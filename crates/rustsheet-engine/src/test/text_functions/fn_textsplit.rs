@@ -263,3 +263,52 @@ fn long_delimiter_matching_everywhere() {
     assert_eq!(model._get_text("A1"), *"2001");
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 }
+
+// T-1361: a delimiter range of any shape is a list; a blank cell in the column delimiter range
+// is the empty delimiter, so `#VALUE!`; a boolean is its spelling and an error element is that
+// error (probes/textbefore-delimiter-range A27-A34, probes/textbefore-delimiter-list-elements).
+#[test]
+fn delimiter_ranges_are_lists() {
+    let mut model = new_empty_model();
+    model._set("D1", "x");
+    model._set("E1", "y");
+    model._set("D2", "z");
+    model._set("E2", ",");
+    model._set("D3", "TRUE");
+    model._set("E3", "q");
+    model._set("E4", "b");
+    model._set("D5", "=1/0");
+    model._set("E5", "b");
+    model._set("A1", "=ARRAYTOTEXT(TEXTSPLIT(\"a,b\",D1:E2),1)");
+    model._set("A2", "=ARRAYTOTEXT(TEXTSPLIT(\"aTRUEb\",D3:E3),1)");
+    model._set("A3", "=ARRAYTOTEXT(TEXTSPLIT(\"aTRUEb\",\",\",D3:E3),1)");
+    model._set("A4", "=TEXTSPLIT(\"abc\",D4:E4)");
+    model._set("A5", "=TEXTSPLIT(\"abc\",D5:E5)");
+    model._set("A6", "=ARRAYTOTEXT(TEXTSPLIT(\"aTRUEb\",{TRUE,\"q\"}),1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"{\"a\",\"b\"}");
+    assert_eq!(model._get_text("A2"), *"{\"a\",\"b\"}");
+    assert_eq!(model._get_text("A3"), *"{\"a\";\"b\"}");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"#DIV/0!");
+    assert_eq!(model._get_text("A6"), *"{\"a\",\"b\"}");
+}
+
+// T-1412: an empty delimiter is `#VALUE!` in either list, as a "" string, a blank cell or an
+// empty element of a list (probes/textsplit-empty-delimiter A1-A11).
+#[test]
+fn empty_row_delimiter_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("D2", ";");
+    model._set("A1", "=TEXTSPLIT(\"abc\",\"b\",\"\")");
+    model._set("A2", "=TEXTSPLIT(\"abc\",\"b\",{\",\",\"\"})");
+    model._set("A3", "=TEXTSPLIT(\"a,b\",\",\",D1)");
+    model._set("A4", "=TEXTSPLIT(\"a,b\",\",\",C2:D2)");
+    model._set("A5", "=TEXTSPLIT(\"a,b\",D1,\",\")");
+    model._set("A6", "=ARRAYTOTEXT(TEXTSPLIT(\"a,b\",\",\",,TRUE),1)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4", "A5"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
+    assert_eq!(model._get_text("A6"), *"{\"a\",\"b\"}");
+}

@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "5b1333bae71c554173b0acbc38db5adba289dab07428591ad54cc4666ca8eea3",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T01:26:40+00:00",
+  "version": null
+ },
+ "text": {
+  "S": {
+   "A1": "Mittwoch Mrz",
+   "A2": "Wednesday, March 15, 2023",
+   "A3": "6:00:00 PM",
+   "A4": "6 PM",
+   "A5": "3\u6708"
+  }
+ }
+}

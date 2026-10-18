@@ -3,7 +3,7 @@ id: T-1412
 title: "TEXTSPLIT with an empty row_delimiter is #VALUE! even when a column delimiter is given"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,11 +22,22 @@ Engine today: `TEXTSPLIT("abc","")` and `TEXTSPLIT("abc",,"")` are already `#VAL
 `TEXTSPLIT("abc","","b")`, `TEXTSPLIT("abc",{"b",""})` and `TEXTSPLIT("abc","b",{",",""})` (an empty element inside a list).
 Semantics: docs/excel-semantics/text.md "TEXTSPLIT with an empty delimiter is #VALUE!". Code: `fn_textsplit`
 (crates/rustsheet-engine/src/functions/text/textsplit.rs). Delimiter ranges are T-1361.
+T-1361 (probes/textbefore-delimiter-range A44, excel-graph 2026-10-18) settles the list form: `TEXTSPLIT("abc",",",A9:B9)` with A9
+blank, B9 "b" is `#VALUE!` (the blank cell is an empty row delimiter; ours drops it via `skip_empty` in `split_delimiters` and gives
+{"a";"c"}). That cell is a known failure in eval/baseline until this task lands.
 
 ## Acceptance criteria
-- [ ] gen-m9/d244411dd90f7fbd A6 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] The empty-delimiter probe cells pass; text.md's entry is VERIFIED.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/d244411dd90f7fbd A6 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] The empty-delimiter probe cells pass; text.md's entry is VERIFIED.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Done inside T-1361's PR: T-1361's list reader made a blank cell in a delimiter range the empty delimiter, and TEXTSPLIT
+still dropped it from the row list, which turned gen-m7/a0cbc75358b429b6 A10 from a (lucky) `#VALUE!` into `#SPILL!`.
+probes/textsplit-empty-delimiter (12 cells, excel-graph 2026-10-18) shows every empty delimiter is `#VALUE!`, row or
+column, as "", a list element, a blank cell or an empty-string cell; an omitted one is fine. `textsplit_element` now
+checks both lists and `split_delimiters` no longer drops empties. gen-m9/d244411dd90f7fbd A6, gen-m7/a0cbc75358b429b6 A10
+and probes/textbefore-delimiter-range A44 pass. text.md "TEXTSPLIT with an empty delimiter is #VALUE!" is VERIFIED.

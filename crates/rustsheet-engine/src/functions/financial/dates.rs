@@ -8,7 +8,7 @@ use chrono::{Datelike, NaiveDate};
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{token::Error, types::CellReferenceIndex},
     formatter::dates::{from_excel_date, EPOCH_1904_IN_1900_SERIALS},
     functions::lift::num_error,
     model::Model,
@@ -52,47 +52,6 @@ impl Model {
             .date_system
             .financial_1900_serial(serial)
             .floor() as i64
-    }
-
-    /// A date argument of a financial function, as `financial_date` reads it. Booleans are
-    /// rejected; ACCRINT, ACCRINTM and AMORLINC accept them, so they call `get_number` and
-    /// `financial_date` themselves.
-    pub(super) fn get_financial_date(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<i64, CalcResult> {
-        let serial = self.get_number_no_bools(node, cell)?;
-        Ok(self.financial_date(serial))
-    }
-
-    /// The first two arguments, settlement and maturity, as `get_financial_date` reads them.
-    pub(super) fn get_settlement_and_maturity(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> Result<(i64, i64), CalcResult> {
-        Ok((
-            self.get_financial_date(&args[0], cell)?,
-            self.get_financial_date(&args[1], cell)?,
-        ))
-    }
-
-    /// The first `N` arguments of ODDFPRICE, ODDFYIELD, ODDLPRICE or ODDLYIELD, all dates, as 1900
-    /// serials (`DateSystem::odd_period_1900_serial`). A date Excel's reading moves off the calendar
-    /// is `None`: the caller makes it #NUM! once every argument has been read, so an error in a
-    /// later argument still wins.
-    pub(super) fn get_odd_period_dates<const N: usize>(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> Result<[Option<i64>; N], CalcResult> {
-        let date_system = self.workbook.settings.date_system;
-        let mut dates = [None; N];
-        for (date, arg) in dates.iter_mut().zip(args) {
-            *date = date_system.odd_period_1900_serial(self.get_number_no_bools(arg, cell)?);
-        }
-        Ok(dates)
     }
 
     /// Whether Excel's coupon schedule breaks for `maturity`, as `financial_date` read it

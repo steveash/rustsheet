@@ -283,11 +283,10 @@ The delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are one list, not lifted: 
 {",";"-"})` is "b", "d", "f". VERIFIED: probes/m7-argument-modes F13-K13 (excel-graph, 2026-10-09; T-1083), and gen-m7 cells
 whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/93976dd9a3578ed9 Calc!A11, 59cc50701f4937c9 A24).
 A lifted element whose call returns an array keeps its first value: TEXTSPLIT, probes/m7-argument-modes F13:H13.
+An error inside a delimiter array is that error and a boolean is its spelling (T-1361, next entry).
 UNVERIFIED (T-1272 guesses, nothing probed; T-1824 probes them): when two delimiters of a list match at the same
 position, the first in list order sets the match length; every entry longer than the text gives the single-delimiter
-error (`#VALUE!` with more than two arguments, `#N/A` with two); an error inside a delimiter array is `#VALUE!`; a
-boolean inside a TEXTBEFORE/TEXTAFTER delimiter array is `#VALUE!` (as TEXTSPLIT's already was), although a boolean in a
-delimiter range raises no error (next entry); a REGEX pattern that does not compile is `#VALUE!` in its own element
+error (`#VALUE!` with more than two arguments, `#N/A` with two); a REGEX pattern that does not compile is `#VALUE!` in its own element
 only; if_not_found, pad_with, match_end and return_all lift like the other scalars, and if_not_found is evaluated even
 when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of a lifted element. A 1x1 array lifts too, so
 `COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(A1:A2,A1:A2="a,b"),","))` and
@@ -330,7 +329,7 @@ The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite
 ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE),
 UNVERIFIED against Excel's PCRE2 (T-1817 probes it).
 The REGEXREPLACE replacement syntax is the regex crate's (`$1`, `${1}`, `$name`, `$$`; `$1a` is the group named `1a`,
-a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it).
+a lone `$` is itself), as before T-1272; UNVERIFIED against Excel's PCRE2 rules (T-1817 probes it). The T-1626 probes settle part of this, and Excel differs from ours there (`\1` in the replacement, a pattern backreference, lazy empty matches): see "REGEXTEST and REGEXREPLACE edge cases (T-1626)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
@@ -339,23 +338,40 @@ Tasks: T-1272, T-1829
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
-function argument modes"), and numbers and booleans in it raise no error. VERIFIED: a 2-row range is accepted
-(`TEXTBEFORE("",C3:D3)` with C3:D3 = TRUE, 1E+15 is `#N/A`, nothing found; `TEXTSPLIT("#N/A",B4,B11:B12)` with row
-delimiters 1E+15, TRUE is not an error); `TEXTAFTER("TRUE",A5:D6)` (A5 = "TRUE") is text that is not a reference
-(`INDIRECT` of it is `#REF!`), inferred to be "" since "TRUE" matches at the start; `TEXTBEFORE("a*",C1:D11)` is "".
-UNVERIFIED: whether a blank cell in the range is an empty delimiter (in `TEXTBEFORE("a*",C1:D11)` the "a" in C5 matches at
-the start anyway) and whether numbers and booleans match as their text; T-1361 probes both first.
-More cells (gen-m9, excel-graph, 2026-10-12, T-1289). Blank cells do not act as the empty delimiter of
-`TEXTBEFORE(x,"")` (which matches at the start and gives ""): `TEXTBEFORE(2,A9:D10)` over 0, "?b", blank, 1.005, FALSE, blank, 1 and
-a blank is "2", the whole text (`((-1E+11)-TEXTBEFORE(..))/-1` = 100000000002, gen-m9/0c7fc447bc2eebfd Calc!A6), and
-`TEXTBEFORE(42,C11:D11,1E+15)` over 1E+15 and a blank is "" although instance_num 1E+15 is far past the text
-(gen-m9/4df1b22d3ed63f58 Calc!A14). Both are inferred from the surrounding formula and look inconsistent; record, do not
-explain, until T-1361's probe. Without blanks, nothing found is `#N/A` as usual: `TEXTBEFORE(TRUE,D4:E5,-1)`,
-`TEXTAFTER(123456789.123,D4:E10)`, `TEXTBEFORE(" x ",D10:E11)` (gen-m9/3ec66461400faf2f A3, 696af2c8cee2f57e A23,
-95efb37a9874f82e A25), and `TEXTBEFORE("1TRUE",A8:C11)` (number 1 among the delimiters) is "" (4df1b22d3ed63f58 A30).
-Evidence: gen-m7/8ed8a680e9794b77 Calc!A17, A26; gen-m7/0e40208f51c2454c Calc!A17; gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, 2026-10-11, T-1275).
-Ours: a one-row range of text delimiters works; a multi-row range, or one holding a blank or a boolean, is `#VALUE!`.
-Status: VERIFIED (web) for the listed cells; blank and number/boolean matching UNVERIFIED
+function argument modes"). Each element is read as text: a number as its text (`1E+15` as `1000000000000000`, the
+spelling `number_to_text` gives, so `TEXTBEFORE("a1E+15b",{1E+15,"q"})` is `#N/A`), a boolean as TRUE or FALSE
+(`TEXTBEFORE("a false b",{FALSE,"q"},,1)` is "a ", case-folded with match_mode 1), and a blank cell or an empty-string
+cell as the empty delimiter. An error element makes the call that error, even beside the empty delimiter
+(`TEXTBEFORE("abc",{"",#N/A})` is `#N/A`; a range holding `=1/0` gives `#DIV/0!`; TEXTSPLIT alike). So in TEXTSPLIT a
+blank cell in the col_delimiter range is `#VALUE!` (the empty delimiter, see "TEXTSPLIT with an empty delimiter is
+#VALUE!"), and so is one in the row_delimiter range (`TEXTSPLIT("abc",",",A9:B9)` with A9 blank). In TEXTBEFORE
+and TEXTAFTER the empty delimiter decides the result alone, see the next entry; this explains the gen-m9 cells that
+looked inconsistent (`TEXTBEFORE(2,A9:D10)` is "2" because the text is one character long, `TEXTBEFORE(42,C11:D11,1E+15)`
+is "" because the empty delimiter ignores instance_num's size), and `TEXTAFTER(" x ",A6:A10,A9)` (A6 blank, A9 42) is
+" x ", which the gen-m7 cell's subtraction turns into `#VALUE!`.
+Evidence: probes/textbefore-delimiter-range (54 cells), probes/textbefore-delimiter-list-elements A1-A7, A22, A23,
+A31-A34, probes/textbefore-number-delimiter (excel-graph, 2026-10-18, T-1361); gen-m7/8ed8a680e9794b77 Calc!A17, A26;
+gen-m7/0e40208f51c2454c Calc!A17; gen-m7/4629e931955aa4b8 Calc!A19; gen-m7/851eb2099ae3f805 Calc!A25 (excel-graph,
+2026-10-11, T-1275); gen-m9/0c7fc447bc2eebfd A6, 4df1b22d3ed63f58 A14, A30, 3ec66461400faf2f A3, 696af2c8cee2f57e A23,
+95efb37a9874f82e A25 (excel-graph, 2026-10-12, T-1289).
+Ours: matches (`delimiter_list` in functions/text/lifted.rs). The error of a list with two different errors is the first in row-major order (UNVERIFIED).
+Status: VERIFIED (web)
+Tasks: T-1361, T-1412
+
+## TEXTBEFORE and TEXTAFTER with the empty delimiter
+Rule: when the delimiter (a scalar `""`, a blank cell, or any element of a list) is empty, the result depends only on the
+text and the sign of instance_num, not on the other delimiters, the size of instance_num (`TEXTBEFORE("42","",1E+15)` is
+"", `TEXTBEFORE("abc","",2)` is "" too), match_mode, match_end or if_not_found: the empty delimiter matches at the start
+of the text, so TEXTBEFORE is "" and TEXTAFTER the whole text, and with a negative instance_num at its end (TEXTBEFORE the
+whole text, TEXTAFTER ""). A text one UTF-16 unit long always matches at the end, whatever the sign:
+`TEXTBEFORE("2","")`, `TEXTBEFORE("é","")`, `TEXTBEFORE(1,"")` and `TEXTBEFORE("q",{"","q"})` are the whole text, their
+TEXTAFTER "", while `TEXTBEFORE("😀","")` (two units) is "". An empty text gives "" (not the usual `#N/A` of
+`TEXTBEFORE("",x)`). instance_num 0, a match_end other than 0 or 1 and a non-numeric instance_num are still `#VALUE!`.
+Evidence: probes/textbefore-empty-delimiter-list (240 cells: texts of 0-3 characters, the empty delimiter alone and
+beside delimiters of each length, instance_num 1, -1 and 2), probes/textbefore-delimiter-list-elements A8-A21, A24-A30,
+A35, A36 (excel-graph, 2026-10-18, T-1361).
+Ours: matches (`around_empty_delimiter` in functions/text/before_after.rs).
+Status: VERIFIED (web)
 Tasks: T-1361
 
 ## TEXTSPLIT of empty text is #VALUE!
@@ -372,13 +388,16 @@ Status: VERIFIED (web)
 Tasks: T-1347
 
 ## TEXTSPLIT with an empty delimiter is #VALUE!
-Rule: an empty row_delimiter is `#VALUE!` even when a non-empty col_delimiter is given:
-`TEXTSPLIT("TRUE"&"abc"&"x~*","TRUE1E-15a*","")` is `#VALUE!`.
-Evidence: gen-m9/d244411dd90f7fbd Calc!A6 (excel-graph, 2026-10-12, T-1289).
-Ours: the empty row delimiter is ignored (the whole text comes back; `TEXTSPLIT("abc","b","")` is "a"); `TEXTSPLIT("abc","")` and
-`TEXTSPLIT("abc",,"")` are already `#VALUE!`.
-Status: VERIFIED (web) for this form; an empty element inside a delimiter list is UNVERIFIED
-Tasks: T-1412
+Rule: an empty delimiter is `#VALUE!` in either list, even when the other list has a non-empty one: a `""` string
+(`TEXTSPLIT("abc","b","")`, `TEXTSPLIT("abc","","b")`), an empty element of a list (`{"b",""}`, `{",",""}`), a blank
+cell alone or in a range, and an empty-string cell. An omitted delimiter is no delimiter and is fine beside the other one
+(`TEXTSPLIT("a,b",",",,TRUE)` is {"a","b"}). `TEXTSPLIT("TRUE"&"abc"&"x~*","TRUE1E-15a*","")` is `#VALUE!`.
+Evidence: probes/textsplit-empty-delimiter A1-A12 (excel-graph, 2026-10-18, T-1361); probes/textbefore-delimiter-range
+A30, A31, A33, A34, A44, A45; gen-m9/d244411dd90f7fbd Calc!A6 (excel-graph, 2026-10-12, T-1289); gen-m7/a0cbc75358b429b6
+Calc!A10 (a blank cell in a row_delimiter range).
+Ours: matches (`textsplit_element` in functions/text/textsplit.rs; `delimiter_list` reads a blank cell as "").
+Status: VERIFIED (web)
+Tasks: T-1412, T-1361
 
 ## TEXTSPLIT match_mode 1 case folding
 Rule: with match_mode 1 TEXTSPLIT compares case-insensitively without changing the length of the text. `İ` (U+0130) matches `i`
@@ -496,6 +515,21 @@ Evidence: probes cases `textjoin-array-arguments` (A1-A28, A30-A35), `textjoin-a
 Status: VERIFIED (excel-graph); the array argument (T-1482) and the cycling delimiter (T-1510) are implemented.
 Tasks: T-1482, T-1510
 
+## ASC and JIS in en-US: ASC is the identity (T-1626)
+Rule: in en-US `ASC` changes nothing: full-width letters and digits (`ASC("ＡＢＣ")` = "ＡＢＣ", `ASC("１２３")`), the ideographic space, `！ ＂ ＇ ￥ ゛`, voiced and long-sound katakana (`ガ パ ー`), `、 。`, half-width katakana, surrogate pairs, numbers (`ASC(A7)` with A7 = 7 is "7"), TRUE ("TRUE") and an empty string ("") come back as given (a truly blank cell was not probed); an error argument is returned. `JIS` is `#NAME?` for every argument probed (`ERROR.TYPE(JIS(..))` = 5 for 28 inputs).
+The byte functions (SEARCHB, FINDB, REPLACEB, RIGHTB, LENB) are the character functions for all of these inputs; see the byte-function rule at the top of this file.
+Evidence: probes/t1626-asc, t1626-jis-0..3, t1626-searchb, -findb, -replaceb, -rightb, -lenb (excel-graph, 2026-10-16). PHONETIC of every reference in probes/t1626-phonetic is `#N/A` as before.
+Ours: ASC narrows full-width characters (T-1863). The others match.
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+Tasks: T-1863
+
+## REGEXTEST and REGEXREPLACE edge cases (T-1626)
+Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); surrogate pairs are UNVERIFIED (not probed). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending, as do REGEXTEST case_sensitivity 2 and -1 (C23, C24); UNVERIFIED.
+Evidence: probes/t1626-regextest, t1626-regexreplace (excel-graph, 2026-10-16).
+Ours: #ERROR! for the optional arguments (T-1360); the rest of the mismatches are T-1688.
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+Tasks: T-1360, T-1688, T-1272 (range lift)
+
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
 Rule (PROPER; UPPER, LOWER and further characters in the T-1747 section below): a letter after any non-letter, digits, apostrophes (straight or curly), `_` and `-` included, is upper-cased and the other letters lowered (`2Nd Place`, `O'Neil Mc-Donald`, `It'S 3Rd`, `A1B2C3`, `Hello_World`; full-width letters follow the same rule). Case mapping is per character and one-to-one: the characters whose full mapping expands stay as they are (`PROPER("ßa straße")` is `ßa Straße`, ŉ, ǰ and the ﬁ/ﬂ ligatures unchanged), where Rust's `to_uppercase` gives "SS", "ʼN" and "FI". İ folds to ASCII (`PROPER("İstanbul")` is `Istanbul`, `PROPER("aİb")` `Aib`) and ΐ, ΰ upper-case to Ϊ, Ϋ. Titlecase digraphs map to their capital (`ǅ ǈ ǋ ǲ` give `Ǆ Ǉ Ǌ Ǳ`). A capital sigma ending a word lowers to the final ς, with no letter or digit after it (`ΣΊΣΥΦΟΣ` is `Σίσυφος`, `ΑΣ.ΑΣ-Σ ΑΣ1` is `Ας.Ας-Σ Ασ1`, so a following digit keeps σ and a word-initial Σ stays). A combining mark is not a letter, so the next letter is capitalised (`e` + U+0301 + `cole` is `ÉCole`), and a zero-width space (U+200B) is not a letter either (`PROPER(U+200B&"abc def")` is `<U+200B>Abc Def`).
@@ -517,3 +551,11 @@ cell is "" in both formats, and a typed `""` is "" / `{""}`. An array element is
 its function as an array and `ARRAYTOTEXT` of it is "" (probes/groupby-blank-values).
 Evidence: probes/arraytotext-empty-ref A1-A25 (excel-graph, 2026-10-17, T-1718).
 Status: VERIFIED (excel-graph). Implemented in: `fn_arraytotext`. Tasks: T-1718
+
+## VALUE lifts over a range or an array (T-1791)
+Rule: VALUE lifts over a multi-cell range or an array, each element read as a scalar argument: text converts as in scalar VALUE (`"1 "` is 1, `" $2 "` 2, `"1/2/2020"` 43832, `" 3%"` 0.03), a number stays, a blank cell is 0, a boolean or `""` is `#VALUE!` and an error stays (`VALUE(A1:A8)` spills 8 rows). So `{=SUM(IFERROR(VALUE(LEFT(range,FIND(...)-1)),0))}` adds the numbers in front of the found text (corpus-bench/42181 B14 is 3).
+Not probed: a multi-cell range in a legacy (non-dynamic-array) cell, which takes the implicit intersection of the other lifted text functions.
+Evidence: probes/value-argument-lift (excel-graph, 2026-10-18); corpus-bench/42181 B14 (Excel cached value).
+Implemented in: `fn_value` (functions/text/common.rs), through `text_arg` and `broadcast_text`.
+Status: VERIFIED (excel-graph)
+Tasks: T-1791

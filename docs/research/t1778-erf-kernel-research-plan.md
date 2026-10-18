@@ -384,3 +384,73 @@ x >= 0.5:
 - The drift's sign changes suggest an approximation interval of about [8, 26.64].
 - Five proposed probes (66,240 cells) are specified in the round-2 erfc-structure report: decouple, the exact 0.5
   split, a branch scan, Excel's EXP alongside ERFC, and a dense drift map.
+
+### Research update 4 (2026-10-18): small-x erf is bit-exact; the ERFC tail's outer structure is pinned
+
+**Small x is solved.** For 0 <= x <= 0.5 a single coefficient set reproduces 775,272 of 775,272 oracle points,
+re-verified with the unmodified round-2 scorer. It also reproduces 35,718 of 35,718 points never used in the fit.
+- The structure is unchanged from update 3 (x87 Horner, every operation stored to double; 80-bit product and
+  divide). Only the coefficients changed.
+- How: exact interval inversion of each rounding step into linear constraints, then LP/MILP. Round 2's local
+  optimum had p1 one ulp too high.
+- Pinned to single doubles: p0..p2 and q0..q2. The top coefficients lie on a thin feasible family whose
+  members score identically on all data.
+- The coefficients are in `docs/research/t1778/round3/sol100.txt` on the research branch.
+
+**The ERFC tail (x > 0.5) is open, but its outer structure is exact.**
+- ERFC = fl53(fl64(E*R)): E is Excel's own EXP(-fl53(fl64(x*x))), and R is a stored double that depends only on
+  x. All 121,798 points fit this form.
+- **Excel EXP** is emulated as x87 2^(a*log2e) with a 64-bit log2e: 121,790 of 121,805 points and 30,717 of
+  30,720. It is not correctly rounded; it runs about 2.1% low by 1 ulp at large |a|.
+- **Split and related functions:**
+  - The split is at x = 0.5 + 2^-53.
+  - CHISQ.DIST.RT(2z,1) = ERFC(SQRT(z)).
+  - NORM.S.DIST(-y) = ERFC(fl(y*sqrt(0.5)))/2.
+  - A result below DBL_MIN is flushed to 0.
+- **R's error is a rounding fingerprint.** The ±3-unit "drift" is a deterministic staircase from power-of-two
+  crossings of Horner intermediates, not an approximation-error curve. So matching error-curve shapes cannot
+  identify the source; only exact simulation can.
+- **Features of R:** a sharp change at x ≈ 1.843, a likely branch at about 8.03-8.05, sharp steps at 9.0503 and
+  19.3667, and spectral lines above 8 that point to an intermediate linear in x.
+- **Candidates that fail:** Cephes, Hart 5725, CALERF and fdlibm reach 16-40% exact. Continued fractions,
+  term-count series and tables are ruled out.
+- The 19 new tail probes are `kmyst-erfc-*` (about 644k cells).
+
+**Round 4 (running)** works only on the tail:
+- bit-exact EXP;
+- interval-inversion fits of R, starting on [0.5, 1.843);
+- known rationals with a scale factor, tested by exact fingerprint simulation;
+- probes bisecting the steps and branch points;
+- reconstructing the Horner intermediates from the step catalogue and the spectral lines.
+
+### Research update 5 (2026-10-18): ERFC tail anchors (round 4 plus four cloud sessions)
+
+**Structure:**
+- R is one stored double, multiplied by E once. Every other final ordering (Cephes `(z*p)/q`, Cody's split exp,
+  SLATEC/AS66) leaves about 8% of points unreachable.
+- Horner in x itself, every operation stored to double: the noise fingerprint matches on [0.5, 1.843) and
+  [1.843, 8.04). This is the same style as small-x erf.
+- Earlier "branches" at 1.843 and 8.04 are clusters of sharp steps. Seven steps are pinned to within about
+  10-50 ulps (`kmyst-erfc-r4*`, 2.98M cells).
+
+**Sources:** no published source works, raw or rescaled by any common λ (Cephes P/Q and R/S, Cody CALERF,
+Hart 5725/5667/5666, Boost, fdlibm). The tail is a private fit, like small-x erf.
+
+**Pinned constants:**
+- Stage B, numerator side, is the stored product fl53(fl64(a2*x)) with mantissa a2 = 0x1.5371d5b5d84d4. Two
+  independent methods (a phase search plus correlation, and a vernier plus exact simulation on 506k held-out
+  points) agree on this double. Its error shows where a2*x is in the lower part of its binade; its scale is unknown.
+- Stage A, denominator side, is s1 = fl(fl(a1*x) + b1) with a1 = 0x1.27cdbb941913dp+0 * 2^(E-5). s1 stays in
+  [2^E, 2^(E+1)) for x in [7, 27]. b1 is in [1, 1.043)*2^E, or s1 = b1 - a1*x with b1 in [1.975, 2.253)*2^E.
+
+**EXP:** a floor split, then F2XM1, then FADD (x87). It matches 153,643 of 153,655 cells. The rest needs Excel's
+F2XM1 to be off by 1-2 ulp for 2^f - 1 >= 0.5, which looks like a non-current-Intel F2XM1.
+
+**Disputed:** whether the ±3-unit drift is a rounding fingerprint or the approximation error of non-minimax
+piecewise coefficients. Candidate piece breaks: about 4.1, 4.6-5.66, 5.227, 8.04, 9.055 and 13.8-19.0.
+
+**Running (round 5):**
+- dense probes of [8.0, 9.1], spectral-tracking runs on [0.5, 1.843), branch bisections and EXP maps;
+- an exact attack on piece [8.04, 9.055) with the anchors;
+- recovery of N and D modulo their ulps from spectral phases by a lattice solve;
+- a cloud session placing piece boundaries and verifying the anchors.

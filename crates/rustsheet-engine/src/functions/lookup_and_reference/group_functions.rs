@@ -22,6 +22,7 @@ use crate::{
     model::Model,
 };
 
+use super::eta_min_args;
 use super::grouping::{at, empty_text, value_error, Relative, SetId};
 
 /// What one aggregate cell is computed from: the rows of its group (or grid cell) and its
@@ -109,25 +110,20 @@ pub(crate) fn is_function_array(arg: &Node) -> bool {
 }
 
 /// How many arguments GROUPBY and PIVOTBY pass to a function passed by name: its minimum argument
-/// count when that is 1 or 2, `None` (the whole result `#VALUE!`) otherwise. Two arguments, the
-/// values and the relative set: PERCENTOF (G!S97), CORREL, PEARSON, RSQ, COVARIANCE.P (`#N/A` per
-/// group, as the sizes differ; in the total, the same array twice: about 1 for CORREL, PEARSON
-/// and RSQ, the variance 161.7225 for COVARIANCE.P, functions2 G!B326), and IF, ROUND, SUMIF (`#VALUE!` per cell: an
-/// array result); none: NOW, TEXTJOIN, XLOOKUP (probes/groupby-pivotby-functions G!A421,
-/// -functions2 G!A281-A501). Other functions whose minimum is not 1 are unprobed and get one.
-// TODO(T-1706): every function's minimum argument count (eval/catalog/excel-functions.tsv).
+/// count (`eval/catalog/excel-functions.tsv`) when that is 1 or 2, `None` (the whole result
+/// `#VALUE!`) for 0 and for 3 or more. Two arguments, the values and the relative set: PERCENTOF
+/// (G!S97), CORREL, PEARSON, RSQ, COVARIANCE.P (`#N/A` per group, as the sizes differ; in the
+/// total, the same array twice: about 1 for CORREL, PEARSON and RSQ, the variance 161.7225 for
+/// COVARIANCE.P, functions2 G!B326), and IF, ROUND, SUMIF (`#VALUE!` per cell: an array result);
+/// none: NOW, TEXTJOIN, XLOOKUP (probes/groupby-pivotby-functions G!A421, -functions2
+/// G!A281-A501, probes/groupby-eta-arity G!A1-A141 for the rest).
 fn eta_arity(kind: &Function) -> Option<usize> {
-    match kind {
-        Function::Percentof
-        | Function::Correl
-        | Function::Pearson
-        | Function::Rsq
-        | Function::CovarianceP
-        | Function::If
-        | Function::Round
-        | Function::Sumif => Some(2),
-        Function::Now | Function::Textjoin | Function::Xlookup => None,
-        _ => Some(1),
+    let name = kind.to_localized_name(get_default_language());
+    let min = eta_min_args::min_args(&name);
+    match min {
+        1 => Some(1),
+        2 => Some(2),
+        _ => None,
     }
 }
 
@@ -596,4 +592,33 @@ fn transpose(grid: Vec<Vec<Element>>) -> Vec<Vec<Element>> {
         }
     }
     columns
+}
+
+#[cfg(test)]
+mod tests {
+    use super::eta_min_args::entries;
+
+    /// The table is generated from the catalog; it must list exactly the names whose minimum is not 1.
+    #[test]
+    fn table_matches_catalog() {
+        let catalog = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../eval/catalog/excel-functions.tsv"
+        ));
+        let mut expected: Vec<(&str, u8)> = catalog
+            .lines()
+            .filter(|line| !line.starts_with('#'))
+            .skip(1)
+            .filter_map(|line| {
+                let mut columns = line.split('\t');
+                let name = columns.next()?;
+                let min: u8 = columns.nth(1)?.parse().ok()?;
+                (min != 1).then_some((name, min))
+            })
+            .collect();
+        expected.sort_unstable();
+        let mut actual: Vec<(&str, u8)> = entries().collect();
+        actual.sort_unstable();
+        assert_eq!(actual, expected);
+    }
 }

@@ -543,6 +543,21 @@ for DURATION, MDURATION and PRICE (512; financial.md "Coupon schedule work cap",
 to a schedule-length budget). YIELD, the ODD*
 functions, CUMIPMT/CUMPRINC, AMOR* and the scalars beside XNPV's, XIRR's and FVSCHEDULE's data are T-1841 to T-1843 and T-1845.
 
+As built (T-1290): 44 statistical functions whose every argument is scalar are `Lift` entries. Kernels that call
+statrs' incomplete beta (a 140-step continued fraction) a fixed number of times are `Constant` (0.14 to 0.3 us an
+element in release, BINOM.DIST with 1E18 trials 3.2 us), and so is PERMUT, whose product stops once it is infinite (at
+most 171 factors). BINOM.INV and CRITBINOM are `Weighted(4096)`: a halving search over a `u64`, at most 64 cdfs, up to
+about 65 us an element, so a lift is capped at 32,768 elements, about 2.1 s (statistics.md, a DEVIATION). The quantile searches, the incomplete-gamma functions and
+HYPGEOM.DIST loop by value with no per-call cap, so they stay out until T-1848 bounds them.
+
+As built (T-1842): YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD are `LiftArrays` and `Weighted` from their
+measured worst case. Their schedule walks are hoisted out of the solvers first, a tighter per-call bound with the same
+values: `CouponSchedule` and `OddFirstSchedule` (functions/financial/financial_bonds.rs) walk once per element, so a
+solver step is a sum over the coupons (up to 32,400, 0.55 ms in release) rather than four walks and a sum (5 ms). YIELD
+and ODDFYIELD are charged 2^24 (`YIELD_SOLVER_WEIGHT`: at most 397 prices, about 0.23 s an element at the bound, so 8
+elements, about 1.8 s), ODDFPRICE eight walks (256 elements) and the closed-form ODDLPRICE and ODDLYIELD two (1,024);
+financial.md "Yield and odd-coupon work cap", a DEVIATION that T-1869 narrows to a schedule-length budget.
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
@@ -567,7 +582,7 @@ stack frames (T-1110) stay as they are, and the driver runs inside `fn_edate`.
 
 **Security rule for kernel work.** A table entry is `KernelWork::Constant` only if its kernel is
 O(1) or loops a fixed number of times, whatever the argument values. A value-dependent kernel
-must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.DIST, POISSON,
+must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.INV, POISSON,
 COMBIN, FACT and MULTINOMIAL (T-1197), the RATE/IRR/YIELD solvers (they have iteration caps, so
 they are `Constant` only if the cap is fixed), and the Bessel series. T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`

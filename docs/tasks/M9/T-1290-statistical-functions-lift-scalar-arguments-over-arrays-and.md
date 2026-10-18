@@ -3,7 +3,7 @@ id: T-1290
 title: "Statistical functions whose arguments are all scalar lift over arrays and ranges (probes/stat-argument-modes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -29,10 +29,70 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/1466c66c61189a83 Calc!A1 `=EXPONDIST(INDEX(Data!A1:C3,3,-1e-15),..)`: Excel 0.027981694209681673 (EXPONDIST over the row A3:C3, anchor value), engine `#VALUE!`; also needs T-1407 (INDEX with -1E-15).
 
 ## Acceptance criteria
-- [ ] The lift cells of probes/stat-argument-modes for the functions in scope pass (their baseline lines removed), as do probes/scalar-lift-shapes H15, H16, H20, H21, H34, H35, H38, H40, J8 and K8. Ulp misses in values are named in the Outcome with their owner task.
-- [ ] gen-m9/55fc8c4ffbd7c7cc A5 and d5bd4272655c5211 A6 pass, and 1466c66c61189a83 A1 once T-1407 has landed, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
-- [ ] The entries it adds make the variant live, and it removes the `#[allow(dead_code)]` on `KernelWork::Weighted` and, if still there, on `ArgKind::Lift` (functions/lift/kinds.rs) (T-1770 left the allow with a `TODO(T-1290)`).
+- [x] (subset; the rest moved to T-1848) The lift cells of probes/stat-argument-modes for the functions in scope pass (their baseline lines removed), as do probes/scalar-lift-shapes H15, H16, H20, H21, H34, H35, H38, H40, J8 and K8. Ulp misses in values are named in the Outcome with their owner task.
+- [x] gen-m9/55fc8c4ffbd7c7cc A5 and d5bd4272655c5211 A6 pass, and 1466c66c61189a83 A1 once T-1407 has landed, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] `make check` green; reviewers approve. (`make check` green locally; review is the PR's.)
+- [x] The entries it adds make the variant live, and it removes the `#[allow(dead_code)]` on `KernelWork::Weighted` and, if still there, on `ArgKind::Lift` (functions/lift/kinds.rs) (T-1770 left the allow with a `TODO(T-1290)`).
 
 ## Out of scope
 -
+
+## Outcome
+44 statistical functions whose every argument is scalar run on the SPEC-0011 driver, every argument `Lift`:
+BETA.DIST, BETADIST, BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE, BINOM.INV, CRITBINOM, NEGBINOM.DIST, NEGBINOMDIST,
+CONFIDENCE, CONFIDENCE.NORM, EXPON.DIST, EXPONDIST, F.DIST, F.DIST.RT, FDIST, FISHER, FISHERINV, GAMMA, GAMMALN,
+GAMMALN.PRECISE, GAUSS, PHI, LOGNORM.DIST, LOGNORMDIST, LOGNORM.INV, LOGINV, NORM.DIST, NORMDIST, NORM.INV, NORMINV,
+NORM.S.DIST, NORMSDIST, NORM.S.INV, NORMSINV, PERMUT, PERMUTATIONA, STANDARDIZE, T.DIST, T.DIST.2T, T.DIST.RT, TDIST,
+WEIBULL and WEIBULL.DIST.
+- **Work** (release timings, measured with throwaway timing tests):
+  - The kernels are closed form or call statrs' incomplete beta (140 steps at most) a fixed number of times:
+    `Constant`. Over 2^20 elements BETA.DIST with shapes of 1E6 takes 0.30 s (0.28 us an element), F.DIST and T.DIST
+    with 1E9 degrees of freedom 0.28 and 0.30 us an element, NORM.DIST 0.14 us; the slowest, BINOM.DIST with 1E18
+    trials, 3.32 s (3.2 us an element), and BINOM.DIST.RANGE (two cdfs) 6.66 s (6.4 us an element); both stay
+    `Constant` (a fixed 140-step cap).
+  - PERMUT is `Constant`: its product stops once it is infinite (at most 171 factors), where `PERMUT(1E15,1E15)` looped
+    10^15 times; 2^20 elements take at most 0.23 s.
+  - BINOM.INV/CRITBINOM are `Weighted(4096)`: their search halves a `u64` (at most 64 cdfs), up to 65 us an element
+    (`BINOM.INV(1E12,0.3,alpha)`; 37 us at 1E6 trials), so 2^20 elements would take about 68 s. The weight caps a lift
+    at 32,768 elements, measured at 2.14 s. DEVIATION: a lifted BINOM.INV above 32,768 elements is `#ERROR!`
+    (statistics.md).
+- **New probe** probes/stat-later-argument-lift (141 formula cells, excel-graph 2026-10-17; value cells rounded to 12
+  places): the last and the optional arguments of each function over a range on the formula's own rows (all lift),
+  BETA.DIST's/BETADIST's `[A]`/`[B]` and BINOM.DIST.RANGE's `[number_s2]` over an array, and element values. 138 pass.
+  The three that fail are a finding, not a regression: a typed TRUE element reads as 1 in BETA.DIST's and F.DIST's x
+  (L1, L13: T-1849) and STANDARDIZE's x (L14: T-1755), where the kernels keep their scalar `#VALUE!`.
+- **Code:** the kernels borrow their values and build their own errors with empty messages; the legacy names
+  (BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST, TDIST) share their modern kernel instead of rebuilding argument
+  nodes, and each kernel keeps its scalar read and check order (T.DIST.2T and TDIST read every argument before they
+  check any). `number_or_error` moved from financial/mod.rs to functions/lift. Their fallback
+  arms in static_analysis.rs are deleted (87 lines; the lock goes 1385 → 1209, main being 1296); duplicated lines
+  4812 → 4510 (decision 0010 line).
+- **Scalar changes**, each from Excel evidence (new probes probes/stat-overflow-arguments, 61 formula cells, and -b,
+  10 cells, all pass, excel-graph 2026-10-18; statistics.md "Overflowing arguments, PERMUT's limit and argument error order"):
+  - BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is its value (stat-later-argument-lift L11).
+  - Panics fixed (directive 5; on main, and reachable per element once lifted): F.DIST, F.DIST.RT and FDIST whose
+    `df1*x` overflows are `#DIV/0!` (the F.DIST pdf `#NUM!`), and BETA.DIST/BETADIST whose `B - A` overflows are 0 at
+    x = A, 1 at x = B and `#DIV/0!` otherwise, as Excel; statrs' incomplete beta used to unwrap the NaN. The F pdf of
+    a huge x whose `df1*x` stays finite was `#NUM!` and is now 0 (`F.DIST(1E308,1,3,FALSE)`, E11; -b A6): a
+    logarithmic form runs only where the overflow comes from x alone, so large-df pdfs keep main's `#NUM!` (accurate
+    large-df pdfs are T-1864); probes-numeric was compared cell by cell with main: unchanged but for t1049-phi A37,
+    a lift fix.
+  - PERMUT: a truncated number of 2^31 - 1 or more is `#NUM!` (it was a number, and `PERMUT(1E30,0)` overflowed i64),
+    and a product past the double range is `#NUM!`.
+  - TDIST reads deg_freedom and tails before it checks x: `TDIST(-1,NA(),1)` is `#N/A` (was `#NUM!`).
+  - A 1x1 array argument now gives a 1x1 result, as for the other table entries (T-1813).
+- **Not entered, filed:** BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV, CONFIDENCE.T, the CHISQ.*
+  family, CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON, POISSON.DIST, HYPGEOM.DIST and
+  HYPGEOMDIST: their statrs quantile searches, incomplete-gamma series and hypergeometric cdf sum loop by value with no
+  per-call cap (`Gamma::new(a,1).cdf(a)` 1.6 ms at a = 1E10 and growing as sqrt(a); a hypergeometric cdf of 5E7 terms
+  4 s), so T-1848 bounds them first. Z.TEST, T.TEST, PROB, RANK and FORECAST stay T-1772's/T-1813's.
+  T-1750 (STANDARDIZE over a range) is done by this task.
+- **Eval:** `update-baseline --timeout 240`: 0 regressions; probes known failures 4470 → 4302 on main at b167ec8e (171 F lines removed:
+  stat-argument-modes 161, scalar-lift-shapes 8 (H15, H16, H20, H21, H34, H35, J8, K8), scalar-lift-open-a W33,
+  stats-evidence-floor-t1623 Q63; 3 added, the new case's L1, L13, L14). Every suite, the non-gated ones too, was
+  compared cell by cell against main (both binaries, same suites): 0 new failing cells; fixed also gen-m9
+  55fc8c4ffbd7c7cc A5, d5bd4272655c5211 A6 and 95efb37a9874f82e A19, and probes-numeric/t1049-phi A37.
+  gen-m9/1466c66c61189a83 A1 already passed on main. Changed failing values in the existing cases: scalar-lift-shapes H38 and
+  H40, from `#N/IMPL!` to NORM.S.DIST's known last-digit residue (0.8413447460685429, as the scalar H39; T-0968). The new
+  case scores 37/141 with main's binary and 138/141 here; L1, L13 and L14 change from `#N/IMPL!` to `#VALUE!`.
+

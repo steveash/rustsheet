@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Cell display of locale-tagged date names and system date/time tags (T-1716).",
+ "tags": [
+  "M10",
+  "number-format",
+  "displayed-text",
+  "probe"
+ ],
+ "text": [
+  "S!A1",
+  "S!A2",
+  "S!A3",
+  "S!A4",
+  "S!A5"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": 45000,
+    "A2": 45000.75,
+    "A3": 45000.75,
+    "A4": 0.75,
+    "A5": 45000
+   },
+   "number_formats": {
+    "A1": "[$-407]dddd mmm",
+    "A2": "[$-F800]",
+    "A3": "[$-F400]",
+    "A4": "[$-40C]h A/P",
+    "A5": "[$-411]mmmm"
+   }
+  }
+ ],
+ "expected": {}
+}
