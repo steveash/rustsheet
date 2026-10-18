@@ -17,7 +17,7 @@ use coupon_schedule::{
 use super::number_or_error;
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
     functions::lift::{div_error, num_error},
     functions::Function,
@@ -26,7 +26,7 @@ use crate::{
 
 // #NUM! unless ODDFPRICE and ODDFYIELD take this first coupon: it must be on the maturity's
 // coupon schedule (probes/date-system-1900-oddf-schedule; T-1457). A first period exactly one
-// period long is #NUM! too, in `compute_oddfprice`.
+// period long is #NUM! too, in `OddFirstSchedule::new`.
 fn check_odd_first_coupon(
     issue: i64,
     first_coupon: i64,
@@ -34,18 +34,14 @@ fn check_odd_first_coupon(
     frequency: u32,
     cell: CellReferenceIndex,
 ) -> Result<(), CalcResult> {
-    // Off-calendar dates are #NUM! anyway (`compute_oddfprice`); checking them first keeps the
+    // Off-calendar dates are #NUM! anyway (`OddFirstSchedule::new`); checking them first keeps the
     // schedule walk back from the maturity within the calendar for a far-negative serial.
     let (_, next_coupon) = from_excel_date(issue)
         .and_then(|_| from_excel_date(first_coupon))
         .and_then(|_| find_pcd_ncd(first_coupon.saturating_sub(1), maturity, frequency))
-        .map_err(|e| map_date_err(e, cell))?;
+        .map_err(|_| num_error(cell))?;
     if next_coupon != first_coupon {
-        return Err(CalcResult::new_error(
-            Error::NUM,
-            cell,
-            "first coupon off the maturity's schedule".to_string(),
-        ));
+        return Err(num_error(cell));
     }
     Ok(())
 }
@@ -70,13 +66,53 @@ fn validate_basis(basis: u32, cell: CellReferenceIndex) -> Result<(), CalcResult
     }
 }
 
-fn map_date_err(e: String, cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, e)
-}
-
 // ============================================================
 // Core bond price computation (standard coupon bond)
 // ============================================================
+
+/// The yield-independent part of a standard coupon bond's price: the coupon count and the day
+/// counts of the period around settlement, each found by a walk of the coupon schedule.
+struct CouponSchedule {
+    n: f64,
+    e: f64,
+    a: f64,
+}
+
+impl CouponSchedule {
+    fn new(settlement: i64, maturity: i64, frequency: u32, basis: u32) -> Result<Self, String> {
+        Ok(CouponSchedule {
+            n: coupon_count(settlement, maturity, frequency)? as f64,
+            e: coupon_days_e(settlement, maturity, frequency, basis)?,
+            a: coupon_days_a(settlement, maturity, frequency, basis)?,
+        })
+    }
+
+    /// The clean price (per `redemption` par) at the yield `yld`: a sum over every coupon, and no
+    /// schedule walk, so YIELD's solver walks the schedule once, not on every step (T-1842).
+    fn price(&self, rate: f64, yld: f64, redemption: f64, frequency: u32) -> f64 {
+        let CouponSchedule { n, e, a } = *self;
+        let dsc_over_e = (e - a) / e;
+
+        let coupon = 100.0 * rate / frequency as f64;
+        let accrued = coupon * (a / e);
+
+        // A single remaining coupon is discounted with simple (linear) interest
+        if n == 1.0 {
+            return (redemption + coupon) / (1.0 + dsc_over_e * yld / frequency as f64) - accrued;
+        }
+
+        let v = 1.0 + yld / frequency as f64;
+        let first_term = redemption / v.powf(dsc_over_e + n - 1.0);
+
+        let mut second_term = 0.0;
+        for k in 1..=(n as u32) {
+            let t = dsc_over_e + k as f64 - 1.0;
+            second_term += coupon / v.powf(t);
+        }
+
+        first_term + second_term - accrued
+    }
+}
 
 // Returns the clean price (per `redemption` par) for a standard coupon bond.
 fn compute_price(
@@ -88,49 +124,26 @@ fn compute_price(
     frequency: u32,
     basis: u32,
 ) -> Result<f64, String> {
-    let n = coupon_count(settlement, maturity, frequency)? as f64;
-    let e = coupon_days_e(settlement, maturity, frequency, basis)?;
-    let a = coupon_days_a(settlement, maturity, frequency, basis)?;
-    let dsc_over_e = (e - a) / e;
-
-    let coupon = 100.0 * rate / frequency as f64;
-    let accrued = coupon * (a / e);
-
-    // A single remaining coupon is discounted with simple (linear) interest
-    if n == 1.0 {
-        return Ok((redemption + coupon) / (1.0 + dsc_over_e * yld / frequency as f64) - accrued);
-    }
-
-    let v = 1.0 + yld / frequency as f64;
-    let first_term = redemption / v.powf(dsc_over_e + n - 1.0);
-
-    let mut second_term = 0.0;
-    for k in 1..=(n as u32) {
-        let t = dsc_over_e + k as f64 - 1.0;
-        second_term += coupon / v.powf(t);
-    }
-
-    Ok(first_term + second_term - accrued)
+    let schedule = CouponSchedule::new(settlement, maturity, frequency, basis)?;
+    Ok(schedule.price(rate, yld, redemption, frequency))
 }
 
 // ============================================================
 // Yield solver (Newton-Raphson + bisection)
 // ============================================================
 
+/// YIELD's solver: at most 100 Newton steps of three prices and 97 bisection prices (the
+/// bracket [-0.9999, 100] is below 1e-12 wide after 47 halvings), each a sum over the coupons of
+/// `schedule`, which the caller walks once.
 fn compute_yield_from_price(
     target: f64,
-    settlement: i64,
-    maturity: i64,
+    schedule: &CouponSchedule,
     rate: f64,
     redemption: f64,
     frequency: u32,
-    basis: u32,
 ) -> Result<f64, String> {
-    let obj = |y: f64| -> Option<f64> {
-        compute_price(settlement, maturity, rate, y, redemption, frequency, basis)
-            .ok()
-            .map(|p| p - target)
-    };
+    let obj =
+        |y: f64| -> Option<f64> { Some(schedule.price(rate, y, redemption, frequency) - target) };
 
     let h = 1e-5;
     let eps = 1e-8;
@@ -251,110 +264,150 @@ fn coup_number(
 // Odd-first-period price
 // ============================================================
 
-// Clean price for a bond with an odd first coupon period.
-// settlement:   settlement date
-// maturity:     maturity date
-// issue:        issue date (defines start of odd first period)
-// first_coupon: first coupon date
-// rate, yld, redemption, frequency, basis: standard
-#[allow(clippy::too_many_arguments)]
-fn compute_oddfprice(
-    settlement: i64,
-    maturity: i64,
-    issue: i64,
-    first_coupon: i64,
-    rate: f64,
-    yld: f64,
+/// The yield-independent part of the price of a bond with an odd first coupon period: every
+/// schedule walk and day count, so ODDFYIELD's solver walks the schedule once (T-1842). The
+/// price is `redemption / x^front_exponent + lead / x^lead_exponent + sum - accrued`, the sum
+/// running `coupon / x^(index + offset + y)` over `first_index..=last_index`, with
+/// `x = yld / m + 1`: the short and the long first period of oddbonds.fs in one form, with
+/// each term's operations in the order the port had them.
+struct OddFirstSchedule {
+    m: f64,
     redemption: f64,
-    frequency: u32,
-    basis: u32,
-) -> Result<f64, String> {
-    let m = frequency as f64;
-    let num_months = (12 / frequency) as i32;
+    front_exponent: f64,
+    lead: f64,
+    lead_exponent: f64,
+    coupon: f64,
+    first_index: i64,
+    last_index: i64,
+    offset: f64,
+    y: f64,
+    accrued: f64,
+}
 
-    let settlement_d = from_excel_date(settlement)?;
-    let issue_d = from_excel_date(issue)?;
-    let first_coupon_d = from_excel_date(first_coupon)?;
+impl OddFirstSchedule {
+    // settlement:   settlement date
+    // maturity:     maturity date
+    // issue:        issue date (defines start of odd first period)
+    // first_coupon: first coupon date
+    // rate, redemption, frequency, basis: standard
+    #[allow(clippy::too_many_arguments)]
+    fn new(
+        settlement: i64,
+        maturity: i64,
+        issue: i64,
+        first_coupon: i64,
+        rate: f64,
+        redemption: f64,
+        frequency: u32,
+        basis: u32,
+    ) -> Result<Self, String> {
+        let m = frequency as f64;
+        let num_months = (12 / frequency) as i32;
 
-    // E: length of the quasi-coupon period that ends on the first coupon.
-    let e = coupon_days_e(settlement, first_coupon, frequency, basis)?;
-    let dfc = days_between_not_neg(issue_d, first_coupon_d, basis);
-    // Excel: a first period neither shorter nor longer than E is #NUM!, counted on the basis: issue
-    // 2023-07-01 with first coupon 2023-12-31 (180 days 30/360) on basis 0 but not 1 (183 of 184
-    // days) or 4 (179), issue 2023-07-04 (180 actual days) on basis 2, while the quasi-coupon date
-    // 2023-06-30 is a value on bases 2 and 3 (probes/date-system-1900-oddf-issue-after-quasi;
-    // docs/excel-semantics/financial.md; T-1490). Both are whole day counts (E is 182.5 or 91.25 on
-    // basis 3), so the comparison is exact by design.
-    if dfc.partial_cmp(&e) == Some(Ordering::Equal) {
-        return Err("first period is one regular period".to_string());
+        let settlement_d = from_excel_date(settlement)?;
+        let issue_d = from_excel_date(issue)?;
+        let first_coupon_d = from_excel_date(first_coupon)?;
+
+        // E: length of the quasi-coupon period that ends on the first coupon.
+        let e = coupon_days_e(settlement, first_coupon, frequency, basis)?;
+        let dfc = days_between_not_neg(issue_d, first_coupon_d, basis);
+        // Excel: a first period neither shorter nor longer than E is #NUM!, counted on the basis: issue
+        // 2023-07-01 with first coupon 2023-12-31 (180 days 30/360) on basis 0 but not 1 (183 of 184
+        // days) or 4 (179), issue 2023-07-04 (180 actual days) on basis 2, while the quasi-coupon date
+        // 2023-06-30 is a value on bases 2 and 3 (probes/date-system-1900-oddf-issue-after-quasi;
+        // docs/excel-semantics/financial.md; T-1490). Both are whole day counts (E is 182.5 or 91.25 on
+        // basis 3), so the comparison is exact by design.
+        if dfc.partial_cmp(&e) == Some(Ordering::Equal) {
+            return Err("first period is one regular period".to_string());
+        }
+
+        if dfc < e {
+            // --- Short odd first coupon period ---
+            let n = coupon_count(settlement, maturity, frequency)? as f64;
+            let dsc = days_between_not_neg(settlement_d, first_coupon_d, basis);
+            let a = days_between_not_neg(issue_d, settlement_d, basis);
+            let y = dsc / e;
+            Ok(OddFirstSchedule {
+                m,
+                redemption,
+                front_exponent: n - 1.0 + y,
+                lead: 100.0 * rate / m * dfc / e,
+                lead_exponent: y,
+                coupon: 100.0 * rate / m,
+                first_index: 2,
+                last_index: n as i64,
+                // `index - 1` as `index + (-1)`: the same double.
+                offset: -1.0,
+                y,
+                accrued: a / e * (rate / m) * 100.0,
+            })
+        } else {
+            // --- Long odd first coupon period (spans several quasi-coupon periods) ---
+            let nc = coupon_count(issue, first_coupon, frequency)? as i64;
+
+            let mut late_coupon = first_coupon_d;
+            let mut dcnl = 0.0_f64;
+            let mut anl = 0.0_f64;
+            for index in (1..=nc).rev() {
+                let early_coupon = change_month(late_coupon, -num_months, false)?;
+                let nl = if basis == 1 {
+                    days_between_not_neg(early_coupon, late_coupon, basis)
+                } else {
+                    e
+                };
+                let dci = if index > 1 {
+                    nl
+                } else {
+                    days_between_not_neg(issue_d, late_coupon, basis)
+                };
+                let start_date = issue_d.max(early_coupon);
+                let end_date = settlement_d.min(late_coupon);
+                let a = days_between_not_neg(start_date, end_date, basis);
+                late_coupon = early_coupon;
+                dcnl += dci / nl;
+                anl += a / nl;
+            }
+
+            let dsc = if basis == 2 || basis == 3 {
+                let ncd = from_excel_date(next_coupon_date(settlement, first_coupon, frequency)?)?;
+                days_between_not_neg(settlement_d, ncd, basis)
+            } else {
+                let pcd = from_excel_date(prev_coupon_date(settlement, first_coupon, frequency)?)?;
+                e - basis_days(pcd, settlement_d, basis)
+            };
+
+            let nq = coup_number(first_coupon, settlement, num_months, true)?;
+            let n = coupon_count(first_coupon, maturity, frequency)? as f64;
+            let y = dsc / e;
+            Ok(OddFirstSchedule {
+                m,
+                redemption,
+                front_exponent: y + nq + n,
+                lead: 100.0 * rate / m * dcnl,
+                lead_exponent: nq + y,
+                coupon: 100.0 * rate / m,
+                first_index: 1,
+                last_index: n as i64,
+                offset: nq,
+                y,
+                accrued: 100.0 * rate / m * anl,
+            })
+        }
     }
 
-    if dfc < e {
-        // --- Short odd first coupon period ---
-        let n = coupon_count(settlement, maturity, frequency)? as f64;
-        let dsc = days_between_not_neg(settlement_d, first_coupon_d, basis);
-        let a = days_between_not_neg(issue_d, settlement_d, basis);
-        let x = yld / m + 1.0;
-        let y = dsc / e;
-
-        let term1 = redemption / x.powf(n - 1.0 + y);
-        let term2 = 100.0 * rate / m * dfc / e / x.powf(y);
+    /// The clean price at the yield `yld`: a sum over the coupons after the first, no walk.
+    fn price(&self, yld: f64) -> f64 {
+        let x = yld / self.m + 1.0;
+        let term1 = self.redemption / x.powf(self.front_exponent);
+        let term2 = self.lead / x.powf(self.lead_exponent);
         let mut term3 = 0.0;
-        for index in 2..=(n as i64) {
-            term3 += 100.0 * rate / m / x.powf(index as f64 - 1.0 + y);
+        for index in self.first_index..=self.last_index {
+            term3 += self.coupon / x.powf(index as f64 + self.offset + self.y);
         }
-        let term4 = a / e * (rate / m) * 100.0;
-        Ok(term1 + term2 + term3 - term4)
-    } else {
-        // --- Long odd first coupon period (spans several quasi-coupon periods) ---
-        let nc = coupon_count(issue, first_coupon, frequency)? as i64;
-
-        let mut late_coupon = first_coupon_d;
-        let mut dcnl = 0.0_f64;
-        let mut anl = 0.0_f64;
-        for index in (1..=nc).rev() {
-            let early_coupon = change_month(late_coupon, -num_months, false)?;
-            let nl = if basis == 1 {
-                days_between_not_neg(early_coupon, late_coupon, basis)
-            } else {
-                e
-            };
-            let dci = if index > 1 {
-                nl
-            } else {
-                days_between_not_neg(issue_d, late_coupon, basis)
-            };
-            let start_date = issue_d.max(early_coupon);
-            let end_date = settlement_d.min(late_coupon);
-            let a = days_between_not_neg(start_date, end_date, basis);
-            late_coupon = early_coupon;
-            dcnl += dci / nl;
-            anl += a / nl;
-        }
-
-        let dsc = if basis == 2 || basis == 3 {
-            let ncd = from_excel_date(next_coupon_date(settlement, first_coupon, frequency)?)?;
-            days_between_not_neg(settlement_d, ncd, basis)
-        } else {
-            let pcd = from_excel_date(prev_coupon_date(settlement, first_coupon, frequency)?)?;
-            e - basis_days(pcd, settlement_d, basis)
-        };
-
-        let nq = coup_number(first_coupon, settlement, num_months, true)?;
-        let n = coupon_count(first_coupon, maturity, frequency)? as f64;
-        let x = yld / m + 1.0;
-        let y = dsc / e;
-
-        let term1 = redemption / x.powf(y + nq + n);
-        let term2 = 100.0 * rate / m * dcnl / x.powf(nq + y);
-        let mut term3 = 0.0;
-        for index in 1..=(n as i64) {
-            term3 += 100.0 * rate / m / x.powf(index as f64 + nq + y);
-        }
-        let term4 = 100.0 * rate / m * anl;
-        Ok(term1 + term2 + term3 - term4)
+        term1 + term2 + term3 - self.accrued
     }
 }
+
 // ============================================================
 // Odd-last-period price / yield
 // ============================================================
@@ -430,30 +483,6 @@ fn odd_l_func(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn compute_oddlprice(
-    settlement: i64,
-    maturity: i64,
-    last_interest: i64,
-    rate: f64,
-    yld: f64,
-    redemption: f64,
-    frequency: u32,
-    basis: u32,
-) -> Result<f64, String> {
-    odd_l_func(
-        settlement,
-        maturity,
-        last_interest,
-        rate,
-        yld,
-        redemption,
-        frequency,
-        basis,
-        true,
-    )
-}
-
 // ============================================================
 // Generic yield solver (wraps any price function)
 // ============================================================
@@ -523,15 +552,55 @@ where
 /// The checked `(settlement, maturity, frequency, basis)` of a COUP* function.
 type CouponArgs = (i64, i64, u32, u32);
 
-/// The checked arguments of DURATION, MDURATION and PRICE (redemption 100 for the durations).
+/// Which function's arguments [`Model::bond_args`] reads.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BondFunction {
+    /// DURATION and MDURATION: no redemption (it is 100).
+    Duration,
+    /// PRICE: the fourth argument is the yield, at least 0.
+    Price,
+    /// YIELD: the fourth argument is the price, above 0.
+    Yield,
+}
+
+/// The checked arguments of DURATION, MDURATION, PRICE and YIELD (redemption 100 for the
+/// durations).
 struct BondArgs {
     settlement: i64,
     maturity: i64,
     rate: f64,
-    yld: f64,
+    /// The yield, or YIELD's price.
+    yld_or_pr: f64,
     redemption: f64,
     frequency: u32,
     basis: u32,
+}
+
+/// The checked arguments of an ODD* function: its `N` dates as 1900 serials, then the rest.
+struct OddArgs<const N: usize> {
+    dates: [i64; N],
+    rate: f64,
+    /// The yield, or ODDFYIELD's and ODDLYIELD's price.
+    yld_or_pr: f64,
+    redemption: f64,
+    frequency: u32,
+    basis: u32,
+}
+
+/// `odd_l_func` over the checked arguments of ODDLPRICE (`is_l_price`) or ODDLYIELD.
+fn odd_l_function(odd: &OddArgs<3>, is_l_price: bool) -> Result<f64, String> {
+    let [settlement, maturity, last_interest] = odd.dates;
+    odd_l_func(
+        settlement,
+        maturity,
+        last_interest,
+        odd.rate,
+        odd.yld_or_pr,
+        odd.redemption,
+        odd.frequency,
+        odd.basis,
+        is_l_price,
+    )
 }
 
 /// A COUP* kernel over its checked arguments.
@@ -585,13 +654,15 @@ impl Model {
     }
 
     /// Reads and checks `(settlement, maturity, rate, yld, frequency, basis)` of DURATION and
-    /// MDURATION, and of PRICE with its redemption at `values[4]` (`with_redemption`).
+    /// MDURATION, and of PRICE and YIELD (`yld` is the price) with their redemption at
+    /// `values[4]`: every argument is read, in order, before any value is checked.
     fn bond_args(
         &self,
         values: &[CalcResult],
-        with_redemption: bool,
+        function: BondFunction,
         cell: CellReferenceIndex,
     ) -> Result<BondArgs, CalcResult> {
+        let with_redemption = function != BondFunction::Duration;
         let (settlement, maturity, rate, yld, redemption, frequency, basis) =
             match (with_redemption, values) {
                 (true, [s, m, r, y, red, f, rest @ ..]) => (s, m, r, y, Some(red), f, rest.first()),
@@ -610,7 +681,12 @@ impl Model {
         let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?.floor() as u32;
         validate_frequency(frequency, cell)?;
         validate_basis(basis, cell)?;
-        if rate < 0.0 || yld < 0.0 || redemption <= 0.0 {
+        // YIELD's price must be positive, a yield may be 0.
+        let bad_fourth = match function {
+            BondFunction::Yield => yld <= 0.0,
+            BondFunction::Duration | BondFunction::Price => yld < 0.0,
+        };
+        if rate < 0.0 || bad_fourth || redemption <= 0.0 {
             return Err(num_error(cell));
         }
         self.check_bond_dates(settlement, maturity, cell)?;
@@ -618,7 +694,7 @@ impl Model {
             settlement,
             maturity,
             rate,
-            yld,
+            yld_or_pr: yld,
             redemption,
             frequency,
             basis,
@@ -637,7 +713,7 @@ impl Model {
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let bond = self.bond_args(values, false, cell)?;
+        let bond = self.bond_args(values, BondFunction::Duration, cell)?;
         let (settlement, maturity, frequency, basis) =
             (bond.settlement, bond.maturity, bond.frequency, bond.basis);
         let date_error = |_| num_error(cell);
@@ -648,7 +724,7 @@ impl Model {
 
         let redemption = bond.redemption;
         let coupon = redemption * bond.rate / frequency as f64;
-        let v = 1.0 + bond.yld / frequency as f64;
+        let v = 1.0 + bond.yld_or_pr / frequency as f64;
 
         let mut num = 0.0; // sum of t * PV(CF)
         let mut den = 0.0; // dirty price (sum of PV(CF))
@@ -696,371 +772,200 @@ impl Model {
     // PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])
     pub(crate) fn fn_price(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Price, args, cell, &mut |model, values| {
-            number_or_error(model.bond_args(values, true, cell).and_then(|bond| {
-                compute_price(
-                    bond.settlement,
-                    bond.maturity,
-                    bond.rate,
-                    bond.yld,
-                    bond.redemption,
-                    bond.frequency,
-                    bond.basis,
-                )
-                .map_err(|_| num_error(cell))
-            }))
+            number_or_error(
+                model
+                    .bond_args(values, BondFunction::Price, cell)
+                    .and_then(|bond| {
+                        compute_price(
+                            bond.settlement,
+                            bond.maturity,
+                            bond.rate,
+                            bond.yld_or_pr,
+                            bond.redemption,
+                            bond.frequency,
+                            bond.basis,
+                        )
+                        .map_err(|_| num_error(cell))
+                    }),
+            )
         })
     }
 
     // YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])
     pub(crate) fn fn_yield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(6..=7).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let (settlement, maturity) = match self.get_settlement_and_maturity(args, cell) {
-            Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let rate = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let pr = match self.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let redemption = match self.get_number_no_bools(&args[4], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let frequency = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return e,
-        };
-        let basis = if arg_count == 7 {
-            match self.get_number_no_bools(&args[6], cell) {
-                Ok(f) => f.floor() as u32,
-                Err(e) => return e,
-            }
-        } else {
-            0
-        };
-
-        if let Err(e) = validate_frequency(frequency, cell) {
-            return e;
-        }
-        if let Err(e) = validate_basis(basis, cell) {
-            return e;
-        }
-        if rate < 0.0 || pr <= 0.0 || redemption <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "pr and redemption must be > 0".to_string(),
-            );
-        }
-        if let Err(e) = self.check_bond_dates(settlement, maturity, cell) {
-            return e;
-        }
-        match compute_yield_from_price(pr, settlement, maturity, rate, redemption, frequency, basis)
-        {
-            Ok(y) => CalcResult::Number(y),
-            Err(e) => map_date_err(e, cell),
-        }
+        self.lift_call(Function::Yield, args, cell, &mut |model, values| {
+            number_or_error(
+                model
+                    .bond_args(values, BondFunction::Yield, cell)
+                    .and_then(|bond| {
+                        let schedule = CouponSchedule::new(
+                            bond.settlement,
+                            bond.maturity,
+                            bond.frequency,
+                            bond.basis,
+                        )
+                        .map_err(|_| num_error(cell))?;
+                        compute_yield_from_price(
+                            bond.yld_or_pr,
+                            &schedule,
+                            bond.rate,
+                            bond.redemption,
+                            bond.frequency,
+                        )
+                        .map_err(|_| num_error(cell))
+                    }),
+            )
+        })
     }
 
-    // ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency, [basis])
-    pub(crate) fn fn_oddfprice(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(8..=9).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
+    /// Reads and checks the arguments of ODDFPRICE and ODDFYIELD (`N` = 4 dates: settlement,
+    /// maturity, issue, `first_coupon`) or ODDLPRICE and ODDLYIELD (`N` = 3: settlement, maturity,
+    /// `last_interest`), then rate, yld or pr (`price_given`), redemption, frequency and [basis].
+    /// Every argument is read, in order, before any value is checked; then a date off the
+    /// calendar, the frequency, the basis, `check_dates` (the dates' order) and the values are
+    /// #NUM! in that order.
+    fn odd_args<const N: usize>(
+        &self,
+        values: &[CalcResult],
+        price_given: bool,
+        cell: CellReferenceIndex,
+        check_dates: impl Fn(&[i64; N], u32) -> Result<(), CalcResult>,
+    ) -> Result<OddArgs<N>, CalcResult> {
+        let (Some(date_values), Some(rest)) = (values.get(..N), values.get(N..)) else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        let [rate, yld_or_pr, redemption, frequency, rest @ ..] = rest else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        let date_system = self.workbook.settings.date_system;
+        let mut read = [None; N];
+        for (date, value) in read.iter_mut().zip(date_values) {
+            *date = date_system.odd_period_1900_serial(self.cast_number_no_bools_ref(value, cell)?);
         }
-        let dates = match self.get_odd_period_dates::<4>(args, cell) {
-            Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let rate = match self.get_number_no_bools(&args[4], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let yld = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let redemption = match self.get_number_no_bools(&args[6], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let frequency = match self.get_number_no_bools(&args[7], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return e,
-        };
-        let basis = if arg_count == 9 {
-            match self.get_number_no_bools(&args[8], cell) {
-                Ok(f) => f.floor() as u32,
-                Err(e) => return e,
-            }
+        let rate = self.cast_number_no_bools_ref(rate, cell)?;
+        let yld_or_pr = self.cast_number_no_bools_ref(yld_or_pr, cell)?;
+        let redemption = self.cast_number_no_bools_ref(redemption, cell)?;
+        let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
+        let basis = self
+            .cast_number_no_bools_or(rest.first(), 0.0, cell)?
+            .floor() as u32;
+        // A date Excel's reading moves off the calendar (`DateSystem::odd_period_1900_serial`).
+        let mut dates = [0; N];
+        for (date, read) in dates.iter_mut().zip(read) {
+            *date = read.ok_or_else(|| num_error(cell))?;
+        }
+        validate_frequency(frequency, cell)?;
+        validate_basis(basis, cell)?;
+        check_dates(&dates, frequency)?;
+        let bad_fourth = if price_given {
+            yld_or_pr <= 0.0
         } else {
-            0
+            yld_or_pr < 0.0
         };
+        if rate < 0.0 || bad_fourth || redemption <= 0.0 {
+            return Err(num_error(cell));
+        }
+        Ok(OddArgs {
+            dates,
+            rate,
+            yld_or_pr,
+            redemption,
+            frequency,
+            basis,
+        })
+    }
 
-        let [Some(settlement), Some(maturity), Some(issue), Some(first_coupon)] = dates else {
-            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
-        };
-        if let Err(e) = validate_frequency(frequency, cell) {
-            return e;
-        }
-        if let Err(e) = validate_basis(basis, cell) {
-            return e;
-        }
-        if issue >= first_coupon || first_coupon >= maturity || settlement >= maturity {
-            return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
-        }
-        if let Err(e) = check_odd_first_coupon(issue, first_coupon, maturity, frequency, cell) {
-            return e;
-        }
-        if rate < 0.0 || yld < 0.0 || redemption <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "invalid rate/yld/redemption".to_string(),
-            );
-        }
-
-        match compute_oddfprice(
+    /// The checked arguments of ODDFPRICE (`price_given` false) or ODDFYIELD, and the schedule of
+    /// their odd first period.
+    fn odd_first_of(
+        &self,
+        values: &[CalcResult],
+        price_given: bool,
+        cell: CellReferenceIndex,
+    ) -> Result<(OddArgs<4>, OddFirstSchedule), CalcResult> {
+        let odd = self.odd_args::<4>(values, price_given, cell, |dates, frequency| {
+            let [settlement, maturity, issue, first_coupon] = *dates;
+            if issue >= first_coupon || first_coupon >= maturity || settlement >= maturity {
+                return Err(num_error(cell));
+            }
+            check_odd_first_coupon(issue, first_coupon, maturity, frequency, cell)
+        })?;
+        let [settlement, maturity, issue, first_coupon] = odd.dates;
+        let schedule = OddFirstSchedule::new(
             settlement,
             maturity,
             issue,
             first_coupon,
-            rate,
-            yld,
-            redemption,
-            frequency,
-            basis,
-        ) {
-            Ok(p) => CalcResult::Number(p),
-            Err(e) => map_date_err(e, cell),
-        }
+            odd.rate,
+            odd.redemption,
+            odd.frequency,
+            odd.basis,
+        )
+        .map_err(|_| num_error(cell))?;
+        Ok((odd, schedule))
+    }
+
+    /// The checked arguments of ODDLPRICE (`price_given` false) or ODDLYIELD.
+    fn odd_last_of(
+        &self,
+        values: &[CalcResult],
+        price_given: bool,
+        cell: CellReferenceIndex,
+    ) -> Result<OddArgs<3>, CalcResult> {
+        self.odd_args::<3>(values, price_given, cell, |dates, _| {
+            let [settlement, maturity, last_interest] = *dates;
+            if last_interest >= maturity || settlement >= maturity {
+                return Err(num_error(cell));
+            }
+            Ok(())
+        })
+    }
+
+    // ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency, [basis])
+    pub(crate) fn fn_oddfprice(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_call(Function::Oddfprice, args, cell, &mut |model, values| {
+            number_or_error(
+                model
+                    .odd_first_of(values, false, cell)
+                    .map(|(odd, schedule)| schedule.price(odd.yld_or_pr)),
+            )
+        })
     }
 
     // ODDFYIELD(settlement, maturity, issue, first_coupon, rate, pr, redemption, frequency, [basis])
     pub(crate) fn fn_oddfyield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(8..=9).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let dates = match self.get_odd_period_dates::<4>(args, cell) {
-            Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let rate = match self.get_number_no_bools(&args[4], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let pr = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let redemption = match self.get_number_no_bools(&args[6], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let frequency = match self.get_number_no_bools(&args[7], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return e,
-        };
-        let basis = if arg_count == 9 {
-            match self.get_number_no_bools(&args[8], cell) {
-                Ok(f) => f.floor() as u32,
-                Err(e) => return e,
-            }
-        } else {
-            0
-        };
-
-        let [Some(settlement), Some(maturity), Some(issue), Some(first_coupon)] = dates else {
-            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
-        };
-        if let Err(e) = validate_frequency(frequency, cell) {
-            return e;
-        }
-        if let Err(e) = validate_basis(basis, cell) {
-            return e;
-        }
-        if issue >= first_coupon || first_coupon >= maturity || settlement >= maturity {
-            return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
-        }
-        if let Err(e) = check_odd_first_coupon(issue, first_coupon, maturity, frequency, cell) {
-            return e;
-        }
-        if rate < 0.0 || pr <= 0.0 || redemption <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "invalid rate/pr/redemption".to_string(),
-            );
-        }
-
-        let price_fn = |yld: f64| {
-            compute_oddfprice(
-                settlement,
-                maturity,
-                issue,
-                first_coupon,
-                rate,
-                yld,
-                redemption,
-                frequency,
-                basis,
+        self.lift_call(Function::Oddfyield, args, cell, &mut |model, values| {
+            number_or_error(
+                model
+                    .odd_first_of(values, true, cell)
+                    .and_then(|(odd, schedule)| {
+                        solve_yield(odd.yld_or_pr, odd.rate, |yld| Some(schedule.price(yld)))
+                            .map_err(|_| num_error(cell))
+                    }),
             )
-            .ok()
-        };
-
-        match solve_yield(pr, rate, price_fn) {
-            Ok(y) => CalcResult::Number(y),
-            Err(e) => map_date_err(e, cell),
-        }
+        })
     }
 
     // ODDLPRICE(settlement, maturity, last_interest, rate, yld, redemption, frequency, [basis])
     pub(crate) fn fn_oddlprice(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(7..=8).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let dates = match self.get_odd_period_dates::<3>(args, cell) {
-            Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let rate = match self.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let yld = match self.get_number_no_bools(&args[4], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let redemption = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let frequency = match self.get_number_no_bools(&args[6], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return e,
-        };
-        let basis = if arg_count == 8 {
-            match self.get_number_no_bools(&args[7], cell) {
-                Ok(f) => f.floor() as u32,
-                Err(e) => return e,
-            }
-        } else {
-            0
-        };
-
-        let [Some(settlement), Some(maturity), Some(last_interest)] = dates else {
-            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
-        };
-        if let Err(e) = validate_frequency(frequency, cell) {
-            return e;
-        }
-        if let Err(e) = validate_basis(basis, cell) {
-            return e;
-        }
-        if last_interest >= maturity || settlement >= maturity {
-            return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
-        }
-        if rate < 0.0 || yld < 0.0 || redemption <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "invalid rate/yld/redemption".to_string(),
-            );
-        }
-
-        match compute_oddlprice(
-            settlement,
-            maturity,
-            last_interest,
-            rate,
-            yld,
-            redemption,
-            frequency,
-            basis,
-        ) {
-            Ok(p) => CalcResult::Number(p),
-            Err(e) => map_date_err(e, cell),
-        }
+        self.lift_call(Function::Oddlprice, args, cell, &mut |model, values| {
+            number_or_error(
+                model
+                    .odd_last_of(values, false, cell)
+                    .and_then(|odd| odd_l_function(&odd, true).map_err(|_| num_error(cell))),
+            )
+        })
     }
 
     // ODDLYIELD(settlement, maturity, last_interest, rate, pr, redemption, frequency, [basis])
     pub(crate) fn fn_oddlyield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(7..=8).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let dates = match self.get_odd_period_dates::<3>(args, cell) {
-            Ok(dates) => dates,
-            Err(e) => return e,
-        };
-        let rate = match self.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let pr = match self.get_number_no_bools(&args[4], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let redemption = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let frequency = match self.get_number_no_bools(&args[6], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return e,
-        };
-        let basis = if arg_count == 8 {
-            match self.get_number_no_bools(&args[7], cell) {
-                Ok(f) => f.floor() as u32,
-                Err(e) => return e,
-            }
-        } else {
-            0
-        };
-
-        let [Some(settlement), Some(maturity), Some(last_interest)] = dates else {
-            return CalcResult::new_error(Error::NUM, cell, "date out of range".to_string());
-        };
-        if let Err(e) = validate_frequency(frequency, cell) {
-            return e;
-        }
-        if let Err(e) = validate_basis(basis, cell) {
-            return e;
-        }
-        if last_interest >= maturity || settlement >= maturity {
-            return CalcResult::new_error(Error::NUM, cell, "invalid date ordering".to_string());
-        }
-        if rate < 0.0 || pr <= 0.0 || redemption <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "invalid rate/pr/redemption".to_string(),
-            );
-        }
-
-        match odd_l_func(
-            settlement,
-            maturity,
-            last_interest,
-            rate,
-            pr,
-            redemption,
-            frequency,
-            basis,
-            false,
-        ) {
-            Ok(y) => CalcResult::Number(y),
-            Err(e) => map_date_err(e, cell),
-        }
+        self.lift_call(Function::Oddlyield, args, cell, &mut |model, values| {
+            number_or_error(
+                model
+                    .odd_last_of(values, true, cell)
+                    .and_then(|odd| odd_l_function(&odd, false).map_err(|_| num_error(cell))),
+            )
+        })
     }
 
     // COUPDAYBS(settlement, maturity, frequency, [basis])

@@ -550,6 +550,14 @@ most 171 factors). BINOM.INV and CRITBINOM are `Weighted(4096)`: a halving searc
 about 65 us an element, so a lift is capped at 32,768 elements, about 2.1 s (statistics.md, a DEVIATION). The quantile searches, the incomplete-gamma functions and
 HYPGEOM.DIST loop by value with no per-call cap, so they stay out until T-1848 bounds them.
 
+As built (T-1842): YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD are `LiftArrays` and `Weighted` from their
+measured worst case. Their schedule walks are hoisted out of the solvers first, a tighter per-call bound with the same
+values: `CouponSchedule` and `OddFirstSchedule` (functions/financial/financial_bonds.rs) walk once per element, so a
+solver step is a sum over the coupons (up to 32,400, 0.55 ms in release) rather than four walks and a sum (5 ms). YIELD
+and ODDFYIELD are charged 2^24 (`YIELD_SOLVER_WEIGHT`: at most 397 prices, about 0.23 s an element at the bound, so 8
+elements, about 1.8 s), ODDFPRICE eight walks (256 elements) and the closed-form ODDLPRICE and ODDLYIELD two (1,024);
+financial.md "Yield and odd-coupon work cap", a DEVIATION that T-1869 narrows to a schedule-length budget.
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
