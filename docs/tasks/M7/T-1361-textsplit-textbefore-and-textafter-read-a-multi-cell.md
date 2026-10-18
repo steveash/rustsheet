@@ -50,7 +50,7 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Escalated by a sonnet run without implementing (work-loop step 5b: unclear evidence). What I found, not tried in code:
 - The rule for blank, number and boolean delimiter cells is genuinely unknown and the listed cells constrain it in conflicting ways
   (gen-m9/0c7fc447bc2eebfd A6 and 4df1b22d3ed63f58 A14 contradict "blank = empty delimiter"; gen-m7/851eb2099ae3f805 A25 shows a
