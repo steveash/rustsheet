@@ -155,8 +155,8 @@ fn substituted_chars(
         .saturating_sub(matches.saturating_mul(old_text.chars().count()))
 }
 
-/// Whether a SUBSTITUTE result would be over the cell text limit, so it is `#VALUE!`. A result
-/// that does not grow passes even from over-limit input (text.md "Open").
+/// Whether a SUBSTITUTE result would be over the cell text limit, so it is `#VALUE!`, even when
+/// it does not grow from over-limit input (probes/regexreplace-long-result-d A2).
 pub(crate) fn substitute_exceeds_limit(
     text: &str,
     old_text: &str,
@@ -165,7 +165,7 @@ pub(crate) fn substitute_exceeds_limit(
 ) -> bool {
     let text_chars = text.chars().count();
     let result_chars = substituted_chars(text, text_chars, old_text, new_text, instance_num);
-    result_chars > MAX_TEXT_UNITS && result_chars > text_chars
+    result_chars > MAX_TEXT_UNITS
 }
 
 pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_num: i32) -> String {
@@ -349,7 +349,7 @@ fn substitute_units(
             .count(),
     };
     let result_len = (units.len() + replaced * new.len()).saturating_sub(replaced * old.len());
-    if result_len > MAX_TEXT_UNITS && result_len > units.len() {
+    if result_len > MAX_TEXT_UNITS {
         return Err(Error::VALUE);
     }
     let result = match (instance_num, at) {

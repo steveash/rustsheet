@@ -28,6 +28,16 @@ use crate::{
 // Excel: LEFT and RIGHT count characters (code points), unlike LEN, MID, FIND and REPLACE, which
 // count UTF-16 code units: `LEFT("a😀b",3)` is "a😀b" (docs/excel-semantics/text.md "Text
 // positions count UTF-16 code units", probes/text-surrogate-positions A3, B1-B5).
+/// Excel: UPPER, LOWER, PROPER, TRIM, CLEAN and REPLACE (and SUBSTITUTE) of text over 32,767
+/// UTF-16 units are `#VALUE!`, though LEN, LEFT, MID and the REGEX* functions take it
+/// (probes/regexreplace-long-result-d, -e, text-long-input-a, -b, -c).
+pub(super) fn reject_over_limit(text: &Text) -> Result<(), Error> {
+    if text.len_utf16() > MAX_TEXT_UNITS {
+        return Err(Error::VALUE);
+    }
+    Ok(())
+}
+
 fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_text(text)?;
     let num = num?;
@@ -364,11 +374,17 @@ impl Model {
         // or more spaces to a single space. It must NOT touch tab (0x09),
         // non-breaking space (0xA0), or any other Unicode whitespace, so we
         // deliberately split on ' ' rather than using `str::trim`.
-        self.apply_text_unary_text(args, cell, Text::trim_spaces)
+        self.try_apply_text_unary_text(args, cell, |text| {
+            reject_over_limit(text)?;
+            Ok(text.trim_spaces())
+        })
     }
 
     pub(crate) fn fn_lower(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, super::string_format::lower_case)
+        self.try_apply_text_unary_text(args, cell, |text| {
+            reject_over_limit(text)?;
+            Ok(text.map_runs(super::string_format::lower_case))
+        })
     }
 
     /// Applies a single-argument string transform element-wise.
@@ -392,17 +408,33 @@ impl Model {
         cell: CellReferenceIndex,
         f: impl Fn(&Text) -> Text,
     ) -> CalcResult {
+        self.try_apply_text_unary_text(args, cell, |text| Ok(f(text)))
+    }
+
+    /// [`Model::apply_text_unary_text`] for a transform that can fail with an error.
+    pub(crate) fn try_apply_text_unary_text(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        f: impl Fn(&Text) -> Result<Text, Error>,
+    ) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
         match self.get_string_or_array(&args[0], cell) {
-            Ok(crate::cast::StringOrArray::String(s)) => CalcResult::String(f(&s)),
+            Ok(crate::cast::StringOrArray::String(s)) => match f(&s) {
+                Ok(t) => CalcResult::String(t),
+                Err(e) => CalcResult::new_error(e, cell, "Text too long".to_string()),
+            },
             Ok(crate::cast::StringOrArray::Array(arr)) => CalcResult::Array(
                 arr.iter()
                     .map(|row| {
                         row.iter()
                             .map(|n| match crate::cast::array_node_to_text(n) {
-                                Ok(s) => crate::expressions::parser::ArrayNode::String(f(&s)),
+                                Ok(s) => match f(&s) {
+                                    Ok(t) => crate::expressions::parser::ArrayNode::String(t),
+                                    Err(e) => crate::expressions::parser::ArrayNode::Error(e),
+                                },
                                 Err(e) => crate::expressions::parser::ArrayNode::Error(e),
                             })
                             .collect()
@@ -471,7 +503,10 @@ impl Model {
     }
 
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, super::string_format::upper_case)
+        self.try_apply_text_unary_text(args, cell, |text| {
+            reject_over_limit(text)?;
+            Ok(text.map_runs(super::string_format::upper_case))
+        })
     }
 
     /// Evaluates an argument of a text function into a scalar value or a 2-D array of

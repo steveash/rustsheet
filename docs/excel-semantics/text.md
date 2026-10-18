@@ -130,13 +130,16 @@ replace-all and for a given instance number alike; exactly 32,767 is fine. The l
 inputs: when nothing matches the text is returned unchanged even if text plus new_text would exceed it.
 Evidence: probes/text-result-limit C1-C7, C14 (over limit, `#VALUE!`), C11-C13 (no match, unchanged) (excel-graph,
 2026-10-05; excel-desktop not used).
+Over-limit input: SUBSTITUTE of text already over 32,767 units is `#VALUE!` even when the result does not grow
+(`SUBSTITUTE(REGEXREPLACE(REPT("a",32767),"a","bb"),"b","c")`, probes/regexreplace-long-result-d A2, T-1904).
+Per function (the text is the 65,534-unit REGEXREPLACE result; excel-graph, 2026-10-18): UPPER, LOWER, PROPER, TRIM,
+CLEAN, REPLACE and SUBSTITUTE give `#VALUE!` (probes/regexreplace-long-result-e A2, text-long-input-a, -b, -c); LEN,
+LEFT, MID, ISTEXT and the REGEX* functions take the text. `&` is unprobed: excel-graph refuses the workbook.
 Open: REPT and CONCATENATE count the limit in UTF-16 code units (coercion.md "Text longer than 32,767
-characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`; ours passes input text already over the limit
-through when the result does not grow, but Excel's `SUBSTITUTE(REGEXREPLACE(REPT("a",32767),"a","bb"),"b","c")` (65,534
-units in, 65,534 out) is `#VALUE!` (probes/regexreplace-long-result-d A2, T-1817; ours fixes it in T-1904).
+characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`.
 Status: VERIFIED
 Implemented in: `substitute_exceeds_limit`/`substituted_chars` in functions/text/util.rs size the result before building it (T-0241)
-Tasks: T-0241
+Tasks: T-0241, T-1904
 
 ## CONCAT and TEXTJOIN past 32,767 characters
 Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).

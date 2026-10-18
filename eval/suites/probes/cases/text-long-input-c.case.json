@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1904: how LOWER, PROPER, TRIM, CLEAN, REPLACE and & take a REGEXREPLACE result over 32,767 UTF-16 units (c); two long texts per case (excel-graph limit).",
+  "tags": [
+    "M7",
+    "probe",
+    "T-1904",
+    "regexreplace"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LEN(REPLACE(REGEXREPLACE(REPT(\"a\",32767),\"a\",\"bb\"),1,1,\"c\"))"
+      }
+    }
+  ],
+  "expected": {}
+}

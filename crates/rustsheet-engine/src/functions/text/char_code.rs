@@ -151,10 +151,13 @@ impl Model {
     /// CLEAN(text) — removes code points 0-31 and the C1 controls 128-159, and nothing else
     /// (docs/excel-semantics/text.md#clean-and-code-scalar-edges).
     pub(crate) fn fn_clean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.apply_text_unary(args, cell, |s| {
-            s.chars()
-                .filter(|&c| !matches!(c as u32, 0..=31 | 128..=159))
-                .collect()
+        self.try_apply_text_unary_text(args, cell, |text| {
+            super::common::reject_over_limit(text)?;
+            Ok(text.map_runs(|s| {
+                s.chars()
+                    .filter(|&c| !matches!(c as u32, 0..=31 | 128..=159))
+                    .collect()
+            }))
         })
     }
 
