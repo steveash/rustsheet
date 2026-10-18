@@ -3,7 +3,7 @@ id: T-1297
 title: "Probe CONVERT to Celsius, to prefixed units and between non-base units"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
