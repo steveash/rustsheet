@@ -784,6 +784,10 @@ C	probes/text-search-casefold-length.case.json	24
 C	probes/text-surrogate-positions.case.json	68
 C	probes/text-unicode-lone-surrogate-followed.case.json	10
 C	probes/textbefore-casefold-length.case.json	25
+C	probes/textbefore-delimiter-list-elements.case.json	41
+C	probes/textbefore-delimiter-range.case.json	55
+C	probes/textbefore-empty-delimiter-list.case.json	240
+C	probes/textbefore-number-delimiter.case.json	31
 C	probes/textjoin-array-arguments.case.json	34
 C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
@@ -3214,6 +3218,7 @@ F	probes/text-locale-name-tables.case.json	S!A587
 F	probes/text-locale-name-tables.case.json	S!A588
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
+F	probes/textbefore-delimiter-range.case.json	Calc!A44
 F	probes/textsplit-padded-size.case.json	Calc!A1
 F	probes/textsplit-padded-size.case.json	Calc!A2
 F	probes/textsplit-padded-size.case.json	Calc!A3
