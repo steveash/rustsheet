@@ -33,7 +33,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        let pad = match self.get_pad_with(args, flat.len() % wrap_count != 0, cell) {
+        let pad = match self.get_pad_with(args, cell) {
             Ok(p) => p,
             Err(e) => return e,
         };
@@ -83,7 +83,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        let pad = match self.get_pad_with(args, flat.len() % wrap_count != 0, cell) {
+        let pad = match self.get_pad_with(args, cell) {
             Ok(p) => p,
             Err(e) => return e,
         };
@@ -124,7 +124,25 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> Result<Vec<ArrayNode>, CalcResult> {
-        let data = self.eval_to_array(&args[0], cell)?;
+        let result = self.evaluate_node_in_context(&args[0], cell);
+        // A single empty cell is not a vector: `WRAPCOLS(Z1:Z1,2)` and `WRAPCOLS(Z1,2)` are `#VALUE!`
+        // whatever pad_with is, while two empty cells are two 0s (probes/wrapcols-wraprows-pad-with
+        // Z1 rows; it was this, not the error pad_with, behind gen-m9/675763979c1defb6 A6).
+        let empty = match &result {
+            CalcResult::EmptyCell | CalcResult::EmptyArg => true,
+            CalcResult::Range { left, right } if left == right => {
+                matches!(self.evaluate_cell(*left), CalcResult::EmptyCell)
+            }
+            _ => false,
+        };
+        if empty {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "An empty cell is not a vector".to_string(),
+            ));
+        }
+        let data = self.result_to_array(result, cell)?;
         let is_row_vec = data.len() == 1;
         let is_col_vec = data.iter().all(|r| r.len() == 1);
         if !is_row_vec && !is_col_vec {
@@ -165,22 +183,16 @@ impl Model {
         Ok((wrap_count as usize).min(len.max(1)))
     }
 
-    /// Parse the optional `pad_with` argument; `padded` says some cell is filled with it
-    /// (3rd arg of WRAPCOLS/WRAPROWS).
+    /// Parse the optional `pad_with` argument (3rd arg of WRAPCOLS/WRAPROWS). An error `pad_with` is
+    /// a value like another: it fills the padded cells, and when nothing is padded the array is
+    /// returned (probes/wrapcols-wraprows-pad-with, `WRAPROWS({1,2,3,4},4,VALUE("x"))`).
     fn get_pad_with(
         &mut self,
         args: &[Node],
-        padded: bool,
         cell: CellReferenceIndex,
     ) -> Result<ArrayNode, CalcResult> {
         if args.len() == 3 {
             let v = self.evaluate_node_in_context(&args[2], cell);
-            // An error pad_with that nothing is padded with is the result
-            // (gen-m9/675763979c1defb6 A6: `WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`), while
-            // one that fills a padded cell stays in that cell (WRAPCOLS_ROWS.xlsx E10, NA()).
-            if !padded && v.is_error() {
-                return Err(v);
-            }
             Ok(match v {
                 CalcResult::Number(n) => ArrayNode::Number(n),
                 CalcResult::Boolean(b) => ArrayNode::Boolean(b),

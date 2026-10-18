@@ -854,6 +854,13 @@ fn statistical_legacy_ranges_and_shapes_follow_the_table() {
             "_xlfn.BETA.DIST(0.5,2,3,TRUE,0,B1:B60)",
         ),
         ("PERMUT(5,C1:C60)", "PERMUT(5,@C1:C60)", "PERMUT(5,C1:C60)"),
+        // The quantile searches (T-1848).
+        ("TINV(0.4,A1:A60)", "TINV(0.4,@A1:A60)", "TINV(0.4,A1:A60)"),
+        (
+            "BETA.INV(0.4,2,3,0,B1:B60)",
+            "BETA.INV(0.4,2,3,0,@B1:B60)",
+            "_xlfn.BETA.INV(0.4,2,3,0,B1:B60)",
+        ),
     ]);
     let worksheets = vec!["Sheet1".to_string()];
     let mut parser = new_parser(worksheets, vec![], HashMap::new());
@@ -873,7 +880,11 @@ fn statistical_legacy_ranges_and_shapes_follow_the_table() {
         StaticResult::Array(1, 2)
     ));
     assert!(matches!(shape("GAMMA(2.5)"), StaticResult::Scalar));
-    // Not entered yet (T-1848): the old scalar shape.
+    assert!(matches!(
+        shape("F.INV(A1:A3,5,5)"),
+        StaticResult::Array(3, 1)
+    ));
+    // Not entered yet (T-1872): the old scalar shape.
     assert!(matches!(
         shape("CHISQ.DIST(A1:A3,2,TRUE)"),
         StaticResult::Scalar

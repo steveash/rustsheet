@@ -454,3 +454,26 @@ piecewise coefficients. Candidate piece breaks: about 4.1, 4.6-5.66, 5.227, 8.04
 - an exact attack on piece [8.04, 9.055) with the anchors;
 - recovery of N and D modulo their ulps from spectral phases by a lattice solve;
 - a cloud session placing piece boundaries and verifying the anchors.
+
+### Research update 6 (2026-10-18): ERFC tail [4, 26.55], exact Horner stages (rounds 5-6 and cloud sessions)
+
+- **Piece structure.** The tail splits at exactly x = 4, Cody's break point. A level step of 9 sigma there replaces
+  the whole spectral line set. Nothing happens at x = 1, 2, 8 or 16, and there is no binade range reduction: Horner
+  runs in x itself with one coefficient family on [4, 26.55]. The features at 1.843, 8.04, 9.055 and 13.85 are
+  intermediate binade crossings or grid switches, not branches. [0.5, 4) is a separate piece that has not been
+  identified yet.
+- **Numerator chain**, every operation stored to double:
+  - P = fl(alpha*x) with alpha = 0x1.4dc756d76135p-2;
+  - Q = fl(P + b_N) with b_N = 0x1.6ca0f8ecfc798p+1 (exact; it lies inside an independent cloud range);
+  - T = fl(Q*x);
+  - V = fl(T + b2), with b2 in [16, ~17.1] and b2 ≡ 7*2^-48 mod 2^-44.
+- **Denominator chain:** s1 = fl(fl(beta*x) + b_D) with beta = 0x1.27cdbb941913dp-2 and b_D ≈ 2.52, under
+  bisection.
+- **Leading coefficients.** alpha/beta ≈ 2/sqrt(pi), which is the erfcx asymptote. So alpha and beta lead N and D,
+  with deg D = deg N + 1.
+- **R's error** is a staircase of fixed relative quanta, about 0.5*2^-53: a rounding fingerprint. The plateaus are
+  flat between sharp jumps.
+- **EXP.** Excel's F2XM1 deviates from correctly rounded 2^f - 1 for f >= 0.585 in a deterministic way that depends
+  on frac(t); repeats are identical.
+- **Running:** b_D bisection to the ulp; b2 and the next numerator stages; the exact fit of [4, 26.55]; probes on
+  [0.5, 4) for its own fingerprints.
