@@ -3,7 +3,7 @@ id: T-1292
 title: "Paired-array statistics (CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, CHISQ.TEST) of unequal sizes with text are #N/A; F.TEST tail"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
