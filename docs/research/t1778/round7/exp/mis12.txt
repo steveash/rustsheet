@@ -1,0 +1,14 @@
+MIS -0x1.3b6aeb0bf16bbp+9 0x1.dcbc2c0e0448cp-911 0x1.dcbc2c0e0448dp-911 driftmap
+MIS -0x1.de7ad1837e005p+1 0x1.85eb1a3d8bb3ap-6 0x1.85eb1a3d8bb3bp-6 runs2
+MIS -0x1.87c345b200835p+4 0x1.98d4c176ccc07p-36 0x1.98d4c176ccc08p-36 runs3
+MIS -0x1.0036647727588p+5 0x1.bc50e847405bdp-47 0x1.bc50e847405bcp-47 runs3
+MIS -0x1.9a7763f3cfb7cp+8 0x1.c4a29fc31a3dap-593 0x1.c4a29fc31a3dbp-593 runs4
+MIS -0x1.157d2d48d2feap+4 0x1.f8b0829862abep-26 0x1.f8b0829862abfp-26 jumpzoom
+MIS -0x1.157d2d48d2feap+4 0x1.f8b0829862abep-26 0x1.f8b0829862abfp-26 stepmap1
+MIS -0x1.2cc328fb03932p+5 0x1.b1f8c28c43bb5p-55 0x1.b1f8c28c43bb4p-55 stepmap1
+MIS -0x1.a5f3859734dd2p+5 0x1.dfe986dd20b9ep-77 0x1.dfe986dd20b9dp-77 stepmap1
+MIS -0x1.1842d679c3c56p+6 0x1.e36f9241e34bdp-102 0x1.e36f9241e34bep-102 stepmap1
+MIS -0x1.4ee9bfbf9c0f8p+9 0x1.90595cca97e8ep-967 0x1.90595cca97e8dp-967 stepmap2
+MIS -0x1.7715d8a74466dp+8 0x1.d2aa4dc687a2fp-542 0x1.d2aa4dc687a2ep-542 stepmicro
+MIS -0x1.4548194c52e78p+4 0x1.97469b2c16be2p-30 0x1.97469b2c16be3p-30 chiruns2
+MIS -0x1.a1003437a316ep+6 0x1.83b04a02fe695p-151 0x1.83b04a02fe694p-151 chiruns3
