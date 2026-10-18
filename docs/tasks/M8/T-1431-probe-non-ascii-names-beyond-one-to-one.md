@@ -3,7 +3,7 @@ id: T-1431
 title: "Probe non-ASCII names beyond one-to-one Latin pairs: CJK and Turkish I in LET/LAMBDA, and defined names starting with a non-ASCII letter"
 milestone: M8
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
