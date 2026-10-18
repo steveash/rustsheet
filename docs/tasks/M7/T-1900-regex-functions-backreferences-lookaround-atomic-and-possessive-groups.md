@@ -19,7 +19,6 @@ Found by T-1688 (probes/regex-pcre2-features C1-C19, B27-B29; t1626-regextest C2
 ## Acceptance criteria
 - [ ] t1626-regextest C29 and regex-pcre2-features C1-C19 pass; baseline shrinks.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Iteration after empty matches (T-1899).

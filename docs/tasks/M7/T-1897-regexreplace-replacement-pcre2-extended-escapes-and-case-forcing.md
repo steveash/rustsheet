@@ -19,7 +19,6 @@ Found by T-1688 (probes/regex-pcre2-features). Excel's replacement follows PCRE2
 ## Acceptance criteria
 - [ ] B25 passes and a probe case with oracle values covers the escapes above; text.md "REGEXREPLACE replacement syntax" records them.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The pattern side (T-1900).

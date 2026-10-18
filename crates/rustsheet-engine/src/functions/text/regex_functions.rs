@@ -194,7 +194,9 @@ impl Replacement {
     /// Parses `text` for a pattern compiled to `engine`; `None` when Excel gives `#VALUE!` for
     /// it: a group the pattern does not have (`$2`, `\2`, `${y}` with one unnamed group), a `$`
     /// that starts no reference, a trailing `\`, `\0` or a letter escape other than `\n` and
-    /// `\t` (probes/regex-pcre2-features B15-B24, B30).
+    /// `\t` (probes/regex-pcre2-features B15-B24, B30). A backslash before any other character
+    /// is that character (`\-`, `\é`; E6, E7). The `?`s on slices of the text never fail: they
+    /// cut at the ASCII `$`, `\` and digits the scan found.
     fn new(engine: &Engine, text: &str) -> Option<Self> {
         let mut pieces = Vec::new();
         let mut literal = String::new();
@@ -300,6 +302,15 @@ impl Replacement {
         None
     }
 
+    /// The whole replacement when it refers to no group (an empty one has no pieces).
+    fn literal_only(&self) -> Option<&str> {
+        match self.pieces.as_slice() {
+            [] => Some(""),
+            [Piece::Literal(literal)] => Some(literal),
+            _ => None,
+        }
+    }
+
     /// The byte length of `REGEXREPLACE(text, re, replacement)`, saturating, without building it.
     fn result_len(&self, search: &mut Search<'_>, text: &str) -> Result<usize, Spent> {
         let mut len = text.len();
@@ -327,14 +338,10 @@ impl Replacement {
     fn replace(&self, search: &mut Search<'_>, text: &str, len: usize) -> Result<String, Spent> {
         let mut out = String::with_capacity(len);
         let mut last = 0;
-        if self.groups.is_empty() {
-            let literal = self.pieces.iter().find_map(|piece| match piece {
-                Piece::Literal(literal) => Some(literal.as_str()),
-                Piece::Group(_) => None,
-            });
+        if let Some(literal) = self.literal_only() {
             search.for_each_match(text, |m| {
                 out.push_str(text.get(last..m.start()).unwrap_or_default());
-                out.push_str(literal.unwrap_or_default());
+                out.push_str(literal);
                 last = m.end();
             })?;
             out.push_str(text.get(last..).unwrap_or_default());
@@ -506,6 +513,11 @@ impl Model {
                 // Two passes over the text: one measures the result, one builds it.
                 let replaced = cache.with(&pattern, cell, |search| {
                     let Some(replacement) = Replacement::new(search.engine, &replacement) else {
+                        // An invalid replacement is #VALUE! only once something matches: with
+                        // no match the text comes back unchanged (regex-pcre2-features E1-E3).
+                        if search.find(&text)?.is_none() {
+                            return Ok(Ok(text.to_string()));
+                        }
                         return Ok(Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,

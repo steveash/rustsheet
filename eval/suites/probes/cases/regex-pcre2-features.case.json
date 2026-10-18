@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1688: REGEXREPLACE backslash group references in the replacement (B; ERROR.TYPE of the errors in B15-B30), PCRE2 pattern features: backreferences, lookaround, possessive/atomic, \\K, conditionals, comments, \\Q..\\E, (?x) (C), and global iteration after an empty match (D).",
+ "description": "T-1688: REGEXREPLACE backslash group references in the replacement (B; ERROR.TYPE of the errors in B15-B30), PCRE2 pattern features: backreferences, lookaround, possessive/atomic, \\K, conditionals, comments, \\Q..\\E, (?x) (C), and global iteration after an empty match (D). E: an invalid replacement when nothing matches, an unset group, a backslash before punctuation.",
  "tags": [
   "M7",
   "probe",
@@ -73,7 +73,16 @@
     "B27": "=ERROR.TYPE(REGEXTEST(\"aa\",\"(a)\\2\"))",
     "B28": "=ERROR.TYPE(REGEXTEST(\"a\",\"(\"))",
     "B29": "=ERROR.TYPE(REGEXEXTRACT(\"aaa\",\"a++a\"))",
-    "B30": "=ERROR.TYPE(REGEXREPLACE(\"ab\",\"(a)\",\"$y\"))"
+    "B30": "=ERROR.TYPE(REGEXREPLACE(\"ab\",\"(a)\",\"$y\"))",
+    "D13": "=ERROR.TYPE(REGEXREPLACE(\"a\"&UNICHAR(128512)&\"b\",\"\",\"-\"))",
+    "D14": "=LEN(REGEXREPLACE(\"a\"&UNICHAR(128512)&\"b\",\"x*\",\"-\"))",
+    "E1": "=REGEXREPLACE(\"zz\",\"(a)\",\"$2\")",
+    "E2": "=REGEXREPLACE(\"zz\",\"(a)\",\"\\q\")",
+    "E3": "=REGEXREPLACE(\"zz\",\"(a)\",\"$\")",
+    "E4": "=REGEXREPLACE(\"b\",\"(a)?b\",\"[$1]\")",
+    "E5": "=ERROR.TYPE(REGEXREPLACE(\"b\",\"(a)?b\",\"[$1]\"))",
+    "E6": "=REGEXREPLACE(\"a\",\"a\",\"[\\-]\")",
+    "E7": "=REGEXREPLACE(\"a\",\"a\",\"[\\é]\")"
    }
   }
  ],

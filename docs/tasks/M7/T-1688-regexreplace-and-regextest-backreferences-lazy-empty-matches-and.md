@@ -34,8 +34,8 @@ Sonnet run read the task and the engine's regex setup (`regex-automata` with `nf
 The REGEXREPLACE replacement is parsed as Excel's PCRE2 extended syntax (`Replacement::new` in
 functions/text/regex_functions.rs): `\n` is group n, `$n` takes every following digit (`$1a` is group 1 then "a"),
 `\$` and `\\` escape, `\n`/`\t` are LF/TAB, and a missing group, a lone `$`, a trailing `\`, `\0` or an unknown
-letter escape is `#VALUE!`. New probe probes/regex-pcre2-features (54 cells, excel-graph) records the replacement
+letter escape is `#VALUE!` once something matches (with no match the text is unchanged). New probe probes/regex-pcre2-features (62 scored cells, excel-graph) records the replacement
 syntax, the PCRE2 pattern features and PCRE2's global iteration (text.md "REGEXREPLACE replacement syntax (T-1688)"
 and "REGEX* patterns and match iteration are PCRE2 (T-1688)"). Eval: t1626-regexreplace C18 fixed; the new case
-passes 25 of 54, its 29 failures are T-1897 (`\U` case forcing), T-1898/T-1899/T-1900 (the PCRE2 matcher) and
-T-1360 (optional arguments). Follow-ups: T-1897, T-1898, T-1899, T-1900.
+passes 32 of 62, its 30 failures are T-1897 (`\U` case forcing), T-1898/T-1899/T-1900 (the PCRE2 matcher) and
+T-1360 (optional arguments) and the surrogate-pair empty match (D13, T-1899). Follow-ups: T-1897, T-1898, T-1899, T-1900.

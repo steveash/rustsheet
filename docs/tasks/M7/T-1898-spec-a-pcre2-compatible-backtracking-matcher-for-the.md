@@ -20,7 +20,6 @@ Found by T-1688. Excel's REGEX* functions are PCRE2: probes/regex-pcre2-features
 - [ ] docs/specs/ has the spec, with a decision record if it adds a dependency.
 - [ ] The implementation is split into S/M tasks (T-1899 and T-1900 are rewritten or replaced to follow it).
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the matcher.

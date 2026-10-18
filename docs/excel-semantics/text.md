@@ -537,13 +537,14 @@ that follows (`$1a` is group 1 then "a", `[\10]` is group 10); `${n}`, `${name}`
 `aab`); `$$` and `\$` are `$`, `\\` is `\`; `\n` is LF (CODE 10) and `\t` TAB (9); `\U$1` upper-cases (`Ab`, T-1897).
 `#VALUE!` (ERROR.TYPE 3, so the undecoded rich errors are `#VALUE!`): a group the pattern does not have (`$2`, `\2`,
 `$10`, `${y}`, `$y` with one unnamed group), a `$` that starts no reference (`$` alone), a trailing `\`, `\0`, `\x`
-with no hex digits and an unknown letter escape (`\q`). Whether an invalid replacement is `#VALUE!` when nothing
-matches is unprobed (ours: always).
-Evidence: probes/regex-pcre2-features B1-B30 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's
+with no hex digits and an unknown letter escape (`\q`), but only when something matches: with no match the text
+comes back unchanged (`REGEXREPLACE("zz","(a)","$2")`, `"\q"` and `"$"` are `zz`). A backslash before any other
+character is that character (`[\-]`, `[\é]`), and a group that took no part in the match is empty
+(`REGEXREPLACE("b","(a)?b","[$1]")` is `[]`).
+Evidence: probes/regex-pcre2-features B1-B30, E1-E7 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's
 probes/regexreplace-limit-and-syntax A12-A16.
 Ours: matches, except the escapes other than `\n` and `\t` (`\U`, `\L`, `\u`, `\l`, `\E`, `\r`, `\xhh`...), which
-are `#VALUE!` until T-1897, and a backslash before punctuation other than `$` and `\`, which ours reads as that
-character (PCRE2's rule; UNVERIFIED). Implemented in `Replacement::new` (functions/text/regex_functions.rs).
+are `#VALUE!` until T-1897. Implemented in `Replacement::new` (functions/text/regex_functions.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1688, T-1897
 
@@ -558,10 +559,12 @@ Global iteration is PCRE2's: after an empty match a non-empty match anchored at 
 advancing one character, so `a*?` and `a??` on `aaa` replace to `bbbbbbb`, `(?:ab)*?` on `abab` to `-----`, `|b` on
 `abc` to `-a---c-`, `b|` to `-a--c-` and `(?=b)|b` to `a--c`; REGEXEXTRACT's all-matches mode gives 7 matches for
 `a*?` on `aaa` (`,a,,a,,a,`), and REGEXREPLACE's occurrence counts the same matches (occurrence 2 is `baa`, 4 is
-`aba`, -1 `aaab`).
-Evidence: probes/regex-pcre2-features C1-C19, D1-D12, B27-B29 (excel-graph, 2026-10-18).
-Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, possessive and atomic groups, `\K`,
-conditionals and comments as invalid (`#VALUE!`), and iterates as Rust does (`bababab`). The matcher is T-1898
+`aba`, -1 `aaab`). An empty pattern over text with a surrogate pair is `#VALUE!` (`REGEXREPLACE("a"&UNICHAR(128512)&"b","","-")`,
+ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around the emoji.
+Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
+Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, atomic groups, `\K`, conditionals and
+comments as invalid (`#VALUE!`), reads `a++` as `a+` followed by `+` (so `a++a` matches `aaa`, C11, B29), and
+iterates as Rust does (`bababab`). The matcher is T-1898
 (spec), T-1899 (iteration) and T-1900 (pattern features).
 Status: VERIFIED (excel-graph)
 Tasks: T-1688, T-1898, T-1899, T-1900
