@@ -19,6 +19,9 @@
 #              calls the LAMBDA at once (`LAMBDA(x,x+1)(3)`), since an uncalled one is #CALC!.
 #              probes/m7-argument-modes: scalar arguments of the M7 functions lift over a range or an array;
 #              delimiters, SORT's sort_index/sort_order and FILTER's if_empty take one whole (arrays.md).
+# `lift: arrays` on a `value` param: it lifts over an array but a multi-cell range is #VALUE! (the Analysis
+# ToolPak functions, ISEVEN). Derived from the engine's argument-kind table (SPEC-0011) through
+# eval/catalog/lift-kinds.json: run `cd tools && uv run rustsheet-catalog-lift --write`; tools/tests/test_catalog_lift.py checks it.
 # `repeat: true` marks the trailing repeating param; `repeat: {group: [a, b], min, max}` on the first
 # member marks a repeating group of params (SUMIFS criteria_range/criteria pairs). Types: number | text | bool | any.
 # `domain: {enum: [...]}` lists the usual text values (CELL's info_type), or numbers written unquoted (a bond's
@@ -345,14 +348,14 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: issue, mode: value, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: first_interest, mode: value, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: par, mode: value, type: number, domain: { int: true, min: 100, max: 10000 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
-      - { name: calc_method, mode: value, type: bool, optional: true }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
+      - { name: first_interest, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: par, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: calc_method, mode: value, lift: arrays, type: bool, optional: true }
   - name: ACCRINTM
     category: financial
     milestone: M9
@@ -360,11 +363,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: issue, mode: value, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: par, mode: value, type: number, domain: { int: true, min: 100, max: 10000 } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: par, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: ACOS
     category: math
     milestone: M5
@@ -571,8 +574,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: n, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: x, mode: value, lift: arrays, type: number }
+      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 } }
   - name: BESSELJ
     category: engineering
     milestone: M9
@@ -580,8 +583,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: n, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: x, mode: value, lift: arrays, type: number }
+      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 } }
   - name: BESSELK
     category: engineering
     milestone: M9
@@ -589,8 +592,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number, domain: { int: true, min: 1, max: 20 } }
-      - { name: n, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: x, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 20 } }
+      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 } }
   - name: BESSELY
     category: engineering
     milestone: M9
@@ -598,8 +601,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number, domain: { int: true, min: 1, max: 20 } }
-      - { name: n, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: x, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 20 } }
+      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 5 } }
   - name: BETA.DIST
     category: statistical
     milestone: M9
@@ -656,7 +659,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number, mode: value, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] } }
   - name: BIN2HEX
     category: engineering
     milestone: M9
@@ -664,8 +667,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] } }
-      - { name: places, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] } }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
   - name: BIN2OCT
     category: engineering
     milestone: M9
@@ -673,8 +676,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] } }
-      - { name: places, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 1, 101, 1111, 1010101, 111111111, 1111111111] } }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
   - name: BINOM.DIST
     category: statistical
     milestone: M9
@@ -985,9 +988,9 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: real_num, mode: value, type: number }
-      - { name: i_num, mode: value, type: number }
-      - { name: suffix, mode: value, type: text, optional: true, domain: { enum: ["i", "j"] } }
+      - { name: real_num, mode: value, lift: arrays, type: number }
+      - { name: i_num, mode: value, lift: arrays, type: number }
+      - { name: suffix, mode: value, lift: arrays, type: text, optional: true, domain: { enum: ["i", "j"] } }
   - name: CONFIDENCE
     category: statistical
     milestone: M9
@@ -1025,9 +1028,9 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: number, mode: value, type: number }
-      - { name: from_unit, mode: value, type: text, domain: { enum: ["m", "ft", "in", "km", "mi", "yd", "kg", "lbm", "g", "C", "F", "K", "s", "hr", "day"] } }
-      - { name: to_unit, mode: value, type: text, domain: { enum: ["m", "ft", "in", "km", "mi", "yd", "kg", "lbm", "g", "C", "F", "K", "s", "hr", "day"] } }
+      - { name: number, mode: value, lift: arrays, type: number }
+      - { name: from_unit, mode: value, lift: arrays, type: text, domain: { enum: ["m", "ft", "in", "km", "mi", "yd", "kg", "lbm", "g", "C", "F", "K", "s", "hr", "day"] } }
+      - { name: to_unit, mode: value, lift: arrays, type: text, domain: { enum: ["m", "ft", "in", "km", "mi", "yd", "kg", "lbm", "g", "C", "F", "K", "s", "hr", "day"] } }
   - { name: COPILOT, category: text, milestone: M5, scope: out, reason: "AI service (decision 0027); no longer available from 2026-09-14 per https://support.microsoft.com/en-us/excel/functions/copilot-function (fetched 2026-10-07)" }
   - name: CORREL
     category: statistical
@@ -1080,10 +1083,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: COUPDAYS
     category: financial
     milestone: M9
@@ -1091,10 +1094,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: COUPDAYSNC
     category: financial
     milestone: M9
@@ -1102,10 +1105,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: COUPNCD
     category: financial
     milestone: M9
@@ -1113,10 +1116,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: COUPNUM
     category: financial
     milestone: M9
@@ -1124,10 +1127,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: COUPPCD
     category: financial
     milestone: M9
@@ -1135,10 +1138,10 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: COVAR
     category: statistical
     milestone: M9
@@ -1204,12 +1207,12 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 24, max: 360 } }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 } }
-      - { name: start_period, mode: value, type: number, domain: { int: true, min: 1, max: 12 } }
-      - { name: end_period, mode: value, type: number, domain: { int: true, min: 13, max: 24 } }
-      - { name: type, mode: value, type: number, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: nper, mode: value, lift: arrays, type: number, domain: { int: true, min: 24, max: 360 } }
+      - { name: pv, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 500000 } }
+      - { name: start_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 } }
+      - { name: end_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 13, max: 24 } }
+      - { name: type, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 1 } }
   - name: CUMPRINC
     category: financial
     milestone: M9
@@ -1217,12 +1220,12 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
-      - { name: nper, mode: value, type: number, domain: { int: true, min: 24, max: 360 } }
-      - { name: pv, mode: value, type: number, domain: { int: true, min: 1000, max: 500000 } }
-      - { name: start_period, mode: value, type: number, domain: { int: true, min: 1, max: 12 } }
-      - { name: end_period, mode: value, type: number, domain: { int: true, min: 13, max: 24 } }
-      - { name: type, mode: value, type: number, domain: { int: true, min: 0, max: 1 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: nper, mode: value, lift: arrays, type: number, domain: { int: true, min: 24, max: 360 } }
+      - { name: pv, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 500000 } }
+      - { name: start_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 } }
+      - { name: end_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 13, max: 24 } }
+      - { name: type, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 1 } }
   - name: DATE
     category: date
     milestone: M6
@@ -1339,8 +1342,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, type: number, domain: { int: true, min: -512, max: 511 } }
-      - { name: places, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -512, max: 511 } }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
   - name: DEC2HEX
     category: engineering
     milestone: M9
@@ -1348,8 +1351,8 @@ functions:
     prior: 0.1
     returns: text
     params:
-      - { name: number, mode: value, type: number, domain: { int: true, min: -1000, max: 100000 } }
-      - { name: places, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -1000, max: 100000 } }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
   - name: DEC2OCT
     category: engineering
     milestone: M9
@@ -1357,8 +1360,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, type: number, domain: { int: true, min: -1000, max: 100000 } }
-      - { name: places, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -1000, max: 100000 } }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
   - name: DECIMAL
     category: math
     milestone: M5
@@ -1382,8 +1385,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number1, mode: value, type: number }
-      - { name: number2, mode: value, type: number, optional: true }
+      - { name: number1, mode: value, lift: arrays, type: number }
+      - { name: number2, mode: value, lift: arrays, type: number, optional: true }
   - { name: DETECTLANGUAGE, category: text, milestone: M5, scope: out, reason: "Microsoft Translation Services (decision 0027)" }
   - name: DEVSQ
     category: statistical
@@ -1409,11 +1412,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: pr, mode: value, type: number, domain: { int: true, min: 80, max: 99 } }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 99 } }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: DMAX
     category: database
     milestone: M9
@@ -1450,8 +1453,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: fractional_dollar, mode: value, type: number }
-      - { name: fraction, mode: value, type: number, domain: { int: true, min: 1, max: 32 } }
+      - { name: fractional_dollar, mode: value, lift: arrays, type: number }
+      - { name: fraction, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 32 } }
   - name: DOLLARFR
     category: financial
     milestone: M9
@@ -1459,8 +1462,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: decimal_dollar, mode: value, type: number }
-      - { name: fraction, mode: value, type: number, domain: { int: true, min: 1, max: 32 } }
+      - { name: decimal_dollar, mode: value, lift: arrays, type: number }
+      - { name: fraction, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 32 } }
   - name: DPRODUCT
     category: database
     milestone: M9
@@ -1518,12 +1521,12 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: coupon, mode: value, type: number }
-      - { name: yld, mode: value, type: number }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: coupon, mode: value, lift: arrays, type: number }
+      - { name: yld, mode: value, lift: arrays, type: number }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: DVAR
     category: database
     milestone: M9
@@ -1561,8 +1564,8 @@ functions:
     prior: 0.8
     returns: number
     params:
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: months, mode: value, type: number, domain: { int: true, min: -24, max: 24 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: months, mode: value, lift: arrays, type: number, domain: { int: true, min: -24, max: 24 } }
   - name: EFFECT
     category: financial
     milestone: M9
@@ -1570,8 +1573,8 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: nominal_rate, mode: value, type: number }
-      - { name: npery, mode: value, type: number, domain: { int: true, min: 1, max: 12 } }
+      - { name: nominal_rate, mode: value, lift: arrays, type: number }
+      - { name: npery, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 } }
   # Lifts over an array; #VALUE! for every argument on excel-graph (probes/info-logic-argument-modes-2, T-1088).
   - name: ENCODEURL
     category: web
@@ -1588,8 +1591,8 @@ functions:
     prior: 0.8
     returns: number
     params:
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: months, mode: value, type: number, domain: { int: true, min: -24, max: 24 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: months, mode: value, lift: arrays, type: number, domain: { int: true, min: -24, max: 24 } }
   - name: ERF
     category: engineering
     milestone: M9
@@ -1597,8 +1600,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: lower_limit, mode: value, type: number }
-      - { name: upper_limit, mode: value, type: number, optional: true }
+      - { name: lower_limit, mode: value, lift: arrays, type: number }
+      - { name: upper_limit, mode: value, lift: arrays, type: number, optional: true }
   - name: ERF.PRECISE
     category: engineering
     milestone: M9
@@ -1606,7 +1609,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
+      - { name: x, mode: value, lift: arrays, type: number }
   - name: ERFC
     category: engineering
     milestone: M9
@@ -1614,7 +1617,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
+      - { name: x, mode: value, lift: arrays, type: number }
   - name: ERFC.PRECISE
     category: engineering
     milestone: M9
@@ -1622,7 +1625,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: x, mode: value, type: number }
+      - { name: x, mode: value, lift: arrays, type: number }
   # Lifts over a range (probes/info-logic-argument-modes A8).
   - name: ERROR.TYPE
     category: information
@@ -1749,7 +1752,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number, domain: { int: true, min: 0, max: 30 } }]
+    params: [{ name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 30 } }]
   - name: "FALSE"
     category: logical
     milestone: M5
@@ -2079,8 +2082,8 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number, mode: value, type: number }
-      - { name: step, mode: value, type: number, optional: true }
+      - { name: number, mode: value, lift: arrays, type: number }
+      - { name: step, mode: value, lift: arrays, type: number, optional: true }
   # No signature: GETPIVOTDATA reads a pivot table, which generated workbooks do not have (T-1238).
   - { name: GETPIVOTDATA, category: lookup, milestone: M6, scope: in }
   - name: GROUPBY
@@ -2124,8 +2127,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] } }
-      - { name: places, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] } }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
   - name: HEX2DEC
     category: engineering
     milestone: M9
@@ -2133,7 +2136,7 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: number, mode: value, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] } }
+      - { name: number, mode: value, lift: arrays, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] } }
   - name: HEX2OCT
     category: engineering
     milestone: M9
@@ -2141,8 +2144,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] } }
-      - { name: places, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: text, domain: { enum: ["0", "1F", "FF", "ABC", "7FFFFFFFFF", "FFFFFFFFFF"] } }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
   - name: HOUR
     category: date
     milestone: M6
@@ -2218,7 +2221,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - { name: IMAGE, category: lookup, milestone: M6, scope: out, reason: "loads an image from the web (decision 0027)" }
   - name: IMAGINARY
     category: engineering
@@ -2227,7 +2230,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMARGUMENT
     category: engineering
     milestone: M9
@@ -2235,7 +2238,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMCONJUGATE
     category: engineering
     milestone: M9
@@ -2243,7 +2246,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMCOS
     category: engineering
     milestone: M9
@@ -2251,7 +2254,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMCOSH
     category: engineering
     milestone: M9
@@ -2259,7 +2262,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMCOT
     category: engineering
     milestone: M9
@@ -2267,7 +2270,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMCSC
     category: engineering
     milestone: M9
@@ -2275,7 +2278,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMCSCH
     category: engineering
     milestone: M9
@@ -2283,7 +2286,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMDIV
     category: engineering
     milestone: M9
@@ -2291,8 +2294,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber1, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
-      - { name: inumber2, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber1, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber2, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMEXP
     category: engineering
     milestone: M9
@@ -2300,7 +2303,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMLN
     category: engineering
     milestone: M9
@@ -2308,7 +2311,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMLOG10
     category: engineering
     milestone: M9
@@ -2316,7 +2319,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMLOG2
     category: engineering
     milestone: M9
@@ -2324,7 +2327,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - { name: IMPORTCSV, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
   - { name: IMPORTTEXT, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
   - name: IMPOWER
@@ -2334,8 +2337,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
-      - { name: number, mode: value, type: number, domain: { int: true, min: -3, max: 4 } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { int: true, min: -3, max: 4 } }
   - name: IMPRODUCT
     category: engineering
     milestone: M9
@@ -2351,7 +2354,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMSEC
     category: engineering
     milestone: M9
@@ -2359,7 +2362,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMSECH
     category: engineering
     milestone: M9
@@ -2367,7 +2370,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMSIN
     category: engineering
     milestone: M9
@@ -2375,7 +2378,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMSINH
     category: engineering
     milestone: M9
@@ -2383,7 +2386,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMSQRT
     category: engineering
     milestone: M9
@@ -2391,7 +2394,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMSUB
     category: engineering
     milestone: M9
@@ -2399,8 +2402,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber1, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
-      - { name: inumber2, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber1, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber2, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   - name: IMSUM
     category: engineering
     milestone: M9
@@ -2416,7 +2419,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: inumber, mode: value, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
+      - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
   # ref_text names Data cells only: a Calc reference could point the formula at itself (a circular reference).
   - name: INDIRECT
     category: lookup
@@ -2451,11 +2454,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: investment, mode: value, type: number, domain: { int: true, min: 80000, max: 99000 } }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100000, max: 110000 } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: investment, mode: value, lift: arrays, type: number, domain: { int: true, min: 80000, max: 99000 } }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100000, max: 110000 } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: IPMT
     category: financial
     milestone: M9
@@ -2507,7 +2510,7 @@ functions:
     scope: in
     prior: 0.1
     returns: bool
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, lift: arrays, type: number }]
   # Lifts over a range; a literal or text argument makes excel-graph refuse the workbook (probes/info-logic-argument-modes A11, T-1088).
   - name: ISFORMULA
     category: information
@@ -2559,7 +2562,7 @@ functions:
     scope: in
     prior: 0.1
     returns: bool
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, lift: arrays, type: number }]
   - name: ISOMITTED
     category: information
     milestone: M7
@@ -2817,12 +2820,12 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: coupon, mode: value, type: number }
-      - { name: yld, mode: value, type: number }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: coupon, mode: value, lift: arrays, type: number }
+      - { name: yld, mode: value, lift: arrays, type: number }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: MEDIAN
     category: statistical
     milestone: M9
@@ -3010,8 +3013,8 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: effect_rate, mode: value, type: number }
-      - { name: npery, mode: value, type: number, domain: { int: true, min: 1, max: 12 } }
+      - { name: effect_rate, mode: value, lift: arrays, type: number }
+      - { name: npery, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 12 } }
   - name: NORM.DIST
     category: statistical
     milestone: M9
@@ -3123,8 +3126,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] } }
-      - { name: places, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] } }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
   - name: OCT2DEC
     category: engineering
     milestone: M9
@@ -3132,7 +3135,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: number, mode: value, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] } }
   - name: OCT2HEX
     category: engineering
     milestone: M9
@@ -3140,8 +3143,8 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] } }
-      - { name: places, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
+      - { name: number, mode: value, lift: arrays, type: number, domain: { enum: [0, 7, 17, 777, 1234567, 7777777777] } }
+      - { name: places, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 10 } }
   - name: ODD
     category: math
     milestone: M5
@@ -3156,15 +3159,15 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: issue, mode: value, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: first_coupon, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: yld, mode: value, type: number }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
+      - { name: first_coupon, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: yld, mode: value, lift: arrays, type: number }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: ODDFYIELD
     category: financial
     milestone: M9
@@ -3172,15 +3175,15 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: issue, mode: value, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: first_coupon, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: pr, mode: value, type: number, domain: { int: true, min: 80, max: 120 } }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
+      - { name: first_coupon, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 } }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: ODDLPRICE
     category: financial
     milestone: M9
@@ -3188,14 +3191,14 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: last_interest, mode: value, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: yld, mode: value, type: number }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: last_interest, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: yld, mode: value, lift: arrays, type: number }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: ODDLYIELD
     category: financial
     milestone: M9
@@ -3203,14 +3206,14 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 35100, max: 36500 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: last_interest, mode: value, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: pr, mode: value, type: number, domain: { int: true, min: 80, max: 120 } }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 35100, max: 36500 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: last_interest, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 } }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: OFFSET
     category: lookup
     milestone: M6
@@ -3428,13 +3431,13 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: yld, mode: value, type: number }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: yld, mode: value, lift: arrays, type: number }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: PRICEDISC
     category: financial
     milestone: M9
@@ -3442,11 +3445,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: discount, mode: value, type: number }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: discount, mode: value, lift: arrays, type: number }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: PRICEMAT
     category: financial
     milestone: M9
@@ -3454,12 +3457,12 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: issue, mode: value, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: yld, mode: value, type: number }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: yld, mode: value, lift: arrays, type: number }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: PROB
     category: statistical
     milestone: M9
@@ -3533,8 +3536,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: numerator, mode: value, type: number }
-      - { name: denominator, mode: value, type: number }
+      - { name: numerator, mode: value, lift: arrays, type: number }
+      - { name: denominator, mode: value, lift: arrays, type: number }
   - name: RADIANS
     category: math
     milestone: M5
@@ -3623,11 +3626,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: investment, mode: value, type: number, domain: { int: true, min: 1000, max: 1000000 } }
-      - { name: discount, mode: value, type: number }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: investment, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 1000000 } }
+      - { name: discount, mode: value, lift: arrays, type: number }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: REDUCE
     category: logical
     milestone: M7
@@ -3827,9 +3830,9 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: x, mode: value, type: number }
-      - { name: n, mode: value, type: number, domain: { int: true, min: 0, max: 3 } }
-      - { name: m, mode: value, type: number, domain: { int: true, min: 0, max: 3 } }
+      - { name: x, mode: value, lift: arrays, type: number }
+      - { name: n, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 3 } }
+      - { name: m, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 3 } }
       - { name: coefficients, mode: array, type: number }
   # A range gives its sheet, no lift; a sheet-name text gives that sheet, other values #N/A (probes/info-logic-argument-modes A12:A14, A26).
   - name: SHEET
@@ -4180,9 +4183,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number }
-      - { name: discount, mode: value, type: number }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number }
+      - { name: discount, mode: value, lift: arrays, type: number }
   - name: TBILLPRICE
     category: financial
     milestone: M9
@@ -4190,9 +4193,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number }
-      - { name: discount, mode: value, type: number }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number }
+      - { name: discount, mode: value, lift: arrays, type: number }
   - name: TBILLYIELD
     category: financial
     milestone: M9
@@ -4200,9 +4203,9 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number }
-      - { name: pr, mode: value, type: number, domain: { int: true, min: 90, max: 99 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 90, max: 99 } }
   - name: TDIST
     category: statistical
     milestone: M9
@@ -4518,8 +4521,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: return_type, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 2 } }
+      - { name: serial_number, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: return_type, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 2 } }
   - name: WEIBULL
     category: statistical
     milestone: M9
@@ -4646,9 +4649,9 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: YIELD
     category: financial
     milestone: M9
@@ -4656,13 +4659,13 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: pr, mode: value, type: number, domain: { int: true, min: 80, max: 120 } }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: frequency, mode: value, type: number, domain: { enum: [1, 2, 4] } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 } }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
+      - { name: frequency, mode: value, lift: arrays, type: number, domain: { enum: [1, 2, 4] } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: YIELDDISC
     category: financial
     milestone: M9
@@ -4670,11 +4673,11 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: pr, mode: value, type: number, domain: { int: true, min: 80, max: 99 } }
-      - { name: redemption, mode: value, type: number, domain: { int: true, min: 100, max: 110 } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 99 } }
+      - { name: redemption, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 110 } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: YIELDMAT
     category: financial
     milestone: M9
@@ -4682,12 +4685,12 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: settlement, mode: value, type: number, domain: { int: true, min: 36526, max: 40000 } }
-      - { name: maturity, mode: value, type: number, domain: { int: true, min: 43831, max: 47000 } }
-      - { name: issue, mode: value, type: number, domain: { int: true, min: 32874, max: 35000 } }
-      - { name: rate, mode: value, type: number }
-      - { name: pr, mode: value, type: number, domain: { int: true, min: 80, max: 120 } }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: settlement, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 40000 } }
+      - { name: maturity, mode: value, lift: arrays, type: number, domain: { int: true, min: 43831, max: 47000 } }
+      - { name: issue, mode: value, lift: arrays, type: number, domain: { int: true, min: 32874, max: 35000 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: pr, mode: value, lift: arrays, type: number, domain: { int: true, min: 80, max: 120 } }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: Z.TEST
     category: statistical
     milestone: M9
