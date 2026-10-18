@@ -648,11 +648,16 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::String(text) if number_text_too_long(&text) => {
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
-            }
-            CalcResult::String(text) => {
+        // Lifts over a range or array, each element read as a scalar argument: a blank is 0, a
+        // boolean or "" #VALUE! and an error stays (probes/value-argument-lift C1:C8, D1:D6;
+        // corpus-bench/42181 B14, T-1791).
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
+            Err(e) => return e,
+        };
+        broadcast_text(cell, &[&text], |i, j| match text.elem(i, j) {
+            ArrayNode::String(text) if number_text_too_long(text) => Err(Error::VALUE),
+            ArrayNode::String(text) => {
                 // VALUE trims spaces around date and clock text, unlike number coercion, but
                 // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
                 // (probes/date-text-grammar C7, value-clock-text B14, B44).
@@ -660,27 +665,15 @@ impl Model {
                 // Clock text and date text with a clock suffix read as in number coercion,
                 // with surrounding spaces trimmed (probes/value-clock-text column B against C;
                 // date-text-grammar C30, C31, C53, C55, C63).
-                match self.parse_number_text(text, &["$", "€"], &|| self.current_year()) {
-                    Some(value) => CalcResult::Number(value),
-                    None => CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string()),
-                }
+                self.parse_number_text(text, &["$", "€"], &|| self.current_year())
+                    .map(ArrayNode::Number)
+                    .ok_or(Error::VALUE)
             }
-            CalcResult::Number(f) => CalcResult::Number(f),
-            CalcResult::Boolean(_) => {
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
-            }
-            error @ CalcResult::Error { .. } => error,
-            CalcResult::Range { .. } => {
-                // TODO Implicit Intersection
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(0.0),
-            CalcResult::Array(_) | CalcResult::Lambda(_) => CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            },
-        }
+            ArrayNode::Number(f) => Ok(ArrayNode::Number(*f)),
+            ArrayNode::Boolean(_) => Err(Error::VALUE),
+            ArrayNode::Error(e) => Err(e.clone()),
+            ArrayNode::Empty => Ok(ArrayNode::Number(0.0)),
+        })
     }
 
     // VALUETOTEXT(value, [format]) lifts over a range or array like LEN
