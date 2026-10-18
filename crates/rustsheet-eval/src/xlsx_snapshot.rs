@@ -247,7 +247,7 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
         let Some(target) = rels.get(&rid) else {
             continue;
         };
-        let path = normalize_target(target);
+        let path = resolve_target("xl", target);
         let Some(xml) = read_part(&mut zip, &path)? else {
             continue; // chartsheets / missing parts are not scored
         };
@@ -263,14 +263,6 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
         defined_names,
         tables,
     })
-}
-
-fn normalize_target(target: &str) -> String {
-    if let Some(stripped) = target.strip_prefix('/') {
-        stripped.to_string()
-    } else {
-        format!("xl/{target}")
-    }
 }
 
 fn read_app(zip: &mut Zip) -> Result<(Option<String>, Option<String>), SnapshotError> {
@@ -380,23 +372,57 @@ pub fn is_undecoded(v: &crate::value::Value) -> bool {
 fn read_workbook_rels(zip: &mut Zip) -> Result<HashMap<String, String>, SnapshotError> {
     let xml = read_part(zip, "xl/_rels/workbook.xml.rels")?
         .ok_or_else(|| SnapshotError::Malformed("missing workbook rels".into()))?;
-    let mut reader = Reader::from_str(&xml);
-    let mut map = HashMap::new();
+    Ok(relationships(&xml, "workbook.xml.rels")?
+        .into_iter()
+        .map(|r| (r.id, r.target))
+        .collect())
+}
+
+/// One `<Relationship>` of a `.rels` part.
+pub(crate) struct Relationship {
+    pub(crate) id: String,
+    pub(crate) kind: String,
+    pub(crate) target: String,
+}
+
+/// The `<Relationship>` entries of a `.rels` part (`part` names it in errors); entries missing
+/// `Id`, `Type` or `Target` are skipped.
+pub(crate) fn relationships(xml: &str, part: &str) -> Result<Vec<Relationship>, SnapshotError> {
+    let mut reader = Reader::from_str(xml);
+    let mut out = Vec::new();
     loop {
-        match reader
-            .read_event()
-            .map_err(|e| xml_err("workbook.xml.rels", e))?
-        {
+        match reader.read_event().map_err(|e| xml_err(part, e))? {
             Event::Start(e) | Event::Empty(e) if e.local_name().as_ref() == "Relationship" => {
-                if let (Some(id), Some(target)) = (attr(&e, "Id"), attr(&e, "Target")) {
-                    map.insert(id, target);
+                if let (Some(id), Some(kind), Some(target)) =
+                    (attr(&e, "Id"), attr(&e, "Type"), attr(&e, "Target"))
+                {
+                    out.push(Relationship { id, kind, target });
                 }
             }
             Event::Eof => break,
             _ => {}
         }
     }
-    Ok(map)
+    Ok(out)
+}
+
+/// A relationship `target` as a package path: absolute targets lose the leading `/`, relative
+/// ones (possibly with `../` segments) resolve against `dir`, the folder of the source part.
+pub(crate) fn resolve_target(dir: &str, target: &str) -> String {
+    if let Some(abs) = target.strip_prefix('/') {
+        return abs.to_string();
+    }
+    let mut parts: Vec<&str> = dir.split('/').filter(|p| !p.is_empty()).collect();
+    for seg in target.split('/') {
+        match seg {
+            "." | "" => {}
+            ".." => {
+                parts.pop();
+            }
+            _ => parts.push(seg),
+        }
+    }
+    parts.join("/")
 }
 
 /// `(name, localSheetId, body)` per `<definedName>`.
