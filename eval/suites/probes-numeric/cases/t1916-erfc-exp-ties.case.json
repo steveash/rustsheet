@@ -1,0 +1,61 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "ERFC.PRECISE(x) at the inputs where Excel's EXP(-(x*x)) is a near-tie that EXP model V6 misses (F2XM1 not correctly rounded): the only ERFC cells the T-1778 model does not reproduce. Known residuals, kept as evidence. Curated for T-1916 from the T-1778 research probes on branch agent/research/T-1778-kernel-map at 59c2c3724a3c: contiguous row blocks with inputs, formulas (row references renumbered) and their excel-graph oracle values, then re-filled from excel-graph on 2026-10-18 (identical to the research run except 9 cells of t1916-erfc-exp-ties, statistics.md). Formulas that call the worksheet EXP are left out, as are the 7 inputs Excel misparsed from the xlsx text (numbers.md). Blocks: rows 1-1 = kmyst-erfc-r10a03 rows 7094-7094 (columns B); rows 2-2 = kmyst-erfc-r4cat3 rows 5888-5888 (columns B); rows 3-3 = kmyst-erfc-r4tile3 rows 17525-17525 (columns B); rows 4-4 = kmyst-erfc-r4zoomf1 rows 4817-4817 (columns B); rows 5-5 = kmyst-erfc-r6edge2 rows 2734-2734 (columns B); rows 6-6 = kmyst-erfc-r8a02 rows 11142-11142 (columns B); rows 7-7 = kmyst-erfc-r8a27 rows 2131-2131 (columns B); rows 8-8 = kmyst-erfc-r8b05 rows 6701-6701 (columns B); rows 9-9 = kmyst-erfc-r8b46 rows 8686-8686 (columns B); rows 10-10 = kmyst-erfc-r8b47 rows 6701-6701 (columns B); rows 11-11 = kmyst-erfc-r8c02 rows 2806-2806 (columns B); rows 12-12 = kmyst-erfc-r8c11 rows 12999-12999 (columns B); rows 13-13 = kmyst-erfc-r8c19 rows 14809-14809 (columns B); rows 14-14 = kmyst-erfc-r8c20 rows 4056-4056 (columns B); rows 15-15 = kmyst-erfc-r8c28 rows 12529-12529 (columns B); rows 16-16 = kmyst-erfc-r8c35 rows 2555-2555 (columns B); rows 17-17 = kmyst-erfc-r8c41 rows 12972-12972 (columns B); rows 18-18 = kmyst-erfc-r8c58 rows 1853-1853 (columns B); rows 19-19 = kmyst-erfc-r8d09 rows 7311-7311 (columns B); rows 20-20 = kmyst-erfc-r8d22 rows 3104-3104 (columns B).",
+ "tags": [
+  "M9",
+  "probe",
+  "numeric",
+  "erf",
+  "T-1778",
+  "T-1916",
+  "residual"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": 1.999999999994299,
+    "B1": "=ERFC.PRECISE(A1)",
+    "A2": 10.807240000000013,
+    "B2": "=ERFC.PRECISE(A2)",
+    "A3": 13.046480000000013,
+    "B3": "=ERFC.PRECISE(A3)",
+    "A4": 8.023485545192495,
+    "B4": "=ERFC.PRECISE(A4)",
+    "A5": 6.033383929192591,
+    "B5": "=ERFC.PRECISE(A5)",
+    "A6": 0.6072288384003274,
+    "B6": "=ERFC.PRECISE(A6)",
+    "A7": 0.7384214715396948,
+    "B7": "=ERFC.PRECISE(A7)",
+    "A8": 2.0980403743165046,
+    "B8": "=ERFC.PRECISE(A8)",
+    "A9": 3.4470393500808028,
+    "B9": "=ERFC.PRECISE(A9)",
+    "A10": 3.4677215861840427,
+    "B10": "=ERFC.PRECISE(A10)",
+    "A11": 1.0120360000006228,
+    "B11": "=ERFC.PRECISE(A11)",
+    "A12": 1.133855197359528,
+    "B12": "=ERFC.PRECISE(A12)",
+    "A13": 1.2477434152698585,
+    "B13": "=ERFC.PRECISE(A13)",
+    "A14": 1.2552298757609002,
+    "B14": "=ERFC.PRECISE(A14)",
+    "A15": 1.3895972295864865,
+    "B15": "=ERFC.PRECISE(A15)",
+    "A16": 1.5019749479478826,
+    "B16": "=ERFC.PRECISE(A16)",
+    "A17": 1.6234407324888618,
+    "B17": "=ERFC.PRECISE(A17)",
+    "A18": 1.9777427541726267,
+    "B18": "=ERFC.PRECISE(A18)",
+    "A19": 3.5625000000032463,
+    "B19": "=ERFC.PRECISE(A19)",
+    "A20": 3.664062500001378,
+    "B20": "=ERFC.PRECISE(A20)"
+   }
+  }
+ ]
+}

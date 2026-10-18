@@ -1396,9 +1396,6 @@ F	probes/discount-security-modes.case.json	Calc!A83
 F	probes/discount-security-modes.case.json	Calc!A86
 F	probes/discount-security-modes.case.json	Calc!A88
 F	probes/displayed-text-formats.case.json	S!A21
-F	probes/eng-argument-modes.case.json	Calc!A20
-F	probes/eng-argument-modes.case.json	Calc!A21
-F	probes/eng-argument-modes.case.json	Calc!A22
 F	probes/eng-argument-modes.case.json	Calc!A33
 F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-argument-modes.case.json	Calc!A51
@@ -2563,9 +2560,6 @@ F	probes/scalar-lift-open-c3.case.json	Sheet1!W1
 F	probes/scalar-lift-shapes-c.case.json	Sheet1!R3
 F	probes/scalar-lift-shapes.case.json	Sheet1!H19
 F	probes/scalar-lift-shapes.case.json	Sheet1!H27
-F	probes/scalar-lift-shapes.case.json	Sheet1!H38
-F	probes/scalar-lift-shapes.case.json	Sheet1!H39
-F	probes/scalar-lift-shapes.case.json	Sheet1!H40
 F	probes/scalar-lift-shapes.case.json	Sheet1!H46
 F	probes/scalar-lift-shapes.case.json	Sheet1!J1
 F	probes/scalar-lift-shapes.case.json	Sheet1!J3
@@ -2816,8 +2810,6 @@ F	probes/stat-argument-modes.case.json	Sheet1!H327
 F	probes/stat-argument-modes.case.json	Sheet1!H328
 F	probes/stat-argument-modes.case.json	Sheet1!H330
 F	probes/stat-argument-modes.case.json	Sheet1!H337
-F	probes/stat-argument-modes.case.json	Sheet1!H363
-F	probes/stat-argument-modes.case.json	Sheet1!H369
 F	probes/stat-argument-modes.case.json	Sheet1!H374
 F	probes/stat-argument-modes.case.json	Sheet1!H380
 F	probes/stat-argument-modes.case.json	Sheet1!H424
@@ -2853,12 +2845,10 @@ F	probes/stat-argument-modes.case.json	Sheet1!H564
 F	probes/stat-argument-modes.case.json	Sheet1!H565
 F	probes/stat-argument-modes.case.json	Sheet1!H566
 F	probes/stat-argument-modes.case.json	Sheet1!H567
-F	probes/stat-argument-modes.case.json	Sheet1!H568
 F	probes/stat-argument-modes.case.json	Sheet1!H569
 F	probes/stat-argument-modes.case.json	Sheet1!H570
 F	probes/stat-argument-modes.case.json	Sheet1!H571
 F	probes/stat-argument-modes.case.json	Sheet1!H572
-F	probes/stat-argument-modes.case.json	Sheet1!H573
 F	probes/stat-argument-modes.case.json	Sheet1!H8
 F	probes/stat-argument-modes.case.json	Sheet1!H90
 F	probes/stat-argument-modes.case.json	Sheet1!H95
@@ -2899,7 +2889,6 @@ F	probes/stats-evidence-floor-t1623.case.json	S!Q19
 F	probes/stats-evidence-floor-t1623.case.json	S!Q36
 F	probes/stats-evidence-floor-t1623.case.json	S!Q50
 F	probes/stats-evidence-floor-t1623.case.json	S!Q58
-F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
 F	probes/subtotal-take-array-selector.case.json	Sheet1!A31
 F	probes/subtotal-take-array-selector.case.json	Sheet1!A41

@@ -3,7 +3,7 @@ id: T-1186
 title: "ERFC(26.4) is a few ulp off Excel in the erfc continued-fraction tail"
 milestone: M1
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -20,8 +20,12 @@ The tail is now known exactly: T-1778 (docs/research/t1778-erf-kernel-research-p
 Draft PR #436 (closed by T-0059) dropped the compensation for the rounding of x*x in `erfc_cf` on its own. That fixed no gated cell (A5 went to 1 ulp) and lost 3 probes-numeric/m9-norm-s-inv cells, so it was not landed.
 
 ## Acceptance criteria
-- [ ] Cell A5 of probes/subnormal-function-boundaries passes, with no regression in ERFC cells elsewhere (`make eval-baseline` records it).
-- [ ] `make check` green; reviewers approve.
+- [x] Cell A5 of probes/subnormal-function-boundaries passes, with no regression in ERFC cells elsewhere (`make eval-baseline` records it).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the subnormal flush (T-1180).
+
+## Outcome
+Closed by T-1916: ERFC now runs Excel's own kernels (crates/rustsheet-engine/src/functions/statistical/erf.rs). `ERFC(26.4)`
+is 4.4017768588035533E-305 and probes/subnormal-function-boundaries passes 30 of 30; no ERFC cell regressed.
