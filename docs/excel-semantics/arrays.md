@@ -964,9 +964,9 @@ Tasks: T-1627, T-1630, T-1632
 
 ## MAP and SCAN with a LAMBDA that returns a multi-cell range
 Rule: when the LAMBDA of MAP or SCAN returns a multi-cell reference (`MAP(A1:A2,LAMBDA(r,B1:B3))`,
-a row range, a range of error cells), Excel gives the whole call one `#CALC!` (a scalar, not a
+a row range, a range holding an error cell), Excel gives the whole call one `#CALC!` (a scalar, not a
 `#CALC!` per element: `ROWS` of it is `#CALC!` too), as BYROW and BYCOL do. It does not depend on
-what the range holds (numbers, an error cell, empty cells, text and booleans all alike). A one-cell
+what the range holds (numbers, an error cell among numbers, an error cell among blanks, text and booleans all alike; an all-blank range and a LAMBDA that returns a range for only some elements are unprobed). A one-cell
 range is the control: its value is the element (`MAP(A1:A2,LAMBDA(r,J1:J1))` is 4, 4).
 Evidence: probes/map-scan-range-result (excel-graph 2026-10-18).
 Implemented in: `Model::lambda_result_value`, which still reads the range's existing cells (a cycle
