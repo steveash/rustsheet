@@ -3,7 +3,7 @@ id: T-1841
 title: "AMORDEGRC and AMORLINC bound their period loops, then lift over arrays (SPEC-0011)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
