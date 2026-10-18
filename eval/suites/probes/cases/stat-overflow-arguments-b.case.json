@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1290 (follow-up to probes/stat-overflow-arguments): TDIST with x < 0 beside an error in tails; BETA.DIST's pdf at x = A when B - A overflows a double; and the F overflow threshold, x = 8E307 with deg_freedom1 = 2 (df1*x = 1.6E308, finite) against x = 1E308 (overflowing). The large values sit in numeric cells.",
+  "tags": [
+    "M9",
+    "statistical",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "C1": 1e+308,
+        "C2": -1e+308,
+        "C5": 8e+307,
+        "A1": "=TDIST(-1,5,NA())",
+        "A2": "=TDIST(-1,5,3)",
+        "A3": "=BETA.DIST(C2,2,3,FALSE,C2,C1)",
+        "A4": "=BETA.DIST(C2,2,3,TRUE,C2,C1)",
+        "A5": "=F.DIST(C5,2,3,TRUE)",
+        "A6": "=F.DIST(C5,2,3,FALSE)",
+        "A7": "=F.DIST.RT(C5,2,3)",
+        "A8": "=FDIST(C5,2,3)",
+        "A9": "=F.DIST(C1,2,3,TRUE)",
+        "A10": "=ERROR.TYPE(F.DIST(C5,2,3,TRUE))"
+      }
+    }
+  ]
+}

@@ -4,35 +4,31 @@ use statrs::function::gamma::gamma;
 use super::special::ln_gamma;
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
 impl Model {
+    /// `GAMMA(x)`: lifts over an array and a range (SPEC-0011; probes/stat-argument-modes
+    /// H284-H286). The Lanczos sum is closed form.
     pub(crate) fn fn_gamma(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if x < 0.0 && x.floor() == x {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameter for Gamma function".to_string(),
+        self.lift_call(Function::Gamma, args, cell, &mut |model, values| {
+            let [x] = values else {
+                return CalcResult::new_args_number_error(cell);
             };
-        }
-        let result = gamma(x);
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameter for Gamma function".to_string(),
-            };
-        }
-        CalcResult::Number(result)
+            number_or_error(model.cast_number_ref(x, cell).and_then(|x| {
+                if x < 0.0 && x.floor() == x {
+                    return Err(num_error(cell));
+                }
+                let result = gamma(x);
+                if result.is_nan() || result.is_infinite() {
+                    return Err(num_error(cell));
+                }
+                Ok(result)
+            }))
+        })
     }
 
     pub(crate) fn fn_gamma_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -160,37 +156,23 @@ impl Model {
         CalcResult::Number(x)
     }
 
+    /// `GAMMALN(x)` and GAMMALN.PRECISE: lift over an array and a range (SPEC-0011;
+    /// probes/stat-argument-modes H287-H292).
     pub(crate) fn fn_gamma_ln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if x < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameter for Gamma function".to_string(),
+        self.lift_call(Function::GammaLn, args, cell, &mut |model, values| {
+            let [x] = values else {
+                return CalcResult::new_args_number_error(cell);
             };
-        }
-        let result = ln_gamma(x);
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameter for Gamma Ln function".to_string(),
-            };
-        }
-        CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_gamma_ln_precise(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        self.fn_gamma_ln(args, cell)
+            number_or_error(model.cast_number_ref(x, cell).and_then(|x| {
+                if x < 0.0 {
+                    return Err(num_error(cell));
+                }
+                let result = ln_gamma(x);
+                if result.is_nan() || result.is_infinite() {
+                    return Err(num_error(cell));
+                }
+                Ok(result)
+            }))
+        })
     }
 }
