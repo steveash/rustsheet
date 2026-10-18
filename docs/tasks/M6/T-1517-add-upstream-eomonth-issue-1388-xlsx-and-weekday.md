@@ -3,7 +3,7 @@ id: T-1517
 title: "Add upstream EOMONTH_issue_1388.xlsx and WEEKDAY_WEEKNUM_ISOWEEKNUM_issue_1502.xlsx to calc_tests"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -43,3 +43,8 @@ Record any new quirk in `docs/excel-semantics/dates.md`.
 
 ## Out of scope
 - Porting the upstream code changes (not needed, see Context).
+
+## Outcome
+Added both workbooks to `calc_tests/DATE_AND_TIME`; every cell passes with no engine change
+(10 cells each, recorded in `eval/baseline/ironcalc-calc.txt`). No new quirks found; no
+regressions. The 1502 quoted-date rows match the workbook's own cached values.
