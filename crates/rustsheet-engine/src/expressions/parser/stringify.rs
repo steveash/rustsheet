@@ -670,10 +670,11 @@ fn stringify(
             language,
         ),
         FunctionKind { kind, args } => {
-            let name = if export_to_excel {
-                kind.to_xlsx_string()
-            } else {
-                kind.to_localized_name(language)
+            let name = match kind.legacy_spelling() {
+                // Only the R1C1 storage text (no context) shows a legacy N or T (SPEC-0012).
+                Some(spelling) if context.is_none() => spelling.to_string(),
+                _ if export_to_excel => kind.to_xlsx_string(),
+                _ => kind.to_localized_name(language),
             };
             format_function(
                 &name,

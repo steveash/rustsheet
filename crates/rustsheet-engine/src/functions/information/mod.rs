@@ -477,6 +477,21 @@ impl Model {
     }
 
     pub(crate) fn fn_n(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.n_of_argument(args, cell, false)
+    }
+
+    /// N in a legacy formula's value position (SPEC-0012 rule 3): an array argument is `#VALUE!`.
+    pub(crate) fn fn_n_legacy(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.n_of_argument(args, cell, true)
+    }
+
+    /// N's kernel; `legacy` makes an array argument `#VALUE!`, whatever its size.
+    fn n_of_argument(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        legacy: bool,
+    ) -> CalcResult {
         let arg_count = args.len();
         if arg_count != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -493,6 +508,11 @@ impl Model {
             // An array lifts element-wise, an error element kept: `N({1,#N/A})` spills 1, #N/A,
             // `N(IF(1,{2;3}))` 2, 3, and legacy `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5
             // (probes/n-array-lift, legacy-index-array-index L1, L10; T-1616).
+            // In a legacy formula's value position it is `#VALUE!`, `{2}` included
+            // (probes/legacy-n-t-reference-args N10; SPEC-0012).
+            CalcResult::Array(_) if legacy => {
+                return CalcResult::new_error(Error::VALUE, cell, String::new())
+            }
             CalcResult::Array(values) => return CalcResult::Array(map_elements(&values, n_of)),
             CalcResult::Range { .. } | CalcResult::Lambda(_) => {
                 return CalcResult::Error {

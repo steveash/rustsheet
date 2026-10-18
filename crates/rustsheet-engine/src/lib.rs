@@ -65,6 +65,7 @@ mod defined_names;
 mod evaluation;
 mod external_links;
 mod external_reference;
+mod formula_cells;
 mod function_names;
 mod functions;
 mod implicit_intersection;

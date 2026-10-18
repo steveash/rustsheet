@@ -77,6 +77,7 @@ mod test_ifs_switch_lift;
 mod test_intersection_operator;
 mod test_inverted_ranges;
 mod test_issue_623;
+mod test_legacy_n_t_marker;
 mod test_lifted_range_bound;
 mod test_lotus_dot_ranges;
 mod test_math;
