@@ -3,7 +3,7 @@ id: T-1873
 title: "Bound HYPGEOM.DIST's cdf sum, then lift HYPGEOM.DIST and HYPGEOMDIST (SPEC-0011)"
 milestone: M9
 lane: functions-stat
-status: in_progress
+status: in-progress
 priority: P2
 size: S
 tier: opus
