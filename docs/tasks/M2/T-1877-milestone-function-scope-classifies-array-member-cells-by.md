@@ -3,7 +3,7 @@ id: T-1877
 title: "Milestone function scope classifies array-member cells by their anchor's formula"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -59,3 +59,11 @@ anchor's formula from the same snapshot. Do not re-parse the xlsx in `function_s
 - Fixing SIN(4) (T-1876).
 - Dynamic-array spill children that the xlsx stores without an array range (POWER C4): file a
   follow-up if they turn out to hide M0–M2 cells.
+
+## Outcome
+`CellResult` gains `anchor_formula` (the anchor's formula for a `FormulaKind::ArrayMember`, taken
+from the same snapshot); `function_scope::summarize` classifies members by it. On main data the
+section now reads 4253 scored / 4251 bit-exact / 2 failing, 14 left out (1 failing, POWER
+`inside_a_lambda!C4`, no anchor). Failing: `IF_ARRAY.xlsx!Sheet1!C11` (as expected) and POWER
+`inside_a_lambda!C3`, whose anchor calls the LAMBDA name `gelu`, which the catalog does not list,
+so it counts as in scope by the existing convention. No baseline change.

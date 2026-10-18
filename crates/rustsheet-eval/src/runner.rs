@@ -47,6 +47,10 @@ pub struct CellResult {
     pub cell: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub formula: Option<String>,
+    /// For an array-member cell (no formula of its own), the formula of its array anchor, so the
+    /// milestone function scope can classify it (T-1877).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub anchor_formula: Option<String>,
     pub expected: Value,
     pub actual: Value,
     pub verdict: Verdict,
@@ -123,6 +127,7 @@ struct Expectation {
     sheet: String,
     addr: Addr,
     formula: Option<String>,
+    anchor_formula: Option<String>,
     expected: Value,
     from_excel: bool,
     /// The pinned by-design value when the suite's `deviations` file lists the cell.
@@ -338,6 +343,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                 sheet: e.sheet.clone(),
                 cell: e.addr.to_string(),
                 formula: e.formula.clone(),
+                anchor_formula: e.anchor_formula.clone(),
                 expected: e.expected.clone(),
                 actual,
                 verdict,
@@ -434,6 +440,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
                 sheet: sheet.to_string(),
                 addr,
                 formula: cell.formula.clone(),
+                anchor_formula: cell.anchor_formula(&snapshot.sheets, sheet),
                 expected: lookup(sheet, addr).filter(|v| !is_undecoded(v))?,
                 from_excel,
                 pinned: None,
@@ -574,6 +581,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             sheet,
             addr,
             formula,
+            anchor_formula: None,
             expected: value,
             from_excel: oracle_is_excel && oracle_cells.contains(&key),
             pinned: None,
@@ -706,6 +714,7 @@ mod tests {
             sheet: "S".into(),
             addr: Addr::parse(a1).expect("addr"),
             formula: None,
+            anchor_formula: None,
             expected: Value::Error("#VALUE!".into()),
             from_excel: true,
             pinned: None,
@@ -733,6 +742,7 @@ mod tests {
             sheet: "S".into(),
             addr: Addr::parse("A1").expect("addr"),
             formula: None,
+            anchor_formula: None,
             expected: Value::Number(expected),
             from_excel: true,
             pinned: None,
