@@ -15,32 +15,40 @@ enum Temperature {
     Fahrenheit,
 }
 
-// To Kelvin
-// T_K = T_C + 273.15
-// T_K = 5/9 * T_rank
-// T_K = (T_R-273.15)*4/5
-// T_K = 5/9 ( T_F + 459.67)
+// Excel: no single pivot unit reproduces the last digits of every pair (probes/convert-targets,
+// excel-graph; docs/excel-semantics/engineering.md "CONVERT temperature"). Kelvin is the pivot,
+// except that Fahrenheit goes through Celsius (and to Rankine through `5/9 * (F + 459.67)`), and
+// Rankine to Fahrenheit is `9/5 * K - 459.67`; the other pairs use the Celsius-offset forms below.
 fn convert_temperature(
     value: f64,
     from_temperature: Temperature,
     to_temperature: Temperature,
 ) -> f64 {
-    let from_t_kelvin = match from_temperature {
-        Temperature::Kelvin => value,
-        Temperature::Celsius => value + 273.15,
-        Temperature::Rankine => 5.0 * value / 9.0,
-        Temperature::Reaumur => 5.0 * value / 4.0 + 273.15,
-        // Excel: ironcalc-calc ENGINEERING/CONVERT.xlsx Temperature!C4 `CONVERT(1,"F","K")` is
-        // 255.92777777777775, which only this order gives.
-        Temperature::Fahrenheit => (value - 32.0) * 5.0 / 9.0 + 273.15,
+    use Temperature::{Celsius, Fahrenheit, Kelvin, Rankine, Reaumur};
+    if let Fahrenheit = from_temperature {
+        let celsius = (value - 32.0) * 5.0 / 9.0;
+        return match to_temperature {
+            Celsius => celsius,
+            Kelvin => celsius + 273.15,
+            Rankine => 5.0 / 9.0 * (value + 459.67) * 1.8,
+            Reaumur => celsius * 0.8,
+            Fahrenheit => value,
+        };
+    }
+    let kelvin = match from_temperature {
+        Kelvin => value,
+        Celsius => value + 273.15,
+        Rankine => 5.0 * value / 9.0,
+        Reaumur => 5.0 * value / 4.0 + 273.15,
+        Fahrenheit => value,
     };
-
     match to_temperature {
-        Temperature::Kelvin => from_t_kelvin,
-        Temperature::Celsius => from_t_kelvin - 273.5,
-        Temperature::Rankine => 9.0 * from_t_kelvin / 5.0,
-        Temperature::Reaumur => 4.0 * (from_t_kelvin - 273.15) / 5.0,
-        Temperature::Fahrenheit => 9.0 * from_t_kelvin / 5.0 - 459.67,
+        Kelvin => kelvin,
+        Celsius => kelvin - 273.15,
+        Rankine => 9.0 * kelvin / 5.0,
+        Reaumur => (kelvin - 273.15) * 0.8,
+        Fahrenheit if matches!(from_temperature, Rankine) => 9.0 * kelvin / 5.0 - 459.67,
+        Fahrenheit => (kelvin - 273.15) * 9.0 / 5.0 + 32.0,
     }
 }
 
@@ -175,7 +183,7 @@ impl Model {
             ("N", 100000.0),
             ("dyn", 1.0),
             ("dy", 1.0),
-            ("lbf", 444822.16152605007),
+            ("lbf", 444822.16152605),
             ("pond", 980.665),
         ]);
         units.insert("force", force);
@@ -443,8 +451,16 @@ impl Model {
         // scaled by the prefixes, in that order (docs/excel-semantics/engineering.md "CONVERT
         // constants and evaluation order"; ironcalc-calc ENGINEERING/CONVERT.xlsx, e.g. Volume!J17
         // `CONVERT(0.0002,"Mang3","m3")` = 2.0000000000000002E-16).
-        CalcResult::Number(
-            value * from_unit_factor / to_unit_factor * from_unit_scale / to_unit_scale,
-        )
+        // Excel: `1E290 m2 -> m2`, `1E300 ha -> m2` and `1E302 J -> J` do not overflow although
+        // `value * F_from` does (probes/convert-targets): when the product is infinite the
+        // division goes first. The target prefix is applied as a reciprocal multiply
+        // (`CONVERT(0.0002,"m3","Mm3")` is 2.0000000000000003E-22, not 2E-22).
+        let product = value * from_unit_factor;
+        let scaled = if product.is_infinite() {
+            value / to_unit_factor * from_unit_factor
+        } else {
+            product / to_unit_factor
+        };
+        CalcResult::Number(scaled * from_unit_scale * (1.0 / to_unit_scale))
     }
 }

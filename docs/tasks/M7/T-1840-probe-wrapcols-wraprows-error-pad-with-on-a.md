@@ -3,7 +3,7 @@ id: T-1840
 title: "Probe WRAPCOLS/WRAPROWS error pad_with on a multi-element vector and short vectors"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,9 @@ T-1348 returns an error pad_with as the whole result when nothing is padded, on 
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/wrapcols-wraprows-pad-with (excel-graph, 122 cells) shows an error pad_with is never the whole result:
+`get_pad_with` no longer returns it. The `#VALUE!` in the earlier evidence came from an empty single-cell input, which
+`flatten_vector` now rejects (with any pad_with). Short vectors and a wrap_count above the length already matched.
+arrays.md entry is VERIFIED.

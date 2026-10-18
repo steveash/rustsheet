@@ -22,3 +22,6 @@ Probe `probes/fin-fvschedule` A3, A4, A13, A14, A16, A18, A19: text, boolean or 
 
 ## Out of scope
 -
+
+## Note (T-1373)
+T-1373 fixed every fin-fvschedule cell except A18 (the TRUE principal); only A18 remains.

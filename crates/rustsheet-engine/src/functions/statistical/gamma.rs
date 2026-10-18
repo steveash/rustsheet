@@ -1,196 +1,124 @@
-use statrs::distribution::{Continuous, ContinuousCDF, Gamma};
+use statrs::distribution::{Continuous, Gamma};
 use statrs::function::gamma::gamma;
 
+use super::incomplete_gamma::{gamma_cdf, gamma_inverse_cdf};
 use super::special::ln_gamma;
 
 use crate::expressions::types::CellReferenceIndex;
-use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
-};
+use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::Function;
+use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
+    /// `GAMMA(x)`: lifts over an array and a range (SPEC-0011; probes/stat-argument-modes
+    /// H284-H286). The Lanczos sum is closed form.
     pub(crate) fn fn_gamma(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if x < 0.0 && x.floor() == x {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameter for Gamma function".to_string(),
+        self.lift_call(Function::Gamma, args, cell, &mut |model, values| {
+            let [x] = values else {
+                return CalcResult::new_args_number_error(cell);
             };
-        }
-        let result = gamma(x);
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameter for Gamma function".to_string(),
-            };
-        }
-        CalcResult::Number(result)
+            number_or_error(model.cast_number_ref(x, cell).and_then(|x| {
+                if x < 0.0 && x.floor() == x {
+                    return Err(num_error(cell));
+                }
+                let result = gamma(x);
+                if result.is_nan() || result.is_infinite() {
+                    return Err(num_error(cell));
+                }
+                Ok(result)
+            }))
+        })
     }
 
+    /// `GAMMA.DIST(x, alpha, beta, cumulative)`, and GAMMADIST: every argument lifts over an
+    /// array and a range (SPEC-0011; probes/stat-argument-modes H293-H304,
+    /// probes/stat-quantile-lift H39-H42). The cdf is the capped port of statrs' incomplete gamma
+    /// (`incomplete_gamma.rs`), which the lifting table charges (kinds.rs
+    /// `INCOMPLETE_GAMMA_WEIGHT`).
     pub(crate) fn fn_gamma_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        // GAMMA.DIST(x, alpha, beta, cumulative)
-        if args.len() != 4 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let alpha = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let beta_scale = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let cumulative = match self.get_boolean(&args[3], cell) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-
-        if x < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "x must be >= 0 in GAMMA.DIST".to_string(),
-            );
-        }
-        if alpha <= 0.0 || beta_scale <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "alpha and beta must be > 0 in GAMMA.DIST".to_string(),
-            );
-        }
-
-        let rate = 1.0 / beta_scale;
-
-        let dist = match Gamma::new(alpha, rate) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for Gamma distribution".to_string(),
-                )
-            }
-        };
-
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
-
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for GAMMA.DIST".to_string(),
-            );
-        }
-
-        CalcResult::Number(result)
+        self.lift_call(Function::GammaDist, args, cell, &mut |model, values| {
+            number_or_error(model.gamma_dist_of(values, cell))
+        })
     }
 
-    pub(crate) fn fn_gamma_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        // GAMMA.INV(probability, alpha, beta)
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let p = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let alpha = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let beta_scale = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        if !(0.0..=1.0).contains(&p) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "probability must be in [0,1] in GAMMA.INV".to_string(),
-            );
-        }
-
-        if alpha <= 0.0 || beta_scale <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "alpha and beta must be > 0 in GAMMA.INV".to_string(),
-            );
-        }
-
-        let rate = 1.0 / beta_scale;
-
-        let dist = match Gamma::new(alpha, rate) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for Gamma distribution".to_string(),
-                )
-            }
-        };
-
-        let x = dist.inverse_cdf(p);
-        if x.is_nan() || x.is_infinite() || x < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Invalid result for GAMMA.INV".to_string(),
-            );
-        }
-
-        CalcResult::Number(x)
-    }
-
-    pub(crate) fn fn_gamma_ln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if x < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameter for Gamma function".to_string(),
-            };
-        }
-        let result = ln_gamma(x);
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameter for Gamma Ln function".to_string(),
-            };
-        }
-        CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_gamma_ln_precise(
-        &mut self,
-        args: &[Node],
+    fn gamma_dist_of(
+        &self,
+        values: &[CalcResult],
         cell: CellReferenceIndex,
-    ) -> CalcResult {
-        self.fn_gamma_ln(args, cell)
+    ) -> Result<f64, CalcResult> {
+        let [x, alpha, beta_scale, cumulative] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        let x = self.cast_number_ref(x, cell)?;
+        let alpha = self.cast_number_ref(alpha, cell)?;
+        let beta_scale = self.cast_number_ref(beta_scale, cell)?;
+        let cumulative = Self::cast_bool_ref(cumulative, cell)?;
+        // x < 0, alpha <= 0 and beta <= 0 are #NUM!.
+        if x < 0.0 || alpha <= 0.0 || beta_scale <= 0.0 {
+            return Err(num_error(cell));
+        }
+        let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
+        let result = if cumulative {
+            gamma_cdf(&dist, x)
+        } else {
+            dist.pdf(x)
+        };
+        if !result.is_finite() {
+            return Err(num_error(cell));
+        }
+        Ok(result)
+    }
+
+    /// `GAMMA.INV(probability, alpha, beta)`, and GAMMAINV: every argument lifts over an array
+    /// and a range (SPEC-0011; probes/stat-argument-modes H305-H314, probes/stat-quantile-lift
+    /// H43-H46). The quantile is the capped port of statrs' search (`incomplete_gamma.rs`), which
+    /// the lifting table charges (kinds.rs `INCOMPLETE_GAMMA_WEIGHT`).
+    pub(crate) fn fn_gamma_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_call(Function::GammaInv, args, cell, &mut |model, values| {
+            number_or_error(model.gamma_inv_of(values, cell))
+        })
+    }
+
+    fn gamma_inv_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [p, alpha, beta_scale] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        let p = self.cast_number_ref(p, cell)?;
+        let alpha = self.cast_number_ref(alpha, cell)?;
+        let beta_scale = self.cast_number_ref(beta_scale, cell)?;
+        // probability outside [0, 1], alpha <= 0 and beta <= 0 are #NUM!.
+        if !(0.0..=1.0).contains(&p) || alpha <= 0.0 || beta_scale <= 0.0 {
+            return Err(num_error(cell));
+        }
+        let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
+        let x = gamma_inverse_cdf(&dist, p);
+        if !x.is_finite() || x < 0.0 {
+            return Err(num_error(cell));
+        }
+        Ok(x)
+    }
+
+    /// `GAMMALN(x)` and GAMMALN.PRECISE: lift over an array and a range (SPEC-0011;
+    /// probes/stat-argument-modes H287-H292).
+    pub(crate) fn fn_gamma_ln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_call(Function::GammaLn, args, cell, &mut |model, values| {
+            let [x] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            number_or_error(model.cast_number_ref(x, cell).and_then(|x| {
+                if x < 0.0 {
+                    return Err(num_error(cell));
+                }
+                let result = ln_gamma(x);
+                if result.is_nan() || result.is_infinite() {
+                    return Err(num_error(cell));
+                }
+                Ok(result)
+            }))
+        })
     }
 }

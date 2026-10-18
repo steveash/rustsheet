@@ -12,8 +12,8 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::{
-        exceeds_complexity_limit,
         format::{format_text, format_text_value_exact, FormatContext, Formatted},
+        rejects_format_code,
     },
     functions::{
         text::position::find_element,
@@ -163,9 +163,13 @@ fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) 
     }
 }
 
-/// TEXT's `#VALUE!` for a format code over Excel's complexity limit (T-1393).
-fn too_complex(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::VALUE, cell, "Format code too complex".to_string())
+/// TEXT's `#VALUE!` for a format code it rejects (see [`rejects_format_code`]).
+fn rejected_format(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "Format code too complex or unterminated".to_string(),
+    )
 }
 
 impl Model {
@@ -211,7 +215,7 @@ impl Model {
                     return Ok(e.clone());
                 }
                 let format_code = array_node_to_string(formats.elem(i, j))?;
-                if exceeds_complexity_limit(&format_code) {
+                if rejects_format_code(&format_code) {
                     return Err(Error::VALUE);
                 }
                 Ok(text_element(value.elem(i, j), &format_code, &ctx))
@@ -225,8 +229,8 @@ impl Model {
                     // An error in every element; error elements keep theirs.
                     Err(e) => return array_of_errors(&arr, e, own_error),
                 };
-                if exceeds_complexity_limit(&format_code) {
-                    return array_of_errors(&arr, too_complex(cell), own_error);
+                if rejects_format_code(&format_code) {
+                    return array_of_errors(&arr, rejected_format(cell), own_error);
                 }
                 let ctx = self.format_context();
                 CalcResult::Array(
@@ -246,8 +250,8 @@ impl Model {
                     Ok(s) => s,
                     Err(s) => return s,
                 };
-                if exceeds_complexity_limit(&format_code) {
-                    return too_complex(cell);
+                if rejects_format_code(&format_code) {
+                    return rejected_format(cell);
                 }
                 let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
@@ -648,11 +652,16 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::String(text) if number_text_too_long(&text) => {
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
-            }
-            CalcResult::String(text) => {
+        // Lifts over a range or array, each element read as a scalar argument: a blank is 0, a
+        // boolean or "" #VALUE! and an error stays (probes/value-argument-lift C1:C8, D1:D6;
+        // corpus-bench/42181 B14, T-1791).
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
+            Err(e) => return e,
+        };
+        broadcast_text(cell, &[&text], |i, j| match text.elem(i, j) {
+            ArrayNode::String(text) if number_text_too_long(text) => Err(Error::VALUE),
+            ArrayNode::String(text) => {
                 // VALUE trims spaces around date and clock text, unlike number coercion, but
                 // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
                 // (probes/date-text-grammar C7, value-clock-text B14, B44).
@@ -660,27 +669,15 @@ impl Model {
                 // Clock text and date text with a clock suffix read as in number coercion,
                 // with surrounding spaces trimmed (probes/value-clock-text column B against C;
                 // date-text-grammar C30, C31, C53, C55, C63).
-                match self.parse_number_text(text, &["$", "€"], &|| self.current_year()) {
-                    Some(value) => CalcResult::Number(value),
-                    None => CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string()),
-                }
+                self.parse_number_text(text, &["$", "€"], &|| self.current_year())
+                    .map(ArrayNode::Number)
+                    .ok_or(Error::VALUE)
             }
-            CalcResult::Number(f) => CalcResult::Number(f),
-            CalcResult::Boolean(_) => {
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
-            }
-            error @ CalcResult::Error { .. } => error,
-            CalcResult::Range { .. } => {
-                // TODO Implicit Intersection
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(0.0),
-            CalcResult::Array(_) | CalcResult::Lambda(_) => CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            },
-        }
+            ArrayNode::Number(f) => Ok(ArrayNode::Number(*f)),
+            ArrayNode::Boolean(_) => Err(Error::VALUE),
+            ArrayNode::Error(e) => Err(e.clone()),
+            ArrayNode::Empty => Ok(ArrayNode::Number(0.0)),
+        })
     }
 
     // VALUETOTEXT(value, [format]) lifts over a range or array like LEN

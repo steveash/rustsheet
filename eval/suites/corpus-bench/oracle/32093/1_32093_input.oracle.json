@@ -1,0 +1,70 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "G10": {
+    "t": "s",
+    "v": "Susan"
+   },
+   "G11": {
+    "t": "s",
+    "v": "Gayle"
+   },
+   "G12": {
+    "t": "s",
+    "v": "Gayle"
+   },
+   "G13": {
+    "t": "s",
+    "v": "Gayle"
+   },
+   "G14": {
+    "t": "s",
+    "v": "Gayle"
+   },
+   "G15": {
+    "t": "s",
+    "v": "Gayle"
+   },
+   "G2": {
+    "t": "s",
+    "v": "Jim"
+   },
+   "G3": {
+    "t": "s",
+    "v": "Connor"
+   },
+   "G4": {
+    "t": "s",
+    "v": "Connor"
+   },
+   "G5": {
+    "t": "s",
+    "v": "Connor"
+   },
+   "G6": {
+    "t": "s",
+    "v": "Connor"
+   },
+   "G7": {
+    "t": "s",
+    "v": "Connor"
+   },
+   "G8": {
+    "t": "s",
+    "v": "Connor"
+   },
+   "G9": {
+    "t": "s",
+    "v": "Connor"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "55df6b7724e183dface8a1cac3583b185a30d3323fde194c19a4f76e8fe36f4a",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:29:20+00:00",
+  "version": null
+ }
+}

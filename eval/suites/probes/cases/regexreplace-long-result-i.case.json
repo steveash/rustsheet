@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1817: the UTF-16 length at which TYPE gives 64 and ERROR.TYPE gives 3 for a REGEXREPLACE result, and whether REPT or REGEXEXTRACT text does the same.",
+  "tags": [
+    "M7",
+    "probe",
+    "T-1817",
+    "regexreplace"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TYPE(REPT(\"a\",32767))",
+        "A2": "=ERROR.TYPE(REPT(\"a\",32767))",
+        "A3": "=TYPE(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"bb\")&\"\")",
+        "A4": "=TYPE(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"b\"))",
+        "A5": "=ERROR.TYPE(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"b\"))",
+        "A6": "=TYPE(REGEXREPLACE(REPT(\"a\",32765),\"a$\",\"bb\"))",
+        "A7": "=ERROR.TYPE(REGEXREPLACE(REPT(\"a\",32765),\"a$\",\"bb\"))",
+        "A8": "=TYPE(REGEXREPLACE(REPT(\"a\",32767),\"x\",\"b\"))",
+        "A9": "=ERROR.TYPE(REGEXREPLACE(REPT(\"a\",32767),\"x\",\"b\"))",
+        "A10": "=TYPE(REGEXEXTRACT(REPT(\"a\",32767),\"a+\"))",
+        "A11": "=TYPE(MID(REGEXREPLACE(REPT(\"a\",32767),\"a$\",\"b\"),1,32767))",
+        "A12": "=ISTEXT(REGEXREPLACE(REPT(\"a\",32767),\"a$\",\"bb\"))",
+        "A13": "=ISERROR(ERROR.TYPE(REGEXREPLACE(REPT(\"a\",32766),\"a$\",\"bb\")))"
+      }
+    }
+  ],
+  "expected": {}
+}

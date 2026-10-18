@@ -462,7 +462,17 @@ the engineering functions lift too, and since T-1372 28 financial functions (PMT
 RATE, IPMT, PPMT, ISPMT, RRI, PDURATION, SLN, SYD, DDB as `Lift`; EFFECT, NOMINAL, DOLLARDE,
 DOLLARFR, ACCRINTM and the discount securities and T-bills as `LiftArrays`), so the PMT, EFFECT and
 ACCRINTM cells here pass (scalar-lift-open-a W4, W14, W15; -b W9; -d W8-W18). Since T-1822 ACCRINT,
-the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` as well (scalar-lift-open-a Y1-Y7). The other families
+the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` as well (scalar-lift-open-a Y1-Y7). Since T-1290 the
+44 statistical functions whose every argument is scalar and whose kernels are bounded lift as `Lift`
+(statistics.md "Statistical function argument modes"), so NORM.DIST's cells here pass (H15, H16, H20, H21, H34,
+H35, J8, K8), and NORM.S.DIST's H38 and H40 now lift and miss only by its known last-digit residue, as the scalar H39
+does (statistics.md "The normal CDF is not always correctly rounded", T-0968). Since T-1848 the quantile functions
+BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T lift as `Lift` too, their searches
+capped (statistics.md "Quantile searches: per-call cap and lifting"), and since T-1872 so do CHISQ.DIST,
+CHISQ.DIST.RT, CHIDIST, CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON and
+POISSON.DIST, their incomplete gamma capped (statistics.md "Incomplete gamma: per-call cap and lifting"), and since
+T-1873 HYPGEOM.DIST and HYPGEOMDIST, HYPGEOM.DIST's cdf sum capped (statistics.md "HYPGEOM.DIST: per-call cap and
+lifting"). The other families
 listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
 formula). SPEC-0011's rollout tasks fix them.
 Status: VERIFIED (excel-graph)
@@ -472,8 +482,11 @@ Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lif
 `lifted_static_result` and `lifts_arrays_at` (expressions/parser/static_analysis/lifted.rs);
 kernels `edate_of`, `eomonth_of` (functions/date_and_time/month_shift.rs), `weeknum_of`
 (weeknum.rs) and `yearfrac_of` (yearfrac.rs); the financial kernels in functions/financial/
-(annuity.rs, discount.rs, rate_conversions.rs, accrint.rs, financial_bonds.rs) and financial_depreciation.rs.
-Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822
+(annuity.rs, discount.rs, rate_conversions.rs, accrint.rs, financial_bonds.rs) and financial_depreciation.rs; the
+statistical kernels in functions/statistical/ (normal.rs, binom.rs, beta.rs, fisher.rs, t_dist.rs and the rest; the
+capped quantile search in inverse_beta.rs, the capped incomplete gamma in incomplete_gamma.rs, the capped
+hypergeometric cdf in hypegeom.rs).
+Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822, T-1872, T-1873
 
 ## GROUPBY and PIVOTBY
 Rule: groups are keyed like UNIQUE (case-insensitive text, first spelling shown) and always sorted ascending:
@@ -588,7 +601,11 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
   every group row and total row once per function after a label column, which shown headers head with `""` (functions G!A61,
   G!A101, functions2 G!A681, P!A21-A61; PIVOTBY P!A601). One function in HSTACK is that function, no label row (G!A601); nested
   HSTACKs flatten (functions2 G!A581). Labels are the function names as written ("SUM", "STDEV.S", "PERCENTOF") and "CUSTOM"
-  for a LAMBDA (functions G!A181, G!A521, G!A721). Custom labels: values beside a column of functions label its rows
+  for a LAMBDA (functions G!A181, G!A521, G!A721); two or more LAMBDAs are "CUSTOM1", "CUSTOM2", ... numbered per LAMBDA in order (named functions between them
+  do not count: `HSTACK(L,SUM,L)` is CUSTOM1, SUM, CUSTOM2), as columns and as rows; a single LAMBDA among named functions stays
+  "CUSTOM", a lone LAMBDA in HSTACK shows no label row (G!A201), and a LAMBDA with a label value takes the label (probes/groupby-custom-labels G!A1, G!A41, G!A81, G!A121,
+  G!A161, G!A201, G!A241; probes/pivotby-col-subtotals-values2 S!A181, S!A193; -values3 S!A1; T-1854). Unprobed: whether a
+  labelled LAMBDA counts in the numbering (the engine counts only unlabelled ones; `HSTACK(L,L,"lab")` was undecodable). Custom labels: values beside a column of functions label its rows
   (`HSTACK(SUM,"a")` or `HSTACK(SUM,5)` is a label column of "a" or 5 before the values, a third element `HSTACK(SUM,5,MAX)`
   ignored: functions G!A221, functions2 G!A121-A181, also in PIVOTBY: P!A101), values below a row of functions label its
   columns (`VSTACK(SUM,5)`: a label row of 5; functions2 G!A161). `#VALUE!` (ERROR.TYPE 3): a 2-D array of functions, an array
@@ -598,13 +615,17 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
   on column i (`HSTACK(SUM,MAX)` over Sales and Units is SUM of Sales next to MAX of Units, and `VSTACK` gives the same pairs as
   rows; PIVOTBY too, with its Total columns filled: functions G!A41, G!A81, functions2 P!A1, P!A21); 3 over 2 and 2 over 3 are
   `#VALUE!` (functions2 G!A1-A61). PIVOTBY's Total columns are `""` only for one function over several value columns (P!Y97,
-  functions P!A701).
+  functions P!A701), and then only with two or more column groups ("GROUPBY and PIVOTBY: column totals over several
+  value columns").
 - Detected headers (`field_headers` omitted) are shown, as 3 shows them, with a row of two or more functions (GROUPBY and
   PIVOTBY: functions2 G!A641, functions3 P!A1), not with a column of them, a labelled one, or `field_headers` 1 (functions3
   G!A1-A81, P!A31).
 - sort_order past the keys counts the output value columns: 3 is the second function of a row (functions G!A141, functions2
   G!A221, PIVOTBY P!A181); a column of functions sorts by its first function (functions2 G!A201, G!A261, P!A201, P!A221), each
   group's rows staying in function order.
+- Not implemented (T-1855): PIVOTBY's col_sort_order -3 with one column field over two value columns is `#VALUE!`
+  (probes/pivotby-total-columns-one-group S!A73), while -3 with two column fields sorts (probes/pivotby-col-subtotals-values
+  S!A111); the engine sorts by the second value column.
 - Arguments: a function passed by name gets its minimum argument count: one (SUM, MEDIAN, SUMPRODUCT, ABS, STDEV.S), two
   (PERCENTOF, CORREL, PEARSON, RSQ, COVARIANCE.P, and IF, ROUND, SUMIF, whose array results are `#VALUE!` per cell); none or
   three or more (NOW, TEXTJOIN, XLOOKUP) make the whole result `#VALUE!` (functions G!A421, functions2 G!A281-A501). A LAMBDA gets
@@ -617,10 +638,15 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
   every cell (functions G!A541-A581; PIVOTBY P!A841).
 Unprobed (T-1325): mismatched heights inside a function array (the engine pads with `#N/A`, so the result is `#N/A`); which of
 several error elements wins (the engine: the first evaluated); a labelled row of several functions with detected headers (the
-engine does not show them); a LAMBDA without parameters (the engine: `#VALUE!`); other functions passed by name whose minimum
-argument count is not 1 (the engine gives them one argument, T-1706). CORREL, PEARSON and RSQ over arrays of different sizes
+engine does not show them); a LAMBDA without parameters (the engine: `#VALUE!`). CORREL, PEARSON and RSQ over arrays of different sizes
 are `#N/A` per group in Excel, `#VALUE!` here, and their total rows differ in the last digit (functions G!B421, functions2
 G!B281, G!B301): a CORREL/PEARSON/RSQ gap, T-1707.
+T-1706: every function passed by name gets its catalog minimum argument count (1 or 2; 0 or 3+ is `#VALUE!` overall):
+COVARIANCE.S, SLOPE, SUMX2MY2, INTERCEPT get two (grouped as usual), RANK, PERCENTILE, MOD two (`#VALUE!` per cell),
+SUBSTITUTE none (`#VALUE!`; probes/groupby-eta-arity G!A1-A141). SLOPE and INTERCEPT over arrays of different sizes are
+`#N/A` per group in Excel, `#VALUE!` here (G!B21:B25, G!B61:B65): T-1867.
+Unprobed (T-1706): minimum-0 functions that take optional arguments (ROW, COLUMN, SHEET, SHEETS, RANDARRAY) are
+extrapolated from NOW (`#VALUE!` overall); only NOW is probed.
 T-1327 follow-up (PIVOTBY relative_to; probes/groupby-pivotby-functions P!A1-A841 show each cell's set with
 `LAMBDA(x,y,SUM(y))`, and -functions3 P!A61-A181):
 - A cell's relative set is a row selection crossed with a column selection, each all records, the cell's own row (column)
@@ -668,11 +694,11 @@ through `Model::lambda_caller` with one or two arguments, its body read in refer
 (`percent_of`, shared with the PERCENTOF function), and a two-parameter LAMBDA is charged against the cell-visit cap (see
 "GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap").
 PIVOTBY (T-1326, functions/lookup_and_reference/pivotby.rs): two `Grouping`s of the same records (rows, columns), both size
-checked while grouping and before any call; the grid with `""` cells, totals 0/±1 on both axes, the Total columns `""` with
-several values, shown and generated headers, key and value sorts with the quirks above, and GROUPBY's argument readers
+checked while grouping and before any call; the grid with `""` cells, totals 0/±1 on both axes, the column totals of one function
+over several values placed as below (T-1700), shown and generated headers, key and value sorts with the quirks above, and GROUPBY's argument readers
 (`evaluate_options`, `sort_order`, `filter_rows`: their rules hold for PIVOTBY too, P!A1321-A1601 below);
 `Grouping::sort_by_aggregate` takes whether parents sort by their aggregate (rows, GROUPBY) or keep their key order
-(PIVOTBY columns). `#N/IMPL!`: column subtotals over several value columns (T-1700). Function arrays since T-1325, as in
+(PIVOTBY columns). Function arrays since T-1325, as in
 GROUPBY. Since T-1327 (functions/lookup_and_reference/relative_to.rs): `Model::relative_to` reads the argument into a row
 and a column selection, `RelativeSets` builds every set the grid uses once, after the sorts, in one pass over the records
 per pair of key-prefix levels (groups, subtotals and totals alike; `Grouping::prefix_ids`), the grid cells, subtotal
@@ -710,26 +736,11 @@ size in column Z and the ERROR.TYPE of its first cell in AA, excel-graph, 2026-1
   col_total_depth 0 keeps the key order (above) but its omitted row depth still shows the subtotals (G!A1021). Three
   row fields with depth 2 or 3 as GROUPBY (G!A1051, G!A1291). Row subtotals with two values leave both Total columns
   `""` (G!A751).
-- Quirk, not implemented (T-1700): column subtotals over several value columns are not the subtotals. In
+- Column subtotals of one function over several value columns are not the subtotals: in
   `PIVOTBY(A2:A11,B2:C11,D2:E11,SUM,,,,2)` (G!A781) the Apple and Pear subtotal columns and both Grand Total columns are
   `""`, while Banana (one child) shows Banana's Units in its Sales-subtotal column and every row's Units total in its
   Units-subtotal column; -2 is the same (G!A1141); with Year over Product (G!A1171) only the first of those two columns
-  is filled. The engine gives `#N/IMPL!`.
-  More shapes (probes/pivotby-col-subtotals-values, sheet S, excel-graph 2026-10-17; LAMBDA(x,ARRAYTOTEXT(x)) over
-  values 101-109, 201-209 and 301-309 shows which records and value column each cell takes; Outer keys A (1 child),
-  B (2), C (1), D (3), E (1)): every cell is either `""`, one group's cell, or a Grand Total cell, never a mix.
-  With one value the subtotals are right (S!A51). With several, a parent's first subtotal column shows its only
-  child's last value column (A: Ax's V2, S!A1; Ax's V3 with three values, S!A21) and is `""` for a parent with two or
-  more children (B, D); the other subtotal columns are `""` except at one parent, where they show Grand Total columns:
-  C's V2 column holds every record's V1 (S!A1), B's V2 and V3 columns every record's V1 and V2 (S!A21), but with all
-  parents single-child C's V2 column holds every record's V2 (S!A71), and a parent with two or more children in that place shows nothing
-  (G!A1171, S!A61). The parent is the one at index floor(parents / values) in every probe so far (C of five with two
-  values, B with three, Banana of three); which value its columns take is not explained. The Grand Total columns are
-  always `""`. The same cells come back with depth -2 (S!A11, S!A81), sorted descending (S!A111: by position in the
-  order, E, C and A as above), with shown headers (S!A31: "V1"/"V2" over every column) and with the value columns
-  swapped (S!A101: a single child's last value column is now V1, and C's Grand Total cells hold the first value
-  column, V2). No index arithmetic over the leaf cells (group- or
-  value-major, ranges or single cells, positive-depth layout) fits all of these (T-1700 search, 2026-10-17).
+  is filled. The rule is in "GROUPBY and PIVOTBY: column totals over several value columns" below (T-1700).
 Ours (T-1324): `Grouping::lines` lays the groups out with their subtotals in one pass over the sorted groups (a prefix
 change between neighbours opens or closes a subtotal), `effective_depth` adds the omitted depth of a value sort,
 `ParentOrder` picks hierarchical, key-order or flat parents, the value sort's `Aggregates` (each group's and
@@ -743,6 +754,51 @@ per element, as the row and column probed), and a 1x1 array field_relationship s
 to one cell, as `{FALSE}` is in followup G!A921).
 Status: VERIFIED (web)
 Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700, T-1325, T-1327
+
+## GROUPBY and PIVOTBY: column totals over several value columns
+Rule: with one function over two or more value columns (`width` w), PIVOTBY puts its column subtotal and total cells as
+if a subtotal spanned one column per line it covers instead of w. Lay the column lines out with every subtotal after
+its groups (as for a positive col_total_depth) in the order of the key sort (a descending one too) before any value
+sort, w columns per line, the total's w columns last. The total writes its value column v (0-based) into column
+`k + v`, k being the number of lines; then each subtotal, ordered by its first group and a parent before its own
+deeper subtotals, writes its value column v into
+column `f * w + k + v`, f being the index of its first group's line and k the number of lines it covers (its groups and
+deeper subtotals). A write into a group's column is dropped and a later write replaces an earlier one. Each subtotal
+and total column then moves with its line into the real layout (a negative depth puts the subtotals and totals first, a
+value sort reorders the lines) and shows, in every row, the cells of the subtotal or total written into it, or `""`
+where nothing was written. Group columns are always right, and so are the row axis (row subtotals, G!A751) and
+functions paired with the value columns or laid out as columns over one (probes/pivotby-col-subtotals-values2 S!A181,
+-values3 S!A1, S!A13, S!A25).
+Consequences: with one value column every write lands on its own column (S!A51). A parent with one child writes its
+last value column into its first subtotal column; with two or more children everything lands in their group columns.
+The total's writes land near the middle of the lines, so one parent there may show Grand Total cells in its later
+subtotal columns. This had looked like "the parent at floor(parents / values)", which matches every older probe but
+fails on -values2: eight single-child parents with two values put the total in P5's leaf column, so nothing shows
+(S!A1), and with four values over A (three children), B, C, D and E the total writes into 14-17, so A's third and
+fourth subtotal columns show the Grand Total's V1 and V2 (-values2 S!A85; floor(5 / 4) would be B). Without subtotals (depth ±1) the total's writes land in the group columns, which is why the
+Total columns are `""` (P!Y97), unless there is only one column group: then the first Total column shows the last value
+column's total and the others are `""`, also with -1 (probes/pivotby-total-columns-one-group S!A1-A61).
+Example: `PIVOTBY(A2:A10,B2:C10,D2:E10,LAMBDA(x,ARRAYTOTEXT(x)),,,,2)` with Outer keys A (child x), B (x, y), C (z),
+D (x, y, z), E (y) has 14 lines and 28 columns: A writes into columns 1-2, so A's first subtotal column shows A's V2;
+the total writes into 13-14, so C's second subtotal column (13) shows the Grand Total's V1; C writes into 11-12 and E
+into 23-24, the rest land on groups (probes/pivotby-col-subtotals-values S!A1).
+Evidence: probes/pivotby-col-subtotals-values S!A1-A111 (two and three values, depth -2, shown headers, swapped and
+duplicated column fields, a descending value sort), probes/pivotby-col-subtotals-values2 S!A1-A205 (eight and seven
+single-child parents with two to four values, mixed children with two to four values, a descending key sort, value
+sorts with the depth omitted, three column fields at depth 3, 2 and -3, row and column subtotals together),
+probes/pivotby-col-subtotals-values3 S!A49 (three values over three column fields at depth 3),
+probes/pivotby-total-columns-one-group, probes/groupby-subtotals G!A781, G!A1141, G!A1171 (excel-graph,
+2026-10-17/18). ARRAYTOTEXT over distinct values (101-112, 201-212, ...) shows which records and value column each
+cell takes: every cell is `""`, one group's cell or one subtotal's or total's, never a mix.
+A descending key sort places in the descending order: over Outer descending (E, D, C, B, A) the total's writes land in
+C's subtotal columns, which the ascending order would put on a group (-values2 S!A97).
+Unprobed: writes of two subtotals into the same column (the engine: the later in the order above wins, so a parent's
+deeper subtotal over a parent, and a later parent over an earlier one's deeper subtotal); the relative set a moved cell
+gets (the engine: the set of the subtotal or total whose cell it shows; T-1865); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
+S!A37, S!A61).
+Status: VERIFIED (web)
+Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/pivotby.rs (`Placement`, `Shown`)
+Tasks: T-1700
 
 ## GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap
 Rule: Excel calls a two-parameter LAMBDA in GROUPBY or PIVOTBY once per aggregate cell with the cell's values and its whole
@@ -768,17 +824,24 @@ crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISIT
 crates/rustsheet-engine/src/functions/lookup_and_reference/relative_to.rs (`RelativeSets::new`, `MAX_SET_ENTRIES`)
 Tasks: T-1325, T-1327
 
-## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
+## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!; an empty single cell is #VALUE!
 Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
 `WRAPCOLS(FALSE,4)` is FALSE in one cell and `WRAPCOLS("1.5",4)&DROP(C10,0,3)` is one `#CALC!` (neither spills over the
 occupied cells below). A wrap_count of 0.5 is `#NUM!` (`HYPERLINK(WRAPCOLS(C12,0.5,..),..)`).
 Evidence: gen-m7/bb4617644fee40c9 Calc!A30, gen-m7/d38b52bfa1a9f9e6 Calc!A26, gen-m7/f68fafa0ca2eba26 Calc!A39 (excel-graph, 2026-10-11, T-1275).
-Also: an error pad_with is the whole result when nothing is padded (`WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`,
-gen-m9/675763979c1defb6 A6), while with padding it fills the padded cells (WRAPCOLS_ROWS.xlsx E10, `NA()`). wrap_count 0
-is `#NUM!` for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21; the full set is under "WRAPROWS and WRAPCOLS" below).
-Ours: all of the above since T-1786 and T-1348 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
-Status: VERIFIED for single values (excel-graph). UNVERIFIED: the error pad_with rule for a vector of more than one
-element (it may apply only to a scalar input; follow-up task in Tasks), `WRAPCOLS({1,2},4)` and `WRAPROWS({1,2},4)`.
+Also: an error pad_with is an ordinary pad value: it fills the padded cells (WRAPCOLS_ROWS.xlsx E10, `NA()`;
+`WRAPCOLS({1,2,3},2,VALUE("x"))` pads with `#VALUE!`) and when nothing is padded the array is returned
+(`WRAPROWS({1,2,3,4},4,VALUE("x"))` is 1 2 3 4; `WRAPCOLS(5,3,VALUE("x"))` is 5). The `#VALUE!` of
+`WRAPCOLS(D6:D6,2,VALUE("x"))` (gen-m9/675763979c1defb6 A6) is the empty single-cell input: `WRAPCOLS(Z1:Z1,2)`,
+`WRAPCOLS(Z1,2)`, `WRAPROWS(Z1:Z1,1)` and a wrap_count of 0 are `#VALUE!` with any pad_with, while two empty cells
+(`Z1:Z2`) are two 0s. wrap_count above the length is the length, so `WRAPCOLS({1,2},4)` is 2x1 and
+`WRAPCOLS(B5:H5,100,NA())` is 7x1, unpadded. wrap_count is `#NUM!` below 1 for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21;
+the full set is under "WRAPROWS and WRAPCOLS" below).
+Evidence: probes/wrapcols-wraprows-pad-with (excel-graph, 2026-10-18, T-1840).
+Unprobed: an omitted vector (`WRAPCOLS(,2)`) and an empty cell reached indirectly (`WRAPCOLS(IF(TRUE,Z1),2)`,
+`WRAPCOLS(INDEX(Z1:Z2,1),2)`); the engine treats the omitted vector like an empty cell (`#VALUE!`).
+Ours: all of the above since T-1786, T-1348 and T-1840 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
+Status: VERIFIED (excel-graph).
 Tasks: T-1348, T-1840
 
 ## MAP over arrays of different sizes, or a single value and an array
@@ -861,9 +924,14 @@ Tasks: T-1350
 Rule: an error-valued argument of SORT wins over an invalid other argument: `SORT(B11:E12,ROUND(0,7),A3:C5,<#N/A>)`
 (sort_index 0, a 9-cell sort_order range and a by_col that is `#N/A`) is `#N/A`.
 Evidence: gen-m7/c5d278a8662ef4b2 Calc!A39 (by_col `HLOOKUP(ADDRESS(19,19),Data!C8:C12,3)`) (excel-graph, 2026-10-11, T-1275).
-Ours: `#VALUE!` (sort_index 0 is rejected before by_col is looked at).
-Status: VERIFIED (web) for this cell; SORTBY and the order among several error arguments are UNVERIFIED
-Tasks: T-1351
+Evidence (T-1850, probes/sort-error-args, excel-graph): errors are reported left to right, before any value is validated:
+- SORT: sort_index error beats sort_order error (H29 `NA(),1/0` is #N/A, H33 `1/0,NA()` is #DIV/0!); sort_index (H37) and sort_order (H53) errors beat a by_col error; an error sort_order with sort_index 0 returns the error (H13); an error by_col with sort_index 0 returns the error (H25); an error sort_order with a valid sort_index returns the error (H17).
+- SORTBY: by_array1, order1, by_array2... left to right (H77, H89 `C,NA(),B,1/0` is #N/A, H93 is #DIV/0!); an error in a later pair beats an invalid earlier order (H85 `C,0,B,NA()` is #N/A); an error order beats a by_array row-count mismatch (H105).
+- Invalid values: `SORT(arr,0,1)`, `SORT(arr,1,0)`, `SORTBY(arr,key,0)`, a row-count mismatch and a two-column by_array (`SORTBY(A1:A3,C1:B3,1)`, H101) are #VALUE!. `SORT(NA(),0,1)` and `SORTBY(NA(),...)` are #N/A.
+- Array sort arguments: `SORT(arr,{1,2},1)` is a multi-key sort (H57), `SORT(arr,{1,2},{1,-1},TRUE)` too (H69), `SORT(arr,1,{1,-1})` is #VALUE! (H61, H65), and `SORTBY(A1:A3,C1:C3,{1;-1;1})` returns {1;0;0} (H97-H99).
+Ours: errors left to right and the two-column by_array rejected (T-1850). A #VALUE! sort_order is still returned after by_col's error (multi-cell order of c5d278a8662ef4b2 A39 needs it; a real `"a"+1` order against a later error argument is UNVERIFIED for both SORT and SORTBY, which returns it at once). Array sort_index/sort_order are not implemented (T-1902).
+Status: VERIFIED (excel-graph)
+Tasks: T-1351, T-1850, T-1902
 
 ## SORT: omitted sort_index / sort_order take their defaults
 
@@ -905,3 +973,13 @@ ISOMITTED inside `LAMBDA(x,[y],...)` matches ours in every probed form (A20-A49)
 filled cell (A28-A31) count as supplied (FALSE), and so is a reference to a blank cell: `LAMBDA(x,[y],ISOMITTED(y))(1,C1)` with C1 blank is FALSE (probes/dynamic-array-reshape-reprobe E20-E21); outside a LAMBDA `ISOMITTED(5)`, `ISOMITTED(A1)` and `ISOMITTED(#N/A)` are FALSE (A43-A45).
 Status: VERIFIED (excel-graph)
 Tasks: T-1627, T-1630, T-1632
+
+## MAP and SCAN with a LAMBDA that returns a multi-cell range
+Rule: when the LAMBDA of MAP or SCAN returns a multi-cell reference (`MAP(A1:A2,LAMBDA(r,B1:B3))`,
+a row range, a range holding an error cell), Excel gives the whole call one `#CALC!` (a scalar, not a
+`#CALC!` per element: `ROWS` of it is `#CALC!` too), as BYROW and BYCOL do. It does not depend on
+what the range holds (numbers, an error cell among numbers, an error cell among blanks, text and booleans all alike; an all-blank range and a LAMBDA that returns a range for only some elements are unprobed). A one-cell
+range is the control: its value is the element (`MAP(A1:A2,LAMBDA(r,J1:J1))` is 4, 4).
+Evidence: probes/map-scan-range-result (excel-graph 2026-10-18).
+Implemented in: `Model::lambda_result_value`, which still reads the range's existing cells (a cycle
+through it is `#CIRC!`). Tasks: T-1792, T-1769.

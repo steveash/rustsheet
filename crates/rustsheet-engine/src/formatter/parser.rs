@@ -1,4 +1,6 @@
 use super::lexer::{Compare, Lexer, Token};
+use super::locale_tag::{self, DateNames, LocaleTag};
+use crate::locale::excel_date_names::EN_US;
 
 pub struct Digit {
     pub kind: char, // '#' | '?' | '0'
@@ -65,6 +67,8 @@ pub struct DatePart {
     pub color: Option<i32>,
     pub use_ampm: bool,
     pub tokens: Vec<TextToken>,
+    /// The names of the section's `[$-...]` locale; `None` uses the workbook locale.
+    pub names: Option<&'static DateNames>,
 }
 
 pub struct ErrorPart {}
@@ -161,10 +165,16 @@ impl Parser {
         let mut number = NumberState::Integer;
         let mut index = 0;
         let mut currency = None;
+        // Where each currency symbol sits among `tokens`, for a date section to print it there.
+        let mut currency_positions: Vec<(usize, char)> = Vec::new();
         let mut is_time = false;
         let mut hijri = false;
         // Whether the previous token is an unescaped colon, which the next one joins.
         let mut after_colon = false;
+        let mut locale = None;
+        // Excel: a second locale tag in a section is #VALUE!, even the same one
+        // (`TEXT(45000,"[$-40C]mmmm [$-40C]mmmm")`; probes/text-locale-name-tables A568-A575).
+        let mut repeated_locale = false;
 
         while token != Token::EOF && token != Token::Separator {
             let next_token = self.lexer.next_token();
@@ -240,6 +250,7 @@ impl Parser {
                 }
                 Token::Currency(c) => {
                     currency = Some(c);
+                    currency_positions.push((tokens.len(), c));
                 }
                 Token::QuestionMark => {
                     tokens.push(TextToken::Digit(Digit {
@@ -395,7 +406,10 @@ impl Parser {
                     use_ampm = true;
                     tokens.push(TextToken::AP(am, pm));
                 }
-                Token::Locale => {}
+                Token::Locale(tag) => {
+                    repeated_locale |= locale.is_some();
+                    locale = Some(tag);
+                }
                 Token::Scientific => {
                     if !is_scientific {
                         index = 0;
@@ -454,6 +468,23 @@ impl Parser {
             after_colon = is_colon;
             token = next_token;
         }
+        if repeated_locale {
+            return ParsePart::Error(ErrorPart {});
+        }
+        let system_format = match locale {
+            Some(LocaleTag::SystemDate) => Some(locale_tag::SYSTEM_LONG_DATE),
+            Some(LocaleTag::SystemTime) => Some(locale_tag::SYSTEM_LONG_TIME),
+            _ => None,
+        };
+        if let Some(system_format) = system_format {
+            if !tokens.iter().any(|t| matches!(t, TextToken::Raw)) {
+                return self.system_part(system_format, color);
+            }
+        }
+        let names = match locale {
+            Some(LocaleTag::Names(names)) => Some(names),
+            _ => None,
+        };
         let general_count = tokens
             .iter()
             .filter(|t| matches!(t, TextToken::General))
@@ -486,10 +517,16 @@ impl Parser {
             if is_number || (hijri && prints_date) {
                 return ParsePart::Error(ErrorPart {});
             }
+            // Excel prints a currency symbol in a date section where it is written
+            // (`[$€-40C]d mmmm` is "€15 mars", `mmmm[$€-40C]` "mars€"; number-formats.md).
+            for (position, symbol) in currency_positions.into_iter().rev() {
+                tokens.insert(position, TextToken::Literal(symbol));
+            }
             ParsePart::Date(DatePart {
                 color,
                 use_ampm,
                 tokens,
+                names,
             })
         } else {
             ParsePart::Number(NumberPart {
@@ -506,6 +543,39 @@ impl Parser {
                 exponent_digit_count,
                 currency,
             })
+        }
+    }
+
+    /// The section of a system tag (`[$-F800]`, `[$-F400]`), which replaces whatever else the
+    /// section holds (`TEXT(45000.75,"x[$-F800]0")` is "Wednesday, March 15, 2023"). Only a first
+    /// section shows it: in a later one the section prints nothing (`TEXT(-1,"0;[$-F800]")` and
+    /// `TEXT(0,"0;0;[$-F800]")` are ""; probes/text-locale-name-tables A557-A570, T-1716).
+    fn system_part(&self, format: &str, color: Option<i32>) -> ParsePart {
+        if !self.parts.is_empty() {
+            return ParsePart::Number(NumberPart {
+                color,
+                condition: None,
+                use_thousands: false,
+                percent: 0,
+                comma: 0,
+                tokens: vec![],
+                digit_count: 0,
+                precision: 0,
+                is_scientific: false,
+                scientific_minus: false,
+                exponent_digit_count: 0,
+                currency: None,
+            });
+        }
+        let mut parser = Parser::new(format);
+        parser.parse();
+        match parser.parts.pop() {
+            Some(ParsePart::Date(part)) => ParsePart::Date(DatePart {
+                color,
+                names: Some(EN_US),
+                ..part
+            }),
+            _ => ParsePart::Error(ErrorPart {}),
         }
     }
 }

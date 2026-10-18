@@ -330,6 +330,7 @@ mod tests {
                 sheet: "S".into(),
                 cell: format!("A{}", i + 1),
                 formula: None,
+                anchor_formula: None,
                 expected: Value::Number(1.0),
                 actual: Value::Number(1.0),
                 verdict,

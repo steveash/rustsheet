@@ -24,12 +24,17 @@ probes/fin-argument-modes (excel-graph, 2026-10-11, T-1084). Base rows that miss
 - Tens of ulps off: CUMPRINC H80 (about 37) and EFFECT H125 (about 32).
 - Off at about 1e-10 to 1e-12 relative, so probably an iteration stopping point rather than an evaluation order: ODDFYIELD H200,
   YIELD H343. (TBILLEQ H313 and the other TBILL cells moved to T-1475 on 2026-10-13.)
+- Added by T-1842: probes/fin-yield-odd-lift A1 and I5 (YIELD, about 1e-13 relative), A3 and I7 (ODDFPRICE, a few
+  ulps), A5 and I9 (ODDFYIELD, about 1e-10 relative): the same base values as above, reached through the lift.
 - Moved from T-1493 on 2026-10-13: YIELD A8-E8, A19-E19, A30-E30 and DURATION A20/C20 of
   probes/date-system-1900-financial-readers and its -shifted twin, and the 4 DURATION ulp cells of
   probes/coupdays-feb-month-end. probes/yield-solver-sweep (66 cells, excel-graph) is the YIELD sweep: Excel stops
   below the root, the stopping point does not move with the dates for the same day counts but does differ between
   two bonds with equal day counts and different YEARFRAC (docs/excel-semantics/financial.md, "YIELD stops short of
   PRICE's root").
+- Added by T-1845: probes/fin-remaining-later-argument-ranges K11 `INDEX(CUMIPMT({0.01;0.02},360,100000,1,12,0),2)`
+  (-23997.734423612783, ours an ulp off): the 12-period CUMIPMT sum, kept up to 32 periods by T-1845; the closed form
+  past 32 periods is T-1890's.
 The same DURATION, MDURATION and PRICE base values recur as the intersected controls of
 probes/fin-remaining-later-argument-ranges I85-I103 and I165-I171 (T-1822), and so do the CUMIPMT, CUMPRINC, ODDFPRICE,
 ODDFYIELD and YIELD ones there (I65-I84, I105-I136, I173-I184).

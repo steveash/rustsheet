@@ -50,6 +50,21 @@ Implemented in: `fn_type`, `fn_isblank` and the IS* helpers (functions/informati
 Status: VERIFIED (excel-graph)
 Tasks: T-1278
 
+## TYPE and ERROR.TYPE of text over 255 UTF-16 units
+Rule: `TYPE` of text longer than 255 UTF-16 units is 64 (not 2) and `ERROR.TYPE` of it is 3, as if it were `#VALUE!`,
+though the text is no error elsewhere: `ISERROR(REPT("a",32767))` is FALSE and `ISTEXT(REPT("a",256))` TRUE.
+`TYPE(REPT("a",255))` is 2 and `ERROR.TYPE` of it `#N/A`; 256, 257, 1000, 8192, 16383, 16384 and 32766 characters are
+64 and 3; a 256-character literal and `REPT("a",300)&""` are 64 too. Units, not characters: 127 emoji (254 units)
+are 2, 128 (256 units) are 64. The same holds for REGEXREPLACE, REGEXEXTRACT and MID results of any such length,
+including ones over 32,767 units (probes/regexreplace-long-result-a, -c, -i), and for a cell holding a typed
+256-character constant: `TYPE(A1)` 64, `ERROR.TYPE(A1)` 3, lifted `ERROR.TYPE(A1:A2)` 3 and `#N/A` beside a 255-character
+cell, `TYPE(A1:A2)` 64 (probes/type-long-text-refs). DECIMAL rejects text over the same 255
+units (engineering.md "DECIMAL of unreadable text"), so the three share one constant.
+Evidence: probes/type-long-text, probes/type-long-text-refs (excel-graph, 2026-10-18).
+Implemented in: `fn_type`, `fn_errortype` (functions/information/mod.rs), `MAX_SHORT_TEXT_UNITS` (cast.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1817
+
 ## Resource bound on lifted IS* ranges
 Rule: Excel spills `ISBLANK(A:A)` (1,048,576 rows) and even `ISBLANK(A:XFD)`. RustSheet returns
 `#ERROR!` for a lifted IS* range above 1,048,576 cells (one whole column), to bound allocation on
@@ -248,8 +263,7 @@ Rule (probes/volatile-and-info-rand-true-false-sheet D1-D28, excel-graph, 2026-1
 (`SHEET(T!A1:B2)` 2, `SHEET(A1:B2)` 1); `SHEET("T")` and `SHEET("t")` are the sheet of that name (2, case-insensitive),
 `SHEET("Nope")`, `SHEET("")`, `SHEET(" T")` and `SHEET("S!A1")` are `#N/A`. A number, a boolean, an error and `ROW(A1)` are
 `#N/A`. A reference returned by OFFSET (1), INDIRECT (2), INDEX (`SHEET(INDEX(T!A1:B2,1,1))` 2), IF (`SHEET(IF(TRUE,U!A1))` 3)
-and a union of two areas on sheet T (`SHEET((T!A1,T!B2))` 2) all resolve to their sheet. Ours gives `#N/A` for the INDEX and IF
-forms and `#VALUE!` for the union (3 cells; fix T-1631).
+and a union of two areas on sheet T (`SHEET((T!A1,T!B2))` 2) all resolve to their sheet. Ours matches (T-1631).
 Volatile functions through shape-stable formulas (probes/volatile-now-today-shapes, probes/volatile-and-info-rand-true-false-sheet):
 NOW, TODAY and RAND are numbers (`TYPE` 1, never text or boolean), `NOW()-NOW()` is 0 within one recalculation,
 `INT(NOW())=TODAY()`, `RAND()` is in [0,1) and two calls differ, `TRUE()` and `FALSE()` behave as the literals in
@@ -273,7 +287,7 @@ Legacy: `SUM(N({1,2}))` is 3 and `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` 5, bu
 `=N(B1:B3*1)` off the rows `#VALUE!`.
 Evidence: probes/n-array-lift (excel-graph, 2026-10-16, T-1616).
 Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5,
-T-1713, which needs the legacy marker of spec T-1727). T, CHOOSE, INDEX and IFS arguments and nested uses
+T-1713, which needs the legacy marker of SPEC-0012, legacy-n-t-marker.md: T-1851, T-1713). T, CHOOSE, INDEX and IFS arguments and nested uses
 (`=ABS(N(IF(1,{2;3})))`) behave the same, while N of an array constant or of TRANSPOSE gets an `@` (2):
 references.md "Legacy formulas put `@` on array-valued calls and array constants" and "Legacy N and T over a
 reference-returning call" (probes/legacy-array-result, probes/legacy-n-t-reference-args).

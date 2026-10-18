@@ -1,3 +1,4 @@
+use super::locale_tag::{self, LocaleTag};
 use crate::number_format::{parse_excel_number, parse_finite_number};
 
 pub struct Lexer {
@@ -6,6 +7,8 @@ pub struct Lexer {
     chars: Vec<char>,
     error_message: String,
     error_position: usize,
+    /// The locale of a `[$€-40C]` currency tag, returned by the call after its symbol.
+    pending_locale: Option<LocaleTag>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -59,7 +62,7 @@ pub enum Token {
     /// `A/P`: the letters printed for the morning and for the afternoon.
     AP(char, char),
     /// `[$-409]`: a locale with no currency symbol, which prints nothing.
-    Locale,
+    Locale(LocaleTag),
     ILLEGAL,
     EOF,
 }
@@ -105,6 +108,7 @@ impl Lexer {
             len,
             error_message: "".to_string(),
             error_position: 0,
+            pending_locale: None,
         }
     }
 
@@ -361,13 +365,16 @@ impl Lexer {
     }
 
     pub fn peek_token(&mut self) -> Token {
-        let position = self.position;
+        let (position, pending) = (self.position, self.pending_locale);
         let token = self.next_token();
-        self.position = position;
+        (self.position, self.pending_locale) = (position, pending);
         token
     }
 
     pub fn next_token(&mut self) -> Token {
+        if let Some(locale) = self.pending_locale.take() {
+            return Token::Locale(locale);
+        }
         let ch = self.read_next_char();
         match ch {
             Some(x) => match x {
@@ -401,29 +408,34 @@ impl Lexer {
                             //           [$$-40C] (=1036 for fr-FR)
                             self.read_next_char();
                             // Excel: `[$-409]` has a locale and no symbol and prints nothing
-                            // (probes/text-ap-locale-bracket A11-A20; number-formats.md). Only 409 is
-                            // probed; other LCIDs are read the same way by inference (T-1702).
+                            // (probes/text-ap-locale-bracket A11-A20; number-formats.md); the
+                            // locale it names applies to date names (`locale_tag`, T-1716).
                             if self.peek_char() == Some('-') {
                                 self.read_next_char();
+                                let mut tag = String::new();
                                 while let Some(c) = self.read_next_char() {
                                     if c == ']' {
-                                        return Token::Locale;
+                                        return Token::Locale(locale_tag::resolve(&tag));
                                     }
+                                    tag.push(c);
                                 }
                                 self.set_error("Failed to parse locale");
                                 return Token::ILLEGAL;
                             }
                             if let Some(currency) = self.read_next_char() {
-                                // ignore the locale part for now, just check if it ends with ']'
+                                // The locale part of `[$€-40C]` is read as a `[$-40C]` tag that
+                                // follows the symbol (probes/text-currency-locale-date).
                                 if Some('-') == self.peek_char() {
                                     self.read_next_char();
-
+                                    let mut tag = String::new();
                                     while let Some(c) = self.peek_char() {
                                         if c == ']' {
                                             break;
                                         }
+                                        tag.push(c);
                                         self.read_next_char();
                                     }
+                                    self.pending_locale = Some(locale_tag::resolve(&tag));
                                 }
                                 if self.read_next_char() == Some(']') {
                                     return Token::Currency(currency);

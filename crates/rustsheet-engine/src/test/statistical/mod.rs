@@ -1,3 +1,4 @@
+mod test_argument_lift;
 mod test_fn_avedev;
 mod test_fn_beta_dist;
 mod test_fn_binom;
@@ -26,5 +27,8 @@ mod test_fn_t_tiny_p;
 mod test_fn_var;
 mod test_fn_weibull;
 mod test_fn_z_test;
+mod test_hypgeom_lift;
+mod test_incomplete_gamma_lift;
+mod test_quantile_lift;
 mod test_range_number_walk;
 mod test_sorted_data_lift;

@@ -1,0 +1,52 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1626 PHONETIC evidence-floor probe",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "abcabc",
+    "A2": "日本語テキスト",
+    "A3": "ｱｲｳｶﾞ",
+    "A4": "😀a😀",
+    "A5": "ＡＢＣ１２３",
+    "A6": "abc",
+    "A7": 7,
+    "A8": "",
+    "A9": "Ａ",
+    "A10": "カタカナ",
+    "B1": "=A1&\"x\"",
+    "B2": 5,
+    "C1": "=PHONETIC(A1)",
+    "C2": "=PHONETIC(A2)",
+    "C3": "=PHONETIC(A3)",
+    "C4": "=PHONETIC(A4)",
+    "C5": "=PHONETIC(A5)",
+    "C6": "=PHONETIC(A7)",
+    "C7": "=PHONETIC(A8)",
+    "C8": "=PHONETIC(A11)",
+    "C9": "=PHONETIC(A1:A2)",
+    "C10": "=PHONETIC(A1:A3)",
+    "C11": "=PHONETIC(A1:A10)",
+    "C12": "=PHONETIC(A7:A8)",
+    "C13": "=PHONETIC(B1)",
+    "C14": "=PHONETIC(B2)",
+    "C15": "=PHONETIC(A1:B1)",
+    "C16": "=PHONETIC(B1:B2)",
+    "C17": "=PHONETIC(A8:A8)",
+    "C18": "=PHONETIC(A10)",
+    "C19": "=PHONETIC(A9)",
+    "C20": "=PHONETIC((A1,A2))",
+    "C21": "=PHONETIC(INDEX(A1:A3,2))",
+    "C22": "=PHONETIC(A2:A2)",
+    "C23": "=PHONETIC(OFFSET(A1,1,0))"
+   }
+  }
+ ],
+ "expected": {}
+}

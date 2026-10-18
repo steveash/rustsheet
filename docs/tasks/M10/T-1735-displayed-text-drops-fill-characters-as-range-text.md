@@ -19,6 +19,10 @@ The four accounting built-ins (`_(* #,##0_);...`, `_("$"* #,##0.00_);...`; 320 t
 `_("$"* #,##0.00_)...` " $1,234,567,890.00 ", PI() under `*.0.00` "3.14", under `0.00*-` "3.14"; ours adds a
 space for the fill (" $ 36.50 ", " 3.14", "3.14 "). Check what TEXT() gives for the same codes on sheet T (Excel's
 TEXT may differ from the displayed text) before changing the shared formatter.
+TEXT shows the same bug: `TEXT(7,"0*""a")` is "7a" in Excel and "7 a" with us
+(probes/text-format-length-limit-o A37, a known failure in eval/baseline/probes.txt; T-1486). The `*`
+takes the `"` as its fill character, and a fill adds nothing in a number section, but format.rs prints
+a space for every `TextToken::Spacer` (in `format_number`, both the date and the number branches).
 Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "Displayed text" section, which lists each failing text cell (Excel vs ours). Text cells are scored apart from values and are not baselined (decision 0068); the TEXT() cells on sheet T that use the same codes are value known failures in eval/baseline/gen-m10.txt. Formatter: crates/rustsheet-engine/src/formatter/ (shared by `Workbook::formatted` and TEXT). docs/excel-semantics/number-formats.md.
 
 ## Acceptance criteria

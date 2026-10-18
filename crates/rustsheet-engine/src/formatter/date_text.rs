@@ -193,6 +193,23 @@ fn parse_day_month(
     ))
 }
 
+/// "d-Mon-y" joined by `separator`: the serial and the format Excel gives it.
+fn day_name_year(
+    day: &str,
+    name: &str,
+    year: &str,
+    locale: &Locale,
+    separator: char,
+) -> Result<(i32, String), String> {
+    let (day, day_format) = parse_day(day)?;
+    let (month, month_format) = parse_month_name(name, locale).ok_or("Not a valid month")?;
+    let (year, year_format) = parse_year(year)?;
+    Ok((
+        serial_of(day, month, year)?,
+        format!("{day_format}{separator}{month_format}{separator}{year_format}"),
+    ))
+}
+
 /// One word with a date separator: "7/1/2026", "2026-07-01", "1-Jul-2026", "1/Jul/26",
 /// "Jul-2026". Separators are `/` and `-`, plus `.` in locales whose short date uses it (en-US
 /// rejects "1.7.2026"; probes/date-text-grammar A39/A40).
@@ -213,7 +230,14 @@ fn parse_separated(
         [first, second] => {
             return match parse_month_name(second, locale) {
                 Some((month, _)) => parse_day_month(first, month, current_year),
-                None => parse_month_year(first, second, locale, true, current_year),
+                // "1-Jul2026": a day, then a month name glued to a four-digit year
+                // (probes/date-text-glued-month-2 row 8).
+                None => match split_glued_month(second, locale) {
+                    Some((["", name, year], true)) if is_digits(year, 4..=4) => {
+                        day_name_year(first, name, year, locale, separator)
+                    }
+                    _ => parse_month_year(first, second, locale, true, current_year),
+                },
             };
         }
         // Year first is numeric only: "2023/Jan/15" is #VALUE! (probes/date-text-grammar A20).
@@ -227,14 +251,7 @@ fn parse_separated(
             ));
         }
         [day, name, year] if !is_digits(name, 1..=2) => {
-            let (day, day_format) = parse_day(day)?;
-            let (month, month_format) =
-                parse_month_name(name, locale).ok_or("Not a valid month")?;
-            let (year, year_format) = parse_year(year)?;
-            return Ok((
-                serial_of(day, month, year)?,
-                format!("{day_format}{separator}{month_format}{separator}{year_format}"),
-            ));
+            return day_name_year(day, name, year, locale, separator);
         }
         // Numeric order follows the locale: month first in en-US, where "13/1/2026" and
         // "26-01-01" are #VALUE! (probes/date-text-grammar A32, probes/date-text-locale B1).
@@ -277,6 +294,26 @@ fn remove_separator_spaces(value: &str) -> String {
     out
 }
 
+/// A word whose month name is glued to digits, split where letters meet digits:
+/// `[day?, month name, number?]` ("1JUN2021" is "1", "JUN", "2021"; "July1" is "July", "1"), with
+/// whether a number follows the name. `None` when the word is not that shape (punctuation, no
+/// digits, or letters that are no month name: "1e5", "10AM", "July1,2026" are left whole).
+fn split_glued_month<'a>(word: &'a str, locale: &Locale) -> Option<([&'a str; 3], bool)> {
+    let leading_digits =
+        |s: &str| s.len() - s.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+    let (day, rest) = word.split_at(leading_digits(word));
+    let (name, number) = rest.split_at(
+        rest.find(|c: char| c.is_ascii_digit())
+            .unwrap_or(rest.len()),
+    );
+    let glued = !name.is_empty() && (!day.is_empty() || !number.is_empty());
+    if !glued || leading_digits(number) != number.len() || !name.chars().all(char::is_alphabetic) {
+        return None;
+    }
+    parse_month_name(name, locale)?;
+    Some(([day, name, number], !number.is_empty()))
+}
+
 /// Parses date text, returning its serial and the number format Excel gives it when typed.
 ///
 /// Surrounding spaces make the text invalid: VALUE, DATEVALUE and criteria trim it first, but
@@ -292,7 +329,9 @@ fn remove_separator_spaces(value: &str) -> String {
 /// - the comma of "Month day, year" may also stand as a word of its own after the day
 ///   ("July 1 , 2026"), after the month ("July , 1, 2026") or both ("July , 1 , 2026"); it still
 ///   needs a space after it ("July 1 ,2026" is #VALUE!). Day-first text never takes a comma
-///   ("1 July , 2026" is #VALUE!).
+///   ("1 July , 2026" is #VALUE!);
+/// - a month name glued to digits reads as with a space ("July1", "1JUN2021"), see
+///   [`split_glued_month`].
 ///
 /// Month names follow [`parse_month_name`]; a month name never comes first in a separated word
 /// ("Jul-1-2026" is #VALUE!). Text with a clock time is `time_text`'s ("date clock" text).
@@ -315,9 +354,60 @@ pub(crate) fn parse_date(
         }
     }
     // At most 5 words: one more than the longest form (4), enough to reject longer text without
-    // splitting all of it.
+    // splitting all of it. The cap cannot hide a word after a glued month: a 5th word already
+    // makes the text too long for every form below.
     let words: Vec<&str> = value.split_whitespace().take(5).collect();
-    let (day, name, year) = match words.as_slice() {
+    // A month name glued to digits reads as with spaces between them ("July1" is "July 1",
+    // "1JUN2021" is "1 JUN 2021"), except that a month glued to a number must end the text: a
+    // month glued to a day that a year follows is #VALUE! ("July1,2026", "July12026",
+    // "Jun1 2021"; probes/date-text-glued-month rows 1-24, excel-graph 2026-10-17).
+    let mut parts: Vec<&str> = Vec::with_capacity(words.len());
+    // The number glued to the last month name, as a two-digit year ("1July1" is 2001-07-01).
+    let mut padded_year = String::new();
+    for (i, word) in words.iter().enumerate() {
+        // "Jul1 , 2026" and "July1, 2026" are dates: a glued month and day, a comma that a space
+        // follows, then the year (probes/date-text-glued-month-2 rows 6-7). The comma stays a part
+        // for the "Month day, year" forms below.
+        if let Some(([_, name, day], true)) =
+            split_glued_month(word.strip_suffix(',').unwrap_or(word), locale)
+        {
+            let attached = word.ends_with(',');
+            let comma_word = words.get(i + 1) == Some(&",");
+            let year_at = i + if comma_word { 2 } else { 1 };
+            if (attached || comma_word)
+                && words.len() == year_at + 1
+                && !word.starts_with(|c: char| c.is_ascii_digit())
+            {
+                parts.push(name);
+                // Reborrow the day with its comma from `word` (`day` ends where the comma starts).
+                parts.push(if attached {
+                    &word[word.len() - day.len() - 1..]
+                } else {
+                    day
+                });
+                if comma_word {
+                    parts.push(",");
+                }
+                parts.push(words[year_at]);
+                break;
+            }
+        }
+        match split_glued_month(word, locale) {
+            Some((_, true)) if i + 1 < words.len() => return Err("Not a valid date".to_string()),
+            Some(([first, name, number], _))
+                if !first.is_empty() && number.len() == 1 && i + 1 == words.len() =>
+            {
+                padded_year = format!("0{number}");
+                parts.extend([first, name]);
+            }
+            Some((glued, _)) => parts.extend(glued.into_iter().filter(|p| !p.is_empty())),
+            None => parts.push(word),
+        }
+    }
+    if !padded_year.is_empty() {
+        parts.push(&padded_year);
+    }
+    let (day, name, year) = match parts.as_slice() {
         [word] => return parse_separated(word, locale, current_year),
         [first, second] => {
             return match parse_month_name(second, locale) {
@@ -394,6 +484,28 @@ mod tests {
         assert_eq!(en(&padded), Some(46023));
         // Spaces away from a separator still make a different word count.
         assert_eq!(en("2026 01 01"), None);
+    }
+
+    #[test]
+    fn glued_month_shapes_beyond_the_first_probe() {
+        // probes/date-text-glued-month-2 rows 6-9
+        for (text, serial) in [
+            ("Jul1 , 2026", 46204),
+            ("July1, 2026", 46204),
+            ("1-Jul2026", 46204),
+            ("1July1", 37073),
+        ] {
+            assert_eq!(en(text), Some(serial), "{text}");
+        }
+        // probes/date-text-glued-month rows 10, 17: still #VALUE!
+        for text in ["July1,2026", "Jun1 2021"] {
+            assert_eq!(en(text), None, "{text}");
+        }
+        // UNVERIFIED, hand-derived (not oracle-observed): a glued day with more than the year
+        // after the comma, a day-first glued month with a comma, a doubled comma.
+        for text in ["July1 , 2026 5", "1Jul1 , 2026", "July1,, 2026"] {
+            assert_eq!(en(text), None, "{text}");
+        }
     }
 
     #[test]
@@ -573,6 +685,55 @@ mod tests {
             " 2024-01-10 ",
             "July 1, 2026 ",
         ] {
+            assert_eq!(en(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn month_name_glued_to_digits() {
+        // probes/date-text-glued-month column I (excel-graph, 2026-10-17), clock in 2026. Month
+        // then one number is the year-less "Month d" rule (rows 1-9, 20, 22-23); day then month,
+        // with or without a year, parses glued on either side (rows 12-16, 18-19, 24).
+        let glued: [(i32, &[&str]); 10] = [
+            (
+                46204,
+                &["July1", "Jul1", "Jul2026", "July2026", "1July", "1Jul2026"],
+            ),
+            (46213, &["July10"]),
+            (46234, &["July31"]),
+            (11871, &["July32"]),
+            (16619, &["July45"]),
+            (36708, &["July0"]),
+            (46266, &["Sept1"]),
+            (36526, &["January0"]),
+            (36861, &["December0"]),
+            (
+                44348,
+                &[
+                    "01JUN21",
+                    "1June2021",
+                    "1jun2021",
+                    "1JUN 2021",
+                    "1 JUN2021",
+                    "1JUN2021",
+                ],
+            ),
+        ];
+        for (serial, texts) in glued {
+            for text in texts {
+                assert_eq!(en(text), Some(serial), "{text}");
+            }
+        }
+        // A month glued to a day that a year follows, and a name that is no month (rows 10, 11,
+        // 17, 21).
+        for text in ["July1,2026", "July12026", "Jun1 2021", "Ju1"] {
+            assert_eq!(en(text), None, "{text}");
+        }
+        // The current year comes from the clock, as for spaced year-less text.
+        assert_eq!(en_in("July1", None), None);
+        assert_eq!(en_in("July45", None), Some(16619));
+        // Letters that are no month name are never split off.
+        for text in ["1e5", "Q12026", "A1", "10AM"] {
             assert_eq!(en(text), None, "{text}");
         }
     }

@@ -3,7 +3,7 @@ id: T-1768
 title: "Probe legacy N and T over CHOOSE, INDEX and T of a range, and a range in a scalar slot"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1728 removed the `@` only for probed shapes (`is_plain_reference`, static_anal
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/legacy-n-t-reference-args-2 (excel-graph, 2026-10-18): N and T over CHOOSE/INDEX of a reference, T of a range, and a range in a scalar slot, with FORMULATEXT. references.md records each result. Only N/T over CHOOSE or INDEX of a reference differ from the engine (T-1908). Eval: new known failures for those cells in the probes baseline.

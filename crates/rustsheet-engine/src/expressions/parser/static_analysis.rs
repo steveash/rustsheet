@@ -5,12 +5,15 @@ use crate::functions::Function;
 use broadcast::broadcast_shapes;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
-    legacy_call_reads_a_value, legacy_context_intersects, remove_array_at, remove_in_array_context,
+    legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value,
 };
+pub use redundant::remove_redundant_implicit_intersection;
+use redundant::remove_redundant_legacy_intersection;
 mod aggregate;
 mod broadcast;
 mod legacy;
 mod lifted;
+mod redundant;
 mod reference_parameter;
 mod reference_result;
 mod row_column;
@@ -93,6 +96,15 @@ fn is_range_reference(s: &str) -> bool {
 ///
 /// Assumes formula return a scalar
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
+    add_legacy_intersection(node, add, add);
+}
+
+/// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
+/// (every enclosing argument a scalar one, [`legacy_array_context`]), where a legacy formula also
+/// puts the `@` on an array-valued call or array constant: `=@IF(1,{2;3})`, `=N(@{2;3})`, while
+/// `=SUM(N({1,2}))` is 3 with no `@` (docs/excel-semantics/references.md "Legacy formulas put `@`
+/// on array-valued calls and array constants").
+pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) {
     match node {
         Node::BooleanKind(_)
         | Node::NumberKind(_)
@@ -111,14 +123,14 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::ImplicitIntersection { child, .. } => {
             // We need to check whether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
-            add_implicit_intersection(&mut new_node, add);
+            add_legacy_intersection(&mut new_node, add, arrays);
             if matches!(&new_node, Node::ImplicitIntersection { .. }) {
                 *node = new_node;
             }
         }
         Node::SpillRangeOperator { child } => {
             // A spill anchor is never intersected: `INDEX(D1:D2,1)#` (T-1109, probes K1).
-            add_implicit_intersection(child, false);
+            add_legacy_intersection(child, false, false);
         }
         Node::RangeKind {
             row1,
@@ -157,14 +169,16 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
 
         // operations
         Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
-            add_implicit_intersection(child, add);
+            add_legacy_intersection(child, add, arrays);
         }
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
         | Node::OpProductKind { .. }
         | Node::OpPowerKind { .. }
         | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| add_implicit_intersection(operand, add));
+            for_each_chain_operand_mut(node, |operand| {
+                add_legacy_intersection(operand, add, arrays);
+            });
         }
 
         Node::DefinedNameKind(v) => {
@@ -188,111 +202,32 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
-                add_array_at(kind, signature.get(index), index, arg);
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                add_argument_intersection(kind, signature.get(index), index, arg);
+                let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
+                add_array_at(kind, signature.get(index), index, arg, arrays);
+                add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }
             // There are some function that will never add an automatic II:
             let new_function = matches!(kind, Function::Let | Function::Lambda);
             if !new_function
-                && add
+                && (add || arrays)
                 && !legacy_call_reads_a_value(kind, args)
-                && matches!(
-                    run_static_analysis_on_node(node),
-                    StaticResult::Range(_, _) | StaticResult::Unknown
-                )
+                && match static_analysis_on_function(kind, args) {
+                    StaticResult::Range(_, _) | StaticResult::Unknown => add,
+                    // A one-cell array gives the same value with or without the `@`. Excel shows
+                    // none on `=SUBTOTAL(9,CHOOSE(1,{5}))`, a 1x1 array shape here
+                    // (probes/legacy-one-cell-shape-intersection J3); other one-cell calls are
+                    // unprobed (T-1847). A one-cell CHOOSE is a range shape and keeps its `@`.
+                    StaticResult::Array(rows, columns) => {
+                        arrays
+                            && (rows > 1 || columns > 1)
+                            && legacy_array_call_at(kind, &signature, args)
+                    }
+                    StaticResult::Scalar => false,
+                }
             {
                 *node = Node::automatic_at(node.clone());
-            }
-        }
-    };
-}
-
-/// Inverse of [`add_implicit_intersection`], used when exporting to Excel.
-///
-/// The internal (RC) representation stores every implicit intersection as `@`,
-/// losing the `automatic` flag. When exporting we must decide, for each `@`,
-/// whether it should be written as `_xlfn.SINGLE(...)` (because it is meaningful)
-/// or dropped (because `add_implicit_intersection` would re-insert it on import).
-///
-/// That decision depends on the *context* of the operator, exactly like
-/// `add_implicit_intersection`: an `@` is redundant only in a position that
-/// expects a scalar (`add == true`). Crucially, an `@` sitting in a `Vector`
-/// argument of a function such as `SUM` is **not** redundant: on import no
-/// automatic intersection is added there, so dropping it would change the result
-/// (e.g. `SUM(A1,B1,@J:J)` would become `SUM(A1,B1,J:J)`, scanning the whole
-/// column). This pass removes only the redundant operators, leaving the rest to
-/// be stringified as `_xlfn.SINGLE`.
-///
-/// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
-/// (a formula is evaluated in a scalar context).
-pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
-    match node {
-        // Leaves and nodes that never contain a nested implicit intersection.
-        Node::BooleanKind(_)
-        | Node::NumberKind(_)
-        | Node::StringKind(_)
-        | Node::ErrorKind(_)
-        | Node::EmptyArgKind
-        | Node::ParseErrorKind { .. }
-        | Node::WrongReferenceKind { .. }
-        | Node::WrongRangeKind { .. }
-        | Node::SheetSpanKind { .. }
-        | Node::NamedFunctionKind { .. }
-        | Node::ArrayKind(_)
-        | Node::ReferenceKind { .. }
-        | Node::RangeKind { .. }
-        | Node::OpRangeKind { .. }
-        | Node::OpIntersectKind { .. }
-        | Node::OpUnionKind { .. }
-        | Node::DefinedNameKind(_)
-        | Node::NamedVariableKind { .. }
-        | Node::LambdaDefKind { .. }
-        | Node::LambdaCallKind { .. } => {}
-        Node::ImplicitIntersection { child, .. } => {
-            if add {
-                // Would `add_implicit_intersection` re-insert this operator on
-                // import? Probe the child in a scalar context to find out.
-                let mut probe = child.as_ref().clone();
-                add_implicit_intersection(&mut probe, true);
-                if matches!(probe, Node::ImplicitIntersection { .. }) {
-                    // Redundant: drop the operator and keep cleaning the child.
-                    // The child is still in the same (scalar) context, so recurse
-                    // with `add` to also remove any nested redundant operators.
-                    let mut inner = child.as_ref().clone();
-                    remove_redundant_implicit_intersection(&mut inner, add);
-                    *node = inner;
-                    return;
-                }
-            }
-            // Meaningful operator: keep it, but still clean any nested ones.
-            remove_redundant_implicit_intersection(child, false);
-        }
-        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
-            remove_redundant_implicit_intersection(child, add);
-        }
-        Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
-        Node::OpConcatenateKind { .. }
-        | Node::OpSumKind { .. }
-        | Node::OpProductKind { .. }
-        | Node::OpPowerKind { .. }
-        | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| {
-                remove_redundant_implicit_intersection(operand, add);
-            });
-        }
-        Node::FunctionKind { kind, args } if is_array_context(kind) => {
-            remove_in_array_context(args);
-        }
-        Node::FunctionKind { kind, args } => {
-            let signature = get_function_args_signature(kind, args.len());
-            for (index, arg) in args.iter_mut().enumerate() {
-                remove_array_at(kind, signature.get(index), index, arg);
-                // Scalar arguments are an intersecting context; vector arguments
-                // (ranges/arrays) are not (`legacy_context_intersects`).
-                let child_add = legacy_context_intersects(kind, signature.get(index), index, arg);
-                remove_redundant_implicit_intersection(arg, child_add);
             }
         }
     };
@@ -550,7 +485,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Regexextract => args_signature_scalars(arg_count, 2, 1),
         Function::Regexreplace => args_signature_scalars(arg_count, 3, 0),
         Function::Regextest => args_signature_scalars(arg_count, 2, 0),
-        Function::T => args_signature_scalars(arg_count, 1, 0),
+        Function::T | Function::TLegacy => args_signature_scalars(arg_count, 1, 0),
         Function::Text => args_signature_scalars(arg_count, 2, 0),
         Function::Textafter => args_signature_textafter(arg_count),
         Function::Textbefore => args_signature_textafter(arg_count),
@@ -591,21 +526,12 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::WorkdayIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
         Function::Fvschedule => vec![Signature::Scalar, Signature::Vector],
-        Function::Cumipmt => args_signature_scalars(arg_count, 6, 0),
-        Function::Cumprinc => args_signature_scalars(arg_count, 6, 0),
         Function::Db => args_signature_scalars(arg_count, 4, 1),
         Function::Irr => args_signature_irr(arg_count),
         Function::Mirr => args_signature_mirr(arg_count),
         Function::Npv => args_signature_npv(arg_count),
         Function::Xirr => args_signature_xirr(arg_count),
         Function::Xnpv => args_signature_xnpv(arg_count),
-        Function::Yield => args_signature_scalars(arg_count, 6, 1),
-        Function::Oddfprice => args_signature_scalars(arg_count, 8, 1),
-        Function::Oddfyield => args_signature_scalars(arg_count, 8, 1),
-        Function::Oddlprice => args_signature_scalars(arg_count, 7, 1),
-        Function::Oddlyield => args_signature_scalars(arg_count, 7, 1),
-        Function::Amordegrc => args_signature_scalars(arg_count, 6, 1),
-        Function::Amorlinc => args_signature_scalars(arg_count, 6, 1),
         Function::Vdb => args_signature_scalars(arg_count, 5, 2),
         Function::Subtotal | Function::Aggregate => args_signature_npv(arg_count),
         Function::Rand => args_signature_scalars(arg_count, 0, 0),
@@ -659,7 +585,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::N => args_signature_scalars(arg_count, 1, 0),
+        Function::N | Function::NLegacy => args_signature_scalars(arg_count, 1, 0),
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_cell(arg_count),
         Function::Info => args_signature_scalars(arg_count, 1, 1),
@@ -675,15 +601,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Dvar => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dvarp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::Dstdevp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::BetaDist => args_signature_scalars(arg_count, 4, 2),
-        Function::BetaInv => args_signature_scalars(arg_count, 3, 2),
-        Function::BinomDist => args_signature_scalars(arg_count, 4, 0),
-        Function::BinomDistRange => args_signature_scalars(arg_count, 3, 1),
-        Function::BinomInv => args_signature_scalars(arg_count, 3, 0),
-        Function::ChisqDist => args_signature_scalars(arg_count, 4, 0),
-        Function::ChisqDistRT => args_signature_scalars(arg_count, 3, 0),
-        Function::ChisqInv => args_signature_scalars(arg_count, 3, 0),
-        Function::ChisqInvRT => args_signature_scalars(arg_count, 2, 0),
         Function::ChisqTest => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -691,8 +608,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::ConfidenceNorm => args_signature_scalars(arg_count, 3, 0),
-        Function::ConfidenceT => args_signature_scalars(arg_count, 3, 0),
         Function::CovarianceP => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -708,27 +623,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             }
         }
         Function::Devsq => vec![Signature::Vector; arg_count],
-        Function::ExponDist => args_signature_scalars(arg_count, 3, 0),
-        Function::FDist => args_signature_scalars(arg_count, 4, 0),
-        Function::FDistRT => args_signature_scalars(arg_count, 3, 0),
-        Function::FInv => args_signature_scalars(arg_count, 3, 0),
-        Function::FInvRT => args_signature_scalars(arg_count, 3, 0),
         Function::FTest => vec![Signature::Vector; 2],
-        Function::Fisher => args_signature_scalars(arg_count, 1, 0),
-        Function::FisherInv => args_signature_scalars(arg_count, 1, 0),
-        Function::Gamma => args_signature_scalars(arg_count, 1, 0),
-        Function::GammaDist => args_signature_scalars(arg_count, 4, 0),
-        Function::GammaInv => args_signature_scalars(arg_count, 3, 0),
-        Function::GammaLn => args_signature_scalars(arg_count, 1, 0),
-        Function::GammaLnPrecise => args_signature_scalars(arg_count, 1, 0),
-        Function::HypGeomDist => args_signature_scalars(arg_count, 5, 0),
-        Function::LogNormDist => args_signature_scalars(arg_count, 4, 0),
-        Function::LogNormInv => args_signature_scalars(arg_count, 3, 0),
-        Function::NegbinomDist => args_signature_scalars(arg_count, 4, 0),
-        Function::NormDist => args_signature_scalars(arg_count, 4, 0),
-        Function::NormInv => args_signature_scalars(arg_count, 3, 0),
-        Function::NormSdist => args_signature_scalars(arg_count, 2, 0),
-        Function::NormSInv => args_signature_scalars(arg_count, 1, 0),
         Function::Pearson => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -736,19 +631,11 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::Phi => args_signature_scalars(arg_count, 1, 0),
-        Function::PoissonDist => args_signature_scalars(arg_count, 3, 0),
-        Function::Standardize => args_signature_scalars(arg_count, 3, 0),
         Function::Stdev => vec![Signature::Vector; arg_count],
         Function::StDevP => vec![Signature::Vector; arg_count],
         Function::StDevS => vec![Signature::Vector; arg_count],
         Function::Stdeva => vec![Signature::Vector; arg_count],
         Function::Stdevpa => vec![Signature::Vector; arg_count],
-        Function::TDist => args_signature_scalars(arg_count, 3, 0),
-        Function::TDist2T => args_signature_scalars(arg_count, 2, 0),
-        Function::TDistRT => args_signature_scalars(arg_count, 2, 0),
-        Function::TInv => args_signature_scalars(arg_count, 2, 0),
-        Function::TInv2T => args_signature_scalars(arg_count, 2, 0),
         Function::TTest => {
             if arg_count == 4 {
                 vec![
@@ -765,7 +652,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::VarS => vec![Signature::Vector; arg_count],
         Function::VarpA => vec![Signature::Vector; arg_count],
         Function::VarA => vec![Signature::Vector; arg_count],
-        Function::WeibullDist => args_signature_scalars(arg_count, 4, 0),
         Function::ZTest => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Scalar]
@@ -775,18 +661,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        // Compatibility wrappers
-        Function::BetaDistCompat => args_signature_scalars(arg_count, 3, 2),
-        Function::HypGeomDistCompat => args_signature_scalars(arg_count, 4, 0),
-        Function::LogNormDistCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::NegbinomDistCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::NormSDistCompat => args_signature_scalars(arg_count, 1, 0),
-        Function::TDistCompat => args_signature_scalars(arg_count, 3, 0),
         // Compatibility aliases
-        Function::BetaInvCompat => args_signature_scalars(arg_count, 3, 2),
-        Function::BinomDistCompat => args_signature_scalars(arg_count, 4, 0),
-        Function::ChiDistCompat => args_signature_scalars(arg_count, 2, 0),
-        Function::ChiInvCompat => args_signature_scalars(arg_count, 2, 0),
         Function::ChiTestCompat => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -794,7 +669,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::ConfidenceCompat => args_signature_scalars(arg_count, 3, 0),
         Function::CovarCompat => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -802,22 +676,10 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::CritbinomCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::ExponDistCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::FDistCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::FInvCompat => args_signature_scalars(arg_count, 3, 0),
         Function::FTestCompat => vec![Signature::Vector; 2],
-        Function::GammaDistCompat => args_signature_scalars(arg_count, 4, 0),
-        Function::GammaInvCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::LoginvCompat => args_signature_scalars(arg_count, 3, 0),
         Function::ModeCompat => vec![Signature::Vector; arg_count],
-        Function::NormDistCompat => args_signature_scalars(arg_count, 4, 0),
-        Function::NormInvCompat => args_signature_scalars(arg_count, 3, 0),
-        Function::NormSInvCompat => args_signature_scalars(arg_count, 1, 0),
-        Function::PoissonCompat => args_signature_scalars(arg_count, 3, 0),
         Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::StDevPCompat => vec![Signature::Vector; arg_count],
-        Function::TInvCompat => args_signature_scalars(arg_count, 2, 0),
         Function::TTestCompat => {
             if arg_count == 4 {
                 vec![
@@ -832,7 +694,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         }
         Function::VarCompat => vec![Signature::Vector; arg_count],
         Function::VarPCompat => vec![Signature::Vector; arg_count],
-        Function::WeibullCompat => args_signature_scalars(arg_count, 4, 0),
         Function::ZTestCompat => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Scalar]
@@ -883,7 +744,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             _ => vec![Signature::Error; arg_count],
         },
         Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
-        Function::Permut | Function::Permutationa => vec![Signature::Scalar; 2],
         Function::Prob => match arg_count {
             3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
             4 => vec![
@@ -894,7 +754,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             ],
             _ => vec![Signature::Error; arg_count],
         },
-        Function::Gauss => args_signature_scalars(arg_count, 1, 0),
         Function::Harmean => vec![Signature::Vector; arg_count],
         Function::Kurt => vec![Signature::Vector; arg_count],
         Function::MaxA => vec![Signature::Vector; arg_count],
@@ -935,14 +794,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::True => StaticResult::Scalar,
         Function::Xor => StaticResult::Scalar,
         Function::Atan2 => scalar_arguments(args),
-        // CHOOSE is a reference function: with a range arm the call itself is
-        // reference-shaped, so legacy import wraps the whole CALL in `@`
-        // (Excel upgrades `=CHOOSE(2,A1:A10,B1:B10)` to `=@CHOOSE(...)`).
-        // Its arms' counts become the extents of that range shape.
-        Function::Choose => match scalar_arguments(args) {
-            StaticResult::Array(n, m) => StaticResult::Range(n - 1, m - 1),
-            other => other,
-        },
+        Function::Choose => reference_result::choose_static_result(args),
         Function::Column => row_column::static_analysis_row_column(args, false),
         Function::Columns => not_implemented(args),
         Function::Max => StaticResult::Scalar,
@@ -1047,7 +899,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Rightb => scalar_arguments(args),
         Function::Searchb => scalar_arguments(args),
         Function::Upper => scalar_arguments(args),
-        Function::Value => not_implemented(args),
+        // VALUE lifts element-wise (probes/value-argument-lift C1:C8, T-1791).
+        Function::Value => scalar_arguments(args),
         Function::Valuetotext => scalar_arguments(args),
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
@@ -1082,21 +935,12 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::WorkdayIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
         Function::Isoweeknum => scalar_arguments(args),
         Function::Fvschedule => StaticResult::Scalar,
-        Function::Cumipmt => not_implemented(args),
-        Function::Cumprinc => not_implemented(args),
         Function::Db => not_implemented(args),
         Function::Irr => not_implemented(args),
         Function::Mirr => not_implemented(args),
         Function::Npv => not_implemented(args),
         Function::Xirr => not_implemented(args),
         Function::Xnpv => not_implemented(args),
-        Function::Yield => StaticResult::Scalar,
-        Function::Oddfprice => StaticResult::Scalar,
-        Function::Oddfyield => StaticResult::Scalar,
-        Function::Oddlprice => StaticResult::Scalar,
-        Function::Oddlyield => StaticResult::Scalar,
-        Function::Amordegrc => StaticResult::Scalar,
-        Function::Amorlinc => StaticResult::Scalar,
         Function::Vdb => StaticResult::Scalar,
         Function::Subtotal => aggregate::subtotal_static_result(args),
         Function::Aggregate => aggregate::aggregate_static_result(args),
@@ -1120,9 +964,9 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Mdeterm => StaticResult::Scalar,
         Function::Minverse => StaticResult::Unknown,
         Function::Munit => StaticResult::Unknown,
-        Function::Multinomial => StaticResult::Scalar,
-        Function::Sumproduct => StaticResult::Scalar,
-        Function::Percentof => StaticResult::Scalar,
+        Function::Multinomial | Function::Sumproduct | Function::Percentof => StaticResult::Scalar,
+        // A legacy N or T is one value: an array argument is #VALUE! (SPEC-0012).
+        Function::NLegacy | Function::TLegacy => StaticResult::Scalar,
         Function::N => scalar_arguments(args),
         Function::Sheets => scalar_arguments(args),
         Function::Cell => StaticResult::Unknown,
@@ -1139,96 +983,32 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Dvar => not_implemented(args),
         Function::Dvarp => not_implemented(args),
         Function::Dstdevp => not_implemented(args),
-        Function::BetaDist => StaticResult::Scalar,
-        Function::BetaInv => StaticResult::Scalar,
-        Function::BinomDist => StaticResult::Scalar,
-        Function::BinomDistRange => StaticResult::Scalar,
-        Function::BinomInv => StaticResult::Scalar,
-        Function::ChisqDist => StaticResult::Scalar,
-        Function::ChisqDistRT => StaticResult::Scalar,
-        Function::ChisqInv => StaticResult::Scalar,
-        Function::ChisqInvRT => StaticResult::Scalar,
         Function::ChisqTest => StaticResult::Scalar,
-        Function::ConfidenceNorm => StaticResult::Scalar,
-        Function::ConfidenceT => StaticResult::Scalar,
         Function::CovarianceP => StaticResult::Scalar,
         Function::CovarianceS => StaticResult::Scalar,
         Function::Devsq => StaticResult::Scalar,
-        Function::ExponDist => StaticResult::Scalar,
-        Function::FDist => StaticResult::Scalar,
-        Function::FDistRT => StaticResult::Scalar,
-        Function::FInv => StaticResult::Scalar,
-        Function::FInvRT => StaticResult::Scalar,
         Function::FTest => StaticResult::Scalar,
-        Function::Fisher => StaticResult::Scalar,
-        Function::FisherInv => StaticResult::Scalar,
-        Function::Gamma => StaticResult::Scalar,
-        Function::GammaDist => StaticResult::Scalar,
-        Function::GammaInv => StaticResult::Scalar,
-        Function::GammaLn => StaticResult::Scalar,
-        Function::GammaLnPrecise => StaticResult::Scalar,
-        Function::HypGeomDist => StaticResult::Scalar,
-        Function::LogNormDist => StaticResult::Scalar,
-        Function::LogNormInv => StaticResult::Scalar,
-        Function::NegbinomDist => StaticResult::Scalar,
-        Function::NormDist => StaticResult::Scalar,
-        Function::NormInv => StaticResult::Scalar,
-        Function::NormSdist => StaticResult::Scalar,
-        Function::NormSInv => StaticResult::Scalar,
         Function::Pearson => StaticResult::Scalar,
-        Function::Phi => StaticResult::Scalar,
-        Function::PoissonDist => StaticResult::Scalar,
-        Function::Standardize => StaticResult::Scalar,
         Function::Stdev => StaticResult::Scalar,
         Function::StDevP => StaticResult::Scalar,
         Function::StDevS => StaticResult::Scalar,
         Function::Stdeva => StaticResult::Scalar,
         Function::Stdevpa => StaticResult::Scalar,
-        Function::TDist => StaticResult::Scalar,
-        Function::TDist2T => StaticResult::Scalar,
-        Function::TDistRT => StaticResult::Scalar,
-        Function::TInv => StaticResult::Scalar,
-        Function::TInv2T => StaticResult::Scalar,
         Function::TTest => StaticResult::Scalar,
         Function::VarP => StaticResult::Scalar,
         Function::VarS => StaticResult::Scalar,
         Function::VarpA => StaticResult::Scalar,
         Function::VarA => StaticResult::Scalar,
-        Function::WeibullDist => StaticResult::Scalar,
         Function::ZTest => StaticResult::Scalar,
-        Function::BetaDistCompat => StaticResult::Scalar,
-        Function::HypGeomDistCompat => StaticResult::Scalar,
-        Function::LogNormDistCompat => StaticResult::Scalar,
-        Function::NegbinomDistCompat => StaticResult::Scalar,
-        Function::NormSDistCompat => StaticResult::Scalar,
-        Function::TDistCompat => StaticResult::Scalar,
-        Function::BetaInvCompat => StaticResult::Scalar,
-        Function::BinomDistCompat => StaticResult::Scalar,
-        Function::ChiDistCompat => StaticResult::Scalar,
-        Function::ChiInvCompat => StaticResult::Scalar,
         Function::ChiTestCompat => StaticResult::Scalar,
-        Function::ConfidenceCompat => StaticResult::Scalar,
         Function::CovarCompat => StaticResult::Scalar,
-        Function::CritbinomCompat => StaticResult::Scalar,
-        Function::ExponDistCompat => StaticResult::Scalar,
-        Function::FDistCompat => StaticResult::Scalar,
-        Function::FInvCompat => StaticResult::Scalar,
         Function::FTestCompat => StaticResult::Scalar,
-        Function::GammaDistCompat => StaticResult::Scalar,
-        Function::GammaInvCompat => StaticResult::Scalar,
-        Function::LoginvCompat => StaticResult::Scalar,
         Function::ModeCompat => StaticResult::Scalar,
-        Function::NormDistCompat => StaticResult::Scalar,
-        Function::NormInvCompat => StaticResult::Scalar,
-        Function::NormSInvCompat => StaticResult::Scalar,
-        Function::PoissonCompat => StaticResult::Scalar,
         Function::RankCompat => reference_parameter::rank_static_result(args),
         Function::StDevPCompat => StaticResult::Scalar,
-        Function::TInvCompat => StaticResult::Scalar,
         Function::TTestCompat => StaticResult::Scalar,
         Function::VarCompat => StaticResult::Scalar,
         Function::VarPCompat => StaticResult::Scalar,
-        Function::WeibullCompat => StaticResult::Scalar,
         Function::ZTestCompat => StaticResult::Scalar,
         Function::Sumx2my2 => StaticResult::Scalar,
         Function::Sumx2py2 => StaticResult::Scalar,
@@ -1253,10 +1033,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Trend => StaticResult::Unknown,
         // Scalar-returning functions
         Function::ModeSingl => StaticResult::Scalar,
-        Function::Permut => StaticResult::Scalar,
-        Function::Permutationa => StaticResult::Scalar,
         Function::Prob => StaticResult::Scalar,
-        Function::Gauss => StaticResult::Scalar,
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,
         Function::MaxA => StaticResult::Scalar,

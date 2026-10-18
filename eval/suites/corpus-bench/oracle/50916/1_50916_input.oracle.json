@@ -1,0 +1,46 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "21-22 Schedule": {
+   "C12": {
+    "t": "b",
+    "v": false
+   },
+   "D12": {
+    "t": "s",
+    "v": "French"
+   },
+   "D13": {
+    "t": "s",
+    "v": "French"
+   },
+   "D14": {
+    "t": "s",
+    "v": "French"
+   },
+   "E12": {
+    "t": "b",
+    "v": false
+   },
+   "F12": {
+    "t": "s",
+    "v": "Science"
+   },
+   "G12": {
+    "t": "b",
+    "v": false
+   },
+   "H12": {
+    "t": "s",
+    "v": "Social Studies"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "1691c7eeeb5d6064397a825bc312ec38abc474ff716e84e685a30c68e4a3b388",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:41:28+00:00",
+  "version": null
+ }
+}

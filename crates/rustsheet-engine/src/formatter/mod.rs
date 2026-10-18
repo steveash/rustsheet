@@ -5,10 +5,11 @@ mod elapsed;
 pub mod format;
 mod general;
 pub mod lexer;
+pub mod locale_tag;
 mod parse_formatted;
 pub mod parser;
 
-pub(crate) use complexity::exceeds_complexity_limit;
+pub(crate) use complexity::rejects_format_code;
 
 #[cfg(test)]
 mod test;

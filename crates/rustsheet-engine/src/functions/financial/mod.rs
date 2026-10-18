@@ -1,5 +1,5 @@
 use crate::{
-    calc_result::{CalcResult, Range},
+    calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
     expressions::{
         parser::{ArrayNode, Node},
@@ -7,10 +7,13 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
+    reference_operators::RefArg,
 };
 
 mod accrint;
+mod amortization;
 mod annuity;
+mod cumulative;
 mod dates;
 mod discount;
 mod financial_bonds;
@@ -19,17 +22,9 @@ mod financial_util;
 mod mirr;
 mod rate_conversions;
 
-use annuity::{compute_ipmt, compute_ppmt};
 use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
 
-/// A financial kernel's result as a cell value: the number, or the error (SPEC-0011 kernels
-/// return `Result<f64, CalcResult>` so their reads chain with `?`).
-fn number_or_error(result: Result<f64, CalcResult>) -> CalcResult {
-    match result {
-        Ok(number) => CalcResult::Number(number),
-        Err(error) => error,
-    }
-}
+use crate::functions::lift::number_or_error;
 
 /// A computation's `(error, message)` as the cell's error.
 fn formula_error(cell: CellReferenceIndex) -> impl Fn((Error, String)) -> CalcResult {
@@ -48,8 +43,27 @@ impl Model {
         handle_empty_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
         handle_non_number_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
     ) -> Result<Vec<f64>, CalcResult> {
+        let result = self.evaluate_node_in_context(arg, *cell);
+        self.array_of_numbers_from(
+            result,
+            cell,
+            accept_number_node,
+            handle_empty_cell,
+            handle_non_number_cell,
+        )
+    }
+
+    /// [`Self::get_array_of_numbers_generic`] on an argument already evaluated.
+    fn array_of_numbers_from(
+        &mut self,
+        result: CalcResult,
+        cell: &CellReferenceIndex,
+        accept_number_node: bool,
+        handle_empty_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
+        handle_non_number_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
+    ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
-        match self.evaluate_node_in_context(arg, *cell) {
+        match result {
             CalcResult::Number(value) if accept_number_node => values.push(value),
             CalcResult::Number(_) => {
                 return Err(CalcResult::new_error(
@@ -221,20 +235,44 @@ impl Model {
         };
         let mut values = Vec::new();
         for arg in &args[1..] {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => values.push(value),
-                CalcResult::Range { left, right } => {
-                    let areas = [Range { left, right }];
+            // Excel: an argument read as a reference skips the text and booleans of its cells,
+            // however the reference is written: `B1`, `(B1)`, `@B1:B1`, `IF(TRUE,B1)`,
+            // `INDEX(B1:B2,1)`, `CHOOSE(1,B1)`, `OFFSET(B1,0,0)`, `INDIRECT("B1")`, `LET`, a
+            // name for a cell, `Sheet1:Sheet1!B1`; a union is its areas as written (ironcalc-calc
+            // FINANCIAL/NPV.xlsx K5, L5; probes/npv-fvschedule-typed A7, A10, A11;
+            // probes/npv-reference-forms). Any other value is typed: it is coerced
+            // (`NPV(0.1,-10000,"2750",TRUE,4250)` is -3914.6233180793665) and text that is no
+            // number is #VALUE! (probes/fin-argument-modes H368-H371; probes/npv-fvschedule-typed
+            // A5, A6, A8, A9; probes/npv-fvschedule-edges A1, A5).
+            // docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments".
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Ranges(areas) => {
                     if let Err(e) = self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
                     {
                         return e;
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
+                RefArg::Value(CalcResult::Number(value)) => values.push(value),
+                RefArg::Value(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
+                    match self.cast_number_ref(&direct, cell) {
+                        Ok(value) => values.push(value),
+                        Err(error) => return error,
+                    }
                 }
-            };
+                // A written empty argument is a cash flow of 0 (probes/npv-fvschedule-edges A2).
+                RefArg::Value(CalcResult::EmptyArg) => values.push(0.0),
+                // An array is read whole: its numbers are the cash flows, its text and booleans
+                // are skipped and its first error is the result (H368; probes/npv-reference-forms
+                // A7, A8, A13).
+                RefArg::Value(array @ CalcResult::Array(_)) => {
+                    match self.array_of_numbers_from(array, &cell, true, || Ok(None), || Ok(None)) {
+                        Ok(numbers) => values.extend(numbers),
+                        Err(error) => return error,
+                    }
+                }
+                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
+                RefArg::Value(_) => {}
+            }
         }
         match compute_npv(rate, &values) {
             Ok(f) => CalcResult::Number(f),
@@ -407,142 +445,6 @@ impl Model {
         }
     }
 
-    // CUMIPMT(rate, nper, pv, start_period, end_period, type)
-    pub(crate) fn fn_cumipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 6 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let rate = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let nper = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let pv = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let start_period = match self.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f.ceil() as i32,
-            Err(s) => return s,
-        };
-        let end_period = match self.get_number_no_bools(&args[4], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        // 0 at the end of the period, 1 at the beginning of the period
-        let period_type = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => {
-                if f == 0.0 {
-                    false
-                } else if f == 1.0 {
-                    true
-                } else {
-                    return CalcResult::new_error(
-                        Error::NUM,
-                        cell,
-                        "invalid period type".to_string(),
-                    );
-                }
-            }
-            Err(s) => return s,
-        };
-        if start_period > end_period {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "start period should come before end period".to_string(),
-            );
-        }
-        if rate <= 0.0 || nper <= 0.0 || pv <= 0.0 || start_period < 1 {
-            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
-        }
-        let mut result = 0.0;
-        for period in start_period..=end_period {
-            result += match compute_ipmt(rate, period as f64, nper, pv, 0.0, period_type) {
-                Ok(f) => f,
-                Err(error) => {
-                    return CalcResult::Error {
-                        error: error.0,
-                        origin: cell,
-                        message: error.1,
-                    }
-                }
-            }
-        }
-        CalcResult::Number(result)
-    }
-
-    // CUMPRINC(rate, nper, pv, start_period, end_period, type)
-    pub(crate) fn fn_cumprinc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 6 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let rate = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let nper = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let pv = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let start_period = match self.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f.ceil() as i32,
-            Err(s) => return s,
-        };
-        let end_period = match self.get_number_no_bools(&args[4], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        // 0 at the end of the period, 1 at the beginning of the period
-        let period_type = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => {
-                if f == 0.0 {
-                    false
-                } else if f == 1.0 {
-                    true
-                } else {
-                    return CalcResult::new_error(
-                        Error::NUM,
-                        cell,
-                        "invalid period type".to_string(),
-                    );
-                }
-            }
-            Err(s) => return s,
-        };
-        if start_period > end_period {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "start period should come before end period".to_string(),
-            );
-        }
-        if rate <= 0.0 || nper <= 0.0 || pv <= 0.0 || start_period < 1 {
-            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
-        }
-        let mut result = 0.0;
-        for period in start_period..=end_period {
-            result += match compute_ppmt(rate, period as f64, nper, pv, 0.0, period_type) {
-                Ok(f) => f,
-                Err(error) => {
-                    return CalcResult::Error {
-                        error: error.0,
-                        origin: cell,
-                        message: error.1,
-                    }
-                }
-            }
-        }
-        CalcResult::Number(result)
-    }
-
     // DB(cost, salvage, life, period, [month])
     pub(crate) fn fn_db(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
@@ -657,7 +559,23 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let schedule = match self.get_array_of_numbers(&args[1], &cell) {
+        // Excel: text in the schedule, in a range or an array literal, is #VALUE!
+        // (probes/fin-argument-modes H382-H384).
+        // Typed text that reads as a number is a one-rate schedule: `FVSCHEDULE(1000,"0.1")`,
+        // `("0.1")` and `T("0.1")` are 1100, `"x"` and `TRUE` are #VALUE!
+        // (probes/npv-fvschedule-typed A12, A13; probes/npv-fvschedule-edges A3, A4, A6).
+        let not_a_number =
+            || CalcResult::new_error(Error::VALUE, cell, "Expected number".to_string());
+        let parsed = match self.evaluate_node_in_context(&args[1], cell) {
+            CalcResult::String(text) => self
+                .cast_number(&text)
+                .map(|rate| vec![rate])
+                .ok_or_else(not_a_number),
+            result => {
+                self.array_of_numbers_from(result, &cell, true, || Ok(None), || Err(not_a_number()))
+            }
+        };
+        let schedule = match parsed {
             Ok(s) => s,
             Err(e) => return e,
         };

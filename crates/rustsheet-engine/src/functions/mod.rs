@@ -13,6 +13,7 @@ pub(crate) mod date_and_time;
 mod engineering;
 mod financial;
 mod information;
+mod kinds;
 pub(crate) mod lift;
 pub(crate) mod logical;
 pub(crate) mod lookup_and_reference;
@@ -572,6 +573,8 @@ pub enum Function {
     Intercept,
     Slope,
     Steyx,
+    NLegacy,
+    TLegacy,
 }
 
 macro_rules! impl_function_lookup {
@@ -1269,7 +1272,7 @@ impl Function {
             Function::Sheet => functions.sheet.clone(),
             Function::Type => functions.r#type.clone(),
             Function::Sheets => functions.sheets.clone(),
-            Function::N => functions.n.clone(),
+            Function::N | Function::NLegacy => functions.n.clone(),
             Function::Cell => functions.cell.clone(),
             Function::Info => functions.info.clone(),
             Function::Address => functions.address.clone(),
@@ -1325,7 +1328,7 @@ impl Function {
             Function::Regexextract => functions.regexextract.clone(),
             Function::Regexreplace => functions.regexreplace.clone(),
             Function::Regextest => functions.regextest.clone(),
-            Function::T => functions.t.clone(),
+            Function::T | Function::TLegacy => functions.t.clone(),
             Function::Text => functions.text.clone(),
             Function::Textafter => functions.textafter.clone(),
             Function::Textbefore => functions.textbefore.clone(),
@@ -1660,12 +1663,6 @@ impl Function {
     }
 }
 
-impl Function {
-    pub(crate) fn returns_reference(&self) -> bool {
-        matches!(self, Function::Indirect | Function::Offset)
-    }
-}
-
 /// The signature every function implementation shares.
 type FunctionImplementation = fn(&mut Model, &[Node], CellReferenceIndex) -> CalcResult;
 
@@ -1773,6 +1770,7 @@ impl Model {
             Function::Exact => Self::fn_exact,
             Function::Value => Self::fn_value,
             Function::T => Self::fn_t,
+            Function::TLegacy => Self::fn_t_legacy,
             Function::Valuetotext => Self::fn_valuetotext,
             Function::Concat => Self::fn_concat,
             Function::Find => Self::fn_find,
@@ -2033,6 +2031,7 @@ impl Model {
             Function::Sumproduct => Self::fn_sumproduct,
             Function::Percentof => Self::fn_percentof,
             Function::N => Self::fn_n,
+            Function::NLegacy => Self::fn_n_legacy,
             Function::Cell => Self::fn_cell,
             Function::Info => Self::fn_info,
             Function::Sheets => Self::fn_sheets,
@@ -2074,8 +2073,7 @@ impl Model {
             Function::Gamma => Self::fn_gamma,
             Function::GammaDist | Function::GammaDistCompat => Self::fn_gamma_dist,
             Function::GammaInv | Function::GammaInvCompat => Self::fn_gamma_inv,
-            Function::GammaLn => Self::fn_gamma_ln,
-            Function::GammaLnPrecise => Self::fn_gamma_ln_precise,
+            Function::GammaLn | Function::GammaLnPrecise => Self::fn_gamma_ln,
             Function::HypGeomDist => Self::fn_hyp_geom_dist,
             Function::LogNormDist => Self::fn_log_norm_dist,
             Function::LogNormInv | Function::LoginvCompat => Self::fn_log_norm_inv,

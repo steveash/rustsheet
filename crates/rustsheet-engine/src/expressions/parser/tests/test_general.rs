@@ -137,7 +137,11 @@ fn test_parser_bad_formula() {
             panic!("Expected error in formula");
         }
     }
-    assert_eq!(to_rc_format(&t), "#Value");
+    // Stored marked, so an R1C1 re-parse does not read the A1 text (T-1805).
+    assert_eq!(
+        to_rc_format(&t),
+        "\u{1}0:25:Unexpected token: 'Spill'#Value"
+    );
 }
 
 #[test]
@@ -167,7 +171,8 @@ fn test_parser_bad_formula_1() {
             panic!("Expected error in formula");
         }
     }
-    assert_eq!(to_rc_format(&t), "<5");
+    // Stored marked, so an R1C1 re-parse does not read the A1 text (T-1805).
+    assert_eq!(to_rc_format(&t), "\u{1}0:27:Unexpected token: 'COMPARE'<5");
 }
 
 #[test]
@@ -197,7 +202,8 @@ fn test_parser_bad_formula_2() {
             panic!("Expected error in formula");
         }
     }
-    assert_eq!(to_rc_format(&t), "*5");
+    // Stored marked, so an R1C1 re-parse does not read the A1 text (T-1805).
+    assert_eq!(to_rc_format(&t), "\u{1}0:27:Unexpected token: 'PRODUCT'*5");
 }
 
 #[test]
@@ -227,7 +233,11 @@ fn test_parser_bad_formula_3() {
             panic!("Expected error in formula");
         }
     }
-    assert_eq!(to_rc_format(&t), "SUM(#VALVE!)");
+    // Stored marked, so an R1C1 re-parse does not read the A1 text (T-1805).
+    assert_eq!(
+        to_rc_format(&t),
+        "\u{1}0:25:Unexpected token: 'Spill'SUM(#VALVE!)"
+    );
 }
 
 #[test]

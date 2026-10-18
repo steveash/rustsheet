@@ -80,14 +80,33 @@ is the double that fits all of that unit's cells under the rule. No other base p
 of ten from 1E-32 to 1E+32) and no other order fits every class: reciprocal tables
 (`value / K_from * K_to`, ATP/LibreOffice style) fit 143–156 of 159 units, and the SI base with
 prefix first fits 150.
-Open: conversions to a non-base unit are evidenced only for time (to `yr`), and conversions to a
-prefixed unit not at all. The Celsius output branch subtracts 273.5, not 273.15, and no cached
-cell converts to C (T-1297).
-The internal bases make `value * F_from` overflow sooner than the SI result would:
-`CONVERT(1E290,"m2","m2")` and `CONVERT(1E300,"ha","m2")` are now `#NUM!` (previously the value).
-Excel likely does the same, but this is unprobed (T-1297).
-Backend: excel-desktop cached values only.
+Conversions to a non-base unit, to a prefixed unit and between two non-base units follow the same
+rule (probes/convert-targets, excel-graph, T-1297): `CONVERT(5,"cal","eV")` is 1.3065976295281882E+20,
+`CONVERT(1,"uk_pt","gal")` 0.15011874068810688, `CONVERT(1,"tsp","tbs")` 0.3333333333333333. The
+target prefix is applied as a reciprocal multiply: `CONVERT(0.0002,"m3","Mm3")` is
+2.0000000000000003E-22 (`* 1/1E18`; dividing gives 2E-22). The lbf factor is 444822.16152605
+(`CONVERT(1,"lbf","dyn")` is exactly that).
+Overflow: `value * F_from` is not allowed to overflow when the answer is representable:
+`CONVERT(1E290,"m2","m2")` is 1E+290, `CONVERT(1E300,"ha","m2")` 1.0000000000000001E+304,
+`CONVERT(1E302,"J","J")` 1E+302. The engine divides first (`value / F_to * F_from`) when the
+product is infinite; every probed value fits, but whether Excel does this or uses extended
+precision is not distinguishable from the probes.
+Backend: excel-desktop cached values + excel-graph (probes/convert-targets).
 Status: VERIFIED (for the evidenced conversions)
+Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922, T-1297)
+Tasks: T-0922, T-1297
+
+## CONVERT temperature
+Rule: the temperature pairs do not share one pivot unit; the last digits only fit these forms
+(probes/convert-targets, 40 cells, excel-graph, T-1297). Celsius output:
+`CONVERT(68,"F","C")` is exactly 20 (the old 273.5 constant, which gave 19.65, was wrong).
+From F: C `(v-32)*5/9`; K that plus 273.15; Reau `C*0.8`; Rank `5/9*(v+459.67)*1.8`
+(`CONVERT(68,"F","Rank")` is 527.6700000000001). From the others, Kelvin is the pivot
+(C `v+273.15`, Rank `5v/9`, Reau `5v/4+273.15`) and out of it C is `k-273.15`, Rank `9k/5`,
+Reau `(k-273.15)*0.8`, F `(k-273.15)*9/5+32`, except Rank to F which is `9k/5-459.67`.
+Each pair is fitted to two values (68, -40.5); prefixed temperature units are unprobed.
+Backend: excel-graph.
+Status: VERIFIED (for the two probed values per pair)
 Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
 Tasks: T-0922, T-1297
 
@@ -159,6 +178,26 @@ Ours:
 Status: VERIFIED (excel-graph)
 Tasks: T-1085, T-1383, T-1384, T-0907, T-1816
 
+## A ToolPak argument over CHOOSE: values lift, a reference is refused
+Rule: an argument that lifts over arrays and refuses a multi-cell range (IM*, EDATE, ISEVEN, COMPLEX) treats a CHOOSE by
+what it evaluates to. CHOOSE with an array index lifts to an array of values, even over range arms, so the call spills:
+`IMABS(CHOOSE({1,2},H1:H2,I1:I2))` is the 2x2 3, 6; 4, 8 and `IMSECH(CHOOSE({1,2},{1,2,3},{4;5}))` a 2x3 with `#N/A`
+in its third column (CHOOSE's own broadcast, arrays.md). A scalar index passes on the arm it picks: an array arm lifts
+(`IMABS(CHOOSE(1,{1,2,3}))` is 1, 2, 3; `EDATE(CHOOSE(1,{4;5}),1)` is 35, 36; `ISEVEN(CHOOSE(1,{4;5}))` TRUE, FALSE), a
+multi-cell range arm is one `#VALUE!` (`IMABS(CHOOSE(1,H1:H3))`, `IMABS(CHOOSE(2,{3;4},H1:H3))`) and a one-cell arm is
+read (`IMABS(CHOOSE(1,H1))` is 3). IMSUM folds the whole array (`IMSUM(CHOOSE({1,2},{1,2,3},{4;5}))` is `#N/A`), and
+`SUBTOTAL(9,TAKE(CHOOSE({1,2},H1:H2,I1:I2),2))` is a 2x2 of `#VALUE!`: TAKE picks values there, not cells.
+
+Evidence: probes/lift-arrays-choose-arms (excel-graph, 2026-10-18, T-1874). H1:H3 = 3, 4, 5; I1:I2 = 6, 8.
+
+Ours: matches for the lifted functions (T-1874). Static analysis used to take such a call for a scalar, since CHOOSE
+gives its array arms a range's shape; the fuzz reproducer `IMSECH(CHOOSE({1,2},{1,2,3},{4;5}))` hit a debug assertion.
+The SUBTOTAL over TAKE cell matches since T-1882: SUBTOTAL reads TAKE's first argument as cells only when its static
+shape is not an array, analysed once so nesting stays linear.
+
+Status: VERIFIED (excel-graph)
+Tasks: T-1874, T-1882
+
 ## IMSUM and IMPRODUCT take their arguments whole
 Rule: IMSUM and IMPRODUCT (1 to 255 arguments) fold every value their arguments hold, in argument order and
 row-major order inside a range or array, and the first bad item is the result.
@@ -224,10 +263,20 @@ Status: UNVERIFIED (probe pending)
 Tasks: T-1385
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
-- Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV (we give #VALUE!).
-- An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER (we treat it as 0); a boolean second argument is `#VALUE!`.
+- Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV.
+- An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER; a boolean second argument is `#VALUE!`.
 - `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
-- IMPOWER does not use the naive polar form: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` (ours 1.22464679914735E-16), `IMPOWER("-j",3)` real part -1.83772268236293E-16, `IMPOWER("1+i","2")` real part 1.22514845490862E-16, `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i` (ours `-1125899906842630-0.552925707312197i`). The values differ, not only the printing; tiny parts also print in E-notation.
+- IMPOWER does not use the naive polar form: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` (the naive form gives 1.22464679914735E-16), `IMPOWER("-j",3)` real part -1.83772268236293E-16, `IMPOWER("1+i","2")` real part 1.22514845490862E-16, `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i` (naive: `-1125899906842630-0.552925707312197i`). The values differ, not only the printing; tiny parts also print in E-notation.
+- A blank cell argument is 0 in IMSUB (`IMSUB(A7,B7)` with B7 blank), unlike empty text (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet2 G7:G10).
+- Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, and IMPOWER as `|z|^n` by Excel's `^` (square-and-multiply for an integer `n`) times Excel's SIN/COS of the double `atan2(y,x)·n` (argument reduction by the x87 64-bit pi, numbers.md "Trig of a huge angle"). That reproduces all four values bit for bit: the tiny part of `IMPOWER("i",2)` is `π₆₄ − π_double`, the real part of `(1+i)^100` is `sqrt(2)^100` by square-and-multiply (2^50 + 12.5; libm `pow` gives 2^50 + 7.75) and its imaginary part is that times `sin(double(100·π/4))` reduced by `π₆₄`. Each part prints as number-to-text does (E notation past 20 plain characters).
+- UNVERIFIED: a blank first argument in IMDIV and IMPOWER is read as 0 (only IMSUB is evidenced), and Smith's algorithm is our guess at IMDIV's arithmetic (an x87 plain formula could differ in the last ulp).
+- UNVERIFIED: an angle `atan2·n` of 2^27 or more (SIN's `#NUM!` cut) falls back to libm sine and cosine; no probe covers it.
 Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625).
 Status: VERIFIED (excel-graph)
 Tasks: T-1766
+
+## Base conversions read a blank cell and empty text as 0
+Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank cell, `""` and a ref to `=""` as 0: `BIN2DEC("")`, `OCT2DEC(blank)`, `HEX2DEC("")` are 0; the others give "0", or "0000" with `places` 4. None of these is an error.
+Evidence: probes/eng-base-conv-blank (excel-graph, 2026-10-18, T-1413); gen-m9/d244411dd90f7fbd A15.
+Status: VERIFIED (excel-graph)
+Tasks: T-1413

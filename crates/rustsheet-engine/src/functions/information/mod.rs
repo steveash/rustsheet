@@ -4,7 +4,7 @@ mod offline_errors;
 use crate::external_reference::PickedReference;
 use crate::{
     calc_result::{CalcResult, Range},
-    cast::calc_result_to_array_node,
+    cast::{calc_result_to_array_node, MAX_SHORT_TEXT_UNITS},
     defined_names::ParsedDefinedName,
     expressions::{
         parser::{ArrayNode, Node},
@@ -355,6 +355,11 @@ impl Model {
                 [CalcResult::Error { error, .. }] => {
                     CalcResult::Number(f64::from(error.error_type_code()))
                 }
+                // Excel: text over 255 UTF-16 units reads as #VALUE! here though ISERROR is
+                // FALSE for it (probes/type-long-text B4-B10, C3).
+                [CalcResult::String(text)] if text.len_utf16() > MAX_SHORT_TEXT_UNITS => {
+                    CalcResult::Number(f64::from(Error::VALUE.error_type_code()))
+                }
                 [_] => CalcResult::Error {
                     error: Error::NA,
                     origin: cell,
@@ -372,6 +377,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
+            // Excel: text over 255 UTF-16 units is 64, not 2 (probes/type-long-text A4-A10, C7).
+            CalcResult::String(text) if text.len_utf16() > MAX_SHORT_TEXT_UNITS => {
+                CalcResult::Number(64.0)
+            }
             CalcResult::String(_) => CalcResult::Number(2.0),
             CalcResult::Number(_) => CalcResult::Number(1.0),
             CalcResult::Boolean(_) => CalcResult::Number(4.0),
@@ -443,8 +452,12 @@ impl Model {
             arg => {
                 // A reference (a range included) gives its sheet's number, with no spill
                 // (probes/info-logic-argument-modes A12, excel-graph).
-                if let Ok(range) = self.get_reference(arg, cell) {
-                    return CalcResult::Number(range.left.sheet as f64 + 1.0);
+                // Reached through INDEX, IF or a union it is the same: a union of areas on one
+                // sheet gives that sheet (probes/volatile-and-info-rand-true-false-sheet D18, D19, D26).
+                if let RefArg::Ranges(ranges) = self.evaluate_reference_arg(arg, cell) {
+                    if let Some(first) = ranges.first() {
+                        return CalcResult::Number(first.left.sheet as f64 + 1.0);
+                    }
                 }
                 // Now it should be the name of a sheet
                 let sheet_name = match self.get_string(arg, cell) {
@@ -464,6 +477,21 @@ impl Model {
     }
 
     pub(crate) fn fn_n(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.n_of_argument(args, cell, false)
+    }
+
+    /// N in a legacy formula's value position (SPEC-0012 rule 3): an array argument is `#VALUE!`.
+    pub(crate) fn fn_n_legacy(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.n_of_argument(args, cell, true)
+    }
+
+    /// N's kernel; `legacy` makes an array argument `#VALUE!`, whatever its size.
+    fn n_of_argument(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        legacy: bool,
+    ) -> CalcResult {
         let arg_count = args.len();
         if arg_count != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -480,6 +508,11 @@ impl Model {
             // An array lifts element-wise, an error element kept: `N({1,#N/A})` spills 1, #N/A,
             // `N(IF(1,{2;3}))` 2, 3, and legacy `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5
             // (probes/n-array-lift, legacy-index-array-index L1, L10; T-1616).
+            // In a legacy formula's value position it is `#VALUE!`, `{2}` included
+            // (probes/legacy-n-t-reference-args N10; SPEC-0012).
+            CalcResult::Array(_) if legacy => {
+                return CalcResult::new_error(Error::VALUE, cell, String::new())
+            }
             CalcResult::Array(values) => return CalcResult::Array(map_elements(&values, n_of)),
             CalcResult::Range { .. } | CalcResult::Lambda(_) => {
                 return CalcResult::Error {

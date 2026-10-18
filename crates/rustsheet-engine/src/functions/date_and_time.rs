@@ -13,7 +13,7 @@ use weekend::WeekendPattern;
 const SECONDS_PER_DAY: i32 = 86_400;
 const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
 
-fn is_leap_year(year: i32) -> bool {
+pub(crate) fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
 }
 
@@ -25,9 +25,8 @@ fn last_day_of_feb(year: i32) -> u32 {
     }
 }
 
-// Converts a raw numeric argument to a date serial (date part) for DAYS360,
-// rounding the time-of-day to the nearest second before discarding it. Excel
-// rolls e.g. 46000.999999 up to 46001 when extracting the date part.
+// The date serial of a raw argument (DAYS360, HOUR/MINUTE/SECOND's bound), rounding the
+// time-of-day to the nearest second first: Excel rolls 46000.999999 up to 46001.
 fn days360_serial(raw: f64) -> i64 {
     ((raw * SECONDS_PER_DAY_F64).round() / SECONDS_PER_DAY_F64).floor() as i64
 }
@@ -75,8 +74,7 @@ fn weekday_number(date: chrono::NaiveDate, return_type: i32) -> Result<f64, Erro
             let zero_based = weekday.number_from_monday() - 1; // 0..6, Monday = 0
             ((zero_based + 7 - start) % 7) + 1
         }
-        0 => return Err(Error::VALUE),
-        _ => return Err(Error::NUM),
+        _ => return Err(Error::NUM), // return_type 0 too (probes/weekday-serial-zero A1)
     };
     Ok(num as f64)
 }
@@ -149,9 +147,10 @@ macro_rules! time_part_fn {
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
             }
-            // Lifts over a range or array (probes/date-argument-modes F27:F32); #NUM! from 2958466 (dates.md).
+            // Lifts over a range or array (probes/date-argument-modes F27:F32); #NUM! from 2958466 once rounded to the second (probes/time-parts-rounding-window).
             self.lift_numbers(args, cell, "Invalid time", |[value]| {
-                if !(0.0..f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0).contains(&value) {
+                let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+                if !(value >= 0.0 && days360_serial(value) <= last) {
                     return Err(Error::NUM);
                 }
                 Ok(($extract)(value))
@@ -948,11 +947,12 @@ impl Model {
         if !(1..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let date_system = self.workbook.settings.date_system;
+        let ds = self.workbook.settings.date_system;
+        let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30); // 1900 serial 0: weekday-serial-zero
         let date = move |serial: f64| {
-            date_system
-                .date_of_serial(serial.floor() as i64)
-                .ok_or(Error::NUM)
+            let s = serial.floor();
+            let d = ds.date_of_serial(s as i64).or(sat.filter(|_| s == 0.0));
+            d.ok_or(Error::NUM)
         };
         if args.len() == 1 {
             // Broadcasts element-wise over a range/array date argument.

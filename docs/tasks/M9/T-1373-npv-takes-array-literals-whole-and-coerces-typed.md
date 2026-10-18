@@ -3,10 +3,10 @@ id: T-1373
 title: "NPV takes array literals whole and coerces typed text and booleans; FVSCHEDULE is #VALUE! for text"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -26,8 +26,11 @@ NPV's ranges already skip text and booleans correctly (H369). Check whether the 
 statistical functions use (`aggregate` mode) already does this, and reuse it.
 
 ## Acceptance criteria
-- [ ] H368, H370, H371, H382, H383 and H384 of probes/fin-argument-modes pass. The ulp miss on H368's value, if any, is T-0901's.
-- [ ] `make check` green; reviewers approve.
+- [x] H368, H370, H371, H382, H383 and H384 of probes/fin-argument-modes pass. The ulp miss on H368's value, if any, is T-0901's.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The ulp misses of NPV's value (T-0901).
+
+## Outcome
+NPV takes array literals and computed arrays whole, coerces typed text and booleans and returns #VALUE! for typed text that is no number; an argument that reads as a reference (cell, range, `(B1)`, `@`, IF/INDEX/CHOOSE/OFFSET/INDIRECT/LET, a name for a cell, a 3-D ref, a union in written order) skips its text and booleans; a written empty argument is a 0 cash flow. FVSCHEDULE reads typed text (`"0.1"`, `T("0.1")`) as one rate, decided on the evaluated value. NPV now reads its arguments with `evaluate_reference_arg`, the walker SUM uses, rather than by node shape. FVSCHEDULE is #VALUE! for text in its schedule. Findings in financial.md "NPV and FVSCHEDULE arguments". H371 and H382-H384 now pass; H368 and H370 differ only by ulp (T-0901's, now T-1528). Eval delta: probes fixed 10 cells (fin-argument-modes H371, H382-H384; fin-fvschedule A3, A4, A13, A14, A16, A19), no regressions; new probes npv-fvschedule-typed (16 cells) and npv-reference-forms (20 cells; A7 passes, the other 19 are NPV ulp misses, T-1528) and npv-fvschedule-edges (6 cells, all pass). Handed off from sonnet after node-shape review findings; resumed by opus.

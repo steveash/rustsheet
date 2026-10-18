@@ -723,6 +723,73 @@ fn math_atp_static_shapes_follow_the_table() {
     assert!(matches!(shape("GCD({4;6},2)"), StaticResult::Scalar));
 }
 
+// A legacy formula puts the `@` on an array-valued call or array constant in a value position of
+// the cell, and the export drops it as automatic; under a vector argument, in IF's arms and in N
+// or T over IF or SWITCH it adds none, so an explicit `@` there is kept (probes/legacy-array-result,
+// legacy-n-t-reference-args, n-array-lift A3; T-1717).
+#[test]
+fn legacy_array_values_intersect_in_value_positions() {
+    check(&[
+        ("IF(1,{2;3})", "@IF(1,{2;3})", "IF(1,{2;3})"),
+        (
+            "ABS(IF(1,{-2;3}))",
+            "ABS(@IF(1,{-2;3}))",
+            "ABS(IF(1,{-2;3}))",
+        ),
+        ("-IF(1,{2;3})", "-@IF(1,{2;3})", "-IF(1,{2;3})"),
+        ("N({2;3})", "N(@{2;3})", "N({2;3})"),
+        ("ABS({-2;3})", "ABS(@{-2;3})", "ABS({-2;3})"),
+        (
+            "N(IFERROR({2;3},0))",
+            "N(@IFERROR({2;3},0))",
+            "N(IFERROR({2;3},0))",
+        ),
+        (
+            "IF(1,N(IF(1,{2;3})))",
+            "@IF(1,N(IF(1,{2;3})))",
+            "IF(1,N(IF(1,{2;3})))",
+        ),
+        ("N(IF(1,{2;3}))", "N(IF(1,{2;3}))", "N(IF(1,{2;3}))"),
+        (
+            "ABS(N(IF(1,{2;3})))",
+            "ABS(N(IF(1,{2;3})))",
+            "ABS(N(IF(1,{2;3})))",
+        ),
+        (
+            "N(_xlfn.SWITCH(1,1,{2;3}))",
+            "N(SWITCH(1,1,{2;3}))",
+            "N(_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+        ("SUM(N({1,2}))", "SUM(N({1,2}))", "SUM(N({1,2}))"),
+        (
+            "SUM(ABS(IF(1,{-2;3})))",
+            "SUM(ABS(IF(1,{-2;3})))",
+            "SUM(ABS(IF(1,{-2;3})))",
+        ),
+        // Explicit `@`s where the import adds none survive the export.
+        (
+            "SUM(ABS(_xlfn.SINGLE(IF(1,{-2;3}))))",
+            "SUM(ABS(@IF(1,{-2;3})))",
+            "SUM(ABS(_xlfn.SINGLE(IF(1,{-2;3}))))",
+        ),
+        (
+            "SUM(N(_xlfn.SINGLE({1,2})))",
+            "SUM(N(@{1,2}))",
+            "SUM(N(_xlfn.SINGLE({1,2})))",
+        ),
+        (
+            "N(_xlfn.SINGLE(IF(1,{2;3})))",
+            "N(@IF(1,{2;3}))",
+            "N(_xlfn.SINGLE(IF(1,{2;3})))",
+        ),
+        (
+            "IF(1,_xlfn.SINGLE({2;3}))",
+            "IF(1,@{2;3})",
+            "IF(1,_xlfn.SINGLE({2;3}))",
+        ),
+    ]);
+}
+
 // The coupon-schedule Analysis ToolPak functions (T-1822) are `LiftArrays` in every argument: a
 // legacy bare range keeps its text, an operation on one gets the `@`, and an array adds its shape
 // (probes/fin-remaining-later-argument-ranges).
@@ -766,5 +833,98 @@ fn coupon_functions_follow_the_lifting_table() {
     assert!(matches!(
         shape("ACCRINT(44000,44500,45000,0.1,1000,2,{0,1,2},A1:A3)"),
         StaticResult::Array(1, 3)
+    ));
+}
+
+// SPEC-0011 for the statistical functions whose every argument is scalar (T-1290): they are
+// `Lift`, so a legacy range gets its `@` and the call's static shape is the lifted one
+// (docs/excel-semantics/statistics.md "Statistical function argument modes").
+#[test]
+fn statistical_legacy_ranges_and_shapes_follow_the_table() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    check(&[
+        (
+            "NORMDIST(A1:A60,0,1,TRUE)",
+            "NORMDIST(@A1:A60,0,1,TRUE)",
+            "NORMDIST(A1:A60,0,1,TRUE)",
+        ),
+        (
+            "BETA.DIST(0.5,2,3,TRUE,0,B1:B60)",
+            "BETA.DIST(0.5,2,3,TRUE,0,@B1:B60)",
+            "_xlfn.BETA.DIST(0.5,2,3,TRUE,0,B1:B60)",
+        ),
+        ("PERMUT(5,C1:C60)", "PERMUT(5,@C1:C60)", "PERMUT(5,C1:C60)"),
+        // The quantile searches (T-1848).
+        ("TINV(0.4,A1:A60)", "TINV(0.4,@A1:A60)", "TINV(0.4,A1:A60)"),
+        (
+            "BETA.INV(0.4,2,3,0,B1:B60)",
+            "BETA.INV(0.4,2,3,0,@B1:B60)",
+            "_xlfn.BETA.INV(0.4,2,3,0,B1:B60)",
+        ),
+        // The incomplete-gamma functions (T-1872).
+        (
+            "CHIINV(0.4,A1:A60)",
+            "CHIINV(0.4,@A1:A60)",
+            "CHIINV(0.4,A1:A60)",
+        ),
+        (
+            "GAMMA.DIST(1.5,2,3,B1:B60)",
+            "GAMMA.DIST(1.5,2,3,@B1:B60)",
+            "_xlfn.GAMMA.DIST(1.5,2,3,B1:B60)",
+        ),
+        (
+            "POISSON(A1:A60,1,TRUE)",
+            "POISSON(@A1:A60,1,TRUE)",
+            "POISSON(A1:A60,1,TRUE)",
+        ),
+        // HYPGEOM.DIST and HYPGEOMDIST (T-1873).
+        (
+            "HYPGEOM.DIST(2,3,5,10,B1:B60)",
+            "HYPGEOM.DIST(2,3,5,10,@B1:B60)",
+            "_xlfn.HYPGEOM.DIST(2,3,5,10,B1:B60)",
+        ),
+        (
+            "HYPGEOMDIST(A1:A60,3,5,10)",
+            "HYPGEOMDIST(@A1:A60,3,5,10)",
+            "HYPGEOMDIST(A1:A60,3,5,10)",
+        ),
+    ]);
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut shape =
+        |formula: &str| run_static_analysis_on_node(&parser.parse(formula, &cell_reference));
+    assert!(matches!(
+        shape("NORM.S.DIST(A1:A3,TRUE)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("BINOM.INV(5,0.4,{0.4,0.9})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(shape("GAMMA(2.5)"), StaticResult::Scalar));
+    assert!(matches!(
+        shape("F.INV(A1:A3,5,5)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("CHISQ.DIST(A1:A3,2,TRUE)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("GAMMA.INV(0.4,2,{3,4})"),
+        StaticResult::Array(1, 2)
+    ));
+    assert!(matches!(
+        shape("HYPGEOM.DIST(A1:A3,4,5,10,TRUE)"),
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("HYPGEOMDIST(2,3,5,{10,12})"),
+        StaticResult::Array(1, 2)
     ));
 }

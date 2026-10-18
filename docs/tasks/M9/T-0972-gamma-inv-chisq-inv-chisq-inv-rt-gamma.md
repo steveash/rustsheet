@@ -26,6 +26,12 @@ Triage T-0903. Kernel: statrs' default `ContinuousCDF::inverse_cdf` for `Gamma` 
 - `ironcalc-calc/STATISTICAL/GAMMA.xlsx` `GAMMA.DIST GAMMA.INV`: F2, F3, F4, F5, F6, F7, F8(C), F9, F10(C), F11, F19, F21, F22(C), F24, F34, F39, F41, F42, F43, F44, F45, F46, F47, F50, F51, F53, F61, F62, F66(C), F67(C), F68(C), F69(C), F70(C), F74(C), F75, F76(C), F77(C)
 (C = NumericClose, unmarked = NumericUlp.)
 
+Also in probes (unchanged by T-1872, which lifted these functions): probes/stat-argument-modes H140 `CHIINV(0.4,5)` and
+H148 `CHISQ.INV.RT(0.4,5)` expected 5.131867074401821, actual 5.131867074401809; H144 `CHISQ.INV(0.4,5)` expected
+3.6554996231415857, actual 3.655499623141595 (NumericClose); probes/stat-quantile-lift J35
+`ROUND(INDEX(CHISQ.INV.RT(0.4,G35:G36),2),12)` and J37 (CHIINV), df 10: expected 10.473236231396, actual
+10.473236231395 (our scalar quantile is 10.473236231395429).
+
 Examples (expected vs actual):
 - `GAMMA.INV(GAMMA.DIST(10,9,2,TRUE),9,2)` F2 (14 lines with this pair): expected 9.999999999999998, actual
   9.999999999999993. Excel does not round-trip to 10 (`docs/excel-semantics/statistics.md`).

@@ -354,14 +354,41 @@ are 0 wherever DATEVALUE parses):
   (`"July1"`, `"July10"`, `"July31"`, `"Jul1"`, `"Sept1"`: rows 1-3, 7, 20), otherwise the 1st of
   that month in that year, one or two digits as a two-digit year (`"July32"` 1932-07-01, `"July45"` 1945-07-01,
   `"July0"` 2000-07-01, `"January0"` 2000-01-01, `"December0"` 2000-12-01: rows 4-6, 22-23) and four
-  digits as the year (`"Jul2026"`, `"July2026"`: 2026-07-01, rows 8-9). Unprobed in glued form: a number that is a
-  day of no 30-day month or of February (`"Jun31"`, `"Feb29"`); the year-less rule reads them as years.
+  digits as the year (`"Jul2026"`, `"July2026"`: 2026-07-01, rows 8-9). A number that is a
+  day of no 30-day month or of February (`"Jun31"`, `"Feb29"`) is read as a year (probes/date-text-glued-month-2).
 - Day then month, with or without a year, glued on either side or both: `"1July"` (current year,
   row 12), `"1Jul2026"`, `"01JUN21"` (2021), `"1June2021"`, `"1jun2021"` (case-insensitive),
   `"1JUN 2021"`, `"1 JUN2021"`, `"1JUN2021"` (rows 13-16, 18-19, 24).
 - `#VALUE!`: a month glued to a day followed by a year, whatever joins them (`"July1,2026"`,
   `"July12026"`, `"Jun1 2021"`: rows 10, 11, 17), and a name that is no month (`"Ju1"`, row 21).
-Status: VERIFIED (web). Not implemented (T-1789): the engine gives `#VALUE!` for all of them.
+Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows refer to Sheet1 of that case):
+- Shapes the first probe lacked are dates in Excel, not `#VALUE!`: `"Jul1 , 2026"` and `"July1, 2026"` are
+  2026-07-01 (rows 6-7: a glued month and day, then a comma that a space follows, then the year; contrast
+  `"July1,2026"` and `"Jun1 2021"` above, which stay `#VALUE!`), and so is `"1-Jul2026"` (row 8: day, hyphen,
+  glued month and year); `"1July1"` is 2001-07-01 (serial 37073, day 1, month July, two-digit year 01; row 9).
+  A day number past the month's end reads as a year, following `"July32"`: `"Jun31"` is 1931-06-01 (serial
+  11475) and `"Feb29"` is 2029-02-01 (serial 47150): the 29 is the two-digit year 2029, not the clock year (rows 10-11,
+  MONTH 6/2 and DAY 1 scored). Implemented (T-1906): rows 6-9 and 12 parse; `"1July1"` pads the glued single digit to the two-digit year 01.
+- Date+time text goes through the same split: `"July1 10:00"`, `"Jul1 10 AM"`, `"1JUN2021 6 PM"`, `"1JUN2021 18:30"`,
+  `"July1 10:00:30"` and `"Jul1 , 2026 10:00"` are date-times in VALUE (fractions 0.41666..., 0.75, 0.7708...,
+  0.41701...; rows 1-5, 12), and TIMEVALUE of the same text is just the clock fraction. TIMEVALUE of date-only
+  text (`"Jul1 , 2026"`, `"1Jul 2026"`, `"Jul2026"`, `"July01"`, `"Jun31"`, `"Feb29"`) is 0, not an error
+  (rows 6-8, 10-11, 13-15, column C); the engine returns `#VALUE!` for those.
+- Criteria read the glued forms as dates: over serials 44347, 44348, 44349 `COUNTIF(">1JUN2021")` = 1,
+  `"1JUN2021"` = 1, `">=1JUN2021"` = 2, `"<1JUN2021"` = 1, `">1Jun2021"` = 1, `SUMIF(">1JUN2021")` sums
+  44349; `COUNTIF(date,"July1")`, `"Jul1"` and `"July01"` match the 1 July of the clock year (K1-K8).
+- Typed input (the oracle's ENTERED log, number formats; raw log in docs/research/glued-month-typed-input-2026-10-18.md): `"July1"` and `"July01"` -> 1 July of the clock year,
+  format `d-mmm`; `"Jul2026"` -> 2026-07-01, `mmm-yy`; `"Jun31"` -> 1931-06-01, `mmm-yy`; `"1Jul 2026"`,
+  `"Jul1 , 2026"` and `"1JUN2021"` -> d-mmm-yy dates (2026-07-01, 2026-07-01, 2021-06-01); `"July1 10:00"` ->
+  46204.41666..., format `m/d/yyyy h:mm`; `"Jun1.5"` stays text (General). The engine matches except the typed
+  `"July1 10:00"` (T-1907), which it leaves as text.
+UNVERIFIED:
+- shapes the glued-month rules accept or reject beyond the probed rows (T-1906): `"1Jul5"` (any glued single digit after a day reads as year 0d), `"1/Jul2026"` and other separators, `"1-Jul26"`, the format typed `"1-Jul2026"` gets, and the hand-derived `#VALUE!` of `"July1 , 2026 5"`, `"1Jul1 , 2026"` and `"July1,, 2026"`;
+- the clock-year results (`"July1"`, `"July01"`, criteria K6-K8) for clocks other than the oracle's 2026;
+- locales other than en-US (the split uses the locale's month names).
+Status: VERIFIED (web) for probes/date-text-glued-month rows 1-24 and probes/date-text-glued-month-2; engine gaps are tasks (below).
+Implemented in: `split_glued_month` in `crates/rustsheet-engine/src/formatter/date_text.rs` (used by `parse_date`)
+Tasks: T-1788, T-1789, T-1879
 
 ## WORKDAY holidays take the whole range
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
@@ -390,7 +417,8 @@ the size-mismatch `#VALUE!`, which is unprobed) and
 `VLOOKUP(WORKDAY(28131,-16,<blank>*1),C2:D5,1,XLOOKUP(..))` is `#VALUE!` (so a holiday of 0 is accepted).
 Evidence: gen-m6/ec7b2cc2fb9f0354 Calc!A33, gen-m6/5cc04d6f42b23b51 Calc!A27, gen-m6/63012866a9d8b7db Calc!A39,
 gen-m6/6b2aa08e3b916da5 Calc!A35 (excel-graph, 2026-10-09, T-1239).
-Ours: `WEEKDAY(0.16)`, `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!`; `WEEKDAY(31330,0)` is `#VALUE!`.
+Probed directly (probes/weekday-serial-zero A1:A18, excel-graph, 2026-10-17, T-1253): `WEEKDAY(0)`, `(0.5)`, `(0.9999)` are 7, `WEEKDAY(0.5,2)` 6, `(0.5,3)` 5, `(0,11)` 6, `(0,17)` 7, `WEEKDAY(1)` 1, `WEEKDAY(-0.5)` `#NUM!`; return_type 0, -1, -0.0001, 0.5, 0.9999, 4, 10 and 18 are all `#NUM!`, never `#VALUE!` (0.5 and 0.9999 truncate to 0).
+Ours: WEEKDAY implemented (T-1253); `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!` (T-1254).
 More serial-0 cells (gen-m9, excel-graph, 2026-10-12, T-1289): `YEARFRAC(33752,0)` is 92.41111111111 (from
 `(0.3+YEARFRAC(33752,Data!$C12))^SUM(-0.0001)` = 0.9995471537332011 with C12 = 0), which is basis 0 counted from
 1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours `#NUM!`, T-1409).
@@ -679,6 +707,10 @@ The bound (T-1353, probes/time-parts-past-max-date A1-A14, excel-graph, 2026-10-
 for HOUR, MINUTE and SECOND alike (`HOUR(2958466)`, `MINUTE(2958466.5)`, `SECOND(2958466)`, `SECOND(1E+15)`), while
 2958465.99999 still has a time (`HOUR` = 23) and `HOUR(2958465.9)` = 21, `MINUTE(2958465.9)` = 36, `SECOND(2958465.9)` = 0.
 Implemented in `time_part_fn!` (functions/date_and_time.rs).
+The bound is checked after rounding the serial to the nearest second (T-1815, probes/time-parts-rounding-window,
+excel-graph, 2026-10-18): 2958465.9999942 (23:59:59.499) and 2958465.999994 give 23, 59, 59, while 2958465.9999949
+(23:59:59.559), 2958465.999999 and 2958465.9999999999 are `#NUM!` for HOUR, MINUTE and SECOND alike, so the cut lies between 23:59:59.499 and
+23:59:59.559 (an exact .5 tie is unprobed).
 Status: VERIFIED (web)
 
 ## HOUR, MINUTE and SECOND round to the nearest second
@@ -692,16 +724,16 @@ Ours: the time is rounded to the millisecond and the seconds truncated (`SECOND(
 Status: VERIFIED (web) for these two cells; ties and carries UNVERIFIED
 Tasks: T-1408
 
-## YEARFRAC swaps reversed dates for basis 1
-Rule: YEARFRAC with basis 1 and a start date after the end date swaps them: `YEARFRAC(52874,24708,1)` =
-77.11295191295191 = `YEARFRAC(24708,52874,1)`. Whether bases 0, 2, 3 and 4 swap is UNVERIFIED.
-Evidence: gen-m7/c263b43217a5898b Calc!A38 (excel-graph, 2026-10-11, T-1275), basis 1 only.
-Ours: basis 1 swaps (T-1354). Bases 2-4 take the absolute day count, which is symmetric. Basis 0 takes the absolute
-value of the US 30/360 count on the original order, which is not symmetric at day 30/31 and end of February
-(`YEARFRAC(DATE(2024,3,31),DATE(2024,1,15),0)` is 75/360, its forward pair 76/360). The equality test in
-`test_yearfrac_basis.rs` covers one pair without those edges and is not evidence.
-Status: VERIFIED (web) for basis 1; UNVERIFIED for bases 0, 2, 3, 4
-Tasks: T-1354
+## YEARFRAC swaps reversed dates
+Rule: YEARFRAC with a start date after the end date swaps them for every basis: the reversed result equals the
+forward result, including the asymmetric US 30/360 (basis 0) and European (basis 4) counts at day 30/31 and
+end of February. `YEARFRAC(DATE(2024,3,31),DATE(2024,1,15),0)` = 76/360 = its forward pair (not 75/360), and
+`YEARFRAC(DATE(2024,3,30),DATE(2024,2,29),4)` = 31/360.
+Evidence: probes/yearfrac-reversed-bases (excel-graph, 2026-10-18, T-1826): 9 pairs x bases 0, 2, 3, 4, every
+reversed cell equal to its forward cell; gen-m7/c263b43217a5898b Calc!A38 for basis 1 (T-1275).
+Ours: all bases swap before counting (T-1354 for basis 1, T-1826 for the rest).
+Status: VERIFIED (web)
+Tasks: T-1354, T-1826
 
 ## DATEDIF argument errors before date checks
 Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
@@ -710,3 +742,29 @@ Evidence: gen-m7/f68fafa0ca2eba26 Calc!A1 (`Data!D10^DATEDIF((Data!E$5+(-1)),386
 Ours: once start <= end, the unit's error wins over any start or end date outside the calendar (T-1355); a reversed pair still gives `#NUM!` first.
 Status: VERIFIED (web) for a negative start date with an in-range end; UNVERIFIED: an out-of-range high end date or an ordered pair of negative dates with an error unit, an invalid unit text with a negative start date, and an error unit with a reversed pair
 Tasks: T-1355
+
+## WEEKDAY: date text with literal quote characters is #VALUE!, even with an error return_type
+Date text whose string value contains the double-quote characters themselves (`"07/01/2026"` as text, quotes included) does not parse as a date, so WEEKDAY's date argument is `#VALUE!` and wins over an error `return_type` (`1/0`, `NA()`), by the left-to-right rule in arrays.md.
+Evidence: ironcalc-calc/DATE_AND_TIME/WEEKDAY_WEEKNUM_ISOWEEKNUM_issue_1502.xlsx (Excel-cached, T-1517).
+Ours: matches (all 10 cells pass).
+Status: VERIFIED (upstream Excel-authored workbook)
+Tasks: T-1517
+
+## Date function lifts: weekend with a lifted date, TAKE/DROP of a range, mismatched shapes, boolean elements (T-1807)
+Rule (probes/date-lift-open, excel-graph, 2026-10-18): the lifted `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL broadcasts with
+a lifted date like any other argument pair: the result has the largest height and the largest width of the two (what the shorter one pads with is not probed)
+(`ROWS(WORKDAY.INTL({45000;45031},5,B1:B3))` = 3, `COLUMNS(...)` = 1; `WORKDAY.INTL(45000,{1;2},{1,2})` is 2x2;
+`NETWORKDAYS.INTL(45000,{46000,46100},B1:B3)` is 3x2). A column against a row gives the full grid in every function probed
+(`EDATE({45000;45031},{1,2,3})` is 2x3 and `EDATE({45000,45031},{1;2;3})` is 3x2). Mismatched same-axis arrays take the longer length
+(`ROWS(EDATE({45000;45031;45100},{1;2}))` = 3, likewise EOMONTH, WORKDAY, NETWORKDAYS, YEARFRAC, WEEKNUM and DAYS).
+`TAKE` and `DROP` of a range act like the multi-cell range they cut from (the range rule above applies; whether they return a
+reference is not probed): `EDATE(TAKE(A1:A3,2),1)`, `EDATE(DROP(A1:A3,1),1)`, `EOMONTH(45000,DROP(B1:B3,1))`, `WEEKNUM`,
+`WORKDAY`, `NETWORKDAYS`, `YEARFRAC` and `WORKDAY.INTL` of a 2-row `TAKE` are `#VALUE!` as a whole (ROWS = COLUMNS = `#VALUE!`), while a 1x1
+`TAKE` is that cell (`EOMONTH(TAKE(A1:A3,1),1)` = 45046). `DAYS(TAKE(A1:A3,2),1)` lifts (2 rows) and so does the `weekend`
+of NETWORKDAYS.INTL (`NETWORKDAYS.INTL(45000,46000,TAKE(B1:B3,2))` is 2 rows). A boolean element of an array month count is `#VALUE!` for
+that element only (`EDATE(45000,{TRUE;2})` = {`#VALUE!`; 45061}, `EOMONTH(45000,{FALSE;1})` = {`#VALUE!`; 45046},
+`WORKDAY(45000,{TRUE;5})` = {`#VALUE!`; 45007}, `WEEKNUM(45000,{TRUE;2})` = {`#VALUE!`; 12}).
+Ours: all 70 cells that fail are `#N/IMPL!` from WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL not lifting over arrays yet
+(T-1236); the EDATE, EOMONTH, WEEKNUM, YEARFRAC and DAYS cells already pass.
+Status: VERIFIED (excel-graph)
+Tasks: T-1807, T-1236

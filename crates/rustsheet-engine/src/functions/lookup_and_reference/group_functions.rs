@@ -22,6 +22,7 @@ use crate::{
     model::Model,
 };
 
+use super::eta_min_args;
 use super::grouping::{at, empty_text, value_error, Relative, SetId};
 
 /// What one aggregate cell is computed from: the rows of its group (or grid cell) and its
@@ -109,25 +110,20 @@ pub(crate) fn is_function_array(arg: &Node) -> bool {
 }
 
 /// How many arguments GROUPBY and PIVOTBY pass to a function passed by name: its minimum argument
-/// count when that is 1 or 2, `None` (the whole result `#VALUE!`) otherwise. Two arguments, the
-/// values and the relative set: PERCENTOF (G!S97), CORREL, PEARSON, RSQ, COVARIANCE.P (`#N/A` per
-/// group, as the sizes differ; in the total, the same array twice: about 1 for CORREL, PEARSON
-/// and RSQ, the variance 161.7225 for COVARIANCE.P, functions2 G!B326), and IF, ROUND, SUMIF (`#VALUE!` per cell: an
-/// array result); none: NOW, TEXTJOIN, XLOOKUP (probes/groupby-pivotby-functions G!A421,
-/// -functions2 G!A281-A501). Other functions whose minimum is not 1 are unprobed and get one.
-// TODO(T-1706): every function's minimum argument count (eval/catalog/excel-functions.tsv).
+/// count (`eval/catalog/excel-functions.tsv`) when that is 1 or 2, `None` (the whole result
+/// `#VALUE!`) for 0 and for 3 or more. Two arguments, the values and the relative set: PERCENTOF
+/// (G!S97), CORREL, PEARSON, RSQ, COVARIANCE.P (`#N/A` per group, as the sizes differ; in the
+/// total, the same array twice: about 1 for CORREL, PEARSON and RSQ, the variance 161.7225 for
+/// COVARIANCE.P, functions2 G!B326), and IF, ROUND, SUMIF (`#VALUE!` per cell: an array result);
+/// none: NOW, TEXTJOIN, XLOOKUP (probes/groupby-pivotby-functions G!A421, -functions2
+/// G!A281-A501, probes/groupby-eta-arity G!A1-A141 for the rest).
 fn eta_arity(kind: &Function) -> Option<usize> {
-    match kind {
-        Function::Percentof
-        | Function::Correl
-        | Function::Pearson
-        | Function::Rsq
-        | Function::CovarianceP
-        | Function::If
-        | Function::Round
-        | Function::Sumif => Some(2),
-        Function::Now | Function::Textjoin | Function::Xlookup => None,
-        _ => Some(1),
+    let name = kind.to_localized_name(get_default_language());
+    let min = eta_min_args::min_args(&name);
+    match min {
+        1 => Some(1),
+        2 => Some(2),
+        _ => None,
     }
 }
 
@@ -227,9 +223,11 @@ impl Functions {
         self.layout == Layout::Columns && self.list.len() > 1
     }
 
-    /// Whether PIVOTBY's Total columns are `""`: one function over several value columns (P!Y97);
-    /// several functions fill them, paired with several values too (functions2 P!A1).
-    pub(crate) fn blank_totals(&self, value_columns: usize) -> bool {
+    /// Whether one function goes over several value columns, so that PIVOTBY places its column
+    /// totals and subtotals in other columns (`Placement`; the Total columns are `""` with two or
+    /// more column groups, P!Y97); several functions total and subtotal in place, paired with
+    /// several values too (functions2 P!A1, probes/pivotby-col-subtotals-values3 S!A1).
+    pub(crate) fn one_over_several_values(&self, value_columns: usize) -> bool {
         self.list.len() == 1 && value_columns > 1
     }
 
@@ -405,11 +403,15 @@ impl Model {
             return Err(invalid());
         }
         let mut list = Vec::with_capacity(functions.len());
+        // Positions in `list` whose label is the default "CUSTOM" of a LAMBDA.
+        let mut custom = Vec::new();
         for (index, element) in functions.into_iter().enumerate() {
             let Element::Function(lambda) = element else {
                 return Err(invalid());
             };
-            let (arity, default_label, percentof) = match self.function_value(lambda) {
+            let value = self.function_value(lambda);
+            let is_lambda = matches!(value, Some(FunctionValue::Lambda { .. }));
+            let (arity, default_label, percentof) = match value {
                 Some(FunctionValue::Eta(kind)) => (
                     eta_arity(&kind),
                     ArrayNode::String(kind.to_localized_name(get_default_language()).into()),
@@ -441,13 +443,25 @@ impl Model {
             };
             let label = match labels.as_ref().and_then(|labels| labels.get(index)) {
                 Some(Element::Value(value)) => value.clone(),
-                _ => default_label,
+                _ => {
+                    if is_lambda {
+                        custom.push(list.len());
+                    }
+                    default_label
+                }
             };
             list.push(Aggregator {
                 caller: self.lambda_caller(lambda, arity).keeping_references(),
                 call,
                 label,
             });
+        }
+        // Excel: two or more LAMBDAs are "CUSTOM1", "CUSTOM2", ... in order, whatever sits between
+        // them; one LAMBDA stays "CUSTOM" (probes/groupby-custom-labels G!A1, G!A41, G!A241).
+        if custom.len() > 1 {
+            for (number, position) in custom.into_iter().enumerate() {
+                list[position].label = ArrayNode::String(format!("CUSTOM{}", number + 1).into());
+            }
         }
         Ok(Functions {
             list,
@@ -594,4 +608,33 @@ fn transpose(grid: Vec<Vec<Element>>) -> Vec<Vec<Element>> {
         }
     }
     columns
+}
+
+#[cfg(test)]
+mod tests {
+    use super::eta_min_args::entries;
+
+    /// The table is generated from the catalog; it must list exactly the names whose minimum is not 1.
+    #[test]
+    fn table_matches_catalog() {
+        let catalog = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../eval/catalog/excel-functions.tsv"
+        ));
+        let mut expected: Vec<(&str, u8)> = catalog
+            .lines()
+            .filter(|line| !line.starts_with('#'))
+            .skip(1)
+            .filter_map(|line| {
+                let mut columns = line.split('\t');
+                let name = columns.next()?;
+                let min: u8 = columns.nth(1)?.parse().ok()?;
+                (min != 1).then_some((name, min))
+            })
+            .collect();
+        expected.sort_unstable();
+        let mut actual: Vec<(&str, u8)> = entries().collect();
+        actual.sort_unstable();
+        assert_eq!(actual, expected);
+    }
 }

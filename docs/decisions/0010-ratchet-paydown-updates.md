@@ -137,5 +137,39 @@
   T-1822: duplicated lines 4876 → 4812 (ACCRINT, DURATION, MDURATION, PRICE and the COUP* functions
   share `coupon_args` and `bond_args` instead of their repeated `get_number` argument blocks)
   (`check_duplication.py --update`).
+  T-1290: duplicated lines 4812 → 4510 (the statistical functions whose every argument is scalar
+  become kernels over borrowed values; BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST and TDIST share
+  their modern function's kernel instead of rebuilding its argument nodes) (`check_duplication.py
+  --update`), and expressions/parser/static_analysis.rs 1385 → 1209 lines (main is 1296 after T-1717's
+  split; this PR deletes the 87 fallback lines of the 44 statistical functions now in the lifting table)
+  and functions/mod.rs 2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm)
+  (`check_file_size.py --update`). The same update also tightened a stale lock that is not this PR's
+  change: functions/financial/financial_bonds.rs 1212 → 1178, its size on main.
+  T-1626: functions below the evidence floor 13 → 3 (SEARCHB, FINDB, REPLACEB, RIGHTB, LENB, ASC, JIS, PHONETIC,
+  REGEXREPLACE and REGEXTEST probed to ≥ 20 Excel cells; decision 0062) (`make eval-baseline`).
+  T-1842: duplicated lines 4510 → 4328 (YIELD reads through `bond_args` and the four ODD* functions
+  through one `odd_args`, instead of their repeated `get_number_no_bools` argument blocks)
+  (`check_duplication.py --update`), and functions/financial/financial_bonds.rs 1178 → 1083 lines and
+  expressions/parser/static_analysis.rs 1209 → 1199 (the 10 fallback lines of the five functions now in
+  the lifting table) (`check_file_size.py --update`).
+  T-1848: duplicated lines 4328 → 4248 (on main after T-1842) (BETA.INV, F.INV, F.INV.RT, T.INV, T.INV.2T and CONFIDENCE.T become
+  kernels over borrowed values; F.INV and F.INV.RT share one kernel, and so do T.INV and T.INV.2T)
+  (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1199 → 1181 lines (the 18
+  fallback lines of the nine quantile functions now in the lifting table) (`check_file_size.py --update`).
+  T-1845: duplicated lines 4248 → 4152 (CUMIPMT and CUMPRINC share one kernel, `cumulative_of`, instead of
+  two copies of the argument reading and the period loop) (`check_duplication.py --update`), and
+  expressions/parser/static_analysis.rs 1181 → 1170 lines (the lock was 7 lines loose on main) (the 4 fallback lines of CUMIPMT and CUMPRINC now in
+  the lifting table) (`check_file_size.py --update`).
+  T-1872: duplicated lines 4152 → 3989 (CHISQ.*, GAMMA.DIST, GAMMA.INV and POISSON.DIST become kernels over
+  borrowed values; CHISQ.INV and CHISQ.INV.RT share one kernel, and the four chi-squared kernels one df check)
+  (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1170 → 1146 lines (the 24
+  fallback lines of the twelve incomplete-gamma functions now in the lifting table) (`check_file_size.py --update`).
+  T-1841: duplicated lines 3989 → 3903 (AMORLINC and AMORDEGRC share one kernel, `amortization_of`, instead of two
+  copies of the argument reading and checks, and the lift tests share `check_cells` and `round_trip_value` in
+  test/util.rs) (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1146 → 1142 lines (the
+  4 fallback lines of AMORDEGRC and AMORLINC now in the lifting table) (`check_file_size.py --update`).
+  T-1873: expressions/parser/static_analysis.rs 1142 → 1137 lines (the 4 fallback lines of HYPGEOM.DIST and
+  HYPGEOMDIST now in the lifting table, and the comment heading the one of them that was a compatibility wrapper)
+  (`check_file_size.py --update`); duplicated lines unchanged at 3903.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
