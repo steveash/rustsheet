@@ -3,7 +3,7 @@ id: T-1791
 title: "Three corpus-bench array/legacy cells: CSE IF-lift over FIND/LEFT, legacy MATCH intersection, INDEX(SMALL(IF)) of a whole column"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
