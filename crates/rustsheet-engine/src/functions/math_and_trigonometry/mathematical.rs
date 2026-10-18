@@ -247,6 +247,11 @@ impl Model {
         self.lift_call(kind, args, cell, &mut |model, values| {
             let mut numbers = defaults;
             for (index, slot) in numbers.iter_mut().enumerate() {
+                // A number, the usual argument, skips the coercion chain (T-1785 bench).
+                if let Some(CalcResult::Number(number)) = values.get(index) {
+                    *slot = *number;
+                    continue;
+                }
                 match model.kernel_number_or(values.get(index), *slot, cell) {
                     Ok(number) => *slot = number,
                     Err(error) => return error,
