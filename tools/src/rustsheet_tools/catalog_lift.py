@@ -51,6 +51,9 @@ def check(functions: list[dict[str, Any]], table: list[dict[str, Any]]) -> list[
         kinds: list[str] = row["params"]
         if row["repeat"] is None and len(params) != len(kinds):
             problems.append(f"{name}: catalog has {len(params)} params, the table {len(kinds)}")
+        if row["repeat"]:
+            # Catalog params past the listed ones take the repeat kind (IMSUM's numbers).
+            kinds = kinds + [row["repeat"]] * max(0, len(params) - len(kinds))
         for param, kind in zip(params, kinds, strict=False):
             modes, lifts_arrays = RULE[kind]
             label = f"{name}({param['name']})"

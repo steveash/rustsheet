@@ -26,3 +26,12 @@ def test_a_seeded_mismatch_is_reported() -> None:
         "EDATE(start_date): LiftArrays needs `lift: arrays`",
         "EDATE(months): mode range does not fit LiftArrays",
     ]
+
+
+def test_params_past_the_table_take_the_repeat_kind() -> None:
+    functions = copy.deepcopy(Catalog.load(CATALOG).functions)
+    imsum = next(f for f in functions if f["name"] == "IMSUM")
+    imsum["params"][0]["mode"] = "value"
+    assert check(functions, load_table()) == [
+        f"IMSUM({imsum['params'][0]['name']}): mode value does not fit WholeByCaller",
+    ]
