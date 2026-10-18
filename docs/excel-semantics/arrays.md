@@ -927,9 +927,9 @@ Evidence (T-1850, probes/sort-error-args, excel-graph): errors are reported left
 - SORTBY: by_array1, order1, by_array2... left to right (H77, H89 `C,NA(),B,1/0` is #N/A, H93 is #DIV/0!); an error in a later pair beats an invalid earlier order (H85 `C,0,B,NA()` is #N/A); an error order beats a by_array row-count mismatch (H105).
 - Invalid values: `SORT(arr,0,1)`, `SORT(arr,1,0)`, `SORTBY(arr,key,0)`, a row-count mismatch and a two-column by_array (`SORTBY(A1:A3,C1:B3,1)`, H101) are #VALUE!. `SORT(NA(),0,1)` and `SORTBY(NA(),...)` are #N/A.
 - Array sort arguments: `SORT(arr,{1,2},1)` is a multi-key sort (H57), `SORT(arr,{1,2},{1,-1},TRUE)` too (H69), `SORT(arr,1,{1,-1})` is #VALUE! (H61, H65), and `SORTBY(A1:A3,C1:C3,{1;-1;1})` returns {1;0;0} (H97-H99).
-Ours: errors left to right and the two-column by_array rejected (T-1850). A #VALUE! sort_order is still returned after by_col's error (multi-cell order of c5d278a8662ef4b2 A39 needs it; a real `"a"+1` order against a later error argument is UNVERIFIED for both SORT and SORTBY, which returns it at once). Array sort_index/sort_order are not implemented (T-1901).
+Ours: errors left to right and the two-column by_array rejected (T-1850). A #VALUE! sort_order is still returned after by_col's error (multi-cell order of c5d278a8662ef4b2 A39 needs it; a real `"a"+1` order against a later error argument is UNVERIFIED for both SORT and SORTBY, which returns it at once). Array sort_index/sort_order are not implemented (T-1902).
 Status: VERIFIED (excel-graph)
-Tasks: T-1351, T-1850, T-1901
+Tasks: T-1351, T-1850, T-1902
 
 ## SORT: omitted sort_index / sort_order take their defaults
 

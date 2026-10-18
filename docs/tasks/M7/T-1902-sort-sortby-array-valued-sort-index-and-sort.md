@@ -1,5 +1,5 @@
 ---
-id: T-1901
+id: T-1902
 title: "SORT/SORTBY array-valued sort_index and sort_order (multi-key), SORTBY array order"
 milestone: M7
 lane: functions-lookup

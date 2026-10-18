@@ -24,4 +24,4 @@ T-1351 made SORT return an argument error before validating sort_index/sort_orde
 -
 
 ## Outcome
-Probe `probes/sort-error-args` (30 cells, excel-graph) shows errors are reported left to right before validation. SORT and SORTBY now do so and SORTBY rejects a two-column by_array. Array-valued sort_index/sort_order (multi-key) are filed as T-1901. arrays.md updated.
+Probe `probes/sort-error-args` (30 cells, excel-graph) shows errors are reported left to right before validation. SORT and SORTBY now do so and SORTBY rejects a two-column by_array. Array-valued sort_index/sort_order (multi-key) are filed as T-1902. arrays.md updated.
