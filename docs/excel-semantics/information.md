@@ -56,9 +56,11 @@ though the text is no error elsewhere: `ISERROR(REPT("a",32767))` is FALSE and `
 `TYPE(REPT("a",255))` is 2 and `ERROR.TYPE` of it `#N/A`; 256, 257, 1000, 8192, 16383, 16384 and 32766 characters are
 64 and 3; a 256-character literal and `REPT("a",300)&""` are 64 too. Units, not characters: 127 emoji (254 units)
 are 2, 128 (256 units) are 64. The same holds for REGEXREPLACE, REGEXEXTRACT and MID results of any such length,
-including ones over 32,767 units (probes/regexreplace-long-result-a, -c, -i). DECIMAL rejects text over the same 255
+including ones over 32,767 units (probes/regexreplace-long-result-a, -c, -i), and for a cell holding a typed
+256-character constant: `TYPE(A1)` 64, `ERROR.TYPE(A1)` 3, lifted `ERROR.TYPE(A1:A2)` 3 and `#N/A` beside a 255-character
+cell, `TYPE(A1:A2)` 64 (probes/type-long-text-refs). DECIMAL rejects text over the same 255
 units (engineering.md "DECIMAL of unreadable text"), so the three share one constant.
-Evidence: probes/type-long-text (excel-graph, 2026-10-18).
+Evidence: probes/type-long-text, probes/type-long-text-refs (excel-graph, 2026-10-18).
 Implemented in: `fn_type`, `fn_errortype` (functions/information/mod.rs), `MAX_SHORT_TEXT_UNITS` (cast.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1817
