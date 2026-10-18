@@ -3,7 +3,7 @@ id: T-1373
 title: "NPV takes array literals whole and coerces typed text and booleans; FVSCHEDULE is #VALUE! for text"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
