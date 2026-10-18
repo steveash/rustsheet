@@ -293,7 +293,19 @@ class Gen:
         if mode in ("aggregate", "aggregate_a") and self.rng.random() < 0.5:
             return self.range_ref()
         in_domain = self.domain_value(p.get("domain") or {})
-        return in_domain if in_domain is not None else self.expr(p.get("type", "any"), depth + 1)
+        return in_domain if in_domain is not None else self.value_expr(p, depth)
+
+    def value_expr(self, p: dict[str, Any], depth: int) -> str:
+        """A free expression for a `value` param. A `lift: arrays` param refuses a multi-cell range
+        (SPEC-0011 `LiftArrays`), which a LAMBDA parameter or LET variable may hold (BYROW's row),
+        so its expression sees no names (T-1776)."""
+        if p.get("lift") != "arrays":
+            return self.expr(p.get("type", "any"), depth + 1)
+        outer, self.scope = self.scope, []
+        try:
+            return self.expr(p.get("type", "any"), depth + 1)
+        finally:
+            self.scope = outer
 
     def domain_value(self, dom: dict[str, Any]) -> str | None:
         """An in-domain literal, or None to draw a free expression (a soft domain, 30% of the time)."""

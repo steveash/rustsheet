@@ -22,6 +22,7 @@ rustsheet-oracle = "rustsheet_tools.oracle.cli:main"
 rustsheet-spec2xlsx = "rustsheet_tools.spec2xlsx:main"
 rustsheet-gen = "rustsheet_tools.gen.cli:main"
 rustsheet-catalog-view = "rustsheet_tools.catalog_view:main"
+rustsheet-catalog-lift = "rustsheet_tools.catalog_lift:main"
 rustsheet-fitlab = "rustsheet_tools.fitlab.cli:main"
 
 [build-system]
