@@ -16,8 +16,9 @@ pub enum LocaleTag {
     SystemDate,
     /// `[$-F400]` or `[$-x-systime]`: the section is the system long time.
     SystemTime,
-    /// A tag Excel does not resolve (`[$-zzz]`, `[$-]`, `[$-FFFF]`) or one with no table here: it
-    /// prints nothing and changes nothing (`TEXT(0.75,"[$-FFFF]h A/P")` keeps "6 P").
+    /// A tag Excel does not resolve (`[$-zzz]`, `[$-]`, `[$-FFFF]`) or one with no table here
+    /// (TODO(T-1858)): it prints nothing and changes nothing (`TEXT(0.75,"[$-FFFF]h A/P")` keeps
+    /// "6 P").
     Silent,
 }
 
