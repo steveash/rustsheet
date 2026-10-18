@@ -3,7 +3,7 @@ id: T-1917
 title: "MATCH lifts over an array match_type"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-1866. probes/match-lookup-value-lift E14:E16 (excel-graph): `ROWS(MAT
 
 ## Out of scope
 -
+
+## Outcome
+MATCH's match_type is lifted with lookup_value through `lift_values`; a multi-cell range match_type still reads its top-left cell, and `match_static_result` spills only for an array one. probes/match-lookup-value-lift E14:E16 pass (known failures -3), no other cell changed. lookup.md updated.

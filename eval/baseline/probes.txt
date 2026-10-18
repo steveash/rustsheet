@@ -2260,9 +2260,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!K6
 F	probes/m7-argument-modes.case.json	Sheet1!K7
 F	probes/m7-argument-modes.case.json	Sheet1!K8
 F	probes/m7-argument-modes.case.json	Sheet1!K9
-F	probes/match-lookup-value-lift.case.json	Sheet1!E14
-F	probes/match-lookup-value-lift.case.json	Sheet1!E15
-F	probes/match-lookup-value-lift.case.json	Sheet1!E16
 F	probes/n-array-lift.case.json	S!D4
 F	probes/n-array-lift.case.json	S!D5
 F	probes/negative-date-sections-1900.case.json	S!A21
