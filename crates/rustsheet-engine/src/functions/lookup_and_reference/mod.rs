@@ -142,7 +142,8 @@ impl Model {
 
         // lookup_value lifts over an array or a multi-cell range, one search per element. An
         // element that is an error is the result before an invalid match_type is checked:
-        // `MATCH({#N/A;1},A1:A3,"x")` is #N/A then #VALUE! (probes/match-lookup-value-lift E17;
+        // `MATCH({#N/A;1},A1:A3,"x")` is #N/A in slot 1 (probes/match-lookup-value-lift E17; slot 2,
+        // #VALUE!, follows from the per-slot match_type check and is not probed;
         // docs/excel-semantics/lookup.md "MATCH lifts over lookup_value", T-1866).
         self.lift_values(
             vec![target],
