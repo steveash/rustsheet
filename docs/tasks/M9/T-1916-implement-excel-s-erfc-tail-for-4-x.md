@@ -47,6 +47,7 @@ ERFC(x) = fl53(fl64(E*R)), with E = Excel's EXP(-fl53(fl64(x*x))) and R = fl53(f
   GAUSS.xlsx, LOGNORM.xlsx or the probes suites. T-1186 is then done.
 - [ ] Each cell that still misses is listed with its ulp error, and the finding is in
   docs/excel-semantics/statistics.md.
+- [ ] Excel's EXP (T-1778 model V6, x87 F2XM1, with its evidence) has its own docs/excel-semantics entry.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

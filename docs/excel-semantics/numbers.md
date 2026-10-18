@@ -980,8 +980,8 @@ GEOMEAN(1,1,27), GEOMEAN(2,4.5), GEOMEAN(3,27) are 3, 3, 3, 3, 9, and n copies o
 that r already matches and fixes 37. Excel's GEOMEAN is faithful (within 1 ulp of the exact root
 of P) and usually, but not always, correctly rounded: GEOMEAN(1,3) is 1.7320508075688774 (0.55 ulp
 from sqrt(3); the correctly rounded root is …772) and GEOMEAN(1,2,"5",TRUE) is 0.81 ulp off, both
-exactly r. Excel's own LN and EXP equal glibc's `log` and `exp` bit for bit on every probed P, and
-`EXP(LN(P)/n)` in a cell is r, so the remaining misses are not a libm difference.
+exactly r. Excel's own LN and EXP equal glibc's `log` and `exp` bit for bit on every probed GEOMEAN P
+(not in general: T-1778 finds Excel's EXP is its own routine, model V6), and `EXP(LN(P)/n)` in a cell is r, so the remaining misses are not a libm difference.
 Remaining misses (r and c both wrong, one ulp): the 20-value mixed set (geomean-in-range-many A2,
 0.61 ulp from the exact root) and 25 of the 48 sets of probes/geomean-root-refinement: 22 of rows
 19-48 (picked because r and a Newton-corrected root differ there), A17 (GEOMEAN(7,7,1)), and A7 and
@@ -1037,7 +1037,7 @@ n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geo
 (T-1123), probes/geomean-same-product (T-0288), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
 probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 and 2026-10-08.
 Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in the 159 cells
-scored above, plus 8 in geomean-same-product).
+scored above, plus 8 in geomean-same-product and subtotal-reference-operands-d H28).
 Implemented in: functions/statistical/geomean.rs
 Tasks: T-1113, T-1108, T-1123, T-0288
 
