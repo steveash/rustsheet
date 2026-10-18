@@ -828,6 +828,8 @@ Also: an error pad_with is an ordinary pad value: it fills the padded cells (WRA
 `WRAPCOLS(B5:H5,100,NA())` is 7x1, unpadded. wrap_count is `#NUM!` below 1 for WRAPROWS too (gen-m9/50f10c4062fb2e98 A21;
 the full set is under "WRAPROWS and WRAPCOLS" below).
 Evidence: probes/wrapcols-wraprows-pad-with (excel-graph, 2026-10-18, T-1840).
+Unprobed: an omitted vector (`WRAPCOLS(,2)`) and an empty cell reached indirectly (`WRAPCOLS(IF(TRUE,Z1),2)`,
+`WRAPCOLS(INDEX(Z1:Z2,1),2)`); the engine treats the omitted vector like an empty cell (`#VALUE!`).
 Ours: all of the above since T-1786, T-1348 and T-1840 (wrap_count is read before truncation, so 0.5 is `#NUM!`).
 Status: VERIFIED (excel-graph).
 Tasks: T-1348, T-1840
