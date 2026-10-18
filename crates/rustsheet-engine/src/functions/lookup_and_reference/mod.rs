@@ -141,7 +141,7 @@ impl Model {
         let values = self.as_vector(match_range, cell);
 
         // lookup_value lifts over an array or a multi-cell range, one search per element. An
-        // element that is an error is the result before match_type and lookup_array are checked:
+        // element that is an error is the result before an invalid match_type is checked:
         // `MATCH({#N/A;1},A1:A3,"x")` is #N/A then #VALUE! (probes/match-lookup-value-lift E17;
         // docs/excel-semantics/lookup.md "MATCH lifts over lookup_value", T-1866).
         self.lift_values(
