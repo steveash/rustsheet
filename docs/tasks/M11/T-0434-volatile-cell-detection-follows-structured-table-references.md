@@ -3,7 +3,7 @@ id: T-0434
 title: "Volatile-cell detection follows structured table references"
 milestone: M11
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,9 +27,18 @@ While here, note in the Outcome whether the engine's J16:J23 statuses for today 
 engine counts the six invoices as CURRENT, although their due dates are in 2023); if not, file an engine task.
 
 ## Acceptance criteria
-- [ ] A unit test in volatile.rs: a cell reading `Table[Col]` whose column cells call TODAY() is volatile; `Table[[#This Row],[Col]]` too.
-- [ ] corpus-bench/118-8's `F` line leaves eval/baseline/corpus-bench.txt (its 6 cells become skipped_volatile), with no new `F` lines in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] A unit test in volatile.rs: a cell reading `Table[Col]` whose column cells call TODAY() is volatile; `Table[[#This Row],[Col]]` too.
+- [x] corpus-bench/118-8's `F` line leaves eval/baseline/corpus-bench.txt (its 6 cells become skipped_volatile), with no new `F` lines in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Following INDIRECT/OFFSET (documented as not followed).
+
+## Outcome
+The snapshot now reads table parts (`TableDef`: name, sheet, ref, header/totals rows, columns) and
+`volatile.rs` adds `Table[Col]` / `Table[[#This Row],[Col]]` as precedents over the table's data
+rows (a `[A]:[B]` span or an unmatched column takes the whole body: over-approximation only).
+Eval delta: corpus-bench 26 -> 25 known failures (118-8 `F` line gone; its C count 294 -> 282 and
+52541's 15 -> 10 cells, now skipped as volatile); no new `F` lines in any suite.
+Not assessed: whether the engine's J16:J23 statuses for today are plausible (the cells are now
+skipped, so the question no longer affects scoring); no engine task filed.
