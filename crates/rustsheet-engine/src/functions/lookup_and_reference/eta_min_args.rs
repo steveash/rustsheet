@@ -1,6 +1,7 @@
 //! Minimum argument counts of the functions that GROUPBY and PIVOTBY can be given by name, for
-//! the names whose minimum is not 1. Generated from `eval/catalog/excel-functions.tsv` (column 3);
-//! the `table_matches_catalog` test in `group_functions.rs` keeps the two in sync.
+//! the names whose minimum is not 1. Hand-maintained copy of `eval/catalog/excel-functions.tsv` (column 3):
+//! the `table_matches_catalog` test in `group_functions.rs` fails on any drift (the engine crate cannot
+//! read the catalog at run time, so the test reads it on purpose).
 
 /// `(name, minimum argument count)`, sorted by name, for every catalog function whose minimum is not 1.
 pub(super) const NON_UNARY_MIN_ARGS: &[(&str, u8)] = &[
