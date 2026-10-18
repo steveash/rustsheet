@@ -49,7 +49,8 @@ pub(crate) fn excel_exp(a: f64) -> f64 {
     let (a_significand, a_exponent) = significand_and_exponent(a);
     let (t, shift) = round_to_bits(u128::from(a_significand) * LOG2_E_64, 64, false);
     let t_exponent = a_exponent - 63 + shift;
-    // Step 2: |t| <= T_LIMIT < 2^11 and |t| >= 2^-66, so `drop` is in 53..=130.
+    // Step 2: |t| <= T_LIMIT < 2^11 and |t| >= 2^-66, so `drop` is in 53..=130. The guards above
+    // make every `try_from` fallback below unreachable: t < 2^64, n <= 2^11 and |f| < 2^64.
     let Ok(drop) = u32::try_from(-t_exponent) else {
         return f64::NAN;
     };

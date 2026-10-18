@@ -115,6 +115,7 @@ const TAIL_D: [f64; 10] = [
 
 /// The polynomial with coefficients `c` (highest degree first) at `x`, by Horner's rule with every
 /// product and sum stored to a double through extended precision.
+/// Not `functions::util::poly`: that rounds each step once, in plain doubles, which Excel does not.
 fn horner(c: &[f64], x: f64) -> f64 {
     c.iter()
         .skip(1)
