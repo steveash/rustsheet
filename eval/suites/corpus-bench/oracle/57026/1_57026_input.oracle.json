@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "I2": {
+    "t": "s",
+    "v": "1"
+   },
+   "I3": {
+    "t": "s",
+    "v": "12"
+   },
+   "I4": {
+    "t": "s",
+    "v": "123"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "241af75c62f569c7e2d3d4c9ef0c2883bd3929cef438712938934e9d8256c347",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:49:15+00:00",
+  "version": null
+ }
+}

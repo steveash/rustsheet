@@ -1,0 +1,46 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "C2": {
+    "t": "s",
+    "v": "& Soda"
+   },
+   "C3": {
+    "t": "s",
+    "v": "10 Minute"
+   },
+   "C4": {
+    "t": "s",
+    "v": "James Bond 007"
+   },
+   "C5": {
+    "t": "s",
+    "v": "Paco Rabanne"
+   },
+   "D2": {
+    "t": "n",
+    "v": 0.0
+   },
+   "D3": {
+    "t": "n",
+    "v": 0.0
+   },
+   "D4": {
+    "t": "n",
+    "v": 0.0
+   },
+   "D5": {
+    "t": "n",
+    "v": 0.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "dd279ac5e19cb6770098a9f090ded32be9ce98170397813ff28e2770d943834f",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:32:52+00:00",
+  "version": null
+ }
+}

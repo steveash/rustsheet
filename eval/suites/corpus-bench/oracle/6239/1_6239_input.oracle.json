@@ -1,0 +1,102 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B10": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B11": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B12": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B13": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B14": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B15": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B16": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B17": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B18": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B19": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B2": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B20": {
+    "t": "s",
+    "v": "Not Eligible"
+   },
+   "B21": {
+    "t": "s",
+    "v": "Not Eligible"
+   },
+   "B22": {
+    "t": "s",
+    "v": "Not Eligible"
+   },
+   "B23": {
+    "t": "s",
+    "v": "Not Eligible"
+   },
+   "B3": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B4": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B5": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B6": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B7": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B8": {
+    "t": "s",
+    "v": "Eligible"
+   },
+   "B9": {
+    "t": "s",
+    "v": "Eligible"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "7fab2bb4d0c815b4b248967fd3e3de969553c7f0c67bea53926294f2cf95b4a5",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:55:32+00:00",
+  "version": null
+ }
+}

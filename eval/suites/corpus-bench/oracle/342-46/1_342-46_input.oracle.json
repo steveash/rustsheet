@@ -1,0 +1,16 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "BRE": {},
+  "BRP": {},
+  "BRV": {},
+  "Imported Data": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "b9a46fca8da1698e38db29b7593d087207f8e321b87cee7e38a855556368e651",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:30:45+00:00",
+  "version": null
+ }
+}

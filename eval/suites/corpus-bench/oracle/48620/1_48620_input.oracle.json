@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "E2": {
+    "t": "s",
+    "v": "Yellow"
+   },
+   "E3": {
+    "t": "s",
+    "v": "Black"
+   },
+   "E4": {
+    "t": "s",
+    "v": "Yellow1"
+   },
+   "E5": {
+    "t": "s",
+    "v": "Green"
+   },
+   "E6": {
+    "t": "s",
+    "v": "Yellow"
+   },
+   "E7": {
+    "t": "s",
+    "v": "Green"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "5e54afbc2d201391535b444e69b262e28070e1a4f587d896cdd34c0a6b0dd908",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:37:39+00:00",
+  "version": null
+ }
+}

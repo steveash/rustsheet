@@ -1,0 +1,50 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "K10": {
+    "t": "s",
+    "v": ""
+   },
+   "K11": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K12": {
+    "t": "s",
+    "v": ""
+   },
+   "K4": {
+    "t": "n",
+    "v": 0.224143518518519
+   },
+   "K5": {
+    "t": "s",
+    "v": ""
+   },
+   "K6": {
+    "t": "s",
+    "v": ""
+   },
+   "K7": {
+    "t": "n",
+    "v": 0.331782407407408
+   },
+   "K8": {
+    "t": "s",
+    "v": ""
+   },
+   "K9": {
+    "t": "s",
+    "v": ""
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2e2afb7d3b031127e061b7c4208a9efb4b5afb51b5b10c8d2c0ded427c3eac7c",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:37:56+00:00",
+  "version": null
+ }
+}

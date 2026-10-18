@@ -191,7 +191,9 @@ def formula_parts(parts: dict[str, bytes], workbook: str) -> list[str]:
                 raise PackageError(f"{rels_part(workbook)} points at {name}, which is not in the package")
             names.append(name)
     prefix = posixpath.join(base, "worksheets/")
-    names.extend(n for n in parts if n.startswith(prefix))
+    # A zero-byte `/`-named entry is a zip directory entry, not an OPC part, and holds no formulas;
+    # one with data is still scanned (and refused if it is not XML).
+    names.extend(n for n in parts if n.startswith(prefix) and not (n.endswith("/") and not parts[n]))
     return list(dict.fromkeys(names))
 
 

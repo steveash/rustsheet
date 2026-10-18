@@ -1,0 +1,19 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "DATA": {},
+  "LOOK UP": {
+   "C6": {
+    "t": "b",
+    "v": false
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "17db71ec364252b9f1e3ef5483cce76ed041f71ba6125966bdf3a31c5ec4801c",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T10:43:08+00:00",
+  "version": null
+ }
+}
