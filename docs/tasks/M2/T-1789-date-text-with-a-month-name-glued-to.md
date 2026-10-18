@@ -3,7 +3,7 @@ id: T-1789
 title: "Date text with a month name glued to digits parses (July1, January0, 1JUN2021)"
 milestone: M2
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -30,9 +30,17 @@ parses glued on either side, and a month glued to a day that a year follows (`"J
 stays `#VALUE!`.
 
 ## Acceptance criteria
-- [ ] The `F` lines of corpus-bench/55392, CF_18814 and 1726 leave eval/baseline/corpus-bench.txt (1726 keeps its line only for `July-KPIs!A1`, T-1089), with no new ones.
-- [ ] The probe case of T-1788 passes; unit tests in `date_text` cover each glued form.
-- [ ] dates.md entry updated with "Implemented in"; `make check` green; reviewers approve.
+- [x] The `F` lines of corpus-bench/55392, CF_18814 and 1726 leave eval/baseline/corpus-bench.txt (1726 keeps its line only for `July-KPIs!A1`, T-1089), with no new ones.
+- [x] The probe case of T-1788 passes; unit tests in `date_text` cover each glued form.
+- [x] dates.md entry updated with "Implemented in"; `make check` green; reviewers approve.
 
 ## Out of scope
 - Other date-text shapes not evidenced by T-1788.
+
+## Outcome
+`parse_date` splits a whitespace word whose month name is glued to digits (`split_glued_month`: optional
+digits, a month name, optional digits) into words and reads it with the existing spaced grammar; a word whose
+month is glued to a following number must be the last word (`"Jun1 2021"`, `"Jul1 , 2026"` are `#VALUE!`).
+Eval: probes/date-text-glued-month 30 -> 178/178 (148 fixed); corpus-bench 55392 16118 -> 16644/16644,
+CF_18814 27 -> 91/91, 1726 66 -> 99/100 (only `July-KPIs!A1`, T-1089), so 623 corpus cells fixed and
+corpus-bench known-failure cases 19 -> 17; 0 regressions.

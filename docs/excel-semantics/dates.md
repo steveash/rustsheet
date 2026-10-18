@@ -361,7 +361,12 @@ are 0 wherever DATEVALUE parses):
   `"1JUN 2021"`, `"1 JUN2021"`, `"1JUN2021"` (rows 13-16, 18-19, 24).
 - `#VALUE!`: a month glued to a day followed by a year, whatever joins them (`"July1,2026"`,
   `"July12026"`, `"Jun1 2021"`: rows 10, 11, 17), and a name that is no month (`"Ju1"`, row 21).
-Status: VERIFIED (web). Not implemented (T-1789): the engine gives `#VALUE!` for all of them.
+Unprobed, read by the same rule: a glued word followed by more words is `#VALUE!` when its month is glued to a
+number (`"Jul1 , 2026"`, by rows 10 and 17), and a separated word with a
+glued part (`"1-Jul2026"`) is `#VALUE!` (no glued part is split inside a separated word).
+Status: VERIFIED (web)
+Implemented in: `split_glued_month` in `crates/rustsheet-engine/src/formatter/date_text.rs` (used by `parse_date`)
+Tasks: T-1788, T-1789
 
 ## WORKDAY holidays take the whole range
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
