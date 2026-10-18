@@ -520,3 +520,35 @@ Open routes for [0.5, 4]:
 3. A side channel exposing N or D separately.
 4. Engine work (T-1780) can already ship ERF for x <= 0.5, the ERFC tail, and EXP V6. [0.5, 4] would use the best
    smooth model until it is cracked.
+
+### Research update 9 (2026-10-18): the [0.5, 4] kernel is a (9,10) Remez rational
+
+Route 1 (the generating construction) worked, and it overturns the (7,7) picture in update 8.
+
+- **The tail's generator.** It is a relative-error minimax (8,9) rational of erfcx on [4, 26.54], with D0 = 1, then
+  multiplied by 128. A Remez reconstruction lands within 2-14 ulps of Excel's tail doubles; the residual looks like
+  precision noise in Excel's own generator.
+- **[0.5, 4] structure.** A relative-error minimax (9,10) of erfcx on exactly [0.5, 4] (error about 1.4E-23), with
+  D0 = 1. N and D are Horner polynomials in x with every operation stored, as in the tail.
+- **Evidence.** Two independent spectral methods agree.
+  - Phase-free line-spectrum overlap with exact stored-Horner simulations:
+    - (9,10) scores 0.68. Calibration on the tail: exact coefficients 0.95, a generator 1E-12 off 0.61.
+    - Every other degree, Cody's (8,8), and the scale 1.020495 are at chance (0.01).
+    - Moving either endpoint by 0.01 drops the score to below 0.1.
+  - Per-stage matched filter over a scale scan: the (9,10) stages are coherent at scale 1 (combined z 23.5). Cody
+    (8,8) gives 6.2 and LS (7,7) 4.1.
+  - A brief rival Cody-(8,8) reading at scale 1.8313 turned out to be an alias, and its own author withdrew it.
+- **Superseded.** These came from forcing a least-squares fit into (7,7): the tiny top coefficient, the invisible top
+  stages, and lambda = 1.020495.
+- **Status.** Structure known; exact doubles open.
+  - The 90-digit generator (`docs/research/t1778/round9/gen910.txt` on the research branch) is about 1E-12 from
+    Excel's doubles and matches 31% exactly.
+  - Every stage from the first sum down is visible (weights 0.02-1.05), so the tail's top-down peeling applies.
+  - Two coefficients are pinned so far, each modulo 8,192 ulps (N top, D top). Their aliases are tied by
+    Delta(d10) = (sqrt(pi)/2)*Delta(c9).
+- **New data.** 65,536-double runs ending at 4, below 2 and below 1, plus a control below 3 (`kmyst-erfc-r10*`),
+  for model-free stage-mantissa readout.
+
+| Piece | Status |
+|---|---|
+| ERFC/ERF, 0.5 < x <= 4 | Structure known: (9,10) relative minimax of erfcx on [0.5, 4], D0 = 1, all ops stored. Exact coefficients being peeled. |
