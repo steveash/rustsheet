@@ -3,7 +3,7 @@ id: T-1858
 title: "Probe regional LCID variants and add date-name tables for more locales"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: sonnet
