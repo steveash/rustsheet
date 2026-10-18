@@ -145,5 +145,10 @@
   and functions/mod.rs 2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm)
   (`check_file_size.py --update`). The same update also tightened a stale lock that is not this PR's
   change: functions/financial/financial_bonds.rs 1212 → 1178, its size on main.
+  T-1842: duplicated lines 4510 → 4328 (YIELD reads through `bond_args` and the four ODD* functions
+  through one `odd_args`, instead of their repeated `get_number_no_bools` argument blocks)
+  (`check_duplication.py --update`), and functions/financial/financial_bonds.rs 1178 → 1083 lines and
+  expressions/parser/static_analysis.rs 1209 → 1199 (the 10 fallback lines of the five functions now in
+  the lifting table) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

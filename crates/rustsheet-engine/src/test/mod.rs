@@ -64,6 +64,7 @@ mod test_fn_sumifs;
 mod test_fn_time;
 mod test_fn_type_array;
 mod test_fn_weekend_lift;
+mod test_fn_yield_odd_lift;
 mod test_forecast;
 mod test_frozen_rows_columns;
 mod test_function_iterator;
