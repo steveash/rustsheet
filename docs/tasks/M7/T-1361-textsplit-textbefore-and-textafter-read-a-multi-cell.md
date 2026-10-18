@@ -6,7 +6,7 @@ lane: functions-text
 status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -49,3 +49,12 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Handoff
+Escalated by a sonnet run without implementing (work-loop step 5b: unclear evidence). What I found, not tried in code:
+- The rule for blank, number and boolean delimiter cells is genuinely unknown and the listed cells constrain it in conflicting ways
+  (gen-m9/0c7fc447bc2eebfd A6 and 4df1b22d3ed63f58 A14 contradict "blank = empty delimiter"; gen-m7/851eb2099ae3f805 A25 shows a
+  range holding blanks is `#VALUE!` while gen-m9 95efb37a9874f82e A25 gives `#N/A`). The first step is the excel-probe case in the
+  acceptance criteria (needs the oracle), then infer one rule that fits every cell listed in Context.
+- Next: run the probe, write the rule into docs/excel-semantics/text.md, fix the shared delimiter reader once
+  (`fn_textbefore`/`fn_textafter` in functions/text/common.rs, `fn_textsplit` in functions/text/textsplit.rs), check T-1272 first.
