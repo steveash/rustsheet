@@ -8,9 +8,9 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::case::split_qualified;
-use crate::cellref::Addr;
+use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
-use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot};
+use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot, TableDef};
 
 /// Functions that read the wall clock. Scorable when the workbook pins the clock (see
 /// [`pinned_clock_serial`]).
@@ -40,6 +40,11 @@ static WORD: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"[A-Za-z_\\][A-Za-z0-9_.\\]*").unwrap_or_else(|e| unreachable!("{e}"))
 });
 
+/// `Name[` — the start of a structured reference; whether `Name` is a table is decided by lookup.
+static TABLE_REF: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"([A-Za-z_\\][A-Za-z0-9_.\\]*)\[").unwrap_or_else(|e| unreachable!("{e}"))
+});
+
 /// A formula cell: (sheet name, address, formula text without `=`).
 pub type FormulaCell = (String, Addr, String);
 
@@ -66,9 +71,16 @@ pub fn formula_cells(sheets: &[SheetSnapshot]) -> Vec<FormulaCell> {
 pub fn scorable_cells<'a>(
     sheets: &'a [SheetSnapshot],
     names: &[DefinedName],
+    tables: &[TableDef],
     clock_pinned: bool,
 ) -> (Vec<(&'a str, Addr, &'a CellSnapshot)>, usize) {
-    let volatile = volatile_cells(&formula_cells(sheets), names, clock_pinned, &HashSet::new());
+    let volatile = volatile_cells(
+        &formula_cells(sheets),
+        names,
+        tables,
+        clock_pinned,
+        &HashSet::new(),
+    );
     let mut cells = Vec::new();
     let mut skipped = 0;
     for sheet in sheets {
@@ -196,6 +208,77 @@ fn precedents(sheet: &str, formula: &str) -> Vec<(String, Addr, Addr)> {
     out
 }
 
+/// Static precedents of a formula's structured references (`Table[Col]`,
+/// `Table[[#This Row],[Col]]`) as `(lowercased sheet, top-left, bottom-right)` over the table's
+/// data rows. Columns are matched by name; a reference naming no column, or a `[A]:[B]` column
+/// span, takes the whole data body, which only ever over-approximates the precedents (T-0434).
+fn table_precedents(formula: &str, tables: &[TableDef]) -> Vec<(String, Addr, Addr)> {
+    let text = STRING_LITERAL.replace_all(formula, "\"\"");
+    let mut out = Vec::new();
+    for caps in TABLE_REF.captures_iter(&text) {
+        let (Some(whole), Some(name)) = (caps.get(0), caps.get(1)) else {
+            continue;
+        };
+        let Some(table) = tables
+            .iter()
+            .find(|t| t.name.eq_ignore_ascii_case(name.as_str()))
+        else {
+            continue;
+        };
+        let Some((top_left, bottom_right)) = parse_range(&table.range) else {
+            continue;
+        };
+        let (first, last) = (
+            top_left.row.saturating_add(table.header_rows),
+            bottom_right.row.saturating_sub(table.totals_rows),
+        );
+        let mut depth = 1_usize;
+        let rest = &text[whole.end()..];
+        let end = rest
+            .char_indices()
+            .find(|&(_, c)| {
+                match c {
+                    '[' => depth += 1,
+                    ']' => depth -= 1,
+                    _ => {}
+                }
+                depth == 0
+            })
+            .map_or(rest.len(), |(i, _)| i);
+        let inner = rest[..end].to_lowercase();
+        let named: Vec<u32> = if inner.contains("]:[") {
+            Vec::new()
+        } else {
+            (0..)
+                .zip(&table.columns)
+                .filter(|(_, col)| {
+                    let col = col.to_lowercase();
+                    inner.trim() == col || inner.contains(&format!("[{col}]"))
+                })
+                .map(|(i, _)| top_left.col.saturating_add(i))
+                .collect()
+        };
+        let (left, right) = match (named.iter().min(), named.iter().max()) {
+            (Some(&lo), Some(&hi)) => (lo, hi),
+            _ => (top_left.col, bottom_right.col),
+        };
+        let target = table.sheet.to_lowercase();
+        out.push((
+            target,
+            Addr {
+                row: first,
+                col: left,
+            },
+            Addr {
+                row: last.max(first),
+                col: right,
+            },
+        ));
+        // Named columns need not be adjacent; the min..max span over-approximates them.
+    }
+    out
+}
+
 fn unquote(name: &str) -> String {
     name.replace("''", "'").to_lowercase()
 }
@@ -211,6 +294,7 @@ fn unquote(name: &str) -> String {
 pub fn volatile_cells<S: std::hash::BuildHasher>(
     cells: &[FormulaCell],
     names: &[DefinedName],
+    tables: &[TableDef],
     clock_pinned: bool,
     invariant: &HashSet<(String, Addr), S>,
 ) -> HashSet<(String, Addr)> {
@@ -221,7 +305,8 @@ pub fn volatile_cells<S: std::hash::BuildHasher>(
     let mut single: HashMap<(String, Addr), Vec<usize>> = HashMap::new();
     let mut ranges: Vec<(String, Addr, Addr, usize)> = Vec::new();
     for (idx, ((sheet, _, _), formula)) in cells.iter().zip(&expanded).enumerate() {
-        for (target, lo, hi) in precedents(sheet, formula) {
+        let structured = table_precedents(formula, tables);
+        for (target, lo, hi) in precedents(sheet, formula).into_iter().chain(structured) {
             if lo == hi {
                 single.entry((target, lo)).or_default().push(idx);
             } else {
@@ -274,7 +359,7 @@ pub(crate) fn spec_volatile_cells(
     listed: &[String],
     formulas: &[FormulaCell],
 ) -> Result<HashSet<(String, Addr)>, String> {
-    let volatile = volatile_cells(formulas, &[], false, &HashSet::new());
+    let volatile = volatile_cells(formulas, &[], &[], false, &HashSet::new());
     if listed.is_empty() {
         return Ok(volatile);
     }
@@ -287,7 +372,7 @@ pub(crate) fn spec_volatile_cells(
         }
         invariant.insert((sheet.to_lowercase(), addr));
     }
-    Ok(volatile_cells(formulas, &[], false, &invariant))
+    Ok(volatile_cells(formulas, &[], &[], false, &invariant))
 }
 
 #[cfg(test)]
@@ -303,7 +388,7 @@ mod tests {
     }
 
     fn tainted(cells: &[FormulaCell], pinned: bool) -> Vec<String> {
-        let set = volatile_cells(cells, &[], pinned, &HashSet::new());
+        let set = volatile_cells(cells, &[], &[], pinned, &HashSet::new());
         let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
         keys.sort();
         keys
@@ -371,7 +456,7 @@ mod tests {
     }
 
     fn tainted_with(cells: &[FormulaCell], names: &[DefinedName]) -> Vec<String> {
-        let set = volatile_cells(cells, names, false, &HashSet::new());
+        let set = volatile_cells(cells, names, &[], false, &HashSet::new());
         let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
         keys.sort();
         keys
@@ -417,6 +502,31 @@ mod tests {
     }
 
     #[test]
+    fn structured_references_reach_volatile_table_columns() {
+        let table = TableDef {
+            name: "T_INV".into(),
+            sheet: "S".into(),
+            range: "J15:K18".into(),
+            header_rows: 1,
+            totals_rows: 0,
+            columns: vec!["Status".into(), "Age".into()],
+        };
+        let cells = vec![
+            cell("S", "J16", "IF(TODAY()>5,1,0)"),
+            cell("S", "K16", "1"),
+            cell("S", "A1", "COUNTIFS(t_inv[Status],1)"),
+            cell("S", "A2", "INDEX(T_INV[[#This Row],[Status]],1)"),
+            cell("S", "A3", "SUM(T_INV[Age])"),
+            cell("S", "A4", "COUNT(T_INV)"),
+            cell("S", "A5", "COUNT(Other[Status])+\"T_INV[Status]\""),
+        ];
+        let set = volatile_cells(&cells, &[], &[table], false, &HashSet::new());
+        let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
+        keys.sort();
+        assert_eq!(keys, ["S!A1", "S!A2", "S!J16"]);
+    }
+
+    #[test]
     fn invariant_cells_are_scored_and_stop_the_taint() {
         let cells = vec![
             cell("S", "A1", "RANDBETWEEN(5,5)"),
@@ -437,7 +547,7 @@ mod tests {
                 )
             })
             .collect();
-        let set = volatile_cells(&cells, &[], false, &invariant);
+        let set = volatile_cells(&cells, &[], &[], false, &invariant);
         let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
         keys.sort();
         assert_eq!(

@@ -431,6 +431,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     let (scorable, skipped_volatile) = scorable_cells(
         &snapshot.sheets,
         &snapshot.defined_names,
+        &snapshot.tables,
         pinned_clock_serial(&snapshot.sheets).is_some(),
     );
     let expectations = scorable
