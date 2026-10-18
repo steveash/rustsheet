@@ -3,7 +3,7 @@ id: T-1807
 title: "Probe lifted weekend with lifted date, TAKE/DROP of a range and mismatched shapes in the date functions"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ SPEC-0011 lifts scalar arguments through one driver. These cases have no oracle 
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/date-lift-open (35 formulas x ROWS/COLUMNS/INDEX cells) with excel-graph oracle values and a dates.md entry
+covering each case in the goal. 105 of 175 cells pass; the 70 failures are all `#N/IMPL!` from the WORKDAY/NETWORKDAYS lift
+already tracked by T-1236 (no new task needed). No regressions.
