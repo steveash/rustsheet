@@ -63,7 +63,7 @@ fin-remaining-later-argument-ranges H11-H34, all `#VALUE!`).
   (fin-amor-period-bound B17, period 0.5, Excel 485, ours 0; -b B2, a cost of 1E308, Excel 1.94700443465919E302,
   ours 0), listed in T-1895. No scalar value changed where main finished within 2^20 AMORDEGRC periods; past that the
   closed form replaces main's walk (equal on every case tried).
-- Ratchets: duplicated lines 4152 → 4066 (the shared kernel; the lift tests' `check_cells` and `round_trip_value` now
-  in test/util.rs, also used by test_fn_cumulative_lift.rs), static_analysis.rs 1170 → 1166 (decision 0010).
+- Ratchets: duplicated lines 3989 → 3903 (the shared kernel; the lift tests' `check_cells` and `round_trip_value` now
+  in test/util.rs, also used by test_fn_cumulative_lift.rs), static_analysis.rs 1146 → 1142 (decision 0010).
 - Follow-ups: T-1895 (AMORDEGRC below period 1 and at a cost of 1E308).
 

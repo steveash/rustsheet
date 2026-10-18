@@ -160,10 +160,13 @@
   two copies of the argument reading and the period loop) (`check_duplication.py --update`), and
   expressions/parser/static_analysis.rs 1181 → 1170 lines (the lock was 7 lines loose on main) (the 4 fallback lines of CUMIPMT and CUMPRINC now in
   the lifting table) (`check_file_size.py --update`).
-  T-1841: duplicated lines 4152 → 4066 (AMORLINC and AMORDEGRC share one kernel, `amortization_of`, instead of two
+  T-1872: duplicated lines 4152 → 3989 (CHISQ.*, GAMMA.DIST, GAMMA.INV and POISSON.DIST become kernels over
+  borrowed values; CHISQ.INV and CHISQ.INV.RT share one kernel, and the four chi-squared kernels one df check)
+  (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1170 → 1146 lines (the 24
+  fallback lines of the twelve incomplete-gamma functions now in the lifting table) (`check_file_size.py --update`).
+  T-1841: duplicated lines 3989 → 3903 (AMORLINC and AMORDEGRC share one kernel, `amortization_of`, instead of two
   copies of the argument reading and checks, and the lift tests share `check_cells` and `round_trip_value` in
-  test/util.rs) (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1170 → 1166 lines (the
-  lock was tight on main) (the 4 fallback lines of AMORDEGRC and AMORLINC now in the lifting table)
-  (`check_file_size.py --update`).
+  test/util.rs) (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1146 → 1142 lines (the
+  4 fallback lines of AMORDEGRC and AMORLINC now in the lifting table) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

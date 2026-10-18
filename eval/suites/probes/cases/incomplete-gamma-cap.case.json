@@ -1,0 +1,59 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1872: the incomplete-gamma functions (GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, CHISQ.DIST, CHISQ.DIST.RT, CHIDIST, CHISQ.INV, CHISQ.INV.RT, CHIINV, POISSON, POISSON.DIST) where a per-call cap on statrs' series and continued fraction changes the result (E: a huge shape with x near it, where statrs never finished (E1-E5), panicked (E6, E7) or needs more than 2^19 terms (E8-E15); E16, E17, E20: the largest chi-squared shape, kept; C1 1E300, C2 1.0000001E300, C3 1E-300), and element values of a lifted call (L: text, boolean and error elements, argument error order, broadcast shape, text cumulative flags, a one-cell range).",
+  "tags": [
+    "M9",
+    "statistical",
+    "argument-modes",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "C1": 1e+300,
+        "C2": 1.0000001e+300,
+        "C3": 1e-300,
+        "E1": "=GAMMA.DIST(1E16,1E16,1,TRUE)",
+        "E2": "=POISSON(1E16,1E16,TRUE)",
+        "E3": "=GAMMA.DIST(C1,C1,1,TRUE)",
+        "E4": "=GAMMA.DIST(C2,C1,1,TRUE)",
+        "E5": "=GAMMA.INV(0.5,1E300,1E-300)",
+        "E6": "=GAMMA.DIST(C1,1,1E-10,TRUE)",
+        "E7": "=GAMMA.DIST(C3,2,1E100,TRUE)",
+        "E8": "=GAMMA.DIST(1E10,1E10,1,TRUE)",
+        "E9": "=GAMMA.DIST(1E12,1E12,1,TRUE)",
+        "E10": "=POISSON(1E10,1E10,TRUE)",
+        "E11": "=POISSON(1E12,1E12,TRUE)",
+        "E12": "=POISSON.DIST(337672413111,337672000000,TRUE)",
+        "E13": "=GAMMA.DIST(72939615800,98419000000,0.741118,TRUE)",
+        "E14": "=CHISQ.INV(0.26774,1312890000)",
+        "E15": "=CHISQ.INV(5.6221E-26,4715100000)",
+        "E16": "=CHISQ.DIST(1E10,1E10,TRUE)",
+        "E17": "=GAMMA.DIST(5E9,5E9,1,TRUE)",
+        "E18": "=GAMMA.DIST(C1,1,1E-10,FALSE)",
+        "E19": "=GAMMA.INV(0.5,1E9,1)",
+        "E20": "=CHISQ.DIST.RT(1E10,1E10)",
+        "L1": "=INDEX(GAMMA.DIST({1.5;\"x\"},2,3,TRUE),2)",
+        "L2": "=ROUND(INDEX(GAMMA.DIST({1.5;\"1.5\"},2,3,TRUE),2),12)",
+        "L3": "=ROUND(INDEX(CHISQ.DIST({1.5;TRUE},5,TRUE),2),12)",
+        "L4": "=INDEX(CHISQ.DIST(1.5,{5;0.5},TRUE),2)",
+        "L5": "=INDEX(POISSON({5;-1},1,TRUE),2)",
+        "L6": "=INDEX(CHISQ.INV.RT({0.4;#N/A},5),2)",
+        "L7": "=GAMMA.INV(2,NA(),1)",
+        "L8": "=CHISQ.INV(2,NA())",
+        "L9": "=POISSON(-1,NA(),TRUE)",
+        "L10": "=ROWS(GAMMA.INV({0.1;0.2;0.3},{2,3},1))",
+        "L11": "=COLUMNS(GAMMA.INV({0.1;0.2;0.3},{2,3},1))",
+        "L12": "=ROUND(INDEX(GAMMA.DIST(1.5,2,3,{\"TRUE\";\"FALSE\"}),2),12)",
+        "L13": "=INDEX(GAMMA.DIST(1.5,2,3,{TRUE;\"x\"}),2)",
+        "L14": "=ROUND(INDEX(POISSON({5.9;5},1,{FALSE;FALSE}),1),12)",
+        "L15": "=INDEX(CHIDIST({1.5;-1},5),2)",
+        "L16": "=INDEX(GAMMAINV({0.4;1},2,3),2)",
+        "L17": "=ROUND(INDEX(CHIINV({0.4;1},5),2),12)",
+        "G1": 5,
+        "L18": "=ROUND(CHISQ.DIST.RT(1.5,G1:G1),12)"
+      }
+    }
+  ]
+}
