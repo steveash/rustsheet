@@ -3,7 +3,7 @@ id: T-1879
 title: "Probe glued month-name date text outside DATEVALUE: date+time text, criteria, typed-input formats and unprobed shapes"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
