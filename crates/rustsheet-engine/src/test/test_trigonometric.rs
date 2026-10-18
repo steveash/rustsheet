@@ -138,10 +138,15 @@ fn asin_rounds_like_excel() {
     model._set("A4", "=ASIN(1)");
     model._set("A5", "=ASIN(-1)");
     model._set("A6", "=ASIN(1.0000001)");
-    // T-1605: a tiny argument is returned as is (sweep B220, B221, B210).
     model._set("A7", "=ASIN(1E-13)");
     model._set("A8", "=ASIN(-1E-13)");
     model._set("A9", "=ASIN(1E-8)");
+    // T-1797: ASIN is not odd (sweep B211, B256, B109, B91).
+    model._set("A10", "=ASIN(-1E-8)");
+    model._set("A11", "=ASIN(-0.999)");
+    model._set("A12", "=ASIN(0.999)");
+    model._set("A13", "=ASIN(0.09)");
+    model._set("A14", "=ASIN(-0.09)");
     model.evaluate();
     let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
         Ok(CellValue::Number(n)) => n.to_bits(),
@@ -156,4 +161,9 @@ fn asin_rounds_like_excel() {
     assert_eq!(bits("A7"), 1e-13_f64.to_bits());
     assert_eq!(bits("A8"), (-1e-13_f64).to_bits());
     assert_eq!(bits("A9"), 1.000_000_000_000_000_2e-8_f64.to_bits());
+    assert_eq!(bits("A10"), (-1e-8_f64).to_bits());
+    assert_eq!(bits("A11"), (-1.526_071_239_626_165_5_f64).to_bits());
+    assert_eq!(bits("A12"), 1.526_071_239_626_163_f64.to_bits());
+    assert_eq!(bits("A13"), 0.090_121_945_014_595_26_f64.to_bits());
+    assert_eq!(bits("A14"), (-0.090_121_945_014_595_25_f64).to_bits());
 }
