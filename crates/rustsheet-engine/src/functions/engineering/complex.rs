@@ -16,7 +16,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    number_format::to_precision,
+    number_format::{number_to_text, to_precision},
 };
 
 /// This implements all functions with complex arguments in the standard
@@ -45,33 +45,15 @@ struct Complex {
     suffix: Suffix,
 }
 
-/// Scientific text with Excel's signed exponent (`3E+200`, `1.2E-16`); Rust prints `3E200`.
-fn scientific(v: f64) -> String {
-    let text = format!("{v:E}");
-    match text.split_once('E') {
-        Some((mantissa, exponent)) if !exponent.starts_with('-') => {
-            format!("{mantissa}E+{exponent}")
-        }
-        _ => text,
-    }
-}
-
-/// Whether a part prints in scientific notation. Tiny parts do (`<= 9e-20`, probes/eng-impower);
-/// large ones from 1e21 on, like Excel's number-to-text (UNVERIFIED threshold; `1E+200`,
-/// `-3E+200-4E+200i`: probes/eng-imdiv A19, A24).
-fn is_scientific(v: f64) -> bool {
-    v.abs() <= 9e-20 || v.abs() >= 1e21
-}
-
 impl fmt::Display for Complex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let x = to_precision(self.x, 15);
         let y = to_precision(self.y, 15);
         let suffix = &self.suffix;
-        // it is a bit weird what Excel does but it seems it uses general notation for
-        // numbers > 1e-20 and scientific notation for the rest
-        let y_str = if is_scientific(y) {
-            scientific(y)
+        // Tiny parts (`<= 9e-20`) are always scientific (probes/eng-impower); the rest follow
+        // Excel's number-to-text, which is `1E+200` from 20 plain characters on (probes/eng-imdiv).
+        let y_str = if y.abs() <= 9e-20 || y.abs() >= 1e20 {
+            number_to_text(y)
         } else if y == 1.0 {
             "".to_string()
         } else if y == -1.0 {
@@ -79,8 +61,8 @@ impl fmt::Display for Complex {
         } else {
             format!("{y}")
         };
-        let x_str = if is_scientific(x) {
-            scientific(x)
+        let x_str = if x.abs() <= 9e-20 || x.abs() >= 1e20 {
+            number_to_text(x)
         } else {
             format!("{x}")
         };
@@ -218,7 +200,7 @@ fn complex_result(x: f64, y: f64, suffix: Suffix) -> CalcResult {
     CalcResult::String(Complex { x, y, suffix }.to_string().into())
 }
 
-/// How a complex argument reads empty text: IMCOS, IMCOSH, IMCOT, IMCSC, IMCSCH, IMSUM and
+/// How a complex argument reads empty text: IMCOS, IMCOSH, IMCOT, IMCSC, IMCSCH, IMSUM,
 /// IMPRODUCT parse it (`#NUM!`), the other functions read it as 0. `Zero` is our older behavior,
 /// not Excel's rule for IMSQRT (probably `#NUM!`, T-1385).
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -414,6 +396,9 @@ impl Model {
                 let d = x2 * r + y2;
                 ((x1 * r + y1) / d, (y1 * r - x1) / d)
             };
+            if !re.is_finite() || !im.is_finite() {
+                return num_error(cell);
+            }
             complex_result(re, im, suffix)
         })
     }
@@ -505,7 +490,14 @@ impl Model {
             args,
             cell,
             &mut |_, values| match Self::complex_pair_of(values, cell) {
-                Ok(((x1, y1, suffix), (x2, y2, _))) => complex_result(x1 - x2, y1 - y2, suffix),
+                Ok(((x1, y1, suffix), (x2, y2, _))) => {
+                    let (re, im) = (x1 - x2, y1 - y2);
+                    if re.is_finite() && im.is_finite() {
+                        complex_result(re, im, suffix)
+                    } else {
+                        num_error(cell)
+                    }
+                }
                 Err(error) => error,
             },
         )
