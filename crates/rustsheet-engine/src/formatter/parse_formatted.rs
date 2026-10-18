@@ -1,9 +1,33 @@
 //! Reading typed text as a number together with the format it implies ("$1,234.50" ->
 //! (1234.5, "$#,##0.00")), split from format.rs, which renders numbers.
 
-use crate::{locale::Locale, number_format::parse_excel_number, types::DateSystem};
+use crate::{
+    functions::date_and_time::time_text::parse_date_clock_serial_in, locale::Locale,
+    number_format::parse_excel_number, types::DateSystem,
+};
 
 use super::date_text::{parse_date, CurrentYear};
+
+/// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
+/// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Only that shape is probed; the
+/// format of a typed clock with seconds or an hour-only AM/PM clock is UNVERIFIED (docs/excel-semantics/dates.md).
+const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
+
+/// [`parse_formatted_number`] for text typed into a cell, which also reads date+time text
+/// (coercion reads that through `parse_time_serial` instead).
+pub(crate) fn parse_typed_number(
+    original: &str,
+    currencies: &[&str],
+    locale: &Locale,
+    current_year: CurrentYear,
+    date_system: DateSystem,
+) -> Result<(f64, Option<String>), String> {
+    parse_formatted_number(original, currencies, locale, current_year, date_system).or_else(|err| {
+        parse_date_clock_serial_in(original, locale, current_year, date_system)
+            .map(|serial| (serial, Some(TYPED_DATE_CLOCK_FORMAT.to_string())))
+            .ok_or(err)
+    })
+}
 
 /// Parses a formatted number, returning the numeric value together with the format
 /// Uses heuristics to guess the format string

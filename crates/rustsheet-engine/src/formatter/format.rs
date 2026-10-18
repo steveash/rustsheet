@@ -3,7 +3,7 @@ use super::general::format_general;
 use crate::{locale::Locale, number_format::to_precision, text::Text, types::DateSystem};
 use std::collections::BTreeSet;
 
-pub(crate) use super::parse_formatted::parse_formatted_number;
+pub(crate) use super::parse_formatted::{parse_formatted_number, parse_typed_number};
 use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
     parser::{GeneralPart, ParsePart, Parser, TextToken},

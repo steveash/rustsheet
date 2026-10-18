@@ -23,10 +23,9 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_formatted_number},
+        format::{format_number, parse_typed_number},
         lexer::is_likely_date_number_format,
     },
-    functions::date_and_time::time_text::parse_date_clock_serial_in,
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_default_locale, get_locale, Locale},
@@ -2185,7 +2184,7 @@ impl Model {
                 //  We try to parse as number
                 let (year, ds) = (|| self.current_year(), self.workbook.settings.date_system);
                 if let Ok((v, number_format)) =
-                    parse_formatted_number(&value, &currencies, self.locale, &year, ds)
+                    parse_typed_number(&value, &currencies, self.locale, &year, ds)
                 {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:
@@ -2202,24 +2201,6 @@ impl Model {
                     }
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
                     worksheet.set_cell_with_number(row, column, v, new_style_index)?;
-                    return Ok(());
-                }
-                // Typed date+time text (`July1 10:00`) is a number formatted `m/d/yyyy h:mm`
-                // (probes/date-text-glued-month-2 N8, excel-graph 2026-10-18). Only that shape is
-                // probed; the format of a clock with seconds is UNVERIFIED (dates.md).
-                if let Some(serial) = parse_date_clock_serial_in(&value, self.locale, &year, ds) {
-                    let num_fmt = "m/d/yyyy h:mm";
-                    let should_apply_format = !is_likely_date_number_format(
-                        &self.workbook.styles.get_style(new_style_index)?.num_fmt,
-                    );
-                    if should_apply_format {
-                        new_style_index = self
-                            .workbook
-                            .styles
-                            .get_style_with_format(new_style_index, num_fmt)?;
-                    }
-                    let worksheet = self.workbook.worksheet_mut(sheet)?;
-                    worksheet.set_cell_with_number(row, column, serial, new_style_index)?;
                     return Ok(());
                 }
                 // We try to parse as boolean
