@@ -1571,6 +1571,20 @@ Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908
 
+## Legacy N and T marker spelling shadows a defined name of that spelling
+Rule: in Excel a workbook LAMBDA name is called by its name; in RustSheet the names `_RS_LEGACY_N` and
+`_RS_LEGACY_T` are the stored spelling of a legacy N/T (SPEC-0012, `functions/kinds.rs`), so a typed or
+imported call `=_RS_LEGACY_N(1)` is plain N even when a LAMBDA name `_RS_LEGACY_N` exists.
+Evidence: none yet. Whether Excel accepts these spellings as defined names is unprobed (T-1912). If it
+does, Excel calls the name and ours calls N: a known gap, not a deviation (decision 0052). The matcher
+is exact and case-sensitive, so `_rs_legacy_n(1)` and `_xlfn._RS_LEGACY_N(1)` still call the name.
+A model file saved before T-1851 with such a call stored as `_RS_LEGACY_N(...)` reloads as the marker,
+not as the name call (xlsx never holds the spelling: its A1 text reads as plain N).
+Ours: N (test_legacy_n_t_marker.rs `a_typed_call_of_the_spelling_is_plain_n`).
+Status: UNVERIFIED (probe pending, T-1912)
+Implemented in: functions/kinds.rs (`LEGACY_SPELLINGS`, `Function::from_legacy_spelling`); expressions/parser/operands.rs (`parse_named_call`)
+Tasks: T-1851, T-1912
+
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
 COUNTBLANK's `range`), `@` of an array that is not a reference is the array's top-left value, a plain value, never the whole array.

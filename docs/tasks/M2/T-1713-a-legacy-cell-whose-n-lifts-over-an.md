@@ -17,6 +17,8 @@ A legacy (non-array) cell `=N(IF(1,{2;3}))` gives `#VALUE!`, as Excel does, inst
 ## Context
 probes/n-array-lift S!D4:D5 (excel-graph, T-1616). T-1616 made N lift over an array (dynamic `=N(IF(1,{2;3}))` spills 2, 3, matching Excel), but a legacy cell holding the same formula is `#VALUE!` in Excel, not its top-left element, while legacy `SUM(N({1,2}))` is 3 and `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` 5. Likely shape: in the legacy rewrite (`add_implicit_intersection`, expressions/parser/static_analysis/legacy.rs) a top-level N over an array argument is `#VALUE!`; probe first whether other scalar-argument functions (ABS, LEN) behave the same in a legacy cell. docs/excel-semantics/information.md "N over an array lifts element-wise".
 
+T-1851's kernels make T over a one-element array `#VALUE!` (`T(IF(1,{"a"}))`), extrapolated from N's probe (legacy-n-t-reference-args N10); add a T one-element cell to this task's placement or eval cases.
+
 ## Acceptance criteria
 - [ ] The 32 cells listed in SPEC-0012 "Problem" leave eval/baseline/probes.txt:
   - probes/legacy-n-t-reference-args A10, A20, B10, B20, E10:E11, G10:I11, K10, K20, L10, L20,
