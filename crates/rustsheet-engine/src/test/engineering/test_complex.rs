@@ -167,3 +167,37 @@ fn fn_power() {
     assert_eq!(model._get_text("A3"), "TRUE");
     assert_eq!(model._get_text("A3"), "TRUE");
 }
+
+#[test]
+fn im_sub_div_power_edge_cases() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMDIV("1","1E-200")"#);
+    model._set("A2", r#"=IMDIV("-3-4i","1E-200+0i")"#);
+    model._set("A3", r#"=IMSUB("","1+i")"#);
+    model._set("A4", r#"=IMSUB(B9,"1+i")"#);
+    model._set("A5", r#"=IMDIV("3+4i","1+2j")"#);
+    model._set("A6", r#"=IMPOWER("0",0)"#);
+    model._set("A7", r#"=IMDIV("1E+308","1E-308")"#);
+    model._set("A8", r#"=IMSUB("1E+308","-1E+308")"#);
+    model._set("A9", r#"=IMPOWER("",2)"#);
+    model._set("A10", r#"=IMPOWER("i",2)"#);
+    model._set("A11", r#"=IMPOWER("1+i",100)"#);
+    model._set("A12", r#"=IMPOWER("-j",3)"#);
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "1E+200");
+    assert_eq!(model._get_text("A2"), "-3E+200-4E+200i");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+    assert_eq!(model._get_text("A4"), "-1-i");
+    assert_eq!(model._get_text("A5"), "#NUM!");
+    assert_eq!(model._get_text("A6"), "#NUM!");
+    assert_eq!(model._get_text("A7"), "#NUM!");
+    assert_eq!(model._get_text("A8"), "#NUM!");
+    assert_eq!(model._get_text("A9"), "#NUM!");
+    assert_eq!(model._get_text("A10"), "-1+1.22514845490862E-16i");
+    assert_eq!(
+        model._get_text("A11"),
+        "-1125899906842640-0.551513671875006i"
+    );
+    assert_eq!(model._get_text("A12"), "-1.83772268236293E-16+j");
+}

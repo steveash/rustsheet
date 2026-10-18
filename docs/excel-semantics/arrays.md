@@ -468,7 +468,9 @@ the COUP* family, DURATION, MDURATION and PRICE are `LiftArrays` as well (scalar
 H35, J8, K8), and NORM.S.DIST's H38 and H40 now lift and miss only by its known last-digit residue, as the scalar H39
 does (statistics.md "The normal CDF is not always correctly rounded", T-0968). Since T-1848 the quantile functions
 BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T lift as `Lift` too, their searches
-capped (statistics.md "Quantile searches: per-call cap and lifting"). The other families
+capped (statistics.md "Quantile searches: per-call cap and lifting"), and since T-1872 so do CHISQ.DIST,
+CHISQ.DIST.RT, CHIDIST, CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON and
+POISSON.DIST, their incomplete gamma capped (statistics.md "Incomplete gamma: per-call cap and lifting"). The other families
 listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
 formula). SPEC-0011's rollout tasks fix them.
 Status: VERIFIED (excel-graph)
@@ -480,8 +482,8 @@ kernels `edate_of`, `eomonth_of` (functions/date_and_time/month_shift.rs), `week
 (weeknum.rs) and `yearfrac_of` (yearfrac.rs); the financial kernels in functions/financial/
 (annuity.rs, discount.rs, rate_conversions.rs, accrint.rs, financial_bonds.rs) and financial_depreciation.rs; the
 statistical kernels in functions/statistical/ (normal.rs, binom.rs, beta.rs, fisher.rs, t_dist.rs and the rest; the
-capped quantile search in inverse_beta.rs).
-Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822
+capped quantile search in inverse_beta.rs, the capped incomplete gamma in incomplete_gamma.rs).
+Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822, T-1872
 
 ## GROUPBY and PIVOTBY
 Rule: groups are keyed like UNIQUE (case-insensitive text, first spelling shown) and always sorted ascending:
@@ -961,3 +963,13 @@ ISOMITTED inside `LAMBDA(x,[y],...)` matches ours in every probed form (A20-A49)
 filled cell (A28-A31) count as supplied (FALSE), and so is a reference to a blank cell: `LAMBDA(x,[y],ISOMITTED(y))(1,C1)` with C1 blank is FALSE (probes/dynamic-array-reshape-reprobe E20-E21); outside a LAMBDA `ISOMITTED(5)`, `ISOMITTED(A1)` and `ISOMITTED(#N/A)` are FALSE (A43-A45).
 Status: VERIFIED (excel-graph)
 Tasks: T-1627, T-1630, T-1632
+
+## MAP and SCAN with a LAMBDA that returns a multi-cell range
+Rule: when the LAMBDA of MAP or SCAN returns a multi-cell reference (`MAP(A1:A2,LAMBDA(r,B1:B3))`,
+a row range, a range holding an error cell), Excel gives the whole call one `#CALC!` (a scalar, not a
+`#CALC!` per element: `ROWS` of it is `#CALC!` too), as BYROW and BYCOL do. It does not depend on
+what the range holds (numbers, an error cell among numbers, an error cell among blanks, text and booleans all alike; an all-blank range and a LAMBDA that returns a range for only some elements are unprobed). A one-cell
+range is the control: its value is the element (`MAP(A1:A2,LAMBDA(r,J1:J1))` is 4, 4).
+Evidence: probes/map-scan-range-result (excel-graph 2026-10-18).
+Implemented in: `Model::lambda_result_value`, which still reads the range's existing cells (a cycle
+through it is `#CIRC!`). Tasks: T-1792, T-1769.

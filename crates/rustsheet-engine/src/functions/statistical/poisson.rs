@@ -1,94 +1,60 @@
-use statrs::distribution::{Discrete, DiscreteCDF, Poisson};
+use statrs::distribution::{Discrete, Poisson};
 
+use super::incomplete_gamma::gamma_ur;
 use crate::expressions::types::CellReferenceIndex;
-use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
-};
+use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::Function;
+use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
-    // =POISSON.DIST(x, mean, cumulative)
+    /// `POISSON.DIST(x, mean, cumulative)`, and POISSON: every argument lifts over an array and a
+    /// range (SPEC-0011; probes/stat-argument-modes H476-H485, probes/stat-quantile-lift
+    /// H47-H50). The cdf is statrs' Q(k + 1, mean), the capped port of `incomplete_gamma.rs`,
+    /// which the lifting table charges (kinds.rs `INCOMPLETE_GAMMA_WEIGHT`).
     pub(crate) fn fn_poisson_dist(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_call(Function::PoissonDist, args, cell, &mut |model, values| {
+            number_or_error(model.poisson_dist_of(values, cell))
+        })
+    }
 
-        // x
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+    fn poisson_dist_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [x, lambda, cumulative] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
+        let x = self.cast_number_ref(x, cell)?;
+        let lambda = self.cast_number_ref(lambda, cell)?;
+        let cumulative = Self::cast_bool_ref(cumulative, cell)?;
 
-        // mean (lambda)
-        let lambda = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-
-        let cumulative = match self.get_boolean(&args[2], cell) {
-            Ok(b) => b,
-            Err(e) => return e,
-        };
-
-        if x < 0.0 || lambda < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameters for POISSON.DIST".to_string(),
-            };
-        }
-
-        // Guard against large x
-        if x > (u64::MAX as f64) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "x is too large for POISSON.DIST".to_string(),
-            };
+        // x < 0 or mean < 0 is #NUM!, and so is an x past u64 (the count truncates to one).
+        if x < 0.0 || lambda < 0.0 || x > (u64::MAX as f64) {
+            return Err(num_error(cell));
         }
 
         let k = x.trunc() as u64;
 
-        // Special-case lambda = 0: degenerate distribution at 0
+        // A mean of 0 is the distribution at 0: P(X <= x) = 1, P(X = 0) = 1, P(X = k > 0) = 0.
         if lambda == 0.0 {
-            let result = if cumulative {
-                // For x >= 0, P(X <= x) = 1
-                1.0
-            } else {
-                // P(X = 0) = 1, P(X = k>0) = 0
-                if k == 0 {
-                    1.0
-                } else {
-                    0.0
-                }
-            };
-            return CalcResult::Number(result);
+            return Ok(if cumulative || k == 0 { 1.0 } else { 0.0 });
         }
 
-        let dist = match Poisson::new(lambda) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for POISSON.DIST".to_string(),
-                }
-            }
+        let dist = Poisson::new(lambda).map_err(|_| num_error(cell))?;
+        let prob = if cumulative {
+            // statrs' `Poisson::cdf`.
+            gamma_ur(k as f64 + 1.0, lambda)
+        } else {
+            dist.pmf(k)
         };
-
-        let prob = if cumulative { dist.cdf(k) } else { dist.pmf(k) };
-
         if !prob.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid result for POISSON.DIST".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
-        CalcResult::Number(prob)
+        Ok(prob)
     }
 }
