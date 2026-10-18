@@ -65,7 +65,7 @@ WEIBULL and WEIBULL.DIST.
   (BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST, TDIST) share their modern kernel instead of rebuilding argument
   nodes, and each kernel keeps its scalar read and check order (T.DIST.2T and TDIST read every argument before they
   check any). `number_or_error` moved from financial/mod.rs to functions/lift. Their fallback
-  arms in static_analysis.rs are deleted (87 lines; the lock goes 1385 → 1208, main being 1295); duplicated lines
+  arms in static_analysis.rs are deleted (87 lines; the lock goes 1385 → 1209, main being 1296); duplicated lines
   4812 → 4510 (decision 0010 line).
 - **Scalar changes**, each from Excel evidence (new probes probes/stat-overflow-arguments, 61 formula cells, and -b,
   10 cells, all pass, excel-graph 2026-10-18; statistics.md "Overflowing arguments, PERMUT's limit and argument error order"):

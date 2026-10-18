@@ -140,7 +140,7 @@
   T-1290: duplicated lines 4812 → 4510 (the statistical functions whose every argument is scalar
   become kernels over borrowed values; BETADIST, NORMSDIST, LOGNORMDIST, NEGBINOMDIST and TDIST share
   their modern function's kernel instead of rebuilding its argument nodes) (`check_duplication.py
-  --update`), and expressions/parser/static_analysis.rs 1385 → 1208 lines (main is 1295 after T-1717's
+  --update`), and expressions/parser/static_analysis.rs 1385 → 1209 lines (main is 1296 after T-1717's
   split; this PR deletes the 87 fallback lines of the 44 statistical functions now in the lifting table)
   and functions/mod.rs 2180 → 2179 (GAMMALN and GAMMALN.PRECISE share one dispatch arm)
   (`check_file_size.py --update`). The same update also tightened a stale lock that is not this PR's
