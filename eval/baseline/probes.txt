@@ -817,6 +817,7 @@ C	probes/unknown-function-name-folds-2.case.json	64
 C	probes/unknown-function-name-folds.case.json	40
 C	probes/unknown-function-name-reach.case.json	52
 C	probes/unknown-function-name-spelling.case.json	36
+C	probes/value-argument-lift.case.json	22
 C	probes/value-clock-text.case.json	135
 C	probes/valuetotext-error-format.case.json	10
 C	probes/valuetotext-format.case.json	37
