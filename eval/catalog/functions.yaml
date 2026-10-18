@@ -425,13 +425,13 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: date_purchased, mode: value, type: number, domain: { int: true, min: 36526, max: 38000 } }
-      - { name: first_period, mode: value, type: number, domain: { int: true, min: 38001, max: 40000 } }
-      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 } }
-      - { name: period, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: rate, mode: value, type: number }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: cost, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 100000 } }
+      - { name: date_purchased, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 38000 } }
+      - { name: first_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 38001, max: 40000 } }
+      - { name: salvage, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 900 } }
+      - { name: period, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: AMORLINC
     category: financial
     milestone: M9
@@ -439,13 +439,13 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: cost, mode: value, type: number, domain: { int: true, min: 1000, max: 100000 } }
-      - { name: date_purchased, mode: value, type: number, domain: { int: true, min: 36526, max: 38000 } }
-      - { name: first_period, mode: value, type: number, domain: { int: true, min: 38001, max: 40000 } }
-      - { name: salvage, mode: value, type: number, domain: { int: true, min: 0, max: 900 } }
-      - { name: period, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
-      - { name: rate, mode: value, type: number }
-      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: cost, mode: value, lift: arrays, type: number, domain: { int: true, min: 1000, max: 100000 } }
+      - { name: date_purchased, mode: value, lift: arrays, type: number, domain: { int: true, min: 36526, max: 38000 } }
+      - { name: first_period, mode: value, lift: arrays, type: number, domain: { int: true, min: 38001, max: 40000 } }
+      - { name: salvage, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 900 } }
+      - { name: period, mode: value, lift: arrays, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: rate, mode: value, lift: arrays, type: number }
+      - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: ARABIC
     category: math
     milestone: M5
