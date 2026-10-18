@@ -49,7 +49,7 @@ even when the section the value uses is complete (`TEXT(5,"0;""")` is `#VALUE!`)
 Eval: probes l A13:A15, l A40 and m A22 are fixed (5 cells). After the merge with main (below), the new
 rounds add 6 known failures, each with an owner and recorded in docs/excel-semantics/number-formats.md:
 n A2 and A7:A9 (Excel accepts `a` and `aa` after `_"` but rejects `aaa` and longer runs, while we print
-them; T-1876), o A37 (`*` takes `"` as its fill, and we print a space for the fill; T-1735) and q A16
+them; T-1881), o A37 (`*` takes `"` as its fill, and we print a space for the fill; T-1735) and q A16
 (an unmatched condition printing General; T-0936).
 
 ## Blocked because
@@ -67,7 +67,7 @@ entry, and eval/baseline/probes.txt (main's copy, then regenerated). Main's T-16
 and T-1714 AM/PM, A/P and locale costs sit on top of this refit, and their tests pass. Main's T-1262
 (bare letters print as literals) already fixed l A13:A15 and now also n A1, A6, o A35, A38:A40.
 That leaves 6 new-coverage known failures, not 12: n A2, A7:A9 (`@_"aaa` and longer runs are
-`#VALUE!` in Excel, but we print the letters; T-1876), o A37 (`TEXT(7,"0*""a")` is "7a" in Excel
+`#VALUE!` in Excel, but we print the letters; T-1881), o A37 (`TEXT(7,"0*""a")` is "7a" in Excel
 and "7 a" with us; T-1735) and q A16 (T-0936). Probes against main: l A40 and m A22 are fixed, and there
 are no new failures. Main had brought the duplication lock down to 4510, and this branch's
 tuple tables in `after_quoted_text_and_placeholder_runs` put it 21 lines over. They are now
@@ -76,5 +76,5 @@ tuple tables in `after_quoted_text_and_placeholder_runs` put it 21 lines over. T
 ### Review complete (2026-10-18)
 The excel-fidelity re-review approved at 52d7df54: rounds l-s back the refit and the unterminated
 rule (round s the trailing `\`/`_`/`*`), and every remaining known failure has an open owner
-(T-1876, T-1735, T-0936). Security, architecture and quality approved earlier rounds; quality
+(T-1881, T-1735, T-0936). Security, architecture and quality approved earlier rounds; quality
 re-approved the merge-up.
