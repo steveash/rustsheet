@@ -962,6 +962,17 @@ they exist; a web golden that is already a known failure and is missed within 1e
 a residue below 1e-15) is not a fitting target. Sidecar numbers within 1e-9 of a 16.x desktop
 cached value are the desktop value (T-0142; the fill prints a `DESKTOP` line); near-zero residues
 (2.2e-16 vs 0) and pre-16 caches stay pending or web. Say which Excel a value comes from when working on these functions.
+SIN(4) (T-1876, decision 0074): `ironcalc-calc/LOGICAL/IF_ARRAY.xlsx` Sheet1!C4, E4 and C11 cache the Mac 16.0300 value
+-0.7568024953079283. The web and the engine give -0.7568024953079282, the correctly rounded value: the true sin(4) is 0.06 ulp
+from the midpoint, and the desktop value is 0.56 ulp off. The 38 desktop SIN/COS cells of TRIGONOMETRIC.xlsx `SIN_COS_TAN` are all
+correctly rounded. Fit over those 38 and 224 web cells (m9-trig-reduction and trig-huge-argument, |x| < 2^27), desktop / web out of 38 / 224:
+- The engine model (x87 π₆₄ reduction, then a correctly rounded sin or cos of the remainder) 38 / 224. Rounding the remainder, or the result, to 64 bits first: 38 / 224 each.
+- A correctly rounded sin 38 / 115. glibc and fdlibm/musl 38 / 115 each.
+- The π₆₄ remainder rounded to a double 31 / 219. fdlibm `rem_pio2` with libm on the head only 31 / 113. A double-π/2-plus-tail reduction 31-33 / 105.
+- An idealized x87 `fsin` (the true sine at 64 bits, then a double) 38 / 115. A double-π reduction 20 / 94.
+- All of these give ...282 except the double-π reduction (...284).
+So no formulation reaches the desktop value. The three cells stay known failures as an Excel-vs-Excel last-digit conflict, and the
+desktop target waits for T-1075 (M14).
 
 ## GEOMEAN last digits differ from a log-sum evaluation
 
