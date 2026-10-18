@@ -154,3 +154,75 @@ fn bessel_work_is_bounded() {
     assert_eq!(model._get_text("A4"), *"2000");
     assert_eq!(model._get_text("A5"), *"#ERROR!");
 }
+
+#[test]
+fn a_lifted_argument_over_a_choose_of_values_spills() {
+    // The formula_eval fuzz reproducer (T-1874): CHOOSE gives its array arms a range's shape, so
+    // static analysis took the `LiftArrays` argument for a refused range and the call for a
+    // scalar, while it lifted to a 2x3 array (a debug assertion). Excel:
+    // probes/lift-arrays-choose-arms.
+    let mut model = new_empty_model();
+    model._set("C3", "=IMSECH(CHOOSE({1,2},{1,2,3},{4;5})");
+    model.evaluate();
+    assert_eq!(model._get_text("C3"), *"0.648054273663885");
+    assert_eq!(model._get_text("D4"), *"0.0134752822213046");
+    assert_eq!(model._get_text("E3"), *"#N/A");
+
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("H1", "3"),
+        ("H2", "4"),
+        ("H3", "5"),
+        ("I1", "6"),
+        ("I2", "8"),
+    ] {
+        model._set(cell, value);
+    }
+    // (top-left cell, formula, spill width, the spilled values row by row).
+    let cases: [(&str, &str, i32, &[&str]); 9] = [
+        (
+            "A1",
+            "=IMABS(CHOOSE({1,2},{1,2,3},{4;5}))",
+            3,
+            &["1", "4", "#N/A", "1", "5", "#N/A"],
+        ),
+        ("A5", "=IMABS(CHOOSE(1,{1,2,3}))", 3, &["1", "2", "3"]),
+        ("A9", "=IMABS(CHOOSE(1,H1:H3))", 1, &["#VALUE!", ""]),
+        (
+            "A13",
+            "=IMABS(CHOOSE({1,2},H1:H2,I1:I2))",
+            2,
+            &["3", "6", "4", "8"],
+        ),
+        ("A17", "=IMABS(CHOOSE(2,{3;4},H1:H3))", 1, &["#VALUE!", ""]),
+        ("A21", "=EDATE(CHOOSE(1,{4;5}),1)", 1, &["35", "36"]),
+        ("A25", "=ISEVEN(CHOOSE(1,{4;5}))", 1, &["TRUE", "FALSE"]),
+        ("A29", "=IMABS(CHOOSE(1,H1))", 1, &["3", ""]),
+        ("A37", "=IMABS((CHOOSE(1,{1,2,3})))", 3, &["1", "2", "3"]),
+    ];
+    for (cell, formula, _, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, width, expected) in cases {
+        let row: i32 = cell[1..].parse().unwrap();
+        for (index, value) in (0..).zip(expected.iter()) {
+            let column = char::from(b'A' + u8::try_from(index % width).unwrap());
+            let at = format!("{column}{}", row + index / width);
+            assert_eq!(model._get_text(&at), **value, "{formula} at {at}");
+        }
+    }
+}
+
+#[test]
+fn nested_lifted_calls_over_choose_are_analysed_in_linear_time() {
+    // Each level used to analyse its CHOOSE index twice, so 60 levels took hours (T-1874 review).
+    let mut formula = "{1,2}".to_string();
+    for _ in 0..60 {
+        formula = format!("IMABS(CHOOSE({formula},{{1,2}}))");
+    }
+    let mut model = new_empty_model();
+    model._set("A1", &format!("={formula}"));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1");
+}

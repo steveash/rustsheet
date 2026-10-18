@@ -557,6 +557,7 @@ mod tests {
             sheet: sheet.into(),
             cell: a1.into(),
             formula: Some(formula.into()),
+            anchor_formula: None,
             expected: Value::Number(1.0),
             actual: Value::Number(1.0),
             verdict,

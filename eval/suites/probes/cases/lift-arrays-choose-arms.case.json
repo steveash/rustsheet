@@ -1,0 +1,41 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1874 probe: Analysis ToolPak functions that lift over arrays and refuse a multi-cell range (IM*, EDATE, ISEVEN, COMPLEX) over a CHOOSE that evaluates to an array (array index, or a scalar index picking an array arm) versus one that evaluates to a reference (scalar index picking a range arm). Also SUBTOTAL over TAKE of such a CHOOSE (A69). H1:H3=3,4,5, I1:I2=6,8.",
+ "tags": [
+  "M9",
+  "engineering",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "H1": 3,
+    "H2": 4,
+    "H3": 5,
+    "I1": 6,
+    "I2": 8,
+    "A1": "=IMSECH(CHOOSE({1,2},{1,2,3},{4;5}))",
+    "A5": "=IMABS(CHOOSE({1,2},{1,2,3},{4;5}))",
+    "A9": "=IMSECH(CHOOSE({1,2},1,{4;5}))",
+    "A13": "=IMABS(CHOOSE(1,{1,2,3}))",
+    "A17": "=IMABS(CHOOSE(1,H1:H3))",
+    "A21": "=IMABS(CHOOSE({1,2},H1:H2,I1:I2))",
+    "A25": "=IMABS(CHOOSE(2,{3;4},H1:H3))",
+    "A29": "=IMABS(CHOOSE(1,{3;4},H1:H3))",
+    "A33": "=EDATE(CHOOSE(1,{4;5}),1)",
+    "A37": "=ISEVEN(CHOOSE(1,{4;5}))",
+    "A41": "=EDATE(CHOOSE({1,2},H1:H2,I1:I2),0)",
+    "A45": "=IMREAL(CHOOSE({1;2},\"3+4i\",{\"1+i\",\"2\"}))",
+    "A49": "=ROWS(IMABS(CHOOSE({1,2},{1,2,3},{4;5})))",
+    "B49": "=COLUMNS(IMABS(CHOOSE({1,2},{1,2,3},{4;5})))",
+    "A53": "=IMSUB(CHOOSE(1,{\"3+4i\";\"1\"}),\"1\")",
+    "A57": "=COMPLEX(CHOOSE({1,2},1,2),0)",
+    "A61": "=IMABS(CHOOSE(1,H1))",
+    "A65": "=IMSUM(CHOOSE({1,2},{1,2,3},{4;5}))",
+    "A69": "=SUBTOTAL(9,TAKE(CHOOSE({1,2},H1:H2,I1:I2),2))"
+   }
+  }
+ ],
+ "expected": {}
+}
