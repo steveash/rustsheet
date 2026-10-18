@@ -28,9 +28,14 @@ index twice). `choose_static_result` (static_analysis.rs) now gives a CHOOSE wit
 `Array` shape in one pass; reuse that, or a purely syntactic check, never a second analysis of the
 same subtree.
 
+Also unprobed since T-1874: a legacy top-level `=CHOOSE({1,2},H1:H2,I1:I2)` (on and off the
+range's rows) now gets the array-context `@` rather than the whole-call one, because CHOOSE with an
+array index is an `Array` shape. Add those legacy cells to a probe here and match them.
+
 ## Acceptance criteria
 - [ ] A unit test (decision 0035) of the formula above passes in a debug build.
 - [ ] probes/lift-arrays-choose-arms passes in full; the baseline only shrinks.
+- [ ] The legacy top-level CHOOSE-with-array-index cells are probed and match.
 - [ ] Static analysis stays linear in nesting depth (a 60-level nested test finishes at once).
 - [ ] `make check` green; reviewers approve.
 
