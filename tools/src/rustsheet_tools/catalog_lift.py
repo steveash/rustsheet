@@ -32,6 +32,7 @@ RULE: dict[str, tuple[frozenset[str], bool]] = {
 
 
 def load_table(path: Path = TABLE) -> list[dict[str, Any]]:
+    """The committed lifting table: one row per function, as `rustsheet-eval lift-kinds` writes it."""
     table: list[dict[str, Any]] = json.loads(path.read_text())
     return table
 

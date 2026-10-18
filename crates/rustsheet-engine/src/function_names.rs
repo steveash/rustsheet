@@ -1,7 +1,6 @@
 //! The list of implemented worksheet functions, for coverage reports (T-0020), and the
 //! argument-kind table the harness checks the catalog against (T-1776).
 
-use crate::functions::lift::ArgKind;
 use crate::functions::Function;
 use crate::language::get_default_language;
 
@@ -26,9 +25,9 @@ pub struct LiftKinds {
     /// The fewest arguments a valid call takes.
     pub required: usize,
     /// The kind of each listed parameter, in order.
-    pub params: Vec<&'static str>,
+    pub params: Vec<String>,
     /// The kind of every argument past `params`, when the last parameter repeats.
-    pub repeat: Option<&'static str>,
+    pub repeat: Option<String>,
     /// The most arguments a valid call takes.
     pub max: usize,
     /// `Constant`, or `Weighted(n)` for a value-dependent kernel.
@@ -47,8 +46,12 @@ pub fn lift_kinds_table() -> Vec<LiftKinds> {
             Some(LiftKinds {
                 name: function.to_localized_name(english),
                 required: kinds.required,
-                params: kinds.params.iter().map(|kind| kind.name()).collect(),
-                repeat: kinds.repeat.map(ArgKind::name),
+                params: kinds
+                    .params
+                    .iter()
+                    .map(|kind| format!("{kind:?}"))
+                    .collect(),
+                repeat: kinds.repeat.map(|kind| format!("{kind:?}")),
                 max: kinds.max,
                 work: format!("{:?}", kinds.work),
             })

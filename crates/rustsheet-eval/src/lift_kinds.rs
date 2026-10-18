@@ -32,7 +32,7 @@ mod tests {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../..")
             .join(LIFT_KINDS_PATH);
-        let committed = std::fs::read_to_string(&path).unwrap_or_default();
+        let committed = std::fs::read_to_string(&path).expect("read eval/catalog/lift-kinds.json");
         assert!(
             committed == render().unwrap(),
             "{LIFT_KINDS_PATH} is stale: run `rustsheet-eval lift-kinds --write`"
