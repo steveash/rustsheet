@@ -861,8 +861,8 @@ Tasks: T-1350
 Rule: an error-valued argument of SORT wins over an invalid other argument: `SORT(B11:E12,ROUND(0,7),A3:C5,<#N/A>)`
 (sort_index 0, a 9-cell sort_order range and a by_col that is `#N/A`) is `#N/A`.
 Evidence: gen-m7/c5d278a8662ef4b2 Calc!A39 (by_col `HLOOKUP(ADDRESS(19,19),Data!C8:C12,3)`) (excel-graph, 2026-10-11, T-1275).
-Ours: `#VALUE!` (sort_index 0 is rejected before by_col is looked at).
-Status: VERIFIED (web) for this cell; SORTBY and the order among several error arguments are UNVERIFIED
+Ours: fixed in T-1351 (SORT evaluates sort_index, sort_order and by_col, returns an argument error (by_col first, then sort_index, then sort_order: that order is a guess), then validates sort_index/sort_order).
+Status: VERIFIED (web) for this cell; SORTBY, an error sort_order with sort_index 0 and the order among several error arguments are UNVERIFIED (need a probe)
 Tasks: T-1351
 
 ## SORT: omitted sort_index / sort_order take their defaults
