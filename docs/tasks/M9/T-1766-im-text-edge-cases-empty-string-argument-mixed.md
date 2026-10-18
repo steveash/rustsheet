@@ -3,7 +3,7 @@ id: T-1766
 title: "IM* text edge cases: empty-string argument, mixed i/j suffix, boolean argument, tiny-divisor magnitude, IMPOWER zero power and tiny-part formatting (probes eng-impower, eng-imsub, eng-imdiv)"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
