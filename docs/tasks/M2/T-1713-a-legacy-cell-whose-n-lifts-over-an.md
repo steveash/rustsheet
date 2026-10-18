@@ -119,10 +119,10 @@ The range half (`=N(Z1:Z2)` 7, no `@`) needs no marker and is T-1728.
     INDEX and IFS, the statically scalar case, and a legacy and a dynamic twin as two shared
     formulas.
 - **Eval:**
-  - probes known failures 2110 → 2079 against main at 0c0cb22b (T-1908 and T-1773 merged): the 32 acceptance
+  - probes known failures 2113 → 2082 against main at 5a16a548 (T-1908, T-1773, T-1779 and T-1866 merged): the 32 acceptance
     cells fixed, 1 new-coverage failure (legacy-n-t-marker-shapes F10, T-1921), 0 regressions.
   - ironcalc-calc 1243 → 1243 and fixtures 9 → 9; poi is not fetched here.
-- **Ratchets (decision 0010 line):** after merging main at 0c0cb22b (T-1773, which recorded the shrinks
+- **Ratchets (decision 0010 line):** after merging main (T-1773 at 0c0cb22b recorded the shrinks
   T-1851 left), oversized-files static_analysis.rs 1049 → 1026 (the operator-chain move); duplicated
   lines unchanged at 3863.
 - **Gates:** fmt, clippy `-D warnings`, `cargo test` (engine, rustsheet, xlsx, eval), `make hygiene`
