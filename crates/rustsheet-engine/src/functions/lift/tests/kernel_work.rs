@@ -1,6 +1,8 @@
 //! SPEC-0011 "Security rule for kernel work" (T-1893): a kernel whose work could depend on its
 //! argument values is `KernelWork::Weighted` in the lifting table, or `Constant` with its fixed
-//! cap named below, so no family task can enter one as `Constant` silently.
+//! cap named below, so no family task can enter one as `Constant` silently. A family task that
+//! enters a value-dependent function adds it here. The check does not see a `Weighted` kernel's
+//! own per-call cap; its table entry's doc comment cites it.
 
 use super::super::kinds::KernelWork;
 use crate::functions::Function;
@@ -8,6 +10,9 @@ use crate::functions::Function;
 /// Where the incomplete beta's cap is: statrs' `checked_beta_reg` runs at most 140
 /// continued-fraction steps, and `ln_gamma` is a fixed Lanczos sum.
 const BETA_CDF: &str = "one statrs incomplete beta: at most 140 continued-fraction steps";
+
+/// ERF's and ERFC's cap: `special::erfc_cf` clamps its depth to 600, and the series is fixed.
+const ERFC_CF: &str = "special::erfc_cf: at most 600 steps; the series is fixed";
 
 /// The value-dependent kernels: each with the fixed cap that lets its entry be `Constant`, or
 /// `None` when it must be `Weighted` (a cap that grows with the values, or one not yet read).
@@ -47,22 +52,10 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Some("at most 171 factors: 171 distinct integers pass f64::MAX"),
     ),
     (Function::Permutationa, Some("O(1): one powf")),
-    (
-        Function::Erf,
-        Some("special::erfc_cf: at most 600 steps; the series is fixed"),
-    ),
-    (
-        Function::ErfPrecise,
-        Some("special::erfc_cf: at most 600 steps; the series is fixed"),
-    ),
-    (
-        Function::Erfc,
-        Some("special::erfc_cf: at most 600 steps; the series is fixed"),
-    ),
-    (
-        Function::ErfcPrecise,
-        Some("special::erfc_cf: at most 600 steps; the series is fixed"),
-    ),
+    (Function::Erf, Some(ERFC_CF)),
+    (Function::ErfPrecise, Some(ERFC_CF)),
+    (Function::Erfc, Some(ERFC_CF)),
+    (Function::ErfcPrecise, Some(ERFC_CF)),
     (
         Function::Seriessum,
         Some("one step per coefficient, charged per element as their cells (LiftCost::Cells)"),
