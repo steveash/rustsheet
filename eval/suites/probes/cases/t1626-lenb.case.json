@@ -1,0 +1,53 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1626 LENB evidence-floor probe",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "abcabc",
+    "A2": "日本語テキスト",
+    "A3": "ｱｲｳｶﾞ",
+    "A4": "😀a😀",
+    "A5": "ＡＢＣ１２３",
+    "A6": "abc",
+    "A7": 7,
+    "A8": "",
+    "A9": "Ａ",
+    "A10": "カタカナ",
+    "C1": "=LENB(A1)",
+    "C2": "=LENB(A2)",
+    "C3": "=LENB(A3)",
+    "C4": "=LENB(A4)",
+    "C5": "=LENB(A5)",
+    "C6": "=LENB(A6)",
+    "C7": "=LENB(A7)",
+    "C8": "=LENB(A8)",
+    "C9": "=LENB(A9)",
+    "C10": "=LENB(A10)",
+    "C11": "=LENB(\"\")",
+    "C12": "=LENB(\"ab\")",
+    "C13": "=LENB(\"日\")",
+    "C14": "=LENB(\"é\")",
+    "C15": "=LENB(TRUE)",
+    "C16": "=LENB(1.5)",
+    "C17": "=LENB(-1)",
+    "C18": "=LENB(1/0)",
+    "C19": "=LENB(A1:A2)",
+    "C20": "=LENB(A11)",
+    "C21": "=LENB(\"a\"&CHAR(10))",
+    "C22": "=LENB(UNICHAR(8364))",
+    "C23": "=LENB(UNICHAR(128512))",
+    "C24": "=LENB(\"ﾟ\")",
+    "C25": "=LENB(\"ｶﾞ\")",
+    "C26": "=LENB(REPT(\"日\",3))"
+   }
+  }
+ ],
+ "expected": {}
+}

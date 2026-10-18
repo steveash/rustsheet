@@ -1,0 +1,52 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1626 SEARCHB evidence-floor probe",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "abcabc",
+    "A2": "日本語テキスト",
+    "A3": "ｱｲｳｶﾞ",
+    "A4": "😀a😀",
+    "A5": "ＡＢＣ１２３",
+    "A6": "abc",
+    "A7": 7,
+    "A8": "",
+    "A9": "Ａ",
+    "A10": "カタカナ",
+    "C1": "=SEARCHB(\"b\",A1)",
+    "C2": "=SEARCHB(\"B\",A1)",
+    "C3": "=SEARCHB(\"c\",A1,4)",
+    "C4": "=SEARCHB(\"c\",A1,0)",
+    "C5": "=SEARCHB(\"c\",A1,7)",
+    "C6": "=SEARCHB(\"c\",A1,6)",
+    "C7": "=SEARCHB(\"c\",A1,2.9)",
+    "C8": "=SEARCHB(\"?c\",A1)",
+    "C9": "=SEARCHB(\"*\",A1)",
+    "C10": "=SEARCHB(\"~?\",A1)",
+    "C11": "=SEARCHB(\"本\",A2)",
+    "C12": "=SEARCHB(\"語\",A2)",
+    "C13": "=SEARCHB(\"語\",A2,3)",
+    "C14": "=SEARCHB(\"語\",A2,4)",
+    "C15": "=SEARCHB(\"a\",A4)",
+    "C16": "=SEARCHB(\"a\",A4,2)",
+    "C17": "=SEARCHB(\"\",A1)",
+    "C18": "=SEARCHB(\"\",A1,7)",
+    "C19": "=SEARCHB(\"x\",A1)",
+    "C20": "=SEARCHB(\"b\",A7)",
+    "C21": "=SEARCHB(\"b\",A1,-1)",
+    "C22": "=SEARCHB(\"b\",A1,\"x\")",
+    "C23": "=SEARCHB(7,A7)",
+    "C24": "=SEARCHB(\"ｱ\",A3)",
+    "C25": "=SEARCHB(\"ガ\",A3)"
+   }
+  }
+ ],
+ "expected": {}
+}
