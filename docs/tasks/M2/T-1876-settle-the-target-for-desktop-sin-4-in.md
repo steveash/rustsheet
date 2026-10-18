@@ -3,7 +3,7 @@ id: T-1876
 title: "Settle the target for desktop SIN(4) in ironcalc-calc IF_ARRAY (one ulp from web)"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -34,20 +34,34 @@ owns any of the three cells today.
 - Tools: `rustsheet-fitlab` (docs/architecture/fit-lab.md; `fitlab/exact.py` has the x87 model).
 
 ## Acceptance criteria
-- [ ] Fit-lab run, recorded in numbers.md: does any candidate SIN formulation give the desktop
+- [x] Fit-lab run, recorded in numbers.md: does any candidate SIN formulation give the desktop
   SIN(4) and keep every cell the T-1563 kernel passes today? Candidates include x87 `fsin` over
   the T-1563 reduction, the reduction with a 64-bit intermediate, and Apple libm-style
   reductions. Report the counts per candidate.
-- [ ] If such a formulation exists: a functions-math task (opus) is filed to implement it, naming
+- [x] (n/a) If such a formulation exists: a functions-math task (opus) is filed to implement it, naming
   the three IF_ARRAY cells as its acceptance cells.
-- [ ] Otherwise: a decision record (`make new-decision`) applies decisions 0030/0039 to this
+- [x] Otherwise: a decision record (`make new-decision`) applies decisions 0030/0039 to this
   cell. Either the engine keeps the web value, and the three cells are named as Excel-vs-Excel
   last-digit conflicts in numbers.md, or another resolution the record justifies. If the record
   changes how M2's exit counts them, docs/milestones.md says so. Directive 2 still holds: no
   `--allow-regressions`, no baseline edit.
-- [ ] numbers.md entry updated with the SIN(4) evidence and the outcome. `make check` green;
+- [x] numbers.md entry updated with the SIN(4) evidence and the outcome. `make check` green;
   reviewers approve.
 
 ## Out of scope
 - Implementing a new SIN kernel (the follow-up task).
 - Other functions in the desktop/web last-digit list (ATAN2, IM*, ERFC, BESSEL, MIRR, IRR).
+
+## Outcome
+No SIN formulation gives desktop SIN(4) = -0.7568024953079283 while keeping the cells the T-1563 kernel passes.
+- The fit used exact-arithmetic models plus glibc and an fdlibm/musl port, scored on 224 web SIN/COS cells and on the
+  38 desktop cells of TRIGONOMETRIC.xlsx. Per-candidate counts are in numbers.md "Excel for the web and desktop Excel
+  differ in the last digits".
+  - The engine's model scores 224/224 and 38/38.
+  - Every candidate gives ...282, except a double-π reduction (...284).
+  - The true sin(4) is 0.06 ulp from the midpoint. The 38 desktop cells are all correctly rounded, so the Mac kernel is
+    only faithful, and one cell cannot pin it down.
+- Decision 0074: the engine keeps the web value. C4, E4 and C11 stay known failures, named as an Excel-vs-Excel conflict.
+  Their desktop question is item 11 of T-1075 (M14), which counts as a filed task for M2's ironcalc-calc criterion
+  (note added in docs/milestones.md).
+- Eval delta: none (docs only).
