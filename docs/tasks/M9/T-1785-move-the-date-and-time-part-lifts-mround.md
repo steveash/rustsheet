@@ -3,7 +3,7 @@ id: T-1785
 title: "Move the date and time lifts, MUNIT, MROUND and SQRTPI onto the SPEC-0011 driver and delete lift_numbers"
 milestone: M9
 lane: quality
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -30,3 +30,16 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Today's lifting code". T
 
 ## Out of scope
 - WORKDAY and NETWORKDAYS (T-1236). EDATE, EOMONTH, WEEKNUM and YEARFRAC (T-1770).
+
+## Handoff
+An opus run (2026-10-18) claimed this task and found it would not fit in the time left in its session.
+No code was changed. The claim is released through this note. Findings for the next run:
+- Call sites that the acceptance `rg` must clear: cast.rs (`lift_numbers`, `lift_number_operands`, `number_at`,
+  plus `apply_number_unary` at cast.rs:500 for the unary operators, which stays); date_and_time.rs (TIME,
+  TIMEVALUE-style `apply_number_unary` at ~128, DATE ~283, `date_part_fn!` DAY/MONTH/YEAR, TIME ~686,
+  `time_part_fn!` HOUR/MINUTE/SECOND, DATEDIF ~773, ~891, ~924, WEEKDAY ~960-963, ISOWEEKNUM ~974);
+  matrix.rs:222 (MUNIT); mathematical.rs:389 (MROUND), :529 (SQRTPI).
+- Not in the task's list but still callers: lookup_and_reference/index.rs:385-387 uses `number_at`, and
+  math_and_trigonometry/random.rs:99 (RANDBETWEEN) uses `lift_number_operands`. Deleting those helpers
+  needs them moved too (or the task narrowed).
+- Template: functions/date_and_time/month_shift.rs (EDATE/EOMONTH on `lift_call`, T-1770).
