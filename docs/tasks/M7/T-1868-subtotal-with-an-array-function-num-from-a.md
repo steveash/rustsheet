@@ -3,7 +3,7 @@ id: T-1868
 title: "SUBTOTAL with an array function_num (from a dynamic-array function) lifts over its elements"
 milestone: M7
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
