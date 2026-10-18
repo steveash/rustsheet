@@ -21,13 +21,18 @@ pub(super) fn aggregate_static_result(args: &[Node]) -> StaticResult {
     broadcast_static_result(lifted)
 }
 
-/// SUBTOTAL spills when an argument after the function number evaluates to an array (each
+/// SUBTOTAL spills over an array or range `function_num` (`Model::fn_subtotal`, probes/
+/// subtotal-array-function-num, T-1868), and when an argument after it evaluates to an array (each
 /// element is `#VALUE!` or its own error, `Model::subtotal_reference_args`, T-1163). A written
 /// reference is read, not lifted; anything else counts at its shape, a call even when that is
 /// a range, since CHOOSE gives a range's shape to its array arms (`CHOOSE(1,{1,2})`). Not
 /// `is_reference_operand`: that one accepts calls, which can evaluate to arrays.
 pub(super) fn subtotal_static_result(args: &[Node]) -> StaticResult {
-    broadcast_static_result(args.iter().skip(1).filter(|arg| !is_read_reference(arg)))
+    broadcast_static_result(
+        args.iter()
+            .take(1)
+            .chain(args.iter().skip(1).filter(|arg| !is_read_reference(arg))),
+    )
 }
 
 /// AREAS spills the same way over its one argument (`AREAS(IF(TRUE,{1,2}))` is two `#VALUE!`,
@@ -72,8 +77,10 @@ fn is_read_reference(arg: &Node) -> bool {
 /// `TAKE(LET(x,SEQUENCE(4),x),2)` pick values and spill like any array
 /// (probes/subtotal-reference-operands-e I2:J2, O2:P2, R2:U2, T-1365). `bound` holds the LET
 /// variables in scope with their answer, computed once when bound so a chain of variables costs
-/// linear time; a name not in it (a LAMBDA parameter) counts as cells, as before.
-fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
+/// linear time; a name not in it (a LAMBDA parameter) counts as cells, as before. A written group
+/// is its child: `IMABS((CHOOSE(1,{1,2,3})))` lifts like the bare call (T-1874).
+pub(super) fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
+    let node = node.ungrouped();
     match node {
         Node::FunctionKind {
             kind: Function::If,

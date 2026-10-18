@@ -3,7 +3,7 @@ id: T-1868
 title: "SUBTOTAL with an array function_num (from a dynamic-array function) lifts over its elements"
 milestone: M7
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,9 +23,12 @@ Semantics: docs/excel-semantics/references.md ("SUBTOTAL lifts over an array fun
 crates/rustsheet-engine/src/functions/subtotal.rs.
 
 ## Acceptance criteria
-- [ ] gen-m9/d5bd4272655c5211 A14 passes in `./target/release/rustsheet-eval show gen-m9/d5bd4272655c5211.case.json`, no new failing gen-m9 cell.
-- [ ] probes/subtotal-array-function-num passes (its failures are known in eval/baseline); references.md "Ours" updated.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/d5bd4272655c5211 A14 passes in `./target/release/rustsheet-eval show gen-m9/d5bd4272655c5211.case.json`, no new failing gen-m9 cell.
+- [x] probes/subtotal-array-function-num passes (its failures are known in eval/baseline); references.md "Ours" updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`fn_subtotal` lifts an array or multi-cell range function_num through `lift_values` (one SUBTOTAL per element); `subtotal_static_result` includes the function number so the cell spills. probes/subtotal-array-function-num now passes (probes known failures 2421 -> 2411); gen-m9/d5bd4272655c5211 A14 passes.

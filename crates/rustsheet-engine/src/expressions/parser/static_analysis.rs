@@ -852,14 +852,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Atan => scalar_arguments(args),
         Function::Atan2 => scalar_arguments(args),
         Function::Atanh => scalar_arguments(args),
-        // CHOOSE is a reference function: with a range arm the call itself is
-        // reference-shaped, so legacy import wraps the whole CALL in `@`
-        // (Excel upgrades `=CHOOSE(2,A1:A10,B1:B10)` to `=@CHOOSE(...)`).
-        // Its arms' counts become the extents of that range shape.
-        Function::Choose => match scalar_arguments(args) {
-            StaticResult::Array(n, m) => StaticResult::Range(n - 1, m - 1),
-            other => other,
-        },
+        Function::Choose => reference_result::choose_static_result(args),
         Function::Column => row_column::static_analysis_row_column(args, false),
         Function::Columns => not_implemented(args),
         Function::Cos => scalar_arguments(args),
