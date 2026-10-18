@@ -10,7 +10,7 @@ use regex::Regex;
 use crate::case::split_qualified;
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
-use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot, TableDef};
+use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot, TableDef, WorkbookSnapshot};
 
 /// Functions that read the wall clock. Scorable when the workbook pins the clock (see
 /// [`pinned_clock_serial`]).
@@ -68,16 +68,15 @@ pub fn formula_cells(sheets: &[SheetSnapshot]) -> Vec<FormulaCell> {
 /// The formula cells that can be scored: every formula cell not tainted by a volatile function
 /// (directly or through precedents), with the number of formula cells skipped as volatile.
 #[must_use]
-pub fn scorable_cells<'a>(
-    sheets: &'a [SheetSnapshot],
-    names: &[DefinedName],
-    tables: &[TableDef],
+pub fn scorable_cells(
+    snapshot: &WorkbookSnapshot,
     clock_pinned: bool,
-) -> (Vec<(&'a str, Addr, &'a CellSnapshot)>, usize) {
+) -> (Vec<(&str, Addr, &CellSnapshot)>, usize) {
+    let sheets = &snapshot.sheets;
     let volatile = volatile_cells(
         &formula_cells(sheets),
-        names,
-        tables,
+        &snapshot.defined_names,
+        &snapshot.tables,
         clock_pinned,
         &HashSet::new(),
     );
