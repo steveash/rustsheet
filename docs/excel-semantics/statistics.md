@@ -455,6 +455,24 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
     - Once N was exact, D's stages followed from per-stage correlation searches.
     - The low bits were pinned by peeling down from high x.
   - **Still open:** the [0.5, 4] kernel, and EXP's last F2XM1 cells.
+- ERFC kernel for 0.5 < x <= 4 (rounds 7-8): structure known, coefficients OPEN.
+  - **Form.** ERFC = fl53(fl64(E*R)) with R = fl(N/D). N and D are Horner polynomials in x with every operation
+    stored, degree (7,7). N's top coefficient is tiny, about -4.6E-10 relative, so the effective form is (6,7), as
+    in Cody's [0.46875, 4] interval but with Excel's own coefficients.
+  - **Scale.** In the normalisation N(0) = D(0) = lambda*2^k, lambda = 1.020495 ± 1E-6 from spectral line scans
+    over 496 long runs (`kmyst-erfc-r8a*`, `r8b*`, `r8c*`).
+  - **Approximate coefficients.** Least squares, normalised to N0 = D0 = 1, low to high:
+    - N: 1.00000000028, 1.5051764, 1.1308935, 0.5102721, 0.1440942, 0.0241051, 0.0018892, -4.56E-10.
+    - D: 1, 2.6335556, 3.1025427, 2.1298140, 0.9258883, 0.2570649, 0.0427260, 0.0033484.
+    These match only 33% of points exactly, which is the smooth-model level.
+  - **Why the tail's stage-fingerprint method fails here.** The top Horner stages' rounding is nearly invisible:
+    weights of 0.002-0.06 noise units, against 0.1-0.3 in the tail. Even 64 runs of 16,384 doubles just below 4
+    (`kmyst-erfc-r8d*`) don't show the top product line. Yet those stages fix every downstream rounding, so there is
+    no exact anchor from which to peel.
+  - No power-of-two normalisation (like the tail's D constant 128) appears.
+  - **Remaining routes:** the coefficients' generating construction; a global exact-match optimisation from a much
+    better start; or a side channel that exposes N or D separately (none known).
+
 - GAMMA.DIST(z, 0.5, 1, TRUE) = ERF.PRECISE(SQRT(z)) = CHISQ.DIST(2z, 1, TRUE) at 15,360 of 15,360 consecutive
   doubles z, about half of which are not squares of doubles (`kmyst-erf-decouple`).
   - So the kernel works from x = sqrt(z), and that internal sqrt is rounded twice (64-bit, then 53), like the
