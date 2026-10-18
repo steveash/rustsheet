@@ -4,6 +4,7 @@ import copy
 import functools
 import io
 import json
+import random
 import re
 import zipfile
 from collections import Counter
@@ -12,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from rustsheet_tools import repo_root
-from rustsheet_tools.gen.generator import NAME_POOL, Catalog, generate_case
+from rustsheet_tools.gen.generator import NAME_POOL, Catalog, Gen, generate_case
 from rustsheet_tools.gen.names_3d import CATEGORIES as NAMES_3D_CATEGORIES
 from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
@@ -373,6 +374,24 @@ def test_array_params_are_sometimes_ranges() -> None:
     formulas = list(spec["sheets"][1]["cells"].values())
     # Expressions never produce a bare range: only the array branch passes one to SUMPRODUCT.
     assert any(re.search(r"SUMPRODUCT\(Data!\w+:\w+[,)]", f) for f in formulas)
+
+
+def test_lift_arrays_params_never_get_a_name_or_range() -> None:
+    # T-1776: a `lift: arrays` param refuses a multi-cell range, which a LAMBDA parameter
+    # (BYROW's row) or a range literal would pass. The scope holds a name the call must not use.
+    cat = catalog().scoped("M9")
+    edate = next(f for f in cat.functions if f["name"] == "EDATE")
+    assert all(p.get("lift") == "arrays" for p in edate["params"])
+    gen = Gen(
+        rng=random.Random(4),
+        catalog=Catalog(operators=cat.operators, functions=[edate]),
+        data_rows=10,
+        data_cols=4,
+        max_depth=3,
+    )
+    gen.scope = ["row_x"]
+    calls = [gen.call("any", 0) for _ in range(300)]
+    assert not [c for c in calls if "row_x" in c or ":" in c]
 
 
 def test_generator_calls_only_entries_with_signatures() -> None:

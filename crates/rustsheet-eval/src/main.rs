@@ -28,6 +28,7 @@ use rustsheet_eval::deviations;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::evidence_floor::{self, Lock, EVIDENCE_FLOOR, LOCK_PATH};
 use rustsheet_eval::fetch::fetch_suite;
+use rustsheet_eval::lift_kinds;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
@@ -106,6 +107,13 @@ enum Cmd {
         /// With --update, also record a higher count (needs a decision record).
         #[arg(long)]
         allow_increase: bool,
+    },
+    /// Print the engine's SPEC-0011 argument-kind table, or write it to
+    /// eval/catalog/lift-kinds.json (T-1776).
+    LiftKinds {
+        /// Write the file instead of printing.
+        #[arg(long)]
+        write: bool,
     },
     /// Show every scored cell of one case.
     Show {
@@ -421,6 +429,18 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
     })
 }
 
+fn cmd_lift_kinds(root: &Path, write: bool) -> Result<ExitCode> {
+    let text = lift_kinds::render()?;
+    if write {
+        let path = root.join(lift_kinds::LIFT_KINDS_PATH);
+        std::fs::write(&path, text).with_context(|| format!("writing {}", path.display()))?;
+        println!("wrote {}", lift_kinds::LIFT_KINDS_PATH);
+    } else {
+        print!("{text}");
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
 fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result<ExitCode> {
     let sel = Selection {
         suites: Suite::load_all(&root.join("eval/suites"))?
@@ -611,6 +631,7 @@ fn run() -> Result<ExitCode> {
             update,
             allow_increase,
         } => cmd_evidence_floor(&root, update, allow_increase),
+        Cmd::LiftKinds { write } => cmd_lift_kinds(&root, write),
         Cmd::Show { case_id, all } => cmd_show(&root, &case_id, all),
         Cmd::Cases { suite } => cmd_cases(&root, &suite),
         Cmd::Snapshot { .. } | Cmd::Compare { .. } => unreachable!("handled above"),
