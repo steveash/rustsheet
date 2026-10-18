@@ -22,4 +22,4 @@ Oracle evidence: probes/legacy-n-t-reference-args-2 (excel-graph, 2026-10-18), r
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Range-in-scalar-slot shapes (already match Excel).
+- The IF, OFFSET and CHOOSE scalar-slot shapes (already match Excel).
