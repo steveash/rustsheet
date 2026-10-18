@@ -381,13 +381,20 @@ between arguments: T.DIST.2T and TDIST read every argument before they check x o
 `TDIST(-1,NA(),1)` and `TDIST(1,NA(),3)` are `#N/A`, and per element too; F1-F6), as do F.DIST and BETA.DIST
 (`F.DIST(-1,NA(),3,TRUE)`, `BETA.DIST(2,-1,NA(),TRUE)` `#N/A`; F7, F8). The 1E308 values sit in cells: a literal
 1E308 is not written into a formula, and a text "1e308" cell is `#VALUE!` in these functions.
-Evidence: probes/stat-overflow-arguments (excel-graph, 2026-10-18, T-1290).
+Also `TDIST(-1,5,NA())` is `#N/A` (an error in tails wins over x < 0), the BETA.DIST pdf at x = A with B - A
+overflowing is `#DIV/0!`, and with x = 8E307 and deg_freedom1 = 2 (df1*x = 1.6E308, finite) F.DIST is 1 (cdf) and 0
+(pdf), F.DIST.RT and FDIST 0 (stat-overflow-arguments-b A1-A9).
+Evidence: probes/stat-overflow-arguments and -b (excel-graph, 2026-10-18, T-1290).
 Ours: matches (T-1290). Before, the overflowing F.DIST and BETA.DIST calls panicked in statrs' incomplete beta
-(an unwrapped NaN), the F pdf of a huge x was `#NUM!` (statrs' direct form overflows to inf/inf; it now falls back to
-logarithms only when that form is not finite, so `F.DIST(1E308,1,3,FALSE)` is 0), PERMUT gave numbers of 2^31 - 1 and
-more, and TDIST checked x before reading deg_freedom (`TDIST(-1,NA(),1)` was `#NUM!`).
+(an unwrapped NaN), the F pdf of a huge x was `#NUM!` (statrs' direct form overflows to inf/inf), PERMUT gave numbers
+of 2^31 - 1 and more, and TDIST checked x before reading deg_freedom (`TDIST(-1,NA(),1)` was `#NUM!`). The F pdf falls
+back to logarithms only when the overflow comes from x alone: `df1^df1`, `df2^df2` and `(df1+df2)^(df1+df2)` finite,
+so `F.DIST(1E308,1,3,FALSE)` and `F.DIST(8E307,2,3,FALSE)` are 0. Degrees of freedom large enough to overflow those
+powers keep main's `#NUM!` (`F.DIST(3,50,100,FALSE)`; probes-numeric/t1530-f-df-cut `F.DIST(2,5,1E10,FALSE)`, where
+Excel gives 0.14167277676179968), because the logarithmic form is not accurate enough there (T-1863); every
+probes-numeric cell is unchanged from main.
 Status: VERIFIED (excel-graph)
-Tasks: T-1290
+Tasks: T-1290, T-1863
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the

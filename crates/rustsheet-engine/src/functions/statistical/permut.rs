@@ -34,9 +34,10 @@ impl Model {
         }
         let (n, k) = (n as i64, k as i64);
         // n * (n-1) * ... * (n-k+1), smallest factor first: (n-k)+1, (n-k)+2, ..., n. Counting
-        // up from `n - k` (0 <= k <= n) never computes `n - k + 1` for k = 0. The factors are distinct integers of at least 1, so after 171 of them the
-        // product is at least 171!, past `f64::MAX`, and stays infinite: the loop stops there, at
-        // most 171 multiplications whatever the arguments.
+        // up from `n - k` (0 <= k <= n) never computes `n - k + 1` for k = 0. The factors are
+        // distinct integers of at least 1, so after 171 of them the product is at least 171!,
+        // past `f64::MAX`, and stays infinite: the loop stops there, at most 171
+        // multiplications whatever the arguments.
         let low = n - k;
         let mut result = 1.0_f64;
         for i in 1..=k {

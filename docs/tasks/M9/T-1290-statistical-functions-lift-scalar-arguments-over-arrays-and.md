@@ -48,7 +48,8 @@ WEIBULL and WEIBULL.DIST.
   - The kernels are closed form or call statrs' incomplete beta (140 steps at most) a fixed number of times:
     `Constant`. Over 2^20 elements BETA.DIST with shapes of 1E6 takes 0.30 s (0.28 us an element), F.DIST and T.DIST
     with 1E9 degrees of freedom 0.28 and 0.30 us an element, NORM.DIST 0.14 us; the slowest, BINOM.DIST with 1E18
-    trials, 3.32 s (3.2 us an element).
+    trials, 3.32 s (3.2 us an element), and BINOM.DIST.RANGE (two cdfs) 6.66 s (6.4 us an element); both stay
+    `Constant` (a fixed 140-step cap).
   - PERMUT is `Constant`: its product stops once it is infinite (at most 171 factors), where `PERMUT(1E15,1E15)` looped
     10^15 times; 2^20 elements take at most 0.23 s.
   - BINOM.INV/CRITBINOM are `Weighted(4096)`: their search halves a `u64` (at most 64 cdfs), up to 65 us an element
@@ -66,14 +67,16 @@ WEIBULL and WEIBULL.DIST.
   check any). `number_or_error` moved from financial/mod.rs to functions/lift. Their fallback
   arms in static_analysis.rs are deleted (87 lines; the lock goes 1385 → 1208, main being 1295); duplicated lines
   4812 → 4510 (decision 0010 line).
-- **Scalar changes**, each from Excel evidence (new probe probes/stat-overflow-arguments, 61 formula cells, all pass,
-  excel-graph 2026-10-18; statistics.md "Overflowing arguments, PERMUT's limit and argument error order"):
+- **Scalar changes**, each from Excel evidence (new probes probes/stat-overflow-arguments, 61 formula cells, and -b,
+  10 cells, all pass, excel-graph 2026-10-18; statistics.md "Overflowing arguments, PERMUT's limit and argument error order"):
   - BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is its value (stat-later-argument-lift L11).
   - Panics fixed (directive 5; on main, and reachable per element once lifted): F.DIST, F.DIST.RT and FDIST whose
     `df1*x` overflows are `#DIV/0!` (the F.DIST pdf `#NUM!`), and BETA.DIST/BETADIST whose `B - A` overflows are 0 at
     x = A, 1 at x = B and `#DIV/0!` otherwise, as Excel; statrs' incomplete beta used to unwrap the NaN. The F pdf of
-    a huge x whose `df1*x` stays finite was `#NUM!` and is now 0 (`F.DIST(1E308,1,3,FALSE)`, E11): a logarithmic form
-    runs only where statrs' direct form is not finite.
+    a huge x whose `df1*x` stays finite was `#NUM!` and is now 0 (`F.DIST(1E308,1,3,FALSE)`, E11; -b A6): a
+    logarithmic form runs only where the overflow comes from x alone, so large-df pdfs keep main's `#NUM!` (accurate
+    large-df pdfs are T-1863); probes-numeric was compared cell by cell with main: unchanged but for t1049-phi A37,
+    a lift fix.
   - PERMUT: a truncated number of 2^31 - 1 or more is `#NUM!` (it was a number, and `PERMUT(1E30,0)` overflowed i64),
     and a product past the double range is `#NUM!`.
   - TDIST reads deg_freedom and tails before it checks x: `TDIST(-1,NA(),1)` is `#N/A` (was `#NUM!`).

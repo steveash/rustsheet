@@ -647,7 +647,8 @@ impl Function {
             // fraction of at most 140 steps) a fixed number of times: measured in release over
             // 2^20 elements, BETA.DIST with shapes of 1E6 costs about 0.29 us an element, F.DIST
             // and T.DIST with 1E9 degrees of freedom 0.28 and 0.30 us, NORM.DIST 0.14 us, and the
-            // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements).
+            // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements), and
+            // BINOM.DIST.RANGE, which runs two cdfs, 6.4 us (6.7 s for 2^20 elements).
             // PERMUT multiplies at most 171 factors whatever its arguments (0.22 us). The
             // quantile searches (BETA.INV, F.INV, T.INV, CHISQ.INV, GAMMA.INV), the
             // incomplete-gamma ones (CHISQ.*, GAMMA.DIST, POISSON) and HYPGEOM.DIST's cdf sum loop

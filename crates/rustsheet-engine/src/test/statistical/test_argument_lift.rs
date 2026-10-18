@@ -225,6 +225,16 @@ fn overflowing_arguments_are_excels_errors_not_panics() {
     model._set("A4", "=FDIST(C1,2,3)");
     model._set("A5", "=F.DIST(C1,1,3,TRUE)");
     model._set("B2", "=F.DIST(C1,1,3,FALSE)");
+    // The overflow threshold (stat-overflow-arguments-b A5-A8): 2*8E307 is finite.
+    model._set("C5", "=8E+306*10");
+    model._set("B3", "=F.DIST(C5,2,3,TRUE)");
+    model._set("B4", "=F.DIST(C5,2,3,FALSE)");
+    model._set("B5", "=F.DIST.RT(C5,2,3)");
+    // Large degrees of freedom keep main's #NUM! for the pdf (TODO(T-1863)).
+    model._set("B6", "=F.DIST(1,1000,1000,FALSE)");
+    model._set("B7", "=F.DIST(3,50,100,FALSE)");
+    model._set("B8", "=TDIST(-1,5,NA())");
+    model._set("B9", "=BETA.DIST(C2,2,3,FALSE,C2,C1)");
     model._set("A6", "=BETA.DIST(C1,2,3,TRUE,C2,C1)");
     model._set("A7", "=BETA.DIST(C1,2,3,FALSE,C2,C1)");
     model._set("A8", "=BETADIST(C1,2,3,C2,C1)");
@@ -242,6 +252,13 @@ fn overflowing_arguments_are_excels_errors_not_panics() {
     let expected = [
         ("B1", "TRUE"),
         ("B2", "0"),
+        ("B3", "1"),
+        ("B4", "0"),
+        ("B5", "0"),
+        ("B6", "#NUM!"),
+        ("B7", "#NUM!"),
+        ("B8", "#N/A"),
+        ("B9", "#DIV/0!"),
         ("A1", "#DIV/0!"),
         ("A2", "#NUM!"),
         ("A3", "#DIV/0!"),

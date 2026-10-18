@@ -41,11 +41,19 @@ fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
 
 /// The F density. statrs' direct form raises `df1*x` and `df1*x + df2` to the power `df1` and
 /// `df1 + df2`, which overflows to inf/inf (NaN) for a huge x although the density is tiny:
-/// Excel's `F.DIST(1E308,1,3,FALSE)` is 0 (probes/stat-overflow-arguments E11). Only then is the
-/// density evaluated in logarithms, so every value the direct form gives is kept.
+/// Excel's `F.DIST(1E308,1,3,FALSE)` is 0 (probes/stat-overflow-arguments E11, -b A6). Only in
+/// that case, where the overflow comes from x alone (`df1^df1`, `df2^df2` and
+/// `(df1+df2)^(df1+df2)` are finite, so the direct form does not overflow at x near 1), is the
+/// density evaluated in logarithms. Degrees of freedom large enough to overflow those powers
+/// (`F.DIST(3,50,100,FALSE)`, `F.DIST(2,5,1E10,FALSE)`) overflow the direct form too; they stay
+/// `#NUM!` as before, because the logarithmic form is not accurate enough there (Excel's
+/// `F.DIST(2,5,1E10,FALSE)` is 0.14167277676179968, probes-numeric/t1530-f-df-cut; TODO(T-1863)).
 fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
     let direct = dist.pdf(x);
-    if direct.is_finite() || x <= 0.0 {
+    let total = df1 + df2;
+    let small_powers =
+        df1.powf(df1).is_finite() && df2.powf(df2).is_finite() && total.powf(total).is_finite();
+    if direct.is_finite() || x <= 0.0 || !small_powers {
         return direct;
     }
     let scaled = df1 * x;
