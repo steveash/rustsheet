@@ -451,7 +451,7 @@ to an error element is not probed).
 An array-valued match_type also lifts, broadcast with lookup_value (`ROWS(MATCH(2,A1:A3,{0;1}))` is 2, `INDEX(MATCH(B1:B2,A1:A3,{0;1}),1)` is 3); a multi-cell range match_type still reads its top-left cell (probes/match-type-nested-passthrough), and static analysis spills only for an array one.
 A scalar error lookup_value lifts over an array match_type too: `ROWS(MATCH(NA(),A1:A3,{0;1}))` is 2, `INDEX(MATCH(NA(),A1:A3,{0;1}),2)` is
 `#N/A`, and `#DIV/0!` fills both slots of `MATCH(#DIV/0!,..,{0;1})`; `MATCH(25,A1:A3,{0;"x"})` is `#N/A` then `#VALUE!` (the second
-slot's text match_type, not the error, decides).
+slot's text match_type, not the error, decides; E3 itself is `#SPILL!` in the probe because E4:E5 block the spill).
 Evidence: probes/match-lookup-value-lift (19 cells; excel-graph, 2026-10-18, T-1866); probes/match-error-lookup-value-array-match-type (8 cells; excel-graph, 2026-10-18, T-1926); gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, T-1361).
 Status: VERIFIED
 Implemented in: `Model::fn_match` (functions/lookup_and_reference/mod.rs) through `lift_values`; static analysis (`match_static_result`) spills by lookup_value and an array match_type.

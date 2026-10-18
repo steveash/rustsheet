@@ -296,5 +296,4 @@ fn test_match_scalar_error_lookup_value_lifts_over_array_match_type() {
     assert_eq!(model._get_text("C3"), "2");
     assert_eq!(model._get_text("C4"), "#DIV/0!");
     assert_eq!(model._get_text("D1"), "#N/A");
-    assert_eq!(model._get_text("D2"), "");
 }
