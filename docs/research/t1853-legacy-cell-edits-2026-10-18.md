@@ -4,7 +4,9 @@
 
 SPEC-0012 rule 6 assumes that a legacy cell stays legacy when a row is inserted above it, when it is
 moved, and when it is copied or filled. The cell holds a plain `<f>` holding `=N(IF(1,{2;3}))+A5`, which is `#VALUE!`. The eval harness
-cannot express an edit sequence (rustsheet-case/v1 is static), so this was a one-off session against the excel-graph oracle.
+replays sheet operations (`sheet_ops`: add, rename and move a sheet) but has no row-insert op. So this was a one-off session against
+the excel-graph oracle. Its result is not kept as a case: no sidecar, no saved file, no committed script. T-1933 adds a row-insert op to
+`sheet_ops` and turns the result into an oracle-filled probe case.
 
 ## Method
 
@@ -37,4 +39,4 @@ cannot express an edit sequence (rustsheet-case/v1 is static), so this was a one
 - **Copy, move and fill.** Graph v1.0 refuses all three range operations with BadRequest. Office.js has them, but this Graph
   endpoint does not take them, so excel-graph cannot answer these. They are T-1075 item 12 (M14, decision 0039).
 - **Side finding.** If the cells are not listed under `legacy_formulas`, spec2xlsx writes `<f t="array" ref=...>` with
-  `cm="1"` (dynamic). That formula then spills and gives 3, so the control must mark legacy cells explicitly.
+  `cm="1"` (dynamic). That formula then spills 3 and 4 (A5 = 1), so the control must mark legacy cells explicitly.

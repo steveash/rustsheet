@@ -42,4 +42,6 @@ references.md "Legacy N and T over a reference-returning call".
   400 BadRequest. They stay rule 6's assumption, and the desktop check is T-1075 item 12 (decision 0039).
 - **Evidence:** docs/research/t1853-legacy-cell-edits-2026-10-18.md and references.md "Legacy N and T over a reference-returning call".
 - **Side finding:** a probe of a legacy cell must list it under `legacy_formulas`. Otherwise spec2xlsx writes a dynamic `t="array"` formula.
+- **Follow-up:** the row-insert result came from a one-off session and is not kept as an eval case. T-1933 adds a row-insert op to `sheet_ops`
+  and makes it an oracle-filled probe.
 - **Eval delta:** none (docs only).
