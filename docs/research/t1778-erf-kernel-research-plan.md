@@ -384,3 +384,41 @@ x >= 0.5:
 - The drift's sign changes suggest an approximation interval of about [8, 26.64].
 - Five proposed probes (66,240 cells) are specified in the round-2 erfc-structure report: decouple, the exact 0.5
   split, a branch scan, Excel's EXP alongside ERFC, and a dense drift map.
+
+### Research update 4 (2026-10-18): small-x erf is bit-exact; the ERFC tail's outer structure is pinned
+
+**Small x is solved.** For 0 <= x <= 0.5 a single coefficient set reproduces 775,272 of 775,272 oracle points,
+re-verified with the unmodified round-2 scorer. It also reproduces 35,718 of 35,718 points never used in the fit.
+- The structure is unchanged from update 3 (x87 Horner, every operation stored to double; 80-bit product and
+  divide). Only the coefficients changed.
+- How: exact interval inversion of each rounding step into linear constraints, then LP/MILP. Round 2's local
+  optimum had p1 one ulp too high.
+- Pinned to single doubles: p0..p2 and q0..q2. The top coefficients lie on a thin feasible family whose
+  members score identically on all data.
+- The coefficients are in `docs/research/t1778/round3/sol100.txt` on the research branch.
+
+**The ERFC tail (x > 0.5) is open, but its outer structure is exact.**
+- ERFC = fl53(fl64(E*R)): E is Excel's own EXP(-fl53(fl64(x*x))), and R is a stored double that depends only on
+  x. All 121,798 points fit this form.
+- **Excel EXP** is emulated as x87 2^(a*log2e) with a 64-bit log2e: 121,790 of 121,805 points and 30,717 of
+  30,720. It is not correctly rounded; it runs about 2.1% low by 1 ulp at large |a|.
+- **Split and related functions:**
+  - The split is at x = 0.5 + 2^-53.
+  - CHISQ.DIST.RT(2z,1) = ERFC(SQRT(z)).
+  - NORM.S.DIST(-y) = ERFC(fl(y*sqrt(0.5)))/2.
+  - A result below DBL_MIN is flushed to 0.
+- **R's error is a rounding fingerprint.** The ±3-unit "drift" is a deterministic staircase from power-of-two
+  crossings of Horner intermediates, not an approximation-error curve. So matching error-curve shapes cannot
+  identify the source; only exact simulation can.
+- **Features of R:** a sharp change at x ≈ 1.843, a likely branch at about 8.03-8.05, sharp steps at 9.0503 and
+  19.3667, and spectral lines above 8 that point to an intermediate linear in x.
+- **Candidates that fail:** Cephes, Hart 5725, CALERF and fdlibm reach 16-40% exact. Continued fractions,
+  term-count series and tables are ruled out.
+- The 19 new tail probes are `kmyst-erfc-*` (about 644k cells).
+
+**Round 4 (running)** works only on the tail:
+- bit-exact EXP;
+- interval-inversion fits of R, starting on [0.5, 1.843);
+- known rationals with a scale factor, tested by exact fingerprint simulation;
+- probes bisecting the steps and branch points;
+- reconstructing the Horner intermediates from the step catalogue and the spectral lines.
