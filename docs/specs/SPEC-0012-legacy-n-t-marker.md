@@ -168,16 +168,16 @@ needs no field anywhere else.
   spelling. Case and `_xlfn.` prefix variants follow that matcher exactly, and a test checks that
   no other variant reparses to the internal kind. Today R1C1 mode parses only stored text (the
   three call sites above).
-- **One way to type it.** A formula that does not parse is stored as its raw text
-  (stringify.rs, `ParseErrorKind`) and parsed again in R1C1 mode on reload (operands.rs). So a
-  broken formula holding the spelling, e.g. `=_RS_LEGACY_N(IF(1,{2;3}))+R[1]C`, can come back
-  marked. This is accepted. The only effect is `#VALUE!` for an array argument of that N/T, with
-  no new allocation or recursion. T-1851 adds a test that pins this behavior.
+- **No way to type it.** Since T-1805 a formula that does not parse is stored as a marked parse
+  error (expressions/parser/unparsed.rs) that the R1C1 parser hands back unparsed. So a broken
+  formula holding the spelling, e.g. `=_RS_LEGACY_N(IF(1,{2;3}))+R[1]C`, comes back as the same
+  parse error after a reload, never marked. T-1851's test pins this.
 - **A defined name with the same spelling.** In A1 mode the spelling is plain N/T, so a workbook
   LAMBDA name with that spelling is shadowed: `_RS_LEGACY_N(1)` calls N, not the name. T-1851 may
   find, with the excel-probe skill, a spelling that Excel refuses as a defined name. If it does
-  not, it records the shadowing as a `DEVIATION` entry in references.md (decision 0014), and its
-  test states the actual behavior.
+  not, it records the shadowing in references.md, and its test states the actual behavior. The
+  entry is a known gap, not a `DEVIATION`: decision 0052 allows deviations only for directive 5
+  (T-1851 recorded it as UNVERIFIED, probe pending in T-1912).
 - The shared-formula dedup (`shared_formula_index`, keyed by the RC text) keeps a legacy
   `=N(IF(1,{2;3}))` and a dynamic one on the same sheet apart, as two entries, with no extra key.
 - Model files saved before T-1851 have no spelling and load as today. A model file with the
@@ -352,8 +352,9 @@ failing probe cells already need it.
     `to_excel_array_formula_string` and FORMULATEXT print `N(` / `T(`.
   - The edge behavior is pinned:
     - An A1 call of the spelling is plain N/T, also when a LAMBDA name with that spelling exists.
-      This is the `DEVIATION` above, unless a spelling Excel refuses as a name is found.
-    - A parse-error formula holding the spelling comes back marked after a reload.
+      This is the known gap above, unless a spelling Excel refuses as a name is found.
+    - A parse-error formula holding the spelling comes back as the same parse error after a
+      reload (T-1805), never marked.
     - Case and `_xlfn.` variants that `is_legacy_marker_spelling` does not accept never reparse
       to the internal kind.
   - `function_iterator` with `Function::INTERNAL`.

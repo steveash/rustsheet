@@ -1510,7 +1510,7 @@ position, and at the top level, through an implicit `@` that FORMULATEXT shows: 
 `=N({2;3})` `=N(@{2;3})` (2), `=ABS({-2;3})` 2, `=ISNUMBER(IF(1,{2;3}))` TRUE, `=-IF(1,{2;3})`
 `=-@IF(1,{2;3})` (-2), `=N(TRANSPOSE({2,3}))` `=N(@TRANSPOSE({2,3}))` (2). Each dynamic twin spills
 (`=N(IF(1,{2,3}))` is `#SPILL!` there, its spill range blocked).
-Exception: N and T over `IF(...)` get no `@`, and the legacy cell is `#VALUE!` (`=N(IF(1,{2;3}))`,
+Exceptions: a top-level SWITCH gets no `@` and the legacy cell spills (T-1847, below). N and T over `IF(...)` get no `@`, and the legacy cell is `#VALUE!` (`=N(IF(1,{2;3}))`,
 `=N(IF(1,{2,3}))`, `=T(IF(1,{"a";"b"}))`), while `=N(IF(1,2))` is 2. N and T take a reference or a
 value, and IF can return a reference: CHOOSE, INDEX and IFS behave the same, see "Legacy N and T over
 a reference-returning call" below.
@@ -1524,17 +1524,20 @@ Implemented (T-1717): `add_legacy_intersection` (expressions/parser/static_analy
 computes from them (`legacy_array_context`, static_analysis/legacy.rs; not IF, IFERROR, IFNA, CHOOSE,
 IFS, SWITCH, LET or LAMBDA, nor N/T over IF or SWITCH). Where it holds, an array constant argument
 gets the `@`, and so does an array-valued call of more than one cell whose array is one of its
-arguments or comes from a non-scalar one (`legacy_array_call_at`). Unprobed and left alone: an
-array constant inside an operator (`=N({2;3}+0)`) and a call whose array comes from such an operator
-(`=ABS({2;3}+0)`), both of which still spill; one-cell array-valued calls other than CHOOSE
-(Excel shows none on `=SUBTOTAL(9,CHOOSE(1,{5}))`, probes/legacy-one-cell-shape-intersection J3,
-while `=ABS(@CHOOSE(1,{5}))` keeps one through CHOOSE's range shape). Extrapolated, unprobed: IFNA,
-IFS and SWITCH taking the `@` on the call, the arguments of IFERROR, IFNA, IFS and SWITCH staying
-whole, T over SWITCH, and the array-constant `@` under scalar functions other than N, T and ABS
-(T-1847). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
+arguments or comes from a non-scalar one (`legacy_array_call_at`). Probed since in T-1847 (below): IFNA, IFS, the IFERROR argument, T over SWITCH and the array-constant `@` under LEN and ISNUMBER/SEARCH match. Known mismatches: an array constant inside an operator (`=N({2;3}+0)`, `=ABS({2;3}+0)`) still spills in ours (T-1911), and a top-level `=SWITCH(1,1,{2;3})` gets an `@` from ours (T-1910). One-cell array-valued calls: `=ABS(TRANSPOSE({5}))` takes the `@` in Excel and ours (below), while CHOOSE's one-cell result takes none (probes/legacy-one-cell-shape-intersection J3). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
 exception's `#VALUE!` is T-1713.
+Probed in T-1847 (probes/legacy-array-at-shapes, excel-graph, 2026-10-18; FORMULATEXT shown; each multi-cell dynamic twin spills, except F1 which is `#SPILL!`, its row spill blocked by G1):
+`=IFNA({2;3},0)` `=@IFNA({2;3},0)` (2), `=IFS(1,{2;3})` `=@IFS(1,{2;3})` (2), `=IFERROR(ABS({-2;3}),0)`
+`=@IFERROR(ABS({-2;3}),0)` (2: the `@` on the IFERROR, not inside), `=LEN({"ab";"c"})` `=LEN(@{"ab";"c"})` (2),
+`=ABS(TRANSPOSE({5}))` `=ABS(@TRANSPOSE({5}))` (5: a one-cell array still gets the `@`),
+`=ISNUMBER(SEARCH({"a","b"},Z1))` `=ISNUMBER(SEARCH(@{"a","b"},Z1))` (TRUE),
+`=N({2;3}+0)` `=N(@{2;3}+0)` (2) and `=ABS({2;3}+0)` `=ABS(@{2;3}+0)` (2): the `@` goes on the array constant
+inside an operator. SWITCH is the exception again: `=SWITCH(1,1,{2;3})` shows no `@` and the legacy cell spills 2, 3,
+and `=T(SWITCH(1,1,{"a";"b"}))` shows none and spills "a", "b". Ours matches all but the operator shapes (no `@`,
+spills: T-1911) and the top-level SWITCH (adds an `@`, no spill: T-1910). IFNA, IFS, the IFERROR argument and
+T over SWITCH are confirmed.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1847
+Tasks: T-1713, T-1717, T-1847, T-1910, T-1911
 
 ## Legacy N and T over a reference-returning call (T-1713)
 Rule: in a legacy (non-array) formula, N and T read their argument as a reference: no `@` goes on it,
@@ -1567,6 +1570,20 @@ on array-valued CHOOSE, INDEX and IFS calls (N gives the top-left value, T ""), 
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908
+
+## Legacy N and T marker spelling shadows a defined name of that spelling
+Rule: in Excel a workbook LAMBDA name is called by its name; in RustSheet the names `_RS_LEGACY_N` and
+`_RS_LEGACY_T` are the stored spelling of a legacy N/T (SPEC-0012, `functions/kinds.rs`), so a typed or
+imported call `=_RS_LEGACY_N(1)` is plain N even when a LAMBDA name `_RS_LEGACY_N` exists.
+Evidence: none yet. Whether Excel accepts these spellings as defined names is unprobed (T-1912). If it
+does, Excel calls the name and ours calls N: a known gap, not a deviation (decision 0052). The matcher
+is exact and case-sensitive, so `_rs_legacy_n(1)` and `_xlfn._RS_LEGACY_N(1)` still call the name.
+A model file saved before T-1851 with such a call stored as `_RS_LEGACY_N(...)` reloads as the marker,
+not as the name call (xlsx never holds the spelling: its A1 text reads as plain N).
+Ours: N (test_legacy_n_t_marker.rs `a_typed_call_of_the_spelling_is_plain_n`).
+Status: UNVERIFIED (probe pending, T-1912)
+Implemented in: functions/kinds.rs (`LEGACY_SPELLINGS`, `Function::from_legacy_spelling`); expressions/parser/operands.rs (`parse_named_call`)
+Tasks: T-1851, T-1912
 
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,

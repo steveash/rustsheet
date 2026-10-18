@@ -369,6 +369,7 @@ C	probes/lambda-param-call.case.json	6
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
+C	probes/legacy-array-at-shapes.case.json	40
 C	probes/legacy-array-result.case.json	46
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-choose-array-index.case.json	12
@@ -1847,6 +1848,12 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/info-logic-argument-modes.case.json	Calc!A19
+F	probes/legacy-array-at-shapes.case.json	S!C11
+F	probes/legacy-array-at-shapes.case.json	S!C20
+F	probes/legacy-array-at-shapes.case.json	S!I11
+F	probes/legacy-array-at-shapes.case.json	S!I20
+F	probes/legacy-array-at-shapes.case.json	S!J11
+F	probes/legacy-array-at-shapes.case.json	S!J20
 F	probes/legacy-array-result.case.json	S!A10
 F	probes/legacy-array-result.case.json	S!A11
 F	probes/legacy-array-result.case.json	S!G10

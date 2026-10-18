@@ -504,7 +504,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Regexextract => args_signature_scalars(arg_count, 2, 1),
         Function::Regexreplace => args_signature_scalars(arg_count, 3, 0),
         Function::Regextest => args_signature_scalars(arg_count, 2, 0),
-        Function::T => args_signature_scalars(arg_count, 1, 0),
+        Function::T | Function::TLegacy => args_signature_scalars(arg_count, 1, 0),
         Function::Text => args_signature_scalars(arg_count, 2, 0),
         Function::Textafter => args_signature_textafter(arg_count),
         Function::Textbefore => args_signature_textafter(arg_count),
@@ -629,7 +629,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        Function::N => args_signature_scalars(arg_count, 1, 0),
+        Function::N | Function::NLegacy => args_signature_scalars(arg_count, 1, 0),
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_cell(arg_count),
         Function::Info => args_signature_scalars(arg_count, 1, 1),
@@ -1052,9 +1052,9 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Mdeterm => StaticResult::Scalar,
         Function::Minverse => StaticResult::Unknown,
         Function::Munit => StaticResult::Unknown,
-        Function::Multinomial => StaticResult::Scalar,
-        Function::Sumproduct => StaticResult::Scalar,
-        Function::Percentof => StaticResult::Scalar,
+        Function::Multinomial | Function::Sumproduct | Function::Percentof => StaticResult::Scalar,
+        // A legacy N or T is one value: an array argument is #VALUE! (SPEC-0012).
+        Function::NLegacy | Function::TLegacy => StaticResult::Scalar,
         Function::N => scalar_arguments(args),
         Function::Sheets => scalar_arguments(args),
         Function::Cell => StaticResult::Unknown,
