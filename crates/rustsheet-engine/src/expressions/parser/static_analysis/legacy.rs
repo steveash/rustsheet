@@ -2,6 +2,11 @@
 //! formula reads whole: the rules behind the automatic `@`s of `add_implicit_intersection` and
 //! their mirror in `remove_redundant_implicit_intersection`. Excel:
 //! docs/excel-semantics/references.md "Legacy formulas intersect the ranges in value arguments".
+//!
+//! The same walk places the legacy N/T marker ([`legacy_reads_array_as_error`], SPEC-0012), so
+//! the value-position flag `arrays` ([`legacy_array_context`], [`returns_an_argument`]) decides
+//! evaluation results as well as where an `@` goes: a change to it needs a probe's legacy values,
+//! not only its FORMULATEXT (SPEC-0012 "Placement", item 4).
 
 use super::lifted::lifts_arrays_at;
 use super::{
@@ -157,8 +162,8 @@ pub(super) fn remove_array_at(
 /// `=N(@IFERROR({2;3},0))`; probes/legacy-array-result, legacy-n-t-reference-args D, T-1713).
 /// Not the arguments of IF, IFERROR, IFNA, CHOOSE (but its index, [`is_choose_index`]), IFS or
 /// SWITCH, whose result is one of them: `=@IF(1,{2;3})` and `=@IF(1,N(IF(1,{2;3})))` take the
-/// `@` on the call (probes/legacy-array-result D, legacy-n-t-reference-args P); nor N or T over IF
-/// or SWITCH ([`leaves_call_whole`]); nor
+/// `@` on the call (probes/legacy-array-result D, legacy-n-t-reference-args P); nor N or T over IF,
+/// SWITCH or a CHOOSE, INDEX or IFS of array constants ([`leaves_call_whole`]); nor
 /// anything under a vector argument, `=SUM(N({1,2}))` (probes/n-array-lift A3) or LET, LAMBDA.
 pub(super) fn legacy_array_context(
     kind: &Function,
@@ -217,21 +222,105 @@ pub(super) fn legacy_array_call_at(
 /// Whether a legacy formula puts no `@` on the call `arg` of `kind`, a value it would otherwise
 /// intersect: N and T over IF or SWITCH (`=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`,
 /// `=N(SWITCH(1,1,{2;3}))`, the last spilling 2, 3; probes/legacy-array-result A, G, I,
-/// legacy-n-t-reference-args M, T-1713), where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D).
-/// An explicit `@` on the call is looked through, so the export keeps it.
+/// legacy-n-t-reference-args M, T-1713), and over a CHOOSE, INDEX or IFS that returns only array
+/// constants (`=N(CHOOSE(1,{2;3}))`, `=N(INDEX({2;3},0,1))`, `=N(IFS(1,{2;3}))`, A20, B20, L20),
+/// where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D). An explicit `@` on the call is looked
+/// through, so the export keeps it.
 pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
     let call = match arg {
         Node::ImplicitIntersection { child, .. } => child.as_ref(),
         other => other,
     };
     kind.is_n_or_t()
-        && matches!(
-            call,
+        && match call {
             Node::FunctionKind {
                 kind: Function::If | Function::Switch,
                 ..
+            } => true,
+            Node::FunctionKind { kind, args } => returns_array_constants(kind, args),
+            _ => false,
+        }
+}
+
+/// Whether `kind(args)` is a CHOOSE, INDEX or IFS whose every argument it can return
+/// ([`is_returned_argument`]) is an array constant: the one shape of them probed under N and T
+/// (probes/legacy-n-t-reference-args A, B, K, L). Over a reference they keep their `@` (T-1908).
+fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
+    let mut returned = args
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| is_returned_argument(kind, *index))
+        .peekable();
+    matches!(kind, Function::Choose | Function::Index | Function::Ifs)
+        && returned.peek().is_some()
+        && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_)))
+}
+
+/// Whether argument `index` of `kind` is one its result can be, as it is or as a part of it: the
+/// arms of IF, the values of CHOOSE and IFS, and INDEX's `array`.
+fn is_returned_argument(kind: &Function, index: usize) -> bool {
+    match kind {
+        Function::If | Function::Choose => index > 0,
+        Function::Ifs => index % 2 == 1,
+        Function::Index => index == 0,
+        _ => false,
+    }
+}
+
+/// Whether the call `kind(arg)`, in a value position of a legacy cell, is an N or T that reads
+/// an array argument as `#VALUE!` (the marker of SPEC-0012, rule 2): `arg` is a bare IF (no `@`,
+/// no parentheses), or a CHOOSE, INDEX or IFS that returns only array constants
+/// ([`returns_array_constants`]), and is not statically a scalar. `=N(IF(1,{2;3}))`,
+/// `=T(IF(1,{"a";"b"}))`, `=N(IF(1,{2}))`, `=N(CHOOSE(1,{2;3}))`, `=ABS(N(IF(1,{2;3})))` and
+/// `=N(IF(1,{2;3}))+0` are `#VALUE!` in a legacy cell, while `=N(SWITCH(1,1,{2;3}))` spills and
+/// `=N(@IFERROR({2;3},0))` is 2 (probes/legacy-n-t-reference-args, legacy-array-result A, G, I,
+/// n-array-lift D4; T-1713). A scalar IF reads the same either way, so `=N(IF(A1,1,2))` gets no
+/// marker and its export does not change; so does one the rewrite made scalar,
+/// `=N(IF(@W1:W2,Z1,Z2))` (probes/legacy-n-t-reference-args-2 H).
+fn legacy_reads_array_as_error(kind: &Function, arg: &Node) -> bool {
+    kind.is_n_or_t()
+        && match arg {
+            Node::FunctionKind {
+                kind: Function::If, ..
+            } => true,
+            Node::FunctionKind { kind, args } => returns_array_constants(kind, args),
+            _ => false,
+        }
+        && !matches!(run_static_analysis_on_node(arg), StaticResult::Scalar)
+}
+
+/// Marks the call `kind(args)`, in a value position of a legacy cell and its arguments already
+/// rewritten, when [`legacy_reads_array_as_error`] holds for it. It is decided on, and the
+/// marked call keeps, its argument without the `@` [`shows_scalar_array_at`] put on a
+/// one-element array constant the argument returns: Excel shows `=N(IF(1,{2}))` with none,
+/// `#VALUE!` in a legacy cell (probes/legacy-n-t-reference-args N10, N20; SPEC-0012
+/// "Placement", item 6). Only the automatic `@`s are looked through, so the decision is the same
+/// on the rewrite's own display text, which has none.
+pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
+    let [arg] = args else {
+        return;
+    };
+    if !kind.is_n_or_t() {
+        return;
+    }
+    let mut read = arg.clone();
+    if let Node::FunctionKind { kind, args } = &mut read {
+        for (index, returned) in args.iter_mut().enumerate() {
+            if let Node::ImplicitIntersection {
+                automatic: true,
+                child,
+            } = returned
+            {
+                if is_returned_argument(kind, index) && is_one_element_array(child) {
+                    *returned = child.as_ref().clone();
+                }
             }
-        )
+        }
+    }
+    if legacy_reads_array_as_error(kind, &read) {
+        *arg = read;
+        *kind = kind.legacy_reading();
+    }
 }
 
 /// Calls `f` on `node`, or on each operand of the operators, parentheses and signs it is made

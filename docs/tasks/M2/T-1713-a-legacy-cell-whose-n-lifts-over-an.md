@@ -3,7 +3,7 @@ id: T-1713
 title: "A legacy cell whose N lifts over an array is #VALUE!"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -20,18 +20,18 @@ probes/n-array-lift S!D4:D5 (excel-graph, T-1616). T-1616 made N lift over an ar
 T-1851's kernels make T over a one-element array `#VALUE!` (`T(IF(1,{"a"}))`), extrapolated from N's probe (legacy-n-t-reference-args N10); add a T one-element cell to this task's placement or eval cases.
 
 ## Acceptance criteria
-- [ ] The 32 cells listed in SPEC-0012 "Problem" leave eval/baseline/probes.txt:
+- [x] The 32 cells listed in SPEC-0012 "Problem" leave eval/baseline/probes.txt:
   - probes/legacy-n-t-reference-args A10, A20, B10, B20, E10:E11, G10:I11, K10, K20, L10, L20,
     N10, N20, O10 and R10:T11;
   - probes/legacy-array-result A10:A11, G10:G11 and I10;
   - probes/n-array-lift D4:D5.
 
   There are no regressions in probes, ironcalc-calc, poi or fixtures.
-- [ ] SPEC-0012's T-1713 test plan: placement tests (also the negative ones), the idempotence
+- [x] SPEC-0012's T-1713 test plan: placement tests (also the negative ones), the idempotence
   property over every probes `legacy_formulas` cell, and the export round trip (legacy → plain
   `<f>`; dynamic `=N(IF(1,{2;3}))` → `cm="1"`). It includes the statically scalar case:
   `=N(IF(A1,1,2))` gets no marker, legacy or dynamic, and still exports as a plain `<f>`.
-- [ ] information.md and references.md updated.
+- [x] information.md and references.md updated.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -62,7 +62,7 @@ arm under T-1717's `arrays` flag (`legacy_reads_array_as_error`). It also extend
 under the marker (N20). The export mirror needs no step ("Placement", items 1-6).
 Moved from the functions-logic lane to engine, as the change is in expressions/parser/static_analysis/.
 
-## Blocked because
+## Blocked because (resolved: T-1727 and T-1851 are done)
 The legacy text is identical to the dynamic formula's (`=N(IF(1,{2;3}))`, no `@`), and the engine
 keeps a legacy formula only as its dynamic twin plus the `@`s of `add_implicit_intersection`
 (legacy_formula.rs, xlsx import), so evaluation cannot tell that this cell must be `#VALUE!` while
@@ -70,3 +70,38 @@ the dynamic one spills. That needs a persisted legacy marker, an architectural c
 spec first (CLAUDE.md directive 4): T-1727 (done: SPEC-0012). Resume this task once T-1851 is
 `done` on main.
 The range half (`=N(Z1:Z2)` 7, no `@`) needs no marker and is T-1728.
+
+## Outcome
+- **Placement:** `mark_legacy_reading` (static_analysis/legacy.rs) runs at the end of
+  `add_legacy_intersection`'s `FunctionKind` arm when T-1717's `arrays` flag holds. It turns N/T
+  into `NLegacy`/`TLegacy` (`Function::legacy_reading`, functions/kinds.rs) when the single argument
+  is a bare IF, or a CHOOSE, INDEX or IFS whose every returnable argument is an array constant
+  (`returns_array_constants`), and that argument is not statically scalar
+  (`legacy_reads_array_as_error`).
+- **Decided after the arguments are rewritten**, not before: `=N(IF(W1:W2,Z1,Z2))` (probes
+  legacy-n-t-reference-args-2 H) is an array before the rewrite but `IF(@W1:W2,..)` after it, and
+  deciding first broke idempotence over the display text. The automatic one-element `@` of
+  `shows_scalar_array_at` in the argument's returned arms is looked through and dropped under the
+  marker (`=N(IF(1,{2}))`, N20, SPEC-0012 item 6).
+- **`leaves_call_whole`** now covers the CHOOSE/INDEX/IFS array-constant shapes too, so they lose
+  their `@` (A20, B20, K20, L20). Over a reference or a mixed arm they keep it (T-1908).
+- **No export change.** `legacy_reading_intersects` gives a plain `<f>` for a marked legacy cell and
+  `cm="1"` for a dynamic twin, and `=N(IF(A1,1,2))` stays a plain `<f>` either way.
+- **Room for the step:** `static_analysis_operator_chain` and `static_analysis_op_results` moved to
+  static_analysis/broadcast.rs (static_analysis.rs 1137 → 1114 lines).
+- **Tests:**
+  - test_legacy_n_t_marker.rs: placement over the Problem table, 18 marked and 12 negative rows;
+    the legacy and dynamic values; idempotence (twice, and over the display text, as RC) over all
+    415 `legacy_formulas` cells of the 24 probes cases.
+  - rustsheet-xlsx tests/dynamic_formula_export.rs: the export round trip for N/T over IF, CHOOSE,
+    INDEX and IFS, the statically scalar case, and a legacy and a dynamic twin as two shared
+    formulas.
+- **Eval:**
+  - probes known failures 2118 → 2086: exactly the 32 acceptance cells fixed, 0 new, 0 regressions.
+  - ironcalc-calc 1243 → 1243 and fixtures 9 → 9; poi is not fetched here.
+- **Ratchets (decision 0010 line):** duplicated lines 3903 → 3883; oversized-files static_analysis.rs
+  1137 → 1114, plus the stringify.rs, functions/mod.rs and model.rs shrinks T-1851 left on main.
+- **Gates:** fmt, clippy `-D warnings`, `cargo test` (engine, rustsheet, xlsx, eval), `make hygiene`
+  and the eval checks pass. The full `make check` and the reviewers have not run yet.
+- **Follow-ups:** none new. The re-entry paths are T-1852, CHOOSE/INDEX over references are T-1908,
+  and T over SWITCH / unprobed positions are T-1847.

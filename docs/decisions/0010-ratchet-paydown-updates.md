@@ -171,5 +171,10 @@
   T-1873: expressions/parser/static_analysis.rs 1142 → 1137 lines (the 4 fallback lines of HYPGEOM.DIST and
   HYPGEOMDIST now in the lifting table, and the comment heading the one of them that was a compatibility wrapper)
   (`check_file_size.py --update`); duplicated lines unchanged at 3903.
+  T-1713: expressions/parser/static_analysis.rs 1137 → 1114 lines (the operator-chain shape moved to
+  static_analysis/broadcast.rs to make room for the legacy N/T marker step), and the shrinks T-1851 left unrecorded
+  on main: expressions/parser/stringify.rs 1067 → 1062, functions/mod.rs 2179 → 2178 and model.rs 3462 → 3415 lines
+  (`check_file_size.py --update`); duplicated lines 3903 → 3883, also T-1851's (this change adds none)
+  (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

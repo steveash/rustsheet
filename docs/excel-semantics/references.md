@@ -1525,7 +1525,7 @@ computes from them (`legacy_array_context`, static_analysis/legacy.rs; not IF, I
 IFS, SWITCH, LET or LAMBDA, nor N/T over IF or SWITCH). Where it holds, an array constant argument
 gets the `@`, and so does an array-valued call of more than one cell whose array is one of its
 arguments or comes from a non-scalar one (`legacy_array_call_at`). Probed since in T-1847 (below): IFNA, IFS, the IFERROR argument, T over SWITCH and the array-constant `@` under LEN and ISNUMBER/SEARCH match. Known mismatches: an array constant inside an operator (`=N({2;3}+0)`, `=ABS({2;3}+0)`) still spills in ours (T-1911), and a top-level `=SWITCH(1,1,{2;3})` gets an `@` from ours (T-1910). One-cell array-valued calls: `=ABS(TRANSPOSE({5}))` takes the `@` in Excel and ours (below), while CHOOSE's one-cell result takes none (probes/legacy-one-cell-shape-intersection J3). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
-exception's `#VALUE!` is T-1713.
+exception's `#VALUE!` is implemented by the legacy N/T marker (T-1713, next section).
 Probed in T-1847 (probes/legacy-array-at-shapes, excel-graph, 2026-10-18; FORMULATEXT shown; each multi-cell dynamic twin spills, except F1 which is `#SPILL!`, its row spill blocked by G1):
 `=IFNA({2;3},0)` `=@IFNA({2;3},0)` (2), `=IFS(1,{2;3})` `=@IFS(1,{2;3})` (2), `=IFERROR(ABS({-2;3}),0)`
 `=@IFERROR(ABS({-2;3}),0)` (2: the `@` on the IFERROR, not inside), `=LEN({"ab";"c"})` `=LEN(@{"ab";"c"})` (2),
@@ -1563,10 +1563,20 @@ scalar slot gets the `@` on the range only, never on the call, and the cell is `
 cover (rows 1-2 unprobed): `=N(IF(@W1:W2,Z1,Z2))`, `=N(OFFSET(Z1,@W1:W2,0))`, `=N(INDEX(Z1:Z2,@W1:W2))`, `=N(CHOOSE(@W1:W2,Z1,Z2))` and the
 T versions (all `#VALUE!` in row 10). The engine already matches all but N and T over CHOOSE or INDEX of a reference,
 where it adds an `@` on the call (N/T of CHOOSE: #VALUE!; FORMULATEXT `=N(@INDEX(...))`): T-1908.
-Not implemented: the text is identical to the dynamic formula's, which spills, so the `#VALUE!`
-needs the engine to remember that a formula is legacy (SPEC-0012, legacy-n-t-marker.md: an internal N/T kind placed by the legacy rewrite, T-1851, then T-1713); ours adds an `@`
-on array-valued CHOOSE, INDEX and IFS calls (N gives the top-left value, T ""), none on IF or SWITCH
-(`leaves_call_whole`, T-1717: the SWITCH cell spills as in Excel, the IF one too until T-1713); a range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets none under N and T since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or another call keeps the old `@`; CHOOSE and INDEX over references keep the old `@`, probed: T-1768, T-1908).
+Implemented (T-1713): the text is identical to the dynamic formula's, which spills, so the legacy rewrite
+records the `#VALUE!` reading in the stored formula, as an internal N/T kind (SPEC-0012, legacy-n-t-marker.md;
+`mark_legacy_reading`, static_analysis/legacy.rs, placed under T-1717's `arrays` flag; the kinds are T-1851's).
+It marks an N or T in a value position whose argument is a bare IF, or a CHOOSE, INDEX or IFS returning only array
+constants, that is not statically a scalar; the marked kernel reads an array as `#VALUE!` and a reference as its
+top-left cell. The CHOOSE, INDEX and IFS shapes no longer take an `@` (`leaves_call_whole`), and a one-element
+array constant in the marked argument's arms takes none either (`=N(IF(1,{2}))`, N20). Everything above matches
+(probes/legacy-n-t-reference-args, legacy-array-result A, G, I, n-array-lift D4). The marker is never printed: the
+export writes a plain `<f>` for a legacy cell and `cm="1"` for a dynamic twin. A range, an OFFSET of one with
+number-literal offsets, or an IF with a literal condition and such arms, gets no `@` under N and T since T-1728
+(`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator, an array constant or
+another call keeps the old `@`; CHOOSE and INDEX over references keep the old `@`, probed: T-1768, T-1908). An IF
+whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked. Re-entering a
+marked cell through a row/column edit, move, fill or paste does not keep the marker yet (T-1852).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908
