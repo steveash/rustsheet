@@ -22,27 +22,38 @@ SPEC-0012, "The marker", "Storage", "Entry points" and "Evaluation". The sites t
 10 lines of `rg "Function::(N|T)\b"` (functions/mod.rs names and dispatch,
 static_analysis.rs signature and static result, static_analysis/legacy.rs `leaves_call_whole`
 and `reads_reference_whole`). The reserved call spelling goes in `parse_named_call`
-(expressions/parser/operands.rs), next to `_xlfn.SINGLE`: internal kind in `LexerMode::R1C1`,
-plain N/T in `LexerMode::A1`. It is printed only by `to_rc_format`. `fn_n`
-(functions/information/mod.rs) and `fn_t` (functions/text/t_function.rs) take `legacy: bool`.
+(expressions/parser/operands.rs), next to `_xlfn.SINGLE`, behind one matcher,
+`is_legacy_marker_spelling`, shared by both modes. It gives the internal kind in
+`LexerMode::R1C1` and plain N/T in `LexerMode::A1`. Only `to_rc_format` prints it. The spec's
+"Storage" bullets cover the parse-error path and the defined-name shadowing, which this task
+records as a `DEVIATION` unless it finds a spelling Excel refuses as a name. The kernels of
+`fn_n` (functions/information/mod.rs) and `fn_t` (functions/text/t_function.rs) take
+`legacy: bool`. The internal kinds dispatch to thin wrappers, `fn_n_legacy` and `fn_t_legacy`.
 `function_iterator` (test/test_function_iterator.rs) is extended with `Function::INTERNAL`.
 `Input::LegacyFormula` (crates/rustsheet/src/edit.rs) moves from `legacy_formula_text` +
-`set_user_input` to a new `Model::set_cell_with_legacy_formula`, which parses, rewrites and stores
-the node through `shared_formula_index`.
+`set_user_input` to a new `pub fn set_cell_with_legacy_formula(&mut self, sheet: u32, row: i32,
+column: i32, formula: &str) -> Result<(), String>`. It parses, rewrites, and stores through a
+`set_cell_with_formula_node` split out of `set_cell_with_formula` (no copy). `legacy_formula_text`
+stays.
 
 ## Acceptance criteria
 - [ ] Unit tests for SPEC-0012's T-1851 test plan:
   - R1C1/A1 parsing of the spelling;
   - every print path (RC prints the spelling; display, English, FORMULATEXT, `<f>` and array
     `<f>` print `N(`/`T(`);
-  - a LAMBDA name spelled like the marker survives a reload;
+  - an A1 call of the spelling is plain N/T, also when a LAMBDA name of that spelling exists
+    (the actual behavior, with its `DEVIATION` entry unless a spelling Excel refuses as a name is
+    found);
+  - a parse-error formula holding the spelling comes back marked after a reload;
+  - case and `_xlfn.` variants the matcher rejects never reparse to the internal kind;
   - evaluation of a marked kind from a hand-written RC formula (array 2x1, 1x2, 1x1 → `#VALUE!`;
     range → top-left; scalar unchanged);
   - static result `Scalar`;
   - `Input::LegacyFormula` keeps a marker in the stored tree.
 - [ ] `function_iterator` checks `Function::INTERNAL`. The catalog and `Function::into_iter` do
   not list the internal kinds.
-- [ ] fuzz/fuzz_targets/formula_parse.rs also re-parses its `to_rc_format` output in R1C1 mode.
+- [ ] fuzz/fuzz_targets/formula_parse.rs also parses the raw input in R1C1 mode and re-parses
+  its `to_rc_format` output in R1C1 mode.
 - [ ] Eval: no change in any suite (probes, ironcalc-calc, poi, fixtures).
 - [ ] `make check` green; reviewers approve.
 

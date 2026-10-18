@@ -3,7 +3,7 @@ id: T-1727
 title: "Spec: keep a formula's legacy (plain <f>) reading past the @ rewrite"
 milestone: M2
 lane: engine
-status: done
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -36,7 +36,7 @@ reference-class call, outside an array context or `@`); memory cost per cell; th
 
 ## Acceptance criteria
 - [x] docs/specs/SPEC-XXXX (from the TEMPLATE) with the chosen design, the alternatives and the implementation tasks it cuts (T-1713 resumes on it).
-- [x] Reviewers (architecture, performance) approve.
+- [ ] Reviewers (architecture, performance) approve.
 
 ## Out of scope
 - Implementing it.

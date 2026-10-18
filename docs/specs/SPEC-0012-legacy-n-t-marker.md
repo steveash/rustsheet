@@ -36,9 +36,9 @@ while the dynamic cell spills or gives the first element:
 | `=IF(1,N(IF(1,{2;3})))` | `=@IF(1,N(IF(1,{2;3})))` | 2 | — | 2 |
 
 The legacy text is the dynamic text, so evaluation cannot tell the two cells apart. The export
-has the same hole the other way round. A dynamic `=N(IF(1,{2;3}))` is saved today as a plain `<f>`,
-because the legacy reading adds no `@`. Excel then reads it back as legacy, and it becomes
-`#VALUE!`.
+has no matching hole. A dynamic `=N(IF(1,{2;3}))` has a non-scalar static result, so it is stored
+as a dynamic anchor (`Cell::ArrayFormula`) and written with `cm="1"`. It never reaches
+`legacy_reading_intersects`.
 
 Snapshot (2026-10-18, main at d1efc49): 32 known failures in eval/baseline/probes.txt need this.
 They are T-1713's acceptance cells: probes/legacy-n-t-reference-args A10, A20, B10, B20, E10:E11,
@@ -52,8 +52,9 @@ Goals:
    survives storage, reload, sheet renames and moves, defined-name renames, undo, and xlsx export
    and import.
 2. FORMULATEXT, the API's formula text and the exported `<f>` text never show the marker.
-3. A dynamic formula with the same text keeps its dynamic result, and the export saves it as
-   `cm="1"`.
+3. A dynamic formula with the same text keeps its dynamic result, and its export does not
+   change. A spilling dynamic formula stays `cm="1"`. A statically scalar one (`=N(IF(A1,1,2))`)
+   stays a plain `<f>` (T-1552), because it gets no marker (rule 2).
 4. The marker is placed by the T-1717 rewrite, in the same walk and with the same `arrays` flag.
    No second analysis of "value position" is added.
 
@@ -78,17 +79,24 @@ and in information.md, "N over an array lifts element-wise".
 
 Rules:
 1. **Where:** an N or T call in a value position of a legacy cell. "Value position" is T-1717's
-   `arrays` flag: the top of the cell, and down through operators and the scalar arguments of
-   functions that compute from them (ABS, `+0`, `&""`). It is not inside a vector argument (SUM),
-   inside the arguments of IF, IFERROR, IFNA, CHOOSE, IFS, SWITCH, LET or LAMBDA, or in the
-   SUMPRODUCT array context. Evidence: legacy-n-t-reference-args E, G, R (`#VALUE!`), F (5), P (2);
-   n-array-lift A10 (`SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5).
+   `arrays` flag. These positions are probed for values:
+   - Value positions (`#VALUE!`): the top of the cell (A, B, H, I, K, L, N, O, S, T), ABS's
+     argument (E), and an operand of `+0` (G) or of `&""` (R).
+   - Not value positions: a SUM argument (F, 5), IF's arms (P, 2), and the SUMPRODUCT array
+     context (n-array-lift A10: `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5).
+
+   The rest of the flag is extrapolated from T-1717's FORMULATEXT evidence and is unprobed for
+   values (T-1847). That covers other scalar functions, the arguments of IFERROR, IFNA, CHOOSE,
+   IFS, SWITCH, LET and LAMBDA, and other vector arguments.
 2. **Which argument:** the argument is a bare call (no `@`, no parentheses) of IF, CHOOSE, INDEX or
-   IFS. For CHOOSE, INDEX and IFS, the argument the call can return is an array constant. That is
-   CHOOSE's value arms, INDEX's `array` and IFS's values. The array constant is the only shape
-   probed (A, B, K, L); over references these calls are T-1768's question. IF has no such
-   restriction (H, I, N, O, S, T and legacy-array-result A, G, I), because a reference result reads
-   the same either way (rule 3). Not SWITCH: `=N(SWITCH(1,1,{2;3}))` spills 2, 3 in a legacy cell
+   IFS whose static result is not `StaticResult::Scalar`. A scalar one such as `=N(IF(A1,1,2))`
+   reads the same either way, so it gets no marker and its export does not change.
+   - CHOOSE, INDEX and IFS: every argument the call can return must be an array constant. That is
+     every CHOOSE value argument, INDEX's `array` and every IFS value. It is the only shape
+     probed (A, B, K, L). With a mixed or a reference arm, these calls keep today's `@` until
+     T-1768.
+   - IF has no such restriction (H, I, N, O, S, T and legacy-array-result A, G, I), because a
+     reference result reads the same either way (rule 3). Not SWITCH: `=N(SWITCH(1,1,{2;3}))` spills 2, 3 in a legacy cell
    (M). Not IFERROR: it gets the `@`, `=N(@IFERROR({2;3},0))` is 2 (D, already implemented). T over
    SWITCH is unprobed (T-1847) and stays as it is.
 3. **What it does:** the argument is evaluated as N and T evaluate it today, reading a reference
@@ -105,8 +113,9 @@ Rules:
    `cm="1"`"). So a legacy cell is written back as a plain `<f>`, and a dynamic cell whose legacy
    reading would differ is written as `cm="1"`. This is today's rule (T-1552), applied to the
    marker too.
-6. **Unprobed: re-entry.** In Excel a legacy cell becomes dynamic when its formula is typed again.
-   We assume it stays legacy when rows are inserted above it, when it is moved, and when it is
+6. **Unprobed: re-entry (T-1853 probes all of it).** We assume that a legacy cell becomes dynamic
+   in Excel when its formula is typed again. That is the usual account of dynamic-array Excel, but
+   it is not probed here. We also assume the cell stays legacy when rows are inserted above it, when it is moved, and when it is
    copied or filled. Excel adjusts the stored formula in those edits and does not re-enter it. No
    probe exists, and the eval harness cannot express an edit sequence. T-1853 checks whether the
    oracle can (Graph range insert/copy). Until then, T-1852 implements the assumption, and it is
@@ -117,14 +126,13 @@ Rules:
 ### The marker: two internal function kinds
 `Function` gets two variants, `NLegacy` and `TLegacy`, used only as the `kind` of a
 `Node::FunctionKind`. A legacy N call is `FunctionKind { kind: NLegacy, args }`. Nothing else in
-the tree changes. Most code treats them as N and T. Where it must not, the behavior differs in
-three ways only:
+the tree changes. Most code treats them as N and T. These are the sites that must know about them:
 
 | Site | `NLegacy` / `TLegacy` |
 |---|---|
 | `to_localized_name`, `to_xlsx_string` (FORMULATEXT, UI text, `<f>`) | N's and T's names: the marker is never printed |
 | `stringify` with no context, i.e. `to_rc_format` (internal storage) | the reserved spelling (below) |
-| dispatch (functions/mod.rs) | `fn_n` / `fn_t` with `legacy: true`: an `Array` result of the argument is `#VALUE!` (rule 3) |
+| dispatch (functions/mod.rs) | thin wrappers `fn_n_legacy` / `fn_t_legacy` with the shared dispatch signature. They call the N/T kernel with `legacy: true`, so an `Array` result of the argument is `#VALUE!` (rule 3) |
 | signature (`get_function_args_signature`) | N's and T's (one scalar argument), so the rewrite walks the argument the same way |
 | static result (`static_analysis_on_function`) | `StaticResult::Scalar`, so the legacy cell is a plain `CellFormula`, never a dynamic anchor (`set_cell_with_formula`'s `is_dynamic`) |
 | `reads_reference_whole`, `leaves_call_whole` (static_analysis/legacy.rs) | match N and T and their legacy kinds (one helper, `Function::is_n_or_t`), so a second pass of the rewrite over a marked tree adds nothing (idempotence) |
@@ -155,10 +163,21 @@ needs no field anywhere else.
 - `parse_named_call` (expressions/parser/operands.rs) recognizes the spelling before the function
   lookup, next to `_xlfn.SINGLE`. In `LexerMode::R1C1` it gives the internal kind. In
   `LexerMode::A1` (typed formulas, xlsx `<f>` text) it gives plain `Function::N` / `Function::T`.
-  So a user cannot type the marker, and no A1-parsed formula can print as the reserved spelling. A
-  `NamedFunctionKind` of that name never comes out of the A1 parser, so a LAMBDA name spelled the
-  same cannot collide with it. Today R1C1 mode parses only stored text (the three call sites
-  above).
+  One matcher, `is_legacy_marker_spelling(&name)`, decides for both modes. So every spelling R1C1
+  accepts is one that A1 maps to plain N/T, and no A1-parsed formula can print as the reserved
+  spelling. Case and `_xlfn.` prefix variants follow that matcher exactly, and a test checks that
+  no other variant reparses to the internal kind. Today R1C1 mode parses only stored text (the
+  three call sites above).
+- **One way to type it.** A formula that does not parse is stored as its raw text
+  (stringify.rs, `ParseErrorKind`) and parsed again in R1C1 mode on reload (operands.rs). So a
+  broken formula holding the spelling, e.g. `=_RS_LEGACY_N(IF(1,{2;3}))+R[1]C`, can come back
+  marked. This is accepted. The only effect is `#VALUE!` for an array argument of that N/T, with
+  no new allocation or recursion. T-1851 adds a test that pins this behavior.
+- **A defined name with the same spelling.** In A1 mode the spelling is plain N/T, so a workbook
+  LAMBDA name with that spelling is shadowed: `_RS_LEGACY_N(1)` calls N, not the name. T-1851 may
+  find, with the excel-probe skill, a spelling that Excel refuses as a defined name. If it does
+  not, it records the shadowing as a `DEVIATION` entry in references.md (decision 0014), and its
+  test states the actual behavior.
 - The shared-formula dedup (`shared_formula_index`, keyed by the RC text) keeps a legacy
   `=N(IF(1,{2;3}))` and a dynamic one on the same sheet apart, as two entries, with no extra key.
 - Model files saved before T-1851 have no spelling and load as today. A model file with the
@@ -179,8 +198,12 @@ if arrays && legacy_reads_array_as_error(kind, args) {
 ```
 
 `legacy_reads_array_as_error` (static_analysis/legacy.rs, beside `leaves_call_whole`) is rule 2:
-`kind.is_n_or_t()`, and `args[0]` is a bare IF call, or a bare CHOOSE, INDEX or IFS whose returned
-arguments are array constants. Where this spec constrains or extends #1046:
+`kind.is_n_or_t()`, and `args[0]` is one of these bare calls, with a static result
+(`run_static_analysis_on_node(&args[0])`) other than `StaticResult::Scalar`:
+- an IF call;
+- a CHOOSE, INDEX or IFS call whose every returnable argument is an array constant.
+
+Where this spec constrains or extends #1046:
 
 1. **Extends `leaves_call_whole`** from IF and SWITCH to the CHOOSE, INDEX and IFS shapes of rule 2.
    That drops the `@` T-1717 and T-1728 keep on them (`N(@CHOOSE(1,{2;3}))`), which they kept only
@@ -191,25 +214,24 @@ arguments are array constants. Where this spec constrains or extends #1046:
    also decides an evaluation result. A change to `legacy_array_context` or `returns_an_argument`
    now changes values as well as text, so it needs evaluation evidence (a probe's legacy row), not
    only FORMULATEXT evidence. legacy.rs's module doc says so.
-5. **The export mirror** (`remove_redundant_legacy_intersection`, static_analysis/redundant.rs)
-   gets the inverse step in its `FunctionKind` arm: `NLegacy` becomes `N` where `arrays &&
-   legacy_reads_array_as_error` holds, because the rewrite adds it back there. Elsewhere the
-   marker is kept. `legacy_reading_intersects` keeps its code and its RC comparison. Because RC
-   prints the marker, the comparison now sees it:
-   - A legacy `=N(IF(1,{2;3}))`: remove, then add, gives the same text. It is saved as a plain
-     `<f>` that prints `N(...)`. Excel reads it back as legacy, and so does our import.
-   - A dynamic `=N(IF(1,{2;3}))`: the add places a marker the node lacks. It is saved as
-     `cm="1"`, which fixes the export half of the problem.
-
-   A marked node whose remove-then-add is not the identity can come only from a hand-made model
-   file. It takes the `cm="1"` path as any other mismatch does. Both prints show N, so Excel reads
-   it as dynamic. No eval case can reach it.
+5. **No export mirror step.** `remove_redundant_legacy_intersection` (static_analysis/redundant.rs)
+   needs none. The export prints N/T for the internal kinds anyway. The add pass is idempotent on a
+   marked node, because `legacy_reads_array_as_error` holds again where the marker is.
+   `legacy_reading_intersects` keeps its code, and the three cases come out right:
+   - A legacy marked cell is a statically scalar `CellFormula`. Remove, then add, gives the same RC
+     text, so it is saved as a plain `<f>` printing `N(...)`. Excel and our import read it back as
+     legacy.
+   - A dynamic N/T over a non-scalar call is a dynamic anchor. It is exported with `cm="1"`, as
+     today.
+   - A dynamic, statically scalar formula whose legacy reading would place a marker is saved as
+     `cm="1"` by the existing T-1552 rule. That is right, because its legacy reading differs.
+     Rule 2's `Scalar` exclusion keeps `=N(IF(A1,1,2))` out of this case.
 
 6. **No one-element `@` under the marker.** `shows_scalar_array_at` (T-1633) puts an `@` on a
    one-element array constant in any scalar argument (`=ABS(@{5})`). It must not do so in the
    value arms of an IF the marker covers: `=N(IF(1,{2}))` is shown with no `@` (N20). How T-1713
    suppresses it is its choice, for example by walking the marked argument's arms without the
-   one-element rule. The mirror then has nothing to remove there.
+   one-element rule. The export mirror then has no such `@` to drop either.
 
 The marker never depends on a cell position or a reference's target, only on the shape of the
 tree. So structural edits that only rewrite references (insert rows, rename or move a sheet,
@@ -219,22 +241,35 @@ rename a name) cannot make a marker wrong.
 | Path | Today | With the marker |
 |---|---|---|
 | xlsx import, plain `<f>` | A1 parse → rewrite → `to_rc_format` | the same; the rewrite now places the marker and RC prints it (no code change beyond the rewrite) |
-| `Input::LegacyFormula` (rustsheet edit.rs) | `legacy_formula_text` prints the rewritten tree as **display** text, then `set_user_input` parses it again as a dynamic formula | the display text would drop the marker. T-1851 adds `Model::set_cell_with_legacy_formula` (parse → rewrite → store the node through `shared_formula_index`, the same steps as `set_cell_with_formula` but taking the node), and `apply` calls it after `prepare_cell_for_user_input`. `legacy_formula_text` is deleted if nothing else calls it (directive 3) |
+| `Input::LegacyFormula` (rustsheet edit.rs) | `legacy_formula_text` prints the rewritten tree as **display** text, then `set_user_input` parses it again as a dynamic formula | the display text would drop the marker. T-1851 makes the changes listed below the table |
 | eval harness (`legacy_formulas` of a case) | `Input::LegacyFormula` | unchanged, carried by the row above |
 | reload, sheet rename/move/delete, defined-name rename (`reset_parsed_structures`, new_empty.rs, defined_names.rs) | parse RC → mutate → `to_rc_format` | carried by the RC spelling, no change |
 | facade undo (`Undo::Cells`) | restores the `Cell`; its `f` index into `shared_formulas` stays valid, because the renames rewrite entries in place | carried, no change |
 | `Input::Formula` / typed text / `set_user_input` | dynamic | dynamic, as in Excel when a formula is typed again; the A1 spelling is plain N |
-| row/column insert and delete (`displace_cells`, actions.rs), `move_cell`, `move_cell_value_to_area`, `extend_to` / `extend_copied_value` (fill), UserModel clipboard and autofill | print **display** text, then re-enter it through `update_cell_with_formula` / `set_user_input` | would drop the marker. T-1852: when the source node holds a marker (`Node::has_legacy_marker`), the text goes through the legacy entry, not the dynamic one. None of these is reachable from the `rustsheet` facade today; they are engine `UserModel` paths |
+| row/column insert and delete (`displace_cells`, actions.rs), `move_cell`, `move_cell_value_to_area`, `extend_to` / `extend_copied_value` (fill), UserModel clipboard and autofill | print **display** text, then re-enter it through `update_cell_with_formula` / `set_user_input` | would drop the marker. T-1852: when the source node holds a marker (`Node::has_legacy_marker`), the text goes through the legacy entry, not the dynamic one. Cost: `has_legacy_marker` is one O(nodes) walk per re-entered cell, the same order as the text print these paths already do, and T-1852 may cache it per shared-formula index. None of these is reachable from the `rustsheet` facade today; they are engine `UserModel` paths |
 | Python binding | facade and raw model; legacy cells only via xlsx open | no change: the model carries the marker; `cell().formula` shows N |
+
+T-1851's changes for `Input::LegacyFormula`:
+- It splits `set_cell_with_formula` into `parse_cell_formula` plus one shared
+  `set_cell_with_formula_node(sheet, row, column, node, style) -> Result<i32, String>`. There is no
+  copy (directive 3).
+- It adds `pub fn set_cell_with_legacy_formula(&mut self, sheet: u32, row: i32, column: i32,
+  formula: &str) -> Result<(), String>`. It parses, rewrites, then calls the node setter. Its error
+  convention is `set_user_input`'s, which `apply` maps through `EditError::from_engine_message`.
+- `apply` calls it after `prepare_cell_for_user_input`.
+- The pub `legacy_formula_text` stays. It gives the display text and three tests call it, so
+  nothing breaks.
 
 T-1852's re-entry relies on the rewrite being idempotent over its own display text:
 `rewrite(parse_a1(display(rewrite(x))))` equals `rewrite(x)` in RC. The export already relies on
 the same property (a remove-then-add of an imported formula is the identity), and #1046's unit
-tests cover it for the `@`s. T-1851 adds the property test for the marker (Test plan).
+tests cover it for the `@`s. T-1713 adds the property test for the marker (Test plan).
 
 ### Evaluation
-`fn_n` (functions/information/mod.rs) and `fn_t` (functions/text/t_function.rs) take `legacy:
-bool`. Dispatch passes `true` for the internal kinds. The `CalcResult::Array` arm, which maps the
+The kernels of `fn_n` (functions/information/mod.rs) and `fn_t` (functions/text/t_function.rs)
+take `legacy: bool`. `fn_n` and `fn_t` call them with `false`. The dispatch entries of the
+internal kinds, `fn_n_legacy` and `fn_t_legacy`, call them with `true`. The dispatch signature
+is unchanged. The `CalcResult::Array` arm, which maps the
 elements today (T-1616, T-1729), returns `CalcResult::Error { error: Error::VALUE, origin: cell,
 .. }` when `legacy` is set. The other arms are shared. No other evaluator code changes. The rule
 lives in the N/T kernels, where the argument's result type is already known, and nowhere else.
@@ -242,7 +277,7 @@ lives in the N/T kernels, where the argument's result type is already known, and
 ### Extending
 If a later probe finds another legacy difference that the text does not show, it follows the same
 pattern. It gets an internal kind (or a `legacy: true` dispatch flag) for the one function
-involved, a predicate beside `legacy_reads_array_as_error`, and its inverse in the mirror. T-1847's
+involved, and a predicate beside `legacy_reads_array_as_error`. T-1847's
 `T(SWITCH(..))` and T-1768's `N(CHOOSE(1,Z1:Z2))` would only widen the predicate. If more than two
 or three functions ever need markers, the internal kinds should become a `legacy` bit on
 `FunctionKind`. That needs a spec amendment, and is not done ahead of need.
@@ -257,8 +292,9 @@ or three functions ever need markers, the internal kinds should become a `legacy
   CHOOSE/INDEX/IFS one scan of their arguments: O(args), no allocation, no recursion. The kind is
   changed in place.
 - **Export:** `legacy_reading_intersects` already clones each shared formula and runs remove,
-  then add. The marker adds the same O(1) per N/T call to both passes.
-- **Recalc:** one `bool` per N/T call, read only in the array arm. No other evaluation path
+  then add. The marker adds O(1) per N/T call to the add pass.
+- **Recalc:** the internal kinds dispatch to their own thin wrappers. The kernel reads its
+  `bool` only in the array arm. No other evaluation path
   changes.
 - **Load:** R1C1 parsing tries the reserved spelling in `parse_named_call`, one string comparison
   per call (beside `_xlfn.SINGLE`'s).
@@ -284,8 +320,8 @@ cell. It was rejected for three reasons:
    (`set_cell_with_formula`, the import's sheet_data.rs, the clipboard). Each would need the flag.
    The marker rides on the RC text, which these paths already preserve, or re-enter (T-1852).
 
-What it does well, matching Excel's model for the export, the marker gets from rule 5's existing
-comparison.
+What it does well is match Excel's model for the export. The marker gets the same result from the
+existing T-1552 comparison (Placement, item 5).
 
 **B. A hidden `Node` wrapper on N's argument** (`Node::LegacyRead { child }`), meaning "a
 reference passes, an array is `#VALUE!`". It was rejected. A `Node` variant touches the
@@ -306,15 +342,20 @@ was rejected. It is not an intersection: a reference must pass whole, and an arr
 error. Static analysis types every `ImplicitIntersection` as `Scalar`, `stringify` prints `@`, and
 the mirror reasons about `@` redundancy. Each of these would need an exception.
 
-**E. Do nothing until a general "legacy cell" model is needed.** It was rejected. 32 probe cells
-and an export bug that turns a dynamic cell into a legacy one in Excel are known today.
+**E. Do nothing until a general "legacy cell" model is needed.** It was rejected, because 32
+failing probe cells already need it.
 
 ## Test plan
 - **T-1851 (unit, engine):**
   - The RC spelling parses to the internal kind in R1C1 mode and to plain N/T in A1 mode.
   - `to_rc_format` prints it. `to_localized_string`, `to_english_string`, `to_excel_string`,
     `to_excel_array_formula_string` and FORMULATEXT print `N(` / `T(`.
-  - A LAMBDA defined name spelled like the marker is still a `NamedFunctionKind` after a reload.
+  - The edge behavior is pinned:
+    - An A1 call of the spelling is plain N/T, also when a LAMBDA name with that spelling exists.
+      This is the `DEVIATION` above, unless a spelling Excel refuses as a name is found.
+    - A parse-error formula holding the spelling comes back marked after a reload.
+    - Case and `_xlfn.` variants that `is_legacy_marker_spelling` does not accept never reparse
+      to the internal kind.
   - `function_iterator` with `Function::INTERNAL`.
   - Evaluation of the marked kinds from a stored RC formula: an array argument (2x1, 1x2, 1x1,
     mixed types) is `#VALUE!`; a range is its top-left; a scalar is unchanged.
@@ -325,28 +366,32 @@ and an export bug that turns a dynamic cell into a legacy one in Excel are known
   - Its acceptance cells (Problem) leave eval/baseline/probes.txt, with 0 regressions in probes,
     ironcalc-calc, poi and fixtures.
   - Placement tests, one per row of the Problem table, including the negative ones: SUM, `@IF`,
-    SWITCH, IFERROR, and N over an array constant (`=N(@{2;3})`, legacy-array-result E10).
+    SWITCH, IFERROR, N over an array constant (`=N(@{2;3})`, legacy-array-result E10), and a
+    statically scalar IF: legacy and dynamic `=N(IF(A1,1,2))` get no marker, and the dynamic one
+    still exports as a plain `<f>`.
   - Idempotence: `rewrite(rewrite(x)) == rewrite(x)`, and the display round trip above, as RC
     text, over every `legacy_formulas` cell of every probes case.
-  - Export round trip: a legacy `=N(IF(1,{2;3}))` gives a plain `<f>`, and reimport gives the
+  - Export round trip, as a regression guard: a legacy `=N(IF(1,{2;3}))` gives a plain `<f>`, and reimport gives the
     marker and `#VALUE!`. A dynamic one gives `cm="1"`, and reimport gives no marker and a spill.
     The same tests for T, CHOOSE, INDEX and IFS. A legacy and a dynamic copy on one sheet get two
     shared-formula entries.
 - **T-1852 (unit):** after a row insert above it, a column delete beside it, a move, a fill and a
   paste, a marked cell (`=N(IF(1,{2;3}))+A5`, whose text the edit rewrites) still has its marker
   and is still `#VALUE!`. An unmarked dynamic twin stays dynamic.
-- **Fuzzing:** fuzz/fuzz_targets/formula_parse.rs parses A1 text only. T-1851 extends it to
-  re-parse its `to_rc_format` output in `LexerMode::R1C1`, so the R1C1 branch of the spelling, and
-  storage text in general, gets fuzzed. No new target is needed.
+- **Fuzzing:** fuzz/fuzz_targets/formula_parse.rs parses A1 text only. T-1851 extends it in two
+  ways. It feeds the raw fuzz input to the parser in `LexerMode::R1C1` as well, because a
+  hand-made model file can hold any stored text. It also re-parses its `to_rc_format` output in
+  R1C1 mode. No new target is needed.
 
 ## Rollout
 1. **T-1851** (engine, M): the internal kinds, the R1C1 spelling, names, signature, static
    result, `fn_n`/`fn_t` with `legacy`, `Function::INTERNAL`, and
    `Model::set_cell_with_legacy_formula` with `Input::LegacyFormula` switched to it. No marker is
    placed yet, so no eval result changes. That is checked: probes known failures unchanged.
-2. **T-1713** (functions-logic → engine lane, since the change is in static_analysis/; S):
-   `legacy_reads_array_as_error`, the `leaves_call_whole` extension, the mirror, the eval flip and
-   the references.md update ("Not implemented" removed). Depends on T-1851.
+2. **T-1713** (functions-logic → engine lane, since the change is in static_analysis/; M):
+   `legacy_reads_array_as_error`, the `leaves_call_whole` extension, the one-element `@` rule, the
+   idempotence and export round-trip tests, the eval flip, and the references.md and
+   information.md updates ("Not implemented" removed). Depends on T-1851.
 3. **T-1852** (engine, S): the UserModel re-entry paths. Depends on T-1851; independent of T-1713,
    but only observable after it.
 4. **T-1853** (research): probe rule 6 if the oracle can express the edit; it updates
