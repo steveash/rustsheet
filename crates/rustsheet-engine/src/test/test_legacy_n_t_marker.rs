@@ -286,9 +286,11 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
         ("N({2;3})", false, "N(@{2;3})"),
         ("N(TRANSPOSE({2,3}))", false, "N(@TRANSPOSE({2,3}))"),
         ("N(_xlfn.SINGLE(IF(1,{2;3})))", false, "N(@IF(1,{2;3}))"),
-        // CHOOSE, INDEX and IFS over a reference or a mixed arm keep today's `@` (T-1908).
+        // CHOOSE and INDEX over a reference are read as references, unmarked and with no `@`
+        // (T-1908); a mixed arm keeps the `@` on the call.
+        ("N(CHOOSE(1,Z1:Z2))", false, "N(CHOOSE(1,Z1:Z2))"),
         ("N(CHOOSE(1,{2;3},Z1))", false, "N(@CHOOSE(1,{2;3},Z1))"),
-        ("N(INDEX(Z1:Z2,1))", false, "N(@INDEX(Z1:Z2,1))"),
+        ("N(INDEX(Z1:Z2,1))", false, "N(INDEX(Z1:Z2,1))"),
         // A statically scalar argument reads the same either way.
         ("N(IF(A1,1,2))", false, "N(IF(A1,1,2))"),
         ("N(IF(1,2))", false, "N(IF(1,2))"),

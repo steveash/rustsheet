@@ -1561,8 +1561,7 @@ the reference it returns (CHOOSE: its top-left cell; INDEX with a row and column
 `=T(INDEX(Y1:Y2,1))` are "a"), and so do `=T(Y1:Y2)`, `=T(OFFSET(Y1:Y2,0,0))` and `=T(IF(1,Y1:Y2))`. A range in a
 scalar slot gets the `@` on the range only, never on the call, and the cell is `#VALUE!` in row 10, which the range does not
 cover (rows 1-2 unprobed): `=N(IF(@W1:W2,Z1,Z2))`, `=N(OFFSET(Z1,@W1:W2,0))`, `=N(INDEX(Z1:Z2,@W1:W2))`, `=N(CHOOSE(@W1:W2,Z1,Z2))` and the
-T versions (all `#VALUE!` in row 10). The engine already matches all but N and T over CHOOSE or INDEX of a reference,
-where it adds an `@` on the call (N/T of CHOOSE: #VALUE!; FORMULATEXT `=N(@INDEX(...))`): T-1908.
+T versions (all `#VALUE!` in row 10). The engine matches all of them since T-1908 (N and T over CHOOSE or INDEX of a reference no longer get an `@` on the call).
 More shapes (probes/legacy-n-t-marker-shapes, excel-graph, 2026-10-18, T-1713 review; Z1 = 7; FORMULATEXT shows no `@`
 in any of them, and none spills): `=T(IF(1,{"a"}))`, `=N(CHOOSE(1,{2}))`, `=T(CHOOSE(1,{"a"}))`, `=N(IFS(1,{2}))`
 (one-element arms), `=N(INDEX({2,3;4,5},1))`, `=N(INDEX({2;3},1))`, `=N(IF(1,{2;3}+0))` (an operator in IF's arm),
@@ -1586,8 +1585,9 @@ INDEX gives a scalar there (T-1921). Extrapolated, unprobed: other scalar functi
 IF nested in the marked argument's arms (the one-element `@` stays there).
 A range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets no `@`
 under N and T since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator,
-an array constant or another call keeps the old `@`; CHOOSE and INDEX over references keep the old `@`, probed:
-T-1768, T-1908). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
+an array constant or another call keeps the old `@`; CHOOSE with a literal index over such references and INDEX of
+one get none either, T-1908, and are read as references, not marked; only `CHOOSE(1,range)`, `INDEX(range,1)` and
+`INDEX(range,@range)` are probed, the other literal indices and arms are an unprobed extension: T-1918). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
 Re-entering a marked cell through a row/column edit, move, fill or paste does not keep the marker yet (T-1852).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)

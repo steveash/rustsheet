@@ -224,7 +224,8 @@ pub(super) fn legacy_array_call_at(
 /// `=N(SWITCH(1,1,{2;3}))`, the last spilling 2, 3; probes/legacy-array-result A, G, I,
 /// legacy-n-t-reference-args M, T-1713), and over a CHOOSE, INDEX or IFS that returns only array
 /// constants (`=N(CHOOSE(1,{2;3}))`, `=N(INDEX({2;3},0,1))`, `=N(IFS(1,{2;3}))`, A20, B20, L20),
-/// where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D). An explicit `@` on the call is looked
+/// or INDEX of a plain reference ([`is_plain_reference`], T-1908: `=N(INDEX(Z1:Z2,1))`, which is
+/// read as a reference and not marked), where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D). An explicit `@` on the call is looked
 /// through, so the export keeps it.
 pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
     let call = match arg {
@@ -237,6 +238,12 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
                 kind: Function::If | Function::Switch,
                 ..
             } => true,
+            // INDEX of a reference keeps its indices' own `@`: `=N(INDEX(Z1:Z2,@W1:W2))`
+            // (probes/legacy-n-t-reference-args-2 L20, M20, T-1908).
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } if args.first().is_some_and(is_plain_reference) => true,
             Node::FunctionKind { kind, args } => returns_array_constants(kind, args),
             _ => false,
         }
@@ -244,7 +251,8 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
 
 /// Whether `kind(args)` is a CHOOSE, INDEX or IFS whose every argument it can return
 /// ([`is_returned_argument`]) is an array constant: the one shape of them probed under N and T
-/// (probes/legacy-n-t-reference-args A, B, K, L). Over a reference they keep their `@` (T-1908).
+/// (probes/legacy-n-t-reference-args A, B, K, L). Over a reference they read the reference, unmarked
+/// (T-1908); with a mixed arm they keep their `@`.
 fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
     let mut returned = args
         .iter()
@@ -406,8 +414,9 @@ pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
 /// OFFSET of one with number literals for its offsets, or an IF with a number or boolean literal
 /// condition whose arms are such references. A range in a scalar slot (`IF(A1:A2,Z1,Z2)`), an
 /// array constant, an operator or any other call is not (`N(B1:B3*1)` is `#VALUE!` off the
-/// rows: probes/n-array-lift D7); CHOOSE and INDEX over references are unprobed
-/// (docs/excel-semantics/references.md "Legacy N and T over a reference-returning call"). An
+/// rows: probes/n-array-lift D7); CHOOSE with a literal index over such references and INDEX of
+/// one ([`leaves_call_whole`]) are too (probes/legacy-n-t-reference-args-2, T-1908;
+/// docs/excel-semantics/references.md "Legacy N and T over a reference-returning call"). An
 /// explicit stack keeps the walk off the call stack: a formula's tree is untrusted input.
 fn is_plain_reference(node: &Node) -> bool {
     let is_literal = |node: &Node| matches!(node, Node::NumberKind(_) | Node::BooleanKind(_));
@@ -423,6 +432,10 @@ fn is_plain_reference(node: &Node) -> bool {
                 kind: Function::Offset,
                 args,
             } if args.len() > 2 && args[1..].iter().all(is_literal) => pending.push(&args[0]),
+            Node::FunctionKind {
+                kind: Function::Choose,
+                args,
+            } if args.len() > 1 && is_literal(&args[0]) => pending.extend(&args[1..]),
             _ => return false,
         }
     }

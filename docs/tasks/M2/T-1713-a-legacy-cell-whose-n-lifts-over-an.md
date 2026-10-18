@@ -85,8 +85,11 @@ The range half (`=N(Z1:Z2)` 7, no `@`) needs no marker and is T-1728.
   off in place and puts them back if the call is not marked, so no node is cloned. The marked call
   keeps them off (`=N(IF(1,{2}))`, N20; SPEC-0012 item 6).
 - **`leaves_call_whole`** now covers the CHOOSE/INDEX/IFS array-constant shapes too, so they lose
-  their `@` (A20, B20, K20, L20), CHOOSE's index included. Over a reference or a mixed arm they keep it
-  (T-1908).
+  their `@` (A20, B20, K20, L20), CHOOSE's index included. With a mixed arm they keep it.
+- **Merged with T-1908** (cbd3efd9): N/T over INDEX of a plain reference, and CHOOSE with a literal
+  index over references, take no `@` and are read as references. Those shapes are not marked (no
+  array-constant returns), so the two rules are disjoint and there is no semantic conflict. Both
+  arms are in `leaves_call_whole`.
 - **No export change.** `legacy_reading_intersects` gives a plain `<f>` for a marked legacy cell and
   `cm="1"` for a dynamic twin, and `=N(IF(A1,1,2))` stays a plain `<f>` either way.
 - **Room for the step:** `static_analysis_operator_chain` and `static_analysis_op_results` moved to
@@ -111,8 +114,8 @@ The range half (`=N(Z1:Z2)` 7, no `@`) needs no marker and is T-1728.
     INDEX and IFS, the statically scalar case, and a legacy and a dynamic twin as two shared
     formulas.
 - **Eval:**
-  - probes known failures 2118 → 2087 against main: the 32 acceptance cells fixed, 1 new-coverage
-    failure (legacy-n-t-marker-shapes F10, T-1921), 0 regressions.
+  - probes known failures 2110 → 2079 against main at cbd3efd9 (T-1908 merged): the 32 acceptance
+    cells fixed, 1 new-coverage failure (legacy-n-t-marker-shapes F10, T-1921), 0 regressions.
   - ironcalc-calc 1243 → 1243 and fixtures 9 → 9; poi is not fetched here.
 - **Ratchets (decision 0010 line):** duplicated lines 3903 → 3883; oversized-files static_analysis.rs
   1137 → 1114, plus the stringify.rs, functions/mod.rs and model.rs shrinks T-1851 left on main.
