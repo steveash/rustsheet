@@ -230,7 +230,7 @@ fn overflowing_arguments_are_excels_errors_not_panics() {
     model._set("B3", "=F.DIST(C5,2,3,TRUE)");
     model._set("B4", "=F.DIST(C5,2,3,FALSE)");
     model._set("B5", "=F.DIST.RT(C5,2,3)");
-    // Large degrees of freedom keep main's #NUM! for the pdf (TODO(T-1865)).
+    // Large degrees of freedom keep main's #NUM! for the pdf (TODO(T-1864)).
     model._set("B6", "=F.DIST(1,1000,1000,FALSE)");
     model._set("B7", "=F.DIST(3,50,100,FALSE)");
     model._set("B8", "=TDIST(-1,5,NA())");
