@@ -40,7 +40,10 @@ fn function_iterator() {
     // The enum is the lookup table plus the internal kinds, which the lookup table (and so the
     // catalog) does not list (SPEC-0012).
     let listed: Vec<String> = Function::into_iter().map(|f| format!("{f:?}")).collect();
-    let internal: Vec<String> = Function::INTERNAL.iter().map(|f| format!("{f:?}")).collect();
+    let internal: Vec<String> = Function::INTERNAL
+        .iter()
+        .map(|f| format!("{f:?}"))
+        .collect();
     assert!(internal.iter().all(|kind| !listed.contains(kind)));
     let mut expected = [listed, internal].concat();
     expected.sort();
