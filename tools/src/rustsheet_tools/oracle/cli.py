@@ -115,7 +115,8 @@ def cmd_fill(args: argparse.Namespace) -> int:
     if not ok:
         sys.exit(f"{backend.name} unavailable: {why}")
     done = failed = skipped = conflicts = 0
-    for entry in suite_cases(args.suite)[: args.limit or None]:
+    entries = [e for e in suite_cases(args.suite) if not args.case or e["id"] in args.case]
+    for entry in entries[: args.limit or None]:
         case, sidecar = Path(entry["path"]), Path(entry["sidecar"])
         is_spec = case.name.endswith(".case.json")
         if sidecar.exists() and not args.force:
@@ -132,7 +133,9 @@ def cmd_fill(args: argparse.Namespace) -> int:
         try:
             values, info, sha = _recalc_cached(backend, xlsx)
             if not spec:
-                conflicts += _drop_desktop_conflicts(case, values)
+                conflicts += _drop_desktop_conflicts(
+                    case, values, entry.get("suite_uses_cached_values") is not False
+                )
             elif spec.get("invariant"):
                 _drop_varying_invariants(case, spec["invariant"], values, _recalc_fresh(backend, xlsx))
         except OracleError as e:
@@ -253,7 +256,9 @@ def _materially_differ(a: dict[str, Any], b: dict[str, Any]) -> bool:
     return a != b
 
 
-def _drop_desktop_conflicts(case: Path, values: dict[str, dict[str, Any]]) -> int:
+def _drop_desktop_conflicts(
+    case: Path, values: dict[str, dict[str, Any]], cache_is_evidence: bool = True
+) -> int:
     """Removes cells where Excel for the web contradicts the values Microsoft Excel cached in the
     workbook, so they stay pending until an excel-desktop probe decides (T-0019 review: lowercase-e
     TEXT formats and elapsed tokens after `s` give #VALUE!/odd values on the web only).
@@ -264,7 +269,10 @@ def _drop_desktop_conflicts(case: Path, values: dict[str, dict[str, Any]]) -> in
     leaves a cell pending.
 
     Also overwrites a web number that differs by less than 1e-9 with the cached value when the
-    workbook was saved by a 16.x build (decision 0030 rule 1, T-0142). Returns the dropped count."""
+    workbook was saved by a 16.x build (decision 0030 rule 1, T-0142), unless the suite does not
+    trust its caches (`cache_is_evidence` false, `use_cached_values = false`): corpus-bench caches
+    carry 15 significant digits, a writer's cut and not desktop evidence (decision 0073, T-0433).
+    Returns the dropped count."""
     try:
         snap = snapshot(case)
     except subprocess.CalledProcessError as e:  # never write web values we could not check
@@ -273,7 +281,7 @@ def _drop_desktop_conflicts(case: Path, values: dict[str, dict[str, Any]]) -> in
         return 0  # cached by POI, LibreOffice, a generator...: no Excel evidence to conflict with
     # Decision 0030 rules 1/2: only a 16.x build outranks the web; older builds (12.0 = Mac Excel
     # 2008, XlsxWriter's placeholder) keep the web value when the difference is last-digit noise.
-    is_desktop = (snap.get("app_version") or "").startswith("16.")
+    is_desktop = cache_is_evidence and (snap.get("app_version") or "").startswith("16.")
     cached = formula_values(snap)
     dropped = 0
     for sheet, cells in values.items():
@@ -311,6 +319,7 @@ def main() -> None:
     p.add_argument("--suite", required=True)
     p.add_argument("--force", action="store_true")
     p.add_argument("--limit", type=int, default=0)
+    p.add_argument("--case", action="append", default=[], help="only this case id (repeatable)")
     p.add_argument(
         "--include-cached",
         action="store_true",

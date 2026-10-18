@@ -1,20 +1,23 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-//! The legacy N/T marker (SPEC-0012, T-1851): the internal kinds `NLegacy` and `TLegacy`, their
-//! R1C1 storage spelling and their evaluation. Nothing places a marker yet (T-1713), so the
-//! marked formulas here are written by hand as stored (R1C1) text.
+//! The legacy N/T marker (SPEC-0012): the internal kinds `NLegacy` and `TLegacy`, their R1C1
+//! storage spelling and their evaluation (T-1851, from stored text written by hand), and where
+//! the legacy rewrite places them (T-1713).
 
 use std::collections::HashMap;
 
 use crate::expressions::lexer::LexerMode;
 use crate::expressions::parser::new_parser_english as new_parser;
-use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+use crate::expressions::parser::static_analysis::{
+    add_implicit_intersection, run_static_analysis_on_node, StaticResult,
+};
 use crate::expressions::parser::stringify::{
     to_english_string, to_excel_array_formula_string, to_excel_string, to_localized_string,
     to_rc_format,
 };
 use crate::expressions::parser::Node;
 use crate::expressions::types::CellReferenceRC;
+use crate::expressions::utils::parse_reference_a1;
 use crate::functions::Function;
 use crate::language::get_default_language;
 use crate::locale::get_default_locale;
@@ -211,4 +214,212 @@ fn spelling_variants_are_no_marker() {
         model.evaluate();
         assert_eq!(model._get_text("A1"), "#NAME?", "{formula}");
     }
+}
+
+/// `formula` (no `=`) read as a legacy formula in Sheet1!A1, as the xlsx import reads a plain
+/// `<f>`: its stored (R1C1) text and its display text.
+fn legacy_reading(formula: &str) -> (String, String) {
+    let mut node = parse(formula, LexerMode::A1);
+    add_implicit_intersection(&mut node, true);
+    (to_rc_format(&node), to_english_string(&node, &context()))
+}
+
+// SPEC-0012 rule 2 and "Placement": one row per row of the spec's Problem table, the negative
+// ones included. `marked` is whether the stored text holds the marker; the display text never
+// does, and shows what Excel's FORMULATEXT shows (probes/legacy-n-t-reference-args row 20,
+// legacy-array-result row 20, n-array-lift A26).
+#[test]
+fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
+    for (formula, marked, shown) in [
+        ("N(IF(1,{2;3}))", true, "N(IF(1,{2;3}))"),
+        ("T(IF(1,{\"a\";\"b\"}))", true, "T(IF(1,{\"a\";\"b\"}))"),
+        ("T(IF(1,{\"a\"}))", true, "T(IF(1,{\"a\"}))"),
+        ("N(IF(1,{2,3}))", true, "N(IF(1,{2,3}))"),
+        ("N(IF(1,{2,3;4,5}))", true, "N(IF(1,{2,3;4,5}))"),
+        ("N(IF(1,{2;3},{4;5}))", true, "N(IF(1,{2;3},{4;5}))"),
+        ("N(IF({1;0},2,3))", true, "N(IF({1;0},2,3))"),
+        ("N(CHOOSE(1,{2;3}))", true, "N(CHOOSE(1,{2;3}))"),
+        (
+            "T(CHOOSE(1,{\"a\";\"b\"}))",
+            true,
+            "T(CHOOSE(1,{\"a\";\"b\"}))",
+        ),
+        ("N(INDEX({2;3},0,1))", true, "N(INDEX({2;3},0,1))"),
+        ("N(IFS(1,{2;3}))", true, "N(IFS(1,{2;3}))"),
+        ("ABS(N(IF(1,{2;3})))", true, "ABS(N(IF(1,{2;3})))"),
+        ("N(IF(1,{2;3}))+0", true, "N(IF(1,{2;3}))+0"),
+        ("N(IF(1,{2;3}))&\"\"", true, "N(IF(1,{2;3}))&\"\""),
+        ("T(IF(1,{2;3}))", true, "T(IF(1,{2;3}))"),
+        ("N(IF(1,{\"x\";3}))", true, "N(IF(1,{\"x\";3}))"),
+        // N20: no one-element `@` under the marker.
+        ("N(IF(1,{2}))", true, "N(IF(1,{2}))"),
+        // probes/legacy-n-t-marker-shapes: one-element CHOOSE and IFS arms, INDEX of an array
+        // constant, an operator or a reference in IF's arms, N under LEN, and CHOOSE's array
+        // index, all `#VALUE!` with no `@` (A-F, H-L); `N(INDEX({2},1,1))` is 2 (G).
+        ("N(CHOOSE(1,{2}))", true, "N(CHOOSE(1,{2}))"),
+        ("T(CHOOSE(1,{\"a\"}))", true, "T(CHOOSE(1,{\"a\"}))"),
+        ("N(IFS(1,{2}))", true, "N(IFS(1,{2}))"),
+        ("N(INDEX({2,3;4,5},1))", true, "N(INDEX({2,3;4,5},1))"),
+        ("N(INDEX({2},1,1))", true, "N(INDEX({2},1,1))"),
+        ("N(IF(1,{2;3}+0))", true, "N(IF(1,{2;3}+0))"),
+        ("LEN(N(IF(1,{2;3})))", true, "LEN(N(IF(1,{2;3})))"),
+        ("N(IF(1,{2;3},Z1))", true, "N(IF(1,{2;3},Z1))"),
+        (
+            "N(CHOOSE({1;2},{2;3},{4;5}))",
+            true,
+            "N(CHOOSE({1;2},{2;3},{4;5}))",
+        ),
+        // A reference result reads the same marked or not (J10, 7).
+        ("N(IF(1,Z1:Z2))", true, "N(IF(1,Z1:Z2))"),
+        // Not a value position: a vector argument, IF's arms, SUMPRODUCT's array context.
+        ("SUM(N(IF(1,{2;3})))", false, "SUM(N(IF(1,{2;3})))"),
+        ("IF(1,N(IF(1,{2;3})))", false, "@IF(1,N(IF(1,{2;3})))"),
+        (
+            "SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))",
+            false,
+            "SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))",
+        ),
+        // Not an argument the marker covers: SWITCH spills, IFERROR and an array constant or
+        // another array-valued call take the `@`, an explicit `@` or parentheses are kept.
+        ("N(SWITCH(1,1,{2;3}))", false, "N(SWITCH(1,1,{2;3}))"),
+        ("N(IFERROR({2;3},0))", false, "N(@IFERROR({2;3},0))"),
+        ("N({2;3})", false, "N(@{2;3})"),
+        ("N(TRANSPOSE({2,3}))", false, "N(@TRANSPOSE({2,3}))"),
+        ("N(_xlfn.SINGLE(IF(1,{2;3})))", false, "N(@IF(1,{2;3}))"),
+        // CHOOSE and INDEX over a reference are read as references, unmarked and with no `@`
+        // (T-1908); a mixed arm keeps the `@` on the call.
+        ("N(CHOOSE(1,Z1:Z2))", false, "N(CHOOSE(1,Z1:Z2))"),
+        ("N(CHOOSE(1,{2;3},Z1))", false, "N(@CHOOSE(1,{2;3},Z1))"),
+        ("N(INDEX(Z1:Z2,1))", false, "N(INDEX(Z1:Z2,1))"),
+        // A one-element arm next to the marker. `@`s survive where the call is not marked: an
+        // IFS with a reference arm takes the `@` on the call and keeps the arm's, and so do an IF
+        // under SUM or under an operator. Where the call is marked they are dropped, also with a
+        // non-literal condition or a multi-cell arm beside them (extrapolated from N20 and
+        // probes/legacy-n-t-marker-shapes A-D).
+        ("N(IFS(A1,{2},1,Z1))", false, "N(@IFS(A1,@{2},1,Z1))"),
+        ("SUM(N(IF(1,{2})))", false, "SUM(N(IF(1,@{2})))"),
+        ("N(IF(1,{2})+0)", false, "N(IF(1,@{2})+0)"),
+        ("N(CHOOSE(1,{2},Z1))", false, "N(@CHOOSE(1,{2},Z1))"),
+        ("N(IF(A1,{2},3))", true, "N(IF(A1,{2},3))"),
+        ("N(CHOOSE(1,{2},{3;4}))", true, "N(CHOOSE(1,{2},{3;4}))"),
+        // A statically scalar argument reads the same either way.
+        ("N(IF(A1,1,2))", false, "N(IF(A1,1,2))"),
+        ("N(IF(1,2))", false, "N(IF(1,2))"),
+    ] {
+        let (stored, display) = legacy_reading(formula);
+        assert_eq!(
+            stored.contains("_RS_LEGACY_"),
+            marked,
+            "{formula}: {stored}"
+        );
+        assert_eq!(display, shown, "{formula}");
+    }
+    // A dynamic formula is never rewritten, so never marked.
+    let mut model = new_empty_model();
+    model._set("A1", "=N(IF(A2,1,2))");
+    let stored = &model.workbook.worksheet(0).unwrap().shared_formulas;
+    assert_eq!(stored, &["N(IF(R[1]C[0],1,2))".to_string()]);
+}
+
+// The legacy cells of the spec's Problem table evaluate as in Excel, while their dynamic twins
+// keep lifting (probes/legacy-n-t-reference-args, legacy-array-result A, G, I, J).
+#[test]
+fn a_legacy_cell_reads_n_and_t_over_an_array_as_value_error() {
+    for (formula, legacy, dynamic) in [
+        ("=N(IF(1,{2;3}))", "#VALUE!", "2"),
+        ("=T(IF(1,{\"a\";\"b\"}))", "#VALUE!", "a"),
+        ("=N(IF(1,{2}))", "#VALUE!", "2"),
+        ("=N(CHOOSE(1,{2;3}))", "#VALUE!", "2"),
+        ("=ABS(N(IF(1,{2;3})))", "#VALUE!", "2"),
+        ("=N(IF(1,{2;3}))&\"\"", "#VALUE!", "2"),
+        ("=SUM(N(IF(1,{2;3})))", "5", "5"),
+        ("=IF(1,N(IF(1,{2;3})))", "2", "2"),
+        ("=N(IF(1,Z1:Z2))", "7", "7"),
+        ("=N(IF(1,2))", "2", "2"),
+        ("=N(CHOOSE(1,{2}))", "#VALUE!", "2"),
+        ("=N(INDEX({2},1,1))", "2", "2"),
+        ("=N(CHOOSE({1;2},{2;3},{4;5}))", "#VALUE!", "2"),
+    ] {
+        let mut model = new_empty_model();
+        model._set("Z1", "7");
+        model._set("Z2", "8");
+        model
+            .set_cell_with_legacy_formula(0, 1, 1, formula)
+            .unwrap();
+        model._set("B1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), legacy, "legacy {formula}");
+        assert_eq!(model._get_text("A2"), "", "legacy {formula} spills");
+        assert_eq!(model._get_text("B1"), dynamic, "dynamic {formula}");
+    }
+}
+
+/// Every `legacy_formulas` cell of the probes suite: (sheet names of its case, its sheet, row,
+/// column, formula without `=`).
+fn probes_legacy_cells() -> Vec<(Vec<String>, String, i32, i32, String)> {
+    let dir = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../eval/suites/probes/cases"
+    );
+    let mut cells = Vec::new();
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if !path.to_string_lossy().ends_with(".case.json") {
+            continue;
+        }
+        let case: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        let sheets = case["sheets"].as_array().cloned().unwrap_or_default();
+        let names: Vec<String> = sheets
+            .iter()
+            .map(|sheet| sheet["name"].as_str().unwrap().to_string())
+            .collect();
+        for sheet in &sheets {
+            let name = sheet["name"].as_str().unwrap();
+            for cell in sheet["legacy_formulas"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+            {
+                let a1 = cell.as_str().unwrap();
+                let formula = sheet["cells"][a1].as_str().unwrap();
+                let reference = parse_reference_a1(a1).unwrap();
+                let body = formula.strip_prefix('=').unwrap().to_string();
+                cells.push((
+                    names.clone(),
+                    name.to_string(),
+                    reference.row,
+                    reference.column,
+                    body,
+                ));
+            }
+        }
+    }
+    cells
+}
+
+// SPEC-0012 "Entry points": the rewrite is idempotent, on its own tree and over its own display
+// text, as stored (R1C1) text, so the marker survives a re-entry of the text (T-1852) and the
+// export's remove-then-add (`legacy_reading_intersects`).
+#[test]
+fn the_legacy_rewrite_is_idempotent_over_the_probes_legacy_cells() {
+    let cells = probes_legacy_cells();
+    assert!(cells.len() > 400, "{}", cells.len());
+    let mut marked = 0;
+    for (names, sheet, row, column, body) in cells {
+        let context = CellReferenceRC { sheet, row, column };
+        let mut parser = new_parser(names, vec![], HashMap::new());
+        let mut once = parser.parse(&body, &context);
+        add_implicit_intersection(&mut once, true);
+        let stored = to_rc_format(&once);
+        marked += usize::from(stored.contains("_RS_LEGACY_"));
+        let mut twice = once.clone();
+        add_implicit_intersection(&mut twice, true);
+        assert_eq!(to_rc_format(&twice), stored, "{body}");
+        let display = to_english_string(&once, &context);
+        let mut again = parser.parse(&display, &context);
+        add_implicit_intersection(&mut again, true);
+        assert_eq!(to_rc_format(&again), stored, "{body} shown as {display}");
+    }
+    assert!(marked >= 20, "{marked}");
 }
