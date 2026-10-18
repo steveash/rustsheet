@@ -225,8 +225,8 @@ pub(super) fn legacy_array_call_at(
 /// legacy-n-t-reference-args M, T-1713), and over a CHOOSE, INDEX or IFS that returns only array
 /// constants (`=N(CHOOSE(1,{2;3}))`, `=N(INDEX({2;3},0,1))`, `=N(IFS(1,{2;3}))`, A20, B20, L20),
 /// or INDEX of a plain reference ([`is_plain_reference`], T-1908: `=N(INDEX(Z1:Z2,1))`, which is
-/// read as a reference and not marked), where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D). An explicit `@` on the call is looked
-/// through, so the export keeps it.
+/// read as a reference and not marked), where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D). An
+/// explicit `@` on the call is looked through, so the export keeps it.
 pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
     let call = match arg {
         Node::ImplicitIntersection { child, .. } => child.as_ref(),
@@ -251,8 +251,8 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
 
 /// Whether `kind(args)` is a CHOOSE, INDEX or IFS whose every argument it can return
 /// ([`is_returned_argument`]) is an array constant: the one shape of them probed under N and T
-/// (probes/legacy-n-t-reference-args A, B, K, L). Over a reference they read the reference, unmarked
-/// (T-1908); with a mixed arm they keep their `@`.
+/// (probes/legacy-n-t-reference-args A, B, K, L). Over a reference they read the reference,
+/// unmarked (T-1908); with a mixed arm they keep their `@`.
 fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
     let mut returned = args
         .iter()
@@ -619,4 +619,77 @@ pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool 
                     args: arms,
                 }) if arms.len() > 1 && arms[1..].iter().all(is_value_operation)
             )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::mark_legacy_reading;
+    use crate::expressions::parser::stringify::to_rc_format;
+    use crate::expressions::parser::{new_parser_english, Node};
+    use crate::expressions::types::CellReferenceRC;
+    use crate::functions::Function;
+
+    /// `formula` parsed in Sheet1!A1, with the automatic `@` the rewrite puts on a one-element
+    /// array constant wrapped around argument `arm` of the call that is N's argument.
+    fn with_automatic_at(formula: &str, arm: usize) -> Node {
+        let context = CellReferenceRC {
+            sheet: "Sheet1".to_string(),
+            row: 1,
+            column: 1,
+        };
+        let mut parser = new_parser_english(vec!["Sheet1".to_string()], vec![], HashMap::new());
+        let mut node = parser.parse(formula, &context);
+        let Node::FunctionKind { args, .. } = &mut node else {
+            panic!("{formula}");
+        };
+        let Some(Node::FunctionKind {
+            args: call_args, ..
+        }) = args.first_mut()
+        else {
+            panic!("{formula}");
+        };
+        let constant = std::mem::replace(&mut call_args[arm], Node::EmptyArgKind);
+        call_args[arm] = Node::automatic_at(constant);
+        node
+    }
+
+    /// Runs the marker step on the N call `node`, returning whether it was marked.
+    fn mark(node: &mut Node) -> bool {
+        let Node::FunctionKind { kind, args } = node else {
+            panic!("{node:?}");
+        };
+        mark_legacy_reading(kind, args);
+        *kind == Function::NLegacy
+    }
+
+    // The restore branch: a one-element `@` is taken off to decide, and put back when the call is
+    // not marked. No formula text reaches it, because the rewrite puts the `@` on the call
+    // itself, so the step returns early (`N(@CHOOSE(1,{2},Z1))`). The tree is built by hand.
+    #[test]
+    fn an_unmarked_call_keeps_its_one_element_at() {
+        let mut node = with_automatic_at("N(CHOOSE(1,{2},Z1))", 1);
+        let stored = to_rc_format(&node);
+        assert_eq!(stored, "N(CHOOSE(1,@{2},R[0]C[25]))");
+        assert!(!mark(&mut node));
+        assert_eq!(to_rc_format(&node), stored);
+        assert!(matches!(
+            &node,
+            Node::FunctionKind { args, .. } if matches!(
+                &args[0],
+                Node::FunctionKind { args: arms, .. }
+                    if matches!(arms[1], Node::ImplicitIntersection { automatic: true, .. })
+            )
+        ));
+    }
+
+    // The marked branch drops the `@` for good (`=N(IF(1,{2}))`, probes/legacy-n-t-reference-args
+    // N20).
+    #[test]
+    fn a_marked_call_drops_its_one_element_at() {
+        let mut node = with_automatic_at("N(IF(1,{2}))", 1);
+        assert!(mark(&mut node));
+        assert_eq!(to_rc_format(&node), "_RS_LEGACY_N(IF(1,{2}))");
+    }
 }

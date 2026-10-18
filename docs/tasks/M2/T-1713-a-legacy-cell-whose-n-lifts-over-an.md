@@ -107,9 +107,14 @@ The range half (`=N(Z1:Z2)` 7, no `@`) needs no marker and is T-1728.
   - Which shapes are verified and which are extrapolated: references.md "Legacy N and T over a
     reference-returning call".
 - **Tests:**
-  - test_legacy_n_t_marker.rs: placement over the Problem table and the new probe's shapes (27
-    marked and 12 negative rows); the legacy and dynamic values; idempotence (twice, and over the
-    display text, as RC) over every `legacy_formulas` cell of the probes cases.
+  - test_legacy_n_t_marker.rs: placement over the Problem table and the new probe's shapes (29
+    marked and 17 negative rows, among them one-element arms whose `@` survives on an unmarked
+    call); the legacy and dynamic values; idempotence (twice, and over the display text, as RC)
+    over every `legacy_formulas` cell of the probes cases.
+  - static_analysis/legacy.rs unit tests: `mark_legacy_reading`'s restore branch (a one-element `@`
+    taken off and put back on an unmarked call) and its marked branch, on hand-built trees. No
+    formula text reaches the restore branch: the rewrite puts the `@` on such a call itself, so the
+    step returns early.
   - rustsheet-xlsx tests/dynamic_formula_export.rs: the export round trip for N/T over IF, CHOOSE,
     INDEX and IFS, the statically scalar case, and a legacy and a dynamic twin as two shared
     formulas.

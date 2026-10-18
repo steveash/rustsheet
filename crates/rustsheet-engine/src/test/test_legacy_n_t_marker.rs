@@ -291,6 +291,17 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
         ("N(CHOOSE(1,Z1:Z2))", false, "N(CHOOSE(1,Z1:Z2))"),
         ("N(CHOOSE(1,{2;3},Z1))", false, "N(@CHOOSE(1,{2;3},Z1))"),
         ("N(INDEX(Z1:Z2,1))", false, "N(INDEX(Z1:Z2,1))"),
+        // A one-element arm next to the marker. `@`s survive where the call is not marked: an
+        // IFS with a reference arm takes the `@` on the call and keeps the arm's, and so do an IF
+        // under SUM or under an operator. Where the call is marked they are dropped, also with a
+        // non-literal condition or a multi-cell arm beside them (extrapolated from N20 and
+        // probes/legacy-n-t-marker-shapes A-D).
+        ("N(IFS(A1,{2},1,Z1))", false, "N(@IFS(A1,@{2},1,Z1))"),
+        ("SUM(N(IF(1,{2})))", false, "SUM(N(IF(1,@{2})))"),
+        ("N(IF(1,{2})+0)", false, "N(IF(1,@{2})+0)"),
+        ("N(CHOOSE(1,{2},Z1))", false, "N(@CHOOSE(1,{2},Z1))"),
+        ("N(IF(A1,{2},3))", true, "N(IF(A1,{2},3))"),
+        ("N(CHOOSE(1,{2},{3;4}))", true, "N(CHOOSE(1,{2},{3;4}))"),
         // A statically scalar argument reads the same either way.
         ("N(IF(A1,1,2))", false, "N(IF(A1,1,2))"),
         ("N(IF(1,2))", false, "N(IF(1,2))"),

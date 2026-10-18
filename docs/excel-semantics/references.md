@@ -1522,7 +1522,7 @@ probes/t-n-range-top-left M, O (`=T(@{"a","b"})`, `=N(@{5,6})`).
 Implemented (T-1717): `add_legacy_intersection` (expressions/parser/static_analysis.rs) carries an
 `arrays` flag, true at the top of the cell and down through the scalar arguments of a function that
 computes from them (`legacy_array_context`, static_analysis/legacy.rs; not IF, IFERROR, IFNA, CHOOSE,
-IFS, SWITCH, LET or LAMBDA, nor N/T over IF, SWITCH or a CHOOSE, INDEX or IFS that returns only array constants, T-1713). Where it holds, an array constant argument
+IFS, SWITCH, LET or LAMBDA, nor N/T over IF, SWITCH or a CHOOSE, INDEX or IFS that returns only array constants, T-1713, or INDEX of a reference, T-1908). Where it holds, an array constant argument
 gets the `@`, and so does an array-valued call of more than one cell whose array is one of its
 arguments or comes from a non-scalar one (`legacy_array_call_at`). Probed since in T-1847 (below): IFNA, IFS, the IFERROR argument, T over SWITCH and the array-constant `@` under LEN and ISNUMBER/SEARCH match. Known mismatches: an array constant inside an operator (`=N({2;3}+0)`, `=ABS({2;3}+0)`) still spills in ours (T-1911), and a top-level `=SWITCH(1,1,{2;3})` gets an `@` from ours (T-1910). One-cell array-valued calls: `=ABS(TRANSPOSE({5}))` takes the `@` in Excel and ours (below), while CHOOSE's one-cell result takes none (probes/legacy-one-cell-shape-intersection J3). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
 exception's `#VALUE!` is implemented by the legacy N/T marker (T-1713, next section).
@@ -1576,9 +1576,9 @@ constants, that is not statically a scalar; the marked kernel reads an array as 
 top-left cell. These shapes take no `@` on the call (`leaves_call_whole`), nor on CHOOSE's index, and a one-element
 array constant in the marked argument's returned arms (IF's arms, CHOOSE's and IFS's values) takes none either. The
 marker is never printed: the export writes a plain `<f>` for a legacy cell and `cm="1"` for a dynamic twin.
-Verified (all cells above match): IF with array-constant, one-element, operator and mixed reference arms and an
+Verified (all cells above match, except legacy-n-t-marker-shapes F10): IF with array-constant, one-element, operator and mixed reference arms and an
 array condition; CHOOSE with array-constant and one-element values and an array index; IFS with one value pair;
-INDEX of an array constant with one index or with row and column; and these positions: the top of the cell, ABS's
+INDEX of an array constant with one index on a 2x2 or with row and column; and these positions: the top of the cell, ABS's
 and LEN's argument, and an operand of `+0` or `&""`. Not matched: `=N(INDEX({2;3},1))` is 2 in ours, because our
 INDEX gives a scalar there (T-1921). Extrapolated, unprobed: other scalar functions and operators around the call
 (T-1717's `arrays` flag, T-1847); IFS with more than one pair; INDEX with an area number; T over IFS or INDEX; and an
