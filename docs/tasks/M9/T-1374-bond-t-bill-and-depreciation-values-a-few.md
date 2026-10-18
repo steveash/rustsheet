@@ -32,6 +32,9 @@ probes/fin-argument-modes (excel-graph, 2026-10-11, T-1084). Base rows that miss
   below the root, the stopping point does not move with the dates for the same day counts but does differ between
   two bonds with equal day counts and different YEARFRAC (docs/excel-semantics/financial.md, "YIELD stops short of
   PRICE's root").
+- Added by T-1845: probes/fin-remaining-later-argument-ranges K11 `INDEX(CUMIPMT({0.01;0.02},360,100000,1,12,0),2)`
+  (-23997.734423612783, ours an ulp off): the 12-period CUMIPMT sum, kept up to 32 periods by T-1845; the closed form
+  past 32 periods is T-1890's.
 The same DURATION, MDURATION and PRICE base values recur as the intersected controls of
 probes/fin-remaining-later-argument-ranges I85-I103 and I165-I171 (T-1822), and so do the CUMIPMT, CUMPRINC, ODDFPRICE,
 ODDFYIELD and YIELD ones there (I65-I84, I105-I136, I173-I184).

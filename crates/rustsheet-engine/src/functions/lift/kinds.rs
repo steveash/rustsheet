@@ -348,6 +348,26 @@ const ODD_LAST: ArgKinds = ArgKinds::fixed(
 );
 // --- End financial ATP (T-1842) -------------------------------------------------------------
 
+// --- Financial ATP (T-1845) -----------------------------------------------------------------
+/// What one CUMIPMT or CUMPRINC element is charged: the derived bound of its kernel, at most
+/// `CUMULATIVE_LOOP_PERIODS` (32) PPMT steps of three powers each and then, when a power
+/// overflows on the last step, the closed form (a few `exp`s), about 2.9 us an element in a
+/// release build (2^19 elements of `CUMPRINC(..,1024,1E307*15.98,1,32,0)`, whose last step
+/// overflows, took 1.53 s; 32 full steps of type 1 1.51 s). 2^8 units run at most 2^19
+/// elements, about 1.5 s. docs/excel-semantics/financial.md "CUMIPMT and CUMPRINC over many
+/// periods" (a DEVIATION).
+const CUMULATIVE_WEIGHT: u32 = 1 << 8;
+/// `CUMIPMT(rate, nper, pv, start_period, end_period, type)` and CUMPRINC, whatever the period
+/// count (functions/financial/cumulative.rs).
+const CUMULATIVE: ArgKinds = ArgKinds::fixed(
+    6,
+    &[
+        LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
+    ],
+    Weighted(CUMULATIVE_WEIGHT),
+);
+// --- End financial ATP (T-1845) -------------------------------------------------------------
+
 /// The functions of [`Function::arg_kinds`], as a pattern: the arm of an exhaustive `match` on a
 /// `Function` that has no hand-written arm because the table derives it (static analysis).
 /// Keep it equal to the table; `static_analysis::lifted`'s test checks that no function in the
@@ -492,6 +512,10 @@ macro_rules! lifting_table_functions {
             | Function::Oddlprice
             | Function::Oddlyield
             // --- End financial ATP (T-1842) ---
+            // --- Financial ATP (T-1845) ---
+            | Function::Cumipmt
+            | Function::Cumprinc
+            // --- End financial ATP (T-1845) ---
             // --- Statistical (T-1290) ---
             | Function::BetaDist
             | Function::BetaDistCompat
@@ -760,6 +784,15 @@ impl Function {
             Function::Oddfyield => Some(&ODDFYIELD),
             Function::Oddlprice | Function::Oddlyield => Some(&ODD_LAST),
             // --- End financial ATP (T-1842) ---
+            // --- Financial ATP (T-1845) ---
+            // Analysis ToolPak functions, as the T-1822 ones: every argument lifts over an array
+            // (probes/fin-argument-modes H73-H87; fin-remaining-later-argument-ranges K11) and
+            // refuses a multi-cell range, also on the range's own rows (fin-argument-modes H74,
+            // H82; fin-remaining-later-argument-ranges H65-H84, each with its intersected control
+            // in I; docs/excel-semantics/financial.md "Financial function argument modes"). Their
+            // period sums are bounded ("CUMIPMT and CUMPRINC over many periods").
+            Function::Cumipmt | Function::Cumprinc => Some(&CUMULATIVE),
+            // --- End financial ATP (T-1845) ---
             // --- Statistical (T-1290) ---
             // The statistical functions whose every argument is scalar are worksheet functions:
             // every argument lifts over an array and over a multi-cell range, on the range's own
