@@ -296,6 +296,7 @@ C	probes/geomean-stored-3ulps-low.case.json	9
 C	probes/getpivotdata-evidence-floor.case.json	23
 C	probes/getpivotdata-real-pivot.case.json	33
 C	probes/groupby-blank-values.case.json	110
+C	probes/groupby-eta-arity.case.json	101
 C	probes/groupby-lambda-forms.case.json	491
 C	probes/groupby-pivotby-followup.case.json	1081
 C	probes/groupby-pivotby-followup2.case.json	607
@@ -1896,6 +1897,16 @@ F	probes/getpivotdata-real-pivot.case.json	P!L2
 F	probes/getpivotdata-real-pivot.case.json	P!L5
 F	probes/getpivotdata-real-pivot.case.json	P!M5
 F	probes/getpivotdata-real-pivot.case.json	P!N5
+F	probes/groupby-eta-arity.case.json	G!B21
+F	probes/groupby-eta-arity.case.json	G!B22
+F	probes/groupby-eta-arity.case.json	G!B23
+F	probes/groupby-eta-arity.case.json	G!B24
+F	probes/groupby-eta-arity.case.json	G!B25
+F	probes/groupby-eta-arity.case.json	G!B61
+F	probes/groupby-eta-arity.case.json	G!B62
+F	probes/groupby-eta-arity.case.json	G!B63
+F	probes/groupby-eta-arity.case.json	G!B64
+F	probes/groupby-eta-arity.case.json	G!B65
 F	probes/groupby-pivotby-functions.case.json	G!B421
 F	probes/groupby-pivotby-functions.case.json	G!B422
 F	probes/groupby-pivotby-functions.case.json	G!B423
