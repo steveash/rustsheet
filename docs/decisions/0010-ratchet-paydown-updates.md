@@ -152,5 +152,9 @@
   (`check_duplication.py --update`), and functions/financial/financial_bonds.rs 1178 → 1083 lines and
   expressions/parser/static_analysis.rs 1209 → 1199 (the 10 fallback lines of the five functions now in
   the lifting table) (`check_file_size.py --update`).
+  T-1848: duplicated lines 4328 → 4248 (on main after T-1842) (BETA.INV, F.INV, F.INV.RT, T.INV, T.INV.2T and CONFIDENCE.T become
+  kernels over borrowed values; F.INV and F.INV.RT share one kernel, and so do T.INV and T.INV.2T)
+  (`check_duplication.py --update`), and expressions/parser/static_analysis.rs 1199 → 1181 lines (the 18
+  fallback lines of the nine quantile functions now in the lifting table) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

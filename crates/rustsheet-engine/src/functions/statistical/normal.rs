@@ -1,13 +1,14 @@
 //! The normal distribution functions NORM.DIST, NORM.INV, NORM.S.DIST, NORM.S.INV and
-//! CONFIDENCE.NORM (and their legacy names), which lift every argument over an array and a range
-//! through `lift_call` (SPEC-0011; probes/stat-argument-modes, probes/stat-later-argument-lift,
-//! docs/excel-semantics/statistics.md "Statistical function argument modes"), and CONFIDENCE.T.
+//! CONFIDENCE.NORM (and their legacy names), and CONFIDENCE.T, which lift every argument over an
+//! array and a range through `lift_call` (SPEC-0011; probes/stat-argument-modes,
+//! probes/stat-later-argument-lift, probes/stat-quantile-lift, docs/excel-semantics/statistics.md
+//! "Statistical function argument modes").
 
 use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::special::{normal_cdf, normal_pdf, standard_normal_pdf};
 use crate::functions::statistical::t_dist::{t_upper_quantile, T_DF_MAX};
 use crate::functions::Function;
@@ -186,78 +187,50 @@ impl Model {
         Ok(quantile * std_dev / size.sqrt())
     }
 
+    /// `CONFIDENCE.T(alpha, standard_dev, size)`: every argument lifts over an array and a range
+    /// (SPEC-0011; probes/stat-argument-modes, probes/stat-quantile-lift). The Student-t quantile
+    /// is T.INV.2T's (`t_upper_quantile`), which the lifting table charges (kinds.rs
+    /// `T_QUANTILE_WEIGHT`).
     pub(crate) fn fn_confidence_t(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.lift_call(Function::ConfidenceT, args, cell, &mut |model, values| {
+            number_or_error(model.confidence_t_of(values, cell))
+        })
+    }
 
-        let alpha = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+    fn confidence_t_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let [alpha, std_dev, size] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
-        let std_dev = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
-        };
-        let size = match self.get_number(&args[2], cell) {
-            Ok(f) => f.trunc(),
-            Err(e) => return e,
-        };
-
-        // Domain checks
+        let alpha = self.cast_number_ref(alpha, cell)?;
+        let std_dev = self.cast_number_ref(std_dev, cell)?;
+        let size = self.cast_number_ref(size, cell)?.trunc();
         if alpha <= 0.0 || alpha >= 1.0 || std_dev <= 0.0 || size <= 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid parameters for CONFIDENCE.T".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
         // Need at least 2 observations so df = n - 1 > 0
         if size < 2.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Sample size must be at least 2".to_string(),
-            };
+            return Err(div_error(cell));
         }
-
         let df = size - 1.0;
         if df > T_DF_MAX {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Degrees of freedom too large for CONFIDENCE.T".to_string(),
-            );
+            return Err(num_error(cell));
         }
-
-        let t_dist = match StudentsT::new(0.0, 1.0, df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::ERROR,
-                    cell,
-                    "Failed to construct Student's t distribution".to_string(),
-                )
-            }
-        };
-
+        let t_dist = StudentsT::new(0.0, 1.0, df)
+            .map_err(|_| CalcResult::new_error(Error::ERROR, cell, String::new()))?;
         // Two-sided CI => use 1 - alpha/2
         let t_crit = t_upper_quantile(&t_dist, df, alpha / 2.0);
         if !t_crit.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Invalid quantile for CONFIDENCE.T".to_string(),
-            };
+            return Err(num_error(cell));
         }
-
-        let margin = t_crit * std_dev / size.sqrt();
-        CalcResult::Number(margin)
+        Ok(t_crit * std_dev / size.sqrt())
     }
 
     /// `NORMSDIST(z)`: NORM.S.DIST with `cumulative` TRUE.

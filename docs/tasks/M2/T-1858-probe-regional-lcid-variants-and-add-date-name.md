@@ -3,7 +3,7 @@ id: T-1858
 title: "Probe regional LCID variants and add date-name tables for more locales"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: M
 tier: sonnet
@@ -22,3 +22,6 @@ T-1716 added Excel's date names for 25 LCIDs (crates/rustsheet-engine/src/locale
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/text-locale-regional-lcids` (252 cells, all passing) added 12 LCIDs to `excel_date_names.rs`: de-AT, zh-SG, zh-HK (= zh-TW), es-MX, es-AR, el, th, sk, uk, ar, he, hi. The language fallback does not hold for de-AT, zh-SG, es-MX and es-AR, so those have tables; recorded in number-formats.md.
