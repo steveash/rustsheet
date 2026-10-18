@@ -15,8 +15,8 @@
 //! to 99,999 and p from 1E-320; Beta: shapes 1E-5 to 1E5 and p from 1E-15; Student t: 27 steps at
 //! most). The port returns NaN, which its callers turn into `#NUM!` (docs/excel-semantics/
 //! statistics.md "Quantile searches: per-call cap and lifting", a DEVIATION), where statrs panics
-//! or would not finish and past [`MAX_NEWTON_STEPS`] ([`T_MAX_NEWTON_STEPS`] for Student's t) or
-//! [`MAX_STEP_ADJUSTMENTS`].
+//! or would not finish and past [`MAX_NEWTON_STEPS`] or [`MAX_STEP_ADJUSTMENTS`]
+//! ([`T_MAX_NEWTON_STEPS`] and [`T_MAX_STEP_ADJUSTMENTS`] for Student's t).
 //!
 //! statrs' code carries this notice, from the `special` crate it is based on:
 //!
@@ -49,7 +49,7 @@ const MAX_NEWTON_STEPS: u32 = 512;
 /// The most Newton steps one inversion for Student's t takes: its probabilities are 2E-8 or more
 /// (`t_dist.rs` keeps statrs to `T_STATRS_MIN_P`), where 27 was the most seen in 3 million samples
 /// (degrees of freedom 1 to 99,999), so 64 keeps every result statrs reaches there and lets the
-/// lifting table charge T.INV an eighth of what BETA.INV is charged.
+/// lifting table charge T.INV less than BETA.INV.
 const T_MAX_NEWTON_STEPS: u32 = 64;
 
 /// The most step adjustments (each a division of the step by 3) one inversion makes over all its
@@ -57,16 +57,26 @@ const T_MAX_NEWTON_STEPS: u32 = 64;
 /// (the factor underflows to 0, and a zero step is always accepted).
 const MAX_STEP_ADJUSTMENTS: u32 = 4096;
 
+/// The most step adjustments one inversion for Student's t makes, [`MAX_STEP_ADJUSTMENTS`] scaled
+/// to its Newton cap (64 of 512 steps); 78 was the most seen in 3 million samples.
+const T_MAX_STEP_ADJUSTMENTS: u32 = 512;
+
 /// The `x` with `I_x(a, b) = p` for `a, b > 0` and `p` in [0, 1], or NaN where statrs' search
 /// panics, would not finish, or passes the caps. At most [`MAX_NEWTON_STEPS`] incomplete-beta
 /// evaluations (each a continued fraction of at most 140 steps) and [`MAX_STEP_ADJUSTMENTS`]
 /// adjustments, whatever the arguments.
 pub(crate) fn inv_beta_reg(a: f64, b: f64, x: f64) -> f64 {
-    inv_beta_reg_within(a, b, x, MAX_NEWTON_STEPS)
+    inv_beta_reg_within(a, b, x, MAX_NEWTON_STEPS, MAX_STEP_ADJUSTMENTS)
 }
 
-/// [`inv_beta_reg`] with at most `max_steps` Newton steps.
-fn inv_beta_reg_within(mut a: f64, mut b: f64, mut x: f64, max_steps: u32) -> f64 {
+/// [`inv_beta_reg`] with at most `max_steps` Newton steps and `max_adjustments` step adjustments.
+fn inv_beta_reg_within(
+    mut a: f64,
+    mut b: f64,
+    mut x: f64,
+    max_steps: u32,
+    max_adjustments: u32,
+) -> f64 {
     const SAE: i32 = -30;
     const FPU: f64 = 1e-30; // 10^SAE
 
@@ -159,7 +169,7 @@ fn inv_beta_reg_within(mut a: f64, mut b: f64, mut x: f64, max_steps: u32) -> f6
         loop {
             loop {
                 adjustments += 1;
-                if adjustments > MAX_STEP_ADJUSTMENTS {
+                if adjustments > max_adjustments {
                     return f64::NAN;
                 }
                 let adj = g * q;
@@ -214,10 +224,16 @@ pub(crate) fn f_inverse_cdf(df1: f64, df2: f64, p: f64) -> f64 {
 }
 
 /// statrs' `StudentsT::inverse_cdf` (location 0, scale 1) with [`inv_beta_reg`]'s caps, at most
-/// [`T_MAX_NEWTON_STEPS`] Newton steps: the quantile of `p` in [0, 1] of Student's t.
+/// [`T_MAX_NEWTON_STEPS`] Newton steps and [`T_MAX_STEP_ADJUSTMENTS`] adjustments: the quantile of `p` in [0, 1] of Student's t.
 pub(crate) fn t_inverse_cdf(df: f64, p: f64) -> f64 {
     let x1 = if p >= 0.5 { 1.0 - p } else { p };
-    let mut y = inv_beta_reg_within(0.5 * df, 0.5, 2.0 * x1, T_MAX_NEWTON_STEPS);
+    let mut y = inv_beta_reg_within(
+        0.5 * df,
+        0.5,
+        2.0 * x1,
+        T_MAX_NEWTON_STEPS,
+        T_MAX_STEP_ADJUSTMENTS,
+    );
     y = (df * (1. - y) / y).sqrt();
     y = if p >= 0.5 { y } else { -y };
     // statrs adds its location, 0, which turns a -0 into 0.
@@ -227,7 +243,10 @@ pub(crate) fn t_inverse_cdf(df: f64, p: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used)]
-    use super::{beta_inverse_cdf, f_inverse_cdf, inv_beta_reg, t_inverse_cdf};
+    use super::{
+        beta_inverse_cdf, f_inverse_cdf, inv_beta_reg, inv_beta_reg_within, t_inverse_cdf,
+        MAX_NEWTON_STEPS, MAX_STEP_ADJUSTMENTS,
+    };
     use statrs::distribution::{Beta, ContinuousCDF, FisherSnedecor, StudentsT};
 
     /// A small xorshift, so the sweep is the same on every run.
@@ -314,5 +333,26 @@ mod tests {
     fn the_longest_search_seen_still_finishes() {
         let x = inv_beta_reg(2266.0, 21.5, 3.718_810_279_553_989e-162);
         assert!(x > 0.0 && x < 1.0, "{x}");
+    }
+
+    // The cap branches: a search that needs more Newton steps or step adjustments than its cap is
+    // NaN, and the same search under the real caps finishes with statrs' value.
+    #[test]
+    fn a_search_past_its_cap_is_nan() {
+        let (a, b, p) = (2266.0, 21.5, 3.718_810_279_553_989e-162);
+        let full = inv_beta_reg_within(a, b, p, MAX_NEWTON_STEPS, MAX_STEP_ADJUSTMENTS);
+        assert!(full > 0.0 && full < 1.0, "{full}");
+        // It takes 377 Newton steps.
+        assert_eq!(
+            inv_beta_reg_within(a, b, p, 377, MAX_STEP_ADJUSTMENTS).to_bits(),
+            full.to_bits()
+        );
+        assert!(inv_beta_reg_within(a, b, p, 376, MAX_STEP_ADJUSTMENTS).is_nan());
+        assert!(inv_beta_reg_within(a, b, p, 64, MAX_STEP_ADJUSTMENTS).is_nan());
+        // And more step adjustments than steps.
+        assert!(inv_beta_reg_within(a, b, p, MAX_NEWTON_STEPS, 377).is_nan());
+        // A short search fits Student's t caps.
+        let mid = inv_beta_reg_within(2.5, 0.5, 0.8, 64, 512);
+        assert_eq!(mid.to_bits(), inv_beta_reg(2.5, 0.5, 0.8).to_bits());
     }
 }

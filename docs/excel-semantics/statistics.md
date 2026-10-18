@@ -388,15 +388,18 @@ H90-H99, H173-H177, H231-H245, H518-H529.
 Ours: matches the lift cells (T-1848). The kernels keep their scalar reads, so a TRUE element is `#VALUE!` in BETA.INV,
 F.INV and F.INV.RT, which read numbers without booleans (L2, L3, L19: T-1849). Their quantile comes from statrs 0.18's
 `inv_beta_reg`, ported line for line to `statistical/inverse_beta.rs` with a per-call cap of its own: at most 512 Newton
-steps (64 for Student's t) and 4,096 step adjustments. Where statrs finishes, the port returns its double bit for bit
+steps and 4,096 step adjustments (64 and 512 for Student's t). Where statrs finishes, the port returns its double bit for bit
 (unit test `the_port_is_statrs_where_statrs_finishes`; probes-numeric is unchanged cell for cell), so the values
 probes-numeric checks are main's. statrs needs at most 377 steps where it finishes (13 million samples: F at p down to
 1E-162, Beta shapes 1E-5 to 1E5, Student t). Below the old thresholds the quantile is still a bisection on the cdf of at
 most 1,100 (BETA.INV) or about 1,300 (F.INV) or 264 (T.INV) evaluations. The lifting table charges BETA.INV, BETAINV,
-F.INV, F.INV.RT and FINV 2^14 units an element (at most 167 us an element in release, `BETA.INV(1E-300,0.5,1E6)`) and
-T.INV, T.INV.2T, TINV and CONFIDENCE.T 2^11 (at most 17.5 us, `T.INV.2T(1E-9,99999)`); kinds.rs has the measurements.
+F.INV, F.INV.RT and FINV 2^18 units an element and T.INV, T.INV.2T, TINV and CONFIDENCE.T 2^16: the bound of each
+kernel's caps at a full-cost incomplete-beta cdf (140 continued-fraction steps, 3.1 to 3.4 us in release), about 4.0 ms
+(F.INV's 1,301-cdf bisection) and 0.82 ms (T.INV's 264-cdf bisection); the cases measured cost far less (167 us for
+`BETA.INV(1E-300,0.5,1E6)`, 17.5 us for `T.INV.2T(1E-9,99999)`); kinds.rs has the measurements.
 `F.INV(1E-160,5,5)` and `F.INV(1E-100,5,5)` are 1.3470392369521052E-15 in statrs and here, as on main, where Excel follows
-the power law (E4, E5: T-1871).
+the power law (E4, E5), and `F.INV(1E-50,2000,2)` is 0.008195481623831033 (statrs converges to a wrong root) where Excel
+gives 0.004452511009947361 (E7); E8 and E10-E12 miss by 4 to 357 ulp, as on main (all T-1871).
 DEVIATION (decision 0014, CLAUDE.md directive 5): where statrs' search panicked or never finished, the capped search is
 `#NUM!` and Excel gives a number. With both df below 1E5, statrs panics (a NaN first estimate, an unwrapped incomplete
 beta) for every F.INV below p = 1.6E-162, where `p * p` underflows (`F.INV(1E-300,5,5)`, `F.INV(1E-170,5,5)`: E1-E3), and
@@ -404,12 +407,12 @@ its step loop never ends once a Newton step is infinite, which a 1-million-sampl
 p below 3.6E-27 (`F.INV(1E-50,6000,4)`, E6) and once for BETA.INV at p = 1-2^-53
 (`BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)`, E9). Unit test `quantile_searches_that_hung_or_panicked_are_bounded`;
 T-1871 gives Excel's values there.
-DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BETA.INV, BETAINV, F.INV, F.INV.RT or FINV of more than 8,192
-elements, and a lifted T.INV, T.INV.2T, TINV or CONFIDENCE.T of more than 65,536, is `#ERROR!` before it runs where Excel
-computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^14 and 2^11 an element;
-`ROWS(BETA.INV(SEQUENCE(8193)/8194,2,3))`, unit test `quantile_kernels_are_charged_their_weight`). At the worst cases
-measured, 8,192 BETA.INV elements take 1.37 s and 65,536 T.INV.2T elements 1.15 s, inside the 2 s budget of the Bessel
-entries (engineering.md "BESSEL order cap").
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BETA.INV, BETAINV, F.INV, F.INV.RT or FINV of more than 512
+elements, and a lifted T.INV, T.INV.2T, TINV or CONFIDENCE.T of more than 2,048, is `#ERROR!` before it runs where Excel
+computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^18 and 2^16 an element;
+`ROWS(BETA.INV(SEQUENCE(513)/514,2,3))`, unit test `quantile_kernels_are_charged_their_weight`). At the bound of the caps,
+512 F.INV elements take about 2.1 s and 2,048 T.INV elements about 1.7 s, the 2 s budget of the Bessel entries
+(engineering.md "BESSEL order cap"). Showing that a slow cdf and a long search never coincide would allow larger lifts.
 Status: VERIFIED (excel-graph)
 Tasks: T-1848, T-1849, T-1871
 
