@@ -1,5 +1,5 @@
 ---
-id: T-1883
+id: T-1890
 title: "CUMIPMT and CUMPRINC closed form: fit Excel's last digits over many periods"
 milestone: M9
 lane: functions-financial

@@ -523,8 +523,8 @@ K3). The fit tried `(1+r)^m` by libm and by Excel's `^` against `exp(m*log1p r)`
 parenthesizations, and `r` against `expm1(log1p r)` as the denominator (72 cells): no single form matches both the short
 sums and the long ones. Before T-1845 the engine looped over every period (10^9 steps for A1), was `#NUM!` once
 `(1+rate)^nper` overflowed (A13-A19, K1-K3) and computed A21.
-Status: PARTLY VERIFIED (excel-graph; the closed form's last digits open in T-1883, the short sums' in T-1374)
-Tasks: T-1845, T-1883, T-1374
+Status: PARTLY VERIFIED (excel-graph; the closed form's last digits open in T-1890, the short sums' in T-1374)
+Tasks: T-1845, T-1890, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's

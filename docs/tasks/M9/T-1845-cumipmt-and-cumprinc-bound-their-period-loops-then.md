@@ -56,6 +56,6 @@ over an array (fin-argument-modes H73-H87) and over a range (H74, H82; fin-remai
   H65-H83 and K1, K2), 0 regressions; ironcalc-calc, probes-numeric and gen-m9 unchanged. probes and probes-numeric
   compared cell by cell against main: K3 (`#NUM!` → 64 ulps off) and K11 (`#N/IMPL!` → an ulp off) changed value
   and still fail; no other cell changed. The new case adds 8 known failures (A3, A5, A7, A8, A12, A18, A19, A23), all
-  listed in T-1883; K3 is T-1883's, K11 T-1374's.
+  listed in T-1890; K3 is T-1890's, K11 T-1374's.
 - Ratchets: duplicated lines 4248 → 4152, static_analysis.rs 1181 → 1177 (decision 0010).
-- Follow-ups: T-1883 (fit the closed form's last digits; one formulation for every period count).
+- Follow-ups: T-1890 (fit the closed form's last digits; one formulation for every period count).
