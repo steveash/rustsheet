@@ -178,6 +178,24 @@ Ours:
 Status: VERIFIED (excel-graph)
 Tasks: T-1085, T-1383, T-1384, T-0907, T-1816
 
+## A ToolPak argument over CHOOSE: values lift, a reference is refused
+Rule: an argument that lifts over arrays and refuses a multi-cell range (IM*, EDATE, ISEVEN, COMPLEX) treats a CHOOSE by
+what it evaluates to. CHOOSE with an array index lifts to an array of values, even over range arms, so the call spills:
+`IMABS(CHOOSE({1,2},H1:H2,I1:I2))` is the 2x2 3, 6; 4, 8 and `IMSECH(CHOOSE({1,2},{1,2,3},{4;5}))` a 2x3 with `#N/A`
+in its third column (CHOOSE's own broadcast, arrays.md). A scalar index passes on the arm it picks: an array arm lifts
+(`IMABS(CHOOSE(1,{1,2,3}))` is 1, 2, 3; `EDATE(CHOOSE(1,{4;5}),1)` is 35, 36; `ISEVEN(CHOOSE(1,{4;5}))` TRUE, FALSE), a
+multi-cell range arm is one `#VALUE!` (`IMABS(CHOOSE(1,H1:H3))`, `IMABS(CHOOSE(2,{3;4},H1:H3))`) and a one-cell arm is
+read (`IMABS(CHOOSE(1,H1))` is 3). IMSUM folds the whole array (`IMSUM(CHOOSE({1,2},{1,2,3},{4;5}))` is `#N/A`), and
+`SUBTOTAL(9,TAKE(CHOOSE({1,2},H1:H2,I1:I2),2))` is a 2x2 of `#VALUE!`: TAKE picks values there, not cells.
+
+Evidence: probes/lift-arrays-choose-arms (excel-graph, 2026-10-18, T-1874). H1:H3 = 3, 4, 5; I1:I2 = 6, 8.
+
+Ours: matches (T-1874). Static analysis used to take such a call for a scalar, since CHOOSE gives its array arms a
+range's shape; the fuzz reproducer `IMSECH(CHOOSE({1,2},{1,2,3},{4;5}))` hit a debug assertion.
+
+Status: VERIFIED (excel-graph)
+Tasks: T-1874
+
 ## IMSUM and IMPRODUCT take their arguments whole
 Rule: IMSUM and IMPRODUCT (1 to 255 arguments) fold every value their arguments hold, in argument order and
 row-major order inside a range or array, and the first bad item is the result.
