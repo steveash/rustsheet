@@ -1097,7 +1097,8 @@ Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by 
   2E9 works. `(0,0,0,1,FALSE)` = 1. Zero n or M gives density 1 at s = 0 and 0 above.
 - **Test functions:**
   - F.TEST: `#DIV/0!` for fewer than two points on either side, constant data, scalars, an empty range
-    or text-only input (`F.TEST("a",B1:B5)`); unequal sizes work; text and booleans inside array
+    or text-only input (`F.TEST("a",B1:B5)`); unequal sizes work; the two-tailed p is twice the smaller F tail, so it never exceeds 1
+    (`F.TEST(C1:C6,B1:B8)` and FTEST: 0.9195979047175995, probes/stat-argument-modes H248/H251, T-1292); text and booleans inside array
     constants are skipped (`{1,2,"a",4}` differs from `{1,2,3,4}`).
   - Z.TEST: an empty range is `#N/A` (`Z.TEST(Z1:Z5,4)`, with or without sigma); one point or a
     scalar is `#DIV/0!` even with sigma given (`Z.TEST(7,4,1)`, `D1:D1`); constant data is `#DIV/0!`
