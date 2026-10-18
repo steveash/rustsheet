@@ -14,7 +14,6 @@ use crate::{
     cast::calc_result_to_array_node,
     expressions::{
         parser::{ArrayNode, Node},
-        token::Error,
         types::CellReferenceIndex,
     },
     functions::util::array_node_to_calc_result,
@@ -94,15 +93,6 @@ pub(crate) fn values_have_header(values: &[Vec<ArrayNode>]) -> Option<bool> {
     } else {
         None
     }
-}
-
-/// `#N/IMPL!` for a GROUPBY or PIVOTBY feature a later SPEC-0006 step adds.
-pub(crate) fn not_implemented(cell: CellReferenceIndex, feature: &str) -> CalcResult {
-    CalcResult::new_error(
-        Error::NIMPL,
-        cell,
-        format!("{feature} are not implemented yet"),
-    )
 }
 
 /// An optional argument, `None` when it is missing or omitted (`GROUPBY(k,v,f,,0)`).

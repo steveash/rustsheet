@@ -408,7 +408,7 @@ pub(crate) enum ParentOrder {
 
 /// One line of a grouping laid out with subtotals: group `index`, or the subtotal of the groups
 /// `start..end`, which share their first `level` keys and no others.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Line {
     Group(usize),
     Subtotal {
