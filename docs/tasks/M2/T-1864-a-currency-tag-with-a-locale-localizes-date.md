@@ -1,5 +1,5 @@
 ---
-id: T-1857
+id: T-1864
 title: "A currency tag with a locale localizes date names"
 milestone: M2
 lane: functions-text
