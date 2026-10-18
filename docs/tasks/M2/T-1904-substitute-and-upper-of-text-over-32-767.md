@@ -3,7 +3,7 @@ id: T-1904
 title: "SUBSTITUTE and UPPER of text over 32,767 units are #VALUE!"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
