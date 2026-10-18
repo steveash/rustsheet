@@ -45,4 +45,4 @@ make the engine match it.
 -
 
 ## Outcome
-Probes added: probes/let-name-non-ascii-scripts (M7: CJK, dotless ı, letter number Ⅻ) and probes/defined-name-non-ascii (M8: `é1`, `名前`), excel-graph 2026-10-18. The engine already matched every committed cell (+8 probe cells in eval/baseline/probes.txt, 0 regressions). Excel refuses a LET naming Turkish `İ` or circled `Ⓐ` (not committable); the engine accepts them, a known gap recorded in references.md (no follow-up: names that Excel refuses at load cannot occur in a real workbook).
+Probes added: probes/let-name-non-ascii-scripts (M7: CJK, dotless ı, letter number Ⅻ) and probes/defined-name-non-ascii (M8: `é1`, `名前`), excel-graph 2026-10-18. The engine already matched every committed cell (+8 probe cells in eval/baseline/probes.txt, 0 regressions). Excel refuses a LET naming Turkish `İ` or circled `Ⓐ` (not committable); the engine accepts them, a gap recorded in references.md and filed as T-1856 (it matters for formulas entered through the API).
