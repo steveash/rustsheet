@@ -3,7 +3,7 @@ id: T-1155
 title: "XIRR with a zero first value is 0.1/2^25, and date-0 first flows converge"
 milestone: M1
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -22,9 +22,18 @@ Excel (X5, A8), but `compute_xirr` (functions/financial/financial_util.rs) retur
 diverges over a 124-year span and the bisection hits a non-finite XNPV at -0.9999.
 
 ## Acceptance criteria
-- [ ] The zero-first-value rule is probed (other guesses) and recorded in financial.md.
-- [ ] xirr-mismatched-empties X3, X4, X5 and xirr-early-dates A8, A10, A11 match Excel to the last-digit tolerance of the early stop (or exactly), with no regression.
-- [ ] `make check` green; reviewers approve.
+- [x] (moved to T-1591) The zero-first-value rule is probed (other guesses) and recorded in financial.md.
+- [x] xirr-mismatched-empties X3, X4, X5 and xirr-early-dates A8, A10, A11 match Excel to the last-digit tolerance of the early stop (or exactly), with no regression.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Done by other tasks; closed by T-0059. The cells pass on main since T-1583 (#813) and T-0916 (#914):
+eval/baseline/probes.txt has only coverage lines for probes/xirr-early-dates (16) and
+probes/xirr-mismatched-empties (14), no known failures. The rule is in docs/excel-semantics/financial.md,
+"XIRR is a bracketing bisection, not Newton": with a zero first value the end replaced follows the first
+value's sign, so the result is 0.1/2^25. Probing other guesses with a zero first value (0.2 and 1) moved
+to T-1591. This task's own draft PR #409 (a partial bracket-and-bisect model, 28 of 34 cells) is
+superseded by that entry and was closed.

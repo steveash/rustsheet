@@ -3,7 +3,7 @@ id: T-0941
 title: "GEOMEAN: Excel last-digit parity (2 oracle-scored ulp cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -30,9 +30,16 @@ and the desktop confirmation is item 3 of T-1075 (M14), not a gate. Record the r
 `docs/excel-semantics/`.
 
 ## Acceptance criteria
-- [ ] Both cells pass (`make eval-show CASE=ironcalc-calc/STATISTICAL/GEOMEAN.xlsx`), 0 regressions, baseline updated.
-- [ ] The formulation is backed by oracle probe evidence and recorded in `docs/excel-semantics/`.
-- [ ] `make check` green; reviewers approve.
+- [x] Both cells pass (`make eval-show CASE=ironcalc-calc/STATISTICAL/GEOMEAN.xlsx`), 0 regressions, baseline updated.
+- [x] The formulation is backed by oracle probe evidence and recorded in `docs/excel-semantics/`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - HARMEAN and other means unless the same probe shows they share the formulation.
+
+## Outcome
+Done by T-1113 (numbers.md: "matches both since T-1113"); closed by T-0059. Both cells pass on main:
+eval/baseline/ironcalc-calc.txt:164 is the coverage line `ironcalc-calc/STATISTICAL/GEOMEAN.xlsx 33` and there is no known-failure line for
+the case. The rule is in docs/excel-semantics/numbers.md, "GEOMEAN last digits differ from a log-sum
+evaluation" and "GEOMEAN in-range root" (a single value is returned as is; otherwise r = exp(ln(P)/n)
+with the 15-digit snap). The desktop confirmation stays item 3 of T-1075.
