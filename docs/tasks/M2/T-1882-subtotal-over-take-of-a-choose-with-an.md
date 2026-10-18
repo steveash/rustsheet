@@ -3,7 +3,7 @@ id: T-1882
 title: "SUBTOTAL over TAKE of a CHOOSE with an array index spills, static analysis says scalar (debug_assert panic)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
