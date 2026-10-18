@@ -432,6 +432,7 @@ C	probes/lotus-dot-range-space.case.json	2
 C	probes/lotus-dot-range-trailing-letter.case.json	2
 C	probes/lotus-dot-range.case.json	6
 C	probes/m7-argument-modes.case.json	174
+C	probes/map-scan-range-result.case.json	39
 C	probes/map-unequal-sizes.case.json	36
 C	probes/match-descending-argcheck.case.json	20
 C	probes/match-descending-forward-continuation.case.json	20
