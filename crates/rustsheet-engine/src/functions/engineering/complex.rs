@@ -50,7 +50,7 @@ impl fmt::Display for Complex {
         let x = to_precision(self.x, 15);
         let y = to_precision(self.y, 15);
         let suffix = &self.suffix;
-        // Tiny parts (`<= 9e-20`) are always scientific (probes/eng-impower); the rest follow
+        // Tiny parts (`<= 9e-20`) are scientific (older rule; probes/eng-impower A9 shows E-notation); the rest follow
         // Excel's number-to-text, which is `1E+200` from 20 plain characters on (probes/eng-imdiv).
         let y_str = if y.abs() <= 9e-20 || y.abs() >= 1e20 {
             number_to_text(y)
