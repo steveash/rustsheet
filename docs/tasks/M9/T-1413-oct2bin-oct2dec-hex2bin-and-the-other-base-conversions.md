@@ -3,7 +3,7 @@ id: T-1413
 title: "OCT2BIN, OCT2DEC, HEX2BIN and the other base conversions read a blank cell as 0 (#NUM! today)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
