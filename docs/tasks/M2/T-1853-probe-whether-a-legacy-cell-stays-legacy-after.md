@@ -3,7 +3,7 @@ id: T-1853
 title: "Probe whether a legacy cell stays legacy after a row insert, copy and fill"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
