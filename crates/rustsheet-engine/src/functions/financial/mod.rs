@@ -242,7 +242,8 @@ impl Model {
             // probes/npv-reference-forms). Any other value is typed: it is coerced
             // (`NPV(0.1,-10000,"2750",TRUE,4250)` is -3914.6233180793665) and text that is no
             // number is #VALUE! (probes/fin-argument-modes H368-H371; probes/npv-fvschedule-typed
-            // A5, A6, A8, A9; probes/npv-fvschedule-edges A1, A5). docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments".
+            // A5, A6, A8, A9; probes/npv-fvschedule-edges A1, A5).
+            // docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments".
             match self.evaluate_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     if let Err(e) = self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
@@ -698,27 +699,16 @@ impl Model {
         // Typed text that reads as a number is a one-rate schedule: `FVSCHEDULE(1000,"0.1")`,
         // `("0.1")` and `T("0.1")` are 1100, `"x"` and `TRUE` are #VALUE!
         // (probes/npv-fvschedule-typed A12, A13; probes/npv-fvschedule-edges A3, A4, A6).
+        let not_a_number =
+            || CalcResult::new_error(Error::VALUE, cell, "Expected number".to_string());
         let parsed = match self.evaluate_node_in_context(&args[1], cell) {
-            CalcResult::String(text) => {
-                self.cast_number(&text)
-                    .map(|rate| vec![rate])
-                    .ok_or_else(|| {
-                        CalcResult::new_error(Error::VALUE, cell, "Expected number".to_string())
-                    })
+            CalcResult::String(text) => self
+                .cast_number(&text)
+                .map(|rate| vec![rate])
+                .ok_or_else(not_a_number),
+            result => {
+                self.array_of_numbers_from(result, &cell, true, || Ok(None), || Err(not_a_number()))
             }
-            result => self.array_of_numbers_from(
-                result,
-                &cell,
-                true,
-                || Ok(None),
-                || {
-                    Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Expected number".to_string(),
-                    ))
-                },
-            ),
         };
         let schedule = match parsed {
             Ok(s) => s,
