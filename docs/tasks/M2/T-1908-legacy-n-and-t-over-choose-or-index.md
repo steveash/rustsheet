@@ -3,7 +3,7 @@ id: T-1908
 title: "Legacy N and T over CHOOSE or INDEX of a reference take no @ on the call"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
