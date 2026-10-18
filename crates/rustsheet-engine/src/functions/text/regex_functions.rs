@@ -165,7 +165,7 @@ enum Piece {
 }
 
 /// A PCRE2 case-forcing escape in a replacement (text.md "REGEXREPLACE replacement syntax").
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum CaseOp {
     /// `\U`: upper-case what follows, up to `\E` or the end of the match's replacement.
     Upper,
@@ -231,7 +231,7 @@ impl CaseState {
     }
 }
 
-/// The escape a backslash starts, and how many bytes after the backslash it takes.
+/// The escape a backslash starts.
 enum Escape<'a> {
     /// One character.
     Char(char),
@@ -336,7 +336,11 @@ impl Replacement {
                         if !literal.is_empty() {
                             pieces.push(Piece::Literal(std::mem::take(&mut literal)));
                         }
-                        pieces.push(Piece::Case(op));
+                        // A repeated escape changes nothing, so `\U\U\U...` stays one piece
+                        // and the per-match work stays bounded by the replacement's text.
+                        if !matches!(pieces.last(), Some(Piece::Case(last)) if *last == op) {
+                            pieces.push(Piece::Case(op));
+                        }
                     }
                 }
                 rest = after.get(used..)?;
@@ -396,18 +400,17 @@ impl Replacement {
 
     /// What a backslash followed by the digits at the start of `after` is: `Ok((group, bytes))`
     /// for a group reference, `Err((char, bytes))` for an octal character, `None` for `#VALUE!`.
-    /// PCRE2 reads the digits as a decimal number: below 10 or no past the pattern's groups it is
+    /// PCRE2 reads the digits as a decimal number: below 10 or not past the pattern's groups it is
     /// a group (a missing one is `#VALUE!`), else three octal digits up to `\377` are a
     /// character. `\0` takes one or two more octal digits and needs at least one
     /// (probes/regexreplace-extended-escapes A37, C1-C14, D1-D11, E1-E7, I11-I14).
     fn digit_escape(engine: &Engine, after: &str) -> Option<Result<(usize, usize), (char, usize)>> {
-        let octal = |digits: &str| u32::from_str_radix(digits, 8).ok().and_then(char::from_u32);
         if let Some(zeroed) = after.strip_prefix('0') {
             let more = run_len(zeroed, |c| ('0'..='7').contains(&c)).min(2);
             if more == 0 {
                 return None;
             }
-            return Some(Err((octal(after.get(..=more)?)?, more + 1)));
+            return Some(Err((char_from_digits(after.get(..=more)?, 8)?, more + 1)));
         }
         let digits = run_len(after, |c| c.is_ascii_digit());
         let index = group_number(after.get(..digits)?);
@@ -418,8 +421,8 @@ impl Replacement {
             .get(..3)
             .filter(|d| d.bytes().all(|b| (b'0'..=b'7').contains(&b)))?;
         // Past `\377` is no character in Excel's replacement.
-        let value = u32::from_str_radix(code, 8).ok().filter(|v| *v <= 0xff)?;
-        Some(Err((char::from_u32(value)?, 3)))
+        let c = char_from_digits(code, 8).filter(|c| u32::from(*c) <= 0xff)?;
+        Some(Err((c, 3)))
     }
 
     /// The escape for the letter at the start of `after` (the text after a backslash) and the
