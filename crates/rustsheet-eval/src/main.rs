@@ -146,6 +146,9 @@ struct CaseListing {
     formula_cells: Option<usize>,
     /// xlsx only: the suite scores this case against its own cached values when it has no sidecar.
     trusts_cached_values: Option<bool>,
+    /// xlsx only: the suite's `use_cached_values`. When false its caches are no Excel evidence, so
+    /// the oracle fill never lets one replace a web number (decision 0073).
+    suite_uses_cached_values: Option<bool>,
     /// xlsx only: why the workbook could not be read.
     unreadable: Option<String>,
 }
@@ -167,6 +170,7 @@ fn cmd_cases(root: &Path, name: &str) -> Result<ExitCode> {
             sidecar: case.sidecar,
             formula_cells: None,
             trusts_cached_values: None,
+            suite_uses_cached_values: xlsx.then_some(suite.manifest.use_cached_values),
             unreadable: None,
         };
         if xlsx {

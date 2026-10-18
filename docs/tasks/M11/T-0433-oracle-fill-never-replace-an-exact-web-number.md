@@ -3,7 +3,7 @@ id: T-0433
 title: "Oracle fill: never replace an exact web number with a 15-digit cached value (decision 0030 rule 1)"
 milestone: M11
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -40,9 +40,17 @@ The material-conflict drop (1651 pending cells in eval/suites/corpus-bench/PENDI
 same caches: decide whether it applies to an untrusted-cache suite too.
 
 ## Acceptance criteria
-- [ ] Re-filled sidecars (from the cached web results, no new Graph session needed) of the seven cases above hold the web values; these 7 `F` lines (49278, 54490, 53068, 52216, 49036, 38655, 47766) leave eval/baseline/corpus-bench.txt with no new ones.
-- [ ] A tools test covers the rule: a 15-digit cached number never overwrites a web number.
-- [ ] Decision 0030 (or a new decision) states the changed rule; `make check` green; reviewers approve.
+- [x] Re-filled sidecars (from the cached web results, no new Graph session needed) of the seven cases above hold the web values; these 7 `F` lines (49278, 54490, 53068, 52216, 49036, 38655, 47766) leave eval/baseline/corpus-bench.txt with no new ones.
+- [x] A tools test covers the rule: a 15-digit cached number never overwrites a web number.
+- [x] Decision 0030 (or a new decision) states the changed rule; `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes: the engine already matches the web values.
+
+## Outcome
+`rustsheet-oracle fill` no longer applies decision 0030 rule 1 to a suite with `use_cached_values = false`.
+`rustsheet-eval cases` reports that setting as `suite_uses_cached_values`, and a tools test covers the rule.
+Material conflicts there stay pending, as before (decision 0073).
+
+`fill` gains `--case <id>`. The seven sidecars were refilled from excel-graph and now hold the web numbers (373 values).
+Eval: corpus-bench known failures 23 -> 16 (the 7 case lines fixed), no regressions.
