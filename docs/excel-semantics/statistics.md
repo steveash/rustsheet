@@ -455,6 +455,20 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
     - Once N was exact, D's stages followed from per-stage correlation searches.
     - The low bits were pinned by peeling down from high x.
   - **Still open:** the [0.5, 4] kernel, and EXP's last F2XM1 cells.
+- Wrappers of the ERFC kernel on 0.5 < x <= 4 (round 9 side-channel search; `kmyst-erfc-r9side1..4`, about 147k
+  cells). None exposes N, D or R beyond B = ERFC.PRECISE(x). All 794 exact ties in 1-B and all 419 in 2-B resolve
+  ties-to-even from B itself, so nothing reads the unrounded fl64(E*R).
+  - ERF.PRECISE(x) = fl53(fl64(1 - B)): x87 double rounding, at 8,096 of 8,096 points. Plain fl(1 - B) misses
+    x = 3.1000000000001076. ERFC(-x) = fl53(fl64(2 - B)).
+  - NORM.S.DIST(-y, TRUE) = ERFC.PRECISE(d)/2 with d = fl53(fl64(y*fl(sqrt(0.5)))), rounded twice: 600 of 600 on
+    discriminating y, against 9 for a single rounding. NORMSDIST and NORMDIST are the same.
+    NORM.S.DIST(+y) = fl53(fl64(1 - 2*NORM.S.DIST(-y))).
+  - ERF(a, b) is the exact difference ERF.PRECISE(b) - ERF.PRECISE(a), a multiple of 2^-53. The worksheet `-`
+    near-cancellation snap does not apply inside ERF(a, b): 1 of 129 points differs from the cell formula.
+  - Legacy ERF and ERFC are identical to the .PRECISE forms.
+  - CHIDIST, CHISQ.TEST at df 1 and Z.TEST are wrappers too.
+  - Z.TEST with a single-value array returns #DIV/0!.
+  - Odd-df upper chi-square (Q(1.5), Q(2.5)) and the shape-0.5 density use separate generic paths, not this kernel.
 - ERFC kernel for 0.5 < x <= 4 (rounds 7-8): structure known, coefficients OPEN.
   - **Form.** ERFC = fl53(fl64(E*R)) with R = fl(N/D). N and D are Horner polynomials in x with every operation
     stored, degree (7,7). N's top coefficient is tiny, about -4.6E-10 relative, so the effective form is (6,7), as
