@@ -41,3 +41,39 @@ pub(crate) fn parse_stored_text(text: &str) -> Option<Node> {
         expecting: vec![ExpectedTokens::Other],
     })
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::{parse_stored_text, stored_text};
+    use crate::expressions::parser::{ExpectedTokens, Node};
+
+    #[test]
+    fn stored_form_round_trips() {
+        let error = Node::ParseErrorKind {
+            formula: "Ab1 (1)".to_string(),
+            message: "Unexpected 'é:'".to_string(),
+            position: 4,
+            expecting: vec![ExpectedTokens::Other],
+        };
+        let stored = stored_text(&error).unwrap();
+        assert_eq!(parse_stored_text(&stored), Some(error));
+    }
+
+    // A malformed stored form (an untrusted workbook) is not a stored parse error.
+    #[test]
+    fn malformed_stored_forms_are_rejected() {
+        for text in [
+            "R[1]C[1]+1",
+            "\u{1}",
+            "\u{1}4",
+            "\u{1}x:1:mA1",
+            "\u{1}4:y:mA1",
+            "\u{1}4:9:short",
+            "\u{1}4:1:éA1",
+        ] {
+            assert_eq!(parse_stored_text(text), None, "{text:?}");
+        }
+    }
+}
