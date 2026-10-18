@@ -560,7 +560,7 @@ The last mystery, the [0.5, 4] ERFC kernel, is cracked.
 - **Model.** Same as the tail. N (degree 9) and D (degree 10) are Horner polynomials in x, every operation rounded
   fl53(fl64(.)), with D0 = 1. R = fl53(fl64(N/D)) and ERFC = fl53(fl64(E*R)), where E is Excel's EXP(-(x*x)).
 - **Coefficients.** In `docs/research/t1778/round9/erfc_mid_coef.txt` on `agent/research/T-1778-kernel-map`.
-- **Score.** 5,629,402 of 5,629,407 points with 0.5 < x <= 4. Each of the 5 misses matches at the neighbouring
+- **Score.** 5,694,938 of 5,694,943 points with 0.5 < x <= 4. Each of the 5 misses matches at the neighbouring
   double: the known xlsx misparse of the input. Each of the 21 coefficients is unique to the ulp.
 - **Why it took so long.** Excel's doubles are a relative of the plain (9,10) Remez solution along a near-null
   direction: 1.5E-9 to 1.6E-8 relative away (up to 1.3E8 ulps), with the same function to about 1E-20. Every
@@ -578,7 +578,7 @@ The last mystery, the [0.5, 4] ERFC kernel, is cracked.
 |---|---|
 | ERF, 0 <= x <= 0.5 | Bit-exact (775,272 / 775,272). |
 | ERFC, 0 <= x <= 0.5 | Bit-exact: fl(1 - ERF). |
-| ERFC, 0.5 < x <= 4 | Bit-exact (5,629,402 / 5,629,407; the 5 are input misparses). |
+| ERFC, 0.5 < x <= 4 | Bit-exact (5,694,938 / 5,694,943; the 5 are input misparses). |
 | ERF, 0.5 < x <= 4 | Bit-exact via ERF = fl53(fl64(1 - ERFC)). |
 | ERFC, 4 < x <= 26.55 | Bit-exact (1,540,475 / 1,540,477; the 2 are input misparses). |
 | ERFC, x > 26.55 | 0 (subnormal flush). |
