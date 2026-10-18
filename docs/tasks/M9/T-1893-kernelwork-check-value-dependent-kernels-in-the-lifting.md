@@ -3,7 +3,7 @@ id: T-1893
 title: "KernelWork check: value-dependent kernels in the lifting table are Weighted or name their fixed cap"
 milestone: M9
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
