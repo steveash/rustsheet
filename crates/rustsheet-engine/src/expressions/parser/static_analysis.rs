@@ -204,7 +204,7 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
             for (index, arg) in args.iter_mut().enumerate() {
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                let arrays = legacy_array_context(kind, signature.get(index), arg, arrays);
+                let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
                 add_array_at(kind, signature.get(index), index, arg, arrays);
                 add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }

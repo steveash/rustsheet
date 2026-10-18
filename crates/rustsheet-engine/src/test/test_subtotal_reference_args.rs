@@ -124,3 +124,38 @@ fn take_of_let_chain_and_malformed_let_is_linear_and_total() {
     assert_eq!(model._get_text("B2"), model._get_text("B3"));
     assert!(model._get_text("B1").starts_with('#') || model._get_text("B1") == "0");
 }
+
+// A CHOOSE with an array index lifts to values even over range arms, so TAKE picks values and
+// SUBTOTAL spills a 2x2 of `#VALUE!` (probes/lift-arrays-choose-arms A69:B70, T-1882); static
+// analysis took it for cells, a scalar, and a debug build hit the scalar-context assertion.
+#[test]
+fn subtotal_of_take_of_choose_with_array_index_spills() {
+    let mut model = new_empty_model();
+    for (cell, value) in [("H1", "3"), ("H2", "4"), ("I1", "6"), ("I2", "8")] {
+        model._set(cell, value);
+    }
+    model._set("A1", "=SUBTOTAL(9,TAKE(CHOOSE({1,2},H1:H2,I1:I2),2))");
+    model._set("D1", "=SUBTOTAL(9,TAKE(CHOOSE(2,H1:H2,I1:I2),2))");
+    model.evaluate();
+    for cell in ["A1", "B1", "A2", "B2"] {
+        assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
+    }
+    assert_eq!(model._get_text("D1"), "14");
+    assert_eq!(model._get_text("D2"), "");
+}
+
+// The CHOOSE index is analysed once per level, so deep nesting stays linear (T-1882; T-1874's
+// first fix analysed it twice a level, 2^20 analyses here). 20 levels of three calls is near the
+// parser's nesting cap.
+#[test]
+fn subtotal_of_take_of_nested_choose_is_linear() {
+    let mut formula = "SUBTOTAL(9,TAKE(CHOOSE(1,H1:H2),1))".to_string();
+    for _ in 0..20 {
+        formula = format!("SUBTOTAL(9,TAKE(CHOOSE({formula},H1:H2,I1:I2),1))");
+    }
+    let mut model = new_empty_model();
+    model._set("H1", "1");
+    model._set("A5", &format!("={formula}"));
+    model.evaluate();
+    assert_eq!(model._get_text("A5"), "1");
+}

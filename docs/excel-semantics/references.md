@@ -1642,6 +1642,17 @@ Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at, probes/looku
 Status: VERIFIED (excel-graph)
 Tasks: T-1638, T-1643, T-1645, T-1651, T-1709
 
+## Legacy CHOOSE with an array index intersects the index and the call (T-1882)
+Rule: a legacy (non-dynamic) `=CHOOSE({1,2},H1:H2,I1:I2)` is shown as `=@CHOOSE(@{1,2},H1:H2,I1:I2)`: the array index
+takes an `@` (its first element, as in any scalar argument) and the call takes the whole-call `@` of a reference result,
+so it is 3 on the arms' first row and `#VALUE!` off their rows (row 5). A scalar index shows only the call's `@`
+(`=@CHOOSE(1,H1:H2,I1:I2)`, 3 and `#VALUE!` likewise). Under an aggregate there is no `@` at all and the index lifts:
+legacy `=SUM(CHOOSE({1,2},H1:H2,I1:I2))` is 21 and `=ROWS(...)` 2. H1:H2 = 3, 4; I1:I2 = 6, 8.
+Evidence: probes/legacy-choose-array-index (excel-graph, 2026-10-18).
+Implemented in: `is_choose_index` / `legacy_array_context` (expressions/parser/static_analysis/legacy.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1882
+
 ## R1C1-shaped sheet and defined names
 Rule (case-insensitive; odd, Excel is right): Excel quotes a sheet name in formula text, and refuses it
 as a defined name, when the name is an R1C1 reference or starts with one, by this test (and also

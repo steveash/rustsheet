@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1882: legacy (non-dynamic) top-level CHOOSE with an array index over range arms, on the arms' rows (row 1) and off them (row 5): its value and the @ Excel shows (FORMULATEXT, rows 3 and 7); a scalar-index CHOOSE and SUM/ROWS over the array-index call as controls. H1:H2 = 3,4; I1:I2 = 6,8.",
+  "tags": [
+    "M6",
+    "probe",
+    "T-1882"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "legacy_formulas": [
+        "A1",
+        "A5",
+        "B1",
+        "B5",
+        "C1",
+        "C5"
+      ],
+      "cells": {
+        "H1": 3,
+        "H2": 4,
+        "I1": 6,
+        "I2": 8,
+        "A1": "=CHOOSE({1,2},H1:H2,I1:I2)",
+        "A5": "=CHOOSE({1,2},H1:H2,I1:I2)",
+        "B1": "=CHOOSE(1,H1:H2,I1:I2)",
+        "B5": "=CHOOSE(1,H1:H2,I1:I2)",
+        "C1": "=SUM(CHOOSE({1,2},H1:H2,I1:I2))",
+        "C5": "=ROWS(CHOOSE({1,2},H1:H2,I1:I2))",
+        "A3": "=FORMULATEXT(A1)",
+        "A7": "=FORMULATEXT(A5)",
+        "B3": "=FORMULATEXT(B1)",
+        "B7": "=FORMULATEXT(B5)",
+        "C3": "=FORMULATEXT(C1)",
+        "C7": "=FORMULATEXT(C5)"
+      }
+    }
+  ]
+}
