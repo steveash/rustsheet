@@ -3,7 +3,7 @@ id: T-1307
 title: "Probe and match CLEAN and PROPER character rules: non-printing characters above 31, letters after digits and apostrophes, non-ASCII letters"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -48,3 +48,6 @@ Suggested cells: `CLEAN(CHAR(n))` for n = 7, 9, 10, 13, 31, 32, 127, 129, 141, 1
 ## Out of scope
 - UPPER and LOWER case mapping (file a follow-up if the ß or final-sigma results differ there too).
 - TRIM (already evidenced) and UTF-16 counting (T-0249).
+
+## Outcome
+Added probes/clean-proper-chars (88 Excel cells; CLEAN 38, PROPER 50 with their LEN companions). CLEAN already matched. PROPER now uses Excel's one-to-one case mapping (ß, ŉ, ǰ, ligatures kept; İ to I/i; ΐ, ΰ to Ϊ, Ϋ) and the final sigma ς; documented in text.md. Eval: probes 0 known failures in the new case, no regressions. Follow-up: UPPER/LOWER of the same characters unprobed.

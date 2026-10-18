@@ -13,6 +13,7 @@ use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
 use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
+use crate::text_expect;
 use crate::value::Verdict;
 
 static FUNCTION_CALL: LazyLock<Regex> = LazyLock::new(|| {
@@ -55,6 +56,13 @@ pub struct SuiteSummary {
     /// Total wall time of the suite's cases (informational; never part of the gate).
     #[serde(default)]
     pub millis: u64,
+    /// Cells whose displayed text was scored, and those that matched (T-1610; never part of the
+    /// gate).
+    #[serde(default)]
+    pub text_cells: usize,
+    /// Scored text cells whose text matched Excel's.
+    #[serde(default)]
+    pub text_passed: usize,
 }
 
 /// Number of slowest cases kept in the report.
@@ -87,12 +95,28 @@ impl SuiteSummary {
     /// Bit-exact rate over the scored cells that are not accepted deviations (decision 0036).
     #[must_use]
     pub fn cell_pass_rate(&self) -> f64 {
+        self.rate(self.cells_passed)
+    }
+
+    /// Rate of the same scored cells that are bit-exact or within 1e-9 relative (`NumericUlp`,
+    /// `NumericClose`): the comparator xlsx-corpus-bench's leaderboard uses, reported beside our
+    /// bit-exact score so corpus-bench can be read against it (T-0427). Near misses are counted over
+    /// all cells, so a stale `deviations` line that is now a near miss counts too; `rate` caps it.
+    #[must_use]
+    pub fn cell_close_rate(&self) -> f64 {
+        let near = |k| self.verdicts.get(&k).copied().unwrap_or(0);
+        self.rate(self.cells_passed + near(Verdict::NumericUlp) + near(Verdict::NumericClose))
+    }
+
+    /// `count` over the scored cells (all but accepted deviations), at most 1.
+    fn rate(&self, count: usize) -> f64 {
         let scored = self.cells.saturating_sub(self.deviations);
         if scored == 0 {
             return 0.0;
         }
+        // Cell counts stay far below 2^52, so the casts are exact.
         #[allow(clippy::cast_precision_loss)]
-        let rate = self.cells_passed as f64 / scored as f64;
+        let rate = count.min(scored) as f64 / scored as f64;
         rate
     }
 }
@@ -260,6 +284,8 @@ impl RunReport {
             s.cells_passed += r.passed;
             s.deviations += r.deviations;
             s.millis += r.millis;
+            s.text_cells += r.text.len();
+            s.text_passed += r.text.iter().filter(|t| t.pass).count();
             for c in &r.cells {
                 *s.verdicts.entry(c.verdict).or_default() += 1;
                 if c.listed_deviation && c.verdict.is_pass() {
@@ -312,6 +338,7 @@ impl RunReport {
             .map(|r| {
                 let mut r = r.clone();
                 r.cells.retain(|c| c.verdict.is_failure());
+                r.text.retain(|t| !t.pass);
                 r
             })
             .collect();
@@ -398,10 +425,10 @@ impl RunReport {
 
     fn write_suites_table(&self, md: &mut String) {
         let _ = writeln!(md, "## Suites\n");
-        let _ = writeln!(md, "| suite | cases | pass | fail | pending | crashes | errors | cells | deviations | cell pass % | ulp | close | mismatch | unsupported | type |");
+        let _ = writeln!(md, "| suite | cases | pass | fail | pending | crashes | errors | cells | deviations | cell pass % | 1e-9 % | ulp | close | mismatch | unsupported | type |");
         let _ = writeln!(
             md,
-            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
         );
         for s in &self.suites {
             let st = |k: CaseStatus| s.statuses.get(&k).copied().unwrap_or(0);
@@ -414,7 +441,7 @@ impl RunReport {
                 st(CaseStatus::EngineError) + st(CaseStatus::Panic) + st(CaseStatus::Timeout);
             let _ = writeln!(
                 md,
-                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {:.2} | {} | {} | {} | {} | {} |",
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {:.2} | {:.2} | {} | {} | {} | {} | {} |",
                 s.name,
                 s.cases,
                 st(CaseStatus::Pass),
@@ -425,6 +452,7 @@ impl RunReport {
                 s.cells,
                 s.deviations,
                 100.0 * s.cell_pass_rate(),
+                100.0 * s.cell_close_rate(),
                 v(Verdict::NumericUlp),
                 v(Verdict::NumericClose),
                 v(Verdict::NumericMismatch)
@@ -489,6 +517,7 @@ impl RunReport {
             self.engine
         );
         self.write_suites_table(&mut md);
+        text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
         function_scope::write_markdown(self.function_scope.as_ref(), &mut md);
@@ -638,6 +667,7 @@ mod tests {
             millis,
             tags: Vec::new(),
             cells: Vec::new(),
+            text: Vec::new(),
         }
     }
 
@@ -665,6 +695,21 @@ mod tests {
             listed_deviation: false,
             graph_subnormal: false,
         }
+    }
+
+    #[test]
+    fn near_misses_count_toward_the_close_rate_only() {
+        let mut r = case("corpus-bench/a", 1);
+        r.cells = vec![
+            cell("ABS(1)", Verdict::NumericUlp),
+            cell("ABS(2)", Verdict::NumericClose),
+            cell("ABS(3)", Verdict::NumericMismatch),
+        ];
+        (r.checked, r.passed) = (4, 1);
+        let report = RunReport::build("e", &[r], &[], &Catalog::default());
+        let s = &report.suites[0];
+        assert!((s.cell_pass_rate() - 0.25).abs() < 1e-12);
+        assert!((s.cell_close_rate() - 0.75).abs() < 1e-12);
     }
 
     #[test]

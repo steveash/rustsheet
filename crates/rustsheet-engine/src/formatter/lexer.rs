@@ -55,7 +55,11 @@ pub enum Token {
     ElapsedHourPadded,   // [hh]
     ElapsedMinutePadded, // [mm]
     ElapsedSecondPadded, // [ss]
-    AMPM,                // AM/PM (or A/P)
+    AMPM,                // AM/PM
+    /// `A/P`: the letters printed for the morning and for the afternoon.
+    AP(char, char),
+    /// `[$-409]`: a locale with no currency symbol, which prints nothing.
+    Locale,
     ILLEGAL,
     EOF,
 }
@@ -396,6 +400,19 @@ impl Lexer {
                             //      Like [$$-409] (=1033 for en-US) or
                             //           [$$-40C] (=1036 for fr-FR)
                             self.read_next_char();
+                            // Excel: `[$-409]` has a locale and no symbol and prints nothing
+                            // (probes/text-ap-locale-bracket A11-A20; number-formats.md). Only 409 is
+                            // probed; other LCIDs are read the same way by inference (T-1702).
+                            if self.peek_char() == Some('-') {
+                                self.read_next_char();
+                                while let Some(c) = self.read_next_char() {
+                                    if c == ']' {
+                                        return Token::Locale;
+                                    }
+                                }
+                                self.set_error("Failed to parse locale");
+                                return Token::ILLEGAL;
+                            }
                             if let Some(currency) = self.read_next_char() {
                                 // ignore the locale part for now, just check if it ends with ']'
                                 if Some('-') == self.peek_char() {
@@ -532,9 +549,13 @@ impl Lexer {
                     if self.looks_at("m/pm") {
                         self.position += 4;
                         Token::AMPM
-                    } else if self.peek_char() == Some('/') {
-                        self.set_error("A/P is not supported");
-                        Token::ILLEGAL
+                    } else if self.looks_at("/p") {
+                        // Excel: `A/P` prints the first letter in the morning and the second
+                        // in the afternoon, each as typed (`h A/p` is "6 A" and "6 p";
+                        // probes/text-ap-locale-bracket A1-A6, A28).
+                        self.read_next_char();
+                        let pm = self.read_next_char().unwrap_or('p');
+                        Token::AP(x, pm)
                     } else {
                         // Excel: an unquoted `a` that is not AM/PM prints as itself
                         // (probes/text-format-unquoted-letters A1, A27).

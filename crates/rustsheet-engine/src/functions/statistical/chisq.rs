@@ -259,55 +259,28 @@ impl Model {
         CalcResult::Number(x)
     }
 
+    /// The values of a range, row-major, for a caller that keeps the numbers: a number is `Some`,
+    /// text and booleans are `None`, blank cells give no entry, and the first error cell is the
+    /// `Err`. The range is walked over each sheet's used area, so a whole column of an almost
+    /// empty sheet, or one stretched by a far cell, costs time as in SUM but no memory (T-1681).
+    /// Entries are not one per cell: callers that pair two lists by position use
+    /// [`Self::paired_values`] instead.
     pub(crate) fn values_from_range(
         &mut self,
         left: CellReferenceIndex,
         right: CellReferenceIndex,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
-        let mut values = Vec::new();
-        let mut push = |value: CalcResult| match value {
-            CalcResult::Number(v) => {
-                values.push(Some(v));
-                Ok(())
-            }
-            error @ CalcResult::Error { .. } => Err(error),
-            _ => {
-                values.push(None);
-                Ok(())
-            }
-        };
-        if left.sheet != right.sheet {
-            // 3-D reference (T-0196): the shared walk goes sheet by sheet. It clips to each
-            // sheet's used area, so it is only used here, where no two-input caller pairs
-            // the list by position.
-            self.for_each_cell_or_error_in_areas(&[Range { left, right }], left, |_, value| {
-                push(value)
-            })?;
-            return Ok(values);
-        }
-        // Single sheet: one entry per cell of the range, unclipped, because CHISQ.TEST, SUMXMY2,
-        // COVARIANCE and friends pair two such lists by position.
-        for row_offset in 0..=(right.row - left.row) {
-            for col_offset in 0..=(right.column - left.column) {
-                push(self.evaluate_cell(CellReferenceIndex {
-                    sheet: left.sheet,
-                    row: left.row + row_offset,
-                    column: left.column + col_offset,
-                }))?;
-            }
-        }
-        Ok(values)
+        self.values_from_areas(&[Range { left, right }], left)
     }
 
-    /// One entry per existing cell of every area of a multi-area reference, in formula order:
-    /// a number is `Some`, text and booleans are `None`, and the first error cell is the `Err`.
-    /// Blank cells give no entry, as a union is walked over its existing cells only (T-1497), so
-    /// callers must not pair entries by position (none does: they keep the numbers). Areas are counted as
-    /// written, so an overlap counts twice (docs/excel-semantics/references.md "Multi-area
-    /// references in functions"; probes/multiarea-rank, multiarea-cond).
+    /// One entry per non-blank cell of `areas`, in formula order: a number is `Some`, text and
+    /// booleans are `None`, and the first error cell is the `Err`. Blank cells give no entry, so
+    /// callers must not pair entries by position (none does: they keep the numbers). Areas are
+    /// counted as written, so an overlap counts twice (docs/excel-semantics/references.md
+    /// "Multi-area references in functions"; probes/multiarea-rank, multiarea-cond).
     pub(crate) fn values_from_areas(
         &mut self,
-        areas: &Ranges,
+        areas: &[Range],
         cell: CellReferenceIndex,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
         let mut values = Vec::new();
@@ -317,6 +290,7 @@ impl Model {
                 Ok(())
             }
             error @ CalcResult::Error { .. } => Err(error),
+            CalcResult::EmptyCell => Ok(()),
             _ => {
                 values.push(None);
                 Ok(())
@@ -489,7 +463,7 @@ impl Model {
                 }
             }
         }
-        if width == 0 || height == 0 || values.len() < 2 {
+        if width * height < 2 {
             return CalcResult::new_error(
                 Error::NUM,
                 cell,

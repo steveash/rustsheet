@@ -149,6 +149,12 @@ impl SearchVector {
         self.values.len() + usize::from(self.len > self.values.len())
     }
 
+    /// [`SearchVector::search_cost`] as the cells one lifted element is charged
+    /// (`LiftCost::Cells`), at least 1.
+    pub(crate) fn scan_cells(&self) -> u64 {
+        u64::try_from(self.search_cost()).unwrap_or(u64::MAX).max(1)
+    }
+
     /// The value at `index`, which must be below `len`.
     pub(crate) fn get(&self, index: usize) -> &CalcResult {
         self.values.get(index).unwrap_or(&EMPTY_CELL)

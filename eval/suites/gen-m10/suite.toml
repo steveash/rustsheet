@@ -1,0 +1,10 @@
+name = "gen-m10"
+description = "M10 number-format displayed-text probes from rustsheet-gen --policy number-formats; expectations from the Excel oracle"
+kind = "spec"
+root = "cases"
+include = ["**/*.case.json"]
+license = "Apache-2.0"
+origin = "generated"
+gate = true
+baseline = "cells"
+milestone = ["M10"]

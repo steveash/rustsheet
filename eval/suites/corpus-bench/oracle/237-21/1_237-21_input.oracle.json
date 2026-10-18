@@ -1,0 +1,13 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "GDPR Trg": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "c147cfec9203b02cf71675b2afb8ce5fe5f807237ba5ced015fada51708b8964",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:15:03+00:00",
+  "version": null
+ }
+}

@@ -1,0 +1,47 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "HOUR, MINUTE and SECOND at and past the last date serial 2958465 (T-1353).",
+ "tags": [
+  "M2",
+  "dates",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=HOUR(2958465)",
+    "A2": "=HOUR(2958465.9)",
+    "A3": "=HOUR(2958465.99999)",
+    "A4": "=HOUR(2958466)",
+    "A5": "=HOUR(2958466.5)",
+    "A6": "=MINUTE(2958465.9)",
+    "A7": "=MINUTE(2958466)",
+    "A8": "=MINUTE(2958466.5)",
+    "A9": "=SECOND(2958465.9)",
+    "A10": "=SECOND(2958466)",
+    "A11": "=SECOND(2958466.5)",
+    "A12": "=SECOND(1E+15)",
+    "A13": "=HOUR(123456789.123)",
+    "A14": "=MINUTE(7+123456789.123)"
+   }
+  }
+ ],
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A4",
+  "Sheet1!A5",
+  "Sheet1!A6",
+  "Sheet1!A7",
+  "Sheet1!A8",
+  "Sheet1!A9",
+  "Sheet1!A10",
+  "Sheet1!A11",
+  "Sheet1!A12",
+  "Sheet1!A13",
+  "Sheet1!A14"
+ ],
+ "expected": {}
+}

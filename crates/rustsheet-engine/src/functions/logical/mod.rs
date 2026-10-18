@@ -6,9 +6,11 @@ mod map_reduce;
 mod scan;
 mod switch;
 
-pub(crate) use lambda::LambdaCaller;
+pub(crate) use bycol_byrow::as_lambda;
+pub(crate) use lambda::{FunctionValue, LambdaCaller};
 pub(crate) use r#let::{has_duplicate_parameter, same_variable};
 
+use crate::cast::calc_result_to_array_node;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
@@ -17,6 +19,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::lift::{LiftCost, LiftOptions, LiftedArg},
     limits::check_array_size,
     model::Model,
     reference_operators::{Picked, RefArg},
@@ -72,24 +75,6 @@ pub(crate) fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
             }
         }
     }
-}
-
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
-    match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        CalcResult::Lambda(_) | CalcResult::Range { .. } | CalcResult::Array(_) => {
-            ArrayNode::Error(Error::VALUE)
-        }
-    }
-}
-
-/// Whether an argument value makes IFS or SWITCH run element by element: an array or a range.
-fn is_lifted(value: &CalcResult) -> bool {
-    matches!(value, CalcResult::Range { .. } | CalcResult::Array(_))
 }
 
 /// IFS's and SWITCH's `#N/A` when nothing matches.
@@ -423,7 +408,7 @@ impl Model {
         let case_count = args_count / 2;
         for case_index in 0..case_count {
             let condition = self.evaluate_node_in_context(&args[2 * case_index], cell);
-            if is_lifted(&condition) {
+            if LiftedArg::is_grid(&condition) {
                 // The earlier conditions were all FALSE, so the result is decided element by
                 // element from here (`IFS({TRUE,FALSE},1,TRUE,2)` is {1,2}).
                 let mut lifted = vec![condition];
@@ -431,11 +416,14 @@ impl Model {
                 for node in &args[2 * case_index + 2..] {
                     lifted.push(self.evaluate_node_in_context(node, cell));
                 }
-                return self.lift_with_cost(
+                // Each element reads its condition and value pairs: one unit per argument.
+                let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
+                return self.lift_values(
                     lifted,
-                    |_| 1,
+                    LiftCost::Cells(units),
+                    &LiftOptions::REUSE_EQUAL_RUNS,
                     cell,
-                    |model, pairs| model.ifs_element(pairs, cell),
+                    &mut |model, pairs| model.ifs_element(pairs, cell),
                 );
             }
             match self.cast_to_bool(condition, cell) {

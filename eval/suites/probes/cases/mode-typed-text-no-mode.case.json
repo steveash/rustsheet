@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "MODE with typed text in shapes that have no repeated number (Apache POI EverythingTests G936/H936/K936 shapes; T-1291).",
+  "tags": [
+    "M9",
+    "stat",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "K1": 1,
+        "K2": 1.1,
+        "K3": "1.1",
+        "A1": "=MODE(1,\"1\",2,3)",
+        "A2": "=MODE(\"1\",1,#DIV/0!,2,3)",
+        "A3": "=MODE(K2,K3,\"1\",K1)",
+        "A4": "=MODE(K1,\"1\",2,3)",
+        "A5": "=MODE(\"1\",2,3)",
+        "A6": "=MODE(1,2,3)",
+        "A7": "=MODE(1,2,3,\"x\")",
+        "A8": "=MODE(\"x\",1,2,3)",
+        "A9": "=MODE(1,2,3,TRUE)",
+        "A10": "=MODE(1.1,K3,\"1\",1)",
+        "A11": "=MODE(\"1\",1,1/0,2,3)",
+        "A12": "=MODE(\"1\",1,2,2)",
+        "A13": "=MODE.SNGL(1,\"1\",2,3)",
+        "A14": "=MODE(1,K3,2,3)",
+        "A15": "=MODE(\"1\",#DIV/0!)",
+        "A16": "=MODE(1,2,\"1\")"
+      }
+    }
+  ],
+  "expected": {}
+}

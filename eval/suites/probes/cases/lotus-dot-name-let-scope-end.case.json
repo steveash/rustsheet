@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A LET or LAMBDA name spelled like a Lotus-style range: let-scope-end; one per case, an invalid formula may make Graph reject the workbook (T-1659)",
+  "tags": [
+    "M2",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 4,
+        "A2": 8,
+        "B2": 2,
+        "E1": "=LET(A1.B2,5,A1.B2)+SUM(A1.B2)",
+        "E2": "=FORMULATEXT(E1)"
+      }
+    }
+  ],
+  "expected": {}
+}

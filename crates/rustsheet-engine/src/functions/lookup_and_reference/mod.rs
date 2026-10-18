@@ -5,10 +5,12 @@ use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::is_out_of_range_r1c1_name;
+use crate::external_reference::{one_external_area, PickedReference};
 use crate::functions::logical::{if_arg_at, if_arg_dims};
+use crate::functions::text::util::within_text_budget;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::limits::check_array_size;
+use crate::limits::{check_array_size, check_range_size};
 use crate::reference_operators::{several_areas_ref, Picked, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -24,13 +26,18 @@ mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
 mod expand;
+mod getpivotdata;
+mod group_functions;
 mod groupby;
+mod grouping;
 mod hstack_vstack;
 mod index;
 mod index_arg;
 mod lookup;
 mod lookup_each;
 pub(crate) mod lookup_table;
+mod pivotby;
+mod relative_to;
 mod tocol_torow;
 mod transpose;
 mod trimrange;
@@ -83,7 +90,7 @@ impl Model {
     /// (`CHOOSE(1,A1)`, `OFFSET(A1,0,0)`, `INDIRECT("A1")`, `A1:A1`) gives that cell's value: Excel
     /// finds 30 for `MATCH(CHOOSE(1,J1),A1:A5,0)` with J1 = 30 (docs/excel-semantics/lookup.md,
     /// probes/lookup-reference-lookup-value). VLOOKUP, HLOOKUP and XLOOKUP get there by lifting.
-    /// A multi-cell `lookup_value` is left as it is (T-0270).
+    /// A multi-cell `lookup_value` is left as it is: XMATCH and LOOKUP lift it, MATCH is T-0270.
     pub(super) fn lookup_value_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match self.evaluate_node_in_context(node, cell) {
             range @ CalcResult::Range { left, right } if left == right => {
@@ -313,30 +320,32 @@ impl Model {
     // internal link ("#Sheet1!A1"), anything else is external.
     // The link itself is dynamic: it lives in `Model::links` and is rebuilt on
     // every evaluation, it is not part of the workbook.
+    // Both arguments lift over an array and a multi-cell range (`ROWS(HYPERLINK(D1:D3))`,
+    // `ROWS(HYPERLINK(D1,A1:A3))` are 3; probes/lookup-argument-modes F11:G13,
+    // gen-m7/2bb922eef72e785e A22; docs/excel-semantics/lookup.md "Lookup and reference function
+    // argument modes"). A lifted call attaches the link of its last element.
     pub(crate) fn fn_hyperlink(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let location = match self.get_string(&args[0], cell) {
+        self.lift_call(Function::Hyperlink, args, cell, &mut |model, values| {
+            model.hyperlink_of(values, cell)
+        })
+    }
+
+    /// HYPERLINK of one element.
+    fn hyperlink_of(&mut self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let (location, friendly_name) = match values {
+            [location] => (location, None),
+            [location, friendly_name] => (location, Some(friendly_name)),
+            _ => return CalcResult::new_args_number_error(cell),
+        };
+        let location = match Self::cast_string_ref(location, cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
-
-        let display = if args.len() == 2 {
-            // The friendly name is the value displayed in the cell. It can be
-            // a string, a number or a boolean.
-            let result = self.evaluate_node_in_context(&args[1], cell);
-            match result {
-                CalcResult::Range { .. } | CalcResult::Array(_) => {
-                    match self.cast_to_string(result, cell) {
-                        Ok(s) => CalcResult::String(s.into()),
-                        Err(error) => error,
-                    }
-                }
-                other => other,
-            }
-        } else {
-            CalcResult::String(location.clone().into())
+        // The friendly name is the value displayed in the cell. It can be
+        // a string, a number or a boolean.
+        let display = match friendly_name {
+            Some(value) => value.clone(),
+            None => CalcResult::String(location.clone().into()),
         };
         // A cell displaying an error is not clickable: no link is attached
         if matches!(display, CalcResult::Error { .. }) {
@@ -382,50 +391,42 @@ impl Model {
             return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
         // `ROW(IF(TRUE,…!B3))` is 3 (probes/external-ref-no-link-ifchoose A25).
-        let reference = match self.pick_branch(&args[0], cell) {
-            Picked::Node(node) => node,
-            Picked::Value(error @ CalcResult::Error { .. }) => return error,
+        let reference = match self.pick_reference(&args[0], cell) {
+            PickedReference::Node(node) => node,
+            PickedReference::External(areas) => {
+                let area = match one_external_area(areas, cell) {
+                    Ok(area) => area,
+                    Err(error) => return error,
+                };
+                let (first, last) = if by_row {
+                    (area.first_row, area.last_row)
+                } else {
+                    (area.first_column, area.last_column)
+                };
+                return row_or_column_numbers(first, last, by_row, first_only);
+            }
+            PickedReference::Value(error @ CalcResult::Error { .. }) => return error,
             // A value an IF or CHOOSE gives here is no reference: `ROW(IF(FALSE,…!A1))` is
             // `#VALUE!` (probes/external-ref-no-link-ifchoose-b A4).
-            Picked::Value(_) => {
+            PickedReference::Value(_) => {
                 return CalcResult::new_error(Error::VALUE, cell, "Expected a reference".into())
             }
         };
-        let (first, last) = if let Some(area) = self.one_external_area(reference, cell) {
-            let area = match area {
-                Ok(area) => area,
-                Err(error) => return error,
-            };
-            if by_row {
-                (area.first_row, area.last_row)
-            } else {
-                (area.first_column, area.last_column)
+        let (first, last) = match self.reference_ranges(reference, cell) {
+            // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
+            // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
+            Ok(Ranges::Areas(_)) => return several_areas_ref(cell),
+            Ok(Ranges::One(range)) => {
+                let (a, b) = if by_row {
+                    (range.left.row, range.right.row)
+                } else {
+                    (range.left.column, range.right.column)
+                };
+                (a.min(b), a.max(b))
             }
-        } else {
-            match self.reference_ranges(reference, cell) {
-                // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
-                // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
-                Ok(Ranges::Areas(_)) => return several_areas_ref(cell),
-                Ok(Ranges::One(range)) => {
-                    let (a, b) = if by_row {
-                        (range.left.row, range.right.row)
-                    } else {
-                        (range.left.column, range.right.column)
-                    };
-                    (a.min(b), a.max(b))
-                }
-                Err(s) => return s,
-            }
+            Err(s) => return s,
         };
-        if first == last || first_only {
-            return CalcResult::Number(first as f64);
-        }
-        let numbers = (first..=last).map(|n| ArrayNode::Number(n as f64));
-        CalcResult::Array(if by_row {
-            numbers.map(|n| vec![n]).collect()
-        } else {
-            vec![numbers.collect()]
-        })
+        row_or_column_numbers(first, last, by_row, first_only)
     }
 
     /// The reference an explicit `@` reads. `@` of a span over several sheets is `#REF!`, not
@@ -671,7 +672,7 @@ impl Model {
                 right: reference,
             },
             Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
-            Err(message) => match self.indirect_defined_name(&ref_text, cell.sheet, a1) {
+            Err(message) => match self.indirect_defined_name(&ref_text, cell.sheet) {
                 Some(found) => found,
                 None => CalcResult::Error {
                     error: Error::REF,
@@ -685,12 +686,28 @@ impl Model {
     /// INDIRECT of the text of a defined name that stands for a reference (`INDIRECT("RCR")`,
     /// `ISREF` TRUE; probes/r1c1-name-use-rcr, excel-graph). A name spelled like an out-of-range
     /// R1C1 reference is never resolved (T-1657).
-    fn indirect_defined_name(&self, text: &str, sheet: u32, a1: bool) -> Option<CalcResult> {
-        if !a1 || is_out_of_range_r1c1_name(text) {
+    ///
+    /// Excel: see docs/excel-semantics/lookup.md "INDIRECT resolves a defined name that holds a
+    /// reference": `a1` FALSE still resolves a name, trailing (not leading) spaces are ignored, and
+    /// a `Sheet!name` prefix picks the name scoped to that sheet, else the workbook name
+    /// (probes/indirect-defined-name-text A5, A8, A22; T-1682).
+    fn indirect_defined_name(&self, text: &str, sheet: u32) -> Option<CalcResult> {
+        let text = text.trim_end_matches(' ');
+        if is_out_of_range_r1c1_name(text) {
             return None;
         }
+        let scope = match text.rsplit_once('!') {
+            Some((prefix, _)) => {
+                let prefix = prefix
+                    .strip_prefix('\'')
+                    .and_then(|p| p.strip_suffix('\''))
+                    .unwrap_or(prefix);
+                self.get_sheet_index_by_name(prefix)?
+            }
+            None => sheet,
+        };
         let found = self
-            .parsed_defined_name(text, Some(sheet))
+            .parsed_defined_name(text, Some(scope))
             .or_else(|| self.parsed_defined_name(text, None));
         match found? {
             ParsedDefinedName::CellReference(reference) => Some(CalcResult::Range {
@@ -856,23 +873,45 @@ impl Model {
                     message: "3D ranges not supported".to_string(),
                 };
             }
-            if left.row != right.row || left.column != right.column {
-                // FIXME: Implicit intersection or dynamic arrays
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "argument must be a reference to a single cell".to_string(),
-                };
+            if left == right {
+                return self.formula_text_of(left, cell);
             }
-            if let Ok(Some(f)) = self.get_english_cell_formula(left.sheet, left.row, left.column) {
-                CalcResult::String(f.into())
-            } else {
-                CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Reference does not have a formula".to_string(),
+            // A multi-cell reference gives one result per cell, `#N/A` for a cell with no
+            // formula (`ROWS(FORMULATEXT(A1:A3))` is 3; probes/lookup-argument-modes F38:H38,
+            // docs/excel-semantics/lookup.md "Lookup and reference function argument modes").
+            // The cells and the total text are bounded (CLAUDE.md directive 5).
+            if let Some((error, message)) = check_range_size(&left, &right) {
+                return CalcResult::new_error(error, cell, message);
+            }
+            let mut text_bytes = 0;
+            let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
+            let mut rows =
+                Vec::with_capacity(usize::try_from(right.row - left.row + 1).unwrap_or(0));
+            for row in left.row..=right.row {
+                let mut values = Vec::with_capacity(width);
+                for column in left.column..=right.column {
+                    let at = CellReferenceIndex {
+                        sheet: left.sheet,
+                        row,
+                        column,
+                    };
+                    values.push(match self.formula_text_of(at, cell) {
+                        CalcResult::String(text) => {
+                            if !within_text_budget(&mut text_bytes, text.len()) {
+                                return CalcResult::new_error(
+                                    Error::VALUE,
+                                    cell,
+                                    "Total text result is too large".to_string(),
+                                );
+                            }
+                            ArrayNode::String(text)
+                        }
+                        _ => ArrayNode::Error(Error::NA),
+                    });
                 }
+                rows.push(values);
             }
+            CalcResult::Array(rows)
         } else {
             CalcResult::Error {
                 error: Error::ERROR,
@@ -881,4 +920,31 @@ impl Model {
             }
         }
     }
+
+    /// FORMULATEXT of the one cell `at`: its formula, or `#N/A` when it holds none.
+    fn formula_text_of(&self, at: CellReferenceIndex, cell: CellReferenceIndex) -> CalcResult {
+        if let Ok(Some(f)) = self.get_english_cell_formula(at.sheet, at.row, at.column) {
+            CalcResult::String(f.into())
+        } else {
+            CalcResult::Error {
+                error: Error::NA,
+                origin: cell,
+                message: "Reference does not have a formula".to_string(),
+            }
+        }
+    }
+}
+
+/// ROW's numbers `first..=last` down a column (`by_row`) or COLUMN's across a row; one number
+/// when they are one or with `first_only` (implicit intersection keeps the first).
+fn row_or_column_numbers(first: i32, last: i32, by_row: bool, first_only: bool) -> CalcResult {
+    if first == last || first_only {
+        return CalcResult::Number(f64::from(first));
+    }
+    let numbers = (first..=last).map(|n| ArrayNode::Number(f64::from(n)));
+    CalcResult::Array(if by_row {
+        numbers.map(|n| vec![n]).collect()
+    } else {
+        vec![numbers.collect()]
+    })
 }

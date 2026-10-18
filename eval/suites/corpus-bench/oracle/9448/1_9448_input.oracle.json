@@ -1,0 +1,63 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Data": {
+   "I8": {
+    "t": "n",
+    "v": 6.0
+   },
+   "J8": {
+    "t": "n",
+    "v": 3.0
+   },
+   "K8": {
+    "t": "n",
+    "v": 3.0
+   },
+   "L8": {
+    "t": "n",
+    "v": 2.0
+   },
+   "M8": {
+    "t": "n",
+    "v": 3.0
+   },
+   "N8": {
+    "t": "n",
+    "v": 3.0
+   },
+   "O8": {
+    "t": "n",
+    "v": 2.0
+   },
+   "P8": {
+    "t": "n",
+    "v": 8.0
+   },
+   "Q8": {
+    "t": "n",
+    "v": 2.0
+   },
+   "R8": {
+    "t": "n",
+    "v": 2.0
+   },
+   "S8": {
+    "t": "n",
+    "v": 2.0
+   },
+   "T8": {
+    "t": "n",
+    "v": 0.0
+   }
+  },
+  "MetaData": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "acb2a3219b28f180236d64dcef2372360137313e423cedee520e0ad72fc944b9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-17T06:37:24+00:00",
+  "version": null
+ }
+}

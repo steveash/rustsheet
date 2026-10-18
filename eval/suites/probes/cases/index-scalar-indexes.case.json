@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1242: INDEX of a scalar or 1x1 array with row/column indexes beyond 1, 0, negative, text.",
+  "tags": [
+    "M2",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=INDEX(5,1,1)",
+        "A2": "=INDEX(5,2,1)",
+        "A3": "=INDEX(5,1,2)",
+        "A4": "=INDEX(5,0,0)",
+        "A5": "=INDEX(5,0,1)",
+        "A6": "=INDEX(5,1,0)",
+        "A7": "=INDEX(5,1)",
+        "A8": "=INDEX(5,2)",
+        "A9": "=INDEX(5,0)",
+        "A10": "=INDEX(\"a\",1)",
+        "A11": "=INDEX(\"a\",2)",
+        "A12": "=INDEX(TRUE,1,1)",
+        "A13": "=INDEX(5,-1,1)",
+        "A14": "=INDEX(5,1,-1)",
+        "A15": "=INDEX({7},1,1)",
+        "A16": "=INDEX({7},2,1)",
+        "A17": "=INDEX({7},0,0)",
+        "A18": "=INDEX({7},1,2)",
+        "A19": "=INDEX(#N/A,1,1)",
+        "A20": "=INDEX(5,1,1,1)",
+        "A21": "=INDEX(5,1,1,2)",
+        "A22": "=INDEX(5,\"a\",1)",
+        "A23": "=INDEX(5,1.9,1)"
+      }
+    }
+  ]
+}

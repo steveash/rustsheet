@@ -1,0 +1,26 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1794 TEXTSPLIT match_mode 1 with non-ASCII text whose lowercase changes length (U+0130, U+212A, U+1E9E) or that needs real case folding (Ä/ä, ß)",
+  "tags": [
+    "M7",
+    "text",
+    "dynamic-arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ARRAYTOTEXT(TEXTSPLIT(\"İİİ,a\",\",\",,,1),1)",
+        "A2": "=ARRAYTOTEXT(TEXTSPLIT(\"aİbİc\",\"i\",,,1),1)",
+        "A3": "=ARRAYTOTEXT(TEXTSPLIT(\"aİbİc\",\"İ\",,,1),1)",
+        "A4": "=ARRAYTOTEXT(TEXTSPLIT(\"ÄxäyÄ\",\"ä\",,,1),1)",
+        "A5": "=ARRAYTOTEXT(TEXTSPLIT(\"aßbSSc\",\"ss\",,,1),1)",
+        "A6": "=ARRAYTOTEXT(TEXTSPLIT(\"aẞbssc\",\"ss\",,,1),1)",
+        "A7": "=ARRAYTOTEXT(TEXTSPLIT(\"a\u212Abkc\",\"k\",,,1),1)",
+        "A8": "=ARRAYTOTEXT(TEXTSPLIT(\"İ|İ,c\",\",\",\"|\",,1),1)"
+      }
+    }
+  ],
+  "expected": {}
+}

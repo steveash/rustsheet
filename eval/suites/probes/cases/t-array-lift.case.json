@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T over an array value in a dynamic formula: number, error, boolean and empty-text elements, an array-valued IF, nested T, an array from a range expression, and T's array result consumed by ROWS/CONCAT (T-1729).",
+  "tags": [
+    "M2",
+    "text",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "H1": "x",
+        "H2": 2,
+        "A1": "=T({\"a\",1,#N/A,TRUE,\"\"})",
+        "A3": "=T(IF(1,{\"a\",1,#DIV/0!,FALSE}))",
+        "A5": "=T(T({\"b\",2}))",
+        "A7": "=T(H1:H2&\"\")",
+        "C7": "=T(H1:H2*1)",
+        "E7": "=T(H1:H2)",
+        "A10": "=ROWS(T({1;2;3}))",
+        "A11": "=CONCAT(T({\"x\",1,\"y\"}))",
+        "A12": "=ISTEXT(T({1,\"a\"}))",
+        "A14": "=T(IF(1,{\"a\";1}))"
+      }
+    }
+  ],
+  "expected": {}
+}

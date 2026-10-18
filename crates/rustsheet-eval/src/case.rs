@@ -111,10 +111,20 @@ pub struct SheetSpec {
     /// engine adapter ignores them until Phase 2 implements data tables.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub data_tables: Vec<DataTableSpec>,
+    /// Pivot tables, written by spec2xlsx with their rendered cells, cache and definition
+    /// (`tools/src/rustsheet_tools/pivot.py`, T-1705). The engine has no pivot tables, so the
+    /// adapter ignores them: a case scores only the GETPIVOTDATA formulas that read them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pivot_tables: Vec<PivotTableSpec>,
     /// A1 address → number format code (`"[h]:mm"`), applied to that cell whatever it holds
     /// (T-1268). spec2xlsx writes it as the cell's `numFmt`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub number_formats: BTreeMap<String, String>,
+    /// Column letter → width in characters, written by spec2xlsx (T-1610). The engine adapter
+    /// ignores it: excel-graph's displayed text does not depend on the width
+    /// (probes/displayed-text-formats B1:B3; docs/excel-semantics/number-formats.md).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub column_widths: BTreeMap<String, f64>,
 }
 
 /// A table in a spec sheet. spec2xlsx gives a filtered table a values filter that keeps exactly
@@ -147,6 +157,29 @@ pub struct DataTableSpec {
     pub column_input: Option<String>,
 }
 
+/// A pivot table in a spec sheet (T-1705): `row` (and optionally `column`) are text fields of the
+/// `source` range's header row, `value` a number field aggregated by `function` (`sum` when absent).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PivotTableSpec {
+    /// The pivot's name (`PivotTable1`).
+    pub name: String,
+    /// A1 range with the field names in its first row, optionally sheet-qualified (`Data!A1:C7`).
+    pub source: String,
+    /// Top-left cell of the rendered pivot.
+    pub location: String,
+    /// The row field (a text column of the source).
+    pub row: String,
+    /// The column field (another text column), if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub column: Option<String>,
+    /// The data field (a number column).
+    pub value: String,
+    /// `sum` (when absent), `count`, `average`, `max` or `min`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub function: Option<String>,
+}
+
 /// A workbook's calculation settings (`<calcPr>`), written by spec2xlsx (T-0428). The engine
 /// adapter runs an iterative case's three oracle calculations (T-0429) but does not pass the
 /// settings on until Phase 2 implements iterative calculation (T-0401).
@@ -161,6 +194,19 @@ pub struct CalculationSpec {
     /// Maximum change between iterations (`iterateDelta`; Excel's default is 0.001).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub iterate_delta: Option<f64>,
+}
+
+/// A sheet edit made after a case loads and before it is recalculated (T-1608): spec2xlsx records
+/// it for the oracle backend, which replays it in Excel, and the engine adapter applies it through
+/// the edit API. `{"op":"add","sheet":"New"}` appends a sheet, `{"op":"rename","sheet":"Data",
+/// "to":"Inputs"}` renames one, `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based
+/// position.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "op", rename_all = "lowercase", deny_unknown_fields)]
+pub enum SheetOp {
+    Add { sheet: String },
+    Rename { sheet: String, to: String },
+    Move { sheet: String, to: u32 },
 }
 
 /// A self-contained workbook test case.
@@ -179,6 +225,10 @@ pub struct CaseSpec {
     /// Calculation settings such as iterative calculation; Excel's defaults when absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calculation: Option<CalculationSpec>,
+    /// Sheet edits applied in order after the workbook loads, before recalculation (T-1608).
+    /// Cell keys in `expected` and `check` use the sheet names after the edits.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sheet_ops: Vec<SheetOp>,
     /// Workbook-scoped defined names: name → formula (e.g. `"=Sheet1!$A$1:$B$2"`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub names: BTreeMap<String, String>,
@@ -197,6 +247,11 @@ pub struct CaseSpec {
     /// of skipped as volatile (T-1283); every listed cell must be a volatile formula cell.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub invariant: Vec<String>,
+    /// Cells (`Sheet!A1`) whose displayed text (Excel's `Range.Text`) is scored beside their value
+    /// (T-1610, decision 0068): spec2xlsx records them for the oracle backend, which reads the text
+    /// into the sidecar's `text`, and the eval compares it with the engine's formatted text.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub text: Vec<String>,
 }
 
 /// Provenance of oracle values.
@@ -234,6 +289,9 @@ pub struct OracleFile {
     pub format: String,
     pub source: OracleSource,
     pub sheets: BTreeMap<String, BTreeMap<String, Value>>,
+    /// Displayed text of the cells a case lists in `text`: sheet → A1 → text (T-1610).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub text: BTreeMap<String, BTreeMap<String, String>>,
 }
 
 /// Splits `Sheet!A1` / `'My Sheet'!A1` into (sheet, cell).

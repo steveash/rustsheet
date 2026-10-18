@@ -149,7 +149,9 @@ fn test_fn_choose_scalar_arm_under_index_mode_lookup() {
 }
 
 // A dynamic INDEX of a CHOOSE with arithmetic arms keeps spilling: only a legacy formula leaves
-// the `@` off the call (T-1643). MODE still skips a direct error that no IF or CHOOSE picked.
+// the `@` off the call (T-1643). MODE propagates a direct error (`MODE(1/0,1,1)` is `#DIV/0!`,
+// probes/mode-typed-arguments A30; T-1291), and LOOKUP reads a scalar as a one-element array
+// (`LOOKUP(2,1)` is 1, probes/mode-direct-error-lookup-scalar-vector B1; T-1651).
 #[test]
 fn test_fn_choose_arithmetic_arm_under_dynamic_index_spills() {
     let mut model = new_empty_model();
@@ -163,6 +165,6 @@ fn test_fn_choose_arithmetic_arm_under_dynamic_index_spills() {
     model.evaluate();
     assert_eq!(model._get_text("C3"), "3");
     assert_eq!(model._get_text("D3"), "6");
-    assert_eq!(model._get_text("E1"), "1");
-    assert_eq!(model._get_text("E2"), "#N/A");
+    assert_eq!(model._get_text("E1"), "#DIV/0!");
+    assert_eq!(model._get_text("E2"), "1");
 }

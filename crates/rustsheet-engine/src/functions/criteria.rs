@@ -130,10 +130,16 @@ fn result_is_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
     }
 }
 
-// `target` must be lower case.
-fn result_starts_with_string(calc_result: &CalcResult, target: &str) -> bool {
+// D-function plain text criteria match by prefix, unit by unit, case-insensitively, so a lone
+// surrogate is a unit of its own and never U+FFFD (probes/d-function-prefix-lone-surrogates).
+// `target` is the operand's UTF-16 units, lower-cased.
+fn result_starts_with_units(calc_result: &CalcResult, target: &[u16]) -> bool {
     match calc_result {
-        CalcResult::String(s) => s.to_lowercase().starts_with(target),
+        CalcResult::String(s) => {
+            let folded = s.map_runs(str::to_lowercase);
+            let mut units = folded.units();
+            target.iter().all(|unit| units.next() == Some(*unit))
+        }
         CalcResult::EmptyCell => target.is_empty(),
         _ => false,
     }
@@ -388,7 +394,9 @@ pub(crate) fn build_criteria_with<'a>(
                     // Sheet1!C4); a blank cell still matches (probes/criteria-gaps C2).
                     Box::new(move |x| matches!(x, CalcResult::EmptyCell))
                 } else if flavor == CriteriaFlavor::Database && !explicit_equals {
-                    Box::new(move |x| result_starts_with_string(x, &v.to_lowercase()))
+                    let folded = operand_text(s, "").map_runs(str::to_lowercase);
+                    let prefix: Vec<u16> = folded.units().collect();
+                    Box::new(move |x| result_starts_with_units(x, &prefix))
                 } else {
                     let target = operand_text(s, if explicit_equals { "=" } else { "" });
                     Box::new(move |x| result_is_equal_to_string(x, &target))
@@ -461,7 +469,7 @@ impl WildcardPattern {
     }
 
     /// Compiles a pattern whose units the caller has already case-folded (SEARCH folds with its
-    /// own rules, see `fold_case` in functions/text/position.rs).
+    /// own rules, see `fold_case` in functions/text/casefold.rs).
     pub(crate) fn from_units(units: impl Iterator<Item = u16>) -> WildcardPattern {
         let mut units = units;
         let mut tokens = Vec::new();

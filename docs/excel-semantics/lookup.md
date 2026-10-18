@@ -10,7 +10,9 @@ Status: VERIFIED (Excel-cached values)
 Implemented in: the engine already returns #REF! (those cells pass).
 Oracle caveat: **Excel for the web disagrees.** Through the Graph oracle the same formulas give
 a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...)` = 3), probed
-2026-10-04. Never take oracle values as evidence for references to missing sheets
+2026-10-04. The web gives the same after a sheet edit: a sheet renamed away, or a name added and
+then renamed (T-1608, the unscored cells of probes/sheet-ops/sheet-ops-rename-indirect-text,
+-add-then-rename and -add-resolves-indirect). Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
 
 ## INDIRECT resolves a defined name that holds a reference
@@ -19,14 +21,19 @@ reference: `ISREF(INDIRECT("RCR"))` is TRUE with `RCR` = `Sheet1!$B$1`. Text tha
 reference nor such a name is `#REF!`, so `ISREF(INDIRECT("R0"))` is FALSE, also when `R0` is a
 defined name, since a name spelled like an out-of-range R1C1 reference is never resolved
 (references.md "R1C1-shaped sheet and defined names").
-Unprobed (hand, T-1682): the value read through the name; `a1` FALSE (ours: `#REF!`); sheet-qualified
-text (`"Sheet1!nm"`, ours: `#REF!`); a sheet-scoped name shadowing a workbook one (ours: sheet
-first); formula-valued or dynamic names (ours: `#REF!`).
-Evidence: probes/r1c1-name-use-rcr A2, r1c1-name-use-r0, -c0, -r0c1, -r1048577 A2 (excel-graph,
-2026-10-15).
+The value is read through the name (`SUM(INDIRECT("nm"))` is 7, a range name sums and `ROWS` counts it, `ISREF` is TRUE).
+`a1` FALSE and TRUE both resolve a name (`INDIRECT("nm",FALSE)` is 7). Name text is case-insensitive
+(`"NM"`, `"mixedcase"`) and trailing spaces are ignored (`"nm "` resolves) but a leading space is `#REF!`.
+A `Sheet!name` prefix picks the name scoped to that sheet (`INDIRECT("Sheet2!nm")` reads Sheet2's own `nm`
+though a workbook `nm` exists), and a prefix on a workbook-scoped name falls back to it (`"Sheet1!nm"`, `"Sheet2!gl"`);
+an unprefixed name is read sheet scope first. A name whose body is a formula is `#REF!` and `ISREF` FALSE:
+`OFFSET(...)`, `Sheet1!$B$1+1`, a constant `=5` and a text constant `="B1"`. A multi-cell name spills as a range
+(`INDIRECT("rng")` in a cell with occupied cells below is `#SPILL!`).
+Evidence: probes/r1c1-name-use-rcr A2, r1c1-name-use-r0, -c0, -r0c1, -r1048577 A2, probes/indirect-defined-name-text
+A1:A30, Sheet2!C1:C2 (an unprefixed name text on Sheet2 reads Sheet2's own `nm`, not the workbook one; excel-graph, 2026-10-15 and 2026-10-16, T-1682).
 Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs); ISREF evaluates
 an INDIRECT argument (functions/information/mod.rs).
-Status: VERIFIED (excel-graph) for ISREF; the unprobed choices UNVERIFIED (probe pending, T-1682)
+Status: VERIFIED (excel-graph)
 Tasks: T-1657, T-1682
 
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
@@ -78,7 +85,7 @@ Edges (probes/lookup-vector-edges, excel-graph, 2026-10-07, T-0269):
 - A single-cell lookup_vector is a one-element vector: `LOOKUP(2,C1,D1)` and `LOOKUP(3,C1,D1)` with C1 = 2 are D1, `LOOKUP(0,C1,D1)` is `#N/A`.
 - A scalar result_vector is a one-element array: `LOOKUP(2,A1:A2,5)` is 5 (match at position 1) and `LOOKUP(99,A1:A2,5)` (position 2) is `#N/A`,
   as is `"x"`; unlike a one-cell range it is not read past.
-- In the array form a scalar picked by CHOOSE is a one-element array: legacy `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1 on the range's rows (references.md "Legacy `@` on CHOOSE operator arms under aggregates", T-1643; other scalar lookup_vectors unprobed, T-1651).
+- In both the array and vector forms, any scalar lookup_vector (direct, array constant `{1}`, or picked by IF or CHOOSE) is a one-element array (`LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a": probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651); booleans too (`LOOKUP(TRUE,TRUE)` is TRUE), and an empty lookup_vector (a blank cell or `IF(TRUE,Z99)`) gives #N/A (probes/lookup-bool-empty-scalar-vector, T-1709; the probe cannot tell a one-element blank array from an empty value that never matches, and `IF(TRUE,Z99)` may be a reference); e.g. legacy `=LOOKUP(2,CHOOSE(1,B1:B6*1))` is 1 on the range's rows (references.md "Legacy `@` on CHOOSE operator arms under aggregates", T-1643).
 - Reading past the sheet's last row or column gives a blank, 0, not `#N/A`: `LOOKUP(99,A1:A3,F1048575:F1048576)` and
   `LOOKUP(99,A5:B5,XFD5)` are 0, while a position still on the sheet reads its cell (`LOOKUP(3,A1:A3,F1048575:F1048576)` is F1048576's 12,
   `LOOKUP(99,A5:B5,XFC5:XFD5)` is XFD5).
@@ -102,7 +109,7 @@ is `#ERROR!`).
 Unprobed: blank elements of a multi-cell lookup_value.
 Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
-`Model::lift_with_cost`; the spill shape follows lookup_value in static analysis.
+`Model::lift_values` (functions/lift/driver.rs); the spill shape follows lookup_value in static analysis.
 Status: VERIFIED (web)
 
 ## VLOOKUP / HLOOKUP with an array index or range_lookup
@@ -408,14 +415,15 @@ array literal whole: `LOOKUP(2,{1,2,3},{4,5,6})` = 5, `LOOKUP(2,{1,2,3})` = 2, `
 `XMATCH(2,{1,2,3})` = 2, `ROWS({1;2;3})` = 3, `COLUMNS({1,2})` = 2, `CHOOSEROWS({1;2;3},{1;3})` is 2x1,
 `TRANSPOSE({1,2,3})` is 3x1. INDEX of a single value is that value (`INDEX(LOOKUP(2,{1,2,3},{4,5,6}),1,1)` = 5,
 `INDEX(AREAS(A1:B3),1,1)` = 1). UNVERIFIED (not probed): OFFSET's cols, height and width, XLOOKUP/XMATCH search_mode,
-XLOOKUP's if_not_found, ADDRESS's a1 and sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols.
-Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238).
-Ours: none of the lifting arguments above lifts except CHOOSE's (a range gives `#VALUE!` or an implicit intersection,
-an array `#N/IMPL!`); LOOKUP/XLOOKUP/XMATCH give `#N/A` for a range lookup_value; CHOOSECOLS and CHOOSEROWS are `#VALUE!`
-for a range of indexes and `#N/IMPL!` for an array; HYPERLINK and INDIRECT over an array literal are `#N/IMPL!`;
-FORMULATEXT over a range is `#N/IMPL!`; INDEX of a single value is `#VALUE!`. 34 of 117 cells pass.
+XLOOKUP's if_not_found, ADDRESS's sheet_text, INDIRECT's a1 and TRIMRANGE's trim_cols; which problem wins inside a
+CHOOSECOLS/CHOOSEROWS index list (ours: the first error, out-of-range index or uncoercible text in row-major order).
+Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238); ADDRESS's a1 and HYPERLINK's
+friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
+Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
+one result per cell, and CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). OFFSET, INDIRECT and TRIMRANGE
+still do not lift (their elements are references; T-1810), and INDEX of a single value is `#VALUE!` (T-1242).
 Status: VERIFIED (web)
-Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1242 (INDEX of a single value)
+Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1810 (reference-valued lifts), T-1242 (INDEX of a single value)
 
 ## A reference-valued lookup_value is looked up by its cell's value
 Rule: when lookup_value is a one-cell reference returned by a function or written as a range (`CHOOSE(1,J1)`,
@@ -429,7 +437,7 @@ Evidence: probes/lookup-reference-lookup-value (220 cells: 5 shapes x 4 values x
 Status: VERIFIED
 Implemented in: VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value, so a 1x1 range lifts to its value
 (`lookup_each`, xlookup.rs); MATCH, XMATCH and LOOKUP read it through `Model::lookup_value_arg`
-(functions/lookup_and_reference/mod.rs). A multi-cell lookup_value in MATCH, XMATCH or LOOKUP is T-0270.
+(functions/lookup_and_reference/mod.rs); a multi-cell one lifts in XMATCH and LOOKUP (T-1241) and is T-0270 in MATCH.
 Tasks: T-1256
 
 ## A reference-valued lookup_value pointing at a blank or error cell
@@ -490,7 +498,7 @@ Edge cases (probes/index-lifted-edge-cases, T-1376):
   index), ROWS 1; what needs a reference is `#VALUE!`: AREAS, the range operator (`ROWS(INDEX(D1:D5,{2}):D5)`,
   `SUM(INDEX(D1:D5,{1}):D3)`), OFFSET, `CELL("address",…)`, SUMIF, COUNTIF and COUNTBLANK (countblank-array-values H1).
   COUNTA counts its blank element (1; the scalar index gives 0) while ISBLANK of it is TRUE and `&"|"` gives "|";
-  `N(INDEX(D1:D5,{1}))` is 10 (the engine: `#N/IMPL!`, T-1557).
+  `N(INDEX(D1:D5,{1}))` is 10 (T-1557: already fixed by the T-1616 element-wise lift).
 The legacy, implicitly intersected form is T-0294.
 DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
 array bound (arrays.md, "Array results above 1,048,576 cells are #ERROR!").
@@ -499,6 +507,17 @@ Evidence: probes/index-array-indices (60 cells, excel-graph, 2026-10-11, T-1260)
 Status: VERIFIED (excel-graph)
 Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
 Tasks: T-1260, T-1376, T-1437, T-1507
+
+## INDEX of a scalar or a 1x1 array
+Rule: a scalar (number, text, boolean) or a 1x1 array is a 1x1 range for INDEX. Row and column 0 or 1 return the value (`INDEX(5,0,0)`,
+`(5,0,1)`, `(5,1,0)`, `(5,1)`, `(5,0)`, `INDEX("a",1)`, `INDEX(TRUE,1,1)`, `INDEX({7},1,1)`, `INDEX({7},0,0)` return it; `INDEX(5,1.9,1)` is 5); a
+row or column of 2 is `#REF!` (`INDEX(5,2,1)`, `(5,1,2)`, `(5,2)`, `INDEX("a",2)`, `INDEX({7},2,1)`, `INDEX({7},1,2)`), a negative index or a text
+index is `#VALUE!` (`INDEX(5,-1,1)`, `(5,1,-1)`, `(5,"a",1)`), an error value is that error (`INDEX(#N/A,1,1)`), and area_num 1 is
+accepted while 2 is `#REF!` (`INDEX(5,1,1,1)` is 5, `INDEX(5,1,1,2)`).
+So `INDEX(LOOKUP(2,{1,2,3},{4,5,6}),1,1)` is 5 and `INDEX(ROWS({1;2;3}),1,1)` is 3.
+Evidence: probes/index-scalar-indexes A1:A23 (excel-graph, 2026-10-17, T-1242); probes/lookup-argument-modes H18, H19, H24, H28, H30, H31, H39.
+Status: VERIFIED (excel-graph)
+Ours: implemented (the engine matched every cell before T-1242).
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
@@ -536,17 +555,18 @@ Argument errors do not collapse the result: every element gets the error, in the
 Quirk: under a lifted lookup_value an array `if_not_found` is not lifted but gives its first element (`XLOOKUP({2;9},A1:A4,B1:B4,{"x";"y"})` is "two", "x"), and a reference `if_not_found`, even one cell, is `#VALUE!` where it applies (`XLOOKUP({9;2},..,Data!C1)` and `..,Data!C1:C2)` are `#VALUE!`, "two"), while the scalar `XLOOKUP(9,..,Data!C1:C2)` spills 11, 12.
 DEVIATION (decision 0014, CLAUDE.md directive 5): each element is charged one search of the lookup vector (its evaluated cells, so a whole column costs its used area) against the shared cell-visit cap of criteria.md; `ROWS(XLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576),SEQUENCE(1048576)))` is `#ERROR!` where Excel computes it.
 Evidence: probes/let-name-uncalled-picked-refs H21 (T-1252), probes/xlookup-array-lookup-value and probes/xlookup-array-lookup-value-args (excel-graph, 2026-10-10 and 2026-10-11, T-1264).
-Implemented in: `Model::xlookup_impl` (functions/xlookup.rs) through `Model::lift_with_cost`, evaluating the table once (`xlookup_table`).
+Implemented in: `Model::xlookup_impl` (functions/xlookup.rs) through `Model::lift_values` (functions/lift/driver.rs), evaluating the table once (`xlookup_table`).
 Status: VERIFIED (web)
 Tasks: T-1252, T-1264
 
 ## TRIMRANGE with a fractional trim argument
-Rule (hypothesis): `TRIMRANGE(C10:E11,2.5,3)` is `#VALUE!`. In `UPPER(..)&REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,PROPER(""))`
-the result is `#VALUE!` while the left operand is "42"; either TRIMRANGE rejects trim_rows 2.5 or REPLACE rejects a 2x3
-reference start_num instead of lifting over it.
-Evidence: gen-m7/bcad709c30cfdf64 Calc!A20 (excel-graph, 2026-10-11, T-1275).
-Ours: trim_rows 2.5 reads as 2 and REPLACE lifts, so `#SPILL!`.
-Status: UNVERIFIED (probe pending)
+Rule: trim_rows and trim_cols must be exactly 0, 1, 2 or 3; any fractional value is `#VALUE!`, including `0.9`,
+`1.5`, `2.5` and `3.9` (no truncation), in either argument (`(A1:C3,3,2.5)`, `(A1:C3,2.5,2.5)`), as are `4` and `-1`.
+Text `"2"` and `TRUE` coerce (3x3 kept for full data). So `TRIMRANGE` is the `#VALUE!` source in
+`REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,"")`; REPLACE itself lifts over a multi-cell start_num or num_chars
+and spills (`REPLACE("abc",E1:F2,1,"")` is a 2x2 spill).
+Evidence: probes/trimrange-fractional-trim H1-H10, J1, L1 (excel-graph, 2026-10-17, T-1352); gen-m7/bcad709c30cfdf64 Calc!A20.
+Status: VERIFIED
 Tasks: T-1352
 
 ## XMATCH with an omitted argument; SORT with omitted sort arguments
@@ -579,3 +599,9 @@ Status: VERIFIED (excel-graph)
 Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using IF's `evaluate_if_arg`/`if_arg_at`
 (functions/logical/mod.rs).
 Tasks: T-1508
+
+## XMATCH/XLOOKUP reference-form lookup and return arrays; capital Thorn
+A single-cell reference is a one-cell vector for XMATCH `lookup_array` and XLOOKUP `lookup_array`/`return_array`: `XMATCH(5,A1)` is 1, `XMATCH(5,one)` (single-cell defined name) is 1, `LET(r,A1,XMATCH(5,r))` is 1 and `XLOOKUP(5,A1,B3)` returns B3's value. A blank single-cell `return_array` yields 0 (`XLOOKUP(5,one,B2)` is 0). `XMATCH(10,@A1:A3)` is `#N/A` (on row 1 the `@` yields the scalar 5, not a vector containing 10) and `XLOOKUP(5,A1,@B1:B3)` on row 7 is `#VALUE!` (the `@` finds no cell on row 7 to intersect, so the error arises before XLOOKUP runs; the probe cannot separate that from a scalar `return_array`). A 3-D span `Sheet1:Sheet3!A1` as lookup_array or return_array is `#VALUE!` (not `#REF!`). `"Þ"="TH"` is TRUE and `"Þ"<"TI"` is TRUE (Thorn collates as TH), so `XMATCH("Þ",D1:D3)` is 1, `XMATCH("TI",D1:D3,1)` is 3.
+Evidence: probes/xmatch-xlookup-reference-forms G1, H1-H16, probes/xmatch-xlookup-3d-lookup-array H1-H3 (excel-graph, 2026-10-16, T-1698).
+Status: VERIFIED (excel-graph); the engine already matches every cell.
+Tasks: T-1698

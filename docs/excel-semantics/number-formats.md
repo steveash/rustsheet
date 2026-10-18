@@ -85,9 +85,10 @@ Evidence: probes/text-format-text-limit A1-A25 (excel-graph, 2026-10-08, T-0935)
 Status: VERIFIED
 Implemented in: `format_text_value` (formatter/format.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
 result grows so a format of many `@` cannot allocate a huge string (CLAUDE.md directive 5).
-Unprobed (T-0935 follow-up): a text value with a 1-3 section format and no lone `@` section (the
-engine returns the text unchanged), `0;@`-style formats, `_x`/`*x` in the text section (one space
-here), digit or date tokens in the text section (dropped here), and a General 4th section.
+Unprobed (T-0935 follow-up): a text value with a 1-3 section format and no `@` section (the
+engine returns the text unchanged) and a General 4th section. `0;@`-style formats, `_x`/`*x` and
+digit or date tokens beside `@` are now probed: see "TEXT of a text value: `@` with other tokens in
+one section" (T-1656).
 Tasks: T-0935
 
 ## A doubled quote in a format literal is not an escape
@@ -147,6 +148,9 @@ Excel for the web returns `#VALUE!` for `TEXT` with a lowercase-`e` scientific f
 (see below).
 Evidence: poi/NumberFormatApproxTests.xlsx Tests!A2:A39, A42 onward (oracle: excel-graph
 2026-10-04; workbook cached values).
+Also: Excel for the web refuses a whole workbook whose cell `numFmt` is `0.00e+00` (createSession
+501 `FileCorruptTryRepair`/`unsupportedWorkbook`; the same workbook with the other gen-m10 codes
+loads), so the M10 generator does not use lowercase exponents (T-1611).
 Status: CONFLICTING (web vs desktop; excel-desktop probe pending)
 Tasks: T-1075 (Phase 4; decision 0039)
 
@@ -269,7 +273,7 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
   - 5 per placeholder run, plus 2 per `.` in it (`"0000000000"` costs 5; `0.0` costs 7);
   - 3 per unquoted or escaped literal character; `$` costs 1; a run of colons costs 3 once (see "Colon runs");
   - 2 per quoted character;
-  - 2 per other token (`d`, `mm`, `%`, `@`, `[h]`, ...); `AM/PM` costs at least 3 (`"AM/PM"` + 124 quoted fails; the engine uses 3, and the same for `A/P`, unprobed);
+  - 2 per other token (`d`, `mm`, `%`, `@`, `[h]`, ...); `AM/PM` costs 11 to 13 and `A/P` 8 to 10 (the engine uses 11 and 8; see "`A/P` letters and a locale-only `[$-409]`", T-1714);
   - 2 per color (`"[Red]0"` + 120 quoted works, 122 fails; `"[Red]"` + 124 quoted works, 125 fails);
   - 6 to 8 per condition (`"[>5]0"` plus 79 spaces works, 80 fails; the engine uses 7), 3 more in a section that also holds quoted text (`"[>5]0"` + 116 quoted works and 118 fails on 7 and on 1; `"[>5]"` + 120 quoted works, 122 fails);
   - 0 per `;`.
@@ -309,3 +313,86 @@ Evidence strength: excel-graph oracle, 111 cells.
 Implemented (T-1262): all 111 cells pass; escaped colons are `Token::Escaped` and do not join a colon run.
 Status: VERIFIED (excel-graph)
 Tasks: T-1262, T-1450
+
+## TEXT of a text value: `@` with other tokens in one section (T-1656)
+
+Rule: a format whose section holds `@` is `#VALUE!` (for a text value, and for numbers too: see Sections below) when the same section also holds a date or number token, whichever side of the `@` it sits on: `y yy yyyy m mm mmm d dd ddd h hh s ss b bb e ee g gg ggg`, `[h] [m] [s]`, `0 # ? . /`, `E+0`, `General`, `%` and a condition such as `[>5]`. These are literals, not errors: `a`, `,`, space, `\y`, `"y"`, `*-`, `_x`, `[Red]`, `[$-409]` (`TEXT("abc","x@\y")` is "xabcy"; `"x@_x"` prints a space for the spacer). `A/P` and `AM/PM` give a stray first letter or two: `TEXT("abc","x@A/P")` is "xabcA" and `"x@AM/PM"` "xabcAM" (`"A/P@"` "Aabc", `"AM/PM@"` "AMabc"). `@@` prints the text twice. A fill `*x` prints nothing in the text section (`"x@*-"` is "xabc") while `_x` leaves a space.
+Sections (probes/text-at-token-sections, 96 cells: text, 1, -1 and 0 on each format): `@` may stand only in the last section, and a format that breaks either rule is `#VALUE!` for every value, numbers included. `"@;0"`, `"x@;0"`, `"[Red]x@;0"` and `"x@\y;0;0;@"` are `#VALUE!`; `"x@y;0"`, `"0;x@y"`, `"0;0;x@y"`, `"x@y;0;0;@"`, `"0;0;x@y;@"` and `"0;x@0"` are `#VALUE!` because one section holds `@` beside a token. A last section with `@` is the text section whatever the count: `TEXT("abc","0;x@")` and `"0;0;x@"` are "xabc", and numbers use the sections before it (`TEXT(-1,"0;x@")` is "-1", `TEXT(-1,"0;0;x@")` "1", `TEXT(0,"0;0;x@")` "0"). `"0;0;0;y"` stays `#VALUE!` (4th-section rule) and `"0;0;0;x@\y"` gives "xabcy". This reconciles the poi 4th-section entry: literals in a text section print, but a number or date token beside `@` invalidates the format.
+Evidence: probes/text-at-with-tokens (89 cells), probes/text-at-token-sections (96 cells) (excel-graph, 2026-10-16, T-1656).
+Implemented in: `exceeds_complexity_limit` (formatter/complexity.rs, both placement rules, checked by TEXT before formatting); `format_text_value` and `format_number` (formatter/format.rs: a trailing `@` section, `*x`, `AM/PM` as "AM"). `A/P` and `[$-409]` pass since T-1702. The same formatter paths serve cell display, where the trailing `@` section and `*x` follow TEXT's probed behavior (inferred for display: unprobed, and a display fill would repeat to the column width).
+Status: VERIFIED (excel-graph)
+Tasks: T-1656
+
+## `A/P` letters and a locale-only `[$-409]` (T-1702)
+
+Rule: `A/P` prints one letter, each exactly as typed: the first letter (`A`, `a`) before noon and the second (`P`, `p`) after, so case is per half and mixed forms work (`h A/p` is "6 A" at 0.25 and "6 p" at 0.75; `h a/P` is "6 P" at 0.75). Like `AM/PM` it switches hours to the 12-hour clock, and in the text section it prints the morning letter (`x@a/p` "xabca", `x@A/p` "xabcA", `x@a/P` "xabca"). `a/` followed by anything but `p` is literal text in a date format (`h a/x` at 0.75 is "18 a/x"; the 24-hour clock stays) and `#VALUE!` beside `@`. `[$-409]` (a locale with no currency symbol) prints nothing in front of or after any code: `[$-409]0` of 5 is "5", `[$-409]0.00` "5.00", `[$-409]d` of 45000 "15", `[$-409]yyyy-mm-dd` "2023-03-15", `[$-409]mmmm` "March", `[$-409]dddd` "Wednesday", `[$-409]@`/`General` of 5 "5", `0[$-409]` "5".
+Evidence: probes/text-ap-locale-bracket (28 cells), probes/text-at-with-tokens A22, B22, A35, probes/text-at-token-sections A20 (excel-graph, 2026-10-16).
+Implemented in: `Token::AP` and `Token::Locale` (formatter/lexer.rs), `TextToken::AP` (parser.rs, format.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1702, T-1714
+
+T-1714 probed the inferences (probes/text-ap-locale-inferences, 81 cells; probes/displayed-text-ap-locale, 8 cells; excel-graph, 2026-10-16):
+- **A locale tag is not silent.** `[$-zzz]0`, `[$-]0` and `[$-40C]0`/`0.00` print as without the tag, but `[$-40C]mmmm` on 45000 is "mars", `[$-407]mmmm` "März", `[$-40C]dddd` "mercredi", and `[$-F800]dddd` the system long date "Wednesday, March 15, 2023". The engine still prints English names (T-1716).
+- **`AM/PM` may stand in a fourth section**, with or without `@`: `TEXT(5,"0;0;0;x@AM/PM")` is "5", `TEXT("abc","0;0;0;x@AM/PM")` "xabcAM", `TEXT(0.75,"0;0;0;AM/PM")` "1". `"0;0;0;0"` stays `#VALUE!`. `A/P` there: `TEXT(5,"0;0;0;A/P")` is "5", but `TEXT("abc","0;0;0;A/P")` is "A" (a text value prints the morning letter alone without `@`; A13:A14) and `"0;0;0;x@A/P"` gives "xabcA" (A15). `AM/PM` with a text value and no `@` was not probed. Implemented: `exceeds_complexity_limit` exempts `AM/PM`.
+- **Length-limit costs** (text, 0.75 or 5 as the value): `AM/PM` + 79 spaces works and 80 fails, `AM/PM` + 120 quoted works and 121 fails; `A/P` + 80 spaces works and 81 fails, `A/P` + 122 quoted works and 123 fails; `[$-409]` + 118 quoted works and 119 fails, `[$-409]` + 78 spaces works and 79 fails. The probes pin `AM/PM` to 11 to 13 and `A/P` to 8 to 10 (the engine uses 11 and 8, both refunded 2 before a closing quoted run) and `[$-409]` to 14. The cost of other tags is inferred from `[$-409]` (7 characters at 2), not probed. The earlier "`AM/PM` costs at least 3" fit was wrong.
+- **Cell display of `A/P`** equals TEXT's (`h A/P`, `h a/p`, `A/P`, `h:mm a/P` on cells; probes/displayed-text-ap-locale A1:A4).
+
+## Displayed text (`Range.text`) of a formatted cell (T-1610)
+Rule: excel-graph's `Range.text` is the cell's value under its number format, and it does not
+depend on the column width. At width 4 a General `12345678` stays "12345678" and `=1/3` stays
+"0.333333333" (the 11-character General rule of `TEXT(x,"General")`, not a width-fitted
+shortening), and text is not cut ("long text"). A number a date format cannot show (a negative date
+serial) is 255 `#` characters, not a width-sized `####`. The other probed cells:
+General `1.5` "1.5", `1234567890123` "1.23457E+12", `1E-10` "1E-10"; `0.00` on PI() "3.14";
+`#,##0.00` on -1234.5 "-1,234.50"; `0%`/`0.0%` on 0.256 "26%"/"25.6%"; `yyyy-mm-dd` on 45000
+"2023-03-15"; `m/d/yyyy h:mm` on 45000.75 "3/15/2023 18:00"; `0.00;(0.00)` on -5 "(5.00)";
+`0.00;-0.00;"zero"` on 0 "zero"; `dddd` on DATE(2024,2,29) "Thursday"; `# ?/?` on 12.5 "12 1/2";
+`0.00E+00` on 123456789 "1.23E+08"; `[h]:mm:ss` on 0.5 "12:00:00"; `$#,##0.00` "$3.00"; TRUE
+"TRUE"; `#DIV/0!` "#DIV/0!"; an empty reference "0"; `TEXT(1234.5,"#,##0")` "1,235".
+Evidence: probes/displayed-text-formats S!A1:A24, B1:B4 (excel-graph `text`, 2026-10-16, T-1610).
+Desktop `.Text` does depend on the width (`####` when a number does not fit), unprobed here: the
+excel-graph text is what the M10 suite scores (decision 0068).
+Not implemented (T-1711): ours gives " 1/2" for `# ?/?` on 12.5, "1,234" for
+`TEXT(1234.5,"#,##0")` (a value failure too) and `#VALUE!` for the negative date.
+Status: VERIFIED (Excel for the web)
+Tasks: T-1610, T-1711
+
+## Displayed text over an edge-value pool (T-1611)
+Rule: suite gen-m10 records Excel's displayed text (`Range.text`) of 135 format codes (every built-in,
+custom codes with 1-4 sections, conditions, colors, literals, `*`/`_`, `@`, elapsed and fractional
+seconds, fractions, scientific, scaling commas, percent) over 44 edge values, 10,400 cells, plus
+TEXT() with the same codes. Points the earlier probes did not show:
+- A `*x` fill adds nothing to the text: `_("$"* #,##0.00_);...` on 36.5 is " $36.50 ", `*.0.00` and
+  `0.00*-` on PI() "3.14"; `_x` still adds one space (`_(* #,##0_)` on 1000 " 1,000 ").
+- A date or clock format over a serial it cannot show (negative, or 1234567890 past 9999-12-31) is
+  255 `#`; 787 such cells. An elapsed code with a clock or fraction token joins them (`[h]:mm`,
+  `[m]:ss`, `[ss].00`, `[h]:mm:ss.0` on any negative, even -0.5, and on 1234567890), but a bare
+  elapsed code does not: `[s]` on -1.5 is "-129600" and on 1E15 "86400000000000000000" (see
+  "Elapsed-time tokens"). TEXT() on the same codes is `#VALUE!` exactly where the display is 255 `#`;
+  every other paired TEXT() result equals the displayed text.
+- A fraction whose numerator overflows is 255 `#` too: `?/100` on 1000, 999.9999 and 1234567890
+  (numerator 100000 and up; 99.5 is "9950/100"), `?/?` on 123456789012345 and 1E15 while 1234567890
+  is "1234567890/1". The threshold is unprobed (T-1740).
+- Clock and date fields come from the serial rounded to the shown second: 0.9999999999 is "0:00"
+  under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
+- `mm:ss` with no hour is minutes: 123456.789 is "56:10".
+- The text section formats booleans as well as text: `"pre "@` on TRUE is "pre TRUE", `;;;` shows
+  nothing, `0.0;[Red]-0.0;0.0;"<"@">"` on an empty string "<>".
+- A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5". A value that rounds to
+  nothing shows no minus: `#,` on -0.5 "", `0.0,,` on -1234.5678 "0.0"; `#,` on 1.5 is "" and on
+  1000 "1".
+- `?.??` keeps the point on an integer ("1000.  "); `#%` on 0.0049 is "%".
+- Two conditions: `[<0]"neg";[>0]"pos";"zero"` on 1 is "pos"; `[=0]"nil";General` on PI() is
+  "3.141592654"; `[<=-1]0;[<1]0.0000;0.0` on -1.5 "2"; `[>=1]0.00;0.000` on -0.5 "-0.500".
+- `[$USD]` is currency text ("-1.50 USD") and `[Cyan]` a color.
+- Engineering and padded mantissas: `##0.0E+0` on 123456.789 is "123.5E+3", `00.0E+0` on 36.5
+  "36.5E+0", `0.000E-00` on 1.5 "1.500E00".
+Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
+text" section lists every cell ours gets wrong.
+Not implemented: ours passes 6,961 of 10,400 text cells (66.9%). Fill characters (T-1735),
+out-of-range dates (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
+the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
+scientific (T-1730), fractions and round-half (T-1711, T-0982), the sign of -0.5 (T-1129),
+fractional seconds (T-0981, T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
+Status: VERIFIED (Excel for the web)
+Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740

@@ -24,6 +24,13 @@
 //! - a section holding both a condition and quoted text pays 3 more (`"[>5]0"` + 116 quoted works,
 //!   118 fails, while `"[>5]0"` + 79 spaces works).
 //!
+//! TEXT also rejects two placements of `@`, for any value (docs/excel-semantics/number-formats.md,
+//! "TEXT of a text value: `@` with other tokens in one section"; probes/text-at-with-tokens,
+//! probes/text-at-token-sections, excel-graph, T-1656), and they are checked here too:
+//! - a section holding `@` that is not the last section (`"@;0"`, `"x@;0"`; `"0;x@"` is fine);
+//! - `@` in the same section as a number or date token ([`conflicts_with_text`]): `"x@y"`, `"0@"`,
+//!   `"x@%"`, `"x@[>5]"`, `"x@y;0;0;@"`. `AM/PM` and `A/P` do not conflict (`"x@AM/PM"` is "xabcAM").
+//!
 
 use super::lexer::{Lexer, Token};
 
@@ -39,7 +46,15 @@ const TOKEN_COST: usize = 2;
 /// What `@` is refunded on top of its `TOKEN_COST` in a section whose closing literal run holds
 /// quoted text (probes/text-format-length-limit-l, -m, T-1481).
 const TEXT_TOKEN_EXTRA_REFUND: usize = 1;
-const AMPM_COST: usize = 3;
+/// `AM/PM` and `A/P` (probes/text-ap-locale-inferences, excel-graph, T-1714): `AM/PM` + 79 spaces
+/// works and 80 fails (cost 11 to 13), `A/P` + 80 works and 81 fails (8 to 10); the quoted ladders
+/// (`AM/PM` + 120 works and 121 fails, `A/P` + 122 works and 123 fails) are met by refunding them
+/// like a free token in a section whose closing literal run holds quoted text.
+const AMPM_COST: usize = 11;
+const AP_COST: usize = 8;
+/// `[$-409]` and every other locale tag: 7 characters at a quoted character's cost (+ 118 quoted
+/// works and 119 fails, + 78 spaces works and 79 fails).
+const LOCALE_COST: usize = 14;
 const COLOR_COST: usize = 2;
 const CONDITION_COST: usize = 7;
 /// What quoted text costs on top of its characters when more of the section follows it.
@@ -98,18 +113,34 @@ fn is_number_or_date(token: &Token) -> bool {
                 | Token::ElapsedHourPadded
                 | Token::ElapsedMinutePadded
                 | Token::ElapsedSecondPadded
-                | Token::AMPM
                 | Token::Era
                 | Token::Calendar(_)
         )
 }
 
+/// Whether `token` makes a section holding `@` invalid (probes/text-at-with-tokens A1-A43,
+/// B1-B43): the date and time letters, the elapsed tokens, the era and calendar tokens, the digit
+/// placeholders, `.`, `/`, `E+`, `General`, `%` and a condition. Like [`is_number_or_date`], which leaves out
+/// `AM/PM` (a fourth section may hold it); the calendar tokens (`B1`, `B2`) are inferred from the other date tokens.
+/// `A/P` is in neither list: a fourth section may hold it (probes/text-at-token-sections A20).
+fn conflicts_with_text(token: &Token) -> bool {
+    is_number_or_date(token)
+        || matches!(
+            token,
+            Token::Period
+                | Token::Literal('/')
+                | Token::General
+                | Token::Percent
+                | Token::Condition(..)
+        )
+}
+
 /// Whether `token` costs nothing in a section whose closing literal run holds quoted text: the
 /// date and time letters and `@` (probed: `d`, `dd`, `m`, `mm`, `h`, `yyyy`, `@`; seconds and day or
-/// month names are inferred). Elapsed tokens, `AM/PM` and `%` keep their cost (`"[h]"` + 125 quoted
+/// month names are inferred). Elapsed tokens and `%` keep their cost (`"[h]"` + 125 quoted
 /// and `"%"` + 125 quoted fail).
 fn is_free_before_closing_quoted(token: &Token) -> bool {
-    is_date_time_letter(token) || matches!(token, Token::Raw)
+    is_date_time_letter(token) || matches!(token, Token::Raw | Token::AMPM | Token::AP(..))
 }
 
 /// The context-dependent costs of one section, settled when the section ends.
@@ -158,9 +189,19 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
     // Costs are summed before the end-of-section refunds, so the limit is checked per section.
     let mut cost = 0;
     let mut run = Run::None;
+    // Whether the current section holds `@`, and whether it holds a token that conflicts with it.
+    let mut has_text = false;
+    let mut has_conflict = false;
     loop {
         let token = lexer.next_token();
+        // `AM/PM` is not in the list: it may stand in a fourth section (probes/text-ap-locale-inferences
+        // A11, A12, A16).
         if sections == MAX_SECTIONS && is_number_or_date(&token) {
+            return true;
+        }
+        has_text |= matches!(token, Token::Raw);
+        has_conflict |= conflicts_with_text(&token);
+        if has_text && (has_conflict || token == Token::Separator) {
             return true;
         }
         let (next_run, token_cost) = match &token {
@@ -175,6 +216,7 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
                 sections += 1;
                 section = Section::default();
                 run = Run::None;
+                has_conflict = false;
                 if sections > MAX_SECTIONS {
                     return true;
                 }
@@ -195,11 +237,13 @@ pub(crate) fn exceeds_complexity_limit(format: &str) -> bool {
             Token::Literal(':') => (Run::Colon, LITERAL_COST),
             Token::Literal('$') | Token::Escaped('$') => (Run::Literal, DOLLAR_COST),
             // An escaped colon does not join a colon run: it prints (`0\:\:` is "1::").
+            Token::Locale => (Run::None, LOCALE_COST),
             Token::Literal(_) | Token::Escaped(_) | Token::Currency(_) => {
                 (Run::Literal, LITERAL_COST)
             }
             Token::Text(text) => (Run::Literal, QUOTED_CHAR_COST * text.chars().count()),
             Token::AMPM => (Run::None, AMPM_COST),
+            Token::AP(..) => (Run::None, AP_COST),
             _ => (Run::None, TOKEN_COST),
         };
         let counts_as_element = !matches!(token, Token::Color(_) | Token::Condition(..));
@@ -372,6 +416,101 @@ mod tests {
             format!("[Red]0{}", quoted(122)),
             format!("[>5]{}", quoted(122)),
             format!("[>5]0{}", quoted(118)),
+        ];
+        for code in too_complex {
+            assert!(exceeds_complexity_limit(&code), "{code}");
+        }
+    }
+
+    /// `@` outside the last section or beside a number or date token (probes/text-at-with-tokens,
+    /// probes/text-at-token-sections, T-1656).
+    #[test]
+    fn text_token_placement() {
+        let ok = [
+            "x@",
+            "@@",
+            "0;x@",
+            "0;0;x@",
+            "0;0;0;x@",
+            "0;@",
+            "x@a",
+            "x@A/P",
+            "x@AM/PM",
+            "A/P@",
+            "x@[Red]",
+            "x@[$-409]",
+            "x@*-",
+            "x@_x",
+            "x@\\y",
+            "x@\"y\"",
+            "x@,",
+            "x@ ",
+            "0;0;0;x@\\y",
+        ];
+        for code in ok {
+            assert!(!exceeds_complexity_limit(code), "{code}");
+        }
+        let invalid = [
+            "x@y",
+            "y@",
+            "x@mmm",
+            "x@h",
+            "x@s",
+            "x@b",
+            "x@e",
+            "x@g",
+            "x@[h]",
+            "x@[s]",
+            "x@0",
+            "#@",
+            "x@?",
+            "x@.",
+            "x@/",
+            "x@E+0",
+            "x@General",
+            "x@%",
+            "x@[>5]",
+            "[>5]@",
+            "x@y;z",
+            "x@;0",
+            "@;0",
+            "[Red]x@;0",
+            "x@\\y;0;0;@",
+            "x@y;0;0;@",
+            "0;x@y;0;@",
+            "0;0;x@y;@",
+            "0;x@0",
+        ];
+        for code in invalid {
+            assert!(exceeds_complexity_limit(code), "{code}");
+        }
+    }
+
+    /// probes/text-ap-locale-inferences (excel-graph, T-1714).
+    #[test]
+    fn am_pm_a_p_and_locale_costs() {
+        let ok = [
+            format!("AM/PM{}", " ".repeat(79)),
+            format!("AM/PM{}", quoted(120)),
+            format!("A/P{}", " ".repeat(80)),
+            format!("A/P{}", quoted(122)),
+            format!("[$-409]{}", quoted(118)),
+            format!("[$-409]{}", " ".repeat(78)),
+            "0;0;0;AM/PM".to_string(),
+            "0;0;0;A/P".to_string(),
+            "0;0;0;x@AM/PM".to_string(),
+        ];
+        for code in ok {
+            assert!(!exceeds_complexity_limit(&code), "{code}");
+        }
+        let too_complex = [
+            format!("AM/PM{}", " ".repeat(80)),
+            format!("AM/PM{}", quoted(121)),
+            format!("A/P{}", " ".repeat(81)),
+            format!("A/P{}", quoted(123)),
+            format!("[$-409]{}", quoted(119)),
+            format!("[$-409]{}", " ".repeat(79)),
+            "0;0;0;0".to_string(),
         ];
         for code in too_complex {
             assert!(exceeds_complexity_limit(&code), "{code}");

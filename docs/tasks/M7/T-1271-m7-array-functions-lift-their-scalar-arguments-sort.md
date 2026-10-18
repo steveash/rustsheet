@@ -3,17 +3,20 @@ id: T-1271
 title: "M7 array functions lift their scalar arguments; SORT reads sort_index and sort_order as lists"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: M
-tier: sonnet
-depends_on: []
+tier: opus
+depends_on: [T-1770]
+spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
 ## Goal
 The scalar arguments of SEQUENCE, TAKE, DROP, EXPAND, MAKEARRAY, WRAPROWS, WRAPCOLS, TOCOL, UNIQUE and SORTBY lift over a range and an array (one call per element) as in Excel, and SORT reads an array sort_index as a list of sort keys with a sort_order of the same length.
 
 ## Context
+SPEC-0011 rollout step 3 (docs/specs/SPEC-0011-scalar-argument-lifting.md). Lift the M7 scalars whose elements are values through `lift_call`, with their parameters in `Function::arg_kinds` (`Lift`, or `Whole` for the vector and list arguments). Lifted elements that are references (OFFSET, INDIRECT) or whole arrays (TAKE, DROP) are outside the spec. Design them here, on top of `lift_values` and `cast::calc_result_to_array_node`, rather than as a new copy of the broadcast.
+
 T-1083's probe probes/m7-argument-modes (excel-graph, 2026-10-09; docs/excel-semantics/arrays.md "Dynamic-array and LAMBDA function argument modes"). Failing rows (F/G/H cells): 1-3 SEQUENCE (a range gives one row, an array `#N/IMPL!`), 4-5 TAKE, 6 DROP (a lifted TAKE or DROP element is the whole sub-array, column K), 7 EXPAND, 8 WRAPROWS, 9 TOCOL, 10-11 SORT (`SORT(A1:B3,{1;2})` is 3x2; `SORT(A1:B3,1,{1;-1})` is `#VALUE!`), 12 UNIQUE, 23 MAKEARRAY, 26 SORTBY, 42 WRAPCOLS pad_with. Reuse the existing lift helpers (T-1241 does the same for the M6 lookup functions; check whether it landed a shared helper first). The functions live in functions/lookup_and_reference and spill_functions.rs. Split per function family if it outgrows size M.
 
 More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
@@ -33,3 +36,17 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+## Outcome
+Split into smaller tasks (2026-10-17); no code changed. Each new task owns the probe and gen cells listed for it:
+- T-1833 (opus, S): SPEC-0011 amendment for array-valued functions in the lifting table (static shape, the top-left element rule, the element cost bound, SORTBY's alternating kinds) and for TAKE/DROP elements that are whole sub-arrays. No eval cells.
+- T-1834 (opus, M): SEQUENCE and MAKEARRAY, the first array-valued entries (rows 1-3, 23; K9, K10).
+- T-1835 (sonnet, S): EXPAND, WRAPROWS, WRAPCOLS (rows 7, 8, G42; K5-K7; gen-m7/6db767d720c5b55a A12).
+- T-1836 (sonnet, S): TOCOL, UNIQUE (rows 9, 12; K8; gen-m9/1782efcecd5d4b1b A19, gen-m9/4df1b22d3ed63f58 A36).
+- T-1837 (opus, S): SORT reads sort_index and sort_order as lists (rows 10, 11; gen-m7/a0cbc75358b429b6 A12).
+- T-1838 (opus, M): TAKE and DROP with whole sub-array elements (rows 4-6, I4, I5; K1-K4).
+- T-1839 (opus, S): SORTBY's sort_order (row 26).
+Found while splitting: the table cannot yet hold any M7 function. `lifted_static_result` gives an unlifted call the
+shape `Scalar`, the M7 functions are `Unknown`, and the table-wins test forbids keeping their fallback arms. So
+every entry waits on T-1833's design and T-1834's implementation, except SORT, which has nothing to lift. Row 44
+(`LAMBDA(x,x)`) belongs to T-1511.

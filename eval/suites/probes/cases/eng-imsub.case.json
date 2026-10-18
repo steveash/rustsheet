@@ -1,0 +1,39 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1625: IMSUB suffixes, mixed suffixes, numeric/bool arguments and invalid text.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-1625"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMSUB(\"3+4i\",\"1+2i\")",
+    "A2": "=IMSUB(\"3+4j\",\"1+2j\")",
+    "A3": "=IMSUB(\"3+4i\",\"1+2j\")",
+    "A4": "=IMSUB(\"3+4j\",\"1+2i\")",
+    "A5": "=IMSUB(\"5\",\"2i\")",
+    "A6": "=IMSUB(\"3+4i\",\"3+4i\")",
+    "A7": "=IMSUB(\"3+4i\",\"0\")",
+    "A8": "=IMSUB(\"0\",\"3+4i\")",
+    "A9": "=IMSUB(\"i\",\"i\")",
+    "A10": "=IMSUB(\"abc\",\"1+i\")",
+    "A11": "=IMSUB(\"1+i\",\"abc\")",
+    "A12": "=IMSUB(\"\",\"1+i\")",
+    "A13": "=IMSUB(\"1+i\",\"\")",
+    "A14": "=IMSUB(\"1E2+1i\",\"1+1E-2i\")",
+    "A15": "=IMSUB(\"3+4i\",5)",
+    "A16": "=IMSUB(5,\"3+4i\")",
+    "A17": "=IMSUB(\"3+4i\",TRUE)",
+    "A18": "=IMSUB(\"0\",\"0\")",
+    "A19": "=IMSUB(\"-3-4i\",\"1E-200+0i\")",
+    "A20": "=IMSUB(\"3+4i\",\"1+2k\")",
+    "A21": "=IMSUB(\"1+i\",\"-i\")"
+   }
+  }
+ ],
+ "expected": {}
+}

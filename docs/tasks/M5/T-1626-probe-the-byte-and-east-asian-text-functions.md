@@ -35,6 +35,6 @@ en-US byte functions on double-width text and surrogate pairs, start/num_bytes a
 ## Outcome
 Added probes t1626-{searchb,findb,replaceb,rightb,lenb,asc,jis-0..3,phonetic,regextest,regexreplace}
 (excel-graph); all ten functions are over the floor (lock 59 -> 49). New-coverage failures: ASC
-(T-1691) and REGEXTEST/REGEXREPLACE (T-1360, T-1688). Byte functions, JIS (#NAME?) and PHONETIC
+(T-1863) and REGEXTEST/REGEXREPLACE (T-1360, T-1688). Byte functions, JIS (#NAME?) and PHONETIC
 (#N/A) already match. Invalid-pattern and `$3` cells stay pending (error type undecoded). Quirks in
 docs/excel-semantics/text.md.

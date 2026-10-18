@@ -1036,8 +1036,8 @@ impl Model {
     /// The readers are listed in the order of the writes that contradict them,
     /// cell records first, then rectangles; the rectangles are each met once,
     /// at their first cell written, so the check costs the cells plus the
-    /// rectangles, not their product (T-1512); only the rectangles filed in row bands over the
-    /// spill are met at all (T-1545).
+    /// rectangles, not their product (T-1512); only the rectangles filed in row and column bands
+    /// over the spill are met at all (T-1545, T-1646).
     pub(crate) fn spill_contradicts_a_read(
         &mut self,
         anchor: CellReferenceIndex,

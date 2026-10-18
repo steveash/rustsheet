@@ -2,12 +2,12 @@
 //! array indices (docs/excel-semantics/lookup.md).
 
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
-use crate::external_reference::ExternalArea;
+use crate::external_reference::{ExternalArea, PickedReference};
 use crate::functions::util::{
-    array_node_to_calc_result, near_integer_count, picks_a_branch, NEAR_INTEGER_TOLERANCE,
+    array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
 };
 use crate::limits::check_array_size;
-use crate::reference_operators::{three_d_needs_one_sheet, Picked, RefArg};
+use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
@@ -237,6 +237,8 @@ impl Model {
                     RefArg::Value(CalcResult::Error { error, .. }) => Some(error.clone()),
                     _ => None,
                 };
+                // `INDEX(XMATCH(2,{1,2,3}),{1,2})` is 2, #REF! (probes/index-literal-scalar A10).
+                let arg = scalar_as_one_element_array(arg);
                 return self.index_lifted(row, col, area, cell, arg_error, |model, numbers| {
                     model.index_select(&arg, numbers, two_arg, cell, IndexForm::TopLeft)
                 });
@@ -247,28 +249,23 @@ impl Model {
         // that reference (`ERROR.TYPE(INDEX(IF(TRUE,…!A1:C4),2,2))` is `#N/A`;
         // probes/external-ref-no-link-ifchoose A22, A23). The pick reads the condition once,
         // after the indices, as the reference is read otherwise.
-        let arg = match self.pick_branch(&args[0], cell) {
-            Picked::Node(reference) => {
-                if let Some(areas) = self.external_reference(reference, cell) {
-                    return match areas
-                        .and_then(|areas| external_index_area(&areas, numbers, two_arg, cell))
-                    {
-                        Ok(area) => self.external_picked_value(area, cell),
-                        Err(error) => error,
-                    };
-                }
-                match self.evaluate_reference_arg(reference, cell) {
-                    // A scalar picked by IF or CHOOSE is a one-element array: `INDEX(CHOOSE(1,
-                    // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-
-                    // aggregate-and-array-constant-at H1, T-1643). A scalar anywhere else keeps
-                    // being `#VALUE!` (unprobed, T-1645).
-                    RefArg::Value(scalar) if picks_a_branch(&args[0]) => {
-                        RefArg::Value(scalar_as_array(scalar))
-                    }
-                    other => other,
-                }
+        let arg = match self.pick_reference(&args[0], cell) {
+            PickedReference::External(areas) => {
+                return match areas
+                    .and_then(|areas| external_index_area(&areas, numbers, two_arg, cell))
+                {
+                    Ok(area) => self.external_picked_value(area, cell),
+                    Err(error) => error,
+                };
             }
-            Picked::Value(value) => RefArg::Value(value),
+            // A scalar is a one-element array, wherever it comes from: `INDEX(CHOOSE(1,
+            // @B1:B6*1),3)` is `#REF!` on the range's rows (probes/legacy-choose-arm-aggregate-
+            // and-array-constant-at H1, T-1643), `INDEX(XMATCH(2,{1,2,3}),1,1)` 2 and `INDEX(5,2)`
+            // `#REF!` (probes/lookup-argument-modes, m7-argument-modes, index-literal-scalar; T-1645).
+            PickedReference::Node(reference) => {
+                scalar_as_one_element_array(self.evaluate_reference_arg(reference, cell))
+            }
+            PickedReference::Value(value) => RefArg::Value(scalar_as_array(value)),
         };
         self.index_select(&arg, numbers, two_arg, cell, form)
     }
@@ -526,4 +523,12 @@ fn external_index_area(
         last_column: offset(area.first_column, last_col),
         cache: area.cache,
     })
+}
+
+/// INDEX's first argument with a scalar value read as a one-element array (T-1645).
+fn scalar_as_one_element_array(arg: RefArg) -> RefArg {
+    match arg {
+        RefArg::Value(scalar) => RefArg::Value(scalar_as_array(scalar)),
+        ranges @ RefArg::Ranges(_) => ranges,
+    }
 }

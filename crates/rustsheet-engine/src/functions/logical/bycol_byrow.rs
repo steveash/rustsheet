@@ -1,4 +1,5 @@
 use super::lambda::LambdaCaller;
+use crate::cast::calc_result_to_array_node;
 use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -64,18 +65,24 @@ impl LambdaGrid {
     }
 }
 
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
+/// `Ok` when an evaluated function argument is a LAMBDA (an eta name evaluates to one), else `Err`
+/// with what it evaluated to: the check BYROW, BYCOL, GROUPBY and PIVOTBY share, each mapping
+/// anything else to its own error.
+pub(crate) fn as_lambda(value: CalcResult) -> Result<CalcResult, CalcResult> {
+    match value {
+        lambda @ CalcResult::Lambda(_) => Ok(lambda),
+        other => Err(other),
+    }
+}
+
+/// A LAMBDA result as one BYROW/BYCOL/MAKEARRAY cell: a 1x1 array is its one value (probes/
+/// byrow-bycol-array-results, excel-graph 2026-10-16); otherwise the shared element mapping.
+fn lambda_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        // A 1x1 array is its one value (probes/byrow-bycol-array-results, excel-graph 2026-10-16).
         CalcResult::Array(mut rows) if rows.len() == 1 && rows[0].len() == 1 => {
             rows.remove(0).remove(0)
         }
-        _ => ArrayNode::Error(Error::VALUE),
+        other => calc_result_to_array_node(other),
     }
 }
 
@@ -113,7 +120,7 @@ impl Model {
                         &[Node::ArrayKind(column)],
                         cell,
                     );
-                    (!makes_calc_error(&result)).then(|| calc_result_to_array_node(result))
+                    (!makes_calc_error(&result)).then(|| lambda_result_to_array_node(result))
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -151,7 +158,7 @@ impl Model {
                         &[Node::ArrayKind(vec![row])],
                         cell,
                     );
-                    (!makes_calc_error(&result)).then(|| vec![calc_result_to_array_node(result)])
+                    (!makes_calc_error(&result)).then(|| vec![lambda_result_to_array_node(result)])
                 })
                 .collect::<Option<Vec<_>>>(),
         };
@@ -176,14 +183,8 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<CalcResult, CalcResult> {
-        match self.evaluate_node_in_context(arg, cell) {
-            lambda @ CalcResult::Lambda(_) => Ok(lambda),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expected a LAMBDA".to_string(),
-            )),
-        }
+        as_lambda(self.evaluate_node_in_context(arg, cell))
+            .map_err(|_| CalcResult::new_error(Error::VALUE, cell, "Expected a LAMBDA".to_string()))
     }
 
     /// The array and the one-argument LAMBDA caller of a BYROW or BYCOL call, in that order of
@@ -213,7 +214,7 @@ impl Model {
             right: slice.right,
         };
         let result = self.call_lambda_caller(caller, [reference], cell);
-        (!makes_calc_error(&result)).then(|| calc_result_to_array_node(result))
+        (!makes_calc_error(&result)).then(|| lambda_result_to_array_node(result))
     }
 
     /// The array argument of BYROW or BYCOL. A range on one sheet (also through TAKE, DROP,
@@ -279,8 +280,11 @@ impl Model {
     }
 
     /// A LAMBDA's result as a value: a reference it returns (`LAMBDA(v,v)` over a range cell)
-    /// is read, so MAP, SCAN and REDUCE never carry one into their output. A one-cell reference
-    /// is read directly, without building a one-element array.
+    /// is read, so MAP and SCAN never carry one into their output. A one-cell reference is read
+    /// directly, without building a one-element array. A multi-cell reference is no element:
+    /// both callers show it as `#VALUE!`, so only its existing cells are read, for what reading
+    /// does (a cycle through the range, the reads a spill checks), and no array is built.
+    /// Building one made every call cost the range's full size (T-1769 fuzz timeout).
     pub(super) fn lambda_result_value(
         &mut self,
         result: CalcResult,
@@ -298,13 +302,40 @@ impl Model {
                     value => value,
                 }
             }
-            CalcResult::Range { .. } => match self.result_to_array(result, cell) {
-                Ok(data) if data.len() == 1 && data[0].len() == 1 => {
-                    array_node_to_calc_result(&data[0][0], cell)
+            // A one-cell range on two sheets reads as its first sheet's cell.
+            CalcResult::Range { left, right }
+                if left.row == right.row && left.column == right.column =>
+            {
+                self.lambda_result_value(CalcResult::Range { left, right: left }, cell)
+            }
+            CalcResult::Range { left, right } => {
+                // Read as `evaluate_range` reads it, its size limit and then its first sheet,
+                // but over the cells that exist only, as a union walks an area: the blank rest is
+                // recorded as read empty in one piece. Every value it could hold gives the same
+                // element, and a dense walk made each call cost the range's height.
+                if let Some((error, message)) = check_range_size(&left, &right) {
+                    return CalcResult::new_error(error, cell, message);
                 }
-                Ok(data) => CalcResult::Array(data),
-                Err(e) => e,
-            },
+                let area = Range {
+                    left,
+                    right: CellReferenceIndex {
+                        sheet: left.sheet,
+                        ..right
+                    },
+                };
+                let read = self.for_each_position_in_area(&area, true, cell, &mut |model, at| {
+                    model.evaluate_cell(at);
+                    Ok(())
+                });
+                match read {
+                    Ok(()) => CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "A range is not an element".to_string(),
+                    ),
+                    Err(error) => error,
+                }
+            }
             other => other,
         }
     }
@@ -366,11 +397,33 @@ impl Model {
                     [CalcResult::Number(r as f64), CalcResult::Number(c as f64)],
                     cell,
                 );
-                row.push(calc_result_to_array_node(cell_result));
+                row.push(lambda_result_to_array_node(cell_result));
             }
             result.push(row);
         }
 
         CalcResult::Array(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::as_lambda;
+    use crate::calc_result::CalcResult;
+
+    #[test]
+    fn as_lambda_passes_anything_else_through_unchanged() {
+        assert!(matches!(
+            as_lambda(CalcResult::Lambda(7)),
+            Ok(CalcResult::Lambda(7))
+        ));
+        assert!(matches!(
+            as_lambda(CalcResult::Number(5.0)),
+            Err(CalcResult::Number(n)) if n == 5.0
+        ));
+        assert!(matches!(
+            as_lambda(CalcResult::Array(Vec::new())),
+            Err(CalcResult::Array(rows)) if rows.is_empty()
+        ));
     }
 }

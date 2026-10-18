@@ -107,21 +107,18 @@ pub fn format_text(value: Option<f64>, format: &str, ctx: &FormatContext) -> For
 /// Formats a text value (a boolean's "TRUE"/"FALSE" included) the way `TEXT` does: only the
 /// 4th section applies, `@` stands for the text and the section's other tokens print as literals
 /// (poi `TextFormatTests` A3:A10, A12:A29; docs/excel-semantics/number-formats.md "Text and
-/// booleans use the format's text section"). A single section with `@` is a text section too
-/// (`@" ""q"""` on "x" is "x q", probes/format-doubled-quotes C11). Any other format with fewer
-/// than four sections returns the text unchanged; that case is unprobed. A result over 255
-/// characters is `#VALUE!` ([`MAX_TEXT_FORMAT_CHARS`]).
+/// booleans use the format's text section"). A last section with `@` is the text section too,
+/// whatever the section count (`@" ""q"""` on "x" is "x q", probes/format-doubled-quotes C11;
+/// `TEXT("abc","0;x@")` is "xabc", probes/text-at-token-sections A10, A11, T-1656). Any other
+/// format with fewer than four sections returns the text unchanged; that case is unprobed. A
+/// result over 255 characters is `#VALUE!` ([`MAX_TEXT_FORMAT_CHARS`]).
 pub fn format_text_value(text: &str, format: &str) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
-    let section = match parser.parts.as_slice() {
-        [only]
-            if section_tokens(only)
-                .is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw))) =>
-        {
-            0
-        }
-        parts if parts.len() < 4 => return capped_text(text.to_string()),
+    let parts = parser.parts.as_slice();
+    let section = match parts.last() {
+        Some(last) if parts.len() < 4 && is_text_section(last) => parts.len() - 1,
+        _ if parts.len() < 4 => return capped_text(text.to_string()),
         _ => 3,
     };
     let tokens = match parser.parts.get(section) {
@@ -145,7 +142,13 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
         match token {
             TextToken::Literal(c) => out.push(*c),
             TextToken::Text(t) => out.push_str(t),
-            TextToken::Ghost(_) | TextToken::Spacer(_) => out.push(' '),
+            // Excel: `_x` leaves a space but a `*x` fill prints nothing, and `AM/PM` prints "AM"
+            // (`TEXT("abc","x@_x")` is "xabc ", `"x@*-"` "xabc", `"x@AM/PM"` "xabcAM";
+            // probes/text-at-with-tokens A23, A37, A38, B37, B38, T-1656).
+            TextToken::Ghost(_) => out.push(' '),
+            TextToken::AMPM => out.push_str("AM"),
+            // `A/P` prints its morning letter (probes/text-ap-locale-bracket A21-A23).
+            TextToken::AP(am, _) => out.push(*am),
             TextToken::Raw => out.push_str(text),
             _ => {}
         }
@@ -244,6 +247,11 @@ fn general_text(value: f64, locale: &Locale) -> String {
     }
 }
 
+/// Whether `part` holds `@`, which makes it a text section.
+fn is_text_section(part: &ParsePart) -> bool {
+    section_tokens(part).is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw)))
+}
+
 /// The tokens of a number or date section; `None` for General or an unparsable section.
 fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
     match part {
@@ -272,7 +280,14 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     let mut value = value_original;
     let general = ParsePart::General(GeneralPart {});
     let part;
-    match parts.len() {
+    // A last section with `@` in a format of two or three sections is the text section: numbers
+    // use the sections before it (`TEXT(-1,"0;x@")` is "-1", `TEXT(-1,"0;0;x@")` "1";
+    // probes/text-at-token-sections C10, C11, T-1656).
+    let numeric_sections = match parts.last() {
+        Some(last) if (2..4).contains(&parts.len()) && is_text_section(last) => parts.len() - 1,
+        _ => parts.len(),
+    };
+    match numeric_sections {
         // Excel: an empty format shows nothing but a negative's minus, also for a value that
         // rounds to zero (`TEXT(-0.0001,"")` = "-", `TEXT(5,"")` = ""; probes/text-format-bare-literals
         // A32-A35).
@@ -285,9 +300,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         // A single text section (`@` in it) does not apply to numbers, which print in General:
         // `TEXT(1,"@""aaa""")` is "1" (probes/text-format-length-limit-i A19:A26, T-1434).
-        1 if section_tokens(&parts[0])
-            .is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw))) =>
-        {
+        1 if is_text_section(&parts[0]) => {
             part = &general;
         }
         1 => {
@@ -509,6 +522,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     TextToken::AMPM => {
                         let ampm = if hours < 12.0 { "AM" } else { "PM" };
                         text = format!("{text}{ampm}");
+                    }
+                    TextToken::AP(am, pm) => {
+                        text.push(if hours < 12.0 { *am } else { *pm });
                     }
                     TextToken::Minute => {
                         let minute = minutes as i32;
@@ -791,7 +807,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     TextToken::MinutePadded => {}
                     TextToken::Second => {}
                     TextToken::SecondPadded => {}
-                    TextToken::AMPM => {}
+                    TextToken::AMPM | TextToken::AP(..) => {}
                     TextToken::ElapsedHour => {}
                     TextToken::ElapsedHourPadded => {}
                     TextToken::ElapsedMinute => {}

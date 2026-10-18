@@ -3,7 +3,7 @@ id: T-1557
 title: "N of an array: probe and implement"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,8 @@ Found by T-1507. `Model::fn_n` (functions/information/mod.rs) returns `#N/IMPL!`
 
 ## Out of scope
 -
+
+## Outcome
+Already satisfied by T-1616 (N lifts element-wise; rule in docs/excel-semantics/information.md, probe
+probes/n-array-lift). probes/index-1x1-array-index H21 is not in eval/baseline/probes.txt, so it passes. No engine change;
+only the stale note in lookup.md was corrected. Eval delta: none.

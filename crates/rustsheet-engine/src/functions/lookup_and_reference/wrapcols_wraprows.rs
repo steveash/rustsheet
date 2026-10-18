@@ -5,6 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    limits::check_array_size,
     model::Model,
 };
 
@@ -27,25 +28,23 @@ impl Model {
             Err(e) => return e,
         };
 
-        let wrap_count = match self.get_number(&args[1], cell) {
-            Ok(n) => n as usize,
+        let wrap_count = match self.get_wrap_count(args, flat.len(), cell) {
+            Ok(n) => n,
             Err(e) => return e,
         };
-        if wrap_count < 1 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "wrap_count must be >= 1".to_string(),
-            );
-        }
 
-        let pad = match self.get_pad_with(args, cell) {
+        let pad = match self.get_pad_with(args, flat.len() % wrap_count != 0, cell) {
             Ok(p) => p,
             Err(e) => return e,
         };
 
         let n = flat.len();
         let num_cols = n.div_ceil(wrap_count);
+        // The padded shape is wrap_count rows: refuse one above the array limit before
+        // allocating it (DEVIATION, arrays.md "Array results above 1,048,576 cells"; T-1786).
+        if let Some((error, message)) = check_array_size(wrap_count, num_cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
 
         let mut result: Vec<Vec<ArrayNode>> = vec![Vec::with_capacity(num_cols); wrap_count];
         for (i, val) in flat.into_iter().enumerate() {
@@ -79,22 +78,23 @@ impl Model {
             Err(e) => return e,
         };
 
-        let wrap_count = match self.get_number(&args[1], cell) {
-            Ok(n) => n as usize,
+        let wrap_count = match self.get_wrap_count(args, flat.len(), cell) {
+            Ok(n) => n,
             Err(e) => return e,
         };
-        if wrap_count < 1 {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "wrap_count must be >= 1".to_string(),
-            );
-        }
 
-        let pad = match self.get_pad_with(args, cell) {
+        let pad = match self.get_pad_with(args, flat.len() % wrap_count != 0, cell) {
             Ok(p) => p,
             Err(e) => return e,
         };
+
+        // The padded shape is wrap_count columns: refuse one above the array limit before
+        // allocating a row (T-1786, as WRAPCOLS).
+        if let Some((error, message)) =
+            check_array_size(flat.len().div_ceil(wrap_count), wrap_count)
+        {
+            return CalcResult::new_error(error, cell, message);
+        }
 
         let mut result: Vec<Vec<ArrayNode>> = Vec::new();
         let mut chunk = Vec::with_capacity(wrap_count);
@@ -142,14 +142,45 @@ impl Model {
         Ok(flat)
     }
 
-    /// Parse the optional `pad_with` argument (3rd arg of WRAPCOLS/WRAPROWS).
+    /// The `wrap_count` argument (2nd arg of WRAPCOLS/WRAPROWS) for a vector of `len` values: at
+    /// least 1, and a count above the vector's length does not pad, it is the length
+    /// (probes/dynamic-array-reshape-and-isomitted, arrays.md "WRAPROWS and WRAPCOLS"; T-1786).
+    fn get_wrap_count(
+        &mut self,
+        args: &[Node],
+        len: usize,
+        cell: CellReferenceIndex,
+    ) -> Result<usize, CalcResult> {
+        // Below 1 is checked before truncation: 0.5 and 0 are `#NUM!` (arrays.md "WRAPCOLS of a
+        // single value is not padded"; probes/dynamic-array-reshape-and-isomitted C20/C36/D20/D36 (0, -1),
+        // gen-m7/f68fafa0ca2eba26 A39, gen-m9/50f10c4062fb2e98 A21).
+        let wrap_count = self.get_number(&args[1], cell)?;
+        if wrap_count.is_nan() || wrap_count < 1.0 {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "wrap_count must be >= 1".to_string(),
+            ));
+        }
+        Ok((wrap_count as usize).min(len.max(1)))
+    }
+
+    /// Parse the optional `pad_with` argument; `padded` says some cell is filled with it
+    /// (3rd arg of WRAPCOLS/WRAPROWS).
     fn get_pad_with(
         &mut self,
         args: &[Node],
+        padded: bool,
         cell: CellReferenceIndex,
     ) -> Result<ArrayNode, CalcResult> {
         if args.len() == 3 {
             let v = self.evaluate_node_in_context(&args[2], cell);
+            // An error pad_with that nothing is padded with is the result
+            // (gen-m9/675763979c1defb6 A6: `WRAPCOLS(D6:D6,2,VALUE("x"))` is `#VALUE!`), while
+            // one that fills a padded cell stays in that cell (WRAPCOLS_ROWS.xlsx E10, NA()).
+            if !padded && v.is_error() {
+                return Err(v);
+            }
             Ok(match v {
                 CalcResult::Number(n) => ArrayNode::Number(n),
                 CalcResult::Boolean(b) => ArrayNode::Boolean(b),

@@ -17,6 +17,11 @@ use super::util::compare_values;
 /// Compare two sort keys following Excel's rules:
 ///   Numbers < Strings < Booleans < Errors < Empty cells
 /// Empty cells always sort last regardless of ascending/descending.
+///
+/// It is a total order, so `sort_by` cannot panic: grouping.rs tests it with GROUPBY's `key_cmp`
+/// (`sort_comparators_are_total_orders_on_mixed_types`, T-1694). The blank check must stay here:
+/// `compare_values` alone coerces a blank to 0, "" or FALSE, which is not transitive (-0 = blank =
+/// "" but -0 < "").
 pub(crate) fn sort_key_cmp(
     a: &ArrayNode,
     b: &ArrayNode,
@@ -56,7 +61,7 @@ fn array_node_is_truthy(node: &ArrayNode) -> bool {
 /// Strings are uppercased (matching case-insensitive `array_nodes_equal`).
 /// Numbers use bit-level identity (`f64::to_bits`), which is exact for all
 /// values that actually appear in spreadsheet cells.
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Clone, Hash, Eq, PartialEq)]
 pub(crate) enum CellKey {
     Number(u64),
     Boolean(bool),
@@ -144,10 +149,24 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<bool, CalcResult> {
+        let order = self.get_sort_order_arg(node, cell)?;
+        Self::validate_sort_order(order, cell)
+    }
+
+    /// Evaluates a `sort_order` argument without validating its value (an omitted one is 1).
+    fn get_sort_order_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<i32, CalcResult> {
         if matches!(node, Node::EmptyArgKind) {
-            return Ok(true);
+            return Ok(1);
         }
-        match self.get_number(node, cell)? as i32 {
+        Ok(self.get_number(node, cell)? as i32)
+    }
+
+    fn validate_sort_order(order: i32, cell: CellReferenceIndex) -> Result<bool, CalcResult> {
+        match order {
             1 => Ok(true),
             -1 => Ok(false),
             _ => Err(CalcResult::new_error(
@@ -184,34 +203,21 @@ impl Model {
         let num_cols = data[0].len();
 
         // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
-        let sort_index: usize = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
-            match self.get_number(&args[1], cell) {
-                Ok(n) => {
-                    let n = n as i64;
-                    if n < 1 {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "sort_index must be >= 1".to_string(),
-                        );
-                    }
-                    n as usize
-                }
-                Err(e) => return e,
-            }
+        // Argument errors come before value validation (docs/excel-semantics/arrays.md "SORT
+        // argument errors come before validation"). The order among several error arguments is
+        // UNVERIFIED: by_col's error, then sort_index's, then sort_order's.
+        // A multi-cell sort_order (c5d278a8662ef4b2 A39) fails to coerce here but is only a
+        // validation error to Excel, so by_col is evaluated before either failure is returned.
+        let raw_index = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
+            self.get_number(&args[1], cell).map(|n| n as i64)
         } else {
-            1
+            Ok(1)
         };
-
-        let ascending: bool = if args.len() >= 3 {
-            match self.get_sort_order(&args[2], cell) {
-                Ok(a) => a,
-                Err(e) => return e,
-            }
+        let raw_order = if args.len() >= 3 {
+            self.get_sort_order_arg(&args[2], cell)
         } else {
-            true
+            Ok(1)
         };
-
         let by_col: bool = if args.len() >= 4 {
             match self.get_boolean(&args[3], cell) {
                 Ok(b) => b,
@@ -219,6 +225,27 @@ impl Model {
             }
         } else {
             false
+        };
+        let raw_index = match raw_index {
+            Ok(n) => n,
+            Err(e) => return e,
+        };
+        let raw_order = match raw_order {
+            Ok(n) => n,
+            Err(e) => return e,
+        };
+
+        if raw_index < 1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "sort_index must be >= 1".to_string(),
+            );
+        }
+        let sort_index = raw_index as usize;
+        let ascending = match Self::validate_sort_order(raw_order, cell) {
+            Ok(a) => a,
+            Err(e) => return e,
         };
 
         if !by_col {

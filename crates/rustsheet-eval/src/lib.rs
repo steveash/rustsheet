@@ -27,6 +27,7 @@ pub mod report;
 pub mod runner;
 mod spill_extent;
 pub mod suite;
+pub mod text_expect;
 pub mod value;
 pub mod volatile;
 pub mod xlsx_snapshot;

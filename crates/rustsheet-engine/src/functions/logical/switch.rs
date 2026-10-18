@@ -1,4 +1,5 @@
-use super::{is_lifted, no_match};
+use super::no_match;
+use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
@@ -28,16 +29,19 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let expr = self.evaluate_node_in_context(&args[0], cell);
-        if is_lifted(&expr) {
+        if LiftedArg::is_grid(&expr) {
             let mut lifted = vec![expr];
             for node in &args[1..] {
                 lifted.push(self.evaluate_node_in_context(node, cell));
             }
-            return self.lift_with_cost(
+            // Each element compares its value with the cases: one unit per argument.
+            let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
+            return self.lift_values(
                 lifted,
-                |_| 1,
+                LiftCost::Cells(units),
+                &LiftOptions::REUSE_EQUAL_RUNS,
                 cell,
-                |_, element| switch_element(element, cell),
+                &mut |_, element| switch_element(element, cell),
             );
         }
         if expr.is_error() {

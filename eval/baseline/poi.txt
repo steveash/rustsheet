@@ -2,6 +2,7 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+# `TC` and `TF` lines do the same for displayed text (decision 0070).
 C	poi/45540_classic_Footer.xlsx	104
 C	poi/45540_classic_Header.xlsx	104
 C	poi/45544.xlsx	104
@@ -146,7 +147,6 @@ F	poi/57535.xlsx	Sheet1!E6
 F	poi/58616.xlsx	!InvalidCase
 F	poi/59021.xlsx	!EngineError
 F	poi/60825.xlsx	!EngineError
-F	poi/63934.xlsx	Sheet1!B2
 F	poi/DateFormatNumberTests.xlsx	Tests!A10
 F	poi/DateFormatNumberTests.xlsx	Tests!A2
 F	poi/DateFormatNumberTests.xlsx	Tests!A3
@@ -155,20 +155,15 @@ F	poi/DateFormatNumberTests.xlsx	Tests!A5
 F	poi/DateFormatNumberTests.xlsx	Tests!A6
 F	poi/DateFormatNumberTests.xlsx	Tests!A8
 F	poi/DateFormatNumberTests.xlsx	Tests!A9
-F	poi/DateFormatTests.xlsx	Tests!A11
 F	poi/DateFormatTests.xlsx	Tests!A12
 F	poi/DateFormatTests.xlsx	Tests!A13
-F	poi/DateFormatTests.xlsx	Tests!A16
 F	poi/DateFormatTests.xlsx	Tests!A17
 F	poi/DateFormatTests.xlsx	Tests!A18
-F	poi/DateFormatTests.xlsx	Tests!A30
 F	poi/DateFormatTests.xlsx	Tests!A31
 F	poi/DateFormatTests.xlsx	Tests!A32
-F	poi/DateFormatTests.xlsx	Tests!A35
 F	poi/DateFormatTests.xlsx	Tests!A36
 F	poi/DateFormatTests.xlsx	Tests!A37
 F	poi/DateFormatTests.xlsx	Tests!A40
-F	poi/DateFormatTests.xlsx	Tests!A45
 F	poi/ElapsedFormatTests.xlsx	Tests!A10
 F	poi/ElapsedFormatTests.xlsx	Tests!A11
 F	poi/ElapsedFormatTests.xlsx	Tests!A12
@@ -242,21 +237,20 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!D1112
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1056
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1060
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E160
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E260
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
+F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!G936
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H160
+F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H936
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I104
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I1360
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J1328
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J136
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J392
+F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K936
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!L160
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1352
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!N1352
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!O1352
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!Q104
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O3
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O5

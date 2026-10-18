@@ -22,6 +22,12 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     value at 255 characters) hold it as JSON `[sheet, a1, text]`; oracle backends write
     the text into the cell as a user types it (Graph `values`), so Excel picks value and number
     format. The engine adapter enters the same text through its user-input parser.
+  * `"sheet_ops": [{"op": "rename", "sheet": "Data", "to": "Inputs"}, {"op": "add", "sheet": "New"},
+    {"op": "move", "sheet": "Inputs", "to": 0}]` at the top level are sheet edits made after the
+    workbook loads and before it is recalculated (T-1608): `add` appends a sheet, `rename` renames
+    one (Excel rewrites the formulas that refer to it), `move` puts one at a 0-based position. The
+    docProps custom properties `rustsheet.sheetop.<n>` hold them as JSON, n from 1 in order, and the
+    oracle backend replays them in Excel; the engine adapter applies them through its edit API.
   * A sheet may list `"hidden_rows": [3, 5]` (1-based rows written with `hidden="1"`) and
     `"tables": [{"name": "T1", "ref": "A1:B6", "filter": true}]` (T-1036). A table's header row is the
     first row of `ref` and its cells must be literal text. With `"filter": true` the table's autoFilter
@@ -42,12 +48,20 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     `<f t="dataTable">`; `row_input` alone is a one-variable row table, both inputs a two-variable
     table. `ref` must not overlap the sheet's `cells`. The engine adapter ignores both (Phase 2,
     T-0428).
+  * A sheet's `"pivot_tables": [{"name": "Pv", "source": "Data!A1:C7", "location": "E3", "row": "Region",
+    "column": "Product", "value": "Sales", "function": "sum"}]` writes pivot tables, rendered cells
+    included (rustsheet_tools/pivot.py, T-1705). The engine adapter ignores them.
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
     list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
     A sheet may list formula cells in `"bare_function_names": ["A1", ...]`; those keep their function
     names as typed (no `_xlfn.` added), to probe how a bare newer name loads (T-0416). The engine
     adapter ignores the list.
+  * `"text": ["Sheet1!A1", ...]` at the top level lists cells whose displayed text is scored (T-1610,
+    decision 0068): the docProps custom properties `rustsheet.text.<n>` hold each as JSON `[sheet, a1]`,
+    and the oracle backend reads the cell's text after recalculating. A sheet's
+    `"column_widths": {"B": 4}` sets those columns' widths in characters (desktop `.Text` depends on the
+    width; excel-graph's `text` does not).
 """
 
 from __future__ import annotations
@@ -68,13 +82,16 @@ from xml.sax.saxutils import escape, unescape
 import xlsxwriter
 
 from rustsheet_tools.oracle.package import patch_parts, read_parts
+from rustsheet_tools.pivot import PivotParts, pivot_tables, relationships_xml
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
 _FIXED_CREATED = datetime(2000, 1, 1)
 
 ENTERED_PROPERTY = "rustsheet.entered"
-_ENTERED_XML = re.compile(rf'name="{re.escape(ENTERED_PROPERTY)}\.(\d+)"><vt:lpwstr>(.*?)</vt:lpwstr>', re.S)
+SHEET_OP_PROPERTY = "rustsheet.sheetop"
+TEXT_PROPERTY = "rustsheet.text"
+SHEET_OPS = ("add", "rename", "move")
 
 _A1 = re.compile(r"^\$?([A-Za-z]{1,3})\$?(\d+)$")
 
@@ -330,14 +347,17 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     patches = _Patches()
     tables = frozenset(str(t["name"]).upper() for sheet in spec["sheets"] for t in sheet.get("tables", ()))
     entered: list[tuple[str, str, str]] = []  # (sheet name, cell ref, text as typed)
+    worksheets = []
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
+        worksheets.append(ws)
         hidden = _hidden_rows(sheet)
         for row in sorted(hidden):
             ws.set_row(row - 1, None, None, {"hidden": True})
         for table in sheet.get("tables", ()):
             patches.filters.append(_add_table(ws, sheet, table, hidden, tables))
         formats = _number_formats(wb, sheet)
+        _set_column_widths(ws, sheet)
         legacy = _listed_formula_cells(sheet, "legacy_formulas")
         bare = _listed_formula_cells(sheet, "bare_function_names")
         if both := legacy & bare:
@@ -378,16 +398,33 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         patches.data_tables.extend(
             (number, _add_data_table(ws, sheet, t)) for t in sheet.get("data_tables", ())
         )
+
+    patches.pivots = pivot_tables(spec, _pivot_cell_writer(worksheets, patches, tables))
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, _formula_text(formula, tables))
-    for n, entry in enumerate(entered, start=1):
-        value = json.dumps(entry, ensure_ascii=False)
-        if len(value) > 255:  # Excel's custom-property limit; fail here, not at the oracle
-            msg = f"entered cell {entry[0]}!{entry[1]} is too long for a custom property ({len(value)} > 255)"
-            raise ValueError(msg)
-        wb.set_custom_property(f"{ENTERED_PROPERTY}.{n}", value)
+    _record_backend_steps(wb, spec, entered)
     wb.close()
     return _patch_package(buf.getvalue(), spec, patches)
+
+
+def _set_column_widths(ws: Any, sheet: dict[str, Any]) -> None:
+    """Applies a sheet's `column_widths` (column letter -> width in characters; T-1610)."""
+    for column, width in sheet.get("column_widths", {}).items():
+        _, col = xlsxwriter.utility.xl_cell_to_rowcol(f"{column}1")
+        ws.set_column(col, col, float(width))
+
+
+def _record_backend_steps(
+    wb: xlsxwriter.Workbook, spec: dict[str, Any], entered: list[tuple[str, str, str]]
+) -> None:
+    """Records what an oracle backend does beyond recalculating, as custom properties: typed entries,
+    sheet edits and the cells whose displayed text it reads."""
+    for n, entry in enumerate(entered, start=1):
+        _set_json_property(wb, f"{ENTERED_PROPERTY}.{n}", entry, f"entered cell {entry[0]}!{entry[1]}")
+    for n, op in enumerate(spec.get("sheet_ops", ()), start=1):
+        _set_json_property(wb, f"{SHEET_OP_PROPERTY}.{n}", list(sheet_op(op)), f"sheet op {n}")
+    for n, key in enumerate(spec.get("text", ()), start=1):
+        _set_json_property(wb, f"{TEXT_PROPERTY}.{n}", list(_text_cell(key)), f"text cell {key}")
 
 
 @dataclass
@@ -401,6 +438,7 @@ class _Patches:
     filters: list[tuple[str, str]] = field(default_factory=list)
     # (sheet number, (top-left cell, `<f>`)), T-0428
     data_tables: list[tuple[int, tuple[str, str]]] = field(default_factory=list)
+    pivots: PivotParts = field(default_factory=PivotParts)  # T-1705
 
 
 def _patch_package(xlsx: bytes, spec: dict[str, Any], patches: _Patches) -> bytes:
@@ -409,6 +447,7 @@ def _patch_package(xlsx: bytes, spec: dict[str, Any], patches: _Patches) -> byte
     xlsx = _filter_tables(xlsx, patches.filters) if any(el for _, el in patches.filters) else xlsx
     # Data tables and calculation settings are no-ops when the spec has none (T-0428).
     xlsx = _write_calculation(_write_data_tables(xlsx, patches.data_tables), spec.get("calculation"))
+    xlsx = _write_pivots(xlsx, patches.pivots)
     return _store_numbers(xlsx, patches.lossy) if patches.lossy else xlsx
 
 
@@ -585,6 +624,60 @@ def _write_data_tables(xlsx: bytes, tables: list[tuple[int, tuple[str, str]]]) -
     return _patch_sheets(xlsx, [(number, patch(ref, formula)) for number, (ref, formula) in tables])
 
 
+def _pivot_cell_writer(
+    worksheets: list[Any], patches: _Patches, tables: frozenset[str]
+) -> Callable[[int, int, int, str | float], None]:
+    """Writes a rendered pivot cell through `_write`, so a pivot's aggregates keep every digit (`_store_numbers`)."""
+
+    def write(number: int, row: int, col: int, value: str | float) -> None:
+        cell_number = _write(worksheets[number - 1], row, col, value, tables=tables)
+        if cell_number is not None and _is_lossy(cell_number):
+            patches.lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
+
+    return write
+
+
+def _write_pivots(xlsx: bytes, pivots: PivotParts) -> bytes:
+    """Adds the pivot parts and links them from the workbook, its sheets and the content types (T-1705)."""
+    if not pivots.parts:
+        return xlsx
+
+    def insert(before: str, elements: list[str]) -> Callable[[str], str]:
+        def apply(text: str) -> str:
+            if text.count(before) != 1:
+                msg = f"cannot place pivot parts: {before} not found once"
+                raise ValueError(msg)
+            return text.replace(before, "".join(elements) + before)
+
+        return apply
+
+    def after_calc_pr(text: str) -> str:
+        text, count = re.subn(
+            r"(<calcPr\b[^>]*/>)",
+            lambda m: m.group(1) + f"<pivotCaches>{''.join(pivots.workbook_caches)}</pivotCaches>",
+            text,
+        )
+        if count != 1:
+            msg = "cannot place pivot caches: no <calcPr/> in the workbook"
+            raise ValueError(msg)
+        return text
+
+    existing = set(read_parts(xlsx))
+    added = dict(pivots.parts)
+    patches: list[tuple[str, Callable[[str], str]]] = [
+        ("xl/workbook.xml", after_calc_pr),
+        ("xl/_rels/workbook.xml.rels", insert("</Relationships>", pivots.workbook_rels)),
+        ("[Content_Types].xml", insert("</Types>", pivots.content_types)),
+    ]
+    for number, rels in pivots.sheet_rels.items():
+        part = f"xl/worksheets/_rels/sheet{number}.xml.rels"
+        if part in existing:
+            patches.append((part, insert("</Relationships>", rels)))
+        else:
+            added[part] = relationships_xml(*rels)
+    return patch_parts(xlsx, patches, added)
+
+
 def _write_calculation(xlsx: bytes, calculation: dict[str, Any] | None) -> bytes:
     """Writes the spec's iterative-calculation settings on `<calcPr>`."""
     if calculation is None:
@@ -645,10 +738,18 @@ def _filter_tables(xlsx: bytes, filters: list[tuple[str, str]]) -> bytes:
     )
 
 
-def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
-    """The `(sheet, a1, text)` typed entries `build_xlsx` recorded in `xlsx`, in spec order.
+def _set_json_property(wb: xlsxwriter.Workbook, name: str, value: object, what: str) -> None:
+    text = json.dumps(value, ensure_ascii=False)
+    if len(text) > 255:  # Excel's custom-property limit; fail here, not at the oracle
+        msg = f"{what} is too long for a custom property ({len(text)} > 255)"
+        raise ValueError(msg)
+    wb.set_custom_property(name, text)
 
-    Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
+
+def _json_properties(xlsx: bytes, prefix: str) -> list[Any]:
+    """The JSON values of the custom properties `<prefix>.<n>` in `xlsx`, in order of n.
+
+    Raises ValueError when the package or a property is malformed (xlsx inputs are untrusted).
     """
     try:
         parts = read_parts(xlsx)
@@ -656,14 +757,80 @@ def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
             return []
         custom = parts["docProps/custom.xml"].decode("utf-8")
         # A regex, not an XML parser: the part is untrusted, and only XlsxWriter's own layout matters.
+        pattern = re.compile(rf'name="{re.escape(prefix)}\.(\d+)"><vt:lpwstr>(.*?)</vt:lpwstr>', re.S)
         found = sorted(
             (int(n), json.loads(unescape(v, {"&quot;": '"', "&apos;": "'"})))
-            for n, v in _ENTERED_XML.findall(custom)
+            for n, v in pattern.findall(custom)
         )
-        return [(str(s), str(a1), str(t)) for _, (s, a1, t) in found]
-    except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as e:
+        return [value for _, value in found]
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as e:
+        msg = f"malformed {prefix} property: {e}"
+        raise ValueError(msg) from e
+
+
+def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
+    """The `(sheet, a1, text)` typed entries `build_xlsx` recorded in `xlsx`, in spec order.
+
+    Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
+    """
+    try:
+        return [(str(s), str(a1), str(t)) for s, a1, t in _json_properties(xlsx, ENTERED_PROPERTY)]
+    except (TypeError, ValueError) as e:
         msg = f"malformed {ENTERED_PROPERTY} property: {e}"
         raise ValueError(msg) from e
+
+
+def _text_cell(key: str) -> tuple[str, str]:
+    """`Sheet!A1` or `'It''s'!A1` as `(sheet, A1)`; raises ValueError for anything else."""
+    sheet, sep, a1 = str(key).rpartition("!")
+    if not sep or not _A1.match(a1):
+        msg = f"text cell {key!r} must be Sheet!A1"
+        raise ValueError(msg)
+    if sheet.startswith("'") and sheet.endswith("'") and len(sheet) > 1:
+        sheet = sheet[1:-1].replace("''", "'")
+    return sheet, a1.replace("$", "").upper()
+
+
+def text_cells(xlsx: bytes) -> list[tuple[str, str]]:
+    """The `(sheet, a1)` cells whose displayed text `build_xlsx` recorded in `xlsx` (T-1610).
+
+    Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
+    """
+    try:
+        return [_text_cell(f"{s}!{a1}") for s, a1 in _json_properties(xlsx, TEXT_PROPERTY)]
+    except (TypeError, ValueError) as e:
+        msg = f"malformed {TEXT_PROPERTY} property: {e}"
+        raise ValueError(msg) from e
+
+
+def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
+    """A spec's sheet op as `(op, sheet, to)`: `to` is the new name of a rename, the 0-based
+    position of a move and None for an add. Raises ValueError for an unknown or malformed op."""
+    if isinstance(op, (list, tuple)) and len(op) == 3:
+        op = {"op": op[0], "sheet": op[1], **({} if op[2] is None else {"to": op[2]})}
+    if not isinstance(op, dict) or op.get("op") not in SHEET_OPS or not isinstance(op.get("sheet"), str):
+        msg = f"unknown sheet op {op!r}: expected op {'/'.join(SHEET_OPS)} with a sheet name"
+        raise ValueError(msg)
+    kind, sheet, to = op["op"], op["sheet"], op.get("to")
+    if set(op) - {"op", "sheet", "to"}:
+        msg = f"sheet op {op!r} has unknown keys"
+        raise ValueError(msg)
+    if kind == "add" and to is None:
+        return kind, sheet, None
+    if kind == "rename" and isinstance(to, str) and to:
+        return kind, sheet, to
+    if kind == "move" and isinstance(to, int) and not isinstance(to, bool) and to >= 0:
+        return kind, sheet, to
+    msg = f"sheet op {op!r}: `to` must be absent for add, a name for rename, a position >= 0 for move"
+    raise ValueError(msg)
+
+
+def sheet_ops(xlsx: bytes) -> list[tuple[str, str, str | int | None]]:
+    """The `(op, sheet, to)` sheet edits `build_xlsx` recorded in `xlsx`, in spec order (T-1608).
+
+    Raises ValueError when the package or a property is malformed or an op is unknown.
+    """
+    return [sheet_op(op) for op in _json_properties(xlsx, SHEET_OP_PROPERTY)]
 
 
 def _patch_sheets(xlsx: bytes, patches: list[tuple[int, Callable[[str], str]]]) -> bytes:

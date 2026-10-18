@@ -58,6 +58,7 @@ unanchored `find_from`. The regex translation both used before (`.` skips `\n`) 
 Rule: in DSUM/DCOUNT/DGET/... a plain text criterion (no operator, no wildcard) matches cells that *start with* it ("ab" matches "abc"); every other part of the grammar is shared with COUNTIF.
 An explicit leading `=` (`"=ab"`) turns the prefix match into an exact match (probes/criteria-operands D18).
 Evidence: probes/criteria-grammar C11 (`DCOUNTA` with criterion "ab" over ab, abc, xab → 2).
+The prefix is read unit by unit, so a lone surrogate is a unit of its own (probes/d-function-prefix-lone-surrogates, excel-graph 2026-10-16, T-1667): over H, L, "😀", U+FFFD, "x", H&"a", "a"&L, "a" (v = 1, 2, 4, ..., 128), `DSUM` with criterion H gives 37 (H, "😀", H&"a"), L gives 2 (L only, not "a"&L), "😀" gives 4, U+FFFD gives 8 (never a lone half), H&"a" gives 32, "a"&L gives 64, "a" gives 192 ("a" and "a"&L), `"="&H` gives 1 and `"="&L` gives 2, "x" gives 16; `DCOUNTA` counts agree (H 3, "a" 2).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: functions::criteria::build_criteria_with (CriteriaFlavor::Database)
@@ -186,10 +187,12 @@ arithmetic, and FORMULATEXT shows it: `=SUM(INDEX(B1:B6,{2;3}))` is 2 and shows 
 `SUMPRODUCT(INDEX(B1:B6,{2;3},1))` 2, `INDEX(B1:B6,2,{1,1})` 2, `INDEX((B1:B6,B1:B6),1,1,{2;1})` 1, `INDEX(B1:B6,{2;3}+0)`
 shows `@{2;3}+0`, and a legacy cell `=INDEX(B1:B6,{3;2})` shows `=@INDEX(B1:B6,@{3;2})`; a range index intersects
 (`SUMPRODUCT(INDEX(B1:B6,C1:C3))` is B2 on row 1 and `#VALUE!` off-row, shown `@C1:C3`), while the one function call
-probed gets none: `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5 with no `@` (the classic trick; the engine is `#N/IMPL!`
-there because N does not take an array yet, T-1616). Evidence: probes/legacy-index-array-index (excel-graph,
-2026-10-15, T-0294; unprobed: an array-returning call such as `ROW(B1:B2)` there, which the engine intersects like any
-scalar argument, and functions in INDEX's first argument, which keep SUMPRODUCT's array context in the engine);
+probed gets none: `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` is 5 with no `@` (the classic trick; the engine matches
+since T-1616, N lifting over an array). An array-returning call is intersected like a scalar argument:
+legacy `SUMPRODUCT(INDEX(B1:B6,ROW(B1:B2)))` is 1 (B1) on and off the range's rows, and a function in INDEX's first
+argument keeps SUMPRODUCT's array context: legacy `SUMPRODUCT(INDEX(ABS(B1:B6),0))` is 21 on and off them;
+FORMULATEXT shows them as `=SUMPRODUCT(INDEX(B1:B6,@ROW(B1:B2)))` and `=SUMPRODUCT(INDEX(ABS(B1:B6),0))`
+(probes/n-array-lift A12, D2, A13, D3, A24, A25). Evidence: probes/legacy-index-array-index (excel-graph, 2026-10-15, T-0294);
 fixtures/external-link-cached-ranges Refs!B89:B92 (`SUM`, `ROWS`, `ISREF` and `INDEX` of a legacy
 `INDEX([1]Uses!$A$1:$B$3,{1,2},1)`, Excel-cached). Implemented in `add_index_array_at` (expressions/parser/static_analysis/legacy.rs).
 
@@ -209,6 +212,8 @@ over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walki
 use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
 `lifted_lookup_over_an_array_table_hits_the_visit_cap`).
 AGGREGATE's array function_num, options and k lift through the same code and cap (numbers.md "AGGREGATE", T-1038).
+GROUPBY and PIVOTBY charge their two-parameter LAMBDA calls against the same cap (arrays.md "GROUPBY and PIVOTBY:
+two-parameter LAMBDAs and the cell-visit cap", T-1325).
 Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
 `criteria_static_result` (expressions/parser/static_analysis.rs)
 Tasks: T-0207, T-0263, T-0278

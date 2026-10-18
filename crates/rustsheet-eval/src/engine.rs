@@ -2,6 +2,8 @@
 //! directly, so other engines (e.g. upstream IronCalc, a future rewritten core)
 //! can be plugged in and compared side by side.
 
+use std::collections::BTreeMap;
+
 use rustsheet::{
     CellRef, Clock, DateSystem, ErrorKind, Input, LoadOptions, RangeRef, SheetId,
     Value as ApiValue, Workbook, WorkbookOptions, XlError,
@@ -10,7 +12,7 @@ use rustsheet::{
 use rustsheet_engine::text::{lone_escape, Segment};
 use rustsheet_engine::Text;
 
-use crate::case::{split_qualified, CaseSpec, CellInput};
+use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp};
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 
@@ -21,6 +23,11 @@ pub trait Evaluated {
     /// Every stored cell of `sheet` (spill members included); empty for an unknown sheet. The
     /// spill-extent check reads it (T-1660), so an empty list turns that check off.
     fn stored_cells(&self, sheet: &str) -> Vec<Addr>;
+    /// The cell's text as displayed under its number format (T-1610); `None` if the sheet does
+    /// not exist or the engine cannot format the cell.
+    fn text(&self, _sheet: &str, _addr: Addr) -> Option<String> {
+        None
+    }
 }
 
 pub trait Engine: Sync {
@@ -73,14 +80,21 @@ fn render_lone_units(units: &[u16]) -> String {
     out
 }
 
-impl Evaluated for RustSheetEvaluated {
-    fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
-        let cell = CellRef::new(
+impl RustSheetEvaluated {
+    /// The facade cell at `addr` (1-based) on `sheet`, `None` for an unknown sheet.
+    fn cell(&self, sheet: &str, addr: Addr) -> Option<CellRef> {
+        CellRef::new(
             self.workbook.sheet_id(sheet).ok()?,
             addr.row.checked_sub(1)?,
             addr.col.checked_sub(1)?,
         )
-        .ok()?;
+        .ok()
+    }
+}
+
+impl Evaluated for RustSheetEvaluated {
+    fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
+        let cell = self.cell(sheet, addr)?;
         Some(match self.workbook.value(cell).ok()? {
             ApiValue::Number(n) => Value::Number(n),
             ApiValue::Text(s) => Value::Text(match self.workbook.text_utf16(cell) {
@@ -92,6 +106,10 @@ impl Evaluated for RustSheetEvaluated {
             // `ApiValue` is non-exhaustive; `Empty` and future variants score as empty.
             _ => Value::Empty,
         })
+    }
+
+    fn text(&self, sheet: &str, addr: Addr) -> Option<String> {
+        self.workbook.formatted(self.cell(sheet, addr)?).ok()
     }
 
     fn stored_cells(&self, sheet: &str) -> Vec<Addr> {
@@ -192,7 +210,7 @@ impl Engine for RustSheetEngine {
                                 )?;
                             }
                         }
-                        for (a1, input) in &sheet.cells {
+                        for (addr, a1, input) in row_major(&sheet.cells)? {
                             let Some(mut input) = spec_input(input) else {
                                 continue;
                             };
@@ -207,9 +225,6 @@ impl Engine for RustSheetEngine {
                             if is_formula != formulas {
                                 continue;
                             }
-                            let addr = Addr::parse(a1).ok_or_else(|| {
-                                rustsheet::EditError::Engine(format!("bad address {a1}"))
-                            })?;
                             tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input)?;
                         }
                     }
@@ -232,12 +247,57 @@ impl Engine for RustSheetEngine {
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
+        apply_sheet_ops(&mut workbook, &spec.sheet_ops)?;
         // The edit calculated once; an iterative case gets the oracle's other calculations.
         for _ in 1..calculations(spec) {
             workbook.recalculate();
         }
         Ok(Box::new(RustSheetEvaluated { workbook }))
     }
+}
+
+/// A spec sheet's cells row by row, left to right: the order an xlsx stores them in and Excel
+/// loads them, which decides the spelling a called name that is no function keeps (the first met;
+/// probes/unknown-function-name-spelling, T-1719).
+fn row_major(
+    cells: &BTreeMap<String, CellInput>,
+) -> Result<Vec<(Addr, &String, &CellInput)>, rustsheet::EditError> {
+    let mut ordered = cells
+        .iter()
+        .map(|(a1, input)| {
+            Addr::parse(a1)
+                .map(|addr| (addr, a1, input))
+                .ok_or_else(|| rustsheet::EditError::Engine(format!("bad address {a1}")))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    ordered.sort_by_key(|(addr, ..)| (addr.row, addr.col));
+    Ok(ordered)
+}
+
+/// Makes a case's sheet edits after it is built, as the oracle backend replays them in Excel after
+/// the workbook loads (T-1608). Each op is its own edit, so it sees the names the ops before it
+/// left.
+fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), String> {
+    for op in ops {
+        let sheet_id_of = |workbook: &Workbook, sheet: &str| {
+            workbook
+                .sheet_id(sheet)
+                .map_err(|e| format!("sheet op on {sheet}: {e}"))
+        };
+        let done = match op {
+            SheetOp::Add { sheet } => workbook.edit(|tx| tx.add_sheet(sheet).map(|_| ())),
+            SheetOp::Rename { sheet, to } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                workbook.edit(|tx| tx.rename_sheet(id, to))
+            }
+            SheetOp::Move { sheet, to } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                workbook.edit(|tx| tx.move_sheet(id, *to))
+            }
+        };
+        done.map_err(|e| format!("sheet op {op:?}: {e}"))?;
+    }
+    Ok(())
 }
 
 /// How many times excel-graph calculates a case workbook: on load (`fullCalcOnLoad`), at the
@@ -352,6 +412,47 @@ mod tests {
 
     fn spec(json: &str) -> CaseSpec {
         serde_json::from_str(json).expect("spec")
+    }
+
+    #[test]
+    fn spec_sheet_ops_apply_in_order_after_the_build() {
+        // probes/sheet-ops (T-1608): references follow the renamed sheet, the moved sheet keeps
+        // them, and an added sheet is empty.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1",
+                "sheets":[{"name":"Calc","cells":{"A1":"=Data!A1","A2":"=FORMULATEXT(A1)",
+                                                 "A3":"=SHEET(Inputs!A1)","A4":"=COUNTA(New!A1:B2)"}},
+                          {"name":"Data","cells":{"A1":5}}],
+                "sheet_ops":[{"op":"rename","sheet":"Data","to":"Inputs"},
+                             {"op":"move","sheet":"Inputs","to":0},
+                             {"op":"add","sheet":"New"}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let calc = |row| evaluated.value("Calc", Addr { row, col: 1 });
+        assert_eq!(calc(1), Some(Value::Number(5.0)));
+        assert_eq!(calc(2), Some(Value::Text("=Inputs!A1".into())));
+        assert_eq!(calc(3), Some(Value::Number(1.0)));
+        assert_eq!(
+            evaluated.value("New", Addr { row: 1, col: 1 }),
+            Some(Value::Empty)
+        );
+    }
+
+    #[test]
+    fn unknown_or_malformed_sheet_ops_are_refused() {
+        for ops in [
+            r#"[{"op":"delete","sheet":"Data"}]"#,
+            r#"[{"op":"move","sheet":"Data","to":-1}]"#,
+            r#"[{"op":"add","sheet":"New","to":1}]"#,
+        ] {
+            let json = format!(r#"{{"format":"rustsheet-case/v1","sheets":[],"sheet_ops":{ops}}}"#);
+            assert!(serde_json::from_str::<CaseSpec>(&json).is_err(), "{ops}");
+        }
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"Calc","cells":{}}],
+                "sheet_ops":[{"op":"rename","sheet":"Nope","to":"X"}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
     }
 
     #[test]

@@ -66,12 +66,16 @@ def write_parts(parts: dict[str, bytes]) -> bytes:
     return out.getvalue()
 
 
-def patch_parts(xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]]) -> bytes:
-    """`xlsx` with each `(part name, patch)` applied to that part's text, in order.
+def patch_parts(
+    xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]], added: dict[str, bytes] | None = None
+) -> bytes:
+    """`xlsx` with each `(part name, patch)` applied to that part's text, in order, and the `added`
+    parts appended (stamped with the zip epoch, so the output stays byte-stable).
 
     Keeps every entry's `ZipInfo` (timestamp, compression), so unpatched parts and the archive
     layout are unchanged (unlike `write_parts`, which restamps every entry, so
-    callers that need byte-stable output use this). A part that is not in the package is an error.
+    callers that need byte-stable output use this). A part that is not in the package is an error,
+    and so is an added part that already is.
     """
     by_part: dict[str, list[Callable[[str], str]]] = {}
     for part, patch in patches:
@@ -91,6 +95,10 @@ def patch_parts(xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]]) ->
                 dst.writestr(info, data)
             if missing := by_part.keys() - set(src.namelist()):
                 raise PackageError(f"parts not in the package: {sorted(missing)}")
+            for name, data in (added or {}).items():
+                if name in src.namelist():
+                    raise PackageError(f"part already in the package: {name}")
+                dst.writestr(zipfile.ZipInfo(name), data, zipfile.ZIP_DEFLATED)
     except zipfile.BadZipFile as e:
         raise PackageError(f"unreadable xlsx ({e})") from e
     return out.getvalue()
