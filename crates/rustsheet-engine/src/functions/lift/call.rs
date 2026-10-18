@@ -149,19 +149,63 @@ impl Model {
         if !kinds.accepts(args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let read = match self.read_lift_args(kinds, args, MAX_LIFTED_CELL_VISITS, cell) {
-            Ok(read) => read,
-            Err(error) => return error,
-        };
-        if read.grids.is_empty() {
-            // Nothing lifts: exactly the scalar call, on the values read.
-            return kernel(self, read.values.as_slice());
-        }
         let options = LiftOptions {
             reuse_equal_runs: false,
             work: kinds.work,
         };
-        self.lift_grids(read.into_lifted(), cost, &options, cell, kernel)
+        // One- and two-argument calls (most of the math functions) read into locals: building,
+        // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
+        // most of the per-call overhead over the old math macros (T-1773 bench).
+        let lifted = match args {
+            [only] => match self.read_lift_arg_at(kinds, 0, only, &mut 0, cell) {
+                Ok(LiftedArg::Scalar(value)) => return kernel(self, std::slice::from_ref(&value)),
+                Ok(grid) => vec![grid],
+                Err(error) => return error,
+            },
+            [first, second] => {
+                let mut input_cells = 0;
+                let read = self
+                    .read_lift_arg_at(kinds, 0, first, &mut input_cells, cell)
+                    .and_then(|first| {
+                        let second =
+                            self.read_lift_arg_at(kinds, 1, second, &mut input_cells, cell)?;
+                        Ok((first, second))
+                    });
+                match read {
+                    Ok((LiftedArg::Scalar(first), LiftedArg::Scalar(second))) => {
+                        return kernel(self, &[first, second]);
+                    }
+                    Ok((first, second)) => vec![first, second],
+                    Err(error) => return error,
+                }
+            }
+            _ => {
+                let read = match self.read_lift_args(kinds, args, MAX_LIFTED_CELL_VISITS, cell) {
+                    Ok(read) => read,
+                    Err(error) => return error,
+                };
+                if read.grids.is_empty() {
+                    // Nothing lifts: exactly the scalar call, on the values read.
+                    return kernel(self, read.values.as_slice());
+                }
+                read.into_lifted()
+            }
+        };
+        self.lift_grids(lifted, cost, &options, cell, kernel)
+    }
+
+    /// [`Model::read_lift_arg_with`] for argument `index` of a call read by `kinds`, under
+    /// `limits::MAX_LIFTED_CELL_VISITS`.
+    fn read_lift_arg_at(
+        &mut self,
+        kinds: &ArgKinds,
+        index: usize,
+        node: &Node,
+        input_cells: &mut u64,
+        cell: CellReferenceIndex,
+    ) -> Result<LiftedArg, CalcResult> {
+        let kind = kinds.kind(index).unwrap_or(ArgKind::LiftArrays);
+        self.read_lift_arg_with(kind, node, input_cells, MAX_LIFTED_CELL_VISITS, cell)
     }
 
     /// The read phase: each argument once, by its kind (SPEC-0011's read table). An array is a
@@ -177,72 +221,83 @@ impl Model {
         input_cap: u64,
         cell: CellReferenceIndex,
     ) -> Result<ReadArgs, CalcResult> {
-        // The `#ERROR!` of `too_many_visits`, past the cap.
-        let over_cap = |cells: u64| (cells > input_cap).then(|| too_many_visits(u64::MAX, cell));
         let mut values = ArgBuf::filled(args.len(), || CalcResult::EmptyArg);
         let mut grids = Vec::new();
         let mut input_cells: u64 = 0;
         for (index, (node, slot)) in args.iter().zip(values.as_mut_slice()).enumerate() {
             let kind = kinds.kind(index).unwrap_or(ArgKind::LiftArrays);
-            let value = match kind {
-                ArgKind::WholeByCaller => continue,
-                ArgKind::Whole => {
-                    *slot = self.evaluate_node_with_reference(node, cell);
-                    continue;
-                }
-                ArgKind::LiftArrays => self.evaluate_as_reference(node, cell),
-                ArgKind::Lift | ArgKind::LiftArraysRangeWhole => {
-                    self.evaluate_node_in_context(node, cell)
-                }
-            };
-            let grid = match value {
-                CalcResult::Array(grid) => grid,
-                range @ CalcResult::Range { .. } if kind == ArgKind::LiftArraysRangeWhole => {
-                    *slot = range;
-                    continue;
-                }
-                // A 3-D range is `#REF!` in a `Lift` argument and `#VALUE!` in a `LiftArrays`
-                // one (probes/scalar-lift-open-b W2-W11, -d W17-W29; T-1777).
-                CalcResult::Range { left, right } if left.sheet != right.sheet => {
-                    *slot = if kind == ArgKind::Lift {
-                        CalcResult::new_error(Error::REF, cell, String::new())
-                    } else {
-                        refused_range(cell)
-                    };
-                    continue;
-                }
-                CalcResult::Range { left, right } if left == right => {
-                    *slot = self.evaluate_cell(left);
-                    continue;
-                }
-                CalcResult::Range { .. } if kind == ArgKind::LiftArrays => {
-                    *slot = refused_range(cell);
-                    continue;
-                }
-                CalcResult::Range { left, right } => {
-                    if let Some((error, message)) = check_range_size(&left, &right) {
-                        return Err(CalcResult::new_error(error, cell, message));
-                    }
-                    let rows = u64::try_from(right.row - left.row + 1).unwrap_or(0);
-                    let columns = u64::try_from(right.column - left.column + 1).unwrap_or(0);
-                    let total = input_cells.saturating_add(rows.saturating_mul(columns));
-                    if let Some(Some(error)) = over_cap(total) {
-                        return Err(error);
-                    }
-                    self.evaluate_range(left, right, cell)?
-                }
-                scalar => {
-                    *slot = scalar;
-                    continue;
-                }
-            };
-            // An array is already built; it counts toward the total all the same.
-            input_cells = input_cells.saturating_add(grid_cells(&grid));
-            if let Some(Some(error)) = over_cap(input_cells) {
-                return Err(error);
+            match self.read_lift_arg_with(kind, node, &mut input_cells, input_cap, cell)? {
+                LiftedArg::Scalar(value) => *slot = value,
+                LiftedArg::Grid(grid) => grids.push((index, grid)),
             }
-            grids.push((index, grid));
         }
         Ok(ReadArgs { values, grids })
+    }
+
+    /// One argument of kind `kind`, read once: a grid, or a value (`EmptyArg` for a
+    /// `WholeByCaller` argument, which its caller reads). A grid's cells add to `input_cells`, and
+    /// the call is `#ERROR!` before a range is read once the total would pass `input_cap`.
+    fn read_lift_arg_with(
+        &mut self,
+        kind: ArgKind,
+        node: &Node,
+        input_cells: &mut u64,
+        input_cap: u64,
+        cell: CellReferenceIndex,
+    ) -> Result<LiftedArg, CalcResult> {
+        // The `#ERROR!` of `too_many_visits`, past the cap.
+        let over_cap = |cells: u64| (cells > input_cap).then(|| too_many_visits(u64::MAX, cell));
+        let value = match kind {
+            ArgKind::WholeByCaller => return Ok(LiftedArg::Scalar(CalcResult::EmptyArg)),
+            ArgKind::Whole => {
+                return Ok(LiftedArg::Scalar(
+                    self.evaluate_node_with_reference(node, cell),
+                ))
+            }
+            ArgKind::LiftArrays => self.evaluate_as_reference(node, cell),
+            ArgKind::Lift | ArgKind::LiftArraysRangeWhole => {
+                self.evaluate_node_in_context(node, cell)
+            }
+        };
+        let grid = match value {
+            CalcResult::Array(grid) => grid,
+            range @ CalcResult::Range { .. } if kind == ArgKind::LiftArraysRangeWhole => {
+                return Ok(LiftedArg::Scalar(range));
+            }
+            // A 3-D range is `#REF!` in a `Lift` argument and `#VALUE!` in a `LiftArrays`
+            // one (probes/scalar-lift-open-b W2-W11, -d W17-W29; T-1777).
+            CalcResult::Range { left, right } if left.sheet != right.sheet => {
+                return Ok(LiftedArg::Scalar(if kind == ArgKind::Lift {
+                    CalcResult::new_error(Error::REF, cell, String::new())
+                } else {
+                    refused_range(cell)
+                }));
+            }
+            CalcResult::Range { left, right } if left == right => {
+                return Ok(LiftedArg::Scalar(self.evaluate_cell(left)));
+            }
+            CalcResult::Range { .. } if kind == ArgKind::LiftArrays => {
+                return Ok(LiftedArg::Scalar(refused_range(cell)));
+            }
+            CalcResult::Range { left, right } => {
+                if let Some((error, message)) = check_range_size(&left, &right) {
+                    return Err(CalcResult::new_error(error, cell, message));
+                }
+                let rows = u64::try_from(right.row - left.row + 1).unwrap_or(0);
+                let columns = u64::try_from(right.column - left.column + 1).unwrap_or(0);
+                let total = input_cells.saturating_add(rows.saturating_mul(columns));
+                if let Some(Some(error)) = over_cap(total) {
+                    return Err(error);
+                }
+                self.evaluate_range(left, right, cell)?
+            }
+            scalar => return Ok(LiftedArg::Scalar(scalar)),
+        };
+        // An array is already built; it counts toward the total all the same.
+        *input_cells = input_cells.saturating_add(grid_cells(&grid));
+        if let Some(Some(error)) = over_cap(*input_cells) {
+            return Err(error);
+        }
+        Ok(LiftedArg::Grid(grid))
     }
 }
