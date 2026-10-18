@@ -588,7 +588,9 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
   every group row and total row once per function after a label column, which shown headers head with `""` (functions G!A61,
   G!A101, functions2 G!A681, P!A21-A61; PIVOTBY P!A601). One function in HSTACK is that function, no label row (G!A601); nested
   HSTACKs flatten (functions2 G!A581). Labels are the function names as written ("SUM", "STDEV.S", "PERCENTOF") and "CUSTOM"
-  for a LAMBDA (functions G!A181, G!A521, G!A721). Custom labels: values beside a column of functions label its rows
+  for a LAMBDA (functions G!A181, G!A521, G!A721); two LAMBDAs are "CUSTOM1" and "CUSTOM2", as columns and as rows
+  (probes/pivotby-col-subtotals-values2 S!A181, S!A193; -values3 S!A1; not implemented, the engine prints "CUSTOM":
+  T-1854). Custom labels: values beside a column of functions label its rows
   (`HSTACK(SUM,"a")` or `HSTACK(SUM,5)` is a label column of "a" or 5 before the values, a third element `HSTACK(SUM,5,MAX)`
   ignored: functions G!A221, functions2 G!A121-A181, also in PIVOTBY: P!A101), values below a row of functions label its
   columns (`VSTACK(SUM,5)`: a label row of 5; functions2 G!A161). `#VALUE!` (ERROR.TYPE 3): a 2-D array of functions, an array
@@ -598,13 +600,17 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
   on column i (`HSTACK(SUM,MAX)` over Sales and Units is SUM of Sales next to MAX of Units, and `VSTACK` gives the same pairs as
   rows; PIVOTBY too, with its Total columns filled: functions G!A41, G!A81, functions2 P!A1, P!A21); 3 over 2 and 2 over 3 are
   `#VALUE!` (functions2 G!A1-A61). PIVOTBY's Total columns are `""` only for one function over several value columns (P!Y97,
-  functions P!A701).
+  functions P!A701), and then only with two or more column groups ("GROUPBY and PIVOTBY: column totals over several
+  value columns").
 - Detected headers (`field_headers` omitted) are shown, as 3 shows them, with a row of two or more functions (GROUPBY and
   PIVOTBY: functions2 G!A641, functions3 P!A1), not with a column of them, a labelled one, or `field_headers` 1 (functions3
   G!A1-A81, P!A31).
 - sort_order past the keys counts the output value columns: 3 is the second function of a row (functions G!A141, functions2
   G!A221, PIVOTBY P!A181); a column of functions sorts by its first function (functions2 G!A201, G!A261, P!A201, P!A221), each
   group's rows staying in function order.
+- Not implemented (T-1855): PIVOTBY's col_sort_order -3 with one column field over two value columns is `#VALUE!`
+  (probes/pivotby-total-columns-one-group S!A73), while -3 with two column fields sorts (probes/pivotby-col-subtotals-values
+  S!A111); the engine sorts by the second value column.
 - Arguments: a function passed by name gets its minimum argument count: one (SUM, MEDIAN, SUMPRODUCT, ABS, STDEV.S), two
   (PERCENTOF, CORREL, PEARSON, RSQ, COVARIANCE.P, and IF, ROUND, SUMIF, whose array results are `#VALUE!` per cell); none or
   three or more (NOW, TEXTJOIN, XLOOKUP) make the whole result `#VALUE!` (functions G!A421, functions2 G!A281-A501). A LAMBDA gets
@@ -668,11 +674,11 @@ through `Model::lambda_caller` with one or two arguments, its body read in refer
 (`percent_of`, shared with the PERCENTOF function), and a two-parameter LAMBDA is charged against the cell-visit cap (see
 "GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap").
 PIVOTBY (T-1326, functions/lookup_and_reference/pivotby.rs): two `Grouping`s of the same records (rows, columns), both size
-checked while grouping and before any call; the grid with `""` cells, totals 0/±1 on both axes, the Total columns `""` with
-several values, shown and generated headers, key and value sorts with the quirks above, and GROUPBY's argument readers
+checked while grouping and before any call; the grid with `""` cells, totals 0/±1 on both axes, the column totals of one function
+over several values placed as below (T-1700), shown and generated headers, key and value sorts with the quirks above, and GROUPBY's argument readers
 (`evaluate_options`, `sort_order`, `filter_rows`: their rules hold for PIVOTBY too, P!A1321-A1601 below);
 `Grouping::sort_by_aggregate` takes whether parents sort by their aggregate (rows, GROUPBY) or keep their key order
-(PIVOTBY columns). `#N/IMPL!`: column subtotals over several value columns (T-1700). Function arrays since T-1325, as in
+(PIVOTBY columns). Function arrays since T-1325, as in
 GROUPBY. Since T-1327 (functions/lookup_and_reference/relative_to.rs): `Model::relative_to` reads the argument into a row
 and a column selection, `RelativeSets` builds every set the grid uses once, after the sorts, in one pass over the records
 per pair of key-prefix levels (groups, subtotals and totals alike; `Grouping::prefix_ids`), the grid cells, subtotal
@@ -710,26 +716,11 @@ size in column Z and the ERROR.TYPE of its first cell in AA, excel-graph, 2026-1
   col_total_depth 0 keeps the key order (above) but its omitted row depth still shows the subtotals (G!A1021). Three
   row fields with depth 2 or 3 as GROUPBY (G!A1051, G!A1291). Row subtotals with two values leave both Total columns
   `""` (G!A751).
-- Quirk, not implemented (T-1700): column subtotals over several value columns are not the subtotals. In
+- Column subtotals of one function over several value columns are not the subtotals: in
   `PIVOTBY(A2:A11,B2:C11,D2:E11,SUM,,,,2)` (G!A781) the Apple and Pear subtotal columns and both Grand Total columns are
   `""`, while Banana (one child) shows Banana's Units in its Sales-subtotal column and every row's Units total in its
   Units-subtotal column; -2 is the same (G!A1141); with Year over Product (G!A1171) only the first of those two columns
-  is filled. The engine gives `#N/IMPL!`.
-  More shapes (probes/pivotby-col-subtotals-values, sheet S, excel-graph 2026-10-17; LAMBDA(x,ARRAYTOTEXT(x)) over
-  values 101-109, 201-209 and 301-309 shows which records and value column each cell takes; Outer keys A (1 child),
-  B (2), C (1), D (3), E (1)): every cell is either `""`, one group's cell, or a Grand Total cell, never a mix.
-  With one value the subtotals are right (S!A51). With several, a parent's first subtotal column shows its only
-  child's last value column (A: Ax's V2, S!A1; Ax's V3 with three values, S!A21) and is `""` for a parent with two or
-  more children (B, D); the other subtotal columns are `""` except at one parent, where they show Grand Total columns:
-  C's V2 column holds every record's V1 (S!A1), B's V2 and V3 columns every record's V1 and V2 (S!A21), but with all
-  parents single-child C's V2 column holds every record's V2 (S!A71), and a parent with two or more children in that place shows nothing
-  (G!A1171, S!A61). The parent is the one at index floor(parents / values) in every probe so far (C of five with two
-  values, B with three, Banana of three); which value its columns take is not explained. The Grand Total columns are
-  always `""`. The same cells come back with depth -2 (S!A11, S!A81), sorted descending (S!A111: by position in the
-  order, E, C and A as above), with shown headers (S!A31: "V1"/"V2" over every column) and with the value columns
-  swapped (S!A101: a single child's last value column is now V1, and C's Grand Total cells hold the first value
-  column, V2). No index arithmetic over the leaf cells (group- or
-  value-major, ranges or single cells, positive-depth layout) fits all of these (T-1700 search, 2026-10-17).
+  is filled. The rule is in "GROUPBY and PIVOTBY: column totals over several value columns" below (T-1700).
 Ours (T-1324): `Grouping::lines` lays the groups out with their subtotals in one pass over the sorted groups (a prefix
 change between neighbours opens or closes a subtotal), `effective_depth` adds the omitted depth of a value sort,
 `ParentOrder` picks hierarchical, key-order or flat parents, the value sort's `Aggregates` (each group's and
@@ -743,6 +734,51 @@ per element, as the row and column probed), and a 1x1 array field_relationship s
 to one cell, as `{FALSE}` is in followup G!A921).
 Status: VERIFIED (web)
 Tasks: T-1276, T-1328, T-1322, T-1323, T-1326, T-1324, T-1700, T-1325, T-1327
+
+## GROUPBY and PIVOTBY: column totals over several value columns
+Rule: with one function over two or more value columns (`width` w), PIVOTBY puts its column subtotal and total cells as
+if a subtotal spanned one column per line it covers instead of w. Lay the column lines out with every subtotal after
+its groups (as for a positive col_total_depth) in the order of the key sort (a descending one too) before any value
+sort, w columns per line, the total's w columns last. The total writes its value column v (0-based) into column
+`k + v`, k being the number of lines; then each subtotal, ordered by its first group and a parent before its own
+deeper subtotals, writes its value column v into
+column `f * w + k + v`, f being the index of its first group's line and k the number of lines it covers (its groups and
+deeper subtotals). A write into a group's column is dropped and a later write replaces an earlier one. Each subtotal
+and total column then moves with its line into the real layout (a negative depth puts the subtotals and totals first, a
+value sort reorders the lines) and shows, in every row, the cells of the subtotal or total written into it, or `""`
+where nothing was written. Group columns are always right, and so are the row axis (row subtotals, G!A751) and
+functions paired with the value columns or laid out as columns over one (probes/pivotby-col-subtotals-values2 S!A181,
+-values3 S!A1, S!A13, S!A25).
+Consequences: with one value column every write lands on its own column (S!A51). A parent with one child writes its
+last value column into its first subtotal column; with two or more children everything lands in their group columns.
+The total's writes land near the middle of the lines, so one parent there may show Grand Total cells in its later
+subtotal columns. This had looked like "the parent at floor(parents / values)", which matches every older probe but
+fails on -values2: eight single-child parents with two values put the total in P5's leaf column, so nothing shows
+(S!A1), and with four values over A (three children), B, C, D and E the total writes into 14-17, so A's third and
+fourth subtotal columns show the Grand Total's V1 and V2 (-values2 S!A85; floor(5 / 4) would be B). Without subtotals (depth ±1) the total's writes land in the group columns, which is why the
+Total columns are `""` (P!Y97), unless there is only one column group: then the first Total column shows the last value
+column's total and the others are `""`, also with -1 (probes/pivotby-total-columns-one-group S!A1-A61).
+Example: `PIVOTBY(A2:A10,B2:C10,D2:E10,LAMBDA(x,ARRAYTOTEXT(x)),,,,2)` with Outer keys A (child x), B (x, y), C (z),
+D (x, y, z), E (y) has 14 lines and 28 columns: A writes into columns 1-2, so A's first subtotal column shows A's V2;
+the total writes into 13-14, so C's second subtotal column (13) shows the Grand Total's V1; C writes into 11-12 and E
+into 23-24, the rest land on groups (probes/pivotby-col-subtotals-values S!A1).
+Evidence: probes/pivotby-col-subtotals-values S!A1-A111 (two and three values, depth -2, shown headers, swapped and
+duplicated column fields, a descending value sort), probes/pivotby-col-subtotals-values2 S!A1-A205 (eight and seven
+single-child parents with two to four values, mixed children with two to four values, a descending key sort, value
+sorts with the depth omitted, three column fields at depth 3, 2 and -3, row and column subtotals together),
+probes/pivotby-col-subtotals-values3 S!A49 (three values over three column fields at depth 3),
+probes/pivotby-total-columns-one-group, probes/groupby-subtotals G!A781, G!A1141, G!A1171 (excel-graph,
+2026-10-17/18). ARRAYTOTEXT over distinct values (101-112, 201-212, ...) shows which records and value column each
+cell takes: every cell is `""`, one group's cell or one subtotal's or total's, never a mix.
+A descending key sort places in the descending order: over Outer descending (E, D, C, B, A) the total's writes land in
+C's subtotal columns, which the ascending order would put on a group (-values2 S!A97).
+Unprobed: writes of two subtotals into the same column (the engine: the later in the order above wins, so a parent's
+deeper subtotal over a parent, and a later parent over an earlier one's deeper subtotal); the relative set a moved cell
+gets (the engine: the set of the subtotal or total whose cell it shows; T-1857); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
+S!A37, S!A61).
+Status: VERIFIED (web)
+Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/pivotby.rs (`Placement`, `Shown`)
+Tasks: T-1700
 
 ## GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap
 Rule: Excel calls a two-parameter LAMBDA in GROUPBY or PIVOTBY once per aggregate cell with the cell's values and its whole

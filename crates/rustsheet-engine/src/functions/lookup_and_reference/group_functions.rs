@@ -227,9 +227,11 @@ impl Functions {
         self.layout == Layout::Columns && self.list.len() > 1
     }
 
-    /// Whether PIVOTBY's Total columns are `""`: one function over several value columns (P!Y97);
-    /// several functions fill them, paired with several values too (functions2 P!A1).
-    pub(crate) fn blank_totals(&self, value_columns: usize) -> bool {
+    /// Whether one function goes over several value columns, so that PIVOTBY places its column
+    /// totals and subtotals in other columns (`Placement`; the Total columns are `""` with two or
+    /// more column groups, P!Y97); several functions total and subtotal in place, paired with
+    /// several values too (functions2 P!A1, probes/pivotby-col-subtotals-values3 S!A1).
+    pub(crate) fn one_over_several_values(&self, value_columns: usize) -> bool {
         self.list.len() == 1 && value_columns > 1
     }
 
