@@ -177,5 +177,8 @@
   expressions/parser/static_analysis.rs 1137 -> 1049 lines (their fallback arms now in the lifting table)
   (`check_file_size.py --update`); the same update tightens locks that were loose on main:
   functions/mod.rs 2179 -> 2177 (the `macros` module is gone), model.rs 3462 -> 3415 and stringify.rs 1067 -> 1062.
+  T-1713: expressions/parser/static_analysis.rs 1049 -> 1026 lines (the operator-chain shape moved to
+  static_analysis/broadcast.rs to make room for the legacy N/T marker step) (`check_file_size.py --update`);
+  duplicated lines unchanged at 3863.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
