@@ -6,7 +6,7 @@ lane: functions-text
 status: todo
 priority: P2
 size: M
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -23,3 +23,6 @@ Found by T-1626 (probes/t1626-regexreplace, t1626-regextest, excel-graph). Beyon
 
 ## Out of scope
 - The optional-argument cells (T-1360).
+
+## Handoff
+Sonnet run read the task and the engine's regex setup (`regex-automata` with `nfa-pikevm`, `regex-lite`, `regex`; none supports backreferences). Pattern backreferences (REGEXTEST C29 `(\w)\1`) and PCRE2-style lazy empty-match global replace (C34) need either a backtracking engine (a new dependency: supply-chain review, directive 5 limits on backtracking time and memory) or a hand-written matcher, which is a design question beyond a sonnet run. The `\1` replacement form (C18) alone is small and could be split out. Next: decide the engine (with a decision record and a step/memory cap), or split C18 into its own sonnet task. Nothing is implemented.
