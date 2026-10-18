@@ -720,13 +720,13 @@ Tasks: T-1517
 
 ## Date function lifts: weekend with a lifted date, TAKE/DROP of a range, mismatched shapes, boolean elements (T-1807)
 Rule (probes/date-lift-open, excel-graph, 2026-10-18): the lifted `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL broadcasts with
-a lifted date like any other argument pair: the result has the larger of the two shapes (what the shorter one pads with is not probed)
+a lifted date like any other argument pair: the result has the largest height and the largest width of the two (what the shorter one pads with is not probed)
 (`ROWS(WORKDAY.INTL({45000;45031},5,B1:B3))` = 3, `COLUMNS(...)` = 1; `WORKDAY.INTL(45000,{1;2},{1,2})` is 2x2;
 `NETWORKDAYS.INTL(45000,{46000,46100},B1:B3)` is 3x2). A column against a row gives the full grid in every function probed
 (`EDATE({45000;45031},{1,2,3})` is 2x3 and `EDATE({45000,45031},{1;2;3})` is 3x2). Mismatched same-axis arrays take the longer length
 (`ROWS(EDATE({45000;45031;45100},{1;2}))` = 3, likewise EOMONTH, WORKDAY, NETWORKDAYS, YEARFRAC, WEEKNUM and DAYS).
-`TAKE` and `DROP` of a range return an array, not a reference, so the Analysis ToolPak range rule does not apply to them, yet the
-result is not lifted either: `EDATE(TAKE(A1:A3,2),1)`, `EDATE(DROP(A1:A3,1),1)`, `EOMONTH(45000,DROP(B1:B3,1))`, `WEEKNUM`,
+`TAKE` and `DROP` of a range act like the multi-cell range they cut from (the range rule above applies; whether they return a
+reference is not probed): `EDATE(TAKE(A1:A3,2),1)`, `EDATE(DROP(A1:A3,1),1)`, `EOMONTH(45000,DROP(B1:B3,1))`, `WEEKNUM`,
 `WORKDAY`, `NETWORKDAYS`, `YEARFRAC` and `WORKDAY.INTL` of a 2-row `TAKE` are `#VALUE!` as a whole (ROWS = COLUMNS = `#VALUE!`), while a 1x1
 `TAKE` is that cell (`EOMONTH(TAKE(A1:A3,1),1)` = 45046). `DAYS(TAKE(A1:A3,2),1)` lifts (2 rows) and so does the `weekend`
 of NETWORKDAYS.INTL (`NETWORKDAYS.INTL(45000,46000,TAKE(B1:B3,2))` is 2 rows). A boolean element of an array month count is `#VALUE!` for
