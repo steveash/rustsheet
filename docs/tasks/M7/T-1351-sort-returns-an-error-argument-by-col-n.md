@@ -3,7 +3,7 @@ id: T-1351
 title: "SORT returns an error argument (by_col #N/A) before rejecting sort_index 0"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
