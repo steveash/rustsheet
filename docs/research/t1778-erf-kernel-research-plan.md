@@ -355,3 +355,32 @@ Next steps:
 
 Review 1's H-A (a term-count change in a series) is not needed for x < 0.5 under this model, but it stays
 open for the ERFC tail drift (H-F).
+
+### Research update 3 (2026-10-18): one global formula at 99.90% for x < 0.5; ERFC above 0.5 is open
+
+Small x (round 2):
+- **New data.** New full-mantissa ladders (`kmyst-erf-rladder1..7`, 152,576 cells, z from 0.004 to 0.25) fit the
+  model with 0 misses per run (146,432 points). Both the 80-bit product and the 80-bit divide are required.
+- **No structural change at W = 1.** W = fl(Q) passes 1.0 with only the ulp change; Q(z) = 1 at
+  x = 0x1.2fe204020425fp-3 (±15 ulp).
+- **One global formula.** P is a quartic and Q a quintic. They are evaluated by x87 Horner with every operation
+  stored to double (mode 0300 in `docs/research/t1778/round2/sc.c`).
+  - With the coefficients in `round2/best_coef.txt` this reproduces 770,405 of 771,176 points (99.90%) with no
+    per-run freedom.
+  - Every miss is 1 ulp, and about 90% of them sit within 0.05 ulp of an N or W rounding midpoint.
+  - Only A and W0 are pinned exactly. The data alone cannot pin p2..p4 and q2..q5 to single doubles.
+- **Source not identified.** No source construction reproduces the coefficients: minimax on any [0,b] under
+  four error criteria, Chebyshev interpolation, shifted Padé, or other degrees.
+  - Once q1 is matched, all of them miss q2 by about 8E-7 normalised.
+  - Excel's rational is 13 to 180 times less accurate than the best possible one, yet still accurate to 1E-21.
+    That fits a Remez run below double precision whose coefficients drifted.
+  - Hart's tables could not be reached through the proxy.
+
+x >= 0.5:
+- The switch to a separate erfc kernel e lies in (0.49922, 0.5171), consistent with 0.5. There,
+  ERF(d) = fl(1 - e) at 541 of 541 points and ERFC(-d) = fl(2 - e).
+- e looks like fl(exp(-fl(x*x))) times a rational in x with every Horner step rounded to double, judged from its
+  noise fingerprint. Cephes' coefficients do not reproduce the ±3 ulp drift.
+- The drift's sign changes suggest an approximation interval of about [8, 26.64].
+- Five proposed probes (66,240 cells) are specified in the round-2 erfc-structure report: decouple, the exact 0.5
+  split, a branch scan, Excel's EXP alongside ERFC, and a dense drift map.
