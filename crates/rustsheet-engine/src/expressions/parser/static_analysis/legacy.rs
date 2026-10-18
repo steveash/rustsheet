@@ -224,7 +224,7 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
         Node::ImplicitIntersection { child, .. } => child.as_ref(),
         other => other,
     };
-    matches!(kind, Function::N | Function::T)
+    kind.is_n_or_t()
         && matches!(
             call,
             Node::FunctionKind {
@@ -300,7 +300,7 @@ fn reads_reference(kind: &Function, arg: &Node) -> bool {
 /// Whether `arg` is an argument of N or T that is a reference it reads whole, with nothing in
 /// it to intersect: the `@` of a range or of an IF arm in it is not added either.
 pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
-    matches!(kind, Function::N | Function::T) && is_plain_reference(arg)
+    kind.is_n_or_t() && is_plain_reference(arg)
 }
 
 /// Whether `node` is a reference N or T reads whole, in the shapes probed: a range or cell, an

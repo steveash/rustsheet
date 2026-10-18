@@ -6,6 +6,7 @@
 //! probes/date-argument-modes (docs/excel-semantics/arrays.md "Scalar arguments lift").
 
 mod kernel_work;
+mod metamorphic;
 
 use super::driver::{LiftCost, LiftOptions, LiftedArg};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};

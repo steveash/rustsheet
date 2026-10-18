@@ -2015,14 +2015,7 @@ impl Model {
         column: i32,
         formula: String,
     ) -> Result<(), String> {
-        let mut style_index = self.get_cell_style_index(sheet, row, column)?;
-        if self.workbook.styles.style_is_quote_prefix(style_index) {
-            style_index = self
-                .workbook
-                .styles
-                .get_style_without_quote_prefix(style_index)?;
-        }
-
+        let style_index = self.formula_style_index(sheet, row, column)?;
         if let Some(new_formula) = self.formula_without_prefix(&formula) {
             self.set_cell_with_formula(sheet, row, column, new_formula, style_index)?;
             Ok(())
@@ -2174,28 +2167,10 @@ impl Model {
                 .get_style_with_quote_prefix(style_index)?;
             self.set_cell_with_string(sheet, row, column, new_value, new_style)?;
         } else {
-            let mut new_style_index = style_index;
-            if self.workbook.styles.style_is_quote_prefix(style_index) {
-                new_style_index = self
-                    .workbook
-                    .styles
-                    .get_style_without_quote_prefix(style_index)?;
-            }
+            let mut new_style_index = self.formula_style_index(sheet, row, column)?;
             if let Some(formula) = self.formula_without_prefix(&value) {
-                let formula_index =
-                    self.set_cell_with_formula(sheet, row, column, formula, new_style_index)?;
-                // Update the style if needed
-                let cell = CellReferenceIndex { sheet, row, column };
-                let (parsed_formula, _static_result) =
-                    &self.parsed_formulas[sheet as usize][formula_index as usize];
-                if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
-                    let new_style_index = self
-                        .workbook
-                        .styles
-                        .get_style_with_format(new_style_index, &units.get_num_fmt())?;
-                    let style = self.workbook.styles.get_style(new_style_index)?;
-                    self.set_cell_style(sheet, row, column, &style)?;
-                }
+                let node = self.parse_cell_formula(sheet, row, column, formula)?;
+                self.set_formula_node_with_units(sheet, row, column, node, new_style_index)?;
             } else {
                 // The list of currencies is '$' and the local currency. A euro sign is not
                 // one in en-US: typed `1€` stays text (probes/typed-currency-percent-input
@@ -2394,7 +2369,7 @@ impl Model {
 
     /// The index of a formula among the shared formulas of the sheet, adding it to them if it is new.
     /// The 'cache' lookup comes first, to avoid quadratic time complexity when adding new formulas.
-    fn shared_formula_index(
+    pub(crate) fn shared_formula_index(
         &mut self,
         sheet: u32,
         mut parsed_formula: Node,
@@ -2459,28 +2434,6 @@ impl Model {
             }
             node => Ok(node),
         }
-    }
-
-    fn set_cell_with_formula(
-        &mut self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-        formula: &str,
-        style: i32,
-    ) -> Result<i32, String> {
-        let parsed_formula = self.parse_cell_formula(sheet, row, column, formula)?;
-        let static_result = run_static_analysis_on_node(&parsed_formula);
-        let is_dynamic = !matches!(static_result, StaticResult::Scalar);
-
-        let formula_index = self.shared_formula_index(sheet, parsed_formula, static_result)?;
-        let worksheet = self.workbook.worksheet_mut(sheet)?;
-        if is_dynamic {
-            worksheet.set_cell_with_dynamic_formula(row, column, formula_index, style, 1, 1)?;
-        } else {
-            worksheet.set_cell_with_formula(row, column, formula_index, style)?;
-        }
-        Ok(formula_index)
     }
 
     // FIXME
