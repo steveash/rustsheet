@@ -1,4 +1,4 @@
-use super::trig::{excel_sin_cos, excel_tan};
+use super::trig::{excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT};
 use crate::arithmetic::{divide, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
@@ -25,7 +25,7 @@ const BASE_MAX_MIN_LENGTH: f64 = 255.0;
 /// SIN, COS, TAN, COT, SEC and CSC are `#NUM!` from |x| = 2^27 (SIN(2^27-1) is a number, SIN(2^27)
 /// is `#NUM!`; probes/trig-huge-argument, docs/excel-semantics/numbers.md "Trig of a huge angle").
 fn trig_arg(f: f64) -> Result<f64, Error> {
-    if f.abs() >= 134_217_728.0 {
+    if f.abs() >= EXCEL_TRIG_LIMIT {
         Err(Error::NUM)
     } else {
         Ok(f)

@@ -18,6 +18,10 @@ use std::f64::consts::FRAC_PI_2;
 /// (`0x235·2^-63`). It is COS(PI()/2) in Excel.
 const X87_HALF_PI_TAIL: f64 = 565.0 / 9_223_372_036_854_775_808.0;
 
+/// 2^27: [`excel_sin_cos`] and [`excel_tan`] take |x| below it, where SIN and the others are
+/// numbers (SIN(2^27) is `#NUM!`; probes/trig-huge-argument).
+pub(crate) const EXCEL_TRIG_LIMIT: f64 = 134_217_728.0;
+
 /// Horner divisors are j(j+1): step k of the sine divides by (2k)(2k+1) (even j), of the cosine
 /// by (2k-1)(2k) (odd j). Up to j = 28, |r| <= π/4 leaves the next term below 2^-106 of the sum.
 const SERIES_DIVISORS: usize = 28;
@@ -180,8 +184,8 @@ fn by_quadrant(n: f64, sin: DoubleDouble, cos: DoubleDouble) -> (DoubleDouble, D
     }
 }
 
-/// Excel's SIN(x) and COS(x), for |x| < 2^27 (the caller's `trig_arg` cut).
-pub(super) fn excel_sin_cos(x: f64) -> (f64, f64) {
+/// Excel's SIN(x) and COS(x), for |x| < [`EXCEL_TRIG_LIMIT`].
+pub(crate) fn excel_sin_cos(x: f64) -> (f64, f64) {
     let (sin, cos) = excel_sin_cos_exact(x);
     (sin.hi, cos.hi)
 }
