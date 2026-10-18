@@ -461,7 +461,7 @@ Evidence: probes-numeric (on branch `agent/research/T-1778-kernel-map`) `kmyst-e
 Ours: `crates/rustsheet-engine/src/x87_exp.rs` `excel_exp` implements V6 with integer x87 rounding and a double-double
 F2XM1 (T-1916). It reproduces the reference model, scoring 62,013 of 62,100 `EXP(A)` cells of `kmyst-erfc-r5expmap1/2`
 and every `EXP(-(x*x))` cell up to x = 26.55 except the near-ties. Only the ERFC kernel uses it; the worksheet EXP
-still calls libm's `exp` and flushes subnormal results (T-1928).
+still calls libm's `exp` and flushes subnormal results (T-1931).
 
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is

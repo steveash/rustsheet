@@ -591,7 +591,7 @@ GAMMA.DIST are not routed yet (T-1929).
   (Mac Excel does not run the x87 code), not a kernel miss.
 Status: VERIFIED. ERF, ERF.PRECISE, ERFC and ERFC.PRECISE are bit-exact on every probed input except the 20 EXP
 near-tie cells. Implemented in `erf.rs` and `x87_exp.rs` (T-1916).
-Tasks: T-1778, T-1916; T-1929 routes the remaining wrappers and T-1928 the worksheet EXP; T-0968, T-1187, T-0971 and
+Tasks: T-1778, T-1916; T-1929 routes the remaining wrappers and T-1931 the worksheet EXP; T-0968, T-1187, T-0971 and
 T-0972 inherit the map.
 
 ## RANK of a non-reference array

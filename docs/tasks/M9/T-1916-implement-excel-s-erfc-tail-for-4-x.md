@@ -82,4 +82,4 @@ ERF, ERF.PRECISE, ERFC and ERFC.PRECISE reproduce Excel's bits for every x, from
 - eval: ironcalc-calc known failures 1243 -> 1148 (NORM_DIST 36, LOGNORM 21, CONFIDENCE 17, ERFs 14, GAUSS 5,
   Z_TEST 2), probes 2146 -> 2135 (incl. subnormal-function-boundaries A5); no regressions. ERFs.xlsx E8/G8
   (`ERFC(6)`) stay: Mac Excel cached a value 2 ulp from the Windows oracle's, which we match.
-- Follow-ups: T-1928 (worksheet EXP on V6), T-1929 (route CHISQ.DIST.RT, Z.TEST, POISSON, GAMMA.DIST). T-1186 done.
+- Follow-ups: T-1931 (worksheet EXP on V6), T-1929 (route CHISQ.DIST.RT, Z.TEST, POISSON, GAMMA.DIST). T-1186 done.

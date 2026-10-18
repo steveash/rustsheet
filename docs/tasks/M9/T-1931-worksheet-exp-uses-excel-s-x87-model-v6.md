@@ -1,5 +1,5 @@
 ---
-id: T-1928
+id: T-1931
 title: "Worksheet EXP uses Excel's x87 model V6 (T-1778)"
 milestone: M9
 lane: functions-math

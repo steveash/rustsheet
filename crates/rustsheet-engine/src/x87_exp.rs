@@ -11,7 +11,7 @@
 //! It matches 2,139,591 of 2,139,684 EXP cells of the T-1778 `kmyst-erfc-*` probes; the 93 misses
 //! are points where 2^|f| - 1 lies within 0.09 ulp of a 64-bit rounding midpoint, where Excel's
 //! F2XM1 is faithful but not correctly rounded. Only the ERFC kernel uses it so far; the worksheet
-//! EXP keeps libm's `exp` (T-1928).
+//! EXP keeps libm's `exp` (T-1931).
 
 use crate::arithmetic::{
     round_extended_to_double, round_extended_to_subnormal, round_to_bits, significand_and_exponent,
