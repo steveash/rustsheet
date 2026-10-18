@@ -39,13 +39,9 @@ impl Model {
         // range or an array (probes/m7-argument-modes F13, F14).
         let (operands, lists) = self.lift_text_operands(args, &[1, 2], cell);
         let mut lists = lists.into_iter();
-        let col_delimiters = lists
-            .next()
-            .map(|list| self.split_delimiters(list, cell));
+        let col_delimiters = lists.next().map(|list| self.split_delimiters(list, cell));
         // A bare empty-arg (omitted) row delimiter → no row splitting, which is the empty list.
-        let row_delimiters = lists
-            .next()
-            .map(|list| self.split_delimiters(list, cell));
+        let row_delimiters = lists.next().map(|list| self.split_delimiters(list, cell));
         let arg_count = args.len();
         let scanned: Vec<usize> = [&col_delimiters, &row_delimiters]
             .into_iter()
@@ -116,7 +112,10 @@ impl Model {
         // `#VALUE!`, in either list; an omitted delimiter is the empty list and is allowed when
         // the other one is given (probes/textsplit-empty-delimiter A1-A12).
         let lists = [&col_delims.list, &row_delims.list];
-        if lists.iter().any(|list| list.exact().iter().any(String::is_empty)) {
+        if lists
+            .iter()
+            .any(|list| list.exact().iter().any(String::is_empty))
+        {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
