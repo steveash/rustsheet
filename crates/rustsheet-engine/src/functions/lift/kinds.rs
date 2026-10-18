@@ -280,6 +280,14 @@ const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
 );
 // --- End incomplete gamma (T-1872) ----------------------------------------------------------
 
+// --- Hypergeometric (T-1873) ----------------------------------------------------------------
+/// One HYPGEOM.DIST element: its capped cdf's bound, (2^18 + 131) terms at 250 ns, about 66 ms, so
+/// 32 elements take about 2.1 s (a DEVIATION; measured in release: hypegeom.rs `MAX_TERMS`).
+const HYPGEOM_DIST_WEIGHT: u32 = 1 << 22;
+const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(5, &[Lift; 5], Weighted(HYPGEOM_DIST_WEIGHT));
+const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift; 4], Constant);
+// --- End hypergeometric (T-1873) ------------------------------------------------------------
+
 // --- Financial ATP (T-1822) -----------------------------------------------------------------
 /// What one walk of a coupon schedule is charged: the walk steps one coupon period at a time
 /// from the maturity back to the settlement (or from the first interest date to the issue), at
@@ -655,6 +663,8 @@ macro_rules! lifting_table_functions {
             | Function::PoissonDist
             | Function::PoissonCompat
             // --- End incomplete gamma (T-1872) ---
+            | Function::HypGeomDist // T-1873
+            | Function::HypGeomDistCompat
     };
 }
 pub(crate) use lifting_table_functions;
@@ -899,9 +909,8 @@ impl Function {
             // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements), and
             // BINOM.DIST.RANGE, which runs two cdfs, 6.4 us (6.7 s for 2^20 elements).
             // PERMUT multiplies at most 171 factors whatever its arguments (0.22 us). The
-            // quantile searches of BETA.INV, F.INV and T.INV (T-1848) and the incomplete-gamma
-            // functions (T-1872) are entered below; HYPGEOM.DIST's cdf sum (TODO(T-1873)) loops by
-            // value with no per-call cap of its own, so it is not entered yet.
+            // quantile searches of BETA.INV, F.INV and T.INV (T-1848), the incomplete-gamma
+            // functions (T-1872) and HYPGEOM.DIST's capped cdf sum (T-1873) are entered below.
             Function::Gauss
             | Function::Phi
             | Function::Fisher
@@ -979,6 +988,11 @@ impl Function {
             | Function::GammaInvCompat => Some(&INCOMPLETE_GAMMA_3),
             Function::GammaDist | Function::GammaDistCompat => Some(&GAMMA_DIST),
             // --- End incomplete gamma (T-1872) ---
+            // --- Hypergeometric (T-1873) ---
+            // As above (stat-argument-modes H330-H342, stat-quantile-lift H51-H54).
+            Function::HypGeomDist => Some(&HYPGEOM_DIST),
+            Function::HypGeomDistCompat => Some(&HYPGEOMDIST),
+            // --- End hypergeometric (T-1873) ---
             _ => None,
         }
     }

@@ -28,3 +28,6 @@ Third-party code ported into RustSheet:
   `checked_gamma_lr`, `checked_gamma_ur` and `Gamma::inverse_cdf` from statrs 0.18.0
   (https://github.com/statrs-dev/statrs, Copyright (c) 2016 Michael Ma, MIT License); the notice is
   retained in that file.
+- crates/rustsheet-engine/src/functions/statistical/hypegeom.rs contains a port of
+  `Hypergeometric::cdf` from statrs 0.18.0 (https://github.com/statrs-dev/statrs, Copyright (c) 2016
+  Michael Ma, MIT License); the notice is retained in that file.

@@ -877,6 +877,17 @@ fn statistical_legacy_ranges_and_shapes_follow_the_table() {
             "POISSON(@A1:A60,1,TRUE)",
             "POISSON(A1:A60,1,TRUE)",
         ),
+        // HYPGEOM.DIST and HYPGEOMDIST (T-1873).
+        (
+            "HYPGEOM.DIST(2,3,5,10,B1:B60)",
+            "HYPGEOM.DIST(2,3,5,10,@B1:B60)",
+            "_xlfn.HYPGEOM.DIST(2,3,5,10,B1:B60)",
+        ),
+        (
+            "HYPGEOMDIST(A1:A60,3,5,10)",
+            "HYPGEOMDIST(@A1:A60,3,5,10)",
+            "HYPGEOMDIST(A1:A60,3,5,10)",
+        ),
     ]);
     let worksheets = vec!["Sheet1".to_string()];
     let mut parser = new_parser(worksheets, vec![], HashMap::new());
@@ -908,9 +919,12 @@ fn statistical_legacy_ranges_and_shapes_follow_the_table() {
         shape("GAMMA.INV(0.4,2,{3,4})"),
         StaticResult::Array(1, 2)
     ));
-    // Not entered yet (T-1873): the old scalar shape.
     assert!(matches!(
         shape("HYPGEOM.DIST(A1:A3,4,5,10,TRUE)"),
-        StaticResult::Scalar
+        StaticResult::Array(3, 1)
+    ));
+    assert!(matches!(
+        shape("HYPGEOMDIST(2,3,5,{10,12})"),
+        StaticResult::Array(1, 2)
     ));
 }

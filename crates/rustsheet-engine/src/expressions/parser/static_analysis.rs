@@ -668,7 +668,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         }
         Function::Devsq => vec![Signature::Vector; arg_count],
         Function::FTest => vec![Signature::Vector; 2],
-        Function::HypGeomDist => args_signature_scalars(arg_count, 5, 0),
         Function::Pearson => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -706,8 +705,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
                 vec![Signature::Error; arg_count]
             }
         }
-        // Compatibility wrappers
-        Function::HypGeomDistCompat => args_signature_scalars(arg_count, 4, 0),
         // Compatibility aliases
         Function::ChiTestCompat => {
             if arg_count == 2 {
@@ -1079,7 +1076,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::CovarianceS => StaticResult::Scalar,
         Function::Devsq => StaticResult::Scalar,
         Function::FTest => StaticResult::Scalar,
-        Function::HypGeomDist => StaticResult::Scalar,
         Function::Pearson => StaticResult::Scalar,
         Function::Stdev => StaticResult::Scalar,
         Function::StDevP => StaticResult::Scalar,
@@ -1092,7 +1088,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::VarpA => StaticResult::Scalar,
         Function::VarA => StaticResult::Scalar,
         Function::ZTest => StaticResult::Scalar,
-        Function::HypGeomDistCompat => StaticResult::Scalar,
         Function::ChiTestCompat => StaticResult::Scalar,
         Function::CovarCompat => StaticResult::Scalar,
         Function::FTestCompat => StaticResult::Scalar,

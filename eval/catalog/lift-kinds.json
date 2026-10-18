@@ -87,6 +87,8 @@
   {"name":"HEX2DEC","required":1,"params":["LiftArrays"],"repeat":null,"max":1,"work":"Constant"},
   {"name":"HEX2OCT","required":1,"params":["LiftArrays","LiftArrays"],"repeat":null,"max":2,"work":"Constant"},
   {"name":"HYPERLINK","required":1,"params":["Lift","Lift"],"repeat":null,"max":2,"work":"Constant"},
+  {"name":"HYPGEOM.DIST","required":5,"params":["Lift","Lift","Lift","Lift","Lift"],"repeat":null,"max":5,"work":"Weighted(4194304)"},
+  {"name":"HYPGEOMDIST","required":4,"params":["Lift","Lift","Lift","Lift"],"repeat":null,"max":4,"work":"Constant"},
   {"name":"IMABS","required":1,"params":["LiftArrays"],"repeat":null,"max":1,"work":"Constant"},
   {"name":"IMAGINARY","required":1,"params":["LiftArrays"],"repeat":null,"max":1,"work":"Constant"},
   {"name":"IMARGUMENT","required":1,"params":["LiftArrays"],"repeat":null,"max":1,"work":"Constant"},
