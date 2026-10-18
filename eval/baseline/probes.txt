@@ -370,6 +370,7 @@ C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
 C	probes/legacy-array-result.case.json	46
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
+C	probes/legacy-choose-array-index.case.json	12
 C	probes/legacy-index-array-index.case.json	30
 C	probes/legacy-n-t-reference-args.case.json	41
 C	probes/legacy-one-cell-shape-intersection.case.json	26
@@ -1870,9 +1871,6 @@ F	probes/legacy-n-t-reference-args.case.json	S!S10
 F	probes/legacy-n-t-reference-args.case.json	S!S11
 F	probes/legacy-n-t-reference-args.case.json	S!T10
 F	probes/legacy-n-t-reference-args.case.json	S!T11
-F	probes/lift-arrays-choose-arms.case.json	Sheet1!A70
-F	probes/lift-arrays-choose-arms.case.json	Sheet1!B69
-F	probes/lift-arrays-choose-arms.case.json	Sheet1!B70
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
