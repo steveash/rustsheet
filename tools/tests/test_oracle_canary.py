@@ -245,6 +245,19 @@ def test_a_sheet_in_the_worksheets_directory_is_scanned_even_without_a_relations
         embed_canary(_repack(parts))
 
 
+def test_a_zero_byte_directory_entry_under_worksheets_is_skipped() -> None:
+    parts = _parts(build_xlsx(SPEC))
+    parts["xl/worksheets/"] = ""
+    assert SHEET in _parts(embed_canary(_repack(parts)))["xl/workbook.xml"]
+
+
+def test_a_directory_named_entry_with_data_is_still_refused() -> None:
+    parts = _parts(build_xlsx(SPEC))
+    parts["xl/worksheets/"] = "not xml"
+    with pytest.raises(OracleError, match="xl/worksheets/"):
+        embed_canary(_repack(parts))
+
+
 def test_a_clean_sheet_at_a_nonstandard_path_is_embedded() -> None:
     moved = _move_sheet(_parts(build_xlsx(SPEC)), "xl/other/data.xml")
     assert SHEET in _parts(embed_canary(_repack(moved)))["xl/workbook.xml"]
