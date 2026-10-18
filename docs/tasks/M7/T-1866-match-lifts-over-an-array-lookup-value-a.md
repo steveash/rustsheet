@@ -32,4 +32,4 @@ has no evidence.
 -
 
 ## Outcome
-MATCH lifts `lookup_value` over an array or multi-cell range (one position per element) through `lift_values`, spills like LOOKUP in static analysis, and returns an error element before checking match_type/lookup_array. New probe probes/match-lookup-value-lift (19 cells, excel-graph): 16 pass; the other 3 (E14:E16) are the array-match_type lift, recorded as known failures and filed as T-1876. gen-m7/4629e931955aa4b8 passes (40/40). lookup.md has a new "MATCH lifts over lookup_value" entry.
+MATCH lifts `lookup_value` over an array or multi-cell range (one position per element) through `lift_values`, spills like LOOKUP in static analysis, and returns an error element before checking match_type/lookup_array. New probe probes/match-lookup-value-lift (19 cells, excel-graph): 16 pass; the other 3 (E14:E16) are the array-match_type lift, recorded as known failures and filed as T-1879. gen-m7/4629e931955aa4b8 passes (40/40). lookup.md has a new "MATCH lifts over lookup_value" entry.
