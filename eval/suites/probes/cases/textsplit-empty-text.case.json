@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1347 TEXTSPLIT of empty text: literal, blank cell, empty-string cell, with and without a row delimiter, ignore_empty, empty delimiter",
+  "tags": [
+    "M7",
+    "text",
+    "dynamic-arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "B2": "=\"\"",
+        "A1": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\"),1)",
+        "A2": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",\";\"),1)",
+        "A3": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\"a\",\"TRUE\"),1)",
+        "A4": "=ARRAYTOTEXT(TEXTSPLIT(C9,\",\"),1)",
+        "A5": "=ARRAYTOTEXT(TEXTSPLIT(B2,\",\"),1)",
+        "A6": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",,TRUE),1)",
+        "A7": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",,,1),1)",
+        "A8": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",,,,\"x\"),1)",
+        "A9": "=ARRAYTOTEXT(TEXTSPLIT(\"\",,\";\"),1)",
+        "A10": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\"\"),1)",
+        "A11": "=ISERROR(TEXTSPLIT(\"\",\",\"))",
+        "A12": "=ROWS(TEXTSPLIT(\"a\",\",\"))",
+        "A13": "=ARRAYTOTEXT(TEXTSPLIT(\"\",NA()),1)",
+        "A14": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",NA()),1)",
+        "A15": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",,1/0),1)",
+        "A16": "=ARRAYTOTEXT(TEXTSPLIT(\"\",\",\",,,1/0),1)",
+        "A17": "=ARRAYTOTEXT(TEXTSPLIT({\"a\",\"\";\"b\",\"c\"},\",\"),1)",
+        "A18": "=ARRAYTOTEXT(TEXTSPLIT(C9:C10,\",\"),1)",
+        "C10": "x,y"
+      }
+    }
+  ],
+  "expected": {}
+}
