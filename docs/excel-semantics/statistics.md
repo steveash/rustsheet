@@ -371,6 +371,36 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
   of 115 ulp to 1.85 ulp for x >= 4 (1,702 points). The rest (at most 7.4 ulp) has a smooth part of up to
   about +-2.5 ulp: positive around x = 6.5-7.5, 9-9.75, 13-15.5 and 19.75-22.75, negative around
   10.25-11.75, 16-19.5 and 23-23.75 (means over bins of 0.25). It is the drift T-1187 reported.
+- Rational kernel (round-1 parallel investigation, 2026-10-18). This supersedes the additive hi + K*(1 - fl(V)) + R
+  model above. That model linearises a division, so its K, V0, c1, c2, R and d0 are artefacts.
+  - The kernel is ERF.PRECISE(x) = fl53(fl80(co)/W), with co = fl53(fl64(x*N)), N = fl(P(z)) and W = fl(Q(z)).
+    N and W are stored doubles, and the divide is x87 (80-bit, then rounded).
+  - P(0) = A = 0x1.1df5e70c7956bp+0 and Q(0) = 0x1.fada15778ece6p-1 = 0.98994509777494666.
+    A/Q(0) = 2/sqrt(pi) + 1.067E-16, which is the old +0.5 ulp bias.
+  - Tiny x: fl(fl(x*A)/Q(0)) matches 3,048 of 3,048 points with no fitted constant; the old form matched 3,043.
+    Forming x*A without the store matches 2,322.
+  - Small z: letting N and W step one ulp at a time, every run of the wknee long runs (253,952 points) and of the
+    zs3, wsweep, wladder and wlong2 sweeps (z up to 7.4E-3) fits with zero misses.
+  - Fitted coefficients:
+    - P = A + 0.1406813126423 z + 0.04481917070 z^2 + 0.0018054 z^3 + ...
+    - Q = Q(0) + 0.45465726643 z + 0.0922778683 z^2 + 0.0104635 z^3 + ...
+    - Q's terms follow from P and the erf series.
+  - The old "grid doubling at lo = 0" is W crossing 1.0. The old V phases could not be chained by any smooth
+    polynomial because the true step size N/W^2 varies with z.
+  - The form (degree 4 over 5 in z, x*N/W) matches Cephes `ndtr.c` erf but not its coefficients. The normalised
+    ratios are close to the [4/5] Padé of erf(x)/x. Scripts: `docs/research/t1778/tinydiv.c`.
+  - The exact coefficients and their evaluation order are OPEN (T-1778).
+- GAMMA.DIST(z, 0.5, 1, TRUE) = ERF.PRECISE(SQRT(z)) = CHISQ.DIST(2z, 1, TRUE) at 15,360 of 15,360 consecutive
+  doubles z, about half of which are not squares of doubles (`kmyst-erf-decouple`).
+  - So the kernel works from x = sqrt(z), and that internal sqrt is rounded twice (64-bit, then 53), like the
+    worksheet SQRT.
+  - Shapes 0.5 and 1 are special-cased on exact equality. a = 0.5 +- 1 ulp already takes the generic
+    exp(fl(a*fl(ln z))) path, whose error tracks that rounding with slope 1.00 +- 0.02 (`kmyst-erf-ashape`).
+  - The "0.5 +- 1 ulp" columns of `kmyst-gamma-exp` are formula literals cut to 15 digits (0.5 and
+    0.499999999999999), not true neighbours of 0.5.
+- For 0.03 <= x <= 0.32, ERFC.PRECISE(x) = fl(1 - ERF.PRECISE(x)) (ties to even) and
+  ERFC.PRECISE(-x) = fl(2 - ERFC.PRECISE(x)) at 12,288 of 12,288 points (`kmyst-erf-erfcties`). So ERFC exposes no
+  extra precision at small x.
 Candidates that do not reproduce Excel (exact matches):
 - Small-x erf (1,875 to 2,677 points, x < 0.5): Taylor series, CALERF and Cephes rationals with
   c = ...128 in four operation orders, at most 772 (41%); Taylor coefficients rounded to 15, 16 or 17
@@ -388,7 +418,7 @@ Candidates that do not reproduce Excel (exact matches):
 Evidence: probes-numeric cases `kmyst-norm-erfc-a`, `kmyst-norm-erfc-b`, `kmyst-erf-gamma`,
 `kmyst-erf-tiny`, `kmyst-erf-dense`, `kmyst-erfc-dense`, `kmyst-gamma-tiny` and `kmyst-kernel-map`
 (excel-graph, 2026-10-17); the tiny-x erf split uses `kmyst-erf-mantissa`, `kmyst-erf-scale`,
-`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41`, `kmyst-erf-runs`, `kmyst-erf-zstride`, `kmyst-erf-zsweep`, `kmyst-erf-zsweep2`, `kmyst-erf-bridge`, `kmyst-erf-ladder`, `kmyst-erf-scatter`, `kmyst-erf-zsweep3`, `kmyst-erf-zladder`, `kmyst-erf-wsweep`, `kmyst-erf-wsweep2` and `kmyst-erf-twoarg`, and the
+`kmyst-erf-consecutive`, `kmyst-erf-stride06` to `kmyst-erf-stride41`, `kmyst-erf-runs`, `kmyst-erf-zstride`, `kmyst-erf-zsweep`, `kmyst-erf-zsweep2`, `kmyst-erf-bridge`, `kmyst-erf-ladder`, `kmyst-erf-scatter`, `kmyst-erf-zsweep3`, `kmyst-erf-zladder`, `kmyst-erf-wsweep`, `kmyst-erf-wsweep2`, `kmyst-erf-twoarg`, `kmyst-erf-wladder1/2`, `kmyst-erf-wknee1..4`, `kmyst-erf-decouple`, `kmyst-erf-ashape` and `kmyst-erf-erfcties`, and the
 internal-exp check uses `kmyst-gamma-exp`. `uv run python ../docs/research/t1778_incomplete_gamma_kernel_map.py` in tools/
 reprints the identity counts, the tiny-x constant, the GAMMA.DIST error tracking and the ERFC tail figures.
 Status: VERIFIED (identities, constant, error structure); the kernel's exact operation sequence is OPEN.

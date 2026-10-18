@@ -13,3 +13,4 @@ the Python scripts from OUT (scipy for `hboot.py`, mpmath for `wfamilies.py`).
 - `sweepfit.c`, `sweepphase2.py`: sweep-level joint fit of hi alias, fractional hi offset, V phase and one lo offset
   over all 3,072 points of a fine sweep (`ws.txt`, `wla.txt`). The research plan is in
   `docs/research/t1778-erf-kernel-research-plan.md`.
+- `mk_tiny.py`, `tinydiv.c`: the tiny-x check of the rational kernel, fl(fl(x*A)/Q(0)) = ERF.PRECISE at 3,048 of 3,048 points.
