@@ -14,7 +14,7 @@
   - Excel's doubles are 1.5e-9 to 1.6e-8 relative from the generator (7e6 to 1.3e8 ulps), so the generator is a
     structural guide only, not an ulp-level start.
 - `erfc_mid_coef.txt` holds the BIT-EXACT [0.5, 4] coefficients, highest degree first.
-  - `mid_check.c` gives 5,629,402 / 5,629,407; all 5 misses are xlsx misparse inputs that match at the
+  - `mid_check.c` gives 5,694,938 / 5,694,943; all 5 misses are xlsx misparse inputs that match at the
     neighbouring double.
   - Found by the global-opt worker's phase lattice plus top-stage chain solves, and cross-checked by the D
     worker's peel.

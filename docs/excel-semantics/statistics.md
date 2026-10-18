@@ -476,7 +476,7 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
     - The double rounding of the products matters: single-rounded products give 99.86%.
   - **Coefficients.** In `docs/research/t1778/round9/erfc_mid_coef.txt`, highest degree first. Each of the 21 is
     unique: a 1-ulp change in any one adds misses.
-  - **Score.** `round9/mid_check.c` (gcc -O1 -mfpmath=387) matches 5,629,402 of 5,629,407 points with 0.5 < x <= 4
+  - **Score.** `round9/mid_check.c` (gcc -O1 -mfpmath=387) matches 5,694,938 of 5,694,943 points with 0.5 < x <= 4
     (all kmyst-erfc-* cases with an EXP column, through `r11*`).
     - The 5 misses are at x = 2.4500000000004998, 3.0900000000000998, 2.2677103947185002, 2.6493240961407998 and
       1.3246620480703999. Each matches exactly at the neighbouring double, so these are the xlsx misparse quirk
