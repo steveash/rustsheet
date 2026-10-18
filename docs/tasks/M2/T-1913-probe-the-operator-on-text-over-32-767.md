@@ -3,7 +3,7 @@ id: T-1913
 title: "Probe the & operator on text over 32,767 units"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1904 probed UPPER, LOWER, PROPER, TRIM, CLEAN, REPLACE and SUBSTITUTE on a 65,
 
 ## Out of scope
 -
+
+## Outcome
+Probed `&` with a 65,534-unit operand (probes/text-long-input-concat-d, -g, -h, -k, -l, -m, -o, excel-graph): the result truncates to 32,767 units, no error, only when the long text is the right operand or inside a longer concatenation; excel-graph refuses the left-operand shapes. Ours already matches all 7 cases; no engine change. text.md updated. Left-operand question filed as T-1928 (M14, desktop).
