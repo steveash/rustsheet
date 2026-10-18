@@ -35,4 +35,4 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 -
 
 ## Outcome
-Unequal-size pairs in `fn_get_two_matrices` are `#N/A` (CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, CHISQ.TEST, CHITEST, FORECAST); F.TEST takes twice the smaller tail. Rule in statistics.md. Eval: probes known failures shrank (see baseline diff).
+Unequal-size pairs in `fn_get_two_matrices` are `#N/A` (CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, CHISQ.TEST, CHITEST, FORECAST); F.TEST takes twice the smaller tail. Rule in statistics.md. Eval: 62 known failures cleared by `make eval-baseline` (probes/stat-argument-modes 8, regression-pairs-a 8, regression-pairs-b 4, regression-forecast 4, plus 38 groupby cells that already passed on this base).
