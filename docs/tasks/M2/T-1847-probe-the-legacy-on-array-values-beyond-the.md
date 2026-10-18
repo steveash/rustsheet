@@ -3,7 +3,7 @@ id: T-1847
 title: "Probe the legacy @ on array values beyond the T-1717 evidence"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
