@@ -11,6 +11,7 @@ use crate::{
 
 mod accrint;
 mod annuity;
+mod cumulative;
 mod dates;
 mod discount;
 mod financial_bonds;
@@ -19,7 +20,6 @@ mod financial_util;
 mod mirr;
 mod rate_conversions;
 
-use annuity::{compute_ipmt, compute_ppmt};
 use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
 
 use crate::functions::lift::number_or_error;
@@ -398,142 +398,6 @@ impl Model {
                 message,
             },
         }
-    }
-
-    // CUMIPMT(rate, nper, pv, start_period, end_period, type)
-    pub(crate) fn fn_cumipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 6 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let rate = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let nper = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let pv = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let start_period = match self.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f.ceil() as i32,
-            Err(s) => return s,
-        };
-        let end_period = match self.get_number_no_bools(&args[4], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        // 0 at the end of the period, 1 at the beginning of the period
-        let period_type = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => {
-                if f == 0.0 {
-                    false
-                } else if f == 1.0 {
-                    true
-                } else {
-                    return CalcResult::new_error(
-                        Error::NUM,
-                        cell,
-                        "invalid period type".to_string(),
-                    );
-                }
-            }
-            Err(s) => return s,
-        };
-        if start_period > end_period {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "start period should come before end period".to_string(),
-            );
-        }
-        if rate <= 0.0 || nper <= 0.0 || pv <= 0.0 || start_period < 1 {
-            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
-        }
-        let mut result = 0.0;
-        for period in start_period..=end_period {
-            result += match compute_ipmt(rate, period as f64, nper, pv, 0.0, period_type) {
-                Ok(f) => f,
-                Err(error) => {
-                    return CalcResult::Error {
-                        error: error.0,
-                        origin: cell,
-                        message: error.1,
-                    }
-                }
-            }
-        }
-        CalcResult::Number(result)
-    }
-
-    // CUMPRINC(rate, nper, pv, start_period, end_period, type)
-    pub(crate) fn fn_cumprinc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 6 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let rate = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let nper = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let pv = match self.get_number_no_bools(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let start_period = match self.get_number_no_bools(&args[3], cell) {
-            Ok(f) => f.ceil() as i32,
-            Err(s) => return s,
-        };
-        let end_period = match self.get_number_no_bools(&args[4], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        // 0 at the end of the period, 1 at the beginning of the period
-        let period_type = match self.get_number_no_bools(&args[5], cell) {
-            Ok(f) => {
-                if f == 0.0 {
-                    false
-                } else if f == 1.0 {
-                    true
-                } else {
-                    return CalcResult::new_error(
-                        Error::NUM,
-                        cell,
-                        "invalid period type".to_string(),
-                    );
-                }
-            }
-            Err(s) => return s,
-        };
-        if start_period > end_period {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "start period should come before end period".to_string(),
-            );
-        }
-        if rate <= 0.0 || nper <= 0.0 || pv <= 0.0 || start_period < 1 {
-            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
-        }
-        let mut result = 0.0;
-        for period in start_period..=end_period {
-            result += match compute_ppmt(rate, period as f64, nper, pv, 0.0, period_type) {
-                Ok(f) => f,
-                Err(error) => {
-                    return CalcResult::Error {
-                        error: error.0,
-                        origin: cell,
-                        message: error.1,
-                    }
-                }
-            }
-        }
-        CalcResult::Number(result)
     }
 
     // DB(cost, salvage, life, period, [month])

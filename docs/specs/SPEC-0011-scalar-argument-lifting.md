@@ -566,6 +566,14 @@ of the caps at a full-cost cdf (140 continued-fraction steps, 3.1 to 3.4 us), no
 are `Weighted(2^18)` (F.INV's 1,301-cdf bisection, about 4 ms an element: 512 elements in about 2.1 s), T.INV and
 CONFIDENCE.T `Weighted(2^16)` (a 264-cdf bisection, 0.82 ms: 2,048 elements in about 1.7 s). The incomplete-gamma functions and HYPGEOM.DIST stay out (T-1872, T-1873).
 
+As built (T-1845): CUMIPMT and CUMPRINC are `LiftArrays` and `Weighted(2^8)`. Their kernels summed IPMT/PPMT over every
+period with no cap (10^9 steps for `CUMIPMT(1E-9,1E9,1,1,1E9,0)`); Excel computes any period count in constant time
+(probes/fin-cumipmt-period-bound), so the kernel now does too: up to 32 periods it keeps the per-period sum, bit for bit
+main's values, and past that, or when `(1+r)^nper` overflows, a closed form (`functions/financial/cumulative.rs`;
+financial.md "CUMIPMT and CUMPRINC over many periods"). The weight is the derived bound, 32 PPMT steps and the closed
+form (about 2.9 us an element in release: 2^19 elements, 1.5 s), not a value-dependent loop (financial.md "CUMIPMT and
+CUMPRINC work cap", a DEVIATION).
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
