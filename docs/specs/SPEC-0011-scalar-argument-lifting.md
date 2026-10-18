@@ -589,9 +589,11 @@ As built (T-1841): AMORLINC and AMORDEGRC are `LiftArrays` and `Weighted`. Their
 2^53). Excel walks them too, in doubles (probes/fin-amor-period-bound A6 is the walk's remainder, not the closed form's),
 so the kernels keep the walk's values with an integer count and a bound (`functions/financial/amortization.rs`;
 financial.md "AMORLINC and AMORDEGRC over many periods"): AMORLINC jumps the steps that are exact within a binade (at
-most 616 single steps for any double), AMORDEGRC walks up to 2^20 periods and finishes in closed form. The weights are
-the derived bounds measured in release (financial.md "AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (4.7
-us an element at its longest walk: 2^18 elements, 1.2 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
+most 616 single steps for any double, capped at 1,024, `#NUM!` past the cap), bit for bit the walk; AMORDEGRC walks
+up to 2^20 periods and finishes in a closed form that can be a unit off the walk for charges of 1E12 or more
+(financial.md "AMORDEGRC past 2^20 periods", a DEVIATION). The weights are priced from the caps in release (financial.md
+"AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
+elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.

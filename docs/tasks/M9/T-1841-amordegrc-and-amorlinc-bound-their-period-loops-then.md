@@ -34,35 +34,42 @@ fin-remaining-later-argument-ranges H11-H34, all `#VALUE!`).
 - Probed first: probes/fin-amor-period-bound (31 cells) and fin-amor-period-bound-b (5 cells; excel-graph,
   2026-10-18). Excel walks the periods one by one in doubles: the AMORLINC clamp period at rate 1E-6 is the
   remainder of 874,999 subtractions (A6, 0.0015212859222804571), not the closed form; it finishes 10^9 periods (-b
-  A1) and AMORDEGRC 5E8 (-b B1), but a workbook holding only `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)` timed out
-  (8.5 minutes, createSession retries exhausted), as did twice a larger one with periods 1E12 to 1E308; neither is in
+  A1) and AMORDEGRC 5E8 (-b B1), but a workbook holding only `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)` did not finish
+  within the excel-graph timeout (8.5 minutes, createSession retries exhausted), as did twice a larger one with periods 1E12 to 1E308; neither is in
   the suite (financial.md "AMORLINC and AMORDEGRC over many periods").
 - functions/financial/amortization.rs (moved out of financial_depreciation.rs): one kernel, `amortization_of`, for
   both, its checks written as valid ranges so a NaN fails them, and the walks on an integer count:
   - AMORLINC (`linear_charge`) is exact for any period: within a binade the subtraction rounds the charge the same
     way each time, so after two equal steps the next ones are jumped in one exact multiplication, and a charge below
     half an ulp stops the walk for ever. At most 616 single steps over every charge from 2^-1074 to 2^1023 and values
-    from 1E-300 to `f64::MAX` (cap 4,096, tested); bit for bit the plain walk in 2,820 seeded cases, ties included.
+    from 1E-300 to `f64::MAX` (cap 1,024, tested; a walk at the cap is `#NUM!`); bit for bit the plain walk in 2,820 seeded cases, ties included.
   - AMORDEGRC (`DegressiveWalk::charge`) walks up to 2^20 periods with main's arithmetic, stopping early below the
     salvage, at a charge that rounds to 0 before the half period, or at a fixed point (jumped to the half period);
-    past 2^20 a closed form `remain * exp(n * log1p(-rate))`, which gave the walk's rounded value in all 2,700 seeded
-    cases (466 past the cut with a charge of 1 or more) and Excel's -b B1.
+    past 2^20 a closed form `remain * exp(n * log1p(-rate))`, which drifts from the walk by up to about 1e-13 relative,
+    so a charge of 1E12 or more can be a unit off (fin-amor-period-bound-c; financial.md "AMORDEGRC past 2^20
+    periods", a DEVIATION). It gives Excel's -b B1.
   - `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)` takes 17.5 us in release (main: 10^15 steps; past 2^53 main's
-    `counted += 1.0` never ended). Where Excel does not finish, the kernel returns the walk's value (2.4E-297 here), a
+    `counted += 1.0` never ended). Where Excel did not finish within the excel-graph timeout, the kernel returns the walk's value (2.4E-297 here), a
     DEVIATION.
-- `LiftArrays` and `Weighted` (kinds.rs, `// --- Financial ATP (T-1841) ---`), weights from the derived worst case
-  measured in release: AMORLINC 2^9 (its longest real walk, `AMORLINC(..,9E15,1.08E-16,1)`, crosses the most binades:
-  2^18 elements in 1.23 s, 4.7 us each), AMORDEGRC 2^18 (2^20 walked periods with no shortcut,
+- `LiftArrays` and `Weighted` (kinds.rs, `// --- Financial ATP (T-1841) ---`), weights priced from the caps,
+  measured in release: AMORLINC 2^9 (`AMORLINC(..,9E15,1.08E-16,1)`, 613 steps, within 1% of the longest real walk:
+  2^18 elements in 1.23 s, about 7.7 ns a step, so 1,024 steps are 7.9 us and 2^18 elements about 2.1 s), AMORDEGRC 2^18 (2^20 walked periods with no shortcut,
   `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`: 512 elements in 2.06 s, 4 ms each; a walk of 10^6 periods to the half period
   2.21 s). The per-period `amor_round` check is guarded by a `< 0.5` compare (4.5 s → 2.06 s). Both sides of each cap
   tested (262,144 / 512 elements run, one more is `#ERROR!`): financial.md "AMORLINC and AMORDEGRC work cap", a
   DEVIATION.
 - Eval: probes 26 known failures fixed (fin-argument-modes H19, H21-H26, H28, H30-H35;
   fin-remaining-later-argument-ranges H11-H33 odd rows), 0 regressions. probes and probes-numeric compared cell by
-  cell against main: no other cell changed. The new cases add 2 known failures, base values that main has too
-  (fin-amor-period-bound B17, period 0.5, Excel 485, ours 0; -b B2, a cost of 1E308, Excel 1.94700443465919E302,
-  ours 0), listed in T-1895. No scalar value changed where main finished within 2^20 AMORDEGRC periods; past that the
-  closed form replaces main's walk (equal on every case tried).
+  cell against main: no other cell changed. The new cases add 6 known failures, all listed in T-1895: 2 base values
+  that main has too (fin-amor-period-bound B17, period 0.5, Excel 485, ours 0; -b B2, a cost of 1E308, Excel
+  1.94700443465919E302, ours 0), and 4 past 2^20 AMORDEGRC periods (-c A1, A3, A4 a unit off Excel, where main's walk
+  had Excel's value; A5, which main missed too). Scalar changes: AMORLINC keeps main's value wherever main finished;
+  AMORDEGRC keeps it up to 2^20 periods, and past that the closed form can be a unit off main for charges of 1E12 or
+  more (6 of 154 cases in a review replay; -c A2 is Excel's value where main's was not).
+- Review round 1: the closed form's drift documented as a DEVIATION and probed (-c); `LINEAR_STEP_CAP` 4,096 → 1,024 so
+  the AMORLINC weight is priced from the cap; a walk at the cap is `#NUM!` instead of a `debug_assert`; one
+  `is_leap_year` (date_and_time.rs); `DEGRESSIVE_LOOP_PERIODS` private; the merge of main regenerated
+  eval/catalog/lift-kinds.json and functions.yaml's `lift: arrays` for both functions.
 - Ratchets: duplicated lines 3989 → 3903 (the shared kernel; the lift tests' `check_cells` and `round_trip_value` now
   in test/util.rs, also used by test_fn_cumulative_lift.rs), static_analysis.rs 1146 → 1142 (decision 0010).
 - Follow-ups: T-1895 (AMORDEGRC below period 1 and at a cost of 1E308).

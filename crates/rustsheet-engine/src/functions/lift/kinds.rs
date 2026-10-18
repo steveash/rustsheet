@@ -401,12 +401,13 @@ const CUMULATIVE: ArgKinds = ArgKinds::fixed(
 // --- End financial ATP (T-1845) -------------------------------------------------------------
 
 // --- Financial ATP (T-1841) -----------------------------------------------------------------
-/// What one AMORLINC element is charged: the bound of its exact walk, a few single subtractions
-/// per binade of what is left (at most 616 over every charge and value, `LINEAR_STEP_CAP` 4,096;
-/// functions/financial/amortization.rs `linear_charge`), about 4.7 us an element in a release
-/// build (2^18 elements of `AMORLINC(..,2400,..,300,9E15,1.08E-16,1)`, which crosses the most
-/// binades of a real walk, took 1.23 s). 2^9 units run at most 2^18 elements, about 1.2 s.
-/// docs/excel-semantics/financial.md "AMORLINC and AMORDEGRC work cap" (a DEVIATION).
+/// What one AMORLINC element is charged, priced from its cap: at most `LINEAR_STEP_CAP` (1,024)
+/// single subtractions (functions/financial/amortization.rs `linear_charge`; the longest real walk
+/// takes 616). A step costs about 7.7 ns in a release build (2^18 elements of
+/// `AMORLINC(..,2400,..,300,9E15,1.08E-16,1)`, 613 steps each, within 1% of the longest, took
+/// 1.23 s, 4.7 us an element), so a walk at the cap is about 7.9 us and 2^9 units run at most
+/// 2^18 elements, about 2.1 s. docs/excel-semantics/financial.md "AMORLINC and AMORDEGRC work
+/// cap" (a DEVIATION).
 const AMORLINC_WEIGHT: u32 = 1 << 9;
 /// What one AMORDEGRC element is charged: at most `DEGRESSIVE_LOOP_PERIODS` (2^20) periods
 /// walked one by one, then a closed form, about 4 ms an element in a release build (512 elements

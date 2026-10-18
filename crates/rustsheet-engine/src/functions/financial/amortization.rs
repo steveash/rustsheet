@@ -6,10 +6,11 @@
 //! Excel walks the periods one by one in doubles: `AMORLINC(2400,39679,39813,300,875000,0.000001,1)`
 //! is 0.0015212859222804571, the remainder after 874,999 subtractions of 0.0024, not the closed
 //! form's 0.0015213114757168815 (probes/fin-amor-period-bound A6), and a period of 1E15 at a rate
-//! of 1E-300 never finishes (docs/excel-semantics/financial.md "AMORLINC and AMORDEGRC over many
-//! periods"). The kernels walk the same doubles in bounded time: AMORLINC exactly, by jumping over
-//! the subtractions that are exact (`linear_charge`), and AMORDEGRC exactly up to
-//! `DEGRESSIVE_LOOP_PERIODS` periods and past them in closed form (`degressive_charge`). Moved out
+//! of 1E-300 did not finish within the excel-graph timeout (docs/excel-semantics/financial.md
+//! "AMORLINC and AMORDEGRC over many periods"). The kernels walk the same doubles in bounded time:
+//! AMORLINC exactly, by jumping over the subtractions that are exact (`linear_charge`), and
+//! AMORDEGRC exactly up to `DEGRESSIVE_LOOP_PERIODS` periods and past them in a closed form that
+//! drifts from the walk by about 1e-13 relative (`DegressiveWalk::closed_form`, a DEVIATION). Moved out
 //! of `financial/financial_depreciation.rs` (T-1841).
 //!
 //! Port of the depreciation calculations as implemented in the `ExcelFinancialFunctions` library
@@ -19,6 +20,7 @@ use chrono::{Datelike, NaiveDate};
 
 use super::accrint::acc_days_between;
 use super::number_or_error;
+use crate::functions::date_and_time::is_leap_year;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
@@ -28,17 +30,19 @@ use crate::{
     model::Model,
 };
 
-/// The most AMORDEGRC periods walked one by one. Up to here the kernel is main's walk, bit for bit
-/// Excel's (probes/fin-amor-period-bound B6-B14 walk up to 10^6 periods); past it, where the walk
-/// has not reached a period whose charge is fixed, the decay is a closed form. The bound is also
-/// the kernel's work cap (`AMORDEGRC_WEIGHT` in functions/lift/kinds.rs).
-pub(crate) const DEGRESSIVE_LOOP_PERIODS: u64 = 1 << 20;
+/// The most AMORDEGRC periods walked one by one. Up to here the kernel is main's walk
+/// (probes/fin-amor-period-bound B6-B14, up to 10^6 periods, are Excel's values); past it, where the
+/// walk has not reached a period whose charge is fixed, the decay is a closed form, which can move
+/// the rounded charge once it is about 1E12 or more (fin-amor-period-bound-c). The bound is also the
+/// kernel's work cap (`AMORDEGRC_WEIGHT` in functions/lift/kinds.rs).
+const DEGRESSIVE_LOOP_PERIODS: u64 = 1 << 20;
 
 /// The most single subtractions `linear_charge` makes. A walk takes a few per binade it crosses
 /// and stops once the charge no longer moves the value, at most 616 over every charge from 2^-1074
-/// to 2^1023 against values from 1E-300 to `f64::MAX` (`linear_walks_stay_far_below_the_step_cap`),
-/// so the cap is never reached; it keeps the loop bounded by construction.
-const LINEAR_STEP_CAP: u32 = 1 << 12;
+/// to 2^1023 against values from 1E-300 to `f64::MAX` (`linear_walks_stay_below_the_step_cap`).
+/// The cap keeps the loop bounded by construction, and `AMORLINC_WEIGHT` in functions/lift/kinds.rs
+/// is priced from it; a walk that reached it would be `#NUM!`, never a wrong value.
+const LINEAR_STEP_CAP: u32 = 1 << 10;
 
 /// Which depreciation the kernel computes.
 #[derive(Clone, Copy)]
@@ -154,7 +158,12 @@ impl Asset {
         }
         let charge = self.rate * self.cost;
         let available = self.cost - self.salvage - first_depr;
-        Ok(linear_charge(charge, available, whole_periods(period)))
+        let depr = linear_charge(charge, available, whole_periods(period));
+        // NaN only past `LINEAR_STEP_CAP`, which no double reaches (tests): `#NUM!` then.
+        if depr.is_nan() {
+            return Err(String::new());
+        }
+        Ok(depr)
     }
 
     /// AMORDEGRC: the rate times a coefficient of the life, applied to the remaining cost; two
@@ -224,7 +233,7 @@ fn binade_floor(x: f64) -> f64 {
 /// were equal, the next ones are that step exactly, and `jump` of them is one multiplication
 /// (exact: a multiple of the grid below the binade's top). Each binade then takes a few single
 /// steps, and a step that does not move the value (`charge` below half its ulp) charges `charge`
-/// for ever.
+/// for ever. NaN if the walk reaches `LINEAR_STEP_CAP` single steps before it ends.
 fn linear_charge(charge: f64, available: f64, periods: u64) -> f64 {
     linear_walk(charge, available, periods).0
 }
@@ -270,9 +279,12 @@ fn linear_walk(charge: f64, available: f64, periods: u64) -> (f64, u32) {
         }
         last = Some((step, floor));
     }
-    // Only a walk that ran out of periods gets here: `LINEAR_STEP_CAP` is out of reach (tests).
-    debug_assert!(done >= periods, "AMORLINC walk exceeded its step cap");
-    (charge, steps)
+    if done >= periods {
+        (charge, steps)
+    } else {
+        // `LINEAR_STEP_CAP` single steps and the walk has not ended: no value rather than a wrong one.
+        (f64::NAN, steps)
+    }
 }
 
 /// The period that charges half of what is left: `asset_life - counted` is 2 when `counted`,
@@ -354,9 +366,11 @@ impl DegressiveWalk {
 
     /// The charge of period `periods` from the state after period `done` (before the half
     /// period): `remain` decays by `(1 - rate)` a period, `remain * exp(n * log1p(-rate))`.
-    /// Main's walk adds a rounding per period, so this agrees with it to the rounded whole
-    /// number but within a few ulps of the decay (financial.md "AMORLINC and AMORDEGRC over many
-    /// periods").
+    /// Main's walk adds a rounding per period, so the two drift apart by up to about 1e-13
+    /// relative over 10^6 periods: equal once rounded for charges up to about 1E11, but a charge
+    /// of about 1E12 or more can be a unit off (`AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)`
+    /// is 18989305437101, Excel and main 18989305437102; financial.md "AMORDEGRC past 2^20
+    /// periods", a DEVIATION).
     fn closed_form(&self, done: u64, periods: u64) -> f64 {
         let last = self
             .half_period
@@ -380,10 +394,6 @@ impl DegressiveWalk {
             0.0
         }
     }
-}
-
-fn is_leap_year(year: i32) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }
 
 // `daysInYear` for the AMOR* functions. Actual/Actual (basis 1) uses the
@@ -441,8 +451,6 @@ fn amor_round(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-
     use super::*;
     use crate::test::util::Rng;
 
@@ -480,7 +488,7 @@ mod tests {
             };
             remain -= depr;
         }
-        amor_round(depr)
+        depr
     }
 
     /// A double in [0, 1) from the seeded test generator.
@@ -517,7 +525,7 @@ mod tests {
     }
 
     #[test]
-    fn linear_walks_stay_far_below_the_step_cap() {
+    fn linear_walks_stay_below_the_step_cap() {
         // The longest walks cross every binade: the largest value with the smallest charges
         // that still move it, and the subnormal charges.
         let mut most = 0;
@@ -531,7 +539,7 @@ mod tests {
                 }
             }
         }
-        assert!(most < LINEAR_STEP_CAP / 2, "{most} single steps");
+        assert!(most < LINEAR_STEP_CAP, "{most} single steps");
         assert_eq!(linear_charge(5e-324, f64::MAX, u64::MAX), 5e-324);
         assert_eq!(linear_charge(1.0, f64::MAX, u64::MAX), 1.0);
         assert_eq!(linear_charge(f64::MAX / 2.0, f64::MAX, u64::MAX), 0.0);
@@ -542,7 +550,8 @@ mod tests {
         let mut seed = Rng(0x0123_4567_89AB_CDEF);
         for _ in 0..300 {
             let rate = 10f64.powf(-1.0 - spread(&mut seed) * 4.0) * 2.5;
-            let remain = 10f64.powf(spread(&mut seed) * 12.0);
+            // Up to 1E20, where a charge reaches 1E12 or more and the closed form's drift shows.
+            let remain = 10f64.powf(spread(&mut seed) * 20.0);
             let salvage = if spread(&mut seed) < 0.3 {
                 0.0
             } else {
@@ -567,19 +576,30 @@ mod tests {
                 last - 1,
                 last,
             ] {
-                let expected = degressive_walk(&walk(), asset_life, periods);
+                let raw = degressive_walk(&walk(), asset_life, periods);
+                let expected = amor_round(raw);
                 // Every period walked: main's value exactly.
                 assert_eq!(
                     amor_round(walk().charge(periods, u64::MAX)),
                     expected,
                     "rate {rate:e}, remain {remain:e}, salvage {salvage:e}, period {periods}"
                 );
-                // The closed form after 64 periods: the same rounded charge in all 300 x 9 cases
-                // (466 of them past 64 periods with a charge of 1 or more).
-                assert_eq!(
-                    amor_round(walk().charge(periods, 64)),
-                    expected,
+                // The closed form after 64 periods: within 1e-13 relative of the walk's charge
+                // (its documented drift), so off by at most one unit more than that once rounded.
+                let closed = walk().charge(periods, 64);
+                let context = format!(
                     "closed form: rate {rate:e}, remain {remain:e}, salvage {salvage:e}, period {periods}"
+                );
+                // A charge that rounds to 0 returns 0 early, unrounded.
+                if expected != 0.0 {
+                    assert!(
+                        (closed - raw).abs() <= raw.abs() * 1e-13,
+                        "{closed:e} vs {raw:e}: {context}"
+                    );
+                }
+                assert!(
+                    (amor_round(closed) - expected).abs() <= 1.0 + raw.abs() * 1e-13,
+                    "{context}"
                 );
             }
         }

@@ -550,27 +550,48 @@ the periods before charge 0.0024 (A5) and the ones after 0 (A7); at rate 0.001 p
 (`AMORLINC(..,0.5,0.15,1)` is 360, A8, A9). AMORDEGRC's charge decays geometrically and rounds to a whole number:
 `AMORDEGRC(1E15,39679,39813,1,P,0.000001,1)` is 2499997712, 2493761750, 1947004435, 716262008, 205213720 for P = 1, 1000,
 1E5, 5E5, 999997, then half of what is left at the half period, 41042641307062 for P = 999998 and the same rest at
-999999, then 0 (B6-B14); at 5E8 periods and rate 1E-9 it is 716262 (-b B1). Excel finishes 10^9 periods
-(`AMORLINC(2400,39679,39813,300,1E9,1E-9,1)` is 0, -b A1), but not `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)`: an
-excel-graph fill of a workbook holding only that cell timed out (createSession retries exhausted after 8.5 minutes,
-2026-10-18), as did, twice, a larger one with periods of 1E12 to 1E308 at rates of 1E-13 to 1E-300; neither is in
-the suite. A period past the life,
+999999, then 0 (B6-B14); at 5E8 periods and rate 1E-9 it is 716262 (-b B1). At charges of 1E12 and more over 1.1E6
+to 2.4E6 periods (rate 1E-7) Excel is 18989305437102, 16344246350030, 13720292047582 and 5154670166168 for
+`AMORDEGRC(1E20,39679,39813,300,P,1E-7,1)` with P = 1100000, 1700000, 2400000 and `AMORDEGRC(3E19,..,1500000,..)`
+(-c A1-A4): a walk in doubles gives A1, A3 and A4 but 16344246350031 for A2, so Excel's per-period arithmetic is
+not exactly that walk at that size; `AMORDEGRC(1E300,..,2000000,1E-7,1)` is 1.51632679480347E293, 15 significant digits
+(-c A5, as -b B2). Excel finishes 10^9 periods (`AMORLINC(2400,39679,39813,300,1E9,1E-9,1)` is 0, -b A1), but
+`AMORLINC(2400,39679,39813,300,1E15,1E-300,1)` did not finish within the excel-graph timeout: a fill of a workbook
+holding only that cell failed after 8.5 minutes (createSession retries exhausted, 2026-10-18), as did, twice, a larger
+one with periods of 1E12 to 1E308 at rates of 1E-13 to 1E-300; neither is in the suite. A period past the life,
 `ceil(1/rate)`, is 0 at once (fin-remaining-later-argument-ranges K4, K5).
-Evidence: probes/fin-amor-period-bound A1-A13, B1-B18 and probes/fin-amor-period-bound-b A1-A3, B1, B2 (excel-graph,
-2026-10-18, T-1841).
-Ours: since T-1841 (functions/financial/amortization.rs) both walks are bounded and main's values are kept wherever main
-finished. AMORLINC's walk is exact for any period: while the remainder stays in one binade, the subtraction rounds the
+Evidence: probes/fin-amor-period-bound A1-A13, B1-B18, probes/fin-amor-period-bound-b A1-A3, B1, B2 and
+probes/fin-amor-period-bound-c A1-A6 (excel-graph, 2026-10-18, T-1841).
+Ours: since T-1841 (functions/financial/amortization.rs) both walks are bounded. AMORLINC keeps main's value for every
+period main finished, and AMORDEGRC up to 2^20 periods. AMORLINC's walk is exact for any period: while the remainder stays in one binade, the subtraction rounds the
 charge to that binade's grid the same way each time, so after two equal steps the next ones are jumped in one
 multiplication, and a charge below half an ulp of the remainder stops it for ever (at most 616 single steps over every
 double; `linear_charge`). AMORDEGRC walks up to 2^20 periods one by one, stopping early where the rest is fixed (below
 the salvage, a charge that rounds to 0 before the half period, a remainder the charge no longer moves); past that it
-finishes in closed form, `remain * exp(n * log1p(-rate))`, which gave the walk's rounded value in every one of 2,700
-seeded cases (`degressive_shortcuts_and_closed_form_equal_the_walk`) and -b B1. Main's counter `counted += 1.0` stopped
-moving past 2^53, so main never finished there; where Excel does not finish, the kernel returns the value the walk
-reaches (a DEVIATION: `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)` is 2.4E-297, the charge, and
-`AMORDEGRC(1E300,39679,39813,300,1E15,1E-300,1)` is 3, the charge 2.5 rounded). AMORDEGRC at a period below 1 (B17,
-485 in Excel, ours 0) and at a cost of 1E308 (-b B2) are base values, T-1895.
-Status: VERIFIED (excel-graph) for the probed walks; DEVIATION (decision 0014) where Excel does not finish
+finishes in closed form, `remain * exp(n * log1p(-rate))` ("AMORDEGRC past 2^20 periods"). Main's counter
+`counted += 1.0` stopped moving past 2^53, so main never finished there; where Excel did not finish within the
+excel-graph timeout, the kernel returns the value the walk reaches (a DEVIATION: `AMORLINC(2400,39679,39813,300,1E15,
+1E-300,1)` is 2.4E-297, the charge, and `AMORDEGRC(1E300,39679,39813,300,1E15,1E-300,1)` is 3, the charge 2.5 rounded).
+AMORDEGRC at a period below 1 (B17, 485 in Excel, ours 0) and at a cost of 1E308 (-b B2) are base values, T-1895.
+Status: VERIFIED (excel-graph) for AMORLINC's walks and AMORDEGRC's up to 2^20 periods; DEVIATION (decision 0014) past
+2^20 AMORDEGRC periods and where Excel did not finish
+Tasks: T-1841, T-1895
+
+## AMORDEGRC past 2^20 periods
+Rule: past 2^20 periods RustSheet computes AMORDEGRC's decay in closed form, `remain * exp(n * log1p(-rate))` from the
+state after 2^20 walked periods, instead of walking on. Excel and main walk every period, adding a rounding each time,
+so the closed form drifts from the walk by up to about 1e-13 relative over 10^6 further periods: the same once rounded
+for charges up to about 1E11, but a charge of about 1E12 or more can be a unit off.
+`AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)` is 18989305437101 here and 18989305437102 in Excel (-c A1), and A3, A4
+are a unit off the other way (13720292047583, 5154670166167); A2 is Excel's 16344246350030, where main's walk is ...031;
+`AMORDEGRC(1E300,..,2000000,1E-7,1)` is 1.5163267948033552E293, Excel 1.51632679480347E293 and main
+1.5163267948034761E293 (-c A5, also T-1895's 15-digit rounding). A review replay found 6 of 154 random cases (costs 1E6
+to 1E20, 1.1 to 4 times 2^20 periods) a unit off main; the unit test `degressive_shortcuts_and_closed_form_equal_the_walk`
+bounds the drift at 1e-13 relative for costs up to 1E20. Main walked these in milliseconds (46 ms for the five above),
+but a walk is unbounded in the period, and the 2^20 cut is the kernel's work cap ("AMORLINC and AMORDEGRC work cap").
+Evidence: probes/fin-amor-period-bound-c A1-A6 (excel-graph, 2026-10-18, T-1841 review).
+Status: DEVIATION (decision 0014)
+Implemented in: functions/financial/amortization.rs (`DEGRESSIVE_LOOP_PERIODS`, `DegressiveWalk::closed_form`)
 Tasks: T-1841, T-1895
 
 ## AMORLINC and AMORDEGRC work cap
@@ -578,8 +599,9 @@ Rule: RustSheet charges each lifted AMORLINC element 2^9 units and each AMORDEGR
 visit cap, so one call lifts at most 262,144 AMORLINC or 512 AMORDEGRC elements:
 `ROWS(AMORDEGRC(SEQUENCE(513)*0+2400,39679,39813,300,1,0.15,1))` is `#ERROR!` where Excel lifts every element (they lift
 over arrays: probes/fin-argument-modes H19-H35; Excel's own limit is unprobed). The weights are the kernels' bounds in a
-release build: AMORLINC's exact walk at most a few thousand subtractions (2^18 elements of
-`AMORLINC(..,9E15,1.08E-16,1)`, the longest real walk, took 1.23 s), AMORDEGRC's 2^20 walked periods and the closed
+release build: AMORLINC's exact walk at most 1,024 single subtractions, its step cap (`LINEAR_STEP_CAP`; the longest
+real walk takes 616, and 2^18 elements of `AMORLINC(..,9E15,1.08E-16,1)`, 613 steps each, took 1.23 s, so the cap is
+about 7.9 us an element, 2.1 s per call; a walk at the cap would be `#NUM!`), AMORDEGRC's 2^20 walked periods and the closed
 form (512 elements of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, which takes no shortcut, 2.06 s). The scalar calls are not
 capped beyond those bounds.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").

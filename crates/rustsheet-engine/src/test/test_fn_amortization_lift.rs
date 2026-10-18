@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 //! AMORLINC and AMORDEGRC on the SPEC-0011 driver (T-1841): their period walks are bounded
 //! whatever the period, every argument lifts over an array and refuses a multi-cell range
 //! (`LiftArrays`), and a lifted call is charged its bounded walk. Evidence:
@@ -36,9 +34,9 @@ fn check(cells: &[(&str, &str, &str)]) {
 #[test]
 fn a_period_of_1e15_at_a_tiny_rate_takes_milliseconds() {
     // T-1841 acceptance: main walked 10^15 periods for A1 and never finished past 2^53 (A2, A3:
-    // `counted += 1.0` stopped moving). Excel does not finish either (an excel-graph fill of A1
-    // alone timed out; financial.md "AMORLINC and AMORDEGRC over many periods", a DEVIATION):
-    // the charge 2.4E-297 no longer moves what is left, so every period charges it.
+    // `counted += 1.0` stopped moving). Excel did not finish A1 within the excel-graph timeout
+    // (8.5 minutes; financial.md "AMORLINC and AMORDEGRC over many periods", a DEVIATION): the
+    // charge 2.4E-297 no longer moves what is left, so every period charges it.
     let started = Instant::now();
     check(&[
         ("A1", "=AMORLINC(2400,39679,39813,300,Z2,Z1,1)", "2.4E-297"),
@@ -183,6 +181,41 @@ fn degressive_walks_and_their_closed_form_are_excels_values() {
 }
 
 #[test]
+fn past_2_to_the_20_periods_the_closed_form_drifts_from_the_walk() {
+    // fin-amor-period-bound-c (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION): the closed
+    // form drifts from the walk by about 1e-13 relative, so a charge of 1E12 or more can be a unit
+    // off. Excel is A1 18989305437102, A2 16344246350030, A3 13720292047582, A4 5154670166168, A6
+    // 151632679; main walked A1, A3, A4 to Excel's value and A2 to ...031. TODO(T-1895).
+    check(&[
+        (
+            "A1",
+            "=AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)",
+            "18989305437101",
+        ),
+        (
+            "A2",
+            "=AMORDEGRC(1E20,39679,39813,300,1700000,1E-7,1)",
+            "16344246350030",
+        ),
+        (
+            "A3",
+            "=AMORDEGRC(1E20,39679,39813,300,2400000,1E-7,1)",
+            "13720292047583",
+        ),
+        (
+            "A4",
+            "=AMORDEGRC(3E19,39679,39813,300,1500000,1E-7,1)",
+            "5154670166167",
+        ),
+        (
+            "A6",
+            "=AMORDEGRC(1E15,39679,39813,1,2000000,1E-7,1)",
+            "151632679",
+        ),
+    ]);
+}
+
+#[test]
 fn extreme_values_from_cells_are_values_without_a_panic() {
     // Unprobed. Where main finished (A3-A5, A7-A9) these are main's values: a cost of 1E308
     // overflows AMORDEGRC's rounding to 0 (fin-amor-period-bound-b B2 is 1.94700443465919E302 in
@@ -305,7 +338,7 @@ fn a_range_is_refused_in_every_argument() {
 #[test]
 fn a_lifted_call_is_charged_for_its_walk() {
     // SPEC-0011 "Security rule for kernel work": an AMORLINC element is charged 2^9 units (its
-    // exact walk, at most a few thousand subtractions, about 4.7 us in release) and an AMORDEGRC
+    // exact walk, at most 1,024 subtractions, about 7.9 us in release) and an AMORDEGRC
     // element 2^18 (2^20 periods walked, about 4 ms), so a lifted call runs at most
     // 2^27 / 2^9 = 262,144 and 2^27 / 2^18 = 512 elements, whatever their periods, and the next
     // element makes it #ERROR! before any runs (financial.md "AMORLINC and AMORDEGRC work cap",

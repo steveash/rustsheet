@@ -260,6 +260,7 @@ C	probes/filterxml-array-forms.case.json	11
 C	probes/filterxml-error-arguments.case.json	6
 C	probes/filterxml-evidence-floor.case.json	28
 C	probes/fin-amor-period-bound-b.case.json	5
+C	probes/fin-amor-period-bound-c.case.json	6
 C	probes/fin-amor-period-bound.case.json	31
 C	probes/fin-amordegrc.case.json	23
 C	probes/fin-argument-modes.case.json	386
@@ -1356,6 +1357,10 @@ F	probes/external-ref-no-link-let-index.case.json	Calc!A5
 F	probes/external-ref-no-link-let-index.case.json	Calc!A6
 F	probes/external-ref-no-link-let-index.case.json	Calc!A7
 F	probes/fin-amor-period-bound-b.case.json	Sheet1!B2
+F	probes/fin-amor-period-bound-c.case.json	Sheet1!A1
+F	probes/fin-amor-period-bound-c.case.json	Sheet1!A3
+F	probes/fin-amor-period-bound-c.case.json	Sheet1!A4
+F	probes/fin-amor-period-bound-c.case.json	Sheet1!A5
 F	probes/fin-amor-period-bound.case.json	Sheet1!B17
 F	probes/fin-amordegrc.case.json	S!A10
 F	probes/fin-amordegrc.case.json	S!A11
