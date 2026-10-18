@@ -1,0 +1,114 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A20": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A30": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A31": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A40": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A41": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A50": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A60": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B20": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B3": {
+    "t": "s",
+    "v": "=ABS(@CHOOSE(@{1,2},H1:H2,I1:I2))"
+   },
+   "B30": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B31": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B40": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B41": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B60": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B7": {
+    "t": "s",
+    "v": "=ABS(@CHOOSE(@{1,2},H1:H2,I1:I2))"
+   },
+   "C1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "C3": {
+    "t": "s",
+    "v": "=LEN(@CHOOSE(@{1,2},H1:H2,I1:I2))"
+   },
+   "C5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C7": {
+    "t": "s",
+    "v": "=LEN(@CHOOSE(@{1,2},H1:H2,I1:I2))"
+   },
+   "D1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "D3": {
+    "t": "s",
+    "v": "=N(CHOOSE({1,2},H1:H2,I1:I2))"
+   },
+   "D5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "D7": {
+    "t": "s",
+    "v": "=N(CHOOSE({1,2},H1:H2,I1:I2))"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "a790a7ecf77f0ba8ee6f4eafd75da280b1f19e95accf37653c6adc3f2ba250a6",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T17:21:22+00:00",
+  "version": null
+ }
+}
