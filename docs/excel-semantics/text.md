@@ -144,8 +144,9 @@ Implemented in: `substitute_exceeds_limit`/`substituted_chars` in functions/text
 
 `&` with a 65,534-unit operand (probes/text-long-input-concat-g, -h, -k, -l, -m, -o; excel-graph, 2026-10-18, T-1913): the text as the
 right operand is accepted and the result is truncated, not an error: `LEN("c"&R)`, `LEN(""&R)`, `LEN(INDEX({"c"},1)&R)` and
-`LEN("c"&R&"d")` are 32,767, `ISERROR("c"&R)` is FALSE and `LEN(RIGHT("c"&R,2))` is 2 (R = the REGEXREPLACE result). Two 32,767-unit
-operands give the same: `LEN(C1&"b")` with C1 = `REPT("a",32767)` is 32,767 (probes/text-long-input-concat-d). Ours matches.
+`LEN("c"&R&"d")` are 32,767, `ISERROR("c"&R)` is FALSE and `LEN(RIGHT("c"&R,2))` is 2 (R = the REGEXREPLACE result). A 32,767-unit
+operand read from a cell and a short one give the same: `LEN(C1&"b")` with C1 = `REPT("a",32767)` is 32,767 and `ISERROR(C1&"b")` is FALSE
+(probes/text-long-input-concat-d C3-C4). Ours matches.
 Open (desktop question, M14): excel-graph refuses the workbook when the long text is the left operand (`R&""`, `R&"c"`, `R&R`, `LET(x,R,x&"c")`,
 `IF(TRUE,R)&"c"`) and when it is read from a cell holding it, so the left-operand case is unmeasured.
 Tasks: T-0241, T-1904, T-1913
