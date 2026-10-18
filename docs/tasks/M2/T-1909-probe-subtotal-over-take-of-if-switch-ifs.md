@@ -3,7 +3,7 @@ id: T-1909
 title: "Probe SUBTOTAL over TAKE of IF/SWITCH/IFS with an array selector, and legacy CHOOSE with an array index inside a scalar function"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ mismatch (from T-1882's fidelity review).
 
 ## Out of scope
 - CHOOSE with an array index under TAKE (T-1882).
+
+## Outcome
+Probe probes/subtotal-take-array-selector (excel-graph). ABS/LEN over a legacy array-index CHOOSE and SUBTOTAL over TAKE/DROP of IF match; mismatches filed: T-1914 (SWITCH/IFS selector is #SPILL!), T-1915 (legacy N over CHOOSE). references.md updated. Eval: 19 cells, 14 pass, 5 known failures baselined.

@@ -1,0 +1,48 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1909: SUBTOTAL over TAKE/DROP of IF/SWITCH/IFS with an array selector (A10:A14), and a legacy CHOOSE with an array index inside ABS, LEN and N, on the arms' rows (row 1) and off them (row 5) with FORMULATEXT (rows 3, 7). H1:H2 = 3,4; I1:I2 = 6,8.",
+ "tags": [
+  "M2",
+  "probe",
+  "T-1909"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "legacy_formulas": [
+    "B1",
+    "B5",
+    "C1",
+    "C5",
+    "D1",
+    "D5"
+   ],
+   "cells": {
+    "H1": 3,
+    "H2": 4,
+    "I1": 6,
+    "I2": 8,
+    "J1": 1,
+    "J2": 2,
+    "A10": "=SUBTOTAL(9,TAKE(IF({TRUE,FALSE},H1:H2,I1:I2),1))",
+    "A11": "=SUBTOTAL(9,TAKE(SWITCH({1,2},1,H1:H2,2,I1:I2),2))",
+    "A12": "=SUBTOTAL(9,TAKE(IFS({TRUE,FALSE},H1:H2,{FALSE,TRUE},I1:I2),2))",
+    "A13": "=SUBTOTAL(9,TAKE(IF(TRUE,H1:H2,I1:I2),1))",
+    "A14": "=SUBTOTAL(9,DROP(IF({TRUE,FALSE},H1:H2,I1:I2),1))",
+    "B1": "=ABS(CHOOSE({1,2},H1:H2,I1:I2))",
+    "B3": "=FORMULATEXT(B1)",
+    "B5": "=ABS(CHOOSE({1,2},H1:H2,I1:I2))",
+    "B7": "=FORMULATEXT(B5)",
+    "C1": "=LEN(CHOOSE({1,2},H1:H2,I1:I2))",
+    "C3": "=FORMULATEXT(C1)",
+    "C5": "=LEN(CHOOSE({1,2},H1:H2,I1:I2))",
+    "C7": "=FORMULATEXT(C5)",
+    "D1": "=N(CHOOSE({1,2},H1:H2,I1:I2))",
+    "D3": "=FORMULATEXT(D1)",
+    "D5": "=N(CHOOSE({1,2},H1:H2,I1:I2))",
+    "D7": "=FORMULATEXT(D5)"
+   }
+  }
+ ]
+}

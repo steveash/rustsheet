@@ -1,0 +1,90 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A11": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "A12": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "A13": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A14": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "B10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B14": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B3": {
+    "t": "s",
+    "v": "=ABS(@CHOOSE(@{1,2},H1:H2,I1:I2))"
+   },
+   "B5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B7": {
+    "t": "s",
+    "v": "=ABS(@CHOOSE(@{1,2},H1:H2,I1:I2))"
+   },
+   "C1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "C3": {
+    "t": "s",
+    "v": "=LEN(@CHOOSE(@{1,2},H1:H2,I1:I2))"
+   },
+   "C5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C7": {
+    "t": "s",
+    "v": "=LEN(@CHOOSE(@{1,2},H1:H2,I1:I2))"
+   },
+   "D1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "D3": {
+    "t": "s",
+    "v": "=N(CHOOSE({1,2},H1:H2,I1:I2))"
+   },
+   "D5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "D7": {
+    "t": "s",
+    "v": "=N(CHOOSE({1,2},H1:H2,I1:I2))"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "c3c9f36002eccafc708f9fa7dd0f24aa6ef97f05162255fdb7919cd5dc96b5a7",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-18T17:15:14+00:00",
+  "version": null
+ }
+}
