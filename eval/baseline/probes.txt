@@ -689,6 +689,7 @@ C	probes/subnormal-function-results.case.json	129
 C	probes/subnormal-sumsq-sumproduct-edges.case.json	24
 C	probes/subnormal-text-and-tail-companions.case.json	30
 C	probes/substitute-overlapping-instances.case.json	24
+C	probes/subtotal-array-function-num.case.json	17
 C	probes/subtotal-hidden-filtered.case.json	150
 C	probes/subtotal-reference-operands-b.case.json	23
 C	probes/subtotal-reference-operands-c.case.json	17
@@ -793,6 +794,7 @@ C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
 C	probes/textjoin-delimiter-elements.case.json	24
 C	probes/textsplit-casefold-length.case.json	8
+C	probes/textsplit-empty-delimiter.case.json	13
 C	probes/textsplit-empty-text.case.json	19
 C	probes/textsplit-padded-size.case.json	6
 C	probes/textsplit-wide.case.json	5
@@ -3203,6 +3205,16 @@ F	probes/stats-evidence-floor-t1623.case.json	S!Q36
 F	probes/stats-evidence-floor-t1623.case.json	S!Q50
 F	probes/stats-evidence-floor-t1623.case.json	S!Q58
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
+F	probes/subtotal-array-function-num.case.json	Calc!A1
+F	probes/subtotal-array-function-num.case.json	Calc!A11
+F	probes/subtotal-array-function-num.case.json	Calc!A12
+F	probes/subtotal-array-function-num.case.json	Calc!A3
+F	probes/subtotal-array-function-num.case.json	Calc!A4
+F	probes/subtotal-array-function-num.case.json	Calc!A6
+F	probes/subtotal-array-function-num.case.json	Calc!A9
+F	probes/subtotal-array-function-num.case.json	Calc!B1
+F	probes/subtotal-array-function-num.case.json	Calc!B12
+F	probes/subtotal-array-function-num.case.json	Calc!B3
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
 F	probes/text-format-length-limit-d.case.json	S!A31
 F	probes/text-format-length-limit-f.case.json	Sheet1!A41
@@ -3218,7 +3230,6 @@ F	probes/text-locale-name-tables.case.json	S!A587
 F	probes/text-locale-name-tables.case.json	S!A588
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
-F	probes/textbefore-delimiter-range.case.json	Calc!A44
 F	probes/textsplit-padded-size.case.json	Calc!A1
 F	probes/textsplit-padded-size.case.json	Calc!A2
 F	probes/textsplit-padded-size.case.json	Calc!A3
