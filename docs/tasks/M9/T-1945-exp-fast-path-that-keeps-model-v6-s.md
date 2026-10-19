@@ -16,6 +16,8 @@ Perf: the worksheet EXP and the ERFC kernel get Excel's model V6 bits at close t
 the 26-term double-double `expm1` series in `two_to_the_minus_one`.
 
 ## Context
+- Since T-0959 the operator `^` and POWER with a non-integer exponent (other than ±0.5) also call `excel_exp`:
+  math_lift "POWER, per row" went from 80 ms to 214 ms and "POWER, lifted" from 0.85 s to 2.12 s (T-0959 Outcome).
 - The T-1931 Outcome has the `crates/rustsheet/benches/math_lift.rs` numbers ("EXP, per row", "EXP, lifted").
 - Only RN64(2^|f| - 1) has to be exact, and only where 2^|f| - 1 is near a 64-bit rounding midpoint. Elsewhere an
   approximation good to about 2^-80 rounds to the same 64 bits.
@@ -31,7 +33,8 @@ the 26-term double-double `expm1` series in `two_to_the_minus_one`.
 - [ ] `excel_exp` is at least 10x faster on a per-call kernel microbenchmark, and the math_lift EXP cases come
   within about 20% of the `f64::exp` numbers in T-1931's Outcome (the cases spend ~59 ms per row and ~582 ms
   lifted outside the kernel), with before and after numbers in the Outcome.
-- [ ] Every probes-numeric `t1931-exp-*` and `t1916-*` cell keeps its verdict. A randomized test over a wide
+- [ ] The math_lift POWER cases come within about 20% of their libm-`exp` numbers in T-0959's Outcome.
+- [ ] Every probes-numeric `t1931-exp-*` and `t1916-*` cell keeps its verdict, and so does every `power-*` case. A randomized test over a wide
   range of a compares the fast path with the full series.
 - [ ] `make check` green; reviewers approve.
 

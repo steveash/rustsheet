@@ -583,18 +583,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::StDevS => vec![Signature::Vector; arg_count],
         Function::Stdeva => vec![Signature::Vector; arg_count],
         Function::Stdevpa => vec![Signature::Vector; arg_count],
-        Function::TTest => {
-            if arg_count == 4 {
-                vec![
-                    Signature::Vector,
-                    Signature::Vector,
-                    Signature::Scalar,
-                    Signature::Scalar,
-                ]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::VarP => vec![Signature::Vector; arg_count],
         Function::VarS => vec![Signature::Vector; arg_count],
         Function::VarpA => vec![Signature::Vector; arg_count],
@@ -618,18 +606,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::ModeCompat => vec![Signature::Vector; arg_count],
         Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::StDevPCompat => vec![Signature::Vector; arg_count],
-        Function::TTestCompat => {
-            if arg_count == 4 {
-                vec![
-                    Signature::Vector,
-                    Signature::Vector,
-                    Signature::Scalar,
-                    Signature::Scalar,
-                ]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::VarCompat => vec![Signature::Vector; arg_count],
         Function::VarPCompat => vec![Signature::Vector; arg_count],
         Function::Sumx2my2 => vec![Signature::Vector; 2],
@@ -640,9 +616,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Intercept => vec![Signature::Vector; 2],
         Function::Slope => vec![Signature::Vector; 2],
         Function::Steyx => vec![Signature::Vector; 2],
-        Function::Forecast | Function::ForecastLinear => {
-            vec![Signature::Scalar, Signature::Vector, Signature::Vector]
-        }
         Function::ForecastEts
         | Function::ForecastEtsConfint
         | Function::ForecastEtsSeasonality
@@ -887,7 +860,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::StDevS => StaticResult::Scalar,
         Function::Stdeva => StaticResult::Scalar,
         Function::Stdevpa => StaticResult::Scalar,
-        Function::TTest => StaticResult::Scalar,
         Function::VarP => StaticResult::Scalar,
         Function::VarS => StaticResult::Scalar,
         Function::VarpA => StaticResult::Scalar,
@@ -898,7 +870,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::ModeCompat => StaticResult::Scalar,
         Function::RankCompat => reference_parameter::rank_static_result(args),
         Function::StDevPCompat => StaticResult::Scalar,
-        Function::TTestCompat => StaticResult::Scalar,
         Function::VarCompat => StaticResult::Scalar,
         Function::VarPCompat => StaticResult::Scalar,
         Function::Sumx2my2 => StaticResult::Scalar,
@@ -909,8 +880,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Intercept => StaticResult::Scalar,
         Function::Slope => StaticResult::Scalar,
         Function::Steyx => StaticResult::Scalar,
-        Function::Forecast => StaticResult::Scalar,
-        Function::ForecastLinear => StaticResult::Scalar,
         Function::ForecastEts => StaticResult::Scalar,
         Function::ForecastEtsConfint => StaticResult::Scalar,
         Function::ForecastEtsSeasonality => StaticResult::Scalar,
