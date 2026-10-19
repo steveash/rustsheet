@@ -113,7 +113,8 @@ impl Model {
     /// `BINOM.INV(trials, probability_s, alpha)`, and CRITBINOM. The search halves
     /// `[0, trials]` with `trials` a `u64`, so it stops after at most 64 steps of one cdf each,
     /// its own per-call cap: up to about 65 us an element in release, which the lifting table
-    /// charges as `Weighted(4096)` (SPEC-0011 security rule; kinds.rs `BINOM_INV`).
+    /// charges as `Weighted(4096)` (SPEC-0011 security rule; lift/kinds/statistical.rs
+    /// `BINOM_INV`).
     pub(crate) fn fn_binom_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BinomInv, args, cell, &mut |model, values| {
             number_or_error(model.binom_inv_of(values, cell))

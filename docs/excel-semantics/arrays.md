@@ -476,7 +476,7 @@ lifting"). The other families
 listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
 formula). SPEC-0011's rollout tasks fix them.
 Status: VERIFIED (excel-graph)
-Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs),
+Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds/),
 `Model::lift_call` and its read phase (functions/lift/call.rs), the broadcast `Model::lift_grids`
 (functions/lift/driver.rs), and the static-analysis hooks `lifted_signature`,
 `lifted_static_result` and `lifts_arrays_at` (expressions/parser/static_analysis/lifted.rs);
