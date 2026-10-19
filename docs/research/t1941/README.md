@@ -33,6 +33,14 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
 - **GAMMALN for 3 <= x < 8 (W2, structure).** Excel reduces t into [2,3) and forms the ascending stored product
   p = t*(t+1)*...; then GAMMALN = fl(G(t) + LN(p)), with G a base kernel on [2,3) that is still open. With
   G replaced by the exact value it reaches 91-94% exact; the product order matters.
+- **GAMMALN for small x is an exact one-step recursion (W1, verified by the coordinator).**
+  GAMMALN(x) = fl53(fl64(GAMMALN(fl(x+1)) - LN(x))), with Excel's own GAMMALN and LN.
+  - Probe `kmyst-gam-w101` holds B = GAMMALN.PRECISE(x), C = LN(x) and E = GAMMALN.PRECISE(x+1) side by side.
+    The identity holds on 12,288 of 12,288 points at x0 = 0.0213, 0.1517, 0.2911, 0.4123, 0.5037 and 0.6129.
+  - It fails above the switch, which lies between 0.6985 and 0.7159 (W1's LN-regression test; `w103` bisects it).
+  - So everything below about 0.7 reduces exactly to the near-1 kernel on [0.7, 1.7).
+  - The near-1 piece on [~0.7, 1.5] is fl(t*A) with t = x-1 exact and A a stored double. It uses no LN, and its
+    structure is open (W1).
 - **GAMMA (W4, structure).** It follows Cephes `gamma`: the downward product while x >= 3, division while x < 2,
   then fl(fl(z*P(t))/Q(t)) on [2,3). It is bit-exact at x near 1.37e-9. Excel's P/Q coefficients are its own,
   running 5-9e-17 above Gamma.
