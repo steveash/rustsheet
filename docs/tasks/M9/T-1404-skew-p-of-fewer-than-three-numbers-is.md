@@ -3,7 +3,7 @@ id: T-1404
 title: "SKEW.P of two numbers is #DIV/0!, not 0 (probe the bound)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
