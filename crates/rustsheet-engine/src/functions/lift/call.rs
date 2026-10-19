@@ -5,6 +5,7 @@ use super::arg_buf::ArgBuf;
 use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg, Reuse};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::is_multi_sheet_span;
 use crate::functions::Function;
 use crate::limits::{check_range_size, too_many_visits, MAX_LIFTED_CELL_VISITS};
 use crate::{
@@ -68,11 +69,7 @@ impl Model {
                     return result;
                 }
             }
-            Node::SheetSpanKind {
-                first_index,
-                last_index,
-                ..
-            } if first_index != last_index => return refused_range(cell),
+            node if is_multi_sheet_span(node) => return refused_range(cell),
             _ => {}
         }
         self.evaluate_node_in_context(node, cell)
@@ -152,6 +149,7 @@ impl Model {
         let options = LiftOptions {
             reuse: Reuse::Never,
             work: kinds.work,
+            result: kinds.result,
         };
         // One- and two-argument calls (most of the math functions) read into locals: building,
         // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
@@ -226,6 +224,7 @@ impl Model {
         let options = LiftOptions {
             reuse: Reuse::Never,
             work: kinds.work,
+            result: kinds.result,
         };
         self.lift_grids(read.into_lifted(), cost, &options, cell, kernel)
     }

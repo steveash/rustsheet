@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2010: POSIX bracket syntax edges: class next to a literal hyphen (A1-A4), top-level [.a.] and [..] (A5-A7), multi-character collating element (A8-A9), range ending at a class (A10-A14).",
+ "tags": [
+  "M7",
+  "probe",
+  "T-2010",
+  "regextest"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=IFERROR(REGEXTEST(\"a\",\"[[:alpha:]-]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[[:alpha:]-]\")))",
+    "A2": "=IFERROR(REGEXTEST(\"-\",\"[[:alpha:]-]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"-\",\"[[:alpha:]-]\")))",
+    "A3": "=IFERROR(REGEXTEST(\"-\",\"[-[:alpha:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"-\",\"[-[:alpha:]]\")))",
+    "A4": "=IFERROR(REGEXTEST(\"a\",\"[-[:alpha:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[-[:alpha:]]\")))",
+    "A5": "=IFERROR(REGEXTEST(\"a\",\"[.a.]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[.a.]\")))",
+    "A6": "=IFERROR(REGEXTEST(\"a\",\"[..]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[..]\")))",
+    "A7": "=IFERROR(REGEXTEST(\".\",\"[..]\"),\"err \"&ERROR.TYPE(REGEXTEST(\".\",\"[..]\")))",
+    "A8": "=IFERROR(REGEXTEST(\"ab\",\"[[.ab.]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"ab\",\"[[.ab.]]\")))",
+    "A9": "=IFERROR(REGEXTEST(\"a\",\"[[.ab.]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[[.ab.]]\")))",
+    "A10": "=IFERROR(REGEXTEST(\"b\",\"[a-[:alpha:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"b\",\"[a-[:alpha:]]\")))",
+    "A11": "=IFERROR(REGEXTEST(\"-\",\"[a-[:alpha:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"-\",\"[a-[:alpha:]]\")))",
+    "A12": "=IFERROR(REGEXTEST(\"a\",\"[a-[:alpha:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[a-[:alpha:]]\")))",
+    "A13": "=IFERROR(REGEXTEST(\"1\",\"[a-[:digit:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"1\",\"[a-[:digit:]]\")))",
+    "A14": "=IFERROR(REGEXTEST(\"b\",\"[^a-[:alpha:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"b\",\"[^a-[:alpha:]]\")))"
+   }
+  }
+ ],
+ "expected": {}
+}

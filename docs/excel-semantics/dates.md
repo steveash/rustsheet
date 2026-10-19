@@ -486,11 +486,41 @@ Rule (inferred from the leftmost-error rule in arrays.md, not probed): a date ar
 (`DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` are `#DIV/0!`). After that ours keeps each function's pre-lift
 order: DATEDIF reports the `#NUM!` of an end before the start before the unit's error
 (`DATEDIF(10,5,NA())` is `#NUM!`; for out-of-range dates the unit's error wins, see "DATEDIF argument errors before date checks", T-1355), while DAYS360 reports the method's error before the dates' `#NUM!`
-(`DAYS360(-5,5,NA())` is `#N/A`). Also unprobed: `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and a
-single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
+(`DAYS360(-5,5,NA())` is `#N/A`). `TIMEVALUE(C1:C1)` and `DATEVALUE(B1:B1)` of a one-cell range are that cell's value
+(1 row), and a one-cell or 3-D `weekend` is answered in "An error-valued or 3-D weekend, 3-D date text and holidays"
+(probes/date-text-weekend-3d, T-1428).
 One lifted data point (T-1785): `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` is `#N/A` in Excel, so an error unit beats the reversed pair's `#NUM!` there, where ours gives `#NUM!` (probes/date-math-lift-driver-edges G43, a known failure for T-1430); `INDEX(DATEDIF(45000,46000,{"d";#N/A}),2)` is `#N/A` in both (G42). DATEDIF's unit and DAYS360's method over an array are answered in "Date function argument modes" (they lift).
 Status: UNVERIFIED (probe pending)
-Tasks: T-1430 (error order), T-1428 (3D ranges in the text and weekend arguments)
+Tasks: T-1430 (error order)
+
+## An error-valued or 3-D weekend, 3-D date text and holidays
+Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
+- A 3-D reference in DATEVALUE's or TIMEVALUE's text is `#REF!`, one cell or several
+  (`DATEVALUE(Sheet1:Sheet2!B1)`, `ROWS(TIMEVALUE(Sheet1:Sheet2!C1:C3))`; G1-G5, H1-H5), as in the other lifted
+  arguments; a one-sheet span `Sheet2:Sheet2!B1` is a plain reference (G6, H6).
+- WORKDAY.INTL never passes an error-valued `weekend` on: `NA()`, `1/0`, a cell holding `#REF!` or `#DIV/0!` and a 3-D
+  reference (read as `#REF!`, one cell or several) are all `#NUM!`, the code of an invalid weekend number (P1-P25,
+  J1-J5, M7). It reads the start date, the day count and the holidays first: `WORKDAY.INTL(1/0,5,NA())` is `#DIV/0!`,
+  `WORKDAY.INTL(45000,"x",NA())` and `WORKDAY.INTL(45000,5,NA(),"y")` `#VALUE!`, and the holidays' error beats an
+  invalid weekend too: `WORKDAY.INTL(45000,5,99,NA())` and `WORKDAY.INTL(45000,5,"abc",NA())` are `#N/A` (P31, P33). A day
+  count of 0 still skips the weekend (`WORKDAY.INTL(45000,0,Sheet1:Sheet2!W1)` = 45000, M5).
+- NETWORKDAYS.INTL reads the `weekend` before anything else, and an error-valued one is `#VALUE!`:
+  `NETWORKDAYS.INTL(1/0,45030,NA())`, `NETWORKDAYS.INTL(45000,"x",X1)` and `NETWORKDAYS.INTL(45000,45030,1/0,"y")`
+  are all `#VALUE!` (Q1-Q30), and so is the 3-D weekend whatever the dates (K1-K5, N1-N5). An invalid weekend wins
+  over the dates with its own code: `NETWORKDAYS.INTL(NA(),45030,99)` is `#NUM!`, `NETWORKDAYS.INTL(NA(),45030,"abc")`
+  `#VALUE!` (Q32, Q33).
+- Lifted, each element follows the same order: `INDEX(WORKDAY.INTL(45000,5,{1;#N/A}),2)` is `#NUM!` and
+  `INDEX(WORKDAY.INTL(1/0,5,{1;#N/A}),2)` `#DIV/0!`, while every `INDEX(NETWORKDAYS.INTL(..,{1;#N/A}),2)` is `#VALUE!`
+  (P26-P30, Q26-Q30); `ROWS(WORKDAY.INTL({45000;45001},5,Sheet1:Sheet2!W1))` is 2 (M6, N6).
+- A 3-D `holidays` is `#VALUE!`, also as a branch of IF and in WORKDAY and NETWORKDAYS
+  (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)`, `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`; M9-N13). Unprobed: an IF whose 3-D branch is not taken
+  (`IF(FALSE,Sheet1:Sheet2!A1,A1)`, ours `#VALUE!`) and a 3-D holidays with a day count of 0 (ours the start date).
+- A one-cell `weekend` range is that cell's value (`WORKDAY.INTL(45000,5,W1:W1)` = 45007, 1 row; J7-J9, K7-K9).
+Ours: `Model::weekend_mask` turns an error-valued weekend into the caller's error (`#NUM!` or `#VALUE!`);
+`workday_of` reads the holidays before the weekend and `networkdays_of` reads the weekend first; `holiday_serials`
+refuses a 3-D reference (`is_span_or_if_of_span`) with `#VALUE!` (crates/rustsheet-engine/src/functions/date_and_time/).
+Status: VERIFIED
+Tasks: T-1428
 
 ## TIMEVALUE of chrono-pattern date-time text in a 1904 workbook (T-1445)
 Rule: in a 1904 workbook `TIMEVALUE("7/7/2026 4:35 PM")` and `TIMEVALUE("2024-03-15 16:35")` both give
@@ -824,9 +854,13 @@ Rule: typed text `<date> <clock> A` or `P` (any case, space before the letter) i
 a glued suffix (`10:00A`, General text) or a doubled one (`10:00 A A`, General text); an out-of-range
 hour (`13:00 A`) stays text with the date's format `m/d/yyyy`. Evidence: probes/date-text-single-letter-ap
 N1-N8, N10, N11 (excel-graph 2026-10-19), probes/date-text-rejected-clock-formats N7.
-UNVERIFIED in the engine (probed in the fill run of T-1994 only, no case cells): typed `1/2/2020 10:00 A.`
-(trailing dot) is a number, and bare typed `10:00 A` is a number with `h:mm AM/PM`.
-Status: VERIFIED (web) for the rule above; PARTIAL for the two UNVERIFIED shapes (T-2011).
-Implemented in: `typed_clock_shape` and `rejected_clock_text_format` in `crates/rustsheet-engine/src/formatter/parse_formatted.rs`
+A trailing dot after the letter is accepted wherever the letter is: typed `1/2/2020 10:00 A.` is 43832.41666... with
+`m/d/yyyy h:mm` (N12), so are `1/2/2020 10 A.` and `1/2/2020 10:00:30 P.` (N17, N18), and
+`1/2/2020 13:00 A.` stays text with `m/d/yyyy` (N16). A bare typed clock with the letter is a time of day:
+`10:00 A`, `10:00 p`, `10:00 A.`, `10 A` and `10:00 AM` are 0.41666... (0.91666... for p) with `h:mm AM/PM`,
+but `10:00:30 A` is 0.41701... with `h:mm:ss AM/PM` (N9, N13-N15, N19, N20; excel-graph 2026-10-19, T-2011).
+UNVERIFIED: a bare hour with `AM`/`PM` (`10 AM`), bare `10:00:30 AM`, bare `10 A.`, bare `0:00 A` / `13:00 A`, and fractional seconds before the letter (`10:00:30.5 A`, `10:00.5 A`): the engine extrapolates them (follow-up task).
+Status: VERIFIED (web)
+Implemented in: `typed_clock_shape`, `rejected_clock_text_format`, `parse_typed_number`, `parse_bare_letter_clock` and `without_single_letter_dot` in `crates/rustsheet-engine/src/formatter/parse_formatted.rs`
 Evidence note: docs/research/single-letter-ap-typed-clock-2026-10-19.md
 Tasks: T-1994, T-2011

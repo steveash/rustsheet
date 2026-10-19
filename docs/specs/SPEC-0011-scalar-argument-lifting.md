@@ -791,6 +791,13 @@ Test formulas (T-1834, T-1835):
 - `=ROWS(EXPAND(1,SEQUENCE(1024),1024))` is `#ERROR!`, as the first formula is.
 - `=ROWS(SEQUENCE({3;4}))` is 2 and charges 7 cells.
 
+**As built (T-1834).** The conversion is `element_node` in `lift/driver.rs`, which also applies the
+charge; entries that are `CallResult::Value` with no `Output` work skip both. One rule the spec did
+not name: an `Array` entry whose lifted arguments are all 1x1 runs one unlifted call and keeps its
+whole array (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows, as before T-1834), and its static shape
+is `Unknown`. Whether Excel lifts a 1x1 array there (`SEQUENCE({3})`) is open until T-1960, which
+deletes the rule or keeps it.
+
 **4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds:
 ```rust
 pub(crate) struct ArgKinds {
