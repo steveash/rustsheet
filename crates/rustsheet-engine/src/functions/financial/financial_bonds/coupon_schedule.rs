@@ -123,6 +123,17 @@ pub(in crate::functions::financial) fn coupon_count(
     Ok((diff / months_per) as u32 + 1)
 }
 
+// Actual days of the coupon period that contains settlement.
+pub(in crate::functions::financial) fn coupon_period_days(
+    settlement: i64,
+    maturity: i64,
+    frequency: u32,
+) -> Result<f64, String> {
+    let prev = from_excel_date(prev_coupon_date(settlement, maturity, frequency)?)?;
+    let next = from_excel_date(next_coupon_date(settlement, maturity, frequency)?)?;
+    Ok(actual_days(prev, next))
+}
+
 // Total days in the coupon period that contains settlement (E).
 pub(in crate::functions::financial) fn coupon_days_e(
     settlement: i64,
@@ -134,11 +145,7 @@ pub(in crate::functions::financial) fn coupon_days_e(
         0 | 2 | 4 => Ok(360.0 / frequency as f64),
         // The period PRICE, YIELD and DURATION use. The COUPDAYS function itself differs around
         // 29 February (`coupdays_actual`); keep the two apart.
-        1 => {
-            let prev = from_excel_date(prev_coupon_date(settlement, maturity, frequency)?)?;
-            let next = from_excel_date(next_coupon_date(settlement, maturity, frequency)?)?;
-            Ok(actual_days(prev, next))
-        }
+        1 => coupon_period_days(settlement, maturity, frequency),
         3 => Ok(365.0 / frequency as f64),
         _ => Err("Invalid basis".to_string()),
     }

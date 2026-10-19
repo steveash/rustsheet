@@ -81,6 +81,14 @@ pub(super) fn parse_time_string(
     if let Ok(dt) = DateTime::parse_from_rfc3339(text) {
         return Some(dt.time().num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
     }
+    // Date-only text has no clock, so TIMEVALUE is 0, not #VALUE! (probes/date-text-glued-month-2
+    // column C rows 6-8, 10-11, 13-15: `"Jul1 , 2026"`, `"Jun31"`). The date must be in range for
+    // the date system, as in the date-clock path above.
+    if let Ok((days, _)) = parse_date(text, locale, current_year) {
+        return date_system
+            .serial_from_1900_serial(i64::from(days))
+            .map(|_| 0.0);
+    }
     None
 }
 
@@ -112,7 +120,7 @@ pub(crate) fn parse_time_serial(
 /// workbook's epoch, and a day before the 1904 epoch is no date (`"1904-01-02 10:00"+0` is
 /// 1.4166666666666667, `"1903-12-31 10:00"+0` is #VALUE!; probes/date-system-1904-clock-text A1,
 /// A7). The clock is added after the shift: summing in the 1900 system first loses low bits.
-fn parse_date_clock_serial_in(
+pub(crate) fn parse_date_clock_serial_in(
     text: &str,
     locale: &Locale,
     current_year: CurrentYear,

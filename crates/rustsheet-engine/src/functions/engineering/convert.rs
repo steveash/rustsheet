@@ -15,40 +15,42 @@ enum Temperature {
     Fahrenheit,
 }
 
-// Excel: no single pivot unit reproduces the last digits of every pair (probes/convert-targets,
-// excel-graph; docs/excel-semantics/engineering.md "CONVERT temperature"). Kelvin is the pivot,
-// except that Fahrenheit goes through Celsius (and to Rankine through `5/9 * (F + 459.67)`), and
-// Rankine to Fahrenheit is `9/5 * K - 459.67`; the other pairs use the Celsius-offset forms below.
+// Excel: every pair has its own last-digit form; no single pivot reproduces them (probes/convert-
+// targets and probes/convert-temperature-sweep, excel-graph; docs/excel-semantics/engineering.md
+// "CONVERT temperature"). Rankine and Fahrenheit are linked by `459.67`, the Rankine/Kelvin ratio
+// is `1.8` (a multiply or divide, never `9/5`), and F to Reaumur is `(v - 32) * 0.8 / 1.8`.
 fn convert_temperature(
     value: f64,
     from_temperature: Temperature,
     to_temperature: Temperature,
 ) -> f64 {
     use Temperature::{Celsius, Fahrenheit, Kelvin, Rankine, Reaumur};
-    if let Fahrenheit = from_temperature {
-        let celsius = (value - 32.0) * 5.0 / 9.0;
-        return match to_temperature {
-            Celsius => celsius,
-            Kelvin => celsius + 273.15,
-            Rankine => 5.0 / 9.0 * (value + 459.67) * 1.8,
-            Reaumur => celsius * 0.8,
-            Fahrenheit => value,
-        };
-    }
-    let kelvin = match from_temperature {
-        Kelvin => value,
-        Celsius => value + 273.15,
-        Rankine => 5.0 * value / 9.0,
-        Reaumur => 5.0 * value / 4.0 + 273.15,
-        Fahrenheit => value,
-    };
-    match to_temperature {
-        Kelvin => kelvin,
-        Celsius => kelvin - 273.15,
-        Rankine => 9.0 * kelvin / 5.0,
-        Reaumur => (kelvin - 273.15) * 0.8,
-        Fahrenheit if matches!(from_temperature, Rankine) => 9.0 * kelvin / 5.0 - 459.67,
-        Fahrenheit => (kelvin - 273.15) * 9.0 / 5.0 + 32.0,
+    match (from_temperature, to_temperature) {
+        (Celsius, Celsius)
+        | (Kelvin, Kelvin)
+        | (Rankine, Rankine)
+        | (Reaumur, Reaumur)
+        | (Fahrenheit, Fahrenheit) => value,
+        (Celsius, Fahrenheit) => value * 1.8 + 32.0,
+        (Celsius, Kelvin) => value + 273.15,
+        (Celsius, Rankine) => (value + 273.15) * 1.8,
+        (Celsius, Reaumur) => value * 0.8,
+        (Fahrenheit, Celsius) => (value - 32.0) / 1.8,
+        (Fahrenheit, Kelvin) => (value - 32.0) / 1.8 + 273.15,
+        (Fahrenheit, Rankine) => value + 459.67,
+        (Fahrenheit, Reaumur) => (value - 32.0) * 0.8 / 1.8,
+        (Kelvin, Celsius) => value - 273.15,
+        (Kelvin, Fahrenheit) => (value - 273.15) * 1.8 + 32.0,
+        (Kelvin, Rankine) => value * 1.8,
+        (Kelvin, Reaumur) => (value - 273.15) * 0.8,
+        (Rankine, Celsius) => value / 1.8 - 273.15,
+        (Rankine, Fahrenheit) => value - 459.67,
+        (Rankine, Kelvin) => value / 1.8,
+        (Rankine, Reaumur) => (value / 1.8 - 273.15) * 0.8,
+        (Reaumur, Celsius) => value * 1.25,
+        (Reaumur, Fahrenheit) => value * 2.25 + 32.0,
+        (Reaumur, Kelvin) => value * 1.25 + 273.15,
+        (Reaumur, Rankine) => (value * 1.25 + 273.15) * 1.8,
     }
 }
 
@@ -461,6 +463,16 @@ impl Model {
         } else {
             product / to_unit_factor
         };
-        CalcResult::Number(scaled * from_unit_scale * (1.0 / to_unit_scale))
+        // Excel: `CONVERT(1E290,"Ym","Ym")` is 1E+290 and `CONVERT(1E300,"Ym","Zm")` 1E+303 although
+        // `value * 1E24` overflows (probes/convert-temperature-ov00, -ov01, -ov20): the prefixes are
+        // combined into one ratio when applying the from-prefix first would overflow. A result that
+        // overflows even so stays `#NUM!` (ov02, ov21).
+        let from_scaled = scaled * from_unit_scale;
+        let result = if from_scaled.is_infinite() {
+            scaled * (from_unit_scale * (1.0 / to_unit_scale))
+        } else {
+            from_scaled * (1.0 / to_unit_scale)
+        };
+        CalcResult::Number(result)
     }
 }

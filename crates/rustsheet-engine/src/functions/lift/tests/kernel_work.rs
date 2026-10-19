@@ -58,6 +58,10 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Some("at most 171 factors: 171 distinct integers pass f64::MAX"),
     ),
     (Function::Permutationa, Some("O(1): one powf")),
+    (
+        Function::Exp,
+        Some("one x87_exp::excel_exp: a fixed 26-term series"),
+    ),
     (Function::Erf, Some(ERF_KERNELS)),
     (Function::ErfPrecise, Some(ERF_KERNELS)),
     (Function::Erfc, Some(ERF_KERNELS)),
