@@ -14,23 +14,26 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import struct
 import subprocess
 import sys
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
+from rustsheet_tools.fitlab.score import ulp_distance
 from rustsheet_tools.parity_svg import Bar, bar_chart
 
+EN = "\N{EN DASH}"
+LE = "\N{LESS-THAN OR EQUAL TO}"
 BUCKETS = ("pass", "ulp1", "ulp4", "close", "off")
 LABELS = {
     "pass": "Bit-exact",
     "ulp1": "Within 1 ulp",
-    "ulp4": "Within 4 ulp",
+    "ulp4": f"Within 2{EN}4 ulp",
     "close": "Within 1e-9",
     "off": "Off",
 }
@@ -53,18 +56,6 @@ def functions_in(formula: str) -> set[str]:
     """The upper-cased names of the functions `formula` calls (see FUNCTION_CALL)."""
     stripped = STRING_LITERAL.sub('""', formula)
     return {m.group(1).upper() for m in FUNCTION_CALL.finditer(stripped)}
-
-
-def ulp_distance(a: float, b: float) -> int:
-    """Distance in units in the last place, as `ulp_distance` in crates/rustsheet-eval/src/value.rs.
-
-    The IEEE-754 bit pattern maps onto a monotonically ordered integer line (-0 and +0 meet)."""
-
-    def ordered(x: float) -> int:
-        bits: int = struct.unpack("<q", struct.pack("<d", x))[0]
-        return bits if bits >= 0 else -(bits & 0x7FFF_FFFF_FFFF_FFFF)
-
-    return abs(ordered(a) - ordered(b))
 
 
 def cell_bucket(cell: dict[str, Any]) -> str | None:
@@ -98,6 +89,7 @@ class FunctionParity:
 
     @property
     def cells(self) -> int:
+        """The function's scored cells (unsupported cells excluded)."""
         return sum(self.counts.values())
 
     @property
@@ -107,6 +99,7 @@ class FunctionParity:
 
     @property
     def exact_share(self) -> float:
+        """The share of the function's scored cells that are bit-exact."""
         return self.counts["pass"] / self.cells
 
 
@@ -120,9 +113,11 @@ class Parity:
     suites: list[dict[str, Any]]
 
     def functions_per_bucket(self) -> Counter[str]:
+        """How many functions have their worst cell in each bucket."""
         return Counter(f.worst for f in self.functions)
 
     def cells_per_bucket(self) -> Counter[str]:
+        """Scored cells per bucket, summed over functions (a cell counts once per function)."""
         total: Counter[str] = Counter()
         for f in self.functions:
             total.update(f.counts)
@@ -191,18 +186,31 @@ def pct(part: int, whole: int) -> str:
     return f"{value:.2f}%"
 
 
+# Markdown table cell text: a pipe would split the cell, `<`/`>` could open raw HTML, a backtick a
+# code span, and a newline would end the row.
+MD_CELL_ESCAPES = str.maketrans({"|": "\\|", "<": "&lt;", ">": "&gt;", "`": "&#96;", "\n": " ", "\r": " "})
+
+
+def md_cell(text: str) -> str:
+    """`text` made safe to put in one Markdown table cell (see MD_CELL_ESCAPES)."""
+    return text.translate(MD_CELL_ESCAPES)
+
+
 def table(header: list[str], rows: list[list[str]], right_from: int = 1) -> str:
     """A GitHub Markdown table; columns from `right_from` on are right-aligned (numbers)."""
     align = ["---" if i < right_from else "---:" for i in range(len(header))]
-    lines = [header, align, *rows]
-    return "\n".join("| " + " | ".join(c.replace("|", "\\|") for c in line) + " |" for line in lines)
+    body = [[md_cell(c) for c in line] for line in [header, *rows]]
+    lines = [body[0], align, *body[1:]]
+    return "\n".join("| " + " | ".join(line) + " |" for line in lines)
 
 
 def bucket_header() -> list[str]:
+    """The bucket labels, in bucket order, as table column headers."""
     return [LABELS[b] for b in BUCKETS]
 
 
 def summary_tables(p: Parity) -> str:
+    """The functions-per-bucket and checked-cells-per-bucket tables, with their headings."""
     fb, cb = p.functions_per_bucket(), p.cells_per_bucket()
     nf, nc = len(p.functions), sum(cb.values())
     funcs = table(
@@ -217,6 +225,7 @@ def summary_tables(p: Parity) -> str:
 
 
 def category_table(p: Parity) -> str:
+    """Functions per catalog category and worst-cell bucket, with the category's cell totals."""
     rows = []
     for cat, fs in p.categories():
         per = Counter(f.worst for f in fs)
@@ -227,6 +236,7 @@ def category_table(p: Parity) -> str:
 
 
 def suites_table(p: Parity) -> str:
+    """One row per eval suite: cells by harness verdict (every cell, not only catalog calls)."""
     rows = []
     for s in p.suites:
         v: dict[str, int] = s.get("verdicts", {})
@@ -248,11 +258,12 @@ def suites_table(p: Parity) -> str:
                 f"{unsup:,}",
             ]
         )
-    header = ["Suite", "Cases", "Cells", "Bit-exact", "Within 4 ulp", "Within 1e-9", "Off", "Deviations"]
+    header = ["Suite", "Cases", "Cells", "Bit-exact", f"{LE}4 ulp", "Within 1e-9", "Off", "Deviations"]
     return table([*header, "Unsupported"], rows)
 
 
 def function_table(p: Parity) -> str:
+    """The full per-function table, sorted by name."""
     rows = [
         [
             f.name,
@@ -273,19 +284,20 @@ def function_table(p: Parity) -> str:
         "Bit-exact %",
         "Exact",
         "1 ulp",
-        "2\N{EN DASH}4 ulp",
+        f"2{EN}4 ulp",
     ]
     return table([*header, "1e-9", "Off", "Worst"], rows, right_from=3)
 
 
 def takeaway(p: Parity) -> str:
+    """The landing page's one-paragraph summary."""
     fb, cb = p.functions_per_bucket(), p.cells_per_bucket()
     nf, nc = len(p.functions), sum(cb.values())
     near = fb["ulp1"] + fb["ulp4"] + fb["close"]
     return (
         f"Of **{nf:,}** implemented functions with Excel-checked cells, **{fb['pass']:,}** "
         f"({pct(fb['pass'], nf)}) match Excel bit for bit on every checked cell, and **{near:,}** more "
-        f"are never further than 1e-9 relative ({fb['ulp1']:,} within 1 ulp, {fb['ulp4']:,} within 4 ulp, "
+        f"are never further than 1e-9 relative ({fb['ulp1']:,} within 1 ulp, {fb['ulp4']:,} within 2{EN}4 ulp, "
         f"{fb['close']:,} within 1e-9). **{fb['off']:,}** have at least one cell that is off, but "
         f"{p.near_off():,} of those still match bit for bit on 99% or more of their cells. Across all "
         f"**{nc:,}** checked cells (a cell calling several functions counts for each), "
@@ -294,6 +306,7 @@ def takeaway(p: Parity) -> str:
 
 
 def unscored_note(p: Parity) -> str:
+    """Which in-scope catalog functions have no scored cell yet."""
     if not p.unscored:
         return f"All {p.in_scope:,} in-scope catalog functions have checked cells."
     names = ", ".join(p.unscored) if len(p.unscored) <= 20 else f"{len(p.unscored)} functions"
@@ -303,16 +316,12 @@ def unscored_note(p: Parity) -> str:
     )
 
 
-CHARTS = (
-    ("functions-per-bucket.svg", "Functions per bucket"),
-    ("functions-per-category.svg", "Functions per category, by bucket"),
-    ("cells-per-bucket.svg", "Checked cells per bucket"),
-)
 REGENERATE = "make eval && make parity-report"
 
 
 def landing_page(p: Parity, run_date: str, commit: str) -> str:
-    charts = "\n\n".join(f"![{alt}](parity/{name})" for name, alt in CHARTS)
+    """The landing page (parity.md): the snapshot header, takeaway, summary tables, charts and how to read them."""
+    charts = "\n\n".join(f"![{c.title}](parity/{c.name})" for c in CHARTS)
     return f"""<!-- Generated by `{REGENERATE}` (tools/src/rustsheet_tools/parity_report.py). Do not edit. -->
 # RustSheet Excel parity
 
@@ -339,7 +348,7 @@ Each function counts once, in the bucket of its worst checked cell.
 ## Suites
 
 The eval suites the counts come from. Suite cells include cells that call no catalog function;
-"Within 4 ulp" is the harness's `numeric_ulp` verdict, and bit-exact leaves out accepted
+"{LE}4 ulp" is the harness's `numeric_ulp` verdict, and bit-exact leaves out accepted
 deviations.
 
 {suites_table(p)}
@@ -347,7 +356,7 @@ deviations.
 ## How to read this
 
 - **Bit-exact**: the same value and type as Excel. Accepted deviations (decision 0036) count here.
-- **Within 1 ulp** / **Within 4 ulp**: a number at most 1, or 2 to 4, units in the last place of a
+- **Within 1 ulp** / **Within 2{EN}4 ulp**: a number at most 1, or 2 to 4, units in the last place of a
   64-bit double from Excel's.
 - **Within 1e-9**: a number within 1e-9 relative error of Excel's.
 - **Off**: anything further, or a wrong type, error or text.
@@ -371,6 +380,7 @@ checked-out commit and the report file's date.
 
 
 def functions_page(p: Parity, run_date: str, commit: str) -> str:
+    """The per-function page (parity/functions.md): the full table."""
     return f"""<!-- Generated by `{REGENERATE}` (tools/src/rustsheet_tools/parity_report.py). Do not edit. -->
 # Excel parity by function
 
@@ -382,27 +392,47 @@ in. Back to the [parity summary](../parity.md).
 """
 
 
-def charts(p: Parity) -> dict[str, str]:
-    """The three SVG charts by file name."""
-    fb, cb = p.functions_per_bucket(), p.cells_per_bucket()
-    nf, nc = len(p.functions), sum(cb.values())
-    per_bucket = [Bar(LABELS[b], ((b, fb[b]),), f"{fb[b]:,} ({pct(fb[b], nf)})") for b in BUCKETS]
-    per_cells = [Bar(LABELS[b], ((b, cb[b]),), f"{cb[b]:,} ({pct(cb[b], nc)})") for b in BUCKETS]
-    per_cat = []
+def _functions_per_bucket_chart(p: Parity, title: str) -> str:
+    fb, nf = p.functions_per_bucket(), len(p.functions)
+    bars = [Bar(LABELS[b], ((b, fb[b]),), f"{fb[b]:,} ({pct(fb[b], nf)})") for b in BUCKETS]
+    return bar_chart(title, f"{nf} functions, each in the bucket of its worst checked cell.", bars)
+
+
+def _functions_per_category_chart(p: Parity, title: str) -> str:
+    bars = []
     for cat, fs in p.categories():
         per = Counter(f.worst for f in fs)
-        per_cat.append(Bar(cat, tuple((b, per[b]) for b in BUCKETS), f"{len(fs)}"))
+        bars.append(Bar(cat, tuple((b, per[b]) for b in BUCKETS), f"{len(fs)}"))
     legend = [(b, LABELS[b]) for b in BUCKETS]
-    names = [name for name, _ in CHARTS]
-    return {
-        names[0]: bar_chart(
-            CHARTS[0][1], f"{nf} functions, each in the bucket of its worst checked cell.", per_bucket
-        ),
-        names[1]: bar_chart(
-            CHARTS[1][1], "Functions per catalog category, stacked by worst-cell bucket.", per_cat, legend
-        ),
-        names[2]: bar_chart(CHARTS[2][1], f"{nc:,} checked cells by closeness to Excel.", per_cells),
-    }
+    return bar_chart(title, "Functions per catalog category, stacked by worst-cell bucket.", bars, legend)
+
+
+def _cells_per_bucket_chart(p: Parity, title: str) -> str:
+    cb = p.cells_per_bucket()
+    nc = sum(cb.values())
+    bars = [Bar(LABELS[b], ((b, cb[b]),), f"{cb[b]:,} ({pct(cb[b], nc)})") for b in BUCKETS]
+    return bar_chart(title, f"{nc:,} checked cells by closeness to Excel.", bars)
+
+
+@dataclass(frozen=True)
+class Chart:
+    """One SVG chart: its file name under parity/, its title and alt text, and its builder."""
+
+    name: str
+    title: str
+    build: Callable[[Parity, str], str]
+
+
+CHARTS = (
+    Chart("functions-per-bucket.svg", "Functions per bucket", _functions_per_bucket_chart),
+    Chart("functions-per-category.svg", "Functions per category, by bucket", _functions_per_category_chart),
+    Chart("cells-per-bucket.svg", "Checked cells per bucket", _cells_per_bucket_chart),
+)
+
+
+def charts(p: Parity) -> dict[str, str]:
+    """The SVG charts by file name."""
+    return {c.name: c.build(p, c.title) for c in CHARTS}
 
 
 def write(p: Parity, out_dir: Path, run_date: str, commit: str) -> list[Path]:
@@ -420,10 +450,31 @@ def write(p: Parity, out_dir: Path, run_date: str, commit: str) -> list[Path]:
 
 
 def git_commit(repo: Path) -> str:
+    """The short sha of `repo`'s checked-out commit."""
     out = subprocess.run(
         ["git", "rev-parse", "--short=8", "HEAD"], cwd=repo, capture_output=True, text=True, check=True
     )
     return out.stdout.strip()
+
+
+COMMIT_SHA = re.compile(r"[0-9a-f]{4,40}")
+RUN_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def commit_sha(text: str) -> str:
+    """argparse type: a lower-case hex commit sha, 4 to 40 digits (it is printed into the page)."""
+    if not COMMIT_SHA.fullmatch(text):
+        msg = f"not a commit sha (4-40 lower-case hex digits): {text!r}"
+        raise argparse.ArgumentTypeError(msg)
+    return text
+
+
+def run_date_arg(text: str) -> str:
+    """argparse type: a YYYY-MM-DD date (it is printed into the page)."""
+    if not RUN_DATE.fullmatch(text):
+        msg = f"not a YYYY-MM-DD date: {text!r}"
+        raise argparse.ArgumentTypeError(msg)
+    return text
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -432,8 +483,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--report", type=Path, default=repo / "eval" / "runs" / "latest" / "report.json")
     ap.add_argument("--scope", type=Path, default=repo / "eval" / "catalog" / "scope.json")
     ap.add_argument("--out-dir", type=Path, required=True, help="the docs directory to write into")
-    ap.add_argument("--commit", help="main commit the report ran on (default: git HEAD)")
-    ap.add_argument("--run-date", help="date of the eval run, YYYY-MM-DD (default: the report's mtime)")
+    ap.add_argument("--commit", type=commit_sha, help="main commit the report ran on (default: git HEAD)")
+    ap.add_argument(
+        "--run-date", type=run_date_arg, help="date of the eval run, YYYY-MM-DD (default: the report's mtime)"
+    )
     args = ap.parse_args(argv)
     try:
         report = json.loads(args.report.read_text(encoding="utf-8"))

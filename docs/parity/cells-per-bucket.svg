@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="234" viewBox="0 0 760 234" role="img" aria-labelledby="t d">
 <title id="t">Checked cells per bucket</title><desc id="d">270,551 checked cells by closeness to Excel.</desc>
-<style>text{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}.num{font-variant-numeric:tabular-nums}.bg{fill:#ffffff}.ink{fill:#1f2328}.muted{fill:#59636e}.grid{fill:#d1d9e0}.b-pass{fill:#2a78d6}.b-ulp1{fill:#1baf7a}.b-ulp4{fill:#eda100}.b-close{fill:#6250d6}.b-off{fill:#e34948}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.ink{fill:#f0f6fc}.muted{fill:#9198a1}.grid{fill:#3d444d}.b-pass{fill:#3987e5}.b-ulp1{fill:#199e70}.b-ulp4{fill:#c98500}.b-close{fill:#9085e9}.b-off{fill:#e66767}}</style>
+<style>text{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}.num{font-variant-numeric:tabular-nums}.bg{fill:#ffffff}.ink{fill:#1f2328}.muted{fill:#59636e}.grid{fill:#d1d9e0}.b-pass{fill:#2a78d6}.b-ulp1{fill:#1baf7a}.b-ulp4{fill:#eda100}.b-close{fill:#6250d6}.b-off{fill:#e34948}.in-pass{fill:#000000}.in-ulp1{fill:#000000}.in-ulp4{fill:#000000}.in-close{fill:#ffffff}.in-off{fill:#000000}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.ink{fill:#f0f6fc}.muted{fill:#9198a1}.grid{fill:#3d444d}.b-pass{fill:#3987e5}.b-ulp1{fill:#199e70}.b-ulp4{fill:#c98500}.b-close{fill:#9085e9}.b-off{fill:#e66767}.in-pass{fill:#000000}.in-ulp1{fill:#000000}.in-ulp4{fill:#000000}.in-close{fill:#000000}.in-off{fill:#000000}}</style>
 <rect class="bg" fill="#ffffff" x="0" y="0" width="760" height="234"/>
 <g transform="translate(14,14)">
 <text x="0.0" y="16.0" class="ink title" fill="#1f2328" text-anchor="start" dominant-baseline="middle">Checked cells per bucket</text>
@@ -18,8 +18,8 @@
 <text x="140.0" y="85.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">Within 1 ulp</text>
 <rect class="b-ulp1" fill="#1baf7a" x="150.0" y="76.0" width="3.3" height="18" rx="3"><title>Within 1 ulp: 2,151</title></rect>
 <text x="161.3" y="85.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">2,151 (0.80%)</text>
-<text x="140.0" y="115.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">Within 4 ulp</text>
-<rect class="b-ulp4" fill="#eda100" x="150.0" y="106.0" width="2.4" height="18" rx="3"><title>Within 4 ulp: 1,532</title></rect>
+<text x="140.0" y="115.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">Within 2–4 ulp</text>
+<rect class="b-ulp4" fill="#eda100" x="150.0" y="106.0" width="2.4" height="18" rx="3"><title>Within 2–4 ulp: 1,532</title></rect>
 <text x="160.4" y="115.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">1,532 (0.57%)</text>
 <text x="140.0" y="145.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">Within 1e-9</text>
 <rect class="b-close" fill="#6250d6" x="150.0" y="136.0" width="8.1" height="18" rx="3"><title>Within 1e-9: 5,273</title></rect>

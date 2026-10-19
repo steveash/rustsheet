@@ -25,6 +25,9 @@ static STRING_LITERAL: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// Upper-cased function names called by a formula (string literals ignored).
+///
+/// `tools/src/rustsheet_tools/parity_report.py` mirrors this function and its two regexes to
+/// attribute failing cells to functions; change both together (T-2036 removes the copy).
 #[must_use]
 pub fn functions_in(formula: &str) -> BTreeSet<String> {
     let stripped = STRING_LITERAL.replace_all(formula, "\"\"");

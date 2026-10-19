@@ -4,7 +4,7 @@
 Per-function parity with Microsoft 365 Excel, from the eval run of **2026-10-19** on `main` at
 **`c30e2d40`**.
 
-Of **505** implemented functions with Excel-checked cells, **238** (47.13%) match Excel bit for bit on every checked cell, and **69** more are never further than 1e-9 relative (20 within 1 ulp, 17 within 4 ulp, 32 within 1e-9). **198** have at least one cell that is off, but 45 of those still match bit for bit on 99% or more of their cells. Across all **270,551** checked cells (a cell calling several functions counts for each), 95.68% are bit-exact and 1.01% are off.
+Of **505** implemented functions with Excel-checked cells, **238** (47.13%) match Excel bit for bit on every checked cell, and **69** more are never further than 1e-9 relative (20 within 1 ulp, 17 within 2–4 ulp, 32 within 1e-9). **198** have at least one cell that is off, but 45 of those still match bit for bit on 99% or more of their cells. Across all **270,551** checked cells (a cell calling several functions counts for each), 95.68% are bit-exact and 1.01% are off.
 
 The catalog has 506 in-scope functions; 1 has no scored cell yet (INFO). The full per-function table is in [parity/functions.md](parity/functions.md).
 
@@ -16,7 +16,7 @@ The catalog has 506 in-scope functions; 1 has no scored cell yet (INFO). The ful
 | --- | ---: | ---: |
 | Bit-exact | 238 | 47.13% |
 | Within 1 ulp | 20 | 3.96% |
-| Within 4 ulp | 17 | 3.37% |
+| Within 2–4 ulp | 17 | 3.37% |
 | Within 1e-9 | 32 | 6.34% |
 | Off | 198 | 39.21% |
 | **All** | **505** |  |
@@ -27,7 +27,7 @@ The catalog has 506 in-scope functions; 1 has no scored cell yet (INFO). The ful
 | --- | ---: | ---: |
 | Bit-exact | 258,865 | 95.68% |
 | Within 1 ulp | 2,151 | 0.80% |
-| Within 4 ulp | 1,532 | 0.57% |
+| Within 2–4 ulp | 1,532 | 0.57% |
 | Within 1e-9 | 5,273 | 1.95% |
 | Off | 2,730 | 1.01% |
 | **All** | **270,551** |  |
@@ -44,7 +44,7 @@ The catalog has 506 in-scope functions; 1 has no scored cell yet (INFO). The ful
 
 Each function counts once, in the bucket of its worst checked cell.
 
-| Category | Functions | Bit-exact | Within 1 ulp | Within 4 ulp | Within 1e-9 | Off | Cells | Cells bit-exact |
+| Category | Functions | Bit-exact | Within 1 ulp | Within 2–4 ulp | Within 1e-9 | Off | Cells | Cells bit-exact |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | statistical | 149 | 38 | 2 | 8 | 14 | 87 | 32,442 | 78.69% |
 | math | 83 | 48 | 9 | 3 | 1 | 22 | 103,001 | 99.52% |
@@ -61,10 +61,10 @@ Each function counts once, in the bucket of its worst checked cell.
 ## Suites
 
 The eval suites the counts come from. Suite cells include cells that call no catalog function;
-"Within 4 ulp" is the harness's `numeric_ulp` verdict, and bit-exact leaves out accepted
+"≤4 ulp" is the harness's `numeric_ulp` verdict, and bit-exact leaves out accepted
 deviations.
 
-| Suite | Cases | Cells | Bit-exact | Within 4 ulp | Within 1e-9 | Off | Deviations | Unsupported |
+| Suite | Cases | Cells | Bit-exact | ≤4 ulp | Within 1e-9 | Off | Deviations | Unsupported |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | fixtures | 17 | 248 | 96.37% | 0 | 0 | 9 | 0 | 0 |
 | gen-m1 | 15 | 3,750 | 100.00% | 0 | 0 | 0 | 0 | 0 |
@@ -85,7 +85,7 @@ deviations.
 ## How to read this
 
 - **Bit-exact**: the same value and type as Excel. Accepted deviations (decision 0036) count here.
-- **Within 1 ulp** / **Within 4 ulp**: a number at most 1, or 2 to 4, units in the last place of a
+- **Within 1 ulp** / **Within 2–4 ulp**: a number at most 1, or 2 to 4, units in the last place of a
   64-bit double from Excel's.
 - **Within 1e-9**: a number within 1e-9 relative error of Excel's.
 - **Off**: anything further, or a wrong type, error or text.

@@ -22,8 +22,15 @@ BUCKET_FILLS: dict[str, tuple[str, str]] = {
     "close": ("#6250d6", "#9085e9"),
     "off": ("#e34948", "#e66767"),
 }
-# Ink for a value label drawn inside a segment of that bucket.
-INNER_INK = {"pass": "#ffffff", "ulp1": "#0b0b0b", "ulp4": "#0b0b0b", "close": "#ffffff", "off": "#ffffff"}
+# (light, dark) ink for a value label drawn inside a segment of that bucket: each pair clears
+# 4.5:1 (WCAG) on that bucket's fill in that theme. The worst is black on light blue, 4.76:1.
+INNER_INK: dict[str, tuple[str, str]] = {
+    "pass": ("#000000", "#000000"),
+    "ulp1": ("#000000", "#000000"),
+    "ulp4": ("#000000", "#000000"),
+    "close": ("#ffffff", "#000000"),
+    "off": ("#000000", "#000000"),
+}
 # (class, light, dark) for the chart chrome; GitHub's own page surfaces and ink.
 CHROME = (
     ("bg", "#ffffff", "#0d1117"),
@@ -54,8 +61,10 @@ class Bar:
 def _style() -> str:
     light = [f".{c}{{fill:{lt}}}" for c, lt, _ in CHROME]
     light += [f".b-{k}{{fill:{lt}}}" for k, (lt, _) in BUCKET_FILLS.items()]
+    light += [f".in-{k}{{fill:{lt}}}" for k, (lt, _) in INNER_INK.items()]
     dark = [f".{c}{{fill:{dk}}}" for c, _, dk in CHROME]
     dark += [f".b-{k}{{fill:{dk}}}" for k, (_, dk) in BUCKET_FILLS.items()]
+    dark += [f".in-{k}{{fill:{dk}}}" for k, (_, dk) in INNER_INK.items()]
     return (
         "<style>text{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;"
         "font-size:13px}.title{font-size:15px;font-weight:600}.num{font-variant-numeric:tabular-nums}"
@@ -72,6 +81,7 @@ def _fill(cls: str) -> str:
 
 
 def _text(x: float, y: float, body: str, cls: str, fill: str, *, anchor: str = "start") -> str:
+    """A text element; `fill` is the light-theme fallback for the classes' styled fill."""
     return (
         f'<text x="{x:.1f}" y="{y:.1f}" class="{cls}" fill="{fill}" text-anchor="{anchor}" '
         f'dominant-baseline="middle">{escape(body)}</text>'
@@ -140,7 +150,11 @@ def bar_chart(title: str, desc: str, bars: list[Bar], legend: list[tuple[str, st
                 f"{value:,}</title></rect>"
             )
             if len(live) > 1 and drawn >= MIN_INNER_LABEL_W:
-                out.append(_text(x + drawn / 2, mid, f"{value:,}", "num", INNER_INK[key], anchor="middle"))
+                out.append(
+                    _text(
+                        x + drawn / 2, mid, f"{value:,}", f"num in-{key}", INNER_INK[key][0], anchor="middle"
+                    )
+                )
             x += max(w, 1.5)
         out.append(_text(x + 8, mid, bar.end_label, "ink num", _fill("ink")))
     out.append("</g></svg>")

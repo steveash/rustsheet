@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="440" viewBox="0 0 760 440" role="img" aria-labelledby="t d">
 <title id="t">Functions per category, by bucket</title><desc id="d">Functions per catalog category, stacked by worst-cell bucket.</desc>
-<style>text{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}.num{font-variant-numeric:tabular-nums}.bg{fill:#ffffff}.ink{fill:#1f2328}.muted{fill:#59636e}.grid{fill:#d1d9e0}.b-pass{fill:#2a78d6}.b-ulp1{fill:#1baf7a}.b-ulp4{fill:#eda100}.b-close{fill:#6250d6}.b-off{fill:#e34948}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.ink{fill:#f0f6fc}.muted{fill:#9198a1}.grid{fill:#3d444d}.b-pass{fill:#3987e5}.b-ulp1{fill:#199e70}.b-ulp4{fill:#c98500}.b-close{fill:#9085e9}.b-off{fill:#e66767}}</style>
+<style>text{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}.num{font-variant-numeric:tabular-nums}.bg{fill:#ffffff}.ink{fill:#1f2328}.muted{fill:#59636e}.grid{fill:#d1d9e0}.b-pass{fill:#2a78d6}.b-ulp1{fill:#1baf7a}.b-ulp4{fill:#eda100}.b-close{fill:#6250d6}.b-off{fill:#e34948}.in-pass{fill:#000000}.in-ulp1{fill:#000000}.in-ulp4{fill:#000000}.in-close{fill:#ffffff}.in-off{fill:#000000}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.ink{fill:#f0f6fc}.muted{fill:#9198a1}.grid{fill:#3d444d}.b-pass{fill:#3987e5}.b-ulp1{fill:#199e70}.b-ulp4{fill:#c98500}.b-close{fill:#9085e9}.b-off{fill:#e66767}.in-pass{fill:#000000}.in-ulp1{fill:#000000}.in-ulp4{fill:#000000}.in-close{fill:#000000}.in-off{fill:#000000}}</style>
 <rect class="bg" fill="#ffffff" x="0" y="0" width="760" height="440"/>
 <g transform="translate(14,14)">
 <text x="0.0" y="16.0" class="ink title" fill="#1f2328" text-anchor="start" dominant-baseline="middle">Functions per category, by bucket</text>
@@ -9,11 +9,11 @@
 <rect class="b-ulp1" fill="#1baf7a" x="102.5" y="38" width="12" height="12" rx="2"/>
 <text x="119.5" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Within 1 ulp</text>
 <rect class="b-ulp4" fill="#eda100" x="227.5" y="38" width="12" height="12" rx="2"/>
-<text x="244.5" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Within 4 ulp</text>
-<rect class="b-close" fill="#6250d6" x="352.5" y="38" width="12" height="12" rx="2"/>
-<text x="369.5" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Within 1e-9</text>
-<rect class="b-off" fill="#e34948" x="470.0" y="38" width="12" height="12" rx="2"/>
-<text x="487.0" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Off</text>
+<text x="244.5" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Within 2–4 ulp</text>
+<rect class="b-close" fill="#6250d6" x="367.5" y="38" width="12" height="12" rx="2"/>
+<text x="384.5" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Within 1e-9</text>
+<rect class="b-off" fill="#e34948" x="485.0" y="38" width="12" height="12" rx="2"/>
+<text x="502.0" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Off</text>
 <rect class="grid" fill="#d1d9e0" x="150.0" y="62" width="1" height="334"/>
 <text x="150.0" y="410.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">0</text>
 <rect class="grid" fill="#d1d9e0" x="304.0" y="62" width="1" height="334"/>
@@ -24,35 +24,35 @@
 <text x="612.0" y="410.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">150</text>
 <text x="140.0" y="81.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">statistical</text>
 <rect class="b-pass" fill="#2a78d6" x="150.0" y="72.0" width="115.0" height="18" rx="3"><title>statistical: 38</title></rect>
-<text x="207.5" y="81.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">38</text>
+<text x="207.5" y="81.0" class="num in-pass" fill="#000000" text-anchor="middle" dominant-baseline="middle">38</text>
 <rect class="b-ulp1" fill="#1baf7a" x="267.0" y="72.0" width="4.2" height="18" rx="3"><title>statistical: 2</title></rect>
 <rect class="b-ulp4" fill="#eda100" x="273.2" y="72.0" width="22.6" height="18" rx="3"><title>statistical: 8</title></rect>
 <rect class="b-close" fill="#6250d6" x="297.8" y="72.0" width="41.1" height="18" rx="3"><title>statistical: 14</title></rect>
-<text x="318.4" y="81.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">14</text>
+<text x="318.4" y="81.0" class="num in-close" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">14</text>
 <rect class="b-off" fill="#e34948" x="341.0" y="72.0" width="268.0" height="18" rx="3"><title>statistical: 87</title></rect>
-<text x="474.9" y="81.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">87</text>
+<text x="474.9" y="81.0" class="num in-off" fill="#000000" text-anchor="middle" dominant-baseline="middle">87</text>
 <text x="616.9" y="81.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">149</text>
 <text x="140.0" y="111.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">math</text>
 <rect class="b-pass" fill="#2a78d6" x="150.0" y="102.0" width="145.8" height="18" rx="3"><title>math: 48</title></rect>
-<text x="222.9" y="111.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">48</text>
+<text x="222.9" y="111.0" class="num in-pass" fill="#000000" text-anchor="middle" dominant-baseline="middle">48</text>
 <rect class="b-ulp1" fill="#1baf7a" x="297.8" y="102.0" width="25.7" height="18" rx="3"><title>math: 9</title></rect>
 <rect class="b-ulp4" fill="#eda100" x="325.6" y="102.0" width="7.2" height="18" rx="3"><title>math: 3</title></rect>
 <rect class="b-close" fill="#6250d6" x="334.8" y="102.0" width="1.5" height="18" rx="3"><title>math: 1</title></rect>
 <rect class="b-off" fill="#e34948" x="337.9" y="102.0" width="67.8" height="18" rx="3"><title>math: 22</title></rect>
-<text x="371.8" y="111.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">22</text>
+<text x="371.8" y="111.0" class="num in-off" fill="#000000" text-anchor="middle" dominant-baseline="middle">22</text>
 <text x="413.6" y="111.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">83</text>
 <text x="140.0" y="141.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">financial</text>
 <rect class="b-pass" fill="#2a78d6" x="150.0" y="132.0" width="44.2" height="18" rx="3"><title>financial: 15</title></rect>
-<text x="172.1" y="141.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">15</text>
+<text x="172.1" y="141.0" class="num in-pass" fill="#000000" text-anchor="middle" dominant-baseline="middle">15</text>
 <rect class="b-ulp1" fill="#1baf7a" x="196.2" y="132.0" width="13.4" height="18" rx="3"><title>financial: 5</title></rect>
 <rect class="b-ulp4" fill="#eda100" x="211.6" y="132.0" width="4.2" height="18" rx="3"><title>financial: 2</title></rect>
 <rect class="b-close" fill="#6250d6" x="217.8" y="132.0" width="28.8" height="18" rx="3"><title>financial: 10</title></rect>
 <rect class="b-off" fill="#e34948" x="248.6" y="132.0" width="70.8" height="18" rx="3"><title>financial: 23</title></rect>
-<text x="284.0" y="141.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">23</text>
+<text x="284.0" y="141.0" class="num in-off" fill="#000000" text-anchor="middle" dominant-baseline="middle">23</text>
 <text x="327.4" y="141.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">55</text>
 <text x="140.0" y="171.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">engineering</text>
 <rect class="b-pass" fill="#2a78d6" x="150.0" y="162.0" width="108.9" height="18" rx="3"><title>engineering: 36</title></rect>
-<text x="204.4" y="171.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">36</text>
+<text x="204.4" y="171.0" class="num in-pass" fill="#000000" text-anchor="middle" dominant-baseline="middle">36</text>
 <rect class="b-ulp1" fill="#1baf7a" x="260.9" y="162.0" width="4.2" height="18" rx="3"><title>engineering: 2</title></rect>
 <rect class="b-ulp4" fill="#eda100" x="267.0" y="162.0" width="7.2" height="18" rx="3"><title>engineering: 3</title></rect>
 <rect class="b-close" fill="#6250d6" x="276.3" y="162.0" width="19.6" height="18" rx="3"><title>engineering: 7</title></rect>
@@ -60,32 +60,32 @@
 <text x="324.3" y="171.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">54</text>
 <text x="140.0" y="201.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">text</text>
 <rect class="b-pass" fill="#2a78d6" x="150.0" y="192.0" width="99.6" height="18" rx="3"><title>text: 33</title></rect>
-<text x="199.8" y="201.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">33</text>
+<text x="199.8" y="201.0" class="num in-pass" fill="#000000" text-anchor="middle" dominant-baseline="middle">33</text>
 <rect class="b-ulp1" fill="#1baf7a" x="251.6" y="192.0" width="1.5" height="18" rx="3"><title>text: 1</title></rect>
 <rect class="b-ulp4" fill="#eda100" x="254.7" y="192.0" width="1.5" height="18" rx="3"><title>text: 1</title></rect>
 <rect class="b-off" fill="#e34948" x="257.8" y="192.0" width="40.0" height="18" rx="3"><title>text: 13</title></rect>
-<text x="277.8" y="201.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">13</text>
+<text x="277.8" y="201.0" class="num in-off" fill="#000000" text-anchor="middle" dominant-baseline="middle">13</text>
 <text x="305.8" y="201.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">48</text>
 <text x="140.0" y="231.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">lookup</text>
 <rect class="b-pass" fill="#2a78d6" x="150.0" y="222.0" width="38.0" height="18" rx="3"><title>lookup: 13</title></rect>
-<text x="169.0" y="231.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">13</text>
+<text x="169.0" y="231.0" class="num in-pass" fill="#000000" text-anchor="middle" dominant-baseline="middle">13</text>
 <rect class="b-off" fill="#e34948" x="190.0" y="222.0" width="77.0" height="18" rx="3"><title>lookup: 25</title></rect>
-<text x="228.5" y="231.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">25</text>
+<text x="228.5" y="231.0" class="num in-off" fill="#000000" text-anchor="middle" dominant-baseline="middle">25</text>
 <text x="275.0" y="231.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">38</text>
 <text x="140.0" y="261.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">date</text>
 <rect class="b-pass" fill="#2a78d6" x="150.0" y="252.0" width="56.5" height="18" rx="3"><title>date: 19</title></rect>
-<text x="178.3" y="261.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">19</text>
+<text x="178.3" y="261.0" class="num in-pass" fill="#000000" text-anchor="middle" dominant-baseline="middle">19</text>
 <rect class="b-ulp1" fill="#1baf7a" x="208.5" y="252.0" width="1.5" height="18" rx="3"><title>date: 1</title></rect>
 <rect class="b-off" fill="#e34948" x="211.6" y="252.0" width="15.4" height="18" rx="3"><title>date: 5</title></rect>
 <text x="235.0" y="261.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">25</text>
 <text x="140.0" y="291.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">information</text>
 <rect class="b-pass" fill="#2a78d6" x="150.0" y="282.0" width="28.8" height="18" rx="3"><title>information: 10</title></rect>
 <rect class="b-off" fill="#e34948" x="180.8" y="282.0" width="30.8" height="18" rx="3"><title>information: 10</title></rect>
-<text x="196.2" y="291.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">10</text>
+<text x="196.2" y="291.0" class="num in-off" fill="#000000" text-anchor="middle" dominant-baseline="middle">10</text>
 <text x="219.6" y="291.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">20</text>
 <text x="140.0" y="321.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">logical</text>
 <rect class="b-pass" fill="#2a78d6" x="150.0" y="312.0" width="35.0" height="18" rx="3"><title>logical: 12</title></rect>
-<text x="167.5" y="321.0" class="num" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">12</text>
+<text x="167.5" y="321.0" class="num in-pass" fill="#000000" text-anchor="middle" dominant-baseline="middle">12</text>
 <rect class="b-off" fill="#e34948" x="187.0" y="312.0" width="21.6" height="18" rx="3"><title>logical: 7</title></rect>
 <text x="216.5" y="321.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">19</text>
 <text x="140.0" y="351.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">database</text>

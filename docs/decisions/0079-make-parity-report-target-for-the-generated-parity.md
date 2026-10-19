@@ -12,4 +12,7 @@
 - **Consequences:** `make eval && make parity-report` refreshes the page; anyone (the steward
   included) may commit the regenerated files. The generated files are not hand-edited. The page is
   a snapshot that names its run date and commit, so it can lag `main` without being wrong. Nothing
-  under docs/ is read by code, so decision 0066's CODE_READ_PATHS is unchanged.
+  under docs/ is read by code, so decision 0066's CODE_READ_PATHS is unchanged. docs/parity.md and
+  docs/parity/ are committed snapshots: CI does not check that they match the latest report, and
+  no freshness gate may be added for them (a gate would fail every PR that moves the numbers,
+  and the pages already name the run they show).

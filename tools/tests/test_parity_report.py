@@ -10,7 +10,8 @@ from typing import Any
 import pytest
 
 from rustsheet_tools import parity_report
-from rustsheet_tools.parity_report import ParityReportError, compute, functions_in, ulp_distance
+from rustsheet_tools.parity_report import ParityReportError, compute, functions_in, md_cell, table
+from rustsheet_tools.parity_svg import Bar, bar_chart, nice_step
 
 ONE_ULP = math.nextafter(1.0, 2.0)
 THREE_ULP = math.nextafter(math.nextafter(ONE_ULP, 2.0), 2.0)
@@ -79,14 +80,6 @@ def by_name(r: dict[str, Any] | None = None) -> dict[str, parity_report.Function
     return {f.name: f for f in compute(r or report(), SCOPE).functions}
 
 
-def test_ulp_distance_uses_the_ordered_bit_line() -> None:
-    assert ulp_distance(1.0, ONE_ULP) == 1
-    assert ulp_distance(1.0, THREE_ULP) == 3
-    assert ulp_distance(0.0, -0.0) == 0
-    tiny = math.nextafter(0.0, 1.0)
-    assert ulp_distance(-tiny, tiny) == 2
-
-
 def test_numeric_ulp_cells_split_at_one_ulp() -> None:
     ln = by_name()["LN"]
     assert (ln.counts["ulp1"], ln.counts["ulp4"]) == (1, 1)
@@ -118,6 +111,16 @@ def test_a_cell_counts_for_every_function_it_calls() -> None:
     # A name inside a string literal is not a call; the _xlfn. prefix is.
     assert functions_in('LN(3)&"ABS(x)"') == {"LN"}
     assert functions_in("_xlfn.BETA.DIST(1)+sum (2)") == {"BETA.DIST", "SUM"}
+
+
+def test_function_call_regex_edges() -> None:
+    # Prefixes are dropped; dotted names stay whole; `""` inside a literal does not end it.
+    assert functions_in("_xlfn._xlws.SORT(A1:A3)") == {"SORT"}
+    assert functions_in("_xlws.FILTER(A1:A3,B1:B3)") == {"FILTER"}
+    assert functions_in("NORM.S.DIST(1,TRUE)+F.TEST(A1:A3,B1:B3)") == {"NORM.S.DIST", "F.TEST"}
+    assert functions_in('LEN("say ""SUM(1)"" twice")&ABS(-1)') == {"LEN", "ABS"}
+    assert functions_in('"a"""&UPPER("x")') == {"UPPER"}
+    assert functions_in("A1+B2") == set()
 
 
 def test_only_in_scope_catalog_functions_count() -> None:
@@ -163,7 +166,8 @@ def test_main_writes_the_pages_and_charts(tmp_path: Path) -> None:
     assert "2026-10-19" in page
     assert "`abc12345`" in page
     assert "(parity/functions.md)" in page
-    for name, _ in parity_report.CHARTS:
+    for chart in parity_report.CHARTS:
+        name = chart.name
         assert f"(parity/{name})" in page
         svg = (out / "parity" / name).read_text()
         assert "@media (prefers-color-scheme: dark)" in svg
@@ -172,3 +176,55 @@ def test_main_writes_the_pages_and_charts(tmp_path: Path) -> None:
     rows = [line for line in table.splitlines() if line.startswith("| ")]
     assert [r.split(" | ")[0] for r in rows[2:]] == ["| ABS", "| BETA.DIST", "| LN", "| SUM", "| UPPER"]
     assert all(r.count("|") == 12 for r in rows)
+
+
+def test_nice_step_picks_1_2_5_steps() -> None:
+    assert [nice_step(t) for t in (0, 3, 5, 6, 100, 149, 238, 258_865)] == [1, 1, 1, 2, 20, 50, 50, 100_000]
+
+
+def test_stacked_inner_labels_need_room() -> None:
+    # 60 of 100 is about 280px wide: labelled. 1 of 100 is under MIN_INNER_LABEL_W: not labelled.
+    svg = bar_chart("t", "d", [Bar("cat", (("pass", 60), ("ulp4", 1), ("off", 39)), "100")])
+    assert 'class="num in-pass"' in svg
+    assert ">60</text>" in svg
+    assert 'class="num in-off"' in svg
+    assert 'class="num in-ulp4"' not in svg
+    # A one-segment bar has no inner label, only its end label.
+    single = bar_chart("t", "d", [Bar("Off", (("off", 7),), "7 (1%)")])
+    assert "in-off" not in single.split("</style>")[1]
+    assert ">7 (1%)</text>" in single
+
+
+def test_inner_label_ink_follows_the_theme() -> None:
+    svg = bar_chart("t", "d", [Bar("c", (("close", 50), ("pass", 50)), "100")])
+    light, dark = svg.split("@media (prefers-color-scheme: dark)")
+    assert ".in-close{fill:#ffffff}" in light
+    assert ".in-close{fill:#000000}" in dark
+
+
+def test_chart_contents() -> None:
+    p = compute(report(), SCOPE)
+    svgs = parity_report.charts(p)
+    stacked = svgs["functions-per-category.svg"]
+    for label in parity_report.LABELS.values():
+        assert f">{label}</text>" in stacked
+    assert ">math</text>" in stacked
+    assert ">Within 2\N{EN DASH}4 ulp</text>" in svgs["functions-per-bucket.svg"]
+    assert ">2 (40.00%)</text>" in svgs["functions-per-bucket.svg"]
+
+
+def test_hostile_labels_are_escaped() -> None:
+    hostile = '<script>"&|`\nx'
+    svg = bar_chart(hostile, hostile, [Bar(hostile, (("pass", 1),), hostile)])
+    assert "<script>" not in svg
+    assert "&lt;script&gt;&quot;&amp;|" in svg
+    md = table(["h"], [[hostile]])
+    assert "<script>" not in md
+    assert md.splitlines()[2] == '| &lt;script&gt;"&\\|&#96; x |'
+    assert md_cell("a|b") == "a\\|b"
+
+
+@pytest.mark.parametrize(("flag", "value"), [("--commit", "abc; rm -rf /"), ("--run-date", "19 Oct")])
+def test_snapshot_args_are_validated(tmp_path: Path, flag: str, value: str) -> None:
+    with pytest.raises(SystemExit):
+        parity_report.main(["--out-dir", str(tmp_path), flag, value])

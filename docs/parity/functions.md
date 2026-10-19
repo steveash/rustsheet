@@ -82,15 +82,15 @@ in. Back to the [parity summary](../parity.md).
 | COMPLEX | engineering | M9 | 42 | 100.00% | 42 | 0 | 0 | 0 | 0 | Bit-exact |
 | CONCAT | text | M2 | 1,044 | 100.00% | 1,044 | 0 | 0 | 0 | 0 | Bit-exact |
 | CONCATENATE | text | M2 | 470 | 100.00% | 470 | 0 | 0 | 0 | 0 | Bit-exact |
-| CONFIDENCE | statistical | M9 | 33 | 78.79% | 26 | 4 | 3 | 0 | 0 | Within 4 ulp |
-| CONFIDENCE.NORM | statistical | M9 | 74 | 85.14% | 63 | 7 | 4 | 0 | 0 | Within 4 ulp |
+| CONFIDENCE | statistical | M9 | 33 | 78.79% | 26 | 4 | 3 | 0 | 0 | Within 2–4 ulp |
+| CONFIDENCE.NORM | statistical | M9 | 74 | 85.14% | 63 | 7 | 4 | 0 | 0 | Within 2–4 ulp |
 | CONFIDENCE.T | statistical | M9 | 144 | 38.19% | 55 | 5 | 8 | 71 | 5 | Off |
 | CONVERT | engineering | M9 | 784 | 99.62% | 781 | 3 | 0 | 0 | 0 | Within 1 ulp |
 | CORREL | statistical | M9 | 34 | 64.71% | 22 | 2 | 6 | 0 | 4 | Off |
 | COS | math | M5 | 931 | 100.00% | 931 | 0 | 0 | 0 | 0 | Bit-exact |
 | COSH | math | M5 | 68 | 100.00% | 68 | 0 | 0 | 0 | 0 | Bit-exact |
 | COT | math | M5 | 178 | 99.44% | 177 | 1 | 0 | 0 | 0 | Within 1 ulp |
-| COTH | math | M5 | 87 | 75.86% | 66 | 20 | 1 | 0 | 0 | Within 4 ulp |
+| COTH | math | M5 | 87 | 75.86% | 66 | 20 | 1 | 0 | 0 | Within 2–4 ulp |
 | COUNT | statistical | M2 | 1,107 | 94.49% | 1,046 | 0 | 0 | 0 | 61 | Off |
 | COUNTA | statistical | M2 | 970 | 94.02% | 912 | 0 | 0 | 0 | 58 | Off |
 | COUNTBLANK | statistical | M9 | 196 | 97.96% | 192 | 0 | 0 | 0 | 4 | Off |
@@ -151,8 +151,8 @@ in. Back to the [parity summary](../parity.md).
 | EOMONTH | date | M6 | 141 | 100.00% | 141 | 0 | 0 | 0 | 0 | Bit-exact |
 | ERF | engineering | M9 | 1,980 | 100.00% | 1,980 | 0 | 0 | 0 | 0 | Bit-exact |
 | ERF.PRECISE | engineering | M9 | 6,633 | 100.00% | 6,633 | 0 | 0 | 0 | 0 | Bit-exact |
-| ERFC | engineering | M9 | 608 | 99.84% | 607 | 0 | 1 | 0 | 0 | Within 4 ulp |
-| ERFC.PRECISE | engineering | M9 | 23,128 | 99.95% | 23,116 | 10 | 2 | 0 | 0 | Within 4 ulp |
+| ERFC | engineering | M9 | 608 | 99.84% | 607 | 0 | 1 | 0 | 0 | Within 2–4 ulp |
+| ERFC.PRECISE | engineering | M9 | 23,128 | 99.95% | 23,116 | 10 | 2 | 0 | 0 | Within 2–4 ulp |
 | ERROR.TYPE | information | M5 | 2,435 | 99.55% | 2,424 | 0 | 0 | 0 | 11 | Off |
 | EVEN | math | M5 | 64 | 100.00% | 64 | 0 | 0 | 0 | 0 | Bit-exact |
 | EXACT | text | M5 | 73 | 100.00% | 73 | 0 | 0 | 0 | 0 | Bit-exact |
@@ -196,11 +196,11 @@ in. Back to the [parity summary](../parity.md).
 | GAMMA.INV | statistical | M9 | 208 | 30.77% | 64 | 11 | 30 | 63 | 40 | Off |
 | GAMMADIST | statistical | M9 | 39 | 61.54% | 24 | 6 | 3 | 6 | 0 | Within 1e-9 |
 | GAMMAINV | statistical | M9 | 27 | 74.07% | 20 | 0 | 1 | 5 | 1 | Off |
-| GAMMALN | statistical | M9 | 345 | 68.70% | 237 | 98 | 10 | 0 | 0 | Within 4 ulp |
-| GAMMALN.PRECISE | statistical | M9 | 60 | 83.33% | 50 | 8 | 2 | 0 | 0 | Within 4 ulp |
+| GAMMALN | statistical | M9 | 345 | 68.70% | 237 | 98 | 10 | 0 | 0 | Within 2–4 ulp |
+| GAMMALN.PRECISE | statistical | M9 | 60 | 83.33% | 50 | 8 | 2 | 0 | 0 | Within 2–4 ulp |
 | GAUSS | statistical | M9 | 254 | 100.00% | 254 | 0 | 0 | 0 | 0 | Bit-exact |
 | GCD | math | M5 | 271 | 100.00% | 271 | 0 | 0 | 0 | 0 | Bit-exact |
-| GEOMEAN | statistical | M9 | 553 | 88.79% | 491 | 61 | 1 | 0 | 0 | Within 4 ulp |
+| GEOMEAN | statistical | M9 | 553 | 88.79% | 491 | 61 | 1 | 0 | 0 | Within 2–4 ulp |
 | GESTEP | engineering | M9 | 44 | 100.00% | 44 | 0 | 0 | 0 | 0 | Bit-exact |
 | GETPIVOTDATA | lookup | M6 | 55 | 63.64% | 35 | 0 | 0 | 0 | 20 | Off |
 | GROUPBY | lookup | M7 | 1,253 | 100.00% | 1,253 | 0 | 0 | 0 | 0 | Bit-exact |
@@ -219,7 +219,7 @@ in. Back to the [parity summary](../parity.md).
 | IFERROR | logical | M2 | 3,847 | 99.04% | 3,810 | 1 | 0 | 1 | 35 | Off |
 | IFNA | logical | M5 | 89 | 100.00% | 89 | 0 | 0 | 0 | 0 | Bit-exact |
 | IFS | logical | M5 | 123 | 100.00% | 123 | 0 | 0 | 0 | 0 | Bit-exact |
-| IMABS | engineering | M9 | 41 | 90.24% | 37 | 3 | 1 | 0 | 0 | Within 4 ulp |
+| IMABS | engineering | M9 | 41 | 90.24% | 37 | 3 | 1 | 0 | 0 | Within 2–4 ulp |
 | IMAGINARY | engineering | M9 | 423 | 99.05% | 419 | 0 | 0 | 4 | 0 | Within 1e-9 |
 | IMARGUMENT | engineering | M9 | 29 | 82.76% | 24 | 5 | 0 | 0 | 0 | Within 1 ulp |
 | IMCONJUGATE | engineering | M9 | 29 | 100.00% | 29 | 0 | 0 | 0 | 0 | Bit-exact |
@@ -268,7 +268,7 @@ in. Back to the [parity summary](../parity.md).
 | ISREF | information | M5 | 342 | 98.25% | 336 | 0 | 0 | 0 | 6 | Off |
 | ISTEXT | information | M5 | 73 | 100.00% | 73 | 0 | 0 | 0 | 0 | Bit-exact |
 | JIS | text | M5 | 39 | 100.00% | 39 | 0 | 0 | 0 | 0 | Bit-exact |
-| KURT | statistical | M9 | 43 | 93.02% | 40 | 0 | 3 | 0 | 0 | Within 4 ulp |
+| KURT | statistical | M9 | 43 | 93.02% | 40 | 0 | 3 | 0 | 0 | Within 2–4 ulp |
 | LAMBDA | logical | M7 | 966 | 99.17% | 958 | 1 | 0 | 0 | 7 | Off |
 | LARGE | statistical | M9 | 97 | 100.00% | 97 | 0 | 0 | 0 | 0 | Bit-exact |
 | LCM | math | M5 | 303 | 100.00% | 303 | 0 | 0 | 0 | 0 | Bit-exact |
@@ -279,7 +279,7 @@ in. Back to the [parity summary](../parity.md).
 | LET | logical | M7 | 897 | 99.22% | 890 | 1 | 0 | 0 | 6 | Off |
 | LINEST | statistical | M9 | 45 | 22.22% | 10 | 8 | 2 | 13 | 12 | Off |
 | LN | math | M5 | 335 | 100.00% | 335 | 0 | 0 | 0 | 0 | Bit-exact |
-| LOG | math | M5 | 66 | 95.45% | 63 | 2 | 1 | 0 | 0 | Within 4 ulp |
+| LOG | math | M5 | 66 | 95.45% | 63 | 2 | 1 | 0 | 0 | Within 2–4 ulp |
 | LOG10 | math | M5 | 66 | 95.45% | 63 | 3 | 0 | 0 | 0 | Within 1 ulp |
 | LOGEST | statistical | M9 | 38 | 28.95% | 11 | 14 | 2 | 4 | 7 | Off |
 | LOGINV | statistical | M9 | 26 | 100.00% | 26 | 0 | 0 | 0 | 0 | Bit-exact |
@@ -295,7 +295,7 @@ in. Back to the [parity summary](../parity.md).
 | MAXA | statistical | M9 | 78 | 92.31% | 72 | 0 | 0 | 0 | 6 | Off |
 | MAXIFS | statistical | M9 | 69 | 100.00% | 69 | 0 | 0 | 0 | 0 | Bit-exact |
 | MDETERM | math | M5 | 40 | 97.50% | 39 | 0 | 0 | 0 | 1 | Off |
-| MDURATION | financial | M9 | 42 | 66.67% | 28 | 3 | 11 | 0 | 0 | Within 4 ulp |
+| MDURATION | financial | M9 | 42 | 66.67% | 28 | 3 | 11 | 0 | 0 | Within 2–4 ulp |
 | MEDIAN | statistical | M9 | 64 | 100.00% | 64 | 0 | 0 | 0 | 0 | Bit-exact |
 | MID | text | M2 | 579 | 100.00% | 579 | 0 | 0 | 0 | 0 | Bit-exact |
 | MIDB | text | M5 | 20 | 100.00% | 20 | 0 | 0 | 0 | 0 | Bit-exact |
@@ -321,11 +321,11 @@ in. Back to the [parity summary](../parity.md).
 | NETWORKDAYS | date | M6 | 133 | 100.00% | 133 | 0 | 0 | 0 | 0 | Bit-exact |
 | NETWORKDAYS.INTL | date | M6 | 151 | 100.00% | 151 | 0 | 0 | 0 | 0 | Bit-exact |
 | NOMINAL | financial | M9 | 51 | 92.16% | 47 | 0 | 3 | 1 | 0 | Within 1e-9 |
-| NORM.DIST | statistical | M9 | 1,037 | 64.42% | 668 | 302 | 67 | 0 | 0 | Within 4 ulp |
+| NORM.DIST | statistical | M9 | 1,037 | 64.42% | 668 | 302 | 67 | 0 | 0 | Within 2–4 ulp |
 | NORM.INV | statistical | M9 | 323 | 94.74% | 306 | 8 | 3 | 6 | 0 | Within 1e-9 |
 | NORM.S.DIST | statistical | M9 | 4,979 | 94.76% | 4,718 | 165 | 55 | 41 | 0 | Within 1e-9 |
 | NORM.S.INV | statistical | M9 | 1,354 | 54.58% | 739 | 286 | 219 | 110 | 0 | Within 1e-9 |
-| NORMDIST | statistical | M9 | 161 | 95.03% | 153 | 7 | 1 | 0 | 0 | Within 4 ulp |
+| NORMDIST | statistical | M9 | 161 | 95.03% | 153 | 7 | 1 | 0 | 0 | Within 2–4 ulp |
 | NORMINV | statistical | M9 | 28 | 100.00% | 28 | 0 | 0 | 0 | 0 | Bit-exact |
 | NORMSDIST | statistical | M9 | 152 | 100.00% | 152 | 0 | 0 | 0 | 0 | Bit-exact |
 | NORMSINV | statistical | M9 | 242 | 96.69% | 234 | 4 | 2 | 2 | 0 | Within 1e-9 |
@@ -399,13 +399,13 @@ in. Back to the [parity summary](../parity.md).
 | ROUNDUP | math | M2 | 824 | 100.00% | 824 | 0 | 0 | 0 | 0 | Bit-exact |
 | ROW | lookup | M6 | 5,677 | 100.00% | 5,677 | 0 | 0 | 0 | 0 | Bit-exact |
 | ROWS | lookup | M6 | 2,733 | 94.99% | 2,596 | 0 | 0 | 0 | 137 | Off |
-| RRI | financial | M9 | 34 | 94.12% | 32 | 0 | 2 | 0 | 0 | Within 4 ulp |
+| RRI | financial | M9 | 34 | 94.12% | 32 | 0 | 2 | 0 | 0 | Within 2–4 ulp |
 | RSQ | statistical | M9 | 34 | 70.59% | 24 | 0 | 7 | 0 | 3 | Off |
 | SCAN | logical | M7 | 42 | 100.00% | 42 | 0 | 0 | 0 | 0 | Bit-exact |
 | SEARCH | text | M5 | 136 | 100.00% | 136 | 0 | 0 | 0 | 0 | Bit-exact |
 | SEARCHB | text | M5 | 28 | 100.00% | 28 | 0 | 0 | 0 | 0 | Bit-exact |
 | SEC | math | M5 | 181 | 100.00% | 181 | 0 | 0 | 0 | 0 | Bit-exact |
-| SECH | math | M5 | 65 | 98.46% | 64 | 0 | 1 | 0 | 0 | Within 4 ulp |
+| SECH | math | M5 | 65 | 98.46% | 64 | 0 | 1 | 0 | 0 | Within 2–4 ulp |
 | SECOND | date | M6 | 110 | 100.00% | 110 | 0 | 0 | 0 | 0 | Bit-exact |
 | SEQUENCE | math | M7 | 612 | 96.24% | 589 | 15 | 0 | 0 | 8 | Off |
 | SERIESSUM | math | M5 | 119 | 100.00% | 119 | 0 | 0 | 0 | 0 | Bit-exact |
@@ -443,7 +443,7 @@ in. Back to the [parity summary](../parity.md).
 | SUMXMY2 | math | M5 | 33 | 100.00% | 33 | 0 | 0 | 0 | 0 | Bit-exact |
 | SWITCH | logical | M5 | 110 | 98.18% | 108 | 0 | 0 | 0 | 2 | Off |
 | SYD | financial | M9 | 29 | 100.00% | 29 | 0 | 0 | 0 | 0 | Bit-exact |
-| T | text | M5 | 98 | 98.98% | 97 | 0 | 1 | 0 | 0 | Within 4 ulp |
+| T | text | M5 | 98 | 98.98% | 97 | 0 | 1 | 0 | 0 | Within 2–4 ulp |
 | T.DIST | statistical | M9 | 407 | 35.14% | 143 | 40 | 39 | 179 | 6 | Off |
 | T.DIST.2T | statistical | M9 | 208 | 37.98% | 79 | 3 | 7 | 90 | 29 | Off |
 | T.DIST.RT | statistical | M9 | 236 | 38.56% | 91 | 7 | 12 | 97 | 29 | Off |

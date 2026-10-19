@@ -5,7 +5,7 @@ milestone: M2
 lane: harness
 status: done
 priority: P2
-size: S
+size: M
 tier: opus
 depends_on: []
 ---
@@ -43,10 +43,17 @@ comes with decision 0079.
 - Changing what the eval report scores.
 
 ## Outcome
-Generator in tools/src/rustsheet_tools/parity_report.py (charts in parity_svg.py), tests in
-tools/tests/test_parity_report.py, target `make parity-report` (decision 0079). Generated from the
-2026-10-19 report on c30e2d40: 505 of 506 in-scope functions scored (INFO has no scored cell);
-238 bit-exact, 20 within 1 ulp, 17 within 4 ulp, 32 within 1e-9, 198 off (45 of them still
-bit-exact on 99% or more of their cells); 270,551 function-cells, 95.68% bit-exact. Matches the
-one-off script's per-function output exactly. Follow-up idea, not filed: the steward could run
-`make parity-report` after its daily `make eval`.
+PR #1217. Generator in tools/src/rustsheet_tools/parity_report.py (charts in parity_svg.py; the
+ulp distance is fitlab/score.py's), tests in tools/tests/test_parity_report.py, target
+`make parity-report` (decision 0079). Generated from the 2026-10-19 report on c30e2d40: 505 of
+506 in-scope functions scored (INFO has no scored cell); 238 bit-exact, 20 within 1 ulp, 17
+within 2-4 ulp, 32 within 1e-9, 198 off (45 of them still bit-exact on 99% or more of their
+cells); 270,551 function-cells, 95.68% bit-exact. Matches the one-off script's per-function
+output exactly. Size M: about 900 hand-written lines including tests; the generated pages and
+SVGs are not counted.
+
+Follow-ups:
+- T-2036 (harness): report.rs `FunctionStat` emits per-function bucket counts, so
+  parity_report.py drops its regex and ulp copies.
+- T-2037 (harness, blocked on the owner): the steward runs `make parity-report` after
+  `make eval`, which needs an owner-approved routine change.
