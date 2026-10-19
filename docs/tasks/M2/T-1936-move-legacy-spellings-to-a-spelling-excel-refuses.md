@@ -3,7 +3,7 @@ id: T-1936
 title: "Move LEGACY_SPELLINGS to a spelling Excel refuses as a defined name"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
