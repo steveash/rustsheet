@@ -3,7 +3,7 @@ id: T-1833
 title: "SPEC-0011 amendment: array-valued M7 functions in the lifting table, and TAKE/DROP elements that are whole sub-arrays"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
