@@ -3,7 +3,7 @@ id: T-1911
 title: "Legacy @ goes on an array constant inside an operator (N, ABS over {2;3}+0)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
