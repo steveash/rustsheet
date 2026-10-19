@@ -1,7 +1,7 @@
 use crate::tz::Tz;
 use chrono::Datelike;
-use std::collections::HashMap;
 
+mod holidays;
 mod month_shift;
 mod networkdays;
 pub(crate) mod time_text;
@@ -117,7 +117,6 @@ use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
 use crate::functions::lift::{num_error, number_result, value_error};
 use crate::functions::text::text_arg::broadcast_text;
-use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
 use crate::types::DateSystem;
@@ -138,54 +137,14 @@ fn error_kind(result: &CalcResult) -> Error {
     }
 }
 
+/// The error of `result` with no message: a holidays error, which every lifted element of WORKDAY
+/// or NETWORKDAYS returns, is then cloned without allocating.
+fn bare_error(result: &CalcResult, cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(error_kind(result), cell, String::new())
+}
+
 /// Saturday-Sunday weekend (pattern 1), Monday first.
 const DEFAULT_WEEKEND: [bool; 7] = WeekendPattern::SatSun.to_mask();
-
-/// A weekend argument: one mask, or one (possibly invalid) mask per element of a lifted
-/// range or array.
-enum Weekend {
-    One([bool; 7]),
-    Many(Vec<Vec<Result<[bool; 7], CalcResult>>>),
-}
-
-impl Weekend {
-    /// Runs `compute` on each mask: the value (or the error) for [`Weekend::One`], an array
-    /// of them for [`Weekend::Many`].
-    fn lift(&self, mut compute: impl FnMut([bool; 7]) -> Result<f64, CalcResult>) -> CalcResult {
-        let into_node = |r: Result<f64, CalcResult>| match r {
-            Ok(n) => ArrayNode::Number(n),
-            Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
-            // Every `Err` of the weekend argument is a `CalcResult::Error`.
-            Err(_) => ArrayNode::Error(Error::VALUE),
-        };
-        match self {
-            Weekend::One(mask) => match compute(*mask) {
-                Ok(n) => CalcResult::Number(n),
-                Err(e) => e,
-            },
-            Weekend::Many(rows) => {
-                // At most 128 distinct masks exist, however many cells the argument has, so each
-                // is computed once: the day loop of the caller is millions of steps long.
-                let mut computed: HashMap<[bool; 7], ArrayNode> = HashMap::new();
-                CalcResult::Array(
-                    rows.iter()
-                        .map(|row| {
-                            row.iter()
-                                .map(|mask| match mask {
-                                    Ok(mask) => computed
-                                        .entry(*mask)
-                                        .or_insert_with(|| into_node(compute(*mask)))
-                                        .clone(),
-                                    Err(e) => into_node(Err(e.clone())),
-                                })
-                                .collect()
-                        })
-                        .collect(),
-                )
-            }
-        }
-    }
-}
 
 impl Model {
     /// DATEVALUE's reading of date text (also date arguments read as text, e.g. DATEDIF): the
@@ -347,12 +306,19 @@ impl Model {
         Ok(())
     }
 
+    /// The weekday-faithful date of a WORKDAY or NETWORKDAYS date or holiday, serial 0 included
+    /// (dates.md "WORKDAY and NETWORKDAYS from serial 0"); `#NUM!` outside the date range.
     fn excel_date(
         &self,
         serial: i64,
         cell: CellReferenceIndex,
     ) -> Result<chrono::NaiveDate, CalcResult> {
-        match self.workbook.settings.date_system.date_of_serial(serial) {
+        match self
+            .workbook
+            .settings
+            .date_system
+            .date_of_serial_from_zero(serial)
+        {
             Some(date) => Ok(date),
             None => Err(CalcResult::Error {
                 error: Error::NUM,
@@ -362,38 +328,10 @@ impl Model {
         }
     }
 
-    /// The weekend argument of WORKDAY.INTL / NETWORKDAYS.INTL. A multi-cell range or an array
-    /// lifts, one mask per element (probes/date-argument-modes F41:F42, F63:F64).
-    fn weekend_arg(
-        &mut self,
-        node: Option<&Node>,
-        cell: CellReferenceIndex,
-    ) -> Result<Weekend, CalcResult> {
-        let Some(node) = node else {
-            return Ok(Weekend::One(DEFAULT_WEEKEND));
-        };
-        let elements = match self.evaluate_node_in_context(node, cell) {
-            // A 3D range (two sheets) is unprobed (T-1428): never lift it over its first sheet.
-            CalcResult::Range { left, right } if left != right && left.sheet == right.sheet => {
-                self.evaluate_range(left, right, cell)?
-            }
-            CalcResult::Array(rows) => rows,
-            value => return Self::weekend_mask(value, cell).map(Weekend::One),
-        };
-        Ok(Weekend::Many(
-            elements
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|n| Self::weekend_mask(array_node_to_calc_result(n, cell), cell))
-                        .collect()
-                })
-                .collect(),
-        ))
-    }
-
-    /// The weekend mask (Monday first) a scalar weekend argument stands for.
-    fn weekend_mask(value: CalcResult, cell: CellReferenceIndex) -> Result<[bool; 7], CalcResult> {
+    /// The weekend mask (Monday first) of one weekend element of WORKDAY.INTL or NETWORKDAYS.INTL.
+    /// The argument lifts over a range and an array (`ArgKind::Lift`; probes/date-argument-modes
+    /// F41:F42, F63:F64).
+    fn weekend_mask(value: &CalcResult, cell: CellReferenceIndex) -> Result<[bool; 7], CalcResult> {
         // Default: Saturday-Sunday weekend (pattern 1)
         let mut weekend = DEFAULT_WEEKEND;
         match value {
@@ -444,7 +382,7 @@ impl Model {
                 cell,
                 "Invalid weekend".to_string(),
             )),
-            e @ CalcResult::Error { .. } => Err(e),
+            e @ CalcResult::Error { .. } => Err(e.clone()),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(weekend),
             CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 Err(CalcResult::Error {
@@ -831,13 +769,11 @@ impl Model {
 
     pub(crate) fn fn_weekday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let ds = self.workbook.settings.date_system;
-        // 1900 serial 0: weekday-serial-zero.
-        let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30);
         // The date and the return type lift (probes/date-argument-modes F51:F52).
         let kind = Function::Weekday;
         self.numbers_fn(kind, args, [0.0, 1.0], cell, |[serial, return_type]| {
             let s = serial.floor();
-            let date = ds.date_of_serial(s as i64).or(sat.filter(|_| s == 0.0));
+            let date = ds.date_of_serial_from_zero(s as i64);
             weekday_number(date.ok_or(Error::NUM)?, return_type as i32)
         })
     }

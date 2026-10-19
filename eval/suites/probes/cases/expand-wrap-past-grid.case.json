@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1967: EXPAND, WRAPROWS and WRAPCOLS results past the grid; does VSTACK's rule (rows #NUM!, columns allowed) apply? W-cells in column W, inputs in A1:A2.",
+  "tags": [
+    "M9",
+    "argument-modes",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "W1": "=ROWS(EXPAND(1,1048577,1))",
+        "W2": "=COLUMNS(EXPAND(1,1,16385))",
+        "W3": "=COLUMNS(EXPAND(A1:A2,2,16385))",
+        "W4": "=ROWS(WRAPCOLS(SEQUENCE(16385),1))",
+        "W5": "=COLUMNS(WRAPROWS(SEQUENCE(16385),16385))",
+        "W6": "=EXPAND(1,1E9,1E9)",
+        "W7": "=COLUMNS(VSTACK(TEXTSPLIT(REPT(\",\",16384),\",\"),1))",
+        "W8": "=ROWS(EXPAND(A1:A2,1048577,1))",
+        "W9": "=COLUMNS(EXPAND(1,1,16384))",
+        "W10": "=ROWS(WRAPCOLS(SEQUENCE(1048577),1048577))"
+      }
+    }
+  ]
+}

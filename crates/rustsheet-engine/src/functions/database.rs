@@ -85,7 +85,7 @@ impl Model {
     /// against the database's columns and each criteria row's cells (`db_row_matches_criteria`),
     /// plus the field read. A whole-column database or criteria range is therefore `#ERROR!` when
     /// lifted (limits.rs `MAX_LIFTED_CELL_VISITS`; a DEVIATION, statistics.md).
-    fn db_element_cost(&mut self, args: &[Node], cell: CellReferenceIndex) -> LiftCost<'static> {
+    fn db_element_cost(&mut self, args: &[Node], cell: CellReferenceIndex) -> LiftCost {
         let size = |range: &crate::calc_result::Range| {
             let rows = u64::try_from(range.right.row - range.left.row + 1).unwrap_or(0);
             let columns = u64::try_from(range.right.column - range.left.column + 1).unwrap_or(0);

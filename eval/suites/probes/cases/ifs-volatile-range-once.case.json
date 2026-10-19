@@ -1,0 +1,42 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Whether a volatile range argument of the *IF(S) functions (OFFSET/INDIRECT over RANDBETWEEN) is evaluated once per formula when an array criterion lifts the call: every element should then see the same range, so MAX = MIN over 8 always-true criteria (T-0408). C4 is 1 when every element agrees on the shape check (all numbers or all errors).",
+  "tags": [
+    "M2",
+    "criteria",
+    "volatile",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": 1,
+        "B1": 10,
+        "A2": 2,
+        "B2": 20,
+        "A3": 3,
+        "B3": 30,
+        "A4": 4,
+        "B4": 40,
+        "A5": 5,
+        "B5": 50,
+        "A6": 6,
+        "B6": 60,
+        "C1": "=LET(x,COUNTIFS(OFFSET(A1,0,0,RANDBETWEEN(1,6)),{\"<>z\",\"<>y\",\"<>x\",\"<>w\",\"<>v\",\"<>u\",\"<>t\",\"<>s\"}),MAX(x)=MIN(x))",
+        "C2": "=LET(x,SUMIF(OFFSET(A1,0,0,RANDBETWEEN(1,6)),{\"<>z\",\"<>y\",\"<>x\",\"<>w\",\"<>v\",\"<>u\",\"<>t\",\"<>s\"},B1:B6),MAX(x)=MIN(x))",
+        "C3": "=LET(x,COUNTIF(INDIRECT(\"A1:A\"&RANDBETWEEN(1,6)),{\"<>z\",\"<>y\",\"<>x\",\"<>w\",\"<>v\",\"<>u\",\"<>t\",\"<>s\"}),MAX(x)=MIN(x))",
+        "C4": "=LET(x,COUNTIFS(OFFSET(A1,0,0,RANDBETWEEN(1,6)),{\"<>z\",\"<>y\",\"<>x\",\"<>w\",\"<>v\",\"<>u\",\"<>t\",\"<>s\"},OFFSET(B1,0,0,RANDBETWEEN(1,6)),\"<>q\"),AND(ISNUMBER(x))+AND(ISERROR(x)))",
+        "C5": "=LET(x,COUNTIFS(OFFSET(A1,0,0,RANDBETWEEN(1,6)),{\"<>z\",\"<>y\",\"<>x\",\"<>w\",\"<>v\",\"<>u\",\"<>t\",\"<>s\"}),ROWS(x)*10+COLUMNS(x))"
+      }
+    }
+  ],
+  "expected": {},
+  "invariant": [
+    "Calc!C1",
+    "Calc!C2",
+    "Calc!C3",
+    "Calc!C4",
+    "Calc!C5"
+  ]
+}

@@ -110,6 +110,19 @@ fn date_system_serial_conversion() {
         chrono::NaiveDate::from_ymd_opt(1904, 1, 1)
     );
     assert_eq!(Excel1904.date_of_serial(-1), None);
+    // WEEKDAY, WORKDAY and NETWORKDAYS also read 1900 serial 0, Saturday 1899-12-30 on the
+    // weekday-faithful calendar (T-1254).
+    assert_eq!(Excel1900.date_of_serial(0), None);
+    assert_eq!(
+        Excel1900.date_of_serial_from_zero(0),
+        chrono::NaiveDate::from_ymd_opt(1899, 12, 30)
+    );
+    assert_eq!(
+        Excel1904.date_of_serial_from_zero(0),
+        chrono::NaiveDate::from_ymd_opt(1904, 1, 1)
+    );
+    assert_eq!(Excel1900.date_of_serial_from_zero(-1), None);
+    assert_eq!(Excel1904.date_of_serial_from_zero(-1), None);
     // The last day Excel accepts, 9999-12-31, is 1900 serial 2958465 and 1904 serial 2957003.
     assert_eq!(
         format_in(2_957_003.0, "yyyy-mm-dd", Excel1904),

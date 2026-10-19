@@ -43,7 +43,8 @@ pub(crate) enum FunctionValue {
 }
 
 /// A LAMBDA's parameters (each id, and whether the body reads it once: [`read_once`]) and
-/// patched body, or the error calling it gives, and the `last_lambda_id` when it was patched.
+/// patched body, or the error calling it gives, and the `last_lambda_id` below which every LAMBDA
+/// created is known not to read the parameters (`Model::call_prepared`).
 struct PreparedLambda {
     definition: Result<(Vec<(usize, bool)>, Node), CalcResult>,
     lambda_mark: usize,
@@ -361,20 +362,22 @@ impl Model {
     }
 
     /// Binds parameter `i` to `bind(i)`, once for each `i` in order (`call_lambda_caller` relies
-    /// on that), and evaluates the patched body. The body is reused while no LAMBDA has been
-    /// created since it was patched: a LAMBDA made by the body (`LAMBDA(x,LAMBDA(y,x+y))`) holds
-    /// the parameter ids, so the next call patches a fresh copy with fresh ids, as every call did
-    /// before T-1560. (`last_lambda_id` only grows during an evaluation; `clear_lambdas` resets
-    /// it between evaluations, when no caller is alive.)
+    /// on that), and evaluates the patched body. The body is reused while no LAMBDA created since
+    /// it was patched reads its parameter ids: one made by the body (`LAMBDA(x,LAMBDA(y,x+y))`)
+    /// holds them, so the next call patches a fresh copy with fresh ids, as every call did before
+    /// T-1560. A defined-name LAMBDA, an eta-reduced function or a LAMBDA a called one makes holds
+    /// none of them, so a body calling `MyFn(x)` keeps its patch (T-0425). (`last_lambda_id` only
+    /// grows during an evaluation; `clear_lambdas` resets it between evaluations, when no caller
+    /// is alive.)
     fn call_prepared(
         &mut self,
         caller: &mut LambdaCaller,
         cell: CellReferenceIndex,
         mut bind: impl FnMut(&mut Self, usize) -> Binding,
     ) -> RefArg {
-        let prepared = match caller.prepared.take() {
-            Some(prepared) if prepared.lambda_mark == self.last_lambda_id => prepared,
-            _ => self.prepare_lambda(&caller.lambda, caller.provided, cell),
+        let mut prepared = match caller.prepared.take() {
+            Some(prepared) => prepared,
+            None => self.prepare_lambda(&caller.lambda, caller.provided, cell),
         };
         let result = match &prepared.definition {
             Ok((ids, body)) => {
@@ -397,8 +400,25 @@ impl Model {
             }
             Err(error) => RefArg::Value(error.clone()),
         };
-        caller.prepared = Some(prepared);
+        if !self.lambdas_since_read(&prepared) {
+            prepared.lambda_mark = self.last_lambda_id;
+            caller.prepared = Some(prepared);
+        }
         result
+    }
+
+    /// Whether a LAMBDA created since `prepared.lambda_mark` reads one of its parameter ids. Eta
+    /// lambdas hold no body, so only `lambdas` is looked at; the walk costs no more than the
+    /// clone that created each LAMBDA.
+    fn lambdas_since_read(&self, prepared: &PreparedLambda) -> bool {
+        let Ok((ids, _)) = &prepared.definition else {
+            return false;
+        };
+        (prepared.lambda_mark..self.last_lambda_id).any(|lambda| {
+            self.lambdas.get(&lambda).is_some_and(|(_, body)| {
+                body.reads_variable(|read| ids.iter().any(|&(id, _)| id == read))
+            })
+        })
     }
 
     /// The definition of `lambda_result` for `provided` arguments with its body patched with

@@ -224,3 +224,19 @@ fn fn_yieldmat_error_settlement_after_maturity() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#NUM!");
 }
+
+// Settlement serial 0: INTRATE, PRICEDISC and YIELDDISC compute, RECEIVED is #NUM! (T-1757;
+// docs/excel-semantics/financial.md "Discount-security functions: settlement 0").
+#[test]
+fn discount_security_settlement_zero() {
+    let mut model = new_empty_model();
+    model._set("A1", "=INTRATE(0,43466,1000,1100)");
+    model._set("A2", "=PRICEDISC(0,43466,0.05,100)");
+    model._set("A3", "=YIELDDISC(0,43466,95,100)");
+    model._set("A4", "=RECEIVED(0,43466,1000,0.05)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0.000840317");
+    assert_eq!(model._get_text("A2"), *"-495.0138889");
+    assert_eq!(model._get_text("A3"), *"0.000442272");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}

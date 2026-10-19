@@ -156,8 +156,11 @@ impl Model {
                 CalcResult::EmptyArg => {}
                 CalcResult::Range { left, right } => {
                     has_range = true;
-                    // A blank cell reads as 0, so the blanks past the used area are walked too.
-                    if let Err(error) = self.for_each_cell_or_error_in_whole_range(
+                    // A blank cell reads as 0. Any number of 0s anywhere in the walk gives
+                    // what one does: GCD(n,0) is n, and a 0 makes LCM 0 from then on and
+                    // clears a too-large result before it. So the blanks past the used area
+                    // are read as one 0 after the walk, not walked (T-0438).
+                    match self.for_each_cell_or_error_in_range_noting_blanks(
                         &Range { left, right },
                         cell,
                         |model, value| {
@@ -184,7 +187,13 @@ impl Model {
                             handle_number(number).map_or(Ok(()), Err)
                         },
                     ) {
-                        return error;
+                        Ok(true) => {
+                            if let Some(res) = handle_number(0.0) {
+                                return res;
+                            }
+                        }
+                        Ok(false) => {}
+                        Err(error) => return error,
                     }
                 }
                 CalcResult::Array(array) => {

@@ -11,7 +11,7 @@
   - Findings of T-1777: T-1800, T-1801, T-1802, T-1803.
   - Split from T-1271: T-1833 (the array-valued functions and reference elements below), then T-1834,
     T-1835, T-1836, T-1837, T-1838 and T-1839 (the M7 entries) and T-1960 (their open probes).
-  - Split from T-1241: T-1810 (the reference-valued lifts of OFFSET, INDIRECT and TRIMRANGE; CHOOSE onto the driver), itself split into T-1955 (spec for the reference-array carrier), T-1956, T-1957 (OFFSET, INDIRECT, TRIMRANGE), T-1958 (XMATCH search_mode) and T-1959 (CHOOSE).
+  - Split from T-1241: T-1810 (the reference-valued lifts of OFFSET, INDIRECT and TRIMRANGE; CHOOSE onto the driver, decided against by T-1959), itself split into T-1955 (spec for the reference-array carrier), T-1956, T-1957 (OFFSET, INDIRECT, TRIMRANGE), T-1958 (XMATCH search_mode) and T-1959 (CHOOSE).
   - The order is under Rollout.
 
 ## Problem
@@ -60,8 +60,8 @@ same date and commit. Each row has a migration task, or is a non-goal with its r
 | `parity_predicate` | information/mod.rs | ISEVEN, ISODD | `LiftArrays` entries | T-1774 |
 | `lifted_arg` / `Lifted`, and `map_elements` in offline_errors.rs | information/ | IS*, ERROR.TYPE, ENCODEURL, FIELDVALUE, STOCKHISTORY and the other offline functions | `Lift` entries. `map_elements` stays only for N and T (below) | T-1774 |
 | `TextArg`, `broadcast_text` | text/text_arg.rs | 17 call sites: LEFT, MID, FIND, REPT, TEXT, CONCATENATE, … | `Lift` entries + text kernels | T-1775 |
-| `Weekend::lift` | date_and_time.rs | WORKDAY.INTL, NETWORKDAYS.INTL `weekend` | a kernel with the mask memo in its closure | T-1236 |
-| CHOOSE's index lift (`choose_array`) | lookup_and_reference/mod.rs | CHOOSE | `index_num` is `Lift`, the value arms are `Whole`. `choose_array` becomes the kernel | T-1241 |
+| `Weekend::lift` | date_and_time.rs | WORKDAY.INTL, NETWORKDAYS.INTL `weekend` | a `Lift` entry; no mask memo, an element costs O(log holidays) (done) | T-1236 |
+| CHOOSE's index lift (`choose_array`) | lookup_and_reference/mod.rs | CHOOSE | Non-goal for now (T-1959): CHOOSE keeps its own broadcast loop, as IF does. A table entry does not fit: with a scalar index the arms stay unevaluated (cycles, cost) and the picked one is returned as a reference, and the result's extent includes every arm, picked or not, where `lift_call` reads `Whole` arms eagerly and as scalars. Handing the arms to `lift_grids` as grids gives the same results but fills every arm's slot at every element (O(arms) clones per element, where the loop clones only the picked one), so `CHOOSE(SEQUENCE(1024),<254 text rows>)` would do about 260M string copies instead of 1M. The driver would need a kernel that gets the output position and reads only the arm it picks; the loop stays until a second caller (IF's array condition is the likely one) needs that kernel. The index is read by `get_number_or_array` (a 3-D index is `#ERROR!` there, where a `Lift` read gives `#REF!`) | T-1241, T-1959 |
 | IF's `IfArg`, `if_arg_at` | logical/mod.rs | IF (condition and branches broadcast, logic.md) | non-goal: IF evaluates its branches lazily and returns references. It keeps its own broadcast, which already uses `bcast_idx` | — |
 | `lifted_relative_to`, `lifted_groupby` | relative_to.rs, groupby.rs | GROUPBY, PIVOTBY | non-goal: LAMBDA calls with their own cell-visit budget (SPEC-0006) | — |
 | `broadcast_static_result` | expressions/parser/static_analysis.rs | the static shape of a call | stays as the shape primitive; the table-driven `lifted_static_result` calls it | T-1770 |
@@ -387,29 +387,29 @@ pub(crate) enum LiftedArg {
 }
 
 /// What one element costs, for the cell-visit cap.
-pub(crate) enum LiftCost<'a> {
+pub(crate) enum LiftCost {
     /// `KernelWork::Constant` and no whole data: elements × 1.
     Unit,
     /// Every element walks `cells` (today's *IF(S) criteria walk): elements × cells.
     Cells(u64),
     /// The kernel prepares its whole data once (LARGE sorts it): cells + elements.
     Prepared(u64),
-    /// `walk_cost` of `range`, `walks` times per element (the *IF(S) front end: one walk per
-    /// criterion).
-    Walk { range: &'a Node, walks: u64 },
 }
 
 pub(crate) struct LiftOptions {
-    /// Reuse the previous element's result when every grid slot equals the previous element's:
-    /// the *IF(S) blank-tail optimization of `lift_with_cost`. Off for scalar kernels.
-    pub(crate) reuse_equal_runs: bool,
+    /// Which elements reuse an earlier result: `Never` (scalar kernels), `EqualRuns` (the
+    /// previous element's, when every grid slot equals it: the blank-tail optimization of
+    /// `lift_with_cost`) or `AnyEqual` (the first equal element's; *IF(S), T-0408).
+    pub(crate) reuse: Reuse,
     /// The table's `KernelWork` (`lift_call`); `Constant` for the direct callers.
     pub(crate) work: KernelWork,
 }
 
 impl LiftOptions {
-    /// What every direct caller passes (*IF(S), AGGREGATE, IFS, SWITCH, the lookups).
+    /// What AGGREGATE, IFS, SWITCH and the lookups pass.
     pub(crate) const REUSE_EQUAL_RUNS: Self;
+    /// What the *IF(S) functions pass (T-0408).
+    pub(crate) const REUSE_ANY_EQUAL: Self;
 }
 
 /// A per-element kernel: the scalar function over the argument values of one element.
@@ -434,7 +434,7 @@ impl Model {
     pub(crate) fn lift_values(
         &mut self,
         args: Vec<CalcResult>,
-        cost: LiftCost<'_>,
+        cost: LiftCost,
         options: &LiftOptions,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
@@ -443,7 +443,8 @@ impl Model {
 ```
 As built (T-1770): `lift_call` runs `lift_call_with(kinds, args, LiftCost::Unit, …)`, which a
 future `Prepared` or `Cells` consumer calls with its own cost. The direct callers keep their
-T-1784 totals exactly: *IF(S) passes `Walk { walks: criteria }`, `lookup_each` and AGGREGATE
+T-1784 totals exactly: *IF(S) passes `Cells(walk cost × criteria)` (T-0408 dropped the `Walk`
+variant: the ranges resolve once before the lift, so the walk cost is measured from them), `lookup_each` and AGGREGATE
 multiply their `Cells` by the lifted arguments, IFS and SWITCH pass `Cells(arguments)`; XLOOKUP
 passes its search cost once (it divided it by its three criteria before, so its bound only
 loosens by the rounding).
@@ -499,7 +500,9 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
    WORKDAY(.INTL) and NETWORKDAYS(.INTL) stepped once per calendar day (about 2.96M steps at
    worst, so a covering weight would cap a lift at about 45 elements). T-1295 (whole-week steps)
    and T-1808 (closed-form day counts) make one call O(holidays), so T-1236 follows both and
-   enters them without a calendar weight.
+   enters them without a calendar weight. As built (T-1236): the holidays are `WholeByCaller`,
+   prepared once per call (`LiftCost::Prepared`), and WORKDAY finds its result by a galloping search
+   of closed-form counts, so an element costs O(log holidays).
 5. **Elements**, in row-major order, into one buffer kept for the whole call. Scalar and whole
    slots are written once. Only the grid slots are overwritten per element, by
    `array_node_to_calc_result(bcast_get(grid, i, j).unwrap_or(&MISSING), cell)` (functions/util.rs).
@@ -511,8 +514,12 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
      element errors with `String::new()` messages (T-1770, T-1773 and T-1785 acceptance), so a
      failing number element allocates nothing either; about 211 sites under functions/ allocate a
      message today, and only the migrated kernels change.
-   - **`reuse_equal_runs`:** the element is compared with the previous position slot by slot,
-     through `bcast_get` at both positions. No per-element key `Vec` is built.
+   - **`Reuse::EqualRuns`** (was `reuse_equal_runs`): the element is compared with the previous
+     position slot by slot, through `bcast_get` at both positions. No per-element key `Vec` is built.
+   - **`Reuse::AnyEqual`** (*IF(S) only, T-0408): before the work bound, one pass maps every
+     element to the first element equal to it (a hash map keyed by the borrowed slots, so no key
+     is copied); the work bound counts the distinct elements, and a repeat clones its first
+     element's result from the output.
 6. **Element result** → `ArrayNode` via the existing `cast::calc_result_to_array_node`. A range,
    an array or a LAMBDA is `#VALUE!`, as today. There is no new helper, and T-1787 deletes the four
    private copies of that function in functions/logical/.
@@ -521,8 +528,8 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
    `#ERROR!` before any text is built, and the budget's error stays `#VALUE!`.
 
 No argument is re-evaluated per element. A `Whole` value is the same `CalcResult` for every
-element. A kernel that derives something costly from it (LARGE's sorted data, WORKDAY.INTL's
-weekend mask results, today's `Weekend::lift` memo) computes it on the first element and keeps it
+element. A kernel that derives something costly from it (LARGE's sorted data, WORKDAY's prepared
+holidays, T-1236) computes it once, on the first element or before the driver runs, and keeps it
 in its closure. It declares `LiftCost::Prepared`.
 
 As built (T-1772): LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN take their data
@@ -532,7 +539,8 @@ single cell), which a `Whole` value read by `evaluate_node_with_reference` canno
 `Whole` read would change scalar results. `statistical/sorted_data.rs` reads the numbers once after
 the count check, the kernel sorts them on its first element, and the call goes through
 `lift_call_costed` with `LiftCost::Prepared(numbers)` (TRIMMEAN: `Cells(numbers)`, since every
-element averages the kept values). `Whole` stays unused until T-1236's holidays.
+element averages the kept values). WORKDAY's and NETWORKDAYS' holidays are `WholeByCaller` the
+same way (T-1236), so `Whole` stays unused until the M7 array arguments (T-1836).
 
 As built (T-1383): the engineering functions are the first `KernelWork::Weighted` entries. The four
 Bessel functions loop up to about 2·10^5 times per element at the order cap (`MAX_ORDER`, 100,000,
@@ -976,7 +984,7 @@ Each step is one PR of size S/M. The old paths stay until their step.
    - **T-1772** (functions-stat, M): the first real `Whole` + `Prepared` consumer (LARGE k and the
      other scalar arguments next to a data array).
    - **T-1383** (functions-engineering, M): later arguments are probed before they are entered.
-3. **T-1241** (CHOOSE's index moves in; now T-1959), **T-1389** (functions-criteria; adds
+3. **T-1241** (CHOOSE's index was to move in; T-1959 keeps it off the driver), **T-1389** (functions-criteria; adds
    `LiftArraysRangeWhole`), and the M7 functions split from T-1271 by T-1833:
    - **T-1834** (functions-math, opus, M): `CallResult`, `element_value`, `KernelWork::Output`,
      with SEQUENCE and MAKEARRAY.

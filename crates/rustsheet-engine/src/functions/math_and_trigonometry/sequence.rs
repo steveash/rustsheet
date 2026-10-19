@@ -110,12 +110,16 @@ impl Model {
             1.0
         };
 
+        // Excel adds `step` to the previous value in row-major order, not `start + i·step`:
+        // `SEQUENCE(5,1,10,2.2)` ends 14.399999999999999, 16.599999999999998, …
+        // (docs/excel-semantics/numbers.md "SEQUENCE accumulates its step").
         let mut result = Vec::with_capacity(rows);
-        for r in 0..rows {
+        let mut value = start;
+        for _ in 0..rows {
             let mut row = Vec::with_capacity(columns);
-            for c in 0..columns {
-                let idx = (r * columns + c) as f64;
-                row.push(ArrayNode::Number(start + idx * step));
+            for _ in 0..columns {
+                row.push(ArrayNode::Number(value));
+                value += step;
             }
             result.push(row);
         }
