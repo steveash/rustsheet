@@ -27,14 +27,14 @@ Owned cells:
   - K5 `=ROWS(INDEX(EXPAND(A1:A2,{3;4}),1,1))` 1; K6 `=ROWS(INDEX(WRAPROWS(A1:A3,{1;2}),1,1))` 1; K7 `=COLUMNS(INDEX(WRAPROWS(A1:A3,{1;2}),2,1))` 1.
 - gen-m7/6db767d720c5b55a Calc!A12 `=WRAPCOLS(Data!D3:D3,UNIQUE(Data!B3:E4,SWITCH(..)))` (wrap_count is UNIQUE's 2-D array): Excel `#SPILL!`, ours `#N/IMPL!` (T-1275, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/6db767d720c5b55a.case.json`).
 
-Parameters not yet probed lift only where T-1833's per-parameter list marks them `Lift` (it decides which need a probe first).
+EXPAND's columns and pad_with and WRAPROWS's pad_with are `Lift` by SPEC-0011's per-parameter list ("Array-valued functions"); T-1960 probes them. `KernelWork::Output { weight: 1 }`.
 
 ## Acceptance criteria
 - [ ] probes/m7-argument-modes F7:H7, F8:H8, G42 and K5-K7 pass, and F42, H42 still pass.
 - [ ] gen-m7/6db767d720c5b55a A12 passes, with no new failing gen-m7 cell.
 - [ ] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
 - [ ] The three functions have table entries citing those cells; their fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes).
-- [ ] Unit tests: an unlifted call is unchanged (value and static shape); a lifted EXPAND whose elements would each pad to 10^6 cells is bounded as T-1834's tests require; an element error stays in its position.
+- [ ] Unit tests: an unlifted call is unchanged (value and static shape); `=ROWS(EXPAND(1,SEQUENCE(1024),1024))` is `#ERROR!` (SPEC-0011 rule 3); an element error stays in its position.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
