@@ -620,7 +620,7 @@ fn is_value_operation(node: &Node) -> bool {
 /// are all arithmetic reads a value: `=INDEX(CHOOSE(1,B1:B6*1),3)` shows as
 /// `=INDEX(CHOOSE(1,@B1:B6*1),3)` (probes/legacy-choose-arm-aggregate-and-array-constant-at H3,
 /// excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
-/// of that shape still spills.
+/// of that shape still spills. A SWITCH call is never marked (T-1910).
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
     // SWITCH alone among the choosers is never marked: `=SWITCH(1,1,{2;3})` spills 2, 3 where
     // `=@IFS(1,{2;3})` and `=@IF(1,{2;3})` are marked (probes/legacy-array-at-shapes C20, C11, T-1910).
