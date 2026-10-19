@@ -132,3 +132,16 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
 - A sharper function target than true lgamma: per-run mean of (Excel A minus exactly simulated model A).
 - Remaining: an exact integer search on the stage mantissas at x = 1 (possibly with q0 = 2^-13 fixed), then the top
   coefficients from far runs.
+
+## GAMMALN near-1 kernel: W1 final state
+- Structure is established, confirmed by the line spectrum near 1 and by the within-run noise profile. Excel and the
+  model agree on 98 far runs to within 0.044 ulp rms.
+- N has degree 9 ((8,9) fails at chi2 8e4/pt). D of degree 8, 9 or 10 fits equally; q0 = 2^-13 is supported.
+- Best set: c5_f99t (`near1_candidate_w1.txt`, N3/D3). 51.0% exact on [0.7,1.5]; 32% far (32.1% of 381k points
+  on `kmyst-gam-f1xx`); near-1 A 93.5%.
+- The gap is the MID coefficients N2-N7 and D2-D7. A 1-ulp change in one of them flips 30-38% of far A values;
+  37 ulps on N9 or D9 flips less than 0.1%.
+- Validated as BLIND to mid-coefficient errors: per-stage phases far from 1, the 0.75 and 1.375 ladders (1.25 sees
+  N4 only), and the noise-profile degree test. Greedy and SVD-direction searches plateau at about 51%.
+- Next idea: a joint integer search over about 12 mid coefficients, restricted to moves that keep the near-1 stage
+  values, scored by exact match on far data.
