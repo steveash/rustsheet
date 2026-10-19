@@ -227,6 +227,7 @@ impl Model {
         let options = LiftOptions {
             reuse: Reuse::Never,
             work: kinds.work,
+            result: kinds.result,
         };
         self.lift_grids(read.into_lifted(), cost, &options, cell, kernel)
     }
