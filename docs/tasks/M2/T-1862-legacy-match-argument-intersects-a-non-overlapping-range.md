@@ -29,5 +29,5 @@ Split from T-1791. A legacy (no `cm`) cell `=INDEX(Data!C3:AY4,MATCH(1,(Sheet1!A
   - A single-value table is `#VALUE!` for non-numeric text and `#N/A` otherwise (`Model::lookup_table`, now shared by MATCH, LOOKUP, VLOOKUP and HLOOKUP).
   - A one-cell reference (written, or picked by IF or INDEX) is searched as a range: `MATCH("b",A2,0)` was `#N/A` and is now 1.
 - Evidence: probes/legacy-match-lookup-array-intersection and probes/match-single-value-lookup-array (excel-graph, 2026-10-18), recorded in references.md and lookup.md. Unit test `match_over_a_single_value`.
-- Eval delta: corpus-bench known failures 16 -> 14 (49300 and 59734 fixed). The 2 new probe cases add 2 known failures (J2/Y2, an IF arm in a legacy lookup_array, filed as T-1935). 0 regressions in every suite. The duplication ratchet went 3863 -> 3831.
+- Eval delta: corpus-bench known failures 16 -> 14 (49300 and 59734 fixed). The 2 new probe cases add 2 known failures (J2/Y2, an IF arm in a legacy lookup_array, filed as T-1935). 0 regressions in every suite.
 - Follow-ups: T-1935 (legacy IF arm), T-1937 (other single-cell forms; the numeric-text boundary).
