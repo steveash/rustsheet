@@ -1,4 +1,4 @@
-# T-1941: score a raw-y (8,8) N/D candidate for GAMMA's G on [1,2) against every oracle GAMMA value with 1 <= x < 2.
+# T-1941: score a raw-y Horner N/D candidate for GAMMA's G on [1,2) against the g_rows.py dump (GAMMA(x), 1 <= x < 2).
 import numpy as np, sys
 L=np.longdouble
 def st(v): return np.asarray(v,dtype=L).astype(np.float64)
@@ -8,11 +8,9 @@ def horner(c,y):
     return s
 N=[float.fromhex(v) for v in sys.argv[1].split(',')]; D=[float.fromhex(v) for v in sys.argv[2].split(',')]
 X=[];G=[]
-for l in open(sys.argv[3] if len(sys.argv)>3 else 'docs/research/t1941/rows.txt'):
-    p=l.split()
-    if p[3]=='nan': continue
-    x=float.fromhex(p[0])
-    if 1<=x<2: X.append(x); G.append(float.fromhex(p[3]))
+# rows from g_rows.py: x_hex g_hex case (only cells whose formula is exactly =GAMMA(A<row>))
+for l in open(sys.argv[3] if len(sys.argv)>3 else 'g_rows.txt'):
+    p=l.split(); X.append(float.fromhex(p[0])); G.append(float.fromhex(p[1]))
 y=np.array(X); g=np.array(G)
 m=st(L(horner(N,y))/L(horner(D,y)))
 e=np.abs(m-g)/np.spacing(np.abs(g))
