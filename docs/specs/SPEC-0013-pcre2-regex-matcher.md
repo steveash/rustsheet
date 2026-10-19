@@ -240,9 +240,18 @@ existing cost model and caches.
     - So a state's future depends only on `(pc, pos)`, which makes the visited bit-set sound and leaves the
       priority-ordered result unchanged.
     - The bit-set lives in `Caches` and is cleared once per text, not per attempt (generation stamps). It is kept
-      across the retries of one iteration, which start at increasing positions. Under "not empty at start" only a
-      `Match` at an attempt's own start depends on that start, so a `(pc, pos)` that failed for an earlier start
-      also fails for a later one. The whole iteration is O(program × text).
+      across the searches of one iteration, which start at increasing positions, with one rule.
+      - The rule: a state is marked when entered, so a successful attempt also marks its success path. When an
+        attempt succeeds with a match ending at `e`, every position at or before `e` is treated as unvisited again;
+        with position-major chunks this is cheap.
+      - Why marks after `e` stay valid: a regular program never moves backwards, so the success path lies within
+        [start, `e`]. A state marked after `e` was on a branch that was fully explored and failed before the
+        branch that succeeded. The next search starts at or after `e`.
+      - After a failed attempt nothing is invalidated. Under "not empty at start" only a `Match` at an attempt's
+        own start depends on that start, and every later attempt starts after it, so a `(pc, pos)` that failed for
+        an earlier start also fails for a later one.
+      - So the whole iteration is O(program × text). Without the rule, `a*?` on `aaa` would prune the retry at 1
+        and give `bbbbb` instead of `bbbbbbb` (t1626-regexreplace C34).
     - The bit-set is program × (text + 1) bits, allocated in chunks for the positions reached, and charged to held
       memory. If it would pass what the call may still hold, the call is `#ERROR!`. T-1974 adds that limit as a
       `DEVIATION` entry (decision 0014) unless T-1972 shows Excel failing there too.
@@ -326,7 +335,9 @@ no code to the binary, since the crate is already linked.
     - `(.*)\1x` (backreference over a long capture);
     - `(a|a)*b|` (the memoized retry);
     - `(a|a)*b$` over a text ending in `CHAR(10)` (the memoized `$` path);
-    - `a*?` and `|b` iteration over 32,767 characters (the visited set persists across retries).
+    - `a*?` and `|b` iteration over 32,767 characters (the visited set persists across retries);
+    - in memoized mode, `a*?` on `aaa` gives 7 matches and `|a(?:a*b)?` on `REPT("a",32767)` is linear: this
+      pins the invalidate-up-to-`e` rule and the kept failures after `e`.
   - These patterns go through every pass (parse, `is_regular`, `to_hir`, compile, search, drop) without stack
     growth:
     - 250 nested groups;

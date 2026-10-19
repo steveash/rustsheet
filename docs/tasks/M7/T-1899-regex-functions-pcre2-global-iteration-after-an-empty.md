@@ -20,7 +20,7 @@ Found by T-1626 and T-1688. After an empty match Excel first tries a non-empty m
 - [ ] t1626-regexreplace C34 and regex-pcre2-features D1-D6, D12, D13 pass, plus D14 once its ERROR.TYPE cell is added
   (D7-D10 also need T-1360's optional arguments); baseline shrinks.
 - [ ] The retry for a regular pattern runs in the memoized mode (SPEC-0013 section 3). Its program is counter-free and
-  guard-free, and its visited set persists across the retries of one iteration. The differential test covers this
+  guard-free, and its visited set persists across the searches of one iteration, with every position at or before a successful match's end invalidated (SPEC-0013 section 3). Unit tests: `a*?` on `aaa` gives 7 matches in memoized mode, and `|a(?:a*b)?` on `REPT("a",32767)` is linear. The differential test covers this
   path too.
 - [ ] `(a|a)*b|` over a 32,767-character text returns the same value as before.
 - [ ] `a*?` and `|b` iteration over 32,767 characters stays within the call budget, and each runs under 50 ms in the

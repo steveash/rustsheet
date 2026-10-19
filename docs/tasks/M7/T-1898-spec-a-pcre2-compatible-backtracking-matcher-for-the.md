@@ -3,7 +3,7 @@ id: T-1898
 title: "Spec: a PCRE2-compatible backtracking matcher for the REGEX functions"
 milestone: M7
 lane: functions-text
-status: done
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -19,7 +19,7 @@ Found by T-1688. Excel's REGEX* functions are PCRE2: probes/regex-pcre2-features
 ## Acceptance criteria
 - [x] docs/specs/ has the spec, with a decision record if it adds a dependency.
 - [x] The implementation is split into S/M tasks (T-1899 and T-1900 are rewritten or replaced to follow it).
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the matcher.
@@ -44,3 +44,25 @@ Split, in order:
 5. T-1974, costs, benchmarks and fuzz (perf).
 
 No eval change (docs only).
+
+## Blocked because
+The review hit its 3-round limit (work-loop step 5). One verdict is missing: the performance reviewer's final
+re-review.
+
+Verdicts on head 30135095 and later:
+| reviewer | verdict |
+|---|---|
+| security | APPROVE (at c17d37cc) |
+| architecture | APPROVE (round 1, diff unchanged in scope since) |
+| quality | APPROVE (at 30135095) |
+| performance | REQUEST_CHANGES (round 3) |
+
+Performance round 3 found one correctness rule missing from the memoized mode: a successful match must invalidate the
+visited marks at or before its end. Security raised the same point as a minor finding. The rule is now in SPEC-0013
+section 3 and T-1899, and T-1974 holds the memoized-mode DEVIATION.
+
+To unblock:
+1. Run the performance reviewer (and quality and architecture, since the spec changed after their approval) on
+   `git diff origin/main...HEAD` of this branch (PR #1167).
+2. If all approve, set `status: done`, tick the box, and merge.
+
