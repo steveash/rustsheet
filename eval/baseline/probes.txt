@@ -217,7 +217,7 @@ C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/date-text-non-glued-timevalue.case.json	44
 C	probes/date-text-rejected-clock-formats.case.json	16
-C	probes/date-text-single-letter-ap.case.json	30
+C	probes/date-text-single-letter-ap.case.json	48
 C	probes/date-text-typed-clock-shapes.case.json	85
 C	probes/date-text-weekend-3d.case.json	129
 C	probes/date-text-yearless-2.case.json	64
@@ -618,6 +618,7 @@ C	probes/pivotby-col-subtotals-values3.case.json	1080
 C	probes/pivotby-followup.case.json	3124
 C	probes/pivotby-moved-cells-relative-sets.case.json	1460
 C	probes/pivotby-total-columns-one-group.case.json	172
+C	probes/pmt-overflow.case.json	40
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
@@ -1268,13 +1269,9 @@ F	probes/discount-security-modes.case.json	Calc!A86
 F	probes/discount-security-modes.case.json	Calc!A88
 F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
-F	probes/eng-im-overflow.case.json	S!A11
 F	probes/eng-im-overflow.case.json	S!A12
-F	probes/eng-im-overflow.case.json	S!A17
 F	probes/eng-im-overflow.case.json	S!A33
 F	probes/eng-im-overflow.case.json	S!A34
-F	probes/eng-im-overflow.case.json	S!A40
-F	probes/eng-im-overflow.case.json	S!A41
 F	probes/eng-im-overflow.case.json	S!A42
 F	probes/eng-impower-angle-cut.case.json	S!A10
 F	probes/eng-impower-angle-cut.case.json	S!A11
