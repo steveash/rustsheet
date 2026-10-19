@@ -192,7 +192,8 @@ are `#NUM!`, and so is `ROWS(VSTACK(A:A,1:1))`; `COLUMNS(HSTACK(A1:XFD1,A1))`, `
 wider than the grid is built as TEXTSPLIT's is ("textsplit-wide"). The 2^34-cell `ROWS(HSTACK(A:A,1:1))` is 0 in the Graph
 backend, an answer not trusted; ours is `#ERROR!`, the cell-count bound ("Array results above 1,048,576 cells").
 Evidence: probes/scalar-lift-open-c W1-W10, -c2 W1, -c3 W1 (excel-graph, 2026-10-17, T-1777).
-Ours: `limits::check_stack_size` in `fn_hstack` and `fn_vstack` (T-1803). EXPAND, WRAPROWS and WRAPCOLS keep
+Ours: `limits::check_stack_size` in `fn_hstack` and `fn_vstack` (T-1803), except -c2 W1 and -c3 W1: both sit in row 1,
+which they stack, so ours is `#CIRC!` (T-1965). EXPAND, WRAPROWS and WRAPCOLS keep
 `check_array_size` (`#VALUE!` past the grid either way): whether they share this asymmetry is not probed (T-1964).
 Status: VERIFIED (excel-graph)
 Tasks: T-1803, T-1964
@@ -458,14 +459,8 @@ arrays", information.md "ISEVEN/ISODD over a range").
   -d W25). EDATE gives `#VALUE!`: `ROWS(EDATE(3D,1))` (W4), `ROWS(EDATE(45000,3D))` (W7) and, beside an array,
   both elements (-d W19, W20, W26). The shape beside an array is the array's (-b W8, W9: ROWS 2). `ISREF(3D)` is FALSE
   and `3D+0` is `#REF!` (-d W24, W27, W28). SPEC-0011 assumed `#VALUE!` in both kinds (T-1801).
-- **A stacked result past the grid** (probes/scalar-lift-open-c, -c2, -c3, T-1777). `ROWS(VSTACK(A:A,B1))`,
-  `ROWS(VSTACK(A:A,B1:B2))`, `COLUMNS(VSTACK(A:A,B1:B2))`, `ROWS(VSTACK(A1:A1048576,B1))` and
-  `ROWS(VSTACK(A:A,1:1))` are `#NUM!` (-c W1, W2, W7, W9; -c2 W1), not `#VALUE!`. Columns past the grid are
-  allowed: `COLUMNS(HSTACK(A1:XFD1,A1))` and `COLUMNS(HSTACK(A1:XFD1,A1:A2))` are 16385 (-c W3, W8), as is
-  `COLUMNS(HSTACK(A1:A2,1:1))` (W6), while a stack that fits is exact (`ROWS(VSTACK(A1:A2,1:1))` 3, W5;
-  `COLUMNS(HSTACK(A1:XFC1,A1:A2))` 16384, W10). `ROWS(HSTACK(A:A,1:1))` (a 2^34-cell result) is 0 in the
-  excel-graph backend (-c3 W1), which is not credible as Excel's own value; it was left unsettled. The first fill of the
-  2^34-cell forms in one case hung, so they are cases of their own (T-1803).
+- **A stacked result past the grid** (probes/scalar-lift-open-c, -c2, -c3, T-1777): rows past the grid are `#NUM!`,
+  columns past it are allowed; the rule and its cells are "Stacked results past the grid" above (T-1803).
 - Not probed: lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT).
 Ours: EDATE, EOMONTH, WEEKNUM and YEARFRAC follow the rule (T-1770): every argument is
 `LiftArrays` in the lifting table, so they lift over an array, refuse a multi-cell range or a
