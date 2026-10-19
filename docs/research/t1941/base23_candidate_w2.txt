@@ -1,0 +1,6 @@
+# T-1941 W2 candidate for the GAMMALN base kernel on (2,3]: y = fl((x-2)*S), S = fl(N(x)/D(x)), N and D Horner in
+# raw x (top coefficient first), every op fl53(fl64(.)). Coefficients are good to about 1e-7, not yet bit-exact.
+# Structure: N degree 8, D degree 7; the free D/N scale is 2^2.0000021 (a power of two to 1.4e-6, not imposed).
+# Spectral overlap with the data's S-noise is 0.801 on r204 (chance about 0.01).
+N 9 0x1.3b06f80500cfdp-18 0x1.d71d3dc2e605ep-10 0x1.58fb066109146p-5 0x1.0b819be454bdap-2 0x1.ef316c4a64acep-2 -0x1.083556943e837p-6 -0x1.0ae31d5821f12p-1 -0x1.de8488675eda9p-3 -0x1.21eeefa193addp-6
+D 8 0x1.fdc674e58ee30p-12 0x1.48f2df19197dcp-6 0x1.bd9c0768c7b14p-3 0x1.c5ee423a1a8c8p-1 0x1.7b2780b99cf39p+0 0x1.eddf1455e6deap-1 0x1.9b25b226671a5p-3 0x1.fe7639a8ba349p-8
