@@ -1538,11 +1538,12 @@ Ours: implemented (T-1802): QUOTIENT and FACTDOUBLE are `LiftArrays` entries of 
 `x`, `n`, `m` too with its coefficients `WholeByCaller` (read once by `series_coefficients`, each element charged their
 cells); MULTINOMIAL, GCD and LCM have no entry. Before T-1802 FACTDOUBLE read a boolean as 1 or 0 and lifted over a range,
 and QUOTIENT and SERIESSUM's `x`, `n`, `m` intersected a range and were `#N/IMPL!` over an array.
-Unprobed for these three functions (T-1832), taken from the arrays.md Analysis ToolPak rule (EDATE, WEEKNUM,
-EOMONTH, YEARFRAC): a 3-D range in QUOTIENT, FACTDOUBLE or SERIESSUM's `x`, `n`, `m` is `#VALUE!` (FACTDOUBLE gave
-`#ERROR!` before), and a legacy bare range gets no `@`. `SERIESSUM(2,0,1,Sheet1:Sheet2!A1)` is `#REF!` in ours.
+A one-cell 3-D range (`Sheet1:Sheet2!A1`) is `#VALUE!` in QUOTIENT's first argument, FACTDOUBLE's, SERIESSUM's `x` and
+SERIESSUM's coefficients (`SERIESSUM(2,0,1,Sheet1:Sheet2!A1)`; ours was `#REF!` there until T-1832, now `#VALUE!` in
+`series_coefficients`), and a legacy bare range, `=QUOTIENT(A1:A3,2)` or `=FACTDOUBLE(A1:A3)`, gets no `@` (FORMULATEXT shows it
+as written) and is `#VALUE!` (probes/quotient-factdouble-seriessum-3d-legacy C1-C8, excel-graph, 2026-10-19, T-1832).
 Status: VERIFIED (excel-graph)
-Tasks: T-1777, T-1802
+Tasks: T-1777, T-1802, T-1832
 
 ## ECMA.CEILING
 Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).
