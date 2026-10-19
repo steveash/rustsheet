@@ -688,12 +688,12 @@ fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
         return complex_result(1.0 / x.tan(), 0.0, suffix);
     }
 
-    let x_cot = 1.0 / x.tan();
-    let y_coth = 1.0 / y.tanh();
-
-    let t = x_cot * x_cot + y_coth * y_coth;
-    let x = (x_cot * y_coth * y_coth - x_cot) / t;
-    let y = (-x_cot * x_cot * y_coth - y_coth) / t;
+    // The reciprocal of [`tan_parts`], `conj(t) / |t|²`: Excel's digits (COMPLEXs.xlsx T2, T7,
+    // T15; T-0907).
+    let (tan_x, tan_y) = tan_parts(x, y);
+    let t = tan_x * tan_x + tan_y * tan_y;
+    let x = tan_x / t;
+    let y = -tan_y / t;
 
     if x.is_infinite() || y.is_infinite() || x.is_nan() || y.is_nan() {
         return num_error(cell);
@@ -785,16 +785,29 @@ fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     complex_result(r * f64::cos(a / 2.0), r * f64::sin(a / 2.0), suffix)
 }
 
-fn imtan((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let x_tan = x.tan();
-    let y_tanh = y.tanh();
+/// tan(x+iy) in its double-angle form, `(sin 2x + i sinh 2y) / (cos 2x + cosh 2y)`: Excel's
+/// digits, where the tan/tanh form loses the last 1-10 of them when the real part is small
+/// (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx N2, N7, N15: `IMTAN("1.23+9.5121i")` has real part
+/// 6.89106871662165E-09; T-0907). Past `cosh 2y`'s range the value is `±0 ± i`, as tanh gives;
+/// where the denominator rounds to 0 (y = 0 and x the double nearest π/2) it is `tan x`, finite.
+/// Both fallbacks are unprobed, not Excel evidence (T-1966).
+fn tan_parts(x: f64, y: f64) -> (f64, f64) {
+    let denominator = f64::cos(2.0 * x) + f64::cosh(2.0 * y);
+    if denominator == 0.0 {
+        (x.tan(), 0.0)
+    } else if denominator.is_finite() {
+        (
+            f64::sin(2.0 * x) / denominator,
+            f64::sinh(2.0 * y) / denominator,
+        )
+    } else {
+        (0.0 * f64::sin(2.0 * x), y.signum())
+    }
+}
 
-    let t = 1.0 + x_tan * x_tan * y_tanh * y_tanh;
-    complex_result(
-        (x_tan - x_tan * y_tanh * y_tanh) / t,
-        (y_tanh + x_tan * x_tan * y_tanh) / t,
-        suffix,
-    )
+fn imtan((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+    let (x, y) = tan_parts(x, y);
+    complex_result(x, y, suffix)
 }
 
 #[cfg(test)]
