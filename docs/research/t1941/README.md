@@ -19,4 +19,21 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
 - **GAMMA is a separate kernel**, not EXP(GAMMALN).
   - Near x = 1.37e-9 it runs 1.5-2.4 ulps high. The implied numerator g*x is about 1.2*2^-52 above
     Gamma(1+x), consistent with a stored Gamma(1+x)-like value about 3 ulps off, then divided by x.
+- **GAMMALN for x >= 8 is bit-exact: Stirling with exactly 10 Bernoulli terms (W3, verified by the
+  coordinator).** Every op is fl53(fl64(.)):
+  - corr = Excel LN(y); a = y - 0.5; b = a*corr; d = b - y; e = d + 0.9189385332046727 (ln sqrt(2pi));
+  - z = 1/y; z2 = z*z; r = B10; then r = r*z2 + B_k for k = 9..1; s = r*z; GAMMALN = e + s;
+  - B_k = B_2k/(2k(2k-1)) correctly rounded to double (1/12, -1/360, ..., -174611/125400).
+  - Score: 159,744 of 159,744 points (`gammaln_big_check.c`, `USEC=1 NT=10 ./glc rows.txt 8 1e308`). That is
+    r118-r125, the x >= 8 half of r206, r207, r211 and r212, from 8 to 2.7e15.
+  - 11-13 terms give 159,740 and 9 terms fewer. Cody's ALGAMA coefficients and his divide-by-y^2 form are not
+    used. The cut is exactly at 8: below it, r206 matches only 45%.
+  - With this machine's hardware FYL2X for LN, 3 points miss. At those, RN64 of the log lands exactly on a
+    53-bit tie, where the exact LN model gives Excel's value, so the kernel takes Excel's LN unchanged.
+- **GAMMALN for 3 <= x < 8 (W2, structure).** Excel reduces t into [2,3) and forms the ascending stored product
+  p = t*(t+1)*...; then GAMMALN = fl(G(t) + LN(p)), with G a base kernel on [2,3) that is still open. With
+  G replaced by the exact value it reaches 91-94% exact; the product order matters.
+- **GAMMA (W4, structure).** It follows Cephes `gamma`: the downward product while x >= 3, division while x < 2,
+  then fl(fl(z*P(t))/Q(t)) on [2,3). It is bit-exact at x near 1.37e-9. Excel's P/Q coefficients are its own,
+  running 5-9e-17 above Gamma.
 - Helpers: `rnd.py` (exact RN53/RN64), `exp_v6.py` (Excel EXP, T-1778).
