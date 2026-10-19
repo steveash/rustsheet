@@ -12,10 +12,11 @@ def pts(ti):
 P={ti:pts(ti) for ti,_ in spec}; C={ti:[tuple(c) for c in json.load(open(f))] for ti,f in spec}
 def score(assign):
     rows=[]
-    for ti,(ch,law,j,sg,kk) in assign:
-        x,F=P[ti]; rows+=rows_for(ch,N0 if ch=='N' else D0,law,j,sg,kk,x,F)
+    for ti,cc in assign:
+        ch,law,j,sg,kk=cc[:5]; eo=cc[5] if len(cc)>5 else 0
+        x,F=P[ti]; rows+=rows_for(ch,N0 if ch=='N' else D0,law,j,sg,kk,x,F,eoff=eo)
     N1,D1,_,_=solve(n,n,rows,iters=1,ridge=ridge,c0=c0,K=40)
-    return max(np.sqrt(np.mean((predict(N1,D1,ch,law,j,P[ti][0])-(sg*P[ti][1]+kk))**2)) for ti,(ch,law,j,sg,kk) in assign)
+    return max(np.sqrt(np.mean((predict(N1,D1,cc[0],cc[1],cc[2],P[ti][0])-(cc[3]*P[ti][1]+cc[4]))**2)) for ti,cc in assign)
 B=[((),0.0)]
 for ti,_ in spec:
     nb=[]
@@ -24,4 +25,4 @@ for ti,_ in spec:
             aa=a+((ti,c),); nb.append((aa,score(aa)))
     nb.sort(key=lambda t:t[1]); B=nb[:beam]
     print('after track %d: best'%ti,' '.join('%.1e'%s for _,s in B[:6]),flush=True)
-for a,s in B[:5]: print('%.2e'%s,[('%d:%s.%s%d%+d%+d'%(ti,*c)) for ti,c in a])
+for a,s in B[:8]: print('%.2e'%s,[('%d:'%ti+'.'.join(str(v) for v in c)) for ti,c in a])
