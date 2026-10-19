@@ -411,8 +411,28 @@ fn legacy_intersects(
     index: usize,
     arg: &Node,
 ) -> bool {
-    (is_scalar_context(kind, signature) && !reads_reference(kind, arg))
+    (is_scalar_context(kind, signature)
+        && !reads_reference(kind, arg)
+        && !is_reference_arm(kind, index, arg))
         || legacy_value_operand(kind, index, arg)
+}
+
+/// Whether `arg` is an arm of IF that is a range, possibly in parentheses, which a legacy formula
+/// passes on whole as IF's result: the `@` goes on the IF where its result is a value
+/// (`=IF(TRUE,B1:B6)` shows as `=@IF(TRUE,B1:B6)`, `=ABS(IF(TRUE,B1:B6))` as
+/// `=ABS(@IF(TRUE,B1:B6))`), and none where it is a range argument (`=SUM(IF(TRUE,B1:B6))` is 12
+/// and `=MATCH(3,IF(B1:B6>0,B1:B6),0)` 3 on and off the range's rows, the condition intersected;
+/// probes/legacy-if-arm-range-argument, legacy-match-lookup-array-intersection J2, excel-graph,
+/// T-1935). An operation over the range is still a value (`=MATCH(3,IF(TRUE,@B1:B6+0),0)`), and
+/// so is IFERROR's value (`=MATCH(3,IFERROR(@B1:B6,0),0)`); other reference shapes in an arm are
+/// unprobed and keep their `@`. An explicit `@` on the range is looked through, so the export
+/// keeps it (`SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))`).
+fn is_reference_arm(kind: &Function, index: usize, arg: &Node) -> bool {
+    let arm = match arg.ungrouped() {
+        Node::ImplicitIntersection { child, .. } => child.ungrouped(),
+        other => other,
+    };
+    matches!(kind, Function::If) && index > 0 && matches!(arm, Node::RangeKind { .. })
 }
 
 /// Whether `arg` of `kind` needs no intersection although `kind` takes a scalar: a scalar, or
@@ -476,7 +496,8 @@ pub(super) fn legacy_context_intersects(
     index: usize,
     arg: &Node,
 ) -> bool {
-    is_scalar_context(kind, signature) || legacy_value_operand(kind, index, arg)
+    (is_scalar_context(kind, signature) && !is_reference_arm(kind, index, arg))
+        || legacy_value_operand(kind, index, arg)
 }
 
 /// A scalar argument, or any argument of a function whose arguments a legacy formula reads as
@@ -645,7 +666,9 @@ fn is_value_operation(node: &Node) -> bool {
 /// ([`leaves_call_whole`]): `=N(IF(1,{2;3}))` shows no `@` at all. INDEX of a CHOOSE whose arms
 /// are all arithmetic reads a value: `=INDEX(CHOOSE(1,B1:B6*1),3)` shows as
 /// `=INDEX(CHOOSE(1,@B1:B6*1),3)` (probes/legacy-choose-arm-aggregate-and-array-constant-at H3,
-/// excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
+/// excel-graph, T-1643), and so does INDEX of an IF whose arms are ranges ([`is_reference_arm`]):
+/// `=INDEX(IF(TRUE,B1:B6),3)` shows no `@` (probes/legacy-if-arm-range-argument N12, T-1935).
+/// Only the `@` placement changes: a dynamic formula
 /// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
     args.first()
@@ -657,6 +680,14 @@ pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool 
                     kind: Function::Choose,
                     args: arms,
                 }) if arms.len() > 1 && arms[1..].iter().all(is_value_operation)
+            )
+        || matches!(kind, Function::Index)
+            && matches!(
+                args.first().map(Node::ungrouped),
+                Some(Node::FunctionKind {
+                    kind: Function::If,
+                    args: arms,
+                }) if arms.len() > 1 && arms[1..].iter().all(|arm| is_reference_arm(&Function::If, 1, arm))
             )
 }
 

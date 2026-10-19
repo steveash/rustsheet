@@ -382,6 +382,7 @@ C	probes/legacy-array-at-shapes.case.json	40
 C	probes/legacy-array-result.case.json	46
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-choose-array-index.case.json	12
+C	probes/legacy-if-arm-range-argument.case.json	73
 C	probes/legacy-index-array-index.case.json	30
 C	probes/legacy-marker-spelling-name-plain.case.json	3
 C	probes/legacy-marker-spelling-name-xlfn.case.json	2
@@ -1785,8 +1786,6 @@ F	probes/legacy-array-at-shapes.case.json	S!J11
 F	probes/legacy-array-at-shapes.case.json	S!J20
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A1
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A2
-F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!J2
-F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!Y2
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100

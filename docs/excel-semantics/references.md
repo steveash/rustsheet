@@ -1528,13 +1528,39 @@ HLOOKUP over a single value", lookup.md). With A1:A6 = a,b,a,c,b,a and B1:B6 = 1
   `INDEX(…,0)` workaround (`=MATCH(1,INDEX((A1:A6="b")*(B1:B6=2),0),0)` 2 / 2), an array constant
   operand (`=MATCH(2,{1,2,3}*1,0)` 2 / 2) and XMATCH, a dynamic-array function
   (`=XMATCH(2,B1:B6*1)` 2 / 2). In `=MATCH(2,IF(B1:B6>0,B1:B6),0)` IF's condition is intersected and
-  its arm is not (`=MATCH(2,IF(@B1:B6>0,B1:B6),0)`, 2 / `#VALUE!`).
+  its arm is not (`=MATCH(2,IF(@B1:B6>0,B1:B6),0)`, 2 / `#VALUE!`; next entry).
 Evidence: probes/legacy-match-lookup-array-intersection (excel-graph, 2026-10-18, T-1862),
 corpus-bench/49300 Sheet1!C2.
-Engine: `legacy_value_operand` (`is_lookup_table`, static_analysis/legacy.rs). Known mismatch: ours
-also intersects IF's arm in the last form (2 on row 2 in Excel, `#N/A` in ours; T-1935).
+Engine: `legacy_value_operand` (`is_lookup_table`, static_analysis/legacy.rs); IF's arm in the last
+form: `is_reference_arm` (T-1935, next entry).
 Status: VERIFIED
-Tasks: T-1862
+Tasks: T-1862, T-1935
+
+## Legacy IF passes a range arm whole (T-1935)
+Rule: in a legacy (no `cm`) formula an IF arm that is a bare or parenthesized range is not
+intersected: IF returns the range, and the `@` goes on the IF call where its result is a value,
+none where it is a range argument. With A1:A6 = a,b,a,c,b,a, B1:B6 = 1,2,3,1,2,3, D1:F1 = 1,2,3, on
+row 2 (on the ranges' rows) / row 10 (off them):
+- in a range argument, no `@` and the whole range: `=SUM(IF(TRUE,B1:B6))` 12 / 12, `COUNT`,
+  `COUNTA` 6 / 6, `MAX` 3 / 3, `=SUM(IF(TRUE,(B1:B6)))` 12 / 12, `=SUM(IF(B2>0,B1:B6))` 12 / 12,
+  `=MATCH(3,IF(TRUE,B1:B6),0)`, `=MATCH(3,IF(FALSE,0,B1:B6),0)`,
+  `=MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)`, `=VLOOKUP(3,IF(TRUE,B1:B6),1,FALSE)`,
+  `=HLOOKUP(3,IF(TRUE,D1:F1),1,FALSE)`, `=LOOKUP(3,IF(TRUE,B1:B6))` and `=INDEX(IF(TRUE,B1:B6),3)`
+  3 / 3, `=ROWS(IF(TRUE,B1:B6))` 6 / 6, `=SUMIF(IF(TRUE,A1:A6),"a",B1:B6)` 7 / 7 (a reference:
+  SUMIF takes no array there), `=MATCH(3,IF(TRUE,{1,2,3}),0)` 3 / 3;
+- a range condition is still intersected: `=MATCH(3,IF(@B1:B6>0,B1:B6),0)` 3 / `#VALUE!`,
+  `=SUM(IF(@B1:B6>0,B1:B6))` 12 / `#VALUE!`;
+- in a value position the `@` is on the call: `=IF(TRUE,B1:B6)` shows as `=@IF(TRUE,B1:B6)` and
+  `=ABS(IF(TRUE,B1:B6))` as `=ABS(@IF(TRUE,B1:B6))`, 2 / `#VALUE!`;
+- an operation in the arm, and IFERROR's value, are values as before:
+  `=MATCH(3,IF(TRUE,@B1:B6+0),0)` `#N/A` / `#VALUE!`, `=MATCH(3,IFERROR(@B1:B6,0),0)` `#N/A` / `#N/A`;
+  CHOOSE's arm stays whole (`=MATCH(3,CHOOSE(1,B1:B6),0)` 3 / 3).
+Evidence: probes/legacy-if-arm-range-argument (excel-graph, 2026-10-19, T-1935),
+probes/legacy-match-lookup-array-intersection J2, Y2.
+Engine: `is_reference_arm` (static_analysis/legacy.rs). Other reference shapes in an arm (a
+defined name, OFFSET, INDEX, a `:` range operation) are unprobed and keep their `@`.
+Status: VERIFIED
+Tasks: T-1935
 
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value

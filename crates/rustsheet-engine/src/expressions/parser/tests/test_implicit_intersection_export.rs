@@ -790,6 +790,52 @@ fn legacy_array_values_intersect_in_value_positions() {
     ]);
 }
 
+// A legacy IF passes a range arm whole: the `@` goes on the IF in a value position and nowhere
+// under a range argument, so an explicit `@` on the arm survives the export there
+// (probes/legacy-if-arm-range-argument, T-1935).
+#[test]
+fn legacy_if_passes_a_range_arm_whole() {
+    check(&[
+        ("IF(TRUE,B1:B6)", "@IF(TRUE,B1:B6)", "IF(TRUE,B1:B6)"),
+        (
+            "ABS(IF(TRUE,B1:B6))",
+            "ABS(@IF(TRUE,B1:B6))",
+            "ABS(IF(TRUE,B1:B6))",
+        ),
+        (
+            "SUM(IF(TRUE,B1:B6))",
+            "SUM(IF(TRUE,B1:B6))",
+            "SUM(IF(TRUE,B1:B6))",
+        ),
+        (
+            "SUM(IF(TRUE,(B1:B6)))",
+            "SUM(IF(TRUE,(B1:B6)))",
+            "SUM(IF(TRUE,(B1:B6)))",
+        ),
+        (
+            "MATCH(2,IF(B1:B6>0,B1:B6),0)",
+            "MATCH(2,IF(@B1:B6>0,B1:B6),0)",
+            "MATCH(2,IF(B1:B6>0,B1:B6),0)",
+        ),
+        (
+            "INDEX(IF(TRUE,B1:B6),3)",
+            "INDEX(IF(TRUE,B1:B6),3)",
+            "INDEX(IF(TRUE,B1:B6),3)",
+        ),
+        (
+            "MATCH(3,IF(TRUE,B1:B6+0),0)",
+            "MATCH(3,IF(TRUE,@B1:B6+0),0)",
+            "MATCH(3,IF(TRUE,B1:B6+0),0)",
+        ),
+        // An explicit `@` on the arm is not one the import adds.
+        (
+            "SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))",
+            "SUM(IF(TRUE,@B1:B6))",
+            "SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))",
+        ),
+    ]);
+}
+
 // The coupon-schedule Analysis ToolPak functions (T-1822) are `LiftArrays` in every argument: a
 // legacy bare range keeps its text, an operation on one gets the `@`, and an array adds its shape
 // (probes/fin-remaining-later-argument-ranges).
