@@ -102,10 +102,9 @@ impl Model {
             &PERCENTILE_DATA,
             cell,
             &mut |model, data, values| {
-                if data.is_empty() {
-                    return num_error(cell);
-                }
+                // k's error comes before the empty-data `#NUM!` (gen-m9/d5bd4272655c5211 A31).
                 match model.cast_number_ref(value_at(values, 1), cell) {
+                    Ok(_) if data.is_empty() => num_error(cell),
                     Ok(k) => percentile_exc_impl(data.sorted(), k)
                         .map_or_else(|| num_error(cell), CalcResult::Number),
                     Err(e) => e,

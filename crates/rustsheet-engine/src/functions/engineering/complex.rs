@@ -202,15 +202,14 @@ fn complex_result(x: f64, y: f64, suffix: Suffix) -> CalcResult {
     CalcResult::String(Complex { x, y, suffix }.to_string().into())
 }
 
-/// How a complex argument reads empty text: IMCOS, IMCOSH, IMCOT, IMCSC, IMCSCH, IMSUM,
-/// IMPRODUCT parse it (`#NUM!`), the other functions read it as 0. `Zero` is our older behavior,
-/// not Excel's rule for IMSQRT (probably `#NUM!`, T-1385).
+/// How a complex argument reads a blank and empty text.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum EmptyText {
-    Zero,
+    /// IMSUM and IMPRODUCT: both are parsed (their walk handles a blank cell itself).
     Parse,
-    /// IMSUB, IMDIV and IMPOWER: a blank cell is 0 (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
-    /// Sheet2 G7:G10), empty text is `#NUM!` (probes/eng-imsub A12, A13).
+    /// Every other IM* argument: a blank cell is 0 (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
+    /// Sheet2 G7:G10, probes/eng-gen-sample-edges D3, D26:D32), empty text, typed or from a
+    /// formula, is `#NUM!` (probes/eng-imsub A12, A13, probes/eng-gen-sample-edges D1:D25).
     ZeroIfBlank,
 }
 
@@ -252,9 +251,7 @@ impl Model {
         }
         let blank = matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg);
         let value = Self::cast_string_ref(value, cell)?;
-        if value.is_empty()
-            && (empty == EmptyText::Zero || (empty == EmptyText::ZeroIfBlank && blank))
-        {
+        if value.is_empty() && empty == EmptyText::ZeroIfBlank && blank {
             return Ok((0.0, 0.0, Suffix::I));
         }
         parse_complex_number(&value).map_err(|_| num_error(cell))
@@ -266,7 +263,6 @@ impl Model {
         &mut self,
         kind: Function,
         args: &[Node],
-        empty: EmptyText,
         op: ComplexFn,
         cell: CellReferenceIndex,
     ) -> CalcResult {
@@ -274,7 +270,7 @@ impl Model {
             let [value] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
-            match Self::complex_of(value, empty, cell) {
+            match Self::complex_of(value, EmptyText::ZeroIfBlank, cell) {
                 Ok(z) => op(z, cell),
                 Err(error) => error,
             }
@@ -329,51 +325,39 @@ impl Model {
     }
 
     pub(crate) fn fn_imabs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imabs, args, EmptyText::Zero, imabs, cell)
+        self.lift_complex(Function::Imabs, args, imabs, cell)
     }
 
     pub(crate) fn fn_imaginary(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imaginary, args, EmptyText::Zero, imaginary, cell)
+        self.lift_complex(Function::Imaginary, args, imaginary, cell)
     }
 
     pub(crate) fn fn_imargument(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(
-            Function::Imargument,
-            args,
-            EmptyText::Zero,
-            imargument,
-            cell,
-        )
+        self.lift_complex(Function::Imargument, args, imargument, cell)
     }
 
     pub(crate) fn fn_imconjugate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(
-            Function::Imconjugate,
-            args,
-            EmptyText::Zero,
-            imconjugate,
-            cell,
-        )
+        self.lift_complex(Function::Imconjugate, args, imconjugate, cell)
     }
 
     pub(crate) fn fn_imcos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcos, args, EmptyText::Parse, imcos, cell)
+        self.lift_complex(Function::Imcos, args, imcos, cell)
     }
 
     pub(crate) fn fn_imcosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcosh, args, EmptyText::Parse, imcosh, cell)
+        self.lift_complex(Function::Imcosh, args, imcosh, cell)
     }
 
     pub(crate) fn fn_imcot(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcot, args, EmptyText::Parse, imcot, cell)
+        self.lift_complex(Function::Imcot, args, imcot, cell)
     }
 
     pub(crate) fn fn_imcsc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcsc, args, EmptyText::Parse, imcsc, cell)
+        self.lift_complex(Function::Imcsc, args, imcsc, cell)
     }
 
     pub(crate) fn fn_imcsch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcsch, args, EmptyText::Parse, imcsch, cell)
+        self.lift_complex(Function::Imcsch, args, imcsch, cell)
     }
 
     /// `IMDIV(inumber1, inumber2)`: both lift over an array and refuse a multi-cell range
@@ -406,19 +390,19 @@ impl Model {
     }
 
     pub(crate) fn fn_imexp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imexp, args, EmptyText::Zero, imexp, cell)
+        self.lift_complex(Function::Imexp, args, imexp, cell)
     }
 
     pub(crate) fn fn_imln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imln, args, EmptyText::Zero, imln, cell)
+        self.lift_complex(Function::Imln, args, imln, cell)
     }
 
     pub(crate) fn fn_imlog10(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imlog10, args, EmptyText::Zero, imlog10, cell)
+        self.lift_complex(Function::Imlog10, args, imlog10, cell)
     }
 
     pub(crate) fn fn_imlog2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imlog2, args, EmptyText::Zero, imlog2, cell)
+        self.lift_complex(Function::Imlog2, args, imlog2, cell)
     }
 
     // IMPOWER(imnumber, power): both lift over an array and refuse a multi-cell range
@@ -477,27 +461,27 @@ impl Model {
     }
 
     pub(crate) fn fn_imreal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imreal, args, EmptyText::Zero, imreal, cell)
+        self.lift_complex(Function::Imreal, args, imreal, cell)
     }
 
     pub(crate) fn fn_imsec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsec, args, EmptyText::Zero, imsec, cell)
+        self.lift_complex(Function::Imsec, args, imsec, cell)
     }
 
     pub(crate) fn fn_imsech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsech, args, EmptyText::Zero, imsech, cell)
+        self.lift_complex(Function::Imsech, args, imsech, cell)
     }
 
     pub(crate) fn fn_imsin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsin, args, EmptyText::Zero, imsin, cell)
+        self.lift_complex(Function::Imsin, args, imsin, cell)
     }
 
     pub(crate) fn fn_imsinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsinh, args, EmptyText::Zero, imsinh, cell)
+        self.lift_complex(Function::Imsinh, args, imsinh, cell)
     }
 
     pub(crate) fn fn_imsqrt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsqrt, args, EmptyText::Zero, imsqrt, cell)
+        self.lift_complex(Function::Imsqrt, args, imsqrt, cell)
     }
 
     /// `IMSUB(inumber1, inumber2)`: both lift over an array and refuse a multi-cell range
@@ -653,7 +637,7 @@ impl Model {
     }
 
     pub(crate) fn fn_imtan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imtan, args, EmptyText::Zero, imtan, cell)
+        self.lift_complex(Function::Imtan, args, imtan, cell)
     }
 }
 

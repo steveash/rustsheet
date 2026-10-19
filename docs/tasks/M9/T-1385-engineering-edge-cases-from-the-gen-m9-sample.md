@@ -3,7 +3,7 @@ id: T-1385
 title: "Engineering edge cases from the gen-m9 sample: CONVERT/DELTA/GESTEP error order, HEX2OCT negative places, IMSQRT(), Bessel fractional negative order, IM* E-notation parts"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -41,11 +41,21 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/3462856259a37891 Calc!A25 `=(..&IMPOWER("3+4i",1e-15))`: Excel "1+9.27295218001614E-16i", engine "1+0.000000000000000927295218001614i" (the IMPOWER E-notation item).
 
 ## Acceptance criteria
-- [ ] A probe case answers each item above, and its findings are in docs/excel-semantics/engineering.md.
-- [ ] The items with clear evidence are fixed, with no eval regressions. Any item left open is filed as
+- [x] A probe case answers each item above, and its findings are in docs/excel-semantics/engineering.md.
+- [x] The items with clear evidence are fixed, with no eval regressions. Any item left open is filed as
       its own task.
-- [ ] gen-m9/3462856259a37891 A25 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/3462856259a37891 A25 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bessel and IM* last-digit precision (T-0900, T-0908, T-0907).
+
+## Outcome
+probes/eng-gen-sample-edges (89 cells, excel-graph) answers every item; findings are in
+docs/excel-semantics/engineering.md "Engineering edge cases from a generated sample (T-1385)".
+Fixed: HEX2OCT and HEX2BIN of a negative number ignore a valid `places`; any negative Bessel order
+(even -1E-300) is `#NUM!`; empty text is `#NUM!` in every one-argument IM* function (a blank cell
+stays 0); CONVERT refuses a boolean number with `#VALUE!` before reading the units. Three
+hypotheses were wrong and already matched (DELTA/GESTEP error order and boolean cells, BITAND reads a
+boolean as its number, the IMPOWER E-notation cells, including gen-m9/3462856259a37891 A25, fixed by
+T-1766). Nothing left open.
