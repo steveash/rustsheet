@@ -271,6 +271,21 @@ Implemented in: `coerce_to_f64` (crates/rustsheet-engine/src/functions/math_and_
 Status: VERIFIED (Excel-cached; the boolean rule excel-graph)
 Tasks: T-0943, T-1358
 
+## MDETERM: partial-pivot LU, no singularity cutoff
+Rule: MDETERM is Gaussian elimination with partial pivoting (the largest absolute entry of the column, first such row on
+ties), rows updated as `a[r][k] -= (a[r][c] / pivot) * a[c][k]`, the determinant being the sign of the row permutation
+times the product of the pivots. A tiny pivot is kept, not treated as 0, so a singular matrix can return its rounding
+residual: `MDETERM({1,2,3;4,5,6;7,8,9})` (as a range) = 6.661338147750939E-16, not 0. Only a column whose remaining
+entries are all exactly 0 makes the result 0 (`MDETERM({1,2;2,4})` = 0). `MDETERM({1,2,3;4,5,6;7,8,10})` =
+-2.9999999999999982, the same elimination's rounding (not -3.0000000000000004 as LAPACK-style variants give). Which
+elimination fits was checked in IEEE doubles: dividing each product by the pivot instead of forming the multiplier first
+gives -4.66E-15 and -3.0000000000000036, and no pivoting gives 0 and -3.
+Evidence: probes/stats-evidence-floor-t1623 S!Q107, S!Q120, S!Q121 (excel-graph).
+Not known: whether MINVERSE has a near-singular cutoff (the engine gives `#NUM!` below a pivot of 2.2E-16; unprobed).
+Implemented in: `fn_mdeterm`/`lu_decompose` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs, T-1751)
+Status: VERIFIED (excel-graph)
+Tasks: T-1751
+
 ## Legacy (CSE) array formula over a larger range
 Rule: a legacy array formula entered over a range larger than its result fills the range: a 1x1
 result is repeated into every cell, a single-row result is repeated down and a single-column result
