@@ -1,6 +1,7 @@
 use chrono::DateTime;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::{
     calc_result::Range,
@@ -17,8 +18,9 @@ use crate::{
         },
         types::CellReferenceRC,
     },
-    language::{get_default_language, get_language},
-    locale::{get_default_locale, get_locale},
+    functions::logical::NamedLambdas,
+    language::{get_default_language, get_language, Language},
+    locale::{get_default_locale, get_locale, Locale},
     model::Model,
     types::{
         DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
@@ -179,13 +181,13 @@ impl Model {
                 // user's active language.
                 match self.parse_internal_formula(formula_body, &dummy_ref) {
                     Node::LambdaDefKind { parameters, body } => {
-                        ParsedDefinedName::LambdaDefinition(parameters, *body)
+                        ParsedDefinedName::LambdaDefinition(Arc::new((parameters, *body)))
                     }
                     // Excel leaves `Sheet1!#REF!` as the body of a name whose range was deleted.
                     Node::ErrorKind(error) => ParsedDefinedName::ErrorLiteral(error),
                     Node::ParseErrorKind { .. } => ParsedDefinedName::InvalidDefinedNameFormula,
                     // Intersections, constants, function calls: evaluated where used (T-0158).
-                    body => ParsedDefinedName::Formula(std::sync::Arc::new(body)),
+                    body => ParsedDefinedName::Formula(Arc::new(body)),
                 }
             };
 
@@ -702,15 +704,40 @@ impl Model {
             theme: Default::default(),
             external_books: Vec::new(),
         };
-        let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
         let parser = Parser::new(worksheet_names, vec![], HashMap::new(), locale, language);
 
-        let mut model = Model {
+        let mut model = Model::unparsed(
             workbook,
-            shared_strings: HashMap::new(),
-            parsed_formulas,
+            HashMap::new(),
+            parser,
+            locale,
+            language,
+            tz,
+            clock,
+        );
+        model.parse_formulas();
+        model.evaluate_conditional_formatting();
+        Ok(model)
+    }
+
+    /// A model of `workbook` before its formulas and defined names are parsed, with every piece
+    /// of evaluation state empty: the one definition of that state for both constructors
+    /// (`new_empty_with_clock`, `from_workbook_with_clock`).
+    pub(crate) fn unparsed(
+        workbook: Workbook,
+        shared_strings: HashMap<String, usize>,
+        parser: Parser,
+        locale: &'static Locale,
+        language: &'static Language,
+        tz: Tz,
+        clock: Clock,
+    ) -> Model {
+        Model {
+            workbook,
+            shared_strings,
+            parsed_formulas: Vec::new(),
             shared_formula_lookup: Vec::new(),
             call_name_spellings: CallNameSpellings::default(),
             parsed_defined_names: HashMap::new(),
@@ -724,16 +751,14 @@ impl Model {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             eta_lambdas: HashMap::new(),
+            named_lambdas: NamedLambdas::default(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
-        };
-        model.parse_formulas();
-        model.evaluate_conditional_formatting();
-        Ok(model)
+        }
     }
 }
 
