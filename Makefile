@@ -108,3 +108,15 @@ new-decision: ## New decision record with a collision-free number: make new-deci
 
 board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 	$(PY) scripts/tasks.py board
+
+# ---------------------------------------------------------------- Merge lock (decision 0075)
+.PHONY: merge-lock-acquire merge-lock-release merge-lock-status
+merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 (exit 1: busy)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(PY) scripts/merge_lock.py acquire --pr '$(PR)'
+
+merge-lock-release: ## Drop your merge lock (after the merge, a red CI, or any stop)
+	$(PY) scripts/merge_lock.py release
+
+merge-lock-status: ## Who holds the merge lock, and since when
+	$(PY) scripts/merge_lock.py status
