@@ -232,6 +232,9 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     6. `pairscan.py` on (N0, D1): 99.99%.
     7. `climb6.py`: 100.000% exact R and B on 134,336 points (`applym.py` applies lattice offsets).
     - Both controls (near and far truths) now succeed from zero knowledge.
+    - `run_xl.py` (the driver for steps 1-4) reproduces the far-truth result blind. Staircase ranking chooses the N
+      seed (5/5 against 2/5 and 0/5 for the D seeds), per-peak EM keeps 71 consistent matches, and exact track EM
+      accepts the same 7 tracks at 1-3e-7.
 
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
