@@ -24,4 +24,4 @@ T-1952 found that typed `1/2/2020 10:00:30` and `10:00 AM` become numbers. `ends
 -
 
 ## Outcome
-Added probes/date-text-typed-clock-shapes (17 shapes, excel-graph values, ENTERED log in docs/research/typed-clock-shapes-2026-10-19.md). Excel turns every probed shape into a number except `13:00 PM` and glued `10:00AM`; formats are `m/d/yyyy h:mm`, `mm:ss.0` (fractions) or General (out-of-range components). `typed_clock_shape` replaces `ends_with_typed_clock` and picks the format; dates.md UNVERIFIED note resolved. Eval: new probe passes in full (values).
+Added probes/date-text-typed-clock-shapes (17 shapes, excel-graph values, ENTERED log in docs/research/typed-clock-shapes-2026-10-19.md). Excel turns every probed shape into a number except `13:00 PM` and glued `10:00AM`; formats are `m/d/yyyy h:mm`, `mm:ss.0` (fractions) or General (out-of-range components). `typed_clock_shape` replaces `ends_with_typed_clock` and picks the format; dates.md UNVERIFIED note narrowed to the unprobed extrapolations; follow-up T-1986 (format of rejected-clock text, `13:00 PM` gets `m/d/yyyy`). Eval: new probe passes in full (values).
