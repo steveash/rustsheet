@@ -10,7 +10,7 @@ use crate::x87_exp::excel_exp;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
-use std::f64::consts::PI;
+use std::f64::consts::{FRAC_PI_2, PI};
 
 /// Smallest `|number/divisor|` for which Excel's `MOD` returns `#NUM!`: a decimal limit, not a
 /// power of two (probes/mod-quotient-threshold5).
@@ -418,9 +418,12 @@ impl Model {
     // 157 (docs/excel-semantics/numbers.md "ASIN's formulation"). Outside [-1, 1] ASIN's NaN
     // stays NaN, which is `#NUM!`.
     pub(crate) fn fn_acos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Acos, args, cell, |f| {
-            Ok(std::f64::consts::FRAC_PI_2 - excel_asin(f))
-        })
+        self.number_fn(
+            Function::Acos,
+            args,
+            cell,
+            |f| Ok(FRAC_PI_2 - excel_asin(f)),
+        )
     }
     pub(crate) fn fn_atan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Atan, args, cell, |f| Ok(f64::atan(f)))
@@ -641,14 +644,39 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if x == 0.0 && y == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Arguments can't be both zero".to_string(),
-            };
+        // Excel: see docs/excel-semantics/numbers.md "ATAN2 is ATAN(y/x) plus or minus pi" (probes/atan2-*).
+        if x == 0.0 {
+            if y == 0.0 {
+                return CalcResult::Error {
+                    error: Error::DIV,
+                    origin: cell,
+                    message: "Arguments can't be both zero".to_string(),
+                };
+            }
+            return CalcResult::Number(FRAC_PI_2.copysign(y));
         }
-        CalcResult::Number(f64::atan2(y, x))
+        // The quotient is Excel's `/`: a subnormal x divides like zero (#DIV/0!), overflow is #NUM!.
+        let q = match divide(y, x) {
+            Ok(q) => q,
+            Err(error) => {
+                return CalcResult::Error {
+                    error,
+                    origin: cell,
+                    message: "Invalid quotient".to_string(),
+                }
+            }
+        };
+        // `+ 0.0` turns -0 into +0, which Excel never returns.
+        let a = flush_subnormal(q.atan()) + 0.0;
+        CalcResult::Number(if x < 0.0 {
+            if y >= 0.0 {
+                a + PI
+            } else {
+                a - PI
+            }
+        } else {
+            a
+        })
     }
 
     pub(crate) fn fn_log(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
