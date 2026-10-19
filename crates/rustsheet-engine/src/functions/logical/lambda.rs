@@ -181,6 +181,7 @@ impl Model {
         let callee = self
             .evaluate_reference_arg(lambda, cell)
             .into_single_area(cell);
+        // The same guard as `call_callee`'s, kept in step with it.
         if let CalcResult::Range { .. } = callee {
             return reference_called(cell);
         }
