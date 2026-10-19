@@ -80,3 +80,11 @@ Plan:
 - Then take c by a 1-D FFT over the far runs.
 - Same for D.S6.
 - Plus the new n1001-n1128 data (about 2.1M points), which roughly doubles the coherent Z.
+
+## Control chain closed (N0 last)
+`n0scan.py` (exact-match rate over N0 with all other coefficients fixed, coarse step 256 ulps then
+fine) on `e2e_f1.txt` gives `e2e_final.txt`: **0.9997 exact vs the synthetic truth** (ss_fc start
+0.3066). N0 lands −66 ulps from truth inside its exact-equivalent plateau, so the pipeline recovers a
+bit-exact-equivalent set on the control. Residual differences from truth are all on tie plateaus
+(N1 +3, N8 +2, N9 −389, D1 +25), with no effect on outputs. Open: the D top (D6..D9), which the control
+took from the truth base. scan3 (cubic D.S6) is running.
