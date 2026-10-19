@@ -219,6 +219,13 @@ Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src
 `criteria_static_result` (expressions/parser/static_analysis.rs)
 Tasks: T-0207, T-0263, T-0278
 
+### A lifted *IF(S) evaluates its range arguments once per call
+When an array criterion lifts an *IF(S) call, a volatile range argument (`OFFSET(A1,0,0,RANDBETWEEN(1,6))`,
+`INDIRECT("A1:A"&RANDBETWEEN(1,6))`) is drawn once for the whole formula: every element walks the same range.
+Evidence: probes/ifs-volatile-range-once (excel-graph) C1-C3, where 8 always-true criteria over such a range give
+MAX = MIN for COUNTIFS, SUMIF (volatile criteria range) and COUNTIF (INDIRECT); C4, every element agrees on the
+COUNTIFS shape check between two independently drawn ranges. Ours resolves the ranges before the lift (T-0408).
+
 ## SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS: every range must have the first range's shape
 Rule: if any criteria (or sum) range is shaped differently from the first range, SUMIFS/COUNTIFS
 return `#VALUE!`, even when the cell counts are equal (2x4 vs 4x2). `=SUMIFS(Data!B7:C9,Data!A10:D12,"<5")`

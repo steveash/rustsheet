@@ -221,18 +221,25 @@ enum ReusePlan {
 
 /// For each element in row-major order, the row-major index of the first element whose every
 /// grid slot equals its own ([`Reuse::AnyEqual`]): itself when it is computed, an earlier one
-/// whose result it reuses otherwise. Also returns how many elements are computed.
+/// whose result it reuses otherwise. Also returns how many elements are computed. An element
+/// equal to the previous one takes its entry without hashing, so a run (the blank tail of a
+/// whole-column criteria range) costs one slot comparison per element, as under
+/// [`Reuse::EqualRuns`].
 fn first_equal_elements(args: &[LiftedArg], rows: usize, columns: usize) -> (Vec<usize>, u64) {
     let mut first: HashMap<ElementKey<'_>, usize> = HashMap::new();
-    let mut plan = Vec::with_capacity(rows.saturating_mul(columns));
+    let mut plan: Vec<usize> = Vec::with_capacity(rows.saturating_mul(columns));
+    let mut previous: Option<(usize, usize)> = None;
     for row in 0..rows {
         for column in 0..columns {
             let index = plan.len();
-            plan.push(
-                *first
+            let entry = match (previous, plan.last()) {
+                (Some(p), Some(&last)) if same_as(args, row, column, p) => last,
+                _ => *first
                     .entry(ElementKey { args, row, column })
                     .or_insert(index),
-            );
+            };
+            plan.push(entry);
+            previous = Some((row, column));
         }
     }
     let computed = u64::try_from(first.len()).unwrap_or(u64::MAX);
@@ -321,14 +328,14 @@ impl Model {
                 let (first, elements) = first_equal_elements(&lifted, rows, columns);
                 (ReusePlan::FirstEqual(first), elements)
             }
-            Reuse::EqualRuns => (
-                ReusePlan::EqualRuns,
-                count_walks(&lifted, rows, columns, Reuse::EqualRuns),
-            ),
-            Reuse::Never => (
-                ReusePlan::Never,
-                count_walks(&lifted, rows, columns, Reuse::Never),
-            ),
+            reuse => {
+                let plan = if reuse == Reuse::EqualRuns {
+                    ReusePlan::EqualRuns
+                } else {
+                    ReusePlan::Never
+                };
+                (plan, count_walks(&lifted, rows, columns, reuse))
+            }
         };
         let weight = options.work.weight();
         let visits = match cost {

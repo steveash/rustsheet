@@ -3,7 +3,7 @@ use crate::cast::number_text_too_long;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
-use crate::functions::lift::{LiftCost, LiftOptions};
+use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::Node,
@@ -81,19 +81,27 @@ impl Model {
     /// broadcast against each other (a position past a shorter array uses an `#N/A`
     /// criterion). Otherwise `compute` runs once with the criteria as they are.
     ///
-    /// `walk_cost` is what one walk of the walked range costs (the value range, or COUNTIFS's
-    /// first criteria range; [`Model::range_walk_cost`]): the call is `#ERROR!` when it times the
-    /// criteria count times the elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`.
+    /// `walked` is the range every element walks, as written and evaluated by reference (the value
+    /// range, or COUNTIFS's first criteria range): the call is `#ERROR!` when its used cells
+    /// ([`Model::range_walk_cost`], measured only when the call lifts) times the criteria count
+    /// times the elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`.
     /// `compute` reads only its criteria and the ranges resolved before the lift, so every
     /// repeated criteria element (the blank tail of a whole-column criteria range, the
     /// occurrence-count idiom `COUNTIF(A2:A10000,A2:A10000)`) reuses its first result (T-0408).
     fn lift_criteria(
         &mut self,
         criteria: Vec<CalcResult>,
-        walk_cost: u64,
+        walked: &CalcResult,
         cell: CellReferenceIndex,
         mut compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
+        // An unlifted call runs once and is not charged: measuring would clip the walked range
+        // to the used area on every plain SUMIFS.
+        let walk_cost = if criteria.iter().any(LiftedArg::is_grid) {
+            self.range_walk_cost(walked)
+        } else {
+            1
+        };
         // Each element walks the range once per criterion.
         let walks = u64::try_from(criteria.len()).unwrap_or(u64::MAX);
         self.lift_values(
@@ -141,8 +149,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let criteria = self.criteria_values(args, 2, cell);
-        let (walk_cost, ranges) = self.resolve_sum_ranges(args, cell, strict_shape);
-        self.lift_criteria(criteria, walk_cost, cell, |model, criteria| {
+        // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
+        let sum_value = self.evaluate_node_with_reference(&args[0], cell);
+        let ranges = self.resolve_sum_ranges(args, sum_value.clone(), cell, strict_shape);
+        self.lift_criteria(criteria, &sum_value, cell, |model, criteria| {
             compute(model, &ranges, criteria)
         })
     }
@@ -176,9 +186,8 @@ impl Model {
         let criteria = self.criteria_values(args, 1, cell);
         // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
         let first = self.evaluate_node_with_reference(&args[0], cell);
-        let walk_cost = self.range_walk_cost(&first);
         let ranges = self
-            .resolve_criteria_ranges(args, 0, first, cell)
+            .resolve_criteria_ranges(args, 0, first.clone(), cell)
             .and_then(|ranges| {
                 if same_shape(&ranges) {
                     Ok(ranges)
@@ -186,7 +195,7 @@ impl Model {
                     Err(shape_mismatch(cell))
                 }
             });
-        self.lift_criteria(criteria, walk_cost, cell, |model, criteria| match &ranges {
+        self.lift_criteria(criteria, &first, cell, |model, criteria| match &ranges {
             Ok(ranges) => model.count_ifs(ranges, criteria, cell),
             Err(error) => error.clone(),
         })
@@ -233,8 +242,8 @@ impl Model {
         Ok(ranges)
     }
 
-    /// The ranges of the SUMIFS-shaped functions, resolved once before the lift (T-0408), and
-    /// what one walk of the sum range as written costs. Every range must be shaped like the sum
+    /// The ranges of the SUMIFS-shaped functions, resolved once before the lift (T-0408);
+    /// `sum_value` is `args[0]` evaluated by reference. Every range must be shaped like the sum
     /// range, else `#VALUE!` (T-0209; SUMIFS from gen-m2, AVERAGEIFS/MINIFS/MAXIFS from
     /// probes/ifs-shape-mismatch). Only SUMIF's and AVERAGEIF's single-criterion path
     /// (`strict_shape` false) opts out: it never errors (T-0214), and walks a sum range resized
@@ -243,13 +252,11 @@ impl Model {
     fn resolve_sum_ranges(
         &mut self,
         args: &[Node],
+        sum_value: CalcResult,
         cell: CellReferenceIndex,
         strict_shape: bool,
-    ) -> (u64, Result<SumRanges, CalcResult>) {
-        // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
-        let sum_value = self.evaluate_node_with_reference(&args[0], cell);
-        let walk_cost = self.range_walk_cost(&sum_value);
-        let resolved = Self::ifs_range(sum_value, cell).and_then(|sum_range| {
+    ) -> Result<SumRanges, CalcResult> {
+        Self::ifs_range(sum_value, cell).and_then(|sum_range| {
             let first = self.evaluate_node_with_reference(&args[1], cell);
             let ranges = self.resolve_criteria_ranges(args, 1, first, cell)?;
             if strict_shape {
@@ -262,8 +269,7 @@ impl Model {
                 let sum_range = resize_to(&sum_range, &ranges[0]);
                 Ok(SumRanges { sum_range, ranges })
             }
-        });
-        (walk_cost, resolved)
+        })
     }
 
     /// Builds the predicates of `criteria` (one per criteria range, resolved before the lift).
