@@ -585,6 +585,7 @@ C	probes/negative-date-sections-1904.case.json	23
 C	probes/not-array-cast.case.json	38
 C	probes/npv-fvschedule-edges.case.json	6
 C	probes/npv-fvschedule-typed.case.json	16
+C	probes/npv-fvschedule-unprobed.case.json	8
 C	probes/npv-reference-forms.case.json	20
 C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
@@ -2082,6 +2083,7 @@ F	probes/npv-fvschedule-typed.case.json	Sheet1!A5
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A6
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A7
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A8
+F	probes/npv-fvschedule-unprobed.case.json	Sheet1!A8
 F	probes/npv-reference-forms.case.json	Sheet1!A1
 F	probes/npv-reference-forms.case.json	Sheet1!A10
 F	probes/npv-reference-forms.case.json	Sheet1!A11

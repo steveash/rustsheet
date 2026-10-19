@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "NPV typed empty text and empty-valued arguments; FVSCHEDULE text-vs-error order in arrays and ranges (T-1878).",
+  "tags": [
+    "M9",
+    "financial",
+    "npv",
+    "fvschedule",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=NPV(0.1,-10000,\"\",4250)",
+        "A2": "=FVSCHEDULE(1000,{\"x\",#N/A})",
+        "A3": "=FVSCHEDULE(1000,{#N/A,\"x\"})",
+        "A4": "=FVSCHEDULE(1000,B1:B2)",
+        "A5": "=FVSCHEDULE(1000,B3:B4)",
+        "A6": "=NPV(0.1,-10000,IF(TRUE,),4250)",
+        "A7": "=NPV(0.1,-10000,LET(x,,x),4250)",
+        "A8": "=NPV(0.1,-10000,IF(TRUE,),4250,2750)",
+        "B1": "x",
+        "B2": "=NA()",
+        "B3": "=NA()",
+        "B4": "x"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8"
+  ]
+}

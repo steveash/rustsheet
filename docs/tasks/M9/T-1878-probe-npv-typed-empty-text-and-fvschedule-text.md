@@ -3,7 +3,7 @@ id: T-1878
 title: "Probe NPV typed empty text and FVSCHEDULE text-vs-error order"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,9 +24,15 @@ Write one probe case (probes/npv-fvschedule-unprobed) with these cells, fill it 
 code only where Excel differs.
 
 ## Acceptance criteria
-- [ ] The probe case is filled from excel-graph and every cell passes or misses only by NPV ulp (T-1528).
-- [ ] financial.md records the findings.
-- [ ] `make check` green; reviewers approve.
+- [x] The probe case is filled from excel-graph and every cell passes or misses only by NPV ulp (T-1528).
+- [x] financial.md records the findings.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - NPV's last-digit misses, including fin-argument-modes H368 (NumericClose, ~2e-15 relative): T-1528.
+
+## Outcome
+Probe `probes/npv-fvschedule-unprobed` (8 cells) filled from excel-graph. All cells match the engine, so no
+code change: `NPV(..,"",..)` is #VALUE!, `IF(TRUE,)`/`LET(x,,x)` count as a cash flow of 0 (not skipped), and
+FVSCHEDULE returns the first of text/error left to right in arrays and ranges. A8 misses by 1 ulp (NPV, T-1528);
+recorded in `eval/baseline/probes.txt`. Findings in financial.md "NPV and FVSCHEDULE arguments".
