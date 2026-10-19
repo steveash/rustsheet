@@ -788,10 +788,13 @@ fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 /// tan(x+iy) in its double-angle form, `(sin 2x + i sinh 2y) / (cos 2x + cosh 2y)`: Excel's
 /// digits, where the tan/tanh form loses the last 1-10 of them when the real part is small
 /// (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx N2, N7, N15: `IMTAN("1.23+9.5121i")` has real part
-/// 6.89106871662165E-09; T-0907). Past `cosh 2y`'s range the value is `±0 ± i`, as tanh gives.
+/// 6.89106871662165E-09; T-0907). Past `cosh 2y`'s range the value is `±0 ± i`, as tanh gives;
+/// where the denominator rounds to 0 (y = 0 and x the double nearest π/2) it is `tan x`, finite.
 fn tan_parts(x: f64, y: f64) -> (f64, f64) {
     let denominator = f64::cos(2.0 * x) + f64::cosh(2.0 * y);
-    if denominator.is_finite() {
+    if denominator == 0.0 {
+        (x.tan(), 0.0)
+    } else if denominator.is_finite() {
         (
             f64::sin(2.0 * x) / denominator,
             f64::sinh(2.0 * y) / denominator,

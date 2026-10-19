@@ -134,19 +134,26 @@ fn fn_imcot() {
     );
 }
 
-// Past `cosh 2y`'s range IMTAN is `±0 ± i` and IMCOT `±0 ∓ i`, as tanh gives (T-0907).
+// Past `cosh 2y`'s range IMTAN is `±0 ± i` and IMCOT `±0 ∓ i`, as tanh gives; at the double
+// nearest π/2 IMTAN stays finite (T-0907).
 #[test]
 fn fn_imtan_imcot_large_imaginary_part() {
     let mut model = new_empty_model();
     model._set("A1", r#"=IMTAN("1+400i")"#);
     model._set("A2", r#"=IMTAN("1-400i")"#);
     model._set("A3", r#"=IMCOT("1+400i")"#);
+    model._set("A4", r#"=IMTAN("1.5707963267948966")"#);
 
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), "i");
     assert_eq!(model._get_text("A2"), "-i");
     assert_eq!(model._get_text("A3"), "-i");
+    // Near π/2 the double-angle denominator is (close to) 0: a finite number, never NaN.
+    assert!(model
+        ._get_text("A4")
+        .parse::<f64>()
+        .is_ok_and(f64::is_finite));
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
