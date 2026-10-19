@@ -33,6 +33,33 @@ fn annuity_factor(rate: f64, p: f64, period_start: bool) -> f64 {
     k * ((p - 1.0) / rate)
 }
 
+/// PMT's `P = (1+rate)^nper` (1 for no periods).
+fn payment_growth(rate: f64, nper: f64) -> f64 {
+    if nper == 0.0 {
+        1.0
+    } else {
+        (1.0 + rate).powf(nper)
+    }
+}
+
+/// PMT's fitted quotient for `P = rate_nper`; not finite when `pv*P` overflows.
+fn fitted_payment(rate: f64, rate_nper: f64, pv: f64, fv: f64, period_start: bool) -> f64 {
+    if period_start {
+        // type = 1
+        (fv + pv * rate_nper) * rate / ((1.0 + rate) * (1.0 - rate_nper))
+    } else {
+        (fv * rate + pv * rate * rate_nper) / (1.0 - rate_nper)
+    }
+}
+
+/// Whether PMT's fitted quotient overflows for a positive `rate` and `fv` 0, where
+/// [`compute_payment`] falls back to its divided-through form. CUMIPMT and CUMPRINC then take
+/// their closed form instead of summing IPMT/PPMT, as Excel does (probes/fin-cumipmt-period-bound
+/// A13-A19).
+pub(super) fn payment_overflows(rate: f64, nper: f64, pv: f64, period_start: bool) -> bool {
+    !fitted_payment(rate, payment_growth(rate, nper), pv, 0.0, period_start).is_finite()
+}
+
 fn compute_payment(
     rate: f64,
     nper: f64,
@@ -49,11 +76,7 @@ fn compute_payment(
     if rate <= -1.0 {
         return Err(Error::NUM);
     };
-    let rate_nper = if nper == 0.0 {
-        1.0
-    } else {
-        (1.0 + rate).powf(nper)
-    };
+    let rate_nper = payment_growth(rate, nper);
     // A `(1+rate)^nper` so small that its reciprocal overflows (0 or 2^-1070) is #NUM!, whatever
     // fv and type are, for PMT and so IPMT, PPMT and CUMIPMT (`PMT(-0.5,2000,1)`,
     // `PMT(-0.5,1070,0,5)`; probes/pmt-overflow A14, A15, E1:E8, excel-graph, T-1405).
@@ -61,12 +84,7 @@ fn compute_payment(
     if !inverse.is_finite() {
         return Err(Error::NUM);
     }
-    let result = if period_start {
-        // type = 1
-        (fv + pv * rate_nper) * rate / ((1.0 + rate) * (1.0 - rate_nper))
-    } else {
-        (fv * rate + pv * rate * rate_nper) / (1.0 - rate_nper)
-    };
+    let result = fitted_payment(rate, rate_nper, pv, fv, period_start);
     if result.is_finite() {
         return Ok(result);
     }
