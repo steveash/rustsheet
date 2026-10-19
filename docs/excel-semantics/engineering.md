@@ -97,18 +97,28 @@ Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922, T-1297
 Tasks: T-0922, T-1297
 
 ## CONVERT temperature
-Rule: the temperature pairs do not share one pivot unit; the last digits only fit these forms
-(probes/convert-targets, 40 cells, excel-graph, T-1297). Celsius output:
-`CONVERT(68,"F","C")` is exactly 20 (the old 273.5 constant, which gave 19.65, was wrong).
-From F: C `(v-32)*5/9`; K that plus 273.15; Reau `C*0.8`; Rank `5/9*(v+459.67)*1.8`
-(`CONVERT(68,"F","Rank")` is 527.6700000000001). From the others, Kelvin is the pivot
-(C `v+273.15`, Rank `5v/9`, Reau `5v/4+273.15`) and out of it C is `k-273.15`, Rank `9k/5`,
-Reau `(k-273.15)*0.8`, F `(k-273.15)*9/5+32`, except Rank to F which is `9k/5-459.67`.
-Each pair is fitted to two values (68, -40.5); prefixed temperature units are unprobed.
+Rule: every temperature pair has its own last-digit form; there is no shared pivot unit. The forms
+fit 9 oracle points per pair (7 in probes/convert-temperature-sweep: 0, 1, 0.1, 100, 12345.678,
+1E-5, 1E10; plus 68 and -40.5 in probes/convert-targets; excel-graph, T-1297, T-1860).
+From C: F `v*1.8+32`, K `v+273.15`, Rank `(v+273.15)*1.8`, Reau `v*0.8`. From F: C `(v-32)/1.8`,
+K `(v-32)/1.8+273.15`, Rank `v+459.67`, Reau `(v-32)*0.8/1.8`. From K: C `v-273.15`,
+F `(v-273.15)*1.8+32`, Rank `v*1.8`, Reau `(v-273.15)*0.8`. From Rank: C `v/1.8-273.15`,
+F `v-459.67`, K `v/1.8`, Reau `(v/1.8-273.15)*0.8`. From Reau: C `v*1.25`, F `v*2.25+32`,
+K `v*1.25+273.15`, Rank `(v*1.25+273.15)*1.8`. The Rankine/Kelvin ratio is a multiply or divide
+by `1.8`, never `9/5` (`CONVERT(0.1,"K","Rank")` is 0.18000000000000002).
+Prefixes: only `K` and `kel` take a prefix (`CONVERT(300,"mK","K")` is 0.3, `"kK"` 300000, `"yK"`
+to K 3E-22); `mC`, `kF`, `mRank`, `mReau` and their long names are `#N/A`
+(probes/convert-temperature-prefix-a/-b, all 11 prefixes). Prefix overflow:
+`CONVERT(1E290,"Ym","Ym")` is 1E+290 and `CONVERT(1E300,"Ym","Ym")` 1E+300 (not a same-unit identity: `CONVERT(1E300,"Ym","Zm")` is 1E+303, so the from- and to-prefix
+combine into one ratio when `value * from-prefix` would overflow), while `CONVERT(1E300,"Ym","m")`,
+`CONVERT(1E290,"Ym","km")` and `CONVERT(1E300,"YK","K")` are `#NUM!` (the combined ratio itself
+overflows the result; probes/convert-temperature-ov00..ov03, ov10-ov12, ov20-ov22). Unknown: a truly overflowing temperature result
+(`CONVERT(1E308,"C","F")`): excel-graph rejects any workbook holding a 1E308 literal
+("unsupportedWorkbook"), so it needs desktop Excel (M14, decision 0039).
 Backend: excel-graph.
-Status: VERIFIED (for the two probed values per pair)
+Status: VERIFIED (nine values per pair; overflowing results unprobed)
 Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
-Tasks: T-0922, T-1297
+Tasks: T-0922, T-1297, T-1860
 
 ## Engineering function argument modes
 Rule: every argument of the M9 engineering functions lifts elementwise over an array literal. All
