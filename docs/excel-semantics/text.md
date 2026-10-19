@@ -545,20 +545,39 @@ backreference (REGEXTEST C29) is T-1900 and the lazy empty matches (REGEXREPLACE
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Tasks: T-1360, T-1688, T-1272 (range lift)
 
-## REGEXREPLACE replacement syntax (T-1688)
+## REGEXREPLACE replacement syntax (T-1688, T-1897)
 Rule: the replacement is read as PCRE2's extended substitution. `$n` and `\n` are group n, where n is every digit
 that follows (`$1a` is group 1 then "a", `[\10]` is group 10); `${n}`, `${name}` and `$name` work too (`${x}$x` is
-`aab`); `$$` and `\$` are `$`, `\\` is `\`; `\n` is LF (CODE 10) and `\t` TAB (9); `\U$1` upper-cases (`Ab`, T-1897).
+`aab`); `$$` and `\$` are `$`, `\\` is `\`; `\n` LF, `\t` TAB, `\r` CR, `\a` 7, `\b` 8 (not a word boundary), `\e` 27,
+`\f` 12, `\v` 11. A backslash before any other non-alphanumeric character is that character (`[\-]`, `[\é]`), and a group
+that took no part in the match is empty (`REGEXREPLACE("b","(a)?b","[$1]")` is `[]`).
+Characters: `\xh` and `\xhh` (one or two hex digits, `\x41g` is `Ag`); `\x{h...}` and `\o{o...}` (spaces and tabs
+inside the braces are ignored, `\x{ 41 }` is `A`; any number of leading zeros; a value past U+10FFFF or a surrogate is
+an error); `\0` plus one or two octal digits (`\012` LF, `\0123` LF then "3", `\00` NUL); `\cX` is the upper-cased ASCII
+X XOR 64 (`\ca` is 1, `\c@` 0, `\c?` 127, `\c1` "q", `\c]` 29; a non-ASCII X is an error). `\` and digits 1-9: all
+the digits are a decimal number, a group if it is below 10 or no more than the pattern's groups (a missing group is an
+error), else, if it starts with three octal digits, those as a character up to `\377` (one or two such digits are an error) (`\101` is `A`, `\1010` is `A0`; with 12
+groups `\10` is group 10 but `\20` and `\77` are errors; `\400` an error; `\18`, `\181` errors).
+Case forcing: `\U` and `\L` set a mode for the rest of this match's replacement (literals, groups and the characters
+the escapes above make alike: `\L\x41\U\x61` is `aA`); `\u` upper-cases the next character only and keeps the mode
+(`\L\uxyz` is `Xyz`, `\u\L$1` too); `\l` is unlike PCRE2's: it lower-cases the next character and sets the `\L` mode, so
+`\Uab\lcd` is `ABcd` and `\U\lxyz` is `xyz` (and `\u\lxyz` is `xyz`, `\l\uxyz` is `Xyz`, `\l\Uabc` is `aBC`); `\E`
+ends the mode and a pending `\u`; an empty group or text keeps a pending `\u` for the text after it (`\u$2b` with
+`$2` empty is `B`); the state starts afresh with each match (`REGEXREPLACE("abab","(a)(b)","$2\U$1")` is `bAbA`); only
+the replacement is case-forced, never the subject text around the match. Case mapping is the one-to-one mapping of UPPER and
+LOWER (`\Uß` is `ß`; the final-sigma context of LOWER is not carried across pieces, nor past a `\u`/`\l` head character: unprobed). `\Q...\E` quotes up to
+the first `\E` (or the end): `\Q$1\E` is `$1`, `\Qa\\Eb` is `a\b`; quoted text is case-forced, and `\E` ending a quote
+does not end the mode (`\Uab\Qcd\Eef` is `ABCDEF`).
 `#VALUE!` (ERROR.TYPE 3, so the undecoded rich errors are `#VALUE!`): a group the pattern does not have (`$2`, `\2`,
-`$10`, `${y}`, `$y` with one unnamed group), a `$` that starts no reference (`$` alone), a trailing `\`, `\0`, `\x`
-with no hex digits and an unknown letter escape (`\q`), but only when something matches: with no match the text
-comes back unchanged (`REGEXREPLACE("zz","(a)","$2")`, `"\q"` and `"$"` are `zz`). A backslash before any other
-character is that character (`[\-]`, `[\é]`), and a group that took no part in the match is empty
-(`REGEXREPLACE("b","(a)?b","[$1]")` is `[]`).
-Evidence: probes/regex-pcre2-features B1-B30, E1-E7 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's
-probes/regexreplace-limit-and-syntax A12-A16.
-Ours: matches, except the escapes other than `\n` and `\t` (`\U`, `\L`, `\u`, `\l`, `\E`, `\r`, `\xhh`...), which
-are `#VALUE!` until T-1897. Implemented in `Replacement::new` (functions/text/regex_functions.rs).
+`$10`, `${y}`, `$y` with one unnamed group), a `$` that starts no reference (`$` alone), a trailing `\`, `\0` with no octal
+digit after it (`\0`, `\08`, `\0a`), `\x` with no hex digits or a bad `{...}`, `\o` without a valid `{...}`, `\c` at the
+end, and every other letter escape (`\q`, `\d`, `\w`, `\s`, `\h`, `\R`, `\g`, `\k`, `\p`, `\N`, `\z`...), but only
+when something matches: with no match the text comes back unchanged (`REGEXREPLACE("zz","(a)","$2")`, `"\q"` and
+`"$"` are `zz`).
+Evidence: probes/regexreplace-extended-escapes (244 cells, excel-graph, 2026-10-18, T-1897); probes/regex-pcre2-features
+B1-B30, E1-E7 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's probes/regexreplace-limit-and-syntax A12-A16.
+Ours: matches. Implemented in `Replacement::new`, `CaseState` (functions/text/regex_functions.rs); the size bound
+`Replacement::result_len` allows case mapping to lengthen text by half.
 Status: VERIFIED (excel-graph)
 Tasks: T-1688, T-1897
 
