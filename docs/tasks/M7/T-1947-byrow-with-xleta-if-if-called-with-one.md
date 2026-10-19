@@ -3,7 +3,7 @@ id: T-1947
 title: "BYROW with _xleta.IF (IF called with one argument) is #CALC!, not #ERROR!"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
