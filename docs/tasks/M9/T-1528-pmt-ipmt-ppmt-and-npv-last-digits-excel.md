@@ -80,4 +80,3 @@ so the candidate orders differ).
 `PPMT(1,1,60,1)` is -8.67361737988405E-19 = -2^-60 in Excel (probes/pmt-overflow B8, excel-graph, unscored there),
 where `pmt - ipmt` gives 0 (PMT -1, IPMT -1). That is exactly `-pv*rate/(P-1)` with P = 2^60, so Excel's first-period
 PPMT is not `PMT - IPMT` but a closed form of its own; PPMT's last digits may follow from that form.
-

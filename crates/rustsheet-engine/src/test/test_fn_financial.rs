@@ -578,7 +578,7 @@ fn fn_pmt_when_the_power_overflows_or_underflows() {
     model._set("A2", "=PMT(100,184,439103,0,1)");
     model._set("A3", "=PMT(100,153,1)");
     model._set("A4", "=PMT(1,2000,0,5)");
-    model._set("A5", "=PMT(-0.5,2000,1)");
+    model._set("A5", "=PMT(-0.5,1070,0,5)");
     model._set("A6", "=IPMT(100,1,184,439103)");
     model._set("A7", "=PPMT(100,1,184,439103)");
     model._set("A8", "=FV(100,184,1)");

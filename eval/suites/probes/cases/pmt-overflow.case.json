@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1405: PMT, IPMT, PPMT, PV, FV when (1+rate)^nper overflows a double (2^1024 and past), when P is finite but P-1 rounds to P (2^60), and when it underflows (negative rate or nper); and FLOOR's error order (number vs significance), on which the gen-m9 3b8e9078261b5bd2 A34 inference rests. B8 (PPMT(1,1,60,1), a finite-P control) is recorded but unscored: its last digit is T-1528's question, not overflow.",
+ "description": "T-1405: PMT, IPMT, PPMT, PV, FV when (1+rate)^nper overflows a double (2^1024 and past), when P is finite but P-1 rounds to P (2^60), and when it underflows (negative rate or nper); and FLOOR's error order (number vs significance), on which the gen-m9 3b8e9078261b5bd2 A34 inference rests. B8 (PPMT(1,1,60,1), a finite-P control) is recorded but unscored: its last digit is T-1528's question, not overflow. Column E: underflow (P = 0) with fv, type 1, IPMT, PPMT, CUMIPMT, a subnormal P, and the sign of a vanishing fv term.",
  "tags": [
   "M9",
   "probe",
@@ -37,7 +37,16 @@
   "Sheet1!C3",
   "Sheet1!D1",
   "Sheet1!D2",
-  "Sheet1!D3"
+  "Sheet1!D3",
+  "Sheet1!E1",
+  "Sheet1!E2",
+  "Sheet1!E3",
+  "Sheet1!E4",
+  "Sheet1!E5",
+  "Sheet1!E6",
+  "Sheet1!E7",
+  "Sheet1!E8",
+  "Sheet1!E9"
  ],
  "sheets": [
   {
@@ -74,7 +83,16 @@
     "C3": "=NPER(100,-1,1)",
     "D1": "=FLOOR(NA(),1/0)",
     "D2": "=FLOOR(1,1/0)",
-    "D3": "=ISNUMBER(PMT(100,184,439103))"
+    "D3": "=ISNUMBER(PMT(100,184,439103))",
+    "E1": "=PMT(-0.5,2000,0,5)",
+    "E2": "=PMT(-0.5,2000,1,0,1)",
+    "E3": "=PMT(-0.5,2000,1,5)",
+    "E4": "=IPMT(-0.5,1,2000,1)",
+    "E5": "=PPMT(-0.5,1,2000,1)",
+    "E6": "=CUMIPMT(-0.5,2000,1,1,1,0)",
+    "E7": "=PMT(-0.5,1070,1)",
+    "E8": "=PMT(-0.5,1070,0,5)",
+    "E9": "=PMT(1,2000,0,5)*1E+300"
    }
   }
  ],

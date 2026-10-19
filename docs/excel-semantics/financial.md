@@ -667,16 +667,19 @@ term vanishes. `PMT(100,184,439103)` is -43910300, `PMT(100,184,-439103)` 439103
 -434755.44554455444 (43910300/101), `PMT(100,153,1)` -100 (P = 101^153 is finite; only `pv*rate*P` overflows),
 `PMT(1,2000,1)` -1, `PMT(1,2000,1,0,1)` -0.5, `PMT(1,2000,1,5)` -1, `PMT(1,2000,0,5)` 0, `PMT(0.5,2000,3,7)` -1.5,
 and `PMT(1,1023,1)`, `PMT(1,1024,1)`, `PMT(1,1100,1)` are all -1. When P is finite but P-1 rounds to P
-(`PMT(1,60,1)`, P = 2^60) the ordinary quotient gives -1 (-0.5 for type 1). When P underflows to 0
-(`PMT(-0.5,2000,1)`, `PMT(1,-2000,1)`) PMT is `#NUM!`. IPMT and PPMT follow PMT: `IPMT(100,1,184,439103)` is
+(`PMT(1,60,1)`, P = 2^60) the ordinary quotient gives -1 (-0.5 for type 1). When P is so small that 1/P
+overflows (0, or the subnormal 2^-1070) PMT is `#NUM!` whatever fv and type are, and so are IPMT, PPMT and CUMIPMT:
+`PMT(-0.5,2000,1)`, `PMT(1,-2000,1)`, `PMT(-0.5,2000,0,5)`, `PMT(-0.5,2000,1,0,1)`, `PMT(-0.5,2000,1,5)`,
+`PMT(-0.5,1070,1)`, `PMT(-0.5,1070,0,5)`, `IPMT(-0.5,1,2000,1)`, `PPMT(-0.5,1,2000,1)`, `CUMIPMT(-0.5,2000,1,1,1,0)`
+(a subnormal P whose reciprocal is finite is unprobed). IPMT and PPMT follow PMT: `IPMT(100,1,184,439103)` is
 -43910300 and `PPMT` of it 0; `IPMT(1,1,2000,1)`, `IPMT(1,2,2000,1)` are -1 and their PPMT 0;
 `PPMT(1,1,60,1)` is -8.67361737988405E-19 (ours 0, unscored: a last-digit question, T-1528). PV, FV and NPER stay `#NUM!` there (`PV(100,184,1)`, `FV(100,184,1)`,
 `NPER(100,-1,1)`). The gen-m9 inference holds: `FLOOR(NA(),1/0)` is `#N/A`, FLOOR returns its number's error first.
-Evidence: probes/pmt-overflow Sheet1!A1:A18, B1:B8, C1:C3, D1:D3 (excel-graph, 2026-10-19, T-1405);
+Evidence: probes/pmt-overflow Sheet1!A1:A18, B1:B8, C1:C3, D1:D3, E1:E9 (excel-graph, 2026-10-19, T-1405);
 gen-m9/3b8e9078261b5bd2 Calc!A34 (excel-graph, 2026-10-12, T-1289).
 Status: VERIFIED (excel-graph)
-Ours: matches since T-1405 (`compute_payment` keeps the fitted quotient whenever it is finite and falls back to the
-divided-through form, so no finite result changes digits; P == 0 is `#NUM!`).
+Ours: matches since T-1405 except `PPMT(1,1,60,1)` (0, the T-1528 last-digit case) (`compute_payment` keeps the fitted quotient whenever it is finite and falls back to the
+divided-through form, so no finite result changes digits; a P whose reciprocal overflows is `#NUM!`).
 Tasks: T-1405
 
 ## Analysis ToolPak securities functions check frequency and dates first

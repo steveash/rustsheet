@@ -54,9 +54,11 @@ fn compute_payment(
     } else {
         (1.0 + rate).powf(nper)
     };
-    // `(1+rate)^nper` underflowing to 0 is #NUM! (`PMT(-0.5,2000,1)`, `PMT(1,-2000,1)`;
-    // probes/pmt-overflow A14, A15, excel-graph, T-1405).
-    if rate_nper == 0.0 {
+    // A `(1+rate)^nper` so small that its reciprocal overflows (0 or 2^-1070) is #NUM!, whatever
+    // fv and type are, for PMT and so IPMT, PPMT and CUMIPMT (`PMT(-0.5,2000,1)`,
+    // `PMT(-0.5,1070,0,5)`; probes/pmt-overflow A14, A15, E1:E8, excel-graph, T-1405).
+    let inverse = 1.0 / rate_nper;
+    if !inverse.is_finite() {
         return Err(Error::NUM);
     }
     let result = if period_start {
@@ -72,7 +74,6 @@ fn compute_payment(
     // through by P, whose limit is `-pv*rate` (`/(1+rate)` for type 1) and in which fv vanishes:
     // `PMT(100,184,439103)` is -43910300 and `PMT(100,153,1)` is -100 (probes/pmt-overflow,
     // excel-graph, T-1405). The fitted form above stays first, so finite results keep its digits.
-    let inverse = 1.0 / rate_nper;
     let result = if period_start {
         (fv * inverse + pv) * rate / ((1.0 + rate) * (inverse - 1.0))
     } else {
