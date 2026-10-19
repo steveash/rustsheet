@@ -3,7 +3,7 @@ id: T-1982
 title: "RANK, FORECAST and T.TEST lift their scalar arguments over a whole data argument"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
