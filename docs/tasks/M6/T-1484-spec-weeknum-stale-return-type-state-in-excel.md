@@ -3,7 +3,7 @@ id: T-1484
 title: "Spec: WEEKNUM stale return_type state in Excel's calc order (decision 0038 reopened)"
 milestone: M6
 lane: engine
-status: done
+status: blocked
 priority: P3
 size: M
 tier: opus
@@ -30,7 +30,7 @@ hidden dependency that incremental recalc cannot see.
       in docs/excel-semantics/dates.md.
 - [x] docs/specs/SPEC-NNNN-*.md states how the state is kept and which calc order it follows, and
       files implementation tasks with `make new-task`.
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing calc-chain import in general, beyond what the spec needs.
@@ -51,3 +51,11 @@ hidden dependency that incremental recalc cannot see.
   T-2069 (engine, sonnet, S, moved sheets) and T-2070 (research, sonnet, S, open questions).
 - Eval: probes known failures +42 (1913 -> 1955), all in the new M6 cases; no existing cell
   changed. With the 5 already listed, T-2068 and T-2069 own 47 cells.
+
+## Blocked because
+The review hit the work-loop's 3-round limit with one reviewer short. After round 3, security,
+architecture, quality and excel-fidelity APPROVE. Performance asked for a constant floor on the
+Excel-order move budget (SPEC-0015 "Cost") and a long-chain probe in T-2070. Both are in commit
+3189053e, and the reviewer said it would approve once they were in, but no round confirmed them.
+To unblock: run `reviewer-performance` on the current diff. On APPROVE, set `status: done` and
+merge PR #1245 under the steward merge policy.
