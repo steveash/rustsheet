@@ -5,6 +5,7 @@ use crate::{
     expressions::{parser::Node, types::CellReferenceIndex},
     functions::util::compare_values,
     model::Model,
+    reference_operators::Picked,
 };
 
 impl Model {
@@ -24,9 +25,25 @@ impl Model {
         cell: CellReferenceIndex,
         as_reference: bool,
     ) -> CalcResult {
+        match self.switch_pick(args, cell) {
+            Picked::Node(value) => self.evaluate_node_as(value, cell, as_reference),
+            Picked::Value(value) => value,
+        }
+    }
+
+    /// What SWITCH's scalar expression picks: the value of the first matching case or the
+    /// default, unevaluated; otherwise the value SWITCH gives (an argument-count error, the
+    /// expression's or a case's error, `#N/A`, or SWITCH lifted over an array expression).
+    /// Reference context follows the picked value as it follows IF's branch:
+    /// `SUBTOTAL(9,SWITCH(1,1,(H1,I2)))` is 11 (probes/subtotal-ifs-switch-reference-picks, T-2014).
+    pub(crate) fn switch_pick<'a>(
+        &mut self,
+        args: &'a [Node],
+        cell: CellReferenceIndex,
+    ) -> Picked<'a> {
         let args_count = args.len();
         if args_count < 3 {
-            return CalcResult::new_args_number_error(cell);
+            return Picked::Value(CalcResult::new_args_number_error(cell));
         }
         let expr = self.evaluate_node_in_context(&args[0], cell);
         if LiftedArg::is_grid(&expr) {
@@ -36,16 +53,16 @@ impl Model {
             }
             // Each element compares its value with the cases: one unit per argument.
             let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
-            return self.lift_values(
+            return Picked::Value(self.lift_values(
                 lifted,
                 LiftCost::Cells(units),
                 &LiftOptions::REUSE_EQUAL_RUNS,
                 cell,
                 &mut |_, element| switch_element(element, cell),
-            );
+            ));
         }
         if expr.is_error() {
-            return expr;
+            return Picked::Value(expr);
         }
 
         // How many cases we have?
@@ -54,18 +71,18 @@ impl Model {
         for case_index in 0..case_count {
             let case = self.evaluate_node_in_context(&args[2 * case_index + 1], cell);
             if case.is_error() {
-                return case;
+                return Picked::Value(case);
             }
             if compare_values(&expr, &case) == 0 {
-                return self.evaluate_node_as(&args[2 * case_index + 2], cell, as_reference);
+                return Picked::Node(&args[2 * case_index + 2]);
             }
         }
         // None of the cases matched so we return the default
         // If there is an even number of args is the last one otherwise is #N/A
         if args_count.is_multiple_of(2) {
-            return self.evaluate_node_as(&args[args_count - 1], cell, as_reference);
+            return Picked::Node(&args[args_count - 1]);
         }
-        no_match(cell)
+        Picked::Value(no_match(cell))
     }
 }
 
