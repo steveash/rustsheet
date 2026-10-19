@@ -24,7 +24,8 @@ scalar IF or CHOOSE picks and a LET body; IFS and SWITCH have no pick step (`ifs
 `switch_impl` evaluate the chosen value in place), so they need one (an `ifs_pick`/`switch_pick`
 returning `Picked`, like `if_pick`). ISREF reads its argument in functions/information/mod.rs.
 `Model::evaluate_picked_source` (drop_take.rs, T-1998) does the same walk below TAKE/DROP/
-TRIMRANGE: the two walks should end up as one definition (T-1998 review).
+TRIMRANGE: the two walks should end up as one definition (T-1998, T-2009 reviews), and
+`Model::pick_branch` (external_reference.rs, IF/CHOOSE for external references) may fold into it.
 
 ## Acceptance criteria
 - [ ] probes/subtotal-if-choose-over-xlookup passes in full; debug tests show no scalar-context

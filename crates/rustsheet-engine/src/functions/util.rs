@@ -426,8 +426,9 @@ impl Model {
 
     /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL, AREAS, SUM, COUNT, AVERAGE, MIN, MAX
     /// and AVERAGEA take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a
-    /// range, also as the arm a scalar IF or CHOOSE picks or a LET body (T-2009), are the cells they pick (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c
-    /// H4:H14, T-1206; -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
+    /// range, also as the arm a scalar IF or CHOOSE picks or a LET body (T-2009), are the cells
+    /// they pick (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c H4:H14, T-1206;
+    /// -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
     /// same rule. The call list is [`Function::picks_reference`].
     pub(crate) fn evaluate_picked_reference_arg(
         &mut self,
