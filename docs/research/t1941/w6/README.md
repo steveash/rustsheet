@@ -273,6 +273,18 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       ratio <0.3. The exact-R gain came from the function rows alone.
     - Fix: frequency-hold rows (`FREQ=w`: phase-equivalent weight per cycle/sample; 2621 makes half a bin cost the
       same as 0.02 cycles of phase). Measured-phase lattice runs must pass `latcheck.py` (all lines < 0.5 bins).
+    - With frequency hold (FREQ=2621), pass 1 on Excel: lines move 0.02-0.4 bins (Pn16/17 about 1); exact R 20.2% ->
+      27.5%, median relative R error 2.43e-16 -> 1.30e-16. Re-measured coherence against the new chain: D.T5, D.T6,
+      D.Pn14, D.Pn15, N.T5, N.Pn15 stay 24/24 runs; N.Pn14 22 -> 24; N.T4 21 -> 20, N.T6 21 -> 17; D.Pn16 20 -> 8. So
+      the gain comes with coherent lines.
+    - Pass 2 (re-measured phases, `latpass.sh`): 20.3% exact, 2.43e-16, worse than pass 1. N.Pn11/12/16/17 drift
+      1.5-2.7 bins.
+    - Bug: `applym.py` stepped the bit pattern, which is wrong once a coefficient crosses a binade (pass 2 crossed one).
+      It now adds m*ulp(c) as a value.
+    - Control without frequency hold (far truth, from its EM chain, 402 rows): offsets wrong by ~1e14 and lines moved
+      by hundreds to thousands of bins, the same failure as Excel's retracted pass 1.
+    - Exact climb (`climb6.py`, 20,000 points, steps up to 2^50 ulps) from the 27.5% chain: 32.1% after round 0, then
+      flat.
 
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
