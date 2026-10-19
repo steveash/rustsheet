@@ -25,3 +25,5 @@ probes/date-text-typed-clock-shapes N14: `1/2/2020 13:00 PM` stays text but the 
 
 ## Outcome
 Not a fill artifact: a second probe (probes/date-text-rejected-clock-formats, 16 shapes) shows the format follows a rule. Typed text that is a date plus a number-like clock and a rejected spaced AM/PM stays text with its date part's format (`m/d/yyyy`, `d-mmm-yy` for a month name); every other rejected shape stays General. Implemented in `rejected_clock_text_format` and applied in `set_user_input` (through the new `style_with_typed_format`, shared with the number path). Rule in docs/excel-semantics/dates.md. Eval delta: one new probe case (values only, all passing); the format check is a unit test.
+
+Follow-ups: T-1994 (`1/2/2020 10:00 A` is a number in Excel, text here; baseline F line S!O7).
