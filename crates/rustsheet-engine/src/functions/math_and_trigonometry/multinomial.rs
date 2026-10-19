@@ -9,9 +9,30 @@ use crate::{
     },
     model::Model,
 };
+use std::sync::LazyLock;
 
 /// The largest `n` whose `n!` is finite in a double (170! is about 7.3e306).
 const MAX_FACTORIAL_ARGUMENT: u64 = 170;
+
+/// `log10(k)` for k = 1..=170 by Excel's x87 log10, built once: a call adds and subtracts up to 340
+/// terms, and the kernel costs a few hundred ns where a load costs one.
+static LOG10_OF: LazyLock<[f64; MAX_FACTORIAL_ARGUMENT as usize]> = LazyLock::new(|| {
+    let mut table = [0.0; MAX_FACTORIAL_ARGUMENT as usize];
+    for (k, slot) in (1_u32..).zip(table.iter_mut()) {
+        *slot = excel_log10(f64::from(k));
+    }
+    table
+});
+
+/// `log10(k)` for 1 <= k <= 170; the caller caps the sum at 170 first (`fn_multinomial`), so any
+/// other k is never asked for.
+fn log10_of(k: u64) -> f64 {
+    usize::try_from(k)
+        .ok()
+        .and_then(|k| LOG10_OF.get(k.wrapping_sub(1)))
+        .copied()
+        .unwrap_or(0.0)
+}
 
 /// MULTINOMIAL of `values`, whose sum is at most 170, as Excel computes it. One double running
 /// sum adds `log10(k)` for k = 1..=sum, then subtracts `log10(k)` for k = 1..=n for each value
@@ -29,11 +50,11 @@ fn multinomial_value(values: &[u64]) -> f64 {
     let sum: u64 = values.iter().sum();
     let mut log = 0.0;
     for k in 1..=sum {
-        log += excel_log10(k as f64);
+        log += log10_of(k);
     }
     for &n in values.iter().rev() {
         for k in 1..=n {
-            log -= excel_log10(k as f64);
+            log -= log10_of(k);
         }
     }
     let exponent = log * std::f64::consts::LN_10;

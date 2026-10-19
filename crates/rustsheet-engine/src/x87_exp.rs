@@ -118,7 +118,7 @@ fn two_to_the_minus_one(magnitude: u128, drop: u32) -> (u128, i32) {
 }
 
 /// 2^k as a double for -1022 <= k <= 1023.
-pub(crate) fn power_of_two(k: i32) -> f64 {
+fn power_of_two(k: i32) -> f64 {
     let biased = u64::try_from(k + 1023).unwrap_or(1).clamp(1, 2046);
     f64::from_bits(biased << 52)
 }
@@ -151,6 +151,20 @@ pub(crate) fn dd_div_small(a: (f64, f64), k: f64) -> (f64, f64) {
     let product_error = q.mul_add(k, -product);
     let remainder = ((a.0 - product) - product_error) + a.1;
     two_sum(q, remainder / k)
+}
+
+/// `a + b` in double-double arithmetic.
+pub(crate) fn dd_add(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
+    let (s, e) = two_sum(a.0, b.0);
+    two_sum(s, e + a.1 + b.1)
+}
+
+/// `a / b` in double-double arithmetic: a quotient, then one correction from the remainder.
+pub(crate) fn dd_div(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
+    let q = a.0 / b.0;
+    let product = dd_mul((q, 0.0), b);
+    let remainder = dd_add(a, (-product.0, -product.1));
+    two_sum(q, remainder.0 / b.0)
 }
 
 /// RN64 of a positive double-double `hi + lo`: the 64-bit significand and its exponent.
