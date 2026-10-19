@@ -3,7 +3,7 @@ id: T-2030
 title: "TEXT and displayed text: fraction formats with placeholder denominators (?/?, ??/??, ???/???) pick Excel's fraction"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -54,16 +54,25 @@ Code: crates/rustsheet-engine/src/formatter/ (the fraction part T-2029 adds). Th
 is bounded (at most ~45 steps for a double); no allocation per step.
 
 ## Acceptance criteria
-- [ ] The 23 TEXT() lines above leave eval/baseline/gen-m10.txt, and the `TF` line
+- [x] The 23 TEXT() lines above leave eval/baseline/gen-m10.txt, and the `TF` line
       probes/displayed-text-formats S!A17 leaves eval/baseline/probes.txt; no new F or TF lines.
-- [ ] The 488 `TF` lines of eval/baseline/gen-m10.txt for `F!` cells under the seven codes above
+- [x] The 488 `TF` lines of eval/baseline/gen-m10.txt for `F!` cells under the seven codes above
       leave it; only the 12 overflow cells (255 `#`, T-1740) stay. If a few cells resist, list them with
       Excel's and our text in the Outcome and file a follow-up.
-- [ ] The fraction-choice rule, its stopping rule and the cells that decide them are in
+- [x] The fraction-choice rule, its stopping rule and the cells that decide them are in
       docs/excel-semantics/number-formats.md "Fraction formats"; unit tests for PI() under `# ??/??`,
       123456.789 under `# ??/??` and 12.345 under `# ???/???`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixed denominators (T-2029); numerator overflow to 255 `#` (T-1740); escaped literals and `=/=`
   between the parts (T-0982).
+
+## Outcome
+`Fraction` now takes a placeholder denominator (`Denominator::Placeholders`, formatter/parser.rs).
+formatter/fraction.rs picks Excel's fraction as the last continued-fraction convergent that fits the
+placeholders, stopping on a remainder below 1e-12 (no cell decides that cut-off), pads the
+denominator on the right, and under a `#` numerator drops the separator when either side is empty.
+Eval: gen-m10 known failures 101 -> 78 (the 23 TEXT cells) and text 3125 -> 2637 (the 488 `F!`
+cells; only the 12 overflow cells stay, T-1740); probes text 3 -> 2 (displayed-text-formats S!A17);
+poi known failures 481 -> 466 (NumberFormatTests Tests!A120:A133, A159: fraction cells); 0 regressions in any suite, corpus-bench included.

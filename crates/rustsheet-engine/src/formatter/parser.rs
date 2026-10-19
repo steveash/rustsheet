@@ -76,8 +76,15 @@ pub struct Fraction {
     pub numerator_start: usize,
     /// Index of the `/` literal in `tokens`; the denominator is not a token.
     pub slash: usize,
-    /// The denominator's digits as written (`16` in `# ??/16`).
-    pub denominator: String,
+    pub denominator: Denominator,
+}
+
+/// The denominator of a fraction section.
+pub enum Denominator {
+    /// Digits as written (`16` in `# ??/16`).
+    Fixed(String),
+    /// The kinds of its digit placeholders (`??` in `# ??/??`): Excel picks the fraction.
+    Placeholders(Vec<char>),
 }
 
 pub struct DatePart {
@@ -115,6 +122,15 @@ pub enum NumberState {
     Integer,
     Decimal,
     Exponent,
+}
+
+/// The kind (`#`, `?` or `0`) of a digit placeholder token.
+fn placeholder_kind(token: &Token) -> char {
+    match token {
+        Token::QuestionMark => '?',
+        Token::Zero => '0',
+        _ => '#',
+    }
 }
 
 impl NumberState {
@@ -300,28 +316,34 @@ impl Parser {
                     }));
                     index += 1;
                 }
-                // A `/` right after digit placeholders and before a number makes a fraction with
-                // that fixed denominator (`# ?/4`; number-formats.md "Fraction formats").
-                // TODO(T-2030): placeholder denominators (`?/?`) still print as plain digits.
+                // A `/` right after digit placeholders and before a number or more placeholders
+                // makes a fraction (`# ?/4`, `# ??/??`; number-formats.md "Fraction formats").
                 Token::Literal('/')
                     if last_token_is_digit
                         && !found_decimal_dot
                         && !is_scientific
                         && fraction.is_none()
-                        && matches!(next_token, Token::Literal('1'..='9')) =>
+                        && (matches!(next_token, Token::Literal('1'..='9'))
+                            || next_token_is_digit) =>
                 {
-                    let mut denominator = String::new();
-                    if let Token::Literal(first) = next_token {
-                        denominator.push(first);
-                    }
-                    loop {
-                        match self.lexer.peek_token() {
-                            Token::Literal(c) if c.is_ascii_digit() => denominator.push(c),
-                            Token::Zero => denominator.push('0'),
-                            _ => break,
+                    let denominator = if let Token::Literal(first) = next_token {
+                        let mut digits = String::from(first);
+                        loop {
+                            match self.lexer.peek_token() {
+                                Token::Literal(c) if c.is_ascii_digit() => digits.push(c),
+                                Token::Zero => digits.push('0'),
+                                _ => break,
+                            }
+                            self.lexer.next_token();
                         }
-                        self.lexer.next_token();
-                    }
+                        Denominator::Fixed(digits)
+                    } else {
+                        let mut kinds = vec![placeholder_kind(&next_token)];
+                        while self.lexer.peek_token().is_digit() {
+                            kinds.push(placeholder_kind(&self.lexer.next_token()));
+                        }
+                        Denominator::Placeholders(kinds)
+                    };
                     next_token = self.lexer.next_token();
                     let numerator_len = tokens
                         .iter()
