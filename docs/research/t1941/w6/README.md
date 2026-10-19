@@ -261,6 +261,14 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     - Excel's staircase detector gives 7 steps, of which 3 are real (1.527, 1.531, 1.613); the rest are
       single-segment noise. The driver's crossing ranking was inconclusive (best 4/7).
 
+24. **Excel, measured-phase lattice, pass 1** (`latsolve.py ... measured`, `xlphase.py`, `applym.py`).
+    - Input: the 6-track EM chain (`xl_EM5`). 300 measured per-run phase rows (amplitude ratio 0.7-1.4; coherent lines
+      D.T5, D.T6, D.Pn14-16, N.T4-6, N.Pn14-15). BKZ-30, MPFR-200 LLL (fpylll needs `method='proved'` for MPFR).
+    - Recovered offsets are 1e12-1e15 ulps, the same range as the far control's true offsets from its EM chain
+      (1e9-1.3e15).
+    - Applied to Excel R on 20,000 points: exact 20.2% -> 25.6%, median relative R error 2.43e-16 -> 2.31e-16.
+      A real but partial step. Pass 2 (re-measured phases, lattice again) follows.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
