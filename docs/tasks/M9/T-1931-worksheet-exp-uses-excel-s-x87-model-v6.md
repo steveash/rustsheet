@@ -31,8 +31,9 @@ cells at large |a| are 1 ulp off it, mostly low.
   merge the branch).
 
 ## Acceptance criteria
-- [x] `fn_exp` uses `excel_exp` with the worksheet flush and overflow rules unchanged; a curated EXP probe
-  subset (with provenance) is bit-exact except the listed V6 near-tie cells.
+- [x] `fn_exp` uses `excel_exp`, keeping subnormal results (the "flush" above was the Graph artifact of decision
+  0042) and the overflow rule unchanged; a curated EXP probe subset (with provenance) is bit-exact except the
+  listed V6 near-tie cells.
 - [x] `make eval-baseline` shows no regression (EXP, SINH/COSH/TANH, FISHERINV, power and exp-ln probes).
 - [ ] `make check` green; reviewers approve.
 
@@ -54,4 +55,22 @@ cells at large |a| are 1 ulp off it, mostly low.
   regressions, no fixes), and no other probes-numeric case changed.
 - SINH/COSH/TANH/FISHERINV stay on libm: switching them to `excel_exp` changed no probed cell (numbers.md), so there
   is no evidence either way and no follow-up switch task.
-- Follow-up: T-1940 (the F2XM1 near-tie residuals).
+- Performance (review of PR #1132). V6 is slower than libm. `excel_exp` costs about 1.1 to 1.3 us per call against
+  6 to 14 ns for `f64::exp`, and nearly all of that is the 26-term double-double series in `two_to_the_minus_one`.
+  New cases in `crates/rustsheet/benches/math_lift.rs` measure it (release, `cargo bench -p rustsheet --bench
+  math_lift -- NAME`, one case per process, medians of 11 runs, two runs each of the parent with `f64::exp` and of
+  this branch):
+
+  | case | before (`f64::exp`) | after (V6) |
+  |---|---|---|
+  | `EXP, per row`: 100,000 cells `=EXP(A{r}/100000)` | 59 to 60 ms | 174 to 199 ms |
+  | `EXP, lifted`: `=SUM(EXP(A1:A1000000/1000000))` | 582 to 608 ms | 1.69 to 1.70 s |
+  | control `ABS, per row` / `ABS, lifted` | 59 to 65 ms / 459 to 464 ms | 47 ms / 444 to 451 ms |
+
+  That is about 2.9x on EXP-only sheets, or roughly 1.1 us more per EXP evaluation. The ABS controls do not move.
+  It is accepted for parity (directive 1): libm's exp misses 6,011 of the 22,194 curated Excel cells, and V6 misses
+  none of them. The cost is a fixed, allocation-free amount per call (the kernel-work table entry), so it cannot
+  grow with the input. T-1945 (functions-math, perf) owns a fast path that keeps V6's bits. The reviewer found that
+  dropping the per-step divisions or enabling FMA does not help.
+- Follow-ups: T-1940 (the F2XM1 near-tie residuals), T-1945 (a V6 fast path, perf), T-1944 (probe EXP's overflow
+  edge near 709.78, `EXP(710)`, and the underflow edge near -745.13).
