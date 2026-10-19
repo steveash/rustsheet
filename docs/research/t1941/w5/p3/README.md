@@ -45,3 +45,32 @@ They reproduce the function but not c5's stage coordinates. That is expected, so
   to below c5.
 - Degree reduction does not unlock this kernel, and the evidence favours (9,9), or (9,8) with D9 below its
   visibility.
+
+## 4. D-chain tie-line lattice on real data: no D-only solution (`../lines/dsolve.py`)
+- The method recovers D4 exactly and D5 within 4-7 ulps on synthetic data, with D9 fixed or free (`FREE9=1`,
+  quanta of 2^-62).
+- On the real data no D-only move set fits the 146 D.S3/D.S4/D.S5 tie-line phases:
+
+  | free | BOUND (ulps) | rows in lattice | rms, all rows | rms, lattice rows | exact |
+  |---|---|---|---|---|---|
+  | D3-D8 | 1e5 / 1e6 | 45 | 0.248 / 0.248 | 0.071 / 0.055 | 0 |
+  | D3-D9 | 1e5 / 1e6 | 45 | 0.250 / 0.226 | 0.047 / 0.041 | 0 |
+  | D3-D9 | 1e7 | 60 | 0.232 | 0.047 | 0 |
+
+  A true solution fits all rows at about 0.035-0.037 (controls).
+- **The real phases are reliable.** First-half against second-half phase per run (`../lines/halfcheck.py`):
+
+  | data | D.S3 | D.S4 | D.S5 |
+  |---|---|---|---|
+  | real | 0.034 | 0.051 | 0.157 |
+  | synthetic | 0.041 | 0.048 | 0.123 |
+
+- So the failure is the move space, not the measurement. Excel's D stage values are not c5's D plus an integer
+  move of D3-D9 within 1e7 ulps.
+  - Either they lie farther out (c5 is pinned only to about 1e-10 relative near 1, about 1e6 ulps, and the
+    lattice turns ambiguous beyond that);
+  - or the D-chain evaluation differs from c5's structure in a way the tie lines see, such as a different
+    degree or evaluation order.
+- Next:
+  1. A joint N+D solve with function rows, where the N chain lets the move stay function-preserving.
+  2. Adding the coordinator's e901-e915 ladders (not yet committed when this was written).
