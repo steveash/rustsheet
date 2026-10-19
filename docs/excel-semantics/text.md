@@ -344,7 +344,7 @@ once to size its result: over 65,535 UTF-16 units it is
 broadcast cap (64 MiB, first entry) is one `#VALUE!`.
 The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
 ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE), as
-Excel's are (T-1817, below); the POSIX classes are not (T-1903).
+Excel's are (T-1817, below); POSIX classes are rewritten to Excel's Unicode ones ("REGEX* POSIX classes are Unicode (T-1903)").
 The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE replacement syntax (T-1688)"; the
 pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
@@ -665,11 +665,37 @@ Implemented in: `fn_value` (functions/text/common.rs), through `text_arg` and `b
 Status: VERIFIED (excel-graph)
 Tasks: T-1791
 
+## REGEX* POSIX classes are Unicode (T-1903)
+Rule: inside a bracket, a POSIX class matches what PCRE2 in UCP mode matches, by Unicode property, not ASCII only:
+`alnum` L or N (`²`, `½`, `Ⅳ`, Arabic-Indic and fullwidth digits too); `alpha` L (`ª`, CJK; not `²` or `Ⅳ`); `ascii` U+0000-U+007F;
+`blank` tab and the Zs spaces (NBSP, U+3000; not LF, VT, NEL or U+2028); `cntrl` Cc (NEL too; not the soft hyphen, ZWSP or BOM);
+`digit` Nd (Arabic-Indic and fullwidth digits; not `²`); `graph` L, M, N, P, S and Cf (soft hyphen, ZWSP, BOM, a combining mark and an
+emoji are graphic; spaces and controls are not); `print` graph plus the Zs spaces (not tab or U+2028); `punct` every P plus the ASCII
+symbols (`$`, `+`, `<`, `^`, `@`, the backtick and `~` are punctuation; `×` and `€` are not); `space` White_Space (NEL, NBSP, U+2028, U+3000; not ZWSP); `lower`
+Ll and `upper` Lu (`ª` is not lower, `ǅ` neither); `word` L, N, Mn and Pc (`_`, `²`, a combining mark; not an emoji); `xdigit` 0-9,
+A-F, a-f and their fullwidth forms (not Arabic-Indic digits). `[:^name:]` and `[^[:name:]]` are the complements.
+`[:upper:]` and `[:lower:]` ignore case-insensitive matching: `REGEXTEST("a","(?i)[[:upper:]]")` and `REGEXTEST("A","(?i)[[:lower:]]")`
+are FALSE, and so is `(?i)[[[:upper:]]]` on `a` (which cannot tell a nested bracket from PCRE2's `[[:upper:]` then `]`: nesting is unconfirmed); negated, they complement the unfolded class (`(?i)[^[:upper:]]` and `(?i)[[:^upper:]]` on `a`
+are TRUE). Next to a literal they still are (`(?i)[[:upper:]x]` on `a` FALSE). Ours handles only a plain non-negated bracket (T-1989).
+The case_sensitivity argument 1 behaves the same (`REGEXTEST("a","[[:upper:]]",1)` is FALSE). `&&` in a bracket intersects (`[[:alpha:]&&[:lower:]]`
+on `A` and `&` is FALSE); a literal `^`, `-` or `&` next to a class stays literal (`[[:upper:]^a]` matches `^`, not `b`).
+Syntax: `[a[:digit:]]` and `[[:alpha:][:digit:]]` mix classes with other items; `[\[:alpha:]]` is no class (`":"` FALSE).
+`[:alpha:]` outside a bracket, an unknown or upper-case name (`[[:foo:]]`, `[[:ALPHA:]]`), `[[.a.]]`, `[[=a=]]` and a range from a class
+(`[[:alpha:]-z]`, `[a[:upper:]-z]`) are invalid patterns (ERROR.TYPE 3); ours accepts them (T-1985).
+UNVERIFIED: the characters the probe does not cover (U+180E and U+061C, U+2066-U+2069 in graph and print, U+180E in blank, spacing marks
+in word) follow PCRE2's documented UCP definitions; Excel already departs from stock PCRE2 once (`&&` intersects), so the docs are weak evidence.
+Evidence: probes/regex-posix-classes (excel-graph, 2026-10-19): 47 characters × 19 patterns, and column Z for the syntax;
+probes/regex-posix-classes-b (bracket neighbours, nested and negated `(?i)`, `&&`, case_sensitivity 1);
+probes/regexreplace-limit-and-syntax A23.
+Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled;
+upper and lower become a `(?-i:...)` alternative of their bracket.
+Status: VERIFIED (excel-graph)
+
 ## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)
 Rule: a REGEXREPLACE result may be up to 65,535 UTF-16 units; one unit more is `#CALC!`. `LEN(REGEXREPLACE(REPT("a",32767),"a","bb"))` is 65534; with `REPT("a",N)&REPT("c",M)` and `"a"` → `"bbb"`, 65,535 units is 65535 and 65,536 or 65,537 is `#CALC!`; the cap counts UTF-16 units, not characters (`"a"` → `"b"&UNICHAR(128512)`: 65,535 units in 49,151 characters is 65535, 65,536 units in 49,150 characters `#CALC!`), and not matches (32,767 matches giving 65,534 units pass). 98,301 to 327,670 units (`REPT("a",32767)`, `"a"` → 3 to 10 b's) and the empty pattern with `bbbbbbbbbb` (360,447) are `#CALC!`. Lifted, the cap is per element: `REGEXREPLACE(REPT("a",{1,32767}),"","bbbbbbbbbb")` is `"bbbbbbbbbbabbbbbbbbbb"` and `#CALC!` (probes/regexreplace-result-cap-lifted). A cell holds such a result: `=REGEXREPLACE(REPT("a",32767),"a","bb")` is the 65,534 b's, `LEN` of the cell 65534, `ISERROR` FALSE.
 Other functions on a result over 32,767 units: `LEN`, `LEFT`, `MID(..,40000,10)` (10), `ISTEXT` (TRUE), `ISERR`/`ISERROR` (FALSE), `IFERROR(LEN(..),-1)` (65534), a nested `REGEXREPLACE`, `REGEXEXTRACT` and `REGEXTEST(..,"^b{65534}$")` (TRUE) take it as text; `SUBSTITUTE(..,"b","c")` and `UPPER(..)` are `#VALUE!` (ours 65534; T-1904). `TYPE` is 64 and `ERROR.TYPE` 3, as for any text over 255 units (information.md "TYPE and ERROR.TYPE of text over 255 UTF-16 units").
 Replacement syntax: `$1$1` and `${1}x` on `(a)` give `aab` and `axb`, `$0$0` gives `aab`; named group `${x}$x` gives `aab`. A bare `$`, `a$` and `$|$$` forms are rich-value errors the oracle does not decode yet (A12, A17, A18 pending).
-Unicode: `\w`, `\pL`, `\p{L}`, `\b` and the POSIX class `[[:alpha:]]` all treat é as a letter (`REGEXTEST("é","[[:alpha:]]")` is TRUE; ours FALSE, the regex crate's POSIX classes are ASCII; T-1903); `REGEXEXTRACT("naïve","\w+")` is "naïve".
+Unicode: `\w`, `\pL`, `\p{L}`, `\b` and the POSIX class `[[:alpha:]]` all treat é as a letter (`REGEXTEST("é","[[:alpha:]]")` is TRUE; ours too since T-1903); `REGEXEXTRACT("naïve","\w+")` is "naïve".
 Probing note: excel-graph refuses to open (OpenWorkbookBlockedWorkbook, "exceeds the size limit") a probe workbook that builds more than two or so 65,534-unit texts, or a `REPT("b",32767)` replacement matched twice, so the long-result questions are split over probes/regexreplace-long-result-a to -i; `LEN(REGEXREPLACE(REPT("a",32767),"a","bb")&"")` could not be opened even alone (unprobed).
 Evidence: probes/regexreplace-limit-and-syntax, probes/regexreplace-result-cap, probes/regexreplace-result-cap-lifted, probes/regexreplace-long-result-a to -g and -i (excel-graph, 2026-10-18).
 Implemented in: `MAX_REPLACED_UNITS` / `over_cap` in functions/text/regex_functions.rs, checked on the measured length before the result is built.
