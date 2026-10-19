@@ -560,9 +560,9 @@ impl Model {
 
     pub(crate) fn fn_datedif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // Every argument lifts over a range or array: the dates (probes/date-argument-modes F5:F8)
-        // and the unit (probes/date-math-lift-driver-edges G1-G5). Errors keep their pre-lift order:
-        // the dates' own, #NUM! of a reversed pair, the unit's, then out-of-calendar #NUM! (T-1355;
-        // UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
+        // and the unit (probes/date-math-lift-driver-edges G1-G5). Errors come in Excel's order: the
+        // dates' own (start first), the unit's, then #NUM! of a reversed pair or an out-of-calendar
+        // date, then a bad unit (probes/datedif-days360-error-order, excel-graph, T-1430).
         let date_system = self.workbook.settings.date_system;
         self.lift_call(Function::Datedif, args, cell, &mut |model, values| {
             let [start, end, unit] = values else {
@@ -629,11 +629,13 @@ impl Model {
         unit: Result<&str, Error>,
     ) -> Result<f64, Error> {
         let (start_serial, end_serial) = (start_serial.floor() as i64, end_serial.floor() as i64);
+        // A unit error beats a reversed pair and an out-of-calendar date: `DATEDIF(10,5,NA())` and
+        // `DATEDIF(3000000,5,NA())` are #N/A (probes/datedif-days360-error-order A1, A16; dates.md
+        // "DATEDIF argument errors before date checks").
+        let unit = unit?;
         if end_serial < start_serial {
             return Err(Error::NUM);
         }
-        // A unit error beats an out-of-calendar start date (dates.md "DATEDIF argument errors before date checks").
-        let unit = unit?;
         let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
         let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;
         // The units are ASCII, so an ASCII case-blind match is the upper-casing it replaces.
@@ -737,8 +739,9 @@ impl Model {
         // The dates and the method lift over a range or array (probes/date-argument-modes F15:F18,
         // probes/date-math-lift-driver-edges G6-G10). The European-method flag follows Excel's
         // logical coercion: numbers are truthy when non-zero, and only the text "TRUE"/"FALSE" is
-        // accepted. The dates' own errors come first, then the method's, then the dates' #NUM!, as
-        // before the lift (UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
+        // accepted. The dates' own errors come first, then the method's, then the dates' #NUM!
+        // (probes/datedif-days360-error-order C1-C19, excel-graph; dates.md "DATEDIF and DAYS360
+        // error order", T-1430).
         let date_system = self.workbook.settings.date_system;
         self.lift_call(Function::Days360, args, cell, &mut |model, values| {
             let dates = model

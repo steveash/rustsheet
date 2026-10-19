@@ -1081,7 +1081,7 @@ Evidence: gen-m9 (excel-graph, 2026-10-12, T-1289): 1782efcecd5d4b1b Calc!A10, A
 A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, A21; eefcc3989f31de76 A22;
 95efb37a9874f82e A2; b5352ebdb9c5f1a1 A24; 288b99797f58f149 A3; d5bd4272655c5211 A31; 65faaeb48419087d A17. The arguments
 are read from the cases' Data sheets; each cell's other operands were checked not to decide the result.
-Ours: the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal stays `#VALUE!`, unprobed); `LARGE(#N/A,1)` is `#N/IMPL!`; PERCENTILE.EXC checks empty data
+Ours: GROWTH and TREND match the single-value, error and size-before-text rules (T-1402); the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal stays `#VALUE!`, unprobed); `LARGE(#N/A,1)` is `#N/IMPL!`; PERCENTILE.EXC checks empty data
 before k; `PERCENTRANK.EXC` of a single value equal to x is 1, not 0.5 (probes/percentrank-single-value B6). `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); with one value, x below or above it is `#N/A` for all three, an error x (`#DIV/0!`, text `#VALUE!`) beats that `#N/A`, and any numeric significance (0, negative, fractional) gives 1 rather than `#NUM!` (a text significance is `#VALUE!`) (probes/percentrank-single-value B2-B20); an empty array is `#N/A`.
 Status: VERIFIED (web) for the listed cells
 Tasks: T-1401, T-1402, T-1403
@@ -1647,7 +1647,7 @@ makes the whole result `#VALUE!` (`TREND(A1:A6,B1:B6,D1:D2)`, trend L39-O39). Wi
 gives a row result (`TREND(A1:A6,B1:B6,{7,8})` is 1x2, SUM 15.17142857142857, trend L6-N6; ours 1 column, SUM 7.2). The multi-column known_x cases of the probe (L32, L33) hit text and blank cells, so the
 plain multi-column shape is unprobed.
 Evidence: probes/regression-trend (excel-graph, 2026-10-16, T-1620).
-Ours: differs for the empty arguments, array constants, single points, zero-variance x and the text/error inputs.
+Ours: differs for the empty arguments, array constants, zero-variance x and the text/error inputs. A single point with a constant term matches (T-1402: TREND is that value whatever new_x is, GROWTH its ln/exp round trip); a single point without one (`TREND(5,2,4,FALSE)`) is a fit through the origin, UNVERIFIED. The error-before-text and size-before-text order also applies to TREND, LINEST and LOGEST here, inferred from GROWTH/TREND cells and unprobed for them; a range that holds text and then an error cell gives that error, where probes/regression-trend says `#VALUE!` (T-1726). LINEST and LOGEST of one point are accepted by Excel (linest-modes K141, logest-modes K162); ours still rejects them (T-1741, T-1742).
 Status: VERIFIED (web)
 Tasks: T-1726 (overlaps T-1402)
 
