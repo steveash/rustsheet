@@ -3,7 +3,7 @@ id: T-1901
 title: "Split functions/lift/kinds.rs by family before it passes the 1000-line limit"
 milestone: M9
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
