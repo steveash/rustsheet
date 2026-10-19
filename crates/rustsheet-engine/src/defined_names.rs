@@ -11,7 +11,7 @@ use crate::{
         },
         token::Error,
         types::{CellReferenceIndex, CellReferenceRC},
-        utils::is_valid_identifier,
+        utils::{is_cell_spelled_name, is_valid_identifier},
     },
     functions::logical::SharedLambda,
     model::Model,
@@ -234,7 +234,7 @@ impl Model {
         scope: Option<u32>,
         formula: &str,
     ) -> Result<(), String> {
-        let sheet_id = self.defined_name_slot(name, scope)?;
+        let sheet_id = self.defined_name_slot(name, scope, true)?;
         // Defined-name formulas are stored internally in English so they keep
         // working when the user switches language/locale.
         let context = self.defined_name_context();
@@ -266,8 +266,18 @@ impl Model {
 
     /// The `sheet_id` a new defined name `name` in `scope` would get, or an error when the name
     /// is not a valid identifier, the scope is not a sheet index, or the name already exists there.
-    fn defined_name_slot(&self, name: &str, scope: Option<u32>) -> Result<Option<u32>, String> {
-        if !is_valid_identifier(name) {
+    ///
+    /// `loading` admits a name spelled like an A1 cell (`NLG1`): Excel opens a workbook defining
+    /// one, though its Name Manager refuses to create one, so only the loading path (`define_name`)
+    /// takes it. The lexer reads such a spelling as the cell, so the name never shadows it
+    /// (docs/excel-semantics/references.md "Legacy N and T marker spelling").
+    fn defined_name_slot(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+        loading: bool,
+    ) -> Result<Option<u32>, String> {
+        if !(is_valid_identifier(name) || (loading && is_cell_spelled_name(name))) {
             return Err("Name: Invalid defined name".to_string());
         }
         let name_upper = name.to_uppercase();
@@ -296,7 +306,7 @@ impl Model {
         scope: Option<u32>,
         formula: &str,
     ) -> Result<Option<u32>, String> {
-        let sheet_id = self.defined_name_slot(name, scope)?;
+        let sheet_id = self.defined_name_slot(name, scope, false)?;
 
         // Make sure the formula is valid: a cell/range reference, a LAMBDA definition or an error
         // literal such as `Sheet1!#REF!`.
