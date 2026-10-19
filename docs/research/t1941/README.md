@@ -24,9 +24,9 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - corr = Excel LN(y); a = y - 0.5; b = a*corr; d = b - y; e = d + 0.9189385332046727 (ln sqrt(2pi));
   - z = 1/y; z2 = z*z; r = B10; then r = r*z2 + B_k for k = 9..1; s = r*z; GAMMALN = e + s;
   - B_k = B_2k/(2k(2k-1)) correctly rounded to double (1/12, -1/360, ..., -174611/125400).
-  - Score: 159,744 of 159,744 points (`gammaln_big_check.c`, `USEC=1 NT=10 ./glc rows.txt 8 1e308`). That is
-    r118-r125, the x >= 8 half of r206, r207, r211 and r212, from 8 to 2.7e15.
-  - 11-13 terms give 159,740 and 9 terms fewer. Cody's ALGAMA coefficients and his divide-by-y^2 form are not
+  - Score: 291,957 of 291,957 points (`gammaln_big_check.c`, `USEC=1 NT=10 ./glc rows.txt 8 1e308`), from 8 to 7.8e299. That includes
+    r118-r125, r206-r212 at x >= 8, r301-r303 (up to 7.8e299), r402-r403 and the r401 sweep.
+  - 11 terms give 291,931 (12 misses at 8.03 alone), and 9 terms fewer. Cody's ALGAMA coefficients and his divide-by-y^2 form are not
     used. The cut is exactly at 8: below it, r206 matches only 45%.
   - With this machine's hardware FYL2X for LN, 3 points miss. At those, RN64 of the log lands exactly on a
     53-bit tie, where the exact LN model gives Excel's value, so the kernel takes Excel's LN unchanged.
