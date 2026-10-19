@@ -239,6 +239,13 @@ impl Model {
         self.last_lambda_id += 1;
         id
     }
+    /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
+    /// made it (a cell holding one is `#CALC!`), so what the LAMBDAs captured
+    /// (`Model::store_closure`) is dropped with it, not kept for the rest of the pass.
+    pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
+        self.evaluate_cell(cell);
+        self.lambda_captures.clear();
+    }
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
         self.eta_lambdas.clear();

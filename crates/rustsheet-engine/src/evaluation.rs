@@ -656,10 +656,7 @@ impl Model {
         let mut restart = None;
         for cell in anchors.into_iter().chain(everything) {
             self.evaluation.root = Some(cell);
-            self.evaluate_cell(cell);
-            // No LAMBDA outlives the formula that made it (a cell holding one is `#CALC!`), so
-            // what the LAMBDAs captured is dropped with it, not kept for the rest of the pass.
-            self.lambda_captures.clear();
+            self.evaluate_root_cell(cell);
             if self.evaluation.restart.is_some() {
                 restart = self.evaluation.restart.take();
                 break;
