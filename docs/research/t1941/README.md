@@ -43,6 +43,21 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - So everything below about 0.7 reduces exactly to the near-1 kernel on [0.7, 1.7).
   - The near-1 piece on [~0.7, 1.5] is fl(t*A) with t = x-1 exact and A a stored double. It uses no LN, and its
     structure is open (W1).
+- **GAMMA for x >= 10 is 99.84% exact (W4, verified by the coordinator).** Every op is fl53(fl64(.)), with
+  EXP model V6 and LN = FYL2X:
+  - h = x/2; n = floor(h); c2 = h - n; r = x^n by right-to-left binary powering, every square and multiply stored;
+  - v = r*EXP(c2*LN(x)), which is x^(x/2);
+  - w1 = 1/x; s = the 10-term Bernoulli series of large-x GAMMALN, in w1; W = EXP(s);
+  - t = EXP(-x)*sqrt(w1); t = t*v; t = t*v; t = t*2.50662827463100050242 (sqrt(2pi)); GAMMA = t*W.
+  - Score: 155,714 of 155,964 committed points with 10 <= x < 171.6243769563027, excluding integers <= 88 and
+    exact half-integers (`gamma_big_check.c`). Integers 89-171 match 85 of 85.
+  - Each of the 250 misses is fixed by flipping one stage rounding. 80% are W = EXP(s) near-midpoints
+    (0.003-0.014 ulp), so Excel's s differs by about 1 ulp of s near x = 10-16. Using Excel's LN column instead
+    of FYL2X does not change the rate.
+  - Quirk: the binary powering, with v used twice, makes Excel's GAMMA up to about +-40 ulp off the true value
+    near x = 150.
+  - Special paths: integers n <= 88 take the downward product (n-1)(n-2)...2. Exact half-integers m+0.5 >= 10.5
+    take another, more accurate path (unsolved, W3). The cut is exactly x >= 10.
 - **GAMMA (W4, structure).** It follows Cephes `gamma`: the downward product while x >= 3, division while x < 2,
   then fl(fl(z*P(t))/Q(t)) on [2,3). It is bit-exact at x near 1.37e-9. Excel's P/Q coefficients are its own,
   running 5-9e-17 above Gamma.
