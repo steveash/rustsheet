@@ -427,9 +427,9 @@ fn power_with(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> Result<f64
 }
 
 /// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)` (`exp_of_product`; for
-/// [`power`] EXP's kernel [`excel_exp`] on a twice-rounded product), a negative exponent as one over the positive
-/// power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180 numeric oracle cells over
-/// 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep),
+/// [`power`] EXP's kernel [`excel_exp`] on a twice-rounded product), a negative exponent as one
+/// over the positive power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180
+/// numeric oracle cells over 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep),
 /// and `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` = 9.999999999999827E+99, where libm `exp` is 2 ulps
 /// lower (probes-numeric/power-ulp-sources A13; docs/excel-semantics/numbers.md "Non-integer
 /// exponents: exp(y·ln x)"). A negative `x` gives NaN.
