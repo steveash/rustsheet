@@ -15,11 +15,9 @@ pub(crate) enum ArgKind {
     LiftArrays,
     /// Lifts over an array; a range is handed to the kernel whole, as data (the D-functions'
     /// `criteria`, probes/db-argument-modes F11:F23; entered by T-1389).
-    #[allow(dead_code)] // TODO(T-1389): entered with the D-functions.
     LiftArraysRangeWhole,
     /// Read once as written (`evaluate_node_with_reference`) and handed to every element whole
     /// (LARGE's array, holidays, LOOKUP's vectors).
-    #[allow(dead_code)] // TODO(T-1236): WORKDAY's holidays are the first `Whole` entry.
     Whole,
     /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
@@ -89,7 +87,7 @@ impl ArgKinds {
     }
 }
 
-use ArgKind::{Lift, LiftArrays, WholeByCaller};
+use ArgKind::{Lift, LiftArrays, LiftArraysRangeWhole, Whole, WholeByCaller};
 use KernelWork::{Constant, Weighted};
 
 /// Two Analysis `ToolPak` arguments, both required: `EDATE(start_date, months)`,
@@ -164,6 +162,12 @@ const ATP_5_OF_6: ArgKinds = ArgKinds::fixed(
     ],
     Constant,
 );
+/// `DSUM(database, field, criteria)` and the other D-functions: the database is read whole, `field`
+/// lifts over an array and a two-cell range is `#VALUE!`, `criteria` lifts over an array and a range
+/// is the criteria table, read whole (probes/db-argument-modes D11:D22, F11:F23). Each element
+/// scans the database, so `Model::db_call` charges the database's cells per element
+/// (`LiftCost::Cells`).
+const DATABASE: ArgKinds = ArgKinds::fixed(3, &[Whole, LiftArrays, LiftArraysRangeWhole], Constant);
 // --- Engineering (T-1383) -------------------------------------------------------------------
 /// Two worksheet arguments that lift over an array and a range: BITAND, BITOR, BITXOR,
 /// BITLSHIFT, BITRSHIFT, the ROUND family, MOD, FLOOR and CEILING.
@@ -485,6 +489,19 @@ impl Function {
             // the function's own reader (`statistical/sorted_data.rs`) and sorted once per call.
             // A kernel looks up its sorted numbers in O(1) or by binary search (PERCENTRANK); the
             // call pays for the numbers through its `LiftCost`.
+            // The D-functions: see `DATABASE`.
+            Function::Daverage
+            | Function::Dcount
+            | Function::Dcounta
+            | Function::Dget
+            | Function::Dmax
+            | Function::Dmin
+            | Function::Dproduct
+            | Function::Dstdev
+            | Function::Dstdevp
+            | Function::Dsum
+            | Function::Dvar
+            | Function::Dvarp => Some(&DATABASE),
             Function::Large
             | Function::Small
             | Function::PercentileCompat
