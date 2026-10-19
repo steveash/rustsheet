@@ -9,6 +9,7 @@ use crate::{
     functions::{util::array_node_to_calc_result, Function},
     language::get_default_language,
     model::Model,
+    reference_operators::RefArg,
 };
 
 use super::r#let::assign_variable_ids;
@@ -152,6 +153,27 @@ fn reference_called(cell: CellReferenceIndex) -> CalcResult {
 }
 
 impl Model {
+    /// [`Self::evaluate_node_with_reference`] of a node that is no plain reference: a LET or
+    /// LAMBDA call whose body gives a reference, a single cell too, is that reference for OFFSET
+    /// and COUNTIF (`OFFSET(LET(x,A1,x),1,0)`, `COUNTIF(LAMBDA(x,x)(A1),">0")` read A1;
+    /// probes/lambda-union-reference-callers D1, D2, D5, excel-graph; T-1951).
+    pub(crate) fn evaluate_call_with_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::FunctionKind {
+                kind: Function::Let,
+                ..
+            }
+            | Node::LambdaCallKind { .. } => self
+                .evaluate_reference_arg(node, cell)
+                .into_single_area(cell),
+            _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
     /// A call written in the formula, `callee(args)`, of what its callee evaluates to. A called
     /// reference is `#REF!`, even when its cell holds a LAMBDA (`(A1)(A2)`, `(C1)(2)`;
     /// docs/excel-semantics/references.md "Calling a parenthesized operand", T-0149); anything
@@ -178,18 +200,18 @@ impl Model {
         lambda: &Node,
         call_args: &[Node],
         cell: CellReferenceIndex,
-    ) -> CalcResult {
+    ) -> RefArg {
         let callee = self
             .evaluate_reference_arg(lambda, cell)
             .into_single_area(cell);
         // The same guard as `call_callee`'s, kept in step with it.
         if let CalcResult::Range { .. } = callee {
-            return reference_called(cell);
+            return RefArg::Value(reference_called(cell));
         }
         let mut caller = self
             .lambda_caller(&callee, call_args.len())
             .keeping_references();
-        self.call_lambda_caller_with_nodes(&mut caller, call_args, cell)
+        self.call_lambda_caller_with_nodes_arg(&mut caller, call_args, cell)
     }
 
     /// What a called LET variable or LAMBDA parameter holds. A union is a reference, so calling
@@ -310,6 +332,7 @@ impl Model {
         self.call_prepared(caller, cell, |_, _| {
             Binding::Value(values.next().unwrap_or(CalcResult::EmptyArg))
         })
+        .into_single_area(cell)
     }
 
     /// One call of `caller` with argument nodes evaluated in the calling cell, as `call_lambda`
@@ -320,6 +343,18 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        self.call_lambda_caller_with_nodes_arg(caller, call_args, cell)
+            .into_single_area(cell)
+    }
+
+    /// [`Self::call_lambda_caller_with_nodes`] keeping the areas of a union a reference-keeping
+    /// `caller` returns.
+    fn call_lambda_caller_with_nodes_arg(
+        &mut self,
+        caller: &mut LambdaCaller,
+        call_args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> RefArg {
         self.call_prepared(caller, cell, |model, i| match call_args.get(i) {
             Some(arg) => model.bind_argument(arg, cell),
             None => Binding::Value(CalcResult::EmptyArg),
@@ -339,7 +374,7 @@ impl Model {
         caller: &mut LambdaCaller,
         cell: CellReferenceIndex,
         mut bind: impl FnMut(&mut Self, usize) -> Binding,
-    ) -> CalcResult {
+    ) -> RefArg {
         let mut prepared = match caller.prepared.take() {
             Some(prepared) => prepared,
             None => self.prepare_lambda(&caller.lambda, caller.provided, cell),
@@ -355,16 +390,15 @@ impl Model {
                 }
                 let result = if caller.references {
                     self.evaluate_reference_arg(body, cell)
-                        .into_single_area(cell)
                 } else {
-                    self.evaluate_node_in_context(body, cell)
+                    RefArg::Value(self.evaluate_node_in_context(body, cell))
                 };
                 for &(raw_id, _) in ids {
                     self.variable_stack.remove(raw_id);
                 }
                 result
             }
-            Err(error) => error.clone(),
+            Err(error) => RefArg::Value(error.clone()),
         };
         if !self.lambdas_since_read(&prepared) {
             prepared.lambda_mark = self.last_lambda_id;

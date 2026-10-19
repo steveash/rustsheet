@@ -395,6 +395,7 @@ C	probes/isref-union-operands.case.json	9
 C	probes/lambda-helper-range-slices.case.json	46
 C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
+C	probes/lambda-union-reference-callers.case.json	18
 C	probes/lambda-value-arguments.case.json	41
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
