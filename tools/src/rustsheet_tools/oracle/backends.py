@@ -297,6 +297,15 @@ class GraphBackend:
                 if not isinstance(to, int) or to >= position(CANARY_SHEET):
                     raise OracleError(f"sheet op move {sheet!r} to {to}: past the last sheet")
                 move(sheet, to)
+            elif op == "insert_row":
+                # One blank row above row `to`, cells below shifted down, as the T-1853 session did
+                # (docs/research/t1853-legacy-cell-edits-2026-10-18.md).
+                self._call(
+                    "POST",
+                    f"{ref(sheet)}/range(address='{to}:{to}')/insert",
+                    json={"shift": "Down"},
+                    headers=sid,
+                )
             print(f"SHEET OP {op} {sheet!r} {to!r}", file=sys.stderr)
 
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:

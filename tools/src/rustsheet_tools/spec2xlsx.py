@@ -25,7 +25,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
   * `"sheet_ops": [{"op": "rename", "sheet": "Data", "to": "Inputs"}, {"op": "add", "sheet": "New"},
     {"op": "move", "sheet": "Inputs", "to": 0}]` at the top level are sheet edits made after the
     workbook loads and before it is recalculated (T-1608): `add` appends a sheet, `rename` renames
-    one (Excel rewrites the formulas that refer to it), `move` puts one at a 0-based position. The
+    one (Excel rewrites the formulas that refer to it), `move` puts one at a 0-based position,
+    `{"op": "insert_row", "sheet": "S", "row": 1}` inserts a blank row above row 1 (T-1933). The
     docProps custom properties `rustsheet.sheetop.<n>` hold them as JSON, n from 1 in order, and the
     oracle backend replays them in Excel; the engine adapter applies them through its edit API.
   * A sheet may list `"hidden_rows": [3, 5]` (1-based rows written with `hidden="1"`) and
@@ -91,7 +92,7 @@ _FIXED_CREATED = datetime(2000, 1, 1)
 ENTERED_PROPERTY = "rustsheet.entered"
 SHEET_OP_PROPERTY = "rustsheet.sheetop"
 TEXT_PROPERTY = "rustsheet.text"
-SHEET_OPS = ("add", "rename", "move")
+SHEET_OPS = ("add", "rename", "move", "insert_row")
 
 _A1 = re.compile(r"^\$?([A-Za-z]{1,3})\$?(\d+)$")
 
@@ -805,14 +806,18 @@ def text_cells(xlsx: bytes) -> list[tuple[str, str]]:
 
 def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
     """A spec's sheet op as `(op, sheet, to)`: `to` is the new name of a rename, the 0-based
-    position of a move and None for an add. Raises ValueError for an unknown or malformed op."""
+    position of a move, the 1-based row of an insert_row (spec key `row`; one blank row goes
+    above it, T-1933) and None for an add. Raises ValueError for an unknown or malformed op."""
     if isinstance(op, (list, tuple)) and len(op) == 3:
-        op = {"op": op[0], "sheet": op[1], **({} if op[2] is None else {"to": op[2]})}
+        key = "row" if op[0] == "insert_row" else "to"
+        op = {"op": op[0], "sheet": op[1], **({} if op[2] is None else {key: op[2]})}
     if not isinstance(op, dict) or op.get("op") not in SHEET_OPS or not isinstance(op.get("sheet"), str):
         msg = f"unknown sheet op {op!r}: expected op {'/'.join(SHEET_OPS)} with a sheet name"
         raise ValueError(msg)
-    kind, sheet, to = op["op"], op["sheet"], op.get("to")
-    if set(op) - {"op", "sheet", "to"}:
+    kind, sheet = op["op"], op["sheet"]
+    key = "row" if kind == "insert_row" else "to"
+    to = op.get(key)
+    if set(op) - {"op", "sheet", key}:
         msg = f"sheet op {op!r} has unknown keys"
         raise ValueError(msg)
     if kind == "add" and to is None:
@@ -821,7 +826,12 @@ def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
         return kind, sheet, to
     if kind == "move" and isinstance(to, int) and not isinstance(to, bool) and to >= 0:
         return kind, sheet, to
-    msg = f"sheet op {op!r}: `to` must be absent for add, a name for rename, a position >= 0 for move"
+    if kind == "insert_row" and isinstance(to, int) and not isinstance(to, bool) and to >= 1:
+        return kind, sheet, to
+    msg = (
+        f"sheet op {op!r}: `to` must be absent for add, a name for rename, a position >= 0 for move;"
+        " `row` a 1-based row for insert_row"
+    )
     raise ValueError(msg)
 
 

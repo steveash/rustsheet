@@ -200,13 +200,15 @@ pub struct CalculationSpec {
 /// it for the oracle backend, which replays it in Excel, and the engine adapter applies it through
 /// the edit API. `{"op":"add","sheet":"New"}` appends a sheet, `{"op":"rename","sheet":"Data",
 /// "to":"Inputs"}` renames one, `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based
-/// position.
+/// position, and `{"op":"insert_row","sheet":"S","row":1}` inserts one blank row above the 1-based
+/// `row`, shifting the cells below down (T-1933).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "op", rename_all = "lowercase", deny_unknown_fields)]
+#[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum SheetOp {
     Add { sheet: String },
     Rename { sheet: String, to: String },
     Move { sheet: String, to: u32 },
+    InsertRow { sheet: String, row: u32 },
 }
 
 /// A self-contained workbook test case.

@@ -15,7 +15,7 @@ path = "src/main.rs"
 [dependencies]
 rustsheet_engine = { path = "../rustsheet-engine" }
 # `metadata_clock` pins a workbook's clock to its METADATA `NOW` row (SPEC-0008).
-rustsheet = { path = "../rustsheet", features = ["metadata_clock"] }
+rustsheet = { path = "../rustsheet", features = ["metadata_clock", "harness_row_insert"] }
 rustsheet_xlsx = { path = "../rustsheet-xlsx" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }

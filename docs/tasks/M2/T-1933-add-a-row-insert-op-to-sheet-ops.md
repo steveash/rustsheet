@@ -3,7 +3,7 @@ id: T-1933
 title: "Add a row-insert op to sheet_ops and turn T-1853's legacy row-insert result into an oracle-filled probe"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
