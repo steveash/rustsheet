@@ -3,7 +3,7 @@ id: T-1803
 title: "A stacked result past the grid: VSTACK rows are #NUM!, HSTACK and VSTACK columns past 16384 are allowed (probes/scalar-lift-open-c)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
