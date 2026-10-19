@@ -261,6 +261,9 @@ fn typed_date_clock_text_shapes_pick_their_formats() {
         ("1/2/2020 10:00 P", Some("m/d/yyyy h:mm")),
         ("1/2/2020 10 p", Some("m/d/yyyy h:mm")),
         ("July 1, 2026 10:00 A", Some("m/d/yyyy h:mm")),
+        // probes/date-text-single-letter-ap N9, N12 (T-2011)
+        ("1/2/2020 10:00 A.", Some("m/d/yyyy h:mm")),
+        ("10:00 A", Some("h:mm AM/PM")),
         ("1/2/2020 10:00  AM", Some("m/d/yyyy h:mm")),
         ("1/2/2020 10:00:30.5", Some("mm:ss.0")),
         ("1/2/2020 10:00.5", Some("mm:ss.0")),

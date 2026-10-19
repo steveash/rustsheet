@@ -14,6 +14,10 @@
     "t": "b",
     "v": false
    },
+   "O12": {
+    "t": "b",
+    "v": true
+   },
    "O2": {
     "t": "b",
     "v": true
@@ -41,14 +45,18 @@
    "O8": {
     "t": "b",
     "v": false
+   },
+   "O9": {
+    "t": "b",
+    "v": true
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "b006e2fd67c7f8d2991ea4ec06df6c38c1e7ecb87677b26c9cdcdae76222d316",
+  "input_sha256": "68e186db5bf8e7ef8acfafd9d3acd7a393dc7af2d2ded21c27c7050b6c8eaf5f",
   "kind": "excel-graph",
-  "produced_at": "2026-10-19T14:02:58+00:00",
+  "produced_at": "2026-10-19T17:55:26+00:00",
   "version": null
  }
 }

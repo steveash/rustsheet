@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1994: typed date+clock with a single-letter A/P suffix (N1-N8, N10, N11; the format is in the ENTERED log of the fill run). Bare typed `10:00 A` (number, h:mm AM/PM) and `10:00 A.` (number) are not covered here.",
+ "description": "T-1994/T-2011: typed date+clock with a single-letter A/P suffix (N1-N8, N10, N11; the format is in the ENTERED log of the fill run), bare typed `10:00 A` (N9) and `1/2/2020 10:00 A.` (N12).",
  "tags": [
   "M2",
   "probe",
@@ -52,7 +52,15 @@
     "N11": {
      "entered": "1/2/2020 10:00 A A"
     },
-    "O11": "=ISNUMBER(N11)"
+    "O11": "=ISNUMBER(N11)",
+    "N9": {
+     "entered": "10:00 A"
+    },
+    "O9": "=ISNUMBER(N9)",
+    "N12": {
+     "entered": "1/2/2020 10:00 A."
+    },
+    "O12": "=ISNUMBER(N12)"
    }
   }
  ]

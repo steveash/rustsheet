@@ -3,7 +3,7 @@ id: T-2011
 title: "Typed bare clock with a single-letter A or P suffix and a trailing dot (10:00 A, 1/2/2020 10:00 A.) is a number"
 milestone: M2
 lane: functions-date
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-1994: both seen in the ENTERED log of the excel-graph fill of probes/
 
 ## Out of scope
 -
+
+## Outcome
+Cells N9 (`10:00 A`) and N12 (`1/2/2020 10:00 A.`) added to probes/date-text-single-letter-ap and refilled (excel-graph); both are numbers. `parse_typed_number` drops the dot after a trailing single-letter A/P and gives a bare suffixed clock `h:mm AM/PM`. Eval: probes case 10 -> 12 cells, no new F lines.
