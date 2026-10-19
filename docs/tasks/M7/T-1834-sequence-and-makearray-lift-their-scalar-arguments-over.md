@@ -53,3 +53,13 @@ stays open for T-1960). The metamorphic test compares an `Array` entry's element
 `INDEX(scalar call,1,1)`. arrays.md's DEVIATION entry gains the output charge and its formulas.
 Eval: probes/m7-argument-modes F1, F2, G2, H2, F3, G3, H3, F23, G23, H23, K9, K10 newly pass
 (probes 1836 → 1824), regressions 0.
+
+Benchmarks (min of 11 runs, one case per process; base = main before this PR): lift SWITCH
+numeric 396.9 → 392.7 ms, SWITCH text 499.7 → 498.4 ms; math_lift ABS lifted 302.9 → 287.0 ms,
+ROUND lifted errors 2.846 → 2.804 s, ABS per row 22.37 → 22.62 ms. PMT lifted over a range
+20.7 → 24.6 ms was measured at different times under other load and needs a back-to-back
+re-run before merge (the `Value` path of `element_node` is one early-return compare).
+State when the session budget ran out: reviews (security, architecture, quality, fidelity)
+APPROVE; performance REQUEST_CHANGES for bench evidence (numbers above, PMT pending). `make
+check` passed up to the stale eval/catalog/lift-kinds.json, regenerated in the last commit; rerun
+it in full, re-run the performance reviewer, then open the PR.
