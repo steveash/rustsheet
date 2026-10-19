@@ -3,7 +3,7 @@ id: T-1823
 title: "Financial compute helpers build no message for lifted error elements; bench RATE at the cap"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
