@@ -898,8 +898,14 @@ fn value_extent(
         )),
         CalcResult::Array(array) => Ok((array.len(), array.first().map_or(0, Vec::len))),
         error @ CalcResult::Error { .. } => Err(error),
-        // Excel: a scalar is 1x1 (probes/rows-columns-args); other kinds stay unprobed.
-        CalcResult::Number(_) | CalcResult::Boolean(_) | CalcResult::String(_) => Ok((1, 1)),
+        // Excel: a scalar is 1x1 (probes/rows-columns-args), and so is an uncalled LAMBDA or
+        // function name (`ROWS(LAMBDA(x,x))`, `COLUMNS(_xleta.SUM)`, `ROWS(IF(1,LAMBDA(x,x)))` are 1:
+        // probes/m7-argument-modes F44:G44, probes/lambda-value-arguments A15, A16, A25; arrays.md
+        // "An uncalled LAMBDA is one value"); other kinds stay unprobed.
+        CalcResult::Number(_)
+        | CalcResult::Boolean(_)
+        | CalcResult::String(_)
+        | CalcResult::Lambda(_) => Ok((1, 1)),
         _ => Err(CalcResult::new_error(
             Error::VALUE,
             cell,

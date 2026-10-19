@@ -3,6 +3,9 @@
 //! - unlifted per-row cells, a full recalculation of 100,000 rows of `=ROUND(A{r},2)`,
 //!   `=ABS(A{r})` or `=MOD(A{r},7)` in column B (the driver's no-grid path, once per cell);
 //! - lifted over a 1,000,000-cell range: `=SUM(ROUND(A1:A1000000,2))`, `=SUM(ABS(A1:A1000000))`;
+//! - EXP (T-1931), whose x87 model V6 costs far more per call than libm's `exp`: 100,000 rows of
+//!   `=EXP(A{r}/100000)` and the lifted `=SUM(EXP(A1:A1000000/1000000))` (arguments in (0, 1/7],
+//!   inside the range where every call runs the full F2XM1 series);
 //! - a lifted error fan-out, `=SUM(IFERROR(ROUND(A1:A1000000&"x",2),0))`: every element is
 //!   `#VALUE!`, which must allocate nothing (an empty message).
 //!
@@ -49,6 +52,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ("ROUND, per row", 100_000, Shape::PerRow("=ROUND(A{r},2)")),
         ("ABS, per row", 100_000, Shape::PerRow("=ABS(A{r})")),
         ("MOD, per row", 100_000, Shape::PerRow("=MOD(A{r},7)")),
+        ("EXP, per row", 100_000, Shape::PerRow("=EXP(A{r}/100000)")),
         (
             "ROUND, lifted",
             1_000_000,
@@ -58,6 +62,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             "ABS, lifted",
             1_000_000,
             Shape::Single("=SUM(ABS(A1:A1000000))"),
+        ),
+        (
+            "EXP, lifted",
+            1_000_000,
+            Shape::Single("=SUM(EXP(A1:A1000000/1000000))"),
         ),
         (
             "ROUND, lifted errors",
