@@ -11,7 +11,7 @@ use crate::x87_exp::excel_exp;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
-use std::f64::consts::PI;
+use std::f64::consts::{FRAC_PI_2, PI};
 
 /// Smallest `|number/divisor|` for which Excel's `MOD` returns `#NUM!`: a decimal limit, not a
 /// power of two (probes/mod-quotient-threshold5).
@@ -449,9 +449,12 @@ impl Model {
     // 157 (docs/excel-semantics/numbers.md "ASIN's formulation"). Outside [-1, 1] ASIN's NaN
     // stays NaN, which is `#NUM!`.
     pub(crate) fn fn_acos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Acos, args, cell, |f| {
-            Ok(std::f64::consts::FRAC_PI_2 - excel_asin(f))
-        })
+        self.number_fn(
+            Function::Acos,
+            args,
+            cell,
+            |f| Ok(FRAC_PI_2 - excel_asin(f)),
+        )
     }
     pub(crate) fn fn_atan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Atan, args, cell, |f| Ok(f64::atan(f)))
@@ -690,6 +693,10 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
+        // Excel: see docs/excel-semantics/numbers.md#atan2-is-atanyx-plus-or-minus-pi (probes/atan2-*).
+        // Subnormal operands count as zero.
+        let flush = |v: f64| if v.is_subnormal() { 0.0 } else { v };
+        let (x, y) = (flush(x), flush(y));
         if x == 0.0 && y == 0.0 {
             return CalcResult::Error {
                 error: Error::DIV,
@@ -697,7 +704,27 @@ impl Model {
                 message: "Arguments can't be both zero".to_string(),
             };
         }
-        CalcResult::Number(f64::atan2(y, x))
+        if x == 0.0 {
+            return CalcResult::Number(FRAC_PI_2.copysign(y));
+        }
+        let q = y / x;
+        if !q.is_finite() {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Quotient overflow".to_string(),
+            };
+        }
+        let a = flush(q.atan());
+        CalcResult::Number(if x < 0.0 {
+            if y >= 0.0 {
+                a + PI
+            } else {
+                a - PI
+            }
+        } else {
+            a
+        })
     }
 
     pub(crate) fn fn_log(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

@@ -826,6 +826,20 @@ Implemented in: `fn_acos` (functions/math_and_trigonometry/mathematical.rs) as `
 Status: VERIFIED
 Tasks: T-0939
 
+## ATAN2 is ATAN(y/x) plus or minus π
+Rule: for `ATAN2(x_num, y_num)` Excel forms the double quotient `q = y/x` and returns `ATAN(q)` (glibc `atan`), not libm
+`atan2(y, x)`. For x < 0 it adds π when y >= 0 (so `ATAN2(-1,-0)` = π) and subtracts π when y < 0. x = 0 gives ±π/2
+by the sign of y. Subnormal operands (|v| < 2.2250738585072014E-308) count as 0: `ATAN2(0,1E-310)` and `ATAN2(1E-310,1E-310)`
+are #DIV/0! like `ATAN2(0,0)`, `ATAN2(1E-310,1)` = π/2, `ATAN2(1,1E-310)` = 0. A quotient that overflows to infinity
+(`ATAN2(1E-300,1E300)`, `ATAN2(1E-8,1E305)`) is #NUM!, while `ATAN2(1E-8,1E300)` is π/2. A subnormal quotient gives 0
+(or ±π for x < 0, by y's sign). UNVERIFIED: a subnormal negative y with x < 0 (the engine treats y as 0, so +π).
+Evidence: probes/atan2-quadrants (all 125 numeric cells equal this model; libm `atan2` misses 25 by one ulp, as does
+the 34-cell G column of probes/asin-atan-sign-source), probes/atan2-error-edges, probes/atan2-subnormal-quotient
+(excel-graph, 2026-10-19, T-1930).
+Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT may share the kernel (not probed).
+Status: VERIFIED
+Tasks: T-1930, T-1797
+
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
 engine forms, rounded faithfully (within 1 ulp of the exact `X^fl(1/n)`) but by no known model: it
