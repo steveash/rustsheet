@@ -3,7 +3,7 @@ id: T-2036
 title: "Eval report emits per-function closeness buckets so the parity page drops its regex and ulp copies"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
