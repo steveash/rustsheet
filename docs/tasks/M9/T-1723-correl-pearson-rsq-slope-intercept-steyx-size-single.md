@@ -3,7 +3,7 @@ id: T-1723
 title: "CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX: size, single-point and text-argument errors and large-offset data as Excel (T-1620 probes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -31,7 +31,7 @@ Overlaps T-1401 (scalar or single cell as a one-value array: the `#DIV/0!` singl
 ## Out of scope
 - Probing further inputs (file a probe task instead).
 
-## Handoff
+## Handoff (resumed)
 Not started in code by the sonnet worker (2026-10-19). The task overlaps T-1292, T-1707 and T-1401 (same functions, same
 error paths) and its large-offset/ULP cells need numeric fitting of Excel's accumulation order, which is beyond the sonnet
 tier. Suggested order for the opus run: land T-1707 first (size `#N/A`), then this task's single-point `#DIV/0!` and
