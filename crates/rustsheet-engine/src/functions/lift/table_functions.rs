@@ -47,6 +47,9 @@ macro_rules! lifting_table_functions {
             | Function::ForecastLinear
             | Function::TTest
             | Function::TTestCompat
+            | Function::RankCompat
+            | Function::RankEq
+            | Function::RankAvg
             | Function::Small
             | Function::PercentileCompat
             | Function::PercentileInc
