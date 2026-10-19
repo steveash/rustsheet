@@ -1,7 +1,9 @@
 # 0053 — Merge through the GitHub merge queue instead of the up-to-date check
 
 - **Status:** accepted (2026-10-13, owner request, T-1505). It amends 0028: once the queue is on,
-  the queue gives 0028's guarantee and the agents' mechanical up-to-date check is skipped.
+  the queue gives 0028's guarantee and the agents' mechanical up-to-date check is skipped. Dormant per 0075: a
+  repository owned by a personal account cannot turn the queue on, so merges go through the merge lock
+  until the repository moves to an organization and the queue is on.
 - **Context:** Decision 0028 requires a PR head to contain the current `main` before it merges,
   and the ruleset enforces "require branches to be up to date". With about 2.7 merges an hour and
   a 13-minute CI (the python job), a green PR is usually stale again before it can merge. On
