@@ -9,7 +9,7 @@ mod kernel_work;
 mod metamorphic;
 
 use super::driver::{LiftCost, LiftOptions, LiftedArg, Reuse};
-use super::kinds::{ArgKind, ArgKinds, KernelWork};
+use super::kinds::{ArgKind, ArgKinds, CallResult, KernelWork};
 use crate::calc_result::CalcResult;
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::Error;
@@ -105,6 +105,7 @@ const LIFT_ALL: ArgKinds = ArgKinds {
     repeat: Some(ArgKind::Lift),
     max: 255,
     work: KernelWork::Constant,
+    result: CallResult::Value,
 };
 
 /// A whole argument, then a lifted one.
@@ -647,6 +648,7 @@ fn a_weighted_kernel_is_charged_its_weight() {
         let options = LiftOptions {
             reuse: Reuse::Never,
             work: KernelWork::Weighted(weight),
+            result: CallResult::Value,
         };
         let mut calls = 0;
         let mut kernel = |_: &mut Model, _: &[CalcResult]| {
@@ -685,6 +687,7 @@ fn element_texts_count_against_the_text_budget() {
     let options = LiftOptions {
         reuse: Reuse::Never,
         work: KernelWork::Constant,
+        result: CallResult::Value,
     };
     let mut kernel = |_: &mut Model, _: &[CalcResult]| long.clone();
     // 2048 texts of 32,767 bytes fit 64 MiB; 2049 are #VALUE!.

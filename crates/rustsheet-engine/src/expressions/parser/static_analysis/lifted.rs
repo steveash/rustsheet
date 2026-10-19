@@ -5,7 +5,7 @@
 use super::broadcast::broadcast_shapes;
 use super::reference_result::yields_cells;
 use super::{run_static_analysis_on_node, Node, Signature, StaticResult};
-use crate::functions::lift::{ArgKind, ArgKinds};
+use crate::functions::lift::{ArgKind, ArgKinds, CallResult};
 use crate::functions::Function;
 
 /// A `Lift` argument is `Signature::Scalar`, so a legacy formula intersects a range in it
@@ -31,27 +31,34 @@ pub(super) fn lifted_signature(kinds: &ArgKinds, arg_count: usize) -> Vec<Signat
 /// gives its array arms a range's shape (`IMABS(CHOOSE(1,{1,2,3}))` is 1x3,
 /// probes/lift-arrays-choose-arms A13, T-1874). An `Unknown` lifted argument makes the call
 /// `Unknown`; a `Whole` argument adds nothing. A call with a bad count is a scalar (the count
-/// error).
+/// error). An entry whose unlifted call is an array (SEQUENCE, MAKEARRAY) is `Unknown` when no
+/// lifted argument has a shape, and the broadcast otherwise (`SEQUENCE({1;2;3})` is 3x1,
+/// probes/m7-argument-modes F2, G2; SPEC-0011 "Array-valued functions" rule 1).
 pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticResult {
     if !kinds.accepts(args.len()) {
         return StaticResult::Scalar;
     }
-    broadcast_shapes(
-        args.iter()
-            .enumerate()
-            .map(|(index, arg)| match kinds.kind(index) {
-                Some(ArgKind::Lift) => run_static_analysis_on_node(arg),
-                Some(ArgKind::LiftArrays | ArgKind::LiftArraysRangeWhole) => {
-                    match run_static_analysis_on_node(arg) {
-                        StaticResult::Range(..) if yields_cells(arg, &mut Vec::new()) => {
-                            StaticResult::Scalar
-                        }
-                        other => other,
+    let shapes: Vec<StaticResult> = args
+        .iter()
+        .enumerate()
+        .map(|(index, arg)| match kinds.kind(index) {
+            Some(ArgKind::Lift) => run_static_analysis_on_node(arg),
+            Some(ArgKind::LiftArrays | ArgKind::LiftArraysRangeWhole) => {
+                match run_static_analysis_on_node(arg) {
+                    StaticResult::Range(..) if yields_cells(arg, &mut Vec::new()) => {
+                        StaticResult::Scalar
                     }
+                    other => other,
                 }
-                Some(ArgKind::Whole | ArgKind::WholeByCaller) | None => StaticResult::Scalar,
-            }),
-    )
+            }
+            Some(ArgKind::Whole | ArgKind::WholeByCaller) | None => StaticResult::Scalar,
+        })
+        .collect();
+    if kinds.result == CallResult::Array && shapes.iter().all(|s| matches!(s, StaticResult::Scalar))
+    {
+        return StaticResult::Unknown;
+    }
+    broadcast_shapes(shapes)
 }
 
 /// Whether argument `index` of `kind` is a `LiftArrays` argument: a legacy formula intersects

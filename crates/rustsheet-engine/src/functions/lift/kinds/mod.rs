@@ -45,16 +45,39 @@ pub(crate) enum KernelWork {
     /// against the visit cap, and the kernel also keeps its own per-call cap, as T-1197 bounds
     /// MULTINOMIAL's loop.
     Weighted(u32),
+    /// The kernel builds an array (SPEC-0011 "Array-valued functions" rule 3): a lifted element
+    /// is charged one unit before the call and the cells of its own result after it, times
+    /// `weight` (MAKEARRAY's 128 for its LAMBDA call per cell).
+    Output { weight: u32 },
 }
 
 impl KernelWork {
-    /// The units one kernel call is charged.
+    /// The units one kernel call is charged before it runs.
     pub(crate) fn weight(self) -> u64 {
         match self {
-            KernelWork::Constant => 1,
+            KernelWork::Constant | KernelWork::Output { .. } => 1,
             KernelWork::Weighted(weight) => u64::from(weight),
         }
     }
+
+    /// The units a lifted element is charged after its call, for a result of `cells` cells: 0
+    /// unless the kernel builds an array.
+    pub(crate) fn output_charge(self, cells: u64) -> u64 {
+        match self {
+            KernelWork::Output { weight } => cells.saturating_mul(u64::from(weight)),
+            KernelWork::Constant | KernelWork::Weighted(_) => 0,
+        }
+    }
+}
+
+/// What one unlifted call returns (SPEC-0011 "Array-valued functions" rule 1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CallResult {
+    /// One value: every entry before T-1834.
+    Value,
+    /// An array (SEQUENCE, MAKEARRAY): unlifted, the static shape is `Unknown`, and a lifted
+    /// element is the top-left value of its call.
+    Array,
 }
 
 /// The parameters of one function: `params[i]` is the kind of argument `i`. Arguments past
@@ -65,6 +88,7 @@ pub(crate) struct ArgKinds {
     pub(crate) repeat: Option<ArgKind>,
     pub(crate) max: usize,
     pub(crate) work: KernelWork,
+    pub(crate) result: CallResult,
 }
 
 impl ArgKinds {
@@ -80,6 +104,15 @@ impl ArgKinds {
             repeat: None,
             max: params.len(),
             work,
+            result: CallResult::Value,
+        }
+    }
+
+    /// The same kinds for a function whose unlifted call returns an array.
+    pub(crate) const fn array(self) -> Self {
+        Self {
+            result: CallResult::Array,
+            ..self
         }
     }
 
