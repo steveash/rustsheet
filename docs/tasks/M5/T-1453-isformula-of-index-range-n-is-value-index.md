@@ -3,7 +3,7 @@ id: T-1453
 title: "ISFORMULA of INDEX(range,n) is #VALUE!: INDEX is not a reference in get_reference context (probes/ifna-isformula-edges Calc!B12)"
 milestone: M5
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
