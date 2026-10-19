@@ -135,8 +135,9 @@ ironcalc-calc/FINANCIAL/MIRR.xlsx (225 cells, all passing since).
 MIRR power overflow and underflow (T-1995): with no positive flow, both powers overflowing (`MIRR({-1,-2,-3},1E+200,1E+200)`) is `#DIV/0!`, the
 finance power's error winning over the reinvest power's `#NUM!` (each alone keeps its own: finance 1E+200 `#DIV/0!`, reinvest 1E+200 `#NUM!`).
 A power underflowing to 0 over 400 flows at a rate of -0.999999 is `#DIV/0!` for the reinvest rate or both rates and a number for the finance rate alone
-(0.004041825210995276, the same as at 0.1). Both overflowing with a positive flow is not probed.
-Evidence: probes/fin-mirr-overflow-underflow A1-A7 (excel-graph, 2026-10-19, T-1995).
+(0.004041825210995276, the same as at 0.1). Both overflowing with a positive flow is `#DIV/0!` too (`MIRR({-1,2,3},1E+200,1E+200)`, positive flow first or last), the reinvest power's error;
+with a positive flow finance 1E+200 alone is `#NUM!` and reinvest 1E+200 alone `#DIV/0!`.
+Evidence: probes/fin-mirr-overflow-underflow A1-A7 (T-1995), fin-mirr-overflow-positive A1-A4 (T-2076) (excel-graph, 2026-10-19).
 Status: VERIFIED (fit, 467/467 bit-exact)
 Implemented in: `fn_mirr` (functions/financial/mirr.rs). A rate of -1 keeps its own limit cases, and a ratio that is
 zero, negative or infinite keeps `powf`; neither is part of the fit.
