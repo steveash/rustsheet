@@ -450,7 +450,7 @@ impl Model {
                 return num_error(cell);
             };
             let angle = f64::atan2(y, x) * n;
-            // An angle past `IMPOWER_ANGLE_LIMIT` is `#NUM!` for a pure imaginary base, but an
+            // An angle past `IMPOWER_ANGLE_LIMIT` is `#NUM!` (evidenced for a pure imaginary base only), but an
             // underflowed radius of 0 is "0" without reading the angle: `IMPOWER("i",85445659)` is
             // `#NUM!`, `IMPOWER("0.5i",134217728)` is 0 (probes/eng-impower-imdiv-edges A28-A35,
             // eng-impower-angle-cut; engineering.md "T-1625 probes").
@@ -459,6 +459,7 @@ impl Model {
             } else if angle.abs() < IMPOWER_ANGLE_LIMIT {
                 excel_sin_cos(angle)
             } else {
+                // TODO(T-1950): Excel gives values near 1.797E+308 for a base that is not pure imaginary.
                 return num_error(cell);
             };
             let (x, y) = (radius * cos, radius * sin);
