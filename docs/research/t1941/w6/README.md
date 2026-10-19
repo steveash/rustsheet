@@ -330,6 +330,28 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       N0-N2/D1-D2 almost exactly, so the swing is compensation for the uncertain top pair. Order: non-dyadic ladders
       for N8/N9/D8/D9, then a W5-style peel (`w5/p5/fscan.py`) on the low coefficients over a narrow range.
 
+27. **Non-dyadic ladders, pass 4, and the finishing step** (`kern.py`, `nullscan.py`, `fscan6.py`, `top6.py`).
+    - Out-of-sample check: the pass-3b chain (fitted with the dyadic ladders only) predicts the non-dyadic ladders
+      (q440-q453, anchors 1.6341, 1.7718, 1.9253) to 4e-11..4e-9 cycles on D.Pn12-15, D.T5/T6, N.T4/T5, N.Pn14/15,
+      including at 1.9253 above D's 1.89 crossing. N.Pn13 sits at a constant -4.2e-6 cycles; N.Pn12 is 2 bins off.
+    - Pass 4 (both ladder sets): every variant breaks the function and lands at 12-14% exact (consistent phases;
+      lgamma or Excel-R-anchored function rows; ladder weight 1e6..3e8 gives an erratic 13-29%). Function + ladder
+      rows pin only ~5 of 19 directions (1-sigma moves of 1e7..4e14 ulps along the rest). A first pass-4 attempt that
+      reused phases measured against a different chain is void (phase rows are relative to their chain).
+    - Control: pass 2 + climb 80.2% (low within 153 ulps; N9 -6.6e8, N8 4.4e6, N7 -8.9e4); pass 3 regresses the low
+      coefficients (N0 -2e9). Along the function-null direction even the true N9 scores <= 79.1% exact: exact R has
+      no peak at one coefficient while others are off.
+    - W5's FFT peel ported (`fscan6.py`, with downstream sum/product sites): needs the stages above J exact (peaks at
+      k = 0 otherwise); N9's signal (via S8 rounding, ~0.02 ulp of R) is noise-level.
+    - W5's top objective (`hypo.c` via `top6.py`): truth 9.8 vs base 4.3 on the 24 control runs; capture N9 ~ +-300
+      ulps, N8 ~ +-1 ulp. A grid over the control's top error (N9 6.6e8, N8 4.4e6) is infeasible; the top needs a
+      prior within ~1e4 (N9) / ~10 (N8).
+    - Top-weighted probes near 2- would not supply it: on the synthetic truth, ladders at 1.962/1.9745/1.9871 read
+      37/84 rows but no top-stage line (T6+, Pn15+), like the other sets.
+    - K2 support: `KERNEL=k2` selects R = lgamma/(x-2), B = fl((x-2) R) (`kern.py`; k6 verified identical). K2
+      synthetic ((9,8) raw-x LS truth, `fitrat.py`): ladders read only N.Pn14/D.Pn13 (4 of 108 rows) even against
+      the truth.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
