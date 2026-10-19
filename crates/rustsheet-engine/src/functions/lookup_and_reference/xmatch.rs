@@ -167,10 +167,10 @@ impl Model {
     ///   *  2 – binary search ascending
     ///   * -2 – binary search descending
     ///
-    /// `lookup_value` and `match_mode` lift over a multi-cell range and an array, one search per
+    /// `lookup_value`, `match_mode` and `search_mode` lift over a multi-cell range and an array, one search per
     /// element (`ROWS(XMATCH(A1:A3,A1:A3))` is 3, `ROWS(XMATCH(2,A1:A3,{0;1}))` is 2;
     /// probes/lookup-argument-modes F26:G29; docs/excel-semantics/lookup.md "Lookup and reference
-    /// function argument modes"). `lookup_array` and `search_mode` are read once for every element.
+    /// function argument modes"). `lookup_array` is read once for every element.
     pub(crate) fn fn_xmatch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() < 2 || args.len() > 4 {
             return CalcResult::new_args_number_error(cell);
@@ -181,41 +181,30 @@ impl Model {
             Some(node) => self.lookup_value_arg(node, cell),
             None => CalcResult::Number(0.0),
         };
+        let search_mode = match args.get(3) {
+            Some(node) => self.lookup_value_arg(node, cell),
+            None => CalcResult::Number(1.0),
+        };
         // An error lookup_value that nothing lifts is the result: lookup_array is not read.
-        if lookup_value.is_error() && !LiftedArg::is_grid(&match_mode) {
+        if lookup_value.is_error()
+            && !LiftedArg::is_grid(&match_mode)
+            && !LiftedArg::is_grid(&search_mode)
+        {
             return lookup_value;
         }
-
-        let search_mode = match args.get(3) {
-            Some(node) => match self.get_number(node, cell) {
-                Ok(n) => match n.floor() as i32 {
-                    1 => Ok(SearchMode::FirstToLast),
-                    -1 => Ok(SearchMode::LastToFirst),
-                    2 => Ok(SearchMode::BinaryAscending),
-                    -2 => Ok(SearchMode::BinaryDescending),
-                    _ => Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Invalid search_mode".to_string(),
-                    )),
-                },
-                Err(e) => Err(e),
-            },
-            None => Ok(SearchMode::FirstToLast),
-        };
 
         let array = self.xmatch_vector(&args[1], cell);
         let scan = array.as_ref().map_or(1, SearchVector::scan_cells);
         self.lift_values(
-            vec![lookup_value, match_mode],
+            vec![lookup_value, match_mode, search_mode],
             LiftCost::Cells(scan),
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
             &mut |model, values| {
-                let [lookup_value, match_mode] = values else {
+                let [lookup_value, match_mode, search_mode] = values else {
                     return CalcResult::new_args_number_error(cell);
                 };
-                model.xmatch_of(lookup_value, match_mode, &search_mode, &array, cell)
+                model.xmatch_of(lookup_value, match_mode, search_mode, &array, cell)
             },
         )
     }
@@ -226,7 +215,7 @@ impl Model {
         &self,
         lookup_value: &CalcResult,
         match_mode: &CalcResult,
-        search_mode: &Result<SearchMode, CalcResult>,
+        search_mode: &CalcResult,
         array: &Result<SearchVector, CalcResult>,
         cell: CellReferenceIndex,
     ) -> CalcResult {
@@ -250,16 +239,28 @@ impl Model {
             },
             Err(e) => return e,
         };
-        let search_mode = match search_mode {
-            Ok(search_mode) => search_mode,
-            Err(error) => return error.clone(),
+        let search_mode = match self.cast_number_ref(search_mode, cell) {
+            Ok(n) => match n.floor() as i32 {
+                1 => SearchMode::FirstToLast,
+                -1 => SearchMode::LastToFirst,
+                2 => SearchMode::BinaryAscending,
+                -2 => SearchMode::BinaryDescending,
+                _ => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Invalid search_mode".to_string(),
+                    )
+                }
+            },
+            Err(e) => return e,
         };
         let array = match array {
             Ok(array) => array,
             Err(error) => return error.clone(),
         };
 
-        match *search_mode {
+        match search_mode {
             SearchMode::FirstToLast | SearchMode::LastToFirst => {
                 let regex = match (match_mode, lookup_value) {
                     (MatchMode::Regex, CalcResult::String(pat)) => match Regex::new(pat) {
@@ -274,7 +275,13 @@ impl Model {
                     },
                     _ => None,
                 };
-                match linear_search(lookup_value, array, search_mode, match_mode, regex.as_ref()) {
+                match linear_search(
+                    lookup_value,
+                    array,
+                    &search_mode,
+                    match_mode,
+                    regex.as_ref(),
+                ) {
                     Some(idx) => CalcResult::Number(idx as f64 + 1.0),
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
                 }
@@ -290,7 +297,7 @@ impl Model {
                 match binary_search(
                     lookup_value,
                     array,
-                    *search_mode == SearchMode::BinaryDescending,
+                    search_mode == SearchMode::BinaryDescending,
                     match_mode.ordering(),
                 ) {
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
