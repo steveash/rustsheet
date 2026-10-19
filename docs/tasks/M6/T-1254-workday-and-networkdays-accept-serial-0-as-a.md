@@ -3,7 +3,7 @@ id: T-1254
 title: "WORKDAY and NETWORKDAYS accept serial 0 as a start date and as a holiday (2 gen-m6 cells)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
