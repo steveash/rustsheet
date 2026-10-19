@@ -26,7 +26,8 @@ Excel (excel-graph) gives TRUE for probes/ifna-isformula-edges Calc!B12; the eng
 ## Outcome
 `evaluate_call_with_reference` (functions/logical/lambda.rs), the fallback of
 `evaluate_node_with_reference`, now evaluates INDEX in its reference form (`index_reference`), so
-every reference reader (`get_reference`: ISFORMULA, FORMULATEXT, SHEET, CELL, …; ROWS/COLUMNS;
-OFFSET's base) sees the one cell INDEX picks as a reference, as ISREF and the aggregates already did.
+ISFORMULA sees the one cell INDEX picks as a reference, as ISREF and the aggregates already did.
+Other readers of that path (`get_reference` callers, ROWS/COLUMNS) now get the same reference; only
+ISFORMULA is probed and tested, and the full eval shows no change elsewhere.
 Eval: probes known failures 1812 → 1811 (Calc!B12 fixed), no regressions. Quirk recorded in
 docs/excel-semantics/references.md.
