@@ -29,5 +29,5 @@ T-1780 bounds HSTACK and VSTACK by `check_array_size`, which gives `#VALUE!` for
 `limits::check_stack_size` (rows past the grid `#NUM!`, then the cell-count bound) replaces `check_array_size` in
 `fn_hstack` and `fn_vstack`. arrays.md gains "Stacked results past the grid". `ROWS(HSTACK(A:A,1:1))` is now `#ERROR!`
 (the cell bound; Graph's 0 is not trusted). -c2 W1 and -c3 W1 stay known failures: both sit in row 1, which they stack,
-so ours is `#CIRC!` (T-1965). Follow-up T-1964 probes EXPAND, WRAPROWS and WRAPCOLS.
+so ours is `#CIRC!` (T-1965). Follow-up T-1967 probes EXPAND, WRAPROWS and WRAPCOLS.
 Eval delta: probes known failures 2000 -> 1992 (8 fixed: scalar-lift-open-c W1-W4, W6-W9), 0 regressions.

@@ -1,5 +1,5 @@
 ---
-id: T-1964
+id: T-1967
 title: "Probe whether EXPAND, WRAPROWS and WRAPCOLS past the grid share VSTACK's rows-#NUM!/columns-allowed rule"
 milestone: M7
 lane: functions-lookup
