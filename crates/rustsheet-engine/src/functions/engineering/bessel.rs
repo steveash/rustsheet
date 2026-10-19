@@ -5,7 +5,7 @@
 //! messages.
 
 use crate::arithmetic::flush_subnormal;
-use crate::functions::statistical::special::{erf, erfc};
+use crate::functions::statistical::erf::{erf, erfc};
 
 use crate::{
     calc_result::CalcResult,

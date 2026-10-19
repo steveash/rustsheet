@@ -51,7 +51,7 @@ Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orde
 Status: DEVIATION (decision 0014)
 Tasks: T-1004, T-1383; T-1819 narrows the lifted cap to an order-based work budget.
 Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`), bessel_i.rs, bessel_k.rs;
-functions/lift/kinds.rs (`BESSEL_WEIGHT`)
+functions/lift/kinds/engineering.rs (`BESSEL_WEIGHT`)
 
 ## DECIMAL of unreadable text
 Rule: DECIMAL reads its first argument as text (a number or TRUE goes through its text form, so `DECIMAL(0.5,13)`, `DECIMAL(1E+20,10)` and `DECIMAL(TRUE,10)` read "0.5", "1E+20", "TRUE"). Leading spaces and tabs are skipped; empty or all-blank text is 0. Any other unreadable character is `#NUM!` (not `#VALUE!`): a sign (`"-1"`, `"+1"`), a point, trailing space, a non-breaking space, a digit not below the radix. Text over 255 UTF-16 units (200 emoji is too long) is `#VALUE!`, checked before the radix (`DECIMAL(REPT("1",256),37)` is `#VALUE!`), as is a non-numeric radix. Newline and fullwidth digits are unreadable (`#NUM!`); the overflow is `#NUM!` inside a larger formula too (`ERROR.TYPE` 6, `IFERROR` falls through). Error arguments: the text argument's error wins (`DECIMAL(#N/A,#DIV/0!)` is `#N/A`). Radix 16 only also skips leading zeros and one `x`/`X` (`"0x1F"`, `"x1F"`, `"00x1F"` are 31; `"0x0x1"`, `"1x1F"`, `"0x 1F"` are `#NUM!`; in radix 10 or 15 `"0x1F"` is `#NUM!`, in radix 36 the x is a digit). The sum is a float with no 2^53 limit (255 ones in radix 2 is 5.78960446186581E+76; 198 `Z`s in radix 36 is 1.4057081148316923E+308), but a result past the largest double is `#NUM!` (199 `Z`s in radix 36, 255 `Z`s).
@@ -97,18 +97,28 @@ Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922, T-1297
 Tasks: T-0922, T-1297
 
 ## CONVERT temperature
-Rule: the temperature pairs do not share one pivot unit; the last digits only fit these forms
-(probes/convert-targets, 40 cells, excel-graph, T-1297). Celsius output:
-`CONVERT(68,"F","C")` is exactly 20 (the old 273.5 constant, which gave 19.65, was wrong).
-From F: C `(v-32)*5/9`; K that plus 273.15; Reau `C*0.8`; Rank `5/9*(v+459.67)*1.8`
-(`CONVERT(68,"F","Rank")` is 527.6700000000001). From the others, Kelvin is the pivot
-(C `v+273.15`, Rank `5v/9`, Reau `5v/4+273.15`) and out of it C is `k-273.15`, Rank `9k/5`,
-Reau `(k-273.15)*0.8`, F `(k-273.15)*9/5+32`, except Rank to F which is `9k/5-459.67`.
-Each pair is fitted to two values (68, -40.5); prefixed temperature units are unprobed.
+Rule: every temperature pair has its own last-digit form; there is no shared pivot unit. The forms
+fit 9 oracle points per pair (7 in probes/convert-temperature-sweep: 0, 1, 0.1, 100, 12345.678,
+1E-5, 1E10; plus 68 and -40.5 in probes/convert-targets; excel-graph, T-1297, T-1860).
+From C: F `v*1.8+32`, K `v+273.15`, Rank `(v+273.15)*1.8`, Reau `v*0.8`. From F: C `(v-32)/1.8`,
+K `(v-32)/1.8+273.15`, Rank `v+459.67`, Reau `(v-32)*0.8/1.8`. From K: C `v-273.15`,
+F `(v-273.15)*1.8+32`, Rank `v*1.8`, Reau `(v-273.15)*0.8`. From Rank: C `v/1.8-273.15`,
+F `v-459.67`, K `v/1.8`, Reau `(v/1.8-273.15)*0.8`. From Reau: C `v*1.25`, F `v*2.25+32`,
+K `v*1.25+273.15`, Rank `(v*1.25+273.15)*1.8`. The Rankine/Kelvin ratio is a multiply or divide
+by `1.8`, never `9/5` (`CONVERT(0.1,"K","Rank")` is 0.18000000000000002).
+Prefixes: only `K` and `kel` take a prefix (`CONVERT(300,"mK","K")` is 0.3, `"kK"` 300000, `"yK"`
+to K 3E-22); `mC`, `kF`, `mRank`, `mReau` and their long names are `#N/A`
+(probes/convert-temperature-prefix-a/-b, all 11 prefixes). Prefix overflow:
+`CONVERT(1E290,"Ym","Ym")` is 1E+290 and `CONVERT(1E300,"Ym","Ym")` 1E+300 (not a same-unit identity: `CONVERT(1E300,"Ym","Zm")` is 1E+303, so the from- and to-prefix
+combine into one ratio when `value * from-prefix` would overflow), while `CONVERT(1E300,"Ym","m")`,
+`CONVERT(1E290,"Ym","km")` and `CONVERT(1E300,"YK","K")` are `#NUM!` (the combined ratio itself
+overflows the result; probes/convert-temperature-ov00..ov03, ov10-ov12, ov20-ov22). Unknown: a truly overflowing temperature result
+(`CONVERT(1E308,"C","F")`): excel-graph rejects any workbook holding a 1E308 literal
+("unsupportedWorkbook"), so it needs desktop Excel (M14, decision 0039).
 Backend: excel-graph.
-Status: VERIFIED (for the two probed values per pair)
+Status: VERIFIED (nine values per pair; overflowing results unprobed)
 Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
-Tasks: T-0922, T-1297
+Tasks: T-0922, T-1297, T-1860
 
 ## Engineering function argument modes
 Rule: every argument of the M9 engineering functions lifts elementwise over an array literal. All
@@ -269,11 +279,13 @@ Tasks: T-1385
 - IMPOWER does not use the naive polar form: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` (the naive form gives 1.22464679914735E-16), `IMPOWER("-j",3)` real part -1.83772268236293E-16, `IMPOWER("1+i","2")` real part 1.22514845490862E-16, `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i` (naive: `-1125899906842630-0.552925707312197i`). The values differ, not only the printing; tiny parts also print in E-notation.
 - A blank cell argument is 0 in IMSUB (`IMSUB(A7,B7)` with B7 blank), unlike empty text (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet2 G7:G10).
 - Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, and IMPOWER as `|z|^n` by Excel's `^` (square-and-multiply for an integer `n`) times Excel's SIN/COS of the double `atan2(y,x)·n` (argument reduction by the x87 64-bit pi, numbers.md "Trig of a huge angle"). That reproduces all four values bit for bit: the tiny part of `IMPOWER("i",2)` is `π₆₄ − π_double`, the real part of `(1+i)^100` is `sqrt(2)^100` by square-and-multiply (2^50 + 12.5; libm `pow` gives 2^50 + 7.75) and its imaginary part is that times `sin(double(100·π/4))` reduced by `π₆₄`. Each part prints as number-to-text does (E notation past 20 plain characters).
-- UNVERIFIED: a blank first argument in IMDIV and IMPOWER is read as 0 (only IMSUB is evidenced), and Smith's algorithm is our guess at IMDIV's arithmetic (an x87 plain formula could differ in the last ulp).
-- UNVERIFIED: an angle `atan2·n` of 2^27 or more (SIN's `#NUM!` cut) falls back to libm sine and cosine; no probe covers it.
-Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625).
-Status: VERIFIED (excel-graph)
-Tasks: T-1766
+- A blank first argument is 0 in IMDIV and IMPOWER (`IMDIV(blank,"1+i")` and `IMPOWER(blank,2)` are "0"; `IMPOWER(blank,0)` and `IMDIV(blank,blank)` are `#NUM!`). IMDIV by Smith's algorithm matches Excel to the last digit on a sweep of 13 non-trivial divisors, including `1E10+1E-10i` over `1E-5+1E5i` and `1+i` over `1E-200+1E-200i` (`1E+200`).
+- IMPOWER stops answering once the angle `atan2(y,x)·n` is near 2^27, but not at 2^27: `IMPOWER("i",85445658)` (angle 134217725.7) answers, `IMPOWER("i",85445659)` (134217727.3) is `#NUM!`. We cut at 134217727 (a bracket, not a derived value). A radius that underflows to 0 is "0" whatever the angle (`IMPOWER("0.5i",134217728)`, `IMPOWER("0.5",134217728)`); one that overflows is `#NUM!` (`IMPOWER("1E-200+1E-200i",-2)`, `IMPOWER("1E200",2)`; `IMPOWER("1+i",170891317)` is this overflow, its angle is under the cut).
+- UNVERIFIED: Excel's modulus power for a base near radius 1 differs from ours, so the "bit for bit" claim above holds for the four evidenced values only: `IMPOWER("0.7071067811865476+0.7071067811865476i",170891300)` is `-0.999999886163532+1.2252504385364E-08i` in Excel and `-0.999999867190789+…` in ours (probes/eng-impower-angle-cut A9-A17, all inside the cut). Per factor that is r ≈ 1-6·2^-53 against our 1-7·2^-53, so Excel computes the modulus differently from `sqrt(x²+y²)` (cause unknown; T-1950).
+- UNVERIFIED: past the cut a base that is not a pure imaginary number does not give `#NUM!`: `IMPOWER("0.7071067811865476+0.7071067811865476i",170891318)` is `1.79769293021926E+308+1.79769293021926E+308i` and `…,170891320` is `1.79769293021925E+308+1.79769293021925E+308i` (the parts differ, so it is not a clamp). Ours gives `#NUM!` there (T-1950).
+Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892).
+Status: VERIFIED (excel-graph), except the bullets marked UNVERIFIED (T-1950)
+Tasks: T-1766, T-1892
 
 ## Base conversions read a blank cell and empty text as 0
 Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank cell, `""` and a ref to `=""` as 0: `BIN2DEC("")`, `OCT2DEC(blank)`, `HEX2DEC("")` are 0; the others give "0", or "0000" with `places` 4. None of these is an error.

@@ -49,3 +49,11 @@ Halley step against the T-0924 CDF was worse (fixed 38, 9 regressions). Excel's 
 `NORM.S.INV(C2)` -> 1.3333330000000008) look like iteration against Excel's own CDF, so parity likely
 needs that CDF bit-for-bit (several NORM.S.DIST cells, e.g. `NORM.S.INV!C3`, are still NumericUlp)
 plus oracle probes. The oracle now exists: probe NORM.S.INV at p = NORM.S.DIST(k) for integer k first.
+
+## Update (T-1916, 2026-10-18)
+T-1916 made NORM.S.DIST/NORM.DIST bit-exact through the T-1778 kernels. Three NORM.INV/NORM.S.INV cells
+(NORM_DIST.xlsx F4, F58, D13) then lost their lucky match with statrs, so T-1916 shipped the T-1746 tail half of
+this task: `normal.rs` `ppnd16_tail` for |p - 0.5| > 0.425 in NORM.S.INV, NORM.INV and CONFIDENCE.NORM (statrs
+stays centrally). With it ironcalc-calc lost 18 NORM.INV, 18 NORM.S.INV/NORM.S.DIST and 17 CONFIDENCE.NORM
+known-failure lines and none regressed. What remains here: the central region (an iterative search on Excel's
+NORM.S.DIST, statistics.md "NORM.S.INV is AS 241 PPND16 in the tails") and LOGNORM.INV, which still calls statrs.

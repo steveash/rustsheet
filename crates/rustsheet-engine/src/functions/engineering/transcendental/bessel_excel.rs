@@ -8,6 +8,7 @@
 //! For `|x| >= 8` the fdlibm implementation is kept (see `docs/excel-semantics/engineering.md`).
 
 use super::{bessel_j, bessel_y};
+use crate::functions::util::poly;
 
 const SMALL_ARG_LIMIT: f64 = 8.0;
 /// Orders above this yield NaN (reported as `#NUM!`): every Bessel algorithm here, BESSELI's and
@@ -18,11 +19,6 @@ const SMALL_ARG_LIMIT: f64 = 8.0;
 pub(crate) const MAX_ORDER: i32 = 100_000;
 // Numerical Recipes truncates 2/pi; Excel's output bakes in the truncated constant.
 const TWO_OVER_PI: f64 = 636_619_772.0 / 1e9; // == 0.636619772 (correctly rounded)
-
-/// Evaluates `c[0] + c[1]*y + c[2]*y^2 + ...` (Horner).
-fn poly(c: &[f64], y: f64) -> f64 {
-    c.iter().rev().fold(0.0, |acc, &a| acc * y + a)
-}
 
 fn j0(x: f64) -> f64 {
     let y = x * x;

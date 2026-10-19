@@ -1,0 +1,24 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Does Excel accept _RS_LEGACY_N / _RS_LEGACY_T as defined LAMBDA names, and what does a call give (N(1) would be 1, T(\"a\") \"a\"; the LAMBDA gives 17) (T-1912)",
+ "tags": [
+  "M2",
+  "references",
+  "probe"
+ ],
+ "names": {
+  "_RS_LEGACY_N": "=LAMBDA(x,x*10+7)",
+  "_RS_LEGACY_T": "=LAMBDA(x,x*10+7)"
+ },
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=_RS_LEGACY_N(1)",
+    "A2": "=_RS_LEGACY_T(1)",
+    "A3": "=N(1)"
+   }
+  }
+ ],
+ "expected": {}
+}

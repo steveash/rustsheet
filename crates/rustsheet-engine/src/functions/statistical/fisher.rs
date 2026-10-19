@@ -213,7 +213,8 @@ impl Model {
     /// `F.INV(probability, deg_freedom1, deg_freedom2)`: every argument lifts over an array and a
     /// range (SPEC-0011; probes/stat-argument-modes H231-H235, probes/stat-quantile-lift). The
     /// quantile is the capped port of statrs' inversion or a bisection of at most about 1,300
-    /// cdfs (`f_quantile`), which the lifting table charges (kinds.rs `QUANTILE_WEIGHT`).
+    /// cdfs (`f_quantile`), which the lifting table charges (lift/kinds/statistical.rs
+    /// `QUANTILE_WEIGHT`).
     pub(crate) fn fn_f_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::FInv, args, cell, &mut |model, values| {
             number_or_error(model.f_inv_of(values, false, cell))

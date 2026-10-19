@@ -298,18 +298,21 @@ The delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are one list, not lifted: 
 whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/93976dd9a3578ed9 Calc!A11, 59cc50701f4937c9 A24).
 A lifted element whose call returns an array keeps its first value: TEXTSPLIT, probes/m7-argument-modes F13:H13.
 An error inside a delimiter array is that error and a boolean is its spelling (T-1361, next entry).
-UNVERIFIED (T-1272 guesses, nothing probed; T-1824 probes them): when two delimiters of a list match at the same
-position, the first in list order sets the match length; every entry longer than the text gives the single-delimiter
-error (`#VALUE!` with more than two arguments, `#N/A` with two); a REGEX pattern that does not compile is `#VALUE!` in its own element
-only; if_not_found, pad_with, match_end and return_all lift like the other scalars, and if_not_found is evaluated even
-when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of a lifted element. A 1x1 array lifts too, so
-`COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(A1:A2,A1:A2="a,b"),","))` and
-`COLUMNS(REGEXEXTRACT({"a1b2"},"[0-9]",1))` are 1 (2 before T-1272), by analogy with `COLUMNS(XLOOKUP({2},A1:A4,C1:E4))`
-= 1 (lookup.md); a common pattern, so T-1824 probes it first.
+VERIFIED (probes/textsplit-lift-guesses, excel-graph, 2026-10-19, T-1824):
+- When several delimiters of a list match at one position the LONGEST wins, whatever the list order (`TEXTAFTER("abcd",{"ab","abc"})` and `{"abc","ab"}` are both "d"; `TEXTSPLIT("abcd",{"ab","abc"})` is {"","d"}; a negative instance_num alike, `TEXTAFTER("abcd",{"abc","ab"},-1)` is "d", A1-A9). T-1272 guessed the first in list order.
+- Every list entry longer than the text gives the single-delimiter error: `#VALUE!` with more than two arguments, if_not_found included (`TEXTBEFORE("a","aa",1)`, `TEXTBEFORE("a",{"aa","bb"},1)`, `TEXTAFTER("a",{"aa","bb"},1,0,0,"nf")`), `#N/A` with two (A12-A14, A16, A17). If one entry fits the text the call simply finds nothing: `#N/A`, or if_not_found (`TEXTBEFORE("a",{"aa","b"},1,0,0,"nf")` is "nf"; A10, A11, A21; `#N/A` with 3 or more arguments and no if_not_found is inferred). `TEXTBEFORE("a",{"aa","a"},1)` is "" because "a" is found (A15). TEXTSPLIT returns the text when every entry is too long (A18, A19); `TEXTSPLIT("a",{"aa","a"})` splits into two empty pieces because "a" fits (A20).
+- A REGEX pattern that does not compile is `#VALUE!` in its own element only (`REGEXTEST("abc",{"a";"(";"b"})` is TRUE, `#VALUE!`, TRUE; REGEXEXTRACT and REGEXREPLACE alike; A22-A27).
+- if_not_found, match_end, match_mode, TEXTSPLIT's ignore_empty and REGEXEXTRACT's return_mode lift like the other scalars, and an array if_not_found lifts even when the delimiter is found (`TEXTBEFORE("a,b",",",1,,,{"x";"y"})` is 2x1 "a","a"); a scalar error as if_not_found is returned only when the delimiter is not found (`TEXTBEFORE("a,b",",",1,,,1/0)` is "a", with instance 3 `#DIV/0!`; A28-A34, A39-A48).
+- TEXTSPLIT's pad_with does NOT lift: an array of any size, a 1x1 one included, is `#VALUE!` (`TEXTSPLIT("a,b;c",",",";",,,{"x";"y"})`, `COLUMNS(TEXTSPLIT("a,b,c",",",,,,{"x"}))`; A35-A38, A65). A single-cell or multi-cell range as pad_with is UNVERIFIED (ours: a single cell is its value, a range `#VALUE!`), as is which error comes first when pad_with is an array and another argument is an error (ours: the pad_with `#VALUE!`).
+- REGEXEXTRACT in a lifted call keeps the first value of each element (`REGEXEXTRACT({"a1b2";"c3d4"},"[0-9]",1)` is 2x1 "1","3"; A47-A52).
+- A 1x1 array lifts the call: `COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(Data!A1:A2,Data!A1:A2="a,b"),","))` and `COLUMNS(REGEXEXTRACT({"a1b2"},"[0-9]",1))` are 1, as is `ROWS(...)` (every lifted element keeps its first value, so `COLUMNS(TEXTSPLIT({"a,b";"c,d,e"},","))` is 1 and its ROWS 2); `COLUMNS(TEXTSPLIT(Data!A3,","))` over a single cell is 3, a non-lifting call (A56-A70).
+- A 1x1 array as the delimiter does not lift (`COLUMNS(TEXTSPLIT("a,b",{","}))` is 2, A64); as ignore_empty or a REGEX pattern it does (A66, A67). A one-cell range `Data!A3:A3` does not lift (A70). `INDEX(TEXTSPLIT({"a,b"},","),1,2)` is `#REF!` because the lifted call has one column (A68).
+- A scalar boolean delimiter is its spelling in TEXTSPLIT as in TEXTBEFORE (`TEXTSPLIT("a TRUE b",TRUE)` is "a "," b", A71-A73). Of two different errors in one delimiter list the first element wins (whether the scan is row-major or column-major is UNVERIFIED: every 2x2 cell has its winner at (1,1); ours row-major; `{#N/A,#DIV/0!}` is `#N/A`, `{#DIV/0!,#N/A}` is `#DIV/0!`, `{#REF!,#N/A;#VALUE!,#DIV/0!}` is `#REF!`, A74-A81), and an error in the list beats an invalid instance_num (`TEXTBEFORE("abc",{"",#N/A},0)` is `#N/A`; without the error `#VALUE!`, A82-A87).
+- REGEXEXTRACT's return_mode 2 keeps the first group of each lifted element (`REGEXEXTRACT({"a1b2";"c3d4"},"([a-z])([0-9])",2)` is "a","c"; A53) and its fourth argument case_sensitivity lifts (`REGEXEXTRACT("a1B2","b",0,{0;1})` is `#N/A`,"B", so its TEXTJOIN is `#N/A`; A55). Ours since T-1360 ("REGEX* optional arguments" below).
 Ours: all of this since T-1272. The work caps are the next entry's. A multi-cell range as the TEXTBEFORE/TEXTAFTER
 delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805 Calc!A25 is `#VALUE!`); its list rule is
 T-1361's.
-Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED (probe pending, T-1824) for the rest
+Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED as noted above
 Tasks: T-1272, T-1824 (probe the guesses), T-1361 (delimiter ranges)
 
 ## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped
@@ -347,7 +350,7 @@ pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
-and `Replacement` (functions/text/regex_functions.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
+and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
 Tasks: T-1272, T-1829
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
@@ -538,27 +541,76 @@ Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Implemented in: `Model::fn_asc` (functions/text/char_code.rs). Tasks: T-1863
 
 ## REGEXTEST and REGEXREPLACE edge cases (T-1626)
-Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); surrogate pairs are UNVERIFIED (not probed). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending, as do REGEXTEST case_sensitivity 2 and -1 (C23, C24); UNVERIFIED.
+Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); surrogate pairs are UNVERIFIED (not probed). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending; UNVERIFIED. REGEXTEST case_sensitivity 2 and -1 (C23, C24, undecoded here) are `#VALUE!` (probes/regex-optional-args A3, A4; next entry but two).
 Evidence: probes/t1626-regextest, t1626-regexreplace (excel-graph, 2026-10-16).
-Ours: #ERROR! for the optional arguments (T-1360); `\1` in the replacement matches since T-1688; the pattern
+Ours: the optional arguments since T-1360 (next entry but two, "REGEX* optional arguments"); `\1` in the replacement matches since T-1688; the pattern
 backreference (REGEXTEST C29) is T-1900 and the lazy empty matches (REGEXREPLACE C34) T-1899.
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Tasks: T-1360, T-1688, T-1272 (range lift)
 
-## REGEXREPLACE replacement syntax (T-1688)
+## REGEX* optional arguments: case_sensitivity, return_mode, occurrence (T-1360)
+Rule (coercion, all three): an omitted, empty (`REGEXTEST("ABC","abc",)`) or blank-cell argument is 0; a number is
+truncated toward zero (0.5 and 0.9 are 0, 1.5 is 1; as occurrence -0.5 is 0, -1.5 is -1); TRUE is 1, FALSE 0; number
+text is its number ("1" probed for case_sensitivity and return_mode, "2" and "-1" for occurrence); other text, "" included, is `#VALUE!`; an error argument is returned. Arguments are read left to
+right, so an error in the text beats one in a later argument (`REGEXTEST(NA(),"a",1/0)` is `#N/A`).
+Rule (case_sensitivity, REGEXTEST's third, REGEXEXTRACT's fourth, REGEXREPLACE's fifth): after truncation 0 is
+case-sensitive and 1 case-insensitive; anything else (2, -1, 2^53) is `#VALUE!`, also for an array element (`{0;1;2}`
+gives FALSE, TRUE, `#VALUE!`). Case-insensitive matching uses Unicode case folding (`ſ` matches `s`, the Kelvin sign
+`k`, `ÄÖ` `äö`) and a character class (`[a-c]+$` matches `ABC`).
+Rule (REGEXEXTRACT return_mode): 0 is the first match, WHOLE even when the pattern has capture groups
+(`REGEXEXTRACT("a1b2c3","([a-z])([0-9])")` is "a1"); 1 is every match, whole, as a 1xN ROW ("a1","b2","c3"; one match
+is 1x1); 2 is the capture groups of the first match as a 1xG ROW ("a","1"; named groups alike), a group that took
+no part in the match being `#N/A` (`REGEXEXTRACT("b","(a)?(b)",2)` is `#N/A`,"b"), and a pattern without groups is
+`#VALUE!` whether or not it matches (`REGEXEXTRACT("abc","z",2)`). Any other value after truncation (3, -1) is `#VALUE!`,
+checked before matching (`REGEXEXTRACT("abc","z",5)` is `#VALUE!`, not `#N/A`). No match is `#N/A` in every mode. In a
+lifted call each element keeps the first value of its row (mode 1: the first match; mode 2: the first group, `#N/A` if
+it did not take part).
+Rule (REGEXREPLACE occurrence), extending the T-1626 entry above: truncated toward zero (2.9 is 2, -1.5 is -1, 0.1 and
+-0.5 replace all); matches are counted as the global replace finds them, empty ones included (`REGEXREPLACE("abc","",
+"-",4)` is `abc-`, 5 leaves `abc`); |n| past the match count, 1E+300 and -1E+300 included, leaves the text unchanged. An
+invalid replacement is `#VALUE!` only when the match to replace exists (`REGEXREPLACE("ab","a","$9",2)` is `ab`, with 1
+`#VALUE!`), and a group that took no part is empty (`REGEXREPLACE("ab","(a)|(b)","[$2]",1)` is `[]b`).
+Evidence: probes/regex-optional-args A1-A148 (excel-graph, 2026-10-19); A19 (TEXTJOIN over the `{0;1;2}` result, a
+rich error) stays undecoded, its per-element ERROR.TYPE is A145.
+Ours: matches since T-1360, except where the matcher differs (T-1898-T-1900: lookaround, backreferences, PCRE2
+empty-match iteration). Implemented in `Model::regex_option`, `Occurrence`, `ReturnMode`
+(functions/text/regex_functions.rs); case folding is `regex-automata`'s `case_insensitive` syntax flag.
+Status: VERIFIED (excel-graph)
+Tasks: T-1360
+
+## REGEXREPLACE replacement syntax (T-1688, T-1897)
 Rule: the replacement is read as PCRE2's extended substitution. `$n` and `\n` are group n, where n is every digit
 that follows (`$1a` is group 1 then "a", `[\10]` is group 10); `${n}`, `${name}` and `$name` work too (`${x}$x` is
-`aab`); `$$` and `\$` are `$`, `\\` is `\`; `\n` is LF (CODE 10) and `\t` TAB (9); `\U$1` upper-cases (`Ab`, T-1897).
+`aab`); `$$` and `\$` are `$`, `\\` is `\`; `\n` LF, `\t` TAB, `\r` CR, `\a` 7, `\b` 8 (not a word boundary), `\e` 27,
+`\f` 12, `\v` 11. A backslash before any other non-alphanumeric character is that character (`[\-]`, `[\é]`), and a group
+that took no part in the match is empty (`REGEXREPLACE("b","(a)?b","[$1]")` is `[]`).
+Characters: `\xh` and `\xhh` (one or two hex digits, `\x41g` is `Ag`); `\x{h...}` and `\o{o...}` (spaces and tabs
+inside the braces are ignored, `\x{ 41 }` is `A`; any number of leading zeros; a value past U+10FFFF or a surrogate is
+an error); `\0` plus one or two octal digits (`\012` LF, `\0123` LF then "3", `\00` NUL); `\cX` is the upper-cased ASCII
+X XOR 64 (`\ca` is 1, `\c@` 0, `\c?` 127, `\c1` "q", `\c]` 29; a non-ASCII X is an error). `\` and digits 1-9: all
+the digits are a decimal number, a group if it is below 10 or no more than the pattern's groups (a missing group is an
+error), else, if it starts with three octal digits, those as a character up to `\377` (one or two such digits are an error) (`\101` is `A`, `\1010` is `A0`; with 12
+groups `\10` is group 10 but `\20` and `\77` are errors; `\400` an error; `\18`, `\181` errors).
+Case forcing: `\U` and `\L` set a mode for the rest of this match's replacement (literals, groups and the characters
+the escapes above make alike: `\L\x41\U\x61` is `aA`); `\u` upper-cases the next character only and keeps the mode
+(`\L\uxyz` is `Xyz`, `\u\L$1` too); `\l` is unlike PCRE2's: it lower-cases the next character and sets the `\L` mode, so
+`\Uab\lcd` is `ABcd` and `\U\lxyz` is `xyz` (and `\u\lxyz` is `xyz`, `\l\uxyz` is `Xyz`, `\l\Uabc` is `aBC`); `\E`
+ends the mode and a pending `\u`; an empty group or text keeps a pending `\u` for the text after it (`\u$2b` with
+`$2` empty is `B`); the state starts afresh with each match (`REGEXREPLACE("abab","(a)(b)","$2\U$1")` is `bAbA`); only
+the replacement is case-forced, never the subject text around the match. Case mapping is the one-to-one mapping of UPPER and
+LOWER (`\Uß` is `ß`). Final sigma (T-1934, VERIFIED, probes/regexreplace-final-sigma, excel-graph 2026-10-19): a `\L` run is lowered whole, so a capital sigma sees the text after it in the next piece (`\L$1x` with `$1` = ΑΣ is `ασx`, but `\L$1` alone is `ας`; A2, A4, A8); a `\E` ends the run (`\L$1\E$2` with `$1`, `$2` = Α, Σ keeps `Σ`: `αΣ`, A10); a `\l` head character is lowered alone (`\lΣa` is `ςa`, A1). Whether a `\u`, `\l` or `\U` inside a `\L` run ends the run for the sigma context is UNVERIFIED (ours: it does, as `\E` does). `\Q...\E` quotes up to
+the first `\E` (or the end): `\Q$1\E` is `$1`, `\Qa\\Eb` is `a\b`; quoted text is case-forced, and `\E` ending a quote
+does not end the mode (`\Uab\Qcd\Eef` is `ABCDEF`).
 `#VALUE!` (ERROR.TYPE 3, so the undecoded rich errors are `#VALUE!`): a group the pattern does not have (`$2`, `\2`,
-`$10`, `${y}`, `$y` with one unnamed group), a `$` that starts no reference (`$` alone), a trailing `\`, `\0`, `\x`
-with no hex digits and an unknown letter escape (`\q`), but only when something matches: with no match the text
-comes back unchanged (`REGEXREPLACE("zz","(a)","$2")`, `"\q"` and `"$"` are `zz`). A backslash before any other
-character is that character (`[\-]`, `[\é]`), and a group that took no part in the match is empty
-(`REGEXREPLACE("b","(a)?b","[$1]")` is `[]`).
-Evidence: probes/regex-pcre2-features B1-B30, E1-E7 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's
-probes/regexreplace-limit-and-syntax A12-A16.
-Ours: matches, except the escapes other than `\n` and `\t` (`\U`, `\L`, `\u`, `\l`, `\E`, `\r`, `\xhh`...), which
-are `#VALUE!` until T-1897. Implemented in `Replacement::new` (functions/text/regex_functions.rs).
+`$10`, `${y}`, `$y` with one unnamed group), a `$` that starts no reference (`$` alone), a trailing `\`, `\0` with no octal
+digit after it (`\0`, `\08`, `\0a`), `\x` with no hex digits or a bad `{...}`, `\o` without a valid `{...}`, `\c` at the
+end, and every other letter escape (`\q`, `\d`, `\w`, `\s`, `\h`, `\R`, `\g`, `\k`, `\p`, `\N`, `\z`...), but only
+when something matches: with no match the text comes back unchanged (`REGEXREPLACE("zz","(a)","$2")`, `"\q"` and
+`"$"` are `zz`).
+Evidence: probes/regexreplace-extended-escapes (244 cells, excel-graph, 2026-10-18, T-1897); probes/regex-pcre2-features
+B1-B30, E1-E7 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's probes/regexreplace-limit-and-syntax A12-A16.
+Ours: matches. Implemented in `Replacement::new`, `CaseState` (functions/text/regex_replacement.rs); the size bound
+`Replacement::result_len` allows case mapping to lengthen text by half.
 Status: VERIFIED (excel-graph)
 Tasks: T-1688, T-1897
 

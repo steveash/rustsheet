@@ -200,13 +200,32 @@ pub struct CalculationSpec {
 /// it for the oracle backend, which replays it in Excel, and the engine adapter applies it through
 /// the edit API. `{"op":"add","sheet":"New"}` appends a sheet, `{"op":"rename","sheet":"Data",
 /// "to":"Inputs"}` renames one, `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based
-/// position.
+/// position, and `{"op":"insert_row","sheet":"S","row":1}` inserts one blank row above the 1-based
+/// `row`, shifting the cells below down (T-1933).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "op", rename_all = "lowercase", deny_unknown_fields)]
+#[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum SheetOp {
     Add { sheet: String },
     Rename { sheet: String, to: String },
     Move { sheet: String, to: u32 },
+    InsertRow { sheet: String, row: u32 },
+}
+
+impl SheetOp {
+    /// Where the input cell `addr` (1-based row) of `sheet` sits after this op: an `insert_row`
+    /// at or above it moves it down a row; every other op leaves cells where they are. `sheet` is
+    /// the spec's sheet name: a row insert into a sheet renamed by an earlier op is not matched,
+    /// which no case does yet.
+    #[must_use]
+    pub fn moved(&self, sheet: &str, addr: Addr) -> Addr {
+        match self {
+            SheetOp::InsertRow { sheet: at, row } if at == sheet && addr.row >= *row => Addr {
+                row: addr.row.saturating_add(1),
+                ..addr
+            },
+            _ => addr,
+        }
+    }
 }
 
 /// A self-contained workbook test case.
@@ -361,6 +380,20 @@ pub fn load_oracle(case: &CaseFile) -> Result<Option<OracleFile>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_row_insert_moves_the_inputs_at_and_below_it() {
+        let op = SheetOp::InsertRow {
+            sheet: "S".into(),
+            row: 3,
+        };
+        let at = |a1| Addr::parse(a1).expect("addr");
+        assert_eq!(op.moved("S", at("B3")), at("B4"));
+        assert_eq!(op.moved("S", at("B2")), at("B2"));
+        assert_eq!(op.moved("T", at("B3")), at("B3"));
+        let add = SheetOp::Add { sheet: "S".into() };
+        assert_eq!(add.moved("S", at("B3")), at("B3"));
+    }
 
     #[test]
     fn parses_case_inputs() {

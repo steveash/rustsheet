@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Whether a LET or a LAMBDA call whose result is its variable bound to a reference stays a reference: ISREF, SUM over text, ROWS, and the value in a cell (T-1106).",
+  "tags": [
+    "M7",
+    "references",
+    "probe",
+    "T-1106"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "K1": "text",
+        "K2": 7,
+        "C1": "=ISREF(LAMBDA(x,x)(A1))",
+        "C2": "=ISREF(LAMBDA(x,x)(A1:A3))",
+        "C3": "=ISREF(LET(x,A1,x))",
+        "C4": "=ISREF(LET(x,5,x))",
+        "C5": "=ISREF(LET(x,A1:A3,y,x,y))",
+        "C6": "=ISREF(LAMBDA(x,5)(A1))",
+        "C7": "=ISREF(LET(x,A1:A3,IF(TRUE,x)))",
+        "C8": "=ISREF(LET(x,A1:A3,x+0))",
+        "D1": "=SUM(LAMBDA(x,x)(K1))",
+        "D2": "=SUM(LET(x,K1,x))",
+        "D3": "=SUM(LAMBDA(x,x)(K1:K2))",
+        "D4": "=COUNTA(LAMBDA(x,x)(K1))",
+        "D5": "=COUNT(LET(x,K1:K2,x))",
+        "D6": "=MAX(LAMBDA(x,x)(K1))",
+        "E1": "=ROWS(LAMBDA(x,x)(A1:A3))",
+        "E2": "=LAMBDA(x,x)(K1)",
+        "E3": "=LET(x,K1,x)",
+        "E4": "=ISREF(LET(x,K1,x))"
+      }
+    }
+  ]
+}

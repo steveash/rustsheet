@@ -3,7 +3,7 @@ id: T-1857
 title: "PIVOTBY relative sets of moved column subtotal cells over several values"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,3 +29,8 @@ cell's call gets is unprobed: the engine gives it the set of the subtotal or tot
 
 ## Out of scope
 - Where the cells land (T-1700).
+
+## Outcome
+New probe `probes/pivotby-moved-cells-relative-sets` (1460 cells: LAMBDA(x,y,ARRAYTOTEXT(y)) and PERCENTOF, relative_to 0-4, two value
+columns, col_total_depth 2, single-child parent). Excel gives a moved cell the relative set of the subtotal or total whose
+cell it shows; the engine already did, so no code change. Recorded in arrays.md. Eval: 1460 new cells pass, no regressions.

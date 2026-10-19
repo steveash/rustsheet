@@ -373,15 +373,15 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   `"July1 10:00:30"` and `"Jul1 , 2026 10:00"` are date-times in VALUE (fractions 0.41666..., 0.75, 0.7708...,
   0.41701...; rows 1-5, 12), and TIMEVALUE of the same text is just the clock fraction. TIMEVALUE of date-only
   text (`"Jul1 , 2026"`, `"1Jul 2026"`, `"Jul2026"`, `"July01"`, `"Jun31"`, `"Feb29"`) is 0, not an error
-  (rows 6-8, 10-11, 13-15, column C); the engine returns `#VALUE!` for those.
+  (rows 6-8, 10-11, 13-15, column C). Implemented (T-1907) for every text `parse_date` reads, not only the glued shapes probed: non-glued date-only text (`"1/2/2020"`, `"July 1, 2026"`) giving 0 and a pre-epoch date in a 1904 workbook being `#VALUE!` are UNVERIFIED.
 - Criteria read the glued forms as dates: over serials 44347, 44348, 44349 `COUNTIF(">1JUN2021")` = 1,
   `"1JUN2021"` = 1, `">=1JUN2021"` = 2, `"<1JUN2021"` = 1, `">1Jun2021"` = 1, `SUMIF(">1JUN2021")` sums
   44349; `COUNTIF(date,"July1")`, `"Jul1"` and `"July01"` match the 1 July of the clock year (K1-K8).
 - Typed input (the oracle's ENTERED log, number formats; raw log in docs/research/glued-month-typed-input-2026-10-18.md): `"July1"` and `"July01"` -> 1 July of the clock year,
   format `d-mmm`; `"Jul2026"` -> 2026-07-01, `mmm-yy`; `"Jun31"` -> 1931-06-01, `mmm-yy`; `"1Jul 2026"`,
   `"Jul1 , 2026"` and `"1JUN2021"` -> d-mmm-yy dates (2026-07-01, 2026-07-01, 2021-06-01); `"July1 10:00"` ->
-  46204.41666..., format `m/d/yyyy h:mm`; `"Jun1.5"` stays text (General). The engine matches except the typed
-  `"July1 10:00"` (T-1907), which it leaves as text.
+  46204.41666..., format `m/d/yyyy h:mm`; `"Jun1.5"` stays text (General). The engine matches (T-1907 made typed
+  date+time text a number with `m/d/yyyy h:mm`; only a typed `H:MM` clock is converted; typed clocks with seconds, AM/PM, hours past 23 or fractions stay text, which is UNVERIFIED). Also UNVERIFIED (T-1952): typed non-glued date + `H:MM` text (`1/2/2020 10:00`, `2020-01-02 10:00`, `July 1, 2026 10:00`, year-less `7/1 10:00`) now becomes a number, every such shape with the format `m/d/yyyy h:mm`; a 1904-workbook pre-epoch date stays text. Only the glued `July1 10:00` has oracle evidence.
 UNVERIFIED:
 - shapes the glued-month rules accept or reject beyond the probed rows (T-1906): `"1Jul5"` (any glued single digit after a day reads as year 0d), `"1/Jul2026"` and other separators, `"1-Jul26"`, the format typed `"1-Jul2026"` gets, and the hand-derived `#VALUE!` of `"July1 , 2026 5"`, `"1Jul1 , 2026"` and `"July1,, 2026"`;
 - the clock-year results (`"July1"`, `"July01"`, criteria K6-K8) for clocks other than the oracle's 2026;
@@ -421,7 +421,7 @@ Probed directly (probes/weekday-serial-zero A1:A18, excel-graph, 2026-10-17, T-1
 Ours: WEEKDAY implemented (T-1253); `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!` (T-1254).
 More serial-0 cells (gen-m9, excel-graph, 2026-10-12, T-1289): `YEARFRAC(33752,0)` is 92.41111111111 (from
 `(0.3+YEARFRAC(33752,Data!$C12))^SUM(-0.0001)` = 0.9995471537332011 with C12 = 0), which is basis 0 counted from
-1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours `#NUM!`, T-1409).
+1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours matches for basis 0, where a start or end in [0, 1) counts as day 0 of January 1900, T-1409; other bases with serial 0 stay `#NUM!`, UNVERIFIED; the pair is ordered before counting like every basis; serial 0 paired with a date in January-February 1900, including the fictitious serial 60, is UNVERIFIED).
 `NETWORKDAYS.INTL(44900,0.2)` is a number (`AVERAGE(NETWORKDAYS.INTL(44900,0.2)/<#VALUE!>,..)` is `#VALUE!`,
 gen-m9/50f10c4062fb2e98 Calc!A12; ours `#NUM!`). `WORKDAY(33393,0,A3:D3)` with holidays "a", 0.3, 0.3, 0.5 is 33393
 (`COLUMNS(B8:E10)%+WORKDAY(..)` = 33393.04, gen-m9/288b99797f58f149 Calc!A10): neither the fractional holidays below 1
@@ -461,15 +461,15 @@ the 9999 limit: the month argument is bounded (see "DATE month and day bounds").
 excel-graph 2026-10-09), the same 32767 cap (T-1419).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
 Ours: YEARFRAC's kernel (`yearfrac_of`) reads and range-checks the basis, then reads the start and the end date, as Excel does, so probes/scalar-lift-open-d W1-W7, -a W5-W8 and probes/yearfrac-basis-order pass (T-1800). The financial callers of `get_yearfrac` (ACCRINTM, DISC and the rest) pass three numbers, where every failing check is `#NUM!` in either order, so the reorder changes nothing for them.
-Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
-DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
+DATEDIF's unit and DAYS360's method lift too, over an array and over a range on and off its rows (`ROWS(DATEDIF(45000,46000,{"d";"m"}))` and `ROWS(DATEDIF(45000,46000,B1:B2))` are 2, `INDEX(..,2)` is 32 for "m"; `INDEX(DAYS360(45031,45351,C1:C2),1)` is 314), and in a legacy formula the unit's range takes the `@`: legacy `DATEDIF(45000,46000,B1:B2)` is 1000 on B1's row ("d") and 32 on B2's ("m"), so it intersects with the formula's row rather than taking the first cell. A 3-D reference (`Sheet1:Sheet2!A1`) in DAY, HOUR, DATE, WEEKDAY, DATEDIF or ISOWEEKNUM is `#REF!`, as in the other worksheet functions' lifted arguments. A one-cell range is that cell's value, not a 1x1 array, so a scalar error beside it is the result: `ROWS(DAYS(E1:E1,NA()))` is `#N/A`, `ROWS(WEEKDAY(E1:E1,"x"))` and `ROWS(DAYS360(E1:E1,"x"))` are `#VALUE!`, `ROWS(HOUR(E1:E1))` is 1 (N3, N4, N6, N13). Evidence: probes/date-math-lift-driver-edges G1-G10, G24-G26, G30-G32, G40-G41, K1, K5, L2, N3-N13 (excel-graph, 2026-10-18/19, T-1785).
+Ours: DAY, MONTH, YEAR, HOUR, MINUTE, SECOND, DATE, TIME, DAYS, DAYS360, DATEDIF, WEEKDAY and ISOWEEKNUM are `Lift` entries of the SPEC-0011 driver in every argument (T-1785); DATEVALUE and TIMEVALUE lift like the text functions (T-1235), as does the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
 over an array and refuse a multi-cell range in every argument, in dynamic and legacy formulas (T-1770, SPEC-0011
 `LiftArrays`). Still `#N/IMPL!` (T-1236) for an array literal in a date argument: WORKDAY, WORKDAY.INTL, NETWORKDAYS,
 NETWORKDAYS.INTL.
 In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
 1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330). It counts the days on the 1904 calendar since T-1416 (`DATEDIF(0,1000,"ym")` = 8, probes/date-system-1904-readers A11).
 Status: VERIFIED
-Implemented in: EDATE, EOMONTH, WEEKNUM and YEARFRAC: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs)
+Implemented in: EDATE, EOMONTH, WEEKNUM and YEARFRAC: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds/general.rs)
 and `Model::lift_call` (functions/lift/call.rs), with the kernels `edate_of`, `eomonth_of`
 (functions/date_and_time/month_shift.rs), `weeknum_of` (date_and_time/weeknum.rs) and `yearfrac_of` (date_and_time/yearfrac.rs).
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
@@ -481,8 +481,9 @@ order: DATEDIF reports the `#NUM!` of an end before the start before the unit's 
 (`DATEDIF(10,5,NA())` is `#NUM!`; for out-of-range dates the unit's error wins, see "DATEDIF argument errors before date checks", T-1355), while DAYS360 reports the method's error before the dates' `#NUM!`
 (`DAYS360(-5,5,NA())` is `#N/A`). Also unprobed: `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and a
 single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
+One lifted data point (T-1785): `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` is `#N/A` in Excel, so an error unit beats the reversed pair's `#NUM!` there, where ours gives `#NUM!` (probes/date-math-lift-driver-edges G43, a known failure for T-1430); `INDEX(DATEDIF(45000,46000,{"d";#N/A}),2)` is `#N/A` in both (G42). DATEDIF's unit and DAYS360's method over an array are answered in "Date function argument modes" (they lift).
 Status: UNVERIFIED (probe pending)
-Tasks: T-1430 (error order), T-1428 (3D ranges, unit/method over an array)
+Tasks: T-1430 (error order), T-1428 (3D ranges in the text and weekend arguments)
 
 ## TIMEVALUE of chrono-pattern date-time text in a 1904 workbook (T-1445)
 Rule: in a 1904 workbook `TIMEVALUE("7/7/2026 4:35 PM")` and `TIMEVALUE("2024-03-15 16:35")` both give

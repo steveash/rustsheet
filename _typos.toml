@@ -13,6 +13,10 @@ extend-exclude = [
   "*.lock",
 ]
 
+[default]
+# C99 hex-float literals (0x1.79f85ba68804p-4) in comments citing research coefficients.
+extend-ignore-re = ["-?0x[0-9a-fA-F]\\.[0-9a-fA-F]+p[-+]?[0-9]+"]
+
 [default.extend-words]
 # Excel function names and spreadsheet jargon
 ue = "ue"

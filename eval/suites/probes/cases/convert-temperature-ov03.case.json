@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "CONVERT(1E300,\"K\",\"Rank\") large temperature result (T-1860)",
+  "tags": [
+    "M9",
+    "engineering",
+    "convert",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=CONVERT(1E300,\"K\",\"Rank\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1"
+  ]
+}

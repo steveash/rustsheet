@@ -21,7 +21,7 @@ use super::criteria::wildcard_text_matcher;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
-use lookup_table::{LookupTable, SearchVector};
+use lookup_table::SearchVector;
 
 mod address_areas;
 mod choosecols_chooserows;
@@ -117,16 +117,18 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let target = self.lookup_value_arg(&args[0], cell);
-        if target.is_error() && !LiftedArg::is_grid(&target) {
-            return target;
-        }
         // An array match_type lifts with lookup_value (probes/match-lookup-value-lift E14:E16,
-        // T-1917); a multi-cell range still reads its top-left cell (match_type_arg).
+        // T-1917); a multi-cell range still reads its top-left cell (match_type_arg). A scalar
+        // error lookup_value lifts over it too: `MATCH(NA(),A1:A3,{0;1})` is 2x1 of #N/A
+        // (probes/match-error-lookup-value-array-match-type E1, E2, E7, E8; T-1926).
         let match_type = if args.len() == 3 {
             self.match_type_arg(&args[2], cell)
         } else {
             CalcResult::Number(1.0)
         };
+        if target.is_error() && !LiftedArg::is_grid(&target) && !LiftedArg::is_grid(&match_type) {
+            return target;
+        }
         if match_type.is_error() && !LiftedArg::is_grid(&match_type) && !LiftedArg::is_grid(&target)
         {
             return match_type;
@@ -242,24 +244,9 @@ impl Model {
         };
         let as_reference = as_reference && matches!(row_index, LookupIndexArg::Reference(_));
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
-        let table = match range {
-            CalcResult::Range { left, right } => LookupTable::Range { left, right },
-            CalcResult::Array(array) => LookupTable::Array(array),
-            error @ CalcResult::Error { .. } => return error,
-            CalcResult::String(_) => {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Range expected".to_string(),
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Range expected".to_string(),
-                }
-            }
+        let table = match self.lookup_table(range, cell) {
+            Ok(table) => table,
+            Err(error) => return error,
         };
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
@@ -306,24 +293,9 @@ impl Model {
         };
         let as_reference = as_reference && matches!(column_index, LookupIndexArg::Reference(_));
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
-        let table = match range {
-            CalcResult::Range { left, right } => LookupTable::Range { left, right },
-            CalcResult::Array(array) => LookupTable::Array(array),
-            error @ CalcResult::Error { .. } => return error,
-            CalcResult::String(_) => {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Range expected".to_string(),
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Range expected".to_string(),
-                }
-            }
+        let table = match self.lookup_table(range, cell) {
+            Ok(table) => table,
+            Err(error) => return error,
         };
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);
