@@ -3,7 +3,7 @@ id: T-1401
 title: "Paired-array statistical functions take a scalar or single cell as a one-value array (COVAR, SLOPE, INTERCEPT, STEYX, RSQ, PEARSON, FORECAST.LINEAR, CHISQ.TEST, T.TEST)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
