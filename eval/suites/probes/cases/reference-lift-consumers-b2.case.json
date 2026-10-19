@@ -1,0 +1,56 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "More consumers of a lifted OFFSET/INDIRECT/TRIMRANGE whose elements are references: text, boolean, blank and error elements under SUM-family aggregates, COUNT/COUNTA, the statistical aggregates, *IFS, CONCAT/TEXTJOIN, IF/CHOOSE/LET in an aggregate, ROW/COLUMN/CELL/SHEET/ISFORMULA, N/T, lookups, IFERROR (T-1955).",
+ "tags": [
+  "M6",
+  "probe",
+  "offset",
+  "indirect"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1,
+    "A2": 100,
+    "A3": 10000,
+    "B1": 2,
+    "B2": 200,
+    "B3": 20000,
+    "A4": "5",
+    "A6": true,
+    "A7": 7,
+    "E117": "=SUM(OFFSET(A6,0,0,{1;2}))",
+    "E121": "=MAX(OFFSET(A5,0,0,{1;2}))",
+    "E125": "=COUNTBLANK(OFFSET(A5,0,0,{1;2}))",
+    "E129": "=SUMIF(OFFSET(A1,0,0,{1;2}),\">0\",OFFSET(B1,0,0,{1;2}))",
+    "E133": "=SUBTOTAL(9,OFFSET(A1,{0;1},0),A1)",
+    "E137": "=AVERAGE(OFFSET(A1,0,0,{1;2}),OFFSET(A1,0,0,{1;2}))",
+    "E141": "=SUM(TRIMRANGE(A1:B3,{0;1}))",
+    "E145": "=SUM(OFFSET(A1,{0;1},{0,1}))",
+    "E149": "=ROWS(OFFSET(A1,{0;1},{0,1}))",
+    "E153": "=SUM(DROP(OFFSET(A1,{0;1;2},0),1))",
+    "E157": "=PRODUCT(OFFSET(A1,{0;1},0))",
+    "E161": "=SUM(OFFSET(A4,{0;3},0))",
+    "E165": "=AVERAGE(OFFSET(A4,{0;1;2;3},0))",
+    "E169": "=COUNTA(OFFSET(A5,{0;1},0))",
+    "E173": "=AGGREGATE(9,0,OFFSET(A1,{0;1},0))",
+    "E177": "=SUBTOTAL(109,OFFSET(A1,0,0,{1;2}))",
+    "E181": "=AVERAGE(OFFSET(A1,{0;-1},0))",
+    "E185": "=MAX(OFFSET(A1,{0;-1},0))",
+    "E189": "=SUMPRODUCT(OFFSET(A1,{0;-1},0))",
+    "E193": "=N(OFFSET(A1,0,0,{2;1}))",
+    "E197": "=T(OFFSET(A4,{0;1},0))",
+    "E201": "=MIN(OFFSET(A4,0,0,{1;3}))",
+    "E205": "=ERROR.TYPE(OFFSET(A1,{0;1},0))",
+    "E209": "=ISREF(LET(x,OFFSET(A1,{0;1},0),x))",
+    "E213": "=SUM(INDIRECT({\"A1\";\"Nope\"}))",
+    "E217": "=XLOOKUP(100,OFFSET(A1,{0;1},0),{1;2})",
+    "E221": "=MATCH(100,OFFSET(A1,{0;1},0),0)",
+    "E225": "=SUM(VSTACK(OFFSET(A1,{0;1},0)))",
+    "E229": "=SUM(IFERROR(OFFSET(A1,{0;1},0),0))"
+   }
+  }
+ ],
+ "expected": {}
+}
