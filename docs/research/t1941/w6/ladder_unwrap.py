@@ -8,7 +8,7 @@ def unwrap(meas,g0):
     Ks=np.array([m[0] for m in meas],float); ph=np.array([m[1] for m in meas])
     unw=[]; f=0.0; g=g0
     for i in range(0,len(Ks),2):
-        for q in (i,i+1):
+        for q in range(i,min(i+2,len(Ks))):   # a trailing odd rung is unwrapped alone
             pred=f*Ks[q]+g*Ks[q]**2; unw.append(ph[q]+np.round(pred-ph[q]))
         kk=Ks[:i+2]; yy=np.array(unw); sc=np.max(np.abs(kk))
         A=np.vstack([kk/sc,(kk/sc)**2]).T; b=yy.copy()
