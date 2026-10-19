@@ -1034,6 +1034,7 @@ C	probes/xmatch-xlookup-reference-forms.case.json	17
 C	probes/xnpv-argument-count.case.json	3
 C	probes/yearfrac-basis-order.case.json	14
 C	probes/yearfrac-reversed-bases.case.json	72
+C	probes/yield-one-period-dsr-zero.case.json	18
 C	probes/yield-solver-sweep.case.json	66
 F	probes/circular-iteration-delta-boundary.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!A1
