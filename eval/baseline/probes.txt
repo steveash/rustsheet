@@ -816,6 +816,8 @@ C	probes/t1626-regextest.case.json	31
 C	probes/t1626-replaceb.case.json	27
 C	probes/t1626-rightb.case.json	29
 C	probes/t1626-searchb.case.json	26
+C	probes/take-drop-trimrange-over-xlookup-b.case.json	14
+C	probes/take-drop-trimrange-over-xlookup.case.json	23
 C	probes/tbill-equal-dates.case.json	11
 C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
@@ -2693,6 +2695,10 @@ F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D7
 F	probes/t1626-regexreplace.case.json	Sheet1!C34
 F	probes/t1626-regextest.case.json	Sheet1!C29
+F	probes/take-drop-trimrange-over-xlookup-b.case.json	Sheet1!A34
+F	probes/take-drop-trimrange-over-xlookup-b.case.json	Sheet1!A38
+F	probes/take-drop-trimrange-over-xlookup-b.case.json	Sheet1!B34
+F	probes/take-drop-trimrange-over-xlookup-b.case.json	Sheet1!B38
 F	probes/text-currency-locale-date.case.json	S!A14
 F	probes/text-format-length-limit-d.case.json	S!A31
 F	probes/text-format-length-limit-f.case.json	Sheet1!A41

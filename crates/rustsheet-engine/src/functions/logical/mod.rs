@@ -150,14 +150,17 @@ impl Model {
             IfBranchMode::Aggregate => self.evaluate_reference_arg(node, cell),
             IfBranchMode::SingleSheet => self.evaluate_single_sheet_arg(node, cell).into(),
             IfBranchMode::Chosen => self.evaluate_chosen_reference(node, cell).into(),
-            // A reference into another workbook picked is read as INDEX reads the cell it picks:
-            // `IF(TRUE,…!A1)` is 0, `&"x"` "x", ERROR.TYPE `#N/A`, where the written `…!A1` is
-            // `#BLOCKED!` (probes/external-ref-no-link-index A26, external-ref-no-link-ifchoose).
-            IfBranchMode::Value => self
-                .external_reference_picked_value(node, cell)
-                .unwrap_or_else(|| self.evaluate_node_in_context(node, cell))
-                .into(),
+            IfBranchMode::Value => self.if_branch_value(node, cell).into(),
         }
+    }
+
+    /// The branch an ordinary IF picked, as a value. A reference into another workbook is read
+    /// as INDEX reads the cell it picks: `IF(TRUE,…!A1)` is 0, `&"x"` "x", ERROR.TYPE `#N/A`,
+    /// where the written `…!A1` is `#BLOCKED!` (probes/external-ref-no-link-index A26,
+    /// external-ref-no-link-ifchoose).
+    pub(crate) fn if_branch_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        self.external_reference_picked_value(node, cell)
+            .unwrap_or_else(|| self.evaluate_node_in_context(node, cell))
     }
 
     /// What IF's condition picks: with a scalar condition the branch it chooses, unevaluated;
