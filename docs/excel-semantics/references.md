@@ -447,8 +447,13 @@ A one-cell reference as `if_empty` is its value too: with K1 = "text", `SUM(FILT
 Variables bound to a one-cell reference are references in other reference-taking functions as well:
 `LET(x,K2,SUBTOTAL(9,x))` → 7, `LET(x,A1,SUM(x:A3))` → 12, `LET(x,K1,COUNTA(x))` → 1,
 `LET(x,K1,SUMIF(x,"text",K2))` → 7, `LET(x,K1,ROWS(x))` → 1.
-Not implemented: a LET whose result is a reference stays a reference to SUM (`=SUM(LET(x,K1,x))` → 0, we
-give `#VALUE!`; T-1106).
+A LET or a LAMBDA call whose result is its variable bound to a reference stays a reference where one is
+wanted (probes/let-lambda-reference-results, excel-graph, 2026-10-19, T-1106): with K1 = "text", K2 = 7,
+`SUM(LET(x,K1,x))`, `SUM(LAMBDA(x,x)(K1))` and `MAX(LAMBDA(x,x)(K1))` are 0, `SUM(LAMBDA(x,x)(K1:K2))` 7,
+`COUNTA(LAMBDA(x,x)(K1))` 1, `COUNT(LET(x,K1:K2,x))` 1; `ISREF` is TRUE for `LAMBDA(x,x)(A1)`,
+`LAMBDA(x,x)(A1:A3)`, `LET(x,A1,x)`, `LET(x,K1,x)`, `LET(x,A1:A3,y,x,y)` and `LET(x,A1:A3,IF(TRUE,x))`,
+FALSE for `LET(x,5,x)`, `LAMBDA(x,5)(A1)` and `LET(x,A1:A3,x+0)`; `ROWS(LAMBDA(x,x)(A1:A3))` is 3. In a
+cell the result is the value: `=LET(x,K1,x)` and `=LAMBDA(x,x)(K1)` are "text".
 Evidence: probes/min-max-reference-forms C1-G5 (excel-graph, 2026-10-07, T-0223); upstream IronCalc
 MAX_MIN.xlsx (ironcalc d7b09c33) Sheet1!H39, H40, H43, H54 and MIN_MAX_extras.xlsx (ironcalc 16987342)
 Sheet1!A1-A18, Sheet2!A1-A3 (Microsoft Macintosh Excel cached values) in ironcalc-calc/MATH_AND_TRIGONOMETRY.
@@ -860,7 +865,10 @@ Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
 pass (`MAX_SEEN_RANGES`); a formula that reads more is `#VALUE!` ("Too many distinct ranges read").
 A function walking a whole column or row (and a lookup down a column, or a SUMIFS-shaped criteria
-range) visits only the used area and records the rest as one rectangle read empty, and every area of
+range) visits only the used area and records the rest as one rectangle read empty, as does an
+aggregate walking an explicit block that reaches at least 1,024 cells past the used area, while the
+budget has room (a shorter block, or one met once the budget is short, is walked and recorded cell by
+cell, which is uncapped, so blocks alone never make a formula `#VALUE!`; T-0405), and every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
 for an element (read over its existing cells only, since the whole call is `#CALC!` whatever they hold,
 arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range"; T-1769); which every spill commit of the pass is checked
@@ -1411,7 +1419,7 @@ Reference-only checks (excel-graph, 2026-10-11, probes/written-parens-reference-
 `ANCHORARRAY((INDEX(D1:D3,1)))`, Graph accepts the `)#` shape and FORMULATEXT prints `=(INDEX(D1:D3,1))#`
 (`ANCHORARRAY(@IF(TRUE,D1))` prints `=@IF(TRUE,D1)#`). So a written group is transparent for references in every probed cell; no
 non-transparent cell exists for SPEC-0007 (T-1340).
-Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT drops the groups in the reference-only cells too (T-1340).
+Ours: FORMULATEXT drops the groups in the reference-only cells too (T-1340); `ISREF(LET(x,A1:A3,x))` (grouped or not) is TRUE as in Excel (T-1106).
 Evidence strength: `ISREF((A1))`, `ISREF((A1:A3))` and the union in `SUM(((A1,B1)))` show a reference survives a group.
 Status: VERIFIED (web).
 Tasks: T-1339, T-1340, T-1363, T-1364
@@ -1549,7 +1557,7 @@ Implemented (T-1717): `add_legacy_intersection` (expressions/parser/static_analy
 computes from them (`legacy_array_context`, static_analysis/legacy.rs; not IF, IFERROR, IFNA, CHOOSE,
 IFS, SWITCH, LET or LAMBDA, nor N/T over IF, SWITCH or a CHOOSE, INDEX or IFS that returns only array constants, T-1713, or INDEX of a reference, T-1908). Where it holds, an array constant argument
 gets the `@`, and so does an array-valued call of more than one cell whose array is one of its
-arguments or comes from a non-scalar one (`legacy_array_call_at`). Probed since in T-1847 (below): IFNA, IFS, the IFERROR argument, T over SWITCH and the array-constant `@` under LEN and ISNUMBER/SEARCH match. Known mismatches: an array constant inside an operator (`=N({2;3}+0)`, `=ABS({2;3}+0)`) still spills in ours (T-1911), and a top-level `=SWITCH(1,1,{2;3})` gets an `@` from ours (T-1910). One-cell array-valued calls: `=ABS(TRANSPOSE({5}))` takes the `@` in Excel and ours (below), while CHOOSE's one-cell result takes none (probes/legacy-one-cell-shape-intersection J3). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
+arguments or comes from a non-scalar one (`legacy_array_call_at`). Probed since in T-1847 (below): IFNA, IFS, the IFERROR argument, T over SWITCH and the array-constant `@` under LEN and ISNUMBER/SEARCH match. Known mismatches: an array constant inside an operator (`=N({2;3}+0)`, `=ABS({2;3}+0)`) still spills in ours (T-1911), and a top-level `=SWITCH(1,1,{2;3})` takes no `@` and spills 2, 3 in Excel (probes/legacy-array-at-shapes C20, C11), unlike IF/IFS/IFNA; ours matches since T-1910, which drops the automatic `@` from a formula-root SWITCH whose results are all array constants (`add_root_legacy_intersection`; several pairs, a default and one-element constants are extrapolated). Unprobed, and unchanged by T-1910 (SWITCH keeps the `@` the import gave it): a SWITCH returning a range, or nested under a function or operator (`=ABS(SWITCH(1,1,{-2;3}))`, `=-SWITCH(1,1,{2;3})`) (T-1964). One-cell array-valued calls: `=ABS(TRANSPOSE({5}))` takes the `@` in Excel and ours (below), while CHOOSE's one-cell result takes none (probes/legacy-one-cell-shape-intersection J3). The export drops exactly these `@`s (`remove_redundant_legacy_intersection`). The N/T
 exception's `#VALUE!` is implemented by the legacy N/T marker (T-1713, next section).
 Probed in T-1847 (probes/legacy-array-at-shapes, excel-graph, 2026-10-18; FORMULATEXT shown; each multi-cell dynamic twin spills, except F1 which is `#SPILL!`, its row spill blocked by G1):
 `=IFNA({2;3},0)` `=@IFNA({2;3},0)` (2), `=IFS(1,{2;3})` `=@IFS(1,{2;3})` (2), `=IFERROR(ABS({-2;3}),0)`
@@ -1559,7 +1567,7 @@ Probed in T-1847 (probes/legacy-array-at-shapes, excel-graph, 2026-10-18; FORMUL
 `=N({2;3}+0)` `=N(@{2;3}+0)` (2) and `=ABS({2;3}+0)` `=ABS(@{2;3}+0)` (2): the `@` goes on the array constant
 inside an operator. SWITCH is the exception again: `=SWITCH(1,1,{2;3})` shows no `@` and the legacy cell spills 2, 3,
 and `=T(SWITCH(1,1,{"a";"b"}))` shows none and spills "a", "b". Ours matches all but the operator shapes (no `@`,
-spills: T-1911) and the top-level SWITCH (adds an `@`, no spill: T-1910). IFNA, IFS, the IFERROR argument and
+spills: T-1911) and SWITCH over a range or nested (unprobed: T-1964); the top-level array-constant SWITCH matches (T-1910). IFNA, IFS, the IFERROR argument and
 T over SWITCH are confirmed.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1847, T-1910, T-1911

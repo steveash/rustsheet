@@ -7,7 +7,19 @@
 /// table has a fallback arm.
 macro_rules! lifting_table_functions {
     () => {
-        Function::Edate
+        Function::Daverage
+            | Function::Dcount
+            | Function::Dcounta
+            | Function::Dget
+            | Function::Dmax
+            | Function::Dmin
+            | Function::Dproduct
+            | Function::Dstdev
+            | Function::Dstdevp
+            | Function::Dsum
+            | Function::Dvar
+            | Function::Dvarp
+            | Function::Edate
             | Function::Eomonth
             | Function::Weeknum
             | Function::Yearfrac
@@ -280,6 +292,23 @@ macro_rules! lifting_table_functions {
             | Function::HypGeomDist
             | Function::HypGeomDistCompat
             // --- End hypergeometric (T-1873) ---
+            // --- Date and time lifts, MROUND, SQRTPI (T-1785) ---
+            | Function::Day
+            | Function::Month
+            | Function::Year
+            | Function::Hour
+            | Function::Minute
+            | Function::Second
+            | Function::Isoweeknum
+            | Function::Weekday
+            | Function::Days
+            | Function::Days360
+            | Function::Date
+            | Function::Time
+            | Function::Datedif
+            | Function::Mround
+            | Function::Sqrtpi
+            // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
     };
 }
 pub(crate) use lifting_table_functions;
