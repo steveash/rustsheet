@@ -325,3 +325,19 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
 - Composition: K2's inner S is not fl((x-1)*R), K3's A is not fl((x-2)*R); three separate rationals.
 - K1's constants all sit on their sums' grids: no lattice, no plateaus; the single-coefficient landscape is a
   1-ulp V, so every candidate is a local maximum in every coordinate (also ss_fc, grid_a).
+
+### 2026-10-19 17:25: review 2 mapped; new routes
+- **Review 2 (HANDOFF section 11).**
+  - K1 top stages N5-N7 of AN2 are confirmed at phase (0,0) on Excel; the residual is mid-stage and readable per run (I1 → W4).
+  - K2's s4/s5 "law contradiction" is reproduced by a few-ulp upstream error and is retracted (I3 → W2).
+  - The three GAMMALN kernels are independent rationals; no composition transfer.
+  - Probes V1-V4 (`kmyst-gam-v101`..`v409`, generator `review2/gen_v.py`) are queued.
+- **K2 (W2).**
+  - The sum-line phase law fails at realistic offsets: with p0 moved by 1.8e13 ulps the control is incoherent.
+  - The law-free sim-MSE objective along p0 is a needle.
+  - Validated instead: local exact fits per anchor (99.98-100% local) recover exact stage values (all D, N s3-s9). Exact interval intersection across anchors brackets every coefficient p4-p9 / q2-q8 around the truth (0.25-4096 ulps). Real-data run in progress.
+  - Dense runs `q201`..`q216` are queued.
+- **(1.5,2] (W4/W6).**
+  - Line relation closure: A and D are base lines; B = 2A, 3A, E = D-2A and D-A are derived. D's stage crosses a binade at ~1.89.
+  - Run-ladder phase-vs-K reader validated (frequency to 1e-11).
+  - The W6 long-run pipeline (joint beam over at least 4 tracks, 1000x separation on synthetic data) is not decisive on the 14 existing runs (2 tracks, 2.5x). It needs `L101`..`L124` (queued) and `q421`..`q433` (run ladders, queued).
