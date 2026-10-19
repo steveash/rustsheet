@@ -36,7 +36,8 @@ fn from_binary_to_decimal(value: f64) -> Result<i64, ()> {
 }
 
 /// The number and the optional `places` of one conversion element.
-/// Splits the arguments of a base conversion. Callers coerce `places` before `number`: Excel reads
+///
+/// Callers coerce `places` before `number`: Excel reads
 /// the second argument first, so its error wins (probes/eng-first-vs-second-error).
 fn number_and_places(values: &[CalcResult]) -> Option<(&CalcResult, Option<&CalcResult>)> {
     match values {
