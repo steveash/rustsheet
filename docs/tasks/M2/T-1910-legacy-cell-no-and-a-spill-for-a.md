@@ -3,7 +3,7 @@ id: T-1910
 title: "Legacy cell: no @ and a spill for a top-level SWITCH with an array result"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
