@@ -1,5 +1,6 @@
 //! NETWORKDAYS and NETWORKDAYS.INTL count their span in closed form (T-1808). The differential test
-//! keeps the per-day loops they replaced as the oracle.
+//! keeps the per-day loops they replaced as the oracle, reading serial 0 as a date as Excel does
+//! (T-1254).
 
 use std::collections::HashSet;
 use std::fmt::Write;
@@ -31,10 +32,10 @@ const WEEKEND_CODES: [(i32, [bool; 7]); 14] = [
     (17, [false, false, false, false, false, true, false]),
 ];
 
-/// The first and last serial with a date in `system`.
+/// The first and last serial with a date in `system` (1900 serial 0 is one since T-1254).
 fn date_range(system: DateSystem) -> (i64, i64) {
     match system {
-        DateSystem::Excel1900 => (1, 2_958_465),
+        DateSystem::Excel1900 => (0, 2_958_465),
         DateSystem::Excel1904 => (0, 2_957_003),
     }
 }
@@ -57,7 +58,7 @@ fn old_networkdays(
     };
     let mut count = 0i64;
     for serial in from..=to {
-        let date = system.date_of_serial(serial)?;
+        let date = system.date_of_serial_from_zero(serial)?;
         if !is_weekend(date, &SAT_SUN) && !holidays.contains(&serial) {
             count += 1;
         }
@@ -79,14 +80,14 @@ fn old_networkdays_intl(
     } else {
         (end, start, -1.0)
     };
-    system.date_of_serial(from)?;
-    system.date_of_serial(to)?;
+    system.date_of_serial_from_zero(from)?;
+    system.date_of_serial_from_zero(to)?;
     let mut count = 0i64;
     for serial in from..=to {
         if holidays.contains(&serial) {
             continue;
         }
-        let Some(date) = system.date_of_serial(serial) else {
+        let Some(date) = system.date_of_serial_from_zero(serial) else {
             continue;
         };
         if !is_weekend(date, mask) {
@@ -236,10 +237,10 @@ fn whole_range_spans_cost_no_per_day_loop() {
     let started = Instant::now();
     model.evaluate();
     assert!(started.elapsed() < Duration::from_secs(5));
-    let (first, last) = date_range(DateSystem::Excel1900);
+    let (_, last) = date_range(DateSystem::Excel1900);
     let whole_range = expected_text(old_networkdays(
         DateSystem::Excel1900,
-        first,
+        1,
         last,
         &HashSet::new(),
     ));
