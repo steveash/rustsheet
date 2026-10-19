@@ -122,8 +122,9 @@ impl Model {
             ));
         };
         if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
+            // Excel: unequal sizes are #N/A, with or without text in the ranges (T-1292, T-1620).
             return Err(CalcResult::new_error(
-                Error::VALUE,
+                Error::NA,
                 cell,
                 "Arguments must be of the same shape".to_string(),
             ));

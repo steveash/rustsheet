@@ -133,3 +133,20 @@ fn test_sequence_omit_start() {
     assert_eq!(model._get_text("A2"), "6");
     assert_eq!(model._get_text("A3"), "11");
 }
+
+#[test]
+fn test_sequence_accumulates_its_step() {
+    // Excel adds the step to the previous value (ironcalc-calc SEQUENCE.xlsx I9:I11, L14:M14).
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(5,1,10,2.2)");
+    model._set("C1", "=SEQUENCE(1,5,12.7,0.1)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(crate::cell::CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A3"), 14.399_999_999_999_999_f64.to_bits());
+    assert_eq!(bits("A5"), 18.799_999_999_999_997_f64.to_bits());
+    assert_eq!(bits("F1"), 12.999_999_999_999_998_f64.to_bits());
+    assert_eq!(bits("G1"), 13.099_999_999_999_998_f64.to_bits());
+}
