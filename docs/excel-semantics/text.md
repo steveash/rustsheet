@@ -675,13 +675,17 @@ symbols (`$`, `+`, `<`, `^`, `@`, the backtick and `~` are punctuation; `×` and
 Ll and `upper` Lu (`ª` is not lower, `ǅ` neither); `word` L, N, Mn and Pc (`_`, `²`, a combining mark; not an emoji); `xdigit` 0-9,
 A-F, a-f and their fullwidth forms (not Arabic-Indic digits). `[:^name:]` and `[^[:name:]]` are the complements.
 `[:upper:]` and `[:lower:]` ignore case-insensitive matching: `REGEXTEST("a","(?i)[[:upper:]]")` and `REGEXTEST("A","(?i)[[:lower:]]")`
-are FALSE (probed in a plain bracket only; inside a set operation or a nested bracket, and negated, ours still folds them: unprobed).
+are FALSE, and so is `(?i)[[[:upper:]]]` on `a`; negated, they complement the unfolded class (`(?i)[^[:upper:]]` and `(?i)[[:^upper:]]` on `a`
+are TRUE). Next to a literal they still are (`(?i)[[:upper:]x]` on `a` FALSE). Ours handles only a plain non-negated bracket (T-1989).
+The case_sensitivity argument 1 behaves the same (`REGEXTEST("a","[[:upper:]]",1)` is FALSE). `&&` in a bracket intersects (`[[:alpha:]&&[:lower:]]`
+on `A` and `&` is FALSE); a literal `^`, `-` or `&` next to a class stays literal (`[[:upper:]^a]` matches `^`, not `b`).
 Syntax: `[a[:digit:]]` and `[[:alpha:][:digit:]]` mix classes with other items; `[\[:alpha:]]` is no class (`":"` FALSE).
 `[:alpha:]` outside a bracket, an unknown or upper-case name (`[[:foo:]]`, `[[:ALPHA:]]`), `[[.a.]]`, `[[=a=]]` and a range from a class
-(`[[:alpha:]-z]`) are invalid patterns (ERROR.TYPE 3); ours accepts them (T-1985).
+(`[[:alpha:]-z]`, `[a[:upper:]-z]`) are invalid patterns (ERROR.TYPE 3); ours accepts them (T-1985).
 The characters the probe does not cover (U+180E and U+061C, U+2066-U+2069 in graph and print, spacing marks in word) follow PCRE2's
 documented UCP definitions.
 Evidence: probes/regex-posix-classes (excel-graph, 2026-10-19): 47 characters × 19 patterns, and column Z for the syntax;
+probes/regex-posix-classes-b (bracket neighbours, nested and negated `(?i)`, `&&`, case_sensitivity 1);
 probes/regexreplace-limit-and-syntax A23.
 Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled;
 upper and lower become a `(?-i:...)` alternative of their bracket.

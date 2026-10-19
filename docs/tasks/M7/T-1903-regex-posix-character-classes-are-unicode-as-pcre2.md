@@ -41,4 +41,6 @@ compiled. Upper and lower become a `(?-i:...)` alternative, because Excel's `(?i
 them. text.md "REGEX* POSIX classes are Unicode (T-1903)" records the rule. Eval: probes 905 new
 cells, of which 898 pass; regexreplace-limit-and-syntax A23 is fixed. Seven new known failures:
 the six syntax-error edges Z1, Z2, Z3, Z8, Z9 and Z10 go to follow-up T-1985, and Z7 (`\Q..\E`)
-stays with T-1688.
+stays with T-1688. Review follow-up: probes/regex-posix-classes-b (18 cells, excel-graph) pins
+the bracket rewrite (a literal `^`/`&` next to a class) and `&&`. A4 and A5 (a range from a class
+is an error) go to T-1985, and A8-A11 (`(?i)` upper and lower when nested or negated) to T-1989.

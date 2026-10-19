@@ -19,7 +19,8 @@ is invalid) for each of these, and ours compiles them:
 - Z1 `REGEXTEST("a:","[:alpha:]")`: a POSIX class outside a bracket (ours TRUE).
 - Z2 `[[:foo:]]` and Z3 `[[:ALPHA:]]`: an unknown or upper-case class name (ours FALSE).
 - Z8 `[[.a.]]` and Z9 `[[=a=]]`: POSIX collating elements and equivalence classes (ours TRUE).
-- Z10 `REGEXTEST("-","[[:alpha:]-z]")`: a range whose start is a class (ours TRUE).
+- Z10 `REGEXTEST("-","[[:alpha:]-z]")`: a range whose start is a class (ours TRUE); also
+  probes/regex-posix-classes-b A4 and A5 (`[a[:upper:]-z]`).
 Z7 (`\Q[[:alpha:]]\E`) belongs to the `\Q..\E` gap of T-1688, not to this task.
 The pattern is parsed with regex-syntax's AST in functions/text/regex_posix.rs
 (`unicode_posix_classes`, T-1903). The parser keeps these forms as literals (or as a class
@@ -28,7 +29,7 @@ invalid, and `compile` treats it as `BuildFailure::Invalid`. See docs/excel-sema
 "REGEX* POSIX classes are Unicode (T-1903)".
 
 ## Acceptance criteria
-- [ ] probes/regex-posix-classes Z1, Z2, Z3, Z8, Z9 and Z10 pass; no other probes cell regresses.
+- [ ] probes/regex-posix-classes Z1, Z2, Z3, Z8, Z9 and Z10 and probes/regex-posix-classes-b A4 and A5 pass; no other probes cell regresses.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
