@@ -66,5 +66,5 @@ The performance review's findings from the first round:
   look-around chains and overcharged iteration, and the extra cost is linear and well under the 1 s cap.
 - MINOR, done: the module doc of regex_reach.rs now covers the empty-match retries (`skip_splits_fwd`) and
   always-anchored patterns (overcharged, linearly).
-- Follow-ups filed: T-2010 (states in priority order, so lazy patterns are not quadratic); T-1988 (round 2 MINOR:
+- Follow-ups filed: T-2015 (states in priority order, so lazy patterns are not quadratic); T-1988 (round 2 MINOR:
   charge a `Sparse` state visit by the transitions it walks; `\b[\w\s\d]{30}q` over CJK text exhausts in about 1.7 s).

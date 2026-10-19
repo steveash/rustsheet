@@ -30,4 +30,4 @@ charged").
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Priority-order closure (T-2010).
+- Priority-order closure (T-2015).

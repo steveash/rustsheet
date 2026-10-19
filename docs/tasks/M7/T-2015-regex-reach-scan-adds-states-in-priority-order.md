@@ -1,5 +1,5 @@
 ---
-id: T-2010
+id: T-2015
 title: "REGEX* reach scan adds states in priority order so lazy patterns iterate in linear charge"
 milestone: M7
 lane: functions-text
