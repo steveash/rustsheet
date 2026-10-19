@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Does Excel let the cell-like NLG1 work as a defined LAMBDA name (candidate legacy N/T marker spelling, T-1936): NLG1 and NLG1(1) read the cell, not the name (the LAMBDA gives 17)",
+ "tags": [
+  "M2",
+  "references",
+  "probe"
+ ],
+ "names": {
+  "NLG1": "=LAMBDA(x,x*10+7)"
+ },
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=N(1)",
+    "A2": "=ISREF(NLG1)",
+    "A3": "=FORMULATEXT(A4)",
+    "A4": "=SUM(NLG1)",
+    "A5": "=NLG1(1)",
+    "A6": "=ISERROR(NLG1(1))"
+   }
+  }
+ ],
+ "expected": {}
+}
