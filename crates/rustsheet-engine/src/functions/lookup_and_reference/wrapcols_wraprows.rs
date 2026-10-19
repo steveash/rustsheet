@@ -5,7 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::check_array_size,
+    limits::check_stack_size,
     model::Model,
 };
 
@@ -42,7 +42,7 @@ impl Model {
         let num_cols = n.div_ceil(wrap_count);
         // The padded shape is wrap_count rows: refuse one above the array limit before
         // allocating it (DEVIATION, arrays.md "Array results above 1,048,576 cells"; T-1786).
-        if let Some((error, message)) = check_array_size(wrap_count, num_cols) {
+        if let Some((error, message)) = check_stack_size(wrap_count, num_cols) {
             return CalcResult::new_error(error, cell, message);
         }
 
@@ -91,7 +91,7 @@ impl Model {
         // The padded shape is wrap_count columns: refuse one above the array limit before
         // allocating a row (T-1786, as WRAPCOLS).
         if let Some((error, message)) =
-            check_array_size(flat.len().div_ceil(wrap_count), wrap_count)
+            check_stack_size(flat.len().div_ceil(wrap_count), wrap_count)
         {
             return CalcResult::new_error(error, cell, message);
         }

@@ -5,7 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::check_array_size,
+    limits::check_stack_size,
     model::Model,
 };
 
@@ -62,7 +62,7 @@ impl Model {
 
         // Refuse a target above the array limit before padding it (`EXPAND(1,1E9,1E9)` would be
         // 10^18 cells): DEVIATION, arrays.md "Array results above 1,048,576 cells" (T-1786).
-        if let Some((error, message)) = check_array_size(target_rows, target_cols) {
+        if let Some((error, message)) = check_stack_size(target_rows, target_cols) {
             return CalcResult::new_error(error, cell, message);
         }
 
