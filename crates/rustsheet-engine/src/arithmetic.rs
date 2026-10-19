@@ -12,7 +12,9 @@ use crate::{
     functions::util::compare_values,
     limits::check_array_size,
     model::Model,
+    number_format::to_excel_precision,
     text::Text,
+    x87_exp::excel_exp,
 };
 
 /// Maps an output index `i` back to the source array index, applying Excel's
@@ -386,8 +388,8 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     }
     let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
         // An odd root of a negative number is a real number, minus the root of the magnitude:
-        // `(-8)^(1/3)` is -1.9999999999999998 (POWER.xlsx Sheet1!D3, F9; tolerance UNVERIFIED, see
-        // docs/excel-semantics/numbers.md).
+        // `(-8)^(1/3)` is -1.9999999999999998 (POWER.xlsx Sheet1!D3, F9). The exponent is the one
+        // given, not 1/n: `(-8)^(1/3+8·2^-54)` is -2.0000000000000018.
         -non_integer_power(-x, y)
     } else {
         non_integer_power(x, y)
@@ -410,10 +412,13 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     finite_or_num(result)
 }
 
-/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)`, a negative exponent as one over
-/// the positive power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180 numeric
-/// oracle cells over 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep;
-/// docs/excel-semantics/numbers.md "Non-integer exponents: exp(y·ln x)"). A negative `x` gives NaN.
+/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)` with EXP's kernel
+/// ([`excel_exp`]) and a twice-rounded product, a negative exponent as one over the positive
+/// power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180 numeric oracle cells over
+/// 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep),
+/// and `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` = 9.999999999999827E+99, where libm `exp` is 2 ulps
+/// lower (probes-numeric/power-ulp-sources A13; docs/excel-semantics/numbers.md "Non-integer
+/// exponents: exp(y·ln x)"). A negative `x` gives NaN.
 fn non_integer_power(x: f64, y: f64) -> f64 {
     // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
     let x = if x == 0.0 { 0.0 } else { x };
@@ -424,9 +429,9 @@ fn non_integer_power(x: f64, y: f64) -> f64 {
         // `1/SQRT(x)` agree (probes-numeric/power-neg-half-rounding, T-1541).
         extended_quotient(1.0, extended_sqrt(x))
     } else if y > 0.0 {
-        (y * x.ln()).exp()
+        excel_exp(extended_product(y, x.ln()))
     } else {
-        extended_quotient(1.0, (-y * x.ln()).exp())
+        extended_quotient(1.0, excel_exp(extended_product(-y, x.ln())))
     }
 }
 
@@ -492,15 +497,17 @@ fn decimal_power_of_ten(x: f64, n: f64) -> Option<f64> {
         .flatten()
 }
 
-/// Whether `y` is 1/3, 1/5, -1/7 and so on. A float cannot hold a third, so
-/// this asks whether one over `y` is an odd integer as far as the precision of
-/// a float can tell.
+/// Whether `y` is 1/3, 1/5, -1/7 and so on, as Excel decides it: one over `y`, rounded to 15
+/// significant digits, is an odd integer below 2^31 - 1 in magnitude. So `1/3 + 10·2^-54` counts
+/// (1/y = 2.9999999999999951 → 3) and `1/3 - 10·2^-54` does not (3.0000000000000053 →
+/// 3.00000000000001); `0.333333333333333` counts, `0.33333333333333` does not; `1/(2^31-3)`
+/// counts, `1/(2^31-1)` does not (docs/excel-semantics/numbers.md "POWER and `^`",
+/// probes-numeric/power-odd-root-tolerance, power-odd-root-tolerance-2).
 fn is_one_over_an_odd_integer(y: f64) -> bool {
-    // 2^-48: the last few bits are left to the error of the two divisions
-    const TOLERANCE: f64 = 1.0 / (16_777_216.0 * 16_777_216.0);
-    let inverse = 1.0 / y;
-    let integer = inverse.round();
-    (inverse - integer).abs() <= integer.abs() * TOLERANCE && integer % 2.0 != 0.0
+    // 2^31 - 1: the first odd denominator Excel no longer takes for a root
+    const LIMIT: f64 = 2_147_483_647.0;
+    let inverse = to_excel_precision(1.0 / y, 15);
+    inverse.fract() == 0.0 && inverse.abs() < LIMIT && inverse % 2.0 != 0.0
 }
 
 /// What an array has beyond its end, when it is combined with a larger one:

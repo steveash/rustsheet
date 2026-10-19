@@ -481,6 +481,7 @@ EXP itself, a in (709.7827, 709.79).
   them (a correctly rounded F2XM1 and a correctly rounded exp can agree), so these 43 cells pass under libm and fail
   under V6; the switch still gains 5,968 cells. Unlike the 20 ERFC near-tie cells of T-1916 (statistics.md), all 87
   came back identical in the 2026-10-19 re-fill.
+- POWER and `^` with a non-integer exponent use `excel_exp` since T-0959 (see "Non-integer exponents: exp(y·ln x)").
 - Other EXP users stay on libm's `exp`: with SINH, COSH, TANH and FISHERINV switched to `excel_exp` as an experiment, no
   cell of probes, probes-numeric (`m9-hyperbolic`), ironcalc-calc (`TRIGONOMETRIC.xlsx`), poi, fixtures or gen-m9
   changed verdict (the probed arguments are small, where V6 and libm agree), so the evidence cannot tell the two apart
@@ -767,6 +768,9 @@ Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
 - `y` = 0.5: `sqrt(x)`. `2^0.5` = 1.4142135623730951, where `exp(0.5·ln 2)` is 1.4142135623730950.
 - `y` = -0.5: `1/sqrt(x)`. `3^-0.5` = 0.5773502691896258 and `0.5^-0.5` = 1.414213562373095.
 - Each `1/` is the operator `/`, which rounds twice (see "Division rounds twice"): `8^(-1/3)` = 0.5.
+- `exp` is EXP's own kernel (see "EXP is an x87 2^(a*log2 e) evaluation"), and `y·ln x` is the twice-rounded `*`: `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` =
+  9.999999999999827E+99, where libm `exp` gives 9.999999999999825E+99, and `8^(1/101+28·2^-59)` = 1.0208019359564402
+  (probes-numeric/power-ulp-sources A13-A18, power-odd-root-tolerance A72/A74; excel-graph, 2026-10-19, T-0959).
 
 An odd root of a negative base is minus the same formula on the magnitude. `(-8)^(1/3)` = -exp(ln 8/3) = -1.9999999999999998, which is the value Excel's own workbook caches.
 
@@ -789,7 +793,7 @@ Evidence:
 Not probed: other negative bases; exponents within 1E-15 of ±0.5.
 Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
 Status: VERIFIED (excel-graph)
-Tasks: T-1319, T-1421, T-0221
+Tasks: T-1319, T-1421, T-0221, T-0959
 
 ## POWER and `^`: odd roots of negatives, zero and overflow
 Rule: `POWER(-8, 1/3)` is -1.9999999999999998 (an odd root of a negative number is real; see "Non-integer exponents: exp(y·ln x)"); `POWER(0,0)` is #NUM!;
@@ -799,10 +803,26 @@ D3 and F9 (-1.9999999999999998, matched since T-1319: see "Non-integer exponents
 The operator `^` shares the zero case: `0^-0`, `+0^0`, `(-0)^0` and `0%^0` are all `#NUM!`, while
 `-0^0.5` = 0 (gen-m1/6462bf910ef9f28f Calc!A19, A30, A205, A222; gen-m1/1c62c4bff4ed1976 Calc!A60;
 oracle: excel-graph, 2026-10-05, T-0109).
-Status: VERIFIED for `0^0` → #NUM! (POWER and `^`). UNVERIFIED for (a) overflow of a non-zero base
-being #NUM! (not #DIV/0!), (b) the 2^-48 relative tolerance that decides whether an exponent "is"
-1/odd (only exactly 1/3 is evidenced; probe `POWER(-8,0.333333333333333)`), (c) the operator `^`
-sharing the other special cases.
+Which exponents count as 1/odd: Excel rounds `1/y` to 15 significant digits and takes the root when that is an odd
+integer below 2^31 - 1 in magnitude; any other non-integer exponent of a negative base is #NUM!. The root then uses `y`
+itself, not 1/n: `(-8)^(1/3+8·2^-54)` is -2.0000000000000018.
+- `1/3 + 10·2^-54` counts (1/y = 2.9999999999999951 → 3) but `1/3 - 10·2^-54` does not (3.0000000000000053 → 3.00000000000001),
+  so the cut is not symmetric in y and is not a relative tolerance on y: `1/5 + 8·2^-55` is #NUM! while `1/3 + 8·2^-54` counts.
+- `1/101 ± 28·2^-59` counts and `± 29·2^-59` does not (the 15th digit of 101.000000000000).
+- Literals: `0.333333333333333` counts (-1.9999999999999984), `0.33333333333333` does not; `0.0909090909090909` (1/11) counts,
+  `0.142857142857143` (1/7, 1/y = 6.999999999999993) does not.
+- Size: `1/(2^31-3)` and `1/(2^31-5)` count; `1/(2^31-1)`, `1/(2^31+1)`, `1/(2^40+1)` and `1/(2^52+1)` are #NUM!, although
+  1/y is exactly the odd integer there.
+- Even reciprocals (`1/4 + 2^-55`, `1/2^20`) are #NUM!; `3/9`, `2/6` and `1/(-3)` are odd roots like 1/3 and -1/3.
+Overflow of a non-zero base is #NUM! (`10^309`, `(-10)^309`, `1E300^1.5`, `(-1E300)^3`, `2^1024`) and underflow follows
+"Non-integer exponents" (`1E-300^-1.5` #DIV/0!, `10^-309` 0). The operator `^` and POWER agree on every cell probed: the
+odd-root cut, overflow, zero (`0^-1` #DIV/0!, `0^-0.5` #DIV/0!), negative bases (`(-8)^0.5` #NUM!), the 2^32 - 1 exponent limit,
+text (`"2"^2` = 4, `"a"^2` #VALUE!, `""^2` #VALUE!), logicals (`TRUE^2` = 1), blank cells (`Z99^Z99` #NUM!, `Z99^-1` #DIV/0!) and
+errors (`NA()^0` #N/A, `(1/0)^0` #DIV/0!).
+Evidence: probes-numeric/power-odd-root-tolerance (A is `^`, B is POWER; rows 1-59 the cut, 60-101 the special cases) and
+power-odd-root-tolerance-2 (the cut's edges and the size limit); oracle excel-graph, 2026-10-19, T-0959. A workbook holding
+the literal `1E308` cannot be filled by excel-graph (engineering.md "CONVERT"), so `1^9E307` stands in for `1^1E308`.
+Status: VERIFIED (excel-graph).
 Implemented in: `arithmetic::power` (POWER and `^`).
 
 ## SIN / COS at multiples of 90° return k·6.1257422745431E-17
