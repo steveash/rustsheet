@@ -3,7 +3,7 @@ id: T-2031
 title: "ASINH and ACOSH are Excel's plain log formulas, ln(x + sqrt(x*x +- 1)), not libm"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -36,14 +36,21 @@ Excel value exists: keep today's libm result there, with a comment saying so.
 This splits ASINH and ACOSH out of T-0917 (ATANH, ACOTH, COTH, CSCH and the TANH/SINH thresholds stay there).
 
 ## Acceptance criteria
-- [ ] The 15 TRIGONOMETRIC.xlsx lines above leave eval/baseline/ironcalc-calc.txt (`make eval-baseline`),
+- [x] The 15 TRIGONOMETRIC.xlsx lines above leave eval/baseline/ironcalc-calc.txt (`make eval-baseline`),
       with no new F lines in any baseline.
-- [ ] In `make eval`, probes-numeric/m9-hyperbolic has no failing ASINH or ACOSH cell.
-- [ ] Unit tests for `ASINH(1E-10)`, `ASINH(-1E-10)` and `ACOSH(1.000000000001)` with the bit patterns above; a code
+- [x] In `make eval`, probes-numeric/m9-hyperbolic has no failing ASINH or ACOSH cell.
+- [x] Unit tests for `ASINH(1E-10)`, `ASINH(-1E-10)` and `ACOSH(1.000000000001)` with the bit patterns above; a code
       comment cites the numbers.md entry.
-- [ ] The numbers.md entry says ASINH/ACOSH are implemented (T-2031).
-- [ ] `make check` green; reviewers approve.
+- [x] The numbers.md entry says ASINH/ACOSH are implemented (T-2031).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - ATANH, ACOTH, COTH, CSCH, TANH (T-0917).
 - Excel's ASINH/ACOSH of arguments whose square overflows (unprobed).
+
+## Outcome
+`fn_asinh`/`fn_acosh` now evaluate `ln(x + sqrt(x*x + 1))` (negative x: `-ln(-x + sqrt(x*x + 1))`) and
+`ln(x + sqrt(x*x - 1))` in doubles. ACOSH below 1 is `#NUM!` up front, because for a large negative x the
+sum rounds to 0 and the log is -inf, not NaN. libm stays where `x*x` overflows (probed by T-2062). Eval: the
+15 TRIGONOMETRIC.xlsx ASINH/ACOSH lines left eval/baseline/ironcalc-calc.txt. probes-numeric/m9-hyperbolic
+has no failing ASINH/ACOSH cell (196 of 268 pass, up from 159). No regressions.
