@@ -3,7 +3,7 @@ id: T-1988
 title: "REGEX* reach scan charges a Sparse state visit by the transitions it walks"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
