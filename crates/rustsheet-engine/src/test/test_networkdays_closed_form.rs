@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 //! NETWORKDAYS and NETWORKDAYS.INTL count their span in closed form (T-1808). The differential test
 //! keeps the per-day loops they replaced as the oracle.
 
@@ -14,7 +12,8 @@ use crate::types::DateSystem;
 
 const SAT_SUN: [bool; 7] = [false, false, false, false, false, true, true];
 
-/// The weekend codes of NETWORKDAYS.INTL and their masks, Monday first.
+/// The weekend codes of NETWORKDAYS.INTL and their masks, Monday first, restated here rather than
+/// read from `WeekendPattern` so the oracle stays independent of the code under test.
 const WEEKEND_CODES: [(i32, [bool; 7]); 14] = [
     (1, SAT_SUN),
     (2, [true, false, false, false, false, false, true]),
@@ -223,8 +222,9 @@ fn closed_forms_match_the_per_day_loops() {
 
 #[test]
 fn whole_range_spans_cost_no_per_day_loop() {
-    // The per-day loops took about 2.96M steps per call, far above a second for these 2,000
-    // calls; the closed forms take well under a millisecond each.
+    // The per-day loops took about 2.96M steps per call, minutes for these 2,000 calls; the
+    // closed forms take well under a millisecond each (about 8 ms in all in a debug build), so
+    // the bound leaves room for a loaded runner.
     let mut model = new_empty_model();
     for row in 1..=1_000 {
         model._set(&format!("A{row}"), "=NETWORKDAYS(1,2958465)");
@@ -235,7 +235,7 @@ fn whole_range_spans_cost_no_per_day_loop() {
     }
     let started = Instant::now();
     model.evaluate();
-    assert!(started.elapsed() < Duration::from_secs(1));
+    assert!(started.elapsed() < Duration::from_secs(5));
     let (first, last) = date_range(DateSystem::Excel1900);
     let whole_range = expected_text(old_networkdays(
         DateSystem::Excel1900,
