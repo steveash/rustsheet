@@ -1968,10 +1968,10 @@ COUNTIF too: `OFFSET(LAMBDA(x,x)(A1),1,0)` and `OFFSET(LET(x,A1,x),1,0)` read A2
 (probes/lambda-union-reference-callers, excel-graph, 2026-10-19). Implemented by `call_callee_as_reference` returning the
 `RefArg` uncollapsed and by `evaluate_node_with_reference` reading a LET or LAMBDA call as a reference.
 
-Evidence: probes/lambda-union-reference-callers C1-C7, D1-D11 (excel-graph, 2026-10-19)
-Status: VERIFIED (excel-graph)
 A union is not accepted by OFFSET or COUNTIF, however it arrives: `OFFSET((A1,B1),1,0)`, `COUNTIF((A1,B1),">0")` and the same
 union returned by `LAMBDA(x,x)((A1,B1))` or `LET(x,(A1,B1),x)` (single-area and multi-area unions alike) all give `#VALUE!`
 (probes/lambda-union-offset-countif C1-C10, excel-graph, 2026-10-19, T-1993). Ours already matches.
 
-Tasks: T-1951, T-1993.
+Evidence: probes/lambda-union-reference-callers C1-C7, D1-D11; probes/lambda-union-offset-countif C1-C10 (excel-graph, 2026-10-19)
+Status: VERIFIED (excel-graph)
+Tasks: T-1951, T-1993
