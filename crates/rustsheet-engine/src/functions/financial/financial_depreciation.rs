@@ -34,7 +34,8 @@ fn vdb_total_depr(
     let int_period = period.trunc() as i64;
     let int_life = life.trunc() as i64;
 
-    let ddb_formula = |tot: f64| ((cost - tot) * (factor / life)).min(cost - salvage - tot);
+    let ddb_unclipped = |tot: f64| (cost - tot) * (factor / life);
+    let ddb_formula = |tot: f64| ddb_unclipped(tot).min(cost - salvage - tot);
     let sln_formula = |tot: f64, a_period: f64| (cost - tot - salvage) / (life - a_period);
 
     // Salvage above cost never switches: VDB(2400,3000,10,0,1) is -600 (the declining-balance
@@ -67,7 +68,7 @@ fn vdb_total_depr(
                 }
             } else {
                 // The prorated part takes the unclipped charge; the cap below clips the total.
-                (cost - new_total) * (factor / life)
+                ddb_unclipped(new_total)
             };
             let prorated = new_total + depr_next * frac;
             return if switches && prorated > cap {
