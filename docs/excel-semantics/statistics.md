@@ -547,8 +547,27 @@ rational for 4 < x <= 26.55, ERF = fl(1 - ERFC) and ERFC = fl(1 - ERF) on either
 ERFC(-x) = fl(2 - ERFC(x)), ERF(-x) = -ERF(x), and 0 beyond 26.55 or below DBL_MIN. E comes from `x87_exp.rs`
 (numbers.md, "EXP is an x87 2^(a*log2 e) evaluation"), and every operation is the x87 `fl53(fl64(.))` of
 `arithmetic.rs`' `extended_*` helpers. `normal_cdf` uses the NORM.S.DIST identity (d = fl53(fl64(-z*fl(sqrt(0.5)))),
-z = (x-m)/s), so NORM.DIST, NORM.S.DIST and LOGNORM.DIST inherit the kernel; CHISQ.DIST.RT, Z.TEST, POISSON and
-GAMMA.DIST are not routed yet (T-1929).
+z = (x-m)/s), so NORM.DIST, NORM.S.DIST and LOGNORM.DIST inherit the kernel.
+Engine (T-1929): the wrappers compute through the same compositions, so each identity above holds bit for bit
+(unit tests in `crates/rustsheet-engine/src/test/statistical/test_erf_identities.rs`):
+- CHISQ.DIST.RT, CHIDIST and CHISQ.TEST at df 1 are `erfc(sqrt64(x/2))` and CHISQ.DIST(x,1,TRUE) is
+  `erf(sqrt64(x/2))`, sqrt64 the twice-rounded root of `extended_sqrt` (`erf.rs` `gamma_half_upper`,
+  `gamma_half_lower`). GAMMA.DIST's cdf at shape exactly 0.5 is `erf(sqrt64(x/b))`.
+- GAMMA.DIST's cdf at every shape scales by the quotient x/b, rounded twice like the worksheet `/`, and not by
+  statrs' x*fl(1/b): `GAMMA.DIST(200000,2,1000000,TRUE)` = 0.017523096306421772 then matches
+  (probes-numeric/m9-gamma-dist-a2 A21), with no other cell changed. An x/b that underflows or overflows keeps
+  the port's branches (`GAMMA.DIST(1E300,1,1E-10,TRUE)` stays #NUM!, probes/incomplete-gamma-cap E6).
+- Z.TEST is `NORM.S.DIST(-z,TRUE)`, not `1-NORM.S.DIST(z,TRUE)`: 120 of 120 cells of
+  probes-numeric/t1916-erf-wrappers column I (`Z.TEST(HSTACK(a,a),0,SQRT(2))`) against 19, and column J likewise.
+  The statistic is z = fl53(fl64(fl53(fl64(mean - x)) * sqrt64(n))) / sigma, the quotient rounded twice too:
+  240 of 240 cells of columns I and J, and all 30 numeric cells of t1048-ztest and t1049-ztest. The textbook
+  (mean - x)/(sigma/sqrt(n)) matches 240 of 240 in columns I and J (there sigma/sqrt(n) is exactly 1) but only 24 of
+  the 30, and the plain-double (mean - x)*sqrt(n)/sigma 30 of 30 but only 141 of 240. The mean and the sample
+  standard deviation are not separated by these probes (plain and twice-rounded forms both match).
+- `T.DIST(x,n,TRUE)` for x < 0 is computed as T.DIST.2T(-x,n)/2; T.DIST.2T and T.DIST.RT are still statrs' series,
+  so their values are not Excel's yet. POISSON.DIST's cdf and CHISQ.DIST.RT at df 2(k+1) are the same Q(k+1, m) of
+  the capped series, so that identity holds; neither is Excel's kernel yet. GAUSS was already
+  `NORM.S.DIST(x,TRUE)-0.5`.
 - Bulk check against every single-argument ERF/ERFC cell of the research probes (`ERF.PRECISE(A)`, `ERF(A)`:
   928,038 cells; `ERFC.PRECISE(A)`, `ERFC(A)`: 7,259,712): all match except 27 ERFC cells. Each of the 27 sits on a
   row whose `EXP(-(x*x))` cell also differs from model V6: 7 are the misparsed inputs (numbers.md), and 20 are V6's
@@ -584,14 +603,14 @@ GAMMA.DIST are not routed yet (T-1929).
 - Curated evidence on main (excel-graph values copied unchanged, provenance in each case description):
   probes-numeric `t1916-erf-small` (4,878 cells), `t1916-erfc-mid` (9,024), `t1916-erfc-tail` (10,142),
   `t1916-erf-wrappers` (13,137) and `t1916-erfc-exp-ties` (20). Every ERF, ERFC, ERF(a,b), NORM.S.DIST and
-  NORM.DIST cell passes; the failures are the CHISQ.DIST.RT and Z.TEST wrappers (T-1929) and the 20 residuals.
+  NORM.DIST cell passes, and since T-1929 every CHISQ.DIST.RT and Z.TEST cell too; the failures are the 20 residuals.
 - `ironcalc-calc/ENGINEERING/ERFs.xlsx` E8 and G8 (`ERFC(6)`, `ERFC.PRECISE(6)`) stay known failures: that workbook was
   cached by Microsoft Macintosh Excel, which gives 0x1.8cf81557d20bap-56, while the excel-graph oracle (Windows,
   probes-numeric `t1040-erfc` A97) gives 0x1.8cf81557d20b8p-56, the engine's value. A platform difference
   (Mac Excel does not run the x87 code), not a kernel miss.
 Status: VERIFIED. ERF, ERF.PRECISE, ERFC and ERFC.PRECISE are bit-exact on every probed input except the 20 EXP
 near-tie cells. Implemented in `erf.rs` and `x87_exp.rs` (T-1916).
-Tasks: T-1778, T-1916; T-1929 routes the remaining wrappers and T-1931 the worksheet EXP; T-0968, T-1187, T-0971 and
+Tasks: T-1778, T-1916; T-1929 routed the wrappers and T-1931 the worksheet EXP; T-0968, T-1187, T-0971 and
 T-0972 inherit the map.
 
 ## RANK of a non-reference array
