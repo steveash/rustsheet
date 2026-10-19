@@ -3,7 +3,7 @@ id: T-2060
 title: "Probe IMEXP overflow boundaries with a nonzero imaginary part (T-2002)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
