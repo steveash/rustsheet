@@ -424,9 +424,9 @@ C	probes/legacy-choose-array-index.case.json	12
 C	probes/legacy-if-arm-range-argument-b.case.json	43
 C	probes/legacy-if-arm-range-argument.case.json	73
 C	probes/legacy-index-array-index.case.json	30
-C	probes/legacy-marker-spelling-name-nlg1.case.json	0
+C	probes/legacy-marker-spelling-name-nlg1.case.json	6
 C	probes/legacy-marker-spelling-name-plain.case.json	3
-C	probes/legacy-marker-spelling-name-tlg1.case.json	0
+C	probes/legacy-marker-spelling-name-tlg1.case.json	6
 C	probes/legacy-marker-spelling-name-xlfn.case.json	2
 C	probes/legacy-marker-spelling-undefined.case.json	5
 C	probes/legacy-match-lookup-array-intersection.case.json	41
@@ -1727,8 +1727,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
-F	probes/legacy-marker-spelling-name-nlg1.case.json	!EngineError
-F	probes/legacy-marker-spelling-name-tlg1.case.json	!EngineError
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
