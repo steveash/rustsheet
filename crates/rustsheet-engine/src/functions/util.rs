@@ -455,33 +455,27 @@ impl Model {
         // T-2009); `SUBTOTAL(9,IFS(TRUE,XLOOKUP(..)))` is 9 and `SUBTOTAL(9,SWITCH(1,1,(H1,I2)))`
         // 11 (probes/subtotal-ifs-switch-reference-picks, T-2014). Each condition, index, case
         // and binding is read once, as `reference_arg_reading` reads them.
-        if let Node::FunctionKind { kind, args } = node.ungrouped() {
-            let picked = match kind {
-                Function::If => self.if_pick(args, cell),
-                Function::Choose => self.choose_pick(args, cell),
-                Function::Ifs => self.ifs_pick(args, cell),
-                Function::Switch => self.switch_pick(args, cell),
-                Function::Let => {
-                    return self
-                        .let_scope(args, cell, |model, body| {
-                            model.picked_reference_arg_reading(body, blanks, cell)
-                        })
-                        .unwrap_or_else(RefArg::Value);
-                }
-                _ if kind.picks_reference() => {
-                    if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
-                        return RefArg::from(result);
-                    }
-                    return self.reference_arg_reading(node, blanks, cell);
-                }
-                _ => return self.reference_arg_reading(node, blanks, cell),
-            };
+        let Node::FunctionKind { kind, args } = node.ungrouped() else {
+            return self.reference_arg_reading(node, blanks, cell);
+        };
+        if let Some(picked) = self.pick_step(kind, args, cell) {
             return match picked {
                 Picked::Node(arm) => self.picked_reference_arg_reading(arm, blanks, cell),
                 Picked::Value(value) => RefArg::Value(value),
             };
         }
-        self.reference_arg_reading(node, blanks, cell)
+        match kind {
+            Function::Let => self
+                .let_scope(args, cell, |model, body| {
+                    model.picked_reference_arg_reading(body, blanks, cell)
+                })
+                .unwrap_or_else(RefArg::Value),
+            _ if kind.picks_reference() => match self.evaluate_reference_form(kind, args, cell) {
+                Some(result) => RefArg::from(result),
+                None => self.reference_arg_reading(node, blanks, cell),
+            },
+            _ => self.reference_arg_reading(node, blanks, cell),
+        }
     }
 
     /// [`Self::evaluate_picked_reference_arg`] for an aggregate that skips the blanks of a range

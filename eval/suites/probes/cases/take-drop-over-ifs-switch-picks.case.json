@@ -1,0 +1,43 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2071: TAKE, DROP and TRIMRANGE (below SUBTOTAL, AREAS, ISREF) over an IFS or SWITCH whose chosen value is a reference-returning XLOOKUP or a range, with no-match and lifting controls; ISREF over an IFS that lifts, over IF/IFS of DROP or TRIMRANGE, over a union holding an XLOOKUP and over LAMBDA calls returning one. Each formula in column A from row 10 every 4 rows, in clear space so a spill shows its shape. H1:H2 = 3,4; I1:I2 = 6,8; J1:J2 = 1,2 (keys).",
+  "tags": [
+    "M6",
+    "probe",
+    "T-2071"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "H1": 3,
+        "H2": 4,
+        "I1": 6,
+        "I2": 8,
+        "J1": 1,
+        "J2": 2,
+        "A10": "=SUBTOTAL(9,TAKE(IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2)),1,1))",
+        "A14": "=SUBTOTAL(9,TAKE(SWITCH(1,1,XLOOKUP(1,J1:J2,H1:I2)),1,1))",
+        "A18": "=SUBTOTAL(9,DROP(IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2)),0,1))",
+        "A22": "=SUBTOTAL(9,DROP(SWITCH(2,1,H1,XLOOKUP(1,J1:J2,H1:I2)),0,1))",
+        "A26": "=SUBTOTAL(9,TRIMRANGE(IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2))))",
+        "A30": "=SUBTOTAL(9,TRIMRANGE(SWITCH(1,1,XLOOKUP(1,J1:J2,H1:I2))))",
+        "A34": "=AREAS(TAKE(IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2)),1))",
+        "A38": "=ISREF(TAKE(SWITCH(1,1,XLOOKUP(1,J1:J2,H1:I2)),1))",
+        "A42": "=SUBTOTAL(9,TAKE(IFS(TRUE,H1:I2),1,1))",
+        "A46": "=SUBTOTAL(9,TAKE(IFS(FALSE,1),1,1))",
+        "A50": "=SUBTOTAL(9,TAKE(IFS(TRUE,XLOOKUP({1;2},J1:J2,H1:H2)),1))",
+        "A54": "=ISREF(IFS({TRUE,FALSE},H1,TRUE,I1))",
+        "A58": "=ISREF(IF(TRUE,DROP(H1:I2,1)))",
+        "A62": "=ISREF(IF(TRUE,TRIMRANGE(H1:I2)))",
+        "A66": "=ISREF(IFS(TRUE,DROP(H1:I2,1)))",
+        "A70": "=ISREF((H1,XLOOKUP(1,J1:J2,H1:I2)))",
+        "A74": "=ISREF(LAMBDA(x,x)(XLOOKUP(1,J1:J2,H1:I2)))",
+        "A78": "=ISREF(LAMBDA(x,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))(1))",
+        "A82": "=SUBTOTAL(9,TAKE(IF(TRUE,IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2))),1,1))",
+        "A86": "=SUBTOTAL(9,TAKE(LET(v,1,SWITCH(v,1,XLOOKUP(1,J1:J2,H1:I2))),1,1))"
+      }
+    }
+  ]
+}
