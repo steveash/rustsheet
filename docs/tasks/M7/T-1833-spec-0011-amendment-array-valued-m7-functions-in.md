@@ -3,7 +3,7 @@ id: T-1833
 title: "SPEC-0011 amendment: array-valued M7 functions in the lifting table, and TAKE/DROP elements that are whole sub-arrays"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,13 +27,26 @@ Also decide which unprobed scalar parameters may be entered as `Lift` on the spe
 This task owns no eval cell. SORT is not in scope: its sort_index and sort_order are `Whole` lists (T-1837), and nothing of SORT lifts in the probes.
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-0011-scalar-argument-lifting.md has a section for array-valued functions that answers gaps 1-4 above (the `ArgKinds`/static-analysis change with its signature and shape rules, the element-value rule citing K5-K10, the cost rule with its test formulas, the alternating-kind representation) and one for whole sub-array elements answering gap 5, each rule citing the probe cells listed in Context.
-- [ ] The spec's per-parameter list for the ten functions above gives each parameter a kind, marking which rest on a probe cell and which on the general rule; any parameter that needs a probe first has a filed task (milestone M7, not M1) named in the spec.
-- [ ] SPEC-0011's Tasks list, rollout step 3, the non-goal bullet and open question 5 name T-1834, T-1835, T-1836, T-1837, T-1838 and T-1839 instead of T-1271.
-- [ ] If the design changes what those tasks must do, their Context and Acceptance criteria are updated in the same PR (sizes stay S/M; split further if not).
-- [ ] No code changes; `make check` green; reviewers approve.
+- [x] docs/specs/SPEC-0011-scalar-argument-lifting.md has a section for array-valued functions that answers gaps 1-4 above (the `ArgKinds`/static-analysis change with its signature and shape rules, the element-value rule citing K5-K10, the cost rule with its test formulas, the alternating-kind representation) and one for whole sub-array elements answering gap 5, each rule citing the probe cells listed in Context.
+- [x] The spec's per-parameter list for the ten functions above gives each parameter a kind, marking which rest on a probe cell and which on the general rule; any parameter that needs a probe first has a filed task (milestone M7, not M1) named in the spec.
+- [x] SPEC-0011's Tasks list, rollout step 3, the non-goal bullet and open question 5 name T-1834, T-1835, T-1836, T-1837, T-1838 and T-1839 instead of T-1271.
+- [x] If the design changes what those tasks must do, their Context and Acceptance criteria are updated in the same PR (sizes stay S/M; split further if not).
+- [x] No code changes; `make check` green; reviewers approve.
 
 ## Out of scope
 - Any implementation (T-1834 onward).
 - OFFSET, INDIRECT and TRIMRANGE reference-valued elements (T-1810).
 - SORT's argument-error order (T-1351); WRAPCOLS of a single value and wrap_count below 1 (T-1348).
+
+## Outcome
+SPEC-0011 gains "Array-valued functions" and "Elements that are references" (Design).
+- Gaps 1-4: `ArgKinds.result: CallResult` (`Array` entries are `Unknown` until a lifted argument
+  gives a shape); `element_value` takes an array element's top-left (K5-K10); `KernelWork::Output`
+  charges each element the cells it builds against the 2^27 visit cap (MAKEARRAY weight 128, so at
+  most 2^20 LAMBDA calls), with test formulas; `repeat` becomes a cycle of kinds for SORTBY.
+- Gap 5: a lifted TAKE's or DROP's whole element is read as a reference, the shape OFFSET's lift has
+  (probes/reference-lift-elements), so it reuses T-1955's carrier instead of a nested-array one.
+  T-1838 now depends on T-1955 and T-1956.
+- Per-parameter list for the ten functions; the unprobed parameters, a TAKE over an array value and
+  a 1x1 lifted array go to the new probe task T-1960 (research, M7).
+- T-1834 to T-1839 point at the rules; no code changes, no eval change.
