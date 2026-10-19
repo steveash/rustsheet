@@ -26,7 +26,7 @@ use regex_automata::{
         pikevm::{Cache as PikeCache, PikeVM},
         WhichCaptures, NFA,
     },
-    util::{captures::Captures, iter::Searcher},
+    util::{captures::Captures, iter::Searcher, syntax},
     Anchored, Input, Match, MatchError, MatchKind, PatternID,
 };
 
@@ -78,8 +78,14 @@ pub(super) struct Caches {
 }
 
 impl Engine {
-    /// Compiles `pattern` with its NFAs under `size_limit` bytes.
-    pub(super) fn new(pattern: &str, size_limit: usize) -> Result<Engine, BuildFailure> {
+    /// Compiles `pattern` with its NFAs under `size_limit` bytes, ignoring case (Unicode simple
+    /// case folding: `ſ` matches `s`, the Kelvin sign `k`; probes/regex-optional-args A24-A26)
+    /// when `case_insensitive`.
+    pub(super) fn new(
+        pattern: &str,
+        size_limit: usize,
+        case_insensitive: bool,
+    ) -> Result<Engine, BuildFailure> {
         let failure = |error: thompson::BuildError| {
             if error.size_limit().is_some() {
                 BuildFailure::TooBig
@@ -87,11 +93,14 @@ impl Engine {
                 BuildFailure::Invalid
             }
         };
+        let syntax = syntax::Config::new().case_insensitive(case_insensitive);
         let forward = NFA::compiler()
+            .syntax(syntax)
             .configure(NFA::config().nfa_size_limit(Some(size_limit)))
             .build(pattern)
             .map_err(failure)?;
         let reverse = NFA::compiler()
+            .syntax(syntax)
             .configure(
                 NFA::config()
                     .nfa_size_limit(Some(size_limit))
@@ -276,6 +285,16 @@ impl Search<'_> {
             }
             None => Ok(false),
         }
+    }
+
+    /// Fills `caps` with the groups of `m`, a match found in `text`.
+    pub(super) fn captures_at(
+        &mut self,
+        text: &str,
+        m: Match,
+        caps: &mut Captures,
+    ) -> Result<(), Spent> {
+        self.capture(&Input::new(text), m, caps)
     }
 
     /// Calls `each` with every successive non-overlapping match in `text`.

@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1934: REGEXREPLACE case forcing (\\L, \\l) with a capital sigma: final vs medial lowercase across replacement pieces.",
+ "tags": [
+  "M7",
+  "probe",
+  "T-1934",
+  "regexreplace"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=IFERROR(REGEXREPLACE(\"xaby\",\"(a)(b)\",\"[\\lΣa]\"),\"#ERR\")",
+    "A2": "=IFERROR(REGEXREPLACE(\"xΑΣy\",\"(ΑΣ)\",\"[\\L$1x]\"),\"#ERR\")",
+    "A3": "=IFERROR(REGEXREPLACE(\"xaby\",\"(a)(b)\",\"[\\LΑΣ b]\"),\"#ERR\")",
+    "A4": "=IFERROR(REGEXREPLACE(\"xΑΣy\",\"(ΑΣ)\",\"[\\L$1]\"),\"#ERR\")",
+    "A5": "=IFERROR(REGEXREPLACE(\"xΑΣ y\",\"(ΑΣ) \",\"[\\L$1\\Ex]\"),\"#ERR\")",
+    "A6": "=IFERROR(REGEXREPLACE(\"xaby\",\"(a)(b)\",\"[\\LΑΣ]\"),\"#ERR\")",
+    "A7": "=IFERROR(REGEXREPLACE(\"xaby\",\"(a)(b)\",\"[\\LΑΣΑ]\"),\"#ERR\")",
+    "A8": "=IFERROR(REGEXREPLACE(\"xΑΣy\",\"(Α)(Σ)\",\"[\\L$1$2]\"),\"#ERR\")",
+    "A9": "=IFERROR(REGEXREPLACE(\"xΑΣy\",\"(Α)(Σ)\",\"[\\L$1$2 ]\"),\"#ERR\")",
+    "A10": "=IFERROR(REGEXREPLACE(\"xΑΣy\",\"(Α)(Σ)\",\"[\\L$1\\E$2]\"),\"#ERR\")",
+    "A11": "=LOWER(\"ΑΣ\")",
+    "A12": "=LOWER(\"ΑΣ Α\")"
+   }
+  }
+ ],
+ "expected": {}
+}

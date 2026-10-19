@@ -24,6 +24,8 @@ Code: `fn_datedif` / `datedif_value` and `fn_days360` in crates/rustsheet-engine
 Use the `excel-probe` skill; add the four formulas (and their lifted variants, e.g. `DATEDIF({10,1},5,NA())`)
 to a probe case.
 
+Evidence from T-1785: `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` is `#N/A` in Excel (probes/date-math-lift-driver-edges G43, a known failure: ours gives the reversed pair's `#NUM!`), so the unit's error may come before the reversed-pair check. The DATEDIF and DAYS360 kernels are in `fn_datedif`/`fn_days360` on the SPEC-0011 driver.
+
 ## Acceptance criteria
 - [ ] A probe case holds `DATEDIF(10,5,NA())`, `DATEDIF(1/0,5,NA())`, `DAYS360(-5,5,NA())`, `DAYS360(1/0,5,NA())`
   with oracle values; ours matches them (baseline updated).

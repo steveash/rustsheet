@@ -1,4 +1,4 @@
-//! `lifting_table_functions!`: the functions of the lifting table (`kinds.rs`) as a `match`
+//! `lifting_table_functions!`: the functions of the lifting table (`kinds/`) as a `match`
 //! pattern, apart from the table so each file stays a readable size.
 
 /// The functions of [`Function::arg_kinds`](crate::functions::Function::arg_kinds), as a pattern: the arm of an exhaustive `match` on a
@@ -272,8 +272,27 @@ macro_rules! lifting_table_functions {
             | Function::PoissonDist
             | Function::PoissonCompat
             // --- End incomplete gamma (T-1872) ---
-            | Function::HypGeomDist // T-1873
+            // --- Hypergeometric (T-1873) ---
+            | Function::HypGeomDist
             | Function::HypGeomDistCompat
+            // --- End hypergeometric (T-1873) ---
+            // --- Date and time lifts, MROUND, SQRTPI (T-1785) ---
+            | Function::Day
+            | Function::Month
+            | Function::Year
+            | Function::Hour
+            | Function::Minute
+            | Function::Second
+            | Function::Isoweeknum
+            | Function::Weekday
+            | Function::Days
+            | Function::Days360
+            | Function::Date
+            | Function::Time
+            | Function::Datedif
+            | Function::Mround
+            | Function::Sqrtpi
+            // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
     };
 }
 pub(crate) use lifting_table_functions;

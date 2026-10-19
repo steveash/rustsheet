@@ -156,8 +156,9 @@ impl Model {
                 CalcResult::EmptyArg => {}
                 CalcResult::Range { left, right } => {
                     has_range = true;
-                    if let Err(error) = self.for_each_cell_or_error_in_areas(
-                        &[Range { left, right }],
+                    // A blank cell reads as 0, so the blanks past the used area are walked too.
+                    if let Err(error) = self.for_each_cell_or_error_in_whole_range(
+                        &Range { left, right },
                         cell,
                         |model, value| {
                             let number = match value {

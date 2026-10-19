@@ -3,7 +3,7 @@ id: T-1930
 title: "ATAN2: fit Excel's formulation (atan(y/x), not libm atan2) over all four quadrants"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -21,10 +21,16 @@ The other quadrants are unprobed. A negative x probably adds or subtracts π, an
 grid over the signs of x and y (including y = 0 and -0, x = 0, and large and tiny ratios), then fit the formulation.
 
 ## Acceptance criteria
-- [ ] A probe covers all four quadrants and both axes, with oracle values.
-- [ ] The 34 G-column lines of probes/asin-atan-sign-source leave eval/baseline/probes.txt, and nothing regresses.
-- [ ] The formulation is recorded in docs/excel-semantics/numbers.md.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe covers all four quadrants and both axes, with oracle values.
+- [x] The 34 G-column lines of probes/asin-atan-sign-source leave eval/baseline/probes.txt, and nothing regresses.
+- [x] The formulation is recorded in docs/excel-semantics/numbers.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 IMARGUMENT, which may share the kernel (note it if it does).
+
+## Outcome
+`fn_atan2` now computes `ATAN(y/x)` ± π with Excel's subnormal flush, x = 0 → ±π/2, #DIV/0! for both-zero and #NUM!
+for an overflowing quotient. Three new probes (atan2-quadrants, atan2-error-edges, atan2-kept-subnormal) with
+excel-graph values all pass; the 34 G-column lines of probes/asin-atan-sign-source left the baseline. Recorded in
+numbers.md ("ATAN2 is ATAN(y/x) plus or minus π"). IMARGUMENT sharing the kernel is unprobed.

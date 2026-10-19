@@ -16,4 +16,4 @@ pub(crate) use sum::SumParts;
 mod sumproduct;
 mod trig;
 pub(crate) use mathematical::percent_of;
-pub(crate) use trig::{excel_sin_cos, EXCEL_TRIG_LIMIT};
+pub(crate) use trig::excel_sin_cos;

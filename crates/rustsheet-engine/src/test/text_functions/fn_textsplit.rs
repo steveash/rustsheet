@@ -229,10 +229,9 @@ fn many_pieces_with_an_absent_delimiter() {
     assert_eq!(model._get_text("C2"), *"c");
 }
 
-// UNVERIFIED (no oracle cell; T-1824 probes it): a 1x1 array lifts the call like a larger one, so
-// the element keeps its first value, by analogy with `COLUMNS(XLOOKUP({2},A1:A4,C1:E4))` = 1
-// (docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and
-// scalar arguments"). Pins the guess so a change is deliberate.
+// A 1x1 array lifts the call like a larger one, so the element keeps its first value
+// (probes/textsplit-lift-guesses A56, A59, T-1824; docs/excel-semantics/text.md "TEXTSPLIT,
+// TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments").
 #[test]
 fn one_by_one_array_lifts() {
     let mut model = new_empty_model();
@@ -260,7 +259,8 @@ fn long_delimiter_matching_everywhere() {
         "=ROWS(TEXTSPLIT(REPT(\"a\",32767)&SEQUENCE(16),HSTACK(\"a\",REPT(\"a\",16000))))",
     );
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"2001");
+    // The longest delimiter wins at each position (T-1824): 1000 + 1000 + the empty end.
+    assert_eq!(model._get_text("A1"), *"3");
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 }
 
@@ -311,4 +311,27 @@ fn empty_row_delimiter_is_value_error() {
         assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
     }
     assert_eq!(model._get_text("A6"), *"{\"a\",\"b\"}");
+}
+
+// T-1824: the longest delimiter wins where several match at one position, whatever the list
+// order; pad_with does not lift; a scalar boolean delimiter is its spelling (probes/
+// textsplit-lift-guesses A4-A9, A35-A38, A65, A71).
+#[test]
+fn lift_guesses_settled() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ARRAYTOTEXT(TEXTSPLIT(\"abcd\",{\"ab\",\"abc\"}),1)");
+    model._set("A2", "=ARRAYTOTEXT(TEXTSPLIT(\"abcd\",{\"abc\",\"ab\"}),1)");
+    model._set("A3", "=TEXTAFTER(\"abcd\",{\"ab\",\"abc\"})");
+    model._set("A4", "=TEXTAFTER(\"abcd\",{\"abc\",\"ab\"},-1)");
+    model._set("A5", "=TEXTSPLIT(\"a,b;c\",\",\",\";\",,,{\"x\";\"y\"})");
+    model._set("A6", "=TEXTSPLIT(\"a,b,c\",\",\",,,,{\"x\"})");
+    model._set("A7", "=ARRAYTOTEXT(TEXTSPLIT(\"a TRUE b\",TRUE),1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"{\"\",\"d\"}");
+    assert_eq!(model._get_text("A2"), *"{\"\",\"d\"}");
+    assert_eq!(model._get_text("A3"), *"d");
+    assert_eq!(model._get_text("A4"), *"d");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A6"), *"#VALUE!");
+    assert_eq!(model._get_text("A7"), *"{\"a \",\" b\"}");
 }
