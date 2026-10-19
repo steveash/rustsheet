@@ -3,7 +3,7 @@ id: T-1931
 title: "Worksheet EXP uses Excel's x87 model V6 (T-1778)"
 milestone: M9
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -31,10 +31,27 @@ cells at large |a| are 1 ulp off it, mostly low.
   merge the branch).
 
 ## Acceptance criteria
-- [ ] `fn_exp` uses `excel_exp` with the worksheet flush and overflow rules unchanged; a curated EXP probe
+- [x] `fn_exp` uses `excel_exp` with the worksheet flush and overflow rules unchanged; a curated EXP probe
   subset (with provenance) is bit-exact except the listed V6 near-tie cells.
-- [ ] `make eval-baseline` shows no regression (EXP, SINH/COSH/TANH, FISHERINV, power and exp-ln probes).
+- [x] `make eval-baseline` shows no regression (EXP, SINH/COSH/TANH, FISHERINV, power and exp-ln probes).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 93 F2XM1 near-ties (an AMD F2XM1 hypothesis is untested; numbers.md).
+
+## Outcome
+- `fn_exp` calls `x87_exp::excel_exp` (model V6) and nothing else. The "worksheet flush" in the Context is a
+  Graph artifact: V6 keeps subnormals, as Excel does (probes/subnormal-function-results C4 and C6 stay FALSE), and the
+  18 `kmyst-erfc-cutoff` C cells that read 0 are kept subnormals reported as 0.0 (decision 0042). Overflow is still
+  infinite, so `#NUM!`. EXP is entered in the kernel-work table with its fixed cap.
+- Evidence: probes-numeric `t1931-exp-map` (5,990 EXP cells), `t1931-exp-random` (7,084), `t1931-exp-gauss`
+  (8,096 `EXP(-(x*x))`), `t1931-exp-neg` (1,024 `EXP(-z)`) and `t1931-exp-ties` (87): 44,562 cells, curated from
+  `kmyst-erfc-r5expmap1/2`, `-expcol`, `-driftmap` and `-chiruns1` at 59c2c3724a3c and filled fresh from excel-graph
+  (2026-10-19), which returned the research run's value at all 22,281 formula cells. The engine matches all
+  22,194 non-tie cells (libm's `exp`: 16,183); the 87 ties are 1 ulp misses (+1 at 47, -1 at 40), owned by T-1940.
+  libm matches 43 of the ties, so probes-numeric goes 65,579 -> 71,547 passing cells (+6,011 non-tie, -43 tie).
+- eval: no change in any gated suite (ironcalc-calc 1144, poi 481, probes 2133, fixtures 9 known failures; no
+  regressions, no fixes), and no other probes-numeric case changed.
+- SINH/COSH/TANH/FISHERINV stay on libm: switching them to `excel_exp` changed no probed cell (numbers.md), so there
+  is no evidence either way and no follow-up switch task.
+- Follow-up: T-1940 (the F2XM1 near-tie residuals).
