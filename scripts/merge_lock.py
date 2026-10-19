@@ -99,7 +99,7 @@ def lock_commit(holder: str | None, pr: str = "", root: Path = ROOT) -> str:
     """A new orphan commit with an empty tree that names `holder` and `pr`, or the free marker when
     `holder` is None."""
     tree = git("mktree", root=root).stdout.strip()
-    message = f"merge-lock\n\nholder: {holder}\npr: {pr}\n" if holder else "merge-lock\n\nstate: free\n"
+    message = f"merge-lock\n\nholder: {holder}\npr: {pr}\n" if holder is not None else "merge-lock\n\nstate: free\n"
     return git(*IDENTITY, "commit-tree", tree, "-m", message, root=root).stdout.strip()
 
 
