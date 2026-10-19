@@ -920,13 +920,11 @@ impl Model {
                 .and_then(|start| Ok((start, model.kernel_number_or(values.get(1), 0.0, cell)?)))
                 .and_then(|dates| {
                     let method = match values.get(2) {
-                        // Text other than TRUE or FALSE, with no message (SPEC-0011 kernels).
-                        Some(CalcResult::String(s))
-                            if !s.eq_ignore_ascii_case("true")
-                                && !s.eq_ignore_ascii_case("false") =>
-                        {
-                            Err(value_error(cell))
-                        }
+                        // Text is TRUE or FALSE in any case, else #VALUE! with no message (SPEC-0011
+                        // kernels); read borrowed, so a lifted text method allocates nothing.
+                        Some(CalcResult::String(s)) if s.eq_ignore_ascii_case("true") => Ok(true),
+                        Some(CalcResult::String(s)) if s.eq_ignore_ascii_case("false") => Ok(false),
+                        Some(CalcResult::String(_)) => Err(value_error(cell)),
                         Some(m) => Self::cast_bool_ref(m, cell),
                         None => Ok(false),
                     };

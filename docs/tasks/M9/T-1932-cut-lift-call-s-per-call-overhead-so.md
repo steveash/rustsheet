@@ -23,6 +23,7 @@ the stacked frames `numbers_fn` closure -> `lift_call_costed` (about 34 instruct
 the driver since T-1773, whose +4.5% was measured when a per-row ABS cost 42 ms; it costs about 18 ms now, so the fixed overhead is a larger share).
 `lift_call_costed` is already inlined by LTO (an `#[inline]` changed nothing). Mind T-1110: `lift_call_with` is `#[inline(never)]` so its
 frame stays fixed under recursion; a fix must not grow the evaluation stack frame (measure the recursion depth tests).
+The lifted row (+13%) is larger than the per-call cost explains: profile the per-element path too (the `dyn` kernel dispatch, and the `CalcResult` built and dropped for each element in `lift_in_place`), not only the unlifted call stack (T-1785 performance review).
 Code: crates/rustsheet-engine/src/functions/lift/call.rs, driver.rs, mod.rs (`kernel_number`), math_and_trigonometry/mathematical.rs (`numbers_fn`, `number_fn`).
 
 ## Acceptance criteria
