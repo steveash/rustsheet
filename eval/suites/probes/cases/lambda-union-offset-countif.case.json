@@ -1,0 +1,32 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A union returned by a LAMBDA call or LET, passed to OFFSET and COUNTIF (T-1993).",
+  "tags": [
+    "M7",
+    "references",
+    "probe",
+    "T-1993"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "C1": "=OFFSET(LAMBDA(x,x)((A1,B1)),1,0)",
+        "C2": "=OFFSET(LET(x,(A1,B1),x),1,0)",
+        "C3": "=COUNTIF(LAMBDA(x,x)((A1,B1)),\">0\")",
+        "C4": "=COUNTIF(LET(x,(A1,B1),x),\">0\")",
+        "C5": "=OFFSET((A1,B1),1,0)",
+        "C6": "=COUNTIF((A1,B1),\">0\")",
+        "C7": "=OFFSET(LAMBDA(x,x)((A1:A3,B1:B2)),1,0)",
+        "C8": "=COUNTIF(LAMBDA(x,x)((A1:A3,B1:B2)),\">1\")",
+        "C9": "=SUM(OFFSET(LET(x,(A1:A3,B1:B2),x),1,0))",
+        "C10": "=COUNTIF(LET(x,(A1:A3,B1:B2),x),\">1\")"
+      }
+    }
+  ]
+}
