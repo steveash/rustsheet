@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1806: cell-shaped call names: row 0 and a row past 1048576",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "D1": 5,
+        "A3": "=A0(1)",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "=A1048577(1)",
+        "B4": "=FORMULATEXT(A4)"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -1701,6 +1701,32 @@ Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921, T-1933
 
+## Edge shapes of a cell-shaped call name
+Rule: a call whose callee is spelled as a cell on the grid is a call of that cell, `#REF!`. That includes:
+- the last cell, `=xfd1048576(1)`;
+- anchored cells, `=$D$1(1)` and `=d$1(1)`;
+- a sheet-qualified cell, `=Sheet1!D1(1)`;
+- an empty argument list, `=d1()`;
+- such a call intersected with a range, `=d1(1) D1`.
+
+`ISERROR(d1(1))` is TRUE and `ERROR.TYPE(d1(1))` is 4. FORMULATEXT prints the callee bare and upper-cased:
+`=XFD1048576(1)`, `=$D$1(1)`, `=D$1(1)`, `=Sheet1!D1(1)`, `=D1()`.
+
+A cell-like name off the grid is an unknown name, `#NAME?`: a column past XFD (`=xfe1(1)`), row 0 (`=A0(1)`), row
+1048577 (`=A1048577(1)`), and a non-ASCII letter (`=ß1(1)`). FORMULATEXT upper-cases the column past XFD
+(`=xfe1(1)` prints `=XFE1(1)`; the row shapes were probed in upper case only), and keeps `=ß1(1)` as written.
+
+An R1C1-shaped callee in an A1 workbook (`=R1C1(1)`, `=R[1]C[1](1)`) makes Excel refuse the workbook
+(createSession 501 `unsupportedWorkbook`), so its value is not observable through the web oracle.
+
+Not probed: a called cell pushed off the grid by a structural edit. That needs a column insert, which no case
+file can express; ours turns `=XFD1(1)` into `=#REF!(1)` (`#ERROR!`).
+Evidence: probes/cell-call-edges-a, -b, -c, -f, -g (excel-graph, 2026-10-19, T-1806).
+Ours: matches since T-1806. In A1 text, a reference token directly followed by `(` is a call of that reference
+(`reference_or_call_operand`, parser/operands.rs), and `callee_operand` prints any cell callee bare.
+Status: VERIFIED (excel-graph)
+Tasks: T-1758, T-1806, T-2008
+
 ## Legacy N and T marker spelling: a cell-like name Excel never calls
 Rule: Excel calls a workbook LAMBDA name by its name, `_RS_LEGACY_N` included; but a name spelled like
 an A1 cell (`NLG1`, `TLG1`) is never a name in a formula: Excel opens a workbook defining it, yet `NLG1`

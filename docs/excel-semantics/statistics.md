@@ -960,9 +960,13 @@ non-reference `ref` broadcasts with the ref's shape, every element `#VALUE!` (`R
 `TYPE(LARGE(A1:A8,{1}))` are 64).
 Evidence: probes/stat-test-lift P1-P89, stat-test-lift-b P90-P95 (excel-graph, 2026-10-19, T-1813).
 Ours: Z.TEST/ZTEST and PROB match since T-1813 (`statistical/z_test.rs`, `prob.rs`: the data argument is
-`WholeByCaller`, read once). RANK, FORECAST, T.TEST and the order-statistic precedence: T-1982.
+`WholeByCaller`, read once). FORECAST/FORECAST.LINEAR, T.TEST/TTEST and the order-statistic precedence match
+since T-1982 (`forecast.rs`, `t_dist.rs`; PERCENTILE's and TRIMMEAN's readers keep an error value). T.TEST's
+P64-P67 are still NumericClose (P64: 0.32346094498174827 against 0.32346094498173894), which is T-0969's
+work. Not yet probed (T-2000): T.TEST's `type` against the samples' error, FORECAST's `x` against the data's
+own validation, and an error data argument of PERCENTRANK, QUARTILE, PROB and FREQUENCY. RANK: T-1999.
 Status: VERIFIED (excel-graph)
-Tasks: T-1813, T-1982
+Tasks: T-1813, T-1982, T-1999, T-2000
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the
@@ -1541,7 +1545,7 @@ Evidence: probes/linest-modes, logest-modes, growth-modes.
 Ours: GROWTH spills collapse to the first cell, the LINEST stats block is short or `#N/A`, many last-digit differences (T-1741, T-1742, T-1743).
 FORECAST.ETS.SEASONALITY/STAT/CONFINT could not be lifted: excel-graph is `#N/A` for every valid call (section above), so cases would be junk evidence; the three stay below the floor until desktop values exist (T-1553).
 Status: VERIFIED (excel-graph) for the stated cases; the unprobed items are marked
-Tasks: T-1621, T-1741, T-1742, T-1743
+Tasks: T-1621, T-1741, T-1742, T-1743, T-2006 (shared least-squares kernel)
 
 ## Paired regression functions: single points, zero variance, text and large offsets
 Rule: CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, COVAR and FORECAST(.LINEAR) pair their two arrays cell by cell and
