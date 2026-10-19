@@ -135,20 +135,14 @@ impl Model {
         let (true, Some(node)) = (accepts, args.first()) else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let numbers = match (data.read)(self, node, cell) {
-            Ok(numbers) => Ok(SortedNumbers {
+        // A reader's non-error `Err` (RANK's array of errors; none here) is kept as it is.
+        let numbers = (data.read)(self, node, cell)
+            .map(|numbers| SortedNumbers {
                 numbers,
                 order: data.order,
                 sorts: 0,
-            }),
-            Err(CalcResult::Error { error, origin, .. }) => Err(CalcResult::Error {
-                error,
-                origin,
-                message: String::new(),
-            }),
-            // A reader's non-error `Err` (RANK's array of errors; none here) is kept as it is.
-            Err(other) => Err(other),
-        };
+            })
+            .map_err(CalcResult::without_message);
         Ok(SortedData { numbers })
     }
 

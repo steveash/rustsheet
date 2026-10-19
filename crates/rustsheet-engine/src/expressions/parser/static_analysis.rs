@@ -599,15 +599,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::VarS => vec![Signature::Vector; arg_count],
         Function::VarpA => vec![Signature::Vector; arg_count],
         Function::VarA => vec![Signature::Vector; arg_count],
-        Function::ZTest => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else if arg_count == 3 {
-                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         // Compatibility aliases
         Function::ChiTestCompat => {
             if arg_count == 2 {
@@ -641,15 +632,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         }
         Function::VarCompat => vec![Signature::Vector; arg_count],
         Function::VarPCompat => vec![Signature::Vector; arg_count],
-        Function::ZTestCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else if arg_count == 3 {
-                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::Sumx2my2 => vec![Signature::Vector; 2],
         Function::Sumx2py2 => vec![Signature::Vector; 2],
         Function::Sumxmy2 => vec![Signature::Vector; 2],
@@ -691,16 +673,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             _ => vec![Signature::Error; arg_count],
         },
         Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
-        Function::Prob => match arg_count {
-            3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
-            4 => vec![
-                Signature::Vector,
-                Signature::Vector,
-                Signature::Scalar,
-                Signature::Scalar,
-            ],
-            _ => vec![Signature::Error; arg_count],
-        },
         Function::Harmean => vec![Signature::Vector; arg_count],
         Function::Kurt => vec![Signature::Vector; arg_count],
         Function::MaxA => vec![Signature::Vector; arg_count],
@@ -914,7 +886,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::VarS => StaticResult::Scalar,
         Function::VarpA => StaticResult::Scalar,
         Function::VarA => StaticResult::Scalar,
-        Function::ZTest => StaticResult::Scalar,
         Function::ChiTestCompat => StaticResult::Scalar,
         Function::CovarCompat => StaticResult::Scalar,
         Function::FTestCompat => StaticResult::Scalar,
@@ -924,7 +895,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::TTestCompat => StaticResult::Scalar,
         Function::VarCompat => StaticResult::Scalar,
         Function::VarPCompat => StaticResult::Scalar,
-        Function::ZTestCompat => StaticResult::Scalar,
         Function::Sumx2my2 => StaticResult::Scalar,
         Function::Sumx2py2 => StaticResult::Scalar,
         Function::Sumxmy2 => StaticResult::Scalar,
@@ -948,7 +918,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Trend => StaticResult::Unknown,
         // Scalar-returning functions
         Function::ModeSingl => StaticResult::Scalar,
-        Function::Prob => StaticResult::Scalar,
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,
         Function::MaxA => StaticResult::Scalar,

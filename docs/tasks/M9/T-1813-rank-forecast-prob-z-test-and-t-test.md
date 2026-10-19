@@ -3,7 +3,7 @@ id: T-1813
 title: "RANK, FORECAST, PROB, Z.TEST and T.TEST lift their scalar arguments over a whole data argument"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -23,10 +23,21 @@ Split from T-1772, which entered LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRA
 - Cells that miss by ulps today (T.TEST H535-H546, Z.TEST H564-H573) stay with their accuracy tasks.
 
 ## Acceptance criteria
-- [ ] The lift cells above leave eval/baseline/probes.txt, with no new F lines.
-- [ ] The functions are in `Function::arg_kinds` and `lifting_table_functions!`, and their fallback arms are deleted.
-- [ ] Each kernel's check order is the scalar function's, and its element errors carry empty messages.
-- [ ] `make check` green; reviewers approve.
+- [x] (Z.TEST, PROB; the rest moved to T-1975) The lift cells above leave eval/baseline/probes.txt, with no new F lines.
+- [x] (Z.TEST/ZTEST, PROB; RANK, FORECAST, T.TEST in T-1975) The functions are in `Function::arg_kinds` and `lifting_table_functions!`, and their fallback arms are deleted.
+- [x] Each kernel's check order is the scalar function's, and its element errors carry empty messages.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The pairing functions' unequal sizes (T-1292); FORECAST.ETS (T-1293, T-1553).
+
+## Outcome
+Probed first: probes/stat-test-lift (89 cells, excel-graph), recorded in statistics.md "RANK, FORECAST, PROB, Z.TEST
+and T.TEST: lifted scalar arguments". Z.TEST/ZTEST and PROB are on the driver: their data is `WholeByCaller`, read
+once (Z.TEST keeps count, mean and deviation, so an element is O(1); PROB charges `LiftCost::Cells`), and an element
+checks its scalar arguments before the data's error, as Excel does. Their fallback signature and shape arms are
+deleted. `CalcResult::without_message` replaces three copies of the message-stripping match (the sorted-data reader's
+included). The session ran out before RANK, FORECAST and T.TEST, so they moved to T-1975 with the probe's findings,
+along with the order-statistic precedence the probe found (P81-P83: `PERCENTILE(NA(),2)` is `#N/A`).
+Eval delta: probes fixed 6 (stat-argument-modes H488, H489, H566, H567, H571, H572), new case stat-test-lift
+(55 of 89 cells pass; the 34 others are T-1975's), 0 regressions.
