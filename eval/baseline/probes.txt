@@ -240,6 +240,7 @@ C	probes/encodeurl-evidence-floor.case.json	29
 C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
 C	probes/eng-imdiv.case.json	24
+C	probes/eng-impower-imdiv-edges.case.json	27
 C	probes/eng-impower.case.json	22
 C	probes/eng-imsub.case.json	21
 C	probes/eng-imsum-improduct-whole.case.json	45

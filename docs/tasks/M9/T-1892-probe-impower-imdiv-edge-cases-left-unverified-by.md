@@ -3,7 +3,7 @@ id: T-1892
 title: "Probe IMPOWER/IMDIV edge cases left UNVERIFIED by T-1766: huge angle, underflow, blank first argument"
 milestone: M9
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ docs/excel-semantics/engineering.md "T-1625 probes" lists three UNVERIFIED items
 
 ## Out of scope
 -
+
+## Outcome
+Probe `eng-impower-imdiv-edges` (27 cells, excel-graph) written. Excel gives `#NUM!` for an IMPOWER angle of 2^27 or more, except a radius that underflowed to 0 gives "0" first; our libm fallback was wrong and is now `#NUM!`. A blank first argument as 0 and Smith's IMDIV were confirmed bit for bit. engineering.md updated; +27 probe cells passing.

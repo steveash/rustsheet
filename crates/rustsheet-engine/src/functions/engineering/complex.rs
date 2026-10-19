@@ -445,11 +445,15 @@ impl Model {
                 return num_error(cell);
             };
             let angle = f64::atan2(y, x) * n;
-            let (sin, cos) = if angle.abs() < EXCEL_TRIG_LIMIT {
+            // An angle at or past SIN's cut is `#NUM!`, but an underflowed radius of 0 is "0"
+            // without reading the angle: `IMPOWER("i",134217728)` is `#NUM!`, while
+            // `IMPOWER("1+i",-170891318)` is 0 (probes/eng-impower-imdiv-edges A1-A5).
+            let (sin, cos) = if radius == 0.0 {
+                (0.0, 0.0)
+            } else if angle.abs() < EXCEL_TRIG_LIMIT {
                 excel_sin_cos(angle)
             } else {
-                // UNVERIFIED: no evidence for a huge angle; plain libm keeps the old result.
-                angle.sin_cos()
+                return num_error(cell);
             };
             let (x, y) = (radius * cos, radius * sin);
             if !x.is_finite() || !y.is_finite() {
