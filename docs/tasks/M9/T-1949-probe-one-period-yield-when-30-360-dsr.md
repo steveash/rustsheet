@@ -3,7 +3,7 @@ id: T-1949
 title: "Probe one-period YIELD when 30/360 DSR is 0 (settlement 30th, maturity 31st)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
