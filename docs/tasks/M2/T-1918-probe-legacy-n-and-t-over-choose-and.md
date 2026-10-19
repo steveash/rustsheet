@@ -3,7 +3,7 @@ id: T-1918
 title: "Probe legacy N and T over CHOOSE and INDEX shapes beyond the T-1768 probe"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,9 @@ T-1908 leaves no `@` on the call for N/T over CHOOSE with any literal index over
 
 ## Out of scope
 -
+
+## Outcome
+New probe `probes/legacy-n-t-choose-index-shapes` (18 shapes, values and FORMULATEXT, excel-graph). All matched except
+CHOOSE with a literal index mixing plain references and array constants, which now takes no `@` and is marked
+(`chooses_between_references_and_array_constants`). Recorded in `docs/excel-semantics/references.md`.
+Eval: the 36 new cells pass; no regressions.

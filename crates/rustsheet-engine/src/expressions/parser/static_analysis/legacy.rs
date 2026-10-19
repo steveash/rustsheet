@@ -259,9 +259,31 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
         .enumerate()
         .filter(|(index, _)| is_returned_argument(kind, *index))
         .peekable();
-    matches!(kind, Function::Choose | Function::Index | Function::Ifs)
+    (matches!(kind, Function::Choose | Function::Index | Function::Ifs)
         && returned.peek().is_some()
-        && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_)))
+        && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_))))
+        || chooses_between_references_and_array_constants(kind, args)
+}
+
+/// Whether `kind(args)` is a CHOOSE with a number or boolean literal index whose values are
+/// plain references and array constants, at least one of each kind: Excel shows no `@` on the call
+/// and N or T read the arm the index picks, a reference as its top-left cell and an array constant
+/// as `#VALUE!` (`=N(CHOOSE(1,Z1,{2;3}))` is 7, `=N(CHOOSE(2,Z1,{2;3}))` and
+/// `=N(CHOOSE(1,{2;3},Z1))` are `#VALUE!`, `=N(CHOOSE(1,Z1:Z2,{2;3}))` is 7:
+/// probes/legacy-n-t-choose-index-shapes L, O, P, Q, R, T-1918).
+fn chooses_between_references_and_array_constants(kind: &Function, args: &[Node]) -> bool {
+    let [index, arms @ ..] = args else {
+        return false;
+    };
+    matches!(kind, Function::Choose)
+        && matches!(index, Node::NumberKind(_) | Node::BooleanKind(_))
+        && arms.iter().any(|arm| matches!(arm, Node::ArrayKind(_)))
+        && arms
+            .iter()
+            .any(|arm| !matches!(arm, Node::ArrayKind(_)) && is_plain_reference(arm))
+        && arms
+            .iter()
+            .all(|arm| matches!(arm, Node::ArrayKind(_)) || is_plain_reference(arm))
 }
 
 /// Whether argument `index` of `kind` is one its result can be, as it is or as a part of it: the
