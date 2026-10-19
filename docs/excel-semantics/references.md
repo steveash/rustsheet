@@ -1503,6 +1503,31 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
 
+## Legacy MATCH, VLOOKUP and HLOOKUP intersect an operation in their lookup table (T-1862)
+Rule: in a legacy (no `cm`) formula, arithmetic, a comparison or a concatenation over a range in
+MATCH's `lookup_array` or the table of VLOOKUP and HLOOKUP is a value, intersected like an
+aggregate's arithmetic argument, so the lookup then searches one value ("MATCH, VLOOKUP and
+HLOOKUP over a single value", lookup.md). With A1:A6 = a,b,a,c,b,a and B1:B6 = 1,2,3,1,2,3, on row
+2 (on the ranges' rows) / row 10 (off them):
+- `=MATCH(2,B1:B6*1,0)` shows as `=MATCH(2,@B1:B6*1,0)`: `#N/A` / `#VALUE!`; so do
+  `=MATCH(2,B1:B6*1)`, `=MATCH(2,-B1:B6*-1,-1)` and `=MATCH(TRUE,B1:B6>1,0)`;
+- the corpus INDEX/MATCH idiom, typed without Ctrl+Shift+Enter: `=MATCH(1,(A1:A6="b")*(B1:B6=2),0)`
+  shows as `=MATCH(1,(@A1:A6="b")*(@B1:B6=2),0)`, `#N/A` / `#VALUE!`, and so does its INDEX;
+  `=MATCH(1,(A2=A3:A4)*1,0)` is `#VALUE!` on row 2 too (A3:A4 misses it; corpus-bench/49300);
+- `=MATCH("b",A1:A6&"",0)` `=MATCH("b",@A1:A6&"",0)`: `#VALUE!` on both rows (text is no table);
+- `=VLOOKUP(2,B1:B6*1,1,FALSE)` `=VLOOKUP(2,@B1:B6*1,1,FALSE)` and HLOOKUP: `#N/A` / `#VALUE!`;
+- unchanged: a bare or parenthesized range (`=MATCH(2,B1:B6,0)`, `=MATCH(2,(B1:B6),0)` 2 / 2), the
+  `INDEX(…,0)` workaround (`=MATCH(1,INDEX((A1:A6="b")*(B1:B6=2),0),0)` 2 / 2), an array constant
+  operand (`=MATCH(2,{1,2,3}*1,0)` 2 / 2) and XMATCH, a dynamic-array function
+  (`=XMATCH(2,B1:B6*1)` 2 / 2). In `=MATCH(2,IF(B1:B6>0,B1:B6),0)` IF's condition is intersected and
+  its arm is not (`=MATCH(2,IF(@B1:B6>0,B1:B6),0)`, 2 / `#VALUE!`).
+Evidence: probes/legacy-match-lookup-array-intersection (excel-graph, 2026-10-18, T-1862),
+corpus-bench/49300 Sheet1!C2.
+Engine: `legacy_value_operand` (`is_lookup_table`, static_analysis/legacy.rs). Known mismatch: ours
+also intersects IF's arm in the last form (2 on row 2 in Excel, `#N/A` in ours; T-1935).
+Status: VERIFIED
+Tasks: T-1862
+
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
 position, and at the top level, through an implicit `@` that FORMULATEXT shows: `=IF(1,{2;3})` is

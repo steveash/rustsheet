@@ -54,7 +54,7 @@ impl Model {
         value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<SearchVector, CalcResult> {
-        let table = Self::lookup_table(value, cell)?;
+        let table = self.lookup_table(value, cell)?;
         let (rows, columns) = (table.rows(), table.columns());
         if rows > 1 && columns > 1 {
             return Err(CalcResult::Error {
@@ -145,7 +145,7 @@ impl Model {
         // `LOOKUP(2,1)` is 1, `LOOKUP("b","a")` is "a", `LOOKUP(2,1,5)` is 5, `LOOKUP(2,IF(TRUE,1))` and
         // `LOOKUP(2,{1})` are 1 (probes/mode-direct-error-lookup-scalar-vector B1-B5, T-1651;
         // `LOOKUP(2,CHOOSE(1,@B1:B6*1))`: probes/legacy-choose-arm-aggregate-and-array-constant-at J1).
-        let table = Self::lookup_table(scalar_as_array(value), cell)?;
+        let table = self.lookup_table(scalar_as_array(value), cell)?;
         // A wide table is searched along its first row, any other along its first column. In the
         // vector form that holds for a 2-D lookup_vector too (`LOOKUP(5,A1:D2,F1:F4)` searches
         // A1:D1; probes/lookup-2d-vector, -wide).
@@ -196,9 +196,14 @@ impl Model {
         }
     }
 
-    /// A LOOKUP or MATCH argument read as a table: a range or an array, its own error, and
-    /// `#N/A` for anything else.
-    fn lookup_table(
+    /// A LOOKUP, MATCH, VLOOKUP or HLOOKUP argument read as a table: a range or an array, or else
+    /// its own error. A single value is no table: `#VALUE!` for text that is not a number, `#N/A`
+    /// for anything else (`MATCH("b","b",0)` and `VLOOKUP("b","b",1,FALSE)` are `#VALUE!`,
+    /// `MATCH(2,2,0)`, `MATCH("2","2",0)` and `MATCH(TRUE,TRUE,0)` `#N/A`;
+    /// probes/match-single-value-lookup-array, T-1862). LOOKUP reads a single value as a
+    /// one-element array before it gets here.
+    pub(super) fn lookup_table(
+        &self,
         value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<LookupTable, CalcResult> {
@@ -206,10 +211,17 @@ impl Model {
             CalcResult::Range { left, right } => Ok(LookupTable::Range { left, right }),
             CalcResult::Array(array) => Ok(LookupTable::Array(array)),
             error @ CalcResult::Error { .. } => Err(error),
+            CalcResult::String(text) if self.cast_number(&text).is_none() => {
+                Err(CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Range expected".to_string(),
+                })
+            }
             _ => Err(CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
-                message: "Invalid".to_string(),
+                message: "Range expected".to_string(),
             }),
         }
     }
@@ -235,7 +247,7 @@ impl Model {
         };
         // A scalar result_vector is a one-element array and is not read past
         // (`LOOKUP(2,A1:A2,5)` is 5; probes/lookup-vector-edges A5-A8).
-        let table = Self::lookup_table(scalar_as_array(picked), cell)?;
+        let table = self.lookup_table(scalar_as_array(picked), cell)?;
         let (rows, columns) = (table.rows(), table.columns());
         if rows > 1 && columns > 1 {
             return Ok(ResultVector::TwoD);
