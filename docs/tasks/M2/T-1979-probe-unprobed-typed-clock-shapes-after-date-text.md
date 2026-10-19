@@ -3,7 +3,7 @@ id: T-1979
 title: "Probe unprobed typed clock shapes after date text (10:00:30 PM, am/pm case, 13:00 PM, 10:00AM, 10 AM, hours past 23, fractions)"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
