@@ -182,5 +182,7 @@
   duplicated lines unchanged at 3863.
   T-1929: duplicated lines 3863 -> 3861 (`check_duplication.py --update`): the lock was loose on main, which
   already counts 3861; T-1929's own diff leaves the count unchanged.
+  T-1389: duplicated lines 3861 -> 3693 (`check_duplication.py --update`): the twelve D-functions' copied
+  argument and criteria preamble became `db_call`/`db_query`/`db_fold` in `functions/database.rs`.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
