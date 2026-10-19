@@ -73,7 +73,7 @@ if __name__=='__main__':
     M[t][cols-1]=int(SC)
     A=IntegerMatrix.from_matrix(M)
     LLL.reduction(A)
-    BKZ.reduction(A,BKZ.Param(block_size=20))
+    BKZ.reduction(A,BKZ.Param(block_size=int(__import__("os").environ.get("BKZ","20"))))
     best=None
     for i in range(A.nrows):
         row=[A[i,j] for j in range(A.ncols)]
