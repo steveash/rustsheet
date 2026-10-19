@@ -818,13 +818,17 @@ impl Model {
                 message: "Arguments must be non-negative integers".to_string(),
             };
         }
-        let k = k as usize;
-        let mut result = 1.0;
-        for i in 0..k {
-            let t = i as f64;
-            result *= (n + t) / (t + 1.0);
+        // COMBINA(n, k) is Excel's COMBIN(n + k - 1, k), rounding included: `COMBINA(20,19)` is
+        // 35345263799.999985 (numbers.md "COMBINA is COMBIN(n+k-1, k)"). `combin` also bounds the
+        // loop by the smaller of k and n - 1, so `COMBINA(1,1E10)` is 1 at once (directive 5).
+        match combin(n + k - 1.0, k) {
+            Ok(result) => CalcResult::Number(result),
+            Err(error) => CalcResult::Error {
+                error,
+                origin: cell,
+                message: "Result is too large".to_string(),
+            },
         }
-        CalcResult::Number(result)
     }
 }
 
