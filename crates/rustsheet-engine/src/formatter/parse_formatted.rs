@@ -10,7 +10,7 @@ use super::date_text::{parse_date, CurrentYear};
 
 /// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
 /// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Only that shape is probed; the
-/// format of other typed clocks is UNVERIFIED and they stay text (docs/excel-semantics/dates.md).
+/// format of other typed clocks is UNVERIFIED and they stay text; so is every non-glued date shape given this format (T-1952) (docs/excel-semantics/dates.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
 
 /// [`parse_formatted_number`] for text typed into a cell, which also reads date+time text
