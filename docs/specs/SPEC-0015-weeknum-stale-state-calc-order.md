@@ -9,9 +9,9 @@
 `WEEKNUM(serial, return_type)` with a return_type of 22 or more, or negative, reads a state that
 earlier WEEKNUM and ISOWEEKNUM calls of the same recalc left behind (docs/excel-semantics/dates.md,
 "WEEKNUM's stale return_type state"). `fn_weeknum` always gives `#NUM!`, which is Excel's value only
-where the state is empty. With the T-1484 probes, 45 probes cells are known failures (all M6): 5 in
+where the state is empty. With the T-1484 probes, 46 probes cells are known failures (all M6): 5 in
 probes/weeknum-stale-return-type, 19 in -setters, 11 in -order-column-40, 1 each in the other
-order, sheet, dependency and reset cases.
+order, sheet, dependency, precedent and reset cases.
 
 Decision 0038 rejected modelling this because the value depends on Excel's calc order, which was
 unknown. Decision 0052 reopened it as a known gap. The T-1484 probes now pin down that order for
@@ -48,8 +48,11 @@ Excel calculates a freshly loaded workbook in" (excel-graph, 2026-10-19):
 5. An error in the serial or a `#VALUE!` return_type (boolean, non-numeric text) leaves the state as
    it is; so do WEEKDAY and calls that IF does not run.
 6. Order: formula cells run in the reverse of load order: sheets from the last loaded to the first,
-   and within a sheet rows bottom to top, each row right to left. A precedent that has not been
-   calculated runs just before the cell that reads it. A sheet keeps its load position after a move.
+   and within a sheet rows bottom to top, each row right to left. A cell that reads a formula cell
+   not yet calculated stops at that read, moves to just after that precedent in the order, and runs
+   again from its start when the order reaches it; the cells between run first, and the state
+   changes made before the stop stay (probes/weeknum-stale-precedent-between, -precedent-restart,
+   -dependency). A sheet keeps its load position after a move.
 
 Evidence: the probes/weeknum-stale-* cases. The research note
 docs/research/t1484-weeknum-calc-order-2026-10-19.md covers calcChain.xml and session edits.
@@ -86,11 +89,28 @@ and unwinding on ordinary workbooks, for a function almost no workbook uses this
   `Evaluation::excel_order: bool`, records that the model needs it, so later evaluations start in
   Excel order with no wasted pass. The field is cleared when a pass in Excel order completes with
   no reader.
-- Excel order: dynamic anchors first, in `anchor_order` as today, then
-  `all_positions()` reversed (sheet, row and column descending). A precedent is still evaluated on
-  demand by `evaluate_cell`, which matches rule 6's "just before". Restarts work as they do now:
-  each restarted pass resets the state and repeats the same order, so the result stays a function
-  of the model.
+- The extra pass runs inside the existing `evaluate()` loop. It starts from the restored
+  pre-evaluation spill state (`spills_before`), uses the same `RestartLog`, and its restarts count
+  in `restarts_in_last_evaluation`. So it stays "a function of the anchor order" like any other pass.
+  Each restarted pass resets the state and repeats the same order.
+- Excel order is a chain. It starts as the dynamic anchors in `anchor_order`, as today, followed by
+  the formula cells of `all_positions().into_iter().rev()` (sheet, row and column descending; no
+  second collected Vec). The chain is held as a linked list keyed by `CellKey` (`next` map plus
+  head), so moving a cell is O(1).
+- The driver takes the next cell of the chain. In the Excel-order pass, a read of a formula cell
+  not yet evaluated in this pass does not recurse:
+  - The read aborts the root cell through the existing unwinding flag.
+  - The driver moves the root to just after that precedent and goes on with the next cell
+    (rule 6).
+  - While the flag is set, WEEKNUM and ISOWEEKNUM do not touch the state, because Excel stops at
+    the read. State changes made before the read stay.
+  - Evaluation therefore never nests in this pass. Its depth is always 1, so the `max_depth`
+    unwind/replay never happens there (see Depth limit).
+- A cycle would move its cells after each other forever. A cell moved more often than the
+  formula-cell count is evaluated on demand as today, so the existing circular detection handles
+  it. Excel's own cycle values are a separate gap (recalc.md).
+- Cost: a running total of n cells in reverse order aborts each cell once and re-runs it once. That
+  is about 2n evaluations and O(n) moves, in the reader workbooks only.
 - Where Excel puts a spilling formula is unknown (T-2070). Keeping anchors first is the existing
   behavior, so a reader inside a spilling formula is the one documented gap.
 
@@ -100,10 +120,25 @@ the next free rank for sheets added later. It keeps probes/weeknum-stale-sheet-m
 then, a moved sheet is ranked by its current index.
 
 ### Depth limit
-Unwinding at `max_depth` replays a cell's evaluation. If a replay re-runs a WEEKNUM after other
-cells have changed the state, it can give a different value from Excel's. This happens only past
-the resource limit (directive 5). T-2068 adds a unit test of a reader in an unwound chain. If the
-value differs, the task adds a `DEVIATION (decision 0014)` entry to dates.md.
+The `max_depth`/`max_stack` unwind is documented as never changing a result (`set_max_evaluation_depth`).
+That stays true:
+- In the Excel-order pass nothing nests, so nothing unwinds for depth.
+- In the default pass the state's values are thrown away whenever a reader ran, because the
+  Excel-order pass replaces that pass.
+- Where the default pass has no reader, the state is never read.
+T-2068 runs the T-1484 probes and its unit tests with `IRONCALC_MAX_DEPTH=1` as well, to prove that
+results do not depend on the limit. There is no DEVIATION.
+
+### Incremental recalculation (M3, SPEC-0002)
+A reader depends on every earlier WEEKNUM and ISOWEEKNUM call in the order, and the dependency
+graph has none of those edges. When incremental recalc lands (T-0401), it must be conservative for
+these cells. While `excel_order` is set:
+- readers are treated as volatile;
+- any edit that adds, removes or changes a formula containing WEEKNUM or ISOWEEKNUM, or that moves
+  cells, rows or sheets, forces a full recalc in Excel order.
+This keeps "incremental == full recalc", the M3 exit criterion. It does not copy Excel's
+partial-recalc behavior, which is session history and a non-goal. T-0401's task file gets a note
+pointing to this section, and its metamorphic suite should generate WEEKNUM readers.
 
 ### Public API
 None. The state is internal to `Evaluation`; `evaluate()` keeps its signature.
@@ -126,11 +161,13 @@ None. The state is internal to `Evaluation`; `evaluate()` keeps its signature.
 - Unit tests in crates/rustsheet-engine/src/test/: the setter/empty table (rules 2-5) on one sheet
   per rule. Reversed order across sheets. A reader after a restart caused by a spill. A workbook
   without readers runs exactly one pass (`restarts_in_last_evaluation` and a pass counter).
+- Unit tests and the probes also pass with `IRONCALC_MAX_DEPTH=1` (Depth limit).
 - Benchmark: the recalc benchmark (`make bench` or the T-0430 corpus timing) must not move for
-  workbooks without WEEKNUM readers.
+  workbooks without WEEKNUM readers. A new bench of a 100k-row running total plus one reader
+  records the reader-path cost before and after, in T-2068's Outcome.
 
 ## Rollout
-1. T-2068 (engine, opus, M): state, rules 1-5, Excel order on demand. Replaces the
+1. T-2068 (engine, opus, M): state, rules 1-6, the Excel-order chain pass on demand. Replaces the
    `TODO(T-2068)` in `fn_weeknum` and updates dates.md "Ours".
 2. T-2069 (engine, sonnet, S, after T-2068): sheet load rank.
 3. T-2070 (research, sonnet, S, independent): probes for the open questions. Rules it finds go to

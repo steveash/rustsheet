@@ -67,7 +67,7 @@ impl Model {
             16 => chrono::Weekday::Sat,
             17 => chrono::Weekday::Sun,
             // 0, 3-10 and 18-20 are #NUM! (probes/weeknum-serial-0 C3, C4, C18, C19, C23-C26).
-            // Excel gives 22+ and negatives the start weekday a state that earlier WEEKNUM and
+            // Excel gives 22+ and negatives the start weekday from a state that earlier WEEKNUM and
             // ISOWEEKNUM calls of the recalc left, #NUM! only when it is empty (docs/excel-semantics/
             // dates.md "WEEKNUM's stale return_type state", probes/weeknum-stale-*). We give #NUM!,
             // Excel's empty-state value, until TODO(T-2068) reproduces the state (SPEC-0015).

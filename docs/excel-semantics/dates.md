@@ -85,17 +85,22 @@ it runs them, and a WEEKNUM with a return_type of 22 or more, or negative, reads
 - **Setting Monday:** a scalar WEEKNUM with return_type 2, 11 or 21, and ISOWEEKNUM (serial 0
   included). Text and fractions convert first: `"2"` and 2.9 set Monday.
 - **Emptying:** a scalar WEEKNUM with return_type 12-16 (Tuesday to Saturday starts are never
-  kept), one with an always-#NUM! return_type (0, 3-10, 18-20), and any WEEKNUM that lifts over an
+  kept), one with an always-#NUM! return_type (0, 3-10, 18-20; probed 0, 3, 10, 18, 20), and any WEEKNUM that lifts over an
   array, valid types included (`SUM(WEEKNUM(100,{2,2}))`, `SUM(WEEKNUM({100,101},2))`).
 - **No effect:** a call whose serial is an error (`WEEKNUM(-1,2)`, `WEEKNUM(-1,0)`,
   `ISOWEEKNUM(-1)`), a `#VALUE!` return_type (`TRUE`, `"x"`), a call IF does not run, and WEEKDAY of
   any return_type.
-- **Order.** On a freshly loaded workbook Excel runs the formula cells in the reverse of the order
+- **Order.** On a freshly loaded workbook (the probes read the values after the oracle's
+  FullRebuild; load, Full and FullRebuild agree, research note) Excel runs the formula cells in the reverse of the order
   they were loaded: the last sheet first, and within a sheet the bottom row first and each row right
   to left (reverse row-major). The state carries from one sheet to the next. A cell whose formula
-  reads a formula cell not yet calculated has that precedent calculated just before it (a reader
-  that refers to a marker above it sees that marker, not the markers between). Moving a sheet does
-  not change the order: it keeps its load position. `calcChain.xml` is ignored on a full-calc load:
+  reads a formula cell not yet calculated is abandoned at that read, moved to just after that
+  precedent in the order, and run again from its start when its new turn comes; the cells between
+  run first, and what the abandoned run did to the state stays done. With A1 a Monday marker, A2 a
+  reader-then-Sunday cell and A3 a reader of A1 that then sets Sunday, the order is A2, A1, A3: A2
+  reads nothing and A3 reads Monday (not A1, A3, A2). `WEEKNUM(100,12)&reader-of-A1` in A2 below a
+  Sunday marker in A1 reads nothing: the re-run starts with its own type 12. Moving a sheet does
+not change the order: it keeps its load position. `calcChain.xml` is ignored on a full-calc load:
   three different chains for one sheet gave the layout's values (docs/research/t1484-weeknum-calc-order-2026-10-19.md).
 - **Recalcs and edits.** The state does not outlive a recalc: a volatile reader recalculated alone
   is `#NUM!` though its marker ran in the previous recalc, and a formula entered or edited in a
@@ -107,6 +112,7 @@ Evidence (oracle: excel-graph, 2026-10-19, T-1484): probes/weeknum-stale-setters
 probes/weeknum-stale-sheet-order, probes/weeknum-stale-sheet-moved, probes/weeknum-stale-grid,
 probes/weeknum-stale-order-row, -column, -column-40, -2x3 and -3x2, probes/weeknum-stale-dependency,
 probes/weeknum-stale-reset-num-type, -reset-isoweeknum and -reset-error-serial,
+probes/weeknum-stale-precedent-between and -precedent-restart, probes/weeknum-stale-num-types,
 probes/weeknum-stale-down-alone and probes/weeknum-stale-volatile-reader; the grid case gave the same
 values twice. This corrects two earlier readings: ISOWEEKNUM does set the state (to Monday), and the
 state is not "the last valid WEEKNUM": types 12-16 empty it. probes/weeknum-stale-return-type

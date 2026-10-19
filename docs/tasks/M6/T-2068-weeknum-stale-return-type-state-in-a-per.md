@@ -33,8 +33,10 @@ matters").
       reader ran. A workbook without readers runs the same single pass as before (tested).
 - [ ] Every probes/weeknum-stale-* cell passes except -sheet-moved Second!A1. `make eval-baseline`
       records the fixes, and no other suite changes.
-- [ ] The depth-limit replay case from SPEC-0015 "Depth limit" is tested, with a DEVIATION entry if
-      its value differs from Excel's.
+- [ ] The Excel-order pass is a chain: a read of an uncalculated formula cell aborts the cell,
+      which moves to just after that precedent (SPEC-0015 rule 6; probes/weeknum-stale-precedent-*).
+- [ ] Probes and unit tests also pass with `IRONCALC_MAX_DEPTH=1` (SPEC-0015 "Depth limit").
+- [ ] A bench of a 100k-row running total plus one reader, with before/after numbers in the Outcome.
 - [ ] dates.md "Ours" and the `fn_weeknum` comment describe the new behavior.
 - [ ] `make check` green; reviewers approve (performance reviewer included).
 

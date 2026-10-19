@@ -1014,11 +1014,14 @@ C	probes/weeknum-serial-0.case.json	57
 C	probes/weeknum-stale-dependency.case.json	3
 C	probes/weeknum-stale-down-alone.case.json	2
 C	probes/weeknum-stale-grid.case.json	9
+C	probes/weeknum-stale-num-types.case.json	12
 C	probes/weeknum-stale-order-2x3.case.json	6
 C	probes/weeknum-stale-order-3x2.case.json	6
 C	probes/weeknum-stale-order-column-40.case.json	40
 C	probes/weeknum-stale-order-column.case.json	7
 C	probes/weeknum-stale-order-row.case.json	7
+C	probes/weeknum-stale-precedent-between.case.json	3
+C	probes/weeknum-stale-precedent-restart.case.json	2
 C	probes/weeknum-stale-reset-error-serial.case.json	3
 C	probes/weeknum-stale-reset-isoweeknum.case.json	3
 C	probes/weeknum-stale-reset-num-type.case.json	3
@@ -2908,6 +2911,7 @@ F	probes/weeknum-stale-order-column-40.case.json	Col!A7
 F	probes/weeknum-stale-order-column-40.case.json	Col!A8
 F	probes/weeknum-stale-order-column.case.json	Col!A1
 F	probes/weeknum-stale-order-row.case.json	Row!A1
+F	probes/weeknum-stale-precedent-between.case.json	Between!A3
 F	probes/weeknum-stale-reset-error-serial.case.json	ErrSerial!A1
 F	probes/weeknum-stale-reset-isoweeknum.case.json	Iso!A1
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3

@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM stale return_type: evaluation order down a column of 3 cells (labels cycle through the seven start weekdays). Each cell reads the state left by the cell evaluated just before it (IFERROR(reader,\"-\"), decoded as in weeknum-stale-grid) and then sets its own start weekday (t 1 Sun, 2 Mon, 12 Tue, 13 Wed, 14 Thu, 15 Fri, 16 Sat), so the readings give the evaluation order (T-1484)",
+  "tags": [
+    "M6",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Col",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")&\"|\"&WEEKNUM(100,1)",
+        "A2": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")&\"|\"&WEEKNUM(100,2)",
+        "A3": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")&\"|\"&WEEKNUM(100,12)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Col!A1",
+    "Col!A2",
+    "Col!A3"
+  ]
+}

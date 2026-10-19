@@ -22,14 +22,14 @@ Tasks: T-0428, T-0401, T-0429
 ## The order Excel calculates a freshly loaded workbook in
 Rule: a full recalculation of a freshly loaded workbook runs the formula cells in the reverse of
 their load order: the last sheet first, and within a sheet the bottom row first, each row right to
-left. A cell that reads a formula cell not yet calculated has that precedent calculated just
-before it. A sheet moved after loading keeps its load position, and `calcChain.xml` does not change
+left. A cell that reads a formula cell not yet calculated is abandoned, moved to just after that
+precedent, and re-run from its start at its new place; the cells in between run first. A sheet moved after loading keeps its load position, and `calcChain.xml` does not change
 the order on a full-calc load. Formulas entered or edited in a live session leave this order and
 are not reproducible from the file. The order is visible only through WEEKNUM's stale return_type
 state, the one calc-order-dependent value known so far (dates.md, "WEEKNUM's stale return_type
 state"); iterative calculation sweeps a cycle in forward row-major order instead (below).
 Evidence: probes/weeknum-stale-grid, -order-row, -order-column, -order-column-40, -order-2x3,
--order-3x2, -sheet-order, -sheet-moved and -dependency (excel-graph, 2026-10-19, T-1484);
+-order-3x2, -sheet-order, -sheet-moved, -dependency, -precedent-between and -precedent-restart (excel-graph, 2026-10-19, T-1484);
 calcChain.xml and session edits: docs/research/t1484-weeknum-calc-order-2026-10-19.md.
 Ours: `Model::run_pass` evaluates spill anchors first, then every cell in forward storage order
 (sheet, row, column ascending). SPEC-0015 reproduces Excel's order where WEEKNUM's state needs it.
