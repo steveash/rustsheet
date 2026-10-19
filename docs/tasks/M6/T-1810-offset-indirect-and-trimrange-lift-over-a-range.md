@@ -3,7 +3,7 @@ id: T-1810
 title: "OFFSET, INDIRECT and TRIMRANGE lift over a range or an array into arrays of references"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
