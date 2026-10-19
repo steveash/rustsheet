@@ -231,14 +231,53 @@ fn typed_date_clock_text_is_a_number_with_a_date_time_format() {
 }
 
 #[test]
-fn typed_date_clock_text_other_than_hour_minute_stays_text() {
+fn typed_date_clock_text_with_seconds_or_am_pm_is_a_number() {
+    // probes/date-text-non-glued-timevalue rows 16-17 (excel-graph, T-1952).
     let mut model = new_empty_model();
-    model._set("A1", "July1 10:00:30");
-    model._set("A2", "July1 10 AM");
-    model._set("A3", "July1 25:00");
+    model._set("A1", "1/2/2020 10:00:30");
+    model._set("A2", "1/2/2020 10:00 AM");
+    model._set("A3", "=TEXT(MOD(A1,1)*86400,\"0\")");
+    model._set("A4", "=TEXT(MOD(A2,1)*24,\"0\")");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"July1 10:00:30");
-    assert_eq!(model._get_text("A2"), *"July1 10 AM");
-    assert_eq!(model._get_text("A3"), *"July1 25:00");
+    assert_eq!(model._get_text("A3"), *"36030");
+    assert_eq!(model._get_text("A4"), *"10");
+    assert_eq!(
+        model.get_style_for_cell(0, 1, 1).unwrap().num_fmt,
+        "m/d/yyyy h:mm"
+    );
+}
+
+#[test]
+fn typed_date_clock_text_shapes_pick_their_formats() {
+    // probes/date-text-typed-clock-shapes (excel-graph, T-1979; formats from the ENTERED log in
+    // docs/research/typed-clock-shapes-2026-10-19.md).
+    let cases = [
+        ("1/2/2020 10:00:30 PM", Some("m/d/yyyy h:mm")),
+        ("1/2/2020 10:00 pm", Some("m/d/yyyy h:mm")),
+        ("1/2/2020 10 AM", Some("m/d/yyyy h:mm")),
+        ("1/2/2020 10:00  AM", Some("m/d/yyyy h:mm")),
+        ("1/2/2020 10:00:30.5", Some("mm:ss.0")),
+        ("1/2/2020 10:00.5", Some("mm:ss.0")),
+        ("1/2/2020 24:00", Some("general")),
+        ("1/2/2020 10:60", Some("general")),
+        ("1/2/2020 13:00 PM", None),
+        ("1/2/2020 10:00AM", None),
+    ];
+    let mut model = new_empty_model();
+    for (i, (text, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), text);
+    }
+    model.evaluate();
+    for (i, (text, format)) in cases.iter().enumerate() {
+        let row = i32::try_from(i + 1).unwrap();
+        match format {
+            Some(format) => assert_eq!(
+                model.get_style_for_cell(0, row, 1).unwrap().num_fmt,
+                *format,
+                "{text}"
+            ),
+            None => assert_eq!(model._get_text(&format!("A{row}")), *text),
+        }
+    }
 }

@@ -5,6 +5,7 @@ use regex_automata::Match;
 use super::{
     lifted::COMPARED_BYTES_PER_VISIT,
     regex_engine::{BuildFailure, Caches, Engine, Search, Spent},
+    regex_posix::unicode_posix_classes,
     regex_replacement::Replacement,
     util::within_text_budget,
 };
@@ -123,13 +124,14 @@ impl PatternCache {
         case_insensitive: bool,
         cell: CellReferenceIndex,
     ) -> Result<Option<(Engine, Caches)>, CalcResult> {
+        let pattern = unicode_posix_classes(pattern);
         for limit in SIZE_LIMITS {
             if self.budget < limit {
                 self.exhausted = true;
                 return Err(too_much_regex_work(cell));
             }
             self.budget -= limit;
-            match Engine::new(pattern, limit, case_insensitive) {
+            match Engine::new(&pattern, limit, case_insensitive) {
                 Ok(engine) => {
                     let caches = engine.create_caches();
                     return Ok(Some((engine, caches)));

@@ -4,6 +4,7 @@ use crate::cast::NumberOrArray;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_result, value_error};
+use crate::functions::statistical::IfsShape;
 use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
@@ -194,8 +195,8 @@ impl Model {
     pub(crate) fn fn_sumif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // When sum_range is missing, criteria_range doubles as the sum_range.
         let (criteria_range, criteria, sum_range) = match args.len() {
-            2 => (&args[0], &args[1], &args[0]),
-            3 => (&args[0], &args[1], &args[2]),
+            2 => (&args[0], &args[1], None),
+            3 => (&args[0], &args[1], Some(&args[2])),
             _ => return CalcResult::new_args_number_error(cell),
         };
         self.sumif(criteria_range, criteria, sum_range, cell)
@@ -203,7 +204,7 @@ impl Model {
 
     /// `SUMIFS(sum_range`, `criteria_range1`, criteria1, [`criteria_range2`, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.sum_ifs(args, cell, true)
+        self.sum_ifs(args, cell, IfsShape::Strict)
     }
 
     /// A one-number math function on the SPEC-0011 driver (`LIFT_1`): `op` per element. A NaN

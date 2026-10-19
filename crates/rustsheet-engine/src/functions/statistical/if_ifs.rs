@@ -61,6 +61,18 @@ fn shape_mismatch(cell: CellReferenceIndex) -> CalcResult {
     )
 }
 
+/// How the ranges of a SUMIFS-shaped call relate to the sum range.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum IfsShape {
+    /// Every range must be shaped like the sum range, else `#VALUE!` (SUMIFS, AVERAGEIFS, ...).
+    Strict,
+    /// The sum range is resized to the criteria range, never an error (SUMIF, AVERAGEIF).
+    Resized,
+    /// [`IfsShape::Resized`] on the 2-argument form, where `args[0]` and `args[1]` are the one
+    /// range argument: Excel evaluates it once (probes/sumif-averageif-two-arg-range-once).
+    ResizedSelf,
+}
+
 impl Model {
     /// Evaluates the criteria arguments `args[first]`, `args[first + 2]`, ...
     fn criteria_values(
@@ -142,7 +154,7 @@ impl Model {
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        strict_shape: bool,
+        shape: IfsShape,
         mut compute: impl FnMut(&mut Self, &Result<SumRanges, CalcResult>, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
         if args.len() < 3 || args.len().is_multiple_of(2) {
@@ -151,7 +163,7 @@ impl Model {
         let criteria = self.criteria_values(args, 2, cell);
         // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
         let sum_value = self.evaluate_node_with_reference(&args[0], cell);
-        let ranges = self.resolve_sum_ranges(args, sum_value.clone(), cell, strict_shape);
+        let ranges = self.resolve_sum_ranges(args, sum_value.clone(), cell, shape);
         self.lift_criteria(criteria, &sum_value, cell, |model, criteria| {
             compute(model, &ranges, criteria)
         })
@@ -169,14 +181,20 @@ impl Model {
     /// `AVERAGEIF(criteria_range`, criteria, [`average_range`])
     /// if `average_rage` is missing then `criteria_range` will be used
     pub(crate) fn fn_averageif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arguments = match args.len() {
-            2 => vec![args[0].clone(), args[0].clone(), args[1].clone()],
+        let (arguments, shape) = match args.len() {
+            2 => (
+                vec![args[0].clone(), args[0].clone(), args[1].clone()],
+                IfsShape::ResizedSelf,
+            ),
             // Unlike AVERAGEIFS, a differently shaped average_range is not an
             // error: it is resized to the criteria range (probes/ifs-shape-mismatch F9–F11).
-            3 => vec![args[2].clone(), args[0].clone(), args[1].clone()],
+            3 => (
+                vec![args[2].clone(), args[0].clone(), args[1].clone()],
+                IfsShape::Resized,
+            ),
             _ => return CalcResult::new_args_number_error(cell),
         };
-        self.average_ifs(&arguments, cell, false)
+        self.average_ifs(&arguments, cell, shape)
     }
 
     pub(crate) fn fn_countifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -246,7 +264,7 @@ impl Model {
     /// `sum_value` is `args[0]` evaluated by reference. Every range must be shaped like the sum
     /// range, else `#VALUE!` (T-0209; SUMIFS from gen-m2, AVERAGEIFS/MINIFS/MAXIFS from
     /// probes/ifs-shape-mismatch). Only SUMIF's and AVERAGEIF's single-criterion path
-    /// (`strict_shape` false) opts out: it never errors (T-0214), and walks a sum range resized
+    /// (`shape` not `Strict`) opts out: it never errors (T-0214), and walks a sum range resized
     /// to the shape of the criteria range from its top-left cell (gen-m2/04cfd82f54dbc2b2
     /// Calc!A344, gen-m2/629e6e8b76fab8b9 Calc!A217; probes/ifs-shape-mismatch F9-F11).
     fn resolve_sum_ranges(
@@ -254,14 +272,15 @@ impl Model {
         args: &[Node],
         sum_value: CalcResult,
         cell: CellReferenceIndex,
-        strict_shape: bool,
+        shape: IfsShape,
     ) -> Result<SumRanges, CalcResult> {
+        let shared = (shape == IfsShape::ResizedSelf).then(|| sum_value.clone());
         Self::ifs_range(sum_value, cell).and_then(|sum_range| {
-            let first = self.evaluate_node_with_reference(&args[1], cell);
+            let first = shared.unwrap_or_else(|| self.evaluate_node_with_reference(&args[1], cell));
             let ranges = self.resolve_criteria_ranges(args, 1, first, cell)?;
-            if strict_shape {
-                let shape = range_shape(&sum_range);
-                if ranges.iter().any(|range| range_shape(range) != shape) {
+            if shape == IfsShape::Strict {
+                let sum_shape = range_shape(&sum_range);
+                if ranges.iter().any(|range| range_shape(range) != sum_shape) {
                     return Err(shape_mismatch(cell));
                 }
                 Ok(SumRanges { sum_range, ranges })
@@ -505,22 +524,31 @@ impl Model {
         &mut self,
         criteria_range: &Node,
         criteria: &Node,
-        sum_range: &Node,
+        sum_range: Option<&Node>,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let arguments = [sum_range.clone(), criteria_range.clone(), criteria.clone()];
-        self.sum_ifs(&arguments, cell, false)
+        let arguments = [
+            sum_range.unwrap_or(criteria_range).clone(),
+            criteria_range.clone(),
+            criteria.clone(),
+        ];
+        let shape = if sum_range.is_some() {
+            IfsShape::Resized
+        } else {
+            IfsShape::ResizedSelf
+        };
+        self.sum_ifs(&arguments, cell, shape)
     }
 
-    /// SUMIFS (`strict_shape`) and SUMIF on `(sum_range, criteria_range, criteria, ...)`, lifted
+    /// SUMIFS (`IfsShape::Strict`) and SUMIF on `(sum_range, criteria_range, criteria, ...)`, lifted
     /// over array criteria; a sum beyond the double range is `#NUM!` (T-0991).
     pub(crate) fn sum_ifs(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        strict_shape: bool,
+        shape: IfsShape,
     ) -> CalcResult {
-        self.lift_ifs(args, cell, strict_shape, |model, ranges, criteria| {
+        self.lift_ifs(args, cell, shape, |model, ranges, criteria| {
             let mut total = 0.0;
             // Each addition rounds twice like SUM's (probes-numeric/double-rounding-accumulators).
             match model.apply_ifs(ranges, criteria, cell, |v| {
@@ -533,17 +561,17 @@ impl Model {
     }
 
     pub(crate) fn fn_averageifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.average_ifs(args, cell, true)
+        self.average_ifs(args, cell, IfsShape::Strict)
     }
 
-    /// AVERAGEIFS, lifted over array criteria; AVERAGEIF passes `strict_shape: false`.
+    /// AVERAGEIFS, lifted over array criteria; AVERAGEIF passes `Resized` or `ResizedSelf`.
     fn average_ifs(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        strict_shape: bool,
+        shape: IfsShape,
     ) -> CalcResult {
-        self.lift_ifs(args, cell, strict_shape, |model, ranges, criteria| {
+        self.lift_ifs(args, cell, shape, |model, ranges, criteria| {
             let mut total = 0.0;
             let mut count = 0.0;
             let average = |value: f64| {
@@ -567,7 +595,7 @@ impl Model {
     }
 
     pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_ifs(args, cell, true, |model, ranges, criteria| {
+        self.lift_ifs(args, cell, IfsShape::Strict, |model, ranges, criteria| {
             let mut min = f64::INFINITY;
             let apply_min = |value: f64| min = value.min(min);
             if let Err(e) = model.apply_ifs(ranges, criteria, cell, apply_min) {
@@ -578,7 +606,7 @@ impl Model {
     }
 
     pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_ifs(args, cell, true, |model, ranges, criteria| {
+        self.lift_ifs(args, cell, IfsShape::Strict, |model, ranges, criteria| {
             let mut max = -f64::INFINITY;
             let apply_max = |value: f64| max = value.max(max);
             if let Err(e) = model.apply_ifs(ranges, criteria, cell, apply_max) {

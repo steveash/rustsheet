@@ -538,9 +538,10 @@ impl Model {
 
     /// [`Self::for_each_cell_or_error_in_areas`] over one range that also hands `f` the blank
     /// cells of an explicit block past the used area, for the walkers that read a blank as
-    /// something: GCD and LCM read it as 0 (`LCM(F1:F3)` with 4, blank, 6 is 0;
-    /// docs/excel-semantics/coercion.md) and TEXTJOIN with `ignore_empty` FALSE adds a delimiter
-    /// for it. Whole-row and whole-column ranges are still clipped to the used area.
+    /// something: TEXTJOIN with `ignore_empty` FALSE adds a delimiter for it. (GCD and LCM read
+    /// it as 0, `LCM(F1:F3)` with 4, blank, 6 is 0, docs/excel-semantics/coercion.md, but any
+    /// number of blanks as one: [`Self::for_each_cell_or_error_in_range_noting_blanks`].)
+    /// Whole-row and whole-column ranges are still clipped to the used area.
     pub(crate) fn for_each_cell_or_error_in_whole_range<F>(
         &mut self,
         range: &Range,
@@ -559,6 +560,27 @@ impl Model {
                 f(model, value)
             },
         )
+        .map(|_| ())
+    }
+
+    /// [`Self::for_each_cell_or_error_in_whole_range`] for a walker to which any number of blank
+    /// cells reads as one: an explicit block is cut at the used area as
+    /// [`Self::for_each_cell_or_error_in_areas`] cuts it, and the result says whether the cut
+    /// left out blank cells that the whole-range walk hands on. GCD and LCM read them as one 0,
+    /// so `LCM(A1:Z1048575)` costs the data, not 27 million cells (T-0438).
+    pub(crate) fn for_each_cell_or_error_in_range_noting_blanks<F>(
+        &mut self,
+        range: &Range,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<bool, CalcResult>
+    where
+        F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
+    {
+        self.walk_area(range, AreaWalk::ClipBlocks, cell, &mut |model, position| {
+            let value = model.evaluate_cell(position);
+            f(model, value)
+        })
     }
 
     /// Calls `f` with the position of every cell of `areas`, as
@@ -607,23 +629,26 @@ impl Model {
         } else {
             AreaWalk::ClipBlocks
         };
-        self.walk_area(area, walk, cell, f)
+        self.walk_area(area, walk, cell, f).map(|_| ())
     }
 
     /// [`Self::for_each_position_in_area`] with the cells of each sheet chosen as `walk` says.
+    /// Returns whether `ClipBlocks` cut an explicit block at the used area: whether it left out
+    /// blank cells that `ClipWholeLines` would have handed on.
     fn walk_area<F>(
         &mut self,
         area: &Range,
         walk: AreaWalk,
         cell: CellReferenceIndex,
         f: &mut F,
-    ) -> Result<(), CalcResult>
+    ) -> Result<bool, CalcResult>
     where
         F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
     {
         let Range { left, right } = area;
         // The columns of a row found by a union walk, reused from row to row and sheet to sheet.
         let mut columns = Vec::new();
+        let mut blanks_left_out = false;
         // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one
         // is clipped to its own used area, so a span of whole columns, or of a tall block,
         // walks only data (T-0405).
@@ -634,13 +659,19 @@ impl Model {
                     self.for_each_existing_position(sheet, (left, right), cell, &mut columns, f)?;
                     continue;
                 }
-                AreaWalk::ClipBlocks => self.clip_block_to_used_area(
-                    sheet,
-                    left.row,
-                    left.column,
-                    right.row,
-                    right.column,
-                ),
+                AreaWalk::ClipBlocks => self
+                    .clip_block_to_used_area(sheet, left.row, left.column, right.row, right.column)
+                    .and_then(|corner| {
+                        let whole_lines = self.used_area_corner(
+                            sheet,
+                            left.row,
+                            left.column,
+                            right.row,
+                            right.column,
+                        )?;
+                        blanks_left_out |= corner != whole_lines;
+                        Ok(corner)
+                    }),
                 AreaWalk::ClipWholeLines => {
                     self.clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
                 }
@@ -653,7 +684,7 @@ impl Model {
                 }
             }
         }
-        Ok(())
+        Ok(blanks_left_out)
     }
 
     /// The union-area walk of [`Self::for_each_position_in_area`] on one sheet: the existing
