@@ -793,12 +793,16 @@ cell takes: every cell is `""`, one group's cell or one subtotal's or total's, n
 A descending key sort places in the descending order: over Outer descending (E, D, C, B, A) the total's writes land in
 C's subtotal columns, which the ascending order would put on a group (-values2 S!A97).
 Unprobed: writes of two subtotals into the same column (the engine: the later in the order above wins, so a parent's
-deeper subtotal over a parent, and a later parent over an earlier one's deeper subtotal); the relative set a moved cell
-gets (the engine: the set of the subtotal or total whose cell it shows; T-1865); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
+deeper subtotal over a parent, and a later parent over an earlier one's deeper subtotal); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
 S!A37, S!A61).
+The relative set of a moved cell (probes/pivotby-moved-cells-relative-sets, excel-graph, 2026-10-19, T-1857; two value
+columns, col_total_depth 2, relative_to 0-4, `LAMBDA(x,y,ARRAYTOTEXT(y))` and PERCENTOF, with single-child parent C and the
+Grand Total shown in parents' columns): it is the set of the subtotal or total whose cell it shows, not of the column it
+lands in, in every cell of all ten grids (5x29 each). The engine already did this (`RelativeSets::of_cell` with the source
+slot); the case is the evidence.
 Status: VERIFIED (web)
 Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/pivotby.rs (`Placement`, `Shown`)
-Tasks: T-1700
+Tasks: T-1700, T-1857
 
 ## GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap
 Rule: Excel calls a two-parameter LAMBDA in GROUPBY or PIVOTBY once per aggregate cell with the cell's values and its whole
