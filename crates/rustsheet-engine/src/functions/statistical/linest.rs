@@ -574,16 +574,6 @@ impl Model {
                 );
             }
         }
-        if let [y] = data.y[..] {
-            // The fit goes through ln and exp; whether Excel's GROWTH of one value is bit-exact
-            // is not evidenced (T-1402), so keep the round trip.
-            return self.single_point_prediction(
-                args.get(2..).unwrap_or_default(),
-                &data,
-                y.ln().exp(),
-                cell,
-            );
-        }
         data.y = data.y.iter().map(|&v| v.ln()).collect();
 
         match linear_regression(&data.y, &data.x, data.p, const_term, stats) {
@@ -621,7 +611,10 @@ impl Model {
             Err(e) => return e,
         };
 
-        if let [y] = data.y[..] {
+        // Only with a constant term: LINEST of one point is slope 0, intercept y (linest-modes
+        // K141), so TREND is y whatever new_x is. Without one the fit through the origin is
+        // unprobed and left to the regression below.
+        if let (&[y], true) = (&data.y[..], const_term) {
             return self.single_point_prediction(args.get(2..).unwrap_or_default(), &data, y, cell);
         }
 
@@ -691,7 +684,9 @@ impl Model {
                 );
             }
         }
-        if let [y] = data.y[..] {
+        // As in TREND, constant term only. The fit goes through ln and exp; Excel's
+        // `GROWTH(5,5,5)` is 4.999999999999999 (growth-modes K385), exactly exp(ln 5).
+        if let (&[y], true) = (&data.y[..], const_term) {
             return self.single_point_prediction(
                 args.get(2..).unwrap_or_default(),
                 &data,
