@@ -35,7 +35,11 @@ if __name__=='__main__':
     Nt,Dt=read_chain(sys.argv[1]); Nc,Dc=read_chain(sys.argv[2])
     Nt=[v/Dt[0] for v in Nt]; Dt=[v/Dt[0] for v in Dt]; Nc=[v/Dc[0] for v in Nc]; Dc=[v/Dc[0] for v in Dc]
     sig=float(sys.argv[4]); rng=np.random.default_rng(0)
-    lines=[('N','T',4),('N','T',5),('D','T',4),('D','T',5)]+[('N','Pn1',j) for j in range(4)]+[('D','Pn1',j) for j in range(1,5)]
+    import os
+    if os.environ.get('LINES'):
+        lines=[tuple(v if i<2 else int(v) for i,v in enumerate(t.split(':'))) for t in os.environ['LINES'].split(',')]
+    else:
+        lines=[('N','T',4),('N','T',5),('D','T',4),('D','T',5)]+[('N','Pn1',j) for j in range(4)]+[('D','Pn1',j) for j in range(1,5)]
     xs=[x+32768*2.0**-52 for x in X0][:int(__import__('os').environ.get('NRUN','24'))]
     rows=phase_rows(Nc,Dc,lines,xs); rowsT=phase_rows(Nt,Dt,lines,xs)
     phi=[float((rt[1]-rc[1])%1) for rc,rt in zip(rows,rowsT)]
