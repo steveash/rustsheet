@@ -2,7 +2,9 @@
 //! other functions over a data argument, the scalar distributions, and the weights of the
 //! quantile searches, the incomplete gamma and HYPGEOM.DIST's cdf sum.
 
-use super::ArgKind::{Lift, LiftArrays, LiftArraysRangeWhole, Whole, WholeByCaller};
+use super::ArgKind::{
+    Lift, LiftArrays, LiftArraysRangeWhole, ReferenceByCaller, Whole, WholeByCaller,
+};
 use super::KernelWork::{Constant, Weighted};
 use super::{ArgKinds, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
 use crate::functions::Function;
@@ -24,6 +26,10 @@ const TWO_DATA_THEN_2: ArgKinds =
 /// `FORECAST(x, known_y's, known_x's)`.
 const ONE_THEN_TWO_DATA: ArgKinds =
     ArgKinds::fixed(3, &[Lift, WholeByCaller, WholeByCaller], Constant);
+/// A lifted argument, a reference read by its function, then an optional lifted argument:
+/// `RANK(number, ref, [order])`.
+const ONE_THEN_REFERENCE_THEN_1: ArgKinds =
+    ArgKinds::fixed(2, &[Lift, ReferenceByCaller, Lift], Constant);
 
 // --- Statistical (T-1290) -------------------------------------------------------------------
 /// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])`.
@@ -172,6 +178,13 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // the regression line; a T.TEST element walks the samples (`LiftCost::Cells`).
         Function::Forecast | Function::ForecastLinear => Some(&ONE_THEN_TWO_DATA),
         Function::TTest | Function::TTestCompat => Some(&TWO_DATA_THEN_2),
+        // RANK's `number` and `order` lift likewise over a `ref` read once; a `ref` that is not a
+        // reference broadcasts as its own shape of errors (probes/stat-test-lift P20-P33, P72;
+        // probes/stat-argument-modes H492-H499; T-1999). A lifted call sorts the numbers once
+        // (`LiftCost::Prepared`).
+        Function::RankCompat | Function::RankEq | Function::RankAvg => {
+            Some(&ONE_THEN_REFERENCE_THEN_1)
+        }
         // --- Statistical (T-1290) ---
         // The statistical functions whose every argument is scalar are worksheet functions:
         // every argument lifts over an array and over a multi-cell range, on the range's own
