@@ -3,7 +3,7 @@ id: T-1757
 title: "INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 (RECEIVED, PRICEMAT, YIELDMAT do not)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Excel: INTRATE(0,43466,1000,1100)=0.0008403165192222404, PRICEDISC(0,43466,0.05,
 
 ## Out of scope
 - The last-digit misses (T-1374).
+
+## Outcome
+Already fixed by T-1409 (YEARFRAC accepts serial 0 on basis 0, which these functions call). Calc!A21, A43 and A88 now return numbers and differ from Excel only in the last digit (NumericClose/NumericUlp, T-1374 class), so they stay in the baseline. Added unit test `discount_security_settlement_zero` (INTRATE/PRICEDISC/YIELDDISC compute, RECEIVED #NUM!) and corrected the `financial.md` "Ours" line. Eval delta: none.
