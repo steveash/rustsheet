@@ -3,7 +3,7 @@ id: T-1808
 title: "NETWORKDAYS and NETWORKDAYS.INTL count days in closed form"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
