@@ -3,7 +3,7 @@ id: T-1992
 title: "Probe FVSCHEDULE with a boolean principal read from a cell reference (T-1765 inferred #VALUE!)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
