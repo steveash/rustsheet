@@ -32,12 +32,14 @@ def phase_rows(N,D,lines,xs):
             out.append((g,val))
     return out
 def func_rows(Nc,Dc,K=40):
-    """Function rows: (N - R D)/(R*Dc) at K Chebyshev nodes on [1.5,2], R = lgamma/((x-1)(x-2)); linear in m (ulps of
-    each coefficient, D0 fixed). Returns [(g, v)]; want sum g m = -v + O(1e-16)."""
-    fx=[mp.mpf(1.75)+mp.mpf(0.25)*mp.cos(mp.pi*(k+mp.mpf(1)/2)/K) for k in range(K)]
+    """Function rows: (N - R D)/(R*Dc) at K Chebyshev nodes on the kernel's range, R = kern.Rf (k6: lgamma/((x-1)(x-2)));
+    linear in m (ulps of each coefficient, D0 fixed). Returns [(g, v)]; want sum g m = -v + O(1e-16)."""
+    import kern
+    c,h=(mp.mpf(kern.LO)+mp.mpf(kern.HI))/2,(mp.mpf(kern.HI)-mp.mpf(kern.LO))/2
+    fx=[c+h*mp.cos(mp.pi*(k+mp.mpf(1)/2)/K) for k in range(K)]
     out=[]
     for x in fx:
-        r=mp.loggamma(x)/((x-1)*(x-2)); Dv=mp.polyval([mp.mpf(v) for v in Dc[::-1]],x); Nv=mp.polyval([mp.mpf(v) for v in Nc[::-1]],x)
+        r=kern.Rf(x); Dv=mp.polyval([mp.mpf(v) for v in Dc[::-1]],x); Nv=mp.polyval([mp.mpf(v) for v in Nc[::-1]],x)
         g=[x**k*ulp(Nc[k])/(r*Dv) for k in range(len(Nc))]+[-r*x**k*ulp(Dc[k])/(r*Dv) for k in range(1,len(Dc))]
         out.append((g,(Nv-r*Dv)/(r*Dv)))
     return out
