@@ -3,7 +3,7 @@ id: T-0425
 title: "LAMBDA helpers: keep the patched body when the LAMBDAs a body creates hold none of its parameter ids"
 milestone: M3
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
