@@ -3,7 +3,7 @@ id: T-1724
 title: "COVAR skips pairs with text, blanks or booleans and accepts scalars as Excel (T-1620 probes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
