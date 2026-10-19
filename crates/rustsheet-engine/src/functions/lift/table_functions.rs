@@ -40,6 +40,9 @@ macro_rules! lifting_table_functions {
             | Function::Iseven
             | Function::Isodd
             | Function::Large
+            | Function::ZTest
+            | Function::ZTestCompat
+            | Function::Prob
             | Function::Small
             | Function::PercentileCompat
             | Function::PercentileInc
