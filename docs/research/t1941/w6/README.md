@@ -115,6 +115,21 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     - So a blind null-space search for R is not feasible. Coarse stage values must come from the line structure
       (W4), and then a phase solve (W2 pipeline, `w2/wa/`) takes them to ulps.
 
+16. **Stage-line laws** (with W4's product-sideband law; `stagelaws.py`, `peaklaw.py`, `lawobj.py`).
+    - On the synthetic (9,9), the full law set explains 68.5% of 2,149 per-segment peaks (amp > 0.3, tol 4e-4),
+      against a shuffled-x null of 23.9%. The set: S, T, P, product sidebands P_j - n F_{S_{j+1}}, sum sidebands
+      S_j - n F_{P_j}, and quotient lines F_R - i F_N - k F_D.
+    - Dominant families: n = 1 product sidebands of P0-P4 and the triangles T3-T5. Plain P'/2^e lines are almost
+      absent.
+    - Cubic Hough tracks stitch lines together, so per-peak matching is the right unit.
+    - The law objective is a needle. From the LS fit to the truth along the exact null space it scores 0.27 at 0%
+      and at 90%, 0.63 at 99% and 0.69 at 100%. It needs stage values to about 1e-4 relative before it can verify
+      anything.
+    - Single-track assignment enumeration (`enumtrack.py`) is non-identifying: 8 assignments fit synthetic T1 at the
+      noise floor. The true one only has the smallest shift from the LS fit (0.10 against 0.46-2.4).
+    - The assembler takes stage-value rows. Control: S1..S5 of both chains at 1e-6 noise recover S0-S5 to 1e-6.
+    - Coarse stage values must come from model-free sideband triplets (W4: (E, D, B) gives mant(M(x))).
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
