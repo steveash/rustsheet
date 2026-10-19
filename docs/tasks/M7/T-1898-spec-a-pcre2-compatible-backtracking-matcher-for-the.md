@@ -3,7 +3,7 @@ id: T-1898
 title: "Spec: a PCRE2-compatible backtracking matcher for the REGEX functions"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
