@@ -20,6 +20,7 @@ Design: docs/specs/SPEC-0014-reference-array-results.md (the `RefGrid` carrier, 
 ## Acceptance criteria
 - [ ] The OFFSET cells above pass; eval/baseline updated with no new known failures.
 - [ ] lookup.md's "Implemented in" line names the code.
+- [ ] SPEC-0014's LET held-grid budget (`MAX_HELD_GRID_ELEMENTS`, past it `#VALUE!`) is recorded as a DEVIATION (decision 0014) under lookup.md.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
