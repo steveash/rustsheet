@@ -3,7 +3,7 @@ id: T-1911
 title: "Legacy @ goes on an array constant inside an operator (N, ABS over {2;3}+0)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ Export side: `remove_redundant_legacy_intersection` (static_analysis/redundant.r
 
 ## Out of scope
 -
+
+## Outcome
+`add_array_at`/`remove_array_at` (static_analysis/legacy.rs) now put the automatic `@` on array-constant operands of operators in a legacy scalar argument, and drop them on export. probes/legacy-array-at-shapes I11, I20, J11, J20 pass; probes known failures 1948 -> 1944, no regressions.
