@@ -54,4 +54,5 @@ semantics entry:
   prefactor `exp(a*ln x)`, so they need Excel's incomplete-beta kernel (T-1744's fit, T-0970). The cells are
   BINOM.DIST E24, E32, E67; BINOM.DIST.RANGE E10, E21, E23; NEGBINOM.DIST E3, E26, E30, E37, E40, E74, E75.
 - 57 NumericUlp cells, where Excel is within 4 ulp of the exact value but not equal to it.
+- probes-numeric (ungated): m9-legacy-binomdist 21 -> 33 and t1048-negbinomdist 18 -> 28 bit-exact, no pass lost; A35/A36 and A4/B4 tails move further from Excel (same prefactor residue).
 - POISSON.xlsx, 32 lines, unchanged (T-2055).

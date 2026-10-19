@@ -335,7 +335,6 @@ mod tests {
         assert!(binomial_walk(4096, (0.5, 0.0), (0.5, 0.0), 2048, 2048).is_none());
         // Past the mode a cdf stops once its terms are negligible, whatever k.
         assert_eq!(binomial_cdf(1 << 40, odds(1e-12), 1 << 39), Some(1.0));
-        // A pmf far past the mode stops once its term is below every double.
     }
 
     #[test]
