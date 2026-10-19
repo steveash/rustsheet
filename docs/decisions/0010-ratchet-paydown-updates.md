@@ -185,5 +185,9 @@
   T-1808: functions/date_and_time.rs 1014 -> 891 lines, off the oversized list (NETWORKDAYS and NETWORKDAYS.INTL
   moved to date_and_time/networkdays.rs) (`check_file_size.py --update`); duplicated lines 3861 -> 3831
   (`check_duplication.py --update`: one closed-form count replaces the two per-day loops).
+  steward 2026-10-19: the locks were loose on main at 30bee011. Duplicated lines 3831 -> 3768
+  (`check_duplication.py --update`) and expressions/parser/static_analysis.rs off the oversized list
+  (`check_file_size.py --update`, 12 -> 11 entries; evaluation.rs 1096 -> 1071 and
+  financial/financial_bonds.rs 1083 -> 1031 locked too); no code change in this PR.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
