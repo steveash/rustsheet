@@ -24,4 +24,4 @@ T-1951 review (excel-fidelity, minor): `evaluate_call_with_reference` collapses 
 -
 
 ## Outcome
-Probe `probes/lambda-union-offset-countif` (10 cells, excel-graph) shows Excel gives `#VALUE!` for a union passed to OFFSET or COUNTIF, direct or returned by LAMBDA/LET. Ours already matched (10/10); finding recorded in docs/excel-semantics/references.md. Eval delta: +10 passing cells, no baseline change.
+Probe `probes/lambda-union-offset-countif` (10 cells, excel-graph) shows Excel gives `#VALUE!` for a union passed to OFFSET or COUNTIF, direct or returned by LAMBDA/LET. Ours already matched (10/10); finding recorded in docs/excel-semantics/references.md. Eval delta: +10 passing cells, no known-failure change (new case recorded in eval/baseline/probes.txt).
