@@ -3,7 +3,7 @@ id: T-2042
 title: "CELL(\"address\") of a reference on another sheet names the workbook file, as Excel does"
 milestone: M5
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -41,13 +41,28 @@ depends_on: []
 - Related: `CELL("filename")` uses the same name (check whether it is implemented; same source).
 
 ## Acceptance criteria
-- [ ] probes/info-logic-argument-modes Calc!A19 passes, and its known-failure line leaves
+- [x] probes/info-logic-argument-modes Calc!A19 passes, and its known-failure line leaves
       eval/baseline/probes.txt with no new ones (`make eval-baseline`).
-- [ ] A probe with a quoted sheet name and a same-sheet control is oracle-filled and passes, or the
+- [x] A probe with a quoted sheet name and a same-sheet control is oracle-filled and passes, or the
       quoted form is filed as a follow-up and stays `#N/IMPL!`.
-- [ ] information.md's CELL entry says what is implemented and where the name comes from; the
+- [x] information.md's CELL entry says what is implemented and where the name comes from; the
       T-1218 "unimplemented" note is updated.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - `CELL("filename")` path text beyond the bracketed file name (directory part), if it needs more evidence: file a follow-up.
+
+## Outcome
+- Design: the oracle fill records the file name the workbook had in the oracle as the sidecar's
+  `source.workbook_name` (excel-graph: the upload name `<sha256>.xlsx`; desktop and LibreOffice:
+  `in.xlsx`). The eval runner passes it to the engine through `Engine::evaluate_{xlsx,spec}` and the new
+  facade option `WorkbookOptions::name` (file name without `.xlsx`, applied at `new` and at load). An
+  unnamed workbook (`None`, the default) gives `#N/IMPL!` for cross-sheet `CELL("address")` and for
+  `CELL("filename")` (Excel's unsaved form is unprobed); before, the facade reported `[workbook.xlsx]`.
+- Evidence: new probe probes/info-cell-address-cross-sheet (excel-graph, 2026-10-19): the sheet name is
+  never quoted (`[f.xlsx]My Sheet!$B$2`, `[f.xlsx]Bob's!$A$1`), a range gives its top-left, same-sheet
+  stays bare. `CELL("filename")` is `#VALUE!` on the web (unscored; follow-up T-2052). The
+  info-logic-argument-modes sidecar was refilled to record its name; only A19 and `source` changed.
+- Eval delta: fixed 1 (probes/info-logic-argument-modes Calc!A19), new coverage 9 passing cells
+  (probes/info-cell-address-cross-sheet), regressions 0.
+- Follow-ups: T-2052 (CELL("filename") on the web). A union on another sheet stays `#N/IMPL!` (unprobed).
