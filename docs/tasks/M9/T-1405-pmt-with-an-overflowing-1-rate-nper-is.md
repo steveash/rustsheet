@@ -3,7 +3,7 @@ id: T-1405
 title: "PMT with an overflowing (1+rate)^nper is a number, not #NUM! (gen-m9 3b8e9078261b5bd2 A34)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
