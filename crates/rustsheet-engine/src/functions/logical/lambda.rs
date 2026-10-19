@@ -12,8 +12,31 @@ use crate::{
     reference_operators::RefArg,
 };
 
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+
 use super::r#let::assign_variable_ids;
 use crate::variable_stack::Binding;
+
+/// A LAMBDA's parameters and body as `Model::lambdas` stores them, shared with the defined name
+/// it comes from, so naming a defined-name LAMBDA copies no body (T-0440).
+pub(crate) type SharedLambda = Arc<(Vec<NamedVariable>, Node)>;
+
+/// The defined-name LAMBDAs called in one evaluation (cleared with `Model::lambdas`). Each gets
+/// one lambda id however often it is named (`Model::defined_name_lambda`), and the body a call
+/// patched is kept for the next call (`Model::call_lambda`), so `MAP(r,LAMBDA(x,MyFn(x)))`
+/// neither grows `lambdas` nor copies `MyFn`'s body per element (T-0440).
+#[derive(Default)]
+pub(crate) struct NamedLambdas {
+    /// The lambda id of each definition, by the address of its [`SharedLambda`], which the entry
+    /// holds so that no other definition can take that address while the entry lives.
+    ids: HashMap<usize, (SharedLambda, usize)>,
+    /// The lambda ids in `ids`.
+    named: HashSet<usize>,
+    /// A patched body by lambda id and number of arguments, for the next call. Only a body is
+    /// kept: an error (a wrong count) is made again with the calling cell's origin.
+    prepared: HashMap<(usize, usize), PreparedLambda>,
+}
 
 /// One LAMBDA called repeatedly with the same number of arguments (`Model::lambda_caller`).
 pub(crate) struct LambdaCaller {
@@ -281,8 +304,35 @@ impl Model {
     ) -> CalcResult {
         // A reference is passed as a reference, a single cell too, so that
         // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
-        let mut caller = self.lambda_caller(&lambda_result, call_args.len());
-        self.call_lambda_caller_with_nodes(&mut caller, call_args, cell)
+        let provided = call_args.len();
+        let mut caller = self.lambda_caller(&lambda_result, provided);
+        // A defined-name LAMBDA starts from the body its last call patched (`NamedLambdas`). It
+        // is taken out while this call runs, so a call inside it (recursion, `MyFn(MyFn(x))`)
+        // patches its own. No LAMBDA created since it was put back reads its ids: only an
+        // evaluation of the body binds them, and `call_prepared` dropped it if one did.
+        let named = match lambda_result {
+            CalcResult::Lambda(id) if self.named_lambdas.named.contains(&id) => {
+                Some((id, provided))
+            }
+            _ => None,
+        };
+        if let Some(key) = named {
+            caller.prepared = self
+                .named_lambdas
+                .prepared
+                .remove(&key)
+                .map(|mut prepared| {
+                    prepared.lambda_mark = self.last_lambda_id;
+                    prepared
+                });
+        }
+        let result = self.call_lambda_caller_with_nodes(&mut caller, call_args, cell);
+        if let (Some(key), Some(prepared)) = (named, caller.prepared) {
+            if prepared.definition.is_ok() {
+                self.named_lambdas.prepared.insert(key, prepared);
+            }
+        }
+        result
     }
 
     /// A caller for `lambda_result` with `provided` arguments per call, for the LAMBDA helpers
@@ -310,12 +360,13 @@ impl Model {
         if let Some(kind) = self.eta_lambdas.get(id) {
             return Some(FunctionValue::Eta(kind.clone()));
         }
-        self.lambdas
-            .get(id)
-            .map(|(parameters, _)| FunctionValue::Lambda {
+        self.lambdas.get(id).map(|definition| {
+            let parameters = &definition.0;
+            FunctionValue::Lambda {
                 required: parameters.iter().filter(|p| !p.is_optional).count(),
                 total: parameters.len(),
-            })
+            }
+        })
     }
 
     /// One call of `caller` with `values` (`provided` of them; optional parameters not covered
@@ -415,8 +466,10 @@ impl Model {
             return false;
         };
         (prepared.lambda_mark..self.last_lambda_id).any(|lambda| {
-            self.lambdas.get(&lambda).is_some_and(|(_, body)| {
-                body.reads_variable(|read| ids.iter().any(|&(id, _)| id == read))
+            self.lambdas.get(&lambda).is_some_and(|definition| {
+                definition
+                    .1
+                    .reads_variable(|read| ids.iter().any(|&(id, _)| id == read))
             })
         })
     }
@@ -473,18 +526,16 @@ impl Model {
         if let Some(kind) = self.eta_lambdas.get(&id) {
             return Ok(eta_definition(kind.clone(), provided));
         }
-        let (parameters, body) = match self.lambdas.get(&id) {
-            Some(definition) => definition.clone(),
-            None => {
-                return Err(CalcResult::new_error(
-                    Error::NAME,
-                    cell,
-                    "Lambda not found in store".to_string(),
-                ))
-            }
+        let Some(definition) = self.lambdas.get(&id) else {
+            return Err(CalcResult::new_error(
+                Error::NAME,
+                cell,
+                "Lambda not found in store".to_string(),
+            ));
         };
-        check_arg_count(&parameters, provided, cell)?;
-        Ok((parameters, body))
+        // Checked before the copy: a wrong count copies nothing.
+        check_arg_count(&definition.0, provided, cell)?;
+        Ok(definition.as_ref().clone())
     }
 
     /// An unbound name: a function passed by name (eta-reduced, stored `_xleta.SUM`, any case,
@@ -550,8 +601,26 @@ impl Model {
             );
         }
 
+        CalcResult::Lambda(self.store_lambda(Arc::new((parameters, body))))
+    }
+
+    /// Stores `definition` under a new lambda id, which it returns.
+    pub(crate) fn store_lambda(&mut self, definition: SharedLambda) -> usize {
         let id = self.get_next_lambda_id();
-        self.lambdas.insert(id, (parameters, body));
+        self.lambdas.insert(id, definition);
+        id
+    }
+
+    /// The LAMBDA a defined name holds, as a value: the same lambda id each time the name is
+    /// used in one evaluation (`NamedLambdas`).
+    pub(crate) fn defined_name_lambda(&mut self, definition: SharedLambda) -> CalcResult {
+        let address = Arc::as_ptr(&definition).addr();
+        if let Some(&(_, id)) = self.named_lambdas.ids.get(&address) {
+            return CalcResult::Lambda(id);
+        }
+        let id = self.store_lambda(Arc::clone(&definition));
+        self.named_lambdas.ids.insert(address, (definition, id));
+        self.named_lambdas.named.insert(id);
         CalcResult::Lambda(id)
     }
 }
