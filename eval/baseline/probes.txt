@@ -211,6 +211,7 @@ C	probes/date-text-glued-month.case.json	178
 C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/date-text-non-glued-timevalue.case.json	44
+C	probes/date-text-rejected-clock-formats.case.json	16
 C	probes/date-text-typed-clock-shapes.case.json	85
 C	probes/date-text-yearless-2.case.json	64
 C	probes/date-text-yearless-3.case.json	45
@@ -1196,6 +1197,7 @@ F	probes/date-system-1904-odd-years.case.json	S!J3
 F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
+F	probes/date-text-rejected-clock-formats.case.json	S!O7
 F	probes/discount-security-modes.case.json	Calc!A1
 F	probes/discount-security-modes.case.json	Calc!A103
 F	probes/discount-security-modes.case.json	Calc!A104
