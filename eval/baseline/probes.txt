@@ -2201,17 +2201,9 @@ F	probes/regex-pcre2-features.case.json	Sheet1!D7
 F	probes/regex-pcre2-features.case.json	Sheet1!D9
 F	probes/regex-posix-classes-b.case.json	Sheet1!A10
 F	probes/regex-posix-classes-b.case.json	Sheet1!A11
-F	probes/regex-posix-classes-b.case.json	Sheet1!A4
-F	probes/regex-posix-classes-b.case.json	Sheet1!A5
 F	probes/regex-posix-classes-b.case.json	Sheet1!A8
 F	probes/regex-posix-classes-b.case.json	Sheet1!A9
-F	probes/regex-posix-classes.case.json	Sheet1!Z1
-F	probes/regex-posix-classes.case.json	Sheet1!Z10
-F	probes/regex-posix-classes.case.json	Sheet1!Z2
-F	probes/regex-posix-classes.case.json	Sheet1!Z3
 F	probes/regex-posix-classes.case.json	Sheet1!Z7
-F	probes/regex-posix-classes.case.json	Sheet1!Z8
-F	probes/regex-posix-classes.case.json	Sheet1!Z9
 F	probes/regression-forecast.case.json	Sheet1!L11
 F	probes/regression-forecast.case.json	Sheet1!L13
 F	probes/regression-forecast.case.json	Sheet1!L2
