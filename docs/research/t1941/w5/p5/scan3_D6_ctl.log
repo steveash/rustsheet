@@ -4,3 +4,6 @@ truth cubic coefficient d = -0.269
 truth (alpha, beta, gamma)/u_S = (-6132.981, -1590.817, -18.991), a mod 1 = 0.019
 at truth: S 225.4  P 91.9  joint 317.4
 joint null mean -5.5 sd 58.7
+scan 7954s, 18090 candidates
+top S-only: 257.2 (a 0.02 b -1591.0 c -19.50 d 1.00) | 256.8 (a 0.02 b -1591.0 c -19.50 d 0.50) | 255.3 (a 0.02 b -1591.0 c -19.50 d 1.50) | 254.6 (a 0.98 b -1591.0 c -19.00 d 1.00) | 254.6 (a 0.98 b -1591.0 c -19.00 d 1.50)
+truth a mod 1 0.019 b -1590.82 c -18.99
