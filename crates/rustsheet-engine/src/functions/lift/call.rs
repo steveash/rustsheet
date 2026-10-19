@@ -2,7 +2,7 @@
 //! kind in the table, and the kernel runs once (nothing lifted) or once per element.
 
 use super::arg_buf::ArgBuf;
-use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg};
+use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg, Reuse};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
@@ -117,7 +117,7 @@ impl Model {
         &mut self,
         kind: Function,
         args: &[Node],
-        cost: LiftCost<'_>,
+        cost: LiftCost,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult {
@@ -142,7 +142,7 @@ impl Model {
         &mut self,
         kinds: &ArgKinds,
         args: &[Node],
-        cost: LiftCost<'_>,
+        cost: LiftCost,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult {
@@ -150,7 +150,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let options = LiftOptions {
-            reuse_equal_runs: false,
+            reuse: Reuse::Never,
             work: kinds.work,
         };
         // One- and two-argument calls (most of the math functions) read into locals: building,
