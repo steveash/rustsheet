@@ -13,7 +13,7 @@
 //! - the minus leads the whole text, also when the value rounds to zero (`# ?/2` on -1/7 is
 //!   "-0    ").
 
-use super::parser::{Fraction, NumberPart, TextToken};
+use super::parser::{Denominator, Fraction, NumberPart, TextToken};
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::number_format::to_precision;
 
@@ -21,14 +21,26 @@ use crate::number_format::to_precision;
 pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction) -> String {
     let negative = value < 0.0;
     let value = value.abs() * 100.0_f64.powi(part.percent) / 1000.0_f64.powi(part.comma);
-    // The parser only builds a fraction from a run of ASCII digits starting with 1-9.
-    let denominator = fraction.denominator.parse::<f64>().unwrap_or(1.0);
     let tokens = &part.tokens;
     let has_integer = tokens[..fraction.numerator_start]
         .iter()
         .any(|t| matches!(t, TextToken::Digit(_)));
     let mut integer = if has_integer { value.trunc() } else { 0.0 };
-    let mut numerator = round_numerator((value - integer) * denominator);
+    let (mut numerator, denominator) = match &fraction.denominator {
+        // The parser only builds a fixed denominator from ASCII digits starting with 1-9.
+        Denominator::Fixed(digits) => {
+            let denominator = digits.parse::<f64>().unwrap_or(1.0);
+            (
+                round_numerator((value - integer) * denominator),
+                denominator,
+            )
+        }
+        Denominator::Placeholders(kinds) => {
+            // Past 15 digits 10^n - 1 is no longer exact in a double; no such bound can bind.
+            let digits = i32::try_from(kinds.len()).unwrap_or(i32::MAX).min(15);
+            last_convergent(value - integer, 10.0_f64.powi(digits) - 1.0)
+        }
+    };
     if has_integer && numerator >= denominator {
         integer += 1.0;
         numerator = 0.0;
@@ -45,7 +57,18 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
     } else {
         format!("{numerator}")
     };
+    let denominator_text = match &fraction.denominator {
+        Denominator::Fixed(digits) => digits.clone(),
+        Denominator::Placeholders(kinds) => fill_left(&format!("{denominator}"), kinds),
+    };
 
+    let integer_kinds = placeholder_kinds(&tokens[..fraction.numerator_start]);
+    let numerator_kinds = placeholder_kinds(&tokens[fraction.numerator_start..fraction.slash]);
+    // Under a `#` numerator a blank fraction prints nothing, and the literals between the integer
+    // and the fraction print only when both sides do (`# #/#` on 0.5 is "1/2", on 1234567890
+    // "1234567890"; gen-m10 039accab K8, K2).
+    let sharp_numerator = numerator_kinds.first() == Some(&'#');
+    let drop_separator = sharp_numerator && (blank || integer_digits.is_empty());
     let mut text = String::new();
     if negative {
         text.push('-');
@@ -53,21 +76,26 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
     if let Some(c) = part.currency {
         text.push(c);
     }
-    let integer_kinds = placeholder_kinds(&tokens[..fraction.numerator_start]);
-    let numerator_kinds = placeholder_kinds(&tokens[fraction.numerator_start..fraction.slash]);
     let mut integer_fill = fill(&integer_digits, &integer_kinds).into_iter();
     let mut numerator_fill = fill(&numerator_digits, &numerator_kinds).into_iter();
+    let integer_end = tokens[..fraction.numerator_start]
+        .iter()
+        .rposition(|t| matches!(t, TextToken::Digit(_)))
+        .map_or(0, |i| i + 1);
     for (index, token) in tokens.iter().enumerate() {
         let in_fraction = (fraction.numerator_start..=fraction.slash).contains(&index);
+        let separator = (integer_end..fraction.numerator_start).contains(&index);
         match token {
+            _ if separator && drop_separator && has_integer => {}
             TextToken::Digit(_) if index < fraction.numerator_start => {
                 text.push_str(&integer_fill.next().unwrap_or_default());
             }
+            _ if in_fraction && blank && sharp_numerator => {}
             _ if in_fraction && blank => {
                 // Every placeholder and the `/` take one column.
                 text.push(' ');
                 if index == fraction.slash {
-                    text.extend(fraction.denominator.chars().map(|_| ' '));
+                    text.extend(denominator_text.chars().map(|_| ' '));
                 }
             }
             TextToken::Digit(_) if in_fraction => {
@@ -75,7 +103,7 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
             }
             TextToken::Literal('/') if index == fraction.slash => {
                 text.push('/');
-                text.push_str(&fraction.denominator);
+                text.push_str(&denominator_text);
             }
             TextToken::Literal(c) => text.push(*c),
             TextToken::Text(t) => text.push_str(t),
@@ -85,6 +113,40 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
     }
     text
 }
+
+/// The last continued-fraction convergent `(p, q)` of `x >= 0` whose denominator is at most
+/// `max_denominator`, which is Excel's choice for a placeholder denominator (not the closest
+/// fraction: `# ??/??` on `PI()` is "3  1/7 "; number-formats.md "Fraction formats").
+fn last_convergent(x: f64, max_denominator: f64) -> (f64, f64) {
+    // Cell values are finite; this only keeps a NaN out of the loop.
+    if !x.is_finite() {
+        return (0.0, 1.0);
+    }
+    let (mut p0, mut q0, mut p1, mut q1) = (0.0, 1.0, 1.0, 0.0);
+    let mut rest = x;
+    // A double's continued fraction ends within ~45 terms; the bound only guards the loop.
+    for _ in 0..64 {
+        let a = rest.floor();
+        let (p, q) = (a * p1 + p0, a * q1 + q0);
+        if q > max_denominator {
+            break;
+        }
+        (p0, q0, p1, q1) = (p1, q1, p, q);
+        let fract = rest - a;
+        if fract < CONVERGENT_EPSILON {
+            break;
+        }
+        rest = 1.0 / fract;
+    }
+    if q1 == 0.0 {
+        (x.round(), 1.0)
+    } else {
+        (p1, q1)
+    }
+}
+
+/// A remainder below this ends the continued fraction.
+const CONVERGENT_EPSILON: f64 = 1e-12;
 
 /// `x` rounded half away from zero to an integer at 15 significant digits, as ROUND does.
 fn round_numerator(x: f64) -> f64 {
@@ -126,4 +188,18 @@ fn fill(digits: &str, kinds: &[char]) -> Vec<String> {
             }
         })
         .collect()
+}
+
+/// Like [`fill`] for a denominator: `digits` left-aligned, and each placeholder past them prints
+/// nothing (`#`), a space (`?`) or a zero (`0`): `# ???/???` on 1.5 is "1   1/2  ".
+fn fill_left(digits: &str, kinds: &[char]) -> String {
+    let mut text = digits.to_owned();
+    for kind in kinds.iter().skip(digits.chars().count()) {
+        match kind {
+            '?' => text.push(' '),
+            '0' => text.push('0'),
+            _ => {}
+        }
+    }
+    text
 }

@@ -74,3 +74,36 @@ fn large_integer_part() {
     // TEXT(1E+15,"# ?/4"), 039accab T!A6.
     assert_eq!(text(1E15, "# ?/4"), "1000000000000000    ");
 }
+
+#[test]
+fn placeholder_denominator_is_the_last_convergent() {
+    // 14/99 is closer to PI's fraction part, but 1/7 is the last convergent that fits.
+    assert_eq!(text(std::f64::consts::PI, "# ??/??"), "3  1/7 "); // 4c6a49fe G13
+    assert_eq!(text(std::f64::consts::PI, "# ???/???"), "3  16/113"); // 05c1c646 C18
+                                                                      // 71/90 is closer, the binary fraction part is 0.78900000000430737...
+    assert_eq!(text(123_456.789, "# ??/??"), "123456 15/19"); // 20512106 L16
+    assert_eq!(text(12.345, "# ???/???"), "12  69/200"); // 05c1c646 C11
+    assert_eq!(text(12.345, "?/?"), "37/3"); // 43980980 Z16
+}
+
+#[test]
+fn placeholder_denominator_without_integer_is_improper() {
+    assert_eq!(text(36.5, "?/?"), "73/2"); // 039accab E18
+    assert_eq!(text(0.0, "?/?"), "0/1"); // 43980980 Z5
+    assert_eq!(text(-1.5, "??/??"), "- 3/2 "); // 039accab U1
+}
+
+#[test]
+fn placeholder_denominator_padding_and_blanks() {
+    assert_eq!(text(1.5, "# ???/???"), "1   1/2  "); // 05c1c646 C3
+    assert_eq!(text(999.9999, "# ?/?"), "1000    "); // 0e3d8eba F5
+    assert_eq!(text(1.0 / 3.0, "0 ?/?"), "0 1/3"); // 0e3d8eba W4
+    assert_eq!(text(-1.0 / 7.0, "0 ?/?"), "-0 1/7"); // 71ad5f93 G7
+}
+
+#[test]
+fn sharp_numerator_drops_the_separator() {
+    assert_eq!(text(0.5, "# #/#"), "1/2"); // 039accab K8
+    assert_eq!(text(1_234_567_890.0, "# #/#"), "1234567890"); // 039accab K2
+    assert_eq!(text(1.5, "# #/#"), "1 1/2");
+}

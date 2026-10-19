@@ -2950,6 +2950,5 @@ F	probes/yield-solver-sweep.case.json	S!F4
 F	probes/yield-solver-sweep.case.json	S!F5
 F	probes/yield-solver-sweep.case.json	S!F6
 TC	probes/displayed-text-formats.case.json	28
-TF	probes/displayed-text-formats.case.json	S!A17
 TF	probes/displayed-text-formats.case.json	S!A21
 TF	probes/displayed-text-formats.case.json	S!B4

@@ -464,8 +464,12 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   convergent of the fraction part whose denominator has at most that many digits, not the closest
   fraction: `# ??/??` on PI() is "3  1/7 " (4c6a49fe G13; 14/99 is closer) and on 123456.789 "123456 15/19"
   (20512106 L16; 71/90 is closer); `# ???/???` on PI() "3  16/113" (05c1c646 C18). Fitted during gap
-  triage 2026-10-19 on all 317 gen-m10 text cells that show an n/d (the closest fraction fits 308);
-  the stopping rule on binary noise is not pinned down (T-2030).
+  triage 2026-10-19 on all 317 gen-m10 text cells that show an n/d (the closest fraction fits 308).
+  Implemented (T-2030): the continued fraction of the binary fraction part, stopping at the first
+  convergent whose denominator would not fit or when the remainder drops below 1e-12. Every one of
+  the 488 placeholder-denominator cells matches with that rule, but the 1e-12 cut-off is not pinned
+  down by them (no cell has a remainder near it); 123456.789 (fraction part 0.78900000000430737...)
+  gives 15/19 under `??/??` either way.
 - **No integer part** (`?/?`, `?/100`): the whole value is the numerator, so the fraction is improper:
   `?/?` on 36.5 "73/2", PI() "22/7", 1234567890 "1234567890/1", 0 "0/1" (039accab E18, 43980980 Z14,
   039accab E2, 43980980 Z5); `?/100` on 61 "6100/100" (05c1c646 D5).
@@ -478,7 +482,9 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   on -1/7 "-0 1/7" (71ad5f93 G7).
 - **Padding:** `?` pads the numerator on the left and the denominator on the right (`# ???/???` on 1.5
   "1   1/2  ", 05c1c646 C3; `??/??` on 0.5 " 1/2 "); `#` does not (`# #/#` on 0.5 "1/2", on 1234567890
-  "1234567890", 039accab K8, K2).
+  "1234567890", 039accab K8, K2). Under a `#` numerator the literal between the integer and the
+  fraction goes too when either side prints nothing ("1/2", not " 1/2"; "1234567890" with no
+  trailing blanks), yet stays when both print (`# #/#` on 1.5 "1 1/2").
 - A numerator that overflows is 255 `#` ("Displayed text over an edge-value pool" above, T-1740).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
@@ -488,8 +494,9 @@ codes, all failing in the 2026-10-19 report.
 Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the
 displayed text. Unprobed and implemented by inference (T-2061): the minus before a currency symbol
 or leading literals (`$# ?/4` on -0.5 is "-$ 2/4"), `%`/`,` scaling before the fraction, `#`/`0`
-numerator padding, "-0/100" for a tiny negative, and no grouping (`#,##0 ?/4`). Placeholder
-denominators still print `/` as a literal with plain digits around it (`# ?/?` on PI() is "  /3";
-T-2030), and an overflowing numerator prints in full (T-1740).
+numerator padding, "-0/100" for a tiny negative, and no grouping (`#,##0 ?/4`); also the `#`-numerator
+separator and blank rules under a fixed denominator (`# #/4`), and `0` placeholders in a denominator
+(`?/00` pads with zeros), which only `# #/#` and `?`-denominators evidence. Placeholder
+denominators are implemented as above (T-2030). An overflowing numerator still prints in full (T-1740).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061
