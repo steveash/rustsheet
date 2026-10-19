@@ -297,3 +297,47 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
     - In progress: early-stage anchor phases in the remaining function+ladder null space, with a positive control.
   - The (2,2.005) outlier is the known xlsx misparse at x = 2.0000661560063. Without it, grid_a is 99.5% exact for
     x - 2 < 1e-6.
+- **K1 side channels (coordinator, q501/q502: GAMMA, GAMMA.DIST, BETA.DIST, CHISQ.DIST, 1/GAMMA on [1.32,1.33]
+  and [1.77,1.78])**:
+  - 1/GAMMA(a) == fl(1/GAMMA(a)): 100%.
+  - GAMMA.DIST(1,a,1,FALSE) equals fl(EXP(-1)/GAMMA(a)) or fl(EXP(-1)*(1/GAMMA)) only 23-30% of the time. It runs
+    1.3-1.8 ulp low against the exact value, consistent with an exp(... - GAMMALN) route.
+  - So no G side channel exposes unrounded bits. Negative.
+- **K1 generator reconstruction (W4): negative.**
+  - Rational Remez (7,7) raw y with D0 = -1/16 (mpmath dps 60) over [1,2] rel/abs, [0.99,2.01], [1,2.1], [0.9,2.1]
+    and [0.5,2] all equioscillate cleanly. [1,2] rel has E = 1.44e-18.
+  - round53(R*) differs from AN2 by about 1e9 ulps: mostly a common scale (normalisation), with a residual of
+    2e8 ulps along phase-stiff directions after the scale is removed. Excluded.
+  - Excel's actual rational is one-signed +0.45..+1.24e-16 against Gamma with 8 extrema (no equioscillation, about
+    60x the minimax E). That is consistent with a finite-precision Remez or least-squares run, which cannot be
+    identified from outputs.
+- **K1 empirical-noise design (W4): even 1,000 cases leave dirs 12-14 at 0.6-1.2 units** (needle basin 0.03-0.3), and
+  the unwrap is infeasible. No oracle spend.
+
+## Second review (Fable 5.1, HANDOFF section 11, `review2/`)
+- The x87 double-rounding model is validated by data: pure RN53 loses 79 of 295,724 Stirling points.
+- K1: an exact-template phase scan shows AN2's top three N stages match Excel at every anchor and every dense run
+  (a 1e4-ulp null-direction truth gives a flat profile instead). The misses at 1.80-1.89 are mid-stage; where one
+  stage dominates, its phase is readable from one run (D product 5 and N products 5-6 gain 230-610 points on 15
+  runs). Plan: per-run readings, unwrap over y0, integer recovery top-down; probes V1/V2 (non-dyadic anchors).
+- K2: W2's "law contradiction" is reproduced by a few-ulp upstream (p6/p7, q6/q7) error through a single-phase
+  meter; W2's control moved downstream coefficients and could not see it.
+- Composition: K2's inner S is not fl((x-1)*R), K3's A is not fl((x-2)*R); three separate rationals.
+- K1's constants all sit on their sums' grids: no lattice, no plateaus; the single-coefficient landscape is a
+  1-ulp V, so every candidate is a local maximum in every coordinate (also ss_fc, grid_a).
+
+### 2026-10-19 17:25: review 2 mapped; new routes
+- **Review 2 (HANDOFF section 11).**
+  - K1 top stages N5-N7 of AN2 are confirmed at phase (0,0) on Excel; the residual is mid-stage and readable per run (I1 → W4).
+  - K2's s4/s5 "law contradiction" is reproduced by a few-ulp upstream error and is retracted (I3 → W2).
+  - The three GAMMALN kernels are independent rationals; no composition transfer.
+  - Probes V1-V4 (`kmyst-gam-v101`..`v409`, generator `review2/gen_v.py`) are queued.
+- **K2 (W2).**
+  - The sum-line phase law fails at realistic offsets: with p0 moved by 1.8e13 ulps the control is incoherent.
+  - The law-free sim-MSE objective along p0 is a needle.
+  - Validated instead: local exact fits per anchor (99.98-100% local) recover exact stage values (all D, N s3-s9). Exact interval intersection across anchors brackets every coefficient p4-p9 / q2-q8 around the truth (0.25-4096 ulps). Real-data run in progress.
+  - Dense runs `q201`..`q216` are queued.
+- **(1.5,2] (W4/W6).**
+  - Line relation closure: A and D are base lines; B = 2A, 3A, E = D-2A and D-A are derived. D's stage crosses a binade at ~1.89.
+  - Run-ladder phase-vs-K reader validated (frequency to 1e-11).
+  - The W6 long-run pipeline (joint beam over at least 4 tracks, 1000x separation on synthetic data) is not decisive on the 14 existing runs (2 tracks, 2.5x). It needs `L101`..`L124` (queued) and `q421`..`q433` (run ladders, queued).

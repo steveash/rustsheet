@@ -420,3 +420,208 @@ columns; writes the findings into `docs/excel-semantics/statistics.md`.
   - Next: the product-level phase lattice with the read constants fixed.
 - **W-A (K2): in progress** (W2).
 - **W-D (compositions): pending** the P2-P4 fills.
+
+## 11. Second review (Fable)
+
+State at 2026-10-19 16:30 UTC. Scripts and result tables are under `review2/` (see `review2/README.md`). Every
+number below was computed on committed oracle data with exact x87 simulation (`review2/gsim.c`, numpy longdouble),
+in minutes. I did not run the oracle. Section 11.1 is the headline, 11.2 the critique, 11.3 the ranked ideas with
+their tests, 11.4 the plan per worker, 11.5 the probe layouts.
+
+### 11.1 Headline
+1. **The x87 double-rounding model is now validated, not assumed.** `gammaln_big_check.c` recompiled with
+   `typedef double L` (pure RN53 per op, SSE) scores 295,641 / 295,724 on x >= 8 against 295,720 for fl53(fl64):
+   79 points separate the two, so Excel's stores really are double-rounded. Every simulator in this task is right to
+   use fl53(fl64) at every op (and a candidate that only matches under pure RN53 would be wrong).
+2. **K1: the "non-identifiable" verdict is wrong for the N chain's top, and the weak spot is a mid-stage problem.**
+   An exact-template scan of the phases of the two invisible top products (`review2/top_bump.py`: nudge N product 2
+   and 3 by d2, d3 in 1/16 steps, count exact matches, positive control = AN2 with N7 +3, N6 -5, N5 +2 ulps on the
+   same grid, which gives bumps of +133 to +548 points at the right phases) finds on Excel's data a V centred at
+   **(d2, d3) = (0, 0)** at the anchors 1, 1.5, 1.75, 1.875 and 2- (ranges 134 to 2,208 points) and on the 150
+   dense runs at 1.70-1.96 together (range 2,615) and one by one (`review2/top_bump2.py`). A synthetic truth
+   1e4 ulps away along the three most function-invisible directions (D0 fixed, function change 0.015 ulp) gives a
+   flat collective profile (range 70 on 311k points) and random per-run phases, as the jitter argument predicts.
+   So Excel's S_1(y) and S_2(y) equal AN2's as doubles on [1.70,1.96] and at the anchors: |dN7| < about 30 ulps,
+   |dN6| < about 2 ulps, |dN5| < about 2 ulps. The 1.80-1.89 misses are not the top stages.
+3. **Where one mid stage dominates the error, its phase is readable from one 8,192-point run of Excel's data**
+   (`review2/stage_scan.py`, 1-D scans of all 14 product and 14 sum nudges per run): D product 5 (the phase of
+   S_4^D(y0)*y0) gains +404, +498, +478, +343, +230, +609 points at phases -0.50, -0.50, +0.44, +0.31, +0.25, -0.31
+   on p105, p108, p147, p149, p143, p122; N product 6 (phase of S_5^N) gains +232..+529 on p133, p134, p137, p138,
+   p141, p145; N product 5 / sum 5 gain +312..+504 on p135, p136, p139, p140. These are modular readings of
+   dS_4^D(y0) and dS_5^N(y0), the stage-value errors between anchors that the joint solve never reached (10.W-C).
+   By contrast, on every run in 1.80-1.89 (p111-p119, p153, p154) and on all 19 rungs at 1.875 (e1019-e1025) no
+   single-stage nudge gains more than 11 points while AN2 is 33-38% exact: there the error is a superposition of
+   several stages' re-hashes (several intermediates cross binades in 1.70-1.89, 9.2.3), and no local coordinate
+   has a gradient. That band must be solved after the single-stage runs have fixed the mid coefficients, not read.
+4. **K2: W2's "law contradiction" (wa/README section 5) is reproduced by a few-ulp error in the UPSTREAM
+   coefficients, and W2's control could not see it.** Synthetic truth = efC with p7 -2, p6 +3, q7 +2, q6 -3 ulps:
+   a single-phase meter of N s5, N s4, D s4, D s3 at the anchors 2.125..2.875 reads +0.28/+0.28/+0.28/-0.22/-0.22,
+   +0.25/+0.25/+0.25/-0.50/-0.50, +0.03/-0.47/-0.47/-0.47/-0.47, -0.47/-0.47/-0.09/-0.09/-0.22 with r = 0.07-0.39,
+   while the true offset of those stages' own constants is 0 (`review2/k2_upstream_fm2.py`). A downstream-only
+   truth (p2 +1, q1 -1) changes nothing (exact 1.000: those bits are below the sums' grids). W2's positive control
+   moved p1 and q0, downstream of the metered stages, so it was blind to this failure mode. The re-hash matrix
+   (`review2/rehash_matrix.py`) quantifies it: one ulp of p6 changes 34% of s4 and 23% of s5; p7 17% of s3; q6 50%
+   of D s3 and 29% of s4; p5 changes 40% of the FINAL N. So the s4/s5 and D s3/s4 anomalies are what a 1-5 ulp
+   error in p6/p7/q6/q7 (or their sub-grid bits) looks like through a single-phase meter. The stored-product law is
+   not contradicted.
+5. **Composition: nothing transfers between kernels.** Model-free reachability (W6's method extended to nested
+   forms, `review2/xk_reach.py`, `review2/k2_inner_reach.py`): K3 = fl(t*A) (1.000 against base 0.50-0.99), (1.5,2]
+   = fl(t*fl(m*R)) (1.000/0.89-0.96), K2 = fl(m*S) (1.000/0.52 at 2.7-2.8). K2's stored inner S is NOT fl((x-1)*R):
+   where the test has power (2.10-2.26) S is reachable at exactly the base rate (0.886/0.890, 0.796/0.803). K3's A
+   is not fl((x-2)*R) (0.79 against a conditional base of 0.78). Three separate rationals, one scheme.
+6. **Why coordinate search cannot move, in one sentence.** In K1 every constant sits on its own sum's grid
+   (`review2/k1_lattice.py`: u(S_k)/ulp(c_k) in {1, 2, 4} for all 14 stages except D0, which is 2^20 finer and is
+   exactly -1/16). A stored sum's rounding sequence therefore does not depend on its constant's bits at all; it
+   depends on the product's low bits, i.e. on the upstream stage value. A constant enters the output only through
+   the next product's phase, n_k*y mod 1 with n_k the integer mantissa of S_k: a hash of the full stage value. So
+   the single-coefficient exact-match landscape (`review2/k1_sawtooth.py`) is a 1-ulp-wide V whose depth is the
+   stage's visibility (0.05% per ulp for N6, 10% per ulp for N2), and AN2, ss_fc and grid_a are local maxima in
+   every coordinate (`review2/k23_midscan.py`; grid_a's p5 is pinned to the ulp, +-1 ulp costs 25 points). There
+   is no lattice of near-equivalent points and no plateau bits in K1: the information is in the phases, per run.
+
+### 11.2 Critique, point by point
+1. **"Information-theoretic" (wc/README 3, 7) describes the linearised phase solve, not the data.** The solve
+   measures each line's phase with a template that assumes the candidate's upstream rounding pattern; a wrong
+   upstream re-hashes 25-50% of the next sum (`results_rehash.txt`), so the measured phase jitters by a
+   pseudo-random amount per unit coefficient move, exactly as W4 found. An exact-template nudge scan is not subject
+   to that: it is the simulation, with the nudge as the only free parameter, and it reads the top phases at +-1/16
+   with Z above 10 at every anchor (11.1.2). The verdict should read: *not identifiable by linearised single-phase
+   demodulation with dyadic anchors*.
+2. **Dyadic anchors are the wrong design for the top stages.** At a = p/2^k the product phase frac(dS_1 * a /
+   u(P_2)) = frac(m * a / 2) is 0 for every m divisible by 2^(k+1), so the ladders at 1, 1.25, 1.5, 1.75, 1.875 and
+   2 read dS_1 only modulo 2, 8, 4, 8, 16 and 1 grid units ("stage values modulo small integers", playbook 8.6).
+   This is why the top stages were "weakly constrained" by nine anchors: the design cannot see them. Non-dyadic
+   anchors (any generic double) make the same reading a hash of the full m, and four or five of them pin m
+   uniquely by enumeration. The P1 runs are non-dyadic anchors and that is why 11.1.2 could settle the top.
+3. **The per-anchor paradox of 9.1.2 has a K1 counterpart.** AN2 is 76% exact at 1.95-2.0, 93% near 1, 70-80% at
+   the e7 anchors, and 33-38% on the 1.875 rungs and between anchors. The stage values are right where the ladders
+   pinned them and wrong in between, because the fitted coefficients interpolate five dyadic anchors with the wrong
+   polynomial in the null space. The e10 ladders at 1.875 were never actually absorbed (fitSA is 39% there): the
+   linear step failed for the reason in point 1.
+4. **W-C's positive controls (wc/README 2-3) were the right idea applied to the wrong estimator**: they show that
+   phase rows plus function rows plus a ridge converge to 1e5-1e6 ulps and that exact match is a needle; both are
+   true and neither says the phases are unreadable. The control I ran (`results_fm188.txt`) shows the opposite for
+   the exact-template reading: two invisible phases recovered to 1/32 from one run with the downstream exact, and
+   still recovered (+41 of 8,192) with a wrong D stage at 1.88. It fails near 1 with a wrong downstream (weights
+   100x smaller) and it fails from a cold start with all 28 phases wrong (`posctl_fm.py`, `fm_decode.py`: both the
+   match count and a template correlation have no gradient then). So readings are valid only where one stage
+   dominates the residual; 11.1.3 shows that is the case on about 15 of the 38 P1/P1b runs.
+5. **W2's s1-s3 "rows fail the control" and s4/s5 "contradict the law" are the same fact.** s1-s3 (p9..p6) are the
+   upstream of s4/s5. The meter for s4/s5 can only be trusted once s1-s3 are right to well under a grid unit at the
+   anchor, and nothing in W-A checks that. Note also that grid_a's q7 wants to move (monotone +0.3 points toward
+   -6 ulps in `results_k23_midscan.txt`), a direct hint that the D upstream is off.
+6. **Two of my own first ideas are dead and recorded as such.** (a) An error-magnitude fingerprint of the flipped
+   stage near 2: the output change of a one-grid flip is blurred by the downstream re-hash (std about equal to the
+   mean, `results_k1_fingerprint.txt`); no stage label survives. (b) A lattice of near-equivalent coefficient sets
+   with period u(S_k)/ulp(c_k): the period is 1-4 ulps, so there is no lattice (11.1.6).
+7. **W5 p5's "per-site meters fail when every stage differs" is the same cascade** (K3 re-hash: one ulp of N4 or
+   N5 changes 40-50% of the final sum). Its coherent multi-run sum at the true phases is the right instinct; the
+   per-run single-stage scan of 11.1.3 is the cheaper form of it, valid on runs where ss_fc is above about 60%.
+8. **Oracle-side hygiene.** The four remaining Stirling misses (x = 15.7, 31.4 and 2^51, 1-2 ulps) are not ties and
+   deserve one look; and `g_rows.py` now returns 2.96M rows, so every rate in sections 3 and 10 refers to an older
+   sample.
+
+### 11.3 Ranked ideas with tests
+**I1. Per-run single-stage phase readings, unwrapped over y0, then top-down integer recovery (K1 first).**
+- Reading: for a run at y0 where one stage dominates (gain above about 150 points at 8,192 points), the best nudge
+  d_k of product k is frac(dS_{k-1}(y0) * y0 / u(P_k)) to +-1/32 (refine the scan around the maximum).
+- Unwrap: dS_{k-1}(y) is a polynomial in y with integer-ulp coefficients (the errors of the constants above stage
+  k-1, which 11.1.2 says are zero for N7, N6, N5): for D product 5, dS_4^D(y) = dD3 + dD4*y + dD5*y^2 (+ dD6*y^3 if
+  the D top is off; D products 2-3 show gains up to 100 points at 1.92-1.94, so include dD5, dD6 as unknowns).
+  Enumerate the integer vector over a box of +-5e3 per coefficient (1e8-1e11 cases, vectorised or coarse-to-fine)
+  against the readings at the 10-15 runs; the right vector reproduces every reading to 1/32; the wrong ones do not,
+  because frac(m*y0*...) is a hash with 1/32 resolution and 10 runs give 32^10 of discrimination.
+- Then fix those coefficients, re-score, and repeat one stage up or down (N product 6 reads dS_5^N = dN4 + dN3*y +
+  dN2*y^2 given the top is right; N product 5 reads dS_4^N = dN4 + dN3*y).
+- Positive control first (mandatory): synthetic truth = AN2 with dD3 = +437, dD4 = -212 (and separately dN3 = +91,
+  dN2 = -340), simulated on the real P1/P1b grid; run the scan, the unwrap and the recovery; report the reading
+  precision and the minimum gain at which a reading is trustworthy. Then Excel.
+- Expected result: a set that is above 90% on 1.70-1.80 and 1.93-1.97 (where the readings come from), with the
+  1.80-1.89 band improving as a consequence, since its superposition is made of the same mid-stage errors.
+- Cost: one day of W4; no oracle.
+
+**I2. Non-dyadic anchors with rungs (probe V1), for the readings that need more points.** A top-stage or
+mid-stage bump of +40 per run becomes +500 over 12 runs at the same y0 (rungs at a + c*2^-j, j >= 24, all share
+the top and mid phases to better than 1e-4 grid units). Use them where 11.1.3 found gains of 50-150 (p120-p126,
+p131, p145) and for the D top stages at 1.92-1.94. Also the final verifier of I1: a new anchor the fit has never
+seen must come out above 90%.
+
+**I3. K2: redo the control with upstream null-direction moves, then read p6/p7/q6/q7 by the same scans.**
+- Control: truth = efC + an integer move along the function-null directions restricted to p9..p6, q8..q5 (max 50
+  ulps; check the function change is under 0.02 ulp); run W2's s4/s5 meter: it must show the pseudo-random
+  per-anchor phases of 11.1.4. That closes the "contradiction".
+- Reading: near 3 the top stages of K2 are visible (x^9 = 2e4 against N of order 1: the re-hash of a 1-ulp p6 move
+  reaches 2.4% of the final N and the output weight is large), so the exact-template scan of products 2-4 of N and
+  D on the runs at 2.85-3.0 (r704, allX cases) should show bumps; positive control with planted p7/p6/q7/q6 moves
+  first; then unwrap over the non-dyadic allX anchors (12 of them) exactly as in I1.
+- The late plateau bits stay as W-A read them; efC's early refit was done with the s4/s5 phases contaminated and
+  should be redone after the upstream is fixed. Expect the (9,8)/(8,8) question to resolve itself (the tiny p9 is
+  invisible to every stored value, `results_rehash.txt` row c[0]: 0.000 everywhere).
+
+**I4. K3: the same per-run scans on top of ss_fc**, on the runs where ss_fc is above 60% (0.99-1.07 and the e2xx
+runs), reading N products 6-8 and D products 5-8 (the stages whose one-ulp moves re-hash 40-50% of the final sum).
+Keep the six read constants fixed. Positive control with planted N4/N5/D4/D5 moves first. Then unwrap with the
+e9xx anchors (non-dyadic ones are needed: probe V3).
+
+**I5. (1.5,2]: unchanged plan for W6 (map R's staircase and lines on q401-q414), plus two things from this review**:
+R's chain is a third stored Horner pair, so the per-run scans apply once a first candidate exists; and design the
+q4 anchors non-dyadic (1.5 and 2- are dyadic; use the sweep points).
+
+**I6. Still valid, lower value:** ties as parity readers for sub-grid constants (N0 mod 4, N6 mod 2, N5 mod 2 in
+K1: the only constant bits a sum's rounding can see); the interval LP as the final polish of the last 1-2 ulps per
+coefficient, started from a set above 95%.
+
+**Dropped:** the Fisher design for weak lines (I1 reads the same quantities directly), the generator hypotheses
+(nothing in 11.1 depends on how the coefficients were made), the error-magnitude fingerprint, the lattice, and all
+cross-kernel composition transfer (11.1.5).
+
+### 11.4 Execution plan (Opus workers)
+Common rules: exact simulation per hypothesis (`review2/gsim.c` for K1; port the nudge mechanism to the K2/K3
+simulators, it is ten lines); positive control before any reading is trusted; report per-run reading tables
+(run, y0, exact rate, stage, phase, gain) in a README under the worker's directory; exact match is the final
+verifier, never the search objective; score on the full formula-filtered set.
+
+**W4 (K1).** (1) Port `review2/stage_scan.py` to all dense runs (P1, P1b, y1xx, r7xx, q502, e3, e7, e10, e1001-
+e1020) and tabulate the readings; (2) positive controls for the unwrap (I1); (3) recover dD3, dD4 (dD5, dD6) from
+the D product 5 readings, then dN2, dN3, dN4 from N products 5-6, then rescan; (4) report the by-tenth exact rates;
+(5) if the 1.80-1.89 band is still under 80%, run the 28-nudge per-run fit there starting from the corrected set
+(it is no longer a cold start) and read what is left; (6) request probe V1 for whatever stage still needs points.
+Success: above 90% on every tenth, misses explained by near-ties.
+
+**W2 (K2).** (1) The upstream null-direction control (I3) and a one-paragraph retraction of "contradicts the law";
+(2) a nudge scan of N products 2-4 and D products 2-4 on the 2.85-3.0 runs with positive control; (3) unwrap over
+the allX anchors, fix p6-p7/q6-q7, redo the early refit (earlyfit2) and the ladder solve; (4) score. Also: a +-50
+ulp scan of q7 (the monotone gradient in `results_k23_midscan.txt`). Success: one set above 90% on every anchor
+cluster, or a run where no nudge of any stage gains while the set is under 60% exact (that would be the
+structural failure W2 suspected, and it would then be documented with the run).
+
+**W5 (K3).** (1) Per-run scans on top of ss_fc on the runs above 60%; (2) positive control; (3) recovery of
+N4/N5/D4/D5 (the 40-50% re-hash rows); (4) request probe V3 if the e9xx anchors do not unwrap. The W5 p5 coherent
+multi-run sum stays as the cross-check. Success: above 90% near 1 and above 70% far, then iterate.
+
+**W6 ((1.5,2]).** As in w6/README "Next", with q4 anchors kept non-dyadic, and once a first R candidate exists,
+the per-run scans. Also run `review2/xk_reach.py`-style tests on R itself (is R a plain quotient, as K2's S is?).
+
+### 11.5 Probe layouts (case names unused as of this review: `kmyst-gam-v1xx`..`v4xx`)
+- **V1 (K1 non-dyadic anchors with rungs):** 8 anchors a = 1.0731, 1.2347, 1.3912, 1.4683, 1.5577, 1.6341, 1.7718,
+  1.9253 (W4 may replace any by a run from 11.1.3 whose gain was 50-150). Per anchor 12 runs of 8,192 consecutive
+  doubles starting at a + 1.37*2^-j, j = 46, 44, ..., 24; three cases of 32,768 rows per anchor, 24 cases
+  `kmyst-gam-v101`..`v124`, column A = y, D = GAMMA(A). About 50 minutes of oracle.
+- **V2 (K1 unwrap pairs):** 12 cases `kmyst-gam-v201`..`v212`, 32,768 rows each: two runs of 16,384 consecutive
+  doubles per case starting at y0 and y0 + 0.0008 for y0 = 1.7050, 1.7230, 1.7580, 1.7690, 1.7920, 1.8010, 1.9320,
+  1.9450, 1.9550, 1.9680, 1.9800, 1.9920 (between AN2's crossings, 9.2.3); D = GAMMA(A). Pairs 0.0008 apart give
+  the phase derivative of each reading, which fixes the sign of the unwrap.
+- **V3 (K3 non-dyadic anchors):** 6 anchors a = 0.7413, 0.8127, 0.9318, 1.1731, 1.2869, 1.4137, each 12 runs of
+  8,192 at a + 1.37*2^-j, j = 46..24 (3 cases per anchor, `kmyst-gam-v301`..`v318`); B = GAMMALN.PRECISE(A),
+  C = LN(A).
+- **V4 (K2 near-3 rungs for the top stages):** 3 anchors a = 2.8731, 2.9417, 2.9873, 12 runs each as above
+  (`kmyst-gam-v401`..`v409`); B = GAMMALN.PRECISE(A), C = LN(A).
+Fill V1 and V2 first (they unblock W4); V3/V4 after the W5/W2 positive controls say how many points a reading
+needs.
+
+### 11.6 What this review settles
+- fl53(fl64) at every op is validated by data (79 points on the Stirling kernel).
+- K1: N7, N6, N5 of AN2 are right to within a few ulps; the open error is in the mid stages and is readable per run.
+- K2: the s4/s5 anomaly is an upstream re-hash artefact of the single-phase meter, not a law violation.
+- K2's inner and K3's inner are plain stored quotients; no composition links the three GAMMALN kernels.
+- Dyadic anchors cannot pin the top stages; the next probes are non-dyadic.
