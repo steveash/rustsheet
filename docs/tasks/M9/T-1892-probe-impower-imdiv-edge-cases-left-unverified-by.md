@@ -25,4 +25,4 @@ docs/excel-semantics/engineering.md "T-1625 probes" lists three UNVERIFIED items
 -
 
 ## Outcome
-Probe `eng-impower-imdiv-edges` (27 cells, excel-graph) written. Excel gives `#NUM!` for an IMPOWER angle of 2^27 or more, except a radius that underflowed to 0 gives "0" first; our libm fallback was wrong and is now `#NUM!`. A blank first argument as 0 and Smith's IMDIV were confirmed bit for bit. engineering.md updated; +27 probe cells passing.
+Probes `eng-impower-imdiv-edges` (35 cells) and `eng-impower-angle-cut` (19 cells), excel-graph. Excel's IMPOWER angle cut is just under 2^27 (bracketed at 134217727), not SIN's 2^27, and gives `#NUM!` for a pure imaginary base; an underflowed radius gives "0" whatever the angle. Our libm fallback is now `#NUM!`. A blank first argument as 0 and Smith's IMDIV were confirmed bit for bit. A non-imaginary base past the cut gives values near 1.797E+308 in Excel, which we do not reproduce: follow-up T-1950.

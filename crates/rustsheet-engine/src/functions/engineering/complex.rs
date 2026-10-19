@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::arithmetic::power;
 use crate::functions::lift::{num_error, value_error};
-use crate::functions::math_and_trigonometry::{excel_sin_cos, EXCEL_TRIG_LIMIT};
+use crate::functions::math_and_trigonometry::excel_sin_cos;
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, ItemSource,
 };
@@ -20,6 +20,11 @@ use crate::{
     model::Model,
     number_format::{number_to_text, to_precision},
 };
+
+/// The angle `atan2(y,x)·n` at which IMPOWER stops answering. Bracketed by probe, not derived:
+/// `IMPOWER("i",85445658)` (angle 134217725.7) answers and `IMPOWER("i",85445659)` (134217727.3)
+/// is `#NUM!`; SIN's own cut is 2^27, which is not this one.
+const IMPOWER_ANGLE_LIMIT: f64 = 134_217_727.0;
 
 /// This implements all functions with complex arguments in the standard
 /// NOTE: If performance is ever needed we should have a new entry in `CalcResult`,
@@ -445,12 +450,13 @@ impl Model {
                 return num_error(cell);
             };
             let angle = f64::atan2(y, x) * n;
-            // An angle at or past SIN's cut is `#NUM!`, but an underflowed radius of 0 is "0"
-            // without reading the angle: `IMPOWER("i",134217728)` is `#NUM!`, while
-            // `IMPOWER("1+i",-170891318)` is 0 (probes/eng-impower-imdiv-edges A1-A5).
+            // An angle past `IMPOWER_ANGLE_LIMIT` is `#NUM!` for a pure imaginary base, but an
+            // underflowed radius of 0 is "0" without reading the angle: `IMPOWER("i",85445659)` is
+            // `#NUM!`, `IMPOWER("0.5i",134217728)` is 0 (probes/eng-impower-imdiv-edges A28-A35,
+            // eng-impower-angle-cut; engineering.md "T-1892 probes").
             let (sin, cos) = if radius == 0.0 {
                 (0.0, 0.0)
-            } else if angle.abs() < EXCEL_TRIG_LIMIT {
+            } else if angle.abs() < IMPOWER_ANGLE_LIMIT {
                 excel_sin_cos(angle)
             } else {
                 return num_error(cell);
