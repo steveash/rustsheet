@@ -963,7 +963,7 @@ A one-argument `IF(x)` stored in a file (`=IF(TRUE)`, `=IF(1)`, `=IF({1,0})`, `=
 excel-graph: `createSession` answers 501 `FileCorruptTryRepair` / `unsupportedWorkbook`, so the formula cannot be loaded from a
 file and has no stored value to match (probes/typed-if-one-argument, left pending, T-1990). Whether Excel accepts it typed is
 entry-only and unanswerable here (desktop question, M14 Phase 4, decision 0039). Ours keeps the `#VALUE!` per element of
-the eta path (T-1947) for such a formula; no file Excel writes contains one.
+the eta path (T-1947) for such a formula; excel-graph will not load a file that holds one, and whether desktop Excel writes one is unprobed.
 Status: VERIFIED (excel-graph)
 Tasks: T-1466, T-1947, T-1990
 
