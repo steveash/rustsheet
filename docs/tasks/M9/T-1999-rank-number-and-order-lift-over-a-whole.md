@@ -3,7 +3,7 @@ id: T-1999
 title: "RANK number and order lift over a whole ref through the SPEC-0011 driver"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
