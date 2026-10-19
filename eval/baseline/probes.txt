@@ -270,6 +270,7 @@ C	probes/error-operand-broadcast.case.json	15
 C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-busy-behaviors.case.json	23
 C	probes/error-stored-constants.case.json	24
+C	probes/eta-if-one-argument.case.json	40
 C	probes/eta-reduced-names.case.json	59
 C	probes/expand-wrap-past-grid.case.json	10
 C	probes/external-ref-no-link-ifchoose-b.case.json	6
@@ -1248,9 +1249,6 @@ F	probes/eng-impower-angle-cut.case.json	S!A19
 F	probes/eng-impower-angle-cut.case.json	S!A9
 F	probes/eng-later-argument-lift.case.json	Sheet1!M2
 F	probes/eng-later-argument-lift.case.json	Sheet1!M8
-F	probes/eta-reduced-names.case.json	Sheet1!E101
-F	probes/eta-reduced-names.case.json	Sheet1!E102
-F	probes/eta-reduced-names.case.json	Sheet1!E103
 F	probes/external-ref-no-link-let-index.case.json	Calc!A3
 F	probes/external-ref-no-link-let-index.case.json	Calc!A4
 F	probes/external-ref-no-link-let-index.case.json	Calc!A5
