@@ -3,7 +3,7 @@ id: T-2004
 title: "LOG10 and one-argument LOG: Excel's log10 kernel (correctly rounded hypothesis; LOG(1000) is 3)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
