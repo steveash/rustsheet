@@ -16,6 +16,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::r#let::assign_variable_ids;
+use crate::evaluation::stack_address;
 use crate::variable_stack::Binding;
 
 /// A LAMBDA's parameters and body as `Model::lambdas` stores them, shared with the defined name
@@ -76,6 +77,14 @@ struct PreparedLambda {
     definition: Result<(Vec<(usize, bool)>, Node), CalcResult>,
     lambda_mark: usize,
 }
+
+/// How many times the evaluation's stack budget (`Model::set_max_evaluation_stack`, a quarter of
+/// a 1 MB stack by default) nested LAMBDA calls may use. A call made by a call can nest without
+/// the formula's own depth bounding it (`Model::lambda_stack_base`), and each takes some 5 KB of
+/// stack in a release build and 20 KB in a debug build (a LAMBDA calling itself through a
+/// parameter), so the default, 1 MB, half the smallest common thread stack (2 MB), holds about
+/// 200 calls in a release build and 50 in a debug build.
+const LAMBDA_STACK_SHARE: usize = 4;
 
 /// One read count of [`read_once`]: more than one read, or reads it cannot count.
 const MANY: u8 = 2;
@@ -423,8 +432,49 @@ impl Model {
     /// T-1560. A defined-name LAMBDA, an eta-reduced function or a LAMBDA a called one makes holds
     /// none of them, so a body calling `MyFn(x)` keeps its patch (T-0425). (`last_lambda_id` only
     /// grows during an evaluation; `clear_lambdas` resets it between evaluations, when no caller
-    /// is alive.)
+    /// is alive.) The fresh ids are also what lets `bind_captures` take a bound id for the one a
+    /// closure captured: reusing the patch here would break closures
+    /// (`a_closure_called_many_times_and_recursively_keeps_its_captures`).
     fn call_prepared(
+        &mut self,
+        caller: &mut LambdaCaller,
+        cell: CellReferenceIndex,
+        bind: impl FnMut(&mut Self, usize) -> Binding,
+    ) -> RefArg {
+        let Some(stack_base) = self.lambda_stack_base() else {
+            return RefArg::Value(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "LAMBDA calls nest too deep".to_string(),
+            ));
+        };
+        let outer_base = self.lambda_calls_base.replace(stack_base);
+        let result = self.call_prepared_within_budget(caller, cell, bind);
+        self.lambda_calls_base = outer_base;
+        result
+    }
+
+    /// Where the stack was when the outermost LAMBDA call running now started: the cell's base
+    /// inside a cell formula, so cells and calls share one stack budget (evaluation.rs), or this
+    /// call's own position for the outermost call outside one. `None` once the calls have used
+    /// [`LAMBDA_STACK_SHARE`] times [`Model::get_max_evaluation_stack`] bytes: a LAMBDA calling itself through a parameter,
+    /// `LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,20000))`, or a chain of 20,000 closures made by
+    /// REDUCE, would otherwise overflow the stack. Excel evaluates such calls 300 deep
+    /// (probes/lambda-call-depth); the budget stops them sooner, as `#NUM!` (DEVIATION, decision
+    /// 0014: docs/excel-semantics/arrays.md "How deep LAMBDA calls nest").
+    fn lambda_stack_base(&self) -> Option<usize> {
+        let here = stack_address();
+        let base = match self.lambda_calls_base {
+            Some(base) => base,
+            None if self.evaluation.depth > 0 => self.evaluation.stack_base,
+            None => here,
+        };
+        let budget = self.evaluation.max_stack.saturating_mul(LAMBDA_STACK_SHARE);
+        (base.abs_diff(here) < budget).then_some(base)
+    }
+
+    /// [`Self::call_prepared`] once the stack budget allows the call.
+    fn call_prepared_within_budget(
         &mut self,
         caller: &mut LambdaCaller,
         cell: CellReferenceIndex,

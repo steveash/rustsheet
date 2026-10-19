@@ -569,3 +569,20 @@ fn a_closure_called_many_times_and_recursively_keeps_its_captures() {
     assert_eq!(model._get_text("A1"), "1501500");
     assert_eq!(model._get_text("A2"), "2551");
 }
+
+#[test]
+fn lambda_calls_past_the_stack_budget_are_num_errors() {
+    // DEVIATION (decision 0014): Excel evaluates these 300 deep (probes/lambda-call-depth); past
+    // the evaluation's stack budget the engine gives #NUM! instead of overflowing its stack.
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,20000))");
+    model._set(
+        "A2",
+        "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(20000),LAMBDA(f,x,LAMBDA(z,f(z)+x))),g(0))",
+    );
+    model._set("A3", "=LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,10))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "10");
+}

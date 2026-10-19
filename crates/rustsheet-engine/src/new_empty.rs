@@ -753,6 +753,7 @@ impl Model {
             eta_lambdas: HashMap::new(),
             named_lambdas: NamedLambdas::default(),
             lambda_captures: HashMap::new(),
+            lambda_calls_base: None,
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),

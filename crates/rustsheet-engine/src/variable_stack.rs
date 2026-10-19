@@ -136,12 +136,11 @@ impl VariableStack {
         self.shared.remove(&id);
     }
 
-    /// Unbinds `id`, giving back what it was bound to.
-    pub(crate) fn remove(&mut self, id: usize) -> Option<Binding> {
+    pub(crate) fn remove(&mut self, id: usize) {
         self.shared.remove(&id);
-        let old = self.bindings.remove(&id)?;
-        self.held_areas -= old.held_areas();
-        Some(old)
+        if let Some(old) = self.bindings.remove(&id) {
+            self.held_areas -= old.held_areas();
+        }
     }
 
     pub(crate) fn clear(&mut self) {

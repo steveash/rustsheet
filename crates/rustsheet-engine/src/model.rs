@@ -167,6 +167,9 @@ pub struct Model {
     /// What each LAMBDA made inside a LET or a LAMBDA call captured of the variables in scope
     /// (`Model::store_closure`), keyed by the same ids as `lambdas`.
     pub(crate) lambda_captures: HashMap<usize, Captures>,
+    /// Where the stack was when the outermost LAMBDA call running now started
+    /// (`Model::lambda_stack_base`), `None` while no call runs.
+    pub(crate) lambda_calls_base: Option<usize>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).

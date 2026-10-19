@@ -908,9 +908,10 @@ LAMBDA(z,f(z)*10+x))),g(0))` is 123 (each step's LAMBDA captures the previous ac
 `LET(mk,..,fa,mk(1),fb,mk(100),fa(0)+fb(0)*1000)` 100001; a later binding of the same name changes nothing,
 `LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1),a,50,f(0))` 1 and `LET(a,1,f,LAMBDA(b,a+b),LET(a,2,f(0)))` 1; a closure reads names of
 several scopes, `LET(x,10,mk,LAMBDA(a,LAMBDA(b,a+b+x)),f,mk(1),f(100))` 111; a closure over a REDUCE chain is a function MAP can
-take, `MAP({10,20},g)` spills 16, 26. A captured reference stays a reference: `INDEX(r,2)` through it is 2, `ISREF(r)` TRUE, and a
+take, `MAP({10,20},g)` spills 16, 26. An inner parameter shadows the captured one, `LET(mk,LAMBDA(x,LAMBDA(x,x*2)),f,mk(5),
+f(3))` 6 (H13), and a LAMBDA made and called inside a REDUCE step reads that step's x (H17, 60). A captured reference stays a reference: `INDEX(r,2)` through it is 2, `ISREF(r)` TRUE, and a
 captured union keeps its areas (`AREAS` 2, `SUM` of `(A1,A3)` 4); a captured error is read as the error (`mk(1/0)` then `f(1)` is
-`#DIV/0!`), and an omitted optional parameter stays omitted (`ISOMITTED(c)` TRUE inside the closure). Calling a call,
+`#DIV/0!`), and an omitted optional parameter stays omitted (`ISOMITTED(c)` TRUE inside the closure: H20 is `"om"+0`, `#VALUE!`). Calling a call,
 `LAMBDA(a,LAMBDA(b,a*b))(3)(4)`, is 12 and three levels give 123; `MAP(SCAN(LAMBDA(z,z),{1,2,3},..),LAMBDA(g,g(0)))` spills the
 array of LAMBDAs SCAN makes as 1, 12, 123, and `INDEX` of that array called, `INDEX(s,1,3)(0)`, is 123. A cell holding the
 REDUCE result itself (a LAMBDA) is `#CALC!`, as for any uncalled LAMBDA. LET names spelled like cells (`add5`, `f1`), stored with
@@ -922,6 +923,20 @@ Ours: `Model::store_closure` captures, when a LAMBDA is made, the bound variable
 LET names are read as cells (H4, H5: T-2040).
 Status: VERIFIED (excel-graph)
 Tasks: T-0439, T-2038, T-2039, T-2040
+
+## How deep LAMBDA calls nest
+Rule: Excel evaluates LAMBDA calls nested 300 deep, both a LAMBDA that calls itself through a parameter,
+`LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,300))` 300, and a chain of 300 closures made by REDUCE,
+`LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(300),LAMBDA(f,x,LAMBDA(z,f(z)+x))),g(0))` 45150. What it gives deeper is unknown: workbooks
+with 1,000 to 20,000 levels made Excel for the web's createSession fail (`rustsheet-oracle fill`, 2026-10-19).
+Evidence: probes/lambda-call-depth H1-H6, I1-I6 (excel-graph, 2026-10-19, T-0439).
+Ours: **DEVIATION** (decision 0014, directive 5): nested LAMBDA calls may use four times the evaluation's stack budget
+(`set_max_evaluation_stack`, 256 KB by default), counted from the cell's own base so cells and calls share it
+(`Model::lambda_stack_base`); past it a call is `#NUM!` instead of overflowing the stack. With the defaults that is about 200
+levels in a release build and 50 in a debug build, so the 300-level probe cells H3 and H6 are `#NUM!`. Before T-0439 such
+recursion overflowed the stack and aborted the process.
+Status: DEVIATION (decision 0014, decision 0080); Excel VERIFIED (excel-graph) up to 300 levels, deeper unknown
+Tasks: T-0439
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
 Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a

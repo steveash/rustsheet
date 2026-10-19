@@ -4,3 +4,7 @@ lifted-range-rows.case.json	Sheet1!C1	decision 0014	docs/excel-semantics/arrays.
 lifted-range-rows.case.json	Sheet1!C2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!C3	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!E1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+lambda-call-depth.case.json	Sheet1!H3	decision 0014	docs/excel-semantics/arrays.md#how-deep-lambda-calls-nest	#NUM!
+lambda-call-depth.case.json	Sheet1!H6	decision 0014	docs/excel-semantics/arrays.md#how-deep-lambda-calls-nest	#NUM!
+lambda-call-depth.case.json	Sheet1!I3	decision 0014	docs/excel-semantics/arrays.md#how-deep-lambda-calls-nest	6
+lambda-call-depth.case.json	Sheet1!I6	decision 0014	docs/excel-semantics/arrays.md#how-deep-lambda-calls-nest	6
