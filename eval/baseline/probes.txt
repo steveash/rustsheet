@@ -350,6 +350,7 @@ C	probes/ifs-long-criterion-precedence.case.json	7
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
 C	probes/ifs-switch-lift-edges.case.json	26
+C	probes/ifs-volatile-range-once.case.json	5
 C	probes/incomplete-gamma-cap.case.json	38
 C	probes/index-1x1-array-index.case.json	29
 C	probes/index-area-num-snap.case.json	11
