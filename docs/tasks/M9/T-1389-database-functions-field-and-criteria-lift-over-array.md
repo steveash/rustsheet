@@ -3,7 +3,7 @@ id: T-1389
 title: "Database functions: field and criteria lift over array literals; DCOUNT/DCOUNTA with an empty field count records (probes/db-argument-modes)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -36,3 +36,6 @@ per-function copy.
 
 ## Out of scope
 - The semantic gaps found on generated data (T-1390).
+
+## Outcome
+The 12 D-functions run through `lift_call_costed` (`database` Whole, `field` LiftArrays, `criteria` LiftArraysRangeWhole, charged the database's cells per element); DCOUNT/DCOUNTA with a written empty `field` count the matching records. `LiftArraysRangeWhole` and `Whole` are live (allows removed); catalog and `lift-kinds.json` regenerated. probes: 38 known failures fixed, 0 regressions.
