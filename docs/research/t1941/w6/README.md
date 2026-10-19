@@ -134,6 +134,21 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       N.P3n1 and D.P4n1 are within 0.06. So an EM bootstrap of the assignment from c0 is not viable.
     - Coarse stage values must come from model-free sideband triplets (W4: (E, D, B) gives mant(M(x))).
 
+17. **Long-run pipeline: from no knowledge to about 1e-7 stage accuracy on the synthetic control** (`longspec.py`,
+    `grow.py`, `enumlong.py`, `jointtest.py`, `emtracks.py`, `lawrows.py`; synthetic (9,9) simulated at the 24
+    L101-L124 starts, 65,536 doubles each).
+    - Precise peaks: 59% of the top-25 per run match a law within 3e-5, against 2.2% chance.
+    - Model-free track growing across the runs: 37 tracks. 9 are single-law tracks at rms 2-7e-7.
+    - One track alone is NOT identifying: the truth ranks first, but wrong laws fit within 1.3x.
+    - Joint beam search over 4 tracks: the true combination fits at 4.2e-7, the next at 4.4e-4 (1000x gap). Two tracks
+      already separate it.
+    - EM bootstrap from the 4-track chain: it accepts exactly the 9 genuine tracks, all correctly assigned. Mid and
+      deep stages reach 5e-8..1e-6 (top stages 1e-5..5e-3); the law objective goes from 0.27 to 0.62 (truth 0.685).
+    - Risk for Excel: candidate exponents come from the LS fit c0. If Excel's stages differ from c0 by >2x (as K3's
+      do), they can be wrong. In that case enumerate the exponent offsets too.
+    - Next: the same pipeline on Excel's L101-L124, then ladder-phase unwrapping (q409/q410/q415-q420) from 1e-7 down
+      to ulps.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
