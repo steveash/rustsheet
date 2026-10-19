@@ -83,7 +83,7 @@ formula reaches this through its intersected lookup table (references.md "Legacy
 and HLOOKUP intersect an operation in their lookup table"). LOOKUP differs: it reads a single
 value as a one-element array ("LOOKUP vector form with 2-D or short vectors"). Only "b", "x"
 and "2" are probed: the engine's line between them is its number coercion (`cast_number`), so
-dates, currency, percents and padded text are inferred, not probed (T-1937).
+dates, currency, percents and padded text are inferred, not probed (T-1939).
 Evidence: probes/match-single-value-lookup-array (excel-graph, 2026-10-18, T-1862).
 Engine: `Model::lookup_table` (lookup.rs) and `Model::evaluate_single_sheet_arg` (util.rs).
 Status: VERIFIED
