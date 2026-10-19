@@ -152,7 +152,7 @@ reference-returning call.
 
 ## Alternatives considered
 - **A `CalcResult::References` variant.** Every match on `CalcResult` would need an arm and every
-  `_ =>` arm would silently mis-read it (SPEC-0004's argument). Rejected.
+  `_ =>` arm would silently misread it (SPEC-0004's argument). Rejected.
 - **`ArrayNode::Reference`.** Reuses broadcast and spill code, but puts references into the parser's
   constant type and the spill payload (storage), and into 456 `ArrayNode::` sites. Rejected.
 - **A lazily evaluated lifted node** that INDEX, ROWS and SUM evaluate per element when asked. No new
