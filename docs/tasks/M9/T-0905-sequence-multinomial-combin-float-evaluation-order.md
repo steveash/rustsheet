@@ -3,7 +3,7 @@ id: T-0905
 title: "SEQUENCE/MULTINOMIAL/COMBIN/COMBINA: match Excel's floating-point evaluation order"
 milestone: M9
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -33,9 +33,19 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 - gen-m7/8ed8a680e9794b77 Calc!A21 `=COMBIN(23,ISOWEEKNUM(36264))` = COMBIN(23,15): Excel 490314, engine 490313.9999999999 (`COMBIN(23,4)` is exact 8855). Excel gives exact integers for both; fit these with the five COMBIN_COMBINA cells.
 
 ## Acceptance criteria
-- [ ] 16 known-failure lines (5 SEQUENCE: I9, I10, I11, L14, M14; 6 MULTINOMIAL; 5 COMBIN_COMBINA)
+- [x] 16 known-failure lines (5 SEQUENCE: I9, I10, I11, L14, M14; 6 MULTINOMIAL; 5 COMBIN_COMBINA)
       disappear from eval/baseline/ironcalc-calc.txt with no new ones.
-- [ ] Algorithms documented in docs/excel-semantics/; `make check` green.
+- [x] Algorithms documented in docs/excel-semantics/; `make check` green.
 
 ## Out of scope
 SEQUENCE `#VALUE!` (done, T-0913); trig/hyperbolic (T-0914, T-0915, T-0917, T-0939).
+
+## Outcome
+- SEQUENCE adds `step` to the previous value in row-major order (`fn_sequence`); probes/sequence-step-accumulation
+  (11 cells, excel-graph) confirms the 2-D order. Fixes SEQUENCE.xlsx I9, I10, I11, L14, M14.
+- COMBINA is `combin(n+k-1, k)`, COMBIN's fitted algorithm: fixes COMBIN_COMBINA.xlsx D4, D5, D16. This also bounds
+  COMBINA's loop by min(k, n-1) (it ran k times: `COMBINA(1,1E10)` looped 10^10 times).
+- MULTINOMIAL (6 cells) and COMBIN C5, C16 had already been fixed by T-1190 and T-1598; gen-m7 3a62e0950c1074fd A34 and
+  8ed8a680e9794b77 A21 pass too.
+- numbers.md: "COMBINA is COMBIN(n+k-1, k)" and "SEQUENCE accumulates its step".
+Eval delta: ironcalc-calc known failures 1144 -> 1136 (8 fixed), probes +11 cells all passing, 0 regressions.
