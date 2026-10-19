@@ -36,7 +36,7 @@ impl Model {
     /// `CHISQ.DIST(x, deg_freedom, cumulative)`: every argument lifts over an array and a range
     /// (SPEC-0011; probes/stat-argument-modes H152-H156, probes/stat-quantile-lift H27). The cdf
     /// is the capped port of statrs' incomplete gamma (`incomplete_gamma.rs`), which the lifting
-    /// table charges (kinds.rs `INCOMPLETE_GAMMA_WEIGHT`).
+    /// table charges (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT`).
     pub(crate) fn fn_chisq_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::ChisqDist, args, cell, &mut |model, values| {
             number_or_error(model.chisq_dist_of(values, cell))

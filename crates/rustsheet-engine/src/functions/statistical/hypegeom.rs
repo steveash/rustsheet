@@ -53,9 +53,9 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// and `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)` (x at the mode: 96,259 terms, of
 /// which 95,942 are not 0).
 ///
-/// What the cap costs, which the lifting table charges (kinds.rs `HYPGEOM_DIST_WEIGHT`, 2^22 units
-/// an element): one term is three statrs `ln_binomial`s and an `exp` (six Lanczos `ln_gamma`s above
-/// 170). Measured in release (T-1873, load 1 to 2 on 4 cores): 167 to 193 ns a term where the terms
+/// What the cap costs, which the lifting table charges (lift/kinds/statistical.rs
+/// `HYPGEOM_DIST_WEIGHT`, 2^22 units an element): one term is three statrs `ln_binomial`s and an
+/// `exp` (six Lanczos `ln_gamma`s above 170). Measured in release (T-1873, load 1 to 2 on 4 cores): 167 to 193 ns a term where the terms
 /// are normal (statrs' own sum over the 25,000,001 terms of
 /// `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)`, 4.8 s as on main; 32 elements of
 /// `HYPGEOM.DIST(45500000,90000000,90000000,180000000,TRUE)`, the widest distribution at a
@@ -217,7 +217,8 @@ impl Model {
     /// `HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)`: every
     /// argument lifts over an array and a range (SPEC-0011; probes/stat-argument-modes
     /// H330-H336, probes/stat-quantile-lift H51-H52). The cdf is the capped port of statrs' sum
-    /// (`hypergeometric_cdf`), which the lifting table charges (kinds.rs `HYPGEOM_DIST_WEIGHT`).
+    /// (`hypergeometric_cdf`), which the lifting table charges (lift/kinds/statistical.rs
+    /// `HYPGEOM_DIST_WEIGHT`).
     pub(crate) fn fn_hyp_geom_dist(
         &mut self,
         args: &[Node],

@@ -33,7 +33,7 @@ impl Model {
     /// `GAMMA.DIST(x, alpha, beta, cumulative)`, and GAMMADIST: every argument lifts over an
     /// array and a range (SPEC-0011; probes/stat-argument-modes H293-H304,
     /// probes/stat-quantile-lift H39-H42). The cdf is the capped port of statrs' incomplete gamma
-    /// (`incomplete_gamma.rs`), which the lifting table charges (kinds.rs
+    /// (`incomplete_gamma.rs`), which the lifting table charges (lift/kinds/statistical.rs
     /// `INCOMPLETE_GAMMA_WEIGHT`).
     pub(crate) fn fn_gamma_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::GammaDist, args, cell, &mut |model, values| {
@@ -72,7 +72,7 @@ impl Model {
     /// `GAMMA.INV(probability, alpha, beta)`, and GAMMAINV: every argument lifts over an array
     /// and a range (SPEC-0011; probes/stat-argument-modes H305-H314, probes/stat-quantile-lift
     /// H43-H46). The quantile is the capped port of statrs' search (`incomplete_gamma.rs`), which
-    /// the lifting table charges (kinds.rs `INCOMPLETE_GAMMA_WEIGHT`).
+    /// the lifting table charges (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT`).
     pub(crate) fn fn_gamma_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::GammaInv, args, cell, &mut |model, values| {
             number_or_error(model.gamma_inv_of(values, cell))

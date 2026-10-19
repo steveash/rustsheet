@@ -3,7 +3,7 @@ id: T-1901
 title: "Split functions/lift/kinds.rs by family before it passes the 1000-line limit"
 milestone: M9
 lane: quality
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,11 +24,22 @@ macro, `ArgKinds`, `Lift`, `KernelWork` and `MAX_LIFTED_CELL_VISITS` in a shared
 constants and their measurement comments next to its entries.
 
 ## Acceptance criteria
-- [ ] kinds.rs is split into a parent and per-family modules, each well under 1000 lines; the table's entries, kinds and
+- [x] kinds.rs is split into a parent and per-family modules, each well under 1000 lines; the table's entries, kinds and
   weights are unchanged (`eval/catalog/lift-kinds.json` regenerates byte-identical with `rustsheet-eval lift-kinds --write`).
-- [ ] The T-1873 entries get back the `// --- X (T-1873) ---` / `// --- End X ---` markers the other sections use.
-- [ ] No entry added to quality/oversized-files.json; `scripts/check_duplication.py` does not rise.
-- [ ] `make check` green; reviewers approve.
+- [x] The T-1873 entries get back the `// --- X (T-1873) ---` / `// --- End X ---` markers the other sections use.
+- [x] No entry added to quality/oversized-files.json; `scripts/check_duplication.py` does not rise.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing any kind or weight, or adding entries.
+
+## Outcome
+functions/lift/kinds.rs (831 lines after T-1773 moved `lifting_table_functions!` out) is now
+`functions/lift/kinds/`: `mod.rs` (174 lines: `ArgKind`, `KernelWork`, `ArgKinds`, the argument shapes
+several families share, and `Function::arg_kinds`, which asks each family in turn), `general.rs` (dates,
+information, lookup, math; 142), `financial.rs` (276), `statistical.rs` (231) and `engineering.rs` (105).
+Each family keeps its weight constants and their measurement comments next to its entries, moved verbatim.
+A new test, `no_function_is_in_two_families`, takes over what one `match`'s unreachable-pattern lint
+caught. `eval/catalog/lift-kinds.json` regenerates byte-identical; the `HYPGEOM.DIST` entries in
+`lifting_table_functions!` have their `// --- Hypergeometric (T-1873) ---` markers back; the doc references
+to kinds.rs point at the family files. Duplicated lines 3863 -> 3861. Eval delta: none (no behavior change).

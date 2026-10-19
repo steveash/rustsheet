@@ -34,14 +34,15 @@ use crate::{
 /// (probes/fin-amor-period-bound B6-B14, up to 10^6 periods, are Excel's values); past it, where the
 /// walk has not reached a period whose charge is fixed, the decay is a closed form, which can move
 /// the rounded charge once it is about 1E12 or more (fin-amor-period-bound-c). The bound is also the
-/// kernel's work cap (`AMORDEGRC_WEIGHT` in functions/lift/kinds.rs).
+/// kernel's work cap (`AMORDEGRC_WEIGHT` in functions/lift/kinds/financial.rs).
 const DEGRESSIVE_LOOP_PERIODS: u64 = 1 << 20;
 
 /// The most single subtractions `linear_charge` makes. A walk takes a few per binade it crosses
 /// and stops once the charge no longer moves the value, at most 616 over every charge from 2^-1074
 /// to 2^1023 against values from 1E-300 to `f64::MAX` (`linear_walks_stay_below_the_step_cap`).
-/// The cap keeps the loop bounded by construction, and `AMORLINC_WEIGHT` in functions/lift/kinds.rs
-/// is priced from it; a walk that reached it would be `#NUM!`, never a wrong value.
+/// The cap keeps the loop bounded by construction, and `AMORLINC_WEIGHT` in
+/// functions/lift/kinds/financial.rs is priced from it; a walk that reached it would be `#NUM!`,
+/// never a wrong value.
 const LINEAR_STEP_CAP: u32 = 1 << 10;
 
 /// Which depreciation the kernel computes.
