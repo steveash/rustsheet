@@ -3,7 +3,7 @@ id: T-1824
 title: "Probe the TEXTBEFORE/TEXTAFTER/REGEX lift guesses T-1272 pins in tests"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1272's fidelity review: its tests pin behavior with no oracle cell. docs/excel
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/textsplit-lift-guesses (87 formulas, excel-graph). Mismatches fixed: the longest delimiter wins where several match at one position (TEXTSPLIT, TEXTBEFORE/AFTER; the guess was first in list order), a negative instance_num now checks a match at the start of the text, TEXTSPLIT's pad_with is `#VALUE!` as an array (it was lifted), a scalar boolean TEXTSPLIT delimiter is its spelling. Recorded in text.md; REGEXEXTRACT return_mode 2 and its case_sensitivity argument (cells A53, A55) stay failing and are T-1360's. Eval: probes case 88/90 cells.

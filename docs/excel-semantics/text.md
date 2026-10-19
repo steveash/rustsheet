@@ -298,18 +298,20 @@ The delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are one list, not lifted: 
 whose lifted result is `#SPILL!` because its spill range is occupied (gen-m7/93976dd9a3578ed9 Calc!A11, 59cc50701f4937c9 A24).
 A lifted element whose call returns an array keeps its first value: TEXTSPLIT, probes/m7-argument-modes F13:H13.
 An error inside a delimiter array is that error and a boolean is its spelling (T-1361, next entry).
-UNVERIFIED (T-1272 guesses, nothing probed; T-1824 probes them): when two delimiters of a list match at the same
-position, the first in list order sets the match length; every entry longer than the text gives the single-delimiter
-error (`#VALUE!` with more than two arguments, `#N/A` with two); a REGEX pattern that does not compile is `#VALUE!` in its own element
-only; if_not_found, pad_with, match_end and return_all lift like the other scalars, and if_not_found is evaluated even
-when the delimiter is found; REGEXEXTRACT's return_all keeps the first value of a lifted element. A 1x1 array lifts too, so
-`COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(A1:A2,A1:A2="a,b"),","))` and
-`COLUMNS(REGEXEXTRACT({"a1b2"},"[0-9]",1))` are 1 (2 before T-1272), by analogy with `COLUMNS(XLOOKUP({2},A1:A4,C1:E4))`
-= 1 (lookup.md); a common pattern, so T-1824 probes it first.
+VERIFIED (probes/textsplit-lift-guesses, excel-graph, 2026-10-19, T-1824):
+- When several delimiters of a list match at one position the LONGEST wins, whatever the list order (`TEXTAFTER("abcd",{"ab","abc"})` and `{"abc","ab"}` are both "d"; `TEXTSPLIT("abcd",{"ab","abc"})` is {"","d"}; a negative instance_num alike, `TEXTAFTER("abcd",{"abc","ab"},-1)` is "d", A1-A9). T-1272 guessed the first in list order.
+- An entry longer than the text is not an error by itself: the call finds nothing, so `TEXTBEFORE("a",{"aa","b"})` is `#N/A`, with instance_num `#VALUE!` (`TEXTBEFORE("a","aa",1)`), with if_not_found that value, and TEXTSPLIT returns the text ("a"). `TEXTBEFORE("a",{"aa","a"},1)` is "" (A10-A21).
+- A REGEX pattern that does not compile is `#VALUE!` in its own element only (`REGEXTEST("abc",{"a";"(";"b"})` is TRUE, `#VALUE!`, TRUE; REGEXEXTRACT and REGEXREPLACE alike; A22-A27).
+- if_not_found, match_end, match_mode, TEXTSPLIT's ignore_empty and REGEXEXTRACT's return_mode lift like the other scalars, and an array if_not_found lifts even when the delimiter is found (`TEXTBEFORE("a,b",",",1,,,{"x";"y"})` is 2x1 "a","a"); a scalar error as if_not_found is returned only when the delimiter is not found (`TEXTBEFORE("a,b",",",1,,,1/0)` is "a", with instance 3 `#DIV/0!`; A28-A34, A39-A48).
+- TEXTSPLIT's pad_with does NOT lift: an array of any size, a 1x1 one included, is `#VALUE!` (`TEXTSPLIT("a,b;c",",",";",,,{"x";"y"})`, `COLUMNS(TEXTSPLIT("a,b,c",",",,,,{"x"}))`; A35-A38, A65). A single-cell reference is its value.
+- REGEXEXTRACT in a lifted call keeps the first value of each element (`REGEXEXTRACT({"a1b2";"c3d4"},"[0-9]",1)` is 2x1 "1","3"; A47-A52).
+- A 1x1 array lifts the call: `COLUMNS(TEXTSPLIT({"a,b"},","))`, `COLUMNS(TEXTSPLIT(FILTER(Data!A1:A2,Data!A1:A2="a,b"),","))` and `COLUMNS(REGEXEXTRACT({"a1b2"},"[0-9]",1))` are 1, as is `ROWS(...)` (every lifted element keeps its first value, so `COLUMNS(TEXTSPLIT({"a,b";"c,d,e"},","))` is 1 and its ROWS 2); `COLUMNS(TEXTSPLIT(Data!A3,","))` over a single cell is 3, a non-lifting call (A56-A70).
+- A scalar boolean delimiter is its spelling in TEXTSPLIT as in TEXTBEFORE (`TEXTSPLIT("a TRUE b",TRUE)` is "a "," b", A71-A73). Of two different errors in one delimiter list the first in row-major order wins (`{#N/A,#DIV/0!}` is `#N/A`, `{#DIV/0!,#N/A}` is `#DIV/0!`, `{#REF!,#N/A;#VALUE!,#DIV/0!}` is `#REF!`, A74-A81), and an error in the list beats an invalid instance_num (`TEXTBEFORE("abc",{"",#N/A},0)` is `#N/A`; without the error `#VALUE!`, A82-A87).
+UNVERIFIED still: REGEXEXTRACT's return_mode 2 (capture groups: Excel gives "a","c" for `REGEXEXTRACT({"a1b2";"c3d4"},"([a-z])([0-9])",2)`, ours the whole match "a1","c3"; A53) and its fourth argument case_sensitivity (A55 is `#N/A` for `REGEXEXTRACT("a1B2","b",0,{0;1})`, ours `#ERROR!`) are T-1360's.
 Ours: all of this since T-1272. The work caps are the next entry's. A multi-cell range as the TEXTBEFORE/TEXTAFTER
 delimiter is still read as one text, as before T-1272 (gen-m7/851eb2099ae3f805 Calc!A25 is `#VALUE!`); its list rule is
 T-1361's.
-Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED (probe pending, T-1824) for the rest
+Status: VERIFIED (excel-graph)
 Tasks: T-1272, T-1824 (probe the guesses), T-1361 (delimiter ranges)
 
 ## Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped

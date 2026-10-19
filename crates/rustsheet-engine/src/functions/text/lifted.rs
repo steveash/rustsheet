@@ -124,6 +124,11 @@ impl Model {
             CalcResult::EmptyArg => return Ok(vec![]),
             CalcResult::EmptyCell => return Ok(vec![String::new()]),
             err @ CalcResult::Error { .. } => return Err(err),
+            // A scalar boolean is its spelling, as a list element is (probes/textsplit-lift-guesses
+            // A71-A73).
+            CalcResult::Boolean(b) => {
+                return Ok(vec![(if b { "TRUE" } else { "FALSE" }).to_string()])
+            }
             scalar @ (CalcResult::String(_) | CalcResult::Number(_)) => {
                 return Self::cast_string_ref(&scalar, cell).map(|text| vec![text])
             }

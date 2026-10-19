@@ -179,10 +179,9 @@ pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_nu
 }
 
 /// Byte range of the `instance_num`-th match of any of `delimiters` (counted from the end when
-/// negative). Every position where some delimiter starts counts once; the first delimiter in
-/// list order that matches there decides the match length (UNVERIFIED for delimiters that
-/// match at the same position, docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and
-/// REGEX* lift their text and scalar arguments"; T-1824). With `Case::Insensitive` the
+/// negative). Every position where some delimiter starts counts once; the longest delimiter
+/// that matches there decides the match length (docs/excel-semantics/text.md "TEXTSPLIT,
+/// TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"; T-1824). With `Case::Insensitive` the
 /// delimiters are already folded ([`Delimiters`]); only the text is folded here.
 fn match_text<S: AsRef<str>>(
     text: &str,
@@ -221,13 +220,15 @@ fn match_text<S: AsRef<str>>(
     }
 }
 
-/// Length in bytes of the first delimiter that `rest` starts with.
+/// Length in bytes of the longest delimiter that `rest` starts with (Excel: the longest wins when
+/// several match at one position, probes/textsplit-lift-guesses A1, A2, A9).
 fn delimiter_at<S: AsRef<str>>(rest: &str, delimiters: &[S]) -> Option<usize> {
     delimiters
         .iter()
         .map(AsRef::as_ref)
-        .find(|d| rest.starts_with(d))
+        .filter(|d| rest.starts_with(d))
         .map(str::len)
+        .max()
 }
 
 fn text_sensitive<S: AsRef<str>>(
@@ -274,7 +275,10 @@ fn text_sensitive_reverse<S: AsRef<str>>(
 
         byte_index -= c.len_utf8();
     }
-    None
+    // The loop checks each position before stepping back, so the start of the text is left;
+    // a match there counts (probes/textsplit-lift-guesses A9).
+    let len = delimiter_at(text, delimiters).filter(|_| !text.is_empty())?;
+    (local_index == instance_num).then_some((0, len))
 }
 
 /// Cap on the total bytes of text one broadcast may produce. Excel has no such
