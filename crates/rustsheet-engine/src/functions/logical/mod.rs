@@ -20,6 +20,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::lift::{LiftCost, LiftOptions, LiftedArg},
+    functions::Function,
     limits::check_array_size,
     model::Model,
     reference_operators::{Picked, RefArg},
@@ -161,6 +162,27 @@ impl Model {
     pub(crate) fn if_branch_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         self.external_reference_picked_value(node, cell)
             .unwrap_or_else(|| self.evaluate_node_in_context(node, cell))
+    }
+
+    /// The pick step of a function that stands for one of its arguments once its condition,
+    /// index or expression is read: IF, CHOOSE, IFS and SWITCH ([`Self::if_pick`],
+    /// [`Self::choose_pick`], [`Self::ifs_pick`], [`Self::switch_pick`]). `None` for any other
+    /// function, unread. Reference context follows the argument picked for all four alike
+    /// (probes/subtotal-ifs-switch-reference-picks, take-drop-over-ifs-switch-picks; T-2014,
+    /// T-2071).
+    pub(crate) fn pick_step<'a>(
+        &mut self,
+        kind: &Function,
+        args: &'a [Node],
+        cell: CellReferenceIndex,
+    ) -> Option<Picked<'a>> {
+        Some(match kind {
+            Function::If => self.if_pick(args, cell),
+            Function::Choose => self.choose_pick(args, cell),
+            Function::Ifs => self.ifs_pick(args, cell),
+            Function::Switch => self.switch_pick(args, cell),
+            _ => return None,
+        })
     }
 
     /// What IF's condition picks: with a scalar condition the branch it chooses, unevaluated;
