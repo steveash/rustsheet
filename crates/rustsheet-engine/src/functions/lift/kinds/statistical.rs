@@ -180,8 +180,8 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::TTest | Function::TTestCompat => Some(&TWO_DATA_THEN_2),
         // RANK's `number` and `order` lift likewise over a `ref` read once; a `ref` that is not a
         // reference broadcasts as its own shape of errors (probes/stat-test-lift P20-P33, P72;
-        // probes/stat-argument-modes H492-H499; T-1999). An element walks the numbers
-        // (`LiftCost::Cells`).
+        // probes/stat-argument-modes H492-H499; T-1999). A lifted call sorts the numbers once
+        // (`LiftCost::Prepared`).
         Function::RankCompat | Function::RankEq | Function::RankAvg => {
             Some(&ONE_THEN_REFERENCE_THEN_1)
         }

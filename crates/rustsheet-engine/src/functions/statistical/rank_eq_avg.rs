@@ -1,3 +1,4 @@
+use super::sorted_data::{DataOrder, SortedNumbers};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{value_error, LiftCost};
 use crate::functions::Function;
@@ -31,8 +32,8 @@ impl Model {
     /// probes/rank-direct-boolean). A `ref` that is not a reference is an array of `#VALUE!` (or
     /// the element's own error) that broadcasts with the lifted arguments, after `number`'s error
     /// and before `order`'s (statistics.md "RANK of a non-reference array"; P28-P31,
-    /// probes/rank-nonref-errors). Each element walks the numbers, so the call is charged their
-    /// count per element.
+    /// probes/rank-nonref-errors). The numbers are sorted once for a lifted call, so it is charged
+    /// their count plus its elements (`LiftCost::Prepared`).
     fn rank(&mut self, args: &[Node], ties: Ties, cell: CellReferenceIndex) -> CalcResult {
         // RANK and RANK.AVG share RANK.EQ's table entry (`ONE_THEN_REFERENCE_THEN_1`).
         let kind = Function::RankEq;
@@ -45,24 +46,29 @@ impl Model {
         let Some(reference) = args.get(1) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let numbers = match self.numbers_from_rank_ref_arg(reference, cell) {
+        let mut numbers = match self.numbers_from_rank_ref_arg(reference, cell) {
             // Excel: a reference with no numeric value (or an empty one) gives #N/A like any
             // absent number, never #NUM! (statistics.md, "RANK/RANK.EQ/RANK.AVG: a number absent").
-            Ok(values) => Ok(values
-                .into_iter()
-                .flatten()
-                .filter(|v| !v.is_nan())
-                .collect::<Vec<f64>>()),
+            Ok(values) => Ok(SortedNumbers::new(
+                values
+                    .into_iter()
+                    .flatten()
+                    .filter(|v| !v.is_nan())
+                    .collect(),
+                DataOrder::Ascending,
+            )),
             Err(CalcResult::Array(grid)) => {
                 // Every element of `grid` is an error, so no element reads the numbers.
-                let numbers = Err(value_error(cell));
+                let mut numbers = Err(value_error(cell));
                 return self.lift_call_beside(
                     kind,
                     args,
                     (1, grid),
                     LiftCost::Unit,
                     cell,
-                    &mut |model, values| rank_element(model, &numbers, values, ties, cell),
+                    &mut |model, values| {
+                        rank_element(model, &mut numbers, values, ties, true, cell)
+                    },
                 );
             }
             Err(error) => Err(error.without_message()),
@@ -70,24 +76,32 @@ impl Model {
         let cells = numbers.as_ref().map_or(0, |numbers| {
             u64::try_from(numbers.len()).unwrap_or(u64::MAX)
         });
+        // The first element walks the numbers, so a scalar call (`=RANK(A2,$A$2:$A$9999)` filled
+        // down) never sorts; later elements sort them once and search (`RANK(A2:A9999,A2:A9999)`).
+        let mut first = true;
         self.lift_call_costed(
             kind,
             args,
             // At least one unit an element, so a data error copied per element is charged too.
-            LiftCost::Cells(cells.max(1)),
+            LiftCost::Prepared(cells.max(1)),
             cell,
-            &mut |model, values| rank_element(model, &numbers, values, ties, cell),
+            &mut |model, values| {
+                let walk = std::mem::replace(&mut first, false);
+                rank_element(model, &mut numbers, values, ties, walk, cell)
+            },
         )
     }
 }
 
 /// One RANK element over the numbers read once. `values[1]` is the slot of `ref`: `EmptyArg`
-/// for a reference, or the error of a non-reference array's element.
+/// for a reference, or the error of a non-reference array's element. `walk` counts the numbers
+/// unsorted; otherwise they are sorted (once) and searched.
 fn rank_element(
     model: &Model,
-    numbers: &Result<Vec<f64>, CalcResult>,
+    numbers: &mut Result<SortedNumbers, CalcResult>,
     values: &[CalcResult],
     ties: Ties,
+    walk: bool,
     cell: CellReferenceIndex,
 ) -> CalcResult {
     let number = match values
@@ -114,21 +128,30 @@ fn rank_element(
         Ok(numbers) => numbers,
         Err(error) => return error.clone(),
     };
-    // "better" = greater (descending) or smaller (ascending)
-    let mut better: usize = 0;
-    let mut equal: usize = 0;
-    for &v in numbers {
-        let is_better = if order == 0.0 { v > number } else { v < number };
-        if is_better {
-            better += 1;
-        } else if v == number {
-            equal += 1;
+    let (smaller, equal, larger) = if walk {
+        let (mut smaller, mut equal, mut larger) = (0, 0, 0);
+        for &v in numbers.as_read() {
+            if v < number {
+                smaller += 1;
+            } else if v == number {
+                equal += 1;
+            } else {
+                larger += 1;
+            }
         }
-    }
+        (smaller, equal, larger)
+    } else {
+        // Ascending, and `<`/`<=` treat -0 and 0 as equal, as `==` does.
+        let sorted = numbers.sorted();
+        let smaller = sorted.partition_point(|&v| v < number);
+        let not_larger = sorted.partition_point(|&v| v <= number);
+        (smaller, not_larger - smaller, sorted.len() - not_larger)
+    };
     if equal == 0 {
         return CalcResult::new_error(Error::NA, cell, String::new());
     }
-    let better = better as f64;
+    // "better" = greater (descending, order 0) or smaller (ascending)
+    let better = if order == 0.0 { larger } else { smaller } as f64;
     let rank = match ties {
         Ties::Top => better + 1.0,
         // The tied numbers hold ranks better+1 ..= better+equal; their average.

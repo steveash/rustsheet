@@ -63,7 +63,8 @@ RANK, RANK.EQ and RANK.AVG are in the lifting table as `[Lift, ReferenceByCaller
 fallback arms are gone. The new `ArgKind::ReferenceByCaller` is read by the function (a reference is
 data, read once); a non-reference array comes back as a grid of errors through the new
 `Model::lift_call_beside` and broadcasts with `number` and `order`, and static analysis broadcasts its
-shape (`reference_by_caller_shape`). A new probe, probes/rank-direct-boolean (18 cells, excel-graph),
+shape (`reference_by_caller_shape`). A lifted call sorts the numbers once (`SortedNumbers`,
+`LiftCost::Prepared`) and binary-searches each element; a scalar call walks them unsorted, as before. A new probe, probes/rank-direct-boolean (18 cells, excel-graph),
 showed three things the old scalar path got wrong: a direct boolean `number`/`order` coerces, a text
 `order` (also `"1"`) is `#VALUE!`, and `order`'s error comes before the data's; the kernel follows it
 (statistics.md). Eval: probes known failures 1844 -> 1824 (fixed 20: stat-test-lift P20-P28, P30-P33,

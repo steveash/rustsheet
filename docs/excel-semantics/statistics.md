@@ -637,7 +637,8 @@ Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An a
 Evidence: probes/rank-nonref-06..08 (references), rank-nonref-12..14 (arrays), probes/multiarea-order-stats H14:J14 (excel-graph, 2026-10-09, T-1203).
 Ours: matches since T-1203: the RANK family returns a `#VALUE!` array of the argument's shape, and static analysis
 makes such a formula a dynamic-array anchor so it spills (since T-1999 the `ref` is `ArgKind::ReferenceByCaller`: static
-analysis broadcasts the array's shape with the lifted `number` and `order`, and the driver broadcasts its errors). For a literal array (`{7,1,5}`) we also spill `#VALUE!` 1x3; that is
+analysis broadcasts the array's shape with the lifted `number` and `order`, and the driver broadcasts its errors).
+For a literal array (`{7,1,5}`) we also spill `#VALUE!` 1x3; that is
 UNVERIFIED (the oracle refuses the workbook). Scalar literals (`RANK(5,5)`, `"5"`, `TRUE`) still rank as a
 one-element list, also UNVERIFIED (decision 0039).
 Error and text arguments next to such a ref (probes/rank-nonref-errors, excel-graph, 2026-10-09, T-1208; RANK and RANK.AVG
@@ -698,7 +699,8 @@ Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080
 Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below), and so do the
 44 functions whose every argument is scalar and whose kernel is bounded (T-1290, "Later arguments and element values
 of the scalar statistical functions" below); the other scalar arguments lift since their own tasks (before, `#N/IMPL!`
-for an array, `#VALUE!` for a range): Z.TEST and PROB since T-1813, FORECAST and T.TEST since T-1982, RANK since T-1999; BETA.INV, F.INV, T.INV, CONFIDENCE.T and their variants lift
+for an array, `#VALUE!` for a range): Z.TEST and PROB since T-1813, FORECAST and T.TEST since T-1982, RANK since T-1999;
+BETA.INV, F.INV, T.INV, CONFIDENCE.T and their variants lift
 since T-1848 ("Quantile searches: per-call cap and lifting" below), the incomplete-gamma functions (CHISQ.*,
 CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON, POISSON.DIST) since T-1872 ("Incomplete gamma:
 per-call cap and lifting" below), and HYPGEOM.DIST and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and

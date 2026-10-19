@@ -3,7 +3,7 @@ id: T-1096
 title: "Engine adapter: load legacy_formulas cells through the legacy (implicit-intersection) parse"
 milestone: M1
 lane: harness
-status: done
+status: in-progress
 priority: P3
 size: M
 tier: opus
