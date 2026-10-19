@@ -77,6 +77,20 @@ if __name__=='__main__':
         rows=phase_rows(Nc,Dc,lines,xs); rowsT=phase_rows(Nt,Dt,lines,xs)
         phi=[float((rt[1]-rc[1])%1) for rc,rt in zip(rows,rowsT)]
         if sys.argv[3]=='noise': phi=[(p+sig*rng.standard_normal())%1 for p in phi]
+    wr=[mp.mpf(1)]*len(rows)
+    if os.environ.get('LADDER'):
+        # ladder rows (`ladder.py`): "xc chain law j F_meas maxres"; the line frequency at xc mod 1, a congruence like a
+        # phase row on the frequency gradient, weighted by its precision (LADW = phase sigma / ladder sigma)
+        from stagelaws import stage_F
+        lw=mp.mpf(os.environ.get('LADW','1e8')); nl=0
+        for l in open(os.environ['LADDER']):
+            q=l.split(); xc=float(q[0]); ln=(q[1],q[2],int(q[3]))
+            if float(q[5])>=float(os.environ.get('LADRES','0.2')): continue
+            c=Nc if ln[0]=='N' else Dc; kk=('T%d'%ln[2]) if ln[1]=='T' else 'P%dn1'%ln[2]
+            Fc=stage_F(np.asarray(c),np.array([xc]))[kk][0][0]
+            g=freq_rows(Nc,Dc,[ln],[xc])[0]
+            rows.append((g,None)); phi.append(float((mp.mpf(q[4])-mp.mpf(Fc))%1)); wr.append(lw); nl+=1
+        print('ladder rows:',nl)
     nu=len(Nc)+len(Dc)-1
     m_true=[int(round((mp.mpf(a)-mp.mpf(b))/ulp(b))) for a,b in zip(Nt,Nc)]+[int(round((mp.mpf(a)-mp.mpf(b))/ulp(b))) for a,b in zip(Dt[1:],Dc[1:])]
     if sys.argv[3]!='measured': print('true m:',m_true)
@@ -98,17 +112,19 @@ if __name__=='__main__':
     SC=mp.mpf(2)**60
     for k in range(nu):
         M[k][k]=int(SC/bound[k])
-        for e,(g,_) in enumerate(rows): M[k][nu+e]=int(mp.nint(SC*Wp*g[k]/1e3))
+        for e,(g,_) in enumerate(rows): M[k][nu+e]=int(mp.nint(SC*Wp*wr[e]*g[k]/1e3))
         for f,(g,_) in enumerate(frows): M[k][nu+ne+f]=int(mp.nint(SC*Wf*g[k]/1e3))
         for q,g in enumerate(qrows): M[k][nu+ne+nf+q]=int(mp.nint(SC*Wq*g[k]/1e3))
-    for e in range(ne): M[nu+e][nu+e]=int(mp.nint(SC*Wp/1e3))
+    for e in range(ne): M[nu+e][nu+e]=int(mp.nint(SC*Wp*wr[e]/1e3))
     t=nu+ne
-    for e in range(ne): M[t][nu+e]=int(mp.nint(-SC*Wp*phi[e]/1e3))
+    for e in range(ne): M[t][nu+e]=int(mp.nint(-SC*Wp*wr[e]*phi[e]/1e3))
     for f,(g,v) in enumerate(frows): M[t][nu+ne+f]=int(mp.nint(SC*Wf*v/1e3))
     M[t][cols-1]=int(SC)
     A=IntegerMatrix.from_matrix(M)
     LLL.reduction(A) if not os.environ.get('MPFR') else LLL.reduction(A,method='proved',float_type='mpfr',precision=int(os.environ['MPFR']))
-    BKZ.reduction(A,BKZ.Param(block_size=int(__import__("os").environ.get("BKZ","20"))))
+    bp=BKZ.Param(block_size=int(os.environ.get("BKZ","20")))
+    # ladder rows span ~1e9 in scale: BKZ's Babai step loops forever in double precision, so use MPFR there too
+    BKZ.reduction(A,bp) if not os.environ.get('MPFR') else BKZ.reduction(A,bp,float_type='mpfr',precision=int(os.environ['MPFR']))
     best=None
     for i in range(A.nrows):
         row=[A[i,j] for j in range(A.ncols)]
