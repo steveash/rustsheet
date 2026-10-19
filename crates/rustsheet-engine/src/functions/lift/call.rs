@@ -153,7 +153,7 @@ impl Model {
             reuse_equal_runs: false,
             work: kinds.work,
         };
-        // One- and two-argument calls (most of the math functions) read into locals: building,
+        // Calls of up to three arguments (most of the math functions) read into locals: building,
         // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
         // most of the per-call overhead over the old math macros (T-1773 bench).
         // Each argument is read by `read_lift_arg_with`, as in `read_lift_args`: a change to how
@@ -178,6 +178,31 @@ impl Model {
                         return kernel(self, &[first, second]);
                     }
                     Ok((first, second)) => vec![first, second],
+                    Err(error) => return error,
+                }
+            }
+            // Three arguments (MID, FIND, DATE, ...): a per-row `=MID(A{r},2,3)` was about 15%
+            // slower through `read_lift_args` than through `broadcast_text` (T-1775 bench).
+            [first, second, third] => {
+                let mut input_cells = 0;
+                let read = self
+                    .read_lift_arg_at(kinds, 0, first, &mut input_cells, cell)
+                    .and_then(|first| {
+                        let second =
+                            self.read_lift_arg_at(kinds, 1, second, &mut input_cells, cell)?;
+                        let third =
+                            self.read_lift_arg_at(kinds, 2, third, &mut input_cells, cell)?;
+                        Ok((first, second, third))
+                    });
+                match read {
+                    Ok((
+                        LiftedArg::Scalar(first),
+                        LiftedArg::Scalar(second),
+                        LiftedArg::Scalar(third),
+                    )) => {
+                        return kernel(self, &[first, second, third]);
+                    }
+                    Ok((first, second, third)) => vec![first, second, third],
                     Err(error) => return error,
                 }
             }
@@ -210,7 +235,7 @@ impl Model {
         self.read_lift_arg_with(kind, node, input_cells, MAX_LIFTED_CELL_VISITS, cell)
     }
 
-    /// The read phase for calls of three or more arguments (`lift_call_with` reads shorter ones
+    /// The read phase for calls of four or more arguments (`lift_call_with` reads shorter ones
     /// into locals): each argument once, by its kind (SPEC-0011's read table). An array is a
     /// grid; a multi-cell range is a grid for `Lift` (read through `evaluate_range`, bounded
     /// before it is read) and `#VALUE!` for `LiftArrays`, with no intersection; a one-cell range
