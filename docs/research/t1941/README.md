@@ -63,6 +63,14 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   GAMMA = fl(p * 0x1.c5bf891b4ef6bp+0), sqrt(pi) as a double. That is 172 of 172 points, x = 0.5 to 171.5
   (`kmyst-gam-h101` and t1042-gamma-half-int). The neighbours at +-1 ulp take the large-x path. Descending
   order, sqrt(pi) first, or a 64-bit product all fail (33-58 of 172). Negative half-integers are open.
+- **GAMMA at negative half-integers is bit-exact (W3; the coordinator verified the magnitudes).**
+  q = -x; GAMMA = +-fl(fl(PI/Gh(q))/q), with Gh the positive half-integer model and PI = pi as a double. That is
+  171 of 171 nonzero points, -0.5 to -170.5 (`kmyst-gam-h102`). x <= -171.5 gives 0 (flush below DBL_MIN).
+- **GAMMA reflection for x <= -30 (W3): 6,143 of 6,144.**
+  - q = -x; p = floor(q); z = q - p; if z > 0.5 then p += 1 and z = q - p;
+  - s = |RN53(FSIN(RN53(PI*z)))|; GAMMA = +-fl(fl(PI/G(q)) / fl(q*s)), with G(q) = Excel's GAMMA(q).
+  - Small |x| (-9.87, -2.25, -1.73, -0.31) does not reflect; it presumably recurs up to G on [1,2). `h104`
+    locates the cut.
 - **GAMMA for 1 <= x < 10 reduces to [1,2), not Cephes's [2,3) (W4, verified by the coordinator).**
   y = x; z = 1; while (y >= 2) { y = y - 1; z = fl(z*y); }  GAMMA = fl(z * G(y)), with G = Excel's GAMMA on [1,2).
   The product runs descending, (x-1)(x-2)..., each step stored.
