@@ -66,3 +66,4 @@ one-argument LOG and MULTINOMIAL, whose 170-entry `LOG10_OF` table is deleted (t
 ironcalc-calc 1117 -> 1113 (LOG!B5, B12, B13, LOG10!B13), probes 1840 -> 1838 (geomean-root-models Root!I6, I9), new case
 368/368, no regressions. Two-argument LOG is untouched: `f64::log(x, b)` already matches all 184 LOG(x,2) and LOG(x,3)
 cells of the probe (columns D and E), so no follow-up is filed.
+Follow-up: T-2016 (a faster `excel_log10`, bit-identical).

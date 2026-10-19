@@ -114,6 +114,26 @@ mod tests {
         assert_eq!(excel_log10(1.3), 0.113_943_352_306_836_79);
     }
 
+    /// The integers where glibc's log10 is one ulp off and MULTINOMIAL's deleted literal table
+    /// held the correctly rounded value, which the model equals on 1..=170 (T-1190, T-1600).
+    #[test]
+    fn multinomial_terms_are_the_correctly_rounded_log10() {
+        for (k, want) in [
+            (11.0, 1.041_392_685_158_225_1),
+            (40.0, 1.602_059_991_327_962_3),
+            (43.0, 1.633_468_455_579_586_4),
+            (53.0, 1.724_275_869_600_789),
+            (85.0, 1.929_418_925_714_292_6),
+            (90.0, 1.954_242_509_439_325),
+            (113.0, 2.053_078_443_483_419_5),
+            (119.0, 2.075_546_961_392_530_6),
+            (121.0, 2.082_785_370_316_450_3),
+            (160.0, 2.204_119_982_655_924_6),
+        ] {
+            assert_eq!(excel_log10(k), want, "log10({k})");
+        }
+    }
+
     /// The series coefficients are 1/(2k+1) to double-double precision.
     #[test]
     fn atanh_coefficients_are_the_reciprocals() {
