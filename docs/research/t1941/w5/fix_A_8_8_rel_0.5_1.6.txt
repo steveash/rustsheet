@@ -1,0 +1,28 @@
+0 0.5 1.6 E -7.255e-19 rel dR ['0.03759', '0.2311', '0.5043', '0.8396']
+1 0.5 1.65 E -1.174e-18 rel dR ['0.03491', '0.2129', '0.4607', '0.7604']
+2 0.5 1.7 E -1.86e-18 rel dR ['0.03228', '0.1953', '0.4192', '0.6862']
+3 0.5 1.75 E -2.894e-18 rel dR ['0.0297', '0.1783', '0.3797', '0.6163']
+4 0.5 1.8 E -4.437e-18 rel dR ['0.02716', '0.1617', '0.3417', '0.5502']
+5 0.5 1.85 E -6.732e-18 rel dR ['0.02463', '0.1455', '0.305', '0.4872']
+6 0.5 1.9 E -1.017e-17 rel dR ['0.02208', '0.1294', '0.269', '0.4263']
+7 0.5 1.95 E -1.549e-17 rel dR ['0.01943', '0.1129', '0.2327', '0.3656']
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 64, in inv
+    p, q, E, X = remez2(f, a, b, m, n, w=W[wn], dps=40, grid=500, ref=r)
+                 ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 84, in remez2
+    raise RuntimeError("alternation lost (%d of %d)" % (len(segs), K))
+RuntimeError: alternation lost (17 of 18)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 75, in <module>
+    t, E = inv(a, b)
+           ~~~^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 66, in inv
+    p, q, E, X = remez2(f, a, b, m, n, w=W[wn], dps=40, grid=500)
+                 ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 84, in remez2
+    raise RuntimeError("alternation lost (%d of %d)" % (len(segs), K))
+RuntimeError: alternation lost (17 of 18)
