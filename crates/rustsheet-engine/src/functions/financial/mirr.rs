@@ -84,7 +84,7 @@ impl Model {
         };
         let result = root - 1.0;
         if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return div_error();
         }
         if result.is_nan() {
             return CalcResult::new_error(Error::NUM, cell, "Invalid data for MIRR".to_string());
