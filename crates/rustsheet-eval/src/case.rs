@@ -211,6 +211,21 @@ pub enum SheetOp {
     InsertRow { sheet: String, row: u32 },
 }
 
+impl SheetOp {
+    /// Where the input cell `addr` (1-based row) of `sheet` sits after this op: an `insert_row`
+    /// at or above it moves it down a row; every other op leaves cells where they are.
+    #[must_use]
+    pub fn moved(&self, sheet: &str, addr: Addr) -> Addr {
+        match self {
+            SheetOp::InsertRow { sheet: at, row } if at == sheet && addr.row >= *row => Addr {
+                row: addr.row.saturating_add(1),
+                ..addr
+            },
+            _ => addr,
+        }
+    }
+}
+
 /// A self-contained workbook test case.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CaseSpec {
@@ -363,6 +378,20 @@ pub fn load_oracle(case: &CaseFile) -> Result<Option<OracleFile>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_row_insert_moves_the_inputs_at_and_below_it() {
+        let op = SheetOp::InsertRow {
+            sheet: "S".into(),
+            row: 3,
+        };
+        let at = |a1| Addr::parse(a1).expect("addr");
+        assert_eq!(op.moved("S", at("B3")), at("B4"));
+        assert_eq!(op.moved("S", at("B2")), at("B2"));
+        assert_eq!(op.moved("T", at("B3")), at("B3"));
+        let add = SheetOp::Add { sheet: "S".into() };
+        assert_eq!(add.moved("S", at("B3")), at("B3"));
+    }
 
     #[test]
     fn parses_case_inputs() {
