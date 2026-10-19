@@ -779,6 +779,7 @@ C	probes/subtotal-take-array-selector.case.json	25
 C	probes/subtotal-variance-one-vs-two-pass.case.json	64
 C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
+C	probes/sumif-averageif-two-arg-range-once.case.json	2
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/t-array-lift.case.json	22
 C	probes/t-n-range-top-left.case.json	45
