@@ -76,3 +76,12 @@ evaluated as dependencies share it) or reset it per formula; write the depth ent
 `DEVIATION (decision 0014)` and cite 0080 in "Ours"; note that a debug build stops near 50 levels;
 file a follow-up (smaller LAMBDA call frames or a larger default budget) so probes/lambda-call-depth
 H3, H6, I3, I6 can leave `eval/suites/probes/deviations`.
+Performance round 3b (head 67d3bbb1) confirms the per-call copy blocker and adds: plain LAMBDA calls
+are 6-15% slower (`SUM(MAP(SEQUENCE(300000),LAMBDA(x,x*2)))` 153 -> 163 ms, REDUCE sum 123 -> 136 ms,
+MAP with a LET inside 264 -> 305 ms, release medians). Causes: `captured.extend(ids)` allocates on
+every call (pass the parameter ids to `close_over` separately, or skip when `result.lambda()` is
+None), and `shared.remove` runs on every bind and unbind (guard with `!shared.is_empty()`). Add a
+MAP/REDUCE/LET bench to crates/rustsheet/benches/lift.rs and record before/after numbers. Also move
+`cells_to_share` above `shared`'s doc comment (the two docs merged). A `Binding::Shared(Arc<_>)`
+read through by `Binding::value` would also fix main's O(n^2) array reads inside LAMBDA bodies.
+
