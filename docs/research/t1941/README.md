@@ -195,3 +195,15 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - Six soft directions are unpinned by the lines, and the coordinate search stalls at about 30%.
   - Next: a per-stage complex-amplitude phase solve against exact simulation, on the e301-e324 ladder plus the
     dense y101..y116 runs.
+
+## Near-1 common-factor hypothesis: negative (W5, `w5/README.md`)
+- c5_f99t scores 47.25% on all 980,655 points in [0.7,1.5).
+- The doublet form (8,8)*(1+a*x) is at random-smooth level across 6,003 values of a. c5 has no shared N/D root:
+  its spare pair is a lone N zero at -353 with D9 ≈ 0, a (9,8) shape.
+- Positive control: the exact-score basin in a is only about 1e-14 relative wide, so blind scans of a common factor
+  cannot find it.
+- c5 is a sharp local optimum along all four function-preserving SVD directions.
+- New tool, the x=0 Taylor invariant of N/D (a common factor cancels): R0..R3 = -5.40585248391, 134.942282379,
+  -5937.32019206, 281011.5087. Relative and absolute minimax families of lgamma/(x-1) and lgamma/((x-1)(x-2)),
+  degrees (7,7)-(9,9), are excluded at residuals of 1e-5 to 1e-3.
+- Next (W5): re-read the near-1 lines with W4's triangle law and run a per-stage phase solve.
