@@ -1,9 +1,8 @@
 # SPEC-0013 — A PCRE2-compatible matcher for the REGEX functions
 
-- **Status:** draft
+- **Status:** accepted
 - **Milestone / lane:** M7 / functions-text
-- **Tasks:** T-1898 (this spec); implementation tasks under "Rollout" (T-1899 and T-1900 rewritten, new tasks
-  filed with `make new-task`)
+- **Tasks:** T-1898 (this spec), T-1972, T-1973, T-1900, T-1899, T-1974
 
 ## Problem
 REGEXTEST, REGEXEXTRACT and REGEXREPLACE use PCRE2 in Excel (docs/excel-semantics/text.md "REGEX* patterns and match
@@ -58,7 +57,7 @@ Evidence already in eval (VERIFIED, excel-graph):
 - An invalid pattern is `#VALUE!` in its own lifted element only (text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX*
   lift ...").
 
-Unknowns, probed first by the research task in "Rollout" (case probes/regex-pcre2-limits):
+Unknowns, probed first by T-1972 (case probes/regex-pcre2-limits):
 - **Excel's match limit.** What do `REGEXTEST(REPT("a",n),"(a|a)*b")` for n = 20, 25, 30, 1000 and
   `REGEXTEST(REPT("a",30),"(a*)*b")` give: FALSE, an error, or a slow answer? PCRE2 stops a match at its match limit
   (10,000,000 by default) and its heap limit (20 MB). PCRE2's auto-possessification may also avoid the blow-up
@@ -274,23 +273,23 @@ policy treats a new direct edge as a new dependency, step 2 adds the decision re
 ## Rollout
 Each task is S/M and leaves `make check` green. A pattern needing an unimplemented feature stays `#VALUE!`, as today.
 
-1. **Probe** (research, sonnet, S; new task): probes/regex-pcre2-limits with the "Unknowns" above. Its findings go
+1. **Probe** (T-1972; research, sonnet, S): probes/regex-pcre2-limits with the "Unknowns" above. Its findings go
    into text.md.
-2. **Parser and translation** (functions-text, opus, M; new task):
+2. **Parser and translation** (T-1973; functions-text, opus, M):
    - `pcre::parse`, `Ast`, `to_hir`;
    - `regex_functions.rs` builds through `Pattern`, with regular patterns only;
    - lands `\Q..\E`, comments, `(?x)`, scoped flags and Unicode POSIX classes (regexreplace-limit-and-syntax A23);
    - `a++` and the other backtracking-only constructs become `#VALUE!`, which is B29's direction (it is a failure
      today either way);
    - includes the differential test against `regex-syntax`.
-3. **Backtracker core** (functions-text, opus, M; T-1900 rewritten):
+3. **Backtracker core** (T-1900, rewritten; functions-text, opus, M):
    - `Program`, `Backtracker` and budget accounting;
    - backreferences, lookahead and lookbehind, atomic and possessive groups, `\K`, conditionals (C1-C19,
      B27-B29, t1626-regextest C29);
    - the differential test regular-on-automata against regular-on-backtracker.
-4. **PCRE2 global iteration** (functions-text, opus, S; T-1899 rewritten): `find_iter` with the anchored not-empty
+4. **PCRE2 global iteration** (T-1899, rewritten; functions-text, opus, S): `find_iter` with the anchored not-empty
    retry on the backtracker and the `SplitSurrogate` rule (t1626-regexreplace C34, D1-D14).
-5. **Limits and bench** (perf, opus, S; new task): fit `STEP`/`FRAME`, add the benchmarks and fuzz patterns, and apply
+5. **Limits and bench** (T-1974; perf, opus, S): fit `STEP`/`FRAME`, add the benchmarks and fuzz patterns, and apply
    the probe's match-limit answer (a `DEVIATION` entry where Excel answers past our budget).
 6. **Unprobed features** found accepted by step 1 (recursion, subroutines, `\X`, `\R`, scripts) are filed as
    follow-up tasks by the step 1 task, one per feature group.
