@@ -268,3 +268,65 @@ fn subtotal_of_take_of_nested_ifs_is_linear() {
     model.evaluate();
     assert_eq!(model._get_text("A5"), "1");
 }
+
+// A LAMBDA call (written or LET-bound) and an XLOOKUP whose return array lifts can give TAKE an
+// array of values, which spills, as does an XLOOKUP over an array or multi-cell lookup value; static analysis took them for cells, a scalar, and a debug build
+// hit the scalar-context assertion (T-1914 review, T-1987). Their shape is left to run time, so
+// each formula evaluates (decision 0035); a LAMBDA over a range still picks its cells.
+#[test]
+fn subtotal_of_take_of_lambda_call_or_lifting_xlookup_evaluates() {
+    let lambda_switch = "LAMBDA(s,SWITCH(s,1,H1:H2,2,I1:I2))({1,2})";
+    let lambda_choose = "LAMBDA(s,CHOOSE(s,H1:H2,I1:I2))({1,2})";
+    let xlookup = "XLOOKUP(1,{1,2},CHOOSE({1,2},H1:H2,I1:I2))";
+    let formulas = [
+        format!("SUBTOTAL(9,TAKE({lambda_switch},2))"),
+        "LET(f,LAMBDA(s,SWITCH(s,1,H1:H2,2,I1:I2)),SUBTOTAL(9,TAKE(f({1,2}),2)))".to_string(),
+        format!("SUBTOTAL(9,TAKE({lambda_choose},2))"),
+        format!("SUBTOTAL(9,TAKE(CHOOSE(1,{lambda_choose}),2))"),
+        format!("AREAS(TAKE({lambda_choose},2))"),
+        format!("AREAS(TAKE(CHOOSE(1,{lambda_choose}),2))"),
+        format!("SUBTOTAL(9,TAKE({xlookup},2))"),
+        format!("AREAS(TAKE({xlookup},2))"),
+        format!("SUBTOTAL(9,{xlookup})"),
+        format!("AREAS({xlookup})"),
+        "SUBTOTAL(9,TAKE(XLOOKUP(1,{1,2},{1,2;3,4}),2))".to_string(),
+        "SUBTOTAL(9,TAKE(XLOOKUP(1,{1},H1:I1),1))".to_string(),
+        "SUBTOTAL(9,XLOOKUP({1,2},{1,2},H1:H2))".to_string(),
+        "SUBTOTAL(9,TAKE(XLOOKUP({1,2},{1,2},H1:H2),2))".to_string(),
+        "SUBTOTAL(9,XLOOKUP(H1:H2,{1,2},H1:H2))".to_string(),
+    ];
+    let mut model = new_empty_model();
+    for (cell, value) in [("H1", "3"), ("H2", "4"), ("I1", "6"), ("I2", "8")] {
+        model._set(cell, value);
+    }
+    for (index, formula) in formulas.iter().enumerate() {
+        model._set(&format!("A{}", 1 + 3 * index), &format!("={formula}"));
+    }
+    model._set("K1", "=SUBTOTAL(9,TAKE(LAMBDA(x,x)(H1:H2),2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("K1"), "7");
+}
+
+// A LAMBDA call and a nested XLOOKUP are not looked into, so nesting stays linear (T-1987).
+#[test]
+fn subtotal_of_nested_lambda_call_and_xlookup_is_linear() {
+    let mut lambda = "SUBTOTAL(9,TAKE(LAMBDA(x,x)(H1:H2),1))".to_string();
+    let mut array = "H1:H2".to_string();
+    let mut lookup_value = "1".to_string();
+    for _ in 0..20 {
+        lambda = format!("SUBTOTAL(9,TAKE(LAMBDA(x,CHOOSE(x,H1:H2,I1:I2))({lambda}),1))");
+        array = format!("IF(TRUE,XLOOKUP(1,H1:H2,{array}))");
+        lookup_value = format!("XLOOKUP({lookup_value},H1:H2,H1:H2)");
+    }
+    let mut model = new_empty_model();
+    model._set("H1", "1");
+    model._set("A5", &format!("={lambda}"));
+    model._set("A6", &format!("=SUBTOTAL(9,XLOOKUP(1,H1:H2,{array}))"));
+    model._set("A7", &format!("=SUBTOTAL(9,{lookup_value})"));
+    model.evaluate();
+    assert_eq!(model._get_text("A5"), "1");
+    // The inner XLOOKUP gives one value, which does not match the two-cell lookup array.
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "1");
+}
