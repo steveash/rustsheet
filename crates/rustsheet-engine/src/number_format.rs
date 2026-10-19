@@ -350,7 +350,7 @@ pub(crate) fn number_to_text(value: f64) -> String {
 /// 15 digits at an exponent magnitude of 99 or more (`1.35498631931463E+308`), and it writes a
 /// small part in plain notation past 20 characters (`0.0000602887066915739`), otherwise
 /// the 20-character rule holds (`1.22514845490862E-16`, probes/eng-impower A9). The exponent -5
-/// limit is the printf `%G` rule; only A42 (exponent -5) and A9 (exponent -16) bound it.
+/// limit is evidenced only at -5 (plain, A42) and -16 (E notation, A9); -6 to -15 are unprobed (T-2056).
 pub(crate) fn complex_part_to_text(value: f64) -> String {
     value_to_text(value, TextRules::ComplexPart)
 }

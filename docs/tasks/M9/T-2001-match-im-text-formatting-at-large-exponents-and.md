@@ -24,4 +24,4 @@ Known failures probes/eng-im-overflow S!A11, A17, A40, A41 (14-digit cut) and A4
 -
 
 ## Outcome
-IM* parts use `complex_part_to_text` (number_format.rs): 15 digits at any exponent, plain notation for exponents -5 to -1 past 20 characters. probes eng-im-overflow A11, A17, A40, A41 now pass (probes known failures 1813 -> 1809, 0 regressions). A42 still fails on sin/cos digits (Excel's argument reduction differs); the exponent -5 plain limit is unprobed beyond A42/A9.
+IM* parts use `complex_part_to_text` (number_format.rs): 15 digits at any exponent, plain notation for exponents -5 to -1 past 20 characters. probes eng-im-overflow A11, A17, A40, A41 now pass (probes known failures 1813 -> 1809, 0 regressions). A42 still fails on sin/cos digits (Excel's argument reduction differs); the plain limit at exponents -6 to -15 is unprobed (T-2056).

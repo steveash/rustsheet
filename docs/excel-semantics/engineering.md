@@ -354,7 +354,7 @@ Evidence: probes/eng-im-overflow (excel-graph).
   formatting difference, not T-0907 precision.
 - IM* text writes a small part in full past 20 characters: `IMEXP("710i")` is
   `0.999999998182636+0.0000602887066915739i` (A42). Ours now writes a part with decimal exponent -5 or above in plain notation whatever its
-  length (the exponent -5 limit is a printf `%G` guess, bounded only by A42 and A9); A42 still
+  length (exponent -5 is plain by A42 and -16 is E notation by A9; -6 to -15 are unprobed, T-2056; the 15-digit rule at negative exponents of -99 or below is also unprobed); A42 still
   fails: the digits differ since Excel reduces a large sine or cosine argument differently (ours
   `...915853`).
 - An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
