@@ -381,7 +381,7 @@ C	probes/index-tiny-negative.case.json	150
 C	probes/indirect-defined-name-text.case.json	32
 C	probes/indirect-r1c1-offset-overflow.case.json	7
 C	probes/indirect-text-broadcast.case.json	58
-C	probes/info-cell-address-cross-sheet.case.json	9
+C	probes/info-cell-address-cross-sheet.case.json	13
 C	probes/info-cell-contents-range.case.json	50
 C	probes/info-cell-legacy-range.case.json	40
 C	probes/info-logic-argument-modes-2.case.json	11
