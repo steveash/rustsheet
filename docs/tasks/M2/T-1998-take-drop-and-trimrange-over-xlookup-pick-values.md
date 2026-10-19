@@ -3,7 +3,7 @@ id: T-1998
 title: "TAKE, DROP and TRIMRANGE over XLOOKUP pick values instead of the cells XLOOKUP returns"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
