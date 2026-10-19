@@ -588,6 +588,8 @@ impl Model {
             }
         }
         let count = args.len() - 1;
+        // The driver hands every element over as `[index, arm1, arm2, ...]`, so the fallbacks
+        // below are unreachable; the index goes back to an element for `choose_index_element`.
         let mut pick = |model: &mut Model, values: &[CalcResult]| {
             let Some((index, arms)) = values.split_first() else {
                 return CalcResult::new_args_number_error(cell);
