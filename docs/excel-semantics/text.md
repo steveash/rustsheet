@@ -338,7 +338,8 @@ spend 2^30 (about 1 s of the slowest searches; `SUM(--REGEXTEST(REPT("y",200)&SE
 A pattern whose DFA thrashes over a lot of text (`a[ab]{100}c|b[ab]{100}c` over 560 texts of 30,000 bytes) and a call
 past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). A pattern with `\b` runs on the
 PikeVM over non-ASCII text (the lazy DFA quits there); iterating its matches costs what the searches read
-(`COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is 500, as in Excel, since T-1829; T-1272 charged each
+(`COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is 500 since T-1829, the match count Excel's
+`REPT("naïve ",3)` case (3, probes/regex-ascii-classes A5) leads one to expect; T-1272 charged each
 search the rest of the text), while a search that truly reads to the end every time (`a.*z|a|\bq` over
 `REPT("a",20000)&"é"`) is still `#ERROR!`. A REGEXREPLACE searches twice,
 once to size its result: over 65,535 UTF-16 units it is
@@ -627,9 +628,10 @@ U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]
 `a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
 Ours: matches except that `[[:alpha:]]` and `[[:word:]]` are ASCII (A15, A16), `(*UCP)`, `\X`, `\h` and `\R` are
-`#VALUE!` (A17, A27, A41, A42) and `$` does not match before a final LF (A34): the matcher work of T-1898-T-1900.
+`#VALUE!` (A17, A27, A41, A42) and `$` does not match before a final LF (A34): the POSIX classes are T-1903's, the
+rest the matcher work of T-1898-T-1900.
 Status: VERIFIED (excel-graph)
-Tasks: T-1829 (probe), T-1900
+Tasks: T-1829 (probe), T-1900, T-1903
 
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
