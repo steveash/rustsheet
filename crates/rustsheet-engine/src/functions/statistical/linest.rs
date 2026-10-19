@@ -124,7 +124,14 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let rows = match new_x_args.first() {
-            Some(node) => self.collect_matrix_from_node(node, cell).map(|m| m.len()),
+            // An empty `new_x` is the default, as in the general case.
+            Some(node) => self.collect_matrix_from_node(node, cell).map(|m| {
+                if m.is_empty() {
+                    data.x.len()
+                } else {
+                    m.len()
+                }
+            }),
             None => Ok(data.x.len()),
         };
         match rows {
@@ -568,6 +575,8 @@ impl Model {
             }
         }
         if let [y] = data.y[..] {
+            // The fit goes through ln and exp; whether Excel's GROWTH of one value is bit-exact
+            // is not evidenced (T-1402), so keep the round trip.
             return self.single_point_prediction(
                 args.get(2..).unwrap_or_default(),
                 &data,
