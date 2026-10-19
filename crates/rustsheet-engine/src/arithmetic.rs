@@ -520,7 +520,13 @@ fn decimal_power_of_ten(x: f64, n: f64) -> Option<f64> {
 fn is_one_over_an_odd_integer(y: f64) -> bool {
     // 2^31 - 1: the first odd denominator Excel no longer takes for a root
     const LIMIT: f64 = 2_147_483_647.0;
-    let inverse = to_excel_precision(1.0 / y, 15);
+    let inverse = 1.0 / y;
+    // Cheap rejection first: far from an integer, 15 digits cannot round to one (and formatting
+    // to 15 digits allocates).
+    if inverse.abs() >= LIMIT || (inverse - inverse.round()).abs() > inverse.abs() * 1e-12 {
+        return false;
+    }
+    let inverse = to_excel_precision(inverse, 15);
     inverse.fract() == 0.0 && inverse.abs() < LIMIT && inverse % 2.0 != 0.0
 }
 
