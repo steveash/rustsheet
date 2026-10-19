@@ -89,3 +89,23 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   then fl(fl(z*P(t))/Q(t)) on [2,3). It is bit-exact at x near 1.37e-9. Excel's P/Q coefficients are its own,
   running 5-9e-17 above Gamma.
 - Helpers: `rnd.py` (exact RN53/RN64), `exp_v6.py` (Excel EXP, T-1778).
+
+## GAMMALN base kernel on (2,3]: state at W2's final report
+- y = fl((x-2)*S), with S a stored double; x = 3 belongs to this piece.
+- Exact pins at x = 2 + 2^j*2^-51 give S minus lnGamma/(x-2) = -0.67, -0.25, +0.59, -3.73, +1.64, +1.36, -1.19,
+  -1.30, -3.50, +1.09, +0.26, +0.61 ulps (j = 0..11).
+- S-deviation lines at x = 2 + k*2^-51, pure sine with phase 0 at k = 0, in cycles per step (weight in ulps of S):
+  0.0213747 (+1.69), 0.0505811 (+1.69), 0.1889601 (+1.67), 0.1808971 (+1.65), 0.2063614 (-1.47),
+  0.1938142 (-1.42), 0.0732403 (-1.41), 0.4078820 (+0.83), 0.4058033 (-0.74).
+  This points to Horner in a variable that is dyadic at 2 (raw x, x-1 or x-3), not m = x-2 alone.
+- **Negative results.** Relative-minimax rationals of lnGamma/(x-2), also divided by (x-1), (x+1) or x, all failed.
+  None explains more than 4 lines.
+  - variables x-c for c in {0, .5, 1, 1.5, 2, 2.5, 3, -1};
+  - 8 intervals, plus 1-D interval families;
+  - degrees (4..10, 4..11);
+  - normalisations lead = 1, const = 1, both monic, free lambda.
+  Also out: Cephes lgam B/C, Boost (z-2)(z+1)(Y+R), Cody P2/Q2, LN(Gamma) and log1p(Gamma-1).
+- **Likely reason** (W1's near-1 finding, the same as T-1778 ERFC [0.5,4]): Excel's coefficients sit far out
+  along a near-null direction, a common smooth factor in N and D that cancels in N/D. No function or minimax fit
+  can find them; per-stage phase ladders (epsilon ladders at a dyadic point) can.
+- 1.5 < x < 2 is a different composition, not cracked.
