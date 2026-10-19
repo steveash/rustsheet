@@ -7,8 +7,11 @@ from nullspace import Null
 from stagelaws import stage_F
 def law_key(law,j): return ('S%d'%j if law=='S' else 'T%d'%j) if law in ('T','S') else 'P%dn%s'%(j,law[2:])
 class FastEnum:
-    def __init__(self,n=9,thr=1e-15,ridge=1e-3):
+    def __init__(self,n=9,thr=1e-15,ridge=1e-3,ftol=None,c0=None):
+        # thr: singular-value cut for the free subspace; ftol: if set, add soft function rows sigma_k/ftol * z_k so
+        # directions with sigma above ftol are penalised (lets thr be large for far-away truths).
         self.ns=Null(n,n,thr=thr); self.n=n; self.k=self.ns.k; self.ridge=ridge
+        self.fw=None if ftol is None else self.ns.S[len(self.ns.S)-self.k:]/ftol
         self.c0=self.ns.c0; self.V=self.ns.Vn            # c has length 2n+1: N0..Nn, D1..Dn
     def chain(self,z): c=self.c0+z@self.V; return c[:self.n+1],np.concatenate([[1.0],c[self.n+1:]])
     def drow(self,ch,j,x):
@@ -35,7 +38,9 @@ class FastEnum:
         N0,D0=self.chain(np.zeros(self.k)); As=[];bs=[]
         for h,(x,F) in zip(hyps,tracks):
             A,b=self.rows(h,x,F,N0,D0); s=1/np.maximum(np.abs(b).max(),1e-300); As.append(A); bs.append(b)
-        A=np.vstack(As+[self.ridge*np.eye(self.k)]); b=np.concatenate(bs+[np.zeros(self.k)])
+        extra=[self.ridge*np.eye(self.k)]; eb=[np.zeros(self.k)]
+        if self.fw is not None: extra.append(np.diag(self.fw)); eb.append(np.zeros(self.k))
+        A=np.vstack(As+extra); b=np.concatenate(bs+eb)
         z,*_=np.linalg.lstsq(A,b,rcond=None)
         N,D=self.chain(z); res=[]
         for h,(x,F) in zip(hyps,tracks):
