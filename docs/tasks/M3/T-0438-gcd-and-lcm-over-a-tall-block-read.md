@@ -3,7 +3,7 @@ id: T-0438
 title: "GCD and LCM over a tall block read the blanks past the used area as one 0"
 milestone: M3
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
