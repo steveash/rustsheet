@@ -796,13 +796,14 @@ fn imsinh((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 /// (`IMSQRT("1E154+1E154i")`) the result is `0`, not an error (probes/eng-imsqrt-large,
 /// eng-imsqrt-large-b; docs/excel-semantics/engineering.md, T-1996).
 fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    if !(x * x).is_finite() || !(y * y).is_finite() {
-        return CalcResult::new_error(Error::NUM, cell, "Complex number overflow".to_string());
+    let (xx, yy) = (x * x, y * y);
+    if !xx.is_finite() || !yy.is_finite() {
+        return num_error(cell);
     }
-    if !(x * x + y * y).is_finite() {
+    if !(xx + yy).is_finite() {
         return complex_result(0.0, 0.0, suffix);
     }
-    let r = f64::sqrt(x * x + y * y).sqrt();
+    let r = f64::sqrt(xx + yy).sqrt();
     let a = f64::atan2(y, x);
     complex_result(r * f64::cos(a / 2.0), r * f64::sin(a / 2.0), suffix)
 }
