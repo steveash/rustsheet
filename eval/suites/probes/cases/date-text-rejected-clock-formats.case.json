@@ -1,0 +1,83 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1986: which rejected typed date+clock texts carry a cell format (N1-N16; the format is in the ENTERED log of the fill run, the sheet values say number or text).",
+ "tags": [
+  "M2",
+  "probe",
+  "dates",
+  "date-text",
+  "T-1986"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "N1": {
+     "entered": "1/2/2020 13:00 AM"
+    },
+    "O1": "=ISNUMBER(N1)",
+    "N2": {
+     "entered": "1/2/2020 24:00 PM"
+    },
+    "O2": "=ISNUMBER(N2)",
+    "N3": {
+     "entered": "1/2/2020 13 PM"
+    },
+    "O3": "=ISNUMBER(N3)",
+    "N4": {
+     "entered": "1/2/2020 0:00 PM"
+    },
+    "O4": "=ISNUMBER(N4)",
+    "N5": {
+     "entered": "1/2/2020 10:00 XM"
+    },
+    "O5": "=ISNUMBER(N5)",
+    "N6": {
+     "entered": "1/2/2020 abc"
+    },
+    "O6": "=ISNUMBER(N6)",
+    "N7": {
+     "entered": "1/2/2020 10:00 A"
+    },
+    "O7": "=ISNUMBER(N7)",
+    "N8": {
+     "entered": "1/2/2020 25:00 PM"
+    },
+    "O8": "=ISNUMBER(N8)",
+    "N9": {
+     "entered": "July 1, 2026 13:00 PM"
+    },
+    "O9": "=ISNUMBER(N9)",
+    "N10": {
+     "entered": "2020-01-02 13:00 PM"
+    },
+    "O10": "=ISNUMBER(N10)",
+    "N11": {
+     "entered": "1/2/2020 13:00:00 PM"
+    },
+    "O11": "=ISNUMBER(N11)",
+    "N12": {
+     "entered": "1/2/2020 99:00 PM"
+    },
+    "O12": "=ISNUMBER(N12)",
+    "N13": {
+     "entered": "1/2/2020 10:00 PM PM"
+    },
+    "O13": "=ISNUMBER(N13)",
+    "N14": {
+     "entered": "1/2/2020 1300 PM"
+    },
+    "O14": "=ISNUMBER(N14)",
+    "N15": {
+     "entered": "13:00 PM"
+    },
+    "O15": "=ISNUMBER(N15)",
+    "N16": {
+     "entered": "1/2/2020 10:00.5 PM"
+    },
+    "O16": "=ISNUMBER(N16)"
+   }
+  }
+ ]
+}

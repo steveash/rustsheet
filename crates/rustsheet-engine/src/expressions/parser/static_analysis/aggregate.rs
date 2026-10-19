@@ -62,7 +62,12 @@ fn is_read_reference(arg: &Node) -> bool {
                 .picked_reference_arg()
                 .and_then(|index| args.get(index));
             if *kind == Function::Xlookup {
-                !matches!(picked, Some(Node::ArrayKind(_)))
+                // Here XLOOKUP gives the cells it picks, but values when its return array lifts,
+                // a literal array among them (`XLOOKUP(1,{1,2},CHOOSE({1,2},H1:H2,I1:I2))`), and
+                // it lifts over an array or multi-cell lookup value (`XLOOKUP({1,2},{1,2},H1:H2)`,
+                // T-1987).
+                !args.first().is_some_and(is_lifting_selector)
+                    && !picked.is_some_and(|array| lifts_to_values(array, &mut Vec::new()))
             } else {
                 // A CHOOSE with an array index lifts to values even over range arms
                 // (`SUBTOTAL(9,TAKE(CHOOSE({1,2},H1:H2,I1:I2),2))` is a 2x2 of `#VALUE!`,
@@ -89,15 +94,10 @@ fn is_read_reference(arg: &Node) -> bool {
 /// than taken for a scalar. LET passes on what its body is; `bound` holds the variables in scope
 /// with their answer, computed once when bound, as in `yields_cells`. A variable written in a
 /// selector position (`LET(s,{1,2},SWITCH(s,...))`) counts as lifting too: its own shape does not
-/// tell what it holds. A LAMBDA call is not looked into (T-1987).
+/// tell what it holds. A LAMBDA call, written or named (`f({1,2})` of a LET-bound `f`), is not
+/// looked into and counts as lifting, as an `Unknown` selector does: its body may pick arms by an
+/// array parameter (`LAMBDA(s,CHOOSE(s,H1:H2,I1:I2))({1,2})`, T-1987). So does an XLOOKUP.
 fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
-    let not_scalar = |arg: &Node| {
-        matches!(arg.ungrouped(), Node::NamedVariableKind { .. })
-            || !matches!(
-                run_static_analysis_on_node(arg),
-                StaticResult::Scalar | StaticResult::Range(0, 0)
-            )
-    };
     let node = node.ungrouped();
     if let Node::NamedVariableKind { name, .. } = node {
         return bound
@@ -105,16 +105,22 @@ fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool
             .rfind(|(bound_name, _)| same_variable(bound_name, name))
             .is_some_and(|(_, lifts)| *lifts);
     }
+    if matches!(
+        node,
+        Node::LambdaCallKind { .. } | Node::NamedFunctionKind { .. }
+    ) {
+        return true;
+    }
     let Node::FunctionKind { kind, args } = node else {
         return matches!(run_static_analysis_on_node(node), StaticResult::Array(..));
     };
     match kind {
         Function::If | Function::Choose => {
-            args.first().is_some_and(not_scalar)
+            args.first().is_some_and(is_lifting_selector)
                 || args.iter().skip(1).any(|arm| lifts_to_values(arm, bound))
         }
         Function::Switch => {
-            args.first().is_some_and(not_scalar)
+            args.first().is_some_and(is_lifting_selector)
                 || args
                     .iter()
                     .skip(1)
@@ -125,13 +131,16 @@ fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool
                     .any(|(_, arm)| lifts_to_values(arm, bound))
         }
         Function::Ifs => {
-            args.iter().step_by(2).any(not_scalar)
+            args.iter().step_by(2).any(is_lifting_selector)
                 || args
                     .iter()
                     .skip(1)
                     .step_by(2)
                     .any(|arm| lifts_to_values(arm, bound))
         }
+        // Below SUBTOTAL, AREAS or TAKE an XLOOKUP is evaluated for its values
+        // (`Model::fn_xlookup`), so `SUBTOTAL(9,TAKE(XLOOKUP(1,{1},H1:I1),1))` spills (T-1987).
+        Function::Xlookup => true,
         Function::Let if args.len() >= 3 && args.len() % 2 == 1 => {
             let scope = bound.len();
             for pair in args[..args.len() - 1].chunks_exact(2) {
@@ -146,6 +155,16 @@ fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool
         }
         _ => matches!(run_static_analysis_on_node(node), StaticResult::Array(..)),
     }
+}
+
+/// Whether a selector or lookup value can lift its call: an array, a multi-cell range, an
+/// `Unknown` shape, or a variable, whose own shape does not tell what it holds.
+fn is_lifting_selector(arg: &Node) -> bool {
+    matches!(arg.ungrouped(), Node::NamedVariableKind { .. })
+        || !matches!(
+            run_static_analysis_on_node(arg),
+            StaticResult::Scalar | StaticResult::Range(0, 0)
+        )
 }
 
 /// VLOOKUP/HLOOKUP spill by `lookup_value`, the index and `range_lookup`, broadcast; the table is
