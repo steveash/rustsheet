@@ -231,14 +231,30 @@ fn typed_date_clock_text_is_a_number_with_a_date_time_format() {
 }
 
 #[test]
-fn typed_date_clock_text_other_than_hour_minute_stays_text() {
+fn typed_date_clock_text_with_seconds_or_am_pm_is_a_number() {
+    // probes/date-text-non-glued-timevalue rows 16-17 (excel-graph, T-1952).
     let mut model = new_empty_model();
-    model._set("A1", "July1 10:00:30");
-    model._set("A2", "July1 10 AM");
-    model._set("A3", "July1 25:00");
+    model._set("A1", "1/2/2020 10:00:30");
+    model._set("A2", "1/2/2020 10:00 AM");
+    model._set("A3", "=TEXT(MOD(A1,1)*86400,\"0\")");
+    model._set("A4", "=TEXT(MOD(A2,1)*24,\"0\")");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"July1 10:00:30");
-    assert_eq!(model._get_text("A2"), *"July1 10 AM");
-    assert_eq!(model._get_text("A3"), *"July1 25:00");
+    assert_eq!(model._get_text("A3"), *"36030");
+    assert_eq!(model._get_text("A4"), *"10");
+    assert_eq!(
+        model.get_style_for_cell(0, 1, 1).unwrap().num_fmt,
+        "m/d/yyyy h:mm"
+    );
+}
+
+#[test]
+fn typed_date_clock_text_other_than_hour_minute_second_stays_text() {
+    let mut model = new_empty_model();
+    model._set("A1", "July1 10 AM");
+    model._set("A2", "July1 25:00");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"July1 10 AM");
+    assert_eq!(model._get_text("A2"), *"July1 25:00");
 }
