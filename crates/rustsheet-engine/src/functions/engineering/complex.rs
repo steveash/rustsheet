@@ -791,7 +791,7 @@ fn imsinh((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix)
 }
 
-/// Excel squares each part first: a part past sqrt(DBL_MAX) (1.34078E154) is `#NUM!`
+/// Excel squares each part first: a part past `sqrt(DBL_MAX)` (1.34078E154) is `#NUM!`
 /// (`IMSQRT("1.35E154")`, `IMSQRT("1E307")`), but when only the sum of the squares overflows
 /// (`IMSQRT("1E154+1E154i")`) the result is `0`, not an error (probes/eng-imsqrt-large,
 /// eng-imsqrt-large-b; docs/excel-semantics/engineering.md, T-1996).
