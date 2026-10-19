@@ -3,7 +3,7 @@ id: T-1857
 title: "PIVOTBY relative sets of moved column subtotal cells over several values"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
