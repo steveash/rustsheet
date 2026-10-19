@@ -18,11 +18,14 @@ const SAMPLES: [[&str; 9]; 3] = [
     ],
 ];
 
-/// Whether the argument at `index` is checked: every one the driver reads, so a scalar parameter
-/// entered with a kind that does not lift (`Whole`) shows as a mismatch. A `WholeByCaller`
+/// Whether the argument at `index` is checked: every one that lifts. A `Whole` argument is read
+/// as written and handed to every element (the D-functions' database), and a `WholeByCaller`
 /// argument is the function's own reader's.
 fn lifts(kinds: &ArgKinds, index: usize) -> bool {
-    !matches!(kinds.kind(index), None | Some(ArgKind::WholeByCaller))
+    !matches!(
+        kinds.kind(index),
+        None | Some(ArgKind::Whole | ArgKind::WholeByCaller)
+    )
 }
 
 /// The mismatches of `function`: for each valid argument count, sample set and lifted position,
