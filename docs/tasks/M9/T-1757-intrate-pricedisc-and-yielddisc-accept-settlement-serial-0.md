@@ -3,7 +3,7 @@ id: T-1757
 title: "INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 (RECEIVED, PRICEMAT, YIELDMAT do not)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
