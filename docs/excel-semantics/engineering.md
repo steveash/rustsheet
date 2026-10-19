@@ -369,6 +369,13 @@ Evidence: probes/eng-im-overflow (excel-graph).
   too, which ours does not match (A33, A34).
 - `IMDIV("1","1E-308")` is `#NUM!` (A20) although results near 1E+308 are text (A46); the cause
   (subnormal divisor?) is unprobed, ours matches.
-- Not probed (T-2003): IMSUB overflow, a sum that overflows then cancels
-  (`IMSUM("9E307","9E307","-9E307")`), overflow followed by a later error argument; IMSIN, IMCOS, IMSINH and IMCOSH overflow (ours prints `inf` text), and
-  `IMPRODUCT("1E200","1E200",<blank cell>)` (ours gives 0 through the blank shortcut).
+- IMSIN, IMCOS, IMSINH and IMCOSH: a result part that overflows or is NaN is `#NUM!` (`IMCOSH("1000")`,
+  `IMSINH("1000")`, `IMSIN("1+1000i")`, `IMCOS("1+1000i")`), as IMEXP of a real number (T-2003).
+- IMSUB: a part that overflows is 0 and the other part stays, no error: `IMSUB("9E307","-9E307")` and the `j` form are "0",
+  `IMSUB("9E307+1i","-9E307")` is "i", `IMSUB("1+9E307i","1-9E307i")` is "0"; `IMSUB("5E307","-5E307")` is `1E+308`
+  and an input part of `1E308` is `#NUM!` as everywhere (T-2003).
+- IMSUM and IMPRODUCT: the overflow is `#VALUE!` the moment it happens, so it beats a later bad argument
+  (`IMSUM("9E307","9E307",1,"x")`, `IMPRODUCT("1E200","1E200","x")`), a later cancelling term
+  (`IMSUM("9E307","9E307","-9E307")`) and a later blank cell (`IMPRODUCT("1E200","1E200",<blank>)`, not "0") (T-2003).
+Evidence: probes/eng-complex-overflow A1-A21 (excel-graph, 2026-10-19). Implemented in complex.rs
+(`finite_complex_result`, `fn_imsub`, `fold_complex`).
