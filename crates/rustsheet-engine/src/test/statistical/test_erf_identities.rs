@@ -238,18 +238,6 @@ fn gauss_is_norm_s_dist_minus_one_half() {
     ]);
 }
 
-/// `T.DIST(x,n,TRUE)` for x < 0 = `T.DIST.2T(-x,n)/2` (T-1778, 60 of 60): probes-numeric/
-/// m9-t-dist-cdf's negative points.
-#[test]
-fn t_dist_below_zero_is_half_the_two_tailed() {
-    assert_same_values(&[
-        ("=T.DIST(-0.5,1,TRUE)", "=T.DIST.2T(0.5,1)/2"),
-        ("=T.DIST(-2,2,TRUE)", "=T.DIST.2T(2,2)/2"),
-        ("=T.DIST(-10,30,TRUE)", "=T.DIST.2T(10,30)/2"),
-        ("=T.DIST(-0.5,1E6,TRUE)", "=T.DIST.2T(0.5,1E6)/2"),
-    ]);
-}
-
 /// Each pair of formulas evaluates to the same double.
 fn assert_same_values(pairs: &[(&str, &str)]) {
     let mut model = crate::test::util::new_empty_model();

@@ -151,7 +151,9 @@ impl Model {
             var.sqrt()
         };
 
-        // A sigma/sqrt(n) that underflows is #DIV/0! (not probed; kept from the fork).
+        // A sigma/sqrt(n) that underflows is #DIV/0! (not probed; kept from the fork, TODO(T-1942)).
+        // The guard keeps the fork's plain-double test so it fires exactly where main's did; the
+        // result itself takes Excel's x87 steps (`z_test_p`), which never divide by this quotient.
         let denom = sigma_value / n.sqrt();
         if denom == 0.0 {
             return CalcResult::new_error(
@@ -161,6 +163,16 @@ impl Model {
             );
         }
 
-        CalcResult::Number(z_test_p(mean, x_value, n, sigma_value))
+        // A NaN p (an omitted sigma over data whose sum overflows) is #NUM!, not a NaN number
+        // (not probed, TODO(T-1942)).
+        let p = z_test_p(mean, x_value, n, sigma_value);
+        if !p.is_finite() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Z.TEST result is not finite".to_string(),
+            );
+        }
+        CalcResult::Number(p)
     }
 }

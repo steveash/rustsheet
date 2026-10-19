@@ -131,11 +131,6 @@ pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
     z + g1 / df + g2 / df.powi(2) + g3 / df.powi(3) + g4 / df.powi(4)
 }
 
-/// T.DIST.2T's value at `x >= 0`: twice statrs' upper tail, clamped to [0, 1].
-fn t_two_tailed(dist: &StudentsT, x: f64) -> f64 {
-    (2.0 * (1.0 - dist.cdf(x))).clamp(0.0, 1.0)
-}
-
 impl Model {
     /// `T.DIST(x, deg_freedom, cumulative)`: every argument lifts over an array and a range
     /// (SPEC-0011; probes/stat-argument-modes H505-H509, probes/stat-later-argument-lift H61).
@@ -161,14 +156,7 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
-        // Below 0 the cdf is T.DIST.2T(-x,n)/2 (60 of 60, docs/excel-semantics/statistics.md, T-1778).
-        let result = if cumulative && x < 0.0 {
-            t_two_tailed(&dist, -x) / 2.0
-        } else if cumulative {
-            dist.cdf(x)
-        } else {
-            dist.pdf(x)
-        };
+        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
         if !result.is_finite() {
             return Err(num_error(cell));
         }
@@ -203,7 +191,7 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
-        let result = t_two_tailed(&dist, x);
+        let result = (2.0 * (1.0 - dist.cdf(x))).clamp(0.0, 1.0);
         if !result.is_finite() {
             return Err(num_error(cell));
         }
