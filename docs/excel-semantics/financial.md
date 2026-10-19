@@ -536,8 +536,8 @@ G6, G7). Lifted elements are the scalar calls (A29, A30).
 Evidence: probes/fin-cumipmt-period-bound A1-A30 (excel-graph, 2026-10-18, T-1845), probes/fin-remaining-later-argument-
 ranges K1-K3 (T-1822), `ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx`.
 Ours: since T-1845 (functions/financial/cumulative.rs) up to 32 periods are main's per-period IPMT/PPMT sum, which matches
-CUMPRINC_CUMIPMT.xlsx G3, G9, G15 and G26 where the closed form below is an ulp or two off; past 32 periods, or when a
-period's `(1+rate)^nper` overflows, the closed form `pmt = -pv*r/(-expm1(-nper*L))` (over `1+r` for type 1),
+CUMPRINC_CUMIPMT.xlsx G3, G9, G15 and G26 where the closed form below is an ulp or two off; past 32 periods, or when PMT's
+fitted `pv*(1+rate)^nper` overflows (T-1405) or a period fails, the closed form `pmt = -pv*r/(-expm1(-nper*L))` (over `1+r` for type 1),
 `principal = pmt*((exp((end-nper)*L) - exp((first-1-nper)*L))/expm1(L))` with `L = log1p(r)` (type 1: period 1 adds the
 whole payment and the sum starts at period 2), interest = `pmt*(end-start+1) - principal`. The sum is no closer to
 Excel past 32 periods (83 ulps over 1,024 periods, A11; no correct digit over 10^5 periods of type 1, A5), while the
