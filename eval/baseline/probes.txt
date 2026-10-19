@@ -952,6 +952,7 @@ C	probes/textbefore-delimiter-list-elements.case.json	41
 C	probes/textbefore-delimiter-range.case.json	55
 C	probes/textbefore-empty-delimiter-list.case.json	240
 C	probes/textbefore-number-delimiter.case.json	31
+C	probes/textbefore-sigma-contexts.case.json	18
 C	probes/textjoin-array-arguments.case.json	34
 C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
