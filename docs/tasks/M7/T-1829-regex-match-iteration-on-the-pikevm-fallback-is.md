@@ -3,7 +3,7 @@ id: T-1829
 title: "REGEX* match iteration on the PikeVM fallback is charged by measured work, not the rest of the text"
 milestone: M7
 lane: functions-text
-status: done
+status: in-progress
 priority: P2
 size: M
 tier: opus
@@ -36,7 +36,7 @@ stay sound for it. Options:
 ## Acceptance criteria
 - [x] The three formulas above return values (the test is updated to expect them) and stay fast in a release build.
 - [x] `a.*z|a` iteration over a long `aaa...` text is still bounded (`#ERROR!` within about 1 s).
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -50,3 +50,22 @@ release (`quadratic_pike_iteration_is_still_bounded`); `pike_search_span_keeps_l
 shortened span keeps leftmost-first results. The probe probes/regex-ascii-classes (42 cells) shows Excel's `\w`, `\b`,
 `\d`, `\s` are Unicode (UCP), so the ASCII shortcut the task offered is not Excel's; recorded in text.md "REGEX*
 character classes are Unicode", with its 7 matcher gaps added to T-1900. Eval: no regressions; the new case is 35/42.
+
+## Remaining (session budget ran out; PR #1153 is a draft, resume from this branch)
+Reviewers: security, architecture, quality and Excel fidelity APPROVE; performance REQUEST_CHANGES. To do:
+- MAJOR: charge `State::Look` visits more in `Reach::close` (a `LOOK_VISIT` surcharge, about 4x a plain visit, or
+  only on `WordUnicode*`). The reviewer measured these in release, with 21 units a visit:
+  - `\b` x40 over `REPT("𝒜 ",8000)&SEQUENCE(30)` takes 3.9 s to exhaust the budget.
+  - `\B` x40 & "q" over `REPT("éa ",10000)&SEQUENCE(300)` takes 3.55 s.
+  - `(?:\b|\B){40}q` over the same text: main gives 0 in 977 ms, the branch `#ERROR!` after 1.7 s.
+  Calibrate on a `\b`/`\B` chain over 4-byte characters, aim for about 1 s, and document it next to `SCAN_VISIT`.
+- MINOR: single PikeVM searches now pay for the scan plus the PikeVM (`REGEXTEST(REPT("é ",15000),"\bzz\b")`
+  went from 2.0 ms to 3.5 ms). Either justify this, or skip the scan when the old up-front charge (span x states x 5)
+  is no more than the scan's likely cost (`earliest` searches, the first search).
+- MINOR: add two cases to the soundness doc in regex_reach.rs:
+  - the PikeVM's empty-match retries (`skip_splits_fwd`) restart at or before the scan's first boundary match, so
+    their state sets are subsets of the scan's;
+  - always-anchored patterns, where the scan overcharges.
+- Follow-up (file with `make new-task`): add states to the closure in priority order and cut lower-priority threads
+  when one matches, as the PikeVM's `nexts` does. Lazy patterns stay quadratic until then:
+  `COLUMNS(REGEXEXTRACT(REPT("é ab ",4000),"\bab.*?\b",1))` is `#ERROR!`, as on main.
