@@ -203,6 +203,36 @@ fn compute_yield_from_price(
     Err("YIELD: failed to converge".to_string())
 }
 
+/// YIELD with one coupon period left: Excel does not iterate but evaluates the documented closed
+/// form, in this order of operations, with DSR the basis' settlement-to-maturity count (not PRICE's
+/// E - A) and E the actual period length on bases 1-3 (not 360/f or 365/f on bases 2 and 3).
+/// Excel: see docs/excel-semantics/financial.md#yield-with-one-coupon-period-left-is-closed-form.
+fn yield_one_period(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, String> {
+    let (settlement, maturity) = (bond.settlement, bond.maturity);
+    let e = if matches!(bond.basis, 1..=3) {
+        let prev = from_excel_date(prev_coupon_date(settlement, maturity, bond.frequency)?)?;
+        let next = from_excel_date(next_coupon_date(settlement, maturity, bond.frequency)?)?;
+        (next - prev).num_days() as f64
+    } else {
+        schedule.e
+    };
+    let dsr = basis_days(
+        from_excel_date(settlement)?,
+        from_excel_date(maturity)?,
+        bond.basis,
+    );
+    let f = bond.frequency as f64;
+    let (rate, pr, red) = (bond.rate, bond.yld_or_pr, bond.redemption);
+    let result = ((red / 100.0 + rate / f) - (pr / 100.0 + schedule.a / e * rate / f))
+        / (pr / 100.0 + (schedule.a / e) * (rate / f))
+        * (f * e / dsr);
+    if result.is_finite() {
+        Ok(result)
+    } else {
+        Err("YIELD: no finite result".to_string())
+    }
+}
+
 // ============================================================
 // Odd-coupon helpers (port of ExcelFinancialFunctions oddbonds.fs)
 // ============================================================
@@ -805,6 +835,9 @@ impl Model {
                             bond.basis,
                         )
                         .map_err(|_| num_error(cell))?;
+                        if schedule.n == 1.0 {
+                            return yield_one_period(&bond, &schedule).map_err(|_| num_error(cell));
+                        }
                         compute_yield_from_price(
                             bond.yld_or_pr,
                             &schedule,
