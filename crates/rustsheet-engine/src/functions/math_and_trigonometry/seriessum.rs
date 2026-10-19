@@ -53,6 +53,11 @@ impl Model {
     /// (probes/seriessum-boolean-coefficients A8:A11).
     fn series_coefficients(&mut self, node: &Node, cell: CellReferenceIndex) -> Coefficients {
         let result = self.evaluate_node_in_context(node, cell);
+        // Excel: a 3-D range as the coefficients, one-cell or not, is `#VALUE!`, not the `#REF!`
+        // the reader gives (probes/quotient-factdouble-seriessum-3d-legacy C4, T-1832).
+        if matches!(&result, CalcResult::Range { left, right } if left.sheet != right.sheet) {
+            return Err(value_error(cell));
+        }
         let is_single = match &result {
             CalcResult::String(_) => true,
             CalcResult::Range { left, right } => left == right,
