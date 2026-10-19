@@ -3,7 +3,7 @@ id: T-1993
 title: "Probe a union returned by LAMBDA or LET into OFFSET and COUNTIF"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
