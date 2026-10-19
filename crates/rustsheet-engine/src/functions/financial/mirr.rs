@@ -1,5 +1,5 @@
 use crate::{
-    arithmetic::power,
+    arithmetic::power_with_libm_exp,
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
@@ -25,29 +25,23 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let mut positive_values = Vec::new();
-        let mut negative_values = Vec::new();
-        let mut last_negative_index = -1;
-        for (index, &value) in values.iter().enumerate() {
-            let (p, n) = if value >= 0.0 {
-                (value, 0.0)
-            } else {
-                last_negative_index = index as i32;
-                (0.0, value)
-            };
-            positive_values.push(p);
-            negative_values.push(n);
-        }
-        if last_negative_index == -1 {
+        if values.len() < 2 || !values.iter().any(|&value| value < 0.0) {
             return CalcResult::new_error(
                 Error::DIV,
                 cell,
                 "Invalid data for MIRR function".to_string(),
             );
         }
+        // Excel: a flow divided by a zero power is #DIV/0!, so a reinvest rate of -1, or
+        // a finance rate of -1 with a negative flow after the first, is an
+        // error (probes/fin-mirr-edges A7, A12-A14, A19, A20, A25, A26). A single flow is #DIV/0! too (A3).
+        let num_error =
+            || CalcResult::new_error(Error::NUM, cell, "Invalid data for MIRR".to_string());
+        let div_error = || CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
         // Excel discounts each flow to period 0 with a running power, `x / (1+r)^i` with
         // `(1+r)^i = (1+r)^(i-1) * (1+r)`, and compounds the positive sum forward as
-        // `P * (1+rr)^n / (1+rr)`; the root is Excel's `^`. Every order and power source matters
+        // `P * (1+rr)^n / (1+rr)`; the root is `^` with libm's `exp` (Mac desktop Excel's cached
+        // MIRR.xlsx Sheet2!N16; see [`power_with_libm_exp`]). Every order and power source matters
         // in the last digits: this one matches all 432 cells of probes-numeric/m9-fin-mirr
         // (docs/excel-semantics/financial.md "MIRR's evaluation order", T-1687).
         let years = values.len() as f64;
@@ -59,51 +53,55 @@ impl Model {
         let mut finance_power = 1.0;
         for &value in &values {
             if value > 0.0 {
+                if reinvest_power == 0.0 {
+                    return div_error();
+                }
                 positive_sum += value / reinvest_power;
             } else if value < 0.0 {
+                if finance_power == 0.0 {
+                    return div_error();
+                }
                 negative_sum += value / finance_power;
             }
             reinvest_power *= reinvest_growth;
             finance_power *= finance_growth;
         }
-        // A rate of -1 makes the powers 0, so its limits are taken by hand (the pre-T-1687
-        // behaviour, unfitted; `fn_mirr_div_0` covers a finance rate of -1).
-        let top = if reinvest_rate == -1.0 {
-            // This is finite
-            match positive_values.last() {
-                Some(f) => *f,
-                None => 0.0,
-            }
+        // A reinvest rate of -1 is #DIV/0! even with no positive flow (A25, A26).
+        if reinvest_growth == 0.0 {
+            return div_error();
+        }
+        // A power that overflows. With positive flows the reinvest power is #DIV/0! (A16, A17,
+        // A21; reinvest checked first) and the finance power #NUM! (A15, A24); with none the two
+        // swap (A28, A29), as if the zero positive sum met the infinite power (NaN).
+        let has_positive = values.iter().any(|&value| value > 0.0);
+        let (reinvest_overflow, finance_overflow) = if has_positive {
+            (div_error(), num_error())
         } else {
-            -(positive_sum * reinvest_power / reinvest_growth)
+            (num_error(), div_error())
         };
-        let bottom = if finance_rate == -1.0 {
-            if last_negative_index == 0 {
-                // This is still finite
-                negative_values[last_negative_index as usize]
-            } else {
-                // or -Infinity depending of the sign in the last_negative_index coef.
-                // But it is irrelevant for the calculation
-                f64::INFINITY
-            }
-        } else {
-            negative_sum
-        };
+        if reinvest_power.is_infinite() {
+            return reinvest_overflow;
+        }
+        if finance_power.is_infinite() {
+            return finance_overflow;
+        }
+        let top = -(positive_sum * reinvest_power / reinvest_growth);
+        let bottom = negative_sum;
 
         let ratio = top / bottom;
         let exponent = 1.0 / (years - 1.0);
         // Only the ordinary case is fitted; a zero, negative or infinite ratio and a single flow
         // keep `powf` and the errors below.
-        let root = match power(ratio, exponent) {
+        let root = match power_with_libm_exp(ratio, exponent) {
             Ok(root) if ratio.is_finite() && ratio > 0.0 && exponent.is_finite() => root,
             _ => ratio.powf(exponent),
         };
         let result = root - 1.0;
         if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+            return div_error();
         }
         if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for MIRR".to_string());
+            return num_error();
         }
         CalcResult::Number(result)
     }

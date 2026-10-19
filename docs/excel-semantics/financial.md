@@ -135,7 +135,14 @@ ironcalc-calc/FINANCIAL/MIRR.xlsx (225 cells, all passing since).
 Status: VERIFIED (fit, 467/467 bit-exact)
 Implemented in: `fn_mirr` (functions/financial/mirr.rs). A rate of -1 keeps its own limit cases, and a ratio that is
 zero, negative or infinite keeps `powf`; neither is part of the fit.
-Tasks: T-1687
+Web vs desktop (T-0959): since T-0959 `^` takes `exp` from EXP's kernel on a twice-rounded product (numbers.md "Non-integer
+exponents"), and MIRR's root does not follow it. `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` is 0.3933280241536672 in Mac desktop Excel
+16.0300 (ironcalc-calc MIRR.xlsx Sheet2!N16, cached) and 0.3933280241536674 in Excel for the web (probes-numeric/power-mirr-root A1,
+A2, and A3 = the same closed form written with `^`). The pre-T-0959 root (libm `exp` of a once-rounded product,
+`power_with_libm_exp`) gives the desktop value and still matches all 467 fit cells and 225 MIRR.xlsx cells, so MIRR keeps it
+(decisions 0030 and 0039: passing desktop evidence stays). power-mirr-root A1/A2 are the web side of this conflict; the
+Windows desktop value is a T-1075 (M14) question.
+Tasks: T-1687, T-0959
 
 ## XIRR is a bracketing bisection, not Newton
 Rule: XIRR finds a sign change of XNPV on a chain of trial rates, then bisects it. The chain starts at
@@ -292,7 +299,7 @@ errors on the guess sweep R!C1:C31 are not smooth in the guess (C8 -1.8e-13, C9 
 (a secant's order 21 or 34; scratch analysis against a 60-digit root, not a lab fit, until T-1534's traces).
 Ours: Newton, up to 50 iterations (`compute_rate`, functions/financial/financial_util.rs).
 Status: UNVERIFIED (the update rule and the stop test)
-Tasks: T-1525, T-0916, T-1533
+Tasks: T-1525, T-0916, T-1533, T-2005
 
 ## YIELD with one coupon period left is closed form
 Rule: when at most one coupon period is left, Excel evaluates the documented formula
@@ -433,12 +440,27 @@ AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work c
 VDB `#VALUE!` for a range): DB and VDB need their period loops bounded first (T-1820), NPV's rate, IRR's guess and
 MIRR's rates sit beside a whole cash flow (T-1821), and XNPV's rate,
 XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
-literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE ignores text in the schedule (T-1373).
+literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
 ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475). The
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822, T-1841, T-1842, T-1843, T-1845, T-1870
+
+## MIRR error and edge cases
+Rule: MIRR divides each flow by its running power, so a zero power is `#DIV/0!`, and an overflowing power is an error:
+- A single flow (negative or positive) is `#DIV/0!`; so are values with no negative flow. All-negative flows are -1 (`MIRR({-1,-2,-3},..)`).
+- A reinvest rate of -1 is `#DIV/0!` whatever the flows (`{100,-50}`, `{-1,-2,-3}`, `{-100,0}`; A7, A19, A20, A25, A26). A finance rate of -1 is `#DIV/0!` when a negative flow
+  follows the first (`{50,-100,80}`, `{-100,50,-80,120}`, `{-1,-2,-3}`); with the only negative flow first (`{-100,50,80}`, `{-50,100}`) it is a number (0.1618950038622251, 1).
+- Rates below -1 are ordinary numbers: finance -2 with the first negative flow first is the same 0.1618950038622251 as -1 (A9), reinvest -2 gives -0.4522774424948339 (A10),
+  both at -1.5 -0.2583801512904337 (A11), all-negative flows with reinvest -2 are -1 (A27); `#NUM!` when the ratio goes negative (`{50,-100,80}` with finance -2, A23).
+- Power overflow (a rate of 1E+200, or 400 flows at rate 5): with positive flows a reinvest overflow is `#DIV/0!` (A16, A17) and a finance overflow `#NUM!` (A15, A24; negative 1E+200 too);
+  both overflowing is `#DIV/0!` (A21). With no positive flow the two swap: reinvest overflow is `#NUM!` (A28), finance overflow `#DIV/0!` (A29). Both overflowing with no positive flow is unprobed.
+Evidence: probes/fin-mirr-edges A1-A30 (excel-graph, 2026-10-19, T-1798).
+Backend: excel-graph.
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_mirr` in functions/financial/mirr.rs (T-1798); replaces the hand-taken limits at rate -1.
+Tasks: T-1798
 
 ## Coupon settlement before the calendar
 Rule: the COUP* functions, PRICE, YIELD, DURATION, MDURATION and ACCRINT are `#NUM!` for a settlement (ACCRINT: an
@@ -820,6 +842,7 @@ Implemented (T-1764): VDB with salvage above cost never switches to straight lin
 prorates the unclipped declining-balance charge and the total is capped at `cost - salvage` (A9 is 0; salvage <= cost only, salvage above cost keeps the clipped charge); AMORDEGRC
 rejects only an asset life (1/rate) in [0, 3] or strictly between 4 and 5 (exactly 4 and 5 are valid, coefficients
 1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. Still open: the ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI), see the T-1764 Outcome.
+Implemented (T-1765): a typed boolean principal is `#VALUE!` (A18); a text-number principal still converts. A boolean principal read through a reference is `#VALUE!` by inference, not probed (T-1992).
 Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
 
 ## NPV and FVSCHEDULE arguments

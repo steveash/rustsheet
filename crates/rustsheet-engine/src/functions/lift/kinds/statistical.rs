@@ -12,6 +12,18 @@ use crate::functions::Function;
 const DATA_THEN_1: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift], Constant);
 /// The same with an optional second lifted argument: `PERCENTRANK(array, x, [significance])`.
 const DATA_THEN_1_OF_2: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift], Constant);
+/// Two data arguments read by their function, then one or two lifted limits:
+/// `PROB(x_range, prob_range, lower_limit, [upper_limit])`.
+const TWO_DATA_THEN_1_OF_2: ArgKinds =
+    ArgKinds::fixed(3, &[WholeByCaller, WholeByCaller, Lift, Lift], Constant);
+/// Two data arguments read by their function, then two lifted arguments:
+/// `T.TEST(array1, array2, tails, type)`.
+const TWO_DATA_THEN_2: ArgKinds =
+    ArgKinds::fixed(4, &[WholeByCaller, WholeByCaller, Lift, Lift], Constant);
+/// One lifted argument, then two data arguments read by their function:
+/// `FORECAST(x, known_y's, known_x's)`.
+const ONE_THEN_TWO_DATA: ArgKinds =
+    ArgKinds::fixed(3, &[Lift, WholeByCaller, WholeByCaller], Constant);
 
 // --- Statistical (T-1290) -------------------------------------------------------------------
 /// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])`.
@@ -148,6 +160,18 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::PercentrankCompat | Function::PercentrankInc | Function::PercentrankExc => {
             Some(&DATA_THEN_1_OF_2)
         }
+        // Z.TEST's `x` and `sigma` and PROB's limits lift over an array and a range, the data is
+        // read once by the function (probes/stat-argument-modes H488, H489, H566, H567, H571,
+        // H572; probes/stat-test-lift; T-1813). A Z.TEST element is O(1) over the data's
+        // count, mean and deviation; a PROB element walks the data (`LiftCost::Cells`).
+        Function::ZTest | Function::ZTestCompat => Some(&DATA_THEN_1_OF_2),
+        Function::Prob => Some(&TWO_DATA_THEN_1_OF_2),
+        // FORECAST's `x` and T.TEST's `tails` and `type` lift likewise, the data is read once
+        // by the function (probes/stat-test-lift P1-P9, P60-P67, P88; probes/stat-argument-modes
+        // H260, H261, H264, H265, H492-H499, H537-H545; T-1982). A FORECAST element is O(1) over
+        // the regression line; a T.TEST element walks the samples (`LiftCost::Cells`).
+        Function::Forecast | Function::ForecastLinear => Some(&ONE_THEN_TWO_DATA),
+        Function::TTest | Function::TTestCompat => Some(&TWO_DATA_THEN_2),
         // --- Statistical (T-1290) ---
         // The statistical functions whose every argument is scalar are worksheet functions:
         // every argument lifts over an array and over a multi-cell range, on the range's own

@@ -11,8 +11,7 @@ mod workday;
 mod yearfrac;
 use weekend::WeekendPattern;
 
-const SECONDS_PER_DAY: i32 = 86_400;
-const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
+use crate::formatter::date_clock::{parse_date_clock_serial, SECONDS_PER_DAY_F64};
 
 pub(crate) fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
@@ -100,11 +99,19 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
-// The time of day of a serial in whole seconds, after rounding it to the
-// nearest millisecond (0..=86399; a time that rounds up to midnight is 0).
-fn seconds_of_day(v: f64) -> i64 {
-    let ms = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64 * 1000.0).round() as i64;
-    (ms % (SECONDS_PER_DAY as i64 * 1000)) / 1000
+/// The hour, minute and second of a serial's time of day, as HOUR, MINUTE and SECOND take it
+/// apart. Half a second is added to the serial, then its fraction of a day is split by floors,
+/// through hours (x24) and minutes (x60), each step in double precision. So the time rounds to the
+/// nearest second and carries into the minute, the hour and past midnight (23:59:59.6 is hour 0),
+/// and an exact half goes whichever way the serial's binary noise takes it: `SECOND(0.5+2.5/86400)`
+/// is 2, `SECOND(0.5+3.5/86400)` 4. Excel: docs/excel-semantics/dates.md "HOUR, MINUTE and SECOND
+/// round to the nearest second" (probes/second-rounding, all 40 cells; T-1408).
+fn time_of_day_parts(v: f64) -> [f64; 3] {
+    let hours = (v + 0.5 / SECONDS_PER_DAY_F64).rem_euclid(1.0) * 24.0;
+    let hour = hours.floor();
+    let minutes = (hours - hour) * 60.0;
+    let minute = minutes.floor();
+    [hour, minute, ((minutes - minute) * 60.0).floor()]
 }
 
 use crate::cast::{array_node_to_string, number_text_too_long};
@@ -156,7 +163,7 @@ impl Model {
         let serial = if let Ok((serial, _)) = parse_date(text, self.locale, year) {
             serial
         } else {
-            let serial = time_text::parse_date_clock_serial(text, self.locale, year)?.floor();
+            let serial = parse_date_clock_serial(text, self.locale, year)?.floor();
             if !(f64::from(MINIMUM_DATE_SERIAL_NUMBER)..=f64::from(MAXIMUM_DATE_SERIAL_NUMBER))
                 .contains(&serial)
             {
@@ -490,25 +497,18 @@ impl Model {
         })
     }
 
+    // HOUR, MINUTE and SECOND share one rounding (`time_of_day_parts`): MINUTE(0.520833333) is
+    // 30 (12:29:59.99997 is 12:30:00), HOUR(TIME(10,59,59)+0.6/86400) is 11.
     pub(crate) fn fn_hour(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.time_part(Function::Hour, args, cell, |v| {
-            (v.rem_euclid(1.0) * 24.0).floor()
-        })
+        self.time_part(Function::Hour, args, cell, |v| time_of_day_parts(v)[0])
     }
 
-    // MINUTE and SECOND round the time of day to the nearest millisecond
-    // before taking it apart, as Excel does: MINUTE(0.520833333) is 30
-    // (12:29:59.99997 is 12:30:00.000), SECOND(TIME(14,30,45.999)) stays 45.
     pub(crate) fn fn_minute(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.time_part(Function::Minute, args, cell, |v| {
-            ((seconds_of_day(v) / 60) % 60) as f64
-        })
+        self.time_part(Function::Minute, args, cell, |v| time_of_day_parts(v)[1])
     }
 
     pub(crate) fn fn_second(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.time_part(Function::Second, args, cell, |v| {
-            (seconds_of_day(v) % 60) as f64
-        })
+        self.time_part(Function::Second, args, cell, |v| time_of_day_parts(v)[2])
     }
 
     pub(crate) fn fn_timevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

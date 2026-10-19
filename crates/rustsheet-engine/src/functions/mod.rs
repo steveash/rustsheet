@@ -2141,7 +2141,7 @@ impl Model {
             Function::Slope => Self::fn_slope,
             Function::Steyx => Self::fn_steyx,
             Function::Forecast => Self::fn_forecast,
-            Function::ForecastLinear => Self::fn_forecast_linear,
+            Function::ForecastLinear => Self::fn_forecast,
             Function::ForecastEts => Self::fn_forecast_ets,
             Function::ForecastEtsConfint => Self::fn_forecast_ets_confint,
             Function::ForecastEtsSeasonality => Self::fn_forecast_ets_seasonality,

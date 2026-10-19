@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::expressions::token::Error;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -356,5 +357,41 @@ fn reciprocal_square_root_divides_by_the_twice_rounded_root() {
     assert_eq!(
         crate::arithmetic::power(f64::from_bits(318_463_907_410_473), -0.5),
         Ok(2.521_027_376_716_698e154)
+    );
+}
+
+#[test]
+fn odd_roots_of_negatives_need_one_over_the_exponent_to_be_an_odd_integer_at_15_digits() {
+    // probes-numeric/power-odd-root-tolerance and -2 (excel-graph, T-0959): 1/y rounded to 15
+    // significant digits must be an odd integer below 2^31 - 1, and the root uses y itself.
+    let third = 1.0 / 3.0;
+    let ulp = 2f64.powi(-54);
+    let power = crate::arithmetic::power;
+    assert_eq!(power(-8.0, third + 8.0 * ulp), Ok(-2.000_000_000_000_001_8));
+    assert_eq!(power(-8.0, third + 10.0 * ulp), Ok(-2.000_000_000_000_002));
+    assert_eq!(power(-8.0, third - 10.0 * ulp), Err(Error::NUM));
+    assert_eq!(
+        power(-8.0, 0.333_333_333_333_333),
+        Ok(-1.999_999_999_999_998_4)
+    );
+    assert_eq!(power(-8.0, 0.333_333_333_333_33), Err(Error::NUM));
+    assert_eq!(
+        power(-8.0, 1.0 / 2_147_483_645.0),
+        Ok(-1.000_000_000_968_315_4)
+    );
+    assert_eq!(power(-8.0, 1.0 / 2_147_483_647.0), Err(Error::NUM));
+}
+
+#[test]
+fn non_integer_powers_use_excel_exp_on_a_twice_rounded_product() {
+    // probes-numeric/power-ulp-sources A13-A18 (excel-graph, T-0959): 1E300^(1/3) is
+    // EXP(LN(1E300)*(1/3)), where libm exp gives 9.999999999999825E+99.
+    assert_eq!(
+        crate::arithmetic::power(1e300, 1.0 / 3.0),
+        Ok(9.999_999_999_999_827e99)
+    );
+    assert_eq!(
+        crate::arithmetic::power(-1e300, -1.0 / 3.0),
+        Ok(-1.000_000_000_000_017_3e-100)
     );
 }

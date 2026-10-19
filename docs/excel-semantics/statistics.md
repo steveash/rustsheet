@@ -697,7 +697,7 @@ Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080
 Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below), and so do the
 44 functions whose every argument is scalar and whose kernel is bounded (T-1290, "Later arguments and element values
 of the scalar statistical functions" below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for
-a range): the rest (T-1813); BETA.INV, F.INV, T.INV, CONFIDENCE.T and their variants lift
+a range): RANK, FORECAST and T.TEST (T-1982; Z.TEST and PROB lift since T-1813); BETA.INV, F.INV, T.INV, CONFIDENCE.T and their variants lift
 since T-1848 ("Quantile searches: per-call cap and lifting" below), the incomplete-gamma functions (CHISQ.*,
 CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON, POISSON.DIST) since T-1872 ("Incomplete gamma:
 per-call cap and lifting" below), and HYPGEOM.DIST and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and
@@ -939,6 +939,34 @@ Excel gives 0.14167277676179968), because the logarithmic form is not accurate e
 probes-numeric cell covers the moderate-x region, and every one is unchanged from main.
 Status: VERIFIED (excel-graph)
 Tasks: T-1290, T-1865
+
+## RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments
+Rule: RANK `number`/`order`, FORECAST `x`, PROB `lower_limit`/`upper_limit`, Z.TEST `x`/`sigma` and T.TEST
+`tails`/`type` lift over an array and a range, and each element is the scalar call over the data read once. An
+element checks its own scalar arguments before the data's error: with D2 = `#N/A`, `Z.TEST(D1:D3,"a")`,
+`PROB(D1:D3,F1:F3,"a")`, `FORECAST("a",D1:D3,A1:A3)` and `RANK("x",D1:D3)` are `#VALUE!` and `T.TEST(D1:D3,A1:A3,3,2)`
+is `#NUM!`, while a lifted element with good arguments is the data's `#N/A` (`PROB(D1:D3,F1:F3,{1;2})`,
+`Z.TEST(D1:D3,{1;2})`, `FORECAST({1.5;2},D1:D3,A1:A3)`, `T.TEST(D1:D3,A1:A3,{1;2},2)`; `RANK({1;3},D1:D3)` is `#N/A`,
+not the rank of 1). The order-statistic functions are the other way round: `SMALL(NA(),0)`, `PERCENTILE(NA(),2)`,
+`TRIMMEAN(NA(),2)` and `QUARTILE.EXC(NA(),9)` are `#N/A`. Z.TEST's `x` coerces numeric text and booleans
+(`Z.TEST(A1:A8,"5")`, `TRUE`, also as array elements) and a reference to other text is `#VALUE!`; a `sigma` of 0 or
+below is `#NUM!` per element, but after the data's error (`Z.TEST(D1:D3,4,0)` is `#N/A`). The scalar arguments also come
+before the data's own validation: `PROB(A1:A3,F1:F4,"a")` (unequal sizes), `PROB(A1:A4,{0.5;0.5;0.5;0.5},"a")` (a sum of 2)
+and `Z.TEST({"a","b"},"x")` (no numbers) are `#VALUE!`, and `PROB(A1:A3,F1:F4,{1;"a"})` is `#N/A`, `#VALUE!`. PROB's limits coerce TRUE (`PROB(A1:A4,F1:F4,{1;TRUE})` element 2 is the probability of
+1), `lower > upper` is 0, and a ragged pair of limits is `#N/A` past the shorter one. T.TEST truncates `tails` and `type`
+(`1.7`, `2.9` are 1 and 2) and `tails` 3 or `type` 4 is `#NUM!` per element. A lifted RANK `number` against a
+non-reference `ref` broadcasts with the ref's shape, every element `#VALUE!` (`RANK({4;"x"},IF(A1:C1>0,A1:C1))` is
+2x3). A 1x1 array argument gives a 1x1 array (`TYPE(Z.TEST(A1:A8,{4}))`, `TYPE(RANK({4},A1:A8))`,
+`TYPE(LARGE(A1:A8,{1}))` are 64).
+Evidence: probes/stat-test-lift P1-P89, stat-test-lift-b P90-P95 (excel-graph, 2026-10-19, T-1813).
+Ours: Z.TEST/ZTEST and PROB match since T-1813 (`statistical/z_test.rs`, `prob.rs`: the data argument is
+`WholeByCaller`, read once). FORECAST/FORECAST.LINEAR, T.TEST/TTEST and the order-statistic precedence match
+since T-1982 (`forecast.rs`, `t_dist.rs`; PERCENTILE's and TRIMMEAN's readers keep an error value). T.TEST's
+P64-P67 are still NumericClose (P64: 0.32346094498174827 against 0.32346094498173894), which is T-0969's
+work. Not yet probed (T-2000): T.TEST's `type` against the samples' error, FORECAST's `x` against the data's
+own validation, and an error data argument of PERCENTRANK, QUARTILE, PROB and FREQUENCY. RANK: T-1999.
+Status: VERIFIED (excel-graph)
+Tasks: T-1813, T-1982, T-1999, T-2000
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the
@@ -1517,7 +1545,7 @@ Evidence: probes/linest-modes, logest-modes, growth-modes.
 Ours: GROWTH spills collapse to the first cell, the LINEST stats block is short or `#N/A`, many last-digit differences (T-1741, T-1742, T-1743).
 FORECAST.ETS.SEASONALITY/STAT/CONFINT could not be lifted: excel-graph is `#N/A` for every valid call (section above), so cases would be junk evidence; the three stay below the floor until desktop values exist (T-1553).
 Status: VERIFIED (excel-graph) for the stated cases; the unprobed items are marked
-Tasks: T-1621, T-1741, T-1742, T-1743
+Tasks: T-1621, T-1741, T-1742, T-1743, T-2006 (shared least-squares kernel)
 
 ## Paired regression functions: single points, zero variance, text and large offsets
 Rule: CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, COVAR and FORECAST(.LINEAR) pair their two arrays cell by cell and
