@@ -644,6 +644,11 @@ impl Model {
         if fold == ComplexFold::Product && has_blank {
             return complex_result(0.0, 0.0, suffix);
         }
+        // An overflowed (or NaN) sum or product is `#VALUE!`, unlike IMEXP, IMPOWER and IMDIV
+        // (`#NUM!`): probes/eng-im-overflow A5-A7, A25, A30, A36-A38 (engineering.md).
+        if !x.is_finite() || !y.is_finite() {
+            return value_error(cell);
+        }
         complex_result(x, y, suffix)
     }
 
@@ -723,8 +728,13 @@ fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     complex_result(x_sinh * y_cos / t, -x_cosh * y_sin / t, suffix)
 }
 
-fn imexp((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    complex_result(x.exp() * y.cos(), x.exp() * y.sin(), suffix)
+fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    let (re, im) = (x.exp() * y.cos(), x.exp() * y.sin());
+    // Overflow is `#NUM!` (probes/eng-im-overflow A9, A10; `IMEXP("709.7")` is still finite).
+    if !re.is_finite() || !im.is_finite() {
+        return num_error(cell);
+    }
+    complex_result(re, im, suffix)
 }
 
 fn imln((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {

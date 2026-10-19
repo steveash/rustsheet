@@ -323,3 +323,19 @@ Rule: DEC2BIN, DEC2HEX, DEC2OCT, BIN2OCT, BIN2HEX, HEX2BIN, HEX2OCT, OCT2BIN, OC
 Evidence: probes/eng-first-vs-second-error A1:D11 (excel-graph, 2026-10-19); probes/eng-later-argument-lift M2, M8.
 Status: VERIFIED (excel-graph)
 Tasks: T-1816
+
+## IM* results that overflow (T-1827)
+
+Evidence: probes/eng-im-overflow (excel-graph).
+
+- A result part that overflows or is NaN is an error, never text. The code differs by function:
+  IMSUM and IMPRODUCT give `#VALUE!` (`IMPRODUCT("1E200","1E200")`, `IMSUM("9E307","9E307")`,
+  `IMPRODUCT("1E200","1E200","0")`); IMEXP, IMPOWER and IMDIV give `#NUM!` (`IMEXP("710")`,
+  `IMPOWER("1E155",2)`, `IMDIV("1E308+1E308i","1E-200+1E-200i")`).
+- The limit is the double range: `IMPRODUCT("1E154","1E154")` is `1E+308`, `IMEXP("709.7")` is
+  `1.65498402768026E+308`, `IMPOWER("1E154",2)` is `1E+308`, `IMEXP("1000+1i")` is finite
+  (`9.71297746009434E+307+1.51270661257499E+308i`).
+- Unrelated, found in the same probe and not implemented: an input part of `1E308` or more is
+  `#NUM!` in every IM* function (`IMREAL("1E308")`, `IMSUM("1E308","0")`, `IMSUM("1.7E308","0")`),
+  and `IMSQRT("1E307")` is `#NUM!` while `IMSQRT("4E307")` is too (a large-input limit for
+  IMSQRT / IMLN; `IMLN("1E308")` is `#NUM!`).
