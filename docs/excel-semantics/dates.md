@@ -854,9 +854,15 @@ Rule: typed text `<date> <clock> A` or `P` (any case, space before the letter) i
 a glued suffix (`10:00A`, General text) or a doubled one (`10:00 A A`, General text); an out-of-range
 hour (`13:00 A`) stays text with the date's format `m/d/yyyy`. Evidence: probes/date-text-single-letter-ap
 N1-N8, N10, N11 (excel-graph 2026-10-19), probes/date-text-rejected-clock-formats N7.
-UNVERIFIED in the engine (probed in the fill run of T-1994 only, no case cells): typed `1/2/2020 10:00 A.`
-(trailing dot) is a number, and bare typed `10:00 A` is a number with `h:mm AM/PM`.
-Status: VERIFIED (web) for the rule above; PARTIAL for the two UNVERIFIED shapes (T-2011).
-Implemented in: `typed_clock_shape` and `rejected_clock_text_format` in `crates/rustsheet-engine/src/formatter/parse_formatted.rs`
+A trailing dot after the letter is accepted wherever the letter is: typed `1/2/2020 10:00 A.` is 43832.41666... with
+`m/d/yyyy h:mm` (N12), so are `1/2/2020 10 A.` and `1/2/2020 10:00:30 P.` (N17, N18), and
+`1/2/2020 13:00 A.` stays text with `m/d/yyyy` (N16). A bare typed clock with the letter is a time of day:
+`10:00 A`, `10:00 p`, `10:00 A.`, `10 A` and `10:00 AM` are 0.41666... (0.91666... for p) with `h:mm AM/PM`,
+but `10:00:30 A` is 0.41701... with `h:mm:ss AM/PM` (N9, N13-N15, N19, N20; excel-graph 2026-10-19, T-2011).
+Further bare shapes (N21-N29, T-2053): `10 A.`, `10 AM` and `10 PM` are numbers with `h:mm AM/PM`; `0:00 A` and
+`12:00 A` are 0 with `h:mm AM/PM`; `10:00:30 AM` has `h:mm:ss AM/PM`; a fractional second keeps its own format,
+`10:00:30.5 A` is 0.41701... and `10:00.5 A` 0.00695... with `mm:ss.0`; bare `13:00 A` stays text with General.
+Status: VERIFIED (web)
+Implemented in: `typed_clock_shape`, `rejected_clock_text_format`, `parse_typed_number`, `parse_bare_letter_clock` and `without_single_letter_dot` in `crates/rustsheet-engine/src/formatter/parse_formatted.rs`
 Evidence note: docs/research/single-letter-ap-typed-clock-2026-10-19.md
 Tasks: T-1994, T-2011

@@ -225,8 +225,8 @@ info-modes-isref-value-op (oracle: excel-graph, 2026-10-09, T-1088). The refusal
 Status: VERIFIED (excel-graph)
 Ours: matches since T-1218 (SHEET/N of a range, CELL's array info_type, ISFORMULA's lift, `CELL("contents")` superseded by T-1230 below).
 Settled by T-1230 (next entry): ironcalc-calc CELL.xlsx B14 (top-left of a same-sheet range) and probes/info-logic-argument-modes A18 (`#VALUE!`, which is the formula's own-sheet cell Calc!A2) both fit "the top-left cell, read on the formula's own sheet".
-`CELL("address")` across sheets depends on the file name, which the engine does not know (T-1218 leaves it unimplemented).
-Tasks: T-1088, T-1218
+`CELL("address")` across sheets (unimplemented in T-1218) is implemented since T-2042: see "CELL("address") of a reference on another sheet" below.
+Tasks: T-1088, T-1218, T-2042
 
 ## ISFORMULA over reference kinds (excel-graph)
 Rule: ISFORMULA is TRUE for a cell holding a formula, whatever it returns (`=1+1`, `=""`, `=1/0`), and FALSE for a constant number, a constant text and a blank cell. A spill anchor (`=SEQUENCE(3)`) is TRUE and a spilled child (the cell below it) is FALSE. A cell on another sheet works the same, and the reference may come from INDIRECT, OFFSET or INDEX; `ISFORMULA(Data!D1:D3)` lifts.
@@ -245,11 +245,29 @@ Tasks: T-1230
 
 ## CELL("row"/"col"/"address"/"type", range): no intersection; "type" reads the formula's own sheet
 Rule (excel-graph, 2026-10-15): a legacy (non-array) `CELL(info_type, range)` gives the same value as its dynamic twin and is never implicitly intersected, whether the formula row or column is inside the range or not. `CELL("row",A1:A5)` is 1 and `CELL("address",A1:A5)` is `$A$1` in rows 3 and 8; `CELL("col",B20:D20)` is 2 in columns C, D (inside) and F, G (outside); `CELL("type",A1:A5)` is "v" (the top-left cell; the probe cannot tell it from an intersected cell, since both are numbers, so no-intersection for "type" rests on the vector signature, UNVERIFIED). `row`, `col` and `address` use the reference's own address (`CELL("row",Data!A2:A5)` is 2, `CELL("col",Data!C20:D20)` is 3). `"type"` reads the top-left cell at the same address **on the formula's own sheet**, like `"contents"`: `CELL("type",Data!A7)` is "b" when Data!A7 is text but Calc!A7 is blank, `Data!A8` is "l" (Calc!A8 is text, Data!A8 blank) and `Data!A9` is "b" (Data!A9 a number, Calc!A9 blank).
-Cross-sheet `CELL("address",Data!A2)` was observed as `[<file>.xlsx]Data!$A$2` with the oracle's temporary file name in the T-1433 oracle run; it cannot be scored (not in the case, no stored evidence).
+Cross-sheet `CELL("address",Data!A2)` was observed as `[<file>.xlsx]Data!$A$2` with the oracle's temporary file name in the T-1433 oracle run (scored since T-2042 in its own case, next entry but one).
 Evidence: probes/info-cell-legacy-range (40 cells; oracle: excel-graph, 2026-10-15, T-1433).
 Status: VERIFIED (excel-graph); desktop UNVERIFIED (same caveat as "contents", T-1075 item 9).
-Ours: matches (`cell_info` "TYPE" reads `cell.sheet` since T-1433). Cross-sheet "address" is `#N/IMPL!` (no case, file-name dependent).
+Ours: matches (`cell_info` "TYPE" reads `cell.sheet` since T-1433). Cross-sheet "address": next entry.
 Tasks: T-1230, T-1433
+
+## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
+Rule: `CELL("address", ref)` for a reference on another sheet is `[<file name>]<sheet>!<address>`, the sheet name
+**never quoted**, whatever it holds: `[b.xlsx]Data!$B$2`, `[b.xlsx]My Sheet!$B$2`, `[b.xlsx]2024!$C$3`,
+`[b.xlsx]Bob's!$A$1` (the apostrophe not doubled), `[b.xlsx]a-b!$D$4`, `[b.xlsx]My Sheet!$XFD$1048576`. A range gives
+its top-left cell (`Data!B2:C3` is `[b.xlsx]Data!$B$2`). A reference on the formula's own sheet, written with or
+without its sheet name (`B2`, `Calc!B2`), is the bare `$B$2`. The file name is the workbook's own, extension
+included; in the oracle it is the upload name `<sha256>.xlsx`, which the fill now records in the sidecar's
+`source.workbook_name` and the eval adapter passes to the engine (`WorkbookOptions::name`, the name without `.xlsx`).
+Also: `CELL("filename")`, `CELL("filename",B2)` and `CELL("filename",Data!B2)` are all `#VALUE!` in Excel for the web
+(the same case's B1:B4, unscored); desktop Excel returns the full path (UNVERIFIED here). Ours gives
+`[<file>.xlsx]<sheet>` (T-2052).
+Evidence: probes/info-cell-address-cross-sheet Calc!A1:A9, B1:B4; probes/info-logic-argument-modes Calc!A19
+(oracle: excel-graph, 2026-10-19, T-2042).
+Status: VERIFIED (excel-graph); unsaved workbook UNVERIFIED (Excel's `Book1` form is unprobed; desktop only).
+Ours: matches since T-2042. An unnamed workbook (`WorkbookOptions::name` `None`, the default) gives `#N/IMPL!` for
+cross-sheet "address" and for "filename" rather than guess; a union on another sheet is `#N/IMPL!` (unprobed).
+Tasks: T-2042, T-2052
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
