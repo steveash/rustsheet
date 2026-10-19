@@ -3,7 +3,7 @@ id: T-0405
 title: "Bound range walks: cached sheet dimensions and a cell-visit budget for 3-D spans"
 milestone: M3
 lane: perf
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -23,9 +23,21 @@ evaluation. And an explicit block that is neither whole-row nor whole-column
 cost times the span's sheet count.
 
 ## Acceptance criteria
-- [ ] A walk visits only stored cells (or the used area) of each sheet, for explicit blocks too.
-- [ ] A bench case for a 3-D whole-column SUM over 50 sheets (or a deterministic visit-count test).
-- [ ] `make check` green; reviewers approve.
+- [x] A walk visits only stored cells (or the used area) of each sheet, for explicit blocks too.
+- [x] A bench case for a 3-D whole-column SUM over 50 sheets (or a deterministic visit-count test).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - 3-D reference semantics (T-0196, T-0197, T-0198).
+
+## Outcome
+The per-sheet `Worksheet::dimension()` scan was already gone (T-0049's cached `used_area_end`).
+This task clips explicit blocks too: the dense range walk (`for_each_position_in_area`, behind
+every aggregate) now cuts any range, not only whole rows and columns, at each sheet's used area
+(`clip_block_to_used_area`, evaluation.rs), recording the rest as read empty as before, so
+`SUM(Sheet1:Sheet50!A2:Z1048575)` costs the data of 50 sheets. The two walkers that read a blank
+cell (GCD/LCM read it as 0; TEXTJOIN over a 3-D span with ignore_empty FALSE adds a delimiter)
+use the new `for_each_cell_or_error_in_whole_range`, which keeps walking an explicit block whole.
+Tests: `test_clipped_range_walks` (3-D whole-column and block walks over 50 sheets bounded in
+time, block past the used area sees later writes, a spill into a clipped block restarts, blank
+readers see the whole block). Eval delta: none (performance only).

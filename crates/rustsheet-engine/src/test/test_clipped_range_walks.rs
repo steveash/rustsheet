@@ -362,3 +362,83 @@ fn qualify(formula: &str) -> String {
         .collect();
     format!("{name}({})", args.join(","))
 }
+
+/// Sheets Sheet1..Sheet50, each holding a number in A2 and Z3; the formulas go on a sheet after them.
+fn fifty_sheets() -> crate::Model {
+    let mut model = new_empty_model();
+    for _ in 2..=50 {
+        model.new_sheet();
+    }
+    for index in 1..=50 {
+        model._set(&format!("Sheet{index}!A2"), &index.to_string());
+        model._set(&format!("Sheet{index}!Z3"), "1");
+    }
+    model.add_sheet("Out").unwrap();
+    model
+}
+
+// A 3-D span walks each sheet's used area only, for a tall explicit block as for a whole column
+// (T-0405): unclipped, the block below is 27 million cells on each of 50 sheets.
+#[test]
+fn three_d_walks_cost_the_data_of_each_sheet() {
+    let mut model = fifty_sheets();
+    model._set("Out!A1", "=SUM(Sheet1:Sheet50!A:A)");
+    model._set("Out!A2", "=SUM(Sheet1:Sheet50!A2:Z1048575)");
+    model._set("Out!A3", "=COUNTA(Sheet1:Sheet50!B1:Z1048576)");
+    model._set("Out!A4", "=COUNTBLANK(Sheet1!A1:Z1048576)");
+    let start = Instant::now();
+    model.evaluate();
+    assert!(
+        start.elapsed() < Duration::from_secs(10),
+        "a 3-D block walk was not clipped"
+    );
+    assert_eq!(model._get_text("Out!A1"), "1275");
+    assert_eq!(model._get_text("Out!A2"), "1325");
+    assert_eq!(model._get_text("Out!A3"), "50");
+    assert_eq!(model._get_text("Out!A4"), "27262974");
+}
+
+// A block that lies wholly past the used area walks nothing, and its cells are on record as
+// read empty: a value set there later is seen.
+#[test]
+fn block_past_the_used_area_sees_later_cells() {
+    let mut model = sample();
+    model._set("Sheet2!E1", "=SUM(Sheet1!D5:F9)");
+    model._set("Sheet2!E2", "=SUM(Sheet1!B2:D9)");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), "0");
+    assert_eq!(model._get_text("Sheet2!E2"), "9");
+    model._set("Sheet1!F9", "7");
+    model._set("Sheet1!D8", "1");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), "8");
+    assert_eq!(model._get_text("Sheet2!E2"), "10");
+}
+
+// A spill into the clipped part of a block restarts the walk's formula: D1's spill is written
+// after A1 read D1:D20, whose used area was row 1 then.
+#[test]
+fn spill_into_a_clipped_block_is_seen() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SUM(D1:D20)");
+    model._set("D1", "=SEQUENCE(10)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "55");
+}
+
+// The walkers that read a blank cell still see the blanks past the used area of an explicit
+// block: GCD and LCM read one as 0 (coercion.md), TEXTJOIN with ignore_empty FALSE adds a
+// delimiter for it, here on each sheet of a 3-D span.
+#[test]
+fn walkers_reading_blanks_see_the_whole_block() {
+    let mut model = sample();
+    model._set("Sheet2!E1", "=LCM(Sheet1!A1:A5)");
+    model._set("Sheet2!E2", "=GCD(Sheet1!A1:A5)");
+    model._set("Sheet2!E3", "=TEXTJOIN(\",\",FALSE,Sheet1:Sheet1!A1:A5)");
+    model._set("Sheet2!E4", "=TEXTJOIN(\",\",FALSE,Sheet1!A1:A5)");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), "0");
+    assert_eq!(model._get_text("Sheet2!E2"), "1");
+    assert_eq!(model._get_text("Sheet2!E3"), "2,3,,,");
+    assert_eq!(model._get_text("Sheet2!E4"), "2,3,,,");
+}

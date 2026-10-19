@@ -1012,15 +1012,53 @@ impl Model {
         row2: i32,
         column2: i32,
     ) -> Result<(i32, i32), String> {
-        let (last_row, last_column) = self.used_area_corner(sheet, row1, column1, row2, column2)?;
+        let corner = self.used_area_corner(sheet, row1, column1, row2, column2)?;
+        Ok(self.clip_to_corner(sheet, (row1, column1), (row2, column2), corner))
+    }
+
+    /// [`Self::clip_to_used_area`] for any range, not only a whole-column or whole-row one: the
+    /// block `row1:column1..=row2:column2` is cut at the sheet's used area, so that a walk of
+    /// `Data1:Data999!A2:Z1048575` costs each sheet's data, not the block (T-0405). Only for
+    /// walkers that skip blank cells: the cells left out are blank, and are not walked at all.
+    /// The returned corner is above or left of the block's first cell when the block lies wholly
+    /// past the used area, so that the walk visits nothing.
+    pub(crate) fn clip_block_to_used_area(
+        &mut self,
+        sheet: u32,
+        row1: i32,
+        column1: i32,
+        row2: i32,
+        column2: i32,
+    ) -> Result<(i32, i32), String> {
+        let (max_row, max_column) = self
+            .workbook
+            .worksheet(sheet)
+            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
+            .used_area_end();
+        let corner = (
+            row2.min(max_row).max(row1 - 1),
+            column2.min(max_column).max(column1 - 1),
+        );
+        Ok(self.clip_to_corner(sheet, (row1, column1), (row2, column2), corner))
+    }
+
+    /// Puts on record as read empty the part of the block `first..=last` past `corner`, the
+    /// bottom-right corner the walk will stop at, and returns that corner.
+    fn clip_to_corner(
+        &mut self,
+        sheet: u32,
+        (row1, column1): (i32, i32),
+        (row2, column2): (i32, i32),
+        (last_row, last_column): (i32, i32),
+    ) -> (i32, i32) {
         if (last_row, last_column) == (row2, column2) {
-            return Ok((row2, column2));
+            return (row2, column2);
         }
         // The remainder: the rows below the used area over the whole width,
         // and the columns beyond it within the rows that are walked.
         self.record_seen_empty_range(sheet, last_row + 1, column1, row2, column2);
         self.record_seen_empty_range(sheet, row1, last_column + 1, last_row, column2);
-        Ok((last_row, last_column))
+        (last_row, last_column)
     }
 
     /// Checks, on behalf of the dynamic anchor about to commit, whether spilling

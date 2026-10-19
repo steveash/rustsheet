@@ -325,9 +325,10 @@ impl Model {
                     if left.sheet != right.sheet {
                         // A 3-D reference is walked sheet by sheet; an error cell past the limit
                         // is dropped like a range cell's (probes/text-result-limit-errors-refs
-                        // D10-D11).
-                        if let Err(error) = self.for_each_cell_or_error_in_areas(
-                            &[Range { left, right }],
+                        // D10-D11). With ignore_empty FALSE a blank cell adds a delimiter, so
+                        // the blanks past each sheet's used area are walked too.
+                        if let Err(error) = self.for_each_cell_or_error_in_whole_range(
+                            &Range { left, right },
                             cell,
                             |_, value| {
                                 size.push_cell(
