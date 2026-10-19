@@ -175,6 +175,22 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       2-7e-7 for law tracks. So only tracks whose best fit is near the precision floor are kept. By that rule Excel's D
       (3.3e-4) is a non-law line (mix or sideband with r flipping), and A and C (1.7e-6) are law lines.
 
+20. **Positive control: BIT-EXACT recovery from zero knowledge** (synthetic (9,9) truth, Excel-format data on the real
+    grids):
+    1. The long-run pipeline (item 17) gives an EM chain with stage values at about 1e-7, i.e. 1e9-5e14 coefficient
+       ulps off, at 19% exact R.
+    2. Lattice pass 1 (`latsolve.py`: CVP by LLL+BKZ-20 in fpylll). Inputs: per-run phases (0.01-cycle noise) of T4,
+       T5 and the n=1 sidebands of P0-P4 of both chains on 24 runs, plus exact function rows. Result: N1-N4 and
+       D2-D4 exact, N5/N6/D5/D6 within 69-653 ulps, the top within 4.5e3-1.6e7. 41% exact R.
+    3. Lattice pass 2, adding T3, T6, T7 and sidebands P5-P7: everything exact except N9 (6 ulps), N1 (2) and the
+       line-invisible constants N0 and D1 (function-only, 2.2e4 and 2e3 ulps).
+    4. `pairscan.py` along the function-weak (N0, D1) direction: 99.95%.
+    5. `climb6.py`: 100.000% exact R and exact B on all 134,336 points. The remaining coefficient offsets (N0 -59,
+       N1 +2, N9 -6, D1 -231 ulps) are output-invisible.
+    - The read-back bug found on the way (int(SC/bound) truncation) is fixed.
+    - For Excel the open inputs are: >= 4 jointly assigned precise tracks (L101-L124), per-run Excel phases at those
+      lines (`phasediff.py` with Excel's R in place of the synthetic), and the same lattice, scan and climb.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
