@@ -380,6 +380,7 @@ C	probes/legacy-index-array-index.case.json	30
 C	probes/legacy-marker-spelling-name-plain.case.json	3
 C	probes/legacy-marker-spelling-name-xlfn.case.json	2
 C	probes/legacy-match-lookup-array-intersection.case.json	41
+C	probes/legacy-n-t-choose-index-shapes.case.json	36
 C	probes/legacy-n-t-marker-shapes.case.json	24
 C	probes/legacy-n-t-reference-args-2.case.json	30
 C	probes/legacy-n-t-reference-args.case.json	41
