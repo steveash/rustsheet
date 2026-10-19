@@ -12,7 +12,7 @@ use crate::{
     functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
-    reference_operators::RefArg,
+    reference_operators::{Picked, RefArg},
 };
 
 pub(crate) mod aggregate_args;
@@ -426,8 +426,9 @@ impl Model {
 
     /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL, AREAS, SUM, COUNT, AVERAGE, MIN, MAX
     /// and AVERAGEA take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a
-    /// range are also the cells they pick (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c
-    /// H4:H14, T-1206; -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
+    /// range, also as the arm a scalar IF or CHOOSE picks or a LET body (T-2009), are the cells
+    /// they pick (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c H4:H14, T-1206;
+    /// -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
     /// same rule. The call list is [`Function::picks_reference`].
     pub(crate) fn evaluate_picked_reference_arg(
         &mut self,
@@ -445,12 +446,33 @@ impl Model {
         blanks: CachedBlanks,
         cell: CellReferenceIndex,
     ) -> RefArg {
+        // The arm a scalar IF or CHOOSE picks and a LET body follow the same rule, however deeply
+        // they nest: `SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))` is 9 and `AREAS(LET(v,1,
+        // XLOOKUP(..)))` 1 (probes/subtotal-if-choose-over-xlookup A10-A42, T-2009). Each
+        // condition, index and binding is read once, as `reference_arg_reading` reads them.
         if let Node::FunctionKind { kind, args } = node.ungrouped() {
-            if kind.picks_reference() {
-                if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
-                    return RefArg::from(result);
+            let picked = match kind {
+                Function::If => self.if_pick(args, cell),
+                Function::Choose => self.choose_pick(args, cell),
+                Function::Let => {
+                    return self
+                        .let_scope(args, cell, |model, body| {
+                            model.picked_reference_arg_reading(body, blanks, cell)
+                        })
+                        .unwrap_or_else(RefArg::Value);
                 }
-            }
+                _ if kind.picks_reference() => {
+                    if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
+                        return RefArg::from(result);
+                    }
+                    return self.reference_arg_reading(node, blanks, cell);
+                }
+                _ => return self.reference_arg_reading(node, blanks, cell),
+            };
+            return match picked {
+                Picked::Node(arm) => self.picked_reference_arg_reading(arm, blanks, cell),
+                Picked::Value(value) => RefArg::Value(value),
+            };
         }
         self.reference_arg_reading(node, blanks, cell)
     }
