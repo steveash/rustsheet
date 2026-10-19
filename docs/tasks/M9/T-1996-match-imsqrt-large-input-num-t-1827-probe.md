@@ -3,7 +3,7 @@ id: T-1996
 title: "Match IMSQRT large-input #NUM! (T-1827 probe A33, A34)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
