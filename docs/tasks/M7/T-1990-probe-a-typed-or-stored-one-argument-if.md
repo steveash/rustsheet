@@ -22,9 +22,9 @@ Probe with the `excel-probe` skill: `=IF(TRUE)`, `=IF(1)`, `=IF({1,0})` set thro
 enter them; record what it reports), and if refused, note it as entry-only. Then match or record.
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values (or the recorded refusal) for the typed forms; arrays.md updated.
-- [ ] If Excel differs from ours, the typed form is matched without changing the eta path (probes/eta-if-one-argument stays 40/40).
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with oracle values (or the recorded refusal) for the typed forms; arrays.md updated.
+- [x] If Excel differs from ours, the typed form is matched without changing the eta path (probes/eta-if-one-argument stays 40/40).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The eta path itself (T-1947).

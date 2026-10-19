@@ -958,14 +958,14 @@ Evidence: probes/eta-reduced-names (30 questions, excel-graph, 2026-10-14, T-146
 Ours: an unbound `_xleta.` name of a known function evaluates to a LAMBDA whose definition is made per call
 (`Model::unbound_name`, `eta_definition`, lambda.rs); BYROW and BYCOL take only a LAMBDA (`by_slices_lambda`). IF with
 only a condition is the one-argument eta IF above (`Model::if_pick`, T-1947; a typed `=IF(x)` takes the same path; whether
-Excel accepts one typed is unprobed); `ISERROR(_xleta.SUM)` is FALSE since T-1511. GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
+Excel accepts one typed is entry-only and a file-stored one is refused by excel-graph, below, T-1990); `ISERROR(_xleta.SUM)` is FALSE since T-1511. GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
 A one-argument `IF(x)` stored in a file (`=IF(TRUE)`, `=IF(1)`, `=IF({1,0})`, `=IF(A1:B1)`, each alone in a workbook) is refused by
 excel-graph: `createSession` answers 501 `FileCorruptTryRepair` / `unsupportedWorkbook`, so the formula cannot be loaded from a
 file and has no stored value to match (probes/typed-if-one-argument, left pending, T-1990). Whether Excel accepts it typed is
 entry-only and unanswerable here (desktop question, M14 Phase 4, decision 0039). Ours keeps the `#VALUE!` per element of
 the eta path (T-1947) for such a formula; no file Excel writes contains one.
 Status: VERIFIED (excel-graph)
-Tasks: T-1466, T-1947
+Tasks: T-1466, T-1947, T-1990
 
 ## BYROW and BYCOL of a single value
 Rule: BYROW and BYCOL take a single value as a 1x1 array and call the LAMBDA once: `"ü"&BYROW(COUNT(..),LAMBDA(z,z))` with
