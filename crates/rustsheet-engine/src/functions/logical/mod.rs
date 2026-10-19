@@ -19,8 +19,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::lift::{LiftCost, LiftOptions, LiftedArg},
-    functions::Function,
+    functions::{
+        lift::{LiftCost, LiftOptions, LiftedArg},
+        Function,
+    },
     limits::check_array_size,
     model::Model,
     reference_operators::{Picked, RefArg},
