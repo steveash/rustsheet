@@ -216,3 +216,10 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
     871,392 points. By tenth of [1,2): 92 85 75 69 71 71 66 51 48 73%.
   - The best sets fit Gamma only to 1.2-1.5e-16, so Excel's G is itself about 1-ulp accurate.
 - Anchor ladders: e701-e718 at y = 1.25, 1.5 and 1.75.
+- fit77cS (`g_candidate_w4_77cS.txt`) scores 73.5% on W4's G.txt but 72.1% on the coordinator's 871,392 points,
+  against 76.4% for fit77S2.
+  - y-bias of the misses (W4): model high near 1.0-1.1 and 1.86-2.0 (worst 1.90-1.92, 32% exact); model low across
+    1.12-1.6.
+  - Mean (Excel - model) is about 0.16 ulp rms, smooth in y.
+  - No single stage is blamed: the remaining gap is in the weakly visible higher-stage sums (N c2..c6, D c3..c6).
+  - Long 8,192-point ladders at 1.125, 1.375, 1.625 and 1.875 (e1001..e1025) are queued to lift those lines.
