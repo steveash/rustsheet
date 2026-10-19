@@ -224,3 +224,8 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - Mean (Excel - model) is about 0.16 ulp rms, smooth in y.
   - No single stage is blamed: the remaining gap is in the weakly visible higher-stage sums (N c2..c6, D c3..c6).
   - Long 8,192-point ladders at 1.125, 1.375, 1.625 and 1.875 (e1001..e1025) are queued to lift those lines.
+- **AN2 (`g_candidate_w4_AN2.txt`)**, W4's stochastic hill-climb on combined data: 78.2% exact and 89.3% within 1 ulp
+  on the 1,448,928 clean points (W4 measures 76.6% on its 1,250,870).
+  - By tenth: 93 80 80 72 71 71 70 75 47 79%. The weak spot is y = 1.8-1.9.
+  - Linearised steps from the five-anchor phase solve all lower the exact score, so exact-match search is now the
+    working tool.

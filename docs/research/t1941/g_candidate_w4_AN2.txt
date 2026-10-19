@@ -1,0 +1,4 @@
+# T-1941 W4 candidate AN2 for GAMMA's G on [1,2): (7,7) raw-y Horner N/D, every op fl53(fl64). Coefficients ASCENDING.
+# Stochastic hill-climb on combined data. W4: 76.6% exact on 1,250,870 pts; see README for the coordinator check.
+N 0x1.b5834abbea656p+15 0x1.514773450ce43p+14 0x1.664795a0ef29dp+13 0x1.36c636bfb0a85p+11 0x1.5ff5a1f0e6907p+9 0x1.b983b93295d5dp+6 0x1.c11d5cf1c98dcp+3 0x1.4aa356fe82284p+1
+D -0x1p-4 0x1.b584ae6185b27p+15 0x1.a52694226b400p+15 -0x1.8fd072611474dp+13 -0x1.d079cbb8db18ep+12 0x1.811c89b66f5d7p+11 -0x1.9f2c6b221ba44p+8 0x1.3f2e03e3bc11cp+4
