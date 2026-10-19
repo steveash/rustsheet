@@ -27,6 +27,10 @@
 //!   its cap whose window is mostly exact zeros and subnormal terms (the slowest terms: `exp`'s
 //!   subnormal path and additions with a subnormal operand), over 32 elements.
 //!
+//! - the financial functions' two paths (T-1823): PMT per row, unlifted, over 100,000 rows
+//!   (`=PMT(A{r}/100,10,100)` in each C{r}; C1 is read), and RATE at its work cap, a
+//!   non-converging `=SUM(RATE(A1:A100000,0,100,1))` (50 Newton steps an element).
+//!
 //! - WORKDAY and NETWORKDAYS (T-1236): 20,000 scalar WORKDAY calls through MAP (the path a
 //!   filled-down column takes, comparable with main), and WORKDAY and NETWORKDAYS lifted over a
 //!   100,000-element array with 20 holidays, prepared once per call.
@@ -64,7 +68,15 @@ fn workbook(rows: u32, formula: &str) -> Result<Workbook, Box<dyn Error>> {
                 tx.set(format!("D{r}").as_str(), f64::from((r - 1) % CYCLE))?;
             }
         }
-        tx.set("C1", Input::Formula(formula.to_string()))?;
+        if formula.contains("{r}") {
+            // One scalar formula per row (the unlifted path), the template's `{r}` the row.
+            for r in 1..=rows {
+                let row = formula.replace("{r}", &r.to_string());
+                tx.set(format!("C{r}").as_str(), Input::Formula(row))?;
+            }
+        } else {
+            tx.set("C1", Input::Formula(formula.to_string()))?;
+        }
         Ok(())
     })
 }
@@ -105,6 +117,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             "PMT, lifted over a range",
             100_000,
             "=SUM(PMT(A1:A100000,10,100))",
+        ),
+        (
+            "PMT, unlifted, one formula per row",
+            100_000,
+            "=PMT(A{r}/100,10,100)",
+        ),
+        (
+            "RATE, lifted, non-converging at the Newton cap",
+            100_000,
+            "=SUM(RATE(A1:A100000,0,100,1))",
         ),
         (
             "WORKDAY, scalar calls through MAP",
