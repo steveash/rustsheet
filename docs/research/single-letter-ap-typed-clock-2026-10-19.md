@@ -12,7 +12,20 @@ Formats seen in the ENTERED log of the excel-graph fill of probes/date-text-sing
 | `1/2/2020 10:00 Am` | 43832.4166666667 | `m/d/yyyy h:mm` |
 | `1/2/2020 10:00:30 A` | 43832.4170138889 | `m/d/yyyy h:mm` |
 | `1/2/2020 13:00 A` | text | `m/d/yyyy` |
-| `1/2/2020 10:00 A.` | 43832.4166666667 | `m/d/yyyy h:mm` (not yet in engine, T-2011) |
+| `1/2/2020 10:00 A.` | 43832.4166666667 | `m/d/yyyy h:mm` |
 | `July 1, 2026 10:00 A` | 46204.4166666667 | `m/d/yyyy h:mm` |
 | `1/2/2020 10:00 A A` | text | General |
-| `10:00 A` | 0.416666666666667 | `h:mm AM/PM` (not yet in engine, T-2011) |
+| `10:00 A` | 0.416666666666667 | `h:mm AM/PM` |
+
+T-2011 refill (same case, cells N13-N20):
+
+| Entered | Value | numberFormat |
+|---|---|---|
+| `10:00:30 A` | 0.417013888888889 | `h:mm:ss AM/PM` |
+| `10:00 p` | 0.916666666666667 | `h:mm AM/PM` |
+| `10:00 A.` | 0.416666666666667 | `h:mm AM/PM` |
+| `1/2/2020 13:00 A.` | text | `m/d/yyyy` |
+| `1/2/2020 10 A.` | 43832.4166666667 | `m/d/yyyy h:mm` |
+| `1/2/2020 10:00:30 P.` | 43832.9170138889 | `m/d/yyyy h:mm` |
+| `10 A` | 0.416666666666667 | `h:mm AM/PM` |
+| `10:00 AM` | 0.416666666666667 | `h:mm AM/PM` |
