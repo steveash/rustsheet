@@ -19,8 +19,8 @@ use crate::{
         types::CellReferenceRC,
     },
     functions::logical::NamedLambdas,
-    language::{get_default_language, get_language},
-    locale::{get_default_locale, get_locale},
+    language::{get_default_language, get_language, Language},
+    locale::{get_default_locale, get_locale, Locale},
     model::Model,
     types::{
         DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
@@ -704,15 +704,40 @@ impl Model {
             theme: Default::default(),
             external_books: Vec::new(),
         };
-        let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
         let parser = Parser::new(worksheet_names, vec![], HashMap::new(), locale, language);
 
-        let mut model = Model {
+        let mut model = Model::unparsed(
             workbook,
-            shared_strings: HashMap::new(),
-            parsed_formulas,
+            HashMap::new(),
+            parser,
+            locale,
+            language,
+            tz,
+            clock,
+        );
+        model.parse_formulas();
+        model.evaluate_conditional_formatting();
+        Ok(model)
+    }
+
+    /// A model of `workbook` before its formulas and defined names are parsed, with every piece
+    /// of evaluation state empty: the one definition of that state for both constructors
+    /// (`new_empty_with_clock`, `from_workbook_with_clock`).
+    pub(crate) fn unparsed(
+        workbook: Workbook,
+        shared_strings: HashMap<String, usize>,
+        parser: Parser,
+        locale: &'static Locale,
+        language: &'static Language,
+        tz: Tz,
+        clock: Clock,
+    ) -> Model {
+        Model {
+            workbook,
+            shared_strings,
+            parsed_formulas: Vec::new(),
             shared_formula_lookup: Vec::new(),
             call_name_spellings: CallNameSpellings::default(),
             parsed_defined_names: HashMap::new(),
@@ -733,10 +758,7 @@ impl Model {
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
-        };
-        model.parse_formulas();
-        model.evaluate_conditional_formatting();
-        Ok(model)
+        }
     }
 }
 

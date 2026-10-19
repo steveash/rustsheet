@@ -1463,7 +1463,6 @@ impl Model {
         clock: Clock,
     ) -> Result<Model, String> {
         workbook.rebuild_derived_state();
-        let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
 
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
@@ -1489,31 +1488,15 @@ impl Model {
             shared_strings.insert(s.to_string(), index);
         }
 
-        let mut model = Model {
+        let mut model = Model::unparsed(
             workbook,
-            parsed_formulas,
-            shared_formula_lookup: Vec::new(),
-            call_name_spellings: CallNameSpellings::default(),
             shared_strings,
-            parsed_defined_names: HashMap::new(),
             parser,
-            language,
             locale,
+            language,
             tz,
             clock,
-            view_id: 0,
-            variable_stack: VariableStack::default(),
-            last_variable_id: 0,
-            lambdas: HashMap::new(),
-            eta_lambdas: HashMap::new(),
-            named_lambdas: NamedLambdas::default(),
-            last_lambda_id: 0,
-            defined_names_running: Default::default(),
-            area_budget: Default::default(),
-            evaluation: Evaluation::default(),
-            cf_cache: HashMap::new(),
-            links: HashMap::new(),
-        };
+        );
 
         model.parse_formulas();
         model.parse_defined_names();
