@@ -56,6 +56,7 @@ They reproduce the function but not c5's stage coordinates. That is expected, so
   | D3-D8 | 1e5 / 1e6 | 45 | 0.248 / 0.248 | 0.071 / 0.055 | 0 |
   | D3-D9 | 1e5 / 1e6 | 45 | 0.250 / 0.226 | 0.047 / 0.041 | 0 |
   | D3-D9 | 1e7 | 60 | 0.232 | 0.047 | 0 |
+  | D3-D9 | 1e8 | 60 | 0.226 | 0.042 | 0 |
 
   A true solution fits all rows at about 0.035-0.037 (controls).
 - **The real phases are reliable.** First-half against second-half phase per run (`../lines/halfcheck.py`):
@@ -66,7 +67,7 @@ They reproduce the function but not c5's stage coordinates. That is expected, so
   | synthetic | 0.041 | 0.048 | 0.123 |
 
 - So the failure is the move space, not the measurement. Excel's D stage values are not c5's D plus an integer
-  move of D3-D9 within 1e7 ulps.
+  move of D3-D9 within 1e8 ulps.
   - Either they lie farther out (c5 is pinned only to about 1e-10 relative near 1, about 1e6 ulps, and the
     lattice turns ambiguous beyond that);
   - or the D-chain evaluation differs from c5's structure in a way the tie lines see, such as a different
