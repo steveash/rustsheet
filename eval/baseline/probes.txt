@@ -2399,8 +2399,6 @@ F	probes/scalar-lift-shapes.case.json	Sheet1!J1
 F	probes/scalar-lift-shapes.case.json	Sheet1!J3
 F	probes/scalar-lift-shapes.case.json	Sheet1!J4
 F	probes/scalar-lift-shapes.case.json	Sheet1!K3
-F	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	S!B3
-F	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	S!B4
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!A1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B2

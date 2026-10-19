@@ -386,7 +386,12 @@ impl Model {
                 self.language,
             );
             if formula != formula_displaced {
-                self.update_cell_with_formula(sheet, row, column, format!("={formula_displaced}"))?;
+                let text = format!("={formula_displaced}");
+                if node.has_legacy_marker() {
+                    self.set_cell_with_legacy_formula(sheet, row, column, &text)?;
+                } else {
+                    self.update_cell_with_formula(sheet, row, column, text)?;
+                }
             };
         }
         Ok(())
@@ -446,19 +451,8 @@ impl Model {
         self.parser.set_language(language);
     }
 
-    /// Retrieves the column indices for a specific row in a given sheet, sorted in ascending or descending order.
-    ///
-    /// # Arguments
-    ///
-    /// * `sheet` - The sheet number to retrieve columns from.
-    /// * `row` - The row number to retrieve columns for.
-    /// * `descending` - If true, the columns are returned in descending order; otherwise, in ascending order.
-    ///
-    /// # Returns
-    ///
-    /// This function returns a `Result` containing either:
-    /// - `Ok(Vec<i32>)`: A vector of column indices for the specified row, sorted according to the `descending` flag.
-    /// - `Err(String)`: An error message if the sheet cannot be found.
+    /// The columns of the cells in `row` of `sheet`, ascending (descending if `descending`); an
+    /// error if the sheet does not exist.
     fn get_columns_for_row(
         &self,
         sheet: u32,
@@ -477,14 +471,7 @@ impl Model {
     ///
     /// It assumes that the caller has already checked that the move is valid
     /// (e.g. it does not split an array formula). And that dynamic array spills have been reset.
-    ///
-    /// # Arguments
-    ///
-    /// * `sheet` - The sheet number to retrieve columns from.
-    /// * `source_row` - The row index of the cell's current location.
-    /// * `source_column` - The column index of the cell's current location.
-    /// * `target_row` - The row index of the cell's new location.
-    /// * `target_column` - The column index of the cell's new location.
+    /// A legacy N/T marker moves with the formula (T-1852).
     fn move_cell(
         &mut self,
         sheet: u32,
@@ -553,6 +540,7 @@ impl Model {
                 array = Some(*r);
             }
         }
+        let legacy = self.cell_has_legacy_marker(sheet, source_row, source_column)?;
         let formula_or_value = self
             .get_cell_formula(sheet, source_row, source_column)?
             .unwrap_or_else(|| {
@@ -584,7 +572,7 @@ impl Model {
                 &formula_or_value,
             )?;
         } else {
-            self.set_user_input(sheet, target_row, target_column, formula_or_value)?;
+            self.reenter_user_input(sheet, target_row, target_column, formula_or_value, legacy)?;
         }
 
         let worksheet = self.workbook.worksheet_mut(sheet)?;
@@ -1294,7 +1282,8 @@ impl Model {
                 }
             }
 
-            original_cells.push((r.row, formula_or_value, style_idx, array));
+            let legacy = self.cell_has_legacy_marker(sheet, r.row, column)?;
+            original_cells.push((r.row, formula_or_value, style_idx, array, legacy));
             let ws = self.workbook.worksheet_mut(sheet)?;
             ws.remove_cell(r.row, column)?;
         }
@@ -1331,11 +1320,11 @@ impl Model {
                     .set_column_width_and_style(c + 1, w, h, s)?;
             }
         }
-        for (r, value, style_idx, array) in original_cells {
+        for (r, value, style_idx, array, legacy) in original_cells {
             if let Some(a) = array {
                 self.set_user_array_formula(sheet, r, target_column, a.0, a.1, &value)?;
             } else {
-                self.set_user_input(sheet, r, target_column, value)?;
+                self.reenter_user_input(sheet, r, target_column, value, legacy)?;
             }
             self.workbook
                 .worksheet_mut(sheet)?
@@ -1438,7 +1427,8 @@ impl Model {
                     array = Some(*r);
                 }
             }
-            original_cells.push((*c, formula_or_value, style_idx, array));
+            let legacy = self.cell_has_legacy_marker(sheet, row, *c)?;
+            original_cells.push((*c, formula_or_value, style_idx, array, legacy));
             let ws = self.workbook.worksheet_mut(sheet)?;
             ws.remove_cell(row, *c)?;
         }
@@ -1457,7 +1447,7 @@ impl Model {
                 }
             }
         }
-        for (c, value, style_idx, array) in original_cells {
+        for (c, value, style_idx, array, legacy) in original_cells {
             if let Some(array_range) = array {
                 self.set_user_array_formula(
                     sheet,
@@ -1468,7 +1458,7 @@ impl Model {
                     &value,
                 )?;
             } else {
-                self.set_user_input(sheet, target_row, c, value)?;
+                self.reenter_user_input(sheet, target_row, c, value, legacy)?;
             }
             self.workbook
                 .worksheet_mut(sheet)?

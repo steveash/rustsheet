@@ -62,6 +62,71 @@ impl Model {
         self.set_formula_node_with_units(sheet, row, column, node, style)
     }
 
+    /// Whether the formula in the cell holds a legacy N or T marker ([`Node::has_legacy_marker`]).
+    /// A cell with no formula holds none.
+    pub(crate) fn cell_has_legacy_marker(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<bool, String> {
+        let Some(index) = self
+            .workbook
+            .worksheet(sheet)?
+            .cell(row, column)
+            .and_then(|c| c.get_formula())
+        else {
+            return Ok(false);
+        };
+        Ok(self
+            .parsed_formulas
+            .get(sheet as usize)
+            .and_then(|formulas| formulas.get(index as usize))
+            .is_some_and(|(node, _)| node.has_legacy_marker()))
+    }
+
+    /// Writes `input`, the display text an edit (row or column insert or delete, move, fill,
+    /// paste) made from a cell's formula, as user input; when that formula held a legacy marker
+    /// (`legacy`), through the legacy entry, so the cell stays legacy. Excel keeps a legacy cell
+    /// legacy after a row insert above it (probes/sheet-ops/sheet-ops-insert-row-legacy-cell,
+    /// excel-graph, T-1933); the other edits are assumed to do the same (SPEC-0012 rule 6). The
+    /// re-entry relies on the rewrite being idempotent over its own display text (T-1713).
+    ///
+    /// # Errors
+    /// As [`Model::set_user_input`] and [`Model::set_cell_with_legacy_formula`].
+    pub(crate) fn reenter_user_input(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        input: String,
+        legacy: bool,
+    ) -> Result<(), String> {
+        if legacy {
+            self.set_cell_with_legacy_formula(sheet, row, column, &input)
+        } else {
+            self.set_user_input(sheet, row, column, input)
+        }
+    }
+
+    /// Fills cell `target` from cell `source` of `sheet` as a fill handle drag does: the source
+    /// formula with its relative references shifted ([`Model::extend_to`]), or its value, written
+    /// through [`Model::reenter_user_input`] so a legacy marker is kept. Returns the text written.
+    ///
+    /// # Errors
+    /// As [`Model::extend_to`] and [`Model::reenter_user_input`].
+    pub(crate) fn fill_cell(
+        &mut self,
+        sheet: u32,
+        (source_row, source_column): (i32, i32),
+        (row, column): (i32, i32),
+    ) -> Result<String, String> {
+        let text = self.extend_to(sheet, source_row, source_column, row, column)?;
+        let legacy = self.cell_has_legacy_marker(sheet, source_row, source_column)?;
+        self.reenter_user_input(sheet, row, column, text.clone(), legacy)?;
+        Ok(text)
+    }
+
     /// `body` (no `=`) parsed in the cell and rewritten as a legacy formula reads it.
     fn legacy_formula_node(
         &mut self,

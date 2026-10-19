@@ -35,6 +35,10 @@ pub struct ClipboardCell {
     // payloads without the field deserializable)
     #[serde(default)]
     link: Option<Link>,
+    // whether the cell's formula holds a legacy N or T marker, which `text` does not show
+    // (SPEC-0012); a paste writes it back through the legacy entry (T-1852)
+    #[serde(default)]
+    legacy: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -153,6 +157,7 @@ impl UserModel {
                     CellStructure::SpillArray { .. } | CellStructure::SpillDynamic { .. }
                 );
                 let link = self.model.get_cell_link(sheet, row, column)?;
+                let legacy = self.model.cell_has_legacy_marker(sheet, row, column)?;
                 data_row.insert(
                     column,
                     ClipboardCell {
@@ -160,6 +165,7 @@ impl UserModel {
                         is_spill,
                         style,
                         link,
+                        legacy,
                     },
                 );
                 text_row.push(text);
@@ -314,7 +320,7 @@ impl UserModel {
                     target_column,
                     old_value.clone(),
                     old_style.clone(),
-                    Some(new_value.clone()),
+                    Some((new_value.clone(), value.legacy)),
                     value.style.clone(),
                 ));
                 seen_cells.insert((target_row, target_column));
@@ -326,9 +332,14 @@ impl UserModel {
         self.model.range_clear_contents(target_area)?;
         // set the new values and styles
         for (target_row, target_column, old_value, old_style, new_value, style) in changes {
-            if let Some(ref v) = new_value {
-                self.model
-                    .set_user_input(sheet, target_row, target_column, v.clone())?;
+            if let Some((ref v, legacy)) = new_value {
+                self.model.reenter_user_input(
+                    sheet,
+                    target_row,
+                    target_column,
+                    v.clone(),
+                    legacy,
+                )?;
                 diff_list.push(Diff::SetCellValue {
                     sheet,
                     row: target_row,
