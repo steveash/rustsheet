@@ -3,7 +3,7 @@ id: T-2030
 title: "TEXT and displayed text: fraction formats with placeholder denominators (?/?, ??/??, ???/???) pick Excel's fraction"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
