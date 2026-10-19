@@ -3,7 +3,7 @@
 
 use super::ArgKind::{LiftArrays, WholeByCaller};
 use super::KernelWork::{Constant, Weighted};
-use super::{ArgKinds, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, ATP_3, LIFT_2};
+use super::{ArgKinds, CallResult, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, ATP_3, LIFT_2};
 use crate::functions::Function;
 
 // --- Engineering (T-1383) -------------------------------------------------------------------
@@ -24,6 +24,7 @@ const COMPLEX_FOLD: ArgKinds = ArgKinds {
     repeat: Some(WholeByCaller),
     max: 255,
     work: Constant,
+    result: CallResult::Value,
 };
 // --- End engineering (T-1383) ---------------------------------------------------------------
 
