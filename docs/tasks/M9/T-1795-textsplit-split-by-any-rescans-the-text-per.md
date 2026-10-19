@@ -3,7 +3,7 @@ id: T-1795
 title: "TEXTSPLIT split_by_any rescans the text per delimiter: cap or cache"
 milestone: M9
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
