@@ -65,4 +65,4 @@ depends_on: []
   info-logic-argument-modes sidecar was refilled to record its name; only A19 and `source` changed.
 - Eval delta: fixed 1 (probes/info-logic-argument-modes Calc!A19), new coverage 9 passing cells
   (probes/info-cell-address-cross-sheet), regressions 0.
-- Follow-ups: T-2052 (CELL("filename") on the web). A union on another sheet stays `#N/IMPL!` (unprobed).
+- Follow-ups: T-2052 (CELL("filename") on the web), T-2054 (Python `name` option). A union on another sheet stays `#N/IMPL!` (unprobed).
