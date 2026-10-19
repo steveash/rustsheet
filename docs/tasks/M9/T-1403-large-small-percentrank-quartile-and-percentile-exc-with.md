@@ -38,7 +38,7 @@ Code: crates/rustsheet-engine/src/functions/statistical/count_and_average.rs (`f
 Semantics: docs/excel-semantics/statistics.md "Array arguments given a scalar, a single cell or an error".
 
 ## Acceptance criteria
-- [~] Partly met: 5 of the 6 gen-m9 cells pass (A3 of 288b99797f58f149 is deferred to T-2066); the 6 gen-m9 cells above pass in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [~] Partly met: 5 of the 6 gen-m9 cells pass (A3 of 288b99797f58f149 is deferred to T-2066); the other 5 pass in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [x] (already on main, probes/percentrank-single-value B6) The PERCENTRANK.EXC single-value probe cells pass; the rule is in docs/excel-semantics/statistics.md.
 - [ ] `make check` green; reviewers approve.
 
