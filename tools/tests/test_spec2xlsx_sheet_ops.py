@@ -24,9 +24,15 @@ def test_each_op_is_recorded_in_order() -> None:
         {"op": "rename", "sheet": "Data", "to": "Inputs"},
         {"op": "add", "sheet": "New"},
         {"op": "move", "sheet": "Calc", "to": 0},
+        {"op": "insert_row", "sheet": "Calc", "row": 1},
     ]
     xlsx = build_xlsx(_spec(ops))
-    expected = [("rename", "Data", "Inputs"), ("add", "New", None), ("move", "Calc", 0)]
+    expected = [
+        ("rename", "Data", "Inputs"),
+        ("add", "New", None),
+        ("move", "Calc", 0),
+        ("insert_row", "Calc", 1),
+    ]
     assert sheet_ops(xlsx) == expected
     assert recorded_sheet_ops(xlsx) == expected
 
@@ -45,6 +51,9 @@ def test_workbook_without_ops_lists_none() -> None:
         {"op": "add", "sheet": "New", "to": 1},
         {"op": "add", "sheet": "New", "extra": 1},
         {"op": "add"},
+        {"op": "insert_row", "sheet": "Data"},
+        {"op": "insert_row", "sheet": "Data", "row": 0},
+        {"op": "insert_row", "sheet": "Data", "to": 1},
         "add",
     ],
 )
@@ -71,7 +80,7 @@ class _FakeGraph(GraphBackend):
         self.calls.append((method, url, kwargs.get("json")))
         name = unquote(url.rsplit("('", 1)[-1][:-2]).replace("''", "'") if url.endswith("')") else ""
         body = kwargs.get("json") or {}
-        if method == "POST":
+        if method == "POST" and "name" in body:
             self.order.append(body["name"])
         elif method == "PATCH" and "name" in body:
             self.order[self.order.index(name)] = body["name"]
@@ -97,3 +106,12 @@ def test_graph_replay_refuses_a_move_onto_the_canary_or_one_excel_ignored() -> N
         _FakeGraph(["Calc", "Data", CANARY], frozenset({"Data"}))._replay_sheet_ops(
             "item", {}, [("move", "Data", 0)]
         )
+
+
+def test_graph_replay_inserts_a_row_above_the_given_one() -> None:
+    graph = _FakeGraph(["S", CANARY])
+    graph._replay_sheet_ops("item", {}, [("insert_row", "S", 3)])
+    assert graph.calls == [
+        ("POST", "item/workbook/worksheets('S')/range(address='3:3')/insert", {"shift": "Down"})
+    ]
+    assert graph.order == ["S", CANARY]
