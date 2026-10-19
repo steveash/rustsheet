@@ -3,7 +3,7 @@ id: T-1953
 title: "Move date+clock serial parsing from functions::date_and_time::time_text down to formatter (remove formatter->functions import)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
