@@ -44,8 +44,8 @@ impl Model {
     /// The returned corner is above or left of the block's first cell when the block lies wholly
     /// past the used area, so that the walk visits nothing.
     ///
-    /// An explicit block is cut only when the cut leaves out at least [`MIN_CLIPPED_CELLS`] cells and the
-    /// formula's budget of seen-empty rectangles can pay for the record of them: otherwise its
+    /// An explicit block is cut only when the cut leaves out at least [`MIN_CLIPPED_CELLS`] cells
+    /// and the formula's budget of seen-empty rectangles can pay for the record of them: otherwise its
     /// blank cells are walked and recorded one by one, as before, so a LAMBDA reading many small
     /// blocks costs no more than it did and never reaches the seen-range cap on their account
     /// (docs/excel-semantics/references.md "Seen-range cap").

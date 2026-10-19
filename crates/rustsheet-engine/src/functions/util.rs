@@ -582,8 +582,9 @@ impl Model {
 
     /// Calls `f` with the position of the cells of one area, row by row. A range that is the
     /// whole argument (`of_union` false) is walked densely: every position of the range within
-    /// each sheet's used area, for an explicit block as for whole rows and columns (T-0405). An area of a union is walked over the cells that exist only:
-    /// every caller of a union walk skips blank cells, and a union can repeat a whole column
+    /// each sheet's used area, for an explicit block as for whole rows and columns (T-0405). An
+    /// area of a union is walked over the cells that exist only: every caller of a union walk
+    /// skips blank cells, and a union can repeat a whole column
     /// many times over (`MAX_AREAS` copies, or a LAMBDA walking one per row), so the walk must
     /// cost what the data costs (T-1497). Its work is drawn from the formula's walk budget
     /// ([`Model::spend_area_walk`]) as it goes, and the area is recorded as seen empty in one

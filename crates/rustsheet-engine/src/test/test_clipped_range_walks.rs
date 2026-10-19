@@ -363,7 +363,8 @@ fn qualify(formula: &str) -> String {
     format!("{name}({})", args.join(","))
 }
 
-/// Sheets Sheet1..Sheet50, each holding a number in A2 and Z3; the formulas go on a sheet after them.
+/// Sheets Sheet1..Sheet50, each holding a number in A2 and Z3; the formulas go on a sheet after
+/// them.
 fn fifty_sheets() -> crate::Model {
     let mut model = new_empty_model();
     for _ in 2..=50 {
