@@ -3,7 +3,7 @@ id: T-1751
 title: "MDETERM of a singular 3x3 matrix: reproduce Excel's 6.66e-16 residual"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
