@@ -54,16 +54,35 @@ fn compute_payment(
     } else {
         (1.0 + rate).powf(nper)
     };
+    // `(1+rate)^nper` underflowing to 0 is #NUM! (`PMT(-0.5,2000,1)`, `PMT(1,-2000,1)`;
+    // probes/pmt-overflow A14, A15, excel-graph, T-1405).
+    if rate_nper == 0.0 {
+        return Err(Error::NUM);
+    }
     let result = if period_start {
         // type = 1
         (fv + pv * rate_nper) * rate / ((1.0 + rate) * (1.0 - rate_nper))
     } else {
         (fv * rate + pv * rate * rate_nper) / (1.0 - rate_nper)
     };
-    if result.is_nan() || result.is_infinite() {
-        return Err(Error::NUM);
+    if result.is_finite() {
+        return Ok(result);
     }
-    Ok(result)
+    // When `pv*P` overflows (P itself infinite or not), Excel gives the same quotient divided
+    // through by P, whose limit is `-pv*rate` (`/(1+rate)` for type 1) and in which fv vanishes:
+    // `PMT(100,184,439103)` is -43910300 and `PMT(100,153,1)` is -100 (probes/pmt-overflow,
+    // excel-graph, T-1405). The fitted form above stays first, so finite results keep its digits.
+    let inverse = 1.0 / rate_nper;
+    let result = if period_start {
+        (fv * inverse + pv) * rate / ((1.0 + rate) * (inverse - 1.0))
+    } else {
+        (fv * rate * inverse + pv * rate) / (inverse - 1.0)
+    };
+    if result.is_finite() {
+        Ok(result)
+    } else {
+        Err(Error::NUM)
+    }
 }
 
 /// Which formulation [`compute_future_value`] uses.

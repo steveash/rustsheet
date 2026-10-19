@@ -660,13 +660,23 @@ Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0 on 
 Status: VERIFIED (excel-graph)
 Tasks: T-1624, T-1757, T-1374
 
-## PMT when (1+rate)^nper overflows
-Rule: `PMT(100,184,439103)` is not an error, although 101^184 overflows a double: `FLOOR(PMT(100,184,439103),<#DIV/0!>)`
-is `#DIV/0!` (inferred: FLOOR returns its first argument's error first). The value is unprobed (the limit is -pv*rate =
--43910300).
-Evidence: gen-m9/3b8e9078261b5bd2 Calc!A34 (excel-graph, 2026-10-12, T-1289).
-Ours: `#NUM!`.
-Status: UNVERIFIED (inferred from one cell; T-1405 probes the value and the FLOOR error order)
+## PMT when (1+rate)^nper overflows or underflows
+Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient
+divided through by P, whose limit is `-pv*rate` at the end of the period and `-pv*rate/(1+rate)` at the start; the fv
+term vanishes. `PMT(100,184,439103)` is -43910300, `PMT(100,184,-439103)` 43910300, `PMT(100,184,439103,0,1)`
+-434755.44554455444 (43910300/101), `PMT(100,153,1)` -100 (P = 101^153 is finite; only `pv*rate*P` overflows),
+`PMT(1,2000,1)` -1, `PMT(1,2000,1,0,1)` -0.5, `PMT(1,2000,1,5)` -1, `PMT(1,2000,0,5)` 0, `PMT(0.5,2000,3,7)` -1.5,
+and `PMT(1,1023,1)`, `PMT(1,1024,1)`, `PMT(1,1100,1)` are all -1. When P is finite but P-1 rounds to P
+(`PMT(1,60,1)`, P = 2^60) the ordinary quotient gives -1 (-0.5 for type 1). When P underflows to 0
+(`PMT(-0.5,2000,1)`, `PMT(1,-2000,1)`) PMT is `#NUM!`. IPMT and PPMT follow PMT: `IPMT(100,1,184,439103)` is
+-43910300 and `PPMT` of it 0; `IPMT(1,1,2000,1)`, `IPMT(1,2,2000,1)` are -1 and their PPMT 0;
+`PPMT(1,1,60,1)` is -8.67361737988405E-19 (ours 0, unscored: a last-digit question, T-1528). PV, FV and NPER stay `#NUM!` there (`PV(100,184,1)`, `FV(100,184,1)`,
+`NPER(100,-1,1)`). The gen-m9 inference holds: `FLOOR(NA(),1/0)` is `#N/A`, FLOOR returns its number's error first.
+Evidence: probes/pmt-overflow Sheet1!A1:A18, B1:B8, C1:C3, D1:D3 (excel-graph, 2026-10-19, T-1405);
+gen-m9/3b8e9078261b5bd2 Calc!A34 (excel-graph, 2026-10-12, T-1289).
+Status: VERIFIED (excel-graph)
+Ours: matches since T-1405 (`compute_payment` keeps the fitted quotient whenever it is finite and falls back to the
+divided-through form, so no finite result changes digits; P == 0 is `#NUM!`).
 Tasks: T-1405
 
 ## Analysis ToolPak securities functions check frequency and dates first

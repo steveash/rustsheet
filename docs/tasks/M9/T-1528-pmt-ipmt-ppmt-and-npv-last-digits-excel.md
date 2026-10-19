@@ -75,3 +75,9 @@ Reopens on a new hypothesis recorded here, for example: Excel's documented PMT f
 specific compiled order, a different power routine for PMT than for PV/FV, NPV accumulated in a
 different order or with a different discount factor, or new oracle evidence (a probe with r chosen
 so the candidate orders differ).
+
+## New hypothesis (T-1405, 2026-10-19)
+`PPMT(1,1,60,1)` is -8.67361737988405E-19 = -2^-60 in Excel (probes/pmt-overflow B8, excel-graph, unscored there),
+where `pmt - ipmt` gives 0 (PMT -1, IPMT -1). That is exactly `-pv*rate/(P-1)` with P = 2^60, so Excel's first-period
+PPMT is not `PMT - IPMT` but a closed form of its own; PPMT's last digits may follow from that form.
+
