@@ -704,7 +704,7 @@ on `A` and `&` is FALSE); a literal `^`, `-` or `&` next to a class stays litera
 Syntax: `[a[:digit:]]` and `[[:alpha:][:digit:]]` mix classes with other items; `[\[:alpha:]]` is no class (`":"` FALSE).
 `[:alpha:]` outside a bracket, an unknown or upper-case name (`[[:foo:]]`, `[[:ALPHA:]]`), `[[.a.]]`, `[[=a=]]` and a range from a class
 (`[[:alpha:]-z]`, `[a[:upper:]-z]`) are invalid patterns (`#VALUE!`, ERROR.TYPE 3; probes/regex-posix-classes Z1-Z3, Z8-Z10, regex-posix-classes-b A4, A5; T-1985).
-`[[:alpha:]-]` and `[-[:alpha:]]` stay valid (a literal hyphen next to a class); a top-level `[.a.]` or `[..]`, a multi-character `[[.ab.]]` and a range that ends at a class (`[a-[:alpha:]]`, `[a-[:digit:]]`, negated too) are invalid patterns (`#VALUE!`, ERROR.TYPE 3), as PCRE2's `check_posix_syntax` has it (probes/regex-posix-syntax-edges A1-A14, excel-graph, 2026-10-19, T-2010). Ours already agrees on all fourteen.
+`[[:alpha:]-]` and `[-[:alpha:]]` stay valid (a literal hyphen next to a class); a top-level `[.a.]` or `[..]`, a multi-character `[[.ab.]]` and a range that ends at a class (`[a-[:alpha:]]`, `[a-[:digit:]]`, and `[^a-[:alpha:]]`) are invalid patterns (`#VALUE!`, ERROR.TYPE 3), as PCRE2's `check_posix_syntax` has it (probes/regex-posix-syntax-edges A1-A14, excel-graph, 2026-10-19, T-2010). Ours already agrees on all fourteen.
 UNVERIFIED: the characters the probe does not cover (U+180E and U+061C, U+2066-U+2069 in graph and print, U+180E in blank, spacing marks
 in word) follow PCRE2's documented UCP definitions; Excel already departs from stock PCRE2 once (`&&` intersects), so the docs are weak evidence.
 Evidence: probes/regex-posix-classes (excel-graph, 2026-10-19): 47 characters × 19 patterns, and column Z for the syntax;
