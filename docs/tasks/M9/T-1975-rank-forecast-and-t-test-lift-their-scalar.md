@@ -34,8 +34,8 @@ H264, H265, H492, H493, H495, H496, H498, H499, H537-H539, H543-H545; statistics
   data's error, not the rank of 1).
 - A 1x1 array argument gives a 1x1 array: `TYPE(RANK({4},A1:A8))`, `TYPE(FORECAST({4},..))` are
   64 (P72, P74).
-- Z.TEST's `sigma <= 0` is checked before the data's error by analogy with T.TEST's `tails` (P88);
-  probe `Z.TEST(D1:D3,4,0)` with D2 = `#N/A` and adjust `z_test_element` if Excel differs.
+- Domain checks are not uniform: T.TEST's `tails` 3 beats the data's error (P88), Z.TEST's
+  `sigma <= 0` does not (stat-test-lift-b P93). Probe each kernel's domain checks.
 - SMALL, PERCENTILE, TRIMMEAN and QUARTILE.EXC of `NA()` with a bad `k` are `#N/A` (P80-P83;
   ours gives the `k` error for P81-P83).
 

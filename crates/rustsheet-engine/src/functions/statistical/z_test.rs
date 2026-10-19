@@ -68,9 +68,11 @@ impl Model {
     }
 
     /// `Z.TEST(array, x, [sigma])` and ZTEST: `x` and `sigma` lift over an array and a multi-cell
-    /// range, the data is read once (SPEC-0011, T-1813). An element checks `x`, then `sigma`, then
-    /// the data: `Z.TEST(D1:D3,"a")` with D2 = `#N/A` is `#VALUE!`, and a lifted element with a
-    /// good `x` is the data's `#N/A` (probes/stat-test-lift P45, P86). `x` and `sigma` coerce
+    /// range, the data is read once (SPEC-0011, T-1813). An element reads `x` and `sigma` as
+    /// numbers, then checks the data, then `sigma`'s sign: `Z.TEST(D1:D3,"a")` with D2 = `#N/A`
+    /// is `#VALUE!`, `Z.TEST({"a","b"},"x")` `#VALUE!`, `Z.TEST(D1:D3,4,0)` `#N/A`, and a lifted
+    /// element with a good `x` is the data's `#N/A` (probes/stat-test-lift P45, P86;
+    /// stat-test-lift-b P92, P93). `x` and `sigma` coerce
     /// numeric text and booleans, and a reference to other text is `#VALUE!` (P46-P51).
     pub(crate) fn fn_z_test(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let kind = Function::ZTest;
@@ -106,9 +108,6 @@ fn z_test_element(
         None => return CalcResult::new_args_number_error(cell),
     };
     let sigma = match values.get(2).map(|sigma| model.kernel_number(sigma, cell)) {
-        // A sigma of 0 or below is #NUM! (`Z.TEST(B1:B10,5,-1)`, probes-numeric/t1049-ztest
-        // A26, t1048-ztest A26; probes/stat-test-lift P44, P52).
-        Some(Ok(sigma)) if sigma <= 0.0 => return error(Error::NUM),
         Some(Ok(sigma)) => Some(sigma),
         Some(Err(error)) => return error,
         None => None,
@@ -120,6 +119,12 @@ fn z_test_element(
     // Excel: an array with no numeric values is #N/A.
     if data.count == 0 {
         return error(Error::NA);
+    }
+    // A sigma of 0 or below is #NUM! (`Z.TEST(B1:B10,5,-1)`, probes-numeric/t1049-ztest
+    // A26, t1048-ztest A26; probes/stat-test-lift P44, P52), after the data's error:
+    // `Z.TEST(D1:D3,4,0)` with D2 = `#N/A` is `#N/A` (probes/stat-test-lift-b P93).
+    if sigma.is_some_and(|sigma| sigma <= 0.0) {
+        return error(Error::NUM);
     }
     // One numeric value is #DIV/0!, with or without sigma (`Z.TEST(D1:D1,4,1)`,
     // `Z.TEST(7,4,1)`: probes-numeric/t1049-ztest A40, A42; t1916-erf-wrappers column T).

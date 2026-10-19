@@ -42,4 +42,5 @@ deleted. `CalcResult::without_message` is the message-stripping match, shared by
 copy before) and the two new readers. The session ran out before RANK, FORECAST and T.TEST, so they moved to T-1975 with the probe's findings,
 along with the order-statistic precedence the probe found (P81-P83: `PERCENTILE(NA(),2)` is `#N/A`).
 Eval delta: probes fixed 6 (stat-argument-modes H488, H489, H566, H567, H571, H572), new case stat-test-lift
-(55 of 89 cells pass; the 34 others are T-1975's), 0 regressions.
+(55 of 89 cells pass; the 34 others are T-1975's) and stat-test-lift-b (7 of 7: data validation against a bad scalar
+argument, and Z.TEST's `sigma <= 0` after the data's error), 0 regressions.

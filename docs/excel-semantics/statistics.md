@@ -950,16 +950,17 @@ is `#NUM!`, while a lifted element with good arguments is the data's `#N/A` (`PR
 not the rank of 1). The order-statistic functions are the other way round: `SMALL(NA(),0)`, `PERCENTILE(NA(),2)`,
 `TRIMMEAN(NA(),2)` and `QUARTILE.EXC(NA(),9)` are `#N/A`. Z.TEST's `x` coerces numeric text and booleans
 (`Z.TEST(A1:A8,"5")`, `TRUE`, also as array elements) and a reference to other text is `#VALUE!`; a `sigma` of 0 or
-below is `#NUM!` per element. PROB's limits coerce TRUE (`PROB(A1:A4,F1:F4,{1;TRUE})` element 2 is the probability of
+below is `#NUM!` per element, but after the data's error (`Z.TEST(D1:D3,4,0)` is `#N/A`). The scalar arguments also come
+before the data's own validation: `PROB(A1:A3,F1:F4,"a")` (unequal sizes), `PROB(A1:A4,{0.5;0.5;0.5;0.5},"a")` (a sum of 2)
+and `Z.TEST({"a","b"},"x")` (no numbers) are `#VALUE!`, and `PROB(A1:A3,F1:F4,{1;"a"})` is `#N/A`, `#VALUE!`. PROB's limits coerce TRUE (`PROB(A1:A4,F1:F4,{1;TRUE})` element 2 is the probability of
 1), `lower > upper` is 0, and a ragged pair of limits is `#N/A` past the shorter one. T.TEST truncates `tails` and `type`
 (`1.7`, `2.9` are 1 and 2) and `tails` 3 or `type` 4 is `#NUM!` per element. A lifted RANK `number` against a
 non-reference `ref` broadcasts with the ref's shape, every element `#VALUE!` (`RANK({4;"x"},IF(A1:C1>0,A1:C1))` is
 2x3). A 1x1 array argument gives a 1x1 array (`TYPE(Z.TEST(A1:A8,{4}))`, `TYPE(RANK({4},A1:A8))`,
 `TYPE(LARGE(A1:A8,{1}))` are 64).
-Evidence: probes/stat-test-lift P1-P89 (excel-graph, 2026-10-19, T-1813).
+Evidence: probes/stat-test-lift P1-P89, stat-test-lift-b P90-P95 (excel-graph, 2026-10-19, T-1813).
 Ours: Z.TEST/ZTEST and PROB match since T-1813 (`statistical/z_test.rs`, `prob.rs`: the data argument is
-`WholeByCaller`, read once). RANK, FORECAST, T.TEST and the order-statistic precedence: T-1975. The order of
-Z.TEST's `sigma <= 0` against the data's error was not probed (we check `sigma` first, as T.TEST's `tails`).
+`WholeByCaller`, read once). RANK, FORECAST, T.TEST and the order-statistic precedence: T-1975.
 Status: VERIFIED (excel-graph)
 Tasks: T-1813, T-1975
 
