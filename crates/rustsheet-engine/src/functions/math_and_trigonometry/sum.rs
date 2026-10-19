@@ -112,6 +112,12 @@ impl Model {
                 ));
             }
         }
+        // The first argument's error comes before anything about the second.
+        for value in [&x_range, &y_range] {
+            if let error @ CalcResult::Error { .. } = value {
+                return Err(error.clone());
+            }
+        }
         let (Some((rows1, cols1, first)), Some((rows2, cols2, second))) =
             (matrix_arg(x_range), matrix_arg(y_range))
         else {
@@ -123,7 +129,7 @@ impl Model {
         };
         if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
             return Err(CalcResult::new_error(
-                Error::VALUE,
+                Error::NA,
                 cell,
                 "Arguments must be of the same shape".to_string(),
             ));
@@ -156,6 +162,8 @@ fn matrix_arg(value: CalcResult) -> Option<(i64, i64, PairedArg)> {
                 .map_or(0, |row| i64::try_from(row.len()).unwrap_or(i64::MAX));
             Some((rows, columns, PairedArg::Array(array)))
         }
+        // A plain number is an array of one value.
+        CalcResult::Number(n) => Some((1, 1, PairedArg::Values(vec![Some(n)]))),
         _ => None,
     }
 }

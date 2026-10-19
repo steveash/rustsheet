@@ -65,6 +65,10 @@ impl Model {
         match self.evaluate_node_in_context(arg, cell) {
             CalcResult::Range { left, right } => PairedArg::Range(Range { left, right }),
             CalcResult::Array(array) => PairedArg::Array(array),
+            // A number is an array of one value and an error is itself (statistics.md "Array
+            // arguments given a scalar, a single cell or an error").
+            CalcResult::Number(n) => PairedArg::Values(vec![Some(n)]),
+            error @ CalcResult::Error { .. } => PairedArg::Error(error),
             _ => PairedArg::Error(CalcResult::new_error(
                 Error::VALUE,
                 cell,
