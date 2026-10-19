@@ -30,9 +30,8 @@ use signature::{
     args_signature_scan, args_signature_sequence, args_signature_sort, args_signature_sortby,
     args_signature_sumif, args_signature_take, args_signature_textafter, args_signature_textjoin,
     args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_unique, args_signature_with_holidays, args_signature_wrapcols,
-    args_signature_xirr, args_signature_xlookup, args_signature_xmatch, args_signature_xnpv,
-    Signature,
+    args_signature_unique, args_signature_wrapcols, args_signature_xirr, args_signature_xlookup,
+    args_signature_xmatch, args_signature_xnpv, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -499,8 +498,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Days => args_signature_scalars(arg_count, 2, 0),
         Function::Days360 => args_signature_scalars(arg_count, 2, 1),
         Function::Weekday => args_signature_scalars(arg_count, 1, 1),
-        Function::Workday => args_signature_with_holidays(arg_count, 2, 0),
-        Function::WorkdayIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
         Function::Fvschedule => vec![Signature::Scalar, Signature::Vector],
         Function::Db => args_signature_scalars(arg_count, 4, 1),
@@ -538,8 +535,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Rightb => args_signature_scalars(arg_count, 1, 1),
         Function::Searchb => args_signature_scalars(arg_count, 2, 1),
         Function::Geomean => vec![Signature::Vector; arg_count],
-        Function::Networkdays => args_signature_with_holidays(arg_count, 2, 0),
-        Function::NetworkdaysIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Mround => args_signature_scalars(arg_count, 2, 0),
         Function::Gcd => vec![Signature::Vector; arg_count],
         Function::Lcm => vec![Signature::Vector; arg_count],
@@ -908,8 +903,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Days => scalar_arguments(args),
         Function::Days360 => scalar_arguments(&args[..args.len().min(2)]),
         Function::Weekday => scalar_arguments(args),
-        Function::Workday => not_implemented(args),
-        Function::WorkdayIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
         Function::Isoweeknum => scalar_arguments(args),
         Function::Fvschedule => StaticResult::Scalar,
         Function::Db => not_implemented(args),
@@ -926,8 +919,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         // One result per cell of a multi-cell reference (T-1241).
         Function::Formulatext => broadcast_static_result(args),
         Function::Geomean => not_implemented(args),
-        Function::Networkdays => not_implemented(args),
-        Function::NetworkdaysIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
         Function::Mround => scalar_arguments(args),
         Function::Gcd => StaticResult::Scalar,
         Function::Lcm => StaticResult::Scalar,

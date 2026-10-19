@@ -16,6 +16,13 @@ const BETA_CDF: &str = "one statrs incomplete beta: at most 140 continued-fracti
 const ERF_KERNELS: &str =
     "erf kernels: fixed-degree rationals and one fixed-length excel_exp series";
 
+/// WORKDAY's cap: a binary search of at most 22 probes over the date range, each a closed-form
+/// count with 14 binary searches of the holidays, prepared once (`LiftCost::Prepared`).
+const WORKDAY_SEARCH: &str = "at most 22 closed-form counts of the prepared holidays";
+
+/// NETWORKDAYS' cap: one closed-form count (T-1808) with 14 binary searches of the holidays.
+const NETWORKDAYS_COUNT: &str = "one closed-form count of the prepared holidays";
+
 /// The value-dependent kernels: each with the fixed cap that lets its entry be `Constant`, or
 /// `None` when it must be `Weighted` (a cap that grows with the values, or one not yet read).
 /// A function with no table entry yet is checked once it is entered.
@@ -70,6 +77,10 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Function::Seriessum,
         Some("one step per coefficient, charged per element as their cells (LiftCost::Cells)"),
     ),
+    (Function::Workday, Some(WORKDAY_SEARCH)),
+    (Function::WorkdayIntl, Some(WORKDAY_SEARCH)),
+    (Function::Networkdays, Some(NETWORKDAYS_COUNT)),
+    (Function::NetworkdaysIntl, Some(NETWORKDAYS_COUNT)),
     // Weighted: solvers, searches, series and walks whose length the values set.
     (Function::Rate, None),
     (Function::Irr, None),

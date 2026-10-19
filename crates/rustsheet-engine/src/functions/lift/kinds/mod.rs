@@ -27,10 +27,12 @@ pub(crate) enum ArgKind {
     #[allow(dead_code)] // TODO(T-1389): entered with the D-functions.
     LiftArraysRangeWhole,
     /// Read once as written (`evaluate_node_with_reference`) and handed to every element whole
-    /// (LARGE's array, holidays, LOOKUP's vectors).
-    #[allow(dead_code)] // TODO(T-1236): WORKDAY's holidays are the first `Whole` entry.
+    /// (the M7 functions' array arguments).
+    #[allow(dead_code)]
+    // TODO(T-1836): TOCOL's and UNIQUE's arrays are the first `Whole` entries.
     Whole,
-    /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
+    /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector,
+    /// WORKDAY's holidays),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
 }

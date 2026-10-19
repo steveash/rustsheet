@@ -11,6 +11,10 @@ macro_rules! lifting_table_functions {
             | Function::Eomonth
             | Function::Weeknum
             | Function::Yearfrac
+            | Function::Workday
+            | Function::WorkdayIntl
+            | Function::Networkdays
+            | Function::NetworkdaysIntl
             | Function::Isnumber
             | Function::Istext
             | Function::Isnontext
