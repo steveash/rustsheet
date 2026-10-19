@@ -26,9 +26,10 @@ pub(crate) enum ArgKind {
     /// `criteria`, probes/db-argument-modes F11:F23; entered by T-1389).
     LiftArraysRangeWhole,
     /// Read once as written (`evaluate_node_with_reference`) and handed to every element whole
-    /// (LARGE's array, holidays, LOOKUP's vectors).
+    /// (LARGE's array, the D-functions' database, LOOKUP's vectors).
     Whole,
-    /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
+    /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector,
+    /// WORKDAY's holidays),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
 }
