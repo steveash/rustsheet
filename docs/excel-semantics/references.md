@@ -407,8 +407,8 @@ while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). The engine matches all six (T-0235).
 ISFORMULA reads the cell INDEX picks, as it reads the cell OFFSET or INDIRECT gives: `ISFORMULA(INDEX(Data!D1:D3,1))` is TRUE
 with Data!D1 = `=1+1` (probes/ifna-isformula-edges Calc!B12, excel-graph; B10, B11 for INDIRECT and OFFSET). The engine
-matches since T-1453: every reader of a reference argument (`get_reference`, `evaluate_node_with_reference`) evaluates INDEX
-in its reference form.
+matches since T-1453 (`evaluate_call_with_reference` evaluates INDEX in its reference form). Unprobed: INDEX as the
+argument of the other reference readers (SHEET, CELL, FORMULATEXT), which take the same path.
 XLOOKUP, TAKE, DROP and TRIMRANGE are references to ISREF when they pick cells of a range:
 `ISREF(XLOOKUP(2,A1:A3,B1:B3))`, `ISREF(TAKE(A1:B3,1))`, `ISREF(DROP(A1:B3,1))` and `ISREF(TRIMRANGE(A1:B3))` are
 TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a range return); over an array
