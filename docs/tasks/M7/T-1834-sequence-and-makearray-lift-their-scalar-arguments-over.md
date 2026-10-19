@@ -3,7 +3,7 @@ id: T-1834
 title: "SEQUENCE and MAKEARRAY lift their scalar arguments over a range or an array (first array-valued lifting table entries)"
 milestone: M7
 lane: functions-lookup
-status: done
+status: in-progress
 priority: P2
 size: M
 tier: opus
