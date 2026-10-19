@@ -1,0 +1,62 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "s",
+    "v": "x[\u03c2a]y"
+   },
+   "A10": {
+    "t": "s",
+    "v": "x[\u03b1\u03a3]y"
+   },
+   "A11": {
+    "t": "s",
+    "v": "\u03b1\u03c2"
+   },
+   "A12": {
+    "t": "s",
+    "v": "\u03b1\u03c2 \u03b1"
+   },
+   "A2": {
+    "t": "s",
+    "v": "x[\u03b1\u03c3x]y"
+   },
+   "A3": {
+    "t": "s",
+    "v": "x[\u03b1\u03c2 b]y"
+   },
+   "A4": {
+    "t": "s",
+    "v": "x[\u03b1\u03c2]y"
+   },
+   "A5": {
+    "t": "s",
+    "v": "x[\u03b1\u03c2x]y"
+   },
+   "A6": {
+    "t": "s",
+    "v": "x[\u03b1\u03c2]y"
+   },
+   "A7": {
+    "t": "s",
+    "v": "x[\u03b1\u03c3\u03b1]y"
+   },
+   "A8": {
+    "t": "s",
+    "v": "x[\u03b1\u03c2]y"
+   },
+   "A9": {
+    "t": "s",
+    "v": "x[\u03b1\u03c2 ]y"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "56580948d8b8dc1e5204498caf4ee8860ab91c902f4565f929a9f088062491e8",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-19T01:15:46+00:00",
+  "version": null
+ }
+}

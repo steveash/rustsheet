@@ -194,10 +194,15 @@ struct CaseState {
     mode: Option<Force>,
     /// The `\u` or `\l` that applies to the next character.
     next: Option<Force>,
+    /// Text under `\L` not yet lowered: the run is lowered whole, so a capital sigma sees the
+    /// text that follows it in the next piece (probes/regexreplace-final-sigma A2: `\L$1x` with
+    /// `$1` = ΑΣ gives ασx, not αςx).
+    pending: String,
 }
 
 impl CaseState {
-    fn apply(&mut self, op: CaseOp) {
+    fn apply(&mut self, op: CaseOp, out: &mut String) {
+        self.finish(out);
         match op {
             CaseOp::Upper => self.mode = Some(Force::Upper),
             CaseOp::Lower => self.mode = Some(Force::Lower),
@@ -207,6 +212,14 @@ impl CaseState {
                 self.next = Some(Force::Lower);
             }
             CaseOp::End => *self = CaseState::default(),
+        }
+    }
+
+    /// Lowers the text held back under `\L` into `out`.
+    fn finish(&mut self, out: &mut String) {
+        if !self.pending.is_empty() {
+            out.push_str(&lower_case(&self.pending));
+            self.pending.clear();
         }
     }
 
@@ -225,7 +238,8 @@ impl CaseState {
             rest = tail;
         }
         match self.mode {
-            Some(mode) => out.push_str(&force(mode, rest)),
+            Some(Force::Lower) => self.pending.push_str(rest),
+            Some(Force::Upper) => out.push_str(&force(Force::Upper, rest)),
             None => out.push_str(rest),
         }
     }
@@ -568,9 +582,10 @@ impl Replacement {
                                 case.push(&mut out, text.get(span.range()).unwrap_or_default());
                             }
                         }
-                        Piece::Case(op) => case.apply(*op),
+                        Piece::Case(op) => case.apply(*op, &mut out),
                     }
                 }
+                case.finish(&mut out);
                 last = m.end();
             }
         })?;
@@ -833,10 +848,11 @@ mod tests {
         let mut out = String::new();
         for (op, text) in ops {
             if let Some(op) = op {
-                state.apply(*op);
+                state.apply(*op, &mut out);
             }
             state.push(&mut out, text);
         }
+        state.finish(&mut out);
         out
     }
 
@@ -860,12 +876,21 @@ mod tests {
         assert_eq!(forced(&[(Some(UpperNext), "x"), (Some(End), "y")]), "Xy");
     }
 
+    // T-1934: oracle cells probes/regexreplace-final-sigma A2, A8, A10: a `\L` run is lowered whole.
+    #[test]
+    fn lowered_run_sees_the_text_after_a_sigma() {
+        use CaseOp::{End, Lower};
+        assert_eq!(forced(&[(Some(Lower), "ΑΣ"), (None, "x")]), "ασx");
+        assert_eq!(forced(&[(Some(Lower), "Α"), (None, "Σ")]), "ας");
+        assert_eq!(forced(&[(Some(Lower), "Α"), (Some(End), "Σ")]), "αΣ");
+    }
+
     #[test]
     fn case_mapping_can_lengthen_text_by_half() {
         // ȿ (2 bytes) upper-cases to Ɀ (3 bytes).
         let mut state = CaseState::default();
-        state.apply(CaseOp::Upper);
         let mut out = String::new();
+        state.apply(CaseOp::Upper, &mut out);
         state.push(&mut out, "ȿ");
         assert_eq!(out.len(), 3);
     }
