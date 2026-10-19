@@ -1,5 +1,5 @@
 ---
-id: T-1993
+id: T-1998
 title: "TAKE, DROP and TRIMRANGE over XLOOKUP pick values instead of the cells XLOOKUP returns"
 milestone: M2
 lane: functions-lookup

@@ -275,7 +275,7 @@ fn subtotal_of_take_of_nested_ifs_is_linear() {
 // cells, a scalar, and a debug build hit the scalar-context assertion (T-1914 review, T-1987).
 // The LAMBDA forms spill the 2x2 of `#VALUE!` of the bare SWITCH and CHOOSE calls they wrap
 // (probes/subtotal-take-array-selector A30:B31, probes/lift-arrays-choose-arms A69:B70). The
-// XLOOKUP shapes are the engine's own and unprobed (T-1993): a lookup in a 1x2 vector picks a
+// XLOOKUP shapes are the engine's own and unprobed (T-1998): a lookup in a 1x2 vector picks a
 // 2x1 column, and a 1x2 lookup value lifts to 1x2. A LAMBDA over a range still picks its cells.
 #[test]
 fn subtotal_of_take_of_lambda_call_or_lifting_xlookup_spills() {

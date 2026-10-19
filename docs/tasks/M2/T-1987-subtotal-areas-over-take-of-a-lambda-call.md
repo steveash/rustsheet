@@ -42,5 +42,5 @@ XLOOKUP argument of SUBTOTAL/AREAS is read as cells only when its lookup value i
 return array does not lift. The selector test is one helper, `is_lifting_selector`. Every formula
 in the task, plus `TAKE(XLOOKUP(1,{1},H1:I1),1)` and array/range lookup-value XLOOKUPs found on the
 way, now spills instead of tripping the assertion; a 20-deep nesting test stays fast. Eval delta:
-none (no suite changes). Follow-up: T-1993 (TAKE/DROP/TRIMRANGE over XLOOKUP pick values at run
+none (no suite changes). Follow-up: T-1998 (TAKE/DROP/TRIMRANGE over XLOOKUP pick values at run
 time; probe Excel).
