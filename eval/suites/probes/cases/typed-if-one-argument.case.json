@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1990: IF with only a condition entered as a typed formula (not through _xleta). A1 1, B1 0, A2 TRUE, B2 x. One question per 4 rows in column E.",
+  "tags": [
+    "M2",
+    "probe",
+    "if",
+    "T-1990"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 0,
+        "A2": true,
+        "B2": "x",
+        "E1": "=IF(TRUE)",
+        "E5": "=IF(FALSE)",
+        "E9": "=IF(1)",
+        "E13": "=IF(0)",
+        "E17": "=IF({1,0})",
+        "E21": "=IF(A1:B1)",
+        "E25": "=IF(\"x\")",
+        "E29": "=IF(NA())",
+        "E33": "=ISLOGICAL(IF(TRUE))",
+        "E37": "=IF(TRUE)+1"
+      }
+    }
+  ]
+}

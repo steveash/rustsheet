@@ -9,7 +9,7 @@ use crate::{
     },
     model::CellStructure,
     types::MergedCell,
-    user_model::sequence_detector::detect_progression,
+    user_model::sequence_detector::{detect_progression, Progression},
     UserModel,
 };
 
@@ -476,20 +476,13 @@ impl UserModel {
                 }
 
                 let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
-                let target_value;
-
-                // compute the new value and set it
-                if let Some(ref detected_progression) = possible_progression {
-                    target_value = detected_progression.next(progression_idx);
-                    progression_idx += 1;
-                } else {
-                    target_value = self
-                        .model
-                        .extend_to(sheet, source_row, column, row, column)?;
-                }
-
-                self.model
-                    .set_user_input(sheet, row, column, target_value.to_string())?;
+                let target_value = self.fill_target(
+                    sheet,
+                    possible_progression.as_ref(),
+                    &mut progression_idx,
+                    (source_row, column),
+                    (row, column),
+                )?;
 
                 // Compute the new style and set it
                 let new_style = self.model.get_style_for_cell(sheet, source_row, column)?;
@@ -656,20 +649,13 @@ impl UserModel {
                 }
 
                 let old_style = self.model.get_cell_style_or_none(sheet, row, column)?;
-                let target_value;
-
-                // compute the new value and set it
-                if let Some(ref detected_progression) = possible_progression {
-                    target_value = detected_progression.next(progression_idx);
-                    progression_idx += 1;
-                } else {
-                    target_value = self
-                        .model
-                        .extend_to(sheet, row, source_column, row, column)?;
-                }
-
-                self.model
-                    .set_user_input(sheet, row, column, target_value.to_string())?;
+                let target_value = self.fill_target(
+                    sheet,
+                    possible_progression.as_ref(),
+                    &mut progression_idx,
+                    (row, source_column),
+                    (row, column),
+                )?;
 
                 let new_style = self.model.get_style_for_cell(sheet, row, source_column)?;
                 // Compute the new style and set it
@@ -702,6 +688,28 @@ impl UserModel {
         self.push_diff_list(diff_list);
         self.evaluate();
         Ok(())
+    }
+
+    /// Computes and writes the filled value of cell (`row`, `column`): the next term of
+    /// `progression` when the source cells form one, else the formula or value of the cell at
+    /// `source` ([`Model::fill_cell`](crate::Model), which keeps a legacy N/T marker). Returns
+    /// the text written.
+    fn fill_target(
+        &mut self,
+        sheet: u32,
+        progression: Option<&Progression>,
+        progression_idx: &mut usize,
+        source: (i32, i32),
+        (row, column): (i32, i32),
+    ) -> Result<String, String> {
+        let Some(progression) = progression else {
+            return self.model.fill_cell(sheet, source, (row, column));
+        };
+        let value = progression.next(*progression_idx);
+        *progression_idx += 1;
+        self.model
+            .set_user_input(sheet, row, column, value.clone())?;
+        Ok(value)
     }
 
     /// Makes the link of the fill target cell match the one of its source cell,
