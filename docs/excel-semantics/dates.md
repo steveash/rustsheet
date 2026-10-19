@@ -469,7 +469,7 @@ NETWORKDAYS.INTL.
 In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
 1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330). It counts the days on the 1904 calendar since T-1416 (`DATEDIF(0,1000,"ym")` = 8, probes/date-system-1904-readers A11).
 Status: VERIFIED
-Implemented in: EDATE, EOMONTH, WEEKNUM and YEARFRAC: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs)
+Implemented in: EDATE, EOMONTH, WEEKNUM and YEARFRAC: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds/general.rs)
 and `Model::lift_call` (functions/lift/call.rs), with the kernels `edate_of`, `eomonth_of`
 (functions/date_and_time/month_shift.rs), `weeknum_of` (date_and_time/weeknum.rs) and `yearfrac_of` (date_and_time/yearfrac.rs).
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below

@@ -6,6 +6,7 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_result, value_error};
 use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::functions::Function;
+use crate::x87_exp::excel_exp;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -549,8 +550,13 @@ impl Model {
     pub(crate) fn fn_sech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Sech, args, cell, |f| Ok(1.0 / f64::cosh(f)))
     }
+    /// `EXP(number)`: Excel's own x87 evaluation, model V6, which is not the correctly rounded exp
+    /// (docs/excel-semantics/numbers.md "EXP is an x87 2^(a*log2 e) evaluation, not correctly
+    /// rounded"; probes-numeric `t1931-exp-*`). A subnormal result is kept (probes/
+    /// subnormal-function-results C4, C6), and an overflow is infinite, which the cell turns into
+    /// `#NUM!` as before.
     pub(crate) fn fn_exp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Exp, args, cell, |f: f64| Ok(f64::exp(f)))
+        self.number_fn(Function::Exp, args, cell, |f: f64| Ok(excel_exp(f)))
     }
     pub(crate) fn fn_fact(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Fact, args, cell, |x: f64| {

@@ -561,6 +561,22 @@ Evidence: probes/index-scalar-indexes A1:A23 (excel-graph, 2026-10-17, T-1242); 
 Status: VERIFIED (excel-graph)
 Ours: implemented (the engine matched every cell before T-1242).
 
+## INDEX of an array: a whole row stays an array
+Rule: INDEX of an array (not a reference) that selects a whole row or column returns an array, even when that row or column
+is one cell; only a selection by a row and a column number is a scalar. With one index into a multi-row array the index is
+a row number and the result is that row: `INDEX({2;3},1)` and `INDEX({2;3},2)` are 1x1 arrays (`TYPE` 64, `ROWS` 1, value
+2 and 3), as `INDEX({2,3;4,5},1)` is a 1x2 one; so is `INDEX({2;3},1,0)`. With one index into a one-row array the index is
+a column number and picks one cell, a scalar: `INDEX({2,3},1)` and `INDEX({2},1)` have `TYPE` 1, as do
+`INDEX({2;3},1,1)` and `INDEX({2,3;4,5},1,1)`. `TYPE({2})` is 64. A reference result is unaffected:
+`TYPE(INDEX(Z1:Z2,1))` is 1 (one cell). So a legacy N or T over it is `#VALUE!` (references.md "Legacy N and T over a
+reference-returning call"): `=N(INDEX({2;3},2))`, `=T(INDEX({"a";"b"},1))` and `=N(INDEX({2;3},1,0))` are `#VALUE!`, while
+`=N(INDEX({2,3},2))` is 3 and `=N(INDEX({2},1))` 2; a legacy `=TYPE(INDEX({2;3},1))` is shown `=TYPE(@INDEX({2;3},1))`, 1.
+`TYPE(INDEX({7},0,0))` and the other whole-row and whole-column selections of a scalar or a 1x1 array are unprobed (their
+values are, "INDEX of a scalar or a 1x1 array"); the engine gives them the same array.
+Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); probes/legacy-n-t-marker-shapes F10.
+Status: VERIFIED (excel-graph)
+Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs).
+
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
 counts up near an integer"): truncated, except that a value within 2^-22 + 2^-33 (about 2.38535E-7) below an integer

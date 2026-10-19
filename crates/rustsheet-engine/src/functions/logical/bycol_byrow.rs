@@ -197,7 +197,7 @@ impl Model {
         if args.len() != 2 {
             return Err(CalcResult::new_args_number_error(cell));
         }
-        let source = self.by_slices_source(&args[0], cell)?;
+        let source = self.by_slices_source(&args[0], cell, false)?;
         let lambda_result = self.by_slices_lambda(&args[1], cell)?;
         Ok((source, self.lambda_caller(&lambda_result, 1)))
     }
@@ -224,10 +224,16 @@ impl Model {
     /// full size, as a range read as an array does (docs/excel-semantics/arrays.md "Array
     /// results above 1,048,576 cells"), under the same size bound. Anything else is read as
     /// values.
+    ///
+    /// With `refuse_scalar` a scalar value (no reference, no array) is `#VALUE!`, as MAP reads its
+    /// second and later arrays: `MAP(1,{2},LAMBDA(x,y,x+y))` is 3 but `MAP({1},2,..)` and
+    /// `MAP(1,2,..)` are `#VALUE!` (probes/lambda-value-arguments A28, B1-B10; arrays.md "MAP over
+    /// single values").
     fn by_slices_source(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
+        refuse_scalar: bool,
     ) -> Result<Source, CalcResult> {
         let data = match self.evaluate_picked_reference_arg(arg, cell) {
             RefArg::Ranges(Ranges::One(range)) if range.left.sheet == range.right.sheet => {
@@ -238,6 +244,13 @@ impl Model {
             }
             other => {
                 let value = other.into_single_area(cell);
+                if refuse_scalar && is_scalar_value(&value) {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Expecting an array".to_string(),
+                    ));
+                }
                 self.result_to_array(value, cell)?
             }
         };
@@ -256,12 +269,14 @@ impl Model {
     /// the cell), over anything else its value (probes/lambda-helper-range-slices, excel-graph
     /// 2026-10-12, T-1442). Over a range the references are built on demand ([`LambdaGrid::at`]),
     /// not stored per cell (T-1465).
+    /// `refuse_scalar` as in [`Model::by_slices_source`].
     pub(super) fn lambda_cells(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
+        refuse_scalar: bool,
     ) -> Result<LambdaGrid, CalcResult> {
-        Ok(match self.by_slices_source(arg, cell)? {
+        Ok(match self.by_slices_source(arg, cell, refuse_scalar)? {
             Source::Range(range) => LambdaGrid::Cells {
                 origin: range.left,
                 rows: usize::try_from(range.right.row - range.left.row + 1).unwrap_or(0),
@@ -402,6 +417,18 @@ impl Model {
 
         CalcResult::Array(result)
     }
+}
+
+/// A number, text, boolean or blank: a value that is neither an array nor a reference.
+fn is_scalar_value(value: &CalcResult) -> bool {
+    matches!(
+        value,
+        CalcResult::Number(_)
+            | CalcResult::String(_)
+            | CalcResult::Boolean(_)
+            | CalcResult::EmptyCell
+            | CalcResult::EmptyArg
+    )
 }
 
 #[cfg(test)]

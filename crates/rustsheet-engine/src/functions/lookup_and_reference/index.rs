@@ -65,8 +65,8 @@ fn index_number(x: f64) -> Option<usize> {
 ///
 /// In the two-argument form `INDEX(array, num)` the single index is interpreted
 /// based on the shape of the source: for a single-row source it is a column
-/// index (all rows), otherwise it is a row index (all columns — i.e. a whole row
-/// for a 2-D source, or a single element for a column vector).
+/// index into that one row, otherwise it is a row index (all columns: a whole row
+/// for a 2-D source, a one-element row for a column vector).
 fn index_effective_indices(
     num_rows: usize,
     row_num: usize,
@@ -75,7 +75,7 @@ fn index_effective_indices(
 ) -> (usize, usize) {
     if two_arg {
         if num_rows == 1 {
-            (0, row_num)
+            (1, row_num)
         } else {
             (row_num, 0)
         }
@@ -111,9 +111,12 @@ fn index_window(
 }
 
 /// Extracts the requested cell, row, column or whole array from `arr`.
-/// `row_eff`/`col_eff` of `0` select every row/column respectively. A selection
-/// that resolves to a single cell is returned as a scalar; otherwise an array, unless `top_left`
-/// asks for its first value only (a lifted element, which must not copy the selection).
+/// `row_eff`/`col_eff` of `0` select every row/column respectively. A selection by a row and a
+/// column number is one cell, a scalar; a whole row or column stays an array even when it is one
+/// cell (`INDEX({2;3},1)` and `INDEX({2;3},1,0)` are 1x1 arrays, `TYPE` 64; `INDEX({2,3},1)` is
+/// 2, `TYPE` 1: probes/index-one-index-array-shape, docs/excel-semantics/lookup.md "INDEX of an
+/// array: a whole row stays an array"), unless `top_left` asks for its first value only (a lifted
+/// element, which must not copy the selection).
 fn index_from_array(
     arr: &[Vec<ArrayNode>],
     row_eff: usize,
@@ -136,7 +139,7 @@ fn index_from_array(
     } else {
         (col_eff, col_eff)
     };
-    if top_left || (row_start == row_end && col_start == col_end) {
+    if top_left || (row_eff != 0 && col_eff != 0) {
         return match arr.get(row_start - 1).and_then(|r| r.get(col_start - 1)) {
             Some(node) => array_node_to_calc_result(node, cell),
             None => wrong_reference(cell),
@@ -487,6 +490,17 @@ impl Model {
                 index_from_array(arr, row_eff, col_eff, form == IndexForm::TopLeft, cell)
             }
             error @ CalcResult::Error { .. } => error.clone(),
+            // An uncalled LAMBDA is one value, a 1x1 area: row and column 0 or 1 give it back,
+            // which a cell shows as `#CALC!` (`INDEX(LAMBDA(x,x),1,1)`; `ROWS(INDEX(LAMBDA(x,x),0,0))`
+            // is 1: probes/m7-argument-modes H44, probes/lambda-value-arguments A17-A20).
+            lambda @ CalcResult::Lambda(_) => {
+                let (row_eff, col_eff) = index_effective_indices(1, row_num, col_num, two_arg);
+                if row_eff <= 1 && col_eff <= 1 {
+                    lambda.clone()
+                } else {
+                    wrong_reference(cell)
+                }
+            }
             _ => CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,

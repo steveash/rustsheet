@@ -3,6 +3,7 @@ use chrono::Datelike;
 use std::collections::HashMap;
 
 mod month_shift;
+mod networkdays;
 pub(crate) mod time_text;
 mod weekend;
 mod weeknum;
@@ -346,75 +347,6 @@ impl Model {
         Ok(())
     }
 
-    fn get_array_of_dates(
-        &mut self,
-        arg: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<Vec<i64>, CalcResult> {
-        let mut values = Vec::new();
-        self.collect_serial_numbers(arg, cell, |serial| {
-            values.push(serial);
-            Ok(())
-        })?;
-        Ok(values)
-    }
-
-    /// The start and end serials of NETWORKDAYS / NETWORKDAYS.INTL (booleans are rejected).
-    fn networkdays_bounds(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> Result<(i64, i64), CalcResult> {
-        let start = self.get_number_no_bools(&args[0], cell)?.floor() as i64;
-        let end = self.get_number_no_bools(&args[1], cell)?.floor() as i64;
-        Ok((start, end))
-    }
-
-    /// The holiday serials of NETWORKDAYS / NETWORKDAYS.INTL (none without the argument).
-    fn networkdays_holidays(
-        &mut self,
-        arg: Option<&Node>,
-        cell: CellReferenceIndex,
-    ) -> Result<std::collections::HashSet<i64>, CalcResult> {
-        match arg {
-            Some(arg) => Ok(self.get_array_of_dates(arg, cell)?.into_iter().collect()),
-            None => Ok(std::collections::HashSet::new()),
-        }
-    }
-
-    pub(crate) fn fn_networkdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(2..=3).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let (start_serial, end_serial) = match self.networkdays_bounds(args, cell) {
-            Ok(bounds) => bounds,
-            Err(e) => return e,
-        };
-        let holidays = match self.networkdays_holidays(args.get(2), cell) {
-            Ok(h) => h,
-            Err(e) => return e,
-        };
-
-        let (from, to, sign) = if start_serial <= end_serial {
-            (start_serial, end_serial, 1.0)
-        } else {
-            (end_serial, start_serial, -1.0)
-        };
-        let mut count = 0i64;
-        for serial in from..=to {
-            let date = match self.excel_date(serial, cell) {
-                Ok(d) => d,
-                Err(e) => return e,
-            };
-            let weekday = date.weekday().number_from_monday();
-            let is_weekend = matches!(weekday, 6 | 7);
-            if !is_weekend && !holidays.contains(&serial) {
-                count += 1;
-            }
-        }
-        CalcResult::Number(count as f64 * sign)
-    }
-
     fn excel_date(
         &self,
         serial: i64,
@@ -522,61 +454,6 @@ impl Model {
                 })
             }
         }
-    }
-
-    pub(crate) fn fn_networkdays_intl(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        if !(2..=4).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let (start_serial, end_serial) = match self.networkdays_bounds(args, cell) {
-            Ok(bounds) => bounds,
-            Err(e) => return e,
-        };
-
-        let weekend = match self.weekend_arg(args.get(2), cell) {
-            Ok(w) => w,
-            Err(e) => return e,
-        };
-
-        let holidays = match self.networkdays_holidays(args.get(3), cell) {
-            Ok(h) => h,
-            Err(e) => return e,
-        };
-
-        let (from, to, sign) = if start_serial <= end_serial {
-            (start_serial, end_serial, 1.0)
-        } else {
-            (end_serial, start_serial, -1.0)
-        };
-        // The days between are counted per weekday once, so each mask of a lifted weekend
-        // costs seven additions, not another scan of up to 2.9M days. Serials between two valid
-        // ones are valid.
-        let mut per_weekday = [0i64; 7];
-        for serial in [from, to] {
-            if let Err(e) = self.excel_date(serial, cell) {
-                return e;
-            }
-        }
-        for serial in from..=to {
-            if holidays.contains(&serial) {
-                continue;
-            }
-            let Some(date) = self.workbook.settings.date_system.date_of_serial(serial) else {
-                continue;
-            };
-            per_weekday[date.weekday().number_from_monday() as usize - 1] += 1;
-        }
-        weekend.lift(|weekend_pattern| {
-            let count: i64 = (0..7)
-                .filter(|&d| !weekend_pattern[d])
-                .map(|d| per_weekday[d])
-                .sum();
-            Ok(count as f64 * sign)
-        })
     }
 
     /// The serial of the model clock's now in the optional timezone argument of TODAY / NOW (the

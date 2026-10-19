@@ -338,6 +338,7 @@ C	probes/index-area-num-snap.case.json	11
 C	probes/index-array-indices.case.json	60
 C	probes/index-lifted-edge-cases.case.json	61
 C	probes/index-literal-scalar.case.json	12
+C	probes/index-one-index-array-shape.case.json	36
 C	probes/index-scalar-indexes.case.json	23
 C	probes/index-single-index.case.json	6
 C	probes/index-snap-tolerance.case.json	67
@@ -370,6 +371,7 @@ C	probes/isref-union-operands.case.json	9
 C	probes/lambda-helper-range-slices.case.json	46
 C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
+C	probes/lambda-value-arguments.case.json	41
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
@@ -570,6 +572,7 @@ C	probes/pivotby-col-subtotals-values.case.json	1685
 C	probes/pivotby-col-subtotals-values2.case.json	4162
 C	probes/pivotby-col-subtotals-values3.case.json	1080
 C	probes/pivotby-followup.case.json	3124
+C	probes/pivotby-moved-cells-relative-sets.case.json	1460
 C	probes/pivotby-total-columns-one-group.case.json	172
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
@@ -881,6 +884,7 @@ C	probes/textjoin-delimiter-elements.case.json	24
 C	probes/textsplit-casefold-length.case.json	8
 C	probes/textsplit-empty-delimiter.case.json	13
 C	probes/textsplit-empty-text.case.json	19
+C	probes/textsplit-lift-guesses.case.json	90
 C	probes/textsplit-padded-size.case.json	6
 C	probes/textsplit-wide.case.json	5
 C	probes/time-parts-past-max-date.case.json	14
@@ -1414,7 +1418,6 @@ F	probes/eng-later-argument-lift.case.json	Sheet1!M8
 F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E102
 F	probes/eta-reduced-names.case.json	Sheet1!E103
-F	probes/eta-reduced-names.case.json	Sheet1!E93
 F	probes/external-ref-no-link-let-index.case.json	Calc!A3
 F	probes/external-ref-no-link-let-index.case.json	Calc!A4
 F	probes/external-ref-no-link-let-index.case.json	Calc!A5
@@ -1866,7 +1869,6 @@ F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A1
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A2
 F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!J2
 F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!Y2
-F	probes/legacy-n-t-marker-shapes.case.json	S!F10
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
@@ -2213,7 +2215,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!F23
 F	probes/m7-argument-modes.case.json	Sheet1!F26
 F	probes/m7-argument-modes.case.json	Sheet1!F3
 F	probes/m7-argument-modes.case.json	Sheet1!F4
-F	probes/m7-argument-modes.case.json	Sheet1!F44
 F	probes/m7-argument-modes.case.json	Sheet1!F5
 F	probes/m7-argument-modes.case.json	Sheet1!F6
 F	probes/m7-argument-modes.case.json	Sheet1!F7
@@ -2228,7 +2229,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!G26
 F	probes/m7-argument-modes.case.json	Sheet1!G3
 F	probes/m7-argument-modes.case.json	Sheet1!G4
 F	probes/m7-argument-modes.case.json	Sheet1!G42
-F	probes/m7-argument-modes.case.json	Sheet1!G44
 F	probes/m7-argument-modes.case.json	Sheet1!G5
 F	probes/m7-argument-modes.case.json	Sheet1!G6
 F	probes/m7-argument-modes.case.json	Sheet1!G7
@@ -2242,7 +2242,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!H23
 F	probes/m7-argument-modes.case.json	Sheet1!H26
 F	probes/m7-argument-modes.case.json	Sheet1!H3
 F	probes/m7-argument-modes.case.json	Sheet1!H4
-F	probes/m7-argument-modes.case.json	Sheet1!H44
 F	probes/m7-argument-modes.case.json	Sheet1!H5
 F	probes/m7-argument-modes.case.json	Sheet1!H6
 F	probes/m7-argument-modes.case.json	Sheet1!H7
@@ -3016,6 +3015,8 @@ F	probes/text-locale-calendars.case.json	S!A99
 F	probes/text-locale-era-gregorian.case.json	S!A21
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
+F	probes/textsplit-lift-guesses.case.json	Calc!A53
+F	probes/textsplit-lift-guesses.case.json	Calc!A55
 F	probes/textsplit-padded-size.case.json	Calc!A1
 F	probes/textsplit-padded-size.case.json	Calc!A2
 F	probes/textsplit-padded-size.case.json	Calc!A3

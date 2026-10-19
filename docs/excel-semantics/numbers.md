@@ -460,8 +460,31 @@ Evidence: probes-numeric (on branch `agent/research/T-1778-kernel-map`) `kmyst-e
 (excel-graph, 2026-10-18). Status: VERIFIED (structure); the last mismatches are OPEN.
 Ours: `crates/rustsheet-engine/src/x87_exp.rs` `excel_exp` implements V6 with integer x87 rounding and a double-double
 F2XM1 (T-1916). It reproduces the reference model, scoring 62,013 of 62,100 `EXP(A)` cells of `kmyst-erfc-r5expmap1/2`
-and every `EXP(-(x*x))` cell up to x = 26.55 except the near-ties. Only the ERFC kernel uses it; the worksheet EXP
-still calls libm's `exp` and flushes subnormal results (T-1931).
+and every `EXP(-(x*x))` cell up to x = 26.55 except the near-ties. The ERFC kernel and, since T-1931, the worksheet EXP
+use it.
+
+Worksheet EXP (T-1931). `EXP(a)` in a cell is model V6 exactly, with no extra step: a subnormal result is kept, not
+flushed (probes/subnormal-function-results C4 and C6, `EXP(-745)=0` and `EXP(-720)=0` are FALSE), and an overflow is
+`#NUM!` as before. The `kmyst-erfc-cutoff` column C reads 0 for the 18 cells from x = 26.616 where V6 gives a
+subnormal (2.19E-308 down to 3.58E-309), but that is the Graph artifact of decision 0042 (Graph reports a kept
+subnormal as 0.0), not a flush, so the curated subset leaves those cells out. Not probed: the overflow edge of
+EXP itself, a in (709.7827, 709.79).
+- Curated evidence on main (probes-numeric, excel-graph fill of 2026-10-19, bit-identical to the T-1778 research
+  run at all 22,281 formula cells): `t1931-exp-map` (5,990 near-midpoint EXP(a) cells from `kmyst-erfc-r5expmap1`),
+  `t1931-exp-random` (7,084 from `kmyst-erfc-r5expmap2`), `t1931-exp-gauss` (8,096 `EXP(-(x*x))` cells from
+  `kmyst-erfc-expcol` and `kmyst-erfc-driftmap`), `t1931-exp-neg` (1,024 `EXP(-z)` cells from `kmyst-erfc-chiruns1`)
+  and `t1931-exp-ties` (87). The engine matches every cell of the first four; libm's correctly rounded `exp`, which the
+  worksheet EXP used before, misses 6,011 of those 22,194 (most inputs were chosen near a rounding midpoint):
+  2,596 map, 3,158 random, 256 gauss and 1 neg cells.
+- Known residuals (`t1931-exp-ties`, owner T-1940): all 87 V6 misses of `kmyst-erfc-r5expmap1/2` (33 and 54). Each
+  is a 1 ulp miss (engine minus Excel: +1 ulp at 47 cells, -1 ulp at 40), at an F2XM1 near-tie. libm happens to match 43 of
+  them (a correctly rounded F2XM1 and a correctly rounded exp can agree), so these 43 cells pass under libm and fail
+  under V6; the switch still gains 5,968 cells. Unlike the 20 ERFC near-tie cells of T-1916 (statistics.md), all 87
+  came back identical in the 2026-10-19 re-fill.
+- Other EXP users stay on libm's `exp`: with SINH, COSH, TANH and FISHERINV switched to `excel_exp` as an experiment, no
+  cell of probes, probes-numeric (`m9-hyperbolic`), ironcalc-calc (`TRIGONOMETRIC.xlsx`), poi, fixtures or gen-m9
+  changed verdict (the probed arguments are small, where V6 and libm agree), so the evidence cannot tell the two apart
+  and the switch was not made. A probe of SINH/COSH at large |x| near an EXP rounding midpoint would decide it.
 
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is

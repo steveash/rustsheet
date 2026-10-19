@@ -257,7 +257,7 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
 ## Design
 New module `crates/rustsheet-engine/src/functions/lift/`, all `pub(crate)`:
 - `mod.rs` re-exports;
-- `kinds.rs` holds the table;
+- `kinds/` holds the table, split by family;
 - `driver.rs` holds the driver (`lift_values` and the broadcast `lift_grids`);
 - `call.rs` holds `lift_call` and its read phase;
 - `arg_buf.rs` holds `ArgBuf`;
@@ -274,7 +274,7 @@ The one item that leaves the crate is a testing hook for the catalog check (T-17
 `#[doc(hidden)] pub fn lift_kinds(name: &str) -> Option<Vec<&'static str>>`. It is hidden, not
 part of the public API (SPEC-0001), and comes with no stability promise.
 
-### The argument-kind table (`functions/lift/kinds.rs`)
+### The argument-kind table (`functions/lift/kinds/`)
 ```rust
 /// How one parameter takes an array or a range (SPEC-0011).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -486,6 +486,10 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
 
    Steps 2–4 bound the output, the kernel calls and the input. They do not bound what one kernel
    call does inside, which is why `KernelWork` exists.
+   WORKDAY(.INTL) and NETWORKDAYS(.INTL) stepped once per calendar day (about 2.96M steps at
+   worst, so a covering weight would cap a lift at about 45 elements). T-1295 (whole-week steps)
+   and T-1808 (closed-form day counts) make one call O(holidays), so T-1236 follows both and
+   enters them without a calendar weight.
 5. **Elements**, in row-major order, into one buffer kept for the whole call. Scalar and whole
    slots are written once. Only the grid slots are overwritten per element, by
    `array_node_to_calc_result(bcast_get(grid, i, j).unwrap_or(&MISSING), cell)` (functions/util.rs).
@@ -772,6 +776,7 @@ Each step is one PR of size S/M. The old paths stay until their step.
      and T-1290 wait for it.
    - **T-1802** (functions-math, S): probe, then enter QUOTIENT, FACTDOUBLE and SERIESSUM.
    - **T-1236** (functions-date, S): WORKDAY(.INTL), NETWORKDAYS(.INTL); `weekend` is `Lift`.
+     Follows T-1295 and T-1808, which take the per-day loops out of their kernels.
    - **T-1372** (functions-financial, M): later ATP arguments are probed before they are entered.
    - **T-1290** (functions-stat, M): the functions whose every argument is scalar.
    - **T-1772** (functions-stat, M): the first real `Whole` + `Prepared` consumer (LARGE k and the

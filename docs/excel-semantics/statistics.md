@@ -623,8 +623,8 @@ Engine (T-1929): the wrappers compute through the same compositions, so each ide
   (Mac Excel does not run the x87 code), not a kernel miss.
 Status: VERIFIED. ERF, ERF.PRECISE, ERFC and ERFC.PRECISE are bit-exact on every probed input except the 20 EXP
 near-tie cells. Implemented in `erf.rs` and `x87_exp.rs` (T-1916).
-Tasks: T-1778, T-1916; T-1929 routed the wrappers and T-1931 the worksheet EXP; T-0968, T-1187, T-0971 and
-T-0972 inherit the map.
+Tasks: T-1778, T-1916; T-1929 routed the wrappers, and T-1931 put the worksheet EXP on the same model V6 (both
+done); T-0968, T-1187, T-0971 and T-0972 inherit the map.
 
 ## RANK of a non-reference array
 Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An array that is not a reference
@@ -773,7 +773,7 @@ most 1,100 (BETA.INV) or about 1,300 (F.INV) or 264 (T.INV) evaluations. The lif
 F.INV, F.INV.RT and FINV 2^18 units an element and T.INV, T.INV.2T, TINV and CONFIDENCE.T 2^16: the bound of each
 kernel's caps at a full-cost incomplete-beta cdf (140 continued-fraction steps, 3.1 to 3.4 us in release), about 4.0 ms
 (F.INV's 1,301-cdf bisection) and 0.82 ms (T.INV's 264-cdf bisection); the cases measured cost far less (167 us for
-`BETA.INV(1E-300,0.5,1E6)`, 17.5 us for `T.INV.2T(1E-9,99999)`); kinds.rs has the measurements.
+`BETA.INV(1E-300,0.5,1E6)`, 17.5 us for `T.INV.2T(1E-9,99999)`); lift/kinds/statistical.rs has the measurements.
 `F.INV(1E-160,5,5)` and `F.INV(1E-100,5,5)` are 1.3470392369521052E-15 in statrs and here, as on main, where Excel follows
 the power law (E4, E5), and `F.INV(1E-50,2000,2)` is 0.008195481623831033 (statrs converges to a wrong root) where Excel
 gives 0.004452511009947361 (E7); E8 and E10-E12 miss by 4 to 357 ulp, as on main (all T-1871).
@@ -827,7 +827,7 @@ cdf (a sheet's cell count keeps its shape under 2^33, where the series can need 
 the DEVIATION below). The lifting table charges every entry 2^18 units an element: the bound of the cap at the slowest
 term, the continued fraction's NaN path (4.1 to 4.7 ns in release; a converging fraction at the cap, which rescales on
 about 65% of its terms at a shape of 1E15, costs 2.4 ns, and a series term 2.5 ns), plus the inversion's 2,120 cdfs,
-about 2.6 ms (kinds.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
+about 2.6 ms (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
 Where x / beta underflows to 0 (statrs panicked) the cdf is statrs' value at its smallest x, 0, as Excel's
 `GAMMA.DIST(1E-300,2,1E100,TRUE)` is (E7); the Excel evidence is at shape 2 only, and a shape below 1 (where the true
 value does not underflow) or near 0 (where the cdf is 1) is unprobed (T-1891). `GAMMA.DIST(1E300,1,1E-10,FALSE)` is 0 here, as on main, where Excel is `#NUM!`
