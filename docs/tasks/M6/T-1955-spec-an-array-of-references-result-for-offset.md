@@ -18,7 +18,7 @@ Split from T-1810. The evidence (docs/excel-semantics/lookup.md "OFFSET, INDIREC
 
 ## Acceptance criteria
 - [ ] docs/specs/SPEC-NNNN-*.md (accepted by the reviewers) picks one carrier, with the consumer list, the bounds and the open probe questions.
-- [ ] T-1956 and T-1957 are updated to cite it.
+- [ ] T-1956 and T-1957 are updated to cite it, and SPEC-0011's open question 5 (lifted elements that are references) points to the new spec.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -39,14 +39,14 @@ Unprobed (lookup.md): OFFSET's cols, height and width, INDIRECT's a1, TRIMRANGE'
 unprobed too: probe and lift it here.
 
 ## Acceptance criteria
-Moved on the split (Outcome below): the first two items to T-1956 (OFFSET) and T-1957 (INDIRECT, TRIMRANGE), the
-third to T-1959.
+Moved on the split (Outcome below), so left unchecked here: the first two items to T-1956 (OFFSET) and T-1957
+(INDIRECT, TRIMRANGE), the third to T-1959.
 - [ ] probes/lookup-argument-modes F14:H15, F20:H21 and F34:H35 pass; baseline updated. (T-1956, T-1957)
 - [ ] gen-m7/cb748b6a9b81fbb7 A28, gen-m9/675763979c1defb6 A25 and gen-m9/adb3fd63c7368166 A34 pass, with no new
   known failures in eval/baseline/. (T-1956, T-1957)
 - [ ] CHOOSE's `choose_array` is the kernel of a `lift_call`, with no result change. (T-1959)
 - [x] The unprobed arguments are probed and recorded (probes/reference-lift-elements, lookup.md).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - INDEX of a single value (T-1242).

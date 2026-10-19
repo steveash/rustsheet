@@ -22,4 +22,4 @@ Split from T-1810. Evidence: docs/excel-semantics/lookup.md "OFFSET, INDIRECT an
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- OFFSET, INDIRECT and TRIMRANGE (T-1956, T-1957).

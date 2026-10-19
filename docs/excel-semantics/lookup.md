@@ -442,9 +442,11 @@ Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-12
 friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
 Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
 one result per cell, and CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). OFFSET, INDIRECT and TRIMRANGE
-still do not lift (their elements are references; T-1810 probed them, T-1955 to T-1957 implement them), and INDEX of a single value is `#VALUE!` (T-1242).
+still do not lift (their elements are references; T-1810 probed them, T-1955 to T-1957 implement them),
+and INDEX of a single value is `#VALUE!` (T-1242).
 Status: VERIFIED (web)
-Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1810 (reference-valued lifts; split into T-1955 to T-1958), T-1242 (INDEX of a single value)
+Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1810 (reference-valued lifts; split into
+T-1955 to T-1958), T-1242 (INDEX of a single value)
 
 ## A reference-valued lookup_value is looked up by its cell's value
 Rule: when lookup_value is a one-cell reference returned by a function or written as a range (`CHOOSE(1,J1)`,

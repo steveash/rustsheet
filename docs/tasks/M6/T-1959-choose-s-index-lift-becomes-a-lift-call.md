@@ -22,4 +22,4 @@ Split from T-1810 (its acceptance item "CHOOSE's `choose_array` is the kernel of
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Any change to what CHOOSE returns.
