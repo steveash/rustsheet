@@ -18,7 +18,7 @@ def _cheb_to_mono(C, c, h):
     return out
 
 
-def remez2(f, a, b, m, n, w=None, dps=40, iters=30, grid=600, ref=None, verbose=False):
+def remez2(f, a, b, m, n, w=None, dps=40, iters=30, grid=600, ref=None, verbose=False, tol="1e-10"):
     mp.mp.dps = dps
     a = mp.mpf(a)
     b = mp.mpf(b)
@@ -101,7 +101,7 @@ def remez2(f, a, b, m, n, w=None, dps=40, iters=30, grid=600, ref=None, verbose=
         if verbose:
             print(it, mp.nstr(E, 10), mp.nstr(mx, 10))
         X = newX
-        if abs(mx / abs(E) - 1) < mp.mpf("1e-10"):
+        if abs(mx / abs(E) - 1) < mp.mpf(tol):
             break
     p = _cheb_to_mono(P, c, h)
     q = _cheb_to_mono(Q, c, h)

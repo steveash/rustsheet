@@ -4,7 +4,7 @@ Target: A = fl(N(x)/D(x)) on [0.7, 1.5), res = fl((x-1)*A), raw-x Horner, every 
 Hypothesis under test: Excel's coefficients are round(N*·F, D*·F), where N*/D* is a reproducible
 best-fit rational and F is a low-order common factor.
 
-**Status: negative so far. Nothing beats c5_f99t** (47.25% on all 980,655 points in [0.7, 1.5); far 31.8%, near-1
+**Status: final, negative. Nothing beats c5_f99t** (47.25% on all 980,655 points in [0.7, 1.5); far 31.8%, near-1
 74.6% on the `metrics.py` samples).
 
 ## Summary
@@ -79,14 +79,54 @@ generator: degree, interval, weight and target.
   | (9,9) | -5.679 | 178.7 |
 
   Cody's set gives -5.639. None matches Excel's -5.406.
-- **1-D solves** (`solve2.py`, `runfix*.sh`, `fix_*.txt`): hold a, solve b so that R0 matches, then check R1-R3.
-  R0 and R1 are nearly dependent (the 2-D Newton slides along a level curve), so R1-R3 are the test:
-  - (8,8), relative in A, a = 0.7: R0 matches at b = 1.670448, but R1/R2/R3 miss by -5.4e-4 / -1.7e-3 / -3.1e-3.
-  - (8,8), absolute in A, a = 0.7: R0 matches at b = 1.709362, but R1/R2/R3 miss by -5.5e-4 / -1.7e-3 / -3.2e-3.
-  - (9,8), relative in A, a = 0.7: R0 cannot be reached for b < 2. At b = 1.95, dR0 is still +6e-3.
-  - g = lgamma/((x-1)(x-2)) (N = (x-2)·P, the coordinator's exact root at 2), (8,8) relative, a = 0.7: at
-    b = 1.95, dR0 is still +4.7e-3 (running past 2).
-  - Every mismatch is 1e6 times the pin. These parents are excluded (more rows below as the queue finishes).
+- **1-D solves** (`solve2.py`, `runfix*.sh`, `fix_*.txt`): hold a, solve b so that R0 matches, then read R1-R3.
+
+  | family (target, degree, weight) | a | b matching R0 | dR1 | dR2 | dR3 |
+  |---|---|---|---|---|---|
+  | A (8,8) rel | 0.60 | 1.966060 | -8.4e-4 | -2.6e-3 | -4.8e-3 |
+  | A (8,8) rel | 0.65 | 1.811954 | -6.7e-4 | -2.1e-3 | -3.8e-3 |
+  | A (8,8) rel | 0.70 | 1.670448 | -5.4e-4 | -1.7e-3 | -3.1e-3 |
+  | A (8,8) rel | 0.75 | 1.548006 | -4.4e-4 | -1.4e-3 | -2.5e-3 |
+  | A (8,8) rel | 0.80 | 1.442510 | -3.6e-4 | -1.1e-3 | -2.1e-3 |
+  | A (8,8) abs in A | 0.70 | 1.709362 | -5.5e-4 | -1.7e-3 | -3.2e-3 |
+  | A (8,8) abs in lgamma | 0.70 | 1.685321 | -5.6e-4 | -1.8e-3 | -3.2e-3 |
+  | g (8,8) rel | 0.70 | 2.073733 | -2.1e-4 | -6.5e-4 | -1.2e-3 |
+  | g (8,8) rel | 0.75 | 1.898748 | -8.9e-5 | -2.8e-4 | -5.1e-4 |
+
+  - g = lgamma/((x-1)(x-2)), with N = (x-2)·P. The coordinator has since withdrawn the exact-root-at-2 claim:
+    every good approximant has that zero. The g rows serve as another weighting.
+  - Several families cannot reach Excel's R0 with a in {0.5, 0.7} and b up to 1.95-2.4:
+    (9,8), (8,9) and (9,9) relative in A, A (8,8) relative at a = 0.5, (7,7), and g (8,9) on 1-D.
+- **The mismatch is nearly one-dimensional.** In every family dR2 ≈ 3.15·dR1 and dR3 ≈ 5.75·dR1, so R0 and R1
+  carry almost all the information. That is why the 2-D Newton is ill-conditioned.
+- **2-D solves** (`solve3.py`, `s3_*.txt`): solve (a, b) so that R0 and R1 both match, then test R2 and R3:
+  - **g (8,9) relative.** Both match exactly at a = 0.6766924, b = 2.8721896 (E = 4.2e-19). The residuals are
+    dR2 = +5.7e-6 and dR3 = +1.7e-5, about 1e4-1e5 times the pin. Excluded, and the interval is unnatural anyway.
+  - **A (8,8) relative.** Stalls at a = 0.8258, b = 1.3928 with dR0 = 6e-5, dR1 = 8e-6. dR2 = -3.7e-4 and
+    dR3 = -9.1e-4 there; no solution in reach.
+  - **g (8,8) relative.** Stalls at a = 0.7634, b = 1.8569 with dR0 = 1.1e-5, dR1 = 1.7e-6. dR2 = -6.9e-5 and
+    dR3 = -1.7e-4 there. Not fully converged, but R2 would need a sensitivity about 6 times dR0 just to cancel.
+  - **A (8,8) absolute.** Diverges.
+- **Precision checks.** remez2's invariants are converged to 16 digits: dps 40, 50 and 60 agree (`conv.py`).
+  The older `remez.py` values in `sweep_*.txt` are good to about 1e-7.
+- **Verdict:** no relative or absolute minimax of lgamma/(x-1), or of lgamma/((x-1)(x-2)), at degrees (7,7)-(9,9)
+  on any interval tried matches Excel's x=0 fingerprint. Excel's parent, if any, is not one of these
+  generators, even allowing any common factor F. This agrees with the playbook's ERFC finding: Excel's
+  coefficients are off any reproducible Remez point.
+
+## Conclusions for T-1941
+- The common-factor hypothesis is unfalsifiable as stated: any (9,9) can be written as some (8,8)·F to 1e-17 on
+  the interval. It is testable only when the parent is reproducible, and every reproducible parent tried fails
+  the x=0 fingerprint by 1e-5 or more.
+- Even with a correct parent, F would need about 1e-14 relative precision before exact scoring sees it (point 1).
+  No coarse objective bridges that gap: spectral overlap is blind below 1e-4 to 1e-5.
+  - The only bridge is the playbook's phase-lattice global solve on far runs.
+  - Or the near-1 stage sums S_j(1): they are linear in F's parameters, but pinned only to about 1e-10.
+- Useful by-products for the next worker:
+  - The x=0 invariants R0-R3 as a cheap generator fingerprint, pinned to about 1e-10 by near-1 data.
+  - c5 is a sharp local optimum along every function-preserving direction.
+  - The doublet and truncation variants are excluded.
+  - D0 = 2^-13 forces the D0-normalised form.
 
 ## Tooling
 - `sc.c` / `sc.py`: an exact x87 scorer (OpenMP), with the same arithmetic as W1's `simA.c`, and the data loader
@@ -97,6 +137,7 @@ generator: degree, interval, weight and target.
 - `remez2.py`: a robust rational Remez in mpmath, with Newton on (p, q, E) and real golden-section extrema.
   `remez.py` is the first version, used for `parents.py` and `sweep.py`.
 - `taylor0.py`: Taylor coefficients of N/D at x = 0. `stages.py`: Horner stage sums at x = 1.
+- `solve2.py` / `solve3.py`: 1-D and 2-D fingerprint solves; `conv.py`: Remez convergence check.
 - `spec.py`: a phase-free spectral overlap (c5 gives 0.857). It is blind even to 1e-5 coefficient changes,
   because within a 2,048-ulp run a function change is just a per-run offset. No objective sits between this
   coarse level and the 1e-14 exact basin.
