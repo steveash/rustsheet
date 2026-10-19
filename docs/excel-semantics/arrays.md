@@ -276,13 +276,13 @@ Rule: MDETERM is Gaussian elimination with partial pivoting (the largest absolut
 ties), rows updated as `a[r][k] -= (a[r][c] / pivot) * a[c][k]`, the determinant being the sign of the row permutation
 times the product of the pivots. A tiny pivot is kept, not treated as 0, so a singular matrix can return its rounding
 residual: `MDETERM({1,2,3;4,5,6;7,8,9})` (as a range) = 6.661338147750939E-16, not 0. An exactly-zero column gives 0
-(`MDETERM({1,2;2,4})` = 0). Pivots far below 1E-16 are unprobed; the engine keeps any nonzero pivot (T-2063 probes this). `MDETERM({1,2,3;4,5,6;7,8,10})` =
+(`MDETERM({1,2;2,4})` = 0). Pivots far below 1E-16 are unprobed; the engine keeps any nonzero pivot (T-2067 probes this). `MDETERM({1,2,3;4,5,6;7,8,10})` =
 -2.9999999999999982, the same elimination's rounding (not -3.0000000000000004 as LAPACK-style variants give). Which
 elimination fits was checked in IEEE doubles: dividing each product by the pivot instead of forming the multiplier first
 gives -4.66E-15 and -3.0000000000000036, and no pivoting gives 0 and -3.
 Evidence: probes/stats-evidence-floor-t1623 S!Q107, S!Q120, S!Q121 (excel-graph).
 Not known: whether MINVERSE has a near-singular cutoff (the engine gives `#NUM!` below a pivot of 2.2E-16; unprobed,
-T-2063), and what Excel returns when the pivot product overflows (the engine gives `#NUM!`; probe in T-2063).
+T-2067), and what Excel returns when the pivot product overflows (the engine gives `#NUM!`; probe in T-2067).
 Implemented in: `fn_mdeterm`/`lu_decompose` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs, T-1751)
 Status: VERIFIED (excel-graph)
 Tasks: T-1751

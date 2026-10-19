@@ -28,5 +28,5 @@ Found by T-1623: probes/stats-evidence-floor-t1623 S!Q107 (excel-graph). Excel's
 The elimination already matched Excel: partial-pivot LU with multiplier-first row updates gives 6.661338147750939E-16
 and -2.9999999999999982 bit for bit in IEEE doubles. The mismatch was the `max_val < f64::EPSILON` singularity
 cutoff, which returned 0. MDETERM now treats only an exactly-zero pivot column as singular. MINVERSE keeps its
-cutoff until T-2063 probes it. arrays.md has the rule and the variants that do not fit. Eval: probes S!Q107
+cutoff until T-2067 probes it. arrays.md has the rule and the variants that do not fit. Eval: probes S!Q107
 fixed (probes known failures 1793 -> 1792), no regressions.
