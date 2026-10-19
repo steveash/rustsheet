@@ -558,14 +558,9 @@ impl Model {
         }
         // A boolean principal is #VALUE!, though a text number is converted
         // (probes/fin-fvschedule A18, A9).
-        let principal = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Boolean(_) => {
-                return CalcResult::new_error(Error::VALUE, cell, "Expected number".to_string());
-            }
-            result => match self.cast_to_number(result, cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            },
+        let principal = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
         // Excel: text in the schedule, in a range or an array literal, is #VALUE!
         // (probes/fin-argument-modes H382-H384).
