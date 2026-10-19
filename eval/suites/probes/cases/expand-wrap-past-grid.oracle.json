@@ -1,0 +1,54 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "W1": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "W10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "W2": {
+    "t": "n",
+    "v": 16385.0
+   },
+   "W3": {
+    "t": "n",
+    "v": 16385.0
+   },
+   "W4": {
+    "t": "n",
+    "v": 1.0
+   },
+   "W5": {
+    "t": "n",
+    "v": 16385.0
+   },
+   "W6": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "W7": {
+    "t": "n",
+    "v": 16385.0
+   },
+   "W8": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "W9": {
+    "t": "n",
+    "v": 16384.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "02ce0925f70c50f0efa2a21794ffcb0e642211f32c3d5102a0372d8a54642a04",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-19T09:35:24+00:00",
+  "version": null
+ }
+}
