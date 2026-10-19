@@ -26,7 +26,7 @@ frame stays fixed under recursion; a fix must not grow the evaluation stack fram
 Code: crates/rustsheet-engine/src/functions/lift/call.rs, driver.rs, mod.rs (`kernel_number`), math_and_trigonometry/mathematical.rs (`numbers_fn`, `number_fn`).
 
 ## Acceptance criteria
-- [ ] On T-1785's code, `math_lift` "DAY, per row" is within 5% of main before T-1785 (callgrind `Model::evaluate` instructions, and wall-clock min of alternating processes); "ABS, per row" does not get slower.
+- [ ] On T-1785's code, `math_lift` "DAY, per row", "DATE, per row" and "DAY, lifted" are each within 5% of main before T-1785 (39385aff: callgrind `Model::evaluate` 2.107G, 3.135G and 16.77G; decision 0077 has the table), and "ABS, per row" and "HOUR, per row" do not get slower.
 - [ ] The stack-depth and recursion tests pass unchanged; no new `unsafe`.
 - [ ] `make check` green; reviewers approve.
 
