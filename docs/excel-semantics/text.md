@@ -333,7 +333,9 @@ run on a lazy DFA that gives up when it thrashes (after 3 cache clears, below 10
 setting) and then on a PikeVM; the DFA is charged what its cache says it scanned (4 a byte) and built (8 a byte of
 state), the PikeVM (T-1829) 21 for each NFA state a scan visits that measures the span a leftmost-first search needs, and
 54 more for each look-around it evaluates (a Unicode `\b` or `\B` costs about three visits; a chain of 40 over
-`REPT("éa ",10000)&SEQUENCE(300)` is `#ERROR!` after about 1 s) (the PikeVM then runs over that span alone; an anchored search is charged its span times its state count, 5 a
+`REPT("éa ",10000)&SEQUENCE(300)` is `#ERROR!` after about 1 s), and 3 more for each range of a sparse class state
+(a large Unicode class) its byte step walks (T-1988: `\b[\w\s\d]{30}q` over `REPT("日a ",8000)&SEQUENCE(80)` is
+`#ERROR!` after about 1 s, not 1.6) (the PikeVM then runs over that span alone; an anchored search is charged its span times its state count, 5 a
 state-byte), 64 a search, and a call may
 spend 2^30 (about 1 s of the slowest searches; `SUM(--REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x"))` fits, 20 MB).
 A pattern whose DFA thrashes over a lot of text (`a[ab]{100}c|b[ab]{100}c` over 560 texts of 30,000 bytes) and a call
@@ -356,7 +358,7 @@ Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directi
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829
+Tasks: T-1272, T-1829, T-1988
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA

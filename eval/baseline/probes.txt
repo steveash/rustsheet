@@ -219,6 +219,7 @@ C	probes/date-text-non-glued-timevalue.case.json	44
 C	probes/date-text-rejected-clock-formats.case.json	16
 C	probes/date-text-single-letter-ap.case.json	10
 C	probes/date-text-typed-clock-shapes.case.json	85
+C	probes/date-text-weekend-3d.case.json	129
 C	probes/date-text-yearless-2.case.json	64
 C	probes/date-text-yearless-3.case.json	45
 C	probes/date-text-yearless.case.json	48
@@ -2016,14 +2017,10 @@ F	probes/lookup-argument-modes.case.json	Sheet1!H20
 F	probes/lookup-argument-modes.case.json	Sheet1!H21
 F	probes/lookup-argument-modes.case.json	Sheet1!H34
 F	probes/lookup-argument-modes.case.json	Sheet1!H35
-F	probes/m7-argument-modes.case.json	Sheet1!F1
 F	probes/m7-argument-modes.case.json	Sheet1!F10
 F	probes/m7-argument-modes.case.json	Sheet1!F11
 F	probes/m7-argument-modes.case.json	Sheet1!F12
-F	probes/m7-argument-modes.case.json	Sheet1!F2
-F	probes/m7-argument-modes.case.json	Sheet1!F23
 F	probes/m7-argument-modes.case.json	Sheet1!F26
-F	probes/m7-argument-modes.case.json	Sheet1!F3
 F	probes/m7-argument-modes.case.json	Sheet1!F4
 F	probes/m7-argument-modes.case.json	Sheet1!F5
 F	probes/m7-argument-modes.case.json	Sheet1!F6
@@ -2033,10 +2030,7 @@ F	probes/m7-argument-modes.case.json	Sheet1!F9
 F	probes/m7-argument-modes.case.json	Sheet1!G10
 F	probes/m7-argument-modes.case.json	Sheet1!G11
 F	probes/m7-argument-modes.case.json	Sheet1!G12
-F	probes/m7-argument-modes.case.json	Sheet1!G2
-F	probes/m7-argument-modes.case.json	Sheet1!G23
 F	probes/m7-argument-modes.case.json	Sheet1!G26
-F	probes/m7-argument-modes.case.json	Sheet1!G3
 F	probes/m7-argument-modes.case.json	Sheet1!G4
 F	probes/m7-argument-modes.case.json	Sheet1!G42
 F	probes/m7-argument-modes.case.json	Sheet1!G5
@@ -2047,10 +2041,7 @@ F	probes/m7-argument-modes.case.json	Sheet1!G9
 F	probes/m7-argument-modes.case.json	Sheet1!H10
 F	probes/m7-argument-modes.case.json	Sheet1!H11
 F	probes/m7-argument-modes.case.json	Sheet1!H12
-F	probes/m7-argument-modes.case.json	Sheet1!H2
-F	probes/m7-argument-modes.case.json	Sheet1!H23
 F	probes/m7-argument-modes.case.json	Sheet1!H26
-F	probes/m7-argument-modes.case.json	Sheet1!H3
 F	probes/m7-argument-modes.case.json	Sheet1!H4
 F	probes/m7-argument-modes.case.json	Sheet1!H5
 F	probes/m7-argument-modes.case.json	Sheet1!H6
@@ -2060,7 +2051,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!H9
 F	probes/m7-argument-modes.case.json	Sheet1!I4
 F	probes/m7-argument-modes.case.json	Sheet1!I5
 F	probes/m7-argument-modes.case.json	Sheet1!K1
-F	probes/m7-argument-modes.case.json	Sheet1!K10
 F	probes/m7-argument-modes.case.json	Sheet1!K2
 F	probes/m7-argument-modes.case.json	Sheet1!K3
 F	probes/m7-argument-modes.case.json	Sheet1!K4
@@ -2068,7 +2058,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!K5
 F	probes/m7-argument-modes.case.json	Sheet1!K6
 F	probes/m7-argument-modes.case.json	Sheet1!K7
 F	probes/m7-argument-modes.case.json	Sheet1!K8
-F	probes/m7-argument-modes.case.json	Sheet1!K9
 F	probes/negative-date-sections-1900.case.json	S!A21
 F	probes/negative-date-sections-1900.case.json	S!A22
 F	probes/negative-date-sections-1904.case.json	S!A10
