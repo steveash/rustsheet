@@ -149,6 +149,16 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     - Next: the same pipeline on Excel's L101-L124, then ladder-phase unwrapping (q409/q410/q415-q420) from 1e-7 down
       to ulps.
 
+18. **Per-run line phases** (`phasediff.py`, synthetic control). Data-vs-sim complex DFT phase at each identified
+    line, per long run, matches the exact prediction to about 0.005 cycles (amplitude ratio 1.0 +- 0.07):
+    - frac(dS/u) for an S line;
+    - frac(dS/(2u)) for T;
+    - dP/u_P - n dM/u_M for product sideband n.
+    - The predictions use mpmath polynomial stage values at the run start.
+    - Each (run, line) therefore gives a congruence sum_k x^(k-j) (ulp(c_k)/u_S) m_k == phi (mod 1) in the integer
+      coefficient offsets m_k. With 24 runs x ~9 lines that is a lattice problem: about 1,600 bits of information
+      against about 820 bits of unknowns.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
