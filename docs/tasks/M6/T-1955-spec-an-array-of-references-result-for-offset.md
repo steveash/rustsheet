@@ -3,7 +3,7 @@ id: T-1955
 title: "Spec: an array-of-references result for OFFSET, INDIRECT and TRIMRANGE lifts"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
