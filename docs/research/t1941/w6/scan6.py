@@ -109,9 +109,10 @@ if truthf:
     )
 BMAX = float(os.environ.get("BMAX", 1e7))
 CMAX = float(os.environ.get("CMAX", 0))
+DMAX = float(os.environ.get("DMAX", 0))
 rng = np.random.default_rng(3)
 nul = np.array(
-    [sum(joint(rng.random(), rng.uniform(-BMAX, BMAX), rng.uniform(-CMAX, CMAX))) for _ in range(int(os.environ.get("NPROBE", 5000)))]
+    [sum(joint(rng.random(), rng.uniform(-BMAX, BMAX), rng.uniform(-CMAX, CMAX), rng.uniform(-DMAX, DMAX))) for _ in range(int(os.environ.get("NPROBE", 5000)))]
 )
 print("joint null mean %.1f sd %.1f" % (nul.mean(), nul.std()), flush=True)
 if os.environ.get("EVALONLY"):
@@ -121,7 +122,7 @@ KEEP = int(os.environ.get("KEEP", 200))
 Ch = np.fft.fft(CS, axis=1) / CS.shape[1]
 span = dx.max() - dx.min() + 1e-9
 dx0 = dx.min()
-NB = 1 << int(np.ceil(np.log2(max(1 << 16, 2 * BMAX * span * 4 * 1.1))))
+NB = 1 << int(np.ceil(np.log2(max(1 << 10, 2 * BMAX * span * 4 * 1.1))))
 cell = span / NB * 4
 kbin = np.round((dx - dx0) / cell).astype(int)
 bgrid = np.fft.fftfreq(NB, d=cell)
@@ -129,41 +130,66 @@ keepb = np.abs(bgrid) <= BMAX
 bsel = bgrid[keepb]
 f = np.round(bsel * NB * cell).astype(np.int64)
 t0 = time.time()
-Gh = []
-for h in range(1, H + 1):
-    zz = np.zeros(NB, complex)
-    np.add.at(zz, kbin, Ch[:, h])
-    G = np.fft.ifft(zz) * NB
-    Gh.append((G[(h * f) % NB] * np.exp(2j * np.pi * h * bsel * dx0)).astype(np.complex64))
-    del zz, G
-bestv = np.full(len(bsel), -np.inf, dtype=np.float32)
-besta = np.zeros(len(bsel), dtype=np.float32)
-for ia in range(64):
-    a = ia / 64.0
-    tot = np.zeros(len(bsel), dtype=np.float32)
+# explicit grids over the higher terms (c for DEG >= 2, d for DEG 3), FFT over b for each, batched
+cg = np.arange(-CMAX, CMAX + 1e-9, float(os.environ.get("CSTEP", 0.5))) if DEG >= 2 else np.array([0.0])
+dg = np.arange(-DMAX, DMAX + 1e-9, float(os.environ.get("DSTEP", 2.0))) if DEG >= 3 else np.array([0.0])
+if truth and os.environ.get("NEAR"):  # control only: grids around the truth (validation of the search itself)
+    w_ = float(os.environ["NEAR"])
+    cg = cg[np.abs(cg - truth[2]) <= w_ * float(os.environ.get("CSTEP", 0.5))] if DEG >= 2 else cg
+    dg = dg[np.abs(dg - (truth[3] if DEG >= 3 else 0)) <= w_ * float(os.environ.get("DSTEP", 2.0))] if DEG >= 3 else dg
+pairs = np.array([(c_, d_) for c_ in cg for d_ in dg])
+BATCH = int(os.environ.get("BATCH", 128))
+ph_b = np.exp(2j * np.pi * np.outer(np.arange(1, H + 1), bsel * dx0))
+cand = []
+for i0 in range(0, len(pairs), BATCH):
+    P_ = pairs[i0 : i0 + BATCH]
+    hi = np.outer(P_[:, 0], dx**2) + np.outer(P_[:, 1], dx**3)  # (batch, runs)
+    Ghs = []
     for h in range(1, H + 1):
-        tot += 2 * np.real(np.complex64(np.exp(2j * np.pi * h * a)) * Gh[h - 1])
-    m = tot > bestv
-    bestv[m] = tot[m]
-    besta[m] = a
-print(
-    "scan: NB 2^%d, %d b values (spacing %.3f), %.0fs"
-    % (int(np.log2(NB)), len(bsel), bgrid[1], time.time() - t0),
-    flush=True,
-)
-top = np.argpartition(bestv, -KEEP)[-KEEP:]
-A, Bv = besta[top].astype(float), bsel[top]
-# refine b locally (the grid spacing is ~1/(4 span)) and re-score jointly with the P site
+        zz = np.zeros((len(P_), NB), complex)
+        val = Ch[None, :, h] * np.exp(2j * np.pi * h * hi)
+        for r_ in range(len(kbin)):
+            zz[:, kbin[r_]] += val[:, r_]
+        G = np.fft.ifft(zz, axis=1) * NB
+        Ghs.append((G[:, (h * f) % NB] * ph_b[h - 1][None, :]).astype(np.complex64))
+    bv = np.full(Ghs[0].shape, -np.inf, dtype=np.float32)
+    ba = np.zeros(Ghs[0].shape, dtype=np.float32)
+    for ia in range(64):
+        tot = np.zeros(Ghs[0].shape, dtype=np.float32)
+        for h in range(1, H + 1):
+            tot += 2 * np.real(np.complex64(np.exp(2j * np.pi * h * ia / 64)) * Ghs[h - 1])
+        m = tot > bv
+        bv[m] = tot[m]
+        ba[m] = ia / 64
+    flat = bv.ravel()
+    k_ = min(KEEP, flat.size)
+    for j in np.argpartition(flat, -k_)[-k_:]:
+        pi_, bi_ = divmod(j, bv.shape[1])
+        cand.append((float(flat[j]), float(ba.ravel()[j]), float(bsel[bi_]), float(P_[pi_, 0]), float(P_[pi_, 1])))
+    if len(cand) > 20 * KEEP:
+        cand.sort(reverse=True)
+        cand = cand[:KEEP]
+    if i0 // BATCH % 50 == 0:
+        print("  %d/%d (c, d) pairs, %.0fs, best so far %.1f" % (i0 + len(P_), len(pairs), time.time() - t0, max(c[0] for c in cand)), flush=True)
+cand.sort(reverse=True)
+cand = cand[:KEEP]
+print("scan: NB 2^%d, %d b values (spacing %.3f), %d (c, d) pairs, %.0fs" % (int(np.log2(NB)), len(bsel), bgrid[1], len(pairs), time.time() - t0), flush=True)
+# refine locally and re-score jointly with the P site
 best = []
-for a, b in zip(A, Bv):
-    bb = b + np.linspace(-0.5, 0.5, 21) * bgrid[1]
-    aa = a + np.linspace(-0.5, 0.5, 9) / 64
-    g = [(sum(joint(x_, y_)), x_, y_) for x_ in aa for y_ in bb]
+cs_, ds_ = float(os.environ.get("CSTEP", 0.5)), float(os.environ.get("DSTEP", 2.0))
+for v0, a, b, c_, d_ in cand:
+    g = []
+    for x_ in a + np.linspace(-0.5, 0.5, 5) / 64:
+        for y_ in b + np.linspace(-0.5, 0.5, 7) * bgrid[1]:
+            for z_ in (c_ + np.linspace(-0.5, 0.5, 3) * cs_ if DEG >= 2 else [0.0]):
+                for w_ in (d_ + np.linspace(-0.5, 0.5, 3) * ds_ if DEG >= 3 else [0.0]):
+                    g.append((sum(joint(x_, y_, z_, w_)), x_, y_, z_, w_))
     best.append(max(g))
 best.sort(reverse=True)
 print("top joint (Z vs null):")
-for v, a, b in best[:8]:
-    print("  joint %.1f (Z %.1f)  a %.3f  b %.2f" % (v, (v - nul.mean()) / nul.std(), a % 1, b), flush=True)
+for v, a, b, c_, d_ in best[:8]:
+    print("  joint %.1f (Z %.1f)  a %.3f  b %.2f  c %.2f  d %.2f" % (v, (v - nul.mean()) / nul.std(), a % 1, b, c_, d_), flush=True)
 if truth:
-    print("truth: a mod 1 %.3f  b %.2f" % (truth[0] % 1, truth[1]))
-np.save(os.environ.get("OUT", "/dev/null") if os.environ.get("OUT") else os.devnull, np.array(best[:50]))
+    print("truth: a mod 1 %.3f  b %.2f  %s" % (truth[0] % 1, truth[1], "  ".join("%.2f" % v for v in truth[2:])))
+if os.environ.get("OUT"):
+    np.save(os.environ["OUT"], np.array(best[:50]))
