@@ -16,7 +16,6 @@ mod gauss;
 mod geomean;
 mod hypegeom;
 mod if_ifs;
-pub(crate) use if_ifs::IfsShape;
 mod incomplete_gamma;
 mod inverse_beta;
 mod linest;
@@ -41,3 +40,5 @@ mod trimmean;
 pub(super) mod variance;
 mod weibull;
 mod z_test;
+
+pub(crate) use if_ifs::IfsShape;
