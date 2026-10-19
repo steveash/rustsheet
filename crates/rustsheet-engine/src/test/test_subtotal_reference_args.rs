@@ -208,8 +208,8 @@ fn subtotal_of_take_of_nested_switch_is_linear() {
     assert_eq!(model._get_text("A5"), "1");
 }
 
-// An IF, CHOOSE or LET that passes on a lifting SWITCH, IFS or CHOOSE lifts too, and spills like
-// the bare call; static analysis took these for cells too and hit the scalar-context assertion
+// An IF, CHOOSE or LET that passes on a lifting SWITCH, IFS or CHOOSE lifts too, as does one whose
+// selector is a LET variable holding an array, and each spills like the bare call; static analysis took these for cells too and hit the scalar-context assertion
 // in a debug build (T-1914 review).
 #[test]
 fn subtotal_of_take_of_wrapped_array_selector_spills_like_the_bare_call() {
@@ -221,6 +221,9 @@ fn subtotal_of_take_of_wrapped_array_selector_spills_like_the_bare_call() {
         format!("LET(x,{bare},y,x,IF(TRUE,y))"),
         "IF(TRUE,CHOOSE({1,2},H1:H2,I1:I2))".to_string(),
         "CHOOSE(1,IFS({TRUE,FALSE},H1:H2,TRUE,I1:I2))".to_string(),
+        "LET(s,{1,2},SWITCH(s,1,H1:H2,2,I1:I2))".to_string(),
+        "LET(s,{TRUE,FALSE},IFS(s,H1:H2,TRUE,I1:I2))".to_string(),
+        "LET(s,{1,2},CHOOSE(s,H1:H2,I1:I2))".to_string(),
     ];
     let mut model = new_empty_model();
     for (cell, value) in [("H1", "3"), ("H2", "4"), ("I1", "6"), ("I2", "8")] {

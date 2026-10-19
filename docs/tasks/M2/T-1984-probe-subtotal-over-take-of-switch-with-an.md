@@ -23,10 +23,15 @@ engine today gives, unevidenced (H1:H2 = 3,4; I1:I2 = 6,8):
 - `SUBTOTAL(9,TAKE(IFS(TRUE,H1:H2,{FALSE,TRUE},I1:I2),2))` → 7 (first condition TRUE short-circuits)
 - `SUBTOTAL(9,TAKE(IF(TRUE,SWITCH({1,2},1,H1:H2,2,I1:I2)),2))`, `CHOOSE(1,IFS(...))`,
   `LET(x,SWITCH(...),x)` wrapped → 2x2 `#VALUE!` like the bare call.
+- `SUBTOTAL(9,TAKE(IFS({TRUE,FALSE},H1:H2,TRUE,I1:I2),2))` (scalar second condition) → 2x2 `#VALUE!`
+- a LET-variable selector, `LET(s,{1,2},SWITCH(s,1,H1:H2,2,I1:I2))` (and the IFS/CHOOSE twins) → 2x2 `#VALUE!`
+- a multi-cell range or `Unknown` selector, `TAKE(IF(H1:H2>3,H1:H2,I1:I2),2)`,
+  `TAKE(CHOOSE(J1:J2,H1:H2,I1:I2),2)` (J1:J2 = 1,2) and `TAKE(IF(INDIRECT("K1"),H1:H2,I1:I2),2)`
+  (K1 TRUE) → 1x2 `#VALUE!`; Excel may read the one-cell INDIRECT as a scalar condition (7).
 Probe each in clear space (so the spill shape shows) with the `excel-probe` skill.
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values covers the five formulas above.
+- [ ] A probe case with oracle values covers every formula above.
 - [ ] Findings recorded in docs/excel-semantics/references.md; an engine task filed for any mismatch.
 - [ ] `make check` green; reviewers approve.
 
