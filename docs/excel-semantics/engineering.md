@@ -323,3 +323,38 @@ Rule: DEC2BIN, DEC2HEX, DEC2OCT, BIN2OCT, BIN2HEX, HEX2BIN, HEX2OCT, OCT2BIN, OC
 Evidence: probes/eng-first-vs-second-error A1:D11 (excel-graph, 2026-10-19); probes/eng-later-argument-lift M2, M8.
 Status: VERIFIED (excel-graph)
 Tasks: T-1816
+
+## IM* results that overflow (T-1827)
+
+Rule: for IMSUM, IMPRODUCT, IMEXP, IMPOWER and IMDIV (the functions probed), a result that
+overflows or is NaN is an error, never text. IMSUM and IMPRODUCT give `#VALUE!`; IMEXP of a pure
+real number, IMPOWER and IMDIV give `#NUM!`. The other IM* functions are UNVERIFIED.
+Status: VERIFIED (excel-graph); implemented for the five; IMEXP with a nonzero imaginary part is not (below).
+Tasks: T-1827, T-1996, and the follow-ups T-2001 to T-2003.
+Evidence: probes/eng-im-overflow (excel-graph).
+
+- Examples: `IMPRODUCT("1E200","1E200")`, `IMSUM("9E307","9E307")` and
+  `IMPRODUCT("1E200","1E200","0")` are `#VALUE!` (A5-A7, A25, A30, A36-A38); `IMEXP("710")`,
+  `IMPOWER("1E155",2)` and `IMDIV("1E300","1E-300")` (A21) are `#NUM!`.
+- The limit is the double range: `IMPRODUCT("1E154","1E154")` is `1E+308`, `IMEXP("709.7")` is
+  `1.65498402768026E+308`, `IMPOWER("1E154",2)` is `1E+308`.
+- IMEXP with a nonzero imaginary part does not overflow to an error: `IMEXP("1000+1i")` is
+  `9.71297746009434E+307+1.51270661257499E+308i` (A12). The modulus is capped at DBL_MAX (the
+  ratio of the parts is tan(1) and re / cos(1) is 1.7977E+308), the same mechanism as the values
+  near 1.797E+308 of IMPOWER (T-1950). Only A12 is evidenced; ours gives `#NUM!` (known failure).
+- IM* text keeps 15 significant digits for an exponent past 98, unlike `&""` (numbers.md): A11,
+  A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
+  `1.65498402768026E+308`, where ours cuts to 14 digits via `number_to_text`. This is a
+  formatting difference, not T-0907 precision.
+- IM* text writes a small part in full past 20 characters: `IMEXP("710i")` is
+  `0.999999998182636+0.0000602887066915739i` (A42), where ours switches to E notation, and the
+  digits differ because Excel reduces a large sine or cosine argument differently (ours
+  `...915853`).
+- An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
+  `IMSUM("1E308","0")`); ours already matches. `IMSQRT("1E307")` and `IMSQRT("4E307")` are `#NUM!`
+  too, which ours does not match (A33, A34).
+- `IMDIV("1","1E-308")` is `#NUM!` (A20) although results near 1E+308 are text (A46); the cause
+  (subnormal divisor?) is unprobed, ours matches.
+- Not probed (T-2003): IMSUB overflow, a sum that overflows then cancels
+  (`IMSUM("9E307","9E307","-9E307")`), overflow followed by a later error argument; IMSIN, IMCOS, IMSINH and IMCOSH overflow (ours prints `inf` text), and
+  `IMPRODUCT("1E200","1E200",<blank cell>)` (ours gives 0 through the blank shortcut).

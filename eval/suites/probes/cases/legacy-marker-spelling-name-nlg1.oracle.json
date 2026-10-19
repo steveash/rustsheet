@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A2": {
+    "t": "b",
+    "v": true
+   },
+   "A3": {
+    "t": "s",
+    "v": "=SUM(NLG1)"
+   },
+   "A4": {
+    "t": "n",
+    "v": 0.0
+   },
+   "A5": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A6": {
+    "t": "b",
+    "v": true
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "5297d4a8f287322318ba142c4300684fc3d4a52c8079a71719fc05d8fdf5df99",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-19T11:55:19+00:00",
+  "version": null
+ }
+}
