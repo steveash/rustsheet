@@ -1,0 +1,84 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1952: TIMEVALUE of non-glued date-only text (A:B, 0 or an error) and typed non-glued date+clock text (rows 11-17: whether it becomes a number, its month, day, clock fraction and day serial; the year-less row has no serial, it depends on Excel's clock).",
+ "tags": [
+  "M2",
+  "probe",
+  "dates",
+  "date-text",
+  "T-1952"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TIMEVALUE(\"1/2/2020\")",
+    "B1": "=IF(ISERROR(TIMEVALUE(\"1/2/2020\")),ERROR.TYPE(TIMEVALUE(\"1/2/2020\")),TIMEVALUE(\"1/2/2020\"))",
+    "A2": "=TIMEVALUE(\"July 1, 2026\")",
+    "B2": "=IF(ISERROR(TIMEVALUE(\"July 1, 2026\")),ERROR.TYPE(TIMEVALUE(\"July 1, 2026\")),TIMEVALUE(\"July 1, 2026\"))",
+    "A3": "=TIMEVALUE(\"2020-01-02\")",
+    "B3": "=IF(ISERROR(TIMEVALUE(\"2020-01-02\")),ERROR.TYPE(TIMEVALUE(\"2020-01-02\")),TIMEVALUE(\"2020-01-02\"))",
+    "A4": "=TIMEVALUE(\"1-Jan-2020\")",
+    "B4": "=IF(ISERROR(TIMEVALUE(\"1-Jan-2020\")),ERROR.TYPE(TIMEVALUE(\"1-Jan-2020\")),TIMEVALUE(\"1-Jan-2020\"))",
+    "A5": "=TIMEVALUE(\"7/1\")",
+    "B5": "=IF(ISERROR(TIMEVALUE(\"7/1\")),ERROR.TYPE(TIMEVALUE(\"7/1\")),TIMEVALUE(\"7/1\"))",
+    "N11": {
+     "entered": "1/2/2020 10:00"
+    },
+    "O11": "=ISNUMBER(N11)",
+    "P11": "=IF(ISNUMBER(N11),MONTH(N11),0)",
+    "Q11": "=IF(ISNUMBER(N11),DAY(N11),0)",
+    "R11": "=IF(ISNUMBER(N11),MOD(N11,1),0)",
+    "S11": "=IF(ISNUMBER(N11),INT(N11),0)",
+    "N12": {
+     "entered": "2020-01-02 10:00"
+    },
+    "O12": "=ISNUMBER(N12)",
+    "P12": "=IF(ISNUMBER(N12),MONTH(N12),0)",
+    "Q12": "=IF(ISNUMBER(N12),DAY(N12),0)",
+    "R12": "=IF(ISNUMBER(N12),MOD(N12,1),0)",
+    "S12": "=IF(ISNUMBER(N12),INT(N12),0)",
+    "N13": {
+     "entered": "July 1, 2026 10:00"
+    },
+    "O13": "=ISNUMBER(N13)",
+    "P13": "=IF(ISNUMBER(N13),MONTH(N13),0)",
+    "Q13": "=IF(ISNUMBER(N13),DAY(N13),0)",
+    "R13": "=IF(ISNUMBER(N13),MOD(N13,1),0)",
+    "S13": "=IF(ISNUMBER(N13),INT(N13),0)",
+    "N14": {
+     "entered": "7/1 10:00"
+    },
+    "O14": "=ISNUMBER(N14)",
+    "P14": "=IF(ISNUMBER(N14),MONTH(N14),0)",
+    "Q14": "=IF(ISNUMBER(N14),DAY(N14),0)",
+    "R14": "=IF(ISNUMBER(N14),MOD(N14,1),0)",
+    "N15": {
+     "entered": "1/2/2020"
+    },
+    "O15": "=ISNUMBER(N15)",
+    "P15": "=IF(ISNUMBER(N15),MONTH(N15),0)",
+    "Q15": "=IF(ISNUMBER(N15),DAY(N15),0)",
+    "R15": "=IF(ISNUMBER(N15),MOD(N15,1),0)",
+    "S15": "=IF(ISNUMBER(N15),INT(N15),0)",
+    "N16": {
+     "entered": "1/2/2020 10:00:30"
+    },
+    "O16": "=ISNUMBER(N16)",
+    "P16": "=IF(ISNUMBER(N16),MONTH(N16),0)",
+    "Q16": "=IF(ISNUMBER(N16),DAY(N16),0)",
+    "R16": "=IF(ISNUMBER(N16),MOD(N16,1),0)",
+    "S16": "=IF(ISNUMBER(N16),INT(N16),0)",
+    "N17": {
+     "entered": "1/2/2020 10:00 AM"
+    },
+    "O17": "=ISNUMBER(N17)",
+    "P17": "=IF(ISNUMBER(N17),MONTH(N17),0)",
+    "Q17": "=IF(ISNUMBER(N17),DAY(N17),0)",
+    "R17": "=IF(ISNUMBER(N17),MOD(N17,1),0)",
+    "S17": "=IF(ISNUMBER(N17),INT(N17),0)"
+   }
+  }
+ ]
+}
