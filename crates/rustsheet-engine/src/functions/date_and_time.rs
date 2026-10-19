@@ -11,8 +11,7 @@ mod workday;
 mod yearfrac;
 use weekend::WeekendPattern;
 
-const SECONDS_PER_DAY: i32 = 86_400;
-const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
+use crate::formatter::date_clock::{SECONDS_PER_DAY, SECONDS_PER_DAY_F64};
 
 pub(crate) fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
@@ -156,7 +155,9 @@ impl Model {
         let serial = if let Ok((serial, _)) = parse_date(text, self.locale, year) {
             serial
         } else {
-            let serial = time_text::parse_date_clock_serial(text, self.locale, year)?.floor();
+            let serial =
+                crate::formatter::date_clock::parse_date_clock_serial(text, self.locale, year)?
+                    .floor();
             if !(f64::from(MINIMUM_DATE_SERIAL_NUMBER)..=f64::from(MAXIMUM_DATE_SERIAL_NUMBER))
                 .contains(&serial)
             {
