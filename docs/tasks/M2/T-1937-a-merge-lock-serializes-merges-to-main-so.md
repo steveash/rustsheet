@@ -3,7 +3,7 @@ id: T-1937
 title: "A merge lock serializes merges to main, so a green PR is not overtaken while its CI runs"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -25,10 +25,20 @@ compare-and-swap). The empty tree means no task or decision file is seen on it (
 policy and the work-loop step 6.3; a decision record amending 0028/0053.
 
 ## Acceptance criteria
-- [ ] `make merge-lock-acquire PR=<n>` takes the lock only when no live lock exists (two racing acquirers: exactly one wins), `make merge-lock-release` drops only the caller's own lock, a lock older than the TTL is taken over, and `make merge-lock-status` shows the holder; unit tests run each case against a real temporary remote.
-- [ ] The steward skill's merge policy and the work-loop say: acquire, merge `main` in, push, wait for CI on that head, merge, release; release at once on a red CI or any stop; never merge without the lock; what to do while another agent holds it.
-- [ ] A decision record amends 0028 and 0053.
-- [ ] `make check` green; reviewers approve.
+- [x] `make merge-lock-acquire PR=<n>` takes the lock only when no live lock exists (two racing acquirers: exactly one wins), `make merge-lock-release` drops only the caller's own lock, a lock older than the TTL is taken over, and `make merge-lock-status` shows the holder; unit tests run each case against a real temporary remote.
+- [x] The steward skill's merge policy and the work-loop say: acquire, merge `main` in, push, wait for CI on that head, merge, release; release at once on a red CI or any stop; never merge without the lock; what to do while another agent holds it.
+- [x] A decision record amends 0028 and 0053.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`scripts/merge_lock.py` (`make merge-lock-acquire PR=<n>`, `merge-lock-release`, `merge-lock-status`) keeps the lock as the branch
+`merge-lock` on origin, an orphan empty-tree commit naming the holder (`CLAUDE_CODE_SESSION_ID`) and the PR. Every write is a
+`--force-with-lease` compare-and-swap, so of two racing acquirers one wins, only the holder releases, and a lock older than 30 minutes
+is taken over. 10 unit tests run against a real temporary bare remote. Decision 0075 sets the rule; the steward skill ("Merge lock"),
+the work-loop step 6.3 and agent-workflow.md step 9 follow it, 0028 and 0053 point to it, and the queue instructions are marked
+dormant. Review: security, architecture and quality APPROVE; their minor findings are fixed (one-fetch read of the lock, renew before
+the merge call, a numeric `--pr`, the cross-references), except a shared git helper for scripts/ (the wrappers differ; the duplication
+check shows no hit). Eval: no change (no engine code).

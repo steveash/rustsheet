@@ -24,13 +24,16 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   2. Holding it: if the branch is behind, merge `origin/main` in and push. A clean merge needs no
      local `make check` (CI runs the same gates); a conflict means release first, resolve and run
      `make check` without the lock, push, and start again at 1 once CI is green.
-  3. Wait for CI on that head (subscribe or a `Monitor` until-loop, not sleeps). Green: run check
-     (c), merge with `expectedHeadSha`, then `make merge-lock-release`. Red, or any reason to stop
+  3. Wait for CI on that head (subscribe or a `Monitor` until-loop, not sleeps). Green: renew
+     with `make merge-lock-acquire PR=<n>` (exit 1 means the lock was taken over while you waited:
+     do not merge, start again at 1), run check (c), merge with `expectedHeadSha`, then
+     `make merge-lock-release`. Red, or any reason to stop
      (review changes, the session ending): release at once, then fix without the lock.
   A lock older than 30 minutes is stale and the next acquirer takes it over; renew yours by
   acquiring again if CI runs long. `make merge-lock-status` shows the holder. Orphaned-PR merges,
   the steward's PR and task-only PRs take the lock too.
-- **Merge queue** (decision 0053): once the owner has turned on the merge queue for `main` (a merge
+- **Merge queue** (decision 0053; dormant while the merge lock is in force, decision 0075: this
+  repository cannot turn the queue on): once the owner has turned on the merge queue for `main` (a merge
   call is refused with "merge queue" in the message, or the PR shows as queued), do not merge and
   skip check (c): on a head that meets (a) and (b), call `enable_pr_auto_merge` with `mergeMethod:
   SQUASH` to enqueue it. The queue tests it merged with current `main` and the PRs ahead of it.

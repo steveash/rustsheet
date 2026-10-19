@@ -28,6 +28,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
 LOCK_REF = "refs/heads/merge-lock"
+# Where a read keeps the lock commit, so its sha and message always come from one fetch.
+SEEN_REF = "refs/merge-lock/seen"
 # A holder merges `main` in, waits for CI (about 5 minutes) and merges; 30 minutes is a dead holder.
 TTL_MINUTES = 30
 # The committer of lock commits, so a clone with no git identity can still take the lock.
@@ -65,14 +67,17 @@ def git(*args: str, root: Path = ROOT, check: bool = True) -> subprocess.Complet
 
 def read_lock(root: Path = ROOT) -> Lock | None:
     """The lock on origin, or None when nobody holds it."""
-    listing = git("ls-remote", REMOTE, LOCK_REF, root=root).stdout.split()
-    if not listing:
-        return None
-    sha = listing[0]
-    git("fetch", "-q", REMOTE, LOCK_REF, root=root)
-    body = git("log", "-1", "--format=%ct%n%B", sha, root=root).stdout.splitlines()
-    fields = dict(line.split(": ", 1) for line in body[1:] if ": " in line)
-    return Lock(sha=sha, holder=fields.get("holder", "?"), pr=fields.get("pr", "?"), taken_at=int(body[0]))
+    fetched = git("fetch", "-q", "--no-tags", REMOTE, f"+{LOCK_REF}:{SEEN_REF}", root=root, check=False)
+    if fetched.returncode != 0:
+        if "couldn't find remote ref" in fetched.stderr:
+            return None
+        raise GitError(f"fetch {LOCK_REF}: {fetched.stderr.strip()}")
+    body = git("log", "-1", "--format=%H%n%ct%n%B", SEEN_REF, root=root).stdout.splitlines()
+    try:
+        fields = dict(line.split(": ", 1) for line in body[2:] if ": " in line)
+        return Lock(sha=body[0], holder=fields.get("holder", "?"), pr=fields.get("pr", "?"), taken_at=int(body[1]))
+    except (IndexError, ValueError) as e:
+        raise GitError(f"malformed lock commit on {LOCK_REF}") from e
 
 
 def lock_commit(holder: str, pr: str, root: Path = ROOT) -> str:
@@ -142,7 +147,7 @@ def main(argv: list[str]) -> int:
     )
     commands = parser.add_subparsers(dest="command", required=True)
     take = commands.add_parser("acquire")
-    take.add_argument("--pr", required=True)
+    take.add_argument("--pr", required=True, type=int)
     take.add_argument("--ttl", type=float, default=TTL_MINUTES, help="minutes before a lock is stale")
     drop = commands.add_parser("release")
     for sub in (take, drop):
@@ -156,7 +161,7 @@ def main(argv: list[str]) -> int:
             print("merge lock: no holder (set --holder or CLAUDE_CODE_SESSION_ID)", file=sys.stderr)
             return 2
         if args.command == "acquire":
-            return acquire(args.holder, args.pr, args.ttl)
+            return acquire(args.holder, str(args.pr), args.ttl)
         return release(args.holder)
     except GitError as e:
         print(f"merge lock: {e}", file=sys.stderr)
