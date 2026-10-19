@@ -3,7 +3,7 @@ id: T-2071
 title: "One pick step for IF, CHOOSE, IFS and SWITCH under TAKE, DROP, TRIMRANGE and reference arguments"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
