@@ -3,7 +3,7 @@ id: T-1403
 title: "LARGE, SMALL, PERCENTRANK, QUARTILE and PERCENTILE.EXC with a scalar, error or single-cell data argument give Excel's error"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -38,9 +38,15 @@ Code: crates/rustsheet-engine/src/functions/statistical/count_and_average.rs (`f
 Semantics: docs/excel-semantics/statistics.md "Array arguments given a scalar, a single cell or an error".
 
 ## Acceptance criteria
-- [ ] The 6 gen-m9 cells above pass in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] The PERCENTRANK.EXC single-value probe cells pass; the rule is in docs/excel-semantics/statistics.md.
+- [~] Partly met: 5 of the 6 gen-m9 cells pass (A3 of 288b99797f58f149 is deferred to T-2066); the other 5 pass in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] (already on main, probes/percentrank-single-value B6) The PERCENTRANK.EXC single-value probe cells pass; the rule is in docs/excel-semantics/statistics.md.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+PERCENTILE.EXC now reports k's error (and a non-numeric k's `#VALUE!`) before the empty-data `#NUM!`
+(gen-m9/d5bd4272655c5211 A31 passes). The other gen-m9 cells listed (A25, A2, A24, A17) already passed on main.
+Not done: gen-m9/288b99797f58f149 A3 (`QUARTILE(<cell " x ">,7)`) is undecided by the evidence (BETAINV's invalid
+probability can give `#NUM!` alone) and needs an oracle probe, which this run did not have; follow-up filed below.
