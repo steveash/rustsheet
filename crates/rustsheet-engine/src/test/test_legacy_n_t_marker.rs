@@ -491,7 +491,10 @@ fn cell_spelled_name_loads_and_reads_the_cell() {
     assert!(model
         .new_defined_name("NLG1", None, "LAMBDA(x,x*10+7)")
         .is_err());
-    model.define_name("NLG1", None, "LAMBDA(x,x*10+7)").unwrap();
+    assert!(model.define_name("NLG1", None, "LAMBDA(x,x*10+7)").is_err());
+    model
+        .define_loaded_name("NLG1", None, "LAMBDA(x,x*10+7)")
+        .unwrap();
     model._set("A1", "5");
     model._set("B1", "=SUM(NLG1)");
     model._set("B2", "=ISREF(NLG1)");

@@ -209,9 +209,9 @@ impl Engine for RustSheetEngine {
                                         "name {name}: no sheet {sheet}"
                                     ))
                                 })?;
-                            tx.define_sheet_name(id, &local, formula)?;
+                            tx.load_defined_name(Some(id), &local, formula)?;
                         }
-                        None => tx.define_name(name, formula)?,
+                        None => tx.load_defined_name(None, name, formula)?,
                     }
                 }
                 // Values first, then tables (they read their headers), then formulas (a
