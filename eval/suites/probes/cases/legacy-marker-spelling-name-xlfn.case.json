@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Does Excel accept _xlfn._RS_LEGACY_N as a defined LAMBDA name, and does a call reach it (T-1912)",
+ "tags": [
+  "M2",
+  "references",
+  "probe"
+ ],
+ "names": {
+  "_xlfn._RS_LEGACY_N": "=LAMBDA(x,x*10+7)"
+ },
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=_xlfn._RS_LEGACY_N(1)",
+    "A2": "=N(1)"
+   }
+  }
+ ],
+ "expected": {}
+}
