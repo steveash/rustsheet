@@ -8,6 +8,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
+use crate::closeness::Closeness;
 use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
@@ -26,8 +27,6 @@ static STRING_LITERAL: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Upper-cased function names called by a formula (string literals ignored).
 ///
-/// `tools/src/rustsheet_tools/parity_report.py` mirrors this function and its two regexes to
-/// attribute failing cells to functions; change both together (T-2036 removes the copy).
 #[must_use]
 pub fn functions_in(formula: &str) -> BTreeSet<String> {
     let stripped = STRING_LITERAL.replace_all(formula, "\"\"");
@@ -130,6 +129,9 @@ pub struct FunctionStat {
     pub cells: usize,
     pub passed: usize,
     pub verdicts: BTreeMap<Verdict, usize>,
+    /// The scored cells per closeness bucket, which the parity page reads (T-2036).
+    #[serde(default)]
+    pub closeness: Closeness,
 }
 
 /// Scored cells with Excel-sourced expectations that call one function.
@@ -322,6 +324,7 @@ impl RunReport {
                         st.passed += 1;
                     }
                     *st.verdicts.entry(c.verdict).or_default() += 1;
+                    st.closeness.add(c);
                 }
             }
         }
@@ -746,6 +749,38 @@ mod tests {
             "{md}"
         );
         assert!(md.contains("- `probes/a\tS!A1`"));
+    }
+
+    /// Each function counts its scored cells per closeness bucket, which sum to its cells minus
+    /// the unsupported ones (T-2036).
+    #[test]
+    fn function_closeness_buckets_sum_to_the_scored_cells() {
+        let mut r = case("probes/a", 1);
+        let ulp = |n: u64| CellResult {
+            actual: crate::value::Value::Number(f64::from_bits(1.0_f64.to_bits() + n)),
+            ..cell("ABS(1)+SIGN(1)", Verdict::NumericUlp)
+        };
+        r.cells = vec![
+            cell("ABS(1)", Verdict::Pass),
+            ulp(1),
+            ulp(3),
+            cell("ABS(2)", Verdict::NumericClose),
+            cell("ABS(3)", Verdict::NumericMismatch),
+            cell("ABS(4)", Verdict::Unsupported),
+        ];
+        let report = RunReport::build("e", &[r], &[], &Catalog::default());
+        let abs = report.functions.iter().find(|f| f.name == "ABS");
+        let abs = abs.map(|f| (f.cells, f.closeness));
+        let expected = Closeness {
+            pass: 1,
+            ulp1: 1,
+            ulp4: 1,
+            close: 1,
+            off: 1,
+        };
+        assert_eq!(abs, Some((6, expected)));
+        let sign = report.functions.iter().find(|f| f.name == "SIGN");
+        assert_eq!(sign.map(|f| f.closeness.scored()), Some(2));
     }
 
     #[test]
