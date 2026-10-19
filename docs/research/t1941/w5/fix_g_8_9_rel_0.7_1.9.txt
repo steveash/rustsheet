@@ -1,0 +1,40 @@
+0 0.7 1.9 E -5.798e-22 rel dR ['0.02769', '0.1666', '0.3549', '0.5752']
+1 0.7 1.95 E -9.17e-22 rel dR ['0.02568', '0.1537', '0.3256', '0.5244']
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 64, in inv
+    p, q, E, X = remez2(f, a, b, m, n, w=W[wn], dps=40, grid=500, ref=r)
+                 ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 43, in remez2
+    fx = [f(x) for x in X]
+          ~^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 42, in g
+    return A(x) / (x - 2)
+           ~~~~~^~~~~~~~~
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/ctx_mp_python.py", line 286, in __truediv__
+    val = mpf_div(sval, oval, prec, rounding)
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/libmp/libmpf.py", line 840, in mpf_div
+    if t == fzero: raise ZeroDivisionError
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+ZeroDivisionError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 75, in <module>
+    t, E = inv(a, b)
+           ~~~^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 66, in inv
+    p, q, E, X = remez2(f, a, b, m, n, w=W[wn], dps=40, grid=500)
+                 ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 43, in remez2
+    fx = [f(x) for x in X]
+          ~^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 42, in g
+    return A(x) / (x - 2)
+           ~~~~~^~~~~~~~~
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/ctx_mp_python.py", line 286, in __truediv__
+    val = mpf_div(sval, oval, prec, rounding)
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/libmp/libmpf.py", line 840, in mpf_div
+    if t == fzero: raise ZeroDivisionError
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+ZeroDivisionError

@@ -1,0 +1,40 @@
+0 0.7 1.8 E -2.043e-21 rel dR ['0.01396', '0.08057', '0.1646', '0.2556']
+1 0.7 1.85 E -3.65e-21 rel dR ['0.0114', '0.06532', '0.1324', '0.2041']
+2 0.7 1.9 E -6.434e-21 rel dR ['0.008841', '0.05026', '0.1011', '0.1547']
+3 0.7 1.95 E -1.138e-20 rel dR ['0.006207', '0.03497', '0.06976', '0.1059']
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 64, in inv
+    p, q, E, X = remez2(f, a, b, m, n, w=W[wn], dps=40, grid=500, ref=r)
+                 ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 70, in remez2
+    ev = [err(x) for x in gx]
+          ~~~^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 40, in err
+    return (R(x) - f(x)) / w(x)
+           ~~~~~~~~~~~~~~^~~~~~
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/ctx_mp_python.py", line 286, in __truediv__
+    val = mpf_div(sval, oval, prec, rounding)
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/libmp/libmpf.py", line 844, in mpf_div
+    raise ZeroDivisionError
+ZeroDivisionError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 75, in <module>
+    t, E = inv(a, b)
+           ~~~^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 66, in inv
+    p, q, E, X = remez2(f, a, b, m, n, w=W[wn], dps=40, grid=500)
+                 ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 70, in remez2
+    ev = [err(x) for x in gx]
+          ~~~^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 40, in err
+    return (R(x) - f(x)) / w(x)
+           ~~~~~~~~~~~~~~^~~~~~
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/ctx_mp_python.py", line 286, in __truediv__
+    val = mpf_div(sval, oval, prec, rounding)
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/libmp/libmpf.py", line 844, in mpf_div
+    raise ZeroDivisionError
+ZeroDivisionError

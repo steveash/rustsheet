@@ -1,0 +1,48 @@
+0 0.7 1.8 E -3.931e-21 rel dR ['0.01096', '0.06272', '0.127', '0.1955']
+1 0.7 1.85 E -6.375e-21 rel dR ['0.008819', '0.05012', '0.1008', '0.1542']
+2 0.7 1.9 E -1.007e-20 rel dR ['0.006742', '0.03805', '0.07605', '0.1156']
+3 0.7 1.95 E -1.554e-20 rel dR ['0.004729', '0.02648', '0.05255', '0.07937']
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 64, in inv
+    p, q, E, X = remez2(f, a, b, m, n, w=W[wn], dps=40, grid=500, ref=r)
+                 ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 70, in remez2
+    ev = [err(x) for x in gx]
+          ~~~^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 40, in err
+    return (R(x) - f(x)) / w(x)
+                   ~^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 42, in g
+    return A(x) / (x - 2)
+           ~~~~~^~~~~~~~~
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/ctx_mp_python.py", line 286, in __truediv__
+    val = mpf_div(sval, oval, prec, rounding)
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/libmp/libmpf.py", line 840, in mpf_div
+    if t == fzero: raise ZeroDivisionError
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+ZeroDivisionError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 75, in <module>
+    t, E = inv(a, b)
+           ~~~^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 66, in inv
+    p, q, E, X = remez2(f, a, b, m, n, w=W[wn], dps=40, grid=500)
+                 ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 70, in remez2
+    ev = [err(x) for x in gx]
+          ~~~^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/remez2.py", line 40, in err
+    return (R(x) - f(x)) / w(x)
+                   ~^^^
+  File "/home/user/rustsheet/docs/research/t1941/w5/solve2.py", line 42, in g
+    return A(x) / (x - 2)
+           ~~~~~^~~~~~~~~
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/ctx_mp_python.py", line 286, in __truediv__
+    val = mpf_div(sval, oval, prec, rounding)
+  File "/usr/local/lib/python3.13/dist-packages/mpmath/libmp/libmpf.py", line 840, in mpf_div
+    if t == fzero: raise ZeroDivisionError
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+ZeroDivisionError
