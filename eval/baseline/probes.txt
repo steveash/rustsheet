@@ -1658,7 +1658,6 @@ F	probes/growth-modes.case.json	Sheet1!K99
 F	probes/growth-modes.case.json	Sheet1!L289
 F	probes/growth-modes.case.json	Sheet1!L61
 F	probes/growth-modes.case.json	Sheet1!M61
-F	probes/ifna-isformula-edges.case.json	Calc!B12
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E1
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E10
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E11
