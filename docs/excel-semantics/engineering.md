@@ -250,26 +250,33 @@ Ours: `#NUM!` for OCT2BIN, OCT2DEC and HEX2BIN of a blank cell; BIN2DEC gives 0 
 Status: VERIFIED (web) for OCT2BIN; the rest UNVERIFIED
 Tasks: T-1413
 
-## Engineering edge cases seen in a generated sample (unprobed)
-Excel gave these values in a seeded engineering sample, which was not committed. They were read from
-nested generated formulas, so each one needs a one-question probe before it is implemented (T-1385).
-Seen directly as a whole cell value:
-- `HEX2OCT("FFFFFFFFFF",4)` is "7777777777". For a negative input `places` is ignored, where we give
-  `#NUM!`.
-- `IMPOWER("2i",-1)` is "3.06287113727155E-17-0.5i" and `IMPOWER("-i",4)` is "1+2.45029690981724E-16i".
-  A tiny part is written in E notation with 15 significant digits, and its value is not what
-  cos/sin of the exact angle gives (ours: "0.0000000000000000306161699786838-0.5i").
-Inferred from inside a larger formula:
-- CONVERT reads its number before its units. A text number with an unknown unit is `#VALUE!`, not
-  `#N/A`.
-- DELTA and GESTEP report the second argument's error before the first's. `DELTA(<#NUM!>,<#N/A>)` is
-  `#N/A`.
-- A boolean cell in BITAND, DELTA or GESTEP is `#VALUE!`, where we give `#NUM!`.
-- `IMSQRT("")` is `#NUM!`, where we give "0".
-- A negative fractional Bessel order is `#NUM!`: `BESSELK(5,-0.0001)`. We truncate the order to 0.
-Evidence: `rustsheet-gen --milestone M9 --count 20 --seed 17` run from a scratch catalog holding only
-the engineering signatures (excel-graph, 2026-10-11, T-1085; not committed).
-Status: UNVERIFIED (probe pending)
+## Engineering edge cases from a generated sample (T-1385)
+The T-1085 gen-m9 sample suggested seven differences; a one-question probe of each settled them.
+- **A negative base-conversion result ignores `places`.** `HEX2OCT("FFFFFFFFFF",4)` is "7777777777"
+  and `HEX2BIN("FFFFFFFFFF",4)` is "1111111111" (C1, C6), as DEC2BIN, OCT2BIN, BIN2HEX and the others
+  already did. `places` must still be 1 to 10: 0, -1, 11 and 20 are `#NUM!` and "x" is `#VALUE!`
+  (C2:C5, C11).
+- **Any negative Bessel order is `#NUM!`, checked before truncation.** `BESSELK(5,-0.0001)`,
+  `BESSELK(5,-1E-300)`, `BESSELJ(5,-0.9999)`, `BESSELY(5,-0.0001)` and `BESSELI(5,-0.0001)` are `#NUM!`
+  (E1:E9); a positive fraction still truncates (`BESSELK(5,0.9999)` = `BESSELK(5,0)`, E10).
+- **Empty text is `#NUM!` in every one-argument IM\* function; a blank cell is 0.** `IMSQRT("")`,
+  `IMSQRT(""&"")`, `IMSQRT(<cell holding ="">)`, `IMSQRT(INDEX({"";"4"},1))`, and `""` in IMABS,
+  IMAGINARY, IMARGUMENT, IMCONJUGATE, IMCOS, IMCOSH, IMCOT, IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2,
+  IMREAL, IMSEC, IMSECH, IMSIN, IMSINH and IMTAN are all `#NUM!` (D1:D25). A blank cell is 0 in all of
+  them: `IMSQRT(blank)` is "0", `IMCOS(blank)` and `IMCOSH(blank)` are "1" (D3, D26:D32). This is the
+  rule IMSUB, IMDIV and IMPOWER already followed (T-1625 below).
+- **CONVERT refuses a boolean before it reads the units.** `CONVERT(TRUE,"m","ft")`, a TRUE cell,
+  `CONVERT(FALSE,"m","m")`, a TRUE array element and `CONVERT(<TRUE cell>,"xyz","m")` are `#VALUE!`
+  (A8, A11:A14). The sample's other CONVERT hypothesis was wrong: a numeric text with an unknown unit
+  is `#N/A` (`CONVERT("2.5","ft","xyz")`, A1), non-numeric text is `#VALUE!` whatever the units (A2,
+  A4, A6, A7), and a blank or `""` number is 0 (A15, A16).
+- **Not differences** (the sample's formulas misled): DELTA's and GESTEP's second-argument error
+  wins, as T-1816 already implements (B1, B2); a boolean cell in DELTA and GESTEP is `#VALUE!` (B3,
+  B4, B6, B7), which ours already gave; and BITAND reads a boolean, typed or in a cell, as its number
+  (`BITAND(TRUE,139)` and `BITAND(<TRUE cell>,139)` are 1, B5, B8, B11). The IMPOWER E-notation cells
+  (`IMPOWER("2i",-1)`, `IMPOWER("-i",4)`, `IMPOWER("3+4i",1E-15)`) already matched since T-1766 (F1:F4).
+Evidence: probes/eng-gen-sample-edges (excel-graph, 2026-10-19, T-1385).
+Status: VERIFIED (excel-graph); implemented (T-1385)
 Tasks: T-1385
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
