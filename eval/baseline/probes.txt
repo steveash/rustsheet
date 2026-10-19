@@ -730,6 +730,7 @@ C	probes/scalar-lift-shapes-b.case.json	26
 C	probes/scalar-lift-shapes-c.case.json	18
 C	probes/scalar-lift-shapes.case.json	67
 C	probes/search-wildcard-newline.case.json	30
+C	probes/second-rounding.case.json	40
 C	probes/sequence-step-accumulation.case.json	11
 C	probes/seriessum-boolean-coefficients.case.json	18
 C	probes/seriessum-x-zero-error-precedence.case.json	27
