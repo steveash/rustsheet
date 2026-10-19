@@ -760,6 +760,23 @@ fn legacy_array_values_intersect_in_value_positions() {
             "N(SWITCH(1,1,{2;3}))",
             "N(_xlfn.SWITCH(1,1,{2;3}))",
         ),
+        // A root SWITCH of array constants is unmarked and spills (T-1910); nested, it keeps its `@`.
+        (
+            "_xlfn.SWITCH(1,1,{2;3})",
+            "SWITCH(1,1,{2;3})",
+            "_xlfn.SWITCH(1,1,{2;3})",
+        ),
+        // An `@` typed on it is meaningful (the value is 2, not a spill) and is kept.
+        (
+            "_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
+            "@SWITCH(1,1,{2;3})",
+            "_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+        (
+            "ABS(_xlfn.SWITCH(1,1,{-2;3}))",
+            "ABS(@SWITCH(1,1,{-2;3}))",
+            "ABS(_xlfn.SWITCH(1,1,{-2;3}))",
+        ),
         ("SUM(N({1,2}))", "SUM(N({1,2}))", "SUM(N({1,2}))"),
         (
             "SUM(ABS(IF(1,{-2;3})))",
