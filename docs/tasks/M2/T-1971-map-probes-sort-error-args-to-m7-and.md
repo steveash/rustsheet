@@ -3,7 +3,7 @@ id: T-1971
 title: "Map probes/sort-error-args to M7 and date-math-lift-driver-edges G43 to M6 in probe-milestones.tsv (decision record)"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -36,16 +36,22 @@ features. M2 engine tasks own them (T-1852, T-1910, T-1911, T-1914, T-1915, T-19
 stay M2.
 
 ## Acceptance criteria
-- [ ] A new accepted decision record in docs/decisions/ amends 0051/0058. It names the two lines
+- [x] A new accepted decision record in docs/decisions/ amends 0051/0058. It names the two lines
   and cites the catalog milestones and the 0051 item 2 exception check for each.
-- [ ] eval/milestones/probe-milestones.tsv gains `probes/sort-error-args.case.json	M7	SORT, SORTBY`
+- [x] eval/milestones/probe-milestones.tsv gains `probes/sort-error-args.case.json	M7	SORT, SORTBY`
   and the cell line `probes/date-math-lift-driver-edges.case.json	Sheet1!G43	M6	DATEDIF`. No other
   line changes.
-- [ ] `make eval` report "Probe milestones (decision 0051)": M0-M2 known failures drop by exactly 24
+- [x] `make eval` report "Probe milestones (decision 0051)": M0-M2 known failures drop by exactly 24
   (45 -> 21 at 30bee011, or the same delta at the merge base). M6 rises by 1 and M7 by 23.
   eval/baseline is unchanged.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing SORT/SORTBY (T-1902) or DATEDIF's error order (T-1430).
 - Re-tagging any other case, and editing case.json files (oracle input hashes).
+
+## Outcome
+Decision 0078 amends 0051/0058 and adds the two lines to eval/milestones/probe-milestones.tsv
+(`sort-error-args` → M7, `date-math-lift-driver-edges` Sheet1!G43 → M6). `make eval` at merge
+base ca5c988f, "Probe milestones": M0-M2 known failures 37 → 13 (−24; cases 410 → 409),
+M6 95 → 96, M7 113 → 136. eval/baseline unchanged.
