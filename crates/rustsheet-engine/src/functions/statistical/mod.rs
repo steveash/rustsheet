@@ -40,3 +40,5 @@ mod trimmean;
 pub(super) mod variance;
 mod weibull;
 mod z_test;
+
+pub(crate) use if_ifs::IfsShape;
