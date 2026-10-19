@@ -457,6 +457,7 @@ C	probes/lifted-range-size.case.json	6
 C	probes/linest-modes.case.json	255
 C	probes/literal-digits.case.json	6
 C	probes/literal-number-tiny.case.json	24
+C	probes/log10-kernel.case.json	368
 C	probes/logest-modes.case.json	186
 C	probes/long-text-args-min-criteria.case.json	25
 C	probes/lookup-2d-vector-wide.case.json	13
@@ -1504,8 +1505,6 @@ F	probes/geomean-product-order.case.json	Sheet1!Z7
 F	probes/geomean-product-order.case.json	Sheet1!Z8
 F	probes/geomean-root-models.case.json	Pin!C60
 F	probes/geomean-root-models.case.json	Pin!F60
-F	probes/geomean-root-models.case.json	Root!I6
-F	probes/geomean-root-models.case.json	Root!I9
 F	probes/geomean-root-refinement.case.json	Sheet1!A17
 F	probes/geomean-root-refinement.case.json	Sheet1!A19
 F	probes/geomean-root-refinement.case.json	Sheet1!A21
@@ -2401,8 +2400,6 @@ F	probes/scalar-lift-shapes.case.json	Sheet1!J1
 F	probes/scalar-lift-shapes.case.json	Sheet1!J3
 F	probes/scalar-lift-shapes.case.json	Sheet1!J4
 F	probes/scalar-lift-shapes.case.json	Sheet1!K3
-F	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	S!B3
-F	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	S!B4
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!A1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B2

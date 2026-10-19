@@ -21,6 +21,12 @@ impl Node {
         false
     }
 
+    /// Whether the tree holds a legacy N or T (SPEC-0012), the one fact of a legacy formula its
+    /// display text does not show, so an edit that re-enters the text must keep it (T-1852).
+    pub(crate) fn has_legacy_marker(&self) -> bool {
+        self.contains_function(&Function::INTERNAL)
+    }
+
     /// Whether the tree reads, at any depth, a variable (an id patched in by LET or LAMBDA) for
     /// which `is_target` holds, as a value or as a called function. Walked with an explicit stack
     /// like [`Node::contains_function`].

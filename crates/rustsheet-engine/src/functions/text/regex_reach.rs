@@ -144,8 +144,7 @@ impl Reach {
                     let Some(&id) = self.curr.get(index) else {
                         break;
                     };
-                    let to = step(nfa, id, byte);
-                    if let Some(to) = to {
+                    if let Some(to) = step(nfa, id, byte, &mut visits) {
                         if self.close(nfa, haystack, at + 1, to, &mut visits)
                             && is_boundary(haystack, at + 1)
                         {
@@ -163,11 +162,13 @@ impl Reach {
     }
 }
 
-/// States visited and look-around assertions evaluated by the scan, or the units each costs.
+/// States visited, look-around assertions evaluated and sparse transitions walked by the scan,
+/// or the units each costs.
 #[derive(Default)]
 pub(super) struct Visits {
     pub(super) states: u64,
     pub(super) looks: u64,
+    pub(super) transitions: u64,
 }
 
 impl Visits {
@@ -176,14 +177,28 @@ impl Visits {
         self.states
             .saturating_mul(costs.states)
             .saturating_add(self.looks.saturating_mul(costs.looks))
+            .saturating_add(self.transitions.saturating_mul(costs.transitions))
     }
 }
 
-/// The state `id` moves to on `byte`, if it consumes it.
-fn step(nfa: &NFA, id: StateID, byte: u8) -> Option<StateID> {
+/// The state `id` moves to on `byte`, if it consumes it. A `Sparse` state is walked as
+/// `SparseTransitions::matches_byte` walks it (in order, up to the first range past `byte`),
+/// counting each range looked at: a large Unicode class costs a visit many times over (T-1988).
+fn step(nfa: &NFA, id: StateID, byte: u8, visits: &mut Visits) -> Option<StateID> {
     match nfa.state(id) {
         State::ByteRange { trans } => trans.matches_byte(byte).then_some(trans.next),
-        State::Sparse(sparse) => sparse.matches_byte(byte),
+        State::Sparse(sparse) => {
+            for trans in &sparse.transitions {
+                visits.transitions += 1;
+                if trans.start > byte {
+                    break;
+                }
+                if trans.matches_byte(byte) {
+                    return Some(trans.next);
+                }
+            }
+            None
+        }
         State::Dense(dense) => dense.matches_byte(byte),
         _ => None,
     }
@@ -192,4 +207,33 @@ fn step(nfa: &NFA, id: StateID, byte: u8) -> Option<StateID> {
 /// Whether `at` is a character boundary of the UTF-8 `haystack` (its end included).
 fn is_boundary(haystack: &[u8], at: usize) -> bool {
     haystack.get(at).is_none_or(|&b| b & 0xC0 != 0x80)
+}
+
+#[cfg(test)]
+mod tests {
+    use regex_automata::{nfa::thompson::NFA, Input};
+
+    use super::{Reach, Visits};
+
+    /// The units `scan` charges `pattern` over `text` at one unit a sparse transition.
+    fn transitions(pattern: &str, text: &str) -> u64 {
+        let nfa = NFA::new(pattern).unwrap();
+        let mut work = u64::MAX;
+        let costs = Visits {
+            transitions: 1,
+            ..Visits::default()
+        };
+        Reach::new(&nfa)
+            .scan(&nfa, &Input::new(text), &costs, &mut work)
+            .unwrap();
+        u64::MAX - work
+    }
+
+    #[test]
+    fn scan_charges_the_sparse_transitions_it_walks() {
+        assert_eq!(transitions("x", "xxxx"), 0);
+        // A large Unicode class is a `Sparse` state walked range by range on every visit.
+        assert!(transitions(r"[\w\s\d]", "日") > 1);
+        assert!(transitions(r"[\w\s\d]{3}q", "日日日q") > transitions(r"[\w\s\d]", "日"));
+    }
 }
