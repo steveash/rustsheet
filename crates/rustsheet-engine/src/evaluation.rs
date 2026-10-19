@@ -1054,6 +1054,11 @@ impl Model {
         if (last_row, last_column) == (row2, column2) {
             return (row2, column2);
         }
+        // A block wholly past the used area walks nothing: one record covers it.
+        if last_row < row1 || last_column < column1 {
+            self.record_seen_empty_range(sheet, row1, column1, row2, column2);
+            return (last_row, last_column);
+        }
         // The remainder: the rows below the used area over the whole width,
         // and the columns beyond it within the rows that are walked.
         self.record_seen_empty_range(sheet, last_row + 1, column1, row2, column2);
