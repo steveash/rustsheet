@@ -240,3 +240,13 @@ fn discount_security_settlement_zero() {
     assert_eq!(model._get_text("A3"), *"0.000442272");
     assert_eq!(model._get_text("A4"), *"#NUM!");
 }
+
+#[test]
+fn fn_fvschedule_boolean_principal_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=FVSCHEDULE(TRUE, {0.1})");
+    model._set("A2", "=FVSCHEDULE(\"1000\", {0.1})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"1100");
+}

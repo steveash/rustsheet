@@ -7,12 +7,13 @@ use crate::{
         lexer::LexerMode,
         parser::{
             stringify::{rename_defined_name_in_node, to_rc_format},
-            NamedVariable, Node,
+            Node,
         },
         token::Error,
         types::{CellReferenceIndex, CellReferenceRC},
         utils::is_valid_identifier,
     },
+    functions::logical::SharedLambda,
     model::Model,
     reference_operators::RefArg,
     types::DefinedName,
@@ -35,8 +36,8 @@ pub(crate) enum ParsedDefinedName {
     CellReference(CellReferenceIndex),
     /// A Range (`=C4:D6`)
     RangeReference(Range),
-    /// `=LAMBDA(params..., body)`
-    LambdaDefinition(Vec<NamedVariable>, Node),
+    /// `=LAMBDA(params..., body)`, shared with the lambdas a call creates (T-0440)
+    LambdaDefinition(SharedLambda),
     /// An error literal, possibly sheet-qualified (`=Sheet1!#REF!`): the name evaluates to it
     ErrorLiteral(Error),
     /// Any other formula (`=SUM(Sheet1!$A$1:$A$3)`, `=Sheet1!$A$1:$A$3 Sheet1!$A$2:$B$2`,

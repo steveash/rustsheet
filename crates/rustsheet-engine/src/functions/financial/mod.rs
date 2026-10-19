@@ -27,9 +27,11 @@ use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
 
 use crate::functions::lift::number_or_error;
 
-/// A computation's `(error, message)` as the cell's error.
-fn formula_error(cell: CellReferenceIndex) -> impl Fn((Error, String)) -> CalcResult {
-    move |(error, message)| CalcResult::new_error(error, cell, message)
+/// A computation's error as the cell's error, with no message: the kernels run lifted, where an
+/// element's message is dropped (`calc_result_to_array_node`), so building one only allocates
+/// (SPEC-0011, T-1823).
+fn formula_error(cell: CellReferenceIndex) -> impl Fn(Error) -> CalcResult {
+    move |error| CalcResult::new_error(error, cell, String::new())
 }
 
 // See:
@@ -556,7 +558,9 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let principal = match self.get_number(&args[0], cell) {
+        // A boolean principal is #VALUE!, though a text number is converted
+        // (probes/fin-fvschedule A18, A9).
+        let principal = match self.get_number_no_bools(&args[0], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
