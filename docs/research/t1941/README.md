@@ -145,3 +145,25 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   N4 only), and the noise-profile degree test. Greedy and SVD-direction searches plateau at about 51%.
 - Next idea: a joint integer search over about 12 mid coefficients, restricted to moves that keep the near-1 stage
   values, scored by exact match on far data.
+
+## Zero-factor structure of the GAMMALN rationals (coordinator, literature pass)
+- `roots.py`: np.roots of every candidate N has an exact real root at the other zero of lgamma.
+  - The near-1 N, N2 and N3 all have a root at x = 2.0000000. N3(2) = 4.3e-12, inside the candidate's coefficient
+    uncertainty.
+  - W2's (2,3] base N has a root at x = 0.99999999, within its 1e-7 coefficient accuracy.
+- So both kernels are lgamma(x) = (x-1)(x-2)*P(x)/Q(x) in raw x. One zero factor is the outer multiply, t = x-1
+  (near 1) or x-2 (base). The other is multiplied out into N. This is Boost's lgamma_small form, (z-1)(z-2)*R, not
+  Cody's t*(D1 + t*P/Q).
+- Searches should impose N(2) = 0 (near 1) and N(1) = 0 (base) as hard constraints. The data alone do not pin
+  these values.
+- Open questions:
+  - Is N stored as the expanded coefficients n_k = fl(P_{k-1} - r*P_k), or is the factor evaluated separately?
+    A crude refit in `factor_test2.py` (D fixed, P by least squares) cannot separate the forms: 26-39% for every
+    form against 54% for the original set, because the refit costs about 1 ulp. This needs the exact tooling.
+  - Does GAMMA's G on [1,2) have the analogue, G = 1 + (y-1)(y-2)*R?
+- Literature pass:
+  - Cody and Hillstrom (Math. Comp. 21, 1967) give minimax rationals on [0.5,1.5], [1.5,4] and [4,12].
+  - The Unix V7 / Hart #5243 gamma uses a Stirling cut at 8, as Excel's GAMMALN does.
+  - No published source documents Excel's GAMMALN.PRECISE algorithm (Excel 2010 "function improvements" blog;
+    Melard 2014 on Excel 2010 accuracy).
+  - netlib, gcc.gnu.org and retro11.de are blocked by the proxy.
