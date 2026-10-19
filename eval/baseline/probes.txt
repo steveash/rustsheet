@@ -158,7 +158,7 @@ C	probes/date-argument-modes.case.json	168
 C	probes/date-clock-text-length-limit.case.json	36
 C	probes/date-huge-month-day.case.json	63
 C	probes/date-lift-open.case.json	175
-C	probes/date-math-lift-driver-edges.case.json	56
+C	probes/date-math-lift-driver-edges.case.json	69
 C	probes/date-system-1900-accrint-settlement-bound.case.json	56
 C	probes/date-system-1900-coupon-bound.case.json	140
 C	probes/date-system-1900-financial-daycount.case.json	40

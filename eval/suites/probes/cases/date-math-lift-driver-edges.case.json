@@ -76,7 +76,20 @@
     "K3": "=MROUND(E1:E3,2)",
     "K4": "=SQRTPI(E1:E3+0)",
     "K5": "=DAY(A1:A5)",
-    "L2": "=DATEDIF(45000,46000,B1:B2)"
+    "L2": "=DATEDIF(45000,46000,B1:B2)",
+    "N1": "=ROWS(MUNIT(E1:E1))",
+    "N2": "=ROWS(MUNIT(OFFSET(E1,0,0)))",
+    "N3": "=ROWS(DAYS(E1:E1,NA()))",
+    "N4": "=ROWS(WEEKDAY(E1:E1,\"x\"))",
+    "N5": "=ROWS(MROUND(E1:E1,NA()))",
+    "N6": "=ROWS(DAYS360(E1:E1,\"x\"))",
+    "N7": "=ROWS(MROUND(E1:E3,{1;2}))",
+    "N8": "=INDEX(MROUND(E1:E3,{1;2}),1)",
+    "N9": "=ROWS(MROUND({45000;45001},E1:E2))",
+    "N10": "=ROWS(MROUND(\"x\",E1:E2))",
+    "N11": "=MROUND(\"x\",E1:E2)",
+    "N12": "=ROWS(SQRTPI(E1:E1))",
+    "N13": "=ROWS(HOUR(E1:E1))"
    },
    "legacy_formulas": [
     "K1",

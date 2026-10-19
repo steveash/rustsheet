@@ -954,8 +954,9 @@ impl Model {
 
     pub(crate) fn fn_weekday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let ds = self.workbook.settings.date_system;
-        let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30); // 1900 serial 0: weekday-serial-zero
-                                                                 // The date and the return type lift (probes/date-argument-modes F51:F52).
+        // 1900 serial 0: weekday-serial-zero.
+        let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30);
+        // The date and the return type lift (probes/date-argument-modes F51:F52).
         let kind = Function::Weekday;
         self.numbers_fn(kind, args, [0.0, 1.0], cell, |[serial, return_type]| {
             let s = serial.floor();
