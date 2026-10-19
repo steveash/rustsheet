@@ -25,7 +25,10 @@ top-level bracket of plain items, by turning it into an alternation with `(?-i:\
 other forms reach regex-syntax, which folds the whole bracket. A general fix probably builds the
 bracket's HIR class itself, folding only the other items, or wraps the bracket in `(?-i:...)`
 and folds the other items explicitly. The case_sensitivity argument 1 already behaves (A16-A18).
-See docs/excel-semantics/text.md "REGEX* POSIX classes are Unicode (T-1903)".
+Probe first: A8 does not prove nesting (PCRE2 reads `[[[:upper:]]]` as `[[[:upper:]]` and a
+literal `]`). Add `REGEXTEST("a]","(?i)[[[:upper:]]]")`, `REGEXTEST("[","[[a]]")`, `REGEXTEST("a","[[a]]")`,
+`(?i)[[:ascii:]]` on U+212A and U+017F, and the unprobed code points (U+061C, U+180E, U+2066-U+2069,
+U+0903 in word) before designing. See docs/excel-semantics/text.md "REGEX* POSIX classes are Unicode (T-1903)".
 
 ## Acceptance criteria
 - [ ] probes/regex-posix-classes-b A8-A11 pass; probes/regex-posix-classes stays green.
