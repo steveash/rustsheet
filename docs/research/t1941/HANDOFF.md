@@ -404,3 +404,19 @@ columns; writes the findings into `docs/excel-semantics/statistics.md`.
 - K2 and K3 "bias" is a rounding staircase on the candidates' own binade crossings; the per-anchor paradox follows.
 - K1 is (7,7) by a continuous test; its function is about +0.6..+1.0 ulp high and smooth; AN2 is at a search plateau.
 - (1.5,2] is not a stored-value subtraction; the short-decimal prior and the universal power-of-two D0 are out.
+
+## 10. Execution of the section 9 plan (coordinator, 2026-10-19 11:10 UTC)
+- **W-C (K1): frozen at AN2.** See `wc/README.md`.
+  - The plateau reader does not apply to K1: its sums sit 1-2 binades above their products.
+  - The joint solve converges on synthetic data only with measured-function rows plus a ridge, and stalls 1-4
+    units out in the 6 weakest directions.
+  - Exact-match is a needle on a ~75% plateau, about 1e6 ulps wide.
+  - Adding all ~27 stage lines makes it worse.
+  - Future route: per-stage law validation (`wc/README.md` section 5).
+- **W-B (K3): plateau reader validated and applied.** See `w5/p4/README.md`; best set `w5/p4/ss_fc.txt`.
+  - Six constants read; degree (9,9).
+  - Staircase chi2 down 97%.
+  - Exact 46.8% (coordinator), against c5's 46.0%.
+  - Next: the product-level phase lattice with the read constants fixed.
+- **W-A (K2): in progress** (W2).
+- **W-D (compositions): pending** the P2-P4 fills.
