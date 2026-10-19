@@ -68,7 +68,12 @@ fn vdb_total_depr(
                 }
             } else {
                 // The prorated part takes the unclipped charge; the cap below clips the total.
-                ddb_unclipped(new_total)
+                // Only probed with salvage <= cost; salvage above cost keeps the clipped charge.
+                if switches {
+                    ddb_unclipped(new_total)
+                } else {
+                    ddb_next
+                }
             };
             let prorated = new_total + depr_next * frac;
             return if switches && prorated > cap {
