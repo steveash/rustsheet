@@ -463,10 +463,10 @@ impl Model {
         } else {
             product / to_unit_factor
         };
-        // Excel: `CONVERT(1E290,"Ym","Ym")` is 1E+290 and `CONVERT(1E300,"Ym","Ym")` 1E+300 although
-        // `value * 1E24` overflows (probes/convert-temperature-ov00, -ov01): the prefixes are combined
-        // into one ratio when applying the from-prefix first would overflow. Not an "always combine"
-        // rule: `CONVERT(1E300,"Ym","m")` is still `#NUM!` (ov02).
+        // Excel: `CONVERT(1E290,"Ym","Ym")` is 1E+290 and `CONVERT(1E300,"Ym","Zm")` 1E+303 although
+        // `value * 1E24` overflows (probes/convert-temperature-ov00, -ov01, -ov20): the prefixes are
+        // combined into one ratio when applying the from-prefix first would overflow. A result that
+        // overflows even so stays `#NUM!` (ov02, ov21).
         let from_scaled = scaled * from_unit_scale;
         let result = if from_scaled.is_infinite() {
             scaled * (from_unit_scale * (1.0 / to_unit_scale))

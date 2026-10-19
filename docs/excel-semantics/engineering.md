@@ -109,15 +109,16 @@ by `1.8`, never `9/5` (`CONVERT(0.1,"K","Rank")` is 0.18000000000000002).
 Prefixes: only `K` and `kel` take a prefix (`CONVERT(300,"mK","K")` is 0.3, `"kK"` 300000, `"yK"`
 to K 3E-22); `mC`, `kF`, `mRank`, `mReau` and their long names are `#N/A`
 (probes/convert-temperature-prefix-a/-b, all 11 prefixes). Prefix overflow:
-`CONVERT(1E290,"Ym","Ym")` is 1E+290 and `CONVERT(1E300,"Ym","Ym")` 1E+300 (the from- and
-to-prefix combine before multiplying the value), while `CONVERT(1E300,"Ym","m")` is `#NUM!`
-(probes/convert-temperature-ov00..ov03, ov10-ov12). Unknown: a truly overflowing temperature result
+`CONVERT(1E290,"Ym","Ym")` is 1E+290 and `CONVERT(1E300,"Ym","Ym")` 1E+300 (not a same-unit identity: `CONVERT(1E300,"Ym","Zm")` is 1E+303, so the from- and to-prefix
+combine into one ratio when `value * from-prefix` would overflow), while `CONVERT(1E300,"Ym","m")`,
+`CONVERT(1E290,"Ym","km")` and `CONVERT(1E300,"YK","K")` are `#NUM!` (the combined ratio itself
+overflows the result; probes/convert-temperature-ov00..ov03, ov10-ov12, ov20-ov22). Unknown: a truly overflowing temperature result
 (`CONVERT(1E308,"C","F")`): excel-graph rejects any workbook holding a 1E308 literal
 ("unsupportedWorkbook"), so it needs desktop Excel (M14, decision 0039).
 Backend: excel-graph.
 Status: VERIFIED (nine values per pair; overflowing results unprobed)
 Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
-Tasks: T-0922, T-1297
+Tasks: T-0922, T-1297, T-1860
 
 ## Engineering function argument modes
 Rule: every argument of the M9 engineering functions lifts elementwise over an array literal. All
