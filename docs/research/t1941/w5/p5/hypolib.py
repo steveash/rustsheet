@@ -9,10 +9,12 @@ ROWS = os.environ.get('ROWS', '/tmp/claude-0/-home-user-rustsheet/3a20e203-66f6-
 def ld(f):
     l = open(f).read().split('\n'); return np.array([float.fromhex(v) for v in l[0].split()]), np.array([float.fromhex(v) for v in l[1].split()])
 class Data:
-    def __init__(self, N0, D0, mode, truthfile=None, LO=0.7, HI=1.47, RL=4096):
+    def __init__(self, N0, D0, mode, truthfile=None, LO=0.7, HI=1.47, RL=int(os.environ.get('RL', 16384))):
         z = np.load(ROWS+'.near1.npz'); x = z['x']; b = z['b']
         br = np.where(np.nextafter(x[:-1], np.inf) != x[1:])[0]+1
-        segs = [s[:RL] for s in np.split(np.arange(len(x)), br) if len(s) >= 256 and LO <= x[s[0]] < HI and abs(x[s[0]]-1) > 2e-3]
+        NEAR = float(os.environ.get('NEAR1', 0))   # >0: keep only runs with 2e-12 < |x-1| < NEAR (near-1 mode)
+        keep = (lambda s: 2e-12 < abs(x[s[0]]-1) < NEAR) if NEAR > 0 else (lambda s: LO <= x[s[0]] < HI and abs(x[s[0]]-1) > 2e-3)
+        segs = [s[:RL] for s in np.split(np.arange(len(x)), br) if len(s) >= 256 and keep(s)]
         idx = np.concatenate(segs); self.rs = np.cumsum([0]+[len(s) for s in segs]).astype(np.int64)
         self.x = np.ascontiguousarray(x[idx]); self.nr = len(segs)
         B = res(self.x, *ld(truthfile)) if mode == 'control' else b[idx]
