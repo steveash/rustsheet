@@ -159,6 +159,15 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       coefficient offsets m_k. With 24 runs x ~9 lines that is a lattice problem: about 1,600 bits of information
       against about 820 bits of unknowns.
 
+19. **First Excel pass, on W4's 14 precise runs: not decisive** (`enumlong.py` with exponent offsets, `jointtest.py`,
+    `xcheck.py`).
+    - A and C each fit many laws at the 1.7e-6 floor. D fits no single law (best 3.3e-4).
+    - Joint A+C: the best is C = D.T5, A = N.T5 (3.4e-6), the next 8.4e-6 (a 2.5x gap; the synthetic gap with 4 tracks
+      was 1000x).
+    - Predictions of W4's 95 unassigned peaks from the top hypotheses are at chance (4-10 explained against a null of
+      5-10).
+    - At least 4 independent precise tracks are needed, so this waits for L101-L124.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
