@@ -1,0 +1,5 @@
+# T-1941 W2 best global set "grid_a" for the GAMMALN base kernel on (2,3]: y = fl((x-2)*fl(N/D)), raw-x Horner,
+# every op fl53(fl64). Coefficients HIGHEST degree first (p: x^9..x^0, q: x^8..x^0). 76.3% exact on allX (180,224 pts),
+# 93.1% on the ladder near 2. NOT bit-exact; the (9,8) raw-x parametrisation is probably not Excel's form (see README).
+p 0x1.5717994ef45d1p-51 0x1.5e5b73810edd1p-16 0x1.0ee2f118ad254p-9 0x1.572bf8683b589p-5 0x1.09fd1ad1da445p-2 0x1.f0a8c05397a9fp-2 -0x1.08305b47998b9p-6 -0x1.0ae34eb3cbad6p-1 -0x1.de852aee8c153p-3 -0x1.22260ed97843dp-6
+q 0x1.03cadf2db0d9dp-18 0x1.52fc9914ab713p-11 0x1.5303658ef66c8p-6 0x1.bb43b464d3259p-3 0x1.c515177eb1755p-1 0x1.7b39fc9194438p+0 0x1.eddf2040d2bc2p-1 0x1.9b252b2fab347p-3 0x1.00000000000eap-7
