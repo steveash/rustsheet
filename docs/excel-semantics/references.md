@@ -447,8 +447,13 @@ A one-cell reference as `if_empty` is its value too: with K1 = "text", `SUM(FILT
 Variables bound to a one-cell reference are references in other reference-taking functions as well:
 `LET(x,K2,SUBTOTAL(9,x))` → 7, `LET(x,A1,SUM(x:A3))` → 12, `LET(x,K1,COUNTA(x))` → 1,
 `LET(x,K1,SUMIF(x,"text",K2))` → 7, `LET(x,K1,ROWS(x))` → 1.
-Not implemented: a LET whose result is a reference stays a reference to SUM (`=SUM(LET(x,K1,x))` → 0, we
-give `#VALUE!`; T-1106).
+A LET or a LAMBDA call whose result is its variable bound to a reference stays a reference where one is
+wanted (probes/let-lambda-reference-results, excel-graph, 2026-10-19, T-1106): with K1 = "text", K2 = 7,
+`SUM(LET(x,K1,x))`, `SUM(LAMBDA(x,x)(K1))` and `MAX(LAMBDA(x,x)(K1))` are 0, `SUM(LAMBDA(x,x)(K1:K2))` 7,
+`COUNTA(LAMBDA(x,x)(K1))` 1, `COUNT(LET(x,K1:K2,x))` 1; `ISREF` is TRUE for `LAMBDA(x,x)(A1)`,
+`LAMBDA(x,x)(A1:A3)`, `LET(x,A1,x)`, `LET(x,K1,x)`, `LET(x,A1:A3,y,x,y)` and `LET(x,A1:A3,IF(TRUE,x))`,
+FALSE for `LET(x,5,x)`, `LAMBDA(x,5)(A1)` and `LET(x,A1:A3,x+0)`; `ROWS(LAMBDA(x,x)(A1:A3))` is 3. In a
+cell the result is the value: `=LET(x,K1,x)` and `=LAMBDA(x,x)(K1)` are "text".
 Evidence: probes/min-max-reference-forms C1-G5 (excel-graph, 2026-10-07, T-0223); upstream IronCalc
 MAX_MIN.xlsx (ironcalc d7b09c33) Sheet1!H39, H40, H43, H54 and MIN_MAX_extras.xlsx (ironcalc 16987342)
 Sheet1!A1-A18, Sheet2!A1-A3 (Microsoft Macintosh Excel cached values) in ironcalc-calc/MATH_AND_TRIGONOMETRY.
@@ -1414,7 +1419,7 @@ Reference-only checks (excel-graph, 2026-10-11, probes/written-parens-reference-
 `ANCHORARRAY((INDEX(D1:D3,1)))`, Graph accepts the `)#` shape and FORMULATEXT prints `=(INDEX(D1:D3,1))#`
 (`ANCHORARRAY(@IF(TRUE,D1))` prints `=@IF(TRUE,D1)#`). So a written group is transparent for references in every probed cell; no
 non-transparent cell exists for SPEC-0007 (T-1340).
-Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT drops the groups in the reference-only cells too (T-1340).
+Ours: FORMULATEXT drops the groups in the reference-only cells too (T-1340); `ISREF(LET(x,A1:A3,x))` (grouped or not) is TRUE as in Excel (T-1106).
 Evidence strength: `ISREF((A1))`, `ISREF((A1:A3))` and the union in `SUM(((A1,B1)))` show a reference survives a group.
 Status: VERIFIED (web).
 Tasks: T-1339, T-1340, T-1363, T-1364
