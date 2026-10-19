@@ -457,7 +457,7 @@ fn take_over_nested_if_choose_let_xlookup_is_linear() {
 
 // SUBTOTAL and AREAS read the cells of an XLOOKUP (or TAKE) that a scalar IF or CHOOSE picks or a
 // LET body is, however they nest, with no spill left over; a lifting lookup value under the IF
-// still spills (probes/subtotal-if-choose-over-xlookup A10-A46, A86; T-2009).
+// still spills (probes/subtotal-if-choose-over-xlookup A10-A47, A86; T-2009).
 #[test]
 fn subtotal_and_areas_over_if_choose_let_of_xlookup_read_cells() {
     let x = "XLOOKUP(1,J1:J2,H1:I2)";
@@ -471,11 +471,6 @@ fn subtotal_and_areas_over_if_choose_let_of_xlookup_read_cells() {
         (format!("AREAS(IF(TRUE,{x}))"), "1", ""),
         (format!("AREAS(CHOOSE(2,H1,{x}))"), "1", ""),
         (format!("AREAS(LET(v,1,{x}))"), "1", ""),
-        (
-            "SUBTOTAL(9,IF(TRUE,XLOOKUP({1,2},J1:J2,H1:H2)))".to_string(),
-            "#VALUE!",
-            "#VALUE!",
-        ),
     ];
     let mut model = new_empty_model();
     for (cell, value) in [
@@ -498,4 +493,10 @@ fn subtotal_and_areas_over_if_choose_let_of_xlookup_read_cells() {
         assert_eq!(model._get_text(&format!("B{top}")), *b, "{formula}");
         assert_eq!(model._get_text(&format!("A{}", top + 1)), "", "{formula}");
     }
+    // A lifting lookup value under the IF still spills its values (A46:A47).
+    model._set("K1", "=SUBTOTAL(9,IF(TRUE,XLOOKUP({1;2},J1:J2,H1:H2)))");
+    model.evaluate();
+    assert_eq!(model._get_text("K1"), "#VALUE!");
+    assert_eq!(model._get_text("K2"), "#VALUE!");
+    assert_eq!(model._get_text("L1"), "");
 }

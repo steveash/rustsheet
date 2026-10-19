@@ -789,6 +789,7 @@ C	probes/subnormal-text-and-tail-companions.case.json	30
 C	probes/substitute-overlapping-instances.case.json	24
 C	probes/subtotal-array-function-num.case.json	17
 C	probes/subtotal-hidden-filtered.case.json	150
+C	probes/subtotal-if-choose-over-xlookup-b.case.json	14
 C	probes/subtotal-if-choose-over-xlookup.case.json	24
 C	probes/subtotal-reference-operands-b.case.json	23
 C	probes/subtotal-reference-operands-c.case.json	17

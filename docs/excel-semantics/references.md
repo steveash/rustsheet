@@ -1107,8 +1107,15 @@ argument next to a reference one gives one `#VALUE!`, not a spill
 `SUM(TAKE(XLOOKUP(1,J1:J2,H1:I2),1))` is 9 (A90). The same holds directly below SUBTOTAL and AREAS (T-2009, probes/subtotal-if-choose-over-xlookup, excel-graph,
 2026-10-19): `SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))`, `SUBTOTAL(9,CHOOSE(1,..))`, `SUBTOTAL(9,LET(v,1,..))`,
 `SUBTOTAL(9,IF(FALSE,1,..))`, `SUBTOTAL(9,IF(TRUE,CHOOSE(1,..)))` and `SUBTOTAL(9,IF(TRUE,TAKE(H1:I2,1)))` are 9 with
-no spill, `AREAS(IF(TRUE,..))`, `AREAS(CHOOSE(2,H1,..))` and `AREAS(LET(v,1,..))` 1 (A10-A42, A86); a lifting lookup
-value or a literal return array under the IF still spills `#VALUE!` (A46, A50). Implemented in
+no spill, as is the LET binding `SUBTOTAL(9,LET(v,XLOOKUP(..),v))` (A22); `AREAS(IF(TRUE,..))`,
+`AREAS(CHOOSE(2,H1,..))` and `AREAS(LET(v,1,..))` are 1 (A10-A42, A86); a lifting lookup value or a literal return
+array under the IF still spills `#VALUE!` (A46:A47, A50:B50). Consumers that tell cells from values agree
+(probes/subtotal-if-choose-over-xlookup-b, excel-graph, 2026-10-19): with K1 = "x", L1 = TRUE,
+`AVERAGEA(IF(TRUE,XLOOKUP(1,J1:J2,K1:L2)))`, `AVERAGEA(LET(v,1,..))` and the direct form are 0.5,
+`AVERAGEA(IF(TRUE,..,0),5)` 2, `MAXA(CHOOSE(1,..))` 1, `MINA(IF(FALSE,1,..))` 0,
+`AVERAGEA(IF(TRUE,TAKE(K1:L2,1)))` 0.5; `IMSUM(IF(TRUE,XLOOKUP(1,J1:J2,M1:N2)))` with M1 = "1+i", N1 blank is "1+i";
+`AND(BYROW(IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)),LAMBDA(r,ISREF(r))))` and `LET(v,IF(TRUE,XLOOKUP(..)),ISREF(v))` are TRUE
+and `LET(v,CHOOSE(1,XLOOKUP(..)),SUBTOTAL(9,v))` 9 (A10-A62). Implemented in
 `Model::picked_reference_arg_reading` (functions/util.rs). Not yet matched (T-2014): `SUBTOTAL(9,IFS(TRUE,XLOOKUP(..)))`
 and `SUBTOTAL(9,SWITCH(1,1,XLOOKUP(..)))` are 9 (A78, A82) and `ISREF(IF(TRUE,XLOOKUP(..)))` and
 `ISREF(CHOOSE(1,XLOOKUP(..)))` TRUE (A90, A94). SUM, COUNT and COUNTA over `IF(TRUE,XLOOKUP(1,J1:J2,K1:L2))` with
