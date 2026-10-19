@@ -3,7 +3,7 @@ id: T-1990
 title: "Probe a typed or stored one-argument IF(x) and match it"
 milestone: M7
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,9 @@ enter them; record what it reports), and if refused, note it as entry-only. Then
 
 ## Out of scope
 - The eta path itself (T-1947).
+
+## Outcome
+Probe case `probes/typed-if-one-argument` added. excel-graph refuses every workbook that stores a one-argument `IF(x)`
+(501 `FileCorruptTryRepair`), so there are no oracle values and the case stays pending; whether Excel accepts the typed form is
+entry-only (desktop question, M14 Phase 4). Recorded in docs/excel-semantics/arrays.md "Functions passed by name". No code
+change; eta-if-one-argument unchanged. Eval delta: none.
