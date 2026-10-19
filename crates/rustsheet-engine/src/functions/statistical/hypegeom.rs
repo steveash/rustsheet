@@ -55,8 +55,8 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 ///
 /// What the cap costs, which the lifting table charges (lift/kinds/statistical.rs
 /// `HYPGEOM_DIST_WEIGHT`, 2^22 units an element): one term is three statrs `ln_binomial`s and an
-/// `exp` (six Lanczos `ln_gamma`s above 170). Measured in release (T-1873, load 1 to 2 on 4 cores): 167 to 193 ns a term where the terms
-/// are normal (statrs' own sum over the 25,000,001 terms of
+/// `exp` (six Lanczos `ln_gamma`s above 170). Measured in release (T-1873, load 1 to 2 on 4 cores):
+/// 167 to 193 ns a term where the terms are normal (statrs' own sum over the 25,000,001 terms of
 /// `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)`, 4.8 s as on main; 32 elements of
 /// `HYPGEOM.DIST(45500000,90000000,90000000,180000000,TRUE)`, the widest distribution at a
 /// population of 1.8E8 with 258,239 terms each, 1.38 to 1.55 s in benches/lift.rs), and 206 to 234

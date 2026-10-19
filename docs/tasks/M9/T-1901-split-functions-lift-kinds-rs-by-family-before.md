@@ -42,4 +42,4 @@ Each family keeps its weight constants and their measurement comments next to it
 A new test, `no_function_is_in_two_families`, takes over what one `match`'s unreachable-pattern lint
 caught. `eval/catalog/lift-kinds.json` regenerates byte-identical; the `HYPGEOM.DIST` entries in
 `lifting_table_functions!` have their `// --- Hypergeometric (T-1873) ---` markers back; the doc references
-to kinds.rs point at the family files. Duplicated lines 3863 -> 3861. Eval delta: none (no behavior change).
+to kinds.rs point at the family files. Duplicated lines 3863 -> 3861 (the ratchet file is left for a later update). Eval delta: none (no behavior change).
