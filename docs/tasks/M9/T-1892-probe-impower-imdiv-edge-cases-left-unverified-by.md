@@ -3,7 +3,7 @@ id: T-1892
 title: "Probe IMPOWER/IMDIV edge cases left UNVERIFIED by T-1766: huge angle, underflow, blank first argument"
 milestone: M9
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
