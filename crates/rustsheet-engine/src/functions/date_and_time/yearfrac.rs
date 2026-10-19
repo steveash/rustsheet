@@ -4,7 +4,8 @@
 use chrono::Datelike;
 
 use super::{
-    days360_eu, days360_serial, is_feb29_between_consecutive_years, is_leap_year, num_error,
+    super::financial::days_30_360_us_ymd, days360_eu, days360_serial,
+    is_feb29_between_consecutive_years, is_leap_year, num_error,
 };
 use crate::{
     calc_result::CalcResult,
@@ -63,10 +64,23 @@ impl Model {
             Ok(c) => date_system.financial_1900_serial(c),
             Err(s) => return s,
         };
-        let (Ok(start_date), Ok(end_date)) = (
-            from_excel_date(start_raw.floor() as i64),
-            from_excel_date(end_raw.floor() as i64),
-        ) else {
+        let (start_serial, end_serial) = (start_raw.floor() as i64, end_raw.floor() as i64);
+        // Serial 0 (1900-01-00, so any date in [0, 1)) is a date to the 30/360 day count of basis 0
+        // only, as day 0 of January 1900; other bases keep #NUM! until probed (gen-m9/a2e51f48717af2a1
+        // Calc!A32; dates.md "YEARFRAC accepts serial 0", T-1409).
+        if basis == 0 && (start_serial == 0 || end_serial == 0) {
+            // Excel swaps reversed dates for every basis (dates.md "YEARFRAC swaps reversed
+            // dates"); the asymmetric 30/360 count reads the ordered pair.
+            let (first, last) = (start_serial.min(end_serial), start_serial.max(end_serial));
+            let (Some(start), Some(end)) = (excel_serial_to_ymd(first), excel_serial_to_ymd(last))
+            else {
+                return num_error(cell);
+            };
+            return CalcResult::Number(days_30_360_us_ymd(start, end) / 360.0);
+        }
+        let (Ok(start_date), Ok(end_date)) =
+            (from_excel_date(start_serial), from_excel_date(end_serial))
+        else {
             return num_error(cell);
         };
         // Excel swaps reversed dates for every basis, so the asymmetric 30/360 counts read the
@@ -80,36 +94,10 @@ impl Model {
         let days = (end_date - start_date).num_days() as f64;
         let result = match basis {
             0 => {
-                // YEARFRAC basis 0 uses the financial US 30/360 convention
-                // (`dateDiff360Us`, ModifyStartDate), which differs from the
-                // DAYS360 worksheet function for February month-ends: a
-                // February-end *end* date only collapses to 30 when the *start*
-                // is also a February month-end, and the `end == 31` rule tests
-                // the original (un-normalised) start day.
-                let last_day_feb = |year: i32| if is_leap_year(year) { 29 } else { 28 };
-                let sd_is_feb_last =
-                    start_date.month() == 2 && start_date.day() == last_day_feb(start_date.year());
-                let ed_is_feb_last =
-                    end_date.month() == 2 && end_date.day() == last_day_feb(end_date.year());
-                let mut sd_day = start_date.day() as i32;
-                let mut ed_day = end_date.day() as i32;
-
-                if ed_is_feb_last && sd_is_feb_last {
-                    ed_day = 30;
-                }
-                if ed_day == 31 && sd_day >= 30 {
-                    ed_day = 30;
-                }
-                if sd_day == 31 {
-                    sd_day = 30;
-                }
-                if sd_is_feb_last {
-                    sd_day = 30;
-                }
-                let d360 = (end_date.year() - start_date.year()) * 360
-                    + (end_date.month() as i32 - start_date.month() as i32) * 30
-                    + (ed_day - sd_day);
-                d360 as f64 / 360.0
+                days_30_360_us_ymd(
+                    (start_date.year(), start_date.month(), start_date.day()),
+                    (end_date.year(), end_date.month(), end_date.day()),
+                ) / 360.0
             }
             1 => {
                 // Actual/Actual. Port of ExcelFinancialFunctions

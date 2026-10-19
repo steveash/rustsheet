@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1862: MATCH, VLOOKUP and HLOOKUP over a single value (not a reference or an array) as lookup_array or table, in a dynamic formula: what a legacy formula's intersected lookup_array reads (probes/legacy-match-lookup-array-intersection C2 #N/A, L2 #VALUE!). A2 = \"b\", B2 = 2.",
+  "tags": [
+    "M2",
+    "lookup",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A2": "b",
+        "B2": 2,
+        "C2": "=MATCH(\"b\",\"b\",0)",
+        "D2": "=MATCH(2,2,0)",
+        "E2": "=MATCH(TRUE,TRUE,0)",
+        "F2": "=MATCH(\"x\",\"b\",0)",
+        "G2": "=MATCH(2,\"b\",0)",
+        "H2": "=MATCH(\"b\",A2&\"\",0)",
+        "I2": "=MATCH(2,3,0)",
+        "J2": "=MATCH(2,{2},0)",
+        "K2": "=MATCH(2,B2*1,0)",
+        "L2": "=MATCH(\"b\",\"b\")",
+        "M2": "=MATCH(2,2)",
+        "N2": "=MATCH(\"b\",T(\"b\"),0)",
+        "O2": "=MATCH(\"2\",\"2\",0)",
+        "P2": "=MATCH(\"b\",{\"b\"},0)",
+        "Q2": "=VLOOKUP(\"b\",\"b\",1,FALSE)",
+        "R2": "=VLOOKUP(2,2,1,FALSE)",
+        "S2": "=HLOOKUP(\"b\",\"b\",1,FALSE)",
+        "T2": "=MATCH(2,1/0,0)",
+        "U2": "=MATCH(\"b\",A2,0)",
+        "V2": "=MATCH(2,B2,0)",
+        "W2": "=VLOOKUP(2,B2,1,FALSE)",
+        "X2": "=HLOOKUP(\"b\",A2,1,FALSE)",
+        "Y2": "=VLOOKUP(\"2\",\"2\",1,FALSE)",
+        "Z2": "=MATCH(2,IF(TRUE,B2),0)",
+        "AA2": "=MATCH(2,INDEX(B2:B3,1),0)",
+        "AB2": "=VLOOKUP(TRUE,TRUE,1,FALSE)"
+      }
+    }
+  ],
+  "expected": {}
+}

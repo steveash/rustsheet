@@ -113,8 +113,9 @@ mod tests {
     /// And the reverse: a function outside the table keeps its hand-written arms.
     #[test]
     fn a_function_outside_the_table_has_its_fallback_arms() {
-        assert!(Function::Abs.arg_kinds().is_none());
-        assert!(fallback_signature(&Function::Abs, 1).is_some());
-        assert!(fallback_shape(&Function::Abs, &[Node::NumberKind(1.0)]).is_some());
+        let args = [Node::NumberKind(2.0), Node::NumberKind(3.0)];
+        assert!(Function::Power.arg_kinds().is_none());
+        assert!(fallback_signature(&Function::Power, 2).is_some());
+        assert!(fallback_shape(&Function::Power, &args).is_some());
     }
 }

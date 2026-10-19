@@ -30,7 +30,7 @@ SPEC-0011 `LiftArrays` table entry, so they follow the Analysis ToolPak rule pro
 YEARFRAC, probes/scalar-lift-shapes-c E, F, H, Q): a bare range gets no `@` and is `#VALUE!`, a
 value operation over a range (`ISEVEN(C1:C5+0)`) gets `@`, and `{5}` gets no `@`. Before T-1774 the
 hand-written arm gave the argument a scalar signature (`@` on the range and on `{5}`).
-Implemented in: `Model::lifted_parity` and the `ARRAYS_1` entry in functions/lift/kinds.rs.
+Implemented in: `Model::lifted_parity` and the `ARRAYS_1` entry in functions/lift/kinds/general.rs.
 Status: VERIFIED (excel-graph)
 Tasks: T-0247, T-0248
 
@@ -286,11 +286,14 @@ Legacy: `SUM(N({1,2}))` is 3 and `SUMPRODUCT(INDEX(B1:B6,N(IF(1,{2;3}))))` 5, bu
 `=N(IF(1,{2;3}))` is `#VALUE!` (not the top-left 2), though FORMULATEXT shows it with no `@`, and legacy
 `=N(B1:B3*1)` off the rows `#VALUE!`.
 Evidence: probes/n-array-lift (excel-graph, 2026-10-16, T-1616).
-Not implemented: the legacy cell `=N(IF(1,{2;3}))` gives 2, 3 spilled in ours instead of `#VALUE!` (S!D4:D5,
-T-1713, which needs the legacy marker of SPEC-0012, legacy-n-t-marker.md: T-1851, T-1713). T, CHOOSE, INDEX and IFS arguments and nested uses
-(`=ABS(N(IF(1,{2;3})))`) behave the same, while N of an array constant or of TRANSPOSE gets an `@` (2):
-references.md "Legacy formulas put `@` on array-valued calls and array constants" and "Legacy N and T over a
-reference-returning call" (probes/legacy-array-result, probes/legacy-n-t-reference-args).
+T, CHOOSE, INDEX and IFS arguments and nested uses (`=ABS(N(IF(1,{2;3})))`) behave the same, while N of an
+array constant or of TRANSPOSE gets an `@` (2): references.md "Legacy formulas put `@` on array-valued calls and
+array constants" and "Legacy N and T over a reference-returning call" (probes/legacy-array-result,
+probes/legacy-n-t-reference-args).
+Implemented (T-1713): the legacy rewrite marks such an N call (`NLegacy`, SPEC-0012), whose kernel reads an
+array argument as `#VALUE!`; S!D4:D5 match. A dynamic `=N(IF(1,{2;3}))` is unmarked and still spills. Which
+marked shapes are verified and which are extrapolated: references.md "Legacy N and T over a reference-returning
+call" (probes/legacy-n-t-marker-shapes; `=N(INDEX({2;3},1))` matches since T-1921).
 Status: VERIFIED (excel-graph)
 Tasks: T-1616, T-1713, T-1727
 
@@ -303,8 +306,8 @@ It nests (`T(T({"b",2}))` "b", "") and consumers see the lifted array (`ROWS(T({
 H1 = "x", H2 = 2 is `#VALUE!`, ""). A bare multi-cell range does not lift: see references.md
 "T of a multi-cell range is not intersected" (`T(H1:H2)` is one "x", the top-left cell).
 In a legacy cell, T over an array-valued IF is `#VALUE!` instead (references.md "Legacy N and T over
-a reference-returning call"; not implemented, T-1713, which also owns the legacy spill rows
-probes/legacy-array-result S!G11 and probes/legacy-n-t-reference-args S!S11, decision 0069).
+a reference-returning call"; implemented in T-1713 by the `TLegacy` marker of SPEC-0012, with no spill:
+probes/legacy-array-result S!G10:G11 and probes/legacy-n-t-reference-args S!S10:S11 match, decision 0069).
 Evidence: probes/legacy-array-result S!G1:G2, probes/t-array-lift (excel-graph, 2026-10-16).
 Implemented in fn_t (T-1729).
 Status: VERIFIED (excel-graph)

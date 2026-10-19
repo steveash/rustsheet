@@ -357,8 +357,8 @@ probes/xirr-early-dates A1-A16 (excel-graph, 2026-10-08, T-1124).
 Status: VERIFIED (these cells). XNPV matches since T-1114 (the used-area clip applies the empty-cell
 error to the cells it skips, `get_array_of_numbers_generic`). XIRR follows the empty-as-0, date-range
 and later-date rules since T-1124. Its values still miss in the last digits (the early stop above).
-The zero-first-value result and the date-0-first root (the engine does not converge there, `#NUM!`)
-are open (T-1155).
+The zero-first-value result and the date-0-first root match since T-1583 and T-0916 (the solver entry
+"XIRR is a bracketing bisection, not Newton" above; T-1155 done).
 Tasks: T-1114, T-1124
 
 ## Financial function argument modes
@@ -479,7 +479,7 @@ each element is charged that worst case (`COUPON_WALK_WEIGHT`, 2^16 units per wa
 so a lifted call at the cap takes 1-2 s at the longest schedule. The scalar calls are not capped.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`, `BOND_6_OF_7`)
+Implemented in: functions/lift/kinds/financial.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`, `BOND_6_OF_7`)
 Tasks: T-1822; T-1846 narrows the cap to a schedule-length budget.
 
 ## Yield and odd-coupon work cap
@@ -497,7 +497,7 @@ capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver st
 is now hoisted out of the solver, with the same values.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`)
+Implemented in: functions/lift/kinds/financial.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`)
 Tasks: T-1842; T-1869 narrows the cap to a schedule-length budget (after T-1846).
 
 ## CUMIPMT and CUMPRINC over many periods
@@ -538,7 +538,7 @@ periods the kernel is the closed form (0.3 us), so the charge does not depend on
 not capped.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds.rs (`CUMULATIVE_WEIGHT`, `CUMULATIVE`)
+Implemented in: functions/lift/kinds/financial.rs (`CUMULATIVE_WEIGHT`, `CUMULATIVE`)
 Tasks: T-1845
 
 ## AMORLINC and AMORDEGRC over many periods
@@ -607,7 +607,7 @@ form (512 elements of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, which takes no shortcut
 capped beyond those bounds.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds.rs (`AMORLINC_WEIGHT`, `AMORDEGRC_WEIGHT`, `AMORLINC`, `AMORDEGRC`)
+Implemented in: functions/lift/kinds/financial.rs (`AMORLINC_WEIGHT`, `AMORDEGRC_WEIGHT`, `AMORLINC`, `AMORDEGRC`)
 Tasks: T-1841
 
 ## Coupon-bond functions: a negative basis is #NUM!

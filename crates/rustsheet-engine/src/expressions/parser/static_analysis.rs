@@ -1,11 +1,11 @@
 use super::reference_operators::{at_outside, wrong_range_shape};
-use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
+use super::{for_each_chain_operand_mut, Node};
 use crate::functions::lift::lifting_table_functions;
 use crate::functions::Function;
-use broadcast::broadcast_shapes;
+use broadcast::{broadcast_shapes, static_analysis_operator_chain};
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
-    legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value,
+    legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
@@ -208,6 +208,9 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
                 add_array_at(kind, signature.get(index), index, arg, arrays);
                 add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }
+            if arrays {
+                mark_legacy_reading(kind, args); // The legacy N/T marker (SPEC-0012).
+            }
             // There are some function that will never add an automatic II:
             let new_function = matches!(kind, Function::Let | Function::Lambda);
             if !new_function
@@ -255,32 +258,6 @@ impl StaticResult {
             StaticResult::Array(rows, columns) => Some((*rows, *columns)),
             StaticResult::Range(rows, columns) => Some((rows + 1, columns + 1)),
             StaticResult::Scalar | StaticResult::Unknown => None,
-        }
-    }
-}
-
-/// The shape of a chain of value operators, broadcast link by link in a loop (T-0128).
-fn static_analysis_operator_chain(node: &Node) -> StaticResult {
-    let (links, first) = left_chain(node);
-    let mut result = run_static_analysis_on_node(first);
-    for link in links {
-        if let Some((_, right)) = value_operands(link) {
-            result = static_analysis_op_results(result, run_static_analysis_on_node(right));
-        }
-    }
-    result
-}
-
-/// An operator over a range gives an array of the range's counts.
-fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticResult {
-    match (lhs, rhs) {
-        (StaticResult::Scalar, StaticResult::Scalar) => StaticResult::Scalar,
-        (_, StaticResult::Unknown) | (StaticResult::Unknown, _) => StaticResult::Unknown,
-        (lhs, rhs) => {
-            // A scalar operand counts as 1x1.
-            let (a1, b1) = lhs.counts().unwrap_or((1, 1));
-            let (a2, b2) = rhs.counts().unwrap_or((1, 1));
-            StaticResult::Array(a1.max(a2), b1.max(b2))
         }
     }
 }
@@ -399,39 +376,19 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Switch => vec![Signature::Scalar; arg_count],
         Function::True => args_signature_scalars(arg_count, 0, 0),
         Function::Xor => vec![Signature::Vector; arg_count],
-        Function::Abs => args_signature_scalars(arg_count, 1, 0),
-        Function::Acos => args_signature_scalars(arg_count, 1, 0),
-        Function::Acosh => args_signature_scalars(arg_count, 1, 0),
-        Function::Asin => args_signature_scalars(arg_count, 1, 0),
-        Function::Asinh => args_signature_scalars(arg_count, 1, 0),
-        Function::Atan => args_signature_scalars(arg_count, 1, 0),
         Function::Atan2 => args_signature_scalars(arg_count, 2, 0),
-        Function::Atanh => args_signature_scalars(arg_count, 1, 0),
         Function::Choose => args_signature_choose(arg_count),
         Function::Column => args_signature_row(arg_count),
         Function::Columns => args_signature_one_vector(arg_count),
-        Function::Ln => args_signature_scalars(arg_count, 1, 0),
         Function::Log => args_signature_scalars(arg_count, 1, 1),
-        Function::Log10 => args_signature_scalars(arg_count, 1, 0),
-        Function::Cos => args_signature_scalars(arg_count, 1, 0),
-        Function::Cosh => args_signature_scalars(arg_count, 1, 0),
         Function::Max => vec![Signature::Vector; arg_count],
         Function::Min => vec![Signature::Vector; arg_count],
         Function::Pi => args_signature_scalars(arg_count, 0, 0),
         Function::Power => args_signature_scalars(arg_count, 2, 0),
         Function::Product => vec![Signature::Vector; arg_count],
-        Function::Round => args_signature_scalars(arg_count, 2, 0),
-        Function::Rounddown => args_signature_scalars(arg_count, 2, 0),
-        Function::Roundup => args_signature_scalars(arg_count, 2, 0),
-        Function::Sin => args_signature_scalars(arg_count, 1, 0),
-        Function::Sinh => args_signature_scalars(arg_count, 1, 0),
-        Function::Sqrt => args_signature_scalars(arg_count, 1, 0),
-        Function::Sqrtpi => args_signature_scalars(arg_count, 1, 0),
         Function::Sum => vec![Signature::Vector; arg_count],
         Function::Sumif => args_signature_sumif(arg_count),
         Function::Sumifs => args_signature_ifs(arg_count, 2),
-        Function::Tan => args_signature_scalars(arg_count, 1, 0),
-        Function::Tanh => args_signature_scalars(arg_count, 1, 0),
         Function::Isformula => args_signature_scalars(arg_count, 1, 0),
         Function::Isomitted => args_signature_scalars(arg_count, 1, 0),
         Function::Isref => args_signature_one_vector(arg_count),
@@ -501,9 +458,9 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Right => args_signature_scalars(arg_count, 2, 1),
         Function::Search => args_signature_scalars(arg_count, 2, 1),
         Function::Substitute => args_signature_scalars(arg_count, 3, 1),
-        Function::Regexextract => args_signature_scalars(arg_count, 2, 1),
-        Function::Regexreplace => args_signature_scalars(arg_count, 3, 0),
-        Function::Regextest => args_signature_scalars(arg_count, 2, 0),
+        Function::Regexextract => args_signature_scalars(arg_count, 2, 2),
+        Function::Regexreplace => args_signature_scalars(arg_count, 3, 2),
+        Function::Regextest => args_signature_scalars(arg_count, 2, 1),
         Function::T | Function::TLegacy => args_signature_scalars(arg_count, 1, 0),
         Function::Text => args_signature_scalars(arg_count, 2, 0),
         Function::Textafter => args_signature_textafter(arg_count),
@@ -525,25 +482,12 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Countifs => args_signature_ifs(arg_count, 1),
         Function::Maxifs => args_signature_ifs(arg_count, 2),
         Function::Minifs => args_signature_ifs(arg_count, 2),
-        Function::Date => args_signature_scalars(arg_count, 3, 0),
-        Function::Datedif => args_signature_scalars(arg_count, 3, 0),
         Function::Datevalue => args_signature_scalars(arg_count, 1, 0),
-        Function::Day => args_signature_scalars(arg_count, 1, 0),
-        Function::Month => args_signature_scalars(arg_count, 1, 0),
-        Function::Time => args_signature_scalars(arg_count, 3, 0),
         Function::Timevalue => args_signature_scalars(arg_count, 1, 0),
-        Function::Hour => args_signature_scalars(arg_count, 1, 0),
-        Function::Minute => args_signature_scalars(arg_count, 1, 0),
-        Function::Second => args_signature_scalars(arg_count, 1, 0),
         Function::Now => args_signature_scalars(arg_count, 0, 0),
         Function::Today => args_signature_scalars(arg_count, 0, 0),
-        Function::Year => args_signature_scalars(arg_count, 1, 0),
-        Function::Days => args_signature_scalars(arg_count, 2, 0),
-        Function::Days360 => args_signature_scalars(arg_count, 2, 1),
-        Function::Weekday => args_signature_scalars(arg_count, 1, 1),
         Function::Workday => args_signature_with_holidays(arg_count, 2, 0),
         Function::WorkdayIntl => args_signature_with_holidays(arg_count, 2, 1),
-        Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
         Function::Fvschedule => vec![Signature::Scalar, Signature::Vector],
         Function::Db => args_signature_scalars(arg_count, 4, 1),
         Function::Irr => args_signature_irr(arg_count),
@@ -582,32 +526,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Geomean => vec![Signature::Vector; arg_count],
         Function::Networkdays => args_signature_with_holidays(arg_count, 2, 0),
         Function::NetworkdaysIntl => args_signature_with_holidays(arg_count, 2, 1),
-        Function::Acot => args_signature_scalars(arg_count, 1, 0),
-        Function::Acoth => args_signature_scalars(arg_count, 1, 0),
-        Function::Cot => args_signature_scalars(arg_count, 1, 0),
-        Function::Coth => args_signature_scalars(arg_count, 1, 0),
-        Function::Csc => args_signature_scalars(arg_count, 1, 0),
-        Function::Csch => args_signature_scalars(arg_count, 1, 0),
-        Function::Sec => args_signature_scalars(arg_count, 1, 0),
-        Function::Sech => args_signature_scalars(arg_count, 1, 0),
-        Function::Exp => args_signature_scalars(arg_count, 1, 0),
-        Function::Fact => args_signature_scalars(arg_count, 1, 0),
-        Function::Sign => args_signature_scalars(arg_count, 1, 0),
-        Function::Radians => args_signature_scalars(arg_count, 1, 0),
-        Function::Degrees => args_signature_scalars(arg_count, 1, 0),
-        Function::Int => args_signature_scalars(arg_count, 1, 0),
-        Function::Even => args_signature_scalars(arg_count, 1, 0),
-        Function::Odd => args_signature_scalars(arg_count, 1, 0),
-        Function::Ceiling | Function::EcmaCeiling => args_signature_scalars(arg_count, 2, 0),
-        Function::CeilingMath => args_signature_scalars(arg_count, 1, 2),
-        Function::CeilingPrecise => args_signature_scalars(arg_count, 1, 1),
-        Function::Floor => args_signature_scalars(arg_count, 2, 0),
-        Function::FloorMath => args_signature_scalars(arg_count, 1, 2),
-        Function::FloorPrecise => args_signature_scalars(arg_count, 1, 1),
-        Function::IsoCeiling => args_signature_scalars(arg_count, 1, 1),
-        Function::Mod => args_signature_scalars(arg_count, 2, 0),
-        Function::Mround => args_signature_scalars(arg_count, 2, 0),
-        Function::Trunc => args_signature_scalars(arg_count, 1, 1),
         Function::Gcd => vec![Signature::Vector; arg_count],
         Function::Lcm => vec![Signature::Vector; arg_count],
         Function::Base => args_signature_scalars(arg_count, 2, 1),
@@ -837,39 +755,19 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Switch => StaticResult::Unknown,
         Function::True => StaticResult::Scalar,
         Function::Xor => StaticResult::Scalar,
-        Function::Abs => scalar_arguments(args),
-        Function::Acos => scalar_arguments(args),
-        Function::Acosh => scalar_arguments(args),
-        Function::Asin => scalar_arguments(args),
-        Function::Asinh => scalar_arguments(args),
-        Function::Atan => scalar_arguments(args),
         Function::Atan2 => scalar_arguments(args),
-        Function::Atanh => scalar_arguments(args),
         Function::Choose => reference_result::choose_static_result(args),
         Function::Column => row_column::static_analysis_row_column(args, false),
         Function::Columns => not_implemented(args),
-        Function::Cos => scalar_arguments(args),
-        Function::Cosh => scalar_arguments(args),
         Function::Max => StaticResult::Scalar,
         Function::Min => StaticResult::Scalar,
         Function::Pi => StaticResult::Scalar,
         Function::Power => scalar_arguments(args),
         Function::Product => not_implemented(args),
-        Function::Round => scalar_arguments(args),
-        Function::Rounddown => scalar_arguments(args),
-        Function::Roundup => scalar_arguments(args),
-        Function::Ln => scalar_arguments(args),
         Function::Log => scalar_arguments(args),
-        Function::Log10 => scalar_arguments(args),
-        Function::Sin => scalar_arguments(args),
-        Function::Sinh => scalar_arguments(args),
-        Function::Sqrt => scalar_arguments(args),
-        Function::Sqrtpi => scalar_arguments(args),
         Function::Sum => StaticResult::Scalar,
         Function::Sumif => criteria_static_result(args, 1),
         Function::Sumifs => criteria_static_result(args, 2),
-        Function::Tan => scalar_arguments(args),
-        Function::Tanh => scalar_arguments(args),
         Function::Isformula => scalar_arguments(args),
         Function::Isomitted => not_implemented(args),
         Function::Isref => not_implemented(args),
@@ -887,7 +785,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Indirect => reference_result::static_analysis_indirect(args),
         // Spills by lookup_value; the vectors are consumed (T-1241).
         Function::Lookup => broadcast_static_result(args.first()),
-        Function::Match => not_implemented(args),
+        Function::Match => reference_result::match_static_result(args), // T-1866, T-1917
         Function::Offset => reference_result::static_analysis_offset(args),
         Function::Row => row_column::static_analysis_row_column(args, true),
         Function::Rows => not_implemented(args),
@@ -977,26 +875,12 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Countifs => criteria_static_result(args, 1),
         Function::Maxifs => criteria_static_result(args, 2),
         Function::Minifs => criteria_static_result(args, 2),
-        // DATE broadcasts element-wise: an array/range argument yields an array.
-        Function::Date => scalar_arguments(args),
-        Function::Datedif => scalar_arguments(&args[..args.len().min(2)]),
         Function::Datevalue => scalar_arguments(args),
-        Function::Day => scalar_arguments(args),
-        Function::Month => scalar_arguments(args),
-        Function::Time => scalar_arguments(args),
         Function::Timevalue => scalar_arguments(args),
-        Function::Hour => scalar_arguments(args),
-        Function::Minute => scalar_arguments(args),
-        Function::Second => scalar_arguments(args),
         Function::Now => not_implemented(args),
         Function::Today => not_implemented(args),
-        Function::Year => scalar_arguments(args),
-        Function::Days => scalar_arguments(args),
-        Function::Days360 => scalar_arguments(&args[..args.len().min(2)]),
-        Function::Weekday => scalar_arguments(args),
         Function::Workday => not_implemented(args),
         Function::WorkdayIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
-        Function::Isoweeknum => scalar_arguments(args),
         Function::Fvschedule => StaticResult::Scalar,
         Function::Db => not_implemented(args),
         Function::Irr => not_implemented(args),
@@ -1014,32 +898,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Geomean => not_implemented(args),
         Function::Networkdays => not_implemented(args),
         Function::NetworkdaysIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
-        Function::Acot => scalar_arguments(args),
-        Function::Acoth => scalar_arguments(args),
-        Function::Cot => scalar_arguments(args),
-        Function::Coth => scalar_arguments(args),
-        Function::Csc => scalar_arguments(args),
-        Function::Csch => scalar_arguments(args),
-        Function::Sec => scalar_arguments(args),
-        Function::Sech => scalar_arguments(args),
-        Function::Exp => scalar_arguments(args),
-        Function::Fact => scalar_arguments(args),
-        Function::Sign => scalar_arguments(args),
-        Function::Radians => scalar_arguments(args),
-        Function::Degrees => scalar_arguments(args),
-        Function::Int => scalar_arguments(args),
-        Function::Even => scalar_arguments(args),
-        Function::Odd => scalar_arguments(args),
-        Function::Ceiling | Function::EcmaCeiling => scalar_arguments(args),
-        Function::CeilingMath => scalar_arguments(args),
-        Function::CeilingPrecise => scalar_arguments(args),
-        Function::Floor => scalar_arguments(args),
-        Function::FloorMath => scalar_arguments(args),
-        Function::FloorPrecise => scalar_arguments(args),
-        Function::IsoCeiling => scalar_arguments(args),
-        Function::Mod => scalar_arguments(args),
-        Function::Mround => scalar_arguments(args),
-        Function::Trunc => scalar_arguments(args),
         Function::Gcd => StaticResult::Scalar,
         Function::Lcm => StaticResult::Scalar,
         Function::Base => scalar_arguments(args),

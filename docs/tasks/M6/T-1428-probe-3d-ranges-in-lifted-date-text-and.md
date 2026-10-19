@@ -23,6 +23,8 @@ Semantics: docs/excel-semantics/dates.md "Date function argument modes" and "DAT
 Code: `fn_datevalue`, `fn_timevalue`, `weekend_arg`, `fn_datedif`, `fn_days360` in
 crates/rustsheet-engine/src/functions/date_and_time.rs. Use the `excel-probe` skill first.
 
+Update (T-1785): DATEDIF's unit and DAYS360's method are probed (probes/date-math-lift-driver-edges G1-G10, G40-G41: they lift over arrays and ranges) and implemented as `Lift` entries of the SPEC-0011 driver; a 3-D reference in DAY, HOUR, DATE, WEEKDAY, DATEDIF and ISOWEEKNUM is `#REF!` there (G24-G26, G30-G32). What is left here is the 3D range in DATEVALUE/TIMEVALUE's text and in the `weekend` argument.
+
 ## Acceptance criteria
 - [ ] A probe case covers the four modes above with oracle values; ours matches them (baseline updated) or a
   follow-up implements the difference.

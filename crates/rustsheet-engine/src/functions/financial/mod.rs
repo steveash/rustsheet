@@ -15,6 +15,7 @@ mod amortization;
 mod annuity;
 mod cumulative;
 mod dates;
+pub(crate) use dates::days_30_360_us_ymd;
 mod discount;
 mod financial_bonds;
 mod financial_depreciation;

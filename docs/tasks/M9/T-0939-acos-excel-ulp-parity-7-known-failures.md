@@ -3,7 +3,7 @@ id: T-0939
 title: "ACOS: Excel ulp parity (7 known failures)"
 milestone: M9
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,12 +25,25 @@ libm `acos` is 1 ulp off Excel on several inputs (ASIN and ATAN are already 65/6
 For 0.5, `atan2(sqrt(1-x*x), x)`, `2*atan(sqrt((1-x)/(1+x)))` and `pi/2 - asin(x)` all give the
 expected value. Fit one formulation against all 7 cells, including C15 near x = 1, where
 cancellation in `1-x` matters.
+T-1797 found that Excel's ACOS is exactly `PI()/2 - ASIN(x)` in all 240 ACOS cells of
+probes/asin-atan-sign-source (columns H and I), with ASIN being `fn_asin`'s kernel (numbers.md "ASIN's formulation").
+Reuse that kernel; those 83 H/I known failures should leave the probes baseline too.
 
 ## Acceptance criteria
-- [ ] The 6 NumericUlp lines leave eval/baseline (poi.txt and ironcalc-calc.txt) with no new F lines;
+- [x] The 6 NumericUlp lines leave eval/baseline (poi.txt and ironcalc-calc.txt) with no new F lines;
       C15 leaves too, or the Outcome records its residual.
-- [ ] Formulation and evidence recorded in `docs/excel-semantics/numbers.md`.
-- [ ] `make check` green; reviewers approve.
+- [x] Formulation and evidence recorded in `docs/excel-semantics/numbers.md`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 ACOSH (T-0917). SIN/COS argument reduction (T-0915).
+
+## Outcome
+ACOS is now `FRAC_PI_2 - excel_asin(x)`, on the ASIN kernel T-1797 found (`atan(x/sqrt(y(2-y)))` with y = 1-x, root rounded
+twice). Excel's ACOS equals `PI()/2 - ASIN(x)` in all 240 ACOS cells of probes/asin-atan-sign-source. The ASIN kernel moved
+into the free function `excel_asin`, shared by `fn_asin` and `fn_acos`.
+- Eval: fixed 90, regressions 0:
+  - all 7 task cells, C15 included: ironcalc-calc TRIGONOMETRIC.xlsx C10, C15, C18 and C40, and poi 48539 E23 and
+    FormulaEvalTestData_Copy I104 and Q104;
+  - the 83 ACOS cells of probes/asin-atan-sign-source.
+- numbers.md: "ACOS(0.5) is the double nearest π/3" became "ACOS is PI()/2 - ASIN(x)".

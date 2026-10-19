@@ -518,7 +518,7 @@ Open routes for [0.5, 4]:
 1. Find the construction that generated the coefficients. Small-x erf and the tail also defied published sources.
 2. A global exact-match optimisation over 15 coefficients plus lambda, from a better start than least squares.
 3. A side channel exposing N or D separately.
-4. Engine work (T-1780) can already ship ERF for x <= 0.5, the ERFC tail, and EXP V6. [0.5, 4] would use the best
+4. Engine work (T-1916; the earlier "T-1780" here was a wrong id) can already ship ERF for x <= 0.5, the ERFC tail, and EXP V6. [0.5, 4] would use the best
    smooth model until it is cracked.
 
 ### Research update 9 (2026-10-18): the [0.5, 4] kernel is a (9,10) Remez rational
@@ -544,11 +544,47 @@ Route 1 (the generating construction) worked, and it overturns the (7,7) picture
   - The 90-digit generator (`docs/research/t1778/round9/gen910.txt` on the research branch) is about 1E-12 from
     Excel's doubles and matches 31% exactly.
   - Every stage from the first sum down is visible (weights 0.02-1.05), so the tail's top-down peeling applies.
-  - Two coefficients are pinned so far, each modulo 8,192 ulps (N top, D top). Their aliases are tied by
-    Delta(d10) = (sqrt(pi)/2)*Delta(c9).
+  - No coefficient is pinned yet. The first top-coefficient readings (N and D) used only x in [3.5, 4) and proved to
+    be local false peaks, so a candidate now has to light up in several disjoint x regions.
 - **New data.** 65,536-double runs ending at 4, below 2 and below 1, plus a control below 3 (`kmyst-erfc-r10*`),
   for model-free stage-mantissa readout.
 
 | Piece | Status |
 |---|---|
 | ERFC/ERF, 0.5 < x <= 4 | Structure known: (9,10) relative minimax of erfcx on [0.5, 4], D0 = 1, all ops stored. Exact coefficients being peeled. |
+
+### Research update 10 (2026-10-18): ERF and ERFC are bit-exact on every probed input
+
+The last mystery, the [0.5, 4] ERFC kernel, is cracked.
+
+- **Model.** Same as the tail. N (degree 9) and D (degree 10) are Horner polynomials in x, every operation rounded
+  fl53(fl64(.)), with D0 = 1. R = fl53(fl64(N/D)) and ERFC = fl53(fl64(E*R)), where E is Excel's EXP(-(x*x)).
+- **Coefficients.** In `docs/research/t1778/round9/erfc_mid_coef.txt` on `agent/research/T-1778-kernel-map`.
+- **Score.** 5,694,938 of 5,694,943 points with 0.5 < x <= 4. Each of the 5 misses matches at the neighbouring
+  double: the known xlsx misparse of the input. Each of the 21 coefficients is unique to the ulp.
+- **Why it took so long.** Excel's doubles are a relative of the plain (9,10) Remez solution along a near-null
+  direction: 1.5E-9 to 1.6E-8 relative away (up to 1.3E8 ulps), with the same function to about 1E-20. Every
+  search centred on the Remez solution, within about 1E4 ulps, was looking in the wrong place.
+- **What cracked it.**
+  1. A spectral degree test gave (9,10), overturning the least-squares (7,7).
+  2. A phase-lattice global solve: stored-product sawtooth phases are linear in the integer mantissa errors, so
+     the errors are a closest-vector problem. It went from 31% to 85.5% exact.
+  3. Top-stage chain solves and peeling on non-dyadic-start runs took it to 100%. Two independent methods agreed
+     on the top D coefficients to within a few ulps.
+- **Trap found on the way.** Probe runs that all start at multiples of 1/128 produce lattice aliases: the low bits
+  come out right and the high part wrong. Use irregular run starts, and require agreement across x regions.
+
+| Piece | Status |
+|---|---|
+| ERF, 0 <= x <= 0.5 | Bit-exact (775,272 / 775,272). |
+| ERFC, 0 <= x <= 0.5 | Bit-exact: fl(1 - ERF). |
+| ERFC, 0.5 < x <= 4 | Bit-exact (5,694,938 / 5,694,943; the 5 are input misparses). |
+| ERF, 0.5 < x <= 4 | Bit-exact via ERF = fl53(fl64(1 - ERFC)). |
+| ERFC, 4 < x <= 26.55 | Bit-exact (1,540,475 / 1,540,477; the 2 are input misparses). |
+| ERFC, x > 26.55 | 0 (subnormal flush). |
+| Negative x, ERF(a, b), NORM.S.DIST, CHISQ df 1 | Exact wrapper identities over the kernels (statistics.md). |
+| Excel EXP (feeds ERFC above 0.5) | Model V6: 2,139,591 / 2,139,684. The 93 misses are F2XM1 near-ties, possibly CPU-dependent. This is the only open piece. |
+
+Next: engine work (T-1916, widened from the tail to all of ERF/ERFC) can ship all of ERF/ERFC. Lessons for other
+kernels are in `docs/research/excel-kernel-playbook.md`. The remaining risk is EXP's 93 near-tie cells, which affect
+ERFC only where E itself lands on one of them.

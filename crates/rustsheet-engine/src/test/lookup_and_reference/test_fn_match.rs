@@ -215,3 +215,144 @@ fn test_match_fractional_match_type() {
     assert_eq!(model._get_text("A3"), "2");
     assert_eq!(model._get_text("A4"), "2");
 }
+
+#[test]
+fn test_match_lifts_over_array_lookup_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("B1", "30");
+    model._set("B2", "10");
+    // A 1x1 array, a 2x1 array and a multi-cell range each give one position per element (T-1866).
+    model._set("C1", "=MATCH({20},A1:A3,0)");
+    model._set("D1", "=MATCH({30;10},A1:A3,0)");
+    model._set("E1", "=MATCH(B1:B2,A1:A3,0)");
+    model._set("F1", "=ROWS(MATCH(B1:B2,A1:A3,0))");
+    model._set("G1", "=MATCH({20;99},A1:A3,0)");
+    // An error element wins over an invalid match_type (probes/match-lookup-value-lift E17).
+    model._set("H1", "=MATCH({#N/A;10},A1:A3,\"x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "2");
+    assert_eq!(model._get_text("D1"), "3");
+    assert_eq!(model._get_text("D2"), "1");
+    assert_eq!(model._get_text("E1"), "3");
+    assert_eq!(model._get_text("E2"), "1");
+    assert_eq!(model._get_text("F1"), "2");
+    assert_eq!(model._get_text("G1"), "2");
+    assert_eq!(model._get_text("G2"), "#N/A");
+    assert_eq!(model._get_text("H1"), "#N/A");
+    assert_eq!(model._get_text("H2"), "#VALUE!");
+}
+
+#[test]
+fn test_match_lifts_over_empty_text_of_blanks() {
+    let mut model = new_empty_model();
+    model._set("B1", "a");
+    model._set("B3", "b");
+    // The CSE dedup idiom of corpus-bench 530-28: blanks become "" and match the first ""
+    // (probes/match-empty-text-lift D5, D7, D8), unlike the blank cells themselves (D9; T-1861).
+    // The omitted match_type is 0.
+    model._set("C1", "=SUM(MATCH(A1:A3&\"\",A1:A3&\"\",))");
+    model._set("C2", "=INDEX(MATCH(B1:B4&\"\",B1:B4&\"\",),4)");
+    model._set("C3", "=SUM(--(MATCH(B1:B4&\"\",B1:B4&\"\",)=ROW(1:4)))");
+    model._set("C4", "=MATCH(\"\",A1:A3,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "3");
+    assert_eq!(model._get_text("C2"), "2");
+    assert_eq!(model._get_text("C3"), "3");
+    assert_eq!(model._get_text("C4"), "#N/A");
+}
+
+#[test]
+fn test_match_lifts_over_array_match_type() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("B1", "30");
+    model._set("B2", "10");
+    model._set("C1", "1");
+    model._set("C2", "0");
+    // An array match_type lifts, and broadcasts with lookup_value (probes/match-lookup-value-lift
+    // E14:E16, T-1917).
+    model._set("D1", "=MATCH(25,A1:A3,{0;1})");
+    model._set("E1", "=MATCH(B1:B2,A1:A3,{0;1})");
+    model._set("F1", "=ROWS(MATCH(20,A1:A3,{0;1}))");
+    // A multi-cell range match_type still reads its top-left cell, and does not spill
+    // (probes/match-type-nested-passthrough).
+    model._set("G1", "=MATCH(25,A1:A3,C1:C2)");
+    model._set("H1", "=MATCH(25,A1:A3,{0;\"x\"})");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#N/A");
+    assert_eq!(model._get_text("D2"), "2");
+    assert_eq!(model._get_text("E1"), "3");
+    assert_eq!(model._get_text("E2"), "1");
+    assert_eq!(model._get_text("F1"), "2");
+    assert_eq!(model._get_text("G1"), "2");
+    assert_eq!(model._get_text("G2"), "");
+    assert_eq!(model._get_text("H1"), "#N/A");
+    assert_eq!(model._get_text("H2"), "#VALUE!");
+}
+
+/// MATCH, VLOOKUP and HLOOKUP over a single value: a one-cell reference is searched, a single number or boolean is
+/// `#N/A` and non-numeric text `#VALUE!` (probes/match-single-value-lookup-array, excel-graph,
+/// T-1862).
+#[test]
+fn match_over_a_single_value() {
+    let mut model = new_empty_model();
+    model._set("A2", "b");
+    model._set("B2", "2");
+    let formulas = [
+        (r#"=MATCH("b",A2,0)"#, "1"),
+        ("=MATCH(2,B2,0)", "1"),
+        ("=MATCH(2,INDEX(B2:B3,1),0)", "1"),
+        ("=VLOOKUP(2,B2,1,FALSE)", "2"),
+        (r#"=VLOOKUP("b","b",1,FALSE)"#, "#VALUE!"),
+        (r#"=VLOOKUP("2","2",1,FALSE)"#, "#N/A"),
+        (r#"=HLOOKUP("b",A2,1,FALSE)"#, "b"),
+        (r#"=HLOOKUP("b","b",1,FALSE)"#, "#VALUE!"),
+        ("=MATCH(2,2,0)", "#N/A"),
+        ("=MATCH(TRUE,TRUE,0)", "#N/A"),
+        (r#"=MATCH("2","2",0)"#, "#N/A"),
+        ("=MATCH(2,B2*1,0)", "#N/A"),
+        (r#"=MATCH("b","b",0)"#, "#VALUE!"),
+        (r#"=MATCH(2,"b",0)"#, "#VALUE!"),
+        (r#"=MATCH("b",A2&"",0)"#, "#VALUE!"),
+        (r#"=MATCH("b","b")"#, "#VALUE!"),
+        ("=MATCH(2,1/0,0)", "#DIV/0!"),
+    ];
+    for (row, (formula, _)) in formulas.iter().enumerate() {
+        model._set(&format!("Z{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in formulas.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("Z{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn test_match_scalar_error_lookup_value_lifts_over_array_match_type() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    // probes/match-error-lookup-value-array-match-type E1, E2, E7, E8 (T-1926): the error fills
+    // every slot of the 2x1 result instead of staying a scalar.
+    model._set("C1", "=ROWS(MATCH(NA(),A1:A3,{0;1}))");
+    model._set("C2", "=INDEX(MATCH(NA(),A1:A3,{0;1}),2)");
+    model._set("C3", "=ROWS(MATCH(#DIV/0!,A1:A3,{0;1}))");
+    model._set("C4", "=INDEX(MATCH(#DIV/0!,A1:A3,{0;1}),1)");
+    // A scalar match_type keeps the scalar error.
+    model._set("D1", "=MATCH(NA(),A1:A3,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "2");
+    assert_eq!(model._get_text("C2"), "#N/A");
+    assert_eq!(model._get_text("C3"), "2");
+    assert_eq!(model._get_text("C4"), "#DIV/0!");
+    assert_eq!(model._get_text("D1"), "#N/A");
+}

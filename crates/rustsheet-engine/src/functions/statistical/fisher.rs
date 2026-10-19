@@ -50,10 +50,10 @@ fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
 /// density evaluated in logarithms, and only an underflow to 0 is taken from it: a density that
 /// is a positive double stays `#NUM!` as before, because no oracle cell covers it (moderate x
 /// with df1 near 30-140, e.g. `F.DIST(20,100,3,FALSE)`) and the logarithmic form misses there by
-/// up to about 300 ulp (TODO(T-1865)). Degrees of freedom large enough to overflow those powers
+/// up to about 300 ulp (TODO(T-1864)). Degrees of freedom large enough to overflow those powers
 /// (`F.DIST(3,50,100,FALSE)`, `F.DIST(2,5,1E10,FALSE)`) overflow the direct form too; they stay
 /// `#NUM!` as before, because the logarithmic form is not accurate enough there (Excel's
-/// `F.DIST(2,5,1E10,FALSE)` is 0.14167277676179968, probes-numeric/t1530-f-df-cut; TODO(T-1865)).
+/// `F.DIST(2,5,1E10,FALSE)` is 0.14167277676179968, probes-numeric/t1530-f-df-cut; TODO(T-1864)).
 fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
     let direct = dist.pdf(x);
     let total = df1 + df2;
@@ -213,7 +213,8 @@ impl Model {
     /// `F.INV(probability, deg_freedom1, deg_freedom2)`: every argument lifts over an array and a
     /// range (SPEC-0011; probes/stat-argument-modes H231-H235, probes/stat-quantile-lift). The
     /// quantile is the capped port of statrs' inversion or a bisection of at most about 1,300
-    /// cdfs (`f_quantile`), which the lifting table charges (kinds.rs `QUANTILE_WEIGHT`).
+    /// cdfs (`f_quantile`), which the lifting table charges (lift/kinds/statistical.rs
+    /// `QUANTILE_WEIGHT`).
     pub(crate) fn fn_f_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::FInv, args, cell, &mut |model, values| {
             number_or_error(model.f_inv_of(values, false, cell))

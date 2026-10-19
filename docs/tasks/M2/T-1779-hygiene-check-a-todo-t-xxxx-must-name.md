@@ -3,7 +3,7 @@ id: T-1779
 title: "Hygiene check: a TODO(T-XXXX) must name an open task"
 milestone: M2
 lane: quality
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -31,15 +31,21 @@ scripts/ and the Makefile are protected paths (scripts/check_governance.py), so 
 record (`make new-decision`) that the reviewers approve. It adds a check and weakens nothing.
 
 ## Acceptance criteria
-- [ ] Unit tests in scripts/test_tasks.py (or a new scripts/test_check_todos.py, found by
+- [x] Unit tests in scripts/test_tasks.py (or a new scripts/test_check_todos.py, found by
       `python3 -m unittest discover -s scripts -p 'test_*.py'`) cover: a TODO naming a todo, in-progress or
       blocked task passes; one naming a done task, a dropped task or an unknown id fails with file:line in the
       message; a bare `TODO` and the task-template placeholder are not matched.
-- [ ] On the PR's tree the check passes (T-1783 has landed); with a TODO naming T-0126 added to any .rs file, `make hygiene` fails.
-- [ ] A decision record in docs/decisions/ explains the rule and the protected-path change.
-- [ ] `make check` green; reviewers approve.
+- [x] On the PR's tree the check passes (T-1783 has landed); with a TODO naming T-0126 added to any .rs file, `make hygiene` fails.
+- [x] A decision record in docs/decisions/ explains the rule and the protected-path change.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Resolving existing stale TODOs (T-1783).
 - `FIXME` comments, bare TODOs, and TODOs in docs/.
 - Checking that the named task is about what the TODO says.
+
+## Outcome
+`scripts/tasks.py validate` (run by `make hygiene`) now fails on a `TODO(T-XXXX)` in a tracked file under
+crates/, bindings/, tools/ or scripts/ whose task is done, dropped or missing (`stale_todos`, unit-tested in
+scripts/test_tasks.py; decision 0072). It found four new stale TODOs since T-1783: fisher.rs and its test
+re-pointed from T-1865 to T-1864, locale_tag.rs from T-1858 to T-1875. Eval delta: none (no engine behavior change).
