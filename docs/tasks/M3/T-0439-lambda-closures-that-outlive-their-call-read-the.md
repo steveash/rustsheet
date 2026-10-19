@@ -69,4 +69,10 @@ that captured a large array; guard `shared.remove` in `insert`/`remove` with `!s
 record bench numbers (`cargo bench -p rustsheet --bench lift -- WORKDAY`: 61.6 ms branch vs
 62.7 ms main for the no-capture path); then re-run the performance and fidelity reviewers.
 PR #1226 (draft).
-
+Excel-fidelity round 2 (head 56a019f1) also requests changes, docs only: give the
+`MAX_CAPTURED_CELLS` cap its own arrays.md entry with `Status: DEVIATION (decision 0014)` (Excel
+unprobed) and point the code comment at it; say the capture budget is per root evaluation (cells
+evaluated as dependencies share it) or reset it per formula; write the depth entry's Status as
+`DEVIATION (decision 0014)` and cite 0080 in "Ours"; note that a debug build stops near 50 levels;
+file a follow-up (smaller LAMBDA call frames or a larger default budget) so probes/lambda-call-depth
+H3, H6, I3, I6 can leave `eval/suites/probes/deviations`.
