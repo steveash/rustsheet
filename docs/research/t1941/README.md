@@ -313,3 +313,15 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
     identified from outputs.
 - **K1 empirical-noise design (W4): even 1,000 cases leave dirs 12-14 at 0.6-1.2 units** (needle basin 0.03-0.3), and
   the unwrap is infeasible. No oracle spend.
+
+## Second review (Fable 5.1, HANDOFF section 11, `review2/`)
+- The x87 double-rounding model is validated by data: pure RN53 loses 79 of 295,724 Stirling points.
+- K1: an exact-template phase scan shows AN2's top three N stages match Excel at every anchor and every dense run
+  (a 1e4-ulp null-direction truth gives a flat profile instead). The misses at 1.80-1.89 are mid-stage; where one
+  stage dominates, its phase is readable from one run (D product 5 and N products 5-6 gain 230-610 points on 15
+  runs). Plan: per-run readings, unwrap over y0, integer recovery top-down; probes V1/V2 (non-dyadic anchors).
+- K2: W2's "law contradiction" is reproduced by a few-ulp upstream (p6/p7, q6/q7) error through a single-phase
+  meter; W2's control moved downstream coefficients and could not see it.
+- Composition: K2's inner S is not fl((x-1)*R), K3's A is not fl((x-2)*R); three separate rationals.
+- K1's constants all sit on their sums' grids: no lattice, no plateaus; the single-coefficient landscape is a
+  1-ulp V, so every candidate is a local maximum in every coordinate (also ss_fc, grid_a).
