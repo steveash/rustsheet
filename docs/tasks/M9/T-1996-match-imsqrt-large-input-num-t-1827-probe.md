@@ -6,18 +6,18 @@ lane: functions-engineering
 status: todo
 priority: P2
 size: S
-tier: opus
+tier: sonnet
 depends_on: []
 ---
 
 ## Goal
-TODO(fill): the outcome, not the implementation.
+IMSQRT of a large real input gives what Excel gives: `#NUM!` for `IMSQRT("1E307")` and `IMSQRT("4E307")`.
 
 ## Context
-TODO(fill): why; failing case ids; semantics notes; code paths.
+Known failures probes/eng-im-overflow S!A33, S!A34 (oracle `#NUM!`; ours returns text). Find the threshold with a probe first (excel-probe skill), then implement in `imsqrt` (functions/engineering/complex.rs). See docs/excel-semantics/engineering.md "IM* results that overflow".
 
 ## Acceptance criteria
-- [ ] TODO(fill): verifiable statements.
+- [ ] A33 and A34 pass and the threshold is pinned by a probe; no finite IMSQRT result changes.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
