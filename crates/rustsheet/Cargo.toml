@@ -20,6 +20,9 @@ zip = { version = "9.0.3", default-features = false, features = ["deflate-flate2
 # Lets the eval harness pin the workbook clock to IronCalc's METADATA `NOW` convention
 # (see `Workbook::pin_clock_from_metadata`).
 metadata_clock = []
+# Lets the eval harness replay a row insert from a case's `sheet_ops` (decision 0076,
+# `Workbook::insert_rows`).
+harness_row_insert = []
 
 [lints]
 workspace = true

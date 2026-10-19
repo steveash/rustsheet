@@ -266,6 +266,41 @@ impl Workbook {
         rustsheet_xlsx::metadata_clock::pin_clock_from_metadata(&mut self.model)
     }
 
+    /// Inserts `count` blank rows above the 0-based `row` of `sheet`, shifting the cells below
+    /// down and rewriting the formulas that refer to them, as Excel's row insert does. Harness
+    /// only (decision 0076): it is not a [`crate::Txn`] edit, so it has no undo and reports no
+    /// change set; the eval replays a case's `insert_row` sheet op with it. It does not
+    /// recalculate.
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet, a row past the sheet or a `count` of 0 or more
+    /// rows than lie below `row`; [`EditError::Engine`] when
+    /// the engine refuses the insert (it would push cells off the sheet).
+    #[cfg(feature = "harness_row_insert")]
+    pub fn insert_rows(
+        &mut self,
+        sheet: SheetId,
+        row: u32,
+        count: u32,
+    ) -> Result<(), crate::error::EditError> {
+        let index = self.sheet_index(sheet)?;
+        // The engine's rows are 1-based.
+        let row = row
+            .checked_add(1)
+            .and_then(|r| i32::try_from(r).ok())
+            .filter(|r| *r <= LAST_ROW);
+        // At least one row, and no more than the sheet has below `row`.
+        let count = i32::try_from(count)
+            .ok()
+            .filter(|c| *c >= 1 && row.is_some_and(|r| *c <= LAST_ROW - r + 1));
+        let (Some(row), Some(count)) = (row, count) else {
+            return Err(crate::error::EditError::Ref(RefError::OutOfBounds));
+        };
+        self.model
+            .insert_rows(index, row, count)
+            .map_err(crate::error::EditError::Engine)
+    }
+
     /// Serializes to xlsx bytes.
     ///
     /// # Errors
@@ -775,6 +810,26 @@ mod tests {
         let mut unpinned = sample();
         assert!(!unpinned.pin_clock_from_metadata());
         assert_eq!(unpinned.model.clock(), Clock::system());
+    }
+
+    #[cfg(feature = "harness_row_insert")]
+    #[test]
+    fn insert_rows_shifts_cells_and_rewrites_references() {
+        // sample(): A1 2.5, B1 =A1*2.
+        let mut wb = sample();
+        let sheet = wb.sheet_id("Sheet1").unwrap();
+        wb.insert_rows(sheet, 0, 1).unwrap();
+        wb.recalculate();
+        let moved = wb.cell("B2").unwrap();
+        assert_eq!(moved.formula.as_deref(), Some("=A2*2"));
+        assert_eq!(moved.value, Value::Number(5.0));
+        assert_eq!(wb.value("A1").unwrap(), Value::Empty);
+        for (row, count) in [(u32::MAX, 1), (0, 0), (0, u32::MAX)] {
+            assert!(matches!(
+                wb.insert_rows(sheet, row, count),
+                Err(crate::error::EditError::Ref(RefError::OutOfBounds))
+            ));
+        }
     }
 
     #[test]
