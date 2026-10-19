@@ -45,5 +45,5 @@ arrays.md has two new entries, "An uncalled LAMBDA is one value" and "MAP over s
 Fixed: m7-argument-modes F44:H44, eta-reduced-names E93 and gen-m7/44ef4f5638e25bcd A7. gen-m9/95efb37a9874f82e A19 and the
 T-1664 cells already passed on main.
 Left: eta-reduced-names E101:E103 (`_xleta.IF` with one argument), split to T-1944 since it needs a probe of the one-argument
-IF.
+IF. T-1946 probes the unprobed edge cases that review found: MAP with a blank or error later array, and INDEX of a LAMBDA out of range.
 Eval delta: probes known failures 2133 -> 2129 (4 fixed, 1 new case passing 41/41); gen-m7 A7 fixed; REGRESSIONS 0.
