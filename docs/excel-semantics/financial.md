@@ -820,7 +820,7 @@ Implemented (T-1764): VDB with salvage above cost never switches to straight lin
 prorates the unclipped declining-balance charge and the total is capped at `cost - salvage` (A9 is 0; salvage <= cost only, salvage above cost keeps the clipped charge); AMORDEGRC
 rejects only an asset life (1/rate) in [0, 3] or strictly between 4 and 5 (exactly 4 and 5 are valid, coefficients
 1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. Still open: the ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI), see the T-1764 Outcome.
-Implemented (T-1765): a boolean principal is `#VALUE!` (A18); a text-number principal still converts.
+Implemented (T-1765): a typed boolean principal is `#VALUE!` (A18); a text-number principal still converts. A boolean principal read through a reference is `#VALUE!` by inference, not probed (T-1986).
 Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
 
 ## NPV and FVSCHEDULE arguments
