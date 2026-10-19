@@ -81,13 +81,18 @@ Input conventions:
 - Optional `"sheet_ops"` lists sheet edits made after the workbook loads and before it is
   recalculated (T-1608): `{"op":"add","sheet":"New"}` appends a sheet, `{"op":"rename",
   "sheet":"Data","to":"Inputs"}` renames one (formulas that refer to it are rewritten), and
-  `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based position. Any other op or key is
+  `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based position, and
+  `{"op":"insert_row","sheet":"S","row":1}` inserts one blank row above the 1-based row, shifting
+  the cells below down (T-1933; Graph `range(address='1:1')/insert`). Any other op or key is
   refused. spec2xlsx records them as docProps custom properties `rustsheet.sheetop.<n>`. The
   excel-graph backend replays them in the session after the typed entries and keeps its canary
   sheet last: an added sheet goes just before the canary, and a move may not reach the canary's
   position. The other backends refuse such cases. The engine adapter applies each op as its own
-  `Workbook::edit` (`Txn::add_sheet`, `rename_sheet`, `move_sheet`). Keys in `expected` and
-  `check` use the sheet names after the edits.
+  `Workbook::edit` (`Txn::add_sheet`, `rename_sheet`, `move_sheet`), and a row insert through the
+  harness-only `Workbook::insert_rows` (cargo feature `harness_row_insert`, decision 0076) and a
+  recalculation. Keys in `expected` and `check` use the sheet names and cell addresses after the
+  edits; the case's own inputs stay at their written addresses, so a row-insert case lists its
+  scored cells in `check`.
 
 The same conventions are implemented by `tools/.../spec2xlsx.py` (for Excel) and by
 `engine.rs::evaluate_spec` (for RustSheet).

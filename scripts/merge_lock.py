@@ -2,15 +2,17 @@
 """The merge lock: agents merge to `main` one at a time (decision 0075).
 
   scripts/merge_lock.py acquire --pr N [--holder ID] [--ttl MINUTES]  # exit 0: held; 1: busy
-  scripts/merge_lock.py release [--holder ID]                         # drops only your own lock
+  scripts/merge_lock.py release [--holder ID]                         # frees only your own lock
   scripts/merge_lock.py status
 
 The lock is the branch `merge-lock` on origin: an orphan commit with an empty tree whose message
-names the holder and the PR. Pushes carry `--force-with-lease`, so the server creates the branch
-only while it is absent, and replaces or deletes it only while it still holds the commit the caller
-read: of two racing acquirers exactly one wins. A lock older than its TTL (the holder died) may be
-taken over the same way. The empty tree keeps task and decision files off the branch (tasks.py scans
-every origin branch), and CI does not run on it (ci.yml runs on pull requests and on `main`).
+names the holder and the PR, or says `state: free`. Pushes carry `--force-with-lease`, so the server
+creates the branch only while it is absent and replaces it only while it still holds the commit the
+caller read: of two racing acquirers exactly one wins. Release writes the free marker instead of
+deleting the branch, because the session git proxy refuses branch deletion (HTTP 403; T-1938). A lock
+older than its TTL (the holder died) may be taken over the same way. The empty tree keeps task and
+decision files off the branch (tasks.py scans every origin branch), and CI does not run on it (ci.yml
+runs on pull requests and on `main`).
 
 The holder is `CLAUDE_CODE_SESSION_ID` unless `--holder` is given.
 """
@@ -42,12 +44,14 @@ class GitError(Exception):
 
 @dataclass(frozen=True)
 class Lock:
-    """The lock as origin holds it."""
+    """The lock commit as origin holds it."""
 
     sha: str
     holder: str
     pr: str
     taken_at: int
+    # A released lock: the branch holds the free marker, which anyone may replace.
+    free: bool = False
 
     def age_minutes(self, now: float) -> float:
         return (now - self.taken_at) / 60
@@ -66,7 +70,7 @@ def git(*args: str, root: Path = ROOT, check: bool = True) -> subprocess.Complet
 
 
 def read_lock(root: Path = ROOT) -> Lock | None:
-    """The lock on origin, or None when nobody holds it."""
+    """The lock commit on origin (held, or the free marker), or None when the branch is absent."""
     fetched = git("fetch", "-q", "--no-tags", REMOTE, f"+{LOCK_REF}:{SEEN_REF}", root=root, check=False)
     if fetched.returncode != 0:
         if "couldn't find remote ref" in fetched.stderr:
@@ -75,25 +79,35 @@ def read_lock(root: Path = ROOT) -> Lock | None:
     body = git("log", "-1", "--format=%H%n%ct%n%B", SEEN_REF, root=root).stdout.splitlines()
     try:
         fields = dict(line.split(": ", 1) for line in body[2:] if ": " in line)
-        return Lock(sha=body[0], holder=fields.get("holder", "?"), pr=fields.get("pr", "?"), taken_at=int(body[1]))
+        return Lock(
+            sha=body[0],
+            holder=fields.get("holder", "?"),
+            pr=fields.get("pr", "?"),
+            taken_at=int(body[1]),
+            free=fields.get("state") == "free",
+        )
     except (IndexError, ValueError) as e:
         raise GitError(f"malformed lock commit on {LOCK_REF}") from e
 
 
-def lock_commit(holder: str, pr: str, root: Path = ROOT) -> str:
-    """A new orphan commit with an empty tree that names `holder` and `pr`."""
+def held(lock: Lock | None) -> Lock | None:
+    """`lock` if someone holds it, None when it is absent or free."""
+    return lock if lock is not None and not lock.free else None
+
+
+def lock_commit(holder: str | None, pr: str = "", root: Path = ROOT) -> str:
+    """A new orphan commit with an empty tree that names `holder` and `pr`, or the free marker when
+    `holder` is None."""
     tree = git("mktree", root=root).stdout.strip()
-    message = f"merge-lock\n\nholder: {holder}\npr: {pr}\n"
+    message = f"merge-lock\n\nholder: {holder}\npr: {pr}\n" if holder is not None else "merge-lock\n\nstate: free\n"
     return git(*IDENTITY, "commit-tree", tree, "-m", message, root=root).stdout.strip()
 
 
 def push_lease(expected: str, new: str, root: Path = ROOT) -> bool:
-    """Sets the lock to `new` (a sha, or "" to delete it) only if origin still has `expected` there
-    ("" for absent). False when another agent moved it first."""
-    source = f"{new}:{LOCK_REF}" if new else f":{LOCK_REF}"
-    result = git(
-        "push", "-q", f"--force-with-lease={LOCK_REF}:{expected}", REMOTE, source, root=root, check=False
-    )
+    """Sets the lock to the commit `new` only if origin still has `expected` there ("" for absent).
+    False when another agent moved it first."""
+    lease = f"--force-with-lease={LOCK_REF}:{expected}"
+    result = git("push", "-q", lease, REMOTE, f"{new}:{LOCK_REF}", root=root, check=False)
     return result.returncode == 0
 
 
@@ -106,29 +120,30 @@ def acquire(holder: str, pr: str, ttl_minutes: float = TTL_MINUTES, root: Path =
     """Takes the lock, or renews it when `holder` already has it. 0 when held, 1 when busy."""
     now = time.time()
     lock = read_lock(root)
-    if lock is not None and lock.holder != holder and not lock.is_stale(now, ttl_minutes):
-        print(f"merge lock busy: {describe(lock, now, ttl_minutes)}")
+    current = held(lock)
+    mine = current is not None and current.holder == holder
+    if current is not None and not mine and not current.is_stale(now, ttl_minutes):
+        print(f"merge lock busy: {describe(current, now, ttl_minutes)}")
         return 1
     if push_lease(lock.sha if lock else "", lock_commit(holder, pr, root), root):
-        taken = "renewed" if lock is not None and lock.holder == holder else "acquired"
-        print(f"merge lock {taken} for PR {pr}")
+        print(f"merge lock {'renewed' if mine else 'acquired'} for PR {pr}")
         return 0
-    lost_to = read_lock(root)
-    print(f"merge lock busy: {describe(lost_to, now, ttl_minutes) if lost_to else 'lost a race'}")
+    winner = held(read_lock(root))
+    print(f"merge lock busy: {describe(winner, now, ttl_minutes) if winner else 'lost a race'}")
     return 1
 
 
 def release(holder: str, root: Path = ROOT) -> int:
-    """Drops the lock if `holder` has it. 0 when the lock is no longer `holder`'s, 1 when another
-    agent holds it (it is never released for them)."""
-    lock = read_lock(root)
-    if lock is None:
+    """Frees the lock if `holder` has it, by writing the free marker. 0 when the lock is no longer
+    `holder`'s, 1 when another agent holds it (it is never released for them)."""
+    current = held(read_lock(root))
+    if current is None:
         print("merge lock: not held")
         return 0
-    if lock.holder != holder:
-        print(f"merge lock not yours: {describe(lock, time.time(), TTL_MINUTES)}")
+    if current.holder != holder:
+        print(f"merge lock not yours: {describe(current, time.time(), TTL_MINUTES)}")
         return 1
-    if push_lease(lock.sha, "", root):
+    if push_lease(current.sha, lock_commit(None, root=root), root):
         print("merge lock released")
         return 0
     print("merge lock: taken over before release")
@@ -136,8 +151,8 @@ def release(holder: str, root: Path = ROOT) -> int:
 
 
 def status(root: Path = ROOT) -> int:
-    lock = read_lock(root)
-    print(f"merge lock {describe(lock, time.time(), TTL_MINUTES)}" if lock else "merge lock: free")
+    current = held(read_lock(root))
+    print(f"merge lock {describe(current, time.time(), TTL_MINUTES)}" if current else "merge lock: free")
     return 0
 
 

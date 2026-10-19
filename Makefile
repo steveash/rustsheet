@@ -115,7 +115,7 @@ merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make 
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_lock.py acquire --pr '$(PR)'
 
-merge-lock-release: ## Drop your merge lock (after the merge, a red CI, or any stop)
+merge-lock-release: ## Free your merge lock (after the merge, a red CI, or any stop)
 	$(PY) scripts/merge_lock.py release
 
 merge-lock-status: ## Who holds the merge lock, and since when

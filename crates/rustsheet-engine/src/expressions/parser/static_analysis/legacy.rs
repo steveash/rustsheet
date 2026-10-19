@@ -607,8 +607,21 @@ fn legacy_value_operand(kind: &Function, index: usize, arg: &Node) -> bool {
             // arm's range operand rather than on the call (probes/legacy-one-cell-shape-intersection
             // H3, P3, excel-graph, T-1633).
             | Function::Choose
-    ) || lifts_arrays_at(kind, index))
+    ) || lifts_arrays_at(kind, index)
+        || is_lookup_table(kind, index))
         && is_value_operation(arg)
+}
+
+/// Whether `index` is MATCH's `lookup_array` or the table of VLOOKUP or HLOOKUP, which a legacy
+/// formula reads as a value when it is an operation: `=MATCH(1,(A1:A6="b")*(B1:B6=2),0)` shows
+/// as `=MATCH(1,(@A1:A6="b")*(@B1:B6=2),0)` and is `#VALUE!` off the ranges' rows, and on them
+/// looks up in one value (probes/legacy-match-lookup-array-intersection, excel-graph, T-1862;
+/// corpus-bench/49300). XMATCH's `lookup_array` stays an array.
+fn is_lookup_table(kind: &Function, index: usize) -> bool {
+    matches!(
+        kind,
+        Function::Match | Function::Vlookup | Function::Hlookup
+    ) && index == 1
 }
 
 /// Whether `node` is arithmetic, concatenation or a comparison, possibly in parentheses:
