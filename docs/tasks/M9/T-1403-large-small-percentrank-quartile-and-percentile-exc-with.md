@@ -3,7 +3,7 @@ id: T-1403
 title: "LARGE, SMALL, PERCENTRANK, QUARTILE and PERCENTILE.EXC with a scalar, error or single-cell data argument give Excel's error"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
