@@ -693,29 +693,30 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        // Excel: see docs/excel-semantics/numbers.md#atan2-is-atanyx-plus-or-minus-pi (probes/atan2-*).
-        // Subnormal operands count as zero.
-        let flush = |v: f64| if v.is_subnormal() { 0.0 } else { v };
-        let (x, y) = (flush(x), flush(y));
-        if x == 0.0 && y == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Arguments can't be both zero".to_string(),
-            };
-        }
+        // Excel: see docs/excel-semantics/numbers.md "ATAN2 is ATAN(y/x) plus or minus pi" (probes/atan2-*).
         if x == 0.0 {
+            if y == 0.0 {
+                return CalcResult::Error {
+                    error: Error::DIV,
+                    origin: cell,
+                    message: "Arguments can't be both zero".to_string(),
+                };
+            }
             return CalcResult::Number(FRAC_PI_2.copysign(y));
         }
-        let q = y / x;
-        if !q.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Quotient overflow".to_string(),
-            };
-        }
-        let a = flush(q.atan());
+        // The quotient is Excel's `/`: a subnormal x divides like zero (#DIV/0!), overflow is #NUM!.
+        let q = match divide(y, x) {
+            Ok(q) => q,
+            Err(error) => {
+                return CalcResult::Error {
+                    error,
+                    origin: cell,
+                    message: "Invalid quotient".to_string(),
+                }
+            }
+        };
+        // `+ 0.0` turns -0 into +0, which Excel never returns.
+        let a = flush_subnormal(q.atan()) + 0.0;
         CalcResult::Number(if x < 0.0 {
             if y >= 0.0 {
                 a + PI

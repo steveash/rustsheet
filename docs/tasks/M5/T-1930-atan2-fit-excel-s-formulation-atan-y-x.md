@@ -31,6 +31,6 @@ IMARGUMENT, which may share the kernel (note it if it does).
 
 ## Outcome
 `fn_atan2` now computes `ATAN(y/x)` ± π with Excel's subnormal flush, x = 0 → ±π/2, #DIV/0! for both-zero and #NUM!
-for an overflowing quotient. Three new probes (atan2-quadrants, atan2-error-edges, atan2-subnormal-quotient) with
+for an overflowing quotient. Three new probes (atan2-quadrants, atan2-error-edges, atan2-kept-subnormal) with
 excel-graph values all pass; the 34 G-column lines of probes/asin-atan-sign-source left the baseline. Recorded in
 numbers.md ("ATAN2 is ATAN(y/x) plus or minus π"). IMARGUMENT sharing the kernel is unprobed.

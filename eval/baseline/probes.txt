@@ -54,9 +54,9 @@ C	probes/at-paren-operands-levels.case.json	20
 C	probes/at-paren-operands.case.json	6
 C	probes/at-power-text.case.json	24
 C	probes/at-signed-operand.case.json	24
-C	probes/atan2-error-edges.case.json	72
-C	probes/atan2-quadrants.case.json	253
-C	probes/atan2-subnormal-quotient.case.json	14
+C	probes/atan2-error-edges.case.json	50
+C	probes/atan2-kept-subnormal.case.json	16
+C	probes/atan2-quadrants.case.json	249
 C	probes/atanh-unit-argument.case.json	12
 C	probes/average-value-args.case.json	32
 C	probes/averagea-array-constant-elements.case.json	25
