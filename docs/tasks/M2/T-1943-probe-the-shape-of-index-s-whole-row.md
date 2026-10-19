@@ -33,4 +33,4 @@ differs, file a functions-lookup fix task.
 -
 
 ## Outcome
-probes/index-zero-index-shape (excel-graph): all nine whole-row/column picks are arrays (TYPE 64, legacy N `#VALUE!`), The engine matches on the dynamic shape but not on legacy N and FORMULATEXT of a scalar first argument (E10, E20, F10, F20); filed as T-2017. Recorded in lookup.md.
+probes/index-zero-index-shape (excel-graph): all nine whole-row/column picks are arrays (TYPE 64, legacy N `#VALUE!`), the engine matches on the dynamic shape but not on legacy N and FORMULATEXT of a scalar first argument (E10, E20, F10, F20); filed as T-2017. Recorded in lookup.md.
