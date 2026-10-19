@@ -765,7 +765,6 @@ reference is not probed): `EDATE(TAKE(A1:A3,2),1)`, `EDATE(DROP(A1:A3,1),1)`, `E
 of NETWORKDAYS.INTL (`NETWORKDAYS.INTL(45000,46000,TAKE(B1:B3,2))` is 2 rows). A boolean element of an array month count is `#VALUE!` for
 that element only (`EDATE(45000,{TRUE;2})` = {`#VALUE!`; 45061}, `EOMONTH(45000,{FALSE;1})` = {`#VALUE!`; 45046},
 `WORKDAY(45000,{TRUE;5})` = {`#VALUE!`; 45007}, `WEEKNUM(45000,{TRUE;2})` = {`#VALUE!`; 12}).
-Ours: all 70 cells that fail are `#N/IMPL!` from WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL not lifting over arrays yet
-(T-1236); the EDATE, EOMONTH, WEEKNUM, YEARFRAC and DAYS cells already pass.
+Ours: matches, all 175 cells pass since WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL lift (T-1236).
 Status: VERIFIED (excel-graph)
 Tasks: T-1807, T-1236

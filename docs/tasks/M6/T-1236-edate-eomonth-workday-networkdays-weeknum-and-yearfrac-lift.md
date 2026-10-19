@@ -3,7 +3,7 @@ id: T-1236
 title: "WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL lift over arrays and refuse ranges (SPEC-0011 driver)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -41,3 +41,6 @@ Branch `agent/functions-date/T-1236-date-fn-array-lift` (PR #991, draft) holds a
 Resumed by opus 2026-10-17: the branch now merges origin/main and takes main's SPEC-0011 code. The interim `lift_array_args` wrapper is dropped, because it would be a second lifting mechanism next to the driver. Its tests and cost estimates are still in commit 55b64dca. The probe follow-up was renumbered T-1807, because T-1789 is taken on main.
 
 On the driver, the day loops are the blocker. `KernelWork::Weighted` charges each element a fixed weight, and a weight that covers the worst-case day loop (about 2.96M days) caps a lift at about 45 elements under `MAX_LIFTED_CELL_VISITS`. That would regress the weekend lifts main already does for any range size. T-1295 (in flight on its own branch) makes WORKDAY(.INTL) step whole weeks and T-1808 makes NETWORKDAYS(.INTL) closed-form first; after it this task enters them as `Constant`, or as `Prepared(holiday cells)`, with holidays `Whole`, `weekend` `Lift` and the dates `LiftArrays`.
+
+## Outcome
+WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL are lifting-table entries: the dates `LiftArrays`, the weekend `Lift`, the holidays `WholeByCaller`, read once and prepared (`date_and_time/holidays.rs`: distinct days by day mod 7, sorted), so a call is charged `LiftCost::Prepared(holidays)`. An element costs O(log holidays): NETWORKDAYS counts in closed form, and WORKDAY binary-searches the date range over closed-form counts (at most 22 probes) instead of stepping weeks and days. `Weekend`/`Weekend::lift` and the hand-written static-analysis arms are gone; a legacy formula shows no `@` on a range in a date argument (as EDATE). `ArgKind::Whole` stays unused (its TODO now names T-1836). Eval: probes known failures 2130 -> 2048 (date-argument-modes F/G 36-62, all 70 failing date-lift-open cells), no regressions.
