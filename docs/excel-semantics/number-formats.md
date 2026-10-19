@@ -497,7 +497,7 @@ B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
   `€# ?/4` (C17) and `[Red]$# ?/4` (C16) alike; a tiny negative keeps the minus: "-$0    " (F2).
 - **`%` scales the value before the fraction** and prints after the blanked fraction: `# ?/4%` on 1.5 "150    %" (B4),
   1234.5 "123450    %" (I4), -0.001 "-0    %" (F4).
-- **A trailing `,` after the denominator does not scale**: `# ?/4,` is #VALUE! for every value but 0, which prints
+- **A trailing `,` after the denominator scales the value up, not down by 1000**: `# ?/4,` is #VALUE! for every value but 0, which prints
   "0    " (B5:I5); `# ?/4,,` multiplies the value by 1E250 and prints the integer in full with the fraction blanked ("15" + 249
   zeros + 4 spaces on 1.5, B6; -0.001 "-1" + 247 zeros, F6; 253 to 255 characters), and is #VALUE! on 1234.5 (I6),
   whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! on the same pattern (a larger
