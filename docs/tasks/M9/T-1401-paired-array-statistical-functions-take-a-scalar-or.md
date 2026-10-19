@@ -52,5 +52,4 @@ Semantics: docs/excel-semantics/statistics.md "Array arguments given a scalar, a
 `paired_samples` (COVAR/COVARIANCE/T.TEST) and `fn_get_two_matrices` (CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX,
 FORECAST, CHISQ.TEST) take a number as a one-value array and an error as itself; unequal shapes are `#N/A`; T.TEST checks
 tails/type first and paired samples of unequal size are `#N/A`. Probes eval: 76 cells fixed, 0 regressions.
-Still failing in gen-m9: `CHISQ.TEST(B4,C5:D11)%*AGGREGATE(100,..)` (50f..., a2e5... A34: Excel `#N/A`, we give `#VALUE!` from
-the AGGREGATE operand; operator error precedence, not filed) and `GROWTH(GAMMA(..))` (one-value GROWTH, T-1402 area).
+Still failing in gen-m9: `GROWTH(GAMMA(..))` of a single value (T-1402 area).

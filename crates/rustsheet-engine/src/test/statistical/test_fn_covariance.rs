@@ -96,7 +96,15 @@ fn paired_functions_take_scalars_as_one_value_arrays() {
     model._set("D6", "=T.TEST(C1:C3,5,1,1)");
     model._set("D7", "=T.TEST(A1,B1:B2,0.1,3)");
     model._set("D8", "=RSQ(A1,B1:B2)");
+    model._set("E1", "x");
+    model._set("E2", "TRUE");
+    model._set("D9", "=CHISQ.TEST(E1,B1:B2)");
+    model._set("D10", "=CORREL(E2,B1:B2)");
+    model._set("D12", "=T.TEST(E1,A1:A2,0.1,3)");
     model.evaluate();
+    assert_eq!(model._get_text("D9"), *"#N/A");
+    assert_eq!(model._get_text("D10"), *"#N/A");
+    assert_eq!(model._get_text("D12"), *"#NUM!");
     assert_eq!(model._get_text("D1"), *"0");
     assert_eq!(model._get_text("D2"), *"#N/A");
     assert_eq!(model._get_text("D3"), *"#DIV/0!");

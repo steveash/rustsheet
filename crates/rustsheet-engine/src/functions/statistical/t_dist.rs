@@ -290,6 +290,11 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
+        let samples = match self.paired_samples(args, cell) {
+            Ok(samples) => samples,
+            Err(error) => return error,
+        };
+
         let tails = match self.get_number(&args[2], cell) {
             Ok(f) => {
                 let tf = f.trunc();
@@ -326,12 +331,6 @@ impl Model {
             Err(e) => return e,
         };
 
-        let samples = match self.paired_samples(args, cell) {
-            Ok(samples) => samples,
-            Err(error) => return error,
-        };
-        // Tails and type are checked before the samples (T.TEST(B11,A8:B9,0.1,0.3) is #NUM!
-        // although B11 is no array: statistics.md "Array arguments given a scalar...").
         if matches!(test_type, TTestType::Paired) && !samples.same_size {
             return CalcResult::new_error(
                 Error::NA,
