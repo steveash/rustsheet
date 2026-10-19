@@ -38,6 +38,15 @@ impl Model {
         // The delimiters are lists taken whole; the text and the scalar arguments lift over a
         // range or an array (probes/m7-argument-modes F13, F14).
         let (operands, lists) = self.lift_text_operands(args, &[1, 2], cell);
+        // pad_with does not lift: an array of any size, a 1x1 one included, is #VALUE! (probes/
+        // textsplit-lift-guesses A35-A38, A65).
+        if let Some(CalcResult::Array(_)) = operands.get(5) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "pad_with must be a single value".to_string(),
+            );
+        }
         let mut lists = lists.into_iter();
         let col_delimiters = lists.next().map(|list| self.split_delimiters(list, cell));
         // A bare empty-arg (omitted) row delimiter → no row splitting, which is the empty list.
@@ -346,7 +355,8 @@ fn split_by_any<'a>(original: &'a str, cmp: &str, delims: &[Finder<'_>]) -> Vec<
     let mut next: Vec<Option<usize>> = delims.iter().map(|d| d.find(cmp.as_bytes())).collect();
 
     loop {
-        // Find the earliest match among all delimiters (the first in list order on a tie).
+        // Find the earliest match among all delimiters (the longest on a tie, probes/
+        // textsplit-lift-guesses A4, A6).
         for (found, d) in next.iter_mut().zip(delims) {
             if found.is_some_and(|start| start < pos) {
                 *found = cmp
@@ -360,7 +370,7 @@ fn split_by_any<'a>(original: &'a str, cmp: &str, delims: &[Finder<'_>]) -> Vec<
             .iter()
             .zip(delims)
             .filter_map(|(found, d)| found.map(|start| (start, start + d.needle().len())))
-            .min_by_key(|(p, _)| *p);
+            .min_by_key(|(start, end)| (*start, std::cmp::Reverse(*end)));
 
         let matched = best
             .and_then(|(start, end)| Some((start, end, to_original(start)?, to_original(end)?)));

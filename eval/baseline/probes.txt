@@ -883,6 +883,7 @@ C	probes/textjoin-delimiter-elements.case.json	24
 C	probes/textsplit-casefold-length.case.json	8
 C	probes/textsplit-empty-delimiter.case.json	13
 C	probes/textsplit-empty-text.case.json	19
+C	probes/textsplit-lift-guesses.case.json	90
 C	probes/textsplit-padded-size.case.json	6
 C	probes/textsplit-wide.case.json	5
 C	probes/time-parts-past-max-date.case.json	14
@@ -3012,6 +3013,8 @@ F	probes/text-locale-calendars.case.json	S!A99
 F	probes/text-locale-era-gregorian.case.json	S!A21
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
+F	probes/textsplit-lift-guesses.case.json	Calc!A53
+F	probes/textsplit-lift-guesses.case.json	Calc!A55
 F	probes/textsplit-padded-size.case.json	Calc!A1
 F	probes/textsplit-padded-size.case.json	Calc!A2
 F	probes/textsplit-padded-size.case.json	Calc!A3
