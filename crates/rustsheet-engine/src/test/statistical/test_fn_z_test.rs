@@ -34,3 +34,17 @@ fn arrays() {
     assert_eq!(model._get_text("D1"), *"0.503243397");
     assert_eq!(model._get_text("D2"), *"0.780710987");
 }
+
+/// A data sum that overflows makes the omitted sigma NaN; the result is an error, never a NaN
+/// number. `#NUM!` is not probed yet (T-1942).
+#[test]
+fn overflowing_data_is_an_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "9E307");
+    model._set("A2", "9E307");
+    model._set("A3", "1");
+    model._set("D1", "=Z.TEST(A1:A3,0)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"#NUM!");
+}
