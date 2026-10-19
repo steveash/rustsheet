@@ -32,4 +32,4 @@ T-1254 accept it in WEEKDAY, WORKDAY and NETWORKDAYS: reuse what they use. Code:
 -
 
 ## Outcome
-YEARFRAC basis 0 accepts a start or end date in [0, 1) as day 0 of January 1900 (new `us_30_360` helper shared with the existing basis-0 path); gen-m9/a2e51f48717af2a1 A32 passes (the case's other mismatches A24, A34 are not this task's). gen-m9 baseline unchanged. Bases 1-4 with serial 0 stay `#NUM!`: unprobed. Unit test `test_yearfrac_basis_0_accepts_serial_0`.
+YEARFRAC basis 0 accepts a start or end date in [0, 1) as day 0 of January 1900 (shared `days_30_360_us_ymd` count (financial::dates), ordered like every basis); gen-m9/a2e51f48717af2a1 A32 passes (the case's other mismatches A24, A34 are not this task's). gen-m9 baseline unchanged. Bases 1-4 with serial 0 stay `#NUM!`: unprobed. Unit test `test_yearfrac_basis_0_accepts_serial_0`.
