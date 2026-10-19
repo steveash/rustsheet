@@ -685,26 +685,13 @@ impl Model {
                 sheet: cell.sheet,
                 ..reference
             }),
-            "FILENAME" => {
-                let Some(file_name) = self.workbook_file_name() else {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Unnamed workbook".to_string(),
-                    };
-                };
-                let worksheet_name = match self.workbook.worksheet(reference.sheet) {
-                    Ok(ws) => &ws.name,
-                    Err(_) => {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Invalid sheet".to_string(),
-                        }
-                    }
-                };
-                CalcResult::String(format!("[{file_name}]{worksheet_name}").into())
-            }
+            // Excel for the web gives #VALUE! for every form (probes/info-cell-address-cross-sheet
+            // Calc!B1:B4, excel-graph, T-2052); desktop's full-path form is M14.
+            "FILENAME" => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "CELL(\"filename\") is #VALUE! in Excel for the web".to_string(),
+            },
             "ROW" => CalcResult::Number(reference.row as f64),
             // Like "contents", "type" reads the reference's address on the formula's own sheet
             // (`CELL("type",Data!A7)` is "b" when Calc!A7 is blank although Data!A7 is text;
