@@ -136,15 +136,24 @@ pub(super) fn last_day_of_feb(year: i32) -> u32 {
 // the end date tests the *original* start day, before the start day is itself
 // normalised.
 pub(super) fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let mut day1 = d1.day() as i32;
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let mut day2 = d2.day() as i32;
+    days_30_360_us_ymd(
+        (d1.year(), d1.month(), d1.day()),
+        (d2.year(), d2.month(), d2.day()),
+    )
+}
 
-    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
-    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+// `days_30_360_us` over `(year, month, day)` triples, so YEARFRAC can count from serial 0
+// (1900-01-00), which is not a `NaiveDate`.
+pub(crate) fn days_30_360_us_ymd(d1: (i32, u32, u32), d2: (i32, u32, u32)) -> f64 {
+    let (y1, month1, day1_raw) = d1;
+    let (y2, month2, day2_raw) = d2;
+    let m1 = month1 as i32;
+    let m2 = month2 as i32;
+    let mut day1 = day1_raw as i32;
+    let mut day2 = day2_raw as i32;
+
+    let start_is_feb_last = month1 == 2 && day1_raw == last_day_of_feb(y1);
+    let end_is_feb_last = month2 == 2 && day2_raw == last_day_of_feb(y2);
 
     if end_is_feb_last && start_is_feb_last {
         day2 = 30;
