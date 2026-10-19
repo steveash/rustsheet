@@ -281,3 +281,40 @@ fn typed_date_clock_text_shapes_pick_their_formats() {
         }
     }
 }
+
+#[test]
+fn typed_date_text_with_a_rejected_clock_stays_text_and_keeps_the_date_format() {
+    // probes/date-text-typed-clock-shapes N14-N15, date-text-rejected-clock-formats N1-N16
+    // (excel-graph, T-1986; formats from docs/research/rejected-clock-text-formats-2026-10-19.md).
+    let cases = [
+        ("1/2/2020 13:00 PM", "m/d/yyyy"),
+        ("1/2/2020 13:00 AM", "m/d/yyyy"),
+        ("1/2/2020 24:00 PM", "m/d/yyyy"),
+        ("1/2/2020 13 PM", "m/d/yyyy"),
+        ("1/2/2020 25:00 PM", "m/d/yyyy"),
+        ("1/2/2020 13:00:00 PM", "m/d/yyyy"),
+        ("1/2/2020 99:00 PM", "m/d/yyyy"),
+        ("1/2/2020 1300 PM", "m/d/yyyy"),
+        ("2020-01-02 13:00 PM", "m/d/yyyy"),
+        ("July 1, 2026 13:00 PM", "d-mmm-yy"),
+        ("1/2/2020 10:00AM", "general"),
+        ("1/2/2020 10:00 XM", "general"),
+        ("1/2/2020 abc", "general"),
+        ("1/2/2020 10:00 PM PM", "general"),
+        ("13:00 PM", "general"),
+    ];
+    let mut model = new_empty_model();
+    for (i, (text, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), text);
+    }
+    model.evaluate();
+    for (i, (text, format)) in cases.iter().enumerate() {
+        let row = i32::try_from(i + 1).unwrap();
+        assert_eq!(model._get_text(&format!("A{row}")), *text, "{text}");
+        assert_eq!(
+            model.get_style_for_cell(0, row, 1).unwrap().num_fmt,
+            *format,
+            "{text}"
+        );
+    }
+}
