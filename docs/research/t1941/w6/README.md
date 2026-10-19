@@ -267,7 +267,12 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     - Recovered offsets are 1e12-1e15 ulps, the same range as the far control's true offsets from its EM chain
       (1e9-1.3e15).
     - Applied to Excel R on 20,000 points: exact 20.2% -> 25.6%, median relative R error 2.43e-16 -> 2.31e-16.
-      A real but partial step. Pass 2 (re-measured phases, lattice again) follows.
+    - **Retracted: spurious.** The offsets satisfy the phase congruences mod 1 but move every line by 24-3,900 DFT
+      bins (`latcheck.py`; the frequency gradient in `latsolve.freq_rows` matches a direct `stage_F` difference to
+      every printed digit). Re-measured phases against that chain confirm it: the coherent lines drop to amplitude
+      ratio <0.3. The exact-R gain came from the function rows alone.
+    - Fix: frequency-hold rows (`FREQ=w`: phase-equivalent weight per cycle/sample; 2621 makes half a bin cost the
+      same as 0.02 cycles of phase). Measured-phase lattice runs must pass `latcheck.py` (all lines < 0.5 bins).
 
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
