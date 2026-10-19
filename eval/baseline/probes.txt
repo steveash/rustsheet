@@ -272,6 +272,7 @@ C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-busy-behaviors.case.json	23
 C	probes/error-stored-constants.case.json	24
 C	probes/eta-reduced-names.case.json	59
+C	probes/expand-wrap-past-grid.case.json	10
 C	probes/external-ref-no-link-ifchoose-b.case.json	6
 C	probes/external-ref-no-link-ifchoose.case.json	44
 C	probes/external-ref-no-link-index.case.json	54
@@ -780,6 +781,7 @@ C	probes/subtotal-take-array-selector.case.json	25
 C	probes/subtotal-variance-one-vs-two-pass.case.json	64
 C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
+C	probes/sumif-averageif-two-arg-range-once.case.json	2
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/t-array-lift.case.json	22
 C	probes/t-n-range-top-left.case.json	45
@@ -2662,12 +2664,6 @@ F	probes/stats-evidence-floor-t1623.case.json	S!Q36
 F	probes/stats-evidence-floor-t1623.case.json	S!Q50
 F	probes/stats-evidence-floor-t1623.case.json	S!Q58
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
-F	probes/subtotal-take-array-selector.case.json	Sheet1!A31
-F	probes/subtotal-take-array-selector.case.json	Sheet1!A41
-F	probes/subtotal-take-array-selector.case.json	Sheet1!B30
-F	probes/subtotal-take-array-selector.case.json	Sheet1!B31
-F	probes/subtotal-take-array-selector.case.json	Sheet1!B40
-F	probes/subtotal-take-array-selector.case.json	Sheet1!B41
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D1
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D7

@@ -356,6 +356,7 @@ mod tests {
             tags: Vec::new(),
             cells,
             text: Vec::new(),
+            defined_names: BTreeMap::new(),
         }
     }
 
