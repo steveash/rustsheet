@@ -45,5 +45,6 @@ when the call lifts. The count_ifs/apply_ifs walk merge stays out (T-1477 shared
 the two walks differ in how they treat cells past the used area).
 Bench (`cargo bench -p rustsheet --bench lift`, min of 11): `SUM(COUNTIFS(D1:D10000,D1:D10000))` with 100
 distinct values 85.5 s -> 0.69 s; the existing cases unchanged within noise (whole-column COUNTIFS 694 -> 668 ms,
-array-criterion SUMIFS 581 -> 593 ms).
+array-criterion SUMIFS 581 -> 593 ms). Follow-up: T-1976 (2-argument SUMIF/AVERAGEIF still evaluate their one
+range argument twice).
 Eval: 0 regressions, 0 fixes; one new probe case (5 cells, passing).
