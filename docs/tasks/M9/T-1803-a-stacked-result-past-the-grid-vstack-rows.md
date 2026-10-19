@@ -20,7 +20,7 @@ T-1780 bounds HSTACK and VSTACK by `check_array_size`, which gives `#VALUE!` for
 ## Acceptance criteria
 - [x] VSTACK and HSTACK give `#NUM!` for a result with more than 1,048,576 rows and no error for more than 16,384 columns, under the cell-count limit.
 - [x] probes/scalar-lift-open-c W1-W10 pass; -c2 W1 moved to T-1965 (it sits in row 1, which it stacks, so ours is `#CIRC!`).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 2^34-cell memory bound itself (`check_array_cells`).
