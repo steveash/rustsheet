@@ -3,7 +3,7 @@ id: T-1254
 title: "WORKDAY and NETWORKDAYS accept serial 0 as a start date and as a holiday (2 gen-m6 cells)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,11 +31,26 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/288b99797f58f149 Calc!A10 `=(COLUMNS(Data!B8:E10)%+WORKDAY(33393,(Data!$A10/1.005),Data!A3:D3))` (0 days, holidays "a", 0.3, 0.3, 0.5): Excel 33393.04, engine `#VALUE!` (the text holiday; `#NUM!` without it). Add `WORKDAY(33393,0,{"a",0.3})`, `WORKDAY(33393,1,A3:D3)` and `NETWORKDAYS(33393,33400,A3:D3)` to the probe: a text cell in holidays may only be skipped when days is 0.
 
 ## Acceptance criteria
-- [ ] An excel-graph probe case with the cells above, plus `XLOOKUP(NA(),A1:A4,B1:B5)` (does an error lookup_value beat the size mismatch?), passes; dates.md records the rule (VERIFIED).
-- [ ] gen-m6/63012866a9d8b7db A39 and gen-m6/6b2aa08e3b916da5 A35 pass in `./target/release/rustsheet-eval show <case>`,
+- [x] An excel-graph probe case with the cells above, plus `XLOOKUP(NA(),A1:A4,B1:B5)` (does an error lookup_value beat the size mismatch?), passes; dates.md records the rule (VERIFIED).
+- [x] gen-m6/63012866a9d8b7db A39 and gen-m6/6b2aa08e3b916da5 A35 pass in `./target/release/rustsheet-eval show <case>`,
       with no new failing gen-m6 cell and no new known failures in eval/baseline/.
-- [ ] gen-m9/50f10c4062fb2e98 A12 and gen-m9/288b99797f58f149 A10 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/50f10c4062fb2e98 A12 and gen-m9/288b99797f58f149 A10 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Array lifting of these functions (T-1236).
+
+## Outcome
+- Probe probes/workday-serial-zero (58 cells, excel-graph, 2026-10-19). The four functions take serial 0 (Saturday
+  0 January 1900) as a date, a holiday and a result. A day count that truncates to 0 makes WORKDAY(.INTL) return the
+  start date without reading the weekend or the holidays, so their errors do not apply. NETWORKDAYS has no such
+  shortcut. `XLOOKUP(NA(),A1:A4,B1:B5)` is `#N/A`: an error lookup_value beats the size mismatch (lookup.md).
+- `DateSystem::date_of_serial_from_zero` is the one serial-0-aware date lookup: `Model::excel_date` (WORKDAY,
+  NETWORKDAYS, holidays) uses it, and it replaces WEEKDAY's ad hoc serial-0 case. WORKDAY walks back to serial 0.
+- Eval delta: probes/workday-serial-zero is new and passes 58/58 (probes known failures 1870 -> 1870, no
+  regressions). gen-m6/63012866a9d8b7db A39, gen-m6/6b2aa08e3b916da5 A35, gen-m9/50f10c4062fb2e98 A12 and
+  gen-m9/288b99797f58f149 A10 now pass. Those suites are not baselined: gen-m6 999/1000 and gen-m9 961/998 cells
+  pass, and no remaining failure there is a WORKDAY/NETWORKDAYS value (gen-m9/b5352ebdb9c5f1a1 A24 is PERCENTRANK
+  of a scalar, T-1403).
+- dates.md "WORKDAY and NETWORKDAYS from serial 0" is VERIFIED.
+

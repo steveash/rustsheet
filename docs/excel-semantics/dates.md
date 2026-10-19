@@ -796,6 +796,7 @@ weekday-faithful calendar where serial 1 is a Sunday; a negative serial is still
   (F31:F38, F45:F58). NETWORKDAYS has no such shortcut: `NETWORKDAYS(33393,33393,{"a"})` and
   `NETWORKDAYS(33393,33400,D1:D4)` are `#VALUE!` (F35, F37, F39, F56).
 - `WORKDAY(10,-0.5)` = 9 and `WORKDAY(10,0.5)` = 10 (F53:F54).
-Implemented in: `DateSystem::date_of_serial_from_zero` (formatter/dates.rs) and `Model::workday_of` /
-`Model::networkdays_of` (functions/date_and_time/workday.rs, networkdays.rs).
+Implemented in: `DateSystem::date_of_serial_from_zero` (formatter/dates.rs), which `Model::excel_date`
+(functions/date_and_time.rs) reads for every WORKDAY and NETWORKDAYS date and holiday, and the zero-day shortcut and
+lower walk bound in `Model::workday_of` / `Model::step_workdays` (functions/date_and_time/workday.rs).
 Tasks: T-1254
