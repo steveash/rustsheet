@@ -14,7 +14,7 @@ depends_on: []
 IMSIN, IMCOS, IMSINH, IMCOSH and IMPRODUCT-with-a-blank-cell overflow give what Excel gives, not `inf` text.
 
 ## Context
-Found by T-1827 review: `IMCOSH("1000")`, `IMSIN("1+1000i")` print inf text; `IMPRODUCT("1E200","1E200",<blank>)` gives 0 via the blank shortcut. Probe first (excel-probe skill).
+Found by T-1827 review: `IMCOSH("1000")`, `IMSIN("1+1000i")` print inf text; `IMPRODUCT("1E200","1E200",<blank>)` gives 0 via the blank shortcut. Also probe IMSUB overflow, `IMSUM("9E307","9E307","-9E307")` and an overflow followed by a later error argument. Probe first (excel-probe skill).
 
 ## Acceptance criteria
 - [ ] A probe pins each form and ours matches.

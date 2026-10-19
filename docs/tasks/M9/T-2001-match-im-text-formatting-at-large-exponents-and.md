@@ -14,10 +14,10 @@ depends_on: []
 IM* text keeps 15 digits past exponent 98 and writes small parts in full past 20 characters, as Excel does.
 
 ## Context
-Known failures probes/eng-im-overflow S!A11, A40, A41 (14-digit cut) and A42 (E notation, sin digits). `Complex::fmt` goes through `number_to_text`. See engineering.md "IM* results that overflow".
+Known failures probes/eng-im-overflow S!A11, A17, A40, A41 (14-digit cut) and A42 (E notation, sin digits). `Complex::fmt` goes through `number_to_text`. See engineering.md "IM* results that overflow".
 
 ## Acceptance criteria
-- [ ] A11, A40, A41 pass; A42's formatting matches and its sin/cos digits are probed or split off; no finite result that passes changes.
+- [ ] A11, A17, A40, A41 pass; A42's formatting matches and its sin/cos digits are probed or split off; no finite result that passes changes.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
