@@ -293,6 +293,42 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     - Selector usable on Excel: a line's median |log amplitude ratio| < 0.1 keeps every accurate line except N.Pn12
       (0.16) and rejects every junk line (> 0.45). Run-to-run phase smoothness does not discriminate.
     - Excel clean lines by that rule: D.T5, D.T6, D.Pn14, D.Pn15, N.T4, N.T5, N.Pn14.
+    - Clean lines alone are too little information: ideal phases + noise on only the 8 clean control lines (24 runs)
+      recover the truth at sigma 0.005 (max error 5e7 ulps) but fail at 0.01 (1.5e12).
+
+25. **Run ladders as lattice rows** (`ladder.py`, `ladpass.sh`, `latsolve.py` LADDER/LADW/LADRES/LADDF).
+    - Reader: per anchor and law line, Hann demodulation at the candidate's frequency, phases referenced to each run's
+      centre and to a reference run (K = 0, or the j = 46 '+' rung for the dyadic set), then W4's unwrap. Output: the
+      line frequency F at the reference-run centre, mod 1. Each kept (line, anchor) is a mod-1 congruence row on the
+      verified frequency gradient, weighted 3e8 x a phase row. BKZ needs MPFR too (double Babai loops).
+    - Layouts (confirmed): dyadic q421-q433 (a = 1.625, 1.75, 1.875; x0 = a +- 2^-j, j = 22..46 step 2; 4,096-runs;
+      no K = 0 run) and non-dyadic q440-q453 (a = 1.6341, 1.7718, 1.9253; c = 1.37; K = 0 runs in q440a).
+    - Synthetic far truth on these layouts, read blind against the EM chain: unwrap max|res| < 0.15 keeps 35 + 33
+      rows, all within 4.6e-10 of the truth, none bad; W4's 0.06 also keeps no bad rows but drops half the good.
+    - Control pass 1 (68 ladder + 273 clean phase rows): N0-N4 = 657, 1, 34, -10, 0 ulps; D1-D4 = 155, -5, 1, 0;
+      middle 73-6.5e4; top 5e5-8e7. Pass 2: D1-D9 within 1.9e5 (D3-D5 exact), N0-N7 within 9e4, but N8 -4.4e6 and
+      N9 6.6e8; climb then 80.2%. The top pair needs more than these rows (non-dyadic ladders).
+    - Excel dyadic ladders (2,254,016 rows, no run missing): 22 of 84 (line, anchor) pairs pass the 0.15 gate, all
+      from the coherent L-run lines (D.T5, D.T6, D.Pn14, D.Pn15, N.T4, N.T5, N.Pn15) plus N.Pn13. Against the EM chain
+      six of them agree within 0.01 bins (of a 65,536-run) at every anchor: independent confirmation of those stages.
+    - N.Pn13 sat at a constant -9.01 bins: a mislock that broke the first Excel pass (5.7% exact, the lattice gave up
+      the function). Agreement gate LADDF: drop rows more than 1.5 bins from the candidate (good control rows are
+      within 0.93, median 0.013). Gated passes 1-2: 27.1%, 26.7% exact, median 1.30e-16.
+    - Structure of the gap: a stage-j line's frequency depends only on c_{j+1}.. (never c_j), and Excel's coherent
+      lines are all stages 4-6, so the low coefficients were constrained by the function rows alone.
+
+26. **Excel's low-stage lines exist; the D chain is consistent from stage 2 up** (`lowfit.py`, `xl_lowjoint.py`).
+    - The L-runs have 39 precise tracks (smooth to 2-5e-7); the chain explains 6. Linear fit of each unexplained
+      track to every law, with the upper stages held, then the exact mp assembler: track 27 = D.Pn12 and track 31 =
+      D.Pn11 each fit to noise (9e-7) alone but not together (8.6e-6); tracks 28, 37, 3 fail exactly.
+    - The dyadic ladders decide it. Read against the track-27 chain: D.Pn12 (-0.00, +0.01 bins), D.Pn13 (+0.12 at all
+      three anchors, not used in the fit), D.Pn14/15, D.T5/T6 within 0.24. The track-31 chain misses D.Pn12/13 by
+      ~15 bins. Against the track-27 chain the 24-run phases also show D.Pn12/13 coherent for the first time.
+    - N.Pn13 unwraps cleanly in every chain with an offset that follows the N low coefficients (-9.0, -5.1, -1.66
+      bins), but admitting it (LADDF 2) breaks the function (3.4% exact); with LADDF 1 the pass holds (26.1%, 1.31e-16).
+    - Low offsets still swing ~1e15 ulps between passes. Given the coefficients j >= 3, the function rows pin
+      N0-N2/D1-D2 almost exactly, so the swing is compensation for the uncertain top pair. Order: non-dyadic ladders
+      for N8/N9/D8/D9, then a W5-style peel (`w5/p5/fscan.py`) on the low coefficients over a narrow range.
 
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:

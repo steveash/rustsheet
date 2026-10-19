@@ -41,6 +41,17 @@ def func_rows(Nc,Dc,K=40):
         g=[x**k*ulp(Nc[k])/(r*Dv) for k in range(len(Nc))]+[-r*x**k*ulp(Dc[k])/(r*Dv) for k in range(1,len(Dc))]
         out.append((g,(Nv-r*Dv)/(r*Dv)))
     return out
+def data_rows(Nc,Dc,rfile,n=400,seed=0):
+    """Like func_rows, but the target is Excel's own R (midpoint of [Rlo, Rhi]) at n sampled points of RFILE instead
+    of lgamma: fits the exact rational to the data (each point carries ~2-3e-16 of the chain's own rounding noise)."""
+    rows=[l.split() for l in open(rfile)]; idx=np.random.default_rng(seed).choice(len(rows),n,replace=False)
+    out=[]
+    for i in idx:
+        q=rows[i]; x=mp.mpf(float.fromhex(q[0])); r=(mp.mpf(float.fromhex(q[2]))+mp.mpf(float.fromhex(q[3])))/2
+        Dv=mp.polyval([mp.mpf(v) for v in Dc[::-1]],x); Nv=mp.polyval([mp.mpf(v) for v in Nc[::-1]],x)
+        g=[x**k*ulp(Nc[k])/(r*Dv) for k in range(len(Nc))]+[-r*x**k*ulp(Dc[k])/(r*Dv) for k in range(1,len(Dc))]
+        out.append((g,(Nv-r*Dv)/(r*Dv)))
+    return out
 def freq_rows(N,D,lines,xs):
     """d(line frequency, cycles per sample of a run of consecutive doubles)/d(m_k); keeping these ~0 holds the
     candidate's line frequencies on the data (phase congruences alone admit offsets that move the lines away)."""
@@ -107,12 +118,12 @@ if __name__=='__main__':
     nu=len(Nc)+len(Dc)-1
     m_true=[int(round((mp.mpf(a)-mp.mpf(b))/ulp(b))) for a,b in zip(Nt,Nc)]+[int(round((mp.mpf(a)-mp.mpf(b))/ulp(b))) for a,b in zip(Dt[1:],Dc[1:])]
     if sys.argv[3]!='measured': print('true m:',m_true)
-    frows=func_rows(Nc,Dc)
+    frows=data_rows(Nc,Dc,os.environ['DATAF'],int(os.environ.get('DATAN','400'))) if os.environ.get('DATAF') else func_rows(Nc,Dc)
     # embedding lattice
     B=[float(abs(v))+1 for v in m_true] if len(sys.argv)>5 else None
     bound=[mp.mpf(10)**int(sys.argv[5])]*nu if len(sys.argv)>5 else [mp.mpf(1e15)]*nu
     Wp=mp.mpf(2)**int(np.ceil(np.log2(1/max(sig,1e-4))))*64   # phase scale
-    Wf=mp.mpf(10)**16*64
+    Wf=mp.mpf(10)**16*64*mp.mpf(os.environ.get('FUNCW','1'))   # FUNCW < 1 loosens the function rows (Excel's own approximation error)
     ne=len(rows); nf=len(frows); nq=len(qrows); dim=nu+ne+1; cols=nu+ne+nf+nq+1
     Wq=Wp*mp.mpf(os.environ.get('FREQ') or 0)   # FREQ = phase-equivalent weight per cycle/sample, e.g. 0.02/(0.5/65536)
     M=[[0]*cols for _ in range(dim)]
