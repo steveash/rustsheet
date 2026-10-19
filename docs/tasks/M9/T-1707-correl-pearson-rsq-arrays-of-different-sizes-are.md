@@ -3,7 +3,7 @@ id: T-1707
 title: "CORREL, PEARSON, RSQ: arrays of different sizes are #N/A, and the last digit of their results"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -31,7 +31,7 @@ Sheet1!C2 `CORREL(A2:A13,B2:B13)`: Excel (Mac cache, web agrees) -0.135742784879
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Not started in code by the sonnet worker (2026-10-19). Two parts: (1) CORREL/PEARSON/RSQ with arrays of different sizes
 must be `#N/A` (small, but probe `CORREL({1;2},{1;2;3})` first); (2) the last-digit rule (Excel's total-row
 1.0000000000000002 / 0.9999999999999998 and CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx C2) is numeric fitting of Excel's
