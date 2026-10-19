@@ -3,7 +3,7 @@ id: T-0439
 title: "LAMBDA closures that outlive their call read the parameter values they were made with"
 milestone: M3
 lane: engine
-status: done
+status: blocked
 priority: P3
 size: M
 tier: opus
@@ -54,3 +54,19 @@ chains overflowed the stack; nested LAMBDA calls now stop at four times the eval
 as `#NUM!` (decision 0080, DEVIATION "How deep LAMBDA calls nest"; probes/lambda-call-depth shows
 Excel evaluates 300 levels, ours about 200 in release, 4 cells listed as deviations).
 Eval: probes +2 cases (40 cells: 28 pass, 4 deviations, 8 new-coverage known failures), 0 regressions.
+
+## Blocked because
+Review round 3 (reviewer-performance, head 6953374d) found one blocking cost: `bind_captures`
+deep-copies every captured binding on each call of an escaped closure, so
+`=LET(mk,LAMBDA(r,LAMBDA(i,IF(i<0,INDEX(r,1),i))),f,mk(SEQUENCE(n)),SUM(MAP(SEQUENCE(n),f)))` is
+O(n^2): 3.6 s at n=10,000 against 7 ms on main (main never reads `r`, so it got the right sum).
+Security, architecture and quality approve; the Excel-fidelity round-2 verdict on the scope-exit
+design was still pending when this run stopped. Next step: make captured bindings shared, not
+copied (a `Binding::Shared(Arc<Binding>)` that `Binding::value`, `variable_reference` and
+`read_value` read through, with `bind_captures` cloning only the `Arc` and putting it into
+`VariableStack::shared` so an inner capture reuses it); add a test for MAP over an escaped closure
+that captured a large array; guard `shared.remove` in `insert`/`remove` with `!shared.is_empty()`;
+record bench numbers (`cargo bench -p rustsheet --bench lift -- WORKDAY`: 61.6 ms branch vs
+62.7 ms main for the no-capture path); then re-run the performance and fidelity reviewers.
+PR #1226 (draft).
+
