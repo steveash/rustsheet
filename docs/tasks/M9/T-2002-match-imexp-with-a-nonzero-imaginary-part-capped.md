@@ -3,7 +3,7 @@ id: T-2002
 title: "Match IMEXP with a nonzero imaginary part capped at DBL_MAX (T-1827 A12)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Known failure probes/eng-im-overflow S!A12 (`IMEXP("1000+1i")`); ours gives `#NU
 
 ## Out of scope
 -
+
+## Outcome
+`imexp` caps the modulus at DBL_MAX when exp(x) overflows and the imaginary part is nonzero; A12 now passes (probes known failures -1). Boundaries filed as T-2060.
