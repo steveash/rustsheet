@@ -37,12 +37,19 @@ fn vdb_total_depr(
     let ddb_formula = |tot: f64| ((cost - tot) * (factor / life)).min(cost - salvage - tot);
     let sln_formula = |tot: f64, a_period: f64| (cost - tot - salvage) / (life - a_period);
 
+    // Salvage above cost never switches: VDB(2400,3000,10,0,1) is -600 (the declining-balance
+    // charge `cost - salvage`), not the straight-line -60 (probes/fin-vdb-modes A17).
+    let switches = salvage <= cost;
+    // A fractional period prorates the unclipped charge, then the total stops at `cost - salvage`:
+    // VDB(2400,300,10,9.5,10) is 0 (probes/fin-vdb-modes A9).
+    let cap = cost - salvage;
+
     let mut tot_depr = 0.0;
     let mut per = 0.0_f64;
     loop {
         let ddb_depr = ddb_formula(tot_depr);
         let sln_depr = sln_formula(tot_depr, per);
-        let is_sln = straight_line && ddb_depr < sln_depr;
+        let is_sln = straight_line && switches && ddb_depr < sln_depr;
         let depr = if is_sln { sln_depr } else { ddb_depr };
         let new_total = tot_depr + depr;
 
@@ -51,7 +58,7 @@ fn vdb_total_depr(
         } else if per.trunc() as i64 == int_period - 1 {
             let ddb_next = ddb_formula(new_total);
             let sln_next = sln_formula(new_total, per + 1.0);
-            let is_sln_next = straight_line && ddb_next < sln_next;
+            let is_sln_next = straight_line && switches && ddb_next < sln_next;
             let depr_next = if is_sln_next {
                 if int_period == int_life {
                     0.0
@@ -59,9 +66,15 @@ fn vdb_total_depr(
                     sln_next
                 }
             } else {
-                ddb_next
+                // The prorated part takes the unclipped charge; the cap below clips the total.
+                (cost - new_total) * (factor / life)
             };
-            return new_total + depr_next * frac;
+            let prorated = new_total + depr_next * frac;
+            return if switches && prorated > cap {
+                cap
+            } else {
+                prorated
+            };
         } else {
             tot_depr = new_total;
             per += 1.0;

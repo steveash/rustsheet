@@ -3,7 +3,7 @@ id: T-1764
 title: "Fix VDB negative-salvage-above-cost and fractional end-period, AMORDEGRC rate thresholds (probes fin-vdb-modes, fin-amordegrc)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,8 @@ Probes `probes/fin-vdb-modes` (A6, A7, A9, A10, A13 ulp/close; A9 `VDB(2400,300,
 
 ## Out of scope
 -
+
+## Outcome
+VDB with salvage above cost (A17) and a fractional end period at the end of life (A9) now match Excel, and
+AMORDEGRC accepts a life of exactly 4 and 5 (A10, A11, A13, A14); probes/fin-amordegrc passes fully. The
+last-ulp cells (VDB A6, A7, A10, A13, MDURATION, RRI) need numeric fitting and moved to T-1975 (opus).
