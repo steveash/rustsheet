@@ -31,6 +31,16 @@ def phase_rows(N,D,lines,xs):
                 for k in range(j+1,len(c)): put(k,x**(k-j)*uc[k]/uP-x**(k-j-1)*uc[k]/uM)
             out.append((g,val))
     return out
+def func_rows(Nc,Dc,K=40):
+    """Function rows: (N - R D)/(R*Dc) at K Chebyshev nodes on [1.5,2], R = lgamma/((x-1)(x-2)); linear in m (ulps of
+    each coefficient, D0 fixed). Returns [(g, v)]; want sum g m = -v + O(1e-16)."""
+    fx=[mp.mpf(1.75)+mp.mpf(0.25)*mp.cos(mp.pi*(k+mp.mpf(1)/2)/K) for k in range(K)]
+    out=[]
+    for x in fx:
+        r=mp.loggamma(x)/((x-1)*(x-2)); Dv=mp.polyval([mp.mpf(v) for v in Dc[::-1]],x); Nv=mp.polyval([mp.mpf(v) for v in Nc[::-1]],x)
+        g=[x**k*ulp(Nc[k])/(r*Dv) for k in range(len(Nc))]+[-r*x**k*ulp(Dc[k])/(r*Dv) for k in range(1,len(Dc))]
+        out.append((g,(Nv-r*Dv)/(r*Dv)))
+    return out
 def freq_rows(N,D,lines,xs):
     """d(line frequency, cycles per sample of a run of consecutive doubles)/d(m_k); keeping these ~0 holds the
     candidate's line frequencies on the data (phase congruences alone admit offsets that move the lines away)."""
@@ -97,13 +107,7 @@ if __name__=='__main__':
     nu=len(Nc)+len(Dc)-1
     m_true=[int(round((mp.mpf(a)-mp.mpf(b))/ulp(b))) for a,b in zip(Nt,Nc)]+[int(round((mp.mpf(a)-mp.mpf(b))/ulp(b))) for a,b in zip(Dt[1:],Dc[1:])]
     if sys.argv[3]!='measured': print('true m:',m_true)
-    # function rows: (N - R D)/(R*Dc) at nodes, linear in m
-    K=40; fx=[mp.mpf(1.75)+mp.mpf(0.25)*mp.cos(mp.pi*(k+mp.mpf(1)/2)/K) for k in range(K)]
-    frows=[]
-    for x in fx:
-        r=mp.loggamma(x)/((x-1)*(x-2)); Dv=mp.polyval([mp.mpf(v) for v in Dc[::-1]],x); Nv=mp.polyval([mp.mpf(v) for v in Nc[::-1]],x)
-        g=[x**k*ulp(Nc[k])/(r*Dv) for k in range(len(Nc))]+[-r*x**k*ulp(Dc[k])/(r*Dv) for k in range(1,len(Dc))]
-        frows.append((g,(Nv-r*Dv)/(r*Dv)))   # want sum g m = -(this) + O(1e-16)
+    frows=func_rows(Nc,Dc)
     # embedding lattice
     B=[float(abs(v))+1 for v in m_true] if len(sys.argv)>5 else None
     bound=[mp.mpf(10)**int(sys.argv[5])]*nu if len(sys.argv)>5 else [mp.mpf(1e15)]*nu
