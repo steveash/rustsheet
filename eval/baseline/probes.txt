@@ -268,6 +268,8 @@ C	probes/eng-imdiv.case.json	24
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
 C	probes/eng-impower.case.json	22
+C	probes/eng-imsqrt-large-b.case.json	12
+C	probes/eng-imsqrt-large.case.json	18
 C	probes/eng-imsub.case.json	21
 C	probes/eng-imsum-improduct-whole.case.json	45
 C	probes/eng-later-argument-lift.case.json	75
@@ -1260,8 +1262,6 @@ F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-im-overflow.case.json	S!A11
 F	probes/eng-im-overflow.case.json	S!A12
 F	probes/eng-im-overflow.case.json	S!A17
-F	probes/eng-im-overflow.case.json	S!A33
-F	probes/eng-im-overflow.case.json	S!A34
 F	probes/eng-im-overflow.case.json	S!A40
 F	probes/eng-im-overflow.case.json	S!A41
 F	probes/eng-im-overflow.case.json	S!A42
