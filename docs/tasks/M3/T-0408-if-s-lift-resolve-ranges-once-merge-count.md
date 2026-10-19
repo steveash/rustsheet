@@ -3,7 +3,7 @@ id: T-0408
 title: "*IF(S) lift: resolve ranges once, merge count_ifs into apply_ifs, memo repeated criteria"
 milestone: M3
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
