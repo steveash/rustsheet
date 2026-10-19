@@ -337,8 +337,15 @@ impl Model {
 
     /// The weekend mask (Monday first) of one weekend element of WORKDAY.INTL or NETWORKDAYS.INTL.
     /// The argument lifts over a range and an array (`ArgKind::Lift`; probes/date-argument-modes
-    /// F41:F42, F63:F64).
-    fn weekend_mask(value: &CalcResult, cell: CellReferenceIndex) -> Result<[bool; 7], CalcResult> {
+    /// F41:F42, F63:F64). An error-valued weekend is not passed on but becomes `error_as`, the
+    /// caller's own: `#NUM!` for WORKDAY.INTL, `#VALUE!` for NETWORKDAYS.INTL, whatever the
+    /// error, and a 3-D reference, which the lift reads as `#REF!`, is one too
+    /// (probes/date-text-weekend-3d P1-P30, Q1-Q30; dates.md "An error-valued weekend").
+    fn weekend_mask(
+        value: &CalcResult,
+        error_as: Error,
+        cell: CellReferenceIndex,
+    ) -> Result<[bool; 7], CalcResult> {
         // Default: Saturday-Sunday weekend (pattern 1)
         let mut weekend = DEFAULT_WEEKEND;
         match value {
@@ -389,7 +396,11 @@ impl Model {
                 cell,
                 "Invalid weekend".to_string(),
             )),
-            e @ CalcResult::Error { .. } => Err(e.clone()),
+            CalcResult::Error { .. } => Err(CalcResult::new_error(
+                error_as,
+                cell,
+                "Invalid weekend".to_string(),
+            )),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(weekend),
             CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 Err(CalcResult::Error {

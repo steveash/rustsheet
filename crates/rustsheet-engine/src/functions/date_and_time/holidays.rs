@@ -3,19 +3,29 @@
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, types::CellReferenceIndex},
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    functions::util::is_span_or_if_of_span,
     model::Model,
 };
 
 impl Model {
     /// The serials of a holidays argument, read whole: a range is not intersected
     /// (docs/excel-semantics/dates.md "WORKDAY holidays take the whole range"). Each must be a
-    /// date (`#NUM!`), and a value that is not a number is `#VALUE!`.
+    /// date (`#NUM!`), and a value that is not a number is `#VALUE!`. A 3-D reference is
+    /// `#VALUE!` too, not `#REF!`, also as a branch of IF (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)`,
+    /// `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`; probes/date-text-weekend-3d M9-N13).
     pub(super) fn holiday_serials(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<i64>, CalcResult> {
+        if is_span_or_if_of_span(arg) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "3-D reference in holidays".to_string(),
+            ));
+        }
         let mut serials = Vec::new();
         self.collect_serial_numbers(arg, cell, |serial| {
             serials.push(serial);

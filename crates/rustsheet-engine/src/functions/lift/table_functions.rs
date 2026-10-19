@@ -62,6 +62,8 @@ macro_rules! lifting_table_functions {
             | Function::QuartileExc
             | Function::Trimmean
             | Function::Address
+            | Function::Sequence
+            | Function::Makearray
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv
