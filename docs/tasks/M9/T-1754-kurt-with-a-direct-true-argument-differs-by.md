@@ -21,7 +21,7 @@ Sheet1!F2 `KURT(A1:A10, {1,2,3},A3)` Excel (Excel Online cache) -1.2129835263391
 Sheet1!H13 `KURT(A1:A8)` Excel -1.1999999999999997, ours ...993. Fit all three cells with one order.
 
 ## Acceptance criteria
-- [ ] The failing cell(s) in probes/stats-evidence-floor-t1623 pass and are removed from eval/baseline via `make eval-baseline`.
+- [ ] The failing cell(s) in probes/stats-evidence-floor-t1623, ironcalc-calc MEADIAN_KURT_SKEW_HARMEAN.xlsx F2 and probes/stat-argument-modes H13 pass and leave eval/baseline (ironcalc-calc.txt, probes.txt) via `make eval-baseline`.
 - [ ] The rule is recorded in docs/excel-semantics/.
 - [ ] `make check` green; reviewers approve.
 

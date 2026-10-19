@@ -25,7 +25,7 @@ Also the same last-digit rule (gap triage 2026-10-19): ironcalc-calc/STATISTICAL
 Sheet1!C2 `CORREL(A2:A13,B2:B13)`: Excel (Mac cache, web agrees) -0.13574278487946612, ours -0.1357427848794661.
 
 ## Acceptance criteria
-- [ ] Those cells pass and leave eval/baseline/probes.txt.
+- [ ] Those cells and ironcalc-calc CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx C2 pass and leave eval/baseline (probes.txt, ironcalc-calc.txt).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
