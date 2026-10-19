@@ -860,7 +860,10 @@ Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
 pass (`MAX_SEEN_RANGES`); a formula that reads more is `#VALUE!` ("Too many distinct ranges read").
 A function walking a whole column or row (and a lookup down a column, or a SUMIFS-shaped criteria
-range) visits only the used area and records the rest as one rectangle read empty, and every area of
+range) visits only the used area and records the rest as one rectangle read empty, as does an
+aggregate walking an explicit block that reaches at least 1,024 cells past the used area, while the
+budget has room (a shorter block, or one met once the budget is short, is walked and recorded cell by
+cell, which is uncapped, so blocks alone never make a formula `#VALUE!`; T-0405), and every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
 for an element (read over its existing cells only, since the whole call is `#CALC!` whatever they hold,
 arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range"; T-1769); which every spill commit of the pass is checked
