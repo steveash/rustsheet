@@ -1,0 +1,6 @@
+# T-1941 W4 K1 candidate lat1: AN2 + near-null lattice move (BKZ basis, basin hopping on P1), every op fl53(fl64). Coefficients ASCENDING.
+# Move from AN2 (ulps): N2 +1 N3 -2 N4 -4 N5 +5 N6 +23 N7 -52 D3 +2 D4 -5 D5 +3 D6 -2 D7 +5; function change 0.035 G-ulp.
+# Exact AN2 -> lat1: P1 0.6244->0.6366 (606k), held out: y1xx 0.6741->0.6838 (258k), r7xx 0.5221->0.5652, e10 0.6471->0.6638 (594k), q502 0.7036->0.7025.
+# Coordinator check (g_check.py, all 2,268,128 formula-filtered GAMMA rows on [1,2)): AN2 0.7345 -> lat1 0.7272 overall (worse). By tenth AN2/lat1: 1.0 .933/.899, 1.1 .824/.833, 1.2 .797/.808, 1.3 .716/.730, 1.4 .712/.729, 1.5 .707/.726, 1.6 .690/.686, 1.7 .752/.745, 1.8 .388/.435, 1.9 .787/.641.
+N 0x1.b5834abbea656p+15 0x1.514773450ce43p+14 0x1.664795a0ef29ep+13 0x1.36c636bfb0a83p+11 0x1.5ff5a1f0e6903p+9 0x1.b983b93295d62p+6 0x1.c11d5cf1c98f3p+3 0x1.4aa356fe82250p+1
+D -0x1.0000000000000p-4 0x1.b584ae6185b27p+15 0x1.a52694226b400p+15 -0x1.8fd072611474bp+13 -0x1.d079cbb8db193p+12 0x1.811c89b66f5dap+11 -0x1.9f2c6b221ba46p+8 0x1.3f2e03e3bc121p+4
