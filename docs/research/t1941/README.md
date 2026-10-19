@@ -284,3 +284,16 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
     1.5-25% of the time, and Excel's LN model holds for C and G at 100%. Neither grid_a extended down (0-12%) nor
     ss_fc extended up (15% at 1.52, then 0%) covers it. So (1.5,2] is its own kernel or composition, still open.
   - Recorded in docs/excel-semantics/statistics.md, "GAMMA, GAMMALN and LN kernels (T-1941)".
+- **W-A (W2), K2:**
+  - Positive controls pass: the plateau reader recovers planted bits exactly, and the joint phase+function solve
+    works with a full 28-tier unwrap (an earlier "phase/function conflict" was coarse tiers, retracted).
+  - grid_a already carries Excel's staircase: its late wide-window plateau bits are Excel's. The function error
+    (±0.3 ulp smooth) lived in the early, unchopped coefficients.
+  - **efC** (`w2/efC.txt`) keeps grid_a's late coefficients and refits the early ones to Excel's function plus ladder
+    rows.
+    - Excel - sim is flat at the noise floor across (2.005,3], with ladder phases intact.
+    - The coordinator measures 35.25% exact on 1,153,539 points (grid_a 77.3%): the early stage values are not
+      ulp-exact yet.
+    - In progress: early-stage anchor phases in the remaining function+ladder null space, with a positive control.
+  - The (2,2.005) outlier is the known xlsx misparse at x = 2.0000661560063. Without it, grid_a is 99.5% exact for
+    x - 2 < 1e-6.
