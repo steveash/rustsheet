@@ -3,7 +3,7 @@ id: T-0907
 title: "Engineering: IM* complex-function last-digit precision (COMPLEXs.xlsx)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -29,10 +29,19 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/a2e51f48717af2a1 Calc!A24 `=IMSECH("3+4i")`: Excel "-0.065294027857947+0.0752249603027732i", engine "-0.0652940278579471+0.0752249603027732i".
 
 ## Acceptance criteria
-- [ ] COMPLEXs.xlsx baseline lines in eval/baseline/ironcalc-calc.txt drop with no new F lines;
+- [x] COMPLEXs.xlsx baseline lines in eval/baseline/ironcalc-calc.txt drop with no new F lines;
       record how many remain and why.
-- [ ] Findings in docs/excel-semantics/engineering.md.
-- [ ] `make check` green; reviewers approve.
+- [x] Findings in docs/excel-semantics/engineering.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 CONVERT (T-0922), BESSEL (T-0900), trig/hyperbolic (T-0915, T-0917).
+
+## Outcome
+IMTAN now uses the double-angle form `(sin 2x + i sinh 2y)/(cos 2x + cosh 2y)` and IMCOT its
+reciprocal (fit over every row of COMPLEXs.xlsx; docs/excel-semantics/engineering.md "IMTAN and
+IMCOT use the double-angle form"). COMPLEXs.xlsx: 920 -> 939 of 958 cells. The 19 that remain are
+1-2 ulp or 15th-digit differences in IMABS, IMARGUMENT, IMCSC, IMSEC, IMSECH, IMCOS, IMLOG2 and one
+IMCOT cell. No candidate formula reproduced them (they come from Macintosh Excel, whose libm digits
+are known to differ from Excel for the web's), so they are recorded and left. The gen-m9 IMSECH cell
+is not changed.

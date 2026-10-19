@@ -129,8 +129,24 @@ fn fn_imcot() {
 
     assert_eq!(
         model._get_text("A1"),
-        "0.0049011823943045-0.999266927805902i"
+        // Excel: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx T25, U25 (T-0907).
+        "0.00490118239430447-0.999266927805902i"
     );
+}
+
+// Past `cosh 2y`'s range IMTAN is `±0 ± i` and IMCOT `±0 ∓ i`, as tanh gives (T-0907).
+#[test]
+fn fn_imtan_imcot_large_imaginary_part() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMTAN("1+400i")"#);
+    model._set("A2", r#"=IMTAN("1-400i")"#);
+    model._set("A3", r#"=IMCOT("1+400i")"#);
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "i");
+    assert_eq!(model._get_text("A2"), "-i");
+    assert_eq!(model._get_text("A3"), "-i");
 }
 
 #[cfg_attr(target_os = "windows", ignore)]
@@ -143,7 +159,8 @@ fn fn_imtan() {
 
     assert_eq!(
         model._get_text("A1"),
-        "0.00490825806749608+1.00070953606723i"
+        // Excel: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx N25, O25 (T-0907).
+        "0.00490825806749606+1.00070953606723i"
     );
 }
 

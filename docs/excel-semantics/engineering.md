@@ -287,6 +287,26 @@ Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1
 Status: VERIFIED (excel-graph), except the bullets marked UNVERIFIED (T-1950)
 Tasks: T-1766, T-1892
 
+## IMTAN and IMCOT use the double-angle form (T-0907)
+Rule: IMTAN computes tan(x+iy) as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)`, and IMCOT is the
+reciprocal of that value, `conj(t)/|t|²`; the tan/tanh product form loses the last 1-10 digits
+where the real part is small (`IMTAN("1.23+9.5121i")` real part 6.89106871662165E-09, the product
+form 6.89106877738345E-09; `IMCOT("7-12.6i")` real part 2.25273756035673E-11). A fit over every
+row of the workbook: the double-angle IMTAN matches all of them, the reciprocal IMCOT all but one
+(T14, last digit; Smith's division misses T7 too), while `sin z / cos z` and `cos z / sin z` miss
+most. IMCOT of a real number keeps `1/tan x` (`IMCOT("1E-20")` = 1E+20, where the double-angle
+denominator is 0).
+Remaining after T-0907 (19 cells of COMPLEXs.xlsx, all 1-2 ulps or the 15th digit): IMABS (G7,
+G8, G14, G23; neither `sqrt(x²+y²)` nor `hypot`), IMARGUMENT (H2, H3, H10, H14, H23; neither
+`atan2` nor `atan(y/x)` ± π for all of them), IMCSC (V4, W4, W7, V15, W21), IMSEC (Z25), IMSECH
+(AB7), IMCOS (K25), IMLOG2 (AH19) and IMCOT T14. The workbook's values come from Macintosh Excel,
+and the oracle calibration found IMARGUMENT differing by ulps between Excel for the web and desktop
+(docs/architecture/oracle.md), so these may be platform libm digits.
+Evidence: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx (Excel-cached, Microsoft Macintosh Excel) N, O,
+T, U columns.
+Status: VERIFIED (desktop cached values)
+Tasks: T-0907
+
 ## Base conversions read a blank cell and empty text as 0
 Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank cell, `""` and a ref to `=""` as 0: `BIN2DEC("")`, `OCT2DEC(blank)`, `HEX2DEC("")` are 0; the others give "0", or "0000" with `places` 4. None of these is an error.
 Evidence: probes/eng-base-conv-blank (excel-graph, 2026-10-18, T-1413); gen-m9/d244411dd90f7fbd A15.
