@@ -3,7 +3,7 @@ id: T-0405
 title: "Bound range walks: cached sheet dimensions and a cell-visit budget for 3-D spans"
 milestone: M3
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
