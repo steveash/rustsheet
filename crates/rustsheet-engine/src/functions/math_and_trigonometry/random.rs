@@ -1,6 +1,6 @@
-use crate::cast::NumberOrArray;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lift::{number_result, value_error, LiftCost, LiftOptions};
 use crate::limits::check_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -74,31 +74,36 @@ impl Model {
             .any(|v| matches!(v, CalcResult::Array(_)))
         {
             // Excel reads the top first: when both bounds are errors the top's wins, per element
-            // (probes/randbetween-bound-errors A6:A20), so the operands go in as [top, bottom].
-            let operands = [second, first]
+            // (probes/randbetween-bound-errors A6:A20), so the bounds go in as [top, bottom]. A
+            // scalar bound is read as it is alone, and its error is every element's.
+            let bounds = [second, first]
                 .into_iter()
                 .map(|v| match v {
-                    CalcResult::Array(rows) => self.number_or_array(
-                        CalcResult::Array(
-                            rows.into_iter()
-                                .map(|row| {
-                                    row.into_iter()
-                                        .map(|node| match node {
-                                            ArrayNode::Boolean(_) => ArrayNode::Error(Error::VALUE),
-                                            other => other,
-                                        })
-                                        .collect()
-                                })
-                                .collect(),
-                        ),
-                        cell,
-                    ),
-                    scalar => range_error(self, scalar).map(NumberOrArray::Number),
+                    array @ CalcResult::Array(_) => array,
+                    scalar => range_error(self, scalar).map_or_else(|e| e, CalcResult::Number),
                 })
                 .collect();
-            return self.lift_number_operands(operands, cell, "Invalid arguments", |[t, b]| {
-                randbetween_draw(b, t)
-            });
+            return self.lift_values(
+                bounds,
+                LiftCost::Unit,
+                &LiftOptions::EVERY_ELEMENT,
+                cell,
+                &mut |model, values| {
+                    let mut bounds = [0.0; 2];
+                    for (slot, value) in bounds.iter_mut().zip(values) {
+                        let bound = match value {
+                            CalcResult::Boolean(_) => Err(value_error(cell)),
+                            other => model.kernel_number(other, cell),
+                        };
+                        match bound {
+                            Ok(bound) => *slot = bound,
+                            Err(error) => return error,
+                        }
+                    }
+                    let [top, bottom] = bounds;
+                    number_result(randbetween_draw(bottom, top), cell)
+                },
+            );
         }
         let top = match range_error(self, second) {
             Ok(f) => f,

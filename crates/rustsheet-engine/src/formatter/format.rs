@@ -6,6 +6,7 @@ use std::collections::BTreeSet;
 pub(crate) use super::parse_formatted::{parse_formatted_number, parse_typed_number};
 use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
+    locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     parser::{GeneralPart, ParsePart, Parser, TextToken},
 };
 
@@ -209,6 +210,10 @@ const MAX_TEXT_FORMAT_CHARS: usize = 255;
 /// `bbbb` (probes/text-format-bare-literals A41-A46; gen-m7/6db767d720c5b55a A30).
 const BUDDHIST_ERA_OFFSET: i32 = 543;
 
+/// The Korean calendar (locale tag calendar digit 5) counts from 2333 BC: `[$-50409]yyyy` of 45000
+/// is "4356" (probes/text-locale-calendars A44-A46).
+const KOREAN_ERA_OFFSET: i32 = 2333;
+
 const TEXT_TOO_LONG: &str = "TEXT result over 255 characters";
 
 /// A `#VALUE!` result, with `message` saying why.
@@ -383,6 +388,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let ymd = excel_serial_to_ymd(serial_1900);
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
+            // Under a Japanese locale tag `yy` and `yyyy` after a `g` print the era year: the
+            // Japanese one in its own calendar (`[$-411]yy|g|yy` is "23|R|05"), the whole Gregorian
+            // year in the others (probes/text-locale-japanese-year A1-A13).
+            let mut seen_era = false;
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -492,16 +501,70 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
-                        let year = match token {
-                            TextToken::BuddhistYearShort | TextToken::BuddhistYear => {
+                        let buddhist = matches!(
+                            token,
+                            TextToken::BuddhistYearShort | TextToken::BuddhistYear
+                        );
+                        let short =
+                            matches!(token, TextToken::YearShort | TextToken::BuddhistYearShort);
+                        // Excel: `b` is the Buddhist year with no locale tag and the Gregorian one
+                        // under a tag but in the Thai calendar (`[$-40C]bbbb` is "2023",
+                        // `[$-7041E]bbbb` "2566"); `yy` and `yyyy` count in the tag's calendar
+                        // (probes/text-locale-calendars, text-locale-calendars-detail A2, A14-A23).
+                        let year = match (p.calendar, buddhist) {
+                            (Some(Calendar::Japanese { explicit }), false)
+                                if explicit || seen_era =>
+                            {
+                                let era_year = japanese_era_year(serial_1900, ymd_year);
+                                text = format!("{text}{era_year:02}");
+                                continue;
+                            }
+                            // After a `g` a Japanese LCID's other calendars print the whole
+                            // Gregorian year (`[$-10411]g|yy` is "|2023", `[$-70411]g|yyyy`
+                            // "|2023"); other LCIDs are unaffected (`[$-70409]g|yyyy` is "|2566";
+                            // probes/text-locale-japanese-year A13, text-locale-era-gregorian).
+                            (Some(_), false) if seen_era && p.japanese_lcid => {
+                                text = format!("{text}{ymd_year}");
+                                continue;
+                            }
+                            (None, true) | (Some(Calendar::Thai), _) => {
                                 ymd_year + BUDDHIST_ERA_OFFSET
                             }
+                            (Some(Calendar::Korean), false) => ymd_year + KOREAN_ERA_OFFSET,
                             _ => ymd_year,
                         };
-                        if matches!(token, TextToken::YearShort | TextToken::BuddhistYearShort) {
+                        // The Taiwan calendar's `yy` is four digits (probes/text-locale-japanese-year
+                        // A15).
+                        let two_digits =
+                            short && (buddhist || p.calendar != Some(Calendar::Taiwan));
+                        if two_digits {
                             text = format!("{text}{:02}", year % 100);
                         } else {
                             text = format!("{text}{year}");
+                        }
+                    }
+                    TextToken::EraYear(padded) => {
+                        if !date_valid {
+                            return invalid_date(value);
+                        }
+                        if let Some(Calendar::Japanese { .. }) = p.calendar {
+                            let era_year = japanese_era_year(serial_1900, ymd_year);
+                            if *padded {
+                                text = format!("{text}{era_year:02}");
+                            } else {
+                                text = format!("{text}{era_year}");
+                            }
+                        } else {
+                            text = format!("{text}{ymd_year}");
+                        }
+                    }
+                    TextToken::Era(length) => {
+                        if !date_valid {
+                            return invalid_date(value);
+                        }
+                        seen_era = true;
+                        if let Some(Calendar::Japanese { .. }) = p.calendar {
+                            text.push_str(japanese_era_name(serial_1900, *length));
                         }
                     }
                     TextToken::Hour => {
@@ -539,7 +602,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     // probes/text-locale-name-tables A547-A554, probes/text-locale-am-neutral).
                     TextToken::AMPM | TextToken::AP(..) => {
                         let morning = hours < 12.0;
-                        match (p.names, token) {
+                        match (p.day_half, token) {
                             (Some(n), _) => text.push_str(if morning { n.am } else { n.pm }),
                             (None, TextToken::AP(am, pm)) => {
                                 text.push(if morning { *am } else { *pm });
@@ -820,6 +883,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     TextToken::MonthLetter => {}
                     TextToken::YearShort => {}
                     TextToken::Year => {}
+                    TextToken::EraYear(_) => {}
+                    TextToken::Era(_) => {}
                     TextToken::BuddhistYearShort => {}
                     TextToken::BuddhistYear => {}
                     TextToken::Hour => {}

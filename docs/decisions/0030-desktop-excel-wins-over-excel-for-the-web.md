@@ -40,6 +40,8 @@
      AppVersion is 16.x (the Microsoft 365 / 2016+ line).
      *Amended by decision 0039: in Phases 1–3 a conflict that needs new desktop evidence matches
      the web value; desktop evidence already in the repo that cells pass against stays.*
+     *Refined by decision 0073: in a suite with `use_cached_values = false` a cached value never
+     replaces a web number; its caches are not desktop evidence.*
   2. **Desktop evidence counts only for what it is.** Cached values from a workbook saved under a
      non-en-US locale are not evidence for locale-dependent behavior: date or number text, list
      separators, month and day names. There the en-US web oracle wins. An older desktop build

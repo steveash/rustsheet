@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "MATCH of empty text, alone and lifted over blank&\"\" arrays, with an omitted match_type (the CSE dedup idiom of corpus-bench 530-28; T-1861).",
+ "tags": [
+  "M2",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "B1": "a",
+    "B3": "b",
+    "D1": "=MATCH(\"\",{\"\";\"\"},0)",
+    "D2": "=ROWS(MATCH({\"a\";\"\"},{\"\";\"a\"},))",
+    "D3": "=INDEX(MATCH({\"a\";\"\"},{\"\";\"a\"},),2)",
+    "D4": "=ROWS(MATCH(A1:A3&\"\",A1:A3&\"\",))",
+    "D5": "=SUM(MATCH(A1:A3&\"\",A1:A3&\"\",))",
+    "D6": "=INDEX(MATCH(B1:B4&\"\",B1:B4&\"\",),2)",
+    "D7": "=INDEX(MATCH(B1:B4&\"\",B1:B4&\"\",),4)",
+    "D8": "=SUM(--(MATCH(B1:B4&\"\",B1:B4&\"\",)=ROW(1:4)))",
+    "D9": "=MATCH(\"\",A1:A3,0)",
+    "D10": "=MATCH(\"\",A1:A3&\"\",0)",
+    "D11": "=MATCH(A1,A1:A3&\"\",0)",
+    "D12": "=MATCH(\"\",{\"\";\"\"},)",
+    "D13": "=MATCH(\"\",{\"\";\"\"})"
+   }
+  }
+ ],
+ "expected": {}
+}

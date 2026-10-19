@@ -44,3 +44,5 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 -
+
+More evidence (T-1824, probes/textsplit-lift-guesses): A53 `REGEXEXTRACT({"a1b2";"c3d4"},"([a-z])([0-9])",2)` is "a","c" in Excel (ours "a1","c3"); A55 `REGEXEXTRACT("a1B2","b",0,{0;1})` is `#N/A` (ours `#ERROR!`, the fourth argument).

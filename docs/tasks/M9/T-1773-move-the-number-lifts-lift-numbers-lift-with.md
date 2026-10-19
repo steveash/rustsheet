@@ -3,7 +3,7 @@ id: T-1773
 title: "Move the math number lifts (single_number_fn!, ROUND family, MOD, CEILING/FLOOR, lift_with_defaults) onto the SPEC-0011 driver"
 milestone: M9
 lane: quality
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -37,3 +37,34 @@ Spec: docs/specs/SPEC-0011-scalar-argument-lifting.md, "Today's lifting code" an
 
 ## Out of scope
 - The date and time parts, DATE, DATEDIF, MUNIT, MROUND and SQRTPI (T-1785). The operators' `broadcast_arrays` and `apply_unary_chain`.
+
+## Outcome
+- The 32 `single_number_fn!` functions are `LIFT_1` entries over one kernel helper,
+  `Model::number_fn` (mathematical.rs); `functions/macros.rs` is deleted. The ROUND family, MOD,
+  CEILING/FLOOR and the four `lift_with_defaults` callers are `LIFT_2`, `LIFT_1_OF_2` and
+  `LIFT_1_OF_3` entries over `Model::numbers_fn`; `lift_with_defaults` is gone. CEILING/FLOOR moved
+  to math_and_trigonometry/ceiling_floor.rs (file size). Their static-analysis fallback arms are
+  gone (the table derives the same signatures and shapes). Kernel errors carry no message.
+- Per-row overhead: the driver's read phase is now one function per argument
+  (`read_lift_arg_with`), and `lift_call_with` reads one- and two-argument calls into locals
+  instead of an `ArgBuf` (building, moving and dropping its 8 slots was about 60% of the extra
+  ~100 ns per call the first cut measured).
+- Eval: 0 fixes, 0 regressions in every suite. Duplication 3903 -> 3863 (`--update`).
+- After the merge of main: FACT names its fixed cap in the kernel-work check (T-1893's list had it
+  as `Weighted`-or-cap; `descending_product` overflows within 170 factors, like FACTDOUBLE), the
+  `lifting_table_functions!` pattern moved to lift/table_functions.rs (kinds.rs past 1000 lines),
+  and eval/catalog/lift-kinds.json is regenerated (`rustsheet-eval lift-kinds --write`).
+- Bench `crates/rustsheet/benches/math_lift.rs`, release, one case per process, min of 11 runs,
+  best of several alternating main/branch processes on the same (noisy, 4-core) machine:
+
+  | case | main | branch |
+  |---|---|---|
+  | ROUND, per row (100k) | 154.9 ms | 161.8 ms (+4.5%) |
+  | ABS, per row (100k) | 42.3 ms | 44.2 ms (+4.5%) |
+  | MOD, per row (100k) | 50.0 ms | 46.6 ms |
+  | SUM(ROUND(A1:A1000000,2)) | 1.90 s | 1.09 s |
+  | SUM(ABS(A1:A1000000)) | 435 ms | 381 ms |
+  | SUM(IFERROR(ROUND(A1:A1000000&"x",2),0)) | 3.21 s | 3.01 s |
+- Review: a LAMBDA argument read `#N/IMPL!` on the driver where main read `#VALUE!`;
+  `kernel_number` maps it to `#VALUE!` again (test `a_lambda_number_argument_is_value_error`).
+  Follow-up probes: T-1919 (LAMBDA), T-1920 (CEILING/FLOOR past the double range).

@@ -2,11 +2,16 @@
 //! formula reads whole: the rules behind the automatic `@`s of `add_implicit_intersection` and
 //! their mirror in `remove_redundant_implicit_intersection`. Excel:
 //! docs/excel-semantics/references.md "Legacy formulas intersect the ranges in value arguments".
+//!
+//! The same walk places the legacy N/T marker ([`mark_legacy_reading`], SPEC-0012), so
+//! the value-position flag `arrays` ([`legacy_array_context`], [`returns_an_argument`]) decides
+//! evaluation results as well as where an `@` goes: a change to it needs a probe's legacy values,
+//! not only its FORMULATEXT (SPEC-0012 "Placement", item 4).
 
 use super::lifted::lifts_arrays_at;
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
-    run_static_analysis_on_node, Node, Signature, StaticResult,
+    run_static_analysis_on_node, static_analysis_on_function, Node, Signature, StaticResult,
 };
 use crate::functions::Function;
 
@@ -157,8 +162,8 @@ pub(super) fn remove_array_at(
 /// `=N(@IFERROR({2;3},0))`; probes/legacy-array-result, legacy-n-t-reference-args D, T-1713).
 /// Not the arguments of IF, IFERROR, IFNA, CHOOSE (but its index, [`is_choose_index`]), IFS or
 /// SWITCH, whose result is one of them: `=@IF(1,{2;3})` and `=@IF(1,N(IF(1,{2;3})))` take the
-/// `@` on the call (probes/legacy-array-result D, legacy-n-t-reference-args P); nor N or T over IF
-/// or SWITCH ([`leaves_call_whole`]); nor
+/// `@` on the call (probes/legacy-array-result D, legacy-n-t-reference-args P); nor N or T over IF,
+/// SWITCH or a CHOOSE, INDEX or IFS of array constants ([`leaves_call_whole`]); nor
 /// anything under a vector argument, `=SUM(N({1,2}))` (probes/n-array-lift A3) or LET, LAMBDA.
 pub(super) fn legacy_array_context(
     kind: &Function,
@@ -217,21 +222,149 @@ pub(super) fn legacy_array_call_at(
 /// Whether a legacy formula puts no `@` on the call `arg` of `kind`, a value it would otherwise
 /// intersect: N and T over IF or SWITCH (`=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`,
 /// `=N(SWITCH(1,1,{2;3}))`, the last spilling 2, 3; probes/legacy-array-result A, G, I,
-/// legacy-n-t-reference-args M, T-1713), where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D).
-/// An explicit `@` on the call is looked through, so the export keeps it.
+/// legacy-n-t-reference-args M, T-1713), and over a CHOOSE, INDEX or IFS that returns only array
+/// constants (`=N(CHOOSE(1,{2;3}))`, `=N(INDEX({2;3},0,1))`, `=N(IFS(1,{2;3}))`, A20, B20, L20),
+/// or INDEX of a plain reference ([`is_plain_reference`], T-1908: `=N(INDEX(Z1:Z2,1))`, which is
+/// read as a reference and not marked), where IFERROR gets one (`=N(@IFERROR({2;3},0))`, D). An
+/// explicit `@` on the call is looked through, so the export keeps it.
 pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
     let call = match arg {
         Node::ImplicitIntersection { child, .. } => child.as_ref(),
         other => other,
     };
     kind.is_n_or_t()
-        && matches!(
-            call,
+        && match call {
             Node::FunctionKind {
                 kind: Function::If | Function::Switch,
                 ..
-            }
+            } => true,
+            // INDEX of a reference keeps its indices' own `@`: `=N(INDEX(Z1:Z2,@W1:W2))`
+            // (probes/legacy-n-t-reference-args-2 L20, M20, T-1908).
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } if args.first().is_some_and(is_plain_reference) => true,
+            Node::FunctionKind { kind, args } => returns_array_constants(kind, args),
+            _ => false,
+        }
+}
+
+/// Whether `kind(args)` is a CHOOSE, INDEX or IFS whose every argument it can return
+/// ([`is_returned_argument`]) is an array constant: the one shape of them probed under N and T
+/// (probes/legacy-n-t-reference-args A, B, K, L). Over a reference they read the reference,
+/// unmarked (T-1908); a CHOOSE mixing references and array constants is
+/// [`chooses_between_references_and_array_constants`]; other mixed arms keep their `@`.
+fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
+    let mut returned = args
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| is_returned_argument(kind, *index))
+        .peekable();
+    (matches!(kind, Function::Choose | Function::Index | Function::Ifs)
+        && returned.peek().is_some()
+        && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_))))
+        || chooses_between_references_and_array_constants(kind, args)
+}
+
+/// Whether `kind(args)` is a CHOOSE with a number or boolean literal index whose values are
+/// plain references and array constants, at least one of each kind and no one-element array
+/// (unprobed, it keeps its `@`): Excel shows no `@` on the call
+/// and N or T read the arm the index picks, a reference as its top-left cell and an array constant
+/// as `#VALUE!` (`=N(CHOOSE(1,Z1,{2;3}))` is 7, `=N(CHOOSE(2,Z1,{2;3}))` and
+/// `=N(CHOOSE(1,{2;3},Z1))` are `#VALUE!`, `=N(CHOOSE(1,Z1:Z2,{2;3}))` is 7:
+/// probes/legacy-n-t-choose-index-shapes L, O, P, Q, R, T-1918).
+fn chooses_between_references_and_array_constants(kind: &Function, args: &[Node]) -> bool {
+    let [index, arms @ ..] = args else {
+        return false;
+    };
+    matches!(kind, Function::Choose)
+        && matches!(index, Node::NumberKind(_) | Node::BooleanKind(_))
+        && arms
+            .iter()
+            .any(|arm| matches!(arm, Node::ArrayKind(_)) && !is_one_element_array(arm))
+        && arms
+            .iter()
+            .any(|arm| !matches!(arm, Node::ArrayKind(_)) && is_plain_reference(arm))
+        && arms
+            .iter()
+            .all(|arm| matches!(arm, Node::ArrayKind(_)) || is_plain_reference(arm))
+}
+
+/// Whether argument `index` of `kind` is one its result can be, as it is or as a part of it: the
+/// arms of IF, the values of CHOOSE and IFS, and INDEX's `array`.
+fn is_returned_argument(kind: &Function, index: usize) -> bool {
+    match kind {
+        Function::If | Function::Choose => index > 0,
+        Function::Ifs => index % 2 == 1,
+        Function::Index => index == 0,
+        _ => false,
+    }
+}
+
+/// Marks the N or T call `kind(args)`, in a value position of a legacy cell and its arguments
+/// already rewritten, as one that reads an array argument as `#VALUE!` (the marker of SPEC-0012,
+/// rule 2). Its argument must be a bare IF (no `@`, no parentheses), or a CHOOSE, INDEX or IFS
+/// that returns only array constants ([`returns_array_constants`]), and not statically a scalar.
+/// `=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`, `=N(CHOOSE(1,{2;3}))`,
+/// `=N(CHOOSE({1;2},{2;3},{4;5}))` (no `@` on the index either), `=N(INDEX({2,3;4,5},1))`,
+/// `=N(IF(1,{2;3}+0))`, `=N(IF(1,{2;3},Z1))`, `=ABS(N(IF(1,{2;3})))` and
+/// `=LEN(N(IF(1,{2;3})))` are `#VALUE!` in a legacy cell, while `=N(SWITCH(1,1,{2;3}))` spills,
+/// `=N(@IFERROR({2;3},0))` is 2 and `=N(INDEX({2},1,1))` 2 (probes/legacy-n-t-reference-args,
+/// legacy-n-t-marker-shapes, legacy-array-result A, G, I, n-array-lift D4; T-1713). A scalar IF
+/// reads the same either way, so `=N(IF(A1,1,2))` gets no marker and its export does not change,
+/// nor does one the rewrite made scalar, `=N(IF(@W1:W2,Z1,Z2))` (legacy-n-t-reference-args-2 H).
+///
+/// The decision runs on the rewritten argument, looking through the automatic `@` that
+/// [`shows_scalar_array_at`] put on a one-element array constant the argument returns, and the
+/// marked call drops it: Excel shows `=N(IF(1,{2}))`, `=T(IF(1,{"a"}))`, `=N(CHOOSE(1,{2}))` and
+/// `=N(IFS(1,{2}))` with none, all `#VALUE!` (legacy-n-t-reference-args N, legacy-n-t-marker-shapes
+/// A-D; SPEC-0012 "Placement", item 6). Those `@`s are taken off in place and put back if the call
+/// is not marked, so nothing is cloned; the rewrite's own display text has none, so the decision is
+/// the same on it.
+pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
+    let [Node::FunctionKind {
+        kind: call,
+        args: call_args,
+    }] = args
+    else {
+        return;
+    };
+    if !kind.is_n_or_t()
+        || !matches!(
+            call,
+            Function::If | Function::Choose | Function::Index | Function::Ifs
         )
+    {
+        return;
+    }
+    let mut dropped = Vec::new();
+    for (index, returned) in call_args.iter_mut().enumerate() {
+        if let Node::ImplicitIntersection {
+            automatic: true,
+            child,
+        } = returned
+        {
+            if is_returned_argument(call, index) && is_one_element_array(child) {
+                *returned = std::mem::replace(child.as_mut(), Node::EmptyArgKind);
+                dropped.push(index);
+            }
+        }
+    }
+    let marked = (matches!(call, Function::If) || returns_array_constants(call, call_args))
+        && !matches!(
+            static_analysis_on_function(call, call_args),
+            StaticResult::Scalar
+        );
+    if marked {
+        *kind = kind.legacy_reading();
+    } else {
+        for index in dropped {
+            if let Some(returned) = call_args.get_mut(index) {
+                let constant = std::mem::replace(returned, Node::EmptyArgKind);
+                *returned = Node::automatic_at(constant);
+            }
+        }
+    }
 }
 
 /// Calls `f` on `node`, or on each operand of the operators, parentheses and signs it is made
@@ -307,8 +440,9 @@ pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
 /// OFFSET of one with number literals for its offsets, or an IF with a number or boolean literal
 /// condition whose arms are such references. A range in a scalar slot (`IF(A1:A2,Z1,Z2)`), an
 /// array constant, an operator or any other call is not (`N(B1:B3*1)` is `#VALUE!` off the
-/// rows: probes/n-array-lift D7); CHOOSE and INDEX over references are unprobed
-/// (docs/excel-semantics/references.md "Legacy N and T over a reference-returning call"). An
+/// rows: probes/n-array-lift D7); CHOOSE with a literal index over such references and INDEX of
+/// one ([`leaves_call_whole`]) are too (probes/legacy-n-t-reference-args-2, T-1908;
+/// docs/excel-semantics/references.md "Legacy N and T over a reference-returning call"). An
 /// explicit stack keeps the walk off the call stack: a formula's tree is untrusted input.
 fn is_plain_reference(node: &Node) -> bool {
     let is_literal = |node: &Node| matches!(node, Node::NumberKind(_) | Node::BooleanKind(_));
@@ -324,6 +458,10 @@ fn is_plain_reference(node: &Node) -> bool {
                 kind: Function::Offset,
                 args,
             } if args.len() > 2 && args[1..].iter().all(is_literal) => pending.push(&args[0]),
+            Node::FunctionKind {
+                kind: Function::Choose,
+                args,
+            } if args.len() > 1 && is_literal(&args[0]) => pending.extend(&args[1..]),
             _ => return false,
         }
     }
@@ -469,8 +607,21 @@ fn legacy_value_operand(kind: &Function, index: usize, arg: &Node) -> bool {
             // arm's range operand rather than on the call (probes/legacy-one-cell-shape-intersection
             // H3, P3, excel-graph, T-1633).
             | Function::Choose
-    ) || lifts_arrays_at(kind, index))
+    ) || lifts_arrays_at(kind, index)
+        || is_lookup_table(kind, index))
         && is_value_operation(arg)
+}
+
+/// Whether `index` is MATCH's `lookup_array` or the table of VLOOKUP or HLOOKUP, which a legacy
+/// formula reads as a value when it is an operation: `=MATCH(1,(A1:A6="b")*(B1:B6=2),0)` shows
+/// as `=MATCH(1,(@A1:A6="b")*(@B1:B6=2),0)` and is `#VALUE!` off the ranges' rows, and on them
+/// looks up in one value (probes/legacy-match-lookup-array-intersection, excel-graph, T-1862;
+/// corpus-bench/49300). XMATCH's `lookup_array` stays an array.
+fn is_lookup_table(kind: &Function, index: usize) -> bool {
+    matches!(
+        kind,
+        Function::Match | Function::Vlookup | Function::Hlookup
+    ) && index == 1
 }
 
 /// Whether `node` is arithmetic, concatenation or a comparison, possibly in parentheses:
@@ -507,4 +658,77 @@ pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool 
                     args: arms,
                 }) if arms.len() > 1 && arms[1..].iter().all(is_value_operation)
             )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::mark_legacy_reading;
+    use crate::expressions::parser::stringify::to_rc_format;
+    use crate::expressions::parser::{new_parser_english, Node};
+    use crate::expressions::types::CellReferenceRC;
+    use crate::functions::Function;
+
+    /// `formula` parsed in Sheet1!A1, with the automatic `@` the rewrite puts on a one-element
+    /// array constant wrapped around argument `arm` of the call that is N's argument.
+    fn with_automatic_at(formula: &str, arm: usize) -> Node {
+        let context = CellReferenceRC {
+            sheet: "Sheet1".to_string(),
+            row: 1,
+            column: 1,
+        };
+        let mut parser = new_parser_english(vec!["Sheet1".to_string()], vec![], HashMap::new());
+        let mut node = parser.parse(formula, &context);
+        let Node::FunctionKind { args, .. } = &mut node else {
+            panic!("{formula}");
+        };
+        let Some(Node::FunctionKind {
+            args: call_args, ..
+        }) = args.first_mut()
+        else {
+            panic!("{formula}");
+        };
+        let constant = std::mem::replace(&mut call_args[arm], Node::EmptyArgKind);
+        call_args[arm] = Node::automatic_at(constant);
+        node
+    }
+
+    /// Runs the marker step on the N call `node`, returning whether it was marked.
+    fn mark(node: &mut Node) -> bool {
+        let Node::FunctionKind { kind, args } = node else {
+            panic!("{node:?}");
+        };
+        mark_legacy_reading(kind, args);
+        *kind == Function::NLegacy
+    }
+
+    // The restore branch: a one-element `@` is taken off to decide, and put back when the call is
+    // not marked. No formula text reaches it, because the rewrite puts the `@` on the call
+    // itself, so the step returns early (`N(@CHOOSE(1,{2},Z1))`). The tree is built by hand.
+    #[test]
+    fn an_unmarked_call_keeps_its_one_element_at() {
+        let mut node = with_automatic_at("N(CHOOSE(1,{2},Z1))", 1);
+        let stored = to_rc_format(&node);
+        assert_eq!(stored, "N(CHOOSE(1,@{2},R[0]C[25]))");
+        assert!(!mark(&mut node));
+        assert_eq!(to_rc_format(&node), stored);
+        assert!(matches!(
+            &node,
+            Node::FunctionKind { args, .. } if matches!(
+                &args[0],
+                Node::FunctionKind { args: arms, .. }
+                    if matches!(arms[1], Node::ImplicitIntersection { automatic: true, .. })
+            )
+        ));
+    }
+
+    // The marked branch drops the `@` for good (`=N(IF(1,{2}))`, probes/legacy-n-t-reference-args
+    // N20).
+    #[test]
+    fn a_marked_call_drops_its_one_element_at() {
+        let mut node = with_automatic_at("N(IF(1,{2}))", 1);
+        assert!(mark(&mut node));
+        assert_eq!(to_rc_format(&node), "_RS_LEGACY_N(IF(1,{2}))");
+    }
 }

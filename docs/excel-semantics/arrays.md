@@ -66,7 +66,7 @@ past the end of a shorter divisor, `MOD(NA(),{1,2})` giving `#N/A` in every elem
 broadcast, text elements cast like a scalar (`"x"` gives `#VALUE!`) and booleans as 1/0.
 Status: VERIFIED
 Tasks: T-1119
-Implemented in: `Model::lift_numbers` (DATE uses it too) (crates/rustsheet-engine/src/cast.rs), used by `fn_mod`.
+Implemented in: `Model::numbers_fn` (functions/math_and_trigonometry/mathematical.rs) over the SPEC-0011 driver (functions/lift/), used by `fn_mod` (T-1773).
 
 ## NOT and CONCATENATE lift over array arguments
 Rule: `NOT(array)` and `CONCATENATE(array, …)` return an array, one result per element, like the
@@ -170,19 +170,19 @@ Tasks: T-0129, T-0994, T-1022, T-1056
 ## CEILING/FLOOR family and MROUND lift over arrays
 Rule: ISO.CEILING, CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH, FLOOR.PRECISE and MROUND lift element-wise over an array or multi-cell range in every argument, except MROUND (below). An error in `number` still broadcasts over an array in another argument (`CEILING.MATH(<error>,sig,{9x1 mode})` is a 9x1 array, `#SPILL!` where it cannot spill).
 Evidence: gen-m7/e5a361112d83d0c3 Calc!A9 (ISO.CEILING, excel-graph 2026-10-11); gen-m9/89693ab0cafc29df Calc!A14 (CEILING.MATH, excel-graph 2026-10-12); probes/ceiling-floor-mround-array-lift A1:A18 (CEILING, FLOOR, CEILING.PRECISE, FLOOR.PRECISE, FLOOR.MATH, CEILING.MATH and MROUND with an array in each argument; excel-graph 2026-10-15, T-1589). The family reads a boolean element as 1/0 (`CEILING({TRUE,2},1)` spills `1, 2`, `FLOOR(5,{TRUE,2})` spills `5, 4`, A15:A18).
-MROUND keeps its scalar rules per element: a boolean element or cell is `#VALUE!`, not 1/0 (`MROUND({TRUE,2.6},1)` spills `#VALUE!, 3`, `MROUND(1,{TRUE,2})` spills `#VALUE!, 2`, `MROUND(INDIRECT("K1"),1)` and `MROUND(TRUE,1)` are `#VALUE!`; A19:A25). MROUND judges its two arguments left to right: an error, a missing argument (`#N/A`) or a boolean (`#VALUE!`) in `number` wins over whatever `multiple` holds, so `MROUND(TRUE,)` is `#VALUE!` but `MROUND(,TRUE)` is `#N/A` (A27:A28), `MROUND(1/0,TRUE)` and `MROUND(1/0,)` are `#DIV/0!`, `MROUND(,1/0)` is `#N/A`, `MROUND(TRUE,1/0)` is `#VALUE!`, `MROUND("x",)` is `#VALUE!` but `MROUND(,"x")` is `#N/A` (A23, A27:A42); an error in `number` still broadcasts over an array `multiple` (`MROUND(1/0,{TRUE,2})` spills `#DIV/0!, #DIV/0!`, A22). MROUND is an Analysis ToolPak function and does not lift over a multi-cell range in either argument: `MROUND(M1:N1,1)`, `MROUND(1,M1:N1)`, `MROUND(M1:M3,1)` and `MROUND(M1:N1,M1:N1)` over plain numbers are one `#VALUE!` with no spill (`COLUMNS(MROUND(M1:N1,1))` is `#VALUE!`, A43:A49, A55), while an array constant lifts (`COLUMNS(MROUND({1.2,2.6},1))` is 2, A50) and so do CEILING and FLOOR.MATH over the same range (A51:A52, A30:A31); same rule as ISEVEN (information.md). Unprobed: an error argument next to a multi-cell range. `MROUND("3",)` is `#N/A` and `MROUND("3",2)` is 4 (A53:A54). The scalar rule "every missing argument before any boolean" the engine had was wrong for `MROUND(TRUE,)`.
+MROUND keeps its scalar rules per element: a boolean element or cell is `#VALUE!`, not 1/0 (`MROUND({TRUE,2.6},1)` spills `#VALUE!, 3`, `MROUND(1,{TRUE,2})` spills `#VALUE!, 2`, `MROUND(INDIRECT("K1"),1)` and `MROUND(TRUE,1)` are `#VALUE!`; A19:A25). MROUND judges its two arguments left to right: an error, a missing argument (`#N/A`) or a boolean (`#VALUE!`) in `number` wins over whatever `multiple` holds, so `MROUND(TRUE,)` is `#VALUE!` but `MROUND(,TRUE)` is `#N/A` (A27:A28), `MROUND(1/0,TRUE)` and `MROUND(1/0,)` are `#DIV/0!`, `MROUND(,1/0)` is `#N/A`, `MROUND(TRUE,1/0)` is `#VALUE!`, `MROUND("x",)` is `#VALUE!` but `MROUND(,"x")` is `#N/A` (A23, A27:A42); an error in `number` still broadcasts over an array `multiple` (`MROUND(1/0,{TRUE,2})` spills `#DIV/0!, #DIV/0!`, A22). MROUND is an Analysis ToolPak function and does not lift over a multi-cell range in either argument: `MROUND(M1:N1,1)`, `MROUND(1,M1:N1)`, `MROUND(M1:M3,1)` and `MROUND(M1:N1,M1:N1)` over plain numbers are one `#VALUE!` with no spill (`COLUMNS(MROUND(M1:N1,1))` is `#VALUE!`, A43:A49, A55), while an array constant lifts (`COLUMNS(MROUND({1.2,2.6},1))` is 2, A50) and so do CEILING and FLOOR.MATH over the same range (A51:A52, A30:A31); same rule as ISEVEN (information.md). An error argument next to a multi-cell range wins as a scalar: `MROUND(NA(),E1:E3)` is one `#N/A` (`ROWS` of it `#N/A`), and so is a reference a function returns, `MROUND(TAKE(E1:E3,2),1)` being one `#VALUE!` (probes/date-math-lift-driver-edges G14-G15, G19-G20). A scalar boolean, missing argument or non-numeric text next to an array `multiple` or `number` is broadcast, one element per array element (`ROWS(MROUND({5;7},TRUE))`, `ROWS(MROUND(TRUE,{2;3}))`, `ROWS(MROUND({5;7},))`, `ROWS(MROUND(,{2;3}))` and `ROWS(MROUND({5;7},"x"))` are 2, G11-G13, G16-G18), and a referenced cell is judged like a literal (`MROUND(I1,)` with I1 `=1/0` is `#DIV/0!`, with I1 TRUE `#VALUE!`, a blank I3 then TRUE `#VALUE!`, a blank then a missing argument `#N/A`; G44-G47, G51-G52). A 3-D reference is `#VALUE!` (G27), and a legacy `MROUND(E1:E3,2)` takes no `@`: it is `#VALUE!` on the range's rows (K3). A multi-cell range next to an array follows the Analysis ToolPak rule: the array lifts and every element is `#VALUE!` (`ROWS(MROUND(E1:E3,{1;2}))` and `ROWS(MROUND({45000;45001},E1:E2))` are 2, `INDEX(MROUND(E1:E3,{1;2}),1)` is `#VALUE!`), while non-numeric text before a range is one `#VALUE!` (`MROUND("x",E1:E2)`, `ROWS` of it `#VALUE!`), and a one-cell range is its value (`ROWS(MROUND(E1:E1,NA()))` is `#N/A`; N5, N7-N11). `MROUND("3",)` is `#N/A` and `MROUND("3",2)` is 4 (A53:A54). The scalar rule "every missing argument before any boolean" the engine had was wrong for `MROUND(TRUE,)`.
 Status: VERIFIED
-Implemented in: functions/math_and_trigonometry/mathematical.rs (`lift_with_defaults`, `lift_numbers`)
-Tasks: T-1357, T-1589
+Implemented in: functions/math_and_trigonometry/ceiling_floor.rs (`numbers_fn`, the SPEC-0011 driver, T-1773), mathematical.rs (`fn_mround`, a `LiftArrays` table entry whose kernel judges the arguments left to right; T-1785)
+Tasks: T-1357, T-1589, T-1785
 
 ## ROUND, ROUNDUP, ROUNDDOWN and TRUNC lift over arrays
 Rule: `ROUNDDOWN(array, num_digits)` returns an array, element-wise, with either argument an array; an error in either argument broadcasts (`ROUND(A1:B1,1/0)` and `ROUND(1/0,A1:B1)` are `#DIV/0!`).
 Evidence: gen-m2/893302d6c5b99e2e Calc!A313; probes/round-concat-array-lift (excel-graph, 2026-10-05).
 Status: VERIFIED
-Implemented in: functions/math_and_trigonometry/mathematical.rs (`round_family`), cast.rs (`lift_numbers`)
+Implemented in: functions/math_and_trigonometry/mathematical.rs (`round_family` over `numbers_fn`), functions/lift/ (the SPEC-0011 driver; T-1773)
 Tasks: T-0222, T-1400
 
-Non-number elements (probes/round-concat-array-edges A1-A7, excel-graph 2026-10-13, T-1400): the elements are coerced as scalar arguments are. `ROUND({TRUE,"2.5",""},0)` and `ROUNDUP(...)` spill `1, 3, #VALUE!` (also the column form `{TRUE;"2.5";""}`), `ROUNDDOWN(...)` spills `1, 2, #VALUE!` (numeric text is read as a number, a logical as 1, the empty string is `#VALUE!`). `ROUND({"abc"},0)` is `#VALUE!`, and `ROUND({"abc",1.5},0)` spills `#VALUE!, 2` (a bad element is an error in its own cell only). The same coercion applies to num_digits: `ROUND(2.567,{TRUE,"1",""})` spills `2.6, 2.6, #VALUE!`. The engine matches (`lift_numbers`).
+Non-number elements (probes/round-concat-array-edges A1-A7, excel-graph 2026-10-13, T-1400): the elements are coerced as scalar arguments are. `ROUND({TRUE,"2.5",""},0)` and `ROUNDUP(...)` spill `1, 3, #VALUE!` (also the column form `{TRUE;"2.5";""}`), `ROUNDDOWN(...)` spills `1, 2, #VALUE!` (numeric text is read as a number, a logical as 1, the empty string is `#VALUE!`). `ROUND({"abc"},0)` is `#VALUE!`, and `ROUND({"abc",1.5},0)` spills `#VALUE!, 2` (a bad element is an error in its own cell only). The same coercion applies to num_digits: `ROUND(2.567,{TRUE,"1",""})` spills `2.6, 2.6, #VALUE!`. The engine matches (`kernel_number` in functions/lift/mod.rs).
 
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
@@ -196,7 +196,7 @@ Only a dimension past the grid is `#VALUE!` (`SEQUENCE(1048577)`).
 RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 1,048,576 cells
 (one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, an *IF(S)
 criteria grid (broadcast criteria included), a GROUPBY result (groups x columns, checked while grouping, before any
-LAMBDA call; T-1322), the broadcast result of `lift_numbers` (ROUND family, MOD, DATE), a lifted INDEX's broadcast indices (T-1260), the broadcast of a binary operator over two arrays
+LAMBDA call; T-1322), the broadcast result of `lift_numbers` (DATE) and of the SPEC-0011 driver (ROUND family, MOD; functions/lift/driver.rs), a lifted INDEX's broadcast indices (T-1260), the broadcast of a binary operator over two arrays
 (arithmetic, `&` and comparisons: a whole column against a whole row, `=D:D+4:4`, would be 2^34
 cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), the broadcast of IF, IFERROR and IFNA (`=IF(D:D,4:4)`, `=IFERROR(D:D,4:4)`; T-1448), the broadcast of the element-wise text functions (`broadcast_text`: LEFT, RIGHT, MID, FIND, SEARCH, LEN, REPT, EXACT, CONCATENATE, TEXT, CHAR, CODE, BAHTTEXT and the other callers; `=LEFT(A:A,1:1)` would be 2^34 cells and FIND's numbers do not count against the 64 MiB text budget, so `ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` is `#ERROR!`; T-1771), the padded result of HSTACK and VSTACK (rows x summed columns, or summed rows x columns, checked before any argument is padded or copied: `ROWS(HSTACK(A1:A2000,A1:ALL1))` is `#ERROR!`, and `=VSTACK(A:A,1:1)` is `#VALUE!` as one row past the grid, `check_array_size`'s answer, where Excel gives `#NUM!` for rows past the grid and allows columns past it (probes/scalar-lift-open-c; T-1803); T-1780), the padded results of EXPAND, WRAPCOLS and WRAPROWS and the product of MMULT (rows x columns, checked before allocating and, for EXPAND and MMULT, after their own argument checks: `ROWS(EXPAND(1,2000,1000))` and `ROWS(MMULT(A1:A2000,B1#))` with a 1,000-column B1# are `#ERROR!`, and `EXPAND(1,1E9,1E9)` is `#VALUE!` past the grid, `check_array_size`'s answer: Excel's value there is not measured; WRAPCOLS and WRAPROWS first clamp wrap_count to the vector's length, as Excel does, so they pad at most wrap_count - 1 cells; XMATCH builds no result array, only a one-row or one-column search vector; T-1786), the padded result of MAP over arrays of different sizes (largest rows x largest columns, checked before allocating; T-1349), the padded result of TEXTSPLIT (rows x widest row, checked before any row is padded: a 32,767-char text with the column delimiters first and the row delimiters after pads ~2^28 cells, and `ROWS(TEXTSPLIT(REPT(",",1500)&REPT(";",1500),",",";"))`, 1501 x 1501, is `#ERROR!`, where Excel builds the array and gives 1501 for ROWS and for COLUMNS, and 1025 for the 1025 x 1025 text just above 2^20, and 1024 for the 1024 x 1024 text of exactly 2^20 cells (A5, which fits) and 1001 for 1001 x 1001 (A6): probe `textsplit-padded-size` A1:A6; the bound is the cell count only, `check_array_cells`, because Excel builds a row wider than the grid: `COLUMNS(TEXTSPLIT(REPT(",",16384),","))` is 16385 and the 16383-comma text 16384, probe `textsplit-wide` A1:A2, and a 32,001-row split gives 32001, A4; the bare 16,385-column spill is `#SPILL!` in Excel, A6; T-1781), the broadcast of SPEC-0011's lifting driver (`lift_call`: EDATE, EOMONTH, WEEKNUM and YEARFRAC, and LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN, charged numbers + elements, TRIMMEAN numbers × elements, statistics.md, T-1772; checked before any element runs, and the call is also `#ERROR!` when the cells of its lifted arrays and ranges add up past 2^27 (`limits::MAX_LIFTED_CELL_VISITS`, checked before the next range is read) or when its kernel calls, weighted by the table's `KernelWork`, would cost more than that cap; Excel has neither limit; T-1770), and every range lifted into an array (`Model::evaluate_range`: scalar functions
 over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
@@ -312,7 +312,7 @@ Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (ro
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); none of the other lifts above (`#VALUE!` for a
 range, `#N/IMPL!` for an array; `SEQUENCE(A1:A3)` is one row);
 GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; `_xleta.` names work since T-1466, see "Functions passed by name" below); INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
-is `#VALUE!`; a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
+is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)
 Tasks: T-1083 (generator modes)
 
@@ -476,7 +476,7 @@ lifting"). The other families
 listed in SPEC-0011 do not lift yet (`#N/IMPL!` for an array; a range is intersected in a dynamic
 formula). SPEC-0011's rollout tasks fix them.
 Status: VERIFIED (excel-graph)
-Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds.rs),
+Implemented in: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds/),
 `Model::lift_call` and its read phase (functions/lift/call.rs), the broadcast `Model::lift_grids`
 (functions/lift/driver.rs), and the static-analysis hooks `lifted_signature`,
 `lifted_static_result` and `lifts_arrays_at` (expressions/parser/static_analysis/lifted.rs);
@@ -793,12 +793,16 @@ cell takes: every cell is `""`, one group's cell or one subtotal's or total's, n
 A descending key sort places in the descending order: over Outer descending (E, D, C, B, A) the total's writes land in
 C's subtotal columns, which the ascending order would put on a group (-values2 S!A97).
 Unprobed: writes of two subtotals into the same column (the engine: the later in the order above wins, so a parent's
-deeper subtotal over a parent, and a later parent over an earlier one's deeper subtotal); the relative set a moved cell
-gets (the engine: the set of the subtotal or total whose cell it shows; T-1865); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
+deeper subtotal over a parent, and a later parent over an earlier one's deeper subtotal); several functions over several value columns other than paired (always `#VALUE!` so far: -values3
 S!A37, S!A61).
+The relative set of a moved cell (probes/pivotby-moved-cells-relative-sets, excel-graph, 2026-10-19, T-1857; two value
+columns, col_total_depth 2, relative_to 0-4, `LAMBDA(x,y,ARRAYTOTEXT(y))` and PERCENTOF, with single-child parent C and the
+Grand Total shown in parents' columns): it is the set of the subtotal or total whose cell it shows, not of the column it
+lands in, in every cell of all ten grids (5x29 each). The engine already did this (`RelativeSets::of_cell` with the source
+slot); the case is the evidence.
 Status: VERIFIED (web)
 Implemented in: crates/rustsheet-engine/src/functions/lookup_and_reference/pivotby.rs (`Placement`, `Shown`)
-Tasks: T-1700
+Tasks: T-1700, T-1857
 
 ## GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap
 Rule: Excel calls a two-parameter LAMBDA in GROUPBY or PIVOTBY once per aggregate cell with the cell's values and its whole
@@ -859,6 +863,31 @@ before allocating ("Array results above 1,048,576 cells").
 Status: VERIFIED (excel-graph)
 Tasks: T-1349
 
+## MAP over single values
+Rule: MAP's first array may be a single value, but each later array must be an array or a reference: a single value there
+makes the whole MAP `#VALUE!`. `MAP(1,LAMBDA(x,x))`, `MAP("a",LAMBDA(x,x))` and `MAP(1,{2},LAMBDA(x,y,x+y))` work (1, "a",
+3), and so do one-cell references (`MAP(Z1,Z2,LAMBDA(x,y,x+y))` is 11). `MAP({1},2,..)`, `MAP(1,2,..)`, `MAP(TRUE,FALSE,..)`,
+`MAP(1,1,1,..)` and `MAP(Z1:Z2,3,..)` are `#VALUE!`, and so is `SUM(MAP(scalar,scalar,scalar,_xleta.MAX))`.
+Evidence: probes/lambda-value-arguments A27-A32, B1-B10 (excel-graph, 2026-10-19, T-1511); gen-m7/44ef4f5638e25bcd Calc!A7.
+Ours: `fn_map` reads its second and later arrays with `refuse_scalar` (`by_slices_source`, bycol_byrow.rs) since T-1511. A blank or
+an error value as a later array is unprobed (ours: a blank is refused, an error passes), as is `MAP(1,LAMBDA(x,y,x))` (T-1946).
+Status: VERIFIED (excel-graph)
+Tasks: T-1511
+
+## An uncalled LAMBDA is one value
+Rule: an uncalled LAMBDA, or a function passed by name, is one value that is neither an error nor text. `ROWS` and `COLUMNS`
+of it are 1 (`ROWS(LAMBDA(x,x))`, `COLUMNS(_xleta.SUM)`, `ROWS(IF(1,LAMBDA(x,x)))`). INDEX with a row and a column of 0 or 1
+gives it back, which a cell shows as `#CALC!` (`INDEX(LAMBDA(x,x),1,1)`, `INDEX(LAMBDA(x,x),1)`, `INDEX(_xleta.SUM,1,1)`;
+`ROWS(INDEX(LAMBDA(x,x),0,0))` is 1). ISNONTEXT of it is TRUE, while ISERROR, ISERR, ISNA, ISTEXT, ISNUMBER, ISLOGICAL,
+ISBLANK and ISREF are FALSE (also through `IF(1,..)`). `ISEVEN(LAMBDA(x,x))` is `#VALUE!`, `ERROR.TYPE(LAMBDA(x,x))` is
+`#N/A`, `TYPE(_xleta.SUM)` is 128 and `IFERROR(LAMBDA(x,x),1)` is `#CALC!`, the uncalled LAMBDA in the cell.
+Evidence: probes/lambda-value-arguments A1-A26 (excel-graph, 2026-10-19, T-1511); probes/m7-argument-modes F44:H44;
+probes/eta-reduced-names E93.
+Ours: `value_extent` (cast.rs), `is_predicate` and `parity_of` (information/mod.rs), `index_select` (index.rs) since T-1511.
+INDEX of a LAMBDA with an index of 2 is `#REF!` there, as for a scalar, which is unprobed (T-1946).
+Status: VERIFIED (excel-graph)
+Tasks: T-1511
+
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
 Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a
 reference and MAP, SCAN and REDUCE each cell as a reference. With A1 x, A3 z, B3 y (A2:B2, B1 blank):
@@ -908,7 +937,7 @@ few arguments (`LET(f,_xleta.SUM,f())`): the engine gives whatever the function 
 Evidence: probes/eta-reduced-names (30 questions, excel-graph, 2026-10-14, T-1466); probes/m7-argument-modes F28:H51.
 Ours: an unbound `_xleta.` name of a known function evaluates to a LAMBDA whose definition is made per call
 (`Model::unbound_name`, `eta_definition`, lambda.rs); BYROW and BYCOL take only a LAMBDA (`by_slices_lambda`). Not yet:
-`ISERROR(_xleta.SUM)` is TRUE, and `_xleta.IF` with one argument is `#ERROR!` where Excel gives `#CALC!` (T-1511). GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
+`_xleta.IF` with one argument is `#ERROR!` where Excel gives `#CALC!` (T-1947); `ISERROR(_xleta.SUM)` is FALSE since T-1511. GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1466
 

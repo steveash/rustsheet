@@ -1,19 +1,16 @@
 use super::trig::{excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT};
 use crate::arithmetic::{divide, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
-use crate::constants::EXCEL_PRECISION;
 use crate::decimal_round::{round_decimal, RoundMode};
-use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{div_error, num_error};
+use crate::functions::lift::{div_error, num_error, number_result, value_error};
 use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::functions::Function;
-use crate::number_format::to_excel_precision;
-use crate::single_number_fn;
+use crate::x87_exp::excel_exp;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
-use std::f64::consts::PI;
+use std::f64::consts::{FRAC_PI_2, PI};
 
 /// Smallest `|number/divisor|` for which Excel's `MOD` returns `#NUM!`: a decimal limit, not a
 /// power of two (probes/mod-quotient-threshold5).
@@ -41,9 +38,6 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
 };
-
-/// Below this |x| (2^-28) ASIN returns its argument (`fn_asin`).
-const ASIN_IDENTITY_BOUND: f64 = 3.725_290_298_461_914e-9;
 
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
@@ -212,58 +206,97 @@ impl Model {
         self.sum_ifs(args, cell, true)
     }
 
+    /// A one-number math function on the SPEC-0011 driver (`LIFT_1`): `op` per element. A NaN
+    /// result (ACOS(2), ACOSH(-1), ...) is `#NUM!` at once: left as a number it is swallowed by an
+    /// enclosing function (`x^0` is 1, `ADDRESS` takes row 0, a comparison is FALSE) instead of
+    /// reaching the cell as `#NUM!` (T-1202, gen-m5/gen-m6/gen-m7 cells).
+    fn number_fn(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        op: fn(f64) -> Result<f64, Error>,
+    ) -> CalcResult {
+        self.lift_call(kind, args, cell, &mut |model, values| {
+            let [value] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            match model.kernel_number(value, cell) {
+                Ok(number) => number_result(
+                    op(number).and_then(|x| if x.is_nan() { Err(Error::NUM) } else { Ok(x) }),
+                    cell,
+                ),
+                Err(error) => error,
+            }
+        })
+    }
+
+    /// A math function of `N` numbers on the SPEC-0011 driver, an omitted optional one taking its
+    /// entry in `defaults` (only the trailing ones are read): `op` per element, the leftmost
+    /// argument's error winning.
+    pub(crate) fn numbers_fn<const N: usize>(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        defaults: [f64; N],
+        cell: CellReferenceIndex,
+        op: impl Fn([f64; N]) -> Result<f64, Error>,
+    ) -> CalcResult {
+        self.lift_call(kind, args, cell, &mut |model, values| {
+            let mut numbers = defaults;
+            for (index, slot) in numbers.iter_mut().enumerate() {
+                // A number, the usual argument, skips the coercion chain (T-1785 bench).
+                if let Some(CalcResult::Number(number)) = values.get(index) {
+                    *slot = *number;
+                    continue;
+                }
+                match model.kernel_number_or(values.get(index), *slot, cell) {
+                    Ok(number) => *slot = number,
+                    Err(error) => return error,
+                }
+            }
+            number_result(op(numbers), cell)
+        })
+    }
+
     /// ROUND, ROUNDUP, ROUNDDOWN and TRUNC: `(number, num_digits)`, rounded in
     /// decimal (see [`round_decimal`]); a result beyond the double range is `#NUM!`.
-    /// TRUNC alone may omit `num_digits` (0).
+    /// TRUNC alone may omit `num_digits` (0). Lifts element-wise over arrays and ranges
+    /// (gen-m2/893302d6c5b99e2e Calc!A313).
     fn round_family(
         &mut self,
+        kind: Function,
         args: &[Node],
         cell: CellReferenceIndex,
         mode: RoundMode,
-        num_digits_optional: bool,
     ) -> CalcResult {
-        let min_args = if num_digits_optional { 1 } else { 2 };
-        if !(min_args..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // Lifts element-wise over arrays and ranges (gen-m2/893302d6c5b99e2e Calc!A313).
-        let round = |value: f64, digits: f64| round_decimal(value, digits, mode).ok_or(Error::NUM);
-        if args.len() == 1 {
-            self.lift_numbers(args, cell, "Result is too large", |[value]| {
-                round(value, 0.0)
-            })
-        } else {
-            self.lift_numbers(args, cell, "Result is too large", |[value, digits]| {
-                round(value, digits)
-            })
-        }
+        self.numbers_fn(kind, args, [0.0, 0.0], cell, |[value, digits]| {
+            round_decimal(value, digits, mode).ok_or(Error::NUM)
+        })
     }
 
     pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::HalfAwayFromZero, false)
+        self.round_family(Function::Round, args, cell, RoundMode::HalfAwayFromZero)
     }
 
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Up, false)
+        self.round_family(Function::Roundup, args, cell, RoundMode::Up)
     }
 
     pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Down, false)
+        self.round_family(Function::Rounddown, args, cell, RoundMode::Down)
     }
 
     /// TRUNC is ROUNDDOWN with an optional `num_digits`: Excel cuts to 15 digits
     /// first and wraps huge digit counts the same way (docs/excel-semantics/numbers.md
     /// "TRUNC is ROUNDDOWN", probes/trunc-decimal-stages).
     pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Down, true)
+        self.round_family(Function::Trunc, args, cell, RoundMode::Down)
     }
 
     // (number, divisor); lifts element-wise over arrays and ranges (probes/geomean-overflow-cut-3 E4)
     pub(crate) fn fn_mod(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        self.lift_numbers(args, cell, "Invalid arguments", |[value, divisor]| {
+        self.numbers_fn(Function::Mod, args, [0.0, 0.0], cell, |[value, divisor]| {
             if divisor == 0.0 {
                 return Err(Error::DIV);
             }
@@ -294,356 +327,249 @@ impl Model {
         })
     }
 
-    /// Lifts `op` over `N` numeric arguments like [`Model::lift_numbers`], where the arguments
-    /// past `args.len()` take their `defaults` (the optional significance and mode of the
-    /// CEILING/FLOOR family).
-    fn lift_with_defaults<const N: usize>(
-        &mut self,
-        args: &[Node],
-        defaults: [f64; N],
-        cell: CellReferenceIndex,
-        op: impl Fn([f64; N]) -> Result<f64, Error>,
-    ) -> CalcResult {
-        let operands = (0..N)
-            .map(|i| match args.get(i) {
-                Some(arg) => self.get_number_or_array(arg, cell),
-                None => Ok(NumberOrArray::Number(defaults[i])),
-            })
-            .collect();
-        self.lift_number_operands(operands, cell, "Invalid arguments", op)
-    }
-
-    // The CEILING/FLOOR family lifts element-wise over arrays and ranges in every argument
-    // (gen-m7/e5a361112d83d0c3 Calc!A9, gen-m9/89693ab0cafc29df Calc!A14). The ratio gets
-    // Excel's 15-digit precision so that 0.3/0.1 style quotients round the way Excel's do.
-    pub(crate) fn fn_floor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        self.lift_numbers(args, cell, "Invalid arguments", |[value, significance]| {
-            if significance == 0.0 {
-                // Unlike CEILING, FLOOR divides by zero unless the number is 0 too.
-                return if value == 0.0 {
-                    Ok(0.0)
-                } else {
-                    Err(Error::DIV)
-                };
-            }
-            if significance < 0.0 && value > 0.0 {
-                return Err(Error::NUM);
-            }
-            Ok(snap_ratio(value, significance).floor() * significance)
-        })
-    }
-
-    pub(crate) fn fn_ceiling(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        self.lift_numbers(args, cell, "Invalid arguments", |[value, significance]| {
-            if significance == 0.0 {
-                return Ok(0.0);
-            }
-            if significance < 0.0 && value > 0.0 {
-                return Err(Error::NUM);
-            }
-            Ok(snap_ratio(value, significance).ceil() * significance)
-        })
-    }
-
-    pub(crate) fn fn_ceiling_math(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        if !(1..=3).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        self.lift_with_defaults(args, [0.0, 1.0, 0.0], cell, |[value, significance, mode]| {
-            let significance = significance.abs();
-            if significance == 0.0 {
-                return Ok(0.0);
-            }
-            let ratio = snap_ratio(value, significance);
-            let steps = if value < 0.0 && mode != 0.0 {
-                ratio.floor()
-            } else {
-                ratio.ceil()
-            };
-            Ok(steps * significance)
-        })
-    }
-
-    pub(crate) fn fn_ceiling_precise(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        if !(1..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        self.lift_with_defaults(args, [0.0, 1.0], cell, |[value, significance]| {
-            let significance = significance.abs();
-            if significance == 0.0 {
-                return Ok(0.0);
-            }
-            Ok(snap_ratio(value, significance).ceil() * significance)
-        })
-    }
-
-    pub(crate) fn fn_iso_ceiling(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        // ISO.CEILING is equivalent to CEILING.PRECISE
-        self.fn_ceiling_precise(args, cell)
-    }
-
-    pub(crate) fn fn_floor_math(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=3).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        self.lift_with_defaults(args, [0.0, 1.0, 0.0], cell, |[value, significance, mode]| {
-            let significance = significance.abs();
-            if significance == 0.0 {
-                return Ok(0.0);
-            }
-            let ratio = snap_ratio(value, significance);
-            let steps = if value < 0.0 && mode != 0.0 {
-                ratio.ceil()
-            } else {
-                ratio.floor()
-            };
-            Ok(steps * significance)
-        })
-    }
-
-    pub(crate) fn fn_floor_precise(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        if !(1..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        self.lift_with_defaults(args, [0.0, 1.0], cell, |[value, significance]| {
-            let significance = significance.abs();
-            if significance == 0.0 {
-                return Ok(0.0);
-            }
-            Ok(snap_ratio(value, significance).floor() * significance)
-        })
-    }
-
+    /// MROUND(number, multiple), an Analysis `ToolPak` function on the SPEC-0011 driver (`ATP_2`):
+    /// it lifts over an array and refuses a multi-cell range (probes/ceiling-floor-mround-array-lift
+    /// A21, A43:A49, A55, date-math-lift-driver-edges G19-G20).
     pub(crate) fn fn_mround(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        // MROUND(number, multiple)
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let values: Vec<CalcResult> = args
-            .iter()
-            .map(|arg| self.evaluate_node_in_context(arg, cell))
-            .collect();
-        // Excel: the arguments are judged left to right. A missing one is #N/A and a boolean
-        // #VALUE!, unlike most numeric functions; the first error or non-numeric text ends the
-        // scan, so it wins over a missing or boolean argument after it (`MROUND(1/0,TRUE)` is
-        // #DIV/0!, `MROUND("x",)` #VALUE!, `MROUND(TRUE,)` #VALUE! but `MROUND(,TRUE)` #N/A:
-        // probes/ceiling-floor-mround-array-lift A23, A27:A42, docs/excel-semantics/arrays.md).
-        for value in &values {
-            match value {
-                CalcResult::EmptyArg => {
-                    return CalcResult::new_error(
-                        Error::NA,
-                        cell,
-                        "Bad argument for MROUND".to_string(),
-                    );
-                }
-                CalcResult::Boolean(_) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Expecting number".to_string(),
-                    );
-                }
-                // Excel: an Analysis ToolPak function gives one #VALUE!, no spill, for a multi-cell
-                // range in either argument, numbers-only too, while an array constant lifts
-                // (probes/ceiling-floor-mround-array-lift A21, A43:A49, A55; compare ISEVEN).
-                CalcResult::Range { left, right } if left != right => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Expecting a single value".to_string(),
-                    );
-                }
-                CalcResult::Error { .. } => break,
-                CalcResult::String(text) if self.cast_number(text).is_none() => break,
-                _ => {}
-            }
-        }
-        let operands = values
-            .into_iter()
-            .map(|value| match self.number_or_array(value, cell) {
-                // Booleans are not cast in a scalar MROUND, so not in an array one either
-                // (probes/ceiling-floor-mround-array-lift A19:A20).
-                Ok(NumberOrArray::Array(mut rows)) => {
-                    for node in rows.iter_mut().flatten() {
-                        if matches!(node, ArrayNode::Boolean(_)) {
-                            *node = ArrayNode::Error(Error::VALUE);
-                        }
+        self.lift_call(Function::Mround, args, cell, &mut |model, values| {
+            // Excel: the arguments are judged left to right. A missing one is #N/A and a boolean
+            // #VALUE!, unlike most numeric functions (an array element and a referenced cell too);
+            // the first error or non-numeric text ends the scan, so it wins over a missing or
+            // boolean argument after it (`MROUND(1/0,TRUE)` is #DIV/0!, `MROUND("x",)` #VALUE!,
+            // `MROUND(TRUE,)` #VALUE! but `MROUND(,TRUE)` #N/A: probes/ceiling-floor-mround-array-
+            // lift A19:A20, A23, A27:A42, date-math-lift-driver-edges G44-G47, G51-G52;
+            // docs/excel-semantics/arrays.md).
+            let mut numbers = [0.0; 2];
+            for (slot, value) in numbers.iter_mut().zip(values) {
+                let number = match value {
+                    CalcResult::EmptyArg => {
+                        Err(CalcResult::new_error(Error::NA, cell, String::new()))
                     }
-                    Ok(NumberOrArray::Array(rows))
+                    CalcResult::Boolean(_) => Err(value_error(cell)),
+                    other => model.kernel_number(other, cell),
+                };
+                match number {
+                    Ok(number) => *slot = number,
+                    Err(error) => return error,
                 }
-                other => other,
-            })
-            .collect();
-        self.lift_number_operands(operands, cell, "Invalid arguments", |[value, multiple]| {
+            }
+            let [value, multiple] = numbers;
             if multiple == 0.0 {
-                return Ok(0.0);
+                return CalcResult::Number(0.0);
             }
             if (value > 0.0 && multiple < 0.0) || (value < 0.0 && multiple > 0.0) {
-                return Err(Error::NUM);
+                return num_error(cell);
             }
-            Ok((value / multiple).round() * multiple)
+            CalcResult::Number((value / multiple).round() * multiple)
         })
     }
 
-    single_number_fn!(fn_log10, |f| if f <= 0.0 {
-        Err(Error::NUM)
-    } else {
-        Ok(f64::log10(f))
-    });
-    single_number_fn!(fn_ln, |f| if f <= 0.0 {
-        Err(Error::NUM)
-    } else {
-        Ok(f64::ln(f))
-    });
-    single_number_fn!(fn_sin, |f| trig_arg(f).map(|x| excel_sin_cos(x).0));
-    single_number_fn!(fn_cos, |f| trig_arg(f).map(|x| excel_sin_cos(x).1));
-    single_number_fn!(fn_tan, |f| trig_arg(f).map(excel_tan));
-    single_number_fn!(fn_sinh, |f| Ok(super::hyperbolic::sinh(f)));
-    single_number_fn!(fn_cosh, |f| Ok(super::hyperbolic::cosh(f)));
-    single_number_fn!(fn_tanh, |f| Ok(super::hyperbolic::tanh(f)));
-    // Excel's ASIN is not libm's: `atan(x / sqrt((1 - x) * (1 + x)))` in doubles gives 233 of the 268
-    // cells of probes/asin-argument-sweep (libm `asin` 186), `ASIN(-0.0001)` and `ASIN(0.42)` among
-    // them. Excel's is not even odd (`ASIN(0.09)` and `ASIN(-0.09)` differ in the last digit), so no
-    // formulation found yet fits every cell (docs/excel-semantics/numbers.md "ASIN of a small
-    // argument"). At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is
-    // NaN, which is `#NUM!`. A tiny argument is returned as is: `ASIN(±1E-13)` is ±1E-13, where the
-    // quotient gives ±1.0000000000000002E-13 (T-1605). The sweep only bounds the cut to between 1E-13
-    // and 1E-8 (`ASIN(1E-8)` is the quotient's 1.0000000000000002E-8, `ASIN(-1E-8)` is -1E-8).
-    single_number_fn!(fn_asin, |f: f64| Ok(if f.abs() < ASIN_IDENTITY_BOUND {
-        f
-    } else {
-        f64::atan(f / ((1.0 - f) * (1.0 + f)).sqrt())
-    }));
-    single_number_fn!(fn_acos, |f| Ok(f64::acos(f)));
-    single_number_fn!(fn_atan, |f| Ok(f64::atan(f)));
-    single_number_fn!(fn_asinh, |f| Ok(f64::asinh(f)));
-    single_number_fn!(fn_acosh, |f| Ok(f64::acosh(f)));
+    pub(crate) fn fn_log10(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Log10, args, cell, |f| {
+            if f <= 0.0 {
+                Err(Error::NUM)
+            } else {
+                Ok(f64::log10(f))
+            }
+        })
+    }
+    pub(crate) fn fn_ln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Ln, args, cell, |f| {
+            if f <= 0.0 {
+                Err(Error::NUM)
+            } else {
+                Ok(f64::ln(f))
+            }
+        })
+    }
+    pub(crate) fn fn_sin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Sin, args, cell, |f| {
+            trig_arg(f).map(|x| excel_sin_cos(x).0)
+        })
+    }
+    pub(crate) fn fn_cos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Cos, args, cell, |f| {
+            trig_arg(f).map(|x| excel_sin_cos(x).1)
+        })
+    }
+    pub(crate) fn fn_tan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Tan, args, cell, |f| trig_arg(f).map(excel_tan))
+    }
+    pub(crate) fn fn_sinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Sinh, args, cell, |f| {
+            Ok(super::hyperbolic::sinh(f))
+        })
+    }
+    pub(crate) fn fn_cosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Cosh, args, cell, |f| {
+            Ok(super::hyperbolic::cosh(f))
+        })
+    }
+    pub(crate) fn fn_tanh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Tanh, args, cell, |f| {
+            Ok(super::hyperbolic::tanh(f))
+        })
+    }
+    pub(crate) fn fn_asin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Asin, args, cell, |f| Ok(excel_asin(f)))
+    }
+    // Excel's ACOS is `PI()/2 - ASIN(x)` exactly, on ASIN's kernel: all 240 ACOS cells of
+    // probes/asin-atan-sign-source (columns H and I, excel-graph, T-1797), where libm `acos` fits
+    // 157 (docs/excel-semantics/numbers.md "ASIN's formulation"). Outside [-1, 1] ASIN's NaN
+    // stays NaN, which is `#NUM!`.
+    pub(crate) fn fn_acos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(
+            Function::Acos,
+            args,
+            cell,
+            |f| Ok(FRAC_PI_2 - excel_asin(f)),
+        )
+    }
+    pub(crate) fn fn_atan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Atan, args, cell, |f| Ok(f64::atan(f)))
+    }
+    pub(crate) fn fn_asinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Asinh, args, cell, |f| Ok(f64::asinh(f)))
+    }
+    pub(crate) fn fn_acosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Acosh, args, cell, |f| Ok(f64::acosh(f)))
+    }
     // ATANH(+-1) is `#NUM!` at once, like any other out-of-domain argument; f64::atanh gives an
     // infinity there, which the macro's NaN mapping misses (probes/atanh-unit-argument A1:A8,
     // excel-graph, T-1569).
-    single_number_fn!(fn_atanh, |f: f64| if f.abs() == 1.0 {
-        Err(Error::NUM)
-    } else {
-        Ok(f64::atanh(f))
-    });
-    single_number_fn!(fn_abs, |f| Ok(f64::abs(f)));
-    single_number_fn!(fn_sqrt, |f| if f < 0.0 {
-        Err(Error::NUM)
-    } else {
-        Ok(extended_sqrt(f))
-    });
-    /// SQRTPI. Unlike RADIANS, a boolean argument is `#VALUE!` (a literal, a comparison, a cell
-    /// reference or an array element), while numeric text is read (probes/radians-sqrtpi-munit,
-    /// docs/excel-semantics/numbers.md "RADIANS, SQRTPI and MUNIT", T-1282).
-    pub(crate) fn fn_sqrtpi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = self.evaluate_node_in_context(&args[0], cell);
-        // A range of several cells is one `#VALUE!`, never a spill, whatever it holds (numbers,
-        // text or blanks); an array constant still lifts (probes/sqrtpi-range-operands,
-        // radians-sqrtpi-munit A80; docs/excel-semantics/numbers.md "RADIANS, SQRTPI and MUNIT").
-        if let CalcResult::Range { left, right } = &value {
-            if left != right {
-                return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+    pub(crate) fn fn_atanh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Atanh, args, cell, |f: f64| {
+            if f.abs() == 1.0 {
+                Err(Error::NUM)
+            } else {
+                Ok(f64::atanh(f))
             }
-        }
-        if matches!(value, CalcResult::Boolean(_)) {
-            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
-        }
-        let operand = match self.number_or_array(value, cell) {
-            Ok(NumberOrArray::Array(mut rows)) => {
-                for node in rows.iter_mut().flatten() {
-                    if matches!(node, ArrayNode::Boolean(_)) {
-                        *node = ArrayNode::Error(Error::VALUE);
-                    }
-                }
-                Ok(NumberOrArray::Array(rows))
-            }
-            other => other,
-        };
-        self.lift_number_operands::<1>(vec![operand], cell, "Invalid number", |[f]| {
+        })
+    }
+    pub(crate) fn fn_abs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Abs, args, cell, |f| Ok(f64::abs(f)))
+    }
+    pub(crate) fn fn_sqrt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Sqrt, args, cell, |f| {
             if f < 0.0 {
                 Err(Error::NUM)
             } else {
-                Ok((f * PI).sqrt())
+                Ok(extended_sqrt(f))
+            }
+        })
+    }
+    /// SQRTPI, an Analysis `ToolPak` function on the SPEC-0011 driver (`ARRAYS_1`): a range of
+    /// several cells is one `#VALUE!`, never a spill, whatever it holds, while an array constant
+    /// lifts (probes/sqrtpi-range-operands, radians-sqrtpi-munit A80). Unlike RADIANS, a boolean
+    /// argument is `#VALUE!` (a literal, a comparison, a cell reference or an array element),
+    /// while numeric text is read (probes/radians-sqrtpi-munit, docs/excel-semantics/numbers.md
+    /// "RADIANS, SQRTPI and MUNIT", T-1282).
+    pub(crate) fn fn_sqrtpi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_call(Function::Sqrtpi, args, cell, &mut |model, values| {
+            let number = match values {
+                [CalcResult::Boolean(_)] => return value_error(cell),
+                [value] => model.kernel_number(value, cell),
+                _ => return CalcResult::new_args_number_error(cell),
+            };
+            match number {
+                Ok(f) if f < 0.0 => num_error(cell),
+                Ok(f) => CalcResult::Number((f * PI).sqrt()),
+                Err(error) => error,
             }
         })
     }
 
-    single_number_fn!(fn_acot, |f| {
-        let v = f64::atan(1.0 / f);
-        if f >= 0.0 {
-            Ok(v)
-        } else {
-            // To be compatible with Excel we need a different branch
-            // when f < 0
-            Ok(v + PI)
-        }
-    });
-    single_number_fn!(fn_acoth, |f: f64| if f.abs() == 1.0 {
-        Err(Error::NUM)
-    } else {
-        Ok(0.5 * (f64::ln((f + 1.0) / (f - 1.0))))
-    });
-    single_number_fn!(fn_cot, |f| if trig_arg(f).is_err() {
-        Err(Error::NUM)
-    } else if f == 0.0 {
-        Err(Error::DIV)
-    } else {
-        // 1/TAN, not COS/SIN (probes-numeric/m9-trig-reduction F6-F81).
-        Ok(1.0 / excel_tan(f))
-    });
-    single_number_fn!(fn_coth, |f: f64| if f == 0.0 {
-        Err(Error::DIV)
-    } else if f.abs() > 20.0 {
-        // for values > 20.0 this is exact in f64
-        Ok(f.signum())
-    } else {
-        Ok(f64::cosh(f) / f64::sinh(f))
-    });
-    single_number_fn!(fn_csc, |f| if trig_arg(f).is_err() {
-        Err(Error::NUM)
-    } else if f == 0.0 {
-        Err(Error::DIV)
-    } else {
-        Ok(1.0 / excel_sin_cos(f).0)
-    });
-    single_number_fn!(fn_csch, |f| if f == 0.0 {
-        Err(Error::DIV)
-    } else {
-        // Excel: a subnormal CSCH result is a true 0 (CSCH(710), docs/excel-semantics/numbers.md).
-        Ok(flush_subnormal(1.0 / f64::sinh(f)))
-    });
-    single_number_fn!(fn_sec, |f| trig_arg(f).map(|x| 1.0 / excel_sin_cos(x).1));
-    single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));
-    single_number_fn!(fn_exp, |f: f64| Ok(f64::exp(f)));
-    single_number_fn!(fn_fact, |x: f64| {
-        let x = x.floor();
-        if x < 0.0 {
-            return Err(Error::NUM);
-        }
-        descending_product(x, 1.0)
-    });
+    pub(crate) fn fn_acot(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Acot, args, cell, |f| {
+            let v = f64::atan(1.0 / f);
+            if f >= 0.0 {
+                Ok(v)
+            } else {
+                // To be compatible with Excel we need a different branch
+                // when f < 0
+                Ok(v + PI)
+            }
+        })
+    }
+    pub(crate) fn fn_acoth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Acoth, args, cell, |f: f64| {
+            if f.abs() == 1.0 {
+                Err(Error::NUM)
+            } else {
+                Ok(0.5 * (f64::ln((f + 1.0) / (f - 1.0))))
+            }
+        })
+    }
+    pub(crate) fn fn_cot(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Cot, args, cell, |f| {
+            if trig_arg(f).is_err() {
+                Err(Error::NUM)
+            } else if f == 0.0 {
+                Err(Error::DIV)
+            } else {
+                // 1/TAN, not COS/SIN (probes-numeric/m9-trig-reduction F6-F81).
+                Ok(1.0 / excel_tan(f))
+            }
+        })
+    }
+    pub(crate) fn fn_coth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Coth, args, cell, |f: f64| {
+            if f == 0.0 {
+                Err(Error::DIV)
+            } else if f.abs() > 20.0 {
+                // for values > 20.0 this is exact in f64
+                Ok(f.signum())
+            } else {
+                Ok(f64::cosh(f) / f64::sinh(f))
+            }
+        })
+    }
+    pub(crate) fn fn_csc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Csc, args, cell, |f| {
+            if trig_arg(f).is_err() {
+                Err(Error::NUM)
+            } else if f == 0.0 {
+                Err(Error::DIV)
+            } else {
+                Ok(1.0 / excel_sin_cos(f).0)
+            }
+        })
+    }
+    pub(crate) fn fn_csch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Csch, args, cell, |f| {
+            if f == 0.0 {
+                Err(Error::DIV)
+            } else {
+                // Excel: a subnormal CSCH result is a true 0 (CSCH(710), docs/excel-semantics/numbers.md).
+                Ok(flush_subnormal(1.0 / f64::sinh(f)))
+            }
+        })
+    }
+    pub(crate) fn fn_sec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Sec, args, cell, |f| {
+            trig_arg(f).map(|x| 1.0 / excel_sin_cos(x).1)
+        })
+    }
+    pub(crate) fn fn_sech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Sech, args, cell, |f| Ok(1.0 / f64::cosh(f)))
+    }
+    /// `EXP(number)`: Excel's own x87 evaluation, model V6, which is not the correctly rounded exp
+    /// (docs/excel-semantics/numbers.md "EXP is an x87 2^(a*log2 e) evaluation, not correctly
+    /// rounded"; probes-numeric `t1931-exp-*`). A subnormal result is kept (probes/
+    /// subnormal-function-results C4, C6), and an overflow is infinite, which the cell turns into
+    /// `#NUM!` as before.
+    pub(crate) fn fn_exp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Exp, args, cell, |f: f64| Ok(excel_exp(f)))
+    }
+    pub(crate) fn fn_fact(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Fact, args, cell, |x: f64| {
+            let x = x.floor();
+            if x < 0.0 {
+                return Err(Error::NUM);
+            }
+            descending_product(x, 1.0)
+        })
+    }
     /// `FACTDOUBLE(number)`, an Analysis `ToolPak` function: it lifts over an array and refuses a
     /// multi-cell range (probes/math-atp-array-lift C3-C4, scalar-lift-open-a Y21), and a boolean is
     /// `#VALUE!`, typed, in a cell or as an array element (probes/math-atp-array-lift-b E1-E3, E8;
@@ -669,23 +595,35 @@ impl Model {
             }
         })
     }
-    single_number_fn!(fn_sign, |f| {
-        if f == 0.0 {
-            Ok(0.0)
-        } else {
-            Ok(f64::signum(f))
-        }
-    });
-    single_number_fn!(fn_degrees, |f| Ok(f * (180.0 / PI)));
-    single_number_fn!(fn_radians, |f| Ok(f * (PI / 180.0)));
-    single_number_fn!(fn_odd, |f| {
-        let sign = f64::signum(f);
-        Ok(sign * (f64::ceil((f64::abs(f) - 1.0) / 2.0) * 2.0 + 1.0))
-    });
-    single_number_fn!(fn_even, |f| Ok(f64::signum(f)
-        * f64::ceil(f64::abs(f) / 2.0)
-        * 2.0));
-    single_number_fn!(fn_int, |f| Ok(f64::floor(f)));
+    pub(crate) fn fn_sign(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Sign, args, cell, |f| {
+            if f == 0.0 {
+                Ok(0.0)
+            } else {
+                Ok(f64::signum(f))
+            }
+        })
+    }
+    pub(crate) fn fn_degrees(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Degrees, args, cell, |f| Ok(f * (180.0 / PI)))
+    }
+    pub(crate) fn fn_radians(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Radians, args, cell, |f| Ok(f * (PI / 180.0)))
+    }
+    pub(crate) fn fn_odd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Odd, args, cell, |f| {
+            let sign = f64::signum(f);
+            Ok(sign * (f64::ceil((f64::abs(f) - 1.0) / 2.0) * 2.0 + 1.0))
+        })
+    }
+    pub(crate) fn fn_even(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Even, args, cell, |f| {
+            Ok(f64::signum(f) * f64::ceil(f64::abs(f) / 2.0) * 2.0)
+        })
+    }
+    pub(crate) fn fn_int(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Int, args, cell, |f| Ok(f64::floor(f)))
+    }
 
     pub(crate) fn fn_pi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !args.is_empty() {
@@ -706,14 +644,39 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        if x == 0.0 && y == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Arguments can't be both zero".to_string(),
-            };
+        // Excel: see docs/excel-semantics/numbers.md "ATAN2 is ATAN(y/x) plus or minus pi" (probes/atan2-*).
+        if x == 0.0 {
+            if y == 0.0 {
+                return CalcResult::Error {
+                    error: Error::DIV,
+                    origin: cell,
+                    message: "Arguments can't be both zero".to_string(),
+                };
+            }
+            return CalcResult::Number(FRAC_PI_2.copysign(y));
         }
-        CalcResult::Number(f64::atan2(y, x))
+        // The quotient is Excel's `/`: a subnormal x divides like zero (#DIV/0!), overflow is #NUM!.
+        let q = match divide(y, x) {
+            Ok(q) => q,
+            Err(error) => {
+                return CalcResult::Error {
+                    error,
+                    origin: cell,
+                    message: "Invalid quotient".to_string(),
+                }
+            }
+        };
+        // `+ 0.0` turns -0 into +0, which Excel never returns.
+        let a = flush_subnormal(q.atan()) + 0.0;
+        CalcResult::Number(if x < 0.0 {
+            if y >= 0.0 {
+                a + PI
+            } else {
+                a - PI
+            }
+        } else {
+            a
+        })
     }
 
     pub(crate) fn fn_log(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -888,12 +851,6 @@ pub(crate) fn percent_of(
     }
 }
 
-/// `value / significance` with Excel's precision applied, so floating-point noise does not
-/// push an exact multiple over a step boundary.
-fn snap_ratio(value: f64, significance: f64) -> f64 {
-    to_excel_precision(value / significance, EXCEL_PRECISION)
-}
-
 /// COMBIN(n, k) for integers `0 <= k <= n`, rounded as Excel rounds it. With `j = min(k, n-k)`,
 /// Excel multiplies the factors `(n-j+i)/(i+1)` for i = 1..j-1, each a rounded quotient, into one
 /// double running product and then multiplies by `n`: `COMBIN(10,4)` is 209.99999999999997, not 210.
@@ -940,4 +897,17 @@ fn descending_product(n: f64, step: f64) -> Result<f64, Error> {
         k -= step;
     }
     Ok(acc)
+}
+
+/// Excel's ASIN is `atan(x / sqrt(y * (2 - y)))` with y = 1 - x: the factor 1 + x is formed as
+/// 2 - y, and the square root rounds twice like SQRT. That fits all 570 cells of
+/// probes/asin-argument-sweep and probes/asin-negative-band-sweep (excel-graph, T-1797), including
+/// the ± pairs that differ (`ASIN(0.09)` and `ASIN(-0.09)`): rounding y drops the last bit of a
+/// negative x in -1..-0.5, so ASIN is not odd. libm `asin` fits 186 of the sweep's 268 and
+/// `atan(x / sqrt((1 - x) * (1 + x)))` 235 (docs/excel-semantics/numbers.md "ASIN's formulation").
+/// At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is NaN, which
+/// is `#NUM!`.
+fn excel_asin(f: f64) -> f64 {
+    let y = 1.0 - f;
+    f64::atan(f / extended_sqrt(y * (2.0 - y)))
 }

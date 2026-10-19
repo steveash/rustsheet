@@ -120,7 +120,8 @@ matches the web unless desktop evidence already in the repo decides, and desktop
   relative (4) or by near-zero residue (3; 2.2e-16 vs 0). Desktop wins (decision 0030): engine
   fits target desktop evidence (Excel-authored workbooks); a known-failure web golden missed
   within 1e-9 is not a fitting target (rule 4). The fill writes the 16.x desktop value for
-  differences within 1e-9 (T-0142); near-zero residues stay pending. Say which one a golden comes from.
+  differences within 1e-9 (T-0142), except in suites with `use_cached_values = false`, whose caches
+  are not desktop evidence (decision 0073); near-zero residues stay pending. Say which one a golden comes from.
 - **TEXT formats and CELL (poi, T-0019).** Lowercase-`e` scientific formats give `#VALUE!` on the
   web where Mac Excel cached strings; an elapsed token after a plain `s` gives different hours;
   `CELL("width")` is unimplemented (`#VALUE!`). The fill leaves such cells pending (`CONFLICT`)

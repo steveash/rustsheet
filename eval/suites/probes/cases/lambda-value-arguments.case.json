@@ -1,0 +1,62 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "An uncalled LAMBDA or eta-reduced function name (_xleta.SUM) as the argument of the IS* functions, ROWS, COLUMNS, INDEX, TYPE, ERROR.TYPE, ISEVEN and IFERROR, and MAP over single values rather than arrays (T-1511).",
+  "tags": [
+    "M7",
+    "lambda",
+    "information",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=ISERROR(LAMBDA(x,x))",
+        "A2": "=ISERR(LAMBDA(x,x))",
+        "A3": "=ISNA(LAMBDA(x,x))",
+        "A4": "=ISTEXT(LAMBDA(x,x))",
+        "A5": "=ISNONTEXT(LAMBDA(x,x))",
+        "A6": "=ISNUMBER(LAMBDA(x,x))",
+        "A7": "=ISLOGICAL(LAMBDA(x,x))",
+        "A8": "=ISBLANK(LAMBDA(x,x))",
+        "A9": "=ISREF(LAMBDA(x,x))",
+        "A10": "=ISERR(_xleta.SUM)",
+        "A11": "=ISTEXT(_xleta.SUM)",
+        "A12": "=ISNONTEXT(_xleta.SUM)",
+        "A13": "=ISNUMBER(_xleta.SUM)",
+        "A14": "=ISNA(_xleta.SUM)",
+        "A15": "=ROWS(_xleta.SUM)",
+        "A16": "=COLUMNS(_xleta.SUM)",
+        "A17": "=INDEX(_xleta.SUM,1,1)",
+        "A18": "=INDEX(LAMBDA(x,x),1)",
+        "A19": "=INDEX(LAMBDA(x,x),0,0)",
+        "A20": "=ROWS(INDEX(LAMBDA(x,x),0,0))",
+        "A21": "=TYPE(_xleta.SUM)",
+        "A22": "=ERROR.TYPE(LAMBDA(x,x))",
+        "A23": "=ISEVEN(LAMBDA(x,x))",
+        "A24": "=IFERROR(LAMBDA(x,x),1)",
+        "A25": "=ROWS(IF(1,LAMBDA(x,x)))",
+        "A26": "=ISERROR(IF(1,LAMBDA(x,x)))",
+        "A27": "=MAP(1,LAMBDA(x,x))",
+        "A28": "=MAP(1,2,LAMBDA(x,y,x+y))",
+        "A29": "=SUM(MAP(1,2,3,_xleta.MAX))",
+        "A30": "=MAP(1,_xleta.ABS)",
+        "A31": "=ROWS(MAP(1,LAMBDA(x,x)))",
+        "A32": "=MAP({1},LAMBDA(x,x))",
+        "Z1": 5,
+        "Z2": 6,
+        "B1": "=MAP(1,{2},LAMBDA(x,y,x+y))",
+        "B2": "=MAP({1},2,LAMBDA(x,y,x+y))",
+        "B3": "=MAP({1},{2},LAMBDA(x,y,x+y))",
+        "B4": "=MAP(Z1,Z2,LAMBDA(x,y,x+y))",
+        "B5": "=MAP(Z1,LAMBDA(x,x))",
+        "B6": "=MAP(1,LAMBDA(x,y,x))",
+        "B7": "=MAP(\"a\",LAMBDA(x,x))",
+        "B8": "=MAP(1,1,1,LAMBDA(x,y,z,x))",
+        "B9": "=MAP(Z1:Z2,3,LAMBDA(x,y,x+y))",
+        "B10": "=MAP(TRUE,FALSE,LAMBDA(x,y,x))"
+      }
+    }
+  ],
+  "expected": {}
+}

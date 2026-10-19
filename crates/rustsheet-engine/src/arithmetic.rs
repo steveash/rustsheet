@@ -176,7 +176,11 @@ pub(crate) fn extended_product(x: f64, y: f64) -> f64 {
 /// The 64-bit `extended·2^exponent` rounded, ties to even, to a multiple of 2^-1074 (a subnormal
 /// has fewer than 53 bits, so a tie of the second rounding is a tie on that grid, not on 53 bits),
 /// or `None` when the grid is not coarser than the value or the result is zero.
-fn round_extended_to_subnormal(extended: u128, exponent: i32, negative: bool) -> Option<f64> {
+pub(crate) fn round_extended_to_subnormal(
+    extended: u128,
+    exponent: i32,
+    negative: bool,
+) -> Option<f64> {
     let drop = u32::try_from(-1074 - exponent)
         .ok()
         .filter(|d| (1..128).contains(d))?;
@@ -267,7 +271,11 @@ pub(crate) fn extended_sum(x: f64, y: f64) -> f64 {
 
 /// The 64-bit `extended·2^exponent` rounded to a double (second rounding: the value is exact now,
 /// so a tie is a tie), or `None` when the result is not a normal double.
-fn round_extended_to_double(extended: u128, exponent: i32, negative: bool) -> Option<f64> {
+pub(crate) fn round_extended_to_double(
+    extended: u128,
+    exponent: i32,
+    negative: bool,
+) -> Option<f64> {
     let (significand, shift) = round_to_bits(extended, 53, false);
     let biased = u64::try_from(exponent + shift + 1075)
         .ok()
@@ -280,7 +288,7 @@ fn round_extended_to_double(extended: u128, exponent: i32, negative: bool) -> Op
 
 /// The 53-bit integer significand `m` and exponent `e` of a non-zero finite double,
 /// `|x| = m·2^e`; a subnormal's significand is shifted up to 53 bits.
-fn significand_and_exponent(x: f64) -> (u64, i32) {
+pub(crate) fn significand_and_exponent(x: f64) -> (u64, i32) {
     let bits = x.to_bits();
     let fraction = bits & 0x000F_FFFF_FFFF_FFFF;
     let biased = i32::try_from((bits >> 52) & 0x7FF).unwrap_or(0);
@@ -295,7 +303,7 @@ fn significand_and_exponent(x: f64) -> (u64, i32) {
 /// `value` (non-zero) rounded to nearest, ties to even, to `bits` significant bits: the rounded
 /// significand and the number of low bits dropped, so the result is `significand·2^shift`.
 /// `inexact` says the exact value lies a little above `value`, which turns a tie into a round up.
-fn round_to_bits(value: u128, bits: u32, inexact: bool) -> (u128, i32) {
+pub(crate) fn round_to_bits(value: u128, bits: u32, inexact: bool) -> (u128, i32) {
     let width = 128 - value.leading_zeros();
     if width <= bits {
         return (value, 0);
@@ -307,7 +315,7 @@ fn round_to_bits(value: u128, bits: u32, inexact: bool) -> (u128, i32) {
     if dropped > half || (dropped == half && (inexact || significand & 1 == 1)) {
         significand += 1;
     }
-    // At most 75 - 53 bits are dropped, so the conversion cannot fail.
+    // A u128 has at most 128 bits, so the shift fits an i32.
     let mut shift = i32::try_from(shift).unwrap_or(0);
     // A carry out of the top bit (all ones rounded up) is one more bit to drop.
     if significand >> bits != 0 {

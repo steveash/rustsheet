@@ -11,8 +11,10 @@ use crate::functions::Function;
 /// continued-fraction steps, and `ln_gamma` is a fixed Lanczos sum.
 const BETA_CDF: &str = "one statrs incomplete beta: at most 140 continued-fraction steps";
 
-/// ERF's and ERFC's cap: `special::erfc_cf` clamps its depth to 600, and the series is fixed.
-const ERFC_CF: &str = "special::erfc_cf: at most 600 steps; the series is fixed";
+/// ERF's and ERFC's cap: `erf::small_erf` and `erf::erfc_kernel` are fixed-degree rationals, and
+/// `x87_exp::excel_exp` sums a fixed 26-term series.
+const ERF_KERNELS: &str =
+    "erf kernels: fixed-degree rationals and one fixed-length excel_exp series";
 
 /// The value-dependent kernels: each with the fixed cap that lets its entry be `Constant`, or
 /// `None` when it must be `Weighted` (a cap that grows with the values, or one not yet read).
@@ -44,6 +46,10 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Some("the pmf: three statrs binomials, a fixed factorial cache or ln_gamma each"),
     ),
     (
+        Function::Fact,
+        Some("descending_product stops at the first infinity: n*(n-1)*... overflows in 170 steps"),
+    ),
+    (
         Function::Factdouble,
         Some("descending_product stops at the first infinity: n*(n-2)*... overflows in 151 steps"),
     ),
@@ -52,10 +58,14 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Some("at most 171 factors: 171 distinct integers pass f64::MAX"),
     ),
     (Function::Permutationa, Some("O(1): one powf")),
-    (Function::Erf, Some(ERFC_CF)),
-    (Function::ErfPrecise, Some(ERFC_CF)),
-    (Function::Erfc, Some(ERFC_CF)),
-    (Function::ErfcPrecise, Some(ERFC_CF)),
+    (
+        Function::Exp,
+        Some("one x87_exp::excel_exp: a fixed 26-term series"),
+    ),
+    (Function::Erf, Some(ERF_KERNELS)),
+    (Function::ErfPrecise, Some(ERF_KERNELS)),
+    (Function::Erfc, Some(ERF_KERNELS)),
+    (Function::ErfcPrecise, Some(ERF_KERNELS)),
     (
         Function::Seriessum,
         Some("one step per coefficient, charged per element as their cells (LiftCost::Cells)"),
@@ -66,7 +76,6 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     (Function::Xirr, None),
     (Function::Db, None),
     (Function::Vdb, None),
-    (Function::Fact, None),
     (Function::Combin, None),
     (Function::Combina, None),
     (Function::Multinomial, None),

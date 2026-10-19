@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "When yy/yyyy print the Japanese era year under a Japanese locale tag, and the Taiwan calendar's names (T-1859).",
+ "tags": [
+  "M10",
+  "number-format",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(45000,\"[$-411]e|yy|yyyy\")",
+    "A2": "=TEXT(45000,\"[$-411]yy|g|yy|yyyy\")",
+    "A3": "=TEXT(45000,\"[$-411]yyyyxg\")",
+    "A4": "=TEXT(45000,\"[$-411]ee yyyy\")",
+    "A5": "=TEXT(45000,\"[$-411]g yyyy;0\")",
+    "A6": "=TEXT(45000,\"[$-411][h] yyyy g\")",
+    "A7": "=TEXT(45000,\"[$-411]yyyy mmmm g\")",
+    "A8": "=TEXT(45000,\"[$-411]gyyyy\")",
+    "A9": "=TEXT(45000,\"[$-411]e/m/d yyyy\")",
+    "A10": "=TEXT(45000,\"[$-ja-JP]e|yy\")",
+    "A11": "=TEXT(45000,\"[$-ja-JP]yy|g|yy\")",
+    "A12": "=TEXT(45000,\"[$-ja-JP]b|yy|g|yy\")",
+    "A13": "=TEXT(45000,\"[$-10411]g|e|yy\")",
+    "A14": "=TEXT(45000,\"[$-404]ddd|mmm|yy\")",
+    "A15": "=TEXT(45000,\"[$-40404]ddd|mmm|mmmmm|yy|yyy|b|e\")",
+    "A16": "=TEXT(45000,\"[$-150409]yyyy-mm-dd|mmmm|dddd\")",
+    "A17": "=TEXT(45000,\"[$-1E0409]yyyy-mm-dd|mmmm|dddd\")",
+    "A18": "=TEXT(45000,\"[$-20409]mmmmm|ddd\")",
+    "A19": "=TEXT(45000,\"g[$-411]yyyy\")",
+    "A20": "=TEXT(45000,\"yyyy g[$-411]\")"
+   }
+  }
+ ],
+ "expected": {}
+}

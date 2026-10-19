@@ -154,6 +154,7 @@ fn is_date_time_letter(token: &Token) -> bool {
             | Token::MonthLetter
             | Token::YearShort
             | Token::Year
+            | Token::EraYear(_)
             | Token::BuddhistYearShort
             | Token::BuddhistYear
             | Token::Hour
@@ -179,7 +180,7 @@ fn is_number_or_date(token: &Token) -> bool {
                 | Token::ElapsedHourPadded
                 | Token::ElapsedMinutePadded
                 | Token::ElapsedSecondPadded
-                | Token::Era
+                | Token::Era(_)
                 | Token::Calendar(_)
         )
 }
