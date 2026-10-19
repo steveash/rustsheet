@@ -72,7 +72,9 @@ pub struct NumberPart {
 /// Where a fraction sits among a number section's `tokens`: the digit placeholders before
 /// `numerator_start` are the integer part, those from it up to the `/` at `slash` the numerator.
 pub struct Fraction {
+    /// Index of the first numerator placeholder in `tokens`.
     pub numerator_start: usize,
+    /// Index of the `/` literal in `tokens`; the denominator is not a token.
     pub slash: usize,
     /// The denominator's digits as written (`16` in `# ??/16`).
     pub denominator: String,

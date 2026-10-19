@@ -78,3 +78,5 @@ and `?`/`0`/`#` padding. Found in passing: the numerator rounds at 15 digits (`?
 "1235/100"), recorded under "Fraction formats". Eval: gen-m10 known failures 117 -> 101 (the 16 TEXT
 cells) and text 3439 -> 3125 (the 314 `F!` cells; the 15 overflow cells stay, T-1740); every other
 gated suite unchanged (poi checked locally: 481 -> 481), 0 regressions.
+There is no lexer token for fractions: the parser recognizes `/` plus the denominator digits with
+lexer lookahead (`peek_token`) in its `Token::Literal('/')` arm, which T-2030 extends.
