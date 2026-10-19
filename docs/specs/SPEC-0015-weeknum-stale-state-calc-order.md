@@ -112,12 +112,15 @@ and unwinding on ordinary workbooks, for a function almost no workbook uses this
     reaches it while that precedent is still uncalculated, re-running it would abort at the same
     read with no effect, so the driver just moves it again, in O(1), without evaluating. This
     leaves cheap moves, not partial evaluations, as the quadratic term.
-  - *A global budget.* Total moves are capped at 4 × the number of formula cells. When the cap is
-    hit, the rest of the pass evaluates on demand, as the default pass does; the existing circular
-    detection then handles cycles. That fallback is a directive-5 limit. T-2068 records it as a
-    `DEVIATION (decision 0014)` entry in dates.md: past the budget, readers can differ from Excel.
-    It only affects workbooks that have a reader and a long dependency chain running against
-    the load order.
+  - *A global budget.* Total moves are capped at 4 × the number of formula cells + 2^24. Moves are
+    O(1) link updates with no evaluation, so the cap costs tens of milliseconds at most. It keeps
+    chains up to several thousand cells exact (a reverse chain of n cells needs n(n-1)/2 moves:
+    about 5,800 cells at the floor alone). Past the cap, the rest of the pass evaluates on demand,
+    as the default pass does, and the existing circular detection handles cycles. That fallback is a
+    directive-5 limit. T-2068 records it as a `DEVIATION (decision 0014)` entry in dates.md that
+    states this threshold: past it, readers can differ from Excel.
+  - Aborts have no effect, so only the completion order matters, and an exact near-linear
+    algorithm may exist. The naive simulation is the oracle for any such replacement.
 - T-2068 checks the chain against a naive simulation on small random layouts, and checks
   near-linear scaling of the budgeted pass (a 10k vs 100k running total).
 - The links are a `Vec<u32>` indexed by position in the reversed position list, not a hash map.

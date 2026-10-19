@@ -37,7 +37,7 @@ matters").
       which moves to just after that precedent (SPEC-0015 rule 6; probes/weeknum-stale-precedent-*).
 - [ ] Probes and unit tests also pass with `IRONCALC_MAX_DEPTH=1` (SPEC-0015 "Depth limit").
 - [ ] Aborted runs restore the state. Blocked cells are skipped without evaluation. Total moves are
-      capped at 4 × formula cells, with on-demand fallback and a DEVIATION entry (SPEC-0015 "Cost").
+      capped at 4 × formula cells + 2^24, with on-demand fallback and a DEVIATION entry (SPEC-0015 "Cost").
       A test compares the chain against a naive simulation on small layouts.
 - [ ] A bench of a 100k-row running total plus one reader, with before/after numbers and a 10k vs
       100k ratio in the Outcome.
