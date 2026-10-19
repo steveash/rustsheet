@@ -3,7 +3,7 @@ id: T-1943
 title: "Probe the shape of INDEX's whole-row and whole-column picks of a scalar or a 1x1 array"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
