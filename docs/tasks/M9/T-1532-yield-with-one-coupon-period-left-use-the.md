@@ -47,4 +47,4 @@ change `compute_price`.
 - YIELD with more than one coupon period (its solver is unfitted: T-1533, T-1374).
 
 ## Outcome
-New `yield_one_period` in `financial_bonds.rs`: when one coupon is left YIELD evaluates the closed form with DSR = basis settlement-to-maturity count and E = actual period on bases 1-3. `compute_price` untouched. Eval: probes 2130 -> 2070 known failures (60 fixed, 0 regressions).
+New `yield_one_period` in `financial_bonds/yield_closed.rs`: when one coupon is left YIELD evaluates the closed form with DSR = basis settlement-to-maturity count and E = actual period on bases 1-3. `compute_price` untouched. Eval: probes 2130 -> 2070 known failures (60 fixed, 0 regressions).
