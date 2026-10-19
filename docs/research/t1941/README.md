@@ -297,3 +297,19 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
     - In progress: early-stage anchor phases in the remaining function+ladder null space, with a positive control.
   - The (2,2.005) outlier is the known xlsx misparse at x = 2.0000661560063. Without it, grid_a is 99.5% exact for
     x - 2 < 1e-6.
+- **K1 side channels (coordinator, q501/q502: GAMMA, GAMMA.DIST, BETA.DIST, CHISQ.DIST, 1/GAMMA on [1.32,1.33]
+  and [1.77,1.78])**:
+  - 1/GAMMA(a) == fl(1/GAMMA(a)): 100%.
+  - GAMMA.DIST(1,a,1,FALSE) equals fl(EXP(-1)/GAMMA(a)) or fl(EXP(-1)*(1/GAMMA)) only 23-30% of the time. It runs
+    1.3-1.8 ulp low against the exact value, consistent with an exp(... - GAMMALN) route.
+  - So no G side channel exposes unrounded bits. Negative.
+- **K1 generator reconstruction (W4): negative.**
+  - Rational Remez (7,7) raw y with D0 = -1/16 (mpmath dps 60) over [1,2] rel/abs, [0.99,2.01], [1,2.1], [0.9,2.1]
+    and [0.5,2] all equioscillate cleanly. [1,2] rel has E = 1.44e-18.
+  - round53(R*) differs from AN2 by about 1e9 ulps: mostly a common scale (normalisation), with a residual of
+    2e8 ulps along phase-stiff directions after the scale is removed. Excluded.
+  - Excel's actual rational is one-signed +0.45..+1.24e-16 against Gamma with 8 extrema (no equioscillation, about
+    60x the minimax E). That is consistent with a finite-precision Remez or least-squares run, which cannot be
+    identified from outputs.
+- **K1 empirical-noise design (W4): even 1,000 cases leave dirs 12-14 at 0.6-1.2 units** (needle basin 0.03-0.3), and
+  the unwrap is infeasible. No oracle spend.
