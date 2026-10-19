@@ -149,6 +149,7 @@ impl Model {
         let options = LiftOptions {
             reuse: Reuse::Never,
             work: kinds.work,
+            result: kinds.result,
         };
         // One- and two-argument calls (most of the math functions) read into locals: building,
         // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
@@ -223,6 +224,7 @@ impl Model {
         let options = LiftOptions {
             reuse: Reuse::Never,
             work: kinds.work,
+            result: kinds.result,
         };
         self.lift_grids(read.into_lifted(), cost, &options, cell, kernel)
     }
