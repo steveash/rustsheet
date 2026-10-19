@@ -418,7 +418,7 @@ impl Model {
 
         let n = values.len();
         // Excel: two numbers are #DIV/0!, three are enough (docs/excel-semantics/statistics.md
-        // "SKEW.P of two numbers is #DIV/0!").
+        // "SKEW.P of two numbers is #DIV/0!"; probes/skew-p-bound).
         if n < 3 {
             return CalcResult::Error {
                 error: Error::DIV,

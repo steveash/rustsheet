@@ -1093,7 +1093,7 @@ three or more (`SKEW.P(5,5,5)`) and one number are `#DIV/0!`. Same bound as SKEW
 Evidence: gen-m9/3b8e9078261b5bd2 Calc!A13 (`LAMBDA(v,acc,v)(SKEW.P(..),..)`, excel-graph, 2026-10-12, T-1289);
 probes/skew-p-bound A1-A14 (excel-graph, 2026-10-19, T-1404).
 Ours: matches (T-1404).
-Status: VERIFIED (web)
+Status: VERIFIED (excel-graph)
 Tasks: T-1404
 
 ## FORECAST.ETS.CONFINT in the generated gen-m9 suite: argument errors only
@@ -1687,5 +1687,5 @@ as does a wrong argument count (`STANDARDIZE(5,3)`, a three-range `SUMX2PY2`); `
 written `_xlfn.`-prefixed in the file.
 Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
 Status: VERIFIED (excel-graph).
-Ours: the mismatches above are open.
+Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755

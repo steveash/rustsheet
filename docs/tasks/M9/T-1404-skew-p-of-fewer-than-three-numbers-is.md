@@ -32,4 +32,4 @@ Semantics: docs/excel-semantics/statistics.md "SKEW.P of two numbers is #DIV/0!"
 -
 
 ## Outcome
-SKEW.P now needs three numbers (`n < 3` is `#DIV/0!`), probed in probes/skew-p-bound (excel-graph): two numbers `#DIV/0!`, three give 0, constant series `#DIV/0!`. gen-m9/3b8e9078261b5bd2 A13 passes.
+SKEW.P now needs three numbers (`n < 3` is `#DIV/0!`), probed in probes/skew-p-bound (excel-graph): two numbers `#DIV/0!`, three give 0, constant series `#DIV/0!`. the probe's 14 cells pass and stats-evidence-floor-t1623 Q16, Q19 are fixed.
