@@ -124,8 +124,8 @@ impl Model {
         Ok(Holidays::new(days))
     }
 
-    /// One element of WORKDAY(.INTL): the start date, the day count, then the weekend (WORKDAY.INTL
-    /// only), then the holidays; an all-weekend mask is `#VALUE!`. A day count of 0 is the start
+    /// One element of WORKDAY(.INTL): the start date, the day count, the holidays, then the weekend
+    /// (WORKDAY.INTL only); an all-weekend mask is `#VALUE!`. A day count of 0 is the start
     /// date, whatever the weekend and the holidays are.
     fn workday_of(
         &self,
@@ -147,11 +147,13 @@ impl Model {
             // from serial 0").
             return Ok(start as f64);
         }
+        // The holidays' error comes before the weekend's, also before a bad weekend code:
+        // `WORKDAY.INTL(45000,5,99,NA())` is `#N/A` (probes/date-text-weekend-3d P3, P31, P33).
+        let holidays = holidays.as_ref().map_err(Clone::clone)?;
         let weekend = match rest.first() {
-            Some(weekend) if holidays_at == 3 => Self::weekend_mask(weekend, cell)?,
+            Some(weekend) if holidays_at == 3 => Self::weekend_mask(weekend, Error::NUM, cell)?,
             _ => DEFAULT_WEEKEND,
         };
-        let holidays = holidays.as_ref().map_err(Clone::clone)?;
         if weekend == [true; 7] {
             return Err(CalcResult::new_error(
                 Error::VALUE,
