@@ -207,3 +207,12 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   -5937.32019206, 281011.5087. Relative and absolute minimax families of lgamma/(x-1) and lgamma/((x-1)(x-2)),
   degrees (7,7)-(9,9), are excluded at residuals of 1e-5 to 1e-3.
 - Next (W5): re-read the near-1 lines with W4's triangle law and run a per-stage phase solve.
+- **Update (W4 multi-anchor solve): G is degree (7,7), not (8,8).** In the (8,8) solutions both top coefficients
+  collapsed to about 1e-8.
+  - Fixing N8 = D8 = 0 gives Cody's coefficient count. The joint phase solve on anchors 1, 1.25 and 1.5, plus an
+    exact search along the invisible SVD directions, then reaches 73.4% exact (W4).
+  - D0 = -1/16 within 7e-10; rounding it to -1/16 changes nothing.
+  - Candidate `g_candidate_w4_77.txt` (fit77S2): the coordinator measures 76.4% exact and 88.3% within 1 ulp on
+    871,392 points. By tenth of [1,2): 92 85 75 69 71 71 66 51 48 73%.
+  - The best sets fit Gamma only to 1.2-1.5e-16, so Excel's G is itself about 1-ulp accurate.
+- Anchor ladders: e701-e718 at y = 1.25, 1.5 and 1.75.
