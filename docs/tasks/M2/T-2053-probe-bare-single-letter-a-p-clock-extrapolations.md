@@ -24,4 +24,4 @@ T-2011 review: `parse_bare_letter_clock` (formatter/parse_formatted.rs) covers `
 -
 
 ## Outcome
-Cells N21-N29 added to probes/date-text-single-letter-ap and refilled (excel-graph). All extrapolations held except fractional seconds before the letter, which take `mm:ss.0`; `parse_bare_letter_clock` now does that and also accepts a bare hour with AM/PM. Eval: probes case 30 -> 57 cells, no new F lines.
+Cells N21-N29 added to probes/date-text-single-letter-ap and refilled (excel-graph). All extrapolations held except fractional seconds before the letter, which take `mm:ss.0`; `parse_bare_letter_clock` now does that and also accepts a bare hour with AM/PM. Eval: probes case 30 -> 48 cells, no new F lines.
