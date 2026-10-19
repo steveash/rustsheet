@@ -1,6 +1,7 @@
 use chrono::DateTime;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::{
     calc_result::Range,
@@ -17,6 +18,7 @@ use crate::{
         },
         types::CellReferenceRC,
     },
+    functions::logical::NamedLambdas,
     language::{get_default_language, get_language},
     locale::{get_default_locale, get_locale},
     model::Model,
@@ -179,15 +181,13 @@ impl Model {
                 // user's active language.
                 match self.parse_internal_formula(formula_body, &dummy_ref) {
                     Node::LambdaDefKind { parameters, body } => {
-                        ParsedDefinedName::LambdaDefinition(std::sync::Arc::new((
-                            parameters, *body,
-                        )))
+                        ParsedDefinedName::LambdaDefinition(Arc::new((parameters, *body)))
                     }
                     // Excel leaves `Sheet1!#REF!` as the body of a name whose range was deleted.
                     Node::ErrorKind(error) => ParsedDefinedName::ErrorLiteral(error),
                     Node::ParseErrorKind { .. } => ParsedDefinedName::InvalidDefinedNameFormula,
                     // Intersections, constants, function calls: evaluated where used (T-0158).
-                    body => ParsedDefinedName::Formula(std::sync::Arc::new(body)),
+                    body => ParsedDefinedName::Formula(Arc::new(body)),
                 }
             };
 
@@ -726,7 +726,7 @@ impl Model {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             eta_lambdas: HashMap::new(),
-            named_lambdas: crate::functions::logical::NamedLambdas::default(),
+            named_lambdas: NamedLambdas::default(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),

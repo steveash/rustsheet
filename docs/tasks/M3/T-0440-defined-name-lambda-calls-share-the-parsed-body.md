@@ -35,11 +35,12 @@ out one lambda id per defined name per evaluation.
 
 ## Outcome
 `ParsedDefinedName::LambdaDefinition` and `Model::lambdas` hold the parameters and body behind an
-`Arc` (`SharedLambda`, functions/logical/lambda.rs), so naming a defined-name LAMBDA copies no body.
+`Arc` (`SharedLambda`, functions/logical/lambda.rs; `Arc`, not `Rc`, like `ParsedDefinedName::Formula`),
+so naming a defined-name LAMBDA copies no body.
 The new `NamedLambdas` gives each defined-name LAMBDA one lambda id per evaluation
 (`Model::defined_name_lambda`), so `lambdas` no longer grows by one entry per call. It also keeps
 the body a call patched for the next call (`Model::call_lambda`), using T-0425's `call_prepared`
-reuse rule. The body is taken out while a call runs, so recursion and `MyFn(MyFn(x))` patch their
+reuse rule; only a body is kept, not a wrong-count error. The body is taken out while a call runs, so recursion and `MyFn(MyFn(x))` patch their
 own. `lambda_definition` checks the argument count before it copies the body. New test
 `defined_name_lambda_calls_reuse_their_body_and_stay_independent` (recursion, nesting, a wrong
 argument count, the name passed by value, a definition changed between evaluations).

@@ -27,12 +27,13 @@ pub(crate) type SharedLambda = Arc<(Vec<NamedVariable>, Node)>;
 /// neither grows `lambdas` nor copies `MyFn`'s body per element (T-0440).
 #[derive(Default)]
 pub(crate) struct NamedLambdas {
-    /// The lambda id of each definition, by the address of its [`SharedLambda`]. The address
-    /// stays unique while `lambdas` holds the definition, and both are cleared together.
-    ids: HashMap<usize, usize>,
+    /// The lambda id of each definition, by the address of its [`SharedLambda`], which the entry
+    /// holds so that no other definition can take that address while the entry lives.
+    ids: HashMap<usize, (SharedLambda, usize)>,
     /// The lambda ids in `ids`.
     named: HashSet<usize>,
-    /// A patched body by lambda id and number of arguments, for the next call.
+    /// A patched body by lambda id and number of arguments, for the next call. Only a body is
+    /// kept: an error (a wrong count) is made again with the calling cell's origin.
     prepared: HashMap<(usize, usize), PreparedLambda>,
 }
 
@@ -305,7 +306,9 @@ impl Model {
         }
         let result = self.call_lambda_caller_with_nodes(&mut caller, call_args, cell);
         if let (Some(key), Some(prepared)) = (named, caller.prepared) {
-            self.named_lambdas.prepared.insert(key, prepared);
+            if prepared.definition.is_ok() {
+                self.named_lambdas.prepared.insert(key, prepared);
+            }
         }
         result
     }
@@ -565,20 +568,25 @@ impl Model {
         }
 
         let id = self.get_next_lambda_id();
-        self.lambdas.insert(id, Arc::new((parameters, body)));
-        CalcResult::Lambda(id)
+        CalcResult::Lambda(self.store_lambda(Arc::new((parameters, body))))
+    }
+
+    /// Stores `definition` under a new lambda id, which it returns.
+    pub(crate) fn store_lambda(&mut self, definition: SharedLambda) -> usize {
+        let id = self.get_next_lambda_id();
+        self.lambdas.insert(id, definition);
+        id
     }
 
     /// The LAMBDA a defined name holds, as a value: the same lambda id each time the name is
     /// used in one evaluation (`NamedLambdas`).
     pub(crate) fn defined_name_lambda(&mut self, definition: SharedLambda) -> CalcResult {
         let address = Arc::as_ptr(&definition).addr();
-        if let Some(&id) = self.named_lambdas.ids.get(&address) {
+        if let Some(&(_, id)) = self.named_lambdas.ids.get(&address) {
             return CalcResult::Lambda(id);
         }
-        let id = self.get_next_lambda_id();
-        self.lambdas.insert(id, definition);
-        self.named_lambdas.ids.insert(address, id);
+        let id = self.store_lambda(Arc::clone(&definition));
+        self.named_lambdas.ids.insert(address, (definition, id));
         self.named_lambdas.named.insert(id);
         CalcResult::Lambda(id)
     }

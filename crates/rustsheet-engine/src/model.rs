@@ -767,10 +767,8 @@ impl Model {
                 self.implicit_intersection_to_value(result, cell)
             }
             LambdaDefKind { parameters, body } => {
-                let id = self.get_next_lambda_id();
-                self.lambdas
-                    .insert(id, Arc::new((parameters.clone(), *body.clone())));
-                CalcResult::Lambda(id)
+                let definition = Arc::new((parameters.clone(), *body.clone()));
+                CalcResult::Lambda(self.store_lambda(definition))
             }
             LambdaCallKind { lambda, args } => {
                 // With a reference kept as one, a cell and an INDEX or IF that selects one
