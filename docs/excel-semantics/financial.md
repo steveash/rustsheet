@@ -292,7 +292,7 @@ errors on the guess sweep R!C1:C31 are not smooth in the guess (C8 -1.8e-13, C9 
 (a secant's order 21 or 34; scratch analysis against a 60-digit root, not a lab fit, until T-1534's traces).
 Ours: Newton, up to 50 iterations (`compute_rate`, functions/financial/financial_util.rs).
 Status: UNVERIFIED (the update rule and the stop test)
-Tasks: T-1525, T-0916, T-1533
+Tasks: T-1525, T-0916, T-1533, T-2005
 
 ## YIELD with one coupon period left is closed form
 Rule: when at most one coupon period is left, Excel evaluates the documented formula

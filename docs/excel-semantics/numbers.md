@@ -842,6 +842,20 @@ Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IM
 Status: VERIFIED
 Tasks: T-1930, T-1797
 
+## LOG with one argument is LOG10
+Rule: `LOG(x)` with the base omitted returns the same double as `LOG10(x)`, not ln(x)/ln(10): `LOG(1000)` is exactly 3
+(ln/ln gives 2.9999999999999996). Hypothesis, not yet verified: that log10 is correctly rounded. `LOG10(1.3)` is
+0.11394335230683679. The true value is 0.11394335230683678404..., so that double is the correctly rounded one, and
+glibc's `log10` (0.11394335230683678) is not. The MULTINOMIAL fit (below, "MULTINOMIAL is inexact") also needed
+correctly rounded `log10(k)` terms on web evidence.
+Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/LOG_LOG10_LN.xlsx (desktop cache, Microsoft Macintosh Excel 16.x).
+LOG!B2:B14 equals LOG10!B2:B14 cell for cell, including B5 (1000 → 3), B12 (0.004 → -2.3979400086720375) and B13
+(1.3 → 0.11394335230683679). No web evidence yet at a point where glibc's log10 is not correctly rounded.
+Ours: LOG is `f64::log(x, 10.0)` and LOG10 is `f64::log10` (`fn_log`, `fn_log10` in
+functions/math_and_trigonometry/mathematical.rs). That gives four known failures: LOG!B5, B12, B13 and LOG10!B13.
+Status: VERIFIED (desktop) for LOG = LOG10 on these 13 inputs; UNVERIFIED (web probe pending) for "correctly rounded".
+Tasks: T-2004
+
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
 engine forms, rounded faithfully (within 1 ulp of the exact `X^fl(1/n)`) but by no known model: it
