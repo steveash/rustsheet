@@ -1130,8 +1130,8 @@ excel-graph, 2026-10-19): `AREAS(IFS(TRUE,XLOOKUP(..)))` and `AREAS(SWITCH(1,1,.
 `ISREF(IFS(TRUE,1))` FALSE; `SUBTOTAL(9,IFS(TRUE,(H1,I2)))`, `SUBTOTAL(9,SWITCH(1,1,(H1,I2)))` and
 `SUM(IFS(TRUE,(H1,I2)))` 11, `AREAS(IFS(TRUE,(H1,I2)))` and `AREAS(SWITCH(2,1,H1,(H1,I2)))` (the default) 2; a later
 TRUE condition (`IFS(FALSE,1,TRUE,TAKE(H1:I2,1))`), SWITCH's default and an IF over IFS or IFS over IF are 9; no match
-is `#N/A`, and a lifting lookup value or an array condition spills `#VALUE!` (A66:A67, A70:B70; A10-A110). SUM, COUNT and COUNTA over `IF(TRUE,XLOOKUP(1,J1:J2,K1:L2))` with
-K1 = "x", L1 = TRUE give 5 (with a 5), 1 and 2 (A54-A74), which an array of those values gives too, so they do not
+is `#N/A`, and a lifting lookup value or an array condition spills `#VALUE!` (A66:A67, A70:B70; A10-A110).
+SUM, COUNT and COUNTA over `IF(TRUE,XLOOKUP(1,J1:J2,K1:L2))` with K1 = "x", L1 = TRUE give 5 (with a 5), 1 and 2 (A54-A74), which an array of those values gives too, so they do not
 tell a reference from values.
 Evidence: probes/take-drop-trimrange-over-xlookup A10-A94, probes/take-drop-trimrange-over-xlookup-b A10-A62
 (excel-graph, 2026-10-19).
