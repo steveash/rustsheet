@@ -78,7 +78,14 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   D = fl(fl(1/x)*E), with E = Excel's GAMMA(x+1), holds on 18,431 of 18,432 points.
   - The one miss is x = 0.5+1ulp. There fl(x+1) = 1.5 exactly, so the E column takes the half-integer special path,
     while GAMMA(x) itself uses G(1.5). It is not a model miss.
-  - (-1,0) does not follow this identity: 8,197 of 14,336. W3 is on the negative paths.
+  - (-1,0) does not follow this identity (8,197 of 14,336). It uses an upward division chain instead (W3, verified):
+    z = fl(1/x); y1 = fl(x+1); z = fl(z/y1); y = fl(y1+1); GAMMA = fl(z*G(y)).
+    That is 14,080 of 14,080 points where fl(fl(x+1)+1) = fl(x+2), with G read from the GAMMA(x+2) column. The
+    general form for -10 < x < 0 is probably z = 1/x; y = x+1; while y < 1 { z = z/y; y = y+1 }; GAMMA = z*G(y).
+    `h105` checks deeper negatives.
+- **GAMMA reflection cut (W3): exactly -x > 10**, mirroring the positive cut at x >= 10.
+  - `kmyst-gam-h104` gives 112 of 112 on the sweep from -10.04 to -34.19.
+  - -10-1ulp reflects; -10+1ulp does not; -10 itself is #NUM!.
 - **GAMMA for 1 <= x < 10 reduces to [1,2), not Cephes's [2,3) (W4, verified by the coordinator).**
   y = x; z = 1; while (y >= 2) { y = y - 1; z = fl(z*y); }  GAMMA = fl(z * G(y)), with G = Excel's GAMMA on [1,2).
   The product runs descending, (x-1)(x-2)..., each step stored.
