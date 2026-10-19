@@ -32,6 +32,12 @@ pub(crate) enum ArgKind {
     /// WORKDAY's holidays),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
+    /// Read by the caller, which needs a reference there (RANK's `ref`): a reference is data,
+    /// captured by the kernel, and its slot is `EmptyArg`. An array that is not a reference is an
+    /// array of errors of its own shape, which the caller hands back to broadcast with the lifted
+    /// arguments (`Model::lift_call_beside`; statistics.md "RANK of a non-reference array",
+    /// probes/stat-test-lift P28-P31; T-1999). Static analysis gives it that array's shape.
+    ReferenceByCaller,
 }
 
 /// What one kernel call may cost, beyond reading its arguments (SPEC-0011 "Security rule for

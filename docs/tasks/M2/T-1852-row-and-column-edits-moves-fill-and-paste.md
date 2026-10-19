@@ -3,7 +3,7 @@ id: T-1852
 title: "Row and column edits, moves, fill and paste keep a legacy N/T marker"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -32,13 +32,28 @@ display text, which T-1713's property test pins. None of these paths is reachabl
 `rustsheet` facade today.
 
 ## Acceptance criteria
-- [ ] Unit tests: after each of row insert, column delete, move, fill and paste, a marked cell
+- [x] Unit tests: after each of row insert, column delete, move, fill and paste, a marked cell
   whose text the edit rewrites keeps its marker and its `#VALUE!`. An unmarked dynamic twin
   stays dynamic and spills.
-- [ ] references.md "Legacy N and T over a reference-returning call" records the assumption as
+- [x] references.md "Legacy N and T over a reference-returning call" records the assumption as
   unprobed, pointing at T-1853, unless T-1853 has landed.
-- [ ] probes/sheet-ops/sheet-ops-insert-row-legacy-cell S!B3 (`#VALUE!`) and S!B4 (empty) pass (T-1933's row-insert op); the baseline shrinks.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/sheet-ops/sheet-ops-insert-row-legacy-cell S!B3 (`#VALUE!`) and S!B4 (empty) pass (T-1933's row-insert op); the baseline shrinks.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Probing Excel (T-1853).
+
+## Outcome
+- An edit that re-enters a cell's formula through its display text now uses the legacy entry when
+  the source tree holds a marker (`Node::has_legacy_marker`, `Model::cell_has_legacy_marker`).
+  This covers row and column inserts and deletes (`move_cell`, and `shift_cell_formula` via
+  `update_cell_with_legacy_formula`, which keeps the style as `update_cell_with_formula` does),
+  row and column moves, fill (`Model::fill_cell`, `UserModel::fill_target`), and copy and cut
+  paste. Paste uses a `#[serde(default)] legacy` flag on `ClipboardCell`; a cut also covers the
+  legacy formulas outside the cut area that read the cut cells. The write itself is
+  `Model::reenter_user_input`.
+- Tests: test/user_model/test_legacy_marker_edits.rs (8 tests). For each edit, the marked cell
+  stays a scalar `#VALUE!` and its dynamic twin still spills.
+- Eval delta: probes/sheet-ops/sheet-ops-insert-row-legacy-cell S!B3 and S!B4 fixed (probes known
+  failures -2). Regressions 0.
+- Follow-up: T-2018. Redo of a paste, fill or cut rewrite re-enters its text as typed.

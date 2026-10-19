@@ -28,6 +28,7 @@ RULE: dict[str, tuple[frozenset[str], bool]] = {
     "LiftArraysRangeWhole": (frozenset({"criteria", "range"}), True),
     "Whole": (WHOLE_MODES, False),
     "WholeByCaller": (WHOLE_MODES, False),
+    "ReferenceByCaller": (frozenset({"range"}), False),
 }
 
 
