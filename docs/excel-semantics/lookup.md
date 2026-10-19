@@ -695,6 +695,6 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 Evidence: probes/reference-lift-elements (excel-graph, 2026-10-19, T-1810); probes/lookup-argument-modes F14:H15,
 F20:H21, F34:H35 (excel-graph, 2026-10-09, T-1238).
 Status: VERIFIED (excel-graph)
-Implemented in: not yet: the carrier is specified by T-1955 and built by T-1956 (OFFSET) and T-1957 (INDIRECT,
-TRIMRANGE); XMATCH's search_mode is implemented (xmatch.rs, T-1958).
+Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier: not yet, specified by T-1955
+and built by T-1956 (OFFSET) and T-1957 (INDIRECT, TRIMRANGE).
 Tasks: T-1810, T-1955, T-1956, T-1957, T-1958

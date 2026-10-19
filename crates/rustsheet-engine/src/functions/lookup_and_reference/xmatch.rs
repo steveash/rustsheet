@@ -167,8 +167,9 @@ impl Model {
     ///   *  2 – binary search ascending
     ///   * -2 – binary search descending
     ///
-    /// `lookup_value`, `match_mode` and `search_mode` lift over a multi-cell range and an array, one search per
-    /// element (`ROWS(XMATCH(A1:A3,A1:A3))` is 3, `ROWS(XMATCH(2,A1:A3,{0;1}))` is 2;
+    /// `lookup_value`, `match_mode` and `search_mode` lift over a multi-cell range and an array,
+    /// one search per element
+    /// (`ROWS(XMATCH(A1:A3,A1:A3))` is 3, `ROWS(XMATCH(2,A1:A3,{0;1}))` is 2;
     /// probes/lookup-argument-modes F26:G29; docs/excel-semantics/lookup.md "Lookup and reference
     /// function argument modes"). `lookup_array` is read once for every element.
     pub(crate) fn fn_xmatch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
