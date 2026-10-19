@@ -449,7 +449,51 @@ text" section lists every cell ours gets wrong.
 Not implemented: ours passes 6,961 of 10,400 text cells (66.9%). Fill characters (T-1735),
 out-of-range dates (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
-scientific (T-1730), fractions and round-half (T-1711, T-0982), the sign of -0.5 (T-1129),
+scientific (T-1730), fractions (T-2020, T-2021, T-0982; "Fraction formats" below), round-half (T-1711), the sign of -0.5 (T-1129),
 fractional seconds (T-0981, T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740
+Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2020, T-2021
+
+## Fraction formats
+Rule: a section with `/` between digit placeholders formats the value as a fraction.
+- Which fraction: with a denominator of k placeholders (`?/?`, `??/??`, `???/???`), the last
+  continued-fraction convergent of the value (or of its fractional part, when a whole part is written)
+  whose denominator has at most k digits; semiconvergents are skipped. So `# ???/???` on 0.001 is
+  "0        " although 1/999 is closer (05c1c646c95a2d60 F!C9), and on 0.0049 "   1/204"
+  (bfbcd16cee266336 F!X4); `# ???/???` on PI() is "3  16/113" (05c1c646c95a2d60 F!C18). This picks the
+  Excel fraction in all 488 numeric, non-overflow gen-m10 cells of the seven such codes; the nearest
+  fraction with a k-digit denominator picks 477 (gap triage 2026-10-19).
+- A fixed denominator (`# ?/2`, `# ?/4`, `# ?/10`, `# ??/16`, `?/100`): numerator = fraction x
+  denominator rounded half up, `TEXT(45000.75,"# ?/10")` = "45000 8/10" (8e073c5b2145567a T!A11),
+  `?/100` on 12.345 "1235/100" (05c1c646c95a2d60 F!D11); all 314 numeric, non-overflow cells of these
+  codes.
+- No whole part: the fraction is improper and its numerator takes as many digits as needed: `?/?` on
+  1.5 "3/2" (039accabcfe1e6c7 F!E7), on 123456.789 "617284/5" (03a284c57e24ff37 F!J4), on 1234567890
+  "1234567890/1" (039accabcfe1e6c7 F!E2), on 0 and 0.0049 "0/1" (4398098060a7fa9d F!Z5,
+  03a284c57e24ff37 F!J8); `??/??` on 12.345 "358/29" (bfbcd16cee266336 F!K16); `?/100` on 1.5 "150/100"
+  (05c1c646c95a2d60 F!D3).
+- A fraction that rounds to 0 or to 1 with a whole part leaves only the whole number, padded with
+  spaces for each placeholder, slash and separator of the fraction when they are `?`: `# ?/?` on 1000
+  "1000    " (810fee377a42575b F!A13), `0 ?/?` on 0 "0    " (71ad5f93362f4ff4 F!G19), `# ??/16` on 0
+  "0      " (bfbcd16cee266336 F!V17), `# ?/4` on 0.9999999999 "1    " (03a284c57e24ff37 T!A11). With
+  `#` placeholders nothing is padded: `# #/#` on 0 "0" (bfbcd16cee266336 F!A17), on 1000 "1000"
+  (039accabcfe1e6c7 F!K20).
+- A whole part of 0 next to a nonzero fraction shows as `0` only under `0`: `0 ?/?` on 0.125 "0 1/8"
+  (71ad5f93362f4ff4 F!G12), `# ?/?` on 1/3 " 1/3" (810fee377a42575b F!A20), `# ??/16` on 1/3 "  5/16"
+  (05c1c646c95a2d60 F!A12). When the fraction is 0 too, the 0 shows under `#` as well: `# ?/?` on 0
+  and on 0.0049 "0    " (4c6a49fe4a6fa404 F!K4, 0e3d8eba9432a18d F!F18).
+- `?` placeholders pad with spaces on the left of the numerator and on the right of the
+  denominator: `??/??` on 0.125 " 1/8 " (039accabcfe1e6c7 F!U12), on 1000 "1000/1 "
+  (039accabcfe1e6c7 F!U20); `# ???/???` on 1.5 "1   1/2  " (05c1c646c95a2d60 F!C3).
+- The minus goes in front: `?/?` on -0.5 "-1/2" (4398098060a7fa9d F!Z4), `0 ?/?` on -0.5 "-0 1/2"
+  (0e3d8eba9432a18d F!W9), `# ?/4` on -0.5 "- 2/4" (9a8b7d68507d7ada F!A1), on -1 "-1    "
+  (039accabcfe1e6c7 F!F9).
+- `TEXT()` with the same code returns the same text (the gen-m10 sheet T cells); overflow is 255 `#`
+  (see "Displayed text over an edge-value pool", T-1740).
+Evidence: eval/suites/gen-m10 (excel-graph `text` and sheet T values, 2026-10-16, T-1611): 900 text
+cells of 12 fraction codes.
+Ours: not implemented. The lexer reads `/` as a literal (`crates/rustsheet-engine/src/formatter/`,
+mod.rs "3.- You can use ?/? to format fractions"), so the value's digits fill the placeholders
+(`TEXT(PI(),"# ?/?")` is "  /3"); 829 of the 900 text cells and 39 gen-m10 TEXT() cells fail.
+Status: VERIFIED (Excel for the web)
+Tasks: T-2020, T-2021, T-0982, T-1711, T-1740

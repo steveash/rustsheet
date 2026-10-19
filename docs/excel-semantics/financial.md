@@ -872,3 +872,19 @@ Backend: excel-graph.
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_npv`, `fn_fvschedule` in functions/financial/mod.rs (T-1373)
 Tasks: T-1084, T-1373
+
+## EFFECT and NOMINAL
+Rule: EFFECT is `(1 + r/n)^n - 1` with `n` floored and the power taken as Excel's `^` takes an integer
+exponent, right-to-left square-and-multiply (numbers.md "Integer exponents: right-to-left
+square-and-multiply"), not libm `pow`. Plain-double square-and-multiply gives all 20 cached EFFECT cells of
+`ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx` (column D and F) and probes/fin-argument-modes H125
+(`EFFECT(0.05,4)` = 0.050945336914062445); libm `pow` gives 11 of the 20, left-to-right
+square-and-multiply 15, `expm1(n*log1p(r/n))` 6 (gap triage 2026-10-19).
+NOMINAL is `n*((1+r)^(1/n) - 1)` in some order not yet fitted: over the 20 cached NOMINAL cells (columns C
+and E) `(exp(ln(1+r)*(1/n)) - 1)*n` gives 17, `((1+r)^(1/n) - 1)*n` with libm `pow` 16,
+`expm1(log1p(r)/n)*n` 7. The fit waits for a sweep (T-2023, T-2024).
+Evidence: ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx (Mac Excel 16 cache; Excel for the web agrees,
+docs/research/oracle-calibration.md), probes/fin-argument-modes H125 (excel-graph).
+Ours: libm `powf` for both, so the 10 EFFECT and 4 NOMINAL cells above are known failures.
+Status: EFFECT VERIFIED on these 21 cells; NOMINAL UNVERIFIED
+Tasks: T-2022, T-2023, T-2024
