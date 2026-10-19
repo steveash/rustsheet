@@ -440,6 +440,19 @@ annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822, T-1841, T-1842, T-1843, T-1845, T-1870
 
+## MIRR error and edge cases
+Rule: MIRR divides each flow by its running power, so a zero power is `#DIV/0!`, and an overflowing power is an error:
+- A single flow (negative or positive) is `#DIV/0!`; so are values with no negative flow. All-negative flows are -1 (`MIRR({-1,-2,-3},..)`).
+- A reinvest rate of -1 with any positive flow, even only the first (`{100,-50}`), is `#DIV/0!`. A finance rate of -1 is `#DIV/0!` when a negative flow
+  follows the first (`{50,-100,80}`, `{-100,50,-80,120}`); with the only negative flow first (`{-100,50,80}`, `{-50,100}`) it is a number (0.1618950038622251, 1).
+- A finance rate below -1 is an ordinary number when the first negative flow is first (A9, same as -1) and `#NUM!` when the ratio goes negative (`{50,-100,80}` with -2).
+- Power overflow: a reinvest rate of 1E+200 or a long flow at rate 5 (400 flows, 6^400) is `#DIV/0!`; a finance rate of +-1E+200 is `#NUM!`; both overflowing is `#DIV/0!`.
+Evidence: probes/fin-mirr-edges A1-A24 (excel-graph, 2026-10-19, T-1798).
+Backend: excel-graph.
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_mirr` in functions/financial/mirr.rs (T-1798); replaces the hand-taken limits at rate -1.
+Tasks: T-1798
+
 ## Coupon settlement before the calendar
 Rule: the COUP* functions, PRICE, YIELD, DURATION, MDURATION and ACCRINT are `#NUM!` for a settlement (ACCRINT: an
 issue, first interest date or settlement) below serial 1 in a 1900 workbook. Probed values: -1 for every one of them
