@@ -3,7 +3,7 @@ id: T-1951
 title: "Probe LAMBDA calls returning a union or a one-cell reference to OFFSET, COUNTIF and AREAS"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
