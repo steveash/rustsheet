@@ -960,9 +960,11 @@ non-reference `ref` broadcasts with the ref's shape, every element `#VALUE!` (`R
 `TYPE(LARGE(A1:A8,{1}))` are 64).
 Evidence: probes/stat-test-lift P1-P89, stat-test-lift-b P90-P95 (excel-graph, 2026-10-19, T-1813).
 Ours: Z.TEST/ZTEST and PROB match since T-1813 (`statistical/z_test.rs`, `prob.rs`: the data argument is
-`WholeByCaller`, read once). RANK, FORECAST, T.TEST and the order-statistic precedence: T-1982.
+`WholeByCaller`, read once). FORECAST/FORECAST.LINEAR, T.TEST/TTEST and the order-statistic precedence match
+since T-1982 (`forecast.rs`, `t_dist.rs`; PERCENTILE's and TRIMMEAN's readers keep an error value). T.TEST's
+P64-P67 still miss by ulps, which is the accuracy tasks' work. RANK: T-1999.
 Status: VERIFIED (excel-graph)
-Tasks: T-1813, T-1982
+Tasks: T-1813, T-1982, T-1999
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the

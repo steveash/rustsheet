@@ -3,7 +3,7 @@ id: T-1982
 title: "RANK, FORECAST and T.TEST lift their scalar arguments over a whole data argument"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -12,6 +12,9 @@ spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
 ## Goal
+Done here: FORECAST/FORECAST.LINEAR `x` and T.TEST/TTEST `tails`/`type` on the driver, and the
+order-statistic precedence. RANK moved to **T-1999**, which carries the RANK findings below.
+As written at the split from T-1813:
 The rest of T-1813: RANK/RANK.EQ/RANK.AVG `number` and `order`, FORECAST/FORECAST.LINEAR `x` and
 T.TEST/TTEST `tails`/`type` lift over an array and a multi-cell range through the SPEC-0011
 driver, with the data arguments read once by the function's own reader; and SMALL, PERCENTILE,
@@ -50,3 +53,29 @@ H264, H265, H492, H493, H495, H496, H498, H499, H537-H539, H543-H545; statistics
 ## Out of scope
 - The pairing functions' unequal sizes (T-1292); FORECAST.ETS (T-1293, T-1553).
 - Cells that miss by ulps today (T.TEST H535-H546) stay with their accuracy tasks.
+
+## Outcome
+FORECAST and FORECAST.LINEAR (`statistical/forecast.rs`) read the data once into the regression
+line (`forecast_line`), and `x` lifts. T.TEST and TTEST (`statistical/t_dist.rs`) read the samples
+once, and `tails`/`type` lift: an element checks `tails`, then `type`, then takes the samples'
+error, and is charged the samples' cells (`LiftCost::Cells`). The test itself is `t_test_p`, with
+empty-message errors. All four functions are in `Function::arg_kinds` (`ONE_THEN_TWO_DATA`,
+`TWO_DATA_THEN_2`) and in `lifting_table_functions!`. Their fallback signature and shape arms are
+deleted, `fn_forecast_linear` is merged into `fn_forecast`, and `eval/catalog/lift-kinds.json` is
+regenerated.
+
+PERCENTILE*/QUARTILE*/PERCENTRANK*'s reader and TRIMMEAN's reader now return an error value as
+that error, so the data's error comes before a bad `k` (P81-P83). PROB keeps `collect_numeric_flat`'s
+`#VALUE!`, since it was not probed with an error data argument. FREQUENCY's and PERCENTILE's readers now
+delegate to the new `numeric_flat_of`, PROB's reader, instead of copying it (duplication 3630 to
+3619).
+
+RANK needs a design for its two-kind `ref` and is split to T-1999.
+
+Eval delta (probes): fixed 32, regressions 0, new cases 0.
+- stat-test-lift: P1-P4, P6-P9, P60-P62, P74, P81-P83, P88.
+- stat-argument-modes: H260, H261, H264, H265, H537-H539, H543-H545.
+- regression-forecast: L7, M7, P7, Q7, L13, P13 (FORECAST's lifted `x`).
+
+Still failing, as the task scoped them: P64-P67 (T.TEST's value misses by ulps, the accuracy
+tasks), and RANK (T-1999).
