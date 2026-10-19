@@ -81,4 +81,4 @@ if mode == "control":
     Ct = Nt if CH == "N" else Dt
     kt = round((Ct[J] - C[J]) / uc)
     print("   truth k=%+d; in top list: %s" % (kt, [i for i, (v_, k) in enumerate(best) if k == kt]))
-np.save(os.path.join(HERE, "fscan_top_%s%d.npy" % (CH, J)), np.array([[k, v_] for v_, k in best]))
+np.save(os.path.join(os.environ.get("TMPDIR_W5", "/tmp/claude-0/-home-user-rustsheet/3a20e203-66f6-532b-8608-5ba2c7a655ee/scratchpad"), "fscan_top_%s%d.npy" % (CH, J)), np.array([[k, v_] for v_, k in best]))
