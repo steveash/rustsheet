@@ -135,7 +135,14 @@ ironcalc-calc/FINANCIAL/MIRR.xlsx (225 cells, all passing since).
 Status: VERIFIED (fit, 467/467 bit-exact)
 Implemented in: `fn_mirr` (functions/financial/mirr.rs). A rate of -1 keeps its own limit cases, and a ratio that is
 zero, negative or infinite keeps `powf`; neither is part of the fit.
-Tasks: T-1687
+Web vs desktop (T-0959): since T-0959 `^` takes `exp` from EXP's kernel on a twice-rounded product (numbers.md "Non-integer
+exponents"), and MIRR's root does not follow it. `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` is 0.3933280241536672 in Mac desktop Excel
+16.0300 (ironcalc-calc MIRR.xlsx Sheet2!N16, cached) and 0.3933280241536674 in Excel for the web (probes-numeric/power-mirr-root A1,
+A2, and A3 = the same closed form written with `^`). The pre-T-0959 root (libm `exp` of a once-rounded product,
+`power_with_libm_exp`) gives the desktop value and still matches all 467 fit cells and 225 MIRR.xlsx cells, so MIRR keeps it
+(decisions 0030 and 0039: passing desktop evidence stays). power-mirr-root A1/A2 are the web side of this conflict; the
+Windows desktop value is a T-1075 (M14) question.
+Tasks: T-1687, T-0959
 
 ## XIRR is a bracketing bisection, not Newton
 Rule: XIRR finds a sign change of XNPV on a chain of trial rates, then bisects it. The chain starts at
