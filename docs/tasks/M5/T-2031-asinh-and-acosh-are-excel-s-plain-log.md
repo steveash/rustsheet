@@ -3,7 +3,7 @@ id: T-2031
 title: "ASINH and ACOSH are Excel's plain log formulas, ln(x + sqrt(x*x +- 1)), not libm"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
