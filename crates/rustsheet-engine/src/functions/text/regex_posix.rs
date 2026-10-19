@@ -104,11 +104,16 @@ fn invalid_ast(ast: &Ast, pattern: &str) -> bool {
     }
 }
 
-fn invalid_set(set: &ClassSet, pattern: &str) -> bool {
-    match set {
-        ClassSet::Item(item) => invalid_item(item, pattern),
-        ClassSet::BinaryOp(op) => invalid_set(&op.lhs, pattern) || invalid_set(&op.rhs, pattern),
+/// Walks the `lhs` chain of set operations in a loop: `[a&&b&&c...]` nests as deep as the pattern
+/// is long, which the parser's nesting limit does not bound.
+fn invalid_set(mut set: &ClassSet, pattern: &str) -> bool {
+    while let ClassSet::BinaryOp(op) = set {
+        if invalid_set(&op.rhs, pattern) {
+            return true;
+        }
+        set = &op.lhs;
     }
+    matches!(set, ClassSet::Item(item) if invalid_item(item, pattern))
 }
 
 fn invalid_item(item: &ClassSetItem, pattern: &str) -> bool {
@@ -302,6 +307,13 @@ mod tests {
         assert_eq!(rewritten("[[:^digit:]x]"), r"[[^\p{Nd}]x]");
         assert_eq!(rewritten(r"[\[:alpha:]]"), r"[\[:alpha:]]");
         assert_eq!(rewritten("[[:ascii:]]"), "[[:ascii:]]");
+    }
+
+    #[test]
+    fn long_set_operation_chain_does_not_overflow_the_stack() {
+        let chain = format!("[a{}[.a.]]", "&&a".repeat(20_000));
+        // Only that it returns: the parser may itself refuse a chain this long.
+        let _ = unicode_posix_classes(&chain);
     }
 
     #[test]

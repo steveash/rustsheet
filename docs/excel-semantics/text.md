@@ -695,8 +695,8 @@ POSIX syntax PCRE2 rejects is `#VALUE!` (ERROR.TYPE 3), not a literal (T-1985; p
 Z1-Z3, Z8-Z10, regex-posix-classes-b A4, A5): `[:alpha:]` outside a bracket, an unknown or upper-case
 class name (`[[:foo:]]`, `[[:ALPHA:]]`), collating elements and equivalence classes (`[[.a.]]`,
 `[[=a=]]`), and a range that starts at a class (`[[:alpha:]-z]`, `[a[:upper:]-z]`). `[[:alpha:]-]`
-and `[-[:alpha:]]` stay valid.
-
+and `[-[:alpha:]]` stay valid. Not yet matched: a range that ends at a class (`[a-[:alpha:]]`),
+which PCRE2 also rejects (unprobed).
 
 ## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)
 Rule: a REGEXREPLACE result may be up to 65,535 UTF-16 units; one unit more is `#CALC!`. `LEN(REGEXREPLACE(REPT("a",32767),"a","bb"))` is 65534; with `REPT("a",N)&REPT("c",M)` and `"a"` → `"bbb"`, 65,535 units is 65535 and 65,536 or 65,537 is `#CALC!`; the cap counts UTF-16 units, not characters (`"a"` → `"b"&UNICHAR(128512)`: 65,535 units in 49,151 characters is 65535, 65,536 units in 49,150 characters `#CALC!`), and not matches (32,767 matches giving 65,534 units pass). 98,301 to 327,670 units (`REPT("a",32767)`, `"a"` → 3 to 10 b's) and the empty pattern with `bbbbbbbbbb` (360,447) are `#CALC!`. Lifted, the cap is per element: `REGEXREPLACE(REPT("a",{1,32767}),"","bbbbbbbbbb")` is `"bbbbbbbbbbabbbbbbbbbb"` and `#CALC!` (probes/regexreplace-result-cap-lifted). A cell holds such a result: `=REGEXREPLACE(REPT("a",32767),"a","bb")` is the 65,534 b's, `LEN` of the cell 65534, `ISERROR` FALSE.
