@@ -397,6 +397,8 @@ C	probes/legacy-array-at-shapes.case.json	40
 C	probes/legacy-array-result.case.json	46
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-choose-array-index.case.json	12
+C	probes/legacy-if-arm-range-argument-b.case.json	43
+C	probes/legacy-if-arm-range-argument.case.json	73
 C	probes/legacy-index-array-index.case.json	30
 C	probes/legacy-marker-spelling-name-plain.case.json	3
 C	probes/legacy-marker-spelling-name-xlfn.case.json	2
@@ -1307,9 +1309,7 @@ F	probes/discount-security-modes.case.json	Calc!A83
 F	probes/discount-security-modes.case.json	Calc!A86
 F	probes/discount-security-modes.case.json	Calc!A88
 F	probes/displayed-text-formats.case.json	S!A21
-F	probes/eng-argument-modes.case.json	Calc!A33
 F	probes/eng-argument-modes.case.json	Calc!A45
-F	probes/eng-argument-modes.case.json	Calc!A51
 F	probes/eng-impower-angle-cut.case.json	S!A10
 F	probes/eng-impower-angle-cut.case.json	S!A11
 F	probes/eng-impower-angle-cut.case.json	S!A12
@@ -1735,8 +1735,6 @@ F	probes/legacy-array-at-shapes.case.json	S!J11
 F	probes/legacy-array-at-shapes.case.json	S!J20
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A1
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A2
-F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!J2
-F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!Y2
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
@@ -2451,14 +2449,6 @@ F	probes/scalar-lift-open-a.case.json	Sheet1!AA9
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
-F	probes/scalar-lift-open-c.case.json	Sheet1!W1
-F	probes/scalar-lift-open-c.case.json	Sheet1!W2
-F	probes/scalar-lift-open-c.case.json	Sheet1!W3
-F	probes/scalar-lift-open-c.case.json	Sheet1!W4
-F	probes/scalar-lift-open-c.case.json	Sheet1!W6
-F	probes/scalar-lift-open-c.case.json	Sheet1!W7
-F	probes/scalar-lift-open-c.case.json	Sheet1!W8
-F	probes/scalar-lift-open-c.case.json	Sheet1!W9
 F	probes/scalar-lift-open-c2.case.json	Sheet1!W1
 F	probes/scalar-lift-open-c3.case.json	Sheet1!W1
 F	probes/scalar-lift-shapes-c.case.json	Sheet1!R3
