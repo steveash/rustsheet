@@ -1133,6 +1133,15 @@ TRUE condition (`IFS(FALSE,1,TRUE,TAKE(H1:I2,1))`), SWITCH's default and an IF o
 is `#N/A`, and a lifting lookup value or an array condition spills `#VALUE!` (subtotal-ifs-switch-reference-picks
 A10-A110; the spills A66:A67, A70:B70). With K1 = "x", L1 = TRUE, `SUM(IFS(TRUE,XLOOKUP(1,J1:J2,K1:L2)),5)` and the
 SWITCH form are 5 and `COUNTA(IFS(TRUE,..))` 2 (A82, A86, A106), as over values, so they do not tell the two apart.
+TAKE, DROP and TRIMRANGE read IFS and SWITCH the same way (probes/take-drop-over-ifs-switch-picks, excel-graph,
+2026-10-19; T-2071): `SUBTOTAL(9,TAKE(IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2)),1,1))` and the SWITCH form are 3,
+`SUBTOTAL(9,DROP(IFS(TRUE,..),0,1))` and `DROP(SWITCH(2,1,H1,..),0,1)` (the default) 6, `TRIMRANGE` of either 9,
+`AREAS(TAKE(IFS(TRUE,..),1))` 1, `ISREF(TAKE(SWITCH(1,1,..),1))` TRUE, `TAKE(IF(TRUE,IFS(TRUE,..)),1,1)` and
+`TAKE(LET(v,1,SWITCH(v,1,..)),1,1)` 3; `TAKE(IFS(FALSE,1),1,1)` is `#N/A` and a lifting lookup value `#VALUE!`
+(A10-A50, A82, A86). ISREF agrees: `ISREF(IF(TRUE,DROP(H1:I2,1)))`, `ISREF(IF(TRUE,TRIMRANGE(H1:I2)))`,
+`ISREF(IFS(TRUE,DROP(H1:I2,1)))`, `ISREF((H1,XLOOKUP(..)))`, `ISREF(LAMBDA(x,x)(XLOOKUP(..)))` and
+`ISREF(LAMBDA(x,IF(TRUE,XLOOKUP(..)))(1))` are TRUE, `ISREF(IFS({TRUE,FALSE},H1,TRUE,I1))` (an IFS that lifts) FALSE
+(A54-A78). Not yet matched (T-2075): the LAMBDA body form (A78) is FALSE in the engine.
 SUM, COUNT and COUNTA over `IF(TRUE,XLOOKUP(1,J1:J2,K1:L2))` with K1 = "x", L1 = TRUE give 5 (with a 5), 1 and 2 (A54-A74), which an array of those values gives too, so they do not
 tell a reference from values.
 Evidence: probes/take-drop-trimrange-over-xlookup A10-A94, probes/take-drop-trimrange-over-xlookup-b A10-A62
@@ -1141,7 +1150,7 @@ Implemented in: `Model::evaluate_picked_source` (functions/lookup_and_reference/
 `take_drop_impl` and `trimrange_impl` in their reference form. Static analysis still counts a nested XLOOKUP as
 lifting (`lifts_to_values`), which leaves the shape to run time.
 Status: VERIFIED (excel-graph)
-Tasks: T-1998, T-2009, T-2014
+Tasks: T-1998, T-2009, T-2014, T-2071, T-2075
 
 ## SUBTOTAL lifts over an array function_num
 Rule: an array or multi-cell range function_num lifts: one SUBTOTAL per element, spilling in its shape.
