@@ -3,7 +3,7 @@ id: T-1934
 title: "Probe REGEXREPLACE case forcing with final sigma"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
