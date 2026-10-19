@@ -7,9 +7,9 @@ from stagelaws import stage_F
 def best_law(N,D,x,F,n,laws=('T','Pn1')):
     out=[]
     for ch,c in (('N',N),('D',D)):
-        sf=stage_F(c,x)
+        sf=stage_F(c,x); deg=len(c)-1   # each chain's own degree (unequal (n,d) allowed)
         for law in laws:
-            for j in range(n-1 if law[0]=='P' else n):
+            for j in range(deg-1 if law[0]=='P' else deg):
                 pr=sf[law_key(law,j)][0]
                 for sg in (1,-1):
                     k=np.round(np.median(pr-sg*F)); r=np.sqrt(np.mean((pr-(sg*F+k))**2)); out.append((r,(ch,law,j,sg,int(k))))
