@@ -3,7 +3,7 @@ id: T-1878
 title: "Probe NPV typed empty text and FVSCHEDULE text-vs-error order"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
