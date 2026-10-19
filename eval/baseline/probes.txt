@@ -1646,10 +1646,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/info-logic-argument-modes.case.json	Calc!A19
-F	probes/legacy-array-at-shapes.case.json	S!I11
-F	probes/legacy-array-at-shapes.case.json	S!I20
-F	probes/legacy-array-at-shapes.case.json	S!J11
-F	probes/legacy-array-at-shapes.case.json	S!J20
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A1
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A2
 F	probes/linest-modes.case.json	Sheet1!K1
