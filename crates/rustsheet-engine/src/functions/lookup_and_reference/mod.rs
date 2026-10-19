@@ -526,11 +526,14 @@ impl Model {
         if as_reference {
             return self.evaluate_reference_arg(node, cell);
         }
-        // A reference into another workbook picked reads as the cell INDEX picks: `CHOOSE(1,…!A1)`
-        // is 0 (probes/external-ref-no-link-ifchoose A2, A12).
+        self.choose_arm_value(node, cell).into()
+    }
+
+    /// The argument an ordinary CHOOSE picked. A reference into another workbook reads as the
+    /// cell INDEX picks: `CHOOSE(1,…!A1)` is 0 (probes/external-ref-no-link-ifchoose A2, A12).
+    pub(crate) fn choose_arm_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         self.external_reference_picked_value(node, cell)
             .unwrap_or_else(|| self.evaluate_node_with_reference(node, cell))
-            .into()
     }
 
     /// What CHOOSE's index picks: with a scalar index the argument it chooses, unevaluated;

@@ -7,7 +7,9 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::Function,
     model::Model,
+    reference_operators::Picked,
 };
 
 /// Whether a call keeps (TAKE) or removes (DROP) the rows and columns it counts.
@@ -70,7 +72,11 @@ impl Model {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let source = self.evaluate_node_in_context(&args[0], cell);
+        let source = if as_reference {
+            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
+        } else {
+            self.evaluate_node_in_context(&args[0], cell)
+        };
         if let CalcResult::Range { left, right } = source {
             if as_reference && left.sheet == right.sheet {
                 let num_rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
@@ -97,6 +103,47 @@ impl Model {
                 CalcResult::Array(result)
             }
             Err(error) => error,
+        }
+    }
+
+    /// The array argument of a TAKE, DROP or TRIMRANGE read as a reference (below SUBTOTAL, AREAS,
+    /// ISREF or an intersection): an XLOOKUP, TAKE, DROP or TRIMRANGE there is the cells it picks,
+    /// also as the arm a scalar IF or CHOOSE picks or as a LET body, however deeply they nest:
+    /// `SUBTOTAL(9,TAKE(XLOOKUP(1,J1:J2,H1:I2),1,1))` is 3 and
+    /// `SUBTOTAL(9,TAKE(IF(TRUE,CHOOSE(1,XLOOKUP(..))),1,1))` too, while an XLOOKUP that lifts or
+    /// returns an array gives values (probes/take-drop-trimrange-over-xlookup, -b; T-1998). Any
+    /// other node is read as `read` says (TAKE's own read, or the picked arm's IF or CHOOSE
+    /// read). Each condition, index and binding is read once; bounded by the parser's depth cap.
+    pub(super) fn evaluate_picked_source(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        read: fn(&mut Self, &Node, CellReferenceIndex) -> CalcResult,
+    ) -> CalcResult {
+        let Node::FunctionKind { kind, args } = node.ungrouped() else {
+            return read(self, node, cell);
+        };
+        let (picked, read_arm): (_, fn(&mut Self, &Node, CellReferenceIndex) -> CalcResult) =
+            match kind {
+                Function::If => (self.if_pick(args, cell), Self::if_branch_value),
+                Function::Choose => (self.choose_pick(args, cell), Self::choose_arm_value),
+                Function::Let => {
+                    return self
+                        .let_scope(args, cell, |model, body| {
+                            model.evaluate_picked_source(body, cell, Self::evaluate_node_in_context)
+                        })
+                        .unwrap_or_else(|error| error);
+                }
+                _ if kind.picks_reference() => {
+                    return self
+                        .evaluate_reference_form(kind, args, cell)
+                        .unwrap_or_else(|| read(self, node, cell));
+                }
+                _ => return read(self, node, cell),
+            };
+        match picked {
+            Picked::Node(arm) => self.evaluate_picked_source(arm, cell, read_arm),
+            Picked::Value(value) => value,
         }
     }
 

@@ -1,0 +1,59 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1994: typed date+clock with a single-letter A/P suffix (N1-N8, N10, N11; the format is in the ENTERED log of the fill run). Bare typed `10:00 A` (number, h:mm AM/PM) and `10:00 A.` (number) are not covered here.",
+ "tags": [
+  "M2",
+  "probe",
+  "dates",
+  "date-text",
+  "T-1994"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "N1": {
+     "entered": "1/2/2020 10:00 P"
+    },
+    "O1": "=ISNUMBER(N1)",
+    "N2": {
+     "entered": "1/2/2020 10:00 a"
+    },
+    "O2": "=ISNUMBER(N2)",
+    "N3": {
+     "entered": "1/2/2020 10:00A"
+    },
+    "O3": "=ISNUMBER(N3)",
+    "N4": {
+     "entered": "1/2/2020 10 A"
+    },
+    "O4": "=ISNUMBER(N4)",
+    "N5": {
+     "entered": "1/2/2020 10 p"
+    },
+    "O5": "=ISNUMBER(N5)",
+    "N6": {
+     "entered": "1/2/2020 10:00 Am"
+    },
+    "O6": "=ISNUMBER(N6)",
+    "N7": {
+     "entered": "1/2/2020 10:00:30 A"
+    },
+    "O7": "=ISNUMBER(N7)",
+    "N8": {
+     "entered": "1/2/2020 13:00 A"
+    },
+    "O8": "=ISNUMBER(N8)",
+    "N10": {
+     "entered": "July 1, 2026 10:00 A"
+    },
+    "O10": "=ISNUMBER(N10)",
+    "N11": {
+     "entered": "1/2/2020 10:00 A A"
+    },
+    "O11": "=ISNUMBER(N11)"
+   }
+  }
+ ]
+}
