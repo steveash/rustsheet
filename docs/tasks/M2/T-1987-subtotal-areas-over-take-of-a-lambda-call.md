@@ -3,7 +3,7 @@ id: T-1987
 title: "SUBTOTAL/AREAS over TAKE of a LAMBDA call or an XLOOKUP whose result lifts reaches the scalar-context assertion"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
