@@ -19,6 +19,23 @@ T-0428.
 Status: VERIFIED (excel-graph)
 Tasks: T-0428, T-0401, T-0429
 
+## The order Excel calculates a freshly loaded workbook in
+Rule: a full recalculation of a freshly loaded workbook runs the formula cells in the reverse of
+their load order: the last sheet first, and within a sheet the bottom row first, each row right to
+left. A cell that reads a formula cell not yet calculated has that precedent calculated just
+before it. A sheet moved after loading keeps its load position, and `calcChain.xml` does not change
+the order on a full-calc load. Formulas entered or edited in a live session leave this order and
+are not reproducible from the file. The order is visible only through WEEKNUM's stale return_type
+state, the one calc-order-dependent value known so far (dates.md, "WEEKNUM's stale return_type
+state"); iterative calculation sweeps a cycle in forward row-major order instead (below).
+Evidence: probes/weeknum-stale-grid, -order-row, -order-column, -order-column-40, -order-2x3,
+-order-3x2, -sheet-order, -sheet-moved and -dependency (excel-graph, 2026-10-19, T-1484);
+calcChain.xml and session edits: docs/research/t1484-weeknum-calc-order-2026-10-19.md.
+Ours: `Model::run_pass` evaluates spill anchors first, then every cell in forward storage order
+(sheet, row, column ascending). SPEC-0015 reproduces Excel's order where WEEKNUM's state needs it.
+Status: VERIFIED (excel-graph)
+Tasks: T-1484, T-2068, T-2069, T-2070
+
 ## A circular reference without iteration is 0, and so is every cell that reads it
 Rule: with iterative calculation off, every cell of a cycle is 0, with no error value: a
 self-reference `=A1+1`, `=A2`, and the 2- and 3-cell cycles `B1=C1+1, C1=B1+1` and `D1=E1+1,

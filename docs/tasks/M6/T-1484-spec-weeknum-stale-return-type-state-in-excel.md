@@ -3,7 +3,7 @@ id: T-1484
 title: "Spec: WEEKNUM stale return_type state in Excel's calc order (decision 0038 reopened)"
 milestone: M6
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -26,11 +26,28 @@ and (b) list the problems: RustSheet's storage-order passes, restarts on spill r
 hidden dependency that incremental recalc cannot see.
 
 ## Acceptance criteria
-- [ ] Probe what decides the order across sheets and after edits (excel-probe skill), and record it
+- [x] Probe what decides the order across sheets and after edits (excel-probe skill), and record it
       in docs/excel-semantics/dates.md.
-- [ ] docs/specs/SPEC-NNNN-*.md states how the state is kept and which calc order it follows, and
+- [x] docs/specs/SPEC-NNNN-*.md states how the state is kept and which calc order it follows, and
       files implementation tasks with `make new-task`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing calc-chain import in general, beyond what the spec needs.
+
+## Outcome
+- Probed the order and the state (excel-graph, 2026-10-19): 17 new probes/weeknum-stale-* cases.
+  The state is Sunday, Monday or empty, one per recalc. Types 1 and 17 set Sunday; 2, 11, 21 and
+  ISOWEEKNUM set Monday; types 12-16, the always-`#NUM!` types and array-lifted calls empty it; 22+
+  and negative types read it. Fresh-load order is reverse load order: last sheet first, bottom row
+  first, right to left, precedents just before their readers. A moved sheet keeps its load position.
+  This corrects the old notes: ISOWEEKNUM does set the state, and there is no per-sheet reset.
+- calcChain.xml is ignored on a full-calc load. Session edits isolate session-entered formulas.
+  Both are in docs/research/t1484-weeknum-calc-order-2026-10-19.md.
+- Recorded in docs/excel-semantics/dates.md ("WEEKNUM's stale return_type state") and recalc.md
+  ("The order Excel calculates a freshly loaded workbook in").
+- SPEC-0015 specifies a per-pass state, with an Excel-order pass that runs only when a WEEKNUM
+  reader ran, so other workbooks keep today's order and cost. Follow-ups: T-2068 (engine, opus, M),
+  T-2069 (engine, sonnet, S, moved sheets) and T-2070 (research, sonnet, S, open questions).
+- Eval: the new cases add known failures to probes (all M6), owned by T-2068 and T-2069. No
+  existing cell changed.

@@ -1,0 +1,42 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM stale return_type across sheets: does the state carry from sheet to sheet, and in which sheet order? Readers decode the reused start weekday: WEEKNUM(2..7,99) joined gives 111111 Sun, 222222 Mon, 122222 Tue, 112222 Wed, 111222 Thu, 111122 Fri, 111112 Sat; markers WEEKNUM(100,t) with t 1 Sun, 2 Mon, 12 Tue, 13 Wed, 14 Thu (T-1484)",
+  "tags": [
+    "M6",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "First",
+      "cells": {
+        "A1": "=WEEKNUM(100,1)"
+      }
+    },
+    {
+      "name": "Second",
+      "cells": {
+        "A1": "=WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99)"
+      }
+    },
+    {
+      "name": "Third",
+      "cells": {
+        "A1": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "Fourth",
+      "cells": {
+        "A1": "=WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "First!A1",
+    "Second!A1",
+    "Third!A1",
+    "Fourth!A1"
+  ]
+}

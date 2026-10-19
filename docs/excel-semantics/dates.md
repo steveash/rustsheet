@@ -37,7 +37,7 @@ anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKN
 `WEEKNUM(100,2)` = 16, `WEEKNUM(100)` = 15, `WEEKNUM(200,2)` = 30, `WEEKNUM(366,2)` = 54, `WEEKNUM(366)` = 53, `WEEKNUM(0,12)` = 1, `WEEKNUM(0,17)` = 0,
 and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor((serial - first)/7) + 1 with first the last serial <= 1 on the
 start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
-type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
+type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" and "WEEKNUM's stale return_type state" below).
 Negative serials under a date/time format (T-1035, VERIFIED, probes/text-ddd-negative-fraction, excel-graph 2026-10-07): `TEXT(-0.5,"dddd")`, `TEXT(-0.5,"d")`, `TEXT(-0.0001,"ddd")`, `TEXT(-0.0001,"d")`, `TEXT(-0.5,"yyyy-mm-dd")`, `TEXT(-0.5,"h:mm")` and `TEXT(-1,"dddd")` are all #VALUE!: a negative value never truncates toward serial 0 (A1-A9). Elapsed-time sections are NOT exempt in the 1900 date system (T-1079, VERIFIED, probes/text-negative-serial-elapsed-mixed, excel-graph 2026-10-07): `TEXT(-0.5,"[h] dddd")`, `TEXT(-1.5,"[h]:mm yyyy")`, `TEXT(-0.5,"[h]:mm")`, `TEXT(-1.5,"[h] d")`, `TEXT(-0.5,"[mm] mmm")` and `TEXT(-0.5,"[s] yy")` are all #VALUE! (A1-A6); non-negative values with the same formats work (`TEXT(0.5,"[h] dddd")` = "12 Saturday", A8). Those cells used to print a leading "-" because the poi ElapsedFormatTests workbook (A40-A47) is a 1904 workbook, where negatives are valid; the formatter now reads the workbook's date system (T-1105, SPEC-0005; see "Negative serials under an explicit negative section" below for the exact 1900 rule). Implemented in the `ParsePart::Date` arm of formatter/format.rs, which also serves cell number-format rendering (cell display of negatives is unprobed).
 Implemented in: `fn_weeknum` (T-0995); TEXT ddd/dddd via `excel_weekday_index` (formatter/format.rs, T-0996,
 `(serial - 1) mod 7` from Sunday, one formula for every non-negative serial; negatives are #VALUE!, see above). EDATE/EOMONTH of serial 0 via `month_arithmetic_date` (T-0997); EDATE of serial 0 returns one serial before the shifted month's first day (VERIFIED for months 0, 1, 2, 3, 12, 13, 14, 24 and 25, T-1052: `EDATE(0,2)` = 60, the fictitious 1900-02-29, `EDATE(0,3)` = 91, `EDATE(0,13)` = 397, `EDATE(0,14)` = 425, `EDATE(0,24)` = 731, `EDATE(0,25)` = 762, `EOMONTH(0,2)` = 91; negative months are #NUM! (tested: -1 and -12): `EDATE(0,-1)`, `EDATE(0,-12)`, `EOMONTH(0,-1)`; evidence probes/edate-serial-0-months A1-A12, excel-graph 2026-10-07).
@@ -59,11 +59,9 @@ Evidence: probes/weeknum-modern-boundaries A1-A67 (excel-graph, 2026-10-17).
 ### WEEKNUM return_type edge cases and serial 0 (T-1023)
 Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21);
 0, 3-10 and 18-20 are always `#NUM!` (not `#VALUE!`). A return_type of 22 or more, or negative, is
-NOT simply an error: it reuses the start weekday of the last WEEKNUM with a valid type evaluated
-earlier in the same recalc (type 21 leaves "start Monday"; ISOWEEKNUM leaves nothing), and is
-`#NUM!` only when none has run. On a fresh load Excel evaluates bottom to top, so with
-`A1=WEEKNUM(100,99)` and `A2=WEEKNUM(100,2)` both are 16, while the swapped layout gives 16 and
-`#NUM!`; `WEEKNUM(0,99)` was 0 or 1 in the 94-cell workbook depending on its neighbours. A boolean
+NOT simply an error: it reads a start-weekday state that other WEEKNUM calls of the same recalc
+leave behind, and is `#NUM!` only when the state is empty (see "WEEKNUM's stale return_type state"
+below for which calls set and clear it and in what order Excel runs them). A boolean
 return_type is `#VALUE!` (`WEEKNUM(100,TRUE)`, also from a reference), text that reads as a number is
 accepted (`WEEKNUM(100,"2")` = 16), other text is `#VALUE!`. An error in the serial wins
 (`WEEKNUM(-1,21)` is `#NUM!`, `WEEKNUM(0,NA())` is `#N/A`). Under ISO numbering serial 0 shares
@@ -72,13 +70,54 @@ Evidence (oracle: excel-graph, 2026-10-06, T-1023): probes/weeknum-serial-0 (57 
 probes/weeknum-invalid-type (8 cells, no valid WEEKNUM in the workbook: all `#NUM!`),
 probes/weeknum-stale-return-type (13 cells over five layouts: Up, Down, Mixed, Type21, Type1);
 the first 94-cell version of weeknum-serial-0 (commit 042ad31) reproduces deterministically.
-Ours: RustSheet always gives `#NUM!` for 22+ and negatives, which is Excel's value only when no
-valid WEEKNUM ran earlier in the recalc. The stale value depends on Excel's calc order (and so on
-its calc chain and edit history), which RustSheet does not reproduce yet;
-probes/weeknum-stale-return-type Up!A1, Mixed!A3, Mixed!A4, Type21!A1 and Type1!A1 stay known
-failures. A known gap, not a deviation (decision 0052): T-1484.
 Status: VERIFIED
 Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
+
+### WEEKNUM's stale return_type state (T-1484)
+Rule: one start-weekday state, Sunday, Monday or empty, lives for one recalculation. It is
+empty when the recalc starts, the WEEKNUM and ISOWEEKNUM calls Excel runs update it in the order
+it runs them, and a WEEKNUM with a return_type of 22 or more, or negative, reads it:
+- **Reading.** A return_type of 22+ or negative numbers the weeks as return_type 1 does (system 1),
+  starting on the state's weekday, and is `#NUM!` when the state is empty. Reading leaves the state
+  as it is: six reads in one formula all see it. After type 21 or ISOWEEKNUM the read is system 1
+  with a Monday start, not ISO (`WEEKNUM(100,99)` = 16 while `WEEKNUM(100,21)` = 15).
+- **Setting Sunday:** a scalar WEEKNUM with return_type 1 (or omitted) or 17.
+- **Setting Monday:** a scalar WEEKNUM with return_type 2, 11 or 21, and ISOWEEKNUM (serial 0
+  included). Text and fractions convert first: `"2"` and 2.9 set Monday.
+- **Emptying:** a scalar WEEKNUM with return_type 12-16 (Tuesday to Saturday starts are never
+  kept), one with an always-#NUM! return_type (0, 3-10, 18-20), and any WEEKNUM that lifts over an
+  array, valid types included (`SUM(WEEKNUM(100,{2,2}))`, `SUM(WEEKNUM({100,101},2))`).
+- **No effect:** a call whose serial is an error (`WEEKNUM(-1,2)`, `WEEKNUM(-1,0)`,
+  `ISOWEEKNUM(-1)`), a `#VALUE!` return_type (`TRUE`, `"x"`), a call IF does not run, and WEEKDAY of
+  any return_type.
+- **Order.** On a freshly loaded workbook Excel runs the formula cells in the reverse of the order
+  they were loaded: the last sheet first, and within a sheet the bottom row first and each row right
+  to left (reverse row-major). The state carries from one sheet to the next. A cell whose formula
+  reads a formula cell not yet calculated has that precedent calculated just before it (a reader
+  that refers to a marker above it sees that marker, not the markers between). Moving a sheet does
+  not change the order: it keeps its load position. `calcChain.xml` is ignored on a full-calc load:
+  three different chains for one sheet gave the layout's values (docs/research/t1484-weeknum-calc-order-2026-10-19.md).
+- **Recalcs and edits.** The state does not outlive a recalc: a volatile reader recalculated alone
+  is `#NUM!` though its marker ran in the previous recalc, and a formula entered or edited in a
+  session is recalculated alone, so a reader is `#NUM!` then. A marker edited in a session does not
+  recalculate the readers that used it. Formulas entered in a live session also stop sharing the
+  state with the formulas loaded from the file, even at a later full recalc (FullRebuild); that
+  history is not in the file, so this part is not reproducible from a workbook (same research note).
+Evidence (oracle: excel-graph, 2026-10-19, T-1484): probes/weeknum-stale-setters (30 sheets),
+probes/weeknum-stale-sheet-order, probes/weeknum-stale-sheet-moved, probes/weeknum-stale-grid,
+probes/weeknum-stale-order-row, -column, -column-40, -2x3 and -3x2, probes/weeknum-stale-dependency,
+probes/weeknum-stale-reset-num-type, -reset-isoweeknum and -reset-error-serial,
+probes/weeknum-stale-down-alone and probes/weeknum-stale-volatile-reader; the grid case gave the same
+values twice. This corrects two earlier readings: ISOWEEKNUM does set the state (to Monday), and the
+state is not "the last valid WEEKNUM": types 12-16 empty it. probes/weeknum-stale-return-type
+Down!A2 is `#NUM!` because Mixed!A1 (type 0) emptied the state just before it, not because the
+state resets per sheet.
+Ours: always `#NUM!` for 22+ and negatives, which matches only where the state is empty.
+SPEC-0015 specifies the state and the order; implementation tasks are listed there.
+Status: VERIFIED
+Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), where a spilling formula sits
+in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and
+a return_type in (-1, 0) (truncates to 0, so presumably empties).
 
 ## DATE month and day bounds
 Rule: DATE floors its month and day, then a month outside -32767..=32766 is `#NUM!` even when the
