@@ -217,7 +217,7 @@ C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/date-text-non-glued-timevalue.case.json	44
 C	probes/date-text-rejected-clock-formats.case.json	16
-C	probes/date-text-single-letter-ap.case.json	30
+C	probes/date-text-single-letter-ap.case.json	48
 C	probes/date-text-typed-clock-shapes.case.json	85
 C	probes/date-text-weekend-3d.case.json	129
 C	probes/date-text-yearless-2.case.json	64
@@ -618,6 +618,7 @@ C	probes/pivotby-col-subtotals-values3.case.json	1080
 C	probes/pivotby-followup.case.json	3124
 C	probes/pivotby-moved-cells-relative-sets.case.json	1460
 C	probes/pivotby-total-columns-one-group.case.json	172
+C	probes/pmt-overflow.case.json	40
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
@@ -1268,13 +1269,9 @@ F	probes/discount-security-modes.case.json	Calc!A86
 F	probes/discount-security-modes.case.json	Calc!A88
 F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
-F	probes/eng-im-overflow.case.json	S!A11
 F	probes/eng-im-overflow.case.json	S!A12
-F	probes/eng-im-overflow.case.json	S!A17
 F	probes/eng-im-overflow.case.json	S!A33
 F	probes/eng-im-overflow.case.json	S!A34
-F	probes/eng-im-overflow.case.json	S!A40
-F	probes/eng-im-overflow.case.json	S!A41
 F	probes/eng-im-overflow.case.json	S!A42
 F	probes/eng-impower-angle-cut.case.json	S!A10
 F	probes/eng-impower-angle-cut.case.json	S!A11
@@ -1618,7 +1615,6 @@ F	probes/growth-modes.case.json	Sheet1!K25
 F	probes/growth-modes.case.json	Sheet1!K253
 F	probes/growth-modes.case.json	Sheet1!K254
 F	probes/growth-modes.case.json	Sheet1!K26
-F	probes/growth-modes.case.json	Sheet1!K265
 F	probes/growth-modes.case.json	Sheet1!K27
 F	probes/growth-modes.case.json	Sheet1!K277
 F	probes/growth-modes.case.json	Sheet1!K278
@@ -1647,7 +1643,6 @@ F	probes/growth-modes.case.json	Sheet1!K355
 F	probes/growth-modes.case.json	Sheet1!K356
 F	probes/growth-modes.case.json	Sheet1!K37
 F	probes/growth-modes.case.json	Sheet1!K38
-F	probes/growth-modes.case.json	Sheet1!K385
 F	probes/growth-modes.case.json	Sheet1!K39
 F	probes/growth-modes.case.json	Sheet1!K4
 F	probes/growth-modes.case.json	Sheet1!K49
@@ -1661,7 +1656,6 @@ F	probes/growth-modes.case.json	Sheet1!K99
 F	probes/growth-modes.case.json	Sheet1!L289
 F	probes/growth-modes.case.json	Sheet1!L61
 F	probes/growth-modes.case.json	Sheet1!M61
-F	probes/ifna-isformula-edges.case.json	Calc!B12
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E1
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E10
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E11
@@ -2276,7 +2270,6 @@ F	probes/regression-trend.case.json	Sheet1!L13
 F	probes/regression-trend.case.json	Sheet1!L14
 F	probes/regression-trend.case.json	Sheet1!L15
 F	probes/regression-trend.case.json	Sheet1!L16
-F	probes/regression-trend.case.json	Sheet1!L18
 F	probes/regression-trend.case.json	Sheet1!L20
 F	probes/regression-trend.case.json	Sheet1!L21
 F	probes/regression-trend.case.json	Sheet1!L25
@@ -2290,15 +2283,12 @@ F	probes/regression-trend.case.json	Sheet1!L34
 F	probes/regression-trend.case.json	Sheet1!L35
 F	probes/regression-trend.case.json	Sheet1!L37
 F	probes/regression-trend.case.json	Sheet1!L39
-F	probes/regression-trend.case.json	Sheet1!L40
-F	probes/regression-trend.case.json	Sheet1!L41
 F	probes/regression-trend.case.json	Sheet1!L43
 F	probes/regression-trend.case.json	Sheet1!M12
 F	probes/regression-trend.case.json	Sheet1!M13
 F	probes/regression-trend.case.json	Sheet1!M14
 F	probes/regression-trend.case.json	Sheet1!M15
 F	probes/regression-trend.case.json	Sheet1!M16
-F	probes/regression-trend.case.json	Sheet1!M18
 F	probes/regression-trend.case.json	Sheet1!M20
 F	probes/regression-trend.case.json	Sheet1!M21
 F	probes/regression-trend.case.json	Sheet1!M25
@@ -2312,8 +2302,6 @@ F	probes/regression-trend.case.json	Sheet1!M34
 F	probes/regression-trend.case.json	Sheet1!M35
 F	probes/regression-trend.case.json	Sheet1!M37
 F	probes/regression-trend.case.json	Sheet1!M39
-F	probes/regression-trend.case.json	Sheet1!M40
-F	probes/regression-trend.case.json	Sheet1!M41
 F	probes/regression-trend.case.json	Sheet1!M43
 F	probes/regression-trend.case.json	Sheet1!M6
 F	probes/regression-trend.case.json	Sheet1!N10
@@ -2322,7 +2310,6 @@ F	probes/regression-trend.case.json	Sheet1!N13
 F	probes/regression-trend.case.json	Sheet1!N14
 F	probes/regression-trend.case.json	Sheet1!N15
 F	probes/regression-trend.case.json	Sheet1!N16
-F	probes/regression-trend.case.json	Sheet1!N18
 F	probes/regression-trend.case.json	Sheet1!N20
 F	probes/regression-trend.case.json	Sheet1!N21
 F	probes/regression-trend.case.json	Sheet1!N25
@@ -2339,8 +2326,6 @@ F	probes/regression-trend.case.json	Sheet1!N36
 F	probes/regression-trend.case.json	Sheet1!N37
 F	probes/regression-trend.case.json	Sheet1!N39
 F	probes/regression-trend.case.json	Sheet1!N4
-F	probes/regression-trend.case.json	Sheet1!N40
-F	probes/regression-trend.case.json	Sheet1!N41
 F	probes/regression-trend.case.json	Sheet1!N43
 F	probes/regression-trend.case.json	Sheet1!N5
 F	probes/regression-trend.case.json	Sheet1!N6
@@ -2352,7 +2337,6 @@ F	probes/regression-trend.case.json	Sheet1!O13
 F	probes/regression-trend.case.json	Sheet1!O14
 F	probes/regression-trend.case.json	Sheet1!O15
 F	probes/regression-trend.case.json	Sheet1!O16
-F	probes/regression-trend.case.json	Sheet1!O18
 F	probes/regression-trend.case.json	Sheet1!O2
 F	probes/regression-trend.case.json	Sheet1!O20
 F	probes/regression-trend.case.json	Sheet1!O21
@@ -2370,8 +2354,6 @@ F	probes/regression-trend.case.json	Sheet1!O36
 F	probes/regression-trend.case.json	Sheet1!O37
 F	probes/regression-trend.case.json	Sheet1!O39
 F	probes/regression-trend.case.json	Sheet1!O4
-F	probes/regression-trend.case.json	Sheet1!O40
-F	probes/regression-trend.case.json	Sheet1!O41
 F	probes/regression-trend.case.json	Sheet1!O43
 F	probes/regression-trend.case.json	Sheet1!O5
 F	probes/regression-trend.case.json	Sheet1!O6
