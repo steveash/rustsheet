@@ -3,7 +3,7 @@ id: T-1827
 title: "Probe and match IM* results that overflow to infinity or NaN"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
