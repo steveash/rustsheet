@@ -3,7 +3,7 @@ id: T-1990
 title: "Probe a typed or stored one-argument IF(x) and match it"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
