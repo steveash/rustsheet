@@ -6,7 +6,10 @@ use crate::{
     number_format::parse_excel_number, types::DateSystem,
 };
 
-use super::date_text::{parse_date, CurrentYear};
+use super::{
+    date_text::{parse_date, CurrentYear},
+    lexer::is_likely_date_number_format,
+};
 
 /// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
 /// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Non-glued dates and clocks with
@@ -66,6 +69,8 @@ pub(crate) fn rejected_clock_text_format(
     )
     .ok()
     .and_then(|(_, format)| format)
+    // Only a date part counts: a percent, currency or grouped number before the clock is unprobed.
+    .filter(|format| is_likely_date_number_format(format))
     // An ISO date gets `m/d/yyyy` here (N10), not the `yyyy-mm-dd` the engine gives a bare typed
     // ISO date (bare typed ISO dates are unprobed).
     .map(|format| {

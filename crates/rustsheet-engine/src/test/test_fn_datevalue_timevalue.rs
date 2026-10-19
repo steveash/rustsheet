@@ -302,6 +302,10 @@ fn typed_date_text_with_a_rejected_clock_stays_text_and_keeps_the_date_format() 
         ("1/2/2020 abc", "general"),
         ("1/2/2020 10:00 PM PM", "general"),
         ("13:00 PM", "general"),
+        // Unprobed: a non-date number before the rejected clock keeps General.
+        ("$5 13:00 PM", "general"),
+        ("10% 13:00 PM", "general"),
+        ("1,000 13:00 PM", "general"),
     ];
     let mut model = new_empty_model();
     for (i, (text, _)) in cases.iter().enumerate() {
