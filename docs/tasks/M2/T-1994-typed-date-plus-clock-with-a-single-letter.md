@@ -3,7 +3,7 @@ id: T-1994
 title: "Typed date plus clock with a single-letter A or P suffix is a number (1/2/2020 10:00 A)"
 milestone: M2
 lane: functions-date
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-1986: probes/date-text-rejected-clock-formats N7 (excel-graph 2026-10
 
 ## Out of scope
 - The cell format of rejected clock text (T-1986).
+
+## Outcome
+`typed_clock_shape` accepts a single-letter `A`/`P` suffix. New probe case date-text-single-letter-ap (10 cells, excel-graph) with the rule in docs/excel-semantics/dates.md. probes: N7 of date-text-rejected-clock-formats fixed (-1 known failure), no new F lines. Follow-up: T-2011 (bare `10:00 A`, trailing dot).
