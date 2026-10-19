@@ -13,9 +13,11 @@
   - The lock is the branch `merge-lock` on origin, written only by `scripts/merge_lock.py`
     (`make merge-lock-acquire PR=<n>`, `make merge-lock-release`, `make merge-lock-status`). It is an
     orphan commit with an empty tree whose message names the holder (`CLAUDE_CODE_SESSION_ID`) and the
-    PR. Every push carries `--force-with-lease`: the server creates the branch only while it is absent
-    and replaces or deletes it only while it still holds the commit the caller read, so of two racing
-    acquirers exactly one wins, and nobody can release someone else's lock.
+    PR, or the free marker `state: free`. Every push carries `--force-with-lease`: the server creates
+    the branch only while it is absent and replaces it only while it still holds the commit the caller
+    read, so of two racing acquirers exactly one wins, and nobody can release someone else's lock.
+    Release writes the free marker rather than deleting the branch: the session git proxy refuses
+    branch deletion with HTTP 403 (found on the first live release, T-1938).
   - To merge a PR that is green and approved, an agent acquires the lock, merges `origin/main` into the
     PR head if it is behind, pushes, waits for CI on that head, runs 0028's up-to-date check and merges,
     then releases. With the lock held nobody else merges, so the check passes on the first green CI.
