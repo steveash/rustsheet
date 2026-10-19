@@ -149,8 +149,6 @@ pub struct Workbook {
     pub defined_names: Vec<DefinedName>,
     pub worksheets: Vec<Worksheet>,
     pub styles: Styles,
-    /// The file name without its extension (`Budget` for `Budget.xlsx`), as CELL("address") and
-    /// CELL("filename") name the workbook; empty for an unnamed workbook (T-2042).
     pub name: String,
     pub settings: WorkbookSettings,
     pub metadata: Metadata,
