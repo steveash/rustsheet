@@ -3,7 +3,7 @@ id: T-1795
 title: "TEXTSPLIT split_by_any rescans the text per delimiter: cap or cache"
 milestone: M9
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ Found by the T-1781 security review (pre-existing). `split_by_any` (textsplit.rs
 
 ## Out of scope
 - Moving TEXTSPLIT onto the SPEC-0011 driver.
+
+## Outcome
+Already satisfied on main: `split_by_any` caches each delimiter's next match and re-searches only once `pos` has passed it (T-1272 performance review), so each delimiter scans the text once, and the lifted-text work cap (`text_call_cost` / `ScanCost`, text length x delimiters; T-1272, T-1988, docs/excel-semantics/text.md "Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are capped") already refuses a long text with thousands of delimiters, so no new cap or DEVIATION is needed. Added the regression test `many_delimiters_over_a_long_text_are_bounded_by_the_work_cap` (32,766 commas with 200 extra delimiters gives 32,767 columns; 5,000 extra is `#ERROR!`). No engine change; eval unchanged.

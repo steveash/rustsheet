@@ -72,3 +72,25 @@ fn wide_row_under_the_cell_limit_is_unchanged() {
     assert_eq!(model._get_text("A2"), "16384");
     assert_eq!(model._get_text("A3"), "32001");
 }
+
+#[test]
+fn many_delimiters_over_a_long_text_are_bounded_by_the_work_cap() {
+    let mut model = new_empty_model();
+    // 32,766 commas split into 32,767 pieces. Each delimiter's next match is cached, so 200 more
+    // delimiters that never match cost one scan each, not one per piece (T-1795); 5,000 of them
+    // pass the lifted-text work cap (text length x delimiters, text.md "Lifted TEXTSPLIT,
+    // TEXTBEFORE, TEXTAFTER and REGEX* calls are capped") and are `#ERROR!` at once.
+    model._set(
+        "A1",
+        r#"=COLUMNS(TEXTSPLIT(REPT(",",32766),VSTACK(",","q"&SEQUENCE(200))))"#,
+    );
+    model._set(
+        "A2",
+        r#"=COLUMNS(TEXTSPLIT(REPT(",",32766),VSTACK(",","q"&SEQUENCE(5000))))"#,
+    );
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "32767");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
+}
