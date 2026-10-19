@@ -63,13 +63,19 @@ fn a_column_delete_keeps_the_marker() {
 }
 
 // Only the reference changes: the legacy cell stays where it is and is rewritten in place
-// (`shift_cell_formula`).
+// (`shift_cell_formula`), keeping its style as a dynamic cell does: a percent A9 does not turn
+// the cell's General format into a percent one.
 #[test]
 fn a_shift_of_a_referenced_cell_keeps_the_marker() {
     let mut model = legacy_and_dynamic();
+    model.set_user_input(0, 9, 1, "100%").unwrap();
     model.insert_rows(0, 5, 1).unwrap();
     assert_legacy(&model, (2, 3), "=N(IF(1,{2;3}))+$A$10");
     assert_dynamic(&model, (2, 5));
+    for column in [3, 5] {
+        let style = model.get_cell_style(0, 2, column).unwrap();
+        assert_eq!(style.num_fmt, "general", "column {column}");
+    }
 }
 
 #[test]
@@ -118,4 +124,20 @@ fn a_paste_keeps_the_marker() {
         assert_legacy(&model, (12, 3), FORMULA);
         assert_dynamic(&model, (12, 5));
     }
+}
+
+// A cut and paste of the cell a legacy formula reads rewrites that formula where it is
+// (`get_external_formula_updates_for_cut`).
+#[test]
+fn a_cut_of_a_referenced_cell_keeps_the_marker() {
+    let mut model = legacy_and_dynamic();
+    model.set_selected_cell(9, 1).unwrap();
+    model.set_selected_range(9, 1, 9, 1).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(20, 1).unwrap();
+    model
+        .paste_from_clipboard(0, (9, 1, 9, 1), &clipboard.data, true)
+        .unwrap();
+    assert_legacy(&model, (2, 3), "=N(IF(1,{2;3}))+$A$20");
+    assert_dynamic(&model, (2, 5));
 }

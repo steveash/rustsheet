@@ -388,7 +388,7 @@ impl Model {
             if formula != formula_displaced {
                 let text = format!("={formula_displaced}");
                 if node.has_legacy_marker() {
-                    self.set_cell_with_legacy_formula(sheet, row, column, &text)?;
+                    self.update_cell_with_legacy_formula(sheet, row, column, &text)?;
                 } else {
                     self.update_cell_with_formula(sheet, row, column, text)?;
                 }

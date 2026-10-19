@@ -546,8 +546,16 @@ impl UserModel {
                     .worksheet(ext_sheet)?
                     .cell(ext_row, ext_col)
                     .cloned();
-                self.model
-                    .set_user_input(ext_sheet, ext_row, ext_col, new_formula.clone())?;
+                let legacy = self
+                    .model
+                    .cell_has_legacy_marker(ext_sheet, ext_row, ext_col)?;
+                self.model.reenter_user_input(
+                    ext_sheet,
+                    ext_row,
+                    ext_col,
+                    new_formula.clone(),
+                    legacy,
+                )?;
                 diff_list.push(Diff::SetCellValue {
                     sheet: ext_sheet,
                     row: ext_row,

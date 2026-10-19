@@ -62,6 +62,29 @@ impl Model {
         self.set_formula_node_with_units(sheet, row, column, node, style)
     }
 
+    /// Rewrites the formula of a cell that holds a legacy marker with `formula` (with its leading
+    /// `=`) as [`Model::update_cell_with_formula`] does for a dynamic one: the cell's style is
+    /// kept and no units number format is applied, so a reference shift changes nothing but the
+    /// formula (T-1852).
+    ///
+    /// # Errors
+    /// As [`Model::update_cell_with_formula`].
+    pub(crate) fn update_cell_with_legacy_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+    ) -> Result<(), String> {
+        let style = self.formula_style_index(sheet, row, column)?;
+        let Some(body) = self.formula_without_prefix(formula) else {
+            return Err(format!("\"{formula}\" is not a valid formula"));
+        };
+        let node = self.legacy_formula_node(sheet, row, column, body)?;
+        self.set_cell_with_formula_node(sheet, row, column, node, style)?;
+        Ok(())
+    }
+
     /// Whether the formula in the cell holds a legacy N or T marker ([`Node::has_legacy_marker`]).
     /// A cell with no formula holds none.
     pub(crate) fn cell_has_legacy_marker(

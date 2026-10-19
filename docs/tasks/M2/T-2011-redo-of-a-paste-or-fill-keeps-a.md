@@ -21,11 +21,15 @@ T-1852 made paste and fill re-enter a marked cell's display text through the leg
 and redo (user_model/undo_redo.rs, the `Diff::SetCellValue` arm) writes `new_value` back with
 `set_user_input`, which parses it as a dynamic formula, so the marker is lost on redo. Row and
 column inserts, deletes and moves redo by calling the action again, so they are not affected.
+A cut and paste also records `Diff::SetCellValue` for each formula outside the cut area that it
+rewrites (clipboard.rs, the `get_external_formula_updates_for_cut` loop), and those lose the marker
+on redo too.
 Fix sketch: carry whether the value was written as legacy in the diff (a `#[serde(default)]`
 bool, so older undo queues still deserialize) and redo through `reenter_user_input`.
 
 ## Acceptance criteria
-- [ ] Unit tests in test/user_model/test_legacy_marker_edits.rs: paste and fill of a legacy cell,
+- [ ] Unit tests in test/user_model/test_legacy_marker_edits.rs: paste and fill of a legacy cell, and a
+  cut and paste of a cell a legacy formula reads,
   undo, redo: the target is `#VALUE!` and `cell_has_legacy_marker` holds; a dynamic twin still
   spills after redo.
 - [ ] references.md "Legacy N and T over a reference-returning call" drops the redo caveat.

@@ -690,13 +690,10 @@ impl UserModel {
         Ok(())
     }
 
-    /// Makes the link of the fill target cell match the one of its source cell,
-    /// adding the corresponding diff. This runs after the value is set so that
-    /// it also overrides any link auto-created by an URL value.
-    /// Computes and writes the filled value of cell `target`: the next term of `progression`
-    /// when the source cells form one, else the `source` cell's formula or value
-    /// ([`Model::fill_cell`](crate::Model), which keeps a legacy N/T marker). Returns the text
-    /// written.
+    /// Computes and writes the filled value of cell (`row`, `column`): the next term of
+    /// `progression` when the source cells form one, else the formula or value of the cell at
+    /// `source` ([`Model::fill_cell`](crate::Model), which keeps a legacy N/T marker). Returns
+    /// the text written.
     fn fill_target(
         &mut self,
         sheet: u32,
@@ -715,6 +712,9 @@ impl UserModel {
         Ok(value)
     }
 
+    /// Makes the link of the fill target cell match the one of its source cell,
+    /// adding the corresponding diff. This runs after the value is set so that
+    /// it also overrides any link auto-created by an URL value.
     fn fill_cell_link(
         &mut self,
         sheet: u32,
