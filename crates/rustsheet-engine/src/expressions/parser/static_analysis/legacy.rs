@@ -236,7 +236,7 @@ pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
         Node::ImplicitIntersection {
             automatic: false,
             child,
-        } if add && is_switch_of_array_constants(child) => {}
+        } if add && is_switch_of_array_constants(child) => {} // A typed `@` stays as it is.
         _ => {
             add_legacy_intersection(node, add, add);
             if let Node::ImplicitIntersection { child, .. } = node {
