@@ -3,10 +3,10 @@ id: T-1892
 title: "Probe IMPOWER/IMDIV edge cases left UNVERIFIED by T-1766: huge angle, underflow, blank first argument"
 milestone: M9
 lane: functions-math
-status: done
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -26,3 +26,7 @@ docs/excel-semantics/engineering.md "T-1625 probes" lists three UNVERIFIED items
 
 ## Outcome
 Probes `eng-impower-imdiv-edges` (35 cells) and `eng-impower-angle-cut` (19 cells), excel-graph. Excel's IMPOWER angle cut is just under 2^27 (bracketed at 134217727), not SIN's 2^27, and gives `#NUM!` for a pure imaginary base; an underflowed radius gives "0" whatever the angle. Our libm fallback is now `#NUM!`. A blank first argument as 0 and Smith's IMDIV were confirmed bit for bit. A non-imaginary base past the cut gives values near 1.797E+308 in Excel, which we do not reproduce: follow-up T-1950.
+
+## Handoff
+Sonnet run: the work is done and `make check` is green on the branch; reviewers security, architecture and quality APPROVE. Excel-fidelity requested changes in three rounds (round 1: wrong 2^27 evidence and an unevidenced radius-0 short-circuit; round 2: modulus-power finding unrecorded; round 3: an uncommitted "n=1000 to 80000000" sweep claim, since deleted). Every item raised is fixed in the last commit; it has not been re-reviewed.
+Next: (1) re-run `reviewer-excel-fidelity` on the branch head; (2) if it approves, set `status: done`, run `make check`, mark the PR ready and merge under the steward policy; (3) T-1950 owns the open Excel differences (modulus power near radius 1, non-imaginary base past the cut). The IMPOWER cut constant 134217727 is a bracket from probes (85445658 answers, 85445659 is `#NUM!`), not a derived value.
