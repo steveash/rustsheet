@@ -79,6 +79,11 @@ impl Model {
         } else {
             (num_error(), div_error())
         };
+        // Both overflowing with no positive flow gives the finance error, #DIV/0!
+        // (probes/fin-mirr-overflow-underflow A1); with positive flows the order is not probed.
+        if !has_positive && reinvest_power.is_infinite() && finance_power.is_infinite() {
+            return finance_overflow;
+        }
         if reinvest_power.is_infinite() {
             return reinvest_overflow;
         }
