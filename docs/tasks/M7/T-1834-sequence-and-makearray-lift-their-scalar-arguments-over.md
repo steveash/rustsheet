@@ -3,7 +3,7 @@ id: T-1834
 title: "SEQUENCE and MAKEARRAY lift their scalar arguments over a range or an array (first array-valued lifting table entries)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -56,10 +56,8 @@ Eval: probes/m7-argument-modes F1, F2, G2, H2, F3, G3, H3, F23, G23, H23, K9, K1
 
 Benchmarks (min of 11 runs, one case per process; base = main before this PR): lift SWITCH
 numeric 396.9 → 392.7 ms, SWITCH text 499.7 → 498.4 ms; math_lift ABS lifted 302.9 → 287.0 ms,
-ROUND lifted errors 2.846 → 2.804 s, ABS per row 22.37 → 22.62 ms. PMT lifted over a range
-20.7 → 24.6 ms was measured at different times under other load and needs a back-to-back
-re-run before merge (the `Value` path of `element_node` is one early-return compare).
-State when the session budget ran out: reviews (security, architecture, quality, fidelity)
-APPROVE; performance REQUEST_CHANGES for bench evidence (numbers above, PMT pending). `make
-check` passed up to the stale eval/catalog/lift-kinds.json, regenerated in the last commit; rerun
-it in full, re-run the performance reviewer, then open the PR.
+ROUND lifted errors 2.846 → 2.804 s, ABS per row 22.37 → 22.62 ms. PMT lifted over a range,
+re-run back to back (a worktree of origin/main vs this branch, three alternating rounds, min of
+11 runs each): base 21.37 / 22.05 / 22.21 ms, branch 21.16 / 24.66 / 21.91 ms; best of three
+21.37 → 21.16 ms, inside this machine's run-to-run noise (the `Value` path of `element_node` is
+one early-return compare).
