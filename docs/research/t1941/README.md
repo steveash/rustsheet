@@ -82,7 +82,9 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
     z = fl(1/x); y1 = fl(x+1); z = fl(z/y1); y = fl(y1+1); GAMMA = fl(z*G(y)).
     That is 14,080 of 14,080 points where fl(fl(x+1)+1) = fl(x+2), with G read from the GAMMA(x+2) column. The
     general form for -10 < x < 0 is probably z = 1/x; y = x+1; while y < 1 { z = z/y; y = y+1 }; GAMMA = z*G(y).
-    `h105` checks deeper negatives.
+    Confirmed on `kmyst-gam-h105` (runs at -1.41, -2.25, -5.37 and -9.87): z = fl(1/x); y = fl(x+1); while y < 1 then
+    z = fl(z/y) and y = fl(y+1); GAMMA = fl(z*G(y)). That is 4,096 of 4,096, with G read from GAMMA at the chained
+    argument (the worksheet sum x+1+...+1 equals the chain's y on every row).
 - **GAMMA reflection cut (W3): exactly -x > 10**, mirroring the positive cut at x >= 10.
   - `kmyst-gam-h104` gives 112 of 112 on the sweep from -10.04 to -34.19.
   - -10-1ulp reflects; -10+1ulp does not; -10 itself is #NUM!.
