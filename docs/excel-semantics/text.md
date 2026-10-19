@@ -331,8 +331,9 @@ compiling, too-big attempts included (2,048 small patterns), and hold 64 MiB of 
 after each search (none is evicted, so patterns that cycle compile once). Its searches (functions/text/regex_engine.rs)
 run on a lazy DFA that gives up when it thrashes (after 3 cache clears, below 10 bytes a state, the regex crate's own
 setting) and then on a PikeVM; the DFA is charged what its cache says it scanned (4 a byte) and built (8 a byte of
-state), the PikeVM (T-1829) 21 for each NFA state a scan visits that measures the span a leftmost-first search needs
-(the PikeVM then runs over that span alone; an anchored search is charged its span times its state count, 5 a
+state), the PikeVM (T-1829) 21 for each NFA state a scan visits that measures the span a leftmost-first search needs, and
+54 more for each look-around it evaluates (a Unicode `\b` or `\B` costs about three visits; a chain of 40 over
+`REPT("éa ",10000)&SEQUENCE(300)` is `#ERROR!` after about 1 s) (the PikeVM then runs over that span alone; an anchored search is charged its span times its state count, 5 a
 state-byte), 64 a search, and a call may
 spend 2^30 (about 1 s of the slowest searches; `SUM(--REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x"))` fits, 20 MB).
 A pattern whose DFA thrashes over a lot of text (`a[ab]{100}c|b[ab]{100}c` over 560 texts of 30,000 bytes) and a call

@@ -16,7 +16,10 @@
 //! `a[ab]{100}c|b[ab]{100}c` (210 states) on a `PikeVM` costs about 4.2 ns a state-byte; lazy DFA
 //! state building about 6 ns a byte built; DFA scanning 1-3 ns a byte.
 
-use super::{lifted::to_u64, regex_reach::Reach};
+use super::{
+    lifted::to_u64,
+    regex_reach::{Reach, Visits},
+};
 use regex_automata::{
     hybrid::{
         dfa::{Cache as DfaCache, Config as DfaConfig, DFA},
@@ -52,6 +55,15 @@ const PIKE_STATE_BYTE: u64 = 5;
 /// Units charged per NFA state the reach scan visits (T-1829: `a.*z|a|\bq` iterated over
 /// `REPT("a",20000)&"é"` scans about 17 ns a visit in a release build).
 const SCAN_VISIT: u64 = 16;
+
+/// Units charged per look-around assertion the reach scan evaluates, on top of its visit: the
+/// scan and the `PikeVM` each evaluate it, and a Unicode `\b` decodes the characters on both
+/// sides and looks them up in the word table. T-1829, release build: a visit costs about 19 ns
+/// (`a.*z|a|\bq` iterated over `REPT("a",20000)&"é"`), an assertion about 54 ns more for `\B`
+/// over `é` (`REPT("\B",40)&"q"` tested on `REPT("éa ",10000)&SEQUENCE(300)`), 49 ns for `\b`
+/// over `𝒜`, 27 ns for `(?:\b|\B){40}q`; the worst is charged, so each runs out of work in
+/// about 1 s.
+const LOOK_VISIT: u64 = 54;
 
 /// Units charged per search, whatever its length: a pattern that matches everywhere does one
 /// search a character.
@@ -268,7 +280,10 @@ impl Search<'_> {
         let reach = self.caches.reach.scan(
             self.engine.pike.get_nfa(),
             input,
-            SCAN_VISIT + PIKE_STATE_BYTE,
+            &Visits {
+                states: SCAN_VISIT + PIKE_STATE_BYTE,
+                looks: LOOK_VISIT,
+            },
             self.work,
         )?;
         let input = input.clone().span(input.start()..reach);

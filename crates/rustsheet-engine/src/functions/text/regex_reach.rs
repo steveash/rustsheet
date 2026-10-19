@@ -13,6 +13,14 @@
 //! a search over the span up to `at` gives it (look-around at the span's end still sees the whole
 //! haystack). An empty match that splits a UTF-8 character is not a match for the `PikeVM`, which
 //! searches on past it, so the scan counts a match only at a character boundary.
+//!
+//! That retry (`skip_splits_fwd`) runs the `PikeVM` again from one byte later, over the same span.
+//! It restarts at or before the scan's first boundary match, and until then the scan starts a
+//! thread at every position, so each retry's state sets are subsets of the scan's: the span still
+//! holds the retry's match. A pattern that is always anchored (`^abc`) starts threads only at the
+//! search's start in the `PikeVM`, while the scan starts one at every position until it has a
+//! match, so the scan overcharges it: a visit or two a byte, linear in the span, never less than
+//! the work done.
 
 use regex_automata::{
     nfa::thompson::{State, NFA},
@@ -63,19 +71,20 @@ impl Reach {
     }
 
     /// Adds the states reachable from `start` without consuming a byte at `at` to the `next`
-    /// set; whether one of them is a match. `visits` counts every state looked at.
+    /// set; whether one of them is a match. `visits` counts every state looked at and every
+    /// look-around assertion evaluated.
     fn close(
         &mut self,
         nfa: &NFA,
         haystack: &[u8],
         at: usize,
         start: StateID,
-        visits: &mut u64,
+        visits: &mut Visits,
     ) -> bool {
         let mut matched = false;
         self.stack.push(start);
         while let Some(id) = self.stack.pop() {
-            *visits += 1;
+            visits.states += 1;
             let Some(mark) = self.marks.get_mut(id.as_usize()) else {
                 continue;
             };
@@ -86,6 +95,7 @@ impl Reach {
             match nfa.state(id) {
                 State::ByteRange { .. } | State::Sparse(_) | State::Dense(_) => self.next.push(id),
                 State::Look { look, next } => {
+                    visits.looks += 1;
                     if nfa.look_matcher().matches(*look, haystack, at) {
                         self.stack.push(*next);
                     }
@@ -100,13 +110,14 @@ impl Reach {
         matched
     }
 
-    /// The end of the span a leftmost-first search of `input` needs, charging `units` for each
-    /// state the scan visits against `work`. `input` must be unanchored.
+    /// The end of the span a leftmost-first search of `input` needs, charging `costs` for the
+    /// states the scan visits and the look-around assertions it evaluates against `work`.
+    /// `input` must be unanchored.
     pub(super) fn scan(
         &mut self,
         nfa: &NFA,
         input: &Input<'_>,
-        units: u64,
+        costs: &Visits,
         work: &mut u64,
     ) -> Result<usize, Spent> {
         let haystack = input.haystack();
@@ -116,7 +127,7 @@ impl Reach {
         self.next.clear();
         self.new_set();
         loop {
-            let mut visits = 0;
+            let mut visits = Visits::default();
             if !matched
                 && self.close(nfa, haystack, at, nfa.start_anchored(), &mut visits)
                 && is_boundary(haystack, at)
@@ -143,12 +154,28 @@ impl Reach {
                     }
                 }
             }
-            charge(work, visits.saturating_mul(units))?;
+            charge(work, visits.units(costs))?;
             if done {
                 return Ok(at.min(end));
             }
             at += 1;
         }
+    }
+}
+
+/// States visited and look-around assertions evaluated by the scan, or the units each costs.
+#[derive(Default)]
+pub(super) struct Visits {
+    pub(super) states: u64,
+    pub(super) looks: u64,
+}
+
+impl Visits {
+    /// These visits' units at `costs` a visit.
+    fn units(&self, costs: &Visits) -> u64 {
+        self.states
+            .saturating_mul(costs.states)
+            .saturating_add(self.looks.saturating_mul(costs.looks))
     }
 }
 
