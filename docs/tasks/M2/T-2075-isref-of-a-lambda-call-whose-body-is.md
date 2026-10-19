@@ -3,7 +3,7 @@ id: T-2075
 title: "ISREF of a LAMBDA call whose body is an IF picking a reference XLOOKUP is TRUE"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
