@@ -996,7 +996,7 @@ fn datedif_pre_epoch_date_text_is_a_value_error_in_1904() {
 // pair included), then an unknown unit (probes/datedif-days360-error-order A1, A2, A14, A4,
 // excel-graph; dates.md "DATEDIF and DAYS360 error order", T-1430).
 #[test]
-fn datedif_date_errors_come_before_the_unit_error() {
+fn datedif_error_order_dates_then_unit_then_num() {
     let mut model = new_empty_model();
     model._set("A1", "=DATEDIF(10,5,NA())");
     model._set("A2", "=DATEDIF(1/0,5,NA())");
