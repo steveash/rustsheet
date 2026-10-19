@@ -140,16 +140,16 @@ if truth and os.environ.get("NEAR"):  # control only: grids around the truth (va
 pairs = np.array([(c_, d_) for c_ in cg for d_ in dg])
 BATCH = int(os.environ.get("BATCH", 128))
 ph_b = np.exp(2j * np.pi * np.outer(np.arange(1, H + 1), bsel * dx0))
+import scipy.sparse as sps
+Smap = sps.csr_matrix((np.ones(len(kbin)), (np.arange(len(kbin)), kbin)), shape=(len(kbin), NB)).astype(complex)
 cand = []
 for i0 in range(0, len(pairs), BATCH):
     P_ = pairs[i0 : i0 + BATCH]
     hi = np.outer(P_[:, 0], dx**2) + np.outer(P_[:, 1], dx**3)  # (batch, runs)
     Ghs = []
     for h in range(1, H + 1):
-        zz = np.zeros((len(P_), NB), complex)
         val = Ch[None, :, h] * np.exp(2j * np.pi * h * hi)
-        for r_ in range(len(kbin)):
-            zz[:, kbin[r_]] += val[:, r_]
+        zz = (val @ Smap).toarray() if hasattr(val @ Smap, "toarray") else val @ Smap  # runs -> b-cells (sparse)
         G = np.fft.ifft(zz, axis=1) * NB
         Ghs.append((G[:, (h * f) % NB] * ph_b[h - 1][None, :]).astype(np.complex64))
     bv = np.full(Ghs[0].shape, -np.inf, dtype=np.float32)

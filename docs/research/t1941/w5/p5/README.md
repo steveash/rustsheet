@@ -111,3 +111,22 @@ gives a sharp gain (best D.S3 0.3624 vs base 0.3550; every top-stage drop is neu
 required, 0.2898). So the half phase is not a missing store. Reading: the real D top lies outside the scanned
 box. The function allows D.S6 principal ranges of 72 / 2.9e3 / 1.4e5 / 1.8e7 cycles in (a, b, c, d), and the
 control truth was planted inside a small box.
+
+## Range problem, quantified on the control
+- The function barely bounds the top tail. `make_truth` moves of 1e7–1e9 ulps on the top coefficients (soft SVD
+  directions, kmin 8–15) change the function by only 2e-17 to 1e-16, the rounding floor. The real top can be that
+  far from ss_fc.
+- The S8 stage (linear, the only scan with no grid) carries no signal. Control truth scores: N.S8 8.4 (TSIZE 1e5) /
+  21.3 (1e9), null sd ~35; D.S8 −19.7 / 23.1, null sd 28. So a top-down scan has to start at N.S7 (quadratic) and
+  D.S6 (cubic), which need c (and d) grids.
+- Planted N.S7 truths: TSIZE 1e6 → (b, c) = (−5537, 60.9), S 260; TSIZE 1e7 → (−55366, 608.5), S 280, joint null
+  sd 48. Range control `launch_scan_farctl.sh`: same box as the real wide scan (b ±1e5, c ±2000), truth at TSIZE 1e7.
+
+## Where the top-stage information lives (`perrun.py`, PERRUN dump of scan2/scan3; control TSIZE 1e7, rows4)
+The truth contribution per run is compared with the null spread over phase (`perrun_tsize1e7.log`; the cubic term
+is now included in scan3's at-truth score):
+- N.S7: total Z 10.3. Concentrated at x ≥ 1.2: Z²/run 0.33–0.51, against 0.04–0.07 for x in 0.8–1.2 and ~0 below
+  0.8.
+- D.S6: total Z 11.2, broad (Z²/run 0.05–0.25 everywhere).
+- N.S6: total Z 8.6, patchy. Not better than N.S7 here (W6's (1.5,2] kernel differs).
+So new K3 data for the top scans should go to x in [1.2, 1.47) for N, spread uniformly for D.

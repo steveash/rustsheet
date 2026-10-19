@@ -88,7 +88,7 @@ for rr in range(Rr):
         P = st(vp)
         vs = L(P) + L(C[i])
         sprev = st(vs)
-        for v in (vp, vs):
+        for v in ((vp,) if os.environ.get("SITES") == "P" else (vp, vs)):  # SITES=P: products only (W5's m-scan)
             u_ = np.spacing(np.abs(st(v))).astype(L)
             th0 = v / u_
             th0 = (th0 - np.floor(th0)).astype(float)

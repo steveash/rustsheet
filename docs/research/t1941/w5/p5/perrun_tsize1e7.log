@@ -1,0 +1,27 @@
+perrun_NS7.npz: total truth 325.1, null sd 31.6 (Z 10.3)
+  x 0.7-0.8 runs 122  truth     2.7  null sd   10.8  Z   0.2  Z^2/run 0.001
+  x 0.8-0.9 runs 120  truth    24.2  null sd    8.5  Z   2.8  Z^2/run 0.067
+  x 0.9-1.0 runs  93  truth    16.4  null sd    8.4  Z   1.9  Z^2/run 0.041
+  x 1.0-1.1 runs  84  truth    16.1  null sd    8.8  Z   1.8  Z^2/run 0.040
+  x 1.1-1.2 runs 111  truth    39.4  null sd   14.1  Z   2.8  Z^2/run 0.070
+  x 1.2-1.3 runs 111  truth    85.8  null sd   12.7  Z   6.7  Z^2/run 0.409
+  x 1.3-1.4 runs 103  truth    77.8  null sd   13.3  Z   5.9  Z^2/run 0.332
+  x 1.4-1.5 runs  63  truth    62.7  null sd   11.1  Z   5.7  Z^2/run 0.510
+perrun_NS6.npz: total truth 368.6, null sd 42.9 (Z 8.6)
+  x 0.7-0.8 runs 122  truth    20.7  null sd   11.1  Z   1.9  Z^2/run 0.028
+  x 0.8-0.9 runs 120  truth    40.0  null sd   10.2  Z   3.9  Z^2/run 0.128
+  x 0.9-1.0 runs  93  truth    32.2  null sd    9.4  Z   3.4  Z^2/run 0.126
+  x 1.0-1.1 runs  84  truth    29.0  null sd   11.9  Z   2.4  Z^2/run 0.071
+  x 1.1-1.2 runs 111  truth    78.7  null sd   15.5  Z   5.1  Z^2/run 0.233
+  x 1.2-1.3 runs 111  truth    31.9  null sd   18.1  Z   1.8  Z^2/run 0.028
+  x 1.3-1.4 runs 103  truth   115.7  null sd   22.6  Z   5.1  Z^2/run 0.255
+  x 1.4-1.5 runs  63  truth    20.4  null sd   17.5  Z   1.2  Z^2/run 0.022
+perrun_DS6.npz: total truth 337.5, null sd 30.1 (Z 11.2)
+  x 0.7-0.8 runs 122  truth    37.3  null sd    9.6  Z   3.9  Z^2/run 0.123
+  x 0.8-0.9 runs 120  truth    22.7  null sd    9.4  Z   2.4  Z^2/run 0.048
+  x 0.9-1.0 runs  93  truth    47.6  null sd    9.9  Z   4.8  Z^2/run 0.250
+  x 1.0-1.1 runs  84  truth    30.9  null sd    9.3  Z   3.3  Z^2/run 0.131
+  x 1.1-1.2 runs 111  truth    53.3  null sd   11.3  Z   4.7  Z^2/run 0.202
+  x 1.2-1.3 runs 111  truth    67.8  null sd   12.7  Z   5.3  Z^2/run 0.255
+  x 1.3-1.4 runs 103  truth    38.6  null sd   11.5  Z   3.3  Z^2/run 0.109
+  x 1.4-1.5 runs  63  truth    39.3  null sd   10.8  Z   3.6  Z^2/run 0.211
