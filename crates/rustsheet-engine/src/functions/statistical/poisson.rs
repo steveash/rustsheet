@@ -10,7 +10,7 @@ impl Model {
     /// `POISSON.DIST(x, mean, cumulative)`, and POISSON: every argument lifts over an array and a
     /// range (SPEC-0011; probes/stat-argument-modes H476-H485, probes/stat-quantile-lift
     /// H47-H50). The cdf is statrs' Q(k + 1, mean), the capped port of `incomplete_gamma.rs`,
-    /// which the lifting table charges (kinds.rs `INCOMPLETE_GAMMA_WEIGHT`).
+    /// which the lifting table charges (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT`).
     pub(crate) fn fn_poisson_dist(
         &mut self,
         args: &[Node],

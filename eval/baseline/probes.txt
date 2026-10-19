@@ -337,6 +337,7 @@ C	probes/index-area-num-snap.case.json	11
 C	probes/index-array-indices.case.json	60
 C	probes/index-lifted-edge-cases.case.json	61
 C	probes/index-literal-scalar.case.json	12
+C	probes/index-one-index-array-shape.case.json	36
 C	probes/index-scalar-indexes.case.json	23
 C	probes/index-single-index.case.json	6
 C	probes/index-snap-tolerance.case.json	67
@@ -1865,7 +1866,6 @@ F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A1
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A2
 F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!J2
 F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!Y2
-F	probes/legacy-n-t-marker-shapes.case.json	S!F10
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100

@@ -117,7 +117,7 @@ impl Model {
     /// array and a range (SPEC-0011; probes/stat-argument-modes H90-H99,
     /// probes/stat-quantile-lift). The quantile is the capped port of statrs' inversion or a
     /// bisection of at most 1,100 cdfs (`beta_quantile`), which the lifting table charges
-    /// (kinds.rs `QUANTILE_WEIGHT`).
+    /// (lift/kinds/statistical.rs `QUANTILE_WEIGHT`).
     pub(crate) fn fn_beta_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaInv, args, cell, &mut |model, values| {
             number_or_error(model.beta_inv_of(values, cell))
