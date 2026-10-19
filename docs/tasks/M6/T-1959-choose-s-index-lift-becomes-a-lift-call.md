@@ -3,7 +3,7 @@ id: T-1959
 title: "CHOOSE's index lift becomes a lift_call kernel on the SPEC-0011 driver"
 milestone: M6
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
