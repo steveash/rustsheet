@@ -1925,3 +1925,7 @@ A written LAMBDA call keeps what its body returns in reference context, as LET d
 COUNTIF too: `OFFSET(LAMBDA(x,x)(A1),1,0)` and `OFFSET(LET(x,A1,x),1,0)` read A2, `COUNTIF(LAMBDA(x,x)(A1),">0")` counts A1
 (probes/lambda-union-reference-callers, excel-graph, 2026-10-19). Implemented by `call_callee_as_reference` returning the
 `RefArg` uncollapsed and by `evaluate_node_with_reference` reading a LET or LAMBDA call as a reference.
+
+Evidence: probes/lambda-union-reference-callers C1-C7, D1-D11 (excel-graph, 2026-10-19)
+Status: VERIFIED (excel-graph)
+Tasks: T-1951. Open: a union returned by LAMBDA or LET into OFFSET or COUNTIF is unprobed (T-1951 follow-up).
