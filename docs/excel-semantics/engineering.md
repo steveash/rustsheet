@@ -273,7 +273,7 @@ Tasks: T-1385
 - IMPOWER stops answering once the angle `atan2(y,x)·n` is near 2^27, but not at 2^27: `IMPOWER("i",85445658)` (angle 134217725.7) answers, `IMPOWER("i",85445659)` (134217727.3) is `#NUM!`, and every `n` below that to 1000 answers. We cut at 134217727 (a bracket, not a derived value). A radius that underflows to 0 is "0" whatever the angle (`IMPOWER("0.5i",134217728)`, `IMPOWER("0.5",134217728)`); one that overflows is `#NUM!` (`IMPOWER("1E-200+1E-200i",-2)`, `IMPOWER("1E200",2)`; `IMPOWER("1+i",170891317)` is this overflow, its angle is under the cut).
 - UNVERIFIED: past the cut a base that is not a pure imaginary number does not give `#NUM!`: `IMPOWER("0.7071067811865476+0.7071067811865476i",170891318)` is `1.79769293021926E+308+1.79769293021926E+308i` and `…,170891320` is `1.79769293021925E+308+1.79769293021925E+308i` (the parts differ, so it is not a clamp). Ours gives `#NUM!` there (T-1950).
 Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892).
-Status: VERIFIED (excel-graph)
+Status: VERIFIED (excel-graph), except the bullet marked UNVERIFIED (T-1950)
 Tasks: T-1766, T-1892
 
 ## Base conversions read a blank cell and empty text as 0

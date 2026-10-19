@@ -453,7 +453,7 @@ impl Model {
             // An angle past `IMPOWER_ANGLE_LIMIT` is `#NUM!` for a pure imaginary base, but an
             // underflowed radius of 0 is "0" without reading the angle: `IMPOWER("i",85445659)` is
             // `#NUM!`, `IMPOWER("0.5i",134217728)` is 0 (probes/eng-impower-imdiv-edges A28-A35,
-            // eng-impower-angle-cut; engineering.md "T-1892 probes").
+            // eng-impower-angle-cut; engineering.md "T-1625 probes").
             let (sin, cos) = if radius == 0.0 {
                 (0.0, 0.0)
             } else if angle.abs() < IMPOWER_ANGLE_LIMIT {
