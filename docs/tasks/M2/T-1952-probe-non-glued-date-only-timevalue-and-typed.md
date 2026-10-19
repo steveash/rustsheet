@@ -3,7 +3,7 @@ id: T-1952
 title: "Probe non-glued date-only TIMEVALUE and typed date+clock text"
 milestone: M2
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1907 generalised the date-only-gives-0 rule and the typed `m/d/yyyy h:mm` conv
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/timevalue-non-glued-date-text with oracle values. All shapes matched except typed `H:MM:SS` and AM/PM clocks, which Excel makes numbers; the typed-clock guard now accepts them. 1904 pre-epoch stays UNVERIFIED (Graph oracle cannot open a 1904 workbook).

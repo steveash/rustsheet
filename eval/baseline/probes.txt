@@ -917,6 +917,7 @@ C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
+C	probes/timevalue-non-glued-date-text.case.json	38
 C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/trig-huge-argument.case.json	86
 C	probes/trimrange-fractional-trim.case.json	20

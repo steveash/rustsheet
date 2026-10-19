@@ -9,7 +9,7 @@ use crate::{
 use super::date_text::{parse_date, CurrentYear};
 
 /// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
-/// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Only that shape is probed; the
+/// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). The
 /// format of other typed clocks is UNVERIFIED and they stay text; so is every non-glued date shape given this format (T-1952) (docs/excel-semantics/dates.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
 
@@ -23,7 +23,7 @@ pub(crate) fn parse_typed_number(
     date_system: DateSystem,
 ) -> Result<(f64, Option<String>), String> {
     parse_formatted_number(original, currencies, locale, current_year, date_system).or_else(|err| {
-        if !ends_with_hour_minute_clock(original) {
+        if !ends_with_typed_clock(original) {
             return Err(err);
         }
         parse_date_clock_serial_in(original, locale, current_year, date_system)
@@ -32,18 +32,34 @@ pub(crate) fn parse_typed_number(
     })
 }
 
-/// Whether the text's last word is an `H:MM` / `HH:MM` clock with an hour below 24: the only typed
-/// clock shape probed. Seconds, AM/PM, hours past 23 and fractions are UNVERIFIED and stay text.
-fn ends_with_hour_minute_clock(text: &str) -> bool {
-    let Some((hour, minute)) = text.rsplit(' ').next().and_then(|c| c.split_once(':')) else {
-        return false;
+/// Whether the text ends in a typed clock: `H:MM` or `H:MM:SS` with an hour below 24, optionally
+/// followed by ` AM`/` PM`, or a bare hour and ` AM`/` PM` (probes/timevalue-non-glued-date-text
+/// E5-E10, excel-graph: `1/2/2020 10:00:30` and `1/2/2020 10 AM` are numbers). Hours past 23 and
+/// fractions are UNVERIFIED and stay text.
+fn ends_with_typed_clock(text: &str) -> bool {
+    let mut words = text.rsplit(' ');
+    let last = words.next().unwrap_or_default();
+    let meridiem = last.eq_ignore_ascii_case("am") || last.eq_ignore_ascii_case("pm");
+    let clock = if meridiem {
+        words.next().unwrap_or_default()
+    } else {
+        last
     };
     let digits =
         |s: &str, max: usize| (1..=max).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_digit());
-    digits(hour, 2)
-        && minute.len() == 2
-        && digits(minute, 2)
-        && hour.parse::<u32>().is_ok_and(|h| h < 24)
+    let mut parts = clock.split(':');
+    let (Some(hour), minute, second) = (parts.next(), parts.next(), parts.next()) else {
+        return false;
+    };
+    let shape_ok = match (minute, second, parts.next()) {
+        (None, None, None) => meridiem,
+        (Some(m), None, None) => m.len() == 2 && digits(m, 2),
+        (Some(m), Some(sec), None) => {
+            m.len() == 2 && digits(m, 2) && sec.len() == 2 && digits(sec, 2)
+        }
+        _ => false,
+    };
+    shape_ok && digits(hour, 2) && hour.parse::<u32>().is_ok_and(|h| h < 24)
 }
 
 /// Parses a formatted number, returning the numeric value together with the format

@@ -230,15 +230,20 @@ fn typed_date_clock_text_is_a_number_with_a_date_time_format() {
     );
 }
 
+// Excel types `1/2/2020 10:00:30` and `1/2/2020 10 AM` as numbers
+// (probes/timevalue-non-glued-date-text E9-E10); an hour past 23 stays text (UNVERIFIED).
 #[test]
-fn typed_date_clock_text_other_than_hour_minute_stays_text() {
+fn typed_date_clock_text_with_seconds_or_meridiem_is_a_number() {
     let mut model = new_empty_model();
-    model._set("A1", "July1 10:00:30");
-    model._set("A2", "July1 10 AM");
+    model._set("A1", "1/2/2020 10:00:30");
+    model._set("A2", "1/2/2020 10 AM");
     model._set("A3", "July1 25:00");
+    model._set("B1", "=ISNUMBER(A1)");
+    model._set("B2", "=ISNUMBER(A2)");
+    model._set("B3", "=ISNUMBER(A3)");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"July1 10:00:30");
-    assert_eq!(model._get_text("A2"), *"July1 10 AM");
-    assert_eq!(model._get_text("A3"), *"July1 25:00");
+    assert_eq!(model._get_text("B1"), *"TRUE");
+    assert_eq!(model._get_text("B2"), *"TRUE");
+    assert_eq!(model._get_text("B3"), *"FALSE");
 }

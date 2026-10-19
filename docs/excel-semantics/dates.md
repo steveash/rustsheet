@@ -373,7 +373,7 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   `"July1 10:00:30"` and `"Jul1 , 2026 10:00"` are date-times in VALUE (fractions 0.41666..., 0.75, 0.7708...,
   0.41701...; rows 1-5, 12), and TIMEVALUE of the same text is just the clock fraction. TIMEVALUE of date-only
   text (`"Jul1 , 2026"`, `"1Jul 2026"`, `"Jul2026"`, `"July01"`, `"Jun31"`, `"Feb29"`) is 0, not an error
-  (rows 6-8, 10-11, 13-15, column C). Implemented (T-1907) for every text `parse_date` reads, not only the glued shapes probed: non-glued date-only text (`"1/2/2020"`, `"July 1, 2026"`) giving 0 and a pre-epoch date in a 1904 workbook being `#VALUE!` are UNVERIFIED.
+  (rows 6-8, 10-11, 13-15, column C). Implemented (T-1907) for every text `parse_date` reads, not only the glued shapes probed: non-glued date-only text (`"1/2/2020"`, `"July 1, 2026"`, `"1 July 2026"`, `"2020-01-02"`) giving 0 is VERIFIED (probes/timevalue-non-glued-date-text rows 1-4, column B). A pre-epoch date in a 1904 workbook being `#VALUE!` is UNVERIFIED (the Graph oracle cannot open a 1904 workbook).
 - Criteria read the glued forms as dates: over serials 44347, 44348, 44349 `COUNTIF(">1JUN2021")` = 1,
   `"1JUN2021"` = 1, `">=1JUN2021"` = 2, `"<1JUN2021"` = 1, `">1Jun2021"` = 1, `SUMIF(">1JUN2021")` sums
   44349; `COUNTIF(date,"July1")`, `"Jul1"` and `"July01"` match the 1 July of the clock year (K1-K8).
@@ -381,7 +381,7 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   format `d-mmm`; `"Jul2026"` -> 2026-07-01, `mmm-yy`; `"Jun31"` -> 1931-06-01, `mmm-yy`; `"1Jul 2026"`,
   `"Jul1 , 2026"` and `"1JUN2021"` -> d-mmm-yy dates (2026-07-01, 2026-07-01, 2021-06-01); `"July1 10:00"` ->
   46204.41666..., format `m/d/yyyy h:mm`; `"Jun1.5"` stays text (General). The engine matches (T-1907 made typed
-  date+time text a number with `m/d/yyyy h:mm`; only a typed `H:MM` clock is converted; typed clocks with seconds, AM/PM, hours past 23 or fractions stay text, which is UNVERIFIED). Also UNVERIFIED (T-1952): typed non-glued date + `H:MM` text (`1/2/2020 10:00`, `2020-01-02 10:00`, `July 1, 2026 10:00`, year-less `7/1 10:00`) now becomes a number, every such shape with the format `m/d/yyyy h:mm`; a 1904-workbook pre-epoch date stays text. Only the glued `July1 10:00` has oracle evidence.
+  date+time text a number with `m/d/yyyy h:mm`; only a typed `H:MM` clock is converted; typed clocks with hours past 23 or fractions stay text, which is UNVERIFIED). Typed non-glued date + clock text is VERIFIED by probes/timevalue-non-glued-date-text (excel-graph 2026-10-19, T-1952): `1/2/2020 10:00`, `2020-01-02 10:00`, `July 1, 2026 10:00` and year-less `7/1 10:00` are numbers with format `m/d/yyyy h:mm`; so are `1/2/2020 10:00:30` (43832.41701...) and `1/2/2020 10 AM`. Date-only typed text gets `m/d/yyyy` (`1/2/2020`, `2020-01-02`) or `d-mmm-yy` (`July 1, 2026`, `1 July 2026`). VALUE and TIMEVALUE of the same text agree with the typed values (columns B-C).
 UNVERIFIED:
 - shapes the glued-month rules accept or reject beyond the probed rows (T-1906): `"1Jul5"` (any glued single digit after a day reads as year 0d), `"1/Jul2026"` and other separators, `"1-Jul26"`, the format typed `"1-Jul2026"` gets, and the hand-derived `#VALUE!` of `"July1 , 2026 5"`, `"1Jul1 , 2026"` and `"July1,, 2026"`;
 - the clock-year results (`"July1"`, `"July01"`, criteria K6-K8) for clocks other than the oracle's 2026;
