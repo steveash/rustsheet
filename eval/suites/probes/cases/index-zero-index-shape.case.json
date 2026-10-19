@@ -1,0 +1,73 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1943: shape of INDEX whole-row/whole-column picks (an index of 0) of a scalar or a 1x1 array: TYPE, ROWS, COLUMNS in dynamic rows 1-3 and a legacy N (an array reads #VALUE!) in row 10 with FORMULATEXT in row 20. Columns A-I are INDEX({7},0,0), ({7},1,0), ({7},0,1), ({7},0), (5,0,0), (5,0), ({2,3},0), ({2,3},0,1), ({2;3},0,1).",
+ "tags": [
+  "M2",
+  "probe",
+  "T-1943"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TYPE(INDEX({7},0,0))",
+    "A2": "=ROWS(INDEX({7},0,0))",
+    "A3": "=COLUMNS(INDEX({7},0,0))",
+    "A10": "=N(INDEX({7},0,0))",
+    "A20": "=FORMULATEXT(A10)",
+    "B1": "=TYPE(INDEX({7},1,0))",
+    "B2": "=ROWS(INDEX({7},1,0))",
+    "B3": "=COLUMNS(INDEX({7},1,0))",
+    "B10": "=N(INDEX({7},1,0))",
+    "B20": "=FORMULATEXT(B10)",
+    "C1": "=TYPE(INDEX({7},0,1))",
+    "C2": "=ROWS(INDEX({7},0,1))",
+    "C3": "=COLUMNS(INDEX({7},0,1))",
+    "C10": "=N(INDEX({7},0,1))",
+    "C20": "=FORMULATEXT(C10)",
+    "D1": "=TYPE(INDEX({7},0))",
+    "D2": "=ROWS(INDEX({7},0))",
+    "D3": "=COLUMNS(INDEX({7},0))",
+    "D10": "=N(INDEX({7},0))",
+    "D20": "=FORMULATEXT(D10)",
+    "E1": "=TYPE(INDEX(5,0,0))",
+    "E2": "=ROWS(INDEX(5,0,0))",
+    "E3": "=COLUMNS(INDEX(5,0,0))",
+    "E10": "=N(INDEX(5,0,0))",
+    "E20": "=FORMULATEXT(E10)",
+    "F1": "=TYPE(INDEX(5,0))",
+    "F2": "=ROWS(INDEX(5,0))",
+    "F3": "=COLUMNS(INDEX(5,0))",
+    "F10": "=N(INDEX(5,0))",
+    "F20": "=FORMULATEXT(F10)",
+    "G1": "=TYPE(INDEX({2,3},0))",
+    "G2": "=ROWS(INDEX({2,3},0))",
+    "G3": "=COLUMNS(INDEX({2,3},0))",
+    "G10": "=N(INDEX({2,3},0))",
+    "G20": "=FORMULATEXT(G10)",
+    "H1": "=TYPE(INDEX({2,3},0,1))",
+    "H2": "=ROWS(INDEX({2,3},0,1))",
+    "H3": "=COLUMNS(INDEX({2,3},0,1))",
+    "H10": "=N(INDEX({2,3},0,1))",
+    "H20": "=FORMULATEXT(H10)",
+    "I1": "=TYPE(INDEX({2;3},0,1))",
+    "I2": "=ROWS(INDEX({2;3},0,1))",
+    "I3": "=COLUMNS(INDEX({2;3},0,1))",
+    "I10": "=N(INDEX({2;3},0,1))",
+    "I20": "=FORMULATEXT(I10)"
+   },
+   "legacy_formulas": [
+    "A10",
+    "B10",
+    "C10",
+    "D10",
+    "E10",
+    "F10",
+    "G10",
+    "H10",
+    "I10"
+   ]
+  }
+ ]
+}

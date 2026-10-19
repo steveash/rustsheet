@@ -573,9 +573,12 @@ a column number and picks one cell, a scalar: `INDEX({2,3},1)` and `INDEX({2},1)
 `TYPE(INDEX(Z1:Z2,1))` is 1 (one cell). So a legacy N or T over it is `#VALUE!` (references.md "Legacy N and T over a
 reference-returning call"): `=N(INDEX({2;3},2))`, `=T(INDEX({"a";"b"},1))` and `=N(INDEX({2;3},1,0))` are `#VALUE!`, while
 `=N(INDEX({2,3},2))` is 3 and `=N(INDEX({2},1))` 2; a legacy `=TYPE(INDEX({2;3},1))` is shown `=TYPE(@INDEX({2;3},1))`, 1.
-`TYPE(INDEX({7},0,0))` and the other whole-row and whole-column selections of a scalar or a 1x1 array are unprobed (their
-values are, "INDEX of a scalar or a 1x1 array"); the engine gives them the same array.
-Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); probes/legacy-n-t-marker-shapes F10.
+Every whole-row or whole-column selection (an index of 0) of a scalar or a 1x1 array is an array too, never a scalar:
+`INDEX({7},0,0)`, `INDEX({7},1,0)`, `INDEX({7},0,1)`, `INDEX({7},0)`, `INDEX(5,0,0)`, `INDEX(5,0)`, `INDEX({2,3},0)` (1x2),
+`INDEX({2,3},0,1)` (1x1) and the control `INDEX({2;3},0,1)` (2x1) all have `TYPE` 64, and a legacy `N` over each is `#VALUE!`
+(values: "INDEX of a scalar or a 1x1 array"). FORMULATEXT shows no `@` for any of them. The engine matches the dynamic `TYPE`, `ROWS` and `COLUMNS` of all nine, but for a scalar first argument, `INDEX(5,0,0)` and `INDEX(5,0)`, a legacy `N` gives 5 and FORMULATEXT shows `@INDEX(...)`: an open gap, T-2017.
+Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); probes/index-zero-index-shape (excel-graph,
+2026-10-19, T-1943); probes/legacy-n-t-marker-shapes F10.
 Status: VERIFIED (excel-graph)
 Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs).
 
