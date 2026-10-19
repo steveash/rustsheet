@@ -489,7 +489,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let samples = self
-            .paired_samples(args, cell)
+            .paired_samples(args, cell, false)
             .map_err(CalcResult::without_message);
         let cells = samples.as_ref().map_or(0, |samples| {
             let cells = samples.first.len().saturating_add(samples.second.len());

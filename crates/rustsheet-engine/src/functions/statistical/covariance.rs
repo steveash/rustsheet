@@ -13,7 +13,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let (values1_opts, values2_opts) = match self.paired_samples(args, cell) {
+        let (values1_opts, values2_opts) = match self.paired_samples(args, cell, true) {
             Ok(paired) if paired.same_size => (paired.first, paired.second),
             Ok(_) => {
                 return CalcResult::new_error(
@@ -52,7 +52,7 @@ impl Model {
 
         let n = xs.len();
         if n == 0 {
-            // Should be impossible given the checks above, but guard anyway
+            // Numeric cells at different positions of the two arrays leave no pair
             return CalcResult::new_error(
                 Error::DIV,
                 cell,
@@ -91,7 +91,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let (values1_opts, values2_opts) = match self.paired_samples(args, cell) {
+        let (values1_opts, values2_opts) = match self.paired_samples(args, cell, true) {
             Ok(paired) if paired.same_size => (paired.first, paired.second),
             Ok(_) => {
                 return CalcResult::new_error(
