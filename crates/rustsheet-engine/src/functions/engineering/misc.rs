@@ -44,11 +44,13 @@ impl Model {
             [first, second] => (first, Some(second)),
             _ => return Err(CalcResult::new_args_number_error(cell)),
         };
-        let first = self.cast_number_no_bools_ref(first, cell)?;
+        // Excel reads the second argument first, so its error wins over the first's
+        // (probes/eng-first-vs-second-error, docs/excel-semantics/engineering.md).
         let second = match second {
             Some(second) => self.cast_number_no_bools_ref(second, cell)?,
             None => 0.0,
         };
+        let first = self.cast_number_no_bools_ref(first, cell)?;
         Ok((to_precision(first, 16), to_precision(second, 16)))
     }
 }

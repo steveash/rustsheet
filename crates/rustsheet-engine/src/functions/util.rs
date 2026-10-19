@@ -405,7 +405,7 @@ impl Model {
             // A LET variable bound to a union is its areas (probes/multiarea-let H1).
             Node::NamedVariableKind { .. } => return self.variable_reference(node, cell),
             Node::LambdaCallKind { lambda, args } => {
-                self.call_callee_as_reference(lambda, args, cell)
+                return self.call_callee_as_reference(lambda, args, cell)
             }
             Node::FunctionKind {
                 kind: Function::Index,

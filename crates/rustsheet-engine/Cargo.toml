@@ -22,6 +22,9 @@ thiserror = "1"
 # the REGEX* engine, a lazy DFA and PikeVM whose search work is counted (T-1272).
 memchr = "2"
 regex-automata = { version = "0.4", default-features = false, features = ["std", "syntax", "unicode", "hybrid", "nfa-pikevm"] }
+# regex-automata's own parser, for its AST: POSIX classes are rewritten to Excel's Unicode ones
+# before compiling (T-1903).
+regex-syntax = { version = "0.8", default-features = false, features = ["std", "unicode"] }
 
 [dev-dependencies]
 serde_json = "1.0"
