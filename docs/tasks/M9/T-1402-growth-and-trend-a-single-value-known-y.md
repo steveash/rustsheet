@@ -3,7 +3,7 @@ id: T-1402
 title: "GROWTH and TREND: a single-value known_y is one point, an error known_y is that error, and unequal sizes are #REF! before text is #VALUE!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
