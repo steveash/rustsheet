@@ -3,7 +3,7 @@ id: T-0439
 title: "LAMBDA closures that outlive their call read the parameter values they were made with"
 milestone: M3
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
