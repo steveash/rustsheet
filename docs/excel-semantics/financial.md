@@ -308,7 +308,7 @@ maturity 2024-08-31), prices 90 to 110, basis 0, and probes/bond-one-period-base
 bonds on bases 0 to 4, prices 95 to 105). E - A for DSR gives 30/60 and the nominal E on bases 2 and 3
 44/60. PRICE: probes/bond-one-period-bases sheet P (40 cells, yields 0.02 to 0.3) all pass in the engine,
 whose one-period PRICE uses E - A.
-Ours: the engine solves PRICE for YIELD (`fn_yield`, functions/financial/financial_bonds.rs) and gets 0/60.
+Ours: `yield_one_period` (functions/financial/financial_bonds/yield_closed.rs) evaluates the closed form and is bit-exact on 60/60 (T-1532); before it, the engine solved PRICE and got 0/60.
 Where PRICE's E - A and E equal YIELD's (basis 0 on the semiannual bond, bases 1 and 4) it lands a few to
 about 15 ulp off; elsewhere it solves a different equation: basis 0 annual (Y!B) is about 0.56% off (ratio
 180/179, Y!B1 0.2807210017227244 against 0.2791614406020427), bases 2 and 3 up to 4%.
