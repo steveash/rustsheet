@@ -34,12 +34,12 @@ Where M2's exit stands:
 - gen-m2: **100%, criterion met**.
 - The frozen m1-probes list is at 0 failures (89 cases, 1,858 cells).
 - M0–M2 probes: 405 cases, 11,553 cells, 11,504 bit-exact, 4 deviations, **45 known failures** (was 180). The planner checked every cell; each has an open owning task:
-  - `sort-error-args` (23): T-1902 (functions-lookup, M7; H57:J71) and T-1839 (H97:H99, moved there by T-1833). SORT/SORTBY are M7 functions; **T-1969** (harness, new) maps the case to M7 in probe-milestones.tsv under a decision record, as 0058 did for `sort-omitted-args`.
+  - `sort-error-args` (23): T-1902 (functions-lookup, M7; H57:J71) and T-1839 (H97:H99, moved there by T-1833). SORT/SORTBY are M7 functions; **T-1971** (harness, new) maps the case to M7 in probe-milestones.tsv under a decision record, as 0058 did for `sort-omitted-args`.
   - `subtotal-take-array-selector` (9): **T-1914** (engine, now P0, see fuzz below) and T-1915 (engine).
   - `legacy-array-at-shapes` (6): T-1910 (engine, merged during this run as #1144) and T-1911 (engine).
-  - `legacy-marker-spelling-name-plain` (2): T-1936 (engine). `legacy-match-lookup-array-intersection` (2): T-1935 (engine, in progress).
+  - `legacy-marker-spelling-name-plain` (2): T-1936 (engine). `legacy-match-lookup-array-intersection` (2): T-1935 (engine, merged during this run as #1155).
   - `sheet-ops-insert-row-legacy-cell` (2): T-1852 (engine; T-1851 is done, so it is ready).
-  - `date-math-lift-driver-edges` G43 (1): T-1430 (functions-date, M6). DATEDIF is M6; T-1969 maps the cell to M6.
+  - `date-math-lift-driver-edges` G43 (1): T-1430 (functions-date, M6). DATEDIF is M6; T-1971 maps the cell to M6.
   - Fixed since the last run: all 148 `date-text-glued-month` cells (T-1789) and the 32 legacy N/T cells (T-1713, T-1851).
 - ironcalc-calc cells using only M1/M2 functions: 4,253 scored (T-1877 now scores array members by their anchor), 4,251 bit-exact, 2 failing:
   - `LOGICAL/IF_ARRAY.xlsx!Sheet1!C11`: the decision 0074 exception (desktop SIN(4), M14 T-1075). T-1876 settled it.
@@ -78,7 +78,7 @@ Queues at the start of the run:
 - functions: 35 ready. The sonnet buffer is 24, so the gap-triager did not run.
 - engine 0, research 0 and quality 0 ready only because their lanes are busy (live branches T-1935, T-1941, T-1775); engine has 10 todo M2 tasks. harness 0, api 1 (M8), perf 20 (Phase 2).
 - The planner ran for M2:
-  - It traced all 47 M2-gap cells to owners (above), tightened the criteria of T-1902, T-1936, T-1852, T-1430 and T-0959, and filed **T-1969** and **T-1970** (harness).
+  - It traced all 47 M2-gap cells to owners (above), tightened the criteria of T-1902, T-1936, T-1852, T-1430 and T-0959, and filed **T-1971** and **T-1970** (harness).
   - Research has one M2 task (T-1943); quality has no M2 critical-path work. It filed nothing there.
 
 Upstream IronCalc: one new commit under base/, xlsx/ or bindings/python, 507487ab (2026-10-18, "Remove views so the model no longer stores them"). It is a UI view-state refactor with no calculation or import fix, so no port task. UPSTREAM.md is triaged through 507487ab.
@@ -94,8 +94,8 @@ Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-1
 **Critical lane:** engine, harness, research
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
-- engine: the P0 T-1914 (fuzz crash + 9 probe cells), then T-1852, T-1911, T-1915, T-1935 and T-1936 hold the other M2 legacy cells.
-- harness: T-1969 (milestone mapping, needs its decision record approved) and T-1970 (defined-name scope) settle what the M2 gate counts.
+- engine: the P0 T-1914 (fuzz crash + 9 probe cells), then T-1852, T-1911, T-1915 and T-1936 hold the other M2 legacy cells.
+- harness: T-1971 (milestone mapping, needs its decision record approved) and T-1970 (defined-name scope) settle what the M2 gate counts.
 - research: T-1943 (INDEX whole-row shape probe).
 - quality and api have no M2 work. perf stays out: Phase 2.)
 
