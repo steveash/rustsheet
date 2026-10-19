@@ -44,6 +44,20 @@ pub(crate) struct SortedNumbers {
 }
 
 impl SortedNumbers {
+    /// `numbers`, to be sorted into `order` on the first [`Self::sorted`].
+    pub(crate) fn new(numbers: Vec<f64>, order: DataOrder) -> Self {
+        Self {
+            numbers,
+            order,
+            sorts: 0,
+        }
+    }
+
+    /// The numbers as read, unsorted until [`Self::sorted`] is first called.
+    pub(crate) fn as_read(&self) -> &[f64] {
+        &self.numbers
+    }
+
     /// Whether the data holds no number; does not sort.
     pub(crate) fn is_empty(&self) -> bool {
         self.numbers.is_empty()
@@ -137,11 +151,7 @@ impl Model {
         };
         // A reader's non-error `Err` (RANK's array of errors; none here) is kept as it is.
         let numbers = (data.read)(self, node, cell)
-            .map(|numbers| SortedNumbers {
-                numbers,
-                order: data.order,
-                sorts: 0,
-            })
+            .map(|numbers| SortedNumbers::new(numbers, data.order))
             .map_err(CalcResult::without_message);
         Ok(SortedData { numbers })
     }

@@ -1104,16 +1104,31 @@ ISREF FALSE: a lifting lookup value (`TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1)` is one
 `TRIMRANGE(XLOOKUP({1;2},..))` spills two), a literal `return_array`, and `IFERROR(XLOOKUP(..),0)`. A lifting
 argument next to a reference one gives one `#VALUE!`, not a spill
 (`SUBTOTAL(9,TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1),TAKE(XLOOKUP(2,J1:J2,H1:H2),1))`, A94), and
-`SUM(TAKE(XLOOKUP(1,J1:J2,H1:I2),1))` is 9 (A90). Also from the
-probe, not yet matched by the engine: `SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))` and
-`SUBTOTAL(9,CHOOSE(1,XLOOKUP(..)))` are 9 (the engine spills two `#VALUE!`; T-2009).
+`SUM(TAKE(XLOOKUP(1,J1:J2,H1:I2),1))` is 9 (A90). The same holds directly below SUBTOTAL and AREAS (T-2009, probes/subtotal-if-choose-over-xlookup, excel-graph,
+2026-10-19): `SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))`, `SUBTOTAL(9,CHOOSE(1,..))`, `SUBTOTAL(9,LET(v,1,..))`,
+`SUBTOTAL(9,IF(FALSE,1,..))`, `SUBTOTAL(9,IF(TRUE,CHOOSE(1,..)))` and `SUBTOTAL(9,IF(TRUE,TAKE(H1:I2,1)))` are 9 with
+no spill, as is the LET binding `SUBTOTAL(9,LET(v,XLOOKUP(..),v))` (A22); `AREAS(IF(TRUE,..))`,
+`AREAS(CHOOSE(2,H1,..))` and `AREAS(LET(v,1,..))` are 1 (A10-A42, A86); a lifting lookup value or a literal return
+array under the IF still spills `#VALUE!` (A46:A47, A50:B50). Consumers that tell cells from values agree
+(probes/subtotal-if-choose-over-xlookup-b, excel-graph, 2026-10-19): with K1 = "x", L1 = TRUE,
+`AVERAGEA(IF(TRUE,XLOOKUP(1,J1:J2,K1:L2)))`, `AVERAGEA(LET(v,1,..))` and the direct form are 0.5,
+`AVERAGEA(IF(TRUE,..,0),5)` 2, `MAXA(CHOOSE(1,..))` 1, `MINA(IF(FALSE,1,..))` 0,
+`AVERAGEA(IF(TRUE,TAKE(K1:L2,1)))` 0.5; `IMSUM(IF(TRUE,XLOOKUP(1,J1:J2,M1:N2)))` with M1 = "1+i", N1 blank is "1+i";
+`AND(BYROW(IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)),LAMBDA(r,ISREF(r))))` and `LET(v,IF(TRUE,XLOOKUP(..)),ISREF(v))` are TRUE
+and `LET(v,CHOOSE(1,XLOOKUP(..)),SUBTOTAL(9,v))` 9 (A10-A62). The MINA (A22) and IMSUM (A34) cells give the same
+result over values, so they do not tell a reference from values; the others do. Implemented in
+`Model::picked_reference_arg_reading` (functions/util.rs). Not yet matched (T-2014): `SUBTOTAL(9,IFS(TRUE,XLOOKUP(..)))`
+and `SUBTOTAL(9,SWITCH(1,1,XLOOKUP(..)))` are 9 (A78, A82) and `ISREF(IF(TRUE,XLOOKUP(..)))` and
+`ISREF(CHOOSE(1,XLOOKUP(..)))` TRUE (A90, A94). SUM, COUNT and COUNTA over `IF(TRUE,XLOOKUP(1,J1:J2,K1:L2))` with
+K1 = "x", L1 = TRUE give 5 (with a 5), 1 and 2 (A54-A74), which an array of those values gives too, so they do not
+tell a reference from values.
 Evidence: probes/take-drop-trimrange-over-xlookup A10-A94, probes/take-drop-trimrange-over-xlookup-b A10-A62
 (excel-graph, 2026-10-19).
 Implemented in: `Model::evaluate_picked_source` (functions/lookup_and_reference/drop_take.rs), used by
 `take_drop_impl` and `trimrange_impl` in their reference form. Static analysis still counts a nested XLOOKUP as
 lifting (`lifts_to_values`), which leaves the shape to run time.
 Status: VERIFIED (excel-graph)
-Tasks: T-1998
+Tasks: T-1998, T-2009, T-2014
 
 ## SUBTOTAL lifts over an array function_num
 Rule: an array or multi-cell range function_num lifts: one SUBTOTAL per element, spilling in its shape.
@@ -1651,7 +1666,7 @@ cells, as a dynamic formula would.
 Edits (SPEC-0012 rule 6, T-1853): inserting a row above a legacy `=N(IF(1,{2;3}))+A5` adjusts it to `+A6`. The cell stays a plain `<f>`
 and stays `#VALUE!`; C2 `=N(IF(1,A5:A6))+A5` likewise stays legacy with the value 2, and FORMULATEXT shows `=N(IF(1,{2;3}))+A6`,
 while the dynamic twin spills 3, 4 (probes/sheet-ops/sheet-ops-insert-row-legacy-cell, excel-graph, 2026-10-19, T-1933; first seen
-in a one-off session, docs/research/t1853-legacy-cell-edits-2026-10-18.md). Ours loses the marker on the insert and spills 3, 4 into B3:B4 (T-1852). Copy, move and fill are unprobed: Graph v1.0 refuses `copyFrom`, `moveTo` and
+in a one-off session, docs/research/t1853-legacy-cell-edits-2026-10-18.md). Ours matches since T-1852. Copy, move and fill are unprobed: Graph v1.0 refuses `copyFrom`, `moveTo` and
 `autoFill` (400). They stay rule 6's assumption, and their desktop check is T-1075 item 12.
 Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16), probes/legacy-n-t-marker-shapes (excel-graph, 2026-10-18); row insert: probes/sheet-ops/sheet-ops-insert-row-legacy-cell (excel-graph, 2026-10-19, T-1933).
 The neighbouring shapes (probes/legacy-n-t-reference-args-2, excel-graph, 2026-10-18, T-1768; Z1:Z2 = 7, 8,
@@ -1696,7 +1711,9 @@ A range, an OFFSET of one with number-literal offsets, or an IF with a literal c
 under N and T since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator,
 an array constant or another call keeps the old `@`; CHOOSE with a literal index over such references and INDEX of
 one get none either, T-1908, and are read as references, not marked; the other literal indices, INDEX indices and mixed arms are probed in legacy-n-t-choose-index-shapes, T-1918). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
-Re-entering a marked cell through a row/column edit, move, fill or paste does not keep the marker yet (T-1852).
+Re-entering a marked cell through a row/column insert or delete, a row/column move, fill or paste keeps the marker since T-1852:
+the display text goes back through the legacy entry (`Model::reenter_user_input`). Only the row insert is probed; the rest is rule 6's assumption.
+Redoing a paste or fill re-enters its text as typed and drops the marker (T-2018).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921, T-1933
