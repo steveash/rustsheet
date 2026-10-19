@@ -36,7 +36,7 @@ if __name__=='__main__':
     Nt=[v/Dt[0] for v in Nt]; Dt=[v/Dt[0] for v in Dt]; Nc=[v/Dc[0] for v in Nc]; Dc=[v/Dc[0] for v in Dc]
     sig=float(sys.argv[4]); rng=np.random.default_rng(0)
     lines=[('N','T',4),('N','T',5),('D','T',4),('D','T',5)]+[('N','Pn1',j) for j in range(4)]+[('D','Pn1',j) for j in range(1,5)]
-    xs=[x+32768*2.0**-52 for x in X0]
+    xs=[x+32768*2.0**-52 for x in X0][:int(__import__('os').environ.get('NRUN','24'))]
     rows=phase_rows(Nc,Dc,lines,xs); rowsT=phase_rows(Nt,Dt,lines,xs)
     phi=[float((rt[1]-rc[1])%1) for rc,rt in zip(rows,rowsT)]
     if sys.argv[3]=='noise': phi=[(p+sig*rng.standard_normal())%1 for p in phi]
@@ -75,7 +75,7 @@ if __name__=='__main__':
         row=[A[i,j] for j in range(A.ncols)]
         if abs(row[-1])==int(SC):
             sgn=1 if row[-1]>0 else -1
-            m=[sgn*row[k]/ (SC/bound[k]) for k in range(nu)]
+            m=[sgn*mp.mpf(row[k])/int(SC/bound[k]) for k in range(nu)]
             best=[int(round(float(v))) for v in m]; break
     print('rec  m:',best)
     if best: print('match:',best==m_true, ' max |err| =',max(abs(a-b) for a,b in zip(best,m_true)))
