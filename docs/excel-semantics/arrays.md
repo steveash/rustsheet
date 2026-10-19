@@ -282,7 +282,7 @@ elimination fits was checked in IEEE doubles: dividing each product by the pivot
 gives -4.66E-15 and -3.0000000000000036, and no pivoting gives 0 and -3.
 Evidence: probes/stats-evidence-floor-t1623 S!Q107, S!Q120, S!Q121 (excel-graph).
 Not known: whether MINVERSE has a near-singular cutoff (the engine gives `#NUM!` below a pivot of 2.2E-16; unprobed,
-T-2063), and what Excel returns when the pivot product overflows (the engine gives `#NUM!`).
+T-2063), and what Excel returns when the pivot product overflows (the engine gives `#NUM!`; probe in T-2063).
 Implemented in: `fn_mdeterm`/`lu_decompose` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs, T-1751)
 Status: VERIFIED (excel-graph)
 Tasks: T-1751

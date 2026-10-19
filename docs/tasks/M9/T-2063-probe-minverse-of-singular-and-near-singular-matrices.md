@@ -25,6 +25,8 @@ pivot. Use the `excel-probe` skill.
 ## Acceptance criteria
 - [ ] A probe case with oracle values for MINVERSE (INDEX into each cell, or a spill) of {1,2,3;4,5,6;7,8,9},
       {1,2;2,4}, {1E-20}, {1E-17,0;0,1}, {1,1;1,1.0000000000000002} and {1E-300}.
+- [ ] The same probe also covers MDETERM of a matrix whose pivot product overflows, e.g. {1E+200,0;0,1E+200}.
+      The engine gives `#NUM!` there (T-1751), but that is unprobed.
 - [ ] arrays.md records the rule. A follow-up implementation task is filed if the engine differs, or the fix
       goes in this PR when it is a one-line threshold change.
 - [ ] `make check` green; reviewers approve.
