@@ -3,7 +3,7 @@ id: T-1829
 title: "REGEX* match iteration on the PikeVM fallback is charged by measured work, not the rest of the text"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -36,7 +36,7 @@ stay sound for it. Options:
 ## Acceptance criteria
 - [x] The three formulas above return values (the test is updated to expect them) and stay fast in a release build.
 - [x] `a.*z|a` iteration over a long `aaa...` text is still bounded (`#ERROR!` within about 1 s).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -66,4 +66,5 @@ The performance review's findings from the first round:
   look-around chains and overcharged iteration, and the extra cost is linear and well under the 1 s cap.
 - MINOR, done: the module doc of regex_reach.rs now covers the empty-match retries (`skip_splits_fwd`) and
   always-anchored patterns (overcharged, linearly).
-- Follow-up filed: T-1985 (states in priority order, so lazy patterns are not quadratic).
+- Follow-ups filed: T-1985 (states in priority order, so lazy patterns are not quadratic); T-1988 (round 2 MINOR:
+  charge a `Sparse` state visit by the transitions it walks; `\b[\w\s\d]{30}q` over CJK text exhausts in about 1.7 s).
