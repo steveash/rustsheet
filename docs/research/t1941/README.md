@@ -244,3 +244,18 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - Calibration: a synthetic +1000-ulp N3 change is NOT recovered by the linear solve, which spreads it along
     near-null directions. The per-(line, anchor) constants carry exactly the discarded information.
   - W4's new smooth objective coh.py (amplitude-weighted phase coherence, constants included) gives fitSA 0.857.
+
+## Reviewer plan (HANDOFF section 9) in execution
+- **W-C (W4), K1.** The plateau reader does NOT apply to K1 (positive control): each sum's product sits 1-2 binades
+  below the sum, so c's low bits average out (at most 0.01 ulp of c-dependence).
+  - The joint phase solve needs measured-function rows (Excel bin means minus the reference's own rounding mean)
+    plus a ulp ridge. With both, a synthetic truth 3e5 ulps away converges: 4.9e7 to 2.5e5 ulps in 3 iterations,
+    with D1..D7 within 1-2,600 ulps.
+  - Next: the same on real Excel, then the interval LP polish.
+- **W-B (W5), K3.** The plateau reader is validated (synthetic N0 +37, D1 -11, D2 +3 kept consistent at 30/30
+  crossings).
+  - Real-data readings exclude c5 for N0, N1, D1, D2 and D3. Nearest consistent moves: N0 +436..443,
+    N1 -18..-24, D1 +306..313, D2 +3..9, D3 odd. D3 = ...b68 matches the tie reading.
+  - With those applied, the staircase chi2 falls 35,400 to 2,438 (93%). See `w5/p4/README.md`.
+- **W-A (W2), K2:** in progress.
+- **Probes:** P1 committed (p101-p126); P2-P4 filling; P1b (p131-p154, crossings for K1) queued.
