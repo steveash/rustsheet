@@ -926,34 +926,30 @@ prefactor's rounding shows: BINOM.DIST E24, E32, E67; BINOM.DIST.RANGE E10, E21,
 E40, E74, E75 (for example E24, `BINOM.DIST(2,10,0.999999,TRUE)`: Excel 4.499992001038836E-47, exact
 4.499992001038802E-47). Neither Loader's saddle-point pmf summed (R's `dbinom_raw`: bit-exact at 49 of the 122 cells
 tried, more than 4 ulp off at 15) nor the prefactor `exp(a*ln x)` times the exact remaining factor reproduces them.
-POISSON.DIST is the series `S = sum mean^i/i!` over i <= k (cdf) or its last term (pmf), rounded once to a double,
-times Excel's `exp(-mean)`, rounded once: `fl(fl(S)*exp(-mean))`. Over the distinct numeric POISSON.DIST cells with a
-count up to 1,000 that reproduces all 5 pmfs and 8 of 11 cdfs bit for bit and the other 3 within an ulp
-(`POISSON.DIST(5,5,TRUE)` 0.6159606548330631, ours ...632; `POISSON.DIST(1,1,TRUE)` 0.7357588823428848, ours ...847,
-where 2*exp(-1) is ...847, so Excel's cdf is not that product everywhere; `POISSON.DIST(100,100,TRUE)`
-0.5265621985299984, ours ...985). The exact value rounded gives only 6 of the 11 (it misses `POISSON.DIST(10,5,TRUE)`
-0.9863047314016171, exact ...170). T-1778 found `POISSON.DIST(k,m,TRUE)` = `CHISQ.DIST.RT(2*m,2*(k+1))` bit for bit
-("One incomplete-gamma kernel"), so the shared kernel sums this series for an integer shape, and CHISQ.DIST.RT,
-CHIDIST and CHISQ.TEST at an even df take the same walk (Q(k + 1, x/2) is `POISSON.DIST(k,x/2,TRUE)`): that fixes
-ironcalc-calc CHISQ.xlsx Sheet1!G2 with no other change in the gated suites.
-Evidence: ironcalc-calc STATISTICAL/BINOM.xlsx and POISSON.xlsx (Excel-cached); the exact values from Python
-`fractions` (BINOM) and 60-digit `decimal` (POISSON).
+POISSON.DIST is unfitted. On ironcalc-calc STATISTICAL/POISSON.xlsx, `fl(fl(S)*exp(-mean))`, with S the partial
+exponential series `sum mean^i/i!` over i <= k (cdf) or its last term (pmf) summed exactly, reproduces all 5 distinct
+small pmfs and 8 of 11 small cdfs bit for bit, against 6 of 11 for the exact value rounded. The excel-graph probes
+contradict it, though: probes-numeric/t1048-poisson `POISSON.DIST(10,4,FALSE)` is 0.005292476676420117 (that model
+...0195), `POISSON.DIST(1,0.1,FALSE)` 0.09048374180359597 (...596), `POISSON(10,4,TRUE)` 0.9971602338794863 (...862)
+and `POISSON(1,0.1,TRUE)` 0.9953211598395555 (...556), all of which statrs gets right. Applied to even-df
+CHISQ.DIST.RT through T-1778's identity, the same model gives `CHISQ.DIST.RT(1E-06,30)` = 1.0000000000000002 where
+Excel gives 1.0 (probes-numeric/m9-legacy-chidist A15, A16), and it misses m9-chisq-dist-rt A32 and t1049-chisqdistrt
+A8. So POISSON.DIST stays on statrs here (T-2042).
+Evidence: ironcalc-calc STATISTICAL/BINOM.xlsx and POISSON.xlsx (Excel-cached); probes-numeric/t1048-poisson,
+m9-legacy-chidist, m9-chisq-dist-rt, t1049-chisqdistrt (excel-graph); the exact values from Python `fractions`.
 Ours (T-0927): `statistical/discrete.rs` walks the pmf terms, each from the last by the exact ratio of consecutive
 terms, in double-double with a power-of-two exponent beside it (the terms start at q^n, as small as 0.5^3000), and
 rounds once: the binomial from the nearer end (a pmf), from 0 (a cdf, stopping once the terms past the mode no longer
 move the sum; past the budget 1 minus the sum from n where that is at least 2^-20), and from the cheaper end (a
 BINOM.DIST.RANGE). NEGBINOM.DIST is that binomial with n = f + r and the roles of p and q swapped: P(F <= f) is the
-probability of at most f failures in f + r trials, and its pmf is r/(f + r) times the binomial pmf at f. POISSON.DIST
-walks the series S above. A walk takes at most 2^10 steps (`MAX_STEPS`); past it (counts beyond about 1,024 before the
-mode) the functions fall back to statrs as before, so POISSON.DIST D31 (`POISSON.DIST(1000000,1000000,TRUE)`) and D55
-(`POISSON.DIST(46040,46071,TRUE)`) keep their 1E-9-relative residues (T-2042). The 13 binomial cells above and POISSON.DIST
-D8, D10, D19 and D60 (one ulp) are the residue; the rest of the two workbooks' numeric distribution cells pass.
+probability of at most f failures in f + r trials, and its pmf is r/(f + r) times the binomial pmf at f. A walk takes
+at most 2^10 steps (`MAX_STEPS`); past it the functions fall back to statrs as before. The 13 binomial cells above are
+the residue; probes-numeric/m9-legacy-binomdist and t1048-negbinomdist only gain passing cells.
 DEVIATION (decision 0014, CLAUDE.md directive 5): BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE, NEGBINOM.DIST and
 NEGBINOMDIST are charged 4096 units an element against the shared cell-visit cap of 2^27
 (`limits::MAX_LIFTED_CELL_VISITS`), the bound of two walks of 2^10 steps at about 32 ns, so a lifted call of more than
 32,768 elements is `#ERROR!` before it runs where Excel computes it (as BINOM.INV, "Later arguments and element values of
-the scalar statistical functions" above). POISSON.DIST keeps its incomplete-gamma weight, whose 2.6 ms bound covers the
-extra 33 us walk.
+the scalar statistical functions" above).
 Status: VERIFIED (excel-cached) for the values; the weight is a DEVIATION
 Tasks: T-0927, T-1744, T-2042
 

@@ -1,6 +1,6 @@
 ---
 id: T-2042
-title: "POISSON.DIST at counts past 1,024: walk the series from near the mode instead of falling back to statrs"
+title: "POISSON.DIST: fit Excel's cdf and pmf (ironcalc-calc POISSON.xlsx and probes-numeric/t1048-poisson together)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -11,25 +11,29 @@ depends_on: []
 ---
 
 ## Goal
-POISSON.DIST (and POISSON) with a count past 1,024 match Excel within an ulp, as the smaller counts do since T-0927.
+POISSON.DIST and POISSON match Excel on ironcalc-calc STATISTICAL/POISSON.xlsx without losing any excel-graph cell of
+probes-numeric/t1048-poisson. The even-df CHISQ.DIST.RT identity of T-1778 must keep holding.
 
 ## Context
-T-0927 (`functions/statistical/discrete.rs`) computes POISSON.DIST as `fl(fl(S)*exp(-mean))`, S the partial
-exponential series walked term by term in double-double (docs/excel-semantics/statistics.md "Discrete distributions:
-within an ulp of the exact sum"). A walk is capped at `MAX_STEPS` = 2^10 steps, so a count past that falls back to
-statrs' incomplete gamma, about 1E-9 relative off: ironcalc-calc STATISTICAL/POISSON.xlsx D31
-(`POISSON.DIST(1000000,1000000,TRUE)`: Excel 0.5002659614862837, ours 0.5002659618281267) and D55
-(`POISSON.DIST(46040,46071,TRUE)`: Excel 0.4438020698095389, ours 0.44380206978608977) stay in the baseline. Both are
-the exact value rounded (60-digit `decimal` sum), and an uncapped walk gives both (tried in T-0927 with 2^20 steps:
-1,000,001 terms in about 25 ms, too slow for the lifting weight).
-Approach to try: the terms that matter lie within about 40 standard deviations of the mean, so start the walk there
-from an accurate pmf (Loader's saddle point, `stirlerr` and `bd0`, in double-double, or the walk's own ratio from a
-scaled start), keeping the per-call bound near 2^10 steps; or a uniform asymptotic expansion (Temme) of Q(k+1, m).
+T-0927 tried two Poisson models; docs/excel-semantics/statistics.md "Discrete distributions: within an ulp of the exact
+sum" has the detail.
+- The exact value rounded matches 6 of 11 small ironcalc cdfs.
+- `fl(fl(S)*exp(-mean))`, with S the partial exponential series, matches 8 of 11 small ironcalc cdfs and all 5 pmfs.
+  It breaks 8 t1048-poisson cells that statrs gets right, for example `POISSON.DIST(10,4,FALSE)`.
+- Routed through the identity `POISSON.DIST(k,m,TRUE)` = `CHISQ.DIST.RT(2m,2(k+1))`, that model also breaks
+  m9-legacy-chidist A15/A16, where Excel's 1.0 became 1.0000000000000002.
+POISSON.xlsx keeps 32 baseline lines: D31 and D55 have counts past 1,024, and the rest are near-ulp cells.
+`functions/statistical/discrete.rs` has the double-double walk and the scaled exponent to reuse; the Poisson walk from
+T-0927 is in that PR's history.
+The likely root is Excel's incomplete gamma (T-0971, T-1778 rank 7).
+Approach: fit against every Excel-computed POISSON, POISSON.DIST, CHISQ.DIST.RT and CHIDIST cell at once: ironcalc,
+t1048-poisson, m9-legacy-chidist, m9-chisq-dist-rt and t1049-chisqdistrt. Compare cell by cell with main, ungated
+suites included.
 
 ## Acceptance criteria
-- [ ] ironcalc-calc POISSON.xlsx D31 and D55 leave `eval/baseline/ironcalc-calc.txt`; no new lines.
-- [ ] The per-call cost stays bounded (state it) and the lifting weight in lift/kinds/statistical.rs covers it.
+- [ ] Fewer POISSON.xlsx baseline lines; no Excel-computed cell in the suites above goes from pass to fail.
+- [ ] The per-call cost stays bounded, and the lifting weight covers it.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The one-ulp residue of POISSON.DIST D8, D10, D19 and D60 (Excel's own incomplete-gamma kernel, T-0971).
+- BINOM.DIST and NEGBINOM.DIST (T-0927).
