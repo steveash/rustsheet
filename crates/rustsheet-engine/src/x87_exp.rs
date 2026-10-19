@@ -23,8 +23,8 @@ use crate::arithmetic::{
 const LOG2_E_64: u128 = 0xB8AA_3B29_5C17_F0BC;
 
 /// ln 2 as a double-double (hi + lo, |lo| <= ulp(hi)/2), from 300-bit mpmath.
-const LN_2_HI: f64 = f64::from_bits(0x3FE6_2E42_FEFA_39EF); // 0x1.62e42fefa39efp-1
-const LN_2_LO: f64 = f64::from_bits(0x3C7A_BC9E_3B39_803F); // 0x1.abc9e3b39803fp-56
+pub(crate) const LN_2_HI: f64 = f64::from_bits(0x3FE6_2E42_FEFA_39EF); // 0x1.62e42fefa39efp-1
+pub(crate) const LN_2_LO: f64 = f64::from_bits(0x3C7A_BC9E_3B39_803F); // 0x1.abc9e3b39803fp-56
 
 /// |a| below this gives exactly 1: |u| < 2^-64 then, under half a 64-bit ulp of 1, so w = 1.
 const TINY_ARGUMENT: f64 = 1.0 / 36_893_488_147_419_103_232.0; // 2^-65
@@ -118,20 +118,20 @@ fn two_to_the_minus_one(magnitude: u128, drop: u32) -> (u128, i32) {
 }
 
 /// 2^k as a double for -1022 <= k <= 1023.
-fn power_of_two(k: i32) -> f64 {
+pub(crate) fn power_of_two(k: i32) -> f64 {
     let biased = u64::try_from(k + 1023).unwrap_or(1).clamp(1, 2046);
     f64::from_bits(biased << 52)
 }
 
 /// The exact sum `a + b` as a rounded head and its error (Knuth's `TwoSum`).
-fn two_sum(a: f64, b: f64) -> (f64, f64) {
+pub(crate) fn two_sum(a: f64, b: f64) -> (f64, f64) {
     let s = a + b;
     let virtual_b = s - a;
     (s, (a - (s - virtual_b)) + (b - virtual_b))
 }
 
 /// `a * b` in double-double arithmetic.
-fn dd_mul(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
+pub(crate) fn dd_mul(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
     let p = a.0 * b.0;
     let error = a.0.mul_add(b.0, -p) + (a.0 * b.1 + a.1 * b.0);
     two_sum(p, error)
@@ -144,7 +144,7 @@ fn dd_add_one(a: (f64, f64)) -> (f64, f64) {
 }
 
 /// `a / k` in double-double arithmetic, for a small integer `k`.
-fn dd_div_small(a: (f64, f64), k: f64) -> (f64, f64) {
+pub(crate) fn dd_div_small(a: (f64, f64), k: f64) -> (f64, f64) {
     let q = a.0 / k;
     // The remainder a - q*k, exactly in its leading part (k*q's error from an FMA).
     let product = q * k;
@@ -154,7 +154,7 @@ fn dd_div_small(a: (f64, f64), k: f64) -> (f64, f64) {
 }
 
 /// RN64 of a positive double-double `hi + lo`: the 64-bit significand and its exponent.
-fn dd_to_extended((hi, lo): (f64, f64)) -> (u128, i32) {
+pub(crate) fn dd_to_extended((hi, lo): (f64, f64)) -> (u128, i32) {
     let (significand, exponent) = significand_and_exponent(hi);
     // On the grid 2^(exponent - 24) the head is an integer of 77 bits, and |lo| <= ulp(hi)/2 is at
     // most 2^23 units: its floor is exact, and a nonzero fraction is the sticky bit.

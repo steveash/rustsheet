@@ -455,6 +455,7 @@ C	probes/lifted-range-size.case.json	6
 C	probes/linest-modes.case.json	255
 C	probes/literal-digits.case.json	6
 C	probes/literal-number-tiny.case.json	24
+C	probes/log10-kernel.case.json	368
 C	probes/logest-modes.case.json	186
 C	probes/long-text-args-min-criteria.case.json	25
 C	probes/lookup-2d-vector-wide.case.json	13
@@ -1501,8 +1502,6 @@ F	probes/geomean-product-order.case.json	Sheet1!Z7
 F	probes/geomean-product-order.case.json	Sheet1!Z8
 F	probes/geomean-root-models.case.json	Pin!C60
 F	probes/geomean-root-models.case.json	Pin!F60
-F	probes/geomean-root-models.case.json	Root!I6
-F	probes/geomean-root-models.case.json	Root!I9
 F	probes/geomean-root-refinement.case.json	Sheet1!A17
 F	probes/geomean-root-refinement.case.json	Sheet1!A19
 F	probes/geomean-root-refinement.case.json	Sheet1!A21

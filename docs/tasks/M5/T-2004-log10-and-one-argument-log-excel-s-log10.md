@@ -3,7 +3,7 @@ id: T-2004
 title: "LOG10 and one-argument LOG: Excel's log10 kernel (correctly rounded hypothesis; LOG(1000) is 3)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -41,18 +41,28 @@ glibc's log10 is not correctly rounded, so a short web probe has to come first (
 value is the target where the two disagree). This is why the task is opus.
 
 ## Acceptance criteria
-- [ ] A `probes` case (excel-probe skill, oracle-filled on excel-graph) holds LOG10(x) and LOG(x) for the 13 workbook
+- [x] A `probes` case (excel-probe skill, oracle-filled on excel-graph) holds LOG10(x) and LOG(x) for the 13 workbook
       inputs, at least 20 doubles where glibc `log10` is not correctly rounded (the MULTINOMIAL k list is a start), and
       exact powers 10^k for k from -20 to 20. It records whether the web agrees with the desktop cell LOG10(1.3).
-- [ ] The kernel that matches is in the engine, written once and used by LOG10, by one-argument LOG and by
+- [x] The kernel that matches is in the engine, written once and used by LOG10, by one-argument LOG and by
       MULTINOMIAL's `log10_of` (or that table is kept, with the reason written in its comment). The 4 lines above leave
       `eval/baseline/ironcalc-calc.txt`, the new probe cells pass, and no baseline gains a line.
-- [ ] numbers.md "LOG with one argument is LOG10" gets the probe evidence, the status VERIFIED (or the hypothesis
+- [x] numbers.md "LOG with one argument is LOG10" gets the probe evidence, the status VERIFIED (or the hypothesis
       rewritten from the evidence), and `Implemented in`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Two-argument LOG(x, b) with b other than 10. No cell fails today and there is no evidence for how it is computed.
   Add a few such calls to the probe if that is cheap, but fit them in a follow-up task.
 - LN, which passes all 318 of its evidence cells.
 - The Mac-only ATAN2/IMARGUMENT/IMABS last digits (decision 0030 conflict; T-1075).
+
+## Outcome
+probes/log10-kernel (92 inputs × LOG10, LOG, LOG(x,2), LOG(x,3); excel-graph) refutes "correctly rounded": Excel's log10
+is an x87 `FLDLG2; FYL2X` result, `RN53(RN64(RN64(log10 2) * log2 x))`, which matches 92/92 (correctly rounded 78, glibc
+56), and LOG = LOG10 on every input; the web agrees with the desktop LOG10(1.3). New `x87_log10.rs` (`excel_log10`,
+double-double ln, then the two roundings; equal to a decimal reference of the model on 30,000 random inputs) serves LOG10,
+one-argument LOG and MULTINOMIAL, whose 170-entry `LOG10_OF` table is deleted (the model equals it on 1..=170). Eval:
+ironcalc-calc 1117 -> 1113 (LOG!B5, B12, B13, LOG10!B13), probes 1840 -> 1838 (geomean-root-models Root!I6, I9), new case
+368/368, no regressions. Two-argument LOG is untouched: `f64::log(x, b)` already matches all 184 LOG(x,2) and LOG(x,3)
+cells of the probe (columns D and E), so no follow-up is filed.
