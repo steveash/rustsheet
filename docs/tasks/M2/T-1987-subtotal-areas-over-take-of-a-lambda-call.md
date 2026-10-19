@@ -3,7 +3,7 @@ id: T-1987
 title: "SUBTOTAL/AREAS over TAKE of a LAMBDA call or an XLOOKUP whose result lifts reaches the scalar-context assertion"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: opus
@@ -28,9 +28,19 @@ Code: `is_read_reference` and `lifts_to_values` in expressions/parser/static_ana
 `lifts_to_values`. Keep the analysis linear in nesting depth.
 
 ## Acceptance criteria
-- [ ] Debug unit tests (decision 0035) of every formula above evaluate without the assertion.
-- [ ] A deep nested test stays fast (linear).
-- [ ] `make check` green; reviewers approve.
+- [x] Debug unit tests (decision 0035) of every formula above evaluate without the assertion.
+- [x] A deep nested test stays fast (linear).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`lifts_to_values` (static_analysis/aggregate.rs) counts a LAMBDA call (written, or named such as a
+LET-bound `f({1,2})`) and any nested XLOOKUP as lifting, without looking into them; a direct
+XLOOKUP argument of SUBTOTAL/AREAS is read as cells only when its lookup value is scalar and its
+return array does not lift. The selector test is one helper, `is_lifting_selector`. Every formula
+in the task, plus `TAKE(XLOOKUP(1,{1},H1:I1),1)` and array/range lookup-value XLOOKUPs found on the
+way, now spills instead of tripping the assertion; a 20-deep nesting test stays fast. Eval delta:
+none (no suite changes). Follow-up: T-1993 (TAKE/DROP/TRIMRANGE over XLOOKUP pick values at run
+time; probe Excel).

@@ -33,4 +33,4 @@ picking cells, that arm can narrow to match.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The static analysis of T-1987, unless the runtime change lets it narrow.
