@@ -10,6 +10,15 @@ use crate::functions::Function;
 
 /// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
+/// `WORKDAY(start_date, days, [holidays])` and `NETWORKDAYS(start_date, end_date, [holidays])`:
+/// the dates are Analysis `ToolPak` arguments, and the holidays are read once by the function
+/// itself (`Model::holiday_serials`) and prepared, so the call is charged their cells once
+/// (`LiftCost::Prepared`).
+const WORKDAYS: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays, WholeByCaller], Constant);
+/// `WORKDAY.INTL(start_date, days, [weekend], [holidays])` and NETWORKDAYS.INTL: the weekend lifts
+/// over a range too.
+const WORKDAYS_INTL: ArgKinds =
+    ArgKinds::fixed(2, &[LiftArrays, LiftArrays, Lift, WholeByCaller], Constant);
 /// `CEILING.MATH(number, [significance], [mode])` and FLOOR.MATH.
 const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
 /// `DAYS360(start_date, end_date, [method])`.
@@ -42,6 +51,13 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // YEARFRAC's basis over a range: probes/scalar-lift-shapes H6; its dates:
         // date-argument-modes F/G 54, 56. Basis 1 counts the year lengths in closed form.
         Function::Yearfrac => Some(&ATP_2_OF_3),
+        // The dates lift over an array and refuse a range (probes/date-argument-modes F/G 35-40,
+        // 57-62), the weekend lifts over both (F/G 41, 42, 63, 64), and the holidays take the
+        // whole range (dates.md "WORKDAY holidays take the whole range"). An element costs
+        // O(log holidays): WORKDAY's search makes at most about 44 counts over the date range,
+        // and NETWORKDAYS counts in closed form (`functions/date_and_time/holidays.rs`).
+        Function::Workday | Function::Networkdays => Some(&WORKDAYS),
+        Function::WorkdayIntl | Function::NetworkdaysIntl => Some(&WORKDAYS_INTL),
         // The IS* tests lift over arrays and ranges, an element as stored (`EmptyCell` is
         // ISBLANK, an error element ISERROR): probes/is-functions-array-lift,
         // probes/info-logic-argument-modes (docs/excel-semantics/information.md "IS* type

@@ -433,28 +433,6 @@ pub(super) fn args_signature_xnpv(arg_count: usize) -> Vec<Signature> {
     }
 }
 
-// NETWORKDAYS(start_date, end_date, [holidays]), NETWORKDAYS.INTL(start_date, end_date, [weekend],
-// [holidays]), WORKDAY(start_date, days, [holidays]), WORKDAY.INTL(start_date, days, [weekend],
-// [holidays]): `required` scalars, then `middle` optional scalars (the weekend), then an optional
-// `holidays` that takes the whole range, so a legacy formula does not implicitly intersect it
-// (docs/excel-semantics/dates.md "WORKDAY holidays take the whole range").
-pub(super) fn args_signature_with_holidays(
-    arg_count: usize,
-    required: usize,
-    middle: usize,
-) -> Vec<Signature> {
-    let holidays_at = required + middle;
-    if arg_count < required || arg_count > holidays_at + 1 {
-        vec![Signature::Error; arg_count]
-    } else if arg_count == holidays_at + 1 {
-        let mut signature = vec![Signature::Scalar; holidays_at];
-        signature.push(Signature::Vector);
-        signature
-    } else {
-        vec![Signature::Scalar; arg_count]
-    }
-}
-
 // FIXME: This is terrible duplications of efforts. We use the signature in at least three different places:
 // 1. When computing the function
 // 2. Checking the arguments to see if we need to insert the implicit intersection operator
