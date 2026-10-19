@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "CONVERT temperature sweep over every pair and value magnitude (T-1860).",
+  "description": "CONVERT(1E-24,\"yK\",\"K\") tiny prefixed temperature (T-1860)",
   "tags": [
     "M9",
     "engineering",

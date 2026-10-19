@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "CONVERT temperature sweep over every pair and value magnitude (T-1860).",
+  "description": "CONVERT(1,\"Ym\",\"K\") #N/A: length prefix unit against a temperature unit (T-1860)",
   "tags": [
     "M9",
     "engineering",
