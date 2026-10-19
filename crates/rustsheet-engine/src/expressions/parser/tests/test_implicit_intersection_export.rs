@@ -766,11 +766,11 @@ fn legacy_array_values_intersect_in_value_positions() {
             "SWITCH(1,1,{2;3})",
             "_xlfn.SWITCH(1,1,{2;3})",
         ),
-        // An explicit `@` on it reads back as the unmarked root, as for any redundant `@`.
+        // An `@` typed on it is meaningful (the value is 2, not a spill) and is kept.
         (
             "_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
-            "SWITCH(1,1,{2;3})",
-            "_xlfn.SWITCH(1,1,{2;3})",
+            "@SWITCH(1,1,{2;3})",
+            "_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
         ),
         (
             "ABS(_xlfn.SWITCH(1,1,{-2;3}))",

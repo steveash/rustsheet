@@ -219,40 +219,30 @@ pub(super) fn legacy_array_call_at(
         })
 }
 
-/// Whether `node` is a SWITCH whose every result (the value of each (case, result) pair and a
-/// trailing default) is an array constant: the formula root of probes/legacy-array-at-shapes
-/// C20 and C11, `=SWITCH(1,1,{2;3})`, which Excel shows unmarked and spills 2, 3, where
-/// `=@IFS(1,{2;3})` is marked (T-1910). Only the formula root is probed: SWITCH nested under a
-/// function or operator, or returning a range, keeps its `@` (T-1944).
-pub(super) fn is_root_switch_of_array_constants(node: &Node) -> bool {
-    let Node::FunctionKind {
-        kind: Function::Switch,
-        args,
-    } = node
-    else {
-        return false;
-    };
-    let results = args.get(1..).unwrap_or_default();
-    results.len() >= 2
-        && results
-            .iter()
-            .enumerate()
-            .filter(|(index, _)| index % 2 == 1 || *index == results.len() - 1)
-            .all(|(_, arg)| matches!(arg, Node::ArrayKind(_)))
+/// Whether `node` is a SWITCH whose results are all array constants: at the formula root,
+/// `=SWITCH(1,1,{2;3})` is shown unmarked and spills 2, 3 in a legacy cell (probes/legacy-array-at-shapes
+/// C20, C11, T-1910). Only the root is probed: a nested or range-returning SWITCH keeps its `@`
+/// (T-1944).
+pub(super) fn is_switch_of_array_constants(node: &Node) -> bool {
+    matches!(node, Node::FunctionKind { kind: Function::Switch, args }
+        if returns_only_array_constants(&Function::Switch, args))
 }
 
-/// [`add_legacy_intersection`] on a whole formula: the automatic `@` the pass puts on the root is
-/// taken off a root SWITCH of array constants ([`is_root_switch_of_array_constants`]).
+/// [`add_legacy_intersection`] on a whole formula: the automatic `@` the pass puts on a root SWITCH
+/// of array constants is taken off ([`is_switch_of_array_constants`]), while one typed there is
+/// meaningful and kept (the export keeps it too, `remove_redundant_implicit_intersection`).
 pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
-    add_legacy_intersection(node, add, add);
-    if add {
-        if let Node::ImplicitIntersection {
-            automatic: true,
+    match node {
+        Node::ImplicitIntersection {
+            automatic: false,
             child,
-        } = node
-        {
-            if is_root_switch_of_array_constants(child) {
-                *node = child.as_ref().clone();
+        } if add && is_switch_of_array_constants(child) => {}
+        _ => {
+            add_legacy_intersection(node, add, add);
+            if let Node::ImplicitIntersection { child, .. } = node {
+                if add && is_switch_of_array_constants(child) {
+                    *node = std::mem::replace(child.as_mut(), Node::EmptyArgKind);
+                }
             }
         }
     }
@@ -293,23 +283,30 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
 /// (probes/legacy-n-t-reference-args A, B, K, L). Over a reference they read the reference,
 /// unmarked (T-1908); with a mixed arm they keep their `@`.
 fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
+    matches!(kind, Function::Choose | Function::Index | Function::Ifs)
+        && returns_only_array_constants(kind, args)
+}
+
+/// Whether `kind` has an argument it can return ([`is_returned_argument`]) and every one is an
+/// array constant.
+fn returns_only_array_constants(kind: &Function, args: &[Node]) -> bool {
     let mut returned = args
         .iter()
         .enumerate()
-        .filter(|(index, _)| is_returned_argument(kind, *index))
+        .filter(|(index, _)| is_returned_argument(kind, *index, args.len()))
         .peekable();
-    matches!(kind, Function::Choose | Function::Index | Function::Ifs)
-        && returned.peek().is_some()
-        && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_)))
+    returned.peek().is_some() && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_)))
 }
 
 /// Whether argument `index` of `kind` is one its result can be, as it is or as a part of it: the
-/// arms of IF, the values of CHOOSE and IFS, and INDEX's `array`.
-fn is_returned_argument(kind: &Function, index: usize) -> bool {
+/// arms of IF, the values of CHOOSE and IFS, INDEX's `array` and the results of SWITCH (the even
+/// positions from 2 and a trailing default, of `count` arguments).
+fn is_returned_argument(kind: &Function, index: usize, count: usize) -> bool {
     match kind {
         Function::If | Function::Choose => index > 0,
         Function::Ifs => index % 2 == 1,
         Function::Index => index == 0,
+        Function::Switch => index >= 2 && (index.is_multiple_of(2) || index + 1 == count),
         _ => false,
     }
 }
@@ -350,6 +347,7 @@ pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
     {
         return;
     }
+    let count = call_args.len();
     let mut dropped = Vec::new();
     for (index, returned) in call_args.iter_mut().enumerate() {
         if let Node::ImplicitIntersection {
@@ -357,7 +355,7 @@ pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
             child,
         } = returned
         {
-            if is_returned_argument(call, index) && is_one_element_array(child) {
+            if is_returned_argument(call, index, count) && is_one_element_array(child) {
                 *returned = std::mem::replace(child.as_mut(), Node::EmptyArgKind);
                 dropped.push(index);
             }

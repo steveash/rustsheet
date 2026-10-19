@@ -26,4 +26,4 @@ Export side: `remove_redundant_legacy_intersection` (static_analysis/redundant.r
 -
 
 ## Outcome
-A SWITCH returning only array constants no longer gets the automatic `@` in a legacy cell at the formula root (`add_root_legacy_intersection`, `static_analysis/legacy.rs`); the export drops the same `@`s through the shared probe, so round-trip is unchanged. probes/legacy-array-at-shapes C11 and C20 now pass (probes known failures 2137 -> 2135). Range-returning and nested SWITCH keep the `@`; unprobed, filed as T-1944.
+A SWITCH returning only array constants no longer gets the automatic `@` in a legacy cell at the formula root (`add_root_legacy_intersection`, `static_analysis/legacy.rs`); import and export round-trip (a typed `@` on it is kept; pinned in test_implicit_intersection_export.rs). probes/legacy-array-at-shapes C11 and C20 now pass (probes known failures 2137 -> 2135). Range-returning and nested SWITCH keep the `@`; unprobed, filed as T-1944.
