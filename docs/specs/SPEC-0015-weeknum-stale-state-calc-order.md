@@ -9,7 +9,7 @@
 `WEEKNUM(serial, return_type)` with a return_type of 22 or more, or negative, reads a state that
 earlier WEEKNUM and ISOWEEKNUM calls of the same recalc left behind (docs/excel-semantics/dates.md,
 "WEEKNUM's stale return_type state"). `fn_weeknum` always gives `#NUM!`, which is Excel's value only
-where the state is empty. On `main` the T-1484 probes hold 46 known failures (all in M6 cases): 5 in
+where the state is empty. With the T-1484 probes, 45 probes cells are known failures (all M6): 5 in
 probes/weeknum-stale-return-type, 19 in -setters, 11 in -order-column-40, 1 each in the other
 order, sheet, dependency and reset cases.
 

@@ -103,7 +103,7 @@ it runs them, and a WEEKNUM with a return_type of 22 or more, or negative, reads
   recalculate the readers that used it. Formulas entered in a live session also stop sharing the
   state with the formulas loaded from the file, even at a later full recalc (FullRebuild); that
   history is not in the file, so this part is not reproducible from a workbook (same research note).
-Evidence (oracle: excel-graph, 2026-10-19, T-1484): probes/weeknum-stale-setters (30 sheets),
+Evidence (oracle: excel-graph, 2026-10-19, T-1484): probes/weeknum-stale-setters (28 sheets),
 probes/weeknum-stale-sheet-order, probes/weeknum-stale-sheet-moved, probes/weeknum-stale-grid,
 probes/weeknum-stale-order-row, -column, -column-40, -2x3 and -3x2, probes/weeknum-stale-dependency,
 probes/weeknum-stale-reset-num-type, -reset-isoweeknum and -reset-error-serial,
