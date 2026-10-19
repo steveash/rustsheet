@@ -867,16 +867,25 @@ Tasks: T-1930, T-1797
 
 ## LOG with one argument is LOG10
 Rule: `LOG(x)` with the base omitted returns the same double as `LOG10(x)`, not ln(x)/ln(10): `LOG(1000)` is exactly 3
-(ln/ln gives 2.9999999999999996). Hypothesis, not yet verified: that log10 is correctly rounded. `LOG10(1.3)` is
-0.11394335230683679. The true value is 0.11394335230683678404..., so that double is the correctly rounded one, and
-glibc's `log10` (0.11394335230683678) is not. The MULTINOMIAL fit (below, "MULTINOMIAL is inexact") also needed
-correctly rounded `log10(k)` terms on web evidence.
-Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/LOG_LOG10_LN.xlsx (desktop cache, Microsoft Macintosh Excel 16.x).
-LOG!B2:B14 equals LOG10!B2:B14 cell for cell, including B5 (1000 → 3), B12 (0.004 → -2.3979400086720375) and B13
-(1.3 → 0.11394335230683679). No web evidence yet at a point where glibc's log10 is not correctly rounded.
-Ours: LOG is `f64::log(x, 10.0)` and LOG10 is `f64::log10` (`fn_log`, `fn_log10` in
-functions/math_and_trigonometry/mathematical.rs). That gives four known failures: LOG!B5, B12, B13 and LOG10!B13.
-Status: VERIFIED (desktop) for LOG = LOG10 on these 13 inputs; UNVERIFIED (web probe pending) for "correctly rounded".
+(ln/ln gives 2.9999999999999996). That log10 is an x87 `FLDLG2; FYL2X` result stored to a double: `RN53(RN64(y * log2 x))`
+with `y = RN64(log10 2)` = `0x9A209A84FBCFF799 * 2^-65`, two roundings. It is therefore neither glibc's `log10` nor always
+the correctly rounded log10: `LOG10(295344268)` is 8.47032854654939 (correctly rounded: 8.470328546549387) and
+`LOG10(616.3769781444394)` 2.7898464093268007 (correctly rounded: ...003), while glibc misses `LOG10(11)` (Excel
+1.0413926851582251, glibc ...225). On k = 1..170 the model equals the correctly rounded log10 (the MULTINOMIAL fit, "MULTINOMIAL
+is inexact", needed exactly those terms). The doubles nearest 10^k (k = -20..20) give k exactly.
+Evidence: probes/log10-kernel (excel-graph, 2026-10-19, T-2004): 92 inputs (the workbook's 7 numbers, 10^-20..10^20,
+32 doubles where glibc is not correctly rounded, 16 where the correctly rounded value and the x87 models differ) for LOG10 and
+LOG: LOG = LOG10 in all 92, and the model matches 92 of 92 (correctly rounded 78, one rounding of the exact y·log2 x 85,
+glibc 56, ln/ln 42). The web agrees with the desktop cell `LOG10(1.3)` = 0.11394335230683679.
+ironcalc-calc/MATH_AND_TRIGONOMETRY/LOG_LOG10_LN.xlsx (desktop cache, Microsoft Macintosh Excel 16.x): LOG!B2:B14 equals
+LOG10!B2:B14 cell for cell, including B5 (1000 → 3), B12 (0.004 → -2.3979400086720375) and B13 (1.3).
+Two-argument LOG is ln(x)/ln(b) in doubles (`f64::log`): it matches all 92 `LOG(x,2)` and 92 `LOG(x,3)` cells of the probe
+(columns D and E); other bases are not probed.
+Implemented in `x87_log10.rs` (`excel_log10`: ln x in double-double, about 2^-104 relative, times `y / ln 2`, then the two
+roundings; 30,000 random inputs equal a decimal reference of the model), used by LOG10, one-argument LOG and MULTINOMIAL's
+`log10(k)` terms (which replaced their 170-entry table). It also fixes probes/geomean-root-models Root!I6 and I9
+(`10^(LOG10(E)/C)`).
+Status: VERIFIED (excel-graph, and desktop for the 13 workbook inputs)
 Tasks: T-2004
 
 ## GEOMEAN root rounding
