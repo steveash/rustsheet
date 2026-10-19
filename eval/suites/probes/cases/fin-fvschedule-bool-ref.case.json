@@ -1,0 +1,27 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1992: FVSCHEDULE with a boolean principal read from a cell, INDEX and INDIRECT.",
+ "tags": [
+  "M9",
+  "probe",
+  "financial",
+  "T-1992"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=FVSCHEDULE(C1,{0.1})",
+    "A2": "=FVSCHEDULE(INDEX(C1:C2,1),{0.1})",
+    "A3": "=FVSCHEDULE(INDIRECT(\"C1\"),{0.1})",
+    "A4": "=FVSCHEDULE(C2,{0.1})",
+    "A5": "=FVSCHEDULE(C3,{0.1})",
+    "A6": "=FVSCHEDULE(TRUE,{0.1})",
+    "C1": true,
+    "C2": false,
+    "C3": "1000"
+   }
+  }
+ ],
+ "expected": {}
+}

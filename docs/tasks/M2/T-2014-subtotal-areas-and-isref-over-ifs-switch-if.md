@@ -3,7 +3,7 @@ id: T-2014
 title: "SUBTOTAL, AREAS and ISREF over IFS, SWITCH, IF or CHOOSE of a reference XLOOKUP read its cells"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,10 +28,18 @@ TRIMRANGE: the two walks should end up as one definition (T-1998, T-2009 reviews
 `Model::pick_branch` (external_reference.rs, IF/CHOOSE for external references) may fold into it.
 
 ## Acceptance criteria
-- [ ] probes/subtotal-if-choose-over-xlookup passes in full; debug tests show no scalar-context
+- [x] probes/subtotal-if-choose-over-xlookup passes in full; debug tests show no scalar-context
   assertion.
-- [ ] Any new probe evidence recorded in `docs/excel-semantics/references.md`.
-- [ ] `make check` green; reviewers approve.
+- [x] Any new probe evidence recorded in `docs/excel-semantics/references.md`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`ifs_pick` and `switch_pick` (functions/logical) return the value IFS or SWITCH picks unevaluated, as
+`if_pick` does; `picked_reference_arg_reading` follows them, and ISREF reads IF, CHOOSE, IFS, SWITCH
+and LET through `evaluate_picked_reference_arg`. New probe subtotal-ifs-switch-reference-picks
+(excel-graph, 28 cells): IFS and SWITCH pass a reference, a union or a reference-returning XLOOKUP
+or TAKE on as IF does. Eval: probes known failures 1914 -> 1908 (6 fixed, 0 regressions), new case
+28/28. Follow-up: T-2071 (one pick step for both walks; TAKE/DROP/TRIMRANGE over IFS/SWITCH).
