@@ -29,7 +29,7 @@ in report.rs already counts verdicts per function; it can count the buckets in t
 - [x] parity_report.py reads those counts and drops its regex and failing-cell attribution; its
   output on the same report is unchanged (`make parity-report` shows no diff).
 - [x] The "mirrored in parity_report.py" comments in report.rs and value.rs are removed or updated.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing any verdict or the eval gate.

@@ -26,7 +26,6 @@ static STRING_LITERAL: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// Upper-cased function names called by a formula (string literals ignored).
-///
 #[must_use]
 pub fn functions_in(formula: &str) -> BTreeSet<String> {
     let stripped = STRING_LITERAL.replace_all(formula, "\"\"");
