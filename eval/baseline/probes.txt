@@ -638,6 +638,7 @@ C	probes/rank-unknown-shape-ref.case.json	17
 C	probes/rate-empty-arguments.case.json	10
 C	probes/regex-pcre2-features.case.json	62
 C	probes/regexreplace-extended-escapes.case.json	244
+C	probes/regexreplace-final-sigma.case.json	12
 C	probes/regexreplace-limit-and-syntax.case.json	22
 C	probes/regexreplace-long-result-a.case.json	5
 C	probes/regexreplace-long-result-b.case.json	1
