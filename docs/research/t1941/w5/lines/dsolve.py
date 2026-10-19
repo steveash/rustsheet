@@ -11,10 +11,12 @@ from sc import res, score
 from metrics import XF, BF, XN, BN
 from fpylll import IntegerMatrix, CVP, LLL
 N0 = PK.N.copy(); D0 = PK.D.copy(); D0[3] = np.nextafter(D0[3], -np.inf)
-IDX = [3, 4, 5, 6, 7, 8]
+IDX = [3, 4, 5, 6, 7, 8] + ([9] if os.environ.get('FREE9') else [])
+Q9 = 2.0**-62   # quantum for D9 moves (its own ulp, 2^-84, is far too small)
+def qu(i): return Q9 if i == 9 else ulp(D0[i])
 def withu(u):
     D = D0.copy()
-    for k, i in enumerate(IDX): D[i] += u[k]*ulp(D0[i])
+    for k, i in enumerate(IDX): D[i] += u[k]*qu(i)
     return D
 rows = []
 for s in PK.segs:
@@ -29,7 +31,7 @@ def phases(B, D):
         d = PK.resid(xx, B[s]); m = PK.resid(xx, res(xx, N0, D))
         out.append(np.angle(np.dot(d-d.mean(), E)/np.dot(m-m.mean(), E))/2/np.pi)
     return np.array(out)
-A = np.array([[ulp(D0[i])*xm**(i-j)/u2 if i >= j else 0.0 for i in IDX] for s, xm, j, u2 in rows])
+A = np.array([[qu(i)*xm**(i-j)/u2 if i >= j else 0.0 for i in IDX] for s, xm, j, u2 in rows])
 control = len(sys.argv) > 1
 allidx = np.concatenate(PK.segs); B = np.zeros_like(PK.x)
 truth = None
@@ -43,9 +45,10 @@ print('rows', len(rows), 'by stage', {j: sum(1 for r in rows if r[2] == j) for j
 if truth is not None:
     pr = (ph - A @ truth + 0.5) % 1 - 0.5; print('truth phase rms %.3f' % pr.std())
 NROW = int(os.environ.get('NROW', 26)); BOUND = float(os.environ.get('BOUND', 1e6))
+BNDS = [float(os.environ.get('B9', 1e10)) if i == 9 else BOUND for i in IDX]
 sel = np.linspace(0, len(rows)-1, NROW).astype(int)
-SC = 10**7; M = 30.0; K = len(IDX)
-L = [[int(round(SC/BOUND)) if kk == k else 0 for kk in range(K)] + [int(round(SC*M*A[r, k])) for r in sel] for k in range(K)]
+SC = int(float(os.environ.get('SC', 1e7))); M = 30.0; K = len(IDX)
+L = [[int(round(SC/BNDS[k])) if kk == k else 0 for kk in range(K)] + [int(round(SC*M*A[r, k])) for r in sel] for k in range(K)]
 L += [[0]*K + [int(round(SC*M)) if rr == r else 0 for rr in sel] for r in sel]
 Bm = IntegerMatrix.from_matrix(L); LLL.reduction(Bm)
 if os.environ.get('BKZ'):
@@ -54,7 +57,7 @@ if os.environ.get('BKZ'):
 for sgn in (1, -1):
     tgt = [0]*K + [int(round(SC*M*sgn*ph[r])) for r in sel]
     v = CVP.closest_vector(Bm, tgt, method=os.environ.get('CVPM', 'proved'))
-    u = np.array([round(v[k]*BOUND/SC) for k in range(K)])
+    u = np.array([round(v[k]*BNDS[k]/SC) for k in range(K)])
     pr = (sgn*ph - A @ u + 0.5) % 1 - 0.5
     print('sign %+d: u = %s  phase rms all rows %.3f (lattice rows %.3f)' % (sgn, u.tolist(), pr.std(), pr[sel].std()), flush=True)
     if truth is not None: print('   truth  %s  recovered: %s' % (truth.tolist(), bool(np.all(u == truth))))
