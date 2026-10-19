@@ -213,7 +213,9 @@ pub enum SheetOp {
 
 impl SheetOp {
     /// Where the input cell `addr` (1-based row) of `sheet` sits after this op: an `insert_row`
-    /// at or above it moves it down a row; every other op leaves cells where they are.
+    /// at or above it moves it down a row; every other op leaves cells where they are. `sheet` is
+    /// the spec's sheet name: a row insert into a sheet renamed by an earlier op is not matched,
+    /// which no case does yet.
     #[must_use]
     pub fn moved(&self, sheet: &str, addr: Addr) -> Addr {
         match self {

@@ -804,18 +804,22 @@ def text_cells(xlsx: bytes) -> list[tuple[str, str]]:
         raise ValueError(msg) from e
 
 
+def _op_key(kind: object) -> str:
+    """The spec key of a sheet op's argument: `row` for insert_row, `to` for the others."""
+    return "row" if kind == "insert_row" else "to"
+
+
 def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
     """A spec's sheet op as `(op, sheet, to)`: `to` is the new name of a rename, the 0-based
     position of a move, the 1-based row of an insert_row (spec key `row`; one blank row goes
     above it, T-1933) and None for an add. Raises ValueError for an unknown or malformed op."""
     if isinstance(op, (list, tuple)) and len(op) == 3:
-        key = "row" if op[0] == "insert_row" else "to"
-        op = {"op": op[0], "sheet": op[1], **({} if op[2] is None else {key: op[2]})}
+        op = {"op": op[0], "sheet": op[1], **({} if op[2] is None else {_op_key(op[0]): op[2]})}
     if not isinstance(op, dict) or op.get("op") not in SHEET_OPS or not isinstance(op.get("sheet"), str):
         msg = f"unknown sheet op {op!r}: expected op {'/'.join(SHEET_OPS)} with a sheet name"
         raise ValueError(msg)
     kind, sheet = op["op"], op["sheet"]
-    key = "row" if kind == "insert_row" else "to"
+    key = _op_key(kind)
     to = op.get(key)
     if set(op) - {"op", "sheet", key}:
         msg = f"sheet op {op!r} has unknown keys"

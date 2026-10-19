@@ -1557,7 +1557,7 @@ cells, as a dynamic formula would.
 Edits (SPEC-0012 rule 6, T-1853): inserting a row above a legacy `=N(IF(1,{2;3}))+A5` adjusts it to `+A6`. The cell stays a plain `<f>`
 and stays `#VALUE!`; C2 `=N(IF(1,A5:A6))+A5` likewise stays legacy with the value 2, and FORMULATEXT shows `=N(IF(1,{2;3}))+A6`,
 while the dynamic twin spills 3, 4 (probes/sheet-ops/sheet-ops-insert-row-legacy-cell, excel-graph, 2026-10-19, T-1933; first seen
-in a one-off session, docs/research/t1853-legacy-cell-edits-2026-10-18.md). Ours loses the marker on the insert and gives 3 (T-1852). Copy, move and fill are unprobed: Graph v1.0 refuses `copyFrom`, `moveTo` and
+in a one-off session, docs/research/t1853-legacy-cell-edits-2026-10-18.md). Ours loses the marker on the insert and spills 3, 4 into B3:B4 (T-1852). Copy, move and fill are unprobed: Graph v1.0 refuses `copyFrom`, `moveTo` and
 `autoFill` (400). They stay rule 6's assumption, and their desktop check is T-1075 item 12.
 Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16), probes/legacy-n-t-marker-shapes (excel-graph, 2026-10-18); row insert: probes/sheet-ops/sheet-ops-insert-row-legacy-cell (excel-graph, 2026-10-19, T-1933).
 The neighbouring shapes (probes/legacy-n-t-reference-args-2, excel-graph, 2026-10-18, T-1768; Z1:Z2 = 7, 8,

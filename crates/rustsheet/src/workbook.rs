@@ -273,7 +273,8 @@ impl Workbook {
     /// recalculate.
     ///
     /// # Errors
-    /// [`EditError::Ref`] for an unknown sheet or a row past the sheet; [`EditError::Engine`] when
+    /// [`EditError::Ref`] for an unknown sheet, a row past the sheet or a `count` of 0 or more
+    /// rows than lie below `row`; [`EditError::Engine`] when
     /// the engine refuses the insert (it would push cells off the sheet).
     #[cfg(feature = "harness_row_insert")]
     pub fn insert_rows(
@@ -288,7 +289,11 @@ impl Workbook {
             .checked_add(1)
             .and_then(|r| i32::try_from(r).ok())
             .filter(|r| *r <= LAST_ROW);
-        let (Some(row), Ok(count)) = (row, i32::try_from(count)) else {
+        // At least one row, and no more than the sheet has below `row`.
+        let count = i32::try_from(count)
+            .ok()
+            .filter(|c| *c >= 1 && row.is_some_and(|r| *c <= LAST_ROW - r + 1));
+        let (Some(row), Some(count)) = (row, count) else {
             return Err(crate::error::EditError::Ref(RefError::OutOfBounds));
         };
         self.model
@@ -819,10 +824,12 @@ mod tests {
         assert_eq!(moved.formula.as_deref(), Some("=A2*2"));
         assert_eq!(moved.value, Value::Number(5.0));
         assert_eq!(wb.value("A1").unwrap(), Value::Empty);
-        assert!(matches!(
-            wb.insert_rows(sheet, u32::MAX, 1),
-            Err(crate::error::EditError::Ref(RefError::OutOfBounds))
-        ));
+        for (row, count) in [(u32::MAX, 1), (0, 0), (0, u32::MAX)] {
+            assert!(matches!(
+                wb.insert_rows(sheet, row, count),
+                Err(crate::error::EditError::Ref(RefError::OutOfBounds))
+            ));
+        }
     }
 
     #[test]
