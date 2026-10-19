@@ -341,7 +341,9 @@ impl Model {
             let mut numbers = [0.0; 2];
             for (slot, value) in numbers.iter_mut().zip(values) {
                 let number = match value {
-                    CalcResult::EmptyArg => Err(CalcResult::new_error(Error::NA, cell, String::new())),
+                    CalcResult::EmptyArg => {
+                        Err(CalcResult::new_error(Error::NA, cell, String::new()))
+                    }
                     CalcResult::Boolean(_) => Err(value_error(cell)),
                     other => model.kernel_number(other, cell),
                 };

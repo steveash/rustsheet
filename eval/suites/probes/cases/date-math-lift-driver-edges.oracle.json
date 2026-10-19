@@ -221,15 +221,19 @@
    "K5": {
     "t": "n",
     "v": 0.0
+   },
+   "L2": {
+    "t": "n",
+    "v": 32.0
    }
   },
   "Sheet2": {}
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "04aedd3e0d9ae51d4972d6b082ffbd8a21fa563d8276c2ed81376b1977d4b376",
+  "input_sha256": "acbbcfcc5cb3375ed79010cf3ce88baaaf6c0d421b6da1f29ab10f9473897fe3",
   "kind": "excel-graph",
-  "produced_at": "2026-10-18T21:32:36+00:00",
+  "produced_at": "2026-10-19T02:17:54+00:00",
   "version": null
  }
 }

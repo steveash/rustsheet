@@ -115,9 +115,9 @@ use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
 use crate::functions::lift::{num_error, number_result, value_error};
-use crate::functions::Function;
 use crate::functions::text::text_arg::broadcast_text;
 use crate::functions::util::array_node_to_calc_result;
+use crate::functions::Function;
 use crate::number_format::parse_excel_number;
 use crate::types::DateSystem;
 use crate::{
@@ -238,7 +238,9 @@ impl Model {
     }
 
     pub(crate) fn fn_month(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.date_part(Function::Month, args, cell, |(_, month, _)| f64::from(month))
+        self.date_part(Function::Month, args, cell, |(_, month, _)| {
+            f64::from(month)
+        })
     }
 
     pub(crate) fn fn_year(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -248,33 +250,27 @@ impl Model {
     // year, month, day
     pub(crate) fn fn_date(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let date_system = self.workbook.settings.date_system;
-        self.numbers_fn(
-            Function::Date,
-            args,
-            [0.0; 3],
-            cell,
-            |[year, month, day]| {
-                let mut year = year.floor() as i32;
-                if year < 0 {
-                    return Err(Error::NUM);
-                }
-                let Some((month, day)) = date_month_and_day(month, day) else {
-                    return Err(Error::NUM);
-                };
-                // Excel: a year in 0..=1899 is an offset from 1900: DATE(100, 1, 1) is 2000-01-01
-                if year < 1900 {
-                    year += 1900;
-                }
-                // In a 1904 workbook the serial counts from 1904-01-01 (`DATE(1904,1,1)` is 0).
-                // An earlier day is #NUM!, `DATE(1903,12,31)` and `DATE(0,1,1)` included
-                // (probes/date-system-1904-readers A29, A31).
-                permissive_date_to_serial_number(day, month, year)
-                    .ok()
-                    .and_then(|serial| date_system.serial_from_1900_serial(i64::from(serial)))
-                    .map(|serial| serial as f64)
-                    .ok_or(Error::NUM)
-            },
-        )
+        self.numbers_fn(Function::Date, args, [0.0; 3], cell, |[year, month, day]| {
+            let mut year = year.floor() as i32;
+            if year < 0 {
+                return Err(Error::NUM);
+            }
+            let Some((month, day)) = date_month_and_day(month, day) else {
+                return Err(Error::NUM);
+            };
+            // Excel: a year in 0..=1899 is an offset from 1900: DATE(100, 1, 1) is 2000-01-01
+            if year < 1900 {
+                year += 1900;
+            }
+            // In a 1904 workbook the serial counts from 1904-01-01 (`DATE(1904,1,1)` is 0).
+            // An earlier day is #NUM!, `DATE(1903,12,31)` and `DATE(0,1,1)` included
+            // (probes/date-system-1904-readers A29, A31).
+            permissive_date_to_serial_number(day, month, year)
+                .ok()
+                .and_then(|serial| date_system.serial_from_1900_serial(i64::from(serial)))
+                .map(|serial| serial as f64)
+                .ok_or(Error::NUM)
+        })
     }
 
     /// Walk a scalar / range / array node and invoke the provided closure with every
@@ -753,17 +749,30 @@ impl Model {
                 Ok(dates) => dates,
                 Err(error) => return error,
             };
-            let unit = model
-                .cast_to_string(unit.clone(), cell)
-                .map(|s| s.to_uppercase());
-            let unit = unit.as_deref().map_err(error_kind);
+            // The unit is borrowed: a lifted DATEDIF allocates nothing per element for it.
+            let converted;
+            let unit = match unit {
+                CalcResult::String(text) => Ok(&**text),
+                CalcResult::Error { error, .. } => Err(error.clone()),
+                other => match Self::cast_string_ref(other, cell) {
+                    Ok(text) => {
+                        converted = text;
+                        Ok(converted.as_str())
+                    }
+                    Err(error) => Err(error_kind(&error)),
+                },
+            };
             number_result(Self::datedif_value(date_system, start, end, unit), cell)
         })
     }
 
     /// A DATEDIF date argument's number: date text reads as DATEVALUE reads it (see
     /// [`Model::datedif_date_text`]), anything else as a kernel number.
-    fn datedif_date(&self, value: &CalcResult, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+    fn datedif_date(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
         match value {
             CalcResult::String(s) => match self.datedif_date_text(s) {
                 Ok(serial) => Ok(serial),
@@ -786,7 +795,7 @@ impl Model {
         }
     }
 
-    /// DATEDIF of two date serials for the (upper-cased) `unit`.
+    /// DATEDIF of two date serials for `unit`, in any letter case.
     fn datedif_value(
         date_system: DateSystem,
         start_serial: f64,
@@ -801,6 +810,11 @@ impl Model {
         let unit = unit?;
         let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
         let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;
+        // The units are ASCII, so an ASCII case-blind match is the upper-casing it replaces.
+        let unit = ["Y", "M", "D", "YM", "YD", "MD"]
+            .into_iter()
+            .find(|known| known.eq_ignore_ascii_case(unit))
+            .unwrap_or("");
         match unit {
             "Y" => {
                 let mut years = end.year() - start.year();
@@ -880,23 +894,17 @@ impl Model {
 
     pub(crate) fn fn_days(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // Lifts over a range or array in both arguments (probes/date-argument-modes F11:F14).
-        self.numbers_fn(
-            Function::Days,
-            args,
-            [0.0; 2],
-            cell,
-            |[end, start]| {
-                let (end_serial, start_serial) = (end.floor() as i64, start.floor() as i64);
-                // Excel accepts any serial in 0..=MAXIMUM (a 0 serial is 1900-01-00) and
-                // reports #NUM! otherwise. DAYS works directly on serials, so the dates
-                // themselves are never materialised.
-                let range = 0..=MAXIMUM_DATE_SERIAL_NUMBER as i64;
-                if !range.contains(&start_serial) || !range.contains(&end_serial) {
-                    return Err(Error::NUM);
-                }
-                Ok((end_serial - start_serial) as f64)
-            },
-        )
+        self.numbers_fn(Function::Days, args, [0.0; 2], cell, |[end, start]| {
+            let (end_serial, start_serial) = (end.floor() as i64, start.floor() as i64);
+            // Excel accepts any serial in 0..=MAXIMUM (a 0 serial is 1900-01-00) and
+            // reports #NUM! otherwise. DAYS works directly on serials, so the dates
+            // themselves are never materialised.
+            let range = 0..=MAXIMUM_DATE_SERIAL_NUMBER as i64;
+            if !range.contains(&start_serial) || !range.contains(&end_serial) {
+                return Err(Error::NUM);
+            }
+            Ok((end_serial - start_serial) as f64)
+        })
     }
 
     pub(crate) fn fn_days360(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -914,7 +922,8 @@ impl Model {
                     let method = match values.get(2) {
                         // Text other than TRUE or FALSE, with no message (SPEC-0011 kernels).
                         Some(CalcResult::String(s))
-                            if !matches!(s.to_lowercase().as_str(), "true" | "false") =>
+                            if !s.eq_ignore_ascii_case("true")
+                                && !s.eq_ignore_ascii_case("false") =>
                         {
                             Err(value_error(cell))
                         }
@@ -948,7 +957,7 @@ impl Model {
     pub(crate) fn fn_weekday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let ds = self.workbook.settings.date_system;
         let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30); // 1900 serial 0: weekday-serial-zero
-        // The date and the return type lift (probes/date-argument-modes F51:F52).
+                                                                 // The date and the return type lift (probes/date-argument-modes F51:F52).
         let kind = Function::Weekday;
         self.numbers_fn(kind, args, [0.0, 1.0], cell, |[serial, return_type]| {
             let s = serial.floor();

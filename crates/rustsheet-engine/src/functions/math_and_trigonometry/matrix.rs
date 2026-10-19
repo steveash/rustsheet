@@ -234,8 +234,9 @@ impl Model {
                             _ => return CalcResult::new_args_number_error(cell),
                         };
                         let one = dimension.and_then(|f| {
-                            let n = munit_dimension(f)
-                                .map_err(|error| CalcResult::new_error(error, cell, String::new()))?;
+                            let n = munit_dimension(f).map_err(|error| {
+                                CalcResult::new_error(error, cell, String::new())
+                            })?;
                             match check_array_size(n, n) {
                                 Some((error, _)) => {
                                     Err(CalcResult::new_error(error, cell, String::new()))

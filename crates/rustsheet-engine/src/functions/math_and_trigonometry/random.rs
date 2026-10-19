@@ -1,6 +1,6 @@
-use crate::functions::lift::{number_result, value_error, LiftCost, LiftOptions};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lift::{number_result, value_error, LiftCost, LiftOptions};
 use crate::limits::check_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,

@@ -53,7 +53,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         ("MOD, per row", 100_000, Shape::PerRow("=MOD(A{r},7)")),
         ("DAY, per row", 100_000, Shape::PerRow("=DAY(A{r})")),
         ("HOUR, per row", 100_000, Shape::PerRow("=HOUR(A{r})")),
-        ("DATE, per row", 100_000, Shape::PerRow("=DATE(2024,1,A{r})")),
+        (
+            "DATE, per row",
+            100_000,
+            Shape::PerRow("=DATE(2024,1,A{r})"),
+        ),
         (
             "ROUND, lifted",
             1_000_000,
