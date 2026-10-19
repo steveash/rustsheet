@@ -134,6 +134,16 @@ C	probes/combin-algorithm-sweep.case.json	844
 C	probes/concatenate-after-cut.case.json	9
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/convert-targets.case.json	84
+C	probes/convert-temperature-ov00.case.json	1
+C	probes/convert-temperature-ov01.case.json	1
+C	probes/convert-temperature-ov02.case.json	1
+C	probes/convert-temperature-ov03.case.json	1
+C	probes/convert-temperature-ov10.case.json	1
+C	probes/convert-temperature-ov11.case.json	1
+C	probes/convert-temperature-ov12.case.json	1
+C	probes/convert-temperature-prefix-a.case.json	88
+C	probes/convert-temperature-prefix-b.case.json	88
+C	probes/convert-temperature-sweep.case.json	140
 C	probes/count-direct-text.case.json	13
 C	probes/counta-empty-value.case.json	26
 C	probes/countblank-array-values.case.json	35
