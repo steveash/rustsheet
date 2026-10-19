@@ -41,7 +41,8 @@ that scope their bodies read (`Model::close_over`; one shared copy per variable,
 `VariableStack::shared`), and each call binds the captured ones that are not in scope (`bind_captures`
 in `call_prepared`); captures are dropped after each root cell. Capturing when a LAMBDA is made, the
 first version, copied a REDUCE accumulator on every step (found in review), so a LAMBDA that never
-leaves its scope now captures nothing. Probed on excel-graph (probes/lambda-escaping-closures, 28 cells): 20
+leaves its scope now captures nothing, and one cell's closures may hold at most 4,194,304 captured
+cells (`MAX_CAPTURED_CELLS`; past it a capture is `#NUM!`, DEVIATION). Probed on excel-graph (probes/lambda-escaping-closures, 28 cells): 20
 pass, among them the REDUCE chain (123), LET-bound curried calls, rebinding and shadowing, and captured
 references, unions and errors. The other 8 are separate gaps, filed: chained calls `f(..)(..)`
 (H3, H8, H10: T-2038), arrays of LAMBDAs from SCAN (H2, I2, J2: T-2039) and LET names spelled like

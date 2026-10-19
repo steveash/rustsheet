@@ -106,6 +106,22 @@ impl VariableStack {
     /// (`Model::close_over`): made on the first capture and handed to every later one while
     /// `id` stays bound, so the LAMBDAs that outlive one scope copy an array they read once. An id is bound to one value for as long as it is bound (a
     /// parameter is bound once per call, a LET name once per evaluation), so the copy stays true.
+    /// The cells a first [`VariableStack::shared`] copy of `id` would hold: an array's, 1 for
+    /// any other binding, 0 when `id` is shared already or not bound.
+    pub(crate) fn cells_to_share(&self, id: usize) -> usize {
+        if self.shared.contains_key(&id) {
+            return 0;
+        }
+        match self.bindings.get(&id) {
+            Some(
+                Binding::Value(CalcResult::Array(rows))
+                | Binding::ReadOnce(CalcResult::Array(rows)),
+            ) => rows.iter().map(Vec::len).sum(),
+            Some(_) => 1,
+            None => 0,
+        }
+    }
+
     pub(crate) fn shared(&mut self, id: usize) -> Option<Arc<Binding>> {
         if let Some(shared) = self.shared.get(&id) {
             return Some(Arc::clone(shared));

@@ -609,6 +609,24 @@ fn lambdas_that_do_not_outlive_their_call_capture_nothing() {
 }
 
 #[test]
+fn closures_past_the_captured_cell_budget_read_num_errors() {
+    // DEVIATION (decision 0014): each of 50 steps returns a closure over a fresh 100,000-row
+    // array, all kept by the chain; past MAX_CAPTURED_CELLS (4,194,304) a capture is #NUM!.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(50),LAMBDA(f,x,LET(b,SEQUENCE(100000),LAMBDA(z,f(z)+ROWS(b))))),g(0))",
+    );
+    model._set(
+        "A2",
+        "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(3),LAMBDA(f,x,LET(b,SEQUENCE(1000),LAMBDA(z,f(z)+ROWS(b))))),g(0))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "3000");
+}
+
+#[test]
 fn lambda_calls_past_the_stack_budget_are_num_errors() {
     // DEVIATION (decision 0014): Excel evaluates these 300 deep (probes/lambda-call-depth); past
     // the evaluation's stack budget the engine gives #NUM! instead of overflowing its stack.

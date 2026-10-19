@@ -118,6 +118,12 @@ struct PreparedLambda {
 /// 200 calls in a release build and 50 in a debug build.
 const LAMBDA_STACK_SHARE: usize = 4;
 
+/// Most cells the LAMBDAs that outlive their scope may capture in one cell's formula
+/// (`Model::close_over`): a REDUCE whose steps each return a closure over a fresh array keeps
+/// every step's array. Past it a capture is `#NUM!` (DEVIATION, decision 0014: arrays.md "LAMBDAs
+/// that outlive their call"). Four whole columns.
+const MAX_CAPTURED_CELLS: usize = 1 << 22;
+
 /// One read count of [`read_once`]: more than one read, or reads it cannot count.
 const MANY: u8 = 2;
 
@@ -534,7 +540,7 @@ impl Model {
                 };
                 // A LAMBDA the body made may read the parameters and the captures bound here.
                 captured.extend(ids.iter().map(|&(raw_id, _)| raw_id));
-                self.close_over(result.lambda(), &captured, mark);
+                self.close_over(result.lambda(), &captured, mark, cell);
                 self.unbind_captures(captured);
                 result
             }
@@ -703,7 +709,13 @@ impl Model {
     /// (docs/excel-semantics/arrays.md "LAMBDAs that outlive their call",
     /// probes/lambda-escaping-closures, T-0439). A LAMBDA used only inside the scope captures
     /// nothing, so a LAMBDA made on each REDUCE step copies nothing.
-    pub(crate) fn close_over(&mut self, result: Option<usize>, ids: &[usize], mark: usize) {
+    pub(crate) fn close_over(
+        &mut self,
+        result: Option<usize>,
+        ids: &[usize],
+        mark: usize,
+        cell: CellReferenceIndex,
+    ) {
         let Some(result) = result.filter(|_| !ids.is_empty()) else {
             return;
         };
@@ -728,7 +740,19 @@ impl Model {
             read.sort_unstable();
             read.dedup();
             for id in read {
-                if let Some(binding) = self.variable_stack.shared(id) {
+                let cells = self.variable_stack.cells_to_share(id);
+                self.captured_cells = self.captured_cells.saturating_add(cells);
+                let binding = if self.captured_cells > MAX_CAPTURED_CELLS {
+                    // DEVIATION (decision 0014): arrays.md "LAMBDAs that outlive their call".
+                    Some(Arc::new(Binding::Value(CalcResult::new_error(
+                        Error::NUM,
+                        cell,
+                        "LAMBDAs capture too many cells".to_string(),
+                    ))))
+                } else {
+                    self.variable_stack.shared(id)
+                };
+                if let Some(binding) = binding {
                     pending.extend(binding.lambda());
                     self.lambda_captures
                         .entry(lambda)

@@ -167,6 +167,8 @@ pub struct Model {
     /// What each LAMBDA made inside a LET or a LAMBDA call captured of the variables in scope
     /// (`Model::close_over`), keyed by the same ids as `lambdas`.
     pub(crate) lambda_captures: HashMap<usize, Captures>,
+    /// The cells `lambda_captures` holds copies of, against `MAX_CAPTURED_CELLS`.
+    pub(crate) captured_cells: usize,
     /// Where the stack was when the outermost LAMBDA call running now started
     /// (`Model::lambda_stack_base`), `None` while no call runs.
     pub(crate) lambda_calls_base: Option<usize>,
@@ -248,12 +250,14 @@ impl Model {
     pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
         self.evaluate_cell(cell);
         self.lambda_captures.clear();
+        self.captured_cells = 0;
     }
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
         self.eta_lambdas.clear();
         self.named_lambdas = NamedLambdas::default();
         self.lambda_captures.clear();
+        self.captured_cells = 0;
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(

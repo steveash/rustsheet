@@ -227,7 +227,7 @@ impl Model {
 
         // Evaluate the body with all bindings in scope.
         let result = read_body(self, &cloned[args.len() - 1]);
-        self.close_over(result.lambda(), &bound_ids, mark);
+        self.close_over(result.lambda(), &bound_ids, mark, cell);
 
         // Remove only the ids introduced by this LET frame.
         for id in bound_ids {

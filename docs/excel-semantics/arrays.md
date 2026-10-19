@@ -920,7 +920,10 @@ Evidence: probes/lambda-escaping-closures H1-H25, I2, J2, I14 (excel-graph, 2026
 Ours: when a LET or a LAMBDA call ends, `Model::close_over` gives the LAMBDAs reachable from its result (the only way one
 leaves it) the variables of that scope their bodies read (one shared copy per variable, `VariableStack::shared`), and
 `call_prepared` binds those not in scope for each call (T-0439); a LAMBDA that never leaves its scope captures nothing. A
-captured union re-bound for a call counts toward the held-areas cap where it is called (references.md "Union area cap"). Open gaps: chained calls
+captured union re-bound for a call counts toward the held-areas cap where it is called (references.md "Union area cap").
+**DEVIATION** (decision 0014, directive 5): the closures of one cell's formula may hold copies of at most 4,194,304 captured
+cells (`MAX_CAPTURED_CELLS`, an array counting its cells, anything else 1); a capture past it is `#NUM!`, so a REDUCE whose
+steps each return a closure over a fresh large array cannot hold memory without bound. Excel's limit is unprobed. Open gaps: chained calls
 `f(..)(..)` are a parse error (H3, H8, H10: T-2038), an array element cannot hold a LAMBDA (H2:J2: T-2039), and cell-shaped
 LET names are read as cells (H4, H5: T-2040).
 Status: VERIFIED (excel-graph)
