@@ -88,3 +88,16 @@ fine) on `e2e_f1.txt` gives `e2e_final.txt`: **0.9997 exact vs the synthetic tru
 bit-exact-equivalent set on the control. Residual differences from truth are all on tie plateaus
 (N1 +3, N8 +2, N9 −389, D1 +25), with no effect on outputs. Open: the D top (D6..D9), which the control
 took from the truth base. scan3 (cubic D.S6) is running.
+
+## D top, and the control chain from scratch
+- `scan3.py` (cubic D.S6, CMAX 50, DMAX 2) finds b −1591.0, c −19.5 (truth −1590.8, −19.0); its cubic term is
+  unresolved, so `dtop.py` converts with d = 0 → D7 +8, D8 −275, D9 +1e5 ulps from truth.
+- `topgrid2.py` with CHAIN=D (J0=7 objective): D8 within 2 ulps, but D7/D9 wrong. The found set outscores the
+  truth there (152 vs 147), so J0=7 is too weak for the D top.
+- `dtop3.py`: (D7, D8, D9) grid on the J0=6 objective (P5 excluded). Result: D7, D8 exact; D9 −9824 ulps on a tie
+  plateau (713 vs truth 712; coarse Z 5.7).
+- `e2e_hchain.sh`: peeled N side plus dtop3 D top, then peel D6..D1, then `n0scan.py`. Truth at exact rank 0 for
+  every D step (D6 Z 6.8, D5..D2 Z 1.4–4.2, D1 tie plateau); final **0.9997 exact vs the synthetic truth**
+  (`e2e_hfinal.txt`).
+- The whole pipeline runs from ss_fc on the control with no truth input: N top scan → topgrid2 → N peel →
+  scan3/dtop3 → D peel → N0.
