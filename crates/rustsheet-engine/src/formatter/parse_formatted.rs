@@ -57,7 +57,7 @@ fn ends_with_typed_clock(text: &str) -> bool {
     let shape_ok = match (minute, second, parts.next()) {
         (None, None, None) => meridiem,
         (Some(m), None, None) if !meridiem => m.len() == 2 && digits(m, 2),
-        (Some(m), Some(sec), None) => {
+        (Some(m), Some(sec), None) if !meridiem => {
             m.len() == 2 && digits(m, 2) && sec.len() == 2 && digits(sec, 2)
         }
         _ => false,

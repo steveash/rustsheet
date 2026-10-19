@@ -245,6 +245,8 @@ fn typed_date_clock_text_with_seconds_or_meridiem_is_a_number() {
     model._set("B4", "=ISNUMBER(A4)");
     model._set("A5", "1/2/2020 10:00 AM");
     model._set("B5", "=ISNUMBER(A5)");
+    model._set("A6", "1/2/2020 10:00:30 AM");
+    model._set("B6", "=ISNUMBER(A6)");
     model._set("C1", "=TEXT(A1,\"0.000000\")");
     model._set("C2", "=TEXT(A2,\"0.000000\")");
     model.evaluate();
@@ -254,6 +256,7 @@ fn typed_date_clock_text_with_seconds_or_meridiem_is_a_number() {
     assert_eq!(model._get_text("B3"), *"FALSE");
     assert_eq!(model._get_text("B4"), *"FALSE");
     assert_eq!(model._get_text("B5"), *"FALSE");
+    assert_eq!(model._get_text("B6"), *"FALSE");
     assert_eq!(model._get_text("C1"), *"43832.417014");
     assert_eq!(model._get_text("C2"), *"43832.416667");
 }
