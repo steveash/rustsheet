@@ -43,6 +43,10 @@ macro_rules! lifting_table_functions {
             | Function::ZTest
             | Function::ZTestCompat
             | Function::Prob
+            | Function::Forecast
+            | Function::ForecastLinear
+            | Function::TTest
+            | Function::TTestCompat
             | Function::Small
             | Function::PercentileCompat
             | Function::PercentileInc

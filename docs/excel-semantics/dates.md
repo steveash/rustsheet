@@ -722,14 +722,30 @@ excel-graph, 2026-10-18): 2958465.9999942 (23:59:59.499) and 2958465.999994 give
 Status: VERIFIED (web)
 
 ## HOUR, MINUTE and SECOND round to the nearest second
-Rule: SECOND of a time of day 22:24:01.729 is 2: `SECOND(DDB(81074,518,21,6,1))`, where DDB is 3024.9333533459067 (a
-last-digit difference in DDB cannot move it by 0.27 s). So the seconds are rounded, not truncated. Yet
-`SECOND("10:11.5")` is 11 (probes/clock-text-oddities F43), so an exact half does not round up there (tie rule or the
-serial's binary noise). The tie rule and whether the carry reaches MINUTE and HOUR (x:59:59.6, 23:59:59.6) are unprobed.
-Evidence: gen-m9/55fc8c4ffbd7c7cc Calc!A40 (excel-graph, 2026-10-12, T-1289); probes/clock-text-oddities F43 (excel-graph,
-2026-10-06, T-0153).
-Ours: the time is rounded to the millisecond and the seconds truncated (`SECOND(0.5+1.7/86400)` = 1).
-Status: VERIFIED (web) for these two cells; ties and carries UNVERIFIED
+Rule: HOUR, MINUTE and SECOND take the time of day rounded to the nearest second, and the carry goes all the way up:
+- `SECOND(TIME(10,59,59)+0.6/86400)` is 0, MINUTE 0 and HOUR 11.
+- At 23:59:59.6, HOUR, MINUTE and SECOND are all 0.
+- `SECOND("10:11:12.6")` is 13, and `HOUR("23:59:59.6")` is 0.
+- `SECOND(DDB(81074,518,21,6,1))`, at 22:24:01.729, is 2.
+
+All 40 probe cells fit one computation in double precision:
+1. Add half a second to the serial: `y = x + 0.5/86400`.
+2. Take the fraction of the day times 24: `h = (y - floor(y))*24`. HOUR is `floor(h)`.
+3. `m = (h - floor(h))*60`. MINUTE is `floor(m)`.
+4. SECOND is `floor((m - floor(m))*60)`.
+
+So an exact half goes whichever way the binary noise of these steps takes it, not by a fixed tie rule:
+- `SECOND(0.5+1.5/86400)` is 1, `0.5+2.5/86400` 2, `0.5+3.5/86400` 4.
+- `1+1.5/86400` is 2, `45000+1.5/86400` 1, `0.5+59.5/86400` 59.
+- `SECOND("10:11:12.5")` is 12, and `SECOND("10:11.5")` (611.5 s) is 11.
+
+Neither half-up nor half-even on `frac*86400` or `x*86400` fits these ties, and neither does the exact product: it
+lies above `.5` for 2.5 and 59.5, which round down. The fractions .4, .6 and .999 round as expected.
+Evidence: probes/second-rounding A1-A40 (excel-graph, 2026-10-19, T-1408); gen-m9/55fc8c4ffbd7c7cc Calc!A40
+(excel-graph, 2026-10-12, T-1289); probes/clock-text-oddities F43 (excel-graph, 2026-10-06, T-0153).
+Ours: matches since T-1408 (`time_of_day_parts`, functions/date_and_time.rs). Before, MINUTE and SECOND rounded to the
+millisecond and then truncated, and HOUR truncated.
+Status: VERIFIED (excel-graph)
 Tasks: T-1408
 
 ## YEARFRAC swaps reversed dates

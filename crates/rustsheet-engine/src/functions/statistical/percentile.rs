@@ -14,28 +14,18 @@ use crate::{
 
 /// The numbers of the data argument of PERCENTILE*, QUARTILE* and PERCENTRANK*: a range's
 /// numbers (text, booleans and blanks skipped), an array's, a number, or nothing for an empty
-/// argument; anything else is `#VALUE!`.
+/// argument; an error value is that error, which comes before a bad `k` (`PERCENTILE(NA(),2)` and
+/// `QUARTILE.EXC(NA(),9)` are `#N/A`, probes/stat-test-lift P81, P83; T-1982); anything else is
+/// `#VALUE!`.
 fn percentile_numbers(
     model: &mut Model,
     arg: &Node,
     cell: CellReferenceIndex,
 ) -> Result<Vec<f64>, CalcResult> {
     match model.evaluate_node_in_context(arg, cell) {
-        CalcResult::Range { left, right } => {
-            let v = model.values_from_range(left, right)?;
-            Ok(v.into_iter().flatten().collect::<Vec<_>>())
-        }
-        CalcResult::Array(arr) => match model.values_from_array(arr) {
-            Ok(v) => Ok(v.into_iter().flatten().collect::<Vec<_>>()),
-            Err(e) => Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}"))),
-        },
-        CalcResult::Number(n) => Ok(vec![n]),
         CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
-        _ => Err(CalcResult::new_error(
-            Error::VALUE,
-            cell,
-            "Expected numeric range".to_string(),
-        )),
+        error @ CalcResult::Error { .. } => Err(error),
+        value => model.numeric_flat_of(value, cell),
     }
 }
 
