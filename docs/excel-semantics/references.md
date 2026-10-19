@@ -1503,6 +1503,31 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
 
+## Legacy MATCH, VLOOKUP and HLOOKUP intersect an operation in their lookup table (T-1862)
+Rule: in a legacy (no `cm`) formula, arithmetic, a comparison or a concatenation over a range in
+MATCH's `lookup_array` or the table of VLOOKUP and HLOOKUP is a value, intersected like an
+aggregate's arithmetic argument, so the lookup then searches one value ("MATCH, VLOOKUP and
+HLOOKUP over a single value", lookup.md). With A1:A6 = a,b,a,c,b,a and B1:B6 = 1,2,3,1,2,3, on row
+2 (on the ranges' rows) / row 10 (off them):
+- `=MATCH(2,B1:B6*1,0)` shows as `=MATCH(2,@B1:B6*1,0)`: `#N/A` / `#VALUE!`; so do
+  `=MATCH(2,B1:B6*1)`, `=MATCH(2,-B1:B6*-1,-1)` and `=MATCH(TRUE,B1:B6>1,0)`;
+- the corpus INDEX/MATCH idiom, typed without Ctrl+Shift+Enter: `=MATCH(1,(A1:A6="b")*(B1:B6=2),0)`
+  shows as `=MATCH(1,(@A1:A6="b")*(@B1:B6=2),0)`, `#N/A` / `#VALUE!`, and so does its INDEX;
+  `=MATCH(1,(A2=A3:A4)*1,0)` is `#VALUE!` on row 2 too (A3:A4 misses it; corpus-bench/49300);
+- `=MATCH("b",A1:A6&"",0)` `=MATCH("b",@A1:A6&"",0)`: `#VALUE!` on both rows (text is no table);
+- `=VLOOKUP(2,B1:B6*1,1,FALSE)` `=VLOOKUP(2,@B1:B6*1,1,FALSE)` and HLOOKUP: `#N/A` / `#VALUE!`;
+- unchanged: a bare or parenthesized range (`=MATCH(2,B1:B6,0)`, `=MATCH(2,(B1:B6),0)` 2 / 2), the
+  `INDEX(…,0)` workaround (`=MATCH(1,INDEX((A1:A6="b")*(B1:B6=2),0),0)` 2 / 2), an array constant
+  operand (`=MATCH(2,{1,2,3}*1,0)` 2 / 2) and XMATCH, a dynamic-array function
+  (`=XMATCH(2,B1:B6*1)` 2 / 2). In `=MATCH(2,IF(B1:B6>0,B1:B6),0)` IF's condition is intersected and
+  its arm is not (`=MATCH(2,IF(@B1:B6>0,B1:B6),0)`, 2 / `#VALUE!`).
+Evidence: probes/legacy-match-lookup-array-intersection (excel-graph, 2026-10-18, T-1862),
+corpus-bench/49300 Sheet1!C2.
+Engine: `legacy_value_operand` (`is_lookup_table`, static_analysis/legacy.rs). Known mismatch: ours
+also intersects IF's arm in the last form (2 on row 2 in Excel, `#N/A` in ours; T-1935).
+Status: VERIFIED
+Tasks: T-1862
+
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
 position, and at the top level, through an implicit `@` that FORMULATEXT shows: `=IF(1,{2;3})` is
@@ -1555,10 +1580,11 @@ Exceptions: IFERROR gets the `@` (`=N(IFERROR({2;3},0))` is `=N(@IFERROR({2;3},0
 gets none and the legacy cell spills: `=N(SWITCH(1,1,{2;3}))` shows no `@` and gives 2, 3 in two
 cells, as a dynamic formula would.
 Edits (SPEC-0012 rule 6, T-1853): inserting a row above a legacy `=N(IF(1,{2;3}))+A5` adjusts it to `+A6`. The cell stays a plain `<f>`
-and stays `#VALUE!`; C2 `=N(IF(1,A5:A6))+A5` likewise stays legacy with the value 2. This comes from a one-off excel-graph session
-(2026-10-18), which is not kept as an eval case (docs/research/t1853-legacy-cell-edits-2026-10-18.md); T-1933 makes it a probe case. Copy, move and fill are unprobed: Graph v1.0 refuses `copyFrom`, `moveTo` and
+and stays `#VALUE!`; C2 `=N(IF(1,A5:A6))+A5` likewise stays legacy with the value 2, and FORMULATEXT shows `=N(IF(1,{2;3}))+A6`,
+while the dynamic twin spills 3, 4 (probes/sheet-ops/sheet-ops-insert-row-legacy-cell, excel-graph, 2026-10-19, T-1933; first seen
+in a one-off session, docs/research/t1853-legacy-cell-edits-2026-10-18.md). Ours loses the marker on the insert and spills 3, 4 into B3:B4 (T-1852). Copy, move and fill are unprobed: Graph v1.0 refuses `copyFrom`, `moveTo` and
 `autoFill` (400). They stay rule 6's assumption, and their desktop check is T-1075 item 12.
-Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16), probes/legacy-n-t-marker-shapes (excel-graph, 2026-10-18); row insert: docs/research/t1853-legacy-cell-edits-2026-10-18.md (one-off session, T-1933).
+Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16), probes/legacy-n-t-marker-shapes (excel-graph, 2026-10-18); row insert: probes/sheet-ops/sheet-ops-insert-row-legacy-cell (excel-graph, 2026-10-19, T-1933).
 The neighbouring shapes (probes/legacy-n-t-reference-args-2, excel-graph, 2026-10-18, T-1768; Z1:Z2 = 7, 8,
 Y1:Y2 = "a", "b", W1:W2 = 1, 2): N and T over CHOOSE or INDEX of a reference take no `@` on the call and read
 the reference it returns (CHOOSE: its top-left cell; INDEX with a row and column number: that one cell; `=N(CHOOSE(1,Z1:Z2))` and `=N(INDEX(Z1:Z2,1))` are 7, `=T(CHOOSE(1,Y1:Y2))` and
@@ -1566,6 +1592,15 @@ the reference it returns (CHOOSE: its top-left cell; INDEX with a row and column
 scalar slot gets the `@` on the range only, never on the call, and the cell is `#VALUE!` in row 10, which the range does not
 cover (rows 1-2 unprobed): `=N(IF(@W1:W2,Z1,Z2))`, `=N(OFFSET(Z1,@W1:W2,0))`, `=N(INDEX(Z1:Z2,@W1:W2))`, `=N(CHOOSE(@W1:W2,Z1,Z2))` and the
 T versions (all `#VALUE!` in row 10). The engine matches all of them since T-1908 (N and T over CHOOSE or INDEX of a reference no longer get an `@` on the call).
+More CHOOSE and INDEX shapes (probes/legacy-n-t-choose-index-shapes, excel-graph, 2026-10-19, T-1918; Z1:Z2 = 7, 8,
+Y1:Y2 = "a", "b"; FORMULATEXT shows no `@` on the call in any, and the `@` stays on an array-constant index): `=N(INDEX(Z1:Z2,@{1;2}))`,
+`=N(INDEX(Z1:Z2,0))`, `=N(INDEX(Z1:Z2,0,1))`, `=N(CHOOSE(2,Z1,Z1:Z2))`, `=N(CHOOSE(2,Z2,Z1:Z2))` (7: the picked range's top-left cell), `=T(INDEX(Y1:Y2,@{1;2}))`, `=N(CHOOSE(3,Z1,Z2,Z1:Z2))`, `=N(CHOOSE(TRUE,Z1:Z2,Z2))`,
+`=T(INDEX(Y1:Y2,0))` and `=T(CHOOSE(2,Y1,Y1:Y2))` read the top-left cell of the reference picked (7, "a"); `=N(INDEX(Z1:Z2,2))` and
+`=N(CHOOSE(2,Z1:Z2,Z2))` are 8. A CHOOSE with a literal index mixing references and array constants is read by the arm the
+index picks: `=N(CHOOSE(1,Z1,{2;3}))` and `=N(CHOOSE(1,Z1:Z2,{2;3}))` are 7, `=N(CHOOSE(2,Z1,{2;3}))`, `=N(CHOOSE(1,{2;3},Z1))` and
+`=T(CHOOSE(2,Y1,{"a";"b"}))` are `#VALUE!`, and none gets an `@` on the call. Implemented (T-1918,
+`chooses_between_references_and_array_constants`); the other cells already matched. One-element array arms in such a
+CHOOSE (`{2}`) are unprobed and keep the old `@`.
 More shapes (probes/legacy-n-t-marker-shapes, excel-graph, 2026-10-18, T-1713 review; Z1 = 7; FORMULATEXT shows no `@`
 in any of them, and none spills): `=T(IF(1,{"a"}))`, `=N(CHOOSE(1,{2}))`, `=T(CHOOSE(1,{"a"}))`, `=N(IFS(1,{2}))`
 (one-element arms), `=N(INDEX({2,3;4,5},1))`, `=N(INDEX({2;3},1))`, `=N(IF(1,{2;3}+0))` (an operator in IF's arm),
@@ -1590,12 +1625,11 @@ IF nested in the marked argument's arms (the one-element `@` stays there).
 A range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets no `@`
 under N and T since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator,
 an array constant or another call keeps the old `@`; CHOOSE with a literal index over such references and INDEX of
-one get none either, T-1908, and are read as references, not marked; only `CHOOSE(1,range)`, `INDEX(range,1)` and
-`INDEX(range,@range)` are probed, the other literal indices and arms are an unprobed extension: T-1918). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
+one get none either, T-1908, and are read as references, not marked; the other literal indices, INDEX indices and mixed arms are probed in legacy-n-t-choose-index-shapes, T-1918). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
 Re-entering a marked cell through a row/column edit, move, fill or paste does not keep the marker yet (T-1852).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921
+Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921, T-1933
 
 ## Legacy N and T marker spelling shadows a defined name of that spelling
 Rule: in Excel a workbook LAMBDA name is called by its name; in RustSheet the names `_RS_LEGACY_N` and

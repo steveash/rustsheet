@@ -285,14 +285,26 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
                 .map_err(|e| format!("sheet op on {sheet}: {e}"))
         };
         let done = match op {
-            SheetOp::Add { sheet } => workbook.edit(|tx| tx.add_sheet(sheet).map(|_| ())),
+            SheetOp::Add { sheet } => workbook.edit(|tx| tx.add_sheet(sheet)).map(drop),
             SheetOp::Rename { sheet, to } => {
                 let id = sheet_id_of(workbook, sheet)?;
-                workbook.edit(|tx| tx.rename_sheet(id, to))
+                workbook.edit(|tx| tx.rename_sheet(id, to)).map(drop)
             }
             SheetOp::Move { sheet, to } => {
                 let id = sheet_id_of(workbook, sheet)?;
-                workbook.edit(|tx| tx.move_sheet(id, *to))
+                workbook.edit(|tx| tx.move_sheet(id, *to)).map(drop)
+            }
+            // Not a `Txn` edit: the facade has no row insert yet, so the harness uses its
+            // feature-gated one (decision 0076). `row` is 1-based, as in the case file.
+            SheetOp::InsertRow { sheet, row } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                let row = row
+                    .checked_sub(1)
+                    .ok_or_else(|| format!("sheet op {op:?}: rows are 1-based"))?;
+                // A `Txn` edit recalculates on commit; this one does not.
+                workbook
+                    .insert_rows(id, row, 1)
+                    .map(|()| workbook.recalculate())
             }
         };
         done.map_err(|e| format!("sheet op {op:?}: {e}"))?;
