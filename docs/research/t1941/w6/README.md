@@ -79,6 +79,28 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
 11. **The pole/interval rule is unidentified** (`polescan.py`): no clean "relative LS on [a,b]" rule reproduces Excel's
     K3 or K2 poles. The best K3 match is (9,9) on [0.75,3] at 0.15 rms log-distance.
 
+12. **Raw x vs m = x-2: raw x favoured, with controls** (`synth.py`, `synth_m.py`).
+    - In an m-variable chain, the products s*m vanish as x -> 2, so their lines die. The x-2 synthetic, a (9,9) LS
+      of R on [1.2,2.6] in m, shows strong peaks (amp > 0.35, per 0.1 band from 1.5) of 614, 287, 127, 94 and 34.
+      Its R noise sd falls from 2.5 to 0.7 ulp.
+    - Excel: 335, 309, 394, 288 and 250, with sd from 1.4 to 1.1.
+    - The raw-x synthetic (same interval): 221, 275, 306, 314 and 451, with sd 1.2-1.5.
+13. **Why the coefficients are hard: quantified on a synthetic (9,9) control** (`synth_truth99.txt`; data simulated
+    on the real sweep grid and re-extracted like Excel's).
+    - Function null space (`nullspace.py`, exact in mpmath): the singular values decay about 40x per step. With a
+      1e-16 function tolerance, about 7 directions are open. Measured in units that change stage values by 1e-3, they
+      span 6 to 2e12 units. The function pins no mid or upper stage, and even D's shape on [1.5,2] varies by 5%
+      under D0 = 1.
+    - Analytic line laws (product P'h/ulp, sum, triangle) explain only 2 of the 30 synthetic tracks. The rest are
+      intermodulation of stored-multiplicand products. A DE on the line-law objective finds a wrong chain that scores
+      above the truth (0.406 against 0.395) (`polede.py`).
+    - The exact-simulation spectral objective (`simobj.py`) scores 0.92 at the truth. Under log-pole perturbations
+      it gives about 0.3 at 1e-3, 0.03-0.07 at 1e-2 and 0 at 1e-1. In pole space with N from LS it is degenerate:
+      DE reaches 0.44 at wrong poles, while the truth scores only 0.33 through the same LS (`simde.py`).
+    - Conclusion: no global search from function plus lines can find Excel's chain. Stage values must be read at
+      anchors (ladders q409 at 2-, q410 at 1.5+, r203, r204, c304) by exact search in stage-ulp coordinates, as W1
+      and W2 did, and then joined. That is K1-K3-scale work.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
