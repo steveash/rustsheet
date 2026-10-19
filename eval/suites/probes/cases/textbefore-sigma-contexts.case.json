@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1799 TEXTBEFORE/TEXTAFTER match_mode 1: a same-case lone sigma delimiter, and a capital sigma before a space, digit, punctuation or letter",
+  "tags": [
+    "M7",
+    "text",
+    "dynamic-arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"aΣb\",\"Σ\",1,1),\"ERR\"),1)",
+        "A2": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"ΟΔΟΣ ΚΑΙ\",\"ς\",1,1),\"ERR\"),1)",
+        "A3": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"ΟΔΟΣ ΚΑΙ\",\"σ\",1,1),\"ERR\"),1)",
+        "A4": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"ΟΔΟΣ1\",\"σ\",1,1),\"ERR\"),1)",
+        "A5": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"ΟΔΟΣ1\",\"ς\",1,1),\"ERR\"),1)",
+        "A6": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"ΟΔΟΣ,Α\",\"σ\",1,1),\"ERR\"),1)",
+        "A7": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"ΟΔΟΣ,Α\",\"ς\",1,1),\"ERR\"),1)",
+        "A8": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"ΟΔΟΣΑ\",\"σ\",1,1),\"ERR\"),1)",
+        "A9": "=ARRAYTOTEXT(IFERROR(TEXTBEFORE(\"ΟΔΟΣΑ\",\"ς\",1,1),\"ERR\"),1)",
+        "A10": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"aΣb\",\"Σ\",1,1),\"ERR\"),1)",
+        "A11": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"ΟΔΟΣ ΚΑΙ\",\"ς\",1,1),\"ERR\"),1)",
+        "A12": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"ΟΔΟΣ ΚΑΙ\",\"σ\",1,1),\"ERR\"),1)",
+        "A13": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"ΟΔΟΣ1\",\"σ\",1,1),\"ERR\"),1)",
+        "A14": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"ΟΔΟΣ1\",\"ς\",1,1),\"ERR\"),1)",
+        "A15": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"ΟΔΟΣ,Α\",\"σ\",1,1),\"ERR\"),1)",
+        "A16": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"ΟΔΟΣ,Α\",\"ς\",1,1),\"ERR\"),1)",
+        "A17": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"ΟΔΟΣΑ\",\"σ\",1,1),\"ERR\"),1)",
+        "A18": "=ARRAYTOTEXT(IFERROR(TEXTAFTER(\"ΟΔΟΣΑ\",\"ς\",1,1),\"ERR\"),1)"
+      }
+    }
+  ],
+  "expected": {}
+}

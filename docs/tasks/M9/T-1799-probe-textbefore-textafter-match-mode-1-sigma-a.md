@@ -3,7 +3,7 @@ id: T-1799
 title: "Probe TEXTBEFORE/TEXTAFTER match_mode 1 sigma: a same-case Σ delimiter and a Σ before a space, digit or punctuation"
 milestone: M9
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ docs/excel-semantics/text.md "TEXTBEFORE and TEXTAFTER match_mode 1 case folding
 
 ## Out of scope
 - TEXTSPLIT's and SEARCH's sigma (their own tasks if they differ).
+
+## Outcome
+Probe `probes/textbefore-sigma-contexts` (18 cells, excel-graph 2026-10-19). Excel gives `#N/A` for a same-case lone `Σ` delimiter (as we did), but a `Σ` before a digit folds to `σ` (we gave `ς`). `fold_for_before_after` now reuses LOWER's `sigma_is_final`. Semantics doc updated.

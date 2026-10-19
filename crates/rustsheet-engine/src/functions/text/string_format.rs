@@ -335,7 +335,7 @@ fn simple_case(c: char, upper: bool) -> char {
 /// a combining mark (U+0300..U+036F), a right single quote (U+2019) or a zero-width space, while
 /// a straight apostrophe, space, `-` and the end of the text all give ς (probes/case-mapping-expanding
 /// A14:C27). The rule is the same in PROPER and LOWER, and a lone Σ lowers to ς in LOWER.
-fn sigma_is_final(next: Option<char>) -> bool {
+pub(super) fn sigma_is_final(next: Option<char>) -> bool {
     next.is_none_or(|n| {
         !(n.is_alphanumeric() || matches!(n, '\u{300}'..='\u{36f}' | '\u{2019}' | '\u{200b}'))
     })

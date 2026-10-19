@@ -327,3 +327,25 @@ fn empty_delimiter_matches_at_start_or_end() {
     assert_eq!(model._get_text("A9"), *"#VALUE!");
     assert_eq!(model._get_text("A10"), *"a");
 }
+
+// T-1799: probes/textbefore-sigma-contexts A1-A9 (excel-graph): a capital sigma is `σ` before a
+// letter or digit and `ς` otherwise, and a lone delimiter `Σ` is `ς` even against a text `Σ`.
+#[test]
+fn test_textbefore_textafter_sigma_contexts() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(\"aΣb\",\"Σ\",1,1)");
+    model._set("A2", "=TEXTBEFORE(\"ΟΔΟΣ ΚΑΙ\",\"ς\",1,1)");
+    model._set("A3", "=TEXTBEFORE(\"ΟΔΟΣ ΚΑΙ\",\"σ\",1,1)");
+    model._set("A4", "=TEXTBEFORE(\"ΟΔΟΣ1\",\"σ\",1,1)");
+    model._set("A5", "=TEXTBEFORE(\"ΟΔΟΣ1\",\"ς\",1,1)");
+    model._set("A6", "=TEXTAFTER(\"ΟΔΟΣ,Α\",\"ς\",1,1)");
+    model._set("A7", "=TEXTAFTER(\"ΟΔΟΣ,Α\",\"σ\",1,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"ΟΔΟ");
+    assert_eq!(model._get_text("A3"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"ΟΔΟ");
+    assert_eq!(model._get_text("A5"), *"#N/A");
+    assert_eq!(model._get_text("A6"), *",Α");
+    assert_eq!(model._get_text("A7"), *"#N/A");
+}
