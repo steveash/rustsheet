@@ -493,3 +493,56 @@ fn criteria_grammar_shared_with_countif() {
     assert_eq!(model._get_text("J2"), *"0");
     assert_eq!(model._get_text("J3"), *"6");
 }
+
+/// A huge or fractional `field` is out of range, never an overflow (T-1389 security review), and a
+/// written empty `field` counts the matching records for DCOUNT and DCOUNTA only
+/// (probes/db-argument-modes K12:K13).
+#[test]
+fn field_edge_cases() {
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "Name"),
+        ("B1", "Qty"),
+        ("A2", "a"),
+        ("B2", "3"),
+        ("A3", "b"),
+        ("B3", "4"),
+        ("D1", "Qty"),
+        ("D2", ">2"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("F1", "=DSUM(A1:B3,1E10,D1:D2)");
+    model._set("F2", "=DSUM(A1:B3,2147483647,D1:D2)");
+    model._set("F3", "=DSUM(A1:B3,0/0,D1:D2)");
+    model._set("F4", "=DCOUNT(A1:B3,,D1:D2)");
+    model._set("F5", "=DCOUNTA(A1:B3,,D1:D2)");
+    model._set("F6", "=DSUM(A1:B3,,D1:D2)");
+    model._set("F7", "=DSUM({1,2;3,4},2,D1:D2)");
+    model._set("F8", "=ROWS(DSUM(A1:B3,{1;2},D1:D2))");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), *"#VALUE!");
+    assert_eq!(model._get_text("F2"), *"#VALUE!");
+    assert_eq!(model._get_text("F3"), *"#DIV/0!");
+    assert_eq!(model._get_text("F4"), *"2");
+    assert_eq!(model._get_text("F5"), *"2");
+    assert_eq!(model._get_text("F6"), *"#VALUE!");
+    assert_eq!(model._get_text("F7"), *"#VALUE!");
+    assert_eq!(model._get_text("F8"), *"2");
+}
+
+/// A lifted `field` is charged the criteria table per element, so a large one is refused before
+/// it scans (security review of T-1389); the same call without a lift runs.
+#[test]
+fn lifted_field_is_charged_the_criteria_table() {
+    let mut model = new_empty_model();
+    model._set("A1", "Name");
+    model._set("A2", "a");
+    model._set("H1", "Name");
+    model._set("H2", "a");
+    model._set("F1", "=DCOUNTA(A1:C1000,1,H1:Z1000)");
+    model._set("F2", "=ROWS(DCOUNTA(A1:C1000,SEQUENCE(10),H1:Z1000))");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), *"1");
+    assert_eq!(model._get_text("F2"), *"#ERROR!");
+}

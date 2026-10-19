@@ -21,14 +21,6 @@ struct DbQuery {
     criteria: (CellReferenceIndex, CellReferenceIndex),
 }
 
-fn value_error(cell: CellReferenceIndex, message: &str) -> CalcResult {
-    CalcResult::Error {
-        error: Error::VALUE,
-        origin: cell,
-        message: message.to_string(),
-    }
-}
-
 /// The corners of a reference argument; an error passes through, anything else is `#VALUE!`
 /// (a database given as an array makes Excel refuse the workbook, statistics.md "Database
 /// function argument modes"; a criteria element of a lifted array is a scalar, `#VALUE!`).
@@ -39,7 +31,11 @@ fn reference_corners(
     match value {
         CalcResult::Range { left, right } => Ok((*left, *right)),
         error @ CalcResult::Error { .. } => Err(error.clone()),
-        _ => Err(value_error(cell, "Expected reference")),
+        _ => Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "Expected reference".to_string(),
+        )),
     }
 }
 
@@ -55,19 +51,23 @@ impl Model {
         empty_field_counts: bool,
         compute: fn(&mut Model, &DbQuery, CellReferenceIndex) -> CalcResult,
     ) -> CalcResult {
-        // Every lifted element scans the database.
-        let cost = match args
-            .first()
-            .map(|database| self.get_reference(database, cell))
-        {
-            Some(Ok(range)) => LiftCost::Cells(
-                u64::try_from(range.right.row - range.left.row + 1)
-                    .unwrap_or(0)
-                    .saturating_mul(
-                        u64::try_from(range.right.column - range.left.column + 1).unwrap_or(0),
-                    ),
-            ),
-            _ => LiftCost::Unit,
+        // Only an argument that is not a plain literal or reference can lift, and only then is the
+        // call priced (the database and criteria are read again by the driver; cheap).
+        let may_lift = args.iter().skip(1).any(|arg| {
+            !matches!(
+                arg.ungrouped(),
+                Node::BooleanKind(_)
+                    | Node::NumberKind(_)
+                    | Node::StringKind(_)
+                    | Node::ReferenceKind { .. }
+                    | Node::RangeKind { .. }
+                    | Node::EmptyArgKind
+            )
+        });
+        let cost = if may_lift {
+            self.db_element_cost(args, cell)
+        } else {
+            LiftCost::Unit
         };
         self.lift_call_costed(
             kind,
@@ -79,6 +79,32 @@ impl Model {
                 Err(error) => error,
             },
         )
+    }
+
+    /// What one lifted element costs: it scans every database row, reading the criteria headers
+    /// against the database's columns and each criteria row's cells (`db_row_matches_criteria`),
+    /// plus the field read. A whole-column database or criteria range is therefore `#ERROR!` when
+    /// lifted (limits.rs `MAX_LIFTED_CELL_VISITS`; a DEVIATION, statistics.md).
+    fn db_element_cost(&mut self, args: &[Node], cell: CellReferenceIndex) -> LiftCost<'static> {
+        let size = |range: &crate::calc_result::Range| {
+            let rows = u64::try_from(range.right.row - range.left.row + 1).unwrap_or(0);
+            let columns = u64::try_from(range.right.column - range.left.column + 1).unwrap_or(0);
+            (rows, columns)
+        };
+        let Some(Ok(database)) = args.first().map(|node| self.get_reference(node, cell)) else {
+            return LiftCost::Unit;
+        };
+        let (rows, columns) = size(&database);
+        let (criteria_rows, criteria_columns) =
+            match args.get(2).map(|node| self.get_reference(node, cell)) {
+                Some(Ok(criteria)) => size(&criteria),
+                _ => (0, 0),
+            };
+        let per_row = criteria_columns
+            .saturating_mul(columns)
+            .saturating_add(criteria_rows.saturating_mul(criteria_columns))
+            .saturating_add(1);
+        LiftCost::Cells(rows.saturating_mul(per_row))
     }
 
     fn db_query(
@@ -98,7 +124,11 @@ impl Model {
         };
         let criteria = reference_corners(criteria, cell)?;
         if right.row <= left.row {
-            return Err(value_error(cell, "No data rows in database"));
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "No data rows in database".to_string(),
+            ));
         }
         Ok(DbQuery {
             left,
@@ -145,6 +175,14 @@ impl Model {
             CalcResult::Number(n) if n.is_finite() => step(acc, n),
             _ => acc,
         })
+    }
+
+    /// DMAX and DMIN: the extreme `pick` chooses among the matching numbers, 0 when there are none.
+    fn db_extreme(&mut self, query: &DbQuery, pick: fn(f64, f64) -> f64) -> CalcResult {
+        let best = self.db_fold_numbers(query, None, |best: Option<f64>, n| {
+            Some(best.map_or(n, |current| pick(n, current)))
+        });
+        CalcResult::Number(best.unwrap_or(0.0))
     }
 
     fn db_numbers(&mut self, query: &DbQuery) -> Vec<f64> {
@@ -220,7 +258,9 @@ impl Model {
             });
             match (matches, result) {
                 (1, Some(value)) => value,
-                (0, _) | (_, None) => value_error(cell, "No matching record"),
+                (0, _) | (_, None) => {
+                    CalcResult::new_error(Error::VALUE, cell, "No matching record".to_string())
+                }
                 _ => CalcResult::Error {
                     error: Error::NUM,
                     origin: cell,
@@ -233,20 +273,14 @@ impl Model {
     // =DMAX(database, field, criteria)
     pub(crate) fn fn_dmax(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.db_call(Function::Dmax, args, cell, false, |model, query, _| {
-            let best = model.db_fold_numbers(query, None, |best: Option<f64>, n| {
-                Some(best.map_or(n, |current| n.max(current)))
-            });
-            CalcResult::Number(best.unwrap_or(0.0))
+            model.db_extreme(query, f64::max)
         })
     }
 
     // =DMIN(database, field, criteria)
     pub(crate) fn fn_dmin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.db_call(Function::Dmin, args, cell, false, |model, query, _| {
-            let best = model.db_fold_numbers(query, None, |best: Option<f64>, n| {
-                Some(best.map_or(n, |current| n.min(current)))
-            });
-            CalcResult::Number(best.unwrap_or(0.0))
+            model.db_extreme(query, f64::min)
         })
     }
 
@@ -318,21 +352,22 @@ impl Model {
         field: &CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<i32, CalcResult> {
-        let field_column_name = match field.clone() {
+        let field_column_name = match field {
             CalcResult::String(s) => s.to_lowercase(),
             CalcResult::Number(index) => {
-                let index = index.floor() as i32;
-                if index < 1 || db_left.column + index - 1 > db_right.column {
+                // `as` saturates a huge or NaN index; i64 keeps the sum from overflowing.
+                let index = i64::from(index.floor() as i32);
+                if index < 1 || i64::from(db_left.column) + index - 1 > i64::from(db_right.column) {
                     return Err(CalcResult::Error {
                         error: Error::VALUE,
                         origin: cell,
                         message: "Field index out of range".to_string(),
                     });
                 }
-                return Ok(db_left.column + index - 1);
+                return Ok(db_left.column + (index as i32) - 1);
             }
             CalcResult::Boolean(b) => {
-                return if b {
+                return if *b {
                     Ok(db_left.column)
                 } else {
                     // Index 0 is out of range
@@ -344,7 +379,7 @@ impl Model {
                 };
             }
             error @ CalcResult::Error { .. } => {
-                return Err(error);
+                return Err(error.clone());
             }
             CalcResult::Range { .. } => {
                 return Err(CalcResult::Error {

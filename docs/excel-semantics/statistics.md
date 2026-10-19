@@ -1063,7 +1063,11 @@ are E1:E2 (Qty ">2") and F1:F2 (Name "e").
 Ours: `field` (LiftArrays) and `criteria` (LiftArraysRangeWhole) lift through SPEC-0011's driver, `database`
 is read whole, and DCOUNT/DCOUNTA with an empty field count the matching records (T-1389). A generated
 sample also showed gaps in header matching and criteria (T-1390).
-Status: VERIFIED (excel-graph)
+Lifted calls are bounded (directive 5): each lifted element is charged the database's rows times the
+criteria headers and criteria cells it scans (`Model::db_element_cost`), and a call over
+`MAX_LIFTED_CELL_VISITS` (2^27) is `#ERROR!` where Excel returns a value, e.g. `DSUM(A:Z, SEQUENCE(1,26), crit)`
+over whole columns. A call that does not lift is not charged.
+Status: VERIFIED (excel-graph); the lifted-call bound is DEVIATION (decision 0014)
 Tasks: T-1086, T-1389, T-1390
 
 ## GAMMA and GAMMALN sweep (T-1042)
