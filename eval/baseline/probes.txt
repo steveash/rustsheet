@@ -381,6 +381,7 @@ C	probes/index-tiny-negative.case.json	150
 C	probes/indirect-defined-name-text.case.json	32
 C	probes/indirect-r1c1-offset-overflow.case.json	7
 C	probes/indirect-text-broadcast.case.json	58
+C	probes/info-cell-address-cross-sheet.case.json	9
 C	probes/info-cell-contents-range.case.json	50
 C	probes/info-cell-legacy-range.case.json	40
 C	probes/info-logic-argument-modes-2.case.json	11
@@ -621,6 +622,7 @@ C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
 C	probes/product-array-elements.case.json	9
+C	probes/quotient-factdouble-seriessum-3d-legacy.case.json	8
 C	probes/r1c1-bare-lambda-one.case.json	2
 C	probes/r1c1-bare-lambda-opt.case.json	2
 C	probes/r1c1-let-name-c.case.json	2
@@ -1678,7 +1680,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
-F	probes/info-logic-argument-modes.case.json	Calc!A19
 F	probes/legacy-marker-spelling-name-nlg1.case.json	!EngineError
 F	probes/legacy-marker-spelling-name-tlg1.case.json	!EngineError
 F	probes/linest-modes.case.json	Sheet1!K1

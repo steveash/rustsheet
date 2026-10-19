@@ -6,6 +6,7 @@ use crate::{
     },
     functions::{
         lift::{num_error, value_error, LiftCost},
+        util::is_multi_sheet_span,
         Function,
     },
     model::Model,
@@ -52,6 +53,12 @@ impl Model {
     /// are 5; text inside an array literal or a multi-cell range is `#VALUE!`
     /// (probes/seriessum-boolean-coefficients A8:A11).
     fn series_coefficients(&mut self, node: &Node, cell: CellReferenceIndex) -> Coefficients {
+        // Excel: a 3-D span as the coefficients (`Sheet1:Sheet2!A1`, even one cell wide) is `#VALUE!`, not the `#REF!`
+        // that reading it as a value gives (probes/quotient-factdouble-seriessum-3d-legacy C4,
+        // T-1832).
+        if is_multi_sheet_span(node) {
+            return Err(value_error(cell));
+        }
         let result = self.evaluate_node_in_context(node, cell);
         let is_single = match &result {
             CalcResult::String(_) => true,
