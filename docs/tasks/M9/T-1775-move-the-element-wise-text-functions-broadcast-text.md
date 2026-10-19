@@ -3,7 +3,7 @@ id: T-1775
 title: "Move the element-wise text functions (broadcast_text, TextArg) onto the SPEC-0011 driver"
 milestone: M9
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
