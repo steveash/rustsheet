@@ -23,7 +23,7 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_typed_number},
+        format::{format_number, parse_typed_number, rejected_clock_text_format},
         lexer::is_likely_date_number_format,
     },
     implicit_intersection::implicit_intersection,
@@ -2187,17 +2187,8 @@ impl Model {
                     parse_typed_number(&value, &currencies, self.locale, &year, ds)
                 {
                     if let Some(num_fmt) = number_format {
-                        // Should not apply the format in the following cases:
-                        // - we assign a date to already date-formatted cell
-                        let should_apply_format = !(is_likely_date_number_format(
-                            &self.workbook.styles.get_style(new_style_index)?.num_fmt,
-                        ) && is_likely_date_number_format(&num_fmt));
-                        if should_apply_format {
-                            new_style_index = self
-                                .workbook
-                                .styles
-                                .get_style_with_format(new_style_index, &num_fmt)?;
-                        }
+                        new_style_index =
+                            self.style_with_typed_format(new_style_index, &num_fmt)?;
                     }
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
                     worksheet.set_cell_with_number(row, column, v, new_style_index)?;
@@ -2210,6 +2201,8 @@ impl Model {
                     return Ok(());
                 }
                 // Check is it is error value
+                let rejected_format =
+                    rejected_clock_text_format(&value, &currencies, self.locale, &year, ds);
                 let upper = value.to_uppercase();
                 let worksheet = self.workbook.worksheet_mut(sheet)?;
                 match get_error_by_name(&upper, self.language) {
@@ -2217,6 +2210,10 @@ impl Model {
                         worksheet.set_cell_with_error(row, column, error, new_style_index)?;
                     }
                     None => {
+                        if let Some(num_fmt) = rejected_format {
+                            new_style_index =
+                                self.style_with_typed_format(new_style_index, &num_fmt)?;
+                        }
                         self.set_cell_with_string(sheet, row, column, &value, new_style_index)?;
                         // If the input looks like an URL or an email address a link is
                         // attached to the cell, the same way other inputs change the
