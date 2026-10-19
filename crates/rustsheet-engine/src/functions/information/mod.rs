@@ -64,10 +64,18 @@ impl Model {
         cell: CellReferenceIndex,
         test: impl Fn(&ArrayNode) -> bool,
     ) -> CalcResult {
+        let is_nontext = kind == Function::Isnontext;
         self.lift_call(kind, args, cell, &mut |_, values| {
             let [value] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
+            // An uncalled LAMBDA or function name is a value of its own, neither an error nor
+            // text: only ISNONTEXT is TRUE (`ISERROR(_xleta.SUM)` is FALSE; probes/eta-reduced-names
+            // E93, probes/lambda-value-arguments A1-A14, A26; arrays.md "An uncalled LAMBDA is one
+            // value").
+            if matches!(value, CalcResult::Lambda(_)) {
+                return CalcResult::Boolean(is_nontext);
+            }
             CalcResult::Boolean(test(&calc_result_to_array_node(value.clone())))
         })
     }
@@ -270,6 +278,10 @@ impl Model {
         let value = self.dereference(value, cell);
         if matches!(value, CalcResult::Boolean(_)) {
             return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+        }
+        // `ISEVEN(LAMBDA(x,x))` is `#VALUE!` (probes/lambda-value-arguments A23).
+        if matches!(value, CalcResult::Lambda(_)) {
+            return Self::lambda_as_number_error(cell);
         }
         match self.cast_to_number(value, cell) {
             Ok(f) => CalcResult::Boolean((f.abs().trunc() as i64 % 2 == 0) == even),

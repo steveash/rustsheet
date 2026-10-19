@@ -312,7 +312,7 @@ Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (ro
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); none of the other lifts above (`#VALUE!` for a
 range, `#N/IMPL!` for an array; `SEQUENCE(A1:A3)` is one row);
 GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; `_xleta.` names work since T-1466, see "Functions passed by name" below); INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
-is `#VALUE!`; a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
+is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)
 Tasks: T-1083 (generator modes)
 
@@ -863,6 +863,31 @@ before allocating ("Array results above 1,048,576 cells").
 Status: VERIFIED (excel-graph)
 Tasks: T-1349
 
+## MAP over single values
+Rule: MAP's first array may be a single value, but each later array must be an array or a reference: a single value there
+makes the whole MAP `#VALUE!`. `MAP(1,LAMBDA(x,x))`, `MAP("a",LAMBDA(x,x))` and `MAP(1,{2},LAMBDA(x,y,x+y))` work (1, "a",
+3), and so do one-cell references (`MAP(Z1,Z2,LAMBDA(x,y,x+y))` is 11). `MAP({1},2,..)`, `MAP(1,2,..)`, `MAP(TRUE,FALSE,..)`,
+`MAP(1,1,1,..)` and `MAP(Z1:Z2,3,..)` are `#VALUE!`, and so is `SUM(MAP(scalar,scalar,scalar,_xleta.MAX))`.
+Evidence: probes/lambda-value-arguments A27-A32, B1-B10 (excel-graph, 2026-10-19, T-1511); gen-m7/44ef4f5638e25bcd Calc!A7.
+Ours: `fn_map` reads its second and later arrays with `refuse_scalar` (`by_slices_source`, bycol_byrow.rs) since T-1511. A blank or
+an error value as a later array is unprobed (ours: a blank is refused, an error passes), as is `MAP(1,LAMBDA(x,y,x))` (T-1946).
+Status: VERIFIED (excel-graph)
+Tasks: T-1511
+
+## An uncalled LAMBDA is one value
+Rule: an uncalled LAMBDA, or a function passed by name, is one value that is neither an error nor text. `ROWS` and `COLUMNS`
+of it are 1 (`ROWS(LAMBDA(x,x))`, `COLUMNS(_xleta.SUM)`, `ROWS(IF(1,LAMBDA(x,x)))`). INDEX with a row and a column of 0 or 1
+gives it back, which a cell shows as `#CALC!` (`INDEX(LAMBDA(x,x),1,1)`, `INDEX(LAMBDA(x,x),1)`, `INDEX(_xleta.SUM,1,1)`;
+`ROWS(INDEX(LAMBDA(x,x),0,0))` is 1). ISNONTEXT of it is TRUE, while ISERROR, ISERR, ISNA, ISTEXT, ISNUMBER, ISLOGICAL,
+ISBLANK and ISREF are FALSE (also through `IF(1,..)`). `ISEVEN(LAMBDA(x,x))` is `#VALUE!`, `ERROR.TYPE(LAMBDA(x,x))` is
+`#N/A`, `TYPE(_xleta.SUM)` is 128 and `IFERROR(LAMBDA(x,x),1)` is `#CALC!`, the uncalled LAMBDA in the cell.
+Evidence: probes/lambda-value-arguments A1-A26 (excel-graph, 2026-10-19, T-1511); probes/m7-argument-modes F44:H44;
+probes/eta-reduced-names E93.
+Ours: `value_extent` (cast.rs), `is_predicate` and `parity_of` (information/mod.rs), `index_select` (index.rs) since T-1511.
+INDEX of a LAMBDA with an index of 2 is `#REF!` there, as for a scalar, which is unprobed (T-1946).
+Status: VERIFIED (excel-graph)
+Tasks: T-1511
+
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
 Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a
 reference and MAP, SCAN and REDUCE each cell as a reference. With A1 x, A3 z, B3 y (A2:B2, B1 blank):
@@ -912,7 +937,7 @@ few arguments (`LET(f,_xleta.SUM,f())`): the engine gives whatever the function 
 Evidence: probes/eta-reduced-names (30 questions, excel-graph, 2026-10-14, T-1466); probes/m7-argument-modes F28:H51.
 Ours: an unbound `_xleta.` name of a known function evaluates to a LAMBDA whose definition is made per call
 (`Model::unbound_name`, `eta_definition`, lambda.rs); BYROW and BYCOL take only a LAMBDA (`by_slices_lambda`). Not yet:
-`ISERROR(_xleta.SUM)` is TRUE, and `_xleta.IF` with one argument is `#ERROR!` where Excel gives `#CALC!` (T-1511). GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
+`_xleta.IF` with one argument is `#ERROR!` where Excel gives `#CALC!` (T-1947); `ISERROR(_xleta.SUM)` is FALSE since T-1511. GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1466
 
