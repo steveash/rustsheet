@@ -1,0 +1,45 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1998: SUBTOTAL, AREAS and ISREF over TAKE, DROP and TRIMRANGE of XLOOKUP: a reference-returning XLOOKUP (scalar lookup value, range return), lifting lookup values, a nested XLOOKUP lookup value, an array return, a range if_not_found, and the XLOOKUP under IF, CHOOSE and LET; each formula in column A from row 10 every 4 rows, in clear space so a spill shows its shape. H1:H2 = 3,4; I1:I2 = 6,8; J1:J2 = 1,2 (keys).",
+ "tags": [
+  "M7",
+  "probe",
+  "T-1998"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "H1": 3,
+    "H2": 4,
+    "I1": 6,
+    "I2": 8,
+    "J1": 1,
+    "J2": 2,
+    "A10": "=SUBTOTAL(9,TAKE(XLOOKUP(1,J1:J2,H1:I2),1,1))",
+    "A14": "=SUBTOTAL(9,DROP(XLOOKUP(1,J1:J2,H1:I2),0,1))",
+    "A18": "=SUBTOTAL(9,TRIMRANGE(XLOOKUP(1,J1:J2,H1:I2)))",
+    "A22": "=AREAS(TAKE(XLOOKUP(1,J1:J2,H1:I2),1))",
+    "A26": "=AREAS(DROP(XLOOKUP(1,J1:J2,H1:I2),0,1))",
+    "A30": "=AREAS(TRIMRANGE(XLOOKUP(1,J1:J2,H1:I2)))",
+    "A34": "=ISREF(TAKE(XLOOKUP(1,J1:J2,H1:I2),1))",
+    "A38": "=SUBTOTAL(9,TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1))",
+    "A42": "=ISREF(TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1))",
+    "A46": "=SUBTOTAL(9,TRIMRANGE(XLOOKUP({1;2},J1:J2,H1:H2)))",
+    "A50": "=SUBTOTAL(9,TAKE(XLOOKUP(XLOOKUP(1,J1:J2,J1:J2),J1:J2,H1:H2),1))",
+    "A54": "=SUBTOTAL(9,TAKE(XLOOKUP(1,{1;2},H1:I2),1,1))",
+    "A58": "=SUBTOTAL(9,TAKE(XLOOKUP(5,J1:J2,H1:I2,H2:I2),1,1))",
+    "A62": "=SUBTOTAL(9,TAKE(XLOOKUP(1,J1:J2,{3,6;4,8}),1,1))",
+    "A66": "=SUBTOTAL(9,TAKE(IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)),1,1))",
+    "A70": "=SUBTOTAL(9,TAKE(CHOOSE(1,XLOOKUP(1,J1:J2,H1:I2)),1,1))",
+    "A74": "=SUBTOTAL(9,TAKE(LET(v,XLOOKUP(1,J1:J2,H1:I2),v),1,1))",
+    "A78": "=SUBTOTAL(9,DROP(LET(v,XLOOKUP(1,J1:J2,H1:I2),v),0,1))",
+    "A82": "=SUBTOTAL(9,TRIMRANGE(IF(TRUE,XLOOKUP(1,J1:J2,H1:I2))))",
+    "A86": "=AREAS(TAKE(LET(v,XLOOKUP(1,J1:J2,H1:I2),v),1))",
+    "A90": "=SUM(TAKE(XLOOKUP(1,J1:J2,H1:I2),1))",
+    "A94": "=SUBTOTAL(9,TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1),TAKE(XLOOKUP(2,J1:J2,H1:H2),1))"
+   }
+  }
+ ]
+}
