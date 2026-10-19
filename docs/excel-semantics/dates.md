@@ -381,7 +381,7 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   format `d-mmm`; `"Jul2026"` -> 2026-07-01, `mmm-yy`; `"Jun31"` -> 1931-06-01, `mmm-yy`; `"1Jul 2026"`,
   `"Jul1 , 2026"` and `"1JUN2021"` -> d-mmm-yy dates (2026-07-01, 2026-07-01, 2021-06-01); `"July1 10:00"` ->
   46204.41666..., format `m/d/yyyy h:mm`; `"Jun1.5"` stays text (General). The engine matches (T-1907 made typed
-  date+time text a number with `m/d/yyyy h:mm`; only a typed `H:MM` clock is converted). Typed non-glued date + clock text is a number with the same format `m/d/yyyy h:mm` (`1/2/2020 10:00` -> 43832.41666..., `2020-01-02 10:00`, `July 1, 2026 10:00`, year-less `7/1 10:00` -> 46204.41666..., the serial inferred from the oracle's 2026 clock and not scored), and so are clocks with seconds (`1/2/2020 10:00:30` -> 43832.41701...) or AM/PM (`1/2/2020 10:00 AM`); a bare typed date `1/2/2020` is 43832 with format `m/d/yyyy`. In a 1904 workbook `1/2/1904 10:00` is 1.41666... and `12/31/1903 10:00` stays text (General) (probes/date-text-non-glued-timevalue rows 11-17, probes/date-system-1904-timevalue-non-glued rows 11-13, excel-graph, T-1952; formats from the ENTERED log in docs/research/non-glued-typed-input-2026-10-19.md). Further typed clock shapes after a date (probes/date-text-typed-clock-shapes, excel-graph, T-1979; formats from docs/research/typed-clock-shapes-2026-10-19.md): `H:MM:SS AM/PM`, lowercase or mixed-case `pm`, several spaces before AM/PM and an hour-only `10 AM`/`10 PM` are numbers with `m/d/yyyy h:mm`; a fractional second (`10:00:30.5`, `10:00.5` read as minutes and seconds) is a number with format `mm:ss.0`; a component out of its usual range (`24:00` -> 43833, `25:00`, `10:60`, `10:00:60`) is a number with format General; `13:00 PM` and a glued `10:00AM` stay text. Implemented in `typed_clock_shape` (formatter/parse_formatted.rs); the value is the date-clock serial of coercion. `0:00 AM`, `12:00 AM` and `12:30 PM` after a date are numbers with `m/d/yyyy h:mm` (0:00 AM is accepted; 12 AM is midnight, 12 PM noon). Text that stays text can still carry a format: the probed `1/2/2020 13:00 PM` is text whose cell format is `m/d/yyyy`, while the glued `10:00AM` stays General; the engine leaves General (follow-up task). UNVERIFIED (engine extrapolations, not probed): hours or minutes of 99 (`99:00`, `10:99`) as numbers, a fraction followed by AM/PM, `24:00 AM` and `13 PM` as text, hour-only `0 AM`/`12 PM`, trailing spaces after the clock, and fractions of 3-9 digits.
+  date+time text a number with `m/d/yyyy h:mm`; only a typed `H:MM` clock is converted). Typed non-glued date + clock text is a number with the same format `m/d/yyyy h:mm` (`1/2/2020 10:00` -> 43832.41666..., `2020-01-02 10:00`, `July 1, 2026 10:00`, year-less `7/1 10:00` -> 46204.41666..., the serial inferred from the oracle's 2026 clock and not scored), and so are clocks with seconds (`1/2/2020 10:00:30` -> 43832.41701...) or AM/PM (`1/2/2020 10:00 AM`); a bare typed date `1/2/2020` is 43832 with format `m/d/yyyy`. In a 1904 workbook `1/2/1904 10:00` is 1.41666... and `12/31/1903 10:00` stays text (General) (probes/date-text-non-glued-timevalue rows 11-17, probes/date-system-1904-timevalue-non-glued rows 11-13, excel-graph, T-1952; formats from the ENTERED log in docs/research/non-glued-typed-input-2026-10-19.md). Further typed clock shapes after a date (probes/date-text-typed-clock-shapes, excel-graph, T-1979; formats from docs/research/typed-clock-shapes-2026-10-19.md): `H:MM:SS AM/PM`, lowercase or mixed-case `pm`, several spaces before AM/PM and an hour-only `10 AM`/`10 PM` are numbers with `m/d/yyyy h:mm`; a fractional second (`10:00:30.5`, `10:00.5` read as minutes and seconds) is a number with format `mm:ss.0`; a component out of its usual range (`24:00` -> 43833, `25:00`, `10:60`, `10:00:60`) is a number with format General; `13:00 PM` and a glued `10:00AM` stay text. Implemented in `typed_clock_shape` (formatter/parse_formatted.rs); the value is the date-clock serial of coercion. `0:00 AM`, `12:00 AM` and `12:30 PM` after a date are numbers with `m/d/yyyy h:mm` (0:00 AM is accepted; 12 AM is midnight, 12 PM noon). Text that stays text can still carry a format (T-1986, probes/date-text-rejected-clock-formats N1-N16 and date-text-typed-clock-shapes N14-N15, excel-graph; formats from docs/research/rejected-clock-text-formats-2026-10-19.md): a date followed by a number-like clock (digits and colons only) and a spaced `AM`/`PM` that is rejected (`13:00 PM`, `13:00 AM`, `24:00 PM`, `13 PM`, `25:00 PM`, `13:00:00 PM`, `99:00 PM`, `1300 PM`) is text whose cell format is that of its date part: `m/d/yyyy` for slash and ISO dates, `d-mmm-yy` for `July 1, 2026 13:00 PM`. Everything else stays General: a glued `10:00AM`, `10:00 XM`, `10:00 PM PM`, `1/2/2020 abc` and a clock with no date (`13:00 PM`). Implemented in `rejected_clock_text_format` (formatter/parse_formatted.rs); `1/2/2020 10:00 A` is a number with `m/d/yyyy h:mm` (N7; engine gap T-1994); the format of a bare typed ISO date (`2020-01-02`) is unprobed, and the engine's `yyyy-mm-dd` for it is not Excel evidence. UNVERIFIED (engine extrapolations, not probed): hours or minutes of 99 (`99:00`, `10:99`) as numbers, a fraction followed by AM/PM, `24:00 AM` as text, hour-only `0 AM`/`12 PM`, trailing spaces after the clock (including after a rejected `13:00 PM`), a rejected clock after a percent, currency or grouped number (`$5 13:00 PM`; the engine leaves General), a year-less date before a rejected clock, a malformed clock of digits and colons (`:5 PM`, `1:2:3:4 PM`), a date part that already carries a time (`1/2/2020 10:00 13:00 PM`), several spaces between the date and the clock (the engine gives all of these the date part's format), a date typed into an already date-formatted cell (the engine keeps its format), and fractions of 3-9 digits.
 UNVERIFIED:
 - shapes the glued-month rules accept or reject beyond the probed rows (T-1906): `"1Jul5"` (any glued single digit after a day reads as year 0d), `"1/Jul2026"` and other separators, `"1-Jul26"`, the format typed `"1-Jul2026"` gets, and the hand-derived `#VALUE!` of `"July1 , 2026 5"`, `"1Jul1 , 2026"` and `"July1,, 2026"`;
 - the clock-year results (`"July1"`, `"July01"`, criteria K6-K8) for clocks other than the oracle's 2026;
@@ -722,14 +722,30 @@ excel-graph, 2026-10-18): 2958465.9999942 (23:59:59.499) and 2958465.999994 give
 Status: VERIFIED (web)
 
 ## HOUR, MINUTE and SECOND round to the nearest second
-Rule: SECOND of a time of day 22:24:01.729 is 2: `SECOND(DDB(81074,518,21,6,1))`, where DDB is 3024.9333533459067 (a
-last-digit difference in DDB cannot move it by 0.27 s). So the seconds are rounded, not truncated. Yet
-`SECOND("10:11.5")` is 11 (probes/clock-text-oddities F43), so an exact half does not round up there (tie rule or the
-serial's binary noise). The tie rule and whether the carry reaches MINUTE and HOUR (x:59:59.6, 23:59:59.6) are unprobed.
-Evidence: gen-m9/55fc8c4ffbd7c7cc Calc!A40 (excel-graph, 2026-10-12, T-1289); probes/clock-text-oddities F43 (excel-graph,
-2026-10-06, T-0153).
-Ours: the time is rounded to the millisecond and the seconds truncated (`SECOND(0.5+1.7/86400)` = 1).
-Status: VERIFIED (web) for these two cells; ties and carries UNVERIFIED
+Rule: HOUR, MINUTE and SECOND take the time of day rounded to the nearest second, and the carry goes all the way up:
+- `SECOND(TIME(10,59,59)+0.6/86400)` is 0, MINUTE 0 and HOUR 11.
+- At 23:59:59.6, HOUR, MINUTE and SECOND are all 0.
+- `SECOND("10:11:12.6")` is 13, and `HOUR("23:59:59.6")` is 0.
+- `SECOND(DDB(81074,518,21,6,1))`, at 22:24:01.729, is 2.
+
+All 40 probe cells fit one computation in double precision:
+1. Add half a second to the serial: `y = x + 0.5/86400`.
+2. Take the fraction of the day times 24: `h = (y - floor(y))*24`. HOUR is `floor(h)`.
+3. `m = (h - floor(h))*60`. MINUTE is `floor(m)`.
+4. SECOND is `floor((m - floor(m))*60)`.
+
+So an exact half goes whichever way the binary noise of these steps takes it, not by a fixed tie rule:
+- `SECOND(0.5+1.5/86400)` is 1, `0.5+2.5/86400` 2, `0.5+3.5/86400` 4.
+- `1+1.5/86400` is 2, `45000+1.5/86400` 1, `0.5+59.5/86400` 59.
+- `SECOND("10:11:12.5")` is 12, and `SECOND("10:11.5")` (611.5 s) is 11.
+
+Neither half-up nor half-even on `frac*86400` or `x*86400` fits these ties, and neither does the exact product: it
+lies above `.5` for 2.5 and 59.5, which round down. The fractions .4, .6 and .999 round as expected.
+Evidence: probes/second-rounding A1-A40 (excel-graph, 2026-10-19, T-1408); gen-m9/55fc8c4ffbd7c7cc Calc!A40
+(excel-graph, 2026-10-12, T-1289); probes/clock-text-oddities F43 (excel-graph, 2026-10-06, T-0153).
+Ours: matches since T-1408 (`time_of_day_parts`, functions/date_and_time.rs). Before, MINUTE and SECOND rounded to the
+millisecond and then truncated, and HOUR truncated.
+Status: VERIFIED (excel-graph)
 Tasks: T-1408
 
 ## YEARFRAC swaps reversed dates

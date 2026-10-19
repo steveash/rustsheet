@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "With no name defined, is a call of the old marker spelling _RS_LEGACY_N/_RS_LEGACY_T #NAME? and one of the new cell-like NLG1/TLG1 #REF! (T-1936)",
+ "tags": [
+  "M2",
+  "references",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=_RS_LEGACY_N(1)",
+    "A2": "=_RS_LEGACY_T(\"a\")",
+    "A3": "=NLG1(1)",
+    "A4": "=TLG1(\"a\")",
+    "A5": "=N(1)"
+   }
+  }
+ ],
+ "expected": {}
+}
