@@ -211,6 +211,7 @@ C	probes/date-text-glued-month.case.json	178
 C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/date-text-non-glued-timevalue.case.json	44
+C	probes/date-text-typed-clock-shapes.case.json	85
 C	probes/date-text-yearless-2.case.json	64
 C	probes/date-text-yearless-3.case.json	45
 C	probes/date-text-yearless.case.json	48
@@ -255,6 +256,7 @@ C	probes/elapsed-tiny-negatives-1904.case.json	11
 C	probes/encodeurl-evidence-floor.case.json	29
 C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
+C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-imdiv.case.json	24
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
@@ -671,6 +673,8 @@ C	probes/rate-empty-arguments.case.json	10
 C	probes/reference-lift-elements.case.json	59
 C	probes/regex-optional-args.case.json	149
 C	probes/regex-pcre2-features.case.json	62
+C	probes/regex-posix-classes-b.case.json	18
+C	probes/regex-posix-classes.case.json	905
 C	probes/regexreplace-extended-escapes.case.json	244
 C	probes/regexreplace-final-sigma.case.json	12
 C	probes/regexreplace-limit-and-syntax.case.json	22
@@ -1246,8 +1250,6 @@ F	probes/eng-impower-angle-cut.case.json	S!A17
 F	probes/eng-impower-angle-cut.case.json	S!A18
 F	probes/eng-impower-angle-cut.case.json	S!A19
 F	probes/eng-impower-angle-cut.case.json	S!A9
-F	probes/eng-later-argument-lift.case.json	Sheet1!M2
-F	probes/eng-later-argument-lift.case.json	Sheet1!M8
 F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E102
 F	probes/eta-reduced-names.case.json	Sheet1!E103
@@ -2179,7 +2181,19 @@ F	probes/regex-pcre2-features.case.json	Sheet1!D5
 F	probes/regex-pcre2-features.case.json	Sheet1!D6
 F	probes/regex-pcre2-features.case.json	Sheet1!D7
 F	probes/regex-pcre2-features.case.json	Sheet1!D9
-F	probes/regexreplace-limit-and-syntax.case.json	Sheet1!A23
+F	probes/regex-posix-classes-b.case.json	Sheet1!A10
+F	probes/regex-posix-classes-b.case.json	Sheet1!A11
+F	probes/regex-posix-classes-b.case.json	Sheet1!A4
+F	probes/regex-posix-classes-b.case.json	Sheet1!A5
+F	probes/regex-posix-classes-b.case.json	Sheet1!A8
+F	probes/regex-posix-classes-b.case.json	Sheet1!A9
+F	probes/regex-posix-classes.case.json	Sheet1!Z1
+F	probes/regex-posix-classes.case.json	Sheet1!Z10
+F	probes/regex-posix-classes.case.json	Sheet1!Z2
+F	probes/regex-posix-classes.case.json	Sheet1!Z3
+F	probes/regex-posix-classes.case.json	Sheet1!Z7
+F	probes/regex-posix-classes.case.json	Sheet1!Z8
+F	probes/regex-posix-classes.case.json	Sheet1!Z9
 F	probes/regression-forecast.case.json	Sheet1!L11
 F	probes/regression-forecast.case.json	Sheet1!L13
 F	probes/regression-forecast.case.json	Sheet1!L2
@@ -2662,12 +2676,6 @@ F	probes/stats-evidence-floor-t1623.case.json	S!Q36
 F	probes/stats-evidence-floor-t1623.case.json	S!Q50
 F	probes/stats-evidence-floor-t1623.case.json	S!Q58
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
-F	probes/subtotal-take-array-selector.case.json	Sheet1!A31
-F	probes/subtotal-take-array-selector.case.json	Sheet1!A41
-F	probes/subtotal-take-array-selector.case.json	Sheet1!B30
-F	probes/subtotal-take-array-selector.case.json	Sheet1!B31
-F	probes/subtotal-take-array-selector.case.json	Sheet1!B40
-F	probes/subtotal-take-array-selector.case.json	Sheet1!B41
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D1
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D7

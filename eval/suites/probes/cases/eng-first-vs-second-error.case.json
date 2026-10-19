@@ -1,0 +1,62 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1816: which argument's error wins inside one element of the two-argument base conversions, DELTA and GESTEP: scalar (A: text then #N/A, B: #N/A then text) and array-lifted (C, D). One function per row, rows 1-11 in the order DEC2BIN DEC2HEX DEC2OCT BIN2OCT BIN2HEX HEX2BIN HEX2OCT OCT2BIN OCT2HEX DELTA GESTEP.",
+ "tags": [
+  "M9",
+  "engineering",
+  "argument-modes",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=DEC2BIN(\"x\",NA())",
+    "B1": "=DEC2BIN(NA(),\"x\")",
+    "C1": "=INDEX(DEC2BIN({\"x\";9},NA()),1)",
+    "D1": "=INDEX(DEC2BIN(NA(),{\"x\";9}),1)",
+    "A2": "=DEC2HEX(\"x\",NA())",
+    "B2": "=DEC2HEX(NA(),\"x\")",
+    "C2": "=INDEX(DEC2HEX({\"x\";9},NA()),1)",
+    "D2": "=INDEX(DEC2HEX(NA(),{\"x\";9}),1)",
+    "A3": "=DEC2OCT(\"x\",NA())",
+    "B3": "=DEC2OCT(NA(),\"x\")",
+    "C3": "=INDEX(DEC2OCT({\"x\";9},NA()),1)",
+    "D3": "=INDEX(DEC2OCT(NA(),{\"x\";9}),1)",
+    "A4": "=BIN2OCT(\"x\",NA())",
+    "B4": "=BIN2OCT(NA(),\"x\")",
+    "C4": "=INDEX(BIN2OCT({\"x\";9},NA()),1)",
+    "D4": "=INDEX(BIN2OCT(NA(),{\"x\";9}),1)",
+    "A5": "=BIN2HEX(\"x\",NA())",
+    "B5": "=BIN2HEX(NA(),\"x\")",
+    "C5": "=INDEX(BIN2HEX({\"x\";9},NA()),1)",
+    "D5": "=INDEX(BIN2HEX(NA(),{\"x\";9}),1)",
+    "A6": "=HEX2BIN(\"x\",NA())",
+    "B6": "=HEX2BIN(NA(),\"x\")",
+    "C6": "=INDEX(HEX2BIN({\"x\";9},NA()),1)",
+    "D6": "=INDEX(HEX2BIN(NA(),{\"x\";9}),1)",
+    "A7": "=HEX2OCT(\"x\",NA())",
+    "B7": "=HEX2OCT(NA(),\"x\")",
+    "C7": "=INDEX(HEX2OCT({\"x\";9},NA()),1)",
+    "D7": "=INDEX(HEX2OCT(NA(),{\"x\";9}),1)",
+    "A8": "=OCT2BIN(\"x\",NA())",
+    "B8": "=OCT2BIN(NA(),\"x\")",
+    "C8": "=INDEX(OCT2BIN({\"x\";9},NA()),1)",
+    "D8": "=INDEX(OCT2BIN(NA(),{\"x\";9}),1)",
+    "A9": "=OCT2HEX(\"x\",NA())",
+    "B9": "=OCT2HEX(NA(),\"x\")",
+    "C9": "=INDEX(OCT2HEX({\"x\";9},NA()),1)",
+    "D9": "=INDEX(OCT2HEX(NA(),{\"x\";9}),1)",
+    "A10": "=DELTA(\"x\",NA())",
+    "B10": "=DELTA(NA(),\"x\")",
+    "C10": "=INDEX(DELTA({\"x\";9},NA()),1)",
+    "D10": "=INDEX(DELTA(NA(),{\"x\";9}),1)",
+    "A11": "=GESTEP(\"x\",NA())",
+    "B11": "=GESTEP(NA(),\"x\")",
+    "C11": "=INDEX(GESTEP({\"x\";9},NA()),1)",
+    "D11": "=INDEX(GESTEP(NA(),{\"x\";9}),1)"
+   }
+  }
+ ],
+ "expected": {}
+}
