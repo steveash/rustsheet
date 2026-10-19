@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-0953]
+depends_on: [T-0953, T-2029, T-2030]
 ---
 
 ## Goal
@@ -43,6 +43,8 @@ excel-probe skill (decision 0019/0030) before implementing it.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
+- The fraction section itself and the choice of fraction: T-2029 and T-2030 (gap triage 2026-10-19);
+  this task adds the literals, `=/=` and spacers on top of them.
 - Thousands grouping (T-0952); literal `|`, `£`, `¥` (T-0953).
 - The split into smaller PRs if the re-triage after T-0953 finds independent causes: file them as
   separate tasks instead of growing this one.

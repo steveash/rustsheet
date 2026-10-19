@@ -8,6 +8,7 @@ use crate::functions::statistical::IfsShape;
 use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
+use crate::x87_log10::excel_log10;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -370,7 +371,9 @@ impl Model {
             if f <= 0.0 {
                 Err(Error::NUM)
             } else {
-                Ok(f64::log10(f))
+                // Excel's x87 log10, not the platform's (numbers.md "LOG with one argument is
+                // LOG10", T-2004).
+                Ok(excel_log10(f))
             }
         })
     }
@@ -689,11 +692,13 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
+        // The base omitted is LOG10, not ln(x)/ln(10): `LOG(1000)` is 3 (numbers.md "LOG with
+        // one argument is LOG10"; probes/log10-kernel, T-2004).
         let y = if n_args == 1 {
-            10.0
+            None
         } else {
             match self.get_number(&args[1], cell) {
-                Ok(f) => f,
+                Ok(f) => Some(f),
                 Err(s) => return s,
             }
         };
@@ -704,6 +709,9 @@ impl Model {
                 message: "Number must be positive".to_string(),
             };
         }
+        let Some(y) = y else {
+            return CalcResult::Number(excel_log10(x));
+        };
         if y == 1.0 {
             return CalcResult::Error {
                 error: Error::DIV,
