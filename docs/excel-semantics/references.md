@@ -1601,15 +1601,18 @@ Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T
 Rule: in Excel a workbook LAMBDA name is called by its name; in RustSheet the names `_RS_LEGACY_N` and
 `_RS_LEGACY_T` are the stored spelling of a legacy N/T (SPEC-0012, `functions/kinds.rs`), so a typed or
 imported call `=_RS_LEGACY_N(1)` is plain N even when a LAMBDA name `_RS_LEGACY_N` exists.
-Evidence: none yet. Whether Excel accepts these spellings as defined names is unprobed (T-1912). If it
-does, Excel calls the name and ours calls N: a known gap, not a deviation (decision 0052). The matcher
-is exact and case-sensitive, so `_rs_legacy_n(1)` and `_xlfn._RS_LEGACY_N(1)` still call the name.
+Evidence (probes/legacy-marker-spelling-name-plain, probes/legacy-marker-spelling-name-xlfn, excel-graph, 2026-10-18, T-1912):
+Excel accepts `_RS_LEGACY_N`, `_RS_LEGACY_T` and `_xlfn._RS_LEGACY_N` as defined LAMBDA names (`=LAMBDA(x,x*10+7)`) and calls them: each call
+gives 17 where `N(1)` is 1. So the gap is real: ours calls N. Spellings Excel refuses as a defined name (the workbook does not open: createSession
+501 `unsupportedWorkbook`, no cell values to record, so these have no case): `R`, `RC`, `R1C1` (xlsxwriter warns "like a RC cell ref" too) and a
+256-character name (a 255-character one is accepted). Whether the engine's lexer reads such a spelling as one call name is open (T-1936).
+The matcher is exact and case-sensitive, so `_rs_legacy_n(1)` and `_xlfn._RS_LEGACY_N(1)` still call the name.
 A model file saved before T-1851 with such a call stored as `_RS_LEGACY_N(...)` reloads as the marker,
 not as the name call (xlsx never holds the spelling: its A1 text reads as plain N).
 Ours: N (test_legacy_n_t_marker.rs `a_typed_call_of_the_spelling_is_plain_n`).
-Status: UNVERIFIED (probe pending, T-1912)
+Status: VERIFIED (excel-graph); ours differs until T-1936
 Implemented in: functions/kinds.rs (`LEGACY_SPELLINGS`, `Function::from_legacy_spelling`); expressions/parser/operands.rs (`parse_named_call`)
-Tasks: T-1851, T-1912
+Tasks: T-1851, T-1912, T-1936
 
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
