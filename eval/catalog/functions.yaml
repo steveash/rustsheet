@@ -2931,8 +2931,8 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: number, mode: value, type: number }
-      - { name: multiple, mode: value, type: number }
+      - { name: number, mode: value, lift: arrays, type: number }
+      - { name: multiple, mode: value, lift: arrays, type: number }
   - name: MULTINOMIAL
     category: math
     milestone: M5
@@ -3940,7 +3940,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, lift: arrays, type: number }]
   - name: STANDARDIZE
     category: statistical
     milestone: M9
