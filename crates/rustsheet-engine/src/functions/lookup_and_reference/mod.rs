@@ -21,7 +21,7 @@ use super::criteria::wildcard_text_matcher;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
-use lookup_table::{LookupTable, SearchVector};
+use lookup_table::SearchVector;
 
 mod address_areas;
 mod choosecols_chooserows;
@@ -117,22 +117,22 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let target = self.lookup_value_arg(&args[0], cell);
-        if target.is_error() && !LiftedArg::is_grid(&target) {
+        // An array match_type lifts with lookup_value (probes/match-lookup-value-lift E14:E16,
+        // T-1917); a multi-cell range still reads its top-left cell (match_type_arg). A scalar
+        // error lookup_value lifts over it too: `MATCH(NA(),A1:A3,{0;1})` is 2x1 of #N/A
+        // (probes/match-error-lookup-value-array-match-type E1, E2, E7, E8; T-1926).
+        let match_type = if args.len() == 3 {
+            self.match_type_arg(&args[2], cell)
+        } else {
+            CalcResult::Number(1.0)
+        };
+        if target.is_error() && !LiftedArg::is_grid(&target) && !LiftedArg::is_grid(&match_type) {
             return target;
         }
-        let match_type = if args.len() == 3 {
-            match self.match_type_arg(&args[2], cell) {
-                // Only the sign counts: -0.5 searches descending (gen-m2/f7e6d351c8538ef5 A160,
-                // gen-m2/96a0952412cefa6c A241) and 0.5 ascending (probes/match-fractional-match-type
-                // C1-C3), so neither is the exact search that 0 is (docs/excel-semantics/lookup.md).
-                Ok(v) if v < 0.0 => Ok(-1),
-                Ok(v) if v > 0.0 => Ok(1),
-                Ok(_) => Ok(0),
-                Err(s) => Err(s),
-            }
-        } else {
-            Ok(1)
-        };
+        if match_type.is_error() && !LiftedArg::is_grid(&match_type) && !LiftedArg::is_grid(&target)
+        {
+            return match_type;
+        }
         let match_range = self.evaluate_single_sheet_arg(&args[1], cell);
 
         // MATCH operates on a vector (a single row or single column). We
@@ -146,20 +146,25 @@ impl Model {
         // #VALUE!, follows from the per-slot match_type check and is not probed;
         // docs/excel-semantics/lookup.md "MATCH lifts over lookup_value", T-1866).
         self.lift_values(
-            vec![target],
+            vec![target, match_type],
             LiftCost::Cells(values.as_ref().map_or(1, SearchVector::scan_cells)),
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,
-            &mut |_, args| {
-                let [target] = args else {
+            &mut |model, args| {
+                let [target, match_type] = args else {
                     return CalcResult::new_args_number_error(cell);
                 };
                 if target.is_error() {
                     return target.clone();
                 }
-                let match_type = match &match_type {
-                    Ok(match_type) => *match_type,
-                    Err(error) => return error.clone(),
+                // Only the sign counts: -0.5 searches descending (gen-m2/f7e6d351c8538ef5 A160,
+                // gen-m2/96a0952412cefa6c A241) and 0.5 ascending (probes/match-fractional-match-type
+                // C1-C3), so neither is the exact search that 0 is (docs/excel-semantics/lookup.md).
+                let match_type = match model.cast_number_ref(match_type, cell) {
+                    Ok(v) if v < 0.0 => -1,
+                    Ok(v) if v > 0.0 => 1,
+                    Ok(_) => 0,
+                    Err(error) => return error,
                 };
                 let values = match &values {
                     Ok(values) => values,
@@ -187,9 +192,10 @@ impl Model {
     /// MATCH's `match_type` as a number. Text that comes from a cell (a reference) and is not a
     /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
     /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
-    fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+    fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         // A range of several cells is its top-left cell, plain or picked by IF, IFS, SWITCH or
-        // LET (probes/match-type-nested-passthrough K2, K3, K7:K9, K14, K15, T-1452).
+        // LET (probes/match-type-nested-passthrough K2, K3, K7:K9, K14, K15, T-1452). An array
+        // stays whole: it lifts.
         let value = match self.evaluate_chosen_reference(node, cell) {
             CalcResult::Range { left, .. } => CalcResult::Range { left, right: left },
             other => other,
@@ -201,15 +207,15 @@ impl Model {
         if from_cell {
             if let CalcResult::String(text) = &value {
                 if self.cast_number(text).is_none() {
-                    return Err(CalcResult::Error {
+                    return CalcResult::Error {
                         error: Error::REF,
                         origin: cell,
                         message: "Invalid reference".to_string(),
-                    });
+                    };
                 }
             }
         }
-        self.cast_to_number(value, cell)
+        value
     }
 
     /// `HLOOKUP(lookup_value`, `table_array`, `row_index`, [`is_sorted`])
@@ -238,24 +244,9 @@ impl Model {
         };
         let as_reference = as_reference && matches!(row_index, LookupIndexArg::Reference(_));
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
-        let table = match range {
-            CalcResult::Range { left, right } => LookupTable::Range { left, right },
-            CalcResult::Array(array) => LookupTable::Array(array),
-            error @ CalcResult::Error { .. } => return error,
-            CalcResult::String(_) => {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Range expected".to_string(),
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Range expected".to_string(),
-                }
-            }
+        let table = match self.lookup_table(range, cell) {
+            Ok(table) => table,
+            Err(error) => return error,
         };
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
@@ -302,24 +293,9 @@ impl Model {
         };
         let as_reference = as_reference && matches!(column_index, LookupIndexArg::Reference(_));
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
-        let table = match range {
-            CalcResult::Range { left, right } => LookupTable::Range { left, right },
-            CalcResult::Array(array) => LookupTable::Array(array),
-            error @ CalcResult::Error { .. } => return error,
-            CalcResult::String(_) => {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Range expected".to_string(),
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Range expected".to_string(),
-                }
-            }
+        let table = match self.lookup_table(range, cell) {
+            Ok(table) => table,
+            Err(error) => return error,
         };
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);

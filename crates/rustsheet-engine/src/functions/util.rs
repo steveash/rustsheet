@@ -235,7 +235,8 @@ impl ColumnBatch {
 impl Model {
     /// Evaluates an argument that must be a single-sheet reference (INDEX, AREAS, VLOOKUP,
     /// MATCH, COUNTBLANK): a 3-D reference is `#VALUE!` there, not the `#REF!` it is as a
-    /// value (probes/3d-ref-functions; docs/excel-semantics/references.md).
+    /// value (probes/3d-ref-functions; docs/excel-semantics/references.md). A one-cell reference,
+    /// written or picked by IF or INDEX, stays a one-cell range (T-1862).
     pub(crate) fn evaluate_single_sheet_arg(
         &mut self,
         node: &Node,
@@ -259,6 +260,14 @@ impl Model {
             } => self
                 .if_impl(args, cell, IfBranchMode::SingleSheet)
                 .into_single_area(cell),
+            // One cell is a one-cell range, searched as one: `MATCH("b",A2,0)` is 1 and
+            // `VLOOKUP(2,B2,1,FALSE)` 2 where B2 is 2, also picked by IF or INDEX
+            // (probes/match-single-value-lookup-array U2, V2, W2, Z2, AA2; T-1862).
+            Node::ReferenceKind { .. } => self.evaluate_node_with_reference(node, cell),
+            Node::FunctionKind {
+                kind: Function::Index,
+                ..
+            } => self.eval_ref_or_index(node, cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -753,6 +762,12 @@ impl Model {
             Ok(())
         })
     }
+}
+
+/// Evaluates `c[0] + c[1]*y + c[2]*y^2 + ...` by Horner's rule in plain doubles, from the top
+/// coefficient.
+pub(crate) fn poly(c: &[f64], y: f64) -> f64 {
+    c.iter().rev().fold(0.0, |acc, &a| acc * y + a)
 }
 
 /// Excel's `MOD`: the exact remainder (`fmod`) shifted into the divisor's sign. Not

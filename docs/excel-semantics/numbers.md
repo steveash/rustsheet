@@ -399,6 +399,70 @@ GAMMA at non-integers and ERFC the x87 model is unsupported (it ties correctly r
 kernels stay unexplained (time-boxed, decision 0056).
 Tasks: T-1524, T-0901, T-1495, T-0973, T-0968, T-1528, T-1529
 
+## Stored numbers in an xlsx are not always parsed to the nearest double (T-1778)
+
+When Excel loads a cell value from xlsx (`<v>` text), it occasionally lands one ulp away from the correctly rounded
+double. In the T-1778 ERFC/EXP probes this happened at 4 of about 2.1M input cells. For each, Excel's EXP and ERFC
+results are bit-identical to the neighbouring double's model value and 10-400 ulp from the written value's:
+
+| `<v>` text | nearest double | double Excel used |
+|---|---|---|
+| `11.137073` | 0x1.6462e6ea85447p+3 | ...448 |
+| `15.803795365599` | 0x1.f9b8b10efd91fp+3 | ...920 |
+
+The other two cells are in `kmyst-erfc-r6clow7` (x ≈ 2.45) and `kmyst-erfc-r6clow8` (x ≈ 3.09). Their written texts
+are the shortest round-trip decimals, and Excel used the double one below.
+
+So the parse is not a correctly rounded decimal-to-binary conversion, even for short texts. The rule behind the
+rare misreads is not derived. Probe cases that need an exact input double should check Excel's own reading, for
+example by returning `=A1` or by testing the model at the neighbouring doubles.
+
+Later rounds found 3 more, at x = 2.2677103947185002, 2.6493240961407998 and 1.3246620480703999; the two x ≈ 2.45
+and 3.09 cells above are 2.4500000000004998 and 3.0900000000000998 (statistics.md, T-1778). The curated T-1916
+probes leave all seven inputs out.
+
+Evidence (probes-numeric on branch `agent/research/T-1778-kernel-map`): `kmyst-erfc-r4bisect2`, `kmyst-erfc-r6bisN2`, `kmyst-erfc-r6clow7`, `kmyst-erfc-r6clow8` (excel-graph,
+2026-10-18). Status: OBSERVED; the parsing rule is OPEN.
+
+## EXP is an x87 2^(a*log2 e) evaluation, not correctly rounded (T-1778)
+
+Excel's EXP(a) behaves like x87 code written for the 8087's F2XM1 domain (model "V6", T-1778 round 8):
+1. t = RN64(a * RN64(log2 e)), that is FLDL2E then FMUL in 64-bit precision.
+2. n = nint(t), using FRNDINT with ties to even.
+3. f = t - n, which is exact, with |f| <= 1/2.
+4. u = F2XM1(|f|), modelled as RN64(2^|f| - 1).
+5. w = RN64(1 + u).
+6. If f < 0, w = RN64(1/w).
+7. EXP = RN53(w * 2^n), with gradual underflow.
+
+This matches 2,139,591 of 2,139,684 EXP cells across all kmyst-erfc-* probes, including the near-midpoint maps
+`kmyst-erfc-r5expmap1/2`. The 93 misses are all points where 2^|f| - 1 lies within 0.09 ulp of a 64-bit rounding
+midpoint. There, Excel's F2XM1 is faithful but not correctly rounded, with an error of about 2^-69, deterministic
+and not matched by this machine's Intel F2XM1. The likely cause is a different CPU's F2XM1 microcode (an AMD Zen
+hypothesis is untested), so those cells may be CPU-dependent. Confirmed in part (T-1916): a fresh excel-graph fill of the
+20 ERFC cells whose E is such a near-tie returned 9 of them with the other rounding (statistics.md, the T-1778
+entry), while 37,181 neighbouring ERF/ERFC cells were identical across the two runs. The earlier description below (a floor split, with
+F2XM1 applied to f in [0, 1)) is superseded: it had 6,281 misses on the same set.
+
+Earlier description: t = fl64(a * L2E64), then EXP = fl53(fl64(2^t)). Here L2E64 is log2(e) rounded to a 64-bit
+mantissa, with relative error +1.92E-20.
+- **Where it matches.** EXP(-(x*x)) at 121,790 of 121,805 points (x from 0.5 to 26.5) and EXP(-z) at 30,717 of
+  30,720 (z from 0.26 to 702). A variant that applies F2XM1 to the fraction (n = nint(t),
+  w = fl64(1 + fl64(2^(t-n) - 1)), EXP = fl53(w * 2^n)) gains 3 more points.
+- **What correctly rounded exp gives.** 30,218 of 30,720.
+- **How it shows.** Excel's EXP is 1 ulp off the correctly rounded value at about 2.1% of points with large
+  |a|, mostly low. The bias grows with |a|, as the error in L2E64 times a predicts. At small |a| the two agree,
+  which is why the `exp-ln` sweep above saw correctly rounded values.
+- **Where it matters.** ERFC.PRECISE for x >= 0.5 multiplies by this stored EXP value (statistics.md, T-1778).
+- **Open.** The remaining 12 to 15 of 152,525 mismatches are unresolved.
+
+Evidence: probes-numeric (on branch `agent/research/T-1778-kernel-map`) `kmyst-erfc-expcol`, `kmyst-erfc-runs1..4`, `kmyst-erfc-stepmap1/2`, `kmyst-erfc-chiruns1..3`
+(excel-graph, 2026-10-18). Status: VERIFIED (structure); the last mismatches are OPEN.
+Ours: `crates/rustsheet-engine/src/x87_exp.rs` `excel_exp` implements V6 with integer x87 rounding and a double-double
+F2XM1 (T-1916). It reproduces the reference model, scoring 62,013 of 62,100 `EXP(A)` cells of `kmyst-erfc-r5expmap1/2`
+and every `EXP(-(x*x))` cell up to x = 26.55 except the near-ties. Only the ERFC kernel uses it; the worksheet EXP
+still calls libm's `exp` and flushes subnormal results (T-1931).
+
 ## Numbers near 1E+307 print with 14 significant digits
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
 4.49423283715579E+307 (15 digits, A16); the engine prints 4.49423283715579E+307.
@@ -730,9 +794,12 @@ Evidence: poi/47813.xlsx Numbers!C92, B182, C272, B362, C452, B542, C632 (oracle
 Status: VERIFIED
 Tasks: T-0915
 
-## ACOS(0.5) is the double nearest π/3
-Rule: `ACOS(0.5)` = 1.0471975511965976 (the double nearest π/3); libm returns 1.0471975511965979.
-Evidence: poi/48539.xlsx Instance1!E23 (oracle: excel-graph, 2026-10-04); poi/FormulaEvalTestData_Copy.xlsx Q104.
+## ACOS is PI()/2 - ASIN(x)
+Rule: Excel's `ACOS(x)` is `π/2 - ASIN(x)` in doubles, on ASIN's kernel ("ASIN's formulation"). So `ACOS(0.5)` =
+1.0471975511965976, the double nearest π/3, where libm gives 1.0471975511965979.
+Evidence: all 240 ACOS cells of probes/asin-atan-sign-source (`ACOS(x)` and `ACOS(-x)`, H and I; excel-graph, 2026-10-18, T-1797),
+where libm `acos` fits 157; poi/48539.xlsx Instance1!E23 (oracle: excel-graph, 2026-10-04); poi/FormulaEvalTestData_Copy.xlsx Q104.
+Implemented in: `fn_acos` (functions/math_and_trigonometry/mathematical.rs) as `FRAC_PI_2 - excel_asin(x)` since T-0939.
 Status: VERIFIED
 Tasks: T-0939
 
@@ -959,6 +1026,17 @@ they exist; a web golden that is already a known failure and is missed within 1e
 a residue below 1e-15) is not a fitting target. Sidecar numbers within 1e-9 of a 16.x desktop
 cached value are the desktop value (T-0142; the fill prints a `DESKTOP` line); near-zero residues
 (2.2e-16 vs 0) and pre-16 caches stay pending or web. Say which Excel a value comes from when working on these functions.
+SIN(4) (T-1876, decision 0074): `ironcalc-calc/LOGICAL/IF_ARRAY.xlsx` Sheet1!C4, E4 and C11 cache the Mac 16.0300 value
+-0.7568024953079283. The web and the engine give -0.7568024953079282, the correctly rounded value: the true sin(4) is 0.06 ulp
+from the midpoint, and the desktop value is 0.56 ulp off. The 38 desktop SIN/COS cells of TRIGONOMETRIC.xlsx `SIN_COS_TAN` are all
+correctly rounded. Fit over those 38 and 224 web cells (m9-trig-reduction and trig-huge-argument, |x| < 2^27), desktop / web out of 38 / 224:
+- The engine model (x87 π₆₄ reduction, then a correctly rounded sin or cos of the remainder) 38 / 224. Rounding the remainder, or the result, to 64 bits first: 38 / 224 each.
+- A correctly rounded sin 38 / 115. glibc and fdlibm/musl 38 / 115 each.
+- The π₆₄ remainder rounded to a double 31 / 219. fdlibm `rem_pio2` with libm on the head only 31 / 113. A double-π/2-plus-tail reduction 31-33 / 105.
+- An idealized x87 `fsin` (the true sine at 64 bits, then a double) 38 / 115. A double-π reduction 20 / 94.
+- All of these give ...282 except the double-π reduction (...284).
+So no formulation reaches the desktop value. The three cells stay known failures as an Excel-vs-Excel last-digit conflict, and the
+desktop target waits for T-1075 (M14).
 
 ## GEOMEAN last digits differ from a log-sum evaluation
 
@@ -1207,30 +1285,39 @@ comparisons read as FALSE).
 Status: VERIFIED for the observed cells; the exact threshold and TAN are UNVERIFIED.
 Tasks: T-1192, T-1201, T-1202
 
-## ASIN of a small argument
-Rule: Excel's ASIN is not libm's `asin` and not correctly rounded. `ASIN(-0.0001)` is -0.00010000000016666668 (libm, correctly
-rounded: ...667) and `ASIN(0.42)` is 0.4334453200698859 (libm ...8595). The closest formulation found is `atan(x/sqrt((1-x)*(1+x)))` in
-doubles (glibc `atan`), which matches 233 of the 268 cells of probes/asin-argument-sweep (excel-graph, 2026-10-15, T-1259: every 0.01 in
--0.99..0.99, ±10^-1..10^-15, small multiples, near ±1). libm `asin` matches 186, `atan(x/sqrt(1-x*x))` 217, `atan2(x,sqrt(1-x*x))` 174,
-`2*atan(x/(1+sqrt(1-x*x)))` 156 and `π/2-acos(x)` 67.
-Negative results (T-1259, fit-lab exact arithmetic): computing `1-x*x` or `(1-x)(1+x)`, the sqrt and the quotient in x87 extended
-precision, or rounding the atan to 64 bits then to a double, never beats 233. A correctly rounded atan of an extended quotient gives 185-186
-(libm's count).
-Excel's ASIN is not odd: 31 ± pairs in the sweep differ in the last digit (`ASIN(0.09)` = 0.09012194501459526,
-`ASIN(-0.09)` = -0.09012194501459525). 26 of the 35 misses are negative arguments, and `ASIN(±1E-13)` is ±1E-13 exactly.
-A tiny argument is returned as is (T-1605): `ASIN(x)` = x for |x| from 1E-15 to 1E-9 and for -1E-8, but `ASIN(1E-8)` is
-1.0000000000000002E-8 (the quotient's value), so a symmetric cut lies between 1E-13 and 1E-8; the engine uses 2^-28.
-T-1605's other candidates over the sweep (bit-exact out of 268, python doubles and glibc): `atan(x/sqrt(1-x)/sqrt(1+x))` 163,
-`atan(x/sqrt(1+x)/sqrt(1-x))` 160, `atan(x/(sqrt(1-x)*sqrt(1+x)))` 175, `atan(x*(1/sqrt((1-x)(1+x))))` 177, `atan2` of the same
-175, `2 atan(x/(1+sqrt((1-x)(1+x))))` 165, `pi/2 - 2 asin(sqrt((1-x)/2))` and `2 asin(sqrt((1+x)/2)) - pi/2` (a few misses each,
-no rule), and a table reduction `atan(c) + atan((q-c)/(1+qc))` with c = floor/ceil/round/trunc(q N)/N for N in 1..128, at
-most 215. The residue (33 cells) is T-1797.
-Evidence: probes/asin-argument-sweep; gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c
-Calc!A27 and gen-m7/cb748b6a9b81fbb7 Calc!A38 (excel-graph, 2026-10-11, T-1275).
-Ours: `atan(x/sqrt((1-x)*(1+x)))` since T-1259, and x itself below 2^-28 since T-1605 (`fn_asin`, mathematical.rs). The gen-m6/gen-m7
-cells pass; 33 sweep cells are known failures (T-1797). The result depends on the platform `atan` (glibc fits).
-Status: VERIFIED (excel-graph); formulation PARTIAL
-Tasks: T-1259, T-1605, T-1797
+## ASIN's formulation
+Rule: Excel's ASIN is `atan(x / sqrt(y*(2-y)))` with `y = 1-x`, in doubles, where the square root rounds twice (to a
+64-bit significand, then to a double) like Excel's SQRT. So the factor 1+x is formed as `2-y`. In -1..-0.5, rounding
+`y = 1-x` drops the last significand bit of x (ties to even), so ASIN is not odd. 31 ± pairs of the sweep differ in the last
+digit (`ASIN(0.09)` = 0.09012194501459526, `ASIN(-0.09)` = -0.09012194501459525; `ASIN(1E-8)` = 1.0000000000000002E-8,
+`ASIN(-1E-8)` = -1E-8), and `ASIN(-0.999)` = -1.5260712396261655 is 11 ulp from the correctly rounded value, while
+`ASIN(0.999)` = 1.526071239626163 is correctly rounded. There is no tiny-argument branch: `ASIN(±1E-13)` = ±1E-13 is the
+formula's own value once the root rounds twice.
+The formulation fits all 570 cells of probes/asin-argument-sweep (268 cells) and probes/asin-negative-band-sweep (302 cells: ±0.800..±0.950 at a 0.001 step). In
+that band every positive argument fit `atan(x/sqrt((1-x)(1+x)))`. Every negative one with an even significand did too, while
+69 of the 74 with an odd significand did not.
+Other candidates over the 570 cells (bit-exact; fit lab `asin`, T-1797): the same with a plain `sqrt` 567, the engine before
+T-1797 (`atan(x/sqrt((1-x)(1+x)))` with x itself below 2^-28) 468, without the cut 466, `atan(x/sqrt(1-x*x))` 408, libm `asin` 390,
+`atan2(x, sqrt((1-x)(1+x)))` 388, `2 atan(x/(1+sqrt((1-x)(1+x))))` 340, `pi/2 - acos(x)` 217. Rounding `(1-x)`, `(1+x)`, the product, the
+root and the quotient in doubles, at 64 bits or twice, in every combination with glibc `atan` or a correctly rounded one, never beat 218 of the sweep's 251
+non-tiny cells (T-1797). T-1259 and T-1605 rejected more, all symmetric in x: x87 extended intermediates, an extended atan, and
+table reductions `atan(c) + atan((q-c)/(1+qc))`.
+Ruled out by probes/asin-negative-input-read (127 rows, excel-graph, 2026-10-18, T-1797): the asymmetry is not Excel's read of
+stored negatives. `=A1` echoes every stored negative exactly, and `ASIN(-D1)` of the stored positive equals `ASIN(A1)` in every row,
+as does `ASIN` of the formula literal. Excel's ATAN is odd and equals glibc `atan` on all 120 quotients of
+probes/asin-atan-sign-source (columns B-E, excel-graph, 2026-10-18).
+With a positive first argument, `ATAN2(s, x)` is glibc `atan(x/s)` of the double quotient: column G,
+`ATAN2(SQRT((1-x)*(1+x)),x)`, matches it in all 120 rows, against 86 for libm `atan2` (the engine's; T-1930 covers the other quadrants).
+ACOS shares the kernel: on all 240 ACOS cells of probes/asin-atan-sign-source (`ACOS(x)` and `ACOS(-x)`, H and I), Excel's ACOS
+equals `PI()/2 - ASIN(x)` exactly. glibc `acos` matches 157 of them and `pi/2 - atan(x/sqrt((1-x)(1+x)))` 225 (T-0939).
+Evidence: probes/asin-argument-sweep (excel-graph, 2026-10-15, T-1259); probes/asin-negative-band-sweep,
+probes/asin-negative-input-read and probes/asin-atan-sign-source (excel-graph, 2026-10-18, T-1797); gen-m6/2f6b96385ed3facd Calc!A38
+(excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c Calc!A27 and gen-m7/cb748b6a9b81fbb7 Calc!A38 (excel-graph, 2026-10-11, T-1275).
+Implemented in: `excel_asin` (functions/math_and_trigonometry/mathematical.rs), with `extended_sqrt`, since T-1797. ACOS uses it
+since T-0939 ("ACOS is PI()/2 - ASIN(x)"). The result depends on
+the platform `atan`, and glibc's fits.
+Status: VERIFIED (excel-graph)
+Tasks: T-1259, T-1605, T-1797; ACOS: T-0939
 
 ## MULTINOMIAL of a huge argument
 Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds

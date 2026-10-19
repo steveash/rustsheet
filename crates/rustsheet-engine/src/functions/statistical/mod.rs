@@ -6,6 +6,7 @@ mod count;
 mod count_and_average;
 mod covariance;
 mod devsq;
+pub(super) mod erf;
 mod exponential;
 mod fisher;
 mod forecast;

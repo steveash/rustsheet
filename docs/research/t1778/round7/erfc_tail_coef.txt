@@ -1,0 +1,11 @@
+# Copied by T-1916 from branch agent/research/T-1778-kernel-map at 59c2c3724a3c (path docs/research/t1778/round7/erfc_tail_coef.txt), unchanged below this line.
+# Excel ERFC.PRECISE kernel for 4 < x <= 26.55 (T-1778, round 7)
+# ERFC(x) = fl53(fl64(E*R)), E = Excel EXP(-fl53(fl64(x*x))) as a double, R = fl53(fl64(N/D)).
+# N and D: Horner in x from the first listed coefficient, s = fl53(fl64(fl53(fl64(s*x)) + c)).
+# A result below DBL_MIN is flushed to 0. x = 4 takes the [0.5, 4] kernel.
+N 0x1.4dc756d76135p-2 0x1.6ca0f8ecfc798p+1 0x1.0191f83634b97p+4 0x1.d936f5138efd9p+5 0x1.396f0fc8e5c9cp+7 0x1.26c409d384172p+8 0x1.80fb2b5716d18p+8 0x1.3da266cd039ep+8 0x1.000aebf22de16p+7
+D 0x1.27cdbb941913dp-1 0x1.4324d3ef0f238p+2 0x1.cd27390103553p+4 0x1.ad794d2e2c325p+6 0x1.23c050f5fc4a3p+8 0x1.1e2d955b8fd9dp+9 0x1.93da0f9daba69p+9 0x1.850e3f0a8dbb6p+9 0x1.ce328ffeb78acp+8 0x1p+7
+# Score with Excel's EXP column as E: 1,540,475 of 1,540,477 points (all kmyst-erfc-* cases with an EXP column);
+# the 2 misses are 2 ulp in y at x = 0x1.6462e6ea85447p+3 and 0x1.f9b8b10efd91fp+3.
+# Equivalent ranges on all data (ulps): N c5 +-1, c6 +-7, c7 +-31, c8 [-21,+485];
+# D c5 [0,+2], c6 [-8,+6], c7 [-53,+9], c8 [-170,+339], c9 [-4,+4093]. Every other coefficient is unique.

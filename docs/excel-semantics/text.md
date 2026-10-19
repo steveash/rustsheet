@@ -135,13 +135,21 @@ Over-limit input: SUBSTITUTE keys on the result length only. On the 65,534-unit 
 but results that shrink to 0 and to 32,767 units are returned (probes/text-long-input-e A1, A2).
 Per function (the text is the 65,534-unit REGEXREPLACE result; excel-graph, 2026-10-18): UPPER, LOWER, PROPER, TRIM,
 CLEAN and REPLACE give `#VALUE!` for the input itself (SUBSTITUTE: see above) (probes/regexreplace-long-result-e A2, text-long-input-a, -b, -c); LEN,
-LEFT, MID, ISTEXT and the REGEX* functions take the text. `&` is unprobed: excel-graph refuses the workbook (follow-up task). REPLACE's error precedence against an error in
+LEFT, MID, ISTEXT and the REGEX* functions take the text. `&` with the text as the right operand truncates to 32,767 units like any other `&` (below). REPLACE's error precedence against an error in
 another argument is unprobed (ours coerces all arguments first, then checks the length).
 Open: REPT and CONCATENATE count the limit in UTF-16 code units (coercion.md "Text longer than 32,767
 characters"); SUBSTITUTE is unprobed with surrogate pairs and the code still counts `chars()`.
 Status: VERIFIED
 Implemented in: `substitute_exceeds_limit`/`substituted_chars` in functions/text/util.rs size the result before building it (T-0241)
-Tasks: T-0241, T-1904
+
+`&` with a 65,534-unit operand (probes/text-long-input-concat-g, -h, -k, -l, -m, -o; excel-graph, 2026-10-18, T-1913): the text as the
+right operand is accepted and the result is truncated, not an error: `LEN("c"&R)`, `LEN(""&R)`, `LEN(INDEX({"c"},1)&R)` and
+`LEN("c"&R&"d")` are 32,767, `ISERROR("c"&R)` is FALSE and `LEN(RIGHT("c"&R,2))` is 2 (R = the REGEXREPLACE result). A 32,767-unit
+operand read from a cell and a short one give the same: `LEN(C1&"b")` with C1 = `REPT("a",32767)` is 32,767 and `ISERROR(C1&"b")` is FALSE
+(probes/text-long-input-concat-d C3-C4). Ours matches.
+Open (desktop question, M14): excel-graph refuses the workbook when the long text is the left operand (`R&""`, `R&"c"`, `R&R`, `LET(x,R,x&"c")`,
+`IF(TRUE,R)&"c"`) and when it is read from a cell holding it, so the left-operand case is unmeasured.
+Tasks: T-0241, T-1904, T-1913
 
 ## CONCAT and TEXTJOIN past 32,767 characters
 Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).
@@ -537,20 +545,39 @@ backreference (REGEXTEST C29) is T-1900 and the lazy empty matches (REGEXREPLACE
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Tasks: T-1360, T-1688, T-1272 (range lift)
 
-## REGEXREPLACE replacement syntax (T-1688)
+## REGEXREPLACE replacement syntax (T-1688, T-1897)
 Rule: the replacement is read as PCRE2's extended substitution. `$n` and `\n` are group n, where n is every digit
 that follows (`$1a` is group 1 then "a", `[\10]` is group 10); `${n}`, `${name}` and `$name` work too (`${x}$x` is
-`aab`); `$$` and `\$` are `$`, `\\` is `\`; `\n` is LF (CODE 10) and `\t` TAB (9); `\U$1` upper-cases (`Ab`, T-1897).
+`aab`); `$$` and `\$` are `$`, `\\` is `\`; `\n` LF, `\t` TAB, `\r` CR, `\a` 7, `\b` 8 (not a word boundary), `\e` 27,
+`\f` 12, `\v` 11. A backslash before any other non-alphanumeric character is that character (`[\-]`, `[\é]`), and a group
+that took no part in the match is empty (`REGEXREPLACE("b","(a)?b","[$1]")` is `[]`).
+Characters: `\xh` and `\xhh` (one or two hex digits, `\x41g` is `Ag`); `\x{h...}` and `\o{o...}` (spaces and tabs
+inside the braces are ignored, `\x{ 41 }` is `A`; any number of leading zeros; a value past U+10FFFF or a surrogate is
+an error); `\0` plus one or two octal digits (`\012` LF, `\0123` LF then "3", `\00` NUL); `\cX` is the upper-cased ASCII
+X XOR 64 (`\ca` is 1, `\c@` 0, `\c?` 127, `\c1` "q", `\c]` 29; a non-ASCII X is an error). `\` and digits 1-9: all
+the digits are a decimal number, a group if it is below 10 or no more than the pattern's groups (a missing group is an
+error), else, if it starts with three octal digits, those as a character up to `\377` (one or two such digits are an error) (`\101` is `A`, `\1010` is `A0`; with 12
+groups `\10` is group 10 but `\20` and `\77` are errors; `\400` an error; `\18`, `\181` errors).
+Case forcing: `\U` and `\L` set a mode for the rest of this match's replacement (literals, groups and the characters
+the escapes above make alike: `\L\x41\U\x61` is `aA`); `\u` upper-cases the next character only and keeps the mode
+(`\L\uxyz` is `Xyz`, `\u\L$1` too); `\l` is unlike PCRE2's: it lower-cases the next character and sets the `\L` mode, so
+`\Uab\lcd` is `ABcd` and `\U\lxyz` is `xyz` (and `\u\lxyz` is `xyz`, `\l\uxyz` is `Xyz`, `\l\Uabc` is `aBC`); `\E`
+ends the mode and a pending `\u`; an empty group or text keeps a pending `\u` for the text after it (`\u$2b` with
+`$2` empty is `B`); the state starts afresh with each match (`REGEXREPLACE("abab","(a)(b)","$2\U$1")` is `bAbA`); only
+the replacement is case-forced, never the subject text around the match. Case mapping is the one-to-one mapping of UPPER and
+LOWER (`\Uß` is `ß`). Final sigma (T-1934, VERIFIED, probes/regexreplace-final-sigma, excel-graph 2026-10-19): a `\L` run is lowered whole, so a capital sigma sees the text after it in the next piece (`\L$1x` with `$1` = ΑΣ is `ασx`, but `\L$1` alone is `ας`; A2, A4, A8); a `\E` ends the run (`\L$1\E$2` with `$1`, `$2` = Α, Σ keeps `Σ`: `αΣ`, A10); a `\l` head character is lowered alone (`\lΣa` is `ςa`, A1). Whether a `\u`, `\l` or `\U` inside a `\L` run ends the run for the sigma context is UNVERIFIED (ours: it does, as `\E` does). `\Q...\E` quotes up to
+the first `\E` (or the end): `\Q$1\E` is `$1`, `\Qa\\Eb` is `a\b`; quoted text is case-forced, and `\E` ending a quote
+does not end the mode (`\Uab\Qcd\Eef` is `ABCDEF`).
 `#VALUE!` (ERROR.TYPE 3, so the undecoded rich errors are `#VALUE!`): a group the pattern does not have (`$2`, `\2`,
-`$10`, `${y}`, `$y` with one unnamed group), a `$` that starts no reference (`$` alone), a trailing `\`, `\0`, `\x`
-with no hex digits and an unknown letter escape (`\q`), but only when something matches: with no match the text
-comes back unchanged (`REGEXREPLACE("zz","(a)","$2")`, `"\q"` and `"$"` are `zz`). A backslash before any other
-character is that character (`[\-]`, `[\é]`), and a group that took no part in the match is empty
-(`REGEXREPLACE("b","(a)?b","[$1]")` is `[]`).
-Evidence: probes/regex-pcre2-features B1-B30, E1-E7 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's
-probes/regexreplace-limit-and-syntax A12-A16.
-Ours: matches, except the escapes other than `\n` and `\t` (`\U`, `\L`, `\u`, `\l`, `\E`, `\r`, `\xhh`...), which
-are `#VALUE!` until T-1897. Implemented in `Replacement::new` (functions/text/regex_functions.rs).
+`$10`, `${y}`, `$y` with one unnamed group), a `$` that starts no reference (`$` alone), a trailing `\`, `\0` with no octal
+digit after it (`\0`, `\08`, `\0a`), `\x` with no hex digits or a bad `{...}`, `\o` without a valid `{...}`, `\c` at the
+end, and every other letter escape (`\q`, `\d`, `\w`, `\s`, `\h`, `\R`, `\g`, `\k`, `\p`, `\N`, `\z`...), but only
+when something matches: with no match the text comes back unchanged (`REGEXREPLACE("zz","(a)","$2")`, `"\q"` and
+`"$"` are `zz`).
+Evidence: probes/regexreplace-extended-escapes (244 cells, excel-graph, 2026-10-18, T-1897); probes/regex-pcre2-features
+B1-B30, E1-E7 (excel-graph, 2026-10-18); t1626-regexreplace C14-C19; T-1817's probes/regexreplace-limit-and-syntax A12-A16.
+Ours: matches. Implemented in `Replacement::new`, `CaseState` (functions/text/regex_functions.rs); the size bound
+`Replacement::result_len` allows case mapping to lengthen text by half.
 Status: VERIFIED (excel-graph)
 Tasks: T-1688, T-1897
 

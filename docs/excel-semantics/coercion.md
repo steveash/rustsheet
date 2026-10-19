@@ -187,6 +187,7 @@ Status: VERIFIED
 Implemented in: `Text::concat`/`Text::truncate_utf16` (text.rs), shared by CONCATENATE and `&` (T-0240, T-1580);
 REPT's limit in `rept_element` (functions/text/common.rs); both count UTF-16 units (T-0233).
 CONCAT/TEXTJOIN give `#CALC!` (probes/text-result-limit C8-C9, not implemented).
+A 65,534-unit operand truncates the same way (text.md "SUBSTITUTE result longer than 32,767 characters", probes/text-long-input-concat-*, T-1913).
 Tasks: T-0240, T-0233, T-0249
 
 ## Truncation inside a surrogate pair keeps a lone high surrogate

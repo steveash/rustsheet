@@ -1,4 +1,4 @@
-//! The result shapes of the reference-returning OFFSET, INDIRECT and CHOOSE, and whether an
+//! The result shapes of the reference-returning OFFSET, INDIRECT, CHOOSE and MATCH, and whether an
 //! argument evaluates to cells ([`yields_cells`], shared by `aggregate` and `lifted`). Moved out
 //! of `static_analysis.rs` (T-1770, T-1874, T-1882) to keep it under its size lock.
 
@@ -123,4 +123,19 @@ pub(super) fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>)
             .is_none_or(|(_, cells)| *cells),
         _ => is_reference_operand(node),
     }
+}
+
+/// MATCH spills by `lookup_value` and by an array `match_type`; a range `match_type` reads its
+/// top-left cell and never spills (probes/match-type-nested-passthrough, T-1917).
+pub(super) fn match_static_result(args: &[Node]) -> StaticResult {
+    let match_type = args.get(2).map(run_static_analysis_on_node);
+    let match_type = match match_type {
+        Some(StaticResult::Range(..)) | None => StaticResult::Scalar,
+        Some(other) => other,
+    };
+    broadcast_shapes([
+        args.first()
+            .map_or(StaticResult::Scalar, run_static_analysis_on_node),
+        match_type,
+    ])
 }

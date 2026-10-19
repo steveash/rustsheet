@@ -68,6 +68,27 @@ A 2-D *array* is `#N/A` too: `MATCH(2,{1,2;3,4},0)`, `MATCH(2,{1,2;3,4})`, `MATC
 Status: VERIFIED
 Tasks: T-0210, T-0224
 
+## MATCH, VLOOKUP and HLOOKUP over a single value
+Rule: a `lookup_array` (MATCH) or table (VLOOKUP, HLOOKUP) that is a single value rather than a
+reference or an array is no table: text that is not a number is `#VALUE!`, any other value `#N/A`,
+an error is itself; a one-cell reference, also picked by IF or INDEX, is searched as a one-cell
+range. A2 = "b", B2 = 2: `MATCH("b","b",0)`, `MATCH(2,"b",0)`, `MATCH("b","b")`,
+`MATCH("b",A2&"",0)`, `MATCH("b",T("b"),0)`, `VLOOKUP("b","b",1,FALSE)` and HLOOKUP's are
+`#VALUE!`; `MATCH(2,2,0)`, `MATCH(2,3,0)`, `MATCH(2,2)`, `MATCH(TRUE,TRUE,0)`, `MATCH("2","2",0)`,
+`MATCH(2,B2*1,0)`, `VLOOKUP(2,2,1,FALSE)`, `VLOOKUP("2","2",1,FALSE)` and
+`VLOOKUP(TRUE,TRUE,1,FALSE)` `#N/A`; `MATCH(2,1/0,0)` `#DIV/0!`; `MATCH(2,{2},0)`,
+`MATCH("b",{"b"},0)`, `MATCH("b",A2,0)`, `MATCH(2,B2,0)`, `MATCH(2,IF(TRUE,B2),0)` and
+`MATCH(2,INDEX(B2:B3,1),0)` 1, `VLOOKUP(2,B2,1,FALSE)` 2, `HLOOKUP("b",A2,1,FALSE)` "b". A legacy
+formula reaches this through its intersected lookup table (references.md "Legacy MATCH, VLOOKUP
+and HLOOKUP intersect an operation in their lookup table"). LOOKUP differs: it reads a single
+value as a one-element array ("LOOKUP vector form with 2-D or short vectors"). Only "b", "x"
+and "2" are probed: the engine's line between them is its number coercion (`cast_number`), so
+dates, currency, percents and padded text are inferred, not probed (T-1939).
+Evidence: probes/match-single-value-lookup-array (excel-graph, 2026-10-18, T-1862).
+Engine: `Model::lookup_table` (lookup.rs) and `Model::evaluate_single_sheet_arg` (util.rs).
+Status: VERIFIED
+Tasks: T-1862
+
 ## LOOKUP vector form with 2-D or short vectors
 Rule: in `LOOKUP(value, lookup_vector, result_vector)`:
 - A 2-D lookup_vector is searched like the array form searches its array: along its first column, or
@@ -448,12 +469,18 @@ that reads like an error: in gen-m7/4629e931955aa4b8 A19, `MATCH(TEXTSPLIT("#N/A
 the text `"#N/A"` returned a position, not `#N/A` (which would have won the subtraction). An error element is that slot's
 result before an invalid match_type is checked: `INDEX(MATCH({#N/A;1},A1:A3,"x"),1)` is `#N/A` (an invalid lookup_array next
 to an error element is not probed).
-An array-valued match_type also lifts in Excel (`ROWS(MATCH(2,A1:A3,{0;1}))` is 2), which the engine does not do yet (`#N/IMPL!`, T-1917).
-Evidence: probes/match-lookup-value-lift (19 cells; excel-graph, 2026-10-18, T-1866); gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, T-1361).
+Empty-text elements lift like any other text: in the CSE dedup idiom `MATCH(r&"",r&"",)` (match_type omitted, so 0) a blank
+cell of `r` becomes `""` and matches the first `""` of the lookup array, so `SUM(MATCH(A1:A3&"",A1:A3&"",))` is 3 over three blanks
+and `INDEX(MATCH(B1:B4&"",B1:B4&"",),4)` is 2 when B2 and B4 are the blanks (probes/match-empty-text-lift D4-D8; corpus-bench 530-28
+P8:Q8). This differs from the blank cells themselves: `MATCH("",A1:A3,0)` over blanks is `#N/A` (D9), as above.
+An array-valued match_type also lifts, broadcast with lookup_value (`ROWS(MATCH(2,A1:A3,{0;1}))` is 2, `INDEX(MATCH(B1:B2,A1:A3,{0;1}),1)` is 3); a multi-cell range match_type still reads its top-left cell (probes/match-type-nested-passthrough), and static analysis spills only for an array one.
+A scalar error lookup_value lifts over an array match_type too: `ROWS(MATCH(NA(),A1:A3,{0;1}))` is 2, `INDEX(MATCH(NA(),A1:A3,{0;1}),2)` is
+`#N/A`, and `#DIV/0!` fills both slots of `MATCH(#DIV/0!,..,{0;1})`; `MATCH(25,A1:A3,{0;"x"})` is `#N/A` then `#VALUE!` (the second
+slot's text match_type, not the error, decides; E3 itself is `#SPILL!` in the probe because E4:E5 block the spill).
+Evidence: probes/match-lookup-value-lift (19 cells; excel-graph, 2026-10-18, T-1866); probes/match-error-lookup-value-array-match-type (8 cells; excel-graph, 2026-10-18, T-1926); probes/match-empty-text-lift (13 cells; excel-graph, 2026-10-18, T-1861); gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, T-1361).
 Status: VERIFIED
-Implemented in: `Model::fn_match` (functions/lookup_and_reference/mod.rs) through `lift_values`; static analysis spills by lookup_value.
-Not implemented: the match_type array lift (E14:E16 of the probe, known failures in the baseline; T-1917).
-Tasks: T-1866, T-1917
+Implemented in: `Model::fn_match` (functions/lookup_and_reference/mod.rs) through `lift_values`; static analysis (`match_static_result`) spills by lookup_value and an array match_type.
+Tasks: T-1866, T-1861, T-1917, T-1926
 
 ## A reference-valued lookup_value pointing at a blank or error cell
 Rule: `CHOOSE(1,J5)`, `OFFSET(J5,0,0)`, `INDIRECT("J5")`, `J5:J5` and the direct `J5` behave identically in VLOOKUP, HLOOKUP,
