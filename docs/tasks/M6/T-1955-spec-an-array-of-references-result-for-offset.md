@@ -28,8 +28,8 @@ Split from T-1810. The evidence (docs/excel-semantics/lookup.md "OFFSET, INDIREC
 docs/specs/SPEC-0014-reference-array-results.md picks `RefGrid`, an array of references carried in
 `RefArg::Grid` and `Binding::Grid` outside `CalcResult` (SPEC-0004's pattern), with a single value
 view (`#VALUE!` per element). It lists the consumers by rule, the bounds and the rollout (T-1956,
-T-1957, T-1838, new T-2063, T-2064, T-2065). Two new probes (probes/reference-lift-consumers and
--b1c, -b1d, -b2, 141 cells, excel-graph) answer the open questions: a top-left cell per element for
+T-1957, T-1838, new T-2063, T-2064, T-2065). Four new probe cases (probes/reference-lift-consumers,
+-b1c, -b1d, -b2, 130 checked cells, excel-graph) answer the open questions: a top-left cell per element for
 SUM/AVERAGE/MIN/MAX/PRODUCT, COUNT 0, per-element lifts for SUBTOTAL and the criteria functions,
 `#VALUE!` per element to operators. Twelve statistical aggregates did not open in Excel for the web
 (T-2065). Eval: probes +4 cases, 123 new-coverage known failures (the carrier is not built yet),

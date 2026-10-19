@@ -684,7 +684,7 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 - SUM, AVERAGE, MIN, MAX and PRODUCT read each element's top-left cell as a range cell (text,
   booleans and blanks skipped; an error element is its error): with A1 = 1, A2 = 100,
   `SUM(OFFSET(A1,0,0,{1;2}))` and `SUM(OFFSET(A1,0,0,{2;3}))` are 2, `SUM(OFFSET(A2,0,0,{1;2}))` 200,
-  `SUM(OFFSET(A1,{0;1},{0,1}))` 303, `SUM(OFFSET(A1,{0;-1},0))` `#REF!`. COUNT counts no element (0), COUNTA every
+  `SUM(OFFSET(A1,{0;1},{0,1}))` 303, `SUM(INDIRECT({"A1";"Nope"}))` and `AVERAGE(OFFSET(A1,{0;-1},0))` `#REF!`. COUNT counts no element (0), COUNTA every
   element, a blank one too, and SUMPRODUCT reads each as 0. SUBTOTAL, COUNTIF, SUMIF(S), COUNTBLANK, AREAS,
   ROW, COLUMN, CELL, ISFORMULA, N and T lift, once per whole element (`SUBTOTAL(9,OFFSET(A1,0,0,{1;2;3}))`
   spills 1, 101, 10101). Operators, IS* functions, IFERROR, TEXTJOIN and AGGREGATE see `#VALUE!` per element;

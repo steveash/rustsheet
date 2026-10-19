@@ -19,6 +19,8 @@ Design: docs/specs/SPEC-0014-reference-array-results.md rules 6 and 7, "Consumer
 
 ## Acceptance criteria
 - [ ] The cells above pass and leave eval/baseline, with no new known failures.
+- [ ] `SHEET(OFFSET(A1,{0;1},0))` is one `#N/A` (reference-lift-consumers-b1d E101).
+- [ ] The per-element charge's bound error is recorded as a DEVIATION (decision 0014) under lookup.md.
 - [ ] A per-element walk past the lift's visit budget is its bound error before any element runs (unit test).
 - [ ] `make check` green; reviewers approve.
 

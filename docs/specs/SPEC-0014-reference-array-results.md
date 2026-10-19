@@ -40,7 +40,9 @@ cell is told from its sum. Cell ids are the consumers case's unless named.
    (E85, E105, E121, E153-E161), ISERROR TRUE, ISNUMBER FALSE, ERROR.TYPE 3 (E93, E141, b2 E205),
    IFERROR's fallback (`IFERROR(..,"x")` spills x, b1d E113; `SUM(IFERROR(..,0))` 0, b2 E229), TEXTJOIN
    `#VALUE!` (b1c E65), `SUM(..*1)` `#VALUE!` (E49, E53), AGGREGATE `#VALUE!` (E213, b2 E173), XLOOKUP
-   and MATCH find nothing (`#N/A`, b2 E217, E221), SHEET `#N/A` (b1d E101).
+   and MATCH find nothing (`#N/A`, b2 E217, E221).
+   SHEET is neither view: `SHEET(OFFSET(A1,{0;1},0))` is one `#N/A`, not lifted and not a spill
+   (b1d E101); T-2064 owns it.
 3. **Reference view: INDEX.** `INDEX(r,i,j)` is element (i,j) itself: one cell is its value with ISREF
    TRUE (E81), a multi-cell one spills or is `#SPILL!` (reference-lift-elements); `SUM(INDEX(..,2,1))`
    reads the whole element (101, E177). With one index over a column of elements, `INDEX(r,2)` is
@@ -50,10 +52,10 @@ cell is told from its sum. Cell ids are the consumers case's unless named.
    (`SUM(OFFSET(A1,0,0,{1;2}))` 2, `SUM(OFFSET(A1,0,0,{2;3}))` 2, `SUM(OFFSET(A2,0,0,{1;2}))` 200,
    `SUM(INDIRECT({"A1:A2";"B1:B2"}))` 3, `SUM(INDIRECT(C1:C3))` 103, MAX/MIN 1, AVERAGE 1 or 50.5,
    PRODUCT 1 and 100: E1-E25, E117, E125, E129, E133, E181, E189, E197, E201, E205, b2 E157;
-   `SUM(OFFSET(A4,0,0,{1;2}))` 0, `SUM(OFFSET(A6,0,0,{1;2}))` 0, `MAX(OFFSET(A5,..))` 0,
+   `SUM(OFFSET(A6,0,0,{1;2}))` 0, `MAX(OFFSET(A5,0,0,{1;2}))` 0,
    `MIN(OFFSET(A4,0,0,{1;3}))` 0, `SUM(OFFSET(A4,{0;3},0))` 7, `AVERAGE(OFFSET(A4,{0;1;2;3},0))` 7:
-   b2 E117-E121, E161, E165, E201). An error element is that error (`#REF!` for SUM, AVERAGE, MAX
-   and SUMPRODUCT, b2 E181-E189, E213). The grid may be 2-D (`SUM(OFFSET(A1,{0;1},{0,1}))` 303,
+   b2 E117-E121, E161, E165, E201). An error element is that error (`AVERAGE(OFFSET(A1,{0;-1},0))`,
+   `MAX(..)` and `SUMPRODUCT(..)` `#REF!`, `SUM(INDIRECT({"A1";"Nope"}))` `#REF!`: b2 E181-E189, E213). The grid may be 2-D (`SUM(OFFSET(A1,{0;1},{0,1}))` 303,
    b2 E145) and sits beside other arguments (`SUM(..,1)` 102, b1d E105).
 5. **Reference view: not numbers.** COUNT counts no element (0, E13, E193); COUNTA counts every
    element, a blank one too (2, E17, b2 E169); SUMPRODUCT reads an element as 0 (E29), an error
@@ -127,7 +129,10 @@ would not move it.
     sum_range are both grids broadcasts them as SPEC-0011 does). Its cost is the consumer's:
     `LiftCost::Unit` for ROW, COLUMN, AREAS, CELL, ISFORMULA, N and T (O(1) per element);
     `LiftCost::Cells` of each element's clipped cells for SUBTOTAL, COUNTIF, SUMIF and COUNTBLANK, and
-    cells times criteria pairs for SUMIFS and COUNTIFS (as lookup_each.rs charges).
+    cells times criteria pairs for SUMIFS and COUNTIFS (as lookup_each.rs charges). Past the budget
+    the call is the bound's error where Excel computes a value
+    (`SUBTOTAL(9,OFFSET(A:A,0,0,SEQUENCE(1000)))`): T-2064 records that DEVIATION (decision 0014)
+    when it lands the charge.
   - Pass-through (rule 7): IF and CHOOSE in reference form, LET (`Binding::Grid(RefGrid)`, an `Arc`
     clone), VSTACK in a reference position (T-2064), TAKE and DROP (T-1838). `VariableStack` gets
     its own held-elements budget for grids, `MAX_HELD_GRID_ELEMENTS = 4 * MAX_SIZE` (2^22), apart
