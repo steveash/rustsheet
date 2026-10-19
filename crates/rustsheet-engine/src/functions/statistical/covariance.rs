@@ -25,7 +25,9 @@ impl Model {
             Err(error) => return error,
         };
 
-        // Count numeric data points in each array (ignoring text/booleans/empty)
+        // Excel skips a pair when either cell is text, blank or boolean, so the two arrays may hold
+        // different numbers of numeric cells (docs/excel-semantics/statistics.md "Paired regression
+        // functions"; probes/covariance-pairs-skip).
         let count1 = values1_opts.iter().filter(|v| v.is_some()).count();
         let count2 = values2_opts.iter().filter(|v| v.is_some()).count();
 
@@ -37,17 +39,9 @@ impl Model {
             );
         }
 
-        if count1 != count2 {
-            return CalcResult::new_error(
-                Error::NA,
-                cell,
-                "COVARIANCE.P arrays must have the same number of numeric data points".to_string(),
-            );
-        }
-
         // Build paired numeric vectors, position by position
-        let mut xs: Vec<f64> = Vec::with_capacity(count1);
-        let mut ys: Vec<f64> = Vec::with_capacity(count2);
+        let mut xs: Vec<f64> = Vec::with_capacity(count1.min(count2));
+        let mut ys: Vec<f64> = Vec::with_capacity(count1.min(count2));
 
         for (v1_opt, v2_opt) in values1_opts.into_iter().zip(values2_opts) {
             if let (Some(x), Some(y)) = (v1_opt, v2_opt) {
@@ -109,7 +103,9 @@ impl Model {
             Err(error) => return error,
         };
 
-        // Count numeric data points in each array (ignoring text/booleans/empty)
+        // Excel skips a pair when either cell is text, blank or boolean, so the two arrays may hold
+        // different numbers of numeric cells (docs/excel-semantics/statistics.md "Paired regression
+        // functions"; probes/covariance-pairs-skip).
         let count1 = values1_opts.iter().filter(|v| v.is_some()).count();
         let count2 = values2_opts.iter().filter(|v| v.is_some()).count();
 
@@ -121,17 +117,9 @@ impl Model {
             );
         }
 
-        if count1 != count2 {
-            return CalcResult::new_error(
-                Error::NA,
-                cell,
-                "COVARIANCE.S arrays must have the same number of numeric data points".to_string(),
-            );
-        }
-
         // Build paired numeric vectors
-        let mut xs: Vec<f64> = Vec::with_capacity(count1);
-        let mut ys: Vec<f64> = Vec::with_capacity(count2);
+        let mut xs: Vec<f64> = Vec::with_capacity(count1.min(count2));
+        let mut ys: Vec<f64> = Vec::with_capacity(count1.min(count2));
 
         for (v1_opt, v2_opt) in values1_opts.into_iter().zip(values2_opts) {
             if let (Some(x), Some(y)) = (v1_opt, v2_opt) {

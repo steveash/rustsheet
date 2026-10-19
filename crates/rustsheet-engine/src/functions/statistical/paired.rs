@@ -91,15 +91,20 @@ impl Model {
     }
 
     fn sample_arg(&mut self, arg: &Node, which: &str, cell: CellReferenceIndex) -> PairedArg {
-        PairedArg::from_node_result(arg, self.evaluate_node_in_context(arg, cell)).unwrap_or_else(
-            |_| {
-                PairedArg::Error(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    format!("{which} argument must be a range or array"),
-                ))
-            },
-        )
+        // A typed text is an array of one cell with no number, so against a longer range the sizes
+        // differ and the result is `#N/A`: `COVAR(A1:A6,"a")`, COVARIANCE.P and .S too (statistics.md
+        // "Paired regression functions", probes/covariance-pairs-skip L8, L16; T.TEST's is unprobed).
+        let value = self.evaluate_node_in_context(arg, cell);
+        if matches!(value, CalcResult::String(_)) {
+            return PairedArg::Values(vec![None]);
+        }
+        PairedArg::from_node_result(arg, value).unwrap_or_else(|_| {
+            PairedArg::Error(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("{which} argument must be a range or array"),
+            ))
+        })
     }
 
     /// Flattens `first` and `second` for a function that pairs them by position. The first
