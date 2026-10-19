@@ -203,7 +203,8 @@ impl Model {
                 .into_single_area(cell);
             match value {
                 CalcResult::Range { left, right } => {
-                    // 3-D references are walked sheet by sheet by the shared range walk.
+                    // 3-D references are walked sheet by sheet by the shared range walk, which
+                    // leaves out the blanks past the used area: a blank joins "" anyway.
                     if let Err(error) = self.for_each_cell_or_error_in_areas(
                         &[Range { left, right }],
                         cell,
