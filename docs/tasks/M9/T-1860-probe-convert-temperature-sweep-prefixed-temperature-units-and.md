@@ -3,7 +3,7 @@ id: T-1860
 title: "Probe CONVERT temperature sweep, prefixed temperature units and prefix overflow"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
