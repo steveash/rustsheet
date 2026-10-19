@@ -77,7 +77,8 @@ fn lookup_and_xmatch_lift_their_lookup_value() {
 
 #[test]
 fn xmatch_lifts_its_search_mode() {
-    // probes/reference-lift-elements F13:H14 (excel-graph); lookup.md "lift into arrays".
+    // probes/reference-lift-elements F13:H14 (excel-graph) back the second elements and the TRUE
+    // range element; the first elements are hand-written, pending an oracle run.
     let mut model = new_empty_model();
     for (cell, value) in [("A1", "1"), ("A2", "2"), ("A3", "2"), ("D1", "TRUE")] {
         model._set(cell, value);
