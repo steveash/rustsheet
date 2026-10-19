@@ -97,14 +97,16 @@ enforces that. It is not an `ArrayNode` variant either: `ArrayNode` is the parse
 type and the spill payload, so a reference there could reach cell storage, where structural edits
 would not move it.
 
-- **Value view, one definition.** `RefGrid::into_values(&self) -> CalcResult` gives a
+- **Value view, one definition.** `RefGrid::to_values(&self) -> CalcResult` gives a
   `CalcResult::Array` with `#VALUE!` (empty message) per reference element and the error per error
   element. `RefArg::into_single_area` and every value reader go through it. `evaluate_node_in_context`
   of a producer returns that array, so a spill, operator, IS* function or IFERROR needs no change
   (rule 2).
 - **Producers.** OFFSET, INDIRECT, TRIMRANGE, TAKE and DROP each get a reference form
   `fn x_reference(&mut self, args, cell) -> RefArg`; their value form is `x_reference(..)` then the
-  value view. The lift is SPEC-0011's driver: the kernel returns the scalar call's `CalcResult::Range`
+  value view. A producer whose arguments do not lift stays on today's path, allocation-free:
+  `RefArg::Ranges(Ranges::One)` goes straight to `CalcResult::Range`, and T-1956 times scalar OFFSET
+  and INDIRECT recalc before and after (no bench suite exists yet). The lift is SPEC-0011's driver: the kernel returns the scalar call's `CalcResult::Range`
   or error, and a new `CallResult::Reference` mode collects those into a `RefGrid` instead of
   `ArrayNode`s (one broadcast, directive 3). `evaluate_reference_form`
   (lookup_and_reference/mod.rs) and `evaluate_reference_arg` (util.rs) dispatch the five producers
@@ -122,10 +124,17 @@ would not move it.
   - Per-element callers (rule 6): SUBTOTAL, COUNTIF, SUMIF, SUMIFS, COUNTBLANK, AREAS, ROW, COLUMN,
     CELL, ISFORMULA, N, T. One helper, `Model::lift_over_ref_grid(grid, cell, |model, elem| ..)`,
     runs the scalar call per element and builds a `CalcResult::Array` (a SUMIF whose range and
-    sum_range are both grids broadcasts them as SPEC-0011 does).
+    sum_range are both grids broadcasts them as SPEC-0011 does). Its cost is the consumer's:
+    `LiftCost::Unit` for ROW, COLUMN, AREAS, CELL, ISFORMULA, N and T (O(1) per element);
+    `LiftCost::Cells` of each element's clipped cells for SUBTOTAL, COUNTIF, SUMIF and COUNTBLANK, and
+    cells times criteria pairs for SUMIFS and COUNTIFS (as lookup_each.rs charges).
   - Pass-through (rule 7): IF and CHOOSE in reference form, LET (`Binding::Grid(RefGrid)`, an `Arc`
-    clone; `VariableStack`'s held-area cap counts its elements), VSTACK in a reference position
-    (T-2064), TAKE and DROP (T-1838).
+    clone), VSTACK in a reference position (T-2064), TAKE and DROP (T-1838). `VariableStack` gets
+    its own held-elements budget for grids, `MAX_HELD_GRID_ELEMENTS = 4 * MAX_SIZE` (2^22), apart
+    from the union cap (`MAX_HELD_AREAS`, 2^18, which would refuse a legal 2^20-element grid). Only a
+    newly built grid is charged; an `Arc` clone (`LET(x,r,y,x,..)`) costs no memory and is not. The
+    budget bounds VSTACK doubling a bound grid at each binding; past it the binding is `#VALUE!`, a
+    DEVIATION that T-1956 records under lookup.md (decision 0014), as Excel's limit is not known.
 
 ### Bounds (directive 5)
 - Element count: every producer, one over a grid included, and every per-element consumer that
@@ -143,8 +152,11 @@ would not move it.
   per-element consumer (rule 6) charges the clipped cells of each element it walks to the same
   budget before walking (`LiftCost::Cells`), so `SUBTOTAL(9,OFFSET(A:A,0,0,SEQUENCE(1000)))` is
   `#ERROR!`-bounded rather than 10^9 reads. A top-left aggregate reads one cell per element.
-- Nesting: recursion follows the formula tree, so the parser's depth cap bounds it; each level's
-  grid passes `check_array_size` as above.
+- Nesting: recursion follows the formula tree, so the parser's depth cap bounds it. A grid may grow
+  at a level, by broadcast with another lifted argument (`OFFSET(OFFSET(A1,{0;1},0),{0,1,2},0)` is
+  2x3) or by VSTACK concatenating grids; every grid built passes `check_array_size` (VSTACK:
+  `check_stack_size`) on its full broadcast or stacked shape, the grid argument's own shape
+  included, before any element runs.
 - No panics: element access is by checked index; an empty grid is never built (shape ≥ 1x1).
 
 ### What changes for existing formulas
@@ -154,8 +166,9 @@ Nothing that does not lift: a producer with scalar arguments still returns `Calc
 
 ### Dependency graph
 A `RefGrid` is the result of OFFSET/INDIRECT (volatile) or TAKE/DROP/TRIMRANGE (whose dependencies
-are their arguments'), so it adds no static dependency. T-0401 treats it like any
-reference-returning call.
+are their arguments'), so it adds no static dependency: the per-element consumers of a TAKE, DROP or
+TRIMRANGE grid read cells inside the argument's static range, and an OFFSET or INDIRECT grid depends
+through volatility. T-0401 carries a pointer to this paragraph.
 
 ## Alternatives considered
 - **A `CalcResult::References` variant.** Every match on `CalcResult` would need an arm and every
