@@ -7,6 +7,12 @@
 //! inside an escaped `\[` or a literal. A pattern that does not parse is returned unchanged: it
 //! fails to compile the same way.
 //!
+//! PCRE2 rejects POSIX syntax the parser keeps as plain brackets or literals: `[:alpha:]` outside a
+//! bracket, an unknown or upper-case class name, collating elements (`[.a.]`) and equivalence
+//! classes (`[=a=]`), and a range that starts at a class (`[[:alpha:]-z]`); Excel gives
+//! `#VALUE!` for each (probes/regex-posix-classes Z1-Z3, Z8-Z10; T-1985). [`unicode_posix_classes`]
+//! reports them as an [`InvalidPosixSyntax`].
+//!
 //! `[:upper:]` and `[:lower:]` ignore case-insensitive matching (`(?i)[[:upper:]]` does not match
 //! `a`), so a non-negated top-level bracket that holds them becomes an alternation of the rest of
 //! the bracket and `(?-i:\p{Lu})` / `(?-i:\p{Ll})`.
@@ -49,24 +55,107 @@ fn unicode_class(kind: &ClassAsciiKind) -> Option<&'static str> {
     })
 }
 
+/// A pattern whose POSIX class syntax PCRE2 rejects.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct InvalidPosixSyntax;
+
 /// `pattern` with its POSIX classes rewritten to Excel's Unicode ones; borrowed when it has none
-/// or does not parse.
-pub(super) fn unicode_posix_classes(pattern: &str) -> Cow<'_, str> {
-    if !pattern.contains("[:") {
-        return Cow::Borrowed(pattern);
+/// or does not parse (it then fails to compile the same way). `Err` when PCRE2 rejects its POSIX
+/// syntax.
+pub(super) fn unicode_posix_classes(pattern: &str) -> Result<Cow<'_, str>, InvalidPosixSyntax> {
+    if !["[:", "[.", "[="].iter().any(|open| pattern.contains(open)) {
+        return Ok(Cow::Borrowed(pattern));
     }
     let Ok(mut ast) = Parser::new().parse(pattern) else {
-        return Cow::Borrowed(pattern);
+        return Ok(Cow::Borrowed(pattern));
     };
+    if invalid_ast(&ast, pattern) {
+        return Err(InvalidPosixSyntax);
+    }
     if !rewrite(&mut ast) {
-        return Cow::Borrowed(pattern);
+        return Ok(Cow::Borrowed(pattern));
     }
     let mut out = String::with_capacity(pattern.len() * 2);
     // Printing to a String cannot fail.
     if Printer::new().print(&ast, &mut out).is_err() {
-        return Cow::Borrowed(pattern);
+        return Ok(Cow::Borrowed(pattern));
     }
-    Cow::Owned(out)
+    Ok(Cow::Owned(out))
+}
+
+/// Whether a bracket under `ast` holds POSIX syntax PCRE2 rejects. The recursion is bounded by
+/// the parser's nesting limit.
+fn invalid_ast(ast: &Ast, pattern: &str) -> bool {
+    match ast {
+        Ast::ClassBracketed(class) => {
+            posix_shaped(&class.span, pattern) || invalid_set(&class.kind, pattern)
+        }
+        Ast::Repetition(rep) => invalid_ast(&rep.ast, pattern),
+        Ast::Group(group) => invalid_ast(&group.ast, pattern),
+        Ast::Alternation(alt) => alt.asts.iter().any(|a| invalid_ast(a, pattern)),
+        Ast::Concat(cat) => cat.asts.iter().any(|a| invalid_ast(a, pattern)),
+        Ast::Empty(_)
+        | Ast::Flags(_)
+        | Ast::Literal(_)
+        | Ast::Dot(_)
+        | Ast::Assertion(_)
+        | Ast::ClassUnicode(_)
+        | Ast::ClassPerl(_) => false,
+    }
+}
+
+/// Walks the `lhs` chain of set operations in a loop: `[a&&b&&c...]` nests as deep as the pattern
+/// is long, which the parser's nesting limit does not bound.
+fn invalid_set(mut set: &ClassSet, pattern: &str) -> bool {
+    while let ClassSet::BinaryOp(op) = set {
+        if invalid_set(&op.rhs, pattern) {
+            return true;
+        }
+        set = &op.lhs;
+    }
+    matches!(set, ClassSet::Item(item) if invalid_item(item, pattern))
+}
+
+fn invalid_item(item: &ClassSetItem, pattern: &str) -> bool {
+    match item {
+        // The parser reads a class followed by `-` and an item as three items, not a range.
+        ClassSetItem::Union(union) => {
+            union.items.iter().any(|i| invalid_item(i, pattern))
+                || union.items.windows(3).any(|w| {
+                    matches!(w[0], ClassSetItem::Ascii(_))
+                        && matches!(&w[1], ClassSetItem::Literal(lit)
+                            if lit.c == '-' && lit.kind == ast::LiteralKind::Verbatim)
+                })
+        }
+        ClassSetItem::Bracketed(class) => {
+            posix_shaped(&class.span, pattern) || invalid_set(&class.kind, pattern)
+        }
+        ClassSetItem::Empty(_)
+        | ClassSetItem::Literal(_)
+        | ClassSetItem::Range(_)
+        | ClassSetItem::Ascii(_)
+        | ClassSetItem::Unicode(_)
+        | ClassSetItem::Perl(_) => false,
+    }
+}
+
+/// Whether the bracket at `span` reads `[:name:]`, `[.name.]` or `[=name=]`: a POSIX class, which
+/// PCRE2 allows only as a valid name directly inside a bracket (the parser has turned a valid
+/// one into [`ClassSetItem::Ascii`] already), or a collating element or equivalence class, which
+/// it never does.
+fn posix_shaped(span: &ast::Span, pattern: &str) -> bool {
+    let Some(text) = pattern.get(span.start.offset..span.end.offset) else {
+        return false;
+    };
+    let Some(inner) = text.strip_prefix('[').and_then(|t| t.strip_suffix(']')) else {
+        return false;
+    };
+    [':', '.', '='].iter().any(|&mark| {
+        inner.len() >= 2
+            && inner.starts_with(mark)
+            && inner.ends_with(mark)
+            && !inner[1..inner.len() - 1].contains(['[', ']', '\\'])
+    })
 }
 
 /// Rewrites the POSIX classes under `ast`; whether there were any. The recursion is bounded by
@@ -205,33 +294,64 @@ fn parse_bracket(text: &str) -> Option<ast::ClassBracketed> {
 
 #[cfg(test)]
 mod tests {
-    use super::unicode_posix_classes;
+    use super::{unicode_posix_classes, InvalidPosixSyntax};
+
+    fn rewritten(pattern: &str) -> String {
+        unicode_posix_classes(pattern).unwrap().into_owned()
+    }
 
     #[test]
     fn rewrites_only_bracketed_posix_classes() {
-        assert_eq!(unicode_posix_classes("a[b]"), "a[b]");
-        assert_eq!(unicode_posix_classes("[[:alpha:]]"), r"[[\p{L}]]");
-        assert_eq!(unicode_posix_classes("[[:^digit:]x]"), r"[[^\p{Nd}]x]");
-        assert_eq!(unicode_posix_classes(r"[\[:alpha:]]"), r"[\[:alpha:]]");
-        assert_eq!(unicode_posix_classes("[[:ascii:]]"), "[[:ascii:]]");
-        assert_eq!(unicode_posix_classes("[[:foo:]]"), "[[:foo:]]");
+        assert_eq!(rewritten("a[b]"), "a[b]");
+        assert_eq!(rewritten("[[:alpha:]]"), r"[[\p{L}]]");
+        assert_eq!(rewritten("[[:^digit:]x]"), r"[[^\p{Nd}]x]");
+        assert_eq!(rewritten(r"[\[:alpha:]]"), r"[\[:alpha:]]");
+        assert_eq!(rewritten("[[:ascii:]]"), "[[:ascii:]]");
+    }
+
+    #[test]
+    fn long_set_operation_chain_does_not_overflow_the_stack() {
+        let chain = format!("[a{}[.a.]]", "&&a".repeat(20_000));
+        // Only that it returns: the parser may itself refuse a chain this long.
+        let _ = unicode_posix_classes(&chain);
+    }
+
+    #[test]
+    fn rejects_posix_syntax_pcre2_rejects() {
+        for pattern in [
+            "[:alpha:]",
+            "[[:foo:]]",
+            "[[:ALPHA:]]",
+            "[[.a.]]",
+            "[[=a=]]",
+            "[[:alpha:]-z]",
+            "[a[:upper:]-z]",
+            "x(?:[[.a.]])+",
+        ] {
+            assert_eq!(
+                unicode_posix_classes(pattern),
+                Err(InvalidPosixSyntax),
+                "{pattern}"
+            );
+        }
+        for pattern in [
+            r"[\[:alpha:]]",
+            "[[:alpha:]-]",
+            "[-[:alpha:]]",
+            "[:a]",
+            "[a:]",
+            "[[:alpha:]]",
+        ] {
+            assert!(unicode_posix_classes(pattern).is_ok(), "{pattern}");
+        }
     }
 
     #[test]
     fn upper_and_lower_stay_case_sensitive() {
-        assert_eq!(
-            unicode_posix_classes("[x[:upper:]]"),
-            r"(?:[x]|(?-i:\p{Lu}))"
-        );
-        assert_eq!(unicode_posix_classes("[[:lower:]]+"), r"(?:(?-i:\p{Ll}))+");
-        assert_eq!(unicode_posix_classes("[^[:upper:]]"), r"[^[\p{Lu}]]");
-        assert_eq!(
-            unicode_posix_classes("[[:upper:]^a]"),
-            r"(?:[\^a]|(?-i:\p{Lu}))"
-        );
-        assert_eq!(
-            unicode_posix_classes(r"[&[:lower:]\&]"),
-            r"(?:[\&\&]|(?-i:\p{Ll}))"
-        );
+        assert_eq!(rewritten("[x[:upper:]]"), r"(?:[x]|(?-i:\p{Lu}))");
+        assert_eq!(rewritten("[[:lower:]]+"), r"(?:(?-i:\p{Ll}))+");
+        assert_eq!(rewritten("[^[:upper:]]"), r"[^[\p{Lu}]]");
+        assert_eq!(rewritten("[[:upper:]^a]"), r"(?:[\^a]|(?-i:\p{Lu}))");
+        assert_eq!(rewritten(r"[&[:lower:]\&]"), r"(?:[\&\&]|(?-i:\p{Ll}))");
     }
 }
