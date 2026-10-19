@@ -1141,7 +1141,14 @@ TAKE, DROP and TRIMRANGE read IFS and SWITCH the same way (probes/take-drop-over
 (A10-A50, A82, A86). ISREF agrees: `ISREF(IF(TRUE,DROP(H1:I2,1)))`, `ISREF(IF(TRUE,TRIMRANGE(H1:I2)))`,
 `ISREF(IFS(TRUE,DROP(H1:I2,1)))`, `ISREF((H1,XLOOKUP(..)))`, `ISREF(LAMBDA(x,x)(XLOOKUP(..)))` and
 `ISREF(LAMBDA(x,IF(TRUE,XLOOKUP(..)))(1))` are TRUE, `ISREF(IFS({TRUE,FALSE},H1,TRUE,I1))` (an IFS that lifts) FALSE
-(A54-A78). Not yet matched (T-2075): the LAMBDA body form (A78) is FALSE in the engine.
+(A54-A78). A LAMBDA body is read the same way wherever its call stands for a reference (probes/lambda-body-picked-references,
+excel-graph, 2026-10-19; T-2075): a body that is XLOOKUP, TAKE or DROP over a range, or one the arm an IF, CHOOSE, IFS,
+SWITCH or LET picks, makes `ISREF(LAMBDA(x,..)(1))` TRUE (A10-A34); with K1:K2 = text "5","7",
+`SUM(LAMBDA(x,IF(TRUE,XLOOKUP(1,J1:J2,K1:K2)))(1))` is 0, the cell's text skipped (A38, A42, A62);
+`SUBTOTAL(9,LAMBDA(x,IF(TRUE,XLOOKUP(..)))(1))` 9, AREAS 1 and COUNTA over a blank cell 0 (A46-A58); and as the
+function of GROUPBY or PIVOTBY each such body is a reference result, so every aggregate is `#VALUE!` (A66-A78, A86, A90),
+while `IF(TRUE,XLOOKUP(..))+0` is a value, 3 (A82). Implemented in: `LambdaCaller::keeping_references` reads the
+body with `Model::evaluate_picked_reference_arg` (functions/logical/lambda.rs).
 SUM, COUNT and COUNTA over `IF(TRUE,XLOOKUP(1,J1:J2,K1:L2))` with K1 = "x", L1 = TRUE give 5 (with a 5), 1 and 2 (A54-A74), which an array of those values gives too, so they do not
 tell a reference from values.
 Evidence: probes/take-drop-trimrange-over-xlookup A10-A94, probes/take-drop-trimrange-over-xlookup-b A10-A62

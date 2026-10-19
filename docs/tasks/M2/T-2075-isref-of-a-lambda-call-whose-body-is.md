@@ -3,7 +3,7 @@ id: T-2075
 title: "ISREF of a LAMBDA call whose body is an IF picking a reference XLOOKUP is TRUE"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,9 +25,17 @@ does not follow the arm an IF picks into a reference-returning XLOOKUP the way
 `IF(TRUE,XLOOKUP(..))` before switching the read, and check SUM/SUBTOTAL over the same call.
 
 ## Acceptance criteria
-- [ ] probes/take-drop-over-ifs-switch-picks passes in full.
-- [ ] GROUPBY/PIVOTBY and aggregate behavior over such a LAMBDA is probed and matched.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/take-drop-over-ifs-switch-picks passes in full.
+- [x] GROUPBY/PIVOTBY and aggregate behavior over such a LAMBDA is probed and matched.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+A LAMBDA call read in reference context (`LambdaCaller::keeping_references`: ISREF, aggregates,
+GROUPBY/PIVOTBY functions) now reads its body with `evaluate_picked_reference_arg`, so a body that
+is or picks a reference-returning XLOOKUP, TAKE or DROP is that reference. New probe
+probes/lambda-body-picked-references (excel-graph, 52 cells) shows Excel does this for ISREF, SUM,
+SUBTOTAL, AREAS, COUNTA and makes GROUPBY/PIVOTBY aggregates `#VALUE!`. Eval delta: +52 cells
+passing (new case), take-drop-over-ifs-switch-picks A78 fixed (case now passes in full).

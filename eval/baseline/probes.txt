@@ -409,6 +409,7 @@ C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/isref-range-operands.case.json	27
 C	probes/isref-reference-lookups.case.json	11
 C	probes/isref-union-operands.case.json	9
+C	probes/lambda-body-picked-references.case.json	52
 C	probes/lambda-helper-range-slices.case.json	46
 C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
@@ -2833,7 +2834,6 @@ F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D7
 F	probes/t1626-regexreplace.case.json	Sheet1!C34
 F	probes/t1626-regextest.case.json	Sheet1!C29
-F	probes/take-drop-over-ifs-switch-picks.case.json	Sheet1!A78
 F	probes/text-currency-locale-date.case.json	S!A14
 F	probes/text-format-length-limit-d.case.json	S!A31
 F	probes/text-format-length-limit-f.case.json	Sheet1!A41
