@@ -785,6 +785,7 @@ C	probes/sheet-ops/sheet-ops-rename-twice.case.json	4
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-corner-order.case.json	13
 C	probes/sheet-qualified-ref-error-forms.case.json	10
+C	probes/skew-p-bound.case.json	14
 C	probes/solver-iteration-traces.case.json	353
 C	probes/sort-error-args.case.json	48
 C	probes/sort-omitted-args.case.json	75
@@ -2816,8 +2817,6 @@ F	probes/stat-test-lift.case.json	Sheet1!P64
 F	probes/stat-test-lift.case.json	Sheet1!P65
 F	probes/stat-test-lift.case.json	Sheet1!P66
 F	probes/stat-test-lift.case.json	Sheet1!P67
-F	probes/stats-evidence-floor-t1623.case.json	S!Q16
-F	probes/stats-evidence-floor-t1623.case.json	S!Q19
 F	probes/stats-evidence-floor-t1623.case.json	S!Q36
 F	probes/stats-evidence-floor-t1623.case.json	S!Q50
 F	probes/stats-evidence-floor-t1623.case.json	S!Q58

@@ -1088,10 +1088,12 @@ Tasks: T-1401, T-1402, T-1403
 
 ## SKEW.P of two numbers is #DIV/0!
 Rule: `SKEW.P` of two numbers is `#DIV/0!`, like SKEW: `SKEW.P(E11:E11,A11:A12,A5:A7)` over -0.0001 and 1 (blank, FALSE,
-TRUE and "a" skipped) is `#DIV/0!`. Whether three numbers are enough is unprobed.
-Evidence: gen-m9/3b8e9078261b5bd2 Calc!A13 (`LAMBDA(v,acc,v)(SKEW.P(..),..)`, excel-graph, 2026-10-12, T-1289).
-Ours: 0 (`SKEW.P(1,2)` and `SKEW.P(1,2,3)` are 0).
-Status: VERIFIED (web) for two numbers; three numbers UNVERIFIED
+TRUE and "a" skipped) is `#DIV/0!`. Three numbers are enough: `SKEW.P(1,2,3)` is 0, `SKEW.P(1,2,4)` 0.3818017741606059; a constant series of
+three or more (`SKEW.P(5,5,5)`) and one number are `#DIV/0!`. Same bound as SKEW (`SKEW(1,2)` `#DIV/0!`, `SKEW(1,2,3)` 0).
+Evidence: gen-m9/3b8e9078261b5bd2 Calc!A13 (`LAMBDA(v,acc,v)(SKEW.P(..),..)`, excel-graph, 2026-10-12, T-1289);
+probes/skew-p-bound A1-A14 (excel-graph, 2026-10-19, T-1404).
+Ours: matches (T-1404).
+Status: VERIFIED (excel-graph)
 Tasks: T-1404
 
 ## FORECAST.ETS.CONFINT in the generated gen-m9 suite: argument errors only
@@ -1685,5 +1687,5 @@ as does a wrong argument count (`STANDARDIZE(5,3)`, a three-range `SUMX2PY2`); `
 written `_xlfn.`-prefixed in the file.
 Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
 Status: VERIFIED (excel-graph).
-Ours: the mismatches above are open.
+Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755
