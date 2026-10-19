@@ -1,0 +1,36 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1996: IMSQRT large-input threshold (#NUM! past about sqrt(DBL_MAX)?).",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-1996"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMSQRT(\"1E150\")",
+    "A2": "=IMSQRT(\"1E153\")",
+    "A3": "=IMSQRT(\"1.3E154\")",
+    "A4": "=IMSQRT(\"1.34E154\")",
+    "A5": "=IMSQRT(\"1.35E154\")",
+    "A6": "=IMSQRT(\"1.5E154\")",
+    "A7": "=IMSQRT(\"1E155\")",
+    "A8": "=IMSQRT(\"1E200\")",
+    "A9": "=IMSQRT(\"1E300\")",
+    "A10": "=IMSQRT(\"1E306\")",
+    "A11": "=IMSQRT(\"1E307\")",
+    "A12": "=IMSQRT(\"1E308\")",
+    "A13": "=IMSQRT(\"1E154+1E154i\")",
+    "A14": "=IMSQRT(\"1E154+1i\")",
+    "A15": "=IMSQRT(\"1E160i\")",
+    "A16": "=IMSQRT(\"-1E160\")",
+    "A17": "=IMSQRT(\"1E200+1E200i\")",
+    "A18": "=IMSQRT(\"1E307+1i\")"
+   }
+  }
+ ],
+ "expected": {}
+}

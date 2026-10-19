@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1996: IMSQRT of complex input whose squared modulus overflows.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-1996"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMSQRT(\"1E154+1E154i\")",
+    "A2": "=IMSQRT(\"1E154-1E154i\")",
+    "A3": "=IMSQRT(\"-1E154+1E154i\")",
+    "A4": "=IMSQRT(\"1.1E154+1.1E154i\")",
+    "A5": "=IMSQRT(\"1E154+2E154i\")",
+    "A6": "=IMSQRT(\"1E154+1.4E154i\")",
+    "A7": "=IMSQRT(\"1.3E154+1.3E154i\")",
+    "A8": "=IMSQRT(\"1.34E154+1.34E154i\")",
+    "A9": "=IMSQRT(\"1.35E154+1E154i\")",
+    "A10": "=IMSQRT(\"1E154+1.35E154i\")",
+    "A11": "=IMSQRT(\"1.2E154+1.2E154i\")",
+    "A12": "=IMSQRT(\"-1E154-1E154i\")"
+   }
+  }
+ ],
+ "expected": {}
+}

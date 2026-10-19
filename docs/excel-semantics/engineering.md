@@ -352,7 +352,12 @@ Evidence: probes/eng-im-overflow (excel-graph).
   `...915853`).
 - An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
   `IMSUM("1E308","0")`); ours already matches. `IMSQRT("1E307")` and `IMSQRT("4E307")` are `#NUM!`
-  too, which ours does not match (A33, A34).
+  too (A33, A34). The threshold is sqrt(DBL_MAX) = 1.34078E154 per part: IMSQRT squares each
+  part, and a part past it is `#NUM!` (`"1.34E154"` is `1.15758369027902E+77`, `"1.35E154"`,
+  `"1E160i"`, `"-1E160"`, `"1E154+1.4E154i"` are `#NUM!`). When each square is finite but their
+  sum overflows, the result is `0`, not an error: `IMSQRT("1E154+1E154i")`, `"-1E154-1E154i"`,
+  `"1.34E154+1.34E154i"` (probes/eng-imsqrt-large, eng-imsqrt-large-b, excel-graph, T-1996).
+  Implemented in `imsqrt`.
 - `IMDIV("1","1E-308")` is `#NUM!` (A20) although results near 1E+308 are text (A46); the cause
   (subnormal divisor?) is unprobed, ours matches.
 - Not probed (T-2003): IMSUB overflow, a sum that overflows then cancels
