@@ -486,8 +486,10 @@ codes, all failing in the 2026-10-19 report.
   (12.345 × 100 is 1234.4999999999998 in binary), while `# ?/10` on 12.345 is "12 3/10" (43980980 P16; the binary
   fraction part 0.34499999999999886 × 10 stays below the half).
 Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the
-displayed text; grouping (`#,##0 ?/4`) inside a fraction is unprobed and not applied. Placeholder
+displayed text. Unprobed and implemented by inference (T-2061): the minus before a currency symbol
+or leading literals (`$# ?/4` on -0.5 is "-$ 2/4"), `%`/`,` scaling before the fraction, `#`/`0`
+numerator padding, "-0/100" for a tiny negative, and no grouping (`#,##0 ?/4`). Placeholder
 denominators still print `/` as a literal with plain digits around it (`# ?/?` on PI() is "  /3";
 T-2030), and an overflowing numerator prints in full (T-1740).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1611, T-2029, T-2030, T-1740, T-0982
+Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061
