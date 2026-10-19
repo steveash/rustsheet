@@ -26,4 +26,4 @@ Export side: `remove_redundant_legacy_intersection` (static_analysis/redundant.r
 -
 
 ## Outcome
-A SWITCH call no longer gets the automatic `@` in a legacy cell (`legacy_call_reads_a_value` in `static_analysis/legacy.rs`); the export drops the same `@`s through the shared probe, so round-trip is unchanged. probes/legacy-array-at-shapes C11 and C20 now pass (probes known failures 2137 -> 2135). SWITCH nested under other scalar functions, or with a range first argument, is unprobed and now also unmarked (needs a probe).
+A SWITCH returning only array constants no longer gets the automatic `@` in a legacy cell (`switch_of_array_constants` via `legacy_call_reads_a_value`, `static_analysis/legacy.rs`); the export drops the same `@`s through the shared probe, so round-trip is unchanged. probes/legacy-array-at-shapes C11 and C20 now pass (probes known failures 2137 -> 2135). Range-returning and nested SWITCH keep the `@`; unprobed, filed as T-1944.
