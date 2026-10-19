@@ -25,6 +25,9 @@ them probed:
 - `#` and `0` numerator placeholders pad as for integers (`# #/4`, `# 00/16` on 1.5);
 - a tiny negative with no integer part prints "-0/100" (`?/100` on -0.001);
 - grouping (`#,##0 ?/4` on 1234.5) is not applied.
+- the `#`-numerator rules (blank fraction prints nothing, separator dropped when a side is empty)
+  also apply under a fixed denominator (`# #/4` on 1 gives "1", on 0.5 "2/4"; T-2030);
+- `0` placeholders in a denominator pad with zeros (`?/00` on 0.5 gives "1/20"; T-2030).
 Use the `excel-probe` skill. Write one probe case with TEXT() cells for each bullet: positive,
 negative, zero and a carry value.
 

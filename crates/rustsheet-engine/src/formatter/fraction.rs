@@ -36,6 +36,7 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
             )
         }
         Denominator::Placeholders(kinds) => {
+            // Past 15 digits 10^n - 1 is no longer exact in a double; no such bound can bind.
             let digits = i32::try_from(kinds.len()).unwrap_or(i32::MAX).min(15);
             last_convergent(value - integer, 10.0_f64.powi(digits) - 1.0)
         }
@@ -115,8 +116,12 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
 
 /// The last continued-fraction convergent `(p, q)` of `x >= 0` whose denominator is at most
 /// `max_denominator`, which is Excel's choice for a placeholder denominator (not the closest
-/// fraction: `# ??/??` on PI() is "3  1/7 "; number-formats.md "Fraction formats").
+/// fraction: `# ??/??` on `PI()` is "3  1/7 "; number-formats.md "Fraction formats").
 fn last_convergent(x: f64, max_denominator: f64) -> (f64, f64) {
+    // Cell values are finite; this only keeps a NaN out of the loop.
+    if !x.is_finite() {
+        return (0.0, 1.0);
+    }
     let (mut p0, mut q0, mut p1, mut q1) = (0.0, 1.0, 1.0, 0.0);
     let mut rest = x;
     // A double's continued fraction ends within ~45 terms; the bound only guards the loop.

@@ -494,7 +494,9 @@ codes, all failing in the 2026-10-19 report.
 Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the
 displayed text. Unprobed and implemented by inference (T-2061): the minus before a currency symbol
 or leading literals (`$# ?/4` on -0.5 is "-$ 2/4"), `%`/`,` scaling before the fraction, `#`/`0`
-numerator padding, "-0/100" for a tiny negative, and no grouping (`#,##0 ?/4`). Placeholder
+numerator padding, "-0/100" for a tiny negative, and no grouping (`#,##0 ?/4`); also the `#`-numerator
+separator and blank rules under a fixed denominator (`# #/4`), and `0` placeholders in a denominator
+(`?/00` pads with zeros), which only `# #/#` and `?`-denominators evidence. Placeholder
 denominators are implemented as above (T-2030). An overflowing numerator still prints in full (T-1740).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061

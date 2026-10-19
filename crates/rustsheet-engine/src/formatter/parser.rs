@@ -65,7 +65,7 @@ pub struct NumberPart {
     pub scientific_minus: bool,
     pub exponent_digit_count: i32,
     pub currency: Option<char>,
-    /// A fraction with a fixed denominator (`# ?/4`, `?/100`); `None` for any other section.
+    /// A fraction (`# ?/4`, `?/100`, `# ??/??`); `None` for any other section.
     pub fraction: Option<Fraction>,
 }
 
@@ -76,6 +76,7 @@ pub struct Fraction {
     pub numerator_start: usize,
     /// Index of the `/` literal in `tokens`; the denominator is not a token.
     pub slash: usize,
+    /// Fixed digits or placeholder kinds; see [`Denominator`].
     pub denominator: Denominator,
 }
 
