@@ -3,7 +3,7 @@ id: T-2061
 title: "Probe fraction formats with currency, literals, % and , scaling, grouping and #/0 numerators"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
