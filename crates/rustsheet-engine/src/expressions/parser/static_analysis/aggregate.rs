@@ -69,12 +69,37 @@ fn is_read_reference(arg: &Node) -> bool {
                 // shape is `Unknown` and never analyses its argument, so this is the one analysis
                 // of it and nesting stays linear.
                 picked.is_some_and(|first| {
-                    yields_cells(first, &mut Vec::new())
-                        && !matches!(run_static_analysis_on_node(first), StaticResult::Array(..))
+                    yields_cells(first, &mut Vec::new()) && !lifts_to_values(first)
                 })
             }
         }
         _ => false,
+    }
+}
+
+/// Whether `node`, whose arms all yield cells, still lifts to an array of values: CHOOSE with an
+/// array index (its shape is then an array), and SWITCH or IFS with an array or multi-cell range
+/// value or condition, whose own shape is `Unknown` (`SUBTOTAL(9,TAKE(SWITCH({1,2},1,H1:H2,2,
+/// I1:I2),2))` and the IFS twin are a 2x2 of `#VALUE!`, probes/subtotal-take-array-selector
+/// A30:B31, A40:B41, T-1914). Only the selectors are analysed, each once. An `Unknown` selector
+/// counts as lifting, so the cell is left to spill at run time rather than taken for a scalar.
+fn lifts_to_values(node: &Node) -> bool {
+    let not_scalar = |arg: &Node| {
+        !matches!(
+            run_static_analysis_on_node(arg),
+            StaticResult::Scalar | StaticResult::Range(0, 0)
+        )
+    };
+    match node.ungrouped() {
+        Node::FunctionKind {
+            kind: Function::Switch,
+            args,
+        } => args.first().is_some_and(not_scalar),
+        Node::FunctionKind {
+            kind: Function::Ifs,
+            args,
+        } => args.iter().step_by(2).any(not_scalar),
+        other => matches!(run_static_analysis_on_node(other), StaticResult::Array(..)),
     }
 }
 

@@ -159,3 +159,55 @@ fn subtotal_of_take_of_nested_choose_is_linear() {
     model.evaluate();
     assert_eq!(model._get_text("A5"), "1");
 }
+
+// SWITCH and IFS with an array selector lift to values even over range arms, as CHOOSE does, so
+// TAKE picks values and SUBTOTAL spills a 2x2 of `#VALUE!` (probes/subtotal-take-array-selector
+// A30:B31, A40:B41, T-1914); static analysis took them for cells, a scalar, and a debug build hit
+// the scalar-context assertion (nightly fuzz). A scalar selector still picks cells.
+#[test]
+fn subtotal_of_take_of_switch_and_ifs_with_array_selector_spills() {
+    let mut model = new_empty_model();
+    for (cell, value) in [("H1", "3"), ("H2", "4"), ("I1", "6"), ("I2", "8")] {
+        model._set(cell, value);
+    }
+    model._set("A1", "=SUBTOTAL(9,TAKE(SWITCH({1,2},1,H1:H2,2,I1:I2),2))");
+    model._set(
+        "A4",
+        "=SUBTOTAL(9,TAKE(IFS({TRUE,FALSE},H1:H2,TRUE,I1:I2),2))",
+    );
+    model._set(
+        "A7",
+        "=SUBTOTAL(9,TAKE(IFS(TRUE,H1:H2,{FALSE,TRUE},I1:I2),2))",
+    );
+    model._set("D1", "=SUBTOTAL(9,TAKE(SWITCH(2,1,H1:H2,2,I1:I2),2))");
+    model._set("D4", "=SUBTOTAL(9,TAKE(IFS(FALSE,H1:H2,TRUE,I1:I2),2))");
+    model.evaluate();
+    for top in [1, 4] {
+        for cell in [
+            format!("A{top}"),
+            format!("B{top}"),
+            format!("A{}", top + 1),
+            format!("B{}", top + 1),
+        ] {
+            assert_eq!(model._get_text(&cell), "#VALUE!", "{cell}");
+        }
+    }
+    assert_eq!(model._get_text("D1"), "14");
+    assert_eq!(model._get_text("D2"), "");
+    assert_eq!(model._get_text("D4"), "14");
+    assert_eq!(model._get_text("D5"), "");
+}
+
+// Each SWITCH selector is analysed once per level, so deep nesting stays linear (T-1914).
+#[test]
+fn subtotal_of_take_of_nested_switch_is_linear() {
+    let mut formula = "SUBTOTAL(9,TAKE(SWITCH(1,1,H1:H2),1))".to_string();
+    for _ in 0..20 {
+        formula = format!("SUBTOTAL(9,TAKE(SWITCH({formula},1,H1:H2,I1:I2),1))");
+    }
+    let mut model = new_empty_model();
+    model._set("H1", "1");
+    model._set("A5", &format!("={formula}"));
+    model.evaluate();
+    assert_eq!(model._get_text("A5"), "1");
+}
