@@ -223,6 +223,7 @@ C	probes/date-text-weekend-3d.case.json	129
 C	probes/date-text-yearless-2.case.json	64
 C	probes/date-text-yearless-3.case.json	45
 C	probes/date-text-yearless.case.json	48
+C	probes/datedif-days360-error-order.case.json	41
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900-edges.case.json	132
 C	probes/dates-early-1900.case.json	25
@@ -1087,7 +1088,6 @@ F	probes/data-tables.case.json	S!H5
 F	probes/data-tables.case.json	S!H6
 F	probes/data-tables.case.json	S!H7
 F	probes/data-tables.case.json	S!H9
-F	probes/date-math-lift-driver-edges.case.json	Sheet1!G43
 F	probes/date-system-1900-coupon-bound.case.json	S!A20
 F	probes/date-system-1900-financial-daycount.case.json	S!A1
 F	probes/date-system-1900-financial-daycount.case.json	S!A19
