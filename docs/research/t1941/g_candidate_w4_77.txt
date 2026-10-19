@@ -1,6 +1,6 @@
 # T-1941 W4 candidate fit77S2 for GAMMA's G on [1,2): G = fl(N(y)/D(y)), raw-y Horner of degree (7,7) (Cody's
 # coefficient count), every op fl53(fl64(.)). Coefficients ASCENDING (y^0 first). D0 = -2^-4 (fitted
 # -0x1.000000002fe2cp-4; rounding it to -1/16 changes nothing). NOT bit-exact: 72.4% exact (W4, 260,096 pts);
-# 76.4% exact and 88.3% within 1 ulp (coordinator g_check.py, 871,392 pts incl. the e7xx ladders).
+# 71.6% exact and 87.1% within 1 ulp (coordinator g_check.py on 1,448,928 clean GAMMA(x) points from g_rows.py).
 N 0x1.b5834abbea656p+15 0x1.514773450ca33p+14 0x1.664795a0f1a31p+13 0x1.36c636bf9c958p+11 0x1.5ff5a1f13d31fp+9 0x1.b983b930f38e5p+6 0x1.c11d5cf5f5ea0p+3 0x1.4aa356fc4f8a8p+1
 D -0x1p-4 0x1.b584ae6185b27p+15 0x1.a52694226b50ep+15 -0x1.8fd07261158a3p+13 -0x1.d079cbb8d796ep+12 0x1.811c89b669c8dp+11 -0x1.9f2c6b220a389p+8 0x1.3f2e03e3916bcp+4
