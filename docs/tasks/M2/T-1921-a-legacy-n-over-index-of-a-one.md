@@ -3,7 +3,7 @@ id: T-1921
 title: "A legacy N over INDEX of a one-column array with one index is #VALUE!"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
