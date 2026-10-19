@@ -18,7 +18,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    number_format::{number_to_text, to_precision},
+    number_format::{complex_part_to_text, to_precision},
 };
 
 /// The angle `atan2(y,x)·n` at which IMPOWER stops answering. Bracketed by probe, not derived:
@@ -65,9 +65,9 @@ impl fmt::Display for Complex {
         } else if y == -1.0 {
             "-".to_string()
         } else {
-            number_to_text(y)
+            complex_part_to_text(y)
         };
-        let x_str = number_to_text(x);
+        let x_str = complex_part_to_text(x);
         if y == 0.0 && x == 0.0 {
             write!(f, "0")
         } else if y == 0.0 {
@@ -729,10 +729,16 @@ fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 }
 
 fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    let (re, im) = (x.exp() * y.cos(), x.exp() * y.sin());
     // Overflow of a pure real argument is `#NUM!` (probes/eng-im-overflow A9, A10;
-    // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus
-    // instead (A12, engineering.md); that is not implemented, TODO(T-2002).
+    // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus at
+    // DBL_MAX instead (A12: `IMEXP("1000+1i")` is `9.71297746009434E+307+1.51270661257499E+308i`,
+    // DBL_MAX times cos 1 and sin 1). Only A12 is evidenced, so a negative imaginary part or a tiny
+    // one are unprobed (engineering.md).
+    let modulus = x.exp();
+    if modulus == f64::INFINITY && y != 0.0 && y.is_finite() {
+        return complex_result(f64::MAX * y.cos(), f64::MAX * y.sin(), suffix);
+    }
+    let (re, im) = (modulus * y.cos(), modulus * y.sin());
     if !re.is_finite() || !im.is_finite() {
         return num_error(cell);
     }

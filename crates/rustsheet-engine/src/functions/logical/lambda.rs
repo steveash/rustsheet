@@ -179,7 +179,9 @@ impl Model {
     /// [`Self::evaluate_node_with_reference`] of a node that is no plain reference: a LET or
     /// LAMBDA call whose body gives a reference, a single cell too, is that reference for OFFSET
     /// and COUNTIF (`OFFSET(LET(x,A1,x),1,0)`, `COUNTIF(LAMBDA(x,x)(A1),">0")` read A1;
-    /// probes/lambda-union-reference-callers D1, D2, D5, excel-graph; T-1951).
+    /// probes/lambda-union-reference-callers D1, D2, D5, excel-graph; T-1951). An INDEX of a
+    /// reference is the cell it picks, so `ISFORMULA(INDEX(D1:D3,1))` reads D1
+    /// (probes/ifna-isformula-edges Calc!B12, excel-graph; T-1453).
     pub(crate) fn evaluate_call_with_reference(
         &mut self,
         node: &Node,
@@ -193,6 +195,10 @@ impl Model {
             | Node::LambdaCallKind { .. } => self
                 .evaluate_reference_arg(node, cell)
                 .into_single_area(cell),
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self.index_reference(args, cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }

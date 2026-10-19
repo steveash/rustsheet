@@ -260,13 +260,12 @@ without its sheet name (`B2`, `Calc!B2`), is the bare `$B$2`. The file name is t
 included; in the oracle it is the upload name `<sha256>.xlsx`, which the fill now records in the sidecar's
 `source.workbook_name` and the eval adapter passes to the engine (`WorkbookOptions::name`, the name without `.xlsx`).
 Also: `CELL("filename")`, `CELL("filename",B2)` and `CELL("filename",Data!B2)` are all `#VALUE!` in Excel for the web
-(the same case's B1:B4, unscored); desktop Excel returns the full path (UNVERIFIED here). Ours gives
-`[<file>.xlsx]<sheet>` (T-2052).
+(the same case's B1:B4, scored since T-2052); desktop Excel returns the full path (UNVERIFIED here; M14).
 Evidence: probes/info-cell-address-cross-sheet Calc!A1:A9, B1:B4; probes/info-logic-argument-modes Calc!A19
 (oracle: excel-graph, 2026-10-19, T-2042).
 Status: VERIFIED (excel-graph); unsaved workbook UNVERIFIED (Excel's `Book1` form is unprobed; desktop only).
-Ours: matches since T-2042. An unnamed workbook (`WorkbookOptions::name` `None`, the default) gives `#N/IMPL!` for
-cross-sheet "address" and for "filename" rather than guess; a union on another sheet is `#N/IMPL!` (unprobed).
+Ours: matches since T-2042; "filename" is `#VALUE!` always since T-2052. An unnamed workbook
+(`WorkbookOptions::name` `None`, the default) gives `#N/IMPL!` for cross-sheet "address" rather than guess; a union on another sheet is `#N/IMPL!` (unprobed).
 Tasks: T-2042, T-2052
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)

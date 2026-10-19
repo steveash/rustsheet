@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2042: CELL(\"address\", ref) for a reference on another sheet names the workbook file. Sheet names that need quotes in a formula (a space, a leading digit, an apostrophe, a dash) against a plain one, a multi-cell range, a same-sheet control, and CELL(\"filename\") of the same references (B column, unscored evidence: the oracle's path prefix is not reproducible).",
+ "description": "T-2042: CELL(\"address\", ref) for a reference on another sheet names the workbook file. Sheet names that need quotes in a formula (a space, a leading digit, an apostrophe, a dash) against a plain one, a multi-cell range, a same-sheet control, and CELL(\"filename\") of the same references (B column: #VALUE! in Excel for the web, T-2052).",
  "tags": [
   "M5",
   "probe",
@@ -15,7 +15,11 @@
   "Calc!A6",
   "Calc!A7",
   "Calc!A8",
-  "Calc!A9"
+  "Calc!A9",
+  "Calc!B1",
+  "Calc!B2",
+  "Calc!B3",
+  "Calc!B4"
  ],
  "sheets": [
   {

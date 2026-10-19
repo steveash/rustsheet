@@ -36,9 +36,9 @@ pub struct WorkbookOptions {
     /// loading.
     pub clock: Clock,
     /// The workbook's file name without its extension (`Budget` for `Budget.xlsx`), which
-    /// `CELL("address")` of a reference on another sheet and `CELL("filename")` report as
-    /// `[Budget.xlsx]`. `None` (the default) is an unnamed workbook, for which both are
-    /// `#N/IMPL!`: Excel's form for an unsaved workbook is unprobed (T-2042). Applies to loading
+    /// `CELL("address")` of a reference on another sheet
+    /// reports as `[Budget.xlsx]`. `None` (the default) is an unnamed workbook, for which that
+    /// `CELL("address")` is `#N/IMPL!`: Excel's form for an unsaved workbook is unprobed (T-2042). Applies to loading
     /// too.
     pub name: Option<String>,
 }
