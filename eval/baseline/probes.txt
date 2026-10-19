@@ -306,6 +306,7 @@ C	probes/fin-argument-modes.case.json	386
 C	probes/fin-coupon-walk-bounds-b.case.json	13
 C	probes/fin-coupon-walk-bounds.case.json	28
 C	probes/fin-cumipmt-period-bound.case.json	30
+C	probes/fin-fvschedule-bool-ref.case.json	6
 C	probes/fin-fvschedule.case.json	20
 C	probes/fin-later-argument-ranges.case.json	115
 C	probes/fin-mduration.case.json	18
