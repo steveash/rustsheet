@@ -3,7 +3,7 @@ id: T-1829
 title: "REGEX* match iteration on the PikeVM fallback is charged by measured work, not the rest of the text"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -34,9 +34,19 @@ stay sound for it. Options:
   with the `excel-probe` skill first.
 
 ## Acceptance criteria
-- [ ] The three formulas above return values (the test is updated to expect them) and stay fast in a release build.
-- [ ] `a.*z|a` iteration over a long `aaa...` text is still bounded (`#ERROR!` within about 1 s).
-- [ ] `make check` green; reviewers approve.
+- [x] The three formulas above return values (the test is updated to expect them) and stay fast in a release build.
+- [x] `a.*z|a` iteration over a long `aaa...` text is still bounded (`#ERROR!` within about 1 s).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+A PikeVM search (the fallback when the lazy DFA quits, e.g. on a Unicode `\b` over non-ASCII text) now runs over the
+span a set-based scan of the NFA shows a leftmost-first search needs (`regex_reach.rs`), charged 21 units for each state
+the scan visits, instead of being charged its whole span up front. The three formulas return 500, 27500 and 4750
+(`pike_iteration_is_charged_by_work_done`); `a.*z|a|\bq` over `REPT("a",20000)&"é"` is still `#ERROR!`, about 1 s in
+release (`quadratic_pike_iteration_is_still_bounded`); `pike_search_span_keeps_leftmost_first_matches` pins that the
+shortened span keeps leftmost-first results. The probe probes/regex-ascii-classes (42 cells) shows Excel's `\w`, `\b`,
+`\d`, `\s` are Unicode (UCP), so the ASCII shortcut the task offered is not Excel's; recorded in text.md "REGEX*
+character classes are Unicode", with its 7 matcher gaps added to T-1900. Eval: no regressions; the new case is 35/42.

@@ -331,13 +331,16 @@ compiling, too-big attempts included (2,048 small patterns), and hold 64 MiB of 
 after each search (none is evicted, so patterns that cycle compile once). Its searches (functions/text/regex_engine.rs)
 run on a lazy DFA that gives up when it thrashes (after 3 cache clears, below 10 bytes a state, the regex crate's own
 setting) and then on a PikeVM; the DFA is charged what its cache says it scanned (4 a byte) and built (8 a byte of
-state), the PikeVM its span times its NFA's state count (5 a state-byte) before it runs, 64 a search, and a call may
+state), the PikeVM (T-1829) 21 for each NFA state a scan visits that measures the span a leftmost-first search needs
+(the PikeVM then runs over that span alone; an anchored search is charged its span times its state count, 5 a
+state-byte), 64 a search, and a call may
 spend 2^30 (about 1 s of the slowest searches; `SUM(--REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x"))` fits, 20 MB).
 A pattern whose DFA thrashes over a lot of text (`a[ab]{100}c|b[ab]{100}c` over 560 texts of 30,000 bytes) and a call
-past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). Iterating matches on the PikeVM
-charges every successive search the rest of the text, and a pattern with `\b` runs on the PikeVM over non-ASCII
-text (the lazy DFA quits there), so `COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is `#ERROR!` where
-Excel returns an array (T-1829 charges it by the work done). A REGEXREPLACE searches twice,
+past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). A pattern with `\b` runs on the
+PikeVM over non-ASCII text (the lazy DFA quits there); iterating its matches costs what the searches read
+(`COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is 500, as in Excel, since T-1829; T-1272 charged each
+search the rest of the text), while a search that truly reads to the end every time (`a.*z|a|\bq` over
+`REPT("a",20000)&"é"`) is still `#ERROR!`. A REGEXREPLACE searches twice,
 once to size its result: over 65,535 UTF-16 units it is
 `#CALC!` as Excel's is, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`;
 "REGEXREPLACE results are capped at 65,535 UTF-16 units" below); a lifted REGEXREPLACE whose results pass the text
@@ -613,6 +616,20 @@ Ours: matches. Implemented in `Replacement::new`, `CaseState` (functions/text/re
 `Replacement::result_len` allows case mapping to lengthen text by half.
 Status: VERIFIED (excel-graph)
 Tasks: T-1688, T-1897
+
+## REGEX* character classes are Unicode; `$` and `.` around line breaks (T-1829)
+Rule: Excel's PCRE2 runs with Unicode properties (UCP): `\w` matches any letter or digit, `é`, `日` and the Kelvin sign
+included (`REGEXEXTRACT("naïve","\w+")` is "naïve"; `\W` does not match `é`; `[\w]`, `[^\W]` alike); `\b` sees
+`é` as a word character (`REGEXREPLACE("café foo","\bfoo\b","x")` is "café x", `"caféfoo"` is unchanged, `a\b` does
+not match in "aé"); `\d` matches the Arabic-Indic three and the full-width digit; `\s` matches NBSP, U+2003, U+3000,
+U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]]` and `[[:word:]]` match `é`;
+`(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
+`a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
+Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
+Ours: matches except that `[[:alpha:]]` and `[[:word:]]` are ASCII (A15, A16), `(*UCP)`, `\X`, `\h` and `\R` are
+`#VALUE!` (A17, A27, A41, A42) and `$` does not match before a final LF (A34): the matcher work of T-1898-T-1900.
+Status: VERIFIED (excel-graph)
+Tasks: T-1829 (probe), T-1900
 
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;

@@ -22,3 +22,7 @@ Found by T-1688 (probes/regex-pcre2-features C1-C19, B27-B29; t1626-regextest C2
 
 ## Out of scope
 - Iteration after empty matches (T-1899).
+
+More cells (T-1829, probes/regex-ascii-classes, excel-graph 2026-10-19): `[[:alpha:]]` and `[[:word:]]` are Unicode
+(A15, A16, ours ASCII); `(*UCP)`, `\X`, `\h` and `\R` are accepted (A17, A27, A41, A42, ours `#VALUE!`); `$` matches
+before a final LF (A34, ours FALSE). text.md "REGEX* character classes are Unicode".

@@ -1,0 +1,60 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1829: are REGEX* \\w, \\d, \\s, \\b and POSIX classes ASCII-only (PCRE2 without UCP)? Plus $ and . around line breaks.",
+ "tags": [
+  "M7",
+  "probe",
+  "T-1829",
+  "regex"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=IFERROR(REGEXTEST(\"é\",\"\\w\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"\\w\")))",
+    "A2": "=IFERROR(REGEXTEST(\"é\",\"^\\w$\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"^\\w$\")))",
+    "A3": "=IFERROR(REGEXEXTRACT(\"naïve\",\"\\w+\"),\"E\"&ERROR.TYPE(REGEXEXTRACT(\"naïve\",\"\\w+\")))",
+    "A4": "=IFERROR(TEXTJOIN(\"|\",FALSE,REGEXEXTRACT(\"naïve\",\"\\b\\w+\\b\",1)),\"E\"&ERROR.TYPE(TEXTJOIN(\"|\",FALSE,REGEXEXTRACT(\"naïve\",\"\\b\\w+\\b\",1))))",
+    "A5": "=IFERROR(COLUMNS(REGEXEXTRACT(REPT(\"naïve \",3),\"\\b\\w+\\b\",1)),\"E\"&ERROR.TYPE(COLUMNS(REGEXEXTRACT(REPT(\"naïve \",3),\"\\b\\w+\\b\",1))))",
+    "A6": "=IFERROR(REGEXTEST(\"é\",\"\\b\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"\\b\")))",
+    "A7": "=IFERROR(REGEXTEST(\"é\",\"\\W\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"\\W\")))",
+    "A8": "=IFERROR(REGEXTEST(\"é\",\"[\\w]\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"[\\w]\")))",
+    "A9": "=IFERROR(REGEXTEST(\"é\",\"[^\\W]\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"[^\\W]\")))",
+    "A10": "=IFERROR(REGEXTEST(UNICHAR(1635),\"\\d\"),\"E\"&ERROR.TYPE(REGEXTEST(UNICHAR(1635),\"\\d\")))",
+    "A11": "=IFERROR(REGEXTEST(UNICHAR(65299),\"\\d\"),\"E\"&ERROR.TYPE(REGEXTEST(UNICHAR(65299),\"\\d\")))",
+    "A12": "=IFERROR(REGEXTEST(UNICHAR(160),\"\\s\"),\"E\"&ERROR.TYPE(REGEXTEST(UNICHAR(160),\"\\s\")))",
+    "A13": "=IFERROR(REGEXTEST(UNICHAR(8195),\"\\s\"),\"E\"&ERROR.TYPE(REGEXTEST(UNICHAR(8195),\"\\s\")))",
+    "A14": "=IFERROR(REGEXTEST(UNICHAR(133),\"\\s\"),\"E\"&ERROR.TYPE(REGEXTEST(UNICHAR(133),\"\\s\")))",
+    "A15": "=IFERROR(REGEXTEST(\"é\",\"[[:alpha:]]\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"[[:alpha:]]\")))",
+    "A16": "=IFERROR(REGEXTEST(\"é\",\"[[:word:]]\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"[[:word:]]\")))",
+    "A17": "=IFERROR(REGEXTEST(\"é\",\"(*UCP)\\w\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"(*UCP)\\w\")))",
+    "A18": "=IFERROR(REGEXTEST(UNICHAR(8490),\"\\w\"),\"E\"&ERROR.TYPE(REGEXTEST(UNICHAR(8490),\"\\w\")))",
+    "A19": "=IFERROR(REGEXTEST(\"日\",\"\\w\"),\"E\"&ERROR.TYPE(REGEXTEST(\"日\",\"\\w\")))",
+    "A20": "=IFERROR(REGEXTEST(\"_\",\"\\w\"),\"E\"&ERROR.TYPE(REGEXTEST(\"_\",\"\\w\")))",
+    "A21": "=IFERROR(REGEXTEST(\"aé\",\"a\\b\"),\"E\"&ERROR.TYPE(REGEXTEST(\"aé\",\"a\\b\")))",
+    "A22": "=IFERROR(REGEXTEST(\"éa\",\"\\ba\"),\"E\"&ERROR.TYPE(REGEXTEST(\"éa\",\"\\ba\")))",
+    "A23": "=IFERROR(REGEXTEST(\"é a\",\"é\\b\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é a\",\"é\\b\")))",
+    "A24": "=IFERROR(REGEXTEST(\"É\",\"\\w\",1),\"E\"&ERROR.TYPE(REGEXTEST(\"É\",\"\\w\",1)))",
+    "A25": "=IFERROR(REGEXTEST(\"ſ\",\"[a-z]\",1),\"E\"&ERROR.TYPE(REGEXTEST(\"ſ\",\"[a-z]\",1)))",
+    "A26": "=IFERROR(REGEXTEST(\"é\",\"\\p{L}\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"\\p{L}\")))",
+    "A27": "=IFERROR(REGEXTEST(\"é\",\"\\X\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"\\X\")))",
+    "A28": "=IFERROR(REGEXTEST(\"é\",\"\\B\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"\\B\")))",
+    "A29": "=IFERROR(REGEXREPLACE(\"café foo\",\"\\bfoo\\b\",\"x\"),\"E\"&ERROR.TYPE(REGEXREPLACE(\"café foo\",\"\\bfoo\\b\",\"x\")))",
+    "A30": "=IFERROR(REGEXREPLACE(\"caféfoo\",\"\\bfoo\\b\",\"x\"),\"E\"&ERROR.TYPE(REGEXREPLACE(\"caféfoo\",\"\\bfoo\\b\",\"x\")))",
+    "A31": "=IFERROR(REGEXTEST(\"a\"&UNICHAR(8232)&\"b\",\"a$\"),\"E\"&ERROR.TYPE(REGEXTEST(\"a\"&UNICHAR(8232)&\"b\",\"a$\")))",
+    "A32": "=IFERROR(REGEXTEST(\"a\"&CHAR(10)&\"b\",\"a$\"),\"E\"&ERROR.TYPE(REGEXTEST(\"a\"&CHAR(10)&\"b\",\"a$\")))",
+    "A33": "=IFERROR(REGEXTEST(\"a\"&CHAR(13)&\"b\",\"a$\"),\"E\"&ERROR.TYPE(REGEXTEST(\"a\"&CHAR(13)&\"b\",\"a$\")))",
+    "A34": "=IFERROR(REGEXTEST(\"a\"&CHAR(10),\"a$\"),\"E\"&ERROR.TYPE(REGEXTEST(\"a\"&CHAR(10),\"a$\")))",
+    "A35": "=IFERROR(REGEXTEST(\"a\"&CHAR(10)&\"b\",\"^b\"),\"E\"&ERROR.TYPE(REGEXTEST(\"a\"&CHAR(10)&\"b\",\"^b\")))",
+    "A36": "=IFERROR(REGEXTEST(\"a\"&CHAR(10)&\"b\",\"a.b\"),\"E\"&ERROR.TYPE(REGEXTEST(\"a\"&CHAR(10)&\"b\",\"a.b\")))",
+    "A37": "=IFERROR(REGEXTEST(\"é\",\"[a-zé]\"),\"E\"&ERROR.TYPE(REGEXTEST(\"é\",\"[a-zé]\")))",
+    "A38": "=IFERROR(REGEXTEST(UNICHAR(8203),\"\\s\"),\"E\"&ERROR.TYPE(REGEXTEST(UNICHAR(8203),\"\\s\")))",
+    "A39": "=IFERROR(REGEXTEST(UNICHAR(12288),\"\\s\"),\"E\"&ERROR.TYPE(REGEXTEST(UNICHAR(12288),\"\\s\")))",
+    "A40": "=IFERROR(REGEXTEST(UNICHAR(11),\"\\s\"),\"E\"&ERROR.TYPE(REGEXTEST(UNICHAR(11),\"\\s\")))",
+    "A41": "=IFERROR(REGEXTEST(CHAR(9),\"\\h\"),\"E\"&ERROR.TYPE(REGEXTEST(CHAR(9),\"\\h\")))",
+    "A42": "=IFERROR(REGEXTEST(CHAR(10),\"\\R\"),\"E\"&ERROR.TYPE(REGEXTEST(CHAR(10),\"\\R\")))"
+   }
+  }
+ ],
+ "expected": {}
+}
