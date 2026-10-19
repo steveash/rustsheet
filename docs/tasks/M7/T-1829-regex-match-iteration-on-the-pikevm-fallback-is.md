@@ -3,7 +3,7 @@ id: T-1829
 title: "REGEX* match iteration on the PikeVM fallback is charged by measured work, not the rest of the text"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
