@@ -308,7 +308,7 @@ maturity 2024-08-31), prices 90 to 110, basis 0, and probes/bond-one-period-base
 bonds on bases 0 to 4, prices 95 to 105). E - A for DSR gives 30/60 and the nominal E on bases 2 and 3
 44/60. PRICE: probes/bond-one-period-bases sheet P (40 cells, yields 0.02 to 0.3) all pass in the engine,
 whose one-period PRICE uses E - A.
-Ours: the engine solves PRICE for YIELD (`fn_yield`, functions/financial/financial_bonds.rs) and gets 0/60.
+Ours: `yield_one_period` (functions/financial/financial_bonds/yield_closed.rs) evaluates the closed form and is bit-exact on 60/60 (T-1532); before it, the engine solved PRICE and got 0/60.
 Where PRICE's E - A and E equal YIELD's (basis 0 on the semiannual bond, bases 1 and 4) it lands a few to
 about 15 ulp off; elsewhere it solves a different equation: basis 0 annual (Y!B) is about 0.56% off (ratio
 180/179, Y!B1 0.2807210017227244 against 0.2791614406020427), bases 2 and 3 up to 4%.
@@ -479,7 +479,7 @@ each element is charged that worst case (`COUPON_WALK_WEIGHT`, 2^16 units per wa
 so a lifted call at the cap takes 1-2 s at the longest schedule. The scalar calls are not capped.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`, `BOND_6_OF_7`)
+Implemented in: functions/lift/kinds/financial.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`, `BOND_6_OF_7`)
 Tasks: T-1822; T-1846 narrows the cap to a schedule-length budget.
 
 ## Yield and odd-coupon work cap
@@ -497,7 +497,7 @@ capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver st
 is now hoisted out of the solver, with the same values.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`)
+Implemented in: functions/lift/kinds/financial.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`)
 Tasks: T-1842; T-1869 narrows the cap to a schedule-length budget (after T-1846).
 
 ## CUMIPMT and CUMPRINC over many periods
@@ -538,7 +538,7 @@ periods the kernel is the closed form (0.3 us), so the charge does not depend on
 not capped.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds.rs (`CUMULATIVE_WEIGHT`, `CUMULATIVE`)
+Implemented in: functions/lift/kinds/financial.rs (`CUMULATIVE_WEIGHT`, `CUMULATIVE`)
 Tasks: T-1845
 
 ## AMORLINC and AMORDEGRC over many periods
@@ -607,7 +607,7 @@ form (512 elements of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, which takes no shortcut
 capped beyond those bounds.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds.rs (`AMORLINC_WEIGHT`, `AMORDEGRC_WEIGHT`, `AMORLINC`, `AMORDEGRC`)
+Implemented in: functions/lift/kinds/financial.rs (`AMORLINC_WEIGHT`, `AMORDEGRC_WEIGHT`, `AMORLINC`, `AMORDEGRC`)
 Tasks: T-1841
 
 ## Coupon-bond functions: a negative basis is #NUM!

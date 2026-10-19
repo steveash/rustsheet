@@ -50,7 +50,7 @@ fn test_regextest_case_sensitive() {
 fn test_regextest_wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=REGEXTEST(\"text\")");
-    model._set("A2", "=REGEXTEST(\"text\", \".\", \"extra\")");
+    model._set("A2", "=REGEXTEST(\"text\", \".\", 0, \"extra\")");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");
@@ -66,6 +66,8 @@ fn test_regexextract_full_match() {
     assert_eq!(model._get_text("A1"), "42");
 }
 
+// return_mode 0 is the whole match even with capture groups; 2 is the groups, in a row
+// (probes/regex-optional-args A29-A36).
 #[test]
 fn test_regexextract_capture_group() {
     let mut model = new_empty_model();
@@ -73,8 +75,14 @@ fn test_regexextract_capture_group() {
         "A1",
         "=REGEXEXTRACT(\"2024-01-15\", \"(\\d{4})-\\d{2}-\\d{2}\")",
     );
+    model._set(
+        "A2",
+        "=REGEXEXTRACT(\"2024-01-15\", \"(\\d{4})-(\\d{2})-\\d{2}\", 2)",
+    );
     model.evaluate();
-    assert_eq!(model._get_text("A1"), "2024");
+    assert_eq!(model._get_text("A1"), "2024-01-15");
+    assert_eq!(model._get_text("A2"), "2024");
+    assert_eq!(model._get_text("B2"), "01");
 }
 
 #[test]
@@ -97,7 +105,7 @@ fn test_regexextract_invalid_regex() {
 fn test_regexextract_wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=REGEXEXTRACT(\"text\")");
-    model._set("A2", "=REGEXEXTRACT(\"text\", \".\", \"0\", \"extra\")");
+    model._set("A2", "=REGEXEXTRACT(\"text\", \".\", 0, 0, \"extra\")");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");
@@ -207,7 +215,10 @@ fn regexreplace_replacement_syntax() {
 fn test_regexreplace_wrong_arg_count() {
     let mut model = new_empty_model();
     model._set("A1", "=REGEXREPLACE(\"text\", \".\")");
-    model._set("A2", "=REGEXREPLACE(\"text\", \".\", \"x\", \"extra\")");
+    model._set(
+        "A2",
+        "=REGEXREPLACE(\"text\", \".\", \"x\", 0, 0, \"extra\")",
+    );
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");

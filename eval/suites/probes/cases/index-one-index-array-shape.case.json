@@ -1,0 +1,68 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDEX of a one-column or one-row array constant with one index: whether the result is a 1x1 array or a scalar (TYPE, ROWS/COLUMNS, ISREF in dynamic row 1-4), and legacy (non-array) N and T over INDEX of array constants with one or two indexes, with FORMULATEXT in row 20 (Z1:Z2 = 7, 8; T-1921).",
+  "tags": [
+    "M2",
+    "lookup",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "Z1": 7,
+        "Z2": 8,
+        "A1": "=TYPE(INDEX({2;3},1))",
+        "B1": "=ROWS(INDEX({2;3},1))",
+        "C1": "=ISREF(INDEX({2;3},1))",
+        "D1": "=INDEX({2;3},1)",
+        "A2": "=TYPE(INDEX({2,3},1))",
+        "B2": "=COLUMNS(INDEX({2,3},1))",
+        "C2": "=ISREF(INDEX({2,3},1))",
+        "D2": "=INDEX({2,3},1)",
+        "A3": "=TYPE(INDEX({2;3},1,1))",
+        "B3": "=TYPE(INDEX({2},1))",
+        "C3": "=TYPE(INDEX({2,3;4,5},1))",
+        "D3": "=TYPE(INDEX({2,3;4,5},1,1))",
+        "A4": "=TYPE({2})",
+        "B4": "=TYPE(INDEX({2;3},2))",
+        "C4": "=TYPE(INDEX({2,3},2))",
+        "D4": "=TYPE(INDEX(Z1:Z2,1))",
+        "A10": "=N(INDEX({2,3},1))",
+        "A20": "=FORMULATEXT(A10)",
+        "B10": "=N(INDEX({2;3},1,1))",
+        "B20": "=FORMULATEXT(B10)",
+        "C10": "=N(INDEX({2},1))",
+        "C20": "=FORMULATEXT(C10)",
+        "D10": "=N(INDEX({2;3},2))",
+        "D20": "=FORMULATEXT(D10)",
+        "E10": "=N(INDEX({2,3},2))",
+        "E20": "=FORMULATEXT(E10)",
+        "F10": "=T(INDEX({\"a\";\"b\"},1))",
+        "F20": "=FORMULATEXT(F10)",
+        "G10": "=TYPE(INDEX({2;3},1))",
+        "G20": "=FORMULATEXT(G10)",
+        "H10": "=INDEX({2;3},1)",
+        "H20": "=FORMULATEXT(H10)",
+        "I10": "=N(INDEX({2,3},1,1))",
+        "I20": "=FORMULATEXT(I10)",
+        "J10": "=N(INDEX({2;3},1,0))",
+        "J20": "=FORMULATEXT(J10)"
+      },
+      "legacy_formulas": [
+        "A10",
+        "B10",
+        "C10",
+        "D10",
+        "E10",
+        "F10",
+        "G10",
+        "H10",
+        "I10",
+        "J10"
+      ]
+    }
+  ],
+  "expected": {}
+}

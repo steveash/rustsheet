@@ -167,6 +167,30 @@ impl Model {
         self.call_lambda(callee, call_args, cell)
     }
 
+    /// [`Self::call_callee`] of a call written where a reference is wanted (an aggregate's
+    /// argument, ISREF): a body that gives a reference keeps it, a single cell too, so
+    /// `SUM(LAMBDA(x,x)(K1))` and `MAX(LAMBDA(x,x)(K1))` skip the text in K1 (0) and
+    /// `ISREF(LAMBDA(x,x)(A1))` is TRUE (probes/let-lambda-reference-results C1, C2, D1, D6,
+    /// excel-graph; T-1106).
+    pub(crate) fn call_callee_as_reference(
+        &mut self,
+        lambda: &Node,
+        call_args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let callee = self
+            .evaluate_reference_arg(lambda, cell)
+            .into_single_area(cell);
+        // The same guard as `call_callee`'s, kept in step with it.
+        if let CalcResult::Range { .. } = callee {
+            return reference_called(cell);
+        }
+        let mut caller = self
+            .lambda_caller(&callee, call_args.len())
+            .keeping_references();
+        self.call_lambda_caller_with_nodes(&mut caller, call_args, cell)
+    }
+
     /// What a called LET variable or LAMBDA parameter holds. A union is a reference, so calling
     /// it is `#REF!` like any reference (probes/let-name-call-forms H1, H2, H13, T-1231).
     pub(crate) fn variable_callee(

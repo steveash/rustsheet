@@ -235,7 +235,8 @@ impl Model {
     /// `T.INV(probability, deg_freedom)`: both arguments lift over an array and a range
     /// (SPEC-0011; probes/stat-argument-modes, probes/stat-quantile-lift). The quantile is the
     /// capped port of statrs' inversion, a closed form, or a bisection of at most 264 cdfs
-    /// (`t_quantile`), which the lifting table charges (kinds.rs `T_QUANTILE_WEIGHT`).
+    /// (`t_quantile`), which the lifting table charges (lift/kinds/statistical.rs
+    /// `T_QUANTILE_WEIGHT`).
     pub(crate) fn fn_t_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::TInv, args, cell, &mut |model, values| {
             number_or_error(model.t_inv_of(values, false, cell))

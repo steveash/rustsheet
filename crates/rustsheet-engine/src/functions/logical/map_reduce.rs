@@ -25,8 +25,8 @@ impl Model {
         }
 
         let mut arrays: Vec<LambdaGrid> = Vec::with_capacity(n_arrays);
-        for arg in &args[..n_arrays] {
-            let data = match self.lambda_cells(arg, cell) {
+        for (index, arg) in args[..n_arrays].iter().enumerate() {
+            let data = match self.lambda_cells(arg, cell, index > 0) {
                 Ok(d) => d,
                 Err(e) => return e,
             };
@@ -100,7 +100,7 @@ impl Model {
             return lambda_result;
         }
 
-        let data = match self.lambda_cells(&args[array_idx], cell) {
+        let data = match self.lambda_cells(&args[array_idx], cell, false) {
             Ok(d) => d,
             Err(e) => return e,
         };
