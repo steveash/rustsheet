@@ -486,6 +486,10 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
 
    Steps 2–4 bound the output, the kernel calls and the input. They do not bound what one kernel
    call does inside, which is why `KernelWork` exists.
+   WORKDAY(.INTL) and NETWORKDAYS(.INTL) stepped once per calendar day (about 2.96M steps at
+   worst, so a covering weight would cap a lift at about 45 elements). T-1295 (whole-week steps)
+   and T-1808 (closed-form day counts) make one call O(holidays), so T-1236 follows both and
+   enters them without a calendar weight.
 5. **Elements**, in row-major order, into one buffer kept for the whole call. Scalar and whole
    slots are written once. Only the grid slots are overwritten per element, by
    `array_node_to_calc_result(bcast_get(grid, i, j).unwrap_or(&MISSING), cell)` (functions/util.rs).
@@ -772,6 +776,7 @@ Each step is one PR of size S/M. The old paths stay until their step.
      and T-1290 wait for it.
    - **T-1802** (functions-math, S): probe, then enter QUOTIENT, FACTDOUBLE and SERIESSUM.
    - **T-1236** (functions-date, S): WORKDAY(.INTL), NETWORKDAYS(.INTL); `weekend` is `Lift`.
+     Follows T-1295 and T-1808, which take the per-day loops out of their kernels.
    - **T-1372** (functions-financial, M): later ATP arguments are probed before they are entered.
    - **T-1290** (functions-stat, M): the functions whose every argument is scalar.
    - **T-1772** (functions-stat, M): the first real `Whole` + `Prepared` consumer (LARGE k and the

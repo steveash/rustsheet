@@ -430,24 +430,65 @@ impl Model {
             Err(e) => return e,
         };
 
-        let (from, to, sign) = if start_serial <= end_serial {
+        let (from, to, sign) = Self::networkdays_span(start_serial, end_serial);
+        match self.networkdays_per_weekday(from, to, &holidays, cell) {
+            Ok(per_weekday) => {
+                CalcResult::Number(Self::working_days(&per_weekday, &DEFAULT_WEEKEND) as f64 * sign)
+            }
+            Err(e) => e,
+        }
+    }
+
+    /// The span of NETWORKDAYS / NETWORKDAYS.INTL as `(from, to, sign)` with `from <= to`: an end
+    /// before the start counts the same days, negated.
+    fn networkdays_span(start_serial: i64, end_serial: i64) -> (i64, i64, f64) {
+        if start_serial <= end_serial {
             (start_serial, end_serial, 1.0)
         } else {
             (end_serial, start_serial, -1.0)
-        };
-        let mut count = 0i64;
-        for serial in from..=to {
-            let date = match self.excel_date(serial, cell) {
-                Ok(d) => d,
-                Err(e) => return e,
-            };
-            let weekday = date.weekday().number_from_monday();
-            let is_weekend = matches!(weekday, 6 | 7);
-            if !is_weekend && !holidays.contains(&serial) {
-                count += 1;
+        }
+    }
+
+    /// The days of `from..=to` (`from <= to`) per weekday, Monday first, without the distinct
+    /// `holidays` among them. Counted in closed form, whole weeks plus the remainder, so a span of
+    /// the whole date range costs O(holidays), not one step per day (T-1808). Both endpoints must
+    /// be dates (#NUM! otherwise); the dates of a date system are one run of serials, so every
+    /// day between is one too, and its weekday follows the first day's.
+    fn networkdays_per_weekday(
+        &self,
+        from: i64,
+        to: i64,
+        holidays: &std::collections::HashSet<i64>,
+        cell: CellReferenceIndex,
+    ) -> Result<[i64; 7], CalcResult> {
+        let first_weekday = i64::from(
+            self.excel_date(from, cell)?
+                .weekday()
+                .num_days_from_monday(),
+        );
+        self.excel_date(to, cell)?;
+        let weekday_of = |serial: i64| ((first_weekday + serial - from) % 7) as usize;
+        let days = to - from + 1;
+        let mut per_weekday = [days / 7; 7];
+        for serial in from..from + days % 7 {
+            per_weekday[weekday_of(serial)] += 1;
+        }
+        for &holiday in holidays {
+            if (from..=to).contains(&holiday) {
+                per_weekday[weekday_of(holiday)] -= 1;
             }
         }
-        CalcResult::Number(count as f64 * sign)
+        Ok(per_weekday)
+    }
+
+    /// The days of `per_weekday` (Monday first) that are not weekend days of `weekend_mask`.
+    fn working_days(per_weekday: &[i64; 7], weekend_mask: &[bool; 7]) -> i64 {
+        per_weekday
+            .iter()
+            .zip(weekend_mask)
+            .filter(|(_, &weekend)| !weekend)
+            .map(|(days, _)| days)
+            .sum()
     }
 
     fn excel_date(
@@ -582,36 +623,15 @@ impl Model {
             Err(e) => return e,
         };
 
-        let (from, to, sign) = if start_serial <= end_serial {
-            (start_serial, end_serial, 1.0)
-        } else {
-            (end_serial, start_serial, -1.0)
+        let (from, to, sign) = Self::networkdays_span(start_serial, end_serial);
+        // The days are counted per weekday once, so each mask of a lifted weekend costs seven
+        // additions.
+        let per_weekday = match self.networkdays_per_weekday(from, to, &holidays, cell) {
+            Ok(per_weekday) => per_weekday,
+            Err(e) => return e,
         };
-        // The days between are counted per weekday once, so each mask of a lifted weekend
-        // costs seven additions, not another scan of up to 2.9M days. Serials between two valid
-        // ones are valid.
-        let mut per_weekday = [0i64; 7];
-        for serial in [from, to] {
-            if let Err(e) = self.excel_date(serial, cell) {
-                return e;
-            }
-        }
-        for serial in from..=to {
-            if holidays.contains(&serial) {
-                continue;
-            }
-            let Some(date) = self.workbook.settings.date_system.date_of_serial(serial) else {
-                continue;
-            };
-            per_weekday[date.weekday().number_from_monday() as usize - 1] += 1;
-        }
-        weekend.lift(|weekend_pattern| {
-            let count: i64 = (0..7)
-                .filter(|&d| !weekend_pattern[d])
-                .map(|d| per_weekday[d])
-                .sum();
-            Ok(count as f64 * sign)
-        })
+        weekend
+            .lift(|weekend_mask| Ok(Self::working_days(&per_weekday, &weekend_mask) as f64 * sign))
     }
 
     /// The serial of the model clock's now in the optional timezone argument of TODAY / NOW (the
