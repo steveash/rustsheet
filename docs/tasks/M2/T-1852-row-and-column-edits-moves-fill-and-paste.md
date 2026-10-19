@@ -3,7 +3,7 @@ id: T-1852
 title: "Row and column edits, moves, fill and paste keep a legacy N/T marker"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
