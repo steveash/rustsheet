@@ -523,14 +523,14 @@ mod tests {
             Some("a,b".to_string())
         );
         assert_eq!(text_before("a,b-c", &list, 3, Case::Sensitive), None);
-        // The first entry in list order sets the length where two match at one position.
+        // The longest entry sets the length where two match at one position (T-1824).
         assert_eq!(
             text_after("xabc", &["ab", "a"], 1, Case::Sensitive),
             Some("c".to_string())
         );
         assert_eq!(
             text_after("xabc", &["a", "ab"], 1, Case::Sensitive),
-            Some("bc".to_string())
+            Some("c".to_string())
         );
         assert_eq!(
             text_before("xAbC", &["B", "x"], 1, Case::Insensitive),
