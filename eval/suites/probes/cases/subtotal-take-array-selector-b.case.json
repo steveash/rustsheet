@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1984: SUBTOTAL over TAKE of SWITCH/IFS with the array away from the selector, and IF/CHOOSE/LET-wrapped or LET-variable/range/INDIRECT selectors, each in clear space (A10, A20, ... A130) so the spill shape shows. H1:H2 = 3,4; I1:I2 = 6,8; J1:J2 = 1,2; K1 TRUE.",
+ "tags": [
+  "M2",
+  "probe",
+  "T-1984"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "H1": 3,
+    "H2": 4,
+    "I1": 6,
+    "I2": 8,
+    "J1": 1,
+    "J2": 2,
+    "K1": true,
+    "A10": "=SUBTOTAL(9,TAKE(SWITCH(1,{1,2},H1:H2,I1:I2),2))",
+    "A20": "=SUBTOTAL(9,TAKE(IFS(TRUE,H1:H2,{FALSE,TRUE},I1:I2),2))",
+    "A30": "=SUBTOTAL(9,TAKE(IF(TRUE,SWITCH({1,2},1,H1:H2,2,I1:I2)),2))",
+    "A40": "=SUBTOTAL(9,TAKE(CHOOSE(1,IFS({TRUE,FALSE},H1:H2,{FALSE,TRUE},I1:I2)),2))",
+    "A50": "=SUBTOTAL(9,TAKE(LET(x,SWITCH({1,2},1,H1:H2,2,I1:I2),x),2))",
+    "A60": "=SUBTOTAL(9,TAKE(IFS({TRUE,FALSE},H1:H2,TRUE,I1:I2),2))",
+    "A70": "=SUBTOTAL(9,TAKE(IFS(FALSE,H1:H2,{TRUE,FALSE},I1:I2),2))",
+    "A80": "=SUBTOTAL(9,TAKE(LET(s,{1,2},SWITCH(s,1,H1:H2,2,I1:I2)),2))",
+    "A90": "=SUBTOTAL(9,TAKE(LET(s,{TRUE,FALSE},IFS(s,H1:H2,TRUE,I1:I2)),2))",
+    "A100": "=SUBTOTAL(9,TAKE(LET(s,{1,2},CHOOSE(s,H1:H2,I1:I2)),2))",
+    "A110": "=SUBTOTAL(9,TAKE(IF(H1:H2>3,H1:H2,I1:I2),2))",
+    "A120": "=SUBTOTAL(9,TAKE(CHOOSE(J1:J2,H1:H2,I1:I2),2))",
+    "A130": "=SUBTOTAL(9,TAKE(IF(INDIRECT(\"K1\"),H1:H2,I1:I2),2))"
+   }
+  }
+ ]
+}
