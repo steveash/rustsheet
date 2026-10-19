@@ -668,7 +668,7 @@ silently.
   | T-1784 | a lifted whole-column COUNTIFS (`=SUM(COUNTIFS(A:A,A1:A100000))`, the `reuse_equal_runs` path) and a *IF(S) bench | within 5% |
   | T-1773 | per-row unlifted cells over ≥ 100k rows, full recalc: `=ROUND(A{r},2)`, `=ABS(A{r})`, `=MOD(A{r},7)` | within 5% each |
   | T-1773 | lifted `=SUM(ROUND(A1:A1000000,2))` and `=SUM(ABS(A1:A1000000))` | within 5% |
-  | T-1785 | per-row unlifted `=DAY(A{r})` over ≥ 100k rows | within 5% |
+  | T-1785 | per-row unlifted `=DAY(A{r})` over ≥ 100k rows | within 5%; relaxed by decision 0077 (landed at +9.4% instructions), the target moves to T-1932 |
   | T-1775 | `benches/text.rs` | within 5% |
   | T-1372 | `=SUM(PMT(A1:A100000,10,100))` | none: a new path, a smoke number only |
 
