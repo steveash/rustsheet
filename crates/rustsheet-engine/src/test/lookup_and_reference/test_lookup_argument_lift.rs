@@ -76,6 +76,27 @@ fn lookup_and_xmatch_lift_their_lookup_value() {
 }
 
 #[test]
+fn xmatch_lifts_its_search_mode() {
+    // probes/reference-lift-elements F13:H14 (excel-graph) back the second elements and the TRUE
+    // range element; the first elements are hand-written, pending an oracle run.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("A3", "2"), ("D1", "TRUE")] {
+        model._set(cell, value);
+    }
+    model._set("F1", "=XMATCH(2,A1:A3,0,{1;-1})");
+    model._set("G1", "=XMATCH(2,A1:A3,0,{1;3})");
+    model._set("H1", "=XMATCH(2,A1:A3,0,{2;-2})");
+    model._set("I1", "=XMATCH(2,A1:A3,0,D1:D2)");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), *"2");
+    assert_eq!(model._get_text("F2"), *"3");
+    assert_eq!(model._get_text("G1"), *"2");
+    assert_eq!(model._get_text("G2"), *"#VALUE!");
+    assert_eq!(model._get_text("H2"), *"3");
+    assert_eq!(model._get_text("I1"), *"2");
+}
+
+#[test]
 fn choosecols_and_chooserows_read_index_lists_whole() {
     let mut model = new_empty_model();
     for (cell, value) in [
