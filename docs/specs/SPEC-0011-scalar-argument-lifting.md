@@ -610,6 +610,11 @@ financial.md "CUMIPMT and CUMPRINC over many periods"). The weight is the derive
 form (about 2.9 us an element in release: 2^19 elements, 1.5 s), not a value-dependent loop (financial.md "CUMIPMT and
 CUMPRINC work cap", a DEVIATION).
 
+As built (T-1389): the twelve D-functions are `DATABASE` (`Whole`, `LiftArrays`, `LiftArraysRangeWhole`), the
+first entries of the `Whole` and `LiftArraysRangeWhole` kinds. The table says `Constant`, but a kernel scans the whole
+database, so `Model::db_call` prices a call that can lift with `LiftCost::Cells` of the database's rows times the
+criteria headers and cells scanned per row (statistics.md "Database function argument modes", a DEVIATION).
+
 As built (T-1841): AMORLINC and AMORDEGRC are `LiftArrays` and `Weighted`. Their kernels walked the periods with
 `counted += 1.0` up to `ceil(1/rate)` (10^15 steps for `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)`, and no end past
 2^53). Excel walks them too, in doubles (probes/fin-amor-period-bound A6 is the walk's remainder, not the closed form's),
