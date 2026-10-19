@@ -1958,3 +1958,16 @@ Unprobed folds (still merged by upper-casing): U+0345, ǰ and ΐ (a workbook wit
 Evidence: probes/unknown-function-name-spelling, probes/unknown-function-name-reach, probes/unknown-function-name-folds, probes/unknown-function-name-folds-2.
 Status: VERIFIED (excel-graph)
 Tasks: T-1719, T-1756, T-1760, T-1761, T-1762, T-1763
+
+## A LAMBDA call returning a union or a one-cell reference (T-1951)
+
+A written LAMBDA call keeps what its body returns in reference context, as LET does: `SUM(LAMBDA(x,x)((A1,B1)))` is 11,
+`ISREF(LAMBDA(x,x)((A1,B1)))` TRUE and `AREAS(LAMBDA(x,x)((A1,B1)))` 2, the same as `LET(x,(A1,B1),x)`, and
+`INDEX(LAMBDA(x,x)((A1:A3,B1:B2)),1,1,2)` reads the second area. A body that gives one cell is that cell for OFFSET and
+COUNTIF too: `OFFSET(LAMBDA(x,x)(A1),1,0)` and `OFFSET(LET(x,A1,x),1,0)` read A2, `COUNTIF(LAMBDA(x,x)(A1),">0")` counts A1
+(probes/lambda-union-reference-callers, excel-graph, 2026-10-19). Implemented by `call_callee_as_reference` returning the
+`RefArg` uncollapsed and by `evaluate_node_with_reference` reading a LET or LAMBDA call as a reference.
+
+Evidence: probes/lambda-union-reference-callers C1-C7, D1-D11 (excel-graph, 2026-10-19)
+Status: VERIFIED (excel-graph)
+Tasks: T-1951. Open: a union returned by LAMBDA or LET into OFFSET or COUNTIF is unprobed (T-1951 follow-up).

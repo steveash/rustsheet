@@ -225,6 +225,7 @@
   {"name":"PRICE","required":6,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":7,"work":"Weighted(262144)"},
   {"name":"PRICEDISC","required":4,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":5,"work":"Constant"},
   {"name":"PRICEMAT","required":5,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":6,"work":"Constant"},
+  {"name":"PROB","required":3,"params":["WholeByCaller","WholeByCaller","Lift","Lift"],"repeat":null,"max":4,"work":"Constant"},
   {"name":"PV","required":3,"params":["Lift","Lift","Lift","Lift","Lift"],"repeat":null,"max":5,"work":"Constant"},
   {"name":"QUARTILE","required":2,"params":["WholeByCaller","Lift"],"repeat":null,"max":2,"work":"Constant"},
   {"name":"QUARTILE.EXC","required":2,"params":["WholeByCaller","Lift"],"repeat":null,"max":2,"work":"Constant"},
@@ -275,5 +276,7 @@
   {"name":"YEARFRAC","required":2,"params":["LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":3,"work":"Constant"},
   {"name":"YIELD","required":6,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":7,"work":"Weighted(16777216)"},
   {"name":"YIELDDISC","required":4,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":5,"work":"Constant"},
-  {"name":"YIELDMAT","required":5,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":6,"work":"Constant"}
+  {"name":"YIELDMAT","required":5,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":null,"max":6,"work":"Constant"},
+  {"name":"Z.TEST","required":2,"params":["WholeByCaller","Lift","Lift"],"repeat":null,"max":3,"work":"Constant"},
+  {"name":"ZTEST","required":2,"params":["WholeByCaller","Lift","Lift"],"repeat":null,"max":3,"work":"Constant"}
 ]

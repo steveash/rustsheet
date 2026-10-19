@@ -3,6 +3,7 @@ use crate::{
     formatter::{
         self,
         format::{FormatContext, Formatted},
+        lexer::is_likely_date_number_format,
     },
     locale::get_locale,
     model::{FmtSettings, Model},
@@ -448,6 +449,25 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
 
 /// A model's number-formatting inputs and locale examples.
 impl Model {
+    /// Style of typed input that implies the number format `num_fmt`. The format is not applied
+    /// when a date is typed into a cell that is already date-formatted.
+    pub(crate) fn style_with_typed_format(
+        &mut self,
+        style_index: i32,
+        num_fmt: &str,
+    ) -> Result<i32, String> {
+        let keeps_format =
+            is_likely_date_number_format(&self.workbook.styles.get_style(style_index)?.num_fmt)
+                && is_likely_date_number_format(num_fmt);
+        if keeps_format {
+            Ok(style_index)
+        } else {
+            self.workbook
+                .styles
+                .get_style_with_format(style_index, num_fmt)
+        }
+    }
+
     /// The workbook's number-formatting inputs: its locale and date system (SPEC-0005).
     pub(crate) fn format_context(&self) -> FormatContext<'static> {
         FormatContext {

@@ -6,7 +6,10 @@ use crate::{
     number_format::parse_excel_number, types::DateSystem,
 };
 
-use super::date_text::{parse_date, CurrentYear};
+use super::{
+    date_text::{parse_date, CurrentYear},
+    lexer::is_likely_date_number_format,
+};
 
 /// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
 /// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Non-glued dates and clocks with
@@ -30,6 +33,52 @@ pub(crate) fn parse_typed_number(
         parse_date_clock_serial_in(original, locale, current_year, date_system)
             .map(|serial| (serial, shape.format()))
             .ok_or(err)
+    })
+}
+
+/// Cell format of typed text that stays text because its clock is rejected: a date followed by a
+/// number-like clock and a spaced `AM`/`PM` (`1/2/2020 13:00 PM`, `13 PM`, `1300 PM`, `99:00 PM`)
+/// carries the format of its date part (`m/d/yyyy`, `d-mmm-yy` for `July 1, 2026 13:00 PM`), while
+/// a glued `10:00AM`, `10:00 XM`, `10:00 PM PM`, a clock with no date and `1/2/2020 abc` stay
+/// General (probes/date-text-typed-clock-shapes N14-N15, date-text-rejected-clock-formats N1-N16;
+/// formats in docs/research/rejected-clock-text-formats-2026-10-19.md).
+pub(crate) fn rejected_clock_text_format(
+    original: &str,
+    currencies: &[&str],
+    locale: &Locale,
+    current_year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<String> {
+    let (rest, word) = original.rsplit_once(' ')?;
+    if !(word.eq_ignore_ascii_case("am") || word.eq_ignore_ascii_case("pm")) {
+        return None;
+    }
+    let rest = rest.trim_end_matches(' ');
+    let (date, clock) = rest.rsplit_once(' ')?;
+    if !clock.bytes().all(|b| b.is_ascii_digit() || b == b':')
+        || !clock.bytes().any(|b| b.is_ascii_digit())
+    {
+        return None;
+    }
+    parse_formatted_number(
+        date.trim_end_matches(' '),
+        currencies,
+        locale,
+        current_year,
+        date_system,
+    )
+    .ok()
+    .and_then(|(_, format)| format)
+    // Only a date part counts: a percent, currency or grouped number before the clock is unprobed.
+    .filter(|format| is_likely_date_number_format(format))
+    // An ISO date gets `m/d/yyyy` here (N10), not the `yyyy-mm-dd` the engine gives a bare typed
+    // ISO date (bare typed ISO dates are unprobed).
+    .map(|format| {
+        if format == "yyyy-mm-dd" {
+            "m/d/yyyy".to_string()
+        } else {
+            format
+        }
     })
 }
 
