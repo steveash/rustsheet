@@ -48,9 +48,12 @@ SC = 10**7; M = 30.0; K = len(IDX)
 L = [[int(round(SC/BOUND)) if kk == k else 0 for kk in range(K)] + [int(round(SC*M*A[r, k])) for r in sel] for k in range(K)]
 L += [[0]*K + [int(round(SC*M)) if rr == r else 0 for rr in sel] for r in sel]
 Bm = IntegerMatrix.from_matrix(L); LLL.reduction(Bm)
+if os.environ.get('BKZ'):
+    from fpylll import BKZ
+    BKZ.reduction(Bm, BKZ.Param(block_size=int(os.environ['BKZ'])))
 for sgn in (1, -1):
     tgt = [0]*K + [int(round(SC*M*sgn*ph[r])) for r in sel]
-    v = CVP.closest_vector(Bm, tgt, method='proved')
+    v = CVP.closest_vector(Bm, tgt, method=os.environ.get('CVPM', 'proved'))
     u = np.array([round(v[k]*BOUND/SC) for k in range(K)])
     pr = (sgn*ph - A @ u + 0.5) % 1 - 0.5
     print('sign %+d: u = %s  phase rms all rows %.3f (lattice rows %.3f)' % (sgn, u.tolist(), pr.std(), pr[sel].std()), flush=True)

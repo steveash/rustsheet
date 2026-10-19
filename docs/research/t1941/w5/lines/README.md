@@ -61,10 +61,18 @@ different reason.
 - **N.S2 plus function rows** (`joint.py`) is still degenerate. LLL plus Babai, and BKZ, do not recover the truth,
   and exact CVP is too slow at 60-165 dimensions.
 - **D chain from all tie lines** (`dsolve.py`): D.S3 (47 runs), D.S4 (83) and D.S5 (16), 146 rows over
-  [0.70, 1.50], 6 unknowns u3..u8.
-  - The truth fits all rows at 0.037.
-  - Exact CVP on a 26-row subsample overfits: 0.020 on its rows, 0.275 on all.
-  - Larger subsamples: see section 5.
+  [0.70, 1.50], 6 unknowns u3..u8. Control: truth u = (-21972, -22286, 17824, -44, 5401, 6089), which fits all
+  rows at 0.037 cycles.
+  - Exact CVP on 26 rows overfits (0.020 on its rows, 0.275 on all). At 45 rows it does not finish in 20 min.
+  - LLL + BKZ-20 + Babai on 45/90/146 rows gives u = (-4, -22286, 17820, 4, 5027, 13664) at 0.036 cycles:
+    - **u4 exact, u5 within 4 ulps**;
+    - u6 within about 50, u7 within about 500, u8 within about 1e4 (weak high-power terms);
+    - **u3 only modulo 16**: D3 enters S3's phase as the constant u3·ulp(D3)/(2 ulp S3) = u3/8 or u3/16, so
+      only u3 mod 16 is visible (-4 ≡ -21972 mod 16).
+  - So far-run tie lines pin the mid D coefficients (D4, D5) to the ulp. D3, D6-D8 need other rows: near-1 stage
+    sums S_j(1), function preservation, and more lines.
+- **Real data, D chain:** the same LLL + BKZ-20 solve (146 rows, bounds 1e5 and 1e6) did not finish in 15
+  minutes per bound. That is not run yet; it is the next step, with a smaller row set (about 60 rows) or BKZ-10.
 - On real data, D-only moves at bounds 1e3-1e6 give phase rms 0.08-0.15, and exact 0. The real Excel-c5
   difference involves N too (function-preserving), so a real solve must be joint with function rows.
 
@@ -76,3 +84,16 @@ different reason.
   A at 1.0983 and D.S1/D.P1 at 1.107.
 - So the apparent function deviation from part 1 is stage-rounding bias at binade crossings. It is no evidence
   about the generator.
+
+## 5. Status and next steps
+- Best exact score is unchanged: c5_f99t at 47.25%. The parity-fixed c5 (D3 -> ...b68, N2+1) is equal near 1
+  and 0.2 points lower far.
+- New facts:
+  - the far "unexplained" lines are D.S3 and N.S2 tie lines;
+  - Excel's D3 is a multiple of 4 ulps, N2 is even and N5 is odd;
+  - the tie-line phase law is validated on synthetic data;
+  - a 6-unknown D-chain lattice recovers D4 exactly and D5 within 4 ulps on synthetic data.
+- Next:
+  1. Run `dsolve.py` on the real data with a smaller lattice.
+  2. Add near-1 stage-sum rows and function rows to fix D3 (mod-16 ambiguity) and D6-D8.
+  3. Do the same for the N chain with N.S2 plus the N sawtooth lines. Then refit and score exactly.

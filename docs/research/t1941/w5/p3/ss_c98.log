@@ -1,0 +1,6 @@
+start far+near 0.2921  (far 0.2722 near 0.3119)
+ sweep 0: far+near 0.4405
+ sweep 1: far+near 0.4498
+ sweep 2: far+near 0.4498
+ sweep 3: far+near 0.4498
+final: far 0.3136 near 0.5861 | metrics-sample far 0.3104 near 0.6237
