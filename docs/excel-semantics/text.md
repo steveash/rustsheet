@@ -675,7 +675,7 @@ symbols (`$`, `+`, `<`, `^`, `@`, the backtick and `~` are punctuation; `×` and
 Ll and `upper` Lu (`ª` is not lower, `ǅ` neither); `word` L, N, Mn and Pc (`_`, `²`, a combining mark; not an emoji); `xdigit` 0-9,
 A-F, a-f and their fullwidth forms (not Arabic-Indic digits). `[:^name:]` and `[^[:name:]]` are the complements.
 `[:upper:]` and `[:lower:]` ignore case-insensitive matching: `REGEXTEST("a","(?i)[[:upper:]]")` and `REGEXTEST("A","(?i)[[:lower:]]")`
-are FALSE.
+are FALSE (probed in a plain bracket only; inside a set operation or a nested bracket, and negated, ours still folds them: unprobed).
 Syntax: `[a[:digit:]]` and `[[:alpha:][:digit:]]` mix classes with other items; `[\[:alpha:]]` is no class (`":"` FALSE).
 `[:alpha:]` outside a bracket, an unknown or upper-case name (`[[:foo:]]`, `[[:ALPHA:]]`), `[[.a.]]`, `[[=a=]]` and a range from a class
 (`[[:alpha:]-z]`) are invalid patterns (ERROR.TYPE 3); ours accepts them (T-1985).

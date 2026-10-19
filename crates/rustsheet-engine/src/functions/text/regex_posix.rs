@@ -154,7 +154,7 @@ fn case_sensitive_split(class: &ast::ClassBracketed) -> Option<Ast> {
             _ => {
                 let mut one = ClassSetItem::Union(ast::ClassSetUnion {
                     span: class.span,
-                    items: vec![item.clone()],
+                    items: vec![escaped(item)],
                 });
                 rewrite_item(&mut one);
                 let bracket = Ast::class_bracketed(ast::ClassBracketed {
@@ -165,7 +165,7 @@ fn case_sensitive_split(class: &ast::ClassBracketed) -> Option<Ast> {
                 let mut printed = String::new();
                 Printer::new().print(&bracket, &mut printed).ok()?;
                 // `[x]` → `x`, so the rest prints as one bracket.
-                rest.push_str(printed.get(1..printed.len() - 1)?);
+                rest.push_str(printed.get(1..printed.len().checked_sub(1)?)?);
             }
         }
     }
@@ -178,6 +178,21 @@ fn case_sensitive_split(class: &ast::ClassBracketed) -> Option<Ast> {
     text.push_str(&alternatives.join("|"));
     text.push(')');
     Parser::new().parse(&text).ok()
+}
+
+/// `item` with a meta-character literal escaped: once the cased classes are taken out, a
+/// verbatim `^` may lead the rest (`[[:upper:]^a]` must not become `[^a]`) and two `&`, `-` or
+/// `~` may meet and read as a set operator.
+fn escaped(item: &ClassSetItem) -> ClassSetItem {
+    match item {
+        ClassSetItem::Literal(lit) if regex_syntax::is_meta_character(lit.c) => {
+            ClassSetItem::Literal(ast::Literal {
+                kind: ast::LiteralKind::Meta,
+                ..lit.clone()
+            })
+        }
+        _ => item.clone(),
+    }
 }
 
 /// The bracket class `text` (one of [`unicode_class`]'s constants).
@@ -210,5 +225,13 @@ mod tests {
         );
         assert_eq!(unicode_posix_classes("[[:lower:]]+"), r"(?:(?-i:\p{Ll}))+");
         assert_eq!(unicode_posix_classes("[^[:upper:]]"), r"[^[\p{Lu}]]");
+        assert_eq!(
+            unicode_posix_classes("[[:upper:]^a]"),
+            r"(?:[\^a]|(?-i:\p{Lu}))"
+        );
+        assert_eq!(
+            unicode_posix_classes(r"[&[:lower:]\&]"),
+            r"(?:[\&\&]|(?-i:\p{Ll}))"
+        );
     }
 }
