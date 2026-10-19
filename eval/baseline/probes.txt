@@ -398,6 +398,7 @@ C	probes/legacy-value-argument-intersection.case.json	45
 C	probes/let-bind-implicit-index.case.json	10
 C	probes/let-bind-reference-forms.case.json	11
 C	probes/let-lambda-name-case.case.json	14
+C	probes/let-lambda-reference-results.case.json	18
 C	probes/let-name-call-arrays.case.json	4
 C	probes/let-name-call-bool.case.json	2
 C	probes/let-name-call-forms.case.json	17
@@ -2911,8 +2912,6 @@ F	probes/weeknum-stale-return-type.case.json	Type21!A1
 F	probes/weeknum-stale-return-type.case.json	Up!A1
 F	probes/whole-column-empty-walkers.case.json	Sheet1!E7
 F	probes/whole-column-empty-walkers.case.json	Sheet1!F3
-F	probes/written-parens-reference-only.case.json	Sheet1!E40
-F	probes/written-parens-reference-only.case.json	Sheet1!E45
 F	probes/yield-solver-sweep.case.json	S!A1
 F	probes/yield-solver-sweep.case.json	S!A10
 F	probes/yield-solver-sweep.case.json	S!A11
