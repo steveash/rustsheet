@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
+spec: docs/specs/SPEC-0014-reference-array-results.md
 depends_on: [T-1956]
 ---
 
