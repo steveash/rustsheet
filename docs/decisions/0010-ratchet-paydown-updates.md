@@ -187,5 +187,8 @@
   (`check_duplication.py --update`: one closed-form count replaces the two per-day loops).
   T-1389: duplicated lines 3831 -> 3630 (`check_duplication.py --update`): the twelve D-functions' copied
   argument and criteria preamble became `db_call`/`db_query`/`db_fold` in `functions/database.rs`.
+  steward 2026-10-19: the size lock was loose on main. expressions/parser/static_analysis.rs off the oversized list
+  (`check_file_size.py --update`, 12 -> 11 entries; evaluation.rs 1096 -> 1071 and
+  financial/financial_bonds.rs 1083 -> 1031 locked too); no code change in this PR.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
