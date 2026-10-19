@@ -3,7 +3,7 @@ id: T-1947
 title: "BYROW with _xleta.IF (IF called with one argument) is #CALC!, not #ERROR!"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -23,9 +23,17 @@ unprobed, and `=IF(TRUE)` may not be enterable. Probe `MAP({1,2},_xleta.IF)`, `B
 `by_slices_lambda` (bycol_byrow.rs). docs/excel-semantics/arrays.md "Functions passed by name".
 
 ## Acceptance criteria
-- [ ] probes/eta-reduced-names E101:E103 leave eval/baseline/probes.txt; a probe of the one-argument eta IF is recorded in
+- [x] probes/eta-reduced-names E101:E103 leave eval/baseline/probes.txt; a probe of the one-argument eta IF is recorded in
   arrays.md.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/eta-if-one-argument (40 cells, excel-graph): an eta-reduced IF called with one argument is accepted. It
+gives `#VALUE!` for any condition that is not an error, passes an error on, and lifts element by element over an array
+or range condition, so BYROW and BYCOL over two-cell slices are one `#CALC!` and MAP is `#VALUE!` per element. Recorded
+in arrays.md "Functions passed by name". `Model::if_pick` (functions/logical/mod.rs) now takes IF with only a condition
+that way instead of giving an argument-count `#ERROR!`. Eval: probes/eta-reduced-names E101 fixed (E102:E103 were
+its spill), the new case passes 40/40 (E69, `f()`, is left pending: excel-graph cannot decode its error), no regressions.
