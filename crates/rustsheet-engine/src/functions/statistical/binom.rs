@@ -1,9 +1,13 @@
 //! BINOM.DIST, BINOM.DIST.RANGE, BINOM.INV and NEGBINOM.DIST (and BINOMDIST, CRITBINOM,
 //! NEGBINOMDIST): every argument lifts over an array and a range (SPEC-0011;
 //! probes/stat-argument-modes H105-H131, H374-H384, probes/stat-later-argument-lift H11-H23,
-//! K15-K16). The cdfs are statrs' incomplete beta, a continued fraction of at most 140 steps.
+//! K15-K16). BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST sum their pmf terms in double-double
+//! (`discrete.rs`, T-0927), and past that walk's budget fall back to statrs' incomplete beta, a
+//! continued fraction of at most 140 steps, as BINOM.INV's search does throughout.
 
 use statrs::distribution::{Binomial, Discrete, DiscreteCDF, NegativeBinomial};
+
+use super::discrete::{binomial_cdf, binomial_pmf, binomial_range, odds, times_ratio, Scaled};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
@@ -44,6 +48,24 @@ impl Model {
         }
         let n = trials as u64;
         let k = number_s as u64;
+        // A certain outcome: the walks need 0 < p < 1.
+        if p == 0.0 || p == 1.0 {
+            let certain = if p == 0.0 { 0 } else { n };
+            let hit = if cumulative {
+                k >= certain
+            } else {
+                k == certain
+            };
+            return Ok(if hit { 1.0 } else { 0.0 });
+        }
+        let walked = if cumulative {
+            binomial_cdf(n, odds(p), k)
+        } else {
+            binomial_pmf(n, odds(p), k).map(Scaled::to_f64)
+        };
+        if let Some(prob) = walked {
+            return Ok(prob);
+        }
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
         let prob = if cumulative { dist.cdf(k) } else { dist.pmf(k) };
         if prob.is_nan() || prob.is_infinite() {
@@ -98,6 +120,17 @@ impl Model {
         let n = trials as u64;
         let lower = number_s as u64;
         let upper = number_s2 as u64;
+        if p == 0.0 || p == 1.0 {
+            let certain = if p == 0.0 { 0 } else { n };
+            return Ok(if (lower..=upper).contains(&certain) {
+                1.0
+            } else {
+                0.0
+            });
+        }
+        if let Some(prob) = binomial_range(n, odds(p), lower, upper) {
+            return Ok(prob);
+        }
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
         let prob = if lower == 0 {
             dist.cdf(upper)
@@ -201,8 +234,27 @@ impl Model {
         if number_f > (u64::MAX as f64) {
             return Err(num_error(cell));
         }
-        let dist = NegativeBinomial::new(number_s, probability_s).map_err(|_| num_error(cell))?;
         let f_u = number_f as u64;
+        // F failures before the r-th success: P(F <= f) is P(at most f failures in f + r trials),
+        // a binomial cdf whose "success" is a failure, and P(F = f) = r / (f + r) times that
+        // binomial's pmf at f.
+        if number_f + number_s < 2f64.powi(53) {
+            let r_u = number_s as u64;
+            let trials = f_u + r_u;
+            let failure_odds = {
+                let (p, q) = odds(probability_s);
+                (q, p)
+            };
+            let walked = if cumulative {
+                binomial_cdf(trials, failure_odds, f_u)
+            } else {
+                binomial_pmf(trials, failure_odds, f_u).map(|pmf| times_ratio(pmf, r_u, trials))
+            };
+            if let Some(result) = walked {
+                return Ok(result);
+            }
+        }
+        let dist = NegativeBinomial::new(number_s, probability_s).map_err(|_| num_error(cell))?;
         let result = if cumulative {
             dist.cdf(f_u)
         } else {

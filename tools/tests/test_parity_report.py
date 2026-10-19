@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from rustsheet_tools import parity_report
-from rustsheet_tools.parity_report import ParityReportError, compute, functions_in, md_cell, table
+from rustsheet_tools.parity_report import ParityReportError, compute, md_cell, table
 from rustsheet_tools.parity_svg import Bar, bar_chart, nice_step
-
-ONE_ULP = math.nextafter(1.0, 2.0)
-THREE_ULP = math.nextafter(math.nextafter(ONE_ULP, 2.0), 2.0)
 
 SCOPE: dict[str, Any] = {
     "functions": [
@@ -29,41 +25,27 @@ SCOPE: dict[str, Any] = {
 }
 
 
-def num(v: float) -> dict[str, Any]:
-    return {"t": "n", "v": v}
-
-
-def cell(formula: str, verdict: str, expected: float = 1.0, actual: float = 1.0) -> dict[str, Any]:
-    return {"formula": formula, "verdict": verdict, "expected": num(expected), "actual": num(actual)}
-
-
-def fn(name: str, cells: int, passed: int, **verdicts: int) -> dict[str, Any]:
-    return {"name": name, "cells": cells, "passed": passed, "verdicts": {"pass": passed, **verdicts}}
+def fn(name: str, cells: int, passed: int, unsupported: int = 0, **buckets: int) -> dict[str, Any]:
+    """A report `functions[]` entry with its closeness counts (T-2036); `passed` cells are bit-exact."""
+    closeness = {"pass": passed, "ulp1": 0, "ulp4": 0, "close": 0, "off": 0, **buckets}
+    verdicts = {"pass": passed, **({"unsupported": unsupported} if unsupported else {})}
+    return {"name": name, "cells": cells, "passed": passed, "verdicts": verdicts, "closeness": closeness}
 
 
 def report() -> dict[str, Any]:
-    """ABS: 1 ulp. LN: one 1-ulp and one 3-ulp cell. SUM: shares ABS's and BETA.DIST's cells.
-    BETA.DIST: 1e-9 and an off cell, plus a deviation. UPPER: bit-exact but one unsupported.
-    CALL is out of scope."""
-    cells = [
-        cell("SUM(ABS(A1))", "numeric_ulp", 1.0, ONE_ULP),
-        cell("LN(2)", "numeric_ulp", 1.0, ONE_ULP),
-        cell('LN(3)&"ABS(x)"', "numeric_ulp", 1.0, THREE_ULP),
-        cell("_xlfn.BETA.DIST(0.5,2,3,TRUE)", "numeric_close", 0.1, 0.1000000001),
-        cell("SUM(BETA.DIST(0.5,2,3,TRUE))", "type_mismatch"),
-        cell("UPPER(CALL(1))", "unsupported"),
-        cell("CALL(1)", "numeric_mismatch"),
-    ]
+    """ABS: 1 ulp. LN: one 1-ulp and one 3-ulp cell. SUM: a 1-ulp and an off cell.
+    BETA.DIST: 1e-9 and an off cell, plus a deviation (pinned value, counted as pass).
+    UPPER: bit-exact but one unsupported. CALL is out of scope."""
     return {
         "functions": [
-            fn("ABS", 5, 4, numeric_ulp=1),
-            fn("SUM", 4, 2, numeric_ulp=1, type_mismatch=1),
-            fn("LN", 6, 4, numeric_ulp=2),
-            fn("BETA.DIST", 6, 3, numeric_close=1, type_mismatch=1, deviation=1),
+            fn("ABS", 5, 4, ulp1=1),
+            fn("SUM", 4, 2, ulp1=1, off=1),
+            fn("LN", 6, 4, ulp1=1, ulp4=1),
+            fn("BETA.DIST", 6, 3, close=1, off=1, **{"pass": 4}),
             fn("UPPER", 3, 2, unsupported=1),
-            fn("CALL", 2, 0, unsupported=1, numeric_mismatch=1),
+            fn("CALL", 2, 0, unsupported=1, off=1),
         ],
-        "cases": [{"id": "s/a", "cells": cells[:4]}, {"id": "s/b", "cells": cells[4:]}],
+        "cases": [],
         "suites": [
             {
                 "name": "s",
@@ -80,7 +62,7 @@ def by_name(r: dict[str, Any] | None = None) -> dict[str, parity_report.Function
     return {f.name: f for f in compute(r or report(), SCOPE).functions}
 
 
-def test_numeric_ulp_cells_split_at_one_ulp() -> None:
+def test_ulp_buckets_are_kept_apart() -> None:
     ln = by_name()["LN"]
     assert (ln.counts["ulp1"], ln.counts["ulp4"]) == (1, 1)
     assert ln.worst == "ulp4"
@@ -104,23 +86,17 @@ def test_unsupported_cells_are_dropped() -> None:
     assert upper.counts["pass"] == 2
 
 
-def test_a_cell_counts_for_every_function_it_calls() -> None:
+def test_buckets_come_from_the_report() -> None:
     f = by_name()
     assert f["SUM"].counts == {"pass": 2, "ulp1": 1, "ulp4": 0, "close": 0, "off": 1}
     assert f["ABS"].counts["ulp1"] == 1
-    # A name inside a string literal is not a call; the _xlfn. prefix is.
-    assert functions_in('LN(3)&"ABS(x)"') == {"LN"}
-    assert functions_in("_xlfn.BETA.DIST(1)+sum (2)") == {"BETA.DIST", "SUM"}
 
 
-def test_function_call_regex_edges() -> None:
-    # Prefixes are dropped; dotted names stay whole; `""` inside a literal does not end it.
-    assert functions_in("_xlfn._xlws.SORT(A1:A3)") == {"SORT"}
-    assert functions_in("_xlws.FILTER(A1:A3,B1:B3)") == {"FILTER"}
-    assert functions_in("NORM.S.DIST(1,TRUE)+F.TEST(A1:A3,B1:B3)") == {"NORM.S.DIST", "F.TEST"}
-    assert functions_in('LEN("say ""SUM(1)"" twice")&ABS(-1)') == {"LEN", "ABS"}
-    assert functions_in('"a"""&UPPER("x")') == {"UPPER"}
-    assert functions_in("A1+B2") == set()
+def test_a_report_without_closeness_counts_fails_loudly() -> None:
+    r = report()
+    del r["functions"][0]["closeness"]
+    with pytest.raises(ParityReportError, match="T-2036"):
+        compute(r, SCOPE)
 
 
 def test_only_in_scope_catalog_functions_count() -> None:
