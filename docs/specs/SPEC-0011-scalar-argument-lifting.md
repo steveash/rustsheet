@@ -387,29 +387,29 @@ pub(crate) enum LiftedArg {
 }
 
 /// What one element costs, for the cell-visit cap.
-pub(crate) enum LiftCost<'a> {
+pub(crate) enum LiftCost {
     /// `KernelWork::Constant` and no whole data: elements × 1.
     Unit,
     /// Every element walks `cells` (today's *IF(S) criteria walk): elements × cells.
     Cells(u64),
     /// The kernel prepares its whole data once (LARGE sorts it): cells + elements.
     Prepared(u64),
-    /// `walk_cost` of `range`, `walks` times per element (the *IF(S) front end: one walk per
-    /// criterion).
-    Walk { range: &'a Node, walks: u64 },
 }
 
 pub(crate) struct LiftOptions {
-    /// Reuse the previous element's result when every grid slot equals the previous element's:
-    /// the *IF(S) blank-tail optimization of `lift_with_cost`. Off for scalar kernels.
-    pub(crate) reuse_equal_runs: bool,
+    /// Which elements reuse an earlier result: `Never` (scalar kernels), `EqualRuns` (the
+    /// previous element's, when every grid slot equals it: the blank-tail optimization of
+    /// `lift_with_cost`) or `AnyEqual` (the first equal element's; *IF(S), T-0408).
+    pub(crate) reuse: Reuse,
     /// The table's `KernelWork` (`lift_call`); `Constant` for the direct callers.
     pub(crate) work: KernelWork,
 }
 
 impl LiftOptions {
-    /// What every direct caller passes (*IF(S), AGGREGATE, IFS, SWITCH, the lookups).
+    /// What AGGREGATE, IFS, SWITCH and the lookups pass.
     pub(crate) const REUSE_EQUAL_RUNS: Self;
+    /// What the *IF(S) functions pass (T-0408).
+    pub(crate) const REUSE_ANY_EQUAL: Self;
 }
 
 /// A per-element kernel: the scalar function over the argument values of one element.
@@ -434,7 +434,7 @@ impl Model {
     pub(crate) fn lift_values(
         &mut self,
         args: Vec<CalcResult>,
-        cost: LiftCost<'_>,
+        cost: LiftCost,
         options: &LiftOptions,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
@@ -443,7 +443,8 @@ impl Model {
 ```
 As built (T-1770): `lift_call` runs `lift_call_with(kinds, args, LiftCost::Unit, …)`, which a
 future `Prepared` or `Cells` consumer calls with its own cost. The direct callers keep their
-T-1784 totals exactly: *IF(S) passes `Walk { walks: criteria }`, `lookup_each` and AGGREGATE
+T-1784 totals exactly: *IF(S) passes `Cells(walk cost × criteria)` (T-0408 dropped the `Walk`
+variant: the ranges resolve once before the lift, so the walk cost is measured from them), `lookup_each` and AGGREGATE
 multiply their `Cells` by the lifted arguments, IFS and SWITCH pass `Cells(arguments)`; XLOOKUP
 passes its search cost once (it divided it by its three criteria before, so its bound only
 loosens by the rounding).
@@ -511,8 +512,12 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
      element errors with `String::new()` messages (T-1770, T-1773 and T-1785 acceptance), so a
      failing number element allocates nothing either; about 211 sites under functions/ allocate a
      message today, and only the migrated kernels change.
-   - **`reuse_equal_runs`:** the element is compared with the previous position slot by slot,
-     through `bcast_get` at both positions. No per-element key `Vec` is built.
+   - **`Reuse::EqualRuns`** (was `reuse_equal_runs`): the element is compared with the previous
+     position slot by slot, through `bcast_get` at both positions. No per-element key `Vec` is built.
+   - **`Reuse::AnyEqual`** (*IF(S) only, T-0408): before the work bound, one pass maps every
+     element to the first element equal to it (a hash map keyed by the borrowed slots, so no key
+     is copied); the work bound counts the distinct elements, and a repeat clones its first
+     element's result from the output.
 6. **Element result** → `ArrayNode` via the existing `cast::calc_result_to_array_node`. A range,
    an array or a LAMBDA is `#VALUE!`, as today. There is no new helper, and T-1787 deletes the four
    private copies of that function in functions/logical/.
