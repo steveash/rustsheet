@@ -719,8 +719,9 @@ total_depth ±2, and the default layout otherwise). Since T-1324: subtotals (gro
 an array field_relationship (below). Since T-1325 (functions/lookup_and_reference/group_functions.rs): the function
 argument is read as a grid of functions and labels (`Model::function_elements`, `Model::function_argument`), paired with
 the value columns (`Functions::pair_with`) and laid out as columns or rows (`Functions::shape`); each function is called
-through `Model::lambda_caller` with one or two arguments, its body read in reference context so a reference result, also one an XLOOKUP, TAKE or DROP
-picks (probes/lambda-body-picked-references A66-A90, T-2075), is `#VALUE!` (`LambdaCaller::keeping_references`); PERCENTOF passed by name sums each relative set once and divides
+through `Model::lambda_caller` with one or two arguments, its body read in reference context so a reference result, also
+one an XLOOKUP, TAKE or DROP picks (probes/lambda-body-picked-references A66-A90, T-2075), is `#VALUE!`
+(`LambdaCaller::keeping_references`); PERCENTOF passed by name sums each relative set once and divides
 (`percent_of`, shared with the PERCENTOF function), and a two-parameter LAMBDA is charged against the cell-visit cap (see
 "GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap").
 PIVOTBY (T-1326, functions/lookup_and_reference/pivotby.rs): two `Grouping`s of the same records (rows, columns), both size

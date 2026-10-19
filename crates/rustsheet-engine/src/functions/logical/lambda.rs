@@ -50,8 +50,8 @@ pub(crate) struct LambdaCaller {
 impl LambdaCaller {
     /// This caller with the body read in reference context: a body that is a reference, also
     /// one picked by IF or returned by INDEX or XLOOKUP (`Model::evaluate_picked_reference_arg`),
-    /// comes back as a `CalcResult::Range` instead of the
-    /// cell's value, so GROUPBY and PIVOTBY can make it `#VALUE!` as Excel does
+    /// comes back as a `CalcResult::Range` instead of the cell's value, so GROUPBY and PIVOTBY
+    /// can make it `#VALUE!` as Excel does
     /// (probes/groupby-lambda-forms G!J193, probes/groupby-pivotby-functions G!A541-A581).
     pub(crate) fn keeping_references(mut self) -> Self {
         self.references = true;
@@ -446,7 +446,7 @@ impl Model {
                     };
                     self.variable_stack.insert(raw_id, binding, cell);
                 }
-                // A body that picks a reference with XLOOKUP, TAKE, DROP or TRIMRANGE, also as
+                // A body that picks a reference with XLOOKUP, TAKE or DROP, also as
                 // the arm an IF, CHOOSE, IFS or SWITCH picks or a LET body, is that reference:
                 // ISREF is TRUE, SUM skips its text and GROUPBY makes it `#VALUE!`
                 // (probes/lambda-body-picked-references, take-drop-over-ifs-switch-picks A78).
