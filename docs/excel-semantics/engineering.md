@@ -271,8 +271,7 @@ Tasks: T-1385
 - Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, and IMPOWER as `|z|^n` by Excel's `^` (square-and-multiply for an integer `n`) times Excel's SIN/COS of the double `atan2(y,x)·n` (argument reduction by the x87 64-bit pi, numbers.md "Trig of a huge angle"). That reproduces all four values bit for bit: the tiny part of `IMPOWER("i",2)` is `π₆₄ − π_double`, the real part of `(1+i)^100` is `sqrt(2)^100` by square-and-multiply (2^50 + 12.5; libm `pow` gives 2^50 + 7.75) and its imaginary part is that times `sin(double(100·π/4))` reduced by `π₆₄`. Each part prints as number-to-text does (E notation past 20 plain characters).
 - A blank first argument is 0 in IMDIV and IMPOWER (`IMDIV(blank,"1+i")` and `IMPOWER(blank,2)` are "0"; `IMPOWER(blank,0)` and `IMDIV(blank,blank)` are `#NUM!`). IMDIV by Smith's algorithm matches Excel to the last digit on a sweep of 13 non-trivial divisors, including `1E10+1E-10i` over `1E-5+1E5i` and `1+i` over `1E-200+1E-200i` (`1E+200`).
 - An angle `atan2·n` of 2^27 or more (SIN's cut) is `#NUM!`: `IMPOWER("i",134217727)`, `IMPOWER("1+i",170891317)` and the same with 134217728 / 170891318. Unless the radius underflowed to 0 first: `IMPOWER("1+i",-170891318)` is "0", as are `IMPOWER("1E-200",2)` and `IMPOWER("1E-200+1E-200i",2)`. A radius that overflows is `#NUM!` (`IMPOWER("1E200",2)`, `IMPOWER("1E-200+1E-200i",-2)`).
-Evidence: probes/eng-impower-imdiv-edges (excel-graph, 2026-10-19, T-1892).
-Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625).
+Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges (excel-graph, 2026-10-19, T-1892).
 Status: VERIFIED (excel-graph)
 Tasks: T-1766, T-1892
 
