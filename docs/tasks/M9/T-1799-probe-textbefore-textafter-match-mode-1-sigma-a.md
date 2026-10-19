@@ -3,7 +3,7 @@ id: T-1799
 title: "Probe TEXTBEFORE/TEXTAFTER match_mode 1 sigma: a same-case Σ delimiter and a Σ before a space, digit or punctuation"
 milestone: M9
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
