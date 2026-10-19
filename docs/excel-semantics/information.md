@@ -30,7 +30,7 @@ SPEC-0011 `LiftArrays` table entry, so they follow the Analysis ToolPak rule pro
 YEARFRAC, probes/scalar-lift-shapes-c E, F, H, Q): a bare range gets no `@` and is `#VALUE!`, a
 value operation over a range (`ISEVEN(C1:C5+0)`) gets `@`, and `{5}` gets no `@`. Before T-1774 the
 hand-written arm gave the argument a scalar signature (`@` on the range and on `{5}`).
-Implemented in: `Model::lifted_parity` and the `ARRAYS_1` entry in functions/lift/kinds.rs.
+Implemented in: `Model::lifted_parity` and the `ARRAYS_1` entry in functions/lift/kinds/general.rs.
 Status: VERIFIED (excel-graph)
 Tasks: T-0247, T-0248
 
@@ -293,7 +293,7 @@ probes/legacy-n-t-reference-args).
 Implemented (T-1713): the legacy rewrite marks such an N call (`NLegacy`, SPEC-0012), whose kernel reads an
 array argument as `#VALUE!`; S!D4:D5 match. A dynamic `=N(IF(1,{2;3}))` is unmarked and still spills. Which
 marked shapes are verified and which are extrapolated: references.md "Legacy N and T over a reference-returning
-call" (probes/legacy-n-t-marker-shapes; `=N(INDEX({2;3},1))` is not matched yet, T-1921).
+call" (probes/legacy-n-t-marker-shapes; `=N(INDEX({2;3},1))` matches since T-1921).
 Status: VERIFIED (excel-graph)
 Tasks: T-1616, T-1713, T-1727
 
