@@ -470,7 +470,9 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
     near-cancellation snap does not apply inside ERF(a, b): 1 of 129 points differs from the cell formula.
   - Legacy ERF and ERFC are identical to the .PRECISE forms.
   - CHIDIST, CHISQ.TEST at df 1 and Z.TEST are wrappers too.
-  - Z.TEST with a single-value array returns #DIV/0!.
+  - Z.TEST with a single-value array returns #DIV/0!. A typed TRUE as the array is such a single value:
+    `Z.TEST(TRUE,0.5,1)` is #DIV/0! (probes-numeric/t1049-ztest A51; ours #VALUE!, T-2027), while typed text is
+    #VALUE! (`Z.TEST("a",4)`, A50) and `Z.TEST(7,4)` #DIV/0! (A41).
   - Odd-df upper chi-square (Q(1.5), Q(2.5)) and the shape-0.5 density use separate generic paths, not this kernel.
 - ERFC kernel for 0.5 < x <= 4 (rounds 7-9): bit-exact.
   - **Form.** The same family as the tail. ERFC = fl53(fl64(E*R)) with R = fl53(fl64(N/D)). N (degree 9) and D
@@ -1075,7 +1077,7 @@ desktop Excel, so the family stays `#N/IMPL!` until desktop values exist (M14, P
 Evidence: probes/forecast-ets-longer-series.case.json K1:K42 (excel-graph, 2026-10-14, T-1293).
 Ours: `#N/IMPL!` for every call.
 Status: VERIFIED (web) that the family is `#N/A` there; desktop behavior UNKNOWN
-Tasks: T-1293, T-1553
+Tasks: T-1293, T-1553, T-2028 (the text `target_date` and the lifting cells)
 
 ## Database function argument modes
 Rule: in the database functions (DAVERAGE, DCOUNT, DCOUNTA, DGET, DMAX, DMIN, DPRODUCT, DSTDEV, DSTDEVP, DSUM,
