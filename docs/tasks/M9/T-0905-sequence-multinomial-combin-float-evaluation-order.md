@@ -3,7 +3,7 @@ id: T-0905
 title: "SEQUENCE/MULTINOMIAL/COMBIN/COMBINA: match Excel's floating-point evaluation order"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
