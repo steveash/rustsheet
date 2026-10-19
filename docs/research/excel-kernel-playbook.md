@@ -160,3 +160,45 @@ These use the same machinery and are still unsolved. Each has its own entries in
 - BETA.DIST (T-1744).
 - The generic-shape incomplete gamma and GAMMALN (statistics.md).
 - The odd-degree-of-freedom chi-square paths.
+
+## 8. Lessons from T-1941 (GAMMALN, GAMMA, LN)
+Details: `docs/research/t1941/` on the T-1941 research branch (HANDOFF.md sections 9-10, README.md, wc/, w5/p4/,
+w2/wa/).
+1. **Triangle lines.** A product P = fl(M*y) rounded into a sum S = fl(P + c) that lies one binade up gives a line
+   with local frequency S'(y)/2^(eS+1), not the product's (M + tM')/2^e.
+   - Its data-vs-simulation phase needs a constant column.
+   - Read with the sawtooth law, triangle lines look like stages that cannot be assigned, and that cost a day on
+     GAMMA's G. With the right law every strong line mapped onto one structure.
+2. **Plateau staircases read constants' low bits, but only where the product lies on the sum's grid.**
+   - A stored sum fl(P + c) with P on S's grid carries the constant error RN_u(c) - c. It changes only at binade
+     crossings, so Excel minus the true function is a staircase.
+   - The step heights read c's bits below ulp(S). This worked on GAMMALN near 1: six constants read, 97% of the
+     staircase removed.
+   - It does NOT apply when the sum sits 1-2 binades above its product (GAMMA's G): c's bits then average out.
+   - Always simulate the candidate's own staircase before reading any "bias curve" as a function.
+3. **Exact-match is a needle on a plateau.**
+   - A synthetic control on G showed a ~75% plateau about 1e6 ulps from the truth, reached only within 0.1% of the
+     distance.
+   - A right function with wrong low bits scores about 28%.
+   - Use exact match only as the final verifier. Search with measured-function rows, phases and plateau rows.
+4. **Positive controls before every solve.** Each method that failed on real data was also checked on synthetic
+   data from a known set on the real grid. That separated "method cannot work" (G's high stages) from "model is
+   wrong" (K2's s4/s5 lines).
+5. **Measured-function rows plus a ulp ridge** made the joint phase solve converge on synthetic data.
+   - Function rows are per-bin means of Excel minus the true value, minus the reference's own simulated rounding
+     mean.
+   - Γ-fit rows alone do not converge, because Excel's function is not the true function: G is +0.6..+1.0 ulp high.
+6. **Multi-anchor epsilon ladders** (runs at a ± c*2^-j, irregular c, several anchors per piece) pin stage values
+   along the interval. Near one anchor only about 3 Taylor functionals per stage are visible.
+   - Dyadic anchors give stage values only modulo small integers. Combine anchors to unwrap.
+   - Use the full 28-tier unwrap. Coarse tiers produced a false "conflict" on K2.
+7. **Degree by continuous fits, not exact scores.** Fit the measured (staircase-corrected) function: G was (7,7)
+   ((6,6) chi2/dof 5.8e5, (8,8) 3.8). Top coefficients collapsing toward 0 also signal a degree that is too high.
+8. **Hygiene.**
+   - Extract oracle values only from cells whose formula is exactly the function under test. A loose column pick
+     mixed in GAMMA(x+1) cells and inflated a score from 72% to 76%.
+   - Check every new case name is unused before generating.
+   - Do not chain oracle fills behind `pgrep -f` wait loops, because the loop matches itself. Count finished files
+     instead.
+   - Grep for exact roots or "structural zeros" against the analytic continuation of the reference before believing
+     them: Cody's rationals show the same 1e-12 near-zeros.
