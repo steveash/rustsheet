@@ -177,7 +177,8 @@ fn fn_mirr_has_excels_evaluation_order() {
 
 #[test]
 fn fn_mirr_div_0() {
-    // This test produces #DIV/0! in Excel (but it is incorrect)
+    // A finance rate of -1 divides a later negative flow by a zero power: #DIV/0! in Excel
+    // (ironcalc-calc MIRR.xlsx E8; probes/fin-mirr-edges A12, A14)
     let mut model = new_empty_model();
     model._set("A2", "-30");
     model._set("A3", "-20");
@@ -193,9 +194,8 @@ fn fn_mirr_div_0() {
     model.evaluate();
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!B1"),
-        Ok(CellValue::Number(-1.0))
+        Ok(CellValue::String("#DIV/0!".to_string()))
     );
-    assert_eq!(model._get_text("B1"), "-100%");
 }
 
 #[test]

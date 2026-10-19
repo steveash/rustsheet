@@ -298,6 +298,7 @@ C	probes/fin-cumipmt-period-bound.case.json	30
 C	probes/fin-fvschedule.case.json	20
 C	probes/fin-later-argument-ranges.case.json	115
 C	probes/fin-mduration.case.json	18
+C	probes/fin-mirr-edges.case.json	30
 C	probes/fin-remaining-later-argument-ranges.case.json	197
 C	probes/fin-rri.case.json	16
 C	probes/fin-vdb-modes.case.json	20
@@ -395,6 +396,7 @@ C	probes/isref-union-operands.case.json	9
 C	probes/lambda-helper-range-slices.case.json	46
 C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
+C	probes/lambda-union-reference-callers.case.json	18
 C	probes/lambda-value-arguments.case.json	41
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
