@@ -69,4 +69,4 @@ showed three things the old scalar path got wrong: a direct boolean `number`/`or
 `order` (also `"1"`) is `#VALUE!`, and `order`'s error comes before the data's; the kernel follows it
 (statistics.md). Eval: probes known failures 1844 -> 1824 (fixed 20: stat-test-lift P20-P28, P30-P33,
 P72; stat-argument-modes H492, H493, H495, H496, H498, H499), new case 19/19, no regressions.
-Follow-ups: T-2012 (probe a text-cell `order` and the number-vs-order error order), T-2013 (RANK benchmarks).
+Follow-ups: T-2019 (probe a text-cell `order` and the number-vs-order error order), T-2013 (RANK benchmarks).

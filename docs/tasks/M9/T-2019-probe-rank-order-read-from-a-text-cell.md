@@ -1,5 +1,5 @@
 ---
-id: T-2012
+id: T-2019
 title: "Probe RANK order read from a text cell and the number-vs-order error order"
 milestone: M9
 lane: functions-stat
