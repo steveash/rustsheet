@@ -7,17 +7,19 @@ from nullspace import Null
 from stagelaws import stage_F
 def law_key(law,j): return ('S%d'%j if law=='S' else 'T%d'%j) if law in ('T','S') else 'P%dn%s'%(j,law[2:])
 class FastEnum:
-    def __init__(self,n=9,thr=1e-15,ridge=1e-3,ftol=None,c0=None):
+    def __init__(self,n=9,thr=1e-15,ridge=1e-3,ftol=None,c0=None,d=None):
         # thr: singular-value cut for the free subspace; ftol: if set, add soft function rows sigma_k/ftol * z_k so
         # directions with sigma above ftol are penalised (lets thr be large for far-away truths).
-        self.ns=Null(n,n,thr=thr); self.n=n; self.k=self.ns.k; self.ridge=ridge
+        d=n if d is None else d
+        self.ns=Null(n,d,thr=thr); self.n=max(n,d); self.nN=n; self.nD=d; self.k=self.ns.k; self.ridge=ridge
         self.fw=None if ftol is None else self.ns.S[len(self.ns.S)-self.k:]/ftol
-        self.c0=self.ns.c0; self.V=self.ns.Vn            # c has length 2n+1: N0..Nn, D1..Dn
-    def chain(self,z): c=self.c0+z@self.V; return c[:self.n+1],np.concatenate([[1.0],c[self.n+1:]])
+        self.c0=self.ns.c0; self.V=self.ns.Vn            # c has length nN+1+nD: N0..NnN, D1..DnD
+    def chain(self,z): c=self.c0+z@self.V; return c[:self.nN+1],np.concatenate([[1.0],c[self.nN+1:]])
     def drow(self,ch,j,x):
         """row r (len 2n+1) with r.c = s_j'(x) for chain ch."""
-        r=np.zeros(2*self.n+1); off=0 if ch=='N' else self.n
-        for k in range(j+1,self.n+1):
+        deg=self.nN if ch=='N' else self.nD
+        r=np.zeros(self.nN+1+self.nD); off=0 if ch=='N' else self.nN
+        for k in range(j+1,deg+1):
             if ch=='D' and k==0: continue
             r[off+k]+= (k-j)*x**(k-j-1)
         return r
@@ -50,8 +52,9 @@ class FastEnum:
     def single(self,x,F,laws=('T','Pn1'),eoffs=(0,),top=15):
         N0,D0=self.chain(np.zeros(self.k)); out=[]
         for ch in 'ND':
+            deg=self.nN if ch=='N' else self.nD
             for law in laws:
-                for j in range(self.n-1 if law[0]=='P' else self.n):
+                for j in range(deg-1 if law[0]=='P' else deg):
                     for eo in eoffs:
                         pr=stage_F(N0 if ch=='N' else D0,np.asarray(x))[law_key(law,j)][0]*2.0**(-eo)
                         for sg in (1,-1):
