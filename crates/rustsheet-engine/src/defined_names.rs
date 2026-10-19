@@ -292,8 +292,8 @@ impl Model {
     /// is not a valid identifier, the scope is not a sheet index, or the name already exists there.
     ///
     /// `loading` admits a name spelled like an A1 cell (`NLG1`): Excel opens a workbook defining
-    /// one (its Name Manager refusing one is unverified), so only the loading path (`define_loaded_name`)
-    /// takes it. The lexer reads such a spelling as the cell, so the name never shadows it
+    /// one (its Name Manager refusing one is unverified), so only the loading path
+    /// (`define_loaded_name`) takes it. The lexer reads such a spelling as the cell, so the name never shadows it
     /// (docs/excel-semantics/references.md "Legacy N and T marker spelling").
     fn defined_name_slot(
         &self,
