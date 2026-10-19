@@ -816,3 +816,17 @@ Implemented in: `DateSystem::date_of_serial_from_zero` (formatter/dates.rs), whi
 (functions/date_and_time.rs) reads for every WORKDAY and NETWORKDAYS date and holiday, and the zero-day shortcut and
 lower walk bound in `Model::workday_of` / `Model::step_workdays` (functions/date_and_time/workday.rs).
 Tasks: T-1254
+
+## Typed date plus clock with a single-letter A or P suffix is a number (T-1994)
+Rule: typed text `<date> <clock> A` or `P` (any case, space before the letter) is a number with
+`m/d/yyyy h:mm`, like `AM`/`PM`: `1/2/2020 10:00 A` = 43832.41666..., `10:00 P` = 43832.91666...,
+`10 A` and `10:00:30 A` too, `July 1, 2026 10:00 A` = 46204.41666.... The letter does not extend to
+a glued suffix (`10:00A`, General text) or a doubled one (`10:00 A A`, General text); an out-of-range
+hour (`13:00 A`) stays text with the date's format `m/d/yyyy`. Evidence: probes/date-text-single-letter-ap
+N1-N8, N10, N11 (excel-graph 2026-10-19), probes/date-text-rejected-clock-formats N7.
+UNVERIFIED in the engine (probed in the fill run of T-1994 only, no case cells): typed `1/2/2020 10:00 A.`
+(trailing dot) is a number, and bare typed `10:00 A` is a number with `h:mm AM/PM`.
+Status: VERIFIED (web) for the rule above; PARTIAL for the two UNVERIFIED shapes (T-2011).
+Implemented in: `typed_clock_shape` and `rejected_clock_text_format` in `crates/rustsheet-engine/src/formatter/parse_formatted.rs`
+Evidence note: docs/research/single-letter-ap-typed-clock-2026-10-19.md
+Tasks: T-1994, T-2011

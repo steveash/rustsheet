@@ -35,7 +35,7 @@ pub(crate) fn parse_typed_number(
 }
 
 /// Cell format of typed text that stays text because its clock is rejected: a date followed by a
-/// number-like clock and a spaced `AM`/`PM` (`1/2/2020 13:00 PM`, `13 PM`, `1300 PM`, `99:00 PM`)
+/// number-like clock and a spaced `AM`/`PM` or single-letter `A`/`P` (`1/2/2020 13:00 PM`, `13 PM`, `1300 PM`, `99:00 PM`)
 /// carries the format of its date part (`m/d/yyyy`, `d-mmm-yy` for `July 1, 2026 13:00 PM`), while
 /// a glued `10:00AM`, `10:00 XM`, `10:00 PM PM`, a clock with no date and `1/2/2020 abc` stay
 /// General (probes/date-text-typed-clock-shapes N14-N15, date-text-rejected-clock-formats N1-N16;
@@ -48,7 +48,10 @@ pub(crate) fn rejected_clock_text_format(
     date_system: DateSystem,
 ) -> Option<String> {
     let (rest, word) = original.rsplit_once(' ')?;
-    if !(word.eq_ignore_ascii_case("am") || word.eq_ignore_ascii_case("pm")) {
+    if !["am", "pm", "a", "p"]
+        .iter()
+        .any(|s| word.eq_ignore_ascii_case(s))
+    {
         return None;
     }
     let rest = rest.trim_end_matches(' ');
@@ -82,7 +85,7 @@ pub(crate) fn rejected_clock_text_format(
 
 /// Number format a typed clock shape gets (`None` is General).
 enum TypedClock {
-    /// `H:MM[:SS]` with an in-range value, with or without `AM`/`PM`, or hour-only `H AM`.
+    /// `H:MM[:SS]` with an in-range value, with or without `AM`/`PM`/`A`/`P`, or hour-only `H AM`.
     Time,
     /// A fractional second (`H:MM:SS.f`, `M:SS.f`).
     Fraction,
@@ -101,7 +104,8 @@ impl TypedClock {
 }
 
 /// Classifies the clock at the end of typed date+clock text: `H:MM`, `H:MM:SS`, `H:MM:SS.f` or
-/// `M:SS.f`, optionally followed by spaces and `AM`/`PM` in any case, or an hour-only `H AM`.
+/// `M:SS.f`, optionally followed by spaces and `AM`/`PM`/`A`/`P` in any case (probes/date-text-single-letter-ap,
+/// T-1994), or an hour-only `H AM`.
 /// Probed (probes/date-text-non-glued-timevalue rows 11-17, date-text-typed-clock-shapes,
 /// excel-graph; formats in docs/research/typed-clock-shapes-2026-10-19.md): all of these become
 /// numbers, with `m/d/yyyy h:mm` except a fraction (`mm:ss.0`) and an out-of-range component
@@ -110,7 +114,10 @@ fn typed_clock_shape(text: &str) -> Option<TypedClock> {
     let mut text = text.trim_end_matches(' ');
     let mut suffixed = false;
     if let Some((rest, word)) = text.rsplit_once(' ') {
-        if word.eq_ignore_ascii_case("am") || word.eq_ignore_ascii_case("pm") {
+        if ["am", "pm", "a", "p"]
+            .iter()
+            .any(|s| word.eq_ignore_ascii_case(s))
+        {
             suffixed = true;
             text = rest.trim_end_matches(' ');
         }

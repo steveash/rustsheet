@@ -256,6 +256,11 @@ fn typed_date_clock_text_shapes_pick_their_formats() {
         ("1/2/2020 10:00:30 PM", Some("m/d/yyyy h:mm")),
         ("1/2/2020 10:00 pm", Some("m/d/yyyy h:mm")),
         ("1/2/2020 10 AM", Some("m/d/yyyy h:mm")),
+        // probes/date-text-single-letter-ap N1-N2, N4, N7, N10 (T-1994)
+        ("1/2/2020 10:00 A", Some("m/d/yyyy h:mm")),
+        ("1/2/2020 10:00 P", Some("m/d/yyyy h:mm")),
+        ("1/2/2020 10 p", Some("m/d/yyyy h:mm")),
+        ("July 1, 2026 10:00 A", Some("m/d/yyyy h:mm")),
         ("1/2/2020 10:00  AM", Some("m/d/yyyy h:mm")),
         ("1/2/2020 10:00:30.5", Some("mm:ss.0")),
         ("1/2/2020 10:00.5", Some("mm:ss.0")),
@@ -301,6 +306,10 @@ fn typed_date_text_with_a_rejected_clock_stays_text_and_keeps_the_date_format() 
         ("1/2/2020 10:00 XM", "general"),
         ("1/2/2020 abc", "general"),
         ("1/2/2020 10:00 PM PM", "general"),
+        // probes/date-text-single-letter-ap N8, N3, N11 (T-1994)
+        ("1/2/2020 13:00 A", "m/d/yyyy"),
+        ("1/2/2020 10:00A", "general"),
+        ("1/2/2020 10:00 A A", "general"),
         ("13:00 PM", "general"),
         // Unprobed: a non-date number before the rejected clock keeps General.
         ("$5 13:00 PM", "general"),
