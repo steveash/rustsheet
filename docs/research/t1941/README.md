@@ -229,3 +229,11 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - By tenth: 93 80 80 72 71 71 70 75 47 79%. The weak spot is y = 1.8-1.9.
   - Linearised steps from the five-anchor phase solve all lower the exact score, so exact-match search is now the
     working tool.
+
+## Excel's G is biased high (coordinator, model-free)
+- `g_bias.py`: the mean relative error of Excel's GAMMA against true Gamma on [1,2) is +6.9e-17 (+0.62 ulp) near 1,
+  rising smoothly to +1.14e-16 (+1.0 ulp) near 2 (60k-point sample).
+- `g_eqosc.py`: AN2's error is likewise one-signed (+4.5e-17 to +1.2e-16) and does not equioscillate.
+- So Excel's G is not a minimax-accurate rational. Its function error is a smooth ~1e-16 curve, plausibly
+  coefficient rounding or limited-precision generation. See HANDOFF.md section 6.
+- `HANDOFF.md` summarises the whole task for a fresh reviewer.
