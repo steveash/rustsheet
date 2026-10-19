@@ -185,12 +185,12 @@ Tasks: T-0222, T-1400
 Non-number elements (probes/round-concat-array-edges A1-A7, excel-graph 2026-10-13, T-1400): the elements are coerced as scalar arguments are. `ROUND({TRUE,"2.5",""},0)` and `ROUNDUP(...)` spill `1, 3, #VALUE!` (also the column form `{TRUE;"2.5";""}`), `ROUNDDOWN(...)` spills `1, 2, #VALUE!` (numeric text is read as a number, a logical as 1, the empty string is `#VALUE!`). `ROUND({"abc"},0)` is `#VALUE!`, and `ROUND({"abc",1.5},0)` spills `#VALUE!, 2` (a bad element is an error in its own cell only). The same coercion applies to num_digits: `ROUND(2.567,{TRUE,"1",""})` spills `2.6, 2.6, #VALUE!`. The engine matches (`kernel_number` in functions/lift/mod.rs).
 
 ## Stacked results past the grid
-Rule: a VSTACK with more rows than the grid is `#NUM!`, while an HSTACK (or VSTACK) with more columns than the grid is
-allowed: `ROWS(VSTACK(A:A,B1))`, `ROWS(VSTACK(A1:A1048576,B1))`, `ROWS(VSTACK(A:A,B1:B2))` and `COLUMNS(VSTACK(A:A,B1:B2))`
+Rule: a VSTACK with more rows than the grid is `#NUM!`, while an HSTACK with more columns than the grid is allowed (a
+VSTACK of an input already wider than the grid is inferred to be, not probed: T-1964): `ROWS(VSTACK(A:A,B1))`, `ROWS(VSTACK(A1:A1048576,B1))`, `ROWS(VSTACK(A:A,B1:B2))` and `COLUMNS(VSTACK(A:A,B1:B2))`
 are `#NUM!`, and so is `ROWS(VSTACK(A:A,1:1))`; `COLUMNS(HSTACK(A1:XFD1,A1))`, `COLUMNS(HSTACK(A1:XFD1,A1:A2))` and
 `COLUMNS(HSTACK(A1:A2,1:1))` are 16385 (`ROWS` of the second is 2), and `COLUMNS(HSTACK(A1:XFC1,A1:A2))` 16384. A row
 wider than the grid is built as TEXTSPLIT's is ("textsplit-wide"). The 2^34-cell `ROWS(HSTACK(A:A,1:1))` is 0 in the Graph
-backend, an answer not trusted; ours is `#ERROR!`, the cell-count bound ("Array results above 1,048,576 cells").
+backend, an answer not trusted; ours is `#ERROR!` outside the stacked row and column, the cell-count bound ("Array results above 1,048,576 cells").
 Evidence: probes/scalar-lift-open-c W1-W10, -c2 W1, -c3 W1 (excel-graph, 2026-10-17, T-1777).
 Ours: `limits::check_stack_size` in `fn_hstack` and `fn_vstack` (T-1803), except -c2 W1 and -c3 W1: both sit in row 1,
 which they stack, so ours is `#CIRC!` (T-1965). EXPAND, WRAPROWS and WRAPCOLS keep
