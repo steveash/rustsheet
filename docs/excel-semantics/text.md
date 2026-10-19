@@ -681,22 +681,16 @@ The case_sensitivity argument 1 behaves the same (`REGEXTEST("a","[[:upper:]]",1
 on `A` and `&` is FALSE); a literal `^`, `-` or `&` next to a class stays literal (`[[:upper:]^a]` matches `^`, not `b`).
 Syntax: `[a[:digit:]]` and `[[:alpha:][:digit:]]` mix classes with other items; `[\[:alpha:]]` is no class (`":"` FALSE).
 `[:alpha:]` outside a bracket, an unknown or upper-case name (`[[:foo:]]`, `[[:ALPHA:]]`), `[[.a.]]`, `[[=a=]]` and a range from a class
-(`[[:alpha:]-z]`, `[a[:upper:]-z]`) are invalid patterns (ERROR.TYPE 3); ours accepts them (T-1985).
+(`[[:alpha:]-z]`, `[a[:upper:]-z]`) are invalid patterns (`#VALUE!`, ERROR.TYPE 3; probes/regex-posix-classes Z1-Z3, Z8-Z10, regex-posix-classes-b A4, A5; T-1985).
+UNVERIFIED (probe pending): `[[:alpha:]-]` and `[-[:alpha:]]` stay valid; a top-level `[.a.]` or `[..]`, a multi-character `[[.ab.]]` and a range that ends at a class (`[a-[:alpha:]]`) are taken as invalid by PCRE2's rules (`check_posix_syntax`, ERR50), and ours matches for all but the last (not yet matched).
 UNVERIFIED: the characters the probe does not cover (U+180E and U+061C, U+2066-U+2069 in graph and print, U+180E in blank, spacing marks
 in word) follow PCRE2's documented UCP definitions; Excel already departs from stock PCRE2 once (`&&` intersects), so the docs are weak evidence.
 Evidence: probes/regex-posix-classes (excel-graph, 2026-10-19): 47 characters × 19 patterns, and column Z for the syntax;
 probes/regex-posix-classes-b (bracket neighbours, nested and negated `(?i)`, `&&`, case_sensitivity 1);
 probes/regexreplace-limit-and-syntax A23.
-Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled;
+Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled (and rejects the invalid syntax above in `invalid_ast`);
 upper and lower become a `(?-i:...)` alternative of their bracket.
 Status: VERIFIED (excel-graph)
-
-POSIX syntax PCRE2 rejects is `#VALUE!` (ERROR.TYPE 3), not a literal (T-1985; probes/regex-posix-classes
-Z1-Z3, Z8-Z10, regex-posix-classes-b A4, A5): `[:alpha:]` outside a bracket, an unknown or upper-case
-class name (`[[:foo:]]`, `[[:ALPHA:]]`), collating elements and equivalence classes (`[[.a.]]`,
-`[[=a=]]`), and a range that starts at a class (`[[:alpha:]-z]`, `[a[:upper:]-z]`). `[[:alpha:]-]`
-and `[-[:alpha:]]` stay valid. Not yet matched: a range that ends at a class (`[a-[:alpha:]]`),
-which PCRE2 also rejects (unprobed).
 
 ## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)
 Rule: a REGEXREPLACE result may be up to 65,535 UTF-16 units; one unit more is `#CALC!`. `LEN(REGEXREPLACE(REPT("a",32767),"a","bb"))` is 65534; with `REPT("a",N)&REPT("c",M)` and `"a"` → `"bbb"`, 65,535 units is 65535 and 65,536 or 65,537 is `#CALC!`; the cap counts UTF-16 units, not characters (`"a"` → `"b"&UNICHAR(128512)`: 65,535 units in 49,151 characters is 65535, 65,536 units in 49,150 characters `#CALC!`), and not matches (32,767 matches giving 65,534 units pass). 98,301 to 327,670 units (`REPT("a",32767)`, `"a"` → 3 to 10 b's) and the empty pattern with `bbbbbbbbbb` (360,447) are `#CALC!`. Lifted, the cap is per element: `REGEXREPLACE(REPT("a",{1,32767}),"","bbbbbbbbbb")` is `"bbbbbbbbbbabbbbbbbbbb"` and `#CALC!` (probes/regexreplace-result-cap-lifted). A cell holds such a result: `=REGEXREPLACE(REPT("a",32767),"a","bb")` is the 65,534 b's, `LEN` of the cell 65534, `ISERROR` FALSE.
