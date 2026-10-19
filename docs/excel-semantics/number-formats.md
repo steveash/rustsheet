@@ -491,12 +491,36 @@ codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
   (12.345 × 100 is 1234.4999999999998 in binary), while `# ?/10` on 12.345 is "12 3/10" (43980980 P16; the binary
   fraction part 0.34499999999999886 × 10 stays below the half).
-Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the
-displayed text. Unprobed and implemented by inference (T-2061): the minus before a currency symbol
-or leading literals (`$# ?/4` on -0.5 is "-$ 2/4"), `%`/`,` scaling before the fraction, `#`/`0`
-numerator padding, "-0/100" for a tiny negative, and no grouping (`#,##0 ?/4`); also the `#`-numerator
-separator and blank rules under a fixed denominator (`# #/4`), and `0` placeholders in a denominator
-(`?/00` pads with zeros), which only `# #/#` and `?`-denominators evidence. Placeholder
-denominators are implemented as above (T-2030). An overflowing numerator still prints in full (T-1740).
+Probed (T-2061, excel-graph 2026-10-19, probes/fraction-format-features, cells named by row of column A; values
+B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
+- **Currency and leading literals** sit after the minus: `$# ?/4` on -0.5 "-$ 2/4" (C2), `"x"# ?/4` "-x 2/4" (C3),
+  `€# ?/4` (C17) and `[Red]$# ?/4` (C16) alike; a tiny negative keeps the minus: "-$0    " (F2).
+- **`%` scales the value before the fraction** and prints after the blanked fraction: `# ?/4%` on 1.5 "150    %" (B4),
+  1234.5 "123450    %" (I4), -0.001 "-0    %" (F4).
+- **A trailing `,` after the denominator scales the value up, not down by 1000**: `# ?/4,` is #VALUE! for every value but 0, which prints
+  "0    " (B5:I5); `# ?/4,,` multiplies the value by 1E250 and prints the integer in full with the fraction blanked ("15" + 249
+  zeros + 4 spaces on 1.5, B6; -0.001 "-1" + 247 zeros, F6; 253 to 255 characters), and is #VALUE! on 1234.5 (I6),
+  whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! on the same pattern (a larger
+  factor, or the limit); the per-comma factor and the limit's role are hypotheses to probe (T-2072). Not
+  implemented: we print "0    ".
+- **`0` numerator placeholders print**: a zero numerator is not blanked, it pads with zeros: `# 00/16` on 0 "00/16",
+  on 1.99 "2 00/16" (D8, E8), and `# 0/4` on 0 "0/4", 1 "1 0/4" (D15, G15); the integer part is dropped under `#` when
+  zero and the separator goes with it (`# 00/16` on 0.5 "08/16", H8; `# 0/4` on 0.5 "2/4", H15; -0.5 "-08/16", "-2/4",
+  C8, C15). `# #/4` blanks the fraction and its separator: on 0 "0", 1.99 "2", -0.001 "-0", 1 "1" (D7:G7), on
+  0.5 "2/4" (H7), -0.5 "-2/4" (C7). With `0` as the integer, `0 #/4` on 0.5 is "0 2/4" and on -0.5 "-0 2/4" (H12, C12):
+  the separator stays.
+- **A tiny negative loses its minus in a format with no integer section**: `?/100` on -0.001 is "0/100" (F9), as is
+  `?/00` "0/01" (F13); formats with an integer section keep it ("-0    ", F11; `# 00/16` "-00/16", F8; `# 0/4`
+  "-0/4", F15).
+- **`?/100` on 1234.5 is #VALUE!** (I9), although 12.345 and 61 print (05c1c646 D11, D5).
+- **Grouping applies**: `#,##0 ?/4` on 1234.5 "1,234 2/4" (I10), on -0.5 "-0 2/4" (C10).
+- **`00` in a denominator is a placeholder denominator, not a fixed 00**: `?/00` is the best fraction of at most
+  two digits, zero padded to two: 1.5 "3/02", -0.5 "-1/02", 0 "0/01", 1.99 "197/99", 1 "1/01", 0.5 "1/02",
+  1234.5 "2469/02" (B13:I13); `# ?/00` on 1.5 "1 1/02", 1.99 "1 98/99", 1 "1     " (B14:G14).
+Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the displayed text.
+Mismatches with the probes (42 of 128 cells; the other 86 match, including currency, literals and `%`) are filed as
+T-2072 (`,` after the denominator), T-2073 (`0` numerator placeholders, minus and separator under `#`/`0`) and T-2074
+(`00` denominator, the `?/100` minus and the grouped integer). Placeholder denominators are implemented as above
+(T-2030). An overflowing numerator still prints in full (T-1740).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061
+Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061, T-2072, T-2073, T-2074

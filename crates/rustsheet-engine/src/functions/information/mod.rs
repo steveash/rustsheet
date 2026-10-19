@@ -175,6 +175,10 @@ impl Model {
             // a reference: `ISREF(LET(x,A1:A3,x))` is TRUE (probes/written-parens-reference-only
             // E40, E45, excel-graph; T-1106), and a LAMBDA call that returns one:
             // `ISREF(LAMBDA(x,x)(A1))` is TRUE (probes/let-lambda-reference-results C1, C2).
+            // IFS and SWITCH too, and an XLOOKUP or TAKE any of them picks over a range:
+            // `ISREF(IFS(TRUE,H1))`, `ISREF(CHOOSE(1,XLOOKUP(1,J1:J2,H1:I2)))` are TRUE
+            // (probes/subtotal-ifs-switch-reference-picks, subtotal-if-choose-over-xlookup A94;
+            // T-2014).
             Node::OpIntersectKind { .. }
             | Node::OpUnionKind { .. }
             | Node::LambdaCallKind { .. }
@@ -182,9 +186,14 @@ impl Model {
                 kind:
                     crate::functions::Function::If
                     | crate::functions::Function::Choose
+                    | crate::functions::Function::Ifs
+                    | crate::functions::Function::Switch
                     | crate::functions::Function::Let,
                 ..
-            } => matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_)),
+            } => matches!(
+                self.evaluate_picked_reference_arg(node, cell),
+                RefArg::Ranges(_)
+            ),
             // The `@` of an XLOOKUP or TAKE that picks one cell keeps the reference too
             // (probes/isref-implicit-xlookup-take, T-1509).
             Node::ImplicitIntersection { child, .. }

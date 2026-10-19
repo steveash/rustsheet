@@ -429,9 +429,9 @@ impl Model {
 
     /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL, AREAS, SUM, COUNT, AVERAGE, MIN, MAX
     /// and AVERAGEA take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a
-    /// range, also as the arm a scalar IF or CHOOSE picks or a LET body (T-2009), are the cells
-    /// they pick (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c H4:H14, T-1206;
-    /// -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
+    /// range, also as the arm a scalar IF, CHOOSE, IFS or SWITCH picks or a LET body (T-2009,
+    /// T-2014), are the cells they pick (probes/subtotal-reference-operands-b H12, H15:H17,
+    /// T-1175; -c H4:H14, T-1206; -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
     /// same rule. The call list is [`Function::picks_reference`].
     pub(crate) fn evaluate_picked_reference_arg(
         &mut self,
@@ -449,35 +449,33 @@ impl Model {
         blanks: CachedBlanks,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        // The arm a scalar IF or CHOOSE picks and a LET body follow the same rule, however deeply
-        // they nest: `SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))` is 9 and `AREAS(LET(v,1,
-        // XLOOKUP(..)))` 1 (probes/subtotal-if-choose-over-xlookup A10-A42, T-2009). Each
-        // condition, index and binding is read once, as `reference_arg_reading` reads them.
-        if let Node::FunctionKind { kind, args } = node.ungrouped() {
-            let picked = match kind {
-                Function::If => self.if_pick(args, cell),
-                Function::Choose => self.choose_pick(args, cell),
-                Function::Let => {
-                    return self
-                        .let_scope(args, cell, |model, body| {
-                            model.picked_reference_arg_reading(body, blanks, cell)
-                        })
-                        .unwrap_or_else(RefArg::Value);
-                }
-                _ if kind.picks_reference() => {
-                    if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
-                        return RefArg::from(result);
-                    }
-                    return self.reference_arg_reading(node, blanks, cell);
-                }
-                _ => return self.reference_arg_reading(node, blanks, cell),
-            };
+        // The arm a scalar IF, CHOOSE, IFS or SWITCH picks and a LET body follow the same rule,
+        // however deeply they nest: `SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))` is 9 and
+        // `AREAS(LET(v,1,XLOOKUP(..)))` 1 (probes/subtotal-if-choose-over-xlookup A10-A42,
+        // T-2009); `SUBTOTAL(9,IFS(TRUE,XLOOKUP(..)))` is 9 and `SUBTOTAL(9,SWITCH(1,1,(H1,I2)))`
+        // 11 (probes/subtotal-ifs-switch-reference-picks, T-2014). Each condition, index, case
+        // and binding is read once, as `reference_arg_reading` reads them.
+        let Node::FunctionKind { kind, args } = node.ungrouped() else {
+            return self.reference_arg_reading(node, blanks, cell);
+        };
+        if let Some(picked) = self.pick_step(kind, args, cell) {
             return match picked {
                 Picked::Node(arm) => self.picked_reference_arg_reading(arm, blanks, cell),
                 Picked::Value(value) => RefArg::Value(value),
             };
         }
-        self.reference_arg_reading(node, blanks, cell)
+        match kind {
+            Function::Let => self
+                .let_scope(args, cell, |model, body| {
+                    model.picked_reference_arg_reading(body, blanks, cell)
+                })
+                .unwrap_or_else(RefArg::Value),
+            _ if kind.picks_reference() => match self.evaluate_reference_form(kind, args, cell) {
+                Some(result) => RefArg::from(result),
+                None => self.reference_arg_reading(node, blanks, cell),
+            },
+            _ => self.reference_arg_reading(node, blanks, cell),
+        }
     }
 
     /// [`Self::evaluate_picked_reference_arg`] for an aggregate that skips the blanks of a range
