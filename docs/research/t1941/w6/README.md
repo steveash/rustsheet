@@ -236,6 +236,31 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       seed (5/5 against 2/5 and 0/5 for the D seeds), per-peak EM keeps 71 consistent matches, and exact track EM
       accepts the same 7 tracks at 1-3e-7.
 
+23. **Excel L101-L124, first pass** (24 runs x 65,536 doubles, merged cleanly; 39 tracks).
+    - Floors of the 18 longest tracks under (9,9): 9 law-like tracks at 1.8-6.8e-7 (0, 2, 4, 8, 9, 13, 14, 16, 17),
+      8 mixed (0.004-0.19), one borderline (1.1e-5).
+    - None of the tracks is an outer-op line (A = fl(m R), B = fl(t A), or their sidebands; best rms 0.04-0.55), as
+      expected for spectra of the extracted inner R.
+    - Fast joint skip beam, laws that fit jointly by degree:
+
+      | Degree | Law-like tracks | Fit jointly |
+      |---|---|---|
+      | (7,7) | 0 | 0 |
+      | (7,8) | 4 | 1 |
+      | (8,7) | 5 | 1 |
+      | (8,8) | 6 | 1 |
+      | (8,9) | 9 | 1 |
+      | (9,8) | 9 | 2 |
+      | (9,9) | 9 | 2 |
+      | (9,10) | 10 | 2 |
+      | (10,10) | 10 | 2 |
+      | (10,9) | 11 | 3 (D.T5, N.T4, N.T5; rms 1.5e-6) |
+
+    - Low degrees are clearly worse. From (9,8) up, the fast solver caps at 2-3 jointly fitted tracks, as it did on the
+      far synthetic truth, so the exact assembler (`mpjoint.py`) is the real test.
+    - Excel's staircase detector gives 7 steps, of which 3 are real (1.527, 1.531, 1.613); the rest are
+      single-segment noise. The driver's crossing ranking was inconclusive (best 4/7).
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
