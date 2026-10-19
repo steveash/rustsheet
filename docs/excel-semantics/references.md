@@ -1115,7 +1115,8 @@ array under the IF still spills `#VALUE!` (A46:A47, A50:B50). Consumers that tel
 `AVERAGEA(IF(TRUE,..,0),5)` 2, `MAXA(CHOOSE(1,..))` 1, `MINA(IF(FALSE,1,..))` 0,
 `AVERAGEA(IF(TRUE,TAKE(K1:L2,1)))` 0.5; `IMSUM(IF(TRUE,XLOOKUP(1,J1:J2,M1:N2)))` with M1 = "1+i", N1 blank is "1+i";
 `AND(BYROW(IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)),LAMBDA(r,ISREF(r))))` and `LET(v,IF(TRUE,XLOOKUP(..)),ISREF(v))` are TRUE
-and `LET(v,CHOOSE(1,XLOOKUP(..)),SUBTOTAL(9,v))` 9 (A10-A62). Implemented in
+and `LET(v,CHOOSE(1,XLOOKUP(..)),SUBTOTAL(9,v))` 9 (A10-A62). The MINA (A22) and IMSUM (A34) cells give the same
+result over values, so they do not tell a reference from values; the others do. Implemented in
 `Model::picked_reference_arg_reading` (functions/util.rs). Not yet matched (T-2014): `SUBTOTAL(9,IFS(TRUE,XLOOKUP(..)))`
 and `SUBTOTAL(9,SWITCH(1,1,XLOOKUP(..)))` are 9 (A78, A82) and `ISREF(IF(TRUE,XLOOKUP(..)))` and
 `ISREF(CHOOSE(1,XLOOKUP(..)))` TRUE (A90, A94). SUM, COUNT and COUNTA over `IF(TRUE,XLOOKUP(1,J1:J2,K1:L2))` with
