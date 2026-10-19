@@ -52,12 +52,20 @@ impl Model {
     /// are 5; text inside an array literal or a multi-cell range is `#VALUE!`
     /// (probes/seriessum-boolean-coefficients A8:A11).
     fn series_coefficients(&mut self, node: &Node, cell: CellReferenceIndex) -> Coefficients {
-        let result = self.evaluate_node_in_context(node, cell);
         // Excel: a 3-D range as the coefficients, one-cell or not, is `#VALUE!`, not the `#REF!`
-        // the reader gives (probes/quotient-factdouble-seriessum-3d-legacy C4, T-1832).
-        if matches!(&result, CalcResult::Range { left, right } if left.sheet != right.sheet) {
-            return Err(value_error(cell));
+        // that reading it as a value gives (probes/quotient-factdouble-seriessum-3d-legacy C4,
+        // T-1832).
+        if let Node::SheetSpanKind {
+            first_index,
+            last_index,
+            ..
+        } = node.ungrouped()
+        {
+            if first_index != last_index {
+                return Err(value_error(cell));
+            }
         }
+        let result = self.evaluate_node_in_context(node, cell);
         let is_single = match &result {
             CalcResult::String(_) => true,
             CalcResult::Range { left, right } => left == right,
