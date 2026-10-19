@@ -33,6 +33,7 @@ Parameters not yet probed (SEQUENCE columns and step, MAKEARRAY cols) are `Lift`
 - [ ] The probes/m7-argument-modes cells F1, F2:H2, F3:H3, F23:H23, K9 and K10 pass; their lines leave eval/baseline/probes.txt (`make eval-baseline`), and no other cell regresses.
 - [ ] SEQUENCE and MAKEARRAY have table entries citing those cells; their `fallback_signature`/`fallback_shape` arms are gone and `no_function_in_the_table_has_a_fallback_arm` passes.
 - [ ] Unit tests: an unlifted `SEQUENCE(3)` and `MAKEARRAY(2,2,..)` keep their static shape `Unknown` and their values; the spec's rule-3 test formulas are `#ERROR!` (`=ROWS(SEQUENCE(SEQUENCE(1024),1024))`, `=ROWS(MAKEARRAY(SEQUENCE(2048),1024,LAMBDA(r,c,r)))`) and `=ROWS(SEQUENCE({3;4}))` is 2; one element error stays in its position (`SEQUENCE({1;0})` element 2 is `#CALC!`, or what T-1833 records).
+- [ ] arrays.md's DEVIATION entry "Array results above 1,048,576 cells" (decision 0014) gains the lifted output charge (`KernelWork::Output`) and its test formulas: Excel answers `=ROWS(SEQUENCE(SEQUENCE(1024),1024))` (1024), ours is `#ERROR!`.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

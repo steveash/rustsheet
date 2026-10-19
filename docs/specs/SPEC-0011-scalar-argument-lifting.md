@@ -249,9 +249,9 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
 4. **Answered, with a limit.** `=EDATE({45000;45031},A1:A60)` spills 2 rows, as the static shape says
    (-a AA3, AC3). FORMULATEXT carries no marker, so how Excel saves it needs the file (M14).
 5. **Partly answered.** Lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT):
-   an array element is its top-left value (probes/m7-argument-modes K5-K10), and the whole elements
-   of TAKE, DROP, OFFSET, INDIRECT and TRIMRANGE are references (m7-argument-modes K1-K4,
-   probes/reference-lift-elements). Design: "Array-valued functions" (T-1834 to T-1839) and
+   an array element is its top-left value (probes/m7-argument-modes K5-K10; SORTBY excepted, H97-H99),
+   the elements of OFFSET, INDIRECT and TRIMRANGE are references (probes/reference-lift-elements),
+   and TAKE's and DROP's are whole (K1-K4), which this spec reads as references, pending T-1960. Design: "Array-valued functions" (T-1834 to T-1839) and
    "Elements that are references" (T-1955). Still open: a TAKE or DROP over an array value, and
    SUM, `=` and arithmetic over a result of references (T-1960, T-1955).
 6. **Answered.** A function-returned multi-cell reference in a `Lift` argument [lifts like a written
@@ -735,6 +735,11 @@ result as it is, the array included. Lifted, the driver turns each element's res
 - a reference to several cells is a reference element ("Elements that are references" below:
   TAKE and DROP over a range);
 - a value is itself.
+SORTBY is the exception that is not settled: `SORTBY(A1:A3,C1:C3,{1;-1;1})` with A1:A3 = 3,1,2 and
+C1:C3 = 2,1,3 is {1;0;0} in Excel (probes/sort-error-args H97-H99, arrays.md "SORT argument errors
+come before validation"), where this rule gives {1;2;1}. H26 only shows the shape and the first
+element. So SORTBY's lifted element is an open question: T-1960 probes it, and T-1839 enters SORTBY
+only once the rule that gives {1;0;0} is known.
 `element_value` is the one conversion for `CallResult::Array` entries; a `Value` entry keeps
 `calc_result_to_array_node`, so no existing element changes.
 
@@ -782,8 +787,11 @@ empty, `(count - params.len()) % repeat.len() == 0` (tested in that order, so an
 accepts no argument past `params` and never divides by zero; T-1839 tests the empty case). A one-kind cycle (today's `Some(kind)`) accepts every
 count as before. SORTBY is `params: [Whole, Whole, Lift]`, `repeat: [Whole, Lift]`, `required: 2`,
 `max: usize::MAX` (`fn_sortby` sets no upper bound). It accepts 2, 3, 5, 7, … and refuses 4 and 6, as `fn_sortby`
-does today. Its sort_order lifts (`SORTBY(A1:A3,B1:B3,{1;-1})` is 2x1, F26:H26); a by_array given
-as an array literal is `Whole` and does not lift.
+does today; that is today's code, not evidence: the Graph backend refuses to load
+`SORTBY(a,k,,k2)` (arrays.md "SORT: omitted sort_index / sort_order"), so whether Excel takes 4 or 6
+arguments is a desktop question (decision 0039), and the cycle can express either answer. Its
+sort_order lifts (`SORTBY(A1:A3,B1:B3,{1;-1})` is 2x1, F26:H26), with element values still open
+(rule 2); a by_array given as an array literal is `Whole` and does not lift.
 
 **Per-parameter list.** "Probe" names the m7-argument-modes cells, or the gen-m7/gen-m9 cell, that
 evidence the kind. "General rule" means the parameter is entered as `Lift` because its sibling
@@ -812,10 +820,10 @@ it; an answer that differs changes the entry in T-1960's PR.
 | TOCOL | ignore | `Lift` | probe F9, K8; gen-m9/1782efcecd5d4b1b A19 |
 | TOCOL | scan_by_column | `Lift` | general rule (T-1960) |
 | UNIQUE | array | `Whole` | read as written |
-| UNIQUE | by_col | `Lift` | probe F12; gen-m9/4df1b22d3ed63f58 A36 (range) |
+| UNIQUE | by_col | `Lift` | probe F12 (shape; it cannot tell a lift from reading one element, T-1960); gen-m9/4df1b22d3ed63f58 A36 (range) |
 | UNIQUE | exactly_once | `Lift` | general rule (T-1960) |
 | SORTBY | array, by_array1, by_array2, … | `Whole` | read as written |
-| SORTBY | sort_order1 | `Lift` | probe F26 |
+| SORTBY | sort_order1 | `Lift` | probe F26 (shape); element values open, sort-error-args H97-H99 (T-1960) |
 | SORTBY | sort_order2, … | `Lift` | general rule (T-1960) |
 | TAKE, DROP | array | `Whole` | read as written, a reference kept (`evaluate_node_with_reference`) |
 | TAKE, DROP | rows | `Lift` | probe F4 (range), F5, F6, K1-K4 |
@@ -838,7 +846,8 @@ This is the shape a lifted OFFSET, INDIRECT or TRIMRANGE gives (lookup.md "OFFSE
 TRIMRANGE lift into arrays of references", probes/reference-lift-elements): INDEX picks an element as
 the reference itself, and a multi-cell pick spills its cells or is `#SPILL!` where they collide
 (`INDEX(OFFSET(A1,0,0,1,A1:A2),2,1)` spills 1, 10). TAKE and DROP return a reference when their array
-is one. So this spec reads a lifted TAKE's or DROP's element as a **reference**, not a nested array:
+is one (`ISREF(TAKE(A1:B3,1))` and `ISREF(DROP(A1:B3,1))` are TRUE, over an array FALSE:
+references.md, probes/isref-reference-lookups). So this spec reads a lifted TAKE's or DROP's element as a **reference**, not a nested array:
 - over a reference, each element is the reference the scalar TAKE or DROP returns (A1:B1, A1:B2);
 - over an array value, the element follows rule 2 above: the top-left value, as EXPAND's. This is
   not probed: T-1960 asks `TAKE({1,10;2,20;3,30},{1;2})`. If Excel keeps a whole sub-array there,
