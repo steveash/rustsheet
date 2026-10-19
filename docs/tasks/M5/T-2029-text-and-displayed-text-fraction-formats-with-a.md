@@ -21,7 +21,7 @@ parsed part, renderer) that T-2030 extends to placeholder denominators.
 The engine has no fraction support at all: `/` is a literal and the `?`/`#`/`0` around it are plain
 digit placeholders, so every fraction code prints garbage (`TEXT(36.5,"# ?/2")` is "3 6/2", Excel
 "36 1/2"). Gap triage 2026-10-19: in suite gen-m10 (excel-graph `Range.text`, 2026-10-16, T-1611)
-**all 829 displayed-text cells under the 12 fraction codes fail**; 329 of them use the five
+**all 829 numeric displayed-text cells under the 12 fraction codes fail**; 329 of them use the five
 fixed-denominator codes below (314 values, 15 overflow cells that are T-1740's).
 
 Rules read from the cells (recorded in docs/excel-semantics/number-formats.md, "Fraction formats",

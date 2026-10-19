@@ -6,7 +6,7 @@ lane: functions-financial
 status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -23,7 +23,9 @@ eval/baseline/probes.txt (excel-graph). Example: G20 `DB(100,10,4,1,2)` is 7.299
 
 Fitted formulations (scratch Python over the cells, IEEE doubles with libm `pow`; they reproduce all
 24 numeric DB cells and all 23 numeric DDB cells of DB_DDB.xlsx, including every cell that passes today,
-plus H88 and H95):
+plus H88 and H95). They rely on two checks the engine already makes ahead of the formula
+(functions/financial/mod.rs): `month` is truncated (without it G10, G11, G17, G18 and G40 miss), and
+cost 0 returns 0 (G30, G32-G34, outside the 24); keep both:
 - DB: `rate = round(1 - (salvage/cost)^(1/life), 3)` as today; `first = cost * rate * (month/12)`
   (month over 12 first; ours `cost * rate * month / 12`); period 1 returns `first`. Then keep the
   remaining *balance*, not the accumulated depreciation: `balance = cost - first`, and for each period

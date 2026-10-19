@@ -480,7 +480,7 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   "1   1/2  ", 05c1c646 C3; `??/??` on 0.5 " 1/2 "); `#` does not (`# #/#` on 0.5 "1/2", on 1234567890
   "1234567890", 039accab K8, K2).
 - A numerator that overflows is 255 `#` ("Displayed text over an edge-value pool" above, T-1740).
-Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 text cells under 12 fraction
+Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 Ours: no fraction support; `/` is a literal and the placeholders around it are digits (`# ?/?` on PI()
 is "  /3"). T-2029 (fixed denominators), T-2030 (placeholder denominators).

@@ -32,7 +32,7 @@ the engine has no fraction support (see T-2029). Rules in docs/excel-semantics/n
   you implement and the cells that decide it.
 - **Improper fractions without an integer part:** `?/?` on 1.5 "3/2", 36.5 "73/2", PI() "22/7",
   1234567890 "1234567890/1", 0 and 1E-5 "0/1", 0.9999999999 "1/1", -1 "-1/1" (039accab E-column,
-  43980980 Z-column); `??/??` on 123456.789 "2345679/19", on -1.5 "- 3/2 " (039accab U1, 03a284c5 Z4).
+  43980980 Z-column); `??/??` on 123456.789 "2345679/19", on -1.5 "- 3/2 " (03a284c5 Z4, 039accab U1).
 - **Padding:** `?` pads the numerator on the left and the denominator on the right:
   `# ???/???` on 1.5 "1   1/2  ", on 0.0049 "   1/204" (05c1c646 C3, bfbcd16c X4); `??/??` on 0.5
   " 1/2 ". `#` does not pad: `# #/#` on 0.5 "1/2", on 1234567890 "1234567890" (039accab K8, K2).
