@@ -31,6 +31,29 @@ impl Model {
         }
     }
 
+    /// SWITCH lifted over an array `expr` or case value: every argument is read, and each element
+    /// compares its value with the cases.
+    fn switch_lifted(
+        &mut self,
+        expr: CalcResult,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let mut lifted = vec![expr];
+        for node in &args[1..] {
+            lifted.push(self.evaluate_node_in_context(node, cell));
+        }
+        // One unit per argument.
+        let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
+        self.lift_values(
+            lifted,
+            LiftCost::Cells(units),
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut |_, element| switch_element(element, cell),
+        )
+    }
+
     /// What SWITCH's scalar expression picks: the value of the first matching case or the
     /// default, unevaluated; otherwise the value SWITCH gives (an argument-count error, the
     /// expression's or a case's error, `#N/A`, or SWITCH lifted over an array expression).
@@ -47,19 +70,7 @@ impl Model {
         }
         let expr = self.evaluate_node_in_context(&args[0], cell);
         if LiftedArg::is_grid(&expr) {
-            let mut lifted = vec![expr];
-            for node in &args[1..] {
-                lifted.push(self.evaluate_node_in_context(node, cell));
-            }
-            // Each element compares its value with the cases: one unit per argument.
-            let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
-            return Picked::Value(self.lift_values(
-                lifted,
-                LiftCost::Cells(units),
-                &LiftOptions::REUSE_EQUAL_RUNS,
-                cell,
-                &mut |_, element| switch_element(element, cell),
-            ));
+            return Picked::Value(self.switch_lifted(expr, args, cell));
         }
         if expr.is_error() {
             return Picked::Value(expr);
@@ -70,6 +81,12 @@ impl Model {
         let case_count = (args_count - 1) / 2;
         for case_index in 0..case_count {
             let case = self.evaluate_node_in_context(&args[2 * case_index + 1], cell);
+            // An array case value lifts the call like an array expression does, though the
+            // expression is a scalar (`SUBTOTAL(9,TAKE(SWITCH(1,{1,2},H1:H2,I1:I2),2))` is a 2x2
+            // of `#VALUE!`, probes/subtotal-take-array-selector-b A10, T-2012).
+            if LiftedArg::is_grid(&case) {
+                return Picked::Value(self.switch_lifted(expr, args, cell));
+            }
             if case.is_error() {
                 return Picked::Value(case);
             }
