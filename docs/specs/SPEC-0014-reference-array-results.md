@@ -184,7 +184,7 @@ through volatility. T-0401 carries a pointer to this paragraph.
   each rollout task owns: they leave eval/baseline as each task lands.
 - Unit tests per task: a grid never reaches storage (spill of a grid is `#VALUE!` cells); a lift past
   `check_array_size` or the visit budget is the bound's error before any element runs;
-  `RefGrid::into_values` keeps error elements.
+  `RefGrid::to_values` keeps error elements.
 - Metamorphic: `SUM(OFFSET(A1,{0;1},0))` equals `SUM(A1,A2)`; `ROWS` of any producer grid equals the
   broadcast shape of its lifted arguments.
 
