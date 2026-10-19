@@ -134,3 +134,39 @@ Those directions are spanned by the hidden stages: N c2..c6 and D c2..c6, produc
     - ALLLINES / AMPMIN / AMPW / XREF hooks.
 - Also required: libgeval.so (`../w4/gline_tools/geval.c`) next to jointA.py; e3res.txt in ../; e7e10.pkl (built with
   load_rows from the e7/e10 extract_runs dumps).
+
+## 7. Route (i)/(ii) and the generator hypothesis: all negative (synthetic controls; W4, 2026-10-19 PM)
+- **Per-stage law validation** (lawcheck.py: known δ on each stage's y^1 coefficient; rms / fraction of runs with
+  |r| < 0.05):
+  - Valid: N.tri0 .012/1.00, D.tri1 .010/1.00, N.tri1 .029/.92, D.saw0 .034/.91.
+  - Usable with outliers: N.saw6, D.tri2, D.tri3, N.tri2.
+  - Fail: N.tri4-6, D.saw4-5, D.tri6. The rest are marginal.
+- **Adding validated hidden-stage lines** (N.saw6, D.tri3, N.tri2, robust rejection): worse. Max error 4.5-5.7e6
+  ulps, 30-38% exact.
+- **Numerical-Jacobian joint solve:** the same failure (3.3-8.7e6 ulps). Every ≥1-ulp coefficient change re-hashes
+  the hidden roundings, which jitters each line's phase by a pseudo-random amount that does not depend on K.
+- **Interval LP with frozen rounding errors** (the half-ulp bounds need long double):
+  - At the truth, slack is 0, but its T = 2 step drops the real exact rate to 39%.
+  - From 100 ulps off, T = 10 drifts to 140 ulps and T = 200 to 560.
+  - Not a finisher at any distance.
+- **Known-offset row check:**
+  - Below K = 1e12 the predicted shift is ≤0.03 cycles, so all information sits at K ≥ 1e12.
+  - There, residual rms is .02-.10 on the low-stage lines but .25-.37 (uniform-random) on N.saw2/5/6, N.tri4 and
+    D.saw4/6.
+  - So the solves are at their true bound: dirs 7-14 std 1.7-8 units.
+- **Fisher design with empirical σ:**
+  - +632 cases bring dirs 7-14 to .30-1.4 units; +1,005 cases to .26-1.2 units (√N).
+  - Unwrapping the designed top rungs would need intermediate rungs.
+  - Not worth about 17 h of oracle time.
+- **Generator** (remez.py, gauge.py: exact (7,7) raw-y minimax of Gamma, D0 = -1/16):
+  - [1,2] rel: E = 1.44e-18. round53(R*) is about 1e9 ulps from AN2 per coefficient.
+  - Other intervals and weights are 1e12-3e16 ulps away.
+  - A common scale is not function-null here: D0 shifts G by about 300-570 ulps for s - 1 = 1.86e-7.
+  - Phases pin D0 to about 1.5e-11 absolute, so any normalisation rule must keep D0 = -1/16 to 1.6e-10.
+  - No normalisation closes the gap. Excluded by more than 50 units in phase-stiff directions.
+  - Excel's rational is one-signed against Gamma (+0.45..+1.24e-16 relative, 8 extrema, about 60x the minimax E).
+    That is consistent with a finite-precision generator, which cannot be reproduced from outputs.
+- **Side channels** (coordinator q501/q502): GAMMA.DIST, BETA.DIST, CHISQ.DIST and 1/GAMMA expose no unrounded G
+  bits.
+- **Conclusion:** K1 stays at AN2 until a new observable appears. Tools are in W4's scratchpad: ilp.py, jointN.py,
+  posctl3/4.py, lawcheck.py, design*.py, rowcheck2.py, remez.py, gauge.py.
