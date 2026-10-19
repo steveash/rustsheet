@@ -132,6 +132,11 @@ Excel's `^` 467/467; with `exp(ln q/(n-1))` 456/467, libm `pow` 456/465; the sam
 Evidence: probes-numeric/m9-fin-mirr Calc!A1:A432 (excel-graph, 2026-10-17; A253:A432 are the 6x6 rate grids for
 {-100,120}, {-3,7}, {120,-100}, {-3,0,7} and {-3,7,0}); probes-numeric/m9-fin-irr-rate MIRR cells;
 ironcalc-calc/FINANCIAL/MIRR.xlsx (225 cells, all passing since).
+MIRR power overflow and underflow (T-1995): with no positive flow, both powers overflowing (`MIRR({-1,-2,-3},1E+200,1E+200)`) is `#DIV/0!`, the
+finance power's error winning over the reinvest power's `#NUM!` (each alone keeps its own: finance 1E+200 `#DIV/0!`, reinvest 1E+200 `#NUM!`).
+A power underflowing to 0 over 400 flows at a rate of -0.999999 is `#DIV/0!` for the reinvest rate or both rates and a number for the finance rate alone
+(0.004041825210995276, the same as at 0.1). Both overflowing with a positive flow is not probed.
+Evidence: probes/fin-mirr-overflow-underflow A1-A7 (excel-graph, 2026-10-19, T-1995).
 Status: VERIFIED (fit, 467/467 bit-exact)
 Implemented in: `fn_mirr` (functions/financial/mirr.rs). A rate of -1 keeps its own limit cases, and a ratio that is
 zero, negative or infinite keeps `powf`; neither is part of the fit.
