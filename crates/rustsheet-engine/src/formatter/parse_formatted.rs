@@ -4,7 +4,7 @@
 use crate::{locale::Locale, number_format::parse_excel_number, types::DateSystem};
 
 use super::{
-    date_clock::parse_date_clock_serial_in,
+    date_clock::{parse_clock_text, parse_date_clock_serial_in, parse_hour_only_am_pm},
     date_text::{parse_date, CurrentYear},
     lexer::is_likely_date_number_format,
 };
@@ -14,6 +14,9 @@ use super::{
 /// seconds or AM/PM get the same format (probes/date-text-non-glued-timevalue, T-1952;
 /// docs/research/non-glued-typed-input-2026-10-19.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
+
+/// Format of a bare typed clock with a single-letter A/P suffix (`10:00 A`).
+const BARE_CLOCK_AM_PM_FORMAT: &str = "h:mm AM/PM";
 
 /// [`parse_formatted_number`] for text typed into a cell, which also reads date+time text
 /// (coercion reads that through `parse_time_serial` instead).
@@ -25,13 +28,54 @@ pub(crate) fn parse_typed_number(
     date_system: DateSystem,
 ) -> Result<(f64, Option<String>), String> {
     parse_formatted_number(original, currencies, locale, current_year, date_system).or_else(|err| {
-        let Some(shape) = typed_clock_shape(original) else {
+        let text = without_single_letter_dot(original);
+        if let Some(parsed) = parse_bare_letter_clock(text) {
+            return Ok(parsed);
+        }
+        let Some(shape) = typed_clock_shape(text) else {
             return Err(err);
         };
-        parse_date_clock_serial_in(original, locale, current_year, date_system)
+        parse_date_clock_serial_in(text, locale, current_year, date_system)
             .map(|serial| (serial, shape.format()))
             .ok_or(err)
     })
+}
+
+/// A bare typed clock with an `A`/`P` or `AM`/`PM` suffix as a time of day with its AM/PM clock
+/// format: `10:00 A`, `10:00 AM` and `10 A` are `h:mm AM/PM`, `10:00:30 A` is `h:mm:ss AM/PM`
+/// (probes/date-text-single-letter-ap N9, N13-N15, N19, N20). A bare hour with `AM`/`PM` is unprobed.
+fn parse_bare_letter_clock(text: &str) -> Option<(f64, Option<String>)> {
+    let (clock, word) = text.rsplit_once(' ')?;
+    let single_letter = is_single_letter_ap(word);
+    if clock.contains(' ')
+        || !(single_letter || word.eq_ignore_ascii_case("am") || word.eq_ignore_ascii_case("pm"))
+    {
+        return None;
+    }
+    let serial =
+        parse_clock_text(text).or_else(|| parse_hour_only_am_pm(text).filter(|_| single_letter))?;
+    let format = if clock.matches(':').count() == 2 {
+        "h:mm:ss AM/PM"
+    } else {
+        BARE_CLOCK_AM_PM_FORMAT
+    };
+    Some((serial, Some(format.to_string())))
+}
+
+/// `text` without the dot after a trailing single-letter `A`/`P` suffix (`10:00 A.` -> `10:00 A`):
+/// typed text accepts it (probes/date-text-single-letter-ap N12).
+fn without_single_letter_dot(text: &str) -> &str {
+    match text
+        .strip_suffix('.')
+        .and_then(|rest| rest.rsplit_once(' '))
+    {
+        Some((rest, word)) if is_single_letter_ap(word) => &text[..rest.len() + 1 + word.len()],
+        _ => text,
+    }
+}
+
+fn is_single_letter_ap(word: &str) -> bool {
+    word.eq_ignore_ascii_case("a") || word.eq_ignore_ascii_case("p")
 }
 
 /// Cell format of typed text that stays text because its clock is rejected: a date followed by a
@@ -47,7 +91,7 @@ pub(crate) fn rejected_clock_text_format(
     current_year: CurrentYear,
     date_system: DateSystem,
 ) -> Option<String> {
-    let (rest, word) = original.rsplit_once(' ')?;
+    let (rest, word) = without_single_letter_dot(original).rsplit_once(' ')?;
     if !["am", "pm", "a", "p"]
         .iter()
         .any(|s| word.eq_ignore_ascii_case(s))
