@@ -546,3 +546,18 @@ fn lifted_field_is_charged_the_criteria_table() {
     assert_eq!(model._get_text("F1"), *"1");
     assert_eq!(model._get_text("F2"), *"#ERROR!");
 }
+
+/// A one-cell criteria reference is a one-cell criteria table (a header only: every record
+/// matches), as before the criteria were lifted (T-1389 fidelity review).
+#[test]
+fn one_cell_criteria_reference_is_a_table() {
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "Price"), ("A2", "2.5"), ("A3", "4"), ("E1", "Price")] {
+        model._set(cell, value);
+    }
+    model._set("F1", "=DSUM(A1:A3,\"Price\",E1)");
+    model._set("F2", "=DSUM(A1:A3,\"Price\",$E$1)");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), *"6.5");
+    assert_eq!(model._get_text("F2"), *"6.5");
+}
