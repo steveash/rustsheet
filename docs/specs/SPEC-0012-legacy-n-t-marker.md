@@ -158,13 +158,15 @@ rename and defined-name rename parses that text in `LexerMode::R1C1` (new_empty.
 defined_names.rs), mutates the tree, and prints it again. So the marker needs a spelling there. It
 needs no field anywhere else.
 
-- `to_rc_format` prints `NLegacy` as a reserved call name, e.g. `_RS_LEGACY_N(` and
-  `_RS_LEGACY_T(`. The exact spelling is T-1851's choice under the constraints below.
+- `to_rc_format` prints `NLegacy` as a reserved call name: `NLG1(` and `TLG1(` since T-1936
+  (`_RS_LEGACY_N(` and `_RS_LEGACY_T(` in T-1851, still read from stored text while the workbook
+  defines no name of that spelling). The spelling is an A1 cell, so no A1 text holds it as a call
+  name and Excel never calls a name of it (references.md "Legacy N and T marker spelling").
 - `parse_named_call` (expressions/parser/operands.rs) recognizes the spelling before the function
   lookup, next to `_xlfn.SINGLE`. In `LexerMode::R1C1` it gives the internal kind. In
-  `LexerMode::A1` (typed formulas, xlsx `<f>` text) it gives plain `Function::N` / `Function::T`.
-  One matcher, `is_legacy_marker_spelling(&name)`, decides for both modes. So every spelling R1C1
-  accepts is one that A1 maps to plain N/T, and no A1-parsed formula can print as the reserved
+  `LexerMode::A1` (typed formulas, xlsx `<f>` text) it gave plain `Function::N` / `Function::T`
+  until T-1936; now it is not consulted there (the spelling is a cell). One matcher,
+  `Function::from_legacy_spelling`, decides, and no A1-parsed formula can print as the reserved
   spelling. Case and `_xlfn.` prefix variants follow that matcher exactly, and a test checks that
   no other variant reparses to the internal kind. Today R1C1 mode parses only stored text (the
   three call sites above).
@@ -172,7 +174,8 @@ needs no field anywhere else.
   error (expressions/parser/unparsed.rs) that the R1C1 parser hands back unparsed. So a broken
   formula holding the spelling, e.g. `=_RS_LEGACY_N(IF(1,{2;3}))+R[1]C`, comes back as the same
   parse error after a reload, never marked. T-1851's test pins this.
-- **A defined name with the same spelling.** In A1 mode the spelling is plain N/T, so a workbook
+- **A defined name with the same spelling** (superseded by T-1936: the spelling is now a cell in
+  A1 mode, a call of it `#REF!` as in Excel). In A1 mode the spelling was plain N/T, so a workbook
   LAMBDA name with that spelling is shadowed: `_RS_LEGACY_N(1)` calls N, not the name. T-1851 may
   find, with the excel-probe skill, a spelling that Excel refuses as a defined name. If it does
   not, it records the shadowing in references.md, and its test states the actual behavior. The

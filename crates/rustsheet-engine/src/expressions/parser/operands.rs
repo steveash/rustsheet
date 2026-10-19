@@ -418,10 +418,16 @@ impl Parser {
                 child: Box::new(args[0].clone()),
             };
         }
-        // The stored spelling of a legacy N or T (SPEC-0012): the marker in R1C1 (stored) text,
-        // plain N or T in A1 text, so a typed or imported call of it is never stored marked.
-        if let Some(kind) = Function::from_legacy_spelling(&name, !self.lexer.is_a1_mode()) {
-            return self.function_call(kind, args);
+        // The stored spelling of a legacy N or T (SPEC-0012), in R1C1 (stored) text only: in A1
+        // text it is a cell (`NLG1(1)` is `#REF!`, below) or a name call (T-1936).
+        if !self.lexer.is_a1_mode() {
+            if let Some(kind) = Function::from_legacy_spelling(&name, |name| {
+                self.defined_names
+                    .iter()
+                    .any(|(defined, _, _)| defined.eq_ignore_ascii_case(name))
+            }) {
+                return self.function_call(kind, args);
+            }
         }
         // We should do this *only* importing functions from xlsx
         if let Some(function_kind) = self.language.functions.lookup_stored(&name) {

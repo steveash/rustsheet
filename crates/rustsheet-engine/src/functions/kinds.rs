@@ -4,9 +4,19 @@
 use super::Function;
 
 /// How `to_rc_format` stores the internal kinds. No other text shows them: the display, English,
-/// FORMULATEXT and xlsx texts print N and T. A typed or imported (A1) call of the spelling is
-/// plain N or T, so no A1 formula is stored with it (SPEC-0012 "Storage").
-const LEGACY_SPELLINGS: [(&str, Function); 2] = [
+/// FORMULATEXT and xlsx texts print N and T. Each spelling is an A1 cell, so typed or imported (A1)
+/// text never holds it as a call name: there `NLG1(1)` is a call of that cell, `#REF!`. Nor can a
+/// workbook name of that spelling be called: Excel opens a workbook defining a LAMBDA name `NLG1`
+/// or `TLG1`, but `NLG1(1)` is `#REF!` and `ISREF(NLG1)` TRUE (probes/legacy-marker-spelling-
+/// name-nlg1, -tlg1, T-1936), so the marker never shadows a name (SPEC-0012 "Storage").
+const LEGACY_SPELLINGS: [(&str, Function); 2] =
+    [("NLG1", Function::NLegacy), ("TLG1", Function::TLegacy)];
+
+/// The spellings model files saved between T-1851 and T-1936 store. Excel calls a LAMBDA name of
+/// these spellings (probes/legacy-marker-spelling-name-plain, T-1912), so they are the marker only
+/// in stored text and only while the workbook defines no name of that spelling: a call of such a
+/// name is stored by its name, and a file of that time never stored one (its A1 text read as N).
+const OLD_LEGACY_SPELLINGS: [(&str, Function); 2] = [
     ("_RS_LEGACY_N", Function::NLegacy),
     ("_RS_LEGACY_T", Function::TLegacy),
 ];
@@ -41,19 +51,21 @@ impl Function {
         }
     }
 
-    /// The kind a call spelled `name` is, if it is the stored spelling of an internal kind: that
-    /// kind when `stored` (R1C1 text), else plain N or T. The one matcher of both modes, exact
-    /// and case-sensitive, so a variant (`_rs_legacy_n`, `_xlfn._RS_LEGACY_N`) is no marker in
-    /// either.
-    pub(crate) fn from_legacy_spelling(name: &str, stored: bool) -> Option<Function> {
-        let (_, kind) = LEGACY_SPELLINGS
-            .iter()
-            .find(|(spelling, _)| *spelling == name)?;
-        Some(match (kind, stored) {
-            (kind, true) => kind.clone(),
-            (Function::NLegacy, false) => Function::N,
-            _ => Function::T,
-        })
+    /// The internal kind a call spelled `name` in stored (R1C1) text is, if any; `is_defined_name`
+    /// tells whether the workbook defines a name of that spelling. The one matcher, exact and
+    /// case-sensitive, so a variant (`nlg1`, `_xlfn.NLG1`) is no marker. A1 text has no marker.
+    pub(crate) fn from_legacy_spelling(
+        name: &str,
+        is_defined_name: impl FnOnce(&str) -> bool,
+    ) -> Option<Function> {
+        let spelling = |table: &[(&str, Function)]| {
+            table
+                .iter()
+                .find(|(spelling, _)| *spelling == name)
+                .map(|(_, kind)| kind.clone())
+        };
+        spelling(&LEGACY_SPELLINGS)
+            .or_else(|| spelling(&OLD_LEGACY_SPELLINGS).filter(|_| !is_defined_name(name)))
     }
 
     /// The stored spelling of an internal kind, `None` for every other kind.
