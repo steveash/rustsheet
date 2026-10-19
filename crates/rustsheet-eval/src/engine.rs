@@ -570,7 +570,7 @@ mod tests {
     #[test]
     fn a_bad_spec_name_fails_the_case() {
         let spec = spec(
-            r#"{"format":"rustsheet-case/v1","names":{"A1":"=1"},
+            r#"{"format":"rustsheet-case/v1","names":{"2real":"=1"},
                 "sheets":[{"name":"Sheet1","cells":{}}]}"#,
         );
         assert!(RustSheetEngine.evaluate_spec(&spec, None).is_err());
