@@ -65,6 +65,12 @@ const SCAN_VISIT: u64 = 16;
 /// about 1 s.
 const LOOK_VISIT: u64 = 54;
 
+/// Units charged per range of a sparse class state the reach scan walks, on top of its visit:
+/// the scan and the `PikeVM` each walk them. T-1988, release build: at a flat visit charge
+/// `\b[\w\s\d]{30}q` tested on `REPT("日a ",8000)&SEQUENCE(80)` ran out of work in 1.6 s; at 3 a
+/// range it does in 0.9-1.0 s (1.0-1.2 s over `ж`), at 2 in 1.0-1.15 s, at 4 in 0.8 s.
+const SPARSE_TRANSITION: u64 = 3;
+
 /// Units charged per search, whatever its length: a pattern that matches everywhere does one
 /// search a character.
 const SEARCH: u64 = 64;
@@ -283,6 +289,7 @@ impl Search<'_> {
             &Visits {
                 states: SCAN_VISIT + PIKE_STATE_BYTE,
                 looks: LOOK_VISIT,
+                transitions: SPARSE_TRANSITION,
             },
             self.work,
         )?;
