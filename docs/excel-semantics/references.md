@@ -1101,7 +1101,10 @@ picks, a LET body or under a nested TAKE or TRIMRANGE; SUBTOTAL, AREAS and ISREF
 (`XLOOKUP(XLOOKUP(1,J1:J2,J1:J2),J1:J2,H1:H2)`), a literal lookup array and a range `if_not_found` keep the
 reference; `SUBTOTAL(9,TAKE(TAKE(H1:I2,1),1,1))` is 3. Values instead, so SUBTOTAL is `#VALUE!` per element and
 ISREF FALSE: a lifting lookup value (`TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1)` is one `#VALUE!`,
-`TRIMRANGE(XLOOKUP({1;2},..))` spills two), a literal `return_array`, and `IFERROR(XLOOKUP(..),0)`. Also from the
+`TRIMRANGE(XLOOKUP({1;2},..))` spills two), a literal `return_array`, and `IFERROR(XLOOKUP(..),0)`. A lifting
+argument next to a reference one gives one `#VALUE!`, not a spill
+(`SUBTOTAL(9,TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1),TAKE(XLOOKUP(2,J1:J2,H1:H2),1))`, A94), and
+`SUM(TAKE(XLOOKUP(1,J1:J2,H1:I2),1))` is 9 (A90). Also from the
 probe, not yet matched by the engine: `SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))` and
 `SUBTOTAL(9,CHOOSE(1,XLOOKUP(..)))` are 9 (the engine spills two `#VALUE!`; T-2009).
 Evidence: probes/take-drop-trimrange-over-xlookup A10-A94, probes/take-drop-trimrange-over-xlookup-b A10-A62

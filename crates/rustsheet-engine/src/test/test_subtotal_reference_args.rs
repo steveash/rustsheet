@@ -390,6 +390,8 @@ fn take_drop_trimrange_over_xlookup_pick_cells() {
         (format!("SUBTOTAL(9,DROP(TRIMRANGE({x}),0,1))"), "6"),
         ("SUBTOTAL(9,TAKE(TAKE(H1:I2,1),1,1))".to_string(), "3"),
         (format!("ISREF(DROP(CHOOSE(1,{x}),0,1))"), "TRUE"),
+        // A literal lookup array keeps the reference (probes/take-drop-trimrange-over-xlookup A54).
+        ("SUBTOTAL(9,TAKE(XLOOKUP(1,{1},H1:I1),1))".to_string(), "9"),
         // Values, not cells: a lifting lookup value, an array return, IFERROR.
         (
             "SUBTOTAL(9,TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1))".to_string(),
@@ -422,4 +424,33 @@ fn take_drop_trimrange_over_xlookup_pick_cells() {
         assert_eq!(model._get_text(&format!("B{top}")), "", "{formula}");
         assert_eq!(model._get_text(&format!("A{}", top + 1)), "", "{formula}");
     }
+}
+
+// The walk below TAKE through IF, CHOOSE and LET to an XLOOKUP reads each condition, index and
+// binding once, so 20 levels stay fast (T-1998).
+#[test]
+fn take_over_nested_if_choose_let_xlookup_is_linear() {
+    let mut formula = "XLOOKUP(1,J1:J2,H1:I2)".to_string();
+    for level in 0..20 {
+        formula = match level % 3 {
+            0 => format!("IF(TRUE,{formula})"),
+            1 => format!("CHOOSE(1,{formula})"),
+            _ => format!("LET(x_{level},1,{formula})"),
+        };
+    }
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("H1", "3"),
+        ("H2", "4"),
+        ("I1", "6"),
+        ("I2", "8"),
+        ("J1", "1"),
+        ("J2", "2"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("A1", &format!("=SUBTOTAL(9,TAKE({formula},1,-1))"));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "6");
+    assert_eq!(model._get_text("B1"), "");
 }

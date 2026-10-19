@@ -22,7 +22,9 @@ aggregate mode (`IfBranchMode::Aggregate`, `choose_impl(.., true)`) read the arm
 `evaluate_reference_arg`, which evaluates XLOOKUP for its values, and static analysis
 (`is_read_reference`, `lifts_to_values` in static_analysis/aggregate.rs) sizes it as an array.
 T-1998 added `Model::evaluate_picked_source` (drop_take.rs) for the same walk below TAKE, DROP and
-TRIMRANGE; reuse it or its rule. Check whether SUM/COUNT (which share `reference_arg_reading`)
+TRIMRANGE; reuse it or its rule, and move it next to `evaluate_reference_form` /
+`reference_arg_reading` so the walk has one home (it may also absorb `Model::pick_branch`,
+external_reference.rs, which walks IF/CHOOSE for external references; T-1998 review). Check whether SUM/COUNT (which share `reference_arg_reading`)
 also read the cells (text/boolean cells tell), and probe the LET-body form `SUBTOTAL(9,LET(v,1,XLOOKUP(..)))`.
 
 ## Acceptance criteria
