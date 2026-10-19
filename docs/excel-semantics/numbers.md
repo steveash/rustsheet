@@ -812,7 +812,8 @@ itself, not 1/n: `(-8)^(1/3+8·2^-54)` is -2.0000000000000018.
 - Literals: `0.333333333333333` counts (-1.9999999999999984), `0.33333333333333` does not; `0.0909090909090909` (1/11) counts,
   `0.142857142857143` (1/7, 1/y = 6.999999999999993) does not.
 - Size: `1/(2^31-3)` and `1/(2^31-5)` count; `1/(2^31-1)`, `1/(2^31+1)`, `1/(2^40+1)` and `1/(2^52+1)` are #NUM!, although
-  1/y is exactly the odd integer there.
+  1/y is exactly the odd integer there. Not probed: negative exponents at the limit (`-1/(2^31-1)`, `-1/(2^31-3)`); the engine
+  takes the limit on |1/y|.
 - Even reciprocals (`1/4 + 2^-55`, `1/2^20`) are #NUM!; `3/9`, `2/6` and `1/(-3)` are odd roots like 1/3 and -1/3.
 Overflow of a non-zero base is #NUM! (`10^309`, `(-10)^309`, `1E300^1.5`, `(-1E300)^3`, `2^1024`) and underflow follows
 "Non-integer exponents" (`1E-300^-1.5` #DIV/0!, `10^-309` 0). The operator `^` and POWER agree on every cell probed: the
