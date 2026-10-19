@@ -3,7 +3,7 @@ id: T-1484
 title: "Spec: WEEKNUM stale return_type state in Excel's calc order (decision 0038 reopened)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
