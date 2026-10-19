@@ -547,8 +547,40 @@ rational for 4 < x <= 26.55, ERF = fl(1 - ERFC) and ERFC = fl(1 - ERF) on either
 ERFC(-x) = fl(2 - ERFC(x)), ERF(-x) = -ERF(x), and 0 beyond 26.55 or below DBL_MIN. E comes from `x87_exp.rs`
 (numbers.md, "EXP is an x87 2^(a*log2 e) evaluation"), and every operation is the x87 `fl53(fl64(.))` of
 `arithmetic.rs`' `extended_*` helpers. `normal_cdf` uses the NORM.S.DIST identity (d = fl53(fl64(-z*fl(sqrt(0.5)))),
-z = (x-m)/s), so NORM.DIST, NORM.S.DIST and LOGNORM.DIST inherit the kernel; CHISQ.DIST.RT, Z.TEST, POISSON and
-GAMMA.DIST are not routed yet (T-1929).
+z = (x-m)/s), so NORM.DIST, NORM.S.DIST and LOGNORM.DIST inherit the kernel.
+Engine (T-1929): the wrappers compute through the same compositions, so each identity above but T.DIST's holds bit for bit
+(unit tests in `crates/rustsheet-engine/src/test/statistical/test_erf_identities.rs`):
+- CHISQ.DIST.RT, CHIDIST and CHISQ.TEST at df 1 are `erfc(sqrt64(x/2))` and CHISQ.DIST(x,1,TRUE) is
+  `erf(sqrt64(x/2))`, sqrt64 the twice-rounded root of `extended_sqrt` (`erf.rs` `gamma_half_upper`,
+  `gamma_half_lower`). GAMMA.DIST's cdf at shape exactly 0.5 is `erf(sqrt64(x/b))`.
+- GAMMA.DIST's cdf at every shape scales by the quotient x/b, rounded twice like the worksheet `/`, and not by
+  statrs' x*fl(1/b): `GAMMA.DIST(200000,2,1000000,TRUE)` = 0.017523096306421772 then matches
+  (probes-numeric/m9-gamma-dist-a2 A21). No cell that matched before changed; three that fail either way moved
+  (m9-gamma-dist-a1 A21 from 1 to 4 ulp off, m9-gamma-dist-a9 A21 closer, t1048-gammadist A11/B11 from 19 to 27 ulp
+  off). Against an exact P(a, x/b) the twice-rounded x/b gives Excel's value at shapes 1 and 2 (A21), so the
+  remaining error is the generic kernel's, not the scaling's. An x/b that underflows to 0 or overflows keeps
+  the port's branches (`GAMMA.DIST(1E300,1,1E-10,TRUE)` stays #NUM!, probes/incomplete-gamma-cap E6). Unprobed
+  (T-1942): a subnormal x/b is kept, not flushed like a worksheet `/` result, so `GAMMA.DIST(2E-300,0.5,1E8,TRUE)`
+  is about 1.6E-154 (0 before); and the tiny-x lower tail at shape 0.5 moved with the identity
+  (`GAMMA.DIST(3E-308,0.5,1,TRUE)` and `CHISQ.DIST(3E-308,1,TRUE)` about 1.4E-154 to 2E-154, 0 before; T-1891).
+- Z.TEST is `NORM.S.DIST(-z,TRUE)`, not `1-NORM.S.DIST(z,TRUE)`: 120 of 120 cells of
+  probes-numeric/t1916-erf-wrappers column I (`Z.TEST(HSTACK(a,a),0,SQRT(2))`) against 19, and column J likewise.
+  The statistic is z = fl53(fl64(fl53(fl64(mean - x)) * sqrt64(n))) / sigma, the quotient rounded twice too:
+  240 of 240 cells of columns I and J, and all 30 numeric cells of t1048-ztest and t1049-ztest. The textbook
+  (mean - x)/(sigma/sqrt(n)) matches 240 of 240 in columns I and J (there sigma/sqrt(n) is exactly 1) but only 24 of
+  the 30, and the plain-double (mean - x)*sqrt(n)/sigma 30 of 30 but only 141 of 240. The mean and the sample
+  standard deviation are not separated by these probes (plain and twice-rounded forms both match). One value is
+  #DIV/0! with sigma given too and sigma < 0 is #NUM! (the T-1048/T-1049 rules below). Unprobed: a plain-double
+  sigma/sqrt(n) that underflows stays #DIV/0! (the fork's guard) and a non-finite p is #NUM!, including an
+  omitted sigma that overflows to infinity (T-1942). No held-out cell separates the three z formulas at the p level.
+- `T.DIST(x,n,TRUE)` for x < 0 = `T.DIST.2T(-x,n)/2` is NOT routed. The engine's T.DIST.2T is statrs' 2*(1 - cdf(x)),
+  which cancels to 0 for a large x, so the routed T.DIST(-1E6,10,TRUE) was 0 (Excel 1.230468749943611E-56) and the
+  T.INV of it #NUM! (ironcalc-calc T_DIST.xlsx "T.DIST T.INV T.DIST.RT" D19, E19). Taking T.DIST.2T from the lower
+  tail, 2*cdf(-x), keeps the identity but loses 8 Excel-matching T.DIST.2T cells (T_DIST.xlsx C11, C25, C26, C34,
+  C35, C38, C39 and probes-numeric/m9-t-dist-2t A64, all `T.DIST.2T(1,10)` = 0.34089313230205986). So Excel's
+  T.DIST.2T is neither form, and the identity waits for its T kernel (T-0969). POISSON.DIST's cdf and CHISQ.DIST.RT at df 2(k+1) are the same Q(k+1, m) of
+  the capped series, so that identity holds; neither is Excel's kernel yet. GAUSS was already
+  `NORM.S.DIST(x,TRUE)-0.5`.
 - Bulk check against every single-argument ERF/ERFC cell of the research probes (`ERF.PRECISE(A)`, `ERF(A)`:
   928,038 cells; `ERFC.PRECISE(A)`, `ERFC(A)`: 7,259,712): all match except 27 ERFC cells. Each of the 27 sits on a
   row whose `EXP(-(x*x))` cell also differs from model V6: 7 are the misparsed inputs (numbers.md), and 20 are V6's
@@ -584,15 +616,15 @@ GAMMA.DIST are not routed yet (T-1929).
 - Curated evidence on main (excel-graph values copied unchanged, provenance in each case description):
   probes-numeric `t1916-erf-small` (4,878 cells), `t1916-erfc-mid` (9,024), `t1916-erfc-tail` (10,142),
   `t1916-erf-wrappers` (13,137) and `t1916-erfc-exp-ties` (20). Every ERF, ERFC, ERF(a,b), NORM.S.DIST and
-  NORM.DIST cell passes; the failures are the CHISQ.DIST.RT and Z.TEST wrappers (T-1929) and the 20 residuals.
+  NORM.DIST cell passes, and since T-1929 every CHISQ.DIST.RT and Z.TEST cell too; the failures are the 20 residuals.
 - `ironcalc-calc/ENGINEERING/ERFs.xlsx` E8 and G8 (`ERFC(6)`, `ERFC.PRECISE(6)`) stay known failures: that workbook was
   cached by Microsoft Macintosh Excel, which gives 0x1.8cf81557d20bap-56, while the excel-graph oracle (Windows,
   probes-numeric `t1040-erfc` A97) gives 0x1.8cf81557d20b8p-56, the engine's value. A platform difference
   (Mac Excel does not run the x87 code), not a kernel miss.
 Status: VERIFIED. ERF, ERF.PRECISE, ERFC and ERFC.PRECISE are bit-exact on every probed input except the 20 EXP
 near-tie cells. Implemented in `erf.rs` and `x87_exp.rs` (T-1916).
-Tasks: T-1778, T-1916; T-1929 routes the remaining wrappers and T-1931 the worksheet EXP; T-0968, T-1187, T-0971 and
-T-0972 inherit the map.
+Tasks: T-1778, T-1916; T-1929 routed the wrappers, and T-1931 put the worksheet EXP on the same model V6 (both
+done); T-0968, T-1187, T-0971 and T-0972 inherit the map.
 
 ## RANK of a non-reference array
 Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An array that is not a reference
@@ -741,7 +773,7 @@ most 1,100 (BETA.INV) or about 1,300 (F.INV) or 264 (T.INV) evaluations. The lif
 F.INV, F.INV.RT and FINV 2^18 units an element and T.INV, T.INV.2T, TINV and CONFIDENCE.T 2^16: the bound of each
 kernel's caps at a full-cost incomplete-beta cdf (140 continued-fraction steps, 3.1 to 3.4 us in release), about 4.0 ms
 (F.INV's 1,301-cdf bisection) and 0.82 ms (T.INV's 264-cdf bisection); the cases measured cost far less (167 us for
-`BETA.INV(1E-300,0.5,1E6)`, 17.5 us for `T.INV.2T(1E-9,99999)`); kinds.rs has the measurements.
+`BETA.INV(1E-300,0.5,1E6)`, 17.5 us for `T.INV.2T(1E-9,99999)`); lift/kinds/statistical.rs has the measurements.
 `F.INV(1E-160,5,5)` and `F.INV(1E-100,5,5)` are 1.3470392369521052E-15 in statrs and here, as on main, where Excel follows
 the power law (E4, E5), and `F.INV(1E-50,2000,2)` is 0.008195481623831033 (statrs converges to a wrong root) where Excel
 gives 0.004452511009947361 (E7); E8 and E10-E12 miss by 4 to 357 ulp, as on main (all T-1871).
@@ -795,7 +827,7 @@ cdf (a sheet's cell count keeps its shape under 2^33, where the series can need 
 the DEVIATION below). The lifting table charges every entry 2^18 units an element: the bound of the cap at the slowest
 term, the continued fraction's NaN path (4.1 to 4.7 ns in release; a converging fraction at the cap, which rescales on
 about 65% of its terms at a shape of 1E15, costs 2.4 ns, and a series term 2.5 ns), plus the inversion's 2,120 cdfs,
-about 2.6 ms (kinds.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
+about 2.6 ms (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
 Where x / beta underflows to 0 (statrs panicked) the cdf is statrs' value at its smallest x, 0, as Excel's
 `GAMMA.DIST(1E-300,2,1E100,TRUE)` is (E7); the Excel evidence is at shape 2 only, and a shape below 1 (where the true
 value does not underflow) or near 0 (where the cdf is 1) is unprobed (T-1891). `GAMMA.DIST(1E300,1,1E-10,FALSE)` is 0 here, as on main, where Excel is `#NUM!`

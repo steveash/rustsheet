@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "CONVERT(1E290,\"Ym\",\"km\") prefix overflow, different prefixes (T-1860)",
+  "tags": [
+    "M9",
+    "engineering",
+    "convert",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=CONVERT(1E290,\"Ym\",\"km\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1"
+  ]
+}

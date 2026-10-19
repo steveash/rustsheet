@@ -26,7 +26,7 @@ mod tests {
     use super::*;
 
     /// The committed file matches the engine's table: run `rustsheet-eval lift-kinds --write`
-    /// after changing `functions/lift/kinds.rs`.
+    /// after changing `functions/lift/kinds/`.
     #[test]
     fn committed_table_is_current() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

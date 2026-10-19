@@ -687,7 +687,7 @@ impl Worksheet {
     }
 
     /// The bottom-right corner of the used area, `(last row, last column)`,
-    /// for clipping whole-row and whole-column walks. It may over-approximate
+    /// for clipping range walks (T-0048, T-0405). It may over-approximate
     /// `dimension` (a row that exists without cells counts), which leaves the
     /// result unchanged for walkers that ignore empty cells: the cells past the
     /// true used area are empty. Walkers that act on empty cells (TEXTJOIN with

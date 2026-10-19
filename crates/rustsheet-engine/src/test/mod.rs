@@ -187,6 +187,7 @@ mod test_mod_quotient;
 mod test_nan_inf;
 mod test_nested_formula_stack;
 mod test_networkdays;
+mod test_networkdays_closed_form;
 mod test_now;
 mod test_percentage;
 mod test_range_evaluation;

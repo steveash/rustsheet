@@ -447,8 +447,13 @@ A one-cell reference as `if_empty` is its value too: with K1 = "text", `SUM(FILT
 Variables bound to a one-cell reference are references in other reference-taking functions as well:
 `LET(x,K2,SUBTOTAL(9,x))` → 7, `LET(x,A1,SUM(x:A3))` → 12, `LET(x,K1,COUNTA(x))` → 1,
 `LET(x,K1,SUMIF(x,"text",K2))` → 7, `LET(x,K1,ROWS(x))` → 1.
-Not implemented: a LET whose result is a reference stays a reference to SUM (`=SUM(LET(x,K1,x))` → 0, we
-give `#VALUE!`; T-1106).
+A LET or a LAMBDA call whose result is its variable bound to a reference stays a reference where one is
+wanted (probes/let-lambda-reference-results, excel-graph, 2026-10-19, T-1106): with K1 = "text", K2 = 7,
+`SUM(LET(x,K1,x))`, `SUM(LAMBDA(x,x)(K1))` and `MAX(LAMBDA(x,x)(K1))` are 0, `SUM(LAMBDA(x,x)(K1:K2))` 7,
+`COUNTA(LAMBDA(x,x)(K1))` 1, `COUNT(LET(x,K1:K2,x))` 1; `ISREF` is TRUE for `LAMBDA(x,x)(A1)`,
+`LAMBDA(x,x)(A1:A3)`, `LET(x,A1,x)`, `LET(x,K1,x)`, `LET(x,A1:A3,y,x,y)` and `LET(x,A1:A3,IF(TRUE,x))`,
+FALSE for `LET(x,5,x)`, `LAMBDA(x,5)(A1)` and `LET(x,A1:A3,x+0)`; `ROWS(LAMBDA(x,x)(A1:A3))` is 3. In a
+cell the result is the value: `=LET(x,K1,x)` and `=LAMBDA(x,x)(K1)` are "text".
 Evidence: probes/min-max-reference-forms C1-G5 (excel-graph, 2026-10-07, T-0223); upstream IronCalc
 MAX_MIN.xlsx (ironcalc d7b09c33) Sheet1!H39, H40, H43, H54 and MIN_MAX_extras.xlsx (ironcalc 16987342)
 Sheet1!A1-A18, Sheet2!A1-A3 (Microsoft Macintosh Excel cached values) in ironcalc-calc/MATH_AND_TRIGONOMETRY.
@@ -860,7 +865,10 @@ Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
 pass (`MAX_SEEN_RANGES`); a formula that reads more is `#VALUE!` ("Too many distinct ranges read").
 A function walking a whole column or row (and a lookup down a column, or a SUMIFS-shaped criteria
-range) visits only the used area and records the rest as one rectangle read empty, and every area of
+range) visits only the used area and records the rest as one rectangle read empty, as does an
+aggregate walking an explicit block that reaches at least 1,024 cells past the used area, while the
+budget has room (a shorter block, or one met once the budget is short, is walked and recorded cell by
+cell, which is uncapped, so blocks alone never make a formula `#VALUE!`; T-0405), and every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
 for an element (read over its existing cells only, since the whole call is `#CALC!` whatever they hold,
 arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range"; T-1769); which every spill commit of the pass is checked
@@ -1411,7 +1419,7 @@ Reference-only checks (excel-graph, 2026-10-11, probes/written-parens-reference-
 `ANCHORARRAY((INDEX(D1:D3,1)))`, Graph accepts the `)#` shape and FORMULATEXT prints `=(INDEX(D1:D3,1))#`
 (`ANCHORARRAY(@IF(TRUE,D1))` prints `=@IF(TRUE,D1)#`). So a written group is transparent for references in every probed cell; no
 non-transparent cell exists for SPEC-0007 (T-1340).
-Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT drops the groups in the reference-only cells too (T-1340).
+Ours: FORMULATEXT drops the groups in the reference-only cells too (T-1340); `ISREF(LET(x,A1:A3,x))` (grouped or not) is TRUE as in Excel (T-1106).
 Evidence strength: `ISREF((A1))`, `ISREF((A1:A3))` and the union in `SUM(((A1,B1)))` show a reference survives a group.
 Status: VERIFIED (web).
 Tasks: T-1339, T-1340, T-1363, T-1364
@@ -1592,6 +1600,15 @@ the reference it returns (CHOOSE: its top-left cell; INDEX with a row and column
 scalar slot gets the `@` on the range only, never on the call, and the cell is `#VALUE!` in row 10, which the range does not
 cover (rows 1-2 unprobed): `=N(IF(@W1:W2,Z1,Z2))`, `=N(OFFSET(Z1,@W1:W2,0))`, `=N(INDEX(Z1:Z2,@W1:W2))`, `=N(CHOOSE(@W1:W2,Z1,Z2))` and the
 T versions (all `#VALUE!` in row 10). The engine matches all of them since T-1908 (N and T over CHOOSE or INDEX of a reference no longer get an `@` on the call).
+More CHOOSE and INDEX shapes (probes/legacy-n-t-choose-index-shapes, excel-graph, 2026-10-19, T-1918; Z1:Z2 = 7, 8,
+Y1:Y2 = "a", "b"; FORMULATEXT shows no `@` on the call in any, and the `@` stays on an array-constant index): `=N(INDEX(Z1:Z2,@{1;2}))`,
+`=N(INDEX(Z1:Z2,0))`, `=N(INDEX(Z1:Z2,0,1))`, `=N(CHOOSE(2,Z1,Z1:Z2))`, `=N(CHOOSE(2,Z2,Z1:Z2))` (7: the picked range's top-left cell), `=T(INDEX(Y1:Y2,@{1;2}))`, `=N(CHOOSE(3,Z1,Z2,Z1:Z2))`, `=N(CHOOSE(TRUE,Z1:Z2,Z2))`,
+`=T(INDEX(Y1:Y2,0))` and `=T(CHOOSE(2,Y1,Y1:Y2))` read the top-left cell of the reference picked (7, "a"); `=N(INDEX(Z1:Z2,2))` and
+`=N(CHOOSE(2,Z1:Z2,Z2))` are 8. A CHOOSE with a literal index mixing references and array constants is read by the arm the
+index picks: `=N(CHOOSE(1,Z1,{2;3}))` and `=N(CHOOSE(1,Z1:Z2,{2;3}))` are 7, `=N(CHOOSE(2,Z1,{2;3}))`, `=N(CHOOSE(1,{2;3},Z1))` and
+`=T(CHOOSE(2,Y1,{"a";"b"}))` are `#VALUE!`, and none gets an `@` on the call. Implemented (T-1918,
+`chooses_between_references_and_array_constants`); the other cells already matched. One-element array arms in such a
+CHOOSE (`{2}`) are unprobed and keep the old `@`.
 More shapes (probes/legacy-n-t-marker-shapes, excel-graph, 2026-10-18, T-1713 review; Z1 = 7; FORMULATEXT shows no `@`
 in any of them, and none spills): `=T(IF(1,{"a"}))`, `=N(CHOOSE(1,{2}))`, `=T(CHOOSE(1,{"a"}))`, `=N(IFS(1,{2}))`
 (one-element arms), `=N(INDEX({2,3;4,5},1))`, `=N(INDEX({2;3},1))`, `=N(IF(1,{2;3}+0))` (an operator in IF's arm),
@@ -1604,20 +1621,20 @@ records the `#VALUE!` reading in the stored formula, as an internal N/T kind (SP
 It marks an N or T in a value position whose argument is a bare IF, or a CHOOSE, INDEX or IFS returning only array
 constants, that is not statically a scalar; the marked kernel reads an array as `#VALUE!` and a reference as its
 top-left cell. These shapes take no `@` on the call (`leaves_call_whole`), nor on CHOOSE's index, and a one-element
-array constant in the marked argument's returned arms (IF's arms, CHOOSE's and IFS's values) takes none either. The
-marker is never printed: the export writes a plain `<f>` for a legacy cell and `cm="1"` for a dynamic twin.
-Verified (all cells above match, except legacy-n-t-marker-shapes F10): IF with array-constant, one-element, operator and mixed reference arms and an
+array constant in the marked argument's returned arms (IF's arms, CHOOSE's and IFS's values) takes none either.
+`=N(INDEX({2;3},1))` is `#VALUE!` because that INDEX returns a 1x1 array, the row it picks (lookup.md "INDEX of an
+array: a whole row stays an array", T-1921). The marker is never printed: the export writes a plain `<f>` for a
+legacy cell and `cm="1"` for a dynamic twin.
+Verified (all cells above match; legacy-n-t-marker-shapes F10 since T-1921): IF with array-constant, one-element, operator and mixed reference arms and an
 array condition; CHOOSE with array-constant and one-element values and an array index; IFS with one value pair;
 INDEX of an array constant with one index on a 2x2 or with row and column; and these positions: the top of the cell, ABS's
-and LEN's argument, and an operand of `+0` or `&""`. Not matched: `=N(INDEX({2;3},1))` is 2 in ours, because our
-INDEX gives a scalar there (T-1921). Extrapolated, unprobed: other scalar functions and operators around the call
-(T-1717's `arrays` flag, T-1847); IFS with more than one pair; INDEX with an area number; T over IFS or INDEX; and an
+and LEN's argument, and an operand of `+0` or `&""`. Extrapolated, unprobed: other scalar functions and operators
+around the call (T-1717's `arrays` flag, T-1847); IFS with more than one pair; INDEX with an area number; T over IFS or INDEX; and an
 IF nested in the marked argument's arms (the one-element `@` stays there).
 A range, an OFFSET of one with number-literal offsets, or an IF with a literal condition and such arms, gets no `@`
 under N and T since T-1728 (`reads_reference_whole`, static_analysis/legacy.rs; a range in a scalar slot, an operator,
 an array constant or another call keeps the old `@`; CHOOSE with a literal index over such references and INDEX of
-one get none either, T-1908, and are read as references, not marked; only `CHOOSE(1,range)`, `INDEX(range,1)` and
-`INDEX(range,@range)` are probed, the other literal indices and arms are an unprobed extension: T-1918). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
+one get none either, T-1908, and are read as references, not marked; the other literal indices, INDEX indices and mixed arms are probed in legacy-n-t-choose-index-shapes, T-1918). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
 Re-entering a marked cell through a row/column edit, move, fill or paste does not keep the marker yet (T-1852).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)

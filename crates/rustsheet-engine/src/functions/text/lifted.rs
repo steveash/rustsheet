@@ -68,8 +68,8 @@ impl Model {
 
     /// Runs `element` once on `operands`, or once per element when one lifts; `element` is told
     /// whether it lifts, as a lifted element keeps only the first value of an array result
-    /// (TEXTSPLIT: probes/m7-argument-modes F13:H13; REGEXEXTRACT's `return_all` UNVERIFIED,
-    /// text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar
+    /// (TEXTSPLIT: probes/m7-argument-modes F13:H13; REGEXEXTRACT's `return_all`:
+    /// probes/textsplit-lift-guesses A47-A52; text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar
     /// arguments"), so it need not build the rest.
     ///
     /// An element compares each position of its text with the delimiters of byte lengths
@@ -124,7 +124,9 @@ impl Model {
             CalcResult::EmptyArg => return Ok(vec![]),
             CalcResult::EmptyCell => return Ok(vec![String::new()]),
             err @ CalcResult::Error { .. } => return Err(err),
-            scalar @ (CalcResult::String(_) | CalcResult::Number(_)) => {
+            // A scalar boolean is its spelling, as a list element is (probes/textsplit-lift-guesses
+            // A71-A73).
+            scalar @ (CalcResult::String(_) | CalcResult::Number(_) | CalcResult::Boolean(_)) => {
                 return Self::cast_string_ref(&scalar, cell).map(|text| vec![text])
             }
             _ => return Err(not_a_string(cell)),
