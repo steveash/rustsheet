@@ -3,7 +3,7 @@ id: T-1816
 title: "DEC2BIN and DELTA take an error in their second argument over text in the first"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
