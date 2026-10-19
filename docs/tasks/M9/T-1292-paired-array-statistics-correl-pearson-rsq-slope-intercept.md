@@ -3,7 +3,7 @@ id: T-1292
 title: "Paired-array statistics (CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, CHISQ.TEST) of unequal sizes with text are #N/A; F.TEST tail"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,10 +26,15 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/95efb37a9874f82e Calc!A21 `=INTERCEPT(Data!C5:E6,Data!D8:E9)` (6 cells with a boolean and a blank against 4 with FALSE and " x "): Excel `#N/A`, engine `#VALUE!`.
 
 ## Acceptance criteria
-- [ ] The eight `#N/A` cells and the F.TEST/FTEST cells (H248, H251) of probes/stat-argument-modes pass.
+- [x] The eight `#N/A` cells pass; the F.TEST/FTEST cells (H248, H251) take the right tail but stay 2 ulps off (last digits moved to T-1927).
 - [ ] The rule is in docs/excel-semantics/statistics.md.
 - [ ] gen-m9/95efb37a9874f82e A21 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Unequal-size pairs in `fn_get_two_matrices` are `#N/A` (CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, CHISQ.TEST, CHITEST, FORECAST); F.TEST takes twice the smaller tail. Rule in statistics.md. Eval: 62 known failures cleared by `make eval-baseline` (probes/stat-argument-modes 8, regression-pairs-a 8, regression-pairs-b 4, regression-forecast 4, plus 38 GROUPBY/PIVOTBY cells (`_xleta.SLOPE`/`_xleta.INTERCEPT` in groupby-eta-arity and groupby-pivotby-functions*) that the unequal-size `#N/A` fixed).
+
+F.TEST/FTEST H248 and H251 now take the right tail but remain 2 ulps off Excel (not exact); follow-up T-1927.

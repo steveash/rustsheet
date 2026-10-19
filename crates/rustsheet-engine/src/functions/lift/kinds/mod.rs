@@ -24,11 +24,9 @@ pub(crate) enum ArgKind {
     LiftArrays,
     /// Lifts over an array; a range is handed to the kernel whole, as data (the D-functions'
     /// `criteria`, probes/db-argument-modes F11:F23; entered by T-1389).
-    #[allow(dead_code)] // TODO(T-1389): entered with the D-functions.
     LiftArraysRangeWhole,
     /// Read once as written (`evaluate_node_with_reference`) and handed to every element whole
     /// (LARGE's array, holidays, LOOKUP's vectors).
-    #[allow(dead_code)] // TODO(T-1236): WORKDAY's holidays are the first `Whole` entry.
     Whole,
     /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.

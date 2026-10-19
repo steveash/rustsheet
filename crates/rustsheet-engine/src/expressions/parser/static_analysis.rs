@@ -96,7 +96,7 @@ fn is_range_reference(s: &str) -> bool {
 ///
 /// Assumes formula return a scalar
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
-    add_legacy_intersection(node, add, add);
+    legacy::add_root_legacy_intersection(node, add);
 }
 
 /// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
@@ -551,18 +551,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_cell(arg_count),
         Function::Info => args_signature_scalars(arg_count, 1, 1),
-        Function::Daverage => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dcount => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dget => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dmax => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dmin => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dsum => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dcounta => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dproduct => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dstdev => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dvar => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dvarp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dstdevp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::ChisqTest => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -917,18 +905,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Sheets => scalar_arguments(args),
         Function::Cell => StaticResult::Unknown,
         Function::Info => StaticResult::Unknown,
-        Function::Dget => not_implemented(args),
-        Function::Dmax => not_implemented(args),
-        Function::Dmin => not_implemented(args),
-        Function::Dcount => not_implemented(args),
-        Function::Daverage => not_implemented(args),
-        Function::Dsum => not_implemented(args),
-        Function::Dcounta => not_implemented(args),
-        Function::Dproduct => not_implemented(args),
-        Function::Dstdev => not_implemented(args),
-        Function::Dvar => not_implemented(args),
-        Function::Dvarp => not_implemented(args),
-        Function::Dstdevp => not_implemented(args),
         Function::ChisqTest => StaticResult::Scalar,
         Function::CovarianceP => StaticResult::Scalar,
         Function::CovarianceS => StaticResult::Scalar,

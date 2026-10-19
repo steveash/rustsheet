@@ -185,5 +185,7 @@
   T-1808: functions/date_and_time.rs 1014 -> 891 lines, off the oversized list (NETWORKDAYS and NETWORKDAYS.INTL
   moved to date_and_time/networkdays.rs) (`check_file_size.py --update`); duplicated lines 3861 -> 3831
   (`check_duplication.py --update`: one closed-form count replaces the two per-day loops).
+  T-1389: duplicated lines 3831 -> 3630 (`check_duplication.py --update`): the twelve D-functions' copied
+  argument and criteria preamble became `db_call`/`db_query`/`db_fold` in `functions/database.rs`.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
