@@ -106,7 +106,11 @@ fn test_yearfrac_basis_0_accepts_serial_0() {
     model._set("A4", "=YEARFRAC(0,0)");
     model._set("A5", "=((0.3+YEARFRAC(33752,0))^SUM((-0.0001)))");
     model._set("A6", "=YEARFRAC(33752,0,1)");
+    model._set("B1", "=YEARFRAC(31,0)=YEARFRAC(0,31)");
+    model._set("B2", "=YEARFRAC(59,0)=YEARFRAC(0,59)");
     model.evaluate();
+    assert_eq!(model._get_text("B1"), *"TRUE");
+    assert_eq!(model._get_text("B2"), *"TRUE");
     assert_eq!(model._get_text("A1"), *"TRUE");
     assert_eq!(model._get_text("A2"), *"TRUE");
     assert_eq!(model._get_text("A3"), *"TRUE");

@@ -69,14 +69,14 @@ impl Model {
         // only, as day 0 of January 1900; other bases keep #NUM! until probed (gen-m9/a2e51f48717af2a1
         // Calc!A32; dates.md "YEARFRAC accepts serial 0", T-1409).
         if basis == 0 && (start_serial == 0 || end_serial == 0) {
-            let (Some(start), Some(end)) = (
-                excel_serial_to_ymd(start_serial),
-                excel_serial_to_ymd(end_serial),
-            ) else {
+            // Excel swaps reversed dates for every basis (dates.md "YEARFRAC swaps reversed
+            // dates"); the asymmetric 30/360 count reads the ordered pair.
+            let (first, last) = (start_serial.min(end_serial), start_serial.max(end_serial));
+            let (Some(start), Some(end)) = (excel_serial_to_ymd(first), excel_serial_to_ymd(last))
+            else {
                 return num_error(cell);
             };
-            // A reversed pair negates the count, so `abs` equals swapping first.
-            return CalcResult::Number(days_30_360_us_ymd(start, end).abs() / 360.0);
+            return CalcResult::Number(days_30_360_us_ymd(start, end) / 360.0);
         }
         let (Ok(start_date), Ok(end_date)) =
             (from_excel_date(start_serial), from_excel_date(end_serial))
