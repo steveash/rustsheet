@@ -3,7 +3,7 @@ id: T-1532
 title: "YIELD with one coupon period left: use the closed form (bit-exact on probes/solver-iteration-traces Y!A, Y!B)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
