@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
+use crate::functions::logical::{NamedLambdas, SharedLambda};
 use crate::{
     calc_result::{CalcResult, Range},
     cell::{spill_value_to_calc_result, CellValue},
@@ -16,14 +17,14 @@ use crate::{
             new_parser_english,
             static_analysis::StaticResult,
             stringify::{to_english_string, to_localized_string, to_rc_format},
-            ArrayNode, CallNameSpellings, CompletionContext, NamedVariable, Node, Parser,
+            ArrayNode, CallNameSpellings, CompletionContext, Node, Parser,
         },
         token::{get_error_by_name, Error},
         types::*,
         utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_typed_number},
+        format::{format_number, parse_typed_number, rejected_clock_text_format},
         lexer::is_likely_date_number_format,
     },
     implicit_intersection::implicit_intersection,
@@ -158,9 +159,11 @@ pub struct Model {
     /// Last variable id used. It is incremented every time a new variable is created (for example, when evaluating a LET function).
     pub(crate) last_variable_id: usize,
     /// Lambdas
-    pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
+    pub(crate) lambdas: HashMap<usize, SharedLambda>,
     /// Functions passed by name (`_xleta.SUM`), keyed by the same ids as `lambdas`.
     pub(crate) eta_lambdas: HashMap<usize, crate::functions::Function>,
+    /// The defined-name LAMBDAs called in this evaluation, keyed by the same ids as `lambdas`.
+    pub(crate) named_lambdas: NamedLambdas,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
@@ -236,6 +239,7 @@ impl Model {
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
         self.eta_lambdas.clear();
+        self.named_lambdas = NamedLambdas::default();
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
@@ -630,10 +634,8 @@ impl Model {
                         .or_else(|| self.parsed_defined_names.get(&(None, name_lower)))
                         .cloned();
                     match found {
-                        Some(ParsedDefinedName::LambdaDefinition(param_names, body)) => {
-                            let lambda_id = self.get_next_lambda_id();
-                            self.lambdas.insert(lambda_id, (param_names, body));
-                            CalcResult::Lambda(lambda_id)
+                        Some(ParsedDefinedName::LambdaDefinition(definition)) => {
+                            self.defined_name_lambda(definition)
                         }
                         _ => {
                             return CalcResult::new_error(
@@ -660,10 +662,8 @@ impl Model {
                             left: range.left,
                             right: range.right,
                         },
-                        ParsedDefinedName::LambdaDefinition(param_names, body) => {
-                            let lambda_id = self.get_next_lambda_id();
-                            self.lambdas.insert(lambda_id, (param_names, body));
-                            CalcResult::Lambda(lambda_id)
+                        ParsedDefinedName::LambdaDefinition(definition) => {
+                            self.defined_name_lambda(definition)
                         }
                         ParsedDefinedName::ErrorLiteral(error) => CalcResult::new_error(
                             error,
@@ -767,9 +767,8 @@ impl Model {
                 self.implicit_intersection_to_value(result, cell)
             }
             LambdaDefKind { parameters, body } => {
-                let id = self.get_next_lambda_id();
-                self.lambdas.insert(id, (parameters.clone(), *body.clone()));
-                CalcResult::Lambda(id)
+                let definition = Arc::new((parameters.clone(), *body.clone()));
+                CalcResult::Lambda(self.store_lambda(definition))
             }
             LambdaCallKind { lambda, args } => {
                 // With a reference kept as one, a cell and an INDEX or IF that selects one
@@ -1464,7 +1463,6 @@ impl Model {
         clock: Clock,
     ) -> Result<Model, String> {
         workbook.rebuild_derived_state();
-        let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
 
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
@@ -1490,30 +1488,15 @@ impl Model {
             shared_strings.insert(s.to_string(), index);
         }
 
-        let mut model = Model {
+        let mut model = Model::unparsed(
             workbook,
-            parsed_formulas,
-            shared_formula_lookup: Vec::new(),
-            call_name_spellings: CallNameSpellings::default(),
             shared_strings,
-            parsed_defined_names: HashMap::new(),
             parser,
-            language,
             locale,
+            language,
             tz,
             clock,
-            view_id: 0,
-            variable_stack: VariableStack::default(),
-            last_variable_id: 0,
-            lambdas: HashMap::new(),
-            eta_lambdas: HashMap::new(),
-            last_lambda_id: 0,
-            defined_names_running: Default::default(),
-            area_budget: Default::default(),
-            evaluation: Evaluation::default(),
-            cf_cache: HashMap::new(),
-            links: HashMap::new(),
-        };
+        );
 
         model.parse_formulas();
         model.parse_defined_names();
@@ -2187,17 +2170,8 @@ impl Model {
                     parse_typed_number(&value, &currencies, self.locale, &year, ds)
                 {
                     if let Some(num_fmt) = number_format {
-                        // Should not apply the format in the following cases:
-                        // - we assign a date to already date-formatted cell
-                        let should_apply_format = !(is_likely_date_number_format(
-                            &self.workbook.styles.get_style(new_style_index)?.num_fmt,
-                        ) && is_likely_date_number_format(&num_fmt));
-                        if should_apply_format {
-                            new_style_index = self
-                                .workbook
-                                .styles
-                                .get_style_with_format(new_style_index, &num_fmt)?;
-                        }
+                        new_style_index =
+                            self.style_with_typed_format(new_style_index, &num_fmt)?;
                     }
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
                     worksheet.set_cell_with_number(row, column, v, new_style_index)?;
@@ -2210,6 +2184,8 @@ impl Model {
                     return Ok(());
                 }
                 // Check is it is error value
+                let rejected_format =
+                    rejected_clock_text_format(&value, &currencies, self.locale, &year, ds);
                 let upper = value.to_uppercase();
                 let worksheet = self.workbook.worksheet_mut(sheet)?;
                 match get_error_by_name(&upper, self.language) {
@@ -2217,6 +2193,10 @@ impl Model {
                         worksheet.set_cell_with_error(row, column, error, new_style_index)?;
                     }
                     None => {
+                        if let Some(num_fmt) = rejected_format {
+                            new_style_index =
+                                self.style_with_typed_format(new_style_index, &num_fmt)?;
+                        }
                         self.set_cell_with_string(sheet, row, column, &value, new_style_index)?;
                         // If the input looks like an URL or an email address a link is
                         // attached to the cell, the same way other inputs change the
