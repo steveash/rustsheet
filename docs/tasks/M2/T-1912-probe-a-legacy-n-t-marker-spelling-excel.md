@@ -3,7 +3,7 @@ id: T-1912
 title: "Probe a legacy N/T marker spelling Excel refuses as a defined name"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1851 stores a legacy N/T as the reserved call `_RS_LEGACY_N(` / `_RS_LEGACY_T(
 
 ## Out of scope
 -
+
+## Outcome
+Excel accepts `_RS_LEGACY_N`/`_RS_LEGACY_T` (and the `_xlfn.` form) as LAMBDA names and calls them, so the shadowing gap is real. Refused spellings found: `R`, `RC`, `R1C1`, and names over 255 characters (workbook refuses to open). Two oracle-filled cases added (`legacy-marker-spelling-name-plain`, `-xlfn`); references.md updated; follow-up T-1936 (engine, opus) moves `LEGACY_SPELLINGS`. Eval delta: 2 new probe cases, both filled, no scored regressions expected.
