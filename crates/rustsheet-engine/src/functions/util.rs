@@ -487,15 +487,6 @@ impl Model {
         Ok((last_row, last_column))
     }
 
-    /// The bottom-right corner of `sheet`'s used area (`Worksheet::used_area_end`).
-    pub(crate) fn used_area_end_of(&self, sheet: u32) -> Result<(i32, i32), String> {
-        Ok(self
-            .workbook
-            .worksheet(sheet)
-            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
-            .used_area_end())
-    }
-
     /// Calls `f` with the value of every cell of `areas`, area by area in formula
     /// order, each in row-major order.
     ///
