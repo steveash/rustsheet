@@ -237,3 +237,10 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
 - So Excel's G is not a minimax-accurate rational. Its function error is a smooth ~1e-16 curve, plausibly
   coefficient rounding or limited-precision generation. See HANDOFF.md section 6.
 - `HANDOFF.md` summarises the whole task for a fresh reviewer.
+- **fitSA (`g_candidate_w4_fitSA.txt`)**, annealed from AN2: 73.5% exact and 86.2% within 1 ulp on 2,268,128 clean
+  points, including the e10xx long ladders. By tenth: 93 82 80 72 71 71 69 75 39 79%.
+  - The e10 runs at 1.875 expose y = 1.8-1.9 (39%).
+  - Nine-anchor phases are consistent, but a linear step lowers the exact score.
+  - Calibration: a synthetic +1000-ulp N3 change is NOT recovered by the linear solve, which spreads it along
+    near-null directions. The per-(line, anchor) constants carry exactly the discarded information.
+  - W4's new smooth objective coh.py (amplitude-weighted phase coherence, constants included) gives fitSA 0.857.
