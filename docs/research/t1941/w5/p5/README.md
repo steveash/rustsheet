@@ -101,3 +101,13 @@ took from the truth base. scan3 (cubic D.S6) is running.
   (`e2e_hfinal.txt`).
 - The whole pipeline runs from ss_fc on the control with no truth input: N top scan → topgrid2 → N peel →
   scan3/dtop3 → D peel → N0.
+
+## Real data: D top scan (scan3, rows4 incl. V3, 807 runs, c ±200 step 0.5, d = 0, b ±1e5)
+No detection. The best is 316.3 at b = 0, c = 0, a = 0.53, i.e. the base shape shifted by a half-ulp phase, which
+flips the odd harmonics of the base S6 pattern. Null mean −5.5, sd 67.3; the best of ~8k kept candidates is at
+the expected null maximum. (Control, same settings: the truth was the top candidate at 257 with null sd 58.7.)
+Structure check (`structtest.py`, 300k real points, ss_fc): drop the fl53 store at one stage at a time. No stage
+gives a sharp gain (best D.S3 0.3624 vs base 0.3550; every top-stage drop is neutral within ±0.0002; the A store is
+required, 0.2898). So the half phase is not a missing store. Reading: the real D top lies outside the scanned
+box. The function allows D.S6 principal ranges of 72 / 2.9e3 / 1.4e5 / 1.8e7 cycles in (a, b, c, d), and the
+control truth was planted inside a small box.
