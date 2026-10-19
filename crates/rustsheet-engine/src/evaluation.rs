@@ -408,6 +408,11 @@ pub(crate) struct Evaluation {
 /// what the smallest common stacks hold (1 MB in WebAssembly, 2 MB for a
 /// thread) and cost nothing to workbooks that never reach them.
 const DEFAULT_MAX_DEPTH: usize = 64;
+
+/// Fewest blank cells past a sheet's used area that an explicit block must leave out to be cut
+/// there ([`Model::clip_block_to_used_area`]): fewer are walked one by one, which costs about as
+/// much as the rectangles recording them and spends nothing from the seen-range cap.
+const MIN_CLIPPED_CELLS: i64 = 1024;
 const DEFAULT_MAX_STACK: usize = 256 * 1024;
 
 /// Roughly where the stack is: the address of a local.
@@ -1022,6 +1027,12 @@ impl Model {
     /// walkers that skip blank cells: the cells left out are blank, and are not walked at all.
     /// The returned corner is above or left of the block's first cell when the block lies wholly
     /// past the used area, so that the walk visits nothing.
+    ///
+    /// An explicit block is cut only when the cut leaves out at least [`MIN_CLIPPED_CELLS`] cells and the
+    /// formula's budget of seen-empty rectangles can pay for the record of them: otherwise its
+    /// blank cells are walked and recorded one by one, as before, so a LAMBDA reading many small
+    /// blocks costs no more than it did and never reaches the seen-range cap on their account
+    /// (docs/excel-semantics/references.md "Seen-range cap").
     pub(crate) fn clip_block_to_used_area(
         &mut self,
         sheet: u32,
@@ -1030,15 +1041,23 @@ impl Model {
         row2: i32,
         column2: i32,
     ) -> Result<(i32, i32), String> {
-        let (max_row, max_column) = self
-            .workbook
-            .worksheet(sheet)
-            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
-            .used_area_end();
+        // Whole rows and columns are cut as they always were, whatever the budget.
+        let whole_lines = self.used_area_corner(sheet, row1, column1, row2, column2)?;
+        if whole_lines != (row2, column2) {
+            return Ok(self.clip_to_corner(sheet, (row1, column1), (row2, column2), whole_lines));
+        }
+        let (max_row, max_column) = self.used_area_end_of(sheet)?;
         let corner = (
             row2.min(max_row).max(row1 - 1),
             column2.min(max_column).max(column1 - 1),
         );
+        let cells = |(last_row, last_column): (i32, i32)| {
+            i64::from(last_row - row1 + 1) * i64::from(last_column - column1 + 1)
+        };
+        let left_out = cells((row2, column2)) - cells(corner);
+        if left_out < MIN_CLIPPED_CELLS || !self.area_budget.has_seen_ranges(2) {
+            return Ok((row2, column2));
+        }
         Ok(self.clip_to_corner(sheet, (row1, column1), (row2, column2), corner))
     }
 

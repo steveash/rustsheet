@@ -399,28 +399,29 @@ fn three_d_walks_cost_the_data_of_each_sheet() {
 }
 
 // A block that lies wholly past the used area walks nothing, and its cells are on record as
-// read empty: a value set there later is seen.
+// read empty: a value set there later is seen. The blocks are tall enough to be cut
+// (`MIN_CLIPPED_CELLS`); a short one is walked cell by cell.
 #[test]
 fn block_past_the_used_area_sees_later_cells() {
     let mut model = sample();
-    model._set("Sheet2!E1", "=SUM(Sheet1!D5:F9)");
-    model._set("Sheet2!E2", "=SUM(Sheet1!B2:D9)");
+    model._set("Sheet2!E1", "=SUM(Sheet1!D5:F2000)");
+    model._set("Sheet2!E2", "=SUM(Sheet1!B2:D2000)");
     model.evaluate();
     assert_eq!(model._get_text("Sheet2!E1"), "0");
     assert_eq!(model._get_text("Sheet2!E2"), "9");
-    model._set("Sheet1!F9", "7");
-    model._set("Sheet1!D8", "1");
+    model._set("Sheet1!F2000", "7");
+    model._set("Sheet1!D1999", "1");
     model.evaluate();
     assert_eq!(model._get_text("Sheet2!E1"), "8");
     assert_eq!(model._get_text("Sheet2!E2"), "10");
 }
 
 // A spill into the clipped part of a block restarts the walk's formula: D1's spill is written
-// after A1 read D1:D20, whose used area was row 1 then.
+// after A1 read D1:D2000, whose used area was row 1 then.
 #[test]
 fn spill_into_a_clipped_block_is_seen() {
     let mut model = new_empty_model();
-    model._set("A1", "=SUM(D1:D20)");
+    model._set("A1", "=SUM(D1:D2000)");
     model._set("D1", "=SEQUENCE(10)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "55");
@@ -441,4 +442,18 @@ fn walkers_reading_blanks_see_the_whole_block() {
     assert_eq!(model._get_text("Sheet2!E2"), "1");
     assert_eq!(model._get_text("Sheet2!E3"), "2,3,,,");
     assert_eq!(model._get_text("Sheet2!E4"), "2,3,,,");
+}
+
+// Short blocks past the used area are walked cell by cell, not recorded as rectangles: a LAMBDA
+// reading more of them than the seen-range cap allows rectangles is not `#VALUE!` (T-0405).
+#[test]
+fn many_short_blocks_do_not_reach_the_seen_range_cap() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set(
+        "C1",
+        "=SUM(MAKEARRAY(70000,1,LAMBDA(r,c,SUM(OFFSET($A$1,r,0,2,2)))))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "0");
 }

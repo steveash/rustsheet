@@ -481,14 +481,19 @@ impl Model {
         if !whole_rows && !whole_columns {
             return Ok((row2, column2));
         }
-        let (max_row, max_column) = self
-            .workbook
-            .worksheet(sheet)
-            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
-            .used_area_end();
+        let (max_row, max_column) = self.used_area_end_of(sheet)?;
         let last_row = if whole_rows { max_row } else { row2 };
         let last_column = if whole_columns { max_column } else { column2 };
         Ok((last_row, last_column))
+    }
+
+    /// The bottom-right corner of `sheet`'s used area (`Worksheet::used_area_end`).
+    pub(crate) fn used_area_end_of(&self, sheet: u32) -> Result<(i32, i32), String> {
+        Ok(self
+            .workbook
+            .worksheet(sheet)
+            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
+            .used_area_end())
     }
 
     /// Calls `f` with the value of every cell of `areas`, area by area in formula
