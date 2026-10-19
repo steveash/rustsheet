@@ -2991,8 +2991,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
       - { name: holidays, mode: array, type: number, optional: true }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: NETWORKDAYS.INTL
@@ -3002,8 +3002,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
       - { name: weekend, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 17 } }
       - { name: holidays, mode: array, type: number, optional: true }
   - name: NOMINAL
@@ -4553,8 +4553,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: days, mode: value, type: number, domain: { int: true, min: -30, max: 30 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: days, mode: value, lift: arrays, type: number, domain: { int: true, min: -30, max: 30 } }
       - { name: holidays, mode: array, type: number, optional: true }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: WORKDAY.INTL
@@ -4564,8 +4564,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: days, mode: value, type: number, domain: { int: true, min: -30, max: 30 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: days, mode: value, lift: arrays, type: number, domain: { int: true, min: -30, max: 30 } }
       - { name: weekend, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 17 } }
       - { name: holidays, mode: array, type: number, optional: true }
   - name: WRAPCOLS
