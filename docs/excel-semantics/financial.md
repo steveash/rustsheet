@@ -443,11 +443,13 @@ Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822, T-1841, T-1842, T
 ## MIRR error and edge cases
 Rule: MIRR divides each flow by its running power, so a zero power is `#DIV/0!`, and an overflowing power is an error:
 - A single flow (negative or positive) is `#DIV/0!`; so are values with no negative flow. All-negative flows are -1 (`MIRR({-1,-2,-3},..)`).
-- A reinvest rate of -1 with any positive flow, even only the first (`{100,-50}`), is `#DIV/0!`. A finance rate of -1 is `#DIV/0!` when a negative flow
-  follows the first (`{50,-100,80}`, `{-100,50,-80,120}`); with the only negative flow first (`{-100,50,80}`, `{-50,100}`) it is a number (0.1618950038622251, 1).
-- A finance rate below -1 is an ordinary number when the first negative flow is first (A9, same as -1) and `#NUM!` when the ratio goes negative (`{50,-100,80}` with -2).
-- Power overflow: a reinvest rate of 1E+200 or a long flow at rate 5 (400 flows, 6^400) is `#DIV/0!`; a finance rate of +-1E+200 is `#NUM!`; both overflowing is `#DIV/0!`.
-Evidence: probes/fin-mirr-edges A1-A24 (excel-graph, 2026-10-19, T-1798).
+- A reinvest rate of -1 is `#DIV/0!` whatever the flows (`{100,-50}`, `{-1,-2,-3}`, `{-100,0}`; A7, A19, A20, A25, A26). A finance rate of -1 is `#DIV/0!` when a negative flow
+  follows the first (`{50,-100,80}`, `{-100,50,-80,120}`, `{-1,-2,-3}`); with the only negative flow first (`{-100,50,80}`, `{-50,100}`) it is a number (0.1618950038622251, 1).
+- Rates below -1 are ordinary numbers: finance -2 with the first negative flow first is the same 0.1618950038622251 as -1 (A9), reinvest -2 gives -0.4522774424948339 (A10),
+  both at -1.5 -0.2583801512904337 (A11), all-negative flows with reinvest -2 are -1 (A27); `#NUM!` when the ratio goes negative (`{50,-100,80}` with finance -2, A23).
+- Power overflow (a rate of 1E+200, or 400 flows at rate 5): with positive flows a reinvest overflow is `#DIV/0!` (A16, A17) and a finance overflow `#NUM!` (A15, A24; negative 1E+200 too);
+  both overflowing is `#DIV/0!` (A21). With no positive flow the two swap: reinvest overflow is `#NUM!` (A28), finance overflow `#DIV/0!` (A29). Both overflowing with no positive flow is unprobed.
+Evidence: probes/fin-mirr-edges A1-A30 (excel-graph, 2026-10-19, T-1798).
 Backend: excel-graph.
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_mirr` in functions/financial/mirr.rs (T-1798); replaces the hand-taken limits at rate -1.

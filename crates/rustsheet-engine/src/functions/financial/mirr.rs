@@ -32,9 +32,11 @@ impl Model {
                 "Invalid data for MIRR function".to_string(),
             );
         }
-        // Excel: a flow divided by a zero power is #DIV/0!, so a reinvest rate of -1 with any
-        // positive flow, or a finance rate of -1 with a negative flow after the first, is an
-        // error (probes/fin-mirr-edges A7, A12-A14, A19, A20). A single flow is #DIV/0! too (A3).
+        // Excel: a flow divided by a zero power is #DIV/0!, so a reinvest rate of -1, or
+        // a finance rate of -1 with a negative flow after the first, is an
+        // error (probes/fin-mirr-edges A7, A12-A14, A19, A20, A25, A26). A single flow is #DIV/0! too (A3).
+        let num_error =
+            || CalcResult::new_error(Error::NUM, cell, "Invalid data for MIRR".to_string());
         let div_error = || CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
         // Excel discounts each flow to period 0 with a running power, `x / (1+r)^i` with
         // `(1+r)^i = (1+r)^(i-1) * (1+r)`, and compounds the positive sum forward as
@@ -50,7 +52,7 @@ impl Model {
         let mut finance_power = 1.0;
         for &value in &values {
             if value > 0.0 {
-                if reinvest_power == 0.0 || reinvest_growth == 0.0 {
+                if reinvest_power == 0.0 {
                     return div_error();
                 }
                 positive_sum += value / reinvest_power;
@@ -63,13 +65,24 @@ impl Model {
             reinvest_power *= reinvest_growth;
             finance_power *= finance_growth;
         }
-        // A power that overflows: the reinvest one is #DIV/0! (A16, A17, A21), the finance one
-        // #NUM! (A15, A24); the reinvest check comes first (A21 is #DIV/0!).
-        if reinvest_power.is_infinite() {
+        // A reinvest rate of -1 is #DIV/0! even with no positive flow (A25, A26).
+        if reinvest_growth == 0.0 {
             return div_error();
         }
+        // A power that overflows. With positive flows the reinvest power is #DIV/0! (A16, A17,
+        // A21; reinvest checked first) and the finance power #NUM! (A15, A24); with none the two
+        // swap (A28, A29), as if the zero positive sum met the infinite power (NaN).
+        let has_positive = values.iter().any(|&value| value > 0.0);
+        let (reinvest_overflow, finance_overflow) = if has_positive {
+            (div_error(), num_error())
+        } else {
+            (num_error(), div_error())
+        };
+        if reinvest_power.is_infinite() {
+            return reinvest_overflow;
+        }
         if finance_power.is_infinite() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for MIRR".to_string());
+            return finance_overflow;
         }
         let top = -(positive_sum * reinvest_power / reinvest_growth);
         let bottom = negative_sum;
@@ -87,7 +100,7 @@ impl Model {
             return div_error();
         }
         if result.is_nan() {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid data for MIRR".to_string());
+            return num_error();
         }
         CalcResult::Number(result)
     }

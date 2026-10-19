@@ -27,4 +27,4 @@ infinite ratio, and power overflow on long or high-rate flows. Use the excel-pro
 -
 
 ## Outcome
-Probed MIRR's error and edge cases (probes/fin-mirr-edges, 24 cells, excel-graph). The engine missed 8: single negative flow, rate -1 with later flows, and power overflow. `fn_mirr` now divides by zero powers (#DIV/0!) and maps overflow to #DIV/0! (reinvest) or #NUM! (finance). Eval: probes +24 cells, all pass; m9-fin-mirr still 432/432.
+Probed MIRR's error and edge cases (probes/fin-mirr-edges, 30 cells, excel-graph). The engine missed 12: single negative flow, rate -1 with later flows, and power overflow. `fn_mirr` now divides by zero powers (#DIV/0!) and maps overflow to #DIV/0! (reinvest) or #NUM! (finance). Eval: probes +30 cells, all pass; m9-fin-mirr still 432/432.
