@@ -1687,8 +1687,8 @@ Rule: a call whose callee is spelled as a cell on the grid is a call of that cel
 `=XFD1048576(1)`, `=$D$1(1)`, `=D$1(1)`, `=Sheet1!D1(1)`, `=D1()`.
 
 A cell-like name off the grid is an unknown name, `#NAME?`: a column past XFD (`=xfe1(1)`), row 0 (`=A0(1)`), row
-1048577 (`=A1048577(1)`), and a non-ASCII letter (`=ß1(1)`). FORMULATEXT still upper-cases the ASCII ones
-(`=xfe1(1)` prints `=XFE1(1)`), and keeps `=ß1(1)` as written.
+1048577 (`=A1048577(1)`), and a non-ASCII letter (`=ß1(1)`). FORMULATEXT upper-cases the column past XFD
+(`=xfe1(1)` prints `=XFE1(1)`; the row shapes were probed in upper case only), and keeps `=ß1(1)` as written.
 
 An R1C1-shaped callee in an A1 workbook (`=R1C1(1)`, `=R[1]C[1](1)`) makes Excel refuse the workbook
 (createSession 501 `unsupportedWorkbook`), so its value is not observable through the web oracle.
@@ -1699,7 +1699,7 @@ Evidence: probes/cell-call-edges-a, -b, -c, -f, -g (excel-graph, 2026-10-19, T-1
 Ours: matches since T-1806. In A1 text, a reference token directly followed by `(` is a call of that reference
 (`reference_or_call_operand`, parser/operands.rs), and `callee_operand` prints any cell callee bare.
 Status: VERIFIED (excel-graph)
-Tasks: T-1758, T-1806
+Tasks: T-1758, T-1806, T-2008
 
 ## Legacy N and T marker spelling: a cell-like name Excel never calls
 Rule: Excel calls a workbook LAMBDA name by its name, `_RS_LEGACY_N` included; but a name spelled like

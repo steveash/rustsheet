@@ -513,8 +513,10 @@ pub(crate) fn at_text(child: &Node, sub: &dyn Fn(&Node) -> String) -> String {
 /// cell and prints bare, `AB1(1)` (probes/unknown-function-name-spelling B8, T-1758;
 /// probes/cell-call-edges-a B5-B7, T-1806).
 pub(crate) fn callee_operand(text: String, node: &Node) -> String {
-    let bare_cell = matches!(node, Node::ReferenceKind { .. });
-    if bare_cell || matches!(node, Node::LambdaDefKind { .. } | Node::Group { .. }) {
+    if matches!(
+        node,
+        Node::ReferenceKind { .. } | Node::LambdaDefKind { .. } | Node::Group { .. }
+    ) {
         text
     } else {
         format!("({text})")

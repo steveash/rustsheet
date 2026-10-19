@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1806: cell-shaped call names: a column past XFD and row 0 / past 1048576",
+  "description": "T-1806: cell-shaped call names: a column past XFD",
   "tags": [
     "M2",
     "references",
