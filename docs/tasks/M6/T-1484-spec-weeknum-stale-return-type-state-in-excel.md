@@ -36,7 +36,7 @@ hidden dependency that incremental recalc cannot see.
 - Implementing calc-chain import in general, beyond what the spec needs.
 
 ## Outcome
-- Probed the order and the state (excel-graph, 2026-10-19): 20 new probes/weeknum-stale-* cases.
+- Probed the order and the state (excel-graph, 2026-10-19): 21 new probes/weeknum-stale-* cases.
   The state is Sunday, Monday or empty, one per recalc. Types 1 and 17 set Sunday; 2, 11, 21 and
   ISOWEEKNUM set Monday; types 12-16, the always-`#NUM!` types and array-lifted calls empty it; 22+
   and negative types read it. Fresh-load order is reverse load order: last sheet first, bottom row
@@ -49,5 +49,5 @@ hidden dependency that incremental recalc cannot see.
 - SPEC-0015 specifies a per-pass state, with an Excel-order pass that runs only when a WEEKNUM
   reader ran, so other workbooks keep today's order and cost. Follow-ups: T-2068 (engine, opus, M),
   T-2069 (engine, sonnet, S, moved sheets) and T-2070 (research, sonnet, S, open questions).
-- Eval: probes known failures +41 (1913 -> 1954), all in the new M6 cases; no existing cell
-  changed. With the 5 already listed, T-2068 and T-2069 own 46 cells.
+- Eval: probes known failures +42 (1913 -> 1955), all in the new M6 cases; no existing cell
+  changed. With the 5 already listed, T-2068 and T-2069 own 47 cells.

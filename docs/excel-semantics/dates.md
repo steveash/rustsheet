@@ -96,7 +96,9 @@ it runs them, and a WEEKNUM with a return_type of 22 or more, or negative, reads
   to left (reverse row-major). The state carries from one sheet to the next. A cell whose formula
   reads a formula cell not yet calculated is abandoned at that read, moved to just after that
   precedent in the order, and run again from its start when its new turn comes; the cells between
-  run first, and what the abandoned run did to the state stays done. With A1 a Monday marker, A2 a
+  run first. The abandoned run leaves the state as it was: `WEEKNUM(100,2)&reader-of-A1` in A3
+  sets Monday before its read of A1, yet the plain reader in A2, which runs next, reads nothing
+  (probes/weeknum-stale-precedent-abort-keeps). With A1 a Monday marker, A2 a
   reader-then-Sunday cell and A3 a reader of A1 that then sets Sunday, the order is A2, A1, A3: A2
   reads nothing and A3 reads Monday (not A1, A3, A2). `WEEKNUM(100,12)&reader-of-A1` in A2 below a
   Sunday marker in A1 reads nothing: the re-run starts with its own type 12. Moving a sheet does
@@ -112,7 +114,7 @@ Evidence (oracle: excel-graph, 2026-10-19, T-1484): probes/weeknum-stale-setters
 probes/weeknum-stale-sheet-order, probes/weeknum-stale-sheet-moved, probes/weeknum-stale-grid,
 probes/weeknum-stale-order-row, -column, -column-40, -2x3 and -3x2, probes/weeknum-stale-dependency,
 probes/weeknum-stale-reset-num-type, -reset-isoweeknum and -reset-error-serial,
-probes/weeknum-stale-precedent-between and -precedent-restart, probes/weeknum-stale-num-types,
+probes/weeknum-stale-precedent-between, -precedent-restart and -precedent-abort-keeps, probes/weeknum-stale-num-types,
 probes/weeknum-stale-down-alone and probes/weeknum-stale-volatile-reader; the grid case gave the same
 values twice. This corrects two earlier readings: ISOWEEKNUM does set the state (to Monday), and the
 state is not "the last valid WEEKNUM": types 12-16 empty it. probes/weeknum-stale-return-type
@@ -123,7 +125,8 @@ SPEC-0015 specifies the state and the order; implementation tasks are listed the
 Status: VERIFIED
 Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), where a spilling formula sits
 in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and
-a return_type in (-1, 0) (truncates to 0, so presumably empties).
+a return_type in (-1, 0) (truncates to 0, so presumably empties), and whether a reference to an
+uncalculated cell in an IF branch that is not taken also moves the cell.
 
 ## DATE month and day bounds
 Rule: DATE floors its month and day, then a month outside -32767..=32766 is `#NUM!` even when the

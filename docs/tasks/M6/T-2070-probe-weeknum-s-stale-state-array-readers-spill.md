@@ -26,7 +26,9 @@ marker; the order is bottom to top. Write one probe case per question group and 
   - WEEKNUM inside a defined name, inside LET and inside a LAMBDA called from a cell, as both setter
     and reader;
   - a reader in a conditional-formatting rule, if the harness can read it; otherwise say it cannot;
-  - return_type -0.5 and 21.5, and serial 2958466 (`#NUM!`) with type 2.
+  - return_type -0.5 and 21.5, and serial 2958466 (`#NUM!`) with type 2;
+  - whether a reference to an uncalculated cell in an IF branch that is not taken still moves the
+    cell (a reader of it is a check from the start or a stop at the read).
 - [ ] dates.md updated with each finding. Any finding that changes SPEC-0015's design becomes a
       follow-up engine task (`make new-task`).
 - [ ] `make check` green; reviewers approve.

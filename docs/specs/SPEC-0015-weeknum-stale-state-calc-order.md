@@ -9,7 +9,7 @@
 `WEEKNUM(serial, return_type)` with a return_type of 22 or more, or negative, reads a state that
 earlier WEEKNUM and ISOWEEKNUM calls of the same recalc left behind (docs/excel-semantics/dates.md,
 "WEEKNUM's stale return_type state"). `fn_weeknum` always gives `#NUM!`, which is Excel's value only
-where the state is empty. With the T-1484 probes, 46 probes cells are known failures (all M6): 5 in
+where the state is empty. With the T-1484 probes, 47 probes cells are known failures (all M6): 5 in
 probes/weeknum-stale-return-type, 19 in -setters, 11 in -order-column-40, 1 each in the other
 order, sheet, dependency, precedent and reset cases.
 
@@ -50,9 +50,9 @@ Excel calculates a freshly loaded workbook in" (excel-graph, 2026-10-19):
 6. Order: formula cells run in the reverse of load order: sheets from the last loaded to the first,
    and within a sheet rows bottom to top, each row right to left. A cell that reads a formula cell
    not yet calculated stops at that read, moves to just after that precedent in the order, and runs
-   again from its start when the order reaches it; the cells between run first, and the state
-   changes made before the stop stay (probes/weeknum-stale-precedent-between, -precedent-restart,
-   -dependency). A sheet keeps its load position after a move.
+   again from its start when the order reaches it; the cells between run first, and the stopped run
+   leaves the state as it was (probes/weeknum-stale-precedent-between, -precedent-restart,
+   -precedent-abort-keeps, -dependency). A sheet keeps its load position after a move.
 
 Evidence: the probes/weeknum-stale-* cases. The research note
 docs/research/t1484-weeknum-calc-order-2026-10-19.md covers calcChain.xml and session edits.
@@ -95,22 +95,32 @@ and unwinding on ordinary workbooks, for a function almost no workbook uses this
   Each restarted pass resets the state and repeats the same order.
 - Excel order is a chain. It starts as the dynamic anchors in `anchor_order`, as today, followed by
   the formula cells of `all_positions().into_iter().rev()` (sheet, row and column descending; no
-  second collected Vec). The chain is held as a linked list keyed by `CellKey` (`next` map plus
-  head), so moving a cell is O(1).
+  second collected Vec). The chain is held as a linked list, so moving a cell is O(1).
 - The driver takes the next cell of the chain. In the Excel-order pass, a read of a formula cell
   not yet evaluated in this pass does not recurse:
   - The read aborts the root cell through the existing unwinding flag.
   - The driver moves the root to just after that precedent and goes on with the next cell
     (rule 6).
-  - While the flag is set, WEEKNUM and ISOWEEKNUM do not touch the state, because Excel stops at
-    the read. State changes made before the read stay.
+  - The driver saves `weeknum_start` before it runs a cell and restores it when the cell aborts,
+    because an abandoned run has no effect on the state (rule 6).
   - Evaluation therefore never nests in this pass. Its depth is always 1, so the `max_depth`
     unwind/replay never happens there (see Depth limit).
-- A cycle would move its cells after each other forever. A cell moved more often than the
-  formula-cell count is evaluated on demand as today, so the existing circular detection handles
-  it. Excel's own cycle values are a separate gap (recalc.md).
-- Cost: a running total of n cells in reverse order aborts each cell once and re-runs it once. That
-  is about 2n evaluations and O(n) moves, in the reader workbooks only.
+- **Cost.** Moves are not linear. A running total of n cells in reverse order needs n(n-1)/2
+  aborts before the chain settles (A_n aborts n-1 times), and a cycle would move its cells forever.
+  Two measures bound this:
+  - *Skipping known blocks.* A moved cell remembers the precedent it waits on. When the driver
+    reaches it while that precedent is still uncalculated, re-running it would abort at the same
+    read with no effect, so the driver just moves it again, in O(1), without evaluating. This
+    leaves cheap moves, not partial evaluations, as the quadratic term.
+  - *A global budget.* Total moves are capped at 4 × the number of formula cells. When the cap is
+    hit, the rest of the pass evaluates on demand, as the default pass does; the existing circular
+    detection then handles cycles. That fallback is a directive-5 limit. T-2068 records it as a
+    `DEVIATION (decision 0014)` entry in dates.md: past the budget, readers can differ from Excel.
+    It only affects workbooks that have a reader and a long dependency chain running against
+    the load order.
+- T-2068 checks the chain against a naive simulation on small random layouts, and checks
+  near-linear scaling of the budgeted pass (a 10k vs 100k running total).
+- The links are a `Vec<u32>` indexed by position in the reversed position list, not a hash map.
 - Where Excel puts a spilling formula is unknown (T-2070). Keeping anchors first is the existing
   behavior, so a reader inside a spilling formula is the one documented gap.
 

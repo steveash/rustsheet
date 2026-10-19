@@ -36,7 +36,11 @@ matters").
 - [ ] The Excel-order pass is a chain: a read of an uncalculated formula cell aborts the cell,
       which moves to just after that precedent (SPEC-0015 rule 6; probes/weeknum-stale-precedent-*).
 - [ ] Probes and unit tests also pass with `IRONCALC_MAX_DEPTH=1` (SPEC-0015 "Depth limit").
-- [ ] A bench of a 100k-row running total plus one reader, with before/after numbers in the Outcome.
+- [ ] Aborted runs restore the state. Blocked cells are skipped without evaluation. Total moves are
+      capped at 4 × formula cells, with on-demand fallback and a DEVIATION entry (SPEC-0015 "Cost").
+      A test compares the chain against a naive simulation on small layouts.
+- [ ] A bench of a 100k-row running total plus one reader, with before/after numbers and a 10k vs
+      100k ratio in the Outcome.
 - [ ] dates.md "Ours" and the `fn_weeknum` comment describe the new behavior.
 - [ ] `make check` green; reviewers approve (performance reviewer included).
 
