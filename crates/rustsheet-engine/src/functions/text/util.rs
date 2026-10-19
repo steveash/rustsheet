@@ -181,8 +181,9 @@ pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_nu
 /// Byte range of the `instance_num`-th match of any of `delimiters` (counted from the end when
 /// negative). Every position where some delimiter starts counts once; the longest delimiter
 /// that matches there decides the match length (docs/excel-semantics/text.md "TEXTSPLIT,
-/// TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"; T-1824). With `Case::Insensitive` the
-/// delimiters are already folded ([`Delimiters`]); only the text is folded here.
+/// TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"; T-1824). With
+/// `Case::Insensitive` the delimiters are already folded ([`Delimiters`]); only the text is
+/// folded here.
 fn match_text<S: AsRef<str>>(
     text: &str,
     delimiters: &[S],

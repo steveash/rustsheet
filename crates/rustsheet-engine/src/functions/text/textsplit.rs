@@ -355,7 +355,8 @@ fn split_by_any<'a>(original: &'a str, cmp: &str, delims: &[Finder<'_>]) -> Vec<
     let mut next: Vec<Option<usize>> = delims.iter().map(|d| d.find(cmp.as_bytes())).collect();
 
     loop {
-        // Find the earliest match among all delimiters (the longest on a tie, probes/textsplit-lift-guesses A4, A6).
+        // Find the earliest match among all delimiters (the longest on a tie, probes/
+        // textsplit-lift-guesses A4, A6).
         for (found, d) in next.iter_mut().zip(delims) {
             if found.is_some_and(|start| start < pos) {
                 *found = cmp
