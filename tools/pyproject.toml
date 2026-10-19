@@ -24,6 +24,7 @@ rustsheet-gen = "rustsheet_tools.gen.cli:main"
 rustsheet-catalog-view = "rustsheet_tools.catalog_view:main"
 rustsheet-catalog-lift = "rustsheet_tools.catalog_lift:main"
 rustsheet-fitlab = "rustsheet_tools.fitlab.cli:main"
+rustsheet-parity-report = "rustsheet_tools.parity_report:main"
 
 [build-system]
 requires = ["hatchling"]
