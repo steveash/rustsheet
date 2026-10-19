@@ -209,6 +209,21 @@ fn the_old_stored_spelling_still_reloads_as_the_marker() {
     }
 }
 
+// With a name of the old spelling defined (any scope, any case), its stored text is the name call.
+#[test]
+fn the_old_stored_spelling_is_a_name_call_when_the_name_exists() {
+    for (defined, scope) in [("_RS_LEGACY_N", None), ("_rs_legacy_n", Some(0))] {
+        let names = vec![(defined.to_string(), scope, "LAMBDA(x,x)".to_string())];
+        let mut parser = new_parser(vec!["Sheet1".to_string()], names, HashMap::new());
+        parser.set_lexer_mode(LexerMode::R1C1);
+        let node = parser.parse("_RS_LEGACY_N(1)", &context());
+        assert!(matches!(node, Node::NamedFunctionKind { .. }), "{node:?}");
+        // The new spelling stays the marker whatever names exist.
+        let node = parser.parse("NLG1(1)", &context());
+        assert_eq!(top_kind(&node), Some(Function::NLegacy));
+    }
+}
+
 // Since T-1805 a formula that does not parse is stored marked as a parse error and never
 // re-parsed, so the spelling in it does not come back as a marker after a reload.
 #[test]

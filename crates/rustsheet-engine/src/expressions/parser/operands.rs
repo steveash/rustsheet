@@ -421,6 +421,8 @@ impl Parser {
         // The stored spelling of a legacy N or T (SPEC-0012), in R1C1 (stored) text only: in A1
         // text it is a cell (`NLG1(1)` is `#REF!`, below) or a name call (T-1936).
         if !self.lexer.is_a1_mode() {
+            // A name of the old spelling in any scope keeps it a name call, so no sheet-scoped
+            // name of it is ever read as the marker.
             if let Some(kind) = Function::from_legacy_spelling(&name, |name| {
                 self.defined_names
                     .iter()
