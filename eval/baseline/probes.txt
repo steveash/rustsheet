@@ -688,6 +688,7 @@ C	probes/seriessum-x-zero.case.json	22
 C	probes/sheet-ops/sheet-ops-add-into-span.case.json	6
 C	probes/sheet-ops/sheet-ops-add-resolves-indirect.case.json	2
 C	probes/sheet-ops/sheet-ops-add-then-rename.case.json	1
+C	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	5
 C	probes/sheet-ops/sheet-ops-move-formula-sheet.case.json	4
 C	probes/sheet-ops/sheet-ops-move-into-span.case.json	4
 C	probes/sheet-ops/sheet-ops-move-out-of-span.case.json	6
@@ -2566,6 +2567,8 @@ F	probes/scalar-lift-shapes.case.json	Sheet1!J1
 F	probes/scalar-lift-shapes.case.json	Sheet1!J3
 F	probes/scalar-lift-shapes.case.json	Sheet1!J4
 F	probes/scalar-lift-shapes.case.json	Sheet1!K3
+F	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	S!B3
+F	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	S!B4
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!A1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B2
