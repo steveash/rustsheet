@@ -73,7 +73,18 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        match self.evaluate_node_in_context(arg, cell) {
+        let value = self.evaluate_node_in_context(arg, cell);
+        self.numeric_flat_of(value, cell)
+    }
+
+    /// The numbers of `value` as [`Self::collect_numeric_flat`] reads an argument: a range's or
+    /// an array's numbers, or a number; anything else, an error value too, is `#VALUE!`.
+    pub(crate) fn numeric_flat_of(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
+        match value {
             CalcResult::Range { left, right } => match self.values_from_range(left, right) {
                 Ok(v) => Ok(v.into_iter().flatten().collect()),
                 Err(e) => Err(e),

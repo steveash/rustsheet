@@ -1,9 +1,7 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::reference_operators::RefArg;
-use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
-};
+use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
     fn collect_freq_values(
@@ -22,21 +20,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
         match value {
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => Ok(v.into_iter().flatten().collect()),
-                Err(e) => Err(e),
-            },
-            CalcResult::Array(arr) => match self.values_from_array(arr) {
-                Ok(v) => Ok(v.into_iter().flatten().collect()),
-                Err(e) => Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}"))),
-            },
-            CalcResult::Number(n) => Ok(vec![n]),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "FREQUENCY: expected numeric range".to_string(),
-            )),
+            value => self.numeric_flat_of(value, cell),
         }
     }
 
