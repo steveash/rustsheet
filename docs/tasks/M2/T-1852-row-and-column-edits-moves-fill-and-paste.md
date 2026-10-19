@@ -56,4 +56,4 @@ display text, which T-1713's property test pins. None of these paths is reachabl
   stays a scalar `#VALUE!` and its dynamic twin still spills.
 - Eval delta: probes/sheet-ops/sheet-ops-insert-row-legacy-cell S!B3 and S!B4 fixed (probes known
   failures -2). Regressions 0.
-- Follow-up: T-2011. Redo of a paste, fill or cut rewrite re-enters its text as typed.
+- Follow-up: T-2018. Redo of a paste, fill or cut rewrite re-enters its text as typed.
