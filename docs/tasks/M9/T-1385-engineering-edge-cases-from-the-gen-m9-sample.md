@@ -3,7 +3,7 @@ id: T-1385
 title: "Engineering edge cases from the gen-m9 sample: CONVERT/DELTA/GESTEP error order, HEX2OCT negative places, IMSQRT(), Bessel fractional negative order, IM* E-notation parts"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
