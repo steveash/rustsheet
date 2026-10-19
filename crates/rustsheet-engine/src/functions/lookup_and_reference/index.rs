@@ -1,6 +1,7 @@
 //! INDEX: one cell, row, column or area of a reference or an array, lifted element-wise over
 //! array indices (docs/excel-semantics/lookup.md).
 
+use crate::arithmetic::bcast_get;
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::{ExternalArea, PickedReference};
 use crate::functions::util::{
@@ -379,15 +380,23 @@ impl Model {
         if let Some((error, message)) = check_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
         }
+        // The number at (`i`, `j`) of an operand, a size-1 dimension repeating; text is cast like
+        // a scalar argument, a position past a shorter array is `#N/A`.
+        let number_at = |model: &Self, na: &NumberOrArray, i: usize, j: usize| match na {
+            NumberOrArray::Number(f) => Ok(*f),
+            NumberOrArray::Array(a) => {
+                bcast_get(a, i, j).map_or(Err(Error::NA), |node| model.array_node_to_number(node))
+            }
+        };
         let mut result = Vec::with_capacity(rows);
         for i in 0..rows {
             let mut data_row = Vec::with_capacity(cols);
             for j in 0..cols {
                 let [area, row, col] = &operands;
                 let numbers = index_numbers(
-                    self.number_at(area, i, j),
-                    self.number_at(row, i, j),
-                    self.number_at(col, i, j),
+                    number_at(self, area, i, j),
+                    number_at(self, row, i, j),
+                    number_at(self, col, i, j),
                     || Error::VALUE,
                 );
                 data_row.push(match (numbers, &arg_error) {
@@ -481,6 +490,17 @@ impl Model {
                 index_from_array(arr, row_eff, col_eff, form == IndexForm::TopLeft, cell)
             }
             error @ CalcResult::Error { .. } => error.clone(),
+            // An uncalled LAMBDA is one value, a 1x1 area: row and column 0 or 1 give it back,
+            // which a cell shows as `#CALC!` (`INDEX(LAMBDA(x,x),1,1)`; `ROWS(INDEX(LAMBDA(x,x),0,0))`
+            // is 1: probes/m7-argument-modes H44, probes/lambda-value-arguments A17-A20).
+            lambda @ CalcResult::Lambda(_) => {
+                let (row_eff, col_eff) = index_effective_indices(1, row_num, col_num, two_arg);
+                if row_eff <= 1 && col_eff <= 1 {
+                    lambda.clone()
+                } else {
+                    wrong_reference(cell)
+                }
+            }
             _ => CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,

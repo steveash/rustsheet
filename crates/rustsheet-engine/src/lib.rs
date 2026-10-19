@@ -80,6 +80,7 @@ mod styles;
 mod tables;
 mod tz;
 mod units;
+mod used_area;
 mod user_model;
 mod utils;
 mod variable_stack;

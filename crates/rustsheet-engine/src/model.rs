@@ -23,7 +23,7 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_formatted_number},
+        format::{format_number, parse_typed_number},
         lexer::is_likely_date_number_format,
     },
     implicit_intersection::implicit_intersection,
@@ -2184,7 +2184,7 @@ impl Model {
                 //  We try to parse as number
                 let (year, ds) = (|| self.current_year(), self.workbook.settings.date_system);
                 if let Ok((v, number_format)) =
-                    parse_formatted_number(&value, &currencies, self.locale, &year, ds)
+                    parse_typed_number(&value, &currencies, self.locale, &year, ds)
                 {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:
