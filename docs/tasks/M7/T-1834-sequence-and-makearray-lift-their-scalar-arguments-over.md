@@ -17,7 +17,7 @@ SEQUENCE's rows, columns, start and step and MAKEARRAY's rows and cols lift over
 ## Context
 Split from T-1271. This task builds the shared part of SPEC-0011 "Array-valued functions" (T-1833): `CallResult` on `ArgKinds` and its static-analysis rule (1), `element_value` (2) and `KernelWork::Output` (3, MAKEARRAY with weight 128) with its first two consumers, so T-1835, T-1836, T-1838 and T-1839 only add entries and kernels. Today SEQUENCE over an array is `#N/IMPL!` (`cast_to_number`) and over a range gives one row (implicit intersection); MAKEARRAY over a range is `#VALUE!`.
 
-Code: `fn_sequence` in crates/rustsheet-engine/src/functions/math_and_trigonometry/sequence.rs, `fn_makearray` in functions/logical/bycol_byrow.rs, the table in functions/lift/kinds.rs (`arg_kinds`, `lifting_table_functions!`), `lift_call`/`lift_call_costed` in functions/lift/call.rs. Delete the SEQUENCE and MAKEARRAY arms of `fallback_signature` and `fallback_shape` in expressions/parser/static_analysis.rs (the table-wins test).
+Code: `fn_sequence` in crates/rustsheet-engine/src/functions/math_and_trigonometry/sequence.rs, `fn_makearray` in functions/logical/bycol_byrow.rs, the table in functions/lift/kinds/ (mod.rs and the per-family files) (`arg_kinds`, `lifting_table_functions!`), `lift_call`/`lift_call_costed` in functions/lift/call.rs. Delete the SEQUENCE and MAKEARRAY arms of `fallback_signature` and `fallback_shape` in expressions/parser/static_analysis.rs (the table-wins test).
 
 Owned cells, probes/m7-argument-modes (T-1083, excel-graph, 2026-10-09; docs/excel-semantics/arrays.md "Dynamic-array and LAMBDA function argument modes"):
 - F1 `=ROWS(SEQUENCE(A1:A3))` 3 (ours 1).

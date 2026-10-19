@@ -32,7 +32,7 @@ it is approximate.
 | probes/stat-argument-modes | 573 | 396 | 214 | 96 | T-1290, T-1772 |
 | probes/fin-argument-modes | 386 | 302 | 256 | 18 | T-1372 |
 | probes/eng-argument-modes | 231 | 119 | 86 | 8 | T-1383 |
-| probes/m7-argument-modes | 174 | 86 | 58 | 26 | T-1271 |
+| probes/m7-argument-modes | 174 | 86 | 58 | 26 | T-1271 (split: T-1834 to T-1839, T-1960) |
 | probes/lookup-argument-modes | 117 | 66 | 30 | 36 | T-1241 |
 | probes/db-argument-modes | 121 | 38 | 12 | 12 | T-1389 |
 | probes/date-argument-modes | 168 | 28 | 28 | 0 | T-1770, T-1236 |

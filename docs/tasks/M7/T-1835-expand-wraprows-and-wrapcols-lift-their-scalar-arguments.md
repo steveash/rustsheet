@@ -15,7 +15,7 @@ spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 EXPAND's rows, columns and pad_with and WRAPROWS's and WRAPCOLS's wrap_count and pad_with lift over a multi-cell range and an array, one call per element whose value is the top-left of that call's result, as in Excel; the array argument stays whole.
 
 ## Context
-Split from T-1271. Mechanical once T-1834 lands: add table entries (the array argument `Whole`, the scalar ones as T-1833's per-parameter list says) and kernels using the element-value and cost rules T-1834 built; do not write a new lift or bound. Put the entries in their own `// --- M7 (T-1835) ---` block in functions/lift/kinds.rs, as the engineering and math blocks are, so T-1836 and T-1839 can land in parallel. Delete the three functions' `fallback_signature`/`fallback_shape` arms in expressions/parser/static_analysis.rs.
+Split from T-1271. Mechanical once T-1834 lands: add table entries (the array argument `Whole`, the scalar ones as T-1833's per-parameter list says) and kernels using the element-value and cost rules T-1834 built; do not write a new lift or bound. Put the entries in their own `// --- M7 (T-1835) ---` block in functions/lift/kinds/ (mod.rs and the per-family files), as the engineering and math blocks are, so T-1836 and T-1839 can land in parallel. Delete the three functions' `fallback_signature`/`fallback_shape` arms in expressions/parser/static_analysis.rs.
 
 Code: `fn_expand` in functions/lookup_and_reference/expand.rs, `fn_wrapcols`/`fn_wraprows` in functions/lookup_and_reference/wrapcols_wraprows.rs. T-1786 (done) already bounds one call's output with `check_array_size`; the kernel must keep that check and the function's argument-error order.
 
