@@ -31,8 +31,9 @@ only. Do not let such a name shadow the cell.
 - The marker spelling itself (T-1936).
 
 ## Outcome
-`define_name` (the loading path, used by the xlsx-style `Txn::define_name`) now accepts a name spelled
-like an A1 cell (`is_cell_spelled_name`); `new_defined_name` (Name Manager) still refuses it. The
+New `Model::define_loaded_name` / `Txn::load_defined_name` (the eval harness's loading path) accept a name
+spelled like an A1 cell (`is_cell_spelled_name`); `define_name` and `new_defined_name` (Name Manager) still
+refuse it. The
 lexer reads such a spelling as the cell, so the name never shadows it. xlsx import never validated
 names, so it already loaded them. Eval: probes legacy-marker-spelling-name-nlg1 and -tlg1 now pass
 (12 cells; two `!EngineError` known failures removed).
