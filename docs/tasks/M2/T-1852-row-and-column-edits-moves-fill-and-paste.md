@@ -37,6 +37,7 @@ display text, which T-1713's property test pins. None of these paths is reachabl
   stays dynamic and spills.
 - [ ] references.md "Legacy N and T over a reference-returning call" records the assumption as
   unprobed, pointing at T-1853, unless T-1853 has landed.
+- [ ] probes/sheet-ops/sheet-ops-insert-row-legacy-cell S!B3 (`#VALUE!`) and S!B4 (empty) pass (T-1933's row-insert op); the baseline shrinks.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

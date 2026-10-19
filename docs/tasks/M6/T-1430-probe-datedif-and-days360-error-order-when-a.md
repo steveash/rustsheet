@@ -30,6 +30,7 @@ Evidence from T-1785: `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` is `#N/A` in Ex
 - [ ] A probe case holds `DATEDIF(10,5,NA())`, `DATEDIF(1/0,5,NA())`, `DAYS360(-5,5,NA())`, `DAYS360(1/0,5,NA())`
   with oracle values; ours matches them (baseline updated).
 - [ ] dates.md's entry is VERIFIED (or records the difference) and the code comments cite the probe.
+- [ ] probes/date-math-lift-driver-edges Sheet1!G43 (`=INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)`, Excel #N/A) passes; the baseline shrinks.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -8,7 +8,7 @@
 mod kernel_work;
 mod metamorphic;
 
-use super::driver::{LiftCost, LiftOptions, LiftedArg};
+use super::driver::{LiftCost, LiftOptions, LiftedArg, Reuse};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use crate::calc_result::CalcResult;
 use crate::expressions::parser::{ArrayNode, Node};
@@ -55,7 +55,7 @@ fn run_counting(
     model: &mut Model,
     kinds: &ArgKinds,
     formula: &str,
-    cost: LiftCost<'_>,
+    cost: LiftCost,
     kernel: impl Fn(&[CalcResult]) -> CalcResult,
 ) -> (CalcResult, usize) {
     let args = args_of(model, formula);
@@ -645,7 +645,7 @@ fn a_weighted_kernel_is_charged_its_weight() {
     // 2^10 elements × 2^17 cells is the cap exactly; a weight of 2 is over it.
     for (weight, runs) in [(1, true), (2, false)] {
         let options = LiftOptions {
-            reuse_equal_runs: false,
+            reuse: Reuse::Never,
             work: KernelWork::Weighted(weight),
         };
         let mut calls = 0;
@@ -683,7 +683,7 @@ fn element_texts_count_against_the_text_budget() {
     let long = CalcResult::String("x".repeat(32767).into());
     let elements = |n: usize| vec![CalcResult::Array(vec![vec![ArrayNode::Number(1.0); n]])];
     let options = LiftOptions {
-        reuse_equal_runs: false,
+        reuse: Reuse::Never,
         work: KernelWork::Constant,
     };
     let mut kernel = |_: &mut Model, _: &[CalcResult]| long.clone();

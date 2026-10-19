@@ -3,7 +3,7 @@ use crate::cast::number_text_too_long;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
-use crate::functions::lift::{LiftCost, LiftOptions};
+use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::Node,
@@ -47,6 +47,12 @@ fn criterion_too_long(criterion: &CalcResult) -> bool {
     matches!(criterion, CalcResult::String(text) if number_text_too_long(text))
 }
 
+/// The ranges of a SUMIFS-shaped call: the (resized) sum range and the criteria ranges.
+struct SumRanges {
+    sum_range: Range,
+    ranges: Vec<Range>,
+}
+
 fn shape_mismatch(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(
         Error::VALUE,
@@ -75,26 +81,33 @@ impl Model {
     /// broadcast against each other (a position past a shorter array uses an `#N/A`
     /// criterion). Otherwise `compute` runs once with the criteria as they are.
     ///
-    /// `walked` is the range every element walks (the value range, or COUNTIFS's first criteria
-    /// range): the call is `#ERROR!` when its used cells times the criteria count times the
-    /// elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`. Consecutive equal criteria
-    /// (the blank tail of a whole-column criteria range) reuse the previous result.
+    /// `walked` is the range every element walks, as written and evaluated by reference (the value
+    /// range, or COUNTIFS's first criteria range): the call is `#ERROR!` when its used cells
+    /// ([`Model::range_walk_cost`], measured only when the call lifts) times the criteria count
+    /// times the elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`.
+    /// `compute` reads only its criteria and the ranges resolved before the lift, so every
+    /// repeated criteria element (the blank tail of a whole-column criteria range, the
+    /// occurrence-count idiom `COUNTIF(A2:A10000,A2:A10000)`) reuses its first result (T-0408).
     fn lift_criteria(
         &mut self,
         criteria: Vec<CalcResult>,
-        walked: &Node,
+        walked: &CalcResult,
         cell: CellReferenceIndex,
         mut compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
+        // An unlifted call runs once and is not charged: measuring would clip the walked range
+        // to the used area on every plain SUMIFS.
+        let walk_cost = if criteria.iter().any(LiftedArg::is_grid) {
+            self.range_walk_cost(walked)
+        } else {
+            1
+        };
         // Each element walks the range once per criterion.
         let walks = u64::try_from(criteria.len()).unwrap_or(u64::MAX);
         self.lift_values(
             criteria,
-            LiftCost::Walk {
-                range: walked,
-                walks,
-            },
-            &LiftOptions::REUSE_EQUAL_RUNS,
+            LiftCost::Cells(walk_cost.saturating_mul(walks)),
+            &LiftOptions::REUSE_ANY_EQUAL,
             cell,
             &mut compute,
         )
@@ -102,8 +115,13 @@ impl Model {
 
     /// Cells of `node`'s range inside the used area (at least 1): what one criteria walk visits.
     pub(crate) fn walk_cost(&mut self, node: &Node, cell: CellReferenceIndex) -> u64 {
-        let CalcResult::Range { left, right } = self.evaluate_node_with_reference(node, cell)
-        else {
+        let value = self.evaluate_node_with_reference(node, cell);
+        self.range_walk_cost(&value)
+    }
+
+    /// Cells of `value`'s range inside the used area, 1 for a value that is not a range.
+    fn range_walk_cost(&mut self, value: &CalcResult) -> u64 {
+        let CalcResult::Range { left, right } = *value else {
             return 1;
         };
         let Ok((last_row, last_column)) =
@@ -117,18 +135,26 @@ impl Model {
     }
 
     /// The SUMIFS-shaped functions `(value_range, criteria_range1, criteria1, ...)`: checks the
-    /// argument count, then lifts `compute` over the criteria (see [`Model::lift_criteria`]).
-    pub(crate) fn lift_ifs(
+    /// argument count, resolves the ranges once ([`Model::resolve_sum_ranges`]), then lifts
+    /// `compute` over the criteria (see [`Model::lift_criteria`]). `compute` gets the resolved
+    /// ranges, or the error every element is.
+    fn lift_ifs(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
+        strict_shape: bool,
+        mut compute: impl FnMut(&mut Self, &Result<SumRanges, CalcResult>, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
         if args.len() < 3 || args.len().is_multiple_of(2) {
             return CalcResult::new_args_number_error(cell);
         }
         let criteria = self.criteria_values(args, 2, cell);
-        self.lift_criteria(criteria, &args[0], cell, compute)
+        // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
+        let sum_value = self.evaluate_node_with_reference(&args[0], cell);
+        let ranges = self.resolve_sum_ranges(args, sum_value.clone(), cell, strict_shape);
+        self.lift_criteria(criteria, &sum_value, cell, |model, criteria| {
+            compute(model, &ranges, criteria)
+        })
     }
 
     pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -158,53 +184,103 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let criteria = self.criteria_values(args, 1, cell);
-        self.lift_criteria(criteria, &args[0], cell, |model, criteria| {
-            model.count_ifs(args, criteria, cell)
+        // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
+        let first = self.evaluate_node_with_reference(&args[0], cell);
+        let ranges = self
+            .resolve_criteria_ranges(args, 0, first.clone(), cell)
+            .and_then(|ranges| {
+                if same_shape(&ranges) {
+                    Ok(ranges)
+                } else {
+                    Err(shape_mismatch(cell))
+                }
+            });
+        self.lift_criteria(criteria, &first, cell, |model, criteria| match &ranges {
+            Ok(ranges) => model.count_ifs(ranges, criteria, cell),
+            Err(error) => error.clone(),
         })
     }
 
-    /// Resolves the criteria ranges of COUNTIFS and the SUMIFS-shaped functions and builds their
-    /// predicates: `args[first + 2k]` is the range of `criteria[k]`.
-    ///
-    /// The ranges are taken by reference (a single-cell range `A1` is a 1x1 range, probes/
-    /// sumif-edge-single-cell F11-F15) and a cross-sheet range or a non-range is `#VALUE!`.
-    /// `shape_error` then checks their shapes. A criterion over 255 characters is `#VALUE!` (from a
-    /// literal, a cell or one element of a range), but only once the ranges and shapes resolved: a
-    /// bad range wins (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
-    fn resolve_ifs_criteria<'c>(
+    /// An *IF(S) range argument already evaluated by reference (a single-cell range `A1` is a 1x1
+    /// range, probes/sumif-edge-single-cell F11-F15): an error as it is, a cross-sheet range or a
+    /// non-range `#VALUE!`.
+    fn ifs_range(value: CalcResult, cell: CellReferenceIndex) -> Result<Range, CalcResult> {
+        match value {
+            CalcResult::Range { left, right } if left.sheet != right.sheet => {
+                Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Ranges are in different sheets".to_string(),
+                ))
+            }
+            CalcResult::Range { left, right } => Ok(Range { left, right }),
+            error if error.is_error() => Err(error),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expected a range".to_string(),
+            )),
+        }
+    }
+
+    /// The criteria ranges `args[first]`, `args[first + 2]`, ... of COUNTIFS and the
+    /// SUMIFS-shaped functions, each evaluated once, before the lift (T-0408): the first bad one
+    /// is the error, and the ranges after it are not evaluated. `first_value` is `args[first]`
+    /// already evaluated by reference.
+    fn resolve_criteria_ranges(
         &mut self,
         args: &[Node],
         first: usize,
+        first_value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Range>, CalcResult> {
+        let mut ranges = vec![Self::ifs_range(first_value, cell)?];
+        for node in args.iter().skip(first + 2).step_by(2) {
+            let value = self.evaluate_node_with_reference(node, cell);
+            ranges.push(Self::ifs_range(value, cell)?);
+        }
+        Ok(ranges)
+    }
+
+    /// The ranges of the SUMIFS-shaped functions, resolved once before the lift (T-0408);
+    /// `sum_value` is `args[0]` evaluated by reference. Every range must be shaped like the sum
+    /// range, else `#VALUE!` (T-0209; SUMIFS from gen-m2, AVERAGEIFS/MINIFS/MAXIFS from
+    /// probes/ifs-shape-mismatch). Only SUMIF's and AVERAGEIF's single-criterion path
+    /// (`strict_shape` false) opts out: it never errors (T-0214), and walks a sum range resized
+    /// to the shape of the criteria range from its top-left cell (gen-m2/04cfd82f54dbc2b2
+    /// Calc!A344, gen-m2/629e6e8b76fab8b9 Calc!A217; probes/ifs-shape-mismatch F9-F11).
+    fn resolve_sum_ranges(
+        &mut self,
+        args: &[Node],
+        sum_value: CalcResult,
+        cell: CellReferenceIndex,
+        strict_shape: bool,
+    ) -> Result<SumRanges, CalcResult> {
+        Self::ifs_range(sum_value, cell).and_then(|sum_range| {
+            let first = self.evaluate_node_with_reference(&args[1], cell);
+            let ranges = self.resolve_criteria_ranges(args, 1, first, cell)?;
+            if strict_shape {
+                let shape = range_shape(&sum_range);
+                if ranges.iter().any(|range| range_shape(range) != shape) {
+                    return Err(shape_mismatch(cell));
+                }
+                Ok(SumRanges { sum_range, ranges })
+            } else {
+                let sum_range = resize_to(&sum_range, &ranges[0]);
+                Ok(SumRanges { sum_range, ranges })
+            }
+        })
+    }
+
+    /// Builds the predicates of `criteria` (one per criteria range, resolved before the lift).
+    /// A criterion over 255 characters is `#VALUE!` (from a literal, a cell or one element of a
+    /// range), but only once the ranges and shapes resolved: a bad range wins
+    /// (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
+    fn build_ifs_criteria<'c>(
+        &self,
         criteria: &'c [CalcResult],
         cell: CellReferenceIndex,
-        shape_error: impl FnOnce(&[Range]) -> Option<CalcResult>,
-    ) -> Result<(Vec<Range>, Vec<Criterion<'c>>), CalcResult> {
-        let mut ranges = Vec::with_capacity(criteria.len());
-        for case_index in 0..criteria.len() {
-            let result = self.evaluate_node_with_reference(&args[first + case_index * 2], cell);
-            if result.is_error() {
-                return Err(result);
-            }
-            if let CalcResult::Range { left, right } = result {
-                if left.sheet != right.sheet {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                ranges.push(Range { left, right });
-            } else {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Expected a range".to_string(),
-                ));
-            }
-        }
-        if let Some(error) = shape_error(&ranges) {
-            return Err(error);
-        }
+    ) -> Result<Vec<Criterion<'c>>, CalcResult> {
         if criteria.iter().any(criterion_too_long) {
             return Err(CalcResult::new_error(
                 Error::VALUE,
@@ -223,25 +299,22 @@ impl Model {
                 )
             })
             .collect();
-        Ok((ranges, fn_criteria))
+        Ok(fn_criteria)
     }
 
-    /// COUNTIFS with the criteria already evaluated (`criteria[k]` is `args[2k + 1]`'s value).
+    /// COUNTIFS over its resolved criteria ranges, with the criteria already evaluated
+    /// (`criteria[k]` is the criterion of `ranges[k]`).
     fn count_ifs(
         &mut self,
-        args: &[Node],
+        ranges: &[Range],
         criteria: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let case_count = criteria.len();
-        // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
-        let (ranges, fn_criteria) =
-            match self.resolve_ifs_criteria(args, 0, criteria, cell, |ranges| {
-                (!same_shape(ranges)).then(|| shape_mismatch(cell))
-            }) {
-                Ok(resolved) => resolved,
-                Err(error) => return error,
-            };
+        let fn_criteria = match self.build_ifs_criteria(criteria, cell) {
+            Ok(fn_criteria) => fn_criteria,
+            Err(error) => return error,
+        };
 
         let mut total = 0.0;
         let first_range = &ranges[0];
@@ -340,59 +413,22 @@ impl Model {
         CalcResult::Number(total)
     }
 
-    /// The walk of the SUMIFS-shaped functions, with the criteria already evaluated
-    /// (`criteria[k]` is `args[2k + 2]`'s value; see [`Model::lift_ifs`]).
-    pub(crate) fn apply_ifs<F>(
+    /// The walk of the SUMIFS-shaped functions over their resolved ranges, with the criteria
+    /// already evaluated (`criteria[k]` is the criterion of `ranges.ranges[k]`; see
+    /// [`Model::lift_ifs`]).
+    fn apply_ifs<F>(
         &mut self,
-        args: &[Node],
+        ranges: &Result<SumRanges, CalcResult>,
         criteria: &[CalcResult],
         cell: CellReferenceIndex,
-        strict_shape: bool,
         apply: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(f64),
     {
-        // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
-        let arg_0 = self.evaluate_node_with_reference(&args[0], cell);
-        if arg_0.is_error() {
-            return Err(arg_0);
-        }
-        let mut sum_range = if let CalcResult::Range { left, right } = arg_0 {
-            if left.sheet != right.sheet {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Ranges are in different sheets".to_string(),
-                ));
-            }
-            Range { left, right }
-        } else {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expected a range".to_string(),
-            ));
-        };
-
-        // Every range shaped like sum_range, else #VALUE! (T-0209; SUMIFS from
-        // gen-m2, AVERAGEIFS/MINIFS/MAXIFS from probes/ifs-shape-mismatch). Only
-        // SUMIF's single-criterion path opts out: it never errors (T-0214).
-        let (ranges, fn_criteria) =
-            self.resolve_ifs_criteria(args, 1, criteria, cell, |ranges| {
-                (strict_shape
-                    && (!same_shape(ranges)
-                        || ranges.first().map(range_shape) != Some(range_shape(&sum_range))))
-                .then(|| shape_mismatch(cell))
-            })?;
-        if !strict_shape {
-            // SUMIF/AVERAGEIF sum a sum_range resized to the shape of the criteria
-            // range from its top-left cell (gen-m2/04cfd82f54dbc2b2 Calc!A344,
-            // gen-m2/629e6e8b76fab8b9 Calc!A217; probes/ifs-shape-mismatch F9-F11).
-            sum_range = resize_to(&sum_range, &ranges[0]);
-        }
-
-        self.run_ifs(&sum_range, &ranges, &fn_criteria, cell, apply)
+        let SumRanges { sum_range, ranges } = ranges.as_ref().map_err(Clone::clone)?;
+        let fn_criteria = self.build_ifs_criteria(criteria, cell)?;
+        self.run_ifs(sum_range, ranges, &fn_criteria, cell, apply)
     }
 
     /// Walks `sum_range` and applies `apply` to every numeric cell whose parallel
@@ -484,10 +520,10 @@ impl Model {
         cell: CellReferenceIndex,
         strict_shape: bool,
     ) -> CalcResult {
-        self.lift_ifs(args, cell, |model, criteria| {
+        self.lift_ifs(args, cell, strict_shape, |model, ranges, criteria| {
             let mut total = 0.0;
             // Each addition rounds twice like SUM's (probes-numeric/double-rounding-accumulators).
-            match model.apply_ifs(args, criteria, cell, strict_shape, |v| {
+            match model.apply_ifs(ranges, criteria, cell, |v| {
                 total = extended_sum(total, v);
             }) {
                 Ok(()) => CalcResult::finite_number_or_num(total, cell),
@@ -507,14 +543,14 @@ impl Model {
         cell: CellReferenceIndex,
         strict_shape: bool,
     ) -> CalcResult {
-        self.lift_ifs(args, cell, |model, criteria| {
+        self.lift_ifs(args, cell, strict_shape, |model, ranges, criteria| {
             let mut total = 0.0;
             let mut count = 0.0;
             let average = |value: f64| {
                 total = extended_sum(total, value);
                 count += 1.0;
             };
-            if let Err(e) = model.apply_ifs(args, criteria, cell, strict_shape, average) {
+            if let Err(e) = model.apply_ifs(ranges, criteria, cell, average) {
                 return e;
             }
             if count == 0.0 {
@@ -531,10 +567,10 @@ impl Model {
     }
 
     pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_ifs(args, cell, |model, criteria| {
+        self.lift_ifs(args, cell, true, |model, ranges, criteria| {
             let mut min = f64::INFINITY;
             let apply_min = |value: f64| min = value.min(min);
-            if let Err(e) = model.apply_ifs(args, criteria, cell, true, apply_min) {
+            if let Err(e) = model.apply_ifs(ranges, criteria, cell, apply_min) {
                 return e;
             }
             CalcResult::Number(if min.is_infinite() { 0.0 } else { min })
@@ -542,10 +578,10 @@ impl Model {
     }
 
     pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_ifs(args, cell, |model, criteria| {
+        self.lift_ifs(args, cell, true, |model, ranges, criteria| {
             let mut max = -f64::INFINITY;
             let apply_max = |value: f64| max = value.max(max);
-            if let Err(e) = model.apply_ifs(args, criteria, cell, true, apply_max) {
+            if let Err(e) = model.apply_ifs(ranges, criteria, cell, apply_max) {
                 return e;
             }
             CalcResult::Number(if max.is_infinite() { 0.0 } else { max })

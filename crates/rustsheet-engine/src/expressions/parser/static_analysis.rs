@@ -31,9 +31,8 @@ use signature::{
     args_signature_scan, args_signature_sequence, args_signature_sort, args_signature_sortby,
     args_signature_sumif, args_signature_take, args_signature_textafter, args_signature_textjoin,
     args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_unique, args_signature_with_holidays, args_signature_wrapcols,
-    args_signature_xirr, args_signature_xlookup, args_signature_xmatch, args_signature_xnpv,
-    Signature,
+    args_signature_unique, args_signature_wrapcols, args_signature_xirr, args_signature_xlookup,
+    args_signature_xmatch, args_signature_xnpv, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -488,8 +487,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Timevalue => args_signature_scalars(arg_count, 1, 0),
         Function::Now => args_signature_scalars(arg_count, 0, 0),
         Function::Today => args_signature_scalars(arg_count, 0, 0),
-        Function::Workday => args_signature_with_holidays(arg_count, 2, 0),
-        Function::WorkdayIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Fvschedule => vec![Signature::Scalar, Signature::Vector],
         Function::Db => args_signature_scalars(arg_count, 4, 1),
         Function::Irr => args_signature_irr(arg_count),
@@ -526,8 +523,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Rightb => args_signature_scalars(arg_count, 1, 1),
         Function::Searchb => args_signature_scalars(arg_count, 2, 1),
         Function::Geomean => vec![Signature::Vector; arg_count],
-        Function::Networkdays => args_signature_with_holidays(arg_count, 2, 0),
-        Function::NetworkdaysIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Gcd => vec![Signature::Vector; arg_count],
         Function::Lcm => vec![Signature::Vector; arg_count],
         Function::Base => args_signature_scalars(arg_count, 2, 1),
@@ -784,8 +779,14 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => StaticResult::Unknown,
-        // Spills by lookup_value and match_mode, broadcast; lookup_array is consumed (T-1241).
-        Function::Xmatch => broadcast_static_result(args.iter().step_by(2).take(2)),
+        // Spills by lookup_value, match_mode and search_mode, broadcast; lookup_array is consumed
+        // (T-1241, T-1958).
+        Function::Xmatch => broadcast_static_result(
+            args.iter()
+                .enumerate()
+                .filter(|(i, _)| *i != 1)
+                .map(|(_, a)| a),
+        ),
         Function::Trimrange => StaticResult::Unknown,
         Function::Sort | Function::Sortby | Function::Unique => StaticResult::Unknown,
         Function::Filter | Function::Take | Function::Drop => StaticResult::Unknown,
@@ -869,8 +870,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Timevalue => scalar_arguments(args),
         Function::Now => not_implemented(args),
         Function::Today => not_implemented(args),
-        Function::Workday => not_implemented(args),
-        Function::WorkdayIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
         Function::Fvschedule => StaticResult::Scalar,
         Function::Db => not_implemented(args),
         Function::Irr => not_implemented(args),
@@ -886,8 +885,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         // One result per cell of a multi-cell reference (T-1241).
         Function::Formulatext => broadcast_static_result(args),
         Function::Geomean => not_implemented(args),
-        Function::Networkdays => not_implemented(args),
-        Function::NetworkdaysIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
         Function::Gcd => StaticResult::Scalar,
         Function::Lcm => StaticResult::Scalar,
         Function::Base => scalar_arguments(args),
