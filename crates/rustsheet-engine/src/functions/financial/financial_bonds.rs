@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use crate::formatter::dates::real_date_to_serial;
 
 mod coupon_schedule;
+mod yield_closed;
 
 use super::dates::{
     basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us, days_30_360_us_both,
@@ -132,9 +133,8 @@ fn compute_price(
 // Yield solver (Newton-Raphson + bisection)
 // ============================================================
 
-/// YIELD's solver: at most 100 Newton steps of three prices and 97 bisection prices (the
-/// bracket [-0.9999, 100] is below 1e-12 wide after 47 halvings), each a sum over the coupons of
-/// `schedule`, which the caller walks once.
+/// YIELD's solver: `solve_yield` over `schedule`, which the caller walks once, so each of the
+/// at most 100 Newton steps (three prices) and 97 bisection prices is a sum over the coupons.
 fn compute_yield_from_price(
     target: f64,
     schedule: &CouponSchedule,
@@ -142,95 +142,9 @@ fn compute_yield_from_price(
     redemption: f64,
     frequency: u32,
 ) -> Result<f64, String> {
-    let obj =
-        |y: f64| -> Option<f64> { Some(schedule.price(rate, y, redemption, frequency) - target) };
-
-    let h = 1e-5;
-    let eps = 1e-8;
-
-    // Newton-Raphson starting near the coupon rate.
-    let mut y = rate;
-    for _ in 0..100 {
-        let fv = match obj(y) {
-            Some(v) if v.is_finite() => v,
-            _ => break,
-        };
-        let fp = match (obj(y + h), obj(y - h)) {
-            (Some(a), Some(b)) => (a - b) / (2.0 * h),
-            _ => break,
-        };
-        if !fp.is_finite() || fp.abs() < 1e-15 {
-            break;
-        }
-        let yn = y - fv / fp;
-        if yn <= -1.0 {
-            break;
-        }
-        if (yn - y).abs() < eps {
-            return Ok(yn);
-        }
-        y = yn;
-    }
-
-    // Bisection fallback.
-    let x1 = -0.9999_f64;
-    let x2 = 100.0_f64;
-    let f1 = obj(x1).ok_or("bisection failed")?;
-    let f2 = obj(x2).ok_or("bisection failed")?;
-    if f1 * f2 > 0.0 {
-        return Err("YIELD: failed to converge".to_string());
-    }
-    let (mut lo, mut hi, fl_sign) = if f1 < 0.0 {
-        (x1, x2, -1.0_f64)
-    } else {
-        (x2, x1, 1.0_f64)
-    };
-    let _ = fl_sign; // used only implicitly through lo/hi ordering
-
-    for _ in 0..200 {
-        let mid = (lo + hi) / 2.0;
-        let fm = obj(mid).ok_or("bisection failed")?;
-        if fm.abs() < eps || (hi - lo).abs() < 1e-12 {
-            return Ok(mid);
-        }
-        let f_lo = obj(lo).ok_or("bisection failed")?;
-        if f_lo * fm < 0.0 {
-            hi = mid;
-        } else {
-            lo = mid;
-        }
-    }
-    Err("YIELD: failed to converge".to_string())
-}
-
-/// YIELD with one coupon period left: Excel does not iterate but evaluates the documented closed
-/// form, in this order of operations, with DSR the basis' settlement-to-maturity count (not PRICE's
-/// E - A) and E the actual period length on bases 1-3 (not 360/f or 365/f on bases 2 and 3).
-/// Excel: see docs/excel-semantics/financial.md#yield-with-one-coupon-period-left-is-closed-form.
-fn yield_one_period(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, String> {
-    let (settlement, maturity) = (bond.settlement, bond.maturity);
-    let e = if matches!(bond.basis, 1..=3) {
-        let prev = from_excel_date(prev_coupon_date(settlement, maturity, bond.frequency)?)?;
-        let next = from_excel_date(next_coupon_date(settlement, maturity, bond.frequency)?)?;
-        (next - prev).num_days() as f64
-    } else {
-        schedule.e
-    };
-    let dsr = basis_days(
-        from_excel_date(settlement)?,
-        from_excel_date(maturity)?,
-        bond.basis,
-    );
-    let f = bond.frequency as f64;
-    let (rate, pr, red) = (bond.rate, bond.yld_or_pr, bond.redemption);
-    let result = ((red / 100.0 + rate / f) - (pr / 100.0 + schedule.a / e * rate / f))
-        / (pr / 100.0 + (schedule.a / e) * (rate / f))
-        * (f * e / dsr);
-    if result.is_finite() {
-        Ok(result)
-    } else {
-        Err("YIELD: no finite result".to_string())
-    }
+    solve_yield(target, rate, |y| {
+        Some(schedule.price(rate, y, redemption, frequency))
+    })
 }
 
 // ============================================================
@@ -836,7 +750,8 @@ impl Model {
                         )
                         .map_err(|_| num_error(cell))?;
                         if schedule.n == 1.0 {
-                            return yield_one_period(&bond, &schedule).map_err(|_| num_error(cell));
+                            return yield_closed::yield_one_period(&bond, &schedule)
+                                .map_err(|_| num_error(cell));
                         }
                         compute_yield_from_price(
                             bond.yld_or_pr,
