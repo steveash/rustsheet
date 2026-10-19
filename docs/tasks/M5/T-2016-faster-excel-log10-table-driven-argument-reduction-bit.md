@@ -24,6 +24,8 @@ for trig.
 ## Acceptance criteria
 - [ ] A release microbenchmark of `excel_log10` before/after in the Outcome.
 - [ ] Bit-identical to the current kernel on a large random sweep (a unit test), and probes/log10-kernel stays 368/368.
+- [ ] probes/log10-kernel gains edge inputs the T-2004 review found missing (1±2^-52, 1±1e-10, 5e-324,
+  2.2e-308, 1.7976931348623157e308; an x87 library might take FYL2XP1 near 1), oracle-filled and passing.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
