@@ -47,3 +47,12 @@ unprobed too: probe and lift it here.
 
 ## Out of scope
 - INDEX of a single value (T-1242).
+
+## Progress (2026-10-19, opus)
+Probe landed: probes/reference-lift-elements (excel-graph) answers the unprobed arguments (OFFSET cols, height,
+width; INDIRECT a1; TRIMRANGE trim_cols; XMATCH search_mode) and the element shape. Findings are in lookup.md
+"OFFSET, INDIRECT and TRIMRANGE lift into arrays of references". The key point for the design note: the elements
+are references, not values. Spilled directly, each is `#VALUE!`; INDEX picks one as a reference (a multi-cell pick
+spills or is `#SPILL!`); ROWS/COLUMNS count elements; SUM reads them. `ArrayNode` cannot hold that today, so the
+design note has to choose a carrier (an array of references, or a lifted result INDEX/SUM/ROWS can see through)
+before any code. No engine code yet; the new case's cells are recorded as known failures in eval/baseline.
