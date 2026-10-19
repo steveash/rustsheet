@@ -234,8 +234,9 @@ existing cost model and caches.
     section 4 and the `$`-before-a-final-`\n` texts of section 2.
     - Its program is compiled from the regular AST Thompson-style. Counted repeats are expanded, with no
       `RepeatCounter`, and charged to the compile budget, `TooBig` as the NFA limits are today. There is no
-      empty-loop slot: empty iterations are resolved as the Thompson NFA resolves them, which the differential test
-      pins against PCRE2's results.
+      empty-loop slot: empty iterations are resolved as the Thompson NFA resolves them. That is how the
+      automata path already resolves them for the same patterns, so memoized mode and automata give one answer, and
+      the differential test pins it.
     - So a state's future depends only on `(pc, pos)`, which makes the visited bit-set sound and leaves the
       priority-ordered result unchanged.
     - The bit-set lives in `Caches` and is cleared once per text, not per attempt (generation stamps). It is kept
