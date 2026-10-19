@@ -980,8 +980,8 @@ are `#N/A` and one point is `#DIV/0!` (COVAR of one pair is 0): `TTEST(A7:C7,<nu
 `COVAR(0,C6:D6)`, `COVAR(D4:D8,<number>)`, `RSQ(A4,B11:C12)`, `INTERCEPT(B9:E9,1E-15)`, `CHISQ.TEST(B4,C5:D11)`,
 `FORECAST.LINEAR(x,C2:D7,<number>)` and `FORECAST.LINEAR(x,0.2,D11:D12)` are `#N/A`; `SLOPE(123456789.123,<number>)`,
 `INTERCEPT(1.005,2.5)`, `FORECAST.LINEAR(x,0.2,1)` and `FORECAST.LINEAR(x,7,137.5)` are `#DIV/0!`; `COVAR(0,D6)` is a number (inferred 0;
-`(B6-0.5)>COVAR(0,D6)` is TRUE). `PEARSON(D5,SEQUENCE(0))` is `#CALC!`. T.TEST checks tails and type first:
-`T.TEST(B11,A8:B9,0.1,0.3)` with B11 = FALSE is `#NUM!`. GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
+`(B6-0.5)>COVAR(0,D6)` is TRUE). `PEARSON(D5,SEQUENCE(0))` is `#CALC!`. `T.TEST(B11,A8:B9,0.1,0.3)` with B11 = FALSE (one value, no number) is `#NUM!` (tails/type before
+the paired unequal-size `#N/A`; whether an error array argument beats a bad tails/type is unprobed). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
 9.332621544394404E+155), `TREND(#NUM!)` is `#NUM!`, and `GROWTH(B2:B3,<number>,..)` with B2:B3 = "?b", 0 is `#REF!` (the size
 check before the text check). LARGE of an error is that error (`LARGE(<#VALUE!>,k)`, `LARGE(<#REF!>,0.1)`), and so is
 PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). `QUARTILE(D6,7)` with D6 = " x " is inferred `#NUM!` (inside a BETAINV whose
@@ -993,8 +993,7 @@ Evidence: gen-m9 (excel-graph, 2026-10-12, T-1289): 1782efcecd5d4b1b Calc!A10, A
 A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, A21; eefcc3989f31de76 A22;
 95efb37a9874f82e A2; b5352ebdb9c5f1a1 A24; 288b99797f58f149 A3; d5bd4272655c5211 A31; 65faaeb48419087d A17. The arguments
 are read from the cases' Data sheets; each cell's other operands were checked not to decide the result.
-Ours: a plain number or single cell in these arguments is `#VALUE!` (one-element array literals already work:
-`COVAR({0},{1,2})` is `#N/A`, `SLOPE({1},{2})` `#DIV/0!`); `LARGE(#N/A,1)` is `#N/IMPL!`; PERCENTILE.EXC checks empty data
+Ours: the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal stays `#VALUE!`, unprobed); `LARGE(#N/A,1)` is `#N/IMPL!`; PERCENTILE.EXC checks empty data
 before k; `PERCENTRANK.EXC` of a single value equal to x is 1, not 0.5 (probes/percentrank-single-value B6). `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); with one value, x below or above it is `#N/A` for all three, an error x (`#DIV/0!`, text `#VALUE!`) beats that `#N/A`, and any numeric significance (0, negative, fractional) gives 1 rather than `#NUM!` (a text significance is `#VALUE!`) (probes/percentrank-single-value B2-B20); an empty array is `#N/A`.
 Status: VERIFIED (web) for the listed cells
 Tasks: T-1401, T-1402, T-1403

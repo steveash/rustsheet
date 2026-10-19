@@ -76,3 +76,41 @@ fn arguments() {
     assert_eq!(model._get_text("A5"), *"0");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 }
+
+// A number or single cell is an array of one value (statistics.md "Array arguments given a
+// scalar, a single cell or an error").
+#[test]
+fn paired_functions_take_scalars_as_one_value_arrays() {
+    let mut model = new_empty_model();
+    model._set("A1", "0");
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("C1", "1");
+    model._set("C2", "2");
+    model._set("C3", "3");
+    model._set("D1", "=COVAR(0,A1)");
+    model._set("D2", "=COVAR(0,B1:B2)");
+    model._set("D3", "=SLOPE(1,2)");
+    model._set("D4", "=FORECAST.LINEAR(1,0.2,1)");
+    model._set("D5", "=FORECAST.LINEAR(1,0.2,B1:B2)");
+    model._set("D6", "=T.TEST(C1:C3,5,1,1)");
+    model._set("D7", "=T.TEST(A1,B1:B2,0.1,3)");
+    model._set("D8", "=RSQ(A1,B1:B2)");
+    model._set("E1", "x");
+    model._set("E2", "TRUE");
+    model._set("D9", "=CHISQ.TEST(E1,B1:B2)");
+    model._set("D10", "=CORREL(E2,B1:B2)");
+    model._set("D12", "=T.TEST(E1,A1:A2,0.1,3)");
+    model.evaluate();
+    assert_eq!(model._get_text("D9"), *"#N/A");
+    assert_eq!(model._get_text("D10"), *"#N/A");
+    assert_eq!(model._get_text("D12"), *"#NUM!");
+    assert_eq!(model._get_text("D1"), *"0");
+    assert_eq!(model._get_text("D2"), *"#N/A");
+    assert_eq!(model._get_text("D3"), *"#DIV/0!");
+    assert_eq!(model._get_text("D4"), *"#DIV/0!");
+    assert_eq!(model._get_text("D5"), *"#N/A");
+    assert_eq!(model._get_text("D6"), *"#N/A");
+    assert_eq!(model._get_text("D7"), *"#NUM!");
+    assert_eq!(model._get_text("D8"), *"#N/A");
+}

@@ -331,6 +331,14 @@ impl Model {
             Err(e) => return e,
         };
 
+        if matches!(test_type, TTestType::Paired) && !samples.same_size {
+            return CalcResult::new_error(
+                Error::NA,
+                cell,
+                "For paired T.TEST, both samples must have the same size".to_string(),
+            );
+        }
+
         let (values1, values2): (Vec<f64>, Vec<f64>) = if matches!(test_type, TTestType::Paired) {
             // The pairs zipping the samples makes; a pair with a non-number side is skipped.
             let pairs = samples
