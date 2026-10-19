@@ -350,6 +350,7 @@ C	probes/ifs-long-criterion-precedence.case.json	7
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
 C	probes/ifs-switch-lift-edges.case.json	26
+C	probes/ifs-volatile-range-once.case.json	5
 C	probes/incomplete-gamma-cap.case.json	38
 C	probes/index-1x1-array-index.case.json	29
 C	probes/index-area-num-snap.case.json	11
@@ -1259,10 +1260,6 @@ F	probes/fin-amor-period-bound-c.case.json	Sheet1!A3
 F	probes/fin-amor-period-bound-c.case.json	Sheet1!A4
 F	probes/fin-amor-period-bound-c.case.json	Sheet1!A5
 F	probes/fin-amor-period-bound.case.json	Sheet1!B17
-F	probes/fin-amordegrc.case.json	S!A10
-F	probes/fin-amordegrc.case.json	S!A11
-F	probes/fin-amordegrc.case.json	S!A13
-F	probes/fin-amordegrc.case.json	S!A14
 F	probes/fin-argument-modes.case.json	Sheet1!H117
 F	probes/fin-argument-modes.case.json	Sheet1!H125
 F	probes/fin-argument-modes.case.json	Sheet1!H137
@@ -1399,10 +1396,8 @@ F	probes/fin-remaining-later-argument-ranges.case.json	Sheet1!K9
 F	probes/fin-rri.case.json	S!A14
 F	probes/fin-vdb-modes.case.json	S!A10
 F	probes/fin-vdb-modes.case.json	S!A13
-F	probes/fin-vdb-modes.case.json	S!A17
 F	probes/fin-vdb-modes.case.json	S!A6
 F	probes/fin-vdb-modes.case.json	S!A7
-F	probes/fin-vdb-modes.case.json	S!A9
 F	probes/fin-yield-odd-lift.case.json	Sheet1!A1
 F	probes/fin-yield-odd-lift.case.json	Sheet1!A3
 F	probes/fin-yield-odd-lift.case.json	Sheet1!A5

@@ -206,7 +206,8 @@ for SUMIFS and SUMIF an error in the sum range is `#N/A` only at the criteria po
 (`COUNTIF(NA(),{"a","b"})`, `COUNTIFS(NA(),{"a"})`, `SUMIFS(NA(),...)`) made excel-graph reject the whole workbook as unsupported,
 so those cases are unprobed.
 DEVIATION (directive 5, decision 0014): a lifted call whose walks would visit more than 2^27 cells
-(used cells of the walked range x criteria count x distinct consecutive criteria elements) is
+(used cells of the walked range x criteria count x distinct criteria elements; T-0408 counts a
+repeated element once wherever it repeats, where it counted each run of equal consecutive elements) is
 `#ERROR!` before any walk; Excel computes it. Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
 over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`). VLOOKUP/HLOOKUP over an array lookup_value
 use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
@@ -217,6 +218,13 @@ two-parameter LAMBDAs and the cell-visit cap", T-1325).
 Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
 `criteria_static_result` (expressions/parser/static_analysis.rs)
 Tasks: T-0207, T-0263, T-0278
+
+### A lifted *IF(S) evaluates its range arguments once per call
+When an array criterion lifts an *IF(S) call, a volatile range argument (`OFFSET(A1,0,0,RANDBETWEEN(1,6))`,
+`INDIRECT("A1:A"&RANDBETWEEN(1,6))`) is drawn once for the whole formula: every element walks the same range.
+Evidence: probes/ifs-volatile-range-once (excel-graph) C1-C3, where 8 always-true criteria over such a range give
+MAX = MIN for COUNTIFS, SUMIF (volatile criteria range) and COUNTIF (INDIRECT); C4, every element agrees on the
+COUNTIFS shape check between two independently drawn ranges. Ours resolves the ranges before the lift (T-0408).
 
 ## SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS: every range must have the first range's shape
 Rule: if any criteria (or sum) range is shaped differently from the first range, SUMIFS/COUNTIFS

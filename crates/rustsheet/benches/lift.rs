@@ -1,9 +1,13 @@
 //! Timings for SPEC-0011's lifting driver (`functions/lift/driver.rs`), T-1784. Column A holds
 //! runs of `RUN_LENGTH` equal values (0, 0, ..., 1, 1, ...) and column B the row number:
-//! - a lifted whole-column COUNTIFS, `=SUM(COUNTIFS(A:A,A1:A100000))` (the `reuse_equal_runs`
-//!   path: 10 walks, 100,000 slot comparisons);
+//! - a lifted whole-column COUNTIFS, `=SUM(COUNTIFS(A:A,A1:A100000))` (the `Reuse::AnyEqual`
+//!   path: 10 walks, 100,000 elements hashed);
 //! - a SUMIFS with an array criterion, `=SUM(SUMIFS(B1:B100000,A1:A100000,SEQUENCE(10,1,0)))`
 //!   (10 distinct criteria, one walk each);
+//! - the occurrence-count idiom over a 10,000-element criteria range of `CYCLE` distinct values
+//!   that repeat apart (column D), `=SUM(COUNTIFS(D1:D10000,D1:D10000))` and
+//!   `=SUM(SUMIFS(B1:B10000,D1:D10000,D1:D10000))` (T-0408: one walk per distinct value, where
+//!   reusing only equal runs walked once per element);
 //! - SWITCH lifted over 1,000,000 cells, where the driver itself dominates: a numeric result,
 //!   `=SUM(SWITCH(A1:A1000000,0,1,1,2,3))`, and a text one, `=ROWS(SWITCH(A1:A1000000,0,"a","b"))`
 //!   (every element a clone of a reused text result);
@@ -44,15 +48,21 @@ use std::io::Write;
 use rustsheet::{Input, Workbook};
 
 const RUN_LENGTH: u32 = 10_000;
+/// Column D's values, in its first `CYCLED_ROWS` rows: 0, 1, ..., `CYCLE` - 1, 0, 1, ...
+const CYCLE: u32 = 100;
+const CYCLED_ROWS: u32 = 10_000;
 const RUNS: usize = 11;
 
-/// A workbook with `rows` rows of runs in column A, the row number in column B, and `formula` in
-/// C1.
+/// A workbook with `rows` rows of runs in column A, the row number in column B, at most
+/// `CYCLED_ROWS` rows of cycling values in column D, and `formula` in C1.
 fn workbook(rows: u32, formula: &str) -> Result<Workbook, Box<dyn Error>> {
     common::filled_workbook(|tx| {
         for r in 1..=rows {
             tx.set(format!("A{r}").as_str(), f64::from((r - 1) / RUN_LENGTH))?;
             tx.set(format!("B{r}").as_str(), f64::from(r))?;
+            if r <= CYCLED_ROWS {
+                tx.set(format!("D{r}").as_str(), f64::from((r - 1) % CYCLE))?;
+            }
         }
         tx.set("C1", Input::Formula(formula.to_string()))?;
         Ok(())
@@ -70,6 +80,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             "SUMIFS, array criterion",
             100_000,
             "=SUM(SUMIFS(B1:B100000,A1:A100000,SEQUENCE(10,1,0)))",
+        ),
+        (
+            "COUNTIFS, occurrence count over repeated criteria",
+            10_000,
+            "=SUM(COUNTIFS(D1:D10000,D1:D10000))",
+        ),
+        (
+            "SUMIFS, 10,000-element criteria range of repeated values",
+            10_000,
+            "=SUM(SUMIFS(B1:B10000,D1:D10000,D1:D10000))",
         ),
         (
             "SWITCH, numeric result",
