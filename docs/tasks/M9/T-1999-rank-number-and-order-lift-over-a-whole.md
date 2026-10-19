@@ -3,7 +3,7 @@ id: T-1999
 title: "RANK number and order lift over a whole ref through the SPEC-0011 driver"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -47,13 +47,24 @@ Known behaviour from those probes:
 - A 1x1 array `number` gives a 1x1 array (P72).
 
 ## Acceptance criteria
-- [ ] probes/stat-test-lift P20-P28, P30-P33, P72 and stat-argument-modes H492, H493, H495, H496,
+- [x] probes/stat-test-lift P20-P28, P30-P33, P72 and stat-argument-modes H492, H493, H495, H496,
   H498, H499 leave eval/baseline/probes.txt, with no new F lines (the probes/rank-nonref-* cases
   stay green).
-- [ ] RANK* are in `Function::arg_kinds` and `lifting_table_functions!` with their fallback arms
+- [x] RANK* are in `Function::arg_kinds` and `lifting_table_functions!` with their fallback arms
   deleted, or a decision record keeps them.
-- [ ] Element errors carry empty messages.
-- [ ] `make check` green; reviewers approve.
+- [x] Element errors carry empty messages.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Literal-array and scalar `ref` values that the oracle refuses (decision 0039).
+
+## Outcome
+RANK, RANK.EQ and RANK.AVG are in the lifting table as `[Lift, ReferenceByCaller, Lift]` and their
+fallback arms are gone. The new `ArgKind::ReferenceByCaller` is read by the function (a reference is
+data, read once); a non-reference array comes back as a grid of errors through the new
+`Model::lift_call_beside` and broadcasts with `number` and `order`, and static analysis broadcasts its
+shape (`reference_by_caller_shape`). A new probe, probes/rank-direct-boolean (18 cells, excel-graph),
+showed three things the old scalar path got wrong: a direct boolean `number`/`order` coerces, a text
+`order` (also `"1"`) is `#VALUE!`, and `order`'s error comes before the data's; the kernel follows it
+(statistics.md). Eval: probes known failures 1844 -> 1824 (fixed 20: stat-test-lift P20-P28, P30-P33,
+P72; stat-argument-modes H492, H493, H495, H496, H498, H499), new case 19/19, no regressions.
