@@ -392,10 +392,7 @@ impl Model {
                 let d = x2 * r + y2;
                 ((x1 * r + y1) / d, (y1 * r - x1) / d)
             };
-            if !re.is_finite() || !im.is_finite() {
-                return num_error(cell);
-            }
-            complex_result(re, im, suffix)
+            finite_complex_result(re, im, suffix, cell)
         })
     }
 
@@ -457,10 +454,7 @@ impl Model {
                 return num_error(cell);
             };
             let (x, y) = (radius * cos, radius * sin);
-            if !x.is_finite() || !y.is_finite() {
-                return num_error(cell);
-            }
-            complex_result(x, y, suffix)
+            finite_complex_result(x, y, suffix, cell)
         })
     }
 
@@ -740,10 +734,7 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
         return complex_result(f64::MAX * y.cos(), f64::MAX * y.sin(), suffix);
     }
     let (re, im) = (modulus * y.cos(), modulus * y.sin());
-    if !re.is_finite() || !im.is_finite() {
-        return num_error(cell);
-    }
-    complex_result(re, im, suffix)
+    finite_complex_result(re, im, suffix, cell)
 }
 
 fn imln((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
