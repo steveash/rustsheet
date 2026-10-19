@@ -254,6 +254,8 @@ C	probes/encodeurl-evidence-floor.case.json	29
 C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
 C	probes/eng-imdiv.case.json	24
+C	probes/eng-impower-angle-cut.case.json	19
+C	probes/eng-impower-imdiv-edges.case.json	35
 C	probes/eng-impower.case.json	22
 C	probes/eng-imsub.case.json	21
 C	probes/eng-imsum-improduct-whole.case.json	45
@@ -1344,6 +1346,17 @@ F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A33
 F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-argument-modes.case.json	Calc!A51
+F	probes/eng-impower-angle-cut.case.json	S!A10
+F	probes/eng-impower-angle-cut.case.json	S!A11
+F	probes/eng-impower-angle-cut.case.json	S!A12
+F	probes/eng-impower-angle-cut.case.json	S!A13
+F	probes/eng-impower-angle-cut.case.json	S!A14
+F	probes/eng-impower-angle-cut.case.json	S!A15
+F	probes/eng-impower-angle-cut.case.json	S!A16
+F	probes/eng-impower-angle-cut.case.json	S!A17
+F	probes/eng-impower-angle-cut.case.json	S!A18
+F	probes/eng-impower-angle-cut.case.json	S!A19
+F	probes/eng-impower-angle-cut.case.json	S!A9
 F	probes/eng-later-argument-lift.case.json	Sheet1!M2
 F	probes/eng-later-argument-lift.case.json	Sheet1!M8
 F	probes/eta-reduced-names.case.json	Sheet1!E101
