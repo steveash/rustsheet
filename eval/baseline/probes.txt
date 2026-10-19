@@ -258,6 +258,7 @@ C	probes/encodeurl-evidence-floor.case.json	29
 C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
 C	probes/eng-first-vs-second-error.case.json	44
+C	probes/eng-im-overflow.case.json	48
 C	probes/eng-imdiv.case.json	24
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
@@ -1248,6 +1249,14 @@ F	probes/discount-security-modes.case.json	Calc!A86
 F	probes/discount-security-modes.case.json	Calc!A88
 F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
+F	probes/eng-im-overflow.case.json	S!A11
+F	probes/eng-im-overflow.case.json	S!A12
+F	probes/eng-im-overflow.case.json	S!A17
+F	probes/eng-im-overflow.case.json	S!A33
+F	probes/eng-im-overflow.case.json	S!A34
+F	probes/eng-im-overflow.case.json	S!A40
+F	probes/eng-im-overflow.case.json	S!A41
+F	probes/eng-im-overflow.case.json	S!A42
 F	probes/eng-impower-angle-cut.case.json	S!A10
 F	probes/eng-impower-angle-cut.case.json	S!A11
 F	probes/eng-impower-angle-cut.case.json	S!A12
