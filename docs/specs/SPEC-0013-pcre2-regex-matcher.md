@@ -157,7 +157,8 @@ narrowed only by naming a construct, and each narrowing runs the REGEX* benchmar
 **`$` and `\Z`.** In PCRE2's default mode they also match before a final `\n`, which no `hir::Look` expresses.
 They stay regular, and the choice is made per text instead:
 - on a text that does not end in `\n`, `$` and `\Z` are `\z`, so the automata run, with `Look::End`;
-- on a text that ends in `\n`, the search runs on the backtracker.
+- on a text that ends in `\n`, the search runs on the backtracker in its memoized mode (section 3), so it stays
+  linear.
 
 Cells rarely end in a line feed, so `^\d{5}$` over a column stays on the lazy DFA. Until T-1972 confirms PCRE2's
 default for Excel, T-1973 keeps today's meaning (`$` is `\z` on every text) and only adds the per-text switch once
@@ -228,10 +229,22 @@ existing cost model and caches.
     budget.
   - Memoization (a bit-set of visited `(pc, pos)`) is not used for non-regular programs. PCRE2 does not have it,
     and with backreferences, atomic groups or conditionals the result of a state depends on the path that reached
-    it. A program compiled from a regular AST (the empty-match retry of section 4) does use it, the technique of
-    `regex-automata`'s bounded backtracker. There, success from a state does not depend on the path, so the
-    priority-ordered result is unchanged and an attempt is O(program × span). The bit-set is program × (span + 1)
-    bits, charged to held memory.
+    it. Regular patterns use it, in a separate **memoized mode** (the technique of `regex-automata`'s bounded
+    backtracker). Every regular pattern that runs on the backtracker uses this mode: the empty-match retry of
+    section 4 and the `$`-before-a-final-`\n` texts of section 2.
+    - Its program is compiled from the regular AST Thompson-style. Counted repeats are expanded, with no
+      `RepeatCounter`, and charged to the compile budget, `TooBig` as the NFA limits are today. There is no
+      empty-loop slot: empty iterations are resolved as the Thompson NFA resolves them, which the differential test
+      pins against PCRE2's results.
+    - So a state's future depends only on `(pc, pos)`, which makes the visited bit-set sound and leaves the
+      priority-ordered result unchanged.
+    - The bit-set lives in `Caches` and is cleared once per text, not per attempt (generation stamps). It is kept
+      across the retries of one iteration, which start at increasing positions. Under "not empty at start" only a
+      `Match` at an attempt's own start depends on that start, so a `(pc, pos)` that failed for an earlier start
+      also fails for a later one. The whole iteration is O(program × text).
+    - The bit-set is program × (text + 1) bits, allocated in chunks for the positions reached, and charged to held
+      memory. If it would pass what the call may still hold, the call is `#ERROR!`. T-1974 adds that limit as a
+      `DEVIATION` entry (decision 0014) unless T-1972 shows Excel failing there too.
 
 ### 4. Positions and iteration (`pcre::Pattern::find_iter`)
 - Both engines search Rust `&str` byte offsets, and each match is converted to UTF-16 offsets only where Excel's
@@ -310,7 +323,9 @@ no code to the binary, since the crate is already linked.
   - Catastrophic patterns finish within the budget as `#ERROR!` or the probed answer, in bounded time:
     - `(a|a)*b`, `(a*)*b`, `((a+)+)+b` and nested lookarounds on 32,767-character texts;
     - `(.*)\1x` (backreference over a long capture);
-    - `(a|a)*b|` (the memoized retry).
+    - `(a|a)*b|` (the memoized retry);
+    - `(a|a)*b$` over a text ending in `CHAR(10)` (the memoized `$` path);
+    - `a*?` and `|b` iteration over 32,767 characters (the visited set persists across retries).
   - These patterns go through every pass (parse, `is_regular`, `to_hir`, compile, search, drop) without stack
     growth:
     - 250 nested groups;

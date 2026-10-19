@@ -27,6 +27,9 @@ Found by T-1688 (probes/regex-pcre2-features C1-C19, B27-B29; t1626-regextest C2
     frame, at conservative placeholder costs (overcharge, never undercharge);
   - a release-mode test runs `(a|a)*b`, `(a*)*b`, `((a+)+)+b` and `(.*)\1x` on 32,767 characters, which end in
     `Spent` (`#ERROR!`) or an answer within a stated wall-clock bound, without a stack overflow.
+- [ ] Every regular program on the backtracker runs in the memoized mode (SPEC-0013 section 3), counter-free and
+  guard-free. Its bit-set is allocated only if it fits what the call may still hold; otherwise the call is
+  `#ERROR!`. `(a|a)*b$` over a text ending in `CHAR(10)` is linear.
 - [ ] If the task proves bigger than M, split it: the core VM with backreferences, atomic and possessive groups
   first, then lookaround, conditionals and `\K` as a follow-up.
 - [ ] `make check` green; reviewers approve.
