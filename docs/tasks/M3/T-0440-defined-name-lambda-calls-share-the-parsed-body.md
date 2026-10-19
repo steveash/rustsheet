@@ -3,7 +3,7 @@ id: T-0440
 title: "Defined-name LAMBDA calls share the parsed body instead of cloning it per call"
 milestone: M3
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
