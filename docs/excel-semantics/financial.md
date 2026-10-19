@@ -132,6 +132,11 @@ Excel's `^` 467/467; with `exp(ln q/(n-1))` 456/467, libm `pow` 456/465; the sam
 Evidence: probes-numeric/m9-fin-mirr Calc!A1:A432 (excel-graph, 2026-10-17; A253:A432 are the 6x6 rate grids for
 {-100,120}, {-3,7}, {120,-100}, {-3,0,7} and {-3,7,0}); probes-numeric/m9-fin-irr-rate MIRR cells;
 ironcalc-calc/FINANCIAL/MIRR.xlsx (225 cells, all passing since).
+MIRR power overflow and underflow (T-1995): with no positive flow, both powers overflowing (`MIRR({-1,-2,-3},1E+200,1E+200)`) is `#DIV/0!`, the
+finance power's error winning over the reinvest power's `#NUM!` (each alone keeps its own: finance 1E+200 `#DIV/0!`, reinvest 1E+200 `#NUM!`).
+A power underflowing to 0 over 400 flows at a rate of -0.999999 is `#DIV/0!` for the reinvest rate or both rates and a number for the finance rate alone
+(0.004041825210995276, the same as at 0.1). Both overflowing with a positive flow is not probed.
+Evidence: probes/fin-mirr-overflow-underflow A1-A7 (excel-graph, 2026-10-19, T-1995).
 Status: VERIFIED (fit, 467/467 bit-exact)
 Implemented in: `fn_mirr` (functions/financial/mirr.rs). A rate of -1 keeps its own limit cases, and a ratio that is
 zero, negative or infinite keeps `powf`; neither is part of the fit.
@@ -858,12 +863,14 @@ Tasks: T-1475
 - VDB differs from us by a few ulp (A6, A10, A13) and ~4e-13 (A7); Excel's result for the same inputs depends on no_switch (A6 FALSE = 203.31648000000007, A7 TRUE = 203.3164800000004).
 - MDURATION and RRI(TRUE principal) differ from us only in the last ulp.
 Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
+- FVSCHEDULE: a boolean principal is `#VALUE!` from a TRUE or FALSE cell (`C1`, `C2`), `INDEX(C1:C2,1)` or `INDIRECT("C1")`; a text-number cell (`"1000"`) is converted (1100). The reference path matches the typed path, so `get_number_no_bools` is right (T-1992).
+Evidence: probes/fin-fvschedule-bool-ref (excel-graph, 2026-10-19, T-1992).
 Status: VERIFIED (excel-graph)
 Implemented (T-1764): VDB with salvage above cost never switches to straight line (-600); a fractional end period
 prorates the unclipped declining-balance charge and the total is capped at `cost - salvage` (A9 is 0; salvage <= cost only, salvage above cost keeps the clipped charge); AMORDEGRC
 rejects only an asset life (1/rate) in [0, 3] or strictly between 4 and 5 (exactly 4 and 5 are valid, coefficients
 1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. Still open: the ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI), see the T-1764 Outcome.
-Implemented (T-1765): a typed boolean principal is `#VALUE!` (A18); a text-number principal still converts. A boolean principal read through a reference is `#VALUE!` by inference, not probed (T-1992).
+Implemented (T-1765): a typed boolean principal is `#VALUE!` (A18); a text-number principal still converts. A boolean principal read through a reference is `#VALUE!` too, verified by probes/fin-fvschedule-bool-ref (T-1992).
 Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
 
 ## NPV and FVSCHEDULE arguments

@@ -425,13 +425,29 @@ impl Model {
         cell: CellReferenceIndex,
         as_reference: bool,
     ) -> CalcResult {
+        match self.ifs_pick(args, cell) {
+            Picked::Node(value) => self.evaluate_node_as(value, cell, as_reference),
+            Picked::Value(value) => value,
+        }
+    }
+
+    /// What IFS's conditions pick: the value of the first TRUE scalar condition, unevaluated;
+    /// otherwise the value IFS gives (an argument-count error, a condition's error, `#N/A`, or
+    /// IFS lifted over an array condition). Reference context follows the picked value as it
+    /// follows IF's branch: `SUBTOTAL(9,IFS(TRUE,(H1,I2)))` is 11 and
+    /// `ISREF(IFS(TRUE,XLOOKUP(..)))` TRUE (probes/subtotal-ifs-switch-reference-picks, T-2014).
+    pub(crate) fn ifs_pick<'a>(
+        &mut self,
+        args: &'a [Node],
+        cell: CellReferenceIndex,
+    ) -> Picked<'a> {
         let args_count = args.len();
         if args_count < 2 {
-            return CalcResult::new_args_number_error(cell);
+            return Picked::Value(CalcResult::new_args_number_error(cell));
         }
         if !args_count.is_multiple_of(2) {
             // Missing value for last condition
-            return CalcResult::new_args_number_error(cell);
+            return Picked::Value(CalcResult::new_args_number_error(cell));
         }
         let case_count = args_count / 2;
         for case_index in 0..case_count {
@@ -446,23 +462,21 @@ impl Model {
                 }
                 // Each element reads its condition and value pairs: one unit per argument.
                 let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
-                return self.lift_values(
+                return Picked::Value(self.lift_values(
                     lifted,
                     LiftCost::Cells(units),
                     &LiftOptions::REUSE_EQUAL_RUNS,
                     cell,
                     &mut |model, pairs| model.ifs_element(pairs, cell),
-                );
+                ));
             }
             match self.cast_to_bool(condition, cell) {
-                Ok(true) => {
-                    return self.evaluate_node_as(&args[2 * case_index + 1], cell, as_reference)
-                }
+                Ok(true) => return Picked::Node(&args[2 * case_index + 1]),
                 Ok(false) => {}
-                Err(error) => return error,
+                Err(error) => return Picked::Value(error),
             }
         }
-        no_match(cell)
+        Picked::Value(no_match(cell))
     }
 
     /// IFS on one element of lifted (condition, value) pairs: the value of the first TRUE
