@@ -20,7 +20,8 @@ and that `INDEX({2},1)` and `INDEX({2,3},1)` are scalars. The engine now returns
 (`index_from_array`), including `INDEX({7},0,0)`, `INDEX({7},1,0)`, `INDEX({7},0)` and `INDEX(5,0,0)`. Their values are probed
 (probes/index-scalar-indexes) but their shape is not. Probe with `TYPE(...)` in a dynamic cell, and with a legacy
 `=N(INDEX({7},0,0))` (the SPEC-0012 marker reads an array as `#VALUE!`). Cover `INDEX({7},0,0)`, `(…,1,0)`, `(…,0,1)`,
-`INDEX({7},0)`, `INDEX(5,0,0)`, `INDEX(5,0)` and `INDEX({2,3},0)`. Then record the result in lookup.md. If the engine
+`INDEX({7},0)`, `INDEX(5,0,0)`, `INDEX(5,0)`, `INDEX({2,3},0)`, `INDEX({2,3},0,1)` (a one-cell column of a one-row
+array) and `INDEX({2;3},0,1)` as a control. Then record the result in lookup.md. If the engine
 differs, file a functions-lookup fix task.
 
 ## Acceptance criteria
