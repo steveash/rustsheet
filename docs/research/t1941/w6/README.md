@@ -101,6 +101,20 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       anchors (ladders q409 at 2-, q410 at 1.5+, r203, r204, c304) by exact search in stage-ulp coordinates, as W1
       and W2 did, and then joined. That is K1-K3-scale work.
 
+14. **R is not a plain polynomial** (`polytest.py`, `polyctrl.py`).
+    - Forms tested: the Chebyshev interpolant on [1.5,2], degrees 12-18, as Clenshaw in z = 4x-7, Horner in z, in
+      2x-3.5, in x-c for c = 1..3 and in raw x.
+    - Exact-sim coherence on the real data is -0.02..+0.02 for all of them.
+    - Control: Chebyshev-extrema coefficients (4.6e-3 different) scored with the root-node ones give 0.96-1.00.
+    - A polynomial has no null space, so this is a clean rejection.
+    - Clenshaw N/D fits (5,5)-(9,9) also score about 0, but only (5,5) is meaningfully rejected (null space).
+15. **How far Excel's kernels sit from plain LS fits** (`nullspace.py`, used as a calibration):
+    - K2 efC lies in the linear null space of a (9,8) LS fit on [2,3], at <= 930 units of 1e-3 stage change in the
+      softest direction.
+    - K3 ss_fc is nonlinearly far: its D shape differs, with N stages 3-100x apart under D0 = 1.
+    - So a blind null-space search for R is not feasible. Coarse stage values must come from the line structure
+      (W4), and then a phase solve (W2 pipeline, `w2/wa/`) takes them to ulps.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
