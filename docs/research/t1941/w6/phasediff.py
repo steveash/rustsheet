@@ -34,6 +34,6 @@ if __name__=='__main__':
             j=int(j); c=Nc if ch=='N' else Dc; key=('S%d'%j if law=='S' else 'T%d'%j) if law in ('S','T') else 'P%dn%s'%(j,law[2:])
             f=stage_F(c,np.array([x[0]]))[key][0][0]; fa=f%1.0
             a=dft_at(ed,fa); b=dft_at(ec,fa)
-            meas=(np.angle(a/b)/(2*np.pi)); pred=(stage_phase(Nd if ch=='N' else Dd,law,j,x[0])-stage_phase(c,law,j,x[0]))
+            meas=(np.angle(a/b)/(2*np.pi)); pred=(stage_phase(Nd if ch=="N" else Dd,law,j,x[n//2])-stage_phase(c,law,j,x[n//2]))
             pw=((pred+0.5)%1)-0.5; line.append('%s.%s%d meas %+.3f pred %+.3f (%+.3f) |r| %.2f'%(ch,law,j,meas,pw,((-pred+0.5)%1)-0.5,abs(a)/max(abs(b),1e-9)))
         print('run %d x0 %.4f: '%(i,X0[i])+' | '.join(line),flush=True)

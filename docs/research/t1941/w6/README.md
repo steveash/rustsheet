@@ -155,6 +155,10 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     - frac(dS/(2u)) for T;
     - dP/u_P - n dM/u_M for product sideband n.
     - The predictions use mpmath polynomial stage values at the run start.
+    - Reference the predicted phase at the run centre: a frequency mismatch dF otherwise adds dF(N-1)/2.
+    - Then T lines agree to 0.001-0.02 cycles. The n=1 sideband D.P2n1 carries a systematic -0.055 cycle offset.
+      Plain S lines are unreliable (0.04-0.23 off, unstable amplitude), which matches W2's large-offset finding.
+      Use T lines for phase rows, sidebands with a fitted constant, and not S lines.
     - Each (run, line) therefore gives a congruence sum_k x^(k-j) (ulp(c_k)/u_S) m_k == phi (mod 1) in the integer
       coefficient offsets m_k. With 24 runs x ~9 lines that is a lattice problem: about 1,600 bits of information
       against about 820 bits of unknowns.
