@@ -3,7 +3,7 @@ id: T-1810
 title: "OFFSET, INDIRECT and TRIMRANGE lift over a range or an array into arrays of references"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -39,11 +39,34 @@ Unprobed (lookup.md): OFFSET's cols, height and width, INDIRECT's a1, TRIMRANGE'
 unprobed too: probe and lift it here.
 
 ## Acceptance criteria
-- [ ] probes/lookup-argument-modes F14:H15, F20:H21 and F34:H35 pass; baseline updated.
+Moved on the split (Outcome below), so left unchecked here: the first two items to T-1956 (OFFSET) and T-1957
+(INDIRECT, TRIMRANGE), the third to T-1959.
+- [ ] probes/lookup-argument-modes F14:H15, F20:H21 and F34:H35 pass; baseline updated. (T-1956, T-1957)
 - [ ] gen-m7/cb748b6a9b81fbb7 A28, gen-m9/675763979c1defb6 A25 and gen-m9/adb3fd63c7368166 A34 pass, with no new
-  known failures in eval/baseline/.
-- [ ] CHOOSE's `choose_array` is the kernel of a `lift_call`, with no result change.
-- [ ] `make check` green; reviewers approve.
+  known failures in eval/baseline/. (T-1956, T-1957)
+- [ ] CHOOSE's `choose_array` is the kernel of a `lift_call`, with no result change. (T-1959)
+- [x] The unprobed arguments are probed and recorded (probes/reference-lift-elements, lookup.md).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - INDEX of a single value (T-1242).
+
+## Progress (2026-10-19, opus)
+Probe landed: probes/reference-lift-elements (excel-graph) answers the unprobed arguments (OFFSET cols, height,
+width; INDIRECT a1; TRIMRANGE trim_cols; XMATCH search_mode) and the element shape. Findings are in lookup.md
+"OFFSET, INDIRECT and TRIMRANGE lift into arrays of references". The key point for the design note: the elements
+are references, not values. Spilled directly, each is `#VALUE!`; INDEX picks one as a reference (a multi-cell pick
+spills or is `#SPILL!`); ROWS/COLUMNS count elements; SUM reads them. `ArrayNode` cannot hold that today, so the
+design note has to choose a carrier (an array of references, or a lifted result INDEX/SUM/ROWS can see through)
+before any code. No engine code yet; the new case's cells are recorded as known failures in eval/baseline.
+
+## Outcome
+Split on resumption (2026-10-19, opus): the probe showed the lifted elements are references that INDEX, ROWS and
+SUM see through, which `ArrayNode` cannot carry. A new result carrier is an architectural change, which needs a
+spec first (CLAUDE.md directive 4), so this task lands the evidence and hands the code to:
+- T-1955 (engine, opus): spec for the array-of-references carrier.
+- T-1956 (functions-lookup, opus): OFFSET on it. T-1957 (sonnet): INDIRECT and TRIMRANGE.
+- T-1958 (functions-lookup, sonnet): XMATCH's search_mode lift, a value lift with no carrier needed.
+- T-1959 (quality, sonnet): CHOOSE's index lift onto `lift_call`.
+Eval delta: probes +59 cells (3 pass, 56 new known failures in probes/reference-lift-elements, owned by T-1956 to T-1958);
+0 regressions, 0 fixes.

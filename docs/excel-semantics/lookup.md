@@ -442,9 +442,11 @@ Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-12
 friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
 Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
 one result per cell, and CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). OFFSET, INDIRECT and TRIMRANGE
-still do not lift (their elements are references; T-1810), and INDEX of a single value is `#VALUE!` (T-1242).
+still do not lift (their elements are references; T-1810 probed them, T-1955 to T-1957 implement them),
+and INDEX of a single value is `#VALUE!` (T-1242).
 Status: VERIFIED (web)
-Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1810 (reference-valued lifts), T-1242 (INDEX of a single value)
+Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1810 (reference-valued lifts; split into
+T-1955 to T-1959), T-1242 (INDEX of a single value)
 
 ## A reference-valued lookup_value is looked up by its cell's value
 Rule: when lookup_value is a one-cell reference returned by a function or written as a range (`CHOOSE(1,J1)`,
@@ -663,3 +665,36 @@ A single-cell reference is a one-cell vector for XMATCH `lookup_array` and XLOOK
 Evidence: probes/xmatch-xlookup-reference-forms G1, H1-H16, probes/xmatch-xlookup-3d-lookup-array H1-H3 (excel-graph, 2026-10-16, T-1698).
 Status: VERIFIED (excel-graph); the engine already matches every cell.
 Tasks: T-1698
+
+## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
+Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or
+TRIMRANGE's trim_rows or trim_cols lifts the call element-wise, and each element is a *reference* (the scalar
+call's result), not a value. What the caller sees depends on who reads the elements:
+- Spilled as the cell's result, every element is `#VALUE!`, even a one-cell reference: `=OFFSET(A1,{0;1},0)`,
+  `=OFFSET(A1,0,{0,1})`, `=INDIRECT(C1:C3)`, `=TRIMRANGE(A1:B5,{0;1})` and `=OFFSET(A1,0,0,{1;2})` spill only
+  `#VALUE!`. An element that is an error stays itself: `=INDIRECT("A2",D1:D2)` (D1 TRUE, D2 FALSE) is
+  `#VALUE!`, `#REF!` ("A2" read as R1C1).
+- INDEX picks an element as the reference itself: a one-cell element gives its value (`INDEX(OFFSET(A1,0,{0,1}),1,2)`
+  is B1, `INDEX(INDIRECT(C1:C3),1,1)` is A1, `INDEX(TRIMRANGE(A1,{0;1}),2,1)` is A1) and `ISREF` of the pick is TRUE;
+  a multi-cell element spills its cells (`INDEX(OFFSET(A1,0,0,1,A1:A2),2,1)` spills A1:B1 as 1, 10) or is `#SPILL!`
+  where its area is blocked (`INDEX(OFFSET(A1,0,0,{1;2}),2,1)`, `INDEX(INDIRECT({"A1";"A1:A2"}),2,1)`,
+  `INDEX(TRIMRANGE(A1:B5,0,{0;1}),1,1)`). This is the nested-array `#SPILL!` of lookup-argument-modes H34:H35.
+- The shape is the lifted argument's: `ROWS`/`COLUMNS` count elements (`ROWS(OFFSET(A1,0,0,{1;2}))` is 2,
+  `COLUMNS(TRIMRANGE(A1:B5,0,{0;1}))` is 1), and `ISREF` of the whole result is a single FALSE.
+- SUM adds a one-cell element's value; a multi-cell element seems to add only its first cell
+  (`SUM(OFFSET(A1,0,0,{1;2}))` is 2 with A1 = 1, A2 = 2: A1 + A1). `SUM(INDIRECT(C1:C3))` is A1 + B2 + A3,
+  `SUM(OFFSET(A1,{0;1},0))` is A1 + A2. Unconfirmed: one probe cell only.
+- Per element, the scalar rules hold: an element off the sheet is `#REF!` (`OFFSET(A1,{0;-1},0)`, second element);
+  `INDIRECT("R2C1",{TRUE;FALSE})` is `#REF!`, A2; a scalar error argument next to the lifted one is that error in every
+  element (`INDEX(OFFSET(A1,{0;1},NA()),1,1)` is `#N/A`).
+- XMATCH's search_mode lifts too, as a value (only the second element is read, `INDEX(…,2,1)`): it is 2 in
+  `XMATCH(2,A1:A3,0,{1;-1})` and 3 in `XMATCH(2,{1;2;2},0,{2;-2})`; an invalid mode element is `#VALUE!` in its slot
+  (`{1;3}`); a boolean range element counts as its number (TRUE is 1). The first elements are unprobed (T-1958).
+- ERROR.TYPE and ISERROR of an INDEX pick whose multi-cell element cannot spill are the cell's `#SPILL!`, not a code or
+  TRUE (`ERROR.TYPE(INDEX(OFFSET(A1,0,0,{1;2}),2,1))`, `ISERROR(INDEX(TRIMRANGE(A1:B5,{0;1}),2,1))`; F11, G11, H11).
+Evidence: probes/reference-lift-elements (excel-graph, 2026-10-19, T-1810); probes/lookup-argument-modes F14:H15,
+F20:H21, F34:H35 (excel-graph, 2026-10-09, T-1238).
+Status: VERIFIED (excel-graph)
+Implemented in: not yet: the carrier is specified by T-1955 and built by T-1956 (OFFSET) and T-1957 (INDIRECT,
+TRIMRANGE); XMATCH's search_mode is T-1958.
+Tasks: T-1810, T-1955, T-1956, T-1957, T-1958

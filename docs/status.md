@@ -28,13 +28,13 @@ merged since its last run.
 
 `make eval-check` on `main` (30bee011) shows 0 regressions and 0 unrecorded fixes in every gated suite. poi and corpus-bench were fetched for this run. corpus-bench now scores 316 workbooks (142 last run): T-0432's canary fix and the refill landed.
 
-CI on `main` is green at 30bee011. No CI run on `main` failed since the last snapshot; six were cancelled by the next push. `main` moved to 054dd343 (T-1810, #1154) during this run.
+CI on `main` is green at 30bee011. No CI run on `main` failed since the last snapshot; six were cancelled by the next push. `main` moved on during this run (T-1810 #1154, T-1389 #1143 and others); this PR merges it.
 
 Where M2's exit stands:
 - gen-m2: **100%, criterion met**.
 - The frozen m1-probes list is at 0 failures (89 cases, 1,858 cells).
 - M0–M2 probes: 405 cases, 11,553 cells, 11,504 bit-exact, 4 deviations, **45 known failures** (was 180). The planner checked every cell; each has an open owning task:
-  - `sort-error-args` (23): T-1902 (functions-lookup, M7). SORT/SORTBY are M7 functions; **T-1964** (harness, new) maps the case to M7 in probe-milestones.tsv under a decision record, as 0058 did for `sort-omitted-args`.
+  - `sort-error-args` (23): T-1902 (functions-lookup, M7; H57:J71) and T-1839 (H97:H99, moved there by T-1833). SORT/SORTBY are M7 functions; **T-1964** (harness, new) maps the case to M7 in probe-milestones.tsv under a decision record, as 0058 did for `sort-omitted-args`.
   - `subtotal-take-array-selector` (9): **T-1914** (engine, now P0, see fuzz below) and T-1915 (engine).
   - `legacy-array-at-shapes` (6): T-1910 and T-1911 (engine).
   - `legacy-marker-spelling-name-plain` (2): T-1936 (engine). `legacy-match-lookup-array-intersection` (2): T-1935 (engine, in progress).
@@ -45,9 +45,9 @@ Where M2's exit stands:
   - `LOGICAL/IF_ARRAY.xlsx!Sheet1!C11`: the decision 0074 exception (desktop SIN(4), M14 T-1075). T-1876 settled it.
   - `MATH_AND_TRIGONOMETRY/POWER.xlsx!inside_a_lambda!C3`: a member of `=gelu(A1:C1)`, a workbook LAMBDA name over TANH/POWER (M5/M7). It counts as M2 only because the scope check does not see through defined names. **T-1965** (harness, new) fixes the classification; the 1-ulp gap itself is T-0959 (M9).
 - Criteria and aggregate iteration through the shared walks: met.
-- Duplication is at 3,768 lines, 58.8% below the fork's 9,153 (target ≥ 15%): met.
+- Duplication is at 3,630 lines on current `main` (T-1389 locked it), 60.3% below the fork's 9,153 (target ≥ 15%): met.
 
-Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 3,768 (ratchet locked 3,831 → 3,768 in this PR; was 4,328) · oversized files 11 (ratchet locked 12 → 11 in this PR, static_analysis.rs off the list; was 13).
+Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 3,630 (ratchet 3,630 after T-1389; was 4,328) · oversized files 11 (ratchet locked 12 → 11 in this PR, static_analysis.rs off the list; was 13).
 
 Since the 2026-10-18 snapshot (steward PR #1068), 92 commits landed on `main` through 30bee011, touching 89 task ids. None was reverted.
 - 83 came through PRs (one is the steward's #1068).
@@ -72,7 +72,7 @@ Blocked: 26 (25 last run). None can be unblocked.
 - I reproduced it on 30bee011 with a debug engine test, and the IFS twin `SUBTOTAL(9,TAKE(IFS({TRUE,FALSE},H1:H2,TRUE,I1:I2),2))` panics too.
 - Deduplicated against the open **T-1914**, which owns exactly these formulas (probe cells only): raised it to **P0, opus**, with the reproducer and a unit-test criterion (decision 0035).
 
-Open PRs: 6 (6 at the end of the last run), all opened in the last 24 h and none a draft: #1154 (T-1810, merged during this run), #1153 (T-1829), #1151 (T-1236), #1144 (T-1910), #1143 (T-1389), #1116 (T-1292). The long-standing drafts #698, #553, #436 and #409 are closed (their tasks landed or were blocked with findings). No PR qualified for an orphan merge (decision 0050), and there are no duplicates.
+Open PRs: 6 (6 at the end of the last run), all opened in the last 24 h and none a draft: #1153 (T-1829), #1151 (T-1236) and #1144 (T-1910) are open; #1154 (T-1810), #1143 (T-1389) and #1116 (T-1292) merged during this run. The long-standing drafts #698, #553, #436 and #409 are closed (their tasks landed or were blocked with findings). No PR qualified for an orphan merge (decision 0050), and there are no duplicates.
 
 Queues at the start of the run:
 - functions: 35 ready. The sonnet buffer is 24, so the gap-triager did not run.
