@@ -3,7 +3,7 @@ id: T-2012
 title: "Match SUBTOTAL over TAKE of an array SWITCH case value and of IF over a one-cell INDIRECT condition (T-1984)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
