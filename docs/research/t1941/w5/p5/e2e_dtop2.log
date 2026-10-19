@@ -1,0 +1,5 @@
+step 1 coarse: 66049 hyps 915s; top: dN8 +272 dN9 +231424 99 (Z 3.7) | dN8 +276 dN9 -112640 99 (Z 3.6) | dN8 +272 dN9 +229376 98 (Z 3.6) | dN8 +280 dN9 -239616 98 (Z 3.6)
+step 1 fine: 108
+step 2 m-scan top: -14064:9.1 +16304:8.1 -7728:8.1 -13640:8.0 -4624:8.0 (sd 2.2)
+step 3 refine: 152 | 146 | 140 | 132 | 118
+found - truth (ulps): N7 -14056 N8 -2 N9 +329824; truth full objective 147
