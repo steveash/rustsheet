@@ -3,7 +3,7 @@ id: T-1360
 title: "REGEXTEST, REGEXEXTRACT and REGEXREPLACE accept their optional case_sensitivity, return_mode and occurrence arguments (#ERROR! today)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
