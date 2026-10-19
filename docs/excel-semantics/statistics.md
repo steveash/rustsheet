@@ -911,6 +911,52 @@ HYPGEOMDIST is `Constant` and lifts up to the output cap.
 Status: VERIFIED (excel-graph) for the lifting (the Rule's cells); the term cap is a DEVIATION whose Excel values are unprobed (T-1896)
 Tasks: T-1873, T-1896, T-0977
 
+## Discrete distributions: within an ulp of the exact sum (T-0927)
+Rule: BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST are close to the exact value of their finite sums, not to a
+regularized incomplete beta evaluated in doubles: over the 148 numeric cells of those three sheets of ironcalc-calc
+STATISTICAL/BINOM.xlsx, the exact sum rounded once (ours, below; checked against Python `fractions` from the double `p`)
+is Excel's double at 78, within 4 ulp of it at 57 more, and within 4E-14 relative at the other 13 (below). Exact arithmetic also reproduces the cells whose exact value is a short decimal: `BINOM.DIST(7,8,0.7,TRUE)` is 0.94235199 and
+`BINOM.DIST(2,10,0.5,TRUE)` 0.0546875, where statrs' incomplete beta gave 0.9423519899999973 and 0.05468750000000168.
+Excel is not always the exact value: `BINOM.DIST(3,10,0.5,TRUE)` is 0.17187500000000006, one ulp above the exact
+0.171875, and `NEGBINOM.DIST(5,10,0.5,TRUE)` 0.15087890625000006. `NEGBINOM.DIST(0,100,0.01,TRUE)` (the pmf p^r) is
+1.0000000000000348E-200, which is `exp(100*ln(0.01))` in doubles bit for bit, 226 ulp from the exact 0.01^100
+(1.000000000000002E-200): Excel's prefactor is `exp(a*ln x)`, as for BETA.DIST ("Incomplete beta: Excel's closed forms
+and the best candidate", T-1744). The 13 cells further than 4 ulp from both the exact value and ours are tails where that
+prefactor's rounding shows: BINOM.DIST E24, E32, E67; BINOM.DIST.RANGE E10, E21, E23; NEGBINOM.DIST E3, E26, E30, E37,
+E40, E74, E75 (for example E24, `BINOM.DIST(2,10,0.999999,TRUE)`: Excel 4.499992001038836E-47, exact
+4.499992001038802E-47). Neither Loader's saddle-point pmf summed (R's `dbinom_raw`: bit-exact at 49 of the 122 cells
+tried, more than 4 ulp off at 15) nor the prefactor `exp(a*ln x)` times the exact remaining factor reproduces them.
+POISSON.DIST is the series `S = sum mean^i/i!` over i <= k (cdf) or its last term (pmf), rounded once to a double,
+times Excel's `exp(-mean)`, rounded once: `fl(fl(S)*exp(-mean))`. Over the distinct numeric POISSON.DIST cells with a
+count up to 1,000 that reproduces all 5 pmfs and 8 of 11 cdfs bit for bit and the other 3 within an ulp
+(`POISSON.DIST(5,5,TRUE)` 0.6159606548330631, ours ...632; `POISSON.DIST(1,1,TRUE)` 0.7357588823428848, ours ...847,
+where 2*exp(-1) is ...847, so Excel's cdf is not that product everywhere; `POISSON.DIST(100,100,TRUE)`
+0.5265621985299984, ours ...985). The exact value rounded gives only 6 of the 11 (it misses `POISSON.DIST(10,5,TRUE)`
+0.9863047314016171, exact ...170). T-1778 found `POISSON.DIST(k,m,TRUE)` = `CHISQ.DIST.RT(2*m,2*(k+1))` bit for bit
+("One incomplete-gamma kernel"), so the shared kernel sums this series for an integer shape, and CHISQ.DIST.RT,
+CHIDIST and CHISQ.TEST at an even df take the same walk (Q(k + 1, x/2) is `POISSON.DIST(k,x/2,TRUE)`): that fixes
+ironcalc-calc CHISQ.xlsx Sheet1!G2 with no other change in the gated suites.
+Evidence: ironcalc-calc STATISTICAL/BINOM.xlsx and POISSON.xlsx (Excel-cached); the exact values from Python
+`fractions` (BINOM) and 60-digit `decimal` (POISSON).
+Ours (T-0927): `statistical/discrete.rs` walks the pmf terms, each from the last by the exact ratio of consecutive
+terms, in double-double with a power-of-two exponent beside it (the terms start at q^n, as small as 0.5^3000), and
+rounds once: the binomial from the nearer end (a pmf), from 0 (a cdf, stopping once the terms past the mode no longer
+move the sum; past the budget 1 minus the sum from n where that is at least 2^-20), and from the cheaper end (a
+BINOM.DIST.RANGE). NEGBINOM.DIST is that binomial with n = f + r and the roles of p and q swapped: P(F <= f) is the
+probability of at most f failures in f + r trials, and its pmf is r/(f + r) times the binomial pmf at f. POISSON.DIST
+walks the series S above. A walk takes at most 2^10 steps (`MAX_STEPS`); past it (counts beyond about 1,024 before the
+mode) the functions fall back to statrs as before, so POISSON.DIST D31 (`POISSON.DIST(1000000,1000000,TRUE)`) and D55
+(`POISSON.DIST(46040,46071,TRUE)`) keep their 1E-9-relative residues (T-2042). The 13 binomial cells above and POISSON.DIST
+D8, D10, D19 and D60 (one ulp) are the residue; the rest of the two workbooks' numeric distribution cells pass.
+DEVIATION (decision 0014, CLAUDE.md directive 5): BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE, NEGBINOM.DIST and
+NEGBINOMDIST are charged 4096 units an element against the shared cell-visit cap of 2^27
+(`limits::MAX_LIFTED_CELL_VISITS`), the bound of two walks of 2^10 steps at about 32 ns, so a lifted call of more than
+32,768 elements is `#ERROR!` before it runs where Excel computes it (as BINOM.INV, "Later arguments and element values of
+the scalar statistical functions" above). POISSON.DIST keeps its incomplete-gamma weight, whose 2.6 ms bound covers the
+extra 33 us walk.
+Status: VERIFIED (excel-cached) for the values; the weight is a DEVIATION
+Tasks: T-0927, T-1744, T-2042
+
 ## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
 Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the
 right tail and `#NUM!` for the pdf (`F.DIST(1E308,2,3,TRUE)` `#DIV/0!`, `F.DIST(1E308,2,3,FALSE)` `#NUM!`,

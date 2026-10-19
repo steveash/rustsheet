@@ -1,5 +1,6 @@
 use statrs::distribution::{Discrete, Poisson};
 
+use super::discrete::{poisson_cdf, poisson_pmf};
 use super::incomplete_gamma::gamma_ur;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
@@ -9,8 +10,10 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 impl Model {
     /// `POISSON.DIST(x, mean, cumulative)`, and POISSON: every argument lifts over an array and a
     /// range (SPEC-0011; probes/stat-argument-modes H476-H485, probes/stat-quantile-lift
-    /// H47-H50). The cdf is statrs' Q(k + 1, mean), the capped port of `incomplete_gamma.rs`,
-    /// which the lifting table charges (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT`).
+    /// H47-H50). The pmf and cdf are Excel's `fl(fl(S)*exp(-mean))`, S the partial exponential series
+    /// walked in double-double (`discrete.rs`, T-0927); past that walk's budget the cdf is statrs'
+    /// Q(k + 1, mean), the capped port of `incomplete_gamma.rs`, both of which the lifting table
+    /// charges (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT`).
     pub(crate) fn fn_poisson_dist(
         &mut self,
         args: &[Node],
@@ -45,6 +48,15 @@ impl Model {
             return Ok(if cumulative || k == 0 { 1.0 } else { 0.0 });
         }
 
+        // The series walked in double-double (T-0927), past the walk's budget statrs.
+        let walked = if cumulative {
+            poisson_cdf(lambda, k)
+        } else {
+            poisson_pmf(lambda, k)
+        };
+        if let Some(prob) = walked {
+            return Ok(prob);
+        }
         let dist = Poisson::new(lambda).map_err(|_| num_error(cell))?;
         let prob = if cumulative {
             // statrs' `Poisson::cdf`.

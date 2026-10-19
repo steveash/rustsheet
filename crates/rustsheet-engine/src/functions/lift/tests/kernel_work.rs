@@ -29,17 +29,6 @@ const NETWORKDAYS_COUNT: &str = "one closed-form count of the prepared holidays"
 /// A function with no table entry yet is checked once it is entered.
 const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     // Fixed caps, read in each kernel.
-    (Function::BinomDist, Some(BETA_CDF)),
-    (Function::BinomDistCompat, Some(BETA_CDF)),
-    (
-        Function::BinomDistRange,
-        Some("two statrs incomplete betas of at most 140 steps each"),
-    ),
-    (Function::NegbinomDist, Some(BETA_CDF)),
-    (
-        Function::NegbinomDistCompat,
-        Some("the pmf: ln_gamma's fixed Lanczos sum"),
-    ),
     (Function::BetaDist, Some(BETA_CDF)),
     (Function::BetaDistCompat, Some(BETA_CDF)),
     (Function::FDist, Some(BETA_CDF)),
@@ -91,6 +80,11 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     (Function::Combin, None),
     (Function::Combina, None),
     (Function::Multinomial, None),
+    (Function::BinomDist, None),
+    (Function::BinomDistCompat, None),
+    (Function::BinomDistRange, None),
+    (Function::NegbinomDist, None),
+    (Function::NegbinomDistCompat, None),
     (Function::BinomInv, None),
     (Function::CritbinomCompat, None),
     (Function::BetaInv, None),

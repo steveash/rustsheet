@@ -2,6 +2,7 @@ use crate::calc_result::Range;
 use crate::reference_operators::{Ranges, RefArg};
 use statrs::distribution::{Continuous, Gamma};
 
+use super::discrete::poisson_cdf;
 use super::erf::{gamma_half_lower, gamma_half_upper};
 use super::incomplete_gamma::{gamma_cdf, gamma_inverse_cdf, gamma_sf};
 use crate::functions::lift::{num_error, number_or_error};
@@ -32,13 +33,21 @@ fn is_one_degree(dist: &Gamma) -> bool {
 
 /// The right tail P(X > x) of a chi-squared distribution from [`chi_squared`]: at one degree of
 /// freedom Q(1/2, x/2) = ERFC.PRECISE(SQRT(x/2)), as Excel's CHISQ.DIST.RT(x,1), CHIDIST and
-/// CHISQ.TEST compute it (T-1778, `kmyst-erfc-r9side4`), else statrs' `sf`, capped.
+/// CHISQ.TEST compute it (T-1778, `kmyst-erfc-r9side4`); at an even df, 2(k + 1), Excel's
+/// POISSON.DIST(k, x/2, TRUE) (T-1778: `POISSON.DIST(k,m,TRUE)` = `CHISQ.DIST.RT(2*m,2*(k+1))`,
+/// 60 of 60), the series walk of `discrete.rs` (T-0927) within its budget; else statrs' `sf`,
+/// capped.
 fn chi_squared_sf(dist: &Gamma, x: f64) -> f64 {
     if is_one_degree(dist) {
-        gamma_half_upper(x / 2.0)
-    } else {
-        gamma_sf(dist, x)
+        return gamma_half_upper(x / 2.0);
     }
+    let shape = dist.shape();
+    if x > 0.0 && shape.fract() == 0.0 {
+        if let Some(value) = poisson_cdf(x / 2.0, shape as u64 - 1) {
+            return value;
+        }
+    }
+    gamma_sf(dist, x)
 }
 
 /// A distribution value as a cell value: `#NUM!` unless finite and not negative.

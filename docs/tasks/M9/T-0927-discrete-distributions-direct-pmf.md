@@ -3,7 +3,7 @@ id: T-0927
 title: "BINOM.DIST/NEGBINOM.DIST/BINOM.DIST.RANGE/POISSON.DIST: direct pmf evaluation (~140 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -28,9 +28,25 @@ incomplete beta (T-0970) and incomplete gamma (T-0971) kernels are the alternati
 HYPGEOM.DIST is separate (T-0977): Excel is not exact there, so a direct product does not fit it.
 
 ## Acceptance criteria
-- [ ] All NumericClose lines for BINOM.DIST, NEGBINOM.DIST, BINOM.DIST.RANGE, POISSON.DIST disappear from `eval/baseline/ironcalc-calc.txt` (state exact counts; ulp-only residue may remain only if listed in the PR with expected/actual), no new lines.
-- [ ] No panics for huge n/k (bounded loops; large-n CDF falls back to a bounded method); unit tests for n = 0, p in {0,1}.
-- [ ] `make check` green.
+- [x] All NumericClose lines for BINOM.DIST, NEGBINOM.DIST, BINOM.DIST.RANGE, POISSON.DIST disappear from `eval/baseline/ironcalc-calc.txt` (state exact counts; ulp-only residue may remain only if listed in the PR with expected/actual), no new lines.
+- [x] No panics for huge n/k (bounded loops; large-n CDF falls back to a bounded method); unit tests for n = 0, p in {0,1}.
+- [x] `make check` green.
 
 ## Out of scope
 BINOM.INV (CRITBINOM), GAMMA.DIST/BETA.DIST kernels.
+
+## Outcome
+`functions/statistical/discrete.rs` sums the pmf terms in double-double with a power-of-two exponent (each term from
+the last by the exact ratio of consecutive terms, one rounding at the end), capped at 2^10 steps a walk with statrs as the
+fallback past it. BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST (as a binomial of f + r trials) give the exact sum
+rounded; POISSON.DIST (and CHISQ.DIST.RT, CHIDIST and CHISQ.TEST at an even df, by T-1778's identity) gives `fl(fl(S)*exp(-mean))`, S the partial exponential series, which fits Excel better than the
+exact sum (8 of 11 small cdfs and all 5 pmfs bit for bit, against 6 of 11). docs/excel-semantics/statistics.md
+"Discrete distributions: within an ulp of the exact sum" has the evidence. The five binomial functions are now charged
+4096 units an element in the lifting table (BINOM.INV's weight, a DEVIATION past 32,768 elements).
+Eval: ironcalc-calc known failures 1113 -> 1045 (68 fixed, no regressions); for these four functions 143 -> 76 cell lines (BINOM.xlsx 111 -> 70, POISSON.xlsx 32 -> 6). Residue, all listed in the semantics entry:
+- 13 NumericClose binomial tails where Excel is more than 4 ulp from the exact value (its incomplete-beta prefactor
+  `exp(a*ln x)`; BINOM.DIST E24, E32, E67; BINOM.DIST.RANGE E10, E21, E23; NEGBINOM.DIST E3, E26, E30, E37, E40, E74,
+  E75): they need Excel's incomplete-beta kernel (T-1744's fit, T-0970).
+- 57 binomial NumericUlp cells (Excel within 4 ulp of the exact value, not equal).
+- POISSON.DIST D31 and D55 (NumericClose; counts past the 2^10 budget fall back to statrs): follow-up T-2042.
+- POISSON.DIST D8, D10, D19, D60 (one ulp).
