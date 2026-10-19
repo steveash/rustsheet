@@ -826,6 +826,22 @@ Implemented in: `fn_acos` (functions/math_and_trigonometry/mathematical.rs) as `
 Status: VERIFIED
 Tasks: T-0939
 
+## ATAN2 is ATAN(y/x) plus or minus π
+Rule: for `ATAN2(x_num, y_num)` Excel forms the quotient `q = y/x` with its own `/` ("A subnormal divisor is zero",
+overflow is #NUM!) and returns `ATAN(q)`, not libm `atan2(y, x)`. For x < 0 it adds π when y >= 0 (so `ATAN2(-1,-0)` = π)
+and subtracts π when y < 0. x = 0 gives ±π/2 by the sign of y (a kept subnormal y counts as non-zero), and
+`ATAN2(0,0)` is #DIV/0!. A subnormal x (kept, e.g. `3E-308-2.5E-308`) is #DIV/0! for any y, even `ATAN2(S,1E300)`;
+a quotient that overflows (`ATAN2(1E-300,1E300)`, `ATAN2(1E-8,1E305)`) is #NUM! while `ATAN2(1E-8,1E300)` is π/2.
+An underflowing quotient (`ATAN2(1E300,-1E-10)`) gives 0, or ±π for x < 0 by y's sign; a subnormal y with x < 0
+keeps its sign (`ATAN2(-1,-S)` = -π). Literal subnormal inputs read as 0 first ("Subnormal results become 0"), a separate
+quirk. The ATAN kernel is the engine's `f64::atan`, as in `fn_atan`; ulp parity depends on it.
+Evidence: probes/atan2-quadrants (all 123 numeric cells equal this model; libm `atan2` misses 25 by one ulp, as does
+the 34-cell G column of probes/asin-atan-sign-source), probes/atan2-error-edges, probes/atan2-kept-subnormal (with `=0`
+companions, decision 0042); excel-graph, 2026-10-19, T-1930.
+Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT may share the kernel (not probed).
+Status: VERIFIED
+Tasks: T-1930, T-1797
+
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
 engine forms, rounded faithfully (within 1 ulp of the exact `X^fl(1/n)`) but by no known model: it
