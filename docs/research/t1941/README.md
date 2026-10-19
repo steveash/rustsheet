@@ -123,3 +123,12 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   along a near-null direction, a common smooth factor in N and D that cancels in N/D. No function or minimax fit
   can find them; per-stage phase ladders (epsilon ladders at a dyadic point) can.
 - 1.5 < x < 2 is a different composition, not cracked.
+
+## GAMMALN near-1 kernel, 0.7 <= x <= 1.5: state at W1's report
+- res = fl(t*A), t = x-1 exact; A = fl(N(x)/D(x)), Horner in raw x, degree (9,9) or (9,10).
+- Candidate: `near1_candidate_w1.txt` (49% exact on [0.7,1.5]). The stage values at x = 1 match Excel to 1-8 ulps.
+- Method that worked: per-chain phase ladders near x = 1 (`kmyst-gam-e1xx`, `e2xx`). Each step's Taylor terms
+  follow a_k(j) = a_k(j-1) + a_k-1(j-1), so all stages of a chain are unwrapped jointly, rung by rung.
+- A sharper function target than true lgamma: per-run mean of (Excel A minus exactly simulated model A).
+- Remaining: an exact integer search on the stage mantissas at x = 1 (possibly with q0 = 2^-13 fixed), then the top
+  coefficients from far runs.
