@@ -432,11 +432,37 @@ impl Model {
     pub(crate) fn fn_atan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Atan, args, cell, |f| Ok(f64::atan(f)))
     }
+    // ASINH and ACOSH are the textbook log formulas in doubles, not libm, so small arguments lose
+    // precision exactly as Excel's do: ASINH(1E-10) = 1.000000082690371E-10 and
+    // ACOSH(1.000000000001) = 1.414276423083533E-6 (docs/excel-semantics/numbers.md, "Inverse
+    // hyperbolics, COTH/CSCH and the SINH/TANH thresholds", probes-numeric/m9-hyperbolic, T-2031).
+    // Where `x*x` overflows (|x| above about 1.3E154) no Excel value is known, so libm stays there.
     pub(crate) fn fn_asinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Asinh, args, cell, |f| Ok(f64::asinh(f)))
+        self.number_fn(Function::Asinh, args, cell, |f: f64| {
+            let square = f * f;
+            if square.is_infinite() {
+                Ok(f64::asinh(f))
+            } else if f < 0.0 {
+                Ok(-(-f + (square + 1.0).sqrt()).ln())
+            } else {
+                Ok((f + (square + 1.0).sqrt()).ln())
+            }
+        })
     }
     pub(crate) fn fn_acosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Acosh, args, cell, |f| Ok(f64::acosh(f)))
+        self.number_fn(Function::Acosh, args, cell, |f: f64| {
+            // Checked first: for a large negative argument `f + sqrt(f*f - 1)` rounds to 0 and the
+            // log is -inf, not NaN.
+            if f < 1.0 {
+                return Err(Error::NUM);
+            }
+            let square = f * f;
+            if square.is_infinite() {
+                Ok(f64::acosh(f))
+            } else {
+                Ok((f + (square - 1.0).sqrt()).ln())
+            }
+        })
     }
     // ATANH(+-1) is `#NUM!` at once, like any other out-of-domain argument; f64::atanh gives an
     // infinity there, which the macro's NaN mapping misses (probes/atanh-unit-argument A1:A8,
