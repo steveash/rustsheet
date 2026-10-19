@@ -461,8 +461,8 @@ the 9999 limit: the month argument is bounded (see "DATE month and day bounds").
 excel-graph 2026-10-09), the same 32767 cap (T-1419).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
 Ours: YEARFRAC's kernel (`yearfrac_of`) reads and range-checks the basis, then reads the start and the end date, as Excel does, so probes/scalar-lift-open-d W1-W7, -a W5-W8 and probes/yearfrac-basis-order pass (T-1800). The financial callers of `get_yearfrac` (ACCRINTM, DISC and the rest) pass three numbers, where every failing check is `#NUM!` in either order, so the reorder changes nothing for them.
-Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
-DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
+DATEDIF's unit and DAYS360's method lift too, over an array and over a range on and off its rows (`ROWS(DATEDIF(45000,46000,{"d";"m"}))` and `ROWS(DATEDIF(45000,46000,B1:B2))` are 2, `INDEX(..,2)` is 32 for "m"; `INDEX(DAYS360(45031,45351,C1:C2),1)` is 314), and in a legacy formula the unit's range takes the `@`: legacy `DATEDIF(45000,46000,B1:B2)` is 1000 on B1's row ("d") and 32 on B2's ("m"), so it intersects with the formula's row rather than taking the first cell. A 3-D reference (`Sheet1:Sheet2!A1`) in DAY, HOUR, DATE, WEEKDAY, DATEDIF or ISOWEEKNUM is `#REF!`, as in the other worksheet functions' lifted arguments. A one-cell range is that cell's value, not a 1x1 array, so a scalar error beside it is the result: `ROWS(DAYS(E1:E1,NA()))` is `#N/A`, `ROWS(WEEKDAY(E1:E1,"x"))` and `ROWS(DAYS360(E1:E1,"x"))` are `#VALUE!`, `ROWS(HOUR(E1:E1))` is 1 (N3, N4, N6, N13). Evidence: probes/date-math-lift-driver-edges G1-G10, G24-G26, G30-G32, G40-G41, K1, K5, L2, N3-N13 (excel-graph, 2026-10-18/19, T-1785).
+Ours: DAY, MONTH, YEAR, HOUR, MINUTE, SECOND, DATE, TIME, DAYS, DAYS360, DATEDIF, WEEKDAY and ISOWEEKNUM are `Lift` entries of the SPEC-0011 driver in every argument (T-1785); DATEVALUE and TIMEVALUE lift like the text functions (T-1235), as does the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
 over an array and refuse a multi-cell range in every argument, in dynamic and legacy formulas (T-1770, SPEC-0011
 `LiftArrays`). Still `#N/IMPL!` (T-1236) for an array literal in a date argument: WORKDAY, WORKDAY.INTL, NETWORKDAYS,
 NETWORKDAYS.INTL.
@@ -481,8 +481,9 @@ order: DATEDIF reports the `#NUM!` of an end before the start before the unit's 
 (`DATEDIF(10,5,NA())` is `#NUM!`; for out-of-range dates the unit's error wins, see "DATEDIF argument errors before date checks", T-1355), while DAYS360 reports the method's error before the dates' `#NUM!`
 (`DAYS360(-5,5,NA())` is `#N/A`). Also unprobed: `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and a
 single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
+One lifted data point (T-1785): `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` is `#N/A` in Excel, so an error unit beats the reversed pair's `#NUM!` there, where ours gives `#NUM!` (probes/date-math-lift-driver-edges G43, a known failure for T-1430); `INDEX(DATEDIF(45000,46000,{"d";#N/A}),2)` is `#N/A` in both (G42). DATEDIF's unit and DAYS360's method over an array are answered in "Date function argument modes" (they lift).
 Status: UNVERIFIED (probe pending)
-Tasks: T-1430 (error order), T-1428 (3D ranges, unit/method over an array)
+Tasks: T-1430 (error order), T-1428 (3D ranges in the text and weekend arguments)
 
 ## TIMEVALUE of chrono-pattern date-time text in a 1904 workbook (T-1445)
 Rule: in a 1904 workbook `TIMEVALUE("7/7/2026 4:35 PM")` and `TIMEVALUE("2024-03-15 16:35")` both give

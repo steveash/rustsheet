@@ -826,6 +826,22 @@ Implemented in: `fn_acos` (functions/math_and_trigonometry/mathematical.rs) as `
 Status: VERIFIED
 Tasks: T-0939
 
+## ATAN2 is ATAN(y/x) plus or minus π
+Rule: for `ATAN2(x_num, y_num)` Excel forms the quotient `q = y/x` with its own `/` ("A subnormal divisor is zero",
+overflow is #NUM!) and returns `ATAN(q)`, not libm `atan2(y, x)`. For x < 0 it adds π when y >= 0 (so `ATAN2(-1,-0)` = π)
+and subtracts π when y < 0. x = 0 gives ±π/2 by the sign of y (a kept subnormal y counts as non-zero), and
+`ATAN2(0,0)` is #DIV/0!. A subnormal x (kept, e.g. `3E-308-2.5E-308`) is #DIV/0! for any y, even `ATAN2(S,1E300)`;
+a quotient that overflows (`ATAN2(1E-300,1E300)`, `ATAN2(1E-8,1E305)`) is #NUM! while `ATAN2(1E-8,1E300)` is π/2.
+An underflowing quotient (`ATAN2(1E300,-1E-10)`) gives 0, or ±π for x < 0 by y's sign; a subnormal y with x < 0
+keeps its sign (`ATAN2(-1,-S)` = -π). Literal subnormal inputs read as 0 first ("Subnormal results become 0"), a separate
+quirk. The ATAN kernel is the engine's `f64::atan`, as in `fn_atan`; ulp parity depends on it.
+Evidence: probes/atan2-quadrants (all 123 numeric cells equal this model; libm `atan2` misses 25 by one ulp, as does
+the 34-cell G column of probes/asin-atan-sign-source), probes/atan2-error-edges, probes/atan2-kept-subnormal (with `=0`
+companions, decision 0042); excel-graph, 2026-10-19, T-1930.
+Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT may share the kernel (not probed).
+Status: VERIFIED
+Tasks: T-1930, T-1797
+
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
 engine forms, rounded faithfully (within 1 ulp of the exact `X^fl(1/n)`) but by no known model: it
@@ -1464,13 +1480,13 @@ Tasks: T-1301
 ## RADIANS, SQRTPI and MUNIT
 Rule: all 94 cells of probes/radians-sqrtpi-munit agree with `x * (PI / 180)` for RADIANS and `sqrt(x * PI)` for SQRTPI to the last bit (`RADIANS(180)` = PI(), `RADIANS(1E-300)`, `SQRTPI(1E-155*1E-155)` and `SQRTPI(10^308)` included), so there are no ulp differences to file.
 - **SQRTPI rejects booleans, RADIANS reads them.** `SQRTPI(TRUE)`, `SQRTPI(FALSE)`, `SQRTPI(1=1)`, a reference to a TRUE cell and `SQRTPI({TRUE})` are `#VALUE!`, while `RADIANS(TRUE)`, `RADIANS(D1)` and `RADIANS({TRUE})` are 0.01745...; numeric text (`SQRTPI("4")`) is read, `-TRUE` is a number (`SQRTPI(-TRUE)` is `#NUM!`). In an array the boolean element is the error: `SQRTPI({1,TRUE})` starts with 1.77... (the second element is not probed; we give `#VALUE!`). A negative argument is `#NUM!`.
-- **A multi-cell range is one `#VALUE!`, not a spill.** `SQRTPI(D1:E1)` (D1 TRUE, E1 empty) is a single `#VALUE!` (probes/radians-sqrtpi-munit A80, no B80), and so is every multi-cell range whatever it holds: two numbers (`H1:I1`), a boolean and a number, text and a number, a vertical pair, two blanks, a 2-D block (probes/sqrtpi-range-operands, excel-graph, 2026-10-16, T-1663). An array constant lifts: `SQRTPI({4,9})` is 3.54..., 5.31... and `SQRTPI({4,TRUE})` is 3.54..., `#VALUE!`. A one-cell range such as `H1:H1` is unprobed (ours: a scalar). Ours: `fn_sqrtpi`.
+- **A multi-cell range is one `#VALUE!`, not a spill.** `SQRTPI(D1:E1)` (D1 TRUE, E1 empty) is a single `#VALUE!` (probes/radians-sqrtpi-munit A80, no B80), and so is every multi-cell range whatever it holds: two numbers (`H1:I1`), a boolean and a number, text and a number, a vertical pair, two blanks, a 2-D block (probes/sqrtpi-range-operands, excel-graph, 2026-10-16, T-1663). An array constant lifts: `SQRTPI({4,9})` is 3.54..., 5.31... and `SQRTPI({4,TRUE})` is 3.54..., `#VALUE!`. A one-cell range such as `H1:H1` is unprobed (ours: a scalar). A reference a function returns is refused like a written range (`SQRTPI(TAKE(E1:E3,2))` and `ROWS(SQRTPI(DROP(E1:E3,1)))` are `#VALUE!`), a 3-D reference is `#VALUE!`, and a legacy `SQRTPI(E1:E3)` takes no `@` (`#VALUE!` on the range's rows), as for the other Analysis ToolPak functions (probes/date-math-lift-driver-edges G21-G23, G28, K2; T-1785). Ours: `fn_sqrtpi`.
 - **MUNIT truncates its dimension** (`ROWS(MUNIT(2.9))` is 2), is `#VALUE!` below 1 (`MUNIT(0)`, `MUNIT(0.5)`, `MUNIT(-1)`) and for text that is not a number, and reads numeric text and TRUE as 1.
-- **MUNIT lifts over an array or range argument**: each element gives the 1 at the top left of its own matrix, so `MUNIT({1,2})` is {1,1} (`ROWS` 1, `COLUMNS` 2, `SUM` 2), `MUNIT({2;3})` is 2 rows by 1 column, and an element of 0 or text makes that element, and so `SUM`, `#VALUE!`.
+- **MUNIT lifts over an array or range argument**: each element gives the 1 at the top left of its own matrix, so `MUNIT({1,2})` is {1,1} (`ROWS` 1, `COLUMNS` 2, `SUM` 2), `MUNIT({2;3})` is 2 rows by 1 column, and an element of 0 or text makes that element, and so `SUM`, `#VALUE!` (`INDEX(MUNIT({2;0}),2)` is `#VALUE!`, `INDEX(MUNIT({2;TRUE}),2)` is 1, `ROWS(MUNIT(E1:E2))` is 2 over a range; probes/date-math-lift-driver-edges G33-G35). A 3-D reference is `#REF!`, as in a worksheet function's lifted argument (G29). A one-cell range or one-cell reference is its value, not a 1x1 array: `ROWS(MUNIT(E1:E1))` and `ROWS(MUNIT(OFFSET(E1,0,0)))` are 5 with E1 = 5, the whole matrix (N1-N2).
 - excel-graph rejects the workbook (`createSession` 501 `unsupportedWorkbook`) for a literal `1E+308` (as numbers.md "Formula literals of 1E+308 or more" says) and also for the denormal literals `1E-310` and `-1E-310`; the probe computes them (`1E-155*1E-155`). `MUNIT(1048577)` and `MUNIT(1E+10)` were left out of the case for the huge-dimension reason in text.md, unprobed.
 Evidence: probes/radians-sqrtpi-munit (excel-graph, 2026-10-13, T-1282).
-Status: VERIFIED. Ours: `fn_sqrtpi` (mathematical.rs) reads booleans as errors and lifts, `fn_munit` (matrix.rs) lifts through `lift_number_operands`; SQRTPI's static result is `scalar_arguments` since it can return an array.
-Tasks: T-1282
+Status: VERIFIED. Ours: `fn_sqrtpi` (mathematical.rs) is a `LiftArrays` table entry of the SPEC-0011 driver whose kernel reads booleans as errors; `fn_munit` (matrix.rs) reads its argument with `read_lift_arg` and lifts an array or range through `lift_values` (it has no table entry: its scalar result is a matrix, so its static shape stays unknown; T-1785).
+Tasks: T-1282, T-1785
 
 ## Trig of a huge angle
 SIN, COS, TAN, COT, SEC and CSC return `#NUM!` when |x| >= 2^27 (134217728); 2^27-1 still gives a
