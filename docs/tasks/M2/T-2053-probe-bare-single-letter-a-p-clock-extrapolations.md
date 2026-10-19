@@ -3,7 +3,7 @@ id: T-2053
 title: "Probe bare single-letter A/P clock extrapolations (10 A., 0:00 A, 13:00 A, 10:00:30.5 A, 10 AM)"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
