@@ -687,16 +687,16 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 - Per element, the scalar rules hold: an element off the sheet is `#REF!` (`OFFSET(A1,{0;-1},0)`, second element);
   `INDIRECT("R2C1",{TRUE;FALSE})` is `#REF!`, A2; a scalar error argument next to the lifted one is that error in every
   element (`INDEX(OFFSET(A1,{0;1},NA()),1,1)` is `#N/A`).
-- XMATCH's search_mode lifts too, as a value (only the second element is read, `INDEX(…,2,1)`): it is 2 in
+- XMATCH's search_mode lifts too, as a value (for the array modes only the second element is probed, `INDEX(…,2,1)`): it is 2 in
   `XMATCH(2,A1:A3,0,{1;-1})` and 3 in `XMATCH(2,{1;2;2},0,{2;-2})`; an invalid mode element is `#VALUE!` in its slot
-  (`{1;3}`); a boolean range element counts as its number (TRUE is 1). The first elements are unprobed (T-1958).
+  (`{1;3}`); a boolean range element counts as its number (TRUE is 1). The first array-mode elements are unprobed, as is an error lookup_value next to a lifted search_mode (`XMATCH(NA(),A1:A3,0,{1;-1})`, implemented as a 2x1 of `#N/A` by analogy with MATCH's match_type, UNVERIFIED). Implemented (T-1958): `fn_xmatch` lifts search_mode with lookup_value and match_mode.
 - ERROR.TYPE and ISERROR of an INDEX pick whose multi-cell element cannot spill are the cell's `#SPILL!`, not a code or
   TRUE (`ERROR.TYPE(INDEX(OFFSET(A1,0,0,{1;2}),2,1))`, `ISERROR(INDEX(TRIMRANGE(A1:B5,{0;1}),2,1))`; F11, G11, H11).
 Evidence: probes/reference-lift-elements (excel-graph, 2026-10-19, T-1810); probes/lookup-argument-modes F14:H15,
 F20:H21, F34:H35 (excel-graph, 2026-10-09, T-1238).
 Status: VERIFIED (excel-graph)
-Implemented in: not yet: the carrier is specified by T-1955 and built by T-1956 (OFFSET) and T-1957 (INDIRECT,
-TRIMRANGE); XMATCH's search_mode is T-1958.
+Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier: not yet, specified by T-1955
+and built by T-1956 (OFFSET) and T-1957 (INDIRECT, TRIMRANGE).
 Tasks: T-1810, T-1955, T-1956, T-1957, T-1958
 
 ## XLOOKUP: an error lookup_value beats a size mismatch

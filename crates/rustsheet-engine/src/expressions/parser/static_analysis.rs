@@ -751,8 +751,14 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => StaticResult::Unknown,
-        // Spills by lookup_value and match_mode, broadcast; lookup_array is consumed (T-1241).
-        Function::Xmatch => broadcast_static_result(args.iter().step_by(2).take(2)),
+        // Spills by lookup_value, match_mode and search_mode, broadcast; lookup_array is consumed
+        // (T-1241, T-1958).
+        Function::Xmatch => broadcast_static_result(
+            args.iter()
+                .enumerate()
+                .filter(|(i, _)| *i != 1)
+                .map(|(_, a)| a),
+        ),
         Function::Trimrange => StaticResult::Unknown,
         Function::Sort | Function::Sortby | Function::Unique => StaticResult::Unknown,
         Function::Filter | Function::Take | Function::Drop => StaticResult::Unknown,
