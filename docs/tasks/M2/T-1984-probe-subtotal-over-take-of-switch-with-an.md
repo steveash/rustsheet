@@ -3,7 +3,7 @@ id: T-1984
 title: "Probe SUBTOTAL over TAKE of SWITCH with an array case value, IFS with only a later array condition, and IF/CHOOSE/LET-wrapped array selectors"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
