@@ -975,7 +975,7 @@ RANK.EQ and RANK.AVG agree where probed): `number` coerces a boolean and numeric
 text included: `RANK(4,A1:A8,"1")` is `#VALUE!`. `order` is read before the data's error: with D2 = `#N/A`,
 `RANK(4,D1:D3,"x")` and `RANK(1,D1:D3,"x")` are `#VALUE!` and `RANK(4,D1:D3,1/0)` is `#DIV/0!`. So an element reads
 `number`, then `order`, then the data's error, then ranks (`#N/A` when absent). Before T-1999 a direct boolean was `#VALUE!`,
-`"1"` was an ascending order and the data's error came before `order`'s. Not probed: an `order` from a cell holding text.
+`"1"` was an ascending order and the data's error came before `order`'s. Not probed: an `order` from a cell holding text, and `number`'s error against `order`'s (T-2012).
 Not yet probed (T-2000): T.TEST's `type` against the samples' error, FORECAST's `x` against the data's
 own validation, and an error data argument of PERCENTRANK, QUARTILE, PROB and FREQUENCY.
 Status: VERIFIED (excel-graph)
