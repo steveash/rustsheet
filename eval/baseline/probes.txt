@@ -203,12 +203,14 @@ C	probes/date-system-1904-odd-years.case.json	114
 C	probes/date-system-1904-pre-epoch-text.case.json	15
 C	probes/date-system-1904-readers.case.json	54
 C	probes/date-system-1904-timevalue-chrono.case.json	4
+C	probes/date-system-1904-timevalue-non-glued.case.json	21
 C	probes/date-system-1904-timevalue.case.json	7
 C	probes/date-text-dotted-criteria.case.json	16
 C	probes/date-text-glued-month-2.case.json	106
 C	probes/date-text-glued-month.case.json	178
 C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
+C	probes/date-text-non-glued-timevalue.case.json	44
 C	probes/date-text-yearless-2.case.json	64
 C	probes/date-text-yearless-3.case.json	45
 C	probes/date-text-yearless.case.json	48
