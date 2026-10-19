@@ -1,0 +1,57 @@
+# T-1941 W4: G on [1,2), per-stage line analysis (state)
+
+Status: structure partly pinned. Not bit-exact. Research only.
+
+## Phase law (validated on synthetic Horner-in-y N/D, syn.c, W1 N3/D3)
+- A product stage P = fl(M*y), with M a stored double, rounds at y = 1 + K*2^-52 with phase
+  phase(K) = frac(u*K + v*eps*K^2 + w*eps^2*K^3), where:
+  - eps = 2^-52;
+  - u = M(1)/2^eR, v = M'(1)/2^eR, w = (M''(1)/2)/2^eR;
+  - eR is the binade the product is rounded in.
+- Far from 1, a run centred at y has local frequency F(y) = d/dt[t*m(t)] mod 1, with t = y-1 and m = M/2^eR.
+- Same-binade "+ c" stages give no line. A sum that lands one binade up gives a triangle at u/2.
+- Horner law between consecutive multiplicands: m_{j+1}(t) = 2^d*(1+t)*m_j(t) + const, i.e.
+  b_k = 2^d*(a_k + a_{k-1}).
+
+## Tools (gline_tools/)
+- efit2.py: coherent low-n0 ladder fit with a wide initial b scan. The old efit window (|v| < 2.8) aliased.
+  Not committed.
+- vspec2.py / vspec3.py: incoherent (v,w) spectrum over the high runs, n0 in (3e11, 1.3e14).
+  - Validated on synthetic data: (-4.382, -2.5) recovered against truth (-4.380, -2.67).
+  - Second check: (5.875, 10.2) against truth (5.882, 9.67).
+- yruns.py and track2.py: residuals of the G.txt long runs against mpmath, and frequency tracks F(y) across
+  [1,2). dense.py builds the same json from the y101..y116 probe (extract_runs output).
+- chain.py: pairwise Horner-link search. Not committed.
+
+## Independent lines (f at 1+, v, w, m_k from tracks)
+| line | f | v (m1) | w (m2) | track |
+|---|---|---|---|---|
+| L1 | 0.4094486825857 | +0.2494 (ladder +0.25012) | -0.30 | to 1.046 |
+| L2 | 0.4230053820552 | +0.1870 | +0.05 | m = u+0.187t+0.05t^2+0.02t^3, to 1.44 |
+| L3 | 0.1250589147893 | -0.1560 | +0.0085 | to 1.88 |
+| a3048 | 0.3048029747 | +0.006 | ~0 | to 1.18 |
+| a1099 | 0.1098510050 | -0.6113 | ~0 | to 1.18 |
+| a4299 | 0.4298616996 | -0.225 | +7.5? | short |
+
+Harmonics, not stages:
+- 0.1811 = 2*L1; 0.2283 = 3*L1; 0.3622 = 4*L1; 0.0472 = 5*L1;
+- 0.2197 = 2*a1099;
+- 0.2859 = L1+a3048.
+
+## Chain link found
+a1099 (u = +1.10985) -> L1, with e_L1 = e_a + 1. Three predictions agree:
+- L1 m1: predicted 0.2493, observed 0.2494.
+- L1 w: predicted -0.305, observed -0.30.
+- F_L1(1.236): predicted 0.4761, observed 0.4765.
+
+The added constant is c = 2^e_a*(2*u1 - 1.10985), with u1 in {1.40945, -0.59055, -1.59055}.
+
+## Ruled out here
+- Cody SPECFUN GAMMA coefficients: 88,566 of 260,096 exact.
+- Boost lanczos13m53 num/expG/den stage frequencies: the nearest is 2.6e-4 off, against about 1e-9 for a true
+  stage.
+- The form 1 + t*R: the w104 lines at t < 4e-12 need O(1) products by y.
+
+## Needed
+Dense oracle runs: 4096 consecutive doubles at y = 1 + j/64, to track every stage across [1,2) and pin the chain
+and the binade crossings (1.365-1.370, 1.5438-1.545). The coordinator generated them as kmyst-gam-y101..y116.
