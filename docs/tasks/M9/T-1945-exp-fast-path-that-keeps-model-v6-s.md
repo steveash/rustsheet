@@ -28,7 +28,9 @@ the 26-term double-double `expm1` series in `two_to_the_minus_one`.
   tests.
 
 ## Acceptance criteria
-- [ ] `excel_exp` is at least 10x faster on the math_lift EXP cases, with before and after numbers in the Outcome.
+- [ ] `excel_exp` is at least 10x faster on a per-call kernel microbenchmark, and the math_lift EXP cases come
+  within about 20% of the `f64::exp` numbers in T-1931's Outcome (the cases spend ~59 ms per row and ~582 ms
+  lifted outside the kernel), with before and after numbers in the Outcome.
 - [ ] Every probes-numeric `t1931-exp-*` and `t1916-*` cell keeps its verdict. A randomized test over a wide
   range of a compares the fast path with the full series.
 - [ ] `make check` green; reviewers approve.

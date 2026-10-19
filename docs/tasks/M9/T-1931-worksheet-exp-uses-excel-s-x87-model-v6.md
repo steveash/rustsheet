@@ -23,7 +23,8 @@ cells at large |a| are 1 ulp off it, mostly low.
   only by the ERFC kernel. Its bulk check: 62,013 of 62,100 `EXP(A)` cells of `kmyst-erfc-r5expmap1/2` and
   7,234,707 of 7,235,446 `EXP(-(A*A))` cells (all misses are near-ties or the worksheet flush below).
 - The worksheet EXP flushes a subnormal result to 0 (`kmyst-erfc-cutoff` column C: `EXP(-(x*x))` is 0 from
-  x = 26.616 where the model gives 2.19E-308); the internal helper keeps gradual underflow.
+  x = 26.616 where the model gives 2.19E-308); the internal helper keeps gradual underflow. (Later shown to be a
+  Graph artifact, decision 0042: the worksheet keeps the subnormal; see acceptance criterion 1.)
 - Every caller of `f64::exp` that stands for Excel's EXP inside another function (SINH/COSH/TANH, FISHERINV,
   GAMMA.DIST prefixes, the normal densities) should be checked against probes before it switches too.
 - Evidence to copy: a curated subset of `kmyst-erfc-r5expmap1/2`, `kmyst-erfc-expcol` and the `C` columns of
