@@ -5,9 +5,9 @@ milestone: M7
 lane: functions-text
 status: todo
 priority: P2
-size: M
+size: S
 tier: opus
-depends_on: []
+depends_on: [T-1973, T-1972]
 ---
 
 ## Goal
@@ -19,13 +19,12 @@ because the regex crate (regex-syntax) defines POSIX classes as ASCII-only, whil
 Unicode in both. Excel's other classes are unprobed: probe each of `alnum alpha ascii blank cntrl digit graph lower
 print punct space upper word xdigit` (and a negated `[[:^alpha:]]`) on ASCII, Latin-1 (é, ß, ²), Greek, CJK, fullwidth
 digits and an emoji before implementing (PCRE2 with UCP maps most to Unicode properties, but `[:punct:]`, `[:graph:]`,
-`[:print:]` and `[:xdigit:]` have special rules; follow the oracle, not PCRE2's docs). The pattern is passed to
-regex-automata unchanged (functions/text/regex_engine.rs `Engine::new`), so the fix is a rewrite of POSIX classes
-inside bracket expressions before compiling, which must respect escapes, `\Q...\E` and nested brackets, and must not
-grow a pattern past the compile limits (T-1272). Size M; needs a design call on where the rewrite lives, so opus.
+`[:print:]` and `[:xdigit:]` have special rules; follow the oracle, not PCRE2's docs). Design (SPEC-0013, 2026-10-19): there is no pre-compile rewrite. T-1973's PCRE2
+parser builds each POSIX class as a `ClassUnicode`, and this task changes that mapping to the classes T-1972's
+per-class probe shows (the probe moved there). Size S once T-1972 and T-1973 have landed.
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values covers every class; text.md records the rule.
+- [ ] T-1972's per-class cells pass; text.md records the rule.
 - [ ] probes/regexreplace-limit-and-syntax A23 passes and the new cells pass.
 - [ ] `make check` green; reviewers approve.
 

@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Milestone / lane:** M7 / functions-text
-- **Tasks:** T-1898 (this spec), T-1972, T-1973, T-1900, T-1899, T-1974
+- **Tasks:** T-1898 (this spec), T-1972, T-1973, T-1903, T-1900, T-1899, T-1974; benchmarks T-1830
 
 ## Problem
 REGEXTEST, REGEXEXTRACT and REGEXREPLACE use PCRE2 in Excel (docs/excel-semantics/text.md "REGEX* patterns and match
@@ -53,7 +53,8 @@ Evidence already in eval (VERIFIED, excel-graph):
 - Global iteration as above: REGEXEXTRACT's all-matches mode and REGEXREPLACE's occurrence count the same matches
   (D1-D12).
 - Case-insensitive matching uses Unicode simple case folding: `ſ` matches `s` and the Kelvin sign matches `k`
-  (probes/regex-optional-args A24-A26). `\w`, `\b`, `\pL` and `[[:alpha:]]` are Unicode (text.md line "Unicode: ...").
+  (probes/regex-optional-args A24-A26). `\w`, `\b`, `\pL` and `[[:alpha:]]` are Unicode (text.md "REGEX* patterns and match iteration are PCRE2
+  (T-1688)" and the REGEX entries after it; regexreplace-limit-and-syntax A23).
 - An invalid pattern is `#VALUE!` in its own lifted element only (text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX*
   lift ...").
 
@@ -101,7 +102,15 @@ The current `Engine` stays as is. It is fed a `Hir` built by our translator inst
 
 ### 1. One parser: `pcre::parse`
 - Hand-written and iterative. It keeps an explicit group stack, no recursion, and its nesting depth is capped at
-  the probed nest limit, assumed 250 until the probe answers.
+  the probed nest limit, assumed 250 until the probe answers. A quantifier applied to a quantified item
+  (`a{2}{2}{2}`, which PCRE2 accepts) also counts one level, so the AST's depth, not only its parentheses, is
+  capped.
+- Every pass over the AST is iterative (an explicit work stack) or runs under that same depth bound: `is_regular`,
+  `to_hir`, `compile`, the lookbehind length computation and `Drop` of `Ast` (a manual, stack-based `Drop`, as
+  `regex-syntax` does for its `Ast` and `Hir`).
+- Repeat counts are capped at PCRE2's 65,535 (`a{65536}` is a compile error in PCRE2; T-1972 confirms Excel's
+  answer). All arithmetic on counts, program sizes and lookbehind lengths is checked. An overflow or a size past the
+  compile budget is `BuildFailure::TooBig`, or `Invalid` where PCRE2 reports a compile error.
 - Its input is the pattern as Rust `&str`. A pattern with a lone surrogate follows SPEC-0010; no special case is
   needed here, because a lone surrogate is a literal.
 - It produces `Ast` nodes:
@@ -128,8 +137,8 @@ The current `Engine` stays as is. It is fed a `Hir` built by our translator inst
   - a bad quantifier.
 - Character classes build `regex_syntax::hir::ClassUnicode` (or `ClassBytes`) through the same Unicode tables the
   current engine uses. That includes `case_fold_simple` for case-insensitive matching, so both engines share one
-  class and one case-folding definition. POSIX classes are mapped to their Unicode equivalents, which fixes
-  `[[:alpha:]]` (A23).
+  class and one case-folding definition. POSIX classes keep today's (ASCII) meaning in T-1973.
+  T-1903 then maps them to what Excel matches, from T-1972's per-class answers, which fixes `[[:alpha:]]` (A23).
 
 ### 2. Regular patterns stay on the automata
 `Ast::is_regular` holds when no node is one of these:
@@ -139,8 +148,21 @@ The current `Engine` stays as is. It is fed a `Hir` built by our translator inst
 - a possessive quantifier;
 - a conditional;
 - `\K`;
-- `\G`;
-- an anchor whose meaning the automata cannot express.
+- `\G`.
+
+Every other anchor has a `Hir` look-around assertion (`hir::Look`) with the same meaning, so the list is closed.
+A construct the parser adds later is non-regular unless it is added to this list with a test. `is_regular` is
+narrowed only by naming a construct, and each narrowing runs the REGEX* benchmarks.
+
+**`$` and `\Z`.** In PCRE2's default mode they also match before a final `\n`, which no `hir::Look` expresses.
+They stay regular, and the choice is made per text instead:
+- on a text that does not end in `\n`, `$` and `\Z` are `\z`, so the automata run, with `Look::End`;
+- on a text that ends in `\n`, the search runs on the backtracker.
+
+Cells rarely end in a line feed, so `^\d{5}$` over a column stays on the lazy DFA. Until T-1972 confirms PCRE2's
+default for Excel, T-1973 keeps today's meaning (`$` is `\z` on every text) and only adds the per-text switch once
+the probe shows the final-`\n` rule. The same applies to `.` and `\n`/`\r` (`(?s)` off) and `(?m)`, whose `Hir`
+forms exist.
 
 For a regular pattern, Perl-style priority matching and `regex-automata`'s leftmost-first semantics pick the same
 match and the same captures. That is the property the `regex` crate is built on, and the T-1900 differential test
@@ -181,17 +203,35 @@ existing cost model and caches.
   - Empty-loop protection follows PCRE2's rule: an iteration of an unbounded repeat that matched the empty string
     stops the loop. It is enforced with a per-loop "position at iteration start" slot, as in PCRE2.
 - **Budget (directive 5).**
-  - Each executed instruction costs `STEP` units and each pushed frame `FRAME` units. Both constants are fitted in
-    the bench task against the T-1272 unit (about a nanosecond).
-  - Both are charged to the call's existing `Spent` budget through the same `Engine`-level accounting, so one call
-    has one budget whichever engine runs.
-  - The stack is capped in bytes. It counts toward the 64 MiB the call may hold.
+  - Each executed instruction costs `STEP` units and each pushed frame `FRAME` units. Instructions whose work is not
+    one step are charged by their work:
+    - `Backref`: per character compared, with case folding;
+    - a lookbehind: per character stepped back;
+    - an atomic or lookaround barrier: per frame it pops;
+    - `Save` and restore: per slot.
+  - The constants are fitted in T-1974 against the T-1272 unit (about a nanosecond). Until then T-1900 uses
+    conservative upper bounds: overcharge, never undercharge.
+  - Charges go to the call's existing work counter (the `work: &mut u64` that `regex_engine::Search` charges through
+    its private `charge`, with `Spent` as the error). T-1900 makes that charge function and `Spent` visible to `pcre`
+    (`pub(super)` in `functions::text`). It does not add a second counter, so one call has one budget whichever
+    engine runs.
+  - The frame stack and slot arrays live in the pattern's `Caches` and are reused across searches: cleared, not
+    freed, so a lifted call over 100,000 cells does not allocate per cell. The stack's growth is capped during the
+    search at the bytes the call may still hold (64 MiB minus what it holds), not only measured afterwards. The
+    stack and a lazily built `Program` are counted in `memory_usage`.
+  - **Start positions.** An unanchored search tries each start position, but skips ahead with a first-character
+    prefilter: a `memchr` for a literal first character, or a class lookup. A pattern that starts with `^` or `\A`
+    makes one attempt.
   - Running out of either is `#ERROR!`, as the current budget is. If the probe shows Excel answering a pattern that
     exhausts our budget, that pattern is a `DEVIATION` (text.md entry plus decision 0014). If Excel itself fails at
     its match limit, we return the probed error at a fitted equivalent step count when that count is within
     budget.
-  - Memoization (bit-set of `(pc, pos)` visited) is not used. PCRE2 does not have it, and with backreferences it
-    changes which match is found.
+  - Memoization (a bit-set of visited `(pc, pos)`) is not used for non-regular programs. PCRE2 does not have it,
+    and with backreferences, atomic groups or conditionals the result of a state depends on the path that reached
+    it. A program compiled from a regular AST (the empty-match retry of section 4) does use it, the technique of
+    `regex-automata`'s bounded backtracker. There, success from a state does not depend on the path, so the
+    priority-ordered result is unchanged and an attempt is O(program × span). The bit-set is program × (span + 1)
+    bits, charged to held memory.
 
 ### 4. Positions and iteration (`pcre::Pattern::find_iter`)
 - Both engines search Rust `&str` byte offsets, and each match is converted to UTF-16 offsets only where Excel's
@@ -202,8 +242,13 @@ existing cost model and caches.
      `NOTEMPTY_ATSTART | ANCHORED`);
   3. if that fails, advance one UTF-16 unit and search again.
 - The automata cannot express step 2, so step 2 always runs on the backtracker, also for a regular pattern. It is
-  one anchored match attempt per empty match, compiled lazily the first time it is needed and cached with the
-  pattern.
+  one anchored match attempt per empty match. Its program is compiled lazily the first time it is needed, charged to
+  the compile budget (it can be `TooBig`), and cached with the pattern. For a regular pattern the attempt is memoized
+  (section 3), so it stays linear and `(a|a)*b|` over `REPT("a",n)` costs what it does today. Every attempt is
+  charged to the same per-call budget. A pattern that cannot match empty never takes step 2, so its iteration costs
+  exactly what it does now.
+- The iteration charges of `regex_engine.rs` (and T-1829's change to them) are reused. T-1899 must not make them
+  worse.
 - Advancing one UTF-16 unit from a position before a supplementary character lands inside its surrogate pair. Excel
   then returns `#VALUE!` (D11, D13), and so do we: the iterator returns a `SplitSurrogate` error, mapped to
   `#VALUE!` by regex_functions.rs.
@@ -213,7 +258,7 @@ existing cost model and caches.
 ### 5. API and errors
 `regex_functions.rs` changes in one place: it builds `pcre::Pattern::new(pattern, case_insensitive, limits)` instead
 of `Engine::new`. `Pattern` exposes the three operations the functions need:
-- `is_match(&mut Caches, text, &mut Budget)`;
+- `is_match(&mut Caches, text, work: &mut u64)` (the existing work counter);
 - `captures_at(..)`;
 - `find_iter(..)`.
 
@@ -224,9 +269,11 @@ No public (crate `rustsheet`) API changes.
 ### 6. Dependencies
 No new crate enters the tree. The parser, compiler and VM are ours. The class and case-folding tables and the `Hir`
 type come from `regex-syntax`, which is already in Cargo.lock through `regex` and `regex-automata` (its `syntax`
-feature). Step 2 makes `regex-syntax` a direct dependency of rustsheet-engine, pinned to the version already locked,
-and feeds `Hir` to `regex_automata::nfa::thompson::Compiler::build_from_hir`. If `cargo deny` or the dependency
-policy treats a new direct edge as a new dependency, step 2 adds the decision record.
+feature). `regex-automata` re-exports the parsers but not the `Hir` types, so T-1973 adds `regex-syntax = "0.8"` as a direct
+dependency of rustsheet-engine, in the same semver range `regex-automata` 0.4 uses. It feeds `Hir` to
+`regex_automata::nfa::thompson::Compiler::build_from_hir`. T-1973's acceptance requires one locked copy
+(`cargo tree -d` shows no second `regex-syntax`) and a short decision record for the new direct edge. The edge adds
+no code to the binary, since the crate is already linked.
 
 ## Alternatives considered
 - **The `pcre2` crate (C PCRE2 by FFI).** Exact semantics for free, but rejected:
@@ -260,25 +307,41 @@ policy treats a new direct edge as a new dependency, step 2 adds the decision re
   - our parser's `Hir` against `regex-syntax`'s for the patterns both dialects read alike (no `\Q`, no possessive,
     no POSIX classes). This catches translation slips.
 - **Directive 5.**
-  - Catastrophic patterns (`(a|a)*b`, `(a*)*b`, `((a+)+)+b`, nested lookarounds) on 32,767-character texts finish
-    within the budget as `#ERROR!` or the probed answer, in bounded time.
-  - A pattern of 250 nested groups and one of 32,767 characters parse without stack growth.
+  - Catastrophic patterns finish within the budget as `#ERROR!` or the probed answer, in bounded time:
+    - `(a|a)*b`, `(a*)*b`, `((a+)+)+b` and nested lookarounds on 32,767-character texts;
+    - `(.*)\1x` (backreference over a long capture);
+    - `(a|a)*b|` (the memoized retry).
+  - These patterns go through every pass (parse, `is_regular`, `to_hir`, compile, search, drop) without stack
+    growth:
+    - 250 nested groups;
+    - 32,767 stacked quantifiers;
+    - a 32,767-character pattern;
+    - `(?:a{65535}){65535}` and its lookbehind form, which are `TooBig` or `Invalid`, never an overflow.
   - The cargo-fuzz `formula` target gains REGEX* calls with generated PCRE2 patterns (decision 0035's nightly fuzz).
 - **Benchmarks.**
-  - `crates/rustsheet/benches` gains backtracker cases (backreference over 10,000 cells, lookahead over long text,
-    the empty-match retry over `a*?` on a 32,767-character text).
-  - The T-1272 cases must not move by more than noise. Those patterns stay on the automata, and the only new cost
-    is the `is_regular` check at compile time.
+  - There is no REGEX* benchmark today. T-1830 adds the column cases (100,000 rows: REGEXTEST `x` over 200-byte
+    cells, `\w{10}`, REGEXEXTRACT `(\w+)@(\w+)\.com`, REGEXREPLACE `o`). T-1973 depends on it and adds:
+    - `^\d{5}$` over a column;
+    - many distinct small patterns in one lifted call (compile cost: our parser plus `build_from_hir`).
+  - T-1973 reports before and after numbers. A slowdown over 5% needs a justification in its PR.
+  - `crates/rustsheet/benches` gains backtracker cases: a backreference over 10,000 cells, `\b(\w+)\s+\1\b` over a
+    100,000-row column, lookahead over long text, and the empty-match retry over `a*?` and `|b` on a
+    32,767-character text.
+  - Patterns that stay on the automata must not move by more than noise. Their only new costs are our parser and the
+    `is_regular` check at compile time.
 
 ## Rollout
 Each task is S/M and leaves `make check` green. A pattern needing an unimplemented feature stays `#VALUE!`, as today.
 
-1. **Probe** (T-1972; research, sonnet, S): probes/regex-pcre2-limits with the "Unknowns" above. Its findings go
-   into text.md.
+1. **Probe** (T-1972; research, sonnet, S): probes/regex-pcre2-limits with the "Unknowns" above, plus T-1903's
+   per-class POSIX probe and the repeat-count limit. Its findings go into text.md.
 2. **Parser and translation** (T-1973; functions-text, opus, M):
    - `pcre::parse`, `Ast`, `to_hir`;
    - `regex_functions.rs` builds through `Pattern`, with regular patterns only;
-   - lands `\Q..\E`, comments, `(?x)`, scoped flags and Unicode POSIX classes (regexreplace-limit-and-syntax A23);
+   - lands `\Q..\E`, comments, `(?x)` and scoped flags;
+   - depends on T-1830 (benchmarks);
+   - then T-1903 (rewritten) maps POSIX classes to what Excel matches, in the new parser, from T-1972's per-class
+     answers (regexreplace-limit-and-syntax A23);
    - `a++` and the other backtracking-only constructs become `#VALUE!`, which is B29's direction (it is a failure
      today either way);
    - includes the differential test against `regex-syntax`.
@@ -286,7 +349,9 @@ Each task is S/M and leaves `make check` green. A pattern needing an unimplement
    - `Program`, `Backtracker` and budget accounting;
    - backreferences, lookahead and lookbehind, atomic and possessive groups, `\K`, conditionals (C1-C19,
      B27-B29, t1626-regextest C29);
-   - the differential test regular-on-automata against regular-on-backtracker.
+   - the differential test regular-on-automata against regular-on-backtracker;
+   - if it proves bigger than M, split it at the natural seams: the core VM with backreferences, atomic and
+     possessive groups first, then lookaround, conditionals and `\K`.
 4. **PCRE2 global iteration** (T-1899, rewritten; functions-text, opus, S): `find_iter` with the anchored not-empty
    retry on the backtracker and the `SplitSurrogate` rule (t1626-regexreplace C34, D1-D14).
 5. **Limits and bench** (T-1974; perf, opus, S): fit `STEP`/`FRAME`, add the benchmarks and fuzz patterns, and apply

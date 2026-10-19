@@ -37,11 +37,10 @@ SPEC-0013 (docs/specs/SPEC-0013-pcre2-regex-matcher.md) is accepted. Its design:
 - `pcre2` (C FFI, wasm32, unsafe) and `fancy-regex` (Rust dialect and iteration, separate limit) were rejected.
 
 Split, in order:
-1. T-1972, probe (research, sonnet);
-2. T-1973, parser (opus, M);
+1. T-1972, probe (research, sonnet), which now also holds T-1903's per-class POSIX probe;
+2. T-1973, parser (opus, M; depends on the T-1830 benchmarks), then T-1903 (rewritten, S: POSIX classes in the new parser);
 3. T-1900, backtracker (rewritten; depends on T-1973);
 4. T-1899, iteration (rewritten, S; depends on T-1900);
 5. T-1974, costs, benchmarks and fuzz (perf).
 
 No eval change (docs only).
-

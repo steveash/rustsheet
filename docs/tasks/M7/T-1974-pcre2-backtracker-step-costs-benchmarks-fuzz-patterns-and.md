@@ -25,6 +25,8 @@ release build; functions/text/regex_engine.rs). T-1972 records what Excel gives 
 - [ ] Catastrophic patterns on 32,767-character texts finish in bounded time. They give Excel's probed answer, or
   `#ERROR!` with a `DEVIATION` entry in text.md (decision 0014) where Excel answers past our budget.
 - [ ] The fuzz `formula` target generates REGEX* calls with PCRE2 patterns.
+- [ ] REGEXREPLACE over 100,000 cells with a pattern that never matches empty is no slower than before the empty-match
+  retry (T-1899). `\b(\w+)\s+\1\b` over a 100,000-row column is benchmarked (start-position prefilter).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

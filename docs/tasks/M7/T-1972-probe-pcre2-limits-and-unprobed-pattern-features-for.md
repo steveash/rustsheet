@@ -29,7 +29,10 @@ matters and ERROR.TYPE for every error cell. Cover:
 - `$` and `\Z` before a final `CHAR(10)`; `.` on `CHAR(10)` and `CHAR(13)`; `(?s)`, `(?m)`, `(?n)`;
 - verbs and callouts: `(*SKIP)(*FAIL)`, `(*UTF)`, `(?C1)`;
 - `\G`;
-- `x*+` and `x{2,}+` possessives.
+- `x*+` and `x{2,}+` possessives;
+- the repeat-count limit: `a{65535}` and `a{65536}`;
+- T-1903's per-class POSIX probe: each of `alnum alpha ascii blank cntrl digit graph lower print punct space upper
+  word xdigit` and `[[:^alpha:]]` on ASCII, Latin-1 (é, ß, ²), Greek, CJK, fullwidth digits and an emoji.
 
 ## Acceptance criteria
 - [ ] probes/regex-pcre2-limits has excel-graph values for every question above. Record a question excel-graph
@@ -37,6 +40,7 @@ matters and ERROR.TYPE for every error cell. Cover:
 - [ ] text.md has one entry per finding (VERIFIED), and SPEC-0013's Unknowns list points to them.
 - [ ] Each feature group Excel accepts and SPEC-0013's rollout does not cover (recursion, `\X`, scripts, ...) gets
   a follow-up task (`make new-task`, functions-text, depends on T-1973).
+- [ ] eval/baseline/ changes only through `make eval-baseline` (new probe cells as known failures).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
