@@ -154,6 +154,14 @@
     "t": "e",
     "v": "#NUM!"
    },
+   "M12": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "M13": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "M2": {
     "t": "e",
     "v": "#N/A"
@@ -197,6 +205,14 @@
    "N11": {
     "t": "e",
     "v": "#NUM!"
+   },
+   "N12": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "N13": {
+    "t": "e",
+    "v": "#VALUE!"
    },
    "N2": {
     "t": "e",
@@ -507,9 +523,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "8aff7222dd6b1256ec10bc54f5dd03e6f12cf9a706db9fd66f8f5b625a86b8e5",
+  "input_sha256": "5d68cd233bb17d00dfa32d01b57067ee5b55b45bfe9e4b0e722938c52f1e033c",
   "kind": "excel-graph",
-  "produced_at": "2026-10-19T15:42:05+00:00",
+  "produced_at": "2026-10-19T16:14:39+00:00",
   "version": null
  }
 }

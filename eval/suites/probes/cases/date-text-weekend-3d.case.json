@@ -144,7 +144,11 @@
         "P32": "=WORKDAY.INTL(NA(),5,\"abc\")",
         "Q32": "=NETWORKDAYS.INTL(NA(),45030,\"abc\")",
         "P33": "=WORKDAY.INTL(45000,5,99,NA())",
-        "Q33": "=NETWORKDAYS.INTL(NA(),45030,99)"
+        "Q33": "=NETWORKDAYS.INTL(NA(),45030,99)",
+        "M12": "=WORKDAY.INTL(45000,5,1,IF(TRUE,Sheet1:Sheet2!A1))",
+        "N12": "=NETWORKDAYS.INTL(45000,45030,1,IF(TRUE,Sheet1:Sheet2!A1))",
+        "M13": "=WORKDAY(45000,5,Sheet1:Sheet2!A1)",
+        "N13": "=NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))"
       }
     },
     {

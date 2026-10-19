@@ -40,5 +40,5 @@ weekend, 3-D date text and holidays". A 3-D reference in DATEVALUE/TIMEVALUE's t
 The `weekend` differed: WORKDAY.INTL turns any error-valued weekend (a 3-D one reads as `#REF!`) into `#NUM!` and reads
 it after the start, day count and holidays; NETWORKDAYS.INTL reads the weekend first and turns an error-valued one into
 `#VALUE!`. A 3-D `holidays` is `#VALUE!`. `weekend_mask` takes the caller's error code, `workday_of`/`networkdays_of`
-reorder their reads, and `holiday_serials` refuses a 3-D reference. Eval delta: +125 probe cells, all passing (the 12
+reorder their reads, and `holiday_serials` refuses a 3-D reference. Eval delta: +129 probe cells, all passing (the 12
 weekend and holidays cells that failed before the fix now pass); no other cell changed.
