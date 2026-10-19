@@ -22,14 +22,17 @@ fn a_one_by_one_array_lifts_and_a_one_cell_range_does_not() {
     );
 }
 
-/// A LAMBDA argument is `#VALUE!` in its own position, so an earlier argument's error comes first
-/// and an array argument keeps its shape (UNVERIFIED, T-1963).
+/// A LAMBDA argument makes the element `#VALUE!` whatever the other arguments hold
+/// (probes/filterxml-array-forms A9 for a later error), and an array argument keeps its shape
+/// (UNVERIFIED, T-1963).
 #[test]
-fn a_lambda_argument_is_value_per_element() {
+fn a_lambda_argument_is_value_in_every_element() {
     check_cells(
         &[],
         &[
-            ("A1", "=LEFT(NA(),LAMBDA(x,x))", "#N/A"),
+            ("A1", "=LEFT(NA(),LAMBDA(x,x))", "#VALUE!"),
+            ("A5", "=VALUETOTEXT(LAMBDA(x,x),NA())", "#VALUE!"),
+            ("A6", "=FILTERXML(LAMBDA(x,x),NA())", "#VALUE!"),
             ("A2", "=LEFT(LAMBDA(x,x),1)", "#VALUE!"),
             ("A3", "=COLUMNS(LEFT({\"a\",\"b\"},LAMBDA(x,x)))", "2"),
             ("A4", "=CONCATENATE(LAMBDA(x,x))", "#VALUE!"),

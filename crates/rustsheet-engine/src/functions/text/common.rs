@@ -1,4 +1,4 @@
-use super::text_kernel::text_result;
+use super::text_kernel::{lambda_argument_error, text_result};
 use super::util::substitute_element;
 use crate::cast::number_text_too_long;
 use crate::number_format::number_to_text;
@@ -174,6 +174,9 @@ impl Model {
             };
             if let error @ CalcResult::Error { .. } = value {
                 return error.clone();
+            }
+            if let Some(error) = lambda_argument_error(values, cell) {
+                return error;
             }
             let format_code = match format {
                 error @ CalcResult::Error { .. } => return error.clone(),
@@ -498,6 +501,9 @@ impl Model {
             let [value, format @ ..] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
+            if let Some(error) = lambda_argument_error(values, cell) {
+                return error;
+            }
             let text = format
                 .first()
                 .map_or(Ok(false), |format| model.valuetotext_format(format))

@@ -659,12 +659,12 @@ Status: VERIFIED (excel-graph). Implemented in: `fn_arraytotext`. Tasks: T-1718
 
 ## Element-wise text functions on the lift driver: a LAMBDA, a 1x1 array, VALUETOTEXT's error format (T-1775)
 Rule (the engine's, unprobed): since the element-wise text functions (LEFT/RIGHT/MID and their *B twins, LEN/LENB, FIND/SEARCH, REPT, SUBSTITUTE, REPLACE, EXACT, TEXT, VALUE, VALUETOTEXT, CODE, UNICHAR, BAHTTEXT, FILTERXML, CONCATENATE, DATEVALUE, TIMEVALUE) lift through the SPEC-0011 driver, three edges follow the driver's rule rather than the old `broadcast_text`'s:
-- a LAMBDA argument is `#VALUE!` in its own position, so an earlier argument's error comes first (`LEFT(NA(),LAMBDA(x,x))` is `#N/A`, was `#VALUE!`) and an array argument keeps its shape (`COLUMNS(LEFT({"a","b"},LAMBDA(x,x)))` is 2, was one `#VALUE!`);
+- a LAMBDA argument makes every element `#VALUE!`, whatever the other arguments hold, as before (`FILTERXML(LAMBDA(x,x),NA())` is `#VALUE!` in Excel, probes/filterxml-array-forms A9; an error before the LAMBDA, `LEFT(NA(),LAMBDA(x,x))`, is unprobed), but an array argument now keeps its shape (`COLUMNS(LEFT({"a","b"},LAMBDA(x,x)))` is 2, was one `#VALUE!`);
 - a 1x1 array argument gives a 1x1 array, as in every other lifted family and in TEXTSPLIT ("TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift ..." above): `TYPE(LEFT({"abc"},2))` is 64, `ARRAYTOTEXT(MID({"abc"},"x",NA()),1)` "{#VALUE!}" (was 2 and `#VALUE!`). A one-cell range is still its cell's value (`TYPE(LEFT(A1:A1,2))` is 2);
 - VALUETOTEXT with an array value and a scalar error format is an array of that error, one per element (was the one error).
 A legacy (pre-dynamic-array) `RIGHT(A1:A3)` now gets the implicit-intersection `@`: the old hand-written static arm wanted two arguments, the table says one or two (`RIGHT(text, [num_chars])`), as LEFT's arm did.
 The probed behaviour is unchanged (error precedence, the broadcast padding, the size and text bounds; eval 0 fixes, 0 regressions).
-Evidence: none for these edges (crates/rustsheet-engine/src/test/text_functions/lift_driver.rs pins the engine's values).
+Evidence: probes/filterxml-array-forms A9 for the LAMBDA's precedence; none for the shapes (crates/rustsheet-engine/src/test/text_functions/lift_driver.rs pins the engine's values).
 Status: UNVERIFIED (probe pending, T-1963)
 Implemented in: `Model::lift_text` (functions/text/text_kernel.rs), the text table entries (functions/lift/kinds/text.rs).
 Tasks: T-1775, T-1963

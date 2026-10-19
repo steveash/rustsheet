@@ -32,13 +32,30 @@ impl Model {
         element: &mut TextElement<'_>,
     ) -> CalcResult {
         self.lift_call(kind, args, cell, &mut |model, values| {
+            if let Some(error) = lambda_argument_error(values, cell) {
+                return error;
+            }
             let result = element(model, values);
             text_result(values, result, cell)
         })
     }
 }
 
-/// An element's result as a value. An error argument is returned as it came only when it is the
+/// The `#VALUE!` of an element with a LAMBDA argument, which wins over every other argument's
+/// error, as the text functions read their arguments before T-1775: `FILTERXML(LAMBDA(x,x),NA())`
+/// is `#VALUE!` (probes/filterxml-array-forms A9). An error argument before the LAMBDA is
+/// unprobed (`LEFT(NA(),LAMBDA(x,x))`, T-1963).
+pub(crate) fn lambda_argument_error(
+    values: &[CalcResult],
+    cell: CellReferenceIndex,
+) -> Option<CalcResult> {
+    values
+        .iter()
+        .any(|value| matches!(value, CalcResult::Lambda(_)))
+        .then(|| CalcResult::new_error(Error::VALUE, cell, String::new()))
+}
+
+/// An element's result as a value. An error argument is the result only when it is the
 /// element's first failure; "first" is judged by comparing error kinds, which fits the probed
 /// cases (T-1022). Other errors carry no message, so a failing element allocates nothing.
 pub(crate) fn text_result(
@@ -50,12 +67,15 @@ pub(crate) fn text_result(
         Ok(ArrayNode::Error(e)) | Err(e) => Some(e),
         Ok(_) => None,
     };
-    if let Some(error @ CalcResult::Error { error: arg, .. }) = values
+    if let Some(CalcResult::Error {
+        error: arg, origin, ..
+    }) = values
         .iter()
         .find(|value| matches!(value, CalcResult::Error { .. }))
     {
         if failure.is_none_or(|e| e == arg) {
-            return error.clone();
+            // Its kind and origin, without its message: one copy per element would allocate.
+            return CalcResult::new_error(arg.clone(), *origin, String::new());
         }
     }
     match result {

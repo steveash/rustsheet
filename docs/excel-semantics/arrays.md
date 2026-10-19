@@ -105,7 +105,7 @@ Evidence: gen-m2/ce315bb699e1be6f Calc!A313
 `=MID(CONCATENATE(INDEX(Data!B8:E11,1),"x~*",HLOOKUP(-0.5,Data!B2:E2,4)),Data!A$3,1)` gives `#REF!`, not `#SPILL!`;
 gen-m2/207a5753da48c7e0 Calc!A95 (VLOOKUP over `CONCATENATE(INDEX(..,0.1),INDEX(Data!D3:D4,4,1))`) gives `#REF!`.
 Status: VERIFIED
-Implemented in: `fn_concatenate` (early return of the first argument error, T-0226)
+Implemented in: no early return exists (T-1775 found none on main either): `fn_concatenate` gives an array of that error, one per element, whose top-left cell is the error the evidence cells show. Whether Excel's result is one error or an array of errors (`ROWS(CONCATENATE(NA(),{"a","b"}))`) is unprobed.
 
 ## CONCATENATE result longer than 32767 characters
 Superseded: Excel truncates rather than returning `#VALUE!`; see coercion.md "Text longer than 32,767 characters".
