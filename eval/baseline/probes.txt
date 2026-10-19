@@ -402,6 +402,7 @@ C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/isref-range-operands.case.json	27
 C	probes/isref-reference-lookups.case.json	11
 C	probes/isref-union-operands.case.json	9
+C	probes/lambda-escaping-closures.case.json	28
 C	probes/lambda-helper-range-slices.case.json	46
 C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
@@ -1677,6 +1678,14 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/info-logic-argument-modes.case.json	Calc!A19
+F	probes/lambda-escaping-closures.case.json	Sheet1!H10
+F	probes/lambda-escaping-closures.case.json	Sheet1!H2
+F	probes/lambda-escaping-closures.case.json	Sheet1!H3
+F	probes/lambda-escaping-closures.case.json	Sheet1!H4
+F	probes/lambda-escaping-closures.case.json	Sheet1!H5
+F	probes/lambda-escaping-closures.case.json	Sheet1!H8
+F	probes/lambda-escaping-closures.case.json	Sheet1!I2
+F	probes/lambda-escaping-closures.case.json	Sheet1!J2
 F	probes/legacy-marker-spelling-name-nlg1.case.json	!EngineError
 F	probes/legacy-marker-spelling-name-tlg1.case.json	!EngineError
 F	probes/linest-modes.case.json	Sheet1!K1
