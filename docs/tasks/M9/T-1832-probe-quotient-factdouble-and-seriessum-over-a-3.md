@@ -3,7 +3,7 @@ id: T-1832
 title: "Probe QUOTIENT, FACTDOUBLE and SERIESSUM over a 3-D range and in legacy formulas"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
