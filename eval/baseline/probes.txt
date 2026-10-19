@@ -2504,14 +2504,6 @@ F	probes/scalar-lift-open-a.case.json	Sheet1!AA9
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
-F	probes/scalar-lift-open-c.case.json	Sheet1!W1
-F	probes/scalar-lift-open-c.case.json	Sheet1!W2
-F	probes/scalar-lift-open-c.case.json	Sheet1!W3
-F	probes/scalar-lift-open-c.case.json	Sheet1!W4
-F	probes/scalar-lift-open-c.case.json	Sheet1!W6
-F	probes/scalar-lift-open-c.case.json	Sheet1!W7
-F	probes/scalar-lift-open-c.case.json	Sheet1!W8
-F	probes/scalar-lift-open-c.case.json	Sheet1!W9
 F	probes/scalar-lift-open-c2.case.json	Sheet1!W1
 F	probes/scalar-lift-open-c3.case.json	Sheet1!W1
 F	probes/scalar-lift-shapes-c.case.json	Sheet1!R3
