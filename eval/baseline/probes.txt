@@ -970,6 +970,7 @@ C	probes/weeknum-serial-0.case.json	57
 C	probes/weeknum-stale-return-type.case.json	13
 C	probes/whole-column-empty-walkers.case.json	16
 C	probes/workday-lift-errors.case.json	35
+C	probes/workday-serial-zero.case.json	58
 C	probes/wrapcols-wraprows-pad-with.case.json	122
 C	probes/written-parens-reference-context.case.json	35
 C	probes/written-parens-reference-only.case.json	35

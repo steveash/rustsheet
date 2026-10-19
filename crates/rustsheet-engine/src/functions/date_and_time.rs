@@ -306,12 +306,19 @@ impl Model {
         Ok(())
     }
 
+    /// The weekday-faithful date of a WORKDAY or NETWORKDAYS date or holiday, serial 0 included
+    /// (dates.md "WORKDAY and NETWORKDAYS from serial 0"); `#NUM!` outside the date range.
     fn excel_date(
         &self,
         serial: i64,
         cell: CellReferenceIndex,
     ) -> Result<chrono::NaiveDate, CalcResult> {
-        match self.workbook.settings.date_system.date_of_serial(serial) {
+        match self
+            .workbook
+            .settings
+            .date_system
+            .date_of_serial_from_zero(serial)
+        {
             Some(date) => Ok(date),
             None => Err(CalcResult::Error {
                 error: Error::NUM,
@@ -762,13 +769,11 @@ impl Model {
 
     pub(crate) fn fn_weekday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let ds = self.workbook.settings.date_system;
-        // 1900 serial 0: weekday-serial-zero.
-        let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30);
         // The date and the return type lift (probes/date-argument-modes F51:F52).
         let kind = Function::Weekday;
         self.numbers_fn(kind, args, [0.0, 1.0], cell, |[serial, return_type]| {
             let s = serial.floor();
-            let date = ds.date_of_serial(s as i64).or(sat.filter(|_| s == 0.0));
+            let date = ds.date_of_serial_from_zero(s as i64);
             weekday_number(date.ok_or(Error::NUM)?, return_type as i32)
         })
     }
