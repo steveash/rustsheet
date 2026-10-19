@@ -3,7 +3,7 @@ id: T-1236
 title: "WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL lift over arrays and refuse ranges (SPEC-0011 driver)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
