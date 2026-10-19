@@ -379,6 +379,8 @@ C	probes/legacy-choose-array-index.case.json	12
 C	probes/legacy-index-array-index.case.json	30
 C	probes/legacy-marker-spelling-name-plain.case.json	3
 C	probes/legacy-marker-spelling-name-xlfn.case.json	2
+C	probes/legacy-match-lookup-array-intersection.case.json	41
+C	probes/legacy-n-t-choose-index-shapes.case.json	36
 C	probes/legacy-n-t-marker-shapes.case.json	24
 C	probes/legacy-n-t-reference-args-2.case.json	30
 C	probes/legacy-n-t-reference-args.case.json	41
@@ -455,6 +457,7 @@ C	probes/match-empty-text-lift.case.json	13
 C	probes/match-error-lookup-value-array-match-type.case.json	8
 C	probes/match-fractional-match-type.case.json	8
 C	probes/match-lookup-value-lift.case.json	19
+C	probes/match-single-value-lookup-array.case.json	26
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
 C	probes/math-argument-modes.case.json	56
@@ -566,6 +569,7 @@ C	probes/pivotby-col-subtotals-values.case.json	1685
 C	probes/pivotby-col-subtotals-values2.case.json	4162
 C	probes/pivotby-col-subtotals-values3.case.json	1080
 C	probes/pivotby-followup.case.json	3124
+C	probes/pivotby-moved-cells-relative-sets.case.json	1460
 C	probes/pivotby-total-columns-one-group.case.json	172
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
@@ -638,6 +642,7 @@ C	probes/rank-unknown-shape-ref.case.json	17
 C	probes/rate-empty-arguments.case.json	10
 C	probes/regex-pcre2-features.case.json	62
 C	probes/regexreplace-extended-escapes.case.json	244
+C	probes/regexreplace-final-sigma.case.json	12
 C	probes/regexreplace-limit-and-syntax.case.json	22
 C	probes/regexreplace-long-result-a.case.json	5
 C	probes/regexreplace-long-result-b.case.json	1
@@ -690,6 +695,7 @@ C	probes/seriessum-x-zero.case.json	22
 C	probes/sheet-ops/sheet-ops-add-into-span.case.json	6
 C	probes/sheet-ops/sheet-ops-add-resolves-indirect.case.json	2
 C	probes/sheet-ops/sheet-ops-add-then-rename.case.json	1
+C	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	5
 C	probes/sheet-ops/sheet-ops-move-formula-sheet.case.json	4
 C	probes/sheet-ops/sheet-ops-move-into-span.case.json	4
 C	probes/sheet-ops/sheet-ops-move-out-of-span.case.json	6
@@ -1857,6 +1863,8 @@ F	probes/legacy-array-at-shapes.case.json	S!J11
 F	probes/legacy-array-at-shapes.case.json	S!J20
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A1
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A2
+F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!J2
+F	probes/legacy-match-lookup-array-intersection.case.json	Sheet1!Y2
 F	probes/legacy-n-t-marker-shapes.case.json	S!F10
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
@@ -2570,6 +2578,8 @@ F	probes/scalar-lift-shapes.case.json	Sheet1!J1
 F	probes/scalar-lift-shapes.case.json	Sheet1!J3
 F	probes/scalar-lift-shapes.case.json	Sheet1!J4
 F	probes/scalar-lift-shapes.case.json	Sheet1!K3
+F	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	S!B3
+F	probes/sheet-ops/sheet-ops-insert-row-legacy-cell.case.json	S!B4
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!A1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B2
@@ -2846,12 +2856,8 @@ F	probes/stat-argument-modes.case.json	Sheet1!H543
 F	probes/stat-argument-modes.case.json	Sheet1!H544
 F	probes/stat-argument-modes.case.json	Sheet1!H545
 F	probes/stat-argument-modes.case.json	Sheet1!H546
-F	probes/stat-argument-modes.case.json	Sheet1!H564
-F	probes/stat-argument-modes.case.json	Sheet1!H565
 F	probes/stat-argument-modes.case.json	Sheet1!H566
 F	probes/stat-argument-modes.case.json	Sheet1!H567
-F	probes/stat-argument-modes.case.json	Sheet1!H569
-F	probes/stat-argument-modes.case.json	Sheet1!H570
 F	probes/stat-argument-modes.case.json	Sheet1!H571
 F	probes/stat-argument-modes.case.json	Sheet1!H572
 F	probes/stat-argument-modes.case.json	Sheet1!H8

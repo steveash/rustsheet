@@ -35,7 +35,23 @@ pub fn round_trip_value(model: &Model, cell: &str) -> String {
 /// evaluates it and checks each of `cells` with [`round_trip_value`]: an expected number is
 /// compared bit for bit, anything else as text.
 pub fn check_cells(inputs: &[(&str, &str)], cells: &[(&str, &str, &str)]) {
+    check_cells_with_numbers(&[], inputs, cells);
+}
+
+/// [`check_cells`] with `numbers` (cell, value) stored as exact doubles first: typed input keeps
+/// 15 significant digits, as Excel's does, so a probe's 17-digit input goes in this way.
+pub fn check_cells_with_numbers(
+    numbers: &[(&str, f64)],
+    inputs: &[(&str, &str)],
+    cells: &[(&str, &str, &str)],
+) {
     let mut model = new_empty_model();
+    for (cell, number) in numbers {
+        let reference = model._parse_reference(cell);
+        model
+            .update_cell_with_number(reference.sheet, reference.row, reference.column, *number)
+            .unwrap();
+    }
     for (cell, input) in inputs {
         model._set(cell, input);
     }

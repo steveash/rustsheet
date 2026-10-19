@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1933 (from T-1853): a legacy (plain <f>) cell stays legacy after a row is inserted above it. Before the insert A5 = 1, A6 = 10; B2 =N(IF(1,{2;3}))+A5 and C2 =N(IF(1,A5:A6))+A5 are legacy, D2 is B2's dynamic twin, E2 =FORMULATEXT(B2). The insert_row op puts a blank row above row 1, so every cell is scored one row down (B3, C3, D3:D4, E3). SPEC-0012 rule 6. Only the moved formula cells are scored (`check`): the inputs are written at their pre-insert addresses.",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A5": 1,
+        "A6": 10,
+        "B2": "=N(IF(1,{2;3}))+A5",
+        "C2": "=N(IF(1,A5:A6))+A5",
+        "D2": "=N(IF(1,{2;3}))+A5",
+        "E2": "=FORMULATEXT(B2)"
+      },
+      "legacy_formulas": [
+        "B2",
+        "C2"
+      ]
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "insert_row",
+      "sheet": "S",
+      "row": 1
+    }
+  ],
+  "expected": {},
+  "check": [
+    "S!B3",
+    "S!C3",
+    "S!D3",
+    "S!D4",
+    "S!E3"
+  ]
+}
