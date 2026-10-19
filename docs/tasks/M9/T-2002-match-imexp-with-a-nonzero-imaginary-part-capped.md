@@ -3,7 +3,7 @@ id: T-2002
 title: "Match IMEXP with a nonzero imaginary part capped at DBL_MAX (T-1827 A12)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
