@@ -481,17 +481,25 @@ and `Model::lift_call` (functions/lift/call.rs), with the kernels `edate_of`, `e
 (functions/date_and_time/month_shift.rs), `weeknum_of` (date_and_time/weeknum.rs) and `yearfrac_of` (date_and_time/yearfrac.rs).
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
 
-## DATEDIF and DAYS360 error order with a bad unit or method (inferred)
-Rule (inferred from the leftmost-error rule in arrays.md, not probed): a date argument's own error comes first
-(`DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` are `#DIV/0!`). After that ours keeps each function's pre-lift
-order: DATEDIF reports the `#NUM!` of an end before the start before the unit's error
-(`DATEDIF(10,5,NA())` is `#NUM!`; for out-of-range dates the unit's error wins, see "DATEDIF argument errors before date checks", T-1355), while DAYS360 reports the method's error before the dates' `#NUM!`
-(`DAYS360(-5,5,NA())` is `#N/A`). `TIMEVALUE(C1:C1)` and `DATEVALUE(B1:B1)` of a one-cell range are that cell's value
-(1 row), and a one-cell or 3-D `weekend` is answered in "An error-valued or 3-D weekend, 3-D date text and holidays"
-(probes/date-text-weekend-3d, T-1428).
-One lifted data point (T-1785): `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` is `#N/A` in Excel, so an error unit beats the reversed pair's `#NUM!` there, where ours gives `#NUM!` (probes/date-math-lift-driver-edges G43, a known failure for T-1430); `INDEX(DATEDIF(45000,46000,{"d";#N/A}),2)` is `#N/A` in both (G42). DATEDIF's unit and DAYS360's method over an array are answered in "Date function argument modes" (they lift).
-Status: UNVERIFIED (probe pending)
-Tasks: T-1430 (error order)
+## DATEDIF and DAYS360 error order with a bad unit or method
+Rule (probes/datedif-days360-error-order, excel-graph, 2026-10-19, T-1430): both functions read every argument's
+value first, left to right, and only then check the dates' range. An error or non-date text in a date argument
+comes first, start before end (`DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` `#DIV/0!`, `DATEDIF("abc",5,"x")`
+and `DAYS360("abc",5,NA())` `#VALUE!`, `DATEDIF(NA(),1/0,"d")` and `DAYS360(NA(),1/0)` `#N/A`; A2, A6-A9, A11,
+A12, A15, C2, C4-C6, C8-C10, C13, C14). Then the unit's or method's error: `DATEDIF(10,5,NA())` (a reversed pair),
+`DATEDIF(-5,5,NA())`, `DATEDIF(5,-1,NA())`, `DATEDIF(3000000,5,NA())`, `DAYS360(-5,5,NA())`, `DAYS360(5,-5,NA())`
+and `DAYS360(3000000,5,NA())` are all `#N/A` (A1, A3, A10, A16, C1, C7, C18). DAYS360's method text that is no
+logical is `#VALUE!` at that same step, before the dates' `#NUM!` (`DAYS360(-5,5,"x")` `#VALUE!`, C3). Only then the
+dates' `#NUM!` (reversed pair or out of the calendar), and DATEDIF's unknown unit last: `DATEDIF(10,5,"x")` and
+`DATEDIF(-5,5,"x")` are `#NUM!` (A4, A5, A13, A17; C11, C17). Lifted forms keep the order per element
+(`INDEX(DATEDIF({10,1},5,NA()),1)` and `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` `#N/A`, A18-A22, C15, C16;
+probes/date-math-lift-driver-edges G42, G43). `TIMEVALUE(C1:C1)` and `DATEVALUE(B1:B1)` of a one-cell range are that
+cell's value (1 row), and a one-cell or 3-D `weekend` is answered in "An error-valued or 3-D weekend, 3-D date text
+and holidays" (probes/date-text-weekend-3d, T-1428). DATEDIF's unit and DAYS360's method over an array are answered
+in "Date function argument modes" (they lift).
+Status: VERIFIED (excel-graph). Before T-1430 the engine checked DATEDIF's reversed pair before the unit's error.
+Implemented in: `datedif_value` (crates/rustsheet-engine/src/functions/date_and_time.rs).
+Tasks: T-1355, T-1430
 
 ## An error-valued or 3-D weekend, 3-D date text and holidays
 Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
@@ -793,9 +801,10 @@ Tasks: T-1354, T-1826
 Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
 `#VALUE!`) is `#VALUE!`, not the `#NUM!` of a negative date.
 Evidence: gen-m7/f68fafa0ca2eba26 Calc!A1 (`Data!D10^DATEDIF((Data!E$5+(-1)),38627,CHOOSE(3,Data!B12))`, E5 blank) (excel-graph, 2026-10-11, T-1275).
-Ours: once start <= end, the unit's error wins over any start or end date outside the calendar (T-1355); a reversed pair still gives `#NUM!` first.
-Status: VERIFIED (web) for a negative start date with an in-range end; UNVERIFIED: an out-of-range high end date or an ordered pair of negative dates with an error unit, an invalid unit text with a negative start date, and an error unit with a reversed pair
-Tasks: T-1355
+Ours: the unit's error wins over a reversed pair and over any date outside the calendar (T-1355, T-1430).
+Status: VERIFIED (web); the reversed pair, a high out-of-calendar date, a negative end and an invalid unit text with a
+negative start are answered in "DATEDIF and DAYS360 error order with a bad unit or method" (probes/datedif-days360-error-order, T-1430)
+Tasks: T-1355, T-1430
 
 ## WEEKDAY: date text with literal quote characters is #VALUE!, even with an error return_type
 Date text whose string value contains the double-quote characters themselves (`"07/01/2026"` as text, quotes included) does not parse as a date, so WEEKDAY's date argument is `#VALUE!` and wins over an error `return_type` (`1/0`, `NA()`), by the left-to-right rule in arrays.md.

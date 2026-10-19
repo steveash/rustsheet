@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "DATEDIF and DAYS360 error order when a date argument and the unit (DATEDIF) or method (DAYS360) are both bad: error dates, negative, too-large, text and reversed dates against an error or invalid unit/method, start vs end error, and lifted forms (T-1430).",
+ "tags": [
+  "M6",
+  "dates",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=DATEDIF(10,5,NA())",
+    "A2": "=DATEDIF(1/0,5,NA())",
+    "A3": "=DATEDIF(-5,5,NA())",
+    "A4": "=DATEDIF(10,5,\"x\")",
+    "A5": "=DATEDIF(-5,5,\"x\")",
+    "A6": "=DATEDIF(1/0,5,\"x\")",
+    "A7": "=DATEDIF(\"abc\",5,NA())",
+    "A8": "=DATEDIF(\"abc\",5,\"x\")",
+    "A9": "=DATEDIF(5,1/0,NA())",
+    "A10": "=DATEDIF(5,-1,NA())",
+    "A11": "=DATEDIF(1/0,NA(),\"d\")",
+    "A12": "=DATEDIF(NA(),1/0,\"d\")",
+    "A13": "=DATEDIF(10,5,\"d\")",
+    "A14": "=DATEDIF(5,10,NA())",
+    "A15": "=DATEDIF(10,\"abc\",\"d\")",
+    "A16": "=DATEDIF(3000000,5,NA())",
+    "A17": "=DATEDIF(-5,10,\"d\")",
+    "A18": "=INDEX(DATEDIF({10,1},5,NA()),1)",
+    "A19": "=INDEX(DATEDIF({10,1},5,NA()),2)",
+    "A20": "=INDEX(DATEDIF(46000,45000,{\"d\";#N/A}),2)",
+    "A21": "=INDEX(DATEDIF(10,5,{\"d\",\"x\"}),2)",
+    "A22": "=INDEX(DATEDIF({-5,1},5,{\"x\",\"x\"}),1)",
+    "C1": "=DAYS360(-5,5,NA())",
+    "C2": "=DAYS360(1/0,5,NA())",
+    "C3": "=DAYS360(-5,5,\"x\")",
+    "C4": "=DAYS360(1/0,5,\"x\")",
+    "C5": "=DAYS360(\"abc\",5,NA())",
+    "C6": "=DAYS360(\"abc\",5,\"x\")",
+    "C7": "=DAYS360(5,-5,NA())",
+    "C8": "=DAYS360(5,1/0,NA())",
+    "C9": "=DAYS360(1/0,NA())",
+    "C10": "=DAYS360(NA(),1/0)",
+    "C11": "=DAYS360(-5,5)",
+    "C12": "=DAYS360(5,10,NA())",
+    "C13": "=DAYS360(-5,\"abc\")",
+    "C14": "=DAYS360(\"abc\",-5)",
+    "C15": "=INDEX(DAYS360({-5,1},5,NA()),1)",
+    "C16": "=INDEX(DAYS360(-5,5,{TRUE;#N/A}),2)",
+    "C17": "=DAYS360(-5,5,TRUE)",
+    "C18": "=DAYS360(3000000,5,NA())",
+    "C19": "=DAYS360(5,10,\"x\")"
+   }
+  }
+ ],
+ "expected": {}
+}
