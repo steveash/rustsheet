@@ -311,12 +311,12 @@ fn regexreplace_result_is_bounded_before_it_is_built() {
     assert_eq!(model._get_text("A7"), *"#CALC!");
 }
 
-// T-1272 performance review: iterating matches on the PikeVM (a `\b` pattern over non-ASCII
-// text, where the lazy DFA quits) charges each successive search the rest of the text, so a few
-// KB with many matches is `#ERROR!` (DEVIATION, decision 0014; T-1829 charges the work done and
-// updates this test). ASCII text stays on the lazy DFA.
+// T-1829: iterating matches on the PikeVM (a `\b` pattern over non-ASCII text, where the lazy
+// DFA quits) is charged the states a scan of the NFA visits, not the rest of the text for every
+// match, so a few KB with many matches returns values (T-1272 made these `#ERROR!`); ASCII text
+// stays on the lazy DFA.
 #[test]
-fn pike_iteration_is_charged_by_rest_of_text() {
+fn pike_iteration_is_charged_by_work_done() {
     let mut model = new_empty_model();
     model._set(
         "A1",
@@ -334,9 +334,48 @@ fn pike_iteration_is_charged_by_rest_of_text() {
         "A4",
         "=LEN(REGEXREPLACE(REPT(\"café foo bar \",2500),\"\\bfoo\\b\",\"x\"))",
     );
+    model._set(
+        "A5",
+        "=LEN(REGEXREPLACE(REPT(\"café foo bar \",250),\"\\b(\\w+)\\b\",\"<$1>\"))",
+    );
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"300");
-    assert_eq!(model._get_text("A2"), *"#ERROR!");
+    assert_eq!(model._get_text("A2"), *"500");
     assert_eq!(model._get_text("A3"), *"27500");
-    assert_eq!(model._get_text("A4"), *"#ERROR!");
+    assert_eq!(model._get_text("A4"), *"27500");
+    assert_eq!(model._get_text("A5"), *"4750");
+}
+
+// T-1829: a search on the PikeVM runs over the span the scan measured, which must not change
+// its leftmost-first match: a higher-priority alternative that reads past a lower one's match
+// still wins, and empty matches still fall between characters.
+#[test]
+fn pike_search_span_keeps_leftmost_first_matches() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REGEXEXTRACT(\"é aéééz a\",\"\\ba.*z|\\ba\")");
+    model._set(
+        "A2",
+        "=TEXTJOIN(\"|\",FALSE,REGEXEXTRACT(\"é aéz aé\",\"\\ba.*z|\\ba\",1))",
+    );
+    model._set("A3", "=REGEXREPLACE(\"éa é\",\"\\b\",\"-\")");
+    model._set("A4", "=REGEXREPLACE(\"éé\",\"(?:\\b|)\",\"-\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"aéééz");
+    assert_eq!(model._get_text("A2"), *"aéz|a");
+    assert_eq!(model._get_text("A3"), *"-éa- -é-");
+    assert_eq!(model._get_text("A4"), *"-é-é-");
+}
+
+// T-1829: a truly quadratic iteration (each search reads to the end of the text, where the
+// lazy DFA quits on the `é`) is still charged every byte it reads, so it stops (DEVIATION,
+// decision 0014).
+#[test]
+fn quadratic_pike_iteration_is_still_bounded() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LEN(REGEXREPLACE(REPT(\"a\",20000)&\"é\",\"a.*z|a|\\bq\",\"b\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
 }
