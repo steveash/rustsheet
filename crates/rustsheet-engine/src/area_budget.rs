@@ -69,6 +69,12 @@ pub(crate) struct AreaBudget {
 }
 
 impl AreaBudget {
+    /// Whether `count` more rectangles fit in what is left of the budget of [`MAX_SEEN_RANGES`]:
+    /// a walk that may instead record its cells one by one asks before it clips (T-0405).
+    pub(crate) fn has_seen_ranges(&self, count: usize) -> bool {
+        self.seen_ranges >= count
+    }
+
     /// Takes one rectangle from what is left of the budget of [`MAX_SEEN_RANGES`], or, past it,
     /// marks the formula's run as exceeded ([`Model::with_area_budget`]) and returns `false`: the
     /// rectangle must not be recorded.

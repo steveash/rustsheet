@@ -4,6 +4,9 @@
 
 use super::arg_buf::ArgBuf;
 use super::kinds::KernelWork;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+
 use crate::arithmetic::{bcast_get, MISSING};
 use crate::cast::calc_result_to_array_node;
 use crate::expressions::types::CellReferenceIndex;
@@ -11,9 +14,7 @@ use crate::functions::text::util::within_text_budget;
 use crate::functions::util::array_node_to_calc_result;
 use crate::limits::{check_array_size, too_many_visits};
 use crate::{
-    calc_result::CalcResult,
-    expressions::parser::{ArrayNode, Node},
-    expressions::token::Error,
+    calc_result::CalcResult, expressions::parser::ArrayNode, expressions::token::Error,
     model::Model,
 };
 
@@ -81,45 +82,60 @@ pub(crate) fn grid_dims(grid: &[Vec<ArrayNode>]) -> (usize, usize) {
 
 /// What one element costs, for the cell-visit cap (`limits::MAX_LIFTED_CELL_VISITS`). The total
 /// is checked before the first element runs, with saturating arithmetic. "Elements" are the
-/// elements computed: all of them, or one per run of equal elements under
-/// [`LiftOptions::reuse_equal_runs`]. The table's [`KernelWork::Weighted`] weight multiplies the
-/// per-element term.
-pub(crate) enum LiftCost<'a> {
+/// elements computed: all of them, or those [`LiftOptions::reuse`] does not reuse. The table's
+/// [`KernelWork::Weighted`] weight multiplies the per-element term.
+pub(crate) enum LiftCost {
     /// `KernelWork::Constant` and no whole data: elements × 1.
     Unit,
     /// Every element visits this many cells: elements × cells.
     Cells(u64),
     /// The kernel prepares its whole data once (LARGE sorts it): cells + elements.
     Prepared(u64),
-    /// Every element walks the used cells of `range` (`Model::walk_cost`) `walks` times: the
-    /// *IF(S) front end, one walk per criterion. The range is only measured when the call lifts.
-    Walk { range: &'a Node, walks: u64 },
+}
+
+/// Which elements reuse an earlier element's result instead of running the kernel.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Reuse {
+    /// Every element runs.
+    Never,
+    /// An element whose every grid slot equals the previous element's reuses its result (the
+    /// blank tail of a whole-column criteria range is walked once).
+    EqualRuns,
+    /// An element whose every grid slot equals any earlier element's reuses that result: the
+    /// occurrence-count idiom `COUNTIF(A2:A10000,A2:A10000)` walks once per distinct value
+    /// (T-0408). Only for a kernel whose result depends on nothing but its argument values.
+    AnyEqual,
 }
 
 /// How [`Model::lift_values`] runs the elements.
 pub(crate) struct LiftOptions {
-    /// Reuse the previous element's result when every grid slot equals the previous element's
-    /// (the blank tail of a whole-column criteria range is walked once). `ArrayNode`'s equality
-    /// treats 0 and -0 as equal, so a 0 element may reuse a -0 element's result: harmless for the
-    /// callers that set it (*IF(S) criteria, IFS, SWITCH and lookups match 0 and -0 alike). Off
-    /// for the scalar kernels of `lift_call`.
-    pub(crate) reuse_equal_runs: bool,
+    /// Which elements reuse an earlier result. `ArrayNode`'s equality treats 0 and -0 as equal,
+    /// so a 0 element may reuse a -0 element's result: harmless for the callers that reuse
+    /// (*IF(S) criteria, IFS, SWITCH and lookups match 0 and -0 alike). [`Reuse::Never`] for the
+    /// scalar kernels of `lift_call`.
+    pub(crate) reuse: Reuse,
     /// What one kernel call may cost: the table's entry for `lift_call`.
     pub(crate) work: KernelWork,
 }
 
 impl LiftOptions {
-    /// Every caller of T-1784's driver: the *IF(S) functions, AGGREGATE, IFS, SWITCH and the
-    /// lookups all reuse equal runs, as `lift_with_cost` did.
+    /// AGGREGATE, IFS, SWITCH and the lookups reuse equal runs, as T-1784's `lift_with_cost` did.
     pub(crate) const REUSE_EQUAL_RUNS: Self = Self {
-        reuse_equal_runs: true,
+        reuse: Reuse::EqualRuns,
+        work: KernelWork::Constant,
+    };
+
+    /// The *IF(S) functions, whose kernel only reads the criteria and the ranges resolved before
+    /// the lift: any repeated element reuses its first result (T-0408).
+    pub(crate) const REUSE_ANY_EQUAL: Self = Self {
+        reuse: Reuse::AnyEqual,
         work: KernelWork::Constant,
     };
 
     /// Every element runs, and the caller's [`LiftCost`] already counts its work: the lifted
     /// text functions (TEXTSPLIT, TEXTBEFORE, TEXTAFTER, REGEX*; T-1272).
     pub(crate) const EVERY_ELEMENT: Self = Self {
-        reuse_equal_runs: false,
+        reuse: Reuse::Never,
         work: KernelWork::Constant,
     };
 }
@@ -133,10 +149,11 @@ fn same_as(args: &[LiftedArg], row: usize, column: usize, previous: (usize, usiz
         .all(|arg| arg.element(row, column) == arg.element(previous.0, previous.1))
 }
 
-/// Elements [`Model::lift_values`] computes, in row-major order: all of them, or one per run of
-/// equal consecutive elements when `reuse` is set (the rest reuse the previous result).
-fn count_walks(args: &[LiftedArg], rows: usize, columns: usize, reuse: bool) -> u64 {
-    if !reuse {
+/// Elements [`Model::lift_values`] computes under [`Reuse::Never`] or [`Reuse::EqualRuns`], in
+/// row-major order: all of them, or one per run of equal consecutive elements (the rest reuse the
+/// previous result).
+fn count_walks(args: &[LiftedArg], rows: usize, columns: usize, reuse: Reuse) -> u64 {
+    if reuse == Reuse::Never {
         return u64::try_from(rows.saturating_mul(columns)).unwrap_or(u64::MAX);
     }
     let mut walks: u64 = 0;
@@ -151,6 +168,82 @@ fn count_walks(args: &[LiftedArg], rows: usize, columns: usize, reuse: bool) -> 
         }
     }
     walks
+}
+
+/// One element's grid slots, as a hash key: equal when [`same_as`] is, without copying a slot.
+struct ElementKey<'a> {
+    args: &'a [LiftedArg],
+    row: usize,
+    column: usize,
+}
+
+impl PartialEq for ElementKey<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        same_as(self.args, self.row, self.column, (other.row, other.column))
+    }
+}
+
+impl Eq for ElementKey<'_> {}
+
+impl Hash for ElementKey<'_> {
+    /// Hashes what `ArrayNode`'s equality compares: 0 and -0 alike, a text by its lossy view
+    /// (equal texts have equal views; the rare lossy collision is told apart by `eq`).
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for arg in self.args {
+            let Some(node) = arg.element(self.row, self.column) else {
+                continue;
+            };
+            std::mem::discriminant(node).hash(state);
+            match node {
+                ArrayNode::Boolean(value) => value.hash(state),
+                ArrayNode::Number(value) => {
+                    (if *value == 0.0 { 0 } else { value.to_bits() }).hash(state);
+                }
+                ArrayNode::String(text) => {
+                    let view: &str = text;
+                    view.hash(state);
+                }
+                ArrayNode::Error(error) => std::mem::discriminant(error).hash(state),
+                ArrayNode::Empty => {}
+            }
+        }
+    }
+}
+
+/// How [`Model::lift_broadcast`] reuses results, worked out from [`LiftOptions::reuse`].
+enum ReusePlan {
+    Never,
+    EqualRuns,
+    /// For each element in row-major order, the row-major index of the first element equal to it
+    /// ([`first_equal_elements`]).
+    FirstEqual(Vec<usize>),
+}
+
+/// For each element in row-major order, the row-major index of the first element whose every
+/// grid slot equals its own ([`Reuse::AnyEqual`]): itself when it is computed, an earlier one
+/// whose result it reuses otherwise. Also returns how many elements are computed. An element
+/// equal to the previous one takes its entry without hashing, so a run (the blank tail of a
+/// whole-column criteria range) costs one slot comparison per element, as under
+/// [`Reuse::EqualRuns`].
+fn first_equal_elements(args: &[LiftedArg], rows: usize, columns: usize) -> (Vec<usize>, u64) {
+    let mut first: HashMap<ElementKey<'_>, usize> = HashMap::new();
+    let mut plan: Vec<usize> = Vec::with_capacity(rows.saturating_mul(columns));
+    let mut previous: Option<(usize, usize)> = None;
+    for row in 0..rows {
+        for column in 0..columns {
+            let index = plan.len();
+            let entry = match (previous, plan.last()) {
+                (Some(p), Some(&last)) if same_as(args, row, column, p) => last,
+                _ => *first
+                    .entry(ElementKey { args, row, column })
+                    .or_insert(index),
+            };
+            plan.push(entry);
+            previous = Some((row, column));
+        }
+    }
+    let computed = u64::try_from(first.len()).unwrap_or(u64::MAX);
+    (plan, computed)
 }
 
 /// The `#VALUE!` of a call whose element texts exceed the broadcast text budget, or `None`.
@@ -192,7 +285,7 @@ impl Model {
     pub(crate) fn lift_values(
         &mut self,
         args: Vec<CalcResult>,
-        cost: LiftCost<'_>,
+        cost: LiftCost,
         options: &LiftOptions,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
@@ -217,7 +310,7 @@ impl Model {
     pub(super) fn lift_grids(
         &mut self,
         lifted: Vec<LiftedArg>,
-        cost: LiftCost<'_>,
+        cost: LiftCost,
         options: &LiftOptions,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
@@ -230,17 +323,25 @@ impl Model {
             return CalcResult::new_error(error, cell, message);
         }
         // Refuse before running anything when the elements would cost too much.
-        let elements = count_walks(&lifted, rows, columns, options.reuse_equal_runs);
+        let (plan, elements) = match options.reuse {
+            Reuse::AnyEqual => {
+                let (first, elements) = first_equal_elements(&lifted, rows, columns);
+                (ReusePlan::FirstEqual(first), elements)
+            }
+            reuse => {
+                let plan = if reuse == Reuse::EqualRuns {
+                    ReusePlan::EqualRuns
+                } else {
+                    ReusePlan::Never
+                };
+                (plan, count_walks(&lifted, rows, columns, reuse))
+            }
+        };
         let weight = options.work.weight();
         let visits = match cost {
             LiftCost::Unit => elements.saturating_mul(weight),
             LiftCost::Cells(cells) => cells.saturating_mul(weight).saturating_mul(elements),
             LiftCost::Prepared(cells) => cells.saturating_add(elements.saturating_mul(weight)),
-            LiftCost::Walk { range, walks } => self
-                .walk_cost(range, cell)
-                .saturating_mul(walks)
-                .saturating_mul(weight)
-                .saturating_mul(elements),
         };
         if let Some(error) = too_many_visits(visits, cell) {
             return error;
@@ -254,7 +355,7 @@ impl Model {
             });
         // One grid with the output's exact shape (every row as wide), and nothing to reuse.
         let in_place = match (grids.next(), grids.next()) {
-            (Some((index, grid)), None) => (!options.reuse_equal_runs
+            (Some((index, grid)), None) => (options.reuse == Reuse::Never
                 && grid.len() == rows
                 && grid.iter().all(|row| row.len() == columns))
             .then_some(index),
@@ -262,7 +363,7 @@ impl Model {
         };
         match in_place {
             Some(index) => self.lift_in_place(lifted, index, cell, kernel),
-            None => self.lift_broadcast(&lifted, rows, columns, options, cell, kernel),
+            None => self.lift_broadcast(&lifted, rows, columns, &plan, cell, kernel),
         }
     }
 
@@ -303,13 +404,14 @@ impl Model {
 
     /// The general broadcast: several grids (or one that a dimension of length 1 stretches), one
     /// value buffer for the whole call (scalar slots are written once, grid slots per element),
-    /// and the previous result reused for a run of equal elements when the options ask for it.
+    /// and an earlier result reused as `plan` says: the previous one for a run of equal elements,
+    /// or the first equal element's.
     fn lift_broadcast(
         &mut self,
         lifted: &[LiftedArg],
         rows: usize,
         columns: usize,
-        options: &LiftOptions,
+        plan: &ReusePlan,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult {
@@ -323,29 +425,46 @@ impl Model {
         // The previous position and the last computed result.
         let mut previous: Option<((usize, usize), ArrayNode)> = None;
         let mut text_bytes = 0;
-        let mut output = Vec::with_capacity(rows);
+        let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(rows);
         for row in 0..rows {
-            let mut out_row = Vec::with_capacity(columns);
+            let mut out_row: Vec<ArrayNode> = Vec::with_capacity(columns);
             for column in 0..columns {
-                let reuse = options.reuse_equal_runs
+                // The first equal element's result, already in the output.
+                let first_equal = match plan {
+                    ReusePlan::FirstEqual(first) => first
+                        .get(row * columns + column)
+                        .map(|first| (first / columns, first % columns))
+                        .filter(|&first| first != (row, column))
+                        .and_then(|(first_row, first_column)| {
+                            if first_row == row {
+                                out_row.get(first_column)
+                            } else {
+                                output.get(first_row).and_then(|r| r.get(first_column))
+                            }
+                        })
+                        .cloned(),
+                    ReusePlan::Never | ReusePlan::EqualRuns => None,
+                };
+                let reuse = matches!(plan, ReusePlan::EqualRuns)
                     && previous
                         .as_ref()
                         .is_some_and(|(position, _)| same_as(lifted, row, column, *position));
-                let value = match previous.as_mut() {
+                let value = match (first_equal, previous.as_mut()) {
+                    (Some(value), _) => value,
                     // Equal slots are transitive, so comparing with the previous position is the
                     // same as comparing with the last computed one; only the position moves.
-                    Some((position, value)) if reuse => {
+                    (None, Some((position, value))) if reuse => {
                         *position = (row, column);
                         value.clone()
                     }
-                    _ => {
+                    (None, _) => {
                         for (slot, arg) in values.iter_mut().zip(lifted) {
                             if let Some(node) = arg.element(row, column) {
                                 *slot = array_node_to_calc_result(node, cell);
                             }
                         }
                         let value = calc_result_to_array_node(kernel(self, &values));
-                        if options.reuse_equal_runs {
+                        if matches!(plan, ReusePlan::EqualRuns) {
                             previous = Some(((row, column), value.clone()));
                         }
                         value
@@ -364,7 +483,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{count_walks, LiftedArg};
+    use super::{count_walks, first_equal_elements, LiftedArg, Reuse};
     use crate::calc_result::CalcResult;
     use crate::expressions::parser::ArrayNode;
 
@@ -375,8 +494,8 @@ mod tests {
     #[test]
     fn count_walks_counts_runs_only_when_reusing() {
         let args = [column(&[1.0, 1.0, 2.0, 2.0, 1.0])];
-        assert_eq!(count_walks(&args, 5, 1, true), 3);
-        assert_eq!(count_walks(&args, 5, 1, false), 5);
+        assert_eq!(count_walks(&args, 5, 1, Reuse::EqualRuns), 3);
+        assert_eq!(count_walks(&args, 5, 1, Reuse::Never), 5);
     }
 
     #[test]
@@ -389,10 +508,34 @@ mod tests {
             row,
             LiftedArg::Scalar(CalcResult::Number(3.0)),
         ];
-        assert_eq!(count_walks(&args, 2, 2, true), 4);
+        assert_eq!(count_walks(&args, 2, 2, Reuse::EqualRuns), 4);
         // Past the shorter array every slot is #N/A, so the tail is one run.
         let args = [column(&[1.0, 2.0]), column(&[5.0, 5.0, 5.0, 5.0])];
-        assert_eq!(count_walks(&args, 4, 1, true), 3);
+        assert_eq!(count_walks(&args, 4, 1, Reuse::EqualRuns), 3);
+    }
+
+    #[test]
+    fn first_equal_elements_points_repeats_at_their_first_occurrence() {
+        // 0 and -0 are one element, as `ArrayNode`'s equality has them; a text and an equal
+        // number are not.
+        let texts = LiftedArg::Grid(vec![
+            vec![ArrayNode::String("a".into())],
+            vec![ArrayNode::Number(1.0)],
+            vec![ArrayNode::String("a".into())],
+            vec![ArrayNode::Number(0.0)],
+            vec![ArrayNode::Number(-0.0)],
+            vec![ArrayNode::Number(1.0)],
+        ]);
+        let (plan, computed) = first_equal_elements(&[texts], 6, 1);
+        assert_eq!(plan, vec![0, 1, 0, 3, 3, 1]);
+        assert_eq!(computed, 3);
+        // Every grid slot takes part; a scalar does not.
+        let args = [
+            column(&[1.0, 1.0, 1.0]),
+            column(&[2.0, 3.0, 2.0]),
+            LiftedArg::Scalar(CalcResult::Number(9.0)),
+        ];
+        assert_eq!(first_equal_elements(&args, 3, 1), (vec![0, 1, 0], 2));
     }
 
     #[test]

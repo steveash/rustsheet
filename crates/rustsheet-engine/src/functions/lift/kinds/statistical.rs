@@ -2,7 +2,7 @@
 //! other functions over a data argument, the scalar distributions, and the weights of the
 //! quantile searches, the incomplete gamma and HYPGEOM.DIST's cdf sum.
 
-use super::ArgKind::{Lift, WholeByCaller};
+use super::ArgKind::{Lift, LiftArrays, LiftArraysRangeWhole, Whole, WholeByCaller};
 use super::KernelWork::{Constant, Weighted};
 use super::{ArgKinds, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
 use crate::functions::Function;
@@ -106,6 +106,13 @@ const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(5, &[Lift; 5], Weighted(HYPGEOM_D
 const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift; 4], Constant);
 // --- End hypergeometric (T-1873) ------------------------------------------------------------
 
+/// `DSUM(database, field, criteria)` and the other D-functions: the database is read whole, `field`
+/// lifts over an array and a two-cell range is `#VALUE!`, `criteria` lifts over an array and a range
+/// is the criteria table, read whole (probes/db-argument-modes D11:D22, F11:F23). Each element
+/// scans the database, so `Model::db_call` charges the database's cells per element
+/// (`LiftCost::Cells`).
+const DATABASE: ArgKinds = ArgKinds::fixed(3, &[Whole, LiftArrays, LiftArraysRangeWhole], Constant);
+
 /// This family's part of the lifting table (`Function::arg_kinds`).
 pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
     match function {
@@ -116,6 +123,19 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // the function's own reader (`statistical/sorted_data.rs`) and sorted once per call.
         // A kernel looks up its sorted numbers in O(1) or by binary search (PERCENTRANK); the
         // call pays for the numbers through its `LiftCost`.
+        // The D-functions: see `DATABASE`.
+        Function::Daverage
+        | Function::Dcount
+        | Function::Dcounta
+        | Function::Dget
+        | Function::Dmax
+        | Function::Dmin
+        | Function::Dproduct
+        | Function::Dstdev
+        | Function::Dstdevp
+        | Function::Dsum
+        | Function::Dvar
+        | Function::Dvarp => Some(&DATABASE),
         Function::Large
         | Function::Small
         | Function::PercentileCompat

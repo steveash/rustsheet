@@ -739,6 +739,9 @@ fn legacy_array_values_intersect_in_value_positions() {
         ("-IF(1,{2;3})", "-@IF(1,{2;3})", "-IF(1,{2;3})"),
         ("N({2;3})", "N(@{2;3})", "N({2;3})"),
         ("ABS({-2;3})", "ABS(@{-2;3})", "ABS({-2;3})"),
+        // An array constant inside an operator (probes/legacy-array-at-shapes I20, J20, T-1911).
+        ("N({2;3}+0)", "N(@{2;3}+0)", "N({2;3}+0)"),
+        ("ABS({2;3}+0)", "ABS(@{2;3}+0)", "ABS({2;3}+0)"),
         (
             "N(IFERROR({2;3},0))",
             "N(@IFERROR({2;3},0))",
@@ -759,6 +762,23 @@ fn legacy_array_values_intersect_in_value_positions() {
             "N(_xlfn.SWITCH(1,1,{2;3}))",
             "N(SWITCH(1,1,{2;3}))",
             "N(_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+        // A root SWITCH of array constants is unmarked and spills (T-1910); nested, it keeps its `@`.
+        (
+            "_xlfn.SWITCH(1,1,{2;3})",
+            "SWITCH(1,1,{2;3})",
+            "_xlfn.SWITCH(1,1,{2;3})",
+        ),
+        // An `@` typed on it is meaningful (the value is 2, not a spill) and is kept.
+        (
+            "_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
+            "@SWITCH(1,1,{2;3})",
+            "_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+        (
+            "ABS(_xlfn.SWITCH(1,1,{-2;3}))",
+            "ABS(@SWITCH(1,1,{-2;3}))",
+            "ABS(_xlfn.SWITCH(1,1,{-2;3}))",
         ),
         ("SUM(N({1,2}))", "SUM(N({1,2}))", "SUM(N({1,2}))"),
         (
@@ -786,6 +806,73 @@ fn legacy_array_values_intersect_in_value_positions() {
             "IF(1,_xlfn.SINGLE({2;3}))",
             "IF(1,@{2;3})",
             "IF(1,_xlfn.SINGLE({2;3}))",
+        ),
+    ]);
+}
+
+// A legacy IF passes a range arm whole: the `@` goes on the IF in a value position and nowhere
+// under a range argument, so an explicit `@` on the arm survives the export there
+// (probes/legacy-if-arm-range-argument, T-1935).
+#[test]
+fn legacy_if_passes_a_range_arm_whole() {
+    check(&[
+        ("IF(TRUE,B1:B6)", "@IF(TRUE,B1:B6)", "IF(TRUE,B1:B6)"),
+        (
+            "ABS(IF(TRUE,B1:B6))",
+            "ABS(@IF(TRUE,B1:B6))",
+            "ABS(IF(TRUE,B1:B6))",
+        ),
+        (
+            "SUM(IF(TRUE,B1:B6))",
+            "SUM(IF(TRUE,B1:B6))",
+            "SUM(IF(TRUE,B1:B6))",
+        ),
+        (
+            "SUM(IF(TRUE,(B1:B6)))",
+            "SUM(IF(TRUE,(B1:B6)))",
+            "SUM(IF(TRUE,(B1:B6)))",
+        ),
+        (
+            "MATCH(2,IF(B1:B6>0,B1:B6),0)",
+            "MATCH(2,IF(@B1:B6>0,B1:B6),0)",
+            "MATCH(2,IF(B1:B6>0,B1:B6),0)",
+        ),
+        (
+            "INDEX(IF(TRUE,B1:B6),3)",
+            "INDEX(IF(TRUE,B1:B6),3)",
+            "INDEX(IF(TRUE,B1:B6),3)",
+        ),
+        (
+            "MATCH(3,IF(TRUE,B1:B6+0),0)",
+            "MATCH(3,IF(TRUE,@B1:B6+0),0)",
+            "MATCH(3,IF(TRUE,B1:B6+0),0)",
+        ),
+        // Read as a value under a range argument, the IF takes the `@` (probes/-b).
+        (
+            "SUM(IF(TRUE,B1:B6)+0)",
+            "SUM(@IF(TRUE,B1:B6)+0)",
+            "SUM(IF(TRUE,B1:B6)+0)",
+        ),
+        (
+            "MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)",
+            "MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)",
+            "MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)",
+        ),
+        (
+            "INDEX(IF(TRUE,B1:B6,5),3)",
+            "INDEX(IF(TRUE,B1:B6,5),3)",
+            "INDEX(IF(TRUE,B1:B6,5),3)",
+        ),
+        (
+            "SUM(_xlfn.SINGLE(IF(TRUE,B1:B6)))",
+            "SUM(@IF(TRUE,B1:B6))",
+            "SUM(_xlfn.SINGLE(IF(TRUE,B1:B6)))",
+        ),
+        // An explicit `@` on the arm is not one the import adds.
+        (
+            "SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))",
+            "SUM(IF(TRUE,@B1:B6))",
+            "SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))",
         ),
     ]);
 }

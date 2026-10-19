@@ -7,10 +7,26 @@
 /// table has a fallback arm.
 macro_rules! lifting_table_functions {
     () => {
-        Function::Edate
+        Function::Daverage
+            | Function::Dcount
+            | Function::Dcounta
+            | Function::Dget
+            | Function::Dmax
+            | Function::Dmin
+            | Function::Dproduct
+            | Function::Dstdev
+            | Function::Dstdevp
+            | Function::Dsum
+            | Function::Dvar
+            | Function::Dvarp
+            | Function::Edate
             | Function::Eomonth
             | Function::Weeknum
             | Function::Yearfrac
+            | Function::Workday
+            | Function::WorkdayIntl
+            | Function::Networkdays
+            | Function::NetworkdaysIntl
             | Function::Isnumber
             | Function::Istext
             | Function::Isnontext

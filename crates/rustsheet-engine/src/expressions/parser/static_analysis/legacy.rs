@@ -116,7 +116,8 @@ fn is_one_element_array(node: &Node) -> bool {
 /// excel-graph, T-1633), `=N({2;3})` as `=N(@{2;3})` and `=ABS({-2;3})` as `=ABS(@{-2;3})`, 2
 /// (probes/legacy-array-result E, F, T-1713; probes/t-n-range-top-left M, O, T-0985), while
 /// `=SUM(N({1,2}))` is 3 with none (probes/n-array-lift A3). An array constant in an operator
-/// (`N({2;3}+0)`) is unprobed and left alone. TYPE reads its argument whole and shows none:
+/// gets its own `@` (`=N(@{2;3}+0)`, `=ABS(@{2;3}+0)`, 2 with no spill; probes/legacy-array-at-shapes
+/// I20, J20, T-1911). TYPE reads its argument whole and shows none:
 /// `=TYPE({5})` stays `=TYPE({5})` (probes/legacy-choose-arm-aggregate-and-array-constant-at
 /// L3, excel-graph, T-1638).
 fn shows_scalar_array_at(signature: Option<&Signature>, arrays: bool, node: &Node) -> bool {
@@ -136,6 +137,12 @@ pub(super) fn add_array_at(
     add_index_array_at(kind, index, arg);
     if shows_scalar_array_at(signature, arrays, arg) {
         *arg = Node::automatic_at(arg.clone());
+    } else if arrays && matches!(signature, Some(Signature::Scalar)) {
+        for_each_value_operand(arg, &mut |operand| {
+            if matches!(operand, Node::ArrayKind(_)) {
+                *operand = Node::automatic_at(operand.clone());
+            }
+        });
     }
 }
 
@@ -152,6 +159,14 @@ pub(super) fn remove_array_at(
         if shows_scalar_array_at(signature, arrays, child) {
             *arg = child.as_ref().clone();
         }
+    } else if arrays && matches!(signature, Some(Signature::Scalar)) {
+        for_each_value_operand(arg, &mut |operand| {
+            if let Node::ImplicitIntersection { child, .. } = operand {
+                if matches!(child.as_ref(), Node::ArrayKind(_)) {
+                    *operand = child.as_ref().clone();
+                }
+            }
+        });
     }
 }
 
@@ -219,6 +234,35 @@ pub(super) fn legacy_array_call_at(
         })
 }
 
+/// Whether `node` is a SWITCH whose results are all array constants: at the formula root,
+/// `=SWITCH(1,1,{2;3})` is shown unmarked and spills 2, 3 in a legacy cell (probes/legacy-array-at-shapes
+/// C20, C11, T-1910). Only the root is probed: a nested or range-returning SWITCH keeps its `@`
+/// (T-1964).
+pub(super) fn is_switch_of_array_constants(node: &Node) -> bool {
+    matches!(node, Node::FunctionKind { kind: Function::Switch, args }
+        if returns_only_array_constants(&Function::Switch, args))
+}
+
+/// [`add_legacy_intersection`] on a whole formula: the automatic `@` the pass puts on a root SWITCH
+/// of array constants is taken off ([`is_switch_of_array_constants`]), while one typed there is
+/// meaningful and kept (the export keeps it too, `remove_redundant_implicit_intersection`).
+pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
+    match node {
+        Node::ImplicitIntersection {
+            automatic: false,
+            child,
+        } if add && is_switch_of_array_constants(child) => {} // A typed `@` stays as it is.
+        _ => {
+            add_legacy_intersection(node, add, add);
+            if let Node::ImplicitIntersection { child, .. } = node {
+                if add && is_switch_of_array_constants(child) {
+                    *node = std::mem::replace(child.as_mut(), Node::EmptyArgKind);
+                }
+            }
+        }
+    }
+}
+
 /// Whether a legacy formula puts no `@` on the call `arg` of `kind`, a value it would otherwise
 /// intersect: N and T over IF or SWITCH (`=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`,
 /// `=N(SWITCH(1,1,{2;3}))`, the last spilling 2, 3; probes/legacy-array-result A, G, I,
@@ -255,15 +299,20 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
 /// unmarked (T-1908); a CHOOSE mixing references and array constants is
 /// [`chooses_between_references_and_array_constants`]; other mixed arms keep their `@`.
 fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
+    (matches!(kind, Function::Choose | Function::Index | Function::Ifs)
+        && returns_only_array_constants(kind, args))
+        || chooses_between_references_and_array_constants(kind, args)
+}
+
+/// Whether `kind` has an argument it can return ([`is_returned_argument`]) and every one is an
+/// array constant.
+fn returns_only_array_constants(kind: &Function, args: &[Node]) -> bool {
     let mut returned = args
         .iter()
         .enumerate()
-        .filter(|(index, _)| is_returned_argument(kind, *index))
+        .filter(|(index, _)| is_returned_argument(kind, *index, args.len()))
         .peekable();
-    (matches!(kind, Function::Choose | Function::Index | Function::Ifs)
-        && returned.peek().is_some()
-        && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_))))
-        || chooses_between_references_and_array_constants(kind, args)
+    returned.peek().is_some() && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_)))
 }
 
 /// Whether `kind(args)` is a CHOOSE with a number or boolean literal index whose values are
@@ -291,12 +340,14 @@ fn chooses_between_references_and_array_constants(kind: &Function, args: &[Node]
 }
 
 /// Whether argument `index` of `kind` is one its result can be, as it is or as a part of it: the
-/// arms of IF, the values of CHOOSE and IFS, and INDEX's `array`.
-fn is_returned_argument(kind: &Function, index: usize) -> bool {
+/// arms of IF, the values of CHOOSE and IFS, INDEX's `array` and the results of SWITCH (the even
+/// positions from 2 and a trailing default, of `count` arguments).
+fn is_returned_argument(kind: &Function, index: usize, count: usize) -> bool {
     match kind {
         Function::If | Function::Choose => index > 0,
         Function::Ifs => index % 2 == 1,
         Function::Index => index == 0,
+        Function::Switch => index >= 2 && (index.is_multiple_of(2) || index + 1 == count),
         _ => false,
     }
 }
@@ -337,6 +388,7 @@ pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
     {
         return;
     }
+    let count = call_args.len();
     let mut dropped = Vec::new();
     for (index, returned) in call_args.iter_mut().enumerate() {
         if let Node::ImplicitIntersection {
@@ -344,7 +396,7 @@ pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
             child,
         } = returned
         {
-            if is_returned_argument(call, index) && is_one_element_array(child) {
+            if is_returned_argument(call, index, count) && is_one_element_array(child) {
                 *returned = std::mem::replace(child.as_mut(), Node::EmptyArgKind);
                 dropped.push(index);
             }
@@ -411,8 +463,56 @@ fn legacy_intersects(
     index: usize,
     arg: &Node,
 ) -> bool {
-    (is_scalar_context(kind, signature) && !reads_reference(kind, arg))
+    (is_scalar_context(kind, signature)
+        && !reads_reference(kind, arg)
+        && !is_reference_arm(kind, index, arg))
         || legacy_value_operand(kind, index, arg)
+}
+
+/// Whether `arg` is an arm of IF that is a range, possibly in parentheses, which a legacy formula
+/// passes on whole as IF's result: the `@` goes on the IF where its result is a value
+/// (`=IF(TRUE,B1:B6)` shows as `=@IF(TRUE,B1:B6)`, `=ABS(IF(TRUE,B1:B6))` as
+/// `=ABS(@IF(TRUE,B1:B6))`), and none where it is a range argument (`=SUM(IF(TRUE,B1:B6))` is 12
+/// and `=MATCH(3,IF(B1:B6>0,B1:B6),0)` 3 on and off the range's rows, the condition intersected;
+/// probes/legacy-if-arm-range-argument, legacy-match-lookup-array-intersection J2, excel-graph,
+/// T-1935). An operation over the range is still a value (`=MATCH(3,IF(TRUE,@B1:B6+0),0)`), and
+/// so is IFERROR's value (`=MATCH(3,IFERROR(@B1:B6,0),0)`); other reference shapes in an arm are
+/// unprobed and keep their `@`. An explicit `@` on the range is looked through, so the export
+/// keeps it (`SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))`).
+fn is_reference_arm(kind: &Function, index: usize, arg: &Node) -> bool {
+    matches!(kind, Function::If) && index > 0 && is_range_arm(arg)
+}
+
+/// Whether `arm` is a range, possibly in parentheses or under an explicit `@`, or an IF that
+/// returns one ([`returns_range_arm`]): `=MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)` shows no `@` and
+/// is 3 off the range's rows (probes/legacy-if-arm-range-argument T). An explicit stack keeps the
+/// walk off the call stack: a formula's tree is untrusted input.
+fn is_range_arm(arm: &Node) -> bool {
+    let mut pending = vec![arm];
+    while let Some(node) = pending.pop() {
+        let node = match node.ungrouped() {
+            Node::ImplicitIntersection { child, .. } => child.ungrouped(),
+            other => other,
+        };
+        match node {
+            Node::RangeKind { .. } => return true,
+            Node::FunctionKind {
+                kind: Function::If,
+                args,
+            } if args.len() > 1 => pending.extend(&args[1..]),
+            _ => {}
+        }
+    }
+    false
+}
+
+/// Whether `kind(args)` is an IF with an arm that is a range ([`is_range_arm`]), which a legacy
+/// formula intersects as a whole wherever it reads the IF as a value, also under a range
+/// argument: `=SUM(IF(TRUE,B1:B6)+0)` shows as `=SUM(@IF(TRUE,B1:B6)+0)`, 2 on the range's rows
+/// and `#VALUE!` off them, and so do `-`, a comparison, `&` and `=MATCH(3,IF(TRUE,B1:B6)*1,0)`
+/// (probes/legacy-if-arm-range-argument-b, excel-graph, T-1935).
+pub(super) fn returns_range_arm(kind: &Function, args: &[Node]) -> bool {
+    matches!(kind, Function::If) && args.len() > 1 && args[1..].iter().any(is_range_arm)
 }
 
 /// Whether `arg` of `kind` needs no intersection although `kind` takes a scalar: a scalar, or
@@ -476,7 +576,8 @@ pub(super) fn legacy_context_intersects(
     index: usize,
     arg: &Node,
 ) -> bool {
-    is_scalar_context(kind, signature) || legacy_value_operand(kind, index, arg)
+    (is_scalar_context(kind, signature) && !is_reference_arm(kind, index, arg))
+        || legacy_value_operand(kind, index, arg)
 }
 
 /// A scalar argument, or any argument of a function whose arguments a legacy formula reads as
@@ -645,7 +746,10 @@ fn is_value_operation(node: &Node) -> bool {
 /// ([`leaves_call_whole`]): `=N(IF(1,{2;3}))` shows no `@` at all. INDEX of a CHOOSE whose arms
 /// are all arithmetic reads a value: `=INDEX(CHOOSE(1,B1:B6*1),3)` shows as
 /// `=INDEX(CHOOSE(1,@B1:B6*1),3)` (probes/legacy-choose-arm-aggregate-and-array-constant-at H3,
-/// excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
+/// excel-graph, T-1643), and so does INDEX of an IF with a range arm ([`returns_range_arm`]):
+/// `=INDEX(IF(TRUE,B1:B6),3)` and `=INDEX(IF(TRUE,B1:B6,5),3)` show no `@`
+/// (probes/legacy-if-arm-range-argument N12, legacy-if-arm-range-argument-b I12, T-1935).
+/// Only the `@` placement changes: a dynamic formula
 /// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
     args.first()
@@ -657,6 +761,14 @@ pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool 
                     kind: Function::Choose,
                     args: arms,
                 }) if arms.len() > 1 && arms[1..].iter().all(is_value_operation)
+            )
+        || matches!(kind, Function::Index)
+            && matches!(
+                args.first().map(Node::ungrouped),
+                Some(Node::FunctionKind {
+                    kind: Function::If,
+                    args: arms,
+                }) if returns_range_arm(&Function::If, arms)
             )
 }
 

@@ -80,13 +80,8 @@ impl Model {
     // One SUMX argument: a range, an array or a scalar typed in place (a non-number is `None`).
     // An error is returned when its turn comes, after the first argument's cells.
     fn sumx_arg(&mut self, arg: &Node, cell: CellReferenceIndex) -> PairedArg {
-        match self.evaluate_node_in_context(arg, cell) {
-            CalcResult::Range { left, right } => PairedArg::Range(Range { left, right }),
-            CalcResult::Array(array) => PairedArg::Array(array),
-            CalcResult::Number(n) => PairedArg::Values(vec![Some(n)]),
-            error @ CalcResult::Error { .. } => PairedArg::Error(error),
-            _ => PairedArg::Values(vec![None]),
-        }
+        PairedArg::from_node_result(arg, self.evaluate_node_in_context(arg, cell))
+            .unwrap_or_else(|_| PairedArg::Values(vec![None]))
     }
 
     // Helper function to extract and validate two matrices (ranges or arrays) with compatible shapes.
@@ -112,9 +107,10 @@ impl Model {
                 ));
             }
         }
-        let (Some((rows1, cols1, first)), Some((rows2, cols2, second))) =
-            (matrix_arg(x_range), matrix_arg(y_range))
-        else {
+        // The first argument's error comes before anything about the second.
+        let first = matrix_arg(&args[0], x_range)?;
+        let second = matrix_arg(&args[1], y_range)?;
+        let (Some((rows1, cols1, first)), Some((rows2, cols2, second))) = (first, second) else {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -122,8 +118,9 @@ impl Model {
             ));
         };
         if !is_same_shape_or_1d(rows1, cols1, rows2, cols2) {
+            // Excel: unequal sizes are #N/A, with or without text in the ranges (T-1292, T-1620).
             return Err(CalcResult::new_error(
-                Error::VALUE,
+                Error::NA,
                 cell,
                 "Arguments must be of the same shape".to_string(),
             ));
@@ -141,23 +138,27 @@ impl Model {
     }
 }
 
-/// A range or array argument of [`Model::fn_get_two_matrices`] with its rows and columns.
-fn matrix_arg(value: CalcResult) -> Option<(i64, i64, PairedArg)> {
-    match value {
-        CalcResult::Range { left, right } => Some((
+/// A range, array or number argument of [`Model::fn_get_two_matrices`] with its rows and columns;
+/// an error value is returned as the error, anything else is `None`.
+fn matrix_arg(node: &Node, value: CalcResult) -> Result<Option<(i64, i64, PairedArg)>, CalcResult> {
+    let Ok(arg) = PairedArg::from_node_result(node, value) else {
+        return Ok(None);
+    };
+    let (rows, columns) = match &arg {
+        PairedArg::Range(Range { left, right }) => (
             i64::from(right.row - left.row + 1),
             i64::from(right.column - left.column + 1),
-            PairedArg::Range(Range { left, right }),
-        )),
-        CalcResult::Array(array) => {
-            let rows = i64::try_from(array.len()).unwrap_or(i64::MAX);
-            let columns = array
+        ),
+        PairedArg::Array(array) => (
+            i64::try_from(array.len()).unwrap_or(i64::MAX),
+            array
                 .first()
-                .map_or(0, |row| i64::try_from(row.len()).unwrap_or(i64::MAX));
-            Some((rows, columns, PairedArg::Array(array)))
-        }
-        _ => None,
-    }
+                .map_or(0, |row| i64::try_from(row.len()).unwrap_or(i64::MAX)),
+        ),
+        PairedArg::Values(_) => (1, 1),
+        PairedArg::Error(error) => return Err(error.clone()),
+    };
+    Ok(Some((rows, columns, arg)))
 }
 
 /// A running SUM: the total and the two addends of the latest addition, which

@@ -171,11 +171,18 @@ impl Model {
             // is FALSE (probes/union-accepted H9).
             // IF and CHOOSE are references when the argument they pick is one: `ISREF(IF(TRUE,
             // A1))` and `ISREF(CHOOSE(1,A1))` are TRUE, with a value FALSE (probes/isref-function-
-            // results C3:C6, excel-graph; T-0235).
+            // results C3:C6, excel-graph; T-0235). So is a LET whose result is a variable bound to
+            // a reference: `ISREF(LET(x,A1:A3,x))` is TRUE (probes/written-parens-reference-only
+            // E40, E45, excel-graph; T-1106), and a LAMBDA call that returns one:
+            // `ISREF(LAMBDA(x,x)(A1))` is TRUE (probes/let-lambda-reference-results C1, C2).
             Node::OpIntersectKind { .. }
             | Node::OpUnionKind { .. }
+            | Node::LambdaCallKind { .. }
             | Node::FunctionKind {
-                kind: crate::functions::Function::If | crate::functions::Function::Choose,
+                kind:
+                    crate::functions::Function::If
+                    | crate::functions::Function::Choose
+                    | crate::functions::Function::Let,
                 ..
             } => matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_)),
             // The `@` of an XLOOKUP or TAKE that picks one cell keeps the reference too

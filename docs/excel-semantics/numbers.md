@@ -1309,6 +1309,31 @@ product overflows within a few hundred factors for a large j, which bounds the w
 Status: VERIFIED (values); algorithm a fit, 841/841 bit-exact
 Tasks: T-1190, T-1598
 
+## COMBINA is COMBIN(n+k-1, k)
+Rule: COMBINA rounds exactly as COMBIN of `n+k-1` and `k` does ("COMBIN is inexact"): `COMBINA(10,10)` is 92378,
+`COMBINA(20,19)` 35345263799.999985 and `COMBINA(1000,200)` 1.6676833067813678e+233, all three bit for bit (a running
+product of `(n+i)/(i+1)` over k gives 92377.99999999999 and 35345263800 instead). `COMBINA(0,0)` is 1.
+Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/COMBIN_COMBINA.xlsx D4, D5, D16, and D11 for `COMBINA(0,0)` (Excel-cached,
+Excel Online). Not probed: k at or above 2^53, where `n+k-1` rounds (`COMBINA(2,1E300)` gives `combin(1E300,1E300)` = 1
+here; Excel's answer is unknown).
+Ours: `fn_combina` calls `combin(n+k-1, k)`. Its loop runs min(k, n-1) times and stops at overflow, so
+`COMBINA(1,1E10)` answers 1 at once (directive 5; the old loop ran k times).
+Status: VERIFIED (3 cached cells; the rule is a fit to them)
+Tasks: T-0905
+
+## SEQUENCE accumulates its step
+Rule: SEQUENCE adds `step` to the previous value in row-major order, not `start + i*step`: `SEQUENCE(5,1,10,2.2)` is 10,
+12.2, 14.399999999999999, 16.599999999999998, 18.799999999999997 and `SEQUENCE(1,5.3,12.7,0.1)` is 12.7,
+12.799999999999999, 12.899999999999999, 12.999999999999998, 13.099999999999998 (the product form gives 14.4, 16.6, 18.8,
+13 and 13.1). In a 2-D result the sum runs on across rows, in row-major order: in `SEQUENCE(3,3,0.1,0.1)` the first
+cell of row 3 is 0.7 (the product form gives 0.7000000000000001) and the last 0.8999999999999999, and
+`SEQUENCE(2,4,10,2.2)` ends 25.399999999999995.
+Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/SEQUENCE.xlsx I7:I11, I14:M14 (Excel-cached, Microsoft Macintosh Excel);
+probes/sequence-step-accumulation A1:A11 (excel-graph, 2026-10-19, T-0905).
+Ours: `fn_sequence` (functions/math_and_trigonometry/sequence.rs).
+Status: VERIFIED
+Tasks: T-0905
+
 ## Huge arguments of trig functions
 Rule: `COS(1E+15)` is `#NUM!` in Excel (the argument is too large to reduce). Errors from a left operand win over a
 later operand's: in `(x-COS(1E+15))=INDEX(B11:D11,6,2)` the result is `#NUM!`, not INDEX's `#REF!`. An

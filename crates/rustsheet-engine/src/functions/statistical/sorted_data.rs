@@ -31,7 +31,7 @@ pub(crate) struct DataArg {
     pub(crate) order: DataOrder,
     /// What a call costs for that many numbers: `LiftCost::Prepared` when an element is O(1)
     /// once sorted, `LiftCost::Cells` when every element walks the numbers (TRIMMEAN's mean).
-    pub(crate) cost: fn(u64) -> LiftCost<'static>,
+    pub(crate) cost: fn(u64) -> LiftCost,
 }
 
 /// The numbers of a data argument read once, sorted on the first element that asks for them. A
@@ -161,7 +161,7 @@ impl Model {
         kind: Function,
         args: &[Node],
         data: &mut SortedData,
-        cost: fn(u64) -> LiftCost<'static>,
+        cost: fn(u64) -> LiftCost,
         cell: CellReferenceIndex,
         kernel: &mut SortedKernel<'_>,
     ) -> CalcResult {

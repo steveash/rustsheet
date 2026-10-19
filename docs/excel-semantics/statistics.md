@@ -690,7 +690,7 @@ and MODE.MULT are `#N/A` for `(1,"2",4,TRUE)` because they skip typed text (nume
 `MODE(1,2,2,"x")` and `MODE(1,2,2,TRUE)` are 2, `MODE(2,"x",2)` is 2, `MODE("2","2",5)`, `MODE(TRUE,TRUE,5)` and `MODE(FALSE,FALSE,5)` are `#N/A`, and `MODE.SNGL(1,TRUE,2,2)` is 2 (a TRUE read as 1 would make 1 the first mode); MODE.SNGL and MODE.MULT agree (probes/mode-typed-arguments A1-A20, excel-graph, 2026-10-16, T-1291). Also a direct error propagates (`MODE(1,"1",#DIV/0!,2,3)` is `#DIV/0!`, A22), an empty argument is `#VALUE!` (`MODE(1,1,)`, A27), a blank single-cell reference is `#VALUE!` (A23) and a reference to a text cell is skipped (`MODE(K1,K2,"1",2)` is 2, A25). A direct LAMBDA argument is `#VALUE!` in VARA, VARPA, STDEVA, STDEVPA, VAR and AVERAGEA (`VARA(LAMBDA(x,x),1,2)`; probes/vara-direct-lambda, excel-graph, 2026-10-16, T-1291). Array arguments (CORREL, COVAR, F.TEST, T.TEST, LARGE, PERCENTILE, QUARTILE, TRIMMEAN,
 Z.TEST, LINEST, ...) take array literals whole with the range's value; LARGE, SMALL, PERCENTILE*, QUARTILE*,
 PERCENTRANK*, TRIMMEAN, Z.TEST, F.TEST and T.TEST skip text and booleans in a range, GROWTH, TREND, LINEST and LOGEST are
-`#VALUE!` for them, and the pairing functions are `#N/A` for unequal sizes with text (size-only: `CORREL(A1:A5,B1:B6)` `#N/A`; with equal sizes the text pair is skipped instead, `CORREL(C1:C6,B1:B6)` 0.9014729960756244; probes/regression-pairs-a L2, L9, T-1620; the text-with-unequal-sizes order is T-1292). The FORECAST.ETS family is `#N/A` for a
+`#VALUE!` for them, and the pairing functions are `#N/A` for unequal sizes with text (size-only: `CORREL(A1:A5,B1:B6)` `#N/A`; with equal sizes the text pair is skipped instead, `CORREL(C1:C6,B1:B6)` 0.9014729960756244; probes/regression-pairs-a L2, L9, T-1620; unequal sizes with text are `#N/A` too, `CORREL(C1:C6,B1:B8)`, as in PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, CHISQ.TEST and CHITEST: the size check decides before the text is looked at; T-1292). The FORECAST.ETS family is `#N/A` for a
 plain 8-point series on the timeline 1..8 (T-1293). These decide the generator modes in eval/catalog/functions.yaml
 (`value`, `aggregate`, `aggregate_a`, `array`; RANK `ref`, COUNTBLANK and the *IFS ranges are `range`).
 Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080).
@@ -701,7 +701,7 @@ a range): the rest (T-1813); BETA.INV, F.INV, T.INV, CONFIDENCE.T and their vari
 since T-1848 ("Quantile searches: per-call cap and lifting" below), the incomplete-gamma functions (CHISQ.*,
 CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON, POISSON.DIST) since T-1872 ("Incomplete gamma:
 per-call cap and lifting" below), and HYPGEOM.DIST and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and
-lifting" below); the pairing functions are `#VALUE!` and F.TEST takes the wrong tail (T-1292); FORECAST.ETS is
+lifting" below); the pairing functions are `#N/A` for unequal sizes since T-1292, which also made F.TEST take twice the smaller tail of the F distribution (`F.TEST(C1:C6,B1:B8)`: Excel 0.9195979047175995, ours 0.9195979047175997, not 2 minus that; T-1927); FORECAST.ETS is
 `#N/IMPL!`; many distribution values are a few ulps off (the existing accuracy entries above).
 Status: VERIFIED (excel-graph)
 Tasks: T-1080, T-1290, T-1291, T-1292, T-1293, T-1848, T-1872, T-1873
@@ -980,8 +980,8 @@ are `#N/A` and one point is `#DIV/0!` (COVAR of one pair is 0): `TTEST(A7:C7,<nu
 `COVAR(0,C6:D6)`, `COVAR(D4:D8,<number>)`, `RSQ(A4,B11:C12)`, `INTERCEPT(B9:E9,1E-15)`, `CHISQ.TEST(B4,C5:D11)`,
 `FORECAST.LINEAR(x,C2:D7,<number>)` and `FORECAST.LINEAR(x,0.2,D11:D12)` are `#N/A`; `SLOPE(123456789.123,<number>)`,
 `INTERCEPT(1.005,2.5)`, `FORECAST.LINEAR(x,0.2,1)` and `FORECAST.LINEAR(x,7,137.5)` are `#DIV/0!`; `COVAR(0,D6)` is a number (inferred 0;
-`(B6-0.5)>COVAR(0,D6)` is TRUE). `PEARSON(D5,SEQUENCE(0))` is `#CALC!`. T.TEST checks tails and type first:
-`T.TEST(B11,A8:B9,0.1,0.3)` with B11 = FALSE is `#NUM!`. GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
+`(B6-0.5)>COVAR(0,D6)` is TRUE). `PEARSON(D5,SEQUENCE(0))` is `#CALC!`. `T.TEST(B11,A8:B9,0.1,0.3)` with B11 = FALSE (one value, no number) is `#NUM!` (tails/type before
+the paired unequal-size `#N/A`; whether an error array argument beats a bad tails/type is unprobed). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
 9.332621544394404E+155), `TREND(#NUM!)` is `#NUM!`, and `GROWTH(B2:B3,<number>,..)` with B2:B3 = "?b", 0 is `#REF!` (the size
 check before the text check). LARGE of an error is that error (`LARGE(<#VALUE!>,k)`, `LARGE(<#REF!>,0.1)`), and so is
 PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). `QUARTILE(D6,7)` with D6 = " x " is inferred `#NUM!` (inside a BETAINV whose
@@ -993,8 +993,7 @@ Evidence: gen-m9 (excel-graph, 2026-10-12, T-1289): 1782efcecd5d4b1b Calc!A10, A
 A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, A21; eefcc3989f31de76 A22;
 95efb37a9874f82e A2; b5352ebdb9c5f1a1 A24; 288b99797f58f149 A3; d5bd4272655c5211 A31; 65faaeb48419087d A17. The arguments
 are read from the cases' Data sheets; each cell's other operands were checked not to decide the result.
-Ours: a plain number or single cell in these arguments is `#VALUE!` (one-element array literals already work:
-`COVAR({0},{1,2})` is `#N/A`, `SLOPE({1},{2})` `#DIV/0!`); `LARGE(#N/A,1)` is `#N/IMPL!`; PERCENTILE.EXC checks empty data
+Ours: the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal stays `#VALUE!`, unprobed); `LARGE(#N/A,1)` is `#N/IMPL!`; PERCENTILE.EXC checks empty data
 before k; `PERCENTRANK.EXC` of a single value equal to x is 1, not 0.5 (probes/percentrank-single-value B6). `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); with one value, x below or above it is `#N/A` for all three, an error x (`#DIV/0!`, text `#VALUE!`) beats that `#N/A`, and any numeric significance (0, negative, fractional) gives 1 rather than `#NUM!` (a text significance is `#VALUE!`) (probes/percentrank-single-value B2-B20); an empty array is `#N/A`.
 Status: VERIFIED (web) for the listed cells
 Tasks: T-1401, T-1402, T-1403
@@ -1060,9 +1059,14 @@ These set the generator modes in eval/catalog/functions.yaml: `database` and `cr
 Evidence: probes/db-argument-modes (121 cells, excel-graph, 2026-10-11, T-1086).
 The data is A1:C6, with headers Name, Qty and Price. Price holds 2.5, 4, "x", TRUE and 10. The criteria
 are E1:E2 (Qty ">2") and F1:F2 (Name "e").
-Ours: field and criteria do not lift (`#N/IMPL!`, `#VALUE!`), and DCOUNT/DCOUNTA with an empty field are
-`#VALUE!` (T-1389). A generated sample also showed gaps in header matching and criteria (T-1390).
-Status: VERIFIED (excel-graph)
+Ours: `field` (LiftArrays) and `criteria` (LiftArraysRangeWhole) lift through SPEC-0011's driver, `database`
+is read whole, and DCOUNT/DCOUNTA with an empty field count the matching records (T-1389). A generated
+sample also showed gaps in header matching and criteria (T-1390).
+Lifted calls are bounded (directive 5): each lifted element is charged the database's rows times the
+criteria headers and criteria cells it scans (`Model::db_element_cost`), and a call over
+`MAX_LIFTED_CELL_VISITS` (2^27) is `#ERROR!` where Excel returns a value, e.g. `DSUM(A:Z, SEQUENCE(1,26), crit)`
+over whole columns. A call that does not lift is not charged.
+Status: VERIFIED (excel-graph); the lifted-call bound is DEVIATION (decision 0014)
 Tasks: T-1086, T-1389, T-1390
 
 ## GAMMA and GAMMALN sweep (T-1042)
@@ -1470,7 +1474,8 @@ Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by 
   2E9 works. `(0,0,0,1,FALSE)` = 1. Zero n or M gives density 1 at s = 0 and 0 above.
 - **Test functions:**
   - F.TEST: `#DIV/0!` for fewer than two points on either side, constant data, scalars, an empty range
-    or text-only input (`F.TEST("a",B1:B5)`); unequal sizes work; text and booleans inside array
+    or text-only input (`F.TEST("a",B1:B5)`); unequal sizes work; the two-tailed p is twice the smaller F tail, so it never exceeds 1
+    (`F.TEST(C1:C6,B1:B8)` and FTEST: 0.9195979047175995, probes/stat-argument-modes H248/H251, T-1292); text and booleans inside array
     constants are skipped (`{1,2,"a",4}` differs from `{1,2,3,4}`).
   - Z.TEST: an empty range is `#N/A` (`Z.TEST(Z1:Z5,4)`, with or without sigma); one point or a
     scalar is `#DIV/0!` even with sigma given (`Z.TEST(7,4,1)`, `D1:D1`); constant data is `#DIV/0!`
@@ -1537,7 +1542,7 @@ Unequal sizes and single points follow "Array arguments given a scalar, a single
 - Last-digit differences: `FORECAST(0,A1:A6,B1:B6)` 1.7999999999999998 (ours 1.8), `CORREL(A1:A6,C1:C6)` 0.9999999999999998 (ours 1.0).
 Evidence: probes/regression-pairs-a, regression-pairs-b, regression-forecast (excel-graph, 2026-10-16, T-1620); the
 error cells in these cases are `#DIV/0!`, so whether a range error propagates or is replaced is unprobed.
-Ours: differs in each bullet (fix tasks below); the large-offset data gives `#DIV/0!` or a last-digits-off value, a single point `#VALUE!`.
+Ours: differs in most bullets (the unequal-size `#N/A` of FORECAST, STEYX and INTERCEPT matches since T-1292; fix tasks below); the large-offset data gives `#DIV/0!` or a last-digits-off value, a single point `#VALUE!`.
 Status: VERIFIED (web)
 Tasks: T-1723, T-1724, T-1725 (overlaps T-1292, T-1707, T-1401, T-1290)
 

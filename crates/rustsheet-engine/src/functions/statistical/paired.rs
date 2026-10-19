@@ -24,6 +24,35 @@ pub(crate) enum PairedArg {
     Error(CalcResult),
 }
 
+impl PairedArg {
+    /// The argument a range, array, number or error value stands for. A number is an array of one
+    /// value and an error is itself (statistics.md "Array arguments given a scalar, a single cell
+    /// or an error"); any other value is handed back for the caller's own fallback.
+    pub(crate) fn from_result(value: CalcResult) -> Result<Self, CalcResult> {
+        match value {
+            CalcResult::Range { left, right } => Ok(Self::Range(Range { left, right })),
+            CalcResult::Array(array) => Ok(Self::Array(array)),
+            CalcResult::Number(n) => Ok(Self::Values(vec![Some(n)])),
+            error @ CalcResult::Error { .. } => Ok(Self::Error(error)),
+            other => Err(other),
+        }
+    }
+
+    /// As [`Self::from_result`] for the value of `node`: a single cell holding text, a boolean
+    /// or nothing is an array of one cell with no number (`CHISQ.TEST(B4,C5:D11)` with B4 text is
+    /// `#N/A`, gen-m9 a2e51f48717af2a1 A34), which a typed text or boolean is not (unprobed).
+    pub(crate) fn from_node_result(node: &Node, value: CalcResult) -> Result<Self, CalcResult> {
+        match Self::from_result(value) {
+            Err(CalcResult::String(_) | CalcResult::Boolean(_) | CalcResult::EmptyCell)
+                if matches!(node.ungrouped(), Node::ReferenceKind { .. }) =>
+            {
+                Ok(Self::Values(vec![None]))
+            }
+            other => other,
+        }
+    }
+}
+
 /// The flattened arguments of a paired function, aligned by row-major position: a number is
 /// `Some`, anything else `None`. Positions blank in both arguments are left out, so the lists
 /// hold every number of both arguments and have the same length.
@@ -62,15 +91,15 @@ impl Model {
     }
 
     fn sample_arg(&mut self, arg: &Node, which: &str, cell: CellReferenceIndex) -> PairedArg {
-        match self.evaluate_node_in_context(arg, cell) {
-            CalcResult::Range { left, right } => PairedArg::Range(Range { left, right }),
-            CalcResult::Array(array) => PairedArg::Array(array),
-            _ => PairedArg::Error(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                format!("{which} argument must be a range or array"),
-            )),
-        }
+        PairedArg::from_node_result(arg, self.evaluate_node_in_context(arg, cell)).unwrap_or_else(
+            |_| {
+                PairedArg::Error(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("{which} argument must be a range or array"),
+                ))
+            },
+        )
     }
 
     /// Flattens `first` and `second` for a function that pairs them by position. The first

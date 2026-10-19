@@ -1,9 +1,62 @@
 //! Reading typed text as a number together with the format it implies ("$1,234.50" ->
 //! (1234.5, "$#,##0.00")), split from format.rs, which renders numbers.
 
-use crate::{locale::Locale, number_format::parse_excel_number, types::DateSystem};
+use crate::{
+    functions::date_and_time::time_text::parse_date_clock_serial_in, locale::Locale,
+    number_format::parse_excel_number, types::DateSystem,
+};
 
 use super::date_text::{parse_date, CurrentYear};
+
+/// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
+/// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Non-glued dates and clocks with
+/// seconds or AM/PM get the same format (probes/date-text-non-glued-timevalue, T-1952;
+/// docs/research/non-glued-typed-input-2026-10-19.md).
+const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
+
+/// [`parse_formatted_number`] for text typed into a cell, which also reads date+time text
+/// (coercion reads that through `parse_time_serial` instead).
+pub(crate) fn parse_typed_number(
+    original: &str,
+    currencies: &[&str],
+    locale: &Locale,
+    current_year: CurrentYear,
+    date_system: DateSystem,
+) -> Result<(f64, Option<String>), String> {
+    parse_formatted_number(original, currencies, locale, current_year, date_system).or_else(|err| {
+        if !ends_with_typed_clock(original) {
+            return Err(err);
+        }
+        parse_date_clock_serial_in(original, locale, current_year, date_system)
+            .map(|serial| (serial, Some(TYPED_DATE_CLOCK_FORMAT.to_string())))
+            .ok_or(err)
+    })
+}
+
+/// Whether the text ends in a whole-second clock below hour 24, `H:MM`, `H:MM:SS` or either
+/// followed by `AM`/`PM`: the typed clock shapes probed (probes/date-text-non-glued-timevalue
+/// rows 11-17, excel-graph: `10:00`, `10:00:30` and `10:00 AM` all become numbers with
+/// `m/d/yyyy h:mm`). Hours past 23 and fractions are UNVERIFIED and stay text.
+fn ends_with_typed_clock(text: &str) -> bool {
+    let mut words = text.rsplit(' ');
+    let mut clock = words.next().unwrap_or("");
+    if clock.eq_ignore_ascii_case("am") || clock.eq_ignore_ascii_case("pm") {
+        clock = words.next().unwrap_or("");
+    }
+    let mut parts = clock.split(':');
+    let (Some(hour), Some(minute), second, None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
+        return false;
+    };
+    let digits =
+        |s: &str, max: usize| (1..=max).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_digit());
+    digits(hour, 2)
+        && minute.len() == 2
+        && digits(minute, 2)
+        && second.is_none_or(|s| s.len() == 2 && digits(s, 2))
+        && hour.parse::<u32>().is_ok_and(|h| h < 24)
+}
 
 /// Parses a formatted number, returning the numeric value together with the format
 /// Uses heuristics to guess the format string
