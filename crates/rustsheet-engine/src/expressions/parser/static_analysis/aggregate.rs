@@ -1,3 +1,4 @@
+use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
 use super::reference_result::yields_cells;
@@ -69,7 +70,7 @@ fn is_read_reference(arg: &Node) -> bool {
                 // shape is `Unknown` and never analyses its argument, so this is the one analysis
                 // of it and nesting stays linear.
                 picked.is_some_and(|first| {
-                    yields_cells(first, &mut Vec::new()) && !lifts_to_values(first)
+                    yields_cells(first, &mut Vec::new()) && !lifts_to_values(first, &mut Vec::new())
                 })
             }
         }
@@ -77,29 +78,70 @@ fn is_read_reference(arg: &Node) -> bool {
     }
 }
 
-/// Whether `node`, whose arms all yield cells, still lifts to an array of values: CHOOSE with an
-/// array index (its shape is then an array), and SWITCH or IFS with an array or multi-cell range
-/// value or condition, whose own shape is `Unknown` (`SUBTOTAL(9,TAKE(SWITCH({1,2},1,H1:H2,2,
-/// I1:I2),2))` and the IFS twin are a 2x2 of `#VALUE!`, probes/subtotal-take-array-selector
-/// A30:B31, A40:B41, T-1914). Only the selectors are analysed, each once. An `Unknown` selector
-/// counts as lifting, so the cell is left to spill at run time rather than taken for a scalar.
-fn lifts_to_values(node: &Node) -> bool {
+/// Whether `node`, whose arms all yield cells, still lifts to an array of values: an IF, CHOOSE,
+/// SWITCH or IFS with an array or multi-cell range condition, index or value lifts even over range
+/// arms (`SUBTOTAL(9,TAKE(SWITCH({1,2},1,H1:H2,2,I1:I2),2))`, the IFS twin and the CHOOSE one are
+/// a 2x2 of `#VALUE!`, probes/subtotal-take-array-selector A30:B31, A40:B41, probes/
+/// lift-arrays-choose-arms A69:B70, T-1882, T-1914), and so does one whose selected arm lifts
+/// (`IF(TRUE,SWITCH({1,2},...))`). SWITCH and IFS have an `Unknown` shape of their own, so their
+/// selectors are checked here. Each selector and each arm is analysed once, so nesting stays
+/// linear. An `Unknown` selector counts as lifting: the cell is left to spill at run time rather
+/// than taken for a scalar. LET passes on what its body is; `bound` holds the variables in scope
+/// with their answer, computed once when bound, as in `yields_cells`.
+fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
     let not_scalar = |arg: &Node| {
         !matches!(
             run_static_analysis_on_node(arg),
             StaticResult::Scalar | StaticResult::Range(0, 0)
         )
     };
-    match node.ungrouped() {
-        Node::FunctionKind {
-            kind: Function::Switch,
-            args,
-        } => args.first().is_some_and(not_scalar),
-        Node::FunctionKind {
-            kind: Function::Ifs,
-            args,
-        } => args.iter().step_by(2).any(not_scalar),
-        other => matches!(run_static_analysis_on_node(other), StaticResult::Array(..)),
+    let node = node.ungrouped();
+    if let Node::NamedVariableKind { name, .. } = node {
+        return bound
+            .iter()
+            .rfind(|(bound_name, _)| same_variable(bound_name, name))
+            .is_some_and(|(_, lifts)| *lifts);
+    }
+    let Node::FunctionKind { kind, args } = node else {
+        return matches!(run_static_analysis_on_node(node), StaticResult::Array(..));
+    };
+    match kind {
+        Function::If | Function::Choose => {
+            args.first().is_some_and(not_scalar)
+                || args.iter().skip(1).any(|arm| lifts_to_values(arm, bound))
+        }
+        Function::Switch => {
+            args.first().is_some_and(not_scalar)
+                || args
+                    .iter()
+                    .skip(1)
+                    .enumerate()
+                    // As in `yields_cells`: results at the odd positions after the value, and a
+                    // trailing unpaired default.
+                    .filter(|(index, _)| index % 2 == 1 || *index == args.len().saturating_sub(2))
+                    .any(|(_, arm)| lifts_to_values(arm, bound))
+        }
+        Function::Ifs => {
+            args.iter().step_by(2).any(not_scalar)
+                || args
+                    .iter()
+                    .skip(1)
+                    .step_by(2)
+                    .any(|arm| lifts_to_values(arm, bound))
+        }
+        Function::Let if args.len() >= 3 && args.len() % 2 == 1 => {
+            let scope = bound.len();
+            for pair in args[..args.len() - 1].chunks_exact(2) {
+                if let Node::NamedVariableKind { name, .. } = &pair[0] {
+                    let lifts = lifts_to_values(&pair[1], bound);
+                    bound.push((name, lifts));
+                }
+            }
+            let result = args.last().is_some_and(|body| lifts_to_values(body, bound));
+            bound.truncate(scope);
+            result
+        }
+        _ => matches!(run_static_analysis_on_node(node), StaticResult::Array(..)),
     }
 }
 

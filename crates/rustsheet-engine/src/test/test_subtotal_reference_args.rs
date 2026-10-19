@@ -175,10 +175,6 @@ fn subtotal_of_take_of_switch_and_ifs_with_array_selector_spills() {
         "A4",
         "=SUBTOTAL(9,TAKE(IFS({TRUE,FALSE},H1:H2,TRUE,I1:I2),2))",
     );
-    model._set(
-        "A7",
-        "=SUBTOTAL(9,TAKE(IFS(TRUE,H1:H2,{FALSE,TRUE},I1:I2),2))",
-    );
     model._set("D1", "=SUBTOTAL(9,TAKE(SWITCH(2,1,H1:H2,2,I1:I2),2))");
     model._set("D4", "=SUBTOTAL(9,TAKE(IFS(FALSE,H1:H2,TRUE,I1:I2),2))");
     model.evaluate();
@@ -204,6 +200,64 @@ fn subtotal_of_take_of_nested_switch_is_linear() {
     let mut formula = "SUBTOTAL(9,TAKE(SWITCH(1,1,H1:H2),1))".to_string();
     for _ in 0..20 {
         formula = format!("SUBTOTAL(9,TAKE(SWITCH({formula},1,H1:H2,I1:I2),1))");
+    }
+    let mut model = new_empty_model();
+    model._set("H1", "1");
+    model._set("A5", &format!("={formula}"));
+    model.evaluate();
+    assert_eq!(model._get_text("A5"), "1");
+}
+
+// An IF, CHOOSE or LET that passes on a lifting SWITCH, IFS or CHOOSE lifts too, and spills like
+// the bare call; static analysis took these for cells too and hit the scalar-context assertion
+// in a debug build (T-1914 review).
+#[test]
+fn subtotal_of_take_of_wrapped_array_selector_spills_like_the_bare_call() {
+    let bare = "SWITCH({1,2},1,H1:H2,2,I1:I2)";
+    let wrapped = [
+        format!("IF(TRUE,{bare})"),
+        format!("CHOOSE(1,{bare})"),
+        format!("LET(x,{bare},x)"),
+        format!("LET(x,{bare},y,x,IF(TRUE,y))"),
+        "IF(TRUE,CHOOSE({1,2},H1:H2,I1:I2))".to_string(),
+        "CHOOSE(1,IFS({TRUE,FALSE},H1:H2,TRUE,I1:I2))".to_string(),
+    ];
+    let mut model = new_empty_model();
+    for (cell, value) in [("H1", "3"), ("H2", "4"), ("I1", "6"), ("I2", "8")] {
+        model._set(cell, value);
+    }
+    model._set("A1", &format!("=SUBTOTAL(9,TAKE({bare},2))"));
+    for (index, arg) in wrapped.iter().enumerate() {
+        model._set(
+            &format!("A{}", 4 + 3 * index),
+            &format!("=SUBTOTAL(9,TAKE({arg},2))"),
+        );
+    }
+    model.evaluate();
+    for index in 0..wrapped.len() {
+        let top = 4 + 3 * index;
+        for (bare_cell, cell) in [
+            ("A1".to_string(), format!("A{top}")),
+            ("B1".to_string(), format!("B{top}")),
+            ("A2".to_string(), format!("A{}", top + 1)),
+            ("B2".to_string(), format!("B{}", top + 1)),
+        ] {
+            assert_eq!(
+                model._get_text(&cell),
+                model._get_text(&bare_cell),
+                "{cell}"
+            );
+        }
+    }
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+}
+
+// Each IFS condition is analysed once per level, so deep nesting stays linear (T-1914).
+#[test]
+fn subtotal_of_take_of_nested_ifs_is_linear() {
+    let mut formula = "SUBTOTAL(9,TAKE(IFS(TRUE,H1:H2),1))".to_string();
+    for _ in 0..20 {
+        formula = format!("SUBTOTAL(9,TAKE(IFS({formula}=1,H1:H2,TRUE,I1:I2),1))");
     }
     let mut model = new_empty_model();
     model._set("H1", "1");
