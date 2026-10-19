@@ -827,5 +827,6 @@ N1-N8, N10, N11 (excel-graph 2026-10-19), probes/date-text-rejected-clock-format
 UNVERIFIED in the engine (probed in the fill run of T-1994 only, no case cells): typed `1/2/2020 10:00 A.`
 (trailing dot) is a number, and bare typed `10:00 A` is a number with `h:mm AM/PM`.
 Status: VERIFIED (web) for the rule above; PARTIAL for the two UNVERIFIED shapes (T-2011).
-Implemented in: `typed_clock_shape` in `crates/rustsheet-engine/src/formatter/parse_formatted.rs`
-Tasks: T-1994
+Implemented in: `typed_clock_shape` and `rejected_clock_text_format` in `crates/rustsheet-engine/src/formatter/parse_formatted.rs`
+Evidence note: docs/research/single-letter-ap-typed-clock-2026-10-19.md
+Tasks: T-1994, T-2011
