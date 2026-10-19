@@ -235,7 +235,8 @@ impl ColumnBatch {
 impl Model {
     /// Evaluates an argument that must be a single-sheet reference (INDEX, AREAS, VLOOKUP,
     /// MATCH, COUNTBLANK): a 3-D reference is `#VALUE!` there, not the `#REF!` it is as a
-    /// value (probes/3d-ref-functions; docs/excel-semantics/references.md).
+    /// value (probes/3d-ref-functions; docs/excel-semantics/references.md). A one-cell reference,
+    /// written or picked by IF or INDEX, stays a one-cell range (T-1862).
     pub(crate) fn evaluate_single_sheet_arg(
         &mut self,
         node: &Node,

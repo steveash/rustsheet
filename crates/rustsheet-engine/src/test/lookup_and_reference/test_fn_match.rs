@@ -295,7 +295,7 @@ fn test_match_lifts_over_array_match_type() {
     assert_eq!(model._get_text("H2"), "#VALUE!");
 }
 
-/// MATCH and VLOOKUP over a single value: a one-cell reference is searched, a single number or boolean is
+/// MATCH, VLOOKUP and HLOOKUP over a single value: a one-cell reference is searched, a single number or boolean is
 /// `#N/A` and non-numeric text `#VALUE!` (probes/match-single-value-lookup-array, excel-graph,
 /// T-1862).
 #[test]
@@ -310,6 +310,8 @@ fn match_over_a_single_value() {
         ("=VLOOKUP(2,B2,1,FALSE)", "2"),
         (r#"=VLOOKUP("b","b",1,FALSE)"#, "#VALUE!"),
         (r#"=VLOOKUP("2","2",1,FALSE)"#, "#N/A"),
+        (r#"=HLOOKUP("b",A2,1,FALSE)"#, "b"),
+        (r#"=HLOOKUP("b","b",1,FALSE)"#, "#VALUE!"),
         ("=MATCH(2,2,0)", "#N/A"),
         ("=MATCH(TRUE,TRUE,0)", "#N/A"),
         (r#"=MATCH("2","2",0)"#, "#N/A"),

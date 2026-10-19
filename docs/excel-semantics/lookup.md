@@ -81,7 +81,9 @@ range. A2 = "b", B2 = 2: `MATCH("b","b",0)`, `MATCH(2,"b",0)`, `MATCH("b","b")`,
 `MATCH(2,INDEX(B2:B3,1),0)` 1, `VLOOKUP(2,B2,1,FALSE)` 2, `HLOOKUP("b",A2,1,FALSE)` "b". A legacy
 formula reaches this through its intersected lookup table (references.md "Legacy MATCH, VLOOKUP
 and HLOOKUP intersect an operation in their lookup table"). LOOKUP differs: it reads a single
-value as a one-element array ("LOOKUP vector form with 2-D or short vectors").
+value as a one-element array ("LOOKUP vector form with 2-D or short vectors"). Only "b", "x"
+and "2" are probed: the engine's line between them is its number coercion (`cast_number`), so
+dates, currency, percents and padded text are inferred, not probed (T-1937).
 Evidence: probes/match-single-value-lookup-array (excel-graph, 2026-10-18, T-1862).
 Engine: `Model::lookup_table` (lookup.rs) and `Model::evaluate_single_sheet_arg` (util.rs).
 Status: VERIFIED
