@@ -3,7 +3,7 @@ id: T-1430
 title: "Probe DATEDIF and DAYS360 error order when a date and the unit or method are both bad"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
