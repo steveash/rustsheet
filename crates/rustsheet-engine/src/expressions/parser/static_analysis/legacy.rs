@@ -266,7 +266,8 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
 }
 
 /// Whether `kind(args)` is a CHOOSE with a number or boolean literal index whose values are
-/// plain references and array constants, at least one of each kind: Excel shows no `@` on the call
+/// plain references and array constants, at least one of each kind and no one-element array
+/// (unprobed, it keeps its `@`): Excel shows no `@` on the call
 /// and N or T read the arm the index picks, a reference as its top-left cell and an array constant
 /// as `#VALUE!` (`=N(CHOOSE(1,Z1,{2;3}))` is 7, `=N(CHOOSE(2,Z1,{2;3}))` and
 /// `=N(CHOOSE(1,{2;3},Z1))` are `#VALUE!`, `=N(CHOOSE(1,Z1:Z2,{2;3}))` is 7:
@@ -277,7 +278,9 @@ fn chooses_between_references_and_array_constants(kind: &Function, args: &[Node]
     };
     matches!(kind, Function::Choose)
         && matches!(index, Node::NumberKind(_) | Node::BooleanKind(_))
-        && arms.iter().any(|arm| matches!(arm, Node::ArrayKind(_)))
+        && arms
+            .iter()
+            .any(|arm| matches!(arm, Node::ArrayKind(_)) && !is_one_element_array(arm))
         && arms
             .iter()
             .any(|arm| !matches!(arm, Node::ArrayKind(_)) && is_plain_reference(arm))
