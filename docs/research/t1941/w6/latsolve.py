@@ -88,6 +88,9 @@ if __name__=='__main__':
             if float(q[5])>=float(os.environ.get('LADRES','0.2')): continue
             c=Nc if ln[0]=='N' else Dc; kk=('T%d'%ln[2]) if ln[1]=='T' else 'P%dn1'%ln[2]
             Fc=stage_F(np.asarray(c),np.array([xc]))[kk][0][0]
+            # agreement gate: a row more than LADDF bins (65,536-run) from the candidate's line is a mislock onto a
+            # neighbouring line (Excel N.Pn13: -9.01 bins at all three anchors); good control rows sit within 0.93
+            if abs(((float(q[4])-Fc+0.5)%1-0.5)*65536)>float(os.environ.get('LADDF','1.5')): print('ladder row dropped (agreement):',*q[:4]); continue
             g=freq_rows(Nc,Dc,[ln],[xc])[0]
             rows.append((g,None)); phi.append(float((mp.mpf(q[4])-mp.mpf(Fc))%1)); wr.append(lw); nl+=1
         print('ladder rows:',nl)
