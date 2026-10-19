@@ -8,3 +8,8 @@
 # Excel's scaling.
 N 0 -0x1.59f97cb274435p-11 -0x1.92587e5c124efp-6 -0x1.8558f6ad8f42fp-3 -0x1.d3f136ff6c1a9p-2 -0x1.4c00f7dcf9ca9p-2 0x1.59e7b3b047457p-5 0x1.6d0d5c0da3ed0p-4 0x1.30389e1d6f4d5p-6 0x1.c3ad284ce7c0ap-11 0x1.331b0222c934ep-19
 D 0 0x1.00000000bb368p-13 0x1.f168c3e77cdcfp-8 0x1.72eb273956503p-4 0x1.6b0b4a0835679p-2 0x1.18e838cf8fedfp-1 0x1.6e6b1e7db071bp-2 0x1.8a4a61687f99fp-4 0x1.353980a6cb188p-7 0x1.ec04685f735b0p-13 -0x1.18cd49c695d77p-28 0x1.094ed9564f38fp-32
+# --- Update (W1 C1): with q0 = 2^-13 fixed, joint exact search over the whole piece: 56.0% exact on 400k points in
+# [0.7,1.5], 97% A-exact near 1 (99.6/99.7% A-exact on the 32,768-point runs at x = 1 +- k ulp with a near-1-only
+# search). The lower stages (D S5..S8, N S6..S8) are pinned to the bit; the upper stages are loose.
+N2 0 -0x1.59f97cb2593f5p-11 -0x1.92587e5cc6b6fp-6 -0x1.8558f6ae39a6fp-3 -0x1.d3f136ff32e7dp-2 -0x1.4c00f7dd0cb88p-2 0x1.59e7b3b06f7ebp-5 0x1.6d0d5c0dad97ep-4 0x1.30389e1d615bbp-6 0x1.c3ad284cef3bbp-11 0x1.331b0222e2e6ep-19
+D2 0 0x1.0000000000000p-13 0x1.f168c3e77cdcfp-8 0x1.72eb273a4ee5bp-4 0x1.6b0b4a0843b71p-2 0x1.18e838cf96cc0p-1 0x1.6e6b1e7db0517p-2 0x1.8a4a61687d3d9p-4 0x1.353980a6c93c5p-7 0x1.ec04685f768a3p-13 -0x1.18cd49c671524p-28 0x1.094ed9564f38fp-32
