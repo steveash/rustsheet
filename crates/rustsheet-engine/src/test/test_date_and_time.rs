@@ -1011,7 +1011,8 @@ fn datedif_error_order_dates_then_unit_then_num() {
 
 // An error unit wins over a start date outside the calendar (gen-m7/f68fafa0ca2eba26 Calc!A1,
 // dates.md "DATEDIF argument errors before date checks", T-1355); a negative start with a valid or
-// unknown unit is #NUM! (probes/datedif-days360-error-order A17, A5, T-1430).
+// unknown unit is #NUM!, as `DATEDIF(-5,10,"d")` and `DATEDIF(-5,5,"x")` are in Excel
+// (probes/datedif-days360-error-order A17, A5, T-1430).
 #[test]
 fn datedif_error_unit_comes_before_a_negative_start_date() {
     let mut model = new_empty_model();

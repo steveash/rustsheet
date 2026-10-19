@@ -489,11 +489,12 @@ and `DAYS360("abc",5,NA())` `#VALUE!`, `DATEDIF(NA(),1/0,"d")` and `DAYS360(NA()
 A12, A15, C2, C4-C6, C8-C10, C13, C14). Then the unit's or method's error: `DATEDIF(10,5,NA())` (a reversed pair),
 `DATEDIF(-5,5,NA())`, `DATEDIF(5,-1,NA())`, `DATEDIF(3000000,5,NA())`, `DAYS360(-5,5,NA())`, `DAYS360(5,-5,NA())`
 and `DAYS360(3000000,5,NA())` are all `#N/A` (A1, A3, A10, A16, C1, C7, C18). DAYS360's method text that is no
-logical is `#VALUE!` at that same step, before the dates' `#NUM!` (`DAYS360(-5,5,"x")` `#VALUE!`, C3). Only then the
+logical is `#VALUE!` at that same step, before the dates' `#NUM!` (`DAYS360(-5,5,"x")` `#VALUE!`, C3; `DAYS360(5,10,"x")` too, C19). Only then the
 dates' `#NUM!` (reversed pair or out of the calendar), and DATEDIF's unknown unit last: `DATEDIF(10,5,"x")` and
 `DATEDIF(-5,5,"x")` are `#NUM!` (A4, A5, A13, A17; C11, C17). Lifted forms keep the order per element
-(`INDEX(DATEDIF({10,1},5,NA()),1)` and `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` `#N/A`, A18-A22, C15, C16;
-probes/date-math-lift-driver-edges G42, G43). `TIMEVALUE(C1:C1)` and `DATEVALUE(B1:B1)` of a one-cell range are that
+(`INDEX(DATEDIF({10,1},5,NA()),1)` and `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` `#N/A`, A18-A20, C15, C16;
+probes/date-math-lift-driver-edges G42, G43; a reversed or out-of-calendar element with an unknown unit is `#NUM!`,
+`INDEX(DATEDIF(10,5,{"d","x"}),2)` and `INDEX(DATEDIF({-5,1},5,{"x","x"}),1)`, A21, A22). `TIMEVALUE(C1:C1)` and `DATEVALUE(B1:B1)` of a one-cell range are that
 cell's value (1 row), and a one-cell or 3-D `weekend` is answered in "An error-valued or 3-D weekend, 3-D date text
 and holidays" (probes/date-text-weekend-3d, T-1428). DATEDIF's unit and DAYS360's method over an array are answered
 in "Date function argument modes" (they lift).
