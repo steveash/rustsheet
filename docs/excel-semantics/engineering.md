@@ -302,6 +302,12 @@ G8, G14, G23; neither `sqrt(x²+y²)` nor `hypot`), IMARGUMENT (H2, H3, H10, H14
 (AB7), IMCOS (K25), IMLOG2 (AH19) and IMCOT T14. The workbook's values come from Macintosh Excel,
 and the oracle calibration found IMARGUMENT differing by ulps between Excel for the web and desktop
 (docs/architecture/oracle.md), so these may be platform libm digits.
+- IMSEC and IMSECH do not share a kernel: `sech(3+4i)` and `sec(4+3i)` have the same real part mathematically, yet
+  `IMREAL(IMSEC("4+3i"))` is -0.0652940278579471 (COMPLEXs.xlsx Z25, Mac cache, which the web agrees with) and
+  `IMSECH("3+4i")` prints -0.065294027857947 (probes/eng-argument-modes Calc!A45 and gen-m9/a2e51f48717af2a1
+  Calc!A24, excel-graph). Ours gives the other digit in both. The remaining cells are now T-2044 (sweep T-2043);
+  IMARGUMENT H2, H3, H10 and IMCOS K25 are desktop/web differences (docs/research/oracle-calibration.md), not fitting
+  targets until the desktop oracle exists.
 - UNVERIFIED: where `cosh 2y` overflows (|y| above about 355) ours gives `±0 ± i` (IMTAN("1+400i") =
   "i", as the old tan/tanh form did), and where the denominator is 0 (a real x at the double nearest
   π/2) `tan x`; Excel may give `#NUM!` there (T-1966).
@@ -310,7 +316,7 @@ T, U columns; probes/eng-argument-modes Calc!A33 `IMCOT("3+4i")` = "-0.000187587
 and A51 `IMTAN("3+4i")` = "-0.000187346204629478+0.999355987381473i" (excel-graph), which the
 double-angle form matches too, so the digits are not Mac-only.
 Status: VERIFIED (desktop cached values and excel-graph), except the UNVERIFIED bullet (T-1966)
-Tasks: T-0907, T-1966
+Tasks: T-0907, T-1966, T-2043, T-2044
 
 ## Base conversions read a blank cell and empty text as 0
 Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank cell, `""` and a ref to `=""` as 0: `BIN2DEC("")`, `OCT2DEC(blank)`, `HEX2DEC("")` are 0; the others give "0", or "0000" with `places` 4. None of these is an error.

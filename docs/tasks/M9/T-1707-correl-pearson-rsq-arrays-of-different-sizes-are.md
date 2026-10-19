@@ -21,8 +21,11 @@ array twice, is 1.0000000000000002 (CORREL, PEARSON) and 0.9999999999999998 (RSQ
 (G!B426, functions2 G!B286, G!B306): Excel's formula rounds differently. COVARIANCE.P passes. Probe the plain
 `CORREL({1;2},{1;2;3})` too.
 
+Also the same last-digit rule (gap triage 2026-10-19): ironcalc-calc/STATISTICAL/CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx
+Sheet1!C2 `CORREL(A2:A13,B2:B13)`: Excel (Mac cache, web agrees) -0.13574278487946612, ours -0.1357427848794661.
+
 ## Acceptance criteria
-- [ ] Those cells pass and leave eval/baseline/probes.txt.
+- [ ] Those cells and ironcalc-calc CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx C2 pass and leave eval/baseline (probes.txt, ironcalc-calc.txt).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
