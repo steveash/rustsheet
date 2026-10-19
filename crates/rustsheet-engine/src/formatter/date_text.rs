@@ -435,7 +435,7 @@ pub(crate) fn parse_date(
 #[cfg(test)]
 mod tests {
     use super::parse_date;
-    use crate::functions::date_and_time::time_text::parse_date_clock_serial;
+    use crate::formatter::date_clock::parse_date_clock_serial;
     use crate::locale::get_locale;
 
     /// The serial of en-US date text read with the clock in `year` (`None`: no clock).

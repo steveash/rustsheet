@@ -841,6 +841,6 @@ mod tests {
     fn a_marked_call_drops_its_one_element_at() {
         let mut node = with_automatic_at("N(IF(1,{2}))", 1);
         assert!(mark(&mut node));
-        assert_eq!(to_rc_format(&node), "_RS_LEGACY_N(IF(1,{2}))");
+        assert_eq!(to_rc_format(&node), "NLG1(IF(1,{2}))");
     }
 }
