@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-CHOOSE's index_num lift runs on the SPEC-0011 driver (`index_num` `Lift`, the value arms `Whole`), with no change in any result.
+CHOOSE's index_num lift runs on the SPEC-0011 driver (`index_num` `Lift`, the value arms `Whole`), with no change in any result. (Decided against; see Outcome.)
 
 ## Context
 Split from T-1810 (its acceptance item "CHOOSE's `choose_array` is the kernel of a `lift_call`"). Today `choose_array` (functions/lookup_and_reference/mod.rs) broadcasts the index array itself. Move it onto `lift_call` (functions/lift/call.rs) and the lift-kind table. CHOOSE's reference arms (it can return a range) must keep their behaviour: test_fn_choose.rs and every eval case that uses CHOOSE stay green.
@@ -34,4 +34,4 @@ kernel. It gave the same results, but the performance reviewer found that the dr
 every arm's slot at every element: O(arms) clones per element instead of one, which untrusted
 input can reach with many text arms. That attempt was reverted. Moving CHOOSE needs a driver
 kernel that receives the output position, and that is worth building only when a second caller
-needs it. Eval delta: 0 fixes, 0 regressions.
+needs it (IF's array condition is the likely one). Eval delta: 0 fixes, 0 regressions.
