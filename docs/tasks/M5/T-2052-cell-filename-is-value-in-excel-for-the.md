@@ -3,7 +3,7 @@ id: T-2052
 title: "CELL(\"filename\") is #VALUE! in Excel for the web: score it and match it"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
