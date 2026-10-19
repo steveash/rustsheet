@@ -481,6 +481,17 @@ impl Model {
                 index_from_array(arr, row_eff, col_eff, form == IndexForm::TopLeft, cell)
             }
             error @ CalcResult::Error { .. } => error.clone(),
+            // An uncalled LAMBDA is one value, a 1x1 area: row and column 0 or 1 give it back,
+            // which a cell shows as `#CALC!` (`INDEX(LAMBDA(x,x),1,1)`; `ROWS(INDEX(LAMBDA(x,x),0,0))`
+            // is 1: probes/m7-argument-modes H44, probes/lambda-value-arguments A17-A20).
+            lambda @ CalcResult::Lambda(_) => {
+                let (row_eff, col_eff) = index_effective_indices(1, row_num, col_num, two_arg);
+                if row_eff <= 1 && col_eff <= 1 {
+                    lambda.clone()
+                } else {
+                    wrong_reference(cell)
+                }
+            }
             _ => CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
