@@ -87,9 +87,9 @@ fn is_read_reference(arg: &Node) -> bool {
 /// selectors are checked here. Each selector and each arm is analysed once, so nesting stays
 /// linear. An `Unknown` selector counts as lifting: the cell is left to spill at run time rather
 /// than taken for a scalar. LET passes on what its body is; `bound` holds the variables in scope
-/// with their answer, computed once when bound, as in `yields_cells`. A variable selector (a LET
-/// name or LAMBDA parameter, `LET(s,{1,2},SWITCH(s,...))`) counts as lifting too: its own shape
-/// does not tell what it holds.
+/// with their answer, computed once when bound, as in `yields_cells`. A variable written in a
+/// selector position (`LET(s,{1,2},SWITCH(s,...))`) counts as lifting too: its own shape does not
+/// tell what it holds. A LAMBDA call is not looked into (T-1987).
 fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
     let not_scalar = |arg: &Node| {
         matches!(arg.ungrouped(), Node::NamedVariableKind { .. })

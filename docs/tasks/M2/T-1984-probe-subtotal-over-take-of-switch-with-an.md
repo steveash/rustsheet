@@ -24,6 +24,7 @@ engine today gives, unevidenced (H1:H2 = 3,4; I1:I2 = 6,8):
 - `SUBTOTAL(9,TAKE(IF(TRUE,SWITCH({1,2},1,H1:H2,2,I1:I2)),2))`, `CHOOSE(1,IFS(...))`,
   `LET(x,SWITCH(...),x)` wrapped → 2x2 `#VALUE!` like the bare call.
 - `SUBTOTAL(9,TAKE(IFS({TRUE,FALSE},H1:H2,TRUE,I1:I2),2))` (scalar second condition) → 2x2 `#VALUE!`
+- `SUBTOTAL(9,TAKE(IFS(FALSE,H1:H2,{TRUE,FALSE},I1:I2),2))` (an earlier FALSE, then an array condition) → `#VALUE!, #N/A` in both rows
 - a LET-variable selector, `LET(s,{1,2},SWITCH(s,1,H1:H2,2,I1:I2))` (and the IFS/CHOOSE twins) → 2x2 `#VALUE!`
 - a multi-cell range or `Unknown` selector, `TAKE(IF(H1:H2>3,H1:H2,I1:I2),2)`,
   `TAKE(CHOOSE(J1:J2,H1:H2,I1:I2),2)` (J1:J2 = 1,2) and `TAKE(IF(INDIRECT("K1"),H1:H2,I1:I2),2)`
