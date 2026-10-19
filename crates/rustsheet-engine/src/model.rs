@@ -2226,21 +2226,6 @@ impl Model {
         Ok(())
     }
 
-    /// Style of typed input that implies the number format `num_fmt`. The format is not applied
-    /// when a date is typed into a cell that is already date-formatted.
-    fn style_with_typed_format(&mut self, style_index: i32, num_fmt: &str) -> Result<i32, String> {
-        let keeps_format =
-            is_likely_date_number_format(&self.workbook.styles.get_style(style_index)?.num_fmt)
-                && is_likely_date_number_format(num_fmt);
-        if keeps_format {
-            Ok(style_index)
-        } else {
-            self.workbook
-                .styles
-                .get_style_with_format(style_index, num_fmt)
-        }
-    }
-
     /// Sets an array formula in an area (CSE formula)
     pub fn set_user_array_formula(
         &mut self,
