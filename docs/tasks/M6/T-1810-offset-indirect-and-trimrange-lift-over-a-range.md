@@ -68,5 +68,5 @@ spec first (CLAUDE.md directive 4), so this task lands the evidence and hands th
 - T-1956 (functions-lookup, opus): OFFSET on it. T-1957 (sonnet): INDIRECT and TRIMRANGE.
 - T-1958 (functions-lookup, sonnet): XMATCH's search_mode lift, a value lift with no carrier needed.
 - T-1959 (quality, sonnet): CHOOSE's index lift onto `lift_call`.
-Eval delta: probes +59 cells, all new known failures in probes/reference-lift-elements, owned by T-1956 to T-1958;
+Eval delta: probes +59 cells (3 pass, 56 new known failures in probes/reference-lift-elements, owned by T-1956 to T-1958);
 0 regressions, 0 fixes.
