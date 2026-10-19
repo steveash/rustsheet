@@ -167,3 +167,31 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - The Unix V6 gamma.s uses Hart and Cheney #5243 (near zero) and #5404 (asymptotic), with a Stirling cut at 8,
     as Excel's GAMMALN has.
   - No published source documents Excel's GAMMALN.PRECISE algorithm.
+
+## GAMMA's G on [1,2): structure solved (W4)
+- G(y) = fl(N(y)/D(y)). N and D are independent raw-y Horner chains of degree (8,8), every op fl53(fl64).
+- It is Cody's GAMMA shape, (xnum+xden)/xden in z = y-1, re-expanded into raw y, with Excel's own coefficients.
+  Cody verbatim scores 34%.
+- Ruled out by the lines: 1 + X/D, (X+D)/D as evaluated, z-form chains, and Boost's Lanczos.
+- **Triangle-law correction (applies to every kernel).** A product rounded into a sum that lands one binade up
+  (a "triangle" line) has local frequency F(y) = S'(y)/2^(eS+1), where S = M*y + c is the sum. It is not the
+  product's (M + tM')/2^e, and not u/2. With this law, every strong line matches its full track on an untuned fit.
+- Line to stage map (mean/max track deviation):
+
+  | Line | Stage | Kind | Mean / max deviation | Track |
+  |---|---|---|---|---|
+  | L1 0.40945 | D*c0 | product | 0.0005 / 0.0012 | to 1.47 |
+  | a1099 0.10985 | D*c1 product + N*c0 | doublet (n0 ≈ d1, from Gamma's residue at 0) | | |
+  | L2 0.42301 | final N sum | triangle | 0.0007 / 0.0011 | to 1.44 |
+  | L3 0.12506 | M_Dc0 sum | triangle | 0.0007 / 0.0009 | to 1.995 |
+  | a3048 0.30480 | M_Dc1 sum | triangle | 0.0008 / 0.0010 | |
+  | 0.29108 | M_Nc0 sum | triangle | 0.0013 / 0.0043 | |
+- Pins:
+  - M_Dc0(1) = 1.4094486825857*2^16; M_Dc0'(1) = 0.2501178295786*2^16;
+  - M_Dc1'(1) = -0.6096059494094*2^15;
+  - N'(1) = 0.4230053820552*2^17.
+- Candidate `g_candidate_w4.txt`: 29.9% exact (W4). The coordinator's `g_check.py` reproduces 28.5% exact and
+  69.6% within 1 ulp on 871,392 points. The rate falls from 33% near 1 to 22% near 2.
+  - Six soft directions are unpinned by the lines, and the coordinate search stalls at about 30%.
+  - Next: a per-stage complex-amplitude phase solve against exact simulation, on the e301-e324 ladder plus the
+    dense y101..y116 runs.
