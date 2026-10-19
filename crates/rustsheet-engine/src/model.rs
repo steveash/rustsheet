@@ -165,7 +165,7 @@ pub struct Model {
     /// The defined-name LAMBDAs called in this evaluation, keyed by the same ids as `lambdas`.
     pub(crate) named_lambdas: NamedLambdas,
     /// What each LAMBDA made inside a LET or a LAMBDA call captured of the variables in scope
-    /// (`Model::store_closure`), keyed by the same ids as `lambdas`.
+    /// (`Model::close_over`), keyed by the same ids as `lambdas`.
     pub(crate) lambda_captures: HashMap<usize, Captures>,
     /// Where the stack was when the outermost LAMBDA call running now started
     /// (`Model::lambda_stack_base`), `None` while no call runs.
@@ -244,7 +244,7 @@ impl Model {
     }
     /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
     /// made it (a cell holding one is `#CALC!`), so what the LAMBDAs captured
-    /// (`Model::store_closure`) is dropped with it, not kept for the rest of the pass.
+    /// (`Model::close_over`) is dropped with it, not kept for the rest of the pass.
     pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
         self.evaluate_cell(cell);
         self.lambda_captures.clear();
@@ -782,7 +782,7 @@ impl Model {
             }
             LambdaDefKind { parameters, body } => {
                 let definition = Arc::new((parameters.clone(), *body.clone()));
-                CalcResult::Lambda(self.store_closure(definition))
+                CalcResult::Lambda(self.store_lambda(definition))
             }
             LambdaCallKind { lambda, args } => {
                 // With a reference kept as one, a cell and an INDEX or IF that selects one

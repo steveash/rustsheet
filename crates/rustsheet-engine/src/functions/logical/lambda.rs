@@ -23,8 +23,8 @@ use crate::variable_stack::Binding;
 /// it comes from, so naming a defined-name LAMBDA copies no body (T-0440).
 pub(crate) type SharedLambda = Arc<(Vec<NamedVariable>, Node)>;
 
-/// The LET variables and LAMBDA parameters, by id, that a LAMBDA's body reads and that were bound
-/// when it was made, with what they were bound to then (`Model::store_closure`).
+/// The LET variables and LAMBDA parameters, by id, that a LAMBDA's body reads, bound when the
+/// LAMBDA was made, and kept when the scope that bound them ended, with what they were bound to (`Model::close_over`).
 pub(crate) type Captures = Vec<(usize, Arc<Binding>)>;
 
 /// The defined-name LAMBDAs called in one evaluation (cleared with `Model::lambdas`). Each gets
@@ -41,6 +41,38 @@ pub(crate) struct NamedLambdas {
     /// A patched body by lambda id and number of arguments, for the next call. Only a body is
     /// kept: an error (a wrong count) is made again with the calling cell's origin.
     prepared: HashMap<(usize, usize), PreparedLambda>,
+}
+
+/// What a LET or a LAMBDA call gives, for [`Model::close_over`]: the LAMBDA it is, if it is one.
+pub(crate) trait ScopeResult {
+    fn lambda(&self) -> Option<usize>;
+}
+
+impl ScopeResult for CalcResult {
+    fn lambda(&self) -> Option<usize> {
+        match self {
+            CalcResult::Lambda(id) => Some(*id),
+            _ => None,
+        }
+    }
+}
+
+impl ScopeResult for RefArg {
+    fn lambda(&self) -> Option<usize> {
+        match self {
+            RefArg::Value(value) => value.lambda(),
+            RefArg::Ranges(_) => None,
+        }
+    }
+}
+
+impl ScopeResult for Binding {
+    fn lambda(&self) -> Option<usize> {
+        match self {
+            Binding::Value(value) | Binding::ReadOnce(value) => value.lambda(),
+            Binding::Areas(_) | Binding::Span(_) => None,
+        }
+    }
 }
 
 /// One LAMBDA called repeatedly with the same number of arguments (`Model::lambda_caller`).
@@ -486,7 +518,8 @@ impl Model {
         };
         let result = match &prepared.definition {
             Ok((ids, body)) => {
-                let captured = self.bind_captures(&caller.lambda, cell);
+                let mark = self.last_lambda_id;
+                let mut captured = self.bind_captures(&caller.lambda, cell);
                 for (i, &(raw_id, once)) in ids.iter().enumerate() {
                     let binding = match bind(self, i) {
                         Binding::Value(value) if once => Binding::ReadOnce(value),
@@ -499,9 +532,9 @@ impl Model {
                 } else {
                     RefArg::Value(self.evaluate_node_in_context(body, cell))
                 };
-                for &(raw_id, _) in ids {
-                    self.variable_stack.remove(raw_id);
-                }
+                // A LAMBDA the body made may read the parameters and the captures bound here.
+                captured.extend(ids.iter().map(|&(raw_id, _)| raw_id));
+                self.close_over(result.lambda(), &captured, mark);
                 self.unbind_captures(captured);
                 result
             }
@@ -657,37 +690,56 @@ impl Model {
             );
         }
 
-        CalcResult::Lambda(self.store_closure(Arc::new((parameters, body))))
+        CalcResult::Lambda(self.store_lambda(Arc::new((parameters, body))))
     }
 
-    /// Stores a LAMBDA written in a formula, with what it captures: the variables in scope that
-    /// its body reads, as they are bound now. Called after the LET or the call that bound them
-    /// is over (a REDUCE or SCAN accumulator, a LET-bound `mk(5)`), it reads those values, as
-    /// Excel's closures do: `LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1),a,50,f(0))` is 1
+    /// Gives the LAMBDAs a LET or a LAMBDA call made, and that outlive it, what they read of its
+    /// variables `ids` (`mark` is the first lambda id it could have made). Called at the end of
+    /// that scope, while `ids` are still bound: a LAMBDA leaves a scope only through its result
+    /// (a REDUCE or SCAN accumulator, a LET-bound `mk(5)`), so the LAMBDAs reachable from it, the
+    /// result itself and those its captures hold, capture each variable of `ids` their bodies
+    /// read, as it is bound now. Excel's closures read those values:
+    /// `LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1),a,50,f(0))` is 1
     /// (docs/excel-semantics/arrays.md "LAMBDAs that outlive their call",
-    /// probes/lambda-escaping-closures, T-0439).
-    pub(crate) fn store_closure(&mut self, definition: SharedLambda) -> usize {
-        let mut read = Vec::new();
-        definition.1.reads_variable(|id| {
-            if self.variable_stack.get(id).is_some() {
-                read.push(id);
+    /// probes/lambda-escaping-closures, T-0439). A LAMBDA used only inside the scope captures
+    /// nothing, so a LAMBDA made on each REDUCE step copies nothing.
+    pub(crate) fn close_over(&mut self, result: Option<usize>, ids: &[usize], mark: usize) {
+        let Some(result) = result.filter(|_| !ids.is_empty()) else {
+            return;
+        };
+        let mut pending = vec![result];
+        let mut seen = HashSet::new();
+        while let Some(lambda) = pending.pop() {
+            if lambda < mark || !seen.insert(lambda) {
+                continue;
             }
-            false
-        });
-        read.sort_unstable();
-        read.dedup();
-        let captures: Captures = read
-            .into_iter()
-            .filter_map(|id| Some((id, self.variable_stack.shared(id)?)))
-            .collect();
-        let id = self.store_lambda(definition);
-        if !captures.is_empty() {
-            self.lambda_captures.insert(id, captures);
+            let held = self.lambda_captures.get(&lambda).into_iter().flatten();
+            pending.extend(held.filter_map(|(_, binding)| binding.lambda()));
+            let Some(definition) = self.lambdas.get(&lambda) else {
+                continue;
+            };
+            let mut read = Vec::new();
+            definition.1.reads_variable(|id| {
+                if ids.contains(&id) {
+                    read.push(id);
+                }
+                false
+            });
+            read.sort_unstable();
+            read.dedup();
+            for id in read {
+                if let Some(binding) = self.variable_stack.shared(id) {
+                    pending.extend(binding.lambda());
+                    self.lambda_captures
+                        .entry(lambda)
+                        .or_default()
+                        .push((id, binding));
+                }
+            }
         }
-        id
     }
 
-    /// Binds what the LAMBDA `lambda` captured (`store_closure`) for one call of it, each
+    /// Binds what the LAMBDA `lambda` captured (`close_over`) for one call of it, each
     /// variable that is not bound already, and gives back the ids it bound, for
     /// [`Self::unbind_captures`]. A bound one is in scope still, bound to what was captured: the
     /// same LET or call made the LAMBDA, since every evaluation of a LET, and every call of a

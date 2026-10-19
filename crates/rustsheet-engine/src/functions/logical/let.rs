@@ -5,7 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::Function,
+    functions::{logical::ScopeResult, Function},
     model::Model,
     reference_operators::{Ranges, RefArg},
     variable_stack::Binding,
@@ -154,12 +154,14 @@ impl Model {
     /// Binds LET's names to their values in order, then hands `read_body` the body while the
     /// bindings are live, and removes them. `Err` is LET's own error: a wrong argument count, a
     /// name that is not a variable name or is bound twice, before the body is read.
-    pub(crate) fn let_scope<R>(
+    pub(crate) fn let_scope<R: ScopeResult>(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
         read_body: impl FnOnce(&mut Self, &Node) -> R,
     ) -> Result<R, CalcResult> {
+        // The first lambda id this LET could make, its values' LAMBDAs included (`close_over`).
+        let mark = self.last_lambda_id;
         // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
         if args.len() < 3 || args.len().is_multiple_of(2) {
             return Err(CalcResult::new_args_number_error(cell));
@@ -225,6 +227,7 @@ impl Model {
 
         // Evaluate the body with all bindings in scope.
         let result = read_body(self, &cloned[args.len() - 1]);
+        self.close_over(result.lambda(), &bound_ids, mark);
 
         // Remove only the ids introduced by this LET frame.
         for id in bound_ids {

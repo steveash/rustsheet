@@ -7,7 +7,9 @@ mod scan;
 mod switch;
 
 pub(crate) use bycol_byrow::as_lambda;
-pub(crate) use lambda::{Captures, FunctionValue, LambdaCaller, NamedLambdas, SharedLambda};
+pub(crate) use lambda::{
+    Captures, FunctionValue, LambdaCaller, NamedLambdas, ScopeResult, SharedLambda,
+};
 pub(crate) use r#let::{has_duplicate_parameter, same_variable};
 
 use crate::cast::calc_result_to_array_node;

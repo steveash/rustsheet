@@ -571,6 +571,44 @@ fn a_closure_called_many_times_and_recursively_keeps_its_captures() {
 }
 
 #[test]
+fn closures_escape_through_nested_scopes() {
+    // A LAMBDA a LET value or body makes inside a call, and one an escaped closure makes, capture
+    // the variables of every scope they leave (lexical, as probes/lambda-escaping-closures shows).
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LET(mk,LAMBDA(a,LET(f,LAMBDA(b,a+b),f)),g,mk(3),g(4))",
+    );
+    model._set(
+        "A2",
+        "=LET(mk,LAMBDA(a,LET(x,a*2,LAMBDA(b,x+b))),f,mk(5),f(1))",
+    );
+    model._set(
+        "A3",
+        "=LET(mk,LAMBDA(a,LAMBDA(b,LAMBDA(c,a+b+c))),f,mk(1),g,f(10),g(100))",
+    );
+    model._set("A4", "=LET(x,1,f,LAMBDA(b,x+b),g,LET(y,f,y),g(2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "7");
+    assert_eq!(model._get_text("A2"), "11");
+    assert_eq!(model._get_text("A3"), "111");
+    assert_eq!(model._get_text("A4"), "3");
+}
+
+#[test]
+fn lambdas_that_do_not_outlive_their_call_capture_nothing() {
+    // A LAMBDA made on each of 2,000 REDUCE steps reads the 10,000-row accumulator but never
+    // leaves its step, so nothing is copied for it (capturing at creation kept 2,000 copies).
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=ROWS(REDUCE(SEQUENCE(10000),SEQUENCE(2000),LAMBDA(a,x,IF(SUM(MAP({1},LAMBDA(z,ROWS(a))))>0,a,a))))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "10000");
+}
+
+#[test]
 fn lambda_calls_past_the_stack_budget_are_num_errors() {
     // DEVIATION (decision 0014): Excel evaluates these 300 deep (probes/lambda-call-depth); past
     // the evaluation's stack budget the engine gives #NUM! instead of overflowing its stack.

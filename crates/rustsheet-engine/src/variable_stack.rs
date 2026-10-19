@@ -103,9 +103,8 @@ impl VariableStack {
     }
 
     /// A shared copy of what `id` is bound to, for a LAMBDA that captures it
-    /// (`Model::store_closure`): made on the first capture and handed to every later one while
-    /// `id` stays bound, so a LAMBDA made once per element of a MAP copies the array it reads
-    /// once, not once per element. An id is bound to one value for as long as it is bound (a
+    /// (`Model::close_over`): made on the first capture and handed to every later one while
+    /// `id` stays bound, so the LAMBDAs that outlive one scope copy an array they read once. An id is bound to one value for as long as it is bound (a
     /// parameter is bound once per call, a LET name once per evaluation), so the copy stays true.
     pub(crate) fn shared(&mut self, id: usize) -> Option<Arc<Binding>> {
         if let Some(shared) = self.shared.get(&id) {
