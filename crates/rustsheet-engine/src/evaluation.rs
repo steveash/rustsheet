@@ -998,31 +998,6 @@ impl Model {
         }
     }
 
-    /// Clips a whole-column or whole-row range to the sheet's used area, so
-    /// that a function walking it visits only the cells that can hold
-    /// something. Returns the bottom-right corner to walk to. The cells the
-    /// walk will skip are put on record as read empty first: the formula
-    /// depends on them, and a spill into them must restart the pass, however
-    /// the used area changes while the walk runs.
-    pub(crate) fn clip_to_used_area(
-        &mut self,
-        sheet: u32,
-        row1: i32,
-        column1: i32,
-        row2: i32,
-        column2: i32,
-    ) -> Result<(i32, i32), String> {
-        let (last_row, last_column) = self.used_area_corner(sheet, row1, column1, row2, column2)?;
-        if (last_row, last_column) == (row2, column2) {
-            return Ok((row2, column2));
-        }
-        // The remainder: the rows below the used area over the whole width,
-        // and the columns beyond it within the rows that are walked.
-        self.record_seen_empty_range(sheet, last_row + 1, column1, row2, column2);
-        self.record_seen_empty_range(sheet, row1, last_column + 1, last_row, column2);
-        Ok((last_row, last_column))
-    }
-
     /// Checks, on behalf of the dynamic anchor about to commit, whether spilling
     /// over `area` (width, height; every cell of it but the anchor's own is
     /// written, so `(1, 1)` writes nothing) and removing its own spill cells at
