@@ -18,7 +18,7 @@ T-1995 fixed the no-positive-flow case (#DIV/0!); with a positive flow `fn_mirr`
 
 ## Acceptance criteria
 - [x] a probe of `MIRR({-1,2,3},1E+200,1E+200)`, filled by excel-graph, with a mismatch fixed in `fn_mirr` and recorded in financial.md.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
