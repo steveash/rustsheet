@@ -3,7 +3,7 @@ id: T-1106
 title: "LET and LAMBDA results that are references stay references (SUM(LET(x,K1,x)) is 0)"
 milestone: M7
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -23,9 +23,20 @@ value. Likely fix: evaluate the body with `evaluate_node_with_reference` when th
 are references". Probe the LAMBDA form (`SUM(LAMBDA(x,x)(K1))`) and ISREF(LET(..)) first.
 
 ## Acceptance criteria
-- [ ] probes/min-max-reference-forms D8 passes (baseline shrinks); new probe cells for the LAMBDA and ISREF forms match the oracle.
-- [ ] 0 eval regressions.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/min-max-reference-forms D8 passes (baseline shrinks); new probe cells for the LAMBDA and ISREF forms match the oracle.
+- [x] 0 eval regressions.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`SUM(LET(x,K1,x))` (min-max-reference-forms D8) already passed on main. What remained:
+`ISREF(LET(x,A1:A3,x))` was FALSE (written-parens-reference-only E40, E45) and a LAMBDA call
+lost a one-cell reference (`SUM(LAMBDA(x,x)(K1))` was `#VALUE!`, `ISREF(LAMBDA(x,x)(A1))`
+FALSE). New probe probes/let-lambda-reference-results (excel-graph, 18 cells) pins the LET and
+LAMBDA forms. Now `is_reference` treats LET and a LAMBDA call like IF/CHOOSE (reference iff their
+reference-context result is one), and `evaluate_reference_arg` reads a written LAMBDA call through
+`call_callee_as_reference` (the caller's `keeping_references` mode). Recorded in references.md.
+Eval delta: probes known failures 2096 -> 2094 (E40, E45 fixed), +1 case (18 cells, all pass),
+0 regressions.
