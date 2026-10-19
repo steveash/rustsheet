@@ -3,7 +3,7 @@ id: T-1806
 title: "Probe the edge shapes of a cell-shaped call name"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
