@@ -63,7 +63,18 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   GAMMA = fl(p * 0x1.c5bf891b4ef6bp+0), sqrt(pi) as a double. That is 172 of 172 points, x = 0.5 to 171.5
   (`kmyst-gam-h101` and t1042-gamma-half-int). The neighbours at +-1 ulp take the large-x path. Descending
   order, sqrt(pi) first, or a 64-bit product all fail (33-58 of 172). Negative half-integers are open.
-- **GAMMA (W4, structure).** It follows Cephes `gamma`: the downward product while x >= 3, division while x < 2,
+- **GAMMA for 1 <= x < 10 reduces to [1,2), not Cephes's [2,3) (W4, verified by the coordinator).**
+  y = x; z = 1; while (y >= 2) { y = y - 1; z = fl(z*y); }  GAMMA = fl(z * G(y)), with G = Excel's GAMMA on [1,2).
+  The product runs descending, (x-1)(x-2)..., each step stored.
+  - Evidence, `kmyst-gam-k101..k104` (GAMMA of x, x+1, x-1, x+2, x+3 on 51 runs of [2,3)), with Excel's own G in
+    column F:
+    - GAMMA(x) = fl((x-1)*G): 52,224 of 52,224.
+    - GAMMA(x+1) = fl(fl(x*(x-1))*G): 52,224 of 52,224.
+    - x+2 and x+3 hold the same way on the exact rows.
+  - Integers fall out as the downward product, since G(1) = 1.
+  - G on [1,2) is the remaining GAMMA kernel. G(1+2^-52) = 1-2^-53 is correctly rounded, which Cephes's 1/y chain
+    does not give.
+- **GAMMA (W4, superseded structure note).** It follows Cephes `gamma`: the downward product while x >= 3, division while x < 2,
   then fl(fl(z*P(t))/Q(t)) on [2,3). It is bit-exact at x near 1.37e-9. Excel's P/Q coefficients are its own,
   running 5-9e-17 above Gamma.
 - Helpers: `rnd.py` (exact RN53/RN64), `exp_v6.py` (Excel EXP, T-1778).
