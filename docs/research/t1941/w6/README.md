@@ -210,6 +210,15 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
         2e-4 (41 consistent matches, max res 8.5e-7) and stalls. The wrong seed stays at 650% error, with less
         consistent matches (max res 4.8e-6).
       - So a 2-track start is marginal; Excel needs >= 4 law tracks or sideband-difference (comb) rows.
+      - The N/D ambiguity is resolved by the R staircase (`crossings.py`). On the far truth's sweep, the 5 staircase
+        steps all sit at binade crossings of the correct-seed EM chain (5/5, window 0.003). The swapped-seed chain
+        explains 2/5 (chance); so does an unrelated chain. Apply the same check to Excel's steps (1.526-1.533,
+        1.612-1.615) and to D's end at 1.889.
+      - Negatives:
+        - adaptive (median-based) trimming in peak EM diverges (stage error 0.2-0.5);
+        - law-track EM (`lawem.py`: per-law nearest-peak sequences, accepted if smooth in x) accepts nearly every law
+          at 24/24 inliers, because a smooth wrong prediction near a real track looks smooth too;
+        - so EM must gate on absolute residuals (per-peak EM with a 5x-tol trim, which reached 2e-4).
 
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
