@@ -67,8 +67,8 @@ regenerated.
 PERCENTILE*/QUARTILE*/PERCENTRANK*'s reader and TRIMMEAN's reader now return an error value as
 that error, so the data's error comes before a bad `k` (P81-P83). PROB keeps `collect_numeric_flat`'s
 `#VALUE!`, since it was not probed with an error data argument. FREQUENCY's and PERCENTILE's readers now
-delegate to the new `numeric_flat_of`, PROB's reader, instead of copying it (duplication 3630 to
-3619).
+delegate to the new `numeric_flat_of`, PROB's reader, instead of copying it. Duplication drops from 3630 to 3619; the
+ratchet file is left for the steward, since changing it needs a decision record.
 
 RANK needs a design for its two-kind `ref` and is split to T-1999. The unprobed orders the
 fidelity review listed are T-2000.
