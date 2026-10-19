@@ -3,7 +3,7 @@ id: T-2061
 title: "Probe fraction formats with currency, literals, % and , scaling, grouping and #/0 numerators"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -40,3 +40,6 @@ negative, zero and a carry value.
 ## Out of scope
 - Placeholder denominators (T-2030), numerator overflow (T-1740), escaped literals and `_x` between
   the parts (T-0982).
+
+## Outcome
+Probe case probes/fraction-format-features (128 cells, excel-graph). 86 match the engine; 42 mismatch and are filed as T-2072, T-2073, T-2074. Findings in docs/excel-semantics/number-formats.md, Fraction formats. Several inferred behaviours were wrong (grouping applies, trailing `,` is #VALUE!, `0` numerators print, `00` is a placeholder denominator).
