@@ -135,7 +135,8 @@ fn fn_imcot() {
 }
 
 // Past `cosh 2y`'s range IMTAN is `±0 ± i` and IMCOT `±0 ∓ i`, as tanh gives; at the double
-// nearest π/2 IMTAN stays finite (T-0907).
+// nearest π/2 IMTAN stays finite (T-0907). Not Excel evidence: these pin our fallbacks until
+// T-1966 probes Excel there.
 #[test]
 fn fn_imtan_imcot_large_imaginary_part() {
     let mut model = new_empty_model();

@@ -790,6 +790,7 @@ fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 /// (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx N2, N7, N15: `IMTAN("1.23+9.5121i")` has real part
 /// 6.89106871662165E-09; T-0907). Past `cosh 2y`'s range the value is `±0 ± i`, as tanh gives;
 /// where the denominator rounds to 0 (y = 0 and x the double nearest π/2) it is `tan x`, finite.
+/// Both fallbacks are unprobed, not Excel evidence (T-1966).
 fn tan_parts(x: f64, y: f64) -> (f64, f64) {
     let denominator = f64::cos(2.0 * x) + f64::cosh(2.0 * y);
     if denominator == 0.0 {

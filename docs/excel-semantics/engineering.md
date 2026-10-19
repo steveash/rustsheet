@@ -302,10 +302,15 @@ G8, G14, G23; neither `sqrt(x²+y²)` nor `hypot`), IMARGUMENT (H2, H3, H10, H14
 (AB7), IMCOS (K25), IMLOG2 (AH19) and IMCOT T14. The workbook's values come from Macintosh Excel,
 and the oracle calibration found IMARGUMENT differing by ulps between Excel for the web and desktop
 (docs/architecture/oracle.md), so these may be platform libm digits.
+- UNVERIFIED: where `cosh 2y` overflows (|y| above about 355) ours gives `±0 ± i` (IMTAN("1+400i") =
+  "i", as the old tan/tanh form did), and where the denominator is 0 (a real x at the double nearest
+  π/2) `tan x`; Excel may give `#NUM!` there (T-1966).
 Evidence: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx (Excel-cached, Microsoft Macintosh Excel) N, O,
-T, U columns.
-Status: VERIFIED (desktop cached values)
-Tasks: T-0907
+T, U columns; probes/eng-argument-modes Calc!A33 `IMCOT("3+4i")` = "-0.000187587737983659-1.00064439247156i"
+and A51 `IMTAN("3+4i")` = "-0.000187346204629478+0.999355987381473i" (excel-graph), which the
+double-angle form matches too, so the digits are not Mac-only.
+Status: VERIFIED (desktop cached values and excel-graph), except the UNVERIFIED bullet (T-1966)
+Tasks: T-0907, T-1966
 
 ## Base conversions read a blank cell and empty text as 0
 Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank cell, `""` and a ref to `=""` as 0: `BIN2DEC("")`, `OCT2DEC(blank)`, `HEX2DEC("")` are 0; the others give "0", or "0000" with `places` 4. None of these is an error.
