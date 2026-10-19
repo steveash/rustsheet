@@ -41,7 +41,11 @@ if __name__=='__main__':
         import collections; rows=collections.defaultdict(list)
         for l in open(sys.argv[2]):
             p=l.split()
-            if p[5].startswith('kmyst-gam-L1'): rows[p[5]].append((float.fromhex(p[0]),float.fromhex(p[2]),float.fromhex(p[3])))
+            if p[5].startswith('kmyst-gam-L1'):
+                key=__import__('re').sub(r'[a-d]?(:B)?$','',p[5])   # L104a..L104d are 16,384-row parts of one run
+                rows[key].append((float.fromhex(p[0]),float.fromhex(p[2]),float.fromhex(p[3])))
         for i,(k,v) in enumerate(sorted(rows.items())):
-            v=np.array(sorted(v)); res['x%d'%i]=np.array([v[0,0]]); res['p%d'%i]=np.array(peaks(resid(v[:,0],v[:,1],v[:,2]))); print(k,len(v),flush=True)
+            v=np.array(sorted(v)); gaps=int(np.sum(np.diff(v[:,0])>2*np.spacing(v[:-1,0])))
+            if gaps: print('  warning: %s has %d gaps (non-consecutive parts)'%(k,gaps))
+            res['x%d'%i]=np.array([v[0,0]]); res['p%d'%i]=np.array(peaks(resid(v[:,0],v[:,1],v[:,2]))); print(k,len(v),flush=True)
     np.savez(sys.argv[3],**res)

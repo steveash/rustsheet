@@ -26,7 +26,7 @@ for s in segs:
 cat = lambda a: np.ascontiguousarray(np.concatenate(a), dtype=np.float64)
 PJ, XX, WS, WP, RR = map(cat, (PJ, XX, WS, WP, RR)); rs = np.array(rs, dtype=np.int64)
 KMAX = int(float(os.environ.get('KMAX', 1e5))); KSTEP = int(os.environ.get('KSTEP', 1))
-ks = np.arange(-KMAX, KMAX+1, KSTEP, dtype=np.int64); out = np.empty(len(ks))
+ks = np.array([int(v) for v in os.environ['KLIST'].split(',')], dtype=np.int64) if os.environ.get('KLIST') else np.arange(-KMAX, KMAX+1, KSTEP, dtype=np.int64); out = np.empty(len(ks))
 t0 = time.time()
 _lib.peel_obj(PJ.ctypes.data_as(Pd), XX.ctypes.data_as(Pd), WS.ctypes.data_as(Pd), WP.ctypes.data_as(Pd), RR.ctypes.data_as(Pd), rs.ctypes.data_as(Pl), len(segs), float(C0[J]), uc, ks.ctypes.data_as(Pl), len(ks), out.ctypes.data_as(Pd))
 mu, sd = np.median(out), np.std(out); o = np.argsort(out)[::-1]
