@@ -630,10 +630,10 @@ ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around 
 Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
 Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, atomic groups, `\K`, conditionals and
 comments as invalid (`#VALUE!`), reads `a++` as `a+` followed by `+` (so `a++a` matches `aaa`, C11, B29), and
-iterates as Rust does (`bababab`). The matcher is T-1898
-(spec), T-1899 (iteration) and T-1900 (pattern features).
+iterates as Rust does (`bababab`). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
+unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
 Status: VERIFIED (excel-graph)
-Tasks: T-1688, T-1898, T-1899, T-1900
+Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
