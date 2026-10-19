@@ -727,11 +727,12 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     // Overflow of a pure real argument is `#NUM!` (probes/eng-im-overflow A9, A10;
     // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus at
     // DBL_MAX instead (A12: `IMEXP("1000+1i")` is `9.71297746009434E+307+1.51270661257499E+308i`,
-    // DBL_MAX times cos 1 and sin 1). Only A12 is evidenced, so a negative imaginary part or a tiny
-    // one are unprobed (engineering.md).
+    // DBL_MAX times cos 1 and sin 1), unless cos y rounds to exactly 1: `IMEXP("1000+1.4E-8i")` is
+    // `#NUM!` and `"1000+1.5E-8i"` is capped (probes/eng-imexp-overflow-imag; engineering.md).
     let modulus = x.exp();
-    if modulus == f64::INFINITY && y != 0.0 && y.is_finite() {
-        return complex_result(f64::MAX * y.cos(), f64::MAX * y.sin(), suffix);
+    let cos_y = y.cos();
+    if modulus == f64::INFINITY && y != 0.0 && y.is_finite() && cos_y != 1.0 {
+        return complex_result(f64::MAX * cos_y, f64::MAX * y.sin(), suffix);
     }
     let (re, im) = (modulus * y.cos(), modulus * y.sin());
     finite_complex_result(re, im, suffix, cell)
