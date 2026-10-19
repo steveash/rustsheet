@@ -287,9 +287,13 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
         ("N(TRANSPOSE({2,3}))", false, "N(@TRANSPOSE({2,3}))"),
         ("N(_xlfn.SINGLE(IF(1,{2;3})))", false, "N(@IF(1,{2;3}))"),
         // CHOOSE and INDEX over a reference are read as references, unmarked and with no `@`
-        // (T-1908); a mixed arm keeps the `@` on the call.
+        // (T-1908); a CHOOSE with a literal index mixing references and array constants is marked with no
+        // `@` (T-1918), other mixed arms keep it.
         ("N(CHOOSE(1,Z1:Z2))", false, "N(CHOOSE(1,Z1:Z2))"),
         ("N(CHOOSE(1,{2;3},Z1))", true, "N(CHOOSE(1,{2;3},Z1))"),
+        ("N(CHOOSE(2,Z1,{2;3}))", true, "N(CHOOSE(2,Z1,{2;3}))"),
+        ("N(CHOOSE(1,Z1:Z2,{2;3}))", true, "N(CHOOSE(1,Z1:Z2,{2;3}))"),
+        ("N(CHOOSE(TRUE,Z1,{2;3}))", true, "N(CHOOSE(TRUE,Z1,{2;3}))"),
         ("N(INDEX(Z1:Z2,1))", false, "N(INDEX(Z1:Z2,1))"),
         // A one-element arm next to the marker. `@`s survive where the call is not marked: an
         // IFS with a reference arm takes the `@` on the call and keeps the arm's, and so do an IF

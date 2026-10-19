@@ -1568,12 +1568,13 @@ cover (rows 1-2 unprobed): `=N(IF(@W1:W2,Z1,Z2))`, `=N(OFFSET(Z1,@W1:W2,0))`, `=
 T versions (all `#VALUE!` in row 10). The engine matches all of them since T-1908 (N and T over CHOOSE or INDEX of a reference no longer get an `@` on the call).
 More CHOOSE and INDEX shapes (probes/legacy-n-t-choose-index-shapes, excel-graph, 2026-10-19, T-1918; Z1:Z2 = 7, 8,
 Y1:Y2 = "a", "b"; FORMULATEXT shows no `@` on the call in any, and the `@` stays on an array-constant index): `=N(INDEX(Z1:Z2,@{1;2}))`,
-`=N(INDEX(Z1:Z2,0))`, `=N(INDEX(Z1:Z2,0,1))`, `=N(CHOOSE(2,Z1,Z1:Z2))`, `=N(CHOOSE(3,Z1,Z2,Z1:Z2))`, `=N(CHOOSE(TRUE,Z1:Z2,Z2))`,
+`=N(INDEX(Z1:Z2,0))`, `=N(INDEX(Z1:Z2,0,1))`, `=N(CHOOSE(2,Z1,Z1:Z2))`, `=N(CHOOSE(2,Z2,Z1:Z2))` (7: the picked range's top-left cell), `=T(INDEX(Y1:Y2,@{1;2}))`, `=N(CHOOSE(3,Z1,Z2,Z1:Z2))`, `=N(CHOOSE(TRUE,Z1:Z2,Z2))`,
 `=T(INDEX(Y1:Y2,0))` and `=T(CHOOSE(2,Y1,Y1:Y2))` read the top-left cell of the reference picked (7, "a"); `=N(INDEX(Z1:Z2,2))` and
 `=N(CHOOSE(2,Z1:Z2,Z2))` are 8. A CHOOSE with a literal index mixing references and array constants is read by the arm the
 index picks: `=N(CHOOSE(1,Z1,{2;3}))` and `=N(CHOOSE(1,Z1:Z2,{2;3}))` are 7, `=N(CHOOSE(2,Z1,{2;3}))`, `=N(CHOOSE(1,{2;3},Z1))` and
 `=T(CHOOSE(2,Y1,{"a";"b"}))` are `#VALUE!`, and none gets an `@` on the call. Implemented (T-1918,
-`chooses_between_references_and_array_constants`); the other cells already matched.
+`chooses_between_references_and_array_constants`); the other cells already matched. One-element array arms in such a
+CHOOSE (`{2}`) are unprobed and keep the old `@`.
 More shapes (probes/legacy-n-t-marker-shapes, excel-graph, 2026-10-18, T-1713 review; Z1 = 7; FORMULATEXT shows no `@`
 in any of them, and none spills): `=T(IF(1,{"a"}))`, `=N(CHOOSE(1,{2}))`, `=T(CHOOSE(1,{"a"}))`, `=N(IFS(1,{2}))`
 (one-element arms), `=N(INDEX({2,3;4,5},1))`, `=N(INDEX({2;3},1))`, `=N(IF(1,{2;3}+0))` (an operator in IF's arm),
