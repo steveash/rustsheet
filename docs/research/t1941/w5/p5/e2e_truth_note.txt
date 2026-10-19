@@ -1,0 +1,1 @@
+e2e control: truth = make_truth(ss_fc, seed 1, 1e5); scan2 control used the same truth.

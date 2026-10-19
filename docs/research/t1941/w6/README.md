@@ -191,6 +191,35 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     - For Excel the open inputs are: >= 4 jointly assigned precise tracks (L101-L124), per-run Excel phases at those
       lines (`phasediff.py` with Excel's R in place of the synthetic), and the same lattice, scan and climb.
 
+21. **Hardening for Excel-like conditions** (coordinator's list):
+    - Phase-precision limit of the lattice (`latsolve.py`, from the EM chain):
+      - with the 12-line set and BKZ-20: works at 0.01 cycles, fails at 0.02-0.08;
+      - with the full 25-line set (T3-T7 and n=1 sidebands of P0-P7, both chains) and BKZ-30: at 0.04 cycles every
+        coefficient is exact or within 1-24 ulps, with only N0/D1 (function-only) off by 2.4e4/2.2e3 (pair-scan
+        range);
+      - the 0.02 run crashed in fpylll (infinite loop in Babai, double-precision GSO); use float_type 'mpfr' for
+        Excel.
+    - A far, K3-like truth (`synth_truth99_1_6.txt`: (9,9) LS on [1,6]; stages 0.06-0.27x the [1.5,2] fit, so
+      exponents 2-4 off):
+      - its non-null residual against the narrow (thr 1e-15) null space is 6e-5, so the fast enumerator
+        (`fastenum.py`) needs the wide null space (thr 1e-8, 10 dims) with soft function rows (ftol 3e-16);
+      - then single-track floors separate law tracks again (2e-7 against 1e-4..0.2);
+      - but only 2 of the top 16 tracks are single-law (N.T4, N.P3n1, eoff -2), and an N<->D-swapped pair fits almost
+        equally (3.4e-7 against 3.5e-7);
+      - robust per-peak EM (`peakem.py`: global eoff, trimmed refits) from the correct seed reaches stage errors of
+        2e-4 (41 consistent matches, max res 8.5e-7) and stalls. The wrong seed stays at 650% error, with less
+        consistent matches (max res 4.8e-6).
+      - So a 2-track start is marginal; Excel needs >= 4 law tracks or sideband-difference (comb) rows.
+      - The N/D ambiguity is resolved by the R staircase (`crossings.py`). On the far truth's sweep, the 5 staircase
+        steps all sit at binade crossings of the correct-seed EM chain (5/5, window 0.003). The swapped-seed chain
+        explains 2/5 (chance); so does an unrelated chain. Apply the same check to Excel's steps (1.526-1.533,
+        1.612-1.615) and to D's end at 1.889.
+      - Negatives:
+        - adaptive (median-based) trimming in peak EM diverges (stage error 0.2-0.5);
+        - law-track EM (`lawem.py`: per-law nearest-peak sequences, accepted if smooth in x) accepts nearly every law
+          at 24/24 inliers, because a smooth wrong prediction near a real track looks smooth too;
+        - so EM must gate on absolute residuals (per-peak EM with a 5x-tol trim, which reached 2e-4).
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
