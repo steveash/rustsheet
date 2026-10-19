@@ -22,6 +22,10 @@ Establish with oracle evidence what Excel's EXP does at its range edges, and mak
   `(x)=0` companions, because Graph reports a kept subnormal as 0.0 (decision 0042).
 - Use the `excel-probe` skill. Put a dense grid of consecutive doubles, as stored inputs, around each edge.
 
+- Existing cell (gap triage 2026-10-19): ironcalc-calc/MATH_AND_TRIGONOMETRY/EXP_SIGN.xlsx EXP_SIGN!B44 `EXP(-745)`:
+  Excel Online cached 0, ours 5E-324 (2^-1074). Whether that 0 is Excel's value or a saved kept subnormal is what the
+  companion cells decide; the baseline line leaves eval/baseline/ironcalc-calc.txt if the engine then matches.
+
 ## Acceptance criteria
 - [ ] A probes-numeric case with an excel-graph oracle covers both edges and `EXP(710)`, and every Excel quirk
   found is recorded in numbers.md.

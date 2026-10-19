@@ -1,0 +1,39 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1832: a one-cell 3-D range (Sheet1:Sheet2!A1) in QUOTIENT, FACTDOUBLE and SERIESSUM's x and coefficients (C1-C4), and the legacy bare range in QUOTIENT and FACTDOUBLE with the FORMULATEXT of each (C5-C8). Sheet1 A1:A3 7, 9, 11; Sheet2 A1 5.",
+ "tags": [
+  "M9",
+  "argument-modes",
+  "probe",
+  "T-1832"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 7,
+    "A2": 9,
+    "A3": 11,
+    "C1": "=QUOTIENT(Sheet1:Sheet2!A1,2)",
+    "C2": "=FACTDOUBLE(Sheet1:Sheet2!A1)",
+    "C3": "=SERIESSUM(Sheet1:Sheet2!A1,0,1,1)",
+    "C4": "=SERIESSUM(2,0,1,Sheet1:Sheet2!A1)",
+    "C5": "=QUOTIENT(A1:A3,2)",
+    "C6": "=FORMULATEXT(C5)",
+    "C7": "=FACTDOUBLE(A1:A3)",
+    "C8": "=FORMULATEXT(C7)"
+   },
+   "legacy_formulas": [
+    "C5",
+    "C7"
+   ]
+  },
+  {
+   "name": "Sheet2",
+   "cells": {
+    "A1": 5
+   }
+  }
+ ],
+ "expected": {}
+}

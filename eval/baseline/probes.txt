@@ -217,7 +217,7 @@ C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/date-text-non-glued-timevalue.case.json	44
 C	probes/date-text-rejected-clock-formats.case.json	16
-C	probes/date-text-single-letter-ap.case.json	10
+C	probes/date-text-single-letter-ap.case.json	30
 C	probes/date-text-typed-clock-shapes.case.json	85
 C	probes/date-text-weekend-3d.case.json	129
 C	probes/date-text-yearless-2.case.json	64
@@ -621,6 +621,7 @@ C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
 C	probes/product-array-elements.case.json	9
+C	probes/quotient-factdouble-seriessum-3d-legacy.case.json	8
 C	probes/r1c1-bare-lambda-one.case.json	2
 C	probes/r1c1-bare-lambda-opt.case.json	2
 C	probes/r1c1-let-name-c.case.json	2
