@@ -3,7 +3,7 @@ id: T-1106
 title: "LET and LAMBDA results that are references stay references (SUM(LET(x,K1,x)) is 0)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
