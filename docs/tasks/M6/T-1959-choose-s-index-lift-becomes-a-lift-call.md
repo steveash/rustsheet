@@ -3,7 +3,7 @@ id: T-1959
 title: "CHOOSE's index lift becomes a lift_call kernel on the SPEC-0011 driver"
 milestone: M6
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -24,7 +24,7 @@ Split from T-1810 (its acceptance item "CHOOSE's `choose_array` is the kernel of
 ## Out of scope
 - Any change to what CHOOSE returns.
 
-## Handoff
+## Handoff (resumed)
 Tried: read `lift_call` (lift/call.rs), the kind table and `choose_array`/`choose_pick`
 (lookup_and_reference/mod.rs). No code written. Why it is not a mechanical move:
 - `Whole` arms are evaluated eagerly in the read phase, but CHOOSE with a scalar index must stay
