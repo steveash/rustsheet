@@ -16,6 +16,20 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   clean` only means "no textual conflict", and two PRs that each add `T-0129` (or decision `0026`)
   never conflict textually. Merge `origin/main` in, run `make check`, push, and merge only after
   CI is green on that new head.
+- **Merge lock** (decision 0075): every merge to `main` is made under the merge lock, so `main`
+  cannot move between a PR's green CI and its merge. On a head that meets (a) and (b):
+  1. `make merge-lock-acquire PR=<n>`. Exit 1 means another agent holds it (the output names it):
+     do other work (your next task) and try again at the PR's next event or check-in, or every few
+     minutes while nothing else is waiting; never merge without it.
+  2. Holding it: if the branch is behind, merge `origin/main` in and push. A clean merge needs no
+     local `make check` (CI runs the same gates); a conflict means release first, resolve and run
+     `make check` without the lock, push, and start again at 1 once CI is green.
+  3. Wait for CI on that head (subscribe or a `Monitor` until-loop, not sleeps). Green: run check
+     (c), merge with `expectedHeadSha`, then `make merge-lock-release`. Red, or any reason to stop
+     (review changes, the session ending): release at once, then fix without the lock.
+  A lock older than 30 minutes is stale and the next acquirer takes it over; renew yours by
+  acquiring again if CI runs long. `make merge-lock-status` shows the holder. Orphaned-PR merges,
+  the steward's PR and task-only PRs take the lock too.
 - **Merge queue** (decision 0053): once the owner has turned on the merge queue for `main` (a merge
   call is refused with "merge queue" in the message, or the PR shows as queued), do not merge and
   skip check (c): on a head that meets (a) and (b), call `enable_pr_auto_merge` with `mergeMethod:

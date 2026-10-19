@@ -86,9 +86,11 @@ file and its acceptance criteria.
    so resolve conflicts immediately per the `steward` skill ("Merge conflicts are never waiting
    on CI"). Then wait for CI (subscribe to PR activity and arm a check-in; do not poll with
    sleep). Fix failures per the `steward` skill. When CI is green and all reviewers approve:
-   **squash-merge**, but only after the `steward` skill's mechanical up-to-date check (decision
-   0028: the PR head must contain the current `origin/main`). If it fails, follow the steward
-   remedy: merge `origin/main` in, `make check`, push, and wait for CI on the new head. Once the
+   **squash-merge under the merge lock** (the `steward` skill's "Merge lock", decision 0075):
+   `make merge-lock-acquire PR=<n>`, bring `origin/main` in if the branch is behind and wait for
+   CI on that head, run the mechanical up-to-date check (decision 0028), merge, and
+   `make merge-lock-release`. If the lock is busy, start the next task and come back to the merge
+   at the PR's next event or check-in. Once the
    merge queue is on (decision 0053), enqueue with `enable_pr_auto_merge` (`mergeMethod: SQUASH`)
    instead of merging, and skip the up-to-date check; the queue does it.
 4. Delete the branch.
