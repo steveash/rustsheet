@@ -1,5 +1,7 @@
 //! NETWORKDAYS and NETWORKDAYS.INTL: count the working days between two dates.
 
+use std::collections::HashSet;
+
 use chrono::Datelike;
 
 use super::DEFAULT_WEEKEND;
@@ -39,10 +41,10 @@ impl Model {
         &mut self,
         arg: Option<&Node>,
         cell: CellReferenceIndex,
-    ) -> Result<std::collections::HashSet<i64>, CalcResult> {
+    ) -> Result<HashSet<i64>, CalcResult> {
         match arg {
             Some(arg) => Ok(self.get_array_of_dates(arg, cell)?.into_iter().collect()),
-            None => Ok(std::collections::HashSet::new()),
+            None => Ok(HashSet::new()),
         }
     }
 
@@ -87,7 +89,7 @@ impl Model {
         &self,
         from: i64,
         to: i64,
-        holidays: &std::collections::HashSet<i64>,
+        holidays: &HashSet<i64>,
         cell: CellReferenceIndex,
     ) -> Result<[i64; 7], CalcResult> {
         let first_weekday = i64::from(

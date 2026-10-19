@@ -30,7 +30,7 @@ SPEC-0011 `LiftArrays` table entry, so they follow the Analysis ToolPak rule pro
 YEARFRAC, probes/scalar-lift-shapes-c E, F, H, Q): a bare range gets no `@` and is `#VALUE!`, a
 value operation over a range (`ISEVEN(C1:C5+0)`) gets `@`, and `{5}` gets no `@`. Before T-1774 the
 hand-written arm gave the argument a scalar signature (`@` on the range and on `{5}`).
-Implemented in: `Model::lifted_parity` and the `ARRAYS_1` entry in functions/lift/kinds.rs.
+Implemented in: `Model::lifted_parity` and the `ARRAYS_1` entry in functions/lift/kinds/general.rs.
 Status: VERIFIED (excel-graph)
 Tasks: T-0247, T-0248
 

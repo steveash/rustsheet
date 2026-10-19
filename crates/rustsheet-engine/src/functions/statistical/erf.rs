@@ -16,7 +16,9 @@
 //!
 //! Negative x: ERF(-x) = -ERF(x) and ERFC(-x) = fl(2 - ERFC(x)).
 
-use crate::arithmetic::{extended_product, extended_quotient, extended_sum, flush_subnormal};
+use crate::arithmetic::{
+    extended_product, extended_quotient, extended_sqrt, extended_sum, flush_subnormal,
+};
 use crate::x87_exp::excel_exp;
 
 /// Where the small-x rational stops: x = 0.5 still takes it, 0.5 + 2^-53 does not (research
@@ -181,6 +183,21 @@ pub(crate) fn erfc(x: f64) -> f64 {
     } else {
         erfc_kernel(x)
     }
+}
+
+/// P(1/2, z), the regularized lower incomplete gamma at shape 1/2, as Excel's
+/// `GAMMA.DIST(z,0.5,1,TRUE)` computes it: ERF.PRECISE(SQRT(z)), the root rounded twice like the
+/// worksheet SQRT (15,360 of 15,360 consecutive doubles z, `kmyst-erf-decouple`;
+/// docs/excel-semantics/statistics.md, T-1778). CHISQ.DIST(x,1,TRUE) is this at x/2.
+pub(crate) fn gamma_half_lower(z: f64) -> f64 {
+    erf(extended_sqrt(z))
+}
+
+/// Q(1/2, z), the upper half of [`gamma_half_lower`], as Excel's `CHISQ.DIST.RT(2z,1)` computes
+/// it: ERFC.PRECISE(SQRT(z)) with the root rounded twice (32,768 of 32,768, T-1778). CHIDIST and
+/// CHISQ.TEST at df 1 are the same.
+pub(crate) fn gamma_half_upper(z: f64) -> f64 {
+    erfc(extended_sqrt(z))
 }
 
 #[cfg(test)]

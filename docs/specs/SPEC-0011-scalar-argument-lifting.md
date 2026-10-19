@@ -257,7 +257,7 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
 ## Design
 New module `crates/rustsheet-engine/src/functions/lift/`, all `pub(crate)`:
 - `mod.rs` re-exports;
-- `kinds.rs` holds the table;
+- `kinds/` holds the table, split by family;
 - `driver.rs` holds the driver (`lift_values` and the broadcast `lift_grids`);
 - `call.rs` holds `lift_call` and its read phase;
 - `arg_buf.rs` holds `ArgBuf`;
@@ -274,7 +274,7 @@ The one item that leaves the crate is a testing hook for the catalog check (T-17
 `#[doc(hidden)] pub fn lift_kinds(name: &str) -> Option<Vec<&'static str>>`. It is hidden, not
 part of the public API (SPEC-0001), and comes with no stability promise.
 
-### The argument-kind table (`functions/lift/kinds.rs`)
+### The argument-kind table (`functions/lift/kinds/`)
 ```rust
 /// How one parameter takes an array or a range (SPEC-0011).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
