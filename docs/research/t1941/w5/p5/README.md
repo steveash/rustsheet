@@ -111,3 +111,13 @@ gives a sharp gain (best D.S3 0.3624 vs base 0.3550; every top-stage drop is neu
 required, 0.2898). So the half phase is not a missing store. Reading: the real D top lies outside the scanned
 box. The function allows D.S6 principal ranges of 72 / 2.9e3 / 1.4e5 / 1.8e7 cycles in (a, b, c, d), and the
 control truth was planted inside a small box.
+
+## Range problem, quantified on the control
+- The function barely bounds the top tail. `make_truth` moves of 1e7–1e9 ulps on the top coefficients (soft SVD
+  directions, kmin 8–15) change the function by only 2e-17 to 1e-16, the rounding floor. The real top can be that
+  far from ss_fc.
+- The S8 stage (linear, the only scan with no grid) carries no signal. Control truth scores: N.S8 8.4 (TSIZE 1e5) /
+  21.3 (1e9), null sd ~35; D.S8 −19.7 / 23.1, null sd 28. So a top-down scan has to start at N.S7 (quadratic) and
+  D.S6 (cubic), which need c (and d) grids.
+- Planted N.S7 truths: TSIZE 1e6 → (b, c) = (−5537, 60.9), S 260; TSIZE 1e7 → (−55366, 608.5), S 280, joint null
+  sd 48. Range control `launch_scan_farctl.sh`: same box as the real wide scan (b ±1e5, c ±2000), truth at TSIZE 1e7.
