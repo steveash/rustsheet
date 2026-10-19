@@ -79,13 +79,40 @@ class MergeLock(unittest.TestCase):
         assert lock is not None
         self.assertEqual((lock.holder, lock.pr), ("agent-b", "202"))
 
-    def test_release_drops_only_the_callers_lock(self) -> None:
+    def test_release_frees_only_the_callers_lock(self) -> None:
         merge_lock.acquire("agent-a", "101", root=self.a)
         self.assertEqual(merge_lock.release("agent-b", root=self.b), 1)
-        self.assertIsNotNone(self.lock())
+        self.assertIsNotNone(merge_lock.held(self.lock()))
         self.assertEqual(merge_lock.release("agent-a", root=self.a), 0)
-        self.assertIsNone(self.lock())
+        # The branch stays, holding the free marker: the session git proxy refuses deletion (T-1938).
+        lock = self.lock()
+        assert lock is not None
+        self.assertTrue(lock.free)
+        self.assertIsNone(merge_lock.held(lock))
         self.assertEqual(merge_lock.release("agent-a", root=self.a), 0)
+
+    def test_a_released_lock_is_acquired_again(self) -> None:
+        merge_lock.acquire("agent-a", "101", root=self.a)
+        merge_lock.release("agent-a", root=self.a)
+        self.assertEqual(merge_lock.acquire("agent-b", "202", root=self.b), 0)
+        lock = merge_lock.held(self.lock())
+        assert lock is not None
+        self.assertEqual((lock.holder, lock.pr), ("agent-b", "202"))
+
+    def test_no_push_deletes_the_branch(self) -> None:
+        real = merge_lock.git
+        pushes: list[tuple[str, ...]] = []
+
+        def spy(*args: str, root: Path = merge_lock.ROOT, check: bool = True) -> subprocess.CompletedProcess[str]:
+            if args[:1] == ("push",):
+                pushes.append(args)
+            return real(*args, root=root, check=check)
+
+        with mock.patch.object(merge_lock, "git", side_effect=spy):
+            merge_lock.acquire("agent-a", "101", root=self.a)
+            merge_lock.release("agent-a", root=self.a)
+        self.assertEqual(len(pushes), 2)
+        self.assertFalse([p for p in pushes if p[-1].startswith(":")], pushes)
 
     def test_a_lock_taken_over_before_release_is_left_alone(self) -> None:
         merge_lock.acquire("agent-a", "101", root=self.a)
