@@ -1,12 +1,10 @@
 //! Reading typed text as a number together with the format it implies ("$1,234.50" ->
 //! (1234.5, "$#,##0.00")), split from format.rs, which renders numbers.
 
-use crate::{
-    functions::date_and_time::time_text::parse_date_clock_serial_in, locale::Locale,
-    number_format::parse_excel_number, types::DateSystem,
-};
+use crate::{locale::Locale, number_format::parse_excel_number, types::DateSystem};
 
 use super::{
+    date_clock::parse_date_clock_serial_in,
     date_text::{parse_date, CurrentYear},
     lexer::is_likely_date_number_format,
 };
