@@ -27,7 +27,8 @@ probes/take-drop-trimrange-over-xlookup) has no evidence yet: probe it first (ex
 docs/excel-semantics/references.md "TAKE, DROP and TRIMRANGE over XLOOKUP pick its cells".
 
 ## Acceptance criteria
-- [ ] A probe of TAKE/DROP/TRIMRANGE over IFS and SWITCH of XLOOKUP is filled and passes.
+- [ ] A probe of TAKE/DROP/TRIMRANGE over IFS and SWITCH of XLOOKUP (and `ISREF(IFS({TRUE,FALSE},H1,TRUE,I1))`,
+  ISREF over an IFS that lifts: no evidence yet) is filled and passes.
 - [ ] One helper maps a function kind to its pick step; both walks use it.
 - [ ] `make check` green; reviewers approve.
 
