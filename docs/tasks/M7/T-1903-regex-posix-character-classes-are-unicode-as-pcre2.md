@@ -3,7 +3,7 @@ id: T-1903
 title: "REGEX* POSIX character classes are Unicode, as PCRE2 UCP's are"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
