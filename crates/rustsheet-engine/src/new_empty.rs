@@ -179,7 +179,9 @@ impl Model {
                 // user's active language.
                 match self.parse_internal_formula(formula_body, &dummy_ref) {
                     Node::LambdaDefKind { parameters, body } => {
-                        ParsedDefinedName::LambdaDefinition(parameters, *body)
+                        ParsedDefinedName::LambdaDefinition(std::sync::Arc::new((
+                            parameters, *body,
+                        )))
                     }
                     // Excel leaves `Sheet1!#REF!` as the body of a name whose range was deleted.
                     Node::ErrorKind(error) => ParsedDefinedName::ErrorLiteral(error),
@@ -724,6 +726,7 @@ impl Model {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             eta_lambdas: HashMap::new(),
+            named_lambdas: crate::functions::logical::NamedLambdas::default(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),

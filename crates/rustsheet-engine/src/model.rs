@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
+use crate::functions::logical::{NamedLambdas, SharedLambda};
 use crate::{
     calc_result::{CalcResult, Range},
     cell::{spill_value_to_calc_result, CellValue},
@@ -16,7 +17,7 @@ use crate::{
             new_parser_english,
             static_analysis::StaticResult,
             stringify::{to_english_string, to_localized_string, to_rc_format},
-            ArrayNode, CallNameSpellings, CompletionContext, NamedVariable, Node, Parser,
+            ArrayNode, CallNameSpellings, CompletionContext, Node, Parser,
         },
         token::{get_error_by_name, Error},
         types::*,
@@ -158,9 +159,11 @@ pub struct Model {
     /// Last variable id used. It is incremented every time a new variable is created (for example, when evaluating a LET function).
     pub(crate) last_variable_id: usize,
     /// Lambdas
-    pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
+    pub(crate) lambdas: HashMap<usize, SharedLambda>,
     /// Functions passed by name (`_xleta.SUM`), keyed by the same ids as `lambdas`.
     pub(crate) eta_lambdas: HashMap<usize, crate::functions::Function>,
+    /// The defined-name LAMBDAs called in this evaluation, keyed by the same ids as `lambdas`.
+    pub(crate) named_lambdas: NamedLambdas,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
@@ -236,6 +239,7 @@ impl Model {
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
         self.eta_lambdas.clear();
+        self.named_lambdas = NamedLambdas::default();
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
@@ -630,10 +634,8 @@ impl Model {
                         .or_else(|| self.parsed_defined_names.get(&(None, name_lower)))
                         .cloned();
                     match found {
-                        Some(ParsedDefinedName::LambdaDefinition(param_names, body)) => {
-                            let lambda_id = self.get_next_lambda_id();
-                            self.lambdas.insert(lambda_id, (param_names, body));
-                            CalcResult::Lambda(lambda_id)
+                        Some(ParsedDefinedName::LambdaDefinition(definition)) => {
+                            self.defined_name_lambda(definition)
                         }
                         _ => {
                             return CalcResult::new_error(
@@ -660,10 +662,8 @@ impl Model {
                             left: range.left,
                             right: range.right,
                         },
-                        ParsedDefinedName::LambdaDefinition(param_names, body) => {
-                            let lambda_id = self.get_next_lambda_id();
-                            self.lambdas.insert(lambda_id, (param_names, body));
-                            CalcResult::Lambda(lambda_id)
+                        ParsedDefinedName::LambdaDefinition(definition) => {
+                            self.defined_name_lambda(definition)
                         }
                         ParsedDefinedName::ErrorLiteral(error) => CalcResult::new_error(
                             error,
@@ -768,7 +768,8 @@ impl Model {
             }
             LambdaDefKind { parameters, body } => {
                 let id = self.get_next_lambda_id();
-                self.lambdas.insert(id, (parameters.clone(), *body.clone()));
+                self.lambdas
+                    .insert(id, Arc::new((parameters.clone(), *body.clone())));
                 CalcResult::Lambda(id)
             }
             LambdaCallKind { lambda, args } => {
@@ -1507,6 +1508,7 @@ impl Model {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             eta_lambdas: HashMap::new(),
+            named_lambdas: NamedLambdas::default(),
             last_lambda_id: 0,
             defined_names_running: Default::default(),
             area_budget: Default::default(),
