@@ -184,44 +184,42 @@ fn a_typed_call_of_the_old_spelling_calls_the_name() {
     }
 }
 
-// A model file saved between T-1851 and T-1936 stores the marker as `_RS_LEGACY_N(` and
-// `_RS_LEGACY_T(`; it still reloads as the marker while the workbook defines no name of that
-// spelling (a file of that time stored no call of such a name: its A1 text read as plain N).
+// T-1851's spelling is no longer the marker: with no name of it defined, a typed call is
+// `#NAME?` and stays one through a reload and a sheet rename, which reparse the stored text, as in
+// Excel (probes/legacy-marker-spelling-undefined A1:A2). A cell marked in a file saved between
+// T-1851 and T-1936 reloads the same way (references.md "Legacy N and T marker spelling").
 #[test]
-fn the_old_stored_spelling_still_reloads_as_the_marker() {
-    let cells = [("B1", "7"), ("B2", "8")];
-    for (stored, value, shown) in [
-        ("_RS_LEGACY_N(IF(1,{2;3}))", "#VALUE!", "=N(IF(1,{2;3}))"),
-        ("_RS_LEGACY_N(IF(1,R1C2:R2C2))", "7", "=N(IF(1,$B$1:$B$2))"),
-        (
-            "_RS_LEGACY_T(IF(1,{\"a\";\"b\"}))",
-            "#VALUE!",
-            "=T(IF(1,{\"a\";\"b\"}))",
-        ),
-    ] {
-        let model = stored_in_a1(stored, &cells);
-        assert_eq!(model._get_text("A1"), value, "{stored}");
-        assert_eq!(model._get_text("A2"), "", "{stored}");
-        assert_eq!(model._get_formula("A1"), shown, "{stored}");
-        // Stored again, it takes the new spelling.
-        let restored = to_rc_format(&parse(stored, LexerMode::R1C1));
-        assert!(is_marked(&restored), "{restored}");
+fn the_old_spelling_is_an_unknown_name_without_a_definition() {
+    let mut model = new_empty_model();
+    model._set("A1", "=_RS_LEGACY_N(1)");
+    model._set("B1", "=_RS_LEGACY_T(\"a\")");
+    model.evaluate();
+    let mut reloaded = Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    reloaded.evaluate();
+    for model in [&mut model, &mut reloaded] {
+        for _ in 0..2 {
+            assert_eq!(model._get_formula("A1"), "=_RS_LEGACY_N(1)");
+            assert_eq!(model._get_text("A1"), "#NAME?");
+            assert_eq!(model._get_text("B1"), "#NAME?");
+            let name = model.workbook.worksheet(0).unwrap().get_name();
+            model.rename_sheet(&name, &format!("{name}x")).unwrap();
+            model.evaluate();
+        }
     }
+    let stored = stored_in_a1("_RS_LEGACY_N(IF(1,{2;3}))", &[]);
+    assert_eq!(stored._get_text("A1"), "#NAME?");
 }
 
-// With a name of the old spelling defined (any scope, any case), its stored text is the name call.
+// The new spelling is the marker in stored text whatever names exist, and the old one is a name.
 #[test]
-fn the_old_stored_spelling_is_a_name_call_when_the_name_exists() {
-    for (defined, scope) in [("_RS_LEGACY_N", None), ("_rs_legacy_n", Some(0))] {
-        let names = vec![(defined.to_string(), scope, "LAMBDA(x,x)".to_string())];
-        let mut parser = new_parser(vec!["Sheet1".to_string()], names, HashMap::new());
-        parser.set_lexer_mode(LexerMode::R1C1);
-        let node = parser.parse("_RS_LEGACY_N(1)", &context());
-        assert!(matches!(node, Node::NamedFunctionKind { .. }), "{node:?}");
-        // The new spelling stays the marker whatever names exist.
-        let node = parser.parse("NLG1(1)", &context());
-        assert_eq!(top_kind(&node), Some(Function::NLegacy));
-    }
+fn the_stored_spellings_ignore_defined_names() {
+    let names = vec![("_RS_LEGACY_N".to_string(), None, "LAMBDA(x,x)".to_string())];
+    let mut parser = new_parser(vec!["Sheet1".to_string()], names, HashMap::new());
+    parser.set_lexer_mode(LexerMode::R1C1);
+    let node = parser.parse("_RS_LEGACY_N(1)", &context());
+    assert!(matches!(node, Node::NamedFunctionKind { .. }), "{node:?}");
+    let node = parser.parse("NLG1(1)", &context());
+    assert_eq!(top_kind(&node), Some(Function::NLegacy));
 }
 
 // Since T-1805 a formula that does not parse is stored marked as a parse error and never

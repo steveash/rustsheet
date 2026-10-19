@@ -1688,11 +1688,15 @@ calls them: each call gives 17 where `N(1)` is 1. probes/legacy-marker-spelling-
 (the workbook does not open: createSession 501 `unsupportedWorkbook`, so no case): `R`, `RC`, `R1C1` and a
 256-character name (255 is accepted); those read as R1C1 references in the engine's stored-text lexer, so
 they were not chosen.
-Ours: matches since T-1936: `=_RS_LEGACY_N(1)` calls the name, also after a reload; `=NLG1(1)` is `#REF!`
-(test_legacy_n_t_marker.rs). Stored text of T-1851 to T-1936 (`_RS_LEGACY_N(`) still reloads as the
-marker while the workbook defines no name of that spelling; the new spelling is exact and case-sensitive.
+With no name defined, `=_RS_LEGACY_N(1)` and `=_RS_LEGACY_T("a")` are `#NAME?` and `=NLG1(1)`, `=TLG1("a")`
+`#REF!` (probes/legacy-marker-spelling-undefined, 2026-10-19).
+Ours: matches since T-1936: `=_RS_LEGACY_N(1)` calls the name, or is `#NAME?` without one, also after a
+reload; `=NLG1(1)` is `#REF!` (test_legacy_n_t_marker.rs). The new spelling is exact and case-sensitive.
+Stored text cannot tell T-1851's spelling (`_RS_LEGACY_N(`) from a call of a name of it, so it is no
+longer read as the marker: a legacy N/T marked in a model file saved between T-1851 and T-1936
+(2026-10-18/19) reloads as that name call, `#NAME?` without the name; re-import the xlsx to restore it.
 Status: VERIFIED (excel-graph)
-Implemented in: functions/kinds.rs (`LEGACY_SPELLINGS`, `OLD_LEGACY_SPELLINGS`, `Function::from_legacy_spelling`); expressions/parser/operands.rs (`parse_named_call`)
+Implemented in: functions/kinds.rs (`LEGACY_SPELLINGS`, `Function::from_legacy_spelling`); expressions/parser/operands.rs (`parse_named_call`)
 Tasks: T-1851, T-1912, T-1936
 
 ## `@` of a non-reference array as a function argument is its top-left value

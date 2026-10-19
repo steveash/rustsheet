@@ -419,17 +419,11 @@ impl Parser {
             };
         }
         // The stored spelling of a legacy N or T (SPEC-0012), in R1C1 (stored) text only: in A1
-        // text it is a cell (`NLG1(1)` is `#REF!`, below) or a name call (T-1936).
-        if !self.lexer.is_a1_mode() {
-            // A name of the old spelling in any scope keeps it a name call, so no sheet-scoped
-            // name of it is ever read as the marker.
-            if let Some(kind) = Function::from_legacy_spelling(&name, |name| {
-                self.defined_names
-                    .iter()
-                    .any(|(defined, _, _)| defined.eq_ignore_ascii_case(name))
-            }) {
-                return self.function_call(kind, args);
-            }
+        // text it is a cell, so `NLG1(1)` is a call of that cell, `#REF!` (below, T-1936).
+        if let Some(kind) =
+            Function::from_legacy_spelling(&name).filter(|_| !self.lexer.is_a1_mode())
+        {
+            return self.function_call(kind, args);
         }
         // We should do this *only* importing functions from xlsx
         if let Some(function_kind) = self.language.functions.lookup_stored(&name) {

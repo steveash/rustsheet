@@ -32,8 +32,11 @@ call name (`R`, `RC`, `R1C1` are R1C1 references there), so the spelling is a ce
 opens a workbook defining a LAMBDA name `NLG1`/`TLG1`, but `NLG1(1)` is `#REF!` and `ISREF(NLG1)`
 TRUE (probes/legacy-marker-spelling-name-nlg1, -tlg1), so no callable name can have it. In A1
 text it is a cell call, `#REF!`, as in Excel. `=_RS_LEGACY_N(1)` now calls a LAMBDA name of that
-spelling, also after a reload. Stored text from T-1851 (`_RS_LEGACY_N(`) still reloads as the
-marker while the workbook defines no name of that spelling (`OLD_LEGACY_SPELLINGS`). Eval delta:
-probes fixed 2 (legacy-marker-spelling-name-plain A1:A2), new-coverage failures 2 (the two new
+spelling, or is `#NAME?` without one, also after a reload (probes/legacy-marker-spelling-undefined).
+T-1851's stored spelling is no longer read as the marker: stored text cannot tell it from a call of a
+name of that spelling (fidelity review), and the model file has no version to key on, so a marked
+cell in a file saved in the one day between T-1851 and T-1936 reloads as that name call (recorded in
+references.md; such files still load). Eval delta:
+probes fixed 2 (legacy-marker-spelling-name-plain A1:A2), new case legacy-marker-spelling-undefined passes, new-coverage failures 2 (the two new
 cases are `!EngineError`: ours refuses the cell-like defined name, follow-up T-1997), regressions 0.
 

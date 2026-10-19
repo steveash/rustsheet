@@ -12,15 +12,6 @@ use super::Function;
 const LEGACY_SPELLINGS: [(&str, Function); 2] =
     [("NLG1", Function::NLegacy), ("TLG1", Function::TLegacy)];
 
-/// The spellings model files saved between T-1851 and T-1936 store. Excel calls a LAMBDA name of
-/// these spellings (probes/legacy-marker-spelling-name-plain, T-1912), so they are the marker only
-/// in stored text and only while the workbook defines no name of that spelling: a call of such a
-/// name is stored by its name, and a file of that time never stored one (its A1 text read as N).
-const OLD_LEGACY_SPELLINGS: [(&str, Function); 2] = [
-    ("_RS_LEGACY_N", Function::NLegacy),
-    ("_RS_LEGACY_T", Function::TLegacy),
-];
-
 impl Function {
     /// The internal kinds. They are not in the lookup table, so no name parses to them and
     /// `Function::into_iter` does not list them; `function_iterator` checks that the enum is the
@@ -51,21 +42,15 @@ impl Function {
         }
     }
 
-    /// The internal kind a call spelled `name` in stored (R1C1) text is, if any; `is_defined_name`
-    /// tells whether the workbook defines a name of that spelling. The one matcher, exact and
-    /// case-sensitive, so a variant (`nlg1`, `_xlfn.NLG1`) is no marker. A1 text has no marker.
-    pub(crate) fn from_legacy_spelling(
-        name: &str,
-        is_defined_name: impl FnOnce(&str) -> bool,
-    ) -> Option<Function> {
-        let spelling = |table: &[(&str, Function)]| {
-            table
-                .iter()
-                .find(|(spelling, _)| *spelling == name)
-                .map(|(_, kind)| kind.clone())
-        };
-        spelling(&LEGACY_SPELLINGS)
-            .or_else(|| spelling(&OLD_LEGACY_SPELLINGS).filter(|_| !is_defined_name(name)))
+    /// The internal kind a call spelled `name` in stored (R1C1) text is, if any. The one matcher,
+    /// exact and case-sensitive, so a variant (`nlg1`, `_xlfn.NLG1`) is no marker. A1 text has no
+    /// marker. T-1851's spelling `_RS_LEGACY_N(` is no longer read: stored text cannot tell it from
+    /// a call of a name of that spelling, which Excel calls (T-1936).
+    pub(crate) fn from_legacy_spelling(name: &str) -> Option<Function> {
+        LEGACY_SPELLINGS
+            .iter()
+            .find(|(spelling, _)| *spelling == name)
+            .map(|(_, kind)| kind.clone())
     }
 
     /// The stored spelling of an internal kind, `None` for every other kind.
