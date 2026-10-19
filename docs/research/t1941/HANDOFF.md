@@ -212,3 +212,195 @@ So everything reduces to **three open kernels**:
 - **W5** (session_01AJhNGX8uNdacKiJaHWDVPH): stopped. Its suggested next step for K3 is a joint N+D phase
   solve with function rows on the e9xx anchors.
 - **W1 and W3:** finished.
+
+## 9. Reviewer critique and new plan (Fable 5.1)
+
+State at 2026-10-19 10:30 UTC. Scripts and result tables are under `review/` (see `review/README.md`); every
+number below was computed on the committed data (`g_rows.py`, `review/ln_rows.py`), in minutes, with exact x87
+simulation (numpy longdouble with `astype(float64)` after every op).
+
+### 9.1 Headline
+1. **The model-free "bias curves" of K2 and K3 are staircases, not functions** (`review/bias_K2.txt`,
+   `review/bias_K3.txt`). Excel's GAMMALN.PRECISE minus lnGamma, relative, averaged per 0.01 bin (SE about
+   0.03 ulp), is piecewise constant with sharp steps:
+   - K2 on (2,3]: -0.47 ulp on (2, 2.28); -1.45 on (2.285, 2.35); -2.3 on (2.355, 2.40); -1.15 on (2.405, 2.455);
+     -0.07 on (2.465, 2.61); +1.3 on (2.615, 2.63); +0.7 on (2.635, 2.66); -0.33 on (2.665, 2.71); +0.05..+0.12 on
+     (2.715, 2.78); +1.0 falling to +0.57 on (2.785, 3].
+   - K3 on [0.7,1.5): 0 on (0.70, 0.73); -0.5 on (0.736, 0.752); -0.04 on (0.76, 0.82); +1.4 on (0.83, 0.87);
+     +0.75 on (0.87, 0.91); +0.63 to +0.52 on (0.91, 1.065); -0.55 on (1.07, 1.105); -1.5 to -2.5 on (1.11, 1.16);
+     -1.8 on (1.165, 1.19); -1.3 to -1.1 on (1.19, 1.5).
+   - **Every step sits on a binade crossing of a Horner intermediate of the current candidate** (grid_a for K2,
+     c5_f99t for K3; `review/k2_plateau_sim.py`, `review/k3_crossings.py`). K2: 2.2767 (N.P9/S9), 2.3407/2.3490
+     (N.P8/S8), 2.394-2.410 (D.S7/P7, N.P7), 2.4634 (N.S7), 2.606 (N.P9/S9 again, N.P5), 2.631-2.658 (D.S6, N.P4,
+     N.P6, N.S6), 2.707-2.724 (D.P6, D.S8/P8), 2.774-2.779 (N.P8, D.P3, N.S8). K3: 0.7303 (N.S8), 0.7513/0.7569
+     (N.P8, D.S9), 0.820-0.829 (N.S9/P9, D.S7, res), 0.8619 (D.P7), 0.9028 (N.P5), 1.068 (N.S9/P9), 1.107-1.136
+     (D.S8/P8, N.S8, N.P4, N.P2, res, N.P8), 1.159-1.162 (N.S5, D.S7, D.P4), 1.185 (D.P7). Crossing positions are
+     insensitive to coefficient errors, so they are Excel's crossings too.
+   - The exact simulation of grid_a's own chain (sim minus grid_a's exact rational) shows the same staircase at the
+     same x, with different plateau heights (`review/k2_plateau_sim.py` output in `review/README.md`).
+   - **Mechanism.** A stored sum S = fl(P + c) with P a stored product: when P lies on S's grid (same binade, or
+     cancellation), S = P + RN_u(c) with u = ulp(S), so the stage carries the constant error RN_u(c) - c, up to
+     +-u/2. When P is one or two binades below S, the error takes 2 or 4 values depending on P's low bits, and its
+     mean is still a nonzero constant. The constant changes only when S or P changes binade. The output bias is the
+     sum over stages of (weight) x (that constant), i.e. a staircase. Product roundings, the division and the final
+     product are zero-mean and contribute no step.
+   - **Consequence: the plateau heights read the bits of each constant c_k that lie below its sum's ulp**, which is
+     exactly the information that function fitting cannot see and that exact-match search cannot climb to (below).
+     Nobody has used it. W5 saw the bumps (part 1 lead 6, part 2 section 4) and correctly called them rounding
+     bias, but treated them as a nuisance.
+2. **The per-anchor/joint paradox of K2 is explained, and is not evidence about degree or scheme.** W2's anchors
+   2.125, 2.25, 2.375, 2.5, 2.625, 2.75, 2.875 and 3- sit on plateaus -0.49, -0.45, -2.31, -0.10, +1.30, +0.04,
+   +0.88 and +0.57 ulp. A single-anchor fit absorbs the local plateau into "early-stage values off by less than
+   1 ulp" (W2's words); the plateaus differ per anchor, so no smooth refit joins them, and the (9,8) tiny x^9 term
+   (1.5e-10 relative) is the artefact the playbook warns about (section 3, "tiny top coefficient"). The joint
+   solution is per-stage bit reading, not a search.
+3. **Exact-match search is on a plateau, and the hill-climbs have been optimising it.** Calibration on K1
+   (`review/k1_degree_modelfree.py`): a (7,7) raw-y rational fitted in mpmath to Excel's *measured* function
+   (bin means of GAMMA vs Gamma, 91 bins, SE 0.015 ulp) reproduces that function at chi2/dof 1.42 (max 5.3 SE),
+   agrees with AN2's function to 1.4e-17..3.2e-17, and yet its rounded coefficients score **28.3% exact** (72%
+   within 1 ulp). AN2 scores 78.2% with its function 0.1-0.3 ulp *further* from Excel. So 50 of AN2's 78 points
+   come from stage values that match Excel near the anchors, not from the function, and no small integer move can
+   improve it: a ridge sweep (`review/k1_ridge_sweep.py`) shows every integer move that flattens AN2's residual
+   (by 0.1-0.3 ulp) drops the exact rate to 45-67%. Exact match is the final verifier, never the search objective.
+
+### 9.2 Critique, point by point
+1. **The bias-curve interpretation in section 6 (idea 1) is wrong for K2 and K3.** The curves are rounding
+   staircases (9.1.1), not generator fingerprints. For K1 the curve (+0.59 at 1.0 to +0.97 at 1.94, SE 0.015-0.04)
+   is smooth enough that a (7,7) fits it at chi2/dof 1.4, so there the function really is about 1 ulp high; but
+   K1's low stages also chop 1-2 bits (N0 at 2^-37 against ulp(N) = 2^-35 or 2^-36), so part of even that curve is
+   plateau. Measure the staircase by exact simulation before reading any curve as "function".
+2. **Degree claims from exact scores are not evidence** (K2 "(9,8) or close", K3 "N degree 9, D degree 9 with
+   D9 ~ -2^-31"). The playbook says so (section 4), and 9.1.3 quantifies it: the right function scores 28%.
+   The only degree test that worked today is continuous: fit the measured function. For K1 it decides cleanly
+   ((6,6): chi2/dof 5.8e5; (7,7): 1.42; (8,8): 3.8). For K2 and K3 it fails for every degree (chi2/dof 237 to
+   53,000, `review/k23_degree_modelfree.py`) **because of the staircase**, so the degree is undecided until the
+   plateau contribution is modelled or subtracted (plan, W-A/W-B step 4). W5's D9 ~ -2^-31 and W2's tiny p9 are
+   both "tiny top" artefacts until shown otherwise.
+3. **K1's weak spot (1.80-1.97) is a multi-stage plateau regime, not one parity bit.** Errors there are +-1..+-3
+   ulps, nearly white between consecutive doubles (lag-1 autocorrelation -0.03 to -0.14), with P(|e| > 1) = 0.37
+   (`review/k1_weakspot_hist.py`), and no single +-1..+-4 ulp coefficient flip reduces the dispersion
+   (`review/k1_flipscan.py`: best 0.468 exact from 0.433). Six of AN2's intermediates cross binades in
+   1.70-1.89 (N.P1 1.7295, N.S3 1.7029, N.P5 1.7493, D.P4 1.7807, N.P2 1.7826, N.P4 1.8888) and several sums
+   there sit two binades above their product, so the low 2 bits of several constants decide the pattern.
+   The e1001-e1025 ladders at 1.875 sample one plateau; what is needed is runs across the steps (probe P1 below).
+4. **No positive control for the K1 joint phase solve or the K2 joint early-stage search.** The playbook makes
+   this mandatory. Both solves "lower the exact score", which is expected (9.1.3) and says nothing about whether
+   they move toward Excel. Generate synthetic Excel-like data from a (7,7) set placed 1e5-1e6 ulps from AN2
+   along the null directions, on the real y grid, and show the solve recovers it. Until then neither method's
+   failure is diagnostic.
+5. **"Every op stored" is validated only where it is cheap to see.** In the Stirling kernel the products are far
+   below the sums, so stored vs 64-bit products is invisible there. For K1, AN2's scheme variants score
+   stored 78.2%, product-64-bit 49.8%, all-64-bit 38.0% (`review/k1_scheme_bins.py`); that is consistent with
+   stored but not decisive since AN2 was tuned under it. The staircases are the stronger evidence: an all-64-bit
+   chain would chop 11 more bits and produce plateaus 2^-11 smaller. So sums are stored, with 53-bit constants
+   rounded into them. Products: the triangle/tie lines (W4, W5) already settle it for the low stages.
+6. **(1.5,2] is not "stored GAMMALN(fl(x+1)) minus LN(x)".** On 121,577 points, GAMMALN(x) + LN(x), computed in
+   64 bits, is a 53-bit double only 7.4% of the time (`review/gl_15_2_glue.py`); Sterbenz makes E - LN(x) exact
+   on this range, so a stored E is excluded. Composition variants through grid_a all score about 3%, but that
+   test is blind because grid_a's S is not exact to 2^-60; it needs the probe in P2. (I first read the
+   B + C vs lnGamma(x+1) agreement as "the argument is the exact 64-bit x+1"; that is a tautology for any accurate
+   B, retracted.)
+7. **Normalisation habit.** D0 can only be measured to about ulp(final sum)/2, i.e. 2e-10 relative for K1 and
+   2e-10 for K3; "exactly -1/16" and "exactly 2^-13" are consistent but their low 30 bits are unobservable and
+   irrelevant (they never reach a stored value). Across the solved ERF kernels the habit is not universal:
+   small-x erf has Q0 = 0.98994509777494666, not a power of two; the [0.5,4] kernel has 1 and the tail 128.
+   Do not constrain K2's D0 on this basis (`review/norm_survey.py`).
+8. **A "short decimal literal" prior is dead on arrival.** The bit-exact T-1778 coefficients need 16-17
+   significant digits to round-trip, like generic doubles (`review/erf_decimal_digits.py`). Excel's tables were
+   not typed as 15-digit decimals.
+9. **Data hygiene near K2's left end.** With grid_a, the (2.000, 2.005) bin has std 120 ulps of B
+   (`review/k23_resid_bins.py`), against 0.7-1.3 elsewhere. Either grid_a's S is wrong by many ulps very close to
+   2 (the e4xx/e5xx ladders) or those rows need the formula filter. Check before using them as anchors.
+10. **Side channels through other functions are weak by construction**: GAMMA(x) on (0,1), GAMMALN below 0.7 and
+    the [3,8) recurrence all compose on *stored* kernel values (verified at 100%), so they expose nothing the
+    direct column does not. The two exceptions are the (1.5,2] glue (point 6) and the untested [3,8) glue,
+    where an unstored 64-bit product would leak extra bits (probe P2, P3).
+
+### 9.3 Ranked ideas (expected value per effort)
+**I1. Plateau bit-reader (new; highest value, 1-2 days per kernel).**
+- Hypothesis: Excel's output bias on each plateau equals sum_k w_k(x) b_k, with b_k = mean rounding error of
+  stage k's sum in that binade configuration, a known function of (c_k mod ulp(S_k)) and of how many binades P_k
+  lies below S_k; w_k(x) is the exact stage weight (x^(top-k)/D for an N stage, times -N/D for a D stage, times
+  the outer factor).
+- Decisive test (cheap): take the candidate, list its crossings, measure Excel's step height at each crossing where
+  a single stage crosses (SE 0.01 ulp with all points; use 0.002-wide bins either side), compute the candidate's
+  predicted step for every value of c_k mod u (2-4 candidates per stage), pick the one that matches, set those
+  bits, re-simulate, and check that the residual staircase flattens. Then the exact score must jump on the
+  plateaus covered. Positive control first: perturb a known set's low bits, confirm the reader recovers them.
+- Evidence for: the steps already coincide with the crossings (9.1.1) and the simulated staircase has the same
+  shape. Against: if the steps do not match any low-bit choice of the crossing stage, the scheme at that stage is
+  not "stored product + stored sum".
+- Data: committed (all K2 and K3 rows; K1 dense runs). Tools: `review/k23lib.py`, `review/k2_plateau_sim.py`.
+
+**I2. Two-scale solve with the right objectives (replaces exact-match search).**
+- Function scale: fit the rational to Excel's measured function per bin, with the candidate's simulated staircase
+  subtracted (or, better, after I1 has fixed the plateau bits). Target precision 0.01 ulp. This fixes the ~6
+  function-visible directions.
+- Bit scale: plateau readings (I1) for sums, line/tie phases (W4, W5 tools) for products, as one integer lattice
+  problem per chain, solved by LLL/Babai with a box of 1e9 ulps, validated on synthetic data. The playbook's step 4.
+- Effort: 2-3 days per kernel. Success: exact rate above 95% on all committed data, misses explained by
+  near-ties.
+
+**I3. K2 restart from W2's per-anchor offsets, re-read as bits (0.5 day).** The stage offsets W2 found per anchor
+are (Excel b_k - candidate b_k) on that plateau. Tabulate them against the anchor's binade configuration and solve
+c_k mod u per stage; that is I1 using data already in hand.
+
+**I4. Degree and scheme by continuous tests on staircase-corrected curves (0.5 day each).** After I1, refit
+(8,8), (9,8), (8,9), (9,9) to the corrected K2 curve and (8,8), (9,8), (9,9) to K3; the chi2 decides as it did for
+K1. Also compare stored vs unstored-product schemes by their predicted plateau heights.
+
+**I5. Probes (coordinator): P1-P4 below.** Dense runs across K1's steps are the only new oracle data this plan needs.
+
+**I6. Tie lines as parity readers for K1 and K2 (W5 method; 1 day).** Still valid; lower priority because plateaus
+read the same bits at lower cost, but ties give the bit *at* the sum grid when the plateau is ambiguous (ties have
+zero mean).
+
+**I7. Interval/MILP.** Subsumed by I2; keep as the final polish for the last 1-2 coefficients per chain.
+
+**I8. Legacy GAMMALN vs GAMMALN.PRECISE (one case, P4).** Low prior, near-zero cost.
+
+### 9.4 Execution plan (parallel Opus workers)
+Common rules: exact simulation per hypothesis; positive control before any reading is trusted; report plateau
+tables and bit readings in a README under `docs/research/t1941/<worker>/`; score only as the last step.
+
+**W-A: K2 plateau reader.** Inputs: `review/ln_rows.py` dump, grid_a (`k23lib.py`), `review/bias_K2.txt`,
+`review/k2_plateau_sim.py`. Steps: (1) positive control: flip 1-3 low bits of three constants of grid_a, generate
+synthetic Excel on the real x grid, recover them from the synthetic staircase; (2) measure Excel's step heights at
+each single-stage crossing with 0.002 bins and all points; (3) solve c_k mod u for every N and D sum stage that
+crosses in (2,3]; (4) with those bits fixed, refit the function-visible directions to the corrected curve (I4) and
+decide the degree; (5) score. Output: bit table, corrected candidate, degree verdict. Success: a single set above
+90% exact on every anchor cluster at once, or a documented stage whose steps no stored-sum model reproduces.
+
+**W-B: K3 plateau reader.** Same as W-A with c5_f99t and `review/bias_K3.txt` (plus W5's tie-bit readings as
+cross-checks: D3 = 0 mod 4 ulps, N2 even, N5 odd). Treat the N.S5 zero crossing at about 1.485 (sign change,
+huge relative noise) as a separate regime; exclude (1.47,1.5) from readings. Success as W-A.
+
+**W-C: K1 two-scale solve.** Inputs: AN2, `g_rows.py`, W4's `gline_tools`, `review/k1_degree_modelfree.py`
+(fits (7,7) to the measured function in mpmath), `review/k1_two_scale_lsq.py`. Steps: (1) positive control for
+the joint solve (critique 4); (2) plateau map of AN2 on [1,2) and step readings at its 18 crossings (needs P1 for
+1.70-1.95); (3) joint lattice with function rows (Excel target, not Gamma), plateau rows and the W4 line phases on
+the dense runs; (4) score. Success: above 95% and the 1.80-1.97 dispersion gone.
+
+**W-D: compositions and probes.** Runs P2-P4 when filled; tests the (1.5,2] and [3,8) glue with Excel's own
+columns; writes the findings into `docs/excel-semantics/statistics.md`.
+
+**Probe requests (exact layout; case names unused as of this handoff: `kmyst-gam-p1xx`..`p4xx`):**
+- **P1 (K1 steps):** 26 cases `kmyst-gam-p101`..`p126`, 8,192 rows each: A = consecutive doubles starting at
+  y0 = 1.70 + 0.0103137*i + 0.0031415 (i = 0..25, irregular starts, so about every 0.01 across 1.70-1.96),
+  D = GAMMA(A). That gives both plateau heights and the W4 line phases across the K1 steps. Optional: 8 more
+  cases straddling each listed crossing at +-200 ulps (4,096 rows, two per crossing) for sharp step heights.
+- **P2 ((1.5,2] glue):** 4 cases `kmyst-gam-p201`..`p204`, 16,384 rows: A = consecutive doubles from 1.52, 1.66,
+  1.81, 1.97; B = GAMMALN.PRECISE(A), C = LN(A), E = GAMMALN.PRECISE(A+1), F = GAMMALN.PRECISE(A-1), G = LN(A-1),
+  H = GAMMA(A). Tests: B == fl(E - C) (already excluded on existing data, confirm), B == fl(F + G) (downward
+  recurrence), B == fl(LN(H)) (log of GAMMA), and whether B + C carries bits beyond E.
+- **P3 ([3,8) glue):** 2 cases `kmyst-gam-p301`..`p302`, 16,384 rows: A from 3.37 and 5.71; B = GAMMALN.PRECISE(A),
+  E = GAMMALN.PRECISE(A-1) (for 3.37) / GAMMALN.PRECISE(A-3) (for 5.71), F = LN of the stored ascending product
+  built in cells: G = A-1, H = G*(G+1), I = H*(G+2) (for 5.71), F = LN(G) or LN(I). Test B == fl(E + F) exactly;
+  a miss rate above the K2 miss rate means the glue reads an unstored product.
+- **P4 (legacy GAMMALN):** 1 case `kmyst-gam-p401`, 16,384 rows: A from 2.33 (consecutive), B = GAMMALN.PRECISE(A),
+  C = GAMMALN(A), D = GAMMA.DIST(1, A, 1, FALSE), E = EXP(-B). Tests: B == C; D vs e^-1/GAMMA(A) composition.
+
+### 9.5 What is settled by this review
+- K2 and K3 "bias" is a rounding staircase on the candidates' own binade crossings; the per-anchor paradox follows.
+- K1 is (7,7) by a continuous test; its function is about +0.6..+1.0 ulp high and smooth; AN2 is at a search plateau.
+- (1.5,2] is not a stored-value subtraction; the short-decimal prior and the universal power-of-two D0 are out.
