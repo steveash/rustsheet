@@ -18,7 +18,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    number_format::{number_to_text, to_precision},
+    number_format::{complex_part_to_text, to_precision},
 };
 
 /// The angle `atan2(y,x)·n` at which IMPOWER stops answering. Bracketed by probe, not derived:
@@ -65,9 +65,9 @@ impl fmt::Display for Complex {
         } else if y == -1.0 {
             "-".to_string()
         } else {
-            number_to_text(y)
+            complex_part_to_text(y)
         };
-        let x_str = number_to_text(x);
+        let x_str = complex_part_to_text(x);
         if y == 0.0 && x == 0.0 {
             write!(f, "0")
         } else if y == 0.0 {
