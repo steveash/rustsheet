@@ -417,11 +417,13 @@ impl Model {
         }
 
         let n = values.len();
-        if n < 2 {
+        // Excel: two numbers are #DIV/0!, three are enough (docs/excel-semantics/statistics.md
+        // "SKEW.P of two numbers is #DIV/0!").
+        if n < 3 {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
-                message: "SKEW.P requires at least 2 data points".to_string(),
+                message: "SKEW.P requires at least 3 data points".to_string(),
             };
         }
 
