@@ -37,7 +37,9 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   GAMMALN(x) = fl53(fl64(GAMMALN(fl(x+1)) - LN(x))), with Excel's own GAMMALN and LN.
   - Probe `kmyst-gam-w101` holds B = GAMMALN.PRECISE(x), C = LN(x) and E = GAMMALN.PRECISE(x+1) side by side.
     The identity holds on 12,288 of 12,288 points at x0 = 0.0213, 0.1517, 0.2911, 0.4123, 0.5037 and 0.6129.
-  - It fails above the switch, which lies between 0.6985 and 0.7159 (W1's LN-regression test; `w103` bisects it).
+  - The switch is the exact comparison x < 0.7, with 0.7 the double 0x1.6666666666666p-1. From `w103`, the
+    LN-error slope is -1.00 on the 256 doubles below and +0.12 from 0.7 up. Tiny x is the same formula, since
+    fl(1+x) = 1 and GAMMALN(1) = 0, so no separate eps branch is visible.
   - So everything below about 0.7 reduces exactly to the near-1 kernel on [0.7, 1.7).
   - The near-1 piece on [~0.7, 1.5] is fl(t*A) with t = x-1 exact and A a stored double. It uses no LN, and its
     structure is open (W1).
