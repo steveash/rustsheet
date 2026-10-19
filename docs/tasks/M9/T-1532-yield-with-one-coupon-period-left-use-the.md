@@ -3,7 +3,7 @@ id: T-1532
 title: "YIELD with one coupon period left: use the closed form (bit-exact on probes/solver-iteration-traces Y!A, Y!B)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -39,9 +39,12 @@ engine passes all 40. So the fix is a separate one-period YIELD formula with its
 change `compute_price`.
 
 ## Acceptance criteria
-- [ ] YIELD with one coupon period or less left uses the closed form above, in Excel's order of operations, on every basis.
-- [ ] probes/solver-iteration-traces Y!A1:A10, Y!B1:B10 and probes/bond-one-period-bases Y!A1:J4 pass; PRICE (sheet P) still passes; no other cell regresses (`make eval-baseline`).
-- [ ] `make check` green; reviewers approve.
+- [x] YIELD with one coupon period or less left uses the closed form above, in Excel's order of operations, on every basis.
+- [x] probes/solver-iteration-traces Y!A1:A10, Y!B1:B10 and probes/bond-one-period-bases Y!A1:J4 pass; PRICE (sheet P) still passes; no other cell regresses (`make eval-baseline`).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - YIELD with more than one coupon period (its solver is unfitted: T-1533, T-1374).
+
+## Outcome
+New `yield_one_period` in `financial_bonds.rs`: when one coupon is left YIELD evaluates the closed form with DSR = basis settlement-to-maturity count and E = actual period on bases 1-3. `compute_price` untouched. Eval: probes 2130 -> 2070 known failures (60 fixed, 0 regressions).
