@@ -45,6 +45,40 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
      stored-stage Horner chain.
    - It is NOT Cody's form R = fl(c + fl(m*Q)): that predicts a clean fR = R'h/ulp(R) line, which is absent.
 
+## With q401-q414 (344,448 points in (1.5,2))
+6. The nested form holds everywhere: 0 misses on 344k points. Base rates are as low as 0.57 at 1.70 and 0.41 at 1.825
+   (`reach2.py`).
+7. **The R staircase** (`rstair2.py`, 512-double segments, SE 0.06 ulp; full table in the session scratchpad,
+   regenerate it with the script):
+   - -0.05..-0.10 on (1.503, 1.526);
+   - a step to +0.34/+0.43 at 1.5285-1.5300, and to +0.85..+0.97 by 1.5327;
+   - +0.75..+0.85 on (1.533, 1.612);
+   - a step to +1.15 at 1.6120-1.6147;
+   - then a smooth decline: +1.05 at 1.70, +0.90 at 1.80, +0.80 at 1.90, +0.72 at 2.0.
+   - So there are two or three binade steps, plus a smooth function error of about +0.7..+1.1 ulp of R
+     (+1.5..+2.5e-16 relative), as in K1.
+8. **Sweep line tracks** (`segpeaks.py`, `hough.py`): about 16 crisp, nearly straight tracks of the unaliased
+   frequency F(x), with |dF/dx| = 0.015, 0.0275, 0.06, 0.0975, 0.1225, 0.23, 0.48, 0.525, 0.63, 0.72, 0.915, 1.02,
+   1.145, 1.155, 1.29 and 1.43.
+   - Some tracks end or start abruptly (binade crossings), for example at 1.89.
+   - Refined cubic tracks (`hough2.py`, 30 tracks): rms 3-6e-4 cycles per step; most have |F''| < 0.2. Several run
+     unbroken to 1.999 (T0, T4-T6, T9, T16, T24). A product s*m in an m = x-2 chain has ulp -> 0 as x -> 2, so its
+     line would chirp without bound. Tracks that stay straight up to 2 are therefore sum lines or raw-x products,
+     which mildly favours raw x.
+   - Straightness alone is not diagnostic: a fitted (8,8) raw-x chain also gives straight tracks within each binade.
+   - None of the tracks belongs to the K2 (efC) or K3 (ss_fc) stage polynomials (`kscore.py`: hits equal the
+     shuffled control).
+9. **Generator habit** (`fitwin.py`): the exact rationals of ss_fc and efC against the true function.
+   - ss_fc is accurate to about 2e-16 on [0.65, 1.55] and degrades fast outside it.
+   - efC is accurate to about 1e-16 on [1.6, 3.3]; its error is one-signed, about -1e-16, and not equioscillating.
+   - So K2's fit interval extends well below 2 (Cody-like (1.5,4)?), yet Excel does not use K2 on (1.5,2].
+
+10. **Null-space search of a (6,6) chain, D0 = 1** (`nullde.py`): the 3e-16 function constraint allows only about
+    1e-8 relative coefficient moves, so stage values are fixed. It explains 159 of 1,576 peaks. Excel's chain is
+    therefore not a near-minimal (6,6) with that normalisation, and is likely over-parametrised like K3's (9,9).
+11. **The pole/interval rule is unidentified** (`polescan.py`): no clean "relative LS on [a,b]" rule reproduces Excel's
+    K3 or K2 poles. The best K3 match is (9,9) on [0.75,3] at 0.15 rms log-distance.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
