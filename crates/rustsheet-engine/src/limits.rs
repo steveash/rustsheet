@@ -45,6 +45,20 @@ pub fn check_array_cells(rows: usize, columns: usize) -> Option<(Error, String)>
     None
 }
 
+/// The bound of a stacked result (HSTACK, VSTACK): more rows than the grid is `#NUM!`, while
+/// columns past the grid are allowed, under the cell-count limit of [`check_array_cells`]:
+/// `ROWS(VSTACK(A:A,B1))` is `#NUM!` and `COLUMNS(HSTACK(A1:XFD1,A1))` is 16385
+/// (probes/scalar-lift-open-c W1-W10, -c2; arrays.md "Stacked results past the grid"; T-1803).
+pub fn check_stack_size(rows: usize, columns: usize) -> Option<(Error, String)> {
+    if rows > LAST_ROW as usize {
+        return Some((
+            Error::NUM,
+            format!("rows exceeds sheet limit of {LAST_ROW}"),
+        ));
+    }
+    check_array_cells(rows, columns)
+}
+
 /// [`check_array_size`] for the array a range `left:right` would become when it is lifted
 /// element by element (`Model::evaluate_range`): Excel lifts any range that fits the grid, so this
 /// is the shared allocation bound (DEVIATION, docs/excel-semantics/arrays.md).
