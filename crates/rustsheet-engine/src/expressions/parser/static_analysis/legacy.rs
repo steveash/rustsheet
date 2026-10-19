@@ -222,7 +222,7 @@ pub(super) fn legacy_array_call_at(
 /// Whether `node` is a SWITCH whose results are all array constants: at the formula root,
 /// `=SWITCH(1,1,{2;3})` is shown unmarked and spills 2, 3 in a legacy cell (probes/legacy-array-at-shapes
 /// C20, C11, T-1910). Only the root is probed: a nested or range-returning SWITCH keeps its `@`
-/// (T-1944).
+/// (T-1964).
 pub(super) fn is_switch_of_array_constants(node: &Node) -> bool {
     matches!(node, Node::FunctionKind { kind: Function::Switch, args }
         if returns_only_array_constants(&Function::Switch, args))
