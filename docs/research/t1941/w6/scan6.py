@@ -16,7 +16,7 @@ from synth import read_chain
 rf, base, CH, J = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 truthf = sys.argv[5] if len(sys.argv) > 5 else None
 X0 = float(os.environ.get("X0", 1.75))
-DEG = int(os.environ.get("DEG", 1))  # 1: linear top stage (S8); 2: quadratic (S7 = c7 + c8 x + c9 x^2)
+DEG = int(os.environ.get("DEG", 1))  # 1: linear top stage (S8); 2: quadratic (S7); 3: cubic (S6), EVALONLY
 RL = int(os.environ.get("RL", 4096))
 N, D = read_chain(base)
 N = np.array(N) / D[0]
@@ -92,19 +92,19 @@ def obj(Cm, ph):
     return (Cm[idx[None, :], k] * (1 - fr) + Cm[idx[None, :], (k + 1) % 64] * fr).sum(-1)
 
 
-def joint(a, b, c=0.0):
-    dS = (a + b * dx + c * dx**2) * u0
+def joint(a, b, c=0.0, *hi):
+    dS = (a + b * dx + c * dx**2 + sum(h * dx ** (3 + k) for k, h in enumerate(hi))) * u0
     return obj(CS, dS / uS), obj(CP, dS * xm / uP)
 
 
 truth = None
 if truthf:
     tp = np.polyfit(dx, np.array(tS), DEG)[::-1] / u0
-    truth = (tp[0], tp[1], tp[2] if DEG == 2 else 0.0)
+    truth = tuple(tp) if DEG >= 2 else (tp[0], tp[1], 0.0)
     s1, s2 = joint(*truth)
     print(
-        "truth (a, b, c) = (%.3f, %.1f, %.2f), a mod 1 %.3f; at truth: S %.1f  P %.1f  joint %.1f; fit rms %.3f u"
-        % (truth[0], truth[1], truth[2], truth[0] % 1, s1, s2, s1 + s2, np.std(np.array(tS) / u0 - np.polyval(tp[::-1], dx))),
+        "truth (a, b, c..) = (%.3f, %.1f, %s), a mod 1 %.3f; at truth: S %.1f  P %.1f  joint %.1f; fit rms %.3f u"
+        % (truth[0], truth[1], ", ".join("%.2f" % v for v in truth[2:]), truth[0] % 1, s1, s2, s1 + s2, np.std(np.array(tS) / u0 - np.polyval(tp[::-1], dx))),
         flush=True,
     )
 BMAX = float(os.environ.get("BMAX", 1e7))
