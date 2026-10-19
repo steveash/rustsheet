@@ -220,6 +220,22 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
           at 24/24 inliers, because a smooth wrong prediction near a real track looks smooth too;
         - so EM must gate on absolute residuals (per-peak EM with a 5x-tol trim, which reached 2e-4).
 
+22. **The far, K3-like control is also BIT-EXACT** (truth `synth_truth99_1_6.txt`, stages 0.06-0.27x the [1.5,2] fit,
+    exponents 2-4 off):
+    1. Wide fast enumeration with exponent offsets -4..+1, plus the skip beam: 2 law tracks found (N.T4, N.P3n1,
+       eoff -2), with an N<->D-swapped tie.
+    2. The staircase/crossing discriminator picks the right seed (5/5 steps against 2/5).
+    3. Per-peak EM: stage errors 2e-4.
+    4. Track EM with the exact mpmath assembler: 7 tracks (adding D.T5 and D.P0..P4 n1). S0-S4 reach 2e-7..1e-6.
+       The fast linear subspace stalls at 2e-4 because of its linearisation, so the exact assembler is required here.
+    5. Lattice passes 1 and 2 (full line set, BKZ-30, 0.01-cycle noise): all exact except N0, D1 and N9 (-12 ulps).
+    6. `pairscan.py` on (N0, D1): 99.99%.
+    7. `climb6.py`: 100.000% exact R and B on 134,336 points (`applym.py` applies lattice offsets).
+    - Both controls (near and far truths) now succeed from zero knowledge.
+    - `run_xl.py` (the driver for steps 1-4) reproduces the far-truth result blind. Staircase ranking chooses the N
+      seed (5/5 against 2/5 and 0/5 for the D seeds), per-peak EM keeps 71 consistent matches, and exact track EM
+      accepts the same 7 tracks at 1-3e-7.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
