@@ -276,3 +276,11 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - Adding all ~27 stage lines makes it worse, because the weak-line laws mismatch.
   - K1 is frozen at AN2/fitSA. The future route is per-stage law validation by single-stage synthetic data
     (`wc/README.md`).
+- **W-D (coordinator), compositions on P2-P4** (`compose_p2p4.py`):
+  - P3: [3,8) glue B == fl(E + F) on 16,384/16,384 from both 3.37 and 5.71. GAMMALN(x-k) is Excel's own column and
+    F = LN of the cell-built ascending product.
+  - P4: legacy GAMMALN == GAMMALN.PRECISE on 16,384/16,384 from 2.33.
+  - P2: (1.5,2] is none of fl(E - C) (0.3-4.7%), fl(F + G) (12-25%) or LN(GAMMA) (0.4-3.8%). B + C is a double only
+    1.5-25% of the time, and Excel's LN model holds for C and G at 100%. Neither grid_a extended down (0-12%) nor
+    ss_fc extended up (15% at 1.52, then 0%) covers it. So (1.5,2] is its own kernel or composition, still open.
+  - Recorded in docs/excel-semantics/statistics.md, "GAMMA, GAMMALN and LN kernels (T-1941)".

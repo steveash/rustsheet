@@ -1236,6 +1236,42 @@ m9-f-inv-rt, m9-legacy-finv, t1049-finvrt, m9-t-inv, m9-t-inv-2t, t1048-tinv. Fi
 Status: VERIFIED (crossing at 155/188); the 11 misses and the solver's start, step and stop are UNVERIFIED
 Tasks: T-1745, T-0974
 
+## GAMMA, GAMMALN and LN kernels (T-1941, research in progress)
+Rule: Excel's LN, GAMMALN.PRECISE and GAMMA are private x87 kernels. Every op is rounded to a 64-bit mantissa and
+then stored to double, fl53(fl64(.)). Evidence and scripts: `docs/research/t1941/` on the T-1941 research branch
+(README.md, HANDOFF.md).
+- **LN(x)** = RN53(RN64(RN64(ln 2) * log2 x)), i.e. FLDLN2 then FYL2X.
+  - 114,687 of 114,688 points; the one miss is an FYL2X near-tie at x = 0.612354100000274.
+- **GAMMALN.PRECISE, x >= 8:** a 10-term Bernoulli Stirling series, every op stored. 291,957 of 291,957.
+- **GAMMALN.PRECISE, x < 0.7:** fl(GAMMALN(fl(x+1)) - LN(x)).
+  - The switch is the exact comparison x < 0x1.6666666666666p-1.
+  - 12,288 of 12,288.
+- **GAMMALN.PRECISE, 3 <= x < 8:** fl(GAMMALN(t) + LN(p)), with t = x - k reduced into (2,3] and p the ascending
+  stored product t(t+1)...
+  - Confirmed with Excel's own columns: B == fl(GAMMALN(x-1) + LN(x-1)) on 16,384 of 16,384 points from 3.37.
+  - B == fl(GAMMALN(x-3) + LN(G*(G+1)*(G+2))) with G = x-3, on 16,384 of 16,384 from 5.71 (probe P3).
+- **GAMMALN.PRECISE on (1.5,2] is its own piece:**
+  - not fl(GAMMALN(x+1) - LN(x)) (0.3-4.7%), not fl(GAMMALN(x-1) + LN(x-1)) (12-25%), and not LN(GAMMA(x)) (0.4-3.8%);
+  - not the (2,3] base kernel extended, and not the near-1 kernel extended (probe P2).
+- **Legacy GAMMALN equals GAMMALN.PRECISE**: 16,384 of 16,384 consecutive doubles from 2.33 (probe P4).
+- **The remaining kernels are private rationals in the raw variable with Excel's own coefficients.** Cody's
+  layouts are used, never Cody's numbers.
+  - Near 1: fl((x-1)*fl(N/D)), degree (9,9).
+  - (2,3]: fl((x-2)*fl(N/D)).
+  - GAMMA on [1,2): fl(N/D), degree (7,7), D0 = -1/16.
+  - Best coefficient sets reach about 47%, 76% and 78% exact; not yet bit-exact.
+  - Excel's GAMMALN near 1 and on (2,3] differs from lnGamma by a rounding staircase. It steps at binade crossings
+    of the kernel's stored intermediates, which comes from constants rounded into stored sums.
+- **GAMMA:**
+  - x >= 10 uses x^(x/2) by binary powering times EXP terms. 99.84% of 155,964 points; up to about ±40 ulp off the
+    true value near 150.
+  - 1 <= x < 10 is the descending stored product times G(y), y in [1,2).
+  - 0 < x < 1: fl(fl(1/x)*G(fl(x+1))).
+  - -10 < x < 0: an upward division chain z = 1/x; while y < 1 { z = z/y }.
+  - x <= -10: reflection with sin computed by FSIN.
+  - Exact half-integers take an ascending product times sqrt(pi); integers <= 88 take the downward product.
+  - The cuts are exact comparisons: x >= 10 and -x > 10.
+
 ## Incomplete gamma sweep (T-1045)
 Rule: Excel's incomplete-gamma values (the targets for T-0971 and T-0972) are plain numbers on the whole in-domain grid, and the CDF saturates to exactly 1 deep in the upper tail while the pdf stays finite.
 Oracle sweep (excel-graph) of `GAMMA.DIST` (a in {0.5, 1, 2, 9, 50, 500}, b in {1, 2, 1E6}, x = 0.1, 0.5, 1, 1.5, 3 times the mean a*b,
