@@ -252,16 +252,42 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
 /// Whether `kind(args)` is a CHOOSE, INDEX or IFS whose every argument it can return
 /// ([`is_returned_argument`]) is an array constant: the one shape of them probed under N and T
 /// (probes/legacy-n-t-reference-args A, B, K, L). Over a reference they read the reference,
-/// unmarked (T-1908); with a mixed arm they keep their `@`.
+/// unmarked (T-1908); a CHOOSE mixing references and array constants is
+/// [`chooses_between_references_and_array_constants`]; other mixed arms keep their `@`.
 fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
     let mut returned = args
         .iter()
         .enumerate()
         .filter(|(index, _)| is_returned_argument(kind, *index))
         .peekable();
-    matches!(kind, Function::Choose | Function::Index | Function::Ifs)
+    (matches!(kind, Function::Choose | Function::Index | Function::Ifs)
         && returned.peek().is_some()
-        && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_)))
+        && returned.all(|(_, arg)| matches!(arg, Node::ArrayKind(_))))
+        || chooses_between_references_and_array_constants(kind, args)
+}
+
+/// Whether `kind(args)` is a CHOOSE with a number or boolean literal index whose values are
+/// plain references and array constants, at least one of each kind and no one-element array
+/// (unprobed, it keeps its `@`): Excel shows no `@` on the call
+/// and N or T read the arm the index picks, a reference as its top-left cell and an array constant
+/// as `#VALUE!` (`=N(CHOOSE(1,Z1,{2;3}))` is 7, `=N(CHOOSE(2,Z1,{2;3}))` and
+/// `=N(CHOOSE(1,{2;3},Z1))` are `#VALUE!`, `=N(CHOOSE(1,Z1:Z2,{2;3}))` is 7:
+/// probes/legacy-n-t-choose-index-shapes L, O, P, Q, R, T-1918).
+fn chooses_between_references_and_array_constants(kind: &Function, args: &[Node]) -> bool {
+    let [index, arms @ ..] = args else {
+        return false;
+    };
+    matches!(kind, Function::Choose)
+        && matches!(index, Node::NumberKind(_) | Node::BooleanKind(_))
+        && arms
+            .iter()
+            .any(|arm| matches!(arm, Node::ArrayKind(_)) && !is_one_element_array(arm))
+        && arms
+            .iter()
+            .any(|arm| !matches!(arm, Node::ArrayKind(_)) && is_plain_reference(arm))
+        && arms
+            .iter()
+            .all(|arm| matches!(arm, Node::ArrayKind(_)) || is_plain_reference(arm))
 }
 
 /// Whether argument `index` of `kind` is one its result can be, as it is or as a part of it: the
