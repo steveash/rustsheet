@@ -221,3 +221,13 @@ fn element_errors_carry_no_message() {
         assert_eq!(model._get_error_message(cell), "", "{cell}");
     }
 }
+
+/// gen-m9/d5bd4272655c5211 A31: k's error comes before PERCENTILE.EXC's empty-data `#NUM!` (T-1403).
+#[test]
+fn percentile_exc_checks_k_before_empty_data() {
+    assert_cells(&[
+        ("=PERCENTILE.EXC(G2:G3,1/0)", "#DIV/0!"),
+        ("=PERCENTILE.EXC(G2:G3,\"?\"+1)", "#VALUE!"),
+        ("=PERCENTILE.EXC(G2:G3,0.5)", "#NUM!"),
+    ]);
+}
