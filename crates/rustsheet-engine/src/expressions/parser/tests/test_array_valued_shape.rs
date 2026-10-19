@@ -15,7 +15,7 @@ fn shape(formula: &str) -> StaticResult {
 }
 
 /// An array-valued table entry is `Unknown` unlifted and the broadcast of its lifted arguments
-/// otherwise (SPEC-0011 "Array-valued functions" rule 1; probes/m7-argument-modes F1, F2).
+/// larger than 1x1 otherwise (SPEC-0011 "Array-valued functions" rule 1; probes/m7-argument-modes F1, F2).
 #[test]
 fn an_array_valued_entry_is_unknown_unless_it_lifts() {
     for formula in [
@@ -31,6 +31,6 @@ fn an_array_valued_entry_is_unknown_unless_it_lifts() {
     ));
     assert!(matches!(
         shape("MAKEARRAY(A1:A2,2,LAMBDA(r,c,r+c))"),
-        StaticResult::Range(1, 0) | StaticResult::Array(2, 1)
+        StaticResult::Array(2, 1)
     ));
 }

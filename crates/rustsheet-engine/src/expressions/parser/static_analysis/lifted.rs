@@ -32,7 +32,7 @@ pub(super) fn lifted_signature(kinds: &ArgKinds, arg_count: usize) -> Vec<Signat
 /// probes/lift-arrays-choose-arms A13, T-1874). An `Unknown` lifted argument makes the call
 /// `Unknown`; a `Whole` argument adds nothing. A call with a bad count is a scalar (the count
 /// error). An entry whose unlifted call is an array (SEQUENCE, MAKEARRAY) is `Unknown` when no
-/// lifted argument has a shape, and the broadcast otherwise (`SEQUENCE({1;2;3})` is 3x1,
+/// lifted argument has a shape larger than 1x1, and the broadcast otherwise (`SEQUENCE({1;2;3})` is 3x1,
 /// probes/m7-argument-modes F2, G2; SPEC-0011 "Array-valued functions" rule 1).
 pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticResult {
     if !kinds.accepts(args.len()) {
@@ -54,11 +54,14 @@ pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticRes
             Some(ArgKind::Whole | ArgKind::WholeByCaller) | None => StaticResult::Scalar,
         })
         .collect();
-    if kinds.result == CallResult::Array && shapes.iter().all(|s| matches!(s, StaticResult::Scalar))
-    {
-        return StaticResult::Unknown;
+    match (kinds.result, broadcast_shapes(shapes)) {
+        // Unlifted, or lifted over 1x1 arrays only, the call runs once and keeps its whole array
+        // (the driver's 1x1 rule, pending T-1960), so its shape is not known.
+        (CallResult::Array, StaticResult::Scalar | StaticResult::Array(1, 1)) => {
+            StaticResult::Unknown
+        }
+        (_, shape) => shape,
     }
-    broadcast_shapes(shapes)
 }
 
 /// Whether argument `index` of `kind` is a `LiftArrays` argument: a legacy formula intersects

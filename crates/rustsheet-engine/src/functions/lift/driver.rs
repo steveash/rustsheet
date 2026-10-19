@@ -289,6 +289,10 @@ fn element_node(
     visits: &mut u64,
     cell: CellReferenceIndex,
 ) -> Result<ArrayNode, CalcResult> {
+    // Every entry before T-1834: no output charge and no top-left, the loop body as before.
+    if options.result == CallResult::Value && !matches!(options.work, KernelWork::Output { .. }) {
+        return Ok(calc_result_to_array_node(value));
+    }
     let cells = match &value {
         CalcResult::Array(grid) => {
             let (rows, columns) = grid_dims(grid);

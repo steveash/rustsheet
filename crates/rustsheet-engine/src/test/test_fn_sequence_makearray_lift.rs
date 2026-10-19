@@ -100,3 +100,19 @@ fn lifted_output_is_charged_against_the_visit_cap() {
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("B1"), "#ERROR!");
 }
+
+/// A call whose lifted arguments are all 1x1 runs once and keeps its whole array, as before
+/// T-1834 (`SEQUENCE(C3*1)` with C3 = 3 spills three rows). Whether Excel lifts a 1x1 array here
+/// (`SEQUENCE({3})`) is open until T-1960, which may change this pin.
+#[test]
+fn a_one_cell_array_argument_runs_one_unlifted_call() {
+    let mut model = new_empty_model();
+    model._set("C3", "3");
+    model._set("A1", "=ROWS(SEQUENCE(INDIRECT(\"C3\")*1))");
+    model._set("B1", "=ROWS(SEQUENCE({3}))");
+    model._set("D1", "=SEQUENCE(C3*1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    assert_eq!(model._get_text("B1"), "3");
+    assert_eq!(model._get_text("D3"), "3");
+}
