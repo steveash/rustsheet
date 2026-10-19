@@ -252,8 +252,9 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
    an array element is its top-left value (probes/m7-argument-modes K5-K10; SORTBY excepted, H97-H99),
    the elements of OFFSET, INDIRECT and TRIMRANGE are references (probes/reference-lift-elements),
    and TAKE's and DROP's are whole (K1-K4), which this spec reads as references, pending T-1960. Design: "Array-valued functions" (T-1834 to T-1839) and
-   "Elements that are references" (T-1955). Still open: a TAKE or DROP over an array value, and
-   SUM, `=` and arithmetic over a result of references (T-1960, T-1955).
+   "Elements that are references"; the carrier and its consumers are SPEC-0014 (T-1955), which
+   answers SUM, `=` and arithmetic over a result of references. Still open: a TAKE or DROP over an
+   array value (T-1960).
 6. **Answered.** A function-returned multi-cell reference in a `Lift` argument [lifts like a written
    range]: it does (IF, INDEX, OFFSET, INDIRECT, CHOOSE; -a W31-W36).
 7. **Answered.** The precedence and element-value gaps: precedence is the kernel's order (-a W14-W17
@@ -879,7 +880,7 @@ references.md, probes/isref-reference-lookups). So this spec reads a lifted TAKE
   not probed: T-1960 asks `TAKE({1,10;2,20;3,30},{1;2})`. If Excel keeps a whole sub-array there,
   T-1960 records it and this section gains a nested-array element in its PR.
 
-Then no new nested-array carrier is needed. The array-of-references carrier is T-1955's (one
+Then no new nested-array carrier is needed. The array-of-references carrier is SPEC-0014's `RefGrid` (T-1955; one
 definition for OFFSET, INDIRECT, TRIMRANGE, TAKE and DROP: directive 3). Rule 2's `element_value`
 hands a multi-cell reference to that carrier. The consumers are the ones T-1955 lists, with the
 evidence it has:
@@ -887,7 +888,7 @@ evidence it has:
 - ROWS and COLUMNS count the outer array (F4-F6; `ROWS(OFFSET(A1,0,0,{1;2}))` is 2);
 - ISREF of the whole result is one FALSE (reference-lift-elements F15, G15);
 - spilled directly, an OFFSET element is `#VALUE!`; SUM, `=` and arithmetic over such a result are
-  open (T-1955 for OFFSET; T-1960 asks the same of TAKE).
+  answered in SPEC-0014 rules 2-7 (T-1960 asks the same of TAKE).
 So T-1838 builds on T-1955's spec and T-1956's carrier, and adds TAKE and DROP as two more
 producers.
 

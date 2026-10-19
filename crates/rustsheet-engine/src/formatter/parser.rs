@@ -65,6 +65,27 @@ pub struct NumberPart {
     pub scientific_minus: bool,
     pub exponent_digit_count: i32,
     pub currency: Option<char>,
+    /// A fraction (`# ?/4`, `?/100`, `# ??/??`); `None` for any other section.
+    pub fraction: Option<Fraction>,
+}
+
+/// Where a fraction sits among a number section's `tokens`: the digit placeholders before
+/// `numerator_start` are the integer part, those from it up to the `/` at `slash` the numerator.
+pub struct Fraction {
+    /// Index of the first numerator placeholder in `tokens`.
+    pub numerator_start: usize,
+    /// Index of the `/` literal in `tokens`; the denominator is not a token.
+    pub slash: usize,
+    /// Fixed digits or placeholder kinds; see [`Denominator`].
+    pub denominator: Denominator,
+}
+
+/// The denominator of a fraction section.
+pub enum Denominator {
+    /// Digits as written (`16` in `# ??/16`).
+    Fixed(String),
+    /// The kinds of its digit placeholders (`??` in `# ??/??`): Excel picks the fraction.
+    Placeholders(Vec<char>),
 }
 
 pub struct DatePart {
@@ -102,6 +123,15 @@ pub enum NumberState {
     Integer,
     Decimal,
     Exponent,
+}
+
+/// The kind (`#`, `?` or `0`) of a digit placeholder token.
+fn placeholder_kind(token: &Token) -> char {
+    match token {
+        Token::QuestionMark => '?',
+        Token::Zero => '0',
+        _ => '#',
+    }
 }
 
 impl NumberState {
@@ -185,9 +215,10 @@ impl Parser {
         // Excel: a second locale tag in a section is #VALUE!, even the same one
         // (`TEXT(45000,"[$-40C]mmmm [$-40C]mmmm")`; probes/text-locale-name-tables A568-A575).
         let mut repeated_locale = false;
+        let mut fraction = None;
 
         while token != Token::EOF && token != Token::Separator {
-            let next_token = self.lexer.next_token();
+            let mut next_token = self.lexer.next_token();
             let token_is_digit = token.is_digit();
             is_number = is_number || token_is_digit;
             let next_token_is_digit = next_token.is_digit();
@@ -285,6 +316,47 @@ impl Parser {
                         number,
                     }));
                     index += 1;
+                }
+                // A `/` right after digit placeholders and before a number or more placeholders
+                // makes a fraction (`# ?/4`, `# ??/??`; number-formats.md "Fraction formats").
+                Token::Literal('/')
+                    if last_token_is_digit
+                        && !found_decimal_dot
+                        && !is_scientific
+                        && fraction.is_none()
+                        && (matches!(next_token, Token::Literal('1'..='9'))
+                            || next_token_is_digit) =>
+                {
+                    let denominator = if let Token::Literal(first) = next_token {
+                        let mut digits = String::from(first);
+                        loop {
+                            match self.lexer.peek_token() {
+                                Token::Literal(c) if c.is_ascii_digit() => digits.push(c),
+                                Token::Zero => digits.push('0'),
+                                _ => break,
+                            }
+                            self.lexer.next_token();
+                        }
+                        Denominator::Fixed(digits)
+                    } else {
+                        let mut kinds = vec![placeholder_kind(&next_token)];
+                        while self.lexer.peek_token().is_digit() {
+                            kinds.push(placeholder_kind(&self.lexer.next_token()));
+                        }
+                        Denominator::Placeholders(kinds)
+                    };
+                    next_token = self.lexer.next_token();
+                    let numerator_len = tokens
+                        .iter()
+                        .rev()
+                        .take_while(|t| matches!(t, TextToken::Digit(_)))
+                        .count();
+                    fraction = Some(Fraction {
+                        numerator_start: tokens.len() - numerator_len,
+                        slash: tokens.len(),
+                        denominator,
+                    });
+                    tokens.push(TextToken::Literal('/'));
                 }
                 Token::Literal(value) => {
                     if value == ':' {
@@ -565,6 +637,7 @@ impl Parser {
                 scientific_minus,
                 exponent_digit_count,
                 currency,
+                fraction,
             })
         }
     }
@@ -588,6 +661,7 @@ impl Parser {
                 scientific_minus: false,
                 exponent_digit_count: 0,
                 currency: None,
+                fraction: None,
             });
         }
         let mut parser = Parser::new(format);
