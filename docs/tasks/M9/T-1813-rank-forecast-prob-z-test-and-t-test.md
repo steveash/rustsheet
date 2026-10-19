@@ -12,6 +12,8 @@ spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
 ## Goal
+As done: Z.TEST/ZTEST and PROB only; RANK, FORECAST and T.TEST moved to T-1975 (see Outcome).
+
 The rest of T-1772: RANK/RANK.EQ/RANK.AVG `number` (and `order`), FORECAST/FORECAST.LINEAR `x`, PROB `lower_limit`/`upper_limit`, Z.TEST/ZTEST `x`/`sigma` and T.TEST/TTEST `tails`/`type` lift over an array and over a multi-cell range through the SPEC-0011 driver, with the data arguments read once by the function's own reader and not lifted.
 
 ## Context
@@ -36,8 +38,8 @@ Probed first: probes/stat-test-lift (89 cells, excel-graph), recorded in statist
 and T.TEST: lifted scalar arguments". Z.TEST/ZTEST and PROB are on the driver: their data is `WholeByCaller`, read
 once (Z.TEST keeps count, mean and deviation, so an element is O(1); PROB charges `LiftCost::Cells`), and an element
 checks its scalar arguments before the data's error, as Excel does. Their fallback signature and shape arms are
-deleted. `CalcResult::without_message` replaces three copies of the message-stripping match (the sorted-data reader's
-included). The session ran out before RANK, FORECAST and T.TEST, so they moved to T-1975 with the probe's findings,
+deleted. `CalcResult::without_message` is the message-stripping match, shared by the sorted-data reader (its one
+copy before) and the two new readers. The session ran out before RANK, FORECAST and T.TEST, so they moved to T-1975 with the probe's findings,
 along with the order-statistic precedence the probe found (P81-P83: `PERCENTILE(NA(),2)` is `#N/A`).
 Eval delta: probes fixed 6 (stat-argument-modes H488, H489, H566, H567, H571, H572), new case stat-test-lift
 (55 of 89 cells pass; the 34 others are T-1975's), 0 regressions.

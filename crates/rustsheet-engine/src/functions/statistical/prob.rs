@@ -61,7 +61,8 @@ impl Model {
         self.lift_call_costed(
             kind,
             args,
-            LiftCost::Cells(cells),
+            // At least one unit an element, so a data error copied per element is charged too.
+            LiftCost::Cells(cells.max(1)),
             cell,
             &mut |model, values| prob_element(model, &data, values, cell),
         )
