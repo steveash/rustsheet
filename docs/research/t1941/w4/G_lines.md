@@ -55,3 +55,56 @@ The added constant is c = 2^e_a*(2*u1 - 1.10985), with u1 in {1.40945, -0.59055,
 ## Needed
 Dense oracle runs: 4096 consecutive doubles at y = 1 + j/64, to track every stage across [1,2) and pin the chain
 and the binade crossings (1.365-1.370, 1.5438-1.545). The coordinator generated them as kmyst-gam-y101..y116.
+
+## Update: structure solved (not yet bit-exact)
+- G(y) = fl(N(y)/D(y)) on [1,2). N and D are independent raw-y Horner chains of degree (8,8), every op
+  fl53(fl64).
+- It is Cody-family: (xnum+xden)/xden from Cody's GAMMA, re-expanded in y, but with Excel's own coefficients.
+- The forms 1+X/D and (X+D)/D are excluded, because both suppress D-stage errors near 1.
+- See the coordinator README for the line to stage map and the pins.
+- Fit: least squares of Gamma*D - N under the pins (null-space elimination plus QR at dps 60-100), then an
+  exact-match coordinate search along the 6 remaining soft directions.
+- Best candidate: G_candidate_fit4.txt (N ascending y^0..y^8, then D ascending). 29.9% exact on 260,096 G points,
+  72% within 1 ulp. Not bit-exact: the remaining soft directions span 1e2 to 1e7 ulps per coefficient.
+
+## Update 2: per-stage phase solve (W2 method), partial
+- stagephase4.py demodulates one stage line per ladder run with the candidate's own phase law, comparing data
+  with an exact simulation (simres.c). It unwraps the phase difference rung by rung.
+  - Sawtooth: dphi = K*dM(y_K)/2^e.
+  - Triangle: dphi = const + dS'(1)*K/2^(eS+1) + ...; the constant term is required.
+  - Calibrated on a known perturbation: -5.03e-13 recovered against -4.94e-13 expected.
+- Convergence:
+  - D.c0 (L1) converges in 1-2 iterations: deltas a = -3e-14, b = 3e-10, c = -1e-6; rms 0.005 cycles to
+    K = 3e12.
+  - D.S1 (L3) and N.S0 (L2) also converge (rms 0.004-0.005).
+- joint.py (not committed) is one linear system over all 18 coefficients, the three clean lines, soft Gamma-fit
+  rows and a ridge.
+  - It is consistent to K = 5e11 (rms 0.005), but its moves run along the near-null common-factor directions.
+  - The ladder near y=1 pins only about 3 Taylor functionals per stage, so the exact score does not improve and
+    a second relinearisation diverges.
+- Blocker: the near-null directions need phase data far from y=1.
+  - Answer: ladders at anchors 1.25, 1.5 and 1.75 (kmyst-gam-e701..e718).
+  - Alternative: march outward over the dense y101..y116 runs.
+
+## Playbook lessons (for docs/research/excel-kernel-playbook.md)
+1. **Triangle lines.** A product P = fl(M*y) rounded into a sum S = fl(P + c) that lies one binade up carries the
+   parity of P_r, whose integer part moves with M's own rounding.
+   - So the line follows the smooth sum: F(y) = S'(y)/2^(eS+1) (mod 1, sign-folded), with
+     F(1) = frac(S'(1)/2^(eS+1)).
+   - It is NOT frac(u/2) and NOT (M + tM')/2^e. Read with the sawtooth law, triangle lines look like
+     unassignable stages.
+   - With the correct law every strong G line mapped onto one (8,8) N/D structure.
+2. **Phase comparison against exact simulation.**
+   - For a triangle line the data-vs-sim phase difference has a constant offset (from dS(1)) plus
+     dS'(1)*K/2^(eS+1)+..., so the unwrap basis needs a constant column.
+   - For a sawtooth line the difference is K*dM(y_K)/2^e, with no constant.
+3. **Frequency-derived pins are biased for weak lines.** A line fitted with the wrong curvature alias shifts f by
+   about dv*eps*2*n_typ, about 5e-6 for an alias jump of 13 in v. Pin with strong lines only, then switch to
+   data-vs-simulation phases.
+4. **Separate the curvature ambiguity before pinning.** The coherent low-n0 fit aliases |v| outside its scan
+   window. An incoherent (v,w) spectrum over the highest runs, with local frequency
+   f + 2v*eps*n0 + 3w*eps^2*n0^2, resolves it to about +-0.005.
+5. **Long-range frequency tracks across the interval** (runs of >= 1024 consecutive doubles at many y) give whole
+   stage curves. That is the strongest stage-assignment test: a stage must match the full curve, not just y=1.
+6. **Doublets.** The Gamma residue at 0 forces n0 ~ d1 in a raw-y N/D, so N.c0 and D.c1 share a frequency to about
+   2e-5. Treat that line as two stages.
