@@ -212,13 +212,13 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - Fixing N8 = D8 = 0 gives Cody's coefficient count. The joint phase solve on anchors 1, 1.25 and 1.5, plus an
     exact search along the invisible SVD directions, then reaches 73.4% exact (W4).
   - D0 = -1/16 within 7e-10; rounding it to -1/16 changes nothing.
-  - Candidate `g_candidate_w4_77.txt` (fit77S2): 71.6% exact and 87.1% within 1 ulp on 1,448,928 clean GAMMA(x)
+  - Candidate `g_candidate_w4_77.txt` (fit77S; W4 first sent it labelled fit77S2): 71.6% exact and 87.1% within 1 ulp on 1,448,928 clean GAMMA(x)
     points (`g_rows.py`). By tenth of [1,2): 92 85 78 69 66 66 66 52 48 73%.
   - An earlier 76.4% used an extractor that also picked up non-GAMMA(x) cells; it is withdrawn.
   - The best sets fit Gamma only to 1.2-1.5e-16, so Excel's G is itself about 1-ulp accurate.
 - Anchor ladders: e701-e718 at y = 1.25, 1.5 and 1.75.
 - fit77cS (`g_candidate_w4_77cS.txt`): 73.5% on W4's G.txt, and 72.3% exact (86.3% within 1 ulp) on the 1,448,928
-  clean points. By tenth: 90 83 76 73 78 78 67 62 55 50%. fit77S2 is better above 1.9 (73% vs 50%).
+  clean points. By tenth: 90 83 76 73 78 78 67 62 55 50%. fit77S is better above 1.9 (73% vs 50%); that tenth is dominated by the e3 ladder runs ending at 2 - c*2^-j, which the joint solve had not used (anchor 2).
   - y-bias of the misses (W4): model high near 1.0-1.1 and 1.86-2.0 (worst 1.90-1.92, 32% exact); model low across
     1.12-1.6.
   - Mean (Excel - model) is about 0.16 ulp rms, smooth in y.
