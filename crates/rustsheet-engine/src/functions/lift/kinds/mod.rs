@@ -5,12 +5,13 @@
 //!
 //! The table is split by family, each file with its weight constants and their measurements next
 //! to its entries: `general.rs` (dates, information, lookup, math), `financial.rs`,
-//! `statistical.rs` and `engineering.rs`. The argument shapes several families share are here.
+//! `statistical.rs`, `engineering.rs` and `text.rs`. The argument shapes several families share are here.
 
 mod engineering;
 mod financial;
 mod general;
 mod statistical;
+mod text;
 
 use crate::functions::Function;
 
@@ -131,6 +132,10 @@ const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 /// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
 /// ISPMT and SYD.
 const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
+/// `DAYS360(start_date, end_date, [method])`, FIND and SEARCH.
+const LIFT_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift], Constant);
+/// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])` and SUBSTITUTE.
+const LIFT_3_OF_4: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Constant);
 const LIFT_4: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Constant);
 /// `PMT(rate, nper, pv, [fv], [type])` and PV, FV, NPER alike.
 const LIFT_3_OF_5: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift], Constant);
@@ -148,12 +153,13 @@ impl Function {
             .or_else(|| financial::arg_kinds(self))
             .or_else(|| statistical::arg_kinds(self))
             .or_else(|| engineering::arg_kinds(self))
+            .or_else(|| text::arg_kinds(self))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{engineering, financial, general, statistical};
+    use super::{engineering, financial, general, statistical, text};
     use crate::functions::Function;
 
     /// One `match` caught a function entered twice as an unreachable pattern; across the
@@ -166,6 +172,7 @@ mod tests {
                 financial::arg_kinds(&function),
                 statistical::arg_kinds(&function),
                 engineering::arg_kinds(&function),
+                text::arg_kinds(&function),
             ];
             let entered = families.iter().filter(|kinds| kinds.is_some()).count();
             assert!(entered <= 1, "{function:?} is in {entered} families");

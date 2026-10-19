@@ -107,7 +107,7 @@ fn seconds_of_day(v: f64) -> i64 {
     (ms % (SECONDS_PER_DAY as i64 * 1000)) / 1000
 }
 
-use crate::cast::{array_node_to_string, number_text_too_long};
+use crate::cast::{calc_result_to_string, number_text_too_long};
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
@@ -116,7 +116,6 @@ use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
 use crate::functions::lift::{num_error, number_result, value_error};
-use crate::functions::text::text_arg::broadcast_text;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
@@ -574,39 +573,35 @@ impl Model {
     }
 
     pub(crate) fn fn_timevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
         // Lifts over a range or array like the text functions (probes/date-argument-modes F47:F48).
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text], |i, j| {
-            let text = array_node_to_string(text.elem(i, j))?;
-            self.parse_time_text(&text)
+        self.lift_text(Function::Timevalue, args, cell, &mut |model, values| {
+            let [text] = values else {
+                return Err(Error::ERROR);
+            };
+            let text = calc_result_to_string(text)?;
+            model
+                .parse_time_text(&text)
                 .map(ArrayNode::Number)
                 .ok_or(Error::VALUE)
         })
     }
 
     pub(crate) fn fn_datevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
         // Lifts over a range or array like the text functions (probes/date-argument-modes F9:F10).
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text], |i, j| match text.elem(i, j) {
-            ArrayNode::String(s) => self
-                .parse_datevalue_text(s)
-                .map(|serial| ArrayNode::Number(f64::from(serial)))
-                .ok_or(Error::VALUE),
-            ArrayNode::Error(e) => Err(e.clone()),
-            _ => Err(Error::VALUE),
-        })
+        self.lift_text(
+            Function::Datevalue,
+            args,
+            cell,
+            &mut |model, values| match values {
+                [CalcResult::String(s)] => model
+                    .parse_datevalue_text(s)
+                    .map(|serial| ArrayNode::Number(f64::from(serial)))
+                    .ok_or(Error::VALUE),
+                [CalcResult::Error { error, .. }] => Err(error.clone()),
+                [_] => Err(Error::VALUE),
+                _ => Err(Error::ERROR),
+            },
+        )
     }
 
     pub(crate) fn fn_datedif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

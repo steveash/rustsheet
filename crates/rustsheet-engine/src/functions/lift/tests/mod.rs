@@ -695,7 +695,7 @@ fn element_texts_count_against_the_text_budget() {
 }
 
 #[test]
-fn lifted_args_are_grids_for_arrays_and_ranges() {
+fn args_read_as_grids_for_arrays_and_ranges() {
     assert!(LiftedArg::is_grid(&CalcResult::Array(vec![])));
 }
 

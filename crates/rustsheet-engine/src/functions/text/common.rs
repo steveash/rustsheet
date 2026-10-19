@@ -1,11 +1,10 @@
-use super::text_arg::{broadcast_text, TextArg};
+use super::text_kernel::text_result;
 use super::util::substitute_element;
 use crate::cast::number_text_too_long;
 use crate::number_format::number_to_text;
 use crate::{
-    arithmetic::{array_of_errors, own_error},
     calc_result::CalcResult,
-    cast::{array_node_to_string, array_node_to_text, calc_result_to_array_node, MAX_TEXT_UNITS},
+    cast::{calc_result_to_string, calc_result_to_text, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -15,10 +14,7 @@ use crate::{
         format::{format_text, format_text_value_exact, FormatContext, Formatted},
         rejects_format_code,
     },
-    functions::{
-        text::position::find_element,
-        util::{array_node_to_calc_result, near_integer_count},
-    },
+    functions::{text::position::find_element, util::near_integer_count, Function},
     model::Model,
     number_format::to_precision,
     text::{Char, Text},
@@ -38,8 +34,8 @@ pub(super) fn reject_over_limit(text: &Text) -> Result<(), Error> {
 // Excel: LEFT and RIGHT count characters (code points), unlike LEN, MID, FIND and REPLACE, which
 // count UTF-16 code units: `LEFT("a😀b",3)` is "a😀b" (docs/excel-semantics/text.md "Text
 // positions count UTF-16 code units", probes/text-surrogate-positions A3, B1-B5).
-fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let s = array_node_to_text(text)?;
+fn left_element(text: &CalcResult, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
+    let s = calc_result_to_text(text)?;
     let num = num?;
     // Excel: any non-negative count works, however large (`LEFT("abc",1E+100)` is "abc"), and
     // -1E-300 is already #VALUE! (probes/text-count-argument-bounds F14, N18).
@@ -51,8 +47,8 @@ fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, 
 }
 
 /// Computes a single RIGHT result from one element of each argument.
-fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let s = array_node_to_text(text)?;
+fn right_element(text: &CalcResult, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
+    let s = calc_result_to_text(text)?;
     let num = num?;
     if num < 0.0 {
         return Err(Error::VALUE);
@@ -66,11 +62,11 @@ const MID_ARGUMENT_LIMIT: f64 = 2_147_483_648.0;
 
 /// Computes a single MID result from one element of each argument.
 fn mid_element(
-    text: &ArrayNode,
+    text: &CalcResult,
     start: Result<f64, Error>,
     length: Result<f64, Error>,
 ) -> Result<ArrayNode, Error> {
-    let s = array_node_to_text(text)?;
+    let s = calc_result_to_text(text)?;
     let start = start?;
     let length = length?;
     // Excel: MID truncates both numbers exactly (`MID(t,1,1-1E-15)` is "") and either one
@@ -89,15 +85,15 @@ fn mid_element(
 }
 
 /// Computes a single LEN result.
-fn len_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
-    let s = array_node_to_string(text)?;
+fn len_element(text: &CalcResult) -> Result<ArrayNode, Error> {
+    let s = calc_result_to_string(text)?;
     // Excel: LEN counts UTF-16 code units, so an emoji counts two (probes/text-surrogate-positions A1).
     Ok(ArrayNode::Number(s.encode_utf16().count() as f64))
 }
 
 /// Computes a single REPT result from one element of each argument.
-fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
-    let text = array_node_to_text(text)?;
+fn rept_element(text: &CalcResult, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
+    let text = calc_result_to_text(text)?;
     let number_times = number_times?.floor();
     // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
     // it also bounds the allocation (CLAUDE.md directive 5).
@@ -114,15 +110,15 @@ fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<Ar
 }
 
 /// Computes a single EXACT result from one element of each argument.
-fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Error> {
-    if let (ArrayNode::Number(number1), ArrayNode::Number(number2)) = (text1, text2) {
+fn exact_element(text1: &CalcResult, text2: &CalcResult) -> Result<ArrayNode, Error> {
+    if let (CalcResult::Number(number1), CalcResult::Number(number2)) = (text1, text2) {
         // In Excel two numbers are the same if they are the same up to 15 digits.
         return Ok(ArrayNode::Boolean(
             to_precision(*number1, 15) == to_precision(*number2, 15),
         ));
     }
-    let string1 = array_node_to_text(text1)?;
-    let string2 = array_node_to_text(text2)?;
+    let string1 = calc_result_to_text(text1)?;
+    let string2 = calc_result_to_text(text2)?;
     // `Text` equality is exact: a lone surrogate never equals U+FFFD (probes/text-lone-surrogates A10-A13).
     Ok(ArrayNode::Boolean(string1 == string2))
 }
@@ -141,8 +137,8 @@ fn text_node(value: Option<f64>, format: &str, ctx: &FormatContext) -> ArrayNode
 
 /// The TEXT array element for a text or boolean value: the format's text section applied to its
 /// text ("TRUE"/"FALSE" for a boolean).
-fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
-    match array_node_to_text(value) {
+fn text_value_node(value: &CalcResult, format: &str) -> ArrayNode {
+    match calc_result_to_text(value) {
         // The exact text, so a lone surrogate lands where `@` is (probes/text-lone-surrogates).
         Ok(text) => format_text_value_exact(&text, format)
             .map_or(ArrayNode::Error(Error::VALUE), ArrayNode::String),
@@ -150,154 +146,47 @@ fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
     }
 }
 
-/// The TEXT array element for one value: numbers and blanks by the number sections, text and
-/// booleans by the text section, an error element stays as it is.
-fn text_element(node: &ArrayNode, format: &str, ctx: &FormatContext) -> ArrayNode {
-    match node {
-        ArrayNode::Number(f) => text_node(Some(*f), format, ctx),
-        ArrayNode::Empty => text_node(None, format, ctx),
-        text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => text_value_node(text, format),
-        e @ ArrayNode::Error(_) => e.clone(),
+/// The TEXT element for one value: numbers and blanks by the number sections, text and booleans
+/// by the text section. An omitted value is 0, not a blank (`TEXT(,"General")`).
+fn text_element(value: &CalcResult, format: &str, ctx: &FormatContext) -> ArrayNode {
+    match value {
+        CalcResult::Number(f) => text_node(Some(*f), format, ctx),
+        CalcResult::EmptyArg => text_node(Some(0.0), format, ctx),
+        CalcResult::EmptyCell => text_node(None, format, ctx),
+        text @ (CalcResult::Boolean(_) | CalcResult::String(_)) => text_value_node(text, format),
+        CalcResult::Error { error, .. } => ArrayNode::Error(error.clone()),
+        CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+            ArrayNode::Error(Error::VALUE)
+        }
     }
-}
-
-/// TEXT of a scalar text or boolean value.
-fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) -> CalcResult {
-    match text_value_node(value, format) {
-        ArrayNode::String(s) => CalcResult::String(s),
-        _ => CalcResult::Error {
-            error: Error::VALUE,
-            origin: cell,
-            message: "Invalid format code".to_string(),
-        },
-    }
-}
-
-/// TEXT's `#VALUE!` for a format code it rejects (see [`rejects_format_code`]).
-fn rejected_format(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(
-        Error::VALUE,
-        cell,
-        "Format code too complex or unterminated".to_string(),
-    )
 }
 
 impl Model {
+    /// TEXT(value, format_text) lifts over a range or an array in either argument, one result
+    /// per element; each format has its own complexity check (probes/text-format-length-limit-f
+    /// A54:B54). The value's error wins over a bad or too complex format (number-formats.md), and
+    /// the format's error over a text value (error_broadcast.xlsx Sheet2!A1, `TEXT("x",NA())`).
     pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value_result = self.evaluate_node_in_context(&args[0], cell);
-        // Normalise a range to an array so both broadcast (spill) the same way.
-        let value_result = match value_result {
-            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                Ok(array) => CalcResult::Array(array),
-                Err(error) => return error,
-            },
-            other => other,
-        };
-        // The format is evaluated once: evaluating it again per path would make TEXT nested in
-        // the format argument exponential in its depth.
-        let format_result = match self.evaluate_node_in_context(&args[1], cell) {
-            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                Ok(array) => CalcResult::Array(array),
-                Err(error) => return error,
-            },
-            other => other,
-        };
-        // An array or range of format codes gives one result per format; each format has its own
-        // complexity check and an error element keeps its error (probes/text-format-length-limit-f
-        // A54:B54).
-        if let CalcResult::Array(formats) = format_result {
-            let value = match value_result {
-                CalcResult::Array(a) => TextArg::Array(a),
-                // An error value lifts over the formats like a scalar.
-                err @ CalcResult::Error { .. } => {
-                    TextArg::Error(calc_result_to_array_node(err.clone()), err)
-                }
-                other => TextArg::Scalar(calc_result_to_array_node(other)),
+        let ctx = self.format_context();
+        self.lift_call(Function::Text, args, cell, &mut |_, values| {
+            let [value, format] = values else {
+                return CalcResult::new_args_number_error(cell);
             };
-            let formats = TextArg::Array(formats);
-            let ctx = self.format_context();
-            return broadcast_text(cell, &[&value, &formats], |i, j| {
-                // An error value wins over a bad or too complex format (number-formats.md).
-                if let e @ ArrayNode::Error(_) = value.elem(i, j) {
-                    return Ok(e.clone());
-                }
-                let format_code = array_node_to_string(formats.elem(i, j))?;
-                if rejects_format_code(&format_code) {
-                    return Err(Error::VALUE);
-                }
-                Ok(text_element(value.elem(i, j), &format_code, &ctx))
-            });
-        }
-        let format_code = self.cast_to_string(format_result, cell);
-        match value_result {
-            CalcResult::Array(arr) => {
-                let format_code = match format_code {
-                    Ok(s) => s,
-                    // An error in every element; error elements keep theirs.
-                    Err(e) => return array_of_errors(&arr, e, own_error),
-                };
-                if rejects_format_code(&format_code) {
-                    return array_of_errors(&arr, rejected_format(cell), own_error);
-                }
-                let ctx = self.format_context();
-                CalcResult::Array(
-                    arr.iter()
-                        .map(|row| {
-                            row.iter()
-                                .map(|node| text_element(node, &format_code, &ctx))
-                                .collect()
-                        })
-                        .collect(),
-                )
+            if let error @ CalcResult::Error { .. } = value {
+                return error.clone();
             }
-            error @ CalcResult::Error { .. } => error,
-            other => {
-                // An error in the format wins, also for text (error_broadcast.xlsx Sheet2!A1).
-                let format_code = match format_code {
-                    Ok(s) => s,
-                    Err(s) => return s,
-                };
-                if rejects_format_code(&format_code) {
-                    return rejected_format(cell);
-                }
-                let is_blank = matches!(other, CalcResult::EmptyCell);
-                let value = match other {
-                    CalcResult::Number(f) => f,
-                    CalcResult::String(s) => {
-                        return text_value_result(&ArrayNode::String(s), &format_code, cell)
-                    }
-                    CalcResult::Boolean(b) => {
-                        return text_value_result(&ArrayNode::Boolean(b), &format_code, cell)
-                    }
-                    CalcResult::Range { .. } => {
-                        return CalcResult::Error {
-                            error: Error::NIMPL,
-                            origin: cell,
-                            message: "Implicit Intersection not implemented".to_string(),
-                        };
-                    }
-                    CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
-                    error @ CalcResult::Error { .. } => return error,
-                    CalcResult::Array(_) | CalcResult::Lambda(_) => unreachable!(),
-                };
-                let d = format_text(
-                    (!is_blank).then_some(value),
-                    &format_code,
-                    &self.format_context(),
-                );
-                if let Some(_e) = d.error {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Invalid format code".to_string(),
-                    };
-                }
-                CalcResult::String(d.text.into())
+            let format_code = match format {
+                error @ CalcResult::Error { .. } => return error.clone(),
+                format => match calc_result_to_text(format) {
+                    Ok(code) => code,
+                    Err(error) => return CalcResult::new_error(error, cell, String::new()),
+                },
+            };
+            if rejects_format_code(&format_code) {
+                return CalcResult::new_error(Error::VALUE, cell, String::new());
             }
-        }
+            text_result(&[], Ok(text_element(value, &format_code, &ctx)), cell)
+        })
     }
 
     /// `FIND(find_text`, `within_text`, [`start_num`])
@@ -327,45 +216,36 @@ impl Model {
         cell: CellReferenceIndex,
         is_search: bool,
     ) -> CalcResult {
-        if args.len() < 2 || args.len() > 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let find_text = match self.text_arg(&args[0], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let within_text = match self.text_arg(&args[1], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let start_num = if args.len() == 3 {
-            match self.text_arg(&args[2], cell) {
-                Ok(o) => o,
-                Err(e) => return e,
-            }
+        let kind = if is_search {
+            Function::Search
         } else {
-            TextArg::Scalar(ArrayNode::Number(1.0))
+            Function::Find
         };
-        broadcast_text(cell, &[&find_text, &within_text, &start_num], |i, j| {
+        self.lift_text(kind, args, cell, &mut |model, values| {
+            let [find_text, within_text, start_num @ ..] = values else {
+                return Err(Error::ERROR);
+            };
             find_element(
-                find_text.elem(i, j),
-                within_text.elem(i, j),
-                self.array_node_to_number(start_num.elem(i, j)),
+                find_text,
+                within_text,
+                model.optional_number(start_num.first(), 1.0),
                 is_search,
             )
         })
     }
 
+    /// A lifted text element's optional number argument: `default` when the call has none.
+    /// A written empty argument is there, and reads as 0 (`LEFT("abc",)` is "").
+    fn optional_number(&self, value: Option<&CalcResult>, default: f64) -> Result<f64, Error> {
+        value.map_or(Ok(default), |value| self.calc_result_to_number(value))
+    }
+
     // LEN, LEFT, RIGHT, MID, LOWER, UPPER, TRIM
     pub(crate) fn fn_len(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text], |i, j| len_element(text.elem(i, j)))
+        self.lift_text(Function::Len, args, cell, &mut |_, values| match values {
+            [text] => len_element(text),
+            _ => Err(Error::ERROR),
+        })
     }
 
     pub(crate) fn fn_trim(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -509,258 +389,129 @@ impl Model {
         })
     }
 
-    /// Evaluates an argument of a text function into a scalar value or a 2-D array of
-    /// values. References to a single cell collapse to a scalar; multi-cell ranges
-    /// and array literals/spills become arrays that the result is broadcast over.
-    pub(crate) fn text_arg(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<TextArg, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
-            err @ CalcResult::Error { .. } => {
-                Ok(TextArg::Error(calc_result_to_array_node(err.clone()), err))
-            }
-            CalcResult::Range { left, right } => {
-                Ok(TextArg::Array(self.evaluate_range(left, right, cell)?))
-            }
-            CalcResult::Array(a) => Ok(TextArg::Array(a)),
-            CalcResult::Lambda(_) => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expecting a value".to_string(),
-            )),
-            other => Ok(TextArg::Scalar(calc_result_to_array_node(other))),
-        }
-    }
-
     pub(crate) fn fn_left(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() > 2 || args.is_empty() {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let num = if args.len() == 2 {
-            match self.text_arg(&args[1], cell) {
-                Ok(o) => o,
-                Err(e) => return e,
-            }
-        } else {
-            TextArg::Scalar(ArrayNode::Number(1.0))
-        };
-        broadcast_text(cell, &[&text, &num], |i, j| {
-            left_element(text.elem(i, j), self.array_node_to_number(num.elem(i, j)))
+        self.lift_text(Function::Left, args, cell, &mut |model, values| {
+            let [text, num @ ..] = values else {
+                return Err(Error::ERROR);
+            };
+            left_element(text, model.optional_number(num.first(), 1.0))
         })
     }
 
     pub(crate) fn fn_right(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() > 2 || args.is_empty() {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let num = if args.len() == 2 {
-            match self.text_arg(&args[1], cell) {
-                Ok(o) => o,
-                Err(e) => return e,
-            }
-        } else {
-            TextArg::Scalar(ArrayNode::Number(1.0))
-        };
-        broadcast_text(cell, &[&text, &num], |i, j| {
-            right_element(text.elem(i, j), self.array_node_to_number(num.elem(i, j)))
+        self.lift_text(Function::Right, args, cell, &mut |model, values| {
+            let [text, num @ ..] = values else {
+                return Err(Error::ERROR);
+            };
+            right_element(text, model.optional_number(num.first(), 1.0))
         })
     }
 
     pub(crate) fn fn_mid(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let start = match self.text_arg(&args[1], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let length = match self.text_arg(&args[2], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text, &start, &length], |i, j| {
+        self.lift_text(Function::Mid, args, cell, &mut |model, values| {
+            let [text, start, length] = values else {
+                return Err(Error::ERROR);
+            };
             mid_element(
-                text.elem(i, j),
-                self.array_node_to_number(start.elem(i, j)),
-                self.array_node_to_number(length.elem(i, j)),
+                text,
+                model.calc_result_to_number(start),
+                model.calc_result_to_number(length),
             )
         })
     }
 
     // REPT(text, number_times)
     pub(crate) fn fn_rept(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let number_times = match self.text_arg(&args[1], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text, &number_times], |i, j| {
-            rept_element(
-                text.elem(i, j),
-                self.array_node_to_number(number_times.elem(i, j)),
-            )
+        self.lift_text(Function::Rept, args, cell, &mut |model, values| {
+            let [text, number_times] = values else {
+                return Err(Error::ERROR);
+            };
+            rept_element(text, model.calc_result_to_number(number_times))
         })
     }
 
     // SUBSTITUTE(text, old_text, new_text, [instance_num])
+    // Without an instance_num every instance is replaced.
     pub(crate) fn fn_substitute(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(3..=4).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let old_text = match self.text_arg(&args[1], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let new_text = match self.text_arg(&args[2], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        // Without it every instance is replaced
-        let instance_num = if arg_count > 3 {
-            match self.text_arg(&args[3], cell) {
-                Ok(o) => Some(o),
-                Err(e) => return e,
-            }
-        } else {
-            None
-        };
-        let mut operands = vec![&text, &old_text, &new_text];
-        if let Some(instance_num) = &instance_num {
-            operands.push(instance_num);
-        }
-        broadcast_text(cell, &operands, |i, j| {
+        self.lift_text(Function::Substitute, args, cell, &mut |model, values| {
+            let [text, old_text, new_text, instance_num @ ..] = values else {
+                return Err(Error::ERROR);
+            };
             substitute_element(
-                text.elem(i, j),
-                old_text.elem(i, j),
-                new_text.elem(i, j),
-                instance_num
-                    .as_ref()
-                    .map(|n| self.array_node_to_number(n.elem(i, j))),
+                text,
+                old_text,
+                new_text,
+                instance_num.first().map(|n| model.calc_result_to_number(n)),
             )
         })
     }
+
     // EXACT(text1, text2)
     // If any of the arguments is an array it compares element by element.
     pub(crate) fn fn_exact(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text1 = match self.text_arg(&args[0], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let text2 = match self.text_arg(&args[1], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text1, &text2], |i, j| {
-            exact_element(text1.elem(i, j), text2.elem(i, j))
-        })
-    }
-    // VALUE(text)
-    pub(crate) fn fn_value(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // Lifts over a range or array, each element read as a scalar argument: a blank is 0, a
-        // boolean or "" #VALUE! and an error stays (probes/value-argument-lift C1:C8, D1:D6;
-        // corpus-bench/42181 B14, T-1791).
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text], |i, j| match text.elem(i, j) {
-            ArrayNode::String(text) if number_text_too_long(text) => Err(Error::VALUE),
-            ArrayNode::String(text) => {
-                // VALUE trims spaces around date and clock text, unlike number coercion, but
-                // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
-                // (probes/date-text-grammar C7, value-clock-text B14, B44).
-                let text = text.trim_matches(' ');
-                // Clock text and date text with a clock suffix read as in number coercion,
-                // with surrounding spaces trimmed (probes/value-clock-text column B against C;
-                // date-text-grammar C30, C31, C53, C55, C63).
-                self.parse_number_text(text, &["$", "€"], &|| self.current_year())
-                    .map(ArrayNode::Number)
-                    .ok_or(Error::VALUE)
-            }
-            ArrayNode::Number(f) => Ok(ArrayNode::Number(*f)),
-            ArrayNode::Boolean(_) => Err(Error::VALUE),
-            ArrayNode::Error(e) => Err(e.clone()),
-            ArrayNode::Empty => Ok(ArrayNode::Number(0.0)),
+        self.lift_text(Function::Exact, args, cell, &mut |_, values| match values {
+            [text1, text2] => exact_element(text1, text2),
+            _ => Err(Error::ERROR),
         })
     }
 
-    // VALUETOTEXT(value, [format]) lifts over a range or array like LEN
-    // (probes/text-argument-modes F17:F19); an error element is spelled out.
+    // VALUE(text)
+    pub(crate) fn fn_value(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // Lifts over a range or array, each element read as a scalar argument: a blank is 0, a
+        // boolean or "" #VALUE! and an error stays (probes/value-argument-lift C1:C8, D1:D6;
+        // corpus-bench/42181 B14, T-1791).
+        self.lift_text(Function::Value, args, cell, &mut |model, values| {
+            let [text] = values else {
+                return Err(Error::ERROR);
+            };
+            match text {
+                CalcResult::String(text) if number_text_too_long(text) => Err(Error::VALUE),
+                CalcResult::String(text) => {
+                    // VALUE trims spaces around date and clock text, unlike number coercion, but
+                    // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
+                    // (probes/date-text-grammar C7, value-clock-text B14, B44).
+                    let text = text.trim_matches(' ');
+                    // Clock text and date text with a clock suffix read as in number coercion,
+                    // with surrounding spaces trimmed (probes/value-clock-text column B against
+                    // C; date-text-grammar C30, C31, C53, C55, C63).
+                    model
+                        .parse_number_text(text, &["$", "€"], &|| model.current_year())
+                        .map(ArrayNode::Number)
+                        .ok_or(Error::VALUE)
+                }
+                CalcResult::Number(f) => Ok(ArrayNode::Number(*f)),
+                CalcResult::Error { error, .. } => Err(error.clone()),
+                CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(ArrayNode::Number(0.0)),
+                CalcResult::Boolean(_)
+                | CalcResult::Range { .. }
+                | CalcResult::Array(_)
+                | CalcResult::Lambda(_) => Err(Error::VALUE),
+            }
+        })
+    }
+
+    // VALUETOTEXT(value, [format]) lifts over a range or array like LEN, the format too
+    // (probes/text-argument-modes F17:F19); an error value is spelled out, so it is not the
+    // result as an error argument of the other text functions is (probes/valuetotext-format C4).
     pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-        let format = match args.get(1) {
-            Some(node) => match self.text_arg(node, cell) {
-                Ok(TextArg::Error(_, error)) => return error,
-                Ok(f) => Some(f),
-                Err(e) => return e,
-            },
-            None => None,
-        };
-        // The format is lifted over arrays like the text; a scalar error text still prints as
-        // text (`C4`) unless the format is invalid.
-        let operands: Vec<&TextArg> = std::iter::once(&text).chain(format.as_ref()).collect();
-        let element = |i: usize, j: usize| {
-            let strict = format
-                .as_ref()
-                .map_or(Ok(false), |f| self.valuetotext_format(f.elem(i, j)))?;
-            Ok(ArrayNode::String(
-                value_to_text(text.elem(i, j), strict).into(),
-            ))
-        };
-        // A scalar error text prints as text, which `broadcast_text` would return as the error.
-        let scalar_format = format.as_ref().is_none_or(|f| f.dims() == (1, 1));
-        match &text {
-            TextArg::Error(..) if scalar_format => match element(0, 0) {
-                Ok(node) => array_node_to_calc_result(&node, cell),
-                Err(e) => CalcResult::new_error(e, cell, String::new()),
-            },
-            _ => broadcast_text(cell, &operands, element),
-        }
+        self.lift_call(Function::Valuetotext, args, cell, &mut |model, values| {
+            let [value, format @ ..] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let text = format
+                .first()
+                .map_or(Ok(false), |format| model.valuetotext_format(format))
+                .and_then(|strict| value_to_text(value, strict));
+            text_result(&[], text.map(|text| ArrayNode::String(text.into())), cell)
+        })
     }
 
     /// Whether VALUETOTEXT's `format` element selects the strict form (1, text quoted). Excel
     /// accepts a number in `[0, 2)` truncated (`1.9` is 1, `1E-20` is 0, `-0.5` and `2.5` are
     /// `#VALUE!`), a boolean, a number text and a blank (0); other text is `#VALUE!`
     /// (probes/valuetotext-format C9:C23, T-1229).
-    fn valuetotext_format(&self, node: &ArrayNode) -> Result<bool, Error> {
-        let f = self.array_node_to_number(node)?;
+    fn valuetotext_format(&self, format: &CalcResult) -> Result<bool, Error> {
+        let f = self.calc_result_to_number(format)?;
         if (0.0..2.0).contains(&f) {
             Ok(f >= 1.0)
         } else {
@@ -771,11 +522,11 @@ impl Model {
 
 /// The text VALUETOTEXT gives one element: an error spells out its code, and `strict` (format 1)
 /// quotes text with its embedded quotes doubled, `"a""b"` (probes/valuetotext-format C1:C7).
-fn value_to_text(node: &ArrayNode, strict: bool) -> String {
-    match node {
-        ArrayNode::Error(e) => e.to_string(),
-        ArrayNode::String(s) if strict => format!("\"{}\"", s.replace('"', "\"\"")),
-        other => array_node_to_string(other).unwrap_or_default(),
+fn value_to_text(value: &CalcResult, strict: bool) -> Result<String, Error> {
+    match value {
+        CalcResult::Error { error, .. } => Ok(error.to_string()),
+        CalcResult::String(s) if strict => Ok(format!("\"{}\"", s.replace('"', "\"\""))),
+        other => calc_result_to_string(other),
     }
 }
 
@@ -785,7 +536,7 @@ mod rept_tests {
 
     #[test]
     fn rept_element_rejects_non_finite_counts() {
-        let text = ArrayNode::String("a".into());
+        let text = CalcResult::String("a".into());
         for count in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             assert_eq!(rept_element(&text, Ok(count)), Err(Error::VALUE));
         }

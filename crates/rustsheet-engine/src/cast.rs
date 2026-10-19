@@ -109,6 +109,42 @@ pub(crate) fn array_node_to_text(node: &ArrayNode) -> Result<Cow<'_, Text>, Erro
     }
 }
 
+/// The text a scalar value reads as: a number as its text, a boolean as TRUE or FALSE, empty as
+/// "". `None` for an error, a range, an array or a LAMBDA.
+fn scalar_text(value: &CalcResult) -> Option<String> {
+    match value {
+        CalcResult::Number(f) => Some(number_to_text(*f)),
+        CalcResult::String(s) => Some((**s).to_owned()),
+        CalcResult::Boolean(f) => Some(if *f { "TRUE" } else { "FALSE" }.to_string()),
+        CalcResult::EmptyCell | CalcResult::EmptyArg => Some(String::new()),
+        CalcResult::Error { .. }
+        | CalcResult::Range { .. }
+        | CalcResult::Array(_)
+        | CalcResult::Lambda(_) => None,
+    }
+}
+
+/// A lifted kernel's value as text, as [`array_node_to_text`] reads an array element: a string
+/// is borrowed, not copied, a lone surrogate kept exactly; an error propagates, and a range, an
+/// array or a LAMBDA is `#VALUE!`.
+pub(crate) fn calc_result_to_text(value: &CalcResult) -> Result<Cow<'_, Text>, Error> {
+    match value {
+        CalcResult::String(s) => Ok(Cow::Borrowed(s)),
+        CalcResult::Error { error, .. } => Err(error.clone()),
+        other => scalar_text(other)
+            .map(|s| Cow::Owned(Text::from(s)))
+            .ok_or(Error::VALUE),
+    }
+}
+
+/// [`calc_result_to_text`], lossy: a lone surrogate is U+FFFD, as in [`array_node_to_string`].
+pub(crate) fn calc_result_to_string(value: &CalcResult) -> Result<String, Error> {
+    match value {
+        CalcResult::Error { error, .. } => Err(error.clone()),
+        other => scalar_text(other).ok_or(Error::VALUE),
+    }
+}
+
 /// Longest text Excel reads as a number or as clock text, counted in characters with any
 /// surrounding spaces: at 255 it parses, at 256 it is #VALUE! (docs/excel-semantics/numbers.md,
 /// probes/text-number-long-zero, probes/clock-text-length-limit).
@@ -135,6 +171,21 @@ impl Model {
             ArrayNode::Empty => Ok(0.0),
             ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
             ArrayNode::Error(e) => Err(e.clone()),
+        }
+    }
+
+    /// [`Model::array_node_to_number`] for a lifted kernel's value: an omitted argument is 0, as
+    /// a blank is, and a range, an array or a LAMBDA is `#VALUE!`.
+    pub(crate) fn calc_result_to_number(&self, value: &CalcResult) -> Result<f64, Error> {
+        match value {
+            CalcResult::Number(v) => Ok(*v),
+            CalcResult::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(0.0),
+            CalcResult::String(s) => self.cast_number(s).ok_or(Error::VALUE),
+            CalcResult::Error { error, .. } => Err(error.clone()),
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                Err(Error::VALUE)
+            }
         }
     }
 
@@ -655,14 +706,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<String, CalcResult> {
         match value {
-            CalcResult::Number(f) => Ok(number_to_text(*f)),
-            CalcResult::String(s) => Ok((**s).to_owned()),
-            CalcResult::Boolean(f) => Ok(if *f { "TRUE" } else { "FALSE" }.to_string()),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(String::new()),
             error @ CalcResult::Error { .. } => Err(error.clone()),
-            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                Err(not_a_scalar(cell))
-            }
+            other => scalar_text(other).ok_or_else(|| not_a_scalar(cell)),
         }
     }
 

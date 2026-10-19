@@ -16,6 +16,11 @@ const BETA_CDF: &str = "one statrs incomplete beta: at most 140 continued-fracti
 const ERF_KERNELS: &str =
     "erf kernels: fixed-degree rationals and one fixed-length excel_exp series";
 
+/// FIND's and SEARCH's cap: each start position of `within_text` is compared with `find_text`
+/// (SEARCH's `*` segments each take their leftmost match), so one element is at most the product
+/// of its two text lengths. TODO(T-1961): charge that product per element.
+const FIND_SCAN: &str = "at most len(within_text) x len(find_text) unit comparisons";
+
 /// The value-dependent kernels: each with the fixed cap that lets its entry be `Constant`, or
 /// `None` when it must be `Weighted` (a cap that grows with the values, or one not yet read).
 /// A function with no table entry yet is checked once it is entered.
@@ -69,6 +74,21 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     (
         Function::Seriessum,
         Some("one step per coefficient, charged per element as their cells (LiftCost::Cells)"),
+    ),
+    // The text kernels (T-1775): linear in their texts, as `broadcast_text` was, except the
+    // searches below. A text is at most 32,767 units in a cell, and a lifted call's results are
+    // bounded by the driver's 64 MiB text budget.
+    (Function::Find, Some(FIND_SCAN)),
+    (Function::Findb, Some(FIND_SCAN)),
+    (Function::Search, Some(FIND_SCAN)),
+    (Function::Searchb, Some(FIND_SCAN)),
+    (
+        Function::Substitute,
+        Some("one pass over the text; the result's length is checked before it is built"),
+    ),
+    (
+        Function::Rept,
+        Some("the result's length (at most 32,767 units) is checked before it is built"),
     ),
     // Weighted: solvers, searches, series and walks whose length the values set.
     (Function::Rate, None),

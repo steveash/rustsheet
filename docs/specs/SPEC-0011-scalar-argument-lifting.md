@@ -611,6 +611,17 @@ up to 2^20 periods and finishes in a closed form that can be a unit off the walk
 "AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
 elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
 
+As built (T-1775): the element-wise text functions are `Lift` entries (`lift/kinds/text.rs`), LEFT to VALUETOTEXT with
+their *B twins, CODE, UNICHAR, BAHTTEXT, FILTERXML, DATEVALUE, TIMEVALUE and CONCATENATE (`repeat: Lift` up to 255
+arguments). Their kernels go through `Model::lift_text` (`functions/text/text_kernel.rs`), which keeps `broadcast_text`'s
+first-failure rule (an error argument is the result only when it is the element's first failure, T-1022); TEXT and
+VALUETOTEXT, which order their own errors, call `lift_call` directly. The element functions read `&CalcResult` through the
+borrowing `cast::calc_result_to_text` and `Model::calc_result_to_number`, so an unlifted call copies no text. `TextArg` and
+`broadcast_text` are deleted. Three unprobed edges now follow the driver (a LAMBDA argument, a 1x1 array, VALUETOTEXT's
+scalar error format; text.md, T-1963). FIND and SEARCH are `Constant` with their scan named as the cap
+(`lift/tests/kernel_work.rs`); T-1961 charges it. The final grep finds two `bcast_get` loops the table above missed or
+another task owns: IMAGE's `image_grid` (information/offline_errors.rs, T-1962) and CHOOSE's `choose_array` (T-1810).
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and

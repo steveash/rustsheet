@@ -1,15 +1,15 @@
-use super::text_arg::{broadcast_text, TextArg};
 use crate::calc_result::Range;
 use crate::functions::util::array_node_to_calc_result;
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
-    cast::{array_node_to_string, array_node_to_text, StringOrArray, MAX_TEXT_UNITS},
+    cast::{array_node_to_string, calc_result_to_text, StringOrArray, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::Function,
     model::Model,
     text::Text,
 };
@@ -163,26 +163,15 @@ impl ConcatText {
 impl Model {
     /// CONCATENATE(text1, [text2], ...): joins text; array arguments lift element-wise.
     pub(crate) fn fn_concatenate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() {
-            return CalcResult::new_args_number_error(cell);
-        }
         // Array arguments lift element-wise (arrays.md "NOT and CONCATENATE lift over array
         // arguments"); with only scalars the result is the plain joined string.
-        let mut operands = Vec::with_capacity(args.len());
-        for arg in args {
-            match self.text_arg(arg, cell) {
-                Ok(operand) => operands.push(operand),
-                Err(error) => return error,
-            }
-        }
-        let operand_refs: Vec<&TextArg> = operands.iter().collect();
-        broadcast_text(cell, &operand_refs, |i, j| {
+        self.lift_text(Function::Concatenate, args, cell, &mut |_, values| {
             let mut joined = Text::default();
             // Once the limit has cut the text, the later arguments are still read (an error
             // argument wins) but cannot change it, so they are not appended and re-cut.
             let mut at_limit = false;
-            for operand in &operands {
-                let piece = array_node_to_text(operand.elem(i, j))?;
+            for value in values {
+                let piece = calc_result_to_text(value)?;
                 if !at_limit {
                     joined.push(&piece);
                     at_limit = joined.truncate_utf16(MAX_TEXT_UNITS);

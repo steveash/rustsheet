@@ -15,6 +15,6 @@ mod regex_functions;
 mod regex_replacement;
 mod string_format;
 mod t_function;
-pub(crate) mod text_arg;
+mod text_kernel;
 mod textsplit;
 pub(super) mod util;

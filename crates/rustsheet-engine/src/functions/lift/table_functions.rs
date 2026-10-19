@@ -293,6 +293,35 @@ macro_rules! lifting_table_functions {
             | Function::Mround
             | Function::Sqrtpi
             // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
+            // --- Text lifts (T-1775) ---
+            | Function::Len
+            | Function::Lenb
+            | Function::Value
+            | Function::Code
+            | Function::Unichar
+            | Function::Bahttext
+            | Function::Datevalue
+            | Function::Timevalue
+            | Function::Left
+            | Function::Leftb
+            | Function::Right
+            | Function::Rightb
+            | Function::Valuetotext
+            | Function::Rept
+            | Function::Exact
+            | Function::Text
+            | Function::Filterxml
+            | Function::Find
+            | Function::Findb
+            | Function::Search
+            | Function::Searchb
+            | Function::Mid
+            | Function::Midb
+            | Function::Substitute
+            | Function::Replace
+            | Function::Replaceb
+            | Function::Concatenate
+            // --- End text lifts (T-1775) ---
     };
 }
 pub(crate) use lifting_table_functions;

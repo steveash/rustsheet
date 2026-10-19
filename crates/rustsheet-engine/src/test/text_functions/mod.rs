@@ -17,6 +17,7 @@ mod fn_textsplit;
 mod fn_unicode;
 mod fn_utf16_positions;
 mod fn_valuetotext;
+mod lift_driver;
 mod textsplit_bound;
 
 use crate::test::util::new_empty_model;

@@ -4,7 +4,7 @@
 
 use super::ArgKind::{Lift, WholeByCaller};
 use super::KernelWork::{Constant, Weighted};
-use super::{ArgKinds, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
+use super::{ArgKinds, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_4, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
 use crate::functions::Function;
 
 /// A data argument its function reads itself, then one lifted worksheet argument:
@@ -14,8 +14,6 @@ const DATA_THEN_1: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift], Constan
 const DATA_THEN_1_OF_2: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift], Constant);
 
 // --- Statistical (T-1290) -------------------------------------------------------------------
-/// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])`.
-const LIFT_3_OF_4: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Constant);
 /// `BINOM.INV(trials, probability_s, alpha)` and CRITBINOM: a search that halves `[0, trials]`
 /// (a `u64`) at most 64 times, its own per-call cap (`statistical/binom.rs`), with one statrs
 /// incomplete-beta cdf (up to 140 continued-fraction steps) each. Measured in release: up to

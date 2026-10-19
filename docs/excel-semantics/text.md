@@ -4,7 +4,7 @@
 Rule: a text function broadcast over arrays (LEFT, REPT, SUBSTITUTE, ...) returns a single scalar `#VALUE!` (no spill) once the total bytes of its string results exceed 64 MiB, to bound allocation on untrusted input (CLAUDE.md directive 5). A broadcast whose shape is above 1,048,576 cells is refused with `#ERROR!` before any element is computed, so that bound takes precedence over this one (arrays.md "Array results above 1,048,576 cells", T-1771). Excel's behavior (expected, not measured): compute the whole array, limited only by memory and the 32,767-char per-cell limit. Ours differs on legitimate data too: the budget counts UTF-8 bytes (not Excel's UTF-16 characters, so CJK text hits it about 3x sooner in characters), and a full-column text formula such as `=UPPER(A:A)` over ~65-char strings exceeds 64 MiB and returns `#VALUE!` where Excel spills normally.
 Evidence: none for Excel's behavior; this is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by functions/text/common.rs (`broadcast_text`), the lift driver and FORMULATEXT over a range
+Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by the lift driver (functions/lift/driver.rs, which runs the element-wise text functions since T-1775) and FORMULATEXT over a range
 
 ## Text functions broadcast over array arguments
 Rule: EXACT, FIND, LEN, REPT, SEARCH, SUBSTITUTE, TRIM, CLEAN, PROPER and REPLACE lift element-wise over
@@ -657,11 +657,23 @@ its function as an array and `ARRAYTOTEXT` of it is "" (probes/groupby-blank-val
 Evidence: probes/arraytotext-empty-ref A1-A25 (excel-graph, 2026-10-17, T-1718).
 Status: VERIFIED (excel-graph). Implemented in: `fn_arraytotext`. Tasks: T-1718
 
+## Element-wise text functions on the lift driver: a LAMBDA, a 1x1 array, VALUETOTEXT's error format (T-1775)
+Rule (the engine's, unprobed): since the element-wise text functions (LEFT/RIGHT/MID and their *B twins, LEN/LENB, FIND/SEARCH, REPT, SUBSTITUTE, REPLACE, EXACT, TEXT, VALUE, VALUETOTEXT, CODE, UNICHAR, BAHTTEXT, FILTERXML, CONCATENATE, DATEVALUE, TIMEVALUE) lift through the SPEC-0011 driver, three edges follow the driver's rule rather than the old `broadcast_text`'s:
+- a LAMBDA argument is `#VALUE!` in its own position, so an earlier argument's error comes first (`LEFT(NA(),LAMBDA(x,x))` is `#N/A`, was `#VALUE!`) and an array argument keeps its shape (`COLUMNS(LEFT({"a","b"},LAMBDA(x,x)))` is 2, was one `#VALUE!`);
+- a 1x1 array argument gives a 1x1 array, as in every other lifted family and in TEXTSPLIT ("TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift ..." above): `TYPE(LEFT({"abc"},2))` is 64, `ARRAYTOTEXT(MID({"abc"},"x",NA()),1)` "{#VALUE!}" (was 2 and `#VALUE!`). A one-cell range is still its cell's value (`TYPE(LEFT(A1:A1,2))` is 2);
+- VALUETOTEXT with an array value and a scalar error format is an array of that error, one per element (was the one error).
+A legacy (pre-dynamic-array) `RIGHT(A1:A3)` now gets the implicit-intersection `@`: the old hand-written static arm wanted two arguments, the table says one or two (`RIGHT(text, [num_chars])`), as LEFT's arm did.
+The probed behaviour is unchanged (error precedence, the broadcast padding, the size and text bounds; eval 0 fixes, 0 regressions).
+Evidence: none for these edges (crates/rustsheet-engine/src/test/text_functions/lift_driver.rs pins the engine's values).
+Status: UNVERIFIED (probe pending, T-1963)
+Implemented in: `Model::lift_text` (functions/text/text_kernel.rs), the text table entries (functions/lift/kinds/text.rs).
+Tasks: T-1775, T-1963
+
 ## VALUE lifts over a range or an array (T-1791)
 Rule: VALUE lifts over a multi-cell range or an array, each element read as a scalar argument: text converts as in scalar VALUE (`"1 "` is 1, `" $2 "` 2, `"1/2/2020"` 43832, `" 3%"` 0.03), a number stays, a blank cell is 0, a boolean or `""` is `#VALUE!` and an error stays (`VALUE(A1:A8)` spills 8 rows). So `{=SUM(IFERROR(VALUE(LEFT(range,FIND(...)-1)),0))}` adds the numbers in front of the found text (corpus-bench/42181 B14 is 3).
 Not probed: a multi-cell range in a legacy (non-dynamic-array) cell, which takes the implicit intersection of the other lifted text functions.
 Evidence: probes/value-argument-lift (excel-graph, 2026-10-18); corpus-bench/42181 B14 (Excel cached value).
-Implemented in: `fn_value` (functions/text/common.rs), through `text_arg` and `broadcast_text`.
+Implemented in: `fn_value` (functions/text/common.rs), through the lift driver (`Model::lift_text`, T-1775).
 Status: VERIFIED (excel-graph)
 Tasks: T-1791
 

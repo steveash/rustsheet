@@ -1,14 +1,14 @@
 // CHAR, CODE, UNICHAR, CLEAN, ASC
 
-use super::text_arg::broadcast_text;
 use crate::{
     calc_result::CalcResult,
-    cast::array_node_to_string,
+    cast::calc_result_to_string,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::Function,
     model::Model,
 };
 
@@ -105,15 +105,11 @@ impl Model {
     /// CODE(text) — Returns the Windows-1252 numeric code for the first character of text.
     /// Lifts over a range or array argument (probes/text-argument-modes F5:F6).
     pub(crate) fn fn_code(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text], |i, j| {
-            let s = array_node_to_string(text.elem(i, j))?;
+        self.lift_text(Function::Code, args, cell, &mut |_, values| {
+            let [text] = values else {
+                return Err(Error::ERROR);
+            };
+            let s = calc_result_to_string(text)?;
             let c = s.chars().next().ok_or(Error::VALUE)?;
             // Excel: a character outside Windows-1252 gives 63, the code of "?"
             // (docs/excel-semantics/text.md#clean-and-code-scalar-edges).
@@ -127,15 +123,11 @@ impl Model {
     /// noncharacter (U+FDD0..U+FDEF, U+xxFFFE, U+xxFFFF) is `#N/A`
     /// (docs/excel-semantics/text.md#unichar-code-point-bounds).
     pub(crate) fn fn_unichar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let number = match self.text_arg(&args[0], cell) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&number], |i, j| {
-            let n = self.array_node_to_number(number.elem(i, j))?.trunc();
+        self.lift_text(Function::Unichar, args, cell, &mut |model, values| {
+            let [number] = values else {
+                return Err(Error::ERROR);
+            };
+            let n = model.calc_result_to_number(number)?.trunc();
             if !(1.0..=f64::from(char::MAX as u32)).contains(&n) {
                 return Err(Error::VALUE);
             }

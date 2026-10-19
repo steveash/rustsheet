@@ -1,12 +1,13 @@
 // BAHTTEXT
 
-use super::text_arg::broadcast_text;
 use crate::{
     calc_result::CalcResult,
     expressions::{
         parser::{ArrayNode, Node},
+        token::Error,
         types::CellReferenceIndex,
     },
+    functions::Function,
     model::Model,
     number_format::significant_15,
 };
@@ -147,15 +148,11 @@ impl Model {
     /// (probes/text-bahttext-form4, -form5) and coerces its argument like a number: text
     /// "5" and TRUE work, "abc" and "" are `#VALUE!`, an empty cell is 0.
     pub(crate) fn fn_bahttext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let number = match self.text_arg(&args[0], cell) {
-            Ok(n) => n,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&number], |i, j| {
-            let v = self.array_node_to_number(number.elem(i, j))?;
+        self.lift_text(Function::Bahttext, args, cell, &mut |model, values| {
+            let [number] = values else {
+                return Err(Error::ERROR);
+            };
+            let v = model.calc_result_to_number(number)?;
             Ok(ArrayNode::String(baht_text(v).into()))
         })
     }
