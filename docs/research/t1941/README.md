@@ -74,6 +74,11 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - Checker: `gamma_neg_check.py` (half-integers of both signs, plus the reflection; signs checked).
   - Small |x| (-9.87, -2.25, -1.73, -0.31) does not reflect; it presumably recurs up to G on [1,2). `h104`
     locates the cut.
+- **GAMMA for 0 < x < 1 is fl(fl(1/x) * G(fl(x+1))) (W4, verified by the coordinator).** On `kmyst-gam-u101/u102`,
+  D = fl(fl(1/x)*E), with E = Excel's GAMMA(x+1), holds on 18,431 of 18,432 points.
+  - The one miss is x = 0.5+1ulp. There fl(x+1) = 1.5 exactly, so the E column takes the half-integer special path,
+    while GAMMA(x) itself uses G(1.5). It is not a model miss.
+  - (-1,0) does not follow this identity: 8,197 of 14,336. W3 is on the negative paths.
 - **GAMMA for 1 <= x < 10 reduces to [1,2), not Cephes's [2,3) (W4, verified by the coordinator).**
   y = x; z = 1; while (y >= 2) { y = y - 1; z = fl(z*y); }  GAMMA = fl(z * G(y)), with G = Excel's GAMMA on [1,2).
   The product runs descending, (x-1)(x-2)..., each step stored.
