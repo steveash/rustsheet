@@ -618,6 +618,7 @@ C	probes/pivotby-col-subtotals-values3.case.json	1080
 C	probes/pivotby-followup.case.json	3124
 C	probes/pivotby-moved-cells-relative-sets.case.json	1460
 C	probes/pivotby-total-columns-one-group.case.json	172
+C	probes/pmt-overflow.case.json	40
 C	probes/power-chain-text.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/product-array-2d-and-scalar.case.json	21
