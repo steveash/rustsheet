@@ -266,6 +266,7 @@ C	probes/encodeurl-evidence-floor.case.json	29
 C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
 C	probes/eng-first-vs-second-error.case.json	44
+C	probes/eng-gen-sample-edges.case.json	89
 C	probes/eng-im-overflow.case.json	48
 C	probes/eng-imdiv.case.json	24
 C	probes/eng-impower-angle-cut.case.json	19

@@ -216,7 +216,7 @@ row-major order inside a range or array, and the first bad item is the result.
 - A blank cell is 0, also one past the used area: `IMPRODUCT(M1:M2,Q1:Q3)` is "0" and `IMSUM(M1:M2,Q1:Q3)` "4+2i".
   An empty argument is skipped, not 0: `IMPRODUCT(M1,)` is "1+2i".
 - Empty text is `#NUM!`, typed (`IMSUM(M1,"")`), from a formula (M9 `=""`) and in an array
-  (`IMPRODUCT({"1+2i",""})`), unlike the one-argument IM* functions that read it as 0.
+  (`IMPRODUCT({"1+2i",""})`), as in every one-argument IM* function ("Engineering edge cases from a generated sample (T-1385)").
 - The first bad item wins, whatever its kind: `IMSUM(M5,M4)` ("x", TRUE) is `#NUM!` and `IMSUM(M4,M5)` `#VALUE!`;
   `IMSUM(M5,M7)` is `#NUM!` and `IMSUM(M7,M5)` `#DIV/0!` (M7 `=1/0`); `IMSUM({"x",TRUE})` is `#NUM!` and
   `IMSUM("x",NA())` `#NUM!`. A blank does not stop the walk: `IMPRODUCT(M1:M3,M5)` is `#NUM!`.
@@ -269,7 +269,7 @@ The T-1085 gen-m9 sample suggested seven differences; a one-question probe of ea
   `CONVERT(FALSE,"m","m")`, a TRUE array element and `CONVERT(<TRUE cell>,"xyz","m")` are `#VALUE!`
   (A8, A11:A14). The sample's other CONVERT hypothesis was wrong: a numeric text with an unknown unit
   is `#N/A` (`CONVERT("2.5","ft","xyz")`, A1), non-numeric text is `#VALUE!` whatever the units (A2,
-  A4, A6, A7), and a blank or `""` number is 0 (A15, A16).
+  A4, A6, A7); a blank cell is 0 (A15) and `""` is `#VALUE!` (A16).
 - **Not differences** (the sample's formulas misled): DELTA's and GESTEP's second-argument error
   wins, as T-1816 already implements (B1, B2); a boolean cell in DELTA and GESTEP is `#VALUE!` (B3,
   B4, B6, B7), which ours already gave; and BITAND reads a boolean, typed or in a cell, as its number
