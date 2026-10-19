@@ -1,0 +1,18 @@
+start chi2 923.2 (runs 499)
+  N0 move +252 ulps -> chi2 694.4
+  N1 move +12 ulps -> chi2 671.8
+  N2 move +1 ulps -> chi2 659.9
+  N5 move -2 ulps -> chi2 600.9
+  N7 move -2 ulps -> chi2 590.2
+  N8 move +3 ulps -> chi2 585.7
+  D2 move +1 ulps -> chi2 577.1
+  D7 move +4 ulps -> chi2 572.3
+  D8 move -4 ulps -> chi2 571.7
+ sweep 0 chi2 571.7
+  N7 move -4 ulps -> chi2 568.0
+  N8 move +2 ulps -> chi2 566.9
+  D7 move +1 ulps -> chi2 564.0
+  D8 move +2 ulps -> chi2 563.8
+ sweep 1 chi2 563.8
+moves vs c5: {('N', 0): 252, ('N', 1): 12, ('N', 2): 1, ('N', 5): -2, ('N', 7): -6, ('N', 8): 5} {('D', 2): 1, ('D', 7): 5, ('D', 8): -2}
+exact: c5 far 0.2462 near 0.4907 -> far 0.2661 near 0.4633

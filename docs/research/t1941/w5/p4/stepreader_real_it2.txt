@@ -1,0 +1,47 @@
+0.7303 N.S1         target step -0.074 +- 0.085 | 1394/4097 consistent | c5 (j=0) ok
+0.7413 D.S3         target step -0.015 +- 0.065 | 1686/4097 consistent | c5 (j=0) ok
+0.7513 N.P1         target step -0.026 +- 0.037 |  712/4097 consistent | c5 (j=0) ok
+0.7872 N.P2         target step +0.050 +- 0.088 | 1435/4097 consistent | c5 (j=0) ok
+0.7892 D.P8         target step +0.030 +- 0.091 | 4097/4097 consistent | c5 (j=0) ok
+0.7929 N.S5         target step -0.041 +- 0.086 | 3388/4097 consistent | c5 (j=0) ok
+0.8326 N.P8         target step +0.102 +- 0.091 | 4097/4097 consistent | c5 (j=0) ok
+0.8619 D.P2         target step +0.130 +- 0.065 | 1664/4097 consistent | c5 (j=0) ok
+0.8783 D.S1         target step -0.002 +- 0.083 | 2038/4097 consistent | c5 (j=0) ok
+0.8806 D.P1         target step -0.016 +- 0.062 | 2033/4097 consistent | c5 (j=0) ok
+0.9028 N.P4         target step +0.013 +- 0.026 |  156/4097 consistent | c5 (j=0) ok
+0.9785 D.S4         target step +0.098 +- 0.084 | 3620/4097 consistent | c5 (j=0) ok
+1.0407 D.P7         target step -0.036 +- 0.020 | 3270/4097 consistent | c5 (j=0) ok
+1.0617 D.P4         target step +0.009 +- 0.051 | 4073/4097 consistent | c5 (j=0) ok
+1.0678 N.S0+N.P0    target step +0.008 +- 0.085 | 1023/4097 consistent | c5 (j=0) ok
+1.1067 D.S1+D.P1    target step -0.043 +- 0.063 | 1017/4097 consistent | c5 (j=0) ok
+1.1168 N.S1         target step -0.008 +- 0.091 | 2036/4097 consistent | c5 (j=0) ok
+1.1250 N.P5         target step +0.109 +- 0.065 | 2116/4097 consistent | c5 (j=0) ok
+1.1360 N.P1         target step +0.105 +- 0.089 | 1923/4097 consistent | c5 (j=0) ok
+1.1593 N.S4         target step -0.075 +- 0.073 |  592/4097 consistent | c5 (j=0) ok
+1.1854 D.P2         target step -0.027 +- 0.094 | 1979/4097 consistent | c5 (j=0) ok
+1.2274 N.P3         target step -0.082 +- 0.066 |  905/4097 consistent | c5 (j=0) ok
+1.3339 N.S4         target step -0.065 +- 0.090 |  287/4097 consistent | c5 (j=0) ok
+1.3422 D.S3         target step -0.012 +- 0.071 | 2111/4097 consistent | c5 (j=0) ok
+1.3703 D.S1+D.P1    target step -0.068 +- 0.097 | 2053/4097 consistent | c5 (j=0) ok
+1.3773 N.P3         target step +0.010 +- 0.106 |  750/4097 consistent | c5 (j=0) ok
+1.4345 N.P3         target step -0.074 +- 0.071 |  255/4097 consistent | c5 (j=0) ok
+1.4490 N.S4         target step +0.059 +- 0.070 |  295/4097 consistent | c5 (j=0) ok
+1.4604 N.P3         target step +0.067 +- 0.069 |  722/4097 consistent | c5 (j=0) ok
+1.4671 N.S4         target step +0.041 +- 0.068 |  176/4097 consistent | c5 (j=0) ok
+
+per-stage intersection of consistent moves (j in ulps of the constant):
+  N1: 4 crossings -> 154 consistent j e.g. [-835, -834, -833, -832, -831, -830, -829, -771, -770, -769]  (c5 j=0 in)
+  D3: 2 crossings -> 1000 consistent j e.g. [-1052, -1046, -1030, -1020, -1009, -1008, -998, -992, -989, -981]  (c5 j=0 in)
+  N2: 1 crossings -> 1435 consistent j e.g. [-1495, -1423, -1419, -1363, -1347, -1343, -1339, -1327, -1307, -1291]  (c5 j=0 in)
+  D8: 1 crossings -> 4097 consistent j e.g. [-2048, -2047, -2046, -2045, -2044, -2043, -2042, -2041, -2040, -2039]  (c5 j=0 in)
+  N5: 2 crossings -> 2114 consistent j e.g. [-1270, -1222, -1214, -1126, -1094, -1086, -1078, -1062, -1054, -1046]  (c5 j=0 in)
+  N8: 1 crossings -> 4097 consistent j e.g. [-2048, -2047, -2046, -2045, -2044, -2043, -2042, -2041, -2040, -2039]  (c5 j=0 in)
+  D2: 2 crossings -> 767 consistent j e.g. [-1995, -1994, -1993, -1992, -1991, -1990, -1989, -1931, -1930, -1929]  (c5 j=0 in)
+  D1: 4 crossings -> 255 consistent j e.g. [-2048, -2047, -2046, -2045, -2044, -2043, -2042, -2041, -2040, -2039]  (c5 j=0 in)
+  N4: 5 crossings -> 125 consistent j e.g. [-63, -60, -57, -56, -55, -53, -50, -49, -48, -47]  (c5 j=0 in)
+  D4: 2 crossings -> 3599 consistent j e.g. [-2048, -2047, -2046, -2045, -2044, -2043, -2042, -2041, -2040, -2037]  (c5 j=0 in)
+  D7: 1 crossings -> 3270 consistent j e.g. [-2048, -2047, -2046, -2045, -2044, -2043, -2042, -2041, -2040, -2039]  (c5 j=0 in)
+  N0: 1 crossings -> 1023 consistent j e.g. [-2048, -2047, -2046, -2045, -2044, -2043, -2042, -2041, -2040, -2039]  (c5 j=0 in)
+  N3: 4 crossings -> 242 consistent j e.g. [-190, -187, -169, -168, -166, -159, -158, -157, -156, -154]  (c5 j=0 in)
+
+nearest consistent moves per stage:
