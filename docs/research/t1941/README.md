@@ -58,6 +58,11 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
     near x = 150.
   - Special paths: integers n <= 88 take the downward product (n-1)(n-2)...2. Exact half-integers m+0.5 >= 10.5
     take another, more accurate path (unsolved, W3). The cut is exactly x >= 10.
+- **GAMMA at exact positive half-integers is bit-exact (W3, verified by the coordinator).** Exact equality
+  x == floor(x) + 0.5 triggers it: p = 1; for k = 0.5, 1.5, ..., x-1 ascending, p = fl(p*k); then
+  GAMMA = fl(p * 0x1.c5bf891b4ef6bp+0), sqrt(pi) as a double. That is 172 of 172 points, x = 0.5 to 171.5
+  (`kmyst-gam-h101` and t1042-gamma-half-int). The neighbours at +-1 ulp take the large-x path. Descending
+  order, sqrt(pi) first, or a 64-bit product all fail (33-58 of 172). Negative half-integers are open.
 - **GAMMA (W4, structure).** It follows Cephes `gamma`: the downward product while x >= 3, division while x < 2,
   then fl(fl(z*P(t))/Q(t)) on [2,3). It is bit-exact at x near 1.37e-9. Excel's P/Q coefficients are its own,
   running 5-9e-17 above Gamma.
