@@ -3,7 +3,7 @@ id: T-2011
 title: "Typed bare clock with a single-letter A or P suffix and a trailing dot (10:00 A, 1/2/2020 10:00 A.) is a number"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
