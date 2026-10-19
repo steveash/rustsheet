@@ -3,7 +3,7 @@ id: T-1976
 title: "2-argument SUMIF/AVERAGEIF evaluate their shared range argument once"
 milestone: M2
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,8 @@ probes/ifs-volatile-range-once). Only observable with a volatile range whose ori
 
 ## Out of scope
 - The 3-argument forms (already evaluated once since T-0408).
+
+## Outcome
+Probe `probes/sumif-averageif-two-arg-range-once` (40 draws per function, excel-graph oracle) failed before and
+passes now: the 2-argument SUMIF/AVERAGEIF share one evaluation of their range (`IfsShape::ResizedSelf`, replacing
+`strict_shape: bool`). Eval: 2 new passing cells, no regressions.

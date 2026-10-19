@@ -225,6 +225,10 @@ When an array criterion lifts an *IF(S) call, a volatile range argument (`OFFSET
 Evidence: probes/ifs-volatile-range-once (excel-graph) C1-C3, where 8 always-true criteria over such a range give
 MAX = MIN for COUNTIFS, SUMIF (volatile criteria range) and COUNTIF (INDIRECT); C4, every element agrees on the
 COUNTIFS shape check between two independently drawn ranges. Ours resolves the ranges before the lift (T-0408).
+The 2-argument SUMIF and AVERAGEIF, whose one range is both criteria range and sum range, evaluate it once too: over
+`OFFSET($A$1,RANDBETWEEN(0,5),0,1)` with A1:A6 = 1,2,2,2,2,2 and the criterion `"=1"`, 40 draws never give 2
+(a second draw for the sum role would read a 2 after a match at row 1). Evidence:
+probes/sumif-averageif-two-arg-range-once F1, F2 (excel-graph, 2026-10-19, T-1976). Ours: `IfsShape::ResizedSelf`.
 
 ## SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS: every range must have the first range's shape
 Rule: if any criteria (or sum) range is shaped differently from the first range, SUMIFS/COUNTIFS
