@@ -19,6 +19,7 @@ T-1912 found (excel-graph, 2026-10-18) that Excel accepts `_RS_LEGACY_N`, `_RS_L
 ## Acceptance criteria
 - [ ] A unit test with a LAMBDA name of the old spelling `_RS_LEGACY_N` shows `=_RS_LEGACY_N(1)` calls the name (17-style result), and legacy N/T round-trips through R1C1 text and old `.ic` files still reload.
 - [ ] The chosen spelling has its own oracle-confirmed refusal evidence before it ships (lowercase `r`/`c`, single `C` and a 255-character name were not probed in T-1912; a 255-character name is accepted).
+- [ ] probes/legacy-marker-spelling-name-plain Sheet1!A1 and A2 (`=_RS_LEGACY_N(1)`, `=_RS_LEGACY_T(1)`, Excel 17) pass; the baseline shrinks.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
