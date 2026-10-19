@@ -3,7 +3,7 @@ id: T-1986
 title: "Match the cell format of typed date text whose clock is rejected (13:00 PM gets m/d/yyyy)"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
