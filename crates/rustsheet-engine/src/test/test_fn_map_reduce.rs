@@ -479,3 +479,93 @@ fn map_and_scan_elements_that_are_ranges_still_read_their_cells() {
     assert_eq!(model._get_text("G1"), "#CIRC!");
     assert_eq!(model._get_text("H1"), "#CIRC!");
 }
+
+// ── LAMBDAs that outlive their call (T-0439) ─────────────────────────────────
+
+#[test]
+fn closures_read_the_values_their_outer_names_had_when_made() {
+    // probes/lambda-escaping-closures, excel-graph: an accumulator LAMBDA made in each REDUCE
+    // step, a LET-bound curried call, and a captured name shadowed or rebound later.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set(
+        "B1",
+        "=LET(g,REDUCE(LAMBDA(z,z),{1,2,3},LAMBDA(f,x,LAMBDA(z,f(z)*10+x))),g(0))",
+    );
+    model._set("B2", "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),plus,mk(5),plus(1))");
+    model._set(
+        "B3",
+        "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),fa,mk(1),fb,mk(100),fa(0)+fb(0)*1000)",
+    );
+    model._set("B4", "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1),a,50,f(0))");
+    model._set("B5", "=LET(a,1,f,LAMBDA(b,a+b),LET(a,2,f(0)))");
+    model._set(
+        "B6",
+        "=LET(g,REDUCE(LAMBDA(z,z),{1,2,3},LAMBDA(f,x,LAMBDA(z,f(z)+x))),MAP({10,20},g))",
+    );
+    model._set(
+        "B8",
+        "=LET(x,10,mk,LAMBDA(a,LAMBDA(b,a+b+x)),f,mk(1),f(100))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "123");
+    assert_eq!(model._get_text("B2"), "6");
+    assert_eq!(model._get_text("B3"), "100001");
+    assert_eq!(model._get_text("B4"), "1");
+    assert_eq!(model._get_text("B5"), "1");
+    assert_eq!(model._get_text("B6"), "16");
+    assert_eq!(model._get_text("C6"), "26");
+    assert_eq!(model._get_text("B8"), "111");
+}
+
+#[test]
+fn closures_keep_captured_references_unions_and_errors() {
+    // probes/lambda-escaping-closures H11, H12, H19, H23, H24: a captured reference stays one.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set(
+        "B1",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,INDEX(r,i))),f,mk(A1:A3),f(2))",
+    );
+    model._set(
+        "B2",
+        "=LET(mk,LAMBDA(r,LAMBDA(z,ISREF(r))),f,mk(A1:A3),f(0))",
+    );
+    model._set("B3", "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1/0),f(1))");
+    model._set(
+        "B4",
+        "=LET(mk,LAMBDA(r,LAMBDA(z,AREAS(r))),f,mk((A1,A2)),f(0))",
+    );
+    model._set(
+        "B5",
+        "=LET(mk,LAMBDA(r,LAMBDA(z,SUM(r)+z)),f,mk((A1,A3)),f(0))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("B2"), "TRUE");
+    assert_eq!(model._get_text("B3"), "#DIV/0!");
+    assert_eq!(model._get_text("B4"), "2");
+    assert_eq!(model._get_text("B5"), "4");
+}
+
+#[test]
+fn a_closure_called_many_times_and_recursively_keeps_its_captures() {
+    // Each call binds what the closure captured and unbinds it after, so the next call (MAP over
+    // 1,000 elements) and a call of the same closure inside one (through REDUCE's chain) see it.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LET(mk,LAMBDA(k,LAMBDA(v,v*k)),f,mk(3),SUM(MAP(SEQUENCE(1000),f)))",
+    );
+    model._set(
+        "A2",
+        "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(50),LAMBDA(f,x,LAMBDA(z,f(z)+x))),g(0)+g(1))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1501500");
+    assert_eq!(model._get_text("A2"), "2551");
+}

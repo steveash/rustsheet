@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
-use crate::functions::logical::{NamedLambdas, SharedLambda};
+use crate::functions::logical::{Captures, NamedLambdas, SharedLambda};
 use crate::{
     calc_result::{CalcResult, Range},
     cell::{spill_value_to_calc_result, CellValue},
@@ -164,6 +164,9 @@ pub struct Model {
     pub(crate) eta_lambdas: HashMap<usize, crate::functions::Function>,
     /// The defined-name LAMBDAs called in this evaluation, keyed by the same ids as `lambdas`.
     pub(crate) named_lambdas: NamedLambdas,
+    /// What each LAMBDA made inside a LET or a LAMBDA call captured of the variables in scope
+    /// (`Model::store_closure`), keyed by the same ids as `lambdas`.
+    pub(crate) lambda_captures: HashMap<usize, Captures>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
@@ -240,6 +243,7 @@ impl Model {
         self.lambdas.clear();
         self.eta_lambdas.clear();
         self.named_lambdas = NamedLambdas::default();
+        self.lambda_captures.clear();
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
@@ -768,7 +772,7 @@ impl Model {
             }
             LambdaDefKind { parameters, body } => {
                 let definition = Arc::new((parameters.clone(), *body.clone()));
-                CalcResult::Lambda(self.store_lambda(definition))
+                CalcResult::Lambda(self.store_closure(definition))
             }
             LambdaCallKind { lambda, args } => {
                 // With a reference kept as one, a cell and an INDEX or IF that selects one

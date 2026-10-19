@@ -22,6 +22,10 @@ use crate::variable_stack::Binding;
 /// it comes from, so naming a defined-name LAMBDA copies no body (T-0440).
 pub(crate) type SharedLambda = Arc<(Vec<NamedVariable>, Node)>;
 
+/// The LET variables and LAMBDA parameters, by id, that a LAMBDA's body reads and that were bound
+/// when it was made, with what they were bound to then (`Model::store_closure`).
+pub(crate) type Captures = Vec<(usize, Arc<Binding>)>;
+
 /// The defined-name LAMBDAs called in one evaluation (cleared with `Model::lambdas`). Each gets
 /// one lambda id however often it is named (`Model::defined_name_lambda`), and the body a call
 /// patched is kept for the next call (`Model::call_lambda`), so `MAP(r,LAMBDA(x,MyFn(x)))`
@@ -432,6 +436,7 @@ impl Model {
         };
         let result = match &prepared.definition {
             Ok((ids, body)) => {
+                let captured = self.bind_captures(&caller.lambda, cell);
                 for (i, &(raw_id, once)) in ids.iter().enumerate() {
                     let binding = match bind(self, i) {
                         Binding::Value(value) if once => Binding::ReadOnce(value),
@@ -447,6 +452,7 @@ impl Model {
                 for &(raw_id, _) in ids {
                     self.variable_stack.remove(raw_id);
                 }
+                self.unbind_captures(captured);
                 result
             }
             Err(error) => RefArg::Value(error.clone()),
@@ -601,7 +607,65 @@ impl Model {
             );
         }
 
-        CalcResult::Lambda(self.store_lambda(Arc::new((parameters, body))))
+        CalcResult::Lambda(self.store_closure(Arc::new((parameters, body))))
+    }
+
+    /// Stores a LAMBDA written in a formula, with what it captures: the variables in scope that
+    /// its body reads, as they are bound now. Called after the LET or the call that bound them
+    /// is over (a REDUCE or SCAN accumulator, a LET-bound `mk(5)`), it reads those values, as
+    /// Excel's closures do: `LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1),a,50,f(0))` is 1
+    /// (docs/excel-semantics/arrays.md "LAMBDAs that outlive their call",
+    /// probes/lambda-escaping-closures, T-0439).
+    pub(crate) fn store_closure(&mut self, definition: SharedLambda) -> usize {
+        let mut read = Vec::new();
+        definition.1.reads_variable(|id| {
+            if self.variable_stack.get(id).is_some() {
+                read.push(id);
+            }
+            false
+        });
+        read.sort_unstable();
+        read.dedup();
+        let captures: Captures = read
+            .into_iter()
+            .filter_map(|id| Some((id, self.variable_stack.shared(id)?)))
+            .collect();
+        let id = self.store_lambda(definition);
+        if !captures.is_empty() {
+            self.lambda_captures.insert(id, captures);
+        }
+        id
+    }
+
+    /// Binds what the LAMBDA `lambda` captured (`store_closure`) for one call of it, each
+    /// variable that is not bound already, and gives back the ids it bound, for
+    /// [`Self::unbind_captures`]. A bound one is in scope still, bound to what was captured: the
+    /// same LET or call made the LAMBDA, since every evaluation of a LET, and every call of a
+    /// body that made a LAMBDA reading its parameters, binds fresh ids (`call_prepared`). So a
+    /// LAMBDA called where it was made copies nothing.
+    fn bind_captures(&mut self, lambda: &CalcResult, cell: CellReferenceIndex) -> Vec<usize> {
+        let CalcResult::Lambda(id) = lambda else {
+            return Vec::new();
+        };
+        let Some(captures) = self.lambda_captures.get(id) else {
+            return Vec::new();
+        };
+        let mut bound = Vec::new();
+        for (variable, binding) in captures {
+            if self.variable_stack.get(*variable).is_none() {
+                self.variable_stack
+                    .insert(*variable, binding.as_ref().clone(), cell);
+                bound.push(*variable);
+            }
+        }
+        bound
+    }
+
+    /// Unbinds what [`Self::bind_captures`] bound.
+    fn unbind_captures(&mut self, bound: Vec<usize>) {
+        for variable in bound {
+            self.variable_stack.remove(variable);
+        }
     }
 
     /// Stores `definition` under a new lambda id, which it returns.

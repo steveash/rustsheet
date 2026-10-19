@@ -900,6 +900,29 @@ INDEX of a LAMBDA with an index of 2 is `#REF!` there, as for a scalar, which is
 Status: VERIFIED (excel-graph)
 Tasks: T-1511
 
+## LAMBDAs that outlive their call
+Rule: a LAMBDA made inside a LET or a LAMBDA call is a lexical closure: called after that LET or call is over, it reads the
+values its outer names had when it was made, not their names' later bindings. `LET(g,REDUCE(LAMBDA(z,z),{1,2,3},LAMBDA(f,x,
+LAMBDA(z,f(z)*10+x))),g(0))` is 123 (each step's LAMBDA captures the previous accumulator and that step's x);
+`LET(mk,LAMBDA(a,LAMBDA(b,a+b)),plus,mk(5),plus(1))` 6; two closures from one maker keep their own values,
+`LET(mk,..,fa,mk(1),fb,mk(100),fa(0)+fb(0)*1000)` 100001; a later binding of the same name changes nothing,
+`LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1),a,50,f(0))` 1 and `LET(a,1,f,LAMBDA(b,a+b),LET(a,2,f(0)))` 1; a closure reads names of
+several scopes, `LET(x,10,mk,LAMBDA(a,LAMBDA(b,a+b+x)),f,mk(1),f(100))` 111; a closure over a REDUCE chain is a function MAP can
+take, `MAP({10,20},g)` spills 16, 26. A captured reference stays a reference: `INDEX(r,2)` through it is 2, `ISREF(r)` TRUE, and a
+captured union keeps its areas (`AREAS` 2, `SUM` of `(A1,A3)` 4); a captured error is read as the error (`mk(1/0)` then `f(1)` is
+`#DIV/0!`), and an omitted optional parameter stays omitted (`ISOMITTED(c)` TRUE inside the closure). Calling a call,
+`LAMBDA(a,LAMBDA(b,a*b))(3)(4)`, is 12 and three levels give 123; `MAP(SCAN(LAMBDA(z,z),{1,2,3},..),LAMBDA(g,g(0)))` spills the
+array of LAMBDAs SCAN makes as 1, 12, 123, and `INDEX` of that array called, `INDEX(s,1,3)(0)`, is 123. A cell holding the
+REDUCE result itself (a LAMBDA) is `#CALC!`, as for any uncalled LAMBDA. LET names spelled like cells (`add5`, `f1`), stored with
+their `_xlpm.` prefix, bind like any name (H4 6, H5 100001).
+Evidence: probes/lambda-escaping-closures H1-H25, I2, J2, I14 (excel-graph, 2026-10-19, T-0439).
+Ours: `Model::store_closure` captures, when a LAMBDA is made, the bound variables its body reads (one shared copy per variable,
+`VariableStack::shared`), and `call_prepared` binds those not in scope for each call (T-0439). Open gaps: chained calls
+`f(..)(..)` are a parse error (H3, H8, H10: T-2038), an array element cannot hold a LAMBDA (H2:J2: T-2039), and cell-shaped
+LET names are read as cells (H4, H5: T-2040).
+Status: VERIFIED (excel-graph)
+Tasks: T-0439, T-2038, T-2039, T-2040
+
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
 Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a
 reference and MAP, SCAN and REDUCE each cell as a reference. With A1 x, A3 z, B3 y (A2:B2, B1 blank):

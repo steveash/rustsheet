@@ -1,6 +1,7 @@
 //! The LET variables and LAMBDA parameters in scope, and what each is bound to.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::{
     calc_result::{CalcResult, Range},
@@ -60,6 +61,9 @@ const MAX_HELD_AREAS: usize = 4 * MAX_AREAS;
 pub(crate) struct VariableStack {
     bindings: HashMap<usize, Binding>,
     held_areas: usize,
+    /// One shared copy of each binding a LAMBDA captured ([`VariableStack::shared`]), while it
+    /// is bound.
+    shared: HashMap<usize, Arc<Binding>>,
 }
 
 impl VariableStack {
@@ -98,6 +102,25 @@ impl VariableStack {
         }
     }
 
+    /// A shared copy of what `id` is bound to, for a LAMBDA that captures it
+    /// (`Model::store_closure`): made on the first capture and handed to every later one while
+    /// `id` stays bound, so a LAMBDA made once per element of a MAP copies the array it reads
+    /// once, not once per element. An id is bound to one value for as long as it is bound (a
+    /// parameter is bound once per call, a LET name once per evaluation), so the copy stays true.
+    pub(crate) fn shared(&mut self, id: usize) -> Option<Arc<Binding>> {
+        if let Some(shared) = self.shared.get(&id) {
+            return Some(Arc::clone(shared));
+        }
+        let binding = match self.bindings.get(&id)? {
+            // Not reached: a read inside a LAMBDA never counts as read once (`read_once`).
+            Binding::ReadOnce(value) => Binding::Value(value.clone()),
+            binding => binding.clone(),
+        };
+        let shared = Arc::new(binding);
+        self.shared.insert(id, Arc::clone(&shared));
+        Some(shared)
+    }
+
     /// Binds `id`; a union that would pass [`MAX_HELD_AREAS`] is bound to `#VALUE!` instead.
     pub(crate) fn insert(&mut self, id: usize, binding: Binding, cell: CellReferenceIndex) {
         let held = self.held_areas + binding.held_areas();
@@ -110,16 +133,20 @@ impl VariableStack {
         if let Some(old) = self.bindings.insert(id, binding) {
             self.held_areas -= old.held_areas();
         }
+        self.shared.remove(&id);
     }
 
-    pub(crate) fn remove(&mut self, id: usize) {
-        if let Some(old) = self.bindings.remove(&id) {
-            self.held_areas -= old.held_areas();
-        }
+    /// Unbinds `id`, giving back what it was bound to.
+    pub(crate) fn remove(&mut self, id: usize) -> Option<Binding> {
+        self.shared.remove(&id);
+        let old = self.bindings.remove(&id)?;
+        self.held_areas -= old.held_areas();
+        Some(old)
     }
 
     pub(crate) fn clear(&mut self) {
         self.bindings.clear();
         self.held_areas = 0;
+        self.shared.clear();
     }
 }
