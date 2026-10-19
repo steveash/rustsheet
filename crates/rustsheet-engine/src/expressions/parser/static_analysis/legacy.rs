@@ -622,8 +622,12 @@ fn is_value_operation(node: &Node) -> bool {
 /// excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
 /// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
-    args.first()
-        .is_some_and(|arg| reads_reference_whole(kind, arg) || leaves_call_whole(kind, arg))
+    // SWITCH alone among the choosers is never marked: `=SWITCH(1,1,{2;3})` spills 2, 3 where
+    // `=@IFS(1,{2;3})` and `=@IF(1,{2;3})` are marked (probes/legacy-array-at-shapes C20, C11, T-1910).
+    matches!(kind, Function::Switch)
+        || args
+            .first()
+            .is_some_and(|arg| reads_reference_whole(kind, arg) || leaves_call_whole(kind, arg))
         || matches!(kind, Function::Index)
             && matches!(
                 args.first().map(Node::ungrouped),

@@ -3,7 +3,7 @@ id: T-1910
 title: "Legacy cell: no @ and a spill for a top-level SWITCH with an array result"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -19,8 +19,11 @@ probes/legacy-array-at-shapes C20 (Excel `=SWITCH(1,1,{2;3})`, ours `=@SWITCH(..
 Export side: `remove_redundant_legacy_intersection` (static_analysis/redundant.rs) must drop exactly the `@`s the parser adds, so change both.
 
 ## Acceptance criteria
-- [ ] The listed probes/legacy-array-at-shapes cells pass; the baseline shrinks.
-- [ ] `make check` green; reviewers approve.
+- [x] The listed probes/legacy-array-at-shapes cells pass; the baseline shrinks.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+A SWITCH call no longer gets the automatic `@` in a legacy cell (`static_analysis.rs`); the export drops the same `@`s through the shared probe, so round-trip is unchanged. probes/legacy-array-at-shapes C11 and C20 now pass (probes known failures 2137 -> 2135). Nested SWITCH under other scalar functions is unprobed and now also unmarked; filed no follow-up.
