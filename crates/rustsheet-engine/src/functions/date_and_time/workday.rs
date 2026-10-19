@@ -10,7 +10,7 @@ use super::holidays::{days_per_weekday, weekday_of, working_days, Holidays};
 use super::{bare_error, DEFAULT_WEEKEND};
 use crate::{
     calc_result::CalcResult,
-    constants::{EXCEL_DATE_BASE, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
+    constants::{EXCEL_DATE_BASE, MAXIMUM_DATE_SERIAL_NUMBER},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     formatter::dates::DATE_OUT_OF_RANGE_MESSAGE,
     functions::{
@@ -125,7 +125,8 @@ impl Model {
     }
 
     /// One element of WORKDAY(.INTL): the start date, the day count, then the weekend (WORKDAY.INTL
-    /// only), then the holidays; an all-weekend mask is `#VALUE!`.
+    /// only), then the holidays; an all-weekend mask is `#VALUE!`. A day count of 0 is the start
+    /// date, whatever the weekend and the holidays are.
     fn workday_of(
         &self,
         values: &[CalcResult],
@@ -139,6 +140,13 @@ impl Model {
         let start = self.cast_number_no_bools_ref(start, cell)?.floor() as i64;
         let date = self.excel_date(start, cell)?;
         let days = self.cast_number_no_bools_ref(days, cell)?.floor() as i32;
+        if days == 0 {
+            // Excel returns the start date without reading the weekend or the holidays, so their
+            // errors do not apply: `WORKDAY(33393,0,{"a"})` and `WORKDAY.INTL(33393,0,"x")` are
+            // 33393 (probes/workday-serial-zero F31, F45:F58; dates.md "WORKDAY and NETWORKDAYS
+            // from serial 0").
+            return Ok(start as f64);
+        }
         let weekend = match rest.first() {
             Some(weekend) if holidays_at == 3 => Self::weekend_mask(weekend, cell)?,
             _ => DEFAULT_WEEKEND,
@@ -196,7 +204,9 @@ impl Model {
                 |k| working(start - k, start - 1),
                 target,
                 per_week,
-                start - i64::from(MINIMUM_DATE_SERIAL_NUMBER),
+                // Serial 0 is the first day (`WORKDAY.INTL(1,-1,"0000000")` is 0;
+                // probes/workday-serial-zero F30).
+                start,
             )
             .map(|k| start - k),
         };
