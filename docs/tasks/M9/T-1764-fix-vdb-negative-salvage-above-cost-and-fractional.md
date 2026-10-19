@@ -3,7 +3,7 @@ id: T-1764
 title: "Fix VDB negative-salvage-above-cost and fractional end-period, AMORDEGRC rate thresholds (probes fin-vdb-modes, fin-amordegrc)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
