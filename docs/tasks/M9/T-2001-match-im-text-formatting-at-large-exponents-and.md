@@ -3,7 +3,7 @@ id: T-2001
 title: "Match IM* text formatting at large exponents and small parts (T-1827 A11 A40-A42)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
