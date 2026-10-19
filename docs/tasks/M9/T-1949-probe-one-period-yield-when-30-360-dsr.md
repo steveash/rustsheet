@@ -3,7 +3,7 @@ id: T-1949
 title: "Probe one-period YIELD when 30/360 DSR is 0 (settlement 30th, maturity 31st)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1532 made one-period YIELD a closed form ending in `* (f*E/DSR)` (`yield_close
 
 ## Out of scope
 -
+
+## Outcome
+Excel gives 0 for one-period YIELD at DSR 0 (probes/yield-one-period-dsr-zero, excel-graph); the engine now matches and the quirk is in financial.md.
