@@ -258,9 +258,10 @@ impl Model {
                 ))
             }
             ArgKind::LiftArrays => self.evaluate_as_reference(node, cell),
-            ArgKind::Lift | ArgKind::LiftArraysRangeWhole => {
-                self.evaluate_node_in_context(node, cell)
-            }
+            ArgKind::Lift => self.evaluate_node_in_context(node, cell),
+            // A reference stays one, also a one-cell `E1`: the criteria table is read whole
+            // (`DSUM(A1:C3,"Price",E1)` is a one-cell table, not the cell's value).
+            ArgKind::LiftArraysRangeWhole => self.evaluate_node_with_reference(node, cell),
         };
         let grid = match value {
             CalcResult::Array(grid) => grid,

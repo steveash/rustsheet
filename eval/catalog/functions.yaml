@@ -1262,8 +1262,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DAYS
     category: date
     milestone: M6
@@ -1311,8 +1311,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DCOUNTA
     category: database
     milestone: M9
@@ -1321,8 +1321,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DDB
     category: financial
     milestone: M9
@@ -1403,8 +1403,8 @@ functions:
     returns: any
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DISC
     category: financial
     milestone: M9
@@ -1425,8 +1425,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DMIN
     category: database
     milestone: M9
@@ -1435,8 +1435,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DOLLAR
     category: text
     milestone: M5
@@ -1472,8 +1472,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DROP
     category: lookup
     milestone: M7
@@ -1492,8 +1492,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DSTDEVP
     category: database
     milestone: M9
@@ -1502,8 +1502,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DSUM
     category: database
     milestone: M9
@@ -1512,8 +1512,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DURATION
     category: financial
     milestone: M9
@@ -1535,8 +1535,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: DVARP
     category: database
     milestone: M9
@@ -1545,8 +1545,8 @@ functions:
     returns: number
     params:
       - { name: database, mode: range, type: any }
-      - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
-      - { name: criteria, mode: range, type: any }
+      - { name: field, mode: value, lift: arrays, type: any, domain: { int: true, min: 1, max: 4 } }
+      - { name: criteria, mode: range, lift: arrays, type: any }
   - name: ECMA.CEILING
     category: math
     milestone: M5
