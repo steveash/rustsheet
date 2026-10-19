@@ -8,9 +8,10 @@ use crate::{
 
 use super::date_text::{parse_date, CurrentYear};
 
-/// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
-/// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). The
-/// format of other typed clocks is UNVERIFIED and they stay text; so is every non-glued date shape given this format (T-1952) (docs/excel-semantics/dates.md).
+/// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8 and
+/// probes/timevalue-non-glued-date-text E5-E10, excel-graph: `July1 10:00`, `1/2/2020 10:00`,
+/// `1/2/2020 10:00:30` and `1/2/2020 10 AM` all get `m/d/yyyy h:mm`). The format is logged in
+/// docs/research/typed-date-clock-formats-2026-10-19.md.
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
 
 /// [`parse_formatted_number`] for text typed into a cell, which also reads date+time text
@@ -32,10 +33,12 @@ pub(crate) fn parse_typed_number(
     })
 }
 
-/// Whether the text ends in a typed clock: `H:MM` or `H:MM:SS` with an hour below 24, optionally
-/// followed by ` AM`/` PM`, or a bare hour and ` AM`/` PM` (probes/timevalue-non-glued-date-text
+/// Whether the text ends in a typed clock: `H:MM` or `H:MM:SS` with an hour below 24, or a bare hour
+/// and ` AM`/` PM` (probes/timevalue-non-glued-date-text
 /// E5-E10, excel-graph: `1/2/2020 10:00:30` and `1/2/2020 10 AM` are numbers). Hours past 23 and
-/// fractions are UNVERIFIED and stay text.
+/// fractions are UNVERIFIED and stay text. This guard is narrower than the clock grammar of
+/// `parse_date_clock_serial_in` on purpose: that parser also reads those unprobed shapes (as
+/// VALUE does), which typed input must not turn into numbers until probed.
 fn ends_with_typed_clock(text: &str) -> bool {
     let mut words = text.rsplit(' ');
     let last = words.next().unwrap_or_default();
@@ -53,7 +56,7 @@ fn ends_with_typed_clock(text: &str) -> bool {
     };
     let shape_ok = match (minute, second, parts.next()) {
         (None, None, None) => meridiem,
-        (Some(m), None, None) => m.len() == 2 && digits(m, 2),
+        (Some(m), None, None) if !meridiem => m.len() == 2 && digits(m, 2),
         (Some(m), Some(sec), None) => {
             m.len() == 2 && digits(m, 2) && sec.len() == 2 && digits(sec, 2)
         }
