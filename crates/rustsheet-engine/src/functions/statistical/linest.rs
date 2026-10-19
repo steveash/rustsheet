@@ -113,9 +113,9 @@ struct RegressionData {
 }
 
 impl Model {
-    /// TREND or GROWTH of one known_y: every predicted value is that point (`TREND(5)` is 5), one
-    /// per row of new_x, or one in all when new_x is omitted (statistics.md "TREND: defaults,
-    /// shapes, single points and error inputs"). `new_x_args` is the arguments from new_x on.
+    /// TREND or GROWTH of one `known_y`: every predicted value is that point (`TREND(5)` is 5), one
+    /// per row of `new_x`, or one in all when `new_x` is omitted (statistics.md "TREND: defaults,
+    /// shapes, single points and error inputs"). `new_x_args` is the arguments from `new_x` on.
     fn single_point_prediction(
         &mut self,
         new_x_args: &[Node],
@@ -134,7 +134,7 @@ impl Model {
     }
 
     /// Collect Y and X data for regression functions.
-    /// `x_arg`: None → auto-generate x = 1, 2, ..., n. `min_points` is the fewest known_y
+    /// `x_arg`: None → auto-generate x = 1, 2, ..., n. `min_points` is the fewest `known_y`
     /// values the caller accepts (LINEST and LOGEST 2; TREND and GROWTH 1, a single value being
     /// one point, statistics.md "Array arguments given a scalar, a single cell or an error").
     fn collect_regression_data(
