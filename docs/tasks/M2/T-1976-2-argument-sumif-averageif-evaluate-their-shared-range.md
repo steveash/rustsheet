@@ -3,7 +3,7 @@ id: T-1976
 title: "2-argument SUMIF/AVERAGEIF evaluate their shared range argument once"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
