@@ -1,5 +1,6 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::Function;
 use crate::limits::check_array_size;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -14,100 +15,57 @@ impl Model {
     ///   * start – first value (default 1)
     ///   * step  – increment between values (default 1)
     pub(crate) fn fn_sequence(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 4 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        // Every argument lifts over an array and a range, one SEQUENCE per element whose value
+        // is that call's top-left (SPEC-0011 "Array-valued functions", T-1834).
+        self.lift_call(Function::Sequence, args, cell, &mut |model, values| {
+            model.sequence_kernel(values, cell)
+        })
+    }
 
-        let rows = {
-            let v = self.evaluate_node_in_context(&args[0], cell);
-            if matches!(v, CalcResult::EmptyArg) {
-                1
-            } else {
-                match self.cast_to_number(v, cell) {
-                    Ok(n) => {
-                        let n = n.floor() as i64;
-                        if n < 1 {
-                            if n == 0 {
-                                return CalcResult::new_error(
-                                    Error::CALC,
-                                    cell,
-                                    "rows must be >= 1".to_string(),
-                                );
-                            }
-                            return CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "rows must be >= 1".to_string(),
-                            );
-                        }
-                        n as usize
-                    }
-                    Err(e) => return e,
-                }
+    /// One SEQUENCE call over argument values. A missing or empty argument takes its default.
+    fn sequence_kernel(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        // An extent: 0 is `#CALC!` (probes/m7-argument-modes F53), a negative one `#VALUE!`.
+        let extent = |value: Option<&CalcResult>, name: &str| -> Result<usize, CalcResult> {
+            let n = match value {
+                None | Some(CalcResult::EmptyArg) => return Ok(1),
+                Some(value) => self.cast_number_ref(value, cell)?.floor() as i64,
+            };
+            match n {
+                0 => Err(CalcResult::new_error(
+                    Error::CALC,
+                    cell,
+                    format!("{name} must be >= 1"),
+                )),
+                n if n < 0 => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("{name} must be >= 1"),
+                )),
+                n => Ok(usize::try_from(n).unwrap_or(usize::MAX)),
             }
         };
-
-        let columns = if args.len() >= 2 {
-            let v = self.evaluate_node_in_context(&args[1], cell);
-            if matches!(v, CalcResult::EmptyArg) {
-                1
-            } else {
-                match self.cast_to_number(v, cell) {
-                    Ok(n) => {
-                        let n = n.floor() as i64;
-                        if n < 1 {
-                            if n == 0 {
-                                return CalcResult::new_error(
-                                    Error::CALC,
-                                    cell,
-                                    "columns must be >= 1".to_string(),
-                                );
-                            }
-                            return CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "columns must be >= 1".to_string(),
-                            );
-                        }
-                        n as usize
-                    }
-                    Err(e) => return e,
-                }
-            }
-        } else {
-            1
+        let number = |value: Option<&CalcResult>| match value {
+            None | Some(CalcResult::EmptyArg) => Ok(1.0),
+            Some(value) => self.cast_number_ref(value, cell),
         };
-
+        let rows = match extent(values.first(), "rows") {
+            Ok(rows) => rows,
+            Err(error) => return error,
+        };
+        let columns = match extent(values.get(1), "columns") {
+            Ok(columns) => columns,
+            Err(error) => return error,
+        };
         if let Some((error, message)) = check_array_size(rows, columns) {
             return CalcResult::new_error(error, cell, message);
         }
-
-        let start = if args.len() >= 3 {
-            let v = self.evaluate_node_in_context(&args[2], cell);
-            if matches!(v, CalcResult::EmptyArg) {
-                1.0
-            } else {
-                match self.cast_to_number(v, cell) {
-                    Ok(n) => n,
-                    Err(e) => return e,
-                }
-            }
-        } else {
-            1.0
+        let start = match number(values.get(2)) {
+            Ok(start) => start,
+            Err(error) => return error,
         };
-
-        let step = if args.len() >= 4 {
-            let v = self.evaluate_node_in_context(&args[3], cell);
-            if matches!(v, CalcResult::EmptyArg) {
-                1.0
-            } else {
-                match self.cast_to_number(v, cell) {
-                    Ok(n) => n,
-                    Err(e) => return e,
-                }
-            }
-        } else {
-            1.0
+        let step = match number(values.get(3)) {
+            Ok(step) => step,
+            Err(error) => return error,
         };
 
         // Excel adds `step` to the previous value in row-major order, not `start + i·step`:

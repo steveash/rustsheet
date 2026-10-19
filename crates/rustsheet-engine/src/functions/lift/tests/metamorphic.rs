@@ -1,8 +1,9 @@
 //! SPEC-0011 Test plan, the metamorphic test (T-1894): every lifting-table entry lifts like its
 //! scalar call. With one argument written `{v;v}`, both spilled elements equal the scalar call's
-//! value, errors included. `WholeByCaller` arguments stay as written.
+//! value, errors included (an array-valued entry's: its top-left value). `WholeByCaller` arguments
+//! stay as written.
 
-use super::super::kinds::{ArgKind, ArgKinds};
+use super::super::kinds::{ArgKind, ArgKinds, CallResult};
 use crate::functions::Function;
 use crate::language::get_default_language;
 use crate::test::util::new_empty_model;
@@ -43,10 +44,15 @@ fn mismatches(function: &Function, kinds: &ArgKinds, checked: &mut Vec<usize>) -
                 checked.push(index);
                 let mut args: Vec<String> = scalar.iter().map(|v| (*v).to_string()).collect();
                 args[index] = format!("{{{v};{v}}}", v = scalar[index]);
-                calls.push((
-                    format!("={name}({})", scalar.join(",")),
-                    format!("={name}({})", args.join(",")),
-                ));
+                // An array-valued entry's element is its scalar call's top-left value
+                // (SPEC-0011 "Array-valued functions" rule 2).
+                let scalar_call = format!("{name}({})", scalar.join(","));
+                let scalar_call = if kinds.result == CallResult::Array {
+                    format!("=INDEX({scalar_call},1,1)")
+                } else {
+                    format!("={scalar_call}")
+                };
+                calls.push((scalar_call, format!("={name}({})", args.join(","))));
             }
         }
     }
