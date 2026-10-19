@@ -110,7 +110,10 @@ fn typed_clock_shape(text: &str) -> Option<TypedClock> {
     let mut text = text.trim_end_matches(' ');
     let mut suffixed = false;
     if let Some((rest, word)) = text.rsplit_once(' ') {
-        if word.eq_ignore_ascii_case("am") || word.eq_ignore_ascii_case("pm") {
+        if ["am", "pm", "a", "p"]
+            .iter()
+            .any(|s| word.eq_ignore_ascii_case(s))
+        {
             suffixed = true;
             text = rest.trim_end_matches(' ');
         }
