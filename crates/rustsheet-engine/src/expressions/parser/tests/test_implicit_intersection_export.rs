@@ -827,6 +827,27 @@ fn legacy_if_passes_a_range_arm_whole() {
             "MATCH(3,IF(TRUE,@B1:B6+0),0)",
             "MATCH(3,IF(TRUE,B1:B6+0),0)",
         ),
+        // Read as a value under a range argument, the IF takes the `@` (probes/-b).
+        (
+            "SUM(IF(TRUE,B1:B6)+0)",
+            "SUM(@IF(TRUE,B1:B6)+0)",
+            "SUM(IF(TRUE,B1:B6)+0)",
+        ),
+        (
+            "MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)",
+            "MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)",
+            "MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)",
+        ),
+        (
+            "INDEX(IF(TRUE,B1:B6,5),3)",
+            "INDEX(IF(TRUE,B1:B6,5),3)",
+            "INDEX(IF(TRUE,B1:B6,5),3)",
+        ),
+        (
+            "SUM(_xlfn.SINGLE(IF(TRUE,B1:B6)))",
+            "SUM(@IF(TRUE,B1:B6))",
+            "SUM(_xlfn.SINGLE(IF(TRUE,B1:B6)))",
+        ),
         // An explicit `@` on the arm is not one the import adds.
         (
             "SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))",

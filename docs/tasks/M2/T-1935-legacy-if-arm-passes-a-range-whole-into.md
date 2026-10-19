@@ -32,4 +32,7 @@ that is a bare or parenthesized range whole; the `@` goes on the IF call in a va
 longer intersects such an arm (`is_reference_arm`, static_analysis/legacy.rs, mirrored on export),
 and INDEX of such an IF gets no `@`. Recorded in docs/excel-semantics/references.md "Legacy IF
 passes a range arm whole". Eval: probes/legacy-match-lookup-array-intersection J2, Y2 now pass;
-the new probe passes 73/73.
+the new probe passes 73/73. Review follow-up: probes/legacy-if-arm-range-argument-b (43
+cells) shows an IF with a range arm that is read as a value under a range argument (an operand of
+`+`, `-`, a comparison, `&`) takes the `@` on the call (`=SUM(@IF(TRUE,B1:B6)+0)`), and INDEX of an
+IF with mixed arms gets none; `returns_range_arm` implements both, 43/43.

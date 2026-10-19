@@ -1555,10 +1555,20 @@ row 2 (on the ranges' rows) / row 10 (off them):
 - an operation in the arm, and IFERROR's value, are values as before:
   `=MATCH(3,IF(TRUE,@B1:B6+0),0)` `#N/A` / `#VALUE!`, `=MATCH(3,IFERROR(@B1:B6,0),0)` `#N/A` / `#N/A`;
   CHOOSE's arm stays whole (`=MATCH(3,CHOOSE(1,B1:B6),0)` 3 / 3).
-Evidence: probes/legacy-if-arm-range-argument (excel-graph, 2026-10-19, T-1935),
+- read as a value anywhere else, the IF is intersected whole, `@` on the call, also under a range
+  argument: `=SUM(IF(TRUE,B1:B6)+0)` shows as `=SUM(@IF(TRUE,B1:B6)+0)` 2 / `#VALUE!`, and so do
+  `=SUM(-@IF(TRUE,B1:B6))`, `=SUM(@IF(TRUE,B1:B6)>1)`, `=COUNT(@IF(TRUE,B1:B6)*1)` (1 / 0),
+  `=MAX(@IF(TRUE,B1:B6)&"")`, `=MATCH(3,@IF(TRUE,B1:B6)*1,0)` (`#N/A` / `#VALUE!`),
+  `=SUM(IF(TRUE,@IF(TRUE,B1:B6)+0))`, VLOOKUP's `col_index_num` (`=VLOOKUP(2,B1:C6,@IF(TRUE,B1:B6),FALSE)`)
+  and `=@IF(TRUE,B1:B6)+1`; a bare-range condition at the root gives `=@IF(@B1:B6,B1:B6,C1:C6)`;
+- not intersected: `=SUMPRODUCT(IF(TRUE,B1:B6)+0)` 12 / 12 (an array context), `=SUM((IF(TRUE,B1:B6)))`
+  12 / 12, `=AND(IF(TRUE,B1:B6))` TRUE / TRUE, and INDEX of an IF with mixed arms,
+  `=INDEX(IF(TRUE,B1:B6,5),3)`, 3 / 3 with no `@`.
+Evidence: probes/legacy-if-arm-range-argument and -b (excel-graph, 2026-10-19, T-1935),
 probes/legacy-match-lookup-array-intersection J2, Y2.
-Engine: `is_reference_arm` (static_analysis/legacy.rs). Other reference shapes in an arm (a
-defined name, OFFSET, INDEX, a `:` range operation) are unprobed and keep their `@`.
+Engine: `is_reference_arm`, `returns_range_arm` (static_analysis/legacy.rs). Other reference
+shapes in an arm (a defined name, OFFSET, INDEX, a `:` range operation) are unprobed and keep
+their `@`.
 Status: VERIFIED
 Tasks: T-1935
 
