@@ -3,7 +3,7 @@ id: T-1970
 title: "Milestone function scope classifies a call of a workbook defined name by the name's formula (POWER.xlsx inside_a_lambda C3)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
