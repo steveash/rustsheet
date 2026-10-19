@@ -317,3 +317,9 @@ Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank
 Evidence: probes/eng-base-conv-blank (excel-graph, 2026-10-18, T-1413); gen-m9/d244411dd90f7fbd A15.
 Status: VERIFIED (excel-graph)
 Tasks: T-1413
+
+## The second argument's error wins in the two-argument base conversions, DELTA and GESTEP
+Rule: DEC2BIN, DEC2HEX, DEC2OCT, BIN2OCT, BIN2HEX, HEX2BIN, HEX2OCT, OCT2BIN, OCT2HEX, DELTA and GESTEP read the second argument (`places`, `number2`, `step`) before the first, scalar or inside one array element. `DEC2BIN("x",NA())` is `#N/A` and `DEC2BIN(NA(),"x")` is `#VALUE!`; the same for all eleven. BESSELJ, BITLSHIFT, CONVERT, COMPLEX, IMPOWER and ERF instead report the first argument's error.
+Evidence: probes/eng-first-vs-second-error A1:D11 (excel-graph, 2026-10-19); probes/eng-later-argument-lift M2, M8.
+Status: VERIFIED (excel-graph)
+Tasks: T-1816

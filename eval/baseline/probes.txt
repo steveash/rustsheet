@@ -256,6 +256,7 @@ C	probes/elapsed-tiny-negatives-1904.case.json	11
 C	probes/encodeurl-evidence-floor.case.json	29
 C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
+C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-imdiv.case.json	24
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
@@ -1249,8 +1250,6 @@ F	probes/eng-impower-angle-cut.case.json	S!A17
 F	probes/eng-impower-angle-cut.case.json	S!A18
 F	probes/eng-impower-angle-cut.case.json	S!A19
 F	probes/eng-impower-angle-cut.case.json	S!A9
-F	probes/eng-later-argument-lift.case.json	Sheet1!M2
-F	probes/eng-later-argument-lift.case.json	Sheet1!M8
 F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E102
 F	probes/eta-reduced-names.case.json	Sheet1!E103
