@@ -6,6 +6,7 @@ use broadcast::{broadcast_shapes, static_analysis_operator_chain};
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
     legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
+    returns_range_arm,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
@@ -222,9 +223,10 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
                     // (probes/legacy-one-cell-shape-intersection J3); other one-cell calls are
                     // unprobed (T-1847). A one-cell CHOOSE is a range shape and keeps its `@`.
                     StaticResult::Array(rows, columns) => {
-                        arrays
+                        (arrays
                             && (rows > 1 || columns > 1)
-                            && legacy_array_call_at(kind, &signature, args)
+                            && legacy_array_call_at(kind, &signature, args))
+                            || (add && returns_range_arm(kind, args))
                     }
                     StaticResult::Scalar => false,
                 }
