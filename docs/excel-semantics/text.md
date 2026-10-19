@@ -565,7 +565,7 @@ the escapes above make alike: `\L\x41\U\x61` is `aA`); `\u` upper-cases the next
 ends the mode and a pending `\u`; an empty group or text keeps a pending `\u` for the text after it (`\u$2b` with
 `$2` empty is `B`); the state starts afresh with each match (`REGEXREPLACE("abab","(a)(b)","$2\U$1")` is `bAbA`); only
 the replacement is case-forced, never the subject text around the match. Case mapping is the one-to-one mapping of UPPER and
-LOWER (`\Uß` is `ß`; the final-sigma context of LOWER is not carried across pieces, nor past a `\u`/`\l` head character: unprobed). `\Q...\E` quotes up to
+LOWER (`\Uß` is `ß`). Final sigma (T-1934, VERIFIED, probes/regexreplace-final-sigma, excel-graph 2026-10-19): a `\L` run is lowered whole, so a capital sigma sees the text after it in the next piece (`\L$1x` with `$1` = ΑΣ is `ασx`, but `\L$1` alone is `ας`; A2, A4, A8); a `\E` ends the run (`\L$1\E$2` with `$1`, `$2` = Α, Σ keeps `Σ`: `αΣ`, A10); a `\l` head character is lowered alone (`\lΣa` is `ςa`, A1). `\Q...\E` quotes up to
 the first `\E` (or the end): `\Q$1\E` is `$1`, `\Qa\\Eb` is `a\b`; quoted text is case-forced, and `\E` ending a quote
 does not end the mode (`\Uab\Qcd\Eef` is `ABCDEF`).
 `#VALUE!` (ERROR.TYPE 3, so the undecoded rich errors are `#VALUE!`): a group the pattern does not have (`$2`, `\2`,
