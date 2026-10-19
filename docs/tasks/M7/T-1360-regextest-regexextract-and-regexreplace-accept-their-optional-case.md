@@ -3,7 +3,7 @@ id: T-1360
 title: "REGEXTEST, REGEXEXTRACT and REGEXREPLACE accept their optional case_sensitivity, return_mode and occurrence arguments (#ERROR! today)"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -37,12 +37,21 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/d244411dd90f7fbd Calc!A38 `=CONCATENATE(REGEXREPLACE(SUBSTITUTE(Data!C5,Data!A$12,Data!B6),CONCAT("ABC",Data!$D8),"a",-1,Data!$D7),Data!D6)`: Excel "abc0.000000000000001", engine `#ERROR!`.
 
 ## Acceptance criteria
-- [ ] gen-m7/8ed8a680e9794b77 A1 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
-- [ ] An excel-graph probe case covers the optional arguments listed above and passes; text.md records the rules (VERIFIED).
-- [ ] gen-m9/3462856259a37891 A39, 3ec66461400faf2f A35, 65faaeb48419087d A31, adb3fd63c7368166 A1, A8 and A30, and d244411dd90f7fbd A38 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m7/8ed8a680e9794b77 A1 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
+- [x] An excel-graph probe case covers the optional arguments listed above and passes; text.md records the rules (VERIFIED).
+- [x] gen-m9/3462856259a37891 A39, 3ec66461400faf2f A35, 65faaeb48419087d A31, adb3fd63c7368166 A1, A8 and A30, and d244411dd90f7fbd A38 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 More evidence (T-1824, probes/textsplit-lift-guesses): A53 `REGEXEXTRACT({"a1b2";"c3d4"},"([a-z])([0-9])",2)` is "a","c" in Excel (ours "a1","c3"); A55 `REGEXEXTRACT("a1B2","b",0,{0;1})` is `#N/A` (ours `#ERROR!`, the fourth argument).
+
+## Outcome
+REGEXTEST, REGEXEXTRACT and REGEXREPLACE take their optional arguments: case_sensitivity (all three), REGEXEXTRACT's
+return_mode 0/1/2 (0 is now the whole match even with groups, 2 the groups of the first match in a row, a
+non-participating group `#N/A`) and REGEXREPLACE's occurrence (n-th, n-th from the end, out of range unchanged).
+Options truncate toward zero; out-of-range values and non-number text are `#VALUE!`. Evidence: new probe
+probes/regex-optional-args (148 cells, excel-graph), recorded in text.md "REGEX* optional arguments". Eval: probes known
+failures 2130 -> 2103 (27 fixed in t1626-regextest, t1626-regexreplace, regex-pcre2-features, textsplit-lift-guesses),
+plus the new case passing 149/149; all nine gen-m7/gen-m9 cells listed above pass; no regressions.
