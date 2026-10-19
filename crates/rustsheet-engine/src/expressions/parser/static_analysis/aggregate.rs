@@ -138,8 +138,10 @@ fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool
                     .step_by(2)
                     .any(|arm| lifts_to_values(arm, bound))
         }
-        // Below SUBTOTAL, AREAS or TAKE an XLOOKUP is evaluated for its values
-        // (`Model::fn_xlookup`), so `SUBTOTAL(9,TAKE(XLOOKUP(1,{1},H1:I1),1))` spills (T-1987).
+        // An XLOOKUP in an IF or CHOOSE arm below SUBTOTAL or AREAS, or in a return array, is
+        // evaluated for its values (`Model::fn_xlookup`, T-1987). Below TAKE, DROP and TRIMRANGE it
+        // picks cells when it does not lift (`Model::evaluate_picked_source`, T-1998); counting it
+        // as lifting there too leaves the shape to run time, which is safe.
         Function::Xlookup => true,
         Function::Let if args.len() >= 3 && args.len() % 2 == 1 => {
             let scope = bound.len();

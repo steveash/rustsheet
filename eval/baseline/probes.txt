@@ -279,6 +279,7 @@ C	probes/error-operand-broadcast.case.json	15
 C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-busy-behaviors.case.json	23
 C	probes/error-stored-constants.case.json	24
+C	probes/eta-if-one-argument.case.json	40
 C	probes/eta-reduced-names.case.json	59
 C	probes/expand-wrap-past-grid.case.json	10
 C	probes/external-ref-no-link-ifchoose-b.case.json	6
@@ -816,6 +817,8 @@ C	probes/t1626-regextest.case.json	31
 C	probes/t1626-replaceb.case.json	27
 C	probes/t1626-rightb.case.json	29
 C	probes/t1626-searchb.case.json	26
+C	probes/take-drop-trimrange-over-xlookup-b.case.json	14
+C	probes/take-drop-trimrange-over-xlookup.case.json	23
 C	probes/tbill-equal-dates.case.json	11
 C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
@@ -1274,9 +1277,6 @@ F	probes/eng-impower-angle-cut.case.json	S!A17
 F	probes/eng-impower-angle-cut.case.json	S!A18
 F	probes/eng-impower-angle-cut.case.json	S!A19
 F	probes/eng-impower-angle-cut.case.json	S!A9
-F	probes/eta-reduced-names.case.json	Sheet1!E101
-F	probes/eta-reduced-names.case.json	Sheet1!E102
-F	probes/eta-reduced-names.case.json	Sheet1!E103
 F	probes/external-ref-no-link-let-index.case.json	Calc!A3
 F	probes/external-ref-no-link-let-index.case.json	Calc!A4
 F	probes/external-ref-no-link-let-index.case.json	Calc!A5
@@ -2207,17 +2207,9 @@ F	probes/regex-pcre2-features.case.json	Sheet1!D7
 F	probes/regex-pcre2-features.case.json	Sheet1!D9
 F	probes/regex-posix-classes-b.case.json	Sheet1!A10
 F	probes/regex-posix-classes-b.case.json	Sheet1!A11
-F	probes/regex-posix-classes-b.case.json	Sheet1!A4
-F	probes/regex-posix-classes-b.case.json	Sheet1!A5
 F	probes/regex-posix-classes-b.case.json	Sheet1!A8
 F	probes/regex-posix-classes-b.case.json	Sheet1!A9
-F	probes/regex-posix-classes.case.json	Sheet1!Z1
-F	probes/regex-posix-classes.case.json	Sheet1!Z10
-F	probes/regex-posix-classes.case.json	Sheet1!Z2
-F	probes/regex-posix-classes.case.json	Sheet1!Z3
 F	probes/regex-posix-classes.case.json	Sheet1!Z7
-F	probes/regex-posix-classes.case.json	Sheet1!Z8
-F	probes/regex-posix-classes.case.json	Sheet1!Z9
 F	probes/regression-forecast.case.json	Sheet1!L11
 F	probes/regression-forecast.case.json	Sheet1!L2
 F	probes/regression-forecast.case.json	Sheet1!L34
@@ -2699,6 +2691,10 @@ F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D7
 F	probes/t1626-regexreplace.case.json	Sheet1!C34
 F	probes/t1626-regextest.case.json	Sheet1!C29
+F	probes/take-drop-trimrange-over-xlookup-b.case.json	Sheet1!A34
+F	probes/take-drop-trimrange-over-xlookup-b.case.json	Sheet1!A38
+F	probes/take-drop-trimrange-over-xlookup-b.case.json	Sheet1!B34
+F	probes/take-drop-trimrange-over-xlookup-b.case.json	Sheet1!B38
 F	probes/text-currency-locale-date.case.json	S!A14
 F	probes/text-format-length-limit-d.case.json	S!A31
 F	probes/text-format-length-limit-f.case.json	Sheet1!A41

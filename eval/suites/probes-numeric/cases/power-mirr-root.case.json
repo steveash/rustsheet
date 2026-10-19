@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-0959: MIRR(40,-5,-5,-5,-5,-5; 0.1, 0.2), ironcalc-calc FINANCIAL/MIRR.xlsx Sheet2!N16 (cached by Mac Excel as 0.3933280241536672), on excel-graph: A1 array, A2 range, A3 MIRR's closed form with the operator ^, to tell whether MIRR's root is the operator's.",
+ "tags": [
+  "probe",
+  "power",
+  "T-0959"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)",
+    "A2": "=MIRR(C1:H1,0.1,0.2)",
+    "A3": "=(-(40*(1.2*1.2*1.2*1.2*1.2*1.2)/1.2)/(-5/1.1-5/(1.1*1.1)-5/(1.1*1.1*1.1)-5/(1.1*1.1*1.1*1.1)-5/(1.1*1.1*1.1*1.1*1.1)))^(1/5)-1",
+    "C1": 40,
+    "D1": -5,
+    "E1": -5,
+    "F1": -5,
+    "G1": -5,
+    "H1": -5
+   }
+  }
+ ],
+ "expected": {}
+}

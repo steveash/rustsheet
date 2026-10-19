@@ -150,21 +150,28 @@ impl Model {
             IfBranchMode::Aggregate => self.evaluate_reference_arg(node, cell),
             IfBranchMode::SingleSheet => self.evaluate_single_sheet_arg(node, cell).into(),
             IfBranchMode::Chosen => self.evaluate_chosen_reference(node, cell).into(),
-            // A reference into another workbook picked is read as INDEX reads the cell it picks:
-            // `IF(TRUE,…!A1)` is 0, `&"x"` "x", ERROR.TYPE `#N/A`, where the written `…!A1` is
-            // `#BLOCKED!` (probes/external-ref-no-link-index A26, external-ref-no-link-ifchoose).
-            IfBranchMode::Value => self
-                .external_reference_picked_value(node, cell)
-                .unwrap_or_else(|| self.evaluate_node_in_context(node, cell))
-                .into(),
+            IfBranchMode::Value => self.if_branch_value(node, cell).into(),
         }
+    }
+
+    /// The branch an ordinary IF picked, as a value. A reference into another workbook is read
+    /// as INDEX reads the cell it picks: `IF(TRUE,…!A1)` is 0, `&"x"` "x", ERROR.TYPE `#N/A`,
+    /// where the written `…!A1` is `#BLOCKED!` (probes/external-ref-no-link-index A26,
+    /// external-ref-no-link-ifchoose).
+    pub(crate) fn if_branch_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        self.external_reference_picked_value(node, cell)
+            .unwrap_or_else(|| self.evaluate_node_in_context(node, cell))
     }
 
     /// What IF's condition picks: with a scalar condition the branch it chooses, unevaluated;
     /// otherwise the value IF gives (the condition's error, FALSE for a missing branch, or IF
-    /// over an array condition, its branches evaluated).
+    /// over an array condition, its branches evaluated). IF with no branch at all, as an
+    /// eta-reduced IF called with one argument is (`BYROW(A1:B3,_xleta.IF)`), gives `#VALUE!`
+    /// for each element of its condition that is not an error, passing an error on
+    /// (`LET(f,_xleta.IF,f({1,#N/A}))` is `{#VALUE!,#N/A}`, probes/eta-if-one-argument;
+    /// docs/excel-semantics/arrays.md "Functions passed by name").
     pub(crate) fn if_pick<'a>(&mut self, args: &'a [Node], cell: CellReferenceIndex) -> Picked<'a> {
-        if args.len() != 2 && args.len() != 3 {
+        if !(1..=3).contains(&args.len()) {
             return Picked::Value(CalcResult::new_args_number_error(cell));
         }
         let cond_result = self.evaluate_node_in_context(&args[0], cell);
@@ -177,6 +184,13 @@ impl Model {
                 Err(error) => return Picked::Value(error),
             },
             CalcResult::Array(a) => a,
+            _ if args.len() == 1 => {
+                return Picked::Value(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "IF needs a value_if_true".to_string(),
+                ))
+            }
             other => {
                 // Scalar cond: cast to bool and pick the chosen branch.
                 // The branch result may itself be an array (it will spill).
@@ -189,6 +203,20 @@ impl Model {
                 };
             }
         };
+        if args.len() == 1 {
+            let values = cond_array
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|value| match value {
+                            error @ ArrayNode::Error(_) => error,
+                            _ => ArrayNode::Error(Error::VALUE),
+                        })
+                        .collect()
+                })
+                .collect();
+            return Picked::Value(CalcResult::Array(values));
+        }
         Picked::Value(self.if_array(args, cond_array, cell))
     }
 

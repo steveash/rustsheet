@@ -33,3 +33,5 @@ Also: a blank new_x makes the whole result `#VALUE!` (ours 2 rows of numbers, tr
 
 ## Out of scope
 - Probing further inputs (file a probe task instead).
+- The ulp cells of probes/regression-trend: they come from the shared least-squares solve, which T-2006 fits (gap
+  triage 2026-10-19).
