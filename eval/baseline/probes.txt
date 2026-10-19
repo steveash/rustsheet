@@ -111,6 +111,11 @@ C	probes/catalog/function-name-forms.case.json	5
 C	probes/catalog/normsdist-stored-form.case.json	4
 C	probes/ceiling-floor-mround-array-lift.case.json	78
 C	probes/ceiling-xlfn-prefix.case.json	4
+C	probes/cell-call-edges-a.case.json	16
+C	probes/cell-call-edges-b.case.json	4
+C	probes/cell-call-edges-c.case.json	4
+C	probes/cell-call-edges-f.case.json	2
+C	probes/cell-call-edges-g.case.json	2
 C	probes/choose-array-index-range-arms.case.json	66
 C	probes/circular-iteration-delta-boundary.case.json	1
 C	probes/circular-iteration-delta-no-reader.case.json	2
