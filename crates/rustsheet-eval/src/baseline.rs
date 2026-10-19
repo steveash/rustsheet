@@ -338,6 +338,7 @@ mod tests {
             tags: Vec::new(),
             cells: Vec::new(),
             text: vec![text("A1", true), text("A2", pass)],
+            defined_names: BTreeMap::new(),
         };
         let before = run(true);
         let after = run(false);
