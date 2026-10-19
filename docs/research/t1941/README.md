@@ -341,3 +341,25 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - Line relation closure: A and D are base lines; B = 2A, 3A, E = D-2A and D-A are derived. D's stage crosses a binade at ~1.89.
   - Run-ladder phase-vs-K reader validated (frequency to 1e-11).
   - The W6 long-run pipeline (joint beam over at least 4 tracks, 1000x separation on synthetic data) is not decisive on the 14 existing runs (2 tracks, 2.5x). It needs `L101`..`L124` (queued) and `q421`..`q433` (run ladders, queued).
+
+### 2026-10-19 21:40: data landed and per-kernel status
+- **Fills landed**, split into parts of 16,384 rows or fewer, because fill time grows superlinearly with case size (`split_cases.py`, `scratchpad/fillgrp.sh`):
+  - `n1001`..`n1128` (K3);
+  - `L101`..`L124` (1.5,2];
+  - V1/V2 (K1);
+  - `q421`..`q433` dyadic run ladders;
+  - `q201`..`q216` (K2 dense).
+  Queued: `q440`..`q453` non-dyadic ladders, V3, V4.
+- **K1 (W4).**
+  - Lattice basin-hopping candidate lat1 is worse overall (0.7272 vs AN2 0.7345 on 2.27M rows): it trades 1.9x for 1.1-1.5.
+  - AN2 is a local maximum in near-null lattice coordinates with the top frozen.
+  - Single-run local fits are aliases. Cluster and ladder fits reach 0.99+ locally. Honest pin checks from far starts are running.
+- **K2 (W2).**
+  - The per-anchor interval route was withdrawn: a far third start fits one cluster 100% with different stages, so the p5/q4 "empty intervals" are not evidence.
+  - Window fits (at least 5 clusters, at least 0.005 wide) pin N s4+ / D s3+ on synthetic data from near starts. The 50-window batch on the q2 data is running.
+- **K3 (W5).** Synthetic control closes end to end at 0.9997 (N and D chains peeled by FFT/exact scans, D top by a cubic scan plus grid). Real-data scans are running.
+- **(1.5,2] (W6).**
+  - The long-run plus lattice pipeline recovers two synthetic chains bit-exactly.
+  - On Excel, 6 coherent mid-stage lines (stages 4-6) are confirmed independently by the dyadic ladders to 5e-10.
+  - The D chain is consistent from stage 2 up (D.Pn12/Pn13 ladder agreement).
+  - Best Excel R so far: about 27-32% exact (unvalidated). The top pair needs the non-dyadic ladders, and the low coefficients an exact peel.
