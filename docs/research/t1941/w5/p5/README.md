@@ -36,3 +36,47 @@ Taking each run's best phase gives Z of 8-14 at random, so per-run phases cannot
 site's smooth phase function, ΔS_j(x)/u, a polynomial with a few unknowns, is statistically feasible with all
 real runs (about 700, so Z about 15-20 expected). Plan: a top-down global scan, N.S7 first, then one coefficient
 per lower product site, FFT-accelerated.
+
+## Top-down pipeline: end-to-end control on the N chain (current x grid, 623 runs)
+Truth: ss_fc + a 1e5-ulp function-preserving move (`synth.py`, seed 1; `e2e_truth.txt`). Base: ss_fc, so every
+coefficient differs.
+
+1. **N top (N7, N8, N9), `topgrid2.py`.**
+   - Step 1: an (N8, N9) grid on the exact S-only objective (`hypo.c`, sites S8, P7, S7, without P6). It does not
+     depend on N7's whole-u shifts.
+   - Step 2: N7's integer by an FFT scan on P6 (`mscan.py`; harmonic sawtooth expansion, df = 1/NF so the FFT index
+     equals m).
+   - Step 3: an exact 3-D refine.
+   - Start: the scan (`scan2.py`) applied (`apply_top.py`). Result: **N7 exact, N8 +2 ulps, N9 -389 ulps** (inside
+     the basin: about ±3 ulps for N8, ±500 for N9). Objective 299 against the truth's 298.
+2. **N6..N1, `fscan.py`.** An FFT peel over k = R·q + r: S_j exact per residue r, then the product P_{j-1} as a
+   sawtooth in q with per-point frequency. k range ±2e6, 0.5-2 min per coefficient (14 min for N0, R = 2048).
+
+   | coefficient | N6 | N5 | N4 | N3 | N2 | N1 |
+   |---|---|---|---|---|---|---|
+   | truth rank | 0 | 0 | 0 | 0 | 0 | plateau |
+   | Z (next) | 6.4 (5.3) | 12.0 (10.5) | 6.0 (4.7) | 28.2 (26.2) | 10.5 (8.4) | 14.3 |
+
+   N1's plateau is 5 consecutive k with equal value; they give the same stored values (one rounding cell).
+   - Lesson: **do not refit the function between peels.** A least-squares refit after N6 moved N5 by 1.5e8 ulps,
+     out of every scan range (`e2e_c*.txt`). Peeling needs only the upstream coefficients.
+   - **N0 is not peelable from the N chain.** Its next rounding is the division A = N/D, so it comes after D.
+3. Earlier exact two-site template (`peel2.py`, `peelk.c`): rank 0 for N3, N6, D3 within ±2e4, at 1.5 ms per
+   hypothesis. The phase-only model (`peel.py`) fails where ulp(c_j) < u(S_j), because ties scramble the product.
+
+## Range problem for real data
+The function does not bound the top tails. With the lower coefficients compensating, the principal ranges of
+ΔS_top, in cycles of the stage's ulp, are:
+
+| tail | at ε = 1e-17 | at ε = 1e-18 |
+|---|---|---|
+| N.S7 (quadratic) | 4.4e3, 6.3e5, 1.4e8 | 436, 6.3e4, 1.4e7 |
+| D.S6 (cubic) | 72, 2.9e3, 1.4e5, 1.8e7 | 7, 294, 1.4e4, 1.8e6 |
+
+So a box like ±3e4 (linear) × ±200 (quadratic) may not contain Excel. The real N.S7 scan on the current data
+peaks at the box edge (b 29,890) and is inconclusive (`scan_real_NS7.log`).
+Plan:
+- Near x = 1, take (a, b') from the near-1 runs, where the curvature is negligible.
+- Then take c by a 1-D FFT over the far runs.
+- Same for D.S6.
+- Plus the new n1001-n1128 data (about 2.1M points), which roughly doubles the coherent Z.
