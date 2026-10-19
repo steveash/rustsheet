@@ -1618,7 +1618,6 @@ F	probes/growth-modes.case.json	Sheet1!K25
 F	probes/growth-modes.case.json	Sheet1!K253
 F	probes/growth-modes.case.json	Sheet1!K254
 F	probes/growth-modes.case.json	Sheet1!K26
-F	probes/growth-modes.case.json	Sheet1!K265
 F	probes/growth-modes.case.json	Sheet1!K27
 F	probes/growth-modes.case.json	Sheet1!K277
 F	probes/growth-modes.case.json	Sheet1!K278
@@ -1647,7 +1646,6 @@ F	probes/growth-modes.case.json	Sheet1!K355
 F	probes/growth-modes.case.json	Sheet1!K356
 F	probes/growth-modes.case.json	Sheet1!K37
 F	probes/growth-modes.case.json	Sheet1!K38
-F	probes/growth-modes.case.json	Sheet1!K385
 F	probes/growth-modes.case.json	Sheet1!K39
 F	probes/growth-modes.case.json	Sheet1!K4
 F	probes/growth-modes.case.json	Sheet1!K49
@@ -2276,7 +2274,6 @@ F	probes/regression-trend.case.json	Sheet1!L13
 F	probes/regression-trend.case.json	Sheet1!L14
 F	probes/regression-trend.case.json	Sheet1!L15
 F	probes/regression-trend.case.json	Sheet1!L16
-F	probes/regression-trend.case.json	Sheet1!L18
 F	probes/regression-trend.case.json	Sheet1!L20
 F	probes/regression-trend.case.json	Sheet1!L21
 F	probes/regression-trend.case.json	Sheet1!L25
@@ -2290,15 +2287,12 @@ F	probes/regression-trend.case.json	Sheet1!L34
 F	probes/regression-trend.case.json	Sheet1!L35
 F	probes/regression-trend.case.json	Sheet1!L37
 F	probes/regression-trend.case.json	Sheet1!L39
-F	probes/regression-trend.case.json	Sheet1!L40
-F	probes/regression-trend.case.json	Sheet1!L41
 F	probes/regression-trend.case.json	Sheet1!L43
 F	probes/regression-trend.case.json	Sheet1!M12
 F	probes/regression-trend.case.json	Sheet1!M13
 F	probes/regression-trend.case.json	Sheet1!M14
 F	probes/regression-trend.case.json	Sheet1!M15
 F	probes/regression-trend.case.json	Sheet1!M16
-F	probes/regression-trend.case.json	Sheet1!M18
 F	probes/regression-trend.case.json	Sheet1!M20
 F	probes/regression-trend.case.json	Sheet1!M21
 F	probes/regression-trend.case.json	Sheet1!M25
@@ -2312,8 +2306,6 @@ F	probes/regression-trend.case.json	Sheet1!M34
 F	probes/regression-trend.case.json	Sheet1!M35
 F	probes/regression-trend.case.json	Sheet1!M37
 F	probes/regression-trend.case.json	Sheet1!M39
-F	probes/regression-trend.case.json	Sheet1!M40
-F	probes/regression-trend.case.json	Sheet1!M41
 F	probes/regression-trend.case.json	Sheet1!M43
 F	probes/regression-trend.case.json	Sheet1!M6
 F	probes/regression-trend.case.json	Sheet1!N10
@@ -2322,7 +2314,6 @@ F	probes/regression-trend.case.json	Sheet1!N13
 F	probes/regression-trend.case.json	Sheet1!N14
 F	probes/regression-trend.case.json	Sheet1!N15
 F	probes/regression-trend.case.json	Sheet1!N16
-F	probes/regression-trend.case.json	Sheet1!N18
 F	probes/regression-trend.case.json	Sheet1!N20
 F	probes/regression-trend.case.json	Sheet1!N21
 F	probes/regression-trend.case.json	Sheet1!N25
@@ -2339,8 +2330,6 @@ F	probes/regression-trend.case.json	Sheet1!N36
 F	probes/regression-trend.case.json	Sheet1!N37
 F	probes/regression-trend.case.json	Sheet1!N39
 F	probes/regression-trend.case.json	Sheet1!N4
-F	probes/regression-trend.case.json	Sheet1!N40
-F	probes/regression-trend.case.json	Sheet1!N41
 F	probes/regression-trend.case.json	Sheet1!N43
 F	probes/regression-trend.case.json	Sheet1!N5
 F	probes/regression-trend.case.json	Sheet1!N6
@@ -2352,7 +2341,6 @@ F	probes/regression-trend.case.json	Sheet1!O13
 F	probes/regression-trend.case.json	Sheet1!O14
 F	probes/regression-trend.case.json	Sheet1!O15
 F	probes/regression-trend.case.json	Sheet1!O16
-F	probes/regression-trend.case.json	Sheet1!O18
 F	probes/regression-trend.case.json	Sheet1!O2
 F	probes/regression-trend.case.json	Sheet1!O20
 F	probes/regression-trend.case.json	Sheet1!O21
@@ -2370,8 +2358,6 @@ F	probes/regression-trend.case.json	Sheet1!O36
 F	probes/regression-trend.case.json	Sheet1!O37
 F	probes/regression-trend.case.json	Sheet1!O39
 F	probes/regression-trend.case.json	Sheet1!O4
-F	probes/regression-trend.case.json	Sheet1!O40
-F	probes/regression-trend.case.json	Sheet1!O41
 F	probes/regression-trend.case.json	Sheet1!O43
 F	probes/regression-trend.case.json	Sheet1!O5
 F	probes/regression-trend.case.json	Sheet1!O6
