@@ -346,7 +346,7 @@ impl Model {
                     _ => self.evaluate_node_in_context(node, cell),
                 }
             }
-            _ => self.evaluate_node_in_context(node, cell),
+            _ => self.evaluate_call_with_reference(node, cell),
         }
     }
 
