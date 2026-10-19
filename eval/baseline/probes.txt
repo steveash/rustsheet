@@ -141,6 +141,9 @@ C	probes/convert-temperature-ov03.case.json	1
 C	probes/convert-temperature-ov10.case.json	1
 C	probes/convert-temperature-ov11.case.json	1
 C	probes/convert-temperature-ov12.case.json	1
+C	probes/convert-temperature-ov20.case.json	1
+C	probes/convert-temperature-ov21.case.json	1
+C	probes/convert-temperature-ov22.case.json	1
 C	probes/convert-temperature-prefix-a.case.json	88
 C	probes/convert-temperature-prefix-b.case.json	88
 C	probes/convert-temperature-sweep.case.json	140
