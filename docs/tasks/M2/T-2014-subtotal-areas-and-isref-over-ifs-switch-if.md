@@ -3,7 +3,7 @@ id: T-2014
 title: "SUBTOTAL, AREAS and ISREF over IFS, SWITCH, IF or CHOOSE of a reference XLOOKUP read its cells"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
