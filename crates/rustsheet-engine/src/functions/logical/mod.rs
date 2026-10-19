@@ -49,7 +49,7 @@ pub(crate) enum IfArg {
     Array(Vec<Vec<ArrayNode>>),
 }
 
-pub(crate) fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
+fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
     match arg {
         IfArg::Scalar(_) => (1, 1),
         IfArg::Array(arr) => (arr.len(), arr.first().map_or(0, |r| r.len())),
@@ -60,7 +60,7 @@ pub(crate) fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
 /// size-1 broadcasting rule: a scalar covers every position, a length-1
 /// dimension repeats its only element to cover the whole output extent, and a
 /// ragged mismatch (e.g. length 2 against an extent of 3) yields `#N/A`.
-pub(crate) fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
+fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
     match arg {
         IfArg::Scalar(node) => node.clone(),
         IfArg::Array(arr) => {

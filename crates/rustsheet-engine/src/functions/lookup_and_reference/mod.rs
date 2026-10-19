@@ -1,4 +1,4 @@
-use crate::arithmetic::bcast_get;
+use crate::cast::calc_result_to_array_node;
 use crate::cast::NumberOrArray;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::defined_names::ParsedDefinedName;
@@ -6,11 +6,11 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::is_out_of_range_r1c1_name;
 use crate::external_reference::{one_external_area, PickedReference};
-use crate::functions::logical::{if_arg_at, if_arg_dims};
+use crate::functions::logical::IfArg;
 use crate::functions::text::util::within_text_budget;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::limits::{check_array_size, check_range_size};
+use crate::limits::check_range_size;
 use crate::reference_operators::{several_areas_ref, Picked, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -557,58 +557,54 @@ impl Model {
                 Picked::Node(&args[index_num])
             }
             Ok(NumberOrArray::Array(index_array)) => {
-                Picked::Value(self.choose_array(args, &index_array, cell))
+                Picked::Value(self.choose_array(args, index_array, cell))
             }
             Err(calc_err) => Picked::Value(calc_err),
         }
     }
 
-    /// CHOOSE over an index array, broadcast like IF over an array condition: every value
-    /// argument is evaluated as a scalar or an array, the result spans the largest extent of the
-    /// index and all of them (an argument no element picks included), and each position takes
-    /// the picked argument's element there under size-1 broadcasting. A ragged position is
-    /// `#N/A`, an index element out of range `#VALUE!`: `CHOOSE({1,2},D1:D2,D3:D4)` is the 2x2
-    /// `{D1,D3;D2,D4}` (probes/choose-array-index-range-arms, docs/excel-semantics/lookup.md).
+    /// CHOOSE over an index array, on the lifting driver (SPEC-0011, T-1959): every value
+    /// argument is evaluated as a scalar or an array, the index and all of them are broadcast
+    /// together, so the result spans the largest extent of the index and all of them (an
+    /// argument no element picks included), and each element is the picked argument's element
+    /// there under size-1 broadcasting. A ragged position is `#N/A`, an index element out of
+    /// range `#VALUE!`: `CHOOSE({1,2},D1:D2,D3:D4)` is the 2x2 `{D1,D3;D2,D4}`
+    /// (probes/choose-array-index-range-arms, docs/excel-semantics/lookup.md).
     fn choose_array(
         &mut self,
         args: &[Node],
-        index_array: &[Vec<ArrayNode>],
+        index_array: Vec<Vec<ArrayNode>>,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let mut values = Vec::with_capacity(args.len() - 1);
+        let mut lifted = Vec::with_capacity(args.len());
+        lifted.push(LiftedArg::Grid(index_array));
         for arg in &args[1..] {
             match self.evaluate_if_arg(arg, cell) {
-                Ok(value) => values.push(value),
+                Ok(IfArg::Array(grid)) => lifted.push(LiftedArg::Grid(grid)),
+                Ok(IfArg::Scalar(node)) => {
+                    lifted.push(LiftedArg::Scalar(array_node_to_calc_result(&node, cell)));
+                }
                 Err(error) => return error,
             }
         }
-        let index_rows = index_array.len();
-        let index_cols = index_array.first().map_or(0, Vec::len);
-        let (rows, cols) = values
-            .iter()
-            .map(if_arg_dims)
-            .fold((index_rows, index_cols), |(r, c), (vr, vc)| {
-                (r.max(vr), c.max(vc))
-            });
-        if let Some((error, message)) = check_array_size(rows, cols) {
-            return CalcResult::new_error(error, cell, message);
-        }
-        let mut output = Vec::with_capacity(rows);
-        for row in 0..rows {
-            let mut line = Vec::with_capacity(cols);
-            for col in 0..cols {
-                let node = match bcast_get(index_array, row, col) {
-                    None => ArrayNode::Error(Error::NA),
-                    Some(index) => match self.choose_index_element(index, values.len()) {
-                        Ok(picked) => if_arg_at(&values[picked], row, col),
-                        Err(error) => error,
-                    },
-                };
-                line.push(node);
+        let count = args.len() - 1;
+        let mut pick = |model: &mut Model, values: &[CalcResult]| {
+            let Some((index, arms)) = values.split_first() else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let index = calc_result_to_array_node(index.clone());
+            match model.choose_index_element(&index, count) {
+                Ok(picked) => arms.get(picked).cloned().unwrap_or(CalcResult::EmptyCell),
+                Err(error) => array_node_to_calc_result(&error, cell),
             }
-            output.push(line);
-        }
-        CalcResult::Array(output)
+        };
+        self.lift_grids(
+            lifted,
+            LiftCost::Unit,
+            &LiftOptions::EVERY_ELEMENT,
+            cell,
+            &mut pick,
+        )
     }
 
     /// The 0-based value argument one CHOOSE index element picks among `count`, or the error

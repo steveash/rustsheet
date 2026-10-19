@@ -214,7 +214,8 @@ impl Model {
     /// `lift_values` steps 3-7): the output bound (`check_array_size`, `#ERROR!` past it) and the
     /// work bound (`cost`, `too_many_visits`) are checked before any element is computed; then
     /// the elements run in row-major order, in place when one grid is the only lifted argument.
-    pub(super) fn lift_grids(
+    /// CHOOSE over an index array calls it with its arms already read (T-1959).
+    pub(crate) fn lift_grids(
         &mut self,
         lifted: Vec<LiftedArg>,
         cost: LiftCost<'_>,

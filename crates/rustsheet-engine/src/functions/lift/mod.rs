@@ -6,7 +6,8 @@
 //!   its functions as a `match` pattern.
 //! - `call.rs`: `lift_call` and its read phase, for the functions in the table.
 //! - `driver.rs`: the broadcasting core, `lift_values`, which the *IF(S), AGGREGATE, IFS, SWITCH
-//!   and lookup lifts call directly (moved from `if_ifs.rs` by T-1784).
+//!   and lookup lifts call directly (moved from `if_ifs.rs` by T-1784), and its `lift_grids`,
+//!   which CHOOSE over an index array calls with its arms read (T-1959).
 //!
 //! [`Function::arg_kinds`]: crate::functions::Function::arg_kinds
 
