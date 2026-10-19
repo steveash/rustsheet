@@ -1266,13 +1266,9 @@ F	probes/discount-security-modes.case.json	Calc!A86
 F	probes/discount-security-modes.case.json	Calc!A88
 F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
-F	probes/eng-im-overflow.case.json	S!A11
 F	probes/eng-im-overflow.case.json	S!A12
-F	probes/eng-im-overflow.case.json	S!A17
 F	probes/eng-im-overflow.case.json	S!A33
 F	probes/eng-im-overflow.case.json	S!A34
-F	probes/eng-im-overflow.case.json	S!A40
-F	probes/eng-im-overflow.case.json	S!A41
 F	probes/eng-im-overflow.case.json	S!A42
 F	probes/eng-impower-angle-cut.case.json	S!A10
 F	probes/eng-impower-angle-cut.case.json	S!A11
