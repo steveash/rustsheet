@@ -5,7 +5,8 @@
 //!
 //! The table is split by family, each file with its weight constants and their measurements next
 //! to its entries: `general.rs` (dates, information, lookup, math), `financial.rs`,
-//! `statistical.rs`, `engineering.rs` and `text.rs`. The argument shapes several families share are here.
+//! `statistical.rs`, `engineering.rs` and `text.rs`. The argument shapes several families share
+//! are here.
 
 mod engineering;
 mod financial;

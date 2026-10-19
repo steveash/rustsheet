@@ -111,7 +111,7 @@ pub(crate) fn array_node_to_text(node: &ArrayNode) -> Result<Cow<'_, Text>, Erro
 
 /// The text a scalar value reads as: a number as its text, a boolean as TRUE or FALSE, empty as
 /// "". `None` for an error, a range, an array or a LAMBDA.
-fn scalar_text(value: &CalcResult) -> Option<String> {
+fn calc_scalar_to_string(value: &CalcResult) -> Option<String> {
     match value {
         CalcResult::Number(f) => Some(number_to_text(*f)),
         CalcResult::String(s) => Some((**s).to_owned()),
@@ -131,7 +131,7 @@ pub(crate) fn calc_result_to_text(value: &CalcResult) -> Result<Cow<'_, Text>, E
     match value {
         CalcResult::String(s) => Ok(Cow::Borrowed(s)),
         CalcResult::Error { error, .. } => Err(error.clone()),
-        other => scalar_text(other)
+        other => calc_scalar_to_string(other)
             .map(|s| Cow::Owned(Text::from(s)))
             .ok_or(Error::VALUE),
     }
@@ -141,7 +141,7 @@ pub(crate) fn calc_result_to_text(value: &CalcResult) -> Result<Cow<'_, Text>, E
 pub(crate) fn calc_result_to_string(value: &CalcResult) -> Result<String, Error> {
     match value {
         CalcResult::Error { error, .. } => Err(error.clone()),
-        other => scalar_text(other).ok_or(Error::VALUE),
+        other => calc_scalar_to_string(other).ok_or(Error::VALUE),
     }
 }
 
@@ -707,7 +707,7 @@ impl Model {
     ) -> Result<String, CalcResult> {
         match value {
             error @ CalcResult::Error { .. } => Err(error.clone()),
-            other => scalar_text(other).ok_or_else(|| not_a_scalar(cell)),
+            other => calc_scalar_to_string(other).ok_or_else(|| not_a_scalar(cell)),
         }
     }
 

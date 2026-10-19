@@ -162,10 +162,10 @@ fn text_element(value: &CalcResult, format: &str, ctx: &FormatContext) -> ArrayN
 }
 
 impl Model {
-    /// TEXT(value, format_text) lifts over a range or an array in either argument, one result
+    /// `TEXT(value, format_text)` lifts over a range or an array in either argument, one result
     /// per element; each format has its own complexity check (probes/text-format-length-limit-f
     /// A54:B54). The value's error wins over a bad or too complex format (number-formats.md), and
-    /// the format's error over a text value (error_broadcast.xlsx Sheet2!A1, `TEXT("x",NA())`).
+    /// the format's error over a text value (`error_broadcast.xlsx` Sheet2!A1, `TEXT("x",NA())`).
     pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let ctx = self.format_context();
         self.lift_call(Function::Text, args, cell, &mut |_, values| {

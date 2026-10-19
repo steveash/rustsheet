@@ -784,11 +784,10 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Randarray => StaticResult::Unknown,
         Function::Textsplit => StaticResult::Unknown,
         Function::Concat => not_implemented(args),
-        // LEFT/MID/RIGHT broadcast element-wise: an array/range argument yields an array.
         // UPPER/LOWER broadcast element-wise: an array/range argument yields an array.
         Function::Lower => scalar_arguments(args),
-        // Their text and scalar arguments lift over a range or an array (T-1272); the table derives
-        // their shape once they move onto `lift_call`. TODO(T-1775)
+        // Their text and scalar arguments lift over a range or an array (T-1272), each lifted
+        // element keeping one value, so the shape is not known statically.
         Function::Regexextract | Function::Regexreplace | Function::Regextest => {
             StaticResult::Unknown
         }
@@ -805,14 +804,10 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Dollar => not_implemented(args),
         // All three lift over an array or range `source`/`stock`/`value` (T-1179).
         Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
-        // Lifts over array arguments, `#VALUE!` per element (filterxml.rs).
-        // The *B functions delegate to their non-B counterparts (byte_functions.rs), so they lift
-        // over ranges exactly as FIND/LEFT/LEN/... do (T-0271).
         Function::Fixed => not_implemented(args),
         Function::Numbervalue => not_implemented(args),
         Function::Proper => scalar_arguments(args),
         Function::Upper => scalar_arguments(args),
-        // VALUE lifts element-wise (probes/value-argument-lift C1:C8, T-1791).
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
         Function::Avedev => not_implemented(args),
