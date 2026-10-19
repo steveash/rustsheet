@@ -3,7 +3,7 @@ id: T-1994
 title: "Typed date plus clock with a single-letter A or P suffix is a number (1/2/2020 10:00 A)"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
