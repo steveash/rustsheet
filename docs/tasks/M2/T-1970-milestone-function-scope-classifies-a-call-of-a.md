@@ -3,7 +3,7 @@ id: T-1970
 title: "Milestone function scope classifies a call of a workbook defined name by the name's formula (POWER.xlsx inside_a_lambda C3)"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -35,18 +35,28 @@ cases). Keep the unknown-function rule (a name neither in the catalog nor define
 as in scope), so that no cell drops out silently.
 
 ## Acceptance criteria
-- [ ] A formula that calls a defined name is classified by the union of its own catalog functions
+- [x] A formula that calls a defined name is classified by the union of its own catalog functions
   and those of the name's formula. A name that calls another name is followed too, with a depth
   bound and a cycle guard (a self-referencing name test terminates). `LAMBDA`/`LET` parameter
   names (`_xlpm.`) and the `_xlfn.` prefix are read like elsewhere in `functions_in`.
-- [ ] Unit tests in function_scope.rs: a cell calling a LAMBDA name over an M5 function is out of
+- [x] Unit tests in function_scope.rs: a cell calling a LAMBDA name over an M5 function is out of
   scope, a name over M2 functions only is in scope, and an undefined unknown name stays in scope.
-- [ ] `make eval` report: the section no longer lists `POWER.xlsx!inside_a_lambda!C3`. The PR
+- [x] `make eval` report: the section no longer lists `POWER.xlsx!inside_a_lambda!C3`. The PR
   states the old and new "scored cells" counts and every cell that left the scope.
   eval/baseline is unchanged.
-- [ ] The module doc comment and the section's lead text say that defined names are followed.
-- [ ] `make check` green; reviewers approve.
+- [x] The module doc comment and the section's lead text say that defined names are followed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing gelu's last digit (T-0959).
 - Following cell precedents (still not followed).
+
+## Outcome
+`CaseResult` carries an xlsx case's workbook-scope defined names (upper-case name → formula),
+and `function_scope::summarize` classifies a formula by the union of its own calls and those of
+every defined name it calls, transitively (each name expanded once, at most 16 levels). The
+section's lead text and the module doc say so. runner.rs's test module moved to
+`runner/tests.rs` to stay under the 1000-line limit. `make eval`: "scored cells" 4253 → 4245,
+failing 2 → 1. The 8 cells that left the scope, all callers of LAMBDA names: LAMBDA.xlsx
+Sheet1!F2, B5, B6, B7, B8 (pass) and POWER.xlsx inside_a_lambda!A3, B3 (pass) and C3
+(NumericUlp, owned by T-0959). eval/baseline unchanged.
