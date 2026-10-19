@@ -6,7 +6,7 @@ import numpy as np
 from fastenum import law_key
 from stagelaws import stage_F
 def alias(F): F=np.mod(F,1.0); return np.minimum(F,1-F)
-def run(fe,z,seed_h,seed_t,rounds=6,tol0=2e-3,laws=('T','Pn1'),truth=None,verbose=True):
+def run(fe,z,seed_h,seed_t,rounds=6,tol0=2e-3,laws=('T','Pn1'),truth=None,verbose=True,adaptive=False,tolmin=3e-6):
     nr=len([k for k in z.files if k.startswith('x')])
     X=[z['x%d'%i][0]+32768*2.0**-52 for i in range(nr)]; P=[z['p%d'%i][:,0] for i in range(nr)]
     hyps=list(seed_h); trs=list(seed_t); zc,_=fe.solve(hyps,trs); tol=tol0
@@ -36,7 +36,8 @@ def run(fe,z,seed_h,seed_t,rounds=6,tol0=2e-3,laws=('T','Pn1'),truth=None,verbos
         for it in range(12):
             try: zc2,res=fe.solve([allh[k] for k in keep],[allt[k] for k in keep])
             except Exception: break
-            bad=[keep[i] for i,r in enumerate(res) if r>5*tol and keep[i]>=len(hyps)]
+            thr_r=max(3*np.median(res),2e-6) if adaptive else 5*tol
+            bad=[keep[i] for i,r in enumerate(res) if r>thr_r and keep[i]>=len(hyps)]
             if not bad: break
             worst=sorted(bad,key=lambda k: -res[keep.index(k)])[:max(1,len(bad)//3)]
             keep=[k for k in keep if k not in worst]
@@ -49,5 +50,6 @@ def run(fe,z,seed_h,seed_t,rounds=6,tol0=2e-3,laws=('T','Pn1'),truth=None,verbos
             e=max(np.max(np.abs(SF(Nn,xg)['S%d'%j][1]/SF(Nt,xg)['S%d'%j][1]-1)) for j in range(0,6))
             msg+='  max rel err S0-S5(N) %.1e'%e
         if verbose: print(msg,flush=True)
-        tol=max(tol/2,3e-6)
+        if not adaptive or len(good)-len(hyps)>=getattr(run,'_lastkept',0): tol=max(tol/2,tolmin)
+        run._lastkept=len(good)-len(hyps)
     return zc
