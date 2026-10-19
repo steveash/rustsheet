@@ -1246,8 +1246,6 @@ F	probes/eng-impower-angle-cut.case.json	S!A17
 F	probes/eng-impower-angle-cut.case.json	S!A18
 F	probes/eng-impower-angle-cut.case.json	S!A19
 F	probes/eng-impower-angle-cut.case.json	S!A9
-F	probes/eng-later-argument-lift.case.json	Sheet1!M2
-F	probes/eng-later-argument-lift.case.json	Sheet1!M8
 F	probes/eta-reduced-names.case.json	Sheet1!E101
 F	probes/eta-reduced-names.case.json	Sheet1!E102
 F	probes/eta-reduced-names.case.json	Sheet1!E103

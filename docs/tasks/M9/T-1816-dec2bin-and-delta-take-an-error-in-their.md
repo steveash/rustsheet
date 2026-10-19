@@ -3,7 +3,7 @@ id: T-1816
 title: "DEC2BIN and DELTA take an error in their second argument over text in the first"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ docs/excel-semantics/engineering.md "Engineering function argument modes".
 
 ## Out of scope
 - The lifting itself (T-1383).
+
+## Outcome
+New probe probes/eng-first-vs-second-error shows all eleven functions (nine base conversions, DELTA, GESTEP) read the second argument first, scalar and lifted. The kernels now coerce `places`/`number2` before the first argument. probes/eng-later-argument-lift M2 and M8 pass; rule recorded in docs/excel-semantics/engineering.md.
