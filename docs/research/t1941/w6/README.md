@@ -128,6 +128,10 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     - Single-track assignment enumeration (`enumtrack.py`) is non-identifying: 8 assignments fit synthetic T1 at the
       noise floor. The true one only has the smallest shift from the LS fit (0.10 against 0.46-2.4).
     - The assembler takes stage-value rows. Control: S1..S5 of both chains at 1e-6 noise recover S0-S5 to 1e-6.
+    - The assembler also takes combination rows (kind 'comb': sum_i n_i s_{j_i}'/2^E_i). Control: n = 1 sideband rows of
+      P0-P4 of both chains (24 x, 3e-4 noise, exponents per point) recover S0..S4 to 1e-5..1e-4.
+    - The LS fit's predictions for the dominant laws are 0.02-2.8 cycles off the synthetic truth: only N.T4, D.T5,
+      N.P3n1 and D.P4n1 are within 0.06. So an EM bootstrap of the assignment from c0 is not viable.
     - Coarse stage values must come from model-free sideband triplets (W4: (E, D, B) gives mant(M(x))).
 
 ## Negative so far
