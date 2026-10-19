@@ -355,7 +355,7 @@ Evidence: probes/eng-im-overflow (excel-graph).
 - IM* text writes a small part in full past 20 characters: `IMEXP("710i")` is
   `0.999999998182636+0.0000602887066915739i` (A42). Ours now writes a part with decimal exponent -5 or above in plain notation whatever its
   length (the exponent -5 limit is a printf `%G` guess, bounded only by A42 and A9); A42 still
-  fails because the digits differ because Excel reduces a large sine or cosine argument differently (ours
+  fails: the digits differ since Excel reduces a large sine or cosine argument differently (ours
   `...915853`).
 - An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
   `IMSUM("1E308","0")`); ours already matches. `IMSQRT("1E307")` and `IMSQRT("4E307")` are `#NUM!`
