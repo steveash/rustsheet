@@ -80,7 +80,7 @@ if __name__=='__main__':
     for f,(g,v) in enumerate(frows): M[t][nu+ne+f]=int(mp.nint(SC*Wf*v/1e3))
     M[t][cols-1]=int(SC)
     A=IntegerMatrix.from_matrix(M)
-    LLL.reduction(A) if not os.environ.get('MPFR') else LLL.reduction(A,float_type='mpfr',precision=int(os.environ['MPFR']))
+    LLL.reduction(A) if not os.environ.get('MPFR') else LLL.reduction(A,method='proved',float_type='mpfr',precision=int(os.environ['MPFR']))
     BKZ.reduction(A,BKZ.Param(block_size=int(__import__("os").environ.get("BKZ","20"))))
     best=None
     for i in range(A.nrows):
