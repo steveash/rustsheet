@@ -23,7 +23,7 @@ use crate::{
 /// sum drifts from Excel (83 ulps over 1,024 periods, probes/fin-cumipmt-period-bound A11, and no
 /// correct digit over 10^5 periods of type 1, A5), while the closed form is within 6 ulps there
 /// (48 to 64 near period 1E15). The bound also caps the kernel's work: at most 32 PPMT steps an
-/// element (`CUMULATIVE_WEIGHT` in functions/lift/kinds.rs).
+/// element (`CUMULATIVE_WEIGHT` in functions/lift/kinds/financial.rs).
 const CUMULATIVE_LOOP_PERIODS: f64 = 32.0;
 
 /// 2^53: below it every period is an exact integer, so `start + offset` is a distinct period.

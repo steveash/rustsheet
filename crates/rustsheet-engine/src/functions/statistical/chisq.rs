@@ -2,6 +2,7 @@ use crate::calc_result::Range;
 use crate::reference_operators::{Ranges, RefArg};
 use statrs::distribution::{Continuous, Gamma};
 
+use super::erf::{gamma_half_lower, gamma_half_upper};
 use super::incomplete_gamma::{gamma_cdf, gamma_inverse_cdf, gamma_sf};
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
@@ -23,6 +24,23 @@ fn chi_squared(df: f64, cell: CellReferenceIndex) -> Result<Gamma, CalcResult> {
     Gamma::new(df / 2.0, 0.5).map_err(|_| num_error(cell))
 }
 
+/// Whether a chi-squared distribution from [`chi_squared`] has one degree of freedom (shape 1/2),
+/// where Excel computes from its ERF/ERFC kernels (docs/excel-semantics/statistics.md, T-1778).
+fn is_one_degree(dist: &Gamma) -> bool {
+    dist.shape() == 0.5
+}
+
+/// The right tail P(X > x) of a chi-squared distribution from [`chi_squared`]: at one degree of
+/// freedom Q(1/2, x/2) = ERFC.PRECISE(SQRT(x/2)), as Excel's CHISQ.DIST.RT(x,1), CHIDIST and
+/// CHISQ.TEST compute it (T-1778, `kmyst-erfc-r9side4`), else statrs' `sf`, capped.
+fn chi_squared_sf(dist: &Gamma, x: f64) -> f64 {
+    if is_one_degree(dist) {
+        gamma_half_upper(x / 2.0)
+    } else {
+        gamma_sf(dist, x)
+    }
+}
+
 /// A distribution value as a cell value: `#NUM!` unless finite and not negative.
 fn non_negative(value: f64, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
     if value.is_finite() && value >= 0.0 {
@@ -36,7 +54,7 @@ impl Model {
     /// `CHISQ.DIST(x, deg_freedom, cumulative)`: every argument lifts over an array and a range
     /// (SPEC-0011; probes/stat-argument-modes H152-H156, probes/stat-quantile-lift H27). The cdf
     /// is the capped port of statrs' incomplete gamma (`incomplete_gamma.rs`), which the lifting
-    /// table charges (kinds.rs `INCOMPLETE_GAMMA_WEIGHT`).
+    /// table charges (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT`).
     pub(crate) fn fn_chisq_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::ChisqDist, args, cell, &mut |model, values| {
             number_or_error(model.chisq_dist_of(values, cell))
@@ -58,7 +76,9 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = chi_squared(df, cell)?;
-        let result = if cumulative {
+        let result = if cumulative && is_one_degree(&dist) {
+            gamma_half_lower(x / 2.0)
+        } else if cumulative {
             gamma_cdf(&dist, x)
         } else {
             dist.pdf(x)
@@ -96,7 +116,7 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = chi_squared(df, cell)?;
-        non_negative(gamma_sf(&dist, x), cell)
+        non_negative(chi_squared_sf(&dist, x), cell)
     }
 
     /// `CHISQ.INV(probability, deg_freedom)`: both arguments lift over an array and a range
@@ -407,7 +427,11 @@ impl Model {
         // The capped cdf. A sheet's cell count keeps the shape under 2^33, where the series can
         // need about 630,000 terms, past the 2^19 cap, so a very large test is #NUM! (the cap's
         // DEVIATION). A statistic whose half underflows is a cdf of 0 (incomplete_gamma.rs), so p 1.
-        let mut p = 1.0 - gamma_cdf(&dist, chi2);
+        let mut p = if is_one_degree(&dist) {
+            chi_squared_sf(&dist, chi2)
+        } else {
+            1.0 - gamma_cdf(&dist, chi2)
+        };
         if p.is_nan() {
             return CalcResult::new_error(
                 Error::NUM,

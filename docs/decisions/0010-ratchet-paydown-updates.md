@@ -180,5 +180,7 @@
   T-1713: expressions/parser/static_analysis.rs 1049 -> 1026 lines (the operator-chain shape moved to
   static_analysis/broadcast.rs to make room for the legacy N/T marker step) (`check_file_size.py --update`);
   duplicated lines unchanged at 3863.
+  T-1929: duplicated lines 3863 -> 3861 (`check_duplication.py --update`): the lock was loose on main, which
+  already counts 3861; T-1929's own diff leaves the count unchanged.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
