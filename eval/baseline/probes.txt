@@ -271,6 +271,7 @@ C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-busy-behaviors.case.json	23
 C	probes/error-stored-constants.case.json	24
 C	probes/eta-reduced-names.case.json	59
+C	probes/expand-wrap-past-grid.case.json	10
 C	probes/external-ref-no-link-ifchoose-b.case.json	6
 C	probes/external-ref-no-link-ifchoose.case.json	44
 C	probes/external-ref-no-link-index.case.json	54
