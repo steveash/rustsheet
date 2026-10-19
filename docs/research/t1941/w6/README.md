@@ -236,6 +236,64 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       seed (5/5 against 2/5 and 0/5 for the D seeds), per-peak EM keeps 71 consistent matches, and exact track EM
       accepts the same 7 tracks at 1-3e-7.
 
+23. **Excel L101-L124, first pass** (24 runs x 65,536 doubles, merged cleanly; 39 tracks).
+    - Floors of the 18 longest tracks under (9,9): 9 law-like tracks at 1.8-6.8e-7 (0, 2, 4, 8, 9, 13, 14, 16, 17),
+      8 mixed (0.004-0.19), one borderline (1.1e-5).
+    - None of the tracks is an outer-op line (A = fl(m R), B = fl(t A), or their sidebands; best rms 0.04-0.55), as
+      expected for spectra of the extracted inner R.
+    - Fast joint skip beam, laws that fit jointly by degree:
+
+      | Degree | Law-like tracks | Fit jointly |
+      |---|---|---|
+      | (7,7) | 0 | 0 |
+      | (7,8) | 4 | 1 |
+      | (8,7) | 5 | 1 |
+      | (8,8) | 6 | 1 |
+      | (8,9) | 9 | 1 |
+      | (9,8) | 9 | 2 |
+      | (9,9) | 9 | 2 |
+      | (9,10) | 10 | 2 |
+      | (10,10) | 10 | 2 |
+      | (10,9) | 11 | 3 (D.T5, N.T4, N.T5; rms 1.5e-6) |
+
+    - Low degrees are clearly worse. From (9,8) up, the fast solver caps at 2-3 jointly fitted tracks, as it did on the
+      far synthetic truth, so the exact assembler (`mpjoint.py`) is the real test.
+    - Excel's staircase detector gives 7 steps, of which 3 are real (1.527, 1.531, 1.613); the rest are
+      single-segment noise. The driver's crossing ranking was inconclusive (best 4/7).
+
+24. **Excel, measured-phase lattice, pass 1** (`latsolve.py ... measured`, `xlphase.py`, `applym.py`).
+    - Input: the 6-track EM chain (`xl_EM5`). 300 measured per-run phase rows (amplitude ratio 0.7-1.4; coherent lines
+      D.T5, D.T6, D.Pn14-16, N.T4-6, N.Pn14-15). BKZ-30, MPFR-200 LLL (fpylll needs `method='proved'` for MPFR).
+    - Recovered offsets are 1e12-1e15 ulps, the same range as the far control's true offsets from its EM chain
+      (1e9-1.3e15).
+    - Applied to Excel R on 20,000 points: exact 20.2% -> 25.6%, median relative R error 2.43e-16 -> 2.31e-16.
+    - **Retracted: spurious.** The offsets satisfy the phase congruences mod 1 but move every line by 24-3,900 DFT
+      bins (`latcheck.py`; the frequency gradient in `latsolve.freq_rows` matches a direct `stage_F` difference to
+      every printed digit). Re-measured phases against that chain confirm it: the coherent lines drop to amplitude
+      ratio <0.3. The exact-R gain came from the function rows alone.
+    - Fix: frequency-hold rows (`FREQ=w`: phase-equivalent weight per cycle/sample; 2621 makes half a bin cost the
+      same as 0.02 cycles of phase). Measured-phase lattice runs must pass `latcheck.py` (all lines < 0.5 bins).
+    - With frequency hold (FREQ=2621), pass 1 on Excel: lines move 0.02-0.4 bins (Pn16/17 about 1); exact R 20.2% ->
+      27.5%, median relative R error 2.43e-16 -> 1.30e-16. Re-measured coherence against the new chain: D.T5, D.T6,
+      D.Pn14, D.Pn15, N.T5, N.Pn15 stay 24/24 runs; N.Pn14 22 -> 24; N.T4 21 -> 20, N.T6 21 -> 17; D.Pn16 20 -> 8. So
+      the gain comes with coherent lines.
+    - Pass 2 (re-measured phases, `latpass.sh`): 20.3% exact, 2.43e-16, worse than pass 1. N.Pn11/12/16/17 drift
+      1.5-2.7 bins.
+    - Bug: `applym.py` stepped the bit pattern, which is wrong once a coefficient crosses a binade (pass 2 crossed one).
+      It now adds m*ulp(c) as a value.
+    - Control without frequency hold (far truth, from its EM chain, 402 rows): offsets wrong by ~1e14 and lines moved
+      by hundreds to thousands of bins, the same failure as Excel's retracted pass 1.
+    - Exact climb (`climb6.py`, 20,000 points, steps up to 2^50 ulps) from the 27.5% chain: 32.1% after round 0, then
+      flat.
+    - **Control with frequency hold fails too** (402 rows): offsets no closer to the truth, exact 28.5% -> 26.3%. So
+      Excel's 27.5% / 32.1% is a better fit, not evidence of the true chain.
+    - Cause: the measured phases. Against the ideal (truth - candidate) phases on the control (`phasediag.py`):
+      accurate lines (median error 0.002-0.008 cycles) are N.T4, N.T5, D.T5, D.Pn13-14, N.Pn12-14; Pn10-12 lines are
+      biased by about 0.04; T2/T3/T7, Pn16/17 and others are junk (about 0.25) yet pass the 0.7-1.4 amplitude filter.
+    - Selector usable on Excel: a line's median |log amplitude ratio| < 0.1 keeps every accurate line except N.Pn12
+      (0.16) and rejects every junk line (> 0.45). Run-to-run phase smoothness does not discriminate.
+    - Excel clean lines by that rule: D.T5, D.T6, D.Pn14, D.Pn15, N.T4, N.T5, N.Pn14.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
