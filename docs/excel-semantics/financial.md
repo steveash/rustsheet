@@ -858,7 +858,7 @@ Tasks: T-1475
 - VDB differs from us by a few ulp (A6, A10, A13) and ~4e-13 (A7); Excel's result for the same inputs depends on no_switch (A6 FALSE = 203.31648000000007, A7 TRUE = 203.3164800000004).
 - MDURATION and RRI(TRUE principal) differ from us only in the last ulp.
 Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
-- FVSCHEDULE: a boolean principal is `#VALUE!` however it is supplied: a TRUE or FALSE cell (`C1`, `C2`), `INDEX(C1:C2,1)` and `INDIRECT("C1")`; a text-number cell (`"1000"`) is converted (1100). The reference path matches the typed path, so `get_number_no_bools` is right (T-1992).
+- FVSCHEDULE: a boolean principal is `#VALUE!` from a TRUE or FALSE cell (`C1`, `C2`), `INDEX(C1:C2,1)` or `INDIRECT("C1")`; a text-number cell (`"1000"`) is converted (1100). The reference path matches the typed path, so `get_number_no_bools` is right (T-1992).
 Evidence: probes/fin-fvschedule-bool-ref (excel-graph, 2026-10-19, T-1992).
 Status: VERIFIED (excel-graph)
 Implemented (T-1764): VDB with salvage above cost never switches to straight line (-600); a fractional end period
