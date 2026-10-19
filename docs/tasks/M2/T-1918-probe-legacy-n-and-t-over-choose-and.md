@@ -3,7 +3,7 @@ id: T-1918
 title: "Probe legacy N and T over CHOOSE and INDEX shapes beyond the T-1768 probe"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
