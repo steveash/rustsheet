@@ -1545,7 +1545,7 @@ Evidence: probes/linest-modes, logest-modes, growth-modes.
 Ours: GROWTH spills collapse to the first cell, the LINEST stats block is short or `#N/A`, many last-digit differences (T-1741, T-1742, T-1743).
 FORECAST.ETS.SEASONALITY/STAT/CONFINT could not be lifted: excel-graph is `#N/A` for every valid call (section above), so cases would be junk evidence; the three stay below the floor until desktop values exist (T-1553).
 Status: VERIFIED (excel-graph) for the stated cases; the unprobed items are marked
-Tasks: T-1621, T-1741, T-1742, T-1743
+Tasks: T-1621, T-1741, T-1742, T-1743, T-2006 (shared least-squares kernel)
 
 ## Paired regression functions: single points, zero variance, text and large offsets
 Rule: CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, COVAR and FORECAST(.LINEAR) pair their two arrays cell by cell and

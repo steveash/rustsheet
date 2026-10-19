@@ -59,7 +59,11 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let source = self.evaluate_node_in_context(&args[0], cell);
+        let source = if as_reference {
+            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
+        } else {
+            self.evaluate_node_in_context(&args[0], cell)
+        };
         let reference_corner = match source {
             CalcResult::Range { left, right } if as_reference && left.sheet == right.sheet => {
                 Some(left)

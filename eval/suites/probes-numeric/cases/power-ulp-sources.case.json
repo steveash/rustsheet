@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-0959: where the 1-ulp differences near POWER come from. A1-A9: the steps of POWER.xlsx inside_a_lambda's gelu at x = 0.5 (0.5*x*(1+TANH(SQRT(2/PI())*(x+0.044715*POWER(x,3))))), whose cached value Excel gives as 0.3457140098251439. A10-A12: TANH at nearby points. A13-A20: positive-base twins of power-odd-root-tolerance A72/A74 and power-odd-root-tolerance-2 A19, and the exp/ln steps of 1E300^(1/3).",
+ "tags": [
+  "probe",
+  "power",
+  "T-0959"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=0.5+0.044715*POWER(0.5,3)",
+    "A2": "=SQRT(2/PI())",
+    "A3": "=SQRT(2/PI())*(0.5+0.044715*POWER(0.5,3))",
+    "A4": "=TANH(A3)",
+    "A5": "=1+TANH(A3)",
+    "A6": "=0.5*0.5*(1+TANH(A3))",
+    "A7": "=0.5*0.5*(1+TANH(SQRT(2/PI())*(0.5+0.044715*POWER(0.5,3))))",
+    "A8": "=LAMBDA(x,0.5*x*(1+TANH(SQRT(2/PI())*(x+0.044715*POWER(x,3)))))(0.5)",
+    "A9": "=2/PI()",
+    "A10": "=TANH(0.5)",
+    "A11": "=TANH(0.4)",
+    "A12": "=TANH(0.403410355045)",
+    "A13": "=1E300^(1/3)",
+    "A14": "=1E300^(-1/3)",
+    "A15": "=8^(1/101+28*2^-59)",
+    "A16": "=8^(1/101)",
+    "A17": "=EXP(LN(1E300)/3)",
+    "A18": "=EXP(LN(1E300)*(1/3))",
+    "A19": "=LN(1E300)",
+    "A20": "=LN(1E300)*(1/3)"
+   }
+  }
+ ],
+ "expected": {}
+}
