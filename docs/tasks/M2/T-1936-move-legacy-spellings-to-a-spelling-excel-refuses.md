@@ -17,7 +17,7 @@ A workbook LAMBDA name is never shadowed by the stored spelling of a legacy N/T:
 T-1912 found (excel-graph, 2026-10-18) that Excel accepts `_RS_LEGACY_N`, `_RS_LEGACY_T` and `_xlfn._RS_LEGACY_N` as defined LAMBDA names and calls them (probes/legacy-marker-spelling-name-plain, -xlfn: 17, where N(1) is 1). So `LEGACY_SPELLINGS` (`functions/kinds.rs`) shadows such a name today. Excel refuses these spellings as names (the workbook then fails to open, createSession 501 `unsupportedWorkbook`): `R`, `RC`, `R1C1`, and any name over 255 characters (a 256-character name was refused; 255 was accepted). Candidates must also be read by the engine's lexer as one call name in R1C1 text (check `R1C1(` is not lexed as a reference) and cost little stored length. See references.md "Legacy N and T marker spelling".
 
 ## Acceptance criteria
-- [x] A unit test with a LAMBDA name of the old spelling `_RS_LEGACY_N` shows `=_RS_LEGACY_N(1)` calls the name (17-style result), and legacy N/T round-trips through R1C1 text and old `.ic` files still reload.
+- [x] A unit test with a LAMBDA name of the old spelling `_RS_LEGACY_N` shows `=_RS_LEGACY_N(1)` calls the name (17-style result), and legacy N/T round-trips through R1C1 text and old `.ic` files still reload (they load; a marker stored in T-1851's spelling reloads as a name call by design, see Outcome).
 - [x] The chosen spelling has its own oracle-confirmed refusal evidence before it ships (lowercase `r`/`c`, single `C` and a 255-character name were not probed in T-1912; a 255-character name is accepted).
 - [x] probes/legacy-marker-spelling-name-plain Sheet1!A1 and A2 (`=_RS_LEGACY_N(1)`, `=_RS_LEGACY_T(1)`, Excel 17) pass; the baseline shrinks.
 - [x] `make check` green; reviewers approve.

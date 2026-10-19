@@ -159,9 +159,10 @@ defined_names.rs), mutates the tree, and prints it again. So the marker needs a 
 needs no field anywhere else.
 
 - `to_rc_format` prints `NLegacy` as a reserved call name: `NLG1(` and `TLG1(` since T-1936
-  (`_RS_LEGACY_N(` and `_RS_LEGACY_T(` in T-1851, no longer read as the marker: stored text cannot
-  tell them from a call of a name of that spelling). The spelling is an A1 cell, so no A1 text holds it as a call
-  name and Excel never calls a name of it (references.md "Legacy N and T marker spelling").
+  (`_RS_LEGACY_N(` and `_RS_LEGACY_T(` in T-1851, no longer read as the marker: stored text
+  cannot tell them from a call of a name of that spelling). The spelling is an A1 cell, so no A1
+  text holds it as a call name and Excel never calls a name of it (references.md "Legacy N and T
+  marker spelling").
 - `parse_named_call` (expressions/parser/operands.rs) recognizes the spelling before the function
   lookup, next to `_xlfn.SINGLE`. In `LexerMode::R1C1` it gives the internal kind. In
   `LexerMode::A1` (typed formulas, xlsx `<f>` text) it gave plain `Function::N` / `Function::T`
