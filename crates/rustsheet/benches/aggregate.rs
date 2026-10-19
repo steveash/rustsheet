@@ -1,5 +1,6 @@
 //! Timings for SPEC-0009's aggregate-argument walker: SUM and AVERAGE over a numeric column of
-//! 1,000,000 cells, and SUM over the same column with an error in A2 (the walk ends there).
+//! 1,000,000 cells, SUM over the same column with an error in A2 (the walk ends there), and SUM
+//! over a block three columns wide reaching past the used area (T-0405: cut at the used area).
 //! `cargo bench -p rustsheet --bench aggregate`
 //!
 //! One warm-up run, then `RUNS` measured recalculations; each case prints the fastest, the median
@@ -34,6 +35,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ("SUM", "=SUM(A1:A1000000)", false),
         ("AVERAGE", "=AVERAGE(A1:A1000000)", false),
         ("SUM, error in A2", "=SUM(A1:A1000000)", true),
+        ("SUM, block past the used area", "=SUM(A1:C1048000)", false),
     ];
     for (name, formula, error_in_a2) in cases {
         let mut wb = workbook(formula, error_in_a2)?;
