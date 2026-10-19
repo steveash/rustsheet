@@ -44,6 +44,10 @@ class OracleInfo:
     version: str | None = None
     # Displayed text of the cells the workbook lists for it (`text_cells`): sheet -> A1 -> text.
     texts: dict[str, dict[str, str]] = field(default_factory=dict)
+    # File name the workbook had while it was calculated (`CELL("address")` of a reference on
+    # another sheet and `CELL("filename")` name it); the eval adapter gives the engine the same
+    # name (T-2042).
+    workbook_name: str | None = None
 
 
 class Backend(Protocol):
@@ -375,7 +379,9 @@ class GraphBackend:
         finally:
             with contextlib.suppress(OracleError):
                 self._call("DELETE", item_url)
-        return content, OracleInfo(kind=self.name, application="Excel for the web (Graph)", texts=texts)
+        return content, OracleInfo(
+            kind=self.name, application="Excel for the web (Graph)", texts=texts, workbook_name=name
+        )
 
     def _read_texts(
         self, item_url: str, sid: dict[str, str], cells: list[tuple[str, str]]
@@ -474,7 +480,7 @@ class ExcelDesktopBackend:
             finally:
                 excel.Quit()
             return dst.read_bytes(), OracleInfo(
-                kind=self.name, application="Microsoft Excel", version=version
+                kind=self.name, application="Microsoft Excel", version=version, workbook_name=src.name
             )
 
 
@@ -522,7 +528,7 @@ class LibreOfficeBackend:
                 timeout=300,
             )
             return (outdir / "in.xlsx").read_bytes(), OracleInfo(
-                kind=self.name, application="LibreOffice (approximate)"
+                kind=self.name, application="LibreOffice (approximate)", workbook_name=src.name
             )
 
 

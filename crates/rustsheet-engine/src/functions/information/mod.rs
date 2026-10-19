@@ -611,6 +611,13 @@ impl Model {
         self.cell_info(&info_type, ranges.as_deref(), reference, cell)
     }
 
+    /// The workbook's file name as CELL names it (`Budget.xlsx`), `None` for an unnamed workbook
+    /// (an empty `Workbook::name`, which holds the name without its extension).
+    fn workbook_file_name(&self) -> Option<String> {
+        let name = &self.workbook.name;
+        (!name.is_empty()).then(|| format!("{name}.xlsx"))
+    }
+
     /// The value of one CELL `info_type` for `reference`; `ranges` holds every area of a union.
     fn cell_info(
         &mut self,
@@ -621,13 +628,30 @@ impl Model {
     ) -> CalcResult {
         match info_type.to_uppercase().as_str() {
             "ADDRESS" => {
-                if reference.sheet != cell.sheet {
-                    return CalcResult::Error {
+                // A reference on another sheet is prefixed `[<file>]<sheet>!`, the sheet name never
+                // quoted (`[b.xlsx]My Sheet!$B$2`, `[b.xlsx]Bob's!$A$1`; probes/
+                // info-cell-address-cross-sheet, excel-graph, T-2042).
+                let prefix = if reference.sheet == cell.sheet {
+                    String::new()
+                } else {
+                    let unimplemented = |message: &str| CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
-                        message: "References to other sheets not implemented".to_string(),
+                        message: message.to_string(),
                     };
-                }
+                    // Excel's form for an unsaved workbook is unprobed.
+                    let Some(file_name) = self.workbook_file_name() else {
+                        return unimplemented("Unnamed workbook");
+                    };
+                    // A union cannot span sheets in Excel; one on another sheet is unprobed.
+                    if ranges.is_some_and(|areas| areas.len() > 1) {
+                        return unimplemented("Union on another sheet not implemented");
+                    }
+                    match self.workbook.worksheet(reference.sheet) {
+                        Ok(ws) => format!("[{file_name}]{}!", ws.name),
+                        Err(_) => return unimplemented("Invalid sheet"),
+                    }
+                };
                 let lefts: Vec<CellReferenceIndex> = match ranges {
                     Some(areas) => areas.iter().map(|range| range.left).collect(),
                     None => vec![reference],
@@ -643,7 +667,7 @@ impl Model {
                     };
                     addresses.push(format!("${}${}", column, area.row));
                 }
-                CalcResult::String(addresses.join(", ").into())
+                CalcResult::String(format!("{prefix}{}", addresses.join(", ")).into())
             }
             "COL" => CalcResult::Number(reference.column as f64),
             "COLOR" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {
@@ -662,7 +686,13 @@ impl Model {
                 ..reference
             }),
             "FILENAME" => {
-                let workbook_name = &self.workbook.name;
+                let Some(file_name) = self.workbook_file_name() else {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Unnamed workbook".to_string(),
+                    };
+                };
                 let worksheet_name = match self.workbook.worksheet(reference.sheet) {
                     Ok(ws) => &ws.name,
                     Err(_) => {
@@ -673,7 +703,7 @@ impl Model {
                         }
                     }
                 };
-                CalcResult::String(format!("[{workbook_name}.xlsx]{worksheet_name}").into())
+                CalcResult::String(format!("[{file_name}]{worksheet_name}").into())
             }
             "ROW" => CalcResult::Number(reference.row as f64),
             // Like "contents", "type" reads the reference's address on the formula's own sheet

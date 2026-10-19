@@ -288,6 +288,11 @@ pub struct OracleSource {
     /// sha256 of the workbook bytes the oracle evaluated.
     #[serde(default)]
     pub input_sha256: Option<String>,
+    /// The file name the workbook had in the oracle (`<sha256>.xlsx` for excel-graph), which
+    /// `CELL("address")` of a reference on another sheet shows; the adapter gives the engine the
+    /// same name (T-2042).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workbook_name: Option<String>,
 }
 
 /// The oracle kind of the Microsoft Graph backend.

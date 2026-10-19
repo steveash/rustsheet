@@ -160,6 +160,8 @@ enum Prepared {
 
 struct PreparedCase {
     input: Prepared,
+    /// The workbook's file name in the oracle (sidecar `source.workbook_name`; T-2042).
+    workbook_name: Option<String>,
     expectations: Vec<Expectation>,
     extent: Option<SpillExtent>,
     expected_source: String,
@@ -257,8 +259,12 @@ pub fn run_case(
         .spawn(move || {
             let outcome = catch_unwind(AssertUnwindSafe(|| {
                 let evaluated = match &prepared.input {
-                    Prepared::Xlsx { bytes } => engine.evaluate_xlsx(bytes),
-                    Prepared::Spec { spec } => engine.evaluate_spec(spec),
+                    Prepared::Xlsx { bytes } => {
+                        engine.evaluate_xlsx(bytes, prepared.workbook_name.as_deref())
+                    }
+                    Prepared::Spec { spec } => {
+                        engine.evaluate_spec(spec, prepared.workbook_name.as_deref())
+                    }
                 }?;
                 let mut cells = score(evaluated.as_ref(), &prepared.expectations);
                 let scored = cells.len();
@@ -403,6 +409,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     let bytes = std::fs::read(&case.path).map_err(|e| e.to_string())?;
     let snapshot = read_snapshot(&bytes).map_err(|e| e.to_string())?;
     let oracle = load_oracle(case)?;
+    let workbook_name = oracle.as_ref().and_then(|o| o.source.workbook_name.clone());
     let (source, from_excel, lookup): (String, bool, Lookup) = if let Some(o) = oracle {
         let kind = o.source.kind.clone();
         (
@@ -427,6 +434,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     } else {
         return Ok(PreparedCase {
             input: Prepared::Xlsx { bytes },
+            workbook_name,
             expectations: Vec::new(),
             extent: None,
             expected_source: "none".into(),
@@ -462,6 +470,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         .collect();
     Ok(PreparedCase {
         input: Prepared::Xlsx { bytes },
+        workbook_name,
         expectations,
         extent: None,
         expected_source: source,
@@ -520,8 +529,10 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     // Cells whose expectation the sidecar supplies; hand cells beside them are not Excel evidence.
     let mut oracle_cells: BTreeSet<String> = BTreeSet::new();
     let mut oracle_is_excel = false;
+    let mut workbook_name = None;
     if let Some(o) = load_oracle(case)? {
         source.clone_from(&o.source.kind);
+        workbook_name = o.source.workbook_name;
         oracle_is_excel = is_excel_evidence(&o.source.kind);
         for (sheet, cells) in o.sheets {
             for (a1, v) in cells {
@@ -609,6 +620,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         input: Prepared::Spec {
             spec: Box::new(spec),
         },
+        workbook_name,
         expectations,
         expected_source: source,
         skipped_volatile,
