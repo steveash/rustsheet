@@ -797,6 +797,7 @@ C	probes/subtotal-reference-operands-d.case.json	42
 C	probes/subtotal-reference-operands-e.case.json	36
 C	probes/subtotal-reference-operands-f.case.json	97
 C	probes/subtotal-reference-operands.case.json	40
+C	probes/subtotal-take-array-selector-b.case.json	42
 C	probes/subtotal-take-array-selector.case.json	25
 C	probes/subtotal-variance-one-vs-two-pass.case.json	64
 C	probes/sum-error-precedence.case.json	24
@@ -2688,6 +2689,12 @@ F	probes/stats-evidence-floor-t1623.case.json	S!Q36
 F	probes/stats-evidence-floor-t1623.case.json	S!Q50
 F	probes/stats-evidence-floor-t1623.case.json	S!Q58
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
+F	probes/subtotal-take-array-selector-b.case.json	Sheet1!A10
+F	probes/subtotal-take-array-selector-b.case.json	Sheet1!A11
+F	probes/subtotal-take-array-selector-b.case.json	Sheet1!A130
+F	probes/subtotal-take-array-selector-b.case.json	Sheet1!A131
+F	probes/subtotal-take-array-selector-b.case.json	Sheet1!B10
+F	probes/subtotal-take-array-selector-b.case.json	Sheet1!B11
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D1
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D7
