@@ -20,7 +20,7 @@ use regex_automata::{
     Input,
 };
 
-use super::regex_engine::Spent;
+use super::regex_engine::{charge, Spent};
 
 /// The state sets of the scan, kept between searches.
 pub(super) struct Reach {
@@ -133,14 +133,7 @@ impl Reach {
                     let Some(&id) = self.curr.get(index) else {
                         break;
                     };
-                    let to = match nfa.state(id) {
-                        State::ByteRange { trans } => {
-                            trans.matches_byte(byte).then_some(trans.next)
-                        }
-                        State::Sparse(sparse) => sparse.matches_byte(byte),
-                        State::Dense(dense) => dense.matches_byte(byte),
-                        _ => None,
-                    };
+                    let to = step(nfa, id, byte);
                     if let Some(to) = to {
                         if self.close(nfa, haystack, at + 1, to, &mut visits)
                             && is_boundary(haystack, at + 1)
@@ -159,21 +152,17 @@ impl Reach {
     }
 }
 
+/// The state `id` moves to on `byte`, if it consumes it.
+fn step(nfa: &NFA, id: StateID, byte: u8) -> Option<StateID> {
+    match nfa.state(id) {
+        State::ByteRange { trans } => trans.matches_byte(byte).then_some(trans.next),
+        State::Sparse(sparse) => sparse.matches_byte(byte),
+        State::Dense(dense) => dense.matches_byte(byte),
+        _ => None,
+    }
+}
+
 /// Whether `at` is a character boundary of the UTF-8 `haystack` (its end included).
 fn is_boundary(haystack: &[u8], at: usize) -> bool {
     haystack.get(at).is_none_or(|&b| b & 0xC0 != 0x80)
-}
-
-/// Takes `units` from `work`; spent once they do not fit.
-pub(super) fn charge(work: &mut u64, units: u64) -> Result<(), Spent> {
-    match work.checked_sub(units) {
-        Some(left) => {
-            *work = left;
-            Ok(())
-        }
-        None => {
-            *work = 0;
-            Err(Spent)
-        }
-    }
 }

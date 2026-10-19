@@ -5,10 +5,10 @@
 //! cleared [`MIN_CLEARS`] times and it builds a state more often than every [`MIN_BYTES_PER_STATE`]
 //! bytes. The DFA's work is measured from its cache (bytes scanned and state memory built), so a
 //! simple pattern over a long column costs what it really costs. A search the DFA gives up on
-//! (or quits, on a Unicode word boundary) runs on a `PikeVM` instead, over only the span a
-//! scan of the NFA's states shows it needs, charged the states that scan visits (`regex_reach`,
-//! T-1829). Capture groups are resolved by the
-//! `PikeVM` over the match alone, as the `regex` crate does. Patterns, matches and replacements
+//! (or quits, on a Unicode word boundary) runs on a `PikeVM` instead, over only the span a scan of
+//! the NFA's states shows it needs, charged the states that scan visits (`regex_reach`, T-1829).
+//! Capture groups are resolved by the `PikeVM` over the match alone, as the `regex` crate does.
+//! Patterns, matches and replacements
 //! follow the `regex` crate exactly: the same syntax, leftmost-first semantics, UTF-8 empty-match
 //! rules and `$name` interpolation (all from `regex_automata`, which `regex` is built on).
 //!
@@ -16,10 +16,7 @@
 //! `a[ab]{100}c|b[ab]{100}c` (210 states) on a `PikeVM` costs about 4.2 ns a state-byte; lazy DFA
 //! state building about 6 ns a byte built; DFA scanning 1-3 ns a byte.
 
-use super::{
-    lifted::to_u64,
-    regex_reach::{charge, Reach},
-};
+use super::{lifted::to_u64, regex_reach::Reach};
 use regex_automata::{
     hybrid::{
         dfa::{Cache as DfaCache, Config as DfaConfig, DFA},
@@ -71,6 +68,20 @@ pub(super) enum BuildFailure {
 /// The work a call has left, in the units above; spent once a charge does not fit.
 #[derive(Debug)]
 pub(super) struct Spent;
+
+/// Takes `units` from `work`; spent once they do not fit.
+pub(super) fn charge(work: &mut u64, units: u64) -> Result<(), Spent> {
+    match work.checked_sub(units) {
+        Some(left) => {
+            *work = left;
+            Ok(())
+        }
+        None => {
+            *work = 0;
+            Err(Spent)
+        }
+    }
+}
 
 /// A compiled pattern.
 pub(super) struct Engine {
@@ -220,14 +231,11 @@ pub(super) struct Search<'a> {
 }
 
 impl Search<'_> {
-    fn charge(&mut self, units: u64) -> Result<(), Spent> {
-        charge(self.work, units)
-    }
-
     /// Charges a `PikeVM` search over `len` bytes.
     fn charge_pike(&mut self, len: usize) -> Result<(), Spent> {
         let len = to_u64(len);
-        self.charge(
+        charge(
+            self.work,
             len.saturating_mul(self.engine.states)
                 .saturating_mul(PIKE_STATE_BYTE),
         )
@@ -235,7 +243,7 @@ impl Search<'_> {
 
     /// The leftmost-first match in `input`.
     fn find_in(&mut self, input: &Input<'_>) -> Result<Option<Match>, Spent> {
-        self.charge(SEARCH)?;
+        charge(self.work, SEARCH)?;
         if let (Some(dfa), Some(cache)) = (self.engine.dfa.as_ref(), self.caches.dfa.as_mut()) {
             let before = {
                 let (fwd, rev) = cache.as_parts();
@@ -247,7 +255,7 @@ impl Search<'_> {
                 dfa_work(before.0, dfa_progress(fwd))
                     .saturating_add(dfa_work(before.1, dfa_progress(rev)))
             };
-            self.charge(work)?;
+            charge(self.work, work)?;
             if let Ok(found) = found {
                 return Ok(found);
             }
