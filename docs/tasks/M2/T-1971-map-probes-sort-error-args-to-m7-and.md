@@ -3,7 +3,7 @@ id: T-1971
 title: "Map probes/sort-error-args to M7 and date-math-lift-driver-edges G43 to M6 in probe-milestones.tsv (decision record)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
