@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2009 (-b): consumers that tell cells from values (AVERAGEA, MAXA, MINA, IMSUM with a blank cell, BYROW with ISREF, a LET binding) over an IF, CHOOSE or LET body whose arm is a reference-returning XLOOKUP or TAKE, with direct-XLOOKUP controls; each formula in column A from row 10 every 4 rows. H1:H2 = 3,4; I1:I2 = 6,8; J1:J2 = 1,2 (keys); K1 = \"x\", L1 = TRUE; M1 = \"1+i\", N1 blank.",
+ "tags": [
+  "M6",
+  "probe",
+  "T-2009"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "H1": 3,
+    "H2": 4,
+    "I1": 6,
+    "I2": 8,
+    "J1": 1,
+    "J2": 2,
+    "K1": "x",
+    "L1": true,
+    "M1": "1+i",
+    "A10": "=AVERAGEA(IF(TRUE,XLOOKUP(1,J1:J2,K1:L2)))",
+    "A14": "=MAXA(CHOOSE(1,XLOOKUP(1,J1:J2,K1:L2)))",
+    "A18": "=AVERAGEA(LET(v,1,XLOOKUP(1,J1:J2,K1:L2)))",
+    "A22": "=MINA(IF(FALSE,1,XLOOKUP(1,J1:J2,K1:L2)))",
+    "A26": "=AVERAGEA(XLOOKUP(1,J1:J2,K1:L2))",
+    "A30": "=AVERAGEA(IF(TRUE,XLOOKUP(1,J1:J2,K1:L2),0),5)",
+    "A34": "=IMSUM(IF(TRUE,XLOOKUP(1,J1:J2,M1:N2)))",
+    "A38": "=IMSUM(XLOOKUP(1,J1:J2,M1:N2))",
+    "A42": "=AND(BYROW(IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)),LAMBDA(r,ISREF(r))))",
+    "A46": "=AND(BYROW(XLOOKUP(1,J1:J2,H1:I2),LAMBDA(r,ISREF(r))))",
+    "A50": "=LET(v,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)),ISREF(v))",
+    "A54": "=LET(v,CHOOSE(1,XLOOKUP(1,J1:J2,H1:I2)),SUBTOTAL(9,v))",
+    "A58": "=COUNTA(IF(TRUE,XLOOKUP(1,J1:J2,K1:L2)))",
+    "A62": "=AVERAGEA(IF(TRUE,TAKE(K1:L2,1)))"
+   }
+  }
+ ]
+}

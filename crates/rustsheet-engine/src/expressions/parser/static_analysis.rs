@@ -602,7 +602,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         }
         Function::FTestCompat => vec![Signature::Vector; 2],
         Function::ModeCompat => vec![Signature::Vector; arg_count],
-        Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::StDevPCompat => vec![Signature::Vector; arg_count],
         Function::VarCompat => vec![Signature::Vector; arg_count],
         Function::VarPCompat => vec![Signature::Vector; arg_count],
@@ -649,8 +648,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::MaxA => vec![Signature::Vector; arg_count],
         Function::Median => vec![Signature::Vector; arg_count],
         Function::MinA => vec![Signature::Vector; arg_count],
-        Function::RankAvg => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
-        Function::RankEq => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::Skew => vec![Signature::Vector; arg_count],
         Function::SkewP => vec![Signature::Vector; arg_count],
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.
@@ -865,7 +862,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::CovarCompat => StaticResult::Scalar,
         Function::FTestCompat => StaticResult::Scalar,
         Function::ModeCompat => StaticResult::Scalar,
-        Function::RankCompat => reference_parameter::rank_static_result(args),
         Function::StDevPCompat => StaticResult::Scalar,
         Function::VarCompat => StaticResult::Scalar,
         Function::VarPCompat => StaticResult::Scalar,
@@ -895,8 +891,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::MaxA => StaticResult::Scalar,
         Function::Median => StaticResult::Scalar,
         Function::MinA => StaticResult::Scalar,
-        Function::RankAvg => reference_parameter::rank_static_result(args),
-        Function::RankEq => reference_parameter::rank_static_result(args),
         Function::Skew => StaticResult::Scalar,
         Function::SkewP => StaticResult::Scalar,
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.

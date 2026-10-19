@@ -2,13 +2,14 @@ use crate::functions::Function;
 
 use super::{run_static_analysis_on_node, Node, StaticResult};
 
-/// RANK's `ref` must be a reference: an array that is not one (`IF(A1:C1>0,A1:C1)`) makes the
-/// result a `#VALUE!` array of that array's shape, which spills (docs/excel-semantics/statistics.md,
-/// "RANK of a non-reference array"). A `ref` whose shape is `Unknown` (INDEX, CHOOSE, OFFSET, a
-/// defined name, `A1:<name>`) may still evaluate to such an array, so the result is `Unknown` too:
-/// a reference ranks to a 1x1 result, an array spills (probes/rank-unknown-shape-ref).
-pub(super) fn rank_static_result(args: &[Node]) -> StaticResult {
-    reference_parameter_static_result(args.get(1))
+/// RANK's `ref` (`ArgKind::ReferenceByCaller`) must be a reference: an array that is not one
+/// (`IF(A1:C1>0,A1:C1)`) broadcasts as a `#VALUE!` array of that array's shape, which spills
+/// (docs/excel-semantics/statistics.md, "RANK of a non-reference array"). A `ref` whose shape is
+/// `Unknown` (INDEX, CHOOSE, OFFSET, a defined name, `A1:<name>`) may still evaluate to such an
+/// array, so its shape is `Unknown` too: a reference ranks to a 1x1 result, an array spills
+/// (probes/rank-unknown-shape-ref).
+pub(super) fn reference_by_caller_shape(reference: &Node) -> StaticResult {
+    reference_parameter_static_result(Some(reference))
 }
 
 /// COUNTBLANK of an array is one `#VALUE!` per element (docs/excel-semantics/references.md,

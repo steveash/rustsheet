@@ -3,6 +3,7 @@
 //! are derived from `Function::arg_kinds`, never written by hand.
 
 use super::broadcast::broadcast_shapes;
+use super::reference_parameter::reference_by_caller_shape;
 use super::reference_result::yields_cells;
 use super::{run_static_analysis_on_node, Node, Signature, StaticResult};
 use crate::functions::lift::{ArgKind, ArgKinds, CallResult};
@@ -30,7 +31,8 @@ pub(super) fn lifted_signature(kinds: &ArgKinds, arg_count: usize) -> Vec<Signat
 /// `EDATE({1;2},A1:A3)` a 2x1 array). A range shape whose arms may be values is an array: CHOOSE
 /// gives its array arms a range's shape (`IMABS(CHOOSE(1,{1,2,3}))` is 1x3,
 /// probes/lift-arrays-choose-arms A13, T-1874). An `Unknown` lifted argument makes the call
-/// `Unknown`; a `Whole` argument adds nothing. A call with a bad count is a scalar (the count
+/// `Unknown`; a `ReferenceByCaller` argument adds the shape of an array that is not a reference
+/// (RANK's `ref`); a `Whole` argument adds nothing. A call with a bad count is a scalar (the count
 /// error). An entry whose unlifted call is an array (SEQUENCE, MAKEARRAY) is `Unknown` when no
 /// lifted argument has a shape larger than 1x1, and the broadcast otherwise (`SEQUENCE({1;2;3})` is 3x1,
 /// probes/m7-argument-modes F2, G2; SPEC-0011 "Array-valued functions" rule 1).
@@ -51,6 +53,7 @@ pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticRes
                     other => other,
                 }
             }
+            Some(ArgKind::ReferenceByCaller) => reference_by_caller_shape(arg),
             Some(ArgKind::Whole | ArgKind::WholeByCaller) | None => StaticResult::Scalar,
         })
         .collect();
