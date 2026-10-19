@@ -70,12 +70,12 @@ that error, so the data's error comes before a bad `k` (P81-P83). PROB keeps `co
 delegate to the new `numeric_flat_of`, PROB's reader, instead of copying it (duplication 3630 to
 3619).
 
-RANK needs a design for its two-kind `ref` and is split to T-1999.
+RANK needs a design for its two-kind `ref` and is split to T-1999. The unprobed orders the
+fidelity review listed are T-2000.
 
 Eval delta (probes): fixed 32, regressions 0, new cases 0.
 - stat-test-lift: P1-P4, P6-P9, P60-P62, P74, P81-P83, P88.
 - stat-argument-modes: H260, H261, H264, H265, H537-H539, H543-H545.
 - regression-forecast: L7, M7, P7, Q7, L13, P13 (FORECAST's lifted `x`).
 
-Still failing, as the task scoped them: P64-P67 (T.TEST's value misses by ulps, the accuracy
-tasks), and RANK (T-1999).
+Still failing, as the task scoped them: P64-P67 (T.TEST's value is NumericClose, T-0969), and RANK (T-1999).

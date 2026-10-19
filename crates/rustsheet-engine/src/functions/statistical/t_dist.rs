@@ -480,6 +480,7 @@ impl Model {
     /// `2.9` are 1 and 2, TRUE is 1 (probes/stat-test-lift P60-P67, P88). Each element walks the
     /// samples, so the call is charged their cells per element.
     pub(crate) fn fn_t_test(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // TTEST shares T.TEST's table entry (`TWO_DATA_THEN_2`).
         let kind = Function::TTest;
         if !kind
             .arg_kinds()

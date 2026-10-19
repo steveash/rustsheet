@@ -962,9 +962,11 @@ Evidence: probes/stat-test-lift P1-P89, stat-test-lift-b P90-P95 (excel-graph, 2
 Ours: Z.TEST/ZTEST and PROB match since T-1813 (`statistical/z_test.rs`, `prob.rs`: the data argument is
 `WholeByCaller`, read once). FORECAST/FORECAST.LINEAR, T.TEST/TTEST and the order-statistic precedence match
 since T-1982 (`forecast.rs`, `t_dist.rs`; PERCENTILE's and TRIMMEAN's readers keep an error value). T.TEST's
-P64-P67 still miss by ulps, which is the accuracy tasks' work. RANK: T-1999.
+P64-P67 are still NumericClose (P64: 0.32346094498174827 against 0.32346094498173894), which is T-0969's
+work. Not yet probed (T-2000): T.TEST's `type` against the samples' error, FORECAST's `x` against the data's
+own validation, and an error data argument of PERCENTRANK, QUARTILE, PROB and FREQUENCY. RANK: T-1999.
 Status: VERIFIED (excel-graph)
-Tasks: T-1813, T-1982, T-1999
+Tasks: T-1813, T-1982, T-1999, T-2000
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the

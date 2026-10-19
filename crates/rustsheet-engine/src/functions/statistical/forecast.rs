@@ -55,6 +55,7 @@ impl Model {
     /// a lifted element with a good `x` is the data's `#N/A`, and unequal sizes are `#N/A` per
     /// element (probes/stat-test-lift P1-P9, P89).
     pub(crate) fn fn_forecast(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        // FORECAST.LINEAR shares FORECAST's table entry (`ONE_THEN_TWO_DATA`).
         let kind = Function::Forecast;
         if !kind
             .arg_kinds()
