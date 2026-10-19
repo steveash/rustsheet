@@ -167,6 +167,9 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     - Predictions of W4's 95 unassigned peaks from the top hypotheses are at chance (4-10 explained against a null of
       5-10).
     - At least 4 independent precise tracks are needed, so this waits for L101-L124.
+    - Automatic track filter (synthetic): the 4 long non-law tracks have best single-law rms 0.1-0.3, against
+      2-7e-7 for law tracks. So only tracks whose best fit is near the precision floor are kept. By that rule Excel's D
+      (3.3e-4) is a non-law line (mix or sideband with r flipping), and A and C (1.7e-6) are law lines.
 
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
