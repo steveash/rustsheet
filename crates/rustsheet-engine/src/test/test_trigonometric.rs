@@ -193,3 +193,26 @@ fn acos_is_half_pi_minus_asin() {
     assert_eq!(bits("A6"), std::f64::consts::PI.to_bits());
     assert_eq!(model._get_text("A7"), *"#NUM!");
 }
+
+#[test]
+fn asinh_acosh_are_the_log_formulas() {
+    // probes-numeric/m9-hyperbolic A1 and A76 (excel-graph, T-1005, T-2031): Excel evaluates
+    // ln(x + sqrt(x*x +- 1)) in doubles, losing precision near 0 (ASINH) and 1 (ACOSH).
+    let mut model = new_empty_model();
+    model._set("A1", "=ASINH(1E-10)");
+    model._set("A2", "=ASINH(-1E-10)");
+    model._set("A3", "=ACOSH(1.000000000001)");
+    model._set("A4", "=ACOSH(0.5)");
+    model._set("A5", "=ASINH(1E+200)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 1.000_000_082_690_371e-10_f64.to_bits());
+    assert_eq!(bits("A2"), (-1.000_000_082_690_371e-10_f64).to_bits());
+    assert_eq!(bits("A3"), 1.414_276_423_083_533e-6_f64.to_bits());
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    // x*x overflows: libm's value, since no Excel value is known there.
+    assert_eq!(bits("A5"), 1e200_f64.asinh().to_bits());
+}
