@@ -1604,9 +1604,10 @@ records the `#VALUE!` reading in the stored formula, as an internal N/T kind (SP
 It marks an N or T in a value position whose argument is a bare IF, or a CHOOSE, INDEX or IFS returning only array
 constants, that is not statically a scalar; the marked kernel reads an array as `#VALUE!` and a reference as its
 top-left cell. These shapes take no `@` on the call (`leaves_call_whole`), nor on CHOOSE's index, and a one-element
-array constant in the marked argument's returned arms (IF's arms, CHOOSE's and IFS's values) takes none either. The
+array constant in the marked argument's returned arms (IF's arms, CHOOSE's and IFS's values) takes none either. `=N(INDEX({2;3},1))` is `#VALUE!` because
+that INDEX returns a 1x1 array, the row it picks (lookup.md "INDEX of an array: a whole row stays an array", T-1921). The
 marker is never printed: the export writes a plain `<f>` for a legacy cell and `cm="1"` for a dynamic twin.
-Verified (all cells above match, except legacy-n-t-marker-shapes F10): IF with array-constant, one-element, operator and mixed reference arms and an
+Verified (all cells above match; legacy-n-t-marker-shapes F10 since T-1921): IF with array-constant, one-element, operator and mixed reference arms and an
 array condition; CHOOSE with array-constant and one-element values and an array index; IFS with one value pair;
 INDEX of an array constant with one index on a 2x2 or with row and column; and these positions: the top of the cell, ABS's
 and LEN's argument, and an operand of `+0` or `&""`. Not matched: `=N(INDEX({2;3},1))` is 2 in ours, because our

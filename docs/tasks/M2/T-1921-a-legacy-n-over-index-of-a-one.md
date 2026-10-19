@@ -3,7 +3,7 @@ id: T-1921
 title: "A legacy N over INDEX of a one-column array with one index is #VALUE!"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -29,9 +29,19 @@ INDEX returns a 1x1 array or whether only the legacy kernel needs the shape. doc
 "Legacy N and T over a reference-returning call".
 
 ## Acceptance criteria
-- [ ] probes/legacy-n-t-marker-shapes S!F10 leaves eval/baseline/probes.txt, with no regressions.
-- [ ] The INDEX shape finding is recorded in docs/excel-semantics (references.md or lookup.md).
-- [ ] `make check` green; reviewers approve.
+- [x] probes/legacy-n-t-marker-shapes S!F10 leaves eval/baseline/probes.txt, with no regressions.
+- [x] The INDEX shape finding is recorded in docs/excel-semantics (references.md or lookup.md).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+probes/index-one-index-array-shape (excel-graph, 2026-10-19) shows that INDEX itself returns the 1x1 array. Dynamic
+`TYPE(INDEX({2;3},1))` is 64, as is `TYPE(INDEX({2;3},2))`. `TYPE(INDEX({2,3},1))`, `TYPE(INDEX({2},1))` and
+`TYPE(INDEX({2;3},1,1))` are 1. A legacy `=N(INDEX({2;3},1,0))` is `#VALUE!`. `index_from_array` now returns a pick by a whole
+row or column as an array, even when that pick is one cell; only a pick by a row number and a column number is a scalar.
+A one-row array's single index is a column number into row 1. References are unchanged.
+lookup.md has a new entry, "INDEX of an array: a whole row stays an array", and references.md notes F10.
+Eval delta: probes known failures -1 (legacy-n-t-marker-shapes S!F10). The new case index-one-index-array-shape passes
+36/36. There are no regressions. Follow-up: T-1943 probes the shape of a 0-index pick of a scalar or a 1x1 array.
