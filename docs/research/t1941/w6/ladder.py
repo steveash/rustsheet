@@ -35,6 +35,8 @@ def run_x(x0, n):
 SETS = {
     "dyadic": dict(anchors=[1.625, 1.75, 1.875], c=1.0, js=range(22, 47, 2), k0=False, cases=range(421, 434)),
     "nd": dict(anchors=[1.6341, 1.7718, 1.9253], c=1.37, js=range(22, 47, 2), k0=True, cases=range(440, 454)),
+    # K2 (run with KERNEL=k2): q220a = K = 0 runs, q221..q233 = rungs; c = 1.37 assumed (W6 non-dyadic layout)
+    "k2": dict(anchors=[2.30, 2.55, 2.80, 2.95], c=1.37, js=range(22, 47, 2), k0=True, cases=range(220, 234)),
 }
 
 

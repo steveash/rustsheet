@@ -7,6 +7,7 @@ sys.path.insert(0,sys.path[0])
 from lib6 import st, L, horner
 from synth import read_chain
 from longspec import extractR, resid
+import kern
 from stagelaws import stage_F
 N,D=read_chain(sys.argv[2]); N=np.array(N)/D[0]; D=np.array(D)/D[0]
 pref=sys.argv[4] if len(sys.argv)>4 else 'kmyst-gam-L1'
@@ -22,7 +23,7 @@ out=open(sys.argv[3],'w')
 for rk,v in sorted(rows.items()):
     v=np.array(sorted(v)); x=v[:,0]; n=len(x)
     ed=resid(x,v[:,1],v[:,2])
-    R=st(L(horner(list(N[::-1]),x))/L(horner(list(D[::-1]),x))); B=st(L(x-1.0)*L(st(L(x-2.0)*L(R)))); lo,hi=extractR(x,B); es=resid(x,lo,hi)
+    R=st(L(horner(list(N[::-1]),x))/L(horner(list(D[::-1]),x))); B=kern.outer(x,R); lo,hi=extractR(x,B); es=resid(x,lo,hi)
     xc=x[n//2]
     for ch,law,j in lines:
         c=N if ch=='N' else D

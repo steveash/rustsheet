@@ -5,7 +5,8 @@
 import sys, numpy as np, mpmath as mp
 sys.path.insert(0,sys.path[0]); from lib6 import st, L, horner; from synth import read_chain
 mp.mp.dps=40
-Rf=lambda z: mp.loggamma(z)/((z-1)*(z-2))
+import kern
+from kern import Rf
 X0=[1.5047+0.0203913*i+0.00071*((0.618034*i)%1.0) for i in range(24)]
 def resid(x,Rlo,Rhi):
     x0=mp.mpf(x[0]); g=[mp.diff(Rf,x0,j)/mp.factorial(j) for j in range(4)]
@@ -21,12 +22,7 @@ def peaks(e,K=40):
         a,b,c=np.log(F[j-1]),np.log(F[j]),np.log(F[j+1]); dlt=0.5*(a-c)/(a-2*b+c); out.append(((j+dlt)/n,F[j]))
     return out
 def extractR(x,B):
-    t=x-1.0; m=x-2.0; R0=B/(t*m); H=[]
-    for k in range(-4,5):
-        Rk=R0.copy()
-        for _ in range(abs(k)): Rk=np.nextafter(Rk,np.inf if k>0 else -np.inf)
-        H.append(np.where(st(L(t)*L(st(L(m)*L(Rk))))==B,Rk,np.nan))
-    H=np.array(H); return np.nanmin(H,0),np.nanmax(H,0)
+    lo,hi,_=kern.extract(x,B,4); return lo,hi
 if __name__=='__main__':
     res={}
     if sys.argv[1]=='synth':
@@ -34,7 +30,7 @@ if __name__=='__main__':
         for i,x0 in enumerate(X0):
             x=np.empty(n); x[0]=x0
             for k in range(1,n): x[k]=np.nextafter(x[k-1],3.0)
-            R=st(L(horner(N[::-1],x))/L(horner(D[::-1],x))); B=st(L(x-1.0)*L(st(L(x-2.0)*L(R))))
+            R=st(L(horner(N[::-1],x))/L(horner(D[::-1],x))); B=kern.outer(x,R)
             lo,hi=extractR(x,B); res['x%d'%i]=np.array([x0]); res['p%d'%i]=np.array(peaks(resid(x,lo,hi)))
             print(i,'%.5f'%x0,flush=True)
     else:
