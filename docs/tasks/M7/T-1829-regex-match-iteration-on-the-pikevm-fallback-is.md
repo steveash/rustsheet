@@ -51,21 +51,19 @@ shortened span keeps leftmost-first results. The probe probes/regex-ascii-classe
 `\d`, `\s` are Unicode (UCP), so the ASCII shortcut the task offered is not Excel's; recorded in text.md "REGEX*
 character classes are Unicode", with its 7 matcher gaps added to T-1900. Eval: no regressions; the new case is 35/42.
 
-## Remaining (session budget ran out; PR #1153 is a draft, resume from this branch)
-Reviewers: security, architecture, quality and Excel fidelity APPROVE; performance REQUEST_CHANGES. To do:
-- MAJOR: charge `State::Look` visits more in `Reach::close` (a `LOOK_VISIT` surcharge, about 4x a plain visit, or
-  only on `WordUnicode*`). The reviewer measured these in release, with 21 units a visit:
-  - `\b` x40 over `REPT("𝒜 ",8000)&SEQUENCE(30)` takes 3.9 s to exhaust the budget.
-  - `\B` x40 & "q" over `REPT("éa ",10000)&SEQUENCE(300)` takes 3.55 s.
-  - `(?:\b|\B){40}q` over the same text: main gives 0 in 977 ms, the branch `#ERROR!` after 1.7 s.
-  Calibrate on a `\b`/`\B` chain over 4-byte characters, aim for about 1 s, and document it next to `SCAN_VISIT`.
-- MINOR: single PikeVM searches now pay for the scan plus the PikeVM (`REGEXTEST(REPT("é ",15000),"\bzz\b")`
-  went from 2.0 ms to 3.5 ms). Either justify this, or skip the scan when the old up-front charge (span x states x 5)
-  is no more than the scan's likely cost (`earliest` searches, the first search).
-- MINOR: add two cases to the soundness doc in regex_reach.rs:
-  - the PikeVM's empty-match retries (`skip_splits_fwd`) restart at or before the scan's first boundary match, so
-    their state sets are subsets of the scan's;
-  - always-anchored patterns, where the scan overcharges.
-- Follow-up (file with `make new-task`): add states to the closure in priority order and cut lower-priority threads
-  when one matches, as the PikeVM's `nexts` does. Lazy patterns stay quadratic until then:
-  `COLUMNS(REGEXEXTRACT(REPT("é ab ",4000),"\bab.*?\b",1))` is `#ERROR!`, as on main.
+## Review round 2 (resumed by a later opus run)
+The performance review's findings from the first round:
+- MAJOR, done: `Reach::close` counts the look-around assertions it evaluates, and each costs `LOOK_VISIT` (54
+  units) on top of its 21-unit visit, calibrated in release on `\B` over `é` (the worst measured: about 54 ns
+  more than a visit; 49 ns for `\b` over `𝒜`, 27 ns for `(?:\b|\B){40}q`). Release, time to exhaust the
+  budget, before -> after: `REPT("\B",40)&"q"` over `REPT("éa ",10000)&SEQUENCE(300)` 3.4 s -> 0.97 s;
+  `(?:\b|\B){40}q` over it 1.5 s -> 0.81 s; `REPT("\b",40)&"q"` over `REPT("𝒜 ",8000)&SEQUENCE(30)` returned
+  0 after 1.35 s, now `#ERROR!` after 0.94 s (the cap of text.md, about 1 s). The task's three formulas are
+  unchanged (1.0, 1.5 and 4.8 ms).
+- MINOR, kept and justified: a single `PikeVM` search pays for the scan plus the `PikeVM` (about 1.6x the old real
+  time: `REGEXTEST(REPT("é ",15000),"\bzz\b")` 3.1 ms). The scan is what makes the charge a measurement. Skipping
+  it when the old up-front charge (span x states x 5) looks cheap would bring back a guess that undercharged
+  look-around chains and overcharged iteration, and the extra cost is linear and well under the 1 s cap.
+- MINOR, done: the module doc of regex_reach.rs now covers the empty-match retries (`skip_splits_fwd`) and
+  always-anchored patterns (overcharged, linearly).
+- Follow-up filed: T-1985 (states in priority order, so lazy patterns are not quadratic).
