@@ -3,7 +3,7 @@ id: T-2076
 title: "MIRR: probe both powers overflowing with a positive flow"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
