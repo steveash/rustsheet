@@ -1089,6 +1089,29 @@ AREAS spill two `#VALUE!`, ISREF FALSE. `is_read_reference` follows an IF branch
 Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211, T-1332, T-1365 (decision 0045)
 
 
+## TAKE, DROP and TRIMRANGE over XLOOKUP pick its cells (T-1998)
+Rule: an XLOOKUP that returns cells of a range (a scalar lookup value, a range `return_array` or `if_not_found`)
+stays a reference as the first argument of TAKE, DROP and TRIMRANGE, also when it is the arm a scalar IF or CHOOSE
+picks, a LET body or under a nested TAKE or TRIMRANGE; SUBTOTAL, AREAS and ISREF then read the cells. With H1:H2 =
+3,4, I1:I2 = 6,8, J1:J2 = 1,2: `SUBTOTAL(9,TAKE(XLOOKUP(1,J1:J2,H1:I2),1,1))` is 3, `SUBTOTAL(9,DROP(..,0,1))` 6,
+`SUBTOTAL(9,TRIMRANGE(XLOOKUP(1,J1:J2,H1:I2)))` 9, `AREAS(TAKE(..,1))`, `AREAS(DROP(..))` and `AREAS(TRIMRANGE(..))`
+1 (no spill), `ISREF(TAKE(..,1))` TRUE; the same through `IF(TRUE,..)`, `IF(FALSE,1,..)`, `CHOOSE(1,..)`,
+`CHOOSE(2,H1:H2,..)`, `IF(TRUE,CHOOSE(1,..))`, `LET(v,1,XLOOKUP(..))`, `LET(v,XLOOKUP(..),v)`,
+`TAKE(TAKE(..,1,2),1,1)` and `DROP(TRIMRANGE(..),0,1)`; a nested XLOOKUP lookup value
+(`XLOOKUP(XLOOKUP(1,J1:J2,J1:J2),J1:J2,H1:H2)`), a literal lookup array and a range `if_not_found` keep the
+reference; `SUBTOTAL(9,TAKE(TAKE(H1:I2,1),1,1))` is 3. Values instead, so SUBTOTAL is `#VALUE!` per element and
+ISREF FALSE: a lifting lookup value (`TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1)` is one `#VALUE!`,
+`TRIMRANGE(XLOOKUP({1;2},..))` spills two), a literal `return_array`, and `IFERROR(XLOOKUP(..),0)`. Also from the
+probe, not yet matched by the engine: `SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))` and
+`SUBTOTAL(9,CHOOSE(1,XLOOKUP(..)))` are 9 (the engine spills two `#VALUE!`; T-2009).
+Evidence: probes/take-drop-trimrange-over-xlookup A10-A94, probes/take-drop-trimrange-over-xlookup-b A10-A62
+(excel-graph, 2026-10-19).
+Implemented in: `Model::evaluate_picked_source` (functions/lookup_and_reference/drop_take.rs), used by
+`take_drop_impl` and `trimrange_impl` in their reference form. Static analysis still counts a nested XLOOKUP as
+lifting (`lifts_to_values`), which leaves the shape to run time.
+Status: VERIFIED (excel-graph)
+Tasks: T-1998
+
 ## SUBTOTAL lifts over an array function_num
 Rule: an array or multi-cell range function_num lifts: one SUBTOTAL per element, spilling in its shape.
 `SUBTOTAL({9,1},A1:A3)` over 1, 2, 3 spills 6, 2 (`INDEX(..,1,2)` is 2, `ISERROR` is FALSE), `ROWS(SUBTOTAL({9;1},A1:A3))`

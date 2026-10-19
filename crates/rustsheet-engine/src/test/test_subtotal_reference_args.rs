@@ -275,8 +275,8 @@ fn subtotal_of_take_of_nested_ifs_is_linear() {
 // cells, a scalar, and a debug build hit the scalar-context assertion (T-1914 review, T-1987).
 // The LAMBDA forms spill the 2x2 of `#VALUE!` of the bare SWITCH and CHOOSE calls they wrap
 // (probes/subtotal-take-array-selector A30:B31, probes/lift-arrays-choose-arms A69:B70). The
-// XLOOKUP shapes are the engine's own and unprobed (T-1998): a lookup in a 1x2 vector picks a
-// 2x1 column, and a 1x2 lookup value lifts to 1x2. A LAMBDA over a range still picks its cells.
+// XLOOKUP shapes are the engine's own and unprobed: a lookup in a 1x2 vector picks a 2x1 column,
+// and a 1x2 lookup value lifts to 1x2. A LAMBDA over a range still picks its cells.
 #[test]
 fn subtotal_of_take_of_lambda_call_or_lifting_xlookup_spills() {
     let lambda_switch = "LAMBDA(s,SWITCH(s,1,H1:H2,2,I1:I2))({1,2})";
@@ -307,7 +307,6 @@ fn subtotal_of_take_of_lambda_call_or_lifting_xlookup_spills() {
             2,
             1,
         ),
-        ("SUBTOTAL(9,TAKE(XLOOKUP(1,{1},H1:I1),1))".to_string(), 1, 2),
         ("SUBTOTAL(9,XLOOKUP({1,2},{1,2},H1:H2))".to_string(), 1, 2),
         (
             "SUBTOTAL(9,TAKE(XLOOKUP({1,2},{1,2},H1:H2),2))".to_string(),
@@ -364,4 +363,63 @@ fn subtotal_of_nested_lambda_call_and_xlookup_is_linear() {
     // The inner XLOOKUP gives one value, which does not match the two-cell lookup array.
     assert_eq!(model._get_text("A6"), "#VALUE!");
     assert_eq!(model._get_text("A7"), "1");
+}
+
+// TAKE, DROP and TRIMRANGE over an XLOOKUP that picks cells of a range read those cells, also when
+// the XLOOKUP is the arm an IF or CHOOSE picks or a LET body, and no spill is left over in B
+// (probes/take-drop-trimrange-over-xlookup A10-A34, A66, A70, A82; -b A10-A30, A42-A46, A54-A62;
+// T-1998). Static analysis still counts the nested XLOOKUP as lifting, so this also checks that
+// a debug build meets no scalar-context assertion.
+#[test]
+fn take_drop_trimrange_over_xlookup_pick_cells() {
+    let x = "XLOOKUP(1,J1:J2,H1:I2)";
+    let cases = [
+        (format!("SUBTOTAL(9,TAKE({x},1,1))"), "3"),
+        (format!("SUBTOTAL(9,DROP({x},0,1))"), "6"),
+        (format!("SUBTOTAL(9,TRIMRANGE({x}))"), "9"),
+        (format!("AREAS(TAKE({x},1))"), "1"),
+        (format!("AREAS(TRIMRANGE({x}))"), "1"),
+        (format!("ISREF(TAKE({x},1))"), "TRUE"),
+        (format!("SUBTOTAL(9,TAKE(IF(TRUE,{x}),1,1))"), "3"),
+        (format!("SUBTOTAL(9,TAKE(IF(FALSE,1,{x}),1,1))"), "3"),
+        (format!("SUBTOTAL(9,TAKE(CHOOSE(2,H1:H2,{x}),1,-1))"), "6"),
+        (format!("SUBTOTAL(9,TAKE(IF(TRUE,CHOOSE(1,{x})),1,1))"), "3"),
+        (format!("SUBTOTAL(9,TAKE(LET(v,1,{x}),1,1))"), "3"),
+        (format!("SUBTOTAL(9,TRIMRANGE(IF(TRUE,{x})))"), "9"),
+        (format!("SUBTOTAL(9,TAKE(TAKE({x},1,2),1,1))"), "3"),
+        (format!("SUBTOTAL(9,DROP(TRIMRANGE({x}),0,1))"), "6"),
+        ("SUBTOTAL(9,TAKE(TAKE(H1:I2,1),1,1))".to_string(), "3"),
+        (format!("ISREF(DROP(CHOOSE(1,{x}),0,1))"), "TRUE"),
+        // Values, not cells: a lifting lookup value, an array return, IFERROR.
+        (
+            "SUBTOTAL(9,TAKE(XLOOKUP({1;2},J1:J2,H1:H2),1))".to_string(),
+            "#VALUE!",
+        ),
+        (
+            "SUBTOTAL(9,TAKE(XLOOKUP(1,J1:J2,{3,6;4,8}),1,1))".to_string(),
+            "#VALUE!",
+        ),
+        (format!("SUBTOTAL(9,TAKE(IFERROR({x},0),1,1))"), "#VALUE!"),
+    ];
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("H1", "3"),
+        ("H2", "4"),
+        ("I1", "6"),
+        ("I2", "8"),
+        ("J1", "1"),
+        ("J2", "2"),
+    ] {
+        model._set(cell, value);
+    }
+    for (index, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", 1 + 3 * index), &format!("={formula}"));
+    }
+    model.evaluate();
+    for (index, (formula, expected)) in cases.iter().enumerate() {
+        let top = 1 + 3 * index;
+        assert_eq!(model._get_text(&format!("A{top}")), *expected, "{formula}");
+        assert_eq!(model._get_text(&format!("B{top}")), "", "{formula}");
+        assert_eq!(model._get_text(&format!("A{}", top + 1)), "", "{formula}");
+    }
 }
