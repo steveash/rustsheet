@@ -31,5 +31,5 @@ check finiteness once in `complex_result` and record the rule in docs/excel-sema
 ## Outcome
 Probe `eng-im-overflow` pins the overflow results. IMSUM/IMPRODUCT now give `#VALUE!` and IMEXP
 `#NUM!` on a non-finite result (IMPOWER and IMDIV already gave `#NUM!`). Eval: 48 new probe cells,
-8 new known failures (IMSQRT large inputs, last-digit precision of finite IMEXP/IMPOWER), no
-regressions. The finiteness checks are per function (not once in `complex_result`) because Excel's codes differ: `#VALUE!` for IMSUM/IMPRODUCT, `#NUM!` for IMEXP. Follow-up: T-1996 (IMSQRT large inputs).
+8 new known failures (IMSQRT large inputs T-1996; IM* text formatting T-2001; IMEXP with a nonzero imaginary part T-2002), no
+regressions. The finiteness checks are per function (not once in `complex_result`) because Excel's codes differ: `#VALUE!` for IMSUM/IMPRODUCT, `#NUM!` for IMEXP. Follow-ups: T-1996, T-2001, T-2002, T-2003 (trig overflow).

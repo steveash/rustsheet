@@ -730,7 +730,9 @@ fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 
 fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (re, im) = (x.exp() * y.cos(), x.exp() * y.sin());
-    // Overflow is `#NUM!` (probes/eng-im-overflow A9, A10; `IMEXP("709.7")` is still finite).
+    // Overflow of a pure real argument is `#NUM!` (probes/eng-im-overflow A9, A10;
+    // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus
+    // instead (A12, engineering.md); that is not implemented, TODO(T-2002).
     if !re.is_finite() || !im.is_finite() {
         return num_error(cell);
     }
