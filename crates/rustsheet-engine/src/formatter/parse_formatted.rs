@@ -9,8 +9,9 @@ use crate::{
 use super::date_text::{parse_date, CurrentYear};
 
 /// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
-/// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Only that shape is probed; the
-/// format of other typed clocks is UNVERIFIED and they stay text; so is every non-glued date shape given this format (T-1952) (docs/excel-semantics/dates.md).
+/// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Non-glued dates and clocks with
+/// seconds or AM/PM get the same format (probes/date-text-non-glued-timevalue, T-1952;
+/// docs/research/non-glued-typed-input-2026-10-19.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
 
 /// [`parse_formatted_number`] for text typed into a cell, which also reads date+time text
@@ -23,7 +24,7 @@ pub(crate) fn parse_typed_number(
     date_system: DateSystem,
 ) -> Result<(f64, Option<String>), String> {
     parse_formatted_number(original, currencies, locale, current_year, date_system).or_else(|err| {
-        if !ends_with_hour_minute_clock(original) {
+        if !ends_with_typed_clock(original) {
             return Err(err);
         }
         parse_date_clock_serial_in(original, locale, current_year, date_system)
@@ -32,10 +33,20 @@ pub(crate) fn parse_typed_number(
     })
 }
 
-/// Whether the text's last word is an `H:MM` / `HH:MM` clock with an hour below 24: the only typed
-/// clock shape probed. Seconds, AM/PM, hours past 23 and fractions are UNVERIFIED and stay text.
-fn ends_with_hour_minute_clock(text: &str) -> bool {
-    let Some((hour, minute)) = text.rsplit(' ').next().and_then(|c| c.split_once(':')) else {
+/// Whether the text ends in a whole-second clock below hour 24, `H:MM`, `H:MM:SS` or either
+/// followed by `AM`/`PM`: the typed clock shapes probed (probes/date-text-non-glued-timevalue
+/// rows 11-17, excel-graph: `10:00`, `10:00:30` and `10:00 AM` all become numbers with
+/// `m/d/yyyy h:mm`). Hours past 23 and fractions are UNVERIFIED and stay text.
+fn ends_with_typed_clock(text: &str) -> bool {
+    let mut words = text.rsplit(' ');
+    let mut clock = words.next().unwrap_or("");
+    if clock.eq_ignore_ascii_case("am") || clock.eq_ignore_ascii_case("pm") {
+        clock = words.next().unwrap_or("");
+    }
+    let mut parts = clock.split(':');
+    let (Some(hour), Some(minute), second, None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
         return false;
     };
     let digits =
@@ -43,6 +54,7 @@ fn ends_with_hour_minute_clock(text: &str) -> bool {
     digits(hour, 2)
         && minute.len() == 2
         && digits(minute, 2)
+        && second.is_none_or(|s| s.len() == 2 && digits(s, 2))
         && hour.parse::<u32>().is_ok_and(|h| h < 24)
 }
 
