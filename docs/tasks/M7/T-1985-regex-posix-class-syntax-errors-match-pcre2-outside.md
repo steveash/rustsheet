@@ -3,7 +3,7 @@ id: T-1985
 title: "REGEX* POSIX class syntax errors match PCRE2 (outside a bracket, unknown names, collating elements, class range ends)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
