@@ -49,7 +49,7 @@ same date and commit. Each row has a migration task, or is a non-goal with its r
 |---|---|---|---|---|
 | `lift_with_cost`, `CriteriaArg`, `count_walks` | statistical/if_ifs.rs | *IF(S), AGGREGATE, IFS, SWITCH, `lookup_each` (VLOOKUP/HLOOKUP), XLOOKUP | moved as the driver core, `lift_values` | T-1784 |
 | `is_lifted` | logical/mod.rs | IFS, SWITCH: when to call `lift_with_cost` | `LiftedArg::is_grid`, deleted | T-1784 |
-| `NumberOrArray`, `lift_numbers`, `lift_number_operands`, `number_at` | cast.rs | ROUND family, MOD, CEILING/FLOOR, DATE, DATEDIF, HOUR/MINUTE/SECOND, MUNIT | table entries + kernels. `NumberOrArray` stays for the operators only | T-1773, T-1785 |
+| `NumberOrArray`, `lift_numbers`, `lift_number_operands`, `number_at` | cast.rs | ROUND family, MOD, CEILING/FLOOR, DATE, DATEDIF, HOUR/MINUTE/SECOND, MUNIT, RANDBETWEEN | table entries + kernels; the three helpers are gone (T-1785). As built: MUNIT and RANDBETWEEN have no table entry and call `lift_values` themselves (MUNIT's scalar result is a matrix, so its static shape stays unknown; RANDBETWEEN reads its own range rule and order), and INDEX's index lift (a non-goal below) reads its operands with `bcast_get`. `NumberOrArray` stays for the operators, INDEX and CHOOSE | T-1773, T-1785 |
 | `lift_with_defaults` | math_and_trigonometry/mathematical.rs | CEILING.MATH, CEILING.PRECISE, FLOOR.MATH, ISO.CEILING | table entries; the kernel takes the defaults | T-1773 (done) |
 | `single_number_fn!` | functions/macros.rs | 32 one-argument math functions | table entries + kernels | T-1773 (done) |
 | `apply_number_unary` | cast.rs | DAY/MONTH/YEAR (`date_part_fn!`), WEEKDAY, ISOWEEKNUM; the unary `-`/`%` chain | function callers move. It stays for `apply_unary_chain`, an operator | T-1785 |
@@ -672,7 +672,7 @@ silently.
   | T-1784 | a lifted whole-column COUNTIFS (`=SUM(COUNTIFS(A:A,A1:A100000))`, the `reuse_equal_runs` path) and a *IF(S) bench | within 5% |
   | T-1773 | per-row unlifted cells over ≥ 100k rows, full recalc: `=ROUND(A{r},2)`, `=ABS(A{r})`, `=MOD(A{r},7)` | within 5% each |
   | T-1773 | lifted `=SUM(ROUND(A1:A1000000,2))` and `=SUM(ABS(A1:A1000000))` | within 5% |
-  | T-1785 | per-row unlifted `=DAY(A{r})` over ≥ 100k rows | within 5% |
+  | T-1785 | per-row unlifted `=DAY(A{r})` over ≥ 100k rows | within 5%; relaxed by decision 0077 (landed at +9.4% instructions), the target moves to T-1932 |
   | T-1775 | `benches/text.rs` | within 5% |
   | T-1372 | `=SUM(PMT(A1:A100000,10,100))` | none: a new path, a smoke number only |
 

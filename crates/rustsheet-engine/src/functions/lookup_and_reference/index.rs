@@ -1,6 +1,7 @@
 //! INDEX: one cell, row, column or area of a reference or an array, lifted element-wise over
 //! array indices (docs/excel-semantics/lookup.md).
 
+use crate::arithmetic::bcast_get;
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::{ExternalArea, PickedReference};
 use crate::functions::util::{
@@ -379,15 +380,23 @@ impl Model {
         if let Some((error, message)) = check_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
         }
+        // The number at (`i`, `j`) of an operand, a size-1 dimension repeating; text is cast like
+        // a scalar argument, a position past a shorter array is `#N/A`.
+        let number_at = |model: &Self, na: &NumberOrArray, i: usize, j: usize| match na {
+            NumberOrArray::Number(f) => Ok(*f),
+            NumberOrArray::Array(a) => {
+                bcast_get(a, i, j).map_or(Err(Error::NA), |node| model.array_node_to_number(node))
+            }
+        };
         let mut result = Vec::with_capacity(rows);
         for i in 0..rows {
             let mut data_row = Vec::with_capacity(cols);
             for j in 0..cols {
                 let [area, row, col] = &operands;
                 let numbers = index_numbers(
-                    self.number_at(area, i, j),
-                    self.number_at(row, i, j),
-                    self.number_at(col, i, j),
+                    number_at(self, area, i, j),
+                    number_at(self, row, i, j),
+                    number_at(self, col, i, j),
                     || Error::VALUE,
                 );
                 data_row.push(match (numbers, &arg_error) {

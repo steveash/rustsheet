@@ -161,6 +161,7 @@ C	probes/date-argument-modes.case.json	168
 C	probes/date-clock-text-length-limit.case.json	36
 C	probes/date-huge-month-day.case.json	63
 C	probes/date-lift-open.case.json	175
+C	probes/date-math-lift-driver-edges.case.json	69
 C	probes/date-system-1900-accrint-settlement-bound.case.json	56
 C	probes/date-system-1900-coupon-bound.case.json	140
 C	probes/date-system-1900-financial-daycount.case.json	40
@@ -645,6 +646,7 @@ C	probes/rank-nonref-error-elements.case.json	31
 C	probes/rank-nonref-errors.case.json	44
 C	probes/rank-unknown-shape-ref.case.json	17
 C	probes/rate-empty-arguments.case.json	10
+C	probes/regex-optional-args.case.json	149
 C	probes/regex-pcre2-features.case.json	62
 C	probes/regexreplace-extended-escapes.case.json	244
 C	probes/regexreplace-final-sigma.case.json	12
@@ -1146,6 +1148,7 @@ F	probes/date-lift-open.case.json	Sheet1!J5
 F	probes/date-lift-open.case.json	Sheet1!J6
 F	probes/date-lift-open.case.json	Sheet1!J7
 F	probes/date-lift-open.case.json	Sheet1!J8
+F	probes/date-math-lift-driver-edges.case.json	Sheet1!G43
 F	probes/date-system-1900-coupon-bound.case.json	S!A20
 F	probes/date-system-1900-financial-daycount.case.json	S!A1
 F	probes/date-system-1900-financial-daycount.case.json	S!A19
@@ -2299,7 +2302,6 @@ F	probes/regex-pcre2-features.case.json	Sheet1!C13
 F	probes/regex-pcre2-features.case.json	Sheet1!C14
 F	probes/regex-pcre2-features.case.json	Sheet1!C15
 F	probes/regex-pcre2-features.case.json	Sheet1!C16
-F	probes/regex-pcre2-features.case.json	Sheet1!C17
 F	probes/regex-pcre2-features.case.json	Sheet1!C2
 F	probes/regex-pcre2-features.case.json	Sheet1!C3
 F	probes/regex-pcre2-features.case.json	Sheet1!C4
@@ -2308,7 +2310,6 @@ F	probes/regex-pcre2-features.case.json	Sheet1!C7
 F	probes/regex-pcre2-features.case.json	Sheet1!C8
 F	probes/regex-pcre2-features.case.json	Sheet1!C9
 F	probes/regex-pcre2-features.case.json	Sheet1!D1
-F	probes/regex-pcre2-features.case.json	Sheet1!D10
 F	probes/regex-pcre2-features.case.json	Sheet1!D12
 F	probes/regex-pcre2-features.case.json	Sheet1!D13
 F	probes/regex-pcre2-features.case.json	Sheet1!D2
@@ -2317,7 +2318,6 @@ F	probes/regex-pcre2-features.case.json	Sheet1!D4
 F	probes/regex-pcre2-features.case.json	Sheet1!D5
 F	probes/regex-pcre2-features.case.json	Sheet1!D6
 F	probes/regex-pcre2-features.case.json	Sheet1!D7
-F	probes/regex-pcre2-features.case.json	Sheet1!D8
 F	probes/regex-pcre2-features.case.json	Sheet1!D9
 F	probes/regexreplace-limit-and-syntax.case.json	Sheet1!A23
 F	probes/regression-forecast.case.json	Sheet1!L11
@@ -2877,30 +2877,8 @@ F	probes/subtotal-take-array-selector.case.json	Sheet1!B41
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D1
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D7
-F	probes/t1626-regexreplace.case.json	Sheet1!C11
-F	probes/t1626-regexreplace.case.json	Sheet1!C12
-F	probes/t1626-regexreplace.case.json	Sheet1!C13
-F	probes/t1626-regexreplace.case.json	Sheet1!C2
-F	probes/t1626-regexreplace.case.json	Sheet1!C3
-F	probes/t1626-regexreplace.case.json	Sheet1!C32
-F	probes/t1626-regexreplace.case.json	Sheet1!C33
 F	probes/t1626-regexreplace.case.json	Sheet1!C34
-F	probes/t1626-regexreplace.case.json	Sheet1!C37
-F	probes/t1626-regexreplace.case.json	Sheet1!C38
-F	probes/t1626-regexreplace.case.json	Sheet1!C4
-F	probes/t1626-regexreplace.case.json	Sheet1!C5
-F	probes/t1626-regexreplace.case.json	Sheet1!C6
-F	probes/t1626-regexreplace.case.json	Sheet1!C7
-F	probes/t1626-regexreplace.case.json	Sheet1!C8
-F	probes/t1626-regexreplace.case.json	Sheet1!C9
-F	probes/t1626-regextest.case.json	Sheet1!C2
-F	probes/t1626-regextest.case.json	Sheet1!C21
-F	probes/t1626-regextest.case.json	Sheet1!C22
-F	probes/t1626-regextest.case.json	Sheet1!C25
 F	probes/t1626-regextest.case.json	Sheet1!C29
-F	probes/t1626-regextest.case.json	Sheet1!C4
-F	probes/t1626-regextest.case.json	Sheet1!C5
-F	probes/t1626-regextest.case.json	Sheet1!C6
 F	probes/text-currency-locale-date.case.json	S!A14
 F	probes/text-format-length-limit-d.case.json	S!A31
 F	probes/text-format-length-limit-f.case.json	Sheet1!A41
@@ -2982,8 +2960,6 @@ F	probes/text-locale-calendars.case.json	S!A99
 F	probes/text-locale-era-gregorian.case.json	S!A21
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
-F	probes/textsplit-lift-guesses.case.json	Calc!A53
-F	probes/textsplit-lift-guesses.case.json	Calc!A55
 F	probes/textsplit-padded-size.case.json	Calc!A1
 F	probes/textsplit-padded-size.case.json	Calc!A2
 F	probes/textsplit-padded-size.case.json	Calc!A3
