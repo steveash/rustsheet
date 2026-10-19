@@ -41,12 +41,14 @@ ODDFYIELD and YIELD ones there (I65-I84, I105-I136, I173-I184).
 The annuity family (FV, PMT, PPMT, NPV) and the solvers (IRR, RATE, XIRR) are T-0901's and T-0916's, not this task's.
 ODDFYIELD's solver (H200, fin-yield-odd-lift A5/I9, the ODDFYIELD controls of fin-remaining-later-argument-ranges and the
 PRICE_YIELD.xlsx K column) moved to T-2007 (gap triage 2026-10-19); this task keeps ODDFPRICE.
+Gap triage 2026-10-19 split three families out: the discount securities (INTRATE H139, YIELDDISC H352 and the
+probes/discount-security-modes acceptance line below) to T-2032; DB H88 and DDB H95 to T-2033 (fitted there);
+EFFECT H125 to T-2034. This task keeps CUMIPMT, CUMPRINC, DURATION, MDURATION, ODDFPRICE and PRICE.
 One probe point per function is not enough to fit a formulation: first add an oracle sweep per function family
 (excel-probe skill; probes-numeric like T-0942), then fit. Split per family if larger than M.
 
 ## Acceptance criteria
 - [ ] A probes-numeric sweep for the bond and depreciation families is oracle-filled.
-- [ ] The last-digit cells of probes/discount-security-modes pass: INTRATE A1-A6, A11-A16, A19; YIELDDISC A68-A73, A78-A83, A86; PRICEMAT A103, A104, A106; YIELDMAT A113-A118, A123, A124, A126-A129, A131 (T-1624). Fitting hint: every INTRATE one-year cell is 0.10000000000000009 against Excel's 0.1, which suggests (redemption-investment)/investment rather than redemption/investment-1.
 - [ ] The base rows above pass, or the Outcome records which formulation was ruled out.
 - [ ] `make check` green; reviewers approve.
 
