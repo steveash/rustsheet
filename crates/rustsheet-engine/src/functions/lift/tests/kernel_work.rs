@@ -16,9 +16,10 @@ const BETA_CDF: &str = "one statrs incomplete beta: at most 140 continued-fracti
 const ERF_KERNELS: &str =
     "erf kernels: fixed-degree rationals and one fixed-length excel_exp series";
 
-/// WORKDAY's cap: a binary search of at most 22 probes over the date range, each a closed-form
-/// count with 14 binary searches of the holidays, prepared once (`LiftCost::Prepared`).
-const WORKDAY_SEARCH: &str = "at most 22 closed-form counts of the prepared holidays";
+/// WORKDAY's cap: a galloping search then a bisection over the date range (`nearest_offset`), at
+/// most about 44 closed-form counts, each with 14 binary searches of the holidays, prepared once
+/// (`LiftCost::Prepared`).
+const WORKDAY_SEARCH: &str = "at most about 44 closed-form counts of the prepared holidays";
 
 /// NETWORKDAYS' cap: one closed-form count (T-1808) with 14 binary searches of the holidays.
 const NETWORKDAYS_COUNT: &str = "one closed-form count of the prepared holidays";

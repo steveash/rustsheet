@@ -5,7 +5,7 @@
 use chrono::Datelike;
 
 use super::holidays::{days_per_weekday, working_days, Holidays};
-use super::DEFAULT_WEEKEND;
+use super::{bare_error, DEFAULT_WEEKEND};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
@@ -44,7 +44,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let holidays = match args.get(holidays_at) {
-            Some(arg) => self.holiday_serials(arg, cell).map(Holidays::new),
+            Some(arg) => self
+                .holiday_serials(arg, cell)
+                .map(Holidays::new)
+                .map_err(|error| bare_error(&error, cell)),
             None => Ok(Holidays::none()),
         };
         let read = holidays.as_ref().map_or(0, |holidays| holidays.read);

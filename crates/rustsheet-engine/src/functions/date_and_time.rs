@@ -191,6 +191,12 @@ fn error_kind(result: &CalcResult) -> Error {
     }
 }
 
+/// The error of `result` with no message: a holidays error, which every lifted element of WORKDAY
+/// or NETWORKDAYS returns, is then cloned without allocating.
+fn bare_error(result: &CalcResult, cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(error_kind(result), cell, String::new())
+}
+
 /// Saturday-Sunday weekend (pattern 1), Monday first.
 const DEFAULT_WEEKEND: [bool; 7] = WeekendPattern::SatSun.to_mask();
 

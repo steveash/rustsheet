@@ -50,7 +50,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // The dates lift over an array and refuse a range (probes/date-argument-modes F/G 35-40,
         // 57-62), the weekend lifts over both (F/G 41, 42, 63, 64), and the holidays take the
         // whole range (dates.md "WORKDAY holidays take the whole range"). An element costs
-        // O(log holidays): WORKDAY's binary search makes at most 22 probes of the date range,
+        // O(log holidays): WORKDAY's search makes at most about 44 counts over the date range,
         // and NETWORKDAYS counts in closed form (`functions/date_and_time/holidays.rs`).
         Function::Workday | Function::Networkdays => Some(&WORKDAYS),
         Function::WorkdayIntl | Function::NetworkdaysIntl => Some(&WORKDAYS_INTL),

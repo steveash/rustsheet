@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use chrono::Datelike;
 
 use super::holidays::{days_per_weekday, weekday_of, working_days, Holidays};
-use super::DEFAULT_WEEKEND;
+use super::{bare_error, DEFAULT_WEEKEND};
 use crate::{
     calc_result::CalcResult,
     constants::{EXCEL_DATE_BASE, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
@@ -24,6 +24,43 @@ use crate::{
 /// consecutive numbers, and the 1900 serial limits bound it.
 fn day_number(date: chrono::NaiveDate) -> i64 {
     i64::from(date.num_days_from_ce() - EXCEL_DATE_BASE)
+}
+
+/// The least offset `k` in `1..=max_offset` with `count(k) >= target` (`target >= 1`), for a
+/// `count` that does not decrease as `k` grows and grows by at most one per step; `None` when
+/// there is none. With `per_week` working days a week, the offset that `target` working days
+/// need without holidays is tried first; holidays double it until it is enough (galloping), then
+/// a bisection finds the least one, so a small `target` costs a few counts.
+fn nearest_offset(
+    count: impl Fn(i64) -> i64,
+    target: i64,
+    per_week: i64,
+    max_offset: i64,
+) -> Option<i64> {
+    if max_offset < target || per_week <= 0 {
+        return None;
+    }
+    // `count` grows by at most one per step, so no offset below `target` reaches it.
+    let mut low = target;
+    let mut span = 7 * (target / per_week + 1);
+    let mut high = span.min(max_offset);
+    while count(high) < target {
+        if high == max_offset {
+            return None;
+        }
+        low = high + 1;
+        span = span.saturating_mul(2);
+        high = span.min(max_offset);
+    }
+    while low < high {
+        let middle = low + (high - low) / 2;
+        if count(middle) >= target {
+            high = middle;
+        } else {
+            low = middle + 1;
+        }
+    }
+    Some(low)
 }
 
 impl Model {
@@ -55,7 +92,9 @@ impl Model {
         if !(2..=holidays_at + 1).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let holidays = self.workday_holidays(args.get(holidays_at), cell);
+        let holidays = self
+            .workday_holidays(args.get(holidays_at), cell)
+            .map_err(|error| bare_error(&error, cell));
         let read = holidays.as_ref().map_or(0, |holidays| holidays.read);
         self.lift_call_costed(
             kind,
@@ -118,9 +157,9 @@ impl Model {
     /// Steps `date` over `days` working days (forward when positive), skipping the weekend days
     /// of `weekend_mask` and `holidays`, and returns the result as a serial of the workbook's
     /// date system. The result is the nearest day past `date` with `days` working days up to it,
-    /// found by a binary search over the date range (at most 22 probes, each counting the
-    /// working days of a span in closed form), so a call costs O(log holidays) whatever `days`
-    /// is. A result beyond the date range and one before the 1904 epoch are `#NUM!`
+    /// found by [`nearest_offset`] over closed-form counts, so a call costs
+    /// O(log(days + holidays) * log holidays) whatever `days` is, and a few counts for a small
+    /// one. A result beyond the date range and one before the 1904 epoch are `#NUM!`
     /// (`WORKDAY(0,-1)`, `WORKDAY.INTL(1,-2)`; probes/date-system-1904-readers A43, A44).
     fn step_workdays(
         &self,
@@ -140,46 +179,28 @@ impl Model {
             working_days(&days_per_weekday(from, to, first_weekday), weekend_mask)
                 - working_days(&holidays.per_weekday(from, to, first_weekday), weekend_mask)
         };
-        let (first, last) = (
-            i64::from(MINIMUM_DATE_SERIAL_NUMBER),
-            i64::from(MAXIMUM_DATE_SERIAL_NUMBER),
-        );
         let target = i64::from(days.unsigned_abs());
+        let per_week = weekend_mask.iter().filter(|&&weekend| !weekend).count() as i64;
         let day = match days.cmp(&0) {
-            Ordering::Equal => start,
-            // The first day `d` with `target` working days in `start + 1..=d`: a working day.
-            Ordering::Greater => {
-                if start >= last || working(start + 1, last) < target {
-                    return Err(out_of_range());
-                }
-                let (mut low, mut high) = (start + 1, last);
-                while low < high {
-                    let middle = low + (high - low) / 2;
-                    if working(start + 1, middle) >= target {
-                        high = middle;
-                    } else {
-                        low = middle + 1;
-                    }
-                }
-                low
-            }
-            // The last day `d` with `target` working days in `d..=start - 1`.
-            Ordering::Less => {
-                if start <= first || working(first, start - 1) < target {
-                    return Err(out_of_range());
-                }
-                let (mut low, mut high) = (first, start - 1);
-                while low < high {
-                    let middle = high - (high - low) / 2;
-                    if working(middle, start - 1) >= target {
-                        low = middle;
-                    } else {
-                        high = middle - 1;
-                    }
-                }
-                low
-            }
+            Ordering::Equal => Some(start),
+            // Offset `k` reaches `start + k`, counting the working days of `start + 1..=start + k`.
+            Ordering::Greater => nearest_offset(
+                |k| working(start + 1, start + k),
+                target,
+                per_week,
+                i64::from(MAXIMUM_DATE_SERIAL_NUMBER) - start,
+            )
+            .map(|k| start + k),
+            // Offset `k` reaches `start - k`, counting the working days of `start - k..=start - 1`.
+            Ordering::Less => nearest_offset(
+                |k| working(start - k, start - 1),
+                target,
+                per_week,
+                start - i64::from(MINIMUM_DATE_SERIAL_NUMBER),
+            )
+            .map(|k| start - k),
         };
+        let day = day.ok_or_else(out_of_range)?;
         self.workbook
             .settings
             .date_system

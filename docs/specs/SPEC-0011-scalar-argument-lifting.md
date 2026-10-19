@@ -490,7 +490,7 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
    worst, so a covering weight would cap a lift at about 45 elements). T-1295 (whole-week steps)
    and T-1808 (closed-form day counts) make one call O(holidays), so T-1236 follows both and
    enters them without a calendar weight. As built (T-1236): the holidays are `WholeByCaller`,
-   prepared once per call (`LiftCost::Prepared`), and WORKDAY finds its result by a binary search
+   prepared once per call (`LiftCost::Prepared`), and WORKDAY finds its result by a galloping search
    of closed-form counts, so an element costs O(log holidays).
 5. **Elements**, in row-major order, into one buffer kept for the whole call. Scalar and whole
    slots are written once. Only the grid slots are overwritten per element, by
