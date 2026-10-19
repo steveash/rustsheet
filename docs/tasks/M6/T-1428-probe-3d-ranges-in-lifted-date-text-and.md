@@ -3,7 +3,7 @@ id: T-1428
 title: "Probe 3D ranges in lifted date text and weekend arguments, and DATEDIF unit and DAYS360 method over an array"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
