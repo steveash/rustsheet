@@ -1675,20 +1675,27 @@ Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921, T-1933
 
-## Legacy N and T marker spelling shadows a defined name of that spelling
-Rule: in Excel a workbook LAMBDA name is called by its name; in RustSheet the names `_RS_LEGACY_N` and
-`_RS_LEGACY_T` are the stored spelling of a legacy N/T (SPEC-0012, `functions/kinds.rs`), so a typed or
-imported call `=_RS_LEGACY_N(1)` is plain N even when a LAMBDA name `_RS_LEGACY_N` exists.
-Evidence (probes/legacy-marker-spelling-name-plain, probes/legacy-marker-spelling-name-xlfn, excel-graph, 2026-10-18, T-1912):
-Excel accepts `_RS_LEGACY_N`, `_RS_LEGACY_T` and `_xlfn._RS_LEGACY_N` as defined LAMBDA names (`=LAMBDA(x,x*10+7)`) and calls them: each call
-gives 17 where `N(1)` is 1. So the gap is real: ours calls N. Spellings Excel refuses as a defined name (the workbook does not open: createSession
-501 `unsupportedWorkbook`, no cell values to record, so these have no case): `R`, `RC`, `R1C1` (xlsxwriter warns "like a RC cell ref" too) and a
-256-character name (a 255-character one is accepted). Whether the engine's lexer reads such a spelling as one call name is open (T-1936).
-The matcher is exact and case-sensitive, so `_rs_legacy_n(1)` and `_xlfn._RS_LEGACY_N(1)` still call the name.
-A model file saved before T-1851 with such a call stored as `_RS_LEGACY_N(...)` reloads as the marker,
-not as the name call (xlsx never holds the spelling: its A1 text reads as plain N).
-Ours: N (test_legacy_n_t_marker.rs `a_typed_call_of_the_spelling_is_plain_n`).
-Status: VERIFIED (excel-graph); ours differs until T-1936
+## Legacy N and T marker spelling: a cell-like name Excel never calls
+Rule: Excel calls a workbook LAMBDA name by its name, `_RS_LEGACY_N` included; but a name spelled like
+an A1 cell (`NLG1`, `TLG1`) is never a name in a formula: Excel opens a workbook defining it, yet `NLG1`
+reads the cell and `NLG1(1)` is a call of that cell, `#REF!`. So RustSheet stores a legacy N/T as
+`NLG1(`/`TLG1(` (SPEC-0012, `functions/kinds.rs`), a spelling no callable name can have.
+Evidence (excel-graph): probes/legacy-marker-spelling-name-plain, -xlfn (2026-10-18, T-1912): Excel accepts
+`_RS_LEGACY_N`, `_RS_LEGACY_T` and `_xlfn._RS_LEGACY_N` as defined LAMBDA names (`=LAMBDA(x,x*10+7)`) and
+calls them: each call gives 17 where `N(1)` is 1. probes/legacy-marker-spelling-name-nlg1, -tlg1
+(2026-10-19, T-1936): with a LAMBDA name `NLG1` (`TLG1`) defined the workbook opens, `ISREF(NLG1)` is TRUE,
+`SUM(NLG1)` is 0 (the empty cell), `NLG1(1)` is `#REF!`. Spellings Excel refuses as a defined name outright
+(the workbook does not open: createSession 501 `unsupportedWorkbook`, so no case): `R`, `RC`, `R1C1` and a
+256-character name (255 is accepted); those read as R1C1 references in the engine's stored-text lexer, so
+they were not chosen.
+With no name defined, `=_RS_LEGACY_N(1)` and `=_RS_LEGACY_T("a")` are `#NAME?` and `=NLG1(1)`, `=TLG1("a")`
+`#REF!` (probes/legacy-marker-spelling-undefined, 2026-10-19).
+Ours: matches since T-1936: `=_RS_LEGACY_N(1)` calls the name, or is `#NAME?` without one, also after a
+reload; `=NLG1(1)` is `#REF!` (test_legacy_n_t_marker.rs). The new spelling is exact and case-sensitive.
+Stored text cannot tell T-1851's spelling (`_RS_LEGACY_N(`) from a call of a name of it, so it is no
+longer read as the marker: a legacy N/T marked in a model file saved between T-1851 and T-1936
+(2026-10-18/19) reloads as that name call, `#NAME?` without the name; re-import the xlsx to restore it.
+Status: VERIFIED (excel-graph)
 Implemented in: functions/kinds.rs (`LEGACY_SPELLINGS`, `Function::from_legacy_spelling`); expressions/parser/operands.rs (`parse_named_call`)
 Tasks: T-1851, T-1912, T-1936
 

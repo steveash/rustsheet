@@ -258,6 +258,7 @@ C	probes/encodeurl-evidence-floor.case.json	29
 C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
 C	probes/eng-first-vs-second-error.case.json	44
+C	probes/eng-im-overflow.case.json	48
 C	probes/eng-imdiv.case.json	24
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
@@ -409,8 +410,11 @@ C	probes/legacy-choose-array-index.case.json	12
 C	probes/legacy-if-arm-range-argument-b.case.json	43
 C	probes/legacy-if-arm-range-argument.case.json	73
 C	probes/legacy-index-array-index.case.json	30
+C	probes/legacy-marker-spelling-name-nlg1.case.json	0
 C	probes/legacy-marker-spelling-name-plain.case.json	3
+C	probes/legacy-marker-spelling-name-tlg1.case.json	0
 C	probes/legacy-marker-spelling-name-xlfn.case.json	2
+C	probes/legacy-marker-spelling-undefined.case.json	5
 C	probes/legacy-match-lookup-array-intersection.case.json	41
 C	probes/legacy-n-t-choose-index-shapes.case.json	36
 C	probes/legacy-n-t-marker-shapes.case.json	24
@@ -1245,6 +1249,14 @@ F	probes/discount-security-modes.case.json	Calc!A86
 F	probes/discount-security-modes.case.json	Calc!A88
 F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
+F	probes/eng-im-overflow.case.json	S!A11
+F	probes/eng-im-overflow.case.json	S!A12
+F	probes/eng-im-overflow.case.json	S!A17
+F	probes/eng-im-overflow.case.json	S!A33
+F	probes/eng-im-overflow.case.json	S!A34
+F	probes/eng-im-overflow.case.json	S!A40
+F	probes/eng-im-overflow.case.json	S!A41
+F	probes/eng-im-overflow.case.json	S!A42
 F	probes/eng-impower-angle-cut.case.json	S!A10
 F	probes/eng-impower-angle-cut.case.json	S!A11
 F	probes/eng-impower-angle-cut.case.json	S!A12
@@ -1655,8 +1667,8 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/info-logic-argument-modes.case.json	Calc!A19
-F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A1
-F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A2
+F	probes/legacy-marker-spelling-name-nlg1.case.json	!EngineError
+F	probes/legacy-marker-spelling-name-tlg1.case.json	!EngineError
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100

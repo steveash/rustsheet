@@ -18,14 +18,14 @@ pub(crate) fn compute_rate(
     pmt: f64,
     annuity_type: i32,
     guess: f64,
-) -> Result<f64, (Error, String)> {
+) -> Result<f64, Error> {
     let mut rate = guess;
     // Excel _claims_ to do 20 iterations, but that will have tests failing
     let max_iterations = 50;
     let eps = 0.0000001;
     let annuity_type = annuity_type as f64;
     if guess <= -1.0 {
-        return Err((Error::VALUE, "Rate initial guess must be > -1".to_string()));
+        return Err(Error::VALUE);
     }
     for _ in 1..=max_iterations {
         let t = (1.0 + rate).powf(nper - 1.0);
@@ -35,14 +35,14 @@ pub(crate) fn compute_rate(
             + pmt * (1.0 + rate * annuity_type) * t * nper / rate;
         let new_rate = rate - f / f_prime;
         if new_rate <= -1.0 {
-            return Err((Error::NUM, "Failed to converge".to_string()));
+            return Err(Error::NUM);
         }
         if (new_rate - rate).abs() < eps {
             return Ok(new_rate);
         }
         rate = new_rate;
     }
-    Err((Error::NUM, "Failed to converge".to_string()))
+    Err(Error::NUM)
 }
 
 pub(crate) fn compute_npv(rate: f64, values: &[f64]) -> Result<f64, (Error, String)> {

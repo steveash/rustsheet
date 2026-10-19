@@ -4,12 +4,13 @@
 use super::Function;
 
 /// How `to_rc_format` stores the internal kinds. No other text shows them: the display, English,
-/// FORMULATEXT and xlsx texts print N and T. A typed or imported (A1) call of the spelling is
-/// plain N or T, so no A1 formula is stored with it (SPEC-0012 "Storage").
-const LEGACY_SPELLINGS: [(&str, Function); 2] = [
-    ("_RS_LEGACY_N", Function::NLegacy),
-    ("_RS_LEGACY_T", Function::TLegacy),
-];
+/// FORMULATEXT and xlsx texts print N and T. Each spelling is an A1 cell, so typed or imported (A1)
+/// text never holds it as a call name: there `NLG1(1)` is a call of that cell, `#REF!`. Nor can a
+/// workbook name of that spelling be called: Excel opens a workbook defining a LAMBDA name `NLG1`
+/// or `TLG1`, but `NLG1(1)` is `#REF!` and `ISREF(NLG1)` TRUE (probes/legacy-marker-spelling-
+/// name-nlg1, -tlg1, T-1936), so the marker never shadows a name (SPEC-0012 "Storage").
+const LEGACY_SPELLINGS: [(&str, Function); 2] =
+    [("NLG1", Function::NLegacy), ("TLG1", Function::TLegacy)];
 
 impl Function {
     /// The internal kinds. They are not in the lookup table, so no name parses to them and
@@ -41,19 +42,15 @@ impl Function {
         }
     }
 
-    /// The kind a call spelled `name` is, if it is the stored spelling of an internal kind: that
-    /// kind when `stored` (R1C1 text), else plain N or T. The one matcher of both modes, exact
-    /// and case-sensitive, so a variant (`_rs_legacy_n`, `_xlfn._RS_LEGACY_N`) is no marker in
-    /// either.
-    pub(crate) fn from_legacy_spelling(name: &str, stored: bool) -> Option<Function> {
-        let (_, kind) = LEGACY_SPELLINGS
+    /// The internal kind a call spelled `name` in stored (R1C1) text is, if any. The one matcher,
+    /// exact and case-sensitive, so a variant (`nlg1`, `_xlfn.NLG1`) is no marker. A1 text has no
+    /// marker. T-1851's spelling `_RS_LEGACY_N(` is no longer read: stored text cannot tell it from
+    /// a call of a name of that spelling, which Excel calls (T-1936).
+    pub(crate) fn from_legacy_spelling(name: &str) -> Option<Function> {
+        LEGACY_SPELLINGS
             .iter()
-            .find(|(spelling, _)| *spelling == name)?;
-        Some(match (kind, stored) {
-            (kind, true) => kind.clone(),
-            (Function::NLegacy, false) => Function::N,
-            _ => Function::T,
-        })
+            .find(|(spelling, _)| *spelling == name)
+            .map(|(_, kind)| kind.clone())
     }
 
     /// The stored spelling of an internal kind, `None` for every other kind.
