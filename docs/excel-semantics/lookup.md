@@ -698,3 +698,8 @@ Status: VERIFIED (excel-graph)
 Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier: not yet, specified by T-1955
 and built by T-1956 (OFFSET) and T-1957 (INDIRECT, TRIMRANGE).
 Tasks: T-1810, T-1955, T-1956, T-1957, T-1958
+
+## XLOOKUP: an error lookup_value beats a size mismatch
+Rule (VERIFIED, probes/workday-serial-zero F40, excel-graph, 2026-10-19, T-1254): `XLOOKUP(NA(),A1:A4,B1:B5)` is
+`#N/A`, not the `#VALUE!` of lookup and return arrays of different sizes: the lookup value's error is returned first.
+Tasks: T-1254
