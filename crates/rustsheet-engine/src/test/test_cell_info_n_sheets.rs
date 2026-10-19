@@ -63,33 +63,23 @@ fn info_timezones() {
     assert!(timezones > 400);
 }
 
+/// `CELL("filename")` is `#VALUE!` in every form, named workbook or not (probes/
+/// info-cell-address-cross-sheet Calc!B1:B4, excel-graph, T-2052).
 #[test]
-fn cell_filename() {
-    // Default workbook name is model
+fn cell_filename_is_value_error() {
     let mut model = new_empty_model();
-
+    model.add_sheet("Data").unwrap();
     model._set("A1", "=CELL(\"filename\")");
-
+    model._set("A2", "=CELL(\"filename\",B2)");
+    model._set("A3", "=CELL(\"filename\",Data!B2)");
     model.evaluate();
+    for cell in ["A1", "A2", "A3"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!");
+    }
 
-    assert_eq!(model._get_text("A1"), *"[model.xlsx]Sheet1");
-
-    model.workbook.name = "Expenses".to_string();
-    model.rename_sheet("Sheet1", "2026").unwrap();
-
-    model.evaluate();
-
-    assert_eq!(model._get_text("A1"), *"[Expenses.xlsx]2026");
-}
-
-/// An unnamed workbook (empty name) has no file name to report (T-2042).
-#[test]
-fn cell_filename_of_an_unnamed_workbook() {
-    let mut model = new_empty_model();
     model.workbook.name = String::new();
-    model._set("A1", "=CELL(\"filename\")");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
 }
 
 /// `CELL("address")` of a reference on another sheet is prefixed `[<file>]<sheet>!`, the sheet
