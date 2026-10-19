@@ -3,7 +3,7 @@ id: T-1511
 title: "A BYROW/BYCOL result that is an array is #CALC!; ROWS(LAMBDA(x,x)) is 1; ISERROR of a LAMBDA is FALSE"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
