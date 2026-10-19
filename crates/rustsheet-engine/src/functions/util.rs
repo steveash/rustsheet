@@ -213,6 +213,21 @@ const MIN_INDEXED_ROWS: i32 = 1024;
 /// row, so a dense column costs a read step per this many cells.
 const INDEX_BATCH_ROWS: usize = 64;
 
+/// Which cells of a sheet a range walk hands on ([`Model::walk_area`]). The two dense walks
+/// differ only for an explicit block reaching past the used area: `ClipBlocks` stops at the
+/// used area ([`Model::clip_block_to_used_area`]), `ClipWholeLines` walks the block whole and
+/// clips only whole rows and columns ([`Model::clip_to_used_area`]).
+#[derive(Clone, Copy)]
+enum AreaWalk {
+    /// Every position of the range within the sheet's used area: the cells past it are blank.
+    ClipBlocks,
+    /// Every position of the range, but a whole-row or whole-column range only within the
+    /// used area, for walkers that read a blank cell as something.
+    ClipWholeLines,
+    /// The cells that exist only, for the areas of a union.
+    Existing,
+}
+
 /// The rows of one column of an indexed walk that were read from the index, from `next` on not
 /// yet handed on.
 struct ColumnBatch {
@@ -469,11 +484,7 @@ impl Model {
         if !whole_rows && !whole_columns {
             return Ok((row2, column2));
         }
-        let (max_row, max_column) = self
-            .workbook
-            .worksheet(sheet)
-            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
-            .used_area_end();
+        let (max_row, max_column) = self.used_area_end_of(sheet)?;
         let last_row = if whole_rows { max_row } else { row2 };
         let last_column = if whole_columns { max_column } else { column2 };
         Ok((last_row, last_column))
@@ -484,9 +495,11 @@ impl Model {
     ///
     /// The one range walk behind every aggregate function. A range whose corners
     /// sit on two sheets is a 3-D reference (only [`Self::evaluate_reference_arg`]
-    /// builds one) and is walked sheet by sheet in tab order; whole-row and
-    /// whole-column ranges are clipped to each sheet's used area so the walk
-    /// stays proportional to the data. Several areas (a union) are walked over
+    /// builds one) and is walked sheet by sheet in tab order; every range is
+    /// clipped to each sheet's used area so the walk stays proportional to the
+    /// data, and `f` is not handed the blank cells past it (T-0405). A walker
+    /// that reads those blanks uses
+    /// [`Self::for_each_cell_or_error_in_whole_range`]. Several areas (a union) are walked over
     /// their existing cells only, so `f` is never handed a blank cell of a union
     /// ([`Self::for_each_position_in_area`]). The first error cell aborts the walk
     /// and is returned as `Err`, as does an `Err` from `f`. `f` never sees
@@ -523,6 +536,31 @@ impl Model {
         })
     }
 
+    /// [`Self::for_each_cell_or_error_in_areas`] over one range that also hands `f` the blank
+    /// cells of an explicit block past the used area, for the walkers that read a blank as
+    /// something: GCD and LCM read it as 0 (`LCM(F1:F3)` with 4, blank, 6 is 0;
+    /// docs/excel-semantics/coercion.md) and TEXTJOIN with `ignore_empty` FALSE adds a delimiter
+    /// for it. Whole-row and whole-column ranges are still clipped to the used area.
+    pub(crate) fn for_each_cell_or_error_in_whole_range<F>(
+        &mut self,
+        range: &Range,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
+    {
+        self.walk_area(
+            range,
+            AreaWalk::ClipWholeLines,
+            cell,
+            &mut |model, position| {
+                let value = model.evaluate_cell(position);
+                f(model, value)
+            },
+        )
+    }
+
     /// Calls `f` with the position of every cell of `areas`, as
     /// [`Self::for_each_cell_in_areas`] orders them, without evaluating it: for walks that
     /// skip cells by position (AGGREGATE's hidden rows and nested SUBTOTAL/AGGREGATE cells).
@@ -546,9 +584,10 @@ impl Model {
     }
 
     /// Calls `f` with the position of the cells of one area, row by row. A range that is the
-    /// whole argument (`of_union` false) is walked densely, every position of its sheets' used
-    /// areas, as it always was. An area of a union is walked over the cells that exist only:
-    /// every caller of a union walk skips blank cells, and a union can repeat a whole column
+    /// whole argument (`of_union` false) is walked densely: every position of the range within
+    /// each sheet's used area, for an explicit block as for whole rows and columns (T-0405). An
+    /// area of a union is walked over the cells that exist only: every caller of a union walk
+    /// skips blank cells, and a union can repeat a whole column
     /// many times over (`MAX_AREAS` copies, or a LAMBDA walking one per row), so the walk must
     /// cost what the data costs (T-1497). Its work is drawn from the formula's walk budget
     /// ([`Model::spend_area_walk`]) as it goes, and the area is recorded as seen empty in one
@@ -563,20 +602,51 @@ impl Model {
     where
         F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
     {
+        let walk = if of_union {
+            AreaWalk::Existing
+        } else {
+            AreaWalk::ClipBlocks
+        };
+        self.walk_area(area, walk, cell, f)
+    }
+
+    /// [`Self::for_each_position_in_area`] with the cells of each sheet chosen as `walk` says.
+    fn walk_area<F>(
+        &mut self,
+        area: &Range,
+        walk: AreaWalk,
+        cell: CellReferenceIndex,
+        f: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+    {
         let Range { left, right } = area;
         // The columns of a row found by a union walk, reused from row to row and sheet to sheet.
         let mut columns = Vec::new();
         // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one
-        // is clipped to its own used area, so a span of whole columns walks only data.
+        // is clipped to its own used area, so a span of whole columns, or of a tall block,
+        // walks only data (T-0405).
         debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
         for sheet in left.sheet..=right.sheet {
-            if of_union {
-                self.for_each_existing_position(sheet, (left, right), cell, &mut columns, f)?;
-                continue;
-            }
-            let (row2, column2) = self
-                .clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
-                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+            let clipped = match walk {
+                AreaWalk::Existing => {
+                    self.for_each_existing_position(sheet, (left, right), cell, &mut columns, f)?;
+                    continue;
+                }
+                AreaWalk::ClipBlocks => self.clip_block_to_used_area(
+                    sheet,
+                    left.row,
+                    left.column,
+                    right.row,
+                    right.column,
+                ),
+                AreaWalk::ClipWholeLines => {
+                    self.clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
+                }
+            };
+            let (row2, column2) =
+                clipped.map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
             for row in left.row..=row2 {
                 for column in left.column..=column2 {
                     f(self, CellReferenceIndex { sheet, row, column })?;
