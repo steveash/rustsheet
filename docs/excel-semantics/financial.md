@@ -321,8 +321,9 @@ about 15 ulp off; elsewhere it solves a different equation: basis 0 annual (Y!B)
 180/179, Y!B1 0.2807210017227244 against 0.2791614406020427), bases 2 and 3 up to 4%.
 DSR 0: with settlement the 30th and maturity the 31st of one month, DAYS360 gives DSR 0 on bases 0 and 4 although
 settlement < maturity. The closed form then divides by 0, and Excel returns **0**, not #NUM!: all 12 probe bonds
-(frequencies 1, 2 and 4, maturities 2024-01-31 and 2023-03-31, bases 0 and 4, price 99) are 0, and so are a zero
-numerator (rate 0, pr = redemption) and a nonzero one (pr = redemption, rate 0.06). A DSR 2 control is ordinary
+(frequencies 1, 2 and 4, maturities 2024-01-31 and 2023-03-31, bases 0 and 4, price 99, so a nonzero numerator) are 0,
+and so are bonds whose numerator is 0 (C1:C2 rate 0 with pr = redemption; C3 rate 0.06 with pr = redemption, where A = E
+on basis 0 cancels it). A DSR 2 control is ordinary
 (1.794410851446313). PRICE at the same dates is 100.
 Evidence (excel-graph, 2026-10-19, T-1949): probes/yield-one-period-dsr-zero Sheet1!A1:A12, B1:B3, C1:C3.
 Ours: `yield_one_period` returns 0 when DSR is 0 (T-1949).
