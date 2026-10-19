@@ -3,7 +3,7 @@ id: T-1914
 title: "SUBTOTAL over TAKE of SWITCH/IFS with an array selector spills a 2x2 block of #VALUE! (fuzz: debug_assert panic)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
