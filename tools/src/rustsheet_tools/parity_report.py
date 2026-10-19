@@ -24,7 +24,6 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
-from rustsheet_tools.fitlab.score import ulp_distance
 from rustsheet_tools.parity_svg import Bar, bar_chart
 
 EN = "\N{EN DASH}"
@@ -40,42 +39,9 @@ LABELS = {
 # The "off" functions that still match on at least this share of their cells.
 NEAR_SHARE = 0.99
 
-# Mirrors `functions_in` in crates/rustsheet-eval/src/report.rs (FUNCTION_CALL and
-# STRING_LITERAL): blank string literals, then take every `NAME(` call, upper-cased, with an
-# optional `_xlfn.`/`_xlws.` prefix. A cell calling several functions counts for each, as the
-# report's per-function counts do.
-FUNCTION_CALL = re.compile(r"(?i)(?:_xlfn\.|_xlws\.)?\b([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
-STRING_LITERAL = re.compile(r'"(?:[^"]|"")*"')
-
 
 class ParityReportError(Exception):
     """The report and catalog do not add up (or are not the shape this generator reads)."""
-
-
-def functions_in(formula: str) -> set[str]:
-    """The upper-cased names of the functions `formula` calls (see FUNCTION_CALL)."""
-    stripped = STRING_LITERAL.sub('""', formula)
-    return {m.group(1).upper() for m in FUNCTION_CALL.finditer(stripped)}
-
-
-def cell_bucket(cell: dict[str, Any]) -> str | None:
-    """The bucket of one report cell, or None for an `unsupported` cell (not scored)."""
-    verdict = cell.get("verdict")
-    if verdict in ("pass", "deviation"):
-        return "pass"
-    if verdict == "unsupported":
-        return None
-    if verdict == "numeric_ulp":
-        try:
-            expected = float(cell["expected"]["v"])
-            actual = float(cell["actual"]["v"])
-        except (KeyError, TypeError, ValueError) as e:
-            msg = f"numeric_ulp cell without two numbers: {cell!r}"
-            raise ParityReportError(msg) from e
-        return "ulp1" if ulp_distance(expected, actual) <= 1 else "ulp4"
-    if verdict == "numeric_close":
-        return "close"
-    return "off"
 
 
 @dataclass(frozen=True)
@@ -136,17 +102,13 @@ class Parity:
 
 
 def compute(report: dict[str, Any], scope: dict[str, Any]) -> Parity:
-    """Bucket every in-scope function of `report` (see the module docstring)."""
+    """Bucket every in-scope function of `report` (see the module docstring).
+
+    The buckets are the report's own per-function `closeness` counts (crates/rustsheet-eval/src/
+    closeness.rs, T-2036), so this generator never re-derives a verdict.
+    """
     catalog = {str(f["name"]): f for f in scope["functions"]}
     in_scope = {n for n, f in catalog.items() if f.get("scope", "in") == "in"}
-    failing: dict[str, Counter[str]] = defaultdict(Counter)
-    for case in report["cases"]:
-        for cell in case.get("cells", []):
-            bucket = cell_bucket(cell)
-            if bucket is None or bucket == "pass":
-                continue
-            for name in functions_in(cell.get("formula") or "") & in_scope:
-                failing[name][bucket] += 1
     rows: list[FunctionParity] = []
     for entry in report["functions"]:
         name = str(entry["name"])
@@ -156,14 +118,15 @@ def compute(report: dict[str, Any], scope: dict[str, Any]) -> Parity:
         scored = int(entry["cells"]) - verdicts.get("unsupported", 0)
         if scored <= 0:
             continue
-        counts = {b: failing[name][b] for b in BUCKETS}
-        # Accepted deviations (decision 0036) give their pinned by-design value: they pass.
-        counts["pass"] = int(entry["passed"]) + verdicts.get("deviation", 0)
+        closeness = entry.get("closeness")
+        if not isinstance(closeness, dict):
+            msg = f"{name}: no `closeness` counts; the report predates T-2036, re-run `make eval`"
+            raise ParityReportError(msg)
+        counts = {b: int(closeness.get(b, 0)) for b in BUCKETS}
         if sum(counts.values()) != scored:
             msg = (
                 f"{name}: buckets {counts} sum to {sum(counts.values())}, but the report scores "
-                f"{scored} cells (cells {entry['cells']} minus unsupported); the failing cells in "
-                "cases[].cells no longer match the per-function counts"
+                f"{scored} cells (cells {entry['cells']} minus unsupported)"
             )
             raise ParityReportError(msg)
         cat = catalog[name]

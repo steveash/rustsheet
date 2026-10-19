@@ -350,11 +350,12 @@ Evidence: probes/eng-im-overflow (excel-graph).
   near 1.797E+308 of IMPOWER (T-1950). Only A12 is evidenced; ours gives `#NUM!` (known failure).
 - IM* text keeps 15 significant digits for an exponent past 98, unlike `&""` (numbers.md): A11,
   A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
-  `1.65498402768026E+308`, where ours cuts to 14 digits via `number_to_text`. This is a
+  `1.65498402768026E+308`, which ours now matches (T-2001: `complex_part_to_text` keeps 15 digits). This is a
   formatting difference, not T-0907 precision.
 - IM* text writes a small part in full past 20 characters: `IMEXP("710i")` is
-  `0.999999998182636+0.0000602887066915739i` (A42), where ours switches to E notation, and the
-  digits differ because Excel reduces a large sine or cosine argument differently (ours
+  `0.999999998182636+0.0000602887066915739i` (A42). Ours now writes a part with decimal exponent -5 or above in plain notation whatever its
+  length (exponent -5 is plain by A42 and -16 is E notation by A9; -6 to -15 are unprobed, T-2056; the 15-digit rule at negative exponents of -99 or below is also unprobed); A42 still
+  fails: the digits differ since Excel reduces a large sine or cosine argument differently (ours
   `...915853`).
 - An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
   `IMSUM("1E308","0")`); ours already matches. `IMSQRT("1E307")` and `IMSQRT("4E307")` are `#NUM!`

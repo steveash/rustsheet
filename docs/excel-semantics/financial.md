@@ -536,8 +536,8 @@ G6, G7). Lifted elements are the scalar calls (A29, A30).
 Evidence: probes/fin-cumipmt-period-bound A1-A30 (excel-graph, 2026-10-18, T-1845), probes/fin-remaining-later-argument-
 ranges K1-K3 (T-1822), `ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx`.
 Ours: since T-1845 (functions/financial/cumulative.rs) up to 32 periods are main's per-period IPMT/PPMT sum, which matches
-CUMPRINC_CUMIPMT.xlsx G3, G9, G15 and G26 where the closed form below is an ulp or two off; past 32 periods, or when a
-period's `(1+rate)^nper` overflows, the closed form `pmt = -pv*r/(-expm1(-nper*L))` (over `1+r` for type 1),
+CUMPRINC_CUMIPMT.xlsx G3, G9, G15 and G26 where the closed form below is an ulp or two off; past 32 periods, or when PMT's
+fitted `pv*(1+rate)^nper` overflows (T-1405) or a period fails, the closed form `pmt = -pv*r/(-expm1(-nper*L))` (over `1+r` for type 1),
 `principal = pmt*((exp((end-nper)*L) - exp((first-1-nper)*L))/expm1(L))` with `L = log1p(r)` (type 1: period 1 adds the
 whole payment and the sum starts at period 2), interest = `pmt*(end-start+1) - principal`. The sum is no closer to
 Excel past 32 periods (83 ulps over 1,024 periods, A11; no correct digit over 10^5 periods of type 1, A5), while the
@@ -660,13 +660,26 @@ Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0 on 
 Status: VERIFIED (excel-graph)
 Tasks: T-1624, T-1757, T-1374
 
-## PMT when (1+rate)^nper overflows
-Rule: `PMT(100,184,439103)` is not an error, although 101^184 overflows a double: `FLOOR(PMT(100,184,439103),<#DIV/0!>)`
-is `#DIV/0!` (inferred: FLOOR returns its first argument's error first). The value is unprobed (the limit is -pv*rate =
--43910300).
-Evidence: gen-m9/3b8e9078261b5bd2 Calc!A34 (excel-graph, 2026-10-12, T-1289).
-Ours: `#NUM!`.
-Status: UNVERIFIED (inferred from one cell; T-1405 probes the value and the FLOOR error order)
+## PMT when (1+rate)^nper overflows or underflows
+Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient
+divided through by P, whose limit is `-pv*rate` at the end of the period and `-pv*rate/(1+rate)` at the start; the fv
+term vanishes. `PMT(100,184,439103)` is -43910300, `PMT(100,184,-439103)` 43910300, `PMT(100,184,439103,0,1)`
+-434755.44554455444 (43910300/101), `PMT(100,153,1)` -100 (P = 101^153 is finite; only `pv*rate*P` overflows),
+`PMT(1,2000,1)` -1, `PMT(1,2000,1,0,1)` -0.5, `PMT(1,2000,1,5)` -1, `PMT(1,2000,0,5)` 0, `PMT(0.5,2000,3,7)` -1.5,
+and `PMT(1,1023,1)`, `PMT(1,1024,1)`, `PMT(1,1100,1)` are all -1. When P is finite but P-1 rounds to P
+(`PMT(1,60,1)`, P = 2^60) the ordinary quotient gives -1 (-0.5 for type 1). When P is so small that 1/P
+overflows (0, or the subnormal 2^-1070) PMT is `#NUM!` whatever fv and type are, and so are IPMT, PPMT and CUMIPMT:
+`PMT(-0.5,2000,1)`, `PMT(1,-2000,1)`, `PMT(-0.5,2000,0,5)`, `PMT(-0.5,2000,1,0,1)`, `PMT(-0.5,2000,1,5)`,
+`PMT(-0.5,1070,1)`, `PMT(-0.5,1070,0,5)`, `IPMT(-0.5,1,2000,1)`, `PPMT(-0.5,1,2000,1)`, `CUMIPMT(-0.5,2000,1,1,1,0)`
+(CUMPRINC, which shares the kernel, and a subnormal P whose reciprocal is finite are unprobed). IPMT and PPMT follow PMT: `IPMT(100,1,184,439103)` is
+-43910300 and `PPMT` of it 0; `IPMT(1,1,2000,1)`, `IPMT(1,2,2000,1)` are -1 and their PPMT 0;
+`PPMT(1,1,60,1)` is -8.67361737988405E-19 (ours 0, unscored: a last-digit question, T-1528). PV, FV and NPER stay `#NUM!` there (`PV(100,184,1)`, `FV(100,184,1)`,
+`NPER(100,-1,1)`). The gen-m9 inference holds: `FLOOR(NA(),1/0)` is `#N/A`, FLOOR returns its number's error first.
+Evidence: probes/pmt-overflow Sheet1!A1:A18, B1:B8, C1:C3, D1:D3, E1:E9 (excel-graph, 2026-10-19, T-1405);
+gen-m9/3b8e9078261b5bd2 Calc!A34 (excel-graph, 2026-10-12, T-1289).
+Status: VERIFIED (excel-graph)
+Ours: matches since T-1405 except `PPMT(1,1,60,1)` (0, the T-1528 last-digit case) (`compute_payment` keeps the fitted quotient whenever it is finite and falls back to the
+divided-through form, so no finite result changes digits; a P whose reciprocal overflows is `#NUM!`).
 Tasks: T-1405
 
 ## Analysis ToolPak securities functions check frequency and dates first

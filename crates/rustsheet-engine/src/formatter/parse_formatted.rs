@@ -15,6 +15,9 @@ use super::{
 /// docs/research/non-glued-typed-input-2026-10-19.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
 
+/// Format of a typed clock with a fractional second (`10:00:30.5`, `10:00.5`).
+const FRACTION_CLOCK_FORMAT: &str = "mm:ss.0";
+
 /// Format of a bare typed clock with a single-letter A/P suffix (`10:00 A`).
 const BARE_CLOCK_AM_PM_FORMAT: &str = "h:mm AM/PM";
 
@@ -43,18 +46,20 @@ pub(crate) fn parse_typed_number(
 
 /// A bare typed clock with an `A`/`P` or `AM`/`PM` suffix as a time of day with its AM/PM clock
 /// format: `10:00 A`, `10:00 AM` and `10 A` are `h:mm AM/PM`, `10:00:30 A` is `h:mm:ss AM/PM`
-/// (probes/date-text-single-letter-ap N9, N13-N15, N19, N20). A bare hour with `AM`/`PM` is unprobed.
+/// (probes/date-text-single-letter-ap N9, N13-N15, N19-N29). A fractional second takes `mm:ss.0`,
+/// as without the suffix (N24-N25, T-2053).
 fn parse_bare_letter_clock(text: &str) -> Option<(f64, Option<String>)> {
     let (clock, word) = text.rsplit_once(' ')?;
-    let single_letter = is_single_letter_ap(word);
-    if clock.contains(' ')
-        || !(single_letter || word.eq_ignore_ascii_case("am") || word.eq_ignore_ascii_case("pm"))
-    {
+    let ap_word = is_single_letter_ap(word)
+        || word.eq_ignore_ascii_case("am")
+        || word.eq_ignore_ascii_case("pm");
+    if clock.contains(' ') || !ap_word {
         return None;
     }
-    let serial =
-        parse_clock_text(text).or_else(|| parse_hour_only_am_pm(text).filter(|_| single_letter))?;
-    let format = if clock.matches(':').count() == 2 {
+    let serial = parse_clock_text(text).or_else(|| parse_hour_only_am_pm(text))?;
+    let format = if clock.contains('.') {
+        FRACTION_CLOCK_FORMAT
+    } else if clock.matches(':').count() == 2 {
         "h:mm:ss AM/PM"
     } else {
         BARE_CLOCK_AM_PM_FORMAT
@@ -141,7 +146,7 @@ impl TypedClock {
     fn format(&self) -> Option<String> {
         match self {
             Self::Time => Some(TYPED_DATE_CLOCK_FORMAT.to_string()),
-            Self::Fraction => Some("mm:ss.0".to_string()),
+            Self::Fraction => Some(FRACTION_CLOCK_FORMAT.to_string()),
             Self::OutOfRange => None,
         }
     }
