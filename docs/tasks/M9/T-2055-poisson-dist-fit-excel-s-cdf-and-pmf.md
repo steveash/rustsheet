@@ -1,5 +1,5 @@
 ---
-id: T-2042
+id: T-2055
 title: "POISSON.DIST: fit Excel's cdf and pmf (ironcalc-calc POISSON.xlsx and probes-numeric/t1048-poisson together)"
 milestone: M9
 lane: functions-stat

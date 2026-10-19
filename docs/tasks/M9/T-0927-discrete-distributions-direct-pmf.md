@@ -36,7 +36,7 @@ HYPGEOM.DIST is separate (T-0977): Excel is not exact there, so a direct product
 BINOM.INV (CRITBINOM), GAMMA.DIST/BETA.DIST kernels.
 
 ## Outcome
-Partial: the binomial half is done, and POISSON.DIST moves to T-2042.
+Partial: the binomial half is done, and POISSON.DIST moves to T-2055.
 `functions/statistical/discrete.rs` sums the binomial pmf terms in double-double with a power-of-two exponent. Each
 term comes from the last by the exact ratio of consecutive terms, and there is one rounding at the end. A walk is
 capped at 2^10 steps, with statrs as the fallback past it. BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST (as a
@@ -45,7 +45,7 @@ element in the lifting table (BINOM.INV's weight, a DEVIATION past 32,768 elemen
 POISSON.DIST: a model fitted to ironcalc-calc POISSON.xlsx, `fl(fl(S)*exp(-mean))`, broke 8 excel-graph cells of
 probes-numeric/t1048-poisson that statrs matches. Routed into even-df CHISQ.DIST.RT, it gave 1.0000000000000002 where
 Excel gives 1.0. The Excel-fidelity review caught both, so POISSON.DIST stays on statrs; the evidence is in
-docs/excel-semantics/statistics.md "Discrete distributions: within an ulp of the exact sum", and follow-up T-2042 owns
+docs/excel-semantics/statistics.md "Discrete distributions: within an ulp of the exact sum", and follow-up T-2055 owns
 it.
 Eval: ironcalc-calc known failures 1113 -> 1072 (41 fixed, no regressions; BINOM.xlsx 111 -> 70 lines). Ungated
 probes-numeric m9-legacy-binomdist and t1048-negbinomdist only gain passing cells. Residue, all listed in the
@@ -54,4 +54,4 @@ semantics entry:
   prefactor `exp(a*ln x)`, so they need Excel's incomplete-beta kernel (T-1744's fit, T-0970). The cells are
   BINOM.DIST E24, E32, E67; BINOM.DIST.RANGE E10, E21, E23; NEGBINOM.DIST E3, E26, E30, E37, E40, E74, E75.
 - 57 NumericUlp cells, where Excel is within 4 ulp of the exact value but not equal to it.
-- POISSON.xlsx, 32 lines, unchanged (T-2042).
+- POISSON.xlsx, 32 lines, unchanged (T-2055).
