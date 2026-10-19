@@ -9,7 +9,7 @@ from fastenum import prep
 def joint_solve(T,assign,c0N,c0D,n,d,ridge=1e-2):
     rows=[]
     for ti,h in assign:
-        ch,law,j,sg,kk,eo=h; x,F=prep(T[ti],12); rows+=rows_for(ch,c0N if ch=='N' else c0D,law,j,sg,kk,x,F,eoff=eo)
+        ch,law,j,sg,kk,eo=h; x,F=prep(T[ti],12); rows+=rows_for(ch,c0N if ch=='N' else c0D,law,j,sg,kk,x,F,eoff=0)   # exponents from the (already scaled) centre chain
     N,D,_,_=solve(n,d,rows,iters=1,ridge=ridge,c0=list(c0N)+list(c0D[1:]),K=40)
     res=[]
     for ti,h in assign:
