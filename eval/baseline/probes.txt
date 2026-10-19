@@ -693,6 +693,7 @@ C	probes/regex-optional-args.case.json	149
 C	probes/regex-pcre2-features.case.json	62
 C	probes/regex-posix-classes-b.case.json	18
 C	probes/regex-posix-classes.case.json	905
+C	probes/regex-posix-syntax-edges.case.json	14
 C	probes/regexreplace-extended-escapes.case.json	244
 C	probes/regexreplace-final-sigma.case.json	12
 C	probes/regexreplace-limit-and-syntax.case.json	22
