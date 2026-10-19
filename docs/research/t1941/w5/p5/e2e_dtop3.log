@@ -1,0 +1,4 @@
+coarse: 41925 hyps 884s; top: dD7 -8 dD8 +2 dD9 -114688 713 (Z 5.7) | dD7 -8 dD8 +2 dD9 -106496 713 (Z 5.7) | dD7 -8 dD8 +2 dD9 -98304 712 (Z 5.7) | dD7 -8 dD8 +4 dD9 -499712 712 (Z 5.7)
+fine: 1625 hyps 39s; top: dD7 -8 dD8 +2 dD9 -109824 713 (Z 1.8) | dD7 -8 dD8 +2 dD9 -109568 713 (Z 1.8) | dD7 -8 dD8 +2 dD9 -109056 713 (Z 1.8) | dD7 -8 dD8 +2 dD9 -109312 713 (Z 1.8)
+best 713 (next 713)
+found - truth (ulps): D7 +0 D8 +0 D9 -9824; truth objective 712
