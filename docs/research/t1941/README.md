@@ -69,6 +69,9 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
 - **GAMMA reflection for x <= -30 (W3): 6,143 of 6,144.**
   - q = -x; p = floor(q); z = q - p; if z > 0.5 then p += 1 and z = q - p;
   - s = |RN53(FSIN(RN53(PI*z)))|; GAMMA = +-fl(fl(PI/G(q)) / fl(q*s)), with G(q) = Excel's GAMMA(q).
+  - The one miss, x = -0x1.94efe288f63adp+5, is an FSIN tie: RN64(sin) lands on a 53-bit midpoint, and
+    RN53(sin) misses a different point. Engine form: s = RN53(RN64(sin(RN53(PI*z)))).
+  - Checker: `gamma_neg_check.py` (half-integers of both signs, plus the reflection; signs checked).
   - Small |x| (-9.87, -2.25, -1.73, -0.31) does not reflect; it presumably recurs up to G on [1,2). `h104`
     locates the cut.
 - **GAMMA for 1 <= x < 10 reduces to [1,2), not Cephes's [2,3) (W4, verified by the coordinator).**
