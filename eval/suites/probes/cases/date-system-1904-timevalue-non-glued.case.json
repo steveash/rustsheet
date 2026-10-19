@@ -1,0 +1,49 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1952: TIMEVALUE and number coercion of non-glued date-only text in a 1904 workbook, including a pre-epoch date, and typed date+clock text there (rows 11-13).",
+ "tags": [
+  "M2",
+  "probe",
+  "dates",
+  "T-1952"
+ ],
+ "date_system": 1904,
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TIMEVALUE(\"1/2/2020\")",
+    "B1": "=IF(ISERROR(TIMEVALUE(\"1/2/2020\")),ERROR.TYPE(TIMEVALUE(\"1/2/2020\")),TIMEVALUE(\"1/2/2020\"))",
+    "C1": "=IF(ISERROR(\"1/2/2020\"+0),ERROR.TYPE(\"1/2/2020\"+0),\"1/2/2020\"+0)",
+    "A2": "=TIMEVALUE(\"12/31/1903\")",
+    "B2": "=IF(ISERROR(TIMEVALUE(\"12/31/1903\")),ERROR.TYPE(TIMEVALUE(\"12/31/1903\")),TIMEVALUE(\"12/31/1903\"))",
+    "C2": "=IF(ISERROR(\"12/31/1903\"+0),ERROR.TYPE(\"12/31/1903\"+0),\"12/31/1903\"+0)",
+    "A3": "=TIMEVALUE(\"1/1/1904\")",
+    "B3": "=IF(ISERROR(TIMEVALUE(\"1/1/1904\")),ERROR.TYPE(TIMEVALUE(\"1/1/1904\")),TIMEVALUE(\"1/1/1904\"))",
+    "C3": "=IF(ISERROR(\"1/1/1904\"+0),ERROR.TYPE(\"1/1/1904\"+0),\"1/1/1904\"+0)",
+    "A4": "=TIMEVALUE(\"July 1, 2026\")",
+    "B4": "=IF(ISERROR(TIMEVALUE(\"July 1, 2026\")),ERROR.TYPE(TIMEVALUE(\"July 1, 2026\")),TIMEVALUE(\"July 1, 2026\"))",
+    "C4": "=IF(ISERROR(\"July 1, 2026\"+0),ERROR.TYPE(\"July 1, 2026\"+0),\"July 1, 2026\"+0)",
+    "A5": "=TIMEVALUE(\"1903-12-31\")",
+    "B5": "=IF(ISERROR(TIMEVALUE(\"1903-12-31\")),ERROR.TYPE(TIMEVALUE(\"1903-12-31\")),TIMEVALUE(\"1903-12-31\"))",
+    "C5": "=IF(ISERROR(\"1903-12-31\"+0),ERROR.TYPE(\"1903-12-31\"+0),\"1903-12-31\"+0)",
+    "N11": {
+     "entered": "12/31/1903 10:00"
+    },
+    "O11": "=ISNUMBER(N11)",
+    "P11": "=IF(ISNUMBER(N11),N11,0)",
+    "N12": {
+     "entered": "1/2/1904 10:00"
+    },
+    "O12": "=ISNUMBER(N12)",
+    "P12": "=IF(ISNUMBER(N12),N12,0)",
+    "N13": {
+     "entered": "1/2/2020 10:00"
+    },
+    "O13": "=ISNUMBER(N13)",
+    "P13": "=IF(ISNUMBER(N13),N13,0)"
+   }
+  }
+ ]
+}

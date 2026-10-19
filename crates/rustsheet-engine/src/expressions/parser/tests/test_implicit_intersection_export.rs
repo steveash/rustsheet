@@ -739,6 +739,9 @@ fn legacy_array_values_intersect_in_value_positions() {
         ("-IF(1,{2;3})", "-@IF(1,{2;3})", "-IF(1,{2;3})"),
         ("N({2;3})", "N(@{2;3})", "N({2;3})"),
         ("ABS({-2;3})", "ABS(@{-2;3})", "ABS({-2;3})"),
+        // An array constant inside an operator (probes/legacy-array-at-shapes I20, J20, T-1911).
+        ("N({2;3}+0)", "N(@{2;3}+0)", "N({2;3}+0)"),
+        ("ABS({2;3}+0)", "ABS(@{2;3}+0)", "ABS({2;3}+0)"),
         (
             "N(IFERROR({2;3},0))",
             "N(@IFERROR({2;3},0))",
