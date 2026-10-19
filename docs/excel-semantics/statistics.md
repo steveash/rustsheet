@@ -697,7 +697,7 @@ Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080
 Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below), and so do the
 44 functions whose every argument is scalar and whose kernel is bounded (T-1290, "Later arguments and element values
 of the scalar statistical functions" below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for
-a range): RANK, FORECAST and T.TEST (T-1975; Z.TEST and PROB lift since T-1813); BETA.INV, F.INV, T.INV, CONFIDENCE.T and their variants lift
+a range): RANK, FORECAST and T.TEST (T-1982; Z.TEST and PROB lift since T-1813); BETA.INV, F.INV, T.INV, CONFIDENCE.T and their variants lift
 since T-1848 ("Quantile searches: per-call cap and lifting" below), the incomplete-gamma functions (CHISQ.*,
 CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON, POISSON.DIST) since T-1872 ("Incomplete gamma:
 per-call cap and lifting" below), and HYPGEOM.DIST and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and
@@ -960,9 +960,9 @@ non-reference `ref` broadcasts with the ref's shape, every element `#VALUE!` (`R
 `TYPE(LARGE(A1:A8,{1}))` are 64).
 Evidence: probes/stat-test-lift P1-P89, stat-test-lift-b P90-P95 (excel-graph, 2026-10-19, T-1813).
 Ours: Z.TEST/ZTEST and PROB match since T-1813 (`statistical/z_test.rs`, `prob.rs`: the data argument is
-`WholeByCaller`, read once). RANK, FORECAST, T.TEST and the order-statistic precedence: T-1975.
+`WholeByCaller`, read once). RANK, FORECAST, T.TEST and the order-statistic precedence: T-1982.
 Status: VERIFIED (excel-graph)
-Tasks: T-1813, T-1975
+Tasks: T-1813, T-1982
 
 ## LARGE, SMALL, PERCENTILE, QUARTILE, PERCENTRANK and TRIMMEAN: each lifted element is the scalar call
 Rule: when `k`, `quart`, `x`, `significance` or `percent` is an array or a multi-cell range, every element is the

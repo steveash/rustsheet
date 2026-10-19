@@ -1,5 +1,5 @@
 ---
-id: T-1975
+id: T-1982
 title: "RANK, FORECAST and T.TEST lift their scalar arguments over a whole data argument"
 milestone: M9
 lane: functions-stat
@@ -37,7 +37,7 @@ H264, H265, H492, H493, H495, H496, H498, H499, H537-H539, H543-H545; statistics
 - Domain checks are not uniform: T.TEST's `tails` 3 beats the data's error (P88), Z.TEST's
   `sigma <= 0` does not (stat-test-lift-b P93). Probe each kernel's domain checks.
 - SMALL, PERCENTILE, TRIMMEAN and QUARTILE.EXC of `NA()` with a bad `k` are `#N/A` (P80-P83;
-  ours gives the `k` error for P81-P83).
+  ours gives `#VALUE!` for P81-P83).
 
 ## Acceptance criteria
 - [ ] probes/stat-test-lift P1-P9, P20-P33, P60-P67, P72, P74, P81-P83, P88 and the

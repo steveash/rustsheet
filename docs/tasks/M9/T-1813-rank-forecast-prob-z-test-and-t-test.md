@@ -12,7 +12,7 @@ spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
 ## Goal
-As done: Z.TEST/ZTEST and PROB only; RANK, FORECAST and T.TEST moved to T-1975 (see Outcome).
+As done: Z.TEST/ZTEST and PROB only; RANK, FORECAST and T.TEST moved to T-1982 (see Outcome).
 
 The rest of T-1772: RANK/RANK.EQ/RANK.AVG `number` (and `order`), FORECAST/FORECAST.LINEAR `x`, PROB `lower_limit`/`upper_limit`, Z.TEST/ZTEST `x`/`sigma` and T.TEST/TTEST `tails`/`type` lift over an array and over a multi-cell range through the SPEC-0011 driver, with the data arguments read once by the function's own reader and not lifted.
 
@@ -25,8 +25,8 @@ Split from T-1772, which entered LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRA
 - Cells that miss by ulps today (T.TEST H535-H546, Z.TEST H564-H573) stay with their accuracy tasks.
 
 ## Acceptance criteria
-- [x] (Z.TEST, PROB; the rest moved to T-1975) The lift cells above leave eval/baseline/probes.txt, with no new F lines.
-- [x] (Z.TEST/ZTEST, PROB; RANK, FORECAST, T.TEST in T-1975) The functions are in `Function::arg_kinds` and `lifting_table_functions!`, and their fallback arms are deleted.
+- [x] (Z.TEST, PROB; the rest moved to T-1982) The lift cells above leave eval/baseline/probes.txt, with no new F lines.
+- [x] (Z.TEST/ZTEST, PROB; RANK, FORECAST, T.TEST in T-1982) The functions are in `Function::arg_kinds` and `lifting_table_functions!`, and their fallback arms are deleted.
 - [x] Each kernel's check order is the scalar function's, and its element errors carry empty messages.
 - [x] `make check` green; reviewers approve.
 
@@ -39,8 +39,8 @@ and T.TEST: lifted scalar arguments". Z.TEST/ZTEST and PROB are on the driver: t
 once (Z.TEST keeps count, mean and deviation, so an element is O(1); PROB charges `LiftCost::Cells`), and an element
 checks its scalar arguments before the data's error, as Excel does. Their fallback signature and shape arms are
 deleted. `CalcResult::without_message` is the message-stripping match, shared by the sorted-data reader (its one
-copy before) and the two new readers. The session ran out before RANK, FORECAST and T.TEST, so they moved to T-1975 with the probe's findings,
+copy before) and the two new readers. The session ran out before RANK, FORECAST and T.TEST, so they moved to T-1982 with the probe's findings,
 along with the order-statistic precedence the probe found (P81-P83: `PERCENTILE(NA(),2)` is `#N/A`).
 Eval delta: probes fixed 6 (stat-argument-modes H488, H489, H566, H567, H571, H572), new case stat-test-lift
-(55 of 89 cells pass; the 34 others are T-1975's) and stat-test-lift-b (7 of 7: data validation against a bad scalar
+(55 of 89 cells pass; the 34 others are T-1982's) and stat-test-lift-b (7 of 7: data validation against a bad scalar
 argument, and Z.TEST's `sigma <= 0` after the data's error), 0 regressions.
