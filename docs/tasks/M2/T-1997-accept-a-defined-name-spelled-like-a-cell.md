@@ -3,7 +3,7 @@ id: T-1997
 title: "Accept a defined name spelled like a cell, as Excel opens such a workbook"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
