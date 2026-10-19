@@ -11,7 +11,7 @@
   - Findings of T-1777: T-1800, T-1801, T-1802, T-1803.
   - Split from T-1271: T-1833 (the array-valued functions and reference elements below), then T-1834,
     T-1835, T-1836, T-1837, T-1838 and T-1839 (the M7 entries) and T-1960 (their open probes).
-  - Split from T-1241: T-1810 (the reference-valued lifts of OFFSET, INDIRECT and TRIMRANGE; CHOOSE onto the driver), itself split into T-1955 (spec for the reference-array carrier), T-1956, T-1957 (OFFSET, INDIRECT, TRIMRANGE), T-1958 (XMATCH search_mode) and T-1959 (CHOOSE).
+  - Split from T-1241: T-1810 (the reference-valued lifts of OFFSET, INDIRECT and TRIMRANGE; CHOOSE onto the driver, decided against by T-1959), itself split into T-1955 (spec for the reference-array carrier), T-1956, T-1957 (OFFSET, INDIRECT, TRIMRANGE), T-1958 (XMATCH search_mode) and T-1959 (CHOOSE).
   - The order is under Rollout.
 
 ## Problem
@@ -61,7 +61,7 @@ same date and commit. Each row has a migration task, or is a non-goal with its r
 | `lifted_arg` / `Lifted`, and `map_elements` in offline_errors.rs | information/ | IS*, ERROR.TYPE, ENCODEURL, FIELDVALUE, STOCKHISTORY and the other offline functions | `Lift` entries. `map_elements` stays only for N and T (below) | T-1774 |
 | `TextArg`, `broadcast_text` | text/text_arg.rs | 17 call sites: LEFT, MID, FIND, REPT, TEXT, CONCATENATE, … | `Lift` entries + text kernels | T-1775 |
 | `Weekend::lift` | date_and_time.rs | WORKDAY.INTL, NETWORKDAYS.INTL `weekend` | a `Lift` entry; no mask memo, an element costs O(log holidays) (done) | T-1236 |
-| CHOOSE's index lift (`choose_array`) | lookup_and_reference/mod.rs | CHOOSE | `index_num` is `Lift`, the value arms are `Whole`. `choose_array` becomes the kernel | T-1241 |
+| CHOOSE's index lift (`choose_array`) | lookup_and_reference/mod.rs | CHOOSE | Non-goal for now (T-1959): CHOOSE keeps its own broadcast loop, as IF does. A table entry does not fit: with a scalar index the arms stay unevaluated (cycles, cost) and the picked one is returned as a reference, and the result's extent includes every arm, picked or not, where `lift_call` reads `Whole` arms eagerly and as scalars. Handing the arms to `lift_grids` as grids gives the same results but fills every arm's slot at every element (O(arms) clones per element, where the loop clones only the picked one), so `CHOOSE(SEQUENCE(1024),<254 text rows>)` would do about 260M string copies instead of 1M. The driver would need a kernel that gets the output position and reads only the arm it picks; the loop stays until a second caller (IF's array condition is the likely one) needs that kernel. The index is read by `get_number_or_array` (a 3-D index is `#ERROR!` there, where a `Lift` read gives `#REF!`) | T-1241, T-1959 |
 | IF's `IfArg`, `if_arg_at` | logical/mod.rs | IF (condition and branches broadcast, logic.md) | non-goal: IF evaluates its branches lazily and returns references. It keeps its own broadcast, which already uses `bcast_idx` | — |
 | `lifted_relative_to`, `lifted_groupby` | relative_to.rs, groupby.rs | GROUPBY, PIVOTBY | non-goal: LAMBDA calls with their own cell-visit budget (SPEC-0006) | — |
 | `broadcast_static_result` | expressions/parser/static_analysis.rs | the static shape of a call | stays as the shape primitive; the table-driven `lifted_static_result` calls it | T-1770 |
@@ -984,7 +984,7 @@ Each step is one PR of size S/M. The old paths stay until their step.
    - **T-1772** (functions-stat, M): the first real `Whole` + `Prepared` consumer (LARGE k and the
      other scalar arguments next to a data array).
    - **T-1383** (functions-engineering, M): later arguments are probed before they are entered.
-3. **T-1241** (CHOOSE's index moves in; now T-1959), **T-1389** (functions-criteria; adds
+3. **T-1241** (CHOOSE's index was to move in; T-1959 keeps it off the driver), **T-1389** (functions-criteria; adds
    `LiftArraysRangeWhole`), and the M7 functions split from T-1271 by T-1833:
    - **T-1834** (functions-math, opus, M): `CallResult`, `element_value`, `KernelWork::Output`,
      with SEQUENCE and MAKEARRAY.
