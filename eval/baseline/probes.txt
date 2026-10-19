@@ -451,6 +451,7 @@ C	probes/map-unequal-sizes.case.json	36
 C	probes/match-descending-argcheck.case.json	20
 C	probes/match-descending-forward-continuation.case.json	20
 C	probes/match-empty-text-lift.case.json	13
+C	probes/match-error-lookup-value-array-match-type.case.json	8
 C	probes/match-fractional-match-type.case.json	8
 C	probes/match-lookup-value-lift.case.json	19
 C	probes/match-single-value-lookup-array.case.json	26
@@ -636,6 +637,7 @@ C	probes/rank-nonref-errors.case.json	44
 C	probes/rank-unknown-shape-ref.case.json	17
 C	probes/rate-empty-arguments.case.json	10
 C	probes/regex-pcre2-features.case.json	62
+C	probes/regexreplace-extended-escapes.case.json	244
 C	probes/regexreplace-limit-and-syntax.case.json	22
 C	probes/regexreplace-long-result-a.case.json	5
 C	probes/regexreplace-long-result-b.case.json	1
@@ -2314,8 +2316,6 @@ F	probes/rate-empty-arguments.case.json	Sheet1!A5
 F	probes/rate-empty-arguments.case.json	Sheet1!A6
 F	probes/rate-empty-arguments.case.json	Sheet1!A8
 F	probes/rate-empty-arguments.case.json	Sheet1!A9
-F	probes/regex-pcre2-features.case.json	Sheet1!B25
-F	probes/regex-pcre2-features.case.json	Sheet1!B26
 F	probes/regex-pcre2-features.case.json	Sheet1!B29
 F	probes/regex-pcre2-features.case.json	Sheet1!C1
 F	probes/regex-pcre2-features.case.json	Sheet1!C10

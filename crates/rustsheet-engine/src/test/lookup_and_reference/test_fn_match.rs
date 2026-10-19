@@ -334,3 +334,25 @@ fn match_over_a_single_value() {
         );
     }
 }
+
+#[test]
+fn test_match_scalar_error_lookup_value_lifts_over_array_match_type() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    // probes/match-error-lookup-value-array-match-type E1, E2, E7, E8 (T-1926): the error fills
+    // every slot of the 2x1 result instead of staying a scalar.
+    model._set("C1", "=ROWS(MATCH(NA(),A1:A3,{0;1}))");
+    model._set("C2", "=INDEX(MATCH(NA(),A1:A3,{0;1}),2)");
+    model._set("C3", "=ROWS(MATCH(#DIV/0!,A1:A3,{0;1}))");
+    model._set("C4", "=INDEX(MATCH(#DIV/0!,A1:A3,{0;1}),1)");
+    // A scalar match_type keeps the scalar error.
+    model._set("D1", "=MATCH(NA(),A1:A3,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "2");
+    assert_eq!(model._get_text("C2"), "#N/A");
+    assert_eq!(model._get_text("C3"), "2");
+    assert_eq!(model._get_text("C4"), "#DIV/0!");
+    assert_eq!(model._get_text("D1"), "#N/A");
+}
