@@ -335,7 +335,7 @@ Evidence: probes/eng-im-overflow (excel-graph).
 - The limit is the double range: `IMPRODUCT("1E154","1E154")` is `1E+308`, `IMEXP("709.7")` is
   `1.65498402768026E+308`, `IMPOWER("1E154",2)` is `1E+308`, `IMEXP("1000+1i")` is finite
   (`9.71297746009434E+307+1.51270661257499E+308i`).
-- Unrelated, found in the same probe and not implemented: an input part of `1E308` or more is
-  `#NUM!` in every IM* function (`IMREAL("1E308")`, `IMSUM("1E308","0")`, `IMSUM("1.7E308","0")`),
-  and `IMSQRT("1E307")` is `#NUM!` while `IMSQRT("4E307")` is too (a large-input limit for
-  IMSQRT / IMLN; `IMLN("1E308")` is `#NUM!`).
+- An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
+  `IMSUM("1E308","0")`); ours already matches. `IMSQRT("1E307")` and `IMSQRT("4E307")` are `#NUM!`
+  too, which ours does not match (known failures A33, A34); the finite `IMEXP`/`IMPOWER` cells
+  A11, A12, A17, A40-A42 differ in the last digits (T-0907).

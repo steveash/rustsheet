@@ -3,7 +3,7 @@ id: T-1827
 title: "Probe and match IM* results that overflow to infinity or NaN"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -27,3 +27,9 @@ check finiteness once in `complex_result` and record the rule in docs/excel-sema
 
 ## Out of scope
 - Precision of finite IM* results (T-0907).
+
+## Outcome
+Probe `eng-im-overflow` pins the overflow results. IMSUM/IMPRODUCT now give `#VALUE!` and IMEXP
+`#NUM!` on a non-finite result (IMPOWER and IMDIV already gave `#NUM!`). Eval: 48 new probe cells,
+8 new known failures (IMSQRT large inputs, last-digit precision of finite IMEXP/IMPOWER), no
+regressions. Follow-up: IMSQRT large inputs.
