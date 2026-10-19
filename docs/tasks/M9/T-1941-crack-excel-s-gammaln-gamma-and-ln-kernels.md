@@ -45,3 +45,33 @@ inverses (about 5,000 near-miss cells in `docs/research/numeric-kernel-map.md`, 
 ## Out of scope
 - Engine implementation (T-0973 / T-1529 and follow-ups).
 - Incomplete gamma and beta (T-0971, T-0970), which come next.
+
+## Outcome (2026-10-19, research in progress; status stays in-progress)
+Full record: `docs/research/t1941/README.md` and `HANDOFF.md` on branch agent/research/T-1941-crack-gammaln-gamma-ln.
+
+**Bit-exact or essentially so** (statistics.md, "GAMMA, GAMMALN and LN kernels (T-1941)"):
+- LN, x87 FLDLN2 + FYL2X: 114,687 / 114,688.
+- GAMMALN for x >= 8: 10-term Stirling.
+- GAMMALN for x < 0.7: the recurrence.
+- The [3,8) glue: 100% with Excel's own columns.
+- Legacy GAMMALN equals GAMMALN.PRECISE.
+- All of GAMMA's reductions, reflection and special paths, given G.
+
+**Open kernels** (structure known, coefficients not bit-exact):
+
+| Kernel | Structure | Best set | Exact |
+|---|---|---|---|
+| GAMMA G on [1,2) | raw-y (7,7), D0 = -1/16 | AN2 | 78.2% (frozen; `wc/README.md` explains why and gives the future route) |
+| GAMMALN near 1 | (x-1)*fl(N/D), (9,9) | `w5/p4/ss_fc.txt` | 46.8%; six constants read from plateaus |
+| GAMMALN (2,3] | (x-2)*fl(N/D), (9,8) raw x | grid_a 77% / efC 35% | efC is function- and staircase-correct; Excel's N s4/s5 and D s3/s4 lines contradict the stored-product law |
+| GAMMALN (1.5,2] | not a composition of neighbours | none yet | open |
+
+**Follow-ups to file:**
+- An engine task to ship the bit-exact pieces now, with the best sets for the open kernels behind a "not bit-exact"
+  note.
+- Per-line law validation for K2's s4/s5 lines.
+- The K3 product-level phase lattice on top of ss_fc.
+- (1.5,2] structure.
+- The optional K1 route (i).
+
+Playbook lessons are in `docs/research/excel-kernel-playbook.md` section 8.

@@ -259,3 +259,41 @@ Data: `eval/suites/probes-numeric/cases/kmyst-gam-*`.
   - With those applied, the staircase chi2 falls 35,400 to 2,438 (93%). See `w5/p4/README.md`.
 - **W-A (W2), K2:** in progress.
 - **Probes:** P1 committed (p101-p126); P2-P4 filling; P1b (p131-p154, crossings for K1) queued.
+- **W-B (W5), K3, final** (`w5/p4/README.md` section 5, best set `w5/p4/ss_fc.txt`).
+  - Read bits: N0 (+692 ulps cumulative from c5), N1, N2, D1, D2 and D3.
+  - Degree by pinned function refit: (9,9) is consistent (weighted rms 0.02); (9,8) gives rms 100, (8,9) 1.9e5.
+  - The staircase chi2 falls 35,400 to 979 (97% removed).
+  - Independent e9xx anchor bias: rms 0.41 ulp for c5 against 0.19 for ss_fc; the 1.125 plateau error is gone.
+  - Exact match: the coordinator measures ss_fc at 46.8% against c5's 46.0% on 1,658,112 rows in [0.7,1.5); W5
+    measures 42.8% against 42.4% on its 1.27M.
+  - Remaining misses are product-level stage values, which need the tie/sawtooth phase lattice on top of ss_fc
+    with the read constants fixed. Residual chi2 sits at 0.787-0.793 (N.P2/D.P8/N.S5) and 0.86 (D.P2).
+- **W-C (W4), K1, final: frozen.**
+  - Synthetic controls show exact-match is a needle: a 75% plateau sits about 1e6 ulps from the truth, which is
+    reached only within 0.1% of the distance.
+  - The 5-line phase solve plus function rows has a 1-4 unit noise floor in every soft direction. The 6 weakest
+    need about 0.05.
+  - Adding all ~27 stage lines makes it worse, because the weak-line laws mismatch.
+  - K1 is frozen at AN2/fitSA. The future route is per-stage law validation by single-stage synthetic data
+    (`wc/README.md`).
+- **W-D (coordinator), compositions on P2-P4** (`compose_p2p4.py`):
+  - P3: [3,8) glue B == fl(E + F) on 16,384/16,384 from both 3.37 and 5.71. GAMMALN(x-k) is Excel's own column and
+    F = LN of the cell-built ascending product.
+  - P4: legacy GAMMALN == GAMMALN.PRECISE on 16,384/16,384 from 2.33.
+  - P2: (1.5,2] is none of fl(E - C) (0.3-4.7%), fl(F + G) (12-25%) or LN(GAMMA) (0.4-3.8%). B + C is a double only
+    1.5-25% of the time, and Excel's LN model holds for C and G at 100%. Neither grid_a extended down (0-12%) nor
+    ss_fc extended up (15% at 1.52, then 0%) covers it. So (1.5,2] is its own kernel or composition, still open.
+  - Recorded in docs/excel-semantics/statistics.md, "GAMMA, GAMMALN and LN kernels (T-1941)".
+- **W-A (W2), K2:**
+  - Positive controls pass: the plateau reader recovers planted bits exactly, and the joint phase+function solve
+    works with a full 28-tier unwrap (an earlier "phase/function conflict" was coarse tiers, retracted).
+  - grid_a already carries Excel's staircase: its late wide-window plateau bits are Excel's. The function error
+    (±0.3 ulp smooth) lived in the early, unchopped coefficients.
+  - **efC** (`w2/efC.txt`) keeps grid_a's late coefficients and refits the early ones to Excel's function plus ladder
+    rows.
+    - Excel - sim is flat at the noise floor across (2.005,3], with ladder phases intact.
+    - The coordinator measures 35.25% exact on 1,153,539 points (grid_a 77.3%): the early stage values are not
+      ulp-exact yet.
+    - In progress: early-stage anchor phases in the remaining function+ladder null space, with a positive control.
+  - The (2,2.005) outlier is the known xlsx misparse at x = 2.0000661560063. Without it, grid_a is 99.5% exact for
+    x - 2 < 1e-6.

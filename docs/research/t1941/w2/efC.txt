@@ -1,0 +1,9 @@
+# T-1941 W2 set "efC" for the GAMMALN base kernel on (2,3]: y = fl((x-2)*fl(N/D)), raw-x Horner, every op fl53(fl64).
+# Coefficients HIGHEST degree first. The late stages (p5..p9, q3..q8) are identical to grid_a. Only p1-p4 and q0-q2
+# moved, by a ridge LS to Excel's measured function plus ladder rows holding the late stage values.
+# Excel - sim is flat at the noise floor in every 0.02 bin (no staircase, no smooth error); function fit 5-8e-18;
+# ladder phase rms 0.010-0.016.
+# Exact: 35.25% (coordinator, 1,153,539 formula-filtered pts in (2.005,3]; grid_a scores 77.3% on the same set), because
+# the early stage values are not yet ulp-exact. Next: early-stage anchor phases in the function+ladder null space.
+p 0x1.5717994ef45d1p-51 0x1.5e5b737d194a5p-16 0x1.0ee2f118d9700p-9 0x1.572bf868363f9p-5 0x1.09fd1ad1daa6ep-2 0x1.f0a8c05397a9fp-2 -0x1.08305b47998b9p-6 -0x1.0ae34eb3cbad6p-1 -0x1.de852aee8c153p-3 -0x1.22260ed97843dp-6
+q 0x1.03cadf21d6d64p-18 0x1.52fc99150daf2p-11 0x1.5303658ef33e5p-6 0x1.bb43b464d3259p-3 0x1.c515177eb1755p-1 0x1.7b39fc9194438p+0 0x1.eddf2040d2bc2p-1 0x1.9b252b2fab347p-3 0x1.00000000000eap-7
