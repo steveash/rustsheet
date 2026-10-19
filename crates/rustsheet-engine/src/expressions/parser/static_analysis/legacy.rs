@@ -219,19 +219,43 @@ pub(super) fn legacy_array_call_at(
         })
 }
 
-/// Whether `kind(args)` is a SWITCH whose every result (the value of each (case, result) pair
-/// and a trailing default) is an array constant: `=SWITCH(1,1,{2;3})` is shown unmarked and spills
-/// 2, 3, where `=@IFS(1,{2;3})` is marked (probes/legacy-array-at-shapes C20, C11, T-1910).
-/// Unprobed: a SWITCH returning a range or nested under another scalar function.
-fn switch_of_array_constants(kind: &Function, args: &[Node]) -> bool {
+/// Whether `node` is a SWITCH whose every result (the value of each (case, result) pair and a
+/// trailing default) is an array constant: the formula root of probes/legacy-array-at-shapes
+/// C20 and C11, `=SWITCH(1,1,{2;3})`, which Excel shows unmarked and spills 2, 3, where
+/// `=@IFS(1,{2;3})` is marked (T-1910). Only the formula root is probed: SWITCH nested under a
+/// function or operator, or returning a range, keeps its `@` (T-1944).
+pub(super) fn is_root_switch_of_array_constants(node: &Node) -> bool {
+    let Node::FunctionKind {
+        kind: Function::Switch,
+        args,
+    } = node
+    else {
+        return false;
+    };
     let results = args.get(1..).unwrap_or_default();
-    matches!(kind, Function::Switch)
-        && args.len() >= 3
+    results.len() >= 2
         && results
             .iter()
             .enumerate()
             .filter(|(index, _)| index % 2 == 1 || *index == results.len() - 1)
             .all(|(_, arg)| matches!(arg, Node::ArrayKind(_)))
+}
+
+/// [`add_legacy_intersection`] on a whole formula: the automatic `@` the pass puts on the root is
+/// taken off a root SWITCH of array constants ([`is_root_switch_of_array_constants`]).
+pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
+    add_legacy_intersection(node, add, add);
+    if add {
+        if let Node::ImplicitIntersection {
+            automatic: true,
+            child,
+        } = node
+        {
+            if is_root_switch_of_array_constants(child) {
+                *node = child.as_ref().clone();
+            }
+        }
+    }
 }
 
 /// Whether a legacy formula puts no `@` on the call `arg` of `kind`, a value it would otherwise
@@ -635,12 +659,10 @@ fn is_value_operation(node: &Node) -> bool {
 /// are all arithmetic reads a value: `=INDEX(CHOOSE(1,B1:B6*1),3)` shows as
 /// `=INDEX(CHOOSE(1,@B1:B6*1),3)` (probes/legacy-choose-arm-aggregate-and-array-constant-at H3,
 /// excel-graph, T-1643). Only the `@` placement changes: a dynamic formula
-/// of that shape still spills. A SWITCH that returns only array constants is never marked ([`switch_of_array_constants`]).
+/// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
-    switch_of_array_constants(kind, args)
-        || args
-            .first()
-            .is_some_and(|arg| reads_reference_whole(kind, arg) || leaves_call_whole(kind, arg))
+    args.first()
+        .is_some_and(|arg| reads_reference_whole(kind, arg) || leaves_call_whole(kind, arg))
         || matches!(kind, Function::Index)
             && matches!(
                 args.first().map(Node::ungrouped),

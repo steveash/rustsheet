@@ -96,7 +96,7 @@ fn is_range_reference(s: &str) -> bool {
 ///
 /// Assumes formula return a scalar
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
-    add_legacy_intersection(node, add, add);
+    legacy::add_root_legacy_intersection(node, add);
 }
 
 /// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
