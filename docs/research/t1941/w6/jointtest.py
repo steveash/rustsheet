@@ -10,7 +10,10 @@ def pts(ti):
     t=T[ti]; sub=np.linspace(0,len(t['x'])-1,min(10,len(t['x']))).astype(int)
     return (np.array(t['x'])+32768*2.0**-52)[sub],np.array(t['F'])[sub]
 P={ti:pts(ti) for ti,_ in spec}; C={ti:[tuple(c) for c in json.load(open(f))] for ti,f in spec}
+THR=float(__import__('os').environ.get('SKIPTHR','0'))
 def score(assign):
+    assign=tuple(a for a in assign if a[1] is not None)
+    if not assign: return 0.0
     rows=[]
     for ti,cc in assign:
         ch,law,j,sg,kk=cc[:5]; eo=cc[5] if len(cc)>5 else 0
@@ -21,8 +24,11 @@ B=[((),0.0)]
 for ti,_ in spec:
     nb=[]
     for a,_ in B:
-        for c in C[ti]:
-            aa=a+((ti,c),); nb.append((aa,score(aa)))
-    nb.sort(key=lambda t:t[1]); B=nb[:beam]
+        for c in C[ti]+([None] if THR>0 else []):
+            aa=a+((ti,c),); sc=score(aa)
+            nskip=sum(1 for _,cc in aa if cc is None)
+            if THR>0 and sc>THR: continue
+            nb.append((aa,sc,nskip))
+    nb.sort(key=lambda t:(t[2],t[1])); B=[(a,s_) for a,s_,_ in nb[:beam]]
     print('after track %d: best'%ti,' '.join('%.1e'%s for _,s in B[:6]),flush=True)
-for a,s in B[:8]: print('%.2e'%s,[('%d:'%ti+'.'.join(str(v) for v in c)) for ti,c in a])
+for a,s in B[:8]: print('%.2e'%s,[('%d:'%ti+('skip' if c is None else '.'.join(str(v) for v in c))) for ti,c in a])
