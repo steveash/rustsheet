@@ -3,7 +3,7 @@ id: T-2029
 title: "TEXT and displayed text: fraction formats with a fixed denominator (# ?/4, # ??/16, ?/100): integer part, sign, padding"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -55,16 +55,26 @@ do not add another. Show cases with
 `make eval-show CASE=gen-m10/<id>.case.json`; the report's "Displayed text" section lists every text cell.
 
 ## Acceptance criteria
-- [ ] The 16 TEXT() lines listed above leave eval/baseline/gen-m10.txt, with no new F lines in any baseline.
-- [ ] The 314 `TF` lines of eval/baseline/gen-m10.txt for `F!` cells under `# ?/2`, `# ?/4`, `# ?/10`,
+- [x] The 16 TEXT() lines listed above leave eval/baseline/gen-m10.txt, with no new F lines in any baseline.
+- [x] The 314 `TF` lines of eval/baseline/gen-m10.txt for `F!` cells under `# ?/2`, `# ?/4`, `# ?/10`,
       `# ??/16` and `?/100` leave it (`make eval-baseline`); only the 15 overflow cells whose Excel text
       is 255 `#` stay (T-1740).
-- [ ] Formatter unit tests for one cell of each rule above.
-- [ ] docs/excel-semantics/number-formats.md "Fraction formats" says what is implemented.
-- [ ] `make check` green; reviewers approve.
+- [x] Formatter unit tests for one cell of each rule above.
+- [x] docs/excel-semantics/number-formats.md "Fraction formats" says what is implemented.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Placeholder denominators (`?/?`, `??/??`, `# #/#`, `0 ?/?`): T-2030.
 - Numerator overflow to 255 `#` (`?/100` on 1000): T-1740.
 - Escaped literals, `=/=` separators and `_x` spacers between the parts (POI NumberFormatTests): T-0982.
 - Fractions inside date/time sections, and `General`/scientific next to a fraction.
+
+## Outcome
+A `/` right after digit placeholders and before a literal number now parses as a fraction with that
+fixed denominator (`Fraction` on `NumberPart`, formatter/parser.rs), rendered by the new
+formatter/fraction.rs for TEXT and displayed text: half-away rounding at 15 significant digits
+(`round_decimal`), carry into the integer, the blank fraction on a zero numerator, the leading minus
+and `?`/`0`/`#` padding. Found in passing: the numerator rounds at 15 digits (`?/100` on 12.345 is
+"1235/100"), recorded under "Fraction formats". Eval: gen-m10 known failures 117 -> 101 (the 16 TEXT
+cells) and text 3439 -> 3125 (the 314 `F!` cells; the 15 overflow cells stay, T-1740); every other
+gated suite unchanged (poi checked locally: 481 -> 481), 0 regressions.

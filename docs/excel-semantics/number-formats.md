@@ -482,7 +482,12 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
 - A numerator that overflows is 255 `#` ("Displayed text over an edge-value pool" above, T-1740).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
-Ours: no fraction support; `/` is a literal and the placeholders around it are digits (`# ?/?` on PI()
-is "  /3"). T-2029 (fixed denominators), T-2030 (placeholder denominators).
+- **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
+  (12.345 × 100 is 1234.4999999999998 in binary), while `# ?/10` on 12.345 is "12 3/10" (43980980 P16; the binary
+  fraction part 0.34499999999999886 × 10 stays below the half).
+Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the
+displayed text; grouping (`#,##0 ?/4`) inside a fraction is unprobed and not applied. Placeholder
+denominators still print `/` as a literal with plain digits around it (`# ?/?` on PI() is "  /3";
+T-2030), and an overflowing numerator prints in full (T-1740).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982
