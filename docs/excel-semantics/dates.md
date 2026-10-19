@@ -402,7 +402,7 @@ in B3, `=WORKDAY(C2,6,D2:D5)` = 42438 in B5, and `=NETWORKDAYS.INTL(C2,C2+14,1,D
 control in the same file, legacy `=D2:D5*1` in E3, gives 42423 (implicit intersection, no spill),
 so the oracle kept the formulas legacy (T-1053, Excel for the web, 2026-10-07).
 Status: VERIFIED (Excel-cached; Excel oracle for WORKDAY.INTL and NETWORKDAYS.INTL)
-Implemented in: `args_signature_with_holidays` in `crates/rustsheet-engine/src/expressions/parser/static_analysis.rs` (WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL)
+Implemented in: the `WholeByCaller` holidays of the WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL entries in `crates/rustsheet-engine/src/functions/lift/kinds/general.rs`, read by `Model::holiday_serials` (`functions/date_and_time/holidays.rs`; T-1236)
 Tasks: T-0983, T-1053
 
 ## WEEKDAY of serial 0 and return_type 0
@@ -411,21 +411,21 @@ Rule: WEEKDAY of a serial in [0, 1) is 7 (serial 0 is Saturday 0 January 1900, a
 `WEEKDAY(31330,-0.0001)` is the column index of `VLOOKUP(FALSE,C7:D9,WEEKDAY(31330,-0.0001),INDEX(B1:E7,4))&REPLACE(NA(),..)`,
 whose lookup value is *not* in the table and whose range_lookup is `#REF!`; the cell is `#NUM!`, and nothing else in
 the formula can give `#NUM!` (a value index's error wins over not-found and over range_lookup, lookup.md).
-WORKDAY and NETWORKDAYS take serial 0 too (inferred, values unprobed): `XLOOKUP(NETWORKDAYS(<blank>,7872),E8:E11,A1:B5,..)`
-is `#VALUE!` (XLOOKUP's size mismatch, so NETWORKDAYS(0,7872) is a number, assuming an error lookup_value would beat
-the size-mismatch `#VALUE!`, which is unprobed) and
+WORKDAY and NETWORKDAYS take serial 0 too (now VERIFIED, see "WORKDAY and NETWORKDAYS from serial 0" below; first inferred from): `XLOOKUP(NETWORKDAYS(<blank>,7872),E8:E11,A1:B5,..)`
+is `#VALUE!` (XLOOKUP's size mismatch, so NETWORKDAYS(0,7872) is a number: an error lookup_value would beat the size
+mismatch, lookup.md "XLOOKUP: an error lookup_value beats a size mismatch") and
 `VLOOKUP(WORKDAY(28131,-16,<blank>*1),C2:D5,1,XLOOKUP(..))` is `#VALUE!` (so a holiday of 0 is accepted).
 Evidence: gen-m6/ec7b2cc2fb9f0354 Calc!A33, gen-m6/5cc04d6f42b23b51 Calc!A27, gen-m6/63012866a9d8b7db Calc!A39,
 gen-m6/6b2aa08e3b916da5 Calc!A35 (excel-graph, 2026-10-09, T-1239).
 Probed directly (probes/weekday-serial-zero A1:A18, excel-graph, 2026-10-17, T-1253): `WEEKDAY(0)`, `(0.5)`, `(0.9999)` are 7, `WEEKDAY(0.5,2)` 6, `(0.5,3)` 5, `(0,11)` 6, `(0,17)` 7, `WEEKDAY(1)` 1, `WEEKDAY(-0.5)` `#NUM!`; return_type 0, -1, -0.0001, 0.5, 0.9999, 4, 10 and 18 are all `#NUM!`, never `#VALUE!` (0.5 and 0.9999 truncate to 0).
-Ours: WEEKDAY implemented (T-1253); `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!` (T-1254).
+Ours: WEEKDAY implemented (T-1253); WORKDAY and NETWORKDAYS implemented (T-1254).
 More serial-0 cells (gen-m9, excel-graph, 2026-10-12, T-1289): `YEARFRAC(33752,0)` is 92.41111111111 (from
 `(0.3+YEARFRAC(33752,Data!$C12))^SUM(-0.0001)` = 0.9995471537332011 with C12 = 0), which is basis 0 counted from
 1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours matches for basis 0, where a start or end in [0, 1) counts as day 0 of January 1900, T-1409; other bases with serial 0 stay `#NUM!`, UNVERIFIED; the pair is ordered before counting like every basis; serial 0 paired with a date in January-February 1900, including the fictitious serial 60, is UNVERIFIED).
 `NETWORKDAYS.INTL(44900,0.2)` is a number (`AVERAGE(NETWORKDAYS.INTL(44900,0.2)/<#VALUE!>,..)` is `#VALUE!`,
 gen-m9/50f10c4062fb2e98 Calc!A12; ours `#NUM!`). `WORKDAY(33393,0,A3:D3)` with holidays "a", 0.3, 0.3, 0.5 is 33393
 (`COLUMNS(B8:E10)%+WORKDAY(..)` = 33393.04, gen-m9/288b99797f58f149 Calc!A10): neither the fractional holidays below 1
-nor the text cell are an error, at least with 0 days (ours `#VALUE!` for the text, `#NUM!` for 0.3).
+nor the text cell are an error, at least with 0 days (ours `#VALUE!` for the text, `#NUM!` for 0.3). Since T-1236 the holidays are read and checked once per call, before any element (`Model::workday_call`), so a "0 days skips the holiday check" rule would go there.
 Status: VERIFIED for WEEKDAY (excel-graph); UNVERIFIED for the WORKDAY/NETWORKDAYS values (probe pending, T-1254)
 Tasks: T-1253, T-1254, T-1409
 
@@ -464,12 +464,19 @@ Ours: YEARFRAC's kernel (`yearfrac_of`) reads and range-checks the basis, then r
 DATEDIF's unit and DAYS360's method lift too, over an array and over a range on and off its rows (`ROWS(DATEDIF(45000,46000,{"d";"m"}))` and `ROWS(DATEDIF(45000,46000,B1:B2))` are 2, `INDEX(..,2)` is 32 for "m"; `INDEX(DAYS360(45031,45351,C1:C2),1)` is 314), and in a legacy formula the unit's range takes the `@`: legacy `DATEDIF(45000,46000,B1:B2)` is 1000 on B1's row ("d") and 32 on B2's ("m"), so it intersects with the formula's row rather than taking the first cell. A 3-D reference (`Sheet1:Sheet2!A1`) in DAY, HOUR, DATE, WEEKDAY, DATEDIF or ISOWEEKNUM is `#REF!`, as in the other worksheet functions' lifted arguments. A one-cell range is that cell's value, not a 1x1 array, so a scalar error beside it is the result: `ROWS(DAYS(E1:E1,NA()))` is `#N/A`, `ROWS(WEEKDAY(E1:E1,"x"))` and `ROWS(DAYS360(E1:E1,"x"))` are `#VALUE!`, `ROWS(HOUR(E1:E1))` is 1 (N3, N4, N6, N13). Evidence: probes/date-math-lift-driver-edges G1-G10, G24-G26, G30-G32, G40-G41, K1, K5, L2, N3-N13 (excel-graph, 2026-10-18/19, T-1785).
 Ours: DAY, MONTH, YEAR, HOUR, MINUTE, SECOND, DATE, TIME, DAYS, DAYS360, DATEDIF, WEEKDAY and ISOWEEKNUM are `Lift` entries of the SPEC-0011 driver in every argument (T-1785); DATEVALUE and TIMEVALUE lift like the text functions (T-1235), as does the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. EDATE, EOMONTH, WEEKNUM and YEARFRAC lift
 over an array and refuse a multi-cell range in every argument, in dynamic and legacy formulas (T-1770, SPEC-0011
-`LiftArrays`). Still `#N/IMPL!` (T-1236) for an array literal in a date argument: WORKDAY, WORKDAY.INTL, NETWORKDAYS,
-NETWORKDAYS.INTL.
+`LiftArrays`), and so do the date and day-count arguments of WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL,
+whose `weekend` lifts over both and whose `holidays` are read whole once per call (T-1236). Their legacy formulas put
+no `@` on a range in a date or day-count argument and are `#VALUE!` on the range's rows and off them, as EDATE's are
+(`=WORKDAY(A1:A60,5)`, `=NETWORKDAYS(A1:A60,46000)`, the .INTL forms and `=WORKDAY(45000,B1:B60)` on rows 3 and 70,
+FORMULATEXT unchanged; probes/workday-lift-errors E-I, P-T). In a lifted call an error among the holidays (`"y"`, `NA()`)
+or an all-weekend mask is each element's, after that element's own argument errors: `WORKDAY({45000;#N/A},1,"y")` is
+{`#VALUE!`; `#N/A`}, `WORKDAY({-1;45000},1,"y")` element 1 is `#NUM!`, `NETWORKDAYS({#DIV/0!;45000},1,NA())` element 1
+is `#DIV/0!`, `ROWS(WORKDAY({45000;45001},1,"y"))` is 2, and `WORKDAY.INTL(45000,1,{1;"1111111"})` is {45001; `#VALUE!`}
+while NETWORKDAYS.INTL counts 0 for `"1111111"` (probes/workday-lift-errors K1:K15, excel-graph, 2026-10-19, T-1236).
 In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
 1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330). It counts the days on the 1904 calendar since T-1416 (`DATEDIF(0,1000,"ym")` = 8, probes/date-system-1904-readers A11).
 Status: VERIFIED
-Implemented in: EDATE, EOMONTH, WEEKNUM and YEARFRAC: `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds/general.rs)
+Implemented in: EDATE, EOMONTH, WEEKNUM, YEARFRAC, WORKDAY(.INTL) and NETWORKDAYS(.INTL): `Function::arg_kinds` (crates/rustsheet-engine/src/functions/lift/kinds/general.rs); the holidays: crates/rustsheet-engine/src/functions/date_and_time/holidays.rs
 and `Model::lift_call` (functions/lift/call.rs), with the kernels `edate_of`, `eomonth_of`
 (functions/date_and_time/month_shift.rs), `weeknum_of` (date_and_time/weeknum.rs) and `yearfrac_of` (date_and_time/yearfrac.rs).
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
@@ -765,7 +772,31 @@ reference is not probed): `EDATE(TAKE(A1:A3,2),1)`, `EDATE(DROP(A1:A3,1),1)`, `E
 of NETWORKDAYS.INTL (`NETWORKDAYS.INTL(45000,46000,TAKE(B1:B3,2))` is 2 rows). A boolean element of an array month count is `#VALUE!` for
 that element only (`EDATE(45000,{TRUE;2})` = {`#VALUE!`; 45061}, `EOMONTH(45000,{FALSE;1})` = {`#VALUE!`; 45046},
 `WORKDAY(45000,{TRUE;5})` = {`#VALUE!`; 45007}, `WEEKNUM(45000,{TRUE;2})` = {`#VALUE!`; 12}).
-Ours: all 70 cells that fail are `#N/IMPL!` from WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL not lifting over arrays yet
-(T-1236); the EDATE, EOMONTH, WEEKNUM, YEARFRAC and DAYS cells already pass.
+Ours: matches, all 175 cells pass since WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL lift (T-1236).
 Status: VERIFIED (excel-graph)
 Tasks: T-1807, T-1236
+
+## WORKDAY and NETWORKDAYS from serial 0
+Rule (VERIFIED, probes/workday-serial-zero, excel-graph, 2026-10-19, T-1254): WORKDAY, WORKDAY.INTL, NETWORKDAYS and
+NETWORKDAYS.INTL take serial 0 (Saturday 0 January 1900) as a start date, an end date, a holiday and a result, on the
+weekday-faithful calendar where serial 1 is a Sunday; a negative serial is still `#NUM!`.
+- `NETWORKDAYS(0,10)` = 7, `NETWORKDAYS(10,0)` = -7, `NETWORKDAYS(0,0)` = 0, `NETWORKDAYS(0,7872)` = 5623,
+  `NETWORKDAYS.INTL(0,10,11)` = 9 (Sunday-only weekend: serial 0 counts), `NETWORKDAYS.INTL(44900,0.2)` = -32071 (the end
+  truncates to 0), `NETWORKDAYS(-1,10)` `#NUM!` (F1:F5, F20:F23, F42).
+- `WORKDAY(0,5)` = 6, `WORKDAY(10,-6)` = 2, `WORKDAY(10,-7)` `#NUM!` (it would land on -1; serial 0 is a weekend day),
+  `WORKDAY.INTL(10,-7,11)` = 2, `WORKDAY.INTL(1,-1,"0000000")` = 0, `WORKDAY.INTL(0,-1,"0000000")` `#NUM!`,
+  `WORKDAY(-1,1)` `#NUM!` (F6:F14, F24:F30, F41, F43:F44).
+- A holiday of 0 is accepted: `WORKDAY(28131,-16,0)` = 28109, `NETWORKDAYS(1,10,0)` = 7 (F15:F18, F23, F28).
+- **A day count of 0 returns the start date without reading the weekend or the holidays** (the count truncates toward
+  negative infinity first: 0.4 is 0, -0.5 is -1). `WORKDAY(33393,0,{"a",0.3})`, `WORKDAY(33393,0,-1)`,
+  `WORKDAY(33393,0,NA())`, `WORKDAY(33393,0,1/0)`, `WORKDAY(33393,0.4,{"a"})`, `WORKDAY.INTL(33393,0,"1111111")`,
+  `WORKDAY.INTL(33393,0,"x")` and `WORKDAY(0,0,"a")` all return the start date (33393 or 0), while
+  `WORKDAY(33393,1,{"a",0.3})`, `WORKDAY(33393,-0.5,{"a"})` (-1 days) and `WORKDAY(33393,1,D1:D4)` (a text cell) are
+  `#VALUE!`, and `WORKDAY(33393,1,-1)` is `#NUM!`. The start date is still checked: `WORKDAY(-1,0)` is `#NUM!`
+  (F31:F38, F45:F58). NETWORKDAYS has no such shortcut: `NETWORKDAYS(33393,33393,{"a"})` and
+  `NETWORKDAYS(33393,33400,D1:D4)` are `#VALUE!` (F35, F37, F39, F56).
+- `WORKDAY(10,-0.5)` = 9 and `WORKDAY(10,0.5)` = 10 (F53:F54).
+Implemented in: `DateSystem::date_of_serial_from_zero` (formatter/dates.rs), which `Model::excel_date`
+(functions/date_and_time.rs) reads for every WORKDAY and NETWORKDAYS date and holiday, and the zero-day shortcut and
+lower walk bound in `Model::workday_of` / `Model::step_workdays` (functions/date_and_time/workday.rs).
+Tasks: T-1254

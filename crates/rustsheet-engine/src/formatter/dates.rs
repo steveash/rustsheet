@@ -161,6 +161,16 @@ impl DateSystem {
     pub(crate) fn date_of_serial(self, serial: i64) -> Option<NaiveDate> {
         from_excel_date(self.to_1900_serial(serial)?).ok()
     }
+
+    /// `date_of_serial`, where 1900 serial 0 (Saturday 0 January 1900, the weekday-faithful
+    /// 1899-12-30) is a date too: WEEKDAY, WORKDAY and NETWORKDAYS read it (probes/weekday-serial-zero,
+    /// probes/workday-serial-zero; dates.md "WORKDAY and NETWORKDAYS from serial 0").
+    pub(crate) fn date_of_serial_from_zero(self, serial: i64) -> Option<NaiveDate> {
+        match self.to_1900_serial(serial)? {
+            0 => NaiveDate::from_ymd_opt(1899, 12, 30),
+            serial => from_excel_date(serial).ok(),
+        }
+    }
 }
 
 /// Whether a negative serial is formatted under a date/time section with these tokens rather than

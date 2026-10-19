@@ -27,6 +27,10 @@
 //!   its cap whose window is mostly exact zeros and subnormal terms (the slowest terms: `exp`'s
 //!   subnormal path and additions with a subnormal operand), over 32 elements.
 //!
+//! - WORKDAY and NETWORKDAYS (T-1236): 20,000 scalar WORKDAY calls through MAP (the path a
+//!   filled-down column takes, comparable with main), and WORKDAY and NETWORKDAYS lifted over a
+//!   100,000-element array with 20 holidays, prepared once per call.
+//!
 //! `cargo bench -p rustsheet --bench lift [-- FILTER...]` (only the cases whose name contains a
 //! FILTER, e.g. `SWITCH`)
 //!
@@ -101,6 +105,21 @@ fn main() -> Result<(), Box<dyn Error>> {
             "PMT, lifted over a range",
             100_000,
             "=SUM(PMT(A1:A100000,10,100))",
+        ),
+        (
+            "WORKDAY, scalar calls through MAP",
+            20_000,
+            "=SUM(MAP(B1:B20000,LAMBDA(d,WORKDAY(d+40000,5,B1:B20+45000))))",
+        ),
+        (
+            "WORKDAY, lifted over an array",
+            100_000,
+            "=SUM(WORKDAY(B1:B100000+40000,5,B1:B20+45000))",
+        ),
+        (
+            "NETWORKDAYS, lifted over an array",
+            100_000,
+            "=SUM(NETWORKDAYS(B1:B100000+40000,50000,B1:B20+45000))",
         ),
         (
             "BETA.INV, full bisection at the element cap",

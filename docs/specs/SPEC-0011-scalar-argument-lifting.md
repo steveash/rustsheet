@@ -60,7 +60,7 @@ same date and commit. Each row has a migration task, or is a non-goal with its r
 | `parity_predicate` | information/mod.rs | ISEVEN, ISODD | `LiftArrays` entries | T-1774 |
 | `lifted_arg` / `Lifted`, and `map_elements` in offline_errors.rs | information/ | IS*, ERROR.TYPE, ENCODEURL, FIELDVALUE, STOCKHISTORY and the other offline functions | `Lift` entries. `map_elements` stays only for N and T (below) | T-1774 |
 | `TextArg`, `broadcast_text` | text/text_arg.rs | 17 call sites: LEFT, MID, FIND, REPT, TEXT, CONCATENATE, … | `Lift` entries + text kernels | T-1775 |
-| `Weekend::lift` | date_and_time.rs | WORKDAY.INTL, NETWORKDAYS.INTL `weekend` | a kernel with the mask memo in its closure | T-1236 |
+| `Weekend::lift` | date_and_time.rs | WORKDAY.INTL, NETWORKDAYS.INTL `weekend` | a `Lift` entry; no mask memo, an element costs O(log holidays) (done) | T-1236 |
 | CHOOSE's index lift (`choose_array`) | lookup_and_reference/mod.rs | CHOOSE | `index_num` is `Lift`, the value arms are `Whole`. `choose_array` becomes the kernel | T-1241 |
 | IF's `IfArg`, `if_arg_at` | logical/mod.rs | IF (condition and branches broadcast, logic.md) | non-goal: IF evaluates its branches lazily and returns references. It keeps its own broadcast, which already uses `bcast_idx` | — |
 | `lifted_relative_to`, `lifted_groupby` | relative_to.rs, groupby.rs | GROUPBY, PIVOTBY | non-goal: LAMBDA calls with their own cell-visit budget (SPEC-0006) | — |
@@ -500,7 +500,9 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
    WORKDAY(.INTL) and NETWORKDAYS(.INTL) stepped once per calendar day (about 2.96M steps at
    worst, so a covering weight would cap a lift at about 45 elements). T-1295 (whole-week steps)
    and T-1808 (closed-form day counts) make one call O(holidays), so T-1236 follows both and
-   enters them without a calendar weight.
+   enters them without a calendar weight. As built (T-1236): the holidays are `WholeByCaller`,
+   prepared once per call (`LiftCost::Prepared`), and WORKDAY finds its result by a galloping search
+   of closed-form counts, so an element costs O(log holidays).
 5. **Elements**, in row-major order, into one buffer kept for the whole call. Scalar and whole
    slots are written once. Only the grid slots are overwritten per element, by
    `array_node_to_calc_result(bcast_get(grid, i, j).unwrap_or(&MISSING), cell)` (functions/util.rs).
@@ -526,8 +528,8 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
    `#ERROR!` before any text is built, and the budget's error stays `#VALUE!`.
 
 No argument is re-evaluated per element. A `Whole` value is the same `CalcResult` for every
-element. A kernel that derives something costly from it (LARGE's sorted data, WORKDAY.INTL's
-weekend mask results, today's `Weekend::lift` memo) computes it on the first element and keeps it
+element. A kernel that derives something costly from it (LARGE's sorted data, WORKDAY's prepared
+holidays, T-1236) computes it once, on the first element or before the driver runs, and keeps it
 in its closure. It declares `LiftCost::Prepared`.
 
 As built (T-1772): LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN take their data
@@ -537,7 +539,8 @@ single cell), which a `Whole` value read by `evaluate_node_with_reference` canno
 `Whole` read would change scalar results. `statistical/sorted_data.rs` reads the numbers once after
 the count check, the kernel sorts them on its first element, and the call goes through
 `lift_call_costed` with `LiftCost::Prepared(numbers)` (TRIMMEAN: `Cells(numbers)`, since every
-element averages the kept values). `Whole` stays unused until T-1236's holidays.
+element averages the kept values). WORKDAY's and NETWORKDAYS' holidays are `WholeByCaller` the
+same way (T-1236), so `Whole` stays unused until the M7 array arguments (T-1836).
 
 As built (T-1383): the engineering functions are the first `KernelWork::Weighted` entries. The four
 Bessel functions loop up to about 2·10^5 times per element at the order cap (`MAX_ORDER`, 100,000,
