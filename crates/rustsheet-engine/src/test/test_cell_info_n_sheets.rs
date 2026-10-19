@@ -82,6 +82,43 @@ fn cell_filename() {
     assert_eq!(model._get_text("A1"), *"[Expenses.xlsx]2026");
 }
 
+/// An unnamed workbook (empty name) has no file name to report (T-2042).
+#[test]
+fn cell_filename_of_an_unnamed_workbook() {
+    let mut model = new_empty_model();
+    model.workbook.name = String::new();
+    model._set("A1", "=CELL(\"filename\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
+}
+
+/// `CELL("address")` of a reference on another sheet is prefixed `[<file>]<sheet>!`, the sheet
+/// name never quoted, a range giving its top-left cell (probes/info-cell-address-cross-sheet,
+/// excel-graph, T-2042).
+#[test]
+fn cell_address_on_another_sheet_names_the_file() {
+    let mut model = new_empty_model();
+    model.workbook.name = "book".to_string();
+    model.add_sheet("My Sheet").unwrap();
+    model.add_sheet("Bob's").unwrap();
+    model._set("A1", "=CELL(\"address\",'My Sheet'!B2)");
+    model._set("A2", "=CELL(\"address\",'Bob''s'!B2:C3)");
+    model._set("A3", "=CELL(\"address\",Sheet1!B2)");
+    model._set("A4", "=CELL(\"address\",('My Sheet'!B2,'My Sheet'!C3))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"[book.xlsx]My Sheet!$B$2");
+    assert_eq!(model._get_text("A2"), *"[book.xlsx]Bob's!$B$2");
+    assert_eq!(model._get_text("A3"), *"$B$2");
+    // A union on another sheet is unprobed.
+    assert_eq!(model._get_text("A4"), *"#N/IMPL!");
+
+    // Excel's form for an unsaved workbook is unprobed.
+    model.workbook.name = String::new();
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A3"), *"$B$2");
+}
+
 /// N lifts over an array, an error element kept (probes/n-array-lift; T-1616).
 #[test]
 fn n_lifts_over_an_array() {
