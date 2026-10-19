@@ -1096,6 +1096,8 @@ correctly rounded. Fit over those 38 and 224 web cells (m9-trig-reduction and tr
 - All of these give ...282 except the double-π reduction (...284).
 So no formulation reaches the desktop value. The three cells stay known failures as an Excel-vs-Excel last-digit conflict, and the
 desktop target waits for T-1075 (M14).
+MIRR (T-0959): Mac 16.0300 caches `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` as 0.3933280241536672, the web gives ...674. The engine keeps
+the desktop value with MIRR's own root (financial.md "MIRR's evaluation order"); `^` follows the web.
 
 ## GEOMEAN last digits differ from a log-sum evaluation
 

@@ -1,5 +1,5 @@
 use crate::{
-    arithmetic::power,
+    arithmetic::power_with_libm_exp,
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
@@ -47,7 +47,8 @@ impl Model {
         }
         // Excel discounts each flow to period 0 with a running power, `x / (1+r)^i` with
         // `(1+r)^i = (1+r)^(i-1) * (1+r)`, and compounds the positive sum forward as
-        // `P * (1+rr)^n / (1+rr)`; the root is Excel's `^`. Every order and power source matters
+        // `P * (1+rr)^n / (1+rr)`; the root is `^` with libm's `exp` (Mac desktop Excel's cached
+        // MIRR.xlsx Sheet2!N16; see [`power_with_libm_exp`]). Every order and power source matters
         // in the last digits: this one matches all 432 cells of probes-numeric/m9-fin-mirr
         // (docs/excel-semantics/financial.md "MIRR's evaluation order", T-1687).
         let years = values.len() as f64;
@@ -94,7 +95,7 @@ impl Model {
         let exponent = 1.0 / (years - 1.0);
         // Only the ordinary case is fitted; a zero, negative or infinite ratio and a single flow
         // keep `powf` and the errors below.
-        let root = match power(ratio, exponent) {
+        let root = match power_with_libm_exp(ratio, exponent) {
             Ok(root) if ratio.is_finite() && ratio > 0.0 && exponent.is_finite() => root,
             _ => ratio.powf(exponent),
         };

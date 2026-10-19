@@ -3,7 +3,7 @@ id: T-0959
 title: "POWER follow-ups from T-0920: 1-ulp odd roots, overflow error, odd-root tolerance probes"
 milestone: M9
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,9 +32,23 @@ Note (planner, 2026-10-19): POWER.xlsx inside_a_lambda!C3/C4 are not `POWER(-8,1
 Excel's 0.3457140098251439: find which kernel gives the ulp before fitting POWER. T-1970 takes C3 out of the M2 function scope.
 
 ## Acceptance criteria
-- [ ] Probe case with oracle values for the three UNVERIFIED points; numbers.md updated.
-- [ ] POWER.xlsx NumericUlp cells pass or are explained in numbers.md.
-- [ ] `make check` green; reviewers approve.
+- [x] Probe case with oracle values for the three UNVERIFIED points; numbers.md updated.
+- [x] POWER.xlsx NumericUlp cells pass or are explained in numbers.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+- Probes (excel-graph, 2026-10-19): probes-numeric/power-odd-root-tolerance (202 cells, `^` and POWER side by side),
+  power-odd-root-tolerance-2 (134), power-ulp-sources (20), power-mirr-root (3). numbers.md "POWER and `^`" is VERIFIED:
+  (a) overflow of a non-zero base is #NUM!; (b) a negative base takes an odd root when 1/y rounded to 15 significant digits
+  is an odd integer below 2^31-1 (not the old 2^-48 relative tolerance: 26 cells changed verdict); (c) `^` and POWER agree on
+  every probed special case.
+- Non-integer powers now use EXP's kernel (`excel_exp`) on a twice-rounded product: all power probes pass (1,800+ cells,
+  including `(-1E300)^(1/3)`). MIRR keeps the old libm `exp` root (`power_with_libm_exp`) because Mac desktop Excel's cached
+  MIRR.xlsx Sheet2!N16 needs it, while the web gives the new `^` value (decisions 0030/0039; T-1075 item 13).
+- POWER.xlsx inside_a_lambda!C3/C4 are TANH's ulp (`gelu` at 0.5), not POWER's: power-ulp-sources A4; noted on T-0917.
+- A workbook holding the literal 1E308 cannot be filled by excel-graph (already known); 9E307 stands in.
+- Eval delta: gated suites unchanged (no fixes, no regressions); probes-numeric +357 new cells, 355 passing (power-mirr-root
+  A1/A2 are the web side of the MIRR conflict) and 7 TANH cells of power-ulp-sources failing (T-0917).

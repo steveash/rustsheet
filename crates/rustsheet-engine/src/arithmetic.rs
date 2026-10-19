@@ -372,6 +372,20 @@ const NEGATIVE_BASE_EXPONENT_LIMIT: f64 = 4_294_967_295.0;
 
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
 pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
+    power_with(x, y, |y, ln_x| excel_exp(extended_product(y, ln_x)))
+}
+
+/// [`power`] with `exp(y·ln x)` for a non-integer `y` taken as libm `exp` of a once-rounded
+/// product, the operator `^` before T-0959. MIRR's root keeps it: Mac desktop Excel caches
+/// `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` as 0.3933280241536672, which this gives, where Excel for
+/// the web and [`power`] give 0.3933280241536674 (ironcalc-calc FINANCIAL/MIRR.xlsx Sheet2!N16,
+/// probes-numeric/power-mirr-root; decisions 0030 and 0039 keep the passing desktop cell).
+pub(crate) fn power_with_libm_exp(x: f64, y: f64) -> Result<f64, Error> {
+    power_with(x, y, |y, ln_x| (y * ln_x).exp())
+}
+
+/// [`power`] with `exp_of_product(y, ln x)` as the `exp(y·ln x)` step of a non-integer exponent.
+fn power_with(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> Result<f64, Error> {
     if x == 0.0 && y == 0.0 {
         return Err(Error::NUM);
     }
@@ -390,9 +404,9 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
         // An odd root of a negative number is a real number, minus the root of the magnitude:
         // `(-8)^(1/3)` is -1.9999999999999998 (POWER.xlsx Sheet1!D3, F9). The exponent is the one
         // given, not 1/n: `(-8)^(1/3+8·2^-54)` is -2.0000000000000018.
-        -non_integer_power(-x, y)
+        -non_integer_power(-x, y, exp_of_product)
     } else {
-        non_integer_power(x, y)
+        non_integer_power(x, y, exp_of_product)
     };
     if result.is_infinite() {
         // POWER(0,-1) is #DIV/0! (POWER.xlsx Sheet1!D2), and so is any negative exponent whose
@@ -412,14 +426,14 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     finite_or_num(result)
 }
 
-/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)` with EXP's kernel
-/// ([`excel_exp`]) and a twice-rounded product, a negative exponent as one over the positive
+/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)` (`exp_of_product`; for
+/// [`power`] EXP's kernel [`excel_exp`] on a twice-rounded product), a negative exponent as one over the positive
 /// power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180 numeric oracle cells over
 /// 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep),
 /// and `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` = 9.999999999999827E+99, where libm `exp` is 2 ulps
 /// lower (probes-numeric/power-ulp-sources A13; docs/excel-semantics/numbers.md "Non-integer
 /// exponents: exp(y·ln x)"). A negative `x` gives NaN.
-fn non_integer_power(x: f64, y: f64) -> f64 {
+fn non_integer_power(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> f64 {
     // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
     let x = if x == 0.0 { 0.0 } else { x };
     if y == 0.5 {
@@ -429,9 +443,9 @@ fn non_integer_power(x: f64, y: f64) -> f64 {
         // `1/SQRT(x)` agree (probes-numeric/power-neg-half-rounding, T-1541).
         extended_quotient(1.0, extended_sqrt(x))
     } else if y > 0.0 {
-        excel_exp(extended_product(y, x.ln()))
+        exp_of_product(y, x.ln())
     } else {
-        extended_quotient(1.0, excel_exp(extended_product(-y, x.ln())))
+        extended_quotient(1.0, exp_of_product(-y, x.ln()))
     }
 }
 
