@@ -68,8 +68,8 @@ impl Model {
 
     /// Runs `element` once on `operands`, or once per element when one lifts; `element` is told
     /// whether it lifts, as a lifted element keeps only the first value of an array result
-    /// (TEXTSPLIT: probes/m7-argument-modes F13:H13; REGEXEXTRACT's `return_all`: probes/textsplit-lift-guesses
-    /// A47-A52; text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar
+    /// (TEXTSPLIT: probes/m7-argument-modes F13:H13; REGEXEXTRACT's `return_all`:
+    /// probes/textsplit-lift-guesses A47-A52; text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar
     /// arguments"), so it need not build the rest.
     ///
     /// An element compares each position of its text with the delimiters of byte lengths
