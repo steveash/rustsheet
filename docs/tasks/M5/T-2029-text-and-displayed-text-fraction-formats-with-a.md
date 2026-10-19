@@ -3,7 +3,7 @@ id: T-2029
 title: "TEXT and displayed text: fraction formats with a fixed denominator (# ?/4, # ??/16, ?/100): integer part, sign, padding"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
