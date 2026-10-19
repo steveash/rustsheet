@@ -451,11 +451,15 @@ impl Model {
     }
     pub(crate) fn fn_acosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Acosh, args, cell, |f: f64| {
+            // Checked first: for a large negative argument `f + sqrt(f*f - 1)` rounds to 0 and the
+            // log is -inf, not NaN.
+            if f < 1.0 {
+                return Err(Error::NUM);
+            }
             let square = f * f;
             if square.is_infinite() {
                 Ok(f64::acosh(f))
             } else {
-                // Below 1 the square root is NaN, which `number_fn` maps to `#NUM!`.
                 Ok((f + (square - 1.0).sqrt()).ln())
             }
         })

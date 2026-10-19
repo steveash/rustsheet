@@ -204,6 +204,10 @@ fn asinh_acosh_are_the_log_formulas() {
     model._set("A3", "=ACOSH(1.000000000001)");
     model._set("A4", "=ACOSH(0.5)");
     model._set("A5", "=ASINH(1E+200)");
+    model._set("A6", "=ACOSH(1)");
+    model._set("A7", "=ACOSH(0.999)");
+    model._set("A8", "=ACOSH(-1E+10)");
+    model._set("A9", "=ACOSH(-1E+200)");
     model.evaluate();
     let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
         Ok(CellValue::Number(n)) => n.to_bits(),
@@ -215,4 +219,9 @@ fn asinh_acosh_are_the_log_formulas() {
     assert_eq!(model._get_text("A4"), *"#NUM!");
     // x*x overflows: libm's value, since no Excel value is known there.
     assert_eq!(bits("A5"), 1e200_f64.asinh().to_bits());
+    assert_eq!(bits("A6"), 0.0_f64.to_bits());
+    // Out of domain is `#NUM!`, also where x + sqrt(x*x - 1) rounds to 0 or x*x overflows.
+    for cell in ["A7", "A8", "A9"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
 }
