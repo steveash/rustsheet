@@ -32,7 +32,7 @@ Add a row-insert op on all three sides. Then add a probe case (tag M2) with the 
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Sonnet run stopped before coding: the engine side needs a design call.
 - Python side is mechanical: add `"insert_row"` (JSON `{"op":"insert_row","sheet":"S","row":1}`; carry the 1-based row in the `to` slot of the `(op, sheet, to)` tuple) to `SHEET_OPS`/`sheet_op()` in spec2xlsx.py, replay it in `GraphBackend._replay_sheet_ops` with `POST worksheets('S')/range(address='<n>:<n>')/insert` `{"shift":"Down"}` (research note method), and extend tests/test_spec2xlsx_sheet_ops.py, `SheetOp` in case.rs, and docs/architecture/eval-harness.md.
 - Blocker: `apply_sheet_ops` (engine.rs) runs through the `rustsheet` facade, and `Txn` has no row insert (SPEC-0012 line 257: "None of these is reachable from the rustsheet facade today"). `Workbook.model` is `pub(crate)`. Options: (a) add `Txn::insert_rows` to the facade, which needs undo for a structural edit and touches SPEC-0001 (api lane); (b) a narrow harness-only hook. Pick one (probably a decision record), then do the rest.
