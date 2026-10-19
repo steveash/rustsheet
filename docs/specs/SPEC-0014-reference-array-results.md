@@ -128,16 +128,23 @@ would not move it.
     (T-2064), TAKE and DROP (T-1838).
 
 ### Bounds (directive 5)
-- Element count: the broadcast shape passes `check_array_size` before any element is computed, as
-  every lift does; a `RefGrid` holds 32 bytes per element, so it is no larger than the value array
-  it replaces.
-- Work: each element is one call charged to the lift's `MAX_LIFTED_CELL_VISITS` budget. A
+- Element count: every producer, one over a grid included, and every per-element consumer that
+  broadcasts two grids (SUMIF's range and sum_range) checks the broadcast shape against
+  `check_array_size` before any element is computed, as every lift does. A grid argument (n x 1)
+  beside a lifted argument (1 x m) gives n x m, so the check is on the output shape, not the input.
+  A `RefElement` is at most 32 bytes (T-1956 asserts its size), no larger than the `ArrayNode` it
+  replaces. A `Reference` is built only from a scalar call's in-sheet result (OFFSET's and
+  INDIRECT's own bounds checks run per element), so no consumer sees an off-sheet corner.
+- Work: each element is one call charged to the lift's `MAX_LIFTED_CELL_VISITS` budget. A producer
+  over a grid is one lift whose elements are the grid's, so nesting (`OFFSET(OFFSET(..),..)`) costs
+  one budget per level, at most the parser's depth cap times the budget in all; T-1956 tests a deep
+  nest. Whether the budget becomes one per formula evaluation (as `MAX_AREA_WALK` is) is left to
+  SPEC-0011's owner; this spec adds no second budget. A
   per-element consumer (rule 6) charges the clipped cells of each element it walks to the same
   budget before walking (`LiftCost::Cells`), so `SUBTOTAL(9,OFFSET(A:A,0,0,SEQUENCE(1000)))` is
   `#ERROR!`-bounded rather than 10^9 reads. A top-left aggregate reads one cell per element.
-- Nesting: a producer over a grid yields a grid of the same shape, and recursion follows the
-  formula tree, so the parser's depth cap bounds it. No `RefGrid` is ever built from a
-  `RefGrid` larger than itself.
+- Nesting: recursion follows the formula tree, so the parser's depth cap bounds it; each level's
+  grid passes `check_array_size` as above.
 - No panics: element access is by checked index; an empty grid is never built (shape ≥ 1x1).
 
 ### What changes for existing formulas
