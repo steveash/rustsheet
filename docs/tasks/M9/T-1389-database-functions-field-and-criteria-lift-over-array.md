@@ -3,7 +3,7 @@ id: T-1389
 title: "Database functions: field and criteria lift over array literals; DCOUNT/DCOUNTA with an empty field count records (probes/db-argument-modes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
