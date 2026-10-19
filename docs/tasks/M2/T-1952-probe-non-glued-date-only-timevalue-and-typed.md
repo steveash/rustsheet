@@ -3,7 +3,7 @@ id: T-1952
 title: "Probe non-glued date-only TIMEVALUE and typed date+clock text"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
