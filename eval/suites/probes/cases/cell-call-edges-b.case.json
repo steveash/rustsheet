@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1806: cell-shaped call names: a column past XFD",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "D1": 5,
+        "A3": "=XFE1(1)",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "=xfe1(1)",
+        "B4": "=FORMULATEXT(A4)"
+      }
+    }
+  ],
+  "expected": {}
+}
