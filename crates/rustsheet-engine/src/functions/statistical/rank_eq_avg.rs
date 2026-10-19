@@ -1,175 +1,161 @@
-use crate::arithmetic::array_of_errors;
+use super::sorted_data::{DataOrder, SortedNumbers};
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lift::{value_error, LiftCost};
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+/// How tied numbers rank: RANK and RANK.EQ give them the top rank, RANK.AVG their average.
+#[derive(Clone, Copy)]
+enum Ties {
+    Top,
+    Average,
+}
+
 impl Model {
-    /// A bad `number` next to a non-reference array `ref`: Excel spills that error over the
-    /// array's shape instead of returning one cell (docs/excel-semantics/statistics.md,
-    /// "RANK of a non-reference array"; probes/rank-nonref-errors, T-1208).
-    fn rank_number_error(
-        &mut self,
-        error: CalcResult,
-        ref_arg: &Node,
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        match self.numbers_from_rank_ref_arg(ref_arg, cell) {
-            Err(CalcResult::Array(shape)) => array_of_errors(&shape, error, |_| None),
-            _ => error,
-        }
-    }
-
-    // Helper to collect numeric values from the 2nd argument of RANK.*
-    fn collect_rank_values(
-        &mut self,
-        arg: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<Vec<f64>, CalcResult> {
-        let values = self.numbers_from_rank_ref_arg(arg, cell)?;
-
-        let numeric_values: Vec<f64> = values.into_iter().flatten().collect();
-        Ok(numeric_values)
-    }
-
-    // RANK.EQ(number, ref, [order])
+    // RANK(number, ref, [order]) and RANK.EQ
     pub(crate) fn fn_rank_eq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(2..=3).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        // number
-        let number = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return self.rank_number_error(e, &args[1], cell),
-        };
-
-        // ref
-        let mut values = match self.collect_rank_values(&args[1], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-
-        // order: default 0 (descending)
-        let order = if args.len() == 2 {
-            0.0
-        } else {
-            match self.get_number_no_bools(&args[2], cell) {
-                Ok(f) => f,
-                Err(e) => return e,
-            }
-        };
-
-        // Excel: a reference with no numeric value (or an empty one) gives #N/A like any absent
-        // number, never #NUM! (docs/excel-semantics/statistics.md, "RANK/RANK.EQ/RANK.AVG: a number absent").
-        values.retain(|v| !v.is_nan());
-
-        // "better" = greater (descending) or smaller (ascending)
-        let mut better = 0;
-        let mut equal = 0;
-
-        if order == 0.0 {
-            // descending
-            for v in &values {
-                if *v > number {
-                    better += 1;
-                } else if *v == number {
-                    equal += 1;
-                }
-            }
-        } else {
-            // ascending
-            for v in &values {
-                if *v < number {
-                    better += 1;
-                } else if *v == number {
-                    equal += 1;
-                }
-            }
-        }
-
-        if equal == 0 {
-            return CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Number not found in reference for RANK.EQ".to_string(),
-            };
-        }
-
-        let rank = (better as f64) + 1.0;
-        CalcResult::Number(rank)
+        self.rank(args, Ties::Top, cell)
     }
 
     // RANK.AVG(number, ref, [order])
     pub(crate) fn fn_rank_avg(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(2..=3).contains(&args.len()) {
+        self.rank(args, Ties::Average, cell)
+    }
+
+    /// The RANK family: `number` and `order` lift over an array and a multi-cell range, and a
+    /// reference `ref` is read once (SPEC-0011, T-1999). An element reads `number` (numeric text
+    /// and booleans coerce, also from a cell), then `order`, then takes the data's error:
+    /// `RANK("x",D1:D3)` and `RANK(4,D1:D3,"x")` with D2 = `#N/A` are `#VALUE!`,
+    /// `RANK({1;3},D1:D3)` is `#N/A` per element (probes/stat-test-lift P20-P27, P32, P33, P85;
+    /// probes/rank-direct-boolean). A `ref` that is not a reference is an array of `#VALUE!` (or
+    /// the element's own error) that broadcasts with the lifted arguments, after `number`'s error
+    /// and before `order`'s (statistics.md "RANK of a non-reference array"; P28-P31,
+    /// probes/rank-nonref-errors). The numbers are sorted once for a lifted call, so it is charged
+    /// their count plus its elements (`LiftCost::Prepared`).
+    fn rank(&mut self, args: &[Node], ties: Ties, cell: CellReferenceIndex) -> CalcResult {
+        // RANK and RANK.AVG share RANK.EQ's table entry (`ONE_THEN_REFERENCE_THEN_1`).
+        let kind = Function::RankEq;
+        if !kind
+            .arg_kinds()
+            .is_some_and(|kinds| kinds.accepts(args.len()))
+        {
             return CalcResult::new_args_number_error(cell);
         }
-
-        // number
-        let number = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return self.rank_number_error(e, &args[1], cell),
+        let Some(reference) = args.get(1) else {
+            return CalcResult::new_args_number_error(cell);
         };
-
-        // ref
-        let mut values = match self.collect_rank_values(&args[1], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
+        let mut numbers = match self.numbers_from_rank_ref_arg(reference, cell) {
+            // Excel: a reference with no numeric value (or an empty one) gives #N/A like any
+            // absent number, never #NUM! (statistics.md, "RANK/RANK.EQ/RANK.AVG: a number absent").
+            Ok(values) => Ok(SortedNumbers::new(
+                values
+                    .into_iter()
+                    .flatten()
+                    .filter(|v| !v.is_nan())
+                    .collect(),
+                DataOrder::Ascending,
+            )),
+            Err(CalcResult::Array(grid)) => {
+                // Every element of `grid` is an error, so no element reads the numbers.
+                let mut numbers = Err(value_error(cell));
+                return self.lift_call_beside(
+                    kind,
+                    args,
+                    (1, grid),
+                    LiftCost::Unit,
+                    cell,
+                    &mut |model, values| {
+                        rank_element(model, &mut numbers, values, ties, true, cell)
+                    },
+                );
+            }
+            Err(error) => Err(error.without_message()),
         };
-
-        // order: default 0 (descending)
-        let order = if args.len() == 2 {
-            0.0
-        } else {
-            match self.get_number_no_bools(&args[2], cell) {
-                Ok(f) => f,
-                Err(e) => return e,
-            }
-        };
-
-        // Same #N/A rule for an empty value set (statistics.md, "RANK/RANK.EQ/RANK.AVG: a number absent").
-        values.retain(|v| !v.is_nan());
-
-        // > or < depending on order
-        let mut better = 0;
-        let mut equal = 0;
-
-        if order == 0.0 {
-            // descending
-            for v in &values {
-                if *v > number {
-                    better += 1;
-                } else if *v == number {
-                    equal += 1;
-                }
-            }
-        } else {
-            // ascending
-            for v in &values {
-                if *v < number {
-                    better += 1;
-                } else if *v == number {
-                    equal += 1;
-                }
-            }
-        }
-
-        if equal == 0 {
-            return CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Number not found in reference for RANK.AVG".to_string(),
-            };
-        }
-
-        // For ties, average of the ranks. If the equal values occupy positions
-        // (better+1) ..= (better+equal), the average is:
-        // better + (equal + 1) / 2
-        let better_f = better as f64;
-        let equal_f = equal as f64;
-        let rank = better_f + (equal_f + 1.0) / 2.0;
-
-        CalcResult::Number(rank)
+        let cells = numbers.as_ref().map_or(0, |numbers| {
+            u64::try_from(numbers.len()).unwrap_or(u64::MAX)
+        });
+        // The first element walks the numbers, so a scalar call (`=RANK(A2,$A$2:$A$9999)` filled
+        // down) never sorts; later elements sort them once and search (`RANK(A2:A9999,A2:A9999)`).
+        let mut first = true;
+        self.lift_call_costed(
+            kind,
+            args,
+            // At least one unit an element, so a data error copied per element is charged too.
+            LiftCost::Prepared(cells.max(1)),
+            cell,
+            &mut |model, values| {
+                let walk = std::mem::replace(&mut first, false);
+                rank_element(model, &mut numbers, values, ties, walk, cell)
+            },
+        )
     }
+}
+
+/// One RANK element over the numbers read once. `values[1]` is the slot of `ref`: `EmptyArg`
+/// for a reference, or the error of a non-reference array's element. `walk` counts the numbers
+/// unsorted; otherwise they are sorted (once) and searched.
+fn rank_element(
+    model: &Model,
+    numbers: &mut Result<SortedNumbers, CalcResult>,
+    values: &[CalcResult],
+    ties: Ties,
+    walk: bool,
+    cell: CellReferenceIndex,
+) -> CalcResult {
+    let number = match values
+        .first()
+        .map(|number| model.kernel_number(number, cell))
+    {
+        Some(Ok(number)) => number,
+        Some(Err(error)) => return error,
+        None => return CalcResult::new_args_number_error(cell),
+    };
+    if let Some(error @ CalcResult::Error { .. }) = values.get(1) {
+        return error.clone();
+    }
+    // order: default 0 (descending). Text is `#VALUE!`, numeric text too, where `number` reads
+    // it; a boolean is 0 or 1 (probes/rank-direct-boolean H4, H10, H15; stat-test-lift P33).
+    let order = match values.get(2) {
+        Some(CalcResult::String(_)) => return value_error(cell),
+        order => match model.kernel_number_or(order, 0.0, cell) {
+            Ok(order) => order,
+            Err(error) => return error,
+        },
+    };
+    let numbers = match numbers {
+        Ok(numbers) => numbers,
+        Err(error) => return error.clone(),
+    };
+    let (smaller, equal, larger) = if walk {
+        let (mut smaller, mut equal, mut larger) = (0, 0, 0);
+        for &v in numbers.as_read() {
+            if v < number {
+                smaller += 1;
+            } else if v == number {
+                equal += 1;
+            } else {
+                larger += 1;
+            }
+        }
+        (smaller, equal, larger)
+    } else {
+        // Ascending, and `<`/`<=` treat -0 and 0 as equal, as `==` does.
+        let sorted = numbers.sorted();
+        let smaller = sorted.partition_point(|&v| v < number);
+        let not_larger = sorted.partition_point(|&v| v <= number);
+        (smaller, not_larger - smaller, sorted.len() - not_larger)
+    };
+    if equal == 0 {
+        return CalcResult::new_error(Error::NA, cell, String::new());
+    }
+    // "better" = greater (descending, order 0) or smaller (ascending)
+    let better = if order == 0.0 { larger } else { smaller } as f64;
+    let rank = match ties {
+        Ties::Top => better + 1.0,
+        // The tied numbers hold ranks better+1 ..= better+equal; their average.
+        Ties::Average => better + (equal as f64 + 1.0) / 2.0,
+    };
+    CalcResult::Number(rank)
 }

@@ -303,6 +303,10 @@ pub(crate) enum ArgKind {
     /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
+    /// Read by the caller, which needs a reference there (RANK's `ref`, T-1999). A reference's
+    /// slot is `EmptyArg`; a non-reference array is handed back as a grid of errors that
+    /// broadcasts with the lifted arguments (`lift_call_beside`).
+    ReferenceByCaller,
 }
 
 /// What one kernel call may cost, beyond reading its arguments (security rule below).
@@ -369,6 +373,7 @@ cites its probe.
   | `LiftArrays` | `mode: value`, `lift: arrays` |
   | `LiftArraysRangeWhole` | `mode: criteria` or `range`, `lift: arrays` |
   | `Whole`, `WholeByCaller` | `mode: array`, `aggregate`, `aggregate_a`, `range`, `criteria` or `lambda`, without `lift` |
+  | `ReferenceByCaller` | `mode: range`, without `lift` |
 
   The generator stops passing ranges to `mode: value, lift: arrays` parameters, because they are
   refused anyway.
@@ -462,6 +467,7 @@ Each argument is read once, by its kind:
 | `LiftArraysRangeWhole` | `Grid` | `Scalar(the range)`, read whole | `Scalar(the range)` | `Scalar(value)` |
 | `Whole` | `Scalar` of the value as `evaluate_node_with_reference` read it, once | | | |
 | `WholeByCaller` | `Scalar(EmptyArg)`, not evaluated | | | |
+| `ReferenceByCaller` | `Scalar(EmptyArg)`, not evaluated; the caller reads it, and a non-reference array comes back through `lift_call_beside` as a `Grid` of errors (T-1999) | | | |
 
 A range across sheets (`Sheet1:Sheet2!C1:C2`, 3-D) is `Scalar(#REF!)` in a `Lift` position and
 `Scalar(#VALUE!)` in a `LiftArrays` position (open question 2; T-1801). That holds for a one-cell
