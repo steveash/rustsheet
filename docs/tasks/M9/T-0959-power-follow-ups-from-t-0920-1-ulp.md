@@ -49,6 +49,10 @@ Excel's 0.3457140098251439: find which kernel gives the ulp before fitting POWER
   including `(-1E300)^(1/3)`). MIRR keeps the old libm `exp` root (`power_with_libm_exp`) because Mac desktop Excel's cached
   MIRR.xlsx Sheet2!N16 needs it, while the web gives the new `^` value (decisions 0030/0039; T-1075 item 13).
 - POWER.xlsx inside_a_lambda!C3/C4 are TANH's ulp (`gelu` at 0.5), not POWER's: power-ulp-sources A4; noted on T-0917.
+- Perf (math_lift, new cases, median of 11): `^` with a non-integer exponent now runs `excel_exp`'s F2XM1 series.
+  "POWER, per row" (100,000 rows of `=A{r}^(1/3)`) 80 ms → 214 ms; "POWER, lifted" (`=SUM(A1:A1000000^0.37)`)
+  0.85 s → 2.12 s (parent = libm `exp`, same machine, one case per process). Accepted for Excel bit parity
+  (directive 1: `1E300^(1/3)` and the power sweeps); T-1945's fast path now covers `^` too.
 - A workbook holding the literal 1E308 cannot be filled by excel-graph (already known); 9E307 stands in.
 - Eval delta: gated suites unchanged (no fixes, no regressions); probes-numeric +357 new cells, 355 passing (power-mirr-root
   A1/A2 are the web side of the MIRR conflict) and 7 TANH cells of power-ulp-sources failing (T-0917).
