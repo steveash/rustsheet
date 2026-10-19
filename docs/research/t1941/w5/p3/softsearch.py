@@ -42,6 +42,14 @@ def softdirs(N, D):
         -np.spacing(abs(D[i])) * xs**i / Dv for i in range(1, len(D))
     ]
     M = np.array(cols, dtype=float).T
+    fix = os.environ.get("FIX", "")
+    if fix:
+        names = ["N%d" % i for i in range(len(N))] + ["D%d" % i for i in range(1, len(D))]
+        keep = [n not in fix.split(",") for n in names]
+        Mk = M[:, keep]
+        U, s, Vk = np.linalg.svd(Mk / 1e-16, full_matrices=False)
+        Vt = np.zeros((Vk.shape[0], M.shape[1])); Vt[:, keep] = Vk
+        return s, Vt
     U, s, Vt = np.linalg.svd(M / 1e-16, full_matrices=False)
     return s, Vt
 

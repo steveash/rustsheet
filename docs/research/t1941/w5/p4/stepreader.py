@@ -85,3 +85,7 @@ for sn, lst in sets.items():
     near = sorted(inter, key=abs)[:8]; best[sn] = near
     print("  %s nearest: %s" % (sn, near))
 import json; json.dump({k: v for k, v in best.items()}, open(os.path.join(HERE, "nearest_%s.json" % mode), "w"))
+if os.environ.get("QUERY"):
+    for q in os.environ["QUERY"].split(","):
+        sn, j = q.split(":"); j = int(j)
+        if sn in sets: print("query %s j=%+d: %s" % (sn, j, ["ok" if j in o else "out" for _, o, _, _, _ in sets[sn]]))

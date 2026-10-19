@@ -5,7 +5,7 @@ exec(open(os.path.join(HERE, 'plateau.py')).read().split("if __name__")[0])
 def ld(f):
     l = open(f).read().split('\n'); return np.array([float.fromhex(v) for v in l[0].split()]), np.array([float.fromhex(v) for v in l[1].split()])
 tmu, tse = runmean(b)
-for tag, (N, D) in [('c5', (candidate('N3'), candidate('D3'))), ('bits+restored', ld(os.path.join(HERE, 'k3_bits_restored.txt'))), ('+coord search', ld(os.path.join(HERE, 'plateau_real.txt')))]:
+for tag, (N, D) in [('c5', (candidate('N3'), candidate('D3'))), ('bits+restored', ld(os.path.join(HERE, 'k3_bits_restored.txt'))), ('+coord search', ld(os.path.join(HERE, 'plateau_real.txt'))), ('r99 refit', ld(os.path.join(HERE, 'refit_r99.txt'))), ('r99+softsearch', ld(os.path.join(HERE, 'ss_r99.txt'))), ('cluster+soft', ld(os.path.join(HERE, 'ss_cluster.txt'))), ('fc+soft', ld(os.path.join(HERE, 'ss_fc.txt')))]:
     c2, r = chi2(tmu, tse, N, D)
     edges = np.arange(0.70, 1.48, 0.04); line = []
     for lo in edges:

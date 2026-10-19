@@ -147,6 +147,6 @@ if __name__ == "__main__":
             "exact: c5 far %.4f near %.4f -> far %.4f near %.4f"
             % (score(XF, BF, N5, D5), score(XN, BN, N5, D5), score(XF, BF, N, D), score(XN, BN, N, D))
         )
-        open(os.path.join(HERE, "plateau_real.txt"), "w").write(
+        open(os.path.join(HERE, os.environ.get("OUT", "plateau_real.txt")), "w").write(
             " ".join(v.hex() for v in N) + "\n" + " ".join(v.hex() for v in D) + "\n"
         )
