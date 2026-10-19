@@ -854,9 +854,12 @@ Rule: typed text `<date> <clock> A` or `P` (any case, space before the letter) i
 a glued suffix (`10:00A`, General text) or a doubled one (`10:00 A A`, General text); an out-of-range
 hour (`13:00 A`) stays text with the date's format `m/d/yyyy`. Evidence: probes/date-text-single-letter-ap
 N1-N8, N10, N11 (excel-graph 2026-10-19), probes/date-text-rejected-clock-formats N7.
-A trailing dot after the letter is accepted: typed `1/2/2020 10:00 A.` is 43832.41666... with `m/d/yyyy h:mm`
-(probes/date-text-single-letter-ap N12), and bare typed `10:00 A` is 0.41666... with `h:mm AM/PM` (N9;
-excel-graph 2026-10-19, T-2011).
+A trailing dot after the letter is accepted wherever the letter is: typed `1/2/2020 10:00 A.` is 43832.41666... with
+`m/d/yyyy h:mm` (N12), so are `1/2/2020 10 A.` and `1/2/2020 10:00:30 P.` (N17, N18), and
+`1/2/2020 13:00 A.` stays text with `m/d/yyyy` (N16). A bare typed clock with the letter is a time of day:
+`10:00 A`, `10:00 p`, `10:00 A.`, `10 A` and `10:00 AM` are 0.41666... (0.91666... for p) with `h:mm AM/PM`,
+but `10:00:30 A` is 0.41701... with `h:mm:ss AM/PM` (N9, N13-N15, N19, N20; excel-graph 2026-10-19, T-2011).
+UNVERIFIED: a bare hour with `AM`/`PM` (`10 AM`), bare `10:00:30 AM`.
 Status: VERIFIED (web)
 Implemented in: `typed_clock_shape` and `rejected_clock_text_format` in `crates/rustsheet-engine/src/formatter/parse_formatted.rs`
 Evidence note: docs/research/single-letter-ap-typed-clock-2026-10-19.md

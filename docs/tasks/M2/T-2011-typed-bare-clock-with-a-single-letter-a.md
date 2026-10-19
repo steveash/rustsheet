@@ -24,4 +24,4 @@ Found by T-1994: both seen in the ENTERED log of the excel-graph fill of probes/
 -
 
 ## Outcome
-Cells N9 (`10:00 A`) and N12 (`1/2/2020 10:00 A.`) added to probes/date-text-single-letter-ap and refilled (excel-graph); both are numbers. `parse_typed_number` drops the dot after a trailing single-letter A/P and gives a bare suffixed clock `h:mm AM/PM`. Eval: probes case 10 -> 12 cells, no new F lines.
+Cells N9, N12-N20 (bare and dotted single-letter A/P shapes, plus `=N` value cells) added to probes/date-text-single-letter-ap and refilled (excel-graph); `parse_typed_number` drops the dot after a trailing single-letter A/P (also in `rejected_clock_text_format`) and gives a bare A/P or AM/PM clock `h:mm AM/PM` (`h:mm:ss AM/PM` with seconds). Eval: probes case 10 -> 28 cells, no new F lines.
