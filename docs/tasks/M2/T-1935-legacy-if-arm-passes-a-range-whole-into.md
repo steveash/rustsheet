@@ -3,7 +3,7 @@ id: T-1935
 title: "Legacy IF arm passes a range whole into a range argument (MATCH(2,IF(B1:B6>0,B1:B6),0))"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
