@@ -110,7 +110,8 @@ fn holidays_are_read_whole_and_their_error_is_each_elements() {
             "=INDEX(NETWORKDAYS({45000;45001},45004,45002),2)",
             "1",
         ),
-        // An element's own argument error comes first, then the holidays' error.
+        // An element's own argument error comes first, then the holidays' error
+        // (probes/workday-lift-errors K1:K15).
         ("C4", "=INDEX(WORKDAY({1;\"x\"},1,\"y\"),1)", "#VALUE!"),
         ("C5", "=INDEX(NETWORKDAYS({1;45000},1,NA()),2)", "#N/A"),
         ("C6", "=INDEX(WORKDAY({1;#N/A},1,\"y\"),2)", "#N/A"),
