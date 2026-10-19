@@ -6,7 +6,7 @@
   "crates/rustsheet-engine/src/expressions/parser/stringify.rs": 1062,
   "crates/rustsheet-engine/src/functions/financial/financial_bonds.rs": 1031,
   "crates/rustsheet-engine/src/functions/mod.rs": 2177,
-  "crates/rustsheet-engine/src/model.rs": 3412,
+  "crates/rustsheet-engine/src/model.rs": 3415,
   "crates/rustsheet-engine/src/user_model/common.rs": 2373,
   "crates/rustsheet-engine/src/user_model/ui.rs": 1088,
   "crates/rustsheet-engine/src/user_model/undo_redo.rs": 1103
