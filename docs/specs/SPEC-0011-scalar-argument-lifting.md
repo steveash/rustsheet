@@ -513,8 +513,8 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
    `#ERROR!` before any text is built, and the budget's error stays `#VALUE!`.
 
 No argument is re-evaluated per element. A `Whole` value is the same `CalcResult` for every
-element. A kernel that derives something costly from it (LARGE's sorted data, WORKDAY.INTL's
-weekend mask results, today's `Weekend::lift` memo) computes it on the first element and keeps it
+element. A kernel that derives something costly from it (LARGE's sorted data, WORKDAY's prepared
+holidays, T-1236) computes it once, on the first element or before the driver runs, and keeps it
 in its closure. It declares `LiftCost::Prepared`.
 
 As built (T-1772): LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN take their data
