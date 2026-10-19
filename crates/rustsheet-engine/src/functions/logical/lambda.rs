@@ -567,7 +567,6 @@ impl Model {
             );
         }
 
-        let id = self.get_next_lambda_id();
         CalcResult::Lambda(self.store_lambda(Arc::new((parameters, body))))
     }
 
