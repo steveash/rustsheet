@@ -3,7 +3,7 @@ id: T-2010
 title: "Probe REGEX* POSIX syntax edges and reject a range ending at a class"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1985 (functions/text/regex_posix.rs `invalid_ast`, `posix_shaped`) follows PCR
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/regex-posix-syntax-edges` (14 cells, excel-graph) confirms PCRE2's rules: a hyphen beside a class is valid, `[.a.]`, `[..]`, `[[.ab.]]` and a range ending at a class are `#VALUE!`. Ours already matched all 14 (the `regex` crate rejects `[a-[:alpha:]]`), so no engine change; the semantics entry moved to VERIFIED. Eval: +14 passing probe cells, no regressions.
