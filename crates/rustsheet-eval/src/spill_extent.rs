@@ -43,9 +43,14 @@ impl SpillExtent {
                 .sheets
                 .iter()
                 .flat_map(|s| {
-                    s.cells
-                        .keys()
-                        .filter_map(|a1| Some(cell_key(&s.name, Addr::parse(a1)?)))
+                    // An input moved by a row insert is known at its new address (T-1933).
+                    s.cells.keys().filter_map(|a1| {
+                        let addr = spec
+                            .sheet_ops
+                            .iter()
+                            .fold(Addr::parse(a1)?, |addr, op| op.moved(&s.name, addr));
+                        Some(cell_key(&s.name, addr))
+                    })
                 })
                 .chain(expected.keys().cloned())
                 .collect(),

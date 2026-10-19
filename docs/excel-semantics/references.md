@@ -1555,10 +1555,11 @@ Exceptions: IFERROR gets the `@` (`=N(IFERROR({2;3},0))` is `=N(@IFERROR({2;3},0
 gets none and the legacy cell spills: `=N(SWITCH(1,1,{2;3}))` shows no `@` and gives 2, 3 in two
 cells, as a dynamic formula would.
 Edits (SPEC-0012 rule 6, T-1853): inserting a row above a legacy `=N(IF(1,{2;3}))+A5` adjusts it to `+A6`. The cell stays a plain `<f>`
-and stays `#VALUE!`; C2 `=N(IF(1,A5:A6))+A5` likewise stays legacy with the value 2. This comes from a one-off excel-graph session
-(2026-10-18), which is not kept as an eval case (docs/research/t1853-legacy-cell-edits-2026-10-18.md); T-1933 makes it a probe case. Copy, move and fill are unprobed: Graph v1.0 refuses `copyFrom`, `moveTo` and
+and stays `#VALUE!`; C2 `=N(IF(1,A5:A6))+A5` likewise stays legacy with the value 2, and FORMULATEXT shows `=N(IF(1,{2;3}))+A6`,
+while the dynamic twin spills 3, 4 (probes/sheet-ops/sheet-ops-insert-row-legacy-cell, excel-graph, 2026-10-19, T-1933; first seen
+in a one-off session, docs/research/t1853-legacy-cell-edits-2026-10-18.md). Ours loses the marker on the insert and spills 3, 4 into B3:B4 (T-1852). Copy, move and fill are unprobed: Graph v1.0 refuses `copyFrom`, `moveTo` and
 `autoFill` (400). They stay rule 6's assumption, and their desktop check is T-1075 item 12.
-Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16), probes/legacy-n-t-marker-shapes (excel-graph, 2026-10-18); row insert: docs/research/t1853-legacy-cell-edits-2026-10-18.md (one-off session, T-1933).
+Evidence: probes/legacy-n-t-reference-args (excel-graph, 2026-10-16), probes/legacy-n-t-marker-shapes (excel-graph, 2026-10-18); row insert: probes/sheet-ops/sheet-ops-insert-row-legacy-cell (excel-graph, 2026-10-19, T-1933).
 The neighbouring shapes (probes/legacy-n-t-reference-args-2, excel-graph, 2026-10-18, T-1768; Z1:Z2 = 7, 8,
 Y1:Y2 = "a", "b", W1:W2 = 1, 2): N and T over CHOOSE or INDEX of a reference take no `@` on the call and read
 the reference it returns (CHOOSE: its top-left cell; INDEX with a row and column number: that one cell; `=N(CHOOSE(1,Z1:Z2))` and `=N(INDEX(Z1:Z2,1))` are 7, `=T(CHOOSE(1,Y1:Y2))` and
@@ -1595,7 +1596,7 @@ one get none either, T-1908, and are read as references, not marked; only `CHOOS
 Re-entering a marked cell through a row/column edit, move, fill or paste does not keep the marker yet (T-1852).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921
+Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921, T-1933
 
 ## Legacy N and T marker spelling shadows a defined name of that spelling
 Rule: in Excel a workbook LAMBDA name is called by its name; in RustSheet the names `_RS_LEGACY_N` and
