@@ -9,9 +9,13 @@
   - The old helpers: T-1773, T-1785, T-1774, T-1775, T-1787.
   - The catalog check and the open probes: T-1776, T-1777.
   - Findings of T-1777: T-1800, T-1801, T-1802, T-1803.
+<<<<<<< HEAD
   - Split from T-1271: T-1833 (the array-valued functions and reference elements below), then T-1834,
     T-1835, T-1836, T-1837, T-1838 and T-1839 (the M7 entries) and T-1960 (their open probes).
   - Split from T-1241: T-1810 (the reference-valued lifts of OFFSET, INDIRECT and TRIMRANGE; CHOOSE onto the driver).
+=======
+  - Split from T-1241: T-1810 (the reference-valued lifts of OFFSET, INDIRECT and TRIMRANGE; CHOOSE onto the driver), itself split into T-1955 (spec for the reference-array carrier), T-1956, T-1957 (OFFSET, INDIRECT, TRIMRANGE), T-1958 (XMATCH search_mode) and T-1959 (CHOOSE).
+>>>>>>> origin/main
   - The order is under Rollout.
 
 ## Problem
