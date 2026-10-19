@@ -203,12 +203,14 @@ C	probes/date-system-1904-odd-years.case.json	114
 C	probes/date-system-1904-pre-epoch-text.case.json	15
 C	probes/date-system-1904-readers.case.json	54
 C	probes/date-system-1904-timevalue-chrono.case.json	4
+C	probes/date-system-1904-timevalue-non-glued.case.json	21
 C	probes/date-system-1904-timevalue.case.json	7
 C	probes/date-text-dotted-criteria.case.json	16
 C	probes/date-text-glued-month-2.case.json	106
 C	probes/date-text-glued-month.case.json	178
 C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
+C	probes/date-text-non-glued-timevalue.case.json	44
 C	probes/date-text-yearless-2.case.json	64
 C	probes/date-text-yearless-3.case.json	45
 C	probes/date-text-yearless.case.json	48
@@ -778,6 +780,7 @@ C	probes/subtotal-take-array-selector.case.json	25
 C	probes/subtotal-variance-one-vs-two-pass.case.json	64
 C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
+C	probes/sumif-averageif-two-arg-range-once.case.json	2
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/t-array-lift.case.json	22
 C	probes/t-n-range-top-left.case.json	45
@@ -1645,10 +1648,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/info-logic-argument-modes.case.json	Calc!A19
-F	probes/legacy-array-at-shapes.case.json	S!I11
-F	probes/legacy-array-at-shapes.case.json	S!I20
-F	probes/legacy-array-at-shapes.case.json	S!J11
-F	probes/legacy-array-at-shapes.case.json	S!J20
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A1
 F	probes/legacy-marker-spelling-name-plain.case.json	Sheet1!A2
 F	probes/linest-modes.case.json	Sheet1!K1

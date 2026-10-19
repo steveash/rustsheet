@@ -116,7 +116,8 @@ fn is_one_element_array(node: &Node) -> bool {
 /// excel-graph, T-1633), `=N({2;3})` as `=N(@{2;3})` and `=ABS({-2;3})` as `=ABS(@{-2;3})`, 2
 /// (probes/legacy-array-result E, F, T-1713; probes/t-n-range-top-left M, O, T-0985), while
 /// `=SUM(N({1,2}))` is 3 with none (probes/n-array-lift A3). An array constant in an operator
-/// (`N({2;3}+0)`) is unprobed and left alone. TYPE reads its argument whole and shows none:
+/// gets its own `@` (`=N(@{2;3}+0)`, `=ABS(@{2;3}+0)`, 2 with no spill; probes/legacy-array-at-shapes
+/// I20, J20, T-1911). TYPE reads its argument whole and shows none:
 /// `=TYPE({5})` stays `=TYPE({5})` (probes/legacy-choose-arm-aggregate-and-array-constant-at
 /// L3, excel-graph, T-1638).
 fn shows_scalar_array_at(signature: Option<&Signature>, arrays: bool, node: &Node) -> bool {
@@ -136,6 +137,12 @@ pub(super) fn add_array_at(
     add_index_array_at(kind, index, arg);
     if shows_scalar_array_at(signature, arrays, arg) {
         *arg = Node::automatic_at(arg.clone());
+    } else if arrays && matches!(signature, Some(Signature::Scalar)) {
+        for_each_value_operand(arg, &mut |operand| {
+            if matches!(operand, Node::ArrayKind(_)) {
+                *operand = Node::automatic_at(operand.clone());
+            }
+        });
     }
 }
 
@@ -152,6 +159,14 @@ pub(super) fn remove_array_at(
         if shows_scalar_array_at(signature, arrays, child) {
             *arg = child.as_ref().clone();
         }
+    } else if arrays && matches!(signature, Some(Signature::Scalar)) {
+        for_each_value_operand(arg, &mut |operand| {
+            if let Node::ImplicitIntersection { child, .. } = operand {
+                if matches!(child.as_ref(), Node::ArrayKind(_)) {
+                    *operand = child.as_ref().clone();
+                }
+            }
+        });
     }
 }
 

@@ -21,6 +21,24 @@ impl Node {
         false
     }
 
+    /// Whether the tree reads, at any depth, a variable (an id patched in by LET or LAMBDA) for
+    /// which `is_target` holds, as a value or as a called function. Walked with an explicit stack
+    /// like [`Node::contains_function`].
+    pub(crate) fn reads_variable(&self, is_target: impl Fn(usize) -> bool) -> bool {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if let Node::NamedVariableKind { id: Some(id), .. }
+            | Node::NamedFunctionKind { id: Some(id), .. } = node
+            {
+                if is_target(*id as usize) {
+                    return true;
+                }
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
     /// Pushes the nodes directly under this one, the operands of every operator and the arguments
     /// of every call, LAMBDA bodies included, for the explicit-stack walks over a formula tree.
     pub(crate) fn push_children<'a>(&'a self, pending: &mut Vec<&'a Node>) {
