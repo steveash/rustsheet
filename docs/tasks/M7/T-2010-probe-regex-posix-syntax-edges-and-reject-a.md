@@ -3,7 +3,7 @@ id: T-2010
 title: "Probe REGEX* POSIX syntax edges and reject a range ending at a class"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
