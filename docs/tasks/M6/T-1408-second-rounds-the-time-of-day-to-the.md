@@ -3,7 +3,7 @@ id: T-1408
 title: "SECOND rounds the time of day to the nearest second instead of truncating"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
