@@ -752,15 +752,18 @@ The charge goes to the same visit cap as the rest (`limits::MAX_LIFTED_CELL_VISI
 a lifted call past it is `#ERROR!` (DEVIATION: Excel has no such limit; arrays.md "Array results
 above 1,048,576 cells"). Each call's own bound still runs first (`check_array_size`, T-1786), so
 one element never builds more than 2^20 cells, and the driver drops it once its top-left is taken:
-the most a lifted call holds at once is one element, and it builds at most 2^27 + 2^20 cells in
-all. An element that reads its whole array (TOCOL, UNIQUE, SORTBY) is also charged that array's
+the most a lifted call holds at once is one element. The charge comes after the call, so the
+last element may pass the cap by its own bound: with `weight` 1 a lifted call builds at most
+2^27 + 2^20 cells in all. An element that reads its whole array (TOCOL, UNIQUE, SORTBY) is also charged that array's
 cells, through `LiftCost::Cells` (`lift_call_costed`). MAKEARRAY calls its LAMBDA once per cell,
-so it takes `weight` 128: its lifted calls make at most 2^20 LAMBDA calls in all, the most one
-unlifted MAKEARRAY may make. The other entries take `weight` 1.
+so it takes `weight` 128: its lifted calls make at most 2^20 LAMBDA calls before the cap, plus
+the last element's own (at most 2^20), so about 2^21 in all, twice what one unlifted MAKEARRAY
+may make. The other entries take `weight` 1.
 Test formulas (T-1834, T-1835):
 - `=ROWS(SEQUENCE(SEQUENCE(1024),1024))` builds 1024 × 1024 × 1025 / 2 ≈ 2^29 cells: `#ERROR!`,
   after about 2^27 cells.
-- `=ROWS(MAKEARRAY(SEQUENCE(2048),1024,LAMBDA(r,c,r)))` is `#ERROR!` after at most 2^20 LAMBDA calls.
+- `=ROWS(MAKEARRAY(SEQUENCE(2048),1024,LAMBDA(r,c,r)))` is `#ERROR!` after at most 2^20 LAMBDA calls
+  plus one element's (2^21 in all).
 - `=ROWS(EXPAND(1,SEQUENCE(1024),1024))` is `#ERROR!`, as the first formula is.
 - `=ROWS(SEQUENCE({3;4}))` is 2 and charges 7 cells.
 
@@ -774,8 +777,9 @@ pub(crate) struct ArgKinds {
     // ...
 }
 ```
-`accepts(count)` also requires whole cycles: `count <= params.len()` or
-`(count - params.len()) % repeat.len() == 0`. A one-kind cycle (today's `Some(kind)`) accepts every
+`accepts(count)` also requires whole cycles: `count <= params.len()`, or, when `repeat` is not
+empty, `(count - params.len()) % repeat.len() == 0` (tested in that order, so an empty `repeat`
+accepts no argument past `params` and never divides by zero; T-1839 tests the empty case). A one-kind cycle (today's `Some(kind)`) accepts every
 count as before. SORTBY is `params: [Whole, Whole, Lift]`, `repeat: [Whole, Lift]`, `required: 2`,
 `max: usize::MAX` (`fn_sortby` sets no upper bound). It accepts 2, 3, 5, 7, … and refuses 4 and 6, as `fn_sortby`
 does today. Its sort_order lifts (`SORTBY(A1:A3,B1:B3,{1;-1})` is 2x1, F26:H26); a by_array given
