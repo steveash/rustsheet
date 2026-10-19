@@ -49,5 +49,5 @@ hidden dependency that incremental recalc cannot see.
 - SPEC-0015 specifies a per-pass state, with an Excel-order pass that runs only when a WEEKNUM
   reader ran, so other workbooks keep today's order and cost. Follow-ups: T-2068 (engine, opus, M),
   T-2069 (engine, sonnet, S, moved sheets) and T-2070 (research, sonnet, S, open questions).
-- Eval: probes known failures +41 (1914 -> 1955), all in the new M6 cases; no existing cell changed. With the 5 already listed, T-2068 and T-2069 own 46, owned by T-2068 and T-2069. No
-  existing cell changed.
+- Eval: probes known failures +41 (1913 -> 1954), all in the new M6 cases; no existing cell
+  changed. With the 5 already listed, T-2068 and T-2069 own 46 cells.
