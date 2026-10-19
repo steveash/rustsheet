@@ -122,10 +122,6 @@ impl Model {
     ///
     /// Returns the determinant of a square matrix using LU decomposition
     /// with partial pivoting.
-    // Excel eliminates the same way and keeps the rounding residual of a tiny last pivot: only an
-    // exactly-zero pivot column gives 0. MDETERM({1,2,3;4,5,6;7,8,9}) = 6.661338147750939E-16 and
-    // MDETERM({1,2,3;4,5,6;7,8,10}) = -2.9999999999999982 (probes/stats-evidence-floor-t1623
-    // S!Q107, S!Q120, excel-graph; docs/excel-semantics/arrays.md, T-1751).
     pub(crate) fn fn_mdeterm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -139,6 +135,10 @@ impl Model {
             Err(e) => return e,
         };
 
+        // Excel eliminates the same way and keeps the rounding residual of a tiny last pivot: only an
+        // exactly-zero pivot column gives 0. MDETERM({1,2,3;4,5,6;7,8,9}) = 6.661338147750939E-16 and
+        // MDETERM({1,2,3;4,5,6;7,8,10}) = -2.9999999999999982 (probes/stats-evidence-floor-t1623
+        // S!Q107, S!Q120, excel-graph; docs/excel-semantics/arrays.md, T-1751).
         match lu_decompose(&mut mat, n, 0.0) {
             Err(()) => CalcResult::Number(0.0),
             Ok((sign, _)) => {
@@ -146,7 +146,8 @@ impl Model {
                 for i in 0..n {
                     det *= mat[i * n + i];
                 }
-                CalcResult::Number(det)
+                // A pivot product past the double range is not a number Excel can hold.
+                CalcResult::finite_number_or_num(det, cell)
             }
         }
     }
