@@ -211,6 +211,7 @@ C	probes/date-text-glued-month.case.json	178
 C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/date-text-non-glued-timevalue.case.json	44
+C	probes/date-text-typed-clock-shapes.case.json	85
 C	probes/date-text-yearless-2.case.json	64
 C	probes/date-text-yearless-3.case.json	45
 C	probes/date-text-yearless.case.json	48

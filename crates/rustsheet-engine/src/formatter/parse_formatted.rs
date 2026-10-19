@@ -24,38 +24,84 @@ pub(crate) fn parse_typed_number(
     date_system: DateSystem,
 ) -> Result<(f64, Option<String>), String> {
     parse_formatted_number(original, currencies, locale, current_year, date_system).or_else(|err| {
-        if !ends_with_typed_clock(original) {
+        let Some(shape) = typed_clock_shape(original) else {
             return Err(err);
-        }
+        };
         parse_date_clock_serial_in(original, locale, current_year, date_system)
-            .map(|serial| (serial, Some(TYPED_DATE_CLOCK_FORMAT.to_string())))
+            .map(|serial| (serial, shape.format()))
             .ok_or(err)
     })
 }
 
-/// Whether the text ends in a whole-second clock below hour 24, `H:MM`, `H:MM:SS` or either
-/// followed by `AM`/`PM`: the typed clock shapes probed (probes/date-text-non-glued-timevalue
-/// rows 11-17, excel-graph: `10:00`, `10:00:30` and `10:00 AM` all become numbers with
-/// `m/d/yyyy h:mm`). Hours past 23 and fractions are UNVERIFIED and stay text.
-fn ends_with_typed_clock(text: &str) -> bool {
-    let mut words = text.rsplit(' ');
-    let mut clock = words.next().unwrap_or("");
-    if clock.eq_ignore_ascii_case("am") || clock.eq_ignore_ascii_case("pm") {
-        clock = words.next().unwrap_or("");
+/// Number format a typed clock shape gets (`None` is General).
+enum TypedClock {
+    /// `H:MM[:SS]` with an in-range value, with or without `AM`/`PM`, or hour-only `H AM`.
+    Time,
+    /// A fractional second (`H:MM:SS.f`, `M:SS.f`).
+    Fraction,
+    /// A component out of its usual range (hour from 24, minute or second from 60).
+    OutOfRange,
+}
+
+impl TypedClock {
+    fn format(&self) -> Option<String> {
+        match self {
+            Self::Time => Some(TYPED_DATE_CLOCK_FORMAT.to_string()),
+            Self::Fraction => Some("mm:ss.0".to_string()),
+            Self::OutOfRange => None,
+        }
     }
-    let mut parts = clock.split(':');
-    let (Some(hour), Some(minute), second, None) =
-        (parts.next(), parts.next(), parts.next(), parts.next())
-    else {
-        return false;
-    };
+}
+
+/// Classifies the clock at the end of typed date+clock text: `H:MM`, `H:MM:SS`, `H:MM:SS.f` or
+/// `M:SS.f`, optionally followed by spaces and `AM`/`PM` in any case, or an hour-only `H AM`.
+/// Probed (probes/date-text-non-glued-timevalue rows 11-17, date-text-typed-clock-shapes,
+/// excel-graph; formats in docs/research/typed-clock-shapes-2026-10-19.md): all of these become
+/// numbers, with `m/d/yyyy h:mm` except a fraction (`mm:ss.0`) and an out-of-range component
+/// (General); a glued `10:00AM` and `13:00 PM` stay text.
+fn typed_clock_shape(text: &str) -> Option<TypedClock> {
+    let mut text = text.trim_end_matches(' ');
+    let mut suffixed = false;
+    if let Some((rest, word)) = text.rsplit_once(' ') {
+        if word.eq_ignore_ascii_case("am") || word.eq_ignore_ascii_case("pm") {
+            suffixed = true;
+            text = rest.trim_end_matches(' ');
+        }
+    }
+    let clock = text.rsplit(' ').next().unwrap_or("");
     let digits =
         |s: &str, max: usize| (1..=max).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_digit());
-    digits(hour, 2)
-        && minute.len() == 2
-        && digits(minute, 2)
-        && second.is_none_or(|s| s.len() == 2 && digits(s, 2))
-        && hour.parse::<u32>().is_ok_and(|h| h < 24)
+    if suffixed && digits(clock, 2) && clock != text {
+        return Some(TypedClock::Time);
+    }
+    let (clock, fraction) = match clock.split_once('.') {
+        Some((head, f)) if digits(f, 9) => (head, true),
+        Some(_) => return None,
+        None => (clock, false),
+    };
+    let mut parts = clock.split(':');
+    let (Some(first), Some(second), third, None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
+        return None;
+    };
+    let two = |s: &str| s.len() == 2 && digits(s, 2);
+    if !digits(first, 2) || !two(second) || third.is_some_and(|s| !two(s)) {
+        return None;
+    }
+    let value = |s: &str| s.parse::<u32>().unwrap_or(u32::MAX);
+    let (hour, minute, sec) = match third {
+        Some(s) => (value(first), value(second), value(s)),
+        None if fraction => (0, value(first), value(second)),
+        None => (value(first), value(second), 0),
+    };
+    if fraction {
+        Some(TypedClock::Fraction)
+    } else if hour >= 24 || minute >= 60 || sec >= 60 {
+        Some(TypedClock::OutOfRange)
+    } else {
+        Some(TypedClock::Time)
+    }
 }
 
 /// Parses a formatted number, returning the numeric value together with the format
