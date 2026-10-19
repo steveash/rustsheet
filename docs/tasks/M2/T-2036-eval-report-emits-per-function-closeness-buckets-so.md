@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: [T-2029]
+depends_on: [T-2041]
 ---
 
 ## Goal
@@ -16,7 +16,7 @@ within 2-4 ulp, within 1e-9, off), so the parity page generator reads them inste
 re-deriving them.
 
 ## Context
-tools/src/rustsheet_tools/parity_report.py (T-2029) re-attributes the failing cells in
+tools/src/rustsheet_tools/parity_report.py (T-2041) re-attributes the failing cells in
 `cases[].cells` to functions with a copy of the `functions_in` regex in
 crates/rustsheet-eval/src/report.rs, and splits `numeric_ulp` cells at 1 ulp with the ordered-bits
 distance (`ulp_distance` in crates/rustsheet-eval/src/value.rs, mirrored in

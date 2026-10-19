@@ -7,7 +7,7 @@ status: blocked
 priority: P3
 size: S
 tier: sonnet
-depends_on: [T-2029]
+depends_on: [T-2041]
 ---
 
 ## Goal
@@ -15,7 +15,7 @@ The daily steward regenerates docs/parity.md and docs/parity/ with `make parity-
 `make eval`, so the linked parity page stays recent without a separate task each time.
 
 ## Context
-T-2029 added `make parity-report` (decision 0079). The steward routine prompt
+T-2041 added `make parity-report` (decision 0079). The steward routine prompt
 (docs/process/routines.md, the steward block) runs `make eval` but not the generator. Routine
 prompts are owner-managed: agents never create, modify or delete routines, so the owner must
 change the routine and its copy in docs/process/routines.md. Decision 0079 says the pages are

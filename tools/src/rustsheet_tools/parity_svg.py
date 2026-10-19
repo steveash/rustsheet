@@ -1,4 +1,4 @@
-"""Hand-written SVG bar charts for the generated parity page (T-2029).
+"""Hand-written SVG bar charts for the generated parity page (T-2041).
 
 GitHub shows a committed SVG through an `<img>` tag, so the chart carries its own `<style>`:
 light colors by default and an `@media (prefers-color-scheme: dark)` block for dark mode. Every

@@ -1,4 +1,4 @@
-"""Generate the per-function Excel parity page from an eval report (T-2029).
+"""Generate the per-function Excel parity page from an eval report (T-2041).
 
 Reads `eval/runs/latest/report.json` (written by `make eval`) and `eval/catalog/scope.json`, and
 writes `parity.md`, `parity/functions.md` and three SVG charts under `--out-dir` (the repository's

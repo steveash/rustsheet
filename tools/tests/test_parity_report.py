@@ -1,4 +1,4 @@
-"""The parity page generator's bucket logic and output (T-2029), on a small synthetic report."""
+"""The parity page generator's bucket logic and output (T-2041), on a small synthetic report."""
 
 from __future__ import annotations
 
