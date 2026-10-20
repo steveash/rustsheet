@@ -13,7 +13,7 @@
 //!
 //! The ends are Excel's: GAMMALN(1.5) is K3's -0.12078223763524523 (the (1.5, 2] kernel gives
 //! ...452), GAMMALN(3) is K2's 0.6931471805599454 (the reduction would give LN(2) = ...453), and
-//! GAMMALN(4) is the reduction's LN(6) (ironcalc-calc GAMMALN_GAMMALNPRECISE.xlsx A5, A9, desktop
+//! GAMMALN(4) is the reduction's LN(6) (ironcalc-calc `GAMMALN_GAMMALNPRECISE.xlsx` A5, A9, desktop
 //! cache; `kmyst-gam-c304`, `r203`, `r205`, excel-graph);
 //! - x >= 8: Stirling's series with exactly 10 Bernoulli terms, every op stored (bit-exact,
 //!   `gammaln_big_check.c`).
@@ -32,7 +32,7 @@ const RECURSION_BELOW: f64 = f64::from_bits(0x3FE6_6666_6666_6666); // 0x1.66666
 /// ln √(2π) as Excel's Stirling sum adds it.
 const LN_SQRT_2PI: f64 = 0.918_938_533_204_672_7;
 
-/// The Stirling series' Bernoulli terms B_2k / (2k (2k - 1)), k = 1..10, each a correctly rounded
+/// The Stirling series' Bernoulli terms `B_2k / (2k (2k - 1))`, k = 1..10, each a correctly rounded
 /// double quotient (as `gammaln_big_check.c`'s `1.0/12, -1.0/360, ...`). Excel uses exactly ten:
 /// eleven or nine miss points from x = 8.
 const STIRLING: [f64; 10] = [
@@ -54,7 +54,7 @@ pub(super) const K2_CAND9_BELOW: f64 = 0.01;
 
 /// Excel's GAMMALN(x) for x > 0; NaN for anything else, and infinity past the double range.
 pub(crate) fn excel_gammaln(x: f64) -> f64 {
-    if !(x > 0.0) || x.is_infinite() {
+    if !(x > 0.0 && x.is_finite()) {
         return f64::NAN;
     }
     if x < RECURSION_BELOW {
@@ -133,7 +133,7 @@ pub(super) fn kernel_1_5_to_2(x: f64) -> f64 {
 }
 
 /// Stirling's series on x >= 8 (module docs): corr = LN(x); a = x - 0.5; b = a corr; d = b - x;
-/// e = d + ln √(2π); z = 1/x; z2 = z z; r = B_10; r = r z2 + B_k for k = 9..1; GAMMALN = e + r z.
+/// e = d + ln √(2π); z = 1/x; z2 = z z; r = `B_10`; r = r z2 + `B_k` for k = 9..1; GAMMALN = e + r z.
 pub(super) fn stirling(x: f64) -> f64 {
     let corr = excel_ln(x);
     let a = extended_sum(x, -0.5);
