@@ -4,7 +4,7 @@ title: "Probe relative defined names past the grid edge and through INDIRECT"
 milestone: M8
 lane: research
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: sonnet
 depends_on: []
@@ -19,7 +19,8 @@ using cell (`NameReference::at`, crates/rustsheet-engine/src/defined_names.rs). 
 unprobed (references.md "Relative references in defined names"): `rel_down` = `Jan!A2` used in
 row 1048576 (and `Jan!B1` used in column XFD), where Excel is believed to wrap to row 1 / column A
 while the engine reads cells past the grid as empty; and `INDIRECT("rel_same")`, which the engine
-reads from the INDIRECT's cell. Write a probe case (excel-probe skill) with both, plus a
+reads from the INDIRECT's cell. P1 because the common "cell above" / "cell to the left" names are stored as `Sheet!A1048576` /
+`Sheet!XFD1`, so every use of them lands past the edge. Write a probe case (excel-probe skill) with both, plus a
 formula-bodied name over a relative range (`=SUM(Jan!A1:A2)`) used on the last row, and a
 mixed-anchor name used above its anchor (`inv` = `Jan!$B$5:$B1` from row 1: the engine reads
 B1:B5, ROWS 5, as an inline reference is).
