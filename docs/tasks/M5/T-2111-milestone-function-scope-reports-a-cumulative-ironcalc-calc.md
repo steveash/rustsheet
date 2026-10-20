@@ -3,7 +3,7 @@ id: T-2111
 title: "Milestone function scope reports a cumulative ironcalc-calc row per function milestone (M5 exit criterion)"
 milestone: M5
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -54,3 +54,10 @@ these categories").
 - Deciding whether M5's 100% exempts any cell. That is T-2116, the decision record.
 - Following precedents transitively.
 - Suites other than ironcalc-calc.
+
+## Outcome
+`function_scope` now reports one cumulative row per report row of the probe milestones (`REPORT_ROWS`, shared with `probe_milestones`: M2, M5 to M11, plus any other catalog milestone), in report.md ("Newly failing at Mk" lists each failing cell once) and report.json (`function_scope.rows`). M8, M10 and M11 have no catalog functions of their own, so their rows equal the one before. Docs: eval-harness.md "Milestone function scope". Unit tests cover the M5-only, M6-call and function-free formulas, array anchors and defined names.
+
+`make eval` on this tree: M2 row unchanged (4245 scored, 4244 bit-exact, 1 failing, `IF_ARRAY.xlsx!Sheet1!C11`, decision 0074). M5 row: 60129 scored, 60075 bit-exact, 0 deviations, 54 failing (53 new beyond M2). M6: 63179 / 63125 / 54. M7: 64075 / 64020 / 55 (adds `POWER.xlsx!inside_a_lambda!C3`). M9: 72209 / 71162 / 1047.
+
+M5's 53 new failures by family: TRIGONOMETRIC.xlsx COTH/CSCH/SECH, ACOT/ACOTH, ASINH/ACOSH/ATANH and SINH/COSH/TANH cells: T-0917; TRIGONOMETRIC.xlsx COT/CSC/SEC B47 and C48: T-0915; `EXP_SIGN.xlsx!EXP_SIGN!B44`: T-1944; `T_VALUE_VALUETOTEXT.xlsx!Sheet1!I4`: T-0929; `IF_ARRAY.xlsx` C4 and E4 and `ATAN2_POWER.xlsx` D14 and D26: no open task (T-2116 decides whether M5 exempts any cell).

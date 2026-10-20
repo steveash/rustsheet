@@ -717,12 +717,44 @@ walker's `GridReading::TopLeft` (`Model::walk_top_left_cells`, util/aggregate_ar
 the value view (`GridReading::Values`), SUMPRODUCT through `Model::sumproduct_array` (sumproduct.rs); the aggregates already see a grid through IF and
 CHOOSE (`SUM(IF(TRUE,r))` 101, b1c E69, E73), which their reference reading picks. INDIRECT
 (`Model::indirect_reference`) and TRIMRANGE (`Model::trimrange_reference`) are producers on the same carrier (T-1957;
-shared helpers in lookup_and_reference/ref_lift.rs); a one-cell TRIMRANGE written reference source still trims to a
-reference. UNVERIFIED (T-2089): an array source gives `#VALUE!` per element, a one-cell source that is not a written
-reference (defined name, `CHOOSE(1,A1)`) does too, and an error source with a lifted trim is one error. Not yet: the
+shared helpers in lookup_and_reference/ref_lift.rs); TRIMRANGE's array, computed-reference and error sources:
+"TRIMRANGE lifted over an array, a computed reference or an error" below (T-2089). Not yet: the
 per-element callers (T-2064). The pass-through of IF, CHOOSE, LET and a LAMBDA parameter, and OFFSET over a grid:
 "Arrays of references through LET, IF, CHOOSE and OFFSET" below (T-2078).
-Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065, T-2078
+Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065, T-2078, T-2089
+
+## TRIMRANGE lifted over an array, a computed reference or an error
+Rule: what a TRIMRANGE lifted over trim_rows or trim_cols holds per element depends on its source (A1 = 5, A2 = 7,
+the rest blank):
+- A reference, written or not, gives references, as for a written range: a defined name (`srcOne` = `S!$A$1`),
+  `CHOOSE(1,A1)`, `INDIRECT("A1")`, `OFFSET(A1,0,0)`, `IF(TRUE,A1)`, `A1:A1` and `A1` all give
+  `INDEX(TRIMRANGE(src,{0;1}),2,1)` = 5, `ISREF` of the pick is TRUE (probed for the name, CHOOSE and INDIRECT), and
+  `=TRIMRANGE(CHOOSE(1,A1),{0;1})` spills `#VALUE!`, `#VALUE!`.
+  SUM reads each element's top-left cell: `SUM(TRIMRANGE(src,{0;1}))` is 10 for those one-cell sources and for the
+  multi-cell `A1:B5`, `CHOOSE(1,A1:B5)`, a name for `S!$A$1:$B$5` and `INDIRECT("A1:B5")`.
+- An array is trimmed to an array, and each element is that array's top-left *value*, not `#VALUE!`:
+  `=TRIMRANGE({1,2},{0;1})` spills 1, 1; `INDEX(…,1,1)` and `INDEX(…,2,1)` are 1 (a 1x1, `ROWS*100+COLUMNS` of the pick
+  is 101), `ISREF` of the pick FALSE, `SUM(…)` 2, `COUNTA(…)` 2, `ROWS` 2 and `COLUMNS` 1;
+  `INDEX(TRIMRANGE({1;2},0,{0,1}),1,2)` is 1 and its SUM 2.
+- An error source is that error in every element, in the trim argument's shape: `=TRIMRANGE(NA(),{0;1})` spills
+  `#N/A`, `#N/A`, `ROWS(…)` is 2, `COUNTA(…)` 2, `ERROR.TYPE(INDEX(…,2,1))` 7, and `ERROR.TYPE(…)` itself spills (here
+  `#SPILL!`, the cell below being taken); `TRIMRANGE(1/0,0,{0,1})` is a 1x2 of `#DIV/0!`; a written reference to an
+  `#N/A` cell (`TRIMRANGE(A9,{0;1})`) is a 2x1 too, `ERROR.TYPE` of its pick 7. Unlifted, `TRIMRANGE(NA())` stays one
+  `#N/A`.
+Evidence: probes/trimrange-lift-sources (44 cells, excel-graph, 2026-10-20, T-2089).
+Status: VERIFIED (excel-graph)
+Implemented in: `Model::lifted_trimrange` (lookup_and_reference/trimrange.rs): the source read by
+`evaluate_picked_reference_arg`, a reference lifted by `Model::lift_references`, anything else by `Model::lift_values`
+with its top-left value per element; SUM and the walker's other aggregates take TRIMRANGE's grid from
+`picked_reference_arg_reading` (functions/util.rs). Probed in T-2120 (probes/trimrange-lift-edge-sources, excel-graph, 2026-10-20): an error source with an invalid
+trim element is the source's error in every element (`TRIMRANGE(NA(),{0;5})` and `TRIMRANGE(1/0,{0;5})` are 2 elements,
+`ERROR.TYPE` 7 and 2); a multi-area source `(A1,B2)` is `#VALUE!` in every element (`ROWS` 2, `ERROR.TYPE` 3); an
+all-blank source (C20:C21) keeps its full extent while trim_rows is 0, whatever trim_cols is: `TRIMRANGE(C20:C21,0)`
+and `(…,0,3)` are the 2x1 range, so `=TRIMRANGE(C20:C21,{0;1})` spills `#VALUE!` (the untrimmed multi-cell element) then
+`#REF!`; a nonzero trim_rows gives `#REF!` (`(…,3,0)`, `(…,1,0)`); the unlifted call behaves the same. Unprobed:
+an all-blank multi-column or single-row source with trim_rows 0 and trim_cols 1-3 (ours keeps the full extent,
+generalized from the single-column probe; T-2127).
+Tasks: T-2089, T-2120
 
 ## Arrays of references through LET, IF, CHOOSE and OFFSET
 Rule: a LET variable or a LAMBDA parameter bound to a lifted OFFSET (or INDIRECT, TRIMRANGE) holds the array of

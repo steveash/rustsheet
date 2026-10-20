@@ -234,6 +234,11 @@ macro_rules! lifting_table_functions {
             | Function::Amorlinc
             | Function::Amordegrc
             // --- End financial ATP (T-1841) ---
+            // --- Financial ATP (T-1843) ---
+            | Function::Xnpv
+            | Function::Xirr
+            | Function::Fvschedule
+            // --- End financial ATP (T-1843) ---
             // --- Statistical (T-1290) ---
             | Function::BetaDist
             | Function::BetaDistCompat

@@ -1,10 +1,10 @@
 //! SPEC-0011 "Security rule for kernel work" (T-1893): a kernel whose work could depend on its
-//! argument values is `KernelWork::Weighted` (or `ByArg`) in the lifting table, or `Constant`
+//! argument values is `KernelWork::Weighted` (or `ByValue`) in the lifting table, or `Constant`
 //! with its fixed cap named below, so no family task can enter one as `Constant` silently. A
 //! family task that enters a value-dependent function adds it here. The check does not see a
 //! `Weighted` kernel's own per-call cap; its table entry's doc comment cites it.
 
-use super::super::kinds::KernelWork;
+use super::super::kinds::{KernelWork, ValueWork};
 use crate::functions::Function;
 
 /// Where the incomplete beta's cap is: statrs' `checked_beta_reg` runs at most 140
@@ -35,7 +35,7 @@ const WORKDAY_SEARCH: &str = "at most about 44 closed-form counts of the prepare
 const NETWORKDAYS_COUNT: &str = "one closed-form count of the prepared holidays";
 
 /// The value-dependent kernels: each with the fixed cap that lets its entry be `Constant`, or
-/// `None` when it must be `Weighted` or `ByArg` (a cap that grows with the values, or one not yet
+/// `None` when it must be `Weighted` or `ByValue` (a cap that grows with the values, or one not yet
 /// read).
 /// A function with no table entry yet is checked once it is entered.
 const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
@@ -100,6 +100,14 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     (
         Function::Mirr,
         Some("one pass over the cash flows, charged per element as their count (LiftCost::Cells)"),
+    ),
+    (
+        Function::Xnpv,
+        Some("one pass over the cash flows, charged per element as their count (LiftCost::Cells)"),
+    ),
+    (
+        Function::Fvschedule,
+        Some("one pass over the schedule, charged per element as its count (LiftCost::Cells)"),
     ),
     (Function::Workday, Some(WORKDAY_SEARCH)),
     (Function::WorkdayIntl, Some(WORKDAY_SEARCH)),
@@ -169,7 +177,7 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
 ];
 
 /// The entries of `list` that break the rule: `Constant` with no cap named, or a `Weighted`
-/// weight of 1 or a `ByArg` weight of 0, which charge no more than `Constant`.
+/// weight of 1 or a `ByValue` estimate of at most 1, which charge no more than `Constant`.
 fn violations(list: &[(Function, Option<&str>)]) -> Vec<String> {
     list.iter()
         .filter_map(|(function, cap)| {
@@ -181,8 +189,8 @@ fn violations(list: &[(Function, Option<&str>)]) -> Vec<String> {
                 (KernelWork::Weighted(weight), _) if weight <= 1 => Some(format!(
                     "{function:?} is Weighted({weight}), no more than Constant"
                 )),
-                (KernelWork::ByArg { weight: 0, .. }, _) => Some(format!(
-                    "{function:?} is ByArg with weight 0, no more than Constant"
+                (KernelWork::ByValue(work), _) if work.most() <= 1 => Some(format!(
+                    "{function:?} is ByValue charging at most 1, no more than Constant"
                 )),
                 _ => None,
             }
@@ -205,7 +213,7 @@ fn a_constant_kernel_without_a_cap_is_caught() {
     );
 }
 
-/// BESSEL's `ByArg` charge (T-1819): an element at the order cap costs `2^16`, so exactly 2,048
+/// BESSEL's `ByValue` charge (T-1819): an element at the order cap costs `2^16`, so exactly 2,048
 /// of them fit under `MAX_LIFTED_CELL_VISITS` (as the flat weight allowed before) and 2,049 do
 /// not; an order-0 element costs 1, a text order is charged as at the cap and a past-the-cap
 /// order, which the kernel refuses before looping, 1.
@@ -217,7 +225,7 @@ fn bessel_elements_are_charged_by_order() {
     use crate::limits::MAX_LIFTED_CELL_VISITS;
 
     let work = Function::Besselj.arg_kinds().map(|kinds| kinds.work);
-    let Some(work @ KernelWork::ByArg { arg: 1, .. }) = work else {
+    let Some(work @ KernelWork::ByValue(ValueWork::Loop { arg: 1, .. })) = work else {
         panic!("BESSELJ is not charged by its order: {work:?}");
     };
     let column = |orders: &[ArrayNode]| {
@@ -247,7 +255,7 @@ fn bessel_elements_are_charged_by_order() {
     assert_eq!(kernel_units(work, &scalar, 10, 1, 10), 10 << 16);
 }
 
-/// DB's and VDB's `ByArg` charge (T-1820): an element at the period cap costs `2^17`, so exactly
+/// DB's and VDB's `ByValue` charge (T-1820): an element at the period cap costs `2^17`, so exactly
 /// 1,024 of them fit under `MAX_LIFTED_CELL_VISITS` and 1,025 do not.
 #[test]
 fn depreciation_elements_are_charged_by_period() {
@@ -258,7 +266,7 @@ fn depreciation_elements_are_charged_by_period() {
 
     for (function, arg) in [(Function::Db, 3), (Function::Vdb, 4)] {
         let work = function.arg_kinds().map(|kinds| kinds.work);
-        let Some(work @ KernelWork::ByArg { arg: charged, .. }) = work else {
+        let Some(work @ KernelWork::ByValue(ValueWork::Loop { arg: charged, .. })) = work else {
             panic!("{function:?} is not charged by its period: {work:?}");
         };
         assert_eq!(charged, arg, "{function:?}");
@@ -275,4 +283,159 @@ fn depreciation_elements_are_charged_by_period() {
         assert_eq!(at_cap(1024), MAX_LIFTED_CELL_VISITS, "{function:?}");
         assert!(at_cap(1025) > MAX_LIFTED_CELL_VISITS, "{function:?}");
     }
+}
+
+/// The coupon functions' `ByValue` charge (T-1846): an element is charged its walks in proportion
+/// to the periods between its earliest and latest date, so exactly 1,024 COUP* elements across
+/// the whole calendar quarterly fit under `MAX_LIFTED_CELL_VISITS` (as the flat weight allowed
+/// before) and 1,025 do not, while a short schedule costs a few units. A text date is charged as
+/// the longest schedule, and an error or an invalid frequency, which the kernel refuses before it
+/// walks, 1.
+#[test]
+fn coupon_elements_are_charged_by_schedule_length() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use super::super::kinds::COUPON_SPAN_DAYS;
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    let work = |function: Function| {
+        let work = function.arg_kinds().map(|kinds| kinds.work);
+        let Some(work @ KernelWork::ByValue(ValueWork::CouponWalks { .. })) = work else {
+            panic!("{function:?} is not charged by its schedule: {work:?}");
+        };
+        work
+    };
+    let number = |n: f64| LiftedArg::Scalar(CalcResult::Number(n));
+    // COUPNUM over `count` settlements in a column, the maturity and frequency scalars.
+    let coupnum = |settlement: ArrayNode, maturity: f64, frequency: LiftedArg, count: usize| {
+        let args = [
+            LiftedArg::Grid(vec![vec![settlement]; count]),
+            number(maturity),
+            frequency,
+        ];
+        kernel_units(work(Function::Coupnum), &args, count, 1, count as u64)
+    };
+    let longest = COUPON_SPAN_DAYS as f64;
+    let quarterly = || number(4.0);
+    assert_eq!(
+        coupnum(ArrayNode::Number(0.0), longest, quarterly(), 1024),
+        MAX_LIFTED_CELL_VISITS
+    );
+    assert!(coupnum(ArrayNode::Number(0.0), longest, quarterly(), 1025) > MAX_LIFTED_CELL_VISITS);
+    // DATE(9990,6,30) from serial 1, the bench's case: 2 walks of 65,460 units.
+    assert_eq!(
+        coupnum(ArrayNode::Number(1.0), 2_954_994.0, quarterly(), 1),
+        2 * 65_460
+    );
+    // 2007-01-01 to 2020-01-01 semiannually: 2 walks of 55 units (26 periods).
+    assert_eq!(
+        coupnum(ArrayNode::Number(39_083.0), 43_831.0, number(2.0), 1),
+        2 * 55
+    );
+    // A settlement a day before the maturity: a walk's one period, 3 units.
+    assert_eq!(
+        coupnum(ArrayNode::Number(43_830.0), 43_831.0, number(1.0), 1),
+        2 * 3
+    );
+    // A settlement after the maturity is #NUM! before any walk, but the estimate does not read
+    // the argument order: it is charged its span, an over-estimate.
+    assert_eq!(
+        coupnum(ArrayNode::Number(50_000.0), 43_831.0, number(1.0), 1),
+        2 * 37
+    );
+    let text = || ArrayNode::String("2020-01-01".into());
+    assert_eq!(coupnum(text(), 43_831.0, number(1.0), 1), 2 << 16);
+    assert_eq!(
+        coupnum(
+            ArrayNode::Number(0.0),
+            longest,
+            LiftedArg::Scalar(CalcResult::String("4".into())),
+            1
+        ),
+        2 << 16
+    );
+    let error = ArrayNode::Error(crate::expressions::token::Error::NA);
+    assert_eq!(coupnum(error, longest, quarterly(), 1), 1);
+    assert_eq!(coupnum(ArrayNode::Number(0.0), longest, number(3.0), 1), 1);
+    assert_eq!(
+        coupnum(ArrayNode::Number(0.0), longest, number(4.9), 1),
+        2 << 16
+    );
+    assert_eq!(
+        coupnum(
+            ArrayNode::Number(0.0),
+            longest,
+            LiftedArg::Scalar(CalcResult::EmptyArg),
+            1
+        ),
+        1
+    );
+    // A blank settlement reads as serial 0.
+    assert_eq!(coupnum(ArrayNode::Empty, longest, quarterly(), 1), 2 << 16);
+
+    // PRICE walks four times; ACCRINT's span runs over its three dates.
+    let price = [
+        LiftedArg::Grid(vec![vec![ArrayNode::Number(39_001.0)]; 513]),
+        number(43_831.0),
+        number(0.05),
+        number(0.04),
+        number(100.0),
+        number(2.0),
+    ];
+    let units = kernel_units(work(Function::Price), &price, 513, 1, 513);
+    assert_eq!(units, 513 * 4 * 56);
+    let accrint = [
+        number(39_083.0),
+        LiftedArg::Grid(vec![vec![ArrayNode::Number(43_831.0)]]),
+        number(39_448.0),
+        number(0.1),
+        number(1000.0),
+        number(2.0),
+    ];
+    assert_eq!(
+        kernel_units(work(Function::Accrint), &accrint, 1, 1, 1),
+        2 * 55
+    );
+}
+
+/// YIELD's and the ODD* functions' `ByValue` charge (T-1869): the solver's walk and price sums are
+/// one pass charged `2^24` at the longest schedule, so 8 YIELD elements there fit and 9 do not,
+/// while a schedule of one period still costs its fixed part (524 units); a span from a negative
+/// date is widened by the 1904 shift, which a negative date does not take.
+#[test]
+fn yield_and_odd_elements_are_charged_by_schedule_length() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use super::super::kinds::COUPON_SPAN_DAYS;
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    let number = |n: f64| LiftedArg::Scalar(CalcResult::Number(n));
+    let yield_units = |settlement: f64, maturity: f64, frequency: f64, count: usize| {
+        let args = [
+            LiftedArg::Grid(vec![vec![ArrayNode::Number(settlement)]; count]),
+            number(maturity),
+            number(0.05),
+            number(95.0),
+            number(100.0),
+            number(frequency),
+        ];
+        let work = Function::Yield.arg_kinds().map(|kinds| kinds.work);
+        let Some(work @ KernelWork::ByValue(ValueWork::CouponWalks { .. })) = work else {
+            panic!("YIELD is not charged by its schedule: {work:?}");
+        };
+        kernel_units(work, &args, count, 1, count as u64)
+    };
+    let longest = COUPON_SPAN_DAYS as f64;
+    assert_eq!(yield_units(0.0, longest, 4.0, 8), MAX_LIFTED_CELL_VISITS);
+    assert!(yield_units(0.0, longest, 4.0, 9) > MAX_LIFTED_CELL_VISITS);
+    assert_eq!(yield_units(43_830.0, 43_831.0, 4.0, 1), 524);
+    // The Goal's call: 9 elements of about 13 years semiannually.
+    assert_eq!(yield_units(39_001.0, 43_831.0, 2.0, 9), 9 * 14_213);
+    // -1 to 10 is 11 days as written, but up to 2,935 in a 1904 workbook.
+    assert_eq!(
+        yield_units(-1.0, 10.0, 4.0, 1),
+        yield_units(0.0, 2_935.0, 4.0, 1)
+    );
 }

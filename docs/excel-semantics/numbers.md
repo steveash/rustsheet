@@ -269,6 +269,10 @@ lands on the midpoint, and the second rounds it to the even neighbor.
 The reciprocal inside `^` and POWER is the same division: `x^-1`, `POWER(x,-1)`, `x^-3` (1 over
 the square-and-multiply power), `x^-0.5` (1 over `sqrt`) and `x^-0.3` (1 over `exp(0.3·ln x)`) all
 round twice, so `8^(-1/3)` = 0.5 and `(-8)^(-1/3)` = -0.5 although `8^(1/3)` = 1.9999999999999998.
+COT, CSC and SEC are the same division of 1 by the rounded TAN, SIN or COS: `COT(PI()/4)` is 1 like `1/TAN(PI()/4)`
+(TAN is 0.9999999999999999, whose correctly rounded reciprocal is 1.0000000000000002), `CSC(PI()/6)` and `CSC(5*PI()/6)`
+are 2 (SIN 0.49999999999999994), and `SEC(PI()/3)` is 1.9999999999999996 (probes/trig-reciprocal-special-angles, 14
+cells, excel-graph, 2026-10-20, and Excel desktop's cached ironcalc-calc TRIGONOMETRIC.xlsx COT_CSC_SEC B47, C48; T-0915).
 Evidence: probes-numeric/power-reciprocal-rounding (72 cells: 8 values whose reciprocal rounds
 differently, each through `^-1`, `POWER(,-1)` and `/`, 4 controls, 6 each through `^-3`, `^-0.5`
 and `^-0.3`, every one double-rounded; oracle: excel-graph, 2026-10-13, T-0221);
@@ -760,8 +764,9 @@ Observed (no formulation is claimed; T-0915 fits it):
 - Hypothesis, not a rule: Excel's `SIN(PI())` is exactly the 15-digit literal 1.22514845490862E-16 and `SIN(2*PI())` is exactly twice that
   with the opposite sign, which would fit a reduction by a two-part pi whose low part is that literal (true pi - fl(pi) is 1.2246467991473532E-16).
 Evidence: `probes-numeric/m9-trig-reduction` (`rustsheet-eval show probes-numeric/m9-trig-reduction.case.json`). As of 2026-10-08,
-247 of 666 cells pass; the 419 others differ from the engine (252 clear mismatches, 152 close, 15 ulp).
-Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0915.
+247 of 666 cells passed. The formulation is the x87 64-bit pi reduction ("Trig of a huge angle", T-1563), and COT, CSC and SEC
+divide as "Division rounds twice" does (T-0915); all 666 cells pass since then.
+Status: VERIFIED (excel-graph); implemented (functions/math_and_trigonometry/trig.rs `reduce`, mathematical.rs `reciprocal_trig`).
 
 ## Non-integer exponents: exp(y·ln x)
 Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
@@ -887,6 +892,28 @@ roundings; 30,000 random inputs equal a decimal reference of the model), used by
 (`10^(LOG10(E)/C)`).
 Status: VERIFIED (excel-graph, and desktop for the 13 workbook inputs)
 Tasks: T-2004
+
+## LN is FLDLN2 then FYL2X
+Rule: `LN(x)` is the x87 `FLDLN2; FYL2X` result stored to a double, `RN53(RN64(y * log2 x))` with `y = RN64(ln 2)` =
+`0xB17217F7D1CF79AC * 2^-64`: the same two-rounding evaluation as LOG10 above, with the other constant. It is not glibc's `log`
+and not always the correctly rounded ln: `LN(1234.5617000014759)` is 7.11847128728637 and `LN(2.7182911000046204)`
+1.000003410805188 in Excel, one ulp from the model, and the model in turn differs from the correctly rounded ln elsewhere.
+Evidence: the T-1941 research runs (excel-graph, 2026-10-19/20; `kmyst-gam-*` on branch
+`agent/research/T-1941-crack-gammaln-gamma-ln`, every cell whose formula is `=LN(A<row>)`): 2,887,551 cells, 2,677,612
+distinct x from 1.37e-9 to 7.8e299. The model (`docs/research/t1941/lnmodels.py`) matches 2,887,521; the 30 misses are each
+one ulp, at points where Excel's FYL2X rounds the other way (the research's first 114,688-cell run had one, x =
+0.612354100000274). At those near-ties Excel is not even consistent with itself: probes/ln-fyl2x-kernel (excel-graph,
+2026-10-20; the 30 points plus 223 sampled ones) returned the model's value at 3 of the 30 (2.426003200000124,
+9.612345678912595, 1.2345670000006508e100) where the research run of 2026-10-19 returned the other neighbour, and agreed with
+the research run on the other 250 cells, so the last-bit rounding of an FYL2X near-tie varies between runs (plausibly the
+server's CPU), and following the model is the stable choice. glibc's `log` matches 2,674,450 of the 2,677,612 distinct x (the engine used it before).
+The probe keeps the 27 near-ties of that run as known failures in eval/baseline/probes.txt.
+Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
+sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,
+`test/fixtures/ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.
+GAMMALN (T-2128) and GAMMA (T-2129) still use the platform ln until they ship.
+Status: VERIFIED (excel-graph)
+Tasks: T-2123, T-1941
 
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the

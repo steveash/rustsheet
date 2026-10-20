@@ -61,6 +61,19 @@ Implemented in: `annuity_power`, `annuity_factor`, `compute_future_value` (`Futu
 `fn_pv` and `fn_nper` (crates/rustsheet-engine/src/functions/financial/mod.rs, T-0901). Salvaged from
 draft PR #13 by T-0031.
 
+## ISPMT's operation order
+Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
+other order tried misses cells where the orders differ in the last bit: `pv*rate*(per/nper-1)` (the old engine form)
+fits 8 of 24, `pv*rate*(per-nper)/nper` 16, `pv*(rate*(per-nper))/nper` 17, `pv*rate/nper*(per-nper)` 6. It also gives
+the Mac cache's `ISPMT(0.2,1,3,100)` = -13.333333333333334, where the old form gave ...336.
+Unprobed: inputs where the three-factor product overflows before the division (`ISPMT(1,0,1E300,1E300)`: ours
+`#NUM!`, where dividing first stays finite).
+Evidence: probes/fin-ispmt-order A1-A24 (inputs chosen where the candidate orders differ, excel-graph, 2026-10-20,
+T-2048); ironcalc-calc/FINANCIAL/ISPMT.xlsx Sheet1!E2 (Mac desktop cache).
+Status: VERIFIED (excel-graph)
+Implemented in: `ispmt_of` (functions/financial/annuity.rs)
+Tasks: T-2048
+
 ## IRR, RATE and XIRR stop early, and the guess and flow scaling change the result
 Rule: Excel's iterative solvers (IRR, RATE, XIRR) return an un-converged iterate, not the root
 rounded to double. The digits beyond the stopping tolerance depend on the starting guess (default
@@ -387,7 +400,7 @@ Rule: RustSheet returns `#NUM!` for DB with a `period`, and VDB with an `end_per
 100,000, after Excel's own argument checks, to bound per-call work on untrusted input (CLAUDE.md directive 5). Both
 schedules step one period at a time (`DB(1,0,1E15,1E15)` ran for hours before the cap). Excel's values above the cap are
 unprobed. A lifted DB or VDB call is also charged by each element's period
-(SPEC-0011 `KernelWork::ByArg`, T-1820): 2^17 units at the cap, so at most 1,024 such elements per call, while small
+(SPEC-0011 `ValueWork::Loop`, T-1820): 2^17 units at the cap, so at most 1,024 such elements per call, while small
 periods lift freely (`ROWS(DB(G25:G26,1000,6,2,7))` is 2 in Excel, probes/fin-argument-modes). Within the cap the values are unchanged.
 Evidence: the cap is a resource limit, not an Excel observation; probes/fin-argument-modes shows Excel lifting DB and VDB.
 Status: DEVIATION (decision 0014)
@@ -466,9 +479,9 @@ DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIE
 coupon schedule walks ("Coupon schedule work cap"), and since T-1842 YIELD and the ODD* functions, charged for their
 solvers and walks ("Yield and odd-coupon work cap"), and since T-1845 CUMIPMT and
 CUMPRINC, charged for their bounded period sums ("CUMIPMT and CUMPRINC work cap"), and since T-1841 AMORDEGRC and
-AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet
-(`#N/IMPL!` for an array literal): XNPV's rate,
-XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
+AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"), and since T-1843 XNPV's rate,
+XIRR's guess and FVSCHEDULE's principal, beside cash flows, dates and a schedule read once, whole ("XNPV, XIRR and
+FVSCHEDULE beside their whole data", a DEVIATION for the work cap). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
 ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475). The
@@ -492,64 +505,99 @@ Implemented in: `fn_mirr` in functions/financial/mirr.rs (T-1798); replaces the 
 Tasks: T-1798
 
 ## Coupon settlement before the calendar
-Rule: the COUP* functions, PRICE, YIELD, DURATION, MDURATION and ACCRINT are `#NUM!` for a settlement (ACCRINT: an
-issue, first interest date or settlement) below serial 1 in a 1900 workbook. Probed values: -1 for every one of them
-(A1, A4-A13; ACCRINT's three dates at -1 and -1E15, A14-A17); 0 for COUPNUM and PRICE (A3, A20); -0.5, 0.5 and -1E15
-for COUPNUM only (A19, -b A11, A2). The other functions at 0 or a fraction follow the same check but are unprobed
-(T-1844). In a 1904 workbook serial 0 is a date and computes
-(`COUPPCD(0,400,2)` = -150), while -1 is `#NUM!` (probes/date-system-1904-financial A35-A41; only
-`COUPDAYBS(-1,400,2)` backs the 1904 negatives, and whether -0.5 truncates to 0 is unprobed, T-1844).
-Evidence: probes/fin-coupon-walk-bounds A1-A20 and -b A11 (excel-graph, 2026-10-17, T-1822).
+Rule: PRICE, YIELD, DURATION, MDURATION and ACCRINT are `#NUM!` for a settlement (ACCRINT: an issue, first interest
+date or settlement) below serial 1 in a 1900 workbook; the COUP* functions only for one below serial 0. Probed values:
+-1 for every one of them (A1, A4-A13; ACCRINT's three dates at -1 and -1E15, A14-A17); -0.5 and -1E15 for COUPNUM
+(A19, A2); 0 and 0.5 for PRICE, YIELD, DURATION, MDURATION and ACCRINT (A20, -c M3-N7). At 0 and 0.5 the COUP*
+functions read the settlement as serial 0: `COUPPCD(0,43831,2)` and `COUPPCD(0.5,43831,2)` are 0 and
+`COUPDAYS(0,43831,2)` is 180 (-c M1, M2, N1, N2, N9), while COUPNUM is `#NUM!` (A3, -b A11, -c M9) because its
+previous coupon date falls before the calendar ("Coupon schedules at the calendar's edges"). In a 1904 workbook serial
+0 is a date and computes (`COUPPCD(0,400,2)` = -150, `PRICE(0,43831,0.05,0.06,100,2)` = 83.347), while -1 is `#NUM!`
+for COUPPCD, PRICE, YIELD, DURATION and MDURATION (probes/date-system-1904-financial A35-A41,
+fin-coupon-walk-bounds-1904 A1-A3, A8, A12-A14); `COUPNUM(-0.5,400,2)` is `#NUM!` (-1904 A4).
+Evidence: probes/fin-coupon-walk-bounds A1-A20, -b A11 (excel-graph, 2026-10-17, T-1822), fin-coupon-walk-bounds-c
+M1-N9 and -1904 (excel-graph, 2026-10-20, T-1844).
 Ours: `Model::check_settlement` (functions/financial/dates.rs) makes a settlement below 1900 serial 1, as
-`financial_date` reads it, `#NUM!` for the COUP* functions, PRICE, YIELD and DURATION; ACCRINT already checked its
-dates against the calendar. Before T-1822 the engine walked the coupon schedule back past 1900 and returned a number
-(`COUPNUM(-1,43831,2)` was 241), and `COUPNUM(-1E15,43831,4)` stepped about 10^6 quarters back to chrono's first year
-before it failed. The check keeps every schedule walk inside the calendar, at most about 32,400 quarters.
+`financial_date` reads it, `#NUM!` for PRICE, YIELD and DURATION; `Model::coupon_args` one below 0 for the COUP*
+functions; ACCRINT already checked its dates against the calendar. Before T-1822 the engine walked the coupon
+schedule back past 1900 and returned a number (`COUPNUM(-1,43831,2)` was 241), and `COUPNUM(-1E15,43831,4)` stepped
+about 10^6 quarters back to chrono's first year before it failed. The checks keep every schedule walk inside the
+calendar, at most about 32,400 quarters.
 Status: VERIFIED (excel-graph)
-Tasks: T-1822
+Tasks: T-1822, T-1844
 
 ## Coupon schedules at the calendar's edges
-Rule: Excel is `#NUM!` (or a different count) for some valid schedules that reach the start or the end of the 1900
-calendar, which the engine computes: `COUPNUM(1,43831,2)` is 240 (ours 241), `COUPNUM(1,1000,2)` and
-`COUPNUM(DATE(1900,3,1),DATE(1910,3,31),4)` are `#NUM!`, `COUPPCD(1,DATE(9990,6,30),4)` is 0, every quarterly bond from
-serial 1 or 1900-03-01 to a maturity in 9990-9999 is `#NUM!` for COUPNUM, PRICE, YIELD and DURATION, and
-`ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 0. The rule behind them is unknown.
-Evidence: probes/fin-coupon-walk-bounds A21-A28, -b A1-A10, A12, A13 (excel-graph, 2026-10-17, T-1822).
-Ours: computes these: `COUPNUM(1,43831,2)` 241, a number for the `#NUM!` cells (e.g. 32,362 quarterly coupons from
-serial 1 to 9990, `PRICE` 404516.67); a known gap, the general rule still open.
-Status: VERIFIED (excel-graph; the rule behind the cells is not found)
-Tasks: T-1844
+Rule: the coupon schedule walk reads its dates as Excel serials of the 1900 calendar: 1900-01-01 is serial 1, a date
+from 1 March 1900 on counts Excel's fictitious 1900-02-29, and a coupon date before 1900-01-01 is serial 0. So:
+- COUPPCD is 0 when the previous coupon date falls before 1900-01-01 (`COUPPCD(1,1000,2)` is 0, not 1899-09-26;
+  `COUPPCD(1,DATE(9990,6,30),4)` is 0), and COUPNUM, PRICE, YIELD, DURATION and MDURATION are `#NUM!` there
+  (`COUPNUM(1,1000,2)`, `COUPNUM(DATE(1900,3,1),DATE(1910,3,31),4)`, every quarterly bond from serial 1 or 1900-03-01
+  to a maturity in 9990-9999). That, not a coupon count cap, is the rule behind the calendar-spanning `#NUM!` cells.
+- A schedule date on 1900-01-01 is serial 1: `COUPNUM(1,43831,2)` is 240, `COUPPCD(1,43831,2)` 1 and `COUPNCD` 183
+  (1900-07-01, counting 1900-02-29).
+- COUPDAYBS counts from the previous coupon date as read, 0 before the calendar: `COUPDAYBS(1,1000,2)` is 1 on bases
+  0 and 1. The 30/360 bases read serial 0 as 1900-01-00 and serial 60 as 1900-02-29, so `COUPDAYBS(60,36585,4)` is -1
+  (from 1900-02-28, the month's last day); the actual bases count serials (`COUPDAYBS(61,36585,4,1)` is 2).
+- COUPDAYSNC on basis 0 is the period's 30/360 length less COUPDAYBS (`COUPDAYSNC(1,1000,2)` is 85), on basis 1 the
+  serials to the next coupon date.
+- COUPDAYS on basis 1 counts a period that starts before 1900-01-01 in the real calendar (`COUPDAYS(1,43830,4,1)` is
+  90, 1899-12-31 to 1900-03-31; `COUPDAYS(1,1000,2,1)` 181) and one inside the calendar by serials
+  (`COUPDAYS(1,43831,2,1)` is 182). A period starting or ending on 1900-02-28 takes the 29 February rule ("COUPDAYS
+  basis 1 around 29 February"): `COUPDAYS(59,36585,4,1)` and `COUPDAYS(1,43890,4,1)` are 90 and 92.
+- A month-end schedule's February 1900 ends on the 28th (`COUPPCD(59,36585,4)` is 59).
+Evidence: probes/fin-coupon-walk-bounds A21-A28, -b A1-A13 (excel-graph, 2026-10-17, T-1822), fin-coupon-walk-bounds-c
+A1-L14 (excel-graph, 2026-10-20, T-1844).
+Ours: matches (functions/financial/financial_bonds/coupon_schedule.rs: `coupon_period`, `coupon_count`,
+`coupdays_actual`, `coupon_days_nc`). Open: ACCRINT with calc_method TRUE whose issue's previous coupon date is serial 0
+is `#NUM!` (fin-coupon-walk-bounds-c O1-O13) but 0 with a settlement in 9990
+(`ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`, -b A9), and ACCRINT's day counts before
+1900-03-01 miss the fictitious 1900-02-29 (-c O10, O14; ours compute them; T-2124). In a 1904 workbook
+`COUPNUM(0,400,2)` and `COUPNUM(1,400,2)` are `#NUM!` (previous coupon 1903-08-04, before the 1904 calendar) while
+`COUPPCD(1,400,2)` is -150 (-1904 A5-A7; ours 3; T-2125).
+Status: VERIFIED (excel-graph)
+Tasks: T-1822, T-1844, T-2124, T-2125
 
 ## Coupon schedule work cap
-Rule: RustSheet charges a lifted COUP*, ACCRINT, DURATION, MDURATION or PRICE call for its coupon schedule walks, so one
-call lifts at most 1,024 elements (COUP*, ACCRINT) or 512 (DURATION, MDURATION, PRICE):
-`ROWS(COUPNUM(SEQUENCE(1025)+39000,43831,2))` and `ROWS(PRICE(SEQUENCE(513)+39000,43831,0.05,0.06,100,2))` are `#ERROR!`
-where Excel lifts every element (probes/fin-argument-modes: they lift over arrays; Excel's own limit is unprobed). A
-walk steps one coupon period at a time, up to about 32,400 quarters inside the calendar, about 1 ms in a release build;
-each element is charged that worst case (`COUPON_WALK_WEIGHT`, 2^16 units per walk against SPEC-0011's 2^27 visit cap),
-so a lifted call at the cap takes 1-2 s at the longest schedule. The scalar calls are not capped.
+Rule: RustSheet charges a lifted COUP*, ACCRINT, DURATION, MDURATION or PRICE call for its coupon schedule walks, in
+proportion to each element's schedule length, so one call lifts at most 1,024 elements (COUP*, ACCRINT) or 512
+(DURATION, MDURATION, PRICE) at the calendar's longest schedule, and more over shorter ones:
+`ROWS(COUPNUM(SEQUENCE(1025)*0+1,DATE(9999,12,31),4))` and
+`ROWS(PRICE(SEQUENCE(513)*0+1,DATE(9999,12,31),0.05,0.06,100,4))` are `#ERROR!` where Excel lifts every element
+(probes/fin-argument-modes: they lift over arrays; Excel's own limit is unprobed), while
+`ROWS(PRICE(SEQUENCE(513)+39000,43831,0.05,0.04,100,2))` is 513. A walk steps one coupon period at a time, up to about
+32,400 quarters inside the calendar, about 1 ms in a release build. Each walk is charged 2^16 units at that longest
+schedule (`COUPON_WALK_WEIGHT`, against SPEC-0011's 2^27 visit cap) and in proportion to its period count below it:
+the days between the element's earliest and latest date times its frequency (`ValueWork::CouponWalks`, T-1846), plus
+one period (T-1869), so a 10-year semiannual walk is 43 units. A text date is charged as the longest schedule. A lifted call
+at the cap takes 1-2 s at the longest schedule. The scalar calls are not capped.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds/financial.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`, `BOND_6_OF_7`)
-Tasks: T-1822; T-1846 narrows the cap to a schedule-length budget.
+Implemented in: functions/lift/kinds/financial.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`,
+`BOND_6_OF_7`), functions/lift/kinds/mod.rs (`ValueWork::CouponWalks`)
+Tasks: T-1822, T-1846
 
 ## Yield and odd-coupon work cap
-Rule: RustSheet charges a lifted YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE or ODDLYIELD call for its worst-case solver and
-schedule work, so one call lifts at most 8 elements (YIELD, ODDFYIELD), 256 (ODDFPRICE) or 1,024 (ODDLPRICE, ODDLYIELD):
-`ROWS(YIELD(SEQUENCE(9)+39000,43831,0.05,95,100,2))` is `#ERROR!` where Excel lifts every element (probes/fin-argument-modes,
-fin-yield-odd-lift: they lift over arrays; Excel's own limit is unprobed). YIELD's and ODDFYIELD's kernels walk the coupon
-schedule once (up to 4.4 and 6.3 ms at the calendar's longest schedule, release build), then the solver evaluates the price
-at most 397 times (100 Newton steps of three prices, 97 bisection prices), each a sum over up to 32,400 quarterly coupons
-(0.55 ms): about 0.23 s an element at that bound, charged 2^24 units against SPEC-0011's 2^27 visit cap (8 elements, about
-1.8 s; the slowest inputs found, a price of 1E300 over 9990 years, take 54 ms an element). ODDFPRICE walks and sums its
-odd first period once (up to 6.3 ms, 8 walks of `COUPON_WALK_WEIGHT`: 256 elements took 1.7 s), ODDLPRICE and ODDLYIELD
-walk to the maturity once in closed form (up to 2.2 ms, 2 walks: 1,024 elements took 2.2 s). The scalar calls are not
-capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver step (about 2.4 s a scalar call at the solver bound, 0.6 s measured); the walk
-is now hoisted out of the solver, with the same values.
+Rule: RustSheet charges a lifted YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE or ODDLYIELD call for its solver and schedule work,
+in proportion to each element's coupon count plus one, so one call lifts at most 8 elements (YIELD, ODDFYIELD), 256
+(ODDFPRICE) or 1,024 (ODDLPRICE, ODDLYIELD) at the calendar's longest schedule, and more over shorter ones:
+`ROWS(YIELD(SEQUENCE(9)*0+1,2958465,0.05,1E300,100,4,1))` is `#ERROR!` where Excel lifts every element
+(probes/fin-argument-modes, fin-yield-odd-lift: they lift over arrays; Excel's own limit is unprobed), while
+`ROWS(YIELD(SEQUENCE(9)+39000,43831,0.05,95,100,2))` is 9. YIELD's and ODDFYIELD's kernels walk the coupon schedule once
+(up to 4.4 and 6.3 ms at the calendar's longest schedule, release build), then the solver evaluates the price at most
+397 times (100 Newton steps of three prices, 97 bisection prices), each a sum over up to 32,400 quarterly coupons
+(0.55 ms): about 0.23 s an element at that bound, charged 2^24 units against SPEC-0011's 2^27 visit cap (8 elements,
+about 1.8 s; the slowest inputs found, a price of 1E300 over 9990 years, take 54 ms an element). ODDFPRICE walks and sums
+its odd first period once (up to 6.3 ms, 8 walks of `COUPON_WALK_WEIGHT`: 256 elements took 1.7 s), ODDLPRICE and
+ODDLYIELD walk to the maturity once in closed form (up to 2.2 ms, 2 walks: 1,024 elements took 2.2 s). Below the longest
+schedule each element is charged in proportion to its coupon count plus one, the extra period covering a pass's fixed cost
+(`ValueWork::CouponWalks`, T-1869): a 10-year semiannual YIELD is 10,873 units (12,344 elements), and a one-period one
+524. The scalar calls are not capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver step (about
+2.4 s a scalar call at the solver bound, 0.6 s measured); the walk is now hoisted out of the solver, with the same values.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds/financial.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`)
-Tasks: T-1842; T-1869 narrows the cap to a schedule-length budget (after T-1846).
+Implemented in: functions/lift/kinds/financial.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`),
+functions/lift/kinds/mod.rs (`ValueWork::CouponWalks`)
+Tasks: T-1842, T-1869
 
 ## CUMIPMT and CUMPRINC over many periods
 Rule: Excel computes CUMIPMT and CUMPRINC in constant time whatever the period count, also where `(1+rate)^nper`
@@ -607,6 +655,24 @@ Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds/financial.rs (`NPV`, `IRR_WEIGHT`, `IRR`, `MIRR`); functions/financial/mod.rs
 (`flow_count`)
 Tasks: T-1821
+
+## XNPV, XIRR and FVSCHEDULE beside their whole data
+Rule: XNPV's rate, XIRR's guess and FVSCHEDULE's principal lift over an array and refuse a multi-cell range, as the other
+Analysis ToolPak scalars ("Financial function argument modes"); each element is the scalar call over the same values,
+dates and schedule. Ours: those are read once per call, before the elements, and each element checks its arguments in
+the scalar order: XNPV's rate and FVSCHEDULE's principal before the flows or schedule, XIRR's values and dates before
+its guess (unprobed, as "NPV, IRR and MIRR error order"). Each lifted element is charged for its walks over the flows
+against SPEC-0011's 2^27 visit cap: one unit per value for XNPV, one per rate for FVSCHEDULE, and 512 per value for
+XIRR (`XIRR_WEIGHT`: `compute_xirr` makes at most 401 XNPV passes, XNPV(0), two bracket walks of 100 points and 200
+bisection steps; "The IRR and XIRR solver caps"). `ROWS(XIRR(A1:A300000,B1:B300000,{0.1;0.1}))`,
+`ROWS(XNPV(SEQUENCE(500),A1:A300000,B1:B300000))` and `ROWS(FVSCHEDULE(SEQUENCE(500),A1:A300000))` are `#ERROR!` before
+their first element, where Excel's own limit is unprobed. The scalar calls are not capped.
+Evidence: probes/fin-argument-modes H137-H138, H338-H339, H341-H342 (the lifts and the refused ranges, excel-graph,
+2026-10-11, T-1084); none for the work cap, which is a resource limit (CLAUDE.md directive 5).
+Status: DEVIATION (decision 0014)
+Implemented in: functions/lift/kinds/financial.rs (`XNPV`, `XIRR_WEIGHT`, `XIRR`, `FVSCHEDULE`);
+functions/financial/mod.rs (`fn_xnpv`, `fn_xirr`, `fn_fvschedule`, `flow_count`)
+Tasks: T-1843
 
 ## NPV, IRR and MIRR error order
 Rule (ours, unprobed): NPV reads its rate before its cash flows, so a rate error wins over an error in the flows. IRR
@@ -835,7 +901,8 @@ COUPDAYBS (76) and COUPDAYSNC (106) describe 2023-08-31 to 2024-02-29 (182 days)
 the walk passes 2025-02-28: 184 and 92 for settlements 2023-11-15 and 2023-12-15. Frequency 1, maturity 2025-02-28,
 settlement 2023-06-15: 365, not 366. A period ending on 28 February of a common year keeps the end-of-month rule
 (2099-08-31 to 2100-02-28, 181), and so does one ending on a 29 February that is the maturity
-(`COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)` is 182). Only COUPDAYS shows it: PRICE and DURATION on basis 1 use the
+(`COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)` is 182). 1900-02-28 takes the rule like a 29 February (Excel's
+1900 has a 29 February): `COUPDAYS(59,36585,4,1)` is 90 (probes/fin-coupon-walk-bounds-c G5). Only COUPDAYS shows it: PRICE and DURATION on basis 1 use the
 182-day period, and bases 0, 2, 3 and 4 have fixed lengths. Unprobed: a walk that lands on a 29 February itself (maturity 2028-08-31, settlement 2027-11-15; the rule predicts 184, 2027-08-29 to 2028-02-29).
 Evidence: probes/coupdays-feb-month-end (296 cells, excel-graph, 2026-10-13, T-1493) and
 probes/date-system-1900-financial-readers E15.
@@ -922,7 +989,7 @@ Tasks: T-1475
 - VDB differs from us by a few ulp (A6, A10, A13) and ~4e-13 (A7); Excel's result for the same inputs depends on no_switch (A6 FALSE = 203.31648000000007, A7 TRUE = 203.3164800000004).
 - MDURATION and RRI(TRUE principal) differ from us only in the last ulp.
 Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
-- FVSCHEDULE: a boolean principal is `#VALUE!` from a TRUE or FALSE cell (`C1`, `C2`), `INDEX(C1:C2,1)` or `INDIRECT("C1")`; a text-number cell (`"1000"`) is converted (1100). The reference path matches the typed path, so `get_number_no_bools` is right (T-1992).
+- FVSCHEDULE: a boolean principal is `#VALUE!` from a TRUE or FALSE cell (`C1`, `C2`), `INDEX(C1:C2,1)` or `INDIRECT("C1")`; a text-number cell (`"1000"`) is converted (1100). The reference path matches the typed path, so `cast_number_no_bools_ref` (the lifted kernel's read) is right (T-1992).
 Evidence: probes/fin-fvschedule-bool-ref (excel-graph, 2026-10-19, T-1992).
 Status: VERIFIED (excel-graph)
 Implemented (T-1764): VDB with salvage above cost never switches to straight line (-600); a fractional end period

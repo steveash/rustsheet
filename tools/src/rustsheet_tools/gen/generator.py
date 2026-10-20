@@ -19,6 +19,9 @@ from typing import Any
 
 import yaml
 
+from rustsheet_tools.gen.common import quoted
+from rustsheet_tools.gen.pools import POOLS
+
 MILESTONES = ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"]
 
 # Edge-value pools per type (P0 subset of the research design).
@@ -67,6 +70,8 @@ NAME_POOL: list[str] = ["x", "y", "z", "w", "v", "acc"]
 # and a bare `SUM` read from a file is #NAME? (docs/excel-semantics/xlsx-storage.md). They take 1 to 255
 # arguments, so any arity fits (probes/m7-argument-modes: `MAKEARRAY(2,2,SUM)` is SUM(row,col)).
 ETA_POOL: list[str] = ["SUM", "MAX", "MIN", "AVERAGE", "COUNT", "PRODUCT"]
+# Share of a `pool` parameter's values drawn from its edge pool (synthetic-generator.md §3.2).
+POOL_RATE = 0.35
 MASK_OPS: list[str] = [">", "<", "=", "<>"]
 
 
@@ -156,8 +161,7 @@ class Gen:
             return repr(v) if v >= 0 else f"({v!r})"
         if typ == "bool":
             return self.rng.choice(["TRUE", "FALSE"])
-        s = self.rng.choice(TEXT_POOL)
-        return '"' + s.replace('"', '""') + '"'
+        return quoted(self.rng.choice(TEXT_POOL))
 
     # -- expressions -----------------------------------------------------------------------
     def expr(self, typ: str, depth: int) -> str:
@@ -185,7 +189,10 @@ class Gen:
 
     def call(self, typ: str, depth: int) -> str:
         fns = [f for f in self.catalog.functions if typ in ("any", f["returns"]) or f["returns"] == "any"]
-        fn = self.weighted(fns or self.catalog.functions)
+        return self.call_fn(self.weighted(fns or self.catalog.functions), depth)
+
+    def call_fn(self, fn: dict[str, Any], depth: int) -> str:
+        """A call to `fn` with generated arguments."""
         self.used.add(fn["name"])
         args: list[str] = []
         params: list[dict[str, Any]] = fn["params"]
@@ -292,8 +299,18 @@ class Gen:
             return repr(c) if isinstance(c, int) else '"' + str(c) + '"'
         if mode in ("aggregate", "aggregate_a") and self.rng.random() < 0.5:
             return self.range_ref()
-        in_domain = self.domain_value(p.get("domain") or {})
-        return in_domain if in_domain is not None else self.value_expr(p, depth)
+        return self.scalar_text(p, depth)
+
+    def scalar_text(self, p: dict[str, Any], depth: int) -> str:
+        """A `value` param: an in-domain literal, else an edge-pool entry, else a free expression."""
+        dom = p.get("domain") or {}
+        in_domain = self.domain_value(dom)
+        if in_domain is not None:
+            return in_domain
+        # A `hard` domain is never overridden: outside it Excel refuses the workbook (MUNIT).
+        if p.get("pool") and not dom.get("hard") and self.rng.random() < POOL_RATE:
+            return self.rng.choice(POOLS[p["pool"]])
+        return self.value_expr(p, depth)
 
     def value_expr(self, p: dict[str, Any], depth: int) -> str:
         """A free expression for a `value` param. A `lift: arrays` param refuses a multi-cell range
@@ -344,9 +361,20 @@ def generate_case(
     data_rows: int = 12,
     data_cols: int = 5,
     max_depth: int = 3,
+    focus: bool = False,
+    case_index: int = 0,
 ) -> dict[str, Any]:
+    """One case. With `focus`, every formula's outer call is a function whose own milestone is `milestone`,
+    taking turns through a seeded shuffle (each case reshuffles from its own seed; `case_index` offsets the
+    position, so counts are exactly even within a case and roughly even across a run)."""
     rng = random.Random(seed)
     g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth)
+    targets = [f for f in g.catalog.functions if f.get("milestone") == milestone] if focus else []
+    if focus:
+        if not targets:
+            msg = f"no generator-ready functions at milestone {milestone} to focus on"
+            raise ValueError(msg)
+        rng.shuffle(targets)
     data: dict[str, Any] = {}
     for r in range(1, data_rows + 1):
         for c in range(data_cols):
@@ -357,6 +385,9 @@ def generate_case(
                 data[f"{chr(ord('A') + c)}{r}"] = v
     calc: dict[str, Any] = {}
     for i in range(1, formulas + 1):
+        if focus:
+            calc[f"A{i}"] = "=" + g.call_fn(targets[(case_index * formulas + i - 1) % len(targets)], 0)
+            continue
         typ = rng.choice(["number", "number", "any", "text", "bool"])
         calc[f"A{i}"] = "=" + g.expr(typ, 0)
     return {
