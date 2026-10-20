@@ -448,12 +448,13 @@ impl Model {
     // hyperbolics, COTH/CSCH and the SINH/TANH thresholds", probes-numeric/m9-hyperbolic, T-2031).
     // The log is the worksheet LN kernel (`excel_ln`, FYL2X), not libm `ln`: at 240 points chosen
     // where the two differ it is 238 right against 2 (probes-numeric/t2133-asinh-acosh-ln, T-2133).
-    // Where `x*x` overflows (|x| above about 1.3E154) no Excel value is known, so libm stays there.
+    // Where `x*x` overflows (|x| above about 1.3407807929942596E154) Excel gives `#NUM!`
+    // (probes-numeric/t2062-asinh-acosh-overflow, excel-graph, T-2062).
     pub(crate) fn fn_asinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Asinh, args, cell, |f: f64| {
             let square = f * f;
             if square.is_infinite() {
-                Ok(f64::asinh(f))
+                Err(Error::NUM)
             } else if f < 0.0 {
                 Ok(-excel_ln(-f + (square + 1.0).sqrt()))
             } else {
@@ -470,7 +471,7 @@ impl Model {
             }
             let square = f * f;
             if square.is_infinite() {
-                Ok(f64::acosh(f))
+                Err(Error::NUM)
             } else {
                 Ok(excel_ln(f + (square - 1.0).sqrt()))
             }

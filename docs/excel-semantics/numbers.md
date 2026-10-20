@@ -750,7 +750,11 @@ Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: 
   ASINH(1E-9) = 1.000000082240371E-9, and ACOSH(1.000000000001) = 1.414276423083533E-6 (about 7e-11 relative below the
   true value 1.4142764231805424E-6). The same two formulas also give all 33 ASINH and 17 ACOSH cells of ironcalc-calc
   TRIGONOMETRIC.xlsx sheet ASINH_ACOSH_ATANH (gap triage 2026-10-19). Implemented (T-2031): `fn_asinh`/`fn_acosh` evaluate
-  these formulas; where `x*x` overflows (|x| above about 1.3E154, unprobed) the engine keeps libm `asinh`/`acosh`.
+  these formulas.
+- Where `x*x` overflows a double (|x| above about 1.3407807929942596E154) ASINH and ACOSH return `#NUM!` (ln of infinity), for
+  both signs of ASINH: probes-numeric/t2062-asinh-acosh-overflow (excel-graph, 2026-10-20). ASINH(+-1E154) = +-355.291251501643
+  and ASINH(+-1.3E154) = +-355.55361576611045 are still finite; 1.35E154, 1.4E154, 1E200, 1E308 and 1.7976931348623157E308 are
+  all `#NUM!`. ACOSH is the same (1E154 and 1.3E154 finite, the rest `#NUM!`). Implemented (T-2062).
 - The `ln` in those formulas is the worksheet LN kernel (FLDLN2; FYL2X, "LN is FLDLN2 then FYL2X"), not libm (T-2133).
   At 120 ASINH and 120 ACOSH points picked so that libm `ln` and `excel_ln` of the argument `x + sqrt(x*x +- 1)` differ
   (probes-numeric/t2133-asinh-acosh-ln, excel-graph 2026-10-20), `excel_ln` matches 238 of 240 cells and libm `ln` 2: the

@@ -3,7 +3,7 @@ id: T-2062
 title: "Probe ASINH and ACOSH where x*x overflows (|x| above about 1.3E154)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,8 @@ Use the `excel-probe` skill.
 
 ## Out of scope
 - ATANH, ACOTH, COTH, CSCH (T-0917).
+
+## Outcome
+Probe `probes-numeric/t2062-asinh-acosh-overflow` (excel-graph): ASINH/ACOSH are `#NUM!` once `x*x` overflows
+(1.35E154 and above, both signs); 1E154 and 1.3E154 stay finite. Engine fixed (was libm `asinh`/`acosh`) and
+numbers.md updated. The probe case is a new passing eval case.
