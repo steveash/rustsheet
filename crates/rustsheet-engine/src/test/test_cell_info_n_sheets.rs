@@ -34,7 +34,7 @@ fn arguments() {
     assert_eq!(model._get_text("A9"), *"#N/IMPL!");
 }
 
-/// INFO is `#VALUE!` for every type_text (probes/info-sheets-info-types Alpha!D25:D49, excel-graph).
+/// INFO is `#VALUE!` for every `type_text` (probes/info-sheets-info-types Alpha!D25:D49, excel-graph).
 #[test]
 fn info_is_value_error_for_every_type_text() {
     let mut model = new_empty_model();
