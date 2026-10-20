@@ -579,7 +579,9 @@ impl Model {
             // A reference counts the sheets between its corners, in either order
             // (probes/info-sheets-info-types D1:D24, excel-graph; T-2181).
             // Only a written reference is read: a union, a name, OFFSET, INDIRECT, INDEX, an
-            // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`.
+            // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So are a
+            // range operator over function operands (`A1:OFFSET(..)`) and a cross-sheet one
+            // (`Alpha!A1:Beta!B1`); the arm below reads whatever such a form evaluates to.
             if matches!(
                 args[0].ungrouped(),
                 Node::ReferenceKind { .. }
