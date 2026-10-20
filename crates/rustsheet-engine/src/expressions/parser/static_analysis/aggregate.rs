@@ -168,7 +168,8 @@ fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool
 /// `Unknown` shape, or a variable, whose own shape does not tell what it holds. `INDIRECT` of
 /// text naming one cell is a scalar condition, not an unknown shape
 /// (`TAKE(IF(INDIRECT("K1"),H1:H2,I1:I2),2)` is 7, probes/subtotal-take-array-selector-b A130,
-/// T-2012); any other INDIRECT stays unknown, which is safe.
+/// T-2012); any other INDIRECT stays unknown, which is safe, though `if_pick` reads any
+/// INDIRECT that gives one cell as a scalar at run time.
 fn is_lifting_selector(arg: &Node) -> bool {
     if let Node::FunctionKind {
         kind: Function::Indirect,

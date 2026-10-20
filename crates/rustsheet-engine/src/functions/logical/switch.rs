@@ -32,16 +32,21 @@ impl Model {
     }
 
     /// SWITCH lifted over an array `expr` or case value: every argument is read, and each element
-    /// compares its value with the cases.
+    /// compares its value with the cases. `cases` are the case values `switch_pick` has already
+    /// read, in order; they are reused, not read again, so nested array-case `SWITCH`es stay linear.
     fn switch_lifted(
         &mut self,
         expr: CalcResult,
+        cases: Vec<CalcResult>,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let mut lifted = vec![expr];
-        for node in &args[1..] {
-            lifted.push(self.evaluate_node_in_context(node, cell));
+        let mut read = cases.into_iter();
+        for (index, node) in args.iter().enumerate().skip(1) {
+            // Odd positions are the case values, the first `read.len()` of which are in hand.
+            let value = (index % 2 == 1).then(|| read.next()).flatten();
+            lifted.push(value.unwrap_or_else(|| self.evaluate_node_in_context(node, cell)));
         }
         // One unit per argument.
         let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
@@ -70,7 +75,7 @@ impl Model {
         }
         let expr = self.evaluate_node_in_context(&args[0], cell);
         if LiftedArg::is_grid(&expr) {
-            return Picked::Value(self.switch_lifted(expr, args, cell));
+            return Picked::Value(self.switch_lifted(expr, Vec::new(), args, cell));
         }
         if expr.is_error() {
             return Picked::Value(expr);
@@ -79,13 +84,15 @@ impl Model {
         // How many cases we have?
         // 3, 4 args -> 1 case
         let case_count = (args_count - 1) / 2;
+        let mut cases = Vec::new();
         for case_index in 0..case_count {
             let case = self.evaluate_node_in_context(&args[2 * case_index + 1], cell);
             // An array case value lifts the call like an array expression does, though the
             // expression is a scalar (`SUBTOTAL(9,TAKE(SWITCH(1,{1,2},H1:H2,I1:I2),2))` is a 2x2
             // of `#VALUE!`, probes/subtotal-take-array-selector-b A10, T-2012).
             if LiftedArg::is_grid(&case) {
-                return Picked::Value(self.switch_lifted(expr, args, cell));
+                cases.push(case);
+                return Picked::Value(self.switch_lifted(expr, cases, args, cell));
             }
             if case.is_error() {
                 return Picked::Value(case);
@@ -93,6 +100,7 @@ impl Model {
             if compare_values(&expr, &case) == 0 {
                 return Picked::Node(&args[2 * case_index + 2]);
             }
+            cases.push(case);
         }
         // None of the cases matched so we return the default
         // If there is an even number of args is the last one otherwise is #N/A

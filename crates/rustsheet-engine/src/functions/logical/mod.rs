@@ -198,32 +198,17 @@ impl Model {
         if !(1..=3).contains(&args.len()) {
             return Picked::Value(CalcResult::new_args_number_error(cell));
         }
-        let cond_result = self.evaluate_node_in_context(&args[0], cell);
+        // A one-cell range (`INDIRECT("K1")`) is a scalar condition: it picks a branch, it does
+        // not lift (`SUBTOTAL(9,TAKE(IF(INDIRECT("K1"),H1:H2,I1:I2),2))` is 7,
+        // probes/subtotal-take-array-selector-b A130, T-2012).
+        let cond_result = match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
+            other => other,
+        };
 
         // Normalize cond to a 2-D array, or take the scalar early-return path.
         let cond_array: Vec<Vec<ArrayNode>> = match cond_result {
             error @ CalcResult::Error { .. } => return Picked::Value(error),
-            // A one-cell range (`INDIRECT("K1")`) is a scalar condition: it picks a branch, it
-            // does not lift (`SUBTOTAL(9,TAKE(IF(INDIRECT("K1"),H1:H2,I1:I2),2))` is 7,
-            // probes/subtotal-take-array-selector-b A130, T-2012).
-            CalcResult::Range { left, right } if left == right => {
-                let value = self.evaluate_cell(left);
-                return match value {
-                    error @ CalcResult::Error { .. } => Picked::Value(error),
-                    _ if args.len() == 1 => Picked::Value(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "IF needs a value_if_true".to_string(),
-                    )),
-                    other => match self.cast_to_bool(other, cell) {
-                        Ok(true) => Picked::Node(&args[1]),
-                        Ok(false) => args
-                            .get(2)
-                            .map_or(Picked::Value(CalcResult::Boolean(false)), Picked::Node),
-                        Err(error) => Picked::Value(error),
-                    },
-                };
-            }
             CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
                 Ok(array) => array,
                 Err(error) => return Picked::Value(error),
