@@ -457,10 +457,10 @@ General `1.5` "1.5", `1234567890123` "1.23457E+12", `1E-10` "1E-10"; `0.00` on P
 Evidence: probes/displayed-text-formats S!A1:A24, B1:B4 (excel-graph `text`, 2026-10-16, T-1610).
 Desktop `.Text` does depend on the width (`####` when a number does not fit), unprobed here: the
 excel-graph text is what the M10 suite scores (decision 0068).
-Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030), "1,234" for
-`TEXT(1234.5,"#,##0")` (a value failure too: Excel rounds the 15-digit decimal half away from zero,
-as General and ROUND do; ours rounds an exact binary tie to even, T-2206) and `#VALUE!` for the
-negative date (T-1711, T-1731).
+Implemented (T-2206): Excel rounds the shown place on the 15-digit decimal half away from zero, as
+General and ROUND do, so `TEXT(1234.5,"#,##0")` is "1,235".
+Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030) and `#VALUE!` for the negative date
+(T-1711, T-1731).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1610, T-1711, T-2030, T-2206
 

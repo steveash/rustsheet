@@ -737,7 +737,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // probes-numeric/4f413cc257ce15c4 A23)
             // The shown place rounds the 15-digit decimal half away from zero, as General and ROUND do
             // (`TEXT(2.5,"0")` is "3", `TEXT(12.345,"0%")` "1235%"; T-2206). Scientific mantissas keep
-            // the significant-digit cut (T-1730).
+            // the significant-digit cut (T-1730), which is also the fallback when `round_decimal`
+            // returns `None` (a result beyond the double range).
             let rounded = if p.is_scientific {
                 None
             } else {
