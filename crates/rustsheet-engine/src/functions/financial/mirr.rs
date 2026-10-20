@@ -22,7 +22,7 @@ impl Model {
         self.lift_call_costed(
             Function::Mirr,
             args,
-            LiftCost::Cells(flow_count(&flows)),
+            LiftCost::Cells(flow_count(flows.as_deref())),
             cell,
             &mut |model, rates| {
                 let flows = match &flows {

@@ -29,6 +29,9 @@
 # `hard: true`. `cell: true` on a `range` param makes the generator pass one cell, not a range (ISFORMULA lifts over
 # a range, so a range would spill into the next formula). `always: true` on an optional param means the generator
 # never omits it (CELL without a reference reads the last changed cell, which no oracle value can match).
+# `pool: <name>` on a `value` param: 35% of its values come from that edge pool in
+# tools/src/rustsheet_tools/gen/pools.py (number_edges, unit_interval, angle, code_point; T-2109), after the `domain`
+# draw and never on a `hard` domain.
 # `vector: true` on a `range` param makes the generator pass a one-column range (LOOKUP and XLOOKUP/XMATCH lookup
 # vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself; WRAPROWS/WRAPCOLS on an
 # `array` param). `full: true` makes every range span all data rows, so the arrays of one call are the same height
@@ -160,7 +163,7 @@ functions:
     prior: 8
     returns: number
     params:
-      - { name: number, mode: value, type: number }
+      - { name: number, mode: value, type: number, pool: number_edges }
       - { name: num_digits, mode: value, type: number, domain: { int: true, min: -6, max: 10 } }
   - name: ABS
     category: math
@@ -258,7 +261,7 @@ functions:
     prior: 2
     returns: number
     params:
-      - { name: number, mode: value, type: number }
+      - { name: number, mode: value, type: number, pool: number_edges }
       - { name: num_digits, mode: value, type: number, domain: { int: true, min: -6, max: 10 } }
   - name: ROUNDDOWN
     category: math
@@ -266,7 +269,7 @@ functions:
     prior: 2
     returns: number
     params:
-      - { name: number, mode: value, type: number }
+      - { name: number, mode: value, type: number, pool: number_edges }
       - { name: num_digits, mode: value, type: number, domain: { int: true, min: -6, max: 10 } }
   - name: NOT
     category: logical
@@ -374,7 +377,7 @@ functions:
     scope: in
     prior: 0.3
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: unit_interval }]
   - name: ACOSH
     category: math
     milestone: M5
@@ -484,7 +487,7 @@ functions:
     scope: in
     prior: 0.3
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: unit_interval }]
   - name: ASINH
     category: math
     milestone: M5
@@ -514,7 +517,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: unit_interval }]
   - name: AVEDEV
     category: statistical
     milestone: M9
@@ -801,7 +804,7 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: number, mode: value, type: number }
+      - { name: number, mode: value, type: number, pool: number_edges }
       - { name: significance, mode: value, type: number, optional: true }
       - { name: mode, mode: value, type: number, optional: true }
   - name: CEILING.PRECISE
@@ -830,7 +833,7 @@ functions:
     prior: 0.5
     returns: text
     params:
-      - { name: number, mode: value, type: number, domain: { int: true, min: 1, max: 255 } }
+      - { name: number, mode: value, type: number, pool: code_point, domain: { int: true, min: 1, max: 255 } }
   - name: CHIDIST
     category: statistical
     milestone: M9
@@ -1047,28 +1050,28 @@ functions:
     scope: in
     prior: 0.5
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: COSH
     category: math
     milestone: M5
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: COT
     category: math
     milestone: M5
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: COTH
     category: math
     milestone: M5
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: COUNTBLANK
     category: statistical
     milestone: M9
@@ -1185,14 +1188,14 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: CSCH
     category: math
     milestone: M5
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - { name: CUBEKPIMEMBER, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
   - { name: CUBEMEMBER, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
   - { name: CUBEMEMBERPROPERTY, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
@@ -1641,7 +1644,7 @@ functions:
     scope: in
     prior: 0.2
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: number_edges }]
   - name: EXACT
     category: text
     milestone: M5
@@ -1657,7 +1660,7 @@ functions:
     scope: in
     prior: 0.5
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: number_edges }]
   - name: EXPAND
     category: lookup
     milestone: M7
@@ -1745,7 +1748,7 @@ functions:
     scope: in
     prior: 0.3
     returns: number
-    params: [{ name: number, mode: value, type: number, domain: { int: true, min: 0, max: 20 } }]
+    params: [{ name: number, mode: value, type: number, pool: number_edges, domain: { int: true, min: 0, max: 20 } }]
   - name: FACTDOUBLE
     category: math
     milestone: M5
@@ -1861,7 +1864,7 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: number, mode: value, type: number }
+      - { name: number, mode: value, type: number, pool: number_edges }
       - { name: significance, mode: value, type: number, optional: true }
       - { name: mode, mode: value, type: number, optional: true }
   - name: FLOOR.PRECISE
@@ -1989,7 +1992,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: principal, mode: value, type: number, domain: { int: true, min: 100, max: 10000 } }
+      - { name: principal, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 } }
       - { name: schedule, mode: array, type: number }
   - name: GAMMA
     category: statistical
@@ -2437,7 +2440,7 @@ functions:
     scope: in
     prior: 2
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: number_edges }]
   - name: INTERCEPT
     category: statistical
     milestone: M9
@@ -2691,7 +2694,7 @@ functions:
     scope: in
     prior: 0.5
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: number_edges }]
   - name: LOG
     category: math
     milestone: M5
@@ -2707,7 +2710,7 @@ functions:
     scope: in
     prior: 0.3
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: number_edges }]
   - name: LOGEST
     category: statistical
     milestone: M9
@@ -2901,7 +2904,7 @@ functions:
     prior: 1.5
     returns: number
     params:
-      - { name: number, mode: value, type: number }
+      - { name: number, mode: value, type: number, pool: number_edges }
       - { name: divisor, mode: value, type: number }
   - name: MODE
     category: statistical
@@ -2931,7 +2934,7 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: number, mode: value, lift: arrays, type: number }
+      - { name: number, mode: value, lift: arrays, type: number, pool: number_edges }
       - { name: multiple, mode: value, lift: arrays, type: number }
   - name: MULTINOMIAL
     category: math
@@ -3151,7 +3154,7 @@ functions:
     scope: in
     prior: 0.2
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: number_edges }]
   - name: ODDFPRICE
     category: financial
     milestone: M9
@@ -3409,7 +3412,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: number, mode: value, type: number }
+      - { name: number, mode: value, type: number, pool: number_edges }
       - { name: power, mode: value, type: number }
   - name: PPMT
     category: financial
@@ -3536,7 +3539,7 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: numerator, mode: value, lift: arrays, type: number }
+      - { name: numerator, mode: value, lift: arrays, type: number, pool: number_edges }
       - { name: denominator, mode: value, lift: arrays, type: number }
   - name: RADIANS
     category: math
@@ -3796,14 +3799,14 @@ functions:
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: SECH
     category: math
     milestone: M5
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: SECOND
     category: date
     milestone: M6
@@ -3856,14 +3859,14 @@ functions:
     scope: in
     prior: 0.5
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: SINH
     category: math
     milestone: M5
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: SKEW
     category: statistical
     milestone: M9
@@ -3933,7 +3936,7 @@ functions:
     scope: in
     prior: 1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: number_edges }]
   - name: SQRTPI
     category: math
     milestone: M5
@@ -4168,14 +4171,14 @@ functions:
     scope: in
     prior: 0.3
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: TANH
     category: math
     milestone: M5
     scope: in
     prior: 0.1
     returns: number
-    params: [{ name: number, mode: value, type: number }]
+    params: [{ name: number, mode: value, type: number, pool: angle }]
   - name: TBILLEQ
     category: financial
     milestone: M9
@@ -4375,7 +4378,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: number, mode: value, type: number }
+      - { name: number, mode: value, type: number, pool: number_edges }
       - { name: num_digits, mode: value, type: number, optional: true, domain: { int: true, min: -6, max: 10 } }
   - name: TTEST
     category: statistical
@@ -4403,7 +4406,7 @@ functions:
     prior: 0.05
     returns: text
     params:
-      - { name: number, mode: value, type: number, domain: { int: true, min: 1, max: 1000 } }
+      - { name: number, mode: value, type: number, pool: code_point, domain: { int: true, min: 1, max: 1000 } }
   - name: UNICODE
     category: text
     milestone: M5
@@ -4597,7 +4600,7 @@ functions:
     params:
       - { name: values, mode: array, type: number }
       - { name: dates, mode: array, type: number }
-      - { name: guess, mode: value, type: number, optional: true }
+      - { name: guess, mode: value, lift: arrays, type: number, optional: true }
   - name: XLOOKUP
     category: lookup
     milestone: M6
@@ -4629,7 +4632,7 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
+      - { name: rate, mode: value, lift: arrays, type: number }
       - { name: values, mode: array, type: number }
       - { name: dates, mode: array, type: number }
   # Like AND: text and blanks in a range or array are skipped, direct text is coerced, a lone text cell is #VALUE! (probes/info-logic-argument-modes A1:A5, -2 A10:A11); XOR() is refused (T-1088).

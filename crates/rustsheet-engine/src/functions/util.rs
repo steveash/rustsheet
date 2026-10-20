@@ -479,6 +479,10 @@ impl Model {
                     model.picked_reference_arg_reading(body, blanks, cell)
                 })
                 .unwrap_or_else(RefArg::Value),
+            // A lifted TRIMRANGE keeps its array of references, which SUM reads by its
+            // top-left cells (`SUM(TRIMRANGE(A1:B5,{0;1}))` is 10 with A1 = 5;
+            // probes/trimrange-lift-sources D27).
+            Function::Trimrange => self.trimrange_reference(args, cell, true),
             _ if kind.picks_reference() => match self.evaluate_reference_form(kind, args, cell) {
                 Some(result) => RefArg::from(result),
                 None => self.reference_arg_reading(node, blanks, cell),
