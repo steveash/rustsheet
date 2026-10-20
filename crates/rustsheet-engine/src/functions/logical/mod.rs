@@ -371,7 +371,7 @@ impl Model {
             }
             // A blank cell gives its value, not the reference: an empty value that OR reads as
             // FALSE and a lookup as 0 (T-0291; gen-m2 7469c3e920e1ade4 A351, ef5c55a81783b7d5 A291).
-            CalcResult::EmptyCell => return CalcResult::EmptyArg,
+            blank @ CalcResult::EmptyCell => return blank.blank_as_empty_value(),
             // A non-error scalar (or an error this function does not handle)
             // passes through unchanged.
             other => return other,
@@ -454,7 +454,9 @@ impl Model {
         as_reference: bool,
     ) -> CalcResult {
         match self.ifs_pick(args, cell) {
-            Picked::Node(value) => self.evaluate_node_as(value, cell, as_reference),
+            Picked::Node(value) => self
+                .evaluate_node_as(value, cell, as_reference)
+                .empty_value_as_zero(),
             Picked::Value(value) => value,
         }
     }

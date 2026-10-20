@@ -271,6 +271,7 @@ impl Model {
                 table.pick(model, row, column as i32, cell, as_reference)
             },
         )
+        .blank_as_empty_value()
     }
 
     /// `VLOOKUP(lookup_value`, `table_array`, `row_index`, [`is_sorted`])
@@ -320,6 +321,7 @@ impl Model {
                 table.pick(model, row as i32, column, cell, as_reference)
             },
         )
+        .blank_as_empty_value()
     }
 
     // HYPERLINK(link_location, [friendly_name])
