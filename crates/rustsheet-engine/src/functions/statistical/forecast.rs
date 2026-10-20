@@ -13,39 +13,10 @@ impl Model {
         known: &[Node],
         cell: CellReferenceIndex,
     ) -> Result<(f64, f64), CalcResult> {
-        let (_, _, values_y, values_x) = self.fn_get_two_matrices(known, cell)?;
-        let error = |error| CalcResult::new_error(error, cell, String::new());
-
-        let mut n = 0.0_f64;
-        let mut sum_x = 0.0_f64;
-        let mut sum_y = 0.0_f64;
-        let mut sum_x2 = 0.0_f64;
-        let mut sum_xy = 0.0_f64;
-
-        for (y, xi) in values_y.iter().zip(&values_x) {
-            if let (Some(y), Some(xi)) = (y, xi) {
-                n += 1.0;
-                sum_x += xi;
-                sum_y += y;
-                sum_x2 += xi * xi;
-                sum_xy += xi * y;
-            }
-        }
-
-        // At least two numeric data points.
-        if n < 2.0 {
-            return Err(error(Error::DIV));
-        }
-
-        // All x values equal.
-        let denom = n * sum_x2 - sum_x * sum_x;
-        if denom == 0.0 || !denom.is_finite() {
-            return Err(error(Error::DIV));
-        }
-
-        let slope = (n * sum_xy - sum_x * sum_y) / denom;
-        let intercept = (sum_y - slope * sum_x) / n;
-        Ok((intercept, slope))
+        // Fewer than two pairs or all x equal is #DIV/0!.
+        self.paired_moments(known, cell)?
+            .line()
+            .ok_or_else(|| CalcResult::new_error(Error::DIV, cell, String::new()))
     }
 
     /// `FORECAST(x, known_y's, known_x's)` and FORECAST.LINEAR: the predicted y at `x` by
