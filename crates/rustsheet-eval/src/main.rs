@@ -31,6 +31,7 @@ use rustsheet_eval::evidence_floor::{self, Lock, EVIDENCE_FLOOR, LOCK_PATH};
 use rustsheet_eval::exit_exceptions::ExitExceptions;
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::lift_kinds;
+use rustsheet_eval::milestone_exit;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
@@ -332,6 +333,7 @@ fn score_milestones(
         .collect();
     report.catalog_coverage =
         catalog_coverage::summarize(catalog, results, &report.evidence, &generated);
+    report.milestone_exit = milestone_exit::summarize(report);
 }
 
 fn print_summary(report: &RunReport) {
