@@ -7,13 +7,14 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-2198]
 ---
 
 ## Goal
 DOLLAR, FIXED and NUMBERVALUE lift over arrays and multi-cell ranges like Excel (SPEC-0011 driver).
 
 ## Context
+- Evidence first (planner, 2026-10-20): the probe this task asks for is T-2198 (research), which fills `probes/t2198-m5-lift-argument-kinds`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). None of them is in eval/catalog/lift-kinds.json: over an array they give `#N/IMPL!` (`DOLLAR(ABS(MUNIT(4)))`), over a range
 `#VALUE!`. Excel returns an array (`#SPILL!` under a filled column). Rule: docs/excel-semantics/arrays.md "LOG, DECIMAL, BASE,
 ATAN2, ARABIC, DOLLAR, FIXED and NUMBERVALUE return arrays over array arguments" (added by this triage). Use `lift_text`/`lift_call`

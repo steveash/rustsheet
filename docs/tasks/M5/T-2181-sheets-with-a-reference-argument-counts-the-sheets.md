@@ -3,7 +3,7 @@ id: T-2181
 title: "SHEETS with a reference argument counts the sheets the reference spans"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,10 +28,13 @@ depends_on: [T-2115]
   evidence appears; do not guess.
 
 ## Acceptance criteria
-- [ ] probes/info-sheets-info-types Alpha!D1:D24 and probes/sheet-names-like-cells-3d-spans S1!B3, B4, B6 (unquoted
-  cell-like sheet names: `#VALUE!`, 1; quoted: 3) pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures.
-- [ ] Unit tests for a one-sheet reference, a 3-D span in both orders and the bare `SHEETS()` (unchanged).
-- [ ] `make check` green; reviewers approve.
+- [x] probes/info-sheets-info-types Alpha!D1:D24 and probes/sheet-names-like-cells-3d-spans S1!B4, B6 (unquoted
+  `S3:S1`: 1; quoted: 3) pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures.
+- [x] Unit tests for a one-sheet reference, a 3-D span in both orders and the bare `SHEETS()` (unchanged).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The unprobed argument forms listed above.
+
+## Outcome
+`fn_sheets` counts the sheets between the corners of a single-area reference (either order). Unions, names and non-reference arguments keep `#N/IMPL!` (unprobed, T-2113). Eval: 26 known failures left eval/baseline/probes.txt; no new ones. probes/sheet-names-like-cells-3d-spans S1!B3 stays a known failure (unquoted `S1:S3!A1` expects `#VALUE!`): T-2193.
