@@ -122,9 +122,11 @@ density's exp(a ln y) form; then re-cut the 4-ulp criterion per decision 0056 if
   bit-exact). No baseline line changed. The ungated probes-numeric cases carry the gain: m9-t-dist-cdf/-rt/-2t/-pdf at
   df 1E6, m9-t-edges, m9-t-nonint-df and t1518-t-df-cut at df 1E10 and up, plus the five `#DIV/0!` cells.
 - What is left is Excel's own noise (statistics.md "Student t sweep", "Large df stays exact"): in deep-ish tails and
-  densities Excel is tens to hundreds of ulp from the exact value, and ours is within a few ulp of it. T.TEST/TTEST is
+  densities Excel is tens to hundreds of ulp from the exact value. Our tails, and our densities up to |t| = 5, are within
+  a few ulp of it. Our large-t densities carry their own |E| eps error (-96 ulp at `T.DIST(30,1000,FALSE)`, +148 at
+  (30,1E6)). T.TEST/TTEST is
   20 cells and the integer-df centre noise (T.DIST.2T(3,30), (2,100), (0.1,2)) another 10. Next: model the density's
-  exp(E) error at df <= 100 (38 to 165 ulp) and the T.TEST noise. A kernel that is only more accurate cannot close
+  exp(E) error at every df (38 to 200 ulp, df 30 to 1E6) and the T.TEST noise. A kernel that is only more accurate cannot close
   these.
 
 ## Acceptance criteria

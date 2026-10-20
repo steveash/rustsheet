@@ -1369,8 +1369,10 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   - `T.DIST(1000,100,FALSE)` is 165 ulp off and `T.DIST(100,30,FALSE)` 38 ulp off.
   - `T.DIST.RT(30,1E6)` = 6.0100471168320144E-198 is 398 ulp above exact.
 
-  ratio / sqrt(n) * exp(-((n+1)/2) log1p(t^2/n)) in doubles is closer to Excel than the exact density at
-  df >= 1000 (`T.DIST(30,1000,FALSE)`: 2 ulp against 94) but not below it. No tried double formula (pow,
+  In doubles, ratio / sqrt(n) * exp(-((n+1)/2) log1p(t^2/n)) carries the same kind of |E| eps error, with its own
+  sign. It is closer to Excel than the exact density at df 1000 and 1E6 for |t| up to about 10, and at
+  `T.DIST(30,1000,FALSE)` (2 ulp against 94). It is further away at `T.DIST(30,1E6,FALSE)` (348 against 200) and
+  below df 1000. No tried double formula (pow,
   exp of ln, exp of log1p, ln Gamma differences) reproduces Excel's density noise at df <= 100.
 Evidence: probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-inv`,
 `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13. Exact reference values for

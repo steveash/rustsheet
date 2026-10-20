@@ -120,8 +120,8 @@ fn unflushed_upper_tail(t: f64, n: f64) -> f64 {
     centre_tail(t, n, z, ratio)
 }
 
-/// L = `I_y(n/2, 1/2)`/2 for 0 < t^2 < n and an integer n from z = t^2/(n+t^2), t^2/n and n/t^2 (each within an ulp
-/// or two), with `ratio` = Gamma((n+1)/2)/(Gamma(n/2) Gamma(1/2)) and y^(n/2) = exp(-(n/2)
+/// L = `I_y(n/2, 1/2)`/2 for 0 < t^2 < n and an integer n, from z = t^2/(n+t^2), t^2/n and
+/// n/t^2 (each within an ulp or two) with `ratio` = Gamma((n+1)/2)/(Gamma(n/2) Gamma(1/2)) and y^(n/2) = exp(-(n/2)
 /// log1p(t^2/n)). Up to t = 1 the centre A = `I_z(1/2, n/2)` by `incbcf` (6 steps at most) and
 /// L = (1 - A)/2; beyond it L itself by `incbd` on the ratio y/z = n/t^2. Each fraction converges
 /// in under 160 steps on its side of t = 1 at every df to 1E10, within a few ulp of the exact L,
@@ -271,10 +271,11 @@ fn centre_series(t: f64, n: f64) -> Option<Dd> {
 
 /// The Student-t density for an integer df n: below [`SERIES_MAX_DF`] rounded once from
 /// double-double, ratio cos^(n+1) / sqrt(n) with cos^2 = n/(n+t^2) and the ratio of
-/// [`integer_ratio`]; from it on ratio / sqrt(n) * exp(-((n+1)/2) log1p(t^2/n)), which Excel
-/// follows to its last digits at df 1E6 to 1E11 (`T.DIST(2,1E11,FALSE)` = 0.05399096651413289,
-/// probes-numeric m9-t-edges) and which is closer to Excel than the exact density at df 1000
-/// (`T.DIST(30,1000,FALSE)`: 2 ulp against 94, m9-t-dist-pdf A129). `None` elsewhere.
+/// [`integer_ratio`]; from it on ratio / sqrt(n) * exp(-((n+1)/2) log1p(t^2/n)), within 2 ulp
+/// of Excel at t = 2 from df 1E10 to 1E11 (`T.DIST(2,1E11,FALSE)` = 0.05399096651413289,
+/// probes-numeric m9-t-edges) and closer to Excel than the exact density at df 1000
+/// (`T.DIST(30,1000,FALSE)`: 2 ulp against 94, m9-t-dist-pdf A129), though not at
+/// `T.DIST(30,1E6,FALSE)` (348 against 200, A144). `None` elsewhere.
 pub(crate) fn student_t_density(t: f64, n: f64) -> Option<f64> {
     if t.is_nan() || t.abs() >= 1e150 {
         return None;
