@@ -297,7 +297,8 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
 /// ([`is_returned_argument`]) is an array constant: the one shape of them probed under N and T
 /// (probes/legacy-n-t-reference-args A, B, K, L). Over a reference they read the reference,
 /// unmarked (T-1908); a CHOOSE mixing references and array constants is
-/// [`chooses_between_references_and_array_constants`]; other mixed arms keep their `@`.
+/// [`chooses_between_references_and_array_constants`], and a CHOOSE with an array-constant index over
+/// references is [`chooses_references_by_an_array_index`]; other mixed arms keep their `@`.
 fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
     (matches!(kind, Function::Choose | Function::Index | Function::Ifs)
         && returns_only_array_constants(kind, args))
