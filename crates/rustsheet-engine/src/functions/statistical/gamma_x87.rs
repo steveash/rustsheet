@@ -26,7 +26,7 @@ const PI: f64 = std::f64::consts::PI;
 const SQRT_PI: f64 = f64::from_bits(0x3FFC_5BF8_91B4_EF6B); // 0x1.c5bf891b4ef6bp+0
 
 /// √(2π) as Excel's x >= 10 path multiplies by it (the literal 2.50662827463100050242).
-const SQRT_2PI: f64 = 2.506_628_274_631_000_502_42;
+const SQRT_2PI: f64 = f64::from_bits(0x4004_0D93_1FF6_2706); // 0x1.40d931ff62706p+1
 
 /// Excel's GAMMA(x); NaN at the poles (0 and the negative integers) and for a non-finite x, an
 /// infinity past the double range (the caller's #NUM!).
