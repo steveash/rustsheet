@@ -1399,3 +1399,41 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
   - D3 is at −2,070,784 ulps; the low block reaches the noise floor with D0 fixed; exact R is 42.7%.
   - The hidden-term form gives nothing there beyond N4 +3 mod 8.
 - **Fill:** w6t 277+/750, k3t 181+/450.
+
+### 12.20 Structure verdicts, K1/K3 coefficient status, ladder probes (07:00-07:40)
+
+- **Noise fingerprint (W2; independently re-implemented by W5 in `w5/fp/`).**
+  - Method:
+    - The target quotient A* is the mean of the doubles A with fl(t·A) = Y.
+    - A weighted LS fit of N − A*·D gives the best smooth function.
+    - The residual rms in ulp(A) is the rounding noise of the TRUE op structure, independent of coefficient bits.
+    - Calibrate with PLANTED truths carrying realistic coefficients; coefficient bits alone shift the level by about ±0.03.
+  - It resolves large unstored regions but not small heads.
+  - **K3 is plain stored:** real 1.001 vs stored 0.997; W5's m3 mask 0.808 and W2's m2 mask 0.563 are excluded. The top 2-4 stages are unresolvable.
+  - **K1 is plain stored or a small head:** real 1.042-1.045 vs stored 1.043-1.044; W4's x87-top mask 0.97 is excluded; N top 4 / D top 3 (1.029) is not excluded.
+  - **K2 is unresolvable:** planted stored vs head-80 differ by 0.002. All the "mask gains" on K1 and K3 were coefficient errors hidden by unstored ops.
+- **K2 structure (reviewer 3), open.**
+  - Near-2 ladders (139k points, x−2 < 5e-7) with grid_a: stored 0.9953, pure double 0.9932, the extended s3 of M* 0.9685. So M* is retracted.
+  - Near-2 constraint: 16δp1 + 8δp2 + 4δp3 + 2δp4 + δp5 ≈ 0 (to 0.05u). The committed set meets it to 0.2u.
+  - The decisive control is running: refit on far data only under each structure, then score on the near-2 ladders.
+  - Oracle data are noise-free: 551,309 duplicated x with 0 conflicts.
+  - `k2_ref.py` currently carries the head-80 mask with a caution note.
+- **K1 (W4), `w4/k1r/plain1.txt`.**
+  - Plain doubles, the hidden e/y terms absorbed via e·g(y) (g ≈ 1/y, degree 5/4): 0.775 overall (0.774 held out); [1, 1.8) ≈ 0.87, [1.8, 2) ≈ 0.45.
+  - Per-run caps: [1, 1.8) at 0.93-0.97 with sum offsets, so smooth site laws remain to be found.
+  - [1.8, 2) caps at 0.65 with sum offsets and 0.80 with all 26 site offsets, with the worst region at 1.888-1.90 (0.53).
+  - Rejected for the dip:
+    - an exp(GAMMALN) composition (Excel GAMMA and GAMMALN are independent computations);
+    - shifted variables (y−2, y−1);
+    - split-chain joins;
+    - a switch point (the dip is a smooth ramp);
+    - unstored final sums, alternative final ops, directed rounding;
+    - the constant / e-y term families at all stages;
+    - a function-changing correction (the mean bias is flat).
+  - Next: unwrap the D P2 line in the dip into Excel's S3(y). K1 ladder probes may be requested.
+- **K3.**
+  - W5's mid-coefficient BKZ/CVP search gets 0.333 → 0.341 held out, then a local maximum. A CVP toward the LS function lowers exact.
+  - The per-stage phase read (`w5/p5/k3phase.py`, all 16 sums) gives SMOOTH but STEEP laws at N3, N5-N7 and D4-D6, with slopes of 10²-10⁵ cycles per unit x: far null offsets the current sampling cannot unwrap.
+  - Ladder probes `kmyst-gam-k3l[a-f](00|10..21)` (78 cases, 640k points, anchors 0.8013, 0.9517, 1.1023, 1.2519, 1.3527, 1.4531, steps 2^-10..2^-21) are being filled now, ahead of w6t/k3t.
+  - W2 is running step-1 c/x needle scans per stage.
+- **Fill:** w6t ~306+/750, k3t ~208+/450 (paused for the K3 ladders).
