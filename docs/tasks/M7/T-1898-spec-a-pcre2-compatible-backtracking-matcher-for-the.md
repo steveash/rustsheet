@@ -45,10 +45,11 @@ Split, in order:
 
 No eval change (docs only).
 
-## Outcome
-SPEC-0013 (docs/specs/SPEC-0013-pcre2-regex-matcher.md) and the split above. Security, architecture and quality
-approved. The performance reviewer's round-3 finding (a successful match must invalidate the memoized visited marks at
-or before its end) is in SPEC-0013 section 3 and T-1899, and T-1974 holds the memoized-mode DEVIATION. No final
+Reviews: security, architecture and quality approved. The performance reviewer's round-3 finding (a successful
+match must invalidate the memoized visited marks at or before its end) is in SPEC-0013 section 3 and T-1899, and
+T-1974 holds the memoized-mode DEVIATION. No final
 performance verdict was taken: the owner turned the performance reviewer off and asked to merge (decision 0081,
 2026-10-20). T-1903 landed on main first (POSIX classes through a pre-compile rewrite, `regex_posix.rs`); the spec,
-T-1972 and T-1973 now carry that mapping over instead of re-probing it.
+T-1972 and T-1973 now carry that mapping over instead of re-probing it, along with the bracket rules of T-1985,
+T-1989 and T-2010 and the line-break and UCP answers of probes/regex-ascii-classes (`$` before a final LF is
+implemented in T-1973).

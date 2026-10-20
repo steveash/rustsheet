@@ -2,7 +2,8 @@
 
 - **Status:** accepted
 - **Milestone / lane:** M7 / functions-text
-- **Tasks:** T-1898 (this spec), T-1972, T-1973, T-1903, T-1900, T-1899, T-1974; benchmarks T-1830
+- **Tasks:** T-1898 (this spec), T-1972, T-1973, T-1900, T-1899, T-1974; benchmarks T-1830; cross-references
+  (landed): T-1903, T-1985, T-1989, T-2010
 
 ## Problem
 REGEXTEST, REGEXEXTRACT and REGEXREPLACE use PCRE2 in Excel (docs/excel-semantics/text.md "REGEX* patterns and match
@@ -22,7 +23,7 @@ iteration are PCRE2 (T-1688)"). Ours use the `regex` crate's dialect on `regex-a
 3. **Positions.** Excel iterates UTF-16 units: an empty pattern over text with a surrogate pair is `#VALUE!` (D11,
    D13). We iterate UTF-8 code points.
 
-Each of these is a known failure in eval/baseline/probes.txt today.
+Each of these, apart from the POSIX classes T-1903 fixed, is a known failure in eval/baseline/probes.txt today.
 
 ## Goals / non-goals
 Goals:
@@ -56,6 +57,17 @@ Evidence already in eval (VERIFIED, excel-graph):
 - Case-insensitive matching uses Unicode simple case folding: `ſ` matches `s` and the Kelvin sign matches `k`
   (probes/regex-optional-args A24-A26). `\w`, `\b`, `\pL` and `[[:alpha:]]` are Unicode (text.md "REGEX* patterns and match iteration are PCRE2
   (T-1688)" and the REGEX entries after it; regexreplace-limit-and-syntax A23).
+- Unicode properties (UCP) and line breaks (text.md "REGEX* character classes are Unicode; `$` and `.` around line
+  breaks (T-1829)", probes/regex-ascii-classes A1-A42):
+  - `\d` matches the Arabic-Indic three and the full-width three (A10, A11);
+  - `(*UCP)`, `\X`, `\h` and `\R` are accepted (A17, A27, A41, A42);
+  - `$` matches at the end and before a final LF (`"a"&CHAR(10)` matches `a$`, A34);
+  - an LF, CR or U+2028 inside the text does not end a line for `$` or `^` (A31-A33, A35);
+  - `.` does not match LF (A36).
+- POSIX classes and brackets (text.md "REGEX* POSIX classes are Unicode (T-1903)"; probes/regex-posix-classes,
+  -b, -c and regex-posix-syntax-edges; T-1903, T-1985, T-1989, T-2010): the Unicode class per name, `[:^name:]`
+  complements (`[[:^alpha:]]` included), nested brackets, `&&`, the `(?i)` rule and the syntax errors. Section 1
+  lists what the parser must keep.
 - An invalid pattern is `#VALUE!` in its own lifted element only (text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX*
   lift ...").
 
@@ -71,12 +83,11 @@ Unknowns, probed first by T-1972 (case probes/regex-pcre2-limits):
 - **Recursion and subroutines.** `(?R)`, `(?1)`, `(?&name)`, for example `REGEXTEST("((()))","^(\((?1)*\))$")`.
 - **Escapes and classes:**
   - `.` on a supplementary character (one match or two);
-  - `\X`, `\R`, `\h`, `\v`, `\N`, `\x{1F600}`;
-  - `\p{Greek}` and `\p{Han}` (scripts);
-  - `[[:^alpha:]]`;
-  - `\d` on Arabic-Indic digits (is `\d` Unicode, as UCP mode makes it?).
-- **Newlines and anchors.** Do `$` and `\Z` match before a final `CHAR(10)`? Does `.` match `CHAR(10)` and
-  `CHAR(13)`? What do `(?s)`, `(?m)` and `(?n)` do?
+  - `\v`, `\N`, `\x{1F600}`;
+  - `\p{Greek}` and `\p{Han}` (scripts).
+- **Newlines and anchors.** Does `\Z` match before a final `CHAR(10)`, as `$` does (A34)? Does `.` match
+  `CHAR(13)` (A36 answers LF only)? Is CR, CRLF or U+2028 at the end a final line break for `$`? What do `(?s)`,
+  `(?m)` and `(?n)` do?
 - **Verbs and callouts.** `(*SKIP)(*FAIL)`, `(*UTF)`, `(?C1)`: `#VALUE!` or accepted.
 
 The spec decides the design; the probe decides constants and accept/reject lists. Each probed answer goes into
@@ -141,6 +152,16 @@ The current `Engine` stays as is. It is fed a `Hir` built by our translator inst
   class and one case-folding definition. POSIX classes build the Unicode classes T-1903 already maps
   them to (`regex_posix.rs`, probes/regex-posix-classes and -b), so the parser replaces that rewrite rather than
   re-deriving it.
+- Brackets keep every behaviour T-1903, T-1985, T-1989 and T-2010 verified (text.md "REGEX* POSIX classes are
+  Unicode (T-1903)"), which stock PCRE2 does not all share:
+  - brackets nest: `[[a]]` matches `a` and not `[`, and `(?i)[[[:upper:]]]` matches `A` (regex-posix-classes-c);
+  - `&&` intersects (`[[:alpha:]&&[:lower:]]` is FALSE on `A`; regex-posix-classes-b);
+  - under `(?i)` (or case_sensitivity 1) no POSIX class folds, while the bracket's other items do:
+    `(?i)[[:upper:]]` is FALSE on `a`, `(?i)[[:lower:]a-c]` matches `B`, `(?i)[^[:upper:]x]` is FALSE on `X`; this
+    holds through nesting, negation, `&&` and scoped or re-set flags;
+  - the syntax errors are `#VALUE!`: a class outside a bracket, an unknown or upper-case name, `[[.a.]]`, `[[=a=]]`,
+    a top-level `[.a.]` or `[..]`, a multi-character `[[.ab.]]`, and a range from or to a class
+    (`[[:alpha:]-z]`, `[a-[:alpha:]]`), while `[[:alpha:]-]` and `[-[:alpha:]]` stay valid (T-1985, T-2010).
 
 ### 2. Regular patterns stay on the automata
 `Ast::is_regular` holds when no node is one of these:
@@ -156,16 +177,21 @@ Every other anchor has a `Hir` look-around assertion (`hir::Look`) with the same
 A construct the parser adds later is non-regular unless it is added to this list with a test. `is_regular` is
 narrowed only by naming a construct, and each narrowing runs the REGEX* benchmarks.
 
-**`$` and `\Z`.** In PCRE2's default mode they also match before a final `\n`, which no `hir::Look` expresses.
-They stay regular, and the choice is made per text instead:
+**`$` and `\Z`.** `$` also matches before a final `\n` (probes/regex-ascii-classes A34), which no `hir::Look`
+expresses; an LF inside the text does not end a line (A32, A35). `\Z` is PCRE2's `$` without `(?m)`, so it gets the
+same rule; T-1972 confirms it for Excel. They stay regular, and the choice is made per text instead:
 - on a text that does not end in `\n`, `$` and `\Z` are `\z`, so the automata run, with `Look::End`;
-- on a text that ends in `\n`, the search runs on the backtracker in its memoized mode (section 3), so it stays
-  linear.
+- on a text that ends in `\n` and has no other `\n`, they are `Look::EndLF` (the multi-line end: at the end or
+  before a `\n`). The only `\n` is the final one, so the meaning is exact and the automata run. This second
+  translation is compiled lazily, the first time such a text is searched, under the same compile budget;
+- on a text that ends in `\n` and has another `\n`, the search runs on the backtracker in its memoized mode
+  (section 3), so it stays linear.
 
-Cells rarely end in a line feed, so `^\d{5}$` over a column stays on the lazy DFA. Until T-1972 confirms PCRE2's
-default for Excel, T-1973 keeps today's meaning (`$` is `\z` on every text) and only adds the per-text switch once
-the probe shows the final-`\n` rule. The same applies to `.` and `\n`/`\r` (`(?s)` off) and `(?m)`, whose `Hir`
-forms exist.
+Cells rarely end in a line feed, so `^\d{5}$` over a column stays on the lazy DFA. T-1973 implements the final-`\n`
+rule for the first two cases (today's `$` is `\z` on every text, A34's known failure). The third case needs T-1900's
+memoized mode: until it lands, T-1973 keeps `\z` there, and a unit test pins that gap for T-1900 to flip. `.` does
+not match `\n` (A36). Whether it matches `\r`, and what `(?s)`, `(?m)` and `(?n)` do, waits for T-1972; their
+`Hir` forms exist, and T-1973 keeps today's meaning for them until the probe answers.
 
 For a regular pattern, Perl-style priority matching and `regex-automata`'s leftmost-first semantics pick the same
 match and the same captures. That is the property the `regex` crate is built on, and the T-1900 differential test
@@ -233,7 +259,7 @@ existing cost model and caches.
     and with backreferences, atomic groups or conditionals the result of a state depends on the path that reached
     it. Regular patterns use it, in a separate **memoized mode** (the technique of `regex-automata`'s bounded
     backtracker). Every regular pattern that runs on the backtracker uses this mode: the empty-match retry of
-    section 4 and the `$`-before-a-final-`\n` texts of section 2.
+    section 4 and the `$` texts of section 2 that end in `\n` and hold another `\n`.
     - Its program is compiled from the regular AST Thompson-style. Counted repeats are expanded, with no
       `RepeatCounter`, and charged to the compile budget, `TooBig` as the NFA limits are today. There is no
       empty-loop slot: empty iterations are resolved as the Thompson NFA resolves them. That is how the
@@ -324,7 +350,9 @@ no code to the binary, since the crate is already linked.
 
 ## Test plan
 - **Eval.** probes/regex-pcre2-features C1-C19, D1-D14 and B27-B29, t1626-regextest C29, t1626-regexreplace C34,
-  regexreplace-limit-and-syntax A23, and the new probes/regex-pcre2-limits case.
+  regexreplace-limit-and-syntax A23, regex-ascii-classes A17, A34 and A41 (A27 and A42 with their follow-up task),
+  and the new probes/regex-pcre2-limits case. probes/regex-posix-classes, -b, -c and regex-posix-syntax-edges keep
+  passing when the parser replaces `regex_posix.rs`.
 - **Differential (unit, in `pcre/tests`).** For random regular patterns over a small alphabet (the property test style
   of T-1808), check:
   - parse, then `to_hir`, then `Engine` against parse, then `Program`, then `Backtracker`: same match and same
@@ -336,7 +364,8 @@ no code to the binary, since the crate is already linked.
     - `(a|a)*b`, `(a*)*b`, `((a+)+)+b` and nested lookarounds on 32,767-character texts;
     - `(.*)\1x` (backreference over a long capture);
     - `(a|a)*b|` (the memoized retry);
-    - `(a|a)*b$` over a text ending in `CHAR(10)` (the memoized `$` path);
+    - `(a|a)*b$` over a text ending in `CHAR(10)` (the `Look::EndLF` path), and over one with a second
+      `CHAR(10)` inside (the memoized `$` path);
     - `a*?` and `|b` iteration over 32,767 characters (the visited set persists across retries);
     - in memoized mode, `a*?` on `aaa` gives 7 matches and `|a(?:a*b)?` on `REPT("a",32767)` is linear: this
       pins the invalidate-up-to-`e` rule and the kept failures after `e`.
@@ -369,7 +398,12 @@ Each task is S/M and leaves `make check` green. A pattern needing an unimplement
    - `regex_functions.rs` builds through `Pattern`, with regular patterns only;
    - lands `\Q..\E`, comments, `(?x)` and scoped flags;
    - depends on T-1830 (benchmarks);
-   - POSIX classes map as T-1903's `regex_posix.rs` does (done on main), which the parser then replaces;
+   - POSIX classes and brackets behave as T-1903's `regex_posix.rs` makes them (done on main, with T-1985, T-1989
+     and T-2010; section 1), which the parser then replaces;
+   - `$` before a final `\n` (A34) on the automata, for texts with no other `\n` (section 2);
+   - `\h` (a class) and a leading `(*UCP)` (a no-op, since UCP is always on; A17, A41). `\R` (atomic in PCRE2)
+     and `\X` (a grapheme cluster), accepted by Excel (A27, A42), parse but stay `#VALUE!`; T-1973 files their
+     follow-up task;
    - `a++` and the other backtracking-only constructs become `#VALUE!`, which is B29's direction (it is a failure
      today either way);
    - includes the differential test against `regex-syntax`.
@@ -378,14 +412,15 @@ Each task is S/M and leaves `make check` green. A pattern needing an unimplement
    - backreferences, lookahead and lookbehind, atomic and possessive groups, `\K`, conditionals (C1-C19,
      B27-B29, t1626-regextest C29);
    - the differential test regular-on-automata against regular-on-backtracker;
+   - the memoized mode for `$` on a text that ends in `\n` and holds another `\n` (section 2);
    - if it proves bigger than M, split it at the natural seams: the core VM with backreferences, atomic and
      possessive groups first, then lookaround, conditionals and `\K`.
 4. **PCRE2 global iteration** (T-1899, rewritten; functions-text, opus, S): `find_iter` with the anchored not-empty
    retry on the backtracker and the `SplitSurrogate` rule (t1626-regexreplace C34, D1-D14).
 5. **Limits and bench** (T-1974; perf, opus, S): fit `STEP`/`FRAME`, add the benchmarks and fuzz patterns, and apply
    the probe's match-limit answer (a `DEVIATION` entry where Excel answers past our budget).
-6. **Unprobed features** found accepted by step 1 (recursion, subroutines, `\X`, `\R`, scripts) are filed as
-   follow-up tasks by the step 1 task, one per feature group.
+6. **Unprobed features** found accepted by step 1 (recursion, subroutines, scripts, `\v`, `\N`, verbs) are
+   filed as follow-up tasks by the step 1 task, one per feature group.
 
 T-1829 (charging PikeVM iteration by measured work) is independent: it touches `regex_engine.rs` iteration costs,
 which step 4 reuses unchanged.
