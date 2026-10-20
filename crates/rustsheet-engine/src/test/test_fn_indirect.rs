@@ -290,7 +290,8 @@ fn errors() {
 }
 
 // An array ref_text or a1 lifts INDIRECT into an array of references (SPEC-0014, T-1957;
-// probes/reference-lift-elements): spilled, each element is `#VALUE!`, an error element stays itself.
+// probes/reference-lift-elements): INDEX picks an element as the reference itself, ROWS counts
+// elements and ISREF of the whole is FALSE.
 #[test]
 fn lifted_ref_text_is_an_array_of_references() {
     let mut model = new_empty_model();
