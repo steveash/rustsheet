@@ -393,6 +393,31 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       convention or an op the model gets wrong) or the phase rows need a better start. Next: measure Excel's N.T5 /
       D.T5 anchor phases on the K = 0 ladder runs (q440a) and test whether any smooth S5 shift explains them.
 
+30. **Excel's line phases are consistent with stored raw-x Horner** (`phasecons.py`: small CVP over only the
+    coefficients the chosen lines depend on; rows = 24 L-run phases + ladder F rows; no function rows).
+    - N4..N9 from N.T4, N.T5, N.Pn14, N.Pn15 (91 phase + 17 ladder rows): BOUND 1e9..1e13 leaves 0.07-0.20 cycles;
+      at BOUND 1e15 / 1e16 (same solution) 0.004-0.015 cycles and every F row within 0.03-0.18 sigma, the control
+      level. xlL3b was ~1.8e14 ulps off in N9.
+    - D2..D9 from D.T5, D.T6, D.Pn12-15 (144 + 32 rows): 0.003-0.009 cycles (D.Pn12 0.058), F within 0.7 sigma.
+    - Controls: near start (pass-1 chain) 0.003-0.010 cycles; far start (EM7) at BOUND 2e15 also consistent.
+    - Uniqueness: from the EM chain instead of xlL3b the absolute N5..N9 agree to 0 / 30 / 844 / 6.3e4 / 1.6e6 ulps.
+    - Checks requested by the coordinator: free per-line constant offsets do not explain the small-bound misfit (no
+      0.5 / 0.25 structure); each x-half alone fits only somewhat better.
+
+31. **The missing parameter is D0: Excel's (1.5,2] D0 is not 1** (`augls.py`, `lowsolve.py`, `synth.nrm`).
+    - With the phase-pinned N5..N9 and D3..D9 and D0 = 1, no low coefficients reproduce Excel's R: residual 5.2e-15
+      (lgamma rows 5.9e-15), smooth in x and needing degree 8-10; upper moves of ~1e9 ulps would be required.
+    - Augmented LS (one extra parameter): k (R = k N/D) 3.24e-16 with k - 1 = -3.6e-7; c 3.41e-16; c(x-2) 3.83e-16;
+      c(x-1) 3.76e-16; e 5.81e-16; extra N10 4.74e-16, N11 5.16e-16, D10 4.52e-16.
+    - With D0 free and no normalisation: 1.6e-16 rms vs Excel's R (the data noise; xlL3b 1.8e-16) and exact R 35.5%,
+      the best so far. The LS D0 itself (~0.0016) is not meaningful (the low block has a function-null direction).
+    - Every tool normalised by D0, which is exact only for +-2^k: `synth.nrm(D)` returns D0 only when it is +-2^k, else
+      1; patched into 26 scripts; D0 = 1 chains are unchanged (control 99.97% unchanged).
+    - D9: the phase fit gives D9 = -1.4e-13 (xlL3b 1.6e-5), i.e. D is effectively degree 8 at the line level; D9 enters
+      only D.S8 = D8 + D9 x at ~1e-13 relative and is left free for the exact scans. The (9,9) machinery covers (9,8)
+      with D9 = 0 as a special case, so the controls' assumptions are unaffected.
+    - Phase / ladder files and the two chains: `data/`.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
