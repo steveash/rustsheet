@@ -3,10 +3,10 @@ id: T-2115
 title: "Probe SHEETS with reference arguments and INFO type_text values on excel-graph (oracle: none evidence gap)"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: [T-2113]
 ---
 
@@ -42,15 +42,30 @@ the same function, or filed as a functions-logic task with milestone M5.
   (`rg -n "fn_sheets|fn_info"`).
 
 ## Acceptance criteria
-- [ ] `probes/info-sheets-info-types` is committed with its excel-graph oracle sidecar, and the report's
+- [x] `probes/info-sheets-info-types` is committed with its excel-graph oracle sidecar, and the report's
       evidence table shows SHEETS and INFO with ≥ 20 Excel cells each.
-- [ ] docs/excel-semantics/information.md has a VERIFIED (excel-graph) entry for SHEETS and one for INFO,
+- [x] docs/excel-semantics/information.md has a VERIFIED (excel-graph) entry for SHEETS and one for INFO,
       citing the probe cells, with the host-dependent values marked.
-- [ ] Every failing cell of the new case is fixed in this PR or listed in a filed task (milestone M5,
+- [x] Every failing cell of the new case is fixed in this PR or listed in a filed task (milestone M5,
       lane functions-logic), and the baseline records it (`make eval-baseline`).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Removing `oracle: none` from the catalog. T-2116 decides how such functions count, and the catalog
   edit can follow once the evidence is in.
 - Bare `SHEETS()` and `INFO("numfile")` (canary-dependent).
+
+## Handoff (resumed)
+A sonnet run drafted the case and handed off the INFO/3-D question; resolved as the Outcome says.
+
+## Outcome
+probes/info-sheets-info-types (excel-graph, 2026-10-20) holds 24 SHEETS cells, 3 SUM/COUNT 3-D controls and 25 INFO
+cells, all Excel-valued, so both functions clear the 20-cell floor.
+- SHEETS counts the sheets a span covers, in either order (information.md "SHEETS counts the sheets a reference
+  spans"). The handoff's "3-D SHEETS is `#VALUE!`" came from sheets named S1:S3, which Excel for the web misreads in
+  an unquoted span. That is now its own committed case, probes/sheet-names-like-cells-3d-spans, recorded as a probe trap.
+- INFO is `#VALUE!` for every type_text on the web. As with ENCODEURL and FILTERXML, these are the goldens
+  (decision 0039). The engine follows them in T-2190 (M5), and T-2182 (M14, blocked) asks desktop Excel.
+- The engine's `#N/IMPL!` for `SHEETS(ref)` is T-2181 (M5).
+- Eval: the two new cases add only new-coverage failures, owned by T-2181 (24 SHEETS cells + 3 in
+  the trap case) and T-2190 (INFO cells); no regressions.
