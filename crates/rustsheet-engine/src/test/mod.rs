@@ -1,4 +1,5 @@
 mod conditional_formatting;
+pub(crate) mod kernel_rows;
 mod test_actions;
 mod test_arabic_roman;
 mod test_bare_union;
