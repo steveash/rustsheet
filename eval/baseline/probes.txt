@@ -520,6 +520,7 @@ C	probes/match-empty-text-lift.case.json	13
 C	probes/match-error-lookup-value-array-match-type.case.json	8
 C	probes/match-fractional-match-type.case.json	8
 C	probes/match-lookup-value-lift.case.json	19
+C	probes/match-single-cell-forms-and-texts.case.json	36
 C	probes/match-single-value-lookup-array.case.json	26
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9

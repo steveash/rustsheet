@@ -235,12 +235,9 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!D1060
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!D1112
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1056
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1060
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E392
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!G936
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H936
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I1360
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I392
@@ -248,7 +245,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J1328
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J136
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K936
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!L160
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O3
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O5
 F	poi/HsGetVal.xlsx	Sheet1!B5
