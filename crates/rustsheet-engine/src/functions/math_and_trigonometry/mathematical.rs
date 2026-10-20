@@ -673,7 +673,13 @@ impl Model {
         // (docs/excel-semantics/numbers.md "INT cuts to 15 significant digits first", T-2171).
         // On the cut value, down is toward zero for a positive number and away from zero for a
         // negative one; the negative case is unprobed and follows the same cut.
+        // From 1E+15 up the cut would drop integer digits (`INT(2^53+1)` = 2^53, a sum of 1000000000000006
+        // stays 1000000000000006: gen-m5/d586a1e0c9896942 Calc!A64, gen-m5/1315170eef6c413e Calc!A332),
+        // so a value that large is floored as it is.
         self.number_fn(Function::Int, args, cell, |f| {
+            if f.abs() >= 1e15 {
+                return Ok(f.floor());
+            }
             let mode = if f < 0.0 {
                 RoundMode::Up
             } else {
