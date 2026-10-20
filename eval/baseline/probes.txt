@@ -710,6 +710,7 @@ C	probes/regex-ascii-classes.case.json	42
 C	probes/regex-optional-args.case.json	149
 C	probes/regex-pcre2-features.case.json	62
 C	probes/regex-posix-classes-b.case.json	18
+C	probes/regex-posix-classes-c.case.json	36
 C	probes/regex-posix-classes.case.json	905
 C	probes/regex-posix-syntax-edges.case.json	14
 C	probes/regexreplace-extended-escapes.case.json	244
@@ -2303,6 +2304,15 @@ F	probes/regex-posix-classes-b.case.json	Sheet1!A10
 F	probes/regex-posix-classes-b.case.json	Sheet1!A11
 F	probes/regex-posix-classes-b.case.json	Sheet1!A8
 F	probes/regex-posix-classes-b.case.json	Sheet1!A9
+F	probes/regex-posix-classes-c.case.json	Sheet1!A14
+F	probes/regex-posix-classes-c.case.json	Sheet1!A16
+F	probes/regex-posix-classes-c.case.json	Sheet1!A18
+F	probes/regex-posix-classes-c.case.json	Sheet1!A23
+F	probes/regex-posix-classes-c.case.json	Sheet1!A26
+F	probes/regex-posix-classes-c.case.json	Sheet1!A29
+F	probes/regex-posix-classes-c.case.json	Sheet1!A3
+F	probes/regex-posix-classes-c.case.json	Sheet1!A8
+F	probes/regex-posix-classes-c.case.json	Sheet1!A9
 F	probes/regex-posix-classes.case.json	Sheet1!Z7
 F	probes/regression-trend.case.json	Sheet1!L12
 F	probes/regression-trend.case.json	Sheet1!L13
