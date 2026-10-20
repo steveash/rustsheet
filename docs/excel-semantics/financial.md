@@ -995,9 +995,41 @@ Status: VERIFIED (excel-graph)
 Implemented (T-1764): VDB with salvage above cost never switches to straight line (-600); a fractional end period
 prorates the unclipped declining-balance charge and the total is capped at `cost - salvage` (A9 is 0; salvage <= cost only, salvage above cost keeps the clipped charge); AMORDEGRC
 rejects only an asset life (1/rate) in [0, 3] or strictly between 4 and 5 (exactly 4 and 5 are valid, coefficients
-1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. Still open: the ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI), see the T-1764 Outcome.
+1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. The ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI) are fixed by T-1975: see "VDB charge order" and "DURATION and RRI operation order".
 Implemented (T-1765): a typed boolean principal is `#VALUE!` (A18); a text-number principal still converts. A boolean principal read through a reference is `#VALUE!` too, verified by probes/fin-fvschedule-bool-ref (T-1992).
 Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
+
+## VDB charge order
+Rule: VDB sums the charges of the periods inside its window; it never subtracts two running totals. Its two modes
+build the per-period charges differently, so the same inputs give different last bits with `no_switch` TRUE and FALSE:
+- `no_switch` TRUE: period i charges `min(b·rate, b - salvage)` (at least 0), `rate = factor/life`, with the book
+  value raised directly, `b = cost·(1-rate)^(i-1)` (square-and-multiply, like the operator `^`). The charges are
+  summed in doubles; a partial first or last period is that charge times its share of the window.
+  `VDB(2400,300,10,7,10,2,TRUE)` is 203.3164800000004 and `VDB(2400,300,10,0,10,3,TRUE)` is 2099.9999999999995.
+- `no_switch` FALSE, from a whole start period: the book value steps down by each charge,
+  `min(b·factor/life, b - salvage)`, until the straight-line charge `(b - salvage)/(life - p)` is larger; from then on
+  every period charges that same amount. The window's declining-balance charges (and a prorated last period) are summed
+  in doubles, and the whole straight-line periods are added at the end as one product `n·sl`:
+  `VDB(1234.56,78.9,12,4,9,1.75)` is 379.8854487417499, one ulp below the period-by-period sum, and
+  `VDB(2400,300,10,7,10,2,FALSE)` is 203.31648000000007.
+- `no_switch` FALSE from a fractional start period is not fitted yet: probes/fin-vdb-schedule A42-A46 still miss
+  (T-2185, which records a restart model that passes 89 of 92 cells).
+Evidence: probes/fin-vdb-schedule (78 cells), fin-vdb-modes (excel-graph, 2026-10-20, T-1975).
+Status: VERIFIED (excel-graph)
+Implemented (T-1975): `vdb_no_switch_between` and `vdb_switching_between` in functions/financial/financial_depreciation.rs.
+Tasks: T-1975, T-2185
+
+## DURATION and RRI operation order
+Rule: DURATION discounts each cash flow with Excel's `^` (not libm `pow`) and weights it as `(t·cf)/v^t`, then
+`num/den/frequency`; MDURATION is exactly the worksheet `DURATION(...)/(1+yld/frequency)`. A zero-coupon
+`DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)` is 5.541666666666668, one ulp above `t/2`, because `(t·cf)/v^t`
+divided by `cf/v^t` is not exactly `t`. RRI is exactly the worksheet `(fv/pv)^(1/nper)-1`: `RRI(10,1,200)` is
+0.6986464646342472, where libm `pow` gives ...474.
+Evidence: probes/fin-mduration-rri-fit (60 cells: 12 DURATION/MDURATION/quotient triples, 12 RRI/`^` pairs),
+fin-mduration, fin-rri (excel-graph, 2026-10-20, T-1975).
+Status: VERIFIED (excel-graph)
+Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in annuity.rs.
+Tasks: T-1975
 
 ## NPV and FVSCHEDULE arguments
 Rule: NPV reads an array literal whole (`NPV(0.1,{-10000,2750,4250,3250,2750})` is 302.233453999042) and skips

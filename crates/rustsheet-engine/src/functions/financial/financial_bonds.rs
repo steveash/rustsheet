@@ -17,6 +17,7 @@ use coupon_schedule::{
 
 use super::number_or_error;
 use crate::{
+    arithmetic::power,
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
@@ -678,19 +679,21 @@ impl Model {
         let coupon = redemption * bond.rate / frequency as f64;
         let v = 1.0 + bond.yld_or_pr / frequency as f64;
 
+        // Each cash flow is discounted by Excel's `^` and its weighted term is `(t·cf)/v^t`, not
+        // `t·(cf/v^t)`: with libm `powf` 6 of 12 DURATION cells miss by an ulp, and the zero-coupon
+        // `DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)` is 5.541666666666668, one ulp above
+        // t/2 (probes/fin-mduration-rri-fit A1-A36, fin-mduration; T-1975).
         let mut num = 0.0; // sum of t * PV(CF)
         let mut den = 0.0; // dirty price (sum of PV(CF))
-
+        let mut add_cash_flow = |t: f64, cash_flow: f64| {
+            let growth = power(v, t).unwrap_or(f64::INFINITY);
+            num += t * cash_flow / growth;
+            den += cash_flow / growth;
+        };
         for k in 1..=(n as u32) {
-            let t = dsc_over_e + k as f64 - 1.0;
-            let pv = coupon / v.powf(t);
-            num += t * pv;
-            den += pv;
+            add_cash_flow(dsc_over_e + k as f64 - 1.0, coupon);
         }
-        let t_final = dsc_over_e + n - 1.0;
-        let pv_red = redemption / v.powf(t_final);
-        num += t_final * pv_red;
-        den += pv_red;
+        add_cash_flow(dsc_over_e + n - 1.0, redemption);
 
         if den == 0.0 {
             return Err(div_error(cell));

@@ -1,4 +1,5 @@
 use crate::{
+    arithmetic::power,
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
     functions::Function,
@@ -88,6 +89,13 @@ fn vdb_total_depr(
     }
 }
 
+/// VDB's depreciation between `start_period` and `end_period`. Excel sums the charges of the
+/// periods in the window rather than subtracting two running totals, and its two modes build the
+/// charges differently (docs/excel-semantics/financial.md "VDB charge order", T-1975):
+/// - `no_switch` TRUE: [`vdb_no_switch_between`];
+/// - switching, from a whole `start_period`: [`vdb_switching_between`];
+/// - switching from a fractional `start_period` keeps the running-total model of
+///   [`vdb_total_depr`], which Excel does not match on every cell yet (T-2185).
 fn vdb_depr_between(
     cost: f64,
     salvage: f64,
@@ -97,8 +105,112 @@ fn vdb_depr_between(
     factor: f64,
     straight_line: bool,
 ) -> f64 {
-    vdb_total_depr(cost, salvage, life, end_period, factor, straight_line)
-        - vdb_total_depr(cost, salvage, life, start_period, factor, straight_line)
+    if !straight_line {
+        vdb_no_switch_between(cost, salvage, life, start_period, end_period, factor)
+    } else if start_period.fract() == 0.0 {
+        vdb_switching_between(cost, salvage, life, start_period, end_period, factor)
+    } else {
+        vdb_total_depr(cost, salvage, life, end_period, factor, true)
+            - vdb_total_depr(cost, salvage, life, start_period, factor, true)
+    }
+}
+
+/// The share of period `period` (which runs from `period - 1` to `period`) inside the window
+/// `[start, end]`, applied to `charge`; a whole period leaves the charge unrounded.
+fn prorated(charge: f64, period: f64, start: f64, end: f64) -> f64 {
+    let share = end.min(period) - start.max(period - 1.0);
+    if share == 1.0 {
+        charge
+    } else {
+        charge * share
+    }
+}
+
+/// VDB with `no_switch` TRUE: the sum, in doubles from the first period on, of each period's
+/// charge `min(b·rate, b - salvage)` (at least 0) with the book value `b = cost·(1-rate)^(i-1)`
+/// raised directly (the operator `^`'s square-and-multiply), the partial periods prorated.
+/// `VDB(2400,300,10,7,10,2,TRUE)` is 203.3164800000004, where the iterated book value gives
+/// 203.31648000000007 (probes/fin-vdb-modes A7, fin-vdb-schedule A16-A30, A55-A78).
+fn vdb_no_switch_between(
+    cost: f64,
+    salvage: f64,
+    life: f64,
+    start: f64,
+    end: f64,
+    factor: f64,
+) -> f64 {
+    let rate = (factor / life).min(1.0);
+    let first = start.floor() as u32 + 1;
+    let last = end.ceil() as u32;
+    let mut total = 0.0;
+    for period in first..=last {
+        let elapsed = f64::from(period - 1);
+        let book = if rate == 1.0 {
+            if period == 1 {
+                cost
+            } else {
+                0.0
+            }
+        } else {
+            cost * power(1.0 - rate, elapsed).unwrap_or(0.0)
+        };
+        let charge = (book * rate).min(book - salvage).max(0.0);
+        total += prorated(charge, f64::from(period), start, end);
+    }
+    total
+}
+
+/// VDB switching to straight line, from a whole `start`. The book value steps down by each
+/// period's charge `min(b·(factor/life), b - salvage)`; from the first period whose
+/// straight-line charge `(b - salvage)/(life - p)` is larger, every later period charges that
+/// same amount. The window's declining-balance charges (and a prorated last period) are summed in
+/// doubles and the whole straight-line periods are added last as one product:
+/// `VDB(1234.56,78.9,12,4,9,1.75)` is 379.8854487417499, one ulp below the period-by-period sum
+/// (probes/fin-vdb-schedule A1-A15, A31-A40, A47-A54; fin-vdb-modes A6, A13). Salvage above cost
+/// never switches and keeps the negative charge: `VDB(2400,3000,10,0,1)` is -600 (fin-vdb-modes A17).
+fn vdb_switching_between(
+    cost: f64,
+    salvage: f64,
+    life: f64,
+    start: f64,
+    end: f64,
+    factor: f64,
+) -> f64 {
+    let switches = salvage <= cost;
+    let mut book = cost;
+    let mut straight_line: Option<f64> = None;
+    let mut declining = 0.0;
+    let mut straight_periods = 0.0;
+    let last = end.ceil() as u32;
+    for index in 0..last {
+        let elapsed = f64::from(index);
+        let charge = match straight_line {
+            Some(charge) => charge,
+            None => {
+                let ddb = (book * (factor / life)).min(book - salvage);
+                let sln = (book - salvage) / (life - elapsed);
+                if switches && sln > ddb {
+                    straight_line = Some(sln);
+                    sln
+                } else {
+                    ddb
+                }
+            }
+        };
+        if elapsed >= start {
+            let period = elapsed + 1.0;
+            if straight_line.is_some() && period <= end {
+                straight_periods += 1.0;
+            } else {
+                declining += prorated(charge, period, start, end);
+            }
+        }
+        book -= charge;
+    }
+    match straight_line {
+        Some(charge) if straight_periods > 0.0 => declining + straight_periods * charge,
+        _ => declining,
+    }
 }
 
 /// The most periods one DB or VDB call walks (`period`, `end_period`): their schedules step one
