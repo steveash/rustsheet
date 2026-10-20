@@ -641,6 +641,13 @@ up to 2^20 periods and finishes in a closed form that can be a unit off the walk
 "AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
 elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
 
+As built (T-1821): NPV is `[Lift]` with a repeated `WholeByCaller`, IRR `[WholeByCaller, Lift]` and MIRR
+`[WholeByCaller, Lift, Lift]`. Each caller reads its cash flows once, before the driver, and calls `lift_call_costed`
+with `LiftCost::Cells` of the flows; each kernel checks the arguments in the scalar order (NPV's rate before the flows,
+IRR's and MIRR's flows first). IRR is `Weighted(512)`: its solver makes at most 455 NPV passes per call
+(`financial_util::compute_irr`), so a lift is charged elements × flows × 512 and `IRR(A1:A300000,{0.1;0.1})` is
+refused before its first element.
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
@@ -666,8 +673,14 @@ stack frames (T-1110) stay as they are, and the driver runs inside `fn_edate`.
 **Security rule for kernel work.** A table entry is `KernelWork::Constant` only if its kernel is
 O(1) or loops a fixed number of times, whatever the argument values. A value-dependent kernel
 must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.INV, POISSON,
-COMBIN, FACT and MULTINOMIAL (T-1197), the RATE/IRR/YIELD solvers (they have iteration caps, so
-they are `Constant` only if the cap is fixed), and the Bessel series. T-1776 checks a list of
+COMBIN, FACT and MULTINOMIAL (T-1197), and the RATE/IRR/YIELD solvers (they have iteration caps, so
+they are `Constant` only if the cap is fixed). A kernel whose loop length is one argument's value
+may instead be `ByArg { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order)):
+before any element runs, the driver sums each element's charge over the broadcast,
+`1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument `arg`,
+`1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the kernel
+refuses it before looping). That pass is O(elements). The
+kernel still keeps `cap` as its own per-call cap. T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`
 silently.
 

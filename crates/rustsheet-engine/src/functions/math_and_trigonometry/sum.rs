@@ -1,7 +1,9 @@
 use crate::calc_result::Range;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::paired::PairedArg;
-use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+};
 
 use crate::{
     arithmetic::{extended_sum, snap_near_zero},
@@ -138,11 +140,16 @@ impl Model {
     }
 }
 
-/// A range, array or number argument of [`Model::fn_get_two_matrices`] with its rows and columns;
-/// an error value is returned as the error, anything else is `None`.
+/// A range, array, number, text or boolean argument of [`Model::fn_get_two_matrices`] with its
+/// rows and columns; an error value is returned as the error, anything else is `None`.
 fn matrix_arg(node: &Node, value: CalcResult) -> Result<Option<(i64, i64, PairedArg)>, CalcResult> {
-    let Ok(arg) = PairedArg::from_node_result(node, value) else {
-        return Ok(None);
+    let arg = match PairedArg::from_node_result(node, value) {
+        Ok(arg) => arg,
+        // Excel: a typed text or boolean is one value with no number,
+        // like a single cell holding one: `CORREL("a",5)` is #DIV/0! and `CORREL(A1:A3,TRUE)`
+        // #N/A (probes/regression-pairs-text-scalar).
+        Err(CalcResult::String(_) | CalcResult::Boolean(_)) => PairedArg::Values(vec![None]),
+        Err(_) => return Ok(None),
     };
     let (rows, columns) = match &arg {
         PairedArg::Range(Range { left, right }) => (
@@ -191,6 +198,7 @@ const SUM_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
+    grids: GridReading::TopLeft,
 };
 
 impl Model {

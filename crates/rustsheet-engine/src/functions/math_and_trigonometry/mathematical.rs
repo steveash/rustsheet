@@ -1,11 +1,13 @@
-use super::trig::{excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT};
+use super::trig::{excel_cos, excel_sin, excel_tan, EXCEL_TRIG_LIMIT};
 use crate::arithmetic::{divide, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_result, value_error};
 use crate::functions::statistical::IfsShape;
-use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+};
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_log10;
@@ -39,6 +41,7 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
+    grids: GridReading::TopLeft,
 };
 
 impl Model {
@@ -387,14 +390,10 @@ impl Model {
         })
     }
     pub(crate) fn fn_sin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Sin, args, cell, |f| {
-            trig_arg(f).map(|x| excel_sin_cos(x).0)
-        })
+        self.number_fn(Function::Sin, args, cell, |f| trig_arg(f).map(excel_sin))
     }
     pub(crate) fn fn_cos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Cos, args, cell, |f| {
-            trig_arg(f).map(|x| excel_sin_cos(x).1)
-        })
+        self.number_fn(Function::Cos, args, cell, |f| trig_arg(f).map(excel_cos))
     }
     pub(crate) fn fn_tan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Tan, args, cell, |f| trig_arg(f).map(excel_tan))
@@ -561,7 +560,7 @@ impl Model {
             } else if f == 0.0 {
                 Err(Error::DIV)
             } else {
-                Ok(1.0 / excel_sin_cos(f).0)
+                Ok(1.0 / excel_sin(f))
             }
         })
     }
@@ -577,7 +576,7 @@ impl Model {
     }
     pub(crate) fn fn_sec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Sec, args, cell, |f| {
-            trig_arg(f).map(|x| 1.0 / excel_sin_cos(x).1)
+            trig_arg(f).map(|x| 1.0 / excel_cos(x))
         })
     }
     pub(crate) fn fn_sech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

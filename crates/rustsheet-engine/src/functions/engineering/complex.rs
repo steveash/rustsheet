@@ -4,7 +4,7 @@ use crate::arithmetic::power;
 use crate::functions::lift::{num_error, value_error};
 use crate::functions::math_and_trigonometry::excel_sin_cos;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, ItemSource,
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
 };
 use crate::limits::too_many_visits;
 use crate::reference_operators::RefArg;
@@ -54,8 +54,15 @@ struct Complex {
 
 impl fmt::Display for Complex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let x = to_precision(self.x, 15);
-        let y = to_precision(self.y, 15);
+        // 15-digit rounding of a part near DBL_MAX overflows to infinity; Excel writes
+        // `1.79769313486232E+308` (probes/eng-imexp-overflow-imag A22), so keep the unrounded part.
+        let round15 = |v: f64| {
+            Some(to_precision(v, 15))
+                .filter(|r| r.is_finite())
+                .unwrap_or(v)
+        };
+        let x = round15(self.x);
+        let y = round15(self.y);
         let suffix = &self.suffix;
         // Each part is written as Excel's number-to-text writes it: plain up to 20 characters,
         // then E notation (`1.22514845490862E-16`, probes/eng-impower A9; `1E+200`,
@@ -238,6 +245,7 @@ const COMPLEX_FOLD_POLICY: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::PickedKeepingBlanks,
     errors: ErrorRule::First,
     skip_empty_args: false,
+    grids: GridReading::Values,
 };
 
 /// The cells of the rectangle `rows` x `columns`, 0 when either is not positive.
@@ -580,6 +588,13 @@ impl Model {
                     let cells: usize = array.iter().map(Vec::len).sum();
                     (0, u64::try_from(cells).unwrap_or(u64::MAX))
                 }
+                RefArg::Grid(grid) => {
+                    let (rows, columns) = grid.dims();
+                    (
+                        0,
+                        u64::try_from(rows.saturating_mul(columns)).unwrap_or(u64::MAX),
+                    )
+                }
                 RefArg::Value(_) => (0, 1),
             };
             visits = visits.saturating_add(walked);
@@ -727,13 +742,20 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     // Overflow of a pure real argument is `#NUM!` (probes/eng-im-overflow A9, A10;
     // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus at
     // DBL_MAX instead (A12: `IMEXP("1000+1i")` is `9.71297746009434E+307+1.51270661257499E+308i`,
-    // DBL_MAX times cos 1 and sin 1). Only A12 is evidenced, so a negative imaginary part or a tiny
-    // one are unprobed (engineering.md).
+    // DBL_MAX times cos 1 and sin 1), unless |y| < sqrt(DBL_EPSILON) (1.49E-8): `IMEXP("1000+1.4E-8i")` is
+    // `#NUM!` and `"1000+1.5E-8i"` is capped (probes/eng-imexp-overflow-imag; engineering.md).
+    // The sine and cosine reduce y as SIN and COS do, which is what gives A3's last digits
+    // (`...+4.770340154251E+302i`); past the SIN limit libm stands in, unprobed.
+    let (sin_y, cos_y) = if y.abs() < IMPOWER_ANGLE_LIMIT {
+        excel_sin_cos(y)
+    } else {
+        (y.sin(), y.cos())
+    };
     let modulus = x.exp();
-    if modulus == f64::INFINITY && y != 0.0 && y.is_finite() {
-        return complex_result(f64::MAX * y.cos(), f64::MAX * y.sin(), suffix);
+    if modulus == f64::INFINITY && y.is_finite() && y.abs() >= f64::EPSILON.sqrt() {
+        return complex_result(f64::MAX * cos_y, f64::MAX * sin_y, suffix);
     }
-    let (re, im) = (modulus * y.cos(), modulus * y.sin());
+    let (re, im) = (modulus * cos_y, modulus * sin_y);
     finite_complex_result(re, im, suffix, cell)
 }
 

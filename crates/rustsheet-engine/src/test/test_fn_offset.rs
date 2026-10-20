@@ -132,3 +132,99 @@ fn fn_offset_negative_height_width() {
     assert_eq!(model._get_text("D9"), *"19");
     assert_eq!(model._get_text("D10"), *"#REF!");
 }
+
+// SPEC-0014: OFFSET lifted over an array is an array of references. It never reaches a cell:
+// spilled, every reference element is `#VALUE!` and an error element stays itself.
+#[test]
+fn fn_offset_lifted_spills_its_value_view() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("C1", "=OFFSET(A1,{0;-1;1},0)");
+    model._set("D1", "=ROWS(OFFSET(A1,{0;1},NA()))");
+    model._set("E1", "=INDEX(OFFSET(A1,{0;1},0),2,1)");
+    model._set("F1", "=ISREF(OFFSET(A1,{0;1},0))");
+    model._set("G1", "=ISREF(INDEX(OFFSET(A1,{0;1},0),1,1))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"#VALUE!");
+    assert_eq!(model._get_text("C2"), *"#REF!");
+    assert_eq!(model._get_text("C3"), *"#VALUE!");
+    assert_eq!(model._get_text("D1"), *"2");
+    assert_eq!(model._get_text("E1"), *"2");
+    assert_eq!(model._get_text("F1"), *"FALSE");
+    assert_eq!(model._get_text("G1"), *"TRUE");
+}
+
+// The broadcast shape is checked before any element is computed (CLAUDE.md directive 5).
+#[test]
+fn fn_offset_lift_past_the_array_bound_is_an_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(OFFSET(B1,SEQUENCE(2000),SEQUENCE(1,1000)))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+}
+
+#[test]
+fn ref_element_is_small() {
+    // SPEC-0014 "Bounds": no larger than the `ArrayNode` it stands in for.
+    assert!(std::mem::size_of::<crate::reference_operators::RefElement>() <= 32);
+}
+
+// SPEC-0014 rules 4-5 (T-2063): SUM, AVERAGE, MIN, MAX and PRODUCT read each element's top-left
+// cell; COUNT counts no element, COUNTA every one; SUMPRODUCT reads an element as 0 and an error
+// element as its error (probes/reference-lift-consumers E1-E29, -b2 E117-E189).
+#[test]
+fn fn_offset_lifted_into_top_left_aggregates() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "100");
+    model._set("A3", "10000");
+    model._set("A4", "'5");
+    model._set("A6", "TRUE");
+    model._set("A7", "7");
+    model._set("C1", "=SUM(OFFSET(A1,0,0,{1;2}))");
+    model._set("C2", "=AVERAGE(OFFSET(A1,{0;1},0))");
+    model._set("C3", "=MAX(OFFSET(A1,0,0,{1;3}))");
+    model._set("C4", "=MIN(OFFSET(A4,0,0,{1;3}))");
+    model._set("C5", "=PRODUCT(OFFSET(A1,{0;1},0))");
+    model._set("C6", "=SUM(OFFSET(A1,{0;1},0),1)");
+    model._set("C7", "=AVERAGE(OFFSET(A1,{0;-1},0))");
+    model._set("C8", "=COUNT(OFFSET(A1,0,0,{1;2}))");
+    model._set("C9", "=COUNTA(OFFSET(A5,0,0,{1;2}))");
+    model._set("C10", "=SUMPRODUCT(OFFSET(A1,{0;1},0))");
+    model._set("C11", "=SUMPRODUCT(OFFSET(A1,{0;-1},0))");
+    model._set("C12", "=SUM(OFFSET(A4,{0;3},0))");
+    model._set("C13", "=SUM(OFFSET(A6,0,0,{1;2}))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"2");
+    assert_eq!(model._get_text("C2"), *"50.5");
+    assert_eq!(model._get_text("C3"), *"1");
+    assert_eq!(model._get_text("C4"), *"0");
+    assert_eq!(model._get_text("C5"), *"100");
+    assert_eq!(model._get_text("C6"), *"102");
+    assert_eq!(model._get_text("C7"), *"#REF!");
+    assert_eq!(model._get_text("C8"), *"0");
+    assert_eq!(model._get_text("C9"), *"2");
+    assert_eq!(model._get_text("C10"), *"0");
+    assert_eq!(model._get_text("C11"), *"#REF!");
+    assert_eq!(model._get_text("C12"), *"7");
+    assert_eq!(model._get_text("C13"), *"0");
+}
+
+// The aggregates SPEC-0014 rules 4-5 do not name keep the value view, every reference element
+// `#VALUE!`, until their Excel results are known (T-2065).
+#[test]
+fn fn_offset_lifted_into_other_aggregates_is_its_value_view() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "100");
+    model._set("C1", "=MEDIAN(OFFSET(A1,{0;1},0))");
+    model._set("C2", "=AVERAGEA(OFFSET(A1,{0;1},0))");
+    model._set("C3", "=STDEV.S(OFFSET(A1,{0;1},0))");
+    model._set("C4", "=MAXA(OFFSET(A1,{0;1},0))");
+    model._set("C5", "=SUMSQ(OFFSET(A1,{0;1},0))");
+    model.evaluate();
+    for cell in ["C1", "C2", "C3", "C4", "C5"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
+}

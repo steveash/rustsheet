@@ -1,0 +1,49 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1837: SORT with a list sort_index whose first key ties (rows (1,9),(1,2),(0,5)): tie-breaking by the next key, per-key and single sort_order, by_col, repeated keys, an error element, a blank range element (D2), boolean, text and 2-D index lists, a long sort_order. B1:C3 holds the same rows; D1 = 1, D2 blank.",
+  "tags": [
+    "M7",
+    "probe",
+    "T-1837"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 1,
+        "C1": 9,
+        "B2": 1,
+        "C2": 2,
+        "B3": 0,
+        "C3": 5,
+        "D1": 1,
+        "A1": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;2}))",
+        "A2": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;2},{1;-1}))",
+        "A3": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1,2},{1;-1}))",
+        "A4": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;2},-1))",
+        "A5": "=TEXTJOIN(\",\",,SORT({1,1,0;9,2,5},{1;2},,TRUE))",
+        "A6": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;1}))",
+        "A7": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;1;2},{1;-1;-1}))",
+        "A8": "=SORT({1,9;1,2;0,5},IF({TRUE;FALSE},1,NA()),1/0)",
+        "A9": "=TEXTJOIN(\",\",,SORT(B1:C3,D1:D2))",
+        "A10": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{TRUE;2}))",
+        "A11": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1,2;2,1}))",
+        "A12": "=SORT({1,9;1,2;0,5},{1;2},{1;-1;1})",
+        "A13": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{\"1\";2}))",
+        "A14": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{2;1},{-1;1}))",
+        "A15": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;1;1}))",
+        "A16": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;1},{1;-1}))",
+        "A17": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;2;1}))",
+        "A18": "=TEXTJOIN(\",\",,SORT({1,9,4;1,2,4;0,5,4},{1;2;3}))",
+        "A19": "=TEXTJOIN(\",\",,SORT({1,9,4;1,2,4;0,5,4},{1;1;2}))",
+        "A20": "=SORT({1,9;1,2;0,5},IF({TRUE;FALSE},1,NA()))",
+        "A21": "=SORT({1,9;1,2;0,5},IF({TRUE;FALSE},1,NA()),5)",
+        "A22": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1,2}))",
+        "A23": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;2},{1,-1}))",
+        "A24": "=SORT({1,9;1,2;0,5},{1;3},1/0)",
+        "A25": "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},1,{-1}))"
+      }
+    }
+  ]
+}

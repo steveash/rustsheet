@@ -200,5 +200,8 @@ through volatility. T-0401 carries a pointer to this paragraph.
 3. **T-1838** (M): TAKE and DROP as producers (SPEC-0011 "Elements that are references").
 4. **T-2063** (M): the aggregate walker's `TopLeft`/`NotANumber` rules (rules 4, 5).
 5. **T-2064** (M): per-element callers (rule 6) through `lift_over_ref_grid`, and VSTACK's pass-through.
+   As built, T-1956 lifts through a separate driver entry, `Model::lift_references`, sharing the shape check
+   with `lift_grids` (its output is `RefElement`s, not `ArrayNode`s), and moved the LET/IF/CHOOSE pass-through,
+   the held-grid budget, a producer over a grid reference argument and the deep-nest test to T-2078.
 6. **T-2065** (research, S, any time): probe the open aggregates one formula per workbook (the
    combined workbooks failed to open).

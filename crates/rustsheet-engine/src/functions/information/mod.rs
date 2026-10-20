@@ -157,6 +157,22 @@ impl Model {
                     return false;
                 }
             }
+            // A lifted OFFSET is an array of references, not a reference: `ISREF(OFFSET(A1,{0;1},0))`
+            // is FALSE (probes/reference-lift-elements F15).
+            if self.offset_lifts(args, cell) {
+                return false;
+            }
+        }
+        // So is a lifted INDIRECT or TRIMRANGE (probes/reference-lift-elements).
+        if let Node::FunctionKind { kind, args } = node {
+            let lifted = match kind {
+                crate::functions::Function::Indirect => self.indirect_lifts(args, cell),
+                crate::functions::Function::Trimrange => self.trimrange_lifts(args, cell),
+                _ => false,
+            };
+            if lifted {
+                return false;
+            }
         }
         match node {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => true,

@@ -382,6 +382,19 @@ The zero-first-value result and the date-0-first root match since T-1583 and T-0
 "XIRR is a bracketing bisection, not Newton" above; T-1155 done).
 Tasks: T-1114, T-1124
 
+## DB and VDB period cap
+Rule: RustSheet returns `#NUM!` for DB with a `period`, and VDB with an `end_period`, whose integer part is above
+100,000, after Excel's own argument checks, to bound per-call work on untrusted input (CLAUDE.md directive 5). Both
+schedules step one period at a time (`DB(1,0,1E15,1E15)` ran for hours before the cap). Excel's values above the cap are
+unprobed. A lifted DB or VDB call is also charged by each element's period
+(SPEC-0011 `KernelWork::ByArg`, T-1820): 2^17 units at the cap, so at most 1,024 such elements per call, while small
+periods lift freely (`ROWS(DB(G25:G26,1000,6,2,7))` is 2 in Excel, probes/fin-argument-modes). Within the cap the values are unchanged.
+Evidence: the cap is a resource limit, not an Excel observation; probes/fin-argument-modes shows Excel lifting DB and VDB.
+Status: DEVIATION (decision 0014)
+Tasks: T-1820
+Implemented in: functions/financial/financial_depreciation.rs (`MAX_DEPRECIATION_PERIODS`),
+functions/lift/kinds/financial.rs (`DB`, `VDB`)
+
 ## Financial function argument modes
 Rule: every scalar argument of the M9 financial functions lifts elementwise over an array literal: all 256
 `ROWS(F(..{v;v}..))` cells are 2, the dates, frequency, basis, type and guess arguments included. Over a two-cell
@@ -444,15 +457,17 @@ Evidence: probes/fin-argument-modes (386 cells, excel-graph, 2026-10-11, T-1084)
 2026-10-17, T-1822), probes/fin-yield-odd-lift (51 cells, excel-graph, 2026-10-18, T-1842). The cash flow is K1:K5 and its
 dates are M1:M5. L1:L8 is the same flow with typed text, a boolean, text and a blank mixed in, and N1:N5 is a
 schedule containing text.
-Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift` and EFFECT, NOMINAL, DOLLARDE,
+Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift`, since T-1820 DB and VDB too,
+charged by their period up to their own cap ("DB and VDB period cap"), since T-1821 NPV's rate, IRR's guess and
+MIRR's rates too, beside cash flows read once, whole, and charged per element for their walks over the flows ("NPV,
+IRR and MIRR cash-flow work cap", a DEVIATION); and EFFECT, NOMINAL, DOLLARDE,
 DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
 (SPEC-0011); since T-1822 so are ACCRINT, the COUP* family, DURATION, MDURATION and PRICE, each element charged for its
 coupon schedule walks ("Coupon schedule work cap"), and since T-1842 YIELD and the ODD* functions, charged for their
 solvers and walks ("Yield and odd-coupon work cap"), and since T-1845 CUMIPMT and
 CUMPRINC, charged for their bounded period sums ("CUMIPMT and CUMPRINC work cap"), and since T-1841 AMORDEGRC and
-AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and
-VDB `#VALUE!` for a range): DB and VDB need their period loops bounded first (T-1820), NPV's rate, IRR's guess and
-MIRR's rates sit beside a whole cash flow (T-1821), and XNPV's rate,
+AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet
+(`#N/IMPL!` for an array literal): XNPV's rate,
 XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
@@ -577,6 +592,33 @@ Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds/financial.rs (`CUMULATIVE_WEIGHT`, `CUMULATIVE`)
 Tasks: T-1845
 
+## NPV, IRR and MIRR cash-flow work cap
+Rule: RustSheet charges each lifted NPV, IRR or MIRR element for its walks over the cash flows, against SPEC-0011's
+2^27 visit cap. NPV and MIRR elements cost one unit per flow. An IRR element costs 512 units per flow (`IRR_WEIGHT`),
+because `compute_irr` makes at most 455 NPV passes per call: two secant runs of 52, then the fallback's Newton from the
+guess (100 with its derivative passes), its bisection's 51, and its Newtons from 200 and -2 (200). A call over too
+many flows times elements is `#ERROR!` before its first element, where Excel lifts every element (the lifts:
+probes/fin-argument-modes H155-H156, H172-H174, H187-H188; Excel's own limit is unprobed).
+`ROWS(IRR(A1:A300000,{0.1;0.1}))`, `ROWS(NPV(SEQUENCE(500),A1:A300000))` and
+`ROWS(MIRR(A1:A300000,SEQUENCE(500),0.1))` are `#ERROR!`. `ROWS(NPV(SEQUENCE(100),A1:A300000))` is 100. The scalar
+calls are not capped.
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
+Status: DEVIATION (decision 0014)
+Implemented in: functions/lift/kinds/financial.rs (`NPV`, `IRR_WEIGHT`, `IRR`, `MIRR`); functions/financial/mod.rs
+(`flow_count`)
+Tasks: T-1821
+
+## NPV, IRR and MIRR error order
+Rule (ours, unprobed): NPV reads its rate before its cash flows, so a rate error wins over an error in the flows. IRR
+and MIRR read their flows first, so a flows error wins over a guess or rate error. This is the order the scalar calls
+had before T-1821. When the rate lifts, an error in the flows is every element's error, after that element's own
+earlier arguments. The flows are evaluated once per call, before the elements, even when NPV's rate is an error. The
+values are the same, but it is not Excel's evaluation order, which is unprobed.
+Evidence: none yet (T-2103).
+Status: UNVERIFIED
+Implemented in: functions/financial/mod.rs (`fn_npv`, `fn_irr`), functions/financial/mirr.rs (`fn_mirr`)
+Tasks: T-1821, T-2103
+
 ## AMORLINC and AMORDEGRC over many periods
 Rule: Excel walks AMORLINC's and AMORDEGRC's periods one by one in doubles, so a long walk carries every rounding:
 `AMORLINC(2400,39679,39813,300,875000,0.000001,1)` is 0.0015212859222804571, the remainder after 874,999 subtractions
@@ -697,13 +739,29 @@ divided-through form, so no finite result changes digits; a P whose reciprocal o
 Tasks: T-1405
 
 ## Analysis ToolPak securities functions check frequency and dates first
-Rule: COUPDAYSNC with an invalid frequency is `#NUM!` even when its basis argument is an error:
-`COUPDAYSNC(37342,46362,-0.0001,<#DIV/0!>)` is `#NUM!`. TBILLEQ with a negative maturity serial is `#NUM!` even when the
-discount is a TEXTSPLIT result (text or an error): `TBILLEQ(38887,1e-15-2,TEXTSPLIT("a*",A1:D2))` is `#NUM!`
-(gen-m9/4df1b22d3ed63f58 Calc!A20); that dates come before the discount is inferred from this one cell. The general order (which argument errors still win) is unprobed.
-Evidence: gen-m9/0c7fc447bc2eebfd Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289).
-Ours: the basis error (`#DIV/0!`) and `#VALUE!` for the text discount.
-Status: VERIFIED (web) for these two shapes; the general order UNVERIFIED
+Rule: the COUP* functions (COUPDAYSNC and COUPNUM probed; they share one argument reader) check each argument as they read
+it, left to right, so a bad value is `#NUM!` before a later argument's error or text:
+1. settlement: an error or text is that error (`#VALUE!` for text); a serial below 1 is `#NUM!` at once
+   (`COUPDAYSNC(-1,1/0,2,0)` and `COUPDAYSNC(-1,"x",2,0)` are `#NUM!`);
+2. maturity: its error or text, then settlement >= maturity is `#NUM!` (`COUPDAYSNC(40000,39000,1/0,0)`,
+   `COUPDAYSNC(39000,39000,"x",0)`, `COUPNUM(40000,39000,NA(),1/0)` are `#NUM!`);
+3. frequency: its error or text, then a frequency other than 1, 2 or 4 is `#NUM!` (`COUPDAYSNC(39000,40000,3,1/0)` and
+   `COUPDAYSNC(37342,46362,-0.0001,<#DIV/0!>)` are `#NUM!`);
+4. basis: its error or text, then a basis outside 0-4 is `#NUM!`.
+Two errors give the first one's (`COUPDAYSNC(NA(),40000,3,1/0)` and `COUPDAYSNC(39000,40000,NA(),1/0)` are `#N/A`).
+TBILLEQ, TBILLPRICE and TBILLYIELD read settlement, maturity and the discount (price) in order, and check only that each date
+floors to a serial from 0 to 2958465 (9999-12-31) as they read it: `TBILLEQ(39000,-1,1/0)`, `TBILLEQ(-1,39100,"x")`,
+`TBILLEQ(39000,2958466,1/0)` and `TBILLPRICE(-1,1/0,"x")` are `#NUM!`, and `TBILLEQ(38887,1e-15-2,TEXTSPLIT("a*",A1:D2))` is
+`#NUM!`. Serial 0 passes this check (`TBILLEQ(0,39100,1/0)` is `#DIV/0!`, `TBILLYIELD(0.5,39100,"x")` `#VALUE!`). A reversed
+or equal date pair, or a maturity more than a year after settlement, comes after the discount (`TBILLEQ(39100,39000,1/0)`
+is `#DIV/0!`, `TBILLPRICE(39000,39500,"x")` `#VALUE!`). An error settlement beats an invalid maturity
+(`TBILLYIELD(1/0,-1,0.05)` is `#DIV/0!`).
+Evidence: probes/securities-argument-error-order (192 cells, excel-graph, 2026-10-20, T-1406); gen-m9/0c7fc447bc2eebfd
+Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289).
+Unprobed: serial 2958465 alone as a T-bill date (the inclusive bound is inferred), and the range in a 1904 workbook (the
+engine checks the date after the 1904 shift).
+Ours: matches since T-1406 (`coupon_args` in financial_bonds.rs, `tbill_arguments` in discount.rs).
+Status: VERIFIED (web)
 Tasks: T-1406
 
 ## ODDFPRICE and ODDFYIELD need the first coupon on the maturity's schedule

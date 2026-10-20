@@ -13,8 +13,11 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::text::util::within_text_budget;
 use crate::functions::util::{array_node_to_calc_result, top_left_of_array};
 use crate::limits::{check_array_size, too_many_visits};
+use crate::reference_operators::{RefArg, RefElement, RefGrid};
 use crate::{
-    calc_result::CalcResult, expressions::parser::ArrayNode, expressions::token::Error,
+    calc_result::{CalcResult, Range},
+    expressions::parser::ArrayNode,
+    expressions::token::Error,
     model::Model,
 };
 
@@ -80,6 +83,21 @@ pub(crate) fn grid_dims(grid: &[Vec<ArrayNode>]) -> (usize, usize) {
     (grid.len(), grid.first().map_or(0, Vec::len))
 }
 
+/// The broadcast shape of `lifted`, or `#ERROR!` past the array bound (`check_array_size`).
+fn broadcast_shape(
+    lifted: &[LiftedArg],
+    cell: CellReferenceIndex,
+) -> Result<(usize, usize), CalcResult> {
+    let (rows, columns) = lifted
+        .iter()
+        .map(LiftedArg::dims)
+        .fold((1, 1), |acc, d| (acc.0.max(d.0), acc.1.max(d.1)));
+    match check_array_size(rows, columns) {
+        Some((error, message)) => Err(CalcResult::new_error(error, cell, message)),
+        None => Ok((rows, columns)),
+    }
+}
+
 /// What one element costs, for the cell-visit cap (`limits::MAX_LIFTED_CELL_VISITS`). The total
 /// is checked before the first element runs, with saturating arithmetic. "Elements" are the
 /// elements computed: all of them, or those [`LiftOptions::reuse`] does not reuse. The table's
@@ -91,6 +109,72 @@ pub(crate) enum LiftCost {
     Cells(u64),
     /// The kernel prepares its whole data once (LARGE sorts it): cells + elements.
     Prepared(u64),
+}
+
+/// The kernel units the computed `elements` of a `rows` x `columns` broadcast are charged before
+/// any runs: `elements` times the table weight, or for [`KernelWork::ByArg`] the sum of each
+/// element's charge by its argument's value. That sum runs over every element, reused or not, so
+/// it never charges less than the elements computed; it is one pass over the grid, O(elements).
+pub(super) fn kernel_units(
+    work: KernelWork,
+    lifted: &[LiftedArg],
+    rows: usize,
+    columns: usize,
+    elements: u64,
+) -> u64 {
+    let KernelWork::ByArg { arg, cap, weight } = work else {
+        return elements.saturating_mul(work.weight());
+    };
+    let charge = |value: ArgCharge| -> u64 {
+        let order = match value {
+            // Past the cap the kernel refuses the order before it loops.
+            ArgCharge::Number(n) if (0.0..=f64::from(cap)).contains(&n.trunc()) => n.trunc(),
+            ArgCharge::Text => f64::from(cap),
+            ArgCharge::Number(_) | ArgCharge::Other => 0.0,
+        };
+        // `order` is a whole number in [0, cap], so the cast is exact.
+        let order = order as u64;
+        1 + order.saturating_mul(u64::from(weight)) / u64::from(cap.max(1))
+    };
+    match lifted.get(arg) {
+        Some(grid @ LiftedArg::Grid(_)) => {
+            let mut units: u64 = 0;
+            for row in 0..rows {
+                for column in 0..columns {
+                    let node = grid.element(row, column);
+                    units = units.saturating_add(charge(ArgCharge::of_node(node)));
+                }
+            }
+            units
+        }
+        Some(LiftedArg::Scalar(value)) => elements.saturating_mul(charge(ArgCharge::of(value))),
+        None => elements,
+    }
+}
+
+/// What a [`KernelWork::ByArg`] argument's value is, for its charge.
+enum ArgCharge {
+    Number(f64),
+    Text,
+    Other,
+}
+
+impl ArgCharge {
+    fn of(value: &CalcResult) -> Self {
+        match value {
+            CalcResult::Number(n) => ArgCharge::Number(*n),
+            CalcResult::String(_) => ArgCharge::Text,
+            _ => ArgCharge::Other,
+        }
+    }
+
+    fn of_node(node: Option<&ArrayNode>) -> Self {
+        match node {
+            Some(ArrayNode::Number(n)) => ArgCharge::Number(*n),
+            Some(ArrayNode::String(_)) => ArgCharge::Text,
+            _ => ArgCharge::Other,
+        }
+    }
 }
 
 /// Which elements reuse an earlier element's result instead of running the kernel.
@@ -363,13 +447,10 @@ impl Model {
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult {
-        let (rows, columns) = lifted
-            .iter()
-            .map(LiftedArg::dims)
-            .fold((1, 1), |acc, d| (acc.0.max(d.0), acc.1.max(d.1)));
-        if let Some((error, message)) = check_array_size(rows, columns) {
-            return CalcResult::new_error(error, cell, message);
-        }
+        let (rows, columns) = match broadcast_shape(&lifted, cell) {
+            Ok(shape) => shape,
+            Err(error) => return error,
+        };
         if options.result == CallResult::Array && (rows, columns) == (1, 1) {
             // Every grid is one cell: the call runs once on those values and keeps its whole
             // array, as before T-1834 (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows). Whether
@@ -398,11 +479,11 @@ impl Model {
                 (plan, count_walks(&lifted, rows, columns, reuse))
             }
         };
-        let weight = options.work.weight();
+        let units = kernel_units(options.work, &lifted, rows, columns, elements);
         let visits = match cost {
-            LiftCost::Unit => elements.saturating_mul(weight),
-            LiftCost::Cells(cells) => cells.saturating_mul(weight).saturating_mul(elements),
-            LiftCost::Prepared(cells) => cells.saturating_add(elements.saturating_mul(weight)),
+            LiftCost::Unit => units,
+            LiftCost::Cells(cells) => cells.saturating_mul(units),
+            LiftCost::Prepared(cells) => cells.saturating_add(units),
         };
         if let Some(error) = too_many_visits(visits, cell) {
             return error;
@@ -431,6 +512,63 @@ impl Model {
         match in_place {
             Some(index) => self.lift_in_place(lifted, index, run, kernel),
             None => self.lift_broadcast(&lifted, rows, columns, &plan, run, kernel),
+        }
+    }
+
+    /// The lift of a call whose result is a reference (SPEC-0014 "Producers"): `kernel` runs
+    /// once per element of the broadcast of `lifted`, as [`Self::lift_grids`] runs it, and each
+    /// result is kept as a [`RefElement`]: its reference, or its error (any other value is
+    /// `#VALUE!`). The shape and the work (one visit per element) are checked before any element
+    /// runs. When every grid is one cell the call runs once and keeps its result, as a lifted
+    /// `CallResult::Array` call does.
+    pub(crate) fn lift_references(
+        &mut self,
+        lifted: Vec<LiftedArg>,
+        cell: CellReferenceIndex,
+        kernel: &mut Kernel<'_>,
+    ) -> RefArg {
+        let (rows, columns) = match broadcast_shape(&lifted, cell) {
+            Ok(shape) => shape,
+            Err(error) => return RefArg::Value(error),
+        };
+        let mut values: Vec<CalcResult> = lifted
+            .iter()
+            .map(|arg| match arg {
+                LiftedArg::Scalar(value) => value.clone(),
+                LiftedArg::Grid(grid) => top_left_of_array(grid, cell),
+            })
+            .collect();
+        if (rows, columns) == (1, 1) {
+            return RefArg::from(kernel(self, &values));
+        }
+        let elements = rows.saturating_mul(columns);
+        if let Some(error) = too_many_visits(u64::try_from(elements).unwrap_or(u64::MAX), cell) {
+            return RefArg::Value(error);
+        }
+        let mut output = Vec::with_capacity(elements);
+        for row in 0..rows {
+            for column in 0..columns {
+                for (slot, arg) in values.iter_mut().zip(&lifted) {
+                    if let Some(node) = arg.element(row, column) {
+                        *slot = array_node_to_calc_result(node, cell);
+                    }
+                }
+                output.push(match kernel(self, &values) {
+                    CalcResult::Range { left, right } => {
+                        RefElement::Reference(Range { left, right })
+                    }
+                    CalcResult::Error { error, .. } => RefElement::Error(error),
+                    _ => RefElement::Error(Error::VALUE),
+                });
+            }
+        }
+        match RefGrid::new(rows, columns, output) {
+            Some(grid) => RefArg::Grid(grid),
+            None => RefArg::Value(CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "Empty array of references".to_string(),
+            )),
         }
     }
 
