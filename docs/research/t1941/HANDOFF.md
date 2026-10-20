@@ -1250,3 +1250,45 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
 - **Next.**
   - W2 screens power-table heads (repeated multiply, squaring, exp/ln), heads at a round-tripped x' = fl(fl(x−a)+a), and N/D heads built from shared subexpressions.
   - Reviewer 3 is asked for structural forms that escape all of the above.
+
+### 12.15 Cross-kernel developments (04:05-04:48)
+
+- **(1.5,2], W6: the D0 normalisation bug.**
+  - Excel's D0 is not ±2^k. Every pipeline had normalised by D0, which is exact only for a power of 2.
+  - With D0 free, the phase-pinned stages plus the function fit Excel's R to 1.6e-16 rms (the data noise). The earlier 5e-15 contradiction vanishes.
+  - Exact R on the best chain rises from 26.1% to 35.5%.
+  - All tools now use synth.nrm, which normalises by ±2^k only. Tools: w6/augls.py, w6/phasecons.py; data in w6/data/.
+  - Next: top-down m-scan peel on Excel.
+- **K1, W4: Excel's upper Horner stages are not double-rounded.** fscan6 (per-site whole-ulp scan, Z scores) on k1R:
+  - On Excel only D1, D2, N1 and N2 are lit, all at k = 0, which confirms AN2 there. Every upper site is dark.
+  - A stored-AN2 synthetic lights every site, even with a top that is tens of ulps wrong.
+  - A masked synthetic (N top 5, D top 4 unstored, i.e. kept in 80-bit) reproduces Excel's lit/dark pattern, including the sum-site map.
+  - Shifted variables (y−1, y−1.5) are rejected.
+  - Fair climbs: stored 0.678; mask 5/4 0.709.
+  - By tenth, the exact rate collapses to 0.50/0.48 in the top two tenths (y ≈ 1.8-2). That is being binned for a structural change.
+  - Next: a mask-aware boundary fit (the 80-bit boundary value as the unknown), then a peel.
+- **K2, W2: "only the last k ops stored" is rejected.** The ceiling falls monotonically with every added unstored op (k = 1..8, N, D and both; division unstored gives 0.52-0.64). The planted control is recovered to 1.000.
+  - So K1's 80-bit-upper pattern does not transfer to K2, whose late chain is stored op by op.
+- **K2, other screens.**
+  - Power-table heads (repeated multiply, squaring, exp(k ln x); forward and reverse), round-trip x' = fl(fl(x−a)+a), and shared powers: all at or below the raw-x ceiling.
+  - Higher degree (N10, D9): emulable by the existing structure plus offsets (Chebyshev bound), no lift.
+  - Input misparse (Excel = model at x±1 ulp) fixes at most 14 of about 4,400 misses per run: excluded.
+  - Correctly-rounded lgamma matches Excel at only 29-35% (grid_a 76%), so the structure is real. Excel's own error is ±5 ulp.
+- **K2, reviewer 3: the parity signature.**
+  - Excel's s4 decision depends on floor(v4/u) parity at non-tie positions. r112, pos .25: even 0.71 up vs odd 0.03.
+  - Per-run fits of the rule "RN(v4 + f·u) with tie parity" reach r112 0.873, r901 0.853, r610 0.851 and v401a 0.852.
+- **W2's tests of that signature** (all with exact-recovering controls):
+  - Global integer head deltas with the late chain LS-re-solved to double: 0.7583 → 0.7583.
+  - Extended-precision head constants in 1/8-ulp steps: +0.004.
+  - A joint 4-D N+D box: grid_a is the optimum.
+  - Nearby runs (0.0034 apart) cannot share head offsets.
+  - Parity-locked class tables also arise from planted per-run-offset truths, so the signature alone is not evidence of a structure.
+- **Open, running.**
+  - The sweep with the hand-off integer part removed (reviewer 3's method flag).
+  - The pair-share test redone with that fix.
+  - The global fit split at x = 2.63 (2-piece table).
+  - A per-run full-freedom supremum (all 19 coefficients) to test fine coefficient tables.
+- **Data contamination.**
+  - kmyst-gam-q501 and q502 carry GAMMA in column B (C/D = GAMMA.DIST). The old extract_runs.py read B blindly, which invalidated W5's real K3 D.S6 scan (being redone on rows6).
+  - W6's and W2's sets select by formula and are clean.
+  - extract_runs.py is being rewritten to select columns by formula.
