@@ -3,7 +3,7 @@ id: T-2088
 title: "fitlab t-dist: evaluate the deep lower tail without rounding y = n/(n+t^2)"
 milestone: M9
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
