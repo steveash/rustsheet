@@ -134,3 +134,32 @@ pub(super) const R15_D: [f64; 10] = [
     f64::from_bits(0x3FF1_3D5D_4770_BBAA), // 0x1.13d5d4770bbaap+0
     f64::from_bits(0xBD44_2F49_D800_0000), // -0x1.42f49d8000000p-43
 ];
+
+/// GAMMA's G on [1, 2), K1, numerator: G = `fl(N/D)`, degree (7,7), raw-y Horner with every op stored,
+/// the constant term first (W4's `w4/k1r/plain1.txt`). Excel's structure with the best known
+/// coefficients, not bit-exact; measured exact rate 0.784 on GAMMA [1, 10) (4,229,812 distinct x), 0.838
+/// on (0, 1) and 0.876 on [-10, 0), all through G; see T-2122.
+#[rustfmt::skip]
+pub(super) const K1_N: [f64; 8] = [
+    f64::from_bits(0x40EB_5834_ABBE_A656), // 0x1.b5834abbea656p+15
+    f64::from_bits(0x40D5_1477_3450_CAEF), // 0x1.514773450caefp+14
+    f64::from_bits(0x40C6_6479_5A0F_0ED9), // 0x1.664795a0f0ed9p+13
+    f64::from_bits(0x40A3_6C63_6BFA_4529), // 0x1.36c636bfa4529p+11
+    f64::from_bits(0x4085_FF5A_1F11_40C6), // 0x1.5ff5a1f1140c6p+9
+    f64::from_bits(0x405B_983B_931D_B2B8), // 0x1.b983b931db2b8p+6
+    f64::from_bits(0x402C_11D5_CF35_DD45), // 0x1.c11d5cf35dd45p+3
+    f64::from_bits(0x4004_AA35_6FDC_D9D5), // 0x1.4aa356fdcd9d5p+1
+];
+
+/// K1's denominator (see [`K1_N`]), the constant term first; D0 = -1/16.
+#[rustfmt::skip]
+pub(super) const K1_D: [f64; 8] = [
+    f64::from_bits(0xBFB0_0000_0000_0000), // -0x1.0000000000000p-4
+    f64::from_bits(0x40EB_584A_E618_5B27), // 0x1.b584ae6185b27p+15
+    f64::from_bits(0x40EA_5269_4226_B55E), // 0x1.a52694226b55ep+15
+    f64::from_bits(0xC0C8_FD07_2611_5AA1), // -0x1.8fd0726115aa1p+13
+    f64::from_bits(0xC0BD_079C_BB8D_7BAA), // -0x1.d079cbb8d7baap+12
+    f64::from_bits(0x40A8_11C8_9B66_ABB2), // 0x1.811c89b66abb2p+11
+    f64::from_bits(0xC079_F2C6_B220_F0DA), // -0x1.9f2c6b220f0dap+8
+    f64::from_bits(0x4033_F2E0_3E3A_10E2), // 0x1.3f2e03e3a10e2p+4
+];

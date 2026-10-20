@@ -338,15 +338,11 @@ impl Model {
             // well: `MAX(TextCell)` ignores the text in it (upstream MIN_MAX_extras.xlsx A1-A3).
             Node::DefinedNameKind((name, scope, _)) => {
                 match self.parsed_defined_name(name, *scope) {
-                    Some(&ParsedDefinedName::CellReference(reference)) => CalcResult::Range {
-                        left: reference,
-                        right: reference,
-                    },
                     // Answered here so the name is not looked up a second time.
-                    Some(ParsedDefinedName::RangeReference(range)) => CalcResult::Range {
-                        left: range.left,
-                        right: range.right,
-                    },
+                    Some(
+                        ParsedDefinedName::CellReference(reference)
+                        | ParsedDefinedName::RangeReference(reference),
+                    ) => reference.range_at(cell),
                     _ => self.evaluate_node_in_context(node, cell),
                 }
             }
@@ -656,12 +652,9 @@ impl Model {
                 if let Some(parsed_defined_name) = self.parsed_defined_name(name, *scope).cloned() {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {
-                            self.evaluate_cell(reference)
+                            self.evaluate_cell(reference.at(cell).left)
                         }
-                        ParsedDefinedName::RangeReference(range) => CalcResult::Range {
-                            left: range.left,
-                            right: range.right,
-                        },
+                        ParsedDefinedName::RangeReference(reference) => reference.range_at(cell),
                         ParsedDefinedName::LambdaDefinition(definition) => {
                             self.defined_name_lambda(definition)
                         }

@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -55,3 +56,11 @@ This needs numeric fitting against a solver trace, hence opus.
 ## Out of scope
 - ODDFPRICE's own last digits (the J column, T-1374) and YIELD (T-1592).
 - ODDLYIELD, which has no failing cells.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 106 in total.
+- ODDFYIELD: 106 cells (13-14 digits right 0, 10-12 77, 6-9 29, fewer or 0 vs nonzero 0); most in `ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx` 31; `probes/date-system-1900-odd-years.case.json` 19. e.g. `ODDFYIELD(A2,B2,C2,D2,E2,J2,G2,H2,I2)` Excel 0.04999999999851281, ours 0.05
+
+Excel stops short of the root by up to ~1e-9 relative; 15 digits means reproducing that stop.

@@ -1,0 +1,49 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2129 review: GAMMA where the x87 model's edges have no oracle cell. Rows 1-8: non-half-integers below -171.62 near and away from poles, where GAMMA(q) overflows (does the reflection give 0 or a normal double?), plus -171.6, -171.7 and half-integer controls. Rows 9-15: the three doubles either side of 171.6243769563027, the model's last finite argument. B = GAMMA(A).",
+ "tags": [
+  "M9",
+  "probe",
+  "numeric",
+  "gamma",
+  "T-2129"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": -172.0000000001,
+    "B1": "=GAMMA(A1)",
+    "A2": -171.55,
+    "B2": "=GAMMA(A2)",
+    "A3": -171.0000000001,
+    "B3": "=GAMMA(A3)",
+    "A4": -200.3,
+    "B4": "=GAMMA(A4)",
+    "A5": -171.6,
+    "B5": "=GAMMA(A5)",
+    "A6": -171.7,
+    "B6": "=GAMMA(A6)",
+    "A7": -172.5,
+    "B7": "=GAMMA(A7)",
+    "A8": -180.25,
+    "B8": "=GAMMA(A8)",
+    "A9": 171.62437695630263,
+    "B9": "=GAMMA(A9)",
+    "A10": 171.62437695630265,
+    "B10": "=GAMMA(A10)",
+    "A11": 171.62437695630268,
+    "B11": "=GAMMA(A11)",
+    "A12": 171.6243769563027,
+    "B12": "=GAMMA(A12)",
+    "A13": 171.62437695630274,
+    "B13": "=GAMMA(A13)",
+    "A14": 171.62437695630277,
+    "B14": "=GAMMA(A14)",
+    "A15": 171.6243769563028,
+    "B15": "=GAMMA(A15)"
+   }
+  }
+ ]
+}

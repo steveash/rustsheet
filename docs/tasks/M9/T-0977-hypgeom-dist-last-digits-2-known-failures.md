@@ -4,9 +4,10 @@ title: "HYPGEOM.DIST last digits (2 known failures)"
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-1048, T-1049]
 ---
 
@@ -40,3 +41,12 @@ difference, CDF as ascending vs descending sums, CDF via the complement when k i
 
 ## Out of scope
 BINOM/NEGBINOM/POISSON (T-0927).
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 23 in total.
+- HYPGEOM.DIST: 22 cells (13-14 digits right 15, 10-12 4, 6-9 2, fewer or 0 vs nonzero 1); most in `probes-numeric/t1049-hypgeomdist.case.json` 19; `ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx` 1. e.g. `HYPGEOM.DIST(1,4,8,20,2)` Excel 0.46542827657378727, ours 0.46542827657378827
+- HYPGEOMDIST: 1 cells (13-14 digits right 1, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-hypgeomdist.case.json` 1. e.g. `HYPGEOMDIST(10,20,40,100)` Excel 0.11923605235455972, ours 0.1192360523545622
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
