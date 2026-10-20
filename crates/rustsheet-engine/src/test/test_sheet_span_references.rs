@@ -230,3 +230,16 @@ fn span_edge_forms_match_excel() {
         "2"
     );
 }
+
+#[test]
+fn sheets_counts_the_sheets_a_reference_spans() {
+    let mut model = sample();
+    assert_eq!(eval(&mut model, "=SHEETS(B1)"), "1");
+    assert_eq!(eval(&mut model, "=SHEETS(Data2!A1:B2)"), "1");
+    assert_eq!(eval(&mut model, "=SHEETS(Data1:Data3!A1)"), "3");
+    assert_eq!(eval(&mut model, "=SHEETS(Data3:Data1!A1)"), "3");
+    assert_eq!(eval(&mut model, "=SHEETS(Sheet1:Data2!B2)"), "3");
+    assert_eq!(eval(&mut model, "=SHEETS('Sheet1:Q 4'!B2)"), "5");
+    assert_eq!(eval(&mut model, "=SHEETS()"), "5");
+    assert_eq!(eval(&mut model, "=SHEETS(1)"), "#N/IMPL!");
+}
