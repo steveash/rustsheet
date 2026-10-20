@@ -804,7 +804,8 @@ The forms differ from `(...)/YEARFRAC` in the last digit: INTRATE.xlsx F2 (90 da
 exactly 0.08 (the year-fraction form gives 0.08000000000000007), `INTRATE(43159,43189,1000,1100,0)` is
 1.2000000000000002 = 0.1*(360/30), not 1.2, and `YIELDMAT(43101,43466,42736,0.06,98,0)` is 0.07692307692307698 (the
 expanded numerator `DIM/B*rate + 1 - pr/100 - A/B*rate` gives ...704). The grouping `x*(B/D)` is the only one of ten
-candidates matching all eight DISC.xlsx cells (bases 0-4). RECEIVED's form is the year
+candidates matching all eight distinct DISC.xlsx cells (F2:F5 and F15:F18, bases 0-3 on two spans; F6:F10 and F19
+repeat them with basis 4, 2.4 or omitted). RECEIVED's form is the year
 fraction it always used (`DIM/B` is YEARFRAC); no cell separates it from the alternatives.
 Evidence: ironcalc-calc DISC.xlsx F2:F19 and INTRATE.xlsx F2:F6 (Excel-cached); probes/discount-security-modes,
 probes/date-system-1900-financial-daycount, probes/date-system-1904-financial-daycount,

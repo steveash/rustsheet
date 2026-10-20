@@ -256,8 +256,8 @@ fn fn_fvschedule_boolean_principal_is_value_error() {
 fn discount_securities_divide_by_day_count_over_year_length() {
     // Excel's bits (financial.md "Discount securities: day count and year length", T-2032):
     // ironcalc-calc DISC.xlsx F2 and INTRATE.xlsx F2 (Excel-cached), probes/discount-security-modes
-    // A14, A80, A113, A126 and A103 (excel-graph).
-    let cases: [(&str, &str, f64); 7] = [
+    // A14, A80, A113, A126, A103 and A43 (excel-graph).
+    let cases: [(&str, &str, f64); 8] = [
         (
             "A1",
             "=DISC(39472,39614,97.975,100,0)",
@@ -289,6 +289,7 @@ fn discount_securities_divide_by_day_count_over_year_length() {
             "=PRICEMAT(43159,43189,42736,0.06,0.05,0)",
             100.057_743_362_831_86,
         ),
+        ("A8", "=PRICEDISC(0,43466,0.05,100)", -495.013_888_888_888_9),
     ];
     let mut model = new_empty_model();
     for (cell, formula, _) in cases {
