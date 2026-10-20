@@ -39,30 +39,51 @@ impl<'a> FormatContext<'a> {
     }
 }
 
-/// Returns the vector of chars of the fractional part of a *positive* number:
+/// Significant digits Excel keeps of a number it formats.
+const EXCEL_DIGITS: usize = 15;
+
+/// Returns the vector of chars of the fractional part of a *positive* number, read off its 15
+/// significant digits (the value is already rounded to them) and without trailing zeros:
 /// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
-fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
-    let b = format!("{:.1$}", value.fract(), precision as usize)
-        .chars()
-        .collect::<Vec<char>>();
-    let l = b.len() - 1;
-    let mut last_non_zero = b.len() - 1;
-    for i in 0..l {
-        if b[l - i] != '0' {
-            last_non_zero = l - i + 1;
-            break;
-        }
-    }
-    if last_non_zero < 2 {
+/// Excel shows only 15 significant digits and pads the rest of a wide format with zeros, so the
+/// cut counts significant digits, not positions after the point (`TEXT(2/3,"0.000000000000000000")`
+/// is "0.666666666666667000", probes-numeric/4f413cc257ce15c4 A23).
+fn get_fract_part(value: f64, precision: i32) -> Vec<char> {
+    let s = format!("{:.*e}", EXCEL_DIGITS - 1, value);
+    let Some((mantissa, exp)) = s.split_once('e') else {
         return vec![];
-    }
-    let max_len = if int_len > 15 {
-        2_usize
-    } else {
-        15_usize - int_len + 1
     };
-    let last_non_zero = usize::min(last_non_zero, max_len + 1);
-    b[2..last_non_zero].to_vec()
+    let Ok(exp) = exp.parse::<i32>() else {
+        return vec![];
+    };
+    let digits: Vec<char> = mantissa.chars().filter(char::is_ascii_digit).collect();
+    // value = 0.d1d2d3... * 10^(exp + 1)
+    let mut fract: Vec<char> = if exp < 0 {
+        let zeros = usize::try_from(-exp - 1).unwrap_or(0);
+        std::iter::repeat_n('0', zeros).chain(digits).collect()
+    } else {
+        digits.into_iter().skip(exp as usize + 1).collect()
+    };
+    // Round half up on the decimal digits. A carry out of the integer-part digits is not
+    // propagated here: the value was rounded to its shown places before it was split.
+    let shown = usize::try_from(precision).unwrap_or(0);
+    if fract.get(shown).is_some_and(|d| *d >= '5') {
+        fract.truncate(shown);
+        for d in fract.iter_mut().rev() {
+            if *d == '9' {
+                *d = '0';
+            } else {
+                *d = char::from(*d as u8 + 1);
+                break;
+            }
+        }
+    } else {
+        fract.truncate(shown);
+    }
+    while fract.last() == Some(&'0') {
+        fract.pop();
+    }
+    fract
 }
 
 /// Return true if we need to add a separator in position `digit_index`
@@ -704,9 +725,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let general_value = value;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
             // p.precision is the number of significant digits _after_ the decimal point
+            // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text")
             value = to_precision(
                 value,
-                (p.precision as usize) + format!("{}", value.abs().floor()).len(),
+                usize::min(
+                    (p.precision as usize) + format!("{}", value.abs().floor()).len(),
+                    EXCEL_DIGITS,
+                ),
             );
             let mut value_abs = value.abs();
             let mut exponent_part: Vec<char> = vec![];
@@ -734,7 +759,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             if int_number as i64 == 0 {
                 int_part = vec![];
             }
-            let fract_part = get_fract_part(value_abs, p.precision, int_part.len());
+            let fract_part = get_fract_part(value_abs, p.precision);
             // ln is the number of digits of the integer part of the value
             let ln = int_part.len() as i32;
             // digit count is the number of digit tokens ('0', '?' and '#') to the left of the decimal point

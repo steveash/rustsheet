@@ -3,7 +3,7 @@ id: T-0980
 title: "TEXT fixed-decimal formats round the value to 15 significant digits before padding (16 probes-numeric failures)"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -77,3 +77,6 @@ probes-numeric is not gated (`gate = false`, no baseline file), so progress is r
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+The Number branch caps the pre-rounding at 15 significant digits and `get_fract_part` reads the fraction off the 15-digit decimal string (half-up at the format's places) instead of cutting at a fixed position. Eval: gen-m5 212 -> 210, gen-m10 68 -> 67 (45 text cells), probes-numeric 4f413cc257ce15c4 cleared. Formatter unit test added.
