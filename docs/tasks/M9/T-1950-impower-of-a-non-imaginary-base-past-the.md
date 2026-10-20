@@ -3,7 +3,7 @@ id: T-1950
 title: "IMPOWER of a non-imaginary base past the angle cut gives values near 1.797E+308, not #NUM!"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
