@@ -3,7 +3,7 @@ id: T-1939
 title: "MATCH/VLOOKUP/HLOOKUP table: single cells picked by CHOOSE, OFFSET or a name, and which single text is numeric"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Review follow-up of T-1862. `Model::evaluate_single_sheet_arg` (functions/util.r
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/match-single-cell-forms-and-texts` (36 cells, excel-graph) covers single cells picked by CHOOSE, OFFSET, INDIRECT and a defined name, and ten single texts, under MATCH and VLOOKUP. Only the defined-name cells differed: `evaluate_single_sheet_arg` now keeps a name for one cell as a one-cell range. Texts already matched `cast_number`. Findings in docs/excel-semantics/lookup.md. Eval delta: probes +36 cells, all passing, 0 regressions.
