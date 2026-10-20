@@ -11,13 +11,16 @@
 //!   finite series for integer df in double-double. In the deep tail (y <= z) Excel's L carries
 //!   the error of exp((n/2) ln y): Cephes' power series with that power and a correctly rounded
 //!   Gamma ratio reproduces it (`T.DIST.RT(1E6,10)` = 1.230468749943611E-56, F18 of `T_DIST.xlsx`).
+//! - elsewhere away from the deep tail (an integer df above [`SERIES_MAX_DF`], or a series tail too
+//!   small to keep its digits) L comes from Cephes' fractions with every input
+//!   formed from z and t^2/n, never from the rounded y ([`centre_tail`]): Excel is within a few ulp
+//!   of the exact value there up to df 1E10 (`T.DIST(2,1E10,TRUE)` = 0.977249868038323,
+//!   probes-numeric m9-t-edges), and a rounded y moves L by about n eps.
 //!
 //! Every loop is bounded: [`SERIES_MAX_DF`] / 2 series terms, [`TAYLOR_TERMS`] Taylor terms and
 //! [`MAX_POWER_SERIES_TERMS`] power-series terms a call.
 
-use statrs::distribution::{ContinuousCDF, StudentsT};
-
-use super::incomplete_beta::beta_reg_upper;
+use super::incomplete_beta::{beta_reg_upper, incbcf, incbd};
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, two_sum};
 
 /// A double-double: an unevaluated sum `hi + lo` with |lo| <= ulp(hi)/2.
@@ -26,8 +29,6 @@ type Dd = (f64, f64);
 /// Largest integer df that the double-double series ([`centre_series`], [`integer_ratio`]) sum:
 /// about df/2 double-double steps a call.
 const SERIES_MAX_DF: f64 = 1000.0;
-/// Largest df whose centre takes Cephes' fraction; above it statrs' cdf (see [`upper_tail`]).
-const FRACTION_MAX_DF: f64 = 1e7;
 /// From this shape on, Gamma(a + 1/2)/Gamma(a) comes from its asymptotic series.
 const ASYMPTOTIC_MIN_SHAPE: f64 = 85.0;
 /// Cephes' `MACHEP`, 2^-53: the power series stops below it.
@@ -99,23 +100,43 @@ fn unflushed_upper_tail(t: f64, n: f64) -> f64 {
         return 0.5;
     }
     let (z, y) = beta_arguments(t, n);
+    let Some(ratio) = gamma_ratio(n) else {
+        return 0.5 * beta_reg_upper(z, y, 0.5, 0.5 * n);
+    };
     if y <= z {
-        if let Some(ratio) = gamma_ratio(n) {
-            return 0.5 * power_series(0.5 * n, y, ratio);
-        }
-    } else if let Some(inside) = centre_series(t, n) {
+        return 0.5 * power_series(0.5 * n, y, ratio);
+    }
+    if let Some(inside) = centre_series(t, n) {
         let tail = dd_add((0.5, 0.0), (-0.5 * inside.0, -0.5 * inside.1)).0;
         if tail > MIN_SERIES_TAIL {
             return tail;
         }
     }
-    if n > FRACTION_MAX_DF {
-        // Above it Cephes' prefactor (n/2) ln y, y rounded, loses more than statrs' cdf does:
-        // `T.DIST(2,1E10,TRUE)` = 0.977249868038323 (probes-numeric m9-t-edges) is 7 digits off
-        // through the fraction, 9 through statrs (T-2126). Its lower tail at -t, not 1 - cdf.
-        return StudentsT::new(0.0, 1.0, n).map_or(f64::NAN, |dist| dist.cdf(-t));
+    if n.fract() != 0.0 {
+        // T.TEST's Welch df: the plain fraction is no further from Excel there, and closer on
+        // probes-numeric t1048-ttest A3 and t1049-ttest A21.
+        return 0.5 * beta_reg_upper(z, y, 0.5, 0.5 * n);
     }
-    0.5 * beta_reg_upper(z, y, 0.5, 0.5 * n)
+    centre_tail(t, n, z, ratio)
+}
+
+/// L = `I_y(n/2, 1/2)`/2 for 0 < t^2 < n and an integer n, from z = t^2/(n+t^2), t^2/n and
+/// n/t^2 (each within an ulp or two) with `ratio` = Gamma((n+1)/2)/(Gamma(n/2) Gamma(1/2)) and y^(n/2) = exp(-(n/2)
+/// log1p(t^2/n)). Up to t = 1 the centre A = `I_z(1/2, n/2)` by `incbcf` (6 steps at most) and
+/// L = (1 - A)/2; beyond it L itself by `incbd` on the ratio y/z = n/t^2. Each fraction converges
+/// in under 160 steps on its side of t = 1 at every df to 1E10, within a few ulp of the exact L,
+/// and loses digits on the other side (T-0969 attempt 4).
+fn centre_tail(t: f64, n: f64, z: f64, ratio: f64) -> f64 {
+    let a = 0.5 * n;
+    let power = (-a * (t * t / n).ln_1p()).exp();
+    if t <= 1.0 {
+        // A = z^(1/2) y^a / ((1/2) B(1/2, a)) * w.
+        let centre = 2.0 * z.sqrt() * power * ratio * incbcf(0.5, a, z);
+        0.5 - 0.5 * centre
+    } else {
+        // I_y(a, 1/2) = y^a z^(1/2) / (a B(a, 1/2)) * w / z.
+        0.5 * power * z.sqrt() * ratio / a * (incbd(a, 0.5, n / (t * t)) / z)
+    }
 }
 
 /// (t^2/(n+t^2), n/(n+t^2)) for t > 0, each rounded once from double-double arithmetic: forming
@@ -248,12 +269,21 @@ fn centre_series(t: f64, n: f64) -> Option<Dd> {
     Some((2.0 * half.0, 2.0 * half.1))
 }
 
-/// The Student-t density for an integer df n <= [`SERIES_MAX_DF`], rounded once from
-/// double-double: ratio cos^(n+1) / sqrt(n) with cos^2 = n/(n+t^2) and the ratio of
-/// [`integer_ratio`]. `None` elsewhere.
+/// The Student-t density for an integer df n: below [`SERIES_MAX_DF`] rounded once from
+/// double-double, ratio cos^(n+1) / sqrt(n) with cos^2 = n/(n+t^2) and the ratio of
+/// [`integer_ratio`]; from it on ratio / sqrt(n) * exp(-((n+1)/2) log1p(t^2/n)), within 2 ulp
+/// of Excel at t = 2 from df 1E10 to 1E11 (`T.DIST(2,1E11,FALSE)` = 0.05399096651413289,
+/// probes-numeric m9-t-edges) and closer to Excel than the exact density at df 1000
+/// (`T.DIST(30,1000,FALSE)`: 2 ulp against 94, m9-t-dist-pdf A129), though not at
+/// `T.DIST(30,1E6,FALSE)` (348 against 200, A144). `None` elsewhere.
 pub(crate) fn student_t_density(t: f64, n: f64) -> Option<f64> {
     if t.is_nan() || t.abs() >= 1e150 {
         return None;
+    }
+    if n >= SERIES_MAX_DF && n.fract() == 0.0 {
+        let ratio = gamma_ratio(n)?;
+        let density = ratio / n.sqrt() * (-0.5 * (n + 1.0) * (t * t / n).ln_1p()).exp();
+        return density.is_finite().then_some(density);
     }
     let ratio = integer_ratio(n)?;
     let square = dd_mul((t, 0.0), (t, 0.0));
@@ -332,7 +362,26 @@ mod tests {
         assert_eq!(student_t_density(0.0, 10.0), Some(0.389_108_383_966_031_04));
         let d3 = student_t_density(8.0, 3.0).unwrap_or(f64::NAN);
         assert!(ulps(d3, 0.000_736_906_520_946_926_6) <= 4, "{d3}");
-        assert_eq!(student_t_density(1.0, 1001.0), None);
+        assert_eq!(student_t_density(1.0, 2.5), None);
+    }
+
+    #[test]
+    fn large_df_cells() {
+        // probes-numeric m9-t-edges A11 and m9-t-dist-cdf A139 (excel-graph): a rounded y missed
+        // these in the 10th digit; m9-t-dist-rt A140 and m9-t-edges A20 (the density at 1E11).
+        let close = |actual: f64, excel: f64| ulps(actual, excel) <= 4;
+        let (cdf, _) = student_t_tails(2.0, 1e10);
+        assert!(close(cdf, 0.977_249_868_038_323), "{cdf}");
+        let (cdf, _) = student_t_tails(1.0, 1e6);
+        assert!(close(cdf, 0.841_344_625_083_211_1), "{cdf}");
+        let (_, rt) = student_t_tails(2.0, 1e6);
+        assert!(close(rt, 0.022_750_266_925_659_606), "{rt}");
+        let (_, rt) = student_t_tails(0.1, 1e6);
+        assert!(close(rt, 0.460_172_172_746_021_57), "{rt}");
+        let density = student_t_density(2.0, 1e11).unwrap_or(f64::NAN);
+        assert!(close(density, 0.053_990_966_514_132_89), "{density}");
+        let density = student_t_density(0.0, 1e6).unwrap_or(f64::NAN);
+        assert!(close(density, 0.398_942_180_665_875_06), "{density}");
     }
 
     #[test]

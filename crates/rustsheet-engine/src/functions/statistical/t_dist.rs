@@ -1,7 +1,7 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{num_error, number_or_error, LiftCost};
+use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
 use crate::functions::statistical::paired::PairedValues;
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
@@ -335,6 +335,12 @@ impl Model {
         let x = self.cast_number_ref(x, cell)?;
         let df = self.cast_number_ref(df, cell)?.trunc();
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
+        // The density divides by the truncated df: df in (-1, 1) is `#DIV/0!`, not `#NUM!`
+        // (`T.DIST(2,0.5,FALSE)`, `T.DIST(2,-0.5,FALSE)`; probes-numeric m9-t-edges A27-A41,
+        // statistics.md "Student t sweep").
+        if !cumulative && df == 0.0 {
+            return Err(div_error(cell));
+        }
         if df < 1.0 || (cumulative && df > T_DF_MAX) {
             return Err(num_error(cell));
         }

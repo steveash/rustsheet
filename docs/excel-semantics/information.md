@@ -23,8 +23,8 @@ Evidence: probes/is-functions-array-lift (Calc!A15, B15, D15, E15, J2, K2, L3, M
 excel-graph oracle sidecar, 2026-10-06). Desktop Excel was not checked.
 Also covered by M34:P34 (`{4.5,-7,"3",TRUE}` -> TRUE, FALSE, FALSE, #VALUE!: parity of the truncated
 absolute value, text cast, boolean #VALUE!). UNVERIFIED sub-rules (no probe yet): an array
-expression derived from a range (`ISEVEN(Data!C1:C5+0)`), arguments of magnitude >= 2^63, and the
-dynamic-array flag Excel writes for the range form.
+expression derived from a range (`ISEVEN(Data!C1:C5+0)`), and the
+dynamic-array flag Excel writes for the range form. Magnitude >= 2^63 is settled below (T-2165).
 Legacy (pre-dynamic-array) formulas, UNVERIFIED for ISEVEN/ISODD (T-1774 moved them onto the
 SPEC-0011 `LiftArrays` table entry, so they follow the Analysis ToolPak rule probed for EDATE and
 YEARFRAC, probes/scalar-lift-shapes-c E, F, H, Q): a bare range gets no `@` and is `#VALUE!`, a
@@ -272,12 +272,12 @@ Tasks: T-2042, T-2052
 - `TYPE` of a one-cell range is its cell's type, not 64: `TYPE(D7:D7)` and `TYPE(B3:B3)` are 1 (ours 64). Multi-cell ranges
   stay 64 (above). Evidence: gen-m5/2abdc1524e5aa685 Calc!A371, gen-m5/c0651f0e0fb544d0 Calc!A203 (excel-graph, 2026-10-20).
 - ISEVEN and ISODD of a value at or above 2^63 read it as even (every double from 2^53 up is an even integer):
-  `ISODD(INT(1E+21))` is FALSE, `ISEVEN(3.333333333333325E+29)` and `ISEVEN(8.999999753086524E+28)` TRUE. Ours saturates to
-  i64::MAX, which is odd. This settles the ">= 2^63" line of "ISEVEN/ISODD over a range". Evidence: gen-m5/ee1667411bbe2ccc
+  `ISODD(INT(1E+21))` is FALSE, `ISEVEN(3.333333333333325E+29)` and `ISEVEN(8.999999753086524E+28)` TRUE. Implemented in `Model::parity_of`
+  (functions/information/mod.rs) with an f64 remainder (an i64 cast saturated to i64::MAX, which is odd). This settles the ">= 2^63" line of "ISEVEN/ISODD over a range". Evidence: gen-m5/ee1667411bbe2ccc
   Calc!A159, gen-m5/1315170eef6c413e Calc!A396, gen-m5/50d8a085335c05e6 Calc!A92.
 - CELL lifts over a multi-cell range given as info_type, as over an array: `CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
   filled column (ours `#VALUE!`). Evidence: gen-m5/c0651f0e0fb544d0 Calc!A293.
-Status: VERIFIED (excel-graph); not implemented (T-2156, T-2165, T-2161).
+Status: VERIFIED (excel-graph); ISEVEN/ISODD implemented (T-2165); not implemented (T-2156, T-2161).
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
@@ -340,3 +340,30 @@ Evidence: probes/legacy-array-result S!G1:G2, probes/t-array-lift (excel-graph, 
 Implemented in fn_t (T-1729).
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1729
+
+## SHEETS counts the sheets a reference spans (VERIFIED, excel-graph)
+Status: VERIFIED (excel-graph). Tasks: T-2115, T-2181.
+Rule: `SHEETS(reference)` is the number of sheets the reference covers: 1 for a cell or range on one sheet, written
+bare, sheet-qualified or quoted (`SHEETS(A1)`, `SHEETS($A$1:$B$2)`, `SHEETS(Data!A1:B2)`, `SHEETS('Beta'!A1)`), and the
+count of sheets between the corners, inclusive, for a 3-D span in either order: with sheets Alpha, Beta, Gamma, Data,
+`SHEETS(Alpha:Gamma!A1)` and `SHEETS(Gamma:Alpha!A1)` are 3, `SHEETS(Beta:Data!A1:B2)` 3, `SHEETS(Alpha:Data!B2)` 4.
+The result is a plain number (`TYPE` 1, `ISNUMBER` TRUE, `+0`, `*1`, `=3` TRUE). A reversed span reads the same in SUM too
+(`SUM(Gamma:Alpha!A1)` = `SUM(Alpha:Gamma!A1)`).
+Evidence: probes/info-sheets-info-types Alpha!D1:D24, D50:D52 (excel-graph, 2026-10-20, T-2115). The engine gives
+`#N/IMPL!` for any argument: T-2181. Unprobed, because the oracle canary refuses them (T-2113): a union, INDIRECT,
+OFFSET, a defined name, a non-reference or error argument, and bare `SHEETS()`.
+Probe trap: sheets named like cells (S1, S2, S3) break an unquoted 3-D span on Excel for the web: `SUM(S1:S3!A1)`,
+`SUM(S3:S1!A1)` and `SHEETS(S1:S3!A1)` are `#VALUE!` and `SHEETS(S3:S1!A1)` is 1, while the quoted `'S1:S3'!A1` works
+(`SUM` 13, `SHEETS` 3) and so does a single-sheet `S2!A1` (probes/sheet-names-like-cells-3d-spans B1:B7, excel-graph,
+2026-10-20). Excel writes such names quoted; give probe sheets names that are not cell references.
+
+## INFO is #VALUE! in Excel for the web
+Status: VERIFIED (excel-graph); desktop pending T-2182. Tasks: T-2115, T-2190, T-2182.
+Rule (web): every INFO call is `#VALUE!`, whatever the type_text: "recalc", "system", "release", "directory",
+"osversion", "origin", the legacy "memavail", "memused" and "totmem", `""` and `"x"`, in lower, upper or mixed case
+(`TYPE(INFO("release"))` 16, `ERROR.TYPE(INFO("x"))` 3, `ISTEXT(INFO("recalc"))` FALSE, `LEN(INFO("osversion"))>0`
+`#VALUE!`). So no value turned out host-dependent. As with ENCODEURL and FILTERXML (web.md), this is the golden for
+Phases 1-3 (decision 0039): the engine follows it in T-2190, which is expected to differ from desktop Excel; T-2182
+(M14) asks desktop. Unprobed: `INFO(#N/A)`, `INFO(1)`, `INFO(TRUE)`, an array argument (the oracle canary refuses a
+non-literal INFO, T-2113), and `INFO("numfile")` (canary-dependent).
+Evidence: probes/info-sheets-info-types Alpha!D25:D49 (excel-graph, 2026-10-20, T-2115).

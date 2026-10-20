@@ -1359,6 +1359,21 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   exp(a ln y), y = n/(n+t^2): Cephes' power series with x^a = exp(a ln y) is within 4 ulp on 131 of 135
   probe cells, the correctly rounded I at the double y on 107 (worst 269 ulp at `T.DIST.RT(1E6,30)`, 275 from the exact
   value) (T-0969 attempt 2).
+- **Large df stays exact; the noise is Excel's own** (T-0969 attempt 4). Up to df 1E10 the tails at
+  |t| up to about 5 are within a few ulp of the exact value (`T.DIST.RT(0.1,1E6)` = 0.46017217274602157,
+  `T.DIST(2,1E10,TRUE)` = 0.977249868038323), and so is the density to df 1E11. Any model that rounds
+  y = n/(n+t^2) first misses them by about n eps (1E-11 relative at 1E6). Further out Excel drifts from the exact
+  value by roughly |E| eps, where E is the exponent of the density or tail (about t^2/2, or ((n+1)/2) ln(1+t^2/n)).
+  That is the signature of exp of a rounded double exponent:
+  - `T.DIST(30,1E6,FALSE)` = 1.8033900017556897E-196 is 200 ulp below exact.
+  - `T.DIST(1000,100,FALSE)` is 165 ulp off and `T.DIST(100,30,FALSE)` 38 ulp off.
+  - `T.DIST.RT(30,1E6)` = 6.0100471168320144E-198 is 398 ulp above exact.
+
+  In doubles, ratio / sqrt(n) * exp(-((n+1)/2) log1p(t^2/n)) carries the same kind of |E| eps error, with its own
+  sign. It is closer to Excel than the exact density at df 1000 and 1E6 for |t| up to about 10, and at
+  `T.DIST(30,1000,FALSE)` (2 ulp against 94). It is further away at `T.DIST(30,1E6,FALSE)` (348 against 200) and
+  below df 1000. No tried double formula (pow,
+  exp of ln, exp of log1p, ln Gamma differences) reproduces Excel's density noise at df <= 100.
 Evidence: probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-inv`,
 `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13. Exact reference values for
 the T.DIST accuracy bullets: mpmath `betainc` at 60 digits (T-0969 attempt 2, 2026-10-20).
