@@ -82,24 +82,12 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
         Denominator::Placeholders(kinds) => fill_left(&format!("{denominator}"), kinds),
     };
 
-    // The literals between the integer and the fraction (the separator). Where the integer prints
-    // no digit they print as spaces under a `?` integer, or under a `#` integer before a `?`
-    // numerator, and are dropped under a `#` integer otherwise (`# #/#` on 0.5 is "1/2", gen-m10
-    // 039accab K8; `#\:?=/=#` on 0.75 " 3=/=4", `?\:#=/=#` "  3=/=4", poi/NumberFormatTests
-    // A228, A234). A blank fraction takes its separator with it.
-    let separator = if blank {
-        if blank_spaces {
-            Separator::Spaces
-        } else {
-            Separator::Dropped
-        }
-    } else if !integer_digits.is_empty() || last_integer_kind == Some('0') {
-        Separator::Printed
-    } else if last_integer_kind == Some('?') || numerator_kinds.first() == Some(&'?') {
-        Separator::Spaces
-    } else {
-        Separator::Dropped
-    };
+    let separator = separator_kind(
+        blank.then_some(blank_spaces),
+        !integer_digits.is_empty(),
+        last_integer_kind,
+        numerator_kinds.first().copied(),
+    );
     let mut text = String::new();
     if negative {
         text.push('-');
@@ -141,6 +129,30 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
         push_denominator(&mut text, &denominator_text, blank, blank_spaces);
     }
     text
+}
+
+/// How the separator (the literals between the integer part and the numerator) prints, given
+/// whether the fraction is blank and blanks to spaces (`blank`), whether the integer prints digits,
+/// and the kinds of the last integer and the first numerator placeholders. A blank fraction takes
+/// its separator with it. Where the integer prints no digit the separator prints under a `0`
+/// integer, turns into spaces under a `?` integer or before a `?` numerator, and is dropped
+/// otherwise (`# #/#` on 0.5 is "1/2", gen-m10 039accab K8; `#\:?=/=#` on 0.75 " 3=/=4",
+/// `?\:#=/=#` "  3=/=4", `0\:#=/=#` "0:3=/=4", poi/NumberFormatTests A228, A234, A243).
+fn separator_kind(
+    blank: Option<bool>,
+    integer_prints: bool,
+    last_integer_kind: Option<char>,
+    first_numerator_kind: Option<char>,
+) -> Separator {
+    match blank {
+        Some(true) => Separator::Spaces,
+        Some(false) => Separator::Dropped,
+        None if integer_prints || last_integer_kind == Some('0') => Separator::Printed,
+        None if last_integer_kind == Some('?') || first_numerator_kind == Some('?') => {
+            Separator::Spaces
+        }
+        None => Separator::Dropped,
+    }
 }
 
 /// How the literals between a fraction's integer part and its numerator print.

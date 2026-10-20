@@ -79,8 +79,6 @@ pub struct Fraction {
     pub numerator_start: usize,
     /// Index just past the last numerator placeholder in `tokens`.
     pub numerator_end: usize,
-    /// Index of the `/` literal in `tokens`.
-    pub slash: usize,
     /// Index in `tokens` where the denominator prints, after the literals that follow the `/`;
     /// the denominator is not a token.
     pub denominator_at: usize,
@@ -404,7 +402,6 @@ impl Parser {
                                 ))) =>
                 {
                     let numerator_end = after_digits.unwrap_or(tokens.len());
-                    let slash = tokens.len();
                     tokens.push(TextToken::Literal('/'));
                     while is_fraction_literal(&next_token) {
                         if let Some(literal) = fraction_literal(next_token) {
@@ -439,7 +436,6 @@ impl Parser {
                     fraction = Some(Fraction {
                         numerator_start: numerator_end - numerator_len,
                         numerator_end,
-                        slash,
                         denominator_at: tokens.len(),
                         denominator,
                     });
