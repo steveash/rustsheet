@@ -7,13 +7,14 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-2201]
 ---
 
 ## Goal
 MROUND rounds as Excel does where the binary quotient sits just below a half (`MROUND(0.3,0.2)` = 0.4).
 
 ## Context
+- Evidence first (planner, 2026-10-20): the probe this task asks for is T-2201 (research), which fills `probes/t2201-mround-quotient-rounding`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). `fn_mround` (mathematical.rs) rounds `value/multiple` in binary: 0.3/0.2 = 1.4999999999999998 rounds to 1. Excel gives 0.4, which
 fits a 15-digit cut of the quotient before rounding half away. Observation: docs/excel-semantics/numbers.md "MROUND rounds the
 quotient as a 15-digit decimal" (added by this triage). Probe first (`excel-probe`): near-half quotients (0.3/0.2, 0.7/0.2,
