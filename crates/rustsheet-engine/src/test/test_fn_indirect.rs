@@ -288,3 +288,22 @@ fn errors() {
     assert_eq!(model._get_text("E7"), *"#DIV/0!");
     assert_eq!(model._get_text("E8"), *"#DIV/0!");
 }
+
+// An array ref_text or a1 lifts INDIRECT into an array of references (SPEC-0014, T-1957;
+// probes/reference-lift-elements): INDEX picks an element as the reference itself, ROWS counts
+// elements and ISREF of the whole is FALSE.
+#[test]
+fn lifted_ref_text_is_an_array_of_references() {
+    let mut model = new_empty_model();
+    set_numbers(&mut model, "Sheet1");
+    model._set("E1", "=INDEX(INDIRECT({\"A1\";\"B2\"}),2,1)");
+    model._set("E2", "=ROWS(INDIRECT({\"A1\";\"B2\"}))");
+    model._set("E3", "=ISREF(INDIRECT({\"A1\";\"B2\"}))");
+    model._set("E4", "=INDEX(INDIRECT(\"R2C1\",{TRUE;FALSE}),2,1)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("E1"), *"5");
+    assert_eq!(model._get_text("E2"), *"2");
+    assert_eq!(model._get_text("E3"), *"FALSE");
+    assert_eq!(model._get_text("E4"), *"4");
+}
