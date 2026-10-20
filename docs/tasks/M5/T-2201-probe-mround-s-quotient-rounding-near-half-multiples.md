@@ -3,7 +3,7 @@ id: T-2201
 title: "Probe MROUND's quotient rounding near half-multiples and the product's last digit (T-2167)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
