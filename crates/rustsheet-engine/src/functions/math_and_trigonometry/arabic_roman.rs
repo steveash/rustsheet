@@ -210,14 +210,13 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let number = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor(),
+            // Excel truncates before the sign check: `ROMAN(-0.5025)` is "" and not `#VALUE!`
+            // (gen-m5/49bfbf67a1409563 Calc!A179; numbers.md "ROMAN truncates before its sign check; BASE checks the sign first").
+            Ok(f) => f.trunc(),
             Err(s) => return s,
         };
 
-        if number == 0.0 {
-            return CalcResult::String(String::new().into());
-        }
-        if !(0.0..=3999.0).contains(&number) {
+        if number != 0.0 && !(1.0..=3999.0).contains(&number) {
             return CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
@@ -251,6 +250,11 @@ impl Model {
                 origin: cell,
                 message: "Form must be between 0 and 4".to_string(),
             };
+        }
+        // The form is read and checked even for 0 (`ROMAN(0,#N/A)` is `#N/A`, `ROMAN(0.2,8.09)` is
+        // `#VALUE!`; gen-m5/0362d48f56108faa Calc!A39, gen-m5/1962de140dae0111 Calc!A206).
+        if number == 0.0 {
+            return CalcResult::String(String::new().into());
         }
         let roman_numeral = match to_roman_with_form(number as u32, form) {
             Ok(s) => s,
