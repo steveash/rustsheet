@@ -1390,7 +1390,8 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
 - **The centre tail at small df can follow the rounded y** (T-0969 attempt 6): for t^2 < n, I_y(n/2,1/2)/2 at
   y = fl(n/(n+t^2)), as T.TEST computes it, is bit-exact at `T.DIST.2T(0.1,2)`, (2,100) and (3,100) where the
   exact tail is 8 to 23 ulp off, but 29 and 97 ulp off at `T.DIST.RT(0.5,100)` and (0.5,1000), where the exact
-  tail is within 1. No (df, t) cut on the swept cells separates the two.
+  tail is within 1. No (df, t) cut on the swept cells separates the two (superseded: the denser grid of T-0969 attempt 7
+  finds the cut, see "T.DIST.RT follows the rounded y beyond t = 1").
 Evidence: probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-inv`,
 `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13. Exact reference values for
 the T.DIST accuracy bullets: mpmath `betainc` at 60 digits (T-0969 attempt 2, 2026-10-20).
@@ -1440,7 +1441,7 @@ t = sqrt(n/99)), it is the exact tail at t.
   the other inside it. That is the pattern of a prefactor (a Gamma ratio at a = 7.5) about 1.5E-15 relative
   off. It is not modelled.
 Ours: `student_t.rs` `unflushed_upper_tail` (since T-0969 attempt 7).
-Status: VERIFIED (excel-graph); the cut's exact position is UNVERIFIED
+Status: VERIFIED (excel-graph) for df 2 to 1000; above df 1000, and the cut's exact position, UNVERIFIED
 Tasks: T-0969
 
 ## Incomplete beta sweep (T-1044)
