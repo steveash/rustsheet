@@ -3,7 +3,7 @@ id: T-1844
 title: "The coupon functions near the calendar's start and end match Excel (probes/fin-coupon-walk-bounds)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
