@@ -345,9 +345,9 @@ impl Model {
 
     /// A value argument whose consumer reads an array of references by its elements (SPEC-0014
     /// "Consumers"): a lifted producer is its grid, anything else its value as
-    /// `evaluate_node_in_context` gives it, a range as `RefArg::Ranges`. OFFSET is the only
-    /// producer so far: TODO(T-1957) INDIRECT and TRIMRANGE, TODO(T-1838) TAKE and DROP, and
-    /// TODO(T-2078) the IF, CHOOSE and LET pass-through join it here.
+    /// `evaluate_node_in_context` gives it, a range as `RefArg::Ranges`. OFFSET, INDIRECT and
+    /// TRIMRANGE are the producers so far: TODO(T-1838) TAKE and DROP, and TODO(T-2078) the IF,
+    /// CHOOSE and LET pass-through join them here.
     pub(crate) fn evaluate_value_or_grid(
         &mut self,
         node: &Node,
@@ -355,9 +355,9 @@ impl Model {
     ) -> RefArg {
         match node.ungrouped() {
             Node::FunctionKind {
-                kind: Function::Offset,
+                kind: kind @ (Function::Offset | Function::Indirect | Function::Trimrange),
                 args,
-            } => self.offset_reference(args, cell),
+            } => self.reference_producer(kind, args, cell),
             _ => RefArg::from(self.evaluate_node_in_context(node, cell)),
         }
     }
