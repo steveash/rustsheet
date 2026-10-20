@@ -763,7 +763,8 @@ fn legacy_array_values_intersect_in_value_positions() {
             "N(SWITCH(1,1,{2;3}))",
             "N(_xlfn.SWITCH(1,1,{2;3}))",
         ),
-        // A root SWITCH of array constants is unmarked and spills (T-1910); nested, it keeps its `@`.
+        // A SWITCH of array constants is unmarked and spills, at the root (T-1910) and nested under a
+        // scalar function (probes/legacy-switch-at-shapes G20, T-1964).
         (
             "_xlfn.SWITCH(1,1,{2;3})",
             "SWITCH(1,1,{2;3})",
@@ -777,7 +778,7 @@ fn legacy_array_values_intersect_in_value_positions() {
         ),
         (
             "ABS(_xlfn.SWITCH(1,1,{-2;3}))",
-            "ABS(@SWITCH(1,1,{-2;3}))",
+            "ABS(SWITCH(1,1,{-2;3}))",
             "ABS(_xlfn.SWITCH(1,1,{-2;3}))",
         ),
         ("SUM(N({1,2}))", "SUM(N({1,2}))", "SUM(N({1,2}))"),
