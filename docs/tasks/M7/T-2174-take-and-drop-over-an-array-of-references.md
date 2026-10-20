@@ -3,7 +3,7 @@ id: T-2174
 title: "TAKE and DROP over an array of references keep its elements (SPEC-0014 rule 7)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
