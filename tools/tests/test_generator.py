@@ -629,7 +629,10 @@ def _outer_function(formula: str) -> str:
 def test_unfocused_output_is_unchanged() -> None:
     # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw.
     body = json.dumps(generate_case(_loaded_catalog(), 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
-    assert hashlib.sha256(body.encode()).hexdigest() == "866c628ae89f0f953bf667e60bbbaad9c0fb6d510b297988862867da51405f92"
+    assert (
+        hashlib.sha256(body.encode()).hexdigest()
+        == "866c628ae89f0f953bf667e60bbbaad9c0fb6d510b297988862867da51405f92"
+    )
 
 
 def test_focus_cycles_target_milestone_functions_evenly() -> None:
@@ -643,7 +646,9 @@ def test_focus_cycles_target_milestone_functions_evenly() -> None:
     spelled = set(targets.values())
     outer: Counter[str] = Counter()
     for i in range(50):
-        spec = generate_case(catalog, 2 * 1_000_003 + i, milestone="M5", formulas=400, focus=True, case_index=i)
+        spec = generate_case(
+            catalog, 2 * 1_000_003 + i, milestone="M5", formulas=400, focus=True, case_index=i
+        )
         outer.update(_outer_function(f) for f in spec["sheets"][1]["cells"].values())
     assert set(outer) <= spelled
     assert min(outer[name] for name in spelled) >= 100
