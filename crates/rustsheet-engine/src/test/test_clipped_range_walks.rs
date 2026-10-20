@@ -250,14 +250,17 @@ fn paired_functions_keep_size_mismatch_and_late_errors() {
     // Different sizes are #N/A however far the data reaches.
     same_as("SUMXMY2(Sheet1!A:A,Sheet1!B1:B3)", "NA()");
     same_as("COVARIANCE.P(Sheet1!A:A,Sheet1!B:C)", "NA()");
-    // An error past the paired positions of the longer argument is still found first.
+    // An error past the paired positions of the longer argument is still found first by T.TEST.
+    // SUMXMY2 checks the counts before any error inside a range (coercion.md "SUMX2MY2 / SUMX2PY2
+    // / SUMXMY2 pairing", probes/sumx-blank-text-error-order G7, G23).
     let mut model = sample();
     model._set("A9", "=1/0");
     model._set("Sheet2!E1", "=SUMXMY2(Sheet1!A:A,Sheet1!B1:B3)");
     model._set("Sheet2!E2", "=T.TEST(Sheet1!A:A,Sheet1!B1:B3,2,2)");
     model._set("Sheet2!E3", "=T.TEST(Sheet1!B1:B3,Sheet1!A:A,2,2)");
     model.evaluate();
-    for cell in ["Sheet2!E1", "Sheet2!E2", "Sheet2!E3"] {
+    assert_eq!(model._get_text("Sheet2!E1"), "#N/A");
+    for cell in ["Sheet2!E2", "Sheet2!E3"] {
         assert_eq!(model._get_text(cell), "#DIV/0!", "{cell}");
     }
 }

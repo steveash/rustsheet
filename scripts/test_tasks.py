@@ -101,13 +101,15 @@ def write_task(
     priority: str = "P1",
     milestone: str = "M0",
     depends_on: str = "",
+    campaign: str | None = None,
 ) -> Path:
     path = root / "docs/tasks" / milestone / f"{tid}-x.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     tier_line = f"tier: {tier}\n" if tier else ""
+    campaign_line = f"campaign: {campaign}\n" if campaign else ""
     path.write_text(
         f"---\nid: {tid}\ntitle: \"x\"\nmilestone: {milestone}\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
-        f"size: S\n{tier_line}depends_on: [{depends_on}]\n---\n{body}"
+        f"size: S\n{tier_line}{campaign_line}depends_on: [{depends_on}]\n---\n{body}"
     )
     return path
 
@@ -161,6 +163,30 @@ class Tiers(unittest.TestCase):
             self.assertEqual(run_next(root, "opus"), "T-0210")
             claims = ({"T-0210"}, set())
             self.assertEqual(run_next(root, "opus", claims=claims), "T-0901")
+
+    def test_campaign_task_comes_before_milestone_order_but_after_p0_and_handoffs(self) -> None:
+        # Decision 0083: a visible-parity M10 task beats an M2 task; P0 and handoffs still lead.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0210", tier="opus", priority="P1", milestone="M2")
+            write_task(root, "T-1711", tier="opus", priority="P3", milestone="M10", campaign="visible")
+            self.assertEqual(run_next(root, "opus"), "T-1711")
+            write_task(root, "T-0002", tier="opus", priority="P2", body="\n## Handoff\nstuck\n")
+            self.assertEqual(run_next(root, "opus"), "T-0002")
+            write_task(root, "T-0001", tier="opus", priority="P0", milestone="M9")
+            self.assertEqual(run_next(root, "opus"), "T-0001")
+
+    def test_unknown_campaign_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(tasks, "ROOT", root):
+                parsed = [
+                    tasks.parse(write_task(root, "T-0001", campaign="visible")),
+                    tasks.parse(write_task(root, "T-0002", campaign="bits")),
+                ]
+                errors = tasks.validate(parsed)
+        self.assertTrue(any("campaign=" in e and "T-0002" in e for e in errors))
+        self.assertFalse(any("T-0001" in e for e in errors))
 
     def test_task_waiting_on_an_open_sweep_is_not_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

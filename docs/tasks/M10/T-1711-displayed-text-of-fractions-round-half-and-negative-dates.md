@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -33,3 +34,6 @@ b4f66526f822ff2c T!A24 `TEXT(36.5,"0\%")` "37%". `to_precision` has other caller
 
 ## Out of scope
 - Column width: excel-graph's displayed text does not depend on it (decision 0068).
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

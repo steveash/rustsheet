@@ -286,7 +286,9 @@ impl Model {
         let blank = matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg);
         let value = Self::cast_string_ref(value, cell)?;
         if value.is_empty() && empty == EmptyText::ZeroIfBlank && blank {
-            return Ok((0.0, 0.0, Suffix::I));
+            // Excel: a blank takes the suffix of the number it meets, as a suffixless number does
+            // (`IMSUB("3+4j",Q1)` is "3+4j"): probes/eng-imsub-imdiv-blank-j A1:A6, B1, B5.
+            return Ok((0.0, 0.0, Suffix::Real));
         }
         parse_complex_number(&value).map_err(|_| num_error(cell))
     }
@@ -320,6 +322,11 @@ impl Model {
         let [first, second] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
+        // Excel: an empty argument, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`):
+        // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4.
+        if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
+            return Err(CalcResult::new_error(Error::NA, cell, String::new()));
+        }
         let first = Self::complex_of(first, EmptyText::ZeroIfBlank, cell)?;
         let second = Self::complex_of(second, EmptyText::ZeroIfBlank, cell)?;
         let Some(suffix) = first.2.join(second.2) else {
@@ -575,9 +582,10 @@ impl Model {
         {
             return CalcResult::new_args_number_error(cell);
         }
-        // Excel: a call of nothing but empty arguments is `#N/A` (`IMSUM(,)`), where blank cells
-        // are "0": probes/eng-imsum-improduct-3d-j-empty F1-F4.
-        if args.iter().all(|arg| matches!(arg, Node::EmptyArgKind)) {
+        // Excel: an empty first argument is `#N/A` (`IMSUM(,)`, `IMSUM(,Q1)`, `IMPRODUCT(,M8)`), where
+        // blank cells are "0" and a later empty argument is skipped (`IMSUM(M8,,M8)`):
+        // probes/eng-imsum-improduct-3d-j-empty F1-F4, probes/eng-imsub-imdiv-blank-j C1-C7, D1-D6.
+        if matches!(args.first(), Some(Node::EmptyArgKind)) {
             return CalcResult::new_error(Error::NA, cell, String::new());
         }
         let mut total: Option<ComplexParts> = None;

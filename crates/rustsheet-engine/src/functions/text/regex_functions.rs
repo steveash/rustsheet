@@ -5,7 +5,7 @@ use regex_automata::Match;
 use super::{
     lifted::COMPARED_BYTES_PER_VISIT,
     regex_engine::{BuildFailure, Caches, Engine, Search, Spent},
-    regex_posix::unicode_posix_classes,
+    regex_posix::{foldable_span, unicode_posix_classes},
     regex_replacement::Replacement,
     util::within_text_budget,
 };
@@ -127,6 +127,14 @@ impl PatternCache {
         let Ok(pattern) = unicode_posix_classes(pattern, case_insensitive) else {
             return Ok(None);
         };
+        // regex-syntax's case folding runs inside every `Engine::new`, before any size limit
+        // applies; one budget byte per code point is about the nanoseconds it takes (T-2138).
+        let fold = foldable_span(&pattern, case_insensitive);
+        if self.budget < fold {
+            self.exhausted = true;
+            return Err(too_much_regex_work(cell));
+        }
+        self.budget -= fold;
         for limit in SIZE_LIMITS {
             if self.budget < limit {
                 self.exhausted = true;
@@ -615,5 +623,26 @@ mod tests {
                 is_error(&cache.with(&format!("a{i}"), false, CELL, |search| search.is_match("")));
         }
         assert!(spent);
+    }
+
+    // Folding the ranges of a `(?i)` pattern is charged though it prints short, so many of them
+    // are spent quickly (T-2138); the same ranges without `(?i)` fold nothing.
+    #[test]
+    fn range_folding_is_budgeted() {
+        let ranges = "[\\x{0}-\\x{10FFFF}]".repeat(1_000);
+        let start = std::time::Instant::now();
+        let mut cache = PatternCache::new();
+        assert!(is_error(
+            &cache.with(&ranges, true, CELL, |search| search.is_match(""))
+        ));
+        assert!(cache.exhausted);
+        assert!(start.elapsed().as_secs() < 5);
+        let mut cache = PatternCache::new();
+        assert!(!is_error(&cache.with(
+            "[\\x{0}-\\x{10FFFF}]",
+            false,
+            CELL,
+            |search| search.is_match("")
+        )));
     }
 }

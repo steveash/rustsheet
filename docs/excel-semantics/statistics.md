@@ -973,7 +973,7 @@ NEGBINOMDIST are charged 4096 units an element against the shared cell-visit cap
 32,768 elements is `#ERROR!` before it runs where Excel computes it (as BINOM.INV, "Later arguments and element values of
 the scalar statistical functions" above).
 Status: VERIFIED (excel-cached) for the values; the weight is a DEVIATION
-Tasks: T-0927, T-1744, T-2055
+Tasks: T-0927, T-1744, T-2055, T-2145, T-2146
 
 ## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
 Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the
@@ -1215,13 +1215,57 @@ and the two functions have different domains.
   Excel's GAMMA does not keep 64-bit intermediates either: that model only ties the correctly
   rounded value (numbers.md "x87 precision is per operator, not per kernel").
 Ours: GAMMA is `statrs` Lanczos (not exact at integers) and returns `#NUM!` for `GAMMA(171.5)` and
-`GAMMA(171.6)`; GAMMALN is fdlibm `lgamma` (63 of the 171 integer cells differ).
+`GAMMA(171.6)` (until T-2129); GAMMALN is Excel's own routine since T-2128 ("GAMMALN is Excel's own x87 routine" below).
 Evidence: probes-numeric cases `t1042-gamma-int-1-90`, `t1042-gamma-int-91-171`, `t1042-gamma-half-int`,
 `t1042-gamma-unit-interval`, `t1042-gamma-negatives-edges` (first half of each case's cells is GAMMA,
 second half GAMMALN, in formula order; GAMMA overflow edge: `t1042-gamma-negatives-edges` Calc!A18:A24;
 GAMMALN of x <= 0: Calc!A28:A44 there and A63:A73 of `t1042-gamma-half-int`). Oracle: excel-graph, 2026-10-13.
 Status: VERIFIED (excel-graph)
 Tasks: T-0973 (kernel, including the 171 < x < 171.62 overflow edge), T-1529 (GAMMALN and non-integer GAMMA, time-boxed)
+
+## GAMMALN is Excel's own x87 routine (T-1941, T-2128)
+Rule: GAMMALN and GAMMALN.PRECISE are one routine of x87 operations, each stored to a double (fl53(fl64(.))), with LN the
+FYL2X model (numbers.md "LN is FLDLN2 then FYL2X"). By the exact comparisons Excel makes:
+- **x < 0.7** (the double 0x1.6666666666666p-1): fl(GAMMALN(fl(x + 1)) - LN(x)), one step up (12,288 of 12,288 points, given
+  the kernel above 0.7; tiny x is the same formula, since fl(1 + x) = 1 and GAMMALN(1) = 0).
+- **[0.7, 1.5]**: K3 = fl(fl(x - 1) * fl(N/D)), a (9,9) raw-x rational.
+- **(1.5, 2]**: fl(fl(x - 1) * fl(fl(x - 2) * fl(N/D))), its own (9,9) rational (D0 not a power of two).
+- **(2, 3]**: K2 = fl(fl(x - 2) * fl(N/D)), raw-x (9,8).
+- **(3, 8)**: t = x - k in [2, 3), p = t (t + 1) ... (t + k - 1) ascending with every product stored, and fl(K2(t) + LN(p)).
+- **x >= 8**: Stirling's series with exactly ten Bernoulli terms, every op stored: a = x - 0.5, b = a LN(x), d = b - x,
+  e = d + 0.9189385332046727, z = 1/x, z2 = z z, r = B_10, r = r z2 + B_k (k = 9..1), GAMMALN = e + r z.
+- The ends are exact: GAMMALN(1.5) is K3's -0.12078223763524523 (the (1.5, 2] form gives ...452), GAMMALN(3) is K2's
+  0.6931471805599454 (the reduction would give LN(2) = ...453), and GAMMALN(4) is the reduction's LN(6).
+The four rationals use Excel's own coefficient doubles, which are not yet known to the bit (T-2122); the engine uses the
+research's best sets (`functions/statistical/gamma_kernels.rs`). K2 near 2 takes reviewer 3's "cand9" set for x - 2 < 0.01 and
+`k2_ref.py`'s (N's first three sums and D's first two in registers) above. That cut is measured: on the (2, 3] points cand9
+scores 0.99 for x - 2 below 1e-5, against 0.945 for k2_ref, and k2_ref wins from x - 2 = 0.01 on; the total over (2, 3]
+peaks at a cut of 0.01 (0.95295, against 0.94959 for k2_ref alone) and is flat from 5e-3 to 2e-2. It is a choice between
+two models, not Excel's switch. Exact rates on the T-1941 GAMMALN.PRECISE cells (18,360,467 distinct x, excel-graph):
+
+| Region | Exact | of |
+|---|---|---|
+| x < 0.7 | 0.869 | 203,520 |
+| K3 [0.7, 1.5] | 0.322 | 8,082,879 |
+| (1.5, 2] | 0.428 | 7,548,389 |
+| K2 (2, 2.02) | 0.983 | 192,512 |
+| K2 [2.02, 3] | 0.950 | 1,862,260 |
+| (3, 8) | 0.991 | 178,258 |
+| x >= 8 | 1.000 (292,645 of 292,649) | 292,649 |
+
+The four x >= 8 misses are LN's FYL2X near-ties, where Excel's own LN column took the other neighbour in the same run, so
+the series is bit-exact given Excel's LN. The misses elsewhere are a few ulps (at most 7, in K3, on the committed 10,500-point sample), never visible
+at 15 digits; a correctly rounded lgamma (the fdlibm `lgamma` the engine used before) matches K2's data at 0.29-0.35 (HANDOFF2 §3).
+Evidence: `docs/research/t1941/` and the `kmyst-gam-*` cases on branch `agent/research/T-1941-crack-gammaln-gamma-ln` (HANDOFF2.md
+§2, §3, §12; `gammaln_big_check.c`, `k2_ref.py`, `review3/final/cand9.py`, `w5/p4/ss_fc.txt`, `w6/data/xl_chain_d3ls.txt`);
+ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx (desktop cache) now passes all 91 cells, and probes/stat-argument-modes
+two more.
+Implemented in `functions/statistical/gammaln.rs` (`excel_gammaln`), `gamma_kernels.rs` and `x87_register.rs` (K2's register
+head). `test/fixtures/gammaln_kernel.fixture` (1,500 random points per region) pins the engine to the research checkers on
+every point; `gammaln_matches_the_t1941_runs` reruns the table above from `RUSTSHEET_T1941_ROWS`.
+Status: VERIFIED (excel-graph and desktop) for the structure and the bit-exact pieces; the four rationals are best known
+models (T-2122)
+Tasks: T-1941, T-2128, T-2122
 
 ## Student t sweep: df truncation, df limits, T.INV.2T above 1 (T-1043)
 Oracle sweep of the Student t family over df in {1,2,3,4,5,10,30,100,1000,1E6}, x up to 1E6 and p

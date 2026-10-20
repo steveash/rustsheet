@@ -254,9 +254,17 @@ Probed in T-1828 (probes/eng-imsum-improduct-3d-j-empty, excel-graph, 2026-10-20
 - A call whose arguments hold no number is "0" when they are blank cells (`IMSUM(Q1:Q3)`, `IMPRODUCT(Q1)`,
   `IMSUM(Q1,Q2)`), `#N/A` when they are empty arguments (`IMSUM(,)`, `IMPRODUCT(,)`), and `#NUM!` when they are
   empty text, typed, in a cell or in an array (`IMSUM("")`, `IMSUM(M9)`, `IMSUM({"",""})`) (F1-F12).
+Probed in T-2132 (probes/eng-imsub-imdiv-blank-j, excel-graph, 2026-10-20):
+- A blank cell takes the suffix of the other operand, as a suffixless number does: `IMSUB("3+4j",Q1)` is "3+4j",
+  `IMSUB(Q1,"3+4j")` "-3-4j", `IMDIV(Q1,"3+4j")` "0" and `IMDIV("3+4j",Q1)` `#NUM!` (A1, A2, A5, A6, B1, B2, B5).
+- An empty argument of IMSUB or IMDIV, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`; A3, A4, B3, B4).
+- An empty FIRST argument of IMSUM or IMPRODUCT is `#N/A` whatever follows (`IMSUM(,Q1)`, `IMSUM(,"")`,
+  `IMSUM(,M9)`, `IMSUM(,"3+4j")`, `IMPRODUCT(,M8)`, `IMSUM(,,M8)`; C1, C2, C5, C6, D1, D2, D5). A later empty argument is
+  skipped: `IMSUM(Q1,)` "0", `IMSUM("3+4j",)` "3+4j", `IMSUM(M8,,M8)` "6+8j", `IMPRODUCT(M8,,M8)` "-7+24j"; `IMSUM("",)`
+  is `#NUM!` (C3, C4, C7, D3, D4, D6).
 Status: VERIFIED (excel-graph)
 Implemented in: `fold_complex` in functions/engineering/complex.rs (T-1384)
-Tasks: T-1384, T-1828
+Tasks: T-1384, T-1828, T-2132
 
 ## IMSUM and IMPRODUCT read cap
 Rule: RustSheet stops an IMSUM or IMPRODUCT call with `#ERROR!` once the cells its ranges walk and the elements of its

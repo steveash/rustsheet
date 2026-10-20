@@ -217,8 +217,8 @@ fn asinh_acosh_are_the_log_formulas() {
     assert_eq!(bits("A2"), (-1.000_000_082_690_371e-10_f64).to_bits());
     assert_eq!(bits("A3"), 1.414_276_423_083_533e-6_f64.to_bits());
     assert_eq!(model._get_text("A4"), *"#NUM!");
-    // x*x overflows: libm's value, since no Excel value is known there.
-    assert_eq!(bits("A5"), 1e200_f64.asinh().to_bits());
+    // x*x overflows: `#NUM!` (probes-numeric/t2062-asinh-acosh-overflow, excel-graph, T-2062).
+    assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(bits("A6"), 0.0_f64.to_bits());
     // Out of domain is `#NUM!`, also where x + sqrt(x*x - 1) rounds to 0 or x*x overflows.
     for cell in ["A7", "A8", "A9"] {

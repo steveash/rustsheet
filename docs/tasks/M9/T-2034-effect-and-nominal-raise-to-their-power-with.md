@@ -4,9 +4,10 @@ title: "EFFECT and NOMINAL raise to their power with Excel's ^ kernel (NOMINAL_E
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -46,3 +47,12 @@ to the error EFFECT/NOMINAL return today for an out-of-range result (`rate_resul
 ## Out of scope
 - If neither helper clears every line, stop and hand the task up (work-loop step 5b) with the cells
   each one misses; do not try other formulations.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 4 in total.
+- EFFECT: 3 cells (13-14 digits right 3, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx` 2; `probes/fin-argument-modes.case.json` 1. e.g. `EFFECT(C2,B2)` Excel 0.5000000000000013, ours 0.5000000000000004
+- NOMINAL: 1 cells (13-14 digits right 1, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx` 1. e.g. `NOMINAL(A8,B8)` Excel 0.4267276788012868, ours 0.4267276788012859
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.

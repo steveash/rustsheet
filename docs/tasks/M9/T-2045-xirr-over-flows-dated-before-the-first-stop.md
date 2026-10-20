@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-1591]
 ---
 
@@ -36,3 +37,9 @@ part of the stop test; it has no engine work, and T-0916 is done, so nothing app
 
 ## Out of scope
 - The zero-first-value result (xirr-early-dates A10, A11) unless T-1591's rule covers it.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 2 in total.
+- XIRR: 2 cells (13-14 digits right 0, 10-12 0, 6-9 2, fewer or 0 vs nonzero 0); most in `probes/whole-column-empty-walkers.case.json` 2. e.g. `XIRR(A:A,B:B)` Excel 0.03189964592456816, ours 0.03189964368939399

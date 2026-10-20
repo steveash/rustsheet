@@ -7,6 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
+campaign: visible
 depends_on: [T-2123]
 ---
 
@@ -49,3 +50,6 @@ Expected parity (HANDOFF2 §3): x ≥ 10, integers and half-integers ~100%; (0,1
 ## Out of scope
 - Finding the remaining coefficient bits (T-2122).
 - GAMMA.DIST and the incomplete gamma / beta kernels (T-0971, T-0970).
+
+## Visible-parity stage
+Decision 0083: GAMMA is visibly off on 241 cells of the 2026-10-20 eval run (`main` 35a5e71), e.g. `GAMMA(3)` = 2.0000000000000067 (13-14 digits right 200, 10-12 41). For this task, stage 1 is reached when every GAMMA cell is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0); the model above should reach it. If a part of the model (for example K1's non-exact coefficients) is not yet bit-exact, ship it once stage 1 holds and leave the bits to a follow-up task (no campaign key). Regressions that stay within 4 ulp follow decision 0083's allowance.

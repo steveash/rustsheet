@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2132: IMSUB/IMDIV with a blank cell or empty argument next to a j number (A-B), and IMSUM with mixed empty-argument forms (C). M8 \"3+4j\", M9 =\"\"; Q1 blank. D: leading and middle empty arguments in IMPRODUCT and IMSUM.",
+ "tags": [
+  "M9",
+  "engineering",
+  "argument-modes",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "M8": "3+4j",
+    "M9": "=\"\"",
+    "A1": "=IMSUB(\"3+4j\",Q1)",
+    "A2": "=IMSUB(Q1,\"3+4j\")",
+    "A3": "=IMSUB(\"3+4j\",)",
+    "A4": "=IMSUB(,\"3+4j\")",
+    "A5": "=IMSUB(M8,Q1)",
+    "A6": "=IMSUB(Q1,M8)",
+    "B1": "=IMDIV(Q1,\"3+4j\")",
+    "B2": "=IMDIV(\"3+4j\",Q1)",
+    "B3": "=IMDIV(,\"3+4j\")",
+    "B4": "=IMDIV(\"3+4j\",)",
+    "B5": "=IMDIV(Q1,M8)",
+    "C1": "=IMSUM(,Q1)",
+    "C2": "=IMSUM(,\"\")",
+    "C3": "=IMSUM(Q1,)",
+    "C4": "=IMSUM(\"\",)",
+    "C5": "=IMSUM(,M9)",
+    "C6": "=IMSUM(,\"3+4j\")",
+    "C7": "=IMSUM(\"3+4j\",)",
+    "D1": "=IMPRODUCT(,Q1)",
+    "D2": "=IMPRODUCT(,M8)",
+    "D3": "=IMPRODUCT(M8,,M8)",
+    "D4": "=IMSUM(M8,,M8)",
+    "D5": "=IMSUM(,,M8)",
+    "D6": "=IMPRODUCT(Q1,)"
+   }
+  }
+ ],
+ "expected": {}
+}

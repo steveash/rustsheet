@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -22,3 +23,6 @@ Probe rows 9, 10, 13, 14: `?/00` is a two-digit placeholder denominator padded t
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

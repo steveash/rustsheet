@@ -3,7 +3,7 @@
 //! the in-place single-grid path and the text budget.
 
 use super::arg_buf::ArgBuf;
-use super::kinds::{ArgValue, CallResult, KernelWork};
+use super::kinds::{ArgKinds, ArgValue, CallResult, KernelWork};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
@@ -170,6 +170,15 @@ pub(crate) struct LiftOptions {
 }
 
 impl LiftOptions {
+    /// The options of a table entry's call: every element runs, at the entry's work and result.
+    pub(crate) fn for_entry(kinds: &ArgKinds) -> Self {
+        Self {
+            reuse: Reuse::Never,
+            work: kinds.work,
+            result: kinds.result,
+        }
+    }
+
     /// AGGREGATE, IFS, SWITCH and the lookups reuse equal runs, as T-1784's `lift_with_cost` did.
     pub(crate) const REUSE_EQUAL_RUNS: Self = Self {
         reuse: Reuse::EqualRuns,
