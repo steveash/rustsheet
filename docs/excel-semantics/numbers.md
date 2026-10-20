@@ -1250,7 +1250,19 @@ desktop 1.2626272556789115, web and engine ...118. D26 is `ATAN2(TRUE,2)`: deskt
 The exact atan(pi) is 1.26262725567891167... and the exact atan(2) is 1.10714871779409050.... So the web values are
 correctly rounded (0.41 and 0.42 ulp off). The desktop values are 0.59 and 0.58 ulp off, and both points lie within
 0.09 ulp of a rounding midpoint. The other 18 numeric desktop ATAN2 cells of the workbook match the web model.
-T-2142 settles the target.
+T-2142 ran a fit over the 20 numeric desktop cells and 257 web cells: probes/atan2-quadrants (120), atan2-error-edges (17)
+and column G of asin-atan-sign-source (120). The quotient is Excel's `/` (rounded to 64 bits, then to a double), and atan is exact to
+90 digits. atan2-kept-subnormal was left out, because its inputs are formulas of subnormal differences; the engine passes it.
+Results, desktop / web:
+- The engine model, a correctly rounded atan of the quotient with ±π added in doubles: 18 / 257. Rounding atan to 64 bits first
+  scores the same. So does π/2 − atan(1/q) for |q| > 1, done entirely in x87 (64-bit) steps.
+- fdlibm/musl `atan` of the quotient: 19 / 248. It gives D14's ...115 but not D26.
+- π/4 + atan((q−1)/(q+1)) for |q| > 0.4375, in doubles: 19 / 231. It also gives D14 but not D26.
+- π/2 − atan(1/q) in doubles, for |q| > 1: 18 / 232. It misses D17 and D26.
+- The quotient rounded to 64 bits only: 18 / 217. x87 `FPATAN` of the exact (y, x): 18 / 198. Adding ±π in x87: 18 / 238.
+- asin(q/sqrt(1+q²)): 18 / 169. 2·atan(q/(1+sqrt(1+q²))): 12 / 175.
+No candidate gives both desktop cells, and the two that give D14 lose web cells. The engine keeps the web value, and decision 0086
+names D14 and D26 as an Excel-vs-Excel last-digit conflict. Their desktop target waits for T-1075 (M14), as SIN(4) does.
 MIRR (T-0959): Mac 16.0300 caches `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` as 0.3933280241536672, the web gives ...674. The engine keeps
 the desktop value with MIRR's own root (financial.md "MIRR's evaluation order"); `^` follows the web.
 
