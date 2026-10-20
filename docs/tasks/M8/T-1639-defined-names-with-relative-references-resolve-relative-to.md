@@ -4,9 +4,10 @@ title: "Defined names with relative references resolve relative to the cell that
 milestone: M8
 lane: engine
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -22,3 +23,6 @@ gen-m8a (T-1606) case 051f538767ab0cfb (names-relative, 25/300 pass) and the `f_
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Decision 0083: wrong values here are visible to anyone using defined names or tables (gen-m8a names-relative (about 223 wrong numbers from `rel_*` names alone)), so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

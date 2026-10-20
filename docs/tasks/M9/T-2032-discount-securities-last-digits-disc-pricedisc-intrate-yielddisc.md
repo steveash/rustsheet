@@ -4,9 +4,10 @@ title: "Discount securities last digits: DISC, PRICEDISC, INTRATE, YIELDDISC, PR
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -55,3 +56,13 @@ sweep for it (research lane) rather than guessing.
 ## Out of scope
 - TBILLPRICE, TBILLYIELD, TBILLEQ (matched by T-1475); bond functions (PRICE, YIELD, DURATION; T-1374, T-1592).
 - Argument-mode and error-order cells of the same functions.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 34 in total.
+- INTRATE: 7 cells (13-14 digits right 7, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes/discount-security-modes.case.json` 3; `ironcalc-calc/FINANCIAL/INTRATE.xlsx` 2. e.g. `INTRATE(A2,B2,C2,D2,E2)` Excel 0.08, ours 0.08000000000000007
+- YIELDDISC: 14 cells (13-14 digits right 14, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes/discount-security-modes.case.json` 12; `probes/date-system-1904-financial-daycount.case.json` 1. e.g. `YIELDDISC(43101,43466,95,100)` Excel 0.05263157894736842, ours 0.05263157894736836
+- YIELDMAT: 13 cells (13-14 digits right 13, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes/discount-security-modes.case.json` 11; `probes/date-system-1904-financial-daycount.case.json` 1. e.g. `YIELDMAT(43101,43466,42736,0.06,98)` Excel 0.07692307692307698, ours 0.0769230769230771
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
