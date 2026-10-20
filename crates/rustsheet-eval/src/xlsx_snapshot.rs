@@ -110,6 +110,10 @@ pub struct WorkbookSnapshot {
     /// `docProps/app.xml` `<Application>` (e.g. "Microsoft Excel").
     pub application: Option<String>,
     pub app_version: Option<String>,
+    /// `xl/workbook.xml` `<fileVersion appName>`: Excel writes `xl`, LibreOffice Calc `Calc`; `None`
+    /// when the element or attribute is absent (T-0442).
+    #[serde(default)]
+    pub file_app_name: Option<String>,
     /// `true` when the workbook uses the 1904 date system.
     pub date1904: bool,
     pub sheets: Vec<SheetSnapshot>,
@@ -138,6 +142,9 @@ impl WorkbookSnapshot {
     ///
     /// XlsxWriter and some other libraries also claim `Microsoft Excel` but with the Excel 2007
     /// `AppVersion` `12.0000` and placeholder cached values, so that version is rejected.
+    /// LibreOffice Calc also claims `Microsoft Excel` in `docProps/app.xml`, but its
+    /// `<fileVersion appName="Calc"/>` gives it away (poi/clone_sheet.xlsx, poi/56295.xlsx): a present
+    /// `appName` other than `xl` is not Excel (T-0442).
     #[must_use]
     pub fn is_excel_authored(&self) -> bool {
         let app_ok = self
@@ -148,7 +155,8 @@ impl WorkbookSnapshot {
             .app_version
             .as_deref()
             .is_some_and(|v| v.starts_with("12."));
-        app_ok && version_ok
+        let file_ok = self.file_app_name.as_deref().is_none_or(|n| n == "xl");
+        app_ok && version_ok && file_ok
     }
 }
 
@@ -231,7 +239,12 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
     let rels = read_workbook_rels(&mut zip)?;
     let workbook = read_part(&mut zip, "xl/workbook.xml")?
         .ok_or_else(|| SnapshotError::Malformed("missing xl/workbook.xml".into()))?;
-    let (sheet_list, date1904, defined_names) = parse_workbook(&workbook)?;
+    let ParsedWorkbook {
+        sheets: sheet_list,
+        date1904,
+        names: defined_names,
+        file_app_name,
+    } = parse_workbook(&workbook)?;
     let sheet_names: Vec<String> = sheet_list.iter().map(|(n, _)| n.clone()).collect();
     let defined_names = defined_names
         .into_iter()
@@ -258,6 +271,7 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
     Ok(WorkbookSnapshot {
         application,
         app_version,
+        file_app_name,
         date1904,
         sheets,
         defined_names,
@@ -435,11 +449,20 @@ fn raw_name(e: &BytesStart<'_>) -> Option<RawName> {
 /// `(sheet name, relationship id)` per `<sheet>`.
 type SheetRef = (String, String);
 
-fn parse_workbook(xml: &str) -> Result<(Vec<SheetRef>, bool, Vec<RawName>), SnapshotError> {
+/// What `parse_workbook` reads from `xl/workbook.xml`.
+struct ParsedWorkbook {
+    sheets: Vec<SheetRef>,
+    date1904: bool,
+    names: Vec<RawName>,
+    file_app_name: Option<String>,
+}
+
+fn parse_workbook(xml: &str) -> Result<ParsedWorkbook, SnapshotError> {
     let mut reader = Reader::from_str(xml);
     let mut sheets = Vec::new();
     let mut names: Vec<RawName> = Vec::new();
     let mut date1904 = false;
+    let mut file_app_name = None;
     let mut in_name = false;
     loop {
         match reader
@@ -460,6 +483,7 @@ fn parse_workbook(xml: &str) -> Result<(Vec<SheetRef>, bool, Vec<RawName>), Snap
                         sheets.push((name, rid));
                     }
                 }
+                "fileVersion" => file_app_name = attr(&e, "appName"),
                 "workbookPr" => {
                     date1904 = date_system_from_attribute(attr(&e, "date1904").as_deref())
                         == DateSystem::Excel1904;
@@ -481,7 +505,12 @@ fn parse_workbook(xml: &str) -> Result<(Vec<SheetRef>, bool, Vec<RawName>), Snap
             _ => {}
         }
     }
-    Ok((sheets, date1904, names))
+    Ok(ParsedWorkbook {
+        sheets,
+        date1904,
+        names,
+        file_app_name,
+    })
 }
 
 #[derive(Default)]
@@ -750,6 +779,29 @@ mod tests {
     use std::io::Write;
 
     #[test]
+    fn a_calc_workbook_claiming_excel_is_not_excel_authored() {
+        // poi/clone_sheet.xlsx: app.xml says Microsoft Excel, workbook.xml says appName="Calc".
+        let parsed =
+            parse_workbook(r#"<workbook><fileVersion appName="Calc"/></workbook>"#).unwrap();
+        assert_eq!(parsed.file_app_name.as_deref(), Some("Calc"));
+        let parsed_xl =
+            parse_workbook(r#"<workbook><fileVersion appName="xl"/></workbook>"#).unwrap();
+        assert_eq!(parsed_xl.file_app_name.as_deref(), Some("xl"));
+        let snapshot = |file_app_name: Option<&str>| WorkbookSnapshot {
+            application: Some("Microsoft Excel".into()),
+            app_version: None,
+            file_app_name: file_app_name.map(str::to_string),
+            date1904: false,
+            sheets: Vec::new(),
+            defined_names: Vec::new(),
+            tables: Vec::new(),
+        };
+        assert!(!snapshot(Some("Calc")).is_excel_authored());
+        assert!(snapshot(Some("xl")).is_excel_authored());
+        assert!(snapshot(None).is_excel_authored());
+    }
+
+    #[test]
     fn resolve_target_handles_absolute_and_dotdot() {
         assert_eq!(
             resolve_target("xl", "worksheets/sheet1.xml"),
@@ -924,7 +976,7 @@ mod defined_name_tests {
             <definedName name="E"/>
             <definedName name="L" localSheetId="0">TODAY()</definedName>
             </definedNames></workbook>"#;
-        let (_, _, names) = parse_workbook(xml).expect("parses");
+        let names = parse_workbook(xml).expect("parses").names;
         assert_eq!(
             names,
             [
