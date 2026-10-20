@@ -3,7 +3,7 @@ id: T-0061
 title: "Fifteen-digit closeness bucket in the eval report and parity page, with a ratchet on visibly-off cells"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
