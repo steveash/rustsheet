@@ -36,6 +36,25 @@ impl ParsedReference {
         locale: &'static Locale,
         get_sheet_index_by_name: F,
     ) -> Result<ParsedReference, String> {
+        Self::parse_anchored_reference_formula(
+            sheet_index_context,
+            reference,
+            locale,
+            get_sheet_index_by_name,
+        )
+        .map(|(parsed, _)| parsed)
+    }
+
+    /// [`ParsedReference::parse_reference_formula`], with which parts of the reference are
+    /// absolute (`$`): the `(row, column)` flags of its left corner, then of its right one (the
+    /// same as the left for a single cell). A whole column (`A:A`) has absolute rows and a whole
+    /// row (`5:5`) absolute columns.
+    pub(crate) fn parse_anchored_reference_formula<F: Fn(&str) -> Option<u32>>(
+        sheet_index_context: Option<u32>,
+        reference: &str,
+        locale: &'static Locale,
+        get_sheet_index_by_name: F,
+    ) -> Result<(ParsedReference, [(bool, bool); 2]), String> {
         #[allow(clippy::expect_used)]
         let language = get_language("en").expect("");
         let mut lexer = Lexer::new(reference, LexerMode::A1, locale, language);
@@ -52,7 +71,8 @@ impl ParsedReference {
                 sheet: sheet_name,
                 column: column_id,
                 row: row_id,
-                ..
+                absolute_row,
+                absolute_column,
             } => {
                 let sheet_index;
                 if let Some(name) = sheet_name {
@@ -74,11 +94,14 @@ impl ParsedReference {
                     );
                 }
 
-                Ok(ParsedReference::CellReference(CellReferenceIndex {
-                    sheet: sheet_index,
-                    row: row_id,
-                    column: column_id,
-                }))
+                Ok((
+                    ParsedReference::CellReference(CellReferenceIndex {
+                        sheet: sheet_index,
+                        row: row_id,
+                        column: column_id,
+                    }),
+                    [(absolute_row, absolute_column); 2],
+                ))
             }
             TokenType::Range {
                 sheet: sheet_name,
@@ -105,17 +128,23 @@ impl ParsedReference {
                     );
                 }
 
-                Ok(ParsedReference::Range(
-                    CellReferenceIndex {
-                        sheet: sheet_index,
-                        row: left.row,
-                        column: left.column,
-                    },
-                    CellReferenceIndex {
-                        sheet: sheet_index,
-                        row: right.row,
-                        column: right.column,
-                    },
+                Ok((
+                    ParsedReference::Range(
+                        CellReferenceIndex {
+                            sheet: sheet_index,
+                            row: left.row,
+                            column: left.column,
+                        },
+                        CellReferenceIndex {
+                            sheet: sheet_index,
+                            row: right.row,
+                            column: right.column,
+                        },
+                    ),
+                    [
+                        (left.absolute_row, left.absolute_column),
+                        (right.absolute_row, right.absolute_column),
+                    ],
                 ))
             }
             _ => Err("Invalid reference. First token is not a reference.".to_string()),

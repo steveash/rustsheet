@@ -29,13 +29,73 @@ fn name_refers_to_itself(name: &str, cell: CellReferenceIndex) -> CalcResult {
     )
 }
 
+/// A defined name's reference body (`=Jan!$A$1`, `=Jan!A1:B2`). xlsx stores a relative row or
+/// column relative to A1, and Excel reads it at the same offset from the cell that uses the name:
+/// `=Jan!A2` used in Calc!K6 is Jan!K7, `=Jan!$A1` there Jan!$A6 (docs/excel-semantics/
+/// references.md "Relative references in defined names", gen-m8a case 051f538767ab0cfb; T-1639).
+#[derive(Clone)]
+pub(crate) struct NameReference {
+    /// The corners as written, relative parts counted from A1.
+    written: Range,
+    /// The `(row, column)` absolute (`$`) flags of the left corner, then of the right one.
+    absolute: [(bool, bool); 2],
+}
+
+impl NameReference {
+    pub(crate) fn new(
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        absolute: [(bool, bool); 2],
+    ) -> Self {
+        NameReference {
+            written: Range { left, right },
+            absolute,
+        }
+    }
+
+    /// The sheet the reference is on; using the name elsewhere does not move it.
+    pub(crate) fn sheet(&self) -> u32 {
+        self.written.left.sheet
+    }
+
+    /// The range the reference stands for when the name is used in `cell`.
+    pub(crate) fn at(&self, cell: CellReferenceIndex) -> Range {
+        let corner = |written: CellReferenceIndex,
+                      (absolute_row, absolute_column): (bool, bool)| {
+            CellReferenceIndex {
+                sheet: written.sheet,
+                row: if absolute_row {
+                    written.row
+                } else {
+                    written.row - 1 + cell.row
+                },
+                column: if absolute_column {
+                    written.column
+                } else {
+                    written.column - 1 + cell.column
+                },
+            }
+        };
+        Range {
+            left: corner(self.written.left, self.absolute[0]),
+            right: corner(self.written.right, self.absolute[1]),
+        }
+    }
+
+    /// The reference as a reference-context result, used in `cell`.
+    pub(crate) fn range_at(&self, cell: CellReferenceIndex) -> CalcResult {
+        let Range { left, right } = self.at(cell);
+        CalcResult::Range { left, right }
+    }
+}
+
 /// A parsed formula for a defined name
 #[derive(Clone)]
 pub(crate) enum ParsedDefinedName {
     /// `CellReference` (`=C4`)
-    CellReference(CellReferenceIndex),
+    CellReference(NameReference),
     /// A Range (`=C4:D6`)
-    RangeReference(Range),
+    RangeReference(NameReference),
     /// `=LAMBDA(params..., body)`, shared with the lambdas a call creates (T-0440)
     LambdaDefinition(SharedLambda),
     /// An error literal, possibly sheet-qualified (`=Sheet1!#REF!`): the name evaluates to it
