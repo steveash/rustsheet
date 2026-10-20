@@ -352,16 +352,18 @@ The result is a plain number (`TYPE` 1, `ISNUMBER` TRUE, `+0`, `*1`, `=3` TRUE).
 Evidence: probes/info-sheets-info-types Alpha!D1:D24, D50:D52 (excel-graph, 2026-10-20, T-2115). The engine gives
 `#N/IMPL!` for any argument: T-2181. Unprobed, because the oracle canary refuses them (T-2113): a union, INDIRECT,
 OFFSET, a defined name, a non-reference or error argument, and bare `SHEETS()`.
-Probe trap: a sheet named like a cell (S1, S2, S3) makes an unquoted span such as `S1:S3!A1` mean something else to
-Excel for the web (`SHEETS(S1:S3!A1)` and `SUM(S1:S3!A1)` were `#VALUE!`, while `SUM(S3:S1!A1)` summed all three, first
-fill of the same case). Excel quotes such names (`'S1:S3'!A1`); give probe sheets names that are not cell references.
+Probe trap: sheets named like cells (S1, S2, S3) break an unquoted 3-D span on Excel for the web: `SUM(S1:S3!A1)`,
+`SUM(S3:S1!A1)` and `SHEETS(S1:S3!A1)` are `#VALUE!` and `SHEETS(S3:S1!A1)` is 1, while the quoted `'S1:S3'!A1` works
+(`SUM` 13, `SHEETS` 3) and so does a single-sheet `S2!A1` (probes/sheet-names-like-cells-3d-spans B1:B7, excel-graph,
+2026-10-20). Excel writes such names quoted; give probe sheets names that are not cell references.
 
-## INFO is not implemented in Excel for the web
-Status: OBSERVED (excel-graph, web gap; desktop pending T-2182). Tasks: T-2115, T-2182.
-Rule (web): every INFO call is `#VALUE!` on Excel for the web, whatever the type_text: "recalc", "system", "release",
-"directory", "osversion", "origin", the legacy "memavail", "memused" and "totmem", `""` and `"x"`, in lower, upper or
-mixed case (`TYPE(INFO("release"))` 16, `ERROR.TYPE(INFO("x"))` 3, `ISTEXT(INFO("recalc"))` FALSE). Like
-`CELL("width")`, this is a gap of the web build, not Excel semantics: the probe rows were not kept as goldens, and the
-oracle canary refuses every INFO call (tools/src/rustsheet_tools/oracle/canary.py, T-2115). So none of the values were
-host-dependent, as the task had expected. Desktop values: T-2182 (M14, decision 0039).
-Evidence: excel-graph fill of probes/info-sheets-info-types D25:D49, 2026-10-20 (not committed).
+## INFO is #VALUE! in Excel for the web
+Status: VERIFIED (excel-graph); desktop pending T-2182. Tasks: T-2115, T-2184, T-2182.
+Rule (web): every INFO call is `#VALUE!`, whatever the type_text: "recalc", "system", "release", "directory",
+"osversion", "origin", the legacy "memavail", "memused" and "totmem", `""` and `"x"`, in lower, upper or mixed case
+(`TYPE(INFO("release"))` 16, `ERROR.TYPE(INFO("x"))` 3, `ISTEXT(INFO("recalc"))` FALSE, `LEN(INFO("osversion"))>0`
+`#VALUE!`). So no value turned out host-dependent. As with ENCODEURL and FILTERXML (web.md), this is the golden for
+Phases 1-3 (decision 0039): the engine follows it in T-2184, which is expected to differ from desktop Excel; T-2182
+(M14) asks desktop. Unprobed: `INFO(#N/A)`, `INFO(1)`, `INFO(TRUE)`, an array argument (the oracle canary refuses a
+non-literal INFO, T-2113), and `INFO("numfile")` (canary-dependent).
+Evidence: probes/info-sheets-info-types Alpha!D25:D49 (excel-graph, 2026-10-20, T-2115).

@@ -14,11 +14,10 @@ depends_on: [T-1074]
 Desktop Excel values for INFO's type_text arguments are known, so INFO can be implemented and evidenced.
 
 ## Context
-- From T-2115. Excel for the web does not implement INFO: every type ("recalc", "system", "release", "directory",
-  "osversion", "origin", "memavail", "memused", "totmem", "", "x", in any case) is `#VALUE!` on excel-graph
-  (2026-10-20; the probe rows were dropped from probes/info-sheets-info-types). The oracle canary now refuses every
-  INFO call as web-unsupported, like `CELL("width")` (tools/src/rustsheet_tools/oracle/canary.py). docs/excel-semantics/information.md
-  "INFO is not implemented in Excel for the web".
+- From T-2115. On Excel for the web every INFO type ("recalc", "system", "release", "directory", "osversion",
+  "origin", "memavail", "memused", "totmem", "", "x", in any case) is `#VALUE!` (probes/info-sheets-info-types
+  Alpha!D25:D49, excel-graph, 2026-10-20). Those are the goldens for Phases 1-3 (T-2184 matches them); this task
+  confirms or contradicts them on desktop. docs/excel-semantics/information.md "INFO is #VALUE! in Excel for the web".
 - Decision 0039: desktop-only questions are Phase 4 (M14) and never block. Blocked until `rustsheet-oracle status`
   shows `excel-desktop OK` (T-1074).
 - Probe on desktop: each type_text in lower, upper and mixed case, `INFO("")`, `INFO("x")`, `INFO(1)`, `INFO(TRUE)`,
@@ -30,4 +29,4 @@ Desktop Excel values for INFO's type_text arguments are known, so INFO can be im
 - [ ] Every engine mismatch is fixed or filed.
 
 ## Out of scope
-- Excel for the web, which has no INFO.
+- Excel for the web (T-2184).

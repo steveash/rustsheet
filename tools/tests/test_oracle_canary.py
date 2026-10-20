@@ -222,6 +222,9 @@ def test_sheet_count_functions_are_refused(formula: str, named: str) -> None:
         "=SHEETS(Data!A1:B2)",
         "=SHEETS(S1:S3!A1)",
         "=SHEETS('My Sheet'!$A$1)",
+        '=INFO("recalc")',
+        '=INFO("system")',
+        '=INFO("x")',
     ],
 )
 def test_calls_that_cannot_see_the_canary_are_accepted(formula: str) -> None:
@@ -233,13 +236,6 @@ def test_calls_that_cannot_see_the_canary_are_accepted(formula: str) -> None:
 def test_web_unsupported_cell_width_is_refused(formula: str) -> None:
     spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": formula}}]}
     with pytest.raises(OracleError, match=r"CELL\(\"width\"\)"):
-        embed_canary(build_xlsx(spec))
-
-
-@pytest.mark.parametrize("formula", ['=INFO("recalc")', '=info( "System")', '=_xlfn.INFO("x")'])
-def test_web_unsupported_info_is_refused(formula: str) -> None:
-    spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": formula}}]}
-    with pytest.raises(OracleError, match=r"INFO\(\), which Excel for the web"):
         embed_canary(build_xlsx(spec))
 
 

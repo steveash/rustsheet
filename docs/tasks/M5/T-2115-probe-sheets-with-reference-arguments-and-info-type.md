@@ -44,14 +44,12 @@ the same function, or filed as a functions-logic task with milestone M5.
 ## Acceptance criteria
 - [x] `probes/info-sheets-info-types` is committed with its excel-graph oracle sidecar, and the report's
       evidence table shows SHEETS and INFO with ≥ 20 Excel cells each.
-- [x] (amended) docs/excel-semantics/information.md has a VERIFIED (excel-graph) entry for SHEETS and one for INFO,
+- [x] docs/excel-semantics/information.md has a VERIFIED (excel-graph) entry for SHEETS and one for INFO,
       citing the probe cells, with the host-dependent values marked.
 - [x] Every failing cell of the new case is fixed in this PR or listed in a filed task (milestone M5,
       lane functions-logic), and the baseline records it (`make eval-baseline`).
 - [x] `make check` green; reviewers approve.
 
-- Amended (T-2115 resume): INFO's 20 cells and VERIFIED entry cannot come from the web, which has no INFO. They are
-  replaced by the web-gap entry, the canary refusal and T-2182 (M14), per the `CELL("width")` precedent.
 
 ## Out of scope
 - Removing `oracle: none` from the catalog. T-2116 decides how such functions count, and the catalog
@@ -73,13 +71,13 @@ INFO/multi-sheet SHEETS in the canary like CELL("width"), record the web gap in 
 The 20-cell floor for INFO cannot be met honestly from web values if they are the gap. Next: refill with `rustsheet-oracle fill -b excel-graph --suite probes`, decide, then docs + `make eval-baseline`.
 
 ## Outcome
-probes/info-sheets-info-types (excel-graph, 2026-10-20) holds 24 SHEETS cells and 3 SUM/COUNT 3-D controls, all
-Excel-valued, so SHEETS clears the 20-cell floor. The first fills used sheets named S1:S3, which Excel for the web
-reads as cell references in an unquoted span (`SUM(S1:S3!A1)` was `#VALUE!`). That artifact was behind the handoff's
-"3-D SHEETS is #VALUE!". With sheets Alpha, Beta, Gamma and Data, SHEETS counts spans in either order
-(information.md "SHEETS counts the sheets a reference spans").
-INFO cannot meet the floor from the web: Excel for the web gives `#VALUE!` for every type_text, valid ones included.
-Following the `CELL("width")` precedent, the INFO rows were dropped, the oracle canary now refuses every INFO call as
-web-unsupported (tested), information.md records the gap, and T-2182 (M14, blocked on the desktop oracle) asks
-desktop Excel. The engine's `#N/IMPL!` for `SHEETS(ref)` is T-2181 (M5, functions-logic).
-Eval: probes 1696 -> 1720 known failures, all 24 of them new-coverage SHEETS cells owned by T-2181. No regressions.
+probes/info-sheets-info-types (excel-graph, 2026-10-20) holds 24 SHEETS cells, 3 SUM/COUNT 3-D controls and 25 INFO
+cells, all Excel-valued, so both functions clear the 20-cell floor.
+- SHEETS counts the sheets a span covers, in either order (information.md "SHEETS counts the sheets a reference
+  spans"). The handoff's "3-D SHEETS is `#VALUE!`" came from sheets named S1:S3, which Excel for the web misreads in
+  an unquoted span. That is now its own committed case, probes/sheet-names-like-cells-3d-spans, recorded as a probe trap.
+- INFO is `#VALUE!` for every type_text on the web. As with ENCODEURL and FILTERXML, these are the goldens
+  (decision 0039). The engine follows them in T-2184 (M5), and T-2182 (M14, blocked) asks desktop Excel.
+- The engine's `#N/IMPL!` for `SHEETS(ref)` is T-2181 (M5).
+- Eval: the two new cases add only new-coverage failures, owned by T-2181 (24 SHEETS cells + 3 in
+  the trap case) and T-2184 (INFO cells); no regressions.

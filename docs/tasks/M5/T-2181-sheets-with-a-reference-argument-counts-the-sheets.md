@@ -28,7 +28,8 @@ depends_on: [T-2115]
   evidence appears; do not guess.
 
 ## Acceptance criteria
-- [ ] probes/info-sheets-info-types Alpha!D1:D24 pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures.
+- [ ] probes/info-sheets-info-types Alpha!D1:D24 and probes/sheet-names-like-cells-3d-spans S1!B3, B4, B6 (unquoted
+  cell-like sheet names: `#VALUE!`, 1; quoted: 3) pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures.
 - [ ] Unit tests for a one-sheet reference, a 3-D span in both orders and the bare `SHEETS()` (unchanged).
 - [ ] `make check` green; reviewers approve.
 
