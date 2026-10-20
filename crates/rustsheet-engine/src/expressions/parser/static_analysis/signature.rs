@@ -390,16 +390,6 @@ pub(super) fn args_signature_npv(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-pub(super) fn args_signature_irr(arg_count: usize) -> Vec<Signature> {
-    if arg_count > 2 {
-        vec![Signature::Error; arg_count]
-    } else if arg_count == 1 {
-        vec![Signature::Vector]
-    } else {
-        vec![Signature::Vector, Signature::Scalar]
-    }
-}
-
 pub(super) fn args_signature_xirr(arg_count: usize) -> Vec<Signature> {
     if arg_count == 2 {
         vec![Signature::Vector; arg_count]
@@ -407,14 +397,6 @@ pub(super) fn args_signature_xirr(arg_count: usize) -> Vec<Signature> {
         vec![Signature::Vector, Signature::Vector, Signature::Scalar]
     } else {
         vec![Signature::Error; arg_count]
-    }
-}
-
-pub(super) fn args_signature_mirr(arg_count: usize) -> Vec<Signature> {
-    if arg_count != 3 {
-        vec![Signature::Error; arg_count]
-    } else {
-        vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
     }
 }
 
