@@ -3,7 +3,7 @@ id: T-2142
 title: "ATAN2 desktop last digits: settle ironcalc-calc ATAN2_POWER D14 and D26 (Mac desktop 0.58 ulp off, web and engine correctly rounded)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -41,20 +41,29 @@ and no open task owns them. T-2111 lists them as "no open task". T-2116 settles 
   the 20 numeric desktop cells and the web probe cells.
 
 ## Acceptance criteria
-- [ ] numbers.md ("Excel for the web and desktop Excel differ in the last digits", ATAN2 paragraph added by the
+- [x] numbers.md ("Excel for the web and desktop Excel differ in the last digits", ATAN2 paragraph added by the
       triage that filed this task) records a fit-lab run. For each candidate it gives the count on the 20 numeric desktop ATAN2 cells of
       ATAN2_POWER.xlsx and on the web cells of probes/atan2-quadrants, atan2-error-edges, atan2-kept-subnormal and
       asin-atan-sign-source G.
-- [ ] If one candidate keeps every web cell the engine passes today and also gives D14 and D26: `fn_atan2` uses it.
+- [x] (n/a: no candidate qualifies) If one candidate keeps every web cell the engine passes today and also gives D14 and D26: `fn_atan2` uses it.
       Then those 2 known-failure lines disappear from eval/baseline/ironcalc-calc.txt, with no new ones in any
       gated suite, and IMARGUMENT is checked for the same kernel (numbers.md says it may share it).
-- [ ] Otherwise: a decision record (`make new-decision`) applies decisions 0030/0039/0074 to D14 and D26. The engine
+- [x] Otherwise: a decision record (`make new-decision`) applies decisions 0030/0039/0074 to D14 and D26. The engine
       keeps the web value, numbers.md names the two cells as an Excel-vs-Excel conflict, and docs/milestones.md's
       M5 ironcalc-calc criterion names the exception if the record grants one. No baseline edit, no
       `--allow-regressions`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The IF_ARRAY SIN(4) cells (decision 0074, T-2116).
 - IMARGUMENT's own known failures (T-2044), unless the shared kernel fixes them for free.
 - Windows desktop evidence (M14, T-1075).
+
+## Outcome
+No candidate gives both desktop cells. The engine's model (a correctly rounded atan of Excel's quotient) scores 18/20 desktop
+and 257/257 web (probes/atan2-quadrants 120, atan2-error-edges 17, asin-atan-sign-source G 120). fdlibm `atan` (19/248) and a
+π/4 reduction (19/231) give D14 but not D26, and they lose web cells. numbers.md records all nine candidates. Decision 0086 keeps the
+web value and names D14 and D26 as an Excel-vs-Excel conflict. Its M14 item is T-1075 item 14, and docs/milestones.md adds the
+two cells to M5's ironcalc-calc exception. probes/atan2-kept-subnormal (16 cells) was not
+scored by the fit: its inputs are formulas of subnormal differences. The engine passes
+all 16. Eval delta: none (no engine change; the two baseline lines stay).
