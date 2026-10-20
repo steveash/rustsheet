@@ -172,11 +172,17 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   `{"b",#N/A}` with `{0,0,0}` is `#BLOCKED!`, `#N/A`, `#N/A`) (95 cells, T-1427; VERIFIED).
   A non-URL scalar source keeps the lift: `IMAGE("x",{"a","b"})` is `#VALUE!`, `#VALUE!` (1x2, not a scalar), and a scalar error option beside an array option
   still shapes the grid and wins over the source: `IMAGE(1,"alt",#DIV/0!,{5,5})` is `#DIV/0!`, `#DIV/0!` (probes/rich-errors-image-array-error-elements A189, A193, T-1432; VERIFIED; the engine already matches).
+  A position past the end of a shorter array is an `#N/A` element of that argument, taken in argument order like any error
+  element, not an `#N/A` that overrides the rest: an earlier argument's error wins (`IMAGE({#DIV/0!,#DIV/0!,#DIV/0!},"alt",{0,0})`,
+  `IMAGE(url,{#DIV/0!,#DIV/0!,#DIV/0!},{0,0})` and `IMAGE(url,"alt",{#DIV/0!,#DIV/0!,#DIV/0!},{5,5})` are `#DIV/0!` in their third
+  column; a scalar `#DIV/0!` height before a two-wide width too), and a later one loses (`IMAGE(url,"alt",{3,3},{#DIV/0!,#DIV/0!,#DIV/0!})`
+  and a two-wide source with a three-wide `{#DIV/0!,...}` sizing are `#N/A` there). It also beats an invalid option (`{9,9,9}` with
+  width `{5,5}` is `#N/A` in the third column; probed with an invalid sizing only) (probes/rich-errors-image-past-end, 8 cells, excel-graph, 2026-10-20, T-1962; VERIFIED).
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
 - A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
   `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!`, and `{1;2;3}` with `{"a","b"}` is 3x2 of `#FIELD!`; the row-axis form (`{1;2;3}` with `{"a";"b"}`) is UNVERIFIED (probes/rich-errors-image-sizing). A
   shorter `value` is not padded (above).
-The engine matches all of these (A16 since T-1345; the option lift since T-1370; `Model::image_grid`).
+The engine matches all of these (A16 since T-1345; the option lift since T-1370; through the SPEC-0011 driver, `image_element`, since T-1962, which fixed the past-the-end order: `image_grid` made every past-the-end position `#N/A`).
 Excel fetches the image or the quotes; formulas here do no I/O (CLAUDE.md directive 5).
 Excel returns the same errors only when the fetch fails: `IMAGE("https://example.invalid/none.png")` is
 `#BLOCKED!` and `STOCKHISTORY("QZXQZXQ",DATE(2020,1,2))` is `#CONNECT!`. A reachable URL or a real ticker
