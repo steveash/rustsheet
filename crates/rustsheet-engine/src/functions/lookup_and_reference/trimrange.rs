@@ -103,6 +103,15 @@ impl Model {
                 Err(error) => RefArg::Value(error),
             };
         }
+        // A one-cell reference evaluates to its value, but its trim is still a reference
+        // (`INDEX(TRIMRANGE(A1,{0;1}),2,1)` is A1; probes/reference-lift-elements).
+        let reference_corner = reference_corner.or_else(|| match args[0].ungrouped() {
+            node @ Node::ReferenceKind { .. } => match self.get_reference(node, cell) {
+                Ok(range) => Some(range.left),
+                Err(_) => None,
+            },
+            _ => None,
+        });
         let lifted = match self.reference_lift_args(values, cell) {
             Ok(lifted) => lifted,
             Err(error) => return RefArg::Value(error),
