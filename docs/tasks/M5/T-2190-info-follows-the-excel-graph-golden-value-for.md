@@ -3,7 +3,7 @@ id: T-2190
 title: "INFO follows the excel-graph golden: #VALUE! for every type_text"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
