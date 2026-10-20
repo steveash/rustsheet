@@ -3,7 +3,7 @@ id: T-2015
 title: "REGEX* reach scan adds states in priority order so lazy patterns iterate in linear charge"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -25,9 +25,26 @@ priority order (a stack, as the `PikeVM`'s `epsilon_closure` does) and stop foll
 below one that has matched; the soundness argument in the module doc must then cover the cut.
 
 ## Acceptance criteria
-- [ ] The formula above returns a value; a test pins it, and one that the matches are unchanged.
-- [ ] `a.*z|a|\bq` iteration over `REPT("a",20000)&"é"` is still `#ERROR!` within about 1 s.
-- [ ] `make check` green; reviewers approve.
+- [x] The formula above returns a value; a test pins it, and one that the matches are unchanged.
+- [x] `a.*z|a|\bq` iteration over `REPT("a",20000)&"é"` is still `#ERROR!` within about 1 s.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The look-around charge (T-1829).
+
+## Outcome
+`Reach::scan` now runs the `PikeVM`'s own search: its sets hold consuming and match states in
+the `PikeVM`'s priority order (depth-first closure, first alternate first; the thread started at
+a position after those running), and a match state at a character boundary ends the step and
+drops the threads below it, as `nexts` does. An empty match inside a character (only searches
+that start inside one, after an empty match, meet it) turns the cut off, so the retries of
+`skip_splits_fwd` stay inside the span; the module doc carries the argument. The scan also
+returns at once for a search that starts past the end (look-around there would have panicked;
+latent on main, where the DFA answered such searches first).
+
+- `COLUMNS(REGEXEXTRACT(REPT("é ab ",4000),"\bab.*?\b",1))` is 4000 (was `#ERROR!`).
+- `a.*z|a|\bq` over `REPT("a",20000)&"é"` is still `#ERROR!` (0.8 s in a release test run).
+- A seeded sweep (3000 random patterns/texts in the unit test; 60,000 run once in release)
+  finds the same matches iterating over the scanned spans as over the rest of the text; it
+  catches a reversed alternate order and a cut at split matches.
+- Eval: no delta (no suite case exercises the `PikeVM` fallback at this size).
