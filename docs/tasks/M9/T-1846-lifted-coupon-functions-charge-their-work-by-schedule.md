@@ -3,7 +3,7 @@ id: T-1846
 title: "Lifted coupon functions charge their work by schedule length, not a flat weight"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
