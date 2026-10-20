@@ -3,7 +3,7 @@ id: T-2087
 title: "Probe IMEXP overflow cutoff at 2^-26 and near y = pi (T-2060)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
