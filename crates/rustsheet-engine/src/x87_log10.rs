@@ -175,7 +175,8 @@ mod tests {
     /// Python model (`docs/research/t1941/lnmodels.py`) on every point, and Excel on all but those.
     #[test]
     fn ln_equals_the_research_model_on_the_fixture() {
-        let rows = crate::test::kernel_rows::fixture_rows(include_str!("test/fixtures/ln_kernel.fixture"));
+        let rows =
+            crate::test::kernel_rows::fixture_rows(include_str!("test/fixtures/ln_kernel.fixture"));
         assert_eq!(rows.len(), 4030);
         let mut excel_misses = 0;
         for row in &rows {
