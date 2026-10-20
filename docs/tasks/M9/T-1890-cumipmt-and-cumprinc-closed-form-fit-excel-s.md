@@ -3,7 +3,7 @@ id: T-1890
 title: "CUMIPMT and CUMPRINC closed form: fit Excel's last digits over many periods"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
