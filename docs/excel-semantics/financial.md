@@ -764,7 +764,9 @@ Evidence: probes/fin-bond-negative-basis (112 cells, excel-graph, 2026-10-20, T-
 (excel-graph, 2026-10-18, T-1842).
 Ours: one reader, `day_count_basis` (functions/financial/dates.rs), is used by the coupon-bond and ODD* kernels and by
 YEARFRAC, which ACCRINTM and the discount-security functions go through. Before T-1870, `floor() as u32` saturated a
-negative basis to 0, and YEARFRAC's `as i32` truncated -0.5 to 0. ACCRINT already floored.
+negative basis to 0, and YEARFRAC's `as i32` truncated -0.5 to 0. ACCRINT keeps its own read, `floor() as i32` and a
+0..=4 check, which gives the same answers. The probe's E1, E2, E9, G1, G2 and G9 (YIELD, PRICE, ODDFPRICE at bases 0 and
+4.9) are last-digit misses of the T-1374 class, not basis reads.
 Status: VERIFIED (excel-graph)
 Tasks: T-1842, T-1870
 
