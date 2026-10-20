@@ -65,7 +65,8 @@ fn relative_name_is_read_from_the_using_cell() {
     assert_eq!(model._get_text("K9"), "2");
     // From K10: Jan!K:K.
     assert_eq!(model._get_text("K10"), "130");
-    // From L6: Jan!L6:M7.
+    // From L6: Jan!L6:M7. INDIRECT of a relative name is not probed; the engine reads it from
+    // the INDIRECT's cell like any other use.
     assert_eq!(model._get_text("L6"), "130");
     // From A6: Jan!$A6.
     assert_eq!(model._get_text("A6"), "2");
@@ -80,4 +81,22 @@ fn absolute_name_ignores_the_using_cell() {
     model._set("C5", "=abs*2");
     model.evaluate();
     assert_eq!(model._get_text("C5"), "14");
+}
+
+// Used on the last row, a relative name points past the grid. Excel's answer there is not probed
+// (references.md "Relative references in defined names": it may wrap to row 1); the engine reads
+// the cells past the grid as empty, with no error and no panic.
+#[test]
+fn relative_name_past_the_last_row_is_bounded() {
+    let mut model = new_empty_model();
+    model.define_name("rel_down", None, "Sheet1!A2").unwrap();
+    model
+        .define_name("rel_tall", None, "Sheet1!$A1:$A1048576")
+        .unwrap();
+    model._set("A1", "5");
+    model._set("C1048576", "=rel_down");
+    model._set("D1048576", "=SUM(rel_tall)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1048576"), "0");
+    assert_eq!(model._get_text("D1048576"), "0");
 }

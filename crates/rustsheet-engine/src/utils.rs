@@ -66,89 +66,60 @@ impl ParsedReference {
             return Err("Invalid reference. Expected only one token.".to_string());
         }
 
-        match reference_token {
+        // The sheet, the `(row, column, absolute_row, absolute_column)` of each corner and whether
+        // it is a range (`A1:A1` stays one).
+        let (sheet_name, left, right, is_range) = match reference_token {
             TokenType::Reference {
-                sheet: sheet_name,
-                column: column_id,
-                row: row_id,
+                sheet,
+                row,
+                column,
                 absolute_row,
                 absolute_column,
             } => {
-                let sheet_index;
-                if let Some(name) = sheet_name {
-                    match get_sheet_index_by_name(&name) {
-                        Some(i) => sheet_index = i,
-                        None => {
-                            return Err(format!(
-                                "Invalid reference. Sheet \"{}\" could not be found.",
-                                name.as_str(),
-                            ));
-                        }
-                    }
-                } else if let Some(sheet_index_context) = sheet_index_context {
-                    sheet_index = sheet_index_context;
-                } else {
-                    return Err(
-                        "Reference doesn't contain sheet name and relative cell is not known."
-                            .to_string(),
-                    );
-                }
-
-                Ok((
-                    ParsedReference::CellReference(CellReferenceIndex {
-                        sheet: sheet_index,
-                        row: row_id,
-                        column: column_id,
-                    }),
-                    [(absolute_row, absolute_column); 2],
-                ))
+                let corner = (row, column, absolute_row, absolute_column);
+                (sheet, corner, corner, false)
             }
-            TokenType::Range {
-                sheet: sheet_name,
-                left,
-                right,
-            } => {
-                let sheet_index;
-                if let Some(name) = sheet_name {
-                    match get_sheet_index_by_name(&name) {
-                        Some(i) => sheet_index = i,
-                        None => {
-                            return Err(format!(
-                                "Invalid reference. Sheet \"{}\" could not be found.",
-                                name.as_str(),
-                            ));
-                        }
-                    }
-                } else if let Some(sheet_index_context) = sheet_index_context {
-                    sheet_index = sheet_index_context;
-                } else {
-                    return Err(
-                        "Reference doesn't contain sheet name and relative cell is not known."
-                            .to_string(),
-                    );
-                }
-
-                Ok((
-                    ParsedReference::Range(
-                        CellReferenceIndex {
-                            sheet: sheet_index,
-                            row: left.row,
-                            column: left.column,
-                        },
-                        CellReferenceIndex {
-                            sheet: sheet_index,
-                            row: right.row,
-                            column: right.column,
-                        },
-                    ),
-                    [
-                        (left.absolute_row, left.absolute_column),
-                        (right.absolute_row, right.absolute_column),
-                    ],
-                ))
-            }
-            _ => Err("Invalid reference. First token is not a reference.".to_string()),
-        }
+            TokenType::Range { sheet, left, right } => (
+                sheet,
+                (
+                    left.row,
+                    left.column,
+                    left.absolute_row,
+                    left.absolute_column,
+                ),
+                (
+                    right.row,
+                    right.column,
+                    right.absolute_row,
+                    right.absolute_column,
+                ),
+                true,
+            ),
+            _ => return Err("Invalid reference. First token is not a reference.".to_string()),
+        };
+        let sheet = if let Some(name) = sheet_name {
+            get_sheet_index_by_name(&name).ok_or_else(|| {
+                format!(
+                    "Invalid reference. Sheet \"{}\" could not be found.",
+                    name.as_str()
+                )
+            })?
+        } else if let Some(sheet_index_context) = sheet_index_context {
+            sheet_index_context
+        } else {
+            return Err(
+                "Reference doesn't contain sheet name and relative cell is not known.".to_string(),
+            );
+        };
+        let index =
+            |(row, column, ..): (i32, i32, bool, bool)| CellReferenceIndex { sheet, row, column };
+        let absolute = [(left.2, left.3), (right.2, right.3)];
+        let parsed = if is_range {
+            ParsedReference::Range(index(left), index(right))
+        } else {
+            ParsedReference::CellReference(index(left))
+        };
+        Ok((parsed, absolute))
     }
 
     /// Parses a reference in R1C1 notation, the way a user writes it. For
