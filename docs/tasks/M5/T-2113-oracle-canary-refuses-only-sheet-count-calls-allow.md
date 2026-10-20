@@ -3,7 +3,7 @@ id: T-2113
 title: "Oracle canary refuses only sheet-count calls: allow SHEETS with a reference and INFO with a literal type other than numfile"
 milestone: M5
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -44,3 +44,10 @@ INFO and SHEETS (`oracle: none` in eval/catalog/functions.yaml) can then get Exc
 - Running the probes (T-2115).
 - Engine changes to SHEETS or INFO.
 - A different canary placement for bare `SHEETS()` (file a follow-up if T-2115 shows it is needed).
+
+## Outcome
+`canary.sheet_count_call` replaces the blanket SHEETS/INFO regex. It refuses bare `SHEETS()` and
+`INFO("numfile")` (any case, spaces) and every call it cannot decide; it accepts `SHEETS(<plain cell
+or range, with optional 3-D sheet prefix>)` and `INFO("<other literal>")`. The refusal names the
+offending call text. Tests in tools/tests/test_oracle_canary.py cover every listed form; docs
+updated (canary.py docstring, oracle.md). No eval change: running the probes is T-2115.
