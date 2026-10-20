@@ -15,6 +15,7 @@ size: M                    # S (≤150 lines) | M (≤400) | L (must be split)
 tier: opus                 # sonnet | opus: model tier that works it (decision 0018)
 depends_on: [T-0100]
 spec: docs/specs/SPEC-0002-criteria.md   # optional
+campaign: visible          # optional: picked before milestone order (decision 0083)
 ---
 
 ## Goal
@@ -39,6 +40,13 @@ Tier rubric (decision 0018): `sonnet` when the task is size S, its acceptance cr
 mechanical to check, the Excel evidence already exists (or it needs none), it needs no spec, no
 protected path and no numeric fitting (ulp/iteration/tolerance work). Everything else is `opus`.
 When unsure, `opus`. A sonnet run that gets stuck hands the task up (work-loop step 5b).
+
+`campaign: visible` (decision 0083) marks a task whose target is visible parity: every cell it owns
+within half a unit of the 15th significant digit of Excel's value, or with the right type, error
+and text. `make next-task` picks campaign tasks after P0 tasks and handoffs, before the milestone
+order. Such a task has a `## Visible-parity stage` section with that target, and it is done when
+the target is met. Bit-level criteria still unmet then move to a follow-up task filed without the
+key.
 
 Rules:
 - One task produces exactly one PR. If it needs more, split it.

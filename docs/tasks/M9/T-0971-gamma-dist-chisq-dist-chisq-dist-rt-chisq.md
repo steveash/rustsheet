@@ -4,9 +4,10 @@ title: "GAMMA.DIST/CHISQ.DIST/CHISQ.DIST.RT/CHISQ.TEST: accurate regularized inc
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -63,3 +64,19 @@ Implement once in `functions/statistical/special.rs`; T-0972 (GAMMA.INV) and pos
 
 ## Out of scope
 GAMMA.INV/CHISQ.INV (T-0972); GAMMA/GAMMALN (T-0973); legacy GAMMADIST/CHIDIST/CHITEST evidence (T-1047, T-1048).
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 256 in total.
+- GAMMA.DIST: 110 cells (13-14 digits right 84, 10-12 24, 6-9 0, fewer or 0 vs nonzero 2); most in `probes-numeric/m9-gamma-dist-a9.case.json` 27; `ironcalc-calc/STATISTICAL/GAMMA.xlsx` 26. e.g. `GAMMA.DIST(9,9,2,TRUE)` Excel 0.04025731248203771, ours 0.04025731248203709
+- GAMMADIST: 6 cells (13-14 digits right 5, 10-12 1, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-gammadist.case.json` 6. e.g. `GAMMADIST(10,5,2,TRUE)` Excel 0.5595067149347877, ours 0.5595067149347852
+- CHISQ.DIST: 57 cells (13-14 digits right 43, 10-12 13, 6-9 0, fewer or 0 vs nonzero 1); most in `probes-numeric/m9-chisq-dist.case.json` 35; `probes-numeric/t1049-chisqdist.case.json` 19. e.g. `CHISQ.DIST(3,3,TRUE)` Excel 0.6083748237289112, ours 0.6083748237289098
+- CHISQ.DIST.RT: 38 cells (13-14 digits right 33, 10-12 4, 6-9 0, fewer or 0 vs nonzero 1); most in `probes-numeric/m9-chisq-dist-rt.case.json` 15; `probes-numeric/m9-legacy-chidist.case.json` 10. e.g. `CHISQ.DIST.RT(3,3)` Excel 0.39162517627108884, ours 0.39162517627109017
+- CHIDIST: 10 cells (13-14 digits right 10, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-legacy-chidist.case.json` 10. e.g. `CHIDIST(10,2)` Excel 0.006737946999085467, ours 0.006737946999085472
+- CHISQ.TEST: 2 cells (13-14 digits right 2, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-legacy-chitest.case.json` 1; `probes-numeric/t1049-chisqtest.case.json` 1. e.g. `CHISQ.TEST(G1:G3,H1:H3)` Excel 0.06234947668967343, ours 0.0623494766896735
+- CHITEST: 2 cells (13-14 digits right 1, 10-12 1, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-legacy-chitest.case.json` 2. e.g. `CHITEST(F1:F3,G1:G3)` Excel 0.00012340980408667956, ours 0.00012340980408664937
+- POISSON.DIST: 21 cells (13-14 digits right 17, 10-12 3, 6-9 1, fewer or 0 vs nonzero 0); most in `ironcalc-calc/STATISTICAL/POISSON.xlsx` 11; `probes-numeric/t1048-poisson.case.json` 10. e.g. `POISSON.DIST(2,3,TRUE)` Excel 0.4231900811268434, ours 0.4231900811268454
+- POISSON: 10 cells (13-14 digits right 9, 10-12 1, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-poisson.case.json` 10; `probes/incomplete-gamma-cap.case.json` 0. e.g. `POISSON(2,3,TRUE)` Excel 0.4231900811268434, ours 0.4231900811268454
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
