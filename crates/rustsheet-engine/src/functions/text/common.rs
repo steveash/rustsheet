@@ -735,6 +735,19 @@ fn value_to_text(node: &ArrayNode, strict: bool) -> String {
     }
 }
 
+/// One UNICODE element: the code point of the first character, `#VALUE!` for empty text.
+/// Excel: a lone high surrogate is `#VALUE!`, a lone low one gives its code
+/// (probes/text-lone-surrogates A3, A4; text-surrogate-positions A38).
+fn unicode_element(node: &ArrayNode) -> Result<ArrayNode, Error> {
+    match array_node_to_text(node)?.chars_lossless().next() {
+        Some(Char::Scalar(c)) => Ok(ArrayNode::Number(f64::from(c as u32))),
+        Some(Char::Lone(u)) if !(0xD800..0xDC00).contains(&u) => {
+            Ok(ArrayNode::Number(f64::from(u)))
+        }
+        Some(Char::Lone(_)) | None => Err(Error::VALUE),
+    }
+}
+
 #[cfg(test)]
 mod rept_tests {
     use super::*;
@@ -749,18 +762,5 @@ mod rept_tests {
             rept_element(&text, Ok(2.0)),
             Ok(ArrayNode::String("aa".into()))
         );
-    }
-}
-
-/// One UNICODE element: the code point of the first character, `#VALUE!` for empty text.
-/// Excel: a lone high surrogate is `#VALUE!`, a lone low one gives its code
-/// (probes/text-lone-surrogates A3, A4; text-surrogate-positions A38).
-fn unicode_element(node: &ArrayNode) -> Result<ArrayNode, Error> {
-    match array_node_to_text(node)?.chars_lossless().next() {
-        Some(Char::Scalar(c)) => Ok(ArrayNode::Number(f64::from(c as u32))),
-        Some(Char::Lone(u)) if !(0xD800..0xDC00).contains(&u) => {
-            Ok(ArrayNode::Number(f64::from(u)))
-        }
-        Some(Char::Lone(_)) | None => Err(Error::VALUE),
     }
 }
