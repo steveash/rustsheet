@@ -7,7 +7,7 @@ import sys, numpy as np
 
 sys.path.insert(0, sys.path[0])
 from lib6 import st, L
-from synth import read_chain, horner_keep
+from synth import read_chain, horner_keep, nrm
 
 rows = [l.split() for l in open(sys.argv[1])]
 npts = int(sys.argv[3]) if len(sys.argv) > 3 else 200000
@@ -16,8 +16,8 @@ x = np.array([float.fromhex(rows[i][0]) for i in idx])
 lo = np.array([float.fromhex(rows[i][2]) for i in idx])
 hi = np.array([float.fromhex(rows[i][3]) for i in idx])
 N, D = read_chain(sys.argv[2])
-N = np.array(N) / D[0]
-D = np.array(D) / D[0]
+N = np.array(N) /nrm(D)
+D = np.array(D) /nrm(D)
 base_keep = set(sys.argv[4].split(",")) if len(sys.argv) > 4 and sys.argv[4] else set()
 
 

@@ -4,7 +4,7 @@
 # (exact in mpmath; dS linear in m). Usage (control): latsolve.py TRUTH CAND ideal|noise sigma
 import sys, os, numpy as np, mpmath as mp
 from fpylll import IntegerMatrix, LLL, BKZ
-sys.path.insert(0,sys.path[0]); from synth import read_chain; from longspec import X0
+sys.path.insert(0,sys.path[0]); from synth import read_chain; from longspec import X0, nrm
 mp.mp.dps=80
 def ulp(v): return mp.mpf(np.spacing(abs(float(v))))
 def stages(c,x):
@@ -76,7 +76,7 @@ def freq_rows(N,D,lines,xs):
     return out
 if __name__=='__main__':
     Nt,Dt=read_chain(sys.argv[1]); Nc,Dc=read_chain(sys.argv[2])
-    Nt=[v/Dt[0] for v in Nt]; Dt=[v/Dt[0] for v in Dt]; Nc=[v/Dc[0] for v in Nc]; Dc=[v/Dc[0] for v in Dc]
+    Nt=[v/nrm(Dt) for v in Nt]; Dt=[v/nrm(Dt) for v in Dt]; Nc=[v/nrm(Dc) for v in Nc]; Dc=[v/nrm(Dc) for v in Dc]
     sig=float(sys.argv[4]); rng=np.random.default_rng(0)
     if os.environ.get('LINES'):
         lines=[tuple(v if i<2 else int(v) for i,v in enumerate(t.split(':'))) for t in os.environ['LINES'].split(',')]
@@ -124,6 +124,12 @@ if __name__=='__main__':
     # embedding lattice
     B=[float(abs(v))+1 for v in m_true] if len(sys.argv)>5 else None
     bound=[mp.mpf(10)**int(sys.argv[5])]*nu if len(sys.argv)>5 else [mp.mpf(1e15)]*nu
+    if os.environ.get('BOUNDV'):
+        # per-coefficient log10 bounds, e.g. "N0:15,N1:15,N5:4,D9:4" (unlisted keep the uniform bound): tight bounds on
+        # coefficients already pinned by phases leave the lattice to resolve only their whole-ulp branch ambiguities
+        nm=['N%d'%k for k in range(len(Nc))]+['D%d'%k for k in range(1,len(Dc))]
+        for t in os.environ['BOUNDV'].split(','):
+            k,v=t.split(':'); bound[nm.index(k)]=mp.mpf(10)**int(v)
     Wp=mp.mpf(2)**int(np.ceil(np.log2(1/max(sig,1e-4))))*64   # phase scale
     Wf=mp.mpf(10)**16*64*mp.mpf(os.environ.get('FUNCW','1'))   # FUNCW < 1 loosens the function rows (Excel's own approximation error)
     ne=len(rows); nf=len(frows); nq=len(qrows); dim=nu+ne+1; cols=nu+ne+nf+nq+1

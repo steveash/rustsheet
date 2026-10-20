@@ -6,7 +6,7 @@
 import sys, os, numpy as np
 
 sys.path.insert(0, sys.path[0])
-from synth import read_chain, simR
+from synth import read_chain, simR, nrm
 
 rf, chain, out, CH = sys.argv[1:5]
 E0, E1 = float(sys.argv[5]), float(sys.argv[6])
@@ -20,8 +20,8 @@ x = np.array([float.fromhex(rows[i][0]) for i in idx])
 lo = np.array([float.fromhex(rows[i][2]) for i in idx])
 hi = np.array([float.fromhex(rows[i][3]) for i in idx])
 N, D = read_chain(chain)
-N = list(np.array(N) / D[0])
-D = list(np.array(D) / D[0])
+N = list(np.array(N) /nrm(D))
+D = list(np.array(D) /nrm(D))
 C = N if CH == "N" else D
 top = len(C) - 1
 uS = np.spacing(abs(C[top - 1] + C[top] * X0))

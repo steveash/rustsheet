@@ -3,11 +3,11 @@
 #   xl_lowjoint.py CHAIN TRACKS OUT "ti:ch:law:j:sign,..." [ITERS]   (law T or Pn1/Pn2/..., e.g. 27:D:Pn1:2:+1)
 import sys, json, numpy as np
 sys.path.insert(0, sys.path[0])
-from synth import read_chain
+from synth import read_chain, nrm
 from mpjoint import joint_solve
 from lawrows import predict
 from fastenum import prep
-N, D = read_chain(sys.argv[1]); N = np.array(N) / D[0]; D = np.array(D) / D[0]
+N, D = read_chain(sys.argv[1]); N = np.array(N) /nrm(D); D = np.array(D) /nrm(D)
 T = json.load(open(sys.argv[2]))
 spec = [a.split(":") for a in sys.argv[4].split(",")]
 it = int(sys.argv[5]) if len(sys.argv) > 5 else 4

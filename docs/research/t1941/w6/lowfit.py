@@ -9,14 +9,14 @@
 import sys, os, json, numpy as np, mpmath as mp
 
 sys.path.insert(0, sys.path[0])
-from synth import read_chain
+from synth import read_chain, nrm
 from stagelaws import stage_F
 from latsolve import func_rows
 
 ST, SF, HOLD_DEV = 3e-7, 3e-16, 2e-6
 N, D = read_chain(sys.argv[1])
-N = list(np.array(N) / D[0])
-D = list(np.array(D) / D[0])
+N = list(np.array(N) /nrm(D))
+D = list(np.array(D) /nrm(D))
 T = json.load(open(sys.argv[2]))
 top = int(sys.argv[3]) if len(sys.argv) > 3 else 3
 nN = len(N)

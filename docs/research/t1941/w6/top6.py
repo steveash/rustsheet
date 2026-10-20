@@ -7,7 +7,7 @@ import sys, os, re, ctypes, collections, numpy as np
 
 sys.path.insert(0, sys.path[0])
 from lib6 import L
-from synth import read_chain
+from synth import read_chain, nrm
 
 Pd = ctypes.POINTER(ctypes.c_double)
 Pl = ctypes.POINTER(ctypes.c_long)
@@ -32,8 +32,8 @@ class Top6:
         ]
         self.lib = lib
         N, D = read_chain(chain)
-        self.N = np.array(N) / D[0]
-        self.D = np.array(D) / D[0]
+        self.N = np.array(N) /nrm(D)
+        self.D = np.array(D) /nrm(D)
         pts = collections.defaultdict(list)
         for l in open(rfile):
             q = l.split()
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     t = Top6(rf, base)
     print("runs %d, points %d" % (t.nr, len(t.x)))
     Nt, Dt = read_chain(truth)
-    Ct = (np.array(Nt) if ch == "N" else np.array(Dt)) / Dt[0]
+    Ct = (np.array(Nt) if ch == "N" else np.array(Dt)) /nrm(Dt)
     Cb = t.N if ch == "N" else t.D
     top = len(Cb) - 1
     u = np.spacing(np.abs(Ct))

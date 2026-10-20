@@ -7,15 +7,15 @@ import sys, os, numpy as np
 
 sys.path.insert(0, sys.path[0])
 from lib6 import st, L, horner
-from synth import read_chain
+from synth import read_chain, nrm
 from latsolve import func_rows, data_rows
 
 rf, chain, out, scan, coupled = sys.argv[1:6]
 tmin, tmax, steps = float(sys.argv[6]), float(sys.argv[7]), int(sys.argv[8])
 npts = int(sys.argv[9]) if len(sys.argv) > 9 else 20000
 N, D = read_chain(chain)
-N = [v / D[0] for v in N]
-D = [v / D[0] for v in D]
+N = [v /nrm(D) for v in N]
+D = [v /nrm(D) for v in D]
 nN = len(N)
 names = ["N%d" % k for k in range(nN)] + ["D%d" % k for k in range(1, len(D))]
 cs = np.array(N + D[1:])

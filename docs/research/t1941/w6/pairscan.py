@@ -2,11 +2,11 @@
 # The direction ratio r (ulps of c_a per ulp of c_b) is computed from the function: minimise ||dR|| over [1.5,2].
 # Usage: pairscan.py RFILE CHAIN OUT ca cb tmin tmax tstep npts   (ca, cb like N0, D1)
 import sys, numpy as np
-sys.path.insert(0,sys.path[0]); from lib6 import st, L, horner; from synth import read_chain
+sys.path.insert(0,sys.path[0]); from lib6 import st, L, horner; from synth import read_chain, nrm
 rows=[l.split() for l in open(sys.argv[1])]
 rng=np.random.default_rng(1); idx=rng.choice(len(rows),min(int(sys.argv[9]),len(rows)),replace=False)
 x=np.array([float.fromhex(rows[i][0]) for i in idx]); lo=np.array([float.fromhex(rows[i][2]) for i in idx]); hi=np.array([float.fromhex(rows[i][3]) for i in idx])
-N,D=read_chain(sys.argv[2]); N=[v/D[0] for v in N]; D=[v/D[0] for v in D]
+N,D=read_chain(sys.argv[2]); N=[v/nrm(D) for v in N]; D=[v/nrm(D) for v in D]
 def nb(v,k):
     i=np.frombuffer(np.float64(v).tobytes(),np.int64)[0]+(int(k) if v>=0 else -int(k)); return float(np.frombuffer(np.int64(i).tobytes(),np.float64)[0])
 def sc(N,D):

@@ -9,7 +9,7 @@
 import sys, numpy as np
 
 sys.path.insert(0, sys.path[0])
-from synth import read_chain, simB
+from synth import read_chain, simB, nrm
 from longspec import extractR, resid
 from stagelaws import stage_F
 from ladder_unwrap import unwrap, demod
@@ -93,7 +93,7 @@ def read(runs, N, D, lines, n):
 
 def norm(p):
     N, D = read_chain(p)
-    return list(np.array(N) / D[0]), list(np.array(D) / D[0])
+    return list(np.array(N) /nrm(D)), list(np.array(D) /nrm(D))
 
 
 def excel_runs(rfile, st, n):

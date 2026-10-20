@@ -11,7 +11,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.append(os.path.join(HERE, "..", "w5", "p5"))  # after w6: both have a synth.py
 from meter import chain_sites, template, L
-from synth import read_chain
+from synth import read_chain, nrm
 
 rf, base, CH, J = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 truthf = sys.argv[5] if len(sys.argv) > 5 else None
@@ -19,12 +19,12 @@ X0 = float(os.environ.get("X0", 1.75))
 DEG = int(os.environ.get("DEG", 1))  # 1: linear top stage (S8); 2: quadratic (S7); 3: cubic (S6), EVALONLY
 RL = int(os.environ.get("RL", 4096))
 N, D = read_chain(base)
-N = np.array(N) / D[0]
-D = np.array(D) / D[0]
+N = np.array(N) /nrm(D)
+D = np.array(D) /nrm(D)
 C = N if CH == "N" else D
 if truthf:
     Nt, Dt = read_chain(truthf)
-    Ct = (np.array(Nt) if CH == "N" else np.array(Dt)) / Dt[0]
+    Ct = (np.array(Nt) if CH == "N" else np.array(Dt)) /nrm(Dt)
 pts = collections.defaultdict(list)
 for l in open(rf):
     q = l.split()

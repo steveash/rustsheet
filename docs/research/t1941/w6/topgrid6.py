@@ -5,7 +5,7 @@
 import sys, os, time, numpy as np
 sys.path.insert(0, sys.path[0])
 from top6 import Top6
-from synth import read_chain
+from synth import read_chain, nrm
 rf, chain, out, CH = sys.argv[1:5]
 t = Top6(rf, chain, maxruns=int(os.environ.get("MAXRUNS", 500)))
 C = (t.N if CH == "N" else t.D).copy()
@@ -36,13 +36,13 @@ i = int(np.argmax(vf))
 d1, d2 = f1[i // len(f2)], f2[i % len(f2)]
 print("fine: d%d %+d d%d %+d %.1f" % (top - 1, d1, top, d2, vf[i]), flush=True)
 N, D = read_chain(chain)
-N = list(np.array(N) / D[0])
-D = list(np.array(D) / D[0])
+N = list(np.array(N) /nrm(D))
+D = list(np.array(D) /nrm(D))
 arr = N if CH == "N" else D
 arr[top - 1] += d1 * u1
 arr[top] += d2 * u2
 open(out, "w").write("N " + " ".join(float(v_).hex() for v_ in N) + "\nD " + " ".join(float(v_).hex() for v_ in D) + "\n")
 if len(sys.argv) > 5:
     Nt, Dt = read_chain(sys.argv[5])
-    Ct = (np.array(Nt) if CH == "N" else np.array(Dt)) / Dt[0]
+    Ct = (np.array(Nt) if CH == "N" else np.array(Dt)) /nrm(Dt)
     print("truth offsets: d%d %+d d%d %+d; truth score %.1f" % (top - 1, round((Ct[top - 1] - C[top - 1]) / u1), top, round((Ct[top] - C[top]) / u2), t.obj(CH, J0, np.array([[C[J0], Ct[top - 1], Ct[top]]]), 0)[0]))
