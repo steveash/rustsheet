@@ -348,7 +348,9 @@ search the rest of the text), while a search that truly reads to the end every t
 once to size its result: over 65,535 UTF-16 units it is
 `#CALC!` as Excel's is, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`;
 "REGEXREPLACE results are capped at 65,535 UTF-16 units" below); a lifted REGEXREPLACE whose results pass the text
-broadcast cap (64 MiB, first entry) is one `#VALUE!`.
+broadcast cap (64 MiB, first entry) is one `#VALUE!`. A bracket holding a POSIX class under `(?i)` that would be
+rewritten past 64 KiB (its other items folded explicitly, "REGEX* POSIX classes are Unicode (T-1903)") is an invalid
+pattern, `#VALUE!` (T-1989).
 The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
 ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE), as
 Excel's are (T-1817, below); POSIX classes are rewritten to Excel's Unicode ones ("REGEX* POSIX classes are Unicode (T-1903)").
@@ -356,9 +358,9 @@ The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE r
 pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
-Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
+Implemented in: `MAX_UNFOLDED_BRACKET_LEN` (functions/text/regex_posix.rs), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829, T-1988
+Tasks: T-1272, T-1829, T-1988, T-1989
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
@@ -704,8 +706,7 @@ are TRUE). Next to a literal they still are (`(?i)[[:upper:]x]` on `a` FALSE). T
 `(?i:[[:upper:]])` and `(?i)(?-i)(?i)[^[:^upper:]]` are FALSE on `a`. No POSIX class folds: `(?i)[[:ascii:]]` is FALSE on the Kelvin sign
 (U+212A) and long s (U+017F), though `(?i)k` matches the Kelvin sign (for the other classes folding changes nothing).
 Brackets nest, unlike stock PCRE2 (which reads `[[a]]` as `[[a]` then `]`): `[[a]]` matches `a` but not `[`, `(?i)[[[:upper:]]]`
-matches `A` and not `[]` (probes/regex-posix-classes-c A1-A26, excel-graph, 2026-10-20, T-1989). Ours handles only a plain non-negated
-bracket (T-1989).
+matches `A` and not `[]` (probes/regex-posix-classes-c A1-A26, excel-graph, 2026-10-20, T-1989). Ours matches all of these (T-1989).
 The case_sensitivity argument 1 behaves the same (`REGEXTEST("a","[[:upper:]]",1)` is FALSE). `&&` in a bracket intersects (`[[:alpha:]&&[:lower:]]`
 on `A` and `&` is FALSE); a literal `^`, `-` or `&` next to a class stays literal (`[[:upper:]^a]` matches `^`, not `b`).
 Syntax: `[a[:digit:]]` and `[[:alpha:][:digit:]]` mix classes with other items; `[\[:alpha:]]` is no class (`":"` FALSE).
@@ -721,7 +722,9 @@ probes/regex-posix-classes-c (nesting, folding of the other items, `[:ascii:]` u
 probes/regex-posix-syntax-edges (hyphen next to a class, `[.a.]`, `[..]`, `[[.ab.]]`, a range ending at a class);
 probes/regexreplace-limit-and-syntax A23.
 Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled (and rejects the invalid syntax above in `invalid_ast`);
-upper and lower become a `(?-i:...)` alternative of their bracket.
+where `(?i)` is on (tracked through flag groups and scopes, starting from the case_sensitivity argument), a bracket
+holding a POSIX class becomes `(?-i:[...])` with its other items replaced by their case closure (`unfolded_posix_bracket`). A
+bracket that would print past 64 KiB that way is `#VALUE!`, a DEVIATION recorded under the REGEX* limits entry above.
 Status: VERIFIED (excel-graph)
 
 ## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)
