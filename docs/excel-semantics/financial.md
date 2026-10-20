@@ -716,6 +716,8 @@ is `#DIV/0!`, `TBILLPRICE(39000,39500,"x")` `#VALUE!`). An error settlement beat
 (`TBILLYIELD(1/0,-1,0.05)` is `#DIV/0!`).
 Evidence: probes/securities-argument-error-order (192 cells, excel-graph, 2026-10-20, T-1406); gen-m9/0c7fc447bc2eebfd
 Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289).
+Unprobed: serial 2958465 alone as a T-bill date (the inclusive bound is inferred), and the range in a 1904 workbook (the
+engine checks the date after the 1904 shift).
 Ours: matches since T-1406 (`coupon_args` in financial_bonds.rs, `tbill_arguments` in discount.rs).
 Status: VERIFIED (web)
 Tasks: T-1406
