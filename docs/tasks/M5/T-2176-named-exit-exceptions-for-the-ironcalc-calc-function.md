@@ -3,7 +3,7 @@ id: T-2176
 title: "Named exit exceptions for the ironcalc-calc function-scope rows (eval/milestones/exit-exceptions.tsv)"
 milestone: M5
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -38,30 +38,31 @@ item 1) can then be read from report.md without hand arithmetic.
   and wording the decision so it weakens no gate.
 
 ## Acceptance criteria
-- [ ] `eval/milestones/exit-exceptions.tsv` exists. It has `#` comment lines that explain the
+- [x] `eval/milestones/exit-exceptions.tsv` exists. It has `#` comment lines that explain the
       format and cite decisions 0074 and 0085. Each data line is
       `cell<TAB>milestone<TAB>decision<TAB>task`, for example
       `ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C11	M2	0074	T-1075`. It holds exactly the three
-      IF_ARRAY lines (C11 from M2, C4 and E4 from M5).
-- [ ] `run` and `check` parse the file and fail, naming the line, on four kinds of bad line: a
+      IF_ARRAY lines (C11 from M2, C4 and E4 from M5), plus ATAN2_POWER D14 and D26 from M5 since
+      decision 0086 (five lines).
+- [x] `run` and `check` parse the file and fail, naming the line, on four kinds of bad line: a
       malformed line, a milestone that is not `M\d+`, a decision that is not four digits, or a
       duplicate cell. A missing file means no exceptions.
-- [ ] Each `MilestoneScope` row gains `excepted: Vec<String>`, the row's failing cells that carry an
+- [x] Each `MilestoneScope` row gains `excepted: Vec<String>`, the row's failing cells that carry an
       exception whose milestone is ≤ the row's. The rows also gain a `failing excl. exceptions`
       column in report.md (report.json: `function_scope.rows[].excepted`). `failing` keeps its
       current meaning and value.
-- [ ] An exception whose cell is not failing in any row (it passes, is a deviation, or is not
+- [x] An exception whose cell is not failing in any row (it passes, is a deviation, or is not
       scored) is listed as stale under the section ("Stale exit exceptions"), the way
       `stale_deviations` are reported. It does not fail the run.
-- [ ] Unit tests cover four cases: an exception that applies from its milestone onwards but not to
+- [x] Unit tests cover four cases: an exception that applies from its milestone onwards but not to
       an earlier row, a stale exception, each parse error, and an absent file.
-- [ ] On `make eval` at the PR's base, the M2 row's `failing excl. exceptions` is 0, and the M5 row's
-      equals its `failing` minus 3. The PR text quotes both rows.
-- [ ] A new decision record (`make new-decision`) says the file holds only exceptions that a
+- [x] On `make eval` at the PR's base, the M2 row's `failing excl. exceptions` is 0, and the M5 row's
+      equals its `failing` minus 3 (minus 5 since decision 0086). The PR text quotes both rows.
+- [x] A new decision record (`make new-decision`) says the file holds only exceptions that a
       decision names, never hides a cell from the baseline or the gate, and that a line is added
       in the PR that takes the decision. docs/milestones.md's M2 and M5 exit text points to the
       file. docs/architecture/eval-harness.md "Milestone function scope" describes it.
-- [ ] `scripts/check_governance.py origin/main` passes with the decision record. `make check`
+- [x] `scripts/check_governance.py origin/main` passes with the decision record. `make check`
       green; reviewers approve.
 
 ## Out of scope
@@ -70,3 +71,14 @@ item 1) can then be read from report.md without hand arithmetic.
 - Exceptions for suites other than ironcalc-calc, or for the probe and gen-m5 rows. Decision 0085
   gives those none.
 - The combined exit section (T-2177).
+
+## Outcome
+`eval/milestones/exit-exceptions.tsv` names IF_ARRAY Sheet1!C11 (M2, decision 0074) and C4, E4 (M5,
+decision 0085), and ATAN2_POWER Sheet1!D14, D26 (M5, decision 0086, which T-2142 merged while this
+task was in review; so five lines, not the three the criteria name), all owned by T-1075; `exit_exceptions.rs` parses it (`data_lines`, now shared with
+`probe-milestones.tsv`'s reader) and `run`/`check` refuse a malformed line, milestone, decision, task
+or a repeated cell; an absent file holds none. Each function-scope row gains `excepted` and report.md
+the column "failing excl. exceptions"; a listed cell that fails in no row is listed under "Stale exit
+exceptions" without failing the run. Decision 0087; milestones.md (M2, M5) and eval-harness.md point
+to the file. `make eval` (ironcalc-calc rerun on main 1fd0f69a merged in): M2 failing 1, excl. exceptions 0; M5 failing 14, excl.
+exceptions 9 (5 lines). Eval delta: none (baseline and gate unchanged).
