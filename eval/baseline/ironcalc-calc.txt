@@ -698,14 +698,6 @@ F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L3
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L4
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L5
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L6
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B10
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B11
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B12
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B13
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B4
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B6
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B7
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B8
 F	ironcalc-calc/STATISTICAL/BINOM.xlsx	BINOM.DIST!E13
 F	ironcalc-calc/STATISTICAL/BINOM.xlsx	BINOM.DIST!E15
 F	ironcalc-calc/STATISTICAL/BINOM.xlsx	BINOM.DIST!E18
@@ -815,19 +807,6 @@ F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L2
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L3
 F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!D1
 F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!K1
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B10
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B11
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B16
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B2
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B20
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B22
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B28
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B3
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B4
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B6
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B7
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B8
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B9
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E10
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E11
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E16

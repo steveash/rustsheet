@@ -764,12 +764,15 @@ with its top-left value per element; SUM and the walker's other aggregates take 
 `picked_reference_arg_reading` (functions/util.rs). Probed in T-2120 (probes/trimrange-lift-edge-sources, excel-graph, 2026-10-20): an error source with an invalid
 trim element is the source's error in every element (`TRIMRANGE(NA(),{0;5})` and `TRIMRANGE(1/0,{0;5})` are 2 elements,
 `ERROR.TYPE` 7 and 2); a multi-area source `(A1,B2)` is `#VALUE!` in every element (`ROWS` 2, `ERROR.TYPE` 3); an
-all-blank source (C20:C21) keeps its full extent while trim_rows is 0, whatever trim_cols is: `TRIMRANGE(C20:C21,0)`
+all-blank single column (C20:C21) keeps its full extent while trim_rows is 0, whatever trim_cols is: `TRIMRANGE(C20:C21,0)`
 and `(…,0,3)` are the 2x1 range, so `=TRIMRANGE(C20:C21,{0;1})` spills `#VALUE!` (the untrimmed multi-cell element) then
-`#REF!`; a nonzero trim_rows gives `#REF!` (`(…,3,0)`, `(…,1,0)`); the unlifted call behaves the same. Unprobed:
-an all-blank multi-column or single-row source with trim_rows 0 and trim_cols 1-3 (ours keeps the full extent,
-generalized from the single-column probe; T-2127).
-Tasks: T-2089, T-2120
+`#REF!`; a nonzero trim_rows gives `#REF!` (`(…,3,0)`, `(…,1,0)`); the unlifted call behaves the same.
+Other all-blank shapes (probes/t2127-trimrange-blank-shapes, excel-graph, 2026-10-20, T-2127): a blank source keeps its
+full extent only when nothing is trimmed (0, 0), or when only the single-cell axis of a line is trimmed: the 2x1 with
+trim_cols 1-3 (and trim_rows 0), and the 1x3 with trim_rows 1-3 (and trim_cols 0, so `TRIMRANGE(C25:E25,3,0)` is the
+1x3). Everything else is `#REF!` (ERROR.TYPE 4): the 2x3 for any trim but (0, 0), the 1x3 with a nonzero trim_cols,
+and a 1x1 (`TRIMRANGE(C40,3,0)`) for any trim but (0, 0). So trim_rows 0 does not keep a multi-column source.
+Tasks: T-2089, T-2120, T-2127
 
 ## Arrays of references through LET, IF, CHOOSE and OFFSET
 Rule: a LET variable or a LAMBDA parameter bound to a lifted OFFSET (or INDIRECT, TRIMRANGE) holds the array of
