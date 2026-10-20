@@ -38,3 +38,4 @@ Probe `probes/eng-imtan-overflow` (excel-graph): no `#NUM!` past the cosh overfl
 flushes to 0 (`i`, not `0+i`); real arguments use TAN's kernel; IMTAN with denominator 0 and y non-zero is
 `#NUM!`, IMCOT is finite there. Engine fixed for all of these; the one remaining cell (B10, IMCOT 1E+20
 printed in full) is recorded in engineering.md. Quirks recorded there.
+Follow-ups: T-2185 (real-argument IMTAN, web vs Mac), T-2186 (large-part notation).

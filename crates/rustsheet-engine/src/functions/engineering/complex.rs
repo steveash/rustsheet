@@ -897,11 +897,11 @@ fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 /// tan(x+iy) in its double-angle form, `(sin 2x + i sinh 2y) / (cos 2x + cosh 2y)`: Excel's
 /// digits, where the tan/tanh form loses the last 1-10 of them when the real part is small
 /// (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx N2, N7, N15: `IMTAN("1.23+9.5121i")` has real part
-/// 6.89106871662165E-09; T-0907). A real argument takes TAN's own kernel (`IMTAN("1.57079632679489")` is 148752068975966, where
-/// libm's tan gives 148752623989354; probes/eng-imtan-overflow A7, A8, B7, B8, T-1966). Past
-/// `cosh 2y`'s range (|y| above about 355) the value is `±0 ± i`, a subnormal real part flushed to
-/// 0 ("i", not "0+i", at y = 355; A4, A6, B4, B6); where the denominator is 0 with y non-zero it
-/// is `#NUM!` (`IMTAN("1.5707963267948966+1E-10i")`, A9).
+/// 6.89106871662165E-09; T-0907). Where the denominator is 0 a real argument takes TAN's kernel
+/// (`IMTAN("1.57079632679489")` is 148752068975966, libm's tan gives 148752623989354; probes/eng-imtan-overflow A7, A8; other real
+/// arguments are T-2185). Past `cosh 2y`'s range (|y| above about 355) the value is `±0 ± i`, a
+/// subnormal real part flushed to 0 ("i", not "0+i", at y = 355; A4, A6, B4, B6); with y non-zero a
+/// zero denominator is `#NUM!` (`IMTAN("1.5707963267948966+1E-10i")`, A9).
 fn tan_parts(x: f64, y: f64) -> Option<(f64, f64)> {
     let (sin, cos) = sin_cos_double_angle(x);
     let denominator = cos + f64::cosh(2.0 * y);
