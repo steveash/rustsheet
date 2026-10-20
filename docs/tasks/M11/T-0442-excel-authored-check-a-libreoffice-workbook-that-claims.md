@@ -3,7 +3,7 @@ id: T-0442
 title: "Excel-authored check: a LibreOffice workbook that claims Microsoft Excel is not Excel evidence (poi/clone_sheet.xlsx)"
 milestone: M11
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -36,13 +36,13 @@ known failures.
   (crates/rustsheet-eval/src/baseline.rs).
 
 ## Acceptance criteria
-- [ ] The snapshot records `fileVersion`'s `appName`, and `is_excel_authored` is false when it is present
+- [x] The snapshot records `fileVersion`'s `appName`, and `is_excel_authored` is false when it is present
       and not `xl` (unit test with a `Calc` workbook claiming Microsoft Excel; the existing calibrate test keeps passing).
-- [ ] The 39 poi/clone_sheet.xlsx F lines and its C line leave eval/baseline/poi.txt (`make eval-baseline`),
+- [x] The 39 poi/clone_sheet.xlsx F lines and its C line leave eval/baseline/poi.txt (`make eval-baseline`),
       with no other change to poi.txt, gen-*, ironcalc-calc, fixtures or probes baselines.
-- [ ] docs/research/test-suites-and-oracle.md (or wherever the excel-authored rule is described; `rg
+- [x] docs/research/test-suites-and-oracle.md (or wherever the excel-authored rule is described; `rg
       is_excel_authored docs`) states the `fileVersion` rule and cites clone_sheet.xlsx and 56295.xlsx.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Oracle-filling clone_sheet.xlsx from excel-graph (after this change `rustsheet-eval cases` lists it as
@@ -58,3 +58,6 @@ poi/clone_sheet.xlsx leave eval/baseline/poi.txt, which has no other change; the
 regressed). Updated with `rustsheet-eval update-baseline --suite poi` because `make eval-baseline` also bakes in a
 probes drift that is already on main (probes 1632 -> 1633, 2 new-coverage failures, same with this change stashed);
 follow-up filed for it if the steward does not already have one.
+
+## Outcome
+Implemented by #1369 (fileVersion appName check in `is_excel_authored`, unit test, docs rule, poi baseline drop). This PR only closes the task file; no code or eval change (poi/clone_sheet.xlsx has no baseline lines on main).
