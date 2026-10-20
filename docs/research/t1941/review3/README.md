@@ -16,6 +16,7 @@ Companion to `../HANDOFF.md` section 12.
 | `keeptest.py cases...` | conditional agreement test: where an unstored-op variant differs from the stored chain, which one does Excel follow |
 | `p3scan.py cases...` | per-run 1-D scans of p2, p3, p4, q2, q3 |
 | `dgridlike.py cases...` | dgrid-style per-cluster fractional pre-rounding offset scan at (4,3) (80-bit head + offset), real vs an all-stored synthetic truth |
+| `offm.c` / `offm.py [truth.pkl|ctl:...] cases...` | (W2) per-run hand-off offset meter of HANDOFF 12.3 step 1; build `liboffm.so` next to it. Control `ctl:p4:+2` on r113 gives 1.000 at dN +2 |
 
 Long consecutive GAMMALN.PRECISE runs in (2,3] used:
 - r701, r112, p401, r702, r610, r901 (two runs), r703, r113, r704, r611, r705, v401a, v404a, v407a;
