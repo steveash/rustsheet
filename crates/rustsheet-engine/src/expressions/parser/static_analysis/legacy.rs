@@ -288,7 +288,7 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
                 kind: Function::Index,
                 args,
             } if args.first().is_some_and(is_plain_reference) => true,
-            Node::FunctionKind { kind, args } => returns_array_constants(kind, args),
+            Node::FunctionKind { kind: call, args } => returns_array_constants(kind, call, args),
             _ => false,
         }
 }
@@ -299,23 +299,24 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
 /// unmarked (T-1908); a CHOOSE mixing references and array constants is
 /// [`chooses_between_references_and_array_constants`], and a CHOOSE with an array-constant index over
 /// references is [`chooses_references_by_an_array_index`]; other mixed arms keep their `@`.
-fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
+fn returns_array_constants(reader: &Function, kind: &Function, args: &[Node]) -> bool {
     (matches!(kind, Function::Choose | Function::Index | Function::Ifs)
         && returns_only_array_constants(kind, args))
         || chooses_between_references_and_array_constants(kind, args)
-        || chooses_references_by_an_array_index(kind, args)
+        || chooses_references_by_an_array_index(reader, kind, args)
 }
 
 /// Whether `kind(args)` is a CHOOSE with a one-row array constant of several elements for its index
 /// over ranges: Excel shows no `@` on it and N reads it as `#VALUE!` on the arms' rows and off them
 /// (`=N(CHOOSE({1,2},H1:H2,I1:I2))`; probes/subtotal-take-array-selector D1, D3, D5, D7, T-1915).
-/// Only that shape is probed, with N: T, single-cell arms, column or 2-D indexes and other arm
+/// Only that shape is probed, read by `reader` N: T, single-cell arms, column or 2-D indexes and other arm
 /// counts are unprobed and keep their `@` (T-1915 follow-up probe).
-fn chooses_references_by_an_array_index(kind: &Function, args: &[Node]) -> bool {
+fn chooses_references_by_an_array_index(reader: &Function, kind: &Function, args: &[Node]) -> bool {
     let [index, arms @ ..] = args else {
         return false;
     };
-    matches!(kind, Function::Choose)
+    matches!(reader, Function::N | Function::NLegacy)
+        && matches!(kind, Function::Choose)
         && matches!(index, Node::ArrayKind(rows) if rows.len() == 1 && rows[0].len() > 1)
         && arms.len() == 2
         && arms.iter().all(|arm| matches!(arm, Node::RangeKind { .. }))
@@ -419,7 +420,7 @@ pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
             }
         }
     }
-    let marked = (matches!(call, Function::If) || returns_array_constants(call, call_args))
+    let marked = (matches!(call, Function::If) || returns_array_constants(kind, call, call_args))
         && !matches!(
             static_analysis_on_function(call, call_args),
             StaticResult::Scalar
