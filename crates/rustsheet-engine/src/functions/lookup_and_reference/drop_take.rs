@@ -222,6 +222,8 @@ impl Model {
                     .filter_map(move |column| grid.get(row, column).cloned())
             })
             .collect();
+        // `edge_spans` keeps the spans inside the grid, so the shape always holds; the error arm
+        // only keeps this panic-free.
         match RefGrid::new(kept_rows, kept_columns, elements) {
             Some(kept) => RefArg::Grid(kept),
             None => RefArg::Value(CalcResult::new_error(
