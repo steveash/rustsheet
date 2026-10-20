@@ -69,8 +69,8 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 37 in eval/baseli
 
 ## Acceptance criteria
 - [x] These 36 of the 37 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] numbers.md entry marked implemented.
-- [ ] `make check` green; reviewers approve.
+- [x] numbers.md entry marked implemented.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The exact SINH/COSH cut inside (709.78, 710) and EXP's overflow edge (T-1944).
