@@ -3,7 +3,7 @@ id: T-1828
 title: "Probe and match IMSUM/IMPRODUCT over a 3-D reference, a real next to a j number, and no numbers at all"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
