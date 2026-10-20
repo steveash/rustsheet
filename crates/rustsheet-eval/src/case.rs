@@ -342,6 +342,7 @@ pub(crate) fn kept_nonzero_formulas(spec: &CaseSpec, oracle: &OracleFile) -> BTr
             let answers = oracle.sheets.get(&sheet.name);
             sheet.cells.iter().filter_map(move |(a1, input)| {
                 let addr = Addr::parse(a1)?;
+                // Sidecars are written with canonical `A1` keys; a missed key leaves the flag off.
                 if answers?.get(&addr.to_string()) != Some(&Value::Bool(false)) {
                     return None;
                 }
