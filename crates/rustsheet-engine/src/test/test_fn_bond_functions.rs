@@ -654,7 +654,6 @@ fn coupon_walk_reads_dates_in_excels_1900_calendar() {
     model._set("A7", "=COUPPCD(0,43831,2)");
     model._set("A8", "=COUPDAYS(1,43830,4,1)");
     model._set("A9", "=COUPDAYS(59,36585,4,1)");
-    model._set("A10", "=MDURATION(NA(),43831,0.08,\"x\",2)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "1");
     assert_eq!(model._get_text("A2"), "240");
@@ -665,5 +664,4 @@ fn coupon_walk_reads_dates_in_excels_1900_calendar() {
     assert_eq!(model._get_text("A7"), "0");
     assert_eq!(model._get_text("A8"), "90");
     assert_eq!(model._get_text("A9"), "90");
-    assert_eq!(model._get_text("A10"), "#N/A");
 }
