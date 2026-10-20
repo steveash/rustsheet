@@ -450,6 +450,7 @@ C	probes/legacy-n-t-marker-shapes.case.json	24
 C	probes/legacy-n-t-reference-args-2.case.json	30
 C	probes/legacy-n-t-reference-args.case.json	41
 C	probes/legacy-one-cell-shape-intersection.case.json	26
+C	probes/legacy-switch-at-shapes.case.json	57
 C	probes/legacy-type-intersection.case.json	17
 C	probes/legacy-value-argument-intersection-b.case.json	64
 C	probes/legacy-value-argument-intersection-c.case.json	33
