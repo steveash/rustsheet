@@ -247,15 +247,39 @@ impl Model {
         // XLOOKUP, TAKE, DROP and TRIMRANGE bind the reference they pick, so calling the name is
         // `#REF!` as for OFFSET (probes/let-name-call-forms H7:H9, H11; T-1232).
         let is_picked = matches!(node, Node::FunctionKind { kind, .. } if kind.picks_reference());
-        if !is_span && !is_picked && !self.is_multi_area(node) {
-            // An INDEX that picks one cell stays a reference, `@INDEX(..)` too (probes/let-bind-implicit-index
-            // H1:H9, T-1503): `eval_ref_or_index` owns that rule.
-            if let Some(picked) = self.eval_at_picked_reference(node, cell) {
-                return Binding::Value(picked);
+        let reference = match node {
+            // A lifted OFFSET, INDIRECT or TRIMRANGE binds its array of references, and a
+            // variable bound to one hands it on (an `Arc` clone): `LET(x,OFFSET(A1,{0;1},0),
+            // y,x,INDEX(y,2,1))` is 100 (SPEC-0014 rule 7; probes/reference-lift-consumers E89,
+            // reference-lift-pass-through E8-E16).
+            Node::FunctionKind {
+                kind: kind @ (Function::Offset | Function::Indirect),
+                args,
+            } if !self.is_multi_area(node) => self.reference_producer(kind, args, cell),
+            Node::FunctionKind {
+                kind: Function::Trimrange,
+                args,
+            } => self.trimrange_reference(args, cell, true),
+            Node::NamedVariableKind { id: Some(id), .. }
+                if matches!(
+                    self.variable_stack.get(*id as usize),
+                    Some(Binding::Grid(_))
+                ) =>
+            {
+                self.variable_reference(node, cell)
             }
-            return Binding::Value(self.eval_ref_or_index(node, cell));
-        }
-        match self.evaluate_picked_reference_arg(node, cell) {
+            _ if !is_span && !is_picked && !self.is_multi_area(node) => {
+                // An INDEX that picks one cell stays a reference, `@INDEX(..)` too (probes/let-bind-implicit-index
+                // H1:H9, T-1503): `eval_ref_or_index` owns that rule.
+                if let Some(picked) = self.eval_at_picked_reference(node, cell) {
+                    return Binding::Value(picked);
+                }
+                return Binding::Value(self.eval_ref_or_index(node, cell));
+            }
+            _ => self.evaluate_picked_reference_arg(node, cell),
+        };
+        match reference {
+            RefArg::Grid(grid) => Binding::Grid(grid),
             RefArg::Ranges(Ranges::Areas(areas)) => Binding::Areas(areas),
             // A 3-D span, written or from IF or CHOOSE: an aggregate reads it through the
             // variable (probes/3d-ref-let-values C7, 3d-ref-let-bound-span C1:C3, 111), every
@@ -287,12 +311,13 @@ impl Model {
     }
 
     /// A LET variable or LAMBDA parameter in reference context: a union binding is its areas, a
-    /// 3-D span its range, anything else what [`Model::variable_value`] gives.
+    /// 3-D span its range, an array of references itself (an `Arc` clone), anything else what [`Model::variable_value`] gives.
     pub(crate) fn variable_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> RefArg {
         if let Node::NamedVariableKind { id: Some(id), .. } = node {
             match self.variable_stack.get(*id as usize) {
                 Some(Binding::Areas(areas)) => return RefArg::Ranges(Ranges::Areas(areas.clone())),
                 Some(Binding::Span(range)) => return RefArg::Ranges(Ranges::One(range.clone())),
+                Some(Binding::Grid(grid)) => return RefArg::Grid(grid.clone()),
                 _ => {}
             }
         }

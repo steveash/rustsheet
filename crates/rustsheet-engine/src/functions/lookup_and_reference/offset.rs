@@ -4,12 +4,19 @@
 use super::ref_lift::lifts;
 use crate::calc_result::{CalcResult, Range};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::parser::ArrayNode;
 use crate::expressions::parser::Node;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::ArgBuf;
+use crate::functions::lift::{ArgBuf, LiftedArg};
 use crate::model::Model;
-use crate::reference_operators::RefArg;
+use crate::reference_operators::{may_hand_on_grid, RefArg, RefElement, RefGrid};
+
+/// OFFSET's reference argument ([`Model::offset_source`]).
+enum Source {
+    One(Range),
+    Grid(RefGrid),
+}
 
 impl Model {
     // OFFSET(reference, rows, cols, [height], [width])
@@ -51,8 +58,12 @@ impl Model {
                 "OFFSET of an external reference".to_string(),
             ));
         }
-        let reference = match self.get_reference(&args[0], cell) {
-            Ok(reference) => reference,
+        let reference = match self.offset_source(&args[0], cell) {
+            Ok(Source::One(reference)) => reference,
+            Ok(Source::Grid(grid)) => {
+                let values = self.offset_values(args, cell);
+                return self.offset_over_grid(&grid, values, cell);
+            }
             Err(error) => return RefArg::Value(error),
         };
         let values = self.offset_values(args, cell);
@@ -65,6 +76,71 @@ impl Model {
         };
         self.lift_references(lifted, cell, &mut |model, values| {
             model.offset_of(&reference, values, cell)
+        })
+    }
+
+    /// OFFSET's reference argument: one range, or an array of references from a lifted OFFSET,
+    /// INDIRECT or TRIMRANGE, also through IF, CHOOSE, LET or a variable (SPEC-0014 rule 7).
+    /// Anything else is read as [`Model::get_reference`] reads it.
+    fn offset_source(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Source, CalcResult> {
+        if !may_hand_on_grid(node) {
+            return self.get_reference(node, cell).map(Source::One);
+        }
+        match self.evaluate_reference_arg(node, cell) {
+            RefArg::Grid(grid) => Ok(Source::Grid(grid)),
+            other => match other.into_single_sheet_area(cell) {
+                CalcResult::Range { left, right } => Ok(Source::One(Range { left, right })),
+                error @ CalcResult::Error { .. } => Err(error),
+                _ => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Expected reference".to_string(),
+                )),
+            },
+        }
+    }
+
+    /// OFFSET over an array of references lifts again, over the grid's elements broadcast with
+    /// any lifted rows, cols, height or width: `ROWS(OFFSET(OFFSET(A1,{0;1},0),1,0))` is 2,
+    /// `SUM(OFFSET(OFFSET(A1,{0;1},0),{0,1},0))` 10201, and an error element stays itself
+    /// (probes/reference-lift-consumers E145, E149; reference-lift-pass-through E17-E21, E29,
+    /// E30). The elements reach the driver as their indices, a grid of numbers, since a lifted
+    /// argument holds values only; each level of nesting is one lift, charged as one.
+    fn offset_over_grid(
+        &mut self,
+        grid: &RefGrid,
+        values: ArgBuf<CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        let mut lifted = match self.reference_lift_args(values, cell) {
+            Ok(lifted) => lifted,
+            Err(error) => return RefArg::Value(error),
+        };
+        let (rows, columns) = grid.dims();
+        let indices = (0..rows)
+            .map(|row| {
+                (0..columns)
+                    .map(|column| ArrayNode::Number((row * columns + column) as f64))
+                    .collect()
+            })
+            .collect();
+        lifted.insert(0, LiftedArg::Grid(indices));
+        self.lift_references(lifted, cell, &mut |model, values| {
+            let Some((CalcResult::Number(index), values)) = values.split_first() else {
+                return CalcResult::new_error(Error::VALUE, cell, "Not an element".to_string());
+            };
+            // The index is a whole number below the grid's length, exactly as built above.
+            match grid.elements().get(*index as usize) {
+                Some(RefElement::Reference(reference)) => model.offset_of(reference, values, cell),
+                Some(RefElement::Error(error)) => {
+                    CalcResult::new_error(error.clone(), cell, "Error element".to_string())
+                }
+                None => CalcResult::new_error(Error::VALUE, cell, "Not an element".to_string()),
+            }
         })
     }
 

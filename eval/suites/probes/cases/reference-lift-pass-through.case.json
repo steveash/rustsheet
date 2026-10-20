@@ -1,0 +1,60 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "IF, CHOOSE, LET and a LAMBDA parameter hand a lifted OFFSET's array of references on to INDEX, ROWS/COLUMNS, SUM and SUMPRODUCT, and OFFSET over such an array lifts again, with A1=1, A2=100, A3=10000 (T-2078).",
+ "tags": [
+  "M6",
+  "probe",
+  "offset",
+  "let"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1,
+    "A2": 100,
+    "A3": 10000,
+    "B1": 2,
+    "B2": 200,
+    "B3": 20000,
+    "E1": "=INDEX(IF(TRUE,OFFSET(A1,{0;1},0)),2,1)",
+    "E2": "=INDEX(CHOOSE(1,OFFSET(A1,{0;1},0)),2,1)",
+    "E3": "=ROWS(IF(TRUE,OFFSET(A1,{0;1},{0,1})))",
+    "E4": "=COLUMNS(CHOOSE(1,OFFSET(A1,{0;1},{0,1})))",
+    "E5": "=SUMPRODUCT(IF(TRUE,OFFSET(A1,{0;1},0)))",
+    "E6": "=SUMPRODUCT(CHOOSE(1,OFFSET(A1,{0;1},0)))",
+    "E7": "=SUMPRODUCT(LET(x,OFFSET(A1,{0;1},0),x))",
+    "E8": "=LET(x,OFFSET(A1,{0;1},0),y,x,INDEX(y,2,1))",
+    "E9": "=LET(x,OFFSET(A1,{0;1},0),SUM(INDEX(x,2,1),INDEX(x,1,1)))",
+    "E10": "=LET(x,OFFSET(A1,0,0,{1;2}),SUM(INDEX(x,2,1)))",
+    "E11": "=LET(x,OFFSET(A1,{0;1},0),ISREF(INDEX(x,1,1)))",
+    "E12": "=LET(x,OFFSET(A1,{0;1},0),ROWS(x))",
+    "E13": "=LET(x,OFFSET(A1,{0;1},0),ISREF(x))",
+    "E14": "=LET(x,OFFSET(A1,{0;1},0),SUM(x))",
+    "E15": "=LET(x,OFFSET(A1,{0;1},0),ROWS(OFFSET(x,1,0)))",
+    "E16": "=LET(x,OFFSET(A1,{0;1},0),SUM(OFFSET(x,1,0)))",
+    "E17": "=SUM(OFFSET(OFFSET(A1,{0;1},0),{0,1},0))",
+    "E18": "=ROWS(OFFSET(OFFSET(A1,{0;1},0),{0,1},0))",
+    "E19": "=COLUMNS(OFFSET(OFFSET(A1,{0;1},0),{0,1},0))",
+    "E20": "=INDEX(OFFSET(OFFSET(A1,{0;1},0),1,0),2,1)",
+    "E21": "=INDEX(OFFSET(OFFSET(A1,{0;1},0),{0,1},0),2,2)",
+    "E22": "=INDEX(LET(x,OFFSET(A1,{0;1},0),x),2,1)",
+    "E23": "=LET(x,OFFSET(A1,{0;1},0),INDEX(IF(TRUE,x),2,1))",
+    "E24": "=LET(f,LAMBDA(r,INDEX(r,2,1)),f(OFFSET(A1,{0;1},0)))",
+    "E25": "=LAMBDA(r,ROWS(r))(OFFSET(A1,{0;1},{0,1}))",
+    "E26": "=SUM(OFFSET(IF(TRUE,OFFSET(A1,{0;1},0)),1,0))",
+    "E27": "=SUMPRODUCT(OFFSET(OFFSET(A1,{0;1},0),1,0))",
+    "E28": "=ISREF(IF(TRUE,OFFSET(A1,{0;1},0)))",
+    "E29": "=ERROR.TYPE(INDEX(OFFSET(OFFSET(A1,{0;-1},0),1,0),2,1))",
+    "E30": "=INDEX(OFFSET(OFFSET(A1,{0;-1},0),1,0),1,1)",
+    "E31": "=SUM(OFFSET(OFFSET(A1,0,0,{1;2}),1,0))",
+    "E32": "=LET(x,OFFSET(A1,{0;1},0),SUM(IF(TRUE,x)))",
+    "E33": "=SUM(OFFSET(CHOOSE(1,OFFSET(A1,{0;1},0)),1,0))",
+    "E34": "=SUM(OFFSET(LET(x,OFFSET(A1,{0;1},0),x),1,0))",
+    "G1": "=LET(x,OFFSET(A1,{0;1},0),x)",
+    "H1": "=OFFSET(OFFSET(A1,{0;1},0),1,0)"
+   }
+  }
+ ],
+ "expected": {}
+}

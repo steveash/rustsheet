@@ -8,7 +8,7 @@ use crate::expressions::types::CellReferenceIndex;
 // (`SUM(ABS(A:A))`, probes/lifted-range-size). Excel builds larger arrays
 // (probes/lifted-range-rows C1): DEVIATION, see docs/excel-semantics/arrays.md ("Array results
 // above 1,048,576 cells").
-const MAX_SIZE: usize = LAST_ROW as usize;
+pub(crate) const MAX_SIZE: usize = LAST_ROW as usize;
 
 pub fn check_array_size(rows: usize, columns: usize) -> Option<(Error, String)> {
     if columns > LAST_COLUMN as usize {
