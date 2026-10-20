@@ -99,8 +99,8 @@ impl Model {
         }
 
         // number to convert
-        let mut value = match self.get_number(&args[0], cell) {
-            Ok(f) => f.trunc() as i64,
+        let number = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
             Err(s) => return s,
         };
         // radix
@@ -146,8 +146,9 @@ impl Model {
             };
         }
 
-        // number must be >= 0
-        if value < 0 {
+        // number must be >= 0, checked before truncation: `BASE(-0.0001,5,4)` is `#NUM!`
+        // (gen-m5/a6fec430ac350c1a Calc!A31; numbers.md "ROMAN truncates before its sign check").
+        if number < 0.0 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -155,6 +156,7 @@ impl Model {
             };
         }
 
+        let mut value = number.trunc() as i64;
         let mut buf = String::new();
         if value == 0 {
             buf.push('0');
