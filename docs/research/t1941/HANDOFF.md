@@ -1132,3 +1132,37 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
   - late coefficients compensating below the reach threshold.
 - Additive offsets (hoffF) cannot emulate this, because they add constants rather than re-hashing the chain.
 - The tool is W2's joint solver, with the 12.9 reach bound as its constraint.
+
+### 12.11 Coordinator note (03:45): the 12.10 synthesis is falsified, and K2 and (1.5,2] converge
+
+- **W2 re-hash calibration (K2).** The planted truths were grid_a with large function-null head moves:
+  - p1 moved by +8.9e3, +8.9e4, +8.9e5 and +8.9e6 ulps;
+  - the remaining head coefficients were LS-compensated on [2,3];
+  - late stages were left at grid_a.
+- **Fits recover the plants.** Per-run additive head-sum offsets (hoff.py, 8,192 points per run) recover every plant:
+
+  | truth | r113 start → fit | r901 start → fit |
+  |---|---|---|
+  | rh1e5 | 0.793 → 0.968 | 0.798 → 0.982 |
+  | rh1e6 | 0.910 → 0.924 | 0.901 → 0.958 |
+  | rh1e7 | 0.899 → 0.950 | 0.741 → 0.979 |
+  | REAL | 0.742 → 0.812 | 0.784 → 0.842 |
+
+  - A re-hashed head is therefore offset-recoverable, so "re-hashed head + reach-bounded late" does not explain real.
+- **Joint v5.** This adds head offsets, s5/d4 fractional offsets and full-residue late moves. Results:
+  - Real reaches r113 0.861, r703 0.907, r112 0.921 and r901 0.953.
+  - The control (cLH) reaches 0.999.
+  - The fractional offsets settle at 0.
+  - The gains come from integer p5/q4 moves of ±1..4 that disagree in sign across runs. Under the 12.9 reach bound these moves compensate for head error.
+- **Conclusion for K2.** Every planted family is recovered to at least 0.92-1.00. This includes head re-hashes up to 1e7, late or cross moves within reach, and stage-4/3 fusion. Real is capped at 0.81-0.95 and needs extra freedom that is inconsistent between runs. So stored raw-x Horner with any tested coefficient change, with or without stage-4/3 fusion, is NOT the structure.
+- **W6 at (1.5,2].** The same picture appears there:
+  - Excel's N-chain line frequencies match to 1e-10.
+  - Every phase-using (stage-VALUE) lattice pass disagrees with the others by 1e6..1e9 u(S5).
+  - The ladder plus function rows leave at least 8 weak directions in N5..N9, each 0.9e5..4.6e5 u.
+  - The control closes at 99.97% (W6 README item 28). The Excel blocker is item 29.
+- **Joint reading.** In both kernels the stored-Horner VALUE model fails at the middle stages, while the stage FREQUENCIES (the multiplication structure) are right.
+- **Next tests.**
+  - W2 runs a window-length scan: fit per window of W points, from W = 64 to 8k, against controls at the same W.
+    - If the fit reaches 1.0 as W shrinks, a hidden quantity varies slowly in x (piecewise tables or breakpoints).
+    - If the fit stays capped, the freedom is per point (a different op or precision).
+  - W6 runs an absolute-phase smooth-shift test on the K=0 and L runs. It also checks whether phases are constant within a window but drift between anchors, and whether the mismatch is a fixed fraction of a cycle (a different precision at one stage).
