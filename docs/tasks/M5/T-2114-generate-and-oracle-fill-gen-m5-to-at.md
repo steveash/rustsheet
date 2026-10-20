@@ -3,7 +3,7 @@ id: T-2114
 title: "Generate and oracle-fill gen-m5 to at least 20,000 cells with --focus and edge pools, gate it, and file its gaps"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
