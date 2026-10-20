@@ -1,6 +1,8 @@
 //! Case folding shared by SEARCH, TEXTSPLIT, TEXTBEFORE and TEXTAFTER. Every fold maps one char
 //! to exactly one char, so char positions in the folded text are char positions in the original.
 
+use super::string_format::sigma_is_final;
+
 /// Lowercases `text` one character at a time (see [`fold_char`]). Excel's SEARCH never changes
 /// the length of the text it counts in: `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is
 /// #VALUE!, whereas Rust's `to_lowercase` turns U+0130 into "i" + U+0307
@@ -42,16 +44,18 @@ pub(super) fn fold_for_split(text: &str) -> String {
 }
 
 /// TEXTBEFORE and TEXTAFTER's `match_mode` 1 folding: [`fold_match_char`], except that sigma
-/// folds by position. A `Σ` followed by a letter is `σ` and any other `Σ` is `ς`, and `ς`
-/// stays `ς`, so `ς` matches only `ς` and a final `Σ` (probes/textbefore-casefold-length
-/// A17-A25). `ẞ` does not fold to `ß`. Whether "followed by a letter" is exact (case-ignorable
-/// chars, or a required letter before the `Σ`) is UNVERIFIED.
+/// folds by position, with LOWER's final-sigma rule ([`sigma_is_final`]): a `Σ` before a letter
+/// or digit is `σ` and any other `Σ` is `ς`, and `ς` stays `ς`, so `ς` matches only `ς` and a
+/// final `Σ` (probes/textbefore-casefold-length A17-A25, probes/textbefore-sigma-contexts: a
+/// digit gives `σ`, a space or punctuation `ς`, and a lone `Σ` is `ς` even against a text `Σ`
+/// that is `σ`). `ẞ` does not fold to `ß`. That a combining mark, `’` or zero-width space
+/// also gives `σ` is UNVERIFIED here (it is LOWER's rule).
 pub(super) fn fold_for_before_after(text: &str) -> String {
     let mut folded = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
     while let Some(c) = chars.next() {
         folded.push(match c {
-            'Σ' if chars.peek().is_some_and(|n| n.is_alphabetic()) => 'σ',
+            'Σ' if !sigma_is_final(chars.peek().copied()) => 'σ',
             'Σ' | 'ς' => 'ς',
             // The delimiter `ß` does not match `ẞ` in the text (A9), although `ẞ` lowercases to `ß`.
             '\u{1E9E}' => c,
