@@ -1226,3 +1226,27 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
   - H5: a variable or scaling under which the head sums re-decide.
 - **Model-free read.** The admissible-s4 map per point is requested from reviewer 3.
 - **Per the user's directive** (bit-exact, no DEVIATION acceptance), grid_a is not shipped.
+
+### 12.14 After the 12.13 ceiling (04:00-04:06): every structure caps the same; Excel's head noise is about 2× ours
+
+- **K2 supremum sweeps (W2 ssweep/shoff, matched to sweep.py within 0.006).** All of these cap at the raw-x values 0.829/0.842/0.813/0.766 (r112/r901/r113/r703), ±0.003:
+  - N head as z = x−c (c = 1, 2, 2.5, 3);
+  - N head as Dekker-split x;
+  - the same variants on the D head, independently;
+  - per-run offsets at the division and the final multiply.
+  - A planted z-head is recovered 1.000 by its own sweep and only 0.96 by the raw-x sweep, so the method separates structures.
+- **Output δ-profiles are flat** at y and at R = n/d. Misses are ±1..±6 ulp(y), and only 37-49% are ±1. So the discrepancy is not at the final ops.
+- **Hand-off read (hread3.py).** Unique-m4 points (12-18%, selection-biased). |s4_Excel − h*| quantiles:
+  - median 0.46-0.58 u (stored 0.25);
+  - 90% at 1.1-2.1 u (stored about 0.5).
+  - It is uncorrelated with our stored error and with all geometric covariates, and has a run-dependent mean bias.
+  - So Excel's effective head noise is about 2× ours and independent of it.
+- **W2 bound.** The late chain pins E4/E3 to under u/8 on [2,3]. Extra higher-degree terms are therefore at most 1e-9 in raw x and cannot add head noise. A common factor would change the late coefficients.
+  - So the higher-degree and cancellation class is excluded within raw-x Horner.
+- **W6 parallel, (1.5,2].**
+  - The per-chain phase fits are control-level.
+  - But with those late stages fixed, no head coefficients make N/D equal Excel's R (5e-15 rms vs 2.3e-16).
+  - Augmented outer-form LS is running (k·N/D, +c, +c(x−2), shifted (x−1), Cody-like, extra leading terms).
+- **Next.**
+  - W2 screens power-table heads (repeated multiply, squaring, exp/ln), heads at a round-tripped x' = fl(fl(x−a)+a), and N/D heads built from shared subexpressions.
+  - Reviewer 3 is asked for structural forms that escape all of the above.
