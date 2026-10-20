@@ -523,18 +523,17 @@ Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 ## FIXED, DOLLAR and BAHTTEXT cut to 15 significant digits first (T-2148, T-2149)
 Rule: FIXED and DOLLAR round as ROUND does: the value is first cut to 15 significant digits (an exact tie at the 16th digit
 goes toward zero), then rounded half away from zero at `decimals`, and the digits past the 15th print as zeros.
-`DOLLAR(1.005)` is "$1.01" (ours "$1.00"), `FIXED(INT(2^53+1),0)` "9,007,199,254,740,990", `FIXED(999999999999998.13)`
+`DOLLAR(1.005)` is "$1.01", `FIXED(INT(2^53+1),0)` "9,007,199,254,740,990", `FIXED(999999999999998.13)`
 "999,999,999,999,998.00", `DOLLAR(3000000123456798.5)` "$3,000,000,123,456,800.00", `DOLLAR(999999999999954.88)`
 "$999,999,999,999,955.00" and `DOLLAR(4999999999999995)` (`ROUNDDOWN(9999999999999999,8)/2`) "$4,999,999,999,999,990.00" (the
 16th-digit tie goes toward zero). BAHTTEXT, whose 15-digit rounding is above, takes the same tie toward zero:
-`BAHTTEXT(999999999999997.5)` reads ...เก้าสิบเจ็ดบาทถ้วน (997; ours 998).
+`BAHTTEXT(999999999999997.5)` reads ...เก้าสิบเจ็ดบาทถ้วน (997).
 With a negative `decimals`, a value that rounds to zero has no sign: `DOLLAR(-3.75,-1)`, `DOLLAR(-2.02005,-1)` and
-`DOLLAR(-0.5,-1)` are "$0" (ours "($0)"), while `DOLLAR(-0.004)` keeps "($0.00)" (above).
+`DOLLAR(-0.5,-1)` are "$0", while `DOLLAR(-0.004)` keeps "($0.00)" (above).
 Past 2^64, and with more than about 20 decimals, the 15 digits are followed by zeros as well: `DOLLAR(1.0000001234567907E+30,-2)`
 is "$1,000,000,123,456,790,000,000,000,000,000", `DOLLAR(4.33884297520652E+28,3)` "$43,388,429,752,065,200,000,000,000,000.000",
 `DOLLAR(1.2244897707231034E+29,0)` "$122,448,977,072,310,000,000,000,000,000", `FIXED(90909090909108.86,24.2)`
-"90909090909108.900000000000000000000000" and `FIXED(ASINH(123456790.123),100)` "19.3245489558243" and 85 zeros. Ours prints
-18,446,744,073,709,551,615 (a saturated u64) in these: "$18,446,744,073,709,551,615" or "...108.000018446744073709551615".
+"90909090909108.900000000000000000000000" and `FIXED(ASINH(123456790.123),100)` "19.3245489558243" and 85 zeros. The old saturated-u64 output "$18,446,744,073,709,551,615" or "...108.000018446744073709551615".
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/3b813881f835cd90 Calc!A48, gen-m5/0362d48f56108faa Calc!A43, Calc!A119,
 gen-m5/2abdc1524e5aa685 Calc!A221, gen-m5/461d1c8dbb044769 Calc!A249, gen-m5/50d8a085335c05e6 Calc!A158, gen-m5/4d099bea7898ebf1 Calc!A66,
 gen-m5/399071ff6782ab16 Calc!A316, gen-m5/5704666097cbc5b2 Calc!A274, gen-m5/ae9ed30812c4d62c Calc!A183 (T-2148); gen-m5/6b831f5e2a20bc34 Calc!A232,
