@@ -94,12 +94,27 @@ Excel, one ulp above; ours returns the input (it is already even). The EVEN inpu
 Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224, gen-m5/38b1b8e51dbad326 Calc!A10.
 Status: OBSERVED; T-2173 (after the T-2172 oracle sweep).
 
-## MROUND rounds the quotient as a 15-digit decimal (T-2167)
-Observation: `MROUND(0.3,0.2)` is 0.4. In doubles 0.3/0.2 is 1.4999999999999998, which rounds to 1 (ours: 0.2); Excel rounds
-it as 1.5, half away from zero, which fits a 15-significant-digit cut of the quotient before rounding (as ROUND's stage 1).
-Evidence (excel-graph, 2026-10-20): gen-m5/043ee562f32eb901 Calc!A199. Unprobed: other near-half quotients, and whether the
-product `n*multiple` is formed in binary (our engine gives `MROUND(0.5,0.2)` = 0.6000000000000001; Excel unprobed).
-Status: OBSERVED (1 cell); T-2167.
+## MROUND rounds the quotient up within 5E-15 of a half, and multiplies in binary (T-2201)
+Rule: `MROUND(number, multiple)` (after the sign and zero checks) is
+1. `q = |number / multiple|`, the double quotient (no x87 or decimal division);
+2. `k = floor(q)`, plus 1 when the fractional part `q - k` (exact in doubles) is at least `0.5 - 5E-15`: an absolute
+   tolerance on the fraction, not a 15-significant-digit cut of `q` (`fr >= 0.5 - 5e-15` in doubles, or equally the
+   fraction rounded half up to 14 decimals reaching 0.5);
+3. the result `k * |multiple|` as one binary multiply, with the sign of `number`.
+Consequences: `MROUND(0.3,0.2)` = 0.4 (q = 1.4999999999999998); `MROUND(1.15,0.1)` = 1.2000000000000002 (12*0.1);
+`MROUND(0.5,0.2)` = 0.6000000000000001 and `MROUND(0.29,0.1)` = 0.30000000000000004 (binary products; the `(x)=0.6`
+companions are TRUE only because `=` compares to 15 digits); `MROUND(1234.4999999999998,1)` = 1234 and
+`MROUND(98765432.49999999,1)` = 98765432 (one ulp below the half is more than 5E-15 there), while
+`MROUND(1.4999999999999956,1)` = 2 (20 ulp below, 4.4E-15). The cutoff: fraction 0.5 - 4.996E-15 rounds up,
+0.5 - 5.0515E-15 down, the same at 0.5, 1.5, with multiple 2 and for negatives (rows 184-213). Ours today:
+`(value / multiple).round() * multiple`, which misses every within-tolerance cell below a half.
+Evidence: probes/t2201-mround-quotient-rounding (excel-graph, 2026-10-20, 213 cells: T-2167's near-half quotients and
+negatives, exact quotients at k+0.5 +- 1..48 ulp for four magnitudes, 80 seeded pairs within 4 ulp of a half, product
+forming with companions, 1E-15 and 1E+15 controls, and the cutoff sweep); generator docs/research/t2201/gen.py. The rule
+predicts all 213 cells. Rivals that miss: a 15-digit cut of `q` (146/213: misses 1234.5 - 1 ulp and most seeded pairs), a
+tolerance of 4.5E-15 or 4.9E-15 (196, 207) or 5.3E-15 (203), an x87 quotient, and a decimal product (the products are
+binary). gen-m5/043ee562f32eb901 Calc!A199 is `MROUND(0.3,0.2)`.
+Status: VERIFIED (excel-graph, 213 cells); not implemented (T-2167).
 
 ## ROUNDUP adds the unit in binary
 Rule: when ROUNDUP has to round up, it does not return the double nearest the rounded-up decimal.

@@ -3,7 +3,7 @@ id: T-2201
 title: "Probe MROUND's quotient rounding near half-multiples and the product's last digit (T-2167)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,7 +32,7 @@ predict every probed cell, in a form T-2167 can implement directly. Today one ce
   crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs.
 
 ## Acceptance criteria
-- [ ] New case `eval/suites/probes/cases/t2201-mround-quotient-rounding.case.json` (`rustsheet-case/v1`, one `M5` tag), with
+- [x] New case `eval/suites/probes/cases/t2201-mround-quotient-rounding.case.json` (`rustsheet-case/v1`, one `M5` tag), with
       stored inputs and at least 150 cells, including:
       - the near-half quotients from T-2167 (0.3/0.2, 0.7/0.2, 2.5/1, 1.15/0.1, 1.05/0.1) and their negatives;
       - at least 60 seeded pairs whose binary quotient lies within 4 ulp of k+0.5, on both sides, with the seed and script
@@ -41,16 +41,26 @@ predict every probed cell, in a form T-2167 can implement directly. Today one ce
       - products whose last bit shows binary vs decimal forming (`MROUND(0.5,0.2)`, `MROUND(0.7,0.1)`, `MROUND(1E+15+0.3,0.2)`),
         each beside `(x)=<decimal>` companion cells;
       - the multiples 1E-15 and 1E+15, as controls.
-- [ ] Its excel-graph sidecar is filled (`cd tools && uv run rustsheet-oracle fill -b excel-graph --suite probes`), with no
+- [x] Its excel-graph sidecar is filled (`cd tools && uv run rustsheet-oracle fill -b excel-graph --suite probes`), with no
       pending cell.
-- [ ] numbers.md "MROUND rounds the quotient as a 15-digit decimal" becomes a VERIFIED rule. It gives the quotient rounding
+- [x] numbers.md "MROUND rounds the quotient as a 15-digit decimal" becomes a VERIFIED rule. It gives the quotient rounding
       and the product forming as an algorithm T-2167 can code, cites the case, and lists every probed cell the rule does
       not predict (target: none).
-- [ ] The case's failing cells are new-coverage F lines in eval/baseline/probes.txt (`make eval-baseline`), with no regression
+- [x] The case's failing cells are new-coverage F lines in eval/baseline/probes.txt (`make eval-baseline`), with no regression
       in any suite. T-2167's Context names the case and the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing `fn_mround` (T-2167).
 - MROUND argument modes and lifting (arrays.md "CEILING/FLOOR family and MROUND lift over arrays", done).
 - INT's 15-digit cut (T-2171).
+
+## Outcome
+- New case probes/t2201-mround-quotient-rounding (excel-graph, 2026-10-20, 213 cells, two fills; generator
+  docs/research/t2201/gen.py, seed 2201).
+- Rule (numbers.md, VERIFIED): MROUND rounds `|number/multiple|` up when its fractional part is at least `0.5 - 5E-15`
+  (an absolute tolerance; cutoff between 4.996E-15 and 5.0515E-15, the same at 0.5 and 1.5, for multiple 2 and for
+  negatives), then multiplies `k * |multiple|` in binary (`MROUND(0.5,0.2)` = 0.6000000000000001). It predicts all 213
+  cells; the 15-digit cut of the quotient fits 146 (it misses `MROUND(1234.4999999999998,1)` = 1234).
+- Eval: probes +1 case, 38 new-coverage known failures (T-2167's to fix), 0 regressions; visible-parity lock 1748 -> 1786
+  (all 38 in the new case). T-2167's Context names the case and the rule.
