@@ -839,3 +839,134 @@ Cheap screens, in order:
   committed data.
 - One hygiene item: the committed grid_a with "p5 -4, q4 -1" applied as coefficient ulps is far worse than grid_a. The
   REAL fingerprint's late set should be stated exactly.
+
+### 12.6 Follow-up: the tie-class offset meter, run (2026-10-20 05:30 UTC)
+
+The coordinator asked for 12.3 step 1 as `review3/meter.py`, with its positive control, on the 14 long runs. Done, plus
+the screens the result called for.
+- Scripts: `review3/meter.py`, `meter_keep.py`, `latescan.py`, `ties.py` (README table).
+- Everything below uses committed data and grid_a as committed; no oracle, nothing pushed.
+
+**Meter.** One smooth offset per chain, in ulps of the stored sum of a chosen stage, injected either:
+- before the product's quantisation (`pre`: what an upstream coefficient difference looks like); or
+- on the constant (`post`: a sub-grid residue error of that constant).
+
+It scans [-3.5, 3.5] in 1/32 steps by coordinate ascent, with exact match as the objective.
+
+Controls: planted p3 +3, p4 +1, q2 -16 ulps read at (4,3) `pre`; p5 +1, q4 +2 read at (5,4) `post`.
+- Every planted offset is recovered to 1/32 ulp, with the synthetic truth going from 3-15% to 97.7-100% exact.
+- Expected dN = 3x/8 + 1 and dD = -x. Read: +1.844/-2.250 at 2.236, +1.938/-2.500 at 2.5, +2.062/-2.875 at 2.877.
+- The reader is sound.
+
+**Real runs, (4,3) pre.** Columns: base -> best exact; dN and dD in ulps of s4 and d3; "flat" is where the rate stays
+within 0.5 points of the best.
+
+| run | x0 | base -> best | dN [flat] | dD [flat] |
+|---|---|---|---|---|
+| r701 | 2.0612 | 0.703 -> 0.715 | +0.12 [-0.06,+0.19] | -0.12 [-0.16,-0.06] |
+| r112 | 2.2361 | 0.766 -> 0.769 | +0.00 [0.00,+0.06] | -0.06 [-0.16,+0.09] |
+| p401 | 2.3300 | 0.761 -> 0.763 | -0.12 [-0.12,+0.19] | -0.06 [-0.22,+0.06] |
+| r702 | 2.3457 | 0.712 -> 0.749 | +0.59 [+0.41,+0.62] | +0.25 [+0.19,+0.38] |
+| r610 | 2.4568 | 0.775 -> 0.807 | +0.25 [+0.19,+0.28] | -0.22 [-0.34,-0.16] |
+| r901 | 2.5000 | 0.784 -> 0.799 | +0.06 [-0.03,+0.22] | -0.12 [-0.28,-0.09] |
+| r901 | 2.2500 | 0.731 -> 0.755 | -0.03 [-0.03,-0.03] | +0.31 [+0.16,+0.38] |
+| r703 | 2.6123 | 0.737 -> 0.750 | -0.03 [-0.06,+0.03] | +0.19 [+0.09,+0.25] |
+| r113 | 2.7183 | 0.730 -> 0.752 | -0.25 [-0.34,-0.19] | +0.00 [-0.06,+0.09] |
+| r704 | 2.8765 | 0.759 -> 0.775 | +0.03 [0.00,+0.06] | -0.12 [-0.12,-0.09] |
+| r611 | 2.9012 | 0.782 -> 0.810 | -0.06 [-0.19,-0.03] | +0.16 [+0.12,+0.19] |
+| r705 | 2.9568 | 0.757 -> 0.781 | +0.06 [+0.06,+0.09] | -0.22 [-0.25,-0.03] |
+| v401a | 2.8731 | 0.737 -> 0.772 | -0.34 [-0.44,-0.34] | +0.16 [+0.06,+0.19] |
+| v404a | 2.9417 | 0.664 -> 0.694 | +0.31 [0.00,+0.38] | -0.38 [-0.41,-0.31] |
+| v407a | 2.9873 | 0.675 -> 0.701 | +0.59 [+0.50,+0.62] | -0.12 [-0.22,0.00] |
+
+Reading:
+- The offsets are small, their signs wander with x (dN/x from -0.12 to +0.25), and they buy 1-4 points, where a true
+  hand-off offset is recovered to 98%.
+- **So the per-anchor mismatch is not a smooth sub-ulp offset of the hand-off sums.** My 12.3 "smooth offset" wording
+  was too strong. The per-anchor phase offsets of 12.1.1 are real, but they are not what separates Excel from grid_a.
+- Section 12.3 step 2 (fit the offsets to a quartic) is moot.
+
+**Screens that followed, all negative:**
+- **(5,4) and (6,5) `post`:** zero gain on every run. grid_a's p5, p6, q4 and q5 sub-grid residues are right.
+- **`latescan.py`:** p6-p9 and q5-q8 moved by whole units of their sums' grids (m in [-6, 6]), scored with the (4,3)
+  meter on top.
+  - m = 0 is the per-run optimum on all 11 runs, for every one of them.
+  - p5 and q4 are degenerate with the head offsets (moves of +-2 cost nothing) and show no consistent preference.
+  - So there is no late integer-grid displacement, and explanation (a) of 12.3 fails in its single-coefficient form.
+- **Unstored-op variants from stage 5 on** (Nadd5, Nmul5+Nadd5, Nmul6, Nadd6, Dadd4, Dmul4+Dadd4, Dmul5, N or D
+  unstored into the division): Excel follows the stored chain on 60-80% of the differing points, and the variant on
+  1-23%.
+- **Division and final-op variants** (N*fl(1/D), single-rounded N/D, fl(fl(t*N)/D), S unstored): Excel follows the
+  stored form; the variant gets 1-7%.
+  - So the chain from stage 5 on, the division and the final product are as modelled.
+- **Keep-mask heads with the meter on top** (`meter_keep.py`: P4 and/or P3_D unstored, or all head products unstored,
+  plus (4,3) offsets): best rates 0.71-0.83. Not a structure:
+  - better than stored on some runs (r112 0.77 -> 0.83, r113 -> 0.80, v407a -> 0.79);
+  - worse on others (r901 at 2.25: 0.76 -> 0.73, r611 0.81 -> 0.78, r705 0.78 -> 0.75).
+- **Controls for the meter itself:**
+  - A random +-1 flip of s4 on 25% of points gives the meter nothing, and so do unstored-op truths.
+  - A jittered head offset (p2 -40) is recovered to 93-97%.
+  - The 5-11 point gains the (5,4) `pre` setting shows on real data also appear on head-offset truths (0.55 -> 0.86), so
+    they carry no structural information.
+
+**Where the deviation lives** (`ties.py`, exact 64-bit positions). Each point is classified by the exact position of
+the stored-chain sum P4_q + p4 on the u grid:
+- ties at 1/2, quarters at 1/4 and 3/4, exact at 0;
+- 25% each for N, where P4's grid is u/4; for D, positions step by 1/8.
+
+The question is which neighbour of grid_a's s4 reproduces Excel's output where the two differ downstream. These
+"decided" points are about half of each class.
+
+| run | class | decided | Excel agrees with round-to-nearest/even | with the true side of the unquantised product |
+|---|---|---|---|---|
+| r112 | tie 1/2 | 2091 | 0.449 | 0.518 |
+| r112 | 1/4 | 2105 | 0.609 | 0.609 |
+| r112 | 3/4 | 2077 | 0.842 | 0.842 |
+| r112 | 0 (no rounding) | 2103 | 0.981 | 0.981 |
+| r901 | tie / 1/4 / 3/4 / 0 | 711 / 782 / 703 / 739 | 0.353 / 0.648 / 0.925 / 0.771 | 0.668 / same / same / same |
+| r113 | tie / 0 | 3048 / 3198 | 0.299 / 0.852 | 0.659 / 0.852 |
+| r703 | tie / 1/4 / 3/4 / 0 | 744 / 726 / 734 / 747 | 0.489 / 0.627 / 0.634 / 0.657 | 0.500 / same / same / same |
+| r704 | tie / 0 | 1464 / 1377 | 0.530 / 0.802 | 0.523 / 0.802 |
+
+Three facts follow.
+1. On the exact ties, Excel agrees with ties-to-even only 30-53% of the time, and with the true side of the 64-bit
+   product 50-67%. Neither rule holds, so on these points Excel's stored s4 is not fl(P4_q + p4) with grid_a's P4_q.
+2. On the quarter classes, where round-to-nearest is unambiguous, Excel disagrees on 8-39% of the decided points.
+3. On the exact class (position 0, no rounding at all), Excel's s4 is still one ulp off on 2-34% of the decided points.
+
+Facts 2 and 3 cannot be a rounding-rule difference at the sum.
+- They mean **Excel's pre-rounding sum P4 + p4 sits in a different position class than grid_a's on 10-35% of the points,
+  point by point**: Excel's P4_q differs from grid_a's by one or two quarter-steps in a non-smooth pattern.
+- P4 = fl(s3*x), with s3 on the u/8 grid. So a point-wise +-1 ulp(s3) difference in s3 does exactly this: it moves P4 by
+  +-x/8 u (one or two quarter-steps) on the subset of points where Excel's P3 + p3 rounds the other way. Such a
+  difference is a different rounding pattern of the stage-3 sum, coming from different early coefficients.
+- That is upstream jitter from the early coefficients, not a hand-off structure. It is why every hand-off reader (W2's
+  s4read sigma, the dgrid fingerprint, my meter) sees "noise". It is also why W2's single-anchor fits, which move p0-p3
+  and q0-q2, can reach 98.6-99.97% while no per-anchor offset can.
+
+**Consequences.**
+- **12.3's two explanations are narrowed.** It is neither a smooth offset at the hand-off (this section) nor a late
+  displacement (latescan, residue scans, unstored variants).
+  - It is the early coefficients p0-p3 / q0-q2 themselves, whose errors reach the hand-off as point-wise jitter through
+    the stage-2/3 roundings.
+  - The information that pins them is in the rounding patterns of P2, s2, P3 and s3 (grids u/128 to u/8), which the
+    output sees only through this jitter.
+  - That is W2's original problem statement, now with the structural alternatives removed.
+- **The K2 structure is settled** as far as these data can settle it: stored raw-x Horner, both chains, every op, with
+  fl(t*fl(N/D)) outside. No further structural screen is warranted on K2.
+- **The (1.5,2] and K3 pipelines should not spend time on hand-off structures either.** The same reader applies there if
+  anyone wants the per-anchor offsets, with the same caveat: small offsets mean "early coefficients", not "structure".
+- **A practical route for the early coefficients, if the task continues:**
+  - Per-anchor exact fits over (p0-p3, q0-q2) on consecutive runs. Not ladder rungs, whose phases repeat.
+  - Each fit gives the integer vector modulo the per-anchor aliases; then a lattice over the anchors.
+  - `ties.py`'s class tables are a sharper per-anchor objective than exact match, because they separate the jitter
+    (classes 1/4, 3/4 and 0 disagreeing) from the tie resolution.
+- **Hygiene:** `meter.py --control` prints the expected readings. The D expectation uses ulp(q2) = 2^-58, which is what
+  the meter read. My first draft used 2^-59 and looked like a factor-2 error; it was not.
+
+**Coordinator note (2026-10-20).** W2's own offset-meter controls (`w2/x87tools/README.md`) recovered
+function-preserving EARLY-only displacements (p0..p4, q0..q3; scales 10-100 ulps) to 0.92-0.96 on every run, while real
+data reach only 0.71-0.83. W2 therefore leans to a joint late/cross-N/D displacement. This section leans to early
+coefficients, after single-coefficient late scans came out null. The two readings must be reconciled: an early-only
+synthetic truth must reproduce real's per-class `ties.py` disagreement rates, and real's 0.71-0.83 meter ceiling, before
+either explanation is accepted.
