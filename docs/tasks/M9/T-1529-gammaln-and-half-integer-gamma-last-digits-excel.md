@@ -48,3 +48,8 @@ T-1524 made two attempts (2026-10-14) and no candidate rose above the correctly 
 Reopens on a new hypothesis recorded here, for example: a named routine (Lanczos with specific
 coefficients, Stirling with a stated number of terms, Cody's or Hart's gamma) that also explains the
 n >= 89 integer values, or a high-precision gamma in the fit lab so the unit-interval sweep can be scored.
+
+## Update 2026-10-20: T-1941 identified Excel's algorithms
+GAMMALN and GAMMA are mapped to Excel's own x87 routines (T-1941; `docs/research/t1941/HANDOFF2.md`). T-2128 and
+T-2129 ship them; the four open kernels' remaining coefficient bits are T-2122. This supersedes the hypotheses above
+(named library routines, Lanczos, ln of the product).
