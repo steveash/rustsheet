@@ -3,7 +3,7 @@ id: T-2098
 title: "Charge REGEX* pattern rewriting and case folding to the compile budget"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
