@@ -759,8 +759,8 @@ Rule: every function with a day-count basis argument rejects any basis below 0 w
 -1E-300, and -1E300 or -0.5 read from a cell, are all `#NUM!`. A basis in [0, 5) truncates (4.9 is basis 4). A negative
 basis is not truncated toward 0. Probed for 22 functions: YIELD, PRICE, DURATION, MDURATION, COUPDAYS, COUPNUM,
 COUPDAYBS, COUPNCD, ACCRINT, ACCRINTM, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, YEARFRAC, DISC, INTRATE, RECEIVED,
-PRICEMAT, YIELDMAT, AMORLINC and AMORDEGRC. The functions not probed (COUPDAYSNC, COUPPCD, PRICEDISC, YIELDDISC) share
-the readers of probed ones. Also `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` with
+PRICEMAT, YIELDMAT, AMORLINC and AMORDEGRC. COUPDAYSNC, COUPPCD, PRICEDISC and YIELDDISC are inferred, not probed: they
+share the readers of probed ones. Also `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` with
 -1E300 read from a cell (fin-yield-odd-lift L5).
 Evidence: probes/fin-bond-negative-basis (176 cells, excel-graph, 2026-10-20, T-1870); probes/fin-yield-odd-lift L5
 (excel-graph, 2026-10-18, T-1842).
