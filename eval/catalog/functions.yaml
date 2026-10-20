@@ -31,7 +31,8 @@
 # never omits it (CELL without a reference reads the last changed cell, which no oracle value can match).
 # `pool: <name>` on a `value` param: 35% of its values come from that edge pool in
 # tools/src/rustsheet_tools/gen/pools.py (T-2109: number_edges, unit_interval, angle, code_point; T-2110: text_edges,
-# numeric_text, number_formats, errors), after the `domain`
+# numeric_text, number_formats, errors; T-2179: date_serial, time_serial, date_text, time_text, weekend_mask,
+# weekday_return, weeknum_return, month_offset), after the `domain`
 # draw and never on a `hard` domain.
 # `vector: true` on a `range` param makes the generator pass a one-column range (LOOKUP and XLOOKUP/XMATCH lookup
 # vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself; WRAPROWS/WRAPCOLS on an
@@ -1247,8 +1248,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: unit, mode: value, type: text, domain: { enum: [Y, M, D, MD, YM, YD] } }
   - name: DATEVALUE
     category: date
@@ -1257,7 +1258,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: date_text, mode: value, type: text, domain: { enum: ["1/15/2024", "2023-03-01", "15-Mar-2021", "March 5, 2020", "12/31/1899"] } }
+      - { name: date_text, mode: value, type: text, pool: date_text, domain: { enum: ["1/15/2024", "2023-03-01", "15-Mar-2021", "March 5, 2020", "12/31/1899"] } }
   - name: DAVERAGE
     category: database
     milestone: M9
@@ -1275,8 +1276,8 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
   - name: DAYS360
     category: date
     milestone: M6
@@ -1284,8 +1285,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: method, mode: value, type: bool, optional: true }
   - name: DB
     category: financial
@@ -1568,8 +1569,8 @@ functions:
     prior: 0.8
     returns: number
     params:
-      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: months, mode: value, lift: arrays, type: number, domain: { int: true, min: -24, max: 24 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: months, mode: value, lift: arrays, type: number, pool: month_offset, domain: { int: true, min: -24, max: 24 } }
   - name: EFFECT
     category: financial
     milestone: M9
@@ -1595,8 +1596,8 @@ functions:
     prior: 0.8
     returns: number
     params:
-      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: months, mode: value, lift: arrays, type: number, domain: { int: true, min: -24, max: 24 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: months, mode: value, lift: arrays, type: number, pool: month_offset, domain: { int: true, min: -24, max: 24 } }
   - name: ERF
     category: engineering
     milestone: M9
@@ -2157,7 +2158,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: serial_number, mode: value, type: number }
+      - { name: serial_number, mode: value, type: number, pool: time_serial }
   - name: HSTACK
     category: lookup
     milestone: M7
@@ -2582,7 +2583,7 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: date, mode: value, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
   - name: ISPMT
     category: financial
     milestone: M9
@@ -2871,7 +2872,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: serial_number, mode: value, type: number }
+      - { name: serial_number, mode: value, type: number, pool: time_serial }
   - name: MINVERSE
     category: math
     milestone: M5
@@ -2995,8 +2996,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: end_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: holidays, mode: array, type: number, optional: true }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: NETWORKDAYS.INTL
@@ -3006,9 +3007,9 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: end_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: weekend, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 17 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: weekend, mode: value, type: number, optional: true, pool: weekend_mask, domain: { int: true, min: 1, max: 17 } }
       - { name: holidays, mode: array, type: number, optional: true }
   - name: NOMINAL
     category: financial
@@ -3815,7 +3816,7 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: serial_number, mode: value, type: number }
+      - { name: serial_number, mode: value, type: number, pool: time_serial }
   - name: SEQUENCE
     category: math
     milestone: M7
@@ -4295,7 +4296,7 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: time_text, mode: value, type: text, domain: { enum: ["1:30 PM", "13:45:10", "6:00", "12:00:00 AM", "1/15/2024 18:30"] } }
+      - { name: time_text, mode: value, type: text, pool: time_text, domain: { enum: ["1:30 PM", "13:45:10", "6:00", "12:00:00 AM", "1/15/2024 18:30"] } }
   - name: TINV
     category: statistical
     milestone: M9
@@ -4515,8 +4516,8 @@ functions:
     prior: 1
     returns: number
     params:
-      - { name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: return_type, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
+      - { name: serial_number, mode: value, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: return_type, mode: value, type: number, optional: true, pool: weekday_return, domain: { int: true, min: 1, max: 3 } }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: WEEKNUM
     category: date
@@ -4525,8 +4526,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: serial_number, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: return_type, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 1, max: 2 } }
+      - { name: serial_number, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: return_type, mode: value, lift: arrays, type: number, optional: true, pool: weeknum_return, domain: { int: true, min: 1, max: 2 } }
   - name: WEIBULL
     category: statistical
     milestone: M9
@@ -4557,7 +4558,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: days, mode: value, lift: arrays, type: number, domain: { int: true, min: -30, max: 30 } }
       - { name: holidays, mode: array, type: number, optional: true }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
@@ -4568,9 +4569,9 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: days, mode: value, lift: arrays, type: number, domain: { int: true, min: -30, max: 30 } }
-      - { name: weekend, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 17 } }
+      - { name: weekend, mode: value, type: number, optional: true, pool: weekend_mask, domain: { int: true, min: 1, max: 17 } }
       - { name: holidays, mode: array, type: number, optional: true }
   - name: WRAPCOLS
     category: lookup
@@ -4653,8 +4654,8 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: start_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
-      - { name: end_date, mode: value, lift: arrays, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: basis, mode: value, lift: arrays, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - name: YIELD
     category: financial
