@@ -3,7 +3,7 @@ id: T-0969
 title: "T.DIST/T.DIST.RT/T.DIST.2T/T.TEST: accurate Student-t CDF with direct upper tail (55 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -146,6 +146,36 @@ density's exp(a ln y) form; then re-cut the 4-ulp criterion per decision 0056 if
 - T.DIST, T.DIST.RT and T.DIST.2T are unchanged.
 - Not cracked: the density's noise. Its error is not a rounded exponent E: no double form of
   E = ((n+1)/2) ln(1+t^2/n) predicts Excel at df <= 100, with residuals of tens of ulp.
+
+## Attempt 6 (2026-10-20, opus run; findings only, merged as progress)
+- **The visible-parity premise below is wrong for what is left.** On `main` a15f80ae the family has 48
+  visibly-off cells (T.DIST 28, T.DIST.2T 14, T.DIST.RT 5, TDIST 1; T.TEST/TTEST 0). Against mpmath at 60 digits, on the
+  46 literal-argument ones the engine is within 1.7 ulp of the exact value and Excel 4.6 to 482 ulp off on 41
+  (`T.DIST(1E6,30,FALSE)` +482, `T.DIST.RT(30,1E6)` +398, `T.DIST(1000,100,FALSE)` -165, `T.DIST.2T(3,100)` +23,
+  `T.DIST(2,3,FALSE)` +4.6). The engine is the off side on 5: `T.DIST.RT(1E6,2)` (engine -4.5, Excel 0.5),
+  `T.DIST.2T(2,9999999999)` (12.3 against 1.3), and df 1E6 at t = 10 and 30 (`T.DIST.RT(10,1E6)` -13.6 against -37.6,
+  `T.DIST(30,1E6,FALSE)` +148 against -200). An accurate kernel cannot reach the stage: the 41 need Excel's noise reproduced.
+- **Density at df = 2 is cracked:** Excel's `T.DIST(t,2,FALSE)` is `EXP(-1.5*LN(2+t^2))` with Excel's x87 EXP and LN
+  (`x87_exp.rs`, `x87_log10.rs`) or libm's: bit-exact on all 13 df-2 density cells, including `T.DIST(1E6,2,FALSE)`, which is
+  15 ulp from the exact value. `POWER(2+t^2,-1.5)` is 9/13, the ln(1+t^2/2) form 11/13.
+- **The density noise is that of one exp of a double exponent, but not of any single double for df >= 3.** Excel's
+  effective exponent (ln of Excel's value over the exact density, plus the exact exponent) is within about one ulp
+  of the exact -((n+1)/2) ln(1+t^2/n) + ln K on every cell from df 2 to 1E6. A scan over the constant C (6,001
+  doubles around ln K) for `exp(C - h ln(n+t^2))`, `exp(C) exp(-h ln(n+t^2))` and `exp(C - h ln(1+t^2/n))` (h = (n+1)/2)
+  never reproduces more than 5 of a df's 8 to 16 cells, so for df >= 3 the exponent is not one double C plus one of these
+  terms. Also rejected (bit-exact out of 121 density cells; the engine has 38): every ordering of the five-term exponent
+  a ln n + GAMMALN(h) - GAMMALN(n/2) - ln sqrt(pi) - h ln(n+t^2) and its four regroupings with Excel's GAMMALN (T-1941),
+  at most 22 of the 87 df-2-to-100 cells; GAMMA(h)/GAMMA(n/2) from Excel's GAMMA, EXP(GAMMALN differences), 1/(sqrt(n) B) and
+  K POWER(n+t^2,-h) with K correctly rounded, at most 17.
+- **The centre tail sometimes follows the rounded y, as T.TEST does.** For t^2 < n, I_y(n/2,1/2)/2 at y = n/(n+t^2)
+  rounded to a double (`student_t_tail_at`) is bit-exact where the engine's exact tail is not at
+  `T.DIST.2T(0.1,2)` (engine -8 ulp), (2,100) (-12 -> -1), (3,100) (-23 -> 1), (3,30) (-8 -> -2), (2,30) and (5,30), but is
+  worse at small t (`T.DIST.RT(0.5,100)` 1 -> 29, (0.5,1000) -1 -> 97) and catastrophic from df 1E6 (y's rounding is n eps).
+  No df/t cut separates the two on the swept cells (df 100 t = 5 and df 1000 t = 3 prefer the exact tail). For df 2,
+  0.5 - 0.5 sqrt(1 - fl(2/(2+t^2))) is bit-exact at t = 0.1 and 1.
+- Harness and cell table: `docs/research/t0969/` (`t_probe.rs`, `tcells.tsv`). Next: probe Excel at df 3 and 4 densities
+  on a dense t grid (and the same t at df 2 as a control) to find the df >= 3 formula; and probe the centre tail on a dense
+  (df, t) grid to locate where Excel switches between the rounded-y and the t form.
 
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
