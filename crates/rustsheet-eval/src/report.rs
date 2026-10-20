@@ -182,8 +182,7 @@ struct CatalogLists {
 }
 
 impl CatalogLists {
-    /// `evidence` holds the in-scope functions with Excel evidence, `out` the run's stats for
-    /// out-of-scope functions.
+    /// `evidence`: in-scope functions with Excel evidence; `out`: stats of out-of-scope ones.
     fn build(
         catalog: &Catalog,
         implemented: &[String],
@@ -243,8 +242,7 @@ pub struct RunReport {
     /// Slowest cases of the run (informational; never part of the gate).
     #[serde(default)]
     pub slowest: Vec<SlowCase>,
-    /// Excel evidence per in-scope function, fewest cells first (informational; never part of
-    /// the gate).
+    /// Excel evidence per in-scope function, fewest cells first (informational).
     #[serde(default)]
     pub evidence: Vec<FunctionEvidence>,
     /// Implemented in-scope functions that no Excel-evidence cell calls.
@@ -265,22 +263,22 @@ pub struct RunReport {
     /// Out-of-scope catalog functions, kept out of every parity count above.
     #[serde(default)]
     pub out_of_scope: Vec<OutOfScope>,
-    /// How each frozen milestone probe list scored (decisions 0043, 0044); filled by the caller,
-    /// which loads the lists.
+    /// How each frozen milestone probe list scored (decisions 0043, 0044); filled by the caller.
     #[serde(default)]
     pub milestone_lists: Vec<ListSummary>,
-    /// How the `probes` cases assigned to each milestone scored (decision 0051); filled by the
-    /// caller, which loads the rules.
+    /// How the `probes` cases assigned to each milestone scored (decision 0051); filled by caller.
     #[serde(default)]
     pub probe_milestones: Vec<MilestoneRow>,
-    /// How the M0–M2-only `ironcalc-calc` cells scored (the M2 exit criterion); `None` when the
-    /// suite did not run.
+    /// How the M0–M2-only `ironcalc-calc` cells scored (M2 exit); `None` if the suite did not run.
     #[serde(default)]
     pub function_scope: Option<FunctionScope>,
     /// Catalog coverage per function milestone (T-2112); filled by the caller, which knows the
     /// suites' origin and milestone tags.
     #[serde(default)]
     pub catalog_coverage: Vec<MilestoneCoverage>,
+    /// The exit measures of decision 0085 per milestone (T-2177); derived from the rows above.
+    #[serde(default)]
+    pub milestone_exit: Vec<crate::milestone_exit::ExitRow>,
 }
 
 impl RunReport {
@@ -403,6 +401,7 @@ impl RunReport {
             probe_milestones: Vec::new(),
             function_scope: function_scope::summarize(catalog, results),
             catalog_coverage: Vec::new(),
+            milestone_exit: Vec::new(),
         }
     }
 
@@ -565,6 +564,7 @@ impl RunReport {
             self.engine
         );
         self.write_suites_table(&mut md);
+        crate::milestone_exit::write_markdown(&self.milestone_exit, &mut md);
         visible_parity::write_markdown(self, &mut md);
         text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
