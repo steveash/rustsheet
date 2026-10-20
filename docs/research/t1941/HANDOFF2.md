@@ -4,6 +4,10 @@ This file is the **restart point**. It is self-contained: read it top to bottom 
 chronological log, with every experiment and number, is `HANDOFF.md` (sections 1-12.20) and `README.md` in this
 directory. Where they disagree with this file, this file wins.
 
+On main only a slim subset of `docs/research/t1941/` is kept: this file, the best-set coefficient files and the
+scripts the engine cites. Everything else this file names (HANDOFF.md, README.md, the worker trees and the
+`kmyst-gam-*` probes) is on branch `agent/research/T-1941-crack-gammaln-gamma-ln`.
+
 - **Branch:** `agent/research/T-1941-crack-gammaln-gamma-ln` (research only; never force-push; commits are
   `T-1941: ...` with the Co-Authored-By / Claude-Session trailers).
 - **Task:** `docs/tasks/M9/T-1941-crack-excel-s-gammaln-gamma-and-ln-kernels.md`; continuation task: see section 10.
