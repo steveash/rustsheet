@@ -45,10 +45,30 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
         integer += 1.0;
         numerator = 0.0;
     }
-    let blank = has_integer && numerator == 0.0;
+    let integer_kinds = placeholder_kinds(&tokens[..fraction.numerator_start]);
+    let numerator_kinds =
+        placeholder_kinds(&tokens[fraction.numerator_start..fraction.numerator_end]);
+    let denominator_kinds: &[char] = match &fraction.denominator {
+        Denominator::Fixed(_) => &[],
+        Denominator::Placeholders(kinds) => kinds,
+    };
+    // A zero numerator blanks the fraction unless a `0` placeholder prints it (`# 00/16` on 0 is
+    // "00/16"; `#\:0=/=#` on 1 "1:0=/=1", poi/NumberFormatTests A258).
+    let blank = has_integer && numerator == 0.0 && !numerator_kinds.contains(&'0');
+    let sharp_numerator = numerator_kinds.first() == Some(&'#');
+    let last_integer_kind = integer_kinds.last().copied();
+    // A blank fraction prints as spaces of its width, or as nothing under a `#` numerator with
+    // neither a `?` integer nor a `?` in the denominator (`#\:#=/=?` and `?\:#=/=#` on 1 are
+    // "1      ", `#\:#=/=#`, `#\:#=/=0` and `0\:#=/=#` "1"; poi/NumberFormatTests A253, A261,
+    // A252, A254, A270).
+    let blank_spaces =
+        !sharp_numerator || denominator_kinds.contains(&'?') || last_integer_kind == Some('?');
     let integer_digits = match (integer == 0.0, numerator == 0.0) {
-        (true, true) => "0".to_owned(),
-        (true, false) => String::new(),
+        // A blank fraction leaves the integer printing even under `#`; a printed zero numerator
+        // drops a zero integer under `#` and keeps it under `?` (`#\:0=/=#` on 0 is "0=/=1",
+        // `?\:0=/=#` "0:0=/=1"; poi/NumberFormatTests A204, A213).
+        (true, true) if blank || last_integer_kind != Some('#') => "0".to_owned(),
+        (true, _) => String::new(),
         // Past 15 significant digits Excel prints zeros, as for any number format.
         (false, _) => format!("{}", to_precision(integer, 15)),
     };
@@ -62,13 +82,12 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
         Denominator::Placeholders(kinds) => fill_left(&format!("{denominator}"), kinds),
     };
 
-    let integer_kinds = placeholder_kinds(&tokens[..fraction.numerator_start]);
-    let numerator_kinds = placeholder_kinds(&tokens[fraction.numerator_start..fraction.slash]);
-    // Under a `#` numerator a blank fraction prints nothing, and the literals between the integer
-    // and the fraction print only when both sides do (`# #/#` on 0.5 is "1/2", on 1234567890
-    // "1234567890"; gen-m10 039accab K8, K2).
-    let sharp_numerator = numerator_kinds.first() == Some(&'#');
-    let drop_separator = sharp_numerator && (blank || integer_digits.is_empty());
+    let separator = separator_kind(
+        blank.then_some(blank_spaces),
+        !integer_digits.is_empty(),
+        last_integer_kind,
+        numerator_kinds.first().copied(),
+    );
     let mut text = String::new();
     if negative {
         text.push('-');
@@ -83,27 +102,22 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
         .rposition(|t| matches!(t, TextToken::Digit(_)))
         .map_or(0, |i| i + 1);
     for (index, token) in tokens.iter().enumerate() {
-        let in_fraction = (fraction.numerator_start..=fraction.slash).contains(&index);
-        let separator = (integer_end..fraction.numerator_start).contains(&index);
+        if index == fraction.denominator_at {
+            push_denominator(&mut text, &denominator_text, blank, blank_spaces);
+        }
+        let in_fraction = (fraction.numerator_start..fraction.denominator_at).contains(&index);
+        let in_separator = has_integer && (integer_end..fraction.numerator_start).contains(&index);
         match token {
-            _ if separator && drop_separator && has_integer => {}
+            _ if in_separator && separator == Separator::Dropped => {}
+            _ if in_separator && separator == Separator::Spaces => push_spaces(&mut text, token),
             TextToken::Digit(_) if index < fraction.numerator_start => {
                 text.push_str(&integer_fill.next().unwrap_or_default());
             }
-            _ if in_fraction && blank && sharp_numerator => {}
-            _ if in_fraction && blank => {
-                // Every placeholder and the `/` take one column.
-                text.push(' ');
-                if index == fraction.slash {
-                    text.extend(denominator_text.chars().map(|_| ' '));
-                }
-            }
+            _ if in_fraction && blank && !blank_spaces => {}
+            // Every placeholder and literal of a blank fraction takes its width in spaces.
+            _ if in_fraction && blank => push_spaces(&mut text, token),
             TextToken::Digit(_) if in_fraction => {
                 text.push_str(&numerator_fill.next().unwrap_or_default());
-            }
-            TextToken::Literal('/') if index == fraction.slash => {
-                text.push('/');
-                text.push_str(&denominator_text);
             }
             TextToken::Literal(c) => text.push(*c),
             TextToken::Text(t) => text.push_str(t),
@@ -111,7 +125,60 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
             _ => {}
         }
     }
+    if fraction.denominator_at == tokens.len() {
+        push_denominator(&mut text, &denominator_text, blank, blank_spaces);
+    }
     text
+}
+
+/// How the separator (the literals between the integer part and the numerator) prints, given
+/// whether the fraction is blank and blanks to spaces (`blank`), whether the integer prints digits,
+/// and the kinds of the last integer and the first numerator placeholders. A blank fraction takes
+/// its separator with it. Where the integer prints no digit the separator prints under a `0`
+/// integer, turns into spaces under a `?` integer or before a `?` numerator, and is dropped
+/// otherwise (`# #/#` on 0.5 is "1/2", gen-m10 039accab K8; `#\:?=/=#` on 0.75 " 3=/=4",
+/// `?\:#=/=#` "  3=/=4", `0\:#=/=#` "0:3=/=4", poi/NumberFormatTests A228, A234, A243).
+fn separator_kind(
+    blank: Option<bool>,
+    integer_prints: bool,
+    last_integer_kind: Option<char>,
+    first_numerator_kind: Option<char>,
+) -> Separator {
+    match blank {
+        Some(true) => Separator::Spaces,
+        Some(false) => Separator::Dropped,
+        None if integer_prints || last_integer_kind == Some('0') => Separator::Printed,
+        None if last_integer_kind == Some('?') || first_numerator_kind == Some('?') => {
+            Separator::Spaces
+        }
+        None => Separator::Dropped,
+    }
+}
+
+/// How the literals between a fraction's integer part and its numerator print.
+#[derive(PartialEq)]
+enum Separator {
+    Printed,
+    Spaces,
+    Dropped,
+}
+
+/// Pushes the denominator, or its width in spaces (or nothing) for a blank fraction.
+fn push_denominator(text: &mut String, denominator: &str, blank: bool, blank_spaces: bool) {
+    match (blank, blank_spaces) {
+        (false, _) => text.push_str(denominator),
+        (true, true) => text.extend(denominator.chars().map(|_| ' ')),
+        (true, false) => {}
+    }
+}
+
+/// Pushes one space per column `token` would take.
+fn push_spaces(text: &mut String, token: &TextToken) {
+    let width = match token {
+        TextToken::Text(t) => t.chars().count(),
+        _ => 1,
+    };
+    text.extend(std::iter::repeat_n(' ', width));
 }
 
 /// The last continued-fraction convergent `(p, q)` of `x >= 0` whose denominator is at most
@@ -190,16 +257,19 @@ fn fill(digits: &str, kinds: &[char]) -> Vec<String> {
         .collect()
 }
 
-/// Like [`fill`] for a denominator: `digits` left-aligned, and each placeholder past them prints
-/// nothing (`#`), a space (`?`) or a zero (`0`): `# ???/???` on 1.5 is "1   1/2  ".
+/// Like [`fill`] for a denominator: each placeholder past `digits` prints nothing (`#`), a space
+/// after the digits (`?`) or a zero before them (`0`): `# ???/???` on 1.5 is "1   1/2  ", `?/00`
+/// on 1.5 "3/02" (number-formats.md "Fraction formats", probes/fraction-format-features B13) and
+/// `#\:? ?0#/000` on 23.75 "2:3  03/004" (poi/NumberFormatTests A160).
 fn fill_left(digits: &str, kinds: &[char]) -> String {
-    let mut text = digits.to_owned();
+    let mut zeros = String::new();
+    let mut spaces = String::new();
     for kind in kinds.iter().skip(digits.chars().count()) {
         match kind {
-            '?' => text.push(' '),
-            '0' => text.push('0'),
+            '?' => spaces.push(' '),
+            '0' => zeros.push('0'),
             _ => {}
         }
     }
-    text
+    format!("{zeros}{digits}{spaces}")
 }

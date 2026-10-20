@@ -280,3 +280,14 @@ Status: VERIFIED (web)
 Implemented in: tools/src/rustsheet_tools/spec2xlsx.py (`table_refs_to_file_form`, `_totals_column`); the engine
 reads `[#This Row]`; `Table[]` is T-1674.
 Tasks: T-1607
+
+## A table part without a name attribute is named by its displayName
+Rule: Excel opens a workbook whose `xl/tables/tableN.xml` has `displayName` but no `name` attribute (as
+LibreOffice writes it), and its formulas reach the table by the displayName: `SUBTOTAL(109,Таблица1[Sum for Q3])`
+in the totals row of `<table displayName="Таблица1" ref="A2:E13" totalsRowCount="1">` computes.
+Evidence: poi/LIBRE_OFFICE-128382-0.xlsx Basic features!B13:E13 (19239.04, 25215.790000000005, 28393.92,
+27527.01; excel-graph, 2026-10-04, eval/suites/poi/oracle/LIBRE_OFFICE-128382-0.oracle.json).
+Ours: the import fails ("Corrupt XML structure: missing table name"), and `import/tables.rs` reads the display
+name from `name` too.
+Status: VERIFIED (web)
+Tasks: T-2208
