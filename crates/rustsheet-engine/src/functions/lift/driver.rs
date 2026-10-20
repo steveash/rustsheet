@@ -3,7 +3,7 @@
 //! the in-place single-grid path and the text budget.
 
 use super::arg_buf::ArgBuf;
-use super::kinds::{CallResult, KernelWork};
+use super::kinds::{ArgValue, CallResult, KernelWork};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
@@ -112,8 +112,8 @@ pub(crate) enum LiftCost {
 }
 
 /// The kernel units the computed `elements` of a `rows` x `columns` broadcast are charged before
-/// any runs: `elements` times the table weight, or for [`KernelWork::ByArg`] the sum of each
-/// element's charge by its argument's value. That sum runs over every element, reused or not, so
+/// any runs: `elements` times the table weight, or for [`KernelWork::ByValue`] the sum of each
+/// element's charge by its argument values. That sum runs over every element, reused or not, so
 /// it never charges less than the elements computed; it is one pass over the grid, O(elements).
 pub(super) fn kernel_units(
     work: KernelWork,
@@ -122,59 +122,24 @@ pub(super) fn kernel_units(
     columns: usize,
     elements: u64,
 ) -> u64 {
-    let KernelWork::ByArg { arg, cap, weight } = work else {
+    let KernelWork::ByValue(work) = work else {
         return elements.saturating_mul(work.weight());
     };
-    let charge = |value: ArgCharge| -> u64 {
-        let order = match value {
-            // Past the cap the kernel refuses the order before it loops.
-            ArgCharge::Number(n) if (0.0..=f64::from(cap)).contains(&n.trunc()) => n.trunc(),
-            ArgCharge::Text => f64::from(cap),
-            ArgCharge::Number(_) | ArgCharge::Other => 0.0,
-        };
-        // `order` is a whole number in [0, cap], so the cast is exact.
-        let order = order as u64;
-        1 + order.saturating_mul(u64::from(weight)) / u64::from(cap.max(1))
-    };
-    match lifted.get(arg) {
-        Some(grid @ LiftedArg::Grid(_)) => {
-            let mut units: u64 = 0;
-            for row in 0..rows {
-                for column in 0..columns {
-                    let node = grid.element(row, column);
-                    units = units.saturating_add(charge(ArgCharge::of_node(node)));
-                }
-            }
-            units
-        }
-        Some(LiftedArg::Scalar(value)) => elements.saturating_mul(charge(ArgCharge::of(value))),
-        None => elements,
-    }
-}
-
-/// What a [`KernelWork::ByArg`] argument's value is, for its charge.
-enum ArgCharge {
-    Number(f64),
-    Text,
-    Other,
-}
-
-impl ArgCharge {
-    fn of(value: &CalcResult) -> Self {
-        match value {
-            CalcResult::Number(n) => ArgCharge::Number(*n),
-            CalcResult::String(_) => ArgCharge::Text,
-            _ => ArgCharge::Other,
+    let mut units: u64 = 0;
+    for row in 0..rows {
+        for column in 0..columns {
+            let value = |index: usize| {
+                lifted.get(index).map(|arg| match arg {
+                    LiftedArg::Scalar(value) => ArgValue::of(value),
+                    LiftedArg::Grid(grid) => {
+                        ArgValue::of_node(bcast_get(grid, row, column).unwrap_or(&MISSING))
+                    }
+                })
+            };
+            units = units.saturating_add(work.units(value));
         }
     }
-
-    fn of_node(node: Option<&ArrayNode>) -> Self {
-        match node {
-            Some(ArrayNode::Number(n)) => ArgCharge::Number(*n),
-            Some(ArrayNode::String(_)) => ArgCharge::Text,
-            _ => ArgCharge::Other,
-        }
-    }
+    units
 }
 
 /// Which elements reuse an earlier element's result instead of running the kernel.
