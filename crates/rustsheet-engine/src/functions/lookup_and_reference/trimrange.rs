@@ -257,13 +257,17 @@ impl Model {
         }
 
         let (num_rows, num_cols) = (data.len(), data[0].len());
-        // Excel: an all-blank source keeps its full extent while trim_rows is 0, whatever
-        // trim_cols is (`TRIMRANGE(C20:C21,0)` is the 2x1 range, `TRIMRANGE(C20:C21,3,0)` is
-        // #REF!); see docs/excel-semantics/lookup.md "TRIMRANGE lifted over an array, a computed
-        // reference or an error" (probes/trimrange-lift-edge-sources; a single column only, other
-        // shapes are TODO(T-2127)).
-        if non_blank.is_none() && trim_rows == 0 {
-            return Ok((0..num_rows, 0..num_cols));
+        // Excel: an all-blank source keeps its full extent when nothing is trimmed, or when only
+        // the single-cell axis of a line is trimmed (`TRIMRANGE(C20:C21,0,3)` is the 2x1 range,
+        // `TRIMRANGE(C25:E25,3,0)` the 1x3); every other trim is #REF!, also for a 1x1, a 2x3
+        // and `TRIMRANGE(C20:C21,3,0)`. See docs/excel-semantics/lookup.md "TRIMRANGE lifted over
+        // an array, a computed reference or an error" (probes/t2127-trimrange-blank-shapes).
+        if non_blank.is_none() {
+            let across_column = trim_rows == 0 && num_cols == 1 && num_rows > 1;
+            let across_row = trim_cols == 0 && num_rows == 1 && num_cols > 1;
+            if (trim_rows == 0 && trim_cols == 0) || across_column || across_row {
+                return Ok((0..num_rows, 0..num_cols));
+            }
         }
         // Trimming a mode removes leading blanks (1), trailing (2) or both (3); with no value
         // at all the leading edge is past the end and the trailing one before the start.

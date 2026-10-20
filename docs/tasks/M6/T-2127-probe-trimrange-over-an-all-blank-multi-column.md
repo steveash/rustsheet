@@ -3,7 +3,7 @@ id: T-2127
 title: "Probe TRIMRANGE over an all-blank multi-column or single-row source with trim_rows 0"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ T-2120 probed only the single column C20:C21: `TRIMRANGE(C20:C21,0)` and `(…,0
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/t2127-trimrange-blank-shapes` (excel-graph): an all-blank source is kept only for no trim or a trim across the
+thin axis of a line (2x1 by columns, 1x3 by rows); 2x3 and 1x1 are `#REF!` for any trim. The engine's old generalization
+(keep while trim_rows is 0) was wrong for multi-column sources; `trim_of` fixed, lookup.md updated.
