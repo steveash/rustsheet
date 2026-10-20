@@ -3,7 +3,7 @@ id: T-2115
 title: "Probe SHEETS with reference arguments and INFO type_text values on excel-graph (oracle: none evidence gap)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -68,3 +68,15 @@ Open question (why I stopped): decision 0039 makes excel-graph the oracle of rec
 look like Excel-for-the-web gaps (compare `_WEB_UNSUPPORTED` for CELL("width")). Opus should decide: treat as goldens, or refuse
 INFO/multi-sheet SHEETS in the canary like CELL("width"), record the web gap in information.md, and file an M14 desktop item.
 The 20-cell floor for INFO cannot be met honestly from web values if they are the gap. Next: refill with `rustsheet-oracle fill -b excel-graph --suite probes`, decide, then docs + `make eval-baseline`.
+
+## Outcome
+probes/info-sheets-info-types (excel-graph, 2026-10-20) holds 24 SHEETS cells and 3 SUM/COUNT 3-D controls, all
+Excel-valued, so SHEETS clears the 20-cell floor. The first fills used sheets named S1:S3, which Excel for the web
+reads as cell references in an unquoted span (`SUM(S1:S3!A1)` was `#VALUE!`). That artifact was behind the handoff's
+"3-D SHEETS is #VALUE!". With sheets Alpha, Beta, Gamma and Data, SHEETS counts spans in either order
+(information.md "SHEETS counts the sheets a reference spans").
+INFO cannot meet the floor from the web: Excel for the web gives `#VALUE!` for every type_text, valid ones included.
+Following the `CELL("width")` precedent, the INFO rows were dropped, the oracle canary now refuses every INFO call as
+web-unsupported (tested), information.md records the gap, and T-2182 (M14, blocked on the desktop oracle) asks
+desktop Excel. The engine's `#N/IMPL!` for `SHEETS(ref)` is T-2181 (M5, functions-logic).
+Eval: probes 1696 -> 1720 known failures, all 24 of them new-coverage SHEETS cells owned by T-2181. No regressions.
