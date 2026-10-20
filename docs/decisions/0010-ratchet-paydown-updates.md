@@ -194,5 +194,7 @@
   literal table is now built from the shared `excel_log10` kernel.
   T-1723: duplicated lines 3619 -> 3318 (`check_duplication.py --update`): CORREL, PEARSON, RSQ, SLOPE, INTERCEPT,
   STEYX and FORECAST share one `PairedMoments` instead of seven copies of their sums loop.
+  steward 2026-10-20: the duplication lock was loose on main. Duplicated lines 3318 -> 3294
+  (`check_duplication.py --update`), from code merged since T-1723; no code change in this PR.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
