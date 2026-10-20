@@ -3,7 +3,7 @@ id: T-1404
 title: "SKEW.P of two numbers is #DIV/0!, not 0 (probe the bound)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Semantics: docs/excel-semantics/statistics.md "SKEW.P of two numbers is #DIV/0!"
 
 ## Out of scope
 -
+
+## Outcome
+SKEW.P now needs three numbers (`n < 3` is `#DIV/0!`), probed in probes/skew-p-bound (excel-graph): two numbers `#DIV/0!`, three give 0, constant series `#DIV/0!`. the probe's 14 cells pass and stats-evidence-floor-t1623 Q16, Q19 are fixed.

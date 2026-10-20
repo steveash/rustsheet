@@ -1793,9 +1793,13 @@ reload; `=NLG1(1)` is `#REF!` (test_legacy_n_t_marker.rs). The new spelling is e
 Stored text cannot tell T-1851's spelling (`_RS_LEGACY_N(`) from a call of a name of it, so it is no
 longer read as the marker: a legacy N/T marked in a model file saved between T-1851 and T-1936
 (2026-10-18/19) reloads as that name call, `#NAME?` without the name; re-import the xlsx to restore it.
+Since T-1997 a loaded workbook may define such a name (`Model::define_loaded_name`, `Txn::load_defined_name`) and
+its formulas read the cell; `define_name` and the Name Manager path still refuse it. Only `NLG1` and `TLG1` were
+probed: accepting every A1-spelled name on load is inferred from them, and that Excel's Name Manager refuses to
+create one is unverified.
 Status: VERIFIED (excel-graph)
-Implemented in: functions/kinds.rs (`LEGACY_SPELLINGS`, `Function::from_legacy_spelling`); expressions/parser/operands.rs (`parse_named_call`)
-Tasks: T-1851, T-1912, T-1936
+Implemented in: functions/kinds.rs (`LEGACY_SPELLINGS`, `Function::from_legacy_spelling`); expressions/parser/operands.rs (`parse_named_call`); defined_names.rs (`define_loaded_name`); expressions/utils/mod.rs (`is_cell_spelled_name`)
+Tasks: T-1851, T-1912, T-1936, T-1997
 
 ## `@` of a non-reference array as a function argument is its top-left value
 Rule (probes/rank-at-if-ref, excel-graph, 2026-10-15, T-1596): where an argument takes a reference (aggregates, RANK's `ref`,
