@@ -1,7 +1,8 @@
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ArrayNumbers, CellNumbers, DirectNumbers, ErrorRule, NumberRules,
+    AggregatePolicy, ArgReading, ArrayNumbers, CellNumbers, DirectNumbers, ErrorRule, GridReading,
+    NumberRules,
 };
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -14,6 +15,7 @@ const VARA_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
+    grids: GridReading::Values,
 };
 
 /// A referenced cell coerces (text 0, booleans 1/0), a direct value casts like the other

@@ -279,23 +279,32 @@ impl RefGrid {
         self.elements.get(row * self.columns + column)
     }
 
+    /// The elements in row-major order.
+    pub(crate) fn elements(&self) -> &[RefElement] {
+        &self.elements
+    }
+
     /// The value view (SPEC-0014 rule 2): every reference element is `#VALUE!` and an error
     /// element is itself, so `=OFFSET(A1,{0;1},0)` spills two `#VALUE!` (probes/
     /// reference-lift-elements K1, K4, K13).
     pub(crate) fn to_values(&self) -> CalcResult {
-        CalcResult::Array(
-            self.elements
-                .chunks(self.columns)
-                .map(|row| {
-                    row.iter()
-                        .map(|element| match element {
-                            RefElement::Reference(_) => ArrayNode::Error(Error::VALUE),
-                            RefElement::Error(error) => ArrayNode::Error(error.clone()),
-                        })
-                        .collect()
-                })
-                .collect(),
-        )
+        CalcResult::Array(self.to_array(ArrayNode::Error(Error::VALUE)))
+    }
+
+    /// The grid as array rows: every reference element is `reference`, an error element is
+    /// itself.
+    pub(crate) fn to_array(&self, reference: ArrayNode) -> Vec<Vec<ArrayNode>> {
+        self.elements
+            .chunks(self.columns)
+            .map(|row| {
+                row.iter()
+                    .map(|element| match element {
+                        RefElement::Reference(_) => reference.clone(),
+                        RefElement::Error(error) => ArrayNode::Error(error.clone()),
+                    })
+                    .collect()
+            })
+            .collect()
     }
 }
 
