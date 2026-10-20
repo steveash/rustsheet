@@ -445,14 +445,15 @@ the Kelvin sign U+212A does not match `k` in either direction (`TEXTBEFORE("a"&U
 U+212A against "akbkc" is `#N/A`), `ß` does not match `ss` (`TEXTBEFORE("aßbSSc","ss",1,1)` is "aßb") and `ẞ` (U+1E9E) does not match
 the delimiter `ß` (`TEXTBEFORE("assbẞc","ß",1,1)` is `#N/A`, although `ẞ` lowercases to `ß`), and `Ä` matches `ä`
 (`TEXTBEFORE("ÄxäyÄ","ä",2,1)` is "Äx"). The result is cut from the original text, so it keeps its case. Positive and negative
-instance numbers behave the same on `"İİİ,a,b"`. Sigma is positional, unlike TEXTSPLIT and SEARCH: `Σ` followed by a letter is `σ`, any
-other `Σ` is `ς`, and `ς` is only `ς`. So the delimiter `Σ` alone matches a text `ς` but not `σ`, the delimiter `ς` matches a final `Σ`
+instance numbers behave the same on `"İİİ,a,b"`. Sigma is positional, unlike TEXTSPLIT and SEARCH, with LOWER's final-sigma rule: `Σ` followed by a letter or digit is `σ`, any
+other `Σ` (end of text, space, punctuation) is `ς`, and `ς` is only `ς`. So the delimiter `Σ` alone matches a text `ς` but not `σ`, the delimiter `ς` matches a final `Σ`
 ("aΟΣ") but neither `σ` nor a `Σ` followed by a letter, and the delimiter `σ` matches a `Σ` followed by a letter but not `ς`.
-Evidence: probes/textbefore-casefold-length A1-A25 (excel-graph, 2026-10-17, T-1796).
+The same holds for the text and a delimiter that are both `Σ` (`TEXTBEFORE("aΣb","Σ",1,1)` is `#N/A`: the text's `Σ` is `σ`, the lone delimiter `Σ` is `ς`), and for TEXTAFTER.
+A `Σ` before a digit is `σ` (`TEXTBEFORE("ΟΔΟΣ1","σ",1,1)` is "ΟΔΟ", delimiter `ς` is `#N/A`); before a space or a comma it is `ς` (`"ΟΔΟΣ ΚΑΙ"` and `"ΟΔΟΣ,Α"` match `ς`, not `σ`).
+Evidence: probes/textbefore-casefold-length A1-A25 (excel-graph, 2026-10-17, T-1796); probes/textbefore-sigma-contexts A1-A18 (excel-graph, 2026-10-19, T-1799).
 Ours: `fold_for_before_after` (text/casefold.rs) folds char by char with `fold_for_split`'s İ/Kelvin exceptions plus the sigma and `ẞ` rules,
 and `match_text` (util.rs) maps the match back to byte offsets of the original with `str::get`. Before T-1796 it searched `to_lowercase()` of the text
-and sliced the original at those offsets, which panicked on `TEXTBEFORE("İİİ,a",",",1,1)`. UNVERIFIED: a delimiter with the same `Σ` as the text, which our separate folds miss (`TEXTBEFORE("aΣb","Σ",1,1)` is `#N/A` here: the text's `Σ` is `σ`, the lone delimiter `Σ` is `ς`), and a `Σ` followed by a space, digit or punctuation (`"ΟΔΟΣ ΚΑΙ"`; only a `Σ` at the end of the text is probed, A25), both T-1799; the exact sigma context rule
-(whether a `Σ` after a non-letter, or before a combining mark, is final; the code ignores what precedes it), the folding of other chars (Å U+212B, ſ, µ,
+and sliced the original at those offsets, which panicked on `TEXTBEFORE("İİİ,a",",",1,1)`. Ours: the final-sigma rule is `sigma_is_final` (string_format.rs), shared with LOWER. UNVERIFIED: whether a `Σ` before a combining mark, `’` or a zero-width space is `σ` (LOWER's rule, assumed), whether a letter must precede the `Σ` (the code ignores what precedes it), the folding of other chars (Å U+212B, ſ, µ,
 titlecase digraphs, which follow SEARCH's `fold_char`), `ẞ` against the delimiter `ß`'s mirror (text `ß`, delimiter `ẞ`), and whether TEXTSPLIT shares the
 `ẞ` and sigma rules (its probe has no such cell).
 Status: VERIFIED (web) for the listed forms
@@ -642,11 +643,11 @@ U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]
 `(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
 `a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
-Ours: matches except that `[[:alpha:]]` and `[[:word:]]` are ASCII (A15, A16), `(*UCP)`, `\X`, `\h` and `\R` are
-`#VALUE!` (A17, A27, A41, A42) and `$` does not match before a final LF (A34): the POSIX classes are T-1903's, the
-rest the matcher work of T-1898-T-1900.
+Ours: matches (the POSIX classes since T-1903) except that `(*UCP)`, `\X`, `\h` and `\R` are `#VALUE!` (A17, A27,
+A41, A42) and `$` does not match before a final LF (A34): SPEC-0013 gives `$`, `\h` and `(*UCP)` to T-1973 and
+`\X` and `\R` to a follow-up task after T-1900.
 Status: VERIFIED (excel-graph)
-Tasks: T-1829 (probe), T-1900, T-1903
+Tasks: T-1829 (probe), T-1900, T-1903, T-1973
 
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
@@ -664,10 +665,10 @@ ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around 
 Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
 Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, atomic groups, `\K`, conditionals and
 comments as invalid (`#VALUE!`), reads `a++` as `a+` followed by `+` (so `a++a` matches `aaa`, C11, B29), and
-iterates as Rust does (`bababab`). The matcher is T-1898
-(spec), T-1899 (iteration) and T-1900 (pattern features).
+iterates as Rust does (`bababab`). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
+unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
 Status: VERIFIED (excel-graph)
-Tasks: T-1688, T-1898, T-1899, T-1900
+Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
