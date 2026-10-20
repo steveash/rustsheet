@@ -28,10 +28,10 @@ use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
 use crate::functions::lift::{number_or_error, number_result, LiftCost};
 use crate::functions::Function;
 
-/// The cash flows a lifted NPV, IRR or MIRR element walks, at least 1: what the call is charged
-/// per element (`LiftCost::Cells`).
-fn flow_count(flows: &Result<Vec<f64>, CalcResult>) -> u64 {
-    let count = flows.as_ref().map_or(1, |flows| flows.len().max(1));
+/// The cash flows (or FVSCHEDULE's rates) a lifted NPV, IRR, MIRR, XNPV, XIRR or FVSCHEDULE
+/// element walks, at least 1: what the call is charged per element (`LiftCost::Cells`).
+fn flow_count(flows: Result<&[f64], &CalcResult>) -> u64 {
+    let count = flows.map_or(1, |flows| flows.len().max(1));
     u64::try_from(count).unwrap_or(u64::MAX)
 }
 
@@ -252,7 +252,7 @@ impl Model {
         self.lift_call_costed(
             Function::Npv,
             args,
-            LiftCost::Cells(flow_count(&flows)),
+            LiftCost::Cells(flow_count(flows.as_deref())),
             cell,
             &mut |model, values| {
                 let rate = match values.first() {
@@ -331,7 +331,7 @@ impl Model {
         self.lift_call_costed(
             Function::Irr,
             args,
-            LiftCost::Cells(flow_count(&flows)),
+            LiftCost::Cells(flow_count(flows.as_deref())),
             cell,
             &mut |model, values| {
                 let flows = match &flows {
@@ -347,134 +347,78 @@ impl Model {
         )
     }
 
-    // XNPV(rate, values, dates)
+    /// `XNPV(rate, values, dates)`: the rate lifts over arrays (a multi-cell range is refused);
+    /// the values and dates are read once, whole, and handed to every element, whose rate is
+    /// checked first, the scalar order (T-1843).
     pub(crate) fn fn_xnpv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // All three are required (docs/excel-semantics/syntax.md, "Minimum argument counts").
-        let [rate, values, dates] = args else {
+        let [_, values, dates] = args else {
             return CalcResult::new_args_number_error(cell);
         };
-        let rate = match self.get_number(rate, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let values = match self.get_array_of_numbers_xpnv(values, &cell, Error::NUM) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let dates = match self.get_array_of_numbers_xpnv(dates, &cell, Error::VALUE) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        // Decimal points on dates are truncated
-        let dates: Vec<f64> = dates.iter().map(|s| s.floor()).collect();
-        let values_count = values.len();
-        // If values and dates contain a different number of values, XNPV returns the #NUM! error value.
-        if values_count != dates.len() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Values and dates must be the same length".to_string(),
-            );
-        }
-        if values_count == 0 {
-            return CalcResult::new_error(Error::NUM, cell, "Not enough values".to_string());
-        }
-        let first_date = dates[0];
-        for date in &dates {
-            if *date < MINIMUM_DATE_SERIAL_NUMBER as f64
-                || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64
-            {
-                // Excel docs claim that if any number in dates is not a valid date,
-                // XNPV returns the #VALUE! error value, but it seems to return #VALUE!
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid number for date".to_string(),
-                );
-            }
-            // If any number in dates precedes the starting date, XNPV returns the #NUM! error value.
-            if date < &first_date {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Date precedes the starting date".to_string(),
-                );
-            }
-        }
-        // It seems Excel returns #NUM! if rate < 0, this is only necessary if r <= -1
-        if rate <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "rate needs to be > 0".to_string());
-        }
-        match compute_xnpv(rate, &values, &dates) {
-            Ok(f) => CalcResult::Number(f),
-            Err((error, message)) => CalcResult::new_error(error, cell, message),
-        }
+        let flows = self
+            .get_array_of_numbers_xpnv(values, &cell, Error::NUM)
+            .and_then(|values| {
+                let dates = self.get_array_of_numbers_xpnv(dates, &cell, Error::VALUE)?;
+                Ok((values, dates))
+            })
+            .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Xnpv,
+            args,
+            LiftCost::Cells(flow_count(
+                flows.as_ref().map(|(values, _)| values.as_slice()),
+            )),
+            cell,
+            &mut |model, values| {
+                let rate = match values.first() {
+                    Some(rate) => model.cast_number_ref(rate, cell),
+                    None => Err(CalcResult::new_args_number_error(cell)),
+                };
+                match (rate, &flows) {
+                    (Err(error), _) => error,
+                    (Ok(_), Err(error)) => error.clone(),
+                    (Ok(rate), Ok((values, dates))) => {
+                        number_result(xnpv_of(rate, values, dates), cell)
+                    }
+                }
+            },
+        )
     }
 
-    // XIRR(values, dates, [guess])
+    /// `XIRR(values, dates, [guess])`: the guess lifts over arrays (a multi-cell range is
+    /// refused); the values and dates are read once, whole, and an error in them is every
+    /// element's, before the guess's, the scalar order (T-1843). Each element may run the bracket
+    /// walks and the bisection over the flows, so the call is charged their count per element,
+    /// weighted by the table's `XIRR_WEIGHT`.
     pub(crate) fn fn_xirr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(2..=3).contains(&arg_count) {
+        let ([values, dates] | [values, dates, _]) = args else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let values = match self.get_array_of_numbers_xirr(&args[0], &cell) {
-            Ok(s) => s,
-            Err(error) => return error,
         };
-        let dates = match self.get_array_of_numbers_xirr(&args[1], &cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let guess = if arg_count == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            0.1
-        };
-        // Decimal points on dates are truncated
-        let dates: Vec<f64> = dates.iter().map(|s| s.floor()).collect();
-        let values_count = values.len();
-        // If values and dates contain a different number of values, XNPV returns the #NUM! error value.
-        if values_count != dates.len() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Values and dates must be the same length".to_string(),
-            );
-        }
-        if values_count == 0 {
-            return CalcResult::new_error(Error::NUM, cell, "Not enough values".to_string());
-        }
-        // Excel reads an empty value or date cell as 0 and accepts date 0 and dates before the
-        // first one, but is #NUM! for a negative date, a date past 9999-12-31, or when no date is
-        // later than the first: {-1000,1100} on {0,45365} is 1.1^(365/45365) - 1,
-        // {-1000,1100,-1000} on {45000,45365,44000} is -0.2467, and {-1000,1100} on
-        // {45365,45000} is #NUM! although it has a root (financial.md, "XIRR reads empty cells as
-        // 0 and accepts earlier dates"; probes/xirr-mismatched-empties, xirr-early-dates; T-1124).
-        let first_date = dates[0];
-        if dates
-            .iter()
-            .any(|date| *date < 0.0 || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64)
-        {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid number for date".to_string());
-        }
-        if !dates.iter().any(|date| *date > first_date) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "No date is later than the starting date".to_string(),
-            );
-        }
-        match compute_xirr(&values, &dates, guess) {
-            Ok(f) => CalcResult::Number(f),
-            Err((error, message)) => CalcResult::Error {
-                error,
-                origin: cell,
-                message,
+        let flows = self
+            .get_array_of_numbers_xirr(values, &cell)
+            .and_then(|values| {
+                let dates = self.get_array_of_numbers_xirr(dates, &cell)?;
+                Ok((values, dates))
+            })
+            .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Xirr,
+            args,
+            LiftCost::Cells(flow_count(
+                flows.as_ref().map(|(values, _)| values.as_slice()),
+            )),
+            cell,
+            &mut |model, arguments| {
+                let (values, dates) = match &flows {
+                    Ok(flows) => flows,
+                    Err(error) => return error.clone(),
+                };
+                match model.cast_number_or(arguments.get(2), 0.1, cell) {
+                    Ok(guess) => number_result(xirr_of(values, dates, guess), cell),
+                    Err(error) => error,
+                }
             },
-        }
+        )
     }
 
     fn get_yearfrac(
@@ -536,25 +480,20 @@ impl Model {
         Ok((a, dim, dim - a))
     }
 
-    // FVSCHEDULE(principal, schedule)
+    /// `FVSCHEDULE(principal, schedule)`: the principal lifts over arrays (a multi-cell range is
+    /// refused); the schedule is read once, whole, and handed to every element, whose principal
+    /// is checked first, the scalar order (T-1843).
     pub(crate) fn fn_fvschedule(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
+        let [_, schedule] = args else {
             return CalcResult::new_args_number_error(cell);
-        }
-        // A boolean principal is #VALUE!, though a text number is converted
-        // (probes/fin-fvschedule A18, A9).
-        let principal = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
         };
         // Excel: text in the schedule, in a range or an array literal, is #VALUE!
         // (probes/fin-argument-modes H382-H384).
         // Typed text that reads as a number is a one-rate schedule: `FVSCHEDULE(1000,"0.1")`,
         // `("0.1")` and `T("0.1")` are 1100, `"x"` and `TRUE` are #VALUE!
         // (probes/npv-fvschedule-typed A12, A13; probes/npv-fvschedule-edges A3, A4, A6).
-        let not_a_number =
-            || CalcResult::new_error(Error::VALUE, cell, "Expected number".to_string());
-        let parsed = match self.evaluate_node_in_context(&args[1], cell) {
+        let not_a_number = || CalcResult::new_error(Error::VALUE, cell, String::new());
+        let schedule = match self.evaluate_node_in_context(schedule, cell) {
             CalcResult::String(text) => self
                 .cast_number(&text)
                 .map(|rate| vec![rate])
@@ -562,18 +501,92 @@ impl Model {
             result => {
                 self.array_of_numbers_from(result, &cell, true, || Ok(None), || Err(not_a_number()))
             }
-        };
-        let schedule = match parsed {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        let mut result = principal;
-        for rate in schedule {
-            result *= 1.0 + rate;
         }
-        if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
-        }
-        CalcResult::Number(result)
+        .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Fvschedule,
+            args,
+            LiftCost::Cells(flow_count(schedule.as_deref())),
+            cell,
+            &mut |model, values| {
+                // A boolean principal is #VALUE!, though a text number is converted
+                // (probes/fin-fvschedule A18, A9).
+                let principal = match values.first() {
+                    Some(principal) => model.cast_number_no_bools_ref(principal, cell),
+                    None => Err(CalcResult::new_args_number_error(cell)),
+                };
+                match (principal, &schedule) {
+                    (Err(error), _) => error,
+                    (Ok(_), Err(error)) => error.clone(),
+                    (Ok(principal), Ok(schedule)) => {
+                        let result = schedule
+                            .iter()
+                            .fold(principal, |result, rate| result * (1.0 + rate));
+                        if result.is_infinite() {
+                            return CalcResult::new_error(Error::DIV, cell, String::new());
+                        }
+                        CalcResult::Number(result)
+                    }
+                }
+            },
+        )
     }
+}
+
+/// XNPV of `values` on `dates` (each truncated to a whole day) at `rate`, with the scalar call's
+/// checks in its order: the counts, then the dates, then the rate.
+fn xnpv_of(rate: f64, values: &[f64], dates: &[f64]) -> Result<f64, Error> {
+    // Decimal points on dates are truncated
+    let dates: Vec<f64> = dates.iter().map(|s| s.floor()).collect();
+    // If values and dates contain a different number of values, XNPV returns the #NUM! error value.
+    let Some(&first_date) = dates.first() else {
+        return Err(Error::NUM);
+    };
+    if values.len() != dates.len() {
+        return Err(Error::NUM);
+    }
+    for date in &dates {
+        // Excel docs claim that if any number in dates is not a valid date,
+        // XNPV returns the #VALUE! error value, but it seems to return #NUM!.
+        // If any number in dates precedes the starting date, XNPV returns the #NUM! error value.
+        if *date < MINIMUM_DATE_SERIAL_NUMBER as f64
+            || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64
+            || *date < first_date
+        {
+            return Err(Error::NUM);
+        }
+    }
+    // It seems Excel returns #NUM! if rate < 0, this is only necessary if r <= -1
+    if rate <= 0.0 {
+        return Err(Error::NUM);
+    }
+    compute_xnpv(rate, values, &dates).map_err(|error| error.0)
+}
+
+/// XIRR of `values` on `dates` (each truncated to a whole day) from `guess`, with the scalar
+/// call's checks in its order: the counts, then the dates, then the solver's own.
+fn xirr_of(values: &[f64], dates: &[f64], guess: f64) -> Result<f64, Error> {
+    // Decimal points on dates are truncated
+    let dates: Vec<f64> = dates.iter().map(|s| s.floor()).collect();
+    // If values and dates contain a different number of values, XIRR returns the #NUM! error value.
+    let Some(&first_date) = dates.first() else {
+        return Err(Error::NUM);
+    };
+    if values.len() != dates.len() {
+        return Err(Error::NUM);
+    }
+    // Excel reads an empty value or date cell as 0 and accepts date 0 and dates before the
+    // first one, but is #NUM! for a negative date, a date past 9999-12-31, or when no date is
+    // later than the first: {-1000,1100} on {0,45365} is 1.1^(365/45365) - 1,
+    // {-1000,1100,-1000} on {45000,45365,44000} is -0.2467, and {-1000,1100} on
+    // {45365,45000} is #NUM! although it has a root (financial.md, "XIRR reads empty cells as
+    // 0 and accepts earlier dates"; probes/xirr-mismatched-empties, xirr-early-dates; T-1124).
+    if dates
+        .iter()
+        .any(|date| *date < 0.0 || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64)
+        || !dates.iter().any(|date| *date > first_date)
+    {
+        return Err(Error::NUM);
+    }
+    compute_xirr(values, &dates, guess).map_err(|error| error.0)
 }

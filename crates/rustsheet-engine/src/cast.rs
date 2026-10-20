@@ -576,16 +576,8 @@ impl Model {
         })
     }
 
-    pub(crate) fn get_number_no_bools(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<f64, CalcResult> {
-        let result = self.evaluate_node_in_context(node, cell);
-        self.cast_to_number_no_bools(result, cell)
-    }
-
-    /// [`Self::get_number_no_bools`] for an argument that is already evaluated.
+    /// [`Self::get_number`] for an argument that is already evaluated, where a boolean is
+    /// `#VALUE!`.
     pub(crate) fn cast_to_number_no_bools(
         &mut self,
         result: CalcResult,

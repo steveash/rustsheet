@@ -62,6 +62,23 @@ const IRR: ArgKinds = ArgKinds::fixed(1, &[WholeByCaller, Lift], Weighted(IRR_WE
 /// `MIRR(values, finance_rate, reinvest_rate)`: the values are read whole by the caller and one
 /// pass over them is charged per element (`LiftCost::Cells`, T-1821).
 const MIRR: ArgKinds = ArgKinds::fixed(3, &[WholeByCaller, Lift, Lift], Constant);
+/// `XNPV(rate, values, dates)`: the values and dates are read whole by the caller and one pass
+/// over them is charged per element (`LiftCost::Cells`, T-1843).
+const XNPV: ArgKinds = ArgKinds::fixed(3, &[LiftArrays, WholeByCaller, WholeByCaller], Constant);
+/// What one XIRR element is charged per cash flow (`LiftCost::Cells` of the flows): the most XNPV
+/// passes over the flows one call can make, 401 (`financial_util::compute_xirr`: XNPV(0), two
+/// bracket walks of `WALK_CAP` 100 points and the bisection's `BISECTION_CAP` 200 steps), rounded
+/// up.
+const XIRR_WEIGHT: u32 = 1 << 9;
+/// `XIRR(values, dates, [guess])`: the values and dates are read whole by the caller (T-1843).
+const XIRR: ArgKinds = ArgKinds::fixed(
+    2,
+    &[WholeByCaller, WholeByCaller, LiftArrays],
+    Weighted(XIRR_WEIGHT),
+);
+/// `FVSCHEDULE(principal, schedule)`: the schedule is read whole by the caller and one pass over
+/// it is charged per element (`LiftCost::Cells`, T-1843).
+const FVSCHEDULE: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, WholeByCaller], Constant);
 /// `ACCRINTM(issue, settlement, rate, [par], [basis])`.
 const ATP_3_OF_5: ArgKinds = ArgKinds::fixed(
     3,
@@ -328,6 +345,16 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Amorlinc => Some(&AMORLINC),
         Function::Amordegrc => Some(&AMORDEGRC),
         // --- End financial ATP (T-1841) ---
+        // --- Financial ATP (T-1843) ---
+        // XNPV's rate, XIRR's guess and FVSCHEDULE's principal lift over an array and refuse a
+        // multi-cell range (`ROWS(XNPV({0.09;0.09},K1:K5,M1:M5))`,
+        // `ROWS(XIRR(K1:K5,M1:M5,{0.1;0.1}))` and `ROWS(FVSCHEDULE({1000;1000},{0.1,0.2}))` are
+        // 2, over a range #VALUE!: probes/fin-argument-modes H137-H138, H338-H339, H341-H342),
+        // beside their whole cash flows, dates and schedule.
+        Function::Xnpv => Some(&XNPV),
+        Function::Xirr => Some(&XIRR),
+        Function::Fvschedule => Some(&FVSCHEDULE),
+        // --- End financial ATP (T-1843) ---
         _ => None,
     }
 }

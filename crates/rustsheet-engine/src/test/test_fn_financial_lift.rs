@@ -402,3 +402,112 @@ fn a_lift_over_long_cash_flows_is_refused_by_the_work_bound() {
     assert_eq!(model._get_text("C5"), "100");
     assert_eq!(model._get_text("C6"), "#ERROR!");
 }
+
+/// The cash flows of probes/fin-argument-modes: values in K1:K5, dates in J1:J5.
+const DATED_FLOWS: [(&str, &str, &str); 10] = [
+    ("K1", "-10000", "-10000"),
+    ("K2", "2750", "2750"),
+    ("K3", "4250", "4250"),
+    ("K4", "3250", "3250"),
+    ("K5", "2750", "2750"),
+    ("J1", "39448", "39448"),
+    ("J2", "39508", "39508"),
+    ("J3", "39751", "39751"),
+    ("J4", "39859", "39859"),
+    ("J5", "39904", "39904"),
+];
+
+/// XNPV's rate, XIRR's guess and FVSCHEDULE's principal lift over arrays and refuse a multi-cell
+/// range, beside their whole cash flows, dates and schedule, each element the scalar call
+/// (probes/fin-argument-modes H137-H138, H338-H339, H341-H342; T-1843).
+#[test]
+fn xnpv_xirr_and_fvschedule_lift_beside_their_whole_flows() {
+    let mut cells = DATED_FLOWS.to_vec();
+    cells.extend([
+        ("H1", "=ROWS(XNPV({0.09;0.09},K1:K5,J1:J5))", "2"),
+        ("H2", "=ROWS(XNPV(C1:C2,K1:K5,J1:J5))", "#VALUE!"),
+        (
+            "H3",
+            "=INDEX(XNPV({0.09;0.2},K1:K5,J1:J5),2)=XNPV(0.2,K1:K5,J1:J5)",
+            "TRUE",
+        ),
+        ("H4", "=ROWS(XIRR(K1:K5,J1:J5,{0.1;0.1}))", "2"),
+        ("H5", "=ROWS(XIRR(K1:K5,J1:J5,C1:C2))", "#VALUE!"),
+        (
+            "H6",
+            "=INDEX(XIRR(K1:K5,J1:J5,{0.1;0.2}),2)=XIRR(K1:K5,J1:J5,0.2)",
+            "TRUE",
+        ),
+        ("H7", "=ROWS(FVSCHEDULE({1000;1000},{0.1,0.2}))", "2"),
+        ("H8", "=ROWS(FVSCHEDULE(C1:C2,{0.1,0.2}))", "#VALUE!"),
+        ("H9", "=INDEX(FVSCHEDULE({1000;2000},{0.1,0.2}),2)", "2640"),
+        // The scalar order: XNPV's rate and FVSCHEDULE's principal before the flows, XIRR's
+        // flows before its guess. A flows error is every element's.
+        ("H10", "=INDEX(XNPV({\"x\";0.1},F4,J1),1)", "#VALUE!"),
+        ("H11", "=INDEX(XNPV({\"x\";0.1},F4,J1),2)", "#DIV/0!"),
+        ("H12", "=INDEX(XIRR(F4,J1:J5,{\"x\";0.1}),1)", "#DIV/0!"),
+        ("H13", "=INDEX(XIRR(K1:K5,J1:J5,{\"x\";0.1}),1)", "#VALUE!"),
+        ("H14", "=INDEX(FVSCHEDULE({TRUE;1000},F4),1)", "#VALUE!"),
+        ("H15", "=INDEX(FVSCHEDULE({TRUE;1000},F4),2)", "#DIV/0!"),
+        ("H16", "=FVSCHEDULE(TRUE,0.1)", "#VALUE!"),
+        ("H17", "=XNPV(0.1,K1:K5)", "#ERROR!"),
+        ("H18", "=XIRR(K1:K5)", "#ERROR!"),
+        ("H19", "=FVSCHEDULE(1000)", "#ERROR!"),
+    ]);
+    check(&cells);
+}
+
+/// The flows, dates and schedule are evaluated once per call, before the elements: random flows
+/// give every element of a constant rate the same result.
+#[test]
+fn xnpv_xirr_and_fvschedule_evaluate_their_flows_once() {
+    let mut cells = DATED_FLOWS.to_vec();
+    cells.extend([
+        (
+            "H1",
+            "=LET(x,XNPV({0.1;0.1},RANDARRAY(5),J1:J5),INDEX(x,1)=INDEX(x,2))",
+            "TRUE",
+        ),
+        (
+            "H2",
+            "=LET(x,XIRR(RANDARRAY(5)+{-10;1;1;1;1},J1:J5,{0.1;0.1}),INDEX(x,1)=INDEX(x,2))",
+            "TRUE",
+        ),
+        (
+            "H3",
+            "=LET(x,FVSCHEDULE({1;1},RANDARRAY(5)),INDEX(x,1)=INDEX(x,2))",
+            "TRUE",
+        ),
+    ]);
+    check(&cells);
+}
+
+/// Every lifted XIRR element may walk the flows up to `XIRR_WEIGHT` times, and every XNPV and
+/// FVSCHEDULE element walks them once, so a lift over long flows is `#ERROR!` before its first
+/// element.
+#[test]
+fn a_lifted_xirr_over_long_flows_is_refused_by_the_work_bound() {
+    let mut model = new_empty_model();
+    let sheet = model.workbook.worksheet_mut(0).unwrap();
+    for row in 1..=300_000 {
+        sheet
+            .set_cell_with_number(row, 1, if row == 1 { -1e9 } else { 1.0 }, 0)
+            .unwrap();
+        sheet
+            .set_cell_with_number(row, 2, 39448.0 + f64::from(row), 0)
+            .unwrap();
+    }
+    for (cell, formula) in [
+        ("C1", "=ROWS(XIRR(A1:A300000,B1:B300000,{0.1;0.1}))"),
+        ("C2", "=ROWS(XIRR(A1:A100,B1:B100,{0.1;0.1}))"),
+        ("C3", "=ROWS(XNPV(SEQUENCE(500),A1:A300000,B1:B300000))"),
+        ("C4", "=ROWS(FVSCHEDULE(SEQUENCE(500),A1:A300000))"),
+    ] {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#ERROR!");
+    assert_eq!(model._get_text("C2"), "2");
+    assert_eq!(model._get_text("C3"), "#ERROR!");
+    assert_eq!(model._get_text("C4"), "#ERROR!");
+}

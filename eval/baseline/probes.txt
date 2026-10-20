@@ -1325,7 +1325,6 @@ F	probes/fin-amor-period-bound-c.case.json	Sheet1!A5
 F	probes/fin-amor-period-bound.case.json	Sheet1!B17
 F	probes/fin-argument-modes.case.json	Sheet1!H117
 F	probes/fin-argument-modes.case.json	Sheet1!H125
-F	probes/fin-argument-modes.case.json	Sheet1!H137
 F	probes/fin-argument-modes.case.json	Sheet1!H139
 F	probes/fin-argument-modes.case.json	Sheet1!H163
 F	probes/fin-argument-modes.case.json	Sheet1!H186
@@ -1335,8 +1334,6 @@ F	probes/fin-argument-modes.case.json	Sheet1!H236
 F	probes/fin-argument-modes.case.json	Sheet1!H243
 F	probes/fin-argument-modes.case.json	Sheet1!H251
 F	probes/fin-argument-modes.case.json	Sheet1!H282
-F	probes/fin-argument-modes.case.json	Sheet1!H338
-F	probes/fin-argument-modes.case.json	Sheet1!H341
 F	probes/fin-argument-modes.case.json	Sheet1!H343
 F	probes/fin-argument-modes.case.json	Sheet1!H352
 F	probes/fin-argument-modes.case.json	Sheet1!H367
