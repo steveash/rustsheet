@@ -3,7 +3,7 @@ id: T-0929
 title: "VALUE: exact percent parsing (1 known failure)"
 milestone: M9
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -19,9 +19,16 @@ Oracle-free evidence in `ironcalc-calc/TEXT/T_VALUE_VALUETOTEXT.xlsx` (1 failing
 - Done elsewhere (T-0024): `I7` `=VALUE("2-Feb-2026")` now parses (shared date-text grammar), and `I5`/`C15`, whose cached values came from a day-first Excel, are scored against en-US oracle values through `eval/suites/ironcalc-calc/cached-overrides.tsv` (decision 0032).
 
 ## Acceptance criteria
-- [ ] The `I4` line disappears from `eval/baseline/ironcalc-calc.txt`; no new ones.
-- [ ] Unit tests.
-- [ ] `make check` green.
+- [x] The `I4` line disappears from `eval/baseline/ironcalc-calc.txt`; no new ones.
+- [x] Unit tests.
+- [x] `make check` green.
 
 ## Out of scope
 Locale-dependent date order; T-0920's finite-number parse.
+
+## Outcome
+`parse_percent_or_currency` (formatter/parse_formatted.rs) now reads `N%` as N's decimal text
+shifted two places and rounded once (`percent_value`), not the double divided by 100, so
+`VALUE("23.123%")` is 0.23123 as in Excel. Covers VALUE, text coercion and typed input.
+Eval: ironcalc-calc known failures 1048 -> 1047 (T_VALUE_VALUETOTEXT `I4` fixed), no regressions.
+Quirk recorded in coercion.md "Percent text is rounded once".

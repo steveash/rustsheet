@@ -289,14 +289,17 @@ fn parse_percent_or_currency(
     if let Some(p) = value.strip_suffix('%') {
         let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
         if options.is_scientific {
-            return Ok(Some((f / 100.0, Some(SCIENTIFIC_FORMAT.to_string()))));
+            return Ok(Some((
+                percent_value(f),
+                Some(SCIENTIFIC_FORMAT.to_string()),
+            )));
         }
         let format = if options.decimal_digits > 0 {
             "0.00%"
         } else {
             "0%"
         };
-        return Ok(Some((f / 100.0, Some(format.to_string()))));
+        return Ok(Some((percent_value(f), Some(format.to_string()))));
     }
 
     // check if it is a currency in currencies
@@ -330,6 +333,22 @@ fn parse_percent_or_currency(
         }
     }
     Ok(None)
+}
+
+/// The value of number text `f` followed by `%`. Excel shifts the decimal text two places and
+/// rounds once (`VALUE("23.123%")` is 0.23123, the double nearest 23.123e-2), where dividing
+/// the double by 100 rounds twice (0.23123000000000002); ironcalc-calc
+/// TEXT/T_VALUE_VALUETOTEXT.xlsx `I4`, docs/excel-semantics/coercion.md "Percent text is
+/// rounded once". `f` came from at most 15 significant digits, so its shortest round-trip text
+/// is that number text.
+fn percent_value(f: f64) -> f64 {
+    let text = format!("{f:e}");
+    text.split_once('e')
+        .and_then(|(mantissa, exponent)| {
+            let exponent = exponent.parse::<i32>().ok()?;
+            format!("{mantissa}e{}", exponent - 2).parse::<f64>().ok()
+        })
+        .unwrap_or(f / 100.0)
 }
 
 /// The format Excel gives text typed with a leading currency symbol. `$` gets the red-negative

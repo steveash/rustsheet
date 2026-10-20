@@ -1268,4 +1268,3 @@ F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F7
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F8
 F	ironcalc-calc/STATISTICAL/WEIBULL_DIST.xlsx	Sheet1!E2
 F	ironcalc-calc/STATISTICAL/WEIBULL_DIST.xlsx	Sheet1!E3
-F	ironcalc-calc/TEXT/T_VALUE_VALUETOTEXT.xlsx	Sheet1!I4

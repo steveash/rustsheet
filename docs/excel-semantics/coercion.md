@@ -314,6 +314,12 @@ Evidence: probes/typed-currency-percent-input (excel-graph, 2026-10-11).
 Status: VERIFIED
 Tasks: T-0283, T-1335
 
+## Percent text is rounded once
+Rule (en-US): number text ending in `%` (VALUE, `0+"…"`, typed cell input) is the decimal text shifted two places and rounded to the nearest double once: `VALUE("23.123%")` = 0.23123, not the double 23.123 divided by 100 (0.23123000000000002). The 15-significant-digit truncation of number text applies before the shift. The engine (T-0929) applies the same single rounding to e-notation percent text (`23e-12%` = 23e-14); that variant is unprobed. The `%` operator in a formula (`=23.123%`) is a separate path and is not covered here.
+Evidence: ironcalc-calc TEXT/T_VALUE_VALUETOTEXT.xlsx `Sheet1!I4` (Excel-authored cached value 0.23123).
+Status: VERIFIED
+Tasks: T-0929
+
 ## AND/OR/XOR text arguments
 Rule: in Microsoft 365, AND, OR and XOR skip every text argument that is not "TRUE" or "FALSE",
 whether it is literal or computed, empty or not: `AND("1",TRUE)`, `AND("abc",TRUE)`, `AND(" ",TRUE)`,
