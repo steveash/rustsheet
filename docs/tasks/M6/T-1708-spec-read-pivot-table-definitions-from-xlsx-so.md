@@ -3,7 +3,7 @@ id: T-1708
 title: "Spec: read pivot table definitions from xlsx so GETPIVOTDATA can resolve field/item pairs"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
