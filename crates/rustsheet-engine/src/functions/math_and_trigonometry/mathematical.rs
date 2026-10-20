@@ -960,8 +960,12 @@ fn descending_product(n: f64, step: f64) -> Result<f64, Error> {
 /// negative x in -1..-0.5, so ASIN is not odd. libm `asin` fits 186 of the sweep's 268 and
 /// `atan(x / sqrt((1 - x) * (1 + x)))` 235 (docs/excel-semantics/numbers.md "ASIN's formulation").
 /// At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is NaN, which
-/// is `#NUM!`.
+/// is `#NUM!`. Just below -1 `1 - f` rounds to 2 and the radicand to 0, so the domain is checked
+/// first (`ASIN(-1-2^-52)` is `#NUM!`, numbers.md "Just below -1 as well", T-2170).
 fn excel_asin(f: f64) -> f64 {
+    if f.abs() > 1.0 {
+        return f64::NAN;
+    }
     let y = 1.0 - f;
     f64::atan(f / extended_sqrt(y * (2.0 - y)))
 }
