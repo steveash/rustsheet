@@ -3,7 +3,7 @@ id: T-2114
 title: "Generate and oracle-fill gen-m5 to at least 20,000 cells with --focus and edge pools, gate it, and file its gaps"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -39,15 +39,36 @@ exit criterion "bit-exact ≥ 99.9% on generated suites (≥ 20k cells)" needs (
   in this PR (CLAUDE.md directive 6).
 
 ## Acceptance criteria
-- [ ] `make eval` shows gen-m5 with ≥ 20,000 scored cells, all with excel-graph oracle sidecars committed.
-- [ ] Every generator-ready, non-volatile M5 function is the outer call of at least 100 scored cells
+- [x] `make eval` shows gen-m5 with ≥ 20,000 scored cells, all with excel-graph oracle sidecars committed.
+- [x] Every generator-ready, non-volatile M5 function is the outer call of at least 100 scored cells
       (state the minimum in the Outcome; the T-2112 section shows it if that task has landed).
-- [ ] eval/suites/gen-m5/suite.toml has `gate = true`, and `make eval-baseline` has recorded eval/baseline/gen-m5.txt.
-- [ ] Each mismatch family has a task id (new or extended) listed in the Outcome with its cell count.
+- [x] eval/suites/gen-m5/suite.toml has `gate = true`, and `make eval-baseline` has recorded eval/baseline/gen-m5.txt.
+- [x] Each mismatch family has a task id (new or extended) listed in the Outcome with its cell count.
       New tasks are created with `make new-task`, and no family is left unfiled.
-- [ ] The Outcome records the suite's bit-exact percentage and the exact commands used, including seeds.
-- [ ] `make check` green; reviewers approve.
+- [x] The Outcome records the suite's bit-exact percentage and the exact commands used, including seeds.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the mismatches (functions lanes).
 - Generator changes beyond removing refused cases (file a harness task instead).
+
+## Outcome
+gen-m5 now has 65 cases and 22,400 scored cells, every one backed by excel-graph. That is the 10 seed-1 cases plus 55 new seed-2 focus cases of 400 formulas each. The fill wrote 55 sidecars with 0 failures, and Excel refused no case. **98.84% bit-exact** (22,140/22,400). `gate = true`; eval/baseline/gen-m5.txt records 260 known failures, all of them new coverage.
+Commands: `cd tools && uv run rustsheet-gen --milestone M5 --focus --count 55 --formulas 400 --seed 2`,
+`uv run rustsheet-oracle fill -b excel-graph --suite gen-m5`, then `make eval-baseline`.
+Coverage: each of the 132 M5 functions the generator emits is the outer call of at least 165 formulas.
+
+Mismatch families (gap-triager, traced to the innermost diverging sub-expression; cells):
+T-2142 SINH/COSH/EXP overflow (37), T-2134 SINH/TANH/COTH/CSCH last digit (19, extended),
+T-2143 ASIN/ACOS just below -1 (14), T-2144 INT 15-digit cut (5), T-2146 ODD/EVEN above 2^53 (3),
+T-2147 TAN near 1.2E8 (3; both depend on the sweep T-2145), T-2148 FIXED/DOLLAR/BAHTTEXT 15-digit cut (15),
+T-2149 FIXED/DOLLAR past 2^64 (5), T-0980 TEXT 15-digit cut (2, extended), T-1730 TEXT exponent sign (1, extended),
+T-0961 SUMX2MY2/SUMX2PY2/SUMXMY2 blanks and shapes (28, extended), T-2150 SUMPRODUCT blank/error order (9),
+T-2151 NUMBERVALUE currency/dates (24), T-2152 NUMBERVALUE separators/empty (12), T-2153 ARABIC blank/trim (12),
+T-2154 ROMAN/BASE sign (6), T-2155 REPT/CODE/UNICODE over 255 chars (6), T-2156 TYPE of a one-cell range (2),
+T-2157 TEXT invalid code on text/boolean (11), T-1731 TEXT clock codes past 2958465 (3, extended),
+T-2158 TEXT number-like text (4), T-1735 TEXT fill (1, extended), T-2159 LOG/DECIMAL/BASE/ATAN2/ARABIC lifting (7),
+T-2160 DOLLAR/FIXED/NUMBERVALUE lifting (5), T-2161 CELL lifting (1), T-2162 COMBIN/COMBINA bound (5),
+T-2163 SERIESSUM blanks/power (8), T-2164 MMULT/MINVERSE/MDETERM blank (4), T-2067 MINVERSE pivot (1, extended),
+T-2165 ISEVEN/ISODD past 2^63 (3), T-2166 SWITCH FALSE vs blank (1), T-2167 MROUND (1), T-2168 VLOOKUP/HLOOKUP blank (2). Total 260.
+Quirks recorded in docs/excel-semantics (numbers, text, number-formats, coercion, arrays, information, logic, lookup).

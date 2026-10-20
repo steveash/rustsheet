@@ -222,6 +222,30 @@ with `TRUE` are `#DIV/0!` (numeric text is not read as a number here) while `SUM
 array constant is skipped (`SUMX2PY2({1,"a"},{3,4})` = 10); two all-blank ranges are `#DIV/0!`. Evidence:
 probes/stats-evidence-floor-t1623 Q73-Q76, Q79, Q86-Q89, Q91, Q99-Q102, Q104 (excel-graph, 2026-10-17, T-1623).
 Open (unverified, T-0961): an empty argument (`SUMXMY2(,1)`) and error-versus-`#N/A` precedence were not probed there.
+More evidence, gen-m5 (excel-graph, 2026-10-20, T-2114; all 28 cells listed in T-0961): a blank one-cell argument
+(`B12`, `C8:C8`, `A$1`, or `IF(..,E5)` returning a blank cell) is `#VALUE!` whatever the other argument is: a range of another
+size (`SUMXMY2(B12,D1:E8)`, gen-m5/043ee562f32eb901 Calc!A36), a number (`SUMX2MY2(YEAR(50111),D1)`, gen-m5/eb942f4a59b1c004 Calc!A231), a
+text cell (`SUMXMY2(B$8,E12)` with E12 "TRUE", gen-m5/f0f205865a3a4328 Calc!A103), a boolean, or an error (`SUMX2PY2(C$4,<#NUM!>)`,
+gen-m5/1962de140dae0111 Calc!A388; gen-m5/ee1667411bbe2ccc Calc!A84). A number against an array of another count is `#N/A`
+(`SUMX2PY2(2.5,<6-element array>)`, gen-m5/204b68ebb5812d50 Calc!A218; gen-m5/aac6230c2fb40e1e Calc!A11), where ours says `#VALUE!`.
+Two non-blank ranges of equal count with no numeric pair are 0, not `#DIV/0!`: `SUMX2MY2(A8:D9,C6:D9)` (gen-m5/8a387c26d182e73c
+Calc!A307) and `SUMX2MY2(C10:D12,C11:E12)` (gen-m5/d1b251fd6e9c4b4b Calc!A397), whose pairs hold text, booleans and blanks only
+(two all-blank ranges stay `#DIV/0!`, above). Ours: a blank one-cell argument is one skipped pair (`#DIV/0!` or `#N/A`).
+
+## SUMPRODUCT: a blank one-cell argument beside other arguments is `#VALUE!` (T-2150)
+Rule: with two or more arguments, SUMPRODUCT is `#VALUE!` when one argument is a blank cell given as a one-cell reference and
+the others are single values: `SUMPRODUCT(E6,123456789.123)` (E6 blank; `ISERR` of it is TRUE), `SUMPRODUCT(41.42,B7:B7,3.64)`,
+`SUMPRODUCT(<number>,D4:D4)`, `SUMPRODUCT(A6:A6,B4,0)` (A6 FALSE, B4 blank), `SUMPRODUCT(B1,C12,D10)` (D10 blank) and
+`SUMPRODUCT(A11:A11,1.005,C11:C11)` (A11 text, C11 blank), and the `#VALUE!` reaches the caller (`SHEET(7+SUMPRODUCT(E1,100,-1))`
+is `#VALUE!`, not SHEET's `#N/A`). A lone blank argument is 0 (`SUMPRODUCT(B4:B4)`, gen-m5/3e134e52393061b1 Calc!A222).
+An error argument beats a shape mismatch earlier in the list: `SUMPRODUCT(TYPE(B11:B11),B9:E10,<VLOOKUP #N/A>)` is `#N/A`
+(ours `#VALUE!`, and ours is `#VALUE!` for `SUMPRODUCT(1,B9:E10,NA())` too).
+Ours: the blank is a 0 factor, so these are 0 (and their callers go on).
+Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1b30e4d075b252ea Calc!A365, gen-m5/6a8bb7cd6d7769ad Calc!A79,
+gen-m5/aac6230c2fb40e1e Calc!A79, gen-m5/fc81c2f704bef138 Calc!A165, gen-m5/c688ca172fe533dc Calc!A183, gen-m5/7d1a5d223624fc70 Calc!A33,
+gen-m5/aac6230c2fb40e1e Calc!A64, gen-m5/f0f205865a3a4328 Calc!A396, gen-m5/399071ff6782ab16 Calc!A145.
+Unprobed: a blank one-cell argument beside a multi-cell range, and a one-cell text or boolean argument on its own.
+Status: VERIFIED (excel-graph); not implemented (T-2150).
 Tasks: T-0944
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!

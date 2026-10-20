@@ -21,6 +21,12 @@ multiple of the integer-placeholder count; ours "1.2E+5", "6.1E+1"); `00.0E+0` 3
 "03.0E+6" (ours "03.6E+1", "02.0E+6"). T-0937 (literals between E and the digits) is separate.
 Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "Displayed text" section, which lists each failing text cell (Excel vs ours). Text cells are scored apart from values and are not baselined (decision 0068); the TEXT() cells on sheet T that use the same codes are value known failures in eval/baseline/gen-m10.txt. Formatter: crates/rustsheet-engine/src/formatter/ (shared by `Workbook::formatted` and TEXT). docs/excel-semantics/number-formats.md.
 
+- gen-m5 (gap triage 2026-10-20, T-2114, excel-graph): 1 more cell, in eval/baseline/gen-m5.txt. `TEXT(2.0811388300841898,"0.000E-00")`: Excel "2.081E00", ours "2.081E-00" (the zero-exponent sign case of this task).
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m5/3b813881f835cd90 Calc!A198 | `=TEXT((SQRT(2.5)+SUM(0.5)),"0.000E-00")` | "2.081E00" | "2.081E-00" |
+
 ## Acceptance criteria
 - [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
 - [ ] number-formats.md updated.

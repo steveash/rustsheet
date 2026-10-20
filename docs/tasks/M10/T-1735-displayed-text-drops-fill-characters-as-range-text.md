@@ -25,6 +25,12 @@ takes the `"` as its fill character, and a fill adds nothing in a number section
 a space for every `TextToken::Spacer` (in `format_number`, both the date and the number branches).
 Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "Displayed text" section, which lists each failing text cell (Excel vs ours). Text cells are scored apart from values and are not baselined (decision 0068); the TEXT() cells on sheet T that use the same codes are value known failures in eval/baseline/gen-m10.txt. Formatter: crates/rustsheet-engine/src/formatter/ (shared by `Workbook::formatted` and TEXT). docs/excel-semantics/number-formats.md.
 
+- gen-m5 (gap triage 2026-10-20, T-2114, excel-graph): 1 more cell, in eval/baseline/gen-m5.txt. TEXT() shows the bug in a value cell too: `TEXT(3,"*.0.00")` Excel "3.00", ours " 3.00". Acceptance addition: this line leaves eval/baseline/gen-m5.txt.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m5/3e134e52393061b1 Calc!A240 | `=TEXT(LEN(Data!A9),"*.0.00")` | "3.00" | " 3.00" |
+
 ## Acceptance criteria
 - [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
 - [ ] number-formats.md updated.

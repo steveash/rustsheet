@@ -22,6 +22,12 @@ shares `lu_decompose` (crates/rustsheet-engine/src/functions/math_and_trigonomet
 return a huge residual inverse (about 1E16 entries) for {1,2,3;4,5,6;7,8,9}, or `#NUM!` only for an exactly-zero
 pivot. Use the `excel-probe` skill.
 
+- gen-m5 (gap triage 2026-10-20, T-2114, excel-graph): 1 more cell, in eval/baseline/gen-m5.txt. `MINVERSE(1.0000000000000085E-108)` (a 1x1 matrix, `1E-15^(0.2+7)`) is 9.999999999999914E+107 in Excel; ours `#NUM!` from the 2.2E-16 pivot cutoff. So a 1x1 pivot far below the cutoff is inverted (recorded in arrays.md "MDETERM: partial-pivot LU, no singularity cutoff"). Acceptance addition: this line leaves eval/baseline/gen-m5.txt.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m5/9284730052aff46c Calc!A39 | `=MINVERSE((1e-15^(Data!$B7+Data!B12)))` | 9.999999999999914e+107 | "#NUM!" |
+
 ## Acceptance criteria
 - [ ] A probe case with oracle values for MINVERSE (INDEX into each cell, or a spill) of {1,2,3;4,5,6;7,8,9},
       {1,2;2,4}, {1E-20}, {1E-17,0;0,1}, {1,1;1,1.0000000000000002} and {1E-300}.

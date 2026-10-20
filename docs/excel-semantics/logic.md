@@ -28,6 +28,13 @@ Evidence: probes/info-logic-argument-modes A1:A5, info-logic-argument-modes-2 A1
 Status: VERIFIED (excel-graph); the engine matches.
 Tasks: T-1088
 
+## SWITCH: a blank cell case value does not match FALSE (T-2166)
+Observation: `SWITCH(FALSE,1.005E-15,<#VALUE!>,A11,FALSE,"a?b",<#VALUE!>)` with A11 blank is `#N/A` (no match, no default):
+FALSE does not match a blank cell given as a case value, unlike the omitted case argument below (`SWITCH(0,,"a","b")` is "a").
+Ours matches it and returns FALSE (so `ISEVEN` of it is `#VALUE!` instead of `#N/A`). Unprobed: a blank case against 0 or "".
+Evidence: gen-m5/d0419fa09d6a756a Calc!A63 (excel-graph, 2026-10-20).
+Status: OBSERVED (1 cell); T-2166.
+
 ## IFERROR / IFNA of a blank cell is an empty value, not the reference
 Rule: when IFERROR's or IFNA's value argument is a blank cell, the result is the blank's value, not a reference to it.
 OR and AND read that value as FALSE (`OR(IFERROR(D9,A9))` with D9 blank is FALSE, whereas OR ignores a blank cell it is

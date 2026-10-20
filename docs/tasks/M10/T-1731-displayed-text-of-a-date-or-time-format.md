@@ -26,6 +26,14 @@ TEXT() on the same codes is `#VALUE!` where the display is 255 `#`. T-1711 has t
 negative date.
 Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "Displayed text" section, which lists each failing text cell (Excel vs ours). Text cells are scored apart from values and are not baselined (decision 0068); the TEXT() cells on sheet T that use the same codes are value known failures in eval/baseline/gen-m10.txt. Formatter: crates/rustsheet-engine/src/formatter/ (shared by `Workbook::formatted` and TEXT). docs/excel-semantics/number-formats.md.
 
+- gen-m5 (gap triage 2026-10-20, T-2114, excel-graph): 3 more cells, in eval/baseline/gen-m5.txt. TEXT() of a clock or `[m]:ss` code over a serial past 2958465.99999 is `#VALUE!` in Excel; ours formats it (`TEXT(123456789.123,"[m]:ss")` "177777776337:07", `TEXT(1E+15,"h AM/PM")` "12 AM", `TEXT(123456831.423,"h:mm:ss AM/PM")` "10:09:07 AM"). These are TRUE value cells (not display text): acceptance addition, the 3 lines leave eval/baseline/gen-m5.txt.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m5/6a511beadb56b932 Calc!A126 | `=TEXT(INDEX(Data!B11:E11,4),"[m]:ss")` | "#VALUE!" | "177777776337:07" |
+| gen-m5/6a8bb7cd6d7769ad Calc!A299 | `=TEXT(MAX((Data!B5/Data!E$3),COUNTIF(Data!D4:D6,">0"),Data!B9:B11),"h AM/PM")` | "#VALUE!" | "12 AM" |
+| gen-m5/a6fec430ac350c1a Calc!A356 | `=LEFTB(TEXT(SUM(42,Data!C9:C11),"h:mm:ss AM/PM"),4)` | "#VALUE!" | "10:0" |
+
 ## Acceptance criteria
 - [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
 - [ ] number-formats.md updated.
