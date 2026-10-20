@@ -248,3 +248,8 @@ gains +8.6% (real: N<2 with D unstored, +5.7%).
   ~7e15 ulps). Masked models score higher whatever the truth, because they carry fewer mis-phased roundings. Real
   data ranks m2 0.382 > m3 0.354 > stored 0.309, which by the controls means nothing. Only an integer refit that
   closes on its own control can decide.
+- W2's function-free structure test (W2's k3/lsmask.py): from Excel's y, take the target A* (doubles with
+  fl(t·A) = y), weighted-LS fit N − A*·D, residual rms in ulp(A); each structure is simulated with the fitted
+  function as calibration. Real 1.013 / median 0.663; all-stored simulation 1.018 / 0.665 (match); W2's mask
+  0.579 / 0.375; partial masks 0.72–0.93. **K3 is fully stored.** The mask lift was ss_fc's coefficient errors being
+  hidden by unstored ops. So the site map's mismatch from N.S3/D.S3 up is wrong mid and top coefficients.
