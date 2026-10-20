@@ -1,26 +1,12 @@
 use crate::functions::engineering::transcendental::bessel_k;
 
-use super::{
-    bessel_i::bessel_i,
-    bessel_j0_y0::{j0, y0},
-    bessel_j1_y1::j1,
-    bessel_jn_yn::{jn, yn},
-};
+use super::bessel_i::bessel_i;
 
-const EPS: f64 = 1e-13;
 const EPS_LOW: f64 = 1e-6;
 
 // Known values computed with Arb via Nemo.jl in Julia
 // You can also use Mathematica
 // But please do not use Excel or any other software without arbitrary precision
-
-fn numbers_are_close(a: f64, b: f64) -> bool {
-    if a == b {
-        // avoid underflow if a = b = 0.0
-        return true;
-    }
-    (a - b).abs() / ((a * a + b * b).sqrt()) < EPS
-}
 
 fn numbers_are_somewhat_close(a: f64, b: f64) -> bool {
     if a == b {
@@ -28,121 +14,6 @@ fn numbers_are_somewhat_close(a: f64, b: f64) -> bool {
         return true;
     }
     (a - b).abs() / ((a * a + b * b).sqrt()) < EPS_LOW
-}
-
-#[test]
-fn bessel_j0_known_values() {
-    let cases = [
-        (2.4, 0.002507683297243813),
-        (0.5, 0.9384698072408129),
-        (1.0, 0.7651976865579666),
-        (1.12345, 0.7084999488947348),
-        (27.0, 0.07274191800588709),
-        (33.0, 0.09727067223550946),
-        (2e-4, 0.9999999900000001),
-        (0.0, 1.0),
-        (1e10, 2.175591750246892e-6),
-    ];
-    for (value, known) in cases {
-        let f = j0(value);
-        assert!(
-            numbers_are_close(f, known),
-            "Got: {f}, expected: {known} for j0({value})"
-        );
-    }
-}
-
-#[test]
-fn bessel_y0_known_values() {
-    let cases = [
-        (2.4, 0.5104147486657438),
-        (0.5, -0.4445187335067065),
-        (1.0, 0.08825696421567692),
-        (1.12345, 0.1783162909790613),
-        (27.0, 0.1352149762078722),
-        (33.0, 0.0991348255208796),
-        (2e-4, -5.496017824512429),
-        (1e10, -7.676508175792937e-6),
-        (1e-300, -439.8351636227653),
-    ];
-    for (value, known) in cases {
-        let f = y0(value);
-        assert!(
-            numbers_are_close(f, known),
-            "Got: {f}, expected: {known} for y0({value})"
-        );
-    }
-    assert!(y0(0.0).is_infinite());
-}
-
-#[test]
-fn bessel_j1_known_values() {
-    // Values computed with Maxima, the computer algebra system
-    // TODO: Recompute
-    let cases = [
-        (2.4, 0.5201852681819311),
-        (0.5, 0.2422684576748738),
-        (1.0, 0.4400505857449335),
-        (1.17232, 0.4910665691824317),
-        (27.5, 0.1521418932046569),
-        (42.0, -0.04599388822188721),
-        (3e-5, 1.499999999831249E-5),
-        (350.0, -0.02040531295214455),
-        (0.0, 0.0),
-        (1e12, -7.913802683850441e-7),
-    ];
-    for (value, known) in cases {
-        let f = j1(value);
-        assert!(
-            numbers_are_close(f, known),
-            "Got: {f}, expected: {known} for j1({value})"
-        );
-    }
-}
-
-#[test]
-fn bessel_jn_known_values() {
-    // Values computed with Maxima, the computer algebra system
-    // TODO: Recompute
-    let cases = [
-        (3, 0.5, 0.002_563_729_994_587_244),
-        (4, 0.5, 0.000_160_736_476_364_287_6),
-        (-3, 0.5, -0.002_563_729_994_587_244),
-        (-4, 0.5, 0.000_160_736_476_364_287_6),
-        (3, 30.0, 0.129211228759725),
-        (-3, 30.0, -0.129211228759725),
-        (4, 30.0, -0.052609000321320355),
-        (20, 30.0, 0.0048310199934040645),
-        (7, 0.0, 0.0),
-    ];
-    for (n, value, known) in cases {
-        let f = jn(n, value);
-        assert!(
-            numbers_are_close(f, known),
-            "Got: {f}, expected: {known} for jn({n}, {value})"
-        );
-    }
-}
-
-#[test]
-fn bessel_yn_known_values() {
-    let cases = [
-        (3, 0.5, -42.059494304723883),
-        (4, 0.5, -499.272_560_819_512_3),
-        (-3, 0.5, 42.059494304723883),
-        (-4, 0.5, -499.272_560_819_512_3),
-        (3, 35.0, -0.13191405300596323),
-        (-12, 12.2, -0.310438011314211),
-        (7, 1e12, 1.016_712_505_197_956_3e-7),
-        (35, 3.0, -6.895_879_073_343_495e31),
-    ];
-    for (n, value, known) in cases {
-        let f = yn(n, value);
-        assert!(
-            numbers_are_close(f, known),
-            "Got: {f}, expected: {known} for yn({n}, {value})"
-        );
-    }
 }
 
 #[test]
@@ -183,7 +54,8 @@ fn bessel_kn_known_values() {
 }
 
 // Expected values are Excel-cached cells from BESSEL.xlsx (ironcalc-calc suite); they must match
-// bit-for-bit, not within a tolerance, because Excel's small-argument algorithm is not fdlibm.
+// bit-for-bit, not within a tolerance, because Excel's algorithm (Numerical Recipes) is only
+// ~1e-8 accurate.
 #[test]
 fn excel_bessel_small_args_are_bit_exact() {
     use super::bessel_excel::{excel_bessel_j, excel_bessel_y};
@@ -195,12 +67,21 @@ fn excel_bessel_small_args_are_bit_exact() {
     assert_eq!(excel_bessel_y(7, 0.2), -2_295_654_720.157_33);
 }
 
-// Placeholder, not Excel truth: pins the fdlibm fallback until T-0908 finds the real algorithm.
+// Excel values from probes-numeric/m9-bessel (T-1004, excel-graph), bit-for-bit: the
+// large-argument asymptotic branch with Excel's own coefficients (T-0908).
 #[test]
-fn excel_bessel_large_args_use_fdlibm() {
-    use super::bessel_excel::excel_bessel_j;
-    assert_eq!(excel_bessel_j(0, 27.0), jn(0, 27.0));
+fn excel_bessel_large_args_are_bit_exact() {
+    use super::bessel_excel::{excel_bessel_j, excel_bessel_y};
+    assert_eq!(excel_bessel_j(0, 8.0), 0.171_650_807_317_693_55);
+    assert_eq!(excel_bessel_j(1, 8.0), 0.234_628_386_507_074_4);
+    assert_eq!(excel_bessel_j(1, 30.0), -0.118_751_060_911_231_17);
+    assert_eq!(excel_bessel_j(4, 8.5), -0.207_695_125_000_947_22);
+    assert_eq!(excel_bessel_y(0, 8.0), 0.223_521_489_249_680_93);
+    assert_eq!(excel_bessel_y(1, 8.5), -0.026_168_679_623_921_92);
+    assert_eq!(excel_bessel_y(8, 10.0), 0.001_075_473_508_846_236_4);
     assert_eq!(excel_bessel_j(3, 0.0), 0.0);
+    assert!(excel_bessel_y(0, 0.0).is_nan());
+    assert!(excel_bessel_y(2, -10.0).is_nan());
 }
 
 #[test]
