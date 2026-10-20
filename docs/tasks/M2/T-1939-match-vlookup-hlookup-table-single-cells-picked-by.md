@@ -3,7 +3,7 @@ id: T-1939
 title: "MATCH/VLOOKUP/HLOOKUP table: single cells picked by CHOOSE, OFFSET or a name, and which single text is numeric"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
