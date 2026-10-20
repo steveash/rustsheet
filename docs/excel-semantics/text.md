@@ -531,7 +531,7 @@ unprobed: the evidence fixes only the shape.
 Evidence: gen-m9/675763979c1defb6 Calc!A25 (excel-graph).
 Status: VERIFIED (excel-graph) for the spill; element values UNVERIFIED
 Implemented in: `fn_unicode`, `unicode_element` (functions/text/common.rs)
-Tasks: T-2090
+Tasks: T-2090, T-2104
 
 ## UNICHAR argument shapes
 Rule: UNICHAR's argument is coerced like any number argument: TRUE is 1 (`UNICHAR(TRUE)` and `UNICHAR(A4)` with A4 = TRUE
