@@ -3,7 +3,7 @@ id: T-1711
 title: "Displayed text of fractions, round-half #,##0 and negative dates matches Excel"
 milestone: M10
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
