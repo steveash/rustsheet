@@ -3,7 +3,7 @@ id: T-0443
 title: "eval check reports the probes baseline out of date on main: 2 new-coverage failures (1632 -> 1633)"
 milestone: M11
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Seen 2026-10-20 while working T-0442 (after `rustsheet-eval fetch --suite poi`):
 
 ## Out of scope
 -
+
+## Outcome
+Not reproducible on origin/main at 2026-10-20 22:5x UTC, with and without `rustsheet-eval fetch --suite poi`: `make eval-check` shows `[probes] known failures 1630 -> 1630 (new-coverage failures 0, REGRESSIONS 0)`, no `baseline is out of date` line, and M0-M2 reads 12474 cells / 0 known failures. The drift seen earlier was transient (most likely a stale local build or a probe/edit in flight while the eval binary predated a merge, since 1632/1633 is not the committed count 1630). No cell newly fails on main, so no follow-up task and no baseline change.
