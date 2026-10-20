@@ -280,6 +280,7 @@ C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
 C	probes/eng-impower-past-cut.case.json	19
 C	probes/eng-impower.case.json	22
+C	probes/eng-imsub-imdiv-blank-j.case.json	25
 C	probes/eng-imsub.case.json	21
 C	probes/eng-imsum-improduct-3d-j-empty.case.json	61
 C	probes/eng-imsum-improduct-whole.case.json	45
@@ -636,6 +637,7 @@ C	probes/paren-negative-variants.case.json	32
 C	probes/paren-number-text-currency-variants.case.json	4
 C	probes/paren-number-text-euro-suffix.case.json	7
 C	probes/paren-number-text-forms.case.json	14
+C	probes/percent-text-paths.case.json	35
 C	probes/percentof-snap-overflow-union.case.json	15
 C	probes/percentrank-single-value.case.json	20
 C	probes/pivotby-col-subtotals-values.case.json	1685
@@ -854,6 +856,7 @@ C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-averageif-two-arg-range-once.case.json	2
 C	probes/sumif-edge-single-cell.case.json	15
+C	probes/sumx-blank-text-error-order.case.json	93
 C	probes/t-array-lift.case.json	22
 C	probes/t-n-range-top-left.case.json	45
 C	probes/t1626-asc.case.json	29
