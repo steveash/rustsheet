@@ -1,0 +1,5 @@
+# K1 best chain ch1 (W4, 2026-10-20 06:43 UTC): raw chain, D0 = -1/16, same form as g_candidate_w4_AN2.txt.
+# Index j = power of y. Hidden terms (gsimh.c): e_N[2] = +852*ulp(N[1]), e_D[3] = -350*ulp(D[2]).
+# Exact on k1R 1/10 subsample 0.7678 (AN2 0.6736). Diff vs AN2 in ulps, coeffs 0..7: N 0,0,-1,+3,-1,-1,+8,-4; D 0,0,0,+1,-1,0,0,+3.
+N 0x1.b5834abbea656p+15 0x1.514773450ce43p+14 0x1.664795a0ef29ep+13 0x1.36c636bfb0a82p+11 0x1.5ff5a1f0e6908p+9 0x1.b983b93295d5ep+6 0x1.c11d5cf1c98d4p+3 0x1.4aa356fe82288p+1
+D -0x1.0000000000000p-4 0x1.b584ae6185b27p+15 0x1.a52694226b400p+15 -0x1.8fd072611474ep+13 -0x1.d079cbb8db18dp+12 0x1.811c89b66f5d7p+11 -0x1.9f2c6b221ba44p+8 0x1.3f2e03e3bc119p+4
