@@ -178,8 +178,10 @@ impl Model {
     /// `=SORT(array, [sort_index], [sort_order], [by_col])`
     ///
     /// Returns the array sorted by the given column (or row when `by_col=TRUE`).
-    ///   * `sort_index` – 1-based column/row index to sort by (default 1)
-    ///   * `sort_order` – 1 = ascending, -1 = descending (default 1)
+    ///   * `sort_index` – 1-based column/row index to sort by (default 1), or a list of them
+    ///     (an array or range), each tie broken by the next
+    ///   * `sort_order` – 1 = ascending, -1 = descending (default 1), or a list as long as
+    ///     `sort_index`
     ///   * `by_col`     – FALSE = sort rows, TRUE = sort columns (default FALSE)
     ///
     /// `array` is evaluated once (`read_once` in functions/logical/lambda.rs relies on it).
@@ -255,7 +257,11 @@ impl Model {
             );
         }
         let extent = if by_col { num_rows } else { num_cols };
-        let mut keys: Vec<(usize, bool)> = Vec::with_capacity(raw_index.len());
+        // A key repeated after its first use never decides a comparison (the rows already tie on
+        // it), so it is dropped: the comparison then reads at most one key per row or column of
+        // the array, however long the list (CLAUDE.md directive 5).
+        let mut used = vec![false; extent];
+        let mut keys: Vec<(usize, bool)> = Vec::new();
         for (k, &index) in raw_index.iter().enumerate() {
             let index = index as i64;
             if index < 1 {
@@ -281,7 +287,11 @@ impl Model {
                     "sort_index exceeds the array".to_string(),
                 );
             }
-            keys.push((index as usize - 1, ascending));
+            let key = index as usize - 1;
+            if let Some(seen @ false) = used.get_mut(key) {
+                *seen = true;
+                keys.push((key, ascending));
+            }
         }
 
         if !by_col {

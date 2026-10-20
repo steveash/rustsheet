@@ -43,6 +43,7 @@ Owned cells:
 multi-cell range is a list (row-major, the first error element is the result), anything else one number. The keys are
 applied in order, each tie broken by the next (`first_unequal`, now shared with SORTBY's comparison); a sort_order list
 of more than one entry must be as long as sort_index (`#VALUE!` otherwise, after by_col is read, as before); a single
-sort_order applies to every key (unprobed). The argument-error order is unchanged. gen-m7/a0cbc75358b429b6 A12 already
+sort_order applies to every key (unprobed). A key repeated in the list is read once (it can never break a tie),
+which bounds the comparison by the array's width; whether Excel accepts repeated keys is unprobed. The argument-error order is unchanged. gen-m7/a0cbc75358b429b6 A12 already
 passed on main (its CONCAT array argument's `#N/A` comes first). Eval delta: 26 probes cells fixed (m7-argument-modes
 F10:H11 and sort-error-args H57:J59, H61, H65, H69:J71), 0 regressions; arrays.md updated.

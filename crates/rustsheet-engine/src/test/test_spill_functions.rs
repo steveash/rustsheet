@@ -57,6 +57,23 @@ fn sort_index_list_breaks_ties_with_the_next_key() {
 }
 
 #[test]
+fn sort_repeated_keys_are_read_once() {
+    // A repeated key never decides a tie, so a long list of them sorts as the first one does.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},SEQUENCE(100000,1,1,0)))",
+    );
+    model._set(
+        "A2",
+        "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;1;2},{1;-1;-1}))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0,5,1,9,1,2");
+    assert_eq!(model._get_text("A2"), "0,5,1,9,1,2");
+}
+
+#[test]
 fn sort_single_column_descending() {
     let mut model = new_empty_model();
     model._set("A1", "3");
