@@ -973,7 +973,7 @@ NEGBINOMDIST are charged 4096 units an element against the shared cell-visit cap
 32,768 elements is `#ERROR!` before it runs where Excel computes it (as BINOM.INV, "Later arguments and element values of
 the scalar statistical functions" above).
 Status: VERIFIED (excel-cached) for the values; the weight is a DEVIATION
-Tasks: T-0927, T-1744, T-2055
+Tasks: T-0927, T-1744, T-2055, T-2145, T-2146
 
 ## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
 Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the
