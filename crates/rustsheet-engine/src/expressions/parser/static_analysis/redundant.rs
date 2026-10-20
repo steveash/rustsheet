@@ -4,8 +4,8 @@
 #[cfg(doc)]
 use super::add_implicit_intersection;
 use super::legacy::{
-    is_switch_result, leaves_call_whole, legacy_array_context, legacy_context_intersects,
-    remove_array_at, remove_in_array_context,
+    is_returned_argument, is_spilling_switch, leaves_call_whole, legacy_array_context,
+    legacy_context_intersects, remove_array_at, remove_in_array_context, spilling_switch_position,
 };
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, get_function_args_signature,
@@ -31,7 +31,48 @@ use super::{
 /// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
 /// (a formula is evaluated in a scalar context).
 pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
+    if add {
+        // The import leaves a spilling SWITCH and its results unmarked, so an `@` there is
+        // meaningful (`spilling_switch_position`, T-1964).
+        if matches!(&*node, Node::ImplicitIntersection { child, .. }
+            if is_spilling_switch(child, true))
+        {
+            return;
+        }
+        if let Some(position) = spilling_switch_position(node) {
+            match position {
+                Node::ImplicitIntersection { child, .. } => {
+                    remove_redundant_legacy_intersection(child, false, false);
+                }
+                switch => remove_redundant_keeping_results(switch),
+            }
+            return;
+        }
+    }
     remove_redundant_legacy_intersection(node, add, add);
+}
+
+/// [`remove_redundant_legacy_intersection`] on a spilling SWITCH whose results are left as they
+/// are: an `@` on one is typed, the import adding none there. Its other arguments are cleaned
+/// as in any call.
+fn remove_redundant_keeping_results(switch: &mut Node) {
+    let mut results = Vec::new();
+    if let Node::FunctionKind { kind, args } = switch {
+        let count = args.len();
+        for (index, arg) in args.iter_mut().enumerate() {
+            if is_returned_argument(kind, index, count) {
+                results.push((index, std::mem::replace(arg, Node::EmptyArgKind)));
+            }
+        }
+    }
+    remove_redundant_legacy_intersection(switch, true, true);
+    if let Node::FunctionKind { args, .. } = switch {
+        for (index, result) in results {
+            if let Some(arg) = args.get_mut(index) {
+                *arg = result;
+            }
+        }
+    }
 }
 
 /// [`remove_redundant_implicit_intersection`] with the `arrays` flag of
@@ -97,14 +138,8 @@ pub(super) fn remove_redundant_legacy_intersection(node: &mut Node, add: bool, a
         }
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
-            let args_len = args.len();
             for (index, arg) in args.iter_mut().enumerate() {
                 let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
-                // The import adds no `@` on a SWITCH result, so one there is meaningful.
-                if is_switch_result(kind, index, args_len) {
-                    remove_redundant_legacy_intersection(arg, false, arrays);
-                    continue;
-                }
                 remove_array_at(kind, signature.get(index), index, arg, arrays);
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not (`legacy_context_intersects`).

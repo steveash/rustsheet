@@ -13,6 +13,7 @@ use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
     run_static_analysis_on_node, static_analysis_on_function, Node, Signature, StaticResult,
 };
+use crate::expressions::token::OpUnary;
 use crate::functions::Function;
 
 /// Legacy formulas evaluate SUMPRODUCT's arguments as arrays, with no implicit intersection inside
@@ -234,6 +235,129 @@ pub(super) fn legacy_array_call_at(
         })
 }
 
+/// Whether `node` is a SWITCH whose results are each an array constant or, with `ranges`, a range,
+/// maybe under an `@`. A legacy cell spills such a SWITCH where
+/// [`spilling_switch_position`] finds it (probes/legacy-switch-at-shapes, T-1964).
+pub(super) fn is_spilling_switch(node: &Node, ranges: bool) -> bool {
+    let Node::FunctionKind {
+        kind: kind @ Function::Switch,
+        args,
+    } = node
+    else {
+        return false;
+    };
+    let mut results = args
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| is_returned_argument(kind, *index, args.len()))
+        .map(|(_, arg)| match arg {
+            Node::ImplicitIntersection { child, .. } => child.as_ref(),
+            arg => arg,
+        })
+        .peekable();
+    results.peek().is_some()
+        && results.all(|result| {
+            matches!(result, Node::ArrayKind(_))
+                || ranges && matches!(result, Node::RangeKind { .. })
+        })
+}
+
+/// Where a legacy formula `root` holds a SWITCH that takes no automatic `@`, nor do its results
+/// ([`is_spilling_switch`]): the root itself (results array constants or ranges,
+/// `=SWITCH(1,1,{2;3})`, `=SWITCH(1,1,Z30:AA31)`), or the argument of ABS or LEN or of a unary
+/// minus (array constants, `=ABS(SWITCH(1,1,{-2;3}))`, `=-SWITCH(1,1,{2;3})`); Excel shows no
+/// `@` and the cell spills (probes/legacy-switch-at-shapes A20, D20, G20, J20, M20, Y20;
+/// legacy-array-at-shapes C20, T-1910, T-1964). Only these shapes are probed: elsewhere (other
+/// callers, binary operators, a result that is an operation or a call) a SWITCH keeps its `@`.
+/// The position may hold an `@` over the SWITCH, typed on import (kept) or added by the pass.
+pub(super) fn spilling_switch_position(root: &mut Node) -> Option<&mut Node> {
+    let peeled = |node: &Node, ranges: bool| match node {
+        Node::ImplicitIntersection { child, .. } => is_spilling_switch(child, ranges),
+        node => is_spilling_switch(node, ranges),
+    };
+    let spills = match &*root {
+        Node::FunctionKind {
+            kind: Function::Abs | Function::Len,
+            args,
+        } => args.len() == 1 && args.first().is_some_and(|arg| peeled(arg, false)),
+        Node::UnaryKind {
+            kind: OpUnary::Minus,
+            right,
+        } => peeled(right, false),
+        root => is_spilling_switch(root, true),
+    };
+    if !spills {
+        return None;
+    }
+    match root {
+        Node::FunctionKind {
+            kind: Function::Abs | Function::Len,
+            args,
+        } => args.first_mut(),
+        Node::UnaryKind {
+            kind: OpUnary::Minus,
+            right,
+        } => Some(right.as_mut()),
+        root => Some(root),
+    }
+}
+
+/// [`add_legacy_intersection`] on a whole formula: the automatic `@`s the pass puts on a spilling
+/// SWITCH and its results ([`spilling_switch_position`]) are taken off, while one typed there is
+/// meaningful and kept (the export keeps it too, `remove_redundant_implicit_intersection`).
+pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
+    if !add {
+        add_legacy_intersection(node, add, add);
+        return;
+    }
+    if matches!(node, Node::ImplicitIntersection { automatic: false, child }
+        if is_spilling_switch(child, true))
+    {
+        return; // A typed `@` on a root SWITCH stays as it is.
+    }
+    // The pass marks a typed `@` it would add anyway as automatic, so the typed ones are noted
+    // first: one over the SWITCH keeps it and all it holds as the pass leaves them, one on a
+    // result stays.
+    let typed_results: Vec<bool> = match spilling_switch_position(node) {
+        None | Some(Node::ImplicitIntersection { .. }) => {
+            add_legacy_intersection(node, add, add);
+            return;
+        }
+        Some(Node::FunctionKind { args, .. }) => args
+            .iter()
+            .map(|arg| matches!(arg, Node::ImplicitIntersection { .. }))
+            .collect(),
+        Some(_) => Vec::new(),
+    };
+    add_legacy_intersection(node, add, add);
+    if matches!(node, Node::ImplicitIntersection { child, .. } if is_spilling_switch(child, true)) {
+        take_automatic_at(node);
+    }
+    if let Some(position) = spilling_switch_position(node) {
+        take_automatic_at(position);
+        if let Node::FunctionKind { kind, args } = position {
+            let count = args.len();
+            for (index, arg) in args.iter_mut().enumerate() {
+                let typed = typed_results.get(index).copied().unwrap_or(false);
+                if is_returned_argument(kind, index, count) && !typed {
+                    take_automatic_at(arg);
+                }
+            }
+        }
+    }
+}
+
+/// Replaces an automatic `@` over `node` by its operand.
+fn take_automatic_at(node: &mut Node) {
+    if let Node::ImplicitIntersection {
+        automatic: true,
+        child,
+    } = node
+    {
+        *node = std::mem::replace(child.as_mut(), Node::EmptyArgKind);
+    }
+}
+
 /// Whether a legacy formula puts no `@` on the call `arg` of `kind`, a value it would otherwise
 /// intersect: N and T over IF or SWITCH (`=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`,
 /// `=N(SWITCH(1,1,{2;3}))`, the last spilling 2, 3; probes/legacy-array-result A, G, I,
@@ -328,15 +452,10 @@ fn chooses_between_references_and_array_constants(kind: &Function, args: &[Node]
             .all(|arm| matches!(arm, Node::ArrayKind(_)) || is_plain_reference(arm))
 }
 
-/// Whether argument `index` of a call to `kind` with `count` arguments is a result of SWITCH.
-pub(super) fn is_switch_result(kind: &Function, index: usize, count: usize) -> bool {
-    matches!(kind, Function::Switch) && is_returned_argument(kind, index, count)
-}
-
 /// Whether argument `index` of `kind` is one its result can be, as it is or as a part of it: the
 /// arms of IF, the values of CHOOSE and IFS, INDEX's `array` and the results of SWITCH (the even
 /// positions from 2 and a trailing default, of `count` arguments).
-fn is_returned_argument(kind: &Function, index: usize, count: usize) -> bool {
+pub(super) fn is_returned_argument(kind: &Function, index: usize, count: usize) -> bool {
     match kind {
         Function::If | Function::Choose => index > 0,
         Function::Ifs => index % 2 == 1,
@@ -746,23 +865,8 @@ fn is_value_operation(node: &Node) -> bool {
 /// Only the `@` placement changes: a dynamic formula
 /// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
-    // ABS and LEN over a SWITCH take no `@` and spill: `=ABS(SWITCH(1,1,{-2;3}))`,
-    // `=LEN(SWITCH(1,1,{"ab";"c"}))` (probes/legacy-switch-at-shapes G20, M20, T-1964). Other
-    // callers (INDIRECT, OFFSET, INDEX, a SWITCH past the first argument) are unprobed and keep
-    // their `@`.
-    (matches!(kind, Function::Abs | Function::Len)
-        && args.first().is_some_and(|arg| {
-            matches!(
-                arg.ungrouped(),
-                Node::FunctionKind {
-                    kind: Function::Switch,
-                    ..
-                }
-            )
-        }))
-        || args
-            .first()
-            .is_some_and(|arg| reads_reference_whole(kind, arg) || leaves_call_whole(kind, arg))
+    args.first()
+        .is_some_and(|arg| reads_reference_whole(kind, arg) || leaves_call_whole(kind, arg))
         || matches!(kind, Function::Index)
             && matches!(
                 args.first().map(Node::ungrouped),
