@@ -38,7 +38,7 @@ Unlifted counts over a grid only; a lifted count over a grid (`TAKE(OFFSET(..),{
 - `take_drop_reference` (functions/lookup_and_reference/drop_take.rs) reads its array with
   `evaluate_value_or_grid`. In reference mode (SUM's read), it does so only for an OFFSET or INDIRECT source.
 - A `RefGrid` with unlifted counts keeps the counted elements as a sub-grid, in `take_drop_of_grid`.
-- A lifted count over a grid keeps the value view; T-2193 is the probe for it.
+- A lifted count over a grid keeps the value view; T-2212 is the probe for it.
 - Unit test: `take_drop_keep_an_array_of_references`. It covers rows, columns, SUM, ROWS, COLUMNS and INDEX, an
   error element, and `TAKE(grid,0)` = `#CALC!`.
 - Eval: probes/reference-lift-consumers E101 and -b2 E153 left eval/baseline/probes.txt, with 0 regressions.

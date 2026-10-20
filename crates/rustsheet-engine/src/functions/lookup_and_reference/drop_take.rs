@@ -121,7 +121,7 @@ impl Model {
         };
         let counts = self.reference_lift_values(&args[1..], cell);
         if counts.as_slice().iter().any(lifts) {
-            // TODO(T-2193) a lifted count over an array of references is unprobed; it reads the
+            // TODO(T-2212) a lifted count over an array of references is unprobed; it reads the
             // grid's value view.
             return self.take_drop_lifted(source, counts, edge, cell);
         }

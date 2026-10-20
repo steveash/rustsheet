@@ -1,5 +1,5 @@
 ---
-id: T-2193
+id: T-2212
 title: "Probe TAKE and DROP with a lifted count over an array of references"
 milestone: M7
 lane: research
@@ -17,7 +17,7 @@ such as `SUM(TAKE(OFFSET(A1,{0;1;2},0),{1;2}))` and `ROWS(DROP(OFFSET(A1,{0;1;2}
 ## Context
 T-2174 made TAKE and DROP keep the elements of an array of references for an unlifted count (SPEC-0014 rule 7).
 A lifted count over such a grid is unprobed. For now the engine reads the grid's value view (`take_drop_reference`
-in functions/lookup_and_reference/drop_take.rs, `TODO(T-2193)`). Write the probe with the `excel-probe` skill.
+in functions/lookup_and_reference/drop_take.rs, `TODO(T-2212)`). Write the probe with the `excel-probe` skill.
 
 ## Acceptance criteria
 - [ ] A probes case covers TAKE and DROP with lifted rows, lifted cols and both, over a lifted OFFSET, read by SUM,
