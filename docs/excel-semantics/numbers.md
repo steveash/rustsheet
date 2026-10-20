@@ -677,9 +677,9 @@ Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOM
 (sheet `SINH_COSH_TANH`; T-0914): COSH = `(e^x + e^-x)/2` (34/34 cells; libm 33/34); SINH uses the
 same exp form for |x| >= 0.5 and the Taylor series below (B10, B18, B42; libm misses B42);
 TANH = `(e^x - e^-x)/(e^x + e^-x)` for |x| >= 1 (all cells), `sinh/cosh` below 1 (D18, D19), ±1 for
-|x| > 20. Status: PARTIAL — TANH at 0.00625/0.123/0.604 and COTH/CSCH/ASINH/ACOSH/ATANH/ACOTH still
-differ by an ulp; COTH/CSCH/SECH deliberately stay on libm because the exp forms regressed B10, B47,
-C54 of `COTH_CSCH_SECH`. Evidence is cached values only (no oracle probe).
+|x| > 20. Status: PARTIAL — TANH at 0.123/0.604 still differs by an ulp (T-2134; "SINH and TANH on
+0.4 .. 1" below). COTH/CSCH/SECH are 1 over these (T-0917, "COTH, CSCH and SECH" below); ASINH/ACOSH
+(T-2031) and ATANH/ACOTH (T-0917) are fitted separately.
 T-0111 (empirical fit): for 0.9 <= |x| < 1 TANH uses `(e^2x - 1)/(e^2x + 1)`. Two cached cells need
 it: x = ±0.9999999999 (`SINH_COSH_TANH!D15/D17`, sinh/cosh and libm miss) and x = -0.9950546550253772
 (poi `FormulaEvalTestData_Copy.xlsx` `EverythingTests!G1360`, sinh/cosh and the exp quotient both
@@ -727,7 +727,7 @@ Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: 
   these formulas; where `x*x` overflows (|x| above about 1.3E154, unprobed) the engine keeps libm `asinh`/`acosh`.
 - ACOTH for large x (A101-A110, x = 15 .. 1.5E10) tracks libm `atanh(1/x)` within 1 ulp: bit-for-bit on A105 and
   A107-A110, 1 ulp off glibc `atanh(1/x)` on A101-A104 and A106 (A103 matches Rust's `f64::atanh`), so Excel is not
-  correctly rounded there either; the exact formula is left open for T-0917. The engine uses `0.5*ln((x+1)/(x-1))`
+  correctly rounded there either; the formula is the x87 atanh series ("ATANH and ACOTH" below, T-0917). The engine uses `0.5*ln((x+1)/(x-1))`
   there and loses digits: ACOTH(1.5E7) engine 6.666666662802374E-8 vs Excel 6.666666666666676E-8 (6e-10 relative),
   ACOTH(1.5E10) engine 6.666667217824696E-11 vs Excel 6.666666666666667E-11 (8e-8 relative).
 - Near 1, ACOTH(1 + 1E-12) = 14.162039699929037 and ATANH(1 - 1E-12) = 14.162095209226402 differ only because the stored
@@ -736,14 +736,58 @@ Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: 
 - COTH and CSCH (A117-A156) are close to, but not exactly, libm `1/tanh(x)` and `1/sinh(x)`. COTH differs by 1 ulp at
   1E-4, 0.01, 0.1, 2 and 5 (A123, A127, A129, A135, A137) and by 2 ulp at 1E-3 (A125); CSCH differs by 1 ulp at 1E-8 and
   0.01 (A120, A128). Notably CSCH(1E-8) = 1E8 exactly, where libm `1/sinh(x)` (and the engine) gives 99999999.99999999.
-  The other COTH/CSCH cells equal the libm expressions bit-for-bit, except CSCH(710) (below); the formula is left open for T-0917.
+  The other COTH/CSCH cells equal the libm expressions bit-for-bit, except CSCH(710) (below); they are 1/TANH and 1/SINH
+  ("COTH, CSCH and SECH" below, T-0917).
 - Overflow: SINH(710) and SINH(-710) are `#NUM!` (engine: +-1.117E308), but CSCH(710) = 0 (not an error; engine 8.95E-309),
   CSCH(709) = 2.433561501246846E-308, COTH(709) = COTH(710) = 1, TANH(x) = 1 for every probed x >= 19 (19, 19.5, 19.99, 20, 20.01,
   21, 22, 25, 30, 350, 700, 709, 710). SINH(709.78) = 8.964113971972578E307 is finite.
 - SINH/TANH values on 0.40..1.0 (step 0.01 / 0.02 / 0.025, plus 0.9950546550253772 and 0.9999999999) are in the case; the
   engine's 0.5 (SINH) and 0.9 (TANH) cutoffs are fitted against them by T-0917. Not probed: SINH in (709.78, 710).
 Evidence: `probes-numeric/m9-hyperbolic` (`rustsheet-eval show probes-numeric/m9-hyperbolic.case.json`).
-Status: VERIFIED (excel-graph); the remaining engine mismatches are tracked by T-0917 (ASINH and ACOSH implemented by T-2031).
+Status: VERIFIED (excel-graph); ASINH and ACOSH implemented by T-2031; ATANH, ACOTH, COTH, CSCH and SECH by T-0917 (next two sections); the SINH/TANH kernel misses remain open (T-0917 Outcome).
+
+### ATANH and ACOTH: an x87 half log on one range, an x87 atanh series on the other (T-0917)
+Rule. With RN64 a round to a 64-bit significand, "twice-rounded" an x87 operation stored to a double (RN64, then to 53 bits;
+"Division rounds twice" above), and `H(q)` = FLDLN2; FYL2X of the double q (one RN64 of `RN64(ln 2)*log2 q`), halved, stored:
+- ATANH(x), |x| < 1: for |x| <= 1E-4 the series `S(x)` below; else `H(q)` with `q` = twice-rounded `(1+x)/(1-x)` and both
+  sums twice-rounded. Negative x is evaluated as written (not as `-ATANH(-x)`): ATANH(-0.0002) and ATANH(-0.0003) need it.
+  The log branch keeps the cancellation in `1+x`: ATANH(0.0005) = 0.0005000000416666375, 327 ulp under the true value,
+  ATANH(0.005) 102 ulp under; the series branch is within an ulp (ATANH(5E-5) = 5.000000004166667E-5).
+- ACOTH(x), |x| > 1, odd (the sign is applied last; ACOTH(-3.5) = -ACOTH(3.5), which `H((-2.5)/(-4.5))` misses): for
+  |x| < 3.69665 `H(q)` with `q` = twice-rounded `(|x|+1)/(|x|-1)`; else `S(y)` with `y` = RN64(1/|x|) kept in a register.
+  The series branch is up to 2 ulp off (ACOTH(4.74) is 2.1 ulp under the true value) and Excel follows it exactly.
+- `S(y)` = `y + y^3/3 + y^5/5 + ...` the x87 way: `y` and the running power `y^(2k+1)` (multiplied by an RN64 `y^2`)
+  stay in 80-bit registers, each term `power/(2k+1)` is stored to a double, each partial sum is twice-rounded, and the
+  loop stops when a term leaves the sum unchanged. A plain double series misses ACOTH(4.7), ACOTH(4.92) and
+  ACOTH(3.69734) by an ulp (and fits the other 322 series cells); every variant tried with y or the power stored to a double
+  misses at least one of them.
+Fit: all 402 ACOTH and 62 ATANH cells of ironcalc-calc TRIGONOMETRIC.xlsx (cached), `probes-numeric/m9-hyperbolic`,
+`t0917-hyperbolic-switchover`, `t0917-acoth-switch` and `t0917-acoth-switch-edge` (excel-graph, 2026-10-20). The literal
+`4.9999999999999996E-06` (m9-hyperbolic A94) is read as 4.99999999999999E-06 (15 digits) and fits at that value.
+Switch points: ATANH's series reaches 1E-4 (A62, A76) and the log starts by 1.1E-4 (A63); ACOTH's log reaches 3.69662
+and the series starts by 3.69668 (t0917-acoth-switch-edge A11, A12). Neither constant is pinned closer.
+Rejected: libm `atanh`/`atanh(1/x)`, `0.5*ln((x+1)/(x-1))` in doubles (24 of 44 cached ACOTH cells), `0.5*log1p(2/(x-1))`
+(32), the correctly rounded `0.5*ln` of the twice-rounded quotient (the x87 FYL2X rounding matters at ACOTH(1.0001)),
+the RN64 quotient instead of the stored double one (misses ACOTH(1.9), 2.5, 3.35, 3.39, 3.49).
+Status: VERIFIED (excel-graph). Implemented in `hyperbolic::atanh`, `hyperbolic::acoth` (`0.5 * x87_log10::excel_ln`, the worksheet LN kernel).
+
+### COTH, CSCH and SECH are 1 over Excel's own TANH, SINH and COSH (T-0917)
+Rule: COTH(x) = 1/TANH(x), CSCH(x) = 1/SINH(x), SECH(x) = 1/COSH(x), Excel's own TANH/SINH/COSH, so wherever those are an ulp
+off libm the reciprocals follow them. All 66 pairs of `probes-numeric/t0917-hyperbolic-switchover` (x = 0.001 .. 5 and two
+negatives, including x where TANH or SINH is 1 to 1.8 ulp from the true value) agree bit for bit; the earlier note that the
+exp forms regressed COTH_CSCH_SECH B10, B47 and C54 came from the engine's TANH/SINH misses, not from the reciprocal.
+The division is the worksheet `/` (twice-rounded, like COT/CSC/SEC); no probed cell tells it from a plain division.
+Status: VERIFIED (excel-graph). Implemented in `fn_coth`, `fn_csch`, `fn_sech` (mathematical.rs) on `hyperbolic::{tanh, sinh, cosh}`.
+
+### SINH and TANH on 0.4 .. 1: no formula found yet (T-0917, negative result)
+Excel's SINH and TANH are not correctly rounded on (0.4, 1): errors up to 1.45 ulp (SINH(0.7)) and 1.8 ulp (TANH(0.54)) against
+the true value (probes-numeric m9-hyperbolic A157-A248), so the kernel works in doubles somewhere. None of these fits all cells
+(tested 2026-10-20 against the 85 SINH and 87 TANH cells): libm sinh/tanh, `(e^x - e^-x)/2` and `(e - 1/e)/2` with libm exp or
+Excel's x87 EXP (model V6), the same in 80-bit, the engine's Taylor series (forward, reverse, Horner, 10 or 16 terms), and for
+TANH `(e^2x - 1)/(e^2x + 1)`, `1 - 2/(e^2x + 1)`, `sinh/cosh`, `expm1` forms, each with libm or V6 exp. The engine keeps T-0914's
+piecewise forms (SINH 60/85, TANH 67/87 cells); COTH/CSCH inherit every one of their misses (see the failing COTH/CSCH cells
+of probes-numeric `m9-hyperbolic` and `t0917-hyperbolic-switchover`; decision 0084 lists those that libm used to pass).
+Status: OPEN.
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
 Probe `probes-numeric/m9-trig-reduction` (666 cells = 111 arguments x 6 functions, oracle: excel-graph, 2026-10-08) is the fitting
