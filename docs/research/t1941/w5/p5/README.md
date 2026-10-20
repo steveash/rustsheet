@@ -321,3 +321,34 @@ So the ladders turn into direct reads of the mid/top coefficients within ~10%, w
   (N7 in 5/6) and D5, D6, D7 within ~4% in 6/6. With rungs up to 21 only, 5/6 seeds solve.
 - First real anchors (a, b; `ladder_real_ab.log`): slopes N3 +5.7e5 / −2.7e5, N5 −7.9e5 / +1.5e5, N6 −1.47e6, D5
   +8.7e5, D6 +2.4e5 / +4.1e5 cycles/x. These are TSIZE ≥ 1e7 offsets, i.e. far from ss_fc.
+
+## PAUSED 2026-10-20 (owner: usage budget). State and how to pick up
+State of K3:
+- Best real set: `../p4/ss_fc.txt`, 33.37% exact on rows6 (5.68M clean points), 28.7% on the k3t part, 42.8% on its
+  old fit set rows2. A near-null lattice climb (`k3climb.py`) gives +0.7% at most (`k3lat_climb.txt`, 0.3405
+  held-out); it is a local maximum.
+- Structure: K3 is plain stored (fingerprint, ../fp/; W2 agrees). The mismatch from N.S3/D.S3 up is wrong mid/top
+  coefficients, far along function-null directions (top box scans empty; phase laws steep).
+- Phase read (`k3phase.py`): smooth per-stage offset laws at N3, N6, N7, D5 (also N5, D6, D4), slopes 10²–10⁶ cycles/x.
+- Ladder (`ladder.py`, validated on far planted truths, `ladder_ctl_ransac.log`): real slopes so far
+  (`ladder_real_abc.log`):
+  - anchor a 0.8013: N5 −8.1e5, N3 +5.6e5, D6 +2.4e5;
+  - anchor b 0.9517: N6 −8.8e5 (an earlier read gave −1.47e6), N5 +1.5e5, N3 −2.7e5, D6 +4.1e5, D5 +8.7e5, D4 −9.6e4;
+  - anchor c 1.1023: N6 −2.8e5, N5 −1.7e5, N3 +8.5e5, D6 −6.1e4, D5 +5.0e5.
+  These are far offsets, and some may be aliased by multiples of 2^21 until the 22..26 rungs are filled.
+- Oracle status at pause: k3l anchors a–e rungs 00, 10..21 filled; f filled except one rung. Rungs 22..26 (a–f) and
+  anchors g–l (00, 10..26) are committed as cases WITHOUT oracles.
+
+Pick-up steps:
+1. Fill the oracles, in order: `kmyst-gam-k3l[a-f]2[2-6]` (30), the missing f rung, then
+   `kmyst-gam-k3l[g-l](00|1[0-9]|2[0-6])` (108).
+2. Solve the ladder slopes (from docs/research/t1941/w5/p5):
+   `KMAX=26 MINRUNG=12 python3 ladder.py ../p4/ss_fc.txt real | tee ladder_real.log`
+   (ANCH=abcdef to restrict; check `alias shifts` and `kept` counts; validate with
+   `KMAX=26 MINRUNG=12 SEED=1 TSIZE=1e7 python3 ladder.py ../p4/ss_fc.txt control`).
+3. Apply the solved moves (N4..N7, D5..D7 in ulps) to ss_fc, rounded to whole ulps, giving a new start set. Then run
+   the peel from it (`peelstep.sh real N j IN OUT` for j = 6..1, then D, then `n0scan.py real IN OUT`), with
+   `ROWS=<rows npz path without .near1.npz>` pointing at a fresh `mkrows.py` build. Report exact on rows and on
+   held-out V3/k3t at each step.
+4. If N8/N9/D8/D9 remain off, rerun the top scans (`launch_real_parts.sh`, S-only) from the new set; the residual top
+   offset should then be inside the box.
