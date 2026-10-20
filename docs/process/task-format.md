@@ -26,7 +26,7 @@ Why, links to failing eval cases (`suite/case` ids), semantics notes, relevant c
 ## Acceptance criteria
 - [ ] Verifiable statements: "cases X, Y pass bit-exact", "`make check` green",
       "known failures for SUMIFS in eval/baseline/ironcalc-calc.txt drop to 0",
-      "benchmark B within 5%".
+      "benchmark B no more than 50% slower" (decision 0081).
 
 ## Out of scope
 What not to do in this task (file follow-ups instead).
