@@ -3,7 +3,7 @@ id: T-1941
 title: "Crack Excel's GAMMALN, GAMMA and LN kernels to the bit"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -33,14 +33,14 @@ inverses (about 5,000 near-miss cells in `docs/research/numeric-kernel-map.md`, 
   GAMMALN_GAMMALNPRECISE.xlsx.
 
 ## Acceptance criteria
-- [ ] New probes (dense consecutive-double runs across GAMMALN's and LN's pieces, plus composition
+- [x] New probes (dense consecutive-double runs across GAMMALN's and LN's pieces, plus composition
   columns) are filled by excel-graph and committed.
-- [ ] Each of GAMMALN, GAMMA and LN has either a bit-exact model (with its verifier, scored on all probed
+- [x] Each of GAMMALN, GAMMA and LN has either a bit-exact model (with its verifier, scored on all probed
   points) or a documented structure and the remaining gap, in `docs/excel-semantics/` plus coefficient
   files under `docs/research/t1941/`.
-- [ ] Lessons are added to `docs/research/excel-kernel-playbook.md`. T-0973 and T-1529 are updated to
+- [x] Lessons are added to `docs/research/excel-kernel-playbook.md`. T-0973 and T-1529 are updated to
   point at the model, and engine follow-ups are filed.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine implementation (T-0973 / T-1529 and follow-ups).
@@ -87,3 +87,19 @@ Playbook lessons are in `docs/research/excel-kernel-playbook.md` section 8.
   (1.5,2] is at 42.7% exact R; its D0 is not a power of two.
 - Structure verdicts by a coefficient-independent noise fingerprint: K1 and K3 are stored (all mask gains were
   artefacts of wrong coefficients).
+
+## Outcome (close-out, 2026-10-20)
+The research ends here; the coefficient hunt continues as T-2122.
+- **Shipped.** The engine models went to main through T-2123 (LN, x87 FLDLN2 + FYL2X), T-2128 (GAMMALN) and
+  T-2129 (GAMMA). Structure, rates and remaining gaps are in `docs/excel-semantics/statistics.md` ("GAMMALN is
+  Excel's own x87 routine", "GAMMA is Excel's own x87 routine"). The four open kernels (K1, K2, K3, (1.5,2]) run
+  in Excel's structure with the best known coefficients (`gamma_kernels.rs`).
+- **On main (this close-out).**
+  - The task files T-1941 and T-2122. Main cited both, but neither file was there.
+  - The restart file `docs/research/t1941/HANDOFF2.md`.
+  - The best-set coefficient files that `gamma_kernels.rs` cites.
+  - Playbook section 8 (lessons).
+  - Update notes on T-0973 and T-1529.
+- **Archive only.** The full research tree stays on branch `agent/research/T-1941-crack-gammaln-gamma-ln`: worker
+  scripts, logs `README.md` / `HANDOFF.md`, and 3,129 `kmyst-gam-*` probe files. The probes are filled, but they
+  take 3.8 GB and about 172M lines, so they cannot be merged.

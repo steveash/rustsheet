@@ -68,7 +68,8 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
 - [ ] Every new probe case is filled and committed. Coefficient files and scripts are under `docs/research/t1941/`.
 - [ ] Quirks recorded in `docs/excel-semantics/statistics.md` ("GAMMA, GAMMALN and LN kernels"). Lessons added
       to `docs/research/excel-kernel-playbook.md`. T-2123's model list updated.
-- [ ] `make check` green; reviewers approve (merged to main by the research branch's PR).
+- [ ] `make check` green; reviewers approve. Land notes, coefficient files and verifiers on main in a slim PR, as the T-1941
+      close-out did. Bulk probe data (`kmyst-gam-*`, gigabytes) stays on the research branch.
 
 ## Out of scope
 - Engine implementation (T-2123).
