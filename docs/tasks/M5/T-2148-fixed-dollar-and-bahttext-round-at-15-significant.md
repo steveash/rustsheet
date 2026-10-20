@@ -3,7 +3,7 @@ id: T-2148
 title: "FIXED, DOLLAR and BAHTTEXT round at 15 significant digits first (ROUND's stage 1)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
