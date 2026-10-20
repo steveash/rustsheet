@@ -3,6 +3,7 @@ use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
     constants::{EXCEL_PRECISION, MAXIMUM_DATE_SERIAL_NUMBER},
+    decimal_round::{round_decimal, RoundMode},
     locale::Locale,
     number_format::{cut_15_digits, to_precision},
     text::Text,
@@ -734,13 +735,23 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // p.precision is the number of significant digits _after_ the decimal point
             // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";
             // probes-numeric/4f413cc257ce15c4 A23)
-            value = to_precision(
-                value,
-                usize::min(
-                    (p.precision as usize) + format!("{}", value.abs().floor()).len(),
-                    EXCEL_PRECISION,
-                ),
-            );
+            // The shown place rounds the 15-digit decimal half away from zero, as General and ROUND do
+            // (`TEXT(2.5,"0")` is "3", `TEXT(12.345,"0%")` "1235%"; T-2206). Scientific mantissas keep
+            // the significant-digit cut (T-1730).
+            let rounded = if p.is_scientific {
+                None
+            } else {
+                round_decimal(value, f64::from(p.precision), RoundMode::HalfAwayFromZero)
+            };
+            value = rounded.unwrap_or_else(|| {
+                to_precision(
+                    value,
+                    usize::min(
+                        (p.precision as usize) + format!("{}", value.abs().floor()).len(),
+                        EXCEL_PRECISION,
+                    ),
+                )
+            });
             let mut value_abs = value.abs();
             let mut exponent_part: Vec<char> = vec![];
             let mut exponent_is_negative = value_abs < 10.0;
