@@ -80,6 +80,29 @@ impl CalcResult {
     pub fn is_error(&self) -> bool {
         matches!(self, CalcResult::Error { .. })
     }
+
+    /// A blank cell's value as a function hands it on: the empty value, which COUNT, COUNTA and
+    /// AVERAGE count as 0 while ISBLANK still sees it blank. IFERROR and IFNA give it for a blank
+    /// value argument (docs/excel-semantics/logic.md "IFERROR / IFNA of a blank cell is an empty
+    /// value"), VLOOKUP, HLOOKUP and LOOKUP for a blank result cell (lookup.md "VLOOKUP and
+    /// HLOOKUP hand a blank result cell to their caller as 0"). Anything else is unchanged.
+    pub(crate) fn blank_as_empty_value(self) -> CalcResult {
+        match self {
+            CalcResult::EmptyCell => CalcResult::EmptyArg,
+            other => other,
+        }
+    }
+
+    /// The empty value as the number 0, anything else unchanged: what IFS and SWITCH give for
+    /// it (`IFS(TRUE,VLOOKUP(..))&""` is "0" when the lookup lands on a blank, while a blank
+    /// reference stays blank; lookup.md "VLOOKUP and HLOOKUP hand a blank result cell to their
+    /// caller as 0").
+    pub(crate) fn empty_value_as_zero(self) -> CalcResult {
+        match self {
+            CalcResult::EmptyArg => CalcResult::Number(0.0),
+            other => other,
+        }
+    }
 }
 
 impl Ord for CalcResult {

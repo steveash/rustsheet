@@ -298,13 +298,30 @@ Implemented in: `fn_index` in `crates/rustsheet-engine/src/functions/lookup_and_
 Tasks: T-0213
 
 ## VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0 (T-2168)
-Rule: when VLOOKUP or HLOOKUP lands on a blank cell, the enclosing function sees the number 0, not an empty value:
-`ASC(IFS(..,VLOOKUP(123456789.123,D3:E7,2),..))` landing on blank E6 is "0" (ours ""), and
-`SEC(AVERAGE(HLOOKUP(2.5,B8:D11,4),-2.5,B7:B9))` averages the blank result as 0, 1.2724471433871758 = SEC(-2/3) (ours skips it:
-SEC(-1) = 1.8508157176809255). XLOOKUP already returns a blank return cell as 0 (below).
-Evidence: gen-m5/49bfbf67a1409563 Calc!A103, gen-m5/aac6230c2fb40e1e Calc!A334 (excel-graph, 2026-10-20).
-Unprobed: `ISBLANK` and `&""` of such a result, LOOKUP and INDEX/MATCH.
-Status: VERIFIED (excel-graph, 2 cells); not implemented (T-2168).
+Rule: when VLOOKUP, HLOOKUP or LOOKUP lands on a blank cell, it gives the blank's *value*, the same empty value IFERROR
+gives for a blank (logic.md "IFERROR / IFNA of a blank cell is an empty value"), not a reference to it. The cell shows 0;
+ISBLANK of it is TRUE, ISNUMBER and ISTEXT FALSE, ISREF FALSE, TYPE 1, N 0, T "", LEN 0, `&""` "", ASC "", SUM, MAX and MIN
+read 0, and `LET(x,..,ISBLANK(x))` is TRUE. Unlike a blank reference, COUNT, COUNTA and AVERAGE count it as the number 0:
+`COUNT(VLOOKUP(..))` and `COUNTA(VLOOKUP(..))` are 1, `AVERAGE(VLOOKUP(..),4)` is 2, through IF and LET too
+(`COUNT(IF(TRUE,VLOOKUP(..)))` 1, `LET(x,VLOOKUP(..),COUNT(x))` 1). Exact and approximate match, both LOOKUP forms
+(`LOOKUP(2,A1:A3,B1:B3)`, `LOOKUP(2,A1:B3)`) behave the same. IFS and SWITCH turn the empty value into 0:
+`IFS(TRUE,VLOOKUP(..))&""`, `IFS(FALSE,1,TRUE,VLOOKUP(..))&""`, `SWITCH(1,1,VLOOKUP(..))&""` and
+`IFS(TRUE,IFERROR(B2,1))&""` are "0" and `ISBLANK(IFS(TRUE,VLOOKUP(..)))` FALSE, while `IFS(TRUE,B2)&""` of a blank
+reference, `IF(TRUE,VLOOKUP(..))&""`, `IF(TRUE,IFERROR(B2,1))&""` and `CHOOSE(1,VLOOKUP(..))&""` stay "". INDEX and
+INDEX/MATCH return the reference, so a blank there is skipped (`COUNT(INDEX(B1:B3,2))` 0, `AVERAGE(..,4)` 4, `MAX(..,-1)`
+-1, ISREF TRUE). An array result keeps the blank element empty: `COUNT(VLOOKUP({2,3},..))` is 1, `AVERAGE` of it 5,
+`AVERAGE(VLOOKUP(2,..,{2},FALSE),4)` 4, `COUNT(HLOOKUP(2,D1:F2,{2}))` 0.
+So `ASC(IFS(..,VLOOKUP(123456789.123,D3:E7,2),..))` landing on blank E6 is "0" (through IFS), and
+`SEC(AVERAGE(HLOOKUP(2.5,B8:D11,4),-2.5,B7:B9))` averages the blank result as 0, 1.2724471433871758 = SEC(-2/3).
+XLOOKUP already returns a blank return cell as 0 (below). Excel for the web refuses a workbook holding
+`IFS(TRUE,)` (createSession 501), and one of `AVERAGEA`, `PRODUCT`, `COUNTBLANK`, `SUMSQ`, `STDEV.P` over
+`VLOOKUP(..)` (most likely COUNTBLANK, which takes only a reference); those are unprobed.
+Evidence: gen-m5/49bfbf67a1409563 Calc!A103, gen-m5/aac6230c2fb40e1e Calc!A334 (excel-graph, 2026-10-20);
+probes/lookup-blank-result-to-caller H1:O20 and probes/lookup-vector-blank-result-to-caller H1:I19 (excel-graph,
+2026-10-20, T-2168).
+Ours: matches since T-2168 (`CalcResult::blank_as_empty_value` on the scalar result of VLOOKUP, HLOOKUP and LOOKUP;
+`empty_value_as_zero` on what IFS and SWITCH pick).
+Status: VERIFIED (excel-graph)
 
 ## Whole-column / whole-row search vectors: blank tail
 Rule: as above, blanks never match and the type-skipping search steps over them, so a whole
