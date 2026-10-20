@@ -346,7 +346,11 @@ Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (ro
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
 per-parameter rule, unprobed, and a 1x1 array argument still runs one unlifted call, both pending T-1960);
-none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array);
+none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a
+sort_order list of the same length since T-1837 (F10:H11; `fn_sort` with `Model::sort_number_list`, spill_functions.rs;
+a single sort_order with several keys applies to each, unprobed; row and column lists alike, and with by_col the keys
+are rows: `SORT(A1:C3,{1,2},{1,-1},TRUE)` sorts columns by row 1, then row 2 descending, and `SORT(A1:C3,1,{1,-1},TRUE)`
+is `#VALUE!`, probes/sort-error-args H57:J71);
 GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; `_xleta.` names work since T-1466, see "Functions passed by name" below); INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
 is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)

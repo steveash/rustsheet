@@ -3,7 +3,7 @@ id: T-1837
 title: "SORT reads an array or range sort_index as a list of sort keys, with a sort_order of the same length"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,14 +26,23 @@ Owned cells:
 - gen-m7/a0cbc75358b429b6 Calc!A12 `=SORT(CONCAT(..),Data!D1:E3,Data!A9:C12,(..=..))` (range sort_index and sort_order): Excel `#N/A`, ours `#N/IMPL!` (T-1275, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/a0cbc75358b429b6.case.json`). Read the full formula with `show` and record in arrays.md which check gives the `#N/A`.
 
 ## Acceptance criteria
-- [ ] probes/m7-argument-modes F10:H10 and F11:H11 pass.
-- [ ] gen-m7/a0cbc75358b429b6 A12 passes, with no new failing gen-m7 cell.
-- [ ] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
-- [ ] Unit tests: two sort keys `{1;2}` and `{2,1}` (row and column lists) with ties broken by the second key; a sort_order list as long as the keys (`SORT(A1:B3,{1;2},{1;-1})`); a sort_order of a different length is `#VALUE!`; a scalar sort_index and sort_order are unchanged.
-- [ ] Any rule not already in docs/excel-semantics/arrays.md "Dynamic-array and LAMBDA function argument modes" is added there with its cells.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/m7-argument-modes F10:H10 and F11:H11 pass.
+- [x] gen-m7/a0cbc75358b429b6 A12 passes, with no new failing gen-m7 cell.
+- [x] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
+- [x] Unit tests: two sort keys `{1;2}` and `{2,1}` (row and column lists) with ties broken by the second key; a sort_order list as long as the keys (`SORT(A1:B3,{1;2},{1;-1})`); a sort_order of a different length is `#VALUE!`; a scalar sort_index and sort_order are unchanged.
+- [x] Any rule not already in docs/excel-semantics/arrays.md "Dynamic-array and LAMBDA function argument modes" is added there with its cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SORT's argument-error order (T-1351).
 - Lifting SORT's by_col (not probed).
 - SORTBY (T-1839).
+
+## Outcome
+`fn_sort` (spill_functions.rs) reads sort_index and sort_order through `Model::sort_number_list`: an array or a
+multi-cell range is a list (row-major, the first error element is the result), anything else one number. The keys are
+applied in order, each tie broken by the next (`first_unequal`, now shared with SORTBY's comparison); a sort_order list
+of more than one entry must be as long as sort_index (`#VALUE!` otherwise, after by_col is read, as before); a single
+sort_order applies to every key (unprobed). The argument-error order is unchanged. gen-m7/a0cbc75358b429b6 A12 already
+passed on main (its CONCAT array argument's `#N/A` comes first). Eval delta: 26 probes cells fixed (m7-argument-modes
+F10:H11 and sort-error-args H57:J59, H61, H65, H69:J71), 0 regressions; arrays.md updated.

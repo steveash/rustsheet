@@ -89,6 +89,14 @@ fn col_key(data: &[Vec<ArrayNode>], j: usize) -> Vec<CellKey> {
     data.iter().map(|row| cell_key(&row[j])).collect()
 }
 
+/// The first of `orderings` that is not `Equal`: the comparison of SORT's and SORTBY's keys,
+/// each tie broken by the next key.
+fn first_unequal(mut orderings: impl Iterator<Item = Ordering>) -> Ordering {
+    orderings
+        .find(|ordering| *ordering != Ordering::Equal)
+        .unwrap_or(Ordering::Equal)
+}
+
 /// An evaluated SORTBY `by_array` argument.
 type SortByArray = Vec<Vec<ArrayNode>>;
 
@@ -199,18 +207,18 @@ impl Model {
         // A multi-cell sort_order (c5d278a8662ef4b2 A39) fails to coerce here but is only a
         // validation error to Excel, so by_col is evaluated before a #VALUE! sort_order is returned.
         let raw_index = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
-            self.get_number(&args[1], cell).map(|n| n as i64)
+            self.sort_number_list(&args[1], cell)
         } else {
-            Ok(1)
+            Ok(vec![1.0])
         };
         let raw_index = match raw_index {
-            Ok(n) => n,
+            Ok(list) => list,
             Err(e) => return e,
         };
-        let raw_order = if args.len() >= 3 {
-            self.get_sort_order_arg(&args[2], cell)
+        let raw_order = if args.len() >= 3 && !matches!(args[2], Node::EmptyArgKind) {
+            self.sort_number_list(&args[2], cell)
         } else {
-            Ok(1)
+            Ok(vec![1.0])
         };
         if let Err(e @ CalcResult::Error { .. }) = &raw_order {
             if !matches!(
@@ -232,54 +240,67 @@ impl Model {
             false
         };
         let raw_order = match raw_order {
-            Ok(n) => n,
+            Ok(list) => list,
             Err(e) => return e,
         };
-
-        if raw_index < 1 {
+        // An array or range sort_index is a list of keys, applied in order, and a sort_order list
+        // must be as long (`SORT(A1:B3,{1;2})` sorts by column 1 then 2; `SORT(A1:B3,1,{1;-1})` is
+        // `#VALUE!`: probes/m7-argument-modes F10:H11). A single sort_order applies to every key
+        // (unprobed with several keys).
+        if raw_order.len() > 1 && raw_order.len() != raw_index.len() {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
-                "sort_index must be >= 1".to_string(),
+                "sort_order must have one entry per sort_index".to_string(),
             );
         }
-        let sort_index = raw_index as usize;
-        let ascending = match Self::validate_sort_order(raw_order, cell) {
-            Ok(a) => a,
-            Err(e) => return e,
-        };
-
-        if !by_col {
-            // Sort rows by column sort_index
-            if sort_index > num_cols {
+        let extent = if by_col { num_rows } else { num_cols };
+        let mut keys: Vec<(usize, bool)> = Vec::with_capacity(raw_index.len());
+        for (k, &index) in raw_index.iter().enumerate() {
+            let index = index as i64;
+            if index < 1 {
                 return CalcResult::new_error(
                     Error::VALUE,
                     cell,
-                    "sort_index exceeds array width".to_string(),
+                    "sort_index must be >= 1".to_string(),
                 );
             }
-            let key_col = sort_index - 1;
+            let order = raw_order
+                .get(k)
+                .or(raw_order.first())
+                .copied()
+                .unwrap_or(1.0);
+            let ascending = match Self::validate_sort_order(order as i32, cell) {
+                Ok(a) => a,
+                Err(e) => return e,
+            };
+            if index as usize > extent {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "sort_index exceeds the array".to_string(),
+                );
+            }
+            keys.push((index as usize - 1, ascending));
+        }
 
+        if !by_col {
+            // Sort rows by the key columns.
             let mut row_indices: Vec<usize> = (0..num_rows).collect();
             row_indices.sort_by(|&a, &b| {
-                sort_key_cmp(&data[a][key_col], &data[b][key_col], ascending, cell)
+                first_unequal(keys.iter().map(|&(key, ascending)| {
+                    sort_key_cmp(&data[a][key], &data[b][key], ascending, cell)
+                }))
             });
 
             CalcResult::Array(row_indices.iter().map(|&r| data[r].clone()).collect())
         } else {
-            // Sort columns by row sort_index
-            if sort_index > num_rows {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "sort_index exceeds array height".to_string(),
-                );
-            }
-            let key_row = sort_index - 1;
-
+            // Sort columns by the key rows.
             let mut col_indices: Vec<usize> = (0..num_cols).collect();
             col_indices.sort_by(|&a, &b| {
-                sort_key_cmp(&data[key_row][a], &data[key_row][b], ascending, cell)
+                first_unequal(keys.iter().map(|&(key, ascending)| {
+                    sort_key_cmp(&data[key][a], &data[key][b], ascending, cell)
+                }))
             });
 
             CalcResult::Array(
@@ -288,6 +309,31 @@ impl Model {
                     .collect(),
             )
         }
+    }
+
+    /// SORT's sort_index or sort_order as a list of numbers: an array or a multi-cell range is
+    /// each of its values in row-major order (the first error element is the result), anything
+    /// else one number.
+    fn sort_number_list(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
+        let value = self.evaluate_node_in_context(node, cell);
+        let is_list = match &value {
+            CalcResult::Array(_) => true,
+            CalcResult::Range { left, right } => left != right,
+            _ => false,
+        };
+        if !is_list {
+            return Ok(vec![self.cast_to_number(value, cell)?]);
+        }
+        let grid = self.result_to_array(value, cell)?;
+        let mut numbers = Vec::new();
+        for node in grid.iter().flatten() {
+            numbers.push(self.cast_number_ref(&array_node_to_calc_result(node, cell), cell)?);
+        }
+        Ok(numbers)
     }
 
     // ── SORTBY ────────────────────────────────────────────────────────────────
@@ -356,13 +402,11 @@ impl Model {
 
         let mut row_indices: Vec<usize> = (0..num_rows).collect();
         row_indices.sort_by(|&a, &b| {
-            for (keys, ascending) in &sort_keys {
-                let ord = sort_key_cmp(&keys[a], &keys[b], *ascending, cell);
-                if ord != Ordering::Equal {
-                    return ord;
-                }
-            }
-            Ordering::Equal
+            first_unequal(
+                sort_keys
+                    .iter()
+                    .map(|(keys, ascending)| sort_key_cmp(&keys[a], &keys[b], *ascending, cell)),
+            )
         });
 
         CalcResult::Array(row_indices.iter().map(|&r| data[r].clone()).collect())
