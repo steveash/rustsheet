@@ -1271,6 +1271,20 @@ then stored to double, fl53(fl64(.)). Evidence and scripts: `docs/research/t1941
   - x <= -10: reflection with sin computed by FSIN.
   - Exact half-integers take an ascending product times sqrt(pi); integers <= 88 take the downward product.
   - The cuts are exact comparisons: x >= 10 and -x > 10.
+- **Update 2026-10-20 (T-1941; restart file `docs/research/t1941/HANDOFF2.md`; engine T-2123; open bits T-2122):**
+  - **GAMMALN (2,3]:** plain stored x87 Horner with plain double coefficients (`k2_ref.py`): 95.0% exact, 97.8%
+    within 1 ulp.
+    - Excel's head coefficients differ from a function fit by a large near-null move: head += c·g(x), with g a
+      cubic ≈ 1/x on [2,3] and c = −3128·2^-54 (N), +552·2^-54 (D).
+    - The next coefficient is reduced by c, and the late coefficients are unchanged.
+    - The move is invisible in the function; only the stage roundings reveal it.
+    - Whether the head sums just before the hand-off product stay in 80-bit registers is unresolved: [2,3] data
+      favour it, the near-2 ladders favour all-stored.
+  - **GAMMA [1,2):** plain doubles (`w4/k1r/plain1.txt`), 77.6% exact, 87.8% within 1 ulp; weaker on [1.8,2).
+    - Two hidden no-op shifts are absorbed into the coefficients the same way (g ≈ 1/y, degree 4-5).
+  - **GAMMALN near 1 and GAMMA [1,2) are plain stored chains** (no unstored stretches; coefficient-independent
+    noise fingerprint). Apparent gains from "80-bit" masks were artefacts of wrong coefficients.
+  - **GAMMALN (1.5,2]:** fl((x-1)*fl((x-2)*R)), with D0 of R NOT a power of two.
 
 ## Incomplete gamma sweep (T-1045)
 Rule: Excel's incomplete-gamma values (the targets for T-0971 and T-0972) are plain numbers on the whole in-domain grid, and the CDF saturates to exactly 1 deep in the upper tail while the pdf stays finite.
