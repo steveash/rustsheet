@@ -3,7 +3,7 @@ id: T-2206
 title: "TEXT and displayed text round a 15-digit decimal tie half away from zero (TEXT(2.5,\"0\") is \"3\", TEXT(36.5,\"0\") is \"37\")"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
