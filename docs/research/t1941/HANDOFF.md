@@ -759,7 +759,7 @@ set produce the offsets at all anchors at once". Two explanations remain; W2 has
   - forces the head to compensate differently at each anchor.
 
   W2's own controls show the symptom: with the late part frozen on a displaced truth, early-only fits stall at 34-67%.
-- **(b) The single-anchor 99.97% fits lock onto aliases**, so their per-anchor offsets are not Excel's and the joint
+- **(b) The single-anchor 99.97% fits lock onto aliases** *(Correction, 2026-10-20: the "99.97%" figure was W2's per-point s4read admissibility, the same quantity as the 99.8% reach of `flips.py`, not a coefficient fit. W2's best single-window coefficient fits are 82-85%. The conclusions in 12.6-12.8 that do not depend on it stand.)*, so their per-anchor offsets are not Excel's and the joint
   solve inherits wrong rungs. The "2.5 cluster" figure comes from ladder rungs whose P4 phase is the same on every rung,
   so a single anchor cannot test the rounding structure. Only consecutive runs can (r901 at 2.5 gives 78.4%).
 
@@ -945,6 +945,7 @@ Facts 2 and 3 cannot be a rounding-rule difference at the sum.
   and q0-q2, can reach 98.6-99.97% while no per-anchor offset can.
 
 **Consequences.**
+- *(Correction, 2026-10-20: the "99.97%" figure was W2's per-point s4read admissibility, the same quantity as the 99.8% reach of `flips.py`, not a coefficient fit. W2's best single-window coefficient fits are 82-85%. The conclusions in 12.6-12.8 that do not depend on it stand.)*
 - **12.3's two explanations are narrowed.** It is neither a smooth offset at the hand-off (this section) nor a late
   displacement (latescan, residue scans, unstored variants).
   - It is the early coefficients p0-p3 / q0-q2 themselves, whose errors reach the hand-off as point-wise jitter through
@@ -1057,3 +1058,35 @@ Reading:
   Recovering them needs an exact per-anchor fit over p0-p3 / q0-q2 on consecutive runs, with the stage-4/3 product's
   quantisation as a free bit, followed by a lattice intersection of the per-anchor integer vectors (modulo aliases)
   across anchors.
+
+### 12.9 The reach test on W2's truths: the late chain is right to well under 1% (reviewer 3, 2026-10-20 03:16 UTC)
+The test: the fraction of outputs the stored grid_a chain reproduces with a hand-off shift of at most 1 or 2 ulps at
+(4,3), and the fraction of misses that NO such shift reaches.
+
+| source | exact vs grid_a (r112/r901/r113/r703) | reach, at most 1 ulp | reach, at most 2 ulps | unreachable misses |
+|---|---|---|---|---|
+| REAL | 0.766/0.784/0.730/0.737 | 0.995/0.988/0.983/0.995 | 0.998/0.999/0.999/0.998 | 0.7%/0.7%/0.4%/0.9% |
+| cE30 (early-only) | 0.75/0.78/0.72/0.74 | 1.000/1.000/0.992/1.000 | 1.000 everywhere | 0% |
+| cE100 | 0.40/0.45/0.37/0.40 | 0.91/0.86/0.78/0.83 | 1.000/1.000/0.9998/1.000 | 0% |
+| cL30 (joint late+cross) | 0.14/0.46/0.82/0.56 | 0.61/0.79/0.997/0.88 | 0.903/0.955/1.000/0.978 | 11%/8%/0%/5% |
+| cL100 | 0.03/0.18/0.43/0.16 | 0.17/0.41/0.79/0.39 | 0.48/0.69/0.93/0.68 | 54%/38%/12%/38% |
+
+Reading:
+- A late displacement leaves misses that no hand-off shift reaches: 5-11% of misses at scale 30 and 38-54% at scale 100
+  (except where the move happens to be weak, as cL30 at r113). Head-level deviations leave none.
+- Real leaves 0.4-0.9%. So any late component is at least an order of magnitude smaller than cL30's, and the late chain
+  is right to within effects on well under 1% of points.
+- The K2 deviation is a head-level, point-wise, two-sided re-decision, just not a smooth one.
+- A joint head+late solver must constrain its late moves accordingly: they may change fewer than about 1 in 100 outputs
+  beyond hand-off reach.
+
+Reviewer 3's mechanism analysis:
+- On x87 nothing lies between a 53-bit store and the 64-bit register for a product: the precision control word offers
+  only 24, 53 or 64 bits.
+- Split multiplies (coordinator screen m1-m5), chop rounding, an 80-bit s3 operand, and the product error reaching P5
+  through an unrounded s4 (killed by the s4 sum line) all fail to give "partial" following.
+- So the leading candidate is a point-wise re-decision ONE stage earlier, at s3. A +-1 ulp(s3) change moves P4 by about
+  a quarter-step and changes the s4 position class exactly as observed.
+
+The direct read is a table of Excel's shift on the s4 exact class, against e3 = P3_80 - P3_q in 1/16 steps jointly with
+the eighth-position class of P3_q + p3, per run. The positive control is a planted p2 move.
