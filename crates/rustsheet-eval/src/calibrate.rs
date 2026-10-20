@@ -94,6 +94,7 @@ mod tests {
         WorkbookSnapshot {
             application: None,
             app_version: None,
+            file_app_name: None,
             date1904: DateSystem::default() == DateSystem::Excel1904,
             sheets: vec![SheetSnapshot {
                 name: "S".into(),
