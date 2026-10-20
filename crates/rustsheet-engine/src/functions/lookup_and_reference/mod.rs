@@ -1,6 +1,5 @@
 use crate::arithmetic::bcast_get;
 use crate::cast::NumberOrArray;
-use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
@@ -38,6 +37,7 @@ mod index_arg;
 mod lookup;
 mod lookup_each;
 pub(crate) mod lookup_table;
+pub(crate) mod offset;
 mod pivotby;
 mod relative_to;
 mod tocol_torow;
@@ -725,140 +725,6 @@ impl Model {
             }),
             _ => None,
         }
-    }
-
-    /// Height or width argument of OFFSET as the signed distance from the anchor cell to the far
-    /// edge of the area; `default` when the argument is missing or empty, `None` for exactly 0.
-    ///
-    /// Excel: see docs/excel-semantics/references.md "OFFSET negative and fractional height/width".
-    /// A positive size `h` reaches `floor(h - 1)` cells on, a negative one `ceil(h + 1)` cells (so
-    /// -3 reaches 2 back), and the fractions in (-1, 1) reach one cell back and on respectively.
-    fn offset_size(
-        &mut self,
-        arg: Option<&Node>,
-        default: i32,
-        cell: CellReferenceIndex,
-    ) -> Result<Option<i32>, CalcResult> {
-        match arg {
-            None | Some(Node::EmptyArgKind) => Ok(Some(default)),
-            Some(node) => {
-                let c = self.get_number(node, cell)?;
-                Ok(if c > 0.0 {
-                    Some((c - 1.0).floor() as i32)
-                } else if c < 0.0 {
-                    Some((c + 1.0).ceil() as i32)
-                } else {
-                    None
-                })
-            }
-        }
-    }
-
-    // OFFSET(reference, rows, cols, [height], [width])
-    // Returns a reference to a range that is a specified number of rows and columns from a cell or range of cells.
-    // The reference that is returned can be a single cell or a range of cells.
-    // You can specify the number of rows and the number of columns to be returned.
-    pub(crate) fn fn_offset(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let l = args.len();
-        if !(3..=5).contains(&l) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // OFFSET of a reference into another workbook is `#VALUE!`, not a reference
-        // (`ISREF(OFFSET(…!A1,1,1))` is FALSE; probes/external-ref-no-link-shapes A5,
-        // external-ref-no-link-index A16, A17, A32).
-        // An error in `rows`, `cols` or `width` comes first: `OFFSET(…!A1,1/0,1)`,
-        // `OFFSET(…!A1,1,1/0)` and `OFFSET(…!A1,1,1,1,1/0)` are `#DIV/0!`, but a height of 0 is
-        // still `#VALUE!` (probes/external-ref-no-link-ifchoose A7, -ifchoose-b A2, A3, A6).
-        if let Some(areas) = self.external_reference(&args[0], cell) {
-            if let Err(error) = areas {
-                return error;
-            }
-            for arg in &args[1..] {
-                if let Err(error) = self.get_number(arg, cell) {
-                    return error;
-                }
-            }
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "OFFSET of an external reference".to_string(),
-            );
-        }
-        let reference = match self.get_reference(&args[0], cell) {
-            Ok(c) => c,
-            Err(s) => return s,
-        };
-        let rows = match self.get_number(&args[1], cell) {
-            Ok(c) => {
-                if c < 0.0 {
-                    c.ceil() as i32
-                } else {
-                    c.floor() as i32
-                }
-            }
-            Err(s) => return s,
-        };
-        let cols = match self.get_number(&args[2], cell) {
-            Ok(c) => {
-                if c < 0.0 {
-                    c.ceil() as i32
-                } else {
-                    c.floor() as i32
-                }
-            }
-            Err(s) => return s,
-        };
-        // `as i32` saturates, so sums saturate too (untrusted input must not overflow): any such
-        // result is outside the sheet and falls through to #REF!.
-        let row_start = reference.left.row.saturating_add(rows);
-        let column_start = reference.left.column.saturating_add(cols);
-        // A missing or empty height/width keeps the reference's size
-        // (poi/FormulaEvalTestData_Copy.xlsx EverythingTests!I1008, J1008, M1008, N1008).
-        let height =
-            match self.offset_size(args.get(3), reference.right.row - reference.left.row, cell) {
-                Ok(h) => h,
-                Err(e) => return e,
-            };
-        let width = match self.offset_size(
-            args.get(4),
-            reference.right.column - reference.left.column,
-            cell,
-        ) {
-            Ok(w) => w,
-            Err(e) => return e,
-        };
-        let (Some(height), Some(width)) = (height, width) else {
-            // A size of exactly 0 is #REF!, not an empty area.
-            return CalcResult::Error {
-                error: Error::REF,
-                origin: cell,
-                message: "Invalid reference".to_string(),
-            };
-        };
-        // A negative size extends the area up/left from the anchor cell.
-        let column_end = column_start.saturating_add(width);
-        let row_end = row_start.saturating_add(height);
-        let (row_start, row_end) = (row_start.min(row_end), row_start.max(row_end));
-        let (column_start, column_end) =
-            (column_start.min(column_end), column_start.max(column_end));
-        if row_start < 1 || row_end > LAST_ROW || column_start < 1 || column_end > LAST_COLUMN {
-            return CalcResult::Error {
-                error: Error::REF,
-                origin: cell,
-                message: "Invalid reference".to_string(),
-            };
-        }
-        let left = CellReferenceIndex {
-            sheet: reference.left.sheet,
-            row: row_start,
-            column: column_start,
-        };
-        let right = CellReferenceIndex {
-            sheet: reference.right.sheet,
-            row: row_end,
-            column: column_end,
-        };
-        CalcResult::Range { left, right }
     }
 
     // FORMULATEXT(reference)

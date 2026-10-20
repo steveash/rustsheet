@@ -16,6 +16,13 @@ pub(super) fn static_analysis_offset(args: &[Node]) -> StaticResult {
         // Actually an error
         return StaticResult::Scalar;
     }
+    // An array or range in rows, cols, height or width lifts the call into an array of
+    // references in their broadcast shape, which spills its value view (SPEC-0014;
+    // probes/reference-lift-elements K1, K4, K13).
+    let lifted = broadcast_shapes(args[1..].iter().map(run_static_analysis_on_node));
+    if !matches!(lifted, StaticResult::Scalar) {
+        return lifted;
+    }
     if !matches!(args[0], Node::ReferenceKind { .. }) {
         return StaticResult::Unknown;
     }

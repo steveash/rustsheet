@@ -132,3 +132,40 @@ fn fn_offset_negative_height_width() {
     assert_eq!(model._get_text("D9"), *"19");
     assert_eq!(model._get_text("D10"), *"#REF!");
 }
+
+// SPEC-0014: OFFSET lifted over an array is an array of references. It never reaches a cell:
+// spilled, every reference element is `#VALUE!` and an error element stays itself.
+#[test]
+fn fn_offset_lifted_spills_its_value_view() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("C1", "=OFFSET(A1,{0;-1;1},0)");
+    model._set("D1", "=ROWS(OFFSET(A1,{0;1},NA()))");
+    model._set("E1", "=INDEX(OFFSET(A1,{0;1},0),2,1)");
+    model._set("F1", "=ISREF(OFFSET(A1,{0;1},0))");
+    model._set("G1", "=ISREF(INDEX(OFFSET(A1,{0;1},0),1,1))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"#VALUE!");
+    assert_eq!(model._get_text("C2"), *"#REF!");
+    assert_eq!(model._get_text("C3"), *"#VALUE!");
+    assert_eq!(model._get_text("D1"), *"2");
+    assert_eq!(model._get_text("E1"), *"2");
+    assert_eq!(model._get_text("F1"), *"FALSE");
+    assert_eq!(model._get_text("G1"), *"TRUE");
+}
+
+// The broadcast shape is checked before any element is computed (CLAUDE.md directive 5).
+#[test]
+fn fn_offset_lift_past_the_array_bound_is_an_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(OFFSET(B1,SEQUENCE(2000),SEQUENCE(1,1000)))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+}
+
+#[test]
+fn ref_element_is_small() {
+    // SPEC-0014 "Bounds": no larger than the `ArrayNode` it stands in for.
+    assert!(std::mem::size_of::<crate::reference_operators::RefElement>() <= 32);
+}

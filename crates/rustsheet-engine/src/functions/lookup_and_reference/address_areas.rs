@@ -182,6 +182,8 @@ impl Model {
                 CalcResult::new_error(Error::VALUE, cell, "AREAS takes a reference".to_string())
             }
             RefArg::Ranges(_) => three_d_needs_one_sheet(cell),
+            // Per element in Excel (SPEC-0014 rule 6, T-2064); the value view until then.
+            RefArg::Grid(grid) => grid.to_values(),
         }
     }
 }
