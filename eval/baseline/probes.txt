@@ -271,6 +271,10 @@ C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
 C	probes/eng-im-overflow.case.json	48
 C	probes/eng-imdiv.case.json	24
+C	probes/eng-imexp-overflow-cutoff-halfpi.case.json	20
+C	probes/eng-imexp-overflow-cutoff-pi.case.json	24
+C	probes/eng-imexp-overflow-cutoff-pi2.case.json	29
+C	probes/eng-imexp-overflow-cutoff.case.json	26
 C	probes/eng-imexp-overflow-imag.case.json	31
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35

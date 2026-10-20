@@ -309,6 +309,13 @@ pub(super) fn excel_cos(x: f64) -> f64 {
     rounded_sine(n + 1, r, r.mul(r))
 }
 
+/// The quarter-turn count `n` and the size of the remainder `|x − n·π/2|` as SIN reduces `x`, for
+/// |x| < [`EXCEL_TRIG_LIMIT`].
+pub(crate) fn excel_quarter_turn_remainder(x: f64) -> (i64, f64) {
+    let (n, r) = reduce(x);
+    (n, r.hi.abs())
+}
+
 /// Excel's SIN(x) and COS(x), for |x| < [`EXCEL_TRIG_LIMIT`].
 pub(crate) fn excel_sin_cos(x: f64) -> (f64, f64) {
     let (n, r) = reduce(x);
