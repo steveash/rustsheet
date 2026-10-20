@@ -164,6 +164,7 @@ C	probes/countblank-error-forms-b.case.json	8
 C	probes/countblank-formula-names-b.case.json	17
 C	probes/countblank-formula-names.case.json	21
 C	probes/coupdays-feb-month-end.case.json	296
+C	probes/covariance-pairs-skip.case.json	17
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
 C	probes/criteria-ifs-bare-equals.case.json	12
@@ -265,6 +266,7 @@ C	probes/elapsed-tiny-negatives-1904.case.json	11
 C	probes/encodeurl-evidence-floor.case.json	29
 C	probes/eng-argument-modes.case.json	231
 C	probes/eng-base-conv-blank.case.json	46
+C	probes/eng-complex-overflow.case.json	21
 C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
 C	probes/eng-im-overflow.case.json	48
@@ -312,6 +314,7 @@ C	probes/fin-fvschedule.case.json	20
 C	probes/fin-later-argument-ranges.case.json	115
 C	probes/fin-mduration.case.json	18
 C	probes/fin-mirr-edges.case.json	30
+C	probes/fin-mirr-overflow-positive.case.json	4
 C	probes/fin-mirr-overflow-underflow.case.json	7
 C	probes/fin-remaining-later-argument-ranges.case.json	197
 C	probes/fin-rri.case.json	16
@@ -409,6 +412,7 @@ C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/isref-range-operands.case.json	27
 C	probes/isref-reference-lookups.case.json	11
 C	probes/isref-union-operands.case.json	9
+C	probes/lambda-body-picked-references.case.json	52
 C	probes/lambda-helper-range-slices.case.json	46
 C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
@@ -2415,13 +2419,6 @@ F	probes/regression-pairs-a.case.json	Sheet1!N5
 F	probes/regression-pairs-a.case.json	Sheet1!O19
 F	probes/regression-pairs-a.case.json	Sheet1!O22
 F	probes/regression-pairs-a.case.json	Sheet1!O26
-F	probes/regression-pairs-b.case.json	Sheet1!L10
-F	probes/regression-pairs-b.case.json	Sheet1!L11
-F	probes/regression-pairs-b.case.json	Sheet1!L12
-F	probes/regression-pairs-b.case.json	Sheet1!L13
-F	probes/regression-pairs-b.case.json	Sheet1!L23
-F	probes/regression-pairs-b.case.json	Sheet1!L26
-F	probes/regression-pairs-b.case.json	Sheet1!L9
 F	probes/regression-pairs-b.case.json	Sheet1!M11
 F	probes/regression-pairs-b.case.json	Sheet1!M13
 F	probes/regression-pairs-b.case.json	Sheet1!M21
@@ -2824,7 +2821,6 @@ F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
 F	probes/subtotal-take-array-selector.case.json	Sheet1!D7
 F	probes/t1626-regexreplace.case.json	Sheet1!C34
 F	probes/t1626-regextest.case.json	Sheet1!C29
-F	probes/take-drop-over-ifs-switch-picks.case.json	Sheet1!A78
 F	probes/text-currency-locale-date.case.json	S!A14
 F	probes/text-format-length-limit-d.case.json	S!A31
 F	probes/text-format-length-limit-f.case.json	Sheet1!A41
