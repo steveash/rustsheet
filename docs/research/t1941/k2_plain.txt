@@ -1,0 +1,10 @@
+# K2 (GAMMALN on (2,3]) best plain-double coefficient set (W2 null-lattice refinement, 2026-10-20 06:52 UTC).
+# PLAIN stored x87 Horner (every product and sum rounded to double), y = fl(fl(x-2) * fl(N/D)), high-order first as
+# review3/spec.py. Only p1..p5 and q0..q4 differ from grid_a; p0, p6..p9, q5..q8 = grid_a (late coefficients are only
+# identifiable up to plateaus; grid_a sits inside them).
+# Scores: 1,024 dense clusters 0.9381; 14 long runs 0.9381 (coordinator recheck 0.9377, worst run 0.908);
+# cluster-mean bias rms 0.047 ulp(y) (grid_a 0.757 / 0.739 / 0.136). Not bit-exact.
+# Previous candidate (reviewer 3, 0.933 / 0.923): p1 ..770d2p-16 p2 ..91878p-9 p3 ..41a77p-5 p4 ..d8fecp-2; q0 ..cc5614p-18
+# q1 ..bdd6cp-11 q2 ..f4484p-6 q3 ..d3964p-3. p3/p4 (q2/q3) trade along a near-null ridge, so "pinned" values are conditional.
+p 0x1.5717994ef45d1p-51 0x1.5e5b7382714e3p-16 0x1.0ee2f11891de0p-9 0x1.572bf8684199dp-5 0x1.09fd1ad1d9003p-2 0x1.f0a8c053986d7p-2 -0x1.08305b47998b9p-6 -0x1.0ae34eb3cbad6p-1 -0x1.de852aee8c153p-3 -0x1.22260ed97843dp-6
+q 0x1.03cadf2cb5f49p-18 0x1.52fc9914beb6ep-11 0x1.5303658ef4376p-6 0x1.bb43b464d397fp-3 0x1.c515177eb1641p-1 0x1.7b39fc9194438p+0 0x1.eddf2040d2bc2p-1 0x1.9b252b2fab347p-3 0x1.00000000000eap-7
