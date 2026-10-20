@@ -19,9 +19,9 @@ functions/engineering/complex.rs still returns `Suffix::I` for a blank with `Zer
 `#NUM!` in ours; unprobed. Also unprobed: `IMSUM(,Q1)` (ours "0") and `IMSUM(,"")` (ours `#NUM!`), where `IMSUM(,)` is `#N/A`.
 
 ## Acceptance criteria
-- [ ] One probe case covers `IMSUB("3+4j",Q1)`, `IMSUB(Q1,"3+4j")`, `IMSUB("3+4j",)`, IMDIV with a blank first and second
+- [x] One probe case covers `IMSUB("3+4j",Q1)`, `IMSUB(Q1,"3+4j")`, `IMSUB("3+4j",)`, IMDIV with a blank first and second
   argument, `IMSUM(,Q1)` and `IMSUM(,"")`; answers recorded in engineering.md and matched (`Suffix::Real` for a blank if Excel agrees).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
