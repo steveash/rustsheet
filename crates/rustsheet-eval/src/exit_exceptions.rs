@@ -221,6 +221,11 @@ mod tests {
                     5,
                     "0086"
                 ),
+                (
+                    "ironcalc-calc/MATH_AND_TRIGONOMETRY/EXP_SIGN.xlsx!EXP_SIGN!B44",
+                    5,
+                    "0089"
+                ),
             ]
         );
     }

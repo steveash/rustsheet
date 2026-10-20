@@ -500,7 +500,15 @@ Worksheet EXP (T-1931). `EXP(a)` in a cell is model V6 exactly, with no extra st
 flushed (probes/subnormal-function-results C4 and C6, `EXP(-745)=0` and `EXP(-720)=0` are FALSE), and an overflow is
 `#NUM!` as before. The `kmyst-erfc-cutoff` column C reads 0 for the 18 cells from x = 26.616 where V6 gives a
 subnormal (2.19E-308 down to 3.58E-309), but that is the Graph artifact of decision 0042 (Graph reports a kept
-subnormal as 0.0), not a flush, so the curated subset leaves those cells out. Not probed: the overflow edge of
+subnormal as 0.0), not a flush, so the curated subset leaves those cells out.
+The artifact is Excel's own save (T-2204, decision 0089; probes/subnormal-saved-as-zero, excel-graph 2026-10-20): the xlsx
+Excel for the web saves holds `<v>0</v>` for `EXP(-745)`, `EXP(-720)` and `=A1` of such a cell, while `(EXP(-745))=0` is
+FALSE and `EXP(-745)*2^1000` is exactly 2^-74 (`<v>5.2939559203393771E-23</v>`), so the kept value is 2^-1074. The oracle
+reads its values from that file, so every value Excel for the web saves for a kept subnormal is 0, cached values
+included: ironcalc-calc `EXP_SIGN.xlsx` EXP_SIGN!B44 (`EXP(-745)`, Excel Online) caches 0 for the same reason. A normal
+result is written in full (`EXP(-708)`: `<v>3.3075530036384078E-308</v>`). Desktop Excel's save is not probed.
+RustSheet's export does not do this yet (T-2211).
+Not probed: the overflow edge of
 EXP itself, a in (709.7827, 709.79).
 - Curated evidence on main (probes-numeric, excel-graph fill of 2026-10-19, bit-identical to the T-1778 research
   run at all 22,281 formula cells): `t1931-exp-map` (5,990 near-midpoint EXP(a) cells from `kmyst-erfc-r5expmap1`),
@@ -567,7 +575,8 @@ probes/text-number-words H6, H7, K1, K4, K5 (`="1e-308"+0` is 0).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Per function group (T-0189, VERIFIED, probes/subnormal-function-results, excel-graph 2026-10-06;
-`C` companion cells `(x)=0` tell a true 0 from a kept subnormal, since the Graph API reports 0.0 and
+`C` companion cells `(x)=0` tell a true 0 from a kept subnormal, since the saved file, and so the Graph value,
+holds 0 (decision 0089) and
 `&""` prints "0" for both). The result is a true 0 (`(x)=0` TRUE) for the postfix `%`
 (`=1E-306%`, `=-1E-306%`), `/` and `*` (`1E-307/10`), PRODUCT (`PRODUCT(3E-308,0.5)`,
 `PRODUCT(1E-200,1E-110)`), SUMPRODUCT, SUMSQ (`SUMSQ(1E-160)`), AVERAGE (`AVERAGE(3E-308,-2.9E-308)`)
