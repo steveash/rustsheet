@@ -366,9 +366,11 @@ impl Model {
                 }
             }
         }
+        // Excel: a scalar or a single value is #N/A (probes-numeric/t1049-chisqtest A36
+        // `CHISQ.TEST(5,5)`, probes/regression-pairs-text-scalar K1 `CHISQ.TEST("a","a")`).
         if width * height < 2 {
             return CalcResult::new_error(
-                Error::NUM,
+                Error::NA,
                 cell,
                 "CHISQ.TEST requires at least two data points".to_string(),
             );

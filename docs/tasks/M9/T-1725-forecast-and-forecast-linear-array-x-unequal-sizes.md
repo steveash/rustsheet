@@ -3,7 +3,7 @@ id: T-1725
 title: "FORECAST and FORECAST.LINEAR: array x, unequal sizes and large-offset data as Excel (T-1620 probes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,8 @@ Overlaps T-1290 (FORECAST x lifting over an array or range: the `{7,8}` spill an
 
 ## Out of scope
 - Probing further inputs (file a probe task instead).
+
+## Outcome
+Landed by T-1723: FORECAST's line now comes from the shared two-pass moments (sums about the means), which gives the
+large-offset and last-digit cells; the array x spill and unequal-size `#N/A` had already landed (T-1290, T-1292).
+probes/regression-forecast passes all 74 cells.
