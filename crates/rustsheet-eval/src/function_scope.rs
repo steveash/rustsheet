@@ -83,12 +83,7 @@ impl FunctionScope {
         self.stale_exceptions = exceptions
             .cells
             .keys()
-            .filter(|cell| {
-                !self
-                    .rows
-                    .iter()
-                    .any(|row| row.failing.binary_search(cell).is_ok())
-            })
+            .filter(|cell| !self.rows.iter().any(|row| row.failing.contains(cell)))
             .cloned()
             .collect();
     }

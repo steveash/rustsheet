@@ -15,7 +15,8 @@
      `eval/milestones/exit-exceptions.tsv`: `case!Sheet!A1`, the first milestone whose row leaves
      the cell out (every later cumulative row does too), the decision that names it, and the task
      that owns the cell. It holds only cells a decision names. A line is added in the PR that takes
-     that decision, and removed when the cell passes (report.md lists such a line as stale).
+     that decision, and removed when the cell passes (report.md lists such a line as stale; a stale
+     line warns only and never fails the run).
   2. The file hides no cell from the baseline or the gate: every listed cell stays an F line of
      eval/baseline/ironcalc-calc.txt, `eval-check` is unchanged, and each row's `failing` keeps
      its meaning. The rows only gain `excepted` and the column "failing excl. exceptions", which

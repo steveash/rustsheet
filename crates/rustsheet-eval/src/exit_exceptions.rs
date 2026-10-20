@@ -200,6 +200,18 @@ mod tests {
     fn the_committed_file_parses() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let exceptions = ExitExceptions::load(&root).unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(exceptions.cells.len(), 3);
+        let lines: Vec<(&str, u32, &str)> = exceptions
+            .cells
+            .iter()
+            .map(|(cell, e)| (cell.as_str(), e.milestone, e.decision.as_str()))
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                ("ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C11", 2, "0074"),
+                ("ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C4", 5, "0085"),
+                ("ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!E4", 5, "0085"),
+            ]
+        );
     }
 }
