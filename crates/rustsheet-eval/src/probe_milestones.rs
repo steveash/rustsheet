@@ -40,10 +40,10 @@ const CATALOG_PREFIX: &str = "probes/catalog/";
 /// Functions that only observe a catalog cell's result, so they do not set its milestone.
 const OBSERVING_WRAPPERS: [&str; 4] = ["OR", "IFERROR", "ERROR.TYPE", "INDEX"];
 /// Rule 5's milestone, and rule 3's for a catalog cell that calls no catalog function.
-const DEFAULT_MILESTONE: u32 = 2;
+pub(crate) const DEFAULT_MILESTONE: u32 = 2;
 /// The milestones that always get a report row; M0, M1 and M2 share the first one. Any other
 /// milestone a case is assigned gets a row of its own after these, so nothing drops out.
-const REPORT_ROWS: [u32; 8] = [2, 5, 6, 7, 8, 9, 10, 11];
+pub(crate) const REPORT_ROWS: [u32; 8] = [2, 5, 6, 7, 8, 9, 10, 11];
 
 /// Parses `M<digits>`. Numeric order is the phase order of docs/milestones.md for every
 /// milestone a probe can take (M0–M2 and M5–M11).
@@ -56,7 +56,7 @@ pub(crate) fn parse_milestone(s: &str) -> Option<u32> {
 }
 
 /// The report row a milestone counts in: M0 and M1 count with M2 (decision 0051, item 3).
-fn row_of(milestone: u32) -> u32 {
+pub(crate) fn row_of(milestone: u32) -> u32 {
     milestone.max(DEFAULT_MILESTONE)
 }
 

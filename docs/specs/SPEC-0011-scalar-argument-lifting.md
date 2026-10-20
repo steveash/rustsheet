@@ -568,8 +568,9 @@ As built (T-1822): ACCRINT, the COUP* family, DURATION, MDURATION and PRICE are 
 one period at a time, at most about 32,400 quarters once a settlement below serial 1 is `#NUM!` (Excel's rule,
 probes/fin-coupon-walk-bounds; before, a settlement of -1E15 walked about 10^6 quarters). Each walk is charged 2^16
 units (`COUPON_WALK_WEIGHT`, about 1 ms at the longest schedule): two for COUP* and ACCRINT (1,024 elements), four
-for DURATION, MDURATION and PRICE (512; financial.md "Coupon schedule work cap", a DEVIATION; T-1846 narrows it
-to a schedule-length budget). YIELD, the ODD*
+for DURATION, MDURATION and PRICE (512; financial.md "Coupon schedule work cap", a DEVIATION). T-1846 narrows it
+to a schedule-length budget: each walk is charged in proportion to the element's period count (`CouponWalks`
+above), so those counts hold only at the calendar's longest schedule. YIELD, the ODD*
 functions, CUMIPMT/CUMPRINC, AMOR* and the scalars beside XNPV's, XIRR's and FVSCHEDULE's data are T-1841 to T-1843 and T-1845.
 
 As built (T-1290): 44 statistical functions whose every argument is scalar are `Lift` entries. Kernels that call
@@ -690,13 +691,24 @@ stack frames (T-1110) stay as they are, and the driver runs inside `fn_edate`.
 O(1) or loops a fixed number of times, whatever the argument values. A value-dependent kernel
 must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.INV, POISSON,
 COMBIN, FACT and MULTINOMIAL (T-1197), and the RATE/IRR/YIELD solvers (they have iteration caps, so
-they are `Constant` only if the cap is fixed). A kernel whose loop length is one argument's value
-may instead be `ByArg { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order)):
-before any element runs, the driver sums each element's charge over the broadcast,
-`1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument `arg`,
-`1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the kernel
-refuses it before looping). That pass is O(elements). The
-kernel still keeps `cap` as its own per-call cap. T-1776 checks a list of
+they are `Constant` only if the cap is fixed). A kernel whose loop length its arguments predict in O(1)
+may instead be `ByValue(ValueWork)`: before any element runs, the driver sums each element's
+`ValueWork::units` of its argument values over the broadcast (`lift/driver.rs` `kernel_units`, one
+O(elements) pass), every estimate between 1 and the flat worst case (`ValueWork::most`). Two
+estimators exist:
+- `Loop { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order); DB and VDB,
+  T-1820): `1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument
+  `arg`, `1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the
+  kernel refuses it before looping). The kernel still keeps `cap` as its own per-call cap.
+- `CouponWalks { dates, frequency, walks, weight }` (T-1846, the COUP* functions, ACCRINT,
+  DURATION, MDURATION and PRICE): `walks` times `ceil(weight * span * f / (4 * 2958465))`, at least
+  1, where `span` is the days between the earliest and latest date argument, clamped to the
+  calendar's 2958465, and `f` the frequency (1, 2 or 4): proportional to the period count, and
+  `weight` per walk for the longest schedule. A text date is charged as the longest schedule and a
+  text frequency as 4; an error argument or an invalid frequency is 1 (refused before any walk).
+  The calendar bounds each walk, so no cap constant is needed.
+
+T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`
 silently.
 
