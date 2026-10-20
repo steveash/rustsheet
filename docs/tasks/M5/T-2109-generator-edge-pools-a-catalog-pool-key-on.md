@@ -3,7 +3,7 @@ id: T-2109
 title: "Generator edge pools: a catalog pool key on params, with numeric pools for the M5 math functions"
 milestone: M5
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -66,3 +66,6 @@ inverse function's domain, 2^53 and date serials.
 - Text, number-format and error pools (T-2110).
 - Regenerating gen-m5 (T-2114).
 - Pool-aware coverage counting (the §13 coverage matrix).
+
+## Outcome
+New `gen/pools.py` (number_edges, unit_interval, angle, code_point) and a `pool:` catalog key drawn at 35% after the domain draw, never on a `hard` domain; 35 M5 params carry it. Tests: every catalog pool exists and stays under 1E+308, draw rate 25-45% over 2,000 draws, hard domain never pooled, unfocused digest pinned on a pool-free catalog. Two seed-sensitive presence tests moved to seed 3 (rng draws shifted). No eval change (T-2114 regenerates gen-m5).
