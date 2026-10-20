@@ -716,6 +716,7 @@ C	probes/reference-lift-pass-through-b.case.json	10
 C	probes/reference-lift-pass-through.case.json	38
 C	probes/regex-ascii-classes.case.json	42
 C	probes/regex-optional-args.case.json	149
+C	probes/regex-p-fold.case.json	40
 C	probes/regex-pcre2-features.case.json	62
 C	probes/regex-posix-classes-b.case.json	18
 C	probes/regex-posix-classes-c.case.json	36
@@ -2455,9 +2456,6 @@ F	probes/stat-argument-modes.case.json	Sheet1!H161
 F	probes/stat-argument-modes.case.json	Sheet1!H163
 F	probes/stat-argument-modes.case.json	Sheet1!H168
 F	probes/stat-argument-modes.case.json	Sheet1!H173
-F	probes/stat-argument-modes.case.json	Sheet1!H215
-F	probes/stat-argument-modes.case.json	Sheet1!H221
-F	probes/stat-argument-modes.case.json	Sheet1!H226
 F	probes/stat-argument-modes.case.json	Sheet1!H231
 F	probes/stat-argument-modes.case.json	Sheet1!H236
 F	probes/stat-argument-modes.case.json	Sheet1!H241

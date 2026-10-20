@@ -11,6 +11,11 @@ use crate::functions::Function;
 /// continued-fraction steps, and `ln_gamma` is a fixed Lanczos sum.
 const BETA_CDF: &str = "one statrs incomplete beta: at most 140 continued-fraction steps";
 
+/// The engine's own incomplete beta (`statistical/incomplete_beta.rs`, T-0970) behind the F
+/// family: Cephes' continued fraction capped at 300 steps, fixed-length series.
+const ENGINE_BETA_CDF: &str =
+    "one incomplete_beta evaluation: at most 300 continued-fraction steps";
+
 /// ERF's and ERFC's cap: `erf::small_erf` and `erf::erfc_kernel` are fixed-degree rationals, and
 /// `x87_exp::excel_exp` runs a fixed-length estimate and at most one fixed 26-term series.
 const ERF_KERNELS: &str =
@@ -37,9 +42,9 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     // Fixed caps, read in each kernel.
     (Function::BetaDist, Some(BETA_CDF)),
     (Function::BetaDistCompat, Some(BETA_CDF)),
-    (Function::FDist, Some(BETA_CDF)),
-    (Function::FDistRT, Some(BETA_CDF)),
-    (Function::FDistCompat, Some(BETA_CDF)),
+    (Function::FDist, Some(ENGINE_BETA_CDF)),
+    (Function::FDistRT, Some(ENGINE_BETA_CDF)),
+    (Function::FDistCompat, Some(ENGINE_BETA_CDF)),
     (Function::TDist, Some(BETA_CDF)),
     (Function::TDist2T, Some(BETA_CDF)),
     (Function::TDistRT, Some(BETA_CDF)),
