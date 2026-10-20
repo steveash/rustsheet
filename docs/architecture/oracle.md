@@ -133,7 +133,11 @@ matches the web unless desktop evidence already in the repo decides, and desktop
   XML and XPath (its page says it relies on Windows). Whether desktop Excel differs is unknown.
   The web values are goldens (decision 0039); desktop confirmation is T-1081 (M14). Every other
   in-scope catalog function is recognised (probes/catalog/availability-*). INFO and SHEETS have no
-  web values at all: the canary refuses their workbooks (catalog `oracle: none`).
+  web values yet (catalog `oracle: none`). The canary refuses only the calls whose answer depends on
+  the sheet count it appends: `SHEETS()` with no argument and `INFO("numfile")`, plus anything it
+  cannot decide (`INFO(A1)`, `INFO("num"&"file")`, a `SHEETS` argument that is not a plain
+  reference). `SHEETS(ref)` of a cell, range or 3-D span and `INFO` with another literal type are
+  accepted, since the canary sheet comes last (T-2113); the probes are T-2115.
 - **Locale is a site setting.** The oracle calculates in the SharePoint site's regional
   settings. The canary pins it to en-US (`DATEVALUE("1/2/2001")-DATEVALUE("1/1/2001")` = 1, not 31; a date difference so that 1904 workbooks pass too, T-1268; `VALUE("1.5")` = 1.5);
   if the site is changed, every fill fails rather than returning another locale's answers.
