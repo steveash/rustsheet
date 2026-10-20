@@ -520,6 +520,57 @@ FIXED of a value that rounds to zero drops the sign (`FIXED(-0.004,2)` "0.00", `
 parentheses: `DOLLAR(-0.004)` "($0.00)"). Implemented (T-1257), see "FIXED drops the sign of a value that rounds to zero".
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
+## FIXED, DOLLAR and BAHTTEXT cut to 15 significant digits first (T-2148, T-2149)
+Rule: FIXED and DOLLAR round as ROUND does: the value is first cut to 15 significant digits (an exact tie at the 16th digit
+goes toward zero), then rounded half away from zero at `decimals`, and the digits past the 15th print as zeros.
+`DOLLAR(1.005)` is "$1.01", `FIXED(INT(2^53+1),0)` "9,007,199,254,740,990", `FIXED(999999999999998.13)`
+"999,999,999,999,998.00", `DOLLAR(3000000123456798.5)` "$3,000,000,123,456,800.00", `DOLLAR(999999999999954.88)`
+"$999,999,999,999,955.00" and `DOLLAR(4999999999999995)` (`ROUNDDOWN(9999999999999999,8)/2`) "$4,999,999,999,999,990.00" (the
+16th-digit tie goes toward zero). BAHTTEXT, whose 15-digit rounding is above, takes the same tie toward zero:
+`BAHTTEXT(999999999999997.5)` reads ...เก้าสิบเจ็ดบาทถ้วน (997).
+With a negative `decimals`, a value that rounds to zero has no sign: `DOLLAR(-3.75,-1)`, `DOLLAR(-2.02005,-1)` and
+`DOLLAR(-0.5,-1)` are "$0", while `DOLLAR(-0.004)` keeps "($0.00)" (above).
+Past 2^64, and with more than about 20 decimals, the 15 digits are followed by zeros as well: `DOLLAR(1.0000001234567907E+30,-2)`
+is "$1,000,000,123,456,790,000,000,000,000,000", `DOLLAR(4.33884297520652E+28,3)` "$43,388,429,752,065,200,000,000,000,000.000",
+`DOLLAR(1.2244897707231034E+29,0)` "$122,448,977,072,310,000,000,000,000,000", `FIXED(90909090909108.86,24.2)`
+"90909090909108.900000000000000000000000" and `FIXED(ASINH(123456790.123),100)` "19.3245489558243" and 85 zeros. The old saturated-u64 output "$18,446,744,073,709,551,615" or "...108.000018446744073709551615".
+Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/3b813881f835cd90 Calc!A48, gen-m5/0362d48f56108faa Calc!A43, Calc!A119,
+gen-m5/2abdc1524e5aa685 Calc!A221, gen-m5/461d1c8dbb044769 Calc!A249, gen-m5/50d8a085335c05e6 Calc!A158, gen-m5/4d099bea7898ebf1 Calc!A66,
+gen-m5/399071ff6782ab16 Calc!A316, gen-m5/5704666097cbc5b2 Calc!A274, gen-m5/ae9ed30812c4d62c Calc!A183 (T-2148); gen-m5/6b831f5e2a20bc34 Calc!A232,
+gen-m5/e0087a1fb9a36188 Calc!A291, gen-m5/fc81c2f704bef138 Calc!A366, gen-m5/399071ff6782ab16 Calc!A122, gen-m5/b0ecb7ca78460b77 Calc!A128 (T-2149).
+Status: VERIFIED (excel-graph); implemented for 15-digit cut, tie toward zero and the DOLLAR sign rule (T-2148, shared `significant_15` in FIXED, DOLLAR and BAHTTEXT); values past 2^64 and many decimals fall out of the same code, T-2149 only has to confirm them.
+
+## NUMBERVALUE reads text as VALUE does, with its own separators (T-2151, T-2152)
+Rule: after the separators are applied, NUMBERVALUE accepts what VALUE accepts: currency `"$1,000.50"` = 1000.5,
+parentheses `"(100)"` = -100, dates `"2024-02-29"` = 45351 and `"1900-02-29"` = 60, and times past 24 hours `"25:00"` =
+1.0416666666666667 (`"12:30"` = 0.5208333333333334). Only the first character of each separator counts: decimal
+separator `"FALSE"` is "F", `"MDCVIII"` (`ROMAN(1608,4)`) is "M", `"0.2"` is "0". Every occurrence of the group separator's
+first character is removed from the text before parsing, digits included: `NUMBERVALUE("25:00",UNICHAR(12288),"5")` is "2:00"
+= 0.08333333333333333 and `NUMBERVALUE("25:00","-0.01","2")` is "5:00" = 0.20833333333333334; with the group separator "0",
+"25:00" still reads 1.0416666666666667 ("25:"). A decimal separator that is a digit of the number breaks it:
+`NUMBERVALUE(0.3,"0.2")` and `NUMBERVALUE(0.1,"0.3x","ABCFALSE")` are `#VALUE!` (ours 0.3 and 0.1). Text that is empty, or
+empty once the group separator is removed, is 0: a blank cell, `""` from MID, RIGHT, T or REPT, and
+`NUMBERVALUE("A","0","ABC?b#N/A")` (ours `#VALUE!`). An empty group separator (a blank cell) is `#VALUE!`:
+`NUMBERVALUE(" 42 ","#N/A",<blank>)` (ours 42).
+Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/033e65b92653f425 Calc!A161, gen-m5/ae9ed30812c4d62c Calc!A285,
+gen-m5/109fc90dceb50ba9 Calc!A144, gen-m5/1962de140dae0111 Calc!A80, gen-m5/6b831f5e2a20bc34 Calc!A227, gen-m5/4d099bea7898ebf1 Calc!A261,
+gen-m5/38b1b8e51dbad326 Calc!A340, gen-m5/34f69d858a39f497 Calc!A227, gen-m5/b237245054b4fedb Calc!A128, gen-m5/eb942f4a59b1c004 Calc!A115 (T-2151);
+gen-m5/5704666097cbc5b2 Calc!A261, Calc!A392, gen-m5/bbbd316c346ce645 Calc!A76, gen-m5/b237245054b4fedb Calc!A390, gen-m5/a6fec430ac350c1a Calc!A32,
+gen-m5/ecd1b828aebad1e8 Calc!A60 (T-2152); the array lift is in arrays.md (T-2160).
+Unprobed: a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
+when only their first characters agree.
+Status: VERIFIED (excel-graph); not implemented (T-2151, T-2152).
+
+## REPT, CODE and UNICODE refuse a text argument over 255 characters (T-2155)
+Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the
+count: `REPT(REPT("ab",300),0)`, `REPT(REPT("ab",300),3)`, `REPT(REPT("ab",300),5)`, `CODE(REPT("ab",300))` and
+`UNICODE(REPT("ab",300))` are `#VALUE!` (ours: the repeated text, "", 97, 97), while `REPT(REPT("x",255),3)` works
+(gen-m5/033e65b92653f425 Calc!A55) and LENB, PROPER, UPPER, EXACT, FIND and SEARCH take the same 600-character text.
+Evidence (excel-graph, 2026-10-20): gen-m5/6a8bb7cd6d7769ad Calc!A191, gen-m5/8a387c26d182e73c Calc!A228, gen-m5/901e91c09b347914 Calc!A45,
+gen-m5/4d099bea7898ebf1 Calc!A359, gen-m5/ecd1b828aebad1e8 Calc!A1, gen-m5/b237245054b4fedb Calc!A394.
+Unprobed: the exact cut (256 to 600 characters) and whether it counts UTF-16 units.
+Status: VERIFIED (excel-graph) at 600 and 255; not implemented (T-2155).
+
 ## UNICHAR code point bounds
 Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or
 above 1114111 (U+10FFFF) is `#VALUE!`. A surrogate (55296-57343) or a Unicode noncharacter is `#N/A`: U+FDD0-U+FDEF

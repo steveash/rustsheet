@@ -4,9 +4,10 @@ title: "Resolve #This Row off-table #VALUE! at evaluation, not parse time"
 milestone: M8
 lane: engine
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -22,3 +23,6 @@ T-1675 returns `Node::ErrorKind(VALUE)` at parse time in `structured_reference_o
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Decision 0083: wrong values here are visible to anyone using defined names or tables (gen-m8b `[#This Row]` off-table cells), so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

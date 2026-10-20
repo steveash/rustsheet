@@ -297,6 +297,15 @@ Status: VERIFIED
 Implemented in: `fn_index` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs`
 Tasks: T-0213
 
+## VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0 (T-2168)
+Rule: when VLOOKUP or HLOOKUP lands on a blank cell, the enclosing function sees the number 0, not an empty value:
+`ASC(IFS(..,VLOOKUP(123456789.123,D3:E7,2),..))` landing on blank E6 is "0" (ours ""), and
+`SEC(AVERAGE(HLOOKUP(2.5,B8:D11,4),-2.5,B7:B9))` averages the blank result as 0, 1.2724471433871758 = SEC(-2/3) (ours skips it:
+SEC(-1) = 1.8508157176809255). XLOOKUP already returns a blank return cell as 0 (below).
+Evidence: gen-m5/49bfbf67a1409563 Calc!A103, gen-m5/aac6230c2fb40e1e Calc!A334 (excel-graph, 2026-10-20).
+Unprobed: `ISBLANK` and `&""` of such a result, LOOKUP and INDEX/MATCH.
+Status: VERIFIED (excel-graph, 2 cells); not implemented (T-2168).
+
 ## Whole-column / whole-row search vectors: blank tail
 Rule: as above, blanks never match and the type-skipping search steps over them, so a whole
 column with data in A1:A3 behaves like A1:A3 for an approximate lookup (`MATCH(99,A:A,1)` is
@@ -700,6 +709,12 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 - Per element, the scalar rules hold: an element off the sheet is `#REF!` (`OFFSET(A1,{0;-1},0)`, second element);
   `INDIRECT("R2C1",{TRUE;FALSE})` is `#REF!`, A2; a scalar error argument next to the lifted one is that error in every
   element (`INDEX(OFFSET(A1,{0;1},NA()),1,1)` is `#N/A`).
+- A TAKE or DROP whose rows or cols lifts over a range is the same kind of result: `INDEX(TAKE(A1:B3,{1;2}),1,1)`
+  spills A1:B1 as 1, 10 (ROWS 1, COLUMNS 2), `INDEX(DROP(A1:B3,{1;2}),1,1)` is the 2x2 A2:B3 (`#SPILL!` where blocked),
+  and the outer result is 2x1 (probes/m7-argument-modes F4:I6, K1-K4; arrays.md "Dynamic-array and LAMBDA function
+  argument modes"). What its spilled elements, SUM over it and TAKE over an array value give is not probed (T-1960);
+  the engine gives it to INDEX, ROWS, COLUMNS, SUMPRODUCT, the aggregates and LET as a lifted OFFSET's, while IF,
+  CHOOSE and OFFSET's reference argument read it as a value (T-1838).
 - XMATCH's search_mode lifts too, as a value (for the array modes only the second element is probed, `INDEX(…,2,1)`): it is 2 in
   `XMATCH(2,A1:A3,0,{1;-1})` and 3 in `XMATCH(2,{1;2;2},0,{2;-2})`; an invalid mode element is `#VALUE!` in its slot
   (`{1;3}`); a boolean range element counts as its number (TRUE is 1). The first array-mode elements are unprobed, as is an error lookup_value next to a lifted search_mode (`XMATCH(NA(),A1:A3,0,{1;-1})`, implemented as a 2x1 of `#N/A` by analogy with MATCH's match_type, UNVERIFIED). Implemented (T-1958): `fn_xmatch` lifts search_mode with lookup_value and match_mode.

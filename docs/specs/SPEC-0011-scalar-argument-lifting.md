@@ -937,6 +937,15 @@ evidence it has:
 So T-1838 builds on T-1955's spec and T-1956's carrier, and adds TAKE and DROP as two more
 producers.
 
+**As built (T-1838).** `Model::take_drop_reference` reads the array once and the counts as values; when a
+count lifts (an array or a multi-cell range, as for OFFSET), a single-sheet range source goes through
+`lift_references` and any other source through `lift_values` with the table entry's options and
+`LiftCost::Cells` of the array (each element copies at most the whole array, so the bound is checked before
+any element runs). An unlifted call is unchanged. TAKE and DROP join OFFSET, INDIRECT and TRIMRANGE in
+`reference_producer`, so INDEX, ROWS, COLUMNS, SUMPRODUCT, the aggregates and LET read the grid as they read
+a lifted OFFSET's. IF, CHOOSE and OFFSET's reference argument (`may_hand_on_grid`) do not hand a TAKE or DROP
+grid on yet: unprobed either way, asked in T-1960.
+
 ## Alternatives considered
 - **A helper per family** (status quo, "lift literals only" variants for financial and
   engineering). That is six more copies of shape, padding, error and bound logic, and

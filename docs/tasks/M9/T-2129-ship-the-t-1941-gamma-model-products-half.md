@@ -7,6 +7,7 @@ status: done
 priority: P1
 size: M
 tier: opus
+campaign: visible
 depends_on: [T-2123]
 ---
 
@@ -50,6 +51,9 @@ Expected parity (HANDOFF2 §3): x ≥ 10, integers and half-integers ~100%; (0,1
 - Finding the remaining coefficient bits (T-2122).
 - GAMMA.DIST and the incomplete gamma / beta kernels (T-0971, T-0970).
 
+## Visible-parity stage
+Decision 0083: GAMMA is visibly off on 241 cells of the 2026-10-20 eval run (`main` 35a5e71), e.g. `GAMMA(3)` = 2.0000000000000067 (13-14 digits right 200, 10-12 41). For this task, stage 1 is reached when every GAMMA cell is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0); the model above should reach it. If a part of the model (for example K1's non-exact coefficients) is not yet bit-exact, ship it once stage 1 holds and leave the bits to a follow-up task (no campaign key). Regressions that stay within 4 ulp follow decision 0083's allowance.
+
 ## Outcome
 `functions/statistical/gamma_x87.rs` `excel_gamma` is Excel's routine and the worksheet GAMMA uses it (statrs' Lanczos is gone
 from GAMMA): integers ≤ 88 by the downward product, exact half-integers by the ascending product times √π (negatives by
@@ -66,4 +70,5 @@ argument) and its 0 past the reflection's overflow are Excel's, 15 of 15. Eval: 
 BETA_GAMMA.xlsx 8 fixed, probes/stat-argument-modes 1 fixed, 0 regressions. The non-gated t1042 cases: every GAMMA cell at the
 integers 1..171 and the half-integers matches (the n ≥ 89 item of T-0973 included), 4 of 24 unit-interval and 2 negatives-edges
 cells (GAMMA(-0.1), GAMMA(-1.1)) miss by an ulp through G. `special.rs` `ln_gamma` stays for GAMMA.DIST and the incomplete
-gamma / beta kernels (T-0971, T-0970).
+gamma / beta kernels (T-0971, T-0970). Decision 0083 stage 1 holds: every GAMMA miss is a few ulp, far inside half a unit of the
+15th significant digit (`GAMMA(3)` is exactly 2).

@@ -4,9 +4,10 @@ title: "Names bound to 3-D ranges evaluate like the 3-D reference, not #REF! (ge
 milestone: M8
 lane: engine
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -22,3 +23,6 @@ gen-m8a (T-1606) case 8982982d63e058ed (3d-names, 108/280) and the name probes o
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Decision 0083: wrong values here are visible to anyone using defined names or tables (gen-m8a 3d-names and 3d-misuse), so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
