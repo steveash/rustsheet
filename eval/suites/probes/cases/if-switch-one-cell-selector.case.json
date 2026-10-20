@@ -1,0 +1,36 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2079: one-cell range IF conditions (K1:K1, OFFSET, INDEX, INDIRECT forms, text and error cells) and SWITCH with an array case after an earlier match or error, each in clear space (A10, A20, ... A120) so a spill shows.",
+ "tags": [
+  "M2",
+  "probe",
+  "T-2079"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "H1": 3,
+    "H2": 4,
+    "I1": 6,
+    "I2": 8,
+    "K1": true,
+    "K2": "x",
+    "K3": "=NA()",
+    "A10": "=SUBTOTAL(9,TAKE(IF(K1:K1,H1:H2,I1:I2),2))",
+    "A20": "=SUBTOTAL(9,TAKE(IF(OFFSET(K1,0,0),H1:H2,I1:I2),2))",
+    "A30": "=SUBTOTAL(9,TAKE(IF(INDEX(K1:K3,1),H1:H2,I1:I2),2))",
+    "A40": "=ISREF(IF(K1:K1,H1,I1))",
+    "A50": "=SUBTOTAL(9,TAKE(IF(K2:K2,H1:H2,I1:I2),2))",
+    "A60": "=SUBTOTAL(9,TAKE(IF(K3:K3,H1:H2,I1:I2),2))",
+    "A70": "=SUBTOTAL(9,TAKE(IF(INDIRECT(\"$K$1\"),H1:H2,I1:I2),2))",
+    "A80": "=SUBTOTAL(9,TAKE(IF(INDIRECT(\"K1\",TRUE),H1:H2,I1:I2),2))",
+    "A90": "=SUBTOTAL(9,TAKE(SWITCH(1,1,H1:H2,{1,2},I1:I2),2))",
+    "A100": "=SUBTOTAL(9,TAKE(SWITCH(1,NA(),H1:H2,{1,2},I1:I2),2))",
+    "A110": "=SUBTOTAL(9,TAKE(SWITCH(1,#N/A,H1:H2,{1,2},I1:I2),2))",
+    "A120": "=ISREF(IF(OFFSET(K1,0,0),H1,I1))"
+   }
+  }
+ ],
+ "expected": {}
+}
