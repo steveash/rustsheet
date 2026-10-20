@@ -1237,12 +1237,21 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   n = 2.5 acts as n = 2).
 - Values are not exactly symmetric: `T.INV(0.1,1)` = -3.077683537175254 but `T.INV(0.9,1)` =
   3.0776835371752544; `T.DIST.2T(1,1)` = 0.5000000000000001 and `T.DIST.RT(1,1)` = 0.25000000000000006.
-- At very large df the CDF is off the true value by about 1e-10 relative: `T.DIST(1,1E6,TRUE)` =
-  0.8413446250832111, 152,191 ulp from the correctly rounded CDF (`uv run rustsheet-fitlab t-dist`). Hill's
-  integer-df series (AS 3) does not reproduce it either: 22,257 ulp off there, 74/150 m9-t-dist-cdf cells exact
-  (T-0969 note, 2026-10-20).
+- The cumulative T.DIST is the exact CDF at every df probed, including 1E6: `T.DIST(1,1E6,TRUE)` =
+  0.8413446250832111 and `T.DIST(-2,1E6,TRUE)` = 0.022750266925659606 are each 1 ulp from the exact value
+  (mpmath, 60 digits), and the exact CDF rounded is bit-exact on 127 of the 160 cumulative T.DIST cells in m9-t-dist-cdf,
+  m9-t-nonint-df and m9-t-edges (118 of m9-t-dist-cdf's 150), 155 within 4 ulp. An earlier note here (1e-10 relative off, 152,191 ulp) measured the fit lab's mapping, which rounds
+  y = n/(n+t^2) before I_y (T-2088), not Excel. Hill's integer-df series (AS 3) is 74/150 exact (T-0969).
+- The upper tail is computed directly, neither as 1 - T.DIST nor as 0.5 minus the rounded centre
+  I_z(1/2,n/2)/2, and `T.DIST.2T` is exactly 2 * `T.DIST.RT`. It carries algorithm noise around the exact
+  value: `T.DIST.RT(1.96,60)` = 0.02732246486826467 is 13 ulp below it and `T.DIST.RT(1E6,10)` =
+  1.230468749943611e-56 33 ulp above it. In the deep tail (t^2 >= n) the noise is that of
+  exp(a ln y), y = n/(n+t^2): Cephes' power series with x^a = exp(a ln y) is within 4 ulp on 131 of 135
+  probe cells, the correctly rounded I at the double y on 107 (worst 269 ulp at `T.DIST.RT(1E6,30)`, 275 from the exact
+  value) (T-0969 attempt 2).
 Evidence: probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-inv`,
-`m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13.
+`m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13. Exact reference values for
+the T.DIST accuracy bullets: mpmath `betainc` at 60 digits (T-0969 attempt 2, 2026-10-20).
 Status: VERIFIED (excel-graph)
 Tasks: T-0969 (T.DIST family), T-0967 (T.INV, T.INV.2T, CONFIDENCE.T)
 
