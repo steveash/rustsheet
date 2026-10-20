@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::catalog_coverage::{self, MilestoneCoverage};
-use crate::closeness::Closeness;
+use crate::closeness::{self, Closeness, Visible};
 use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
@@ -17,6 +17,7 @@ use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::text_expect;
 use crate::value::Verdict;
+use crate::visible_parity;
 
 static FUNCTION_CALL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)(?:_xlfn\.|_xlws\.)?\b([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
@@ -34,6 +35,13 @@ pub fn functions_in(formula: &str) -> BTreeSet<String> {
         .captures_iter(&stripped)
         .filter_map(|c| c.get(1).map(|m| m.as_str().to_ascii_uppercase()))
         .collect()
+}
+
+/// Whether a cell calling `called` counts toward parity: it calls no out-of-scope catalog function
+/// (decision 0027).
+#[must_use]
+pub fn calls_only_in_scope(catalog: &Catalog, called: &BTreeSet<String>) -> bool {
+    called.iter().all(|f| catalog.in_scope(f))
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -65,6 +73,11 @@ pub struct SuiteSummary {
     /// Scored text cells whose text matched Excel's.
     #[serde(default)]
     pub text_passed: usize,
+    /// The suite's in-scope scored cells per closeness bucket: cells that call no out-of-scope
+    /// catalog function (decision 0027). Its visibly-off cells are what the visible-parity
+    /// ratchet counts (T-0061, `visible_parity`).
+    #[serde(default)]
+    pub closeness: Closeness,
 }
 
 /// Number of slowest cases kept in the report.
@@ -132,6 +145,10 @@ pub struct FunctionStat {
     /// The scored cells per closeness bucket, which the parity page reads (T-2036).
     #[serde(default)]
     pub closeness: Closeness,
+    /// The visibly-off cells blamed on this function rather than on the glue around it
+    /// ([`closeness::blamed`], T-0061).
+    #[serde(default)]
+    pub visible: Visible,
 }
 
 /// Scored cells with Excel-sourced expectations that call one function.
@@ -304,11 +321,25 @@ impl RunReport {
                     s.graph_subnormal_passes
                         .push(format!("{}\t{}", r.id, c.key()));
                 }
+                let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
+                if calls_only_in_scope(catalog, &called) {
+                    s.closeness.add(c);
+                }
                 // A by-design value says nothing about how well a function matches Excel.
                 if c.verdict == Verdict::Deviation {
                     continue;
                 }
-                for f in c.formula.as_deref().map(functions_in).unwrap_or_default() {
+                let visible = Visible::of(c);
+                if visible.total() > 0 {
+                    for f in closeness::blamed(&called) {
+                        let st = functions.entry(f.clone()).or_insert_with(|| FunctionStat {
+                            name: f.clone(),
+                            ..FunctionStat::default()
+                        });
+                        st.visible.merge(visible);
+                    }
+                }
+                for f in called {
                     if c.from_excel {
                         let ev = evidence
                             .entry(f.clone())
@@ -505,6 +536,12 @@ impl RunReport {
         }
     }
 
+    /// In-scope cells visibly off from Excel in every suite of the run (T-0061).
+    #[must_use]
+    pub fn visibly_off_cells(&self) -> usize {
+        self.suites.iter().map(|s| s.closeness.visible()).sum()
+    }
+
     fn write_timing(&self, md: &mut String) {
         let _ = writeln!(md, "\n## Timing\n");
         let _ = writeln!(md, "| suite | total ms |\n|---|---|");
@@ -528,6 +565,7 @@ impl RunReport {
             self.engine
         );
         self.write_suites_table(&mut md);
+        visible_parity::write_markdown(self, &mut md);
         text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
@@ -662,10 +700,11 @@ impl RunReport {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
-    fn case(id: &str, millis: u64) -> CaseResult {
+    /// A passing one-cell case `id` in the suite its id names (shared with sibling tests).
+    pub(crate) fn case(id: &str, millis: u64) -> CaseResult {
         CaseResult {
             id: id.to_string(),
             suite: id.split('/').next().unwrap_or(id).to_string(),
@@ -696,7 +735,8 @@ mod tests {
         assert_eq!(ids, ["s/c", "s/a", "s/b"]);
     }
 
-    fn cell(formula: &str, verdict: Verdict) -> CellResult {
+    /// A cell with `formula` and `verdict`, expecting and giving 1 (shared with sibling tests).
+    pub(crate) fn cell(formula: &str, verdict: Verdict) -> CellResult {
         CellResult {
             sheet: "S".into(),
             cell: "A1".into(),
@@ -771,8 +811,12 @@ mod tests {
             ulp(1),
             ulp(3),
             cell("ABS(2)", Verdict::NumericClose),
-            cell("ABS(3)", Verdict::NumericMismatch),
-            cell("ABS(4)", Verdict::Unsupported),
+            CellResult {
+                actual: crate::value::Value::Number(2.0),
+                ..cell("ABS(3)", Verdict::NumericMismatch)
+            },
+            cell("ABS(4)", Verdict::TypeMismatch),
+            cell("ABS(5)", Verdict::Unsupported),
         ];
         let report = RunReport::build("e", &[r], &[], &Catalog::default());
         let abs = report.functions.iter().find(|f| f.name == "ABS");
@@ -781,10 +825,11 @@ mod tests {
             pass: 1,
             ulp1: 1,
             ulp4: 1,
-            close: 1,
-            off: 1,
+            digits15: 1,
+            visible_numeric: 1,
+            visible_other: 1,
         };
-        assert_eq!(abs, Some((6, expected)));
+        assert_eq!(abs, Some((7, expected)));
         let sign = report.functions.iter().find(|f| f.name == "SIGN");
         assert_eq!(sign.map(|f| f.closeness.scored()), Some(2));
     }

@@ -4,8 +4,8 @@ GitHub shows a committed SVG through an `<img>` tag, so the chart carries its ow
 light colors by default and an `@media (prefers-color-scheme: dark)` block for dark mode. Every
 shape also has an explicit `fill` attribute, so a renderer that ignores the style still draws a
 readable light chart. The bucket palette is ordered so that adjacent buckets stay apart under
-color-vision deficiency (checked with the dataviz palette validator in both modes), with "off"
-in red; legends, value labels and the tables on the page carry identity beside the color.
+color-vision deficiency (checked with the dataviz palette validator in both modes), with
+visibly-off numbers in red and visibly-off types, errors and text in slate; legends, value labels and the tables on the page carry identity beside the color.
 """
 
 from __future__ import annotations
@@ -19,8 +19,9 @@ BUCKET_FILLS: dict[str, tuple[str, str]] = {
     "pass": ("#2a78d6", "#3987e5"),
     "ulp1": ("#1baf7a", "#199e70"),
     "ulp4": ("#eda100", "#c98500"),
-    "close": ("#6250d6", "#9085e9"),
-    "off": ("#e34948", "#e66767"),
+    "digits15": ("#6250d6", "#9085e9"),
+    "visible_numeric": ("#e34948", "#e66767"),
+    "visible_other": ("#4b5563", "#9ca3af"),
 }
 # (light, dark) ink for a value label drawn inside a segment of that bucket: each pair clears
 # 4.5:1 (WCAG) on that bucket's fill in that theme. The worst is black on light blue, 4.76:1.
@@ -28,8 +29,9 @@ INNER_INK: dict[str, tuple[str, str]] = {
     "pass": ("#000000", "#000000"),
     "ulp1": ("#000000", "#000000"),
     "ulp4": ("#000000", "#000000"),
-    "close": ("#ffffff", "#000000"),
-    "off": ("#000000", "#000000"),
+    "digits15": ("#ffffff", "#000000"),
+    "visible_numeric": ("#000000", "#000000"),
+    "visible_other": ("#ffffff", "#000000"),
 }
 # (class, light, dark) for the chart chrome; GitHub's own page surfaces and ink.
 CHROME = (
