@@ -266,3 +266,43 @@ fn take_lift_past_the_work_bound_is_an_error() {
     assert_eq!(model._get_text("A1"), *"#ERROR!");
     assert_eq!(model._get_text("A2"), *"1000");
 }
+
+// TAKE and DROP over an array of references keep the elements they count, still references
+// (SPEC-0014 rule 7; probes/reference-lift-consumers E101, -b2 E153).
+#[test]
+fn take_drop_keep_an_array_of_references() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "100");
+    model._set("A3", "10000");
+    model._set("B1", "2");
+    model._set("C1", "3");
+    // By rows.
+    model._set("E1", "=SUM(TAKE(OFFSET(A1,{0;1;2},0),1))");
+    model._set("E2", "=SUM(DROP(OFFSET(A1,{0;1;2},0),1))");
+    model._set("E3", "=SUM(TAKE(OFFSET(A1,{0;1;2},0),-2))");
+    model._set("E4", "=SUM(DROP(OFFSET(A1,{0;1;2},0),-1))");
+    model._set("E5", "=ROWS(DROP(OFFSET(A1,{0;1;2},0),1))");
+    model._set("E6", "=INDEX(DROP(OFFSET(A1,{0;1;2},0),1),2,1)");
+    // By columns.
+    model._set("E7", "=SUM(TAKE(OFFSET(A1,0,{0,1,2}),1,2))");
+    model._set("E8", "=SUM(DROP(OFFSET(A1,0,{0,1,2}),0,2))");
+    model._set("E9", "=COLUMNS(TAKE(OFFSET(A1,0,{0,1,2}),1,-2))");
+    // An error element is kept; a zero TAKE is #CALC!.
+    model._set("E10", "=SUM(DROP(OFFSET(A1,{0;-1;1},0),2))");
+    model._set("E11", "=SUM(TAKE(OFFSET(A1,{0;-1;1},0),2))");
+    model._set("E12", "=SUM(TAKE(OFFSET(A1,{0;1;2},0),0))");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), *"1");
+    assert_eq!(model._get_text("E2"), *"10100");
+    assert_eq!(model._get_text("E3"), *"10100");
+    assert_eq!(model._get_text("E4"), *"101");
+    assert_eq!(model._get_text("E5"), *"2");
+    assert_eq!(model._get_text("E6"), *"10000");
+    assert_eq!(model._get_text("E7"), *"3");
+    assert_eq!(model._get_text("E8"), *"3");
+    assert_eq!(model._get_text("E9"), *"2");
+    assert_eq!(model._get_text("E10"), *"100");
+    assert_eq!(model._get_text("E11"), *"#REF!");
+    assert_eq!(model._get_text("E12"), *"#CALC!");
+}
