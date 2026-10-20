@@ -7,7 +7,7 @@ import sys, numpy as np
 
 sys.path.insert(0, sys.path[0])
 from lib6 import st, L
-from synth import read_chain
+from synth import read_chain, horner_keep
 
 rows = [l.split() for l in open(sys.argv[1])]
 npts = int(sys.argv[3]) if len(sys.argv) > 3 else 200000
@@ -22,16 +22,7 @@ base_keep = set(sys.argv[4].split(",")) if len(sys.argv) > 4 and sys.argv[4] els
 
 
 def chain(C, ch, keep):
-    """raw-x Horner with x87 ops; ops named ch.Pj / ch.Sj in keep stay 64-bit (unstored)."""
-    s = L(C[-1])
-    for j in range(len(C) - 2, -1, -1):
-        p = s * L(x)
-        if "%s.P%d" % (ch, j) not in keep:
-            p = L(st(p))
-        s = p + L(C[j])
-        if "%s.S%d" % (ch, j) not in keep:
-            s = L(st(s))
-    return s
+    return horner_keep(C, x, ch, keep)
 
 
 def R_of(keep):
