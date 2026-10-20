@@ -1,0 +1,31 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-0915: COT, CSC and SEC at PI()/4, PI()/6 and PI()/3. Excel desktop's cached TRIGONOMETRIC.xlsx has COT(PI()/4) = 1 and CSC(PI()/6) = 2, where the reciprocal of the rounded TAN and SIN is an ulp above; probes-numeric/m9-trig-reduction (excel-graph) shows COT = 1/TAN rounded. Do the two backends differ here?",
+ "tags": [
+  "M5",
+  "probe",
+  "trig"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=COT(PI()/4)",
+    "A2": "=CSC(PI()/6)",
+    "A3": "=1/TAN(PI()/4)",
+    "A4": "=1/SIN(PI()/6)",
+    "A5": "=TAN(PI()/4)",
+    "A6": "=SIN(PI()/6)",
+    "A7": "=SEC(PI()/3)",
+    "A8": "=CSC(PI()/4)",
+    "A9": "=SEC(PI()/4)",
+    "A10": "=COT(PI()/6)",
+    "A11": "=SEC(PI()/6)",
+    "A12": "=COT(3*PI()/4)",
+    "A13": "=CSC(5*PI()/6)",
+    "A14": "=COT(PI()/3)"
+   }
+  }
+ ],
+ "expected": {}
+}
