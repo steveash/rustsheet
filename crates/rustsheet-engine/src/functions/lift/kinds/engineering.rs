@@ -2,7 +2,8 @@
 //! `ToolPak` engineering functions, BIT* and the IMSUM/IMPRODUCT fold.
 
 use super::ArgKind::{LiftArrays, WholeByCaller};
-use super::KernelWork::{ByArg, Constant};
+use super::KernelWork::{ByValue, Constant};
+use super::ValueWork::Loop;
 use super::{ArgKinds, CallResult, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, ATP_3, LIFT_2};
 use crate::functions::engineering::transcendental::MAX_ORDER;
 use crate::functions::Function;
@@ -18,11 +19,11 @@ use crate::functions::Function;
 const BESSEL: ArgKinds = ArgKinds::fixed(
     2,
     &[LiftArrays, LiftArrays],
-    ByArg {
+    ByValue(Loop {
         arg: 1,
         cap: MAX_ORDER.unsigned_abs(),
         weight: BESSEL_WEIGHT,
-    },
+    }),
 );
 /// The units one Bessel element at the order cap is charged against `MAX_LIFTED_CELL_VISITS`
 /// (one more for the call itself).

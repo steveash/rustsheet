@@ -39,6 +39,11 @@
 //!   filled-down column takes, comparable with main), and WORKDAY and NETWORKDAYS lifted over a
 //!   100,000-element array with 20 holidays, prepared once per call.
 //!
+//! - the coupon functions at the longest schedule (T-1846): COUPDAYSNC's two walks over 1,024
+//!   settlements at serial 1 and PRICE's four over 512 at serial 92 (its previous coupon,
+//!   1900-03-31, must be a date), quarterly to 9990-06-30, the most a lift is charged by schedule
+//!   length; and PRICE over 4,096 ten-year schedules.
+//!
 //! `cargo bench -p rustsheet --bench lift [-- FILTER...]` (only the cases whose name contains a
 //! FILTER, e.g. `SWITCH`)
 //!
@@ -197,6 +202,21 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             "HYPGEOM.DIST, the cdf sum at its term cap through subnormal terms, at the element cap",
             1,
             "=ROWS(HYPGEOM.DIST(SEQUENCE(32)*0+99994114707,200000000000,200000000000,400000000000,TRUE))",
+        ),
+        (
+            "COUPDAYSNC, the longest schedule at the element cap",
+            1,
+            "=SUM(COUPDAYSNC(SEQUENCE(1024)*0+1,DATE(9990,6,30),4,0))",
+        ),
+        (
+            "PRICE, the longest schedule at the element cap",
+            1,
+            "=SUM(PRICE(SEQUENCE(512)*0+92,DATE(9990,6,30),0.05,0.04,100,4))",
+        ),
+        (
+            "PRICE, ten-year schedules",
+            1,
+            "=SUM(PRICE(SEQUENCE(4096)+39000,43831,0.05,0.04,100,2))",
         ),
     ]
 }
