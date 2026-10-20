@@ -322,7 +322,7 @@ pub(crate) fn excel_sin_cos(x: f64) -> (f64, f64) {
 /// (TAN(PI()/2) is 1.6324552277619072E+16, probes-numeric/m9-trig-reduction C82). The quotient
 /// of the fast sums is off by at most the sum of their errors (the division itself adds below
 /// 2^-100, inside their margins).
-pub(super) fn excel_tan(x: f64) -> f64 {
+pub(crate) fn excel_tan(x: f64) -> f64 {
     let (n, r) = reduce(x);
     let square = r.mul(r);
     let (sin, cos) = by_quadrant(n, r.mul(SINE.fast(square)), COSINE.fast(square));

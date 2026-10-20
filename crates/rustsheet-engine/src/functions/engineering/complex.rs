@@ -1,9 +1,9 @@
 use std::fmt;
 
-use crate::arithmetic::power;
+use crate::arithmetic::{flush_subnormal, power};
 use crate::functions::lift::{num_error, value_error};
 use crate::functions::math_and_trigonometry::{
-    excel_quarter_turn_remainder, excel_sin_cos, EXCEL_TRIG_LIMIT,
+    excel_quarter_turn_remainder, excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT,
 };
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
@@ -753,12 +753,19 @@ fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if x == 0.0 && y != 0.0 {
         return complex_result(0.0, -1.0 / y.tanh(), suffix);
     } else if y == 0.0 {
-        return complex_result(1.0 / x.tan(), 0.0, suffix);
+        return complex_result(1.0 / real_tan(x), 0.0, suffix);
     }
 
     // The reciprocal of [`tan_parts`], `conj(t) / |t|²`: Excel's digits (COMPLEXs.xlsx T2, T7,
     // T15; T-0907).
-    let (tan_x, tan_y) = tan_parts(x, y);
+    let Some((tan_x, tan_y)) = tan_parts(x, y) else {
+        // tan is infinite (cos 2x + cosh 2y is 0) but cot is not: use its own double-angle form
+        // `(sin 2x - i sinh 2y) / (cosh 2y - cos 2x)` (`IMCOT("1.5707963267948966+1E-10i")` is
+        // `6.72259557049637E-15-0.0000000001i`; probes/eng-imtan-overflow B9, T-1966).
+        let (sin, cos) = sin_cos_double_angle(x);
+        let denominator = f64::cosh(2.0 * y) - cos;
+        return complex_result(sin / denominator, -f64::sinh(2.0 * y) / denominator, suffix);
+    };
     let t = tan_x * tan_x + tan_y * tan_y;
     let x = tan_x / t;
     let y = -tan_y / t;
@@ -890,25 +897,49 @@ fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 /// tan(x+iy) in its double-angle form, `(sin 2x + i sinh 2y) / (cos 2x + cosh 2y)`: Excel's
 /// digits, where the tan/tanh form loses the last 1-10 of them when the real part is small
 /// (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx N2, N7, N15: `IMTAN("1.23+9.5121i")` has real part
-/// 6.89106871662165E-09; T-0907). Past `cosh 2y`'s range the value is `±0 ± i`, as tanh gives;
-/// where the denominator rounds to 0 (y = 0 and x the double nearest π/2) it is `tan x`, finite.
-/// Both fallbacks are unprobed, not Excel evidence (T-1966).
-fn tan_parts(x: f64, y: f64) -> (f64, f64) {
-    let denominator = f64::cos(2.0 * x) + f64::cosh(2.0 * y);
+/// 6.89106871662165E-09; T-0907). A real argument takes TAN's own kernel (`IMTAN("1.57079632679489")` is 148752068975966, where
+/// libm's tan gives 148752623989354; probes/eng-imtan-overflow A7, A8, B7, B8, T-1966). Past
+/// `cosh 2y`'s range (|y| above about 355) the value is `±0 ± i`, a subnormal real part flushed to
+/// 0 ("i", not "0+i", at y = 355; A4, A6, B4, B6); where the denominator is 0 with y non-zero it
+/// is `#NUM!` (`IMTAN("1.5707963267948966+1E-10i")`, A9).
+fn tan_parts(x: f64, y: f64) -> Option<(f64, f64)> {
+    let (sin, cos) = sin_cos_double_angle(x);
+    let denominator = cos + f64::cosh(2.0 * y);
     if denominator == 0.0 {
-        (x.tan(), 0.0)
+        // A real argument at the double nearest pi/2 has no double-angle value; TAN's kernel does.
+        (y == 0.0).then(|| (real_tan(x), 0.0))
     } else if denominator.is_finite() {
-        (
-            f64::sin(2.0 * x) / denominator,
+        Some((
+            flush_subnormal(sin / denominator),
             f64::sinh(2.0 * y) / denominator,
-        )
+        ))
     } else {
-        (0.0 * f64::sin(2.0 * x), y.signum())
+        Some((0.0, y.signum()))
     }
 }
 
-fn imtan((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let (x, y) = tan_parts(x, y);
+/// `sin 2x` and `cos 2x` as SIN and COS compute them, outside their range as libm does.
+fn sin_cos_double_angle(x: f64) -> (f64, f64) {
+    if (2.0 * x).abs() < EXCEL_TRIG_LIMIT {
+        excel_sin_cos(2.0 * x)
+    } else {
+        (f64::sin(2.0 * x), f64::cos(2.0 * x))
+    }
+}
+
+/// `tan x` as TAN computes it, outside TAN's range as libm does.
+fn real_tan(x: f64) -> f64 {
+    if x.abs() < EXCEL_TRIG_LIMIT {
+        excel_tan(x)
+    } else {
+        x.tan()
+    }
+}
+
+fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    let Some((x, y)) = tan_parts(x, y) else {
+        return num_error(cell);
+    };
     complex_result(x, y, suffix)
 }
 

@@ -373,14 +373,24 @@ and the oracle calibration found IMARGUMENT differing by ulps between Excel for 
   Calc!A24, excel-graph). Ours gives the other digit in both. The remaining cells are now T-2044 (sweep T-2043);
   IMARGUMENT H2, H3, H10 and IMCOS K25 are desktop/web differences (docs/research/oracle-calibration.md), not fitting
   targets until the desktop oracle exists.
-- UNVERIFIED: where `cosh 2y` overflows (|y| above about 355) ours gives `±0 ± i` (IMTAN("1+400i") =
-  "i", as the old tan/tanh form did), and where the denominator is 0 (a real x at the double nearest
-  π/2) `tan x`; Excel may give `#NUM!` there (T-1966).
-Evidence: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx (Excel-cached, Microsoft Macintosh Excel) N, O,
+- Past `cosh 2y`'s range Excel gives no error: `IMTAN("1+400i")` is `i`, `IMTAN("1-400i")` `-i`, `IMCOT("1+400i")` `-i`;
+  `IMTAN("1+354i")` is `6.01509887059592E-308+i`, but at y = 355 the real part (sin 2 / cosh 710, subnormal)
+  is flushed to 0 and the text is `i` (`-i` for 1-355i; ours wrote `0+i` until T-1966). y = 356 is `i`.
+- A real argument takes TAN's own kernel, not libm's: `IMTAN("1.5707963267949")` is `-286413440886091` and
+  `IMTAN("1.5707963267948966")` (read as 15 digits, 1.57079632679489) is `148752068975966`; IMCOT of them is
+  `-3.49145625605507E-15` and `6.72259557049637E-15`. Ours uses `excel_tan` (and `excel_sin_cos` for the
+  double-angle sine and cosine).
+- With a non-zero imaginary part and `cos 2x + cosh 2y` rounding to 0, IMTAN is `#NUM!`
+  (`IMTAN("1.5707963267948966+1E-10i")`) while IMCOT is finite, `6.72259557049637E-15-0.0000000001i`: IMCOT is not
+  simply the reciprocal of IMTAN there, it is `(sin 2x - i sinh 2y) / (cosh 2y - cos 2x)`.
+- IMCOT of a real part 1E+20 (`IMCOT("1E-20")`) is written in full, `100000000000000000000` (21 characters), where
+  ours writes `1E+20`; the plain-notation cut for large parts is unprobed (probes/eng-imtan-overflow B10 fails,
+  T-1966; formatting is T-2056's area).
+Evidence: probes/eng-imtan-overflow (excel-graph, 2026-10-20, T-1966); ironcalc-calc/ENGINEERING/COMPLEXs.xlsx (Excel-cached, Microsoft Macintosh Excel) N, O,
 T, U columns; probes/eng-argument-modes Calc!A33 `IMCOT("3+4i")` = "-0.000187587737983659-1.00064439247156i"
 and A51 `IMTAN("3+4i")` = "-0.000187346204629478+0.999355987381473i" (excel-graph), which the
 double-angle form matches too, so the digits are not Mac-only.
-Status: VERIFIED (desktop cached values and excel-graph), except the UNVERIFIED bullet (T-1966)
+Status: VERIFIED (desktop cached values and excel-graph)
 Tasks: T-0907, T-1966, T-2043, T-2044
 
 ## Base conversions read a blank cell and empty text as 0

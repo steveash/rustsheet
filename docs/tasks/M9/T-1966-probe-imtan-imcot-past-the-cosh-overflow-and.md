@@ -3,7 +3,7 @@ id: T-1966
 title: "Probe IMTAN/IMCOT past the cosh overflow and near pi/2"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,10 +25,16 @@ there. Probe (excel-probe skill, excel-graph) `IMTAN("1+400i")`, `IMTAN("1-400i"
 `IMTAN("1.5707963267949")`.
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values for the shapes above; the engine matches them, or each
+- [x] A probe case with oracle values for the shapes above; the engine matches them, or each
       mismatch is recorded.
-- [ ] The UNVERIFIED bullet in engineering.md is resolved.
-- [ ] `make check` green; reviewers approve.
+- [x] The UNVERIFIED bullet in engineering.md is resolved.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/eng-imtan-overflow` (excel-graph): no `#NUM!` past the cosh overflow; a subnormal real part
+flushes to 0 (`i`, not `0+i`); real arguments use TAN's kernel; IMTAN with denominator 0 and y non-zero is
+`#NUM!`, IMCOT is finite there. Engine fixed for all of these; the one remaining cell (B10, IMCOT 1E+20
+printed in full) is recorded in engineering.md. Quirks recorded there.
