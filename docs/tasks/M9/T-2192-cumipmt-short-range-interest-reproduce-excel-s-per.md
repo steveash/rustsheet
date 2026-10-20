@@ -28,7 +28,8 @@ Visibly off on the T-1890 head:
 - CUMPRINC_CUMIPMT.xlsx G2, G4, G7 and G31, and H26 (CUMPRINC -3.308722252996902E-21, ours
   ...691E-21: 2 ulps, but visibly).
 - probes/fin-cumipmt-overflow-and-forms A7 and A9-A12, and A16 (`CUMPRINC(1E10,40,1,1,31,0)`,
-  -9.999999990999995E-91, ours ...1000066E-91 as on main).
+  -9.999999990999995E-91, ours ...1000066E-91 as on main), and `CUMPRINC(1E10,40,1,1,20,0)` and `(…,15,20,0)`
+  (excel-graph -9.999999980000501E-201, ours ...0004E-201 as on main; not yet in a probe case).
 - fin-cumipmt-period-bound A18, fin-remaining-later-argument-ranges K3.
 - A2 (`CUMPRINC(1E300,10,1E300,1,10,1)`: Excel -1E300, ours `#NUM!`).
 - A5 and A6 (1E-15 rate past 2^53).

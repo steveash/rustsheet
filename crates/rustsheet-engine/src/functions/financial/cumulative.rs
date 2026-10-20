@@ -193,7 +193,9 @@ impl Periods {
                 * (discount(first - 1.0 - self.nper)
                     * ((self.end - first + 1.0) * log_growth).exp_m1()
                     / log_growth.exp_m1());
-            if product.is_finite() {
+            // Where `v^(a-1-nper)` underflows the product is a silent 0 for a principal of
+            // 1E-200 (`CUMPRINC(1E10,40,1,1,20,0)`, financial.md), so the difference decides then too.
+            if product.is_finite() && product != 0.0 {
                 product
             } else {
                 difference()

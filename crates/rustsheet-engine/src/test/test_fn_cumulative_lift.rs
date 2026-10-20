@@ -158,6 +158,13 @@ fn up_to_32_periods_are_the_per_period_sum() {
         // of powers (probes/fin-cumipmt-overflow-and-forms A15, A18; T-1890 review).
         ("A5", "=CUMPRINC(1E10,40,1,10,40,0)", "-1.0000000000000013"),
         ("A6", "=CUMIPMT(1E300,10,1,1,10,0)", "-1E301"),
+        // Where the first power underflows, not a silent 0: main's value, the exact
+        // -9.99999998000000002E-201 to 15 digits; Excel's is ...80000501E-201 (financial.md, T-2192).
+        (
+            "A7",
+            "=CUMPRINC(1E10,40,1,1,20,0)",
+            "-9.999999980000004E-201",
+        ),
         // CUMPRINC_CUMIPMT.xlsx H6, which the PPMT sum missed by 3 ulps.
         (
             "A4",
