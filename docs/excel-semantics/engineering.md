@@ -370,7 +370,7 @@ Evidence: probes/eng-im-overflow (excel-graph).
   of pi/2, but is smaller: for pi/2, pi and 2pi, and 100pi, below and above, the boundary lies in
   (1.053E-8, 1.054E-8] (A1-A34): `1.053E-8` from the multiple is `#NUM!`, `1.054E-8` is capped. That is
   2^-26.5 = 2^-26/sqrt(2) = 1.0537E-8, where cos(d) = 1 - d^2/2 stops being distinguishable from 1;
-  implemented as that (T-2101). The exact value is within the bracket but not pinned to the bit.
+  implemented as that. The exact value is within the bracket but not pinned to the bit.
 - IMEXP's sine and cosine of the imaginary part reduce the argument as SIN and COS do (the x87
   64-bit pi, see the IMPOWER entry above): `IMEXP("1000+3.14159i")` is
   `-1.79769313485599E+308+4.770340154251E+302i` (probes/eng-imexp-overflow-imag A3) and
@@ -382,9 +382,9 @@ Evidence: probes/eng-im-overflow (excel-graph).
 - A part near DBL_MAX is written as `1.79769313486232E+308`, a decimal above DBL_MAX: the 15-digit
   rounding of 1.7976931348623157E+308 is not clamped (probes/eng-imexp-overflow-imag A22, A24, A27,
   A30). Ours keeps the unrounded part when the rounding overflows (T-2060). Numeric DBL_MAX (`=2^1023*(2-2^-52)&""`) is `1.7976931348623E+308` (14 digits, not the
-  IM* text's 15) and `TEXT(..., "0.00E+00")` is `1.80E+308` (probes/dbl-max-text-a, -b). A DBL_MAX
+  IM* text's 15) and `TEXT(..., "0.00E+00")` is `1.80E+308` (probes/dbl-max-text-a, -b; ours differs for the TEXT form, T-2106). A DBL_MAX
   literal in a formula makes excel-graph reject the workbook; whether the formula `=DBL_MAX literal`
-  equals the computed value is unprobed (T-2101).
+  equals the computed value is unprobed.
 - IM* text keeps 15 significant digits for an exponent past 98, unlike `&""` (numbers.md): A11,
   A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
   `1.65498402768026E+308`, which ours now matches (T-2001: `complex_part_to_text` keeps 15 digits). This is a
