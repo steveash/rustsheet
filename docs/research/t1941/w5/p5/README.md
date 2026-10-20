@@ -150,3 +150,13 @@ needs constants fitted under the wrong structure (W2's method).
 The peak hit rate per run has median 0.30 (2nd best 0.297, null 0.27). So K3's mismatch at these stages varies from
 point to point (rounding-pattern type), not a smooth stage offset. W2's correction applies: the oprep hot spots
 (D.S3, N.P5/N.S5) localise the mismatch; they do not show an unstored op. `stageread.log`, `runread.log`.
+
+## Hand-off model test (W2's K2 model) on K3: not diagnostic
+`handoff.py`: the stored N.S_JN and D.S_JD are fl(smooth upper polynomial + δ), δ constant per run on a u/4 grid
+over ±3 ulps, with the exact stored chain below. Per-run best hit rates (`handoff.log`, 12 runs × 1024 points):
+- Real, ss_fc constants: 0.25–0.49 at N.S5/D.S3, 0.31–0.52 at N.S2/D.S1, 0.30–0.54 at N.S1/D.S1. Plain Horner
+  scores 0.11–0.44 and the null (B + 1 ulp) 0.17–0.49.
+- Control, plain-Horner truth scored with its own true constants: 0.56–0.92 at N.S5/D.S3 and only 0.39–0.58 at S1.
+On K3 the upper Horner's point-to-point rounding noise stays visible down to the output, so even the true model is
+not explained by a per-run δ. Real data at S1 is about the same as this control. The test cannot separate plain
+Horner from a smooth (higher-precision) upper part on K3, unlike K2 where the upper is invisible.
