@@ -14,6 +14,7 @@ mod forecast;
 mod frequency;
 mod gamma;
 mod gamma_kernels;
+mod gamma_x87;
 mod gammaln;
 mod gauss;
 mod geomean;

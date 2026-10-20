@@ -3,7 +3,7 @@ id: T-2129
 title: "Ship the T-1941 GAMMA model: products, half-integers, x>=10, reflection and the K1 kernel"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
