@@ -3,7 +3,7 @@ id: T-1964
 title: "Probe legacy @ on SWITCH returning a range or nested under scalar functions"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
