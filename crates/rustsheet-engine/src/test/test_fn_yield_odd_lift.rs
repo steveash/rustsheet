@@ -295,20 +295,21 @@ fn arguments_far_out_of_range_are_errors_without_a_panic() {
 
 #[test]
 fn a_lifted_call_is_charged_for_its_solver_and_schedule_work() {
-    // SPEC-0011 "Security rule for kernel work": YIELD and ODDFYIELD elements are charged 2^24
-    // (8 elements), ODDFPRICE eight schedule walks (256) and ODDLPRICE and ODDLYIELD two (1,024);
-    // financial.md "Yield and odd-coupon work cap" (a DEVIATION). The ninth YIELD element makes
-    // the call #ERROR! before any element runs, whatever the schedule.
+    // SPEC-0011 "Security rule for kernel work": a YIELD or ODDFYIELD element is charged up to
+    // 2^24 (8 elements at the calendar's longest schedule), ODDFPRICE eight schedule walks (256)
+    // and ODDLPRICE and ODDLYIELD two (1,024), each in proportion to the element's coupon count
+    // plus one (T-1869), so short schedules lift far more; financial.md "Yield and odd-coupon
+    // work cap" (a DEVIATION). Past the budget the call is #ERROR! before any element runs.
     check(&[
         (
             "A1",
-            "=ROWS(YIELD(SEQUENCE(8)+39000,43831,0.05,95,100,2))",
-            "8",
+            "=ROWS(YIELD(SEQUENCE(9)+39000,43831,0.05,95,100,2))",
+            "9",
         ),
         (
             "A2",
-            "=ROWS(YIELD(SEQUENCE(9)+39000,43831,0.05,95,100,2))",
-            "#ERROR!",
+            "=ROWS(YIELD(SEQUENCE(8)*0+1,2958465,0.05,1E300,100,4,1))",
+            "8",
         ),
         (
             "A3",
@@ -317,32 +318,37 @@ fn a_lifted_call_is_charged_for_its_solver_and_schedule_work() {
         ),
         (
             "A4",
-            "=ROWS(ODDFYIELD(SEQUENCE(9)*0+39448,43831,39083,39630,0.08,95,100,2,0))",
-            "#ERROR!",
+            "=ROWS(ODDFYIELD(SEQUENCE(100)*0+39448,43831,39083,39630,0.08,95,100,2,0))",
+            "100",
         ),
         (
             "A5",
-            "=ROWS(ODDFPRICE(SEQUENCE(256)*0+39448,43831,39083,39630,0.08,0.09,100,2,0))",
-            "256",
-        ),
-        (
-            "A6",
-            "=ROWS(ODDFPRICE(SEQUENCE(257)*0+39448,43831,39083,39630,0.08,0.09,100,2,0))",
+            "=ROWS(ODDFYIELD(SEQUENCE(9)*0+39448,2958465,1,39630,0.08,95,100,4,0))",
             "#ERROR!",
         ),
         (
+            "A6",
+            "=ROWS(ODDFPRICE(SEQUENCE(4096)*0+39448,43831,39083,39630,0.08,0.09,100,2,0))",
+            "4096",
+        ),
+        (
             "A7",
-            "=ROWS(ODDLPRICE(SEQUENCE(1024)*0+39448,39630,39264,0.08,0.09,100,2,0))",
-            "1024",
+            "=ROWS(ODDFPRICE(SEQUENCE(257)*0+39448,2958465,1,39630,0.08,0.09,100,4,0))",
+            "#ERROR!",
         ),
         (
             "A8",
-            "=ROWS(ODDLYIELD(SEQUENCE(1025)*0+39448,39630,39264,0.08,99,100,2,0))",
+            "=ROWS(ODDLYIELD(SEQUENCE(4096)*0+39448,39630,39264,0.08,99,100,2,0))",
+            "4096",
+        ),
+        (
+            "A9",
+            "=ROWS(ODDLYIELD(SEQUENCE(1025)*0+39448,2958465,1,0.08,99,100,4,0))",
             "#ERROR!",
         ),
         // An unlifted call is never charged.
         (
-            "A9",
+            "A10",
             "=ODDLYIELD(39448,39630,39264,0.08,99,100,2,0)",
             "0.097087379",
         ),

@@ -586,7 +586,8 @@ values: `CouponSchedule` and `OddFirstSchedule` (functions/financial/financial_b
 solver step is a sum over the coupons (up to 32,400, 0.55 ms in release) rather than four walks and a sum (5 ms). YIELD
 and ODDFYIELD are charged 2^24 (`YIELD_SOLVER_WEIGHT`: at most 397 prices, about 0.23 s an element at the bound, so 8
 elements, about 1.8 s), ODDFPRICE eight walks (256 elements) and the closed-form ODDLPRICE and ODDLYIELD two (1,024);
-financial.md "Yield and odd-coupon work cap", a DEVIATION that T-1869 narrows to a schedule-length budget.
+financial.md "Yield and odd-coupon work cap", a DEVIATION. T-1869 narrows it to a schedule-length budget
+(`CouponWalks` above): those counts hold only at the calendar's longest schedule.
 As built (T-1848): BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T are `Lift` entries.
 Their quantile search was statrs' `inv_beta_reg`, whose loops are open (it panics or never finishes at a tiny p); it is
 now a line-for-line port with a per-call cap of its own (`statistical/inverse_beta.rs`: 512 Newton steps and 4,096
@@ -701,12 +702,15 @@ estimators exist:
   `arg`, `1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the
   kernel refuses it before looping). The kernel still keeps `cap` as its own per-call cap.
 - `CouponWalks { dates, frequency, walks, weight }` (T-1846, the COUP* functions, ACCRINT,
-  DURATION, MDURATION and PRICE): `walks` times `ceil(weight * span * f / (4 * 2958465))`, at least
-  1, where `span` is the days between the earliest and latest date argument, clamped to the
-  calendar's 2958465, and `f` the frequency (1, 2 or 4): proportional to the period count, and
-  `weight` per walk for the longest schedule. A text date is charged as the longest schedule and a
-  text frequency as 4; an error argument or an invalid frequency is 1 (refused before any walk).
-  The calendar bounds each walk, so no cap constant is needed.
+  DURATION, MDURATION and PRICE; T-1869, YIELD and the ODD* functions): `walks` times
+  `ceil(weight * (span * f + 365) / (4 * 2958465 + 365))`, where `span` is the days between the
+  earliest and latest date argument (2 * 1462 more when the earliest is negative, which a 1904
+  workbook does not shift), clamped to the calendar's 2958465, and `f` the frequency (1, 2 or 4):
+  proportional to the period count plus one, the extra period being each pass's fixed cost, and
+  `weight` per pass for the longest schedule. A solver's walk and every price sum are one pass
+  (YIELD's 397 prices, 2^24). A text date is charged as the longest schedule and a text frequency
+  as 4; an error argument or an invalid frequency is 1 (refused before any walk). The calendar
+  bounds each walk, so no cap constant is needed.
 
 T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`

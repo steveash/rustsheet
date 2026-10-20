@@ -42,7 +42,9 @@
 //! - the coupon functions at the longest schedule (T-1846): COUPDAYSNC's two walks over 1,024
 //!   settlements at serial 1 and PRICE's four over 512 at serial 92 (its previous coupon,
 //!   1900-03-31, must be a date), quarterly to 9990-06-30, the most a lift is charged by schedule
-//!   length; and PRICE over 4,096 ten-year schedules.
+//!   length; and PRICE over 4,096 ten-year schedules. YIELD (T-1869) at its element cap over the
+//!   longest schedule, over four-coupon schedules at the solver's slowest inputs and over
+//!   one-period ones, where the per-pass fixed part of the charge binds.
 //!
 //! `cargo bench -p rustsheet --bench lift [-- FILTER...]` (only the cases whose name contains a
 //! FILTER, e.g. `SWITCH`)
@@ -221,6 +223,21 @@ fn coupon_cases() -> Vec<(&'static str, u32, &'static str)> {
             "PRICE, the longest schedule at the element cap",
             1,
             "=SUM(PRICE(SEQUENCE(512)*0+92,DATE(9990,6,30),0.05,0.04,100,4))",
+        ),
+        (
+            "YIELD, the longest schedule at the element cap",
+            1,
+            "=SUM(YIELD(SEQUENCE(8)*0+92,2954994,0.05,1E300,100,4,1))",
+        ),
+        (
+            "YIELD, four-coupon schedules at the element cap",
+            1,
+            "=SUM(YIELD(SEQUENCE(56039)*0+43500,43831,1E300,1E-300,1E300,4,1))",
+        ),
+        (
+            "YIELD, one-period schedules at the element cap",
+            1,
+            "=SUM(YIELD(SEQUENCE(256140)*0+43830,43831,0.05,95,100,4))",
         ),
         (
             "PRICE, ten-year schedules",
