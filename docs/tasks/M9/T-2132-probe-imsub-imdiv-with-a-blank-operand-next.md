@@ -3,7 +3,7 @@ id: T-2132
 title: "Probe IMSUB/IMDIV with a blank operand next to a j number, and IMSUM with mixed empty-argument forms"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,3 +25,8 @@ functions/engineering/complex.rs still returns `Suffix::I` for a blank with `Zer
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/eng-imsub-imdiv-blank-j` (25 cells, excel-graph 2026-10-20): a blank takes the other operand's suffix
+(`complex_of` now returns `Suffix::Real`), an empty IMSUB/IMDIV argument is `#N/A`, and an empty first IMSUM/IMPRODUCT
+argument is `#N/A` (a later one is skipped). All recorded in engineering.md. Eval: probes baseline +25 cells passing.
