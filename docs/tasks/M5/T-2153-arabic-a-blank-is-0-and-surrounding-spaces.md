@@ -7,13 +7,14 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-2200]
 ---
 
 ## Goal
 ARABIC of a blank cell is 0 and ARABIC ignores leading and trailing spaces and tabs (`ARABIC(" x ")` = 10), as Excel does.
 
 ## Context
+- Evidence first (planner, 2026-10-20): the probe this task asks for is T-2200 (research), which fills `probes/t2200-blank-and-padded-m5-args`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). `fn_arabic` (crates/rustsheet-engine/src/functions/math_and_trigonometry/arabic_roman.rs) gives `#VALUE!` for a blank cell (a
 reference, `IF(..,E5)`, or the blank VLOOKUP/HLOOKUP lands on) and for padded numerals; `ARABIC("")` is already 0. Rule:
 docs/excel-semantics/numbers.md "ARABIC of a blank cell, and padded numerals" (added by this triage). Probe first (`excel-probe`):
