@@ -104,8 +104,8 @@ const ATP_5_OF_6: ArgKinds = ArgKinds::fixed(
 // --- Financial ATP (T-1822) -----------------------------------------------------------------
 /// What one walk of a coupon schedule is charged: the walk steps one coupon period at a time
 /// from the maturity back to the settlement (or from the first interest date to the issue), at
-/// most about 32,400 quarters inside the calendar (a settlement before serial 1 is #NUM! first,
-/// `Model::check_settlement`), about 1 ms in a release build (`COUPNUM(1,DATE(9990,6,30),4)`).
+/// most about 32,400 quarters inside the calendar (a settlement before serial 0 is #NUM! first,
+/// `Model::coupon_args` and `Model::check_settlement`), about 1 ms in a release build (`COUPNUM(1,DATE(9990,6,30),4)`).
 const COUPON_WALK_WEIGHT: u32 = 1 << 16;
 /// `COUPDAYBS(settlement, maturity, frequency, [basis])` and the other COUP* functions: up to
 /// two schedule walks (COUPDAYSNC's basis 0 takes both coupon dates), so a lifted call runs at

@@ -639,3 +639,31 @@ fn fn_oddlprice_long_last_period_basis1_settlement_before_li() {
     assert!(p > 100.0, "ODDLPRICE long last period = {p}");
     assert!((y - 0.05).abs() < 1e-6, "ODDLYIELD roundtrip = {y}");
 }
+
+#[test]
+fn coupon_walk_reads_dates_in_excels_1900_calendar() {
+    // probes/fin-coupon-walk-bounds-c (excel-graph): 1900-01-01 is serial 1, a previous coupon
+    // date before it reads as 0, and COUPNUM and PRICE are #NUM! there.
+    let mut model = new_empty_model();
+    model._set("A1", "=COUPPCD(1,43831,2)");
+    model._set("A2", "=COUPNUM(1,43831,2)");
+    model._set("A3", "=COUPPCD(1,1000,2)");
+    model._set("A4", "=COUPNUM(1,1000,2)");
+    model._set("A5", "=COUPDAYBS(1,1000,2)");
+    model._set("A6", "=PRICE(1,43830,0.05,0.06,100,4)");
+    model._set("A7", "=COUPPCD(0,43831,2)");
+    model._set("A8", "=COUPDAYS(1,43830,4,1)");
+    model._set("A9", "=COUPDAYS(59,36585,4,1)");
+    model._set("A10", "=MDURATION(NA(),43831,0.08,\"x\",2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "240");
+    assert_eq!(model._get_text("A3"), "0");
+    assert_eq!(model._get_text("A4"), "#NUM!");
+    assert_eq!(model._get_text("A5"), "1");
+    assert_eq!(model._get_text("A6"), "#NUM!");
+    assert_eq!(model._get_text("A7"), "0");
+    assert_eq!(model._get_text("A8"), "90");
+    assert_eq!(model._get_text("A9"), "90");
+    assert_eq!(model._get_text("A10"), "#N/A");
+}
