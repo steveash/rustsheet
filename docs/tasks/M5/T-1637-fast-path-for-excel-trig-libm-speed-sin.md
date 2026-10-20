@@ -3,7 +3,7 @@ id: T-1637
 title: "Fast path for Excel trig: libm-speed SIN/COS with a rounding test, double-double only when needed"
 milestone: M5
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
