@@ -26,10 +26,13 @@ Fitting set: probes-numeric `m9-hyperbolic` A157-A248, `t0917-hyperbolic-switcho
 ironcalc-calc TRIGONOMETRIC.xlsx SINH_COSH_TANH. A dense oracle sweep on (0, 1) is likely needed.
 Known failures this owns: TRIGONOMETRIC.xlsx SINH_COSH_TANH!D10, D40, B51 and COTH_CSCH_SECH!B10,
 B40, C51, C54, C55 (B10 and C54 were unmasked by T-0917, decision 0084), and POWER.xlsx
-inside_a_lambda!C3/C4 (TANH in `gelu`, T-0959).
+inside_a_lambda!C3/C4 (TANH in `gelu`, T-0959). Ungated but owned too: probes-numeric
+`m9-hyperbolic` Calc!A126 (CSCH(0.001), passed on libm before T-0917) and `t0917-hyperbolic-switchover`
+A81, A97, A105, A109, A159 (decision 0084), plus the other SINH/TANH/COTH/CSCH misses of both cases.
 
 ## Acceptance criteria
-- [ ] COTH_CSCH_SECH!B10 and C54 pass (decision 0084); no new known failures.
+- [ ] COTH_CSCH_SECH!B10 and C54, m9-hyperbolic A126 and t0917-hyperbolic-switchover A81, A97, A105,
+      A109, A159 pass (decision 0084); no new known failures.
 - [ ] The fitted formulation and its evidence are in `docs/excel-semantics/numbers.md`, including
       negative results.
 - [ ] `make check` green; reviewers approve.

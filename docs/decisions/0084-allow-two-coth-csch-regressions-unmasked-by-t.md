@@ -12,12 +12,16 @@
     already (a known failure); COTH inherits it.
   - `COTH_CSCH_SECH!C54` (CSCH(0.88)): the engine's SINH(0.88) misses probes-numeric m9-hyperbolic
     A234; CSCH inherits it.
+  The same cause fails one previously passing cell of the ungated suite probes-numeric:
+  `m9-hyperbolic` Calc!A126 (CSCH(0.001)). In the new case `t0917-hyperbolic-switchover`, five cells
+  fail that libm's old formulas would pass: A81 CSCH(0.001), A97 COTH(0.123), A105 CSCH(0.3), A109
+  COTH(0.42), A159 CSCH(0.88). Against these, probes-numeric gains 333 cells.
 - **Options considered:**
   - *Keep libm for COTH/CSCH.* Contradicts the 66 probe pairs and gives up the fixed cells.
   - *Special-case the two arguments.* Fitting to cells, not to Excel's formulation.
   - *Fit Excel's SINH/TANH kernel in the same PR.* Tried in T-0917 without success (numbers.md "SINH
     and TANH on 0.4 .. 1: no formula found yet"); it is its own research task.
 - **Decision:** run `rustsheet-eval update-baseline --allow-regressions` once in the T-0917 PR, for
-  exactly these two cells. They join T-2134's acceptance list (the SINH/TANH kernel fit).
+  exactly these two cells. They, m9-hyperbolic A126 and the five switchover cells join T-2134's acceptance list (the SINH/TANH kernel fit).
 - **Consequences:** `eval/baseline/ironcalc-calc.txt` loses 39 lines and gains these two. Reviewers
   confirm the baseline diff adds no other line. T-2134 must make them pass.

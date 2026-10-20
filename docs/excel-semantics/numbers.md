@@ -785,8 +785,8 @@ the true value (probes-numeric m9-hyperbolic A157-A248), so the kernel works in 
 (tested 2026-10-20 against the 85 SINH and 87 TANH cells): libm sinh/tanh, `(e^x - e^-x)/2` and `(e - 1/e)/2` with libm exp or
 Excel's x87 EXP (model V6), the same in 80-bit, the engine's Taylor series (forward, reverse, Horner, 10 or 16 terms), and for
 TANH `(e^2x - 1)/(e^2x + 1)`, `1 - 2/(e^2x + 1)`, `sinh/cosh`, `expm1` forms, each with libm or V6 exp. The engine keeps T-0914's
-piecewise forms (SINH 60/85, TANH 67/87 cells); COTH/CSCH inherit their misses (COTH at 0.123, 0.604, 0.001, 0.01; CSCH at
-0.01, 0.88).
+piecewise forms (SINH 60/85, TANH 67/87 cells); COTH/CSCH inherit every one of their misses (see the failing COTH/CSCH cells
+of probes-numeric `m9-hyperbolic` and `t0917-hyperbolic-switchover`; decision 0084 lists those that libm used to pass).
 Status: OPEN.
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
