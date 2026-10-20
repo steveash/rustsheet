@@ -3,7 +3,7 @@ id: T-2164
 title: "MMULT, MINVERSE and MDETERM are #VALUE! on a blank cell"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
