@@ -1627,20 +1627,25 @@ Unequal sizes and single points follow "Array arguments given a scalar, a single
   (`COVAR({1,2,3},{TRUE,FALSE,TRUE})`, pairs-b L18; single pair L3, L25, L27).
 - RSQ is not clamped to 1: `RSQ(J1:J6,B1:B6)` is 1.0000000000000004 (pairs-a N23), as is `RSQ({1,2;3,4},{4,3;2,1})` (N28).
 - Large offset (10000000001...) keeps its variance: `CORREL(I1:I6,B1:B6)` 0.9402561526801988, `FORECAST(7,A1:A6,I1:I6)`
-  -7285714278.784956, `SLOPE(A1:A6,I1:I6)` 0.7285714285713528, `INTERCEPT(A1:A6,I1:I6)` -7285714283.884956, `STEYX(I1:I6,B1:B6)` 0.822308017832176 (pairs-b M21; ours 0.8223080178319075), `STEYX(A1:A6,I1:I6)` 0.5277986629120525 (M22). A two-pass sum of
+  -7285714278.784956, `SLOPE(A1:A6,I1:I6)` 0.7285714285713528, `INTERCEPT(A1:A6,I1:I6)` -7285714283.884956, `STEYX(I1:I6,B1:B6)` 0.822308017832176 (pairs-b M21), `STEYX(A1:A6,I1:I6)` 0.5277986629120525 (M22). A two-pass sum of
   squares about the means reproduces these bits; for r and r² the deviations' sums are then divided before the square
   roots, CORREL and PEARSON by n and RSQ by n - 1: `r = (Sxy/n) / (sqrt(Sxx/n) * sqrt(Syy/n))` and
   `RSQ = ((Sxy/(n-1)) / (sqrt(Sxx/(n-1)) * sqrt(Syy/(n-1))))^2`, with Sxx, Syy, Sxy the sums about the means (T-1723:
   this fits every number cell of the six functions in pairs-a and -b to the bit, ULP cells included; plain
   `Sxy/sqrt(Sxx*Syy)` misses 4 of 17 CORREL cells). SLOPE is `Sxy/Sxx`, INTERCEPT `ȳ - SLOPE*x̄` and STEYX
   `sqrt((Syy - Sxy*Sxy/Sxx)/(n-2))`, evaluated in that order.
-- A typed text or boolean argument, numeric text too, is one value that is not a number, like a single cell holding one:
+- A typed text or boolean argument is one value (numeric text included; whether it counts as a number is not observable
+  with one value on a side), like a single cell holding one:
   `CORREL("a",5)`, `SLOPE("1",5)`, `STEYX({1},"a")` and `FORECAST(1,"a","a")` are `#DIV/0!`, `CORREL(A1:A3,TRUE)` and
   `CORREL("a",{1,2})` `#N/A` (unequal sizes), and so is `CHISQ.TEST("a","a")` (probes/regression-pairs-text-scalar, T-1723).
 - FORECAST x: TRUE is 1 (2.571428571428571), "7" is 7, "" is `#VALUE!` (forecast L6, L10, L12); an array x spills one
   forecast per element (`FORECAST.LINEAR({7,8},A1:A6,B1:B6)` 7.2, 7.9714285714285715 in P7, Q7), a range x that
   collides is `#SPILL!`; unequal sizes are `#N/A`.
-- Last-digit differences: `FORECAST(0,A1:A6,B1:B6)` 1.7999999999999998 (ours 1.8), `CORREL(A1:A6,C1:C6)` 0.9999999999999998 (ours 1.0).
+- Last digits: `FORECAST(0,A1:A6,B1:B6)` 1.7999999999999998, `CORREL(A1:A6,C1:C6)` 0.9999999999999998 (both follow from the formulas above).
+- STEYX on an exact fit: the difference `Syy - Sxy*Sxy/Sxx` is not snapped to 0; when it rounds below zero STEYX is `#NUM!`
+  (`STEYX({1.8,1.9,...,2.4},{1,...,7})`), when it rounds above zero a tiny number (`STEYX({0.1,...,1.1},{1,...,11})`
+  4.967053731282552E-09), and exactly 0 when it cancels (probes/steyx-exact-fit, excel-graph 2026-10-20, T-1723). The fit
+  matches only with the probe's literals read to 15 significant digits (its `0.30000000000000004` taken as 0.3), as the engine reads them.
 Evidence: probes/regression-pairs-a, regression-pairs-b, regression-forecast (excel-graph, 2026-10-16, T-1620); the
 error cells in these cases are `#DIV/0!`, so whether a range error propagates or is replaced is unprobed.
 Ours: the unequal-size `#N/A` matches since T-1292, single points since T-1401; CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX and FORECAST compute from the sums about the means in Excel's order, and a typed text or boolean argument is one value with no number (T-1723). COVAR with text, blank or boolean cells (`#N/A` in ours) is still open.

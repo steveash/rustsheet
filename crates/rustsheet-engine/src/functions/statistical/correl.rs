@@ -151,9 +151,13 @@ impl Model {
             return div();
         }
         // Excel: Σ(y - ȳ)² less the explained part, sxy * sxy / sxx in that order
-        // (probes/regression-pairs-b M column to the bit).
-        let sey =
-            ((moments.syy - moments.sxy * moments.sxy / moments.sxx) / (moments.n - 2.0)).sqrt();
+        // (probes/regression-pairs-b M column to the bit). An exact fit whose difference rounds
+        // below zero is #NUM!, the square root of a negative, not 0 (probes/steyx-exact-fit A8).
+        let variance = (moments.syy - moments.sxy * moments.sxy / moments.sxx) / (moments.n - 2.0);
+        if variance < 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid data".to_string());
+        }
+        let sey = variance.sqrt();
         if sey.is_finite() {
             CalcResult::Number(sey)
         } else {

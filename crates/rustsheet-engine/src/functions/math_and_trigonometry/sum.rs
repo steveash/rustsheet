@@ -143,7 +143,7 @@ impl Model {
 fn matrix_arg(node: &Node, value: CalcResult) -> Result<Option<(i64, i64, PairedArg)>, CalcResult> {
     let arg = match PairedArg::from_node_result(node, value) {
         Ok(arg) => arg,
-        // Excel: a typed text or boolean (numeric text too) is one value that is not a number,
+        // Excel: a typed text or boolean is one value with no number,
         // like a single cell holding one: `CORREL("a",5)` is #DIV/0! and `CORREL(A1:A3,TRUE)`
         // #N/A (probes/regression-pairs-text-scalar).
         Err(CalcResult::String(_) | CalcResult::Boolean(_)) => PairedArg::Values(vec![None]),

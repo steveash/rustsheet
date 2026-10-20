@@ -45,4 +45,4 @@ means, then Excel's formulas fitted to the bit on every number cell of probes/re
 probe probes/regression-pairs-text-scalar, 72 cells, excel-graph), and CHISQ.TEST of a single value is `#N/A`
 (probes-numeric/t1049-chisqtest A36). Eval: probes known failures 1948 -> 1882 (regression-pairs-a and
 regression-forecast fully pass; pairs-b left with COVAR only, T-1724), ironcalc-calc 1057 -> 1056. Folds in T-1707 and
-T-1725 (closed). Follow-up: T-2080 (STEYX on a near-exact fit).
+T-1725 (closed). STEYX on an exact fit that rounds below zero is `#NUM!` (new probe probes/steyx-exact-fit, 28 cells).
