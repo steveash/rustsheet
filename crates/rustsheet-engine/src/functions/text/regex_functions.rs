@@ -124,7 +124,7 @@ impl PatternCache {
         case_insensitive: bool,
         cell: CellReferenceIndex,
     ) -> Result<Option<(Engine, Caches)>, CalcResult> {
-        let Ok(pattern) = unicode_posix_classes(pattern) else {
+        let Ok(pattern) = unicode_posix_classes(pattern, case_insensitive) else {
             return Ok(None);
         };
         for limit in SIZE_LIMITS {
