@@ -43,3 +43,4 @@ The `#N/A` for different sizes was already on main (T-1292/T-1620's size check).
 are now COVARIANCE.P/(STDEV.P*STDEV.P) and RSQ the square of the sample form, all plain two-pass sums
 (`excel_correlation`, pearson.rs), fitted to all 44 numeric oracle cells (statistics.md entry). Eval: probes known
 failures 1948 -> 1917 (31 fixed), ironcalc-calc 1057 -> 1056 (C2 fixed); no regressions.
+Follow-up: T-2080 (probe inexact constant series and overflow-scale data).

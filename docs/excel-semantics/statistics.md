@@ -1600,14 +1600,15 @@ GROUPBY cells below and the ironcalc workbook (C2, F2), large offsets included. 
 cells: `Sxy/sqrt(Sxx*Syy)`, `Sxy/(sqrt(Sxx)*sqrt(Syy))`, `Sxy/sqrt(Sxx)/sqrt(Syy)` (either order), the n-1 form for
 CORREL, the n form for RSQ, the one-pass `n*Σxy - Σx*Σy` forms, `Sxy²/(Sxx*Syy)`, `(Sxy/Sxx)*(Sxy/Syy)`, `1 - SSE/Syy`, and
 STDEV with VAR's one-pass/two-pass switch (misses L19 and N5, N10, N19, N23). Whether Excel computes these with x87
-intermediates is untested: plain doubles fit every cell.
+intermediates is untested: plain doubles fit every cell. Open (unprobed, T-2080): a constant series with an inexact mean
+({0.1,0.1,0.1} leaves deviations near 1E-17; ours gives 0, not `#DIV/0!`) and data whose squares overflow (ours `#DIV/0!`).
 Evidence: GROUPBY passing these functions by name gives each group's values and all values
 (probes/groupby-pivotby-functions G!B421:B426, -functions2 G!B281:B286, G!B301:B306, G!B326; PIVOTBY functions2 P!A121),
 excel-graph, 2026-10-16, T-1325. The plain different-size call is `#N/A` too (`CORREL({2,4,5},{1,2})`, probes/regression-pairs-a L17, T-1620).
 Fit: T-1707 (2026-10-19) over the cells named above.
 Ours: matches since T-1707 (`excel_correlation` in crates/rustsheet-engine/src/functions/statistical/pearson.rs).
 Status: VERIFIED (web)
-Tasks: T-1707
+Tasks: T-1707, T-2080
 
 ## LINEST, LOGEST, GROWTH: probe findings
 Rule (excel-graph, 2026-10-16, T-1621; spilled cells are evidence too; cell ids are in the Sheet1 sidecars):
