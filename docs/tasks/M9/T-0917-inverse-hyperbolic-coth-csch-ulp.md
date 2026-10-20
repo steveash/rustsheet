@@ -3,7 +3,7 @@ id: T-0917
 title: "ASINH/ACOSH/ATANH/ACOTH, COTH/CSCH, small-x TANH: finish Excel ulp parity"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
