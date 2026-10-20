@@ -2,7 +2,10 @@ use super::elapsed::{elapsed_text, ElapsedUnit, FractionalSeconds};
 use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
-    constants::MAXIMUM_DATE_SERIAL_NUMBER, locale::Locale, number_format::to_precision, text::Text,
+    constants::{EXCEL_PRECISION, MAXIMUM_DATE_SERIAL_NUMBER},
+    locale::Locale,
+    number_format::{cut_15_digits, to_precision},
+    text::Text,
     types::DateSystem,
 };
 use std::collections::BTreeSet;
@@ -39,30 +42,39 @@ impl<'a> FormatContext<'a> {
     }
 }
 
-/// Returns the vector of chars of the fractional part of a *positive* number:
+/// Returns the chars of the fractional part of a *positive* number and whether rounding it to
+/// `precision` places carried into the integer part, read off its 15
+/// significant digits (the value is already rounded to them) and without trailing zeros:
 /// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
-fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
-    let b = format!("{:.1$}", value.fract(), precision as usize)
-        .chars()
-        .collect::<Vec<char>>();
-    let l = b.len() - 1;
-    let mut last_non_zero = b.len() - 1;
-    for i in 0..l {
-        if b[l - i] != '0' {
-            last_non_zero = l - i + 1;
-            break;
+/// Excel shows only 15 significant digits and pads the rest of a wide format with zeros, so the
+/// cut counts significant digits, not positions after the point (`TEXT(2/3,"0.000000000000000000")`
+/// is "0.666666666666667000", probes-numeric/4f413cc257ce15c4 A23).
+fn get_fract_part(value: f64, precision: i32) -> (Vec<char>, bool) {
+    let (_, fract) = cut_15_digits(value, true);
+    let mut fract: Vec<u8> = fract;
+    // Round half up on the decimal digits; the flag says the rounding carried into the integer part.
+    let shown = usize::try_from(precision).unwrap_or(0);
+    let round_up = fract.get(shown).is_some_and(|d| *d >= 5);
+    fract.truncate(shown);
+    let mut carry = round_up;
+    if round_up {
+        for d in fract.iter_mut().rev() {
+            if *d == 9 {
+                *d = 0;
+            } else {
+                *d += 1;
+                carry = false;
+                break;
+            }
         }
     }
-    if last_non_zero < 2 {
-        return vec![];
+    while fract.last() == Some(&0) {
+        fract.pop();
     }
-    let max_len = if int_len > 15 {
-        2_usize
-    } else {
-        15_usize - int_len + 1
-    };
-    let last_non_zero = usize::min(last_non_zero, max_len + 1);
-    b[2..last_non_zero].to_vec()
+    (
+        fract.into_iter().map(|d| char::from(b'0' + d)).collect(),
+        carry,
+    )
 }
 
 /// Return true if we need to add a separator in position `digit_index`
@@ -704,9 +716,14 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let general_value = value;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
             // p.precision is the number of significant digits _after_ the decimal point
+            // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";
+            // probes-numeric/4f413cc257ce15c4 A23)
             value = to_precision(
                 value,
-                (p.precision as usize) + format!("{}", value.abs().floor()).len(),
+                usize::min(
+                    (p.precision as usize) + format!("{}", value.abs().floor()).len(),
+                    EXCEL_PRECISION,
+                ),
             );
             let mut value_abs = value.abs();
             let mut exponent_part: Vec<char> = vec![];
@@ -725,16 +742,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 }
             }
             let l_exp = exponent_part.len() as i32;
+            let (fract_part, fract_carry) = get_fract_part(value_abs, p.precision);
             let int_number = if p.precision == 0 {
                 value_abs.round()
             } else {
-                value_abs.floor()
+                value_abs.floor() + if fract_carry { 1.0 } else { 0.0 }
             };
             let mut int_part: Vec<char> = format!("{int_number}").chars().collect();
             if int_number as i64 == 0 {
                 int_part = vec![];
             }
-            let fract_part = get_fract_part(value_abs, p.precision, int_part.len());
             // ln is the number of digits of the integer part of the value
             let ln = int_part.len() as i32;
             // digit count is the number of digit tokens ('0', '?' and '#') to the left of the decimal point
