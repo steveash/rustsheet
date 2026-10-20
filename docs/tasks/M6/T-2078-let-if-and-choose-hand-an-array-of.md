@@ -3,7 +3,7 @@ id: T-2078
 title: "LET, IF and CHOOSE hand an array of references on"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
