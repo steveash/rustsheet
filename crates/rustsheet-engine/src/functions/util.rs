@@ -410,11 +410,19 @@ impl Model {
             Node::LambdaCallKind { lambda, args } => {
                 return self.call_callee_as_reference(lambda, args, cell)
             }
-            // A lifted OFFSET is an array of references (SPEC-0014).
+            // A lifted OFFSET, INDIRECT or TRIMRANGE is an array of references (SPEC-0014).
             Node::FunctionKind {
                 kind: Function::Offset,
                 args,
             } => return self.offset_reference(args, cell),
+            Node::FunctionKind {
+                kind: Function::Indirect,
+                args,
+            } => return self.indirect_reference(args, cell),
+            Node::FunctionKind {
+                kind: Function::Trimrange,
+                args,
+            } => return self.trimrange_reference(args, cell, false),
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
