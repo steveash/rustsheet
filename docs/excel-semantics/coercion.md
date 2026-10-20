@@ -210,18 +210,30 @@ Tasks: T-0233, T-1483, T-1580
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
 Rule: the two arrays are paired element by element in row-major order and need only the same
 element count, not the same shape (a 3x2 range pairs with a 6x1 range); a pair where either side
-is not a number (blank, text, boolean in a range) is skipped; no numeric pair left is `#DIV/0!`;
-different element counts are `#N/A`; scalar arguments are allowed (`SUMXMY2(2,4)` = 4).
+is not a number (blank, text, boolean in a range) is skipped; different element counts are `#N/A`;
+scalar arguments are allowed (`SUMXMY2(2,4)` = 4). The checks run in this order (T-0961,
+probes/sumx-blank-text-error-order, excel-graph, 2026-10-20; all three functions alike):
+1. Each argument in turn, the first one first. An error value, or a one-cell reference (`E2`, `E2:E2`) holding an
+   error, is that error at once, whatever the other argument is (`SUMXMY2(1/0,C1:C3)` and `SUMXMY2(E2,C1:C3)` are
+   `#DIV/0!`, not the count's `#N/A`; `SUMXMY2(1/0,NA())` `#DIV/0!`). A blank one-cell reference (`A4`, `A4:A4`,
+   `IF(TRUE,A4)`) or an omitted argument (`SUMXMY2(,1)`, `SUMXMY2(1,)`) is `#VALUE!` at once: `SUMXMY2(A4,NA())` is
+   `#VALUE!` but `SUMXMY2(NA(),A4)` `#N/A`, and `SUMXMY2(E1:E2,A4)` (E2 `#DIV/0!`) and `SUMXMY2(1/{1,0},A4)` are `#VALUE!`.
+2. Different element counts are `#N/A`, ahead of an error inside a range or an array of either argument
+   (`SUMXMY2(C1:C3,E1:E4)`, `SUMXMY2(C1:C3,1/{1,0})`, `SUMXMY2(5,1/{1,0})`).
+3. Then such an error (`SUMXMY2({1,2},1/{1,0})` and `SUMXMY2(E1:E3,C1:C3)` are `#DIV/0!`).
+4. Then `#DIV/0!` when either argument holds no number at all (`SUMXMY2(A2:A3,B1:B2)` with A2:A3 text and TRUE,
+   `SUMXMY2(C1:C2,{"a","b"})`, a one-cell text or boolean reference or a typed text or boolean against a number).
+   Otherwise the result is the sum over the pairs where both sides are numbers, and it is 0 when no such pair exists:
+   `SUMXMY2(A1:A2,{"a",5})` and `SUMXMY2({1,"a"},{"b",2})` are 0.
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!D1336, E1336,
 G1336, I1336, J1336 (`#N/A`), K1336, E1340, F1340, H1340, J1340 (`SUMX2PY2(G7:H9,J7:J12)` =
 105.7931362501), K1340, F1344, G1344, H1344 (`#N/A`), I1344, J1344.
-Status: VERIFIED (Excel-cached)
-Implemented in: `Model::sumx_fold` / `sumx_values` (math_and_trigonometry/sum.rs); other `fn_get_two_matrices` callers are unchanged.
+Status: VERIFIED (Excel-cached; excel-graph for the order of checks)
+Implemented in: `Model::sumx_fold` / `sumx_arg` (math_and_trigonometry/sum.rs); other `fn_get_two_matrices` callers are unchanged.
 Scalar text and boolean arguments are one skipped pair: `SUMX2PY2("1",2)`, `SUMXMY2("1",2)`, `SUMX2MY2("1",2)` and the same
 with `TRUE` are `#DIV/0!` (numeric text is not read as a number here) while `SUMX2PY2(1,2)` is 5; a text element inside an
 array constant is skipped (`SUMX2PY2({1,"a"},{3,4})` = 10); two all-blank ranges are `#DIV/0!`. Evidence:
 probes/stats-evidence-floor-t1623 Q73-Q76, Q79, Q86-Q89, Q91, Q99-Q102, Q104 (excel-graph, 2026-10-17, T-1623).
-Open (unverified, T-0961): an empty argument (`SUMXMY2(,1)`) and error-versus-`#N/A` precedence were not probed there.
 More evidence, gen-m5 (excel-graph, 2026-10-20, T-2114; all 28 cells listed in T-0961): a blank one-cell argument
 (`B12`, `C8:C8`, `A$1`, or `IF(..,E5)` returning a blank cell) is `#VALUE!` whatever the other argument is: a range of another
 size (`SUMXMY2(B12,D1:E8)`, gen-m5/043ee562f32eb901 Calc!A36), a number (`SUMX2MY2(YEAR(50111),D1)`, gen-m5/eb942f4a59b1c004 Calc!A231), a
@@ -230,7 +242,7 @@ gen-m5/1962de140dae0111 Calc!A388; gen-m5/ee1667411bbe2ccc Calc!A84). A number o
 (`SUMX2PY2(2.5,<6-element array>)`, gen-m5/204b68ebb5812d50 Calc!A218; gen-m5/aac6230c2fb40e1e Calc!A11), where ours says `#VALUE!`.
 Two non-blank ranges of equal count with no numeric pair are 0, not `#DIV/0!`: `SUMX2MY2(A8:D9,C6:D9)` (gen-m5/8a387c26d182e73c
 Calc!A307) and `SUMX2MY2(C10:D12,C11:E12)` (gen-m5/d1b251fd6e9c4b4b Calc!A397), whose pairs hold text, booleans and blanks only
-(two all-blank ranges stay `#DIV/0!`, above). Ours: a blank one-cell argument is one skipped pair (`#DIV/0!` or `#N/A`).
+(two all-blank ranges stay `#DIV/0!`, above): each side holds a number, so rule 4 gives 0. Implemented in T-0961.
 
 ## SUMPRODUCT: a blank one-cell argument beside other arguments is `#VALUE!` (T-2150)
 Rule: with two or more arguments, SUMPRODUCT is `#VALUE!` when one argument is a blank cell given as a one-cell reference and
