@@ -3,7 +3,7 @@ id: T-2063
 title: "Aggregates read an array of references: SUM-family top-left cells, COUNT/COUNTA/SUMPRODUCT rules (SPEC-0014)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
