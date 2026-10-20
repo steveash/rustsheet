@@ -3,7 +3,7 @@ id: T-1838
 title: "TAKE and DROP lift rows and columns over a range or an array, each element the whole sub-array"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
