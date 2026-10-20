@@ -578,11 +578,22 @@ impl Model {
         if arg_count == 1 {
             // A reference counts the sheets between its corners, in either order
             // (probes/info-sheets-info-types D1:D24, excel-graph; T-2181).
-            // A union, a name and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`.
-            if let RefArg::Ranges(Ranges::One(area)) = self.evaluate_reference_arg(&args[0], cell) {
-                return CalcResult::Number(
-                    f64::from(area.left.sheet.abs_diff(area.right.sheet)) + 1.0,
-                );
+            // Only a written reference is read: a union, a name, OFFSET, INDIRECT, INDEX, an
+            // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`.
+            if matches!(
+                args[0].ungrouped(),
+                Node::ReferenceKind { .. }
+                    | Node::RangeKind { .. }
+                    | Node::OpRangeKind { .. }
+                    | Node::SheetSpanKind { .. }
+            ) {
+                if let RefArg::Ranges(Ranges::One(area)) =
+                    self.evaluate_reference_arg(&args[0], cell)
+                {
+                    return CalcResult::Number(
+                        f64::from(area.left.sheet.abs_diff(area.right.sheet)) + 1.0,
+                    );
+                }
             }
             return CalcResult::Error {
                 error: Error::NIMPL,

@@ -350,8 +350,8 @@ count of sheets between the corners, inclusive, for a 3-D span in either order: 
 The result is a plain number (`TYPE` 1, `ISNUMBER` TRUE, `+0`, `*1`, `=3` TRUE). A reversed span reads the same in SUM too
 (`SUM(Gamma:Alpha!A1)` = `SUM(Alpha:Gamma!A1)`).
 Evidence: probes/info-sheets-info-types Alpha!D1:D24, D50:D52 (excel-graph, 2026-10-20, T-2115). The engine implements a single-area
-reference and a 3-D span in either order (T-2181); a union (same-sheet multi-area), a lifted reference grid, a name, a
-non-reference and an error argument stay `#N/IMPL!`. The unquoted cell-like span `SHEETS(S1:S3!A1)` (`#VALUE!` in
+reference and a 3-D span in either order (T-2181); only a written reference (cell, range, 3-D span) is read; a union, a lifted reference grid, a name, OFFSET,
+INDIRECT, INDEX, an IF/CHOOSE pick, a non-reference and an error argument stay `#N/IMPL!`. The unquoted cell-like span `SHEETS(S1:S3!A1)` (`#VALUE!` in
 Excel) is still a known failure: T-2193. Unprobed, because the oracle canary refuses them (T-2113): a union, INDIRECT,
 OFFSET, a defined name, a non-reference or error argument, and bare `SHEETS()`.
 Probe trap: sheets named like cells (S1, S2, S3) break an unquoted 3-D span on Excel for the web: `SUM(S1:S3!A1)`,

@@ -243,3 +243,10 @@ fn sheets_counts_the_sheets_a_reference_spans() {
     assert_eq!(eval(&mut model, "=SHEETS()"), "5");
     assert_eq!(eval(&mut model, "=SHEETS(1)"), "#N/IMPL!");
 }
+
+#[test]
+fn sheets_leaves_unprobed_argument_forms_unimplemented() {
+    let mut model = sample();
+    assert_eq!(eval(&mut model, "=SHEETS(OFFSET(A1,0,0))"), "#N/IMPL!");
+    assert_eq!(eval(&mut model, "=SHEETS((B1,C1))"), "#N/IMPL!");
+}
