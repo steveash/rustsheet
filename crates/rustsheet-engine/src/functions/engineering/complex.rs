@@ -768,7 +768,7 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
 /// Half-width of the window around a multiple of pi/2 inside which an overflowing IMEXP is
 /// `#NUM!` rather than capped (the cap needs a remainder strictly past it). Around 0 it is exactly
 /// 2^-26: `1000+1.4901161193847656E-8i` is `#NUM!`, `...848E-8i` is capped. Around every other
-/// multiple (pi/2 to 100pi, either side) the boundary lies in (1.053, 1.054]E-8, i.e. 2^-26.5 =
+/// multiple (pi/2, pi, 2pi: (1.053, 1.054]E-8; 100pi: (1.05, 1.06]E-8; either side) it is 2^-26.5 =
 /// 2^-26/sqrt(2) = 1.0537E-8 (probes/eng-imexp-cap-window; engineering.md).
 fn imexp_cap_window(quarter_turns: i64) -> f64 {
     let base = f64::EPSILON.sqrt();

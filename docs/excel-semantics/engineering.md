@@ -367,8 +367,8 @@ Evidence: probes/eng-im-overflow (excel-graph).
   and `1.4901E-8` error, `1.4902E-8` caps). The window is independent of x (`800`, `709.9`:
   eng-imexp-overflow-cutoff-pi A21-A24). Exactly 2^-26 is `#NUM!` too, so the cap needs y strictly past it (probes/eng-imexp-cap-window A35),
   and so does a negative y (A36, A37). The same kind of window applies around every other multiple
-  of pi/2, but is smaller: for pi/2, pi and 2pi, and 100pi, below and above, the boundary lies in
-  (1.053E-8, 1.054E-8] (A1-A34): `1.053E-8` from the multiple is `#NUM!`, `1.054E-8` is capped. That is
+  of pi/2, but is smaller: for pi/2, pi and 2pi, below and above, the boundary lies in
+  (1.053E-8, 1.054E-8] (A1-A30), and for 100pi in (1.05E-8, 1.06E-8] (A31-A34): `1.053E-8` from the multiple is `#NUM!`, `1.054E-8` is capped. That is
   2^-26.5 = 2^-26/sqrt(2) = 1.0537E-8, where cos(d) = 1 - d^2/2 stops being distinguishable from 1;
   implemented as that. The exact value is within the bracket but not pinned to the bit.
 - IMEXP's sine and cosine of the imaginary part reduce the argument as SIN and COS do (the x87
