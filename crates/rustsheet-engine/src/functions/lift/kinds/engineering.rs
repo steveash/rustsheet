@@ -2,19 +2,31 @@
 //! `ToolPak` engineering functions, BIT* and the IMSUM/IMPRODUCT fold.
 
 use super::ArgKind::{LiftArrays, WholeByCaller};
-use super::KernelWork::{Constant, Weighted};
+use super::KernelWork::{ByArg, Constant};
 use super::{ArgKinds, CallResult, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, ATP_3, LIFT_2};
+use crate::functions::engineering::transcendental::MAX_ORDER;
 use crate::functions::Function;
 
 // --- Engineering (T-1383) -------------------------------------------------------------------
 /// `BESSELI|J|K|Y(x, n)`: the recurrences loop about once (BESSELK, BESSELY) or twice (BESSELI,
 /// BESSELJ's Miller recurrence) per order, up to the order cap `transcendental::MAX_ORDER`
-/// (100,000), each kernel's own per-call cap. The weight charges a lifted call for that work:
-/// at most 2,048 elements, which at the cap run in about 2 s in release (BESSELI, the slowest:
-/// 8,192 elements took 8 s; docs/excel-semantics/engineering.md "BESSEL order cap").
-const BESSEL: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays], Weighted(BESSEL_WEIGHT));
-/// The units one Bessel element is charged against `MAX_LIFTED_CELL_VISITS`.
-const BESSEL_WEIGHT: u32 = 1 << 16;
+/// (100,000), each kernel's own per-call cap; n = 0 and 1 are O(1). A lifted call is charged by
+/// each element's order (T-1819), `BESSEL_WEIGHT` at the cap, so it lifts any number of small
+/// orders (`BESSELJ(SEQUENCE(5000)/100,0)`) but at most 2,048 elements at the cap, which run in
+/// about 2 s in release (BESSELI, the slowest: 8,192 elements took 8 s; docs/excel-semantics/
+/// engineering.md "BESSEL order cap").
+const BESSEL: ArgKinds = ArgKinds::fixed(
+    2,
+    &[LiftArrays, LiftArrays],
+    ByArg {
+        arg: 1,
+        cap: MAX_ORDER.unsigned_abs(),
+        weight: BESSEL_WEIGHT,
+    },
+);
+/// The units one Bessel element at the order cap is charged against `MAX_LIFTED_CELL_VISITS`
+/// (one more for the call itself).
+const BESSEL_WEIGHT: u32 = (1 << 16) - 1;
 /// `IMSUM(inumber1, ...)` and IMPRODUCT: up to 255 arguments, each read whole by the function's
 /// own fold (`Model::fold_complex`), so nothing lifts and the call is one value. The fold never
 /// enters the lift driver, so its `KernelWork` is not charged; it caps its own reads.

@@ -55,14 +55,24 @@ pub(crate) enum KernelWork {
     /// is charged one unit before the call and the cells of its own result after it, times
     /// `weight` (MAKEARRAY's 128 for its LAMBDA call per cell).
     Output { weight: u32 },
+    /// A loop whose length is the value of argument `arg`: the Bessel recurrences run about once
+    /// or twice per order, up to the kernel's own per-call cap `cap` (T-1819). An element is
+    /// charged by that argument's value before anything runs, summed over the broadcast
+    /// (`lift/driver.rs` `kernel_units`): `1 + trunc(n) * weight / cap` units for a number with
+    /// `0 <= trunc(n) <= cap`, so `1 + weight` at the cap; a text is charged as at the cap (the
+    /// kernel may read it as a number), and anything else (an order past the cap or negative, an
+    /// error, a logical, a blank) 1, as the kernel refuses it before looping or runs order 0.
+    ByArg { arg: usize, cap: u32, weight: u32 },
 }
 
 impl KernelWork {
-    /// The units one kernel call is charged before it runs.
+    /// The units one kernel call is charged before it runs (for `ByArg`, the most it can be).
     pub(crate) fn weight(self) -> u64 {
         match self {
             KernelWork::Constant | KernelWork::Output { .. } => 1,
             KernelWork::Weighted(weight) => u64::from(weight),
+            // The most an element is charged: its argument at the cap.
+            KernelWork::ByArg { weight, .. } => u64::from(weight).saturating_add(1),
         }
     }
 
@@ -71,7 +81,7 @@ impl KernelWork {
     pub(crate) fn output_charge(self, cells: u64) -> u64 {
         match self {
             KernelWork::Output { weight } => cells.saturating_mul(u64::from(weight)),
-            KernelWork::Constant | KernelWork::Weighted(_) => 0,
+            KernelWork::Constant | KernelWork::Weighted(_) | KernelWork::ByArg { .. } => 0,
         }
     }
 }
