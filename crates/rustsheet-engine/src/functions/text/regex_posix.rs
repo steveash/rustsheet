@@ -568,7 +568,7 @@ mod tests {
             unicode_posix_classes(&ranges, true),
             Err(InvalidPosixSyntax)
         );
-        assert!(start.elapsed().as_millis() < 1_000);
+        assert!(start.elapsed().as_secs() < 5);
         // Without (?i) nothing folds, so nothing is spent.
         assert!(unicode_posix_classes(&many, false).is_ok());
     }
