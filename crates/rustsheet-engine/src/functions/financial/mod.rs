@@ -25,7 +25,15 @@ mod rate_conversions;
 
 use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
 
-use crate::functions::lift::number_or_error;
+use crate::functions::lift::{number_or_error, number_result, LiftCost};
+use crate::functions::Function;
+
+/// The cash flows a lifted NPV, IRR or MIRR element walks, at least 1: what the call is charged
+/// per element (`LiftCost::Cells`).
+fn flow_count(flows: &Result<Vec<f64>, CalcResult>) -> u64 {
+    let count = flows.as_ref().map_or(1, |flows| flows.len().max(1));
+    u64::try_from(count).unwrap_or(u64::MAX)
+}
 
 /// A computation's error as the cell's error, with no message: the kernels run lifted, where an
 /// element's message is dropped (`calc_result_to_array_node`), so building one only allocates
@@ -225,19 +233,48 @@ impl Model {
         )
     }
 
-    // NPV(rate, value1, [value2],...)
-    // npv = Sum[value[i]/(1+rate)^i, {i, 1, n}]
+    /// `NPV(rate, value1, [value2], ...)`: `Sum[value[i]/(1+rate)^i, {i, 1, n}]`. The rate lifts
+    /// over arrays and ranges; the values are read once, whole, and handed to every element, whose
+    /// rate is read first: a rate error wins over an error in the values (T-1821).
     pub(crate) fn fn_npv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if arg_count < 2 {
+        let [_, flows @ ..] = args else {
+            return CalcResult::new_args_number_error(cell);
+        };
+        if flows.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let rate = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
+        let flows = self
+            .npv_cash_flows(flows, cell)
+            .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Npv,
+            args,
+            LiftCost::Cells(flow_count(&flows)),
+            cell,
+            &mut |model, values| {
+                let rate = match values.first() {
+                    Some(rate) => model.cast_number_ref(rate, cell),
+                    None => Err(CalcResult::new_args_number_error(cell)),
+                };
+                match (rate, &flows) {
+                    (Err(error), _) => error,
+                    (Ok(_), Err(error)) => error.clone(),
+                    (Ok(rate), Ok(flows)) => {
+                        number_result(compute_npv(rate, flows).map_err(|error| error.0), cell)
+                    }
+                }
+            },
+        )
+    }
+
+    /// The cash flows of NPV, read from its value arguments in order.
+    fn npv_cash_flows(
+        &mut self,
+        flows: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
-        for arg in &args[1..] {
+        for arg in flows {
             // Excel: an argument read as a reference skips the text and booleans of its cells,
             // however the reference is written: `B1`, `(B1)`, `@B1:B1`, `IF(TRUE,B1)`,
             // `INDEX(B1:B2,1)`, `CHOOSE(1,B1)`, `OFFSET(B1,0,0)`, `INDIRECT("B1")`, `LET`, a
@@ -252,38 +289,28 @@ impl Model {
                 .evaluate_reference_arg(arg, cell)
                 .into_ranges_or_value()
             {
-                Ok(areas) => {
-                    if let Err(e) = self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
-                    {
-                        return e;
-                    }
-                }
+                Ok(areas) => self.for_each_number_in_areas(&areas, cell, |v| values.push(v))?,
                 Err(CalcResult::Number(value)) => values.push(value),
                 Err(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
-                    match self.cast_number_ref(&direct, cell) {
-                        Ok(value) => values.push(value),
-                        Err(error) => return error,
-                    }
+                    values.push(self.cast_number_ref(&direct, cell)?);
                 }
                 // A written empty argument is a cash flow of 0 (probes/npv-fvschedule-edges A2).
                 Err(CalcResult::EmptyArg) => values.push(0.0),
                 // An array is read whole: its numbers are the cash flows, its text and booleans
                 // are skipped and its first error is the result (H368; probes/npv-reference-forms
                 // A7, A8, A13).
-                Err(array @ CalcResult::Array(_)) => {
-                    match self.array_of_numbers_from(array, &cell, true, || Ok(None), || Ok(None)) {
-                        Ok(numbers) => values.extend(numbers),
-                        Err(error) => return error,
-                    }
-                }
-                Err(error @ CalcResult::Error { .. }) => return error,
+                Err(array @ CalcResult::Array(_)) => values.extend(self.array_of_numbers_from(
+                    array,
+                    &cell,
+                    true,
+                    || Ok(None),
+                    || Ok(None),
+                )?),
+                Err(error @ CalcResult::Error { .. }) => return Err(error),
                 Err(_) => {}
             }
         }
-        match compute_npv(rate, &values) {
-            Ok(f) => CalcResult::Number(f),
-            Err(error) => CalcResult::new_error(error.0, cell, error.1),
-        }
+        Ok(values)
     }
 
     // Returns the internal rate of return for a series of cash flows represented by the numbers
@@ -291,34 +318,35 @@ impl Model {
     // These cash flows do not have to be even, as they would be for an annuity.
     // However, the cash flows must occur at regular intervals, such as monthly or annually.
     // The internal rate of return is the interest rate received for an investment consisting
-    // of payments (negative values) and income (positive values) that occur at regular periods
-
-    // IRR(values, [guess])
+    // of payments (negative values) and income (positive values) that occur at regular periods.
+    /// `IRR(values, [guess])`: the guess lifts over arrays and ranges; the values are read once,
+    /// whole, and an error in them is every element's (T-1821). Each element may run the solver's
+    /// every pass over the flows, so the call is charged their count per element, weighted by the
+    /// table's `IRR_WEIGHT`.
     pub(crate) fn fn_irr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if arg_count > 2 || arg_count == 0 {
+        let (Some(values), 1..=2) = (args.first(), args.len()) else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let values = match self.get_array_of_numbers(&args[0], &cell) {
-            Ok(s) => s,
-            Err(error) => return error,
         };
-        let guess = if arg_count == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            0.1
-        };
-        match compute_irr(&values, guess) {
-            Ok(f) => CalcResult::Number(f),
-            Err(error) => CalcResult::Error {
-                error: error.0,
-                origin: cell,
-                message: error.1,
+        let flows = self
+            .get_array_of_numbers(values, &cell)
+            .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Irr,
+            args,
+            LiftCost::Cells(flow_count(&flows)),
+            cell,
+            &mut |model, values| {
+                let flows = match &flows {
+                    Ok(flows) => flows,
+                    Err(error) => return error.clone(),
+                };
+                let guess = match model.cast_number_or(values.get(1), 0.1, cell) {
+                    Ok(guess) => guess,
+                    Err(error) => return error,
+                };
+                number_result(compute_irr(flows, guess).map_err(|error| error.0), cell)
             },
-        }
+        )
     }
 
     // XNPV(rate, values, dates)

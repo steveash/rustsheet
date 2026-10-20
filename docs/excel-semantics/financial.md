@@ -458,14 +458,15 @@ Evidence: probes/fin-argument-modes (386 cells, excel-graph, 2026-10-11, T-1084)
 dates are M1:M5. L1:L8 is the same flow with typed text, a boolean, text and a blank mixed in, and N1:N5 is a
 schedule containing text.
 Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift`, since T-1820 DB and VDB too,
-charged by their period up to their own cap ("DB and VDB period cap"), and EFFECT, NOMINAL, DOLLARDE,
+charged by their period up to their own cap ("DB and VDB period cap"), since T-1821 NPV's rate, IRR's guess and
+MIRR's rates too, beside cash flows read once, whole, and charged per element for their walks over the flows; and EFFECT, NOMINAL, DOLLARDE,
 DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
 (SPEC-0011); since T-1822 so are ACCRINT, the COUP* family, DURATION, MDURATION and PRICE, each element charged for its
 coupon schedule walks ("Coupon schedule work cap"), and since T-1842 YIELD and the ODD* functions, charged for their
 solvers and walks ("Yield and odd-coupon work cap"), and since T-1845 CUMIPMT and
 CUMPRINC, charged for their bounded period sums ("CUMIPMT and CUMPRINC work cap"), and since T-1841 AMORDEGRC and
 AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet
-(`#N/IMPL!` for an array literal): NPV's rate, IRR's guess and MIRR's rates sit beside a whole cash flow (T-1821), and XNPV's rate,
+(`#N/IMPL!` for an array literal): XNPV's rate,
 XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
