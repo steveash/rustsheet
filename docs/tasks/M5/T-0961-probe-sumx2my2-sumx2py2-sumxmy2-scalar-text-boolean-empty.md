@@ -3,7 +3,7 @@ id: T-0961
 title: "Probe SUMX2MY2/SUMX2PY2/SUMXMY2 scalar text, boolean, empty args and error-vs-#N/A precedence"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -19,7 +19,7 @@ arguments, and error-versus-`#N/A` precedence, is established by oracle probes a
 
 T-0944 treats any non-number scalar as one skipped pair (so `SUMXMY2("a","b")` is `#DIV/0!`) and
 returns the first error found before the element-count `#N/A` check. Neither choice has Excel
-evidence (reviewer finding). Code: `sumx_values` / `sumx_fold` in
+evidence (reviewer finding). Code: `sumx_arg` / `sumx_fold` in
 `crates/rustsheet-engine/src/functions/math_and_trigonometry/sum.rs`. Use the `excel-probe` skill;
 cases: `SUMXMY2("2",4)`, `SUMXMY2(TRUE,1)`, `SUMXMY2(,1)`, `SUMXMY2(range_with_error,longer_range)`.
 
@@ -57,9 +57,19 @@ cases: `SUMXMY2("2",4)`, `SUMXMY2(TRUE,1)`, `SUMXMY2(,1)`, `SUMXMY2(range_with_e
 | gen-m5/f0f205865a3a4328 Calc!A103 | `=SEARCH(VLOOKUP(SUMXMY2(Data!$B$8,Data!E12),Data!D11:E12,4,(Data!A$6="#N/A")),((""&"#N/A")&IFERROR...` | "#VALUE!" | "#DIV/0!" |
 
 ## Acceptance criteria
-- [ ] Probe cases in eval/suites/probes with oracle values; coercion.md entry updated to VERIFIED.
-- [ ] Implementation matches the oracle values.
-- [ ] `make check` green; reviewers approve.
+- [x] Probe cases in eval/suites/probes with oracle values; coercion.md entry updated to VERIFIED.
+- [x] Implementation matches the oracle values.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other `fn_get_two_matrices` callers.
+
+## Outcome
+probes/sumx-blank-text-error-order (93 cells, excel-graph, 2026-10-20) settles the order of checks, now in coercion.md
+"SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing". Arguments are checked one at a time, the first one first. An error value, or a
+one-cell reference holding an error, is returned at once. A blank one-cell reference or an omitted argument is `#VALUE!`.
+Next, different counts are `#N/A`, ahead of any error inside a range or an array. Then that error is returned. Then the
+result is `#DIV/0!` only when one side holds no number at all. Otherwise it is the sum over the numeric pairs, which is 0
+when there are none. `sumx_arg` and `sumx_fold` (sum.rs) implement this, so the shared `paired_values` and its other
+callers are unchanged (their count now comes from the shared `PairedArg::cell_count`). Unit tests are in test_sumx_pairing.rs; test_clipped_range_walks now expects `#N/A` for SUMXMY2 of a whole column with a late error against 3 cells (probe G7, G23).
+Eval: gen-m5 known failures 260 -> 232 (all 28 T-0961 cells fixed); probes +1 case (93/93 pass); 0 regressions in every suite (poi fetched).
