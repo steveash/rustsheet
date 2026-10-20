@@ -1868,7 +1868,8 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   are `#VALUE!`, while the inline `IFERROR(Feb:Apr!A7:B12,0.5)` is 0.5, yet `ISERROR(span3)` and
   `ISERROR(span_calc)` are TRUE. A span that crosses the
   formula's own sheet (Calc) and the blank sheet Gap aggregates normally. Cases 8982982d63e058ed,
-  b221d72cc501675a; engine follow-up T-1640.
+  b221d72cc501675a; implemented by T-1640 (IFNA is unprobed; the engine gives it the same
+  `#VALUE!`, which IFNA does not replace either way).
 - **A name whose span is quoted on one side only is `#NAME?`.** `span_all` = `=Jan:'My Data'!$A$1`
   (the valid spelling is `='Jan:My Data'!$A$1`) is `#NAME?` in every value use (`=span_all`,
   `span_all+2`, `sumsq(span_all)`); `COUNT(span_all)` is 0, `COUNTA(span_all,7)` 2 (the error
