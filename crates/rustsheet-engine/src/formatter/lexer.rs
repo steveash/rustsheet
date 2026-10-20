@@ -394,8 +394,16 @@ impl Lexer {
     }
 
     pub fn peek_token(&mut self) -> Token {
+        self.peek_token_past(|_| false)
+    }
+
+    /// The first token after the run of tokens `skip` accepts, without consuming anything.
+    pub fn peek_token_past(&mut self, skip: fn(&Token) -> bool) -> Token {
         let (position, pending) = (self.position, self.pending_locale);
-        let token = self.next_token();
+        let mut token = self.next_token();
+        while skip(&token) && token != Token::EOF {
+            token = self.next_token();
+        }
         (self.position, self.pending_locale) = (position, pending);
         token
     }

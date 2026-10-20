@@ -568,9 +568,31 @@ B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
   two digits, zero padded to two: 1.5 "3/02", -0.5 "-1/02", 0 "0/01", 1.99 "197/99", 1 "1/01", 0.5 "1/02",
   1234.5 "2469/02" (B13:I13); `# ?/00` on 1.5 "1 1/02", 1.99 "1 98/99", 1 "1     " (B14:G14).
 Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the displayed text.
-Mismatches with the probes (42 of 128 cells; the other 86 match, including currency, literals and `%`) are filed as
-T-2072 (`,` after the denominator), T-2073 (`0` numerator placeholders, minus and separator under `#`/`0`) and T-2074
-(`00` denominator, the `?/100` minus and the grouped integer). Placeholder denominators are implemented as above
+Mismatches with the probes (18 of 128 cells after T-0982, which fixed T-2073 and the `00` padding) are filed as
+T-2072 (`,` after the denominator) and T-2074 (the minus of `?/100` and `?/00` on a tiny negative, `?/100` on
+1234.5, the grouped integer). Placeholder denominators are implemented as above
 (T-2030). An overflowing numerator still prints in full (T-1740).
-Status: VERIFIED (Excel for the web)
+Literals between the parts (poi/NumberFormatTests.xlsx Tests!A120:A332, desktop Excel cached values, Mac Excel
+16.0; `=TEXT(Cn, Bn)` with `|` literals around each code; a 3×3×3 matrix `|I\:N=/=D|` of integer, numerator and
+denominator kinds over 0, ±0.75, ±1, T-0982):
+- **Literals may stand on either side of the `/`** (`=/=`, `\:`, quoted text, `_x`): the numerator is the last run of
+  placeholders before the `/`, the denominator the first after it: `|#\:#=/=#|` on 23.75 "|23:3=/=4|" (A134);
+  `|#_#/#|` on 3.75 "|15 /4|" (A165: `_#` is a space, so there is no integer part).
+- **`0` in a placeholder denominator pads on the left**: `|#\:? ?0#/000` on 23.75 "|2:3  03/004" (A160); `?` pads
+  on the right as before.
+- **A zero numerator prints when the numerator has a `0`**: `|#\:0=/=#|` on 1 "|1:0=/=1|" (A258); on 0 the
+  integer is dropped under `#` with its separator ("|0=/=1|", A204) and prints under `?` or `0` ("|0:0=/=1|",
+  A213, A224).
+- **Otherwise a zero numerator blanks the fraction**: into spaces of its full width, separator and literals
+  included, under a `?` numerator, a `?` integer or a `?` in the denominator (`|#\:#=/=?|` on 1 "|1      |",
+  A253; `|?\:#=/=#|` A261); into nothing, separator included, when all of them are `#` or `0`
+  (`|#\:#=/=#|`, `|#\:#=/=0|`, `|0\:#=/=#|` on 1 "|1|", A252, A254, A270).
+- **The separator after a zero integer** prints under a `0` integer ("|0:3=/=4|", A243), turns into spaces under a
+  `?` integer ("|  3=/=4|", A234) or under a `#` integer before a `?` numerator ("| 3=/=4|", A228), and is dropped
+  under a `#` integer otherwise ("|3=/=4|", A225, A231). Literals between integer placeholders always print
+  (`|#-#-#\:#/#|` on 0.75 "|--3/4|", A129).
+Ours: implemented in formatter/parser.rs (`is_fraction_literal`) and formatter/fraction.rs (T-0982); all 325 cells pass.
+Unprobed engine choices (T-2209): a mixed `0`/`?` denominator puts its zeros left and spaces right; plain spaces or quoted
+text around the `/` also make a fraction; a `/` with no denominator after its literals stays a literal.
+Status: VERIFIED (Excel for the web; desktop Mac Excel cached values for the literals between the parts)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061, T-2072, T-2073, T-2074
