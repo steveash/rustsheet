@@ -11,9 +11,24 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   upward recurrence for higher orders, and Miller downward recurrence for `J_n(x)` when `n >= x`.
   `Y_n` recurrence is only bit-exact as `b * (2j * (1/x)) - a`.
   Implemented in `functions/engineering/transcendental/bessel_excel.rs`.
-- For `|x| >= 8` (cells at x = 10 and 32) Excel differs from both fdlibm and the NR asymptotic
-  branch (e.g. `BESSELJ(10,1)` = 0.04347224965 vs true 0.04347274617), so another algorithm is
-  used there. UNRESOLVED; tracked in T-0908. fdlibm is kept for `|x| >= 8`.
+- For `|x| >= 8` Excel is the NR asymptotic branch (`sqrt(0.636619772/x) * (P cos(xx) - z Q sin(xx))`
+  for J, `(P sin(xx) + z Q cos(xx))` for Y; `z = 8/x`, `xx = x - 0.785398164` or `x - 2.356194491`),
+  but three of its coefficients differ from the book (T-0908, fitted by least squares on the
+  m9-bessel sweep, then bit-exact on every one of its 354 integer-order cells):
+  - J0's `P` has `-0.1098628267e-2` where NR has `-0.1098628627e-2` (two digits swapped). J0 is
+    ~3e-10 off true; Y0 keeps the book's value.
+  - Y0's `Q` has `-0.934945152e-7` where NR has `-0.934935152e-7`; J0 keeps the book's value.
+  - J1's `P` repeats `-0.3516396496e-4`: `1 + y(0.183105e-2 + y(-0.3516396496e-4 + y(-0.3516396496e-4 +
+    y(0.2457520174e-5 + y(-0.240337019e-6)))))`. That is why `BESSELJ(10,1)` = 0.04347224965225415
+    against true 0.04347274617 (and up to 3.4e-5 off at x = 8). Y1 uses the book's `P`.
+  - Higher orders run the same recurrences as for small x: J's upward recurrence (n < x) is bit-exact
+    only as `b * (2j * (1/x)) - a`, like Y's (11 cells are 1 ulp off with `(2j/x) * b`), and Miller's
+    for n >= x. In the asymptotic form `(z * Q) * sin` is bit-exact; `z * sin * Q` is 1 ulp off at
+    `BESSELY(8.5,1)`.
+  - `BESSELJ(0,n)` is 0 for n >= 2; `BESSELY` of x <= 0 is `#NUM!`.
+  Implemented in `functions/engineering/transcendental/bessel_excel.rs` (`J0_LARGE` and friends);
+  the fdlibm port is gone.
+  The asymptotic branch is evidenced only for 8 <= x <= 100; larger x is unprobed (T-2140).
 
 Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cells (14 x values in 8..100 x
 orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
@@ -26,14 +41,14 @@ orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
   x = 10; 6e-9 at x = 8, 3e-9 at x = 100). Values are at the oracle sidecar's cells, e.g. `BESSELJ(30,1)` =
   -0.11875106091123117, `BESSELY(8,0)` = 0.22352148924968093.
 - At x = 10 the sweep equals the Excel-desktop cached values of `ironcalc-calc/ENGINEERING/BESSEL.xlsx`, at the orders the workbook covers (0, 1, 7, 10).
-- The engine's fdlibm fallback is bit-exact on only 14 of the 364 cells; `rustsheet-eval show` lists the other
-  350 as non-exact (164 within tolerance, 184 beyond it, 2 type mismatches).
+- The fdlibm fallback used before T-0908 was bit-exact on only 14 of the 364 cells; the asymptotic model above
+  is bit-exact on all of them except the order cap (`BESSELJ(10,1000000)`, below).
 - A fractional order truncates: `BESSELJ(8,9.99)` equals `BESSELJ(8,9)`, `BESSELY(30,1.99)` equals `BESSELY(30,1)`.
 - Large orders: `BESSELJ(x,n)` is `0` (not an error) for n = 1000, 10000, 100000 and 1000000 (x = 10, 50), and
   `BESSELY(x,n)` is `#NUM!` for those n. The engine matches this up to n = 100000 but gives `#NUM!` for
   `BESSELJ(10,1000000)` (see "BESSEL order cap"). J underflows to 0, so no cap shows for J; Y is `#NUM!` from n = 1000 (where Y starts to give `#NUM!`
   between 101 and 1000 is not probed).
-Status: VERIFIED for these cells; fitting the algorithm is T-0908.
+Status: VERIFIED for these cells; the algorithm is fitted (T-0908, above).
 
 Provenance: the coefficients are the published Numerical Recipes (2nd ed., §6.5) rational
 approximations, reproduced only because Excel's output matches them bit-for-bit.
