@@ -479,9 +479,9 @@ DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIE
 coupon schedule walks ("Coupon schedule work cap"), and since T-1842 YIELD and the ODD* functions, charged for their
 solvers and walks ("Yield and odd-coupon work cap"), and since T-1845 CUMIPMT and
 CUMPRINC, charged for their bounded period sums ("CUMIPMT and CUMPRINC work cap"), and since T-1841 AMORDEGRC and
-AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet
-(`#N/IMPL!` for an array literal): XNPV's rate,
-XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
+AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"), and since T-1843 XNPV's rate,
+XIRR's guess and FVSCHEDULE's principal, beside cash flows, dates and a schedule read once, whole ("XNPV, XIRR and
+FVSCHEDULE beside their whole data", a DEVIATION for the work cap). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
 ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475). The
@@ -620,6 +620,24 @@ Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds/financial.rs (`NPV`, `IRR_WEIGHT`, `IRR`, `MIRR`); functions/financial/mod.rs
 (`flow_count`)
 Tasks: T-1821
+
+## XNPV, XIRR and FVSCHEDULE beside their whole data
+Rule: XNPV's rate, XIRR's guess and FVSCHEDULE's principal lift over an array and refuse a multi-cell range, as the other
+Analysis ToolPak scalars ("Financial function argument modes"); each element is the scalar call over the same values,
+dates and schedule. Ours: those are read once per call, before the elements, and each element checks its arguments in
+the scalar order: XNPV's rate and FVSCHEDULE's principal before the flows or schedule, XIRR's values and dates before
+its guess (unprobed, as "NPV, IRR and MIRR error order"). Each lifted element is charged for its walks over the flows
+against SPEC-0011's 2^27 visit cap: one unit per value for XNPV, one per rate for FVSCHEDULE, and 512 per value for
+XIRR (`XIRR_WEIGHT`: `compute_xirr` makes at most 401 XNPV passes, XNPV(0), two bracket walks of 100 points and 200
+bisection steps; "The IRR and XIRR solver caps"). `ROWS(XIRR(A1:A300000,B1:B300000,{0.1;0.1}))`,
+`ROWS(XNPV(SEQUENCE(500),A1:A300000,B1:B300000))` and `ROWS(FVSCHEDULE(SEQUENCE(500),A1:A300000))` are `#ERROR!` before
+their first element, where Excel's own limit is unprobed. The scalar calls are not capped.
+Evidence: probes/fin-argument-modes H137-H138, H338-H339, H341-H342 (the lifts and the refused ranges, excel-graph,
+2026-10-11, T-1084); none for the work cap, which is a resource limit (CLAUDE.md directive 5).
+Status: DEVIATION (decision 0014)
+Implemented in: functions/lift/kinds/financial.rs (`XNPV`, `XIRR_WEIGHT`, `XIRR`, `FVSCHEDULE`);
+functions/financial/mod.rs (`fn_xnpv`, `fn_xirr`, `fn_fvschedule`, `flow_count`)
+Tasks: T-1843
 
 ## NPV, IRR and MIRR error order
 Rule (ours, unprobed): NPV reads its rate before its cash flows, so a rate error wins over an error in the flows. IRR
@@ -935,7 +953,7 @@ Tasks: T-1475
 - VDB differs from us by a few ulp (A6, A10, A13) and ~4e-13 (A7); Excel's result for the same inputs depends on no_switch (A6 FALSE = 203.31648000000007, A7 TRUE = 203.3164800000004).
 - MDURATION and RRI(TRUE principal) differ from us only in the last ulp.
 Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fin-rri (excel-graph, 2026-10-17, T-1625).
-- FVSCHEDULE: a boolean principal is `#VALUE!` from a TRUE or FALSE cell (`C1`, `C2`), `INDEX(C1:C2,1)` or `INDIRECT("C1")`; a text-number cell (`"1000"`) is converted (1100). The reference path matches the typed path, so `get_number_no_bools` is right (T-1992).
+- FVSCHEDULE: a boolean principal is `#VALUE!` from a TRUE or FALSE cell (`C1`, `C2`), `INDEX(C1:C2,1)` or `INDIRECT("C1")`; a text-number cell (`"1000"`) is converted (1100). The reference path matches the typed path, so `cast_number_no_bools_ref` (the lifted kernel's read) is right (T-1992).
 Evidence: probes/fin-fvschedule-bool-ref (excel-graph, 2026-10-19, T-1992).
 Status: VERIFIED (excel-graph)
 Implemented (T-1764): VDB with salvage above cost never switches to straight line (-600); a fractional end period

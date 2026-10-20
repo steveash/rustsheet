@@ -278,6 +278,7 @@ C	probes/eng-imexp-overflow-cutoff.case.json	26
 C	probes/eng-imexp-overflow-imag.case.json	31
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
+C	probes/eng-impower-past-cut.case.json	19
 C	probes/eng-impower.case.json	22
 C	probes/eng-imsub.case.json	21
 C	probes/eng-imsum-improduct-whole.case.json	45
@@ -520,6 +521,7 @@ C	probes/match-empty-text-lift.case.json	13
 C	probes/match-error-lookup-value-array-match-type.case.json	8
 C	probes/match-fractional-match-type.case.json	8
 C	probes/match-lookup-value-lift.case.json	19
+C	probes/match-single-cell-forms-and-texts.case.json	36
 C	probes/match-single-value-lookup-array.case.json	26
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
@@ -715,6 +717,7 @@ C	probes/reference-lift-pass-through-b.case.json	10
 C	probes/reference-lift-pass-through.case.json	38
 C	probes/regex-ascii-classes.case.json	42
 C	probes/regex-optional-args.case.json	149
+C	probes/regex-p-fold.case.json	40
 C	probes/regex-pcre2-features.case.json	62
 C	probes/regex-posix-classes-b.case.json	18
 C	probes/regex-posix-classes-c.case.json	36
@@ -1302,17 +1305,6 @@ F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-im-overflow.case.json	S!A33
 F	probes/eng-im-overflow.case.json	S!A34
-F	probes/eng-impower-angle-cut.case.json	S!A10
-F	probes/eng-impower-angle-cut.case.json	S!A11
-F	probes/eng-impower-angle-cut.case.json	S!A12
-F	probes/eng-impower-angle-cut.case.json	S!A13
-F	probes/eng-impower-angle-cut.case.json	S!A14
-F	probes/eng-impower-angle-cut.case.json	S!A15
-F	probes/eng-impower-angle-cut.case.json	S!A16
-F	probes/eng-impower-angle-cut.case.json	S!A17
-F	probes/eng-impower-angle-cut.case.json	S!A18
-F	probes/eng-impower-angle-cut.case.json	S!A19
-F	probes/eng-impower-angle-cut.case.json	S!A9
 F	probes/external-ref-no-link-let-index.case.json	Calc!A3
 F	probes/external-ref-no-link-let-index.case.json	Calc!A4
 F	probes/external-ref-no-link-let-index.case.json	Calc!A5
@@ -1326,7 +1318,6 @@ F	probes/fin-amor-period-bound-c.case.json	Sheet1!A5
 F	probes/fin-amor-period-bound.case.json	Sheet1!B17
 F	probes/fin-argument-modes.case.json	Sheet1!H117
 F	probes/fin-argument-modes.case.json	Sheet1!H125
-F	probes/fin-argument-modes.case.json	Sheet1!H137
 F	probes/fin-argument-modes.case.json	Sheet1!H139
 F	probes/fin-argument-modes.case.json	Sheet1!H163
 F	probes/fin-argument-modes.case.json	Sheet1!H186
@@ -1336,8 +1327,6 @@ F	probes/fin-argument-modes.case.json	Sheet1!H236
 F	probes/fin-argument-modes.case.json	Sheet1!H243
 F	probes/fin-argument-modes.case.json	Sheet1!H251
 F	probes/fin-argument-modes.case.json	Sheet1!H282
-F	probes/fin-argument-modes.case.json	Sheet1!H338
-F	probes/fin-argument-modes.case.json	Sheet1!H341
 F	probes/fin-argument-modes.case.json	Sheet1!H343
 F	probes/fin-argument-modes.case.json	Sheet1!H352
 F	probes/fin-argument-modes.case.json	Sheet1!H367
@@ -2468,9 +2457,6 @@ F	probes/stat-argument-modes.case.json	Sheet1!H161
 F	probes/stat-argument-modes.case.json	Sheet1!H163
 F	probes/stat-argument-modes.case.json	Sheet1!H168
 F	probes/stat-argument-modes.case.json	Sheet1!H173
-F	probes/stat-argument-modes.case.json	Sheet1!H215
-F	probes/stat-argument-modes.case.json	Sheet1!H221
-F	probes/stat-argument-modes.case.json	Sheet1!H226
 F	probes/stat-argument-modes.case.json	Sheet1!H231
 F	probes/stat-argument-modes.case.json	Sheet1!H236
 F	probes/stat-argument-modes.case.json	Sheet1!H241
