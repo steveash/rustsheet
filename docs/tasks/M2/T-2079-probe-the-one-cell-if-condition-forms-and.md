@@ -3,7 +3,7 @@ id: T-2079
 title: "Probe the one-cell IF condition forms and SWITCH array case after an earlier match (T-2012 follow-up)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
