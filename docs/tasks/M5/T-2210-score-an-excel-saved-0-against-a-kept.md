@@ -3,7 +3,7 @@ id: T-2210
 title: "Score an Excel-saved 0 against a kept subnormal when a probe of the same formula has a FALSE =0 companion"
 milestone: M5
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -38,3 +38,15 @@ Excel's own evidence elsewhere shows the same formula over the same inputs keeps
 
 ## Out of scope
 - Engine changes to EXP (T-1944, T-2203).
+
+## Outcome
+- Decision 0090: a `cached_overrides` line may point a cached 0 at an excel-graph probe cell of the same formula on
+  the same inputs; when that probe's own companion `=(<formula>)=0` is FALSE, the override carries decision 0042's
+  kept-subnormal flag (`overrides::evidence`). The cross-case lookup reuses decision 0032's override file, so the
+  harness gains no new format. `kept_nonzero_formulas` (case.rs) is the one definition of the companion rule,
+  shared by spec cases and overrides; `CellInput::formula` replaces the runner's local closure.
+- EXP_SIGN!B44 now scores against probes/subnormal-saved-as-zero S!A1 and passes. Its F line leaves
+  eval/baseline/ironcalc-calc.txt and its exit-exception line goes (no other baseline line changes).
+- Unit test `kept_nonzero_needs_a_false_graph_companion`: a TRUE companion, another formula's companion, an
+  excel-desktop sidecar or a missing probe spec leaves the flag off, so a cached 0 against a subnormal still fails.
+- Eval delta: +1 fixed (ironcalc-calc EXP_SIGN!B44), 0 regressions.
