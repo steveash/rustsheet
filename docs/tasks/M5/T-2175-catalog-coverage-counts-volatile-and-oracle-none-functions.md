@@ -3,7 +3,7 @@ id: T-2175
 title: "Catalog coverage counts volatile and oracle-none functions with the evidence floor as covered (decision 0085 item 4)"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
