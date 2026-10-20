@@ -167,9 +167,10 @@ Typed coercion follows the ToolPak rule:
   argument refuses one, typed, in a cell or as an array element, and so does COMPLEX's `real_num`
   (probes/eng-imsum-improduct-whole C1-C15: IMREAL, IMSUB's both arguments, IMDIV's second, IMPOWER's both,
   IMCOS, IMCONJUGATE, IMSQRT and IMABS of a TRUE cell, `INDEX(IMREAL({TRUE;"3"}),1)`, `COMPLEX(TRUE,1)`).
-  Unprobed, inferred from the shared parse path (T-1828): IMDIV's first argument, IMAGINARY, IMARGUMENT,
-  IMCOSH, IMCOT, IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH, IMSIN, IMSINH, IMTAN, and
-  COMPLEX's `i_num`. The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
+  The same holds, typed and as a TRUE cell, for IMDIV's first argument, IMAGINARY, IMARGUMENT, IMCOSH, IMCOT,
+  IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH, IMSIN, IMSINH, IMTAN, and COMPLEX's `i_num`
+  (probes/eng-imsum-improduct-3d-j-empty G1-G34, T-1828).
+  The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
 - A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
 - COMPLEX's suffix is case-sensitive: `COMPLEX(3,4,"I")` is `#VALUE!`.
 - Non-complex text is `#NUM!` (`IMSUB("x","1")`), and a number cell is a real number (`IMDIV("3+4i",M2)` with M2 = 3 is
@@ -228,8 +229,16 @@ row-major order inside a range or array, and the first bad item is the result.
 Evidence: probes/eng-argument-modes A60-A83, B/C/E42, B/C/E50 (excel-graph, 2026-10-11, T-1085);
 probes/eng-imsum-improduct-whole B1-B28 (excel-graph, 2026-10-17, T-1384). The data is M1 "1+2i", M2 3, M3 blank,
 M4 TRUE, M5 "x", M6 "2-i", M7 `=1/0`, M8 "3+4j", M9 `=""`.
-Unprobed: a 3-D reference (ours `#VALUE!`, as a union), a real number next to a `j` number (ours `#VALUE!`: a real
-reads as an `i` number), a call whose arguments hold no number at all (ours "0") (T-1828).
+Probed in T-1828 (probes/eng-imsum-improduct-3d-j-empty, excel-graph, 2026-10-20):
+- A 3-D reference is `#VALUE!`, as a union is: `IMSUM(Sheet2:Sheet3!A1:A2)`, `IMPRODUCT(...)`, a one-cell
+  `IMSUM(Sheet2:Sheet3!A1)`, and the same next to a valid argument (D1-D4).
+- A real number (no suffix) takes the suffix of the number it meets, not `i`: `IMSUM("3+4j","3")`, `IMSUM(M8,M2)`
+  (M8 "3+4j", M2 3), `IMSUM("3","3+4j")` are "6+4j", `IMPRODUCT("3+4j","3")` is "9+12j", `IMSUB("3+4j","3")` is "4j"
+  and `IMDIV("3+4j","3")` is "1+1.33333333333333j" (E1-E10). Only a suffixless number is neutral; `i` and `j` numbers
+  still clash.
+- A call whose arguments hold no number is "0" when they are blank cells (`IMSUM(Q1:Q3)`, `IMPRODUCT(Q1)`,
+  `IMSUM(Q1,Q2)`), `#N/A` when they are empty arguments (`IMSUM(,)`, `IMPRODUCT(,)`), and `#NUM!` when they are
+  empty text, typed, in a cell or in an array (`IMSUM("")`, `IMSUM(M9)`, `IMSUM({"",""})`) (F1-F12).
 Status: VERIFIED (excel-graph)
 Implemented in: `fold_complex` in functions/engineering/complex.rs (T-1384)
 Tasks: T-1384, T-1828

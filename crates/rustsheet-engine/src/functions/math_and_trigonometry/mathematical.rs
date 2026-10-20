@@ -10,7 +10,7 @@ use crate::functions::util::aggregate_args::{
 };
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
-use crate::x87_log10::excel_log10;
+use crate::x87_log10::{excel_ln, excel_log10};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -393,7 +393,9 @@ impl Model {
             if f <= 0.0 {
                 Err(Error::NUM)
             } else {
-                Ok(f64::ln(f))
+                // Excel's x87 FLDLN2 + FYL2X, not the platform's ln (numbers.md "LN is FLDLN2
+                // then FYL2X", T-2123).
+                Ok(excel_ln(f))
             }
         })
     }

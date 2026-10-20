@@ -1,9 +1,12 @@
-//! Excel's own `log10`, an x87 `FLDLG2; FYL2X` evaluation (T-2004; docs/excel-semantics/numbers.md
-//! "LOG with one argument is LOG10"). FYL2X forms `y * log2(x)` with `y = RN64(log10 2)`, the
-//! constant FLDLG2 loads, rounds it to a 64-bit significand, and the store rounds that to a double:
-//! two roundings, so it is not always the correctly rounded log10. It matches 92 of 92 cells of
-//! probes/log10-kernel (excel-graph), where the correctly rounded log10 matches 78 and glibc's 56.
-//! LOG10, one-argument LOG and MULTINOMIAL's `log10(k)` terms use it.
+//! Excel's own `log10` and `ln`, x87 `FLDLG2; FYL2X` and `FLDLN2; FYL2X` evaluations (T-2004,
+//! T-2123; docs/excel-semantics/numbers.md "LOG with one argument is LOG10" and "LN is FLDLN2 then
+//! FYL2X"). FYL2X forms `y * log2(x)` with `y` the 64-bit constant the load gives (RN64(log10 2)
+//! or RN64(ln 2)), rounds it to a 64-bit significand, and the store rounds that to a double: two
+//! roundings, so neither is always correctly rounded. LOG10 matches 92 of 92 cells of
+//! probes/log10-kernel (excel-graph), where the correctly rounded log10 matches 78 and glibc's 56;
+//! LN matches 2,887,521 of the 2,887,551 T-1941 `kmyst-gam-*` LN cells (the misses are FYL2X
+//! near-ties, see [`excel_ln`]). LOG10, one-argument LOG and MULTINOMIAL's `log10(k)` terms use [`excel_log10`];
+//! the worksheet LN uses [`excel_ln`].
 
 use crate::arithmetic::{round_extended_to_double, significand_and_exponent};
 use crate::x87_exp::{dd_add, dd_div, dd_mul, dd_to_extended, two_sum, LN_2_HI, LN_2_LO};
@@ -13,6 +16,12 @@ use crate::x87_exp::{dd_add, dd_div, dd_mul, dd_to_extended, two_sum, LN_2_HI, L
 /// `0x9A209A84FBCFF798_8F89`... rounds up).
 const LOG10_2_64_OVER_LN_2_HI: f64 = f64::from_bits(0x3FDB_CB7B_1526_E50E); // 0x1.bcb7b1526e50ep-2
 const LOG10_2_64_OVER_LN_2_LO: f64 = f64::from_bits(0x3C69_5D79_BCB5_84BC); // 0x1.95d79bcb584bcp-57
+
+/// `RN64(ln 2) / ln 2` as a double-double, from 400-bit mpmath: `y * log2(x)` is `ln(x)` times
+/// this. FLDLN2 loads ln 2 rounded up in the last bit of a 64-bit significand,
+/// `0xB17217F7D1CF79AC * 2^-64`, so the factor is 1 + 0x1.384291b5ee917p-66 (about 1 + 1.65e-20).
+const LN_2_64_OVER_LN_2_HI: f64 = 1.0;
+const LN_2_64_OVER_LN_2_LO: f64 = f64::from_bits(0x3BD3_8429_1B5E_E917); // 0x1.384291b5ee917p-66
 
 /// The coefficients 1/(2k+1) of the atanh series below as double-doubles, k = 0..23 (from 60-digit
 /// decimal arithmetic): |s| <= 3 - 2√2 < 0.1716, so the next term is under 0.1716^46 < 2^-117 of
@@ -46,6 +55,23 @@ const ATANH_COEFFICIENTS: [(f64, f64); 23] = [
 
 /// Excel's LOG10(x) for a positive finite `x` (module docs); anything else is NaN.
 pub(crate) fn excel_log10(x: f64) -> f64 {
+    fyl2x(x, (LOG10_2_64_OVER_LN_2_HI, LOG10_2_64_OVER_LN_2_LO))
+}
+
+/// Excel's LN(x) for a positive finite `x`: RN53(RN64(RN64(ln 2) * log2 x)) (module docs);
+/// anything else is NaN. The research model (`docs/research/t1941/lnmodels.py`, on branch
+/// `agent/research/T-1941-crack-gammaln-gamma-ln` until it merges) matches 2,887,521 of
+/// 2,887,551 Excel cells; each of the 30 misses (one ulp, e.g. x = 0.612354100000274) is an FYL2X
+/// near-tie, where Excel's own result varies between runs (probes/ln-fyl2x-kernel), and this
+/// follows the model.
+pub(crate) fn excel_ln(x: f64) -> f64 {
+    fyl2x(x, (LN_2_64_OVER_LN_2_HI, LN_2_64_OVER_LN_2_LO))
+}
+
+/// `y * log2(x)` stored as FYL2X does, for `y_over_ln_2` = y / ln 2 as a double-double: ln x in
+/// double-double (about 2^-104 relative), times the factor, rounded to a 64-bit significand and
+/// then to a double. A positive finite `x` only; anything else is NaN.
+fn fyl2x(x: f64, y_over_ln_2: (f64, f64)) -> f64 {
     if !(x > 0.0 && x.is_finite()) {
         return f64::NAN;
     }
@@ -73,9 +99,9 @@ pub(crate) fn excel_log10(x: f64) -> f64 {
     let ln_f = (2.0 * ln_f.0, 2.0 * ln_f.1);
     // ln x = e ln 2 + ln f; |e| <= 1075 is exact in a double.
     let ln_x = dd_add(dd_mul((f64::from(e), 0.0), (LN_2_HI, LN_2_LO)), ln_f);
-    let log = dd_mul(ln_x, (LOG10_2_64_OVER_LN_2_HI, LOG10_2_64_OVER_LN_2_LO));
-    // FYL2X's 64-bit rounding, then the store's rounding to a double (|log| < 324, never tiny:
-    // the smallest, at x = 1 ± 2^-53, is about 4.8e-17).
+    let log = dd_mul(ln_x, y_over_ln_2);
+    // FYL2X's 64-bit rounding, then the store's rounding to a double (|log| < 745, never tiny:
+    // the smallest, at x = 1 ± 2^-53, is about 4.8e-17 for log10 and 1.1e-16 for ln).
     let negative = log.0 < 0.0;
     let magnitude = if negative { (-log.0, -log.1) } else { log };
     let (extended, extended_exponent) = dd_to_extended(magnitude);
@@ -143,6 +169,57 @@ mod tests {
             assert_eq!(hi, want_hi, "1/{n}");
             assert!((lo - want_lo).abs() <= hi * 1e-31, "1/{n}");
         }
+    }
+
+    /// The committed sample of the T-1941 LN runs (`test/fixtures/ln_kernel.fixture`: 4,000 random distinct x
+    /// plus all 30 points where Excel differs from the research model): the engine equals the
+    /// Python model (`docs/research/t1941/lnmodels.py`) on every point, and Excel on all but those.
+    #[test]
+    fn ln_equals_the_research_model_on_the_fixture() {
+        let rows =
+            crate::test::kernel_rows::fixture_rows(include_str!("test/fixtures/ln_kernel.fixture"));
+        assert_eq!(rows.len(), 4030);
+        let mut excel_misses = 0;
+        for row in &rows {
+            let ln = excel_ln(row.x);
+            assert_eq!(
+                ln.to_bits(),
+                row.model.to_bits(),
+                "LN({:e}) vs the model",
+                row.x
+            );
+            if ln.to_bits() != row.excel.to_bits() {
+                excel_misses += 1;
+            }
+        }
+        assert_eq!(excel_misses, 30);
+    }
+
+    /// LN(1) is 0, LN(e) and LN of powers of two are as Excel gives them, and the near-tie the
+    /// research found first (x = 0.612354100000274) follows the model, one ulp from Excel.
+    #[test]
+    fn ln_cells() {
+        assert_eq!(excel_ln(1.0), 0.0);
+        assert_eq!(excel_ln(std::f64::consts::E), 1.0);
+        assert_eq!(excel_ln(2.0), std::f64::consts::LN_2);
+        assert_eq!(excel_ln(0.612_354_100_000_274), -0.490_444_569_019_538_53);
+        for x in [0.0, -1.0, f64::INFINITY, f64::NAN] {
+            assert!(excel_ln(x).is_nan(), "{x}");
+        }
+        assert!(excel_ln(f64::MIN_POSITIVE / 4.0).is_finite());
+    }
+
+    /// The full T-1941 LN runs (`kmyst-gam-*`, every cell whose formula is `=LN(A<row>)`), when
+    /// `RUSTSHEET_T1941_ROWS` points at the extracted rows (`crate::test::kernel_rows`): Excel's
+    /// bits on 2,887,521 of 2,887,551 cells, the 30 misses being the model's own (numbers.md).
+    #[test]
+    #[ignore = "needs the T-1941 research data (RUSTSHEET_T1941_ROWS)"]
+    fn ln_matches_the_t1941_runs() {
+        let Some(rows) = crate::test::kernel_rows::full_rows("ln") else {
+            return;
+        };
+        let exact = crate::test::kernel_rows::exact_count(&rows, excel_ln);
+        assert_eq!((exact, rows.len()), (2_887_521, 2_887_551));
     }
 
     #[test]
