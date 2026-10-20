@@ -15,7 +15,6 @@ SINH and TANH give Excel's exact doubles on |x| < 1 (where Excel is up to 1.8 ul
 value), so COTH, CSCH and SECH, which are 1 over them (T-0917), follow.
 
 ## Context
-- Fitting set: probes-numeric `t2178-hyperbolic-unit-sweep` (T-2178), 1034 SINH/TANH/COSH points on (-1.5, 1.5) from excel-graph.
 T-0917 tried and rejected every simple formulation (docs/excel-semantics/numbers.md "SINH and TANH
 on 0.4 .. 1: no formula found yet"): libm, exp forms with libm or the x87 EXP model V6, 80-bit
 forms, Taylor series in several summation orders, `expm1` forms. Excel misses the true value by
@@ -25,7 +24,7 @@ based `expm1` stored to a double then `(E + E/(E+1))/2` (fdlibm's shape) or `E*(
 a fixed-degree minimax polynomial (fit lab, T-1523, docs/research/excel-kernel-playbook.md).
 Fitting set: probes-numeric `m9-hyperbolic` A157-A248, `t0917-hyperbolic-switchover` A79-A210,
 ironcalc-calc TRIGONOMETRIC.xlsx SINH_COSH_TANH. Needs an oracle sweep: T-2178 (research) fills a dense
-SINH/TANH/COSH sweep on (-1, 1), `probes-numeric/t2178-hyperbolic-unit-sweep`; fit against it, not blind.
+SINH/TANH/COSH sweep (1034 points on (-1.5, 1.5)), `probes-numeric/t2178-hyperbolic-unit-sweep`; fit against it, not blind.
 Known failures this owns: TRIGONOMETRIC.xlsx SINH_COSH_TANH!D10, D40, B51 and COTH_CSCH_SECH!B10,
 B40, C51, C54, C55 (B10 and C54 were unmasked by T-0917, decision 0084), and POWER.xlsx
 inside_a_lambda!C3/C4 (TANH in `gelu`, T-0959). Ungated but owned too: probes-numeric
