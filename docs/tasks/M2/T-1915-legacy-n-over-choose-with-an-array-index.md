@@ -3,7 +3,7 @@ id: T-1915
 title: "Legacy N over CHOOSE with an array index: no @ and #VALUE!"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
