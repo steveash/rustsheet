@@ -3,9 +3,10 @@
 //! multi-cell range is `#VALUE!` in it, with no intersection (`ArgKind::LiftArrays`, SPEC-0011;
 //! probes/fin-argument-modes H72-H87, probes/fin-remaining-later-argument-ranges H65-H84). Excel
 //! sums any number of periods in constant time (`CUMIPMT(0.01,1E308,1,1,1E308,0)` is -1E306,
-//! probes/fin-cumipmt-period-bound A26), so the kernel does too: a short range is the per-period
-//! interest sum main always computed and anything else a closed form (docs/excel-semantics/financial.md
-//! "CUMIPMT and CUMPRINC over many periods"). Moved out of `financial/mod.rs` (T-1845).
+//! probes/fin-cumipmt-period-bound A26), so the kernel does too: the interest over a short range
+//! is the per-period sum main always computed, anything else a closed form
+//! (docs/excel-semantics/financial.md "CUMIPMT and CUMPRINC over many periods"). Moved out of
+//! `financial/mod.rs` (T-1845).
 
 use super::annuity::{compute_ipmt, payment_overflows};
 use super::number_or_error;
@@ -17,8 +18,8 @@ use crate::{
     model::Model,
 };
 
-/// The most periods whose interest is summed one by one. Up to here the kernel keeps main's per-period IPMT
-/// sum, which matches Excel-cached cells the closed form misses by an ulp or two
+/// The most periods whose interest is summed one by one. Up to here the kernel keeps main's
+/// per-period IPMT sum, which matches Excel-cached cells the closed form misses by an ulp or two
 /// (`ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx` G3, G9, G15, G26: 1 and 8 periods). Past it the
 /// sum drifts from Excel (83 ulps over 1,024 periods, probes/fin-cumipmt-period-bound A11, and no
 /// correct digit over 10^5 periods of type 1, A5), while the closed form is within 6 ulps there
