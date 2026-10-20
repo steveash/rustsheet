@@ -754,21 +754,25 @@ Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds/financial.rs (`AMORLINC_WEIGHT`, `AMORDEGRC_WEIGHT`, `AMORLINC`, `AMORDEGRC`)
 Tasks: T-1841
 
-## Coupon-bond functions: a negative basis is #NUM!
-Rule: `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` (the basis read from a cell holding -1E300) is `#NUM!`. Basis -1 and a
-fractional negative basis, and the other coupon-bond functions, are unprobed (the discount-security functions are
-`#NUM!` at basis -1, "Discount-security functions").
-Evidence: probes/fin-yield-odd-lift L5 (excel-graph, 2026-10-18, T-1842).
-Ours: the bond kernels read the basis as `floor() as u32`, which saturates a negative number to 0, so YIELD computes basis
-0 (0.063467439).
-Status: VERIFIED (excel-graph) for the one cell
-Tasks: T-1870
+## Day-count basis: a negative basis is #NUM!
+Rule: every function with a day-count basis argument rejects any basis below 0 with `#NUM!`: -1, -0.5, -0.9999999999,
+-1E-300, and -1E300 or -0.5 read from a cell, are all `#NUM!`. A basis in [0, 5) truncates (4.9 is basis 4). A negative
+basis is not truncated toward 0. Probed for YIELD, PRICE, DURATION, MDURATION, COUPDAYS, COUPNUM, COUPDAYBS, ACCRINT,
+ACCRINTM, ODDFPRICE, ODDLYIELD, YEARFRAC, DISC and PRICEMAT. Also `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` with
+-1E300 read from a cell (fin-yield-odd-lift L5).
+Evidence: probes/fin-bond-negative-basis (112 cells, excel-graph, 2026-10-20, T-1870); probes/fin-yield-odd-lift L5
+(excel-graph, 2026-10-18, T-1842).
+Ours: one reader, `day_count_basis` (functions/financial/dates.rs), is used by the coupon-bond and ODD* kernels and by
+YEARFRAC, which ACCRINTM and the discount-security functions go through. Before T-1870, `floor() as u32` saturated a
+negative basis to 0, and YEARFRAC's `as i32` truncated -0.5 to 0. ACCRINT already floored.
+Status: VERIFIED (excel-graph)
+Tasks: T-1842, T-1870
 
 ## Discount-security functions: settlement 0, basis and argument modes
 Rule: INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 and compute with it (`INTRATE(0,43466,1000,1100)` =
 0.0008403165192222404, `PRICEDISC(0,43466,0.05,100)` = -495.0138888888889, `YIELDDISC(0,43466,95,100)` =
 0.00044227185222223174), whereas RECEIVED, PRICEMAT and YIELDMAT return #NUM! for settlement 0 (PRICEMAT and
-YIELDMAT possibly because issue > settlement: inferred, the probe cannot tell it from a rejection of settlement 0 itself). All six: basis 5 and -1 are #NUM!, a fractional basis truncates (1.9 is 1), a text
+YIELDMAT possibly because issue > settlement: inferred, the probe cannot tell it from a rejection of settlement 0 itself). All six: basis 5 and -1 are #NUM!, a fractional basis truncates (1.9 is 1) and any negative basis is #NUM! ("Day-count basis: a negative basis is #NUM!"), a text
 basis "1" is coerced, a boolean basis is #VALUE!, text dates are parsed, fractional dates truncate, settlement >= maturity
 is #NUM!, and a zero or negative investment, price or redemption (probed for INTRATE, PRICEDISC and YIELDDISC; RECEIVED's investment) is #NUM!, as is a zero or negative PRICEDISC discount; RECEIVED is #NUM! once 1 - discount*yearfrac = 0 (the "< 0" side is inferred, not probed) (`RECEIVED(...,1000,1)` is #NUM!, `...,0.99` is 99999.99999999991); a negative PRICEMAT/YIELDMAT rate or yield price is #NUM! (PRICEMAT and YIELDMAT accept a
 zero rate; issue after settlement is #NUM!). Basis 2 is the only mode whose result differs on a one-year span

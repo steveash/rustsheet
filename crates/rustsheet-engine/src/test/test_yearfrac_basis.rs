@@ -118,3 +118,23 @@ fn test_yearfrac_basis_0_accepts_serial_0() {
     assert_eq!(model._get_text("A5"), *"0.999547154");
     assert_eq!(model._get_text("A6"), *"#NUM!");
 }
+
+#[test]
+fn test_negative_basis_is_num_error() {
+    // Excel: any basis below 0 is #NUM!, even -1E-300 or -0.5, while 4.9 truncates to 4
+    // (probes/fin-bond-negative-basis).
+    let mut model = new_empty_model();
+    model._set("A1", "=YEARFRAC(39083,39448,-0.5)");
+    model._set("A2", "=YEARFRAC(39083,39448,-1E-300)");
+    model._set("A3", "=YEARFRAC(39083,39448,4.9)");
+    model._set("A4", "=COUPDAYS(39448,43831,2,-0.5)");
+    model._set("A5", "=PRICE(39448,43831,0.0575,0.065,100,2,-1E-300)");
+    model._set("A6", "=ODDLYIELD(39448,39630,39264,0.08,98,100,2,-0.5)");
+    model._set("A7", "=COUPDAYS(39448,43831,2,4.9)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A4", "A5", "A6"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+    assert_eq!(model._get_text("A3"), *"1");
+    assert_eq!(model._get_text("A7"), *"180");
+}
