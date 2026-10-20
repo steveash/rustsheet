@@ -39,3 +39,4 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 5 in eval/baselin
 
 ## Outcome
 `fn_int` cuts to 15 significant digits through `round_decimal` (Down for positive, Up for negative), and floors a value of 1E+15 or more as it is: the cut would drop integer digits (`INT(2^53+1)`; an eval run without that guard regressed 10 gen-m5 cells). gen-m5: 5 known failures fixed, 0 regressions; visible parity 1744 -> 1739. Negative `INT(-(1-2^-53))` = -1 is unprobed (unit test documents it).
+Follow-up: T-2215 probes the unprobed edges.
