@@ -3,7 +3,7 @@ id: T-2127
 title: "Probe TRIMRANGE over an all-blank multi-column or single-row source with trim_rows 0"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
