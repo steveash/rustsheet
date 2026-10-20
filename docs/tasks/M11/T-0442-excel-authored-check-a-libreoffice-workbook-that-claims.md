@@ -3,7 +3,7 @@ id: T-0442
 title: "Excel-authored check: a LibreOffice workbook that claims Microsoft Excel is not Excel evidence (poi/clone_sheet.xlsx)"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
