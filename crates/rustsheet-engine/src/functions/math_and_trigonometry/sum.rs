@@ -138,11 +138,16 @@ impl Model {
     }
 }
 
-/// A range, array or number argument of [`Model::fn_get_two_matrices`] with its rows and columns;
-/// an error value is returned as the error, anything else is `None`.
+/// A range, array, number, text or boolean argument of [`Model::fn_get_two_matrices`] with its
+/// rows and columns; an error value is returned as the error, anything else is `None`.
 fn matrix_arg(node: &Node, value: CalcResult) -> Result<Option<(i64, i64, PairedArg)>, CalcResult> {
-    let Ok(arg) = PairedArg::from_node_result(node, value) else {
-        return Ok(None);
+    let arg = match PairedArg::from_node_result(node, value) {
+        Ok(arg) => arg,
+        // Excel: a typed text or boolean (numeric text too) is one value that is not a number,
+        // like a single cell holding one: `CORREL("a",5)` is #DIV/0! and `CORREL(A1:A3,TRUE)`
+        // #N/A (probes/regression-pairs-text-scalar).
+        Err(CalcResult::String(_) | CalcResult::Boolean(_)) => PairedArg::Values(vec![None]),
+        Err(_) => return Ok(None),
     };
     let (rows, columns) = match &arg {
         PairedArg::Range(Range { left, right }) => (

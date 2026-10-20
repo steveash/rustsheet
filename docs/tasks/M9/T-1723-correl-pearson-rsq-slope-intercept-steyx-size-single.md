@@ -3,7 +3,7 @@ id: T-1723
 title: "CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX: size, single-point and text-argument errors and large-offset data as Excel (T-1620 probes)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -36,3 +36,13 @@ Not started in code by the sonnet worker (2026-10-19). The task overlaps T-1292,
 error paths) and its large-offset/ULP cells need numeric fitting of Excel's accumulation order, which is beyond the sonnet
 tier. Suggested order for the opus run: land T-1707 first (size `#N/A`), then this task's single-point `#DIV/0!` and
 text-scalar `#N/A` cells, then the large-offset formula for r and r^2 (open, per the Context above).
+
+## Outcome
+CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX and FORECAST now share `PairedMoments` (correl.rs): two-pass sums about the
+means, then Excel's formulas fitted to the bit on every number cell of probes/regression-pairs-a/-b: r =
+(Sxy/n)/(sqrt(Sxx/n)*sqrt(Syy/n)) for CORREL/PEARSON, the same over n - 1 squared for RSQ, SLOPE Sxy/Sxx, INTERCEPT
+ȳ - SLOPE*x̄, STEYX sqrt((Syy - Sxy*Sxy/Sxx)/(n-2)). A typed text or boolean argument is one value with no number (new
+probe probes/regression-pairs-text-scalar, 72 cells, excel-graph), and CHISQ.TEST of a single value is `#N/A`
+(probes-numeric/t1049-chisqtest A36). Eval: probes known failures 1948 -> 1882 (regression-pairs-a and
+regression-forecast fully pass; pairs-b left with COVAR only, T-1724), ironcalc-calc 1057 -> 1056. Folds in T-1707 and
+T-1725 (closed). Follow-up: T-2080 (STEYX on a near-exact fit).
