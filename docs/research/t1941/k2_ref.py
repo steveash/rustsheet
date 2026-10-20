@@ -1,32 +1,42 @@
-# K2 (GAMMALN on (2,3]) reference model "3p/2p" (W2 + reviewer 3, 2026-10-20 06:20 UTC). Exact-match vs Excel:
-# 14 long runs 0.9089, 1,024 dense clusters 0.9111 (grid_a stored Horner: 0.739 / 0.757). Not bit-exact; see
-# HANDOFF 12.17-12.18. numpy longdouble = x87 80-bit; sd = store to double.
+# K2 (GAMMALN on (2,3]) reference model (W2 + reviewer 3, 2026-10-20 07:00 UTC). Not bit-exact.
+# Plain x87 raw-x Horner N(9)/D(8) with plain double coefficients; the HEAD (N stages 1..3, D stages 1..2) is kept in
+# 80-bit registers and every op from the hand-off product on (N: P4, D: P3) is stored to double (x87 double rounding);
+# y = fl(fl(x-2) * fl(N/D)). Only p1..p5, q0..q4 differ from grid_a (review3/spec.py): grid_a's head was off by a large
+# near-null move along c*g(x), g a cubic ~ 1/x (c_N = -3128*2^-54, c_D = +552*2^-54), with p5 -= c_N, q4 -= c_D.
+# Scores: 1,024 dense clusters ~0.952, 14 long runs ~0.951 (grid_a 0.757 / 0.739). numpy longdouble = x87 80-bit.
 import sys
 import numpy as np
 sys.path.insert(0, 'docs/research/t1941/review3')
-from spec import p, q, load  # grid_a coefficients (high-order first)
+from spec import load
 
 LD = np.longdouble
-U = 2.0 ** -54
-C_N, C_D = -3128 * U, 552 * U          # hand-off c/x terms (N at stage 4, D at stage 3)
+P = [float.fromhex(h) for h in ['0x1.5717994ef45d1p-51', '0x1.5e5b7382714d8p-16', '0x1.0ee2f11891de0p-9',
+                                '0x1.572bf8684199dp-5', '0x1.09fd1ad1d9003p-2', '0x1.f0a8c053986d7p-2',
+                                '-0x1.08305b47998b9p-6', '-0x1.0ae34eb3cbad6p-1', '-0x1.de852aee8c153p-3',
+                                '-0x1.22260ed97843dp-6']]
+Q = [float.fromhex(h) for h in ['0x1.03cadf2cb5f49p-18', '0x1.52fc9914beb6ep-11', '0x1.5303658ef4376p-6',
+                                '0x1.bb43b464d397fp-3', '0x1.c515177eb1641p-1', '0x1.7b39fc9194438p+0',
+                                '0x1.eddf2040d2bc2p-1', '0x1.9b252b2fab347p-3', '0x1.00000000000eap-7']]
 
 def sd(v):
     return np.asarray(v, dtype=LD).astype(np.float64).astype(LD)
 
-def chain(c, x, K, cc):
-    """Stored x87 Horner; at stage K the c/x term enters the product before its rounding and is removed
-    exactly at the next constant (c[K+1] - cc), so the polynomial is algebraically unchanged."""
+def chain(c, x, K):
+    """Head (stages 1..K-1) in x87 80-bit registers; stored double Horner from stage K's product."""
     s = LD(c[0]) + 0 * x
     for i in range(1, len(c)):
-        ci = LD(c[i]) - (LD(cc) if i == K + 1 else 0)
-        s = sd(sd(s * x + LD(cc) / x) + ci) if i == K else sd(sd(s * x) + ci)
+        s = s * x + LD(c[i]) if i < K else sd(sd(s * x) + LD(c[i]))
     return s
 
 def k2(x):
     x = np.asarray(x).astype(LD)
-    return sd(sd(x - 2) * sd(chain(p, x, 4, C_N) / chain(q, x, 3, C_D))).astype(np.float64)
+    return sd(sd(x - 2) * sd(chain(P, x, 4) / chain(Q, x, 3))).astype(np.float64)
 
 if __name__ == '__main__':
+    rates = []
     for case in sys.argv[1:]:
         X, Y = load(case)
-        print(case, len(X), round(float(np.mean(k2(X) == Y)), 4))
+        r = float(np.mean(k2(X) == Y)); rates.append(r)
+        print(case, len(X), round(r, 4))
+    if rates:
+        print('mean', round(float(np.mean(rates)), 4))
