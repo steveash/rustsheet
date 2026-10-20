@@ -340,3 +340,26 @@ Evidence: probes/legacy-array-result S!G1:G2, probes/t-array-lift (excel-graph, 
 Implemented in fn_t (T-1729).
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1729
+
+## SHEETS counts the sheets a reference spans (VERIFIED, excel-graph)
+Rule: `SHEETS(reference)` is the number of sheets the reference covers: 1 for a cell or range on one sheet, written
+bare, sheet-qualified or quoted (`SHEETS(A1)`, `SHEETS($A$1:$B$2)`, `SHEETS(Data!A1:B2)`, `SHEETS('Beta'!A1)`), and the
+count of sheets between the corners, inclusive, for a 3-D span in either order: with sheets Alpha, Beta, Gamma, Data,
+`SHEETS(Alpha:Gamma!A1)` and `SHEETS(Gamma:Alpha!A1)` are 3, `SHEETS(Beta:Data!A1:B2)` 3, `SHEETS(Alpha:Data!B2)` 4.
+The result is a plain number (`TYPE` 1, `ISNUMBER` TRUE, `+0`, `*1`, `=3` TRUE). A reversed span reads the same in SUM too
+(`SUM(Gamma:Alpha!A1)` = `SUM(Alpha:Gamma!A1)`).
+Evidence: probes/info-sheets-info-types Alpha!D1:D24, D50:D52 (excel-graph, 2026-10-20, T-2115). The engine gives
+`#N/IMPL!` for any argument: T-2181. Unprobed, because the oracle canary refuses them (T-2113): a union, INDIRECT,
+OFFSET, a defined name, a non-reference or error argument, and bare `SHEETS()`.
+Probe trap: a sheet named like a cell (S1, S2, S3) makes an unquoted span such as `S1:S3!A1` mean something else to
+Excel for the web (`SHEETS(S1:S3!A1)` and `SUM(S1:S3!A1)` were `#VALUE!`, while `SUM(S3:S1!A1)` summed all three, first
+fill of the same case). Excel quotes such names (`'S1:S3'!A1`); give probe sheets names that are not cell references.
+
+## INFO is not implemented in Excel for the web
+Rule (web): every INFO call is `#VALUE!` on Excel for the web, whatever the type_text: "recalc", "system", "release",
+"directory", "osversion", "origin", the legacy "memavail", "memused" and "totmem", `""` and `"x"`, in lower, upper or
+mixed case (`TYPE(INFO("release"))` 16, `ERROR.TYPE(INFO("x"))` 3, `ISTEXT(INFO("recalc"))` FALSE). Like
+`CELL("width")`, this is a gap of the web build, not Excel semantics: the probe rows were not kept as goldens, and the
+oracle canary refuses every INFO call (tools/src/rustsheet_tools/oracle/canary.py, T-2115). So none of the values were
+host-dependent, as the task had expected. Desktop values: T-2182 (M14, decision 0039).
+Evidence: excel-graph fill of probes/info-sheets-info-types D25:D49, 2026-10-20 (not committed).

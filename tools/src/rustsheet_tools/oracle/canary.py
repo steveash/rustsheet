@@ -17,7 +17,8 @@ content-type override), not a value parser: values are still decoded only by the
 An extra sheet is invisible to formulas except through the sheet count, so workbooks whose
 answer depends on it are refused rather than answered wrongly: `SHEETS()` with no argument and
 `INFO("numfile")`. The canary is appended after the last sheet, so `SHEETS(ref)` of a cell, range
-or 3-D span and `INFO` with another literal type cannot see it and are accepted. Whatever the
+or 3-D span and `INFO` with another literal type cannot see it (every INFO call is refused anyway:
+Excel for the web does not implement INFO, T-2115). Whatever the
 check cannot decide (`INFO(A1)`, `INFO("num"&"file")`, a non-reference `SHEETS` argument) is
 refused (T-2113).
 
@@ -65,6 +66,10 @@ _CALL_TEXT_LIMIT = 60
 # returns the column width (poi/47804.xlsx: desktop cached 10 and 11). Not Excel semantics.
 # Only a literal "width" argument is caught; the fill's desktop-conflict check is the backstop.
 _WEB_UNSUPPORTED = re.compile(r'\bCELL\s*\(\s*"width', re.IGNORECASE)
+# Excel for the web does not implement INFO either: every type_text, "recalc" and "system"
+# included, in any case, is #VALUE! (probes/info-sheets-info-types, excel-graph 2026-10-20,
+# T-2115; docs/excel-semantics/information.md). Desktop questions go to M14 (decision 0039).
+_WEB_UNSUPPORTED_INFO = re.compile(r"\b(?:_xlfn\.)?INFO\s*\(", re.IGNORECASE)
 
 # XLM GET.WORKBOOK (a defined name or a macro-sheet cell) lists the sheet names, canary included.
 _SHEET_LIST_MACRO = re.compile(r"\bGET\.WORKBOOK\s*\(", re.IGNORECASE)
@@ -72,6 +77,7 @@ _SHEET_LIST_MACRO = re.compile(r"\bGET\.WORKBOOK\s*\(", re.IGNORECASE)
 _REFUSALS = (
     (_SHEET_LIST_MACRO, "uses GET.WORKBOOK(), whose answer the canary sheet would change"),
     (_WEB_UNSUPPORTED, 'uses CELL("width"), which Excel for the web does not implement'),
+    (_WEB_UNSUPPORTED_INFO, "uses INFO(), which Excel for the web does not implement"),
 )
 
 
