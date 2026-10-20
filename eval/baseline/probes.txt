@@ -1291,8 +1291,6 @@ F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-im-overflow.case.json	S!A33
 F	probes/eng-im-overflow.case.json	S!A34
-F	probes/eng-im-overflow.case.json	S!A42
-F	probes/eng-imexp-overflow-imag.case.json	S!A3
 F	probes/eng-impower-angle-cut.case.json	S!A10
 F	probes/eng-impower-angle-cut.case.json	S!A11
 F	probes/eng-impower-angle-cut.case.json	S!A12
