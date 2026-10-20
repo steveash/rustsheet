@@ -61,6 +61,19 @@ Implemented in: `annuity_power`, `annuity_factor`, `compute_future_value` (`Futu
 `fn_pv` and `fn_nper` (crates/rustsheet-engine/src/functions/financial/mod.rs, T-0901). Salvaged from
 draft PR #13 by T-0031.
 
+## ISPMT's operation order
+Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
+other order tried misses cells where the orders differ in the last bit: `pv*rate*(per/nper-1)` (the old engine form)
+fits 8 of 24, `pv*rate*(per-nper)/nper` 16, `pv*(rate*(per-nper))/nper` 17, `pv*rate/nper*(per-nper)` 6. It also gives
+the Mac cache's `ISPMT(0.2,1,3,100)` = -13.333333333333334, where the old form gave ...336.
+Unprobed: inputs where the three-factor product overflows before the division (`ISPMT(1,0,1E300,1E300)`: ours
+`#NUM!`, where dividing first stays finite).
+Evidence: probes/fin-ispmt-order A1-A24 (inputs chosen where the candidate orders differ, excel-graph, 2026-10-20,
+T-2048); ironcalc-calc/FINANCIAL/ISPMT.xlsx Sheet1!E2 (Mac desktop cache).
+Status: VERIFIED (excel-graph)
+Implemented in: `ispmt_of` (functions/financial/annuity.rs)
+Tasks: T-2048
+
 ## IRR, RATE and XIRR stop early, and the guess and flow scaling change the result
 Rule: Excel's iterative solvers (IRR, RATE, XIRR) return an un-converged iterate, not the root
 rounded to double. The digits beyond the stopping tolerance depend on the starting guess (default
