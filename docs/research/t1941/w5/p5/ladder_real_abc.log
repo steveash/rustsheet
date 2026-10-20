@@ -1,0 +1,34 @@
+anchor a (x 0.8013), 13 runs
+   N7: base run unreadable
+   N6: base run unreadable
+   N5: slope    -806518.4 cycles/x from 9 rungs (21,20,19,18,17,16,14,13,11)
+   N3: slope    +563550.3 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope    +243045.6 cycles/x from 6 rungs (20,18,17,14,13,12)
+   D5: base run unreadable
+   D4: base run unreadable
+anchor b (x 0.9517), 13 runs
+   N7: base run unreadable
+   N6: slope    -876280.3 cycles/x from 10 rungs (21,20,19,18,17,16,15,14,11,10)
+   N5: slope    +145172.9 cycles/x from 10 rungs (20,18,17,16,15,14,13,12,11,10)
+   N3: slope    -270944.8 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope    +408966.2 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D5: slope    +874046.7 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: slope     -96328.5 cycles/x from 5 rungs (19,16,13,11,10)
+anchor c (x 1.1023), 13 runs
+   N7: base run unreadable
+   N6: slope    -279607.4 cycles/x from 11 rungs (21,20,19,18,17,16,15,14,13,12,11)
+   N5: slope    -168515.5 cycles/x from 9 rungs (20,19,18,17,16,15,14,13,12)
+   N3: slope    +853846.0 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope     -61345.0 cycles/x from 9 rungs (21,20,16,15,14,13,12,11,10)
+   D5: slope    +503828.7 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: base run unreadable
+   alias shifts: none
+N chain: 6 slope equations (6 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   dropped: none
+   residual per equation (in cycles/x): +0 +0 -0 +0 +0 +0
+   solved moves (ulps): N4 -16727996.3 N5 +65613971.1 N6 -337203269.7 N7 +4005627981.4 N8 -125813538441.3 N9 +10474903856104.3
+   alias shifts: none
+D chain: 3 slope equations (3 kept), unknowns D6,D7,D8,D9, rank 3
+   dropped: none
+   residual per equation (in cycles/x): +0 +0 +0
+   solved moves (ulps): D6 +312654.6 D7 +32171820.5 D8 +191782162.0 D9 -213659620896608.7

@@ -310,3 +310,14 @@ Controls with B synthesised at the exact ladder x from planted far truths (`ladd
 - TSIZE 1e6 (seed 1): N4..N8 within ~10% (N7 −94882 vs −95140), D6 within 5%.
 So the ladders turn into direct reads of the mid/top coefficients within ~10%, well inside the peel's range (fscan
 ±2e6 + exact rescore). More anchors would make the N chain robust for very far truths.
+- Slope alias found and fixed. With the smallest rung at 2^-21, slopes beyond ±1e6 cycles/x alias by whole multiples of
+  2^21 (control errors of exactly −2,097,0xx and −2·2^21). Real slopes reach that range (N6 at anchor b −1.47e6).
+  Fixes:
+  - 60 more ladder cases, kk = 22..26 for every anchor (`../gen_k3ladder.py`), plus a second anchor set g..l (0.7311,
+    0.8741, 1.0309, 1.1789, 1.3021, 1.4129: 78 cases). Ladder total: 216 cases.
+  - The joint solve is now a consensus fit (RANSAC over minimal subsets, inliers within 300 cycles/x modulo each
+    equation's alias period, then LS on the consensus with the alias shifts applied).
+  Controls at TSIZE 1e7, 12 anchors (`ladder_ctl_ransac.log`): with rungs up to 26, N4, N5, N6 within ~1% in 6/6 seeds
+  (N7 in 5/6) and D5, D6, D7 within ~4% in 6/6. With rungs up to 21 only, 5/6 seeds solve.
+- First real anchors (a, b; `ladder_real_ab.log`): slopes N3 +5.7e5 / −2.7e5, N5 −7.9e5 / +1.5e5, N6 −1.47e6, D5
+  +8.7e5, D6 +2.4e5 / +4.1e5 cycles/x. These are TSIZE ≥ 1e7 offsets, i.e. far from ss_fc.

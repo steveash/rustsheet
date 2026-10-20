@@ -1,16 +1,19 @@
 # T-1941 W5 K3 phase-unwrap ladders: kmyst-gam-k3l<a..f><kk>, one run of 8,192 consecutive doubles each.
-# Anchors (non-dyadic): a 0.8013, b 0.9517, c 1.1023, d 1.2519, e 1.3527, f 1.4531. Per anchor, starts at
+# Anchors (non-dyadic): a 0.8013, b 0.9517, c 1.1023, d 1.2519, e 1.3527, f 1.4531; second set (more equations
+# for the joint slope solve) g 0.7311, h 0.8741, i 1.0309, j 1.1789, k 1.3021, l 1.4129. Per anchor, starts at
 # fl(anchor + 2^-k) for k = 10..21 (kk = 10..21) and at the anchor itself (kk = 00): stepwise unwrapping of the steep
 # per-stage offset laws (w5/p5 README, "Per-stage phase read"). B = GAMMALN.PRECISE(A) only.
 # usage (repo root): python3 docs/research/t1941/w5/gen_k3ladder.py eval/suites/probes-numeric/cases
 import json, math, sys, os
 D = sys.argv[1]
-ANCH = {'a': 0.8013, 'b': 0.9517, 'c': 1.1023, 'd': 1.2519, 'e': 1.3527, 'f': 1.4531}
+ANCH = {'a': 0.8013, 'b': 0.9517, 'c': 1.1023, 'd': 1.2519, 'e': 1.3527, 'f': 1.4531,
+        'g': 0.7311, 'h': 0.8741, 'i': 1.0309, 'j': 1.1789, 'k': 1.3021, 'l': 1.4129}
 n = 0
 for tag, a in ANCH.items():
-    for k in [0] + list(range(10, 22)):
+    for k in [0] + list(range(10, 27)):
         x0 = a if k == 0 else a + 2.0**-k
-        p = os.path.join(D, f'kmyst-gam-k3l{tag}{k:02d}.case.json'); assert not os.path.exists(p), p
+        p = os.path.join(D, f'kmyst-gam-k3l{tag}{k:02d}.case.json')
+        if os.path.exists(p): continue   # already generated
         cells = {}; x = x0
         for r in range(1, 8193):
             cells[f'A{r}'] = x; cells[f'B{r}'] = f'=GAMMALN.PRECISE(A{r})'; x = math.nextafter(x, math.inf)

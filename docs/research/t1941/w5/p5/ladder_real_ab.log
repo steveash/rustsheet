@@ -1,0 +1,24 @@
+anchor a (x 0.8013), 13 runs
+   N7: base run unreadable
+   N6: base run unreadable
+   N5: slope    -790194.3 cycles/x from 9 rungs (21,20,19,18,17,16,14,13,11)
+   N3: slope    +566742.1 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope    +243393.1 cycles/x from 6 rungs (20,18,17,14,13,12)
+   D5: base run unreadable
+   D4: base run unreadable
+anchor b (x 0.9517), 13 runs
+   N7: base run unreadable
+   N6: slope   -1466180.7 cycles/x from 10 rungs (21,20,19,18,17,16,15,14,11,10)
+   N5: slope    +145253.2 cycles/x from 10 rungs (20,18,17,16,15,14,13,12,11,10)
+   N3: slope    -270918.3 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope    +411073.0 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D5: slope    +873983.3 cycles/x from 12 rungs (21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: slope     -96243.4 cycles/x from 5 rungs (19,16,13,11,10)
+N chain: 4 slope equations (4 kept), unknowns N4,N5,N6,N7,N8,N9, rank 4
+   dropped: none
+   residual per equation (in cycles/x): -0 -0 -0 +0
+   solved moves (ulps): N4 +9011774.4 N5 -43639237.1 N6 +52978.1 N7 +11854986.4 N8 +92261490.8 N9 -69967703430.2
+D chain: 2 slope equations (2 kept), unknowns D6,D7,D8,D9, rank 2
+   dropped: none
+   residual per equation (in cycles/x): +0 +0
+   solved moves (ulps): D6 +2691219.1 D7 +3341276.0 D8 +30693459.4 D9 -5961650546572.4
