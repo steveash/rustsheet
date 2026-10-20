@@ -234,35 +234,6 @@ pub(super) fn legacy_array_call_at(
         })
 }
 
-/// Whether `node` is a SWITCH whose results are all array constants: at the formula root,
-/// `=SWITCH(1,1,{2;3})` is shown unmarked and spills 2, 3 in a legacy cell (probes/legacy-array-at-shapes
-/// C20, C11, T-1910). Only the root is probed: a nested or range-returning SWITCH keeps its `@`
-/// (T-1964).
-pub(super) fn is_switch_of_array_constants(node: &Node) -> bool {
-    matches!(node, Node::FunctionKind { kind: Function::Switch, args }
-        if returns_only_array_constants(&Function::Switch, args))
-}
-
-/// [`add_legacy_intersection`] on a whole formula: the automatic `@` the pass puts on a root SWITCH
-/// of array constants is taken off ([`is_switch_of_array_constants`]), while one typed there is
-/// meaningful and kept (the export keeps it too, `remove_redundant_implicit_intersection`).
-pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
-    match node {
-        Node::ImplicitIntersection {
-            automatic: false,
-            child,
-        } if add && is_switch_of_array_constants(child) => {} // A typed `@` stays as it is.
-        _ => {
-            add_legacy_intersection(node, add, add);
-            if let Node::ImplicitIntersection { child, .. } = node {
-                if add && is_switch_of_array_constants(child) {
-                    *node = std::mem::replace(child.as_mut(), Node::EmptyArgKind);
-                }
-            }
-        }
-    }
-}
-
 /// Whether a legacy formula puts no `@` on the call `arg` of `kind`, a value it would otherwise
 /// intersect: N and T over IF or SWITCH (`=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`,
 /// `=N(SWITCH(1,1,{2;3}))`, the last spilling 2, 3; probes/legacy-array-result A, G, I,
@@ -355,6 +326,11 @@ fn chooses_between_references_and_array_constants(kind: &Function, args: &[Node]
         && arms
             .iter()
             .all(|arm| matches!(arm, Node::ArrayKind(_)) || is_plain_reference(arm))
+}
+
+/// Whether argument `index` of a call to `kind` with `count` arguments is a result of SWITCH.
+pub(super) fn is_switch_result(kind: &Function, index: usize, count: usize) -> bool {
+    matches!(kind, Function::Switch) && is_returned_argument(kind, index, count)
 }
 
 /// Whether argument `index` of `kind` is one its result can be, as it is or as a part of it: the

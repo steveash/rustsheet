@@ -4,8 +4,8 @@
 #[cfg(doc)]
 use super::add_implicit_intersection;
 use super::legacy::{
-    is_switch_of_array_constants, leaves_call_whole, legacy_array_context,
-    legacy_context_intersects, remove_array_at, remove_in_array_context,
+    is_switch_result, leaves_call_whole, legacy_array_context, legacy_context_intersects,
+    remove_array_at, remove_in_array_context,
 };
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, get_function_args_signature,
@@ -31,12 +31,6 @@ use super::{
 /// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
 /// (a formula is evaluated in a scalar context).
 pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
-    // The import leaves a root SWITCH of array constants unmarked, so an `@` on it is meaningful.
-    if matches!(&*node, Node::ImplicitIntersection { child, .. }
-        if add && is_switch_of_array_constants(child))
-    {
-        return;
-    }
     remove_redundant_legacy_intersection(node, add, add);
 }
 
@@ -103,8 +97,14 @@ pub(super) fn remove_redundant_legacy_intersection(node: &mut Node, add: bool, a
         }
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
+            let args_len = args.len();
             for (index, arg) in args.iter_mut().enumerate() {
                 let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
+                // The import adds no `@` on a SWITCH result, so one there is meaningful.
+                if is_switch_result(kind, index, args_len) {
+                    remove_redundant_legacy_intersection(arg, false, arrays);
+                    continue;
+                }
                 remove_array_at(kind, signature.get(index), index, arg, arrays);
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not (`legacy_context_intersects`).

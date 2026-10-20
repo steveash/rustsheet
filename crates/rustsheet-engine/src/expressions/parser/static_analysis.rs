@@ -5,8 +5,8 @@ use crate::functions::Function;
 use broadcast::{broadcast_shapes, static_analysis_operator_chain};
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
-    legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
-    returns_range_arm,
+    is_switch_result, legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value,
+    mark_legacy_reading, returns_range_arm,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
@@ -95,7 +95,7 @@ fn is_range_reference(s: &str) -> bool {
 ///
 /// Assumes formula return a scalar
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
-    legacy::add_root_legacy_intersection(node, add);
+    add_legacy_intersection(node, add, add);
 }
 
 /// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
@@ -200,10 +200,17 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         Node::FunctionKind { kind, args } if is_array_context(kind) => add_in_array_context(args),
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
+            let args_len = args.len();
             for (index, arg) in args.iter_mut().enumerate() {
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
                 let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
+                // A SWITCH result is handed on as it is: no `@` on a range or one-element array
+                // there (probes/legacy-switch-at-shapes A20, D20, Y20, T-1964).
+                if is_switch_result(kind, index, args_len) {
+                    add_legacy_intersection(arg, false, arrays);
+                    continue;
+                }
                 add_array_at(kind, signature.get(index), index, arg, arrays);
                 add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }
@@ -211,7 +218,9 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
                 mark_legacy_reading(kind, args); // The legacy N/T marker (SPEC-0012).
             }
             // There are some function that will never add an automatic II:
-            let new_function = matches!(kind, Function::Let | Function::Lambda);
+            // A SWITCH never takes one: its array or range results spill, also nested under a
+            // scalar function or operator (probes/legacy-switch-at-shapes G20, J20, M20, T-1964).
+            let new_function = matches!(kind, Function::Let | Function::Lambda | Function::Switch);
             if !new_function
                 && (add || arrays)
                 && !legacy_call_reads_a_value(kind, args)
