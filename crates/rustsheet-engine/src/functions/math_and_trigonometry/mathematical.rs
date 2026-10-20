@@ -33,7 +33,8 @@ fn trig_arg(f: f64) -> Result<f64, Error> {
     }
 }
 
-/// COT, CSC and SEC (and COTH, CSCH, SECH): 1 over the rounded TAN, SIN or COS, divided as the `/` operator divides
+/// COT, CSC and SEC (and COTH, CSCH, SECH): 1 over the rounded TAN, SIN or COS (TANH, SINH,
+/// COSH), divided as the `/` operator divides
 /// (rounded to 64 bits, then to a double), so `COT(PI()/4)` is 1 and `CSC(PI()/6)` 2 like
 /// `1/TAN(PI()/4)` and `1/SIN(PI()/6)` (probes/trig-reciprocal-special-angles; ironcalc-calc
 /// TRIGONOMETRIC.xlsx `COT_CSC_SEC` B47, C48; numbers.md "Division rounds twice").

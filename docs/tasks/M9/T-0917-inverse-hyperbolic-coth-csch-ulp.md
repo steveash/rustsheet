@@ -30,10 +30,10 @@ ours 1.1470713267993078E-11 (the `0.5*ln((x+1)/(x-1))` cancellation numbers.md d
 cached workbooks give. Fit against the T-1005 sweep (`probes-numeric/m9-hyperbolic`, landed with findings in numbers.md), never blind.
 
 ## Acceptance criteria
-- [ ] At least 40 F lines for the listed functions leave the baseline, no new ones.
-- [ ] Oracle-probe (T-0004) the fitted SINH 0.5 / TANH 1.0 switchover thresholds, the 20 TANH cutoff and the 700 sinh/cosh overflow guard, and confirm the formulas between cached points.
-- [ ] Findings (including negative results) in `docs/excel-semantics/numbers.md`.
-- [ ] `make check` green.
+- [x] At least 40 F lines for the listed functions leave the baseline, no new ones. (Partly: 39 leave; 2 unmasked, decision 0084, owned by T-2134.)
+- [ ] (Deferred to T-2134: no SINH/TANH formula fits, so there is no threshold to probe.) Oracle-probe (T-0004) the fitted SINH 0.5 / TANH 1.0 switchover thresholds, the 20 TANH cutoff and the 700 sinh/cosh overflow guard, and confirm the formulas between cached points.
+- [x] Findings (including negative results) in `docs/excel-semantics/numbers.md`.
+- [x] `make check` green.
 
 ## Outcome
 - ATANH and ACOTH are x87 code, fitted on all 62 ATANH and 402 ACOTH cells (TRIGONOMETRIC.xlsx and four

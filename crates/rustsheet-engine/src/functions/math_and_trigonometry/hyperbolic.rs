@@ -11,8 +11,8 @@
 //! register ([`atanh_series`]), each branch on its own range.
 
 use crate::arithmetic::{
-    extended_quotient, extended_sum, round_extended_to_double, round_to_bits,
-    significand_and_exponent,
+    extended_div, extended_mul, extended_of, extended_quotient, extended_sum, store_extended,
+    Extended,
 };
 use crate::x87_log10::excel_half_ln;
 
@@ -88,37 +88,6 @@ const ACOTH_SERIES_FROM: f64 = 3.69665;
 /// 0.074 of the one before, so it stops after about 15 terms. This only bounds the loop.
 const SERIES_TERMS: u32 = 64;
 
-/// A positive x87 register value `significand * 2^exponent`, the significand of 64 bits.
-type Extended = (u128, i32);
-
-fn extended_of(x: f64) -> Extended {
-    let (significand, exponent) = significand_and_exponent(x.abs());
-    (u128::from(significand) << 11, exponent - 11)
-}
-
-/// `a * b` rounded to 64 bits (FMUL).
-fn extended_mul(a: Extended, b: Extended) -> Extended {
-    let (product, shift) = round_to_bits(a.0 * b.0, 64, false);
-    (product, a.1 + b.1 + shift)
-}
-
-/// `a / b` rounded to 64 bits (FDIV); `b` is nonzero.
-fn extended_div(a: Extended, b: Extended) -> Extended {
-    // 64 or 65 quotient bits, then two more from the remainder (under 2^66, no overflow) so the
-    // rounding always has a guard bit, and what is left is the sticky bit.
-    let numerator = a.0 << 64;
-    let remainder = (numerator % b.0) << 2;
-    let quotient = ((numerator / b.0) << 2) | (remainder / b.0);
-    let (rounded, shift) = round_to_bits(quotient, 64, remainder % b.0 != 0);
-    (rounded, a.1 - 66 - b.1 + shift)
-}
-
-/// The register value stored to a double (the second rounding), or `None` outside the normal
-/// range.
-fn store(value: Extended) -> Option<f64> {
-    round_extended_to_double(value.0, value.1, false)
-}
-
 /// Excel's atanh series `y + y^3/3 + y^5/5 + ...` for a positive register value `y`, as x87 code
 /// runs it: the power `y^(2k+1)` and `y^2` stay in 80-bit registers, each term `power/(2k+1)` and
 /// each partial sum is stored to a double (every sum rounded twice), and the loop ends when a term
@@ -126,14 +95,14 @@ fn store(value: Extended) -> Option<f64> {
 /// ACOTH(4.92) and ACOTH(3.69734) (probes-numeric t0917-acoth-switch-edge); an all-double series
 /// misses them. `None` when `y` is not a normal double.
 fn atanh_series(y: Extended) -> Option<f64> {
-    let mut sum = store(y)?;
+    let mut sum = store_extended(y)?;
     let square = extended_mul(y, y);
     let mut power = y;
     for k in 1..=SERIES_TERMS {
         power = extended_mul(power, square);
         let term = extended_div(power, extended_of(f64::from(2 * k + 1)));
         // A term under the normal range cannot change a normal sum.
-        let next = extended_sum(sum, store(term).unwrap_or(0.0));
+        let next = extended_sum(sum, store_extended(term).unwrap_or(0.0));
         if next == sum {
             break;
         }
