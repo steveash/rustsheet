@@ -260,7 +260,8 @@ impl Model {
         // Excel: an all-blank source keeps its full extent while trim_rows is 0, whatever
         // trim_cols is (`TRIMRANGE(C20:C21,0)` is the 2x1 range, `TRIMRANGE(C20:C21,3,0)` is
         // #REF!); see docs/excel-semantics/lookup.md "TRIMRANGE lifted over an array, a computed
-        // reference or an error" (probes/trimrange-lift-edge-sources).
+        // reference or an error" (probes/trimrange-lift-edge-sources; a single column only, other
+        // shapes are TODO(T-2127)).
         if non_blank.is_none() && trim_rows == 0 {
             return Ok((0..num_rows, 0..num_cols));
         }
