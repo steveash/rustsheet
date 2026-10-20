@@ -21,6 +21,9 @@ Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). Both functions sh
 Sweep, as stored inputs (probes-numeric case, `excel-probe` skill):
 - TAN, SIN and COS at ~150 arguments spread over 1E+6 .. 2^27-1 (log-spaced plus the two gen-m5 arguments 123456788.123 and
   123456789.123 and their neighbours), so T-2147 can tell whether SIN/COS also leave the pi64 model there.
+  Add the fractional arguments just below the `#NUM!` cut, 134217727.25, 134217727.5, 134217727.75 and the
+  largest double below 2^27 (134217728 - 2^-26), and their negatives: numbers.md "Trig of a huge angle" says
+  only the integers 2^27-1 and 2^27 were probed, so the cut for fractions is assumed (gap triage 2026-10-20).
 - ODD and EVEN at ~100 values from 2^52 to 1E+300: consecutive doubles around 2^53, odd and even integers near 1E+16,
   9999999999999990 .. 10000000000000010, and powers of ten; negatives of a few.
 

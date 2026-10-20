@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
-depends_on: [T-0917]
+depends_on: [T-0917, T-2178]
 ---
 
 ## Goal
@@ -23,7 +23,8 @@ more than half an ulp at e.g. SINH(0.01), 0.05, 0.43, 0.47, 0.65, 0.7, 0.88 and 
 based `expm1` stored to a double then `(E + E/(E+1))/2` (fdlibm's shape) or `E*(E+2)/(2(E+1))`;
 a fixed-degree minimax polynomial (fit lab, T-1523, docs/research/excel-kernel-playbook.md).
 Fitting set: probes-numeric `m9-hyperbolic` A157-A248, `t0917-hyperbolic-switchover` A79-A210,
-ironcalc-calc TRIGONOMETRIC.xlsx SINH_COSH_TANH. A dense oracle sweep on (0, 1) is likely needed.
+ironcalc-calc TRIGONOMETRIC.xlsx SINH_COSH_TANH. Needs an oracle sweep: T-2178 (research) fills a dense
+SINH/TANH/COSH sweep on (-1, 1), `probes-numeric/t2178-hyperbolic-unit-sweep`; fit against it, not blind.
 Known failures this owns: TRIGONOMETRIC.xlsx SINH_COSH_TANH!D10, D40, B51 and COTH_CSCH_SECH!B10,
 B40, C51, C54, C55 (B10 and C54 were unmasked by T-0917, decision 0084), and POWER.xlsx
 inside_a_lambda!C3/C4 (TANH in `gelu`, T-0959). Ungated but owned too: probes-numeric
@@ -53,6 +54,11 @@ A81, A97, A105, A109, A159 (decision 0084), plus the other SINH/TANH/COTH/CSCH m
 | gen-m5/e0087a1fb9a36188 Calc!A134 | `=SINH(Data!E7)` | 0.3045202934471426 | 0.30452029344714254 |
 | gen-m5/e0087a1fb9a36188 Calc!A265 | `=SINH(0.3)` | 0.3045202934471426 | 0.30452029344714254 |
 | gen-m5/fc81c2f704bef138 Calc!A298 | `=SINH(0.3)` | 0.3045202934471426 | 0.30452029344714254 |
+
+- Gap triage 2026-10-20 (after T-2114): 7 more TANH misses on (0, 1) outside the lists above, fitting points
+  too: probes-numeric `power-ulp-sources` Calc!A4, A5, A6, A7, A11, A12 (`TANH(0.4)` Excel 0.3799489622552249,
+  ours 0.37994896225522484; A5-A7 are `1+TANH(..)` and the gelu product over it) and
+  gen-m6/ed0f4f783473cef0 Calc!A23 (`TANH(SUM(Data!D6:D11,(-0.0001)))` Excel 0.3798633951257878, ours ...879).
 
 ## Acceptance criteria
 - [ ] COTH_CSCH_SECH!B10 and C54, m9-hyperbolic A126 and t0917-hyperbolic-switchover A81, A97, A105,
