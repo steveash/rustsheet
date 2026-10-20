@@ -114,6 +114,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 - ironcalc-calc cells using only M1/M2 functions at 100%.
   Exception (decision 0074): `LOGICAL/IF_ARRAY.xlsx` Sheet1!C11 copies the Mac desktop SIN(4), one ulp from the web value.
   Its only open question is desktop evidence, so its M14 item (T-1075) counts as a filed task (decision 0039 rule 3).
+  The exception is a line of `eval/milestones/exit-exceptions.tsv`; the M2 row's "failing excl. exceptions" leaves it out (decision 0087).
 - One implementation of aggregate-argument iteration and criteria matching, used by every
   consumer. Duplication baseline reduced by ≥ 15%.
 
@@ -166,7 +167,9 @@ Decision 0085 fixes how each is measured from `make eval`'s report:
   Exception (decisions 0074, 0085): `LOGICAL/IF_ARRAY.xlsx` Sheet1!C4, E4 and C11 copy the Mac
   desktop SIN(4); their M14 item (T-1075) counts as a filed task (decision 0039 rule 3). A cell
   whose M5 fit task is blocked under decision 0056's time-box and is within 4 ulp is named here
-  by the PR that blocks the task, and then stops blocking.
+  by the PR that blocks the task, and then stops blocking. Each exception is a line of
+  `eval/milestones/exit-exceptions.tsv`, so the measure is the M5 row's "failing excl. exceptions"
+  (decision 0087).
 
 ## M6 — Lookup & reference, date & time
 

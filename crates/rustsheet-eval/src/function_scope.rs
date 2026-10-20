@@ -22,6 +22,7 @@ use std::fmt::Write as _;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
+use crate::exit_exceptions::{ExitExceptions, EXCEPTIONS_PATH};
 use crate::probe_milestones::{parse_milestone, row_of, REPORT_ROWS};
 use crate::report::functions_in;
 use crate::runner::CaseResult;
@@ -45,6 +46,9 @@ pub struct MilestoneScope {
     pub deviations: usize,
     /// All failing cells of the row, as `case!Sheet!A1`, sorted.
     pub failing: Vec<String>,
+    /// The failing cells a named exit exception leaves out of this row (decision 0087), sorted.
+    #[serde(default)]
+    pub excepted: Vec<String>,
 }
 
 /// How the [`SUITE`] cells scored, one cumulative row per function milestone.
@@ -56,6 +60,38 @@ pub struct FunctionScope {
     pub no_formula: usize,
     /// Of those, the cells that are known failures.
     pub no_formula_failing: usize,
+    /// Exit exceptions whose cell fails in no row (it passes, is a deviation or is not scored).
+    #[serde(default)]
+    pub stale_exceptions: Vec<String>,
+}
+
+impl FunctionScope {
+    /// Fills each row's `excepted` cells and the stale exceptions from `exceptions`; `failing`
+    /// is unchanged.
+    pub fn apply_exceptions(&mut self, exceptions: &ExitExceptions) {
+        for row in &mut self.rows {
+            let Some(milestone) = parse_milestone(&row.milestone) else {
+                continue;
+            };
+            row.excepted = row
+                .failing
+                .iter()
+                .filter(|cell| exceptions.applies(cell, milestone))
+                .cloned()
+                .collect();
+        }
+        self.stale_exceptions = exceptions
+            .cells
+            .keys()
+            .filter(|cell| {
+                !self
+                    .rows
+                    .iter()
+                    .any(|row| row.failing.binary_search(cell).is_ok())
+            })
+            .cloned()
+            .collect();
+    }
 }
 
 /// Scores the [`SUITE`] cells of `results`; `None` when the run executed no such case.
@@ -161,22 +197,25 @@ pub fn write_markdown(scope: Option<&FunctionScope>, md: &mut String) {
          a catalog milestone up to the row's (none counts too): the exit criteria of M2 and M5. Each \
          row includes the rows above it. A call of a defined name counts the functions of the \
          name's formula; precedents are not followed. {} scored cells with no formula or anchor \
-         are left out ({} failing).\n",
+         are left out ({} failing). `failing excl. exceptions` leaves out the cells \
+         `{EXCEPTIONS_PATH}` names for the row's milestone or an earlier one (decision 0087).\n",
         s.no_formula, s.no_formula_failing
     );
     let _ = writeln!(
         md,
-        "| milestone | scored cells | bit-exact | deviations | failing |\n|---|---|---|---|---|"
+        "| milestone | scored cells | bit-exact | deviations | failing | failing excl. exceptions |\n\
+         |---|---|---|---|---|---|"
     );
     for row in &s.rows {
         let _ = writeln!(
             md,
-            "| {} | {} | {} | {} | {} |",
+            "| {} | {} | {} | {} | {} | {} |",
             row.milestone,
             row.cells,
             row.bit_exact,
             row.deviations,
-            row.failing.len()
+            row.failing.len(),
+            row.failing.len() - row.excepted.len()
         );
     }
     let mut listed: &[String] = &[];
@@ -194,6 +233,16 @@ pub fn write_markdown(scope: Option<&FunctionScope>, md: &mut String) {
             }
         }
         listed = &row.failing;
+    }
+    if !s.stale_exceptions.is_empty() {
+        let _ = writeln!(
+            md,
+            "\nStale exit exceptions (the cell fails in no row; remove its line from \
+             `{EXCEPTIONS_PATH}`):\n"
+        );
+        for cell in &s.stale_exceptions {
+            let _ = writeln!(md, "- `{cell}`");
+        }
     }
 }
 
@@ -419,5 +468,42 @@ mod tests {
     fn nothing_without_the_suite() {
         let results = [case("probes", vec![cell("A1", Some("1"), Verdict::Pass)])];
         assert_eq!(summarize(&Catalog::default(), &results), None);
+    }
+
+    #[test]
+    fn exceptions_apply_from_their_milestone_on_and_stale_ones_are_listed() {
+        let catalog = Catalog::from_functions([function("SUM", "M1"), function("COT", "M5")]);
+        let results = [case(
+            SUITE,
+            vec![
+                cell("A1", Some("SUM(1)"), Verdict::NumericMismatch),
+                cell("A2", Some("SUM(2)"), Verdict::NumericMismatch),
+                cell("A3", Some("COT(1)"), Verdict::NumericMismatch),
+                cell("A4", Some("SUM(4)"), Verdict::Pass),
+            ],
+        )];
+        let mut s = summarize(&catalog, &results).expect("suite ran");
+        let exceptions = ExitExceptions::parse(
+            "ironcalc-calc/a!S!A1\tM2\t0074\tT-1\n\
+             ironcalc-calc/a!S!A2\tM5\t0085\tT-1\n\
+             ironcalc-calc/a!S!A3\tM5\t0085\tT-1\n\
+             ironcalc-calc/a!S!A4\tM5\t0085\tT-1\n",
+        )
+        .expect("parses");
+        s.apply_exceptions(&exceptions);
+        // A2's exception is from M5, so the M2 row keeps it.
+        let m2 = row(&s, "M2");
+        assert_eq!(m2.failing.len(), 2);
+        assert_eq!(m2.excepted, vec!["ironcalc-calc/a!S!A1".to_string()]);
+        assert_eq!(row(&s, "M5").excepted.len(), 3);
+        assert_eq!(row(&s, "M9").excepted.len(), 3);
+        // A4 passes: its exception is stale, and nothing fails.
+        assert_eq!(s.stale_exceptions, vec!["ironcalc-calc/a!S!A4".to_string()]);
+        let mut md = String::new();
+        write_markdown(Some(&s), &mut md);
+        assert!(md.contains("| M2 | 3 | 1 | 0 | 2 | 1 |"), "{md}");
+        assert!(md.contains("| M5 | 4 | 1 | 0 | 3 | 0 |"), "{md}");
+        assert!(md.contains("Stale exit exceptions"));
+        assert!(md.contains("- `ironcalc-calc/a!S!A4`"));
     }
 }
