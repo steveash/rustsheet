@@ -80,9 +80,13 @@ IM* functions.
   `quality/`. The count moves in most function PRs, and each change under `quality/` needs a
   decision record. A full `rustsheet-eval check` (`make eval-check`) holds the count to the lock;
   `update-baseline` (`make eval-baseline`) records drops, and rises that new cases account for.
-  The lock is 1,784: the in-scope visibly-off cells of the vendored gated suites (probes 1,207,
-  ironcalc-calc 323, gen-m5 178, gen-m10 67, fixtures 9). It was 1,787 until the merge of `main`
-  brought in three gen-m5 fixes. The lock read/write code shared with
+  The lock is 1,825: the in-scope visibly-off cells of the vendored gated suites (probes 1,248,
+  ironcalc-calc 323, gen-m5 178, gen-m10 67, fixtures 9). Merging `main` changed it twice: three
+  gen-m5 fixes took it from 1,787 to 1,784, then T-2115 (#1327) added 41 visibly-off probe cells
+  (SHEETS and INFO, owned by T-2181 and T-2190) and took it to 1,825. Those cases were already in
+  `main`'s baseline, so `update-baseline` could not count them as new coverage. The rise was
+  recorded once with `--allow-regressions` (decision 0088, "Bootstrap"); every baseline was
+  unchanged, with 0 regressions. The lock read/write code shared with
   the evidence floor moved to `lock_file.rs`.
 - **Hand counts**: I ran this harness on the engine and suites at 35a5e71, the commit
   decision 0083 measured. The vendored suites (no poi or corpus-bench) give 4,581 visibly-off

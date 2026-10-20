@@ -39,6 +39,12 @@
     `--allow-regressions`, which needs its own decision record (or decision 0083's standing
     allowance, whose condition 2 already forbids new visibly-off cells). Like the baselines, the
     file is never hand-edited.
+- **Bootstrap:** the first lock was taken on T-0061's branch. Probe PRs that merged before it
+  added visibly-off cells through their own baselines, which the lock could not see. For those
+  cells, T-0061 records the merged count once with `update-baseline --allow-regressions`, and only
+  when every baseline reports 0 regressions. The lock went from 1,784 to 1,825, all of it
+  T-2115's SHEETS and INFO cases. After T-0061 merges, a PR that adds cases records them with
+  its own baseline update, so this does not recur.
 - **Consequences:**
   - A PR that fixes visibly-off cells commits the lower lock with its baseline update, so the
     lock carries no slack.
