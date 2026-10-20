@@ -66,4 +66,4 @@ and 257/257 web (probes/atan2-quadrants 120, atan2-error-edges 17, asin-atan-sig
 web value and names D14 and D26 as an Excel-vs-Excel conflict. Its M14 item is T-1075 item 14, and docs/milestones.md adds the
 two cells to M5's ironcalc-calc exception. probes/atan2-kept-subnormal (16 cells) was not
 scored by the fit: its inputs are formulas of subnormal differences. The engine passes
-the engine passes all 16. Eval delta: none (no engine change; the two baseline lines stay).
+all 16. Eval delta: none (no engine change; the two baseline lines stay).
