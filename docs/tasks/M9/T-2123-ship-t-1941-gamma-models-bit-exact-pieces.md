@@ -3,7 +3,7 @@ id: T-2123
 title: "Ship T-1941 gamma models: bit-exact pieces plus best kernels"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -72,17 +72,27 @@ Expected parity (HANDOFF2 §3), as fractions of points matching Excel to the bit
 - All misses are a few ulp (≤ 7), invisible at 15 significant digits.
 
 ## Acceptance criteria
-- [ ] LN matches the T-1941 LN runs (114,687 of 114,688 committed points in `kmyst-gam-*` column C) and adds no
-      baseline lines elsewhere.
-- [ ] GAMMALN x ≥ 8 and GAMMA x ≥ 10 match the committed T-1941 runs at the rates above. Integer, half-integer
-      and reflection paths are bit-exact on `t1042-gamma-*` and `kmyst-gam-h10x`.
-- [ ] The open kernels reproduce the research models' exact rates (to ±0.5%) on the committed runs.
-- [ ] `eval/baseline/` known failures only shrink (`make eval-baseline` refuses regressions); the GAMMA /
-      GAMMALN lines from T-0973 / T-1529 are reduced or explained.
-- [ ] No panics or unbounded loops on any f64 input (recurrence loops bounded; NaN/inf handled).
-- [ ] `make check` green; reviewers approve.
+Split by size (work-loop: one S/M PR each, in order LN → GAMMALN → GAMMA). This task ships LN; GAMMALN is T-2128 and
+GAMMA is T-2129, each with the matching criteria below.
+- [x] LN matches the T-1941 LN runs and adds no baseline lines elsewhere.
+- [x] No panics or unbounded loops on any f64 input (NaN/inf handled).
+- [x] `make check` green; reviewers approve.
+- GAMMALN x ≥ 8, the GAMMALN kernels and their baseline lines: T-2128.
+- GAMMA x ≥ 10, the integer, half-integer and reflection paths, K1 and the GAMMA baseline lines: T-2129.
 
 ## Out of scope
 - Finding the remaining coefficient bits (T-2122).
 - GAMMA.DIST and the incomplete gamma / beta kernels (T-0971, T-0970), which should switch to these routines
   in their own tasks.
+
+## Outcome
+LN is Excel's x87 `FLDLN2; FYL2X`, RN53(RN64(RN64(ln 2)·log2 x)): `x87_log10.rs` `excel_ln` shares `excel_log10`'s FYL2X
+evaluation (ln x in double-double times RN64(ln 2)/ln 2, then the two roundings), and the worksheet LN uses it. On the
+full T-1941 LN data (every `=LN(A<row>)` cell of the committed `kmyst-gam-*` runs, 2,887,551 cells, 2,677,612 distinct x)
+it gives Excel's bits on 2,887,521; the 30 misses are one ulp each and are the research Python model's own misses
+(`lnmodels.py`), FYL2X near-ties Excel rounds the other way. The handoff's 114,688-point set is one run of these. A
+committed fixture (`ln_kernel.fixture`: 4,000 random distinct x plus the 30 misses, with Excel's and the Python model's
+bits) pins the engine to the model on every point; `ln_matches_the_t1941_runs` (ignored) reruns the full set from
+`RUSTSHEET_T1941_ROWS` (`crate::test::kernel_rows`). glibc's log, used before, matches 2,674,450 of the distinct x. Eval:
+no change in any suite (0 fixes, 0 regressions). numbers.md "LN is FLDLN2 then FYL2X" records the rule. GAMMALN (T-2128)
+and GAMMA (T-2129) follow, using `excel_ln` for their internal LN.

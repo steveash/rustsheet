@@ -888,6 +888,23 @@ roundings; 30,000 random inputs equal a decimal reference of the model), used by
 Status: VERIFIED (excel-graph, and desktop for the 13 workbook inputs)
 Tasks: T-2004
 
+## LN is FLDLN2 then FYL2X
+Rule: `LN(x)` is the x87 `FLDLN2; FYL2X` result stored to a double, `RN53(RN64(y * log2 x))` with `y = RN64(ln 2)` =
+`0xB17217F7D1CF79AC * 2^-64`: the same two-rounding evaluation as LOG10 above, with the other constant. It is not glibc's `log`
+and not always the correctly rounded ln: `LN(1234.5617000014759)` is 7.11847128728637 and `LN(2.7182911000046204)`
+1.000003410805188 in Excel, one ulp from the model, and the model in turn differs from the correctly rounded ln elsewhere.
+Evidence: the T-1941 research runs (excel-graph, 2026-10-19/20; `kmyst-gam-*` on branch
+`agent/research/T-1941-crack-gammaln-gamma-ln`, every cell whose formula is `=LN(A<row>)`): 2,887,551 cells, 2,677,612
+distinct x from 1.37e-9 to 7.8e299. The model (`docs/research/t1941/lnmodels.py`) matches 2,887,521; the 30 misses are each
+one ulp, at points where Excel's FYL2X rounds the other way (the research's first 114,688-cell run had one, x =
+0.612354100000274). glibc's `log` matches 2,674,450 of the 2,677,612 distinct x (the engine used it before).
+Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
+sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,
+`ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.
+GAMMA and GAMMALN still use the platform ln until their own T-2123 follow-ups.
+Status: VERIFIED (excel-graph)
+Tasks: T-2123, T-1941
+
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
 engine forms, rounded faithfully (within 1 ulp of the exact `X^fl(1/n)`) but by no known model: it
