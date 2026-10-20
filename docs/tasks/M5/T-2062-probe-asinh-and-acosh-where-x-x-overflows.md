@@ -3,7 +3,7 @@ id: T-2062
 title: "Probe ASINH and ACOSH where x*x overflows (|x| above about 1.3E154)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
