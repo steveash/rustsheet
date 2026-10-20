@@ -34,7 +34,7 @@ CI on `main` is green at 380ffed2. No CI run on `main` failed since the last sna
 - gen-m2: 100%.
 - M0–M2 probes (decision 0051): 427 cases, 12,147 cells, 12,143 bit-exact, 4 deviations, **0 known failures** (was 45). The frozen m1-probes list is also at 0.
 - ironcalc-calc cells using only M1/M2 functions: 4,245 scored, 4,244 bit-exact. The 1 failing cell is `LOGICAL/IF_ARRAY.xlsx!Sheet1!C11`, the decision 0074 exception (T-1075, M14). T-1970 fixed the defined-name scope, so POWER's `inside_a_lambda!C3` no longer counts as M2.
-- One criteria/aggregate walk: met. Duplication is 3,294 lines (ratchet locked 3,318 → 3,294 in this PR), 64% below the fork's 9,153.
+- One criteria/aggregate walk: met. Duplication is 3,268 lines on current `main` (T-1775 locked it), 64% below the fork's 9,153.
 
 The M2 todo tasks that are left (T-1939, T-1943, T-1964, T-1969, T-1981, T-2008, T-2018, T-2100, and perf T-1599) are follow-up probes, not exit gaps.
 
@@ -45,7 +45,7 @@ Where M5's exit stands (the planner checked this run):
 - Catalog coverage: every function is catalogued. INFO and SHEETS have no Excel cells because the oracle canary refuses them. Filed T-2112 (harness: a coverage report), T-2113 (harness: narrow the canary) and T-2115 (research: probe INFO/SHEETS).
 - T-2116 (research, opus) is a decision record on how M5's exit is measured. It covers the cumulative scope, whether decision 0074 extends to IF_ARRAY C4/E4, and moving T-0915/T-0917/T-0929/T-1944 to M5.
 
-Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 3,294 (ratchet 3,318 → 3,294 in this PR) · oversized files 11 (= last run) · evidence floor: 3 in-scope functions under 20 Excel cells (= lock).
+Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 3,268 (ratchet 3,318 → 3,268, locked by T-1775 during this run) · oversized files 11 (= last run) · evidence floor: 3 in-scope functions under 20 Excel cells (= lock).
 
 Since the 2026-10-19 snapshot (steward PR #1160), 109 commits landed on `main` through 380ffed2, touching 104 task ids. None was reverted.
 - All 109 came through PRs and were squash-merged on GitHub. 15 have no `(#n)` in the title; I checked them, for example T-1799 is #1257. No commit was pushed straight to `main` this time.
