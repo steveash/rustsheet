@@ -24,7 +24,6 @@ Establish with oracle evidence what Excel's EXP does at its range edges, and mak
   `(x)=0` companions, because the saved file holds a kept subnormal as 0 (decisions 0042, 0089).
 - Use the `excel-probe` skill. Put a dense grid of consecutive doubles, as stored inputs, around each edge.
 
-
 ## Acceptance criteria
 - [ ] A probes-numeric case with an excel-graph oracle covers both edges and `EXP(710)`, and every Excel quirk
   found is recorded in numbers.md.
