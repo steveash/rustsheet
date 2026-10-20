@@ -232,6 +232,15 @@ keeps its meaning. `run` and `check` refuse a malformed line or a repeated cell;
 in no row is listed under "Stale exit exceptions" without failing the run. The file never touches
 eval/baseline or the gate.
 
+## Catalog coverage per milestone
+`crates/rustsheet-eval/src/catalog_coverage.rs` (T-2112, T-2175) adds a "Catalog coverage per milestone"
+section to report.md (report.json: `catalog_coverage`), one row per function milestone. A function is
+`covered` by the criterion of decision 0085 item 4: it has (a) the evidence floor of Excel cells and
+(b) a scored Excel-backed cell in a generated suite of the milestone, or it is volatile or
+`oracle: none` and has (a) alone. `both` keeps its meaning (a and b); `covered` adds the exempt
+functions, which report.md lists apart as "Mk exempt from b". The row is at 100% when `covered` equals
+`functions`. The table is an exit measure, not a gate; M6 inherits the rule.
+
 ## CLI
 ```
 rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check | update-baseline [--allow-regressions]
