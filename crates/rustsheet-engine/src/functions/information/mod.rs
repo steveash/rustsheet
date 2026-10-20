@@ -159,7 +159,7 @@ impl Model {
             }
             // A lifted OFFSET is an array of references, not a reference: `ISREF(OFFSET(A1,{0;1},0))`
             // is FALSE (probes/reference-lift-elements F15).
-            if matches!(self.offset_reference(args, cell), RefArg::Grid(_)) {
+            if self.offset_lifts(args, cell) {
                 return false;
             }
         }

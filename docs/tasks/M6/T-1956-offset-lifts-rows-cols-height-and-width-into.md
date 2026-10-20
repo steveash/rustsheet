@@ -37,4 +37,7 @@ element (`index_grid`), ROWS/COLUMNS count the value view, ISREF is FALSE; every
 value view (`into_ranges_or_value`) until T-2063/T-2064. Not done here: SUM's top-left rule (G12, H12 → T-2063) and
 the LET/IF/CHOOSE pass-through with its held-grid budget DEVIATION (→ T-2078, filed). Eval delta: probes 73 known
 failures fixed (reference-lift-elements, lookup-argument-modes F20:H21 and T-1955's consumer probes), gen-m7
-cb748b6a9b81fbb7 A28 passes, 0 regressions.
+cb748b6a9b81fbb7 A28 passes, 0 regressions. Scalar OFFSET keeps its arguments inline (`ArgBuf`), so it allocates
+nothing: `cargo bench -p rustsheet --bench lift -- OFFSET`, 100,000 scalar `=SUM(OFFSET(A{r},0,0,1,2))` cells, median
+50.8 ms on main and 48.0 ms here (11 runs each, same machine); the lifted `=ROWS(OFFSET(A1,B1:B100000,0))` takes
+19.0 ms (main gave a wrong 1 in 6.3 ms).

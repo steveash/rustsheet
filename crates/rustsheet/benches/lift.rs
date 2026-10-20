@@ -31,6 +31,10 @@
 //!   (`=PMT(A{r}/100,10,100)` in each C{r}; C1 is read), and RATE at its work cap, a
 //!   non-converging `=SUM(RATE(A1:A100000,0,100,1))` (50 Newton steps an element).
 //!
+//! - OFFSET (T-1956, SPEC-0014): 100,000 scalar calls, one per row (`=SUM(OFFSET(A{r},0,0,1,2))`,
+//!   the unlifted path that must stay allocation-free), and one OFFSET lifted over 100,000 rows into
+//!   an array of references.
+//!
 //! - WORKDAY and NETWORKDAYS (T-1236): 20,000 scalar WORKDAY calls through MAP (the path a
 //!   filled-down column takes, comparable with main), and WORKDAY and NETWORKDAYS lifted over a
 //!   100,000-element array with 20 holidays, prepared once per call.
@@ -122,6 +126,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             "PMT, unlifted, one formula per row",
             100_000,
             "=PMT(A{r}/100,10,100)",
+        ),
+        (
+            "OFFSET, unlifted, one formula per row",
+            100_000,
+            "=SUM(OFFSET(A{r},0,0,1,2))",
+        ),
+        (
+            "OFFSET, lifted into an array of references",
+            100_000,
+            "=ROWS(OFFSET(A1,B1:B100000,0))",
         ),
         (
             "RATE, lifted, non-converging at the Newton cap",

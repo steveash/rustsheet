@@ -6,16 +6,17 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::Node;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::LiftedArg;
+use crate::functions::lift::{ArgBuf, LiftedArg};
 use crate::model::Model;
 use crate::reference_operators::RefArg;
 
-/// Whether an OFFSET argument's value lifts the call: an array, or a range of more than one
-/// cell (a one-cell range is its value, as before).
+/// Whether an OFFSET argument's value lifts the call: an array or a range of more than one
+/// cell. A one-cell range and a 1x1 array are their value, as before (whether Excel lifts
+/// `OFFSET(A1,{1},0)` is unprobed; `Model::lift_references` keeps a 1x1 broadcast scalar too).
 fn lifts(value: &CalcResult) -> bool {
     match value {
         CalcResult::Range { left, right } => left != right,
-        CalcResult::Array(_) => true,
+        CalcResult::Array(rows) => rows.len() > 1 || rows.first().is_some_and(|row| row.len() > 1),
         _ => false,
     }
 }
@@ -64,19 +65,13 @@ impl Model {
             Ok(reference) => reference,
             Err(error) => return RefArg::Value(error),
         };
-        // A missing or empty height/width keeps the reference's size.
-        let values: Vec<CalcResult> = args[1..]
-            .iter()
-            .map(|arg| match arg {
-                Node::EmptyArgKind => CalcResult::EmptyArg,
-                arg => self.evaluate_node_in_context(arg, cell),
-            })
-            .collect();
-        if !values.iter().any(lifts) {
-            return RefArg::from(self.offset_of(&reference, &values, cell));
+        let mut values = self.offset_values(args, cell);
+        if !values.as_slice().iter().any(lifts) {
+            return RefArg::from(self.offset_of(&reference, values.as_slice(), cell));
         }
-        let mut lifted = Vec::with_capacity(values.len());
-        for value in values {
+        let mut lifted = Vec::with_capacity(values.as_slice().len());
+        for value in values.as_mut_slice() {
+            let value = std::mem::replace(value, CalcResult::EmptyArg);
             if lifts(&value) {
                 match LiftedArg::read(self, value, cell) {
                     Ok(arg) => lifted.push(arg),
@@ -91,6 +86,41 @@ impl Model {
         })
     }
 
+    /// The values of rows, cols, height and width, held inline (no heap allocation for the
+    /// scalar call, SPEC-0014 "Producers"); a written empty argument is `EmptyArg`, so a missing
+    /// or empty height/width keeps the reference's size.
+    fn offset_values(&mut self, args: &[Node], cell: CellReferenceIndex) -> ArgBuf<CalcResult> {
+        let rest = args.get(1..).unwrap_or_default();
+        let mut values = ArgBuf::filled(rest.len(), || CalcResult::EmptyArg);
+        for (slot, arg) in values.as_mut_slice().iter_mut().zip(rest) {
+            if !matches!(arg, Node::EmptyArgKind) {
+                *slot = self.evaluate_node_in_context(arg, cell);
+            }
+        }
+        values
+    }
+
+    /// Whether an OFFSET call lifts into an array of references, its own arguments evaluated
+    /// but no element computed: ISREF's question (probes/reference-lift-elements F15).
+    pub(crate) fn offset_lifts(&mut self, args: &[Node], cell: CellReferenceIndex) -> bool {
+        self.offset_values(args, cell).as_slice().iter().any(lifts)
+    }
+
+    /// One of OFFSET's numbers, read by reference: only a reference or an array is cast by value
+    /// (dereferenced as `cast_to_number` does), so a text argument is never copied.
+    fn offset_number(
+        &mut self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        match value {
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                self.cast_to_number(value.clone(), cell)
+            }
+            value => self.cast_number_ref(value, cell),
+        }
+    }
+
     /// The scalar OFFSET of `reference` by the values of rows, cols and the optional height and
     /// width (`EmptyArg` when missing): the moved reference, or the first error in that order.
     fn offset_of(
@@ -101,8 +131,7 @@ impl Model {
     ) -> CalcResult {
         // Rows and columns truncate toward zero.
         let count = |model: &mut Self, value: Option<&CalcResult>| {
-            let number =
-                model.cast_to_number(value.cloned().unwrap_or(CalcResult::EmptyArg), cell)?;
+            let number = model.offset_number(value.unwrap_or(&CalcResult::EmptyArg), cell)?;
             Ok::<i32, CalcResult>(number.trunc() as i32)
         };
         let rows = match count(self, values.first()) {
@@ -184,7 +213,7 @@ impl Model {
         match value {
             None | Some(CalcResult::EmptyArg) => Ok(Some(default)),
             Some(value) => {
-                let c = self.cast_to_number(value.clone(), cell)?;
+                let c = self.offset_number(value, cell)?;
                 Ok(if c > 0.0 {
                     Some((c - 1.0).floor() as i32)
                 } else if c < 0.0 {
