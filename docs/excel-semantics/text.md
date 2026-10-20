@@ -818,9 +818,9 @@ Implemented in: `MAX_REPLACED_UNITS` / `over_cap` in functions/text/regex_functi
 Status: VERIFIED (excel-graph)
 Tasks: T-1817
 
-## ARRAYTOTEXT: an error in the array argument wins over an invalid format (T-2178)
+## ARRAYTOTEXT: an error in the array argument wins over an invalid format (T-2181)
 Rule: `ARRAYTOTEXT(<error>, 2)` is the array argument's error, not the `#VALUE!` of the invalid format 2: `ARRAYTOTEXT(SINH(134217727),2)` is `#NUM!`. Whether this holds for every error kind and for a non-scalar array is unprobed.
 Ours: `#VALUE!` (the format is checked first).
 Evidence: gen-m5/4febabc66cfdf9a1 Calc!A156 (excel-graph, 2026-10-20, T-2114).
-Status: VERIFIED (excel-graph); not implemented (T-2178).
-Tasks: T-2169, T-2178
+Status: VERIFIED (excel-graph); not implemented (T-2181).
+Tasks: T-2169, T-2181
