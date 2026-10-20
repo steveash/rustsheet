@@ -1,0 +1,72 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Percent number text rounded once across VALUE, 0+ coercion and typed cell input, incl. e-notation and subnormal-range text: B VALUE, C 0+, D typed value, E ISNUMBER(typed), F typed=VALUE (T-2136).",
+ "tags": [
+  "M2",
+  "coercion",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": {
+     "entered": "23.123%"
+    },
+    "B1": "=VALUE(\"23.123%\")",
+    "C1": "=0+\"23.123%\"",
+    "D1": "=A1",
+    "E1": "=ISNUMBER(A1)",
+    "F1": "=D1=B1",
+    "A2": {
+     "entered": "-23.123%"
+    },
+    "B2": "=VALUE(\"-23.123%\")",
+    "C2": "=0+\"-23.123%\"",
+    "D2": "=A2",
+    "E2": "=ISNUMBER(A2)",
+    "F2": "=D2=B2",
+    "A3": {
+     "entered": "0.07%"
+    },
+    "B3": "=VALUE(\"0.07%\")",
+    "C3": "=0+\"0.07%\"",
+    "D3": "=A3",
+    "E3": "=ISNUMBER(A3)",
+    "F3": "=D3=B3",
+    "A4": {
+     "entered": "1.005%"
+    },
+    "B4": "=VALUE(\"1.005%\")",
+    "C4": "=0+\"1.005%\"",
+    "D4": "=A4",
+    "E4": "=ISNUMBER(A4)",
+    "F4": "=D4=B4",
+    "A5": {
+     "entered": "12345.6789012345678%"
+    },
+    "B5": "=VALUE(\"12345.6789012345678%\")",
+    "C5": "=0+\"12345.6789012345678%\"",
+    "D5": "=A5",
+    "E5": "=ISNUMBER(A5)",
+    "F5": "=D5=B5",
+    "A6": {
+     "entered": "23e-12%"
+    },
+    "B6": "=VALUE(\"23e-12%\")",
+    "C6": "=0+\"23e-12%\"",
+    "D6": "=A6",
+    "E6": "=ISNUMBER(A6)",
+    "F6": "=D6=B6",
+    "A7": {
+     "entered": "1.5E-300%"
+    },
+    "B7": "=VALUE(\"1.5E-300%\")",
+    "C7": "=0+\"1.5E-300%\"",
+    "D7": "=A7",
+    "E7": "=ISNUMBER(A7)",
+    "F7": "=D7=B7"
+   }
+  }
+ ]
+}

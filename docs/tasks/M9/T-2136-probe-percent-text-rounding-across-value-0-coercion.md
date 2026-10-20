@@ -3,7 +3,7 @@ id: T-2136
 title: "Probe percent text rounding across VALUE, 0+ coercion and typed input"
 milestone: M9
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -27,3 +27,6 @@ text shifted two places. Only `VALUE("23.123%")` is evidenced (ironcalc-calc T_V
 
 ## Out of scope
 - The formula `%` operator (`=23.123%`).
+
+## Outcome
+Added probe `percent-text-paths` (7 texts x VALUE, `0+`, typed input, ISNUMBER, typed=VALUE), oracle-filled via excel-graph; all 35 cells pass with no engine change. Every path rounds once, including e-notation and 1.5E-300%. coercion.md entry now VERIFIED. Eval delta: probes +35 cells, 0 failures.
