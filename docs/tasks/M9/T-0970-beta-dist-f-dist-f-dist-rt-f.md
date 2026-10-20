@@ -88,7 +88,9 @@ F_DIST F2, H2, H3, F_TEST F1, F3) and probes 1669 -> 1666 (stat-argument-modes H
 H226), with no regressions. F_DIST F3 goes from 28 ulp to 1 ulp, F_TEST D1 from 13 to 1 and K1
 from 16 to 3.
 
-probes-numeric (gate = false), against a main build: 72 more bit-exact cells.
+probes-numeric (gate = false), against a main build: 72 cells gain bit-exact and 3 lose it, a net
+gain of 69. The two tail rules behind this are PARTIAL: t1049-fdistrt A2 and A8 contradict them,
+see statistics.md.
 
 | case | main | branch |
 |---|---|---|

@@ -1342,22 +1342,37 @@ I_w(d2/2, d1/2) with w = d2/(d2 + d1*x), not 1 - F.DIST. With the T-1744 best co
 (`F_DIST.xlsx` H2, H3) are bit-exact, where 1 - cdf misses by 6 and 13 ulp; F.TEST's two tails
 the same way make `F.TEST({1,2,3,4},B1:B4)` and `F.TEST(A1:A3,{2;3;7})` (`F_TEST.xlsx` F1, F3)
 bit-exact.
-Two more rules, from the non-gated probes-numeric suite:
-- **The complement is exact.** The incomplete beta takes y = d1*x/(d1*x+d2) and its complement
-  d2/(d1*x+d2), both formed directly, as TOMS 708 `bratio(a,b,x,y)` does, instead of 1 - w.
-  `FDIST(1E-6,1,1)` and `F.DIST.RT(1E-6,1,1)` are Excel's correctly rounded 0.9993633804398389
-  (m9-legacy-fdist A11, A12). Cephes `fdtrc`'s form, w and then incbet's internal 1 - w, misses
-  by 2E-14.
-- **Both tails come from one evaluation.** The upper tail is the complement of that evaluation
-  where it is reflected, and it is computed directly where it is not.
+Two more rules from the non-gated probes-numeric suite. Both are PARTIAL: oracle cells support
+them and oracle cells contradict them.
+- **The complement is exact (PARTIAL).** The incomplete beta takes y = d1*x/(d1*x+d2) and its
+  complement d2/(d1*x+d2), both formed directly, as TOMS 708 `bratio(a,b,x,y)` does, instead of
+  1 - w.
+  - Supporting: `FDIST(1E-6,1,1)` and `F.DIST.RT(1E-6,1,1)` are Excel's correctly rounded
+    0.9993633804398389 (m9-legacy-fdist A11, A12). Cephes `fdtrc`'s form, w and then incbet's
+    internal 1 - w, misses by 2E-14.
+  - Contradicting: t1049-fdistrt A2 `F.DIST.RT(0.5,3,7)` = 0.6940363875688136 and A8
+    `F.DIST.RT(2.5,3,7)` = 0.14350945627893918 fit the w-then-1-w form bit for bit and are 2 ulp
+    off with the exact complement. At (0.5,3,7), 1 - w = 0.17647058823529416 while
+    d1x/(d1x+d2) = 0.17647058823529413.
+  - A lead for d1 = d2 = 1: Excel's FDIST(x,1,1) cells match the arctangent closed forms.
+    - 1 - (2/pi) atan(sqrt x) at x = 0.5 and 1E-6.
+    - (2/pi) atan(1/sqrt x) at x = 3.5, 10 and 100.
+    - 1 - (2/pi) asin(sqrt(x/(1+x))) at x = 1.
+
+    So an a = b = 1/2 closed form reflected at the mean may explain A11 and A12 without this rule
+    (UNVERIFIED).
+- **Both tails come from one evaluation (PARTIAL).** The upper tail is the complement of that
+  evaluation where it is reflected, and it is computed directly where it is not.
   `F.DIST.RT(1,3,7)+F.DIST(1,3,7,TRUE)` is exactly 1 (t1049-fdistrt A27, x = 1 at the mean);
-  two separate evaluations miss by 6E-16.
+  two separate evaluations miss by 6E-16. The w-then-1-w form explains A27 as well: 1 - w =
+  0.30000000000000004, just past the mean 0.3, reflects.
 - **The closed forms are the exception.** They read the upper tail from w itself:
   `F.DIST.RT(0.7,4,2.4)` = 1 - exp(2 ln(1-w)) (H3), 2 ulp off with the exact complement.
 
-With these, the F and BETA probes-numeric cases gain 72 bit-exact cells over statrs. Three cells
-that statrs had exact are now 1 ulp off: `FDIST(100,1,1)` and `F.DIST.RT(100,1,1)`
-(m9-legacy-fdist A61, A62: 0.06345103486110715) and t1049-fdist A23 (0.979990011905381).
+The engine follows both PARTIAL rules. Against statrs, the probes-numeric F and BETA cases gain
+72 bit-exact cells and lose 3, a net gain of 69. The three lost cells are now 1 ulp off:
+`FDIST(100,1,1)` and `F.DIST.RT(100,1,1)` (m9-legacy-fdist A61, A62: 0.06345103486110715) and
+t1049-fdist A23 (0.979990011905381).
 
 Densities (VERIFIED on the cells named; the general form UNVERIFIED):
 - BETA.DIST(x,a,b,FALSE) as pow(t,a-1)*pow(1-t,b-1)*Gamma(a+b)/(Gamma(a)*Gamma(b))/(B-A), musl
@@ -1389,8 +1404,9 @@ statrs' inversion or with the inversion run on the new cdf. Under statrs they pa
 with both functions wrong in the same way. Excel's own pair lands on x exactly at H2 (3) and H14
 (0.7) but not at H23 (-0.23399999999999987) or H42 (0.23399999999999999), as T-1745 found. The
 switch waits for T-2108.
-Status: VERIFIED (F.DIST.RT and F.TEST upper tails, the densities on the cells named); the cdf
-algorithm stays UNVERIFIED (T-1744).
+Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
+densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
+stays UNVERIFIED (T-1744).
 Tasks: T-0970, T-2108, T-1744, T-1745
 
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
