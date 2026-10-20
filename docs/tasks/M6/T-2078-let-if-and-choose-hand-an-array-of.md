@@ -23,6 +23,9 @@ OFFSET's value view (`bind_argument` in functions/logical/let.rs goes through `e
 grid is lost. Design: `Binding::Grid(RefGrid)` (an `Arc` clone, variable_stack.rs), read back by
 `variable_reference`; IF and CHOOSE pick the arm in reference form (`if_impl` with `IfBranchMode::Aggregate`,
 `choose_impl`) and return its `RefArg::Grid`.
+T-2063 note: `SUM(IF(TRUE,r))` and `SUM(CHOOSE(1,r))` (b1c E69, E73) already pass through the aggregate walker's
+reference reading. SUMPRODUCT reads a grid only from a bare OFFSET (`Model::evaluate_value_or_grid`, util.rs):
+route its IF, CHOOSE and LET forms there too once they pass grids on (unprobed; Excel gives 0 by rule 7's reading).
 
 ## Acceptance criteria
 - [ ] The LET, IF and CHOOSE cells of rule 7 that need no aggregate walker pass (INDEX, ROWS/COLUMNS readers).

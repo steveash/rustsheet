@@ -4,7 +4,7 @@ use crate::arithmetic::power;
 use crate::functions::lift::{num_error, value_error};
 use crate::functions::math_and_trigonometry::excel_sin_cos;
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, ItemSource,
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
 };
 use crate::limits::too_many_visits;
 use crate::reference_operators::RefArg;
@@ -245,6 +245,7 @@ const COMPLEX_FOLD_POLICY: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::PickedKeepingBlanks,
     errors: ErrorRule::First,
     skip_empty_args: false,
+    grids: GridReading::Values,
 };
 
 /// The cells of the rectangle `rows` x `columns`, 0 when either is not positive.
