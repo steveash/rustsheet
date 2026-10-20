@@ -970,3 +970,61 @@ data reach only 0.71-0.83. W2 therefore leans to a joint late/cross-N/D displace
 coefficients, after single-coefficient late scans came out null. The two readings must be reconciled: an early-only
 synthetic truth must reproduce real's per-class `ties.py` disagreement rates, and real's 0.71-0.83 meter ceiling, before
 either explanation is accepted.
+
+### 12.7 Early-only versus joint null displacements: neither reproduces the real class pattern (reviewer 3)
+
+The question: W2 observed that function-preserving early-only displacements of p0-p4/q0-q3 at 10-100 ulps are recovered
+by the offset meter to 0.92-0.96 on every run, while real data stall at 0.71-0.83. Does that argue for a joint
+late/cross-N/D displacement instead of "early coefficients"?
+
+The test (`review3/ties_truth.py`):
+- It builds function-null integer moves from the SVD of the relative-function Jacobian of (x-2)N/D in coefficient ulps
+  (600 points on [2.01,3]).
+- It runs the position-class table of 12.6 on synthetic stored-Horner truths displaced along those moves, scored against
+  grid_a, next to the real data.
+- Each entry is the agreement with round-to-nearest-even per class (tie, 1/4, 3/4, exact), on decided points.
+
+| truth | moves (ulps) | exact vs grid_a (r112/r901/r113/r703/r704) | N classes tie, 1/4, 3/4, 0 (r112; r901) | D classes (r112; r901) |
+|---|---|---|---|---|
+| REAL | | 0.77/0.78/0.73/0.74/0.76 | 0.45 0.61 0.84 0.98; 0.35 0.65 0.92 0.77 | 0.23 0.84 0.86 0.86; 0.48 0.77 0.62 0.78 |
+| early-only, 2 softest, scale 30 | p0+17 p1+28 p2+2 q0+30 q1+6 q2+1 | 0.90/0.90/0.88/0.89/0.87 | 0.81 0.81 0.97 0.98; 0.78 0.74 0.96 0.95 | 0.54 0.62 0.96 1.00; 0.51 0.57 0.96 1.00 |
+| early-only, 2 softest, scale 100 | p0+58 p1+92 p2+6 q0+100 q1+20 q2+2 | 0.74/0.75/0.69/0.72/0.67 | 0.51 0.44 0.92 0.89; 0.53 0.32 0.92 0.74 | 0.54 0.10 0.89 0.54; 0.50 0.10 0.93 0.22 |
+| joint, 4 softest, scale 30, seed 1 | p0-11 p1-3 p6-30 p7-2 p8+7 p9+23 q0-3 q1-1 q6-3 q7-13 q8-26 | 0.64/0.27/0.60/0.29/0.70 | 0.96 0.94 0.97 0.94; 0.36 1.00 0.14 1.00 | 0.85 0.82 1.00 0.78; 0.59 0.47 0.98 0.38 |
+| joint, 4 softest, scale 30, seed 3 | p0-30 p1-23 p2-3 p6-2 p7+1 p8-1 p9-12 q0-23 q1-7 q2-1 q7+5 q8+15 | 0.87/0.89/0.85/0.87/0.84 | 0.75 0.97 0.74 0.97; 0.69 0.97 0.69 0.97 | 0.45 0.96 0.71 0.97; 0.48 0.95 0.52 0.97 |
+| joint, scale 100 | (p6-100, q8-86, ...) | 0.27-0.46 | near chance everywhere | near chance everywhere |
+
+Two families are omitted: early-only directions that exclude the near-invisible p0, and the third-softest early
+direction. Neither is function-preserving at 30 ulps (0.27-0.48 exact, chance everywhere).
+
+Reading:
+1. **Early-only null displacements give a one-sided pattern.** At the scale that matches the real exact rate
+   (100 ulps):
+   - one quarter class is far off (N 1/4 0.30-0.44, D 1/4 0.10-0.12) while the other is near-perfect (3/4 0.89-0.93);
+   - the D exact class is far off (0.13-0.54).
+
+   That is the signature of a smooth pre-rounding offset at the hand-off, which is exactly what the offset meters
+   absorb. W2's 0.92-0.96 recovery of such truths is expected and says nothing about the real data.
+2. **Joint late/cross-N/D null displacements are erratic by run:** the same move scores 0.27 to 0.70 on different runs.
+   They give either near-perfect hand-off classes with the misses elsewhere (seed 1 at r112: N 0.94-0.97, D 0.78-1.00,
+   at 64% exact), or again a one-sided pattern (seed 3: 1/4 at 0.95-0.98, 3/4 at 0.38-0.74). Not the real pattern.
+3. **The real pattern is two-sided and symmetric:**
+   - both quarter classes are off by similar amounts;
+   - the exact classes are mostly right (N 0.66-0.98, D 0.78-0.93);
+   - the tie class is at or below chance. At r901/r113, N is at 0.30-0.35 while the true side of the unquantised product
+     scores 0.66-0.67; on the other runs both rules are at chance.
+
+   No smooth displacement of any coefficients, early or late, produces that. Point-wise +-1 flips of the stage-4/3 sums,
+   in both directions, on 10-30% of the points do, and on such a pattern every offset meter is blind (12.6, random-flip
+   control).
+4. **A two-sided point-wise pattern cannot come from coefficient differences inside grid_a's own head.**
+   - Every head constant sits on its sum's grid, so coefficient moves act smoothly at their own stage. They only turn
+     into flips downstream through the product roundings, with grid ratios that make them one-sided and small.
+   - The only two-sided source, the stage-1 product rounding set by p0's value, reaches s3 at the 0.3% level.
+   - So the honest answer is "neither": W2's control result does not establish a late/cross displacement, and 12.6's
+     "early coefficients" wording was also too strong.
+   - What the position-class data show is a two-sided, zero-mean, point-wise re-decision of the hand-off sums. Its only
+     correlate found so far is the parity-linked tie behaviour on r901/r113. That is consistent with an unquantised
+     stage-4 product there, which `meter_keep.py` shows is not the whole story (0.80-0.83 at best).
+5. **Caveat on the method:** a mismatch of +-1 ulp(y) caused elsewhere can be "decided" by an s4 neighbour by
+   coincidence. The joint seed-1 truth calibrates this: 36% misses from late stages leave the N classes at 0.94-0.97, so
+   the contamination is a few points, far below the real 8-39%.

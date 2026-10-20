@@ -31,3 +31,4 @@ The q2xx dense cases are 512-double clusters and are too short for sub-bin frequ
 | `meter_keep.py cases...` | the same meter on top of head models with the stage-4 (N) / stage-3 (D) products, or all head products, left unstored |
 | `latescan.py cases...` | each late coefficient moved in whole units of its stored sum's grid, m in [-6,6], scored by the (4,3)-pre meter's best rate per run |
 | `ties.py cases...` | direct test of how Excel resolves each position class (exact tie, 1/4, 3/4, 0) of the hand-off sums against ties-to-even and the true side of the unquantised product |
+| `ties_truth.py cases...` | (12.7) the same class table for synthetic truths displaced along function-null directions (early-only, joint), next to REAL |
