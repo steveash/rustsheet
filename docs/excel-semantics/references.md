@@ -1729,7 +1729,7 @@ index picks: `=N(CHOOSE(1,Z1,{2;3}))` and `=N(CHOOSE(1,Z1:Z2,{2;3}))` are 7, `=N
 `=T(CHOOSE(2,Y1,{"a";"b"}))` are `#VALUE!`, and none gets an `@` on the call. Implemented (T-1918,
 `chooses_between_references_and_array_constants`); the other cells already matched. One-element array arms in such a
 CHOOSE (`{2}`) are unprobed and keep the old `@`.
-N over a CHOOSE with an array-constant index over reference arms (probes/subtotal-take-array-selector D1, D3, D5, D7, excel-graph, T-1909; H1:H2 = 3, 4, I1:I2 = 6, 8): `=N(CHOOSE({1,2},H1:H2,I1:I2))` shows no `@` (FORMULATEXT is the formula as typed) and is `#VALUE!` both on the arms' rows and off them, where `=ABS(...)` and `=LEN(...)` over it keep `=ABS(@CHOOSE(@{1,2},...))` and `=LEN(@CHOOSE(@{1,2},...))`, which read 3 and 1 on the rows and are `#VALUE!` off them. Implemented (T-1915, `chooses_references_by_an_array_index`). Only that shape is probed (N, a one-row index, two range arms); T, single-cell arms, column or 2-D indexes, non-numeric or out-of-range index elements and other arm counts keep the old `@` until probed.
+N over a CHOOSE with an array-constant index over reference arms (probes/subtotal-take-array-selector D1, D3, D5, D7, excel-graph, T-1909; H1:H2 = 3, 4, I1:I2 = 6, 8): `=N(CHOOSE({1,2},H1:H2,I1:I2))` shows no `@` (FORMULATEXT is the formula as typed) and is `#VALUE!` both on the arms' rows and off them, where `=ABS(...)` and `=LEN(...)` over it keep `=ABS(@CHOOSE(@{1,2},...))` and `=LEN(@CHOOSE(@{1,2},...))`, which read 3 and 1 on the rows and are `#VALUE!` off them. Implemented (T-1915, `chooses_references_by_an_array_index`). Every other shape probed reads the same, no `@` and `#VALUE!` on the arms' rows and off them (probes/legacy-n-t-choose-array-index-shapes, excel-graph, 2026-10-20, T-2100; V1:V2 = a, b, W1:W2 = c, d, X1:X2 = 3, 4, Y1:Y2 = 6, 8): T over text or number range arms (`=T(CHOOSE({1,2},V1:V2,W1:W2))`, `=T(CHOOSE({1,2},X1:X2,Y1:Y2))`), single-cell arms (`=N(CHOOSE({1,2},X1,Y1))`, `=T(CHOOSE({1,2},V1,W1))`, `=N(CHOOSE({1;2},X1,Y1))`), a cell beside a range (`=N(CHOOSE({1,2},X1:X2,Y1))`), a column or 2-D index (`{1;2}`, `{1,2;2,1}`), a reversed index (`{2,1}`), even a one-element index (`=N(CHOOSE({1},X1:X2,Y1:Y2))`), text, boolean and out-of-range elements (`{"1","2"}`, `{TRUE,FALSE}`, `{1,3}`), one arm (`=N(CHOOSE({1,1},X1:X2))`) and three (`{1,2,3}`). Arms other than plain cell or range references under an array index are unprobed and keep the old `@`.
 More shapes (probes/legacy-n-t-marker-shapes, excel-graph, 2026-10-18, T-1713 review; Z1 = 7; FORMULATEXT shows no `@`
 in any of them, and none spills): `=T(IF(1,{"a"}))`, `=N(CHOOSE(1,{2}))`, `=T(CHOOSE(1,{"a"}))`, `=N(IFS(1,{2}))`
 (one-element arms), `=N(INDEX({2,3;4,5},1))`, `=N(INDEX({2;3},1))`, `=N(IF(1,{2;3}+0))` (an operator in IF's arm),
@@ -1897,7 +1897,7 @@ INDEX reads any scalar first argument as a one-element array, not only an IF or 
 LOOKUP with a boolean or empty scalar lookup_vector (T-1709; its own evidence is probes/lookup-bool-empty-scalar-vector, 10 cells, excel-graph 2026-10-16): a boolean scalar is a one-element array like the number and text ones: `LOOKUP(TRUE,TRUE)` is TRUE, `LOOKUP(TRUE,TRUE,5)` 5, `LOOKUP(TRUE,TRUE,"r")` "r", `LOOKUP(FALSE,FALSE)` FALSE, and `LOOKUP(FALSE,TRUE)` and `LOOKUP(1,TRUE)` are #N/A (reasons unprobed: probably FALSE sorting before TRUE in the approximate search, and a boolean not matching a number). An empty lookup_vector (`IF(TRUE,Z99)`, which may be the reference Z99 rather than a scalar, or `Z99` itself, Z99 empty) gives #N/A for lookup values 0, "" and 1 (`LOOKUP(0,IF(TRUE,Z99))`, `LOOKUP("",IF(TRUE,Z99),5)`, `LOOKUP(1,IF(TRUE,Z99),5)`, `LOOKUP(0,Z99)`). Ours already matched all 10 cells (`scalar_as_array` in cast.rs); no code change.
 Evidence: probes/legacy-choose-arm-aggregate-and-array-constant-at, probes/lookup-bool-empty-scalar-vector (excel-graph, 2026-10-15), probes/lookup-argument-modes, probes/m7-argument-modes, probes/index-literal-scalar (excel-graph).
 Status: VERIFIED (excel-graph)
-Tasks: T-1638, T-1643, T-1645, T-1651, T-1709
+Tasks: T-1638, T-1643, T-1645, T-1651, T-1709, T-2100
 
 ## Legacy CHOOSE with an array index intersects the index and the call (T-1882)
 Rule: a legacy (non-dynamic) `=CHOOSE({1,2},H1:H2,I1:I2)` is shown as `=@CHOOSE(@{1,2},H1:H2,I1:I2)`: the array index
@@ -1915,7 +1915,7 @@ those two (T-1914). An earlier layout with the cases on consecutive rows showed 
 Evidence: probes/legacy-choose-array-index (excel-graph, 2026-10-18).
 Implemented in: `is_choose_index` / `legacy_array_context` (expressions/parser/static_analysis/legacy.rs).
 Status: VERIFIED (excel-graph)
-Tasks: T-1882, T-1909, T-1914, T-1915
+Tasks: T-1882, T-1909, T-1914, T-1915, T-2100
 
 ## R1C1-shaped sheet and defined names
 Rule (case-insensitive; odd, Excel is right): Excel quotes a sheet name in formula text, and refuses it
