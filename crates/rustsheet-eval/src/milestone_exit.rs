@@ -70,11 +70,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 let scored = s.cells.saturating_sub(s.deviations);
                 let passed = s.cells_passed.min(scored);
                 row.gen_scored = Some(scored);
-                // Cell counts are far below 2^52.
-                #[allow(clippy::cast_precision_loss)]
-                {
-                    row.gen_rate = (scored > 0).then(|| passed as f64 / scored as f64);
-                }
+                row.gen_rate = (scored > 0).then(|| s.cell_pass_rate());
                 row.gen_known_failures = Some(scored - passed);
                 row.gen_allowance = Some(scored / RATE_DEN);
                 row.gen_met = Some(
@@ -206,13 +202,15 @@ mod tests {
 
     #[test]
     fn all_met() {
-        let row = m5(&report(Some((22_400, 22_380))));
+        let r = report(Some((22_400, 22_380)));
+        let rows = summarize(&r);
+        let row = &rows[0];
         assert_eq!(row.gen_allowance, Some(22));
         assert_eq!(row.gen_known_failures, Some(20));
         assert_eq!(row.calc_failing, Some(0));
         assert!(row.exit, "{row:?}");
         let mut md = String::new();
-        write_markdown(&summarize(&report(Some((22_400, 22_380)))), &mut md);
+        write_markdown(&rows, &mut md);
         assert!(
             md.contains("| M5 | 10/10 met | 22400, 0.99911, 20/22 met | 0 met | 0 met | met |"),
             "{md}"
