@@ -1,8 +1,8 @@
 # T-1941 W6: apply the lattice's recovered integer offsets ("rec  m:" line of latsolve output) to the candidate chain.
 # Usage: applym.py CAND LATOUT OUT
 import sys, numpy as np
-sys.path.insert(0,sys.path[0]); from synth import read_chain
-N,D=read_chain(sys.argv[1]); N=[v/D[0] for v in N]; D=[v/D[0] for v in D]
+sys.path.insert(0,sys.path[0]); from synth import read_chain, nrm
+N,D=read_chain(sys.argv[1]); N=[v/nrm(D) for v in N]; D=[v/nrm(D) for v in D]
 m=eval([l for l in open(sys.argv[2]) if l.startswith('rec  m:')][0].split(':',1)[1])
 def nb(v,k):
     # m is in ulps of the candidate value (latsolve's linearisation), so add the value k*ulp(v); stepping the bit

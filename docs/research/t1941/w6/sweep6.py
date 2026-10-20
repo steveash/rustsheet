@@ -8,15 +8,15 @@ import sys, re, collections, numpy as np
 
 sys.path.insert(0, sys.path[0])
 from lib6 import L, st
-from synth import read_chain
+from synth import read_chain, nrm
 
 rf, chain = sys.argv[1], sys.argv[2]
 nruns = int(sys.argv[3]) if len(sys.argv) > 3 else 4
 R1 = float(sys.argv[4]) if len(sys.argv) > 4 else 32.0
 S1 = float(sys.argv[5]) if len(sys.argv) > 5 else 0.125
 N, D = read_chain(chain)
-N = np.array(N) / D[0]
-D = np.array(D) / D[0]
+N = np.array(N) /nrm(D)
+D = np.array(D) /nrm(D)
 pts = collections.defaultdict(list)
 for l in open(rf):
     q = l.split()

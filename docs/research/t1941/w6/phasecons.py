@@ -10,14 +10,14 @@ from fpylll import IntegerMatrix, LLL, BKZ
 
 sys.path.insert(0, sys.path[0])
 from latsolve import phase_rows, freq_rows, ulp
-from synth import read_chain
+from synth import read_chain, nrm
 from stagelaws import stage_F
 
 mp.mp.dps = 60
 chain, phf, ladf, lines, krange = sys.argv[1:6]
 N, D = read_chain(chain)
-N = [v / D[0] for v in N]
-D = [v / D[0] for v in D]
+N = [v /nrm(D) for v in N]
+D = [v /nrm(D) for v in D]
 nN = len(N)
 want = set(lines.split(","))
 k0, k1 = [int(v[1:]) for v in krange.split(",")]
@@ -106,7 +106,7 @@ if best:
         )
 if len(sys.argv) > 6:
     Nt, Dt = read_chain(sys.argv[6])
-    Ct = (np.array(Nt) if ch == "N" else np.array(Dt)) / Dt[0]
+    Ct = (np.array(Nt) if ch == "N" else np.array(Dt)) /nrm(Dt)
     C = np.array(N) if ch == "N" else np.array(D)
     print(
         "truth m:", [int(round(float((mp.mpf(Ct[k]) - mp.mpf(C[k])) / ulp(C[k])))) for k in range(k0, k1 + 1)]

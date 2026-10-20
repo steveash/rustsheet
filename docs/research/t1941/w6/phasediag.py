@@ -2,8 +2,8 @@
 # DFT at the predicted frequency), the selector usable on Excel; with a truth chain, also the median error of the
 # measured phase against the ideal (truth - candidate) phase. Usage: phasediag.py PHASES CAND [TRUTH]
 import sys, collections, numpy as np
-sys.path.insert(0,sys.path[0]); from latsolve import phase_rows; from synth import read_chain
-def norm(f): N,D=read_chain(f); return [v/D[0] for v in N],[v/D[0] for v in D]
+sys.path.insert(0,sys.path[0]); from latsolve import phase_rows; from synth import read_chain, nrm
+def norm(f): N,D=read_chain(f); return [v/nrm(D) for v in N],[v/nrm(D) for v in D]
 Nc,Dc=norm(sys.argv[2]); T=norm(sys.argv[3]) if len(sys.argv)>3 else None
 by=collections.defaultdict(list)
 for l in open(sys.argv[1]):

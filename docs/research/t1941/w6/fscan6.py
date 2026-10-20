@@ -10,13 +10,13 @@ import sys, os, re, collections, numpy as np
 
 sys.path.insert(0, sys.path[0])
 from lib6 import st, L
-from synth import read_chain
+from synth import read_chain, nrm
 
 rf, chain, CH, J = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 KR = float(sys.argv[5]) if len(sys.argv) > 5 else 2e6
 N, D = read_chain(chain)
-N = np.array(N) / D[0]
-D = np.array(D) / D[0]
+N = np.array(N) /nrm(D)
+D = np.array(D) /nrm(D)
 # data: runs of consecutive doubles from RFILE (rows "x B Rlo Rhi n case"); residual vs the base chain's exact rational
 runs = collections.defaultdict(list)
 for l in open(rf):
@@ -121,6 +121,6 @@ print(
 )
 if len(sys.argv) > 6:
     Nt, Dt = read_chain(sys.argv[6])
-    Ct = (np.array(Nt) if CH == "N" else np.array(Dt)) / Dt[0]
+    Ct = (np.array(Nt) if CH == "N" else np.array(Dt)) /nrm(Dt)
     kt = round((Ct[J] - C[J]) / uc) + CEN
     print("   truth k=%+d; rank in top list: %s" % (kt, [i for i, (v_, k) in enumerate(best) if k == kt]))

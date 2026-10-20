@@ -7,14 +7,14 @@ import sys, os, numpy as np
 from numpy.polynomial import polynomial as Pn
 
 sys.path.insert(0, sys.path[0])
-from synth import read_chain
+from synth import read_chain, nrm
 
 base, out, CH, J = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 co = [float(v) for v in sys.argv[5:]]
 X0 = float(os.environ.get("X0", 1.75))
 N, D = read_chain(base)
-N = list(np.array(N) / D[0])
-D = list(np.array(D) / D[0])
+N = list(np.array(N) /nrm(D))
+D = list(np.array(D) /nrm(D))
 C = N if CH == "N" else D
 top = len(C) - 1
 if len(co) - 1 > top - J:

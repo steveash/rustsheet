@@ -9,7 +9,7 @@
 import sys, os, numpy as np
 
 sys.path.insert(0, sys.path[0])
-from synth import read_chain
+from synth import read_chain, nrm
 from latsolve import func_rows, data_rows
 
 base, out, CH, J = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
@@ -17,8 +17,8 @@ co = np.array([float(v) for v in sys.argv[5:]])
 X0 = float(os.environ.get("X0", 1.75))
 SPH, SF = float(os.environ.get("SPH", 0.05)), float(os.environ.get("SF", 1e-16))
 N, D = read_chain(base)
-N = list(np.array(N) / D[0])
-D = list(np.array(D) / D[0])
+N = list(np.array(N) /nrm(D))
+D = list(np.array(D) /nrm(D))
 C = N if CH == "N" else D
 top = len(C) - 1
 nN = len(N)

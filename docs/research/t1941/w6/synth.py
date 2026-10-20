@@ -10,6 +10,12 @@ def read_chain(p):
         if q and q[0]=='N': N=[float.fromhex(v) for v in q[1:]]
         if q and q[0]=='D': D=[float.fromhex(v) for v in q[1:]]
     return N,D
+def nrm(D):
+    """the factor the tools normalise a chain by: D0 if it is +-2^k (exact scaling, every rounding unchanged), else 1.
+    Excel's (1.5,2] chain has D0 != 1 (the phase-pinned stages fit Excel's R only with D0 free), and dividing by a
+    non-power-of-two D0 would change every rounding."""
+    d=float(D[0]); m,_=__import__('math').frexp(abs(d))
+    return d if m==0.5 else 1.0
 def horner_keep(C,x,ch,keep):
     """raw-x Horner with x87 ops; ops named ch.Pj / ch.Sj in keep stay 64-bit (unstored), the rest are stored to double
     (W2's K2 finding: Excel keeps some stages in registers). Returns the long-double chain value."""

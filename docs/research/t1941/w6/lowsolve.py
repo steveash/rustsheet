@@ -3,14 +3,14 @@
 # Usage: lowsolve.py CHAIN OUT "N0,N1,N2,N3,N4,D1,D2" [iters]   env DATAF/DATAN (Excel-R-anchored rows instead of lgamma)
 import sys, os, numpy as np
 sys.path.insert(0, sys.path[0])
-from synth import read_chain
+from synth import read_chain, nrm
 from latsolve import func_rows, data_rows
 
 chain, out, free = sys.argv[1], sys.argv[2], sys.argv[3].split(",")
 it = int(sys.argv[4]) if len(sys.argv) > 4 else 4
 N, D = read_chain(chain)
-N = list(np.array(N) / D[0])
-D = list(np.array(D) / D[0])
+N = list(np.array(N) /nrm(D))
+D = list(np.array(D) /nrm(D))
 nN = len(N)
 cols = [(int(f[1:]) if f[0] == "N" else nN - 1 + int(f[1:])) for f in free]
 for i in range(it):

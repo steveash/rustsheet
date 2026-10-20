@@ -4,7 +4,7 @@
 # (exact in mpmath; dS linear in m). Usage (control): latsolve.py TRUTH CAND ideal|noise sigma
 import sys, os, numpy as np, mpmath as mp
 from fpylll import IntegerMatrix, LLL, BKZ
-sys.path.insert(0,sys.path[0]); from synth import read_chain; from longspec import X0
+sys.path.insert(0,sys.path[0]); from synth import read_chain; from longspec import X0, nrm
 mp.mp.dps=80
 def ulp(v): return mp.mpf(np.spacing(abs(float(v))))
 def stages(c,x):
@@ -76,7 +76,7 @@ def freq_rows(N,D,lines,xs):
     return out
 if __name__=='__main__':
     Nt,Dt=read_chain(sys.argv[1]); Nc,Dc=read_chain(sys.argv[2])
-    Nt=[v/Dt[0] for v in Nt]; Dt=[v/Dt[0] for v in Dt]; Nc=[v/Dc[0] for v in Nc]; Dc=[v/Dc[0] for v in Dc]
+    Nt=[v/nrm(Dt) for v in Nt]; Dt=[v/nrm(Dt) for v in Dt]; Nc=[v/nrm(Dc) for v in Nc]; Dc=[v/nrm(Dc) for v in Dc]
     sig=float(sys.argv[4]); rng=np.random.default_rng(0)
     if os.environ.get('LINES'):
         lines=[tuple(v if i<2 else int(v) for i,v in enumerate(t.split(':'))) for t in os.environ['LINES'].split(',')]

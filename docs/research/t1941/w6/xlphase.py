@@ -5,11 +5,11 @@
 import sys, collections, re, numpy as np
 sys.path.insert(0,sys.path[0])
 from lib6 import st, L, horner
-from synth import read_chain
+from synth import read_chain, nrm
 from longspec import extractR, resid
 import kern
 from stagelaws import stage_F
-N,D=read_chain(sys.argv[2]); N=np.array(N)/D[0]; D=np.array(D)/D[0]
+N,D=read_chain(sys.argv[2]); N=np.array(N)/nrm(D); D=np.array(D)/nrm(D)
 pref=sys.argv[4] if len(sys.argv)>4 else 'kmyst-gam-L1'
 rows=collections.defaultdict(list)
 for l in open(sys.argv[1]):

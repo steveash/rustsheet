@@ -2,11 +2,11 @@
 # Excel's (or synthetic) R candidate interval [Rlo, Rhi]. Moves: each coefficient +-2^k ulps, k = 0..kmax, greedy,
 # repeated until no gain. Usage: climb6.py RFILE CHAIN OUT npts kmax rounds [prefix]
 import sys, numpy as np
-sys.path.insert(0,sys.path[0]); from lib6 import st, L, horner; from synth import read_chain, simR
+sys.path.insert(0,sys.path[0]); from lib6 import st, L, horner; from synth import read_chain, simR, nrm
 rows=[l.split() for l in open(sys.argv[1]) if len(sys.argv)<=7 or l.split()[5].startswith(sys.argv[7])]
 rng=np.random.default_rng(0); idx=rng.choice(len(rows),min(int(sys.argv[4]),len(rows)),replace=False)
 x=np.array([float.fromhex(rows[i][0]) for i in idx]); lo=np.array([float.fromhex(rows[i][2]) for i in idx]); hi=np.array([float.fromhex(rows[i][3]) for i in idx])
-N,D=read_chain(sys.argv[2]); N=[v/D[0] for v in N]; D=[v/D[0] for v in D]
+N,D=read_chain(sys.argv[2]); N=[v/nrm(D) for v in N]; D=[v/nrm(D) for v in D]
 kmax=int(sys.argv[5])
 def score(N,D):
     R=simR(N,D,x); return np.mean((R>=lo)&(R<=hi))

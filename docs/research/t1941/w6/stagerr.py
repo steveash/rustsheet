@@ -5,10 +5,10 @@ sys.path.insert(0, sys.path[0])
 import os
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "w5", "p5"))
 from meter import chain_sites
-from synth import read_chain
+from synth import read_chain, nrm
 def nz(f):
     N, D = read_chain(f)
-    return np.array(N) / D[0], np.array(D) / D[0]
+    return np.array(N) /nrm(D), np.array(D) /nrm(D)
 (N, D), (Nt, Dt) = nz(sys.argv[1]), nz(sys.argv[2])
 x = np.linspace(1.5, 1.999, 6)
 for ch, C, Ct in (("N", N, Nt), ("D", D, Dt)):

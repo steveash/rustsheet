@@ -1,10 +1,10 @@
 # T-1941 W6: add whole ulps to named coefficients of a chain. Usage: bump.py IN OUT N6=+1534 [D7=-3 ...]
 import sys, numpy as np
 sys.path.insert(0, sys.path[0])
-from synth import read_chain
+from synth import read_chain, nrm
 N, D = read_chain(sys.argv[1])
-N = list(np.array(N) / D[0])
-D = list(np.array(D) / D[0])
+N = list(np.array(N) /nrm(D))
+D = list(np.array(D) /nrm(D))
 for a in sys.argv[3:]:
     k, v = a.split("=")
     arr = N if k[0] == "N" else D
