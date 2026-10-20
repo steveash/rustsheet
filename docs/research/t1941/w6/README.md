@@ -417,6 +417,11 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       only D.S8 = D8 + D9 x at ~1e-13 relative and is left free for the exact scans. The (9,9) machinery covers (9,8)
       with D9 = 0 as a special case, so the controls' assumptions are unaffected.
     - Phase / ladder files and the two chains: `data/`.
+32. **The products-only top-down peel does not transfer to the D0-free Excel chain.** From `xl_pcD0` (exact 35.9% on
+    300k w6t points) the `peel6.sh` m-scans (KR 2e4) locked N6 0, N5 0, N4 +13314, N3 -16350, N2 -19314, D7 -1606,
+    D6 -9785, D5 -7072, D4 -10155, D3 -18788 ulps, and every step dropped exact R to 0% (median rel error 3e-13 to
+    2e-12). The chain is already at the data noise in R, so these locks are noise maxima near the scan edge, not
+    whole-ulp errors; the m-scan site objective was validated only on D0 = 1 chains. Abandoned for exact-R climbing.
 
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:

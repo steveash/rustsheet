@@ -4,7 +4,7 @@
 # (exact in mpmath; dS linear in m). Usage (control): latsolve.py TRUTH CAND ideal|noise sigma
 import sys, os, numpy as np, mpmath as mp
 from fpylll import IntegerMatrix, LLL, BKZ
-sys.path.insert(0,sys.path[0]); from synth import read_chain; from longspec import X0, nrm
+sys.path.insert(0,sys.path[0]); from synth import read_chain, nrm; from longspec import X0
 mp.mp.dps=80
 def ulp(v): return mp.mpf(np.spacing(abs(float(v))))
 def stages(c,x):
