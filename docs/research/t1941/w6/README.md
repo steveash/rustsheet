@@ -352,6 +352,32 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       synthetic ((9,8) raw-x LS truth, `fitrat.py`): ladders read only N.Pn14/D.Pn13 (4 of 108 rows) even against
       the truth.
 
+28. **Top-down route to 99.4% on the far control** (`scan6.py`, `apply6.py`, `fscan6.py` SITES=P, `peel6.sh`,
+    `bump.py`, `stagerr.py`, `pairscan.py`, `climb6.py`; data: 12.3M synthetic points on the coordinator's w6t layout
+    plus the 24 L-runs).
+    - Sites: S8's rounding reaches R at ~0.001 ulp (invisible); S7 quadratic gives Z 5.0 at the truth on 12.3M points;
+      S6 cubic (u(S6) = 16 u(S7)) gives Z 25. Per-run phases are useless at every site (rms 0.24 cycles).
+    - 1. S6 4-D scan (a mod 1 x b by FFT x c, d grid; scan6 J=6 DEG=3): truth found at Z 20.5 (Z 21.8 with c step 1,
+      d step 4; 32 ms per (c, d) pair, ~1.3 h full range on 4 cores). On the 2.6M points Excel had before the fill
+      the truth wins only locally (Z 7.1).
+    - 2. `apply6.py` maps the S6 polynomial to N6..N9: the S6 error becomes a constant (1533.4 u), i.e. one integer.
+    - 3. Whole-u shifts by products-only m-scans (`fscan6.py` SITES=P NS=1, on P_{J-1}): N6 +1534 (Z 5.8), N5 -341 =
+      truth (Z 15.9), N4 0 = truth, N3/N2 stage-exact. Including the S site or a second product locks near k = 0.
+      N1's ulp is 1/256 of u(S1), so its m-scan is flat (pick -71 was wrong): sub-stage-ulp coefficients are left to
+      the end.
+    - 4. S7 quadratic scan in a small window (error now ~200 u7): Z only ~3.7, but the top hits cluster on the truth
+      (b -118.5 vs -118.6, c 71 vs 71.5); apply6 + m-scans N7 (+205), N6, N5. N stages S7..S0 within 0.3 u.
+    - 5. Transplant diagnostic: true N0/N1/N2/D1 -> 99.3%; all true top (N7-N9, D6-D9) -> 81.3%. N8/N9 barely matter
+      once S7 is right (S8 enters R only through ~0.002-ulp roundings); W5's hypo.c (N8, N9) grid is too weak anyway
+      (truth Z ~2.7 on 500 runs).
+    - 6. The low deficit is the coupled pair (N1, D1) (alone 66.9% / 75.2%, together 95.8%): `pairscan.py` N1 D1 ->
+      96.0%; `climb6.py` -> 99.49% (sample), 99.41% on all 1.57M L-run points.
+    - Left: D.S7 (100-134 u) / D.S8, N.S8 (~150 u). D.S7 scan running.
+    - Unstored-x87 question (W2's K2 finding): `oprep6.py` flags Excel's N.S1/P1/S0/P0, but a stored truth with N0 or
+      D1 off gives the same kind of fingerprint, and the missing Excel lines include D.Pn10/11, which unstored N ops
+      do not remove (synthetic with N.P0/S0/P1/S1 unstored loses exactly N.Pn10/11). Open; the arbiter is the
+      top-down peel on Excel. KEEP support: `synth.horner_keep/simR`, scoreR, climb6, oprep6.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
