@@ -442,7 +442,7 @@ impl Model {
             if n == 0.0 && x == 0.0 && y == 0.0 {
                 return num_error(cell); // probes/eng-impower A6
             }
-            let r = f64::sqrt(x * x + y * y);
+            let r = modulus(x, y);
             // Excel's `^` (square-and-multiply for an integer power) and its x87-reduced sine
             // and cosine: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` and
             // `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i`
@@ -451,20 +451,29 @@ impl Model {
                 return num_error(cell);
             };
             let angle = f64::atan2(y, x) * n;
-            // An angle past `IMPOWER_ANGLE_LIMIT` is `#NUM!` (evidenced for a pure imaginary base only), but an
-            // underflowed radius of 0 is "0" without reading the angle: `IMPOWER("i",85445659)` is
-            // `#NUM!`, `IMPOWER("0.5i",134217728)` is 0 (probes/eng-impower-imdiv-edges A28-A35,
-            // eng-impower-angle-cut; engineering.md "T-1625 probes").
-            let (sin, cos) = if radius == 0.0 {
-                (0.0, 0.0)
-            } else if angle.abs() < IMPOWER_ANGLE_LIMIT {
-                excel_sin_cos(angle)
+            // An underflowed radius of 0 is "0" without reading the angle
+            // (`IMPOWER("0.5i",134217728)`; probes/eng-impower-imdiv-edges A28-A35).
+            if radius == 0.0 {
+                return complex_result(0.0, 0.0, suffix);
+            }
+            if angle.abs() < IMPOWER_ANGLE_LIMIT {
+                let (sin, cos) = excel_sin_cos(angle);
+                return finite_complex_result(radius * cos, radius * sin, suffix, cell);
+            }
+            // Past the cut Excel's sine and cosine both read as the largest double, whatever the
+            // quadrant, so each part is `radius·DBL_MAX`, and `#NUM!` once that is not below
+            // DBL_MAX (a radius of 1 or more): `IMPOWER("0.99999973i",85445659)` is
+            // `1.71948380972175E+298+1.71948380972175E+298i` (the radius 9.56E-11 of the 85445658th
+            // power times 1.797E+308), every quadrant of `0.7071067811865476±0.7071067811865476i`
+            // gives two equal positive parts, and `IMPOWER("i",85445659)`, `IMPOWER("-1",42722830)`
+            // and `IMPOWER("1.0000000001i",85445659)` are `#NUM!` (probes/eng-impower-past-cut,
+            // eng-impower-angle-cut A18-A19; engineering.md "IMPOWER past the angle cut").
+            let part = radius * f64::MAX;
+            if part < f64::MAX {
+                complex_result(part, part, suffix)
             } else {
-                // TODO(T-1950): Excel gives values near 1.797E+308 for a base that is not pure imaginary.
-                return num_error(cell);
-            };
-            let (x, y) = (radius * cos, radius * sin);
-            finite_complex_result(x, y, suffix, cell)
+                num_error(cell)
+            }
         })
     }
 
@@ -672,7 +681,15 @@ impl Model {
 // The one-argument complex functions, of a parsed number.
 
 fn imabs((x, y, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    CalcResult::Number(f64::sqrt(x * x + y * y))
+    CalcResult::Number(modulus(x, y))
+}
+
+/// `|x+yi|` as Excel computes it: `hypot`, not `sqrt(x²+y²)`. They differ in the last bit:
+/// `IMABS("0.7071067811865476+0.7071067811865476i")` is 0.9999999999999993 (1-6·2^-53), where
+/// `sqrt` gives 1-7·2^-53, and IMPOWER's 170891300th power of that number confirms the per-factor
+/// value (probes/eng-impower-past-cut A15, eng-impower-angle-cut A9-A17; T-1950).
+fn modulus(x: f64, y: f64) -> f64 {
+    x.hypot(y)
 }
 
 fn imaginary((_, y, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {

@@ -290,12 +290,31 @@ Tasks: T-1385
 - A blank cell argument is 0 in IMSUB (`IMSUB(A7,B7)` with B7 blank), unlike empty text (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet2 G7:G10).
 - Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, and IMPOWER as `|z|^n` by Excel's `^` (square-and-multiply for an integer `n`) times Excel's SIN/COS of the double `atan2(y,x)·n` (argument reduction by the x87 64-bit pi, numbers.md "Trig of a huge angle"). That reproduces all four values bit for bit: the tiny part of `IMPOWER("i",2)` is `π₆₄ − π_double`, the real part of `(1+i)^100` is `sqrt(2)^100` by square-and-multiply (2^50 + 12.5; libm `pow` gives 2^50 + 7.75) and its imaginary part is that times `sin(double(100·π/4))` reduced by `π₆₄`. Each part prints as number-to-text does (E notation past 20 plain characters).
 - A blank first argument is 0 in IMDIV and IMPOWER (`IMDIV(blank,"1+i")` and `IMPOWER(blank,2)` are "0"; `IMPOWER(blank,0)` and `IMDIV(blank,blank)` are `#NUM!`). IMDIV by Smith's algorithm matches Excel to the last digit on a sweep of 13 non-trivial divisors, including `1E10+1E-10i` over `1E-5+1E5i` and `1+i` over `1E-200+1E-200i` (`1E+200`).
-- IMPOWER stops answering once the angle `atan2(y,x)·n` is near 2^27, but not at 2^27: `IMPOWER("i",85445658)` (angle 134217725.7) answers, `IMPOWER("i",85445659)` (134217727.3) is `#NUM!`. We cut at 134217727 (a bracket, not a derived value). A radius that underflows to 0 is "0" whatever the angle (`IMPOWER("0.5i",134217728)`, `IMPOWER("0.5",134217728)`); one that overflows is `#NUM!` (`IMPOWER("1E-200+1E-200i",-2)`, `IMPOWER("1E200",2)`; `IMPOWER("1+i",170891317)` is this overflow, its angle is under the cut).
-- UNVERIFIED: Excel's modulus power for a base near radius 1 differs from ours, so the "bit for bit" claim above holds for the four evidenced values only: `IMPOWER("0.7071067811865476+0.7071067811865476i",170891300)` is `-0.999999886163532+1.2252504385364E-08i` in Excel and `-0.999999867190789+…` in ours (probes/eng-impower-angle-cut A9-A17, all inside the cut). Per factor that is r ≈ 1-6·2^-53 against our 1-7·2^-53, so Excel computes the modulus differently from `sqrt(x²+y²)` (cause unknown; T-1950).
-- UNVERIFIED: past the cut a base that is not a pure imaginary number does not give `#NUM!`: `IMPOWER("0.7071067811865476+0.7071067811865476i",170891318)` is `1.79769293021926E+308+1.79769293021926E+308i` and `…,170891320` is `1.79769293021925E+308+1.79769293021925E+308i` (the parts differ, so it is not a clamp). Ours gives `#NUM!` there (T-1950).
-Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892).
-Status: VERIFIED (excel-graph), except the bullets marked UNVERIFIED (T-1950)
-Tasks: T-1766, T-1892
+- IMPOWER changes rule once the angle `atan2(y,x)·n` is near 2^27, but not at 2^27 (a radius-1 base stops answering; others: "IMPOWER past the angle cut"): `IMPOWER("i",85445658)` (angle 134217725.7) answers, `IMPOWER("i",85445659)` (134217727.3) is `#NUM!`. We cut at 134217727 (a bracket, not a derived value). A radius that underflows to 0 is "0" whatever the angle (`IMPOWER("0.5i",134217728)`, `IMPOWER("0.5",134217728)`); one that overflows is `#NUM!` (`IMPOWER("1E-200+1E-200i",-2)`, `IMPOWER("1E200",2)`; `IMPOWER("1+i",170891317)` is this overflow, its angle is under the cut).
+- Excel's modulus is `hypot`, not `sqrt(x²+y²)`: `IMABS("0.7071067811865476+0.7071067811865476i")` is
+  0.9999999999999993 (1-6·2^-53; `sqrt` gives 1-7·2^-53), and IMPOWER's `|z|^n` of that base matches Excel from it
+  (`IMPOWER(..,170891300)` = `-0.999999886163532+1.2252504385364E-08i`; probes/eng-impower-angle-cut A9-A17,
+  eng-impower-past-cut A15; T-1950). See "IMPOWER past the angle cut" for bases past the cut.
+Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950).
+Status: VERIFIED (excel-graph)
+Tasks: T-1766, T-1892, T-1950
+
+## IMPOWER past the angle cut
+Rule: once IMPOWER's angle `atan2(y,x)·n` passes the cut (about 134217727), Excel's sine and cosine both read as the
+largest double, 1.7976931348623157E+308, in every quadrant: each part is `|z|^n · DBL_MAX`, both positive and equal,
+and the result is `#NUM!` when that is not below DBL_MAX, that is for a radius of 1 or more. A pure imaginary or real
+base of radius 1 is therefore `#NUM!` (`IMPOWER("i",85445659)`, `IMPOWER("-1",42722830)`), and so is
+`IMPOWER("1.0000000001i",85445659)` and a negative power of a radius below 1 (`IMPOWER(..,-170891318)`), while
+`IMPOWER("0.99999973i",85445659)` is `1.71948380972175E+298+1.71948380972175E+298i` (|z|^n ≈ 9.565E-11, the radius of
+the 85445658th power, A19, times DBL_MAX; the 85445660th and 85445661th powers and the power 85445659.5 follow the
+radius), `IMPOWER("-0.9999999",42722830)` is `2.50776326229151E+306+2.50776326229151E+306i`, and the four quadrants of
+`0.7071067811865476±0.7071067811865476i` past the cut all give two equal positive parts
+(`…,170891318` = `1.79769293021926E+308+1.79769293021926E+308i`). A radius that underflows to 0 is still "0".
+Evidence: probes/eng-impower-past-cut A1-A14, A19 (excel-graph, 2026-10-20, T-1950); probes/eng-impower-angle-cut A18,
+A19 (excel-graph, 2026-10-19, T-1892).
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_impower` in functions/engineering/complex.rs (T-1950)
+Tasks: T-1950
 
 ## IMTAN and IMCOT use the double-angle form (T-0907)
 Rule: IMTAN computes tan(x+iy) as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)`, and IMCOT is the
@@ -356,8 +375,8 @@ Evidence: probes/eng-im-overflow (excel-graph).
   `1.65498402768026E+308`, `IMPOWER("1E154",2)` is `1E+308`.
 - IMEXP with a nonzero imaginary part does not overflow to an error: `IMEXP("1000+1i")` is
   `9.71297746009434E+307+1.51270661257499E+308i` (A12). The modulus is capped at DBL_MAX (the
-  ratio of the parts is tan(1) and re / cos(1) is 1.7977E+308), the same mechanism as the values
-  near 1.797E+308 of IMPOWER (T-1950). Implemented (T-2002, T-2060). Probes
+  ratio of the parts is tan(1) and re / cos(1) is 1.7977E+308), not the mechanism of the values
+  near 1.797E+308 of IMPOWER, which are `|z|^n·DBL_MAX` past its angle cut ("IMPOWER past the angle cut", T-1950). Implemented (T-2002, T-2060). Probes
   (probes/eng-imexp-overflow-imag, excel-graph): the cap holds for a negative imaginary part
   (`IMEXP("1000-1i")`), for `709.9+1i` (exp overflows only past 709.78) and for `1000+3.14159i`
   (`-1.79769313485599E+308+4.770340154251E+302i`), down to `1000+1.5E-8i`; but `IMEXP("710+1E-300i")`,
