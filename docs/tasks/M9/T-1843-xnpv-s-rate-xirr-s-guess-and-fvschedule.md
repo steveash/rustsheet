@@ -3,7 +3,7 @@ id: T-1843
 title: "XNPV's rate, XIRR's guess and FVSCHEDULE's principal lift over arrays beside their whole data (SPEC-0011)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
