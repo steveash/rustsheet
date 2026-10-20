@@ -52,6 +52,13 @@ significant digits. Reuse the existing 15-digit helper (`to_precision` / the rou
 
 probes-numeric is not gated (`gate = false`, no baseline file), so progress is read from the report.
 
+- gen-m5 (gap triage 2026-10-20, T-2114, excel-graph): 2 more cells, in eval/baseline/gen-m5.txt. Same rule (15 significant digits before padding) under `"0;-0;""zero"";""text: ""@"` on 2.5E+29 and `"#,##0.00;[Red](#,##0.00)"` on -909090909090902.6.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m5/1962de140dae0111 Calc!A267 | `=TEXT(SUBTOTAL(11,Data!C6:E6),"0;-0;""zero"";""text: ""@")` | "250000000000000000000000000000" | "249999999999999930000000000000" |
+| gen-m5/25768de48ae7f2f9 Calc!A99 | `=TEXT(((Data!$D7-1000000000000000.0)/(Data!$C8+Data!A9)),"#,##0.00;[Red](#,##0.00)")` | "(909,090,909,090,903.00)" | "(909,090,909,090,902.00)" |
+
 ## Acceptance criteria
 - [ ] In `make eval`, the 16 cells above pass and probes-numeric/4f413cc257ce15c4 has no failing cell
       left (it has exactly these 16 today).
