@@ -340,3 +340,30 @@ Evidence: probes/legacy-array-result S!G1:G2, probes/t-array-lift (excel-graph, 
 Implemented in fn_t (T-1729).
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1729
+
+## SHEETS counts the sheets a reference spans (VERIFIED, excel-graph)
+Status: VERIFIED (excel-graph). Tasks: T-2115, T-2181.
+Rule: `SHEETS(reference)` is the number of sheets the reference covers: 1 for a cell or range on one sheet, written
+bare, sheet-qualified or quoted (`SHEETS(A1)`, `SHEETS($A$1:$B$2)`, `SHEETS(Data!A1:B2)`, `SHEETS('Beta'!A1)`), and the
+count of sheets between the corners, inclusive, for a 3-D span in either order: with sheets Alpha, Beta, Gamma, Data,
+`SHEETS(Alpha:Gamma!A1)` and `SHEETS(Gamma:Alpha!A1)` are 3, `SHEETS(Beta:Data!A1:B2)` 3, `SHEETS(Alpha:Data!B2)` 4.
+The result is a plain number (`TYPE` 1, `ISNUMBER` TRUE, `+0`, `*1`, `=3` TRUE). A reversed span reads the same in SUM too
+(`SUM(Gamma:Alpha!A1)` = `SUM(Alpha:Gamma!A1)`).
+Evidence: probes/info-sheets-info-types Alpha!D1:D24, D50:D52 (excel-graph, 2026-10-20, T-2115). The engine gives
+`#N/IMPL!` for any argument: T-2181. Unprobed, because the oracle canary refuses them (T-2113): a union, INDIRECT,
+OFFSET, a defined name, a non-reference or error argument, and bare `SHEETS()`.
+Probe trap: sheets named like cells (S1, S2, S3) break an unquoted 3-D span on Excel for the web: `SUM(S1:S3!A1)`,
+`SUM(S3:S1!A1)` and `SHEETS(S1:S3!A1)` are `#VALUE!` and `SHEETS(S3:S1!A1)` is 1, while the quoted `'S1:S3'!A1` works
+(`SUM` 13, `SHEETS` 3) and so does a single-sheet `S2!A1` (probes/sheet-names-like-cells-3d-spans B1:B7, excel-graph,
+2026-10-20). Excel writes such names quoted; give probe sheets names that are not cell references.
+
+## INFO is #VALUE! in Excel for the web
+Status: VERIFIED (excel-graph); desktop pending T-2182. Tasks: T-2115, T-2190, T-2182.
+Rule (web): every INFO call is `#VALUE!`, whatever the type_text: "recalc", "system", "release", "directory",
+"osversion", "origin", the legacy "memavail", "memused" and "totmem", `""` and `"x"`, in lower, upper or mixed case
+(`TYPE(INFO("release"))` 16, `ERROR.TYPE(INFO("x"))` 3, `ISTEXT(INFO("recalc"))` FALSE, `LEN(INFO("osversion"))>0`
+`#VALUE!`). So no value turned out host-dependent. As with ENCODEURL and FILTERXML (web.md), this is the golden for
+Phases 1-3 (decision 0039): the engine follows it in T-2190, which is expected to differ from desktop Excel; T-2182
+(M14) asks desktop. Unprobed: `INFO(#N/A)`, `INFO(1)`, `INFO(TRUE)`, an array argument (the oracle canary refuses a
+non-literal INFO, T-2113), and `INFO("numfile")` (canary-dependent).
+Evidence: probes/info-sheets-info-types Alpha!D25:D49 (excel-graph, 2026-10-20, T-2115).
