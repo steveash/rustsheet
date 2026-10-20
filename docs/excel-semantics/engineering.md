@@ -169,7 +169,8 @@ Typed coercion follows the ToolPak rule:
   IMCOS, IMCONJUGATE, IMSQRT and IMABS of a TRUE cell, `INDEX(IMREAL({TRUE;"3"}),1)`, `COMPLEX(TRUE,1)`).
   The same holds, typed and as a TRUE cell, for IMDIV's first argument, IMAGINARY, IMARGUMENT, IMCOSH, IMCOT,
   IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH, IMSIN, IMSINH, IMTAN, and COMPLEX's `i_num`
-  (probes/eng-imsum-improduct-3d-j-empty G1-G34, T-1828). The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
+  (probes/eng-imsum-improduct-3d-j-empty G1-G34, T-1828).
+  The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
 - A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
 - COMPLEX's suffix is case-sensitive: `COMPLEX(3,4,"I")` is `#VALUE!`.
 - Non-complex text is `#NUM!` (`IMSUB("x","1")`), and a number cell is a real number (`IMDIV("3+4i",M2)` with M2 = 3 is

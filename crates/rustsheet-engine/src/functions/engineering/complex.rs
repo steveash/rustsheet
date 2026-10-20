@@ -56,6 +56,7 @@ impl Suffix {
 impl fmt::Display for Suffix {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            // A `Real` only prints when it has an imaginary part, which an unsuffixed number never has.
             Suffix::I | Suffix::Real => write!(f, "i"),
             Suffix::J => write!(f, "j"),
         }
@@ -908,6 +909,14 @@ mod tests {
     use crate::functions::engineering::complex::Suffix;
 
     use super::parse_complex_number as parse;
+
+    #[test]
+    fn suffix_join() {
+        assert_eq!(Suffix::I.join(Suffix::J), None);
+        assert_eq!(Suffix::Real.join(Suffix::J), Some(Suffix::J));
+        assert_eq!(Suffix::I.join(Suffix::Real), Some(Suffix::I));
+        assert_eq!(Suffix::Real.join(Suffix::Real), Some(Suffix::Real));
+    }
 
     #[test]
     fn test_parse_complex() {
