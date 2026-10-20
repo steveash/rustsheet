@@ -4,7 +4,7 @@
 Rule: a text function broadcast over arrays (LEFT, REPT, SUBSTITUTE, ...) returns a single scalar `#VALUE!` (no spill) once the total bytes of its string results exceed 64 MiB, to bound allocation on untrusted input (CLAUDE.md directive 5). A broadcast whose shape is above 1,048,576 cells is refused with `#ERROR!` before any element is computed, so that bound takes precedence over this one (arrays.md "Array results above 1,048,576 cells", T-1771). Excel's behavior (expected, not measured): compute the whole array, limited only by memory and the 32,767-char per-cell limit. Ours differs on legitimate data too: the budget counts UTF-8 bytes (not Excel's UTF-16 characters, so CJK text hits it about 3x sooner in characters), and a full-column text formula such as `=UPPER(A:A)` over ~65-char strings exceeds 64 MiB and returns `#VALUE!` where Excel spills normally.
 Evidence: none for Excel's behavior; this is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by functions/text/common.rs (`broadcast_text`), the lift driver and FORMULATEXT over a range
+Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by the lift driver (functions/lift/driver.rs, which runs the element-wise text functions since T-1775) and FORMULATEXT over a range
 
 ## Text functions broadcast over array arguments
 Rule: EXACT, FIND, LEN, REPT, SEARCH, SUBSTITUTE, TRIM, CLEAN, PROPER and REPLACE lift element-wise over
@@ -445,14 +445,15 @@ the Kelvin sign U+212A does not match `k` in either direction (`TEXTBEFORE("a"&U
 U+212A against "akbkc" is `#N/A`), `ß` does not match `ss` (`TEXTBEFORE("aßbSSc","ss",1,1)` is "aßb") and `ẞ` (U+1E9E) does not match
 the delimiter `ß` (`TEXTBEFORE("assbẞc","ß",1,1)` is `#N/A`, although `ẞ` lowercases to `ß`), and `Ä` matches `ä`
 (`TEXTBEFORE("ÄxäyÄ","ä",2,1)` is "Äx"). The result is cut from the original text, so it keeps its case. Positive and negative
-instance numbers behave the same on `"İİİ,a,b"`. Sigma is positional, unlike TEXTSPLIT and SEARCH: `Σ` followed by a letter is `σ`, any
-other `Σ` is `ς`, and `ς` is only `ς`. So the delimiter `Σ` alone matches a text `ς` but not `σ`, the delimiter `ς` matches a final `Σ`
+instance numbers behave the same on `"İİİ,a,b"`. Sigma is positional, unlike TEXTSPLIT and SEARCH, with LOWER's final-sigma rule: `Σ` followed by a letter or digit is `σ`, any
+other `Σ` (end of text, space, punctuation) is `ς`, and `ς` is only `ς`. So the delimiter `Σ` alone matches a text `ς` but not `σ`, the delimiter `ς` matches a final `Σ`
 ("aΟΣ") but neither `σ` nor a `Σ` followed by a letter, and the delimiter `σ` matches a `Σ` followed by a letter but not `ς`.
-Evidence: probes/textbefore-casefold-length A1-A25 (excel-graph, 2026-10-17, T-1796).
+The same holds for the text and a delimiter that are both `Σ` (`TEXTBEFORE("aΣb","Σ",1,1)` is `#N/A`: the text's `Σ` is `σ`, the lone delimiter `Σ` is `ς`), and for TEXTAFTER.
+A `Σ` before a digit is `σ` (`TEXTBEFORE("ΟΔΟΣ1","σ",1,1)` is "ΟΔΟ", delimiter `ς` is `#N/A`); before a space or a comma it is `ς` (`"ΟΔΟΣ ΚΑΙ"` and `"ΟΔΟΣ,Α"` match `ς`, not `σ`).
+Evidence: probes/textbefore-casefold-length A1-A25 (excel-graph, 2026-10-17, T-1796); probes/textbefore-sigma-contexts A1-A18 (excel-graph, 2026-10-19, T-1799).
 Ours: `fold_for_before_after` (text/casefold.rs) folds char by char with `fold_for_split`'s İ/Kelvin exceptions plus the sigma and `ẞ` rules,
 and `match_text` (util.rs) maps the match back to byte offsets of the original with `str::get`. Before T-1796 it searched `to_lowercase()` of the text
-and sliced the original at those offsets, which panicked on `TEXTBEFORE("İİİ,a",",",1,1)`. UNVERIFIED: a delimiter with the same `Σ` as the text, which our separate folds miss (`TEXTBEFORE("aΣb","Σ",1,1)` is `#N/A` here: the text's `Σ` is `σ`, the lone delimiter `Σ` is `ς`), and a `Σ` followed by a space, digit or punctuation (`"ΟΔΟΣ ΚΑΙ"`; only a `Σ` at the end of the text is probed, A25), both T-1799; the exact sigma context rule
-(whether a `Σ` after a non-letter, or before a combining mark, is final; the code ignores what precedes it), the folding of other chars (Å U+212B, ſ, µ,
+and sliced the original at those offsets, which panicked on `TEXTBEFORE("İİİ,a",",",1,1)`. Ours: the final-sigma rule is `sigma_is_final` (string_format.rs), shared with LOWER. UNVERIFIED: whether a `Σ` before a combining mark, `’` or a zero-width space is `σ` (LOWER's rule, assumed), whether a letter must precede the `Σ` (the code ignores what precedes it), the folding of other chars (Å U+212B, ſ, µ,
 titlecase digraphs, which follow SEARCH's `fold_char`), `ẞ` against the delimiter `ß`'s mirror (text `ß`, delimiter `ẞ`), and whether TEXTSPLIT shares the
 `ẞ` and sigma rules (its probe has no such cell).
 Status: VERIFIED (web) for the listed forms
@@ -642,11 +643,11 @@ U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]
 `(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
 `a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
-Ours: matches except that `[[:alpha:]]` and `[[:word:]]` are ASCII (A15, A16), `(*UCP)`, `\X`, `\h` and `\R` are
-`#VALUE!` (A17, A27, A41, A42) and `$` does not match before a final LF (A34): the POSIX classes are T-1903's, the
-rest the matcher work of T-1898-T-1900.
+Ours: matches (the POSIX classes since T-1903) except that `(*UCP)`, `\X`, `\h` and `\R` are `#VALUE!` (A17, A27,
+A41, A42) and `$` does not match before a final LF (A34): SPEC-0013 gives `$`, `\h` and `(*UCP)` to T-1973 and
+`\X` and `\R` to a follow-up task after T-1900.
 Status: VERIFIED (excel-graph)
-Tasks: T-1829 (probe), T-1900, T-1903
+Tasks: T-1829 (probe), T-1900, T-1903, T-1973
 
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
@@ -664,10 +665,10 @@ ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around 
 Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
 Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, atomic groups, `\K`, conditionals and
 comments as invalid (`#VALUE!`), reads `a++` as `a+` followed by `+` (so `a++a` matches `aaa`, C11, B29), and
-iterates as Rust does (`bababab`). The matcher is T-1898
-(spec), T-1899 (iteration) and T-1900 (pattern features).
+iterates as Rust does (`bababab`). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
+unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
 Status: VERIFIED (excel-graph)
-Tasks: T-1688, T-1898, T-1899, T-1900
+Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
@@ -691,11 +692,23 @@ its function as an array and `ARRAYTOTEXT` of it is "" (probes/groupby-blank-val
 Evidence: probes/arraytotext-empty-ref A1-A25 (excel-graph, 2026-10-17, T-1718).
 Status: VERIFIED (excel-graph). Implemented in: `fn_arraytotext`. Tasks: T-1718
 
+## Element-wise text functions on the lift driver: a LAMBDA, a 1x1 array, VALUETOTEXT's error format (T-1775)
+Rule (the engine's, unprobed): since the element-wise text functions (LEFT/RIGHT/MID and their *B twins, LEN/LENB, FIND/SEARCH, REPT, SUBSTITUTE, REPLACE, EXACT, TEXT, VALUE, VALUETOTEXT, CODE, UNICHAR, BAHTTEXT, FILTERXML, CONCATENATE, DATEVALUE, TIMEVALUE) lift through the SPEC-0011 driver, three edges follow the driver's rule rather than the old `broadcast_text`'s:
+- a LAMBDA argument makes every element `#VALUE!`, whatever the other arguments hold, as before (`FILTERXML(LAMBDA(x,x),NA())` is `#VALUE!` in Excel, probes/filterxml-array-forms A9; an error before the LAMBDA, `LEFT(NA(),LAMBDA(x,x))`, is unprobed), but an array argument now keeps its shape (`COLUMNS(LEFT({"a","b"},LAMBDA(x,x)))` is 2, was one `#VALUE!`);
+- a 1x1 array argument gives a 1x1 array, as in every other lifted family and in TEXTSPLIT ("TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift ..." above): `TYPE(LEFT({"abc"},2))` is 64, `ARRAYTOTEXT(MID({"abc"},"x",NA()),1)` "{#VALUE!}" (was 2 and `#VALUE!`). A one-cell range is still its cell's value (`TYPE(LEFT(A1:A1,2))` is 2);
+- VALUETOTEXT with an array value and a scalar error format is an array of that error, one per element (was the one error).
+A legacy (pre-dynamic-array) `RIGHT(A1:A3)` now gets the implicit-intersection `@`: the old hand-written static arm wanted two arguments, the table says one or two (`RIGHT(text, [num_chars])`), as LEFT's arm did.
+The probed behaviour is unchanged (error precedence, the broadcast padding, the size and text bounds; eval 0 fixes, 0 regressions).
+Evidence: probes/filterxml-array-forms A9 for the LAMBDA's precedence; none for the shapes (crates/rustsheet-engine/src/test/text_functions/lift_driver.rs pins the engine's values).
+Status: UNVERIFIED (probe pending, T-1963)
+Implemented in: `Model::lift_text` (functions/text/text_kernel.rs), the text table entries (functions/lift/kinds/text.rs).
+Tasks: T-1775, T-1963
+
 ## VALUE lifts over a range or an array (T-1791)
 Rule: VALUE lifts over a multi-cell range or an array, each element read as a scalar argument: text converts as in scalar VALUE (`"1 "` is 1, `" $2 "` 2, `"1/2/2020"` 43832, `" 3%"` 0.03), a number stays, a blank cell is 0, a boolean or `""` is `#VALUE!` and an error stays (`VALUE(A1:A8)` spills 8 rows). So `{=SUM(IFERROR(VALUE(LEFT(range,FIND(...)-1)),0))}` adds the numbers in front of the found text (corpus-bench/42181 B14 is 3).
 Not probed: a multi-cell range in a legacy (non-dynamic-array) cell, which takes the implicit intersection of the other lifted text functions.
 Evidence: probes/value-argument-lift (excel-graph, 2026-10-18); corpus-bench/42181 B14 (Excel cached value).
-Implemented in: `fn_value` (functions/text/common.rs), through `text_arg` and `broadcast_text`.
+Implemented in: `fn_value` (functions/text/common.rs), through the lift driver (`Model::lift_text`, T-1775).
 Status: VERIFIED (excel-graph)
 Tasks: T-1791
 

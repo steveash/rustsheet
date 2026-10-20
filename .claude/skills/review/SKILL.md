@@ -1,6 +1,6 @@
 ---
 name: review
-description: Run RustSheet's multi-agent code review on the current branch versus main - security, architecture, quality/duplication, Excel fidelity and (when relevant) performance reviewers in parallel - and consolidate verdicts. Use before opening or merging any PR.
+description: Run RustSheet's multi-agent code review on the current branch versus main - security, architecture, quality/duplication, Excel fidelity reviewers (performance is off, decision 0081) in parallel - and consolidate verdicts. Use before opening or merging any PR.
 ---
 # Multi-agent review
 
@@ -14,10 +14,10 @@ description: Run RustSheet's multi-agent code review on the current branch versu
    - `reviewer-quality` (always)
    - `reviewer-excel-fidelity` (if the diff touches crates/rustsheet-engine, crates/rustsheet-xlsx,
      eval/suites, or eval/baseline)
-   - `reviewer-performance` (if the diff touches evaluation, storage, parser, graph, structural
-     edits, or bulk APIs)
+   - Not `reviewer-performance`: it is off while correctness comes first (decision 0081). A bench
+     criterion in the task is met at no more than 50% slower than main.
    Each reviewer runs on the model set in its agent frontmatter (decision 0015: security,
-   architecture and quality on Sonnet; Excel fidelity and performance on Opus). Do not override it
+   architecture and quality on Sonnet; Excel fidelity on Opus). Do not override it
    per call, with one exception: the steward's weekly spot-audit launches every reviewer with
    `model: opus`, so a cheaper reviewer's miss is re-checked by the stronger model.
 4. Consolidate into a table: reviewer | verdict | blocking findings. A PR is mergeable only when
