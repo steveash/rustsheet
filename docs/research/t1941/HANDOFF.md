@@ -1091,7 +1091,7 @@ Reviewer 3's mechanism analysis:
 The direct read is a table of Excel's shift on the s4 exact class, against e3 = P3_80 - P3_q in 1/16 steps jointly with
 the eighth-position class of P3_q + p3, per run. The positive control is a planted p2 move.
 
-### 12.10 The s3 and D-side tables are flat; what K2's deviation must be (reviewer 3, 2026-10-20 03:28 UTC)
+### 12.10 The s3 and D-side tables are flat; what K2's deviation must be (reviewer 3, 2026-10-20 03:28 UTC) — SUPERSEDED by 12.13 (re-hashed head line withdrawn by reviewer 3)
 Runs: r112, r901, r113, r703, all against grid_a. Script: `review3/s3table.py`; the D-side table is a variant that was
 not committed.
 
@@ -1166,3 +1166,63 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
     - If the fit reaches 1.0 as W shrinks, a hidden quantity varies slowly in x (piecewise tables or breakpoints).
     - If the fit stays capped, the freedom is per point (a different op or precision).
   - W6 runs an absolute-phase smooth-shift test on the K=0 and L runs. It also checks whether phases are constant within a window but drift between anchors, and whether the mismatch is a fixed fraction of a cycle (a different precision at one stage).
+
+### 12.12 W2 locality and precise-head screens (03:50-03:55): both negative
+
+- **Window-length scan (winscan.py).** Joint fit per window of W consecutive doubles.
+
+  | W | REAL | controls (cH, rh1e6, cLH) |
+  |---|---|---|
+  | 64 | 0.885 | 0.95-0.98 |
+  | 256 | 0.859 | 0.95-0.98 |
+  | 1k / 4k | 0.851 | 0.95-0.98 |
+
+  - The extra freedom is **point-local**: no piecewise tables, breakpoints or slowly varying hidden quantity.
+- **Low-bit screen (bitfeat.py, exact rational).** The features were exact, tie, guard, near-tie and quarter positions at 53 bits, exact-at-64, the double-rounding window and the fl24 half.
+  - Nothing beyond propagation sensitivity and the known D tie effect.
+  - Hidden extended precision on a single op, or float32 anywhere, is excluded.
+- **Precise heads (vheads.py).**
+  - Variants:
+    - V1N: exactly-rounded N head;
+    - V1D: exactly-rounded D head;
+    - V1ND: both.
+  - CompHorner and double-double hi are identical to V1ND on every point.
+  - Results:
+    - Excel follows the variant on 0.49-0.88 of the points where it differs; the planted control is followed at 1.00.
+    - That lifts the exact rate by only 1-8 points.
+    - An exact block through s5/d4 and power sums (forward and reverse) are worse than stored.
+  - Rejected.
+- **Net.** Excel's K2 head behaves like stored Horner, re-decided point-wise partly toward the exact value. The strength of that re-decision varies by run.
+- **Queued next.**
+  - W2: the follow-strength map vs x, and head forms H1-H4 (shifted variable, hi+lo coefficients, Dekker-split x, two-order combination).
+  - Reviewer 3: asked for a concrete structural form.
+
+### 12.13 Reviewer 3: proof-grade ceiling for grid_a's op structure (supersedes the 12.10 "re-hashed head" line)
+
+- **Fact 1.** A run spans about 2e-12 relative in x. Within it, any coefficient move acts on every stored op as a constant pre-rounding offset, however large the move. So the "re-hashing" decorrelation does not exist.
+- **Fact 2.** On (2,3], ulp(p_k) = ulp(s_k) for k = 1..4.
+  - An integer coefficient move therefore shifts s_k by exactly that integer, with no re-decision.
+  - Only the products P2, P3 and P4 can re-decide.
+  - The point-dependent span those re-decisions can create at v4 is at most 0.6 u (0.85 u above x ≈ 2.76).
+  - Excel's two-sided ±1 exact-class re-decisions need a span of at least 1 u.
+- **Exhaustive sweep (`review3/sweep.py`).** Per run it scans c2 and c3 on a grid, finds c4 exactly by interval coverage, then finds (g2, g3) for D, and verifies the optimum by direct simulation.
+  - Supremum of {grid_a op structure, any coefficients}:
+
+    | run | x | grid_a → c4 only → (c2,c3,c4) → +(g2,g3) |
+    |---|---|---|
+    | r112 | 2.236 | 0.766 → 0.812 → 0.814 → 0.829 |
+    | r901 | 2.500 | 0.784 → 0.811 → 0.826 → 0.848 |
+    | r113 | 2.718 | 0.730 → 0.775 → 0.796 → 0.809 |
+    | r703 | 2.612 | 0.737 → 0.746 → 0.753 → 0.767 |
+
+  - The optimal hand-off offsets disagree in sign across runs, so not even one polynomial lies behind the per-run optima.
+- **Lattice (`review3/lattice.py`).** The head exact-null lattice has rank 3-4 and is trivially enumerable. By Fact 1 every element is a per-run constant, already covered by the sweep.
+- **Consequence.** The missing 15-23% per run is **op structure**, not coefficients. All K2 coefficient and offset solvers are stopped.
+- **Next.** Any candidate structure is first screened on whether its head has a point-dependent span of at least 1 u at the hand-off. Candidates queued:
+  - H1: shifted-variable head;
+  - H2: hi+lo coefficients;
+  - H3: Dekker-split x;
+  - H4: two-order combination;
+  - H5: a variable or scaling under which the head sums re-decide.
+- **Model-free read.** The admissible-s4 map per point is requested from reviewer 3.
+- **Per the user's directive** (bit-exact, no DEVIATION acceptance), grid_a is not shipped.
