@@ -342,7 +342,7 @@ Tasks: T-1816
 Rule: for IMSUM, IMPRODUCT, IMEXP, IMPOWER and IMDIV (the functions probed), a result that
 overflows or is NaN is an error, never text. IMSUM and IMPRODUCT give `#VALUE!`; IMEXP of a pure
 real number, IMPOWER and IMDIV give `#NUM!`. The other IM* functions are UNVERIFIED.
-Status: VERIFIED (excel-graph); implemented for the five; IMEXP with a nonzero imaginary part is not (below).
+Status: VERIFIED (excel-graph); implemented for the five (IMEXP with a nonzero imaginary part: T-2002, T-2060).
 Tasks: T-1827, T-1996, and the follow-ups T-2001 to T-2003.
 Evidence: probes/eng-im-overflow (excel-graph).
 
@@ -360,7 +360,7 @@ Evidence: probes/eng-im-overflow (excel-graph).
   (`-1.79769313485599E+308+4.770340154251E+302i`), down to `1000+1.5E-8i`; but `IMEXP("710+1E-300i")`,
   `"1000+1E-300i"`, `"1000-1E-300i"` and every imaginary part up to `1.4E-8` are `#NUM!`. The
   boundary (1.4E-8 error, 1.5E-8 capped) is sqrt(DBL_EPSILON) = 1.49E-8, so
-  such an argument is treated like a pure real one. The same rule near y = pi (y within sqrt(DBL_EPSILON) of pi) is unprobed.
+  such an argument is treated like a pure real one. The same rule near y = pi (y within sqrt(DBL_EPSILON) of pi) is unprobed, as is the exact cutoff (T-2087).
 - IM* text keeps 15 significant digits for an exponent past 98, unlike `&""` (numbers.md): A11,
   A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
   `1.65498402768026E+308`, which ours now matches (T-2001: `complex_part_to_text` keeps 15 digits). This is a
