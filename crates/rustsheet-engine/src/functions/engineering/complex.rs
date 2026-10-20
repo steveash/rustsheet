@@ -202,6 +202,16 @@ fn complex_result(x: f64, y: f64, suffix: Suffix) -> CalcResult {
     CalcResult::String(Complex { x, y, suffix }.to_string().into())
 }
 
+/// A result part that overflows or is NaN is `#NUM!`, not `inf` text: `IMCOSH("1000")`,
+/// `IMSIN("1+1000i")` (probes/eng-complex-overflow A1-A4; engineering.md "IM* results that overflow").
+fn finite_complex_result(x: f64, y: f64, suffix: Suffix, cell: CellReferenceIndex) -> CalcResult {
+    if x.is_finite() && y.is_finite() {
+        complex_result(x, y, suffix)
+    } else {
+        num_error(cell)
+    }
+}
+
 /// How a complex argument reads a blank and empty text.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum EmptyText {
@@ -382,10 +392,7 @@ impl Model {
                 let d = x2 * r + y2;
                 ((x1 * r + y1) / d, (y1 * r - x1) / d)
             };
-            if !re.is_finite() || !im.is_finite() {
-                return num_error(cell);
-            }
-            complex_result(re, im, suffix)
+            finite_complex_result(re, im, suffix, cell)
         })
     }
 
@@ -447,10 +454,7 @@ impl Model {
                 return num_error(cell);
             };
             let (x, y) = (radius * cos, radius * sin);
-            if !x.is_finite() || !y.is_finite() {
-                return num_error(cell);
-            }
-            complex_result(x, y, suffix)
+            finite_complex_result(x, y, suffix, cell)
         })
     }
 
@@ -493,12 +497,11 @@ impl Model {
             cell,
             &mut |_, values| match Self::complex_pair_of(values, cell) {
                 Ok(((x1, y1, suffix), (x2, y2, _))) => {
-                    let (re, im) = (x1 - x2, y1 - y2);
-                    if re.is_finite() && im.is_finite() {
-                        complex_result(re, im, suffix)
-                    } else {
-                        num_error(cell)
-                    }
+                    // Excel: a part that overflows is 0 and the other part stays
+                    // (`IMSUB("9E307","-9E307")` is "0", `IMSUB("9E307+1i","-9E307")` is "i";
+                    // probes/eng-complex-overflow A7, A13-A15, A21).
+                    let finite_or_zero = |part: f64| if part.is_finite() { part } else { 0.0 };
+                    complex_result(finite_or_zero(x1 - x2), finite_or_zero(y1 - y2), suffix)
                 }
                 Err(error) => error,
             },
@@ -603,14 +606,22 @@ impl Model {
                         }
                         value => Self::complex_of(&value, EmptyText::Parse, cell)?,
                     };
-                    total = Some(match total {
+                    let next = match total {
                         None => z,
                         Some((x, y, suffix)) if suffix == z.2 => match fold {
                             ComplexFold::Sum => (x + z.0, y + z.1, suffix),
                             ComplexFold::Product => (x * z.0 - y * z.1, x * z.1 + y * z.0, suffix),
                         },
                         Some(_) => return Err(value_error(cell)),
-                    });
+                    };
+                    // An overflow is `#VALUE!` at once: it beats a later bad argument, a later
+                    // blank and a later cancelling term (`IMSUM("9E307","9E307","-9E307")`,
+                    // `IMSUM("9E307","9E307",1,"x")`, `IMPRODUCT("1E200","1E200",<blank>)`;
+                    // probes/eng-complex-overflow A5, A8-A10).
+                    if !next.0.is_finite() || !next.1.is_finite() {
+                        return Err(value_error(cell));
+                    }
+                    total = Some(next);
                     Ok(())
                 },
             );
@@ -662,12 +673,12 @@ fn imconjugate((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResul
     complex_result(x, -y, suffix)
 }
 
-fn imcos((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    complex_result(x.cos() * y.cosh(), -x.sin() * y.sinh(), suffix)
+fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    finite_complex_result(x.cos() * y.cosh(), -x.sin() * y.sinh(), suffix, cell)
 }
 
-fn imcosh((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix)
+fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    finite_complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix, cell)
 }
 
 fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -723,10 +734,7 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
         return complex_result(f64::MAX * y.cos(), f64::MAX * y.sin(), suffix);
     }
     let (re, im) = (modulus * y.cos(), modulus * y.sin());
-    if !re.is_finite() || !im.is_finite() {
-        return num_error(cell);
-    }
-    complex_result(re, im, suffix)
+    finite_complex_result(re, im, suffix, cell)
 }
 
 fn imln((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -773,12 +781,12 @@ fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     complex_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, suffix)
 }
 
-fn imsin((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    complex_result(x.sin() * y.cosh(), x.cos() * y.sinh(), suffix)
+fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    finite_complex_result(x.sin() * y.cosh(), x.cos() * y.sinh(), suffix, cell)
 }
 
-fn imsinh((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix)
+fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
 }
 
 fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
