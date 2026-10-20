@@ -389,7 +389,7 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
                 kind: Function::Index,
                 args,
             } if args.first().is_some_and(is_plain_reference) => true,
-            Node::FunctionKind { kind: call, args } => returns_array_constants(kind, call, args),
+            Node::FunctionKind { kind, args } => returns_array_constants(kind, args),
             _ => false,
         }
 }
@@ -400,27 +400,40 @@ pub(super) fn leaves_call_whole(kind: &Function, arg: &Node) -> bool {
 /// unmarked (T-1908); a CHOOSE mixing references and array constants is
 /// [`chooses_between_references_and_array_constants`], and a CHOOSE with an array-constant index over
 /// references is [`chooses_references_by_an_array_index`]; other mixed arms keep their `@`.
-fn returns_array_constants(reader: &Function, kind: &Function, args: &[Node]) -> bool {
+fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
     (matches!(kind, Function::Choose | Function::Index | Function::Ifs)
         && returns_only_array_constants(kind, args))
         || chooses_between_references_and_array_constants(kind, args)
-        || chooses_references_by_an_array_index(reader, kind, args)
+        || chooses_references_by_an_array_index(kind, args)
 }
 
-/// Whether `kind(args)` is a CHOOSE with a one-row array constant of several elements for its index
-/// over ranges: Excel shows no `@` on it and N reads it as `#VALUE!` on the arms' rows and off them
-/// (`=N(CHOOSE({1,2},H1:H2,I1:I2))`; probes/subtotal-take-array-selector D1, D3, D5, D7, T-1915).
-/// Only that shape is probed, read by `reader` N: T, single-cell arms, column or 2-D indexes and other arm
-/// counts are unprobed and keep their `@` (T-1915 follow-up probe).
-fn chooses_references_by_an_array_index(reader: &Function, kind: &Function, args: &[Node]) -> bool {
+/// Whether `kind(args)` is a CHOOSE with an array constant for its index over cell or range
+/// references: Excel shows no `@` on it and N or T read it as `#VALUE!` on the arms' rows and off
+/// them, whatever the index's shape (one element, a row, a column, 2-D) or elements (text,
+/// boolean, out of range) and however many arms (`=N(CHOOSE({1,2},H1:H2,I1:I2))`,
+/// `=T(CHOOSE({1;2},V1,W1))`, `=N(CHOOSE({1},X1:X2,Y1:Y2))`; probes/subtotal-take-array-selector
+/// D1-D7, T-1915, probes/legacy-n-t-choose-array-index-shapes, T-2100). Arms other than plain
+/// same-sheet cell or range references (other sheets, other kinds of argument) and an explicit `@`
+/// on the index are unprobed; the predicate takes the probed same-sheet behavior for references on
+/// other sheets, and leaves an explicit `@` alone. A one-element index already has its
+/// automatic `@` when N or T is marked, which [`mark_legacy_reading`] then drops.
+fn chooses_references_by_an_array_index(kind: &Function, args: &[Node]) -> bool {
     let [index, arms @ ..] = args else {
         return false;
     };
-    matches!(reader, Function::N | Function::NLegacy)
-        && matches!(kind, Function::Choose)
-        && matches!(index, Node::ArrayKind(rows) if rows.len() == 1 && rows[0].len() > 1)
-        && arms.len() == 2
-        && arms.iter().all(|arm| matches!(arm, Node::RangeKind { .. }))
+    let index = match index {
+        Node::ImplicitIntersection {
+            automatic: true,
+            child,
+        } => child.as_ref(),
+        index => index,
+    };
+    matches!(kind, Function::Choose)
+        && matches!(index, Node::ArrayKind(_))
+        && !arms.is_empty()
+        && arms
+            .iter()
+            .all(|arm| matches!(arm, Node::ReferenceKind { .. } | Node::RangeKind { .. }))
 }
 
 /// Whether `kind` has an argument it can return ([`is_returned_argument`]) and every one is an
@@ -496,7 +509,9 @@ fn is_returned_argument(kind: &Function, index: usize, count: usize) -> bool {
 /// `=N(IFS(1,{2}))` with none, all `#VALUE!` (legacy-n-t-reference-args N, legacy-n-t-marker-shapes
 /// A-D; SPEC-0012 "Placement", item 6). Those `@`s are taken off in place and put back if the call
 /// is not marked, so nothing is cloned; the rewrite's own display text has none, so the decision is
-/// the same on it.
+/// the same on it. The `@` on a one-element index of a CHOOSE over references
+/// ([`chooses_references_by_an_array_index`]) goes too: `=N(CHOOSE({1},X1:X2,Y1:Y2))` shows none
+/// (probes/legacy-n-t-choose-array-index-shapes L, T-2100).
 pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
     let [Node::FunctionKind {
         kind: call,
@@ -527,12 +542,17 @@ pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
             }
         }
     }
-    let marked = (matches!(call, Function::If) || returns_array_constants(kind, call, call_args))
+    let marked = (matches!(call, Function::If) || returns_array_constants(call, call_args))
         && !matches!(
             static_analysis_on_function(call, call_args),
             StaticResult::Scalar
         );
     if marked {
+        if chooses_references_by_an_array_index(call, call_args) {
+            if let Some(index) = call_args.first_mut() {
+                take_automatic_at(index);
+            }
+        }
         *kind = kind.legacy_reading();
     } else {
         for index in dropped {
