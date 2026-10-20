@@ -442,7 +442,11 @@ impl Model {
         if nper == 0.0 {
             return Err(div_error(cell));
         }
-        Ok(pv * rate * (per / nper - 1.0))
+        // Excel's operation order, `(per - nper) * pv * rate / nper`, left to right: it alone fits
+        // all 24 cells of probes/fin-ispmt-order (inputs where the candidate orders differ in the
+        // last bit) and ISPMT.xlsx E2 (`ISPMT(0.2,1,3,100)` = -13.333333333333334, where
+        // `pv * rate * (per / nper - 1)` gives ...336; financial.md "ISPMT's operation order").
+        Ok((per - nper) * pv * rate / nper)
     }
 
     /// `RRI(nper, pv, fv)`: `(fv/pv)^(1/nper) - 1`.
