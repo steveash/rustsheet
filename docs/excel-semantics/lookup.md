@@ -708,7 +708,9 @@ Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier 
 `RefArg::Grid` (reference_operators.rs) with its value view `RefGrid::to_values`; OFFSET as producer
 (`Model::offset_reference`, lookup_and_reference/offset.rs, lifted by `Model::lift_references` in lift/driver.rs; its
 spill shape from `static_analysis_offset`); INDEX's pick (`Model::index_grid`, index.rs), ROWS/COLUMNS (the value
-view's shape) and ISREF (FALSE). INDIRECT (`Model::indirect_reference`) and TRIMRANGE (`Model::trimrange_reference`) are producers on the same carrier (T-1957; shared helpers in lookup_and_reference/ref_lift.rs); a one-cell TRIMRANGE source still trims to a reference, an array source gives `#VALUE!` per element. Not yet: the top-left aggregates such as
+view's shape) and ISREF (FALSE). INDIRECT (`Model::indirect_reference`) and TRIMRANGE (`Model::trimrange_reference`) are producers on the same
+carrier (T-1957; shared helpers in lookup_and_reference/ref_lift.rs); a one-cell TRIMRANGE source still trims to a
+reference, an array source gives `#VALUE!` per element. Not yet: the top-left aggregates such as
 `SUM(OFFSET(A1,{0;1},0))` (reference-lift-elements G12, H12; T-2063), the per-element callers (T-2064) and the
 LET, IF and CHOOSE pass-through (T-2078).
 Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065
