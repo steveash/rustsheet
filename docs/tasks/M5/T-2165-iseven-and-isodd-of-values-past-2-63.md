@@ -3,7 +3,7 @@ id: T-2165
 title: "ISEVEN and ISODD of values past 2^63 (ISODD(INT(1E+21)) is FALSE)"
 milestone: M5
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 3 in eval/baselin
 
 ## Out of scope
 -
+
+## Outcome
+Parity now uses an f64 remainder instead of an i64 cast, so values past 2^63 are even. Removed 3 known failures from eval/baseline/gen-m5.txt.

@@ -307,6 +307,8 @@ impl Model {
     fn parity_of(&mut self, value: CalcResult, even: bool, cell: CellReferenceIndex) -> CalcResult {
         // Parity is taken on the truncated absolute value (4.5 is even, -7 is odd:
         // probes/is-functions-array-lift, Data!C3:C4); a boolean is #VALUE!, text is cast.
+        // The remainder is taken in f64: every double from 2^53 up is an even integer, so
+        // ISODD(INT(1E+21)) is FALSE (an i64 cast would saturate to odd; gen-m5 ee1667411bbe2ccc).
         let value = self.dereference(value, cell);
         if matches!(value, CalcResult::Boolean(_)) {
             return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
@@ -316,7 +318,7 @@ impl Model {
             return Self::lambda_as_number_error(cell);
         }
         match self.cast_to_number(value, cell) {
-            Ok(f) => CalcResult::Boolean((f.abs().trunc() as i64 % 2 == 0) == even),
+            Ok(f) => CalcResult::Boolean((f.abs().trunc() % 2.0 == 0.0) == even),
             Err(error) => error,
         }
     }
