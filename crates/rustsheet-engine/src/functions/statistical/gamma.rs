@@ -2,8 +2,8 @@ use statrs::distribution::{Continuous, Gamma};
 use statrs::function::gamma::gamma;
 
 use super::erf::gamma_half_lower;
+use super::gammaln::excel_gammaln;
 use super::incomplete_gamma::{gamma_cdf, gamma_inverse_cdf};
-use super::special::ln_gamma;
 
 use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
@@ -126,8 +126,8 @@ impl Model {
         Ok(x)
     }
 
-    /// `GAMMALN(x)` and GAMMALN.PRECISE: lift over an array and a range (SPEC-0011;
-    /// probes/stat-argument-modes H287-H292).
+    /// `GAMMALN(x)` and GAMMALN.PRECISE (one routine, `gammaln.rs`): lift over an array and a
+    /// range (SPEC-0011; probes/stat-argument-modes H287-H292).
     pub(crate) fn fn_gamma_ln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::GammaLn, args, cell, &mut |model, values| {
             let [x] = values else {
@@ -137,7 +137,8 @@ impl Model {
                 if x < 0.0 {
                     return Err(num_error(cell));
                 }
-                let result = ln_gamma(x);
+                // Excel's own x87 routine (gammaln.rs, T-2128); x = 0 is NaN there, #NUM!.
+                let result = excel_gammaln(x);
                 if result.is_nan() || result.is_infinite() {
                     return Err(num_error(cell));
                 }

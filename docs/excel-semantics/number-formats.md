@@ -318,6 +318,28 @@ Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455, T-1481, T-1486, T
 
 TEXT over an array of format codes (T-1451): one result per format, value and formats broadcast together (see text.md). `TEXT(1,{"0",#N/A})` is "1", `#N/A` (-f A54:B54). The error-precedence and lifting rules are verified by probes/text-format-array (T-1458) for error and too-complex format elements; a syntactically invalid format element next to an error value is not probed.
 
+## TEXT checks the code before it looks at a text or boolean value (T-2157)
+Rule: a code that is `#VALUE!` for a number is `#VALUE!` for a text or boolean value too, even where the text section would
+apply: `TEXT(" x ","TRUE")`, `TEXT("TRUE",TRUE)`, `TEXT("a",FALSE)`, `TEXT(FALSE,FALSE)`, `TEXT(FALSE,"FALSE")`,
+`TEXT(TRUE,"#N/A")`, `TEXT("TRUE","HELLO ")`, `TEXT("a*",FALSE)` and `TEXT(FALSE,"x~*0.1Hello World")` are `#VALUE!` (a bare
+`E` without a sign, an `N`, or a date token beside digit placeholders: "Bare letters and digits in a number format" above).
+Ours returns the text or boolean unchanged. Also `TEXT(2.5,"a*?b1")` is `#VALUE!` (ours "a "); which part Excel rejects (the
+`*?` fill followed by `b1`) is unprobed.
+Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/25768de48ae7f2f9 Calc!A395, gen-m5/5704666097cbc5b2 Calc!A133,
+gen-m5/651e713f5ae232ed Calc!A3, gen-m5/6b831f5e2a20bc34 Calc!A320, gen-m5/8a387c26d182e73c Calc!A281, gen-m5/8df4830f888f16ae Calc!A149,
+gen-m5/a6fec430ac350c1a Calc!A331, gen-m5/c688ca172fe533dc Calc!A139, gen-m5/d1b251fd6e9c4b4b Calc!A120, gen-m5/d9fb1e918971111b Calc!A243,
+gen-m5/f0f205865a3a4328 Calc!A262.
+Status: VERIFIED (excel-graph); not implemented (T-2157). Related: T-1130 (text values under 1-3 section codes).
+
+## TEXT reads a number-like text value as its number; control characters are literals (T-2158)
+Rule: a text value that reads as a number is formatted as that number: `TEXT("1","0,000.0")` is "0,001.0" and
+`TEXT("$3.14","h:mm:ss.00")` (`DOLLAR(3.14159)`) is "3:21:36.00" (ours "1" and "$3.14"). A control character in the code prints
+as a literal: `TEXT(100,CHAR(10))` is a line feed and `TEXT(-2.5,CHAR(1))` is "-" followed by CHAR(1) (ours `#VALUE!` for both).
+Evidence (excel-graph, 2026-10-20): gen-m5/901e91c09b347914 Calc!A210, gen-m5/eb942f4a59b1c004 Calc!A54,
+gen-m5/d586a1e0c9896942 Calc!A38, gen-m5/c0651f0e0fb544d0 Calc!A336.
+Unprobed: date-like and percent text values, other control characters.
+Status: VERIFIED (excel-graph); not implemented (T-2158).
+
 ## Unquoted ASCII letters in a number format (T-1450)
 
 Excel prints most ASCII letters that are not format tokens as literals, with no quotes or backslash. Probed as `TEXT(1,"0"&L)` and `TEXT(1,"d"&L)` for every ASCII letter in both cases (probes/text-format-unquoted-letters A1:A104, excel-graph 2026-10-14). This refines "Bare letters and digits in a number format" above: a date token next to a digit placeholder is an error, but with no digit placeholder it is a date token (`TEXT(100,"ABC")` = "A43C"; `TEXT(1,"0B")` is `#VALUE!`).

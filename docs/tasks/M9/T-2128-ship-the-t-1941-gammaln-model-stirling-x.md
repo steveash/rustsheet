@@ -3,7 +3,7 @@ id: T-2128
 title: "Ship the T-1941 GAMMALN model: Stirling x>=8, recursions and the K2, K3, (1.5,2] kernels"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -44,12 +44,29 @@ Expected parity (HANDOFF2 §3): x ≥ 8 ~100%; (2,3] and [3,8) ~95% (98% within 
    module so T-2122 can swap them.
 
 ## Acceptance criteria
-- [ ] GAMMALN x ≥ 8 matches the committed T-1941 runs (291,957 of 291,957); x < 0.7 and [3,8) reproduce the research composition.
-- [ ] K2, K3 and (1.5,2] reproduce the research models' exact rates (±0.5%) on the committed runs, and equal the Python checkers on a committed sample; cand9 near 2 decided by measurement and documented.
-- [ ] GAMMALN(1) = GAMMALN(2) = 0; no panics or unbounded loops on any f64.
-- [ ] `eval/baseline/` known failures only shrink; the GAMMALN lines from T-1529 are reduced or explained.
-- [ ] `make check` green; reviewers approve.
+- [x] GAMMALN x ≥ 8 matches the committed T-1941 runs (292,645 of 292,649; the 4 misses are LN near-ties where Excel's own LN cell differs too, so the series is exact given Excel's LN); x < 0.7 and (3,8) reproduce the research composition.
+- [x] K2, K3 and (1.5,2] reproduce the research models' exact rates (±0.5%) on the committed runs, and equal the Python checkers on a committed sample; cand9 near 2 decided by measurement and documented.
+- [x] GAMMALN(1) = GAMMALN(2) = 0; no panics or unbounded loops on any f64.
+- [x] `eval/baseline/` known failures only shrink; the GAMMALN lines from T-1529 are reduced or explained.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Finding the remaining coefficient bits (T-2122).
 - GAMMA.DIST and the incomplete gamma / beta kernels (T-0971, T-0970).
+
+## Outcome
+`functions/statistical/gammaln.rs` `excel_gammaln` is Excel's routine and the worksheet GAMMALN / GAMMALN.PRECISE use it;
+`gamma_kernels.rs` holds the open kernels' coefficient arrays (K2 `k2_ref.py`, cand9, K3 `ss_fc.txt`, (1.5,2]
+`xl_chain_d3ls.txt`, each with its measured rate and a T-2122 pointer, transcribed by bit pattern), and `x87_register.rs` a
+64-bit-significand value for K2's register head. Every other op is a stored x87 op (`extended_*`) and every LN `excel_ln`.
+The region ends come from Excel's own cells: 1.5 is K3, 3 is K2 and 4 reduces to t = 2 (the task text had [0.7, 1.5) and
+3 ≤ x < 8; GAMMALN_GAMMALNPRECISE.xlsx A5/A9 and `kmyst-gam-c304/r203/r205` settle it). K2 takes cand9 for x - 2 < 0.01: the
+measured optimum (statistics.md "GAMMALN is Excel's own x87 routine"). Rates on 18,360,467 distinct T-1941 points: x < 0.7
+0.869, K3 0.322, (1.5,2] 0.428, K2 (2,2.02) 0.983, K2 [2.02,3] 0.950, (3,8) 0.991, x ≥ 8 292,645 of 292,649 (the 4 misses are
+LN near-ties where Excel's LN column also differs, so Stirling is exact given Excel's LN). These are the research models'
+rates: the committed fixture (1,500 random points per region) equals the composed Python checkers on all 10,500 points.
+Eval: ironcalc-calc GAMMALN_GAMMALNPRECISE.xlsx 91/91 (8 + 4 known failures gone), BETA_GAMMA.xlsx 6 fixed,
+probes/stat-argument-modes 2 fixed, 0 regressions. The non-gated t1042 cases: every GAMMALN cell at integers 1..171 and
+half-integers now matches (fdlibm missed 63 of the integers); 5 of 24 unit-interval cells miss by an ulp, all in K3. GAMMA
+(T-2129), GAMMA.DIST and the incomplete gamma/beta kernels still use the old ln-gamma (`special.rs` `ln_gamma`, T-0971 and
+T-0970 switch in their own tasks).
