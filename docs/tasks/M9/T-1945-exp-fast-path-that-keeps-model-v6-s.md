@@ -3,7 +3,7 @@ id: T-1945
 title: "EXP fast path that keeps model V6's bits (perf, T-1931)"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
