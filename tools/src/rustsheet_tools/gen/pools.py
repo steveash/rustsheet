@@ -75,7 +75,7 @@ POOLS: dict[str, list[str]] = {
     "time_serial": entries(
         "0 | 0.5 | 0.999988426 | 0.99999999 | 1/86400 | 0.5/86400 | 1.5/86400 | 2958465.99999 | (-0.5)"
     ),
-    # DATEVALUE: "The en-US date-text grammar" (month-first, month names, the 1929/1930 two-digit-year cut,
+    # DATEVALUE: "The en-US date-text grammar" (month-first, month names, the 29 -> 2029 / 30 -> 1930 two-digit-year cut,
     # ISO, the fictitious 1900-02-29, an invalid day) and "Date text with a month name glued to digits". No
     # year-less date: it reads as a date in the current year, so its value depends on the clock.
     "date_text": entries(
