@@ -459,8 +459,9 @@ Desktop `.Text` does depend on the width (`####` when a number does not fit), un
 excel-graph text is what the M10 suite scores (decision 0068).
 Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030), "1,234" for
 `TEXT(1234.5,"#,##0")` (a value failure too: Excel rounds the 15-digit decimal half away from zero,
-as General and ROUND do; ours rounds an exact binary tie to even, T-2206) and `#VALUE!` for the
-negative date (T-1711, T-1731).
+as General and ROUND do; ours rounds an exact binary tie to even, T-2206).
+Implemented in: formatter/formatted.rs (`Formatted::displayed`: every serial the formatter rejects as a
+date, where TEXT is `#VALUE!`, displays 255 `#`; T-1711).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1610, T-1711, T-2030, T-2206
 

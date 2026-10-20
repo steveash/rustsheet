@@ -10,6 +10,7 @@ use crate::{
 };
 use std::collections::BTreeSet;
 
+pub use super::formatted::Formatted;
 pub(crate) use super::parse_formatted::{
     parse_formatted_number, parse_typed_number, rejected_clock_text_format,
 };
@@ -19,12 +20,6 @@ use super::{
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     parser::{GeneralPart, ParsePart, Parser, TextToken},
 };
-
-pub struct Formatted {
-    pub color: Option<i32>,
-    pub text: String,
-    pub error: Option<String>,
-}
 
 /// The workbook inputs of number formatting: the locale and the date system (SPEC-0005).
 #[derive(Clone, Copy)]
@@ -107,6 +102,7 @@ fn invalid_date(value: f64) -> Formatted {
         text: "#VALUE!".to_owned(),
         color: None,
         error: Some(format!("Invalid date value: '{value}'")),
+        unshowable: true,
     }
 }
 
@@ -119,6 +115,7 @@ pub fn format_text(value: Option<f64>, format: &str, ctx: &FormatContext) -> For
             color: None,
             text: String::new(),
             error: None,
+            unshowable: false,
         };
     }
     format_number(value.unwrap_or(0.0), format, ctx)
@@ -223,7 +220,7 @@ pub(crate) fn format_text_value_exact(text: &Text, format: &str) -> Result<Text,
 
 /// Excel: TEXT of a text value is `#VALUE!` once the result is over 255 characters, also when the
 /// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
-const MAX_TEXT_FORMAT_CHARS: usize = 255;
+pub(super) const MAX_TEXT_FORMAT_CHARS: usize = 255;
 
 /// The Buddhist era counts from 543 BC: serial 100 (1900-04-09) is "43" under `b` and "2443" under
 /// `bbbb` (probes/text-format-bare-literals A41-A46; gen-m7/6db767d720c5b55a A30).
@@ -241,6 +238,7 @@ fn value_error(message: &str) -> Formatted {
         text: "#VALUE!".to_owned(),
         color: None,
         error: Some(message.to_owned()),
+        unshowable: false,
     }
 }
 
@@ -262,6 +260,7 @@ fn capped_text(text: String) -> Formatted {
         color: None,
         text,
         error: None,
+        unshowable: false,
     }
 }
 
@@ -333,6 +332,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text: if value < 0.0 { "-" } else { "" }.to_owned(),
                 color: None,
                 error: None,
+                unshowable: false,
             };
         }
         // A single text section (`@` in it) does not apply to numbers, which print in General:
@@ -384,6 +384,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text: "#VALUE!".to_owned(),
                 color: None,
                 error: Some("Too many parts".to_owned()),
+                unshowable: false,
             };
         }
     }
@@ -393,6 +394,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             text: general_text(value, locale),
             color: None,
             error: None,
+            unshowable: false,
         },
         ParsePart::Date(p) => {
             // Excel: whether a negative serial formats or is #VALUE! depends on the value's own
@@ -713,6 +715,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text,
                 color: p.color,
                 error: None,
+                unshowable: false,
             }
         }
         ParsePart::Number(p) => {
@@ -721,6 +724,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     text: format_fraction(value, p, fraction),
                     color: p.color,
                     error: None,
+                    unshowable: false,
                 };
             }
             let mut text = "".to_string();
@@ -979,6 +983,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text,
                 color: p.color,
                 error: None,
+                unshowable: false,
             }
         }
     }
