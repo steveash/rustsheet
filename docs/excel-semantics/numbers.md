@@ -766,7 +766,7 @@ Observed (no formulation is claimed; T-0915 fits it):
 Evidence: `probes-numeric/m9-trig-reduction` (`rustsheet-eval show probes-numeric/m9-trig-reduction.case.json`). As of 2026-10-08,
 247 of 666 cells passed. The formulation is the x87 64-bit pi reduction ("Trig of a huge angle", T-1563), and COT, CSC and SEC
 divide as "Division rounds twice" does (T-0915); all 666 cells pass since then.
-Status: VERIFIED (excel-graph); implemented (functions/math_and_trigonometry/trig.rs, `reciprocal_trig`).
+Status: VERIFIED (excel-graph); implemented (functions/math_and_trigonometry/trig.rs `reduce`, mathematical.rs `reciprocal_trig`).
 
 ## Non-integer exponents: exp(y·ln x)
 Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
