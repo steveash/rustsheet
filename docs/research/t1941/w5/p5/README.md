@@ -225,3 +225,99 @@ separate these yet. Per-site map running (`sitemap.sh`).
 moves only roundings. 50k clean points, every N and D stage, c in ulp(S_{j−1}) units, ±10,000 step 4
 (`hidden_ssfc.log`), and at the top stages c in ulp(S_j)/32 over ±4 ulps (`hidden_fine_top.log`). Best gains +0.7%
 (D.S2 0.3393, D.S4 0.3389 vs 0.3320) and +0.85% (N.S6 fine). No K2-like jump (K2: 0.74 → 0.88).
+
+## Per-site anti-base map (real rows6, ss_fc base; `sitemap.sh` → `sitemap_N.log`, `sitemap_D.log`)
+Z of the S objective at a = 0 against random-hypothesis nulls. Strongly negative means the base's rounding pattern at
+that site is missing from Excel (wrong phase, wrong coefficients or unstored); near 0 at a strong site means present.
+- N: S8 −0.7 (no signal), S7 −17.5, S6 −28.0, S5 −8.9, S4 −16.1, S3 −28.4, S2 −2.9, S1 −2.3.
+- D: S8 −0.3 (no signal), S7 −4.0, S6 −18.0, S5 −28.4, S4 −95.2, S3 −66.8, S2 −2.8, S1 +1.9.
+N.S1, N.S2 and D.S2 are strong sites (null sd ~300) whose base pattern IS present. Excel stores them, and ss_fc's
+read constants there are right. Everything from N.S3 and D.S3 up is mismatched; D.S3/D.S4 are the worst. This
+argues against an all-80-bit D chain and an unstored N.S2. A no-refit mask gain is not evidence either
+(`maskctl.py`, `maskctl.log`): on a fully stored synthetic truth, ss_fc with D unstored and N stored only below 1
+gains +8.6% (real: N<2 with D unstored, +5.7%).
+
+## Structure controls for the K3 refit, and a failed quick check
+- `maskmodel.py`: the masked model ("stored below k": the ops at coefficient index j are rounded iff j < k).
+- `mkctl.py`: planted controls (ss_fc + a function-preserving move, TSIZE 1e5), with B synthesised under a mask:
+  `ctl_m3.txt` (stored below 3 on both chains), `ctl_m2.txt` (W2's mask: N below 2, D fully 80-bit) and
+  `ctl_st.txt` (all stored). Handed to W2 for the integer refit.
+- Quick check (`lsmask.py`, `lsmask.log`): a Gauss–Newton LS refit of N3..N9 and D4..D9 under each mask, then the
+  exact rate. It FAILS its controls. On the all-stored control the m2 mask wins after refit (0.367 vs 0.308 for the
+  true stored structure), and m2 also wins on ctl_m3. The head runs off along function-null directions (D9 by
+  ~7e15 ulps). Masked models score higher whatever the truth, because they carry fewer mis-phased roundings. Real
+  data ranks m2 0.382 > m3 0.354 > stored 0.309, which by the controls means nothing. Only an integer refit that
+  closes on its own control can decide.
+- W2's function-free structure test (W2's k3/lsmask.py): from Excel's y, take the target A* (doubles with
+  fl(t·A) = y), weighted-LS fit N − A*·D, residual rms in ulp(A); each structure is simulated with the fitted
+  function as calibration. Real 1.013 / median 0.663; all-stored simulation 1.018 / 0.665 (match); W2's mask
+  0.579 / 0.375; partial masks 0.72–0.93. **K3 is fully stored.** The mask lift was ss_fc's coefficient errors being
+  hidden by unstored ops. So the site map's mismatch from N.S3/D.S3 up is wrong mid and top coefficients.
+
+## Mid-coefficient near-null lattice from ss_fc (K3 is stored: W2's fingerprint and `../fp/`)
+- `k3lat.py`: BKZ on [I | λJ] over N3..N9, D3..D9 (N0..N2, D1, D2, D0 fixed). Eleven mid vectors of 1–4 ulps with a
+  function change of 0.002–0.022 ulp(A) (`k3lat_100.log`).
+- `k3climb.py`: exact-count climb (±1, ±2 of each vector and all ±pairs; 300k train / 300k held-out on rows6).
+  0.3320 → 0.3391 train, 0.3332 → 0.3405 held-out, then a local maximum after 10 steps. Total move N5 −2 N6 +1 N7 −1
+  N8 +9 N9 −3 D6 +1 D7 −4 D8 −7 (`k3climb.log`, `k3lat_climb.txt`).
+- `k3cvp.py`: integer move (CVP) taking ss_fc's function toward the real-data LS fit (`../fp/` fit, residual 1.01
+  ulp(A)). The ss_fc → LS gap is max 2.6, rms 0.99 ulp(A). The CVP moves cut it to rms 0.54 / 0.47 / 0.38 (λ = 30 /
+  300 / 3000, moves up to ~1100 ulps), but held-out exact DROPS: 0.333 → 0.295 / 0.291 / 0.284. So the LS-fit
+  function is not the stored chain's function target (the LS fit absorbs the stored chain's rounding bias), or the
+  fixed read constants are part of the gap.
+So ss_fc is near a local maximum in the near-null lattice, as AN2 is on K1 (W4). The truth is far along null
+directions; local search from ss_fc does not reach it.
+
+## Per-stage phase read on K3 (review 3's phase method, generalised: `k3phase.py`, `k3phase_an.py`)
+Per chunk of ≤ 8192 consecutive doubles (594 chunks from 376 rows6 runs), each stored sum S_j leaves its rounding
+sawtooth as a spectral line in (y − exact)/ulp(y) at f_j = S_j'(x)·ulp(x)/ulp(S_j). The phase of Excel's line relative
+to the stored ss_fc model's, signed by a planted +0.25 u offset, is the pre-rounding offset δ_j mod 1 u
+(`k3phase_ssfc.npy`: x, then per stage phase, amplitude ratio, calibration shift, line power, f).
+- Readable stages (|calib| > 0.12, amplitude ratio 0.5–2, power > 4): N7 240 chunks, N6 412, N5 96, N3 518, D6 243,
+  D5 426, D4 91 (D3 22, D2 32). N8, N4, N2, N1, D8, D7, D1 have no usable line.
+- Neighbouring chunks agree better than random (adjacent |Δphase| vs random): N3 0.138 vs 0.251, N6 0.157 vs
+  0.252, D5 0.146 vs 0.251, N7 0.185 vs 0.247. So δ_j(x) is a smooth law for these stages.
+- But no simple global law fits (x, 1/x, x², x³ with |B| ≤ 400: resultant R ≤ 0.31, `k3phase_an.log`). Between chunks
+  ~0.01 apart the phase moves 0.3–0.5 cycles, so the laws have slopes of order 10²–10⁵ cycles per unit x. The
+  current sampling cannot unwrap that: runs ~0.002 apart, chunks within a run ~1e-12 apart, and the V3 rungs
+  (2^-24..2^-46) resolve slopes ≳ 1e7.
+- Data that would unwrap them: ladders near a few anchors (e.g. 1.25, 1.35, 1.45, 0.8, 0.95, 1.1), each with ~12 runs
+  of 8192 consecutive doubles at offsets Δx = 2^-10 .. 2^-21 from the anchor. That is 72 runs, 0.6M points. The
+  local slope of δ_j at each anchor then comes out by stepwise unwrapping, giving one far null coordinate per
+  readable stage.
+- Ladder probes for the unwrap are committed: kmyst-gam-k3l[a-f](00|10..21), 78 runs × 8192 (`../gen_k3ladder.py`),
+  queued for the oracle.
+- Interim slope read from existing close pairs (`k3slope.py`, `k3slope.log`; rows7 with 208 k3t, 786 chunks). Per
+  0.05-wide window, the slope s maximising Σcos 2π(Δφ − sΔx) over pairs with 1e-5 < Δx < 1e-2, |s| ≤ 3e4: peaks at
+  Z 4–5 with second peaks almost as high, and the sign jumps between windows. That is the noise maximum for ~1.2e5
+  slope values: not resolved. Pairs closer than 1e-6 (the V3 rungs) agree in phase at N3 (0.130 vs random 0.237), so the
+  reads are real and |slope| ≪ 1e6 there. The unwrap needs the ladders.
+
+## Ladder unwrap, built and validated on controls before the data lands (`phaselib.py`, `ladder.py`)
+`ladder.py`, per anchor and per readable stage:
+- read the line phase of the base run and of each rung (anchor + 2^-kk), relative to the base;
+- unwrap from kk = 21 up to 10, giving the local slope s_j(anchor) of the pre-rounding offset (cycles of ulp(S_j) per
+  unit x);
+- jointly solve the slopes for the coefficient moves (s_j·ulp(S_j) = Σ_{k>j} ΔC_k (k−j) a^(k−j−1)), with iterative
+  outlier rejection (residual > 300 cycles/x).
+Controls with B synthesised at the exact ladder x from planted far truths (`ladder_ctl_1e7.log`,
+`ladder_ctl_seeds.log`):
+- Single slopes with ≥ 10 usable rungs match the truth to < 0.2% (N3 at every anchor, D5 at every anchor; N6, D6
+  mostly). Failures come with few rungs (D4, N7 at a and b).
+- Joint solve, TSIZE 1e7: D6, D7 within 0.1–5% for seeds 1, 2 and 4; D8 within ~10% or worse. N chain: seed 1 N4, N5, N6
+  within 4–7%; seeds 2–4 fail (slopes reach ~1e6 cycles/x, too many unwrap failures; ≤ 7 equations kept for 6
+  unknowns).
+- TSIZE 1e6 (seed 1): N4..N8 within ~10% (N7 −94882 vs −95140), D6 within 5%.
+So the ladders turn into direct reads of the mid/top coefficients within ~10%, well inside the peel's range (fscan
+±2e6 + exact rescore). More anchors would make the N chain robust for very far truths.
+- Slope alias found and fixed. With the smallest rung at 2^-21, slopes beyond ±1e6 cycles/x alias by whole multiples of
+  2^21 (control errors of exactly −2,097,0xx and −2·2^21). Real slopes reach that range (N6 at anchor b −1.47e6).
+  Fixes:
+  - 60 more ladder cases, kk = 22..26 for every anchor (`../gen_k3ladder.py`), plus a second anchor set g..l (0.7311,
+    0.8741, 1.0309, 1.1789, 1.3021, 1.4129: 78 cases). Ladder total: 216 cases.
+  - The joint solve is now a consensus fit (RANSAC over minimal subsets, inliers within 300 cycles/x modulo each
+    equation's alias period, then LS on the consensus with the alias shifts applied).
+  Controls at TSIZE 1e7, 12 anchors (`ladder_ctl_ransac.log`): with rungs up to 26, N4, N5, N6 within ~1% in 6/6 seeds
+  (N7 in 5/6) and D5, D6, D7 within ~4% in 6/6. With rungs up to 21 only, 5/6 seeds solve.
+- First real anchors (a, b; `ladder_real_ab.log`): slopes N3 +5.7e5 / −2.7e5, N5 −7.9e5 / +1.5e5, N6 −1.47e6, D5
+  +8.7e5, D6 +2.4e5 / +4.1e5 cycles/x. These are TSIZE ≥ 1e7 offsets, i.e. far from ss_fc.

@@ -75,3 +75,15 @@ Full record: `docs/research/t1941/README.md` and `HANDOFF.md` on branch agent/re
 - The optional K1 route (i).
 
 Playbook lessons are in `docs/research/excel-kernel-playbook.md` section 8.
+
+## Outcome update (2026-10-20 08:00 UTC)
+- Restart file: `docs/research/t1941/HANDOFF2.md`. Continuation: T-2122. Engine: T-2123.
+- K2 (GAMMALN (2,3]): 0.74 → 0.950 exact (0.978 within 1 ulp), from a per-cluster phase-law read. grid_a's head
+  was off by a near-null move along c·g(x) (cubic ≈ 1/x), with the next coefficient −c. The model is plain
+  doubles (`k2_ref.py`, `k2_plain.txt`); stored vs 80-bit head is still open.
+- K1 (GAMMA G on [1,2)): 0.674 → 0.776 (0.878 within 1 ulp) with plain1 (`w4/k1r/plain1.txt`); the [1.8,2) dip is
+  0.50 and is a coefficient problem.
+- K3 is plain stored by the noise fingerprint; ss_fc 0.33. Ladder probes `kmyst-gam-k3l*` are filling.
+  (1.5,2] is at 42.7% exact R; its D0 is not a power of two.
+- Structure verdicts by a coefficient-independent noise fingerprint: K1 and K3 are stored (all mask gains were
+  artefacts of wrong coefficients).

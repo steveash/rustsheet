@@ -79,3 +79,8 @@ Excel's gamma. Details: statistics.md "GAMMA and GAMMALN sweep (T-1042)".
 
 ## Out of scope
 GAMMALN and GAMMA at non-integers (T-1529, time-boxed); incomplete gamma (T-0971); GAMMA.INV (T-0972).
+
+## Update 2026-10-20: T-1941 identified Excel's algorithms
+GAMMALN and GAMMA at all arguments are now mapped to Excel's own algorithms (T-1941, `docs/research/t1941/HANDOFF2.md`).
+Shipping is T-2123: bit-exact pieces plus Excel-structured models for the four open kernels. The remaining coefficient bits are T-2122.
+This supersedes the hypotheses above (named library routines, Lanczos, ln of the product).

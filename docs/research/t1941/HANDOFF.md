@@ -1370,3 +1370,70 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
 - **(1.5,2] (W6).**
   - D.P2 is lit at D3 −2,070,784 ulps (Z 163), and N4 is +3 mod 8.
   - These are large near-null coefficient moves, the same family. The c/x test and the polynomial-pattern check have been requested.
+
+### 12.19 K2 is a plain coefficient set with an 80-bit head (06:30-06:57); K1 transfer
+
+- **The "c/x" term is really different plain coefficients (W2).**
+  - The per-cluster ε(x) is fit by c·g(x) with g a CUBIC ≈ 1/x on [2,3]; the a-priori cubic minimax alone gives 0.905.
+  - The head coefficients p1..p4 (q0..q3) carry c·g, p5 −= c and q4 −= c, with the late chain unchanged.
+  - Reviewer 3: a quadratic is excluded (minimax relative error 2.06e-3 vs the cubic's 2.08e-4).
+- **Best plain-double set (`k2_plain.txt`)** from W2's LLL null-lattice refinement:
+  - 1,024 clusters 0.9381, 14 runs 0.9381 (coordinator recheck 0.9377), worst run 0.908, cluster-mean bias rms 0.047 ulp(y).
+  - Reviewer 3's independent set scores 0.933 / 0.923. The sets differ along a p3/p4 (q2/q3) near-null ridge, so the sharp p4/q3 peaks are conditional.
+  - The late coefficients are identifiable only up to plateaus.
+  - Coefficients are exhausted: LLL moves over p0..p3 / q0..q2 are flat, all 19 single profiles sit at their optima, and per-cluster s3/d2 integer shifts are wanted on only 42 of 1,024 clusters.
+- **80-bit head (reviewer 3, W2).**
+  - Keeping the head in 80-bit registers up to the hand-off product, with stored double from P4 (N) / P3_D (D) onward, gives 0.953 on the clusters (reviewer 3, no refit) and 0.952 on the long runs (W2).
+  - W2's greedy best: N s2 and s3 unstored, and D d2's add unstored. Refitting the coefficients under this structure moves nothing.
+  - Rejected alternatives: stored everywhere 0.940; pure double 0.938; FMA 0.32; all-extended 0.29.
+- **Residual of about 5% (W2).**
+  - It is not a per-run phase: the per-run cap is 0.959.
+  - About half the misses are 2 ulps or more, so they originate upstream.
+  - There is only mild boundary enrichment, ≤ 2× at NP4 / D s3 / DP3: a small distributed value difference at the head.
+  - Screening: an 80-bit sub-polynomial, an 80-bit power table, a spill inside the head, then 80-bit constants.
+- **K1 (W4).**
+  - The hidden e/y terms at D c3 (−350·ulp(c2)) and N c2 (+852·ulp(c1)) give 0.770 (`w4/k1r/ch1.txt`, `gsimh.c`). Three more terms add +0.6 points held out.
+  - A smooth ±0.17 G-ulp one-period output bias is the same fingerprint K2 had. Asked: convert the terms to plain cubic-≈-e/y coefficient changes with a pinned compensation, then a bias fit.
+  - The [1.84, 1.97] dip (exact 0.30-0.48) is open. Tests requested: composition via exp(GAMMALN) and a fine step-vs-ramp scan.
+- **(1.5,2] (W6).**
+  - D3 is at −2,070,784 ulps; the low block reaches the noise floor with D0 fixed; exact R is 42.7%.
+  - The hidden-term form gives nothing there beyond N4 +3 mod 8.
+- **Fill:** w6t 277+/750, k3t 181+/450.
+
+### 12.20 Structure verdicts, K1/K3 coefficient status, ladder probes (07:00-07:40)
+
+- **Noise fingerprint (W2; independently re-implemented by W5 in `w5/fp/`).**
+  - Method:
+    - The target quotient A* is the mean of the doubles A with fl(t·A) = Y.
+    - A weighted LS fit of N − A*·D gives the best smooth function.
+    - The residual rms in ulp(A) is the rounding noise of the TRUE op structure, independent of coefficient bits.
+    - Calibrate with PLANTED truths carrying realistic coefficients; coefficient bits alone shift the level by about ±0.03.
+  - It resolves large unstored regions but not small heads.
+  - **K3 is plain stored:** real 1.001 vs stored 0.997; W5's m3 mask 0.808 and W2's m2 mask 0.563 are excluded. The top 2-4 stages are unresolvable.
+  - **K1 is plain stored or a small head:** real 1.042-1.045 vs stored 1.043-1.044; W4's x87-top mask 0.97 is excluded; N top 4 / D top 3 (1.029) is not excluded.
+  - **K2 is unresolvable:** planted stored vs head-80 differ by 0.002. All the "mask gains" on K1 and K3 were coefficient errors hidden by unstored ops.
+- **K2 structure (reviewer 3), open.**
+  - Near-2 ladders (139k points, x−2 < 5e-7) with grid_a: stored 0.9953, pure double 0.9932, the extended s3 of M* 0.9685. So M* is retracted.
+  - Near-2 constraint: 16δp1 + 8δp2 + 4δp3 + 2δp4 + δp5 ≈ 0 (to 0.05u). The committed set meets it to 0.2u.
+  - The decisive control is running: refit on far data only under each structure, then score on the near-2 ladders.
+  - Oracle data are noise-free: 551,309 duplicated x with 0 conflicts.
+  - `k2_ref.py` currently carries the head-80 mask with a caution note.
+- **K1 (W4), `w4/k1r/plain1.txt`.**
+  - Plain doubles, the hidden e/y terms absorbed via e·g(y) (g ≈ 1/y, degree 5/4): 0.775 overall (0.774 held out); [1, 1.8) ≈ 0.87, [1.8, 2) ≈ 0.45.
+  - Per-run caps: [1, 1.8) at 0.93-0.97 with sum offsets, so smooth site laws remain to be found.
+  - [1.8, 2) caps at 0.65 with sum offsets and 0.80 with all 26 site offsets, with the worst region at 1.888-1.90 (0.53).
+  - Rejected for the dip:
+    - an exp(GAMMALN) composition (Excel GAMMA and GAMMALN are independent computations);
+    - shifted variables (y−2, y−1);
+    - split-chain joins;
+    - a switch point (the dip is a smooth ramp);
+    - unstored final sums, alternative final ops, directed rounding;
+    - the constant / e-y term families at all stages;
+    - a function-changing correction (the mean bias is flat).
+  - Next: unwrap the D P2 line in the dip into Excel's S3(y). K1 ladder probes may be requested.
+- **K3.**
+  - W5's mid-coefficient BKZ/CVP search gets 0.333 → 0.341 held out, then a local maximum. A CVP toward the LS function lowers exact.
+  - The per-stage phase read (`w5/p5/k3phase.py`, all 16 sums) gives SMOOTH but STEEP laws at N3, N5-N7 and D4-D6, with slopes of 10²-10⁵ cycles per unit x: far null offsets the current sampling cannot unwrap.
+  - Ladder probes `kmyst-gam-k3l[a-f](00|10..21)` (78 cases, 640k points, anchors 0.8013, 0.9517, 1.1023, 1.2519, 1.3527, 1.4531, steps 2^-10..2^-21) are being filled now, ahead of w6t/k3t.
+  - W2 is running step-1 c/x needle scans per stage.
+- **Fill:** w6t ~306+/750, k3t ~208+/450 (paused for the K3 ladders).

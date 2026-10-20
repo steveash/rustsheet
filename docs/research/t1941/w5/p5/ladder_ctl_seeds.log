@@ -1,0 +1,44 @@
+== seed 1 TSIZE 1e7
+N chain: 13 slope equations (7 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   dropped: N6@1.1023 N5@1.1023 N7@1.2519 N7@1.3527 N6@1.3527 N6@1.4531
+   solved moves (ulps): N4 -864287.5 N5 +3902234.7 N6 +696003.7 N7 -180946.0 N8 -18871581.9 N9 +987375464.9
+   truth moves  (ulps): N4 -897743.0 N5 +4188810.0 N6 +738811.0 N7 -951402.0 N8 -1814538.0 N9 +4984542.0
+D chain: 8 slope equations (8 kept), unknowns D6,D7,D8,D9, rank 4
+   dropped: none
+   solved moves (ulps): D6 -441029.2 D7 -1237664.3 D8 -1066999.5 D9 +10420805583.3
+   truth moves  (ulps): D6 -440624.0 D7 -1239313.0 D8 -970862.0 D9 -10000000.0
+== seed 2 TSIZE 1e7
+N chain: 15 slope equations (7 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   dropped: N6@1.1023 N5@1.1023 N7@1.2519 N6@1.2519 N7@1.3527 N6@1.3527 N7@1.4531 N6@1.4531
+   solved moves (ulps): N4 -132473.2 N5 -1928580.9 N6 +440329.0 N7 +2454223.9 N8 -47112257.4 N9 +2823577484.2
+   truth moves  (ulps): N4 -262411.0 N5 -615274.0 N6 +360897.0 N7 +560628.0 N8 +349692.0 N9 -2325621.0
+D chain: 6 slope equations (6 kept), unknowns D6,D7,D8,D9, rank 4
+   dropped: none
+   solved moves (ulps): D6 +587423.7 D7 +475459.9 D8 +1259497.7 D9 -93764052001.0
+   truth moves  (ulps): D6 +585659.0 D7 +503642.0 D8 -130173.0 D9 -10000000.0
+== seed 3 TSIZE 1e7
+N chain: 13 slope equations (6 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   dropped: N6@1.1023 N3@1.1023 N7@1.2519 N6@1.2519 N7@1.3527 N7@1.4531 N6@1.4531
+   solved moves (ulps): N4 -27687638.8 N5 +209231701.2 N6 -1420840.6 N7 -345301586.4 N8 +9879232169.2 N9 -730884818174.8
+   truth moves  (ulps): N4 -5758715.0 N5 -2813589.0 N6 +6513275.0 N7 +7713469.0 N8 +10000000.0 N9 -6546976.0
+D chain: 8 slope equations (4 kept), unknowns D6,D7,D8,D9, rank 4
+   dropped: D5@0.9517 D5@1.1023 D6@1.2519 D6@1.4531
+   solved moves (ulps): D6 -18830225.4 D7 +353310324.1 D8 -18194219391.7 D9 +1209262359339933.2
+   truth moves  (ulps): D6 +8831704.0 D7 +7802555.0 D8 +8360369.0 D9 -4643795.0
+== seed 4 TSIZE 1e7
+N chain: 13 slope equations (6 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   dropped: N6@1.1023 N3@1.1023 N7@1.2519 N6@1.2519 N6@1.3527 N7@1.4531 N6@1.4531
+   solved moves (ulps): N4 +2635730.9 N5 -12793435.8 N6 -1436431.4 N7 +12334247.7 N8 -304798221.0 N9 +18338574297.9
+   truth moves  (ulps): N4 +1753231.0 N5 -3806484.0 N6 -2059368.0 N7 +551.0 N8 +5031290.0 N9 +10000000.0
+D chain: 7 slope equations (5 kept), unknowns D6,D7,D8,D9, rank 4
+   dropped: D6@1.2519 D6@1.4531
+   solved moves (ulps): D6 -779106.5 D7 +1260431.4 D8 +5623079.4 D9 +114001290419.7
+   truth moves  (ulps): D6 -775411.0 D7 +1218880.0 D8 +7352564.0 D9 +5364734.0
+N chain: 10 slope equations (8 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   dropped: N6@0.9517 N7@1.4531
+   solved moves (ulps): N4 -92463.5 N5 +442355.9 N6 +69874.8 N7 -94881.7 N8 -194756.5 N9 +1730836.6
+   truth moves  (ulps): N4 -89774.0 N5 +418881.0 N6 +73881.0 N7 -95140.0 N8 -181454.0 N9 +498454.0
+D chain: 8 slope equations (7 kept), unknowns D6,D7,D8,D9, rank 4
+   dropped: D6@0.9517
+   solved moves (ulps): D6 -46054.2 D7 -80890.2 D8 -2440093.3 D9 +169694207029.5
+   truth moves  (ulps): D6 -44062.0 D7 -123931.0 D8 -97086.0 D9 -1000000.0

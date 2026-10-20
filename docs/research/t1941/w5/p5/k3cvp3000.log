@@ -1,0 +1,4 @@
+LS fit residual rms 1.013 ulp(A)
+function gap start -> LS fit on grid: max 2.619, rms 0.989 ulp(A)
+move: N3:+203 N4:-122 N5:-38 N6:-487 N7:+1122 N8:+299 N9:+3 D3:+287 D4:-611 D5:+1084 D6:-630 D7:-1107 D8:-66
+after move: function gap max 1.007 rms 0.378 ulp(A)
