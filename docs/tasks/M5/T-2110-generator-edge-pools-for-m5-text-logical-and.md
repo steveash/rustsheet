@@ -3,7 +3,7 @@ id: T-2110
 title: "Generator edge pools for M5 text, logical and information params: text, numeric-text, number-format and error pools"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
