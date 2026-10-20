@@ -3,7 +3,7 @@ id: T-0936
 title: "TEXT conditional sections: [<>], spaces in conditions, unmatched single condition (15 known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -38,14 +38,32 @@ condition lexer and section choice are in `crates/rustsheet-engine/src/formatter
    ours "1" followed by the spaces.
 
 ## Acceptance criteria
-- [ ] The 14 lines (A3, A4, A5, A10, A14, A16, A17, A18, A19, A22, A23, A24, A25, A26)
+- [x] The 14 lines (A3, A4, A5, A10, A14, A16, A17, A18, A19, A22, A23, A24, A25, A26)
       disappear from eval/baseline/poi.txt, and probes/text-format-length-limit-q A16, -d S!A31,
       -f Sheet1!A41, A42 and -j Sheet1!A43 from eval/baseline/probes.txt, with no new F lines.
-- [ ] Rules recorded in `docs/excel-semantics/number-formats.md` citing these cells.
-- [ ] `make check` green; reviewers approve.
+- [x] Rules recorded in `docs/excel-semantics/number-formats.md` citing these cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 FormatConditionTests (excel-cached) unless it is fixed by the same change. Empty formats (T-0933).
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+- The lexer reads `[<>n]` as "not equal" and skips spaces between the comparator and the number
+  (`Compare::NotEqual`, `Compare::holds`).
+- A format with one numeric section whose condition the value fails prints the value in General.
+  Date sections now carry their condition too, so `[>5]d` takes part (`section_condition` in
+  `formatter/format.rs`). Two- and three-section choice is unchanged.
+- Two upstream IronCalc parse tests (`test_conditional`, `test_exponential_conditional`) assumed
+  conditions were ignored (`[=]0.00` on 42 gave "42.00"). They now use values that meet their
+  condition and assert the General fallback for one that does not, per FormatChoiceTests A14 and
+  A16.
+- Eval delta: 37 cells fixed, 0 regressions:
+  - poi: the 14 FormatChoiceTests cells, plus 18 FormatConditionTests cells (Excel-cached) that
+    follow the same rule (409 → 377);
+  - probes: -d S!A31, -f A41:A42, -j A43 and -q A16 (5 cells).
+- number-formats.md "Conditional sections" cites the evidence, says the comparison uses the
+  signed value, and notes that the evidence does not choose between General and the section
+  without its literals.

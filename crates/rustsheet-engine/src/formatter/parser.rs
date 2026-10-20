@@ -92,6 +92,7 @@ pub enum Denominator {
 
 pub struct DatePart {
     pub color: Option<i32>,
+    pub condition: Option<(Compare, f64)>,
     pub use_ampm: bool,
     pub tokens: Vec<TextToken>,
     /// The names of the section's `[$-...]` locale; `None` uses the workbook locale.
@@ -672,6 +673,7 @@ impl Parser {
             }
             ParsePart::Date(DatePart {
                 color,
+                condition,
                 use_ampm,
                 tokens,
                 names: localized.map(|l| l.names),
