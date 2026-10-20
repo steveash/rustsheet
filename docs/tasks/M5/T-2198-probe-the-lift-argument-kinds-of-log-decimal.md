@@ -3,7 +3,7 @@ id: T-2198
 title: "Probe the lift argument kinds of LOG, DECIMAL, BASE, ATAN2, ARABIC, DOLLAR, FIXED and NUMBERVALUE (T-2159, T-2160)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
