@@ -367,7 +367,7 @@ Evidence: probes/eng-im-overflow (excel-graph).
   `1000+1.4901161193847656E-8i` (sqrt(DBL_EPSILON) itself) are `#NUM!`, `1000+1.4901161193848E-8i` is capped
   (probes/eng-imexp-cutoff A1-A6). The refusal is about the angle's distance from a multiple of pi/2, not
   about y: `1000+1.5707963267949i`, `1000+4.71238898038469i` and the points within 1E-9 of pi/2 are `#NUM!`
-  (B4, B5, D9, G1, H1), as are `1000+3.14159265i`, `1000+3.14159266i`, `1000+6.2831853i` and `1000+6.28318531i`
+  (B4, B5, D9; G1 and H1 at 1E-8 from pi/2 and pi too), as are `1000+3.14159265i`, `1000+3.14159266i`, `1000+6.2831853i` and `1000+6.28318531i`
   (A9, A14, B2, B3), while `1000+3.1415926i` and `1000+3.1415927i` are capped (A8, A15). Beyond |y| = 1 the
   cutoff on that distance (sin or cos, whichever is small) is not sqrt(DBL_EPSILON) = 1.49E-8 but
   between 1.0539E-8 (`#NUM!`) and 1.0541E-8 (capped), the same at pi/2 and pi (probes/eng-imexp-cutoff G, H; E and F are capped points further out; sqrt(DBL_EPSILON / 2) =
