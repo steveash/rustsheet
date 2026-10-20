@@ -50,7 +50,7 @@ const STIRLING: [f64; 10] = [
 
 /// x - 2 below this takes reviewer 3's cand9 K2 coefficients (HANDOFF2 §12.1, §12.6), measured
 /// on the T-1941 data (statistics.md).
-pub(super) const K2_CAND9_BELOW: f64 = 0.01;
+const K2_CAND9_BELOW: f64 = 0.01;
 
 /// Excel's GAMMALN(x) for x > 0; NaN for anything else, and infinity past the double range.
 pub(crate) fn excel_gammaln(x: f64) -> f64 {
@@ -98,7 +98,7 @@ fn reduced_to_k2(x: f64) -> f64 {
 }
 
 /// K2 on [2, 3] (`gamma_kernels.rs`); K2(2) = 0.
-pub(super) fn k2(x: f64) -> f64 {
+fn k2(x: f64) -> f64 {
     let t = x - 2.0;
     let ratio = if t < K2_CAND9_BELOW {
         extended_quotient(
@@ -115,7 +115,7 @@ pub(super) fn k2(x: f64) -> f64 {
 }
 
 /// K3 on [0.7, 1.5] (`gamma_kernels.rs`).
-pub(super) fn k3(x: f64) -> f64 {
+fn k3(x: f64) -> f64 {
     let ratio = extended_quotient(
         stored_horner_constant_first(&K3_N, x),
         stored_horner_constant_first(&K3_D, x),
@@ -124,7 +124,7 @@ pub(super) fn k3(x: f64) -> f64 {
 }
 
 /// GAMMALN on (1.5, 2] (`gamma_kernels.rs`).
-pub(super) fn kernel_1_5_to_2(x: f64) -> f64 {
+fn kernel_1_5_to_2(x: f64) -> f64 {
     let ratio = extended_quotient(
         stored_horner_constant_first(&R15_N, x),
         stored_horner_constant_first(&R15_D, x),
@@ -134,7 +134,7 @@ pub(super) fn kernel_1_5_to_2(x: f64) -> f64 {
 
 /// Stirling's series on x >= 8 (module docs): corr = LN(x); a = x - 0.5; b = a corr; d = b - x;
 /// e = d + ln √(2π); z = 1/x; z2 = z z; r = `B_10`; r = r z2 + `B_k` for k = 9..1; GAMMALN = e + r z.
-pub(super) fn stirling(x: f64) -> f64 {
+fn stirling(x: f64) -> f64 {
     let corr = excel_ln(x);
     let a = extended_sum(x, -0.5);
     let b = extended_product(a, corr);
@@ -298,7 +298,10 @@ mod tests {
             }
         }
         for (&(name, _, _), &(exact, total)) in REGIONS.iter().zip(&counts) {
-            #[allow(clippy::cast_precision_loss)]
+            #[allow(
+                clippy::cast_precision_loss,
+                reason = "counts below 2^53 convert exactly"
+            )]
             let rate = exact as f64 / total as f64;
             eprintln!("{name}: {exact} / {total} = {rate:.4}");
         }

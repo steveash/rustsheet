@@ -1,12 +1,15 @@
 //! A value held in an x87 register: a 64-bit significand, rounded to nearest (ties to even) after
 //! every operation, and never stored to a double until [`Register::store`]. Excel's kernels keep a
 //! few Horner stages in registers (T-1941: GAMMALN's (2,3] head, `docs/research/t1941/k2_ref.py`);
-//! the stored ops are `arithmetic.rs`'s `extended_*`, which round twice at once.
+//! the stored ops are `arithmetic.rs`'s `extended_*`, which round twice at once, and
+//! [`Register::add`] is the unstored counterpart of `extended_sum`'s exact aligned sum.
 //!
 //! Only finite, normal-range values are modelled: the exponent is an `i32`, far wider than the
 //! x87's, and no operation here can overflow or underflow it from double operands.
 
-use crate::arithmetic::{round_extended_to_double, round_to_bits, significand_and_exponent};
+use crate::arithmetic::{
+    round_extended_to_double, round_extended_to_subnormal, round_to_bits, significand_and_exponent,
+};
 
 /// `significand * 2^exponent`, with `significand` below 2^64 (zero, or at least 2^63 once
 /// normalised by an operation).
@@ -103,24 +106,27 @@ impl Register {
         Self::rounded(negative, difference, exponent, false)
     }
 
-    /// The register stored to a double (the second rounding), or the nearest double the plain
-    /// conversion gives when the value is outside the normal double range.
+    /// The register stored to a double (the second rounding): past the double range it is an
+    /// infinity, and below the normal range it rounds once more on the subnormal grid (or to 0).
     pub(crate) fn store(self) -> f64 {
+        let zero = if self.negative { -0.0 } else { 0.0 };
         if self.significand == 0 {
-            return if self.negative { -0.0 } else { 0.0 };
+            return zero;
         }
-        round_extended_to_double(self.significand, self.exponent, self.negative).unwrap_or_else(
-            || {
-                // Not a normal double: an approximation is enough, as no kernel reaches it.
-                #[allow(clippy::cast_precision_loss)]
-                let magnitude = self.significand as f64 * 2f64.powi(self.exponent);
-                if self.negative {
-                    -magnitude
-                } else {
-                    magnitude
-                }
-            },
-        )
+        if let Some(value) =
+            round_extended_to_double(self.significand, self.exponent, self.negative)
+        {
+            return value;
+        }
+        // The top bit is bit 63: 2^(exponent + 63) at least 2^1024 overflows.
+        if self.exponent + 63 >= 1024 {
+            return if self.negative {
+                f64::NEG_INFINITY
+            } else {
+                f64::INFINITY
+            };
+        }
+        round_extended_to_subnormal(self.significand, self.exponent, self.negative).unwrap_or(zero)
     }
 
     fn zero(negative: bool) -> Self {
@@ -195,6 +201,17 @@ mod tests {
         assert_eq!(square.significand, (1u128 << 63) + (1u128 << 12));
         assert_eq!(square.store(), 1.0 + 2.0 * f64::EPSILON);
         assert_eq!(Register::load(-3.0).mul(Register::load(0.5)).store(), -1.5);
+    }
+
+    /// Values beyond the double range store as infinity, tiny ones as a subnormal or 0.
+    #[test]
+    fn out_of_range_values_store_without_panicking() {
+        let huge = Register::load(f64::MAX).mul(Register::load(f64::MAX));
+        assert_eq!(huge.store(), f64::INFINITY);
+        let tiny = Register::load(f64::MIN_POSITIVE).mul(Register::load(0.25));
+        assert_eq!(tiny.store(), f64::MIN_POSITIVE / 4.0);
+        let gone = Register::load(1e-300).mul(Register::load(1e-300));
+        assert_eq!(gone.store(), 0.0);
     }
 
     /// Cancellation is exact.

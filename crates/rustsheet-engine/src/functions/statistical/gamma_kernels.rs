@@ -7,7 +7,8 @@
 
 /// GAMMALN's (2,3] kernel K2, numerator: `fl(fl(x - 2) * fl(N/D))` with N and D raw-x Horner, the
 /// leading coefficient first. Excel's structure with the best known coefficients, not bit-exact;
-/// measured exact rate @K2@; see T-2122. `k2_ref.py` (W2 and reviewer 3): N's first three stages and
+/// measured exact rate 0.950 on [2.02, 3] (1,862,260 distinct x) and 0.991 through the (3, 8)
+/// reduction; see T-2122. `k2_ref.py` (W2 and reviewer 3): N's first three stages and
 /// D's first two stay in x87 registers, every op from the hand-off product on is stored.
 #[rustfmt::skip]
 pub(super) const K2_N: [f64; 10] = [
@@ -38,8 +39,8 @@ pub(super) const K2_D: [f64; 9] = [
 ];
 
 /// Reviewer 3's "cand9" K2 numerator (HANDOFF2 §12.1), evaluated all-stored, used for
-/// x - 2 below [`K2_CAND9_BELOW`] (@CUT@). Excel's structure with the best known coefficients near 2,
-/// not bit-exact; measured exact rate @C9@; see T-2122. Only p1..p5 differ from [`K2_N`].
+/// x - 2 below 0.01 (`gammaln.rs` `K2_CAND9_BELOW`, the measured optimum, statistics.md). Excel's structure with the best known coefficients near 2,
+/// not bit-exact; measured exact rate 0.983 on (2, 2.02) (192,512 distinct x); see T-2122. Only p1..p5 differ from [`K2_N`].
 #[rustfmt::skip]
 pub(super) const K2_CAND9_N: [f64; 10] = [
     f64::from_bits(0x3CC5_7179_94EF_45D1), // 0x1.5717994ef45d1p-51
@@ -70,7 +71,8 @@ pub(super) const K2_CAND9_D: [f64; 9] = [
 
 /// GAMMALN's [0.7, 1.5) kernel K3, numerator: `fl(fl(x - 1) * fl(N/D))`, degree (9,9), N and D
 /// raw-x Horner with every op stored, the constant term first (`w5/p4/ss_fc.txt`). Excel's structure
-/// with the best known coefficients, not bit-exact; measured exact rate @K3@; see T-2122.
+/// with the best known coefficients, not bit-exact; measured exact rate 0.322 on [0.7, 1.5] (8,082,879 distinct x) and 0.869 through the
+/// x < 0.7 recursion; see T-2122.
 #[rustfmt::skip]
 pub(super) const K3_N: [f64; 10] = [
     f64::from_bits(0xBF45_9F97_CB25_92FF), // -0x1.59f97cb2592ffp-11
@@ -103,7 +105,7 @@ pub(super) const K3_D: [f64; 10] = [
 /// GAMMALN's (1.5, 2] kernel, numerator of R in `fl(fl(x - 1) * fl(fl(x - 2) * fl(N/D)))`, degree
 /// (9,9), raw-x Horner with every op stored, the constant term first (W6's
 /// `w6/data/xl_chain_d3ls.txt`; D0 is not a power of two and is not normalised away). Excel's
-/// structure with the best known coefficients, not bit-exact; measured exact rate @R15@; see T-2122.
+/// structure with the best known coefficients, not bit-exact; measured exact rate 0.428 on (1.5, 2] (7,548,389 distinct x); see T-2122.
 #[rustfmt::skip]
 pub(super) const R15_N: [f64; 10] = [
     f64::from_bits(0x3F66_733C_BA7A_7048), // 0x1.6733cba7a7048p-9
