@@ -111,6 +111,9 @@ impl Model {
             CalcResult::Range { left, right } if left.sheet == right.sheet => Some(left),
             _ => None,
         };
+        // A reference to one blank cell reads as an empty cell, which `result_to_array` turns
+        // into a 0; it is still blank for the trim (`TRIMRANGE(C40,3,0)` is #REF!, T-2127).
+        let blank_cell = matches!(source, CalcResult::EmptyCell);
         let data = match self.result_to_array(source, cell) {
             Ok(d) => d,
             Err(e) => return RefArg::Value(e),
@@ -118,7 +121,12 @@ impl Model {
         if let Some(error) = empty_source(&data, cell) {
             return RefArg::Value(error);
         }
-        match self.trim_of(&data, NonBlank::of(&data).as_ref(), values.as_slice(), cell) {
+        let non_blank = if blank_cell {
+            None
+        } else {
+            NonBlank::of(&data)
+        };
+        match self.trim_of(&data, non_blank.as_ref(), values.as_slice(), cell) {
             Ok((rows, columns)) => match reference_corner {
                 Some(left) if as_reference => RefArg::from(sub_range(left, &rows, &columns)),
                 _ => RefArg::Value(CalcResult::Array(
