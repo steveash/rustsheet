@@ -5,11 +5,16 @@
 //! ([`excel_ln`]). The pieces, by the exact comparisons Excel makes:
 //! - x < 0.7 (the double 0x1.6666666666666p-1): `fl(GAMMALN(fl(x + 1)) - LN(x))`, once, since
 //!   x + 1 is at least 1;
-//! - [0.7, 1.5): K3, `fl(fl(x - 1) * fl(N/D))`;
-//! - [1.5, 2]: `fl(fl(x - 1) * fl(fl(x - 2) * fl(N/D)))`;
-//! - (2, 3): K2, `fl(fl(x - 2) * fl(N/D))`;
-//! - [3, 8): t = x - k in [2, 3) and the ascending stored product p = t (t + 1) ... (t + k - 1),
-//!   then `fl(K2(t) + LN(p))`;
+//! - [0.7, 1.5]: K3, `fl(fl(x - 1) * fl(N/D))`;
+//! - (1.5, 2]: `fl(fl(x - 1) * fl(fl(x - 2) * fl(N/D)))`;
+//! - (2, 3]: K2, `fl(fl(x - 2) * fl(N/D))`;
+//! - (3, 8): t = x - k in [2, 3) and the ascending stored product p = t (t + 1) ... (t + k - 1),
+//!   then `fl(K2(t) + LN(p))`.
+//!
+//! The ends are Excel's: GAMMALN(1.5) is K3's -0.12078223763524523 (the (1.5, 2] kernel gives
+//! ...452), GAMMALN(3) is K2's 0.6931471805599454 (the reduction would give LN(2) = ...453), and
+//! GAMMALN(4) is the reduction's LN(6) (ironcalc-calc GAMMALN_GAMMALNPRECISE.xlsx A5, A9, desktop
+//! cache; `kmyst-gam-c304`, `r203`, `r205`, excel-graph);
 //! - x >= 8: Stirling's series with exactly 10 Bernoulli terms, every op stored (bit-exact,
 //!   `gammaln_big_check.c`).
 //!
@@ -62,11 +67,11 @@ pub(crate) fn excel_gammaln(x: f64) -> f64 {
 
 /// GAMMALN on x >= 0.7.
 fn gammaln_from_0_7(x: f64) -> f64 {
-    if x < 1.5 {
+    if x <= 1.5 {
         k3(x)
     } else if x <= 2.0 {
         kernel_1_5_to_2(x)
-    } else if x < 3.0 {
+    } else if x <= 3.0 {
         k2(x)
     } else if x < 8.0 {
         reduced_to_k2(x)
@@ -75,7 +80,7 @@ fn gammaln_from_0_7(x: f64) -> f64 {
     }
 }
 
-/// [3, 8): t = x - k in [2, 3), and `fl(K2(t) + LN(t (t + 1) ... (t + k - 1)))` with the product
+/// (3, 8): t = x - k in [2, 3), and `fl(K2(t) + LN(t (t + 1) ... (t + k - 1)))` with the product
 /// ascending and stored at each step. Every t + i is exact (it lies between t and x, on x's grid),
 /// and at most five steps run.
 fn reduced_to_k2(x: f64) -> f64 {
@@ -92,7 +97,7 @@ fn reduced_to_k2(x: f64) -> f64 {
     extended_sum(k2(t), excel_ln(product))
 }
 
-/// K2 on [2, 3) (`gamma_kernels.rs`); K2(2) = 0.
+/// K2 on [2, 3] (`gamma_kernels.rs`); K2(2) = 0.
 pub(super) fn k2(x: f64) -> f64 {
     let t = x - 2.0;
     let ratio = if t < K2_CAND9_BELOW {
@@ -109,7 +114,7 @@ pub(super) fn k2(x: f64) -> f64 {
     extended_product(t, ratio)
 }
 
-/// K3 on [0.7, 1.5) (`gamma_kernels.rs`).
+/// K3 on [0.7, 1.5] (`gamma_kernels.rs`).
 pub(super) fn k3(x: f64) -> f64 {
     let ratio = extended_quotient(
         stored_horner_constant_first(&K3_N, x),
@@ -118,7 +123,7 @@ pub(super) fn k3(x: f64) -> f64 {
     extended_product(x - 1.0, ratio)
 }
 
-/// GAMMALN on [1.5, 2] (`gamma_kernels.rs`).
+/// GAMMALN on (1.5, 2] (`gamma_kernels.rs`).
 pub(super) fn kernel_1_5_to_2(x: f64) -> f64 {
     let ratio = extended_quotient(
         stored_horner_constant_first(&R15_N, x),
@@ -184,27 +189,34 @@ mod tests {
     use super::*;
     use crate::test::kernel_rows::{fixture_rows, full_rows};
 
-    /// The regions the fixture and the full-run test score separately, by the exact cuts of
-    /// [`excel_gammaln`]; K2 is split at 2.02 (cand9 covers (2, 2.01)).
+    /// The regions the fixture and the full-run test score separately ([`region`]), by the exact
+    /// cuts of [`excel_gammaln`]; K2 is split at 2.02 (cand9 covers (2, 2.01)).
     const REGIONS: [(&str, f64, f64); 7] = [
         ("x < 0.7", 0.0, RECURSION_BELOW),
-        ("K3 [0.7, 1.5)", RECURSION_BELOW, 1.5),
-        ("[1.5, 2]", 1.5, 2.0),
+        ("K3 [0.7, 1.5]", RECURSION_BELOW, 1.5),
+        ("(1.5, 2]", 1.5, 2.0),
         ("K2 (2, 2.02)", 2.0, 2.02),
-        ("K2 [2.02, 3)", 2.02, 3.0),
-        ("[3, 8)", 3.0, 8.0),
+        ("K2 [2.02, 3]", 2.02, 3.0),
+        ("(3, 8)", 3.0, 8.0),
         ("x >= 8", 8.0, f64::INFINITY),
     ];
 
     fn region(x: f64) -> usize {
-        REGIONS
-            .iter()
-            .position(|&(_, lo, hi)| match x {
-                _ if lo == 1.5 => (1.5..=2.0).contains(&x),
-                _ if lo == 2.0 => x > 2.0 && x < hi,
-                _ => x >= lo && x < hi,
-            })
-            .unwrap_or(0)
+        if x < RECURSION_BELOW {
+            0
+        } else if x <= 1.5 {
+            1
+        } else if x <= 2.0 {
+            2
+        } else if x < 2.02 {
+            3
+        } else if x <= 3.0 {
+            4
+        } else if x < 8.0 {
+            5
+        } else {
+            6
+        }
     }
 
     /// The committed sample (`test/fixtures/gammaln_kernel.fixture`: 1,500 random distinct x per
@@ -230,16 +242,17 @@ mod tests {
             }
         }
         // Out of 1,500 each (statistics.md "GAMMA, GAMMALN and LN kernels (T-1941)").
-        assert_eq!(exact, [1316, 446, 631, 1476, 1427, 1486, 1500]);
+        assert_eq!(exact, [1313, 453, 627, 1476, 1427, 1486, 1500]);
     }
 
-    /// Exact values: GAMMALN(1) = GAMMALN(2) = 0, GAMMALN(3) = LN(2) through the [3, 8)
-    /// reduction, and the integers 4..7 are LN of the factorial.
+    /// Exact values and the region ends (module docs): GAMMALN(1) = GAMMALN(2) = 0, 1.5 takes K3
+    /// and 3 takes K2 (Excel's cells), and 4..7 are LN of the factorial through the reduction.
     #[test]
     fn exact_points() {
         assert_eq!(excel_gammaln(1.0), 0.0);
         assert_eq!(excel_gammaln(2.0), 0.0);
-        assert_eq!(excel_gammaln(3.0), excel_ln(2.0));
+        assert_eq!(excel_gammaln(1.5), -0.120_782_237_635_245_23);
+        assert_eq!(excel_gammaln(3.0), 0.693_147_180_559_945_4);
         assert_eq!(excel_gammaln(4.0), excel_ln(6.0));
         assert_eq!(excel_gammaln(7.0), excel_ln(720.0));
     }
