@@ -3,7 +3,7 @@ id: T-1869
 title: "Lifted YIELD and ODD* functions charge their solver work by schedule length, not a flat weight"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
