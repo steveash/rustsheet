@@ -1,4 +1,4 @@
---- Changing which patterns match.
+---
 id: T-2138
 title: "Charge regex-syntax case folding of non-POSIX (?i) brackets to the compile budget"
 milestone: M7
@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: sonnet
 depends_on: []
---- Changing which patterns match.
+---
 
 ## Goal
 A REGEX* call whose `(?i)` pattern has no POSIX class but huge ranges (`(?i)[\x{0}-\x{10FFFF}]`×1000) is bounded by the compile budget, instead of spending seconds in case folding inside `Engine::new`.
