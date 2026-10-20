@@ -6,11 +6,13 @@
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
+use crate::lock_file;
+pub use crate::lock_file::LockError;
 use crate::report::FunctionEvidence;
 
 /// Fewer Excel-evidence cells than this and a function's pass rate says little (T-0020); the
@@ -81,22 +83,6 @@ pub struct Lock {
     pub below_floor: usize,
 }
 
-/// Failure to read or write the lock.
-#[derive(Debug, thiserror::Error)]
-pub enum LockError {
-    /// The lock file could not be read or written.
-    #[error("{path}: {source}")]
-    Io {
-        /// The file that failed.
-        path: PathBuf,
-        /// The underlying error.
-        source: std::io::Error,
-    },
-    /// The lock is not valid JSON of the expected shape.
-    #[error("parsing {LOCK_PATH}: {0}")]
-    Parse(#[from] serde_json::Error),
-}
-
 impl Lock {
     /// Reads [`LOCK_PATH`] under `root`. A missing lock allows no function below the floor, so
     /// the first one is written with `--update --allow-increase`.
@@ -104,15 +90,14 @@ impl Lock {
     /// # Errors
     /// When the file cannot be read or is malformed.
     pub fn read(root: &Path) -> Result<Lock, LockError> {
-        let path = root.join(LOCK_PATH);
-        match std::fs::read_to_string(&path) {
-            Ok(text) => Ok(serde_json::from_str(&text)?),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Lock {
+        lock_file::read(
+            root,
+            LOCK_PATH,
+            Lock {
                 floor: EVIDENCE_FLOOR,
                 below_floor: 0,
-            }),
-            Err(source) => Err(LockError::Io { path, source }),
-        }
+            },
+        )
     }
 
     /// Writes the lock to [`LOCK_PATH`] under `root`.
@@ -120,9 +105,7 @@ impl Lock {
     /// # Errors
     /// When the file cannot be written.
     pub fn write(&self, root: &Path) -> Result<(), LockError> {
-        let path = root.join(LOCK_PATH);
-        let text = format!("{}\n", serde_json::to_string_pretty(self)?);
-        std::fs::write(&path, text).map_err(|source| LockError::Io { path, source })
+        lock_file::write(root, LOCK_PATH, self)
     }
 }
 

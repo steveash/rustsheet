@@ -3,13 +3,16 @@
 //! holds a full gated run to [`LOCK_PATH`] with [`judge`]; `update-baseline` records it next to
 //! the baselines.
 
-use std::path::{Path, PathBuf};
+use std::fmt::Write as _;
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
-use crate::closeness::Visible;
-use crate::report::{calls_only_in_scope, functions_in};
+use crate::closeness::{self, Visible};
+use crate::lock_file;
+pub use crate::lock_file::LockError;
+use crate::report::{calls_only_in_scope, functions_in, FunctionStat, RunReport};
 use crate::runner::CaseResult;
 
 /// The committed lock, relative to the repository root. It sits with the baselines because
@@ -24,36 +27,19 @@ pub struct Lock {
     pub visibly_off_cells: usize,
 }
 
-/// Failure to read or write the lock.
-#[derive(Debug, thiserror::Error)]
-pub enum LockError {
-    /// The lock file could not be read or written.
-    #[error("{path}: {source}")]
-    Io {
-        /// The file that failed.
-        path: PathBuf,
-        /// The underlying error.
-        source: std::io::Error,
-    },
-    /// The lock is not valid JSON of the expected shape.
-    #[error("parsing {LOCK_PATH}: {0}")]
-    Parse(#[from] serde_json::Error),
-}
-
 impl Lock {
     /// Reads [`LOCK_PATH`] under `root`. A missing lock allows no visibly-off cell.
     ///
     /// # Errors
     /// When the file cannot be read or is malformed.
     pub fn read(root: &Path) -> Result<Lock, LockError> {
-        let path = root.join(LOCK_PATH);
-        match std::fs::read_to_string(&path) {
-            Ok(text) => Ok(serde_json::from_str(&text)?),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Lock {
+        lock_file::read(
+            root,
+            LOCK_PATH,
+            Lock {
                 visibly_off_cells: 0,
-            }),
-            Err(source) => Err(LockError::Io { path, source }),
-        }
+            },
+        )
     }
 
     /// Writes the lock to [`LOCK_PATH`] under `root`.
@@ -61,9 +47,7 @@ impl Lock {
     /// # Errors
     /// When the file cannot be written.
     pub fn write(&self, root: &Path) -> Result<(), LockError> {
-        let path = root.join(LOCK_PATH);
-        let text = format!("{}\n", serde_json::to_string_pretty(self)?);
-        std::fs::write(&path, text).map_err(|source| LockError::Io { path, source })
+        lock_file::write(root, LOCK_PATH, self)
     }
 }
 
@@ -124,9 +108,72 @@ pub fn judge(lock: Lock, count: VisibleCount, update: Option<bool>) -> Judgement
     }
 }
 
+/// The report's visibly-off section: cells per suite, then the functions they are blamed on,
+/// worst first (decision 0083).
+pub fn write_markdown(report: &RunReport, md: &mut String) {
+    let _ = writeln!(md, "\n## Visibly off (fifteen digits)\n");
+    let _ = writeln!(
+        md,
+        "{} in-scope cells are visibly off: a number further than half a unit in the 15th significant digit of Excel's (or 0 against nonzero), or a wrong type, error, text or boolean. `digits15` cells are within that half unit but more than 4 ulp away.\n",
+        report.visibly_off_cells()
+    );
+    let _ = writeln!(
+        md,
+        "| suite | scored | bit-exact | ≤4 ulp | digits15 | visible numeric | visible other |"
+    );
+    let _ = writeln!(md, "|---|---|---|---|---|---|---|");
+    for s in &report.suites {
+        let c = &s.closeness;
+        let _ = writeln!(
+            md,
+            "| {} | {} | {} | {} | {} | {} | {} |",
+            s.name,
+            c.scored(),
+            c.pass,
+            c.ulp1 + c.ulp4,
+            c.digits15,
+            c.visible_numeric,
+            c.visible_other
+        );
+    }
+    let mut off: Vec<&FunctionStat> = report
+        .functions
+        .iter()
+        .filter(|f| f.visible.total() > 0)
+        .collect();
+    off.sort_by(|a, b| {
+        b.visible
+            .total()
+            .cmp(&a.visible.total())
+            .then_with(|| a.name.cmp(&b.name))
+    });
+    let _ = writeln!(
+        md,
+        "\nFunctions with visibly-off cells ({}), worst first. A cell is blamed on the functions it calls other than glue ({}), or on its glue when it calls nothing else:\n",
+        off.len(),
+        closeness::GLUE.join(", ")
+    );
+    let _ = writeln!(md, "| function | visibly off | numeric | other | checked |");
+    let _ = writeln!(md, "|---|---|---|---|---|");
+    for f in off {
+        let _ = writeln!(
+            md,
+            "| {} | {} | {} | {} | {} |",
+            f.name,
+            f.visible.total(),
+            f.visible.numeric,
+            f.visible.other,
+            f.cells
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::report::tests::{case, cell};
+    use crate::runner::CellResult;
+    use crate::value::{Value, Verdict};
 
     fn count(cells: usize, new_coverage: usize) -> VisibleCount {
         VisibleCount {
@@ -162,5 +209,46 @@ mod tests {
         assert!(serde_json::from_str::<Lock>(r#"{"visibly_off_cells": 1, "x": 2}"#).is_err());
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         assert!(Lock::read(&root).is_ok());
+    }
+
+    /// Visibly-off cells are blamed on the specialised function, not on the glue around it, and
+    /// each suite counts its in-scope visibly-off cells for the ratchet (T-0061).
+    #[test]
+    fn visibly_off_cells_are_blamed_past_glue_and_counted_per_suite() {
+        let mut r = case("probes/a", 1);
+        let off = |formula: &str| CellResult {
+            actual: Value::Number(2.0),
+            ..cell(formula, Verdict::NumericMismatch)
+        };
+        r.cells = vec![
+            off("IF(TRUE,GAMMA(10))"),
+            off("SUM(1,2)"),
+            cell("WEBSERVICE(\"x\")", Verdict::TypeMismatch),
+            cell("GAMMA(2)", Verdict::Pass),
+        ];
+        let catalog = Catalog::from_functions([crate::catalog::CatalogFunction {
+            name: "WEBSERVICE".into(),
+            category: "web".into(),
+            milestone: "M5".into(),
+            scope: crate::catalog::Scope::Out,
+            reason: None,
+            oracle: None,
+        }]);
+        let report = RunReport::build("e", &[r], &[], &catalog);
+        let visible = |name: &str| {
+            report
+                .functions
+                .iter()
+                .find(|f| f.name == name)
+                .map(|f| f.visible.total())
+        };
+        assert_eq!(visible("GAMMA"), Some(1));
+        assert_eq!(visible("IF"), Some(0));
+        assert_eq!(visible("SUM"), Some(1));
+        assert_eq!(report.suites[0].closeness.scored(), 3);
+        assert_eq!(report.visibly_off_cells(), 2);
+        let md = report.to_markdown(1);
+        assert!(md.contains("2 in-scope cells are visibly off"), "{md}");
+        assert!(md.contains("| GAMMA | 1 | 1 | 0 | 2 |"), "{md}");
     }
 }

@@ -23,6 +23,7 @@ pub mod evidence_floor;
 pub mod fetch;
 pub mod function_scope;
 pub mod lift_kinds;
+pub mod lock_file;
 pub mod milestone_lists;
 pub mod overrides;
 pub mod probe_milestones;

@@ -17,6 +17,7 @@ use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::text_expect;
 use crate::value::Verdict;
+use crate::visible_parity;
 
 static FUNCTION_CALL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)(?:_xlfn\.|_xlws\.)?\b([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
@@ -541,66 +542,6 @@ impl RunReport {
         self.suites.iter().map(|s| s.closeness.visible()).sum()
     }
 
-    /// The visibly-off section: cells per suite, then the functions they are blamed on, worst
-    /// first (decision 0083).
-    fn write_visible(&self, md: &mut String) {
-        let _ = writeln!(md, "\n## Visibly off (fifteen digits)\n");
-        let _ = writeln!(
-            md,
-            "{} in-scope cells are visibly off: a number further than half a unit in the 15th significant digit of Excel's (or 0 against nonzero), or a wrong type, error, text or boolean. `digits15` cells are within that half unit but more than 4 ulp away.\n",
-            self.visibly_off_cells()
-        );
-        let _ = writeln!(
-            md,
-            "| suite | scored | bit-exact | ≤4 ulp | digits15 | visible numeric | visible other |"
-        );
-        let _ = writeln!(md, "|---|---|---|---|---|---|---|");
-        for s in &self.suites {
-            let c = &s.closeness;
-            let _ = writeln!(
-                md,
-                "| {} | {} | {} | {} | {} | {} | {} |",
-                s.name,
-                c.scored(),
-                c.pass,
-                c.ulp1 + c.ulp4,
-                c.digits15,
-                c.visible_numeric,
-                c.visible_other
-            );
-        }
-        let mut off: Vec<&FunctionStat> = self
-            .functions
-            .iter()
-            .filter(|f| f.visible.total() > 0)
-            .collect();
-        off.sort_by(|a, b| {
-            b.visible
-                .total()
-                .cmp(&a.visible.total())
-                .then_with(|| a.name.cmp(&b.name))
-        });
-        let _ = writeln!(
-            md,
-            "\nFunctions with visibly-off cells ({}), worst first. A cell is blamed on the functions it calls other than glue ({}), or on its glue when it calls nothing else:\n",
-            off.len(),
-            closeness::GLUE.join(", ")
-        );
-        let _ = writeln!(md, "| function | visibly off | numeric | other | checked |");
-        let _ = writeln!(md, "|---|---|---|---|---|");
-        for f in off {
-            let _ = writeln!(
-                md,
-                "| {} | {} | {} | {} | {} |",
-                f.name,
-                f.visible.total(),
-                f.visible.numeric,
-                f.visible.other,
-                f.cells
-            );
-        }
-    }
-
     fn write_timing(&self, md: &mut String) {
         let _ = writeln!(md, "\n## Timing\n");
         let _ = writeln!(md, "| suite | total ms |\n|---|---|");
@@ -624,7 +565,7 @@ impl RunReport {
             self.engine
         );
         self.write_suites_table(&mut md);
-        self.write_visible(&mut md);
+        visible_parity::write_markdown(self, &mut md);
         text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
@@ -759,10 +700,11 @@ impl RunReport {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
-    fn case(id: &str, millis: u64) -> CaseResult {
+    /// A passing one-cell case `id` in the suite its id names (shared with sibling tests).
+    pub(crate) fn case(id: &str, millis: u64) -> CaseResult {
         CaseResult {
             id: id.to_string(),
             suite: id.split('/').next().unwrap_or(id).to_string(),
@@ -793,7 +735,8 @@ mod tests {
         assert_eq!(ids, ["s/c", "s/a", "s/b"]);
     }
 
-    fn cell(formula: &str, verdict: Verdict) -> CellResult {
+    /// A cell with `formula` and `verdict`, expecting and giving 1 (shared with sibling tests).
+    pub(crate) fn cell(formula: &str, verdict: Verdict) -> CellResult {
         CellResult {
             sheet: "S".into(),
             cell: "A1".into(),
@@ -889,47 +832,6 @@ mod tests {
         assert_eq!(abs, Some((7, expected)));
         let sign = report.functions.iter().find(|f| f.name == "SIGN");
         assert_eq!(sign.map(|f| f.closeness.scored()), Some(2));
-    }
-
-    /// Visibly-off cells are blamed on the specialised function, not on the glue around it, and
-    /// each suite counts its in-scope visibly-off cells for the ratchet (T-0061).
-    #[test]
-    fn visibly_off_cells_are_blamed_past_glue_and_counted_per_suite() {
-        let mut r = case("probes/a", 1);
-        let off = |formula: &str| CellResult {
-            actual: crate::value::Value::Number(2.0),
-            ..cell(formula, Verdict::NumericMismatch)
-        };
-        r.cells = vec![
-            off("IF(TRUE,GAMMA(10))"),
-            off("SUM(1,2)"),
-            cell("WEBSERVICE(\"x\")", Verdict::TypeMismatch),
-            cell("GAMMA(2)", Verdict::Pass),
-        ];
-        let catalog = Catalog::from_functions([crate::catalog::CatalogFunction {
-            name: "WEBSERVICE".into(),
-            category: "web".into(),
-            milestone: "M5".into(),
-            scope: crate::catalog::Scope::Out,
-            reason: None,
-            oracle: None,
-        }]);
-        let report = RunReport::build("e", &[r], &[], &catalog);
-        let visible = |name: &str| {
-            report
-                .functions
-                .iter()
-                .find(|f| f.name == name)
-                .map(|f| f.visible.total())
-        };
-        assert_eq!(visible("GAMMA"), Some(1));
-        assert_eq!(visible("IF"), Some(0));
-        assert_eq!(visible("SUM"), Some(1));
-        assert_eq!(report.suites[0].closeness.scored(), 3);
-        assert_eq!(report.visibly_off_cells(), 2);
-        let md = report.to_markdown(1);
-        assert!(md.contains("2 in-scope cells are visibly off"), "{md}");
-        assert!(md.contains("| GAMMA | 1 | 1 | 0 | 2 |"), "{md}");
     }
 
     #[test]
