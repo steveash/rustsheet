@@ -422,6 +422,25 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
     D6 -9785, D5 -7072, D4 -10155, D3 -18788 ulps, and every step dropped exact R to 0% (median rel error 3e-13 to
     2e-12). The chain is already at the data noise in R, so these locks are noise maxima near the scan edge, not
     whole-ulp errors; the m-scan site objective was validated only on D0 = 1 chains. Abandoned for exact-R climbing.
+33. **Site peel on Excel: D3 found; the low structure is still open** (`sitemap.py`, `sitescan.py`, `pkscan.py`,
+    `siteruns.py`, `lowfit80.py`; chains in `data/xl_chain_d3ls.txt`, `data/xl_chain_80.txt`).
+    - Lit/dark map: a joint LS of Excel's R residual on every op site's rounding-error regressor, with a per-run mean and
+      trend removed. beta ~ 1 means stored. Upper sites are lit (N.P5..N.P4, D.P5..D.P3), so there are no K1-style
+      80-bit upper stages. A stored control with an imperfect chain (ctl_ladA) shows the same dark LOW sites, so low
+      darkness alone means wrong coefficients.
+    - N.S4 lights (beta 0.994, Z 120) at N4 +3 mod 8. D.P2 lights (beta 0.98, Z 163; the only alias within ±9.6e4)
+      at D3 -2,070,784 ulps. Found by an FFT P-site scan, then pkscan.
+    - With that D3, the low block reaches the noise floor with D0 fixed (free N0..N3, D1, D2), and the extra-scale
+      parameter collapses to 1e-12. So item 31's "D0 must be free" was the low block absorbing the D3 error.
+      Exact R 42.7% all-stored.
+    - Alias scans must sample many distinct runs (PERRUN chunks) or false aliases score high. Low sums whose product
+      is in the same binade have a constant rounding error, removed by the detrend, so they carry no information.
+    - Still dark: N.P3 (no N4 alias within ±1e7 lights it) and D.P1 (the best D2 alias is partial and its
+      apparent drift follows the final D binade at 16384).
+    - An "upper stored, low stages and final N/D in 80-bit" model scores 56.8%. But it is probably an artefact: the
+      80-bit-model low fit leaves 5.8e-17 on planted 80-bit truth, 1.31e-16 on planted all-stored truth and
+      1.14e-16 on Excel (stored-like). Masks also raise the score on stored truth (29.3% -> 34.1%).
+    - Reviewer 3's K2 hand-off term (c/x at stage k, -c at k-1), scanned per stage: no jump beyond the N4 shift.
 
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
