@@ -76,24 +76,12 @@ impl NameReference {
                 },
             }
         };
-        let (a, b) = (
-            corner(self.written.left, self.absolute[0]),
-            corner(self.written.right, self.absolute[1]),
-        );
         // Mixed anchors can move one corner past the other (`Jan!$B$5:$B1` used in row 1 is
         // B5:B1); the range is the one between them, B1:B5, as an inline reference is.
-        Range {
-            left: CellReferenceIndex {
-                sheet: a.sheet,
-                row: a.row.min(b.row),
-                column: a.column.min(b.column),
-            },
-            right: CellReferenceIndex {
-                sheet: a.sheet,
-                row: a.row.max(b.row),
-                column: a.column.max(b.column),
-            },
-        }
+        Range::between(
+            corner(self.written.left, self.absolute[0]),
+            corner(self.written.right, self.absolute[1]),
+        )
     }
 
     /// The reference as a reference-context result, used in `cell`.
