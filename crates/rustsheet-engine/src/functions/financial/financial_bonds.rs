@@ -7,7 +7,7 @@ mod coupon_schedule;
 mod yield_closed;
 
 use super::dates::{
-    basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us_both,
+    basis_days, broken_schedule_days, broken_schedule_error, day_count_basis, days_30_360_us_both,
     BROKEN_SCHEDULE_PCD,
 };
 use coupon_schedule::{
@@ -60,12 +60,8 @@ fn validate_frequency(frequency: u32, cell: CellReferenceIndex) -> Result<(), Ca
     }
 }
 
-fn validate_basis(basis: u32, cell: CellReferenceIndex) -> Result<(), CalcResult> {
-    if basis <= 4 {
-        Ok(())
-    } else {
-        Err(num_error(cell))
-    }
+fn validate_basis(basis: f64, cell: CellReferenceIndex) -> Result<u32, CalcResult> {
+    day_count_basis(basis).ok_or_else(|| num_error(cell))
 }
 
 // ============================================================
@@ -581,8 +577,7 @@ impl Model {
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
         validate_frequency(frequency, cell)?;
         let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
-        let basis = basis.floor() as u32;
-        validate_basis(basis, cell)?;
+        let basis = validate_basis(basis, cell)?;
         Ok((settlement, maturity, frequency, basis))
     }
 
@@ -631,9 +626,9 @@ impl Model {
             None => 100.0,
         };
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?.floor() as u32;
+        let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?;
         validate_frequency(frequency, cell)?;
-        validate_basis(basis, cell)?;
+        let basis = validate_basis(basis, cell)?;
         // YIELD's price must be positive, a yield may be 0.
         let bad_fourth = match function {
             BondFunction::Yield => yld <= 0.0,
@@ -806,16 +801,14 @@ impl Model {
         let yld_or_pr = self.cast_number_no_bools_ref(yld_or_pr, cell)?;
         let redemption = self.cast_number_no_bools_ref(redemption, cell)?;
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self
-            .cast_number_no_bools_or(rest.first(), 0.0, cell)?
-            .floor() as u32;
+        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         // A date Excel's reading moves off the calendar (`DateSystem::odd_period_1900_serial`).
         let mut dates = [0; N];
         for (date, read) in dates.iter_mut().zip(read) {
             *date = read.ok_or_else(|| num_error(cell))?;
         }
         validate_frequency(frequency, cell)?;
-        validate_basis(basis, cell)?;
+        let basis = validate_basis(basis, cell)?;
         check_dates(&dates, frequency)?;
         let bad_fourth = if price_given {
             yld_or_pr <= 0.0

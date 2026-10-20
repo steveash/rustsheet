@@ -4,8 +4,8 @@
 use chrono::Datelike;
 
 use super::{
-    super::financial::days_30_360_us_ymd, days360_eu, days360_serial,
-    is_feb29_between_consecutive_years, is_leap_year, num_error,
+    super::financial::{day_count_basis, days_30_360_us_ymd},
+    days360_eu, days360_serial, is_feb29_between_consecutive_years, is_leap_year, num_error,
 };
 use crate::{
     calc_result::CalcResult,
@@ -45,14 +45,14 @@ impl Model {
         // a refused range (-a W6, W7).
         let basis = match basis {
             Some(value) => match self.cast_number_no_bools_ref(value, cell) {
-                Ok(f) => f as i32,
+                Ok(f) => f,
                 Err(s) => return s,
             },
-            None => 0,
+            None => 0.0,
         };
-        if !(0..=4).contains(&basis) {
+        let Some(basis) = day_count_basis(basis) else {
             return num_error(cell);
-        }
+        };
         // The dates as the 1900 serials the financial day counts read: 2 * 1462 days on in a 1904
         // workbook (`DateSystem::financial_1900_serial`).
         let date_system = self.workbook.settings.date_system;

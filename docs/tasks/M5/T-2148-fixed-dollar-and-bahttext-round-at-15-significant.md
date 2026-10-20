@@ -3,7 +3,7 @@ id: T-2148
 title: "FIXED, DOLLAR and BAHTTEXT round at 15 significant digits first (ROUND's stage 1)"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -47,3 +47,6 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 15 in eval/baseli
 
 ## Out of scope
 - Values past 2^64 and very many decimals (T-2149); array lifting (T-2160).
+
+## Outcome
+FIXED and DOLLAR now round in decimal from `significant_15` (ties toward zero, zeros past the 15th digit, rounded half away at `decimals`) instead of scaling the binary value; DOLLAR drops the parentheses when a negative value rounds to 0 at negative `decimals`; BAHTTEXT's 15-digit cut breaks the 16th-digit tie toward zero. gen-m5 known failures 260 -> 240 (the 15 listed cells plus 5 that T-2149 covers), no regressions.
