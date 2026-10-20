@@ -446,6 +446,8 @@ impl Model {
     // precision exactly as Excel's do: ASINH(1E-10) = 1.000000082690371E-10 and
     // ACOSH(1.000000000001) = 1.414276423083533E-6 (docs/excel-semantics/numbers.md, "Inverse
     // hyperbolics, COTH/CSCH and the SINH/TANH thresholds", probes-numeric/m9-hyperbolic, T-2031).
+    // The log is the worksheet LN kernel (`excel_ln`, FYL2X), not libm `ln`: at 240 points chosen
+    // where the two differ it is 238 right against 2 (probes-numeric/t2133-asinh-acosh-ln, T-2133).
     // Where `x*x` overflows (|x| above about 1.3E154) no Excel value is known, so libm stays there.
     pub(crate) fn fn_asinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Asinh, args, cell, |f: f64| {
@@ -453,9 +455,9 @@ impl Model {
             if square.is_infinite() {
                 Ok(f64::asinh(f))
             } else if f < 0.0 {
-                Ok(-(-f + (square + 1.0).sqrt()).ln())
+                Ok(-excel_ln(-f + (square + 1.0).sqrt()))
             } else {
-                Ok((f + (square + 1.0).sqrt()).ln())
+                Ok(excel_ln(f + (square + 1.0).sqrt()))
             }
         })
     }
@@ -470,7 +472,7 @@ impl Model {
             if square.is_infinite() {
                 Ok(f64::acosh(f))
             } else {
-                Ok((f + (square - 1.0).sqrt()).ln())
+                Ok(excel_ln(f + (square - 1.0).sqrt()))
             }
         })
     }
