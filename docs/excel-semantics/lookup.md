@@ -84,8 +84,8 @@ and HLOOKUP intersect an operation in their lookup table"). LOOKUP differs: it r
 value as a one-element array ("LOOKUP vector form with 2-D or short vectors"). One-cell
 references picked by CHOOSE, OFFSET or INDIRECT, and a defined name for one cell, are one-cell
 ranges too (`MATCH("b",CHOOSE(1,A2),0)`, `MATCH(2,nmB,0)` are 1; `VLOOKUP(2,nmB,1,FALSE)` is 2).
-Single texts as MATCH/VLOOKUP table (`1/2/2020`, `$1`, `50%`, ` 2 `, `TRUE`, empty, `1E2`, `2:30`,
-`1,000`) follow the engine's `cast_number` line between `#N/A` and `#VALUE!` exactly.
+Single texts as MATCH/VLOOKUP table (`1/2/2020`, `$1`, `50%`, ` 2 `, `TRUE`, empty, `1E2`, `0x1`,
+`2:30`, `1,000`) follow the engine's `cast_number` line between `#N/A` and `#VALUE!` exactly.
 Evidence: probes/match-single-value-lookup-array (excel-graph, 2026-10-18, T-1862);
 probes/match-single-cell-forms-and-texts (36 cells, excel-graph, 2026-10-20, T-1939).
 Engine: `Model::lookup_table` (lookup.rs) and `Model::evaluate_single_sheet_arg` (util.rs).
