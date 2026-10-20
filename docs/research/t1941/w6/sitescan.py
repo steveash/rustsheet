@@ -2,8 +2,8 @@
 # delta (units of the site's ulp) at one site (ch.Sj or ch.Pj), keep everything above it as the base chain, and fit
 # the data residual (sitemap.py detrending) on that site's rounding-error regressor at each delta. A stored site
 # with a mis-set coefficient shows beta ~ 1 (high Z) at some delta; a truly unstored site never does.
-# Usage: sitescan.py RFILE CHAIN SITE [RANGE] [STEP] [npts]   (e.g. N.S4 8 0.0625; S sites in ulps of c_j)
-import sys, numpy as np
+# Usage: sitescan.py RFILE CHAIN SITE [RANGE] [STEP] [npts]   (e.g. N.S4 8 0.0625; S sites in ulps of c_j)   env KEEP
+import sys, os, numpy as np
 
 sys.path.insert(0, sys.path[0])
 from lib6 import st, L
@@ -24,17 +24,18 @@ XL = x.astype(L)
 C = N if ch == "N" else D
 s = L(C[-1]) * np.ones_like(XL)
 pre = None
+KEEP = set(os.environ.get("KEEP", "").split(",")) - {""}  # ops above the site left unstored (80-bit)
 for j in range(len(C) - 2, -1, -1):
     p = s * XL
     if op == "P" and j == J:
         pre = p
         break
-    ps = L(st(p))
+    ps = p if "%s.P%d" % (ch, j) in KEEP else L(st(p))
     sv = ps + L(C[j])
     if op == "S" and j == J:
         pre = sv
         break
-    s = L(st(sv))
+    s = sv if "%s.S%d" % (ch, j) in KEEP else L(st(sv))
 Nv = np.polyval(np.array(N, dtype=L)[::-1], XL)
 Dv = np.polyval(np.array(D, dtype=L)[::-1], XL)
 R = Nv / Dv

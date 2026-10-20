@@ -1,10 +1,12 @@
 # T-1941 W6: shared data loader for the site tools (sitemap / sitescan / pkscan): split RFILE (rows "x B Rlo Rhi n case")
 # into runs of consecutive doubles and sample whole runs at random across (1.5,2] (many distinct x0 break the period
 # aliases of a single run); per-run mean + linear-trend removal (absorbs smooth coefficient errors).
-import re, collections, numpy as np
+import os, re, collections, numpy as np
 
 
 def load_runs(rf, npts, minrun=1024, seed=3):
+    """env PERRUN: keep only a random contiguous chunk of that many points per run (more distinct x0 per point)"""
+    per = int(os.environ.get("PERRUN", "0"))
     by = collections.defaultdict(list)
     for l in open(rf):
         q = l.split()
@@ -18,9 +20,13 @@ def load_runs(rf, npts, minrun=1024, seed=3):
     order = rng.permutation(len(runs))
     pts, gid, tot = [], [], 0
     for g, i in enumerate(order):
-        pts.append(runs[i])
-        gid.append(np.full(len(runs[i]), g))
-        tot += len(runs[i])
+        r = runs[i]
+        if per and len(r) > per:
+            a = rng.integers(0, len(r) - per)
+            r = r[a : a + per]
+        pts.append(r)
+        gid.append(np.full(len(r), g))
+        tot += len(r)
         if tot >= npts:
             break
     v = np.concatenate(pts)
