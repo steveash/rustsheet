@@ -3,7 +3,7 @@ id: T-2101
 title: "Probe IMEXP cap window at non-zero multiples of pi/2 and numeric DBL_MAX text"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
