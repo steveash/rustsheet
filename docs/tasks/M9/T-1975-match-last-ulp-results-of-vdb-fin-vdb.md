@@ -3,7 +3,7 @@ id: T-1975
 title: "Match last-ulp results of VDB (fin-vdb-modes A6, A7, A10, A13), MDURATION and RRI"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
