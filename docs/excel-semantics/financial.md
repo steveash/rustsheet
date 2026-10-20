@@ -505,33 +505,57 @@ Implemented in: `fn_mirr` in functions/financial/mirr.rs (T-1798); replaces the 
 Tasks: T-1798
 
 ## Coupon settlement before the calendar
-Rule: the COUP* functions, PRICE, YIELD, DURATION, MDURATION and ACCRINT are `#NUM!` for a settlement (ACCRINT: an
-issue, first interest date or settlement) below serial 1 in a 1900 workbook. Probed values: -1 for every one of them
-(A1, A4-A13; ACCRINT's three dates at -1 and -1E15, A14-A17); 0 for COUPNUM and PRICE (A3, A20); -0.5, 0.5 and -1E15
-for COUPNUM only (A19, -b A11, A2). The other functions at 0 or a fraction follow the same check but are unprobed
-(T-1844). In a 1904 workbook serial 0 is a date and computes
-(`COUPPCD(0,400,2)` = -150), while -1 is `#NUM!` (probes/date-system-1904-financial A35-A41; only
-`COUPDAYBS(-1,400,2)` backs the 1904 negatives, and whether -0.5 truncates to 0 is unprobed, T-1844).
-Evidence: probes/fin-coupon-walk-bounds A1-A20 and -b A11 (excel-graph, 2026-10-17, T-1822).
+Rule: PRICE, YIELD, DURATION, MDURATION and ACCRINT are `#NUM!` for a settlement (ACCRINT: an issue, first interest
+date or settlement) below serial 1 in a 1900 workbook; the COUP* functions only for one below serial 0. Probed values:
+-1 for every one of them (A1, A4-A13; ACCRINT's three dates at -1 and -1E15, A14-A17); -0.5 and -1E15 for COUPNUM
+(A19, A2); 0 and 0.5 for PRICE, YIELD, DURATION, MDURATION and ACCRINT (A20, -c M3-N7). At 0 and 0.5 the COUP*
+functions read the settlement as serial 0: `COUPPCD(0,43831,2)` and `COUPPCD(0.5,43831,2)` are 0 and
+`COUPDAYS(0,43831,2)` is 180 (-c M1, M2, N1, N2, N9), while COUPNUM is `#NUM!` (A3, -b A11, -c M9) because its
+previous coupon date falls before the calendar ("Coupon schedules at the calendar's edges"). In a 1904 workbook serial
+0 is a date and computes (`COUPPCD(0,400,2)` = -150, `PRICE(0,43831,0.05,0.06,100,2)` = 83.347), while -1 is `#NUM!`
+for COUPPCD, PRICE, YIELD, DURATION and MDURATION (probes/date-system-1904-financial A35-A41,
+fin-coupon-walk-bounds-1904 A1-A3, A8, A12-A14); `COUPNUM(-0.5,400,2)` is `#NUM!` (-1904 A4).
+Evidence: probes/fin-coupon-walk-bounds A1-A20, -b A11 (excel-graph, 2026-10-17, T-1822), fin-coupon-walk-bounds-c
+M1-N9 and -1904 (excel-graph, 2026-10-20, T-1844).
 Ours: `Model::check_settlement` (functions/financial/dates.rs) makes a settlement below 1900 serial 1, as
-`financial_date` reads it, `#NUM!` for the COUP* functions, PRICE, YIELD and DURATION; ACCRINT already checked its
-dates against the calendar. Before T-1822 the engine walked the coupon schedule back past 1900 and returned a number
-(`COUPNUM(-1,43831,2)` was 241), and `COUPNUM(-1E15,43831,4)` stepped about 10^6 quarters back to chrono's first year
-before it failed. The check keeps every schedule walk inside the calendar, at most about 32,400 quarters.
+`financial_date` reads it, `#NUM!` for PRICE, YIELD and DURATION; `Model::coupon_args` one below 0 for the COUP*
+functions; ACCRINT already checked its dates against the calendar. Before T-1822 the engine walked the coupon
+schedule back past 1900 and returned a number (`COUPNUM(-1,43831,2)` was 241), and `COUPNUM(-1E15,43831,4)` stepped
+about 10^6 quarters back to chrono's first year before it failed. The checks keep every schedule walk inside the
+calendar, at most about 32,400 quarters.
 Status: VERIFIED (excel-graph)
-Tasks: T-1822
+Tasks: T-1822, T-1844
 
 ## Coupon schedules at the calendar's edges
-Rule: Excel is `#NUM!` (or a different count) for some valid schedules that reach the start or the end of the 1900
-calendar, which the engine computes: `COUPNUM(1,43831,2)` is 240 (ours 241), `COUPNUM(1,1000,2)` and
-`COUPNUM(DATE(1900,3,1),DATE(1910,3,31),4)` are `#NUM!`, `COUPPCD(1,DATE(9990,6,30),4)` is 0, every quarterly bond from
-serial 1 or 1900-03-01 to a maturity in 9990-9999 is `#NUM!` for COUPNUM, PRICE, YIELD and DURATION, and
-`ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 0. The rule behind them is unknown.
-Evidence: probes/fin-coupon-walk-bounds A21-A28, -b A1-A10, A12, A13 (excel-graph, 2026-10-17, T-1822).
-Ours: computes these: `COUPNUM(1,43831,2)` 241, a number for the `#NUM!` cells (e.g. 32,362 quarterly coupons from
-serial 1 to 9990, `PRICE` 404516.67); a known gap, the general rule still open.
-Status: VERIFIED (excel-graph; the rule behind the cells is not found)
-Tasks: T-1844
+Rule: the coupon schedule walk reads its dates as Excel serials of the 1900 calendar: 1900-01-01 is serial 1, a date
+from 1 March 1900 on counts Excel's fictitious 1900-02-29, and a coupon date before 1900-01-01 is serial 0. So:
+- COUPPCD is 0 when the previous coupon date falls before 1900-01-01 (`COUPPCD(1,1000,2)` is 0, not 1899-09-26;
+  `COUPPCD(1,DATE(9990,6,30),4)` is 0), and COUPNUM, PRICE, YIELD, DURATION and MDURATION are `#NUM!` there
+  (`COUPNUM(1,1000,2)`, `COUPNUM(DATE(1900,3,1),DATE(1910,3,31),4)`, every quarterly bond from serial 1 or 1900-03-01
+  to a maturity in 9990-9999). That, not a coupon count cap, is the rule behind the calendar-spanning `#NUM!` cells.
+- A schedule date on 1900-01-01 is serial 1: `COUPNUM(1,43831,2)` is 240, `COUPPCD(1,43831,2)` 1 and `COUPNCD` 183
+  (1900-07-01, counting 1900-02-29).
+- COUPDAYBS counts from the previous coupon date as read, 0 before the calendar: `COUPDAYBS(1,1000,2)` is 1 on bases
+  0 and 1. The 30/360 bases read serial 0 as 1900-01-00 and serial 60 as 1900-02-29, so `COUPDAYBS(60,36585,4)` is -1
+  (from 1900-02-28, the month's last day); the actual bases count serials (`COUPDAYBS(61,36585,4,1)` is 2).
+- COUPDAYSNC on basis 0 is the period's 30/360 length less COUPDAYBS (`COUPDAYSNC(1,1000,2)` is 85), on basis 1 the
+  serials to the next coupon date.
+- COUPDAYS on basis 1 counts a period that starts before 1900-01-01 in the real calendar (`COUPDAYS(1,43830,4,1)` is
+  90, 1899-12-31 to 1900-03-31; `COUPDAYS(1,1000,2,1)` 181) and one inside the calendar by serials
+  (`COUPDAYS(1,43831,2,1)` is 182). A period starting or ending on 1900-02-28 takes the 29 February rule ("COUPDAYS
+  basis 1 around 29 February"): `COUPDAYS(59,36585,4,1)` and `COUPDAYS(1,43890,4,1)` are 90 and 92.
+- A month-end schedule's February 1900 ends on the 28th (`COUPPCD(59,36585,4)` is 59).
+Evidence: probes/fin-coupon-walk-bounds A21-A28, -b A1-A13 (excel-graph, 2026-10-17, T-1822), fin-coupon-walk-bounds-c
+A1-L14 (excel-graph, 2026-10-20, T-1844).
+Ours: matches (functions/financial/financial_bonds/coupon_schedule.rs: `coupon_period`, `coupon_count`,
+`coupdays_actual`, `coupon_days_nc`). Open: ACCRINT with calc_method TRUE whose issue's previous coupon date is serial 0
+is `#NUM!` (fin-coupon-walk-bounds-c O1-O13) but 0 with a settlement in 9990
+(`ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`, -b A9), and ACCRINT's day counts before
+1900-03-01 miss the fictitious 1900-02-29 (-c O10, O14; ours compute them; T-2124). In a 1904 workbook
+`COUPNUM(0,400,2)` and `COUPNUM(1,400,2)` are `#NUM!` (previous coupon 1903-08-04, before the 1904 calendar) while
+`COUPPCD(1,400,2)` is -150 (-1904 A5-A7; ours 3; T-2125).
+Status: VERIFIED (excel-graph)
+Tasks: T-1822, T-1844, T-2124, T-2125
 
 ## Coupon schedule work cap
 Rule: RustSheet charges a lifted COUP*, ACCRINT, DURATION, MDURATION or PRICE call for its coupon schedule walks, so one
@@ -866,7 +890,8 @@ COUPDAYBS (76) and COUPDAYSNC (106) describe 2023-08-31 to 2024-02-29 (182 days)
 the walk passes 2025-02-28: 184 and 92 for settlements 2023-11-15 and 2023-12-15. Frequency 1, maturity 2025-02-28,
 settlement 2023-06-15: 365, not 366. A period ending on 28 February of a common year keeps the end-of-month rule
 (2099-08-31 to 2100-02-28, 181), and so does one ending on a 29 February that is the maturity
-(`COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)` is 182). Only COUPDAYS shows it: PRICE and DURATION on basis 1 use the
+(`COUPDAYS(DATE(2399,11,15),DATE(2400,2,29),2,1)` is 182). 1900-02-28 takes the rule like a 29 February (Excel's
+1900 has a 29 February): `COUPDAYS(59,36585,4,1)` is 90 (probes/fin-coupon-walk-bounds-c G5). Only COUPDAYS shows it: PRICE and DURATION on basis 1 use the
 182-day period, and bases 0, 2, 3 and 4 have fixed lengths. Unprobed: a walk that lands on a 29 February itself (maturity 2028-08-31, settlement 2027-11-15; the rule predicts 184, 2027-08-29 to 2028-02-29).
 Evidence: probes/coupdays-feb-month-end (296 cells, excel-graph, 2026-10-13, T-1493) and
 probes/date-system-1900-financial-readers E15.

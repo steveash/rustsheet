@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "TRIMRANGE lifted over trim_rows with an error source and an invalid trim element, a multi-area source, and an all-blank source (T-2120). A9=#N/A; C20:C21 blank. Row 40: bare spills. D13-D20: scalar and lifted all-blank sources with trim modes 0 and 3.",
+ "tags": [
+  "M6",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": 5,
+    "A2": 7,
+    "B2": 9,
+    "A9": "=NA()",
+    "D1": "=ROWS(TRIMRANGE(NA(),{0;5}))",
+    "D2": "=ERROR.TYPE(INDEX(TRIMRANGE(NA(),{0;5}),1,1))",
+    "D3": "=ERROR.TYPE(INDEX(TRIMRANGE(NA(),{0;5}),2,1))",
+    "D4": "=ROWS(TRIMRANGE(1/0,{0;5}))",
+    "D5": "=ERROR.TYPE(INDEX(TRIMRANGE(1/0,{0;5}),2,1))",
+    "D6": "=ROWS(TRIMRANGE((A1,B2),{0;1}))",
+    "D7": "=ERROR.TYPE(INDEX(TRIMRANGE((A1,B2),{0;1}),1,1))",
+    "D8": "=ERROR.TYPE(INDEX(TRIMRANGE((A1,B2),{0;1}),2,1))",
+    "D9": "=ROWS(TRIMRANGE(C20:C21,{0;1}))",
+    "D10": "=ERROR.TYPE(INDEX(TRIMRANGE(C20:C21,{0;1}),1,1))",
+    "D11": "=ERROR.TYPE(INDEX(TRIMRANGE(C20:C21,{0;1}),2,1))",
+    "D12": "=ERROR.TYPE(TRIMRANGE(C20:C21))",
+    "F40": "=TRIMRANGE(NA(),{0;5})",
+    "H40": "=TRIMRANGE((A1,B2),{0;1})",
+    "J40": "=TRIMRANGE(C20:C21,{0;1})",
+    "D13": "=ERROR.TYPE(TRIMRANGE(C20:C21,0))",
+    "D14": "=ROWS(TRIMRANGE(C20:C21,0))",
+    "D15": "=ERROR.TYPE(TRIMRANGE(C20:C21,3,0))",
+    "D16": "=ROWS(TRIMRANGE(C20:C21,0,0))",
+    "D17": "=ERROR.TYPE(TRIMRANGE(C20:C21,0,3))",
+    "D18": "=ERROR.TYPE(TRIMRANGE(C20:C21,1,0))",
+    "D19": "=ROWS(TRIMRANGE(C20:C21,0,{0;3}))",
+    "D20": "=ERROR.TYPE(INDEX(TRIMRANGE(C20:C21,0,{0;3}),2,1))"
+   }
+  }
+ ],
+ "expected": {}
+}
