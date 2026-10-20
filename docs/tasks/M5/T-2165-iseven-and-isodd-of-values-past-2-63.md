@@ -3,7 +3,7 @@ id: T-2165
 title: "ISEVEN and ISODD of values past 2^63 (ISODD(INT(1E+21)) is FALSE)"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
