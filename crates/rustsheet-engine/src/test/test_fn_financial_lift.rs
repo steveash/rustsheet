@@ -335,12 +335,15 @@ fn npv_irr_and_mirr_lift_their_rates_beside_whole_cash_flows() {
             "=INDEX(MIRR(K1:K5,0.1,{0.12;0.2}),2)=MIRR(K1:K5,0.1,0.2)",
             "TRUE",
         ),
-        // NPV reads its rate before its values; IRR and MIRR their values first.
+        // Hand-written, not oracle values: NPV checks its rate before its values, IRR and MIRR
+        // their values first, the scalar order kept (financial.md "NPV, IRR and MIRR error
+        // order", UNVERIFIED; T-2103). A values error is every element's.
         ("H10", "=INDEX(NPV({\"x\";0.1},K1:K2,F4),1)", "#VALUE!"),
         ("H11", "=INDEX(NPV({\"x\";0.1},K1:K2,F4),2)", "#DIV/0!"),
         ("H12", "=INDEX(IRR(F4,{\"x\";0.1}),1)", "#DIV/0!"),
         ("H13", "=INDEX(MIRR(F4,{\"x\";0.1},0.1),1)", "#DIV/0!"),
         ("H14", "=INDEX(MIRR(K1:K5,{\"x\";0.1},0.1),1)", "#VALUE!"),
+        ("H18", "=SUM(--ISERROR(IRR(F4,{0.1;0.1})))", "2"),
         ("H15", "=NPV(0.1)", "#ERROR!"),
         ("H16", "=IRR(K1:K5,0.1,0.1)", "#ERROR!"),
         ("H17", "=MIRR(K1:K5,0.1)", "#ERROR!"),

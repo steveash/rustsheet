@@ -235,7 +235,10 @@ impl Model {
 
     /// `NPV(rate, value1, [value2], ...)`: `Sum[value[i]/(1+rate)^i, {i, 1, n}]`. The rate lifts
     /// over arrays and ranges; the values are read once, whole, and handed to every element, whose
-    /// rate is read first: a rate error wins over an error in the values (T-1821).
+    /// rate is checked first: a rate error wins over an error in the values, the scalar order kept
+    /// from before T-1821. The values are evaluated before the rate, also when the rate is an
+    /// error, since the call's charge needs their count; Excel's order is unprobed (financial.md
+    /// "NPV, IRR and MIRR error order", T-2103).
     pub(crate) fn fn_npv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let [_, flows @ ..] = args else {
             return CalcResult::new_args_number_error(cell);

@@ -459,7 +459,8 @@ dates are M1:M5. L1:L8 is the same flow with typed text, a boolean, text and a b
 schedule containing text.
 Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift`, since T-1820 DB and VDB too,
 charged by their period up to their own cap ("DB and VDB period cap"), since T-1821 NPV's rate, IRR's guess and
-MIRR's rates too, beside cash flows read once, whole, and charged per element for their walks over the flows; and EFFECT, NOMINAL, DOLLARDE,
+MIRR's rates too, beside cash flows read once, whole, and charged per element for their walks over the flows ("NPV,
+IRR and MIRR cash-flow work cap", a DEVIATION); and EFFECT, NOMINAL, DOLLARDE,
 DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
 (SPEC-0011); since T-1822 so are ACCRINT, the COUP* family, DURATION, MDURATION and PRICE, each element charged for its
 coupon schedule walks ("Coupon schedule work cap"), and since T-1842 YIELD and the ODD* functions, charged for their
@@ -590,6 +591,33 @@ Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-
 Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds/financial.rs (`CUMULATIVE_WEIGHT`, `CUMULATIVE`)
 Tasks: T-1845
+
+## NPV, IRR and MIRR cash-flow work cap
+Rule: RustSheet charges each lifted NPV, IRR or MIRR element for its walks over the cash flows, against SPEC-0011's
+2^27 visit cap. NPV and MIRR elements cost one unit per flow. An IRR element costs 512 units per flow (`IRR_WEIGHT`),
+because `compute_irr` makes at most 455 NPV passes per call: two secant runs of 52, then the fallback's Newton from the
+guess (100 with its derivative passes), its bisection's 51, and its Newtons from 200 and -2 (200). A call over too
+many flows times elements is `#ERROR!` before its first element, where Excel lifts every element (the lifts:
+probes/fin-argument-modes H155-H156, H172-H174, H187-H188; Excel's own limit is unprobed).
+`ROWS(IRR(A1:A300000,{0.1;0.1}))`, `ROWS(NPV(SEQUENCE(500),A1:A300000))` and
+`ROWS(MIRR(A1:A300000,SEQUENCE(500),0.1))` are `#ERROR!`. `ROWS(NPV(SEQUENCE(100),A1:A300000))` is 100. The scalar
+calls are not capped.
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
+Status: DEVIATION (decision 0014)
+Implemented in: functions/lift/kinds/financial.rs (`NPV`, `IRR_WEIGHT`, `IRR`, `MIRR`); functions/financial/mod.rs
+(`flow_count`)
+Tasks: T-1821
+
+## NPV, IRR and MIRR error order
+Rule (ours, unprobed): NPV reads its rate before its cash flows, so a rate error wins over an error in the flows. IRR
+and MIRR read their flows first, so a flows error wins over a guess or rate error. This is the order the scalar calls
+had before T-1821. When the rate lifts, an error in the flows is every element's error, after that element's own
+earlier arguments. The flows are evaluated once per call, before the elements, even when NPV's rate is an error. The
+values are the same, but it is not Excel's evaluation order, which is unprobed.
+Evidence: none yet (T-2103).
+Status: UNVERIFIED
+Implemented in: functions/financial/mod.rs (`fn_npv`, `fn_irr`), functions/financial/mirr.rs (`fn_mirr`)
+Tasks: T-1821, T-2103
 
 ## AMORLINC and AMORDEGRC over many periods
 Rule: Excel walks AMORLINC's and AMORDEGRC's periods one by one in doubles, so a long walk carries every rounding:
