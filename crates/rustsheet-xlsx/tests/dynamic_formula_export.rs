@@ -154,7 +154,7 @@ fn a_legacy_n_or_t_over_an_array_round_trips_as_a_plain_formula() {
         assert!(c.contains(&format!("<f>{xml_text}</f>")), "{c}");
         let (stored, values) = reloaded(&bytes);
         assert!(
-            stored[0].starts_with("_RS_LEGACY_"),
+            stored[0].starts_with("NLG1(") || stored[0].starts_with("TLG1("),
             "{formula}: {stored:?}"
         );
         assert_eq!(values, ["#VALUE!", ""], "{formula}");
@@ -163,7 +163,10 @@ fn a_legacy_n_or_t_over_an_array_round_trips_as_a_plain_formula() {
         let c = cell_xml(&sheet1_xml(&bytes), "D10").to_string();
         assert!(c.contains(" cm=\"1\""), "{c}");
         let (stored, values) = reloaded(&bytes);
-        assert!(!stored[0].contains("_RS_LEGACY_"), "{formula}: {stored:?}");
+        assert!(
+            !stored[0].contains("NLG1(") && !stored[0].contains("TLG1("),
+            "{formula}: {stored:?}"
+        );
         assert_eq!(values, dynamic, "{formula}");
     }
 }
@@ -178,7 +181,10 @@ fn a_statically_scalar_n_over_if_stays_a_plain_formula() {
         assert!(!c.contains("cm="), "{c}");
         assert!(c.contains("<f>N(IF(A1,1,2))</f>"), "{c}");
         let (stored, values) = reloaded(&bytes);
-        assert!(!stored[0].contains("_RS_LEGACY_"), "{stored:?}");
+        assert!(
+            !stored[0].contains("NLG1(") && !stored[0].contains("TLG1("),
+            "{stored:?}"
+        );
         assert_eq!(values, ["2", ""]);
     }
 }

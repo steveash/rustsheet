@@ -44,7 +44,7 @@ Moved on the split (Outcome below), so left unchecked here: the first two items 
 - [ ] probes/lookup-argument-modes F14:H15, F20:H21 and F34:H35 pass; baseline updated. (T-1956, T-1957)
 - [ ] gen-m7/cb748b6a9b81fbb7 A28, gen-m9/675763979c1defb6 A25 and gen-m9/adb3fd63c7368166 A34 pass, with no new
   known failures in eval/baseline/. (T-1956, T-1957)
-- [ ] CHOOSE's `choose_array` is the kernel of a `lift_call`, with no result change. (T-1959)
+- [x] ~~CHOOSE's `choose_array` is the kernel of a `lift_call`, with no result change.~~ Dropped by T-1959: CHOOSE stays off the driver (SPEC-0011's CHOOSE row).
 - [x] The unprobed arguments are probed and recorded (probes/reference-lift-elements, lookup.md).
 - [x] `make check` green; reviewers approve.
 
@@ -67,6 +67,6 @@ spec first (CLAUDE.md directive 4), so this task lands the evidence and hands th
 - T-1955 (engine, opus): spec for the array-of-references carrier.
 - T-1956 (functions-lookup, opus): OFFSET on it. T-1957 (sonnet): INDIRECT and TRIMRANGE.
 - T-1958 (functions-lookup, sonnet): XMATCH's search_mode lift, a value lift with no carrier needed.
-- T-1959 (quality, sonnet): CHOOSE's index lift onto `lift_call`.
+- T-1959 (quality, opus): CHOOSE's index lift onto `lift_call`; decided against (see its Outcome).
 Eval delta: probes +59 cells (3 pass, 56 new known failures in probes/reference-lift-elements, owned by T-1956 to T-1958);
 0 regressions, 0 fixes.

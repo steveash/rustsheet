@@ -30,9 +30,9 @@ matters and ERROR.TYPE for every error cell. Cover:
 - verbs and callouts: `(*SKIP)(*FAIL)`, `(*UTF)`, `(?C1)`;
 - `\G`;
 - `x*+` and `x{2,}+` possessives;
-- the repeat-count limit: `a{65535}` and `a{65536}`;
-- T-1903's per-class POSIX probe: each of `alnum alpha ascii blank cntrl digit graph lower print punct space upper
-  word xdigit` and `[[:^alpha:]]` on ASCII, Latin-1 (é, ß, ²), Greek, CJK, fullwidth digits and an emoji.
+- the repeat-count limit: `a{65535}` and `a{65536}`.
+
+(The per-class POSIX probe landed with T-1903: probes/regex-posix-classes and -b.)
 
 ## Acceptance criteria
 - [ ] probes/regex-pcre2-limits has excel-graph values for every question above. Record a question excel-graph

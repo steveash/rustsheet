@@ -7,13 +7,13 @@
 //! from the others as an [`AggregatePolicy`]. The number layer
 //! ([`Model::for_each_aggregate_number`]) adds the coercion of the consumers that fold numbers.
 
-use crate::calc_result::CalcResult;
+use crate::calc_result::{CalcResult, Range};
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::{cell_number, coerced_cell_number};
 use crate::model::Model;
-use crate::reference_operators::RefArg;
+use crate::reference_operators::{RefArg, RefElement, RefGrid};
 
 /// Where an item the walker hands on came from. The coercion rules depend on it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -57,6 +57,23 @@ pub(crate) enum ArgReading {
     PickedKeepingBlanks,
 }
 
+/// How the walker reads an array of references (SPEC-0014, `RefArg::Grid`).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum GridReading {
+    /// Its value view: every reference element is `#VALUE!`, an error element itself
+    /// ([`RefGrid::to_values`]). This is also SPEC-0014 rule 5 for COUNT and COUNTA, which
+    /// see an element as an error item: COUNT counts none, COUNTA every one
+    /// (`COUNT(OFFSET(A1,0,0,{1;2}))` 0, `COUNTA(..)` 2; probes/reference-lift-consumers E13,
+    /// E17, -b2 E169). The aggregates whose Excel result is not known yet keep it (T-2065).
+    Values,
+    /// Each element's top-left cell, read as a range cell, so text, booleans and blanks are
+    /// skipped; an error element ranks as a referenced error, so a direct error beats it either
+    /// side (UNVERIFIED: only a lone error element is probed; T-2065) (SPEC-0014 rule 4: SUM, AVERAGE,
+    /// MIN, MAX, PRODUCT; `SUM(OFFSET(A1,0,0,{1;2}))` is 2, `AVERAGE(OFFSET(A1,{0;-1},0))`
+    /// `#REF!`; probes/reference-lift-consumers E1-E25, -b2 E117-E121, E181, E185).
+    TopLeft,
+}
+
 /// What sets one consumer's argument walk apart (SPEC-0009, "Consumer mapping").
 #[derive(Clone, Copy)]
 pub(crate) struct AggregatePolicy {
@@ -66,6 +83,8 @@ pub(crate) struct AggregatePolicy {
     pub(crate) errors: ErrorRule,
     /// DEVSQ, AVEDEV, SUMSQ: an empty argument is not an item (TODO(T-1748): Excel counts it as 0 for AVEDEV and DEVSQ).
     pub(crate) skip_empty_args: bool,
+    /// How an array of references is read.
+    pub(crate) grids: GridReading,
 }
 
 /// How a direct value (and, under `Cast`, a [`ItemSource::ReferenceValue`]) becomes a number.
@@ -259,37 +278,15 @@ impl Model {
         F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
     {
         let items = walk.policy.errors == ErrorRule::Items;
-        match read {
-            RefArg::Ranges(areas) => {
-                // Once an error is held, later references are not read at all, as before.
-                if walk.held.is_some() {
-                    return Ok(());
-                }
-                // The first error cell ends the walk of these areas; a visitor error is told
-                // apart so it returns at once.
-                let mut visitor_failed = false;
-                let walked =
-                    self.for_each_cell_or_error_in_areas(
-                        &areas,
-                        cell,
-                        |model, value| match value {
-                            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(()),
-                            error @ CalcResult::Error { .. } if !items => Err(error),
-                            value => {
-                                let result = visit(model, ItemSource::ReferencedCell, value);
-                                visitor_failed = result.is_err();
-                                result
-                            }
-                        },
-                    );
-                match walked {
-                    Ok(()) => Ok(()),
-                    Err(error) if visitor_failed => Err(error),
-                    // An error cell, or the walk budget, ranks as a referenced error.
-                    Err(error) => walk.referenced_error(error),
-                }
+        let read = match read {
+            RefArg::Grid(grid) if walk.policy.grids == GridReading::TopLeft => {
+                return self.walk_top_left_cells(&grid, cell, walk, visit);
             }
-            RefArg::Value(CalcResult::Array(array)) => {
+            read => read.into_ranges_or_value(),
+        };
+        match read {
+            Ok(areas) => self.walk_areas(&areas, cell, walk, visit),
+            Err(CalcResult::Array(array)) => {
                 for node in array.into_iter().flatten() {
                     match array_item(node) {
                         Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
@@ -304,8 +301,8 @@ impl Model {
                 }
                 Ok(())
             }
-            RefArg::Value(error @ CalcResult::Error { .. }) if !items => Err(error),
-            RefArg::Value(value) => {
+            Err(error @ CalcResult::Error { .. }) if !items => Err(error),
+            Err(value) => {
                 let source = if is_reference {
                     ItemSource::ReferenceValue
                 } else {
@@ -321,6 +318,80 @@ impl Model {
                 }
             }
         }
+    }
+
+    /// The cells of `areas`, walked as referenced cells: blanks skipped, the first error cell
+    /// held as a referenced error.
+    fn walk_areas<F>(
+        &mut self,
+        areas: &[Range],
+        cell: CellReferenceIndex,
+        walk: &mut AggregateWalk,
+        visit: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        // Once an error is held, later references are not read at all, as before.
+        if walk.held.is_some() {
+            return Ok(());
+        }
+        let items = walk.policy.errors == ErrorRule::Items;
+        // The first error cell ends the walk of these areas; a visitor error is told apart so
+        // it returns at once.
+        let mut visitor_failed = false;
+        let walked =
+            self.for_each_cell_or_error_in_areas(areas, cell, |model, value| match value {
+                CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(()),
+                error @ CalcResult::Error { .. } if !items => Err(error),
+                value => {
+                    let result = visit(model, ItemSource::ReferencedCell, value);
+                    visitor_failed = result.is_err();
+                    result
+                }
+            });
+        match walked {
+            Ok(()) => Ok(()),
+            Err(error) if visitor_failed => Err(error),
+            // An error cell, or the walk budget, ranks as a referenced error.
+            Err(error) => walk.referenced_error(error),
+        }
+    }
+
+    /// [`GridReading::TopLeft`]: each element of `grid` in row-major order, a reference as its
+    /// top-left cell (one cell read per element, so the work is the grid's size) and an error
+    /// as a referenced error.
+    fn walk_top_left_cells<F>(
+        &mut self,
+        grid: &RefGrid,
+        cell: CellReferenceIndex,
+        walk: &mut AggregateWalk,
+        visit: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        for element in grid.elements() {
+            // Once an error is held, nothing later in the grid can change the result.
+            if walk.held.is_some() {
+                return Ok(());
+            }
+            match element {
+                RefElement::Reference(range) => {
+                    let top_left = Range {
+                        left: range.left,
+                        right: range.left,
+                    };
+                    self.walk_areas(std::slice::from_ref(&top_left), cell, walk, visit)?;
+                }
+                RefElement::Error(error) => walk.referenced_error(CalcResult::new_error(
+                    error.clone(),
+                    cell,
+                    String::new(),
+                ))?,
+            }
+        }
+        Ok(())
     }
 
     /// Calls `f` with every number `args` give under `policy` and `rules`.
@@ -434,6 +505,7 @@ mod tests {
         reading: ArgReading::Aggregate,
         errors: ErrorRule::Ranked,
         skip_empty_args: false,
+        grids: GridReading::Values,
     };
 
     /// Z1, where every test formula sits.
@@ -525,6 +597,7 @@ mod tests {
             reading: ArgReading::Aggregate,
             errors: ErrorRule::First,
             skip_empty_args: true,
+            grids: GridReading::Values,
         };
         assert_eq!(items(&cells, "=SUM(A1,1/0)", first), err("#N/A"));
         assert_eq!(items(&[], "=SUM(5,)", first).map(|v| v.len()), Ok(1));
@@ -555,6 +628,7 @@ mod tests {
             reading: ArgReading::Aggregate,
             errors: ErrorRule::Items,
             skip_empty_args: false,
+            grids: GridReading::Values,
         };
         let cells = [("A1", "=NA()"), ("A2", "3")];
         assert_eq!(
@@ -577,6 +651,7 @@ mod tests {
             reading: ArgReading::Aggregate,
             errors: ErrorRule::Ranked,
             skip_empty_args: false,
+            grids: GridReading::Values,
         };
         let rules = NumberRules {
             direct: DirectNumbers::CastA,

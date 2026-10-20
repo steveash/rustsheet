@@ -1,9 +1,12 @@
 use super::elapsed::{elapsed_text, ElapsedUnit};
+use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{locale::Locale, number_format::to_precision, text::Text, types::DateSystem};
 use std::collections::BTreeSet;
 
-pub(crate) use super::parse_formatted::{parse_formatted_number, parse_typed_number};
+pub(crate) use super::parse_formatted::{
+    parse_formatted_number, parse_typed_number, rejected_clock_text_format,
+};
 use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
@@ -656,6 +659,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             }
         }
         ParsePart::Number(p) => {
+            if let Some(fraction) = &p.fraction {
+                return Formatted {
+                    text: format_fraction(value, p, fraction),
+                    color: p.color,
+                    error: None,
+                };
+            }
             let mut text = "".to_string();
             if let Some(c) = p.currency {
                 text = format!("{c}");

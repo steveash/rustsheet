@@ -3,7 +3,7 @@ id: T-1408
 title: "SECOND rounds the time of day to the nearest second instead of truncating"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,9 +28,22 @@ Code: `seconds_of_day` and `time_part_fn!` (crates/rustsheet-engine/src/function
 Semantics: docs/excel-semantics/dates.md "HOUR, MINUTE and SECOND round to the nearest second".
 
 ## Acceptance criteria
-- [ ] gen-m9/55fc8c4ffbd7c7cc A40 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, and probes/clock-text-oddities still passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] The rounding probe cells pass; dates.md's entry is VERIFIED.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/55fc8c4ffbd7c7cc A40 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, and probes/clock-text-oddities still passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] The rounding probe cells pass; dates.md's entry is VERIFIED.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+New probe case probes/second-rounding (40 cells, excel-graph): SECOND of .4/.5/.6/.999 s fractions, ties on
+several serials, the carry at x:59:59.6 and 23:59:59.6, the same through clock text and TIMEVALUE, and the DDB
+cell. The fractions round to the nearest second and the carry reaches MINUTE, HOUR and midnight. Exact halves follow
+no fixed tie rule; all 40 cells fit one floor chain in double precision (add half a second, then hours, minutes,
+seconds). That chain is the new `time_of_day_parts` in functions/date_and_time.rs, shared by HOUR, MINUTE and
+SECOND; it replaces `seconds_of_day` and HOUR's own floor. dates.md's entry is VERIFIED.
+
+Eval delta:
+- probes: new case second-rounding, 40 of 40 pass; regressions 0.
+- gen-m9 (not gated): 55fc8c4ffbd7c7cc A40 fixed. gen-m5 through gen-m8b, gen-m9 and probes-numeric are otherwise
+  unchanged cell for cell.

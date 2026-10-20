@@ -15,6 +15,7 @@ pub mod case;
 pub mod case_log;
 pub mod catalog;
 pub mod cellref;
+pub mod closeness;
 pub mod deviations;
 pub mod engine;
 pub mod evidence_floor;

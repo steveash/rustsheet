@@ -6,6 +6,7 @@ mod count;
 mod count_and_average;
 mod covariance;
 mod devsq;
+mod discrete;
 pub(super) mod erf;
 mod exponential;
 mod fisher;
@@ -40,3 +41,5 @@ mod trimmean;
 pub(super) mod variance;
 mod weibull;
 mod z_test;
+
+pub(crate) use if_ifs::IfsShape;

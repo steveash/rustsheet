@@ -119,7 +119,7 @@ fn scalar_calls_are_unchanged() {
     model._set("A5", "=IMDIV(\"3+4i\",\"1-2i\")");
     model._set("A6", "=DELTA(5)");
     model._set("A7", "=IMCOS(\"\")");
-    // Pins the unchanged scalar result, not Excel's: empty text is a known mismatch (T-1385).
+    // Excel: empty text is `#NUM!` in every IM* function (probes/eng-gen-sample-edges D5).
     model._set("A8", "=IMABS(\"\")");
     model._set("A9", "=BITLSHIFT(13,-2)");
     model._set("A10", "=CONVERT(1,\"m\",\"ft\")");
@@ -131,14 +131,15 @@ fn scalar_calls_are_unchanged() {
     assert_eq!(model._get_text("A5"), *"-1+2i");
     assert_eq!(model._get_text("A6"), *"0");
     assert_eq!(model._get_text("A7"), *"#NUM!");
-    assert_eq!(model._get_text("A8"), *"0");
+    assert_eq!(model._get_text("A8"), *"#NUM!");
     assert_eq!(model._get_text("A9"), *"3");
     assert_eq!(model._get_text("A10"), *"3.280839895");
 }
 
 /// The Bessel kernels loop once or twice per order: each caps the order at 100,000 (`#NUM!`
 /// above, docs/excel-semantics/engineering.md "BESSEL order cap"), and a lifted call is charged
-/// for that work before its first element runs (SPEC-0011 "Security rule for kernel work").
+/// for that work by each element's order before its first element runs (SPEC-0011 "Security rule
+/// for kernel work", T-1819): small orders lift past 2,048 elements, orders at the cap do not.
 #[test]
 fn bessel_work_is_bounded() {
     let mut model = new_empty_model();
@@ -147,12 +148,38 @@ fn bessel_work_is_bounded() {
     model._set("A3", "=BESSELI(2.5,100000)");
     model._set("A4", "=ROWS(BESSELJ(2.5,SEQUENCE(2000)))");
     model._set("A5", "=ROWS(BESSELJ(2.5,SEQUENCE(2100)))");
+    // 2,100 elements at the cap cost more than 2,048 at the cap: refused before any runs.
+    model._set("A6", "=ROWS(BESSELI(2.5,SEQUENCE(2100,1,100000,0)))");
+    // A text order may read as a number, so it is charged as at the cap.
+    model._set("A7", "=ROWS(BESSELJ(2.5,IF(SEQUENCE(2100),\"3\")))");
+    model._set("A8", "=ROWS(BESSELJ(2.5,IF(SEQUENCE(2000),\"3\")))");
+    // Orders past the cap are refused before the kernel loops, so they cost 1 each.
+    model._set("A9", "=ROWS(BESSELJ(2.5,SEQUENCE(2100,1,1E9,0)))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#NUM!");
     assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"0");
     assert_eq!(model._get_text("A4"), *"2000");
-    assert_eq!(model._get_text("A5"), *"#ERROR!");
+    assert_eq!(model._get_text("A5"), *"2100");
+    assert_eq!(model._get_text("A6"), *"#ERROR!");
+    assert_eq!(model._get_text("A7"), *"#ERROR!");
+    assert_eq!(model._get_text("A8"), *"2000");
+    assert_eq!(model._get_text("A9"), *"2100");
+}
+
+/// A lift of many order-0 elements runs, each the scalar call's value (T-1819 Goal).
+#[test]
+fn many_small_bessel_orders_lift() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(BESSELJ(SEQUENCE(5000)/100,0))");
+    model._set("A2", "=INDEX(BESSELJ(SEQUENCE(5000)/100,0),250)");
+    model._set("A3", "=BESSELJ(2.5,0)");
+    model._set("A4", "=INDEX(BESSELJ(2.5,SEQUENCE(2100)),3)");
+    model._set("A5", "=BESSELJ(2.5,3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"5000");
+    assert_eq!(model._get_text("A2"), model._get_text("A3"));
+    assert_eq!(model._get_text("A4"), model._get_text("A5"));
 }
 
 #[test]

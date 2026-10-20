@@ -40,6 +40,16 @@ macro_rules! lifting_table_functions {
             | Function::Iseven
             | Function::Isodd
             | Function::Large
+            | Function::ZTest
+            | Function::ZTestCompat
+            | Function::Prob
+            | Function::Forecast
+            | Function::ForecastLinear
+            | Function::TTest
+            | Function::TTestCompat
+            | Function::RankCompat
+            | Function::RankEq
+            | Function::RankAvg
             | Function::Small
             | Function::PercentileCompat
             | Function::PercentileInc
@@ -52,6 +62,8 @@ macro_rules! lifting_table_functions {
             | Function::QuartileExc
             | Function::Trimmean
             | Function::Address
+            | Function::Sequence
+            | Function::Makearray
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv
@@ -66,6 +78,11 @@ macro_rules! lifting_table_functions {
             | Function::Sln
             | Function::Syd
             | Function::Ddb
+            | Function::Db
+            | Function::Vdb
+            | Function::Npv
+            | Function::Irr
+            | Function::Mirr
             | Function::Effect
             | Function::Nominal
             | Function::Dollarde

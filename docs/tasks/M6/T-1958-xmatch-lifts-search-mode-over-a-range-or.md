@@ -3,7 +3,7 @@ id: T-1958
 title: "XMATCH lifts search_mode over a range or an array"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,9 @@ Split from T-1810. Evidence: docs/excel-semantics/lookup.md "OFFSET, INDIRECT an
 
 ## Out of scope
 - OFFSET, INDIRECT and TRIMRANGE (T-1956, T-1957).
+
+## Outcome
+`fn_xmatch` passes search_mode through the same `lift_values` call as lookup_value and match_mode
+(validated per element in `xmatch_of`); static analysis counts it among the spilling arguments.
+Eval: probes/reference-lift-elements F13:H14 now pass (baseline shrank); no regressions.
+Unit test `xmatch_lifts_its_search_mode`. The F-column first elements stay unprobed (needs oracle).

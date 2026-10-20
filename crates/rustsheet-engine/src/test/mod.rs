@@ -59,6 +59,7 @@ mod test_fn_randarray;
 mod test_fn_rept;
 mod test_fn_row_column;
 mod test_fn_sequence;
+mod test_fn_sequence_makearray_lift;
 mod test_fn_substitute_limit;
 mod test_fn_sum;
 mod test_fn_sumif_array;

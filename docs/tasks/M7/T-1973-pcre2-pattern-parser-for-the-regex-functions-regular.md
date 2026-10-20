@@ -29,7 +29,8 @@ groups, `\K`, conditionals, `\G`. Use the nest limit from T-1972 if it has lande
   construct it does not know.
 - [ ] regex-pcre2-features C14-C19 pass (`(?#..)`, `\Q..\E`, `(?x)`, `(?-i)`; none needs backtracking), as do
   probes/regex-optional-args A24-A26 (case folding), with no new known failures in eval/baseline/. POSIX classes keep
-  their current meaning (T-1903 changes it).
+  the Unicode meaning T-1903 gave them (`regex_posix.rs`, probes/regex-posix-classes and -b pass), and the parser
+  replaces that pre-compile rewrite.
 - [ ] Every AST pass (parse, `is_regular`, `to_hir`, `Drop`) is iterative or depth-bounded. Stacked quantifiers count
   toward the nest cap, and repeat counts are capped at 65,535 with checked arithmetic. Unit tests cover 250 nested
   groups, 32,767 stacked quantifiers and `(?:a{65535}){65535}` (`TooBig`, no overflow).

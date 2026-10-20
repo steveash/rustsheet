@@ -3,7 +3,7 @@ id: T-1402
 title: "GROWTH and TREND: a single-value known_y is one point, an error known_y is that error, and unequal sizes are #REF! before text is #VALUE!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -36,3 +36,6 @@ Semantics: docs/excel-semantics/statistics.md "Array arguments given a scalar, a
 
 ## Out of scope
 -
+
+## Outcome
+TREND and GROWTH take one known_y as one point (every prediction is that value), an error known_y or known_x is returned as that error, and the size check (`#REF!`) runs before the text check (`#VALUE!`); the single-point result is limited to a constant term (const FALSE is unprobed and uses the regression); LINEST and LOGEST are unchanged (T-1741, T-1742 cover their one-point fit). gen-m9 98.00% -> 98.20% (d244411dd90f7fbd A21, 89693ab0cafc29df A24 pass); probes known failures 1812 -> 1798 (14 fixed, 0 regressions). gen-m9/d244411dd90f7fbd A17 still waits on GAMMA(100)'s digits (T-0973).

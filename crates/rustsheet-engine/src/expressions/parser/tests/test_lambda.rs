@@ -357,4 +357,17 @@ fn test_cell_shaped_callee_is_call_of_cell() {
     // Excel's A1 grammar is ASCII: `ß1` must not upper-case into the cell SS1.
     let node = p.parse("ß1(1)", &cell());
     assert!(matches!(node, Node::NamedFunctionKind { .. }), "{node:?}");
+    // Anchored and sheet-qualified cells are called too, and print bare (T-1806).
+    for (formula, printed) in [
+        ("$d$1(1)", "$D$1(1)"),
+        ("d$1(1)", "D$1(1)"),
+        ("Sheet1!d1(1)", "Sheet1!D1(1)"),
+    ] {
+        let node = p.parse(formula, &cell());
+        assert!(
+            matches!(node, Node::LambdaCallKind { .. }),
+            "{formula}: {node:?}"
+        );
+        assert_eq!(to_english_localized_string(&node, &cell()), printed);
+    }
 }

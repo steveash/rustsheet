@@ -69,7 +69,9 @@ impl Model {
         let [value, from_unit, to_unit] = values else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match self.cast_number_ref(value, cell) {
+        // A boolean, typed or in a cell, is `#VALUE!` before the units are read
+        // (probes/eng-gen-sample-edges A8, A11:A14).
+        let value = match self.cast_number_no_bools_ref(value, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };

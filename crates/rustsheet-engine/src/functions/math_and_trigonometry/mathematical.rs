@@ -1,12 +1,16 @@
-use super::trig::{excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT};
+use super::trig::{excel_cos, excel_sin, excel_tan, EXCEL_TRIG_LIMIT};
 use crate::arithmetic::{divide, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_result, value_error};
-use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
+use crate::functions::statistical::IfsShape;
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+};
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
+use crate::x87_log10::excel_log10;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -37,6 +41,7 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
+    grids: GridReading::TopLeft,
 };
 
 impl Model {
@@ -194,8 +199,8 @@ impl Model {
     pub(crate) fn fn_sumif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // When sum_range is missing, criteria_range doubles as the sum_range.
         let (criteria_range, criteria, sum_range) = match args.len() {
-            2 => (&args[0], &args[1], &args[0]),
-            3 => (&args[0], &args[1], &args[2]),
+            2 => (&args[0], &args[1], None),
+            3 => (&args[0], &args[1], Some(&args[2])),
             _ => return CalcResult::new_args_number_error(cell),
         };
         self.sumif(criteria_range, criteria, sum_range, cell)
@@ -203,7 +208,7 @@ impl Model {
 
     /// `SUMIFS(sum_range`, `criteria_range1`, criteria1, [`criteria_range2`, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.sum_ifs(args, cell, true)
+        self.sum_ifs(args, cell, IfsShape::Strict)
     }
 
     /// A one-number math function on the SPEC-0011 driver (`LIFT_1`): `op` per element. A NaN
@@ -369,7 +374,9 @@ impl Model {
             if f <= 0.0 {
                 Err(Error::NUM)
             } else {
-                Ok(f64::log10(f))
+                // Excel's x87 log10, not the platform's (numbers.md "LOG with one argument is
+                // LOG10", T-2004).
+                Ok(excel_log10(f))
             }
         })
     }
@@ -383,14 +390,10 @@ impl Model {
         })
     }
     pub(crate) fn fn_sin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Sin, args, cell, |f| {
-            trig_arg(f).map(|x| excel_sin_cos(x).0)
-        })
+        self.number_fn(Function::Sin, args, cell, |f| trig_arg(f).map(excel_sin))
     }
     pub(crate) fn fn_cos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Cos, args, cell, |f| {
-            trig_arg(f).map(|x| excel_sin_cos(x).1)
-        })
+        self.number_fn(Function::Cos, args, cell, |f| trig_arg(f).map(excel_cos))
     }
     pub(crate) fn fn_tan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Tan, args, cell, |f| trig_arg(f).map(excel_tan))
@@ -428,11 +431,37 @@ impl Model {
     pub(crate) fn fn_atan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Atan, args, cell, |f| Ok(f64::atan(f)))
     }
+    // ASINH and ACOSH are the textbook log formulas in doubles, not libm, so small arguments lose
+    // precision exactly as Excel's do: ASINH(1E-10) = 1.000000082690371E-10 and
+    // ACOSH(1.000000000001) = 1.414276423083533E-6 (docs/excel-semantics/numbers.md, "Inverse
+    // hyperbolics, COTH/CSCH and the SINH/TANH thresholds", probes-numeric/m9-hyperbolic, T-2031).
+    // Where `x*x` overflows (|x| above about 1.3E154) no Excel value is known, so libm stays there.
     pub(crate) fn fn_asinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Asinh, args, cell, |f| Ok(f64::asinh(f)))
+        self.number_fn(Function::Asinh, args, cell, |f: f64| {
+            let square = f * f;
+            if square.is_infinite() {
+                Ok(f64::asinh(f))
+            } else if f < 0.0 {
+                Ok(-(-f + (square + 1.0).sqrt()).ln())
+            } else {
+                Ok((f + (square + 1.0).sqrt()).ln())
+            }
+        })
     }
     pub(crate) fn fn_acosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Acosh, args, cell, |f| Ok(f64::acosh(f)))
+        self.number_fn(Function::Acosh, args, cell, |f: f64| {
+            // Checked first: for a large negative argument `f + sqrt(f*f - 1)` rounds to 0 and the
+            // log is -inf, not NaN.
+            if f < 1.0 {
+                return Err(Error::NUM);
+            }
+            let square = f * f;
+            if square.is_infinite() {
+                Ok(f64::acosh(f))
+            } else {
+                Ok((f + (square - 1.0).sqrt()).ln())
+            }
+        })
     }
     // ATANH(+-1) is `#NUM!` at once, like any other out-of-domain argument; f64::atanh gives an
     // infinity there, which the macro's NaN mapping misses (probes/atanh-unit-argument A1:A8,
@@ -531,7 +560,7 @@ impl Model {
             } else if f == 0.0 {
                 Err(Error::DIV)
             } else {
-                Ok(1.0 / excel_sin_cos(f).0)
+                Ok(1.0 / excel_sin(f))
             }
         })
     }
@@ -547,7 +576,7 @@ impl Model {
     }
     pub(crate) fn fn_sec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Sec, args, cell, |f| {
-            trig_arg(f).map(|x| 1.0 / excel_sin_cos(x).1)
+            trig_arg(f).map(|x| 1.0 / excel_cos(x))
         })
     }
     pub(crate) fn fn_sech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -688,11 +717,13 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
+        // The base omitted is LOG10, not ln(x)/ln(10): `LOG(1000)` is 3 (numbers.md "LOG with
+        // one argument is LOG10"; probes/log10-kernel, T-2004).
         let y = if n_args == 1 {
-            10.0
+            None
         } else {
             match self.get_number(&args[1], cell) {
-                Ok(f) => f,
+                Ok(f) => Some(f),
                 Err(s) => return s,
             }
         };
@@ -703,6 +734,9 @@ impl Model {
                 message: "Number must be positive".to_string(),
             };
         }
+        let Some(y) = y else {
+            return CalcResult::Number(excel_log10(x));
+        };
         if y == 1.0 {
             return CalcResult::Error {
                 error: Error::DIV,

@@ -226,3 +226,23 @@ fn im_sub_div_power_edge_cases() {
     );
     assert_eq!(model._get_text("A12"), "-1.83772268236293E-16+j");
 }
+
+/// Excel: empty text is `#NUM!` in every one-argument IM* function, a blank cell is 0
+/// (probes/eng-gen-sample-edges D1:D32).
+#[test]
+fn empty_text_is_num_error_blank_is_zero() {
+    let mut model = new_empty_model();
+    model._set("B1", r#"="""#);
+    model._set("A1", r#"=IMSQRT("")"#);
+    model._set("A2", "=IMSQRT(B1)");
+    model._set("A3", r#"=IMREAL("")"#);
+    model._set("A4", r#"=IMLN("")"#);
+    model._set("A5", "=IMSQRT(C1)");
+    model._set("A6", "=IMCOS(C1)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+    assert_eq!(model._get_text("A5"), *"0");
+    assert_eq!(model._get_text("A6"), *"1");
+}

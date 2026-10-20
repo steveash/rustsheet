@@ -9,10 +9,34 @@ use crate::{
     functions::{util::array_node_to_calc_result, Function},
     language::get_default_language,
     model::Model,
+    reference_operators::RefArg,
 };
+
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use super::r#let::assign_variable_ids;
 use crate::variable_stack::Binding;
+
+/// A LAMBDA's parameters and body as `Model::lambdas` stores them, shared with the defined name
+/// it comes from, so naming a defined-name LAMBDA copies no body (T-0440).
+pub(crate) type SharedLambda = Arc<(Vec<NamedVariable>, Node)>;
+
+/// The defined-name LAMBDAs called in one evaluation (cleared with `Model::lambdas`). Each gets
+/// one lambda id however often it is named (`Model::defined_name_lambda`), and the body a call
+/// patched is kept for the next call (`Model::call_lambda`), so `MAP(r,LAMBDA(x,MyFn(x)))`
+/// neither grows `lambdas` nor copies `MyFn`'s body per element (T-0440).
+#[derive(Default)]
+pub(crate) struct NamedLambdas {
+    /// The lambda id of each definition, by the address of its [`SharedLambda`], which the entry
+    /// holds so that no other definition can take that address while the entry lives.
+    ids: HashMap<usize, (SharedLambda, usize)>,
+    /// The lambda ids in `ids`.
+    named: HashSet<usize>,
+    /// A patched body by lambda id and number of arguments, for the next call. Only a body is
+    /// kept: an error (a wrong count) is made again with the calling cell's origin.
+    prepared: HashMap<(usize, usize), PreparedLambda>,
+}
 
 /// One LAMBDA called repeatedly with the same number of arguments (`Model::lambda_caller`).
 pub(crate) struct LambdaCaller {
@@ -25,8 +49,9 @@ pub(crate) struct LambdaCaller {
 
 impl LambdaCaller {
     /// This caller with the body read in reference context: a body that is a reference, also
-    /// one picked by IF or returned by INDEX, comes back as a `CalcResult::Range` instead of the
-    /// cell's value, so GROUPBY and PIVOTBY can make it `#VALUE!` as Excel does
+    /// one picked by IF or returned by INDEX or XLOOKUP (`Model::evaluate_picked_reference_arg`),
+    /// comes back as a `CalcResult::Range` instead of the cell's value, so GROUPBY and PIVOTBY
+    /// can make it `#VALUE!` as Excel does
     /// (probes/groupby-lambda-forms G!J193, probes/groupby-pivotby-functions G!A541-A581).
     pub(crate) fn keeping_references(mut self) -> Self {
         self.references = true;
@@ -42,7 +67,8 @@ pub(crate) enum FunctionValue {
 }
 
 /// A LAMBDA's parameters (each id, and whether the body reads it once: [`read_once`]) and
-/// patched body, or the error calling it gives, and the `last_lambda_id` when it was patched.
+/// patched body, or the error calling it gives, and the `last_lambda_id` below which every LAMBDA
+/// created is known not to read the parameters (`Model::call_prepared`).
 struct PreparedLambda {
     definition: Result<(Vec<(usize, bool)>, Node), CalcResult>,
     lambda_mark: usize,
@@ -151,6 +177,33 @@ fn reference_called(cell: CellReferenceIndex) -> CalcResult {
 }
 
 impl Model {
+    /// [`Self::evaluate_node_with_reference`] of a node that is no plain reference: a LET or
+    /// LAMBDA call whose body gives a reference, a single cell too, is that reference for OFFSET
+    /// and COUNTIF (`OFFSET(LET(x,A1,x),1,0)`, `COUNTIF(LAMBDA(x,x)(A1),">0")` read A1;
+    /// probes/lambda-union-reference-callers D1, D2, D5, excel-graph; T-1951). An INDEX of a
+    /// reference is the cell it picks, so `ISFORMULA(INDEX(D1:D3,1))` reads D1
+    /// (probes/ifna-isformula-edges Calc!B12, excel-graph; T-1453).
+    pub(crate) fn evaluate_call_with_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::FunctionKind {
+                kind: Function::Let,
+                ..
+            }
+            | Node::LambdaCallKind { .. } => self
+                .evaluate_reference_arg(node, cell)
+                .into_single_area(cell),
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self.index_reference(args, cell),
+            _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
     /// A call written in the formula, `callee(args)`, of what its callee evaluates to. A called
     /// reference is `#REF!`, even when its cell holds a LAMBDA (`(A1)(A2)`, `(C1)(2)`;
     /// docs/excel-semantics/references.md "Calling a parenthesized operand", T-0149); anything
@@ -177,18 +230,18 @@ impl Model {
         lambda: &Node,
         call_args: &[Node],
         cell: CellReferenceIndex,
-    ) -> CalcResult {
+    ) -> RefArg {
         let callee = self
             .evaluate_reference_arg(lambda, cell)
             .into_single_area(cell);
         // The same guard as `call_callee`'s, kept in step with it.
         if let CalcResult::Range { .. } = callee {
-            return reference_called(cell);
+            return RefArg::Value(reference_called(cell));
         }
         let mut caller = self
             .lambda_caller(&callee, call_args.len())
             .keeping_references();
-        self.call_lambda_caller_with_nodes(&mut caller, call_args, cell)
+        self.call_lambda_caller_with_nodes_arg(&mut caller, call_args, cell)
     }
 
     /// What a called LET variable or LAMBDA parameter holds. A union is a reference, so calling
@@ -258,8 +311,35 @@ impl Model {
     ) -> CalcResult {
         // A reference is passed as a reference, a single cell too, so that
         // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
-        let mut caller = self.lambda_caller(&lambda_result, call_args.len());
-        self.call_lambda_caller_with_nodes(&mut caller, call_args, cell)
+        let provided = call_args.len();
+        let mut caller = self.lambda_caller(&lambda_result, provided);
+        // A defined-name LAMBDA starts from the body its last call patched (`NamedLambdas`). It
+        // is taken out while this call runs, so a call inside it (recursion, `MyFn(MyFn(x))`)
+        // patches its own. No LAMBDA created since it was put back reads its ids: only an
+        // evaluation of the body binds them, and `call_prepared` dropped it if one did.
+        let named = match lambda_result {
+            CalcResult::Lambda(id) if self.named_lambdas.named.contains(&id) => {
+                Some((id, provided))
+            }
+            _ => None,
+        };
+        if let Some(key) = named {
+            caller.prepared = self
+                .named_lambdas
+                .prepared
+                .remove(&key)
+                .map(|mut prepared| {
+                    prepared.lambda_mark = self.last_lambda_id;
+                    prepared
+                });
+        }
+        let result = self.call_lambda_caller_with_nodes(&mut caller, call_args, cell);
+        if let (Some(key), Some(prepared)) = (named, caller.prepared) {
+            if prepared.definition.is_ok() {
+                self.named_lambdas.prepared.insert(key, prepared);
+            }
+        }
+        result
     }
 
     /// A caller for `lambda_result` with `provided` arguments per call, for the LAMBDA helpers
@@ -287,12 +367,13 @@ impl Model {
         if let Some(kind) = self.eta_lambdas.get(id) {
             return Some(FunctionValue::Eta(kind.clone()));
         }
-        self.lambdas
-            .get(id)
-            .map(|(parameters, _)| FunctionValue::Lambda {
+        self.lambdas.get(id).map(|definition| {
+            let parameters = &definition.0;
+            FunctionValue::Lambda {
                 required: parameters.iter().filter(|p| !p.is_optional).count(),
                 total: parameters.len(),
-            })
+            }
+        })
     }
 
     /// One call of `caller` with `values` (`provided` of them; optional parameters not covered
@@ -309,6 +390,7 @@ impl Model {
         self.call_prepared(caller, cell, |_, _| {
             Binding::Value(values.next().unwrap_or(CalcResult::EmptyArg))
         })
+        .into_single_area(cell)
     }
 
     /// One call of `caller` with argument nodes evaluated in the calling cell, as `call_lambda`
@@ -319,6 +401,18 @@ impl Model {
         call_args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        self.call_lambda_caller_with_nodes_arg(caller, call_args, cell)
+            .into_single_area(cell)
+    }
+
+    /// [`Self::call_lambda_caller_with_nodes`] keeping the areas of a union a reference-keeping
+    /// `caller` returns.
+    fn call_lambda_caller_with_nodes_arg(
+        &mut self,
+        caller: &mut LambdaCaller,
+        call_args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> RefArg {
         self.call_prepared(caller, cell, |model, i| match call_args.get(i) {
             Some(arg) => model.bind_argument(arg, cell),
             None => Binding::Value(CalcResult::EmptyArg),
@@ -326,20 +420,22 @@ impl Model {
     }
 
     /// Binds parameter `i` to `bind(i)`, once for each `i` in order (`call_lambda_caller` relies
-    /// on that), and evaluates the patched body. The body is reused while no LAMBDA has been
-    /// created since it was patched: a LAMBDA made by the body (`LAMBDA(x,LAMBDA(y,x+y))`) holds
-    /// the parameter ids, so the next call patches a fresh copy with fresh ids, as every call did
-    /// before T-1560. (`last_lambda_id` only grows during an evaluation; `clear_lambdas` resets
-    /// it between evaluations, when no caller is alive.)
+    /// on that), and evaluates the patched body. The body is reused while no LAMBDA created since
+    /// it was patched reads its parameter ids: one made by the body (`LAMBDA(x,LAMBDA(y,x+y))`)
+    /// holds them, so the next call patches a fresh copy with fresh ids, as every call did before
+    /// T-1560. A defined-name LAMBDA, an eta-reduced function or a LAMBDA a called one makes holds
+    /// none of them, so a body calling `MyFn(x)` keeps its patch (T-0425). (`last_lambda_id` only
+    /// grows during an evaluation; `clear_lambdas` resets it between evaluations, when no caller
+    /// is alive.)
     fn call_prepared(
         &mut self,
         caller: &mut LambdaCaller,
         cell: CellReferenceIndex,
         mut bind: impl FnMut(&mut Self, usize) -> Binding,
-    ) -> CalcResult {
-        let prepared = match caller.prepared.take() {
-            Some(prepared) if prepared.lambda_mark == self.last_lambda_id => prepared,
-            _ => self.prepare_lambda(&caller.lambda, caller.provided, cell),
+    ) -> RefArg {
+        let mut prepared = match caller.prepared.take() {
+            Some(prepared) => prepared,
+            None => self.prepare_lambda(&caller.lambda, caller.provided, cell),
         };
         let result = match &prepared.definition {
             Ok((ids, body)) => {
@@ -350,21 +446,43 @@ impl Model {
                     };
                     self.variable_stack.insert(raw_id, binding, cell);
                 }
+                // A body that picks a reference with XLOOKUP, TAKE or DROP, also as
+                // the arm an IF, CHOOSE, IFS or SWITCH picks or a LET body, is that reference:
+                // ISREF is TRUE, SUM skips its text and GROUPBY makes it `#VALUE!`
+                // (probes/lambda-body-picked-references, take-drop-over-ifs-switch-picks A78).
                 let result = if caller.references {
-                    self.evaluate_reference_arg(body, cell)
-                        .into_single_area(cell)
+                    self.evaluate_picked_reference_arg(body, cell)
                 } else {
-                    self.evaluate_node_in_context(body, cell)
+                    RefArg::Value(self.evaluate_node_in_context(body, cell))
                 };
                 for &(raw_id, _) in ids {
                     self.variable_stack.remove(raw_id);
                 }
                 result
             }
-            Err(error) => error.clone(),
+            Err(error) => RefArg::Value(error.clone()),
         };
-        caller.prepared = Some(prepared);
+        if !self.lambdas_since_read(&prepared) {
+            prepared.lambda_mark = self.last_lambda_id;
+            caller.prepared = Some(prepared);
+        }
         result
+    }
+
+    /// Whether a LAMBDA created since `prepared.lambda_mark` reads one of its parameter ids. Eta
+    /// lambdas hold no body, so only `lambdas` is looked at; the walk costs no more than the
+    /// clone that created each LAMBDA.
+    fn lambdas_since_read(&self, prepared: &PreparedLambda) -> bool {
+        let Ok((ids, _)) = &prepared.definition else {
+            return false;
+        };
+        (prepared.lambda_mark..self.last_lambda_id).any(|lambda| {
+            self.lambdas.get(&lambda).is_some_and(|definition| {
+                definition
+                    .1
+                    .reads_variable(|read| ids.iter().any(|&(id, _)| id == read))
+            })
+        })
     }
 
     /// The definition of `lambda_result` for `provided` arguments with its body patched with
@@ -419,18 +537,16 @@ impl Model {
         if let Some(kind) = self.eta_lambdas.get(&id) {
             return Ok(eta_definition(kind.clone(), provided));
         }
-        let (parameters, body) = match self.lambdas.get(&id) {
-            Some(definition) => definition.clone(),
-            None => {
-                return Err(CalcResult::new_error(
-                    Error::NAME,
-                    cell,
-                    "Lambda not found in store".to_string(),
-                ))
-            }
+        let Some(definition) = self.lambdas.get(&id) else {
+            return Err(CalcResult::new_error(
+                Error::NAME,
+                cell,
+                "Lambda not found in store".to_string(),
+            ));
         };
-        check_arg_count(&parameters, provided, cell)?;
-        Ok((parameters, body))
+        // Checked before the copy: a wrong count copies nothing.
+        check_arg_count(&definition.0, provided, cell)?;
+        Ok(definition.as_ref().clone())
     }
 
     /// An unbound name: a function passed by name (eta-reduced, stored `_xleta.SUM`, any case,
@@ -496,8 +612,26 @@ impl Model {
             );
         }
 
+        CalcResult::Lambda(self.store_lambda(Arc::new((parameters, body))))
+    }
+
+    /// Stores `definition` under a new lambda id, which it returns.
+    pub(crate) fn store_lambda(&mut self, definition: SharedLambda) -> usize {
         let id = self.get_next_lambda_id();
-        self.lambdas.insert(id, (parameters, body));
+        self.lambdas.insert(id, definition);
+        id
+    }
+
+    /// The LAMBDA a defined name holds, as a value: the same lambda id each time the name is
+    /// used in one evaluation (`NamedLambdas`).
+    pub(crate) fn defined_name_lambda(&mut self, definition: SharedLambda) -> CalcResult {
+        let address = Arc::as_ptr(&definition).addr();
+        if let Some(&(_, id)) = self.named_lambdas.ids.get(&address) {
+            return CalcResult::Lambda(id);
+        }
+        let id = self.store_lambda(Arc::clone(&definition));
+        self.named_lambdas.ids.insert(address, (definition, id));
+        self.named_lambdas.named.insert(id);
         CalcResult::Lambda(id)
     }
 }

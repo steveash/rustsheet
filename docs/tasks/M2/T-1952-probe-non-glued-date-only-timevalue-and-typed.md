@@ -3,7 +3,7 @@ id: T-1952
 title: "Probe non-glued date-only TIMEVALUE and typed date+clock text"
 milestone: M2
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1907 generalised the date-only-gives-0 rule and the typed `m/d/yyyy h:mm` conv
 
 ## Out of scope
 -
+
+## Outcome
+Two probe cases (probes/date-text-non-glued-timevalue, probes/date-system-1904-timevalue-non-glued) with excel-graph values. The T-1907 guesses held (date-only TIMEVALUE is 0, 1904 pre-epoch is `#VALUE!`, typed non-glued date+`H:MM` is a number with `m/d/yyyy h:mm`); the guess that typed clocks with seconds or AM/PM stay text was wrong, so `ends_with_typed_clock` (formatter/parse_formatted.rs) now accepts them. dates.md updated; no known failures added.

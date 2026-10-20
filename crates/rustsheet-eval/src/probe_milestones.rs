@@ -585,6 +585,7 @@ mod tests {
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             cells,
             text: Vec::new(),
+            defined_names: BTreeMap::new(),
         }
     }
 

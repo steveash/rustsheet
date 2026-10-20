@@ -11,7 +11,7 @@
   - Findings of T-1777: T-1800, T-1801, T-1802, T-1803.
   - Split from T-1271: T-1833 (the array-valued functions and reference elements below), then T-1834,
     T-1835, T-1836, T-1837, T-1838 and T-1839 (the M7 entries) and T-1960 (their open probes).
-  - Split from T-1241: T-1810 (the reference-valued lifts of OFFSET, INDIRECT and TRIMRANGE; CHOOSE onto the driver), itself split into T-1955 (spec for the reference-array carrier), T-1956, T-1957 (OFFSET, INDIRECT, TRIMRANGE), T-1958 (XMATCH search_mode) and T-1959 (CHOOSE).
+  - Split from T-1241: T-1810 (the reference-valued lifts of OFFSET, INDIRECT and TRIMRANGE; CHOOSE onto the driver, decided against by T-1959), itself split into T-1955 (spec for the reference-array carrier), T-1956, T-1957 (OFFSET, INDIRECT, TRIMRANGE), T-1958 (XMATCH search_mode) and T-1959 (CHOOSE).
   - The order is under Rollout.
 
 ## Problem
@@ -61,7 +61,7 @@ same date and commit. Each row has a migration task, or is a non-goal with its r
 | `lifted_arg` / `Lifted`, and `map_elements` in offline_errors.rs | information/ | IS*, ERROR.TYPE, ENCODEURL, FIELDVALUE, STOCKHISTORY and the other offline functions | `Lift` entries. `map_elements` stays only for N and T (below) | T-1774 |
 | `TextArg`, `broadcast_text` | text/text_arg.rs | 17 call sites: LEFT, MID, FIND, REPT, TEXT, CONCATENATE, … | `Lift` entries + text kernels | T-1775 |
 | `Weekend::lift` | date_and_time.rs | WORKDAY.INTL, NETWORKDAYS.INTL `weekend` | a `Lift` entry; no mask memo, an element costs O(log holidays) (done) | T-1236 |
-| CHOOSE's index lift (`choose_array`) | lookup_and_reference/mod.rs | CHOOSE | `index_num` is `Lift`, the value arms are `Whole`. `choose_array` becomes the kernel | T-1241 |
+| CHOOSE's index lift (`choose_array`) | lookup_and_reference/mod.rs | CHOOSE | Non-goal for now (T-1959): CHOOSE keeps its own broadcast loop, as IF does. A table entry does not fit: with a scalar index the arms stay unevaluated (cycles, cost) and the picked one is returned as a reference, and the result's extent includes every arm, picked or not, where `lift_call` reads `Whole` arms eagerly and as scalars. Handing the arms to `lift_grids` as grids gives the same results but fills every arm's slot at every element (O(arms) clones per element, where the loop clones only the picked one), so `CHOOSE(SEQUENCE(1024),<254 text rows>)` would do about 260M string copies instead of 1M. The driver would need a kernel that gets the output position and reads only the arm it picks; the loop stays until a second caller (IF's array condition is the likely one) needs that kernel. The index is read by `get_number_or_array` (a 3-D index is `#ERROR!` there, where a `Lift` read gives `#REF!`) | T-1241, T-1959 |
 | IF's `IfArg`, `if_arg_at` | logical/mod.rs | IF (condition and branches broadcast, logic.md) | non-goal: IF evaluates its branches lazily and returns references. It keeps its own broadcast, which already uses `bcast_idx` | — |
 | `lifted_relative_to`, `lifted_groupby` | relative_to.rs, groupby.rs | GROUPBY, PIVOTBY | non-goal: LAMBDA calls with their own cell-visit budget (SPEC-0006) | — |
 | `broadcast_static_result` | expressions/parser/static_analysis.rs | the static shape of a call | stays as the shape primitive; the table-driven `lifted_static_result` calls it | T-1770 |
@@ -252,8 +252,9 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
    an array element is its top-left value (probes/m7-argument-modes K5-K10; SORTBY excepted, H97-H99),
    the elements of OFFSET, INDIRECT and TRIMRANGE are references (probes/reference-lift-elements),
    and TAKE's and DROP's are whole (K1-K4), which this spec reads as references, pending T-1960. Design: "Array-valued functions" (T-1834 to T-1839) and
-   "Elements that are references" (T-1955). Still open: a TAKE or DROP over an array value, and
-   SUM, `=` and arithmetic over a result of references (T-1960, T-1955).
+   "Elements that are references"; the carrier and its consumers are SPEC-0014 (T-1955), which
+   answers SUM, `=` and arithmetic over a result of references. Still open: a TAKE or DROP over an
+   array value (T-1960).
 6. **Answered.** A function-returned multi-cell reference in a `Lift` argument [lifts like a written
    range]: it does (IF, INDEX, OFFSET, INDIRECT, CHOOSE; -a W31-W36).
 7. **Answered.** The precedence and element-value gaps: precedence is the kernel's order (-a W14-W17
@@ -303,6 +304,10 @@ pub(crate) enum ArgKind {
     /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
+    /// Read by the caller, which needs a reference there (RANK's `ref`, T-1999). A reference's
+    /// slot is `EmptyArg`; a non-reference array is handed back as a grid of errors that
+    /// broadcasts with the lifted arguments (`lift_call_beside`).
+    ReferenceByCaller,
 }
 
 /// What one kernel call may cost, beyond reading its arguments (security rule below).
@@ -369,6 +374,7 @@ cites its probe.
   | `LiftArrays` | `mode: value`, `lift: arrays` |
   | `LiftArraysRangeWhole` | `mode: criteria` or `range`, `lift: arrays` |
   | `Whole`, `WholeByCaller` | `mode: array`, `aggregate`, `aggregate_a`, `range`, `criteria` or `lambda`, without `lift` |
+  | `ReferenceByCaller` | `mode: range`, without `lift` |
 
   The generator stops passing ranges to `mode: value, lift: arrays` parameters, because they are
   refused anyway.
@@ -387,29 +393,29 @@ pub(crate) enum LiftedArg {
 }
 
 /// What one element costs, for the cell-visit cap.
-pub(crate) enum LiftCost<'a> {
+pub(crate) enum LiftCost {
     /// `KernelWork::Constant` and no whole data: elements × 1.
     Unit,
     /// Every element walks `cells` (today's *IF(S) criteria walk): elements × cells.
     Cells(u64),
     /// The kernel prepares its whole data once (LARGE sorts it): cells + elements.
     Prepared(u64),
-    /// `walk_cost` of `range`, `walks` times per element (the *IF(S) front end: one walk per
-    /// criterion).
-    Walk { range: &'a Node, walks: u64 },
 }
 
 pub(crate) struct LiftOptions {
-    /// Reuse the previous element's result when every grid slot equals the previous element's:
-    /// the *IF(S) blank-tail optimization of `lift_with_cost`. Off for scalar kernels.
-    pub(crate) reuse_equal_runs: bool,
+    /// Which elements reuse an earlier result: `Never` (scalar kernels), `EqualRuns` (the
+    /// previous element's, when every grid slot equals it: the blank-tail optimization of
+    /// `lift_with_cost`) or `AnyEqual` (the first equal element's; *IF(S), T-0408).
+    pub(crate) reuse: Reuse,
     /// The table's `KernelWork` (`lift_call`); `Constant` for the direct callers.
     pub(crate) work: KernelWork,
 }
 
 impl LiftOptions {
-    /// What every direct caller passes (*IF(S), AGGREGATE, IFS, SWITCH, the lookups).
+    /// What AGGREGATE, IFS, SWITCH and the lookups pass.
     pub(crate) const REUSE_EQUAL_RUNS: Self;
+    /// What the *IF(S) functions pass (T-0408).
+    pub(crate) const REUSE_ANY_EQUAL: Self;
 }
 
 /// A per-element kernel: the scalar function over the argument values of one element.
@@ -434,7 +440,7 @@ impl Model {
     pub(crate) fn lift_values(
         &mut self,
         args: Vec<CalcResult>,
-        cost: LiftCost<'_>,
+        cost: LiftCost,
         options: &LiftOptions,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
@@ -443,7 +449,8 @@ impl Model {
 ```
 As built (T-1770): `lift_call` runs `lift_call_with(kinds, args, LiftCost::Unit, …)`, which a
 future `Prepared` or `Cells` consumer calls with its own cost. The direct callers keep their
-T-1784 totals exactly: *IF(S) passes `Walk { walks: criteria }`, `lookup_each` and AGGREGATE
+T-1784 totals exactly: *IF(S) passes `Cells(walk cost × criteria)` (T-0408 dropped the `Walk`
+variant: the ranges resolve once before the lift, so the walk cost is measured from them), `lookup_each` and AGGREGATE
 multiply their `Cells` by the lifted arguments, IFS and SWITCH pass `Cells(arguments)`; XLOOKUP
 passes its search cost once (it divided it by its three criteria before, so its bound only
 loosens by the rounding).
@@ -461,6 +468,7 @@ Each argument is read once, by its kind:
 | `LiftArraysRangeWhole` | `Grid` | `Scalar(the range)`, read whole | `Scalar(the range)` | `Scalar(value)` |
 | `Whole` | `Scalar` of the value as `evaluate_node_with_reference` read it, once | | | |
 | `WholeByCaller` | `Scalar(EmptyArg)`, not evaluated | | | |
+| `ReferenceByCaller` | `Scalar(EmptyArg)`, not evaluated; the caller reads it, and a non-reference array comes back through `lift_call_beside` as a `Grid` of errors (T-1999) | | | |
 
 A range across sheets (`Sheet1:Sheet2!C1:C2`, 3-D) is `Scalar(#REF!)` in a `Lift` position and
 `Scalar(#VALUE!)` in a `LiftArrays` position (open question 2; T-1801). That holds for a one-cell
@@ -513,8 +521,12 @@ is why BESSELI intersects today (eng-argument-modes E1), is no longer reached fr
      element errors with `String::new()` messages (T-1770, T-1773 and T-1785 acceptance), so a
      failing number element allocates nothing either; about 211 sites under functions/ allocate a
      message today, and only the migrated kernels change.
-   - **`reuse_equal_runs`:** the element is compared with the previous position slot by slot,
-     through `bcast_get` at both positions. No per-element key `Vec` is built.
+   - **`Reuse::EqualRuns`** (was `reuse_equal_runs`): the element is compared with the previous
+     position slot by slot, through `bcast_get` at both positions. No per-element key `Vec` is built.
+   - **`Reuse::AnyEqual`** (*IF(S) only, T-0408): before the work bound, one pass maps every
+     element to the first element equal to it (a hash map keyed by the borrowed slots, so no key
+     is copied); the work bound counts the distinct elements, and a repeat clones its first
+     element's result from the output.
 6. **Element result** → `ArrayNode` via the existing `cast::calc_result_to_array_node`. A range,
    an array or a LAMBDA is `#VALUE!`, as today. There is no new helper, and T-1787 deletes the four
    private copies of that function in functions/logical/.
@@ -629,6 +641,13 @@ up to 2^20 periods and finishes in a closed form that can be a unit off the walk
 "AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
 elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
 
+As built (T-1821): NPV is `[Lift]` with a repeated `WholeByCaller`, IRR `[WholeByCaller, Lift]` and MIRR
+`[WholeByCaller, Lift, Lift]`. Each caller reads its cash flows once, before the driver, and calls `lift_call_costed`
+with `LiftCost::Cells` of the flows; each kernel checks the arguments in the scalar order (NPV's rate before the flows,
+IRR's and MIRR's flows first). IRR is `Weighted(512)`: its solver makes at most 455 NPV passes per call
+(`financial_util::compute_irr`), so a lift is charged elements × flows × 512 and `IRR(A1:A300000,{0.1;0.1})` is
+refused before its first element.
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
@@ -654,8 +673,14 @@ stack frames (T-1110) stay as they are, and the driver runs inside `fn_edate`.
 **Security rule for kernel work.** A table entry is `KernelWork::Constant` only if its kernel is
 O(1) or loops a fixed number of times, whatever the argument values. A value-dependent kernel
 must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.INV, POISSON,
-COMBIN, FACT and MULTINOMIAL (T-1197), the RATE/IRR/YIELD solvers (they have iteration caps, so
-they are `Constant` only if the cap is fixed), and the Bessel series. T-1776 checks a list of
+COMBIN, FACT and MULTINOMIAL (T-1197), and the RATE/IRR/YIELD solvers (they have iteration caps, so
+they are `Constant` only if the cap is fixed). A kernel whose loop length is one argument's value
+may instead be `ByArg { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order)):
+before any element runs, the driver sums each element's charge over the broadcast,
+`1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument `arg`,
+`1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the kernel
+refuses it before looping). That pass is O(elements). The
+kernel still keeps `cap` as its own per-call cap. T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`
 silently.
 
@@ -780,6 +805,13 @@ Test formulas (T-1834, T-1835):
 - `=ROWS(EXPAND(1,SEQUENCE(1024),1024))` is `#ERROR!`, as the first formula is.
 - `=ROWS(SEQUENCE({3;4}))` is 2 and charges 7 cells.
 
+**As built (T-1834).** The conversion is `element_node` in `lift/driver.rs`, which also applies the
+charge; entries that are `CallResult::Value` with no `Output` work skip both. One rule the spec did
+not name: an `Array` entry whose lifted arguments are all 1x1 runs one unlifted call and keeps its
+whole array (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows, as before T-1834), and its static shape
+is `Unknown`. Whether Excel lifts a 1x1 array there (`SEQUENCE({3})`) is open until T-1960, which
+deletes the rule or keeps it.
+
 **4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds:
 ```rust
 pub(crate) struct ArgKinds {
@@ -861,7 +893,7 @@ references.md, probes/isref-reference-lookups). So this spec reads a lifted TAKE
   not probed: T-1960 asks `TAKE({1,10;2,20;3,30},{1;2})`. If Excel keeps a whole sub-array there,
   T-1960 records it and this section gains a nested-array element in its PR.
 
-Then no new nested-array carrier is needed. The array-of-references carrier is T-1955's (one
+Then no new nested-array carrier is needed. The array-of-references carrier is SPEC-0014's `RefGrid` (T-1955; one
 definition for OFFSET, INDIRECT, TRIMRANGE, TAKE and DROP: directive 3). Rule 2's `element_value`
 hands a multi-cell reference to that carrier. The consumers are the ones T-1955 lists, with the
 evidence it has:
@@ -869,7 +901,7 @@ evidence it has:
 - ROWS and COLUMNS count the outer array (F4-F6; `ROWS(OFFSET(A1,0,0,{1;2}))` is 2);
 - ISREF of the whole result is one FALSE (reference-lift-elements F15, G15);
 - spilled directly, an OFFSET element is `#VALUE!`; SUM, `=` and arithmetic over such a result are
-  open (T-1955 for OFFSET; T-1960 asks the same of TAKE).
+  answered in SPEC-0014 rules 2-7 (T-1960 asks the same of TAKE).
 So T-1838 builds on T-1955's spec and T-1956's carrier, and adds TAKE and DROP as two more
 producers.
 
@@ -979,7 +1011,7 @@ Each step is one PR of size S/M. The old paths stay until their step.
    - **T-1772** (functions-stat, M): the first real `Whole` + `Prepared` consumer (LARGE k and the
      other scalar arguments next to a data array).
    - **T-1383** (functions-engineering, M): later arguments are probed before they are entered.
-3. **T-1241** (CHOOSE's index moves in; now T-1959), **T-1389** (functions-criteria; adds
+3. **T-1241** (CHOOSE's index was to move in; T-1959 keeps it off the driver), **T-1389** (functions-criteria; adds
    `LiftArraysRangeWhole`), and the M7 functions split from T-1271 by T-1833:
    - **T-1834** (functions-math, opus, M): `CallResult`, `element_value`, `KernelWork::Output`,
      with SEQUENCE and MAKEARRAY.

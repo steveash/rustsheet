@@ -141,6 +141,7 @@ probes/rank-nonref-error-elements.case.json	M9	RANK family
 probes/rank-nonref-errors.case.json	M9	RANK family
 probes/rank-unknown-shape-ref.case.json	M9	RANK family
 probes/rows-columns-args.case.json	M6	ROWS, COLUMNS
+probes/sort-error-args.case.json	M7	SORT, SORTBY
 probes/sort-omitted-args.case.json	M7	SORT, SORTBY
 probes/subnormal-function-boundaries.case.json	M9	CSCH (M5), ERFC and the normal distribution (M9)
 probes/subtotal-hidden-filtered.case.json	M5	AGGREGATE and SUBTOTAL
@@ -1468,3 +1469,4 @@ probes/union-defined-name-uses.case.json	Sheet1!H17	M6	AREAS
 probes/union-defined-name-uses.case.json	Sheet1!H20	M9	FREQUENCY
 probes/written-parens-reference-context.case.json	Sheet1!E14	M7	LET
 probes/written-parens-reference-context.case.json	Sheet1!G14	M7	LET
+probes/date-math-lift-driver-edges.case.json	Sheet1!G43	M6	DATEDIF

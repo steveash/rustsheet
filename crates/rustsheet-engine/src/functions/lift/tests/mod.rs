@@ -8,8 +8,8 @@
 mod kernel_work;
 mod metamorphic;
 
-use super::driver::{LiftCost, LiftOptions, LiftedArg};
-use super::kinds::{ArgKind, ArgKinds, KernelWork};
+use super::driver::{LiftCost, LiftOptions, LiftedArg, Reuse};
+use super::kinds::{ArgKind, ArgKinds, CallResult, KernelWork};
 use crate::calc_result::CalcResult;
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::Error;
@@ -55,7 +55,7 @@ fn run_counting(
     model: &mut Model,
     kinds: &ArgKinds,
     formula: &str,
-    cost: LiftCost<'_>,
+    cost: LiftCost,
     kernel: impl Fn(&[CalcResult]) -> CalcResult,
 ) -> (CalcResult, usize) {
     let args = args_of(model, formula);
@@ -105,6 +105,7 @@ const LIFT_ALL: ArgKinds = ArgKinds {
     repeat: Some(ArgKind::Lift),
     max: 255,
     work: KernelWork::Constant,
+    result: CallResult::Value,
 };
 
 /// A whole argument, then a lifted one.
@@ -128,7 +129,7 @@ fn the_table_reads_its_kinds_and_counts() {
         let kinds = function.arg_kinds().unwrap();
         assert_eq!(kinds.work, KernelWork::Constant, "{function:?}");
     }
-    assert!(Function::Db.arg_kinds().is_none());
+    assert!(Function::Xnpv.arg_kinds().is_none());
 }
 
 // ---------------------------------------------------------------- the unlifted path
@@ -645,8 +646,9 @@ fn a_weighted_kernel_is_charged_its_weight() {
     // 2^10 elements × 2^17 cells is the cap exactly; a weight of 2 is over it.
     for (weight, runs) in [(1, true), (2, false)] {
         let options = LiftOptions {
-            reuse_equal_runs: false,
+            reuse: Reuse::Never,
             work: KernelWork::Weighted(weight),
+            result: CallResult::Value,
         };
         let mut calls = 0;
         let mut kernel = |_: &mut Model, _: &[CalcResult]| {
@@ -683,8 +685,9 @@ fn element_texts_count_against_the_text_budget() {
     let long = CalcResult::String("x".repeat(32767).into());
     let elements = |n: usize| vec![CalcResult::Array(vec![vec![ArrayNode::Number(1.0); n]])];
     let options = LiftOptions {
-        reuse_equal_runs: false,
+        reuse: Reuse::Never,
         work: KernelWork::Constant,
+        result: CallResult::Value,
     };
     let mut kernel = |_: &mut Model, _: &[CalcResult]| long.clone();
     // 2048 texts of 32,767 bytes fit 64 MiB; 2049 are #VALUE!.

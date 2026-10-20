@@ -13,8 +13,9 @@ iteration are PCRE2 (T-1688)"). Ours use the `regex` crate's dialect on `regex-a
    backreferences `\1` `\g1` `\k<n>`, lookahead and lookbehind, atomic groups `(?>..)`, `\K`, conditionals
    `(?(1)b|c)`, comments `(?#..)`, `\Q..\E`, and scoped flags `(?-i)` (probes/regex-pcre2-features C1-C19). Other
    features are read with a different meaning: `a++` is read as `a+` followed by `+`, so `a++a` matches `aaa`, which
-   Excel's `#N/A` says it does not (C11, B27-B29). POSIX classes are ASCII-only where Excel's are Unicode
-   (`REGEXTEST("é","[[:alpha:]]")`, regexreplace-limit-and-syntax A23).
+   Excel's `#N/A` says it does not (C11, B27-B29). POSIX classes were ASCII-only where Excel's are Unicode
+   (`REGEXTEST("é","[[:alpha:]]")`, regexreplace-limit-and-syntax A23); T-1903 has since fixed that on the
+   current engine with a pre-compile rewrite (`functions/text/regex_posix.rs`, probes/regex-posix-classes).
 2. **Global iteration.** After an empty match, PCRE2 first tries a non-empty match anchored at the same position, and
    only then advances one character. Rust's leftmost-first iterator has no "not empty at start" search, so
    `REGEXREPLACE("aaa","a*?","b")` gives `bababab` where Excel gives `bbbbbbb` (t1626-regexreplace C34, D1-D12).
@@ -137,8 +138,9 @@ The current `Engine` stays as is. It is fed a `Hir` built by our translator inst
   - a bad quantifier.
 - Character classes build `regex_syntax::hir::ClassUnicode` (or `ClassBytes`) through the same Unicode tables the
   current engine uses. That includes `case_fold_simple` for case-insensitive matching, so both engines share one
-  class and one case-folding definition. POSIX classes keep today's (ASCII) meaning in T-1973.
-  T-1903 then maps them to what Excel matches, from T-1972's per-class answers, which fixes `[[:alpha:]]` (A23).
+  class and one case-folding definition. POSIX classes build the Unicode classes T-1903 already maps
+  them to (`regex_posix.rs`, probes/regex-posix-classes and -b), so the parser replaces that rewrite rather than
+  re-deriving it.
 
 ### 2. Regular patterns stay on the automata
 `Ast::is_regular` holds when no node is one of these:
@@ -360,15 +362,14 @@ no code to the binary, since the crate is already linked.
 ## Rollout
 Each task is S/M and leaves `make check` green. A pattern needing an unimplemented feature stays `#VALUE!`, as today.
 
-1. **Probe** (T-1972; research, sonnet, S): probes/regex-pcre2-limits with the "Unknowns" above, plus T-1903's
-   per-class POSIX probe and the repeat-count limit. Its findings go into text.md.
+1. **Probe** (T-1972; research, sonnet, S): probes/regex-pcre2-limits with the "Unknowns" above and the
+   repeat-count limit (the per-class POSIX probe landed with T-1903). Its findings go into text.md.
 2. **Parser and translation** (T-1973; functions-text, opus, M):
    - `pcre::parse`, `Ast`, `to_hir`;
    - `regex_functions.rs` builds through `Pattern`, with regular patterns only;
    - lands `\Q..\E`, comments, `(?x)` and scoped flags;
    - depends on T-1830 (benchmarks);
-   - then T-1903 (rewritten) maps POSIX classes to what Excel matches, in the new parser, from T-1972's per-class
-     answers (regexreplace-limit-and-syntax A23);
+   - POSIX classes map as T-1903's `regex_posix.rs` does (done on main), which the parser then replaces;
    - `a++` and the other backtracking-only constructs become `#VALUE!`, which is B29's direction (it is a failure
      today either way);
    - includes the differential test against `regex-syntax`.

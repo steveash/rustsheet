@@ -992,25 +992,27 @@ fn datedif_pre_epoch_date_text_is_a_value_error_in_1904() {
     assert_eq!(model._get_text("A4"), *"50");
 }
 
-// DATEDIF's errors keep their pre-lift order: the dates' own errors, then the dates' #NUM!, then
-// the unit's error (UNVERIFIED against Excel, dates.md "DATEDIF and DAYS360 error order", T-1430).
+// DATEDIF's errors: the dates' own errors, then the unit's error, then the dates' #NUM! (a reversed
+// pair included), then an unknown unit (probes/datedif-days360-error-order A1, A2, A14, A4,
+// excel-graph; dates.md "DATEDIF and DAYS360 error order", T-1430).
 #[test]
-fn datedif_date_errors_come_before_the_unit_error() {
+fn datedif_error_order_dates_then_unit_then_num() {
     let mut model = new_empty_model();
     model._set("A1", "=DATEDIF(10,5,NA())");
     model._set("A2", "=DATEDIF(1/0,5,NA())");
     model._set("A3", "=DATEDIF(5,10,NA())");
     model._set("A4", "=DATEDIF(10,5,\"X\")");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A1"), *"#N/A");
     assert_eq!(model._get_text("A2"), *"#DIV/0!");
     assert_eq!(model._get_text("A3"), *"#N/A");
     assert_eq!(model._get_text("A4"), *"#NUM!");
 }
 
 // An error unit wins over a start date outside the calendar (gen-m7/f68fafa0ca2eba26 Calc!A1,
-// dates.md "DATEDIF argument errors before date checks", T-1355). A3 and A4 are our own
-// expectation (an invalid unit text with a negative start date is UNVERIFIED).
+// dates.md "DATEDIF argument errors before date checks", T-1355); a negative start with a valid or
+// unknown unit is #NUM!, as `DATEDIF(-5,10,"d")` and `DATEDIF(-5,5,"x")` are in Excel
+// (probes/datedif-days360-error-order A17, A5, T-1430).
 #[test]
 fn datedif_error_unit_comes_before_a_negative_start_date() {
     let mut model = new_empty_model();

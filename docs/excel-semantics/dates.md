@@ -373,7 +373,7 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   `"July1 10:00:30"` and `"Jul1 , 2026 10:00"` are date-times in VALUE (fractions 0.41666..., 0.75, 0.7708...,
   0.41701...; rows 1-5, 12), and TIMEVALUE of the same text is just the clock fraction. TIMEVALUE of date-only
   text (`"Jul1 , 2026"`, `"1Jul 2026"`, `"Jul2026"`, `"July01"`, `"Jun31"`, `"Feb29"`) is 0, not an error
-  (rows 6-8, 10-11, 13-15, column C). Implemented (T-1907) for every text `parse_date` reads, not only the glued shapes probed: non-glued date-only text (`"1/2/2020"`, `"July 1, 2026"`) giving 0 and a pre-epoch date in a 1904 workbook being `#VALUE!` are UNVERIFIED.
+  (rows 6-8, 10-11, 13-15, column C). Non-glued date-only text gives 0 as well (`"1/2/2020"`, `"July 1, 2026"`, `"2020-01-02"`, `"1-Jan-2020"`, `"7/1"`; probes/date-text-non-glued-timevalue A1-A5, excel-graph, T-1952). In a 1904 workbook TIMEVALUE and number coercion of a date before 1904-01-01 (`"12/31/1903"`, `"1903-12-31"`) are `#VALUE!`, while `"1/1/1904"` is 0 and `"1/2/2020"` is 42370 (probes/date-system-1904-timevalue-non-glued). Implemented in T-1907.
 - Criteria read the glued forms as dates: over serials 44347, 44348, 44349 `COUNTIF(">1JUN2021")` = 1,
   `"1JUN2021"` = 1, `">=1JUN2021"` = 2, `"<1JUN2021"` = 1, `">1Jun2021"` = 1, `SUMIF(">1JUN2021")` sums
   44349; `COUNTIF(date,"July1")`, `"Jul1"` and `"July01"` match the 1 July of the clock year (K1-K8).
@@ -381,7 +381,7 @@ Probed (probes/date-text-glued-month-2, excel-graph 2026-10-18, T-1879; rows ref
   format `d-mmm`; `"Jul2026"` -> 2026-07-01, `mmm-yy`; `"Jun31"` -> 1931-06-01, `mmm-yy`; `"1Jul 2026"`,
   `"Jul1 , 2026"` and `"1JUN2021"` -> d-mmm-yy dates (2026-07-01, 2026-07-01, 2021-06-01); `"July1 10:00"` ->
   46204.41666..., format `m/d/yyyy h:mm`; `"Jun1.5"` stays text (General). The engine matches (T-1907 made typed
-  date+time text a number with `m/d/yyyy h:mm`; only a typed `H:MM` clock is converted; typed clocks with seconds, AM/PM, hours past 23 or fractions stay text, which is UNVERIFIED). Also UNVERIFIED (T-1952): typed non-glued date + `H:MM` text (`1/2/2020 10:00`, `2020-01-02 10:00`, `July 1, 2026 10:00`, year-less `7/1 10:00`) now becomes a number, every such shape with the format `m/d/yyyy h:mm`; a 1904-workbook pre-epoch date stays text. Only the glued `July1 10:00` has oracle evidence.
+  date+time text a number with `m/d/yyyy h:mm`; only a typed `H:MM` clock is converted). Typed non-glued date + clock text is a number with the same format `m/d/yyyy h:mm` (`1/2/2020 10:00` -> 43832.41666..., `2020-01-02 10:00`, `July 1, 2026 10:00`, year-less `7/1 10:00` -> 46204.41666..., the serial inferred from the oracle's 2026 clock and not scored), and so are clocks with seconds (`1/2/2020 10:00:30` -> 43832.41701...) or AM/PM (`1/2/2020 10:00 AM`); a bare typed date `1/2/2020` is 43832 with format `m/d/yyyy`. In a 1904 workbook `1/2/1904 10:00` is 1.41666... and `12/31/1903 10:00` stays text (General) (probes/date-text-non-glued-timevalue rows 11-17, probes/date-system-1904-timevalue-non-glued rows 11-13, excel-graph, T-1952; formats from the ENTERED log in docs/research/non-glued-typed-input-2026-10-19.md). Further typed clock shapes after a date (probes/date-text-typed-clock-shapes, excel-graph, T-1979; formats from docs/research/typed-clock-shapes-2026-10-19.md): `H:MM:SS AM/PM`, lowercase or mixed-case `pm`, several spaces before AM/PM and an hour-only `10 AM`/`10 PM` are numbers with `m/d/yyyy h:mm`; a fractional second (`10:00:30.5`, `10:00.5` read as minutes and seconds) is a number with format `mm:ss.0`; a component out of its usual range (`24:00` -> 43833, `25:00`, `10:60`, `10:00:60`) is a number with format General; `13:00 PM` and a glued `10:00AM` stay text. Implemented in `typed_clock_shape` (formatter/parse_formatted.rs); the value is the date-clock serial of coercion. `0:00 AM`, `12:00 AM` and `12:30 PM` after a date are numbers with `m/d/yyyy h:mm` (0:00 AM is accepted; 12 AM is midnight, 12 PM noon). Text that stays text can still carry a format (T-1986, probes/date-text-rejected-clock-formats N1-N16 and date-text-typed-clock-shapes N14-N15, excel-graph; formats from docs/research/rejected-clock-text-formats-2026-10-19.md): a date followed by a number-like clock (digits and colons only) and a spaced `AM`/`PM` that is rejected (`13:00 PM`, `13:00 AM`, `24:00 PM`, `13 PM`, `25:00 PM`, `13:00:00 PM`, `99:00 PM`, `1300 PM`) is text whose cell format is that of its date part: `m/d/yyyy` for slash and ISO dates, `d-mmm-yy` for `July 1, 2026 13:00 PM`. Everything else stays General: a glued `10:00AM`, `10:00 XM`, `10:00 PM PM`, `1/2/2020 abc` and a clock with no date (`13:00 PM`). Implemented in `rejected_clock_text_format` (formatter/parse_formatted.rs); `1/2/2020 10:00 A` is a number with `m/d/yyyy h:mm` (N7; engine gap T-1994); the format of a bare typed ISO date (`2020-01-02`) is unprobed, and the engine's `yyyy-mm-dd` for it is not Excel evidence. UNVERIFIED (engine extrapolations, not probed): hours or minutes of 99 (`99:00`, `10:99`) as numbers, a fraction followed by AM/PM, `24:00 AM` as text, hour-only `0 AM`/`12 PM`, trailing spaces after the clock (including after a rejected `13:00 PM`), a rejected clock after a percent, currency or grouped number (`$5 13:00 PM`; the engine leaves General), a year-less date before a rejected clock, a malformed clock of digits and colons (`:5 PM`, `1:2:3:4 PM`), a date part that already carries a time (`1/2/2020 10:00 13:00 PM`), several spaces between the date and the clock (the engine gives all of these the date part's format), a date typed into an already date-formatted cell (the engine keeps its format), and fractions of 3-9 digits.
 UNVERIFIED:
 - shapes the glued-month rules accept or reject beyond the probed rows (T-1906): `"1Jul5"` (any glued single digit after a day reads as year 0d), `"1/Jul2026"` and other separators, `"1-Jul26"`, the format typed `"1-Jul2026"` gets, and the hand-derived `#VALUE!` of `"July1 , 2026 5"`, `"1Jul1 , 2026"` and `"July1,, 2026"`;
 - the clock-year results (`"July1"`, `"July01"`, criteria K6-K8) for clocks other than the oracle's 2026;
@@ -411,14 +411,14 @@ Rule: WEEKDAY of a serial in [0, 1) is 7 (serial 0 is Saturday 0 January 1900, a
 `WEEKDAY(31330,-0.0001)` is the column index of `VLOOKUP(FALSE,C7:D9,WEEKDAY(31330,-0.0001),INDEX(B1:E7,4))&REPLACE(NA(),..)`,
 whose lookup value is *not* in the table and whose range_lookup is `#REF!`; the cell is `#NUM!`, and nothing else in
 the formula can give `#NUM!` (a value index's error wins over not-found and over range_lookup, lookup.md).
-WORKDAY and NETWORKDAYS take serial 0 too (inferred, values unprobed): `XLOOKUP(NETWORKDAYS(<blank>,7872),E8:E11,A1:B5,..)`
-is `#VALUE!` (XLOOKUP's size mismatch, so NETWORKDAYS(0,7872) is a number, assuming an error lookup_value would beat
-the size-mismatch `#VALUE!`, which is unprobed) and
+WORKDAY and NETWORKDAYS take serial 0 too (now VERIFIED, see "WORKDAY and NETWORKDAYS from serial 0" below; first inferred from): `XLOOKUP(NETWORKDAYS(<blank>,7872),E8:E11,A1:B5,..)`
+is `#VALUE!` (XLOOKUP's size mismatch, so NETWORKDAYS(0,7872) is a number: an error lookup_value would beat the size
+mismatch, lookup.md "XLOOKUP: an error lookup_value beats a size mismatch") and
 `VLOOKUP(WORKDAY(28131,-16,<blank>*1),C2:D5,1,XLOOKUP(..))` is `#VALUE!` (so a holiday of 0 is accepted).
 Evidence: gen-m6/ec7b2cc2fb9f0354 Calc!A33, gen-m6/5cc04d6f42b23b51 Calc!A27, gen-m6/63012866a9d8b7db Calc!A39,
 gen-m6/6b2aa08e3b916da5 Calc!A35 (excel-graph, 2026-10-09, T-1239).
 Probed directly (probes/weekday-serial-zero A1:A18, excel-graph, 2026-10-17, T-1253): `WEEKDAY(0)`, `(0.5)`, `(0.9999)` are 7, `WEEKDAY(0.5,2)` 6, `(0.5,3)` 5, `(0,11)` 6, `(0,17)` 7, `WEEKDAY(1)` 1, `WEEKDAY(-0.5)` `#NUM!`; return_type 0, -1, -0.0001, 0.5, 0.9999, 4, 10 and 18 are all `#NUM!`, never `#VALUE!` (0.5 and 0.9999 truncate to 0).
-Ours: WEEKDAY implemented (T-1253); `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!` (T-1254).
+Ours: WEEKDAY implemented (T-1253); WORKDAY and NETWORKDAYS implemented (T-1254).
 More serial-0 cells (gen-m9, excel-graph, 2026-10-12, T-1289): `YEARFRAC(33752,0)` is 92.41111111111 (from
 `(0.3+YEARFRAC(33752,Data!$C12))^SUM(-0.0001)` = 0.9995471537332011 with C12 = 0), which is basis 0 counted from
 1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours matches for basis 0, where a start or end in [0, 1) counts as day 0 of January 1900, T-1409; other bases with serial 0 stay `#NUM!`, UNVERIFIED; the pair is ordered before counting like every basis; serial 0 paired with a date in January-February 1900, including the fictitious serial 60, is UNVERIFIED).
@@ -481,16 +481,55 @@ and `Model::lift_call` (functions/lift/call.rs), with the kernels `edate_of`, `e
 (functions/date_and_time/month_shift.rs), `weeknum_of` (date_and_time/weeknum.rs) and `yearfrac_of` (date_and_time/yearfrac.rs).
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
 
-## DATEDIF and DAYS360 error order with a bad unit or method (inferred)
-Rule (inferred from the leftmost-error rule in arrays.md, not probed): a date argument's own error comes first
-(`DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` are `#DIV/0!`). After that ours keeps each function's pre-lift
-order: DATEDIF reports the `#NUM!` of an end before the start before the unit's error
-(`DATEDIF(10,5,NA())` is `#NUM!`; for out-of-range dates the unit's error wins, see "DATEDIF argument errors before date checks", T-1355), while DAYS360 reports the method's error before the dates' `#NUM!`
-(`DAYS360(-5,5,NA())` is `#N/A`). Also unprobed: `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and a
-single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
-One lifted data point (T-1785): `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` is `#N/A` in Excel, so an error unit beats the reversed pair's `#NUM!` there, where ours gives `#NUM!` (probes/date-math-lift-driver-edges G43, a known failure for T-1430); `INDEX(DATEDIF(45000,46000,{"d";#N/A}),2)` is `#N/A` in both (G42). DATEDIF's unit and DAYS360's method over an array are answered in "Date function argument modes" (they lift).
-Status: UNVERIFIED (probe pending)
-Tasks: T-1430 (error order), T-1428 (3D ranges in the text and weekend arguments)
+## DATEDIF and DAYS360 error order with a bad unit or method
+Rule (probes/datedif-days360-error-order, excel-graph, 2026-10-19, T-1430): both functions read every argument's
+value first, left to right, and only then check the dates' range. An error or non-date text in a date argument
+comes first, start before end (`DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` `#DIV/0!`, `DATEDIF("abc",5,"x")`
+and `DAYS360("abc",5,NA())` `#VALUE!`, `DATEDIF(NA(),1/0,"d")` and `DAYS360(NA(),1/0)` `#N/A`; A2, A6-A9, A11,
+A12, A15, C2, C4-C6, C8-C10, C13, C14). Then the unit's or method's error: `DATEDIF(10,5,NA())` (a reversed pair),
+`DATEDIF(-5,5,NA())`, `DATEDIF(5,-1,NA())`, `DATEDIF(3000000,5,NA())`, `DAYS360(-5,5,NA())`, `DAYS360(5,-5,NA())`
+and `DAYS360(3000000,5,NA())` are all `#N/A` (A1, A3, A10, A16, C1, C7, C18). DAYS360's method text that is no
+logical is `#VALUE!` at that same step, before the dates' `#NUM!` (`DAYS360(-5,5,"x")` `#VALUE!`, C3; `DAYS360(5,10,"x")` too, C19). Only then the
+dates' `#NUM!` (reversed pair or out of the calendar), and DATEDIF's unknown unit last: `DATEDIF(10,5,"x")` and
+`DATEDIF(-5,5,"x")` are `#NUM!` (A4, A5, A13, A17; C11, C17). Lifted forms keep the order per element
+(`INDEX(DATEDIF({10,1},5,NA()),1)` and `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` `#N/A`, A18-A20, C15, C16;
+probes/date-math-lift-driver-edges G42, G43; a reversed or out-of-calendar element with an unknown unit is `#NUM!`,
+`INDEX(DATEDIF(10,5,{"d","x"}),2)` and `INDEX(DATEDIF({-5,1},5,{"x","x"}),1)`, A21, A22). `TIMEVALUE(C1:C1)` and `DATEVALUE(B1:B1)` of a one-cell range are that
+cell's value (1 row), and a one-cell or 3-D `weekend` is answered in "An error-valued or 3-D weekend, 3-D date text
+and holidays" (probes/date-text-weekend-3d, T-1428). DATEDIF's unit and DAYS360's method over an array are answered
+in "Date function argument modes" (they lift).
+Status: VERIFIED (excel-graph). Before T-1430 the engine checked DATEDIF's reversed pair before the unit's error.
+Implemented in: `datedif_value` (crates/rustsheet-engine/src/functions/date_and_time.rs).
+Tasks: T-1355, T-1430
+
+## An error-valued or 3-D weekend, 3-D date text and holidays
+Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
+- A 3-D reference in DATEVALUE's or TIMEVALUE's text is `#REF!`, one cell or several
+  (`DATEVALUE(Sheet1:Sheet2!B1)`, `ROWS(TIMEVALUE(Sheet1:Sheet2!C1:C3))`; G1-G5, H1-H5), as in the other lifted
+  arguments; a one-sheet span `Sheet2:Sheet2!B1` is a plain reference (G6, H6).
+- WORKDAY.INTL never passes an error-valued `weekend` on: `NA()`, `1/0`, a cell holding `#REF!` or `#DIV/0!` and a 3-D
+  reference (read as `#REF!`, one cell or several) are all `#NUM!`, the code of an invalid weekend number (P1-P25,
+  J1-J5, M7). It reads the start date, the day count and the holidays first: `WORKDAY.INTL(1/0,5,NA())` is `#DIV/0!`,
+  `WORKDAY.INTL(45000,"x",NA())` and `WORKDAY.INTL(45000,5,NA(),"y")` `#VALUE!`, and the holidays' error beats an
+  invalid weekend too: `WORKDAY.INTL(45000,5,99,NA())` and `WORKDAY.INTL(45000,5,"abc",NA())` are `#N/A` (P31, P33). A day
+  count of 0 still skips the weekend (`WORKDAY.INTL(45000,0,Sheet1:Sheet2!W1)` = 45000, M5).
+- NETWORKDAYS.INTL reads the `weekend` before anything else, and an error-valued one is `#VALUE!`:
+  `NETWORKDAYS.INTL(1/0,45030,NA())`, `NETWORKDAYS.INTL(45000,"x",X1)` and `NETWORKDAYS.INTL(45000,45030,1/0,"y")`
+  are all `#VALUE!` (Q1-Q30), and so is the 3-D weekend whatever the dates (K1-K5, N1-N5). An invalid weekend wins
+  over the dates with its own code: `NETWORKDAYS.INTL(NA(),45030,99)` is `#NUM!`, `NETWORKDAYS.INTL(NA(),45030,"abc")`
+  `#VALUE!` (Q32, Q33).
+- Lifted, each element follows the same order: `INDEX(WORKDAY.INTL(45000,5,{1;#N/A}),2)` is `#NUM!` and
+  `INDEX(WORKDAY.INTL(1/0,5,{1;#N/A}),2)` `#DIV/0!`, while every `INDEX(NETWORKDAYS.INTL(..,{1;#N/A}),2)` is `#VALUE!`
+  (P26-P30, Q26-Q30); `ROWS(WORKDAY.INTL({45000;45001},5,Sheet1:Sheet2!W1))` is 2 (M6, N6).
+- A 3-D `holidays` is `#VALUE!`, also as a branch of IF and in WORKDAY and NETWORKDAYS
+  (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)`, `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`; M9-N13). Unprobed: an IF whose 3-D branch is not taken
+  (`IF(FALSE,Sheet1:Sheet2!A1,A1)`, ours `#VALUE!`) and a 3-D holidays with a day count of 0 (ours the start date).
+- A one-cell `weekend` range is that cell's value (`WORKDAY.INTL(45000,5,W1:W1)` = 45007, 1 row; J7-J9, K7-K9).
+Ours: `Model::weekend_mask` turns an error-valued weekend into the caller's error (`#NUM!` or `#VALUE!`);
+`workday_of` reads the holidays before the weekend and `networkdays_of` reads the weekend first; `holiday_serials`
+refuses a 3-D reference (`is_span_or_if_of_span`) with `#VALUE!` (crates/rustsheet-engine/src/functions/date_and_time/).
+Status: VERIFIED
+Tasks: T-1428
 
 ## TIMEVALUE of chrono-pattern date-time text in a 1904 workbook (T-1445)
 Rule: in a 1904 workbook `TIMEVALUE("7/7/2026 4:35 PM")` and `TIMEVALUE("2024-03-15 16:35")` both give
@@ -722,14 +761,30 @@ excel-graph, 2026-10-18): 2958465.9999942 (23:59:59.499) and 2958465.999994 give
 Status: VERIFIED (web)
 
 ## HOUR, MINUTE and SECOND round to the nearest second
-Rule: SECOND of a time of day 22:24:01.729 is 2: `SECOND(DDB(81074,518,21,6,1))`, where DDB is 3024.9333533459067 (a
-last-digit difference in DDB cannot move it by 0.27 s). So the seconds are rounded, not truncated. Yet
-`SECOND("10:11.5")` is 11 (probes/clock-text-oddities F43), so an exact half does not round up there (tie rule or the
-serial's binary noise). The tie rule and whether the carry reaches MINUTE and HOUR (x:59:59.6, 23:59:59.6) are unprobed.
-Evidence: gen-m9/55fc8c4ffbd7c7cc Calc!A40 (excel-graph, 2026-10-12, T-1289); probes/clock-text-oddities F43 (excel-graph,
-2026-10-06, T-0153).
-Ours: the time is rounded to the millisecond and the seconds truncated (`SECOND(0.5+1.7/86400)` = 1).
-Status: VERIFIED (web) for these two cells; ties and carries UNVERIFIED
+Rule: HOUR, MINUTE and SECOND take the time of day rounded to the nearest second, and the carry goes all the way up:
+- `SECOND(TIME(10,59,59)+0.6/86400)` is 0, MINUTE 0 and HOUR 11.
+- At 23:59:59.6, HOUR, MINUTE and SECOND are all 0.
+- `SECOND("10:11:12.6")` is 13, and `HOUR("23:59:59.6")` is 0.
+- `SECOND(DDB(81074,518,21,6,1))`, at 22:24:01.729, is 2.
+
+All 40 probe cells fit one computation in double precision:
+1. Add half a second to the serial: `y = x + 0.5/86400`.
+2. Take the fraction of the day times 24: `h = (y - floor(y))*24`. HOUR is `floor(h)`.
+3. `m = (h - floor(h))*60`. MINUTE is `floor(m)`.
+4. SECOND is `floor((m - floor(m))*60)`.
+
+So an exact half goes whichever way the binary noise of these steps takes it, not by a fixed tie rule:
+- `SECOND(0.5+1.5/86400)` is 1, `0.5+2.5/86400` 2, `0.5+3.5/86400` 4.
+- `1+1.5/86400` is 2, `45000+1.5/86400` 1, `0.5+59.5/86400` 59.
+- `SECOND("10:11:12.5")` is 12, and `SECOND("10:11.5")` (611.5 s) is 11.
+
+Neither half-up nor half-even on `frac*86400` or `x*86400` fits these ties, and neither does the exact product: it
+lies above `.5` for 2.5 and 59.5, which round down. The fractions .4, .6 and .999 round as expected.
+Evidence: probes/second-rounding A1-A40 (excel-graph, 2026-10-19, T-1408); gen-m9/55fc8c4ffbd7c7cc Calc!A40
+(excel-graph, 2026-10-12, T-1289); probes/clock-text-oddities F43 (excel-graph, 2026-10-06, T-0153).
+Ours: matches since T-1408 (`time_of_day_parts`, functions/date_and_time.rs). Before, MINUTE and SECOND rounded to the
+millisecond and then truncated, and HOUR truncated.
+Status: VERIFIED (excel-graph)
 Tasks: T-1408
 
 ## YEARFRAC swaps reversed dates
@@ -747,9 +802,10 @@ Tasks: T-1354, T-1826
 Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
 `#VALUE!`) is `#VALUE!`, not the `#NUM!` of a negative date.
 Evidence: gen-m7/f68fafa0ca2eba26 Calc!A1 (`Data!D10^DATEDIF((Data!E$5+(-1)),38627,CHOOSE(3,Data!B12))`, E5 blank) (excel-graph, 2026-10-11, T-1275).
-Ours: once start <= end, the unit's error wins over any start or end date outside the calendar (T-1355); a reversed pair still gives `#NUM!` first.
-Status: VERIFIED (web) for a negative start date with an in-range end; UNVERIFIED: an out-of-range high end date or an ordered pair of negative dates with an error unit, an invalid unit text with a negative start date, and an error unit with a reversed pair
-Tasks: T-1355
+Ours: the unit's error wins over a reversed pair and over any date outside the calendar (T-1355, T-1430).
+Status: VERIFIED (web); the reversed pair, a high out-of-calendar date, a negative end and an invalid unit text with a
+negative start are answered in "DATEDIF and DAYS360 error order with a bad unit or method" (probes/datedif-days360-error-order, T-1430)
+Tasks: T-1355, T-1430
 
 ## WEEKDAY: date text with literal quote characters is #VALUE!, even with an error return_type
 Date text whose string value contains the double-quote characters themselves (`"07/01/2026"` as text, quotes included) does not parse as a date, so WEEKDAY's date argument is `#VALUE!` and wins over an error `return_type` (`1/0`, `NA()`), by the left-to-right rule in arrays.md.
@@ -775,3 +831,48 @@ that element only (`EDATE(45000,{TRUE;2})` = {`#VALUE!`; 45061}, `EOMONTH(45000,
 Ours: matches, all 175 cells pass since WORKDAY, WORKDAY.INTL, NETWORKDAYS and NETWORKDAYS.INTL lift (T-1236).
 Status: VERIFIED (excel-graph)
 Tasks: T-1807, T-1236
+
+## WORKDAY and NETWORKDAYS from serial 0
+Rule (VERIFIED, probes/workday-serial-zero, excel-graph, 2026-10-19, T-1254): WORKDAY, WORKDAY.INTL, NETWORKDAYS and
+NETWORKDAYS.INTL take serial 0 (Saturday 0 January 1900) as a start date, an end date, a holiday and a result, on the
+weekday-faithful calendar where serial 1 is a Sunday; a negative serial is still `#NUM!`.
+- `NETWORKDAYS(0,10)` = 7, `NETWORKDAYS(10,0)` = -7, `NETWORKDAYS(0,0)` = 0, `NETWORKDAYS(0,7872)` = 5623,
+  `NETWORKDAYS.INTL(0,10,11)` = 9 (Sunday-only weekend: serial 0 counts), `NETWORKDAYS.INTL(44900,0.2)` = -32071 (the end
+  truncates to 0), `NETWORKDAYS(-1,10)` `#NUM!` (F1:F5, F20:F23, F42).
+- `WORKDAY(0,5)` = 6, `WORKDAY(10,-6)` = 2, `WORKDAY(10,-7)` `#NUM!` (it would land on -1; serial 0 is a weekend day),
+  `WORKDAY.INTL(10,-7,11)` = 2, `WORKDAY.INTL(1,-1,"0000000")` = 0, `WORKDAY.INTL(0,-1,"0000000")` `#NUM!`,
+  `WORKDAY(-1,1)` `#NUM!` (F6:F14, F24:F30, F41, F43:F44).
+- A holiday of 0 is accepted: `WORKDAY(28131,-16,0)` = 28109, `NETWORKDAYS(1,10,0)` = 7 (F15:F18, F23, F28).
+- **A day count of 0 returns the start date without reading the weekend or the holidays** (the count truncates toward
+  negative infinity first: 0.4 is 0, -0.5 is -1). `WORKDAY(33393,0,{"a",0.3})`, `WORKDAY(33393,0,-1)`,
+  `WORKDAY(33393,0,NA())`, `WORKDAY(33393,0,1/0)`, `WORKDAY(33393,0.4,{"a"})`, `WORKDAY.INTL(33393,0,"1111111")`,
+  `WORKDAY.INTL(33393,0,"x")` and `WORKDAY(0,0,"a")` all return the start date (33393 or 0), while
+  `WORKDAY(33393,1,{"a",0.3})`, `WORKDAY(33393,-0.5,{"a"})` (-1 days) and `WORKDAY(33393,1,D1:D4)` (a text cell) are
+  `#VALUE!`, and `WORKDAY(33393,1,-1)` is `#NUM!`. The start date is still checked: `WORKDAY(-1,0)` is `#NUM!`
+  (F31:F38, F45:F58). NETWORKDAYS has no such shortcut: `NETWORKDAYS(33393,33393,{"a"})` and
+  `NETWORKDAYS(33393,33400,D1:D4)` are `#VALUE!` (F35, F37, F39, F56).
+- `WORKDAY(10,-0.5)` = 9 and `WORKDAY(10,0.5)` = 10 (F53:F54).
+Implemented in: `DateSystem::date_of_serial_from_zero` (formatter/dates.rs), which `Model::excel_date`
+(functions/date_and_time.rs) reads for every WORKDAY and NETWORKDAYS date and holiday, and the zero-day shortcut and
+lower walk bound in `Model::workday_of` / `Model::step_workdays` (functions/date_and_time/workday.rs).
+Tasks: T-1254
+
+## Typed date plus clock with a single-letter A or P suffix is a number (T-1994)
+Rule: typed text `<date> <clock> A` or `P` (any case, space before the letter) is a number with
+`m/d/yyyy h:mm`, like `AM`/`PM`: `1/2/2020 10:00 A` = 43832.41666..., `10:00 P` = 43832.91666...,
+`10 A` and `10:00:30 A` too, `July 1, 2026 10:00 A` = 46204.41666.... The letter does not extend to
+a glued suffix (`10:00A`, General text) or a doubled one (`10:00 A A`, General text); an out-of-range
+hour (`13:00 A`) stays text with the date's format `m/d/yyyy`. Evidence: probes/date-text-single-letter-ap
+N1-N8, N10, N11 (excel-graph 2026-10-19), probes/date-text-rejected-clock-formats N7.
+A trailing dot after the letter is accepted wherever the letter is: typed `1/2/2020 10:00 A.` is 43832.41666... with
+`m/d/yyyy h:mm` (N12), so are `1/2/2020 10 A.` and `1/2/2020 10:00:30 P.` (N17, N18), and
+`1/2/2020 13:00 A.` stays text with `m/d/yyyy` (N16). A bare typed clock with the letter is a time of day:
+`10:00 A`, `10:00 p`, `10:00 A.`, `10 A` and `10:00 AM` are 0.41666... (0.91666... for p) with `h:mm AM/PM`,
+but `10:00:30 A` is 0.41701... with `h:mm:ss AM/PM` (N9, N13-N15, N19, N20; excel-graph 2026-10-19, T-2011).
+Further bare shapes (N21-N29, T-2053): `10 A.`, `10 AM` and `10 PM` are numbers with `h:mm AM/PM`; `0:00 A` and
+`12:00 A` are 0 with `h:mm AM/PM`; `10:00:30 AM` has `h:mm:ss AM/PM`; a fractional second keeps its own format,
+`10:00:30.5 A` is 0.41701... and `10:00.5 A` 0.00695... with `mm:ss.0`; bare `13:00 A` stays text with General.
+Status: VERIFIED (web)
+Implemented in: `typed_clock_shape`, `rejected_clock_text_format`, `parse_typed_number`, `parse_bare_letter_clock` and `without_single_letter_dot` in `crates/rustsheet-engine/src/formatter/parse_formatted.rs`
+Evidence note: docs/research/single-letter-ap-typed-clock-2026-10-19.md
+Tasks: T-1994, T-2011

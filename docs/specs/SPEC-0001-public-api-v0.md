@@ -104,7 +104,7 @@ pub struct Array { /* rows, cols, row-major Vec<Value> */ }   // returned by val
 ### Workbook
 ```rust
 pub struct Workbook { /* owns engine Model; Send, !Sync */ }
-pub struct WorkbookOptions { pub max_read_cells: u64, pub locale: String /* "en-US" */, pub timezone: String /* "UTC" */, pub language: String /* "en" */ }
+pub struct WorkbookOptions { pub max_read_cells: u64, pub locale: String /* "en-US" */, pub timezone: String /* "UTC" */, pub language: String /* "en" */, /* … */ pub name: Option<String> /* file name without .xlsx, for CELL; None = unnamed (T-2042) */ }
 pub struct LoadOptions { pub recalc: bool /* default true */, pub workbook: WorkbookOptions, pub max_uncompressed_bytes: u64, pub max_zip_entries: u32 }
 pub struct SaveOptions {}                                      // placeholder, #[non_exhaustive]
 pub struct SheetMeta { pub id: SheetId, pub name: String, pub index: u32 }

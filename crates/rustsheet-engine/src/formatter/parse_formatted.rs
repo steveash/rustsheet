@@ -1,17 +1,25 @@
 //! Reading typed text as a number together with the format it implies ("$1,234.50" ->
 //! (1234.5, "$#,##0.00")), split from format.rs, which renders numbers.
 
-use crate::{
-    functions::date_and_time::time_text::parse_date_clock_serial_in, locale::Locale,
-    number_format::parse_excel_number, types::DateSystem,
+use crate::{locale::Locale, number_format::parse_excel_number, types::DateSystem};
+
+use super::{
+    date_clock::{parse_clock_text, parse_date_clock_serial_in, parse_hour_only_am_pm},
+    date_text::{parse_date, CurrentYear},
+    lexer::is_likely_date_number_format,
 };
 
-use super::date_text::{parse_date, CurrentYear};
-
 /// Format Excel gives typed date+time text (probes/date-text-glued-month-2 N8, excel-graph
-/// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Only that shape is probed; the
-/// format of other typed clocks is UNVERIFIED and they stay text; so is every non-glued date shape given this format (T-1952) (docs/excel-semantics/dates.md).
+/// 2026-10-18: `July1 10:00` -> 46204.41666..., `m/d/yyyy h:mm`). Non-glued dates and clocks with
+/// seconds or AM/PM get the same format (probes/date-text-non-glued-timevalue, T-1952;
+/// docs/research/non-glued-typed-input-2026-10-19.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
+
+/// Format of a typed clock with a fractional second (`10:00:30.5`, `10:00.5`).
+const FRACTION_CLOCK_FORMAT: &str = "mm:ss.0";
+
+/// Format of a bare typed clock with a single-letter A/P suffix (`10:00 A`).
+const BARE_CLOCK_AM_PM_FORMAT: &str = "h:mm AM/PM";
 
 /// [`parse_formatted_number`] for text typed into a cell, which also reads date+time text
 /// (coercion reads that through `parse_time_serial` instead).
@@ -23,27 +31,180 @@ pub(crate) fn parse_typed_number(
     date_system: DateSystem,
 ) -> Result<(f64, Option<String>), String> {
     parse_formatted_number(original, currencies, locale, current_year, date_system).or_else(|err| {
-        if !ends_with_hour_minute_clock(original) {
-            return Err(err);
+        let text = without_single_letter_dot(original);
+        if let Some(parsed) = parse_bare_letter_clock(text) {
+            return Ok(parsed);
         }
-        parse_date_clock_serial_in(original, locale, current_year, date_system)
-            .map(|serial| (serial, Some(TYPED_DATE_CLOCK_FORMAT.to_string())))
+        let Some(shape) = typed_clock_shape(text) else {
+            return Err(err);
+        };
+        parse_date_clock_serial_in(text, locale, current_year, date_system)
+            .map(|serial| (serial, shape.format()))
             .ok_or(err)
     })
 }
 
-/// Whether the text's last word is an `H:MM` / `HH:MM` clock with an hour below 24: the only typed
-/// clock shape probed. Seconds, AM/PM, hours past 23 and fractions are UNVERIFIED and stay text.
-fn ends_with_hour_minute_clock(text: &str) -> bool {
-    let Some((hour, minute)) = text.rsplit(' ').next().and_then(|c| c.split_once(':')) else {
-        return false;
+/// A bare typed clock with an `A`/`P` or `AM`/`PM` suffix as a time of day with its AM/PM clock
+/// format: `10:00 A`, `10:00 AM` and `10 A` are `h:mm AM/PM`, `10:00:30 A` is `h:mm:ss AM/PM`
+/// (probes/date-text-single-letter-ap N9, N13-N15, N19-N29). A fractional second takes `mm:ss.0`,
+/// as without the suffix (N24-N25, T-2053).
+fn parse_bare_letter_clock(text: &str) -> Option<(f64, Option<String>)> {
+    let (clock, word) = text.rsplit_once(' ')?;
+    let ap_word = is_single_letter_ap(word)
+        || word.eq_ignore_ascii_case("am")
+        || word.eq_ignore_ascii_case("pm");
+    if clock.contains(' ') || !ap_word {
+        return None;
+    }
+    let serial = parse_clock_text(text).or_else(|| parse_hour_only_am_pm(text))?;
+    let format = if clock.contains('.') {
+        FRACTION_CLOCK_FORMAT
+    } else if clock.matches(':').count() == 2 {
+        "h:mm:ss AM/PM"
+    } else {
+        BARE_CLOCK_AM_PM_FORMAT
     };
+    Some((serial, Some(format.to_string())))
+}
+
+/// `text` without the dot after a trailing single-letter `A`/`P` suffix (`10:00 A.` -> `10:00 A`):
+/// typed text accepts it (probes/date-text-single-letter-ap N12).
+fn without_single_letter_dot(text: &str) -> &str {
+    match text
+        .strip_suffix('.')
+        .and_then(|rest| rest.rsplit_once(' '))
+    {
+        Some((rest, word)) if is_single_letter_ap(word) => &text[..rest.len() + 1 + word.len()],
+        _ => text,
+    }
+}
+
+fn is_single_letter_ap(word: &str) -> bool {
+    word.eq_ignore_ascii_case("a") || word.eq_ignore_ascii_case("p")
+}
+
+/// Cell format of typed text that stays text because its clock is rejected: a date followed by a
+/// number-like clock and a spaced `AM`/`PM` or single-letter `A`/`P` (`1/2/2020 13:00 PM`, `13 PM`, `1300 PM`, `99:00 PM`)
+/// carries the format of its date part (`m/d/yyyy`, `d-mmm-yy` for `July 1, 2026 13:00 PM`), while
+/// a glued `10:00AM`, `10:00 XM`, `10:00 PM PM`, a clock with no date and `1/2/2020 abc` stay
+/// General (probes/date-text-typed-clock-shapes N14-N15, date-text-rejected-clock-formats N1-N16;
+/// formats in docs/research/rejected-clock-text-formats-2026-10-19.md).
+pub(crate) fn rejected_clock_text_format(
+    original: &str,
+    currencies: &[&str],
+    locale: &Locale,
+    current_year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<String> {
+    let (rest, word) = without_single_letter_dot(original).rsplit_once(' ')?;
+    if !["am", "pm", "a", "p"]
+        .iter()
+        .any(|s| word.eq_ignore_ascii_case(s))
+    {
+        return None;
+    }
+    let rest = rest.trim_end_matches(' ');
+    let (date, clock) = rest.rsplit_once(' ')?;
+    if !clock.bytes().all(|b| b.is_ascii_digit() || b == b':')
+        || !clock.bytes().any(|b| b.is_ascii_digit())
+    {
+        return None;
+    }
+    parse_formatted_number(
+        date.trim_end_matches(' '),
+        currencies,
+        locale,
+        current_year,
+        date_system,
+    )
+    .ok()
+    .and_then(|(_, format)| format)
+    // Only a date part counts: a percent, currency or grouped number before the clock is unprobed.
+    .filter(|format| is_likely_date_number_format(format))
+    // An ISO date gets `m/d/yyyy` here (N10), not the `yyyy-mm-dd` the engine gives a bare typed
+    // ISO date (bare typed ISO dates are unprobed).
+    .map(|format| {
+        if format == "yyyy-mm-dd" {
+            "m/d/yyyy".to_string()
+        } else {
+            format
+        }
+    })
+}
+
+/// Number format a typed clock shape gets (`None` is General).
+enum TypedClock {
+    /// `H:MM[:SS]` with an in-range value, with or without `AM`/`PM`/`A`/`P`, or hour-only `H AM`.
+    Time,
+    /// A fractional second (`H:MM:SS.f`, `M:SS.f`).
+    Fraction,
+    /// A component out of its usual range (hour from 24, minute or second from 60).
+    OutOfRange,
+}
+
+impl TypedClock {
+    fn format(&self) -> Option<String> {
+        match self {
+            Self::Time => Some(TYPED_DATE_CLOCK_FORMAT.to_string()),
+            Self::Fraction => Some(FRACTION_CLOCK_FORMAT.to_string()),
+            Self::OutOfRange => None,
+        }
+    }
+}
+
+/// Classifies the clock at the end of typed date+clock text: `H:MM`, `H:MM:SS`, `H:MM:SS.f` or
+/// `M:SS.f`, optionally followed by spaces and `AM`/`PM`/`A`/`P` in any case (probes/date-text-single-letter-ap,
+/// T-1994), or an hour-only `H AM`.
+/// Probed (probes/date-text-non-glued-timevalue rows 11-17, date-text-typed-clock-shapes,
+/// excel-graph; formats in docs/research/typed-clock-shapes-2026-10-19.md): all of these become
+/// numbers, with `m/d/yyyy h:mm` except a fraction (`mm:ss.0`) and an out-of-range component
+/// (General); a glued `10:00AM` and `13:00 PM` stay text.
+fn typed_clock_shape(text: &str) -> Option<TypedClock> {
+    let mut text = text.trim_end_matches(' ');
+    let mut suffixed = false;
+    if let Some((rest, word)) = text.rsplit_once(' ') {
+        if ["am", "pm", "a", "p"]
+            .iter()
+            .any(|s| word.eq_ignore_ascii_case(s))
+        {
+            suffixed = true;
+            text = rest.trim_end_matches(' ');
+        }
+    }
+    let clock = text.rsplit(' ').next().unwrap_or("");
     let digits =
         |s: &str, max: usize| (1..=max).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_digit());
-    digits(hour, 2)
-        && minute.len() == 2
-        && digits(minute, 2)
-        && hour.parse::<u32>().is_ok_and(|h| h < 24)
+    if suffixed && digits(clock, 2) && clock != text {
+        return Some(TypedClock::Time);
+    }
+    let (clock, fraction) = match clock.split_once('.') {
+        Some((head, f)) if digits(f, 9) => (head, true),
+        Some(_) => return None,
+        None => (clock, false),
+    };
+    let mut parts = clock.split(':');
+    let (Some(first), Some(second), third, None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
+        return None;
+    };
+    let two = |s: &str| s.len() == 2 && digits(s, 2);
+    if !digits(first, 2) || !two(second) || third.is_some_and(|s| !two(s)) {
+        return None;
+    }
+    let value = |s: &str| s.parse::<u32>().unwrap_or(u32::MAX);
+    let (hour, minute, sec) = match third {
+        Some(s) => (value(first), value(second), value(s)),
+        None if fraction => (0, value(first), value(second)),
+        None => (value(first), value(second), 0),
+    };
+    if fraction {
+        Some(TypedClock::Fraction)
+    } else if hour >= 24 || minute >= 60 || sec >= 60 {
+        Some(TypedClock::OutOfRange)
+    } else {
+        Some(TypedClock::Time)
+    }
 }
 
 /// Parses a formatted number, returning the numeric value together with the format

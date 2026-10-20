@@ -3,7 +3,7 @@ id: T-1898
 title: "Spec: a PCRE2-compatible backtracking matcher for the REGEX functions"
 milestone: M7
 lane: functions-text
-status: blocked
+status: done
 priority: P2
 size: M
 tier: opus
@@ -19,7 +19,7 @@ Found by T-1688. Excel's REGEX* functions are PCRE2: probes/regex-pcre2-features
 ## Acceptance criteria
 - [x] docs/specs/ has the spec, with a decision record if it adds a dependency.
 - [x] The implementation is split into S/M tasks (T-1899 and T-1900 are rewritten or replaced to follow it).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the matcher.
@@ -37,32 +37,18 @@ SPEC-0013 (docs/specs/SPEC-0013-pcre2-regex-matcher.md) is accepted. Its design:
 - `pcre2` (C FFI, wasm32, unsafe) and `fancy-regex` (Rust dialect and iteration, separate limit) were rejected.
 
 Split, in order:
-1. T-1972, probe (research, sonnet), which now also holds T-1903's per-class POSIX probe;
-2. T-1973, parser (opus, M; depends on the T-1830 benchmarks), then T-1903 (rewritten, S: POSIX classes in the new parser);
+1. T-1972, probe (research, sonnet; T-1903's per-class POSIX probe landed with T-1903 on main);
+2. T-1973, parser (opus, M; depends on the T-1830 benchmarks), carrying over T-1903's POSIX mapping (done on main);
 3. T-1900, backtracker (rewritten; depends on T-1973);
 4. T-1899, iteration (rewritten, S; depends on T-1900);
 5. T-1974, costs, benchmarks and fuzz (perf).
 
 No eval change (docs only).
 
-## Blocked because
-The review hit its 3-round limit (work-loop step 5). One verdict is missing: the performance reviewer's final
-re-review.
-
-Verdicts on head 30135095 and later:
-| reviewer | verdict |
-|---|---|
-| security | APPROVE (at c17d37cc) |
-| architecture | APPROVE (round 1, diff unchanged in scope since) |
-| quality | APPROVE (at 30135095) |
-| performance | REQUEST_CHANGES (round 3) |
-
-Performance round 3 found one correctness rule missing from the memoized mode: a successful match must invalidate the
-visited marks at or before its end. Security raised the same point as a minor finding. The rule is now in SPEC-0013
-section 3 and T-1899, and T-1974 holds the memoized-mode DEVIATION.
-
-To unblock:
-1. Run the performance reviewer (and quality and architecture, since the spec changed after their approval) on
-   `git diff origin/main...HEAD` of this branch (PR #1167).
-2. If all approve, set `status: done`, tick the box, and merge.
-
+## Outcome
+SPEC-0013 (docs/specs/SPEC-0013-pcre2-regex-matcher.md) and the split above. Security, architecture and quality
+approved. The performance reviewer's round-3 finding (a successful match must invalidate the memoized visited marks at
+or before its end) is in SPEC-0013 section 3 and T-1899, and T-1974 holds the memoized-mode DEVIATION. No final
+performance verdict was taken: the owner turned the performance reviewer off and asked to merge (decision 0081,
+2026-10-20). T-1903 landed on main first (POSIX classes through a pre-compile rewrite, `regex_posix.rs`); the spec,
+T-1972 and T-1973 now carry that mapping over instead of re-probing it.

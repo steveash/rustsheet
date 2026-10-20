@@ -22,8 +22,8 @@ use crate::{
 /// (right-to-left square-and-multiply for an integer `n`). With [`annuity_factor`] this matches all
 /// 308 PV and 308 FV cells of probes-numeric/m9-fin-pv-fv (docs/excel-semantics/financial.md
 /// "Annuity evaluation order"; fit lab `annuity-pv`, `annuity-fv`, T-1524).
-fn annuity_power(rate: f64, nper: f64) -> Result<f64, (Error, String)> {
-    power(extended_sum(1.0, rate), nper).map_err(|error| (error, "Invalid result".to_string()))
+fn annuity_power(rate: f64, nper: f64) -> Result<f64, Error> {
+    power(extended_sum(1.0, rate), nper)
 }
 
 /// The annuity factor `k*((P-1)/r)`, `k = 1+r*type`, evaluated in doubles in exactly this
@@ -33,37 +33,75 @@ fn annuity_factor(rate: f64, p: f64, period_start: bool) -> f64 {
     k * ((p - 1.0) / rate)
 }
 
+/// PMT's `P = (1+rate)^nper` (1 for no periods).
+fn payment_growth(rate: f64, nper: f64) -> f64 {
+    if nper == 0.0 {
+        1.0
+    } else {
+        (1.0 + rate).powf(nper)
+    }
+}
+
+/// PMT's fitted quotient for `P = rate_nper`; not finite when `pv*P` overflows.
+fn fitted_payment(rate: f64, rate_nper: f64, pv: f64, fv: f64, period_start: bool) -> f64 {
+    if period_start {
+        // type = 1
+        (fv + pv * rate_nper) * rate / ((1.0 + rate) * (1.0 - rate_nper))
+    } else {
+        (fv * rate + pv * rate * rate_nper) / (1.0 - rate_nper)
+    }
+}
+
+/// Whether PMT's fitted quotient overflows for a positive `rate` and `fv` 0, where
+/// [`compute_payment`] falls back to its divided-through form. CUMIPMT and CUMPRINC then take
+/// their closed form instead of summing IPMT/PPMT, as Excel does (probes/fin-cumipmt-period-bound
+/// A13-A19).
+pub(super) fn payment_overflows(rate: f64, nper: f64, pv: f64, period_start: bool) -> bool {
+    !fitted_payment(rate, payment_growth(rate, nper), pv, 0.0, period_start).is_finite()
+}
+
 fn compute_payment(
     rate: f64,
     nper: f64,
     pv: f64,
     fv: f64,
     period_start: bool,
-) -> Result<f64, (Error, String)> {
+) -> Result<f64, Error> {
     if rate == 0.0 {
         if nper == 0.0 {
-            return Err((Error::NUM, "Period count must be non zero".to_string()));
+            return Err(Error::NUM);
         }
         return Ok(-(pv + fv) / nper);
     }
     if rate <= -1.0 {
-        return Err((Error::NUM, "Rate must be > -1".to_string()));
+        return Err(Error::NUM);
     };
-    let rate_nper = if nper == 0.0 {
-        1.0
-    } else {
-        (1.0 + rate).powf(nper)
-    };
-    let result = if period_start {
-        // type = 1
-        (fv + pv * rate_nper) * rate / ((1.0 + rate) * (1.0 - rate_nper))
-    } else {
-        (fv * rate + pv * rate * rate_nper) / (1.0 - rate_nper)
-    };
-    if result.is_nan() || result.is_infinite() {
-        return Err((Error::NUM, "Invalid result".to_string()));
+    let rate_nper = payment_growth(rate, nper);
+    // A `(1+rate)^nper` so small that its reciprocal overflows (0 or 2^-1070) is #NUM!, whatever
+    // fv and type are, for PMT and so IPMT, PPMT and CUMIPMT (`PMT(-0.5,2000,1)`,
+    // `PMT(-0.5,1070,0,5)`; probes/pmt-overflow A14, A15, E1:E8, excel-graph, T-1405).
+    let inverse = 1.0 / rate_nper;
+    if !inverse.is_finite() {
+        return Err(Error::NUM);
     }
-    Ok(result)
+    let result = fitted_payment(rate, rate_nper, pv, fv, period_start);
+    if result.is_finite() {
+        return Ok(result);
+    }
+    // When `pv*P` overflows (P itself infinite or not), Excel gives the same quotient divided
+    // through by P, whose limit is `-pv*rate` (`/(1+rate)` for type 1) and in which fv vanishes:
+    // `PMT(100,184,439103)` is -43910300 and `PMT(100,153,1)` is -100 (probes/pmt-overflow,
+    // excel-graph, T-1405). The fitted form above stays first, so finite results keep its digits.
+    let result = if period_start {
+        (fv * inverse + pv) * rate / ((1.0 + rate) * (inverse - 1.0))
+    } else {
+        (fv * rate * inverse + pv * rate) / (inverse - 1.0)
+    };
+    if result.is_finite() {
+        Ok(result)
+    } else {
+        Err(Error::NUM)
+    }
 }
 
 /// Which formulation [`compute_future_value`] uses.
@@ -85,12 +123,12 @@ fn compute_future_value(
     pv: f64,
     period_start: bool,
     form: FutureValueForm,
-) -> Result<f64, (Error, String)> {
+) -> Result<f64, Error> {
     if rate == 0.0 {
         return Ok(-pv - pmt * nper);
     }
     if rate == -1.0 && nper < 0.0 {
-        return Err((Error::DIV, "Divide by zero".to_string()));
+        return Err(Error::DIV);
     }
 
     let fv = match form {
@@ -109,10 +147,10 @@ fn compute_future_value(
         }
     };
     if fv.is_nan() {
-        return Err((Error::NUM, "Invalid result".to_string()));
+        return Err(Error::NUM);
     }
     if !fv.is_finite() {
-        return Err((Error::DIV, "Divide by zero".to_string()));
+        return Err(Error::DIV);
     }
     Ok(fv)
 }
@@ -124,7 +162,7 @@ pub(super) fn compute_ipmt(
     present_value: f64,
     future_value: f64,
     period_start: bool,
-) -> Result<f64, (Error, String)> {
+) -> Result<f64, Error> {
     // http://www.staff.city.ac.uk/o.s.kerr/CompMaths/WSheet4.pdf
     // https://www.experts-exchange.com/articles/1948/A-Guide-to-the-PMT-FV-IPMT-and-PPMT-Functions.html
     // type = 0 (end of period)
@@ -140,10 +178,7 @@ pub(super) fn compute_ipmt(
         period_start,
     )?;
     if period < 1.0 || period >= period_count + 1.0 {
-        return Err((
-            Error::NUM,
-            format!("Period must be between 1 and {}", period_count + 1.0),
-        ));
+        return Err(Error::NUM);
     }
     if period == 1.0 && period_start {
         Ok(0.0)
@@ -173,7 +208,7 @@ pub(super) fn compute_ppmt(
     present_value: f64,
     future_value: f64,
     period_start: bool,
-) -> Result<f64, (Error, String)> {
+) -> Result<f64, Error> {
     let payment = compute_payment(
         rate,
         period_count,
