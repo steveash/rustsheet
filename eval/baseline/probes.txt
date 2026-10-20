@@ -706,6 +706,7 @@ C	probes/reference-lift-consumers-b1d.case.json	7
 C	probes/reference-lift-consumers-b2.case.json	36
 C	probes/reference-lift-consumers.case.json	76
 C	probes/reference-lift-elements.case.json	59
+C	probes/reference-lift-pass-through-b.case.json	10
 C	probes/reference-lift-pass-through.case.json	38
 C	probes/regex-ascii-classes.case.json	42
 C	probes/regex-optional-args.case.json	149

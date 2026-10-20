@@ -1,7 +1,7 @@
 //! OFFSET: a reference moved and resized from another, lifted into an array of references when
 //! rows, cols, height or width is an array or a multi-cell range (SPEC-0014; T-1956).
 
-use super::ref_lift::lifts;
+use super::ref_lift::{lifts, may_hand_on_grid};
 use crate::calc_result::{CalcResult, Range};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
@@ -10,7 +10,7 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{ArgBuf, LiftedArg};
 use crate::model::Model;
-use crate::reference_operators::{may_hand_on_grid, RefArg, RefElement, RefGrid};
+use crate::reference_operators::{RefArg, RefElement, RefGrid};
 
 /// OFFSET's reference argument ([`Model::offset_source`]).
 enum Source {

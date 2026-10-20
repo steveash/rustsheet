@@ -1,0 +1,34 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "LET, IF and nested OFFSET over a lifted INDIRECT or TRIMRANGE, as reference-lift-pass-through does for OFFSET, with A1=1, A2=100, A3=10000 (T-2078).",
+ "tags": [
+  "M6",
+  "probe",
+  "indirect",
+  "let"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1,
+    "A2": 100,
+    "A3": 10000,
+    "B1": 2,
+    "B2": 200,
+    "B3": 20000,
+    "E1": "=LET(x,INDIRECT({\"A1\";\"A2\"}),INDEX(x,2,1))",
+    "E2": "=LET(x,INDIRECT({\"A1\";\"A2\"}),ROWS(x))",
+    "E3": "=LET(x,INDIRECT({\"A1\";\"A2\"}),SUM(x))",
+    "E4": "=ROWS(OFFSET(INDIRECT({\"A1\";\"A2\"}),1,0))",
+    "E5": "=SUM(OFFSET(INDIRECT({\"A1\";\"A2\"}),1,0))",
+    "E6": "=LET(x,TRIMRANGE(A1:B3,{0;1}),ROWS(x))",
+    "E7": "=LET(x,TRIMRANGE(A1:B3,0,{0;1}),SUM(INDEX(x,2,1)))",
+    "E8": "=SUM(OFFSET(TRIMRANGE(A1:B3,0,{0;1}),1,0))",
+    "E9": "=SUMPRODUCT(LET(x,INDIRECT({\"A1\";\"A2\"}),x))",
+    "E10": "=INDEX(IF(TRUE,INDIRECT({\"A1\";\"A2\"})),2,1)"
+   }
+  }
+ ],
+ "expected": {}
+}

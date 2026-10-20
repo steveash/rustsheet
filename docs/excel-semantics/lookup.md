@@ -734,10 +734,14 @@ With A1 = 1, A2 = 100, A3 = 10000:
   and SUMPRODUCT reads each element as 0 through IF, CHOOSE and LET (`SUMPRODUCT(IF(TRUE,OFFSET(A1,{0;1},0)))` 0).
 - OFFSET over the array lifts again, broadcast with its own lifted arguments: `ROWS(OFFSET(OFFSET(A1,{0;1},0),1,0))`
   is 2, its SUM 10100, `SUM(OFFSET(OFFSET(A1,{0;1},0),{0,1},0))` 10201 (a 2x2), `SUM(OFFSET(OFFSET(A1,0,0,{1;2}),1,0))`
-  200 (each moved element keeps its size), also over a variable, IF, CHOOSE or LET; an error element stays itself
+  200 (SUM reads each moved element's top-left cell, A2 twice), also over a variable, IF, CHOOSE or LET; an error element stays itself
   (`ERROR.TYPE(INDEX(OFFSET(OFFSET(A1,{0;-1},0),1,0),2,1))` 4) and spilled the result is `#VALUE!` per element.
-Evidence: probes/reference-lift-consumers E89, E145, E149, reference-lift-consumers-b1c E77, E81, E209 (excel-graph,
-2026-10-19, T-1955); probes/reference-lift-pass-through E1-E34, G1, H1 (excel-graph, 2026-10-20, T-2078).
+- INDIRECT and TRIMRANGE grids do the same: `LET(x,INDIRECT({"A1";"A2"}),INDEX(x,2,1))` is 100, its ROWS 2, its SUM
+  101, `SUM(OFFSET(INDIRECT({"A1";"A2"}),1,0))` 10100, `SUMPRODUCT(LET(x,INDIRECT(..),x))` 0,
+  `LET(x,TRIMRANGE(A1:B3,0,{0;1}),SUM(INDEX(x,2,1)))` 30303 and `SUM(OFFSET(TRIMRANGE(A1:B3,0,{0;1}),1,0))` 200.
+Evidence: probes/reference-lift-consumers E89, E145, E149, E209, reference-lift-consumers-b1c E77, E81 (excel-graph,
+2026-10-19, T-1955); probes/reference-lift-pass-through E1-E34, G1, H1, reference-lift-pass-through-b E1-E10
+(excel-graph, 2026-10-20, T-2078).
 Status: VERIFIED (excel-graph)
 Implemented in: `Binding::Grid` (variable_stack.rs), bound by `Model::bind_argument` and read by
 `Model::variable_reference` (functions/logical/let.rs); `Model::evaluate_value_or_grid` (functions/util.rs) for

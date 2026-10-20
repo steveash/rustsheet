@@ -234,25 +234,6 @@ impl RefArg {
     }
 }
 
-/// Whether `node` may stand for an array of references (SPEC-0014 rule 7): a call to a producer
-/// (OFFSET, INDIRECT, TRIMRANGE), an IF, CHOOSE or LET that may hand one on, or a variable. Read
-/// without evaluating, so a consumer asks for the grid only where one can come.
-pub(crate) fn may_hand_on_grid(node: &Node) -> bool {
-    matches!(
-        node.ungrouped(),
-        Node::NamedVariableKind { .. }
-            | Node::FunctionKind {
-                kind: Function::Offset
-                    | Function::Indirect
-                    | Function::Trimrange
-                    | Function::If
-                    | Function::Choose
-                    | Function::Let,
-                ..
-            }
-    )
-}
-
 /// One element of an array of references: the reference a scalar call returned, or its error.
 #[derive(Clone)]
 pub(crate) enum RefElement {

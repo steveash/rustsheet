@@ -13,8 +13,9 @@ use crate::{
 
 /// What a LET variable or a LAMBDA parameter is bound to: a value (a single reference
 /// included), the areas of a union, a 3-D span, or an array of references. Only reference
-/// context reads the last three as such ([`Model::variable_reference`]); everywhere else they are `#VALUE!`, as `LET(x,(A1,B2),x)`
-/// is (probes/multiarea-let H3) and as the bare span is (`LET(x,Data1:Data3!A1,x)`,
+/// context reads the last three as such ([`Model::variable_reference`]); everywhere else the
+/// first two are `#VALUE!`, as `LET(x,(A1,B2),x)` is (probes/multiarea-let H3) and as the bare
+/// span is (`LET(x,Data1:Data3!A1,x)`,
 /// `INDEX(x,1)`, `ROWS(x)`: probes/3d-ref-let-bound-span, T-1158).
 #[derive(Clone)]
 pub(crate) enum Binding {

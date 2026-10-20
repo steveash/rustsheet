@@ -260,12 +260,7 @@ impl Model {
                 kind: Function::Trimrange,
                 args,
             } => self.trimrange_reference(args, cell, true),
-            Node::NamedVariableKind { id: Some(id), .. }
-                if matches!(
-                    self.variable_stack.get(*id as usize),
-                    Some(Binding::Grid(_))
-                ) =>
-            {
+            Node::NamedVariableKind { .. } if self.is_grid_variable(node) => {
                 self.variable_reference(node, cell)
             }
             _ if !is_span && !is_picked && !self.is_multi_area(node) => {
@@ -311,7 +306,8 @@ impl Model {
     }
 
     /// A LET variable or LAMBDA parameter in reference context: a union binding is its areas, a
-    /// 3-D span its range, an array of references itself (an `Arc` clone), anything else what [`Model::variable_value`] gives.
+    /// 3-D span its range, an array of references itself (an `Arc` clone), anything else what
+    /// [`Model::variable_value`] gives.
     pub(crate) fn variable_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> RefArg {
         if let Node::NamedVariableKind { id: Some(id), .. } = node {
             match self.variable_stack.get(*id as usize) {
@@ -322,5 +318,12 @@ impl Model {
             }
         }
         RefArg::from(self.variable_value(node, cell))
+    }
+
+    /// Whether `node` is a variable bound to an array of references ([`Binding::Grid`]), which
+    /// [`Model::variable_reference`] hands on.
+    pub(crate) fn is_grid_variable(&self, node: &Node) -> bool {
+        matches!(node, Node::NamedVariableKind { id: Some(id), .. }
+            if matches!(self.variable_stack.get(*id as usize), Some(Binding::Grid(_))))
     }
 }

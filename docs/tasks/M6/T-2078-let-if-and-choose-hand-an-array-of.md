@@ -44,6 +44,6 @@ another variable), read back by `variable_reference`; `VariableStack` charges ea
 `MAX_HELD_GRID_ELEMENTS = 4 * MAX_SIZE` (DEVIATION, lookup.md "Arrays of references held by LET variables are
 bounded"). OFFSET whose reference argument is a grid (bare, through IF, CHOOSE, LET or a variable) lifts again over its
 elements, broadcast with its own lifted arguments (`offset_over_grid`); SUMPRODUCT reads grids through IF, CHOOSE and
-LET (`evaluate_value_or_grid`). New probe probes/reference-lift-pass-through (38 cells, excel-graph) pins INDEX, ROWS,
+LET (`evaluate_value_or_grid`). New probes probes/reference-lift-pass-through (38 cells) and -b (10 cells, INDIRECT and TRIMRANGE grids; excel-graph) pin INDEX, ROWS,
 ISREF, SUM, SUMPRODUCT and nested OFFSET through each pass-through; all pass. Eval delta: probes known failures
-1698 -> 1694 (reference-lift-consumers E89, E145, E149; b1c E77), +38 passing cells in the new case, no regressions.
+1698 -> 1694 (reference-lift-consumers E89, E145, E149; b1c E77), +48 passing cells in the new cases, no regressions.
