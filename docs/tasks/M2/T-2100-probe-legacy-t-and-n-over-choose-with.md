@@ -3,7 +3,7 @@ id: T-2100
 title: "Probe legacy T and N over CHOOSE with an array index: single-cell arms, column/2-D index, arm counts"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
