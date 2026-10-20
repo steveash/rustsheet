@@ -746,20 +746,23 @@ fn is_value_operation(node: &Node) -> bool {
 /// Only the `@` placement changes: a dynamic formula
 /// of that shape still spills.
 pub(super) fn legacy_call_reads_a_value(kind: &Function, args: &[Node]) -> bool {
-    // A SWITCH argument is no value to intersect: `=ABS(SWITCH(1,1,{-2;3}))` and
-    // `=LEN(SWITCH(1,1,{"ab";"c"}))` take no `@` and spill (probes/legacy-switch-at-shapes G20,
-    // M20, T-1964).
-    args.iter().any(|arg| {
-        matches!(
-            arg.ungrouped(),
-            Node::FunctionKind {
-                kind: Function::Switch,
-                ..
-            }
-        )
-    }) || args
-        .first()
-        .is_some_and(|arg| reads_reference_whole(kind, arg) || leaves_call_whole(kind, arg))
+    // ABS and LEN over a SWITCH take no `@` and spill: `=ABS(SWITCH(1,1,{-2;3}))`,
+    // `=LEN(SWITCH(1,1,{"ab";"c"}))` (probes/legacy-switch-at-shapes G20, M20, T-1964). Other
+    // callers (INDIRECT, OFFSET, INDEX, a SWITCH past the first argument) are unprobed and keep
+    // their `@`.
+    (matches!(kind, Function::Abs | Function::Len)
+        && args.first().is_some_and(|arg| {
+            matches!(
+                arg.ungrouped(),
+                Node::FunctionKind {
+                    kind: Function::Switch,
+                    ..
+                }
+            )
+        }))
+        || args
+            .first()
+            .is_some_and(|arg| reads_reference_whole(kind, arg) || leaves_call_whole(kind, arg))
         || matches!(kind, Function::Index)
             && matches!(
                 args.first().map(Node::ungrouped),

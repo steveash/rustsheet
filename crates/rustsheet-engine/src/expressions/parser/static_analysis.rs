@@ -219,7 +219,8 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
             }
             // There are some function that will never add an automatic II:
             // A SWITCH never takes one: its array or range results spill, also nested under a
-            // scalar function or operator (probes/legacy-switch-at-shapes G20, J20, M20, T-1964).
+            // scalar function (ABS, LEN) or a unary minus (probes/legacy-switch-at-shapes G20, J20, M20,
+            // T-1964); binary operators over it are unprobed.
             let new_function = matches!(kind, Function::Let | Function::Lambda | Function::Switch);
             if !new_function
                 && (add || arrays)
