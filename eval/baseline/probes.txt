@@ -874,6 +874,7 @@ C	probes/t1626-regextest.case.json	31
 C	probes/t1626-replaceb.case.json	27
 C	probes/t1626-rightb.case.json	29
 C	probes/t1626-searchb.case.json	26
+C	probes/t2127-trimrange-blank-shapes.case.json	63
 C	probes/take-drop-over-ifs-switch-picks.case.json	20
 C	probes/take-drop-trimrange-over-xlookup-b.case.json	14
 C	probes/take-drop-trimrange-over-xlookup.case.json	23
