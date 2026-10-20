@@ -706,6 +706,7 @@ C	probes/reference-lift-consumers-b1d.case.json	7
 C	probes/reference-lift-consumers-b2.case.json	36
 C	probes/reference-lift-consumers.case.json	76
 C	probes/reference-lift-elements.case.json	59
+C	probes/reference-lift-pass-through.case.json	38
 C	probes/regex-ascii-classes.case.json	42
 C	probes/regex-optional-args.case.json	149
 C	probes/regex-pcre2-features.case.json	62
@@ -2151,7 +2152,6 @@ F	probes/rate-empty-arguments.case.json	Sheet1!A5
 F	probes/rate-empty-arguments.case.json	Sheet1!A6
 F	probes/rate-empty-arguments.case.json	Sheet1!A8
 F	probes/rate-empty-arguments.case.json	Sheet1!A9
-F	probes/reference-lift-consumers-b1c.case.json	Sheet1!E77
 F	probes/reference-lift-consumers-b1c.case.json	Sheet1!E85
 F	probes/reference-lift-consumers-b1c.case.json	Sheet1!E86
 F	probes/reference-lift-consumers-b1c.case.json	Sheet1!E89
@@ -2180,8 +2180,6 @@ F	probes/reference-lift-consumers.case.json	Sheet1!E101
 F	probes/reference-lift-consumers.case.json	Sheet1!E109
 F	probes/reference-lift-consumers.case.json	Sheet1!E110
 F	probes/reference-lift-consumers.case.json	Sheet1!E113
-F	probes/reference-lift-consumers.case.json	Sheet1!E145
-F	probes/reference-lift-consumers.case.json	Sheet1!E149
 F	probes/reference-lift-consumers.case.json	Sheet1!E165
 F	probes/reference-lift-consumers.case.json	Sheet1!E166
 F	probes/reference-lift-consumers.case.json	Sheet1!E169
@@ -2198,7 +2196,6 @@ F	probes/reference-lift-consumers.case.json	Sheet1!E66
 F	probes/reference-lift-consumers.case.json	Sheet1!E73
 F	probes/reference-lift-consumers.case.json	Sheet1!E77
 F	probes/reference-lift-consumers.case.json	Sheet1!E78
-F	probes/reference-lift-consumers.case.json	Sheet1!E89
 F	probes/reference-lift-consumers.case.json	Sheet1!E97
 F	probes/reference-lift-consumers.case.json	Sheet1!E98
 F	probes/regex-ascii-classes.case.json	Sheet1!A17

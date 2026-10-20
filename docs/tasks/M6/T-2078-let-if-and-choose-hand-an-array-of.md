@@ -3,7 +3,7 @@ id: T-2078
 title: "LET, IF and CHOOSE hand an array of references on"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -28,12 +28,22 @@ reference reading. SUMPRODUCT reads a grid only from a bare OFFSET (`Model::eval
 route its IF, CHOOSE and LET forms there too once they pass grids on (unprobed; Excel gives 0 by rule 7's reading).
 
 ## Acceptance criteria
-- [ ] The LET, IF and CHOOSE cells of rule 7 that need no aggregate walker pass (INDEX, ROWS/COLUMNS readers).
-- [ ] `VariableStack` charges newly built grids against `MAX_HELD_GRID_ELEMENTS = 4 * MAX_SIZE`, past it the
+- [x] The LET, IF and CHOOSE cells of rule 7 that need no aggregate walker pass (INDEX, ROWS/COLUMNS readers).
+- [x] `VariableStack` charges newly built grids against `MAX_HELD_GRID_ELEMENTS = 4 * MAX_SIZE`, past it the
       binding is `#VALUE!`; recorded as a DEVIATION (decision 0014) under lookup.md, with a unit test.
-- [ ] OFFSET over a reference argument that is itself an array of references lifts again (SPEC-0014 rule 7:
+- [x] OFFSET over a reference argument that is itself an array of references lifts again (SPEC-0014 rule 7:
       `ROWS(OFFSET(OFFSET(A1,{0;1},0),1,0))` 2), with a unit test of a deep nest staying bounded.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The aggregate walker (T-2063), per-element callers and VSTACK (T-2064), INDIRECT/TRIMRANGE (T-1957).
+
+## Outcome
+LET variables and LAMBDA parameters bind an array of references as `Binding::Grid` (an `Arc` clone when bound from
+another variable), read back by `variable_reference`; `VariableStack` charges each distinct grid once against
+`MAX_HELD_GRID_ELEMENTS = 4 * MAX_SIZE` (DEVIATION, lookup.md "Arrays of references held by LET variables are
+bounded"). OFFSET whose reference argument is a grid (bare, through IF, CHOOSE, LET or a variable) lifts again over its
+elements, broadcast with its own lifted arguments (`offset_over_grid`); SUMPRODUCT reads grids through IF, CHOOSE and
+LET (`evaluate_value_or_grid`). New probe probes/reference-lift-pass-through (38 cells, excel-graph) pins INDEX, ROWS,
+ISREF, SUM, SUMPRODUCT and nested OFFSET through each pass-through; all pass. Eval delta: probes known failures
+1698 -> 1694 (reference-lift-consumers E89, E145, E149; b1c E77), +38 passing cells in the new case, no regressions.
