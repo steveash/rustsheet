@@ -87,3 +87,39 @@ fn switch_with_a_scalar_expression_keeps_a_range_value() {
     assert_eq!(model._get_text("D1"), "10");
     assert_eq!(model._get_text("D2"), "#N/A");
 }
+
+/// An array case value lifts SWITCH over a scalar expression (probes/subtotal-take-array-selector-b
+/// A10, T-2012), and a nest of them reads each case once: 2^depth reads would not finish.
+#[test]
+fn switch_lifts_over_an_array_case_value_and_nests_linearly() {
+    let mut model = model();
+    model._set("D1", "=SWITCH(1,{1,2},10,20,30,40)");
+    let mut nested = "SWITCH(1,{1,2},10,20)".to_string();
+    for _ in 0..40 {
+        nested = format!("SWITCH(1,{nested},10,20)");
+    }
+    model._set("D3", &format!("={nested}"));
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "10");
+    assert_eq!(model._get_text("E1"), "40");
+    // {10,20} at the innermost level; every outer level misses its cases and takes the default.
+    assert_eq!(model._get_text("D3"), "20");
+}
+
+/// A one-cell range condition (`INDIRECT("K1")`) picks a branch like a cell does, and a missing
+/// `value_if_false` gives FALSE (probes/subtotal-take-array-selector-b A130, T-2012).
+#[test]
+fn if_reads_a_one_cell_range_condition_as_a_scalar() {
+    let mut model = model();
+    model._set("K1", "=FALSE");
+    model._set("K2", "=TRUE");
+    model._set("D1", "=IF(INDIRECT(\"K1\"),1,2)");
+    model._set("D2", "=IF(INDIRECT(\"K1\"),1)");
+    model._set("D3", "=IF(INDIRECT(\"K2\"),1,2)");
+    model._set("D4", "=IF(INDIRECT(\"K1\"))");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "2");
+    assert_eq!(model._get_text("D2"), "FALSE");
+    assert_eq!(model._get_text("D3"), "1");
+    assert_eq!(model._get_text("D4"), "#VALUE!");
+}

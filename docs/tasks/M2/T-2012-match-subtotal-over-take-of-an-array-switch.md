@@ -3,7 +3,7 @@ id: T-2012
 title: "Match SUBTOTAL over TAKE of an array SWITCH case value and of IF over a one-cell INDIRECT condition (T-1984)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -17,8 +17,14 @@ depends_on: []
 Probe probes/subtotal-take-array-selector-b A10 (engine 14, Excel 2x2 `#VALUE!`) and A130 (engine 2x1 `#VALUE!`, Excel 7); see docs/excel-semantics/references.md. `lifts_to_values` (static_analysis/aggregate.rs) does not lift an array SWITCH case value, and treats a one-cell INDIRECT condition as an unknown-shape selector. Every other probe cell already matches.
 
 ## Acceptance criteria
-- [ ] A10 and A130 of probes/subtotal-take-array-selector-b pass and no other cell of that case changes.
-- [ ] `make check` green; reviewers approve.
+- [x] A10 and A130 of probes/subtotal-take-array-selector-b pass and no other cell of that case changes.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`switch_pick` (functions/logical/switch.rs) lifts on an array case value like it does on an array
+expression, and `if_pick` reads a one-cell range (`INDIRECT("K1")`) as a scalar condition. The static
+`lifts_to_values` / `is_lifting_selector` (aggregate.rs) agree: an array case value lifts, `INDIRECT` of
+one-cell text does not. probes/subtotal-take-array-selector-b now passes 42/42 (A10 and A130 fixed).
