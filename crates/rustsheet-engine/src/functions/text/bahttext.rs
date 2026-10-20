@@ -64,7 +64,9 @@ fn push_integer(out: &mut String, digits: &[u8]) {
     }
 }
 
-/// BAHTTEXT of a finite number: the value is cut to 15 significant digits, then rounded half
+/// BAHTTEXT of a finite number: the value is cut to 15 significant digits (a 16th-digit tie goes
+/// toward zero, docs/excel-semantics/text.md "FIXED, DOLLAR and BAHTTEXT cut to 15 significant
+/// digits first"), then rounded half
 /// away from zero to two decimals (satang); the sign prints as ลบ even when the value rounds to
 /// zero (probes/text-bahttext-wide, -wide2).
 fn baht_text(value: f64) -> String {
@@ -73,7 +75,7 @@ fn baht_text(value: f64) -> String {
     let (mut baht, mut frac): (Vec<u8>, Vec<u8>) = if value == 0.0 {
         (vec![0], Vec::new())
     } else {
-        let (mantissa, exponent) = significant_15(value.abs(), true);
+        let (mantissa, exponent) = significant_15(value.abs(), false);
         let digits: Vec<u8> = format!("{mantissa:015}")
             .bytes()
             .map(|b| b - b'0')

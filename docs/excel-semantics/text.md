@@ -539,7 +539,7 @@ Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/3b813881f835cd90 Calc!A48, ge
 gen-m5/2abdc1524e5aa685 Calc!A221, gen-m5/461d1c8dbb044769 Calc!A249, gen-m5/50d8a085335c05e6 Calc!A158, gen-m5/4d099bea7898ebf1 Calc!A66,
 gen-m5/399071ff6782ab16 Calc!A316, gen-m5/5704666097cbc5b2 Calc!A274, gen-m5/ae9ed30812c4d62c Calc!A183 (T-2148); gen-m5/6b831f5e2a20bc34 Calc!A232,
 gen-m5/e0087a1fb9a36188 Calc!A291, gen-m5/fc81c2f704bef138 Calc!A366, gen-m5/399071ff6782ab16 Calc!A122, gen-m5/b0ecb7ca78460b77 Calc!A128 (T-2149).
-Status: VERIFIED (excel-graph); not implemented (T-2148, T-2149).
+Status: VERIFIED (excel-graph); implemented for 15-digit cut, tie toward zero and the DOLLAR sign rule (T-2148, shared `significant_15` in FIXED, DOLLAR and BAHTTEXT); values past 2^64 and many decimals fall out of the same code, T-2149 only has to confirm them.
 
 ## NUMBERVALUE reads text as VALUE does, with its own separators (T-2151, T-2152)
 Rule: after the separators are applied, NUMBERVALUE accepts what VALUE accepts: currency `"$1,000.50"` = 1000.5,
