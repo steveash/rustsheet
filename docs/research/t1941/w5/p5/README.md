@@ -253,3 +253,17 @@ gains +8.6% (real: N<2 with D unstored, +5.7%).
   function as calibration. Real 1.013 / median 0.663; all-stored simulation 1.018 / 0.665 (match); W2's mask
   0.579 / 0.375; partial masks 0.72–0.93. **K3 is fully stored.** The mask lift was ss_fc's coefficient errors being
   hidden by unstored ops. So the site map's mismatch from N.S3/D.S3 up is wrong mid and top coefficients.
+
+## Mid-coefficient near-null lattice from ss_fc (K3 is stored: W2's fingerprint and `../fp/`)
+- `k3lat.py`: BKZ on [I | λJ] over N3..N9, D3..D9 (N0..N2, D1, D2, D0 fixed). Eleven mid vectors of 1–4 ulps with a
+  function change of 0.002–0.022 ulp(A) (`k3lat_100.log`).
+- `k3climb.py`: exact-count climb (±1, ±2 of each vector and all ±pairs; 300k train / 300k held-out on rows6).
+  0.3320 → 0.3391 train, 0.3332 → 0.3405 held-out, then a local maximum after 10 steps. Total move N5 −2 N6 +1 N7 −1
+  N8 +9 N9 −3 D6 +1 D7 −4 D8 −7 (`k3climb.log`, `k3lat_climb.txt`).
+- `k3cvp.py`: integer move (CVP) taking ss_fc's function toward the real-data LS fit (`../fp/` fit, residual 1.01
+  ulp(A)). The ss_fc → LS gap is max 2.6, rms 0.99 ulp(A). The CVP moves cut it to rms 0.54 / 0.47 / 0.38 (λ = 30 /
+  300 / 3000, moves up to ~1100 ulps), but held-out exact DROPS: 0.333 → 0.295 / 0.291 / 0.284. So the LS-fit
+  function is not the stored chain's function target (the LS fit absorbs the stored chain's rounding bias), or the
+  fixed read constants are part of the gap.
+So ss_fc is near a local maximum in the near-null lattice, as AN2 is on K1 (W4). The truth is far along null
+directions; local search from ss_fc does not reach it.
