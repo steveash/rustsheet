@@ -848,7 +848,7 @@ of probes-numeric `m9-hyperbolic` and `t0917-hyperbolic-switchover`; decision 00
 Dense fitting set (T-2178): probes-numeric `t2178-hyperbolic-unit-sweep` (1035 arguments on (-1.5, 1.5): k/500, seeded random,
 log-spaced 1E-8 .. 1E-2, the cached misses' arguments, 100 negatives, 20 control points past 1; SINH/TANH/COSH each; excel-graph).
 The current engine matches 2236 of 3105 cells: SINH misses 403, TANH 464, COSH 2. Engine-vs-Excel gaps over the 869 misses: 735 at
-1 ulp, 123 at 2, 10 at 3, 1 at 4 (Calc!C659, TANH(0.48882367384055525)). The sweep shows the quirk is not confined to 0.4 .. 1: an
+1 ulp, 123 at 2, 10 at 3, 1 at 4 (Calc!C659, TANH(0.5345135074151877): Excel 0.48882367384055525). The sweep shows the quirk is not confined to 0.4 .. 1: an
 mpmath check during the T-2178 review found Excel up to 2.57 ulp from the true value for TANH (x = 0.2533858999427424) and 1.93 ulp
 for SINH (+-0.8541474891480176), with misses also below 0.4; COSH stayed within 0.98 ulp (looks correctly rounded here).
 Calc!A1035 stores 0.995054655025377: m9-hyperbolic A245/A246 read their 16-digit literal as this 15-digit value
