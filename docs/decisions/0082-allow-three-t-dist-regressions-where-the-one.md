@@ -13,8 +13,15 @@
     - `probes/stat-argument-modes` Sheet1!H505: `T.DIST(1.5,5,TRUE)`, Excel 0.9030481598787632, now
       0.9030481598787633 (the correctly rounded CDF and 1 - L both give ...633);
     - `ironcalc-calc/STATISTICAL/T_DIST.xlsx` `T.DIST.2T T.INV.2T`!D15 and D37:
-      `T.INV.2T(T.DIST.2T(1,1),1)`, Excel 0.9999999999999996. T.DIST.2T(1,1) is now the exact 0.5
-      (Excel 0.5000000000000001, C15/C37 stay NumericUlp), and T.INV.2T (T-0967) inverts that.
+      `T.INV.2T(T.DIST.2T(1,1),1)`, Excel 0.9999999999999996, now 1.0000000000000016 (NumericClose).
+      C15/C37 (`T.DIST.2T(1,1)`) now pass with Excel's 0.5000000000000001; main's C15 was
+      0.5000000000000004 and its T.INV.2T (T-0967) happened to land on Excel's D15.
+  - Ungated suites (not in the baseline gate; disclosed here): probes-numeric fixes 168 cells and
+    newly misses 12 by one ulp where statrs had matched (among them `T.DIST.RT(2,1)`,
+    `T.DIST.2T(2,1)`, `T.DIST(-2,1,TRUE)`, `T.DIST(0.1,2,TRUE)`, `T.DIST(10,10,FALSE)`,
+    `T.DIST(-10,10,FALSE)` and their m9-t-nonint-df twins at df 1.5 and 1.999). Two further cells
+    the review found (`T.DIST.RT(1E-10,3)` = 0.5 and gen-m9/3ec66461400faf2f A15 = 0) are kept by
+    modelling them (statistics.md: n + t^2 rounding to n; the subnormal flush kept from main).
 - **Options considered:**
   - *Keep statrs where it matched.* That fits individual cells, which decision 0056 forbids.
   - *Wait for Excel's tail noise.* No candidate reproduces it yet (T-0969 attempts 1 to 3).

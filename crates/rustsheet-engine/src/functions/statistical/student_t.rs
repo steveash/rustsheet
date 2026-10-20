@@ -15,6 +15,8 @@
 //! Every loop is bounded: [`SERIES_MAX_DF`] / 2 series terms, [`TAYLOR_TERMS`] Taylor terms and
 //! [`MAX_POWER_SERIES_TERMS`] power-series terms a call.
 
+use statrs::distribution::{ContinuousCDF, StudentsT};
+
 use super::incomplete_beta::beta_reg_upper;
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, two_sum};
 
@@ -24,6 +26,8 @@ type Dd = (f64, f64);
 /// Largest integer df that the double-double series ([`centre_series`], [`integer_ratio`]) sum:
 /// about df/2 double-double steps a call.
 const SERIES_MAX_DF: f64 = 1000.0;
+/// Largest df whose centre takes Cephes' fraction; above it statrs' cdf (see [`upper_tail`]).
+const FRACTION_MAX_DF: f64 = 1e7;
 /// From this shape on, Gamma(a + 1/2)/Gamma(a) comes from its asymptotic series.
 const ASYMPTOTIC_MIN_SHAPE: f64 = 85.0;
 /// Cephes' `MACHEP`, 2^-53: the power series stops below it.
@@ -76,6 +80,24 @@ pub(crate) fn student_t_tails(t: f64, n: f64) -> (f64, f64) {
 
 /// L = P(T > t) for t > 0.
 fn upper_tail(t: f64, n: f64) -> f64 {
+    let tail = unflushed_upper_tail(t, n);
+    // Main (statrs) returned 0 for a subnormal tail and `T.DIST.2T(...)` in gen-m9/3ec66461400faf2f
+    // A15 is 0 in Excel; the graph oracle cannot tell 0 from a kept subnormal (decision 0042), so
+    // the flush stays until a probe with a companion cell decides it.
+    if tail < f64::MIN_POSITIVE {
+        0.0
+    } else {
+        tail
+    }
+}
+
+/// [`upper_tail`] before the subnormal flush.
+fn unflushed_upper_tail(t: f64, n: f64) -> f64 {
+    // Excel forms n + t^2 in doubles: where it rounds to n, y = 1 and L is exactly 1/2
+    // (`T.DIST.RT(1E-10,3)` = `TDIST(1E-10,3,1)` = 0.5, probes-numeric t1048-tdist A27, B27).
+    if n + t * t == n {
+        return 0.5;
+    }
     let (z, y) = beta_arguments(t, n);
     if y <= z {
         if let Some(ratio) = gamma_ratio(n) {
@@ -86,6 +108,12 @@ fn upper_tail(t: f64, n: f64) -> f64 {
         if tail > MIN_SERIES_TAIL {
             return tail;
         }
+    }
+    if n > FRACTION_MAX_DF {
+        // Above it Cephes' prefactor (n/2) ln y, y rounded, loses more than statrs' cdf does:
+        // `T.DIST(2,1E10,TRUE)` = 0.977249868038323 (probes-numeric m9-t-edges) is 7 digits off
+        // through the fraction, 9 through statrs (T-2126). Its lower tail at -t, not 1 - cdf.
+        return StudentsT::new(0.0, 1.0, n).map_or(f64::NAN, |dist| dist.cdf(-t));
     }
     0.5 * beta_reg_upper(z, y, 0.5, 0.5 * n)
 }

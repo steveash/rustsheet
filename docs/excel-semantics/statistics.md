@@ -39,6 +39,9 @@ tail noise there is not modelled yet. The density (cumulative FALSE) is noisy to
 rounded on 38 of 150 cells; `T.DIST(0,10,FALSE)` = 0.38910838396603115 is 3 ulp above the
 correctly rounded 945/(768 sqrt 10), and the error grows with |t| (165 ulp at
 `T.DIST(1000,100,FALSE)`), the signature of a power computed as exp(a ln y).
+Tiny t: Excel forms n + t^2 in doubles, so where it rounds to n the tail is exactly 1/2:
+`T.DIST.RT(1E-10,3)` = `TDIST(1E-10,3,1)` = 0.5 (probes-numeric t1048-tdist A27, B27), not the
+exact 0.49999999996324...
 Status: VERIFIED (observation); the tail model is UNVERIFIED (fits, T-0969); Excel's algorithm is
 UNVERIFIED
 Tasks: T-0969

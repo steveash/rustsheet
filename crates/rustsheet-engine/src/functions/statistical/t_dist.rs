@@ -317,7 +317,7 @@ pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
 impl Model {
     /// `T.DIST(x, deg_freedom, cumulative)`: every argument lifts over an array and a range
     /// (SPEC-0011; probes/stat-argument-modes H505-H509, probes/stat-later-argument-lift H61).
-    /// The cdf is statrs' incomplete beta, a continued fraction of at most 140 steps.
+    /// The cdf and the integer-df density come from `student_t` (T-0969); other densities from statrs.
     pub(crate) fn fn_t_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::TDist, args, cell, &mut |model, values| {
             number_or_error(model.t_dist_of(values, cell))
