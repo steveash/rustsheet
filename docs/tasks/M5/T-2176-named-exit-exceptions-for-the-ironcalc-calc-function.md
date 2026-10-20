@@ -42,7 +42,8 @@ item 1) can then be read from report.md without hand arithmetic.
       format and cite decisions 0074 and 0085. Each data line is
       `cell<TAB>milestone<TAB>decision<TAB>task`, for example
       `ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C11	M2	0074	T-1075`. It holds exactly the three
-      IF_ARRAY lines (C11 from M2, C4 and E4 from M5).
+      IF_ARRAY lines (C11 from M2, C4 and E4 from M5), plus ATAN2_POWER D14 and D26 from M5 since
+      decision 0086 (five lines).
 - [x] `run` and `check` parse the file and fail, naming the line, on four kinds of bad line: a
       malformed line, a milestone that is not `M\d+`, a decision that is not four digits, or a
       duplicate cell. A missing file means no exceptions.
@@ -56,7 +57,7 @@ item 1) can then be read from report.md without hand arithmetic.
 - [x] Unit tests cover four cases: an exception that applies from its milestone onwards but not to
       an earlier row, a stale exception, each parse error, and an absent file.
 - [x] On `make eval` at the PR's base, the M2 row's `failing excl. exceptions` is 0, and the M5 row's
-      equals its `failing` minus 3. The PR text quotes both rows.
+      equals its `failing` minus 3 (minus 5 since decision 0086). The PR text quotes both rows.
 - [x] A new decision record (`make new-decision`) says the file holds only exceptions that a
       decision names, never hides a cell from the baseline or the gate, and that a line is added
       in the PR that takes the decision. docs/milestones.md's M2 and M5 exit text points to the
@@ -79,5 +80,5 @@ task was in review; so five lines, not the three the criteria name), all owned b
 or a repeated cell; an absent file holds none. Each function-scope row gains `excepted` and report.md
 the column "failing excl. exceptions"; a listed cell that fails in no row is listed under "Stale exit
 exceptions" without failing the run. Decision 0087; milestones.md (M2, M5) and eval-harness.md point
-to the file. `make eval` at base 959e076d (M5 re-run on the merge with 1fd0f69a): M2 failing 1, excl. exceptions 0; M5 failing 14, excl.
+to the file. `make eval` (ironcalc-calc rerun on main 1fd0f69a merged in): M2 failing 1, excl. exceptions 0; M5 failing 14, excl.
 exceptions 9 (5 lines). Eval delta: none (baseline and gate unchanged).

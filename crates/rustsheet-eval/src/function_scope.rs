@@ -210,7 +210,7 @@ pub fn write_markdown(scope: Option<&FunctionScope>, md: &mut String) {
             row.bit_exact,
             row.deviations,
             row.failing.len(),
-            row.failing.len() - row.excepted.len()
+            row.failing.len().saturating_sub(row.excepted.len())
         );
     }
     let mut listed: &[String] = &[];
