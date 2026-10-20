@@ -3,7 +3,7 @@ id: T-2183
 title: "ACOTH keeps full precision at large |x| (ACOTH(1.5E7) has 9 correct digits)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -41,3 +41,10 @@ it loses up to 8 digits there.
 
 ## Visible-parity stage
 This whole task is the visible-parity stage (decision 0083).
+
+## Outcome
+No code change. T-0917 (#1309) had already replaced the cancelling `0.5*ln((x+1)/(x-1))` above
+|x| = 3.69665 with the x87 atanh series (numbers.md "ATANH and ACOTH"). A full `make eval` on
+2026-10-20 shows ACOTH at 652 of 653 cells passing, none of them a large-x precision miss: the
+one failure is a TypeMismatch, and `eval/baseline/` holds no ACOTH entry. `acoth(1.5e10)` is unit-tested at
+Excel's value. The ulp-level fit is T-0917's; this task was filed against stale data.
