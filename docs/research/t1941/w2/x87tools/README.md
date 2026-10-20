@@ -100,3 +100,16 @@ Tools: `offm.c` / `offm.py`, in W2's scratchpad. Per run, a constant offset is a
 
 So the late chain itself differs from grid_a by a joint cross-N/D move, (a) in HANDOFF 12.3. Single-coordinate
 plateau, needle and line readers cannot see such a move.
+
+## Per-run head tests (added 2026-10-20)
+- **`hoff.c` / `hoffF.c` / `hoff.py`** — per-run constant sub-ulp offsets at every head sum (N s2-s4, D d2-d3), fitted by
+  coordinate ascent, with the late chain = grid_a. `hoffF` adds a fused stage-4 (N) / stage-3 (D) product.
+  - Controls (head move cH, built with `headnull.py`): 0.67 -> 0.955 and 0.87 -> 0.999; fused truth with fused fit
+    0.66 -> 0.99.
+  - REAL: 0.74-0.78 -> 0.77-0.85 in all four structures.
+  - So no per-anchor head reproduces Excel with grid_a's late chain.
+- **`expl.py`** — which single +-1 stage re-decision explains the misses. s3 explains 63-71%, s4 93-97%, s5 88-98%; s1
+  explains nothing.
+- **ptable (not committed)** — Excel's choice per (class, parity, exact-product offset) is fractional (0.2-0.8) inside
+  cells and differs by run. So a variable outside (class, parity, offset) still decides a quarter to half of the decided
+  points.
