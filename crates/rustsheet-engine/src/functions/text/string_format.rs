@@ -12,7 +12,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    number_format::{parse_excel_number, significant_15},
+    number_format::{cut_15_digits, increment_digits, parse_excel_number},
 };
 
 use crate::functions::util::near_integer_count;
@@ -29,53 +29,11 @@ fn group_thousands(digits: &str) -> String {
     result
 }
 
-/// Adds one to a decimal digit string (most significant digit first), growing it on carry.
-fn increment_digits(digits: &mut Vec<u8>) {
-    for d in digits.iter_mut().rev() {
-        if *d == 9 {
-            *d = 0;
-        } else {
-            *d += 1;
-            return;
-        }
-    }
-    digits.insert(0, 1);
-}
-
-/// The integer and fraction digits of non-negative `value` cut to 15 significant digits, the
-/// first stage of ROUND (docs/excel-semantics/text.md "FIXED, DOLLAR and BAHTTEXT cut to 15
-/// significant digits first"): an exact tie at the 16th digit goes toward zero and digits past the
-/// 15th are zeros.
-fn cut_15_digits(abs_value: f64) -> (Vec<u8>, Vec<u8>) {
-    if abs_value == 0.0 {
-        return (vec![0], Vec::new());
-    }
-    let (mantissa, exponent) = significant_15(abs_value, false);
-    let digits: Vec<u8> = format!("{mantissa:015}")
-        .bytes()
-        .map(|b| b - b'0')
-        .collect();
-    if exponent >= 0 {
-        let int_len = usize::try_from(exponent).unwrap_or(0) + 1;
-        if int_len >= digits.len() {
-            let mut int = digits;
-            int.resize(int_len, 0);
-            (int, Vec::new())
-        } else {
-            (digits[..int_len].to_vec(), digits[int_len..].to_vec())
-        }
-    } else {
-        let mut frac = vec![0; usize::try_from(-exponent - 1).unwrap_or(0)];
-        frac.extend(digits);
-        (vec![0], frac)
-    }
-}
-
 /// Formats a non-negative f64 with the given decimal places and optional thousands separator.
 /// Returns the formatted string without sign. The value is cut to 15 significant digits and then
 /// rounded half away from zero at `decimals`, in decimal as ROUND does.
 fn format_abs(abs_value: f64, decimals: i32, use_thousands: bool) -> String {
-    let (mut int, mut frac) = cut_15_digits(abs_value);
+    let (mut int, mut frac) = cut_15_digits(abs_value, false);
     if decimals >= 0 {
         let keep = usize::try_from(decimals).unwrap_or(0);
         let round_up = frac.get(keep).is_some_and(|&d| d >= 5);
@@ -431,4 +389,53 @@ fn proper_case(s: &str) -> String {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_abs;
+
+    // Expected strings come from docs/excel-semantics/text.md "FIXED, DOLLAR and BAHTTEXT cut to
+    // 15 significant digits first" (excel-graph, gen-m5) and from ROUND's decimal rules.
+    #[test]
+    fn cuts_to_15_digits_before_rounding() {
+        assert_eq!(format_abs(1.005, 2, true), "1.01");
+        assert_eq!(
+            format_abs(9_007_199_254_740_993.0, 0, true),
+            "9,007,199,254,740,990"
+        );
+        assert_eq!(
+            format_abs(999_999_999_999_998.13, 2, true),
+            "999,999,999,999,998.00"
+        );
+        assert_eq!(
+            format_abs(4_999_999_999_999_995.0, 2, true),
+            "4,999,999,999,999,990.00"
+        );
+    }
+
+    #[test]
+    fn carries_into_a_new_leading_digit() {
+        assert_eq!(format_abs(999.9996, 3, true), "1,000.000");
+        assert_eq!(format_abs(0.999, 2, false), "1.00");
+        assert_eq!(format_abs(0.0, 2, true), "0.00");
+        assert_eq!(format_abs(0.004, 2, true), "0.00");
+    }
+
+    #[test]
+    fn negative_decimals_round_the_integer_part() {
+        assert_eq!(format_abs(5.0, -1, true), "10");
+        assert_eq!(format_abs(4.0, -1, true), "0");
+        assert_eq!(format_abs(500.0, -3, true), "1,000");
+        assert_eq!(format_abs(15.0, -5, true), "0");
+        assert_eq!(format_abs(1234.0, -2, false), "1200");
+        assert_eq!(format_abs(1.0, -1000, true), "0");
+    }
+
+    #[test]
+    fn largest_doubles_stay_bounded() {
+        let text = format_abs(f64::MAX, 127, false);
+        assert_eq!(text.len(), 309 + 1 + 127);
+        assert!(text.starts_with("17976931348623200000"));
+    }
 }
