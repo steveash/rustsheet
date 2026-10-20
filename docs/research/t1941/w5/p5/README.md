@@ -236,3 +236,15 @@ read constants there are right. Everything from N.S3 and D.S3 up is mismatched; 
 argues against an all-80-bit D chain and an unstored N.S2. A no-refit mask gain is not evidence either
 (`maskctl.py`, `maskctl.log`): on a fully stored synthetic truth, ss_fc with D unstored and N stored only below 1
 gains +8.6% (real: N<2 with D unstored, +5.7%).
+
+## Structure controls for the K3 refit, and a failed quick check
+- `maskmodel.py`: the masked model ("stored below k": the ops at coefficient index j are rounded iff j < k).
+- `mkctl.py`: planted controls (ss_fc + a function-preserving move, TSIZE 1e5), with B synthesised under a mask:
+  `ctl_m3.txt` (stored below 3 on both chains), `ctl_m2.txt` (W2's mask: N below 2, D fully 80-bit) and
+  `ctl_st.txt` (all stored). Handed to W2 for the integer refit.
+- Quick check (`lsmask.py`, `lsmask.log`): a Gauss–Newton LS refit of N3..N9 and D4..D9 under each mask, then the
+  exact rate. It FAILS its controls. On the all-stored control the m2 mask wins after refit (0.367 vs 0.308 for the
+  true stored structure), and m2 also wins on ctl_m3. The head runs off along function-null directions (D9 by
+  ~7e15 ulps). Masked models score higher whatever the truth, because they carry fewer mis-phased roundings. Real
+  data ranks m2 0.382 > m3 0.354 > stored 0.309, which by the controls means nothing. Only an integer refit that
+  closes on its own control can decide.
