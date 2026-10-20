@@ -3,7 +3,7 @@ id: T-2164
 title: "MMULT, MINVERSE and MDETERM are #VALUE! on a blank cell"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 4 in eval/baselin
 
 ## Out of scope
 - Near-singular MINVERSE (T-2067).
+
+## Outcome
+`eval_matrix_arg` (matrix.rs) keeps a one-cell blank reference blank for MMULT, MINVERSE and MDETERM, so it is `#VALUE!`. gen-m5: 4 known failures fixed, none added.
