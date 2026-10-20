@@ -270,6 +270,7 @@ C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
 C	probes/eng-im-overflow.case.json	48
 C	probes/eng-imdiv.case.json	24
+C	probes/eng-imexp-overflow-imag.case.json	31
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
 C	probes/eng-impower.case.json	22
@@ -1286,6 +1287,15 @@ F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-im-overflow.case.json	S!A33
 F	probes/eng-im-overflow.case.json	S!A34
 F	probes/eng-im-overflow.case.json	S!A42
+F	probes/eng-imexp-overflow-imag.case.json	S!A22
+F	probes/eng-imexp-overflow-imag.case.json	S!A24
+F	probes/eng-imexp-overflow-imag.case.json	S!A25
+F	probes/eng-imexp-overflow-imag.case.json	S!A26
+F	probes/eng-imexp-overflow-imag.case.json	S!A27
+F	probes/eng-imexp-overflow-imag.case.json	S!A28
+F	probes/eng-imexp-overflow-imag.case.json	S!A29
+F	probes/eng-imexp-overflow-imag.case.json	S!A3
+F	probes/eng-imexp-overflow-imag.case.json	S!A30
 F	probes/eng-impower-angle-cut.case.json	S!A10
 F	probes/eng-impower-angle-cut.case.json	S!A11
 F	probes/eng-impower-angle-cut.case.json	S!A12
