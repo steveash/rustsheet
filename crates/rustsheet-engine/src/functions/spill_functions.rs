@@ -321,7 +321,7 @@ impl Model {
         }
     }
 
-    /// SORT's sort_index or sort_order as a list of numbers: an array or a multi-cell range is
+    /// SORT's `sort_index` or `sort_order` as a list of numbers: an array or a multi-cell range is
     /// each of its values in row-major order (the first error element is the result), anything
     /// else one number.
     fn sort_number_list(
