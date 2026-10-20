@@ -3,7 +3,7 @@ id: T-1837
 title: "SORT reads an array or range sort_index as a list of sort keys, with a sort_order of the same length"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
