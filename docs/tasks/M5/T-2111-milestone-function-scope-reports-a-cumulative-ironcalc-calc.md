@@ -3,7 +3,7 @@ id: T-2111
 title: "Milestone function scope reports a cumulative ironcalc-calc row per function milestone (M5 exit criterion)"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
