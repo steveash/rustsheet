@@ -255,9 +255,8 @@ fn rounds_safely(v: DoubleDouble, relative_error: f64) -> bool {
     v.hi + (v.lo + error) == v.hi && v.hi + (v.lo - error) == v.hi
 }
 
-/// sin(r + n·π/2) rounded, from the remainder `r` after `n` quarter turns.
-fn rounded_sine(n: i64, r: DoubleDouble) -> f64 {
-    let square = r.mul(r);
+/// sin(r + n·π/2) rounded, from the remainder `r` after `n` quarter turns and its `square`.
+fn rounded_sine(n: i64, r: DoubleDouble, square: DoubleDouble) -> f64 {
     match n.rem_euclid(4) {
         0 => SINE.rounded(r, square, true),
         1 => COSINE.rounded(r, square, false),
@@ -301,24 +300,26 @@ fn by_quadrant<T: Neg<Output = T>>(n: i64, sin: T, cos: T) -> (T, T) {
 /// Excel's SIN(x), for |x| < [`EXCEL_TRIG_LIMIT`].
 pub(super) fn excel_sin(x: f64) -> f64 {
     let (n, r) = reduce(x);
-    rounded_sine(n, r)
+    rounded_sine(n, r, r.mul(r))
 }
 
 /// Excel's COS(x), for |x| < [`EXCEL_TRIG_LIMIT`]: cos(r + n·π/2) = sin(r + (n + 1)·π/2).
 pub(super) fn excel_cos(x: f64) -> f64 {
     let (n, r) = reduce(x);
-    rounded_sine(n + 1, r)
+    rounded_sine(n + 1, r, r.mul(r))
 }
 
 /// Excel's SIN(x) and COS(x), for |x| < [`EXCEL_TRIG_LIMIT`].
 pub(crate) fn excel_sin_cos(x: f64) -> (f64, f64) {
     let (n, r) = reduce(x);
-    (rounded_sine(n, r), rounded_sine(n + 1, r))
+    let square = r.mul(r);
+    (rounded_sine(n, r, square), rounded_sine(n + 1, r, square))
 }
 
 /// Excel's TAN(x): the correctly rounded quotient of the unrounded sine and cosine
 /// (TAN(PI()/2) is 1.6324552277619072E+16, probes-numeric/m9-trig-reduction C82). The quotient
-/// of the fast sums is off by at most the sum of their errors.
+/// of the fast sums is off by at most the sum of their errors (the division itself adds below
+/// 2^-100, inside their margins).
 pub(super) fn excel_tan(x: f64) -> f64 {
     let (n, r) = reduce(x);
     let square = r.mul(r);
