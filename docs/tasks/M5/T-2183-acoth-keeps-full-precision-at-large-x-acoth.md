@@ -3,7 +3,7 @@ id: T-2183
 title: "ACOTH keeps full precision at large |x| (ACOTH(1.5E7) has 9 correct digits)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
