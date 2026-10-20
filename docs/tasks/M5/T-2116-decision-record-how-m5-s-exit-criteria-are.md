@@ -3,7 +3,7 @@ id: T-2116
 title: "Decision record: how M5's exit criteria are measured, and the milestone of fit tasks for M5 functions"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -50,15 +50,26 @@ M14 items), 0056 (numeric fits), 0062 (evidence floor). The model is T-1470, a r
 decision task that settled M2's probe accounting.
 
 ## Acceptance criteria
-- [ ] One accepted decision record answers questions 1–5 above, each in its own bullet, citing the
+- [x] One accepted decision record answers questions 1–5 above, each in its own bullet, citing the
       2026-10-20 numbers (report.md) it relies on.
-- [ ] docs/milestones.md M5 exit text cites the decision and states any named exception, as M2's text
+- [x] docs/milestones.md M5 exit text cites the decision and states any named exception, as M2's text
       cites decision 0074.
-- [ ] If the decision moves tasks to M5, their front matter `milestone` is edited in this PR and
+- [x] If the decision moves tasks to M5, their front matter `milestone` is edited in this PR and
       `python3 scripts/tasks.py validate` passes. No task is created or closed by this PR.
-- [ ] `make check` green (scripts/check_decisions.py); reviewers approve.
+- [x] `make check` green (scripts/check_decisions.py); reviewers approve.
 
 ## Out of scope
 - Implementing the report sections (T-2111, T-2112).
 - Fitting any function.
 - Changing M6–M10 exit text, beyond noting that M6's "same as M5" inherits the definitions.
+
+## Outcome
+Decision 0085 answers questions 1–5 from `make eval` at f2fa1105 (M5 function-scope row 60,129 scored /
+14 failing; gen-m5 22,400 / 98.84%; M5 probes 8,588 / 2 failing; coverage 135 functions, 131 both).
+The cumulative ≤ M5 catalog rule counts; decision 0074's exception extends to IF_ARRAY C4 and E4;
+T-1944 and T-2134 move from M9 to M5 (T-0915, T-0917 and T-0929 were already done); a time-boxed,
+blocked M5 fit stops blocking only for cells within 4 ulp that the blocking PR names in
+milestones.md; volatile and `oracle: none` functions need the 20-cell floor only, and the bare
+`SHEETS()`/`INFO("numfile")` forms go to M14; gen-m5 alone, deviations excluded (≤ 22 failures today).
+docs/milestones.md M5 cites the decision and names the exception. Eval delta: none (docs and task
+front matter only).

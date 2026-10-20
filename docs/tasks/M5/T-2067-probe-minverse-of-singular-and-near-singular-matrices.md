@@ -1,7 +1,7 @@
 ---
 id: T-2067
 title: "Probe MINVERSE of singular and near-singular matrices (cutoff or residual inverse)"
-milestone: M9
+milestone: M5
 lane: research
 status: todo
 priority: P3
@@ -15,6 +15,8 @@ Excel's MINVERSE results for singular and near-singular matrices are known and r
 docs/excel-semantics/arrays.md.
 
 ## Context
+- Milestone M9 -> M5 (gap triage 2026-10-20): this task owns gen-m5 known failures of an M5 catalog function, and decision 0085 item 3 requires every failing cell of an M5 exit criterion to be owned by a task with milestone M5 so the pick order reaches it while M5 is current. Id and scope are unchanged.
+
 T-1751 found that MDETERM uses partial-pivot LU with no singularity cutoff: `MDETERM({1,2,3;4,5,6;7,8,9})` =
 6.661338147750939E-16 (arrays.md, "MDETERM: partial-pivot LU, no singularity cutoff"). The engine's MINVERSE
 shares `lu_decompose` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs) but still gives
