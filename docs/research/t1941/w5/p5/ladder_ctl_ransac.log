@@ -1,0 +1,96 @@
+== seed 1 (KMAX 26)
+N chain: 25 slope equations (17 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 -898544.7 N5 +4200561.1 N6 +737025.3 N7 -955066.8 N8 -1690167.4 N9 -5534658.1
+   truth moves  (ulps): N4 -897743.0 N5 +4188810.0 N6 +738811.0 N7 -951402.0 N8 -1814538.0 N9 +4984542.0
+   alias shifts: none
+D chain: 15 slope equations (11 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 +517352.1 D6 -441606.3 D7 -1217506.0 D8 -2328321.5 D9 +109349953285.3
+   truth moves  (ulps): D5 +517483.0 D6 -440624.0 D7 -1239313.0 D8 -970862.0 D9 -10000000.0
+== seed 1 (KMAX 21)
+N chain: 24 slope equations (17 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 -898544.3 N5 +4200557.9 N6 +737025.8 N7 -955065.5 N8 -1690215.2 N9 -5530645.7
+   truth moves  (ulps): N4 -897743.0 N5 +4188810.0 N6 +738811.0 N7 -951402.0 N8 -1814538.0 N9 +4984542.0
+   alias shifts: none
+D chain: 15 slope equations (14 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 +517388.9 D6 -442460.6 D7 -1205575.9 D8 -2863060.5 D9 +143497198278.2
+   truth moves  (ulps): D5 +517483.0 D6 -440624.0 D7 -1239313.0 D8 -970862.0 D9 -10000000.0
+== seed 2 (KMAX 26)
+N chain: 26 slope equations (18 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 -263231.3 N5 -607006.3 N6 +359772.3 N7 +560148.9 N8 +370085.8 N9 -4179926.1
+   truth moves  (ulps): N4 -262411.0 N5 -615274.0 N6 +360897.0 N7 +560628.0 N8 +349692.0 N9 -2325621.0
+   alias shifts: none
+D chain: 16 slope equations (13 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 +361767.2 D6 +585601.1 D7 +504181.2 D8 -157121.0 D9 +4185994470.6
+   truth moves  (ulps): D5 +361709.0 D6 +585659.0 D7 +503642.0 D8 -130173.0 D9 -10000000.0
+== seed 2 (KMAX 21)
+N chain: 23 slope equations (18 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 -263230.7 N5 -607011.1 N6 +359773.0 N7 +560149.8 N8 +370048.4 N9 -4176489.4
+   truth moves  (ulps): N4 -262411.0 N5 -615274.0 N6 +360897.0 N7 +560628.0 N8 +349692.0 N9 -2325621.0
+   alias shifts: none
+D chain: 12 slope equations (12 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 +361738.3 D6 +586151.8 D7 +496908.6 D8 +161464.7 D9 -15973055288.1
+   truth moves  (ulps): D5 +361709.0 D6 +585659.0 D7 +503642.0 D8 -130173.0 D9 -10000000.0
+== seed 3 (KMAX 26)
+N chain: 22 slope equations (12 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 -5729501.8 N5 -3014383.2 N6 +6542360.3 N7 +7716298.2 N8 +9902234.8 N9 +1978787.5
+   truth moves  (ulps): N4 -5758715.0 N5 -2813589.0 N6 +6513275.0 N7 +7713469.0 N8 +10000000.0 N9 -6546976.0
+   alias shifts: none
+D chain: 16 slope equations (15 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 +6584328.9 D6 +8830887.9 D7 +7833333.0 D8 +6616220.0 D9 +134613897117.6
+   truth moves  (ulps): D5 +6582233.0 D6 +8831704.0 D7 +7802555.0 D8 +8360369.0 D9 -4643795.0
+== seed 3 (KMAX 21)
+N chain: 22 slope equations (13 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 -6451902.1 N5 -38313850.4 N6 +16489504.7 N7 -675442.1 N8 +10015946.9 N9 -7656988.5
+   truth moves  (ulps): N4 -5758715.0 N5 -2813589.0 N6 +6513275.0 N7 +7713469.0 N8 +10000000.0 N9 -6546976.0
+   alias shifts: D5@0.8013:-1 D5@0.9517:-1 D5@1.1023:-1 D6@1.4531:+1 D5@0.7311:-1 D5@0.8741:-1 D5@1.0309:-1 D6@1.3021:+1
+D chain: 15 slope equations (14 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 +6843543.2 D6 -7946398.8 D7 +7834070.4 D8 +6585830.0 D9 +136684020421.9
+   truth moves  (ulps): D5 +6582233.0 D6 +8831704.0 D7 +7802555.0 D8 +8360369.0 D9 -4643795.0
+== seed 4 (KMAX 26)
+N chain: 22 slope equations (17 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 +1735218.5 N5 -3680866.5 N6 -2078125.5 N7 +17920.0 N8 +4334201.3 N9 +72027308.2
+   truth moves  (ulps): N4 +1753231.0 N5 -3806484.0 N6 -2059368.0 N7 +551.0 N8 +5031290.0 N9 +10000000.0
+   alias shifts: none
+D chain: 16 slope equations (12 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 -1574999.9 D6 -777771.4 D7 +1251959.7 D8 +5907990.7 D9 +91677156813.6
+   truth moves  (ulps): D5 -1574964.0 D6 -775411.0 D7 +1218880.0 D8 +7352564.0 D9 +5364734.0
+== seed 4 (KMAX 21)
+N chain: 21 slope equations (18 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 +1736016.9 N5 -3686700.7 N6 -2076736.7 N7 +10450.3 N8 +4574115.0 N9 +52984258.0
+   truth moves  (ulps): N4 +1753231.0 N5 -3806484.0 N6 -2059368.0 N7 +551.0 N8 +5031290.0 N9 +10000000.0
+   alias shifts: none
+D chain: 13 slope equations (13 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 -1575044.8 D6 -777953.3 D7 +1256187.5 D8 +5730713.9 D9 +100875366243.7
+   truth moves  (ulps): D5 -1574964.0 D6 -775411.0 D7 +1218880.0 D8 +7352564.0 D9 +5364734.0
+== seed 5 (KMAX 26)
+N chain: 26 slope equations (19 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 +2693963.1 N5 -10013050.2 N6 -2447188.9 N7 +1644738.3 N8 +6256165.0 N9 -114353738.5
+   truth moves  (ulps): N4 +2692184.0 N5 -10000000.0 N6 -2454621.0 N7 +1704023.0 N8 +4705583.0 N9 -8237707.0
+   alias shifts: none
+D chain: 18 slope equations (14 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 -1853211.0 D6 +328088.6 D7 +2741708.7 D8 -2006878.4 D9 +373670484003.0
+   truth moves  (ulps): D5 -1853639.0 D6 +335147.0 D7 +2628120.0 D8 +3491981.0 D9 +4184462.0
+== seed 5 (KMAX 21)
+N chain: 23 slope equations (18 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 +2692888.4 N5 -10007221.6 N6 -2453465.6 N7 +1701858.3 N8 +4763354.4 N9 -12287588.9
+   truth moves  (ulps): N4 +2692184.0 N5 -10000000.0 N6 -2454621.0 N7 +1704023.0 N8 +4705583.0 N9 -8237707.0
+   alias shifts: none
+D chain: 14 slope equations (14 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 -1853448.6 D6 +333532.9 D7 +2661836.8 D8 +1721130.4 D9 +127623923810.9
+   truth moves  (ulps): D5 -1853639.0 D6 +335147.0 D7 +2628120.0 D8 +3491981.0 D9 +4184462.0
+== seed 6 (KMAX 26)
+N chain: 24 slope equations (18 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 -1813046.9 N5 +7825545.4 N6 +1917825.3 N7 -1825013.4 N8 -8008708.9 N9 -30643468.1
+   truth moves  (ulps): N4 -1812090.0 N5 +7805074.0 N6 +1920475.0 N7 -1814000.0 N8 -8328791.0 N9 -6224637.0
+   alias shifts: none
+D chain: 14 slope equations (10 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 +1207472.1 D6 -728416.6 D7 -3305108.0 D8 -14516910.9 D9 +330465988858.9
+   truth moves  (ulps): D5 +1207852.0 D6 -724195.0 D7 -3387423.0 D8 -10000000.0 D9 -719030.0
+== seed 6 (KMAX 21)
+N chain: 20 slope equations (18 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   solved moves (ulps): N4 -1812601.4 N5 +7822251.0 N6 +1918157.9 N7 -1825308.0 N8 -7966114.1 N9 -35448731.1
+   truth moves  (ulps): N4 -1812090.0 N5 +7805074.0 N6 +1920475.0 N7 -1814000.0 N8 -8328791.0 N9 -6224637.0
+   alias shifts: none
+D chain: 11 slope equations (11 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   solved moves (ulps): D5 +1207463.0 D6 -728512.0 D7 -3302888.9 D8 -14630252.7 D9 +338043455598.1
+   truth moves  (ulps): D5 +1207852.0 D6 -724195.0 D7 -3387423.0 D8 -10000000.0 D9 -719030.0
