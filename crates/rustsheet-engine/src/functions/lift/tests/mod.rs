@@ -663,14 +663,20 @@ fn a_weighted_kernel_is_charged_its_weight() {
 
 #[test]
 fn a_lifted_yield_over_many_elements_is_refused_before_its_first_element() {
-    // YIELD's elements are charged its solver bound (`YIELD_SOLVER_WEIGHT`, 2^24): 8 elements
-    // run, the ninth makes the call #ERROR! with no kernel call (T-1842).
+    // YIELD's elements across the whole calendar quarterly are charged its solver bound
+    // (`YIELD_SOLVER_WEIGHT`, 2^24): 8 elements run, the ninth makes the call #ERROR! with no
+    // kernel call (T-1842); a shorter schedule is charged less (T-1869), so 9 ten-year ones run.
     let mut model = model_with(&[]);
     let Some(kinds) = Function::Yield.arg_kinds() else {
         panic!("YIELD has a lifting table entry");
     };
-    for (elements, runs) in [(8, true), (9, false), (1 << 20, false)] {
-        let formula = format!("YIELD(SEQUENCE({elements})+39000,43831,0.05,95,100,2)");
+    for (elements, maturity, runs) in [
+        (8, 2_958_465, true),
+        (9, 2_958_465, false),
+        (1 << 20, 2_958_465, false),
+        (9, 43_831, true),
+    ] {
+        let formula = format!("YIELD(SEQUENCE({elements})*0+1,{maturity},0.05,95,100,4)");
         let (result, calls) = run_counting(&mut model, kinds, &formula, LiftCost::Unit, |_| {
             CalcResult::Number(1.0)
         });

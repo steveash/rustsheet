@@ -40,6 +40,7 @@ mod sorted_data;
 pub(super) mod special;
 mod standard_dev;
 mod standardize;
+mod student_t;
 mod t_dist;
 mod trimmean;
 pub(super) mod variance;
