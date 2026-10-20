@@ -16,7 +16,7 @@ Desktop Excel values for INFO's type_text arguments are known, so INFO can be im
 ## Context
 - From T-2115. On Excel for the web every INFO type ("recalc", "system", "release", "directory", "osversion",
   "origin", "memavail", "memused", "totmem", "", "x", in any case) is `#VALUE!` (probes/info-sheets-info-types
-  Alpha!D25:D49, excel-graph, 2026-10-20). Those are the goldens for Phases 1-3 (T-2184 matches them); this task
+  Alpha!D25:D49, excel-graph, 2026-10-20). Those are the goldens for Phases 1-3 (T-2190 matches them); this task
   confirms or contradicts them on desktop. docs/excel-semantics/information.md "INFO is #VALUE! in Excel for the web".
 - Decision 0039: desktop-only questions are Phase 4 (M14) and never block. Blocked until `rustsheet-oracle status`
   shows `excel-desktop OK` (T-1074).
@@ -29,4 +29,4 @@ Desktop Excel values for INFO's type_text arguments are known, so INFO can be im
 - [ ] Every engine mismatch is fixed or filed.
 
 ## Out of scope
-- Excel for the web (T-2184).
+- Excel for the web (T-2190).

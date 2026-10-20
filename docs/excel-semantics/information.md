@@ -358,12 +358,12 @@ Probe trap: sheets named like cells (S1, S2, S3) break an unquoted 3-D span on E
 2026-10-20). Excel writes such names quoted; give probe sheets names that are not cell references.
 
 ## INFO is #VALUE! in Excel for the web
-Status: VERIFIED (excel-graph); desktop pending T-2182. Tasks: T-2115, T-2184, T-2182.
+Status: VERIFIED (excel-graph); desktop pending T-2182. Tasks: T-2115, T-2190, T-2182.
 Rule (web): every INFO call is `#VALUE!`, whatever the type_text: "recalc", "system", "release", "directory",
 "osversion", "origin", the legacy "memavail", "memused" and "totmem", `""` and `"x"`, in lower, upper or mixed case
 (`TYPE(INFO("release"))` 16, `ERROR.TYPE(INFO("x"))` 3, `ISTEXT(INFO("recalc"))` FALSE, `LEN(INFO("osversion"))>0`
 `#VALUE!`). So no value turned out host-dependent. As with ENCODEURL and FILTERXML (web.md), this is the golden for
-Phases 1-3 (decision 0039): the engine follows it in T-2184, which is expected to differ from desktop Excel; T-2182
+Phases 1-3 (decision 0039): the engine follows it in T-2190, which is expected to differ from desktop Excel; T-2182
 (M14) asks desktop. Unprobed: `INFO(#N/A)`, `INFO(1)`, `INFO(TRUE)`, an array argument (the oracle canary refuses a
 non-literal INFO, T-2113), and `INFO("numfile")` (canary-dependent).
 Evidence: probes/info-sheets-info-types Alpha!D25:D49 (excel-graph, 2026-10-20, T-2115).

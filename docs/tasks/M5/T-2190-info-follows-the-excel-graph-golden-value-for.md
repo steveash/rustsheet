@@ -1,5 +1,5 @@
 ---
-id: T-2184
+id: T-2190
 title: "INFO follows the excel-graph golden: #VALUE! for every type_text"
 milestone: M5
 lane: functions-logic
