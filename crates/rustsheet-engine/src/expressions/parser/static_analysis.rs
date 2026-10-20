@@ -6,6 +6,7 @@ use broadcast::{broadcast_shapes, static_analysis_operator_chain};
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
     legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
+    returns_range_arm,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
@@ -23,16 +24,14 @@ use signature::{
     args_signature_choose, args_signature_choosecols, args_signature_drop, args_signature_expand,
     args_signature_fieldvalue, args_signature_filter, args_signature_getpivotdata,
     args_signature_groupby, args_signature_hlookup, args_signature_ifs, args_signature_index,
-    args_signature_irr, args_signature_lambda, args_signature_let, args_signature_lookup,
-    args_signature_map, args_signature_match, args_signature_mirr, args_signature_npv,
-    args_signature_offset, args_signature_one_vector, args_signature_pivotby,
-    args_signature_randarray, args_signature_reduce, args_signature_row, args_signature_scalars,
-    args_signature_scan, args_signature_sequence, args_signature_sort, args_signature_sortby,
+    args_signature_lambda, args_signature_let, args_signature_lookup, args_signature_map,
+    args_signature_match, args_signature_npv, args_signature_offset, args_signature_one_vector,
+    args_signature_pivotby, args_signature_randarray, args_signature_reduce, args_signature_row,
+    args_signature_scalars, args_signature_scan, args_signature_sort, args_signature_sortby,
     args_signature_sumif, args_signature_take, args_signature_textafter, args_signature_textjoin,
     args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_unique, args_signature_with_holidays, args_signature_wrapcols,
-    args_signature_xirr, args_signature_xlookup, args_signature_xmatch, args_signature_xnpv,
-    Signature,
+    args_signature_unique, args_signature_wrapcols, args_signature_xirr, args_signature_xlookup,
+    args_signature_xmatch, args_signature_xnpv, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -96,7 +95,7 @@ fn is_range_reference(s: &str) -> bool {
 ///
 /// Assumes formula return a scalar
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
-    add_legacy_intersection(node, add, add);
+    legacy::add_root_legacy_intersection(node, add);
 }
 
 /// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
@@ -223,9 +222,10 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
                     // (probes/legacy-one-cell-shape-intersection J3); other one-cell calls are
                     // unprobed (T-1847). A one-cell CHOOSE is a range shape and keeps its `@`.
                     StaticResult::Array(rows, columns) => {
-                        arrays
+                        (arrays
                             && (rows > 1 || columns > 1)
-                            && legacy_array_call_at(kind, &signature, args)
+                            && legacy_array_call_at(kind, &signature, args))
+                            || (add && returns_range_arm(kind, args))
                     }
                     StaticResult::Scalar => false,
                 }
@@ -442,8 +442,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Map => args_signature_map(arg_count),
         Function::Reduce => args_signature_reduce(arg_count),
         Function::Scan => args_signature_scan(arg_count),
-        Function::Makearray => vec![Signature::Scalar; 3],
-        Function::Sequence => args_signature_sequence(arg_count),
         Function::Randarray => args_signature_randarray(arg_count),
         Function::Textsplit => args_signature_textsplit(arg_count),
         Function::Concat => vec![Signature::Vector; arg_count],
@@ -471,21 +469,13 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Minifs => args_signature_ifs(arg_count, 2),
         Function::Now => args_signature_scalars(arg_count, 0, 0),
         Function::Today => args_signature_scalars(arg_count, 0, 0),
-        Function::Workday => args_signature_with_holidays(arg_count, 2, 0),
-        Function::WorkdayIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Fvschedule => vec![Signature::Scalar, Signature::Vector],
-        Function::Db => args_signature_scalars(arg_count, 4, 1),
-        Function::Irr => args_signature_irr(arg_count),
-        Function::Mirr => args_signature_mirr(arg_count),
-        Function::Npv => args_signature_npv(arg_count),
         Function::Xirr => args_signature_xirr(arg_count),
         Function::Xnpv => args_signature_xnpv(arg_count),
-        Function::Vdb => args_signature_scalars(arg_count, 5, 2),
         Function::Subtotal | Function::Aggregate => args_signature_npv(arg_count),
         Function::Rand => args_signature_scalars(arg_count, 0, 0),
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
-        Function::Unicode => args_signature_scalars(arg_count, 1, 0),
         Function::Char => args_signature_scalars(arg_count, 1, 0),
         Function::Clean => args_signature_scalars(arg_count, 1, 0),
         Function::Asc | Function::Dbcs => args_signature_scalars(arg_count, 1, 0),
@@ -498,8 +488,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Numbervalue => args_signature_scalars(arg_count, 1, 2),
         Function::Proper => args_signature_scalars(arg_count, 1, 0),
         Function::Geomean => vec![Signature::Vector; arg_count],
-        Function::Networkdays => args_signature_with_holidays(arg_count, 2, 0),
-        Function::NetworkdaysIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Gcd => vec![Signature::Vector; arg_count],
         Function::Lcm => vec![Signature::Vector; arg_count],
         Function::Base => args_signature_scalars(arg_count, 2, 1),
@@ -525,18 +513,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_cell(arg_count),
         Function::Info => args_signature_scalars(arg_count, 1, 1),
-        Function::Daverage => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dcount => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dget => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dmax => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dmin => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dsum => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dcounta => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dproduct => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dstdev => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dvar => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dvarp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
-        Function::Dstdevp => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
         Function::ChisqTest => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -572,31 +548,10 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::StDevS => vec![Signature::Vector; arg_count],
         Function::Stdeva => vec![Signature::Vector; arg_count],
         Function::Stdevpa => vec![Signature::Vector; arg_count],
-        Function::TTest => {
-            if arg_count == 4 {
-                vec![
-                    Signature::Vector,
-                    Signature::Vector,
-                    Signature::Scalar,
-                    Signature::Scalar,
-                ]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::VarP => vec![Signature::Vector; arg_count],
         Function::VarS => vec![Signature::Vector; arg_count],
         Function::VarpA => vec![Signature::Vector; arg_count],
         Function::VarA => vec![Signature::Vector; arg_count],
-        Function::ZTest => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else if arg_count == 3 {
-                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         // Compatibility aliases
         Function::ChiTestCompat => {
             if arg_count == 2 {
@@ -614,31 +569,9 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         }
         Function::FTestCompat => vec![Signature::Vector; 2],
         Function::ModeCompat => vec![Signature::Vector; arg_count],
-        Function::RankCompat => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::StDevPCompat => vec![Signature::Vector; arg_count],
-        Function::TTestCompat => {
-            if arg_count == 4 {
-                vec![
-                    Signature::Vector,
-                    Signature::Vector,
-                    Signature::Scalar,
-                    Signature::Scalar,
-                ]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::VarCompat => vec![Signature::Vector; arg_count],
         Function::VarPCompat => vec![Signature::Vector; arg_count],
-        Function::ZTestCompat => {
-            if arg_count == 2 {
-                vec![Signature::Vector, Signature::Scalar]
-            } else if arg_count == 3 {
-                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-            } else {
-                vec![Signature::Error; arg_count]
-            }
-        }
         Function::Sumx2my2 => vec![Signature::Vector; 2],
         Function::Sumx2py2 => vec![Signature::Vector; 2],
         Function::Sumxmy2 => vec![Signature::Vector; 2],
@@ -647,9 +580,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Intercept => vec![Signature::Vector; 2],
         Function::Slope => vec![Signature::Vector; 2],
         Function::Steyx => vec![Signature::Vector; 2],
-        Function::Forecast | Function::ForecastLinear => {
-            vec![Signature::Scalar, Signature::Vector, Signature::Vector]
-        }
         Function::ForecastEts
         | Function::ForecastEtsConfint
         | Function::ForecastEtsSeasonality
@@ -680,23 +610,11 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
             _ => vec![Signature::Error; arg_count],
         },
         Function::ModeMult | Function::ModeSingl => vec![Signature::Vector; arg_count],
-        Function::Prob => match arg_count {
-            3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
-            4 => vec![
-                Signature::Vector,
-                Signature::Vector,
-                Signature::Scalar,
-                Signature::Scalar,
-            ],
-            _ => vec![Signature::Error; arg_count],
-        },
         Function::Harmean => vec![Signature::Vector; arg_count],
         Function::Kurt => vec![Signature::Vector; arg_count],
         Function::MaxA => vec![Signature::Vector; arg_count],
         Function::Median => vec![Signature::Vector; arg_count],
         Function::MinA => vec![Signature::Vector; arg_count],
-        Function::RankAvg => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
-        Function::RankEq => vec![Signature::Scalar, Signature::Vector, Signature::Scalar],
         Function::Skew => vec![Signature::Vector; arg_count],
         Function::SkewP => vec![Signature::Vector; arg_count],
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.
@@ -768,9 +686,15 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => StaticResult::Unknown,
-        // Spills by lookup_value and match_mode, broadcast; lookup_array is consumed (T-1241).
-        Function::Xmatch => broadcast_static_result(args.iter().step_by(2).take(2)),
-        Function::Trimrange => StaticResult::Unknown,
+        // Spills by lookup_value, match_mode and search_mode, broadcast; lookup_array is consumed
+        // (T-1241, T-1958).
+        Function::Xmatch => broadcast_static_result(
+            args.iter()
+                .enumerate()
+                .filter(|(i, _)| *i != 1)
+                .map(|(_, a)| a),
+        ),
+        Function::Trimrange => reference_result::static_analysis_trimrange(args),
         Function::Sort | Function::Sortby | Function::Unique => StaticResult::Unknown,
         Function::Filter | Function::Take | Function::Drop => StaticResult::Unknown,
         Function::Tocol | Function::Torow | Function::Transpose => StaticResult::Unknown,
@@ -779,8 +703,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Groupby | Function::Pivotby => StaticResult::Unknown,
         Function::Getpivotdata => StaticResult::Scalar,
         Function::Map | Function::Reduce => StaticResult::Unknown,
-        Function::Scan | Function::Makearray => StaticResult::Unknown,
-        Function::Sequence => StaticResult::Unknown,
+        Function::Scan => StaticResult::Unknown,
         Function::Randarray => StaticResult::Unknown,
         Function::Textsplit => StaticResult::Unknown,
         Function::Concat => not_implemented(args),
@@ -795,7 +718,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Textafter | Function::Textbefore => StaticResult::Unknown,
         Function::Textjoin => not_implemented(args),
         Function::Trim => scalar_arguments(args),
-        Function::Unicode => not_implemented(args),
         Function::Char => not_implemented(args),
         Function::Clean => scalar_arguments(args),
         Function::Asc | Function::Dbcs => scalar_arguments(args),
@@ -822,16 +744,9 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Minifs => criteria_static_result(args, 2),
         Function::Now => not_implemented(args),
         Function::Today => not_implemented(args),
-        Function::Workday => not_implemented(args),
-        Function::WorkdayIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
         Function::Fvschedule => StaticResult::Scalar,
-        Function::Db => not_implemented(args),
-        Function::Irr => not_implemented(args),
-        Function::Mirr => not_implemented(args),
-        Function::Npv => not_implemented(args),
         Function::Xirr => not_implemented(args),
         Function::Xnpv => not_implemented(args),
-        Function::Vdb => StaticResult::Scalar,
         Function::Subtotal => aggregate::subtotal_static_result(args),
         Function::Aggregate => aggregate::aggregate_static_result(args),
         Function::Rand => not_implemented(args),
@@ -839,8 +754,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         // One result per cell of a multi-cell reference (T-1241).
         Function::Formulatext => broadcast_static_result(args),
         Function::Geomean => not_implemented(args),
-        Function::Networkdays => not_implemented(args),
-        Function::NetworkdaysIntl => scalar_arguments(args.get(2..3).unwrap_or_default()),
         Function::Gcd => StaticResult::Scalar,
         Function::Lcm => StaticResult::Scalar,
         Function::Base => scalar_arguments(args),
@@ -860,18 +773,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Sheets => scalar_arguments(args),
         Function::Cell => StaticResult::Unknown,
         Function::Info => StaticResult::Unknown,
-        Function::Dget => not_implemented(args),
-        Function::Dmax => not_implemented(args),
-        Function::Dmin => not_implemented(args),
-        Function::Dcount => not_implemented(args),
-        Function::Daverage => not_implemented(args),
-        Function::Dsum => not_implemented(args),
-        Function::Dcounta => not_implemented(args),
-        Function::Dproduct => not_implemented(args),
-        Function::Dstdev => not_implemented(args),
-        Function::Dvar => not_implemented(args),
-        Function::Dvarp => not_implemented(args),
-        Function::Dstdevp => not_implemented(args),
         Function::ChisqTest => StaticResult::Scalar,
         Function::CovarianceP => StaticResult::Scalar,
         Function::CovarianceS => StaticResult::Scalar,
@@ -883,22 +784,17 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::StDevS => StaticResult::Scalar,
         Function::Stdeva => StaticResult::Scalar,
         Function::Stdevpa => StaticResult::Scalar,
-        Function::TTest => StaticResult::Scalar,
         Function::VarP => StaticResult::Scalar,
         Function::VarS => StaticResult::Scalar,
         Function::VarpA => StaticResult::Scalar,
         Function::VarA => StaticResult::Scalar,
-        Function::ZTest => StaticResult::Scalar,
         Function::ChiTestCompat => StaticResult::Scalar,
         Function::CovarCompat => StaticResult::Scalar,
         Function::FTestCompat => StaticResult::Scalar,
         Function::ModeCompat => StaticResult::Scalar,
-        Function::RankCompat => reference_parameter::rank_static_result(args),
         Function::StDevPCompat => StaticResult::Scalar,
-        Function::TTestCompat => StaticResult::Scalar,
         Function::VarCompat => StaticResult::Scalar,
         Function::VarPCompat => StaticResult::Scalar,
-        Function::ZTestCompat => StaticResult::Scalar,
         Function::Sumx2my2 => StaticResult::Scalar,
         Function::Sumx2py2 => StaticResult::Scalar,
         Function::Sumxmy2 => StaticResult::Scalar,
@@ -907,8 +803,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Intercept => StaticResult::Scalar,
         Function::Slope => StaticResult::Scalar,
         Function::Steyx => StaticResult::Scalar,
-        Function::Forecast => StaticResult::Scalar,
-        Function::ForecastLinear => StaticResult::Scalar,
         Function::ForecastEts => StaticResult::Scalar,
         Function::ForecastEtsConfint => StaticResult::Scalar,
         Function::ForecastEtsSeasonality => StaticResult::Scalar,
@@ -922,14 +816,11 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Trend => StaticResult::Unknown,
         // Scalar-returning functions
         Function::ModeSingl => StaticResult::Scalar,
-        Function::Prob => StaticResult::Scalar,
         Function::Harmean => StaticResult::Scalar,
         Function::Kurt => StaticResult::Scalar,
         Function::MaxA => StaticResult::Scalar,
         Function::Median => StaticResult::Scalar,
         Function::MinA => StaticResult::Scalar,
-        Function::RankAvg => reference_parameter::rank_static_result(args),
-        Function::RankEq => reference_parameter::rank_static_result(args),
         Function::Skew => StaticResult::Scalar,
         Function::SkewP => StaticResult::Scalar,
         // In the lifting table (SPEC-0011): `lifted.rs` derives these.

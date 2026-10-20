@@ -96,14 +96,9 @@ def ln_gamma_decimal(z: decimal.Decimal) -> decimal.Decimal:
     return c.subtract(total, shift)
 
 
-def ibeta_reference(x: float, a: float, b: float) -> float:
-    """I_x(a, b) rounded once to a double: NR's continued fraction at 70 digits."""
-    if x <= 0:
-        return 0.0
-    if x >= 1:
-        return 1.0
+def _ibeta_decimal(dx: decimal.Decimal, da: decimal.Decimal, db: decimal.Decimal) -> decimal.Decimal:
+    """I_x(a, b) for 0 < x < 1 at 70 digits: NR's continued fraction."""
     c = _CTX
-    dx, da, db = decimal.Decimal(x), decimal.Decimal(a), decimal.Decimal(b)
     flip = dx > (da + 1) / (da + db + 2)
     if flip:
         dx, da, db = 1 - dx, db, da
@@ -127,7 +122,16 @@ def ibeta_reference(x: float, a: float, b: float) -> float:
         if abs(delta - 1) < tol:
             break
     v = c.exp(lbt) * h / da
-    return float(1 - v if flip else v)
+    return 1 - v if flip else v
+
+
+def ibeta_reference(x: float, a: float, b: float) -> float:
+    """I_x(a, b) rounded once to a double: NR's continued fraction at 70 digits."""
+    if x <= 0:
+        return 0.0
+    if x >= 1:
+        return 1.0
+    return float(_ibeta_decimal(decimal.Decimal(x), decimal.Decimal(a), decimal.Decimal(b)))
 
 
 @cache
@@ -563,7 +567,7 @@ def t_cdf(fn: Ibeta, t: float, n: float) -> float:
     """T.DIST(t,n,TRUE) = 1 - I_y(n/2, 1/2)/2 for t > 0 (I_y/2 below), y = n/(n + t^2), or
     0.5 +- I_z(1/2, n/2)/2 with z = 1 - y when z is smaller (back to I_y/2 for a lower tail under
     0.1, where the difference cancels); Excel truncates n to an integer
-    (docs/excel-semantics/statistics.md, T-1043)."""
+    (docs/excel-semantics/statistics.md, T-1043). `t_cdf_reference` is the exact-decimal twin."""
     n = float(math.trunc(n))
     if t == 0:
         return 0.5
@@ -579,6 +583,19 @@ def t_cdf(fn: Ibeta, t: float, n: float) -> float:
     lower = 0.5 - centre
     # 0.5 - centre cancels in the deep lower tail (T.DIST(-10,1000,TRUE) = 8.3E-23): take I_y/2.
     return lower if lower >= 0.1 else fn(y, n / 2.0, 0.5) / 2.0
+
+
+def t_cdf_reference(t: float, n: float) -> float:
+    """T.DIST(t,n,TRUE) correctly rounded: y = n/(n + t^2) stays an exact decimal into I_y, because
+    rounding y to a double first moves the deep tail (n = 1E6, t = -2) by 152,191 ulp (T-2088).
+    Same mapping as `t_cdf`; Excel truncates n (statistics.md, T-1043)."""
+    n = float(math.trunc(n))
+    if t == 0:
+        return 0.5
+    dn, dt = decimal.Decimal(n), decimal.Decimal(t)
+    y = _CTX.divide(dn, _CTX.add(dn, _CTX.multiply(dt, dt)))
+    half_tail = _ibeta_decimal(y, dn / 2, decimal.Decimal("0.5")) / 2
+    return float(1 - half_tail if t > 0 else half_tail)
 
 
 def f_dist_candidates() -> list[Candidate]:
@@ -604,7 +621,14 @@ def t_dist_candidates() -> list[Candidate]:
 
         return call
 
-    return [candidate(name, wrap(fn), family) for name, family, fn in ibeta_candidates()]
+    def reference(*args: Arg) -> float:
+        t, n = _numbers(args)
+        return t_cdf_reference(t, n)
+
+    # The reference maps exactly, not through a double y (see `t_cdf_reference`).
+    return [candidate("correctly rounded", reference, "reference")] + [
+        candidate(name, wrap(fn), family) for name, family, fn in ibeta_candidates() if family != "reference"
+    ]
 
 
 FITS = [

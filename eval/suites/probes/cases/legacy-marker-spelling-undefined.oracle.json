@@ -1,0 +1,34 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "A2": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "A3": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A4": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A5": {
+    "t": "n",
+    "v": 1.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "3aa8e380cc7ea550d43a0e0eac061e7046a29bc29eda1b703720719aa3a7f2f5",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-19T12:30:55+00:00",
+  "version": null
+ }
+}

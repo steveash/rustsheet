@@ -3,7 +3,7 @@ id: T-1951
 title: "Probe LAMBDA calls returning a union or a one-cell reference to OFFSET, COUNTIF and AREAS"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,9 +25,15 @@ COUNTA and ISREF pin (probes/let-lambda-reference-results). Probe with the excel
 uncollapsed if Excel keeps the areas).
 
 ## Acceptance criteria
-- [ ] A probe case with the forms above has excel-graph values; every cell passes (or failures are filed).
-- [ ] The findings are recorded in docs/excel-semantics/references.md.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with the forms above has excel-graph values; every cell passes (or failures are filed).
+- [x] The findings are recorded in docs/excel-semantics/references.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - LAMBDA helpers (MAP, REDUCE, BYROW) returning references.
+
+## Outcome
+Probe probes/lambda-union-reference-callers (excel-graph): Excel keeps a union and a one-cell reference through a LAMBDA call
+into SUM, ISREF, AREAS, INDEX, OFFSET and COUNTIF. Fixed by returning the `RefArg` uncollapsed from
+`call_callee_as_reference` and reading LET/LAMBDA calls as references in `evaluate_node_with_reference`. Findings in
+docs/excel-semantics/references.md.

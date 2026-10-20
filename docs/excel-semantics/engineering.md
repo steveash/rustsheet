@@ -43,15 +43,18 @@ Rule: RustSheet returns `#NUM!` for BESSELI, BESSELJ, BESSELK and BESSELY orders
 untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0` (probes-numeric/m9-bessel, T-1004), so the engine differs above 100,000 for J.
 BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's values above
 100,000 are unprobed for them.
-A lifted Bessel call is also charged 2^16 units per element against the lifting visit cap (SPEC-0011
-`KernelWork::Weighted`), so one call lifts at most 2,048 elements: `ROWS(BESSELJ(2.5,SEQUENCE(2100)))` is `#ERROR!`
-where Excel gives 2100. At the order cap a BESSELI element runs about 2·10^5 recurrence steps; 2,048 such elements
-take about 2 s in a release build (8,192 took 8 s, T-1383).
+A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
+(SPEC-0011 `KernelWork::ByArg`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
+cap and 1 for n = 0; an order past the cap is refused (`#NUM!`) before the kernel loops and costs 1. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
+the cap (`ROWS(BESSELI(2.5,SEQUENCE(2100,1,100000,0)))` is `#ERROR!`), while small orders lift freely
+(`ROWS(BESSELJ(2.5,SEQUENCE(2100)))` = 2100 and `ROWS(BESSELJ(SEQUENCE(5000)/100,0))` = 5000, as in Excel). A text order
+is charged as at the cap. At the order cap a BESSELI element runs about 2·10^5
+recurrence steps; 2,048 such elements take about 2 s in a release build (8,192 took 8 s, T-1383).
 Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orders; the cap itself is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Tasks: T-1004, T-1383; T-1819 narrows the lifted cap to an order-based work budget.
+Tasks: T-1004, T-1383; T-1819 (the lifted cap is an order-based work budget).
 Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`), bessel_i.rs, bessel_k.rs;
-functions/lift/kinds/engineering.rs (`BESSEL_WEIGHT`)
+functions/lift/kinds/engineering.rs (`BESSEL`, `BESSEL_WEIGHT`), functions/lift/driver.rs (`kernel_units`)
 
 ## DECIMAL of unreadable text
 Rule: DECIMAL reads its first argument as text (a number or TRUE goes through its text form, so `DECIMAL(0.5,13)`, `DECIMAL(1E+20,10)` and `DECIMAL(TRUE,10)` read "0.5", "1E+20", "TRUE"). Leading spaces and tabs are skipped; empty or all-blank text is 0. Any other unreadable character is `#NUM!` (not `#VALUE!`): a sign (`"-1"`, `"+1"`), a point, trailing space, a non-breaking space, a digit not below the radix. Text over 255 UTF-16 units (200 emoji is too long) is `#VALUE!`, checked before the radix (`DECIMAL(REPT("1",256),37)` is `#VALUE!`), as is a non-numeric radix. Newline and fullwidth digits are unreadable (`#NUM!`); the overflow is `#NUM!` inside a larger formula too (`ERROR.TYPE` 6, `IFERROR` falls through). Error arguments: the text argument's error wins (`DECIMAL(#N/A,#DIV/0!)` is `#N/A`). Radix 16 only also skips leading zeros and one `x`/`X` (`"0x1F"`, `"x1F"`, `"00x1F"` are 31; `"0x0x1"`, `"1x1F"`, `"0x 1F"` are `#NUM!`; in radix 10 or 15 `"0x1F"` is `#NUM!`, in radix 36 the x is a digit). The sum is a float with no 2^53 limit (255 ones in radix 2 is 5.78960446186581E+76; 198 `Z`s in radix 36 is 1.4057081148316923E+308), but a result past the largest double is `#NUM!` (199 `Z`s in radix 36, 255 `Z`s).
@@ -216,7 +219,7 @@ row-major order inside a range or array, and the first bad item is the result.
 - A blank cell is 0, also one past the used area: `IMPRODUCT(M1:M2,Q1:Q3)` is "0" and `IMSUM(M1:M2,Q1:Q3)` "4+2i".
   An empty argument is skipped, not 0: `IMPRODUCT(M1,)` is "1+2i".
 - Empty text is `#NUM!`, typed (`IMSUM(M1,"")`), from a formula (M9 `=""`) and in an array
-  (`IMPRODUCT({"1+2i",""})`), unlike the one-argument IM* functions that read it as 0.
+  (`IMPRODUCT({"1+2i",""})`), as in every one-argument IM* function ("Engineering edge cases from a generated sample (T-1385)").
 - The first bad item wins, whatever its kind: `IMSUM(M5,M4)` ("x", TRUE) is `#NUM!` and `IMSUM(M4,M5)` `#VALUE!`;
   `IMSUM(M5,M7)` is `#NUM!` and `IMSUM(M7,M5)` `#DIV/0!` (M7 `=1/0`); `IMSUM({"x",TRUE})` is `#NUM!` and
   `IMSUM("x",NA())` `#NUM!`. A blank does not stop the walk: `IMPRODUCT(M1:M3,M5)` is `#NUM!`.
@@ -250,26 +253,33 @@ Ours: `#NUM!` for OCT2BIN, OCT2DEC and HEX2BIN of a blank cell; BIN2DEC gives 0 
 Status: VERIFIED (web) for OCT2BIN; the rest UNVERIFIED
 Tasks: T-1413
 
-## Engineering edge cases seen in a generated sample (unprobed)
-Excel gave these values in a seeded engineering sample, which was not committed. They were read from
-nested generated formulas, so each one needs a one-question probe before it is implemented (T-1385).
-Seen directly as a whole cell value:
-- `HEX2OCT("FFFFFFFFFF",4)` is "7777777777". For a negative input `places` is ignored, where we give
-  `#NUM!`.
-- `IMPOWER("2i",-1)` is "3.06287113727155E-17-0.5i" and `IMPOWER("-i",4)` is "1+2.45029690981724E-16i".
-  A tiny part is written in E notation with 15 significant digits, and its value is not what
-  cos/sin of the exact angle gives (ours: "0.0000000000000000306161699786838-0.5i").
-Inferred from inside a larger formula:
-- CONVERT reads its number before its units. A text number with an unknown unit is `#VALUE!`, not
-  `#N/A`.
-- DELTA and GESTEP report the second argument's error before the first's. `DELTA(<#NUM!>,<#N/A>)` is
-  `#N/A`.
-- A boolean cell in BITAND, DELTA or GESTEP is `#VALUE!`, where we give `#NUM!`.
-- `IMSQRT("")` is `#NUM!`, where we give "0".
-- A negative fractional Bessel order is `#NUM!`: `BESSELK(5,-0.0001)`. We truncate the order to 0.
-Evidence: `rustsheet-gen --milestone M9 --count 20 --seed 17` run from a scratch catalog holding only
-the engineering signatures (excel-graph, 2026-10-11, T-1085; not committed).
-Status: UNVERIFIED (probe pending)
+## Engineering edge cases from a generated sample (T-1385)
+The T-1085 gen-m9 sample suggested seven differences; a one-question probe of each settled them.
+- **A negative base-conversion result ignores `places`.** `HEX2OCT("FFFFFFFFFF",4)` is "7777777777"
+  and `HEX2BIN("FFFFFFFFFF",4)` is "1111111111" (C1, C6), as DEC2BIN, OCT2BIN, BIN2HEX and the others
+  already did. `places` must still be 1 to 10: 0, -1, 11 and 20 are `#NUM!` and "x" is `#VALUE!`
+  (C2:C5, C11).
+- **Any negative Bessel order is `#NUM!`, checked before truncation.** `BESSELK(5,-0.0001)`,
+  `BESSELK(5,-1E-300)`, `BESSELJ(5,-0.9999)`, `BESSELY(5,-0.0001)` and `BESSELI(5,-0.0001)` are `#NUM!`
+  (E1:E9); a positive fraction still truncates (`BESSELK(5,0.9999)` = `BESSELK(5,0)`, E10).
+- **Empty text is `#NUM!` in every one-argument IM\* function; a blank cell is 0.** `IMSQRT("")`,
+  `IMSQRT(""&"")`, `IMSQRT(<cell holding ="">)`, `IMSQRT(INDEX({"";"4"},1))`, and `""` in IMABS,
+  IMAGINARY, IMARGUMENT, IMCONJUGATE, IMCOS, IMCOSH, IMCOT, IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2,
+  IMREAL, IMSEC, IMSECH, IMSIN, IMSINH and IMTAN are all `#NUM!` (D1:D25). A blank cell is 0 in all of
+  them: `IMSQRT(blank)` is "0", `IMCOS(blank)` and `IMCOSH(blank)` are "1" (D3, D26:D32). This is the
+  rule IMSUB, IMDIV and IMPOWER already followed (T-1625 below).
+- **CONVERT refuses a boolean before it reads the units.** `CONVERT(TRUE,"m","ft")`, a TRUE cell,
+  `CONVERT(FALSE,"m","m")`, a TRUE array element and `CONVERT(<TRUE cell>,"xyz","m")` are `#VALUE!`
+  (A8, A11:A14). The sample's other CONVERT hypothesis was wrong: a numeric text with an unknown unit
+  is `#N/A` (`CONVERT("2.5","ft","xyz")`, A1), non-numeric text is `#VALUE!` whatever the units (A2,
+  A4, A6, A7); a blank cell is 0 (A15) and `""` is `#VALUE!` (A16).
+- **Not differences** (the sample's formulas misled): DELTA's and GESTEP's second-argument error
+  wins, as T-1816 already implements (B1, B2); a boolean cell in DELTA and GESTEP is `#VALUE!` (B3,
+  B4, B6, B7), which ours already gave; and BITAND reads a boolean, typed or in a cell, as its number
+  (`BITAND(TRUE,139)` and `BITAND(<TRUE cell>,139)` are 1, B5, B8, B11). The IMPOWER E-notation cells
+  (`IMPOWER("2i",-1)`, `IMPOWER("-i",4)`, `IMPOWER("3+4i",1E-15)`) already matched since T-1766 (F1:F4).
+Evidence: probes/eng-gen-sample-edges (excel-graph, 2026-10-19, T-1385).
+Status: VERIFIED (excel-graph); implemented (T-1385)
 Tasks: T-1385
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
@@ -279,14 +289,123 @@ Tasks: T-1385
 - IMPOWER does not use the naive polar form: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` (the naive form gives 1.22464679914735E-16), `IMPOWER("-j",3)` real part -1.83772268236293E-16, `IMPOWER("1+i","2")` real part 1.22514845490862E-16, `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i` (naive: `-1125899906842630-0.552925707312197i`). The values differ, not only the printing; tiny parts also print in E-notation.
 - A blank cell argument is 0 in IMSUB (`IMSUB(A7,B7)` with B7 blank), unlike empty text (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet2 G7:G10).
 - Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, and IMPOWER as `|z|^n` by Excel's `^` (square-and-multiply for an integer `n`) times Excel's SIN/COS of the double `atan2(y,x)·n` (argument reduction by the x87 64-bit pi, numbers.md "Trig of a huge angle"). That reproduces all four values bit for bit: the tiny part of `IMPOWER("i",2)` is `π₆₄ − π_double`, the real part of `(1+i)^100` is `sqrt(2)^100` by square-and-multiply (2^50 + 12.5; libm `pow` gives 2^50 + 7.75) and its imaginary part is that times `sin(double(100·π/4))` reduced by `π₆₄`. Each part prints as number-to-text does (E notation past 20 plain characters).
-- UNVERIFIED: a blank first argument in IMDIV and IMPOWER is read as 0 (only IMSUB is evidenced), and Smith's algorithm is our guess at IMDIV's arithmetic (an x87 plain formula could differ in the last ulp).
-- UNVERIFIED: an angle `atan2·n` of 2^27 or more (SIN's `#NUM!` cut) falls back to libm sine and cosine; no probe covers it.
-Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625).
-Status: VERIFIED (excel-graph)
-Tasks: T-1766
+- A blank first argument is 0 in IMDIV and IMPOWER (`IMDIV(blank,"1+i")` and `IMPOWER(blank,2)` are "0"; `IMPOWER(blank,0)` and `IMDIV(blank,blank)` are `#NUM!`). IMDIV by Smith's algorithm matches Excel to the last digit on a sweep of 13 non-trivial divisors, including `1E10+1E-10i` over `1E-5+1E5i` and `1+i` over `1E-200+1E-200i` (`1E+200`).
+- IMPOWER stops answering once the angle `atan2(y,x)·n` is near 2^27, but not at 2^27: `IMPOWER("i",85445658)` (angle 134217725.7) answers, `IMPOWER("i",85445659)` (134217727.3) is `#NUM!`. We cut at 134217727 (a bracket, not a derived value). A radius that underflows to 0 is "0" whatever the angle (`IMPOWER("0.5i",134217728)`, `IMPOWER("0.5",134217728)`); one that overflows is `#NUM!` (`IMPOWER("1E-200+1E-200i",-2)`, `IMPOWER("1E200",2)`; `IMPOWER("1+i",170891317)` is this overflow, its angle is under the cut).
+- UNVERIFIED: Excel's modulus power for a base near radius 1 differs from ours, so the "bit for bit" claim above holds for the four evidenced values only: `IMPOWER("0.7071067811865476+0.7071067811865476i",170891300)` is `-0.999999886163532+1.2252504385364E-08i` in Excel and `-0.999999867190789+…` in ours (probes/eng-impower-angle-cut A9-A17, all inside the cut). Per factor that is r ≈ 1-6·2^-53 against our 1-7·2^-53, so Excel computes the modulus differently from `sqrt(x²+y²)` (cause unknown; T-1950).
+- UNVERIFIED: past the cut a base that is not a pure imaginary number does not give `#NUM!`: `IMPOWER("0.7071067811865476+0.7071067811865476i",170891318)` is `1.79769293021926E+308+1.79769293021926E+308i` and `…,170891320` is `1.79769293021925E+308+1.79769293021925E+308i` (the parts differ, so it is not a clamp). Ours gives `#NUM!` there (T-1950).
+Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892).
+Status: VERIFIED (excel-graph), except the bullets marked UNVERIFIED (T-1950)
+Tasks: T-1766, T-1892
+
+## IMTAN and IMCOT use the double-angle form (T-0907)
+Rule: IMTAN computes tan(x+iy) as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)`, and IMCOT is the
+reciprocal of that value, `conj(t)/|t|²`; the tan/tanh product form loses the last 1-10 digits
+where the real part is small (`IMTAN("1.23+9.5121i")` real part 6.89106871662165E-09, the product
+form 6.89106877738345E-09; `IMCOT("7-12.6i")` real part 2.25273756035673E-11). A fit over every
+row of the workbook: the double-angle IMTAN matches all of them, the reciprocal IMCOT all but one
+(T14, last digit; Smith's division misses T7 too), while `sin z / cos z` and `cos z / sin z` miss
+most. IMCOT of a real number keeps `1/tan x` (`IMCOT("1E-20")` = 1E+20, where the double-angle
+denominator is 0).
+Remaining after T-0907 (19 cells of COMPLEXs.xlsx, all 1-2 ulps or the 15th digit): IMABS (G7,
+G8, G14, G23; neither `sqrt(x²+y²)` nor `hypot`), IMARGUMENT (H2, H3, H10, H14, H23; neither
+`atan2` nor `atan(y/x)` ± π for all of them), IMCSC (V4, W4, W7, V15, W21), IMSEC (Z25), IMSECH
+(AB7), IMCOS (K25), IMLOG2 (AH19) and IMCOT T14. The workbook's values come from Macintosh Excel,
+and the oracle calibration found IMARGUMENT differing by ulps between Excel for the web and desktop
+(docs/architecture/oracle.md), so these may be platform libm digits.
+- IMSEC and IMSECH do not share a kernel: `sech(3+4i)` and `sec(4+3i)` have the same real part mathematically, yet
+  `IMREAL(IMSEC("4+3i"))` is -0.0652940278579471 (COMPLEXs.xlsx Z25, Mac cache, which the web agrees with) and
+  `IMSECH("3+4i")` prints -0.065294027857947 (probes/eng-argument-modes Calc!A45 and gen-m9/a2e51f48717af2a1
+  Calc!A24, excel-graph). Ours gives the other digit in both. The remaining cells are now T-2044 (sweep T-2043);
+  IMARGUMENT H2, H3, H10 and IMCOS K25 are desktop/web differences (docs/research/oracle-calibration.md), not fitting
+  targets until the desktop oracle exists.
+- UNVERIFIED: where `cosh 2y` overflows (|y| above about 355) ours gives `±0 ± i` (IMTAN("1+400i") =
+  "i", as the old tan/tanh form did), and where the denominator is 0 (a real x at the double nearest
+  π/2) `tan x`; Excel may give `#NUM!` there (T-1966).
+Evidence: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx (Excel-cached, Microsoft Macintosh Excel) N, O,
+T, U columns; probes/eng-argument-modes Calc!A33 `IMCOT("3+4i")` = "-0.000187587737983659-1.00064439247156i"
+and A51 `IMTAN("3+4i")` = "-0.000187346204629478+0.999355987381473i" (excel-graph), which the
+double-angle form matches too, so the digits are not Mac-only.
+Status: VERIFIED (desktop cached values and excel-graph), except the UNVERIFIED bullet (T-1966)
+Tasks: T-0907, T-1966, T-2043, T-2044
 
 ## Base conversions read a blank cell and empty text as 0
 Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank cell, `""` and a ref to `=""` as 0: `BIN2DEC("")`, `OCT2DEC(blank)`, `HEX2DEC("")` are 0; the others give "0", or "0000" with `places` 4. None of these is an error.
 Evidence: probes/eng-base-conv-blank (excel-graph, 2026-10-18, T-1413); gen-m9/d244411dd90f7fbd A15.
 Status: VERIFIED (excel-graph)
 Tasks: T-1413
+
+## The second argument's error wins in the two-argument base conversions, DELTA and GESTEP
+Rule: DEC2BIN, DEC2HEX, DEC2OCT, BIN2OCT, BIN2HEX, HEX2BIN, HEX2OCT, OCT2BIN, OCT2HEX, DELTA and GESTEP read the second argument (`places`, `number2`, `step`) before the first, scalar or inside one array element. `DEC2BIN("x",NA())` is `#N/A` and `DEC2BIN(NA(),"x")` is `#VALUE!`; the same for all eleven. BESSELJ, BITLSHIFT, CONVERT, COMPLEX, IMPOWER and ERF instead report the first argument's error.
+Evidence: probes/eng-first-vs-second-error A1:D11 (excel-graph, 2026-10-19); probes/eng-later-argument-lift M2, M8.
+Status: VERIFIED (excel-graph)
+Tasks: T-1816
+
+## IM* results that overflow (T-1827)
+
+Rule: for IMSUM, IMPRODUCT, IMEXP, IMPOWER and IMDIV (the functions probed), a result that
+overflows or is NaN is an error, never text. IMSUM and IMPRODUCT give `#VALUE!`; IMEXP of a pure
+real number, IMPOWER and IMDIV give `#NUM!`. The other IM* functions are UNVERIFIED.
+Status: VERIFIED (excel-graph); implemented for the five (IMEXP with a nonzero imaginary part: T-2002, T-2060).
+Tasks: T-1827, T-1996, and the follow-ups T-2001 to T-2003.
+Evidence: probes/eng-im-overflow (excel-graph).
+
+- Examples: `IMPRODUCT("1E200","1E200")`, `IMSUM("9E307","9E307")` and
+  `IMPRODUCT("1E200","1E200","0")` are `#VALUE!` (A5-A7, A25, A30, A36-A38); `IMEXP("710")`,
+  `IMPOWER("1E155",2)` and `IMDIV("1E300","1E-300")` (A21) are `#NUM!`.
+- The limit is the double range: `IMPRODUCT("1E154","1E154")` is `1E+308`, `IMEXP("709.7")` is
+  `1.65498402768026E+308`, `IMPOWER("1E154",2)` is `1E+308`.
+- IMEXP with a nonzero imaginary part does not overflow to an error: `IMEXP("1000+1i")` is
+  `9.71297746009434E+307+1.51270661257499E+308i` (A12). The modulus is capped at DBL_MAX (the
+  ratio of the parts is tan(1) and re / cos(1) is 1.7977E+308), the same mechanism as the values
+  near 1.797E+308 of IMPOWER (T-1950). Implemented (T-2002, T-2060). Probes
+  (probes/eng-imexp-overflow-imag, excel-graph): the cap holds for a negative imaginary part
+  (`IMEXP("1000-1i")`), for `709.9+1i` (exp overflows only past 709.78) and for `1000+3.14159i`
+  (`-1.79769313485599E+308+4.770340154251E+302i`), down to `1000+1.5E-8i`; but `IMEXP("710+1E-300i")`,
+  `"1000+1E-300i"`, `"1000-1E-300i"` and every imaginary part up to `1.4E-8` are `#NUM!`. The
+  boundary is exactly 2^-26 = sqrt(DBL_EPSILON) = 1.4901161193847656E-8: `1000+1.4901161193847E-8i` is
+  `#NUM!` and `1000+1.4901161193848E-8i` is capped (probes/eng-imexp-overflow-cutoff A1, A2; `1.49E-8`
+  and `1.4901E-8` error, `1.4902E-8` caps). The window is independent of x (`800`, `709.9`:
+  eng-imexp-overflow-cutoff-pi A21-A24). The same kind of window applies around every other multiple of
+  pi/2, but smaller; it was only bracketed (probes/eng-imexp-overflow-cutoff-pi, -pi2, -halfpi): pi
+  below (1.04, 1.06]E-8, pi above and 2pi both sides (1.05, 1.10]E-8, pi/2 and 3pi/2 both sides
+  (1.0, 1.2]E-8. So `IMEXP("1000+3.14159265i")`, `IMEXP("1000+3.14159265358979i")` and
+  `IMEXP("1000+pi/2 i")` (y = 1.5707963267948966) are `#NUM!` while `3.14159264i` (1.36E-8 below pi)
+  caps. Implemented as 2^-26/sqrt(2) = 1.0537E-8 around multiples other than 0, which fits every
+  bracket but is fitted, not derived: UNVERIFIED beyond n = 4 quarter turns and at the exact
+  boundary (T-2101).
+- IMEXP's sine and cosine of the imaginary part reduce the argument as SIN and COS do (the x87
+  64-bit pi, see the IMPOWER entry above): `IMEXP("1000+3.14159i")` is
+  `-1.79769313485599E+308+4.770340154251E+302i` (probes/eng-imexp-overflow-imag A3) and
+  `IMEXP("710i")` is `0.999999998182636+0.0000602887066915739i` (probes/eng-im-overflow A42); libm's
+  sin gives other last digits. Implemented with `excel_sin_cos` (T-2060). `IMEXP("1000+134217727i")` is
+  `-5.27422318923931E+307-1.7185826441088E+308i` but every positive y >= 134217728 (negative y unprobed, T-2101) (`1000+134217728i`, `2E8`,
+  `1E9`, `1E15`) is `#NUM!`, even when x is small (`IMEXP("1+134217728i")`;
+  probes/eng-imexp-overflow-cutoff A17-A24); implemented as the SIN limit (T-2087).
+- A part near DBL_MAX is written as `1.79769313486232E+308`, a decimal above DBL_MAX: the 15-digit
+  rounding of 1.7976931348623157E+308 is not clamped (probes/eng-imexp-overflow-imag A22, A24, A27,
+  A30). Ours keeps the unrounded part when the rounding overflows (T-2060). Numeric `DBL_MAX&""` and TEXT of
+  DBL_MAX are unprobed: a DBL_MAX literal in a formula makes excel-graph reject the workbook (T-2101).
+- IM* text keeps 15 significant digits for an exponent past 98, unlike `&""` (numbers.md): A11,
+  A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
+  `1.65498402768026E+308`, which ours now matches (T-2001: `complex_part_to_text` keeps 15 digits). This is a
+  formatting difference, not T-0907 precision.
+- IM* text writes a small part in full past 20 characters: `IMEXP("710i")` is
+  `0.999999998182636+0.0000602887066915739i` (A42). Ours now writes a part with decimal exponent -5 or above in plain notation whatever its
+  length (exponent -5 is plain by A42 and -16 is E notation by A9; -6 to -15 are unprobed, T-2056; the 15-digit rule at negative exponents of -99 or below is also unprobed); A42 still
+  fails: the digits differ since Excel reduces a large sine or cosine argument differently (ours
+  `...915853`).
+- An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
+  `IMSUM("1E308","0")`); ours already matches. `IMSQRT("1E307")` and `IMSQRT("4E307")` are `#NUM!`
+  too, which ours does not match (A33, A34).
+- `IMDIV("1","1E-308")` is `#NUM!` (A20) although results near 1E+308 are text (A46); the cause
+  (subnormal divisor?) is unprobed, ours matches.
+- IMSIN, IMCOS, IMSINH and IMCOSH: a result part that overflows or is NaN is `#NUM!` (`IMCOSH("1000")`,
+  `IMSINH("1000")`, `IMSIN("1+1000i")`, `IMCOS("1+1000i")`), as IMEXP of a real number (T-2003).
+- IMSUB: a part that overflows is 0 and the other part stays, no error: `IMSUB("9E307","-9E307")` and the `j` form are "0",
+  `IMSUB("9E307+1i","-9E307")` is "i", `IMSUB("1+9E307i","1-9E307i")` is "0"; `IMSUB("5E307","-5E307")` is `1E+308`
+  and an input part of `1E308` is `#NUM!` as everywhere (T-2003).
+- IMSUM and IMPRODUCT: the overflow is `#VALUE!` the moment it happens, so it beats a later bad argument
+  (`IMSUM("9E307","9E307",1,"x")`, `IMPRODUCT("1E200","1E200","x")`), a later cancelling term
+  (`IMSUM("9E307","9E307","-9E307")`) and a later blank cell (`IMPRODUCT("1E200","1E200",<blank>)`, not "0") (T-2003).
+Evidence: probes/eng-complex-overflow A1-A21 (excel-graph, 2026-10-19). Implemented in complex.rs
+(`finite_complex_result`, `fn_imsub`, `fold_complex`).

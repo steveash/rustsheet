@@ -3,7 +3,7 @@ id: T-1910
 title: "Legacy cell: no @ and a spill for a top-level SWITCH with an array result"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -19,8 +19,11 @@ probes/legacy-array-at-shapes C20 (Excel `=SWITCH(1,1,{2;3})`, ours `=@SWITCH(..
 Export side: `remove_redundant_legacy_intersection` (static_analysis/redundant.rs) must drop exactly the `@`s the parser adds, so change both.
 
 ## Acceptance criteria
-- [ ] The listed probes/legacy-array-at-shapes cells pass; the baseline shrinks.
-- [ ] `make check` green; reviewers approve.
+- [x] The listed probes/legacy-array-at-shapes cells pass; the baseline shrinks.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+A SWITCH returning only array constants no longer gets the automatic `@` in a legacy cell at the formula root (`add_root_legacy_intersection`, `static_analysis/legacy.rs`); import and export round-trip (a typed `@` on it is kept; pinned in test_implicit_intersection_export.rs). probes/legacy-array-at-shapes C11 and C20 now pass (probes known failures 2137 -> 2135). Range-returning and nested SWITCH keep the `@`; unprobed, filed as T-1964.

@@ -1,7 +1,7 @@
 use crate::tz::Tz;
 use chrono::Datelike;
-use std::collections::HashMap;
 
+mod holidays;
 mod month_shift;
 mod networkdays;
 pub(crate) mod time_text;
@@ -11,8 +11,7 @@ mod workday;
 mod yearfrac;
 use weekend::WeekendPattern;
 
-const SECONDS_PER_DAY: i32 = 86_400;
-const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
+use crate::formatter::date_clock::{parse_date_clock_serial, SECONDS_PER_DAY_F64};
 
 pub(crate) fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
@@ -100,11 +99,19 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
-// The time of day of a serial in whole seconds, after rounding it to the
-// nearest millisecond (0..=86399; a time that rounds up to midnight is 0).
-fn seconds_of_day(v: f64) -> i64 {
-    let ms = (v.rem_euclid(1.0) * SECONDS_PER_DAY_F64 * 1000.0).round() as i64;
-    (ms % (SECONDS_PER_DAY as i64 * 1000)) / 1000
+/// The hour, minute and second of a serial's time of day, as HOUR, MINUTE and SECOND take it
+/// apart. Half a second is added to the serial, then its fraction of a day is split by floors,
+/// through hours (x24) and minutes (x60), each step in double precision. So the time rounds to the
+/// nearest second and carries into the minute, the hour and past midnight (23:59:59.6 is hour 0),
+/// and an exact half goes whichever way the serial's binary noise takes it: `SECOND(0.5+2.5/86400)`
+/// is 2, `SECOND(0.5+3.5/86400)` 4. Excel: docs/excel-semantics/dates.md "HOUR, MINUTE and SECOND
+/// round to the nearest second" (probes/second-rounding, all 40 cells; T-1408).
+fn time_of_day_parts(v: f64) -> [f64; 3] {
+    let hours = (v + 0.5 / SECONDS_PER_DAY_F64).rem_euclid(1.0) * 24.0;
+    let hour = hours.floor();
+    let minutes = (hours - hour) * 60.0;
+    let minute = minutes.floor();
+    [hour, minute, ((minutes - minute) * 60.0).floor()]
 }
 
 use crate::cast::{calc_result_to_string, number_text_too_long};
@@ -116,7 +123,6 @@ use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
 use crate::functions::lift::{num_error, number_result, value_error};
-use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
 use crate::types::DateSystem;
@@ -137,54 +143,14 @@ fn error_kind(result: &CalcResult) -> Error {
     }
 }
 
+/// The error of `result` with no message: a holidays error, which every lifted element of WORKDAY
+/// or NETWORKDAYS returns, is then cloned without allocating.
+fn bare_error(result: &CalcResult, cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(error_kind(result), cell, String::new())
+}
+
 /// Saturday-Sunday weekend (pattern 1), Monday first.
 const DEFAULT_WEEKEND: [bool; 7] = WeekendPattern::SatSun.to_mask();
-
-/// A weekend argument: one mask, or one (possibly invalid) mask per element of a lifted
-/// range or array.
-enum Weekend {
-    One([bool; 7]),
-    Many(Vec<Vec<Result<[bool; 7], CalcResult>>>),
-}
-
-impl Weekend {
-    /// Runs `compute` on each mask: the value (or the error) for [`Weekend::One`], an array
-    /// of them for [`Weekend::Many`].
-    fn lift(&self, mut compute: impl FnMut([bool; 7]) -> Result<f64, CalcResult>) -> CalcResult {
-        let into_node = |r: Result<f64, CalcResult>| match r {
-            Ok(n) => ArrayNode::Number(n),
-            Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
-            // Every `Err` of the weekend argument is a `CalcResult::Error`.
-            Err(_) => ArrayNode::Error(Error::VALUE),
-        };
-        match self {
-            Weekend::One(mask) => match compute(*mask) {
-                Ok(n) => CalcResult::Number(n),
-                Err(e) => e,
-            },
-            Weekend::Many(rows) => {
-                // At most 128 distinct masks exist, however many cells the argument has, so each
-                // is computed once: the day loop of the caller is millions of steps long.
-                let mut computed: HashMap<[bool; 7], ArrayNode> = HashMap::new();
-                CalcResult::Array(
-                    rows.iter()
-                        .map(|row| {
-                            row.iter()
-                                .map(|mask| match mask {
-                                    Ok(mask) => computed
-                                        .entry(*mask)
-                                        .or_insert_with(|| into_node(compute(*mask)))
-                                        .clone(),
-                                    Err(e) => into_node(Err(e.clone())),
-                                })
-                                .collect()
-                        })
-                        .collect(),
-                )
-            }
-        }
-    }
-}
 
 impl Model {
     /// DATEVALUE's reading of date text (also date arguments read as text, e.g. DATEDIF): the
@@ -196,7 +162,7 @@ impl Model {
         let serial = if let Ok((serial, _)) = parse_date(text, self.locale, year) {
             serial
         } else {
-            let serial = time_text::parse_date_clock_serial(text, self.locale, year)?.floor();
+            let serial = parse_date_clock_serial(text, self.locale, year)?.floor();
             if !(f64::from(MINIMUM_DATE_SERIAL_NUMBER)..=f64::from(MAXIMUM_DATE_SERIAL_NUMBER))
                 .contains(&serial)
             {
@@ -346,12 +312,19 @@ impl Model {
         Ok(())
     }
 
+    /// The weekday-faithful date of a WORKDAY or NETWORKDAYS date or holiday, serial 0 included
+    /// (dates.md "WORKDAY and NETWORKDAYS from serial 0"); `#NUM!` outside the date range.
     fn excel_date(
         &self,
         serial: i64,
         cell: CellReferenceIndex,
     ) -> Result<chrono::NaiveDate, CalcResult> {
-        match self.workbook.settings.date_system.date_of_serial(serial) {
+        match self
+            .workbook
+            .settings
+            .date_system
+            .date_of_serial_from_zero(serial)
+        {
             Some(date) => Ok(date),
             None => Err(CalcResult::Error {
                 error: Error::NUM,
@@ -361,38 +334,17 @@ impl Model {
         }
     }
 
-    /// The weekend argument of WORKDAY.INTL / NETWORKDAYS.INTL. A multi-cell range or an array
-    /// lifts, one mask per element (probes/date-argument-modes F41:F42, F63:F64).
-    fn weekend_arg(
-        &mut self,
-        node: Option<&Node>,
+    /// The weekend mask (Monday first) of one weekend element of WORKDAY.INTL or NETWORKDAYS.INTL.
+    /// The argument lifts over a range and an array (`ArgKind::Lift`; probes/date-argument-modes
+    /// F41:F42, F63:F64). An error-valued weekend is not passed on but becomes `error_as`, the
+    /// caller's own: `#NUM!` for WORKDAY.INTL, `#VALUE!` for NETWORKDAYS.INTL, whatever the
+    /// error, and a 3-D reference, which the lift reads as `#REF!`, is one too
+    /// (probes/date-text-weekend-3d P1-P30, Q1-Q30; dates.md "An error-valued weekend").
+    fn weekend_mask(
+        value: &CalcResult,
+        error_as: Error,
         cell: CellReferenceIndex,
-    ) -> Result<Weekend, CalcResult> {
-        let Some(node) = node else {
-            return Ok(Weekend::One(DEFAULT_WEEKEND));
-        };
-        let elements = match self.evaluate_node_in_context(node, cell) {
-            // A 3D range (two sheets) is unprobed (T-1428): never lift it over its first sheet.
-            CalcResult::Range { left, right } if left != right && left.sheet == right.sheet => {
-                self.evaluate_range(left, right, cell)?
-            }
-            CalcResult::Array(rows) => rows,
-            value => return Self::weekend_mask(value, cell).map(Weekend::One),
-        };
-        Ok(Weekend::Many(
-            elements
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|n| Self::weekend_mask(array_node_to_calc_result(n, cell), cell))
-                        .collect()
-                })
-                .collect(),
-        ))
-    }
-
-    /// The weekend mask (Monday first) a scalar weekend argument stands for.
-    fn weekend_mask(value: CalcResult, cell: CellReferenceIndex) -> Result<[bool; 7], CalcResult> {
+    ) -> Result<[bool; 7], CalcResult> {
         // Default: Saturday-Sunday weekend (pattern 1)
         let mut weekend = DEFAULT_WEEKEND;
         match value {
@@ -443,7 +395,11 @@ impl Model {
                 cell,
                 "Invalid weekend".to_string(),
             )),
-            e @ CalcResult::Error { .. } => Err(e),
+            CalcResult::Error { .. } => Err(CalcResult::new_error(
+                error_as,
+                cell,
+                "Invalid weekend".to_string(),
+            )),
             CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(weekend),
             CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 Err(CalcResult::Error {
@@ -551,25 +507,18 @@ impl Model {
         })
     }
 
+    // HOUR, MINUTE and SECOND share one rounding (`time_of_day_parts`): MINUTE(0.520833333) is
+    // 30 (12:29:59.99997 is 12:30:00), HOUR(TIME(10,59,59)+0.6/86400) is 11.
     pub(crate) fn fn_hour(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.time_part(Function::Hour, args, cell, |v| {
-            (v.rem_euclid(1.0) * 24.0).floor()
-        })
+        self.time_part(Function::Hour, args, cell, |v| time_of_day_parts(v)[0])
     }
 
-    // MINUTE and SECOND round the time of day to the nearest millisecond
-    // before taking it apart, as Excel does: MINUTE(0.520833333) is 30
-    // (12:29:59.99997 is 12:30:00.000), SECOND(TIME(14,30,45.999)) stays 45.
     pub(crate) fn fn_minute(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.time_part(Function::Minute, args, cell, |v| {
-            ((seconds_of_day(v) / 60) % 60) as f64
-        })
+        self.time_part(Function::Minute, args, cell, |v| time_of_day_parts(v)[1])
     }
 
     pub(crate) fn fn_second(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.time_part(Function::Second, args, cell, |v| {
-            (seconds_of_day(v) % 60) as f64
-        })
+        self.time_part(Function::Second, args, cell, |v| time_of_day_parts(v)[2])
     }
 
     pub(crate) fn fn_timevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -606,9 +555,9 @@ impl Model {
 
     pub(crate) fn fn_datedif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // Every argument lifts over a range or array: the dates (probes/date-argument-modes F5:F8)
-        // and the unit (probes/date-math-lift-driver-edges G1-G5). Errors keep their pre-lift order:
-        // the dates' own, #NUM! of a reversed pair, the unit's, then out-of-calendar #NUM! (T-1355;
-        // UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
+        // and the unit (probes/date-math-lift-driver-edges G1-G5). Errors come in Excel's order: the
+        // dates' own (start first), the unit's, then #NUM! of a reversed pair or an out-of-calendar
+        // date, then a bad unit (probes/datedif-days360-error-order, excel-graph, T-1430).
         let date_system = self.workbook.settings.date_system;
         self.lift_call(Function::Datedif, args, cell, &mut |model, values| {
             let [start, end, unit] = values else {
@@ -675,11 +624,13 @@ impl Model {
         unit: Result<&str, Error>,
     ) -> Result<f64, Error> {
         let (start_serial, end_serial) = (start_serial.floor() as i64, end_serial.floor() as i64);
+        // A unit error beats a reversed pair and an out-of-calendar date: `DATEDIF(10,5,NA())` and
+        // `DATEDIF(3000000,5,NA())` are #N/A (probes/datedif-days360-error-order A1, A16; dates.md
+        // "DATEDIF argument errors before date checks").
+        let unit = unit?;
         if end_serial < start_serial {
             return Err(Error::NUM);
         }
-        // A unit error beats an out-of-calendar start date (dates.md "DATEDIF argument errors before date checks").
-        let unit = unit?;
         let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
         let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;
         // The units are ASCII, so an ASCII case-blind match is the upper-casing it replaces.
@@ -783,8 +734,9 @@ impl Model {
         // The dates and the method lift over a range or array (probes/date-argument-modes F15:F18,
         // probes/date-math-lift-driver-edges G6-G10). The European-method flag follows Excel's
         // logical coercion: numbers are truthy when non-zero, and only the text "TRUE"/"FALSE" is
-        // accepted. The dates' own errors come first, then the method's, then the dates' #NUM!, as
-        // before the lift (UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
+        // accepted. The dates' own errors come first, then the method's, then the dates' #NUM!
+        // (probes/datedif-days360-error-order C1-C19, excel-graph; dates.md "DATEDIF and DAYS360
+        // error order", T-1430).
         let date_system = self.workbook.settings.date_system;
         self.lift_call(Function::Days360, args, cell, &mut |model, values| {
             let dates = model
@@ -826,13 +778,11 @@ impl Model {
 
     pub(crate) fn fn_weekday(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let ds = self.workbook.settings.date_system;
-        // 1900 serial 0: weekday-serial-zero.
-        let sat = chrono::NaiveDate::from_ymd_opt(1899, 12, 30);
         // The date and the return type lift (probes/date-argument-modes F51:F52).
         let kind = Function::Weekday;
         self.numbers_fn(kind, args, [0.0, 1.0], cell, |[serial, return_type]| {
             let s = serial.floor();
-            let date = ds.date_of_serial(s as i64).or(sat.filter(|_| s == 0.0));
+            let date = ds.date_of_serial_from_zero(s as i64);
             weekday_number(date.ok_or(Error::NUM)?, return_type as i32)
         })
     }

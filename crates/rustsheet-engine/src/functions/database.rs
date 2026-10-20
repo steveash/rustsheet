@@ -7,444 +7,339 @@ use crate::{
 };
 
 use super::criteria::{build_criteria_with, CriteriaFlavor};
+use super::lift::LiftCost;
 use super::statistical::variance::{variance_result, VarianceKind};
+use super::Function;
+
+/// The resolved `database`, `field` and `criteria` of one D-function element.
+struct DbQuery {
+    left: CellReferenceIndex,
+    right: CellReferenceIndex,
+    /// The field's absolute column; `None` for a written empty `field` (`DCOUNT(A1:C6,,E1:E2)`),
+    /// which DCOUNT and DCOUNTA read as "the matching records".
+    field: Option<i32>,
+    criteria: (CellReferenceIndex, CellReferenceIndex),
+}
+
+/// The corners of a reference argument; an error passes through, anything else is `#VALUE!`
+/// (a database given as an array makes Excel refuse the workbook, statistics.md "Database
+/// function argument modes"; a criteria element of a lifted array is a scalar, `#VALUE!`).
+fn reference_corners(
+    value: &CalcResult,
+    cell: CellReferenceIndex,
+) -> Result<(CellReferenceIndex, CellReferenceIndex), CalcResult> {
+    match value {
+        CalcResult::Range { left, right } => Ok((*left, *right)),
+        error @ CalcResult::Error { .. } => Err(error.clone()),
+        _ => Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "Expected reference".to_string(),
+        )),
+    }
+}
 
 impl Model {
+    /// Runs a D-function through the SPEC-0011 driver: `field` and `criteria` lift over array
+    /// literals, `database` and a criteria range are read whole (probes/db-argument-modes).
+    /// `empty_field_counts` is for DCOUNT and DCOUNTA, whose written empty `field` counts records.
+    fn db_call(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        empty_field_counts: bool,
+        compute: fn(&mut Model, &DbQuery, CellReferenceIndex) -> CalcResult,
+    ) -> CalcResult {
+        // Only an argument that is not a plain literal or reference can lift, and only then is the
+        // call priced (the database and criteria are read again by the driver; cheap).
+        let may_lift = args.iter().skip(1).any(|arg| {
+            !matches!(
+                arg.ungrouped(),
+                Node::BooleanKind(_)
+                    | Node::NumberKind(_)
+                    | Node::StringKind(_)
+                    | Node::ReferenceKind { .. }
+                    | Node::RangeKind { .. }
+                    | Node::EmptyArgKind
+            )
+        });
+        let cost = if may_lift {
+            self.db_element_cost(args, cell)
+        } else {
+            LiftCost::Unit
+        };
+        self.lift_call_costed(
+            kind,
+            args,
+            cost,
+            cell,
+            &mut |model, values| match model.db_query(values, empty_field_counts, cell) {
+                Ok(query) => compute(model, &query, cell),
+                Err(error) => error,
+            },
+        )
+    }
+
+    /// What one lifted element costs: it scans every database row, reading the criteria headers
+    /// against the database's columns and each criteria row's cells (`db_row_matches_criteria`),
+    /// plus the field read. A whole-column database or criteria range is therefore `#ERROR!` when
+    /// lifted (limits.rs `MAX_LIFTED_CELL_VISITS`; a DEVIATION, statistics.md).
+    fn db_element_cost(&mut self, args: &[Node], cell: CellReferenceIndex) -> LiftCost {
+        let size = |range: &crate::calc_result::Range| {
+            let rows = u64::try_from(range.right.row - range.left.row + 1).unwrap_or(0);
+            let columns = u64::try_from(range.right.column - range.left.column + 1).unwrap_or(0);
+            (rows, columns)
+        };
+        let Some(Ok(database)) = args.first().map(|node| self.get_reference(node, cell)) else {
+            return LiftCost::Unit;
+        };
+        let (rows, columns) = size(&database);
+        let (criteria_rows, criteria_columns) =
+            match args.get(2).map(|node| self.get_reference(node, cell)) {
+                Some(Ok(criteria)) => size(&criteria),
+                _ => (0, 0),
+            };
+        let per_row = criteria_columns
+            .saturating_mul(columns)
+            .saturating_add(criteria_rows.saturating_mul(criteria_columns))
+            .saturating_add(1);
+        LiftCost::Cells(rows.saturating_mul(per_row))
+    }
+
+    fn db_query(
+        &mut self,
+        values: &[CalcResult],
+        empty_field_counts: bool,
+        cell: CellReferenceIndex,
+    ) -> Result<DbQuery, CalcResult> {
+        let [database, field, criteria] = values else {
+            return Err(CalcResult::new_args_number_error(cell));
+        };
+        let (left, right) = reference_corners(database, cell)?;
+        let field = if matches!(field, CalcResult::EmptyArg) && empty_field_counts {
+            None
+        } else {
+            Some(self.resolve_db_field_column(left, right, field, cell)?)
+        };
+        let criteria = reference_corners(criteria, cell)?;
+        if right.row <= left.row {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "No data rows in database".to_string(),
+            ));
+        }
+        Ok(DbQuery {
+            left,
+            right,
+            field,
+            criteria,
+        })
+    }
+
+    /// Folds over the field values of the records that match the criteria. A query with no
+    /// field passes `EmptyArg` for each record.
+    fn db_fold<T>(
+        &mut self,
+        query: &DbQuery,
+        init: T,
+        mut step: impl FnMut(T, CalcResult) -> T,
+    ) -> T {
+        let mut acc = init;
+        for row in (query.left.row + 1)..=query.right.row {
+            if !self.db_row_matches_criteria(query.left, query.right, row, query.criteria) {
+                continue;
+            }
+            let value = match query.field {
+                Some(column) => self.evaluate_cell(CellReferenceIndex {
+                    sheet: query.left.sheet,
+                    row,
+                    column,
+                }),
+                None => CalcResult::EmptyArg,
+            };
+            acc = step(acc, value);
+        }
+        acc
+    }
+
+    /// The finite numbers of the field among the matching records.
+    fn db_fold_numbers<T>(
+        &mut self,
+        query: &DbQuery,
+        init: T,
+        mut step: impl FnMut(T, f64) -> T,
+    ) -> T {
+        self.db_fold(query, init, |acc, value| match value {
+            CalcResult::Number(n) if n.is_finite() => step(acc, n),
+            _ => acc,
+        })
+    }
+
+    /// DMAX and DMIN: the extreme `pick` chooses among the matching numbers, 0 when there are none.
+    fn db_extreme(&mut self, query: &DbQuery, pick: fn(f64, f64) -> f64) -> CalcResult {
+        let best = self.db_fold_numbers(query, None, |best: Option<f64>, n| {
+            Some(best.map_or(n, |current| pick(n, current)))
+        });
+        CalcResult::Number(best.unwrap_or(0.0))
+    }
+
+    fn db_numbers(&mut self, query: &DbQuery) -> Vec<f64> {
+        self.db_fold_numbers(query, Vec::new(), |mut numbers, n| {
+            numbers.push(n);
+            numbers
+        })
+    }
+
     // =DAVERAGE(database, field, criteria)
     pub(crate) fn fn_daverage(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        let field_col = match self.resolve_db_field_column(db_left, db_right, &args[1], cell) {
-            Ok(c) => c,
-            Err(e) => return e,
-        };
-
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        if db_right.row <= db_left.row {
-            // no data rows
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No data rows in database".to_string(),
-            };
-        }
-
-        let mut sum = 0.0f64;
-        let mut count = 0usize;
-
-        let mut row = db_left.row + 1; // skip header
-        while row <= db_right.row {
-            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
-                let v = self.evaluate_cell(CellReferenceIndex {
-                    sheet: db_left.sheet,
-                    row,
-                    column: field_col,
-                });
-                if let CalcResult::Number(n) = v {
-                    if n.is_finite() {
-                        // Rounds the total to a double after every addition, like SUM (numbers.md
-                        // "Accumulators beyond SUM and AVERAGE", probes-numeric/daverage-accumulation).
-                        sum = extended_sum(sum, n);
-                        count += 1;
-                    }
+        self.db_call(
+            Function::Daverage,
+            args,
+            cell,
+            false,
+            |model, query, cell| {
+                // Rounds the total to a double after every addition, like SUM (numbers.md
+                // "Accumulators beyond SUM and AVERAGE", probes-numeric/daverage-accumulation).
+                let (sum, count) =
+                    model.db_fold_numbers(query, (0.0f64, 0usize), |(sum, count), n| {
+                        (extended_sum(sum, n), count + 1)
+                    });
+                if count == 0 {
+                    return CalcResult::Error {
+                        error: Error::DIV,
+                        origin: cell,
+                        message: "No numeric values matched criteria".to_string(),
+                    };
                 }
-            }
-            row += 1;
-        }
-
-        if count == 0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "No numeric values matched criteria".to_string(),
-            };
-        }
-
-        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1648), and a subnormal
-        // quotient is 0 as for AVERAGE (probes-numeric/daverage-accumulation A20:A24, T-1649).
-        CalcResult::Number(flush_subnormal(extended_quotient(sum, count as f64)))
+                // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1648), and a
+                // subnormal quotient is 0 as for AVERAGE (probes-numeric/daverage-accumulation
+                // A20:A24, T-1649).
+                CalcResult::Number(flush_subnormal(extended_quotient(sum, count as f64)))
+            },
+        )
     }
 
     // =DCOUNT(database, field, criteria)
     // Counts numeric entries in the field for rows that match criteria
     pub(crate) fn fn_dcount(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        let field_col = match self.resolve_db_field_column(db_left, db_right, &args[1], cell) {
-            Ok(c) => c,
-            Err(e) => return e,
-        };
-
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        if db_right.row <= db_left.row {
-            // no data rows
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No data rows in database".to_string(),
-            };
-        }
-
-        let mut count = 0usize;
-        let mut row = db_left.row + 1; // skip header
-        while row <= db_right.row {
-            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
-                let v = self.evaluate_cell(CellReferenceIndex {
-                    sheet: db_left.sheet,
-                    row,
-                    column: field_col,
-                });
-                if matches!(v, CalcResult::Number(_)) {
-                    count += 1;
-                }
-            }
-            row += 1;
-        }
-
-        CalcResult::Number(count as f64)
-    }
-
-    // =DGET(database, field, criteria)
-    // Returns the (single) field value for the unique matching row
-    pub(crate) fn fn_dget(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        let field_col = match self.resolve_db_field_column(db_left, db_right, &args[1], cell) {
-            Ok(c) => c,
-            Err(e) => return e,
-        };
-
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        if db_right.row <= db_left.row {
-            // no data rows
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No data rows in database".to_string(),
-            };
-        }
-
-        let mut result: Option<CalcResult> = None;
-        let mut matches = 0usize;
-
-        let mut row = db_left.row + 1;
-        while row <= db_right.row {
-            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
-                matches += 1;
-                if matches > 1 {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "More than one matching record".to_string(),
-                    };
-                }
-                result = Some(self.evaluate_cell(CellReferenceIndex {
-                    sheet: db_left.sheet,
-                    row,
-                    column: field_col,
-                }));
-            }
-            row += 1;
-        }
-
-        match (matches, result) {
-            (0, _) | (_, None) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No matching record".to_string(),
-            },
-            (_, Some(v)) => v,
-        }
-    }
-
-    // =DMAX(database, field, criteria)
-    pub(crate) fn fn_dmax(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.db_extreme(args, cell, true)
-    }
-
-    // =DMIN(database, field, criteria)
-    pub(crate) fn fn_dmin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.db_extreme(args, cell, false)
-    }
-
-    // =DSUM(database, field, criteria)
-    pub(crate) fn fn_dsum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        let field_col = match self.resolve_db_field_column(db_left, db_right, &args[1], cell) {
-            Ok(c) => c,
-            Err(e) => return e,
-        };
-
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        if db_right.row <= db_left.row {
-            // no data rows
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No data rows in database".to_string(),
-            };
-        }
-
-        let mut sum = 0.0;
-
-        // skip header
-        let mut row = db_left.row + 1;
-        while row <= db_right.row {
-            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
-                let v = self.evaluate_cell(CellReferenceIndex {
-                    sheet: db_left.sheet,
-                    row,
-                    column: field_col,
-                });
-                if let CalcResult::Number(n) = v {
-                    if n.is_finite() {
-                        // Each addition rounds twice like SUM's (probes-numeric/double-rounding-accumulators).
-                        sum = extended_sum(sum, n);
-                    }
-                }
-            }
-            row += 1;
-        }
-
-        CalcResult::Number(sum)
+        self.db_call(Function::Dcount, args, cell, true, |model, query, _| {
+            let no_field = query.field.is_none();
+            let count = model.db_fold(query, 0usize, |count, value| {
+                count + usize::from(no_field || matches!(value, CalcResult::Number(_)))
+            });
+            CalcResult::Number(count as f64)
+        })
     }
 
     // =DCOUNTA(database, field, criteria)
     // Counts non-empty entries (any type) in the field for rows that match criteria
     pub(crate) fn fn_dcounta(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
+        self.db_call(Function::Dcounta, args, cell, true, |model, query, _| {
+            let no_field = query.field.is_none();
+            let count = model.db_fold(query, 0usize, |count, value| {
+                let filled = !matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg);
+                count + usize::from(no_field || filled)
+            });
+            CalcResult::Number(count as f64)
+        })
+    }
 
-        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        let field_col = match self.resolve_db_field_column(db_left, db_right, &args[1], cell) {
-            Ok(c) => c,
-            Err(e) => return e,
-        };
-
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        if db_right.row <= db_left.row {
-            // no data rows
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No data rows in database".to_string(),
-            };
-        }
-
-        let mut count = 0;
-        for row in (db_left.row + 1)..=db_right.row {
-            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
-                let v = self.evaluate_cell(CellReferenceIndex {
-                    sheet: db_left.sheet,
-                    row,
-                    column: field_col,
-                });
-                if !matches!(v, CalcResult::EmptyCell | CalcResult::EmptyArg) {
-                    count += 1;
+    // =DGET(database, field, criteria)
+    // Returns the (single) field value for the unique matching row
+    pub(crate) fn fn_dget(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.db_call(Function::Dget, args, cell, false, |model, query, cell| {
+            let mut matches = 0usize;
+            let mut result = None;
+            model.db_fold(query, (), |(), value| {
+                matches += 1;
+                result = Some(value);
+            });
+            match (matches, result) {
+                (1, Some(value)) => value,
+                (0, _) | (_, None) => {
+                    CalcResult::new_error(Error::VALUE, cell, "No matching record".to_string())
                 }
+                _ => CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "More than one matching record".to_string(),
+                },
             }
-        }
+        })
+    }
 
-        CalcResult::Number(count as f64)
+    // =DMAX(database, field, criteria)
+    pub(crate) fn fn_dmax(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.db_call(Function::Dmax, args, cell, false, |model, query, _| {
+            model.db_extreme(query, f64::max)
+        })
+    }
+
+    // =DMIN(database, field, criteria)
+    pub(crate) fn fn_dmin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.db_call(Function::Dmin, args, cell, false, |model, query, _| {
+            model.db_extreme(query, f64::min)
+        })
+    }
+
+    // =DSUM(database, field, criteria)
+    pub(crate) fn fn_dsum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.db_call(Function::Dsum, args, cell, false, |model, query, _| {
+            // Each addition rounds twice like SUM's (probes-numeric/double-rounding-accumulators).
+            CalcResult::Number(model.db_fold_numbers(query, 0.0, extended_sum))
+        })
     }
 
     // =DPRODUCT(database, field, criteria)
     pub(crate) fn fn_dproduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        let field_col = match self.resolve_db_field_column(db_left, db_right, &args[1], cell) {
-            Ok(c) => c,
-            Err(e) => return e,
-        };
-
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        if db_right.row <= db_left.row {
-            // no data rows
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No data rows in database".to_string(),
-            };
-        }
-
-        let mut product = 1.0f64;
-        let mut has_numeric = false;
-
-        let mut row = db_left.row + 1; // skip header
-        while row <= db_right.row {
-            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
-                let v = self.evaluate_cell(CellReferenceIndex {
-                    sheet: db_left.sheet,
-                    row,
-                    column: field_col,
+        self.db_call(Function::Dproduct, args, cell, false, |model, query, _| {
+            let (product, has_numeric) =
+                model.db_fold_numbers(query, (1.0f64, false), |(product, _), n| {
+                    (product * n, true)
                 });
-                if let CalcResult::Number(n) = v {
-                    if n.is_finite() {
-                        product *= n;
-                        has_numeric = true;
-                    }
-                }
-            }
-            row += 1;
-        }
-
-        // Excel returns 0 when no rows / no numeric values match for DPRODUCT
-        if has_numeric {
-            CalcResult::Number(product)
-        } else {
-            CalcResult::Number(0.0)
-        }
-    }
-
-    // Small internal helper for DSTDEV / DSTDEVP / DVAR / DVARP
-    // Collects the numeric values of the field for rows that match the criteria.
-    fn db_numeric_values(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> Result<Vec<f64>, CalcResult> {
-        if args.len() != 3 {
-            return Err(CalcResult::new_args_number_error(cell));
-        }
-
-        let (db_left, db_right) = {
-            let r = self.get_reference(&args[0], cell)?;
-            (r.left, r.right)
-        };
-
-        let field_col = self.resolve_db_field_column(db_left, db_right, &args[1], cell)?;
-
-        let criteria = {
-            let r = self.get_reference(&args[2], cell)?;
-            (r.left, r.right)
-        };
-
-        if db_right.row <= db_left.row {
-            // no data rows
-            return Err(CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No data rows in database".to_string(),
-            });
-        }
-
-        let mut values = Vec::new();
-
-        let mut row = db_left.row + 1; // skip header
-        while row <= db_right.row {
-            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
-                let v = self.evaluate_cell(CellReferenceIndex {
-                    sheet: db_left.sheet,
-                    row,
-                    column: field_col,
-                });
-                if let CalcResult::Number(n) = v {
-                    if n.is_finite() {
-                        values.push(n);
-                    }
-                }
-            }
-            row += 1;
-        }
-
-        Ok(values)
+            // Excel returns 0 when no rows / no numeric values match for DPRODUCT
+            CalcResult::Number(if has_numeric { product } else { 0.0 })
+        })
     }
 
     // =DSTDEV(database, field, criteria): sample standard deviation of matching numeric values
     pub(crate) fn fn_dstdev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        match self.db_numeric_values(args, cell) {
-            Ok(values) => variance_result(&values, VarianceKind::Sample, true, "DSTDEV", cell),
-            Err(e) => e,
-        }
+        self.db_call(Function::Dstdev, args, cell, false, |model, query, cell| {
+            let values = model.db_numbers(query);
+            variance_result(&values, VarianceKind::Sample, true, "DSTDEV", cell)
+        })
     }
 
     // =DVAR(database, field, criteria): sample variance of matching numeric values
     pub(crate) fn fn_dvar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        match self.db_numeric_values(args, cell) {
-            Ok(values) => variance_result(&values, VarianceKind::Sample, false, "DVAR", cell),
-            Err(e) => e,
-        }
+        self.db_call(Function::Dvar, args, cell, false, |model, query, cell| {
+            let values = model.db_numbers(query);
+            variance_result(&values, VarianceKind::Sample, false, "DVAR", cell)
+        })
     }
 
     // =DSTDEVP(database, field, criteria): population standard deviation of matching numeric values
     pub(crate) fn fn_dstdevp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        match self.db_numeric_values(args, cell) {
-            Ok(values) => variance_result(&values, VarianceKind::Population, true, "DSTDEVP", cell),
-            Err(e) => e,
-        }
+        self.db_call(
+            Function::Dstdevp,
+            args,
+            cell,
+            false,
+            |model, query, cell| {
+                let values = model.db_numbers(query);
+                variance_result(&values, VarianceKind::Population, true, "DSTDEVP", cell)
+            },
+        )
     }
 
     // =DVARP(database, field, criteria): population variance of matching numeric values
     pub(crate) fn fn_dvarp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        match self.db_numeric_values(args, cell) {
-            Ok(values) => variance_result(&values, VarianceKind::Population, false, "DVARP", cell),
-            Err(e) => e,
-        }
+        self.db_call(Function::Dvarp, args, cell, false, |model, query, cell| {
+            let values = model.db_numbers(query);
+            variance_result(&values, VarianceKind::Population, false, "DVARP", cell)
+        })
     }
 
     /// Resolve the "field" (2nd arg) to an absolute column index (i32) within the sheet.
@@ -454,24 +349,25 @@ impl Model {
         &mut self,
         db_left: CellReferenceIndex,
         db_right: CellReferenceIndex,
-        field_arg: &Node,
+        field: &CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<i32, CalcResult> {
-        let field_column_name = match self.evaluate_node_in_context(field_arg, cell) {
+        let field_column_name = match field {
             CalcResult::String(s) => s.to_lowercase(),
             CalcResult::Number(index) => {
-                let index = index.floor() as i32;
-                if index < 1 || db_left.column + index - 1 > db_right.column {
+                // `as` saturates a huge or NaN index; i64 keeps the sum from overflowing.
+                let index = i64::from(index.floor() as i32);
+                if index < 1 || i64::from(db_left.column) + index - 1 > i64::from(db_right.column) {
                     return Err(CalcResult::Error {
                         error: Error::VALUE,
                         origin: cell,
                         message: "Field index out of range".to_string(),
                     });
                 }
-                return Ok(db_left.column + index - 1);
+                return Ok(db_left.column + (index as i32) - 1);
             }
             CalcResult::Boolean(b) => {
-                return if b {
+                return if *b {
                     Ok(db_left.column)
                 } else {
                     // Index 0 is out of range
@@ -483,7 +379,7 @@ impl Model {
                 };
             }
             error @ CalcResult::Error { .. } => {
-                return Err(error);
+                return Err(error.clone());
             }
             CalcResult::Range { .. } => {
                 return Err(CalcResult::Error {
@@ -680,74 +576,5 @@ impl Model {
             CriteriaFlavor::Database,
         );
         matches(db_val)
-    }
-
-    /// Shared implementation for DMAX/DMIN
-    fn db_extreme(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-        want_max: bool,
-    ) -> CalcResult {
-        if args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let (db_left, db_right) = match self.get_reference(&args[0], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        let field_col = match self.resolve_db_field_column(db_left, db_right, &args[1], cell) {
-            Ok(c) => c,
-            Err(e) => return e,
-        };
-
-        let criteria = match self.get_reference(&args[2], cell) {
-            Ok(r) => (r.left, r.right),
-            Err(e) => return e,
-        };
-
-        if db_right.row <= db_left.row {
-            // no data rows
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "No data rows in database".to_string(),
-            };
-        }
-
-        let mut best: Option<f64> = None;
-
-        let mut row = db_left.row + 1;
-        while row <= db_right.row {
-            if self.db_row_matches_criteria(db_left, db_right, row, criteria) {
-                let v = self.evaluate_cell(CellReferenceIndex {
-                    sheet: db_left.sheet,
-                    row,
-                    column: field_col,
-                });
-                if let CalcResult::Number(value) = v {
-                    if value.is_finite() {
-                        best = Some(match best {
-                            None => value,
-                            Some(cur) => {
-                                if want_max {
-                                    value.max(cur)
-                                } else {
-                                    value.min(cur)
-                                }
-                            }
-                        });
-                    }
-                }
-            }
-            row += 1;
-        }
-
-        match best {
-            Some(v) => CalcResult::Number(v),
-            None => CalcResult::Number(0.0),
-        }
     }
 }

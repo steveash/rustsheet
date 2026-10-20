@@ -1,0 +1,47 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "C1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C6": {
+    "t": "s",
+    "v": "=QUOTIENT(A1:A3,2)"
+   },
+   "C7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C8": {
+    "t": "s",
+    "v": "=FACTDOUBLE(A1:A3)"
+   }
+  },
+  "Sheet2": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "18d70873d984f0f79ff5f8dd9b5f0ac018116e1098f8aff5ba1f97eb8ca736f9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-19T17:47:01+00:00",
+  "version": null
+ }
+}

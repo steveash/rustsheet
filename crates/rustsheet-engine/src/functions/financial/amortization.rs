@@ -112,9 +112,11 @@ impl Model {
         match kind {
             Amortization::Linear => asset.linear(period),
             Amortization::Degressive => {
-                // The asset life must not fall in [0, 3] or [4, 5].
+                // The asset life must not fall in [0, 3] or strictly between 4 and 5: Excel
+                // accepts a life of exactly 4 and 5 (rates 0.25, 0.2; probes/fin-amordegrc
+                // A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
                 let life = 1.0 / rate;
-                if (0.0..=3.0).contains(&life) || (4.0..=5.0).contains(&life) {
+                if (0.0..=3.0).contains(&life) || (life > 4.0 && life < 5.0) {
                     return Err(num_error(cell));
                 }
                 asset.degressive(period, DEGRESSIVE_LOOP_PERIODS)

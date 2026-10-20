@@ -2,9 +2,11 @@
 //! other functions over a data argument, the scalar distributions, and the weights of the
 //! quantile searches, the incomplete gamma and HYPGEOM.DIST's cdf sum.
 
-use super::ArgKind::{Lift, WholeByCaller};
+use super::ArgKind::{
+    Lift, LiftArrays, LiftArraysRangeWhole, ReferenceByCaller, Whole, WholeByCaller,
+};
 use super::KernelWork::{Constant, Weighted};
-use super::{ArgKinds, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_4, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
+use super::{ArgKinds, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
 use crate::functions::Function;
 
 /// A data argument its function reads itself, then one lifted worksheet argument:
@@ -12,8 +14,40 @@ use crate::functions::Function;
 const DATA_THEN_1: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift], Constant);
 /// The same with an optional second lifted argument: `PERCENTRANK(array, x, [significance])`.
 const DATA_THEN_1_OF_2: ArgKinds = ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift], Constant);
+/// Two data arguments read by their function, then one or two lifted limits:
+/// `PROB(x_range, prob_range, lower_limit, [upper_limit])`.
+const TWO_DATA_THEN_1_OF_2: ArgKinds =
+    ArgKinds::fixed(3, &[WholeByCaller, WholeByCaller, Lift, Lift], Constant);
+/// Two data arguments read by their function, then two lifted arguments:
+/// `T.TEST(array1, array2, tails, type)`.
+const TWO_DATA_THEN_2: ArgKinds =
+    ArgKinds::fixed(4, &[WholeByCaller, WholeByCaller, Lift, Lift], Constant);
+/// One lifted argument, then two data arguments read by their function:
+/// `FORECAST(x, known_y's, known_x's)`.
+const ONE_THEN_TWO_DATA: ArgKinds =
+    ArgKinds::fixed(3, &[Lift, WholeByCaller, WholeByCaller], Constant);
+/// A lifted argument, a reference read by its function, then an optional lifted argument:
+/// `RANK(number, ref, [order])`.
+const ONE_THEN_REFERENCE_THEN_1: ArgKinds =
+    ArgKinds::fixed(2, &[Lift, ReferenceByCaller, Lift], Constant);
 
 // --- Statistical (T-1290) -------------------------------------------------------------------
+/// What one BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE, NEGBINOM.DIST or NEGBINOMDIST element is
+/// charged. Each sums its pmf terms in double-double (`statistical/discrete.rs`, T-0927): at most
+/// two walks of `discrete::MAX_STEPS` (2^10) steps at about 32 ns, 66 us, then, past them, statrs'
+/// incomplete beta (BINOM.DIST.RANGE: two of them, 6.4 us at 1E18 trials). The weight is
+/// BINOM.INV's for the same bound, about 70 us: 32,768 elements a lifted call, about 2.3 s (a
+/// DEVIATION, statistics.md "Discrete distributions: within an ulp of the exact sum").
+const DISCRETE_SUM_WEIGHT: u32 = 1 << 12;
+/// `NEGBINOMDIST(number_f, number_s, probability_s)`.
+const DISCRETE_SUM_3: ArgKinds =
+    ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(DISCRETE_SUM_WEIGHT));
+/// `BINOM.DIST(number_s, trials, probability_s, cumulative)`, BINOMDIST and NEGBINOM.DIST.
+const DISCRETE_SUM_4: ArgKinds =
+    ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Weighted(DISCRETE_SUM_WEIGHT));
+/// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])`.
+const DISCRETE_SUM_3_OF_4: ArgKinds =
+    ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Weighted(DISCRETE_SUM_WEIGHT));
 /// `BINOM.INV(trials, probability_s, alpha)` and CRITBINOM: a search that halves `[0, trials]`
 /// (a `u64`) at most 64 times, its own per-call cap (`statistical/binom.rs`), with one statrs
 /// incomplete-beta cdf (up to 140 continued-fraction steps) each. Measured in release: up to
@@ -104,6 +138,13 @@ const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(5, &[Lift; 5], Weighted(HYPGEOM_D
 const HYPGEOMDIST: ArgKinds = ArgKinds::fixed(4, &[Lift; 4], Constant);
 // --- End hypergeometric (T-1873) ------------------------------------------------------------
 
+/// `DSUM(database, field, criteria)` and the other D-functions: the database is read whole, `field`
+/// lifts over an array and a two-cell range is `#VALUE!`, `criteria` lifts over an array and a range
+/// is the criteria table, read whole (probes/db-argument-modes D11:D22, F11:F23). Each element
+/// scans the database, so `Model::db_call` charges the database's cells per element
+/// (`LiftCost::Cells`).
+const DATABASE: ArgKinds = ArgKinds::fixed(3, &[Whole, LiftArrays, LiftArraysRangeWhole], Constant);
+
 /// This family's part of the lifting table (`Function::arg_kinds`).
 pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
     match function {
@@ -114,6 +155,19 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // the function's own reader (`statistical/sorted_data.rs`) and sorted once per call.
         // A kernel looks up its sorted numbers in O(1) or by binary search (PERCENTRANK); the
         // call pays for the numbers through its `LiftCost`.
+        // The D-functions: see `DATABASE`.
+        Function::Daverage
+        | Function::Dcount
+        | Function::Dcounta
+        | Function::Dget
+        | Function::Dmax
+        | Function::Dmin
+        | Function::Dproduct
+        | Function::Dstdev
+        | Function::Dstdevp
+        | Function::Dsum
+        | Function::Dvar
+        | Function::Dvarp => Some(&DATABASE),
         Function::Large
         | Function::Small
         | Function::PercentileCompat
@@ -125,6 +179,25 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         | Function::Trimmean => Some(&DATA_THEN_1),
         Function::PercentrankCompat | Function::PercentrankInc | Function::PercentrankExc => {
             Some(&DATA_THEN_1_OF_2)
+        }
+        // Z.TEST's `x` and `sigma` and PROB's limits lift over an array and a range, the data is
+        // read once by the function (probes/stat-argument-modes H488, H489, H566, H567, H571,
+        // H572; probes/stat-test-lift; T-1813). A Z.TEST element is O(1) over the data's
+        // count, mean and deviation; a PROB element walks the data (`LiftCost::Cells`).
+        Function::ZTest | Function::ZTestCompat => Some(&DATA_THEN_1_OF_2),
+        Function::Prob => Some(&TWO_DATA_THEN_1_OF_2),
+        // FORECAST's `x` and T.TEST's `tails` and `type` lift likewise, the data is read once
+        // by the function (probes/stat-test-lift P1-P9, P60-P67, P88; probes/stat-argument-modes
+        // H260, H261, H264, H265, H492-H499, H537-H545; T-1982). A FORECAST element is O(1) over
+        // the regression line; a T.TEST element walks the samples (`LiftCost::Cells`).
+        Function::Forecast | Function::ForecastLinear => Some(&ONE_THEN_TWO_DATA),
+        Function::TTest | Function::TTestCompat => Some(&TWO_DATA_THEN_2),
+        // RANK's `number` and `order` lift likewise over a `ref` read once; a `ref` that is not a
+        // reference broadcasts as its own shape of errors (probes/stat-test-lift P20-P33, P72;
+        // probes/stat-argument-modes H492-H499; T-1999). A lifted call sorts the numbers once
+        // (`LiftCost::Prepared`).
+        Function::RankCompat | Function::RankEq | Function::RankAvg => {
+            Some(&ONE_THEN_REFERENCE_THEN_1)
         }
         // --- Statistical (T-1290) ---
         // The statistical functions whose every argument is scalar are worksheet functions:
@@ -138,7 +211,8 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // 2^20 elements, BETA.DIST with shapes of 1E6 costs about 0.29 us an element, F.DIST
         // and T.DIST with 1E9 degrees of freedom 0.28 and 0.30 us, NORM.DIST 0.14 us, and the
         // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements), and
-        // BINOM.DIST.RANGE, which runs two cdfs, 6.4 us (6.7 s for 2^20 elements).
+        // BINOM.DIST.RANGE, which runs two cdfs, 6.4 us (6.7 s for 2^20 elements). The binomial
+        // and negative binomial ones also walk their pmf terms first and are weighted (T-0927).
         // PERMUT multiplies at most 171 factors whatever its arguments (0.22 us). The
         // quantile searches of BETA.INV, F.INV and T.INV (T-1848), the incomplete-gamma
         // functions (T-1872) and HYPGEOM.DIST's capped cdf sum (T-1873) are entered below.
@@ -167,7 +241,6 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         | Function::ExponDist
         | Function::ExponDistCompat
         | Function::LogNormDistCompat
-        | Function::NegbinomDistCompat
         | Function::TDist
         | Function::TDistCompat
         | Function::FDistRT
@@ -177,14 +250,15 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         | Function::WeibullDist
         | Function::WeibullCompat
         | Function::LogNormDist
-        | Function::BinomDist
-        | Function::BinomDistCompat
-        | Function::NegbinomDist
         | Function::FDist => Some(&LIFT_4),
+        Function::BinomDist | Function::BinomDistCompat | Function::NegbinomDist => {
+            Some(&DISCRETE_SUM_4)
+        }
+        Function::NegbinomDistCompat => Some(&DISCRETE_SUM_3),
         // `BETA.DIST(x, alpha, beta, cumulative, [A], [B])`, `BETADIST(x, alpha, beta, [A], [B])`.
         Function::BetaDist => Some(&LIFT_4_OF_6),
         Function::BetaDistCompat => Some(&LIFT_3_OF_5),
-        Function::BinomDistRange => Some(&LIFT_3_OF_4),
+        Function::BinomDistRange => Some(&DISCRETE_SUM_3_OF_4),
         Function::BinomInv | Function::CritbinomCompat => Some(&BINOM_INV),
         // --- End statistical (T-1290) ---
         // --- Statistical quantiles (T-1848) ---

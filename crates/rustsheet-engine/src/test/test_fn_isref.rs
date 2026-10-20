@@ -130,3 +130,18 @@ fn range_operand_errors_values_and_if() {
     assert_eq!(model._get_text("E4"), *"3");
     assert_eq!(model._get_text("E5"), *"33");
 }
+
+// An INDEX of a reference is a reference wherever one is wanted, ISFORMULA's argument included
+// (probes/ifna-isformula-edges Calc!B12, excel-graph; T-1453).
+#[test]
+fn isformula_of_index_reads_the_picked_cell() {
+    let mut model = new_empty_model();
+    model._set("K1", "=1+1");
+    model._set("K2", "5");
+    model._set("A1", "=ISFORMULA(INDEX(K1:K2,1))");
+    model._set("A2", "=ISFORMULA(INDEX(K1:K2,2))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"FALSE");
+}

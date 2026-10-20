@@ -1,0 +1,53 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1813: PROB's data validation errors (unequal sizes, probabilities that do not sum to 1) and Z.TEST's no-number data and data error against a bad scalar argument, scalar and lifted (P90-P95; data as in stat-test-lift).",
+  "tags": [
+    "M9",
+    "statistical",
+    "argument-modes",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 4,
+        "A4": 3,
+        "A5": 7,
+        "A6": 5,
+        "A7": 8,
+        "A8": 6,
+        "B1": 2,
+        "B2": 3,
+        "B3": 5,
+        "B4": 4,
+        "B5": 9,
+        "B6": 6,
+        "B7": 10,
+        "B8": 8,
+        "F1": 0.1,
+        "F2": 0.2,
+        "F3": 0.3,
+        "F4": 0.4,
+        "G1": 0.4,
+        "G2": 1,
+        "D1": 1,
+        "D2": "=NA()",
+        "D3": 3,
+        "K1": 1,
+        "K2": "x",
+        "M1": 1,
+        "M2": 3,
+        "P90": "=PROB(A1:A3,F1:F4,\"a\")",
+        "P91": "=PROB(A1:A4,{0.5;0.5;0.5;0.5},\"a\")",
+        "P92": "=Z.TEST({\"a\",\"b\"},\"x\")",
+        "P93": "=Z.TEST(D1:D3,4,0)",
+        "P94": "=INDEX(PROB(A1:A3,F1:F4,{1;\"a\"}),2)",
+        "P95": "=INDEX(PROB(A1:A3,F1:F4,{1;\"a\"}),1)"
+      }
+    }
+  ],
+  "expected": {}
+}

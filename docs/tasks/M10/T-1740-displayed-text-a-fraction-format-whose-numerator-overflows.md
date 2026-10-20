@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-2029, T-2030]
 ---
 
 ## Goal
@@ -22,7 +22,8 @@ The threshold is unknown: probe numerators around 1E5 (fixed denominator) and 1E
 excel-probe before implementing. Ours prints digits (`?/100` on 1000 "10/100"). TEXT() on an overflowing
 fraction is unprobed (no gen-m10 TEXT() cell overflows; date and clock codes give `#VALUE!` where the display is
 `#`): add `TEXT(1000,"?/100")` to the probe. The other fraction
-failures (wrong digits) are T-1711 and T-0982.
+failures (wrong digits) are T-2029 (fixed denominators), T-2030 (placeholder denominators) and T-0982
+(gap triage 2026-10-19: the engine has no fraction section yet, so this task waits for them).
 Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "Displayed text" section, which lists each failing text cell (Excel vs ours). Text cells are scored apart from values and are not baselined (decision 0068); the TEXT() cells on sheet T that use the same codes are value known failures in eval/baseline/gen-m10.txt. Formatter: crates/rustsheet-engine/src/formatter/ (shared by `Workbook::formatted` and TEXT). docs/excel-semantics/number-formats.md.
 
 ## Acceptance criteria

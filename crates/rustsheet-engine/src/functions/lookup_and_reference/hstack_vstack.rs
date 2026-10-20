@@ -5,7 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    limits::check_array_size,
+    limits::check_stack_size,
     model::Model,
 };
 
@@ -39,12 +39,13 @@ impl Model {
 
         // The padded shape is known from the arguments: refuse one above the array limit before
         // any padding or copying (DEVIATION, arrays.md "Array results above 1,048,576 cells";
-        // T-1780). A column next to a row is their product.
+        // T-1780). A column next to a row is their product. Columns past the grid are allowed
+        // (`check_stack_size`, T-1803).
         let total_cols = arrays
             .iter()
             .map(|a| a.first().map_or(0, Vec::len))
             .fold(0_usize, usize::saturating_add);
-        if let Some((error, message)) = check_array_size(max_rows, total_cols) {
+        if let Some((error, message)) = check_stack_size(max_rows, total_cols) {
             return CalcResult::new_error(error, cell, message);
         }
 
@@ -99,12 +100,13 @@ impl Model {
             return CalcResult::Array(vec![]);
         }
 
-        // Refuse a padded shape above the array limit before any padding (T-1780, as HSTACK).
+        // Refuse a padded shape above the array limit before any padding (T-1780, as HSTACK); rows
+        // past the grid are `#NUM!` (`check_stack_size`, T-1803).
         let total_rows = arrays
             .iter()
             .map(Vec::len)
             .fold(0_usize, usize::saturating_add);
-        if let Some((error, message)) = check_array_size(total_rows, max_cols) {
+        if let Some((error, message)) = check_stack_size(total_rows, max_cols) {
             return CalcResult::new_error(error, cell, message);
         }
 

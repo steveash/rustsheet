@@ -3,7 +3,7 @@ id: T-1765
 title: "FVSCHEDULE returns #VALUE! for text/bool/text-cell schedule elements and a boolean principal (probe fin-fvschedule)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,3 +25,6 @@ Probe `probes/fin-fvschedule` A3, A4, A13, A14, A16, A18, A19: text, boolean or 
 
 ## Note (T-1373)
 T-1373 fixed every fin-fvschedule cell except A18 (the TRUE principal); only A18 remains.
+
+## Outcome
+FVSCHEDULE returns #VALUE! for a boolean principal (probes/fin-fvschedule A18). Eval: probes known failures 1836 -> 1835, no regressions.

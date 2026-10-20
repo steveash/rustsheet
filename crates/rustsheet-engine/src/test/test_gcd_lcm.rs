@@ -1,5 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
+use std::time::{Duration, Instant};
+
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -161,4 +163,64 @@ fn range_text_or_boolean_is_value_even_after_a_negative() {
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("A2"), *"#VALUE!");
     assert_eq!(model._get_text("A3"), *"#NUM!");
+}
+
+// ── a tall block past the used area (T-0438) ────────────────────────────────
+
+// The blanks of an explicit block past the used area are read as one 0, not walked: GCD and
+// LCM give for any number of 0s, anywhere, what one gives. Each tall block (cut at the used
+// area) gives what the short one gives (one blank, walked densely), also with a too-large LCM
+// result before the blank, a negative, a too-large argument and an error after it.
+#[test]
+fn a_tall_block_past_the_used_area_gives_what_the_dense_walk_gives() {
+    let mut model = new_empty_model();
+    // 2^26+1 and 2^27+1 make an LCM above 2^53: `#NUM!` unless a 0 follows.
+    model._set("A1", "=2^26+1");
+    model._set("A2", "=2^27+1");
+    model._set("A3", "6");
+    model._set("C1", "1");
+    model._set("C3", "=NA()");
+    let cases = [
+        ("LCM(A1:A5000)", "LCM(A1:A4)", "0"),
+        ("LCM(A1:A2)", "LCM(A1:A2)", "#NUM!"),
+        ("LCM(A1:A5000,\"a\")", "LCM(A1:A4,\"a\")", "#VALUE!"),
+        ("LCM(A1:A5000,NA())", "LCM(A1:A4,NA())", "#N/A"),
+        ("LCM(A1:A5000,-1)", "LCM(A1:A4,-1)", "#NUM!"),
+        ("LCM(A1:A5000,1E+16)", "LCM(A1:A4,1E+16)", "#NUM!"),
+        ("LCM(B1:B5000,A1:A2)", "LCM(B1:B3,A1:A2)", "0"),
+        ("LCM(A10:A5000)", "LCM(A4:A4)", "0"),
+        ("LCM(C1:C5000)", "LCM(C1:C4)", "#N/A"),
+        ("GCD(A3:A5000)", "GCD(A3:A4)", "6"),
+        ("GCD(B1:B5000,A3)", "GCD(B1:B3,A3)", "6"),
+        ("GCD(A10:A5000)", "GCD(A4:A4)", "0"),
+        ("GCD(-1,A3:A5000)", "GCD(-1,A3:A4)", "#NUM!"),
+        ("GCD(A3:A5000,1E+16)", "GCD(A3:A4,1E+16)", "#NUM!"),
+        ("GCD(A3:A5000,TRUE)", "GCD(A3:A4,TRUE)", "#VALUE!"),
+    ];
+    for (row, (tall, short, _)) in (1..).zip(cases) {
+        model._set(&format!("E{row}"), &format!("={tall}"));
+        model._set(&format!("F{row}"), &format!("={short}"));
+    }
+    model.evaluate();
+    for (row, (tall, short, expected)) in (1..).zip(cases) {
+        assert_eq!(model._get_text(&format!("E{row}")), expected, "{tall}");
+        assert_eq!(model._get_text(&format!("F{row}")), expected, "{short}");
+    }
+}
+
+// 27 million cells, of which three hold anything: the walk costs the data.
+#[test]
+fn a_tall_block_costs_its_data_not_its_size() {
+    let mut model = new_empty_model();
+    model._set("A1", "4");
+    model._set("B2", "6");
+    model._set("AB1", "=LCM(A1:Z1048575)");
+    model._set("AB2", "=GCD(A1:Z1048575)");
+    model._set("AB3", "=GCD(A1:Z1048575,10)");
+    let started = Instant::now();
+    model.evaluate();
+    assert!(started.elapsed() < Duration::from_secs(5));
+    assert_eq!(model._get_text("AB1"), "0");
+    assert_eq!(model._get_text("AB2"), "2");
+    assert_eq!(model._get_text("AB3"), "2");
 }

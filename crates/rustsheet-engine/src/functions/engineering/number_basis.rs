@@ -36,6 +36,9 @@ fn from_binary_to_decimal(value: f64) -> Result<i64, ()> {
 }
 
 /// The number and the optional `places` of one conversion element.
+///
+/// Callers coerce `places` before `number`: Excel reads
+/// the second argument first, so its error wins (probes/eng-first-vs-second-error).
 fn number_and_places(values: &[CalcResult]) -> Option<(&CalcResult, Option<&CalcResult>)> {
     match values {
         [number] => Some((number, None)),
@@ -101,14 +104,14 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match self.binary_digits(number, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
         let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
             Some(Ok(f)) => Some(f.trunc() as i32),
             Some(Err(s)) => return s,
             None => None,
+        };
+        let value = match self.binary_digits(number, cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
         if let Some(p) = places {
             if p <= 0 || p > 10 {
@@ -146,14 +149,14 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match self.binary_digits(number, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
         let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
             Some(Ok(f)) => Some(f.trunc() as i32),
             Some(Err(s)) => return s,
             None => None,
+        };
+        let value = match self.binary_digits(number, cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
         let value = match from_binary_to_decimal(value) {
             Ok(n) => n,
@@ -190,14 +193,14 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value_raw = match self.binary_digits(number, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
         let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
             Some(Ok(f)) => Some(f.trunc() as i32),
             Some(Err(s)) => return s,
             None => None,
+        };
+        let value_raw = match self.binary_digits(number, cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
         if let Some(p) = places {
             if p <= 0 || p > 10 {
@@ -232,14 +235,14 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value_raw = match self.binary_digits(number, cell) {
-            Ok(f) => f.trunc(),
-            Err(s) => return s,
-        };
         let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
             Some(Ok(f)) => Some(f.trunc() as i32),
             Some(Err(s)) => return s,
             None => None,
+        };
+        let value_raw = match self.binary_digits(number, cell) {
+            Ok(f) => f.trunc(),
+            Err(s) => return s,
         };
         if let Some(p) = places {
             if p <= 0 || p > 10 {
@@ -274,14 +277,14 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value_raw = match self.binary_digits(number, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
         let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
             Some(Ok(f)) => Some(f.trunc() as i32),
             Some(Err(s)) => return s,
             None => None,
+        };
+        let value_raw = match self.binary_digits(number, cell) {
+            Ok(f) => f,
+            Err(s) => return s,
         };
         if let Some(p) = places {
             if p <= 0 || p > 10 {
@@ -318,14 +321,14 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
         let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
             Some(Ok(f)) => Some(f.trunc() as i32),
             Some(Err(s)) => return s,
             None => None,
+        };
+        let value = match Self::base_digits(number, cell) {
+            Ok(s) => s,
+            Err(s) => return s,
         };
         if value.len() > 10 {
             return num_error(cell);
@@ -351,12 +354,15 @@ impl Model {
         if !(-512..=511).contains(&value) {
             return num_error(cell);
         }
-        if value < 0 {
+        // A negative result is always ten digits and ignores a valid `places`
+        // (`HEX2OCT("FFFFFFFFFF",4)` is "7777777777", probes/eng-gen-sample-edges C1, C6).
+        let negative = value < 0;
+        if negative {
             value += 1024;
         }
         let result = format!("{value:b}");
         if let Some(places) = places {
-            if places <= 0 || (value > 0 && places < result.len() as i32) {
+            if !negative && places < result.len() as i32 {
                 return num_error(cell);
             }
             let result = format!("{:0width$b}", value, width = places as usize);
@@ -409,14 +415,14 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
         let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
             Some(Ok(f)) => Some(f.trunc() as i32),
             Some(Err(s)) => return s,
             None => None,
+        };
+        let value = match Self::base_digits(number, cell) {
+            Ok(s) => s,
+            Err(s) => return s,
         };
         if let Some(p) = places {
             if p <= 0 || p > 10 {
@@ -442,12 +448,15 @@ impl Model {
         if !(-OCT_MAX_HALF..=OCT_MAX_HALF - 1).contains(&value) {
             return num_error(cell);
         }
-        if value < 0 {
+        // A negative result is always ten digits and ignores a valid `places`
+        // (`HEX2OCT("FFFFFFFFFF",4)` is "7777777777", probes/eng-gen-sample-edges C1, C6).
+        let negative = value < 0;
+        if negative {
             value += OCT_MAX;
         }
         let result = format!("{value:o}");
         if let Some(places) = places {
-            if places <= 0 || (value > 0 && places < result.len() as i32) {
+            if !negative && places < result.len() as i32 {
                 return num_error(cell);
             }
             let result = format!("{:0width$o}", value, width = places as usize);
@@ -466,14 +475,14 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
         let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
             Some(Ok(f)) => Some(f.trunc() as i32),
             Some(Err(s)) => return s,
             None => None,
+        };
+        let value = match Self::base_digits(number, cell) {
+            Ok(s) => s,
+            Err(s) => return s,
         };
         if let Some(p) = places {
             if p <= 0 || p > 10 {
@@ -550,14 +559,14 @@ impl Model {
         let Some((number, places)) = number_and_places(values) else {
             return CalcResult::new_args_number_error(cell);
         };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
         let places = match places.map(|p| self.cast_number_no_bools_ref(p, cell)) {
             Some(Ok(f)) => Some(f.trunc() as i32),
             Some(Err(s)) => return s,
             None => None,
+        };
+        let value = match Self::base_digits(number, cell) {
+            Ok(s) => s,
+            Err(s) => return s,
         };
         // There is not a default value for places
         // But if there is a value it needs to be positive and less than 11

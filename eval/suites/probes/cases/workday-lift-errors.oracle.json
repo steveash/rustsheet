@@ -1,0 +1,154 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "E3": {
+    "t": "s",
+    "v": "=WORKDAY(A1:A60,5)"
+   },
+   "E70": {
+    "t": "s",
+    "v": "=WORKDAY(A1:A60,5)"
+   },
+   "F3": {
+    "t": "s",
+    "v": "=NETWORKDAYS(A1:A60,46000)"
+   },
+   "F70": {
+    "t": "s",
+    "v": "=NETWORKDAYS(A1:A60,46000)"
+   },
+   "G3": {
+    "t": "s",
+    "v": "=WORKDAY.INTL(A1:A60,5)"
+   },
+   "G70": {
+    "t": "s",
+    "v": "=WORKDAY.INTL(A1:A60,5)"
+   },
+   "H3": {
+    "t": "s",
+    "v": "=NETWORKDAYS.INTL(A1:A60,46000)"
+   },
+   "H70": {
+    "t": "s",
+    "v": "=NETWORKDAYS.INTL(A1:A60,46000)"
+   },
+   "I3": {
+    "t": "s",
+    "v": "=WORKDAY(45000,B1:B60)"
+   },
+   "I70": {
+    "t": "s",
+    "v": "=WORKDAY(45000,B1:B60)"
+   },
+   "K1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K10": {
+    "t": "n",
+    "v": 45001.0
+   },
+   "K11": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K12": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K13": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K14": {
+    "t": "n",
+    "v": 0.0
+   },
+   "K15": {
+    "t": "n",
+    "v": 45005.0
+   },
+   "K2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K4": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "K5": {
+    "t": "n",
+    "v": 2.0
+   },
+   "K6": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "K7": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "K8": {
+    "t": "n",
+    "v": 2.0
+   },
+   "K9": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "P3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "P70": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "Q3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "Q70": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "R3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "R70": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "S3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "S70": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "T3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "T70": {
+    "t": "e",
+    "v": "#VALUE!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "4d29ea77333824f9e914bc09bf8022a236f26d7b6525279736630a22ba28df90",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-19T04:11:18+00:00",
+  "version": null
+ }
+}

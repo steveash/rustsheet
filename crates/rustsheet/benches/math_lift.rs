@@ -9,6 +9,8 @@
 //! - EXP (T-1931), whose x87 model V6 costs far more per call than libm's `exp`: 100,000 rows of
 //!   `=EXP(A{r}/100000)` and the lifted `=SUM(EXP(A1:A1000000/1000000))` (arguments in (0, 1/7],
 //!   inside the range where every call runs the full F2XM1 series);
+//! - `^` with a non-integer exponent (T-0959), which runs EXP's model V6 too: 100,000 rows of
+//!   `=A{r}^(1/3)` and the lifted `=SUM(A1:A1000000^0.37)`;
 //! - a lifted error fan-out, `=SUM(IFERROR(ROUND(A1:A1000000&"x",2),0))`: every element is
 //!   `#VALUE!`, which must allocate nothing (an empty message).
 //!
@@ -24,6 +26,9 @@ use std::io::Write;
 use rustsheet::{Input, Workbook};
 
 const RUNS: usize = 11;
+
+/// The lifted `^` case (T-0959).
+const POWER_LIFTED: &str = "=SUM(A1:A1000000^0.37)";
 
 /// What a case puts in the workbook besides column A.
 enum Shape {
@@ -63,6 +68,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             Shape::PerRow("=DATE(2024,1,A{r})"),
         ),
         ("EXP, per row", 100_000, Shape::PerRow("=EXP(A{r}/100000)")),
+        ("POWER, per row", 100_000, Shape::PerRow("=A{r}^(1/3)")),
         (
             "ROUND, lifted",
             1_000_000,
@@ -83,6 +89,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             1_000_000,
             Shape::Single("=SUM(EXP(A1:A1000000/1000000))"),
         ),
+        ("POWER, lifted", 1_000_000, Shape::Single(POWER_LIFTED)),
         (
             "ROUND, lifted errors",
             1_000_000,

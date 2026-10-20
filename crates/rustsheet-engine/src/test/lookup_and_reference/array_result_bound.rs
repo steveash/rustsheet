@@ -1,19 +1,20 @@
 //! EXPAND, WRAPCOLS, WRAPROWS and MMULT check the size of their result before building it, as
 //! HSTACK and VSTACK do (T-1786, CLAUDE.md directive 5). DEVIATION (decision 0014): Excel
 //! (expected, not measured) builds an in-grid array above a whole column, which we refuse with
-//! `#ERROR!`; a shape past the grid is `check_array_size`'s `#VALUE!` (Excel's value not
-//! measured; docs/excel-semantics/arrays.md "Array results above 1,048,576 cells").
+//! `#ERROR!`; rows past the grid are `#NUM!` and columns past it are allowed, as for VSTACK and HSTACK
+//! (probes/expand-wrap-past-grid; docs/excel-semantics/arrays.md "Stacked results past the grid").
 
 use crate::test::util::new_empty_model;
 
 #[test]
-fn expand_past_the_grid_is_value_and_a_huge_wrap_count_clamps() {
+fn expand_rows_past_the_grid_are_num_columns_are_allowed_and_a_huge_wrap_count_clamps() {
     let mut model = new_empty_model();
     for row in 1..=10 {
         model._set(&format!("A{row}"), &row.to_string());
     }
-    // 10^18 cells: a dimension past the grid.
+    // 10^18 cells: rows past the grid.
     model._set("C1", "=EXPAND(1,1E9,1E9)");
+    model._set("C8", "=COLUMNS(EXPAND(1,1,16385))");
     // A wrap_count above the vector's length is the length, as in Excel (arrays.md "WRAPROWS
     // and WRAPCOLS"), so a billion pads nothing: a 10x1 column and a 1x10 row.
     model._set("C2", "=ROWS(WRAPCOLS(A1:A10,1E9))");
@@ -27,7 +28,8 @@ fn expand_past_the_grid_is_value_and_a_huge_wrap_count_clamps() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("C1"), *"#VALUE!");
+    assert_eq!(model._get_text("C1"), *"#NUM!");
+    assert_eq!(model._get_text("C8"), *"16385");
     assert_eq!(model._get_text("C2"), *"10");
     assert_eq!(model._get_text("C3"), *"10");
     assert_eq!(model._get_text("C4"), *"#ERROR!");

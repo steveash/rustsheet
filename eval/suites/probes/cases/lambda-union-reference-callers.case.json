@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A LAMBDA call whose body returns a union or a one-cell reference, passed on to SUM, ISREF, AREAS, OFFSET, COUNTIF and INDEX (T-1951).",
+  "tags": [
+    "M7",
+    "references",
+    "probe",
+    "T-1951"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "C1": "=SUM(LAMBDA(x,x)((A1,B1)))",
+        "C2": "=SUM(LET(x,(A1,B1),x))",
+        "C3": "=ISREF(LAMBDA(x,x)((A1,B1)))",
+        "C4": "=ISREF(LET(x,(A1,B1),x))",
+        "C5": "=AREAS(LAMBDA(x,x)((A1,B1)))",
+        "C6": "=AREAS(LET(x,(A1,B1),x))",
+        "C7": "=AREAS((A1,B1))",
+        "D1": "=OFFSET(LAMBDA(x,x)(A1),1,0)",
+        "D2": "=OFFSET(LET(x,A1,x),1,0)",
+        "D3": "=COUNTIF(LAMBDA(x,x)(A1:A3),\">1\")",
+        "D4": "=COUNTIF(LET(x,A1:A3,x),\">1\")",
+        "D5": "=COUNTIF(LAMBDA(x,x)(A1),\">0\")",
+        "D6": "=AREAS(LAMBDA(x,x)(A1))",
+        "D7": "=AREAS(LAMBDA(x,x)(A1:A3))",
+        "D8": "=INDEX(LAMBDA(x,x)(A1:A3),2)",
+        "D9": "=INDEX(LAMBDA(x,x)((A1:A3,B1:B2)),1,1,2)",
+        "D10": "=INDEX(LET(x,(A1:A3,B1:B2),x),1,1,2)",
+        "D11": "=ROWS(OFFSET(LAMBDA(x,x)(A1),0,0,2))"
+      }
+    }
+  ]
+}

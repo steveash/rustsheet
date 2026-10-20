@@ -9,7 +9,7 @@ mod bessel_util;
 #[cfg(test)]
 mod test_bessel;
 
-pub(crate) use bessel_excel::{excel_bessel_j, excel_bessel_y};
+pub(crate) use bessel_excel::{excel_bessel_j, excel_bessel_y, MAX_ORDER};
 pub(crate) use bessel_i::bessel_i;
 pub(crate) use bessel_jn_yn::jn as bessel_j;
 pub(crate) use bessel_jn_yn::yn as bessel_y;

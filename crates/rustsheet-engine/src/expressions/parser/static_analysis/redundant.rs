@@ -4,8 +4,8 @@
 #[cfg(doc)]
 use super::add_implicit_intersection;
 use super::legacy::{
-    leaves_call_whole, legacy_array_context, legacy_context_intersects, remove_array_at,
-    remove_in_array_context,
+    is_switch_of_array_constants, leaves_call_whole, legacy_array_context,
+    legacy_context_intersects, remove_array_at, remove_in_array_context,
 };
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, get_function_args_signature,
@@ -31,6 +31,12 @@ use super::{
 /// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
 /// (a formula is evaluated in a scalar context).
 pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
+    // The import leaves a root SWITCH of array constants unmarked, so an `@` on it is meaningful.
+    if matches!(&*node, Node::ImplicitIntersection { child, .. }
+        if add && is_switch_of_array_constants(child))
+    {
+        return;
+    }
     remove_redundant_legacy_intersection(node, add, add);
 }
 

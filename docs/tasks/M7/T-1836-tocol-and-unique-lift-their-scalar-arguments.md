@@ -15,7 +15,7 @@ spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 TOCOL's ignore and scan_by_column and UNIQUE's by_col and exactly_once lift over a multi-cell range and an array, one call per element whose value is the top-left of that call's result, as in Excel; the array argument stays whole.
 
 ## Context
-Split from T-1271. Mechanical once T-1834 lands: add table entries (the array argument `Whole`, the scalar ones as T-1833's per-parameter list says) and kernels using the element-value and cost rules T-1834 built; do not write a new lift or bound. Each element reads the whole array, so charge it the array's cells per element as T-1833 specifies (`lift_call_costed`). Put the entries in their own `// --- M7 (T-1836) ---` block in functions/lift/kinds.rs so T-1835 and T-1839 can land in parallel. Delete TOCOL's and UNIQUE's `fallback_signature`/`fallback_shape` arms in expressions/parser/static_analysis.rs.
+Split from T-1271. Mechanical once T-1834 lands: add table entries (the array argument `Whole`, the scalar ones as T-1833's per-parameter list says) and kernels using the element-value and cost rules T-1834 built; do not write a new lift or bound. Each element reads the whole array, so charge it the array's cells per element (`LiftCost::Cells`, `lift_call_costed`) on top of `KernelWork::Output { weight: 1 }` (SPEC-0011 "Array-valued functions" rule 3). Put the entries in their own `// --- M7 (T-1836) ---` block in functions/lift/kinds/ (mod.rs and the per-family files) so T-1835 and T-1839 can land in parallel. Delete TOCOL's and UNIQUE's `fallback_signature`/`fallback_shape` arms in expressions/parser/static_analysis.rs.
 
 Code: `fn_tocol` in functions/lookup_and_reference/tocol_torow.rs, `fn_unique` in functions/spill_functions.rs. TOROW is not probed; leave it as it is unless T-1833's list enters it.
 
@@ -29,7 +29,7 @@ Owned cells:
   - gen-m9/1782efcecd5d4b1b Calc!A19 `=TOCOL(Data!C8:D11,HSTACK(Data!E5:E6),..)` (ignore over a 2x1 array): Excel `#SPILL!`, ours `#N/IMPL!`.
   - gen-m9/4df1b22d3ed63f58 Calc!A36 `=UNIQUE(Data!A6:D10,INDEX(Data!D4:D10,0))` (by_col over a 7-cell range): Excel `#SPILL!`, ours `#VALUE!`.
 
-Parameters not yet probed lift only where T-1833's per-parameter list marks them `Lift` (it decides which need a probe first).
+TOCOL's scan_by_column and UNIQUE's exactly_once are `Lift` by SPEC-0011's per-parameter list; T-1960 probes them.
 
 ## Acceptance criteria
 - [ ] probes/m7-argument-modes F9:H9, K8 and F12:H12 pass; F54:H54 and K14-K16 still pass.

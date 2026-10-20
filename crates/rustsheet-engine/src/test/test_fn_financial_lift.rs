@@ -263,3 +263,142 @@ fn the_table_enters_rate_as_weighted() {
     assert_eq!(weight(Function::Rate), Some(50));
     assert_eq!(weight(Function::Pmt), Some(1));
 }
+
+/// DB and VDB lift every argument (probes/fin-argument-modes; T-1820), each element the scalar
+/// call, and stay bounded: a period past 100,000 is `#NUM!` (docs/excel-semantics/financial.md
+/// "DB and VDB period cap", DEVIATION) and a lift is charged by each element's period.
+#[test]
+fn db_and_vdb_lift_and_bound_their_periods() {
+    check(&[
+        ("G1", "1000", "1000"),
+        ("G2", "2000", "2000"),
+        ("H1", "=ROWS(DB(G1:G2,100,6,2,7))", "2"),
+        ("H2", "=ROWS(VDB(G1:G2,300,10,0,1,2,FALSE))", "2"),
+        (
+            "H3",
+            "=INDEX(DB({1000;2000},100,6,2,7),2)=DB(2000,100,6,2,7)",
+            "TRUE",
+        ),
+        (
+            "H4",
+            "=INDEX(VDB(2400,300,10,0,{1;2},2,FALSE),2)=VDB(2400,300,10,0,2,2,FALSE)",
+            "TRUE",
+        ),
+        ("H5", "=DB(1,0,1E15,1E15)", "#NUM!"),
+        ("H6", "=VDB(1000,0,1E9,0,1E9)", "#NUM!"),
+        ("H7", "=DB(1000,1,1E6,100000)>=0", "TRUE"),
+        (
+            "H8",
+            "=ROWS(DB(1000,1,1E6,SEQUENCE(1100,1,100000,0)))",
+            "#ERROR!",
+        ),
+        ("H9", "=ROWS(DB(1000,1,1E6,SEQUENCE(3000,1,1,0)))", "3000"),
+        (
+            "H10",
+            "=ROWS(VDB(1000,1,1E6,0,SEQUENCE(1100,1,100000,0)))",
+            "#ERROR!",
+        ),
+        // Excel's own checks come before the cap: a period past life + 1 is `#NUM!` either way.
+        ("H11", "=DB(1000,100,6,8)", "#NUM!"),
+    ]);
+}
+
+/// NPV's rate, IRR's guess and MIRR's rates lift over arrays and ranges beside their whole cash
+/// flows, each element the scalar call (probes/fin-argument-modes H155-H156, H172-H174,
+/// H187-H188; a values array does not lift: H386; T-1821).
+#[test]
+fn npv_irr_and_mirr_lift_their_rates_beside_whole_cash_flows() {
+    check(&[
+        ("K1", "-10000", "-10000"),
+        ("K2", "2750", "2750"),
+        ("K3", "4250", "4250"),
+        ("K4", "3250", "3250"),
+        ("K5", "2750", "2750"),
+        ("H1", "=ROWS(NPV(C1:C2,K1:K5))", "2"),
+        ("H2", "=ROWS(NPV({0.1;0.1},K1:K5))", "2"),
+        ("H3", "=ROWS(NPV(0.1,{1;2}))", "1"),
+        (
+            "H4",
+            "=INDEX(NPV({0.1;0.2},K1:K5),2)=NPV(0.2,K1:K5)",
+            "TRUE",
+        ),
+        ("H5", "=ROWS(IRR(K1:K5,C1:C2))", "2"),
+        (
+            "H6",
+            "=INDEX(IRR(K1:K5,{0.1;0.2}),2)=IRR(K1:K5,0.2)",
+            "TRUE",
+        ),
+        ("H7", "=ROWS(MIRR(K1:K5,C1:C2,0.12))", "2"),
+        ("H8", "=ROWS(MIRR(K1:K5,0.1,{0.12;0.12}))", "2"),
+        (
+            "H9",
+            "=INDEX(MIRR(K1:K5,0.1,{0.12;0.2}),2)=MIRR(K1:K5,0.1,0.2)",
+            "TRUE",
+        ),
+        // Hand-written, not oracle values: NPV checks its rate before its values, IRR and MIRR
+        // their values first, the scalar order kept (financial.md "NPV, IRR and MIRR error
+        // order", UNVERIFIED; T-2103). A values error is every element's.
+        ("H10", "=INDEX(NPV({\"x\";0.1},K1:K2,F4),1)", "#VALUE!"),
+        ("H11", "=INDEX(NPV({\"x\";0.1},K1:K2,F4),2)", "#DIV/0!"),
+        ("H12", "=INDEX(IRR(F4,{\"x\";0.1}),1)", "#DIV/0!"),
+        ("H13", "=INDEX(MIRR(F4,{\"x\";0.1},0.1),1)", "#DIV/0!"),
+        ("H14", "=INDEX(MIRR(K1:K5,{\"x\";0.1},0.1),1)", "#VALUE!"),
+        ("H18", "=SUM(--ISERROR(IRR(F4,{0.1;0.1})))", "2"),
+        ("H15", "=NPV(0.1)", "#ERROR!"),
+        ("H16", "=IRR(K1:K5,0.1,0.1)", "#ERROR!"),
+        ("H17", "=MIRR(K1:K5,0.1)", "#ERROR!"),
+    ]);
+}
+
+/// The cash flows are evaluated once per call, before the elements: random flows give every
+/// element of a constant rate the same result.
+#[test]
+fn npv_irr_and_mirr_evaluate_their_cash_flows_once() {
+    check(&[
+        (
+            "H1",
+            "=LET(x,NPV({0.1;0.1},RANDARRAY(5)),INDEX(x,1)=INDEX(x,2))",
+            "TRUE",
+        ),
+        (
+            "H2",
+            "=LET(x,IRR(RANDARRAY(5)+{-10;1;1;1;1},{0.1;0.1}),INDEX(x,1)=INDEX(x,2))",
+            "TRUE",
+        ),
+        (
+            "H3",
+            "=LET(x,MIRR(RANDARRAY(5)+{-10;1;1;1;1},{0.1;0.1},0.1),INDEX(x,1)=INDEX(x,2))",
+            "TRUE",
+        ),
+    ]);
+}
+
+/// Every lifted element walks the whole cash flow (IRR up to `IRR_WEIGHT` times), so a lift over
+/// long flows is `#ERROR!` before its first element, while the unlifted call runs.
+#[test]
+fn a_lift_over_long_cash_flows_is_refused_by_the_work_bound() {
+    let mut model = new_empty_model();
+    let sheet = model.workbook.worksheet_mut(0).unwrap();
+    for row in 1..=300_000 {
+        sheet
+            .set_cell_with_number(row, 1, f64::from(row), 0)
+            .unwrap();
+    }
+    for (cell, formula) in [
+        ("C1", "=ROWS(IRR(A1:A300000,{0.1;0.1}))"),
+        ("C2", "=IRR(A1:A300000)"),
+        ("C3", "=ROWS(IRR(A1:A100,{0.1;0.1}))"),
+        ("C4", "=ROWS(NPV(SEQUENCE(500),A1:A300000))"),
+        ("C5", "=ROWS(NPV(SEQUENCE(100),A1:A300000))"),
+        ("C6", "=ROWS(MIRR(A1:A300000,SEQUENCE(500),0.1))"),
+    ] {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#ERROR!");
+    assert_eq!(model._get_text("C2"), "#NUM!");
+    assert_eq!(model._get_text("C3"), "2");
+    assert_eq!(model._get_text("C4"), "#ERROR!");
+    assert_eq!(model._get_text("C5"), "100");
+    assert_eq!(model._get_text("C6"), "#ERROR!");
+}

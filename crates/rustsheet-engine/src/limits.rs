@@ -8,7 +8,7 @@ use crate::expressions::types::CellReferenceIndex;
 // (`SUM(ABS(A:A))`, probes/lifted-range-size). Excel builds larger arrays
 // (probes/lifted-range-rows C1): DEVIATION, see docs/excel-semantics/arrays.md ("Array results
 // above 1,048,576 cells").
-const MAX_SIZE: usize = LAST_ROW as usize;
+pub(crate) const MAX_SIZE: usize = LAST_ROW as usize;
 
 pub fn check_array_size(rows: usize, columns: usize) -> Option<(Error, String)> {
     if columns > LAST_COLUMN as usize {
@@ -43,6 +43,20 @@ pub fn check_array_cells(rows: usize, columns: usize) -> Option<(Error, String)>
         ));
     }
     None
+}
+
+/// The bound of a stacked result (HSTACK, VSTACK): more rows than the grid is `#NUM!`, while
+/// columns past the grid are allowed, under the cell-count limit of [`check_array_cells`]:
+/// `ROWS(VSTACK(A:A,B1))` is `#NUM!` and `COLUMNS(HSTACK(A1:XFD1,A1))` is 16385
+/// (probes/scalar-lift-open-c W1-W10, -c2; arrays.md "Stacked results past the grid"; T-1803).
+pub fn check_stack_size(rows: usize, columns: usize) -> Option<(Error, String)> {
+    if rows > LAST_ROW as usize {
+        return Some((
+            Error::NUM,
+            format!("rows exceeds sheet limit of {LAST_ROW}"),
+        ));
+    }
+    check_array_cells(rows, columns)
 }
 
 /// [`check_array_size`] for the array a range `left:right` would become when it is lifted

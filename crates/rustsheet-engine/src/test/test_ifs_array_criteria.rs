@@ -112,3 +112,52 @@ fn too_many_cell_visits_is_an_error_without_walking() {
     assert_eq!(model._get_text("C1"), "#ERROR!");
     assert_eq!(model._get_text("C2"), "3000");
 }
+
+#[test]
+fn repeated_criteria_reuse_their_first_result() {
+    // The occurrence-count idiom: each repeated criterion reuses the walk of its first
+    // occurrence (T-0408), with the same results as walking it again.
+    let mut model = model();
+    model._set("H1", "=COUNTIF(A1:A6,A1:A6)");
+    model._set("I1", "=SUMIF(A1:A6,A1:A6,B1:B6)");
+    model._set("J1", "=COUNTIFS(A1:A6,A1:A6,B1:B6,B1:B6)");
+    model.evaluate();
+    let column = |c: &str| (1..=6).map(|r| format!("{c}{r}")).collect::<Vec<_>>();
+    let cells = |c: &str| {
+        texts(
+            &model,
+            &column(c).iter().map(String::as_str).collect::<Vec<_>>(),
+        )
+    };
+    assert_eq!(cells("H"), ["3", "2", "3", "1", "2", "3"]);
+    assert_eq!(cells("I"), ["7", "4", "7", "1", "4", "7"]);
+    assert_eq!(cells("J"), ["1", "2", "2", "1", "2", "2"]);
+}
+
+#[test]
+fn a_bad_range_is_every_element_s_error() {
+    // The ranges resolve once before the lift; their error is still one per element.
+    let mut model = model();
+    model._set("H1", r#"=SUMIFS(B1:B6,A1:A3,{"a","b"})"#);
+    model._set("H2", r#"=COUNTIFS(A1:A6,{"a","b"},B1:B3,1)"#);
+    model._set("H3", r#"=AVERAGEIFS(B1:B6,A1:A6,{"a","b"},1,1)"#);
+    model.evaluate();
+    assert_eq!(texts(&model, &["H1", "I1"]), ["#VALUE!", "#VALUE!"]);
+    assert_eq!(texts(&model, &["H2", "I2"]), ["#VALUE!", "#VALUE!"]);
+    assert_eq!(texts(&model, &["H3", "I3"]), ["#VALUE!", "#VALUE!"]);
+}
+
+#[test]
+fn a_volatile_range_is_evaluated_once_for_every_element() {
+    // Both criteria match every cell, so each element counts the height OFFSET drew: one
+    // draw for the whole formula, not one per element (T-0408).
+    let mut model = model();
+    model._set(
+        "H1",
+        r#"=COUNTIFS(OFFSET(B1,0,0,RANDBETWEEN(1,6)),{"<>z","<>y"})"#,
+    );
+    for _ in 0..20 {
+        model.evaluate();
+        assert_eq!(model._get_text("H1"), model._get_text("I1"));
+    }
+}

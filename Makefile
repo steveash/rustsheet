@@ -49,12 +49,15 @@ eval-show: build ## Show one case: make eval-show CASE=ironcalc-calc/FINANCIAL/I
 	$(EVAL) show $(CASE)
 
 # ---------------------------------------------------------------- Python tooling
-.PHONY: py-sync py-check py-bindings
+.PHONY: py-sync py-check py-bindings parity-report
 py-sync:
 	cd tools && $(UV) sync -q
 
 py-check: py-sync ## Lint, type-check and test tools/
 	cd tools && $(UV) run ruff check src tests && $(UV) run ruff format --check src tests && $(UV) run mypy && $(UV) run pytest -q
+
+parity-report: py-sync ## Regenerate docs/parity.md and docs/parity/ from eval/runs/latest/report.json (after make eval) [COMMIT=sha] [RUN_DATE=YYYY-MM-DD]
+	cd tools && $(UV) run rustsheet-parity-report --out-dir ../docs $(if $(COMMIT),--commit '$(COMMIT)') $(if $(RUN_DATE),--run-date '$(RUN_DATE)')
 
 py-bindings: ## Build the PyO3 bindings into bindings/python/.venv and run their tests
 	cd bindings/python && $(UV) venv -q --allow-existing .venv && $(UV) pip install -q --python .venv maturin pytest

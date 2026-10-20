@@ -3,6 +3,7 @@ use crate::{
     formatter::{
         self,
         format::{FormatContext, Formatted},
+        lexer::is_likely_date_number_format,
     },
     locale::get_locale,
     model::{FmtSettings, Model},
@@ -341,8 +342,31 @@ fn scientific_digits(value: f64, count: usize) -> (Vec<u8>, i64) {
 /// Not [`to_excel_precision_str`]: that one renders formula literals (JS `toPrecision`-style,
 /// no 20-character rule) and must not be used for coercion.
 pub(crate) fn number_to_text(value: f64) -> String {
+    value_to_text(value, TextRules::Coercion)
+}
+
+/// The text IM* functions (complex numbers) write for one part. It differs from
+/// [`number_to_text`] in two evidenced ways (probes/eng-im-overflow A11, A17, A40-A42): it keeps
+/// 15 digits at an exponent magnitude of 99 or more (`1.35498631931463E+308`), and it writes a
+/// small part in plain notation past 20 characters (`0.0000602887066915739`), otherwise
+/// the 20-character rule holds (`1.22514845490862E-16`, probes/eng-impower A9). The exponent -5
+/// limit is evidenced only at -5 (plain, A42) and -16 (E notation, A9); -6 to -15 are unprobed (T-2056).
+pub(crate) fn complex_part_to_text(value: f64) -> String {
+    value_to_text(value, TextRules::ComplexPart)
+}
+
+/// Which text rules [`value_to_text`] applies.
+#[derive(Clone, Copy, PartialEq)]
+enum TextRules {
+    Coercion,
+    ComplexPart,
+}
+
+fn value_to_text(value: f64, rules: TextRules) -> String {
     /// Longest plain-notation string (sign excluded) before Excel switches to E notation.
     const MAX_PLAIN_LEN: usize = 20;
+    /// Smallest decimal exponent an IM* part writes in plain notation whatever its length.
+    const MIN_COMPLEX_PLAIN_EXPONENT: i32 = -5;
     if !value.is_finite() {
         // Unreachable from formulas: Excel has no infinities or NaN (overflow is `#NUM!`).
         return format!("{value}");
@@ -357,7 +381,7 @@ pub(crate) fn number_to_text(value: f64) -> String {
     // From a decimal exponent magnitude of 99 on, Excel keeps 14 digits, rounding the 15-digit
     // string half up (`1.23456789012345E+99` → "1.2345678901235E+99"; probes/number-text-exponent-digits,
     // numbers.md "Exponent width").
-    if exponent.unsigned_abs() >= 99 {
+    if rules == TextRules::Coercion && exponent.unsigned_abs() >= 99 {
         mantissa = (mantissa + 5) / 10 * 10;
         if mantissa == 1_000_000_000_000_000 {
             mantissa /= 10;
@@ -368,7 +392,14 @@ pub(crate) fn number_to_text(value: f64) -> String {
     let mantissa = mantissa.to_string();
     let digits = mantissa.trim_end_matches('0');
     let digits = if digits.is_empty() { "0" } else { digits };
-    if plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN {
+    let plain = match rules {
+        TextRules::Coercion => plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN,
+        TextRules::ComplexPart => {
+            plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN
+                || (MIN_COMPLEX_PLAIN_EXPONENT..0).contains(&exponent)
+        }
+    };
+    if plain {
         return format!("{sign}{}", plain_notation(digits, exponent));
     }
     let (first, rest) = digits.split_at(1);
@@ -448,6 +479,25 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
 
 /// A model's number-formatting inputs and locale examples.
 impl Model {
+    /// Style of typed input that implies the number format `num_fmt`. The format is not applied
+    /// when a date is typed into a cell that is already date-formatted.
+    pub(crate) fn style_with_typed_format(
+        &mut self,
+        style_index: i32,
+        num_fmt: &str,
+    ) -> Result<i32, String> {
+        let keeps_format =
+            is_likely_date_number_format(&self.workbook.styles.get_style(style_index)?.num_fmt)
+                && is_likely_date_number_format(num_fmt);
+        if keeps_format {
+            Ok(style_index)
+        } else {
+            self.workbook
+                .styles
+                .get_style_with_format(style_index, num_fmt)
+        }
+    }
+
     /// The workbook's number-formatting inputs: its locale and date system (SPEC-0005).
     pub(crate) fn format_context(&self) -> FormatContext<'static> {
         FormatContext {

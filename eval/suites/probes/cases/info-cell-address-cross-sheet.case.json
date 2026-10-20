@@ -1,0 +1,75 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2042: CELL(\"address\", ref) for a reference on another sheet names the workbook file. Sheet names that need quotes in a formula (a space, a leading digit, an apostrophe, a dash) against a plain one, a multi-cell range, a same-sheet control, and CELL(\"filename\") of the same references (B column: #VALUE! in Excel for the web, T-2052).",
+ "tags": [
+  "M5",
+  "probe",
+  "information"
+ ],
+ "check": [
+  "Calc!A1",
+  "Calc!A2",
+  "Calc!A3",
+  "Calc!A4",
+  "Calc!A5",
+  "Calc!A6",
+  "Calc!A7",
+  "Calc!A8",
+  "Calc!A9",
+  "Calc!B1",
+  "Calc!B2",
+  "Calc!B3",
+  "Calc!B4"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=CELL(\"address\",Data!B2)",
+    "A2": "=CELL(\"address\",'My Sheet'!B2)",
+    "A3": "=CELL(\"address\",'2024'!C3)",
+    "A4": "=CELL(\"address\",'Bob''s'!A1)",
+    "A5": "=CELL(\"address\",'a-b'!D4)",
+    "A6": "=CELL(\"address\",Data!B2:C3)",
+    "A7": "=CELL(\"address\",B2)",
+    "A8": "=CELL(\"address\",Calc!B2)",
+    "A9": "=CELL(\"address\",'My Sheet'!XFD1048576)",
+    "B1": "=CELL(\"filename\",Data!B2)",
+    "B2": "=CELL(\"filename\",'My Sheet'!B2)",
+    "B3": "=CELL(\"filename\",B2)",
+    "B4": "=CELL(\"filename\")"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "B2": 1
+   }
+  },
+  {
+   "name": "My Sheet",
+   "cells": {
+    "B2": 2
+   }
+  },
+  {
+   "name": "2024",
+   "cells": {
+    "C3": 3
+   }
+  },
+  {
+   "name": "Bob's",
+   "cells": {
+    "A1": 4
+   }
+  },
+  {
+   "name": "a-b",
+   "cells": {
+    "D4": 5
+   }
+  }
+ ],
+ "expected": {}
+}

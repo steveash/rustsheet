@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import argparse
 import io
+import json
 import math
 import re
 import zipfile
@@ -155,6 +157,39 @@ def test_fill_writes_no_sidecar_when_the_canary_fails(
     args = SimpleNamespace(backend="echo", suite="s", force=False, limit=0, case=[], include_cached=False)
     assert cli.cmd_fill(args) == 1
     assert not (tmp_path / "x.oracle.json").exists()
+
+
+class NamedBackend(ExcelLikeBackend):
+    """An Excel-like backend that reports the file name it calculated the workbook under."""
+
+    name = "named"
+
+    def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
+        data, _ = super().recalc(xlsx)
+        return data, OracleInfo(kind="fake", application="fake", workbook_name="up.xlsx")
+
+
+@pytest.mark.parametrize(("backend", "recorded"), [(NamedBackend(), "up.xlsx"), (ExcelLikeBackend(), None)])
+def test_fill_records_the_workbook_name_the_oracle_used(
+    cache_root: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    backend: ExcelLikeBackend,
+    recorded: str | None,
+) -> None:
+    del cache_root
+    case = tmp_path / "x.case.json"
+    case.write_text(json.dumps(SPEC))
+    monkeypatch.setattr(cli, "GOLDEN_BACKENDS", {backend.name})
+    monkeypatch.setattr(cli, "_backend", lambda _: backend)
+    entry = {"path": str(case), "sidecar": str(tmp_path / "x.oracle.json")}
+    monkeypatch.setattr(cli, "suite_cases", lambda _: [entry])
+    args = argparse.Namespace(
+        backend=backend.name, suite="s", force=False, limit=0, case=[], include_cached=False
+    )
+    assert cli.cmd_fill(args) == 0
+    source = json.loads((tmp_path / "x.oracle.json").read_text())["source"]
+    assert source.get("workbook_name") == recorded
 
 
 @pytest.mark.parametrize("formula", ["=SHEETS()", "=_xlfn.SHEETS(Sheet1:Sheet1)", '=info("numfile")'])

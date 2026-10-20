@@ -31,7 +31,7 @@ pub(crate) struct DataArg {
     pub(crate) order: DataOrder,
     /// What a call costs for that many numbers: `LiftCost::Prepared` when an element is O(1)
     /// once sorted, `LiftCost::Cells` when every element walks the numbers (TRIMMEAN's mean).
-    pub(crate) cost: fn(u64) -> LiftCost<'static>,
+    pub(crate) cost: fn(u64) -> LiftCost,
 }
 
 /// The numbers of a data argument read once, sorted on the first element that asks for them. A
@@ -44,6 +44,20 @@ pub(crate) struct SortedNumbers {
 }
 
 impl SortedNumbers {
+    /// `numbers`, to be sorted into `order` on the first [`Self::sorted`].
+    pub(crate) fn new(numbers: Vec<f64>, order: DataOrder) -> Self {
+        Self {
+            numbers,
+            order,
+            sorts: 0,
+        }
+    }
+
+    /// The numbers as read, unsorted until [`Self::sorted`] is first called.
+    pub(crate) fn as_read(&self) -> &[f64] {
+        &self.numbers
+    }
+
     /// Whether the data holds no number; does not sort.
     pub(crate) fn is_empty(&self) -> bool {
         self.numbers.is_empty()
@@ -135,20 +149,10 @@ impl Model {
         let (true, Some(node)) = (accepts, args.first()) else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let numbers = match (data.read)(self, node, cell) {
-            Ok(numbers) => Ok(SortedNumbers {
-                numbers,
-                order: data.order,
-                sorts: 0,
-            }),
-            Err(CalcResult::Error { error, origin, .. }) => Err(CalcResult::Error {
-                error,
-                origin,
-                message: String::new(),
-            }),
-            // A reader's non-error `Err` (RANK's array of errors; none here) is kept as it is.
-            Err(other) => Err(other),
-        };
+        // A reader's non-error `Err` (RANK's array of errors; none here) is kept as it is.
+        let numbers = (data.read)(self, node, cell)
+            .map(|numbers| SortedNumbers::new(numbers, data.order))
+            .map_err(CalcResult::without_message);
         Ok(SortedData { numbers })
     }
 
@@ -161,7 +165,7 @@ impl Model {
         kind: Function,
         args: &[Node],
         data: &mut SortedData,
-        cost: fn(u64) -> LiftCost<'static>,
+        cost: fn(u64) -> LiftCost,
         cell: CellReferenceIndex,
         kernel: &mut SortedKernel<'_>,
     ) -> CalcResult {

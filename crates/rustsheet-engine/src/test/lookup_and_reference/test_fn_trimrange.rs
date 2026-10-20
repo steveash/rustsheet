@@ -114,3 +114,19 @@ fn test_trimrange_2d_trims_rows_and_cols() {
     assert_eq!(model._get_text("E2"), "3");
     assert_eq!(model._get_text("F2"), "4");
 }
+
+// An array trim_rows lifts TRIMRANGE into an array of references (SPEC-0014, T-1957;
+// probes/reference-lift-elements).
+#[test]
+fn lifted_trim_rows_is_an_array_of_references() {
+    let mut model = new_empty_model();
+    model._set("A2", "7");
+    model._set("D1", "=INDEX(TRIMRANGE(A2,{0;1}),2,1)");
+    model._set("D2", "=ROWS(TRIMRANGE(A2,{0;1}))");
+    model._set("D3", "=ISREF(TRIMRANGE(A2,{0;1}))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"7");
+    assert_eq!(model._get_text("D2"), *"2");
+    assert_eq!(model._get_text("D3"), *"FALSE");
+}

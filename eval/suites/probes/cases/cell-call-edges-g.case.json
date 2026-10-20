@@ -1,0 +1,20 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1806: a non-ASCII-letter cell-shaped call name",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "D1": 5,
+        "A3": "=\u00df1(1)",
+        "B3": "=FORMULATEXT(A3)"
+      }
+    }
+  ],
+  "expected": {}
+}

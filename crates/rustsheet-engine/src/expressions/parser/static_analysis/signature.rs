@@ -253,13 +253,6 @@ pub(super) fn args_signature_filter(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-pub(super) fn args_signature_sequence(arg_count: usize) -> Vec<Signature> {
-    if !(1..=4).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    vec![Signature::Scalar; arg_count]
-}
-
 pub(super) fn args_signature_randarray(arg_count: usize) -> Vec<Signature> {
     if arg_count > 5 {
         return vec![Signature::Error; arg_count];
@@ -397,16 +390,6 @@ pub(super) fn args_signature_npv(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-pub(super) fn args_signature_irr(arg_count: usize) -> Vec<Signature> {
-    if arg_count > 2 {
-        vec![Signature::Error; arg_count]
-    } else if arg_count == 1 {
-        vec![Signature::Vector]
-    } else {
-        vec![Signature::Vector, Signature::Scalar]
-    }
-}
-
 pub(super) fn args_signature_xirr(arg_count: usize) -> Vec<Signature> {
     if arg_count == 2 {
         vec![Signature::Vector; arg_count]
@@ -417,41 +400,11 @@ pub(super) fn args_signature_xirr(arg_count: usize) -> Vec<Signature> {
     }
 }
 
-pub(super) fn args_signature_mirr(arg_count: usize) -> Vec<Signature> {
-    if arg_count != 3 {
-        vec![Signature::Error; arg_count]
-    } else {
-        vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-    }
-}
-
 pub(super) fn args_signature_xnpv(arg_count: usize) -> Vec<Signature> {
     if arg_count != 3 {
         vec![Signature::Error; arg_count]
     } else {
         vec![Signature::Scalar, Signature::Vector, Signature::Vector]
-    }
-}
-
-// NETWORKDAYS(start_date, end_date, [holidays]), NETWORKDAYS.INTL(start_date, end_date, [weekend],
-// [holidays]), WORKDAY(start_date, days, [holidays]), WORKDAY.INTL(start_date, days, [weekend],
-// [holidays]): `required` scalars, then `middle` optional scalars (the weekend), then an optional
-// `holidays` that takes the whole range, so a legacy formula does not implicitly intersect it
-// (docs/excel-semantics/dates.md "WORKDAY holidays take the whole range").
-pub(super) fn args_signature_with_holidays(
-    arg_count: usize,
-    required: usize,
-    middle: usize,
-) -> Vec<Signature> {
-    let holidays_at = required + middle;
-    if arg_count < required || arg_count > holidays_at + 1 {
-        vec![Signature::Error; arg_count]
-    } else if arg_count == holidays_at + 1 {
-        let mut signature = vec![Signature::Scalar; holidays_at];
-        signature.push(Signature::Vector);
-        signature
-    } else {
-        vec![Signature::Scalar; arg_count]
     }
 }
 

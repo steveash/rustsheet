@@ -1,8 +1,8 @@
 //! The lifting table's date, information, lookup and math entries (SPEC-0011 "The argument-kind
 //! table"): EDATE to YEARFRAC, the IS* tests, ADDRESS and HYPERLINK, and the math functions.
 
-use super::ArgKind::{Lift, LiftArrays, WholeByCaller};
-use super::KernelWork::Constant;
+use super::ArgKind::{Lift, LiftArrays, Whole, WholeByCaller};
+use super::KernelWork::{Constant, Output};
 use super::{
     ArgKinds, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2, LIFT_2, LIFT_2_OF_3,
     LIFT_3,
@@ -11,6 +11,15 @@ use crate::functions::Function;
 
 /// `ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])`: every argument lifts.
 const ADDRESS: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift, Lift, Lift], Constant);
+/// `WORKDAY(start_date, days, [holidays])` and `NETWORKDAYS(start_date, end_date, [holidays])`:
+/// the dates are Analysis `ToolPak` arguments, and the holidays are read once by the function
+/// itself (`Model::holiday_serials`) and prepared, so the call is charged their cells once
+/// (`LiftCost::Prepared`).
+const WORKDAYS: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays, WholeByCaller], Constant);
+/// `WORKDAY.INTL(start_date, days, [weekend], [holidays])` and NETWORKDAYS.INTL: the weekend lifts
+/// over a range too.
+const WORKDAYS_INTL: ArgKinds =
+    ArgKinds::fixed(2, &[LiftArrays, LiftArrays, Lift, WholeByCaller], Constant);
 /// `CEILING.MATH(number, [significance], [mode])` and FLOOR.MATH.
 const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
 
@@ -27,6 +36,21 @@ const SERIES: ArgKinds = ArgKinds::fixed(
 );
 // --- End math (T-1802) ----------------------------------------------------------------------
 
+// --- Array-valued (T-1834) -------------------------------------------------------------------
+/// `SEQUENCE(rows, [columns], [start], [step])`: every argument lifts over an array and a range
+/// (`ROWS(SEQUENCE(A1:A3))` is 3, `SEQUENCE({1;2;3})` and `SEQUENCE(2,2,{1;10})` are 3x1 and 2x1,
+/// probes/m7-argument-modes F1:H3; columns and step by the spec's per-parameter rule, T-1960). Each
+/// lifted element is charged the cells it builds.
+const SEQUENCE: ArgKinds =
+    ArgKinds::fixed(1, &[Lift, Lift, Lift, Lift], Output { weight: 1 }).array();
+/// `MAKEARRAY(rows, cols, lambda)`: rows and cols lift (`MAKEARRAY(A1:A2,2,LAMBDA(r,c,r+c))` is
+/// 2x1 with first element 2, probes/m7-argument-modes F23:H23), the LAMBDA is read whole. Its
+/// kernel calls the LAMBDA once per cell, so a lifted element is charged 128 per cell (SPEC-0011
+/// "Array-valued functions" rule 3).
+const MAKEARRAY: ArgKinds =
+    ArgKinds::fixed(3, &[Lift, Lift, Whole], Output { weight: 128 }).array();
+// --- End array-valued (T-1834) ---------------------------------------------------------------
+
 /// This family's part of the lifting table (`Function::arg_kinds`).
 pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
     match function {
@@ -41,6 +65,13 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // YEARFRAC's basis over a range: probes/scalar-lift-shapes H6; its dates:
         // date-argument-modes F/G 54, 56. Basis 1 counts the year lengths in closed form.
         Function::Yearfrac => Some(&ATP_2_OF_3),
+        // The dates lift over an array and refuse a range (probes/date-argument-modes F/G 35-40,
+        // 57-62), the weekend lifts over both (F/G 41, 42, 63, 64), and the holidays take the
+        // whole range (dates.md "WORKDAY holidays take the whole range"). An element costs
+        // O(log holidays): WORKDAY's search makes at most about 44 counts over the date range,
+        // and NETWORKDAYS counts in closed form (`functions/date_and_time/holidays.rs`).
+        Function::Workday | Function::Networkdays => Some(&WORKDAYS),
+        Function::WorkdayIntl | Function::NetworkdaysIntl => Some(&WORKDAYS_INTL),
         // The IS* tests lift over arrays and ranges, an element as stored (`EmptyCell` is
         // ISBLANK, an error element ISERROR): probes/is-functions-array-lift,
         // probes/info-logic-argument-modes (docs/excel-semantics/information.md "IS* type
@@ -67,6 +98,8 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // friendly_name over an array (gen-m7/2bb922eef72e785e A22). ADDRESS's sheet_text is
         // unprobed and follows SPEC-0011's rule for scalar parameters.
         Function::Address => Some(&ADDRESS),
+        Function::Sequence => Some(&SEQUENCE),
+        Function::Makearray => Some(&MAKEARRAY),
         Function::Hyperlink => Some(&LIFT_1_OF_2),
         // --- Math (T-1802) ---
         // QUOTIENT, FACTDOUBLE and SERIESSUM's x, n and m are Analysis ToolPak arguments: they

@@ -28,18 +28,39 @@ fn column_next_to_row_above_the_limit_is_bounded() {
 #[test]
 fn whole_column_against_whole_row_is_bounded() {
     let mut model = new_empty_model();
-    // Out of column A and row 1 (where they would be circular). The stacked shape is one past
-    // the grid (2^20 + 1 rows, or 2^14 + 1 columns), so `check_array_size` answers `#VALUE!`
-    // (past the grid), not `#ERROR!` (a shape inside the grid but above 2^20 cells).
+    // Out of column A and row 1 (where they would be circular). VSTACK's 2^20 + 1 rows are past
+    // the grid: `#NUM!`, as Excel (probes/scalar-lift-open-c2 W1). HSTACK's 2^14 + 1 columns are
+    // allowed, so its 2^34 cells hit the cell-count bound: `#ERROR!` (DEVIATION; the Graph
+    // backend's 0 for `ROWS(HSTACK(A:A,1:1))`, -c3 W1, is not trusted; T-1803).
     model._set("C3", "=ROWS(VSTACK(A:A,1:1))");
     model._set("C4", "=ROWS(HSTACK(A:A,1:1))");
     model._set("C5", "=HSTACK(A:A,1:1)");
 
     model.evaluate();
 
-    for cell in ["C3", "C4", "C5"] {
-        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    assert_eq!(model._get_text("C3"), *"#NUM!");
+    for cell in ["C4", "C5"] {
+        assert_eq!(model._get_text(cell), *"#ERROR!", "{cell}");
     }
+}
+
+#[test]
+fn rows_past_the_grid_are_num_and_columns_past_it_are_allowed() {
+    // probes/scalar-lift-open-c W1-W10 (excel-graph, T-1803).
+    let mut model = new_empty_model();
+    model._set("C3", "=ROWS(VSTACK(A:A,B1))");
+    model._set("C4", "=ROWS(VSTACK(A1:A1048576,B1))");
+    model._set("C5", "=COLUMNS(HSTACK(A1:XFD1,A1))");
+    model._set("C6", "=COLUMNS(HSTACK(A1:XFC1,A1:A2))");
+    model._set("C7", "=ROWS(HSTACK(A1:XFD1,A1:A2))");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("C3"), *"#NUM!");
+    assert_eq!(model._get_text("C4"), *"#NUM!");
+    assert_eq!(model._get_text("C5"), *"16385");
+    assert_eq!(model._get_text("C6"), *"16384");
+    assert_eq!(model._get_text("C7"), *"2");
 }
 
 #[test]

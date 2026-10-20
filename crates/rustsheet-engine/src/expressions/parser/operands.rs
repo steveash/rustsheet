@@ -65,8 +65,10 @@ impl Parser {
         Node::ArrayKind(matrix)
     }
 
-    /// A reference token, or in the stored R1C1 form a call of one, `R[-7]C[27](1)` (A1 text
-    /// `AB1(1)`; in A1 text a cell followed by `(` is lexed as a name instead, T-1758).
+    /// A reference token, or a call of one: in the stored R1C1 form `R[-7]C[27](1)` (A1 text
+    /// `AB1(1)`; in A1 text a plain cell followed by `(` is lexed as a name instead, T-1758), and
+    /// in A1 text an anchored or sheet-qualified cell, `$D$1(1)`, `Sheet1!D1(1)`: `#REF!` like any
+    /// called reference (probes/cell-call-edges-a A5-A7, T-1806).
     pub(super) fn reference_or_call_operand(
         &mut self,
         sheet: Option<String>,
@@ -76,9 +78,7 @@ impl Parser {
         absolute_row: bool,
     ) -> Node {
         let node = self.reference_operand(sheet, row, column, absolute_column, absolute_row);
-        if !self.lexer.is_a1_mode()
-            && !self.lexer.whitespace_follows()
-            && self.lexer.peek_token() == TokenType::LeftParenthesis
+        if !self.lexer.whitespace_follows() && self.lexer.peek_token() == TokenType::LeftParenthesis
         {
             return self.parse_call(node);
         }
@@ -418,9 +418,11 @@ impl Parser {
                 child: Box::new(args[0].clone()),
             };
         }
-        // The stored spelling of a legacy N or T (SPEC-0012): the marker in R1C1 (stored) text,
-        // plain N or T in A1 text, so a typed or imported call of it is never stored marked.
-        if let Some(kind) = Function::from_legacy_spelling(&name, !self.lexer.is_a1_mode()) {
+        // The stored spelling of a legacy N or T (SPEC-0012), in R1C1 (stored) text only: in A1
+        // text it is a cell, so `NLG1(1)` is a call of that cell, `#REF!` (below, T-1936).
+        if let Some(kind) =
+            Function::from_legacy_spelling(&name).filter(|_| !self.lexer.is_a1_mode())
+        {
             return self.function_call(kind, args);
         }
         // We should do this *only* importing functions from xlsx

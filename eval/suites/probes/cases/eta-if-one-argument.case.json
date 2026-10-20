@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1947: an eta-reduced IF (_xleta.IF) called with one argument, through LET, MAP, BYROW, BYCOL and MAKEARRAY (re-asks eta-reduced-names E101). A1 1, B1 0, A2 TRUE, B2 x, A3 blank, B3 7. One question per 4 rows in column E.",
+  "tags": [
+    "M2",
+    "probe",
+    "lambda",
+    "byrow",
+    "map",
+    "T-1947"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 0,
+        "A2": true,
+        "B2": "x",
+        "B3": 7,
+        "E1": "=LET(f,_xleta.IF,f(TRUE))",
+        "E5": "=LET(f,_xleta.IF,f(FALSE))",
+        "E9": "=LET(f,_xleta.IF,f(1))",
+        "E13": "=LET(f,_xleta.IF,f(0))",
+        "E17": "=LET(f,_xleta.IF,f(\"x\"))",
+        "E21": "=LET(f,_xleta.IF,f({1,0}))",
+        "E25": "=LET(f,_xleta.IF,f(A1:B1))",
+        "E29": "=LET(f,_xleta.IF,f(A3))",
+        "E33": "=MAP({1,0},_xleta.IF)",
+        "E37": "=MAP({TRUE;FALSE},_xleta.IF)",
+        "E41": "=BYROW({1;0},_xleta.IF)",
+        "E45": "=BYROW(A1:B3,_xleta.IF)",
+        "E49": "=BYCOL(A1:B3,_xleta.IF)",
+        "E53": "=BYROW({1,0},_xleta.IF)",
+        "E57": "=MAKEARRAY(2,2,_xleta.IF)",
+        "E61": "=LET(f,_xleta.IF,f(TRUE,5))",
+        "E65": "=LET(f,_xleta.IF,f(FALSE,5))",
+        "E69": "=LET(f,_xleta.IF,f())",
+        "E73": "=MAP(A1:B3,_xleta.IF)",
+        "E77": "=LET(f,_xleta.IF,ISLOGICAL(f(TRUE)))",
+        "E81": "=LET(f,_xleta.IF,f(TRUE)+1)",
+        "E85": "=LET(f,_xleta.IF,f(FALSE)+1)",
+        "E89": "=LET(f,_xleta.IF,f(NA()))",
+        "E93": "=LET(f,_xleta.IF,f({1,#N/A,#DIV/0!}))",
+        "E97": "=MAP({1,#N/A},_xleta.IF)"
+      }
+    }
+  ],
+  "expected": {}
+}

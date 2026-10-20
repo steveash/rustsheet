@@ -7,10 +7,26 @@
 /// table has a fallback arm.
 macro_rules! lifting_table_functions {
     () => {
-        Function::Edate
+        Function::Daverage
+            | Function::Dcount
+            | Function::Dcounta
+            | Function::Dget
+            | Function::Dmax
+            | Function::Dmin
+            | Function::Dproduct
+            | Function::Dstdev
+            | Function::Dstdevp
+            | Function::Dsum
+            | Function::Dvar
+            | Function::Dvarp
+            | Function::Edate
             | Function::Eomonth
             | Function::Weeknum
             | Function::Yearfrac
+            | Function::Workday
+            | Function::WorkdayIntl
+            | Function::Networkdays
+            | Function::NetworkdaysIntl
             | Function::Isnumber
             | Function::Istext
             | Function::Isnontext
@@ -24,6 +40,16 @@ macro_rules! lifting_table_functions {
             | Function::Iseven
             | Function::Isodd
             | Function::Large
+            | Function::ZTest
+            | Function::ZTestCompat
+            | Function::Prob
+            | Function::Forecast
+            | Function::ForecastLinear
+            | Function::TTest
+            | Function::TTestCompat
+            | Function::RankCompat
+            | Function::RankEq
+            | Function::RankAvg
             | Function::Small
             | Function::PercentileCompat
             | Function::PercentileInc
@@ -36,6 +62,8 @@ macro_rules! lifting_table_functions {
             | Function::QuartileExc
             | Function::Trimmean
             | Function::Address
+            | Function::Sequence
+            | Function::Makearray
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv
@@ -50,6 +78,11 @@ macro_rules! lifting_table_functions {
             | Function::Sln
             | Function::Syd
             | Function::Ddb
+            | Function::Db
+            | Function::Vdb
+            | Function::Npv
+            | Function::Irr
+            | Function::Mirr
             | Function::Effect
             | Function::Nominal
             | Function::Dollarde
@@ -299,6 +332,7 @@ macro_rules! lifting_table_functions {
             | Function::Value
             | Function::Code
             | Function::Unichar
+            | Function::Unicode
             | Function::Bahttext
             | Function::Datevalue
             | Function::Timevalue

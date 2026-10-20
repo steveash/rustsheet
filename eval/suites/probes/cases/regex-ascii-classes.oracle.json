@@ -1,0 +1,182 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "b",
+    "v": true
+   },
+   "A10": {
+    "t": "b",
+    "v": true
+   },
+   "A11": {
+    "t": "b",
+    "v": true
+   },
+   "A12": {
+    "t": "b",
+    "v": true
+   },
+   "A13": {
+    "t": "b",
+    "v": true
+   },
+   "A14": {
+    "t": "b",
+    "v": true
+   },
+   "A15": {
+    "t": "b",
+    "v": true
+   },
+   "A16": {
+    "t": "b",
+    "v": true
+   },
+   "A17": {
+    "t": "b",
+    "v": true
+   },
+   "A18": {
+    "t": "b",
+    "v": true
+   },
+   "A19": {
+    "t": "b",
+    "v": true
+   },
+   "A2": {
+    "t": "b",
+    "v": true
+   },
+   "A20": {
+    "t": "b",
+    "v": true
+   },
+   "A21": {
+    "t": "b",
+    "v": false
+   },
+   "A22": {
+    "t": "b",
+    "v": false
+   },
+   "A23": {
+    "t": "b",
+    "v": true
+   },
+   "A24": {
+    "t": "b",
+    "v": true
+   },
+   "A25": {
+    "t": "b",
+    "v": true
+   },
+   "A26": {
+    "t": "b",
+    "v": true
+   },
+   "A27": {
+    "t": "b",
+    "v": true
+   },
+   "A28": {
+    "t": "b",
+    "v": false
+   },
+   "A29": {
+    "t": "s",
+    "v": "caf\u00e9 x"
+   },
+   "A3": {
+    "t": "s",
+    "v": "na\u00efve"
+   },
+   "A30": {
+    "t": "s",
+    "v": "caf\u00e9foo"
+   },
+   "A31": {
+    "t": "b",
+    "v": false
+   },
+   "A32": {
+    "t": "b",
+    "v": false
+   },
+   "A33": {
+    "t": "b",
+    "v": false
+   },
+   "A34": {
+    "t": "b",
+    "v": true
+   },
+   "A35": {
+    "t": "b",
+    "v": false
+   },
+   "A36": {
+    "t": "b",
+    "v": false
+   },
+   "A37": {
+    "t": "b",
+    "v": true
+   },
+   "A38": {
+    "t": "b",
+    "v": false
+   },
+   "A39": {
+    "t": "b",
+    "v": true
+   },
+   "A4": {
+    "t": "s",
+    "v": "na\u00efve"
+   },
+   "A40": {
+    "t": "b",
+    "v": true
+   },
+   "A41": {
+    "t": "b",
+    "v": true
+   },
+   "A42": {
+    "t": "b",
+    "v": true
+   },
+   "A5": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A6": {
+    "t": "b",
+    "v": true
+   },
+   "A7": {
+    "t": "b",
+    "v": false
+   },
+   "A8": {
+    "t": "b",
+    "v": true
+   },
+   "A9": {
+    "t": "b",
+    "v": true
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "ac66a05b47771d2e5917d4c505933b1ac2085618f72b9c7bb3c8e690574b4200",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-19T04:53:23+00:00",
+  "version": null
+ }
+}

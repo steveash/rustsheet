@@ -7,8 +7,8 @@ mod coupon_schedule;
 mod yield_closed;
 
 use super::dates::{
-    basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us, days_30_360_us_both,
-    BROKEN_SCHEDULE_PCD,
+    basis_days, broken_schedule_days, broken_schedule_error, check_settlement_serial,
+    days_30_360_us, days_30_360_us_both, BROKEN_SCHEDULE_PCD,
 };
 use coupon_schedule::{
     change_month, coupdays_actual, coupon_count, coupon_days_a, coupon_days_e, find_pcd_ncd,
@@ -555,8 +555,8 @@ type CouponBody = fn(&Model, CouponArgs, CellReferenceIndex) -> CalcResult;
 // ============================================================
 
 impl Model {
-    /// Reads and checks the COUP* arguments: every one is read, in order, before any value is
-    /// checked. A settlement before the calendar is #NUM! (`Model::check_settlement`).
+    /// Reads the COUP* arguments in order, each checked (#NUM!) before the next is read: settlement,
+    /// date order, frequency, basis (probes/securities-argument-error-order; financial.md, T-1406).
     fn coupon_args(
         &self,
         values: &[CalcResult],
@@ -566,14 +566,14 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         };
         let settlement = self.financial_date_of(settlement, cell)?;
+        check_settlement_serial(settlement, cell)?;
         let maturity = self.financial_date_of(maturity, cell)?;
-        let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self
-            .cast_number_no_bools_or(rest.first(), 0.0, cell)?
-            .floor() as u32;
-        validate_frequency(frequency, cell)?;
-        validate_basis(basis, cell)?;
         self.check_settlement(settlement, maturity, cell)?;
+        let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
+        validate_frequency(frequency, cell)?;
+        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
+        let basis = basis.floor() as u32;
+        validate_basis(basis, cell)?;
         Ok((settlement, maturity, frequency, basis))
     }
 

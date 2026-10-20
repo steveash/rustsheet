@@ -1,6 +1,6 @@
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, types::CellReferenceIndex},
     functions::Function,
     model::Model,
 };
@@ -34,15 +34,23 @@ fn vdb_total_depr(
     let int_period = period.trunc() as i64;
     let int_life = life.trunc() as i64;
 
-    let ddb_formula = |tot: f64| ((cost - tot) * (factor / life)).min(cost - salvage - tot);
+    let ddb_unclipped = |tot: f64| (cost - tot) * (factor / life);
+    let ddb_formula = |tot: f64| ddb_unclipped(tot).min(cost - salvage - tot);
     let sln_formula = |tot: f64, a_period: f64| (cost - tot - salvage) / (life - a_period);
+
+    // Salvage above cost never switches: VDB(2400,3000,10,0,1) is -600 (the declining-balance
+    // charge `cost - salvage`), not the straight-line -60 (probes/fin-vdb-modes A17).
+    let switches = salvage <= cost;
+    // A fractional period prorates the unclipped charge, then the total stops at `cost - salvage`:
+    // VDB(2400,300,10,9.5,10) is 0 (probes/fin-vdb-modes A9).
+    let cap = cost - salvage;
 
     let mut tot_depr = 0.0;
     let mut per = 0.0_f64;
     loop {
         let ddb_depr = ddb_formula(tot_depr);
         let sln_depr = sln_formula(tot_depr, per);
-        let is_sln = straight_line && ddb_depr < sln_depr;
+        let is_sln = straight_line && switches && ddb_depr < sln_depr;
         let depr = if is_sln { sln_depr } else { ddb_depr };
         let new_total = tot_depr + depr;
 
@@ -51,7 +59,7 @@ fn vdb_total_depr(
         } else if per.trunc() as i64 == int_period - 1 {
             let ddb_next = ddb_formula(new_total);
             let sln_next = sln_formula(new_total, per + 1.0);
-            let is_sln_next = straight_line && ddb_next < sln_next;
+            let is_sln_next = straight_line && switches && ddb_next < sln_next;
             let depr_next = if is_sln_next {
                 if int_period == int_life {
                     0.0
@@ -59,9 +67,20 @@ fn vdb_total_depr(
                     sln_next
                 }
             } else {
-                ddb_next
+                // The prorated part takes the unclipped charge; the cap below clips the total.
+                // Only probed with salvage <= cost; salvage above cost keeps the clipped charge.
+                if switches {
+                    ddb_unclipped(new_total)
+                } else {
+                    ddb_next
+                }
             };
-            return new_total + depr_next * frac;
+            let prorated = new_total + depr_next * frac;
+            return if switches && prorated > cap {
+                cap
+            } else {
+                prorated
+            };
         } else {
             tot_depr = new_total;
             per += 1.0;
@@ -82,8 +101,20 @@ fn vdb_depr_between(
         - vdb_total_depr(cost, salvage, life, start_period, factor, straight_line)
 }
 
+/// The most periods one DB or VDB call walks (`period`, `end_period`): their schedules step one
+/// period at a time, so a larger one is `#NUM!`; Excel's result there is unprobed (DEVIATION,
+/// decision 0014; docs/excel-semantics/financial.md "DB and VDB period cap", T-1820).
+/// `DB(1,0,1E15,1E15)` ran for hours before the cap. The lifting table charges each element by
+/// its period up to it.
+pub(crate) const MAX_DEPRECIATION_PERIODS: u32 = 100_000;
+
+/// Whether `period` is past [`MAX_DEPRECIATION_PERIODS`].
+fn past_period_cap(period: f64) -> bool {
+    period.trunc() > f64::from(MAX_DEPRECIATION_PERIODS)
+}
+
 // `db`: fixed-declining-balance depreciation for a single `period`.
-pub(super) fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) -> f64 {
+fn db_depreciation(cost: f64, salvage: f64, life: f64, period: f64, month: f64) -> f64 {
     // The depreciation rate, rounded to three decimal places.
     let rate = ((1.0 - (salvage / cost).powf(1.0 / life)) * 1000.0).round() / 1000.0;
     let int_period = period.trunc() as i64;
@@ -140,88 +171,100 @@ pub(super) fn ddb_depreciation(
 }
 
 impl Model {
-    // VDB(cost, salvage, life, start_period, end_period, [factor], [no_switch])
-    //
-    // Variable declining balance depreciation between `start_period` and
-    // `end_period`. By default (no_switch = FALSE) the calculation switches to
-    // straight-line depreciation when that is more advantageous; passing
-    // no_switch = TRUE keeps it on declining balance throughout.
+    /// `VDB(cost, salvage, life, start_period, end_period, [factor], [no_switch])`: variable
+    /// declining balance depreciation between `start_period` and `end_period`, switching to
+    /// straight line when that is larger unless `no_switch` is TRUE. Every argument lifts over an
+    /// array and a range (SPEC-0011; probes/fin-argument-modes, docs/excel-semantics/financial.md
+    /// "Financial function argument modes"); each element is charged by its `end_period`, the
+    /// periods its schedule walks (T-1820).
     pub(crate) fn fn_vdb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(5..=7).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let cost = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let salvage = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let life = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let start_period = match self.get_number(&args[3], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let end_period = match self.get_number(&args[4], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let factor = if arg_count > 5 {
-            match self.get_number(&args[5], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            2.0
-        };
-        // no_switch defaults to FALSE => switch to straight line.
-        let no_switch = if arg_count > 6 {
-            match self.get_number(&args[6], cell) {
-                Ok(f) => f != 0.0,
-                Err(s) => return s,
-            }
-        } else {
-            false
-        };
-        if cost < 0.0
-            || salvage < 0.0
-            || life <= 0.0
-            || factor <= 0.0
-            || start_period < 0.0
-            || start_period > life
-            || end_period > life
-            || start_period > end_period
-            || end_period <= 0.0
-        {
-            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
-        }
-        // When switching to straight line, life, start and end cannot all coincide.
-        if !no_switch && life == start_period && start_period == end_period {
-            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
-        }
-        let straight_line = !no_switch;
-        let result = vdb_depr_between(
-            cost,
-            salvage,
-            life,
-            start_period,
-            end_period,
-            factor,
-            straight_line,
-        );
-        CalcResult::Number(result)
+        self.lift_call(Function::Vdb, args, cell, &mut |model, values| {
+            let [cost, salvage, life, start_period, end_period, rest @ ..] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let read = || -> Result<f64, CalcResult> {
+                let cost = model.cast_number_ref(cost, cell)?;
+                let salvage = model.cast_number_ref(salvage, cell)?;
+                let life = model.cast_number_ref(life, cell)?;
+                let start_period = model.cast_number_ref(start_period, cell)?;
+                let end_period = model.cast_number_ref(end_period, cell)?;
+                let factor = model.cast_number_or(rest.first(), 2.0, cell)?;
+                // no_switch defaults to FALSE => switch to straight line.
+                let no_switch = model.cast_number_or(rest.get(1), 0.0, cell)? != 0.0;
+                if cost < 0.0
+                    || salvage < 0.0
+                    || life <= 0.0
+                    || factor <= 0.0
+                    || start_period < 0.0
+                    || start_period > life
+                    || end_period > life
+                    || start_period > end_period
+                    || end_period <= 0.0
+                {
+                    return Err(num_error(cell));
+                }
+                // When switching to straight line, life, start and end cannot all coincide.
+                if !no_switch && life == start_period && start_period == end_period {
+                    return Err(num_error(cell));
+                }
+                if past_period_cap(end_period) {
+                    return Err(num_error(cell));
+                }
+                Ok(vdb_depr_between(
+                    cost,
+                    salvage,
+                    life,
+                    start_period,
+                    end_period,
+                    factor,
+                    !no_switch,
+                ))
+            };
+            number_or_error(read())
+        })
+    }
+
+    /// `DB(cost, salvage, life, period, [month])`: fixed-declining-balance depreciation for one
+    /// period. Every argument lifts over an array and a range (SPEC-0011; probes/fin-argument-
+    /// modes); each element is charged by its `period`, the periods its schedule walks (T-1820).
+    pub(crate) fn fn_db(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.lift_call(Function::Db, args, cell, &mut |model, values| {
+            let [cost, salvage, life, period, rest @ ..] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let read = || -> Result<f64, CalcResult> {
+                let cost = model.cast_number_ref(cost, cell)?;
+                let salvage = model.cast_number_ref(salvage, cell)?;
+                let life = model.cast_number_ref(life, cell)?;
+                let period = model.cast_number_ref(period, cell)?;
+                let month = model
+                    .cast_number_no_bools_or(rest.first(), 12.0, cell)?
+                    .trunc();
+                if month == 12.0 && period > life
+                    || (period > life + 1.0)
+                    || month <= 0.0
+                    || month > 12.0
+                    || period <= 0.0
+                    || cost < 0.0
+                {
+                    return Err(num_error(cell));
+                }
+                if cost == 0.0 {
+                    return Ok(0.0);
+                }
+                if past_period_cap(period) {
+                    return Err(num_error(cell));
+                }
+                Ok(db_depreciation(cost, salvage, life, period, month))
+            };
+            number_or_error(read())
+        })
     }
 }
 
 // SLN, SYD and DDB are core worksheet functions in closed form: every argument lifts over an
 // array and a multi-cell range (`ArgKind::Lift`, SPEC-0011; probes/fin-argument-modes H97, H304,
 // H309, probes/fin-later-argument-ranges K19-K23). Moved here from `financial/mod.rs` (T-1372).
-// DB and VDB loop over the periods, so they stay off the driver until their loops are bounded.
 impl Model {
     /// `SLN(cost, salvage, life)`: `(cost - salvage)/life`.
     pub(crate) fn fn_sln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

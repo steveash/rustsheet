@@ -48,6 +48,19 @@ impl CalcResult {
             message,
         }
     }
+    /// An error with its message dropped, anything else as it is: a lifted kernel copies a
+    /// data argument's error into every element, and an empty message allocates nothing.
+    pub(crate) fn without_message(self) -> CalcResult {
+        match self {
+            CalcResult::Error { error, origin, .. } => CalcResult::Error {
+                error,
+                origin,
+                message: String::new(),
+            },
+            other => other,
+        }
+    }
+
     pub fn new_args_number_error(origin: CellReferenceIndex) -> CalcResult {
         CalcResult::Error {
             error: Error::ERROR,

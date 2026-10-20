@@ -1,0 +1,36 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1903 review: POSIX classes next to a literal ^, - or & (A1-A7), case-insensitive upper/lower in a nested or negated bracket and next to a literal (A8-A11, A14-A15), && in a bracket (A12-A13), and the case_sensitivity argument 1 (A16-A18).",
+ "tags": [
+  "M7",
+  "probe",
+  "T-1903",
+  "regextest"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=IFERROR(REGEXTEST(\"b\",\"[[:upper:]^a]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"b\",\"[[:upper:]^a]\")))",
+    "A2": "=IFERROR(REGEXTEST(\"^\",\"[[:upper:]^a]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"^\",\"[[:upper:]^a]\")))",
+    "A3": "=IFERROR(REGEXTEST(\"A\",\"[[:upper:]^a]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"[[:upper:]^a]\")))",
+    "A4": "=IFERROR(REGEXTEST(\"b\",\"[a[:upper:]-z]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"b\",\"[a[:upper:]-z]\")))",
+    "A5": "=IFERROR(REGEXTEST(\"-\",\"[a[:upper:]-z]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"-\",\"[a[:upper:]-z]\")))",
+    "A6": "=IFERROR(REGEXTEST(\"&\",\"[&[:lower:]&]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"&\",\"[&[:lower:]&]\")))",
+    "A7": "=IFERROR(REGEXTEST(\"A\",\"[&[:lower:]&]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"[&[:lower:]&]\")))",
+    "A8": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[[:upper:]]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[[:upper:]]]\")))",
+    "A9": "=IFERROR(REGEXTEST(\"a\",\"(?i)[^[:upper:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[^[:upper:]]\")))",
+    "A10": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[:^upper:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[:^upper:]]\")))",
+    "A11": "=IFERROR(REGEXTEST(\"A\",\"(?i)[[:^lower:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"(?i)[[:^lower:]]\")))",
+    "A12": "=IFERROR(REGEXTEST(\"A\",\"[[:alpha:]&&[:lower:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"[[:alpha:]&&[:lower:]]\")))",
+    "A13": "=IFERROR(REGEXTEST(\"&\",\"[[:alpha:]&&[:lower:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"&\",\"[[:alpha:]&&[:lower:]]\")))",
+    "A14": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[:upper:]x]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[:upper:]x]\")))",
+    "A15": "=IFERROR(REGEXTEST(\"X\",\"(?i)[[:lower:]x]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"X\",\"(?i)[[:lower:]x]\")))",
+    "A16": "=REGEXTEST(\"a\",\"[[:upper:]]\",1)",
+    "A17": "=REGEXTEST(\"A\",\"[[:lower:]]\",1)",
+    "A18": "=REGEXTEST(\"a\",\"[[:alpha:]]\",1)"
+   }
+  }
+ ],
+ "expected": {}
+}

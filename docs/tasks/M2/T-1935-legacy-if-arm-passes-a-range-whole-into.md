@@ -3,7 +3,7 @@ id: T-1935
 title: "Legacy IF arm passes a range whole into a range argument (MATCH(2,IF(B1:B6>0,B1:B6),0))"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -17,9 +17,22 @@ A legacy (no `cm`) `=MATCH(2,IF(B1:B6>0,B1:B6),0)` matches Excel: FORMULATEXT `=
 Found by T-1862. In a legacy cell the engine puts an automatic `@` on IF's value arm when IF sits in MATCH's `lookup_array` (a range argument), because IF's arms are scalar in the signature walk (`add_legacy_intersection` -> `add_argument_intersection`, expressions/parser/static_analysis.rs and static_analysis/legacy.rs). Excel keeps the arm whole there and hands the range to MATCH. docs/excel-semantics/references.md "Legacy MATCH, VLOOKUP and HLOOKUP intersect an operation in their lookup table" records the known mismatch. Probe the same shape under SUM, COUNT and VLOOKUP's table before generalizing (`SUM(IF(TRUE,B1:B6+0))` does intersect its arm's arithmetic: references.md "Legacy formulas intersect the ranges in value arguments").
 
 ## Acceptance criteria
-- [ ] probes/legacy-match-lookup-array-intersection J2 and Y2 pass; no other eval cell regresses.
-- [ ] Any new shape probed is recorded in docs/excel-semantics/references.md.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/legacy-match-lookup-array-intersection J2 and Y2 pass; no other eval cell regresses.
+- [x] Any new shape probed is recorded in docs/excel-semantics/references.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probed the shape under SUM, COUNT, COUNTA, MAX, ROWS, INDEX, SUMIF, MATCH, VLOOKUP, HLOOKUP and
+LOOKUP (probes/legacy-if-arm-range-argument, excel-graph, 73 cells): a legacy IF passes an arm
+that is a bare or parenthesized range whole; the `@` goes on the IF call in a value position
+(`=@IF(TRUE,B1:B6)`, `=ABS(@IF(TRUE,B1:B6))`) and nowhere under a range argument. The engine no
+longer intersects such an arm (`is_reference_arm`, static_analysis/legacy.rs, mirrored on export),
+and INDEX of such an IF gets no `@`. Recorded in docs/excel-semantics/references.md "Legacy IF
+passes a range arm whole". Eval: probes/legacy-match-lookup-array-intersection J2, Y2 now pass;
+the new probe passes 73/73. Review follow-up: probes/legacy-if-arm-range-argument-b (43
+cells) shows an IF with a range arm that is read as a value under a range argument (an operand of
+`+`, `-`, a comparison, `&`) takes the `@` on the call (`=SUM(@IF(TRUE,B1:B6)+0)`), and INDEX of an
+IF with mixed arms gets none; `returns_range_arm` implements both, 43/43.

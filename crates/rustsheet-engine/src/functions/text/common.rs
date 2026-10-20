@@ -1,7 +1,6 @@
 use super::text_kernel::{lambda_argument_error, text_result};
 use super::util::substitute_element;
 use crate::cast::number_text_too_long;
-use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
     cast::{calc_result_to_string, calc_result_to_text, MAX_TEXT_UNITS},
@@ -328,61 +327,16 @@ impl Model {
         }
     }
 
+    /// UNICODE(text): the code point of the first character. Lifts over a range or array
+    /// argument, as CODE does: `UNICODE(INDIRECT("Data!A2:A4",VSTACK(Data!C6:E7)))` spills
+    /// (gen-m9/675763979c1defb6 Calc!A25 is `#SPILL!` where the spill is blocked; T-2090).
     pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => Text::from(number_to_text(v)),
-                CalcResult::String(v) => v,
-                CalcResult::Boolean(b) => Text::from(if b { "TRUE" } else { "FALSE" }),
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::Range { .. } => {
-                    // Implicit Intersection not implemented
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Implicit Intersection not implemented".to_string(),
-                    };
-                }
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Empty cell".to_string(),
-                    }
-                }
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
+        self.lift_text(Function::Unicode, args, cell, &mut |_, values| {
+            let [text] = values else {
+                return Err(Error::ERROR);
             };
-
-            // Excel: a lone high surrogate is #VALUE!, a lone low one gives its code
-            // (probes/text-lone-surrogates A3, A4; text-surrogate-positions A38).
-            match s.chars_lossless().next() {
-                Some(Char::Scalar(c)) => return CalcResult::Number(f64::from(c as u32)),
-                Some(Char::Lone(u)) if !(0xD800..0xDC00).contains(&u) => {
-                    return CalcResult::Number(f64::from(u));
-                }
-                Some(Char::Lone(_)) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Lone high surrogate".to_string(),
-                    };
-                }
-                None => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Empty cell".to_string(),
-                    };
-                }
-            }
-        }
-        CalcResult::new_args_number_error(cell)
+            unicode_element(calc_result_to_text(text)?.as_ref())
+        })
     }
 
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -533,6 +487,19 @@ fn value_to_text(value: &CalcResult, strict: bool) -> Result<String, Error> {
         CalcResult::Error { error, .. } => Ok(error.to_string()),
         CalcResult::String(s) if strict => Ok(format!("\"{}\"", s.replace('"', "\"\""))),
         other => calc_result_to_string(other),
+    }
+}
+
+/// One UNICODE element: the code point of the first character, `#VALUE!` for empty text.
+/// Excel: a lone high surrogate is `#VALUE!`, a lone low one gives its code
+/// (probes/text-lone-surrogates A3, A4; text-surrogate-positions A38).
+fn unicode_element(text: &Text) -> Result<ArrayNode, Error> {
+    match text.chars_lossless().next() {
+        Some(Char::Scalar(c)) => Ok(ArrayNode::Number(f64::from(c as u32))),
+        Some(Char::Lone(u)) if !(0xD800..0xDC00).contains(&u) => {
+            Ok(ArrayNode::Number(f64::from(u)))
+        }
+        Some(Char::Lone(_)) | None => Err(Error::VALUE),
     }
 }
 

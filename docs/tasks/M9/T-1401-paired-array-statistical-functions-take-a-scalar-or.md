@@ -3,7 +3,7 @@ id: T-1401
 title: "Paired-array statistical functions take a scalar or single cell as a one-value array (COVAR, SLOPE, INTERCEPT, STEYX, RSQ, PEARSON, FORECAST.LINEAR, CHISQ.TEST, T.TEST)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -47,3 +47,9 @@ Semantics: docs/excel-semantics/statistics.md "Array arguments given a scalar, a
 
 ## Out of scope
 -
+
+## Outcome
+`paired_samples` (COVAR/COVARIANCE/T.TEST) and `fn_get_two_matrices` (CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX,
+FORECAST, CHISQ.TEST) take a number as a one-value array and an error as itself; unequal shapes are `#N/A`; T.TEST reads its samples
+first (error-vs-tails order unprobed) and paired samples of unequal size are `#N/A`. Probes eval: 76 cells fixed, 0 regressions.
+Still failing in gen-m9: `GROWTH(GAMMA(..))` of a single value (T-1402 area).

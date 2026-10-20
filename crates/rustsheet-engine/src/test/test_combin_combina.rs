@@ -62,3 +62,28 @@ fn combin_rounds_like_excel() {
     assert_eq!(bits("A3"), 455.000_000_000_000_06_f64.to_bits());
     assert_eq!(bits("A4"), 252.0_f64.to_bits());
 }
+
+#[test]
+fn combina_is_combin_of_n_plus_k_minus_one() {
+    // ironcalc-calc COMBIN_COMBINA.xlsx D4, D5, D16 (Excel-cached): Excel's COMBIN rounding
+    // applied to COMBIN(n+k-1, k) (numbers.md "COMBINA is COMBIN(n+k-1, k)").
+    let mut model = new_empty_model();
+    model._set("A1", "=COMBINA(10,10)");
+    model._set("A2", "=COMBINA(20,19)");
+    model._set("A3", "=COMBINA(1000,200)");
+    model._set("A4", "=COMBINA(0,0)");
+    model._set("A5", "=COMBINA(1,1E+10)");
+    model._set("A6", "=COMBINA(1E+300,1E+300)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 92_378.0_f64.to_bits());
+    assert_eq!(bits("A2"), 35_345_263_799.999_985_f64.to_bits());
+    assert_eq!(bits("A3"), 1.667_683_306_781_367_8e233_f64.to_bits());
+    assert_eq!(bits("A4"), 1.0_f64.to_bits());
+    // The loop runs min(k, n - 1) times, so a huge k with n = 1 answers at once (directive 5).
+    assert_eq!(bits("A5"), 1.0_f64.to_bits());
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+}

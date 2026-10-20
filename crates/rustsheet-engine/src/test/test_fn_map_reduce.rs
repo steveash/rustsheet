@@ -237,6 +237,85 @@ fn by_slices_and_makearray_inner_lambda_sees_each_call() {
 }
 
 #[test]
+fn helpers_calling_defined_name_and_eta_lambdas_see_each_element() {
+    // The body makes LAMBDAs that hold none of its parameters (a defined name, a function passed
+    // by name, a LAMBDA made inside the called one), so it keeps its patch (T-0425).
+    let mut model = new_empty_model();
+    model
+        .new_defined_name("Twice", None, "=LAMBDA(x, 2*x)")
+        .unwrap();
+    model
+        .new_defined_name("AddTo", None, "=LAMBDA(a, LAMBDA(b, a + b)(10))")
+        .unwrap();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("B1", "=MAP(A1:A3, LAMBDA(x, Twice(x) + AddTo(x)))");
+    model._set("C1", "=SCAN(0, A1:A3, LAMBDA(acc, v, acc + Twice(v)))");
+    model._set(
+        "D1",
+        "=BYROW(A1:A3, LAMBDA(r, REDUCE(0, r, _xleta.SUM) + Twice(SUM(r))))",
+    );
+    model._set(
+        "E1",
+        "=MAP(A1:A3, LAMBDA(x, Twice(x) + LAMBDA(y, x * y)(100)))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "13");
+    assert_eq!(model._get_text("B2"), "16");
+    assert_eq!(model._get_text("B3"), "19");
+    assert_eq!(model._get_text("C1"), "2");
+    assert_eq!(model._get_text("C2"), "6");
+    assert_eq!(model._get_text("C3"), "12");
+    assert_eq!(model._get_text("D1"), "3");
+    assert_eq!(model._get_text("D2"), "6");
+    assert_eq!(model._get_text("D3"), "9");
+    assert_eq!(model._get_text("E1"), "102");
+    assert_eq!(model._get_text("E2"), "204");
+    assert_eq!(model._get_text("E3"), "306");
+}
+
+#[test]
+fn defined_name_lambda_calls_reuse_their_body_and_stay_independent() {
+    // A defined-name LAMBDA keeps one lambda id and its patched body across calls in one
+    // evaluation (T-0440): recursion, a call in its own argument, a wrong argument count, the
+    // name passed by value and a changed definition must each still see their own values.
+    let mut model = new_empty_model();
+    model
+        .new_defined_name("Twice", None, "=LAMBDA(x, 2*x)")
+        .unwrap();
+    model
+        .new_defined_name("Fact", None, "=LAMBDA(n, IF(n<=1, 1, n*Fact(n-1)))")
+        .unwrap();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set(
+        "B1",
+        "=MAP(A1:A3, LAMBDA(x, Twice(Twice(x)) + Fact(x + 2)))",
+    );
+    model._set("C1", "=MAP(A1:A3, Twice)");
+    model._set("D1", "=Twice(1, 2)");
+    model._set("D2", "=Twice(5) + Twice(A3)");
+    model._set("E1", "=Fact(5) + Fact(3)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "10");
+    assert_eq!(model._get_text("B2"), "32");
+    assert_eq!(model._get_text("B3"), "132");
+    assert_eq!(model._get_text("C1"), "2");
+    assert_eq!(model._get_text("C3"), "6");
+    assert_eq!(model._get_text("D1"), "#VALUE!");
+    assert_eq!(model._get_text("D2"), "16");
+    assert_eq!(model._get_text("E1"), "126");
+    model
+        .update_defined_name("Twice", None, "Twice", None, "=LAMBDA(x, 3*x)")
+        .unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("C3"), "9");
+    assert_eq!(model._get_text("D2"), "24");
+}
+
+#[test]
 fn map_wrong_lambda_arity_is_value_in_every_element() {
     let mut model = new_empty_model();
     model._set("A1", "1");
