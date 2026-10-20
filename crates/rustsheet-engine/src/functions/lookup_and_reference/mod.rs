@@ -649,7 +649,7 @@ impl Model {
         self.indirect_reference(args, cell).into_single_area(cell)
     }
 
-    /// INDIRECT in reference context: one reference, or, when ref_text or a1 is an array or a
+    /// INDIRECT in reference context: one reference, or, when `ref_text` or a1 is an array or a
     /// multi-cell range, an array of references in their broadcast shape, each element the scalar
     /// INDIRECT of its values or that call's error (SPEC-0014; docs/excel-semantics/lookup.md
     /// "OFFSET, INDIRECT and TRIMRANGE lift into arrays of references").
@@ -680,7 +680,7 @@ impl Model {
                 .any(lifts)
     }
 
-    /// The scalar INDIRECT of the values of ref_text and the optional a1 (TRUE when missing).
+    /// The scalar INDIRECT of the values of `ref_text` and the optional a1 (TRUE when missing).
     fn indirect_of(&mut self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let ref_text = match self.cast_to_string(
             values.first().cloned().unwrap_or(CalcResult::EmptyArg),

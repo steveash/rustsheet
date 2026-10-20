@@ -51,7 +51,7 @@ impl Model {
 
     /// TRIMRANGE; `as_reference` gives the trimmed part of a single-sheet range argument as a
     /// reference, as an intersection operand sees it: `=A1:A3 TRIMRANGE(A2:B2)` is 2
-    /// (probes/intersection-function-operands H14; T-0165). When trim_rows or trim_cols is an
+    /// (probes/intersection-function-operands H14; T-0165). When `trim_rows` or `trim_cols` is an
     /// array or a multi-cell range the call lifts into an array of references, each the scalar
     /// call's trimmed reference of the source range or its error (SPEC-0014; docs/excel-semantics/
     /// lookup.md "OFFSET, INDIRECT and TRIMRANGE lift into arrays of references").
@@ -137,8 +137,8 @@ impl Model {
                 .any(lifts)
     }
 
-    /// The rows and columns of `data` that remain after trimming by the values of trim_rows and
-    /// trim_cols (`values`; a missing one is 3), or the scalar call's error.
+    /// The rows and columns of `data` that remain after trimming by the values of `trim_rows` and
+    /// `trim_cols` (`values`; a missing one is 3), or the scalar call's error.
     fn trim_of(
         &mut self,
         data: &[Vec<ArrayNode>],
@@ -191,7 +191,7 @@ impl Model {
         // Determine column slice bounds
         let col_start = if trim_cols == 1 || trim_cols == 3 {
             (0..num_cols)
-                .find(|&c| !col_is_empty(&data, c))
+                .find(|&c| !col_is_empty(data, c))
                 .unwrap_or(num_cols)
         } else {
             0
@@ -199,7 +199,7 @@ impl Model {
         let col_end = if trim_cols == 2 || trim_cols == 3 {
             (0..num_cols)
                 .rev()
-                .find(|&c| !col_is_empty(&data, c))
+                .find(|&c| !col_is_empty(data, c))
                 .map(|c| c + 1)
                 .unwrap_or(0)
         } else {

@@ -47,7 +47,7 @@ pub(super) fn static_analysis_indirect(args: &[Node]) -> StaticResult {
     lifted_or_unknown(args)
 }
 
-/// TRIMRANGE: an array or range in trim_rows or trim_cols lifts the call into an array of
+/// TRIMRANGE: an array or range in `trim_rows` or `trim_cols` lifts the call into an array of
 /// references (SPEC-0014; T-1957), otherwise the shape is not known.
 pub(super) fn static_analysis_trimrange(args: &[Node]) -> StaticResult {
     lifted_or_unknown(args.get(1..).unwrap_or_default())
