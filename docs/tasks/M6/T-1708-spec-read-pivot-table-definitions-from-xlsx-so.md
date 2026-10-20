@@ -3,11 +3,12 @@ id: T-1708
 title: "Spec: read pivot table definitions from xlsx so GETPIVOTDATA can resolve field/item pairs"
 milestone: M6
 lane: engine
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
 depends_on: []
+spec: docs/specs/SPEC-0015-pivot-tables-and-getpivotdata.md
 ---
 
 ## Goal
@@ -22,3 +23,9 @@ T-1705 made the case builder write pivot tables; probes/getpivotdata-real-pivot 
 
 ## Out of scope
 - Implementing it; refreshing or editing pivots; PIVOTBY (a function, not a pivot table).
+
+## Outcome
+docs/specs/SPEC-0015-pivot-tables-and-getpivotdata.md: workbook model for pivot caches and tables, bounded xlsx import,
+GETPIVOTDATA aggregating the cache (each probes/getpivotdata-real-pivot cell mapped to a rule), and baked rendered cells
+for spec cases. Implementation tasks: T-2081 (model), T-2082 (import), T-2083 (GETPIVOTDATA), T-2084 (harness), T-2085
+(probe the unknowns). No code or eval change.
