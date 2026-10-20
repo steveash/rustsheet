@@ -23,3 +23,11 @@ Long consecutive GAMMALN.PRECISE runs in (2,3] used:
 - 8,192 or 16,384 consecutive doubles each.
 
 The q2xx dense cases are 512-double clusters and are too short for sub-bin frequency work.
+
+## Added with the follow-up (HANDOFF 12.6)
+| Script | What it computes |
+|---|---|
+| `meter.py [--control] [--stage kN kD] [--mode pre\|post] cases...` | the tie-class per-anchor offset meter: one smooth offset per chain, injected before the product's quantisation (`pre`) or on the constant (`post`) at the given stages, scanned in 1/32 ulp of the stored sum over +-3.5 by coordinate ascent; `--control` plants known moves and prints the expected readings |
+| `meter_keep.py cases...` | the same meter on top of head models with the stage-4 (N) / stage-3 (D) products, or all head products, left unstored |
+| `latescan.py cases...` | each late coefficient moved in whole units of its stored sum's grid, m in [-6,6], scored by the (4,3)-pre meter's best rate per run |
+| `ties.py cases...` | direct test of how Excel resolves each position class (exact tie, 1/4, 3/4, 0) of the hand-off sums against ties-to-even and the true side of the unquantised product |
