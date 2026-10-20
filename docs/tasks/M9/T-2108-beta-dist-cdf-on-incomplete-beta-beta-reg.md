@@ -30,11 +30,14 @@ Recording the regressions needs `update-baseline --allow-regressions` under a de
 so a person, or a reviewer-approved decision, has to settle it first.
 Code: `functions/statistical/beta.rs` `beta_dist_of` (TODO(T-2108)), `inverse_beta.rs`
 (`beta_inverse_cdf` should invert the same cdf), the lift weights' comments.
+F.INV and F.INV.RT have the same mismatch: they still invert statrs' F cdf while F.DIST uses
+`incomplete_beta` (`F_DIST.xlsx` J2, J3, L2, L3 stay NumericClose). Move them in the same
+change, or measure them and file a separate task.
 
 ## Acceptance criteria
 - [ ] A decision record allows exactly the chained BETA.INV lines (or they are avoided), and the
       baseline diff adds no other line.
-- [ ] BETA.DIST's cdf is `incomplete_beta::beta_reg`; BETA.INV inverts it.
+- [ ] BETA.DIST's cdf is `incomplete_beta`'s; BETA.INV (and F.INV, or a filed task) inverts the same cdf.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -2,7 +2,9 @@ use statrs::distribution::{Continuous, ContinuousCDF, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
-use crate::functions::statistical::incomplete_beta::{beta_density, beta_reg};
+use crate::functions::statistical::incomplete_beta::{
+    beta_density, beta_reg_complement, beta_reg_upper,
+};
 use crate::functions::statistical::inverse_beta::f_inverse_cdf;
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::functions::statistical::t_dist::sample_var;
@@ -21,16 +23,21 @@ fn f_df_ok(df: f64) -> bool {
     (1.0..=F_DF_MAX).contains(&df)
 }
 
-/// P(F <= x) for the F distribution: I_y(df1/2, df2/2) with y = df1 x / (df1 x + df2).
+/// P(F <= x) for the F distribution: `I_y(df1/2, df2/2)` with y = df1 x / (df1 x + df2), its
+/// complement df2 / (df1 x + df2) formed directly.
 fn f_cdf(df1: f64, df2: f64, x: f64) -> f64 {
     let scaled = df1 * x;
-    beta_reg(scaled / (scaled + df2), df1 / 2.0, df2 / 2.0)
+    let total = scaled + df2;
+    beta_reg_complement(scaled / total, df2 / total, df1 / 2.0, df2 / 2.0)
 }
 
-/// P(F > x), computed directly as I_w(df2/2, df1/2) with w = df2 / (df2 + df1 x), not as
-/// 1 - [`f_cdf`] (T-0970: `F.DIST.RT(0.7,4,2.4)` is 0.6597222222222223 in `F_DIST.xlsx`).
+/// P(F > x): the upper tail of [`f_cdf`]'s incomplete beta, taken from its evaluation (the
+/// unreflected side directly, not as 1 - a reflected one) rather than as 1 - [`f_cdf`]
+/// (T-0970: `F.DIST.RT(0.7,4,2.4)` is 0.6597222222222223 in `F_DIST.xlsx`).
 fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
-    beta_reg(df2 / (df2 + df1 * x), df2 / 2.0, df1 / 2.0)
+    let scaled = df1 * x;
+    let total = scaled + df2;
+    beta_reg_upper(scaled / total, df2 / total, df1 / 2.0, df2 / 2.0)
 }
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the

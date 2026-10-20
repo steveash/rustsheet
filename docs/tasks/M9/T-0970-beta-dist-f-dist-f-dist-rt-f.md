@@ -50,10 +50,10 @@ T-0974 (BETA.INV/F.INV) and possibly T-0927 reuse it. Reference: `rg beta_reg` s
 definition afterwards.
 
 ## Acceptance criteria
-- [ ] No BETA.DIST/F.DIST/F.DIST.RT/F.TEST line listed above remains NumericClose (`rustsheet-eval show`),
+- [ ] (Partly: deferred to T-2108; BETADIST_BETAINV G5 and G26 remain NumericClose) No BETA.DIST/F.DIST/F.DIST.RT/F.TEST line listed above remains NumericClose (`rustsheet-eval show`),
       at least 25 of the 45 lines leave `eval/baseline/ironcalc-calc.txt`, no new lines in any
       baseline (BINOM/NEGBINOM must not regress if they switch kernel).
-- [ ] Remaining lines (<= 4 ulp) listed in the PR with expected/actual; they wait for the T-1044
+- [x] Remaining lines (<= 4 ulp) listed in the PR with expected/actual; they wait for the T-1044
       incomplete-beta sweep (family 5).
 - [x] F.DIST.RT and F.TEST use the directly computed upper tail (no `1.0 - cdf`).
 - [x] Unit tests: I_x(a,1) = x^a, I_x(1,b) = 1-(1-x)^b, symmetry I_x(a,b) = 1 - I_{1-x}(b,a) at a few
@@ -80,9 +80,27 @@ Wired in:
 - F.DIST pdf: the beta density times y(1-y)/x where statrs' direct form is finite.
 - BETA.DIST pdf.
 
-Eval: ironcalc-calc known failures 1056 -> 1049 (BETADIST_BETAINV G3, BETA_GAMMA G4, F_DIST F2,
-H2, H3, F_TEST F1, F3) and probes 1669 -> 1666 (stat-argument-modes H215, H221, H226), with no
-regressions. F_DIST F3 goes from 28 ulp to 1 ulp, F_TEST D1 from 13 to 2 and K1 from 16 to 3.
+The incomplete beta takes the exact complement y alongside x (TOMS 708 `bratio`). F.DIST.RT
+takes the other tail of F.DIST's evaluation (`beta_reg_upper`), except in the closed forms.
+
+Eval (gated): ironcalc-calc known failures 1056 -> 1049 (BETADIST_BETAINV G3, BETA_GAMMA G4,
+F_DIST F2, H2, H3, F_TEST F1, F3) and probes 1669 -> 1666 (stat-argument-modes H215, H221,
+H226), with no regressions. F_DIST F3 goes from 28 ulp to 1 ulp, F_TEST D1 from 13 to 1 and K1
+from 16 to 3.
+
+probes-numeric (gate = false), against a main build: 72 more bit-exact cells.
+
+| case | main | branch |
+|---|---|---|
+| m9-f-dist | 1 | 10 |
+| m9-f-dist-rt | 0 | 8 |
+| m9-legacy-fdist | 29 | 42 |
+| m9-legacy-ftest | 8 | 12 |
+| t1049-ftest | 6 | 14 |
+| m9-beta-dist-a0p5 ... a100 (7 cases) | 49 | 73 |
+
+Three cells statrs had exact are 1 ulp off: m9-legacy-fdist A61, A62 (`FDIST(100,1,1)`) and
+t1049-fdist A23. They are listed in statistics.md.
 
 Not met here, and why:
 - At least 25 of the 45 lines leaving the baseline, and no NumericClose: only 7 left.
@@ -103,6 +121,8 @@ Release microbenchmark, 200k calls each: `beta_reg` against statrs `beta_reg`.
 | (0.5, 1E6, 1E6) | 1.75 us | 2.9 us |
 | (0.4999, 1E3, 1E3) | 0.49 us | 1.33 us |
 | (0.9, 0.1, 10) | 192 ns | 168 ns |
+| (0.5, 5E9, 5E9), F at df 1E10 | 1.95 us | - |
 
-The work is constant per call, so the lift weights are unchanged.
+The work is constant per call, and the worst case measured stays under BINOM.DIST's 3.2 us,
+so the lift weights are unchanged.
 

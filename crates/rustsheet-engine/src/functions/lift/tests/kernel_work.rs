@@ -13,7 +13,8 @@ const BETA_CDF: &str = "one statrs incomplete beta: at most 140 continued-fracti
 
 /// The engine's own incomplete beta (`statistical/incomplete_beta.rs`, T-0970) behind the F
 /// family: Cephes' continued fraction capped at 300 steps, fixed-length series.
-const ENGINE_BETA_CDF: &str = "one incomplete_beta::beta_reg: at most 300 continued-fraction steps";
+const ENGINE_BETA_CDF: &str =
+    "one incomplete_beta evaluation: at most 300 continued-fraction steps";
 
 /// ERF's and ERFC's cap: `erf::small_erf` and `erf::erfc_kernel` are fixed-degree rationals, and
 /// `x87_exp::excel_exp` runs a fixed-length estimate and at most one fixed 26-term series.

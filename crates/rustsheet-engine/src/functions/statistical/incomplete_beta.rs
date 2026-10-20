@@ -1,4 +1,4 @@
-//! The regularized incomplete beta I_x(a, b) behind BETA.DIST, BETADIST, F.DIST, F.DIST.RT,
+//! The regularized incomplete beta `I_x(a, b)` behind BETA.DIST, BETADIST, F.DIST, F.DIST.RT,
 //! FDIST and F.TEST (T-0970), and the beta density BETA.DIST takes with `cumulative` FALSE.
 //!
 //! Excel's own algorithm is not known: no published candidate fits every oracle cell (T-1744,
@@ -6,16 +6,18 @@
 //! candidate"). This is the best combination that fit found (`best_combination` in
 //! `tools/src/rustsheet_tools/fitlab/kernels/beta.py`, bit-exact on 158 of the 283 BETA.DIST
 //! sweep cells against 87 for statrs' `beta_reg`):
-//! - Excel's closed forms I_x(a,1) = exp(a ln x) and I_x(1,b) = 1 - exp(b ln(1-x));
+//! - Excel's closed forms `I_x(a,1) = exp(a ln x)` and `I_x(1,b) = 1 - exp(b ln(1-x))`;
 //! - otherwise Cephes' two continued fractions (`incbcf`, `incbd`; no power series), reflected
 //!   at the mean, x > a/(a+b), to the upper tail I_{1-x}(b,a);
 //! - the prefactor x^a (1-x)^b / B(a,b) as exp(a ln x) * exp(b ln(1-x)) * Gamma(a+b) /
-//!   (Gamma(a) Gamma(b)) while Gamma(a+b) is finite (a + b below Cephes' `MAXGAM`).
+//!   (Gamma(a) Gamma(b)) while Gamma(a+b) is finite (a + b below Cephes' `MAXGAM`). The fit
+//!   took correctly rounded Gammas; this takes musl's `tgamma` (`libm`), which can move a last
+//!   digit, so the fit's 158 is not this port's count.
 //!
 //! Past `MAXGAM` the fit's logarithmic prefactor loses about 1,000 to 4,000 ulp (ln Gamma near
 //! 3,000 cancelling to a small sum: `BETA.DIST(0.555,1000,1000,TRUE,0.1,1)` and
 //! `BETA.DIST(33587,3,600,TRUE,2000,5489582)` in `BETADIST_BETAINV.xlsx`, where Excel's values are
-//! within 4 ulp of the correctly rounded ones), so there the prefactor follows DiDonato and
+//! within 4 ulp of the correctly rounded ones), so there the prefactor follows `DiDonato` and
 //! Morris' TOMS 708 `brcomp`: the exponent in `rlog1` form with the Stirling corrections for both
 //! shapes of 8 or more, and ln Gamma(a+b) - ln Gamma(b) by `algdiv`'s Stirling difference when the
 //! smaller shape is below 8.
@@ -41,15 +43,25 @@ const FRAC_1_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
 /// Terms of the atanh series in [`rlog1`]: |r| <= 1/3 there, so (1/9)^20 is far below 2^-53.
 const RLOG1_TERMS: u32 = 20;
 
-/// I_x(a, b) for shapes a, b > 0; 0 at x <= 0 and 1 at x >= 1. NaN in, NaN out.
+/// `I_x(a, b)` for shapes a, b > 0; 0 at x <= 0 and 1 at x >= 1. NaN in, NaN out.
+#[cfg(test)]
 pub(crate) fn beta_reg(x: f64, a: f64, b: f64) -> f64 {
-    if x.is_nan() || a.is_nan() || b.is_nan() {
+    beta_reg_complement(x, 1.0 - x, a, b)
+}
+
+/// [`beta_reg`] with y = 1 - x given by the caller (TOMS 708 `bratio`'s x and y), so that a
+/// complement the caller has without cancellation keeps its digits through the reflection: the F
+/// tails map to y = df1 x / (df1 x + df2) and its complement df2 / (df1 x + df2), and
+/// `F.DIST.RT(1E-6,1,1)` is then Excel's correctly rounded 0.9993633804398389
+/// (probes-numeric/m9-legacy-fdist A12), where forming 1 - w from w misses by 2E-14.
+pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
+    if x.is_nan() || y.is_nan() || a.is_nan() || b.is_nan() {
         return f64::NAN;
     }
     if x <= 0.0 {
         return 0.0;
     }
-    if x >= 1.0 {
+    if y <= 0.0 {
         return 1.0;
     }
     // Excel's closed forms (T-1744: 27 of 27 b = 1 cells, 22 of 24 a = 1 cells); exp of a
@@ -57,22 +69,51 @@ pub(crate) fn beta_reg(x: f64, a: f64, b: f64) -> f64 {
     if b == 1.0 {
         return (a * x.ln()).exp();
     }
+    // From x, not from the given y: `F.DIST.RT(0.7,4,2.4)` = I_w(1,2) is Excel's
+    // 0.6597222222222223 (`F_DIST.xlsx` H3) with ln(1 - w), 2 ulp off with the exact complement.
     if a == 1.0 {
         return 1.0 - (b * (1.0 - x).ln()).exp();
     }
+    beta_tails(x, y, a, b).0
+}
+
+/// (`I_x(a, b)`, 1 - `I_x(a, b)`) from one evaluation, the unreflected side computed and the other
+/// its complement, for 0 < x < 1 outside the closed forms: Excel's two F tails add up to exactly
+/// 1 at the mean, `F.DIST.RT(1,3,7)+F.DIST(1,3,7,TRUE)` = 1 (probes-numeric/t1049-fdistrt A27),
+/// which two separate evaluations miss by 6E-16.
+fn beta_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     let flip = x > a / (a + b);
-    let (x, a, b) = if flip { (1.0 - x, b, a) } else { (x, a, b) };
-    let w = cephes_fraction(a, b, x);
+    let (x, y, a, b) = if flip { (y, x, b, a) } else { (x, y, a, b) };
+    let w = cephes_fraction(a, b, x, y);
     let v = if a + b < MAXGAM {
-        (a * x.ln()).exp() * (b * (1.0 - x).ln()).exp() * gamma_ratio(a, b) / a * w
+        (a * x.ln()).exp() * (b * y.ln()).exp() * gamma_ratio(a, b) / a * w
     } else {
-        large_prefactor(a, b, x) * w / a
+        large_prefactor(a, b, x, y) * w / a
     };
     if flip {
-        1.0 - v
+        (1.0 - v, v)
     } else {
-        v
+        (v, 1.0 - v)
     }
+}
+
+/// 1 - `I_x(a, b)`, the upper tail of [`beta_reg_complement`], with y = 1 - x given: Excel's
+/// closed forms read the other way round, `I_y(b, a)` (`F.DIST.RT(0.7,4,2.4)` = 0.6597222222222223,
+/// `F_DIST.xlsx` H3), else the same evaluation as the lower tail.
+pub(crate) fn beta_reg_upper(x: f64, y: f64, a: f64, b: f64) -> f64 {
+    if x.is_nan() || y.is_nan() || a.is_nan() || b.is_nan() {
+        return f64::NAN;
+    }
+    if x <= 0.0 {
+        return 1.0;
+    }
+    if y <= 0.0 {
+        return 0.0;
+    }
+    if a == 1.0 || b == 1.0 {
+        return beta_reg_complement(y, x, b, a);
+    }
+    beta_tails(x, y, a, b).1
 }
 
 /// The beta density x^(a-1) (1-x)^(b-1) / B(a, b) for 0 < x < 1 while Gamma(a+b) is finite, by
@@ -84,7 +125,12 @@ pub(crate) fn beta_density(x: f64, a: f64, b: f64) -> Option<f64> {
     if !(x > 0.0 && x < 1.0 && a + b < MAXGAM) {
         return None;
     }
-    let density = x.powf(a - 1.0) * (1.0 - x).powf(b - 1.0) * gamma_ratio(a, b);
+    // Gamma(a) Gamma(b) can overflow below MAXGAM (a shape near 1E-300): no ratio then.
+    let ratio = gamma_ratio(a, b);
+    if !(ratio.is_finite() && ratio > 0.0) {
+        return None;
+    }
+    let density = x.powf(a - 1.0) * (1.0 - x).powf(b - 1.0) * ratio;
     density.is_finite().then_some(density)
 }
 
@@ -93,9 +139,9 @@ fn gamma_ratio(a: f64, b: f64) -> f64 {
     libm::tgamma(a + b) / (libm::tgamma(a) * libm::tgamma(b))
 }
 
-/// Cephes' `incbcf` below x (a+b-2) = a-1 and `incbd` / (1-x) above it: the continued fraction
-/// w with I_x(a,b) = x^a (1-x)^b / (a B(a,b)) * w, at most [`MAX_FRACTION_TERMS`] steps.
-fn cephes_fraction(a: f64, b: f64, x: f64) -> f64 {
+/// Cephes' `incbcf` below x (a+b-2) = a-1 and `incbd` / y above it, y = 1 - x: the continued
+/// fraction w with `I_x(a,b) = x^a y^b / (a B(a,b)) * w`, at most [`MAX_FRACTION_TERMS`] steps.
+fn cephes_fraction(a: f64, b: f64, x: f64, y: f64) -> f64 {
     if x * (a + b - 2.0) - (a - 1.0) < 0.0 {
         fraction(
             x,
@@ -103,12 +149,12 @@ fn cephes_fraction(a: f64, b: f64, x: f64) -> f64 {
             false,
         )
     } else {
-        let z = x / (1.0 - x);
+        let z = x / y;
         fraction(
             z,
             [a, b - 1.0, a, a + 1.0, 1.0, a + b, a + 1.0, a + 2.0],
             true,
-        ) / (1.0 - x)
+        ) / y
     }
 }
 
@@ -166,10 +212,9 @@ fn fraction(x: f64, k: [f64; 8], second: bool) -> f64 {
     ans
 }
 
-/// x^a (1-x)^b / B(a, b) for a + b of [`MAXGAM`] or more (so the larger shape is above 163),
-/// after TOMS 708 `brcomp`.
-fn large_prefactor(a: f64, b: f64, x: f64) -> f64 {
-    let y = 1.0 - x;
+/// x^a y^b / B(a, b), y = 1 - x, for a + b of [`MAXGAM`] or more (so the larger shape is above
+/// 163), after TOMS 708 `brcomp`.
+fn large_prefactor(a: f64, b: f64, x: f64, y: f64) -> f64 {
     if a >= STIRLING_MIN && b >= STIRLING_MIN {
         // x/x0 = 1 - lambda/a and y/y0 = 1 + lambda/b around the mean x0 = a/(a+b), so
         // a ln(x/x0) + b ln(y/y0) = -(a rlog1(-lambda/a) + b rlog1(lambda/b)) without the
@@ -245,6 +290,7 @@ fn rlog1(t: f64) -> f64 {
 mod tests {
     use super::*;
 
+    /// The ulps between two doubles of the same sign.
     fn ulps(a: f64, b: f64) -> u64 {
         let (ia, ib) = (a.to_bits() as i64, b.to_bits() as i64);
         ia.abs_diff(ib)
@@ -311,6 +357,31 @@ mod tests {
         }
         // 1e-8 - ln(1 + 1e-8) = 5e-17 - 3.3e-25 + ...
         assert!((rlog1(1e-8) / 5e-17 - 1.0).abs() < 1e-7);
+    }
+
+    #[test]
+    fn upper_tail_cells() {
+        // F.DIST.RT(0.7,4,2.4) (F_DIST.xlsx H3): I_w(1, 2) by the closed form, read from w.
+        let (scaled, df2) = (2.8, 2.0);
+        let total = scaled + df2;
+        assert_eq!(
+            beta_reg_upper(scaled / total, df2 / total, 2.0, 1.0),
+            0.659_722_222_222_222_3
+        );
+        // F.DIST.RT(1E-6,1,1) (probes-numeric/m9-legacy-fdist A12): the exact complement keeps
+        // the small tail's digits.
+        let (scaled, df2) = (1e-6, 1.0);
+        let total = scaled + df2;
+        assert_eq!(
+            beta_reg_upper(scaled / total, df2 / total, 0.5, 0.5),
+            0.999_363_380_439_838_9
+        );
+        // The two tails of one evaluation add up to 1 (t1049-fdistrt A27: F at x = 1, df 3, 7).
+        let (x, y) = (3.0 / 10.0, 7.0 / 10.0);
+        assert_eq!(
+            beta_reg_complement(x, y, 1.5, 3.5) + beta_reg_upper(x, y, 1.5, 3.5),
+            1.0
+        );
     }
 
     #[test]

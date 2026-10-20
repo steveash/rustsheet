@@ -1336,12 +1336,28 @@ Status: VERIFIED (b = 1 closed form); a = 1 PARTIAL (22/24, form not distinguish
 Tasks: T-1744, T-1759, T-0970, T-0969, T-1745
 
 ## Incomplete beta in the ironcalc-calc workbooks: F tails and densities (T-0970)
-Rule (VERIFIED on the cells named): Excel's F.DIST.RT is the upper tail computed directly,
+Rule (VERIFIED on the cells named): Excel's F.DIST.RT is the upper tail of the incomplete beta,
 I_w(d2/2, d1/2) with w = d2/(d2 + d1*x), not 1 - F.DIST. With the T-1744 best combination as I_x,
 `F.DIST.RT(0.8,2.4,3)` = 0.5266779476655967 and `F.DIST.RT(0.7,4,2.4)` = 0.6597222222222223
 (`F_DIST.xlsx` H2, H3) are bit-exact, where 1 - cdf misses by 6 and 13 ulp; F.TEST's two tails
 the same way make `F.TEST({1,2,3,4},B1:B4)` and `F.TEST(A1:A3,{2;3;7})` (`F_TEST.xlsx` F1, F3)
 bit-exact.
+Two more rules, from the non-gated probes-numeric suite:
+- **The complement is exact.** The incomplete beta takes y = d1*x/(d1*x+d2) and its complement
+  d2/(d1*x+d2), both formed directly, as TOMS 708 `bratio(a,b,x,y)` does, instead of 1 - w.
+  `FDIST(1E-6,1,1)` and `F.DIST.RT(1E-6,1,1)` are Excel's correctly rounded 0.9993633804398389
+  (m9-legacy-fdist A11, A12). Cephes `fdtrc`'s form, w and then incbet's internal 1 - w, misses
+  by 2E-14.
+- **Both tails come from one evaluation.** The upper tail is the complement of that evaluation
+  where it is reflected, and it is computed directly where it is not.
+  `F.DIST.RT(1,3,7)+F.DIST(1,3,7,TRUE)` is exactly 1 (t1049-fdistrt A27, x = 1 at the mean);
+  two separate evaluations miss by 6E-16.
+- **The closed forms are the exception.** They read the upper tail from w itself:
+  `F.DIST.RT(0.7,4,2.4)` = 1 - exp(2 ln(1-w)) (H3), 2 ulp off with the exact complement.
+
+With these, the F and BETA probes-numeric cases gain 72 bit-exact cells over statrs. Three cells
+that statrs had exact are now 1 ulp off: `FDIST(100,1,1)` and `F.DIST.RT(100,1,1)`
+(m9-legacy-fdist A61, A62: 0.06345103486110715) and t1049-fdist A23 (0.979990011905381).
 
 Densities (VERIFIED on the cells named; the general form UNVERIFIED):
 - BETA.DIST(x,a,b,FALSE) as pow(t,a-1)*pow(1-t,b-1)*Gamma(a+b)/(Gamma(a)*Gamma(b))/(B-A), musl
