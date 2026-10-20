@@ -351,14 +351,16 @@ def generate_case(
     case_index: int = 0,
 ) -> dict[str, Any]:
     """One case. With `focus`, every formula's outer call is a function whose own milestone is `milestone`,
-    taking turns through a seeded shuffle that continues across cases (`case_index`)."""
+    taking turns through a seeded shuffle (each case reshuffles from its own seed; `case_index` offsets the
+    position, so counts are exactly even within a case and roughly even across a run)."""
     rng = random.Random(seed)
     g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth)
     targets = [f for f in g.catalog.functions if f.get("milestone") == milestone] if focus else []
-    if focus and not targets:
-        msg = f"no generator-ready functions at milestone {milestone} to focus on"
-        raise ValueError(msg)
-    rng.shuffle(targets)
+    if focus:
+        if not targets:
+            msg = f"no generator-ready functions at milestone {milestone} to focus on"
+            raise ValueError(msg)
+        rng.shuffle(targets)
     data: dict[str, Any] = {}
     for r in range(1, data_rows + 1):
         for c in range(data_cols):

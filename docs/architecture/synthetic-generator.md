@@ -469,7 +469,7 @@ separately in the dashboard.
   in the IR for reproducibility and coverage attribution.
 - **Focus mask** (`rustsheet-gen --focus`, T-2108): every formula's outermost call is a
   generator-ready function whose catalog milestone is exactly the target. The functions take
-  turns through a seeded shuffle that continues across cases, so a run gives each about the same
+  turns through a seeded shuffle (reshuffled per case), so a run gives each about the same
   number of outer calls; arguments are still drawn from everything in scope at or below the
   milestone. Without it, the sqrt(prior) weighting lets high-prior earlier-milestone functions
   crowd out the target's own. A milestone with no such function is an error.
