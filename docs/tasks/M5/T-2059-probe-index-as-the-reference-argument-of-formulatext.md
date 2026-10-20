@@ -3,7 +3,7 @@ id: T-2059
 title: "Probe INDEX as the reference argument of FORMULATEXT, CELL and OFFSET"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
