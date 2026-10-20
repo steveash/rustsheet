@@ -32,5 +32,6 @@ mod spill_extent;
 pub mod suite;
 pub mod text_expect;
 pub mod value;
+pub mod visible_parity;
 pub mod volatile;
 pub mod xlsx_snapshot;

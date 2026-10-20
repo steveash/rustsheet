@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::catalog_coverage::{self, MilestoneCoverage};
-use crate::closeness::Closeness;
+use crate::closeness::{self, Closeness, Visible};
 use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
@@ -34,6 +34,13 @@ pub fn functions_in(formula: &str) -> BTreeSet<String> {
         .captures_iter(&stripped)
         .filter_map(|c| c.get(1).map(|m| m.as_str().to_ascii_uppercase()))
         .collect()
+}
+
+/// Whether a cell calling `called` counts toward parity: it calls no out-of-scope catalog function
+/// (decision 0027).
+#[must_use]
+pub fn calls_only_in_scope(catalog: &Catalog, called: &BTreeSet<String>) -> bool {
+    called.iter().all(|f| catalog.in_scope(f))
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -65,6 +72,11 @@ pub struct SuiteSummary {
     /// Scored text cells whose text matched Excel's.
     #[serde(default)]
     pub text_passed: usize,
+    /// The suite's in-scope scored cells per closeness bucket: cells that call no out-of-scope
+    /// catalog function (decision 0027). Its visibly-off cells are what the visible-parity
+    /// ratchet counts (T-0061, `visible_parity`).
+    #[serde(default)]
+    pub closeness: Closeness,
 }
 
 /// Number of slowest cases kept in the report.
@@ -132,6 +144,10 @@ pub struct FunctionStat {
     /// The scored cells per closeness bucket, which the parity page reads (T-2036).
     #[serde(default)]
     pub closeness: Closeness,
+    /// The visibly-off cells blamed on this function rather than on the glue around it
+    /// ([`closeness::blamed`], T-0061).
+    #[serde(default)]
+    pub visible: Visible,
 }
 
 /// Scored cells with Excel-sourced expectations that call one function.
@@ -304,11 +320,25 @@ impl RunReport {
                     s.graph_subnormal_passes
                         .push(format!("{}\t{}", r.id, c.key()));
                 }
+                let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
+                if calls_only_in_scope(catalog, &called) {
+                    s.closeness.add(c);
+                }
                 // A by-design value says nothing about how well a function matches Excel.
                 if c.verdict == Verdict::Deviation {
                     continue;
                 }
-                for f in c.formula.as_deref().map(functions_in).unwrap_or_default() {
+                let visible = Visible::of(c);
+                if visible.total() > 0 {
+                    for f in closeness::blamed(&called) {
+                        let st = functions.entry(f.clone()).or_insert_with(|| FunctionStat {
+                            name: f.clone(),
+                            ..FunctionStat::default()
+                        });
+                        st.visible.merge(visible);
+                    }
+                }
+                for f in called {
                     if c.from_excel {
                         let ev = evidence
                             .entry(f.clone())
@@ -505,6 +535,72 @@ impl RunReport {
         }
     }
 
+    /// In-scope cells visibly off from Excel in every suite of the run (T-0061).
+    #[must_use]
+    pub fn visibly_off_cells(&self) -> usize {
+        self.suites.iter().map(|s| s.closeness.visible()).sum()
+    }
+
+    /// The visibly-off section: cells per suite, then the functions they are blamed on, worst
+    /// first (decision 0083).
+    fn write_visible(&self, md: &mut String) {
+        let _ = writeln!(md, "\n## Visibly off (fifteen digits)\n");
+        let _ = writeln!(
+            md,
+            "{} in-scope cells are visibly off: a number further than half a unit in the 15th significant digit of Excel's (or 0 against nonzero), or a wrong type, error, text or boolean. `digits15` cells are within that half unit but more than 4 ulp away.\n",
+            self.visibly_off_cells()
+        );
+        let _ = writeln!(
+            md,
+            "| suite | scored | bit-exact | ≤4 ulp | digits15 | visible numeric | visible other |"
+        );
+        let _ = writeln!(md, "|---|---|---|---|---|---|---|");
+        for s in &self.suites {
+            let c = &s.closeness;
+            let _ = writeln!(
+                md,
+                "| {} | {} | {} | {} | {} | {} | {} |",
+                s.name,
+                c.scored(),
+                c.pass,
+                c.ulp1 + c.ulp4,
+                c.digits15,
+                c.visible_numeric,
+                c.visible_other
+            );
+        }
+        let mut off: Vec<&FunctionStat> = self
+            .functions
+            .iter()
+            .filter(|f| f.visible.total() > 0)
+            .collect();
+        off.sort_by(|a, b| {
+            b.visible
+                .total()
+                .cmp(&a.visible.total())
+                .then_with(|| a.name.cmp(&b.name))
+        });
+        let _ = writeln!(
+            md,
+            "\nFunctions with visibly-off cells ({}), worst first. A cell is blamed on the functions it calls other than glue ({}), or on its glue when it calls nothing else:\n",
+            off.len(),
+            closeness::GLUE.join(", ")
+        );
+        let _ = writeln!(md, "| function | visibly off | numeric | other | checked |");
+        let _ = writeln!(md, "|---|---|---|---|---|");
+        for f in off {
+            let _ = writeln!(
+                md,
+                "| {} | {} | {} | {} | {} |",
+                f.name,
+                f.visible.total(),
+                f.visible.numeric,
+                f.visible.other,
+                f.cells
+            );
+        }
+    }
+
     fn write_timing(&self, md: &mut String) {
         let _ = writeln!(md, "\n## Timing\n");
         let _ = writeln!(md, "| suite | total ms |\n|---|---|");
@@ -528,6 +624,7 @@ impl RunReport {
             self.engine
         );
         self.write_suites_table(&mut md);
+        self.write_visible(&mut md);
         text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
@@ -771,8 +868,12 @@ mod tests {
             ulp(1),
             ulp(3),
             cell("ABS(2)", Verdict::NumericClose),
-            cell("ABS(3)", Verdict::NumericMismatch),
-            cell("ABS(4)", Verdict::Unsupported),
+            CellResult {
+                actual: crate::value::Value::Number(2.0),
+                ..cell("ABS(3)", Verdict::NumericMismatch)
+            },
+            cell("ABS(4)", Verdict::TypeMismatch),
+            cell("ABS(5)", Verdict::Unsupported),
         ];
         let report = RunReport::build("e", &[r], &[], &Catalog::default());
         let abs = report.functions.iter().find(|f| f.name == "ABS");
@@ -781,12 +882,54 @@ mod tests {
             pass: 1,
             ulp1: 1,
             ulp4: 1,
-            close: 1,
-            off: 1,
+            digits15: 1,
+            visible_numeric: 1,
+            visible_other: 1,
         };
-        assert_eq!(abs, Some((6, expected)));
+        assert_eq!(abs, Some((7, expected)));
         let sign = report.functions.iter().find(|f| f.name == "SIGN");
         assert_eq!(sign.map(|f| f.closeness.scored()), Some(2));
+    }
+
+    /// Visibly-off cells are blamed on the specialised function, not on the glue around it, and
+    /// each suite counts its in-scope visibly-off cells for the ratchet (T-0061).
+    #[test]
+    fn visibly_off_cells_are_blamed_past_glue_and_counted_per_suite() {
+        let mut r = case("probes/a", 1);
+        let off = |formula: &str| CellResult {
+            actual: crate::value::Value::Number(2.0),
+            ..cell(formula, Verdict::NumericMismatch)
+        };
+        r.cells = vec![
+            off("IF(TRUE,GAMMA(10))"),
+            off("SUM(1,2)"),
+            cell("WEBSERVICE(\"x\")", Verdict::TypeMismatch),
+            cell("GAMMA(2)", Verdict::Pass),
+        ];
+        let catalog = Catalog::from_functions([crate::catalog::CatalogFunction {
+            name: "WEBSERVICE".into(),
+            category: "web".into(),
+            milestone: "M5".into(),
+            scope: crate::catalog::Scope::Out,
+            reason: None,
+            oracle: None,
+        }]);
+        let report = RunReport::build("e", &[r], &[], &catalog);
+        let visible = |name: &str| {
+            report
+                .functions
+                .iter()
+                .find(|f| f.name == name)
+                .map(|f| f.visible.total())
+        };
+        assert_eq!(visible("GAMMA"), Some(1));
+        assert_eq!(visible("IF"), Some(0));
+        assert_eq!(visible("SUM"), Some(1));
+        assert_eq!(report.suites[0].closeness.scored(), 3);
+        assert_eq!(report.visibly_off_cells(), 2);
+        let md = report.to_markdown(1);
+        assert!(md.contains("2 in-scope cells are visibly off"), "{md}");
+        assert!(md.contains("| GAMMA | 1 | 1 | 0 | 2 |"), "{md}");
     }
 
     #[test]
