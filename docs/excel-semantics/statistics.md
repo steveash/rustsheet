@@ -1335,6 +1335,80 @@ points with 0 < x < 1:
 Status: VERIFIED (b = 1 closed form); a = 1 PARTIAL (22/24, form not distinguished from pow); the general algorithm is UNVERIFIED
 Tasks: T-1744, T-1759, T-0970, T-0969, T-1745
 
+## Incomplete beta in the ironcalc-calc workbooks: F tails and densities (T-0970)
+Rule (VERIFIED on the cells named): Excel's F.DIST.RT is the upper tail of the incomplete beta,
+I_w(d2/2, d1/2) with w = d2/(d2 + d1*x), not 1 - F.DIST. With the T-1744 best combination as I_x,
+`F.DIST.RT(0.8,2.4,3)` = 0.5266779476655967 and `F.DIST.RT(0.7,4,2.4)` = 0.6597222222222223
+(`F_DIST.xlsx` H2, H3) are bit-exact, where 1 - cdf misses by 6 and 13 ulp; F.TEST's two tails
+the same way make `F.TEST({1,2,3,4},B1:B4)` and `F.TEST(A1:A3,{2;3;7})` (`F_TEST.xlsx` F1, F3)
+bit-exact.
+Two more rules from the non-gated probes-numeric suite. Both are PARTIAL: oracle cells support
+them and oracle cells contradict them.
+- **The complement is exact (PARTIAL).** The incomplete beta takes y = d1*x/(d1*x+d2) and its
+  complement d2/(d1*x+d2), both formed directly, as TOMS 708 `bratio(a,b,x,y)` does, instead of
+  1 - w.
+  - Supporting: `FDIST(1E-6,1,1)` and `F.DIST.RT(1E-6,1,1)` are Excel's correctly rounded
+    0.9993633804398389 (m9-legacy-fdist A11, A12). Cephes `fdtrc`'s form, w and then incbet's
+    internal 1 - w, misses by 2E-14.
+  - Contradicting: t1049-fdistrt A2 `F.DIST.RT(0.5,3,7)` = 0.6940363875688136 and A8
+    `F.DIST.RT(2.5,3,7)` = 0.14350945627893918 fit the w-then-1-w form bit for bit and are 2 ulp
+    off with the exact complement. At (0.5,3,7), 1 - w = 0.17647058823529416 while
+    d1x/(d1x+d2) = 0.17647058823529413.
+  - A lead for d1 = d2 = 1: Excel's FDIST(x,1,1) cells match the arctangent closed forms.
+    - 1 - (2/pi) atan(sqrt x) at x = 0.5 and 1E-6.
+    - (2/pi) atan(1/sqrt x) at x = 3.5, 10 and 100.
+    - 1 - (2/pi) asin(sqrt(x/(1+x))) at x = 1.
+
+    So an a = b = 1/2 closed form reflected at the mean may explain A11 and A12 without this rule
+    (UNVERIFIED).
+- **Both tails come from one evaluation (PARTIAL).** The upper tail is the complement of that
+  evaluation where it is reflected, and it is computed directly where it is not.
+  `F.DIST.RT(1,3,7)+F.DIST(1,3,7,TRUE)` is exactly 1 (t1049-fdistrt A27, x = 1 at the mean);
+  two separate evaluations miss by 6E-16. The w-then-1-w form explains A27 as well: 1 - w =
+  0.30000000000000004, just past the mean 0.3, reflects.
+- **The closed forms are the exception.** They read the upper tail from w itself:
+  `F.DIST.RT(0.7,4,2.4)` = 1 - exp(2 ln(1-w)) (H3), 2 ulp off with the exact complement.
+
+The engine follows both PARTIAL rules. Against statrs, the probes-numeric F and BETA cases gain
+72 bit-exact cells and lose 3, a net gain of 69. The three lost cells are now 1 ulp off:
+`FDIST(100,1,1)` and `F.DIST.RT(100,1,1)` (m9-legacy-fdist A61, A62: 0.06345103486110715) and
+t1049-fdist A23 (0.979990011905381).
+
+Densities (VERIFIED on the cells named; the general form UNVERIFIED):
+- BETA.DIST(x,a,b,FALSE) as pow(t,a-1)*pow(1-t,b-1)*Gamma(a+b)/(Gamma(a)*Gamma(b))/(B-A), musl
+  `tgamma`: bit-exact on `BETA.DIST(3,2,3,FALSE,1,10)` and `BETA.DIST(2,8,10,FALSE,1,3)` =
+  1.4837646484375 (`BETADIST_BETAINV.xlsx` G3, `BETA_GAMMA.xlsx` G4), 2 ulp on
+  `BETA.DIST(0.234,2,2.5,FALSE,0.15,1.2)` (G43, G45); exp((a-1) ln t + (b-1) ln(1-t) - ln B)
+  misses G4 by 4 ulp.
+- F.DIST(x,d1,d2,FALSE) as that beta density at y = d1*x/(d1*x+d2) times y(1-y)/x: 1 ulp on
+  `F.DIST(0.7,4,2.4,FALSE)` (F3: Excel 0.40509259259259256, 1 ulp below 175/432), statrs 28 ulp.
+
+The cdf, BETA.DIST(x,a,b,TRUE), with the best combination ported to the engine
+(`statistical/incomplete_beta.rs`): of the 33 cumulative BETA.DIST cells in
+`BETADIST_BETAINV.xlsx` and `BETA_GAMMA.xlsx` that statrs misses, 8 become bit-exact and 23 come
+within 4 ulp. Two stay far:
+- `BETA.DIST(33587,3,600,TRUE,2000,5489582)` (G5) is the correctly rounded 0.6734553797493481.
+  Cephes' fraction loses about 160 ulp there (t = 0.0058, reflected to I_0.994(600,3)), and so do
+  Numerical Recipes' fraction and Cephes' power series.
+- `BETA.DIST(0.234,0.0001,0.0001,TRUE,0.15,1.2)` (G26) is 0.4998779049300665, 34 ulp from the
+  correctly rounded value. The best combination is 30 ulp off.
+
+For a + b of 171.6 or more, the fit's logarithmic prefactor (ln Gamma near 3,000 cancelling) loses
+about 4,000 ulp on `BETA.DIST(0.555,1000,1000,TRUE,0.1,1)` (G29). TOMS 708's `brcomp` form brings
+it to 3 ulp of Excel's value: the exponent as -(a rlog1(-lambda/a) + b rlog1(lambda/b)) with
+Stirling corrections, or `algdiv` when one shape is below 8.
+
+Moving the BETA.DIST cdf to this kernel also moves nine BETA.INV(BETA.DIST(...)) cells in
+`BETADIST_BETAINV.xlsx` (H2, H14, H42, H44, H46-H49, H67) from bit-exact to 1-2 ulp, with
+statrs' inversion or with the inversion run on the new cdf. Under statrs they passed by chance,
+with both functions wrong in the same way. Excel's own pair lands on x exactly at H2 (3) and H14
+(0.7) but not at H23 (-0.23399999999999987) or H42 (0.23399999999999999), as T-1745 found. The
+switch waits for T-2119.
+Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
+densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
+stays UNVERIFIED (T-1744).
+Tasks: T-0970, T-2119, T-1744, T-1745
+
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
 Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)
 crosses p. The probe t1745-beta-inv-roundtrip has 188 rows: 187 distinct in-domain sweep points
