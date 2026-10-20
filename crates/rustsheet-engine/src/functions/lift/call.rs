@@ -5,6 +5,7 @@ use super::arg_buf::ArgBuf;
 use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg, Reuse};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::is_multi_sheet_span;
 use crate::functions::Function;
 use crate::limits::{check_range_size, too_many_visits, MAX_LIFTED_CELL_VISITS};
 use crate::{
@@ -68,11 +69,7 @@ impl Model {
                     return result;
                 }
             }
-            Node::SheetSpanKind {
-                first_index,
-                last_index,
-                ..
-            } if first_index != last_index => return refused_range(cell),
+            node if is_multi_sheet_span(node) => return refused_range(cell),
             _ => {}
         }
         self.evaluate_node_in_context(node, cell)
@@ -152,6 +149,7 @@ impl Model {
         let options = LiftOptions {
             reuse: Reuse::Never,
             work: kinds.work,
+            result: kinds.result,
         };
         // One- and two-argument calls (most of the math functions) read into locals: building,
         // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
@@ -194,6 +192,41 @@ impl Model {
             }
         };
         self.lift_grids(lifted, cost, &options, cell, kernel)
+    }
+
+    /// [`Model::lift_call_costed`] for a call whose `ReferenceByCaller` argument at `index` was
+    /// not a reference: its caller read it into `grid` (one error per element), which broadcasts
+    /// with the lifted arguments as a grid in that position. `grid` counts toward the read cap.
+    pub(crate) fn lift_call_beside(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        (index, grid): (usize, Vec<Vec<ArrayNode>>),
+        cost: LiftCost,
+        cell: CellReferenceIndex,
+        kernel: &mut Kernel<'_>,
+    ) -> CalcResult {
+        let Some(kinds) = kind.arg_kinds() else {
+            // As in `lift_call_costed`: only called with the caller's own constant `Function`.
+            debug_assert!(false, "{kind:?} has no lifting table entry");
+            return CalcResult::new_args_number_error(cell);
+        };
+        debug_assert_eq!(kinds.kind(index), Some(ArgKind::ReferenceByCaller));
+        if !kinds.accepts(args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let input_cap = MAX_LIFTED_CELL_VISITS.saturating_sub(grid_cells(&grid));
+        let mut read = match self.read_lift_args(kinds, args, input_cap, cell) {
+            Ok(read) => read,
+            Err(error) => return error,
+        };
+        read.grids.push((index, grid));
+        let options = LiftOptions {
+            reuse: Reuse::Never,
+            work: kinds.work,
+            result: kinds.result,
+        };
+        self.lift_grids(read.into_lifted(), cost, &options, cell, kernel)
     }
 
     /// [`Model::read_lift_arg_with`] for argument `index` of a call read by `kinds`, under
@@ -251,7 +284,9 @@ impl Model {
         // The `#ERROR!` of `too_many_visits`, past the cap.
         let over_cap = |cells: u64| (cells > input_cap).then(|| too_many_visits(u64::MAX, cell));
         let value = match kind {
-            ArgKind::WholeByCaller => return Ok(LiftedArg::Scalar(CalcResult::EmptyArg)),
+            ArgKind::WholeByCaller | ArgKind::ReferenceByCaller => {
+                return Ok(LiftedArg::Scalar(CalcResult::EmptyArg))
+            }
             ArgKind::Whole => {
                 return Ok(LiftedArg::Scalar(
                     self.evaluate_node_with_reference(node, cell),

@@ -252,8 +252,9 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
    an array element is its top-left value (probes/m7-argument-modes K5-K10; SORTBY excepted, H97-H99),
    the elements of OFFSET, INDIRECT and TRIMRANGE are references (probes/reference-lift-elements),
    and TAKE's and DROP's are whole (K1-K4), which this spec reads as references, pending T-1960. Design: "Array-valued functions" (T-1834 to T-1839) and
-   "Elements that are references" (T-1955). Still open: a TAKE or DROP over an array value, and
-   SUM, `=` and arithmetic over a result of references (T-1960, T-1955).
+   "Elements that are references"; the carrier and its consumers are SPEC-0014 (T-1955), which
+   answers SUM, `=` and arithmetic over a result of references. Still open: a TAKE or DROP over an
+   array value (T-1960).
 6. **Answered.** A function-returned multi-cell reference in a `Lift` argument [lifts like a written
    range]: it does (IF, INDEX, OFFSET, INDIRECT, CHOOSE; -a W31-W36).
 7. **Answered.** The precedence and element-value gaps: precedence is the kernel's order (-a W14-W17
@@ -303,6 +304,10 @@ pub(crate) enum ArgKind {
     /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
+    /// Read by the caller, which needs a reference there (RANK's `ref`, T-1999). A reference's
+    /// slot is `EmptyArg`; a non-reference array is handed back as a grid of errors that
+    /// broadcasts with the lifted arguments (`lift_call_beside`).
+    ReferenceByCaller,
 }
 
 /// What one kernel call may cost, beyond reading its arguments (security rule below).
@@ -369,6 +374,7 @@ cites its probe.
   | `LiftArrays` | `mode: value`, `lift: arrays` |
   | `LiftArraysRangeWhole` | `mode: criteria` or `range`, `lift: arrays` |
   | `Whole`, `WholeByCaller` | `mode: array`, `aggregate`, `aggregate_a`, `range`, `criteria` or `lambda`, without `lift` |
+  | `ReferenceByCaller` | `mode: range`, without `lift` |
 
   The generator stops passing ranges to `mode: value, lift: arrays` parameters, because they are
   refused anyway.
@@ -462,6 +468,7 @@ Each argument is read once, by its kind:
 | `LiftArraysRangeWhole` | `Grid` | `Scalar(the range)`, read whole | `Scalar(the range)` | `Scalar(value)` |
 | `Whole` | `Scalar` of the value as `evaluate_node_with_reference` read it, once | | | |
 | `WholeByCaller` | `Scalar(EmptyArg)`, not evaluated | | | |
+| `ReferenceByCaller` | `Scalar(EmptyArg)`, not evaluated; the caller reads it, and a non-reference array comes back through `lift_call_beside` as a `Grid` of errors (T-1999) | | | |
 
 A range across sheets (`Sheet1:Sheet2!C1:C2`, 3-D) is `Scalar(#REF!)` in a `Lift` position and
 `Scalar(#VALUE!)` in a `LiftArrays` position (open question 2; T-1801). That holds for a one-cell
@@ -785,6 +792,13 @@ Test formulas (T-1834, T-1835):
 - `=ROWS(EXPAND(1,SEQUENCE(1024),1024))` is `#ERROR!`, as the first formula is.
 - `=ROWS(SEQUENCE({3;4}))` is 2 and charges 7 cells.
 
+**As built (T-1834).** The conversion is `element_node` in `lift/driver.rs`, which also applies the
+charge; entries that are `CallResult::Value` with no `Output` work skip both. One rule the spec did
+not name: an `Array` entry whose lifted arguments are all 1x1 runs one unlifted call and keeps its
+whole array (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows, as before T-1834), and its static shape
+is `Unknown`. Whether Excel lifts a 1x1 array there (`SEQUENCE({3})`) is open until T-1960, which
+deletes the rule or keeps it.
+
 **4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds:
 ```rust
 pub(crate) struct ArgKinds {
@@ -866,7 +880,7 @@ references.md, probes/isref-reference-lookups). So this spec reads a lifted TAKE
   not probed: T-1960 asks `TAKE({1,10;2,20;3,30},{1;2})`. If Excel keeps a whole sub-array there,
   T-1960 records it and this section gains a nested-array element in its PR.
 
-Then no new nested-array carrier is needed. The array-of-references carrier is T-1955's (one
+Then no new nested-array carrier is needed. The array-of-references carrier is SPEC-0014's `RefGrid` (T-1955; one
 definition for OFFSET, INDIRECT, TRIMRANGE, TAKE and DROP: directive 3). Rule 2's `element_value`
 hands a multi-cell reference to that carrier. The consumers are the ones T-1955 lists, with the
 evidence it has:
@@ -874,7 +888,7 @@ evidence it has:
 - ROWS and COLUMNS count the outer array (F4-F6; `ROWS(OFFSET(A1,0,0,{1;2}))` is 2);
 - ISREF of the whole result is one FALSE (reference-lift-elements F15, G15);
 - spilled directly, an OFFSET element is `#VALUE!`; SUM, `=` and arithmetic over such a result are
-  open (T-1955 for OFFSET; T-1960 asks the same of TAKE).
+  answered in SPEC-0014 rules 2-7 (T-1960 asks the same of TAKE).
 So T-1838 builds on T-1955's spec and T-1956's carrier, and adds TAKE and DROP as two more
 producers.
 

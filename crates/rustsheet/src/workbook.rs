@@ -35,6 +35,12 @@ pub struct WorkbookOptions {
     /// (the default) or a fixed instant (SPEC-0008). Applied before the first recalc, also when
     /// loading.
     pub clock: Clock,
+    /// The workbook's file name without its extension (`Budget` for `Budget.xlsx`), which
+    /// `CELL("address")` of a reference on another sheet
+    /// reports as `[Budget.xlsx]`. `None` (the default) is an unnamed workbook, for which that
+    /// `CELL("address")` is `#N/IMPL!`: Excel's form for an unsaved workbook is unprobed (T-2042). Applies to loading
+    /// too.
+    pub name: Option<String>,
 }
 
 impl Default for WorkbookOptions {
@@ -46,6 +52,7 @@ impl Default for WorkbookOptions {
             language: "en".to_string(),
             date_system: DateSystem::default(),
             clock: Clock::system(),
+            name: None,
         }
     }
 }
@@ -173,7 +180,7 @@ impl Workbook {
     /// [`LoadError::Options`] when the locale, timezone or language is unknown.
     pub fn new(opts: &WorkbookOptions) -> Result<Self, LoadError> {
         let mut model = Model::new_empty_with_clock(
-            "workbook",
+            opts.name.as_deref().unwrap_or_default(),
             &opts.locale,
             &opts.timezone,
             &opts.language,
@@ -234,7 +241,7 @@ impl Workbook {
         };
         let book = rustsheet_xlsx::import::load_from_xlsx_bytes_with_limits(
             bytes,
-            "workbook",
+            w.name.as_deref().unwrap_or_default(),
             &w.locale,
             &w.timezone,
             &limits,
@@ -586,6 +593,39 @@ mod tests {
         let bytes = wb.to_xlsx_bytes(SaveOptions::default()).expect("save");
         let loaded = Workbook::from_xlsx_bytes(&bytes, &LoadOptions::default()).expect("load");
         assert_eq!(loaded.date_system(), DateSystem::Excel1904);
+    }
+
+    #[test]
+    fn options_name_is_the_file_name_cell_reports_at_new_and_at_load() {
+        let named = WorkbookOptions {
+            name: Some("Budget".into()),
+            ..WorkbookOptions::default()
+        };
+        let mut wb = Workbook::new(&named).expect("new");
+        wb.edit(|tx| tx.add_sheet("Data").map(|_| ()))
+            .expect("sheet");
+        wb.set("A1", Input::Formula("=CELL(\"address\",Data!B2)".into()))
+            .expect("a1");
+        assert_eq!(
+            wb.value("A1").unwrap(),
+            Value::Text("[Budget.xlsx]Data!$B$2".into())
+        );
+
+        let bytes = wb.to_xlsx_bytes(SaveOptions::default()).expect("save");
+        let unnamed = Workbook::from_xlsx_bytes(&bytes, &LoadOptions::default()).expect("load");
+        assert!(matches!(unnamed.value("A1").unwrap(), Value::Error(_)));
+        let loaded = LoadOptions {
+            workbook: WorkbookOptions {
+                name: Some("Other".into()),
+                ..WorkbookOptions::default()
+            },
+            ..LoadOptions::default()
+        };
+        let renamed = Workbook::from_xlsx_bytes(&bytes, &loaded).expect("load");
+        assert_eq!(
+            renamed.value("A1").unwrap(),
+            Value::Text("[Other.xlsx]Data!$B$2".into())
+        );
     }
 
     #[test]

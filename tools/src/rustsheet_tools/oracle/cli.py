@@ -150,6 +150,8 @@ def cmd_fill(args: argparse.Namespace) -> int:
                 "version": info.version,
                 "produced_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
                 "input_sha256": sha,
+                # The file name CELL("address") and CELL("filename") saw (T-2042).
+                **({"workbook_name": info.workbook_name} if info.workbook_name else {}),
             },
             "sheets": values,
         }

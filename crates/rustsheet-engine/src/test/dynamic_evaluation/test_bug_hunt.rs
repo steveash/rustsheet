@@ -276,21 +276,25 @@ fn sequence_of_indirect_reference() {
 }
 
 #[test]
-fn indirect_range_in_scalar_argument_intersects_with_the_row() {
+fn indirect_range_in_a_scalar_argument_lifts_or_dereferences() {
     let mut model = new_empty_model();
     model._set("C1", "=SEQUENCE(3)");
-    // Row 3 of C1:C3 is C3 = 3.
+    // SEQUENCE's rows lift over a range since T-1834 (probes/m7-argument-modes F1), and a range
+    // INDIRECT returns lifts like a written one (SPEC-0011 open question 6, scalar-lift-open-a
+    // W31-W36): one SEQUENCE per cell, each element its call's top-left, 1.
     model._set("A3", "=SEQUENCE(INDIRECT(\"C1:C3\"))");
-    // Row 1 is outside C2:C3 and column A is outside column C: no intersection.
-    model._set("E1", "=SEQUENCE(INDIRECT(\"C2:C3\"))");
+    model._set("H1", "=SEQUENCE(INDIRECT(\"C2:C3\"))");
     // The string and boolean casts dereference too.
     model._set("E2", "=LEN(INDIRECT(\"C2\"))");
     model._set("E3", "=IF(INDIRECT(\"C3\"),\"yes\",\"no\")");
 
     model.evaluate();
-    assert_eq!(model._get_text("A3"), "1");
-    assert_eq!(model._get_text("A5"), "3");
-    assert_eq!(model._get_text("E1"), "#VALUE!");
+    for cell in ["A3", "A4", "A5"] {
+        assert_eq!(model._get_text(cell), "1", "{cell}");
+    }
+    assert_eq!(model._get_text("A6"), "");
+    assert_eq!(model._get_text("H1"), "1");
+    assert_eq!(model._get_text("H2"), "1");
     assert_eq!(model._get_text("E2"), "1");
     assert_eq!(model._get_text("E3"), "yes");
 }

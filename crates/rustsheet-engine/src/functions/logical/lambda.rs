@@ -49,8 +49,9 @@ pub(crate) struct LambdaCaller {
 
 impl LambdaCaller {
     /// This caller with the body read in reference context: a body that is a reference, also
-    /// one picked by IF or returned by INDEX, comes back as a `CalcResult::Range` instead of the
-    /// cell's value, so GROUPBY and PIVOTBY can make it `#VALUE!` as Excel does
+    /// one picked by IF or returned by INDEX or XLOOKUP (`Model::evaluate_picked_reference_arg`),
+    /// comes back as a `CalcResult::Range` instead of the cell's value, so GROUPBY and PIVOTBY
+    /// can make it `#VALUE!` as Excel does
     /// (probes/groupby-lambda-forms G!J193, probes/groupby-pivotby-functions G!A541-A581).
     pub(crate) fn keeping_references(mut self) -> Self {
         self.references = true;
@@ -179,7 +180,9 @@ impl Model {
     /// [`Self::evaluate_node_with_reference`] of a node that is no plain reference: a LET or
     /// LAMBDA call whose body gives a reference, a single cell too, is that reference for OFFSET
     /// and COUNTIF (`OFFSET(LET(x,A1,x),1,0)`, `COUNTIF(LAMBDA(x,x)(A1),">0")` read A1;
-    /// probes/lambda-union-reference-callers D1, D2, D5, excel-graph; T-1951).
+    /// probes/lambda-union-reference-callers D1, D2, D5, excel-graph; T-1951). An INDEX of a
+    /// reference is the cell it picks, so `ISFORMULA(INDEX(D1:D3,1))` reads D1
+    /// (probes/ifna-isformula-edges Calc!B12, excel-graph; T-1453).
     pub(crate) fn evaluate_call_with_reference(
         &mut self,
         node: &Node,
@@ -193,6 +196,10 @@ impl Model {
             | Node::LambdaCallKind { .. } => self
                 .evaluate_reference_arg(node, cell)
                 .into_single_area(cell),
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self.index_reference(args, cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -439,8 +446,12 @@ impl Model {
                     };
                     self.variable_stack.insert(raw_id, binding, cell);
                 }
+                // A body that picks a reference with XLOOKUP, TAKE or DROP, also as
+                // the arm an IF, CHOOSE, IFS or SWITCH picks or a LET body, is that reference:
+                // ISREF is TRUE, SUM skips its text and GROUPBY makes it `#VALUE!`
+                // (probes/lambda-body-picked-references, take-drop-over-ifs-switch-picks A78).
                 let result = if caller.references {
-                    self.evaluate_reference_arg(body, cell)
+                    self.evaluate_picked_reference_arg(body, cell)
                 } else {
                     RefArg::Value(self.evaluate_node_in_context(body, cell))
                 };

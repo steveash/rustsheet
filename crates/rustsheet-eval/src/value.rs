@@ -92,6 +92,9 @@ impl Verdict {
 const UNSUPPORTED_ERRORS: &[&str] = &["#N/IMPL", "#NAME?"];
 
 /// Distance between two finite doubles in units in the last place.
+///
+/// `ulp_distance` in `tools/src/rustsheet_tools/fitlab/score.py` mirrors it for the fit lab;
+/// change both together.
 #[must_use]
 pub fn ulp_distance(a: f64, b: f64) -> u64 {
     fn ordered(x: f64) -> i64 {

@@ -157,6 +157,11 @@ impl Model {
                     return false;
                 }
             }
+            // A lifted OFFSET is an array of references, not a reference: `ISREF(OFFSET(A1,{0;1},0))`
+            // is FALSE (probes/reference-lift-elements F15).
+            if self.offset_lifts(args, cell) {
+                return false;
+            }
         }
         match node {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => true,
@@ -175,6 +180,10 @@ impl Model {
             // a reference: `ISREF(LET(x,A1:A3,x))` is TRUE (probes/written-parens-reference-only
             // E40, E45, excel-graph; T-1106), and a LAMBDA call that returns one:
             // `ISREF(LAMBDA(x,x)(A1))` is TRUE (probes/let-lambda-reference-results C1, C2).
+            // IFS and SWITCH too, and an XLOOKUP or TAKE any of them picks over a range:
+            // `ISREF(IFS(TRUE,H1))`, `ISREF(CHOOSE(1,XLOOKUP(1,J1:J2,H1:I2)))` are TRUE
+            // (probes/subtotal-ifs-switch-reference-picks, subtotal-if-choose-over-xlookup A94;
+            // T-2014).
             Node::OpIntersectKind { .. }
             | Node::OpUnionKind { .. }
             | Node::LambdaCallKind { .. }
@@ -182,9 +191,14 @@ impl Model {
                 kind:
                     crate::functions::Function::If
                     | crate::functions::Function::Choose
+                    | crate::functions::Function::Ifs
+                    | crate::functions::Function::Switch
                     | crate::functions::Function::Let,
                 ..
-            } => matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_)),
+            } => matches!(
+                self.evaluate_picked_reference_arg(node, cell),
+                RefArg::Ranges(_)
+            ),
             // The `@` of an XLOOKUP or TAKE that picks one cell keeps the reference too
             // (probes/isref-implicit-xlookup-take, T-1509).
             Node::ImplicitIntersection { child, .. }
@@ -611,6 +625,13 @@ impl Model {
         self.cell_info(&info_type, ranges.as_deref(), reference, cell)
     }
 
+    /// The workbook's file name as CELL names it (`Budget.xlsx`), `None` for an unnamed workbook
+    /// (an empty `Workbook::name`, which holds the name without its extension).
+    fn workbook_file_name(&self) -> Option<String> {
+        let name = &self.workbook.name;
+        (!name.is_empty()).then(|| format!("{name}.xlsx"))
+    }
+
     /// The value of one CELL `info_type` for `reference`; `ranges` holds every area of a union.
     fn cell_info(
         &mut self,
@@ -621,13 +642,30 @@ impl Model {
     ) -> CalcResult {
         match info_type.to_uppercase().as_str() {
             "ADDRESS" => {
-                if reference.sheet != cell.sheet {
-                    return CalcResult::Error {
+                // A reference on another sheet is prefixed `[<file>]<sheet>!`, the sheet name never
+                // quoted (`[b.xlsx]My Sheet!$B$2`, `[b.xlsx]Bob's!$A$1`; probes/
+                // info-cell-address-cross-sheet, excel-graph, T-2042).
+                let prefix = if reference.sheet == cell.sheet {
+                    String::new()
+                } else {
+                    let unimplemented = |message: &str| CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
-                        message: "References to other sheets not implemented".to_string(),
+                        message: message.to_string(),
                     };
-                }
+                    // Excel's form for an unsaved workbook is unprobed.
+                    let Some(file_name) = self.workbook_file_name() else {
+                        return unimplemented("Unnamed workbook");
+                    };
+                    // A union cannot span sheets in Excel; one on another sheet is unprobed.
+                    if ranges.is_some_and(|areas| areas.len() > 1) {
+                        return unimplemented("Union on another sheet not implemented");
+                    }
+                    match self.workbook.worksheet(reference.sheet) {
+                        Ok(ws) => format!("[{file_name}]{}!", ws.name),
+                        Err(_) => return unimplemented("Invalid sheet"),
+                    }
+                };
                 let lefts: Vec<CellReferenceIndex> = match ranges {
                     Some(areas) => areas.iter().map(|range| range.left).collect(),
                     None => vec![reference],
@@ -643,7 +681,7 @@ impl Model {
                     };
                     addresses.push(format!("${}${}", column, area.row));
                 }
-                CalcResult::String(addresses.join(", ").into())
+                CalcResult::String(format!("{prefix}{}", addresses.join(", ")).into())
             }
             "COL" => CalcResult::Number(reference.column as f64),
             "COLOR" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {
@@ -661,20 +699,13 @@ impl Model {
                 sheet: cell.sheet,
                 ..reference
             }),
-            "FILENAME" => {
-                let workbook_name = &self.workbook.name;
-                let worksheet_name = match self.workbook.worksheet(reference.sheet) {
-                    Ok(ws) => &ws.name,
-                    Err(_) => {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Invalid sheet".to_string(),
-                        }
-                    }
-                };
-                CalcResult::String(format!("[{workbook_name}.xlsx]{worksheet_name}").into())
-            }
+            // Excel for the web gives #VALUE! for every form (probes/info-cell-address-cross-sheet
+            // Calc!B1:B4, excel-graph, T-2052); desktop's full-path form is M14.
+            "FILENAME" => CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "CELL(\"filename\") is #VALUE! in Excel for the web".to_string(),
+            },
             "ROW" => CalcResult::Number(reference.row as f64),
             // Like "contents", "type" reads the reference's address on the formula's own sheet
             // (`CELL("type",Data!A7)` is "b" when Calc!A7 is blank although Data!A7 is text;

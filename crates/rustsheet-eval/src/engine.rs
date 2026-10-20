@@ -32,16 +32,23 @@ pub trait Evaluated {
 
 pub trait Engine: Sync {
     fn name(&self) -> &'static str;
-    /// Loads xlsx bytes, performs a full recalculation, and returns the result.
+    /// Loads xlsx bytes, performs a full recalculation, and returns the result. `name` is the
+    /// workbook's file name in the oracle (sidecar `source.workbook_name`), if recorded.
     ///
     /// # Errors
     /// Returns a human-readable message if the workbook cannot be loaded.
-    fn evaluate_xlsx(&self, bytes: &[u8]) -> Result<Box<dyn Evaluated>, String>;
-    /// Builds a workbook from a spec, recalculates, and returns the result.
+    fn evaluate_xlsx(&self, bytes: &[u8], name: Option<&str>)
+        -> Result<Box<dyn Evaluated>, String>;
+    /// Builds a workbook from a spec, recalculates, and returns the result. `name` is as for
+    /// [`Engine::evaluate_xlsx`].
     ///
     /// # Errors
     /// Returns a human-readable message if the spec cannot be materialized.
-    fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String>;
+    fn evaluate_spec(
+        &self,
+        spec: &CaseSpec,
+        name: Option<&str>,
+    ) -> Result<Box<dyn Evaluated>, String>;
     /// Worksheet functions the engine implements, by en-US name (for the evidence report).
     fn implemented_functions(&self) -> Vec<String>;
 }
@@ -51,10 +58,12 @@ pub trait Engine: Sync {
 /// so harness results did not change when the clock moved into the workbook (SPEC-0008).
 const HARNESS_CLOCK_MS: i64 = 1_667_906_008_578;
 
-/// Default workbook options on the harness clock.
-fn harness_options() -> Result<WorkbookOptions, String> {
+/// Default workbook options on the harness clock, named as the oracle named the workbook: its
+/// file name without the extension the engine adds back (T-2042).
+fn harness_options(name: Option<&str>) -> Result<WorkbookOptions, String> {
     Ok(WorkbookOptions {
         clock: Clock::fixed_unix_millis(HARNESS_CLOCK_MS).map_err(|e| e.to_string())?,
+        name: name.map(|n| n.strip_suffix(".xlsx").unwrap_or(n).to_string()),
         ..WorkbookOptions::default()
     })
 }
@@ -135,10 +144,14 @@ impl Engine for RustSheetEngine {
         rustsheet::implemented_functions()
     }
 
-    fn evaluate_xlsx(&self, bytes: &[u8]) -> Result<Box<dyn Evaluated>, String> {
+    fn evaluate_xlsx(
+        &self,
+        bytes: &[u8],
+        name: Option<&str>,
+    ) -> Result<Box<dyn Evaluated>, String> {
         let opts = LoadOptions {
             recalc: false,
-            workbook: harness_options()?,
+            workbook: harness_options(name)?,
             ..LoadOptions::default()
         };
         let mut workbook =
@@ -150,7 +163,11 @@ impl Engine for RustSheetEngine {
         Ok(Box::new(RustSheetEvaluated { workbook }))
     }
 
-    fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String> {
+    fn evaluate_spec(
+        &self,
+        spec: &CaseSpec,
+        name: Option<&str>,
+    ) -> Result<Box<dyn Evaluated>, String> {
         let date_system = match spec.date_system {
             None | Some(1900) => DateSystem::Excel1900,
             Some(1904) => DateSystem::Excel1904,
@@ -158,7 +175,7 @@ impl Engine for RustSheetEngine {
         };
         let mut workbook = Workbook::new(&WorkbookOptions {
             date_system,
-            ..harness_options()?
+            ..harness_options(name)?
         })
         .map_err(|e| e.to_string())?;
         // The harness only reads final values: skip the per-edit value diff.
@@ -192,9 +209,9 @@ impl Engine for RustSheetEngine {
                                         "name {name}: no sheet {sheet}"
                                     ))
                                 })?;
-                            tx.define_sheet_name(id, &local, formula)?;
+                            tx.load_defined_name(Some(id), &local, formula)?;
                         }
-                        None => tx.define_name(name, formula)?,
+                        None => tx.load_defined_name(None, name, formula)?,
                     }
                 }
                 // Values first, then tables (they read their headers), then formulas (a
@@ -405,7 +422,9 @@ mod tests {
     }
 
     fn today(bytes: &[u8]) -> Value {
-        let evaluated = RustSheetEngine.evaluate_xlsx(bytes).expect("evaluate");
+        let evaluated = RustSheetEngine
+            .evaluate_xlsx(bytes, None)
+            .expect("evaluate");
         evaluated
             .value("Sheet1", Addr { row: 1, col: 1 })
             .expect("sheet exists")
@@ -439,7 +458,9 @@ mod tests {
                              {"op":"move","sheet":"Inputs","to":0},
                              {"op":"add","sheet":"New"}]}"#,
         );
-        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
         let calc = |row| evaluated.value("Calc", Addr { row, col: 1 });
         assert_eq!(calc(1), Some(Value::Number(5.0)));
         assert_eq!(calc(2), Some(Value::Text("=Inputs!A1".into())));
@@ -464,7 +485,7 @@ mod tests {
             r#"{"format":"rustsheet-case/v1","sheets":[{"name":"Calc","cells":{}}],
                 "sheet_ops":[{"op":"rename","sheet":"Nope","to":"X"}]}"#,
         );
-        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
+        assert!(RustSheetEngine.evaluate_spec(&spec, None).is_err());
     }
 
     #[test]
@@ -474,7 +495,9 @@ mod tests {
                 "sheets":[{"name":"Calc","cells":{"A1":"=src*2"}},
                           {"name":"Data","cells":{"A1":5}}]}"#,
         );
-        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
         assert_eq!(
             evaluated.value("Calc", Addr { row: 1, col: 1 }),
             Some(Value::Number(10.0))
@@ -489,7 +512,9 @@ mod tests {
                 "sheets":[{"name":"Sheet1","cells":{"A1":1,"B2":5,"H1":"=SUM(Print_Area)"}},
                           {"name":"Other","cells":{"A1":"=SUM(Print_Area)"}}]}"#,
         );
-        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
         assert_eq!(
             evaluated.value("Sheet1", Addr { row: 1, col: 8 }),
             Some(Value::Number(6.0))
@@ -506,7 +531,7 @@ mod tests {
             r#"{"format":"rustsheet-case/v1","names":{"Nope!x":"=1"},
                 "sheets":[{"name":"Sheet1","cells":{}}]}"#,
         );
-        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
+        assert!(RustSheetEngine.evaluate_spec(&spec, None).is_err());
     }
 
     #[test]
@@ -521,7 +546,9 @@ mod tests {
                 "B2":"=ERROR.TYPE(A2)",
                 "B3":"=ERROR.TYPE(A3)"}}]}"##,
         );
-        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
         let at = |row| evaluated.value("S", Addr { row, col: 1 });
         assert_eq!(at(1), Some(Value::Error("#N/A".into())));
         assert_eq!(at(2), Some(Value::Error("#N/A".into())));
@@ -543,10 +570,10 @@ mod tests {
     #[test]
     fn a_bad_spec_name_fails_the_case() {
         let spec = spec(
-            r#"{"format":"rustsheet-case/v1","names":{"A1":"=1"},
+            r#"{"format":"rustsheet-case/v1","names":{"2real":"=1"},
                 "sheets":[{"name":"Sheet1","cells":{}}]}"#,
         );
-        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
+        assert!(RustSheetEngine.evaluate_spec(&spec, None).is_err());
     }
 
     #[test]
@@ -569,7 +596,7 @@ mod tests {
             r#"{"format":"rustsheet-case/v1","date_system":1904,"sheets":[{"name":"S",
                 "cells":{"A1":-1.5,"B1":"=A1*2"},"number_formats":{"A1":"[h]:mm","C3":"0.0"}}]}"#,
         );
-        let evaluated = RustSheetEngine.evaluate_spec(&ok).expect("evaluates");
+        let evaluated = RustSheetEngine.evaluate_spec(&ok, None).expect("evaluates");
         assert_eq!(
             evaluated.value("S", Addr { row: 1, col: 2 }),
             Some(Value::Number(-3.0))
@@ -577,12 +604,12 @@ mod tests {
         let bad_system = spec(
             r#"{"format":"rustsheet-case/v1","date_system":1901,"sheets":[{"name":"S","cells":{}}]}"#,
         );
-        assert!(RustSheetEngine.evaluate_spec(&bad_system).is_err());
+        assert!(RustSheetEngine.evaluate_spec(&bad_system, None).is_err());
         let bad_cell = spec(
             r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{},
                 "number_formats":{"nope":"0"}}]}"#,
         );
-        assert!(RustSheetEngine.evaluate_spec(&bad_cell).is_err());
+        assert!(RustSheetEngine.evaluate_spec(&bad_cell, None).is_err());
     }
 
     #[test]
@@ -593,7 +620,9 @@ mod tests {
                 "D1":"=SUBTOTAL(109,B2:B4)","D2":"=SUBTOTAL(9,B2:B4)","D3":"=SUM(Data[Val])"},
                 "hidden_rows":[3],"tables":[{"name":"Data","ref":"A1:B4","filter":true}]}]}"#,
         );
-        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
         let at = |row| evaluated.value("S", Addr { row, col: 4 });
         // Row 3 is filtered out of the table: both SUBTOTAL forms skip it.
         assert_eq!(at(1), Some(Value::Number(5.0)));
@@ -611,7 +640,9 @@ mod tests {
                 "B4":"=SUBTOTAL(109,Data[Val])","D1":"=ROWS(Data[#All])"},
                 "tables":[{"name":"Data","ref":"A1:B4","totals_row":true}]}]}"#,
         );
-        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
         // B4 sums the two data rows; `#All` has no totals row (Excel: 4 rows).
         for (row, col) in [(4, 2), (1, 4)] {
             assert_eq!(
@@ -628,7 +659,9 @@ mod tests {
                 "A1":1,"A2":2,"H7":"=A1:A2","H8":"=FORMULATEXT(H7)","H9":"=A1:A2"},
                 "legacy_formulas":["H7"]}]}"#,
         );
-        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
         let at = |row| evaluated.value("S", Addr { row, col: 8 });
         assert_eq!(at(7), Some(Value::Error("#VALUE!".into())));
         assert_eq!(at(8), Some(Value::Text("=@A1:A2".into())));
@@ -641,6 +674,6 @@ mod tests {
         let spec = spec(
             r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{},"hidden_rows":[0]}]}"#,
         );
-        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
+        assert!(RustSheetEngine.evaluate_spec(&spec, None).is_err());
     }
 }

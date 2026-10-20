@@ -8,6 +8,7 @@ use crate::functions::statistical::IfsShape;
 use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
+use crate::x87_log10::excel_log10;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -370,7 +371,9 @@ impl Model {
             if f <= 0.0 {
                 Err(Error::NUM)
             } else {
-                Ok(f64::log10(f))
+                // Excel's x87 log10, not the platform's (numbers.md "LOG with one argument is
+                // LOG10", T-2004).
+                Ok(excel_log10(f))
             }
         })
     }
@@ -429,11 +432,37 @@ impl Model {
     pub(crate) fn fn_atan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Atan, args, cell, |f| Ok(f64::atan(f)))
     }
+    // ASINH and ACOSH are the textbook log formulas in doubles, not libm, so small arguments lose
+    // precision exactly as Excel's do: ASINH(1E-10) = 1.000000082690371E-10 and
+    // ACOSH(1.000000000001) = 1.414276423083533E-6 (docs/excel-semantics/numbers.md, "Inverse
+    // hyperbolics, COTH/CSCH and the SINH/TANH thresholds", probes-numeric/m9-hyperbolic, T-2031).
+    // Where `x*x` overflows (|x| above about 1.3E154) no Excel value is known, so libm stays there.
     pub(crate) fn fn_asinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Asinh, args, cell, |f| Ok(f64::asinh(f)))
+        self.number_fn(Function::Asinh, args, cell, |f: f64| {
+            let square = f * f;
+            if square.is_infinite() {
+                Ok(f64::asinh(f))
+            } else if f < 0.0 {
+                Ok(-(-f + (square + 1.0).sqrt()).ln())
+            } else {
+                Ok((f + (square + 1.0).sqrt()).ln())
+            }
+        })
     }
     pub(crate) fn fn_acosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Acosh, args, cell, |f| Ok(f64::acosh(f)))
+        self.number_fn(Function::Acosh, args, cell, |f: f64| {
+            // Checked first: for a large negative argument `f + sqrt(f*f - 1)` rounds to 0 and the
+            // log is -inf, not NaN.
+            if f < 1.0 {
+                return Err(Error::NUM);
+            }
+            let square = f * f;
+            if square.is_infinite() {
+                Ok(f64::acosh(f))
+            } else {
+                Ok((f + (square - 1.0).sqrt()).ln())
+            }
+        })
     }
     // ATANH(+-1) is `#NUM!` at once, like any other out-of-domain argument; f64::atanh gives an
     // infinity there, which the macro's NaN mapping misses (probes/atanh-unit-argument A1:A8,
@@ -689,11 +718,13 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
+        // The base omitted is LOG10, not ln(x)/ln(10): `LOG(1000)` is 3 (numbers.md "LOG with
+        // one argument is LOG10"; probes/log10-kernel, T-2004).
         let y = if n_args == 1 {
-            10.0
+            None
         } else {
             match self.get_number(&args[1], cell) {
-                Ok(f) => f,
+                Ok(f) => Some(f),
                 Err(s) => return s,
             }
         };
@@ -704,6 +735,9 @@ impl Model {
                 message: "Number must be positive".to_string(),
             };
         }
+        let Some(y) = y else {
+            return CalcResult::Number(excel_log10(x));
+        };
         if y == 1.0 {
             return CalcResult::Error {
                 error: Error::DIV,

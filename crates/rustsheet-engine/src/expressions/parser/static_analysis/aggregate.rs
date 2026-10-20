@@ -1,3 +1,4 @@
+use crate::expressions::utils::parse_reference_a1;
 use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
@@ -120,14 +121,17 @@ fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool
                 || args.iter().skip(1).any(|arm| lifts_to_values(arm, bound))
         }
         Function::Switch => {
+            // The positions after the value are case, result, case, result..., then an unpaired
+            // default (as in `yields_cells`). An array case value lifts too, like the value
+            // (probes/subtotal-take-array-selector-b A10, T-2012).
+            let default = args.len().saturating_sub(2);
+            let after_value = || args.iter().skip(1).enumerate();
             args.first().is_some_and(is_lifting_selector)
-                || args
-                    .iter()
-                    .skip(1)
-                    .enumerate()
-                    // As in `yields_cells`: results at the odd positions after the value, and a
-                    // trailing unpaired default.
-                    .filter(|(index, _)| index % 2 == 1 || *index == args.len().saturating_sub(2))
+                || after_value()
+                    .filter(|(index, _)| index % 2 == 0 && *index != default)
+                    .any(|(_, case)| is_lifting_selector(case))
+                || after_value()
+                    .filter(|(index, _)| index % 2 == 1 || *index == default)
                     .any(|(_, arm)| lifts_to_values(arm, bound))
         }
         Function::Ifs => {
@@ -138,10 +142,11 @@ fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool
                     .step_by(2)
                     .any(|arm| lifts_to_values(arm, bound))
         }
-        // An XLOOKUP in an IF or CHOOSE arm below SUBTOTAL or AREAS, or in a return array, is
-        // evaluated for its values (`Model::fn_xlookup`, T-1987). Below TAKE, DROP and TRIMRANGE it
-        // picks cells when it does not lift (`Model::evaluate_picked_source`, T-1998); counting it
-        // as lifting there too leaves the shape to run time, which is safe.
+        // An XLOOKUP in a return array is evaluated for its values (`Model::fn_xlookup`, T-1987).
+        // Below TAKE, DROP and TRIMRANGE, and as the arm an IF or CHOOSE picks below SUBTOTAL or
+        // AREAS, it picks cells when it does not lift (`Model::evaluate_picked_source`, T-1998;
+        // `Model::evaluate_picked_reference_arg`, T-2009); counting it as lifting there too leaves
+        // the shape to run time, which is safe.
         Function::Xlookup => true,
         Function::Let if args.len() >= 3 && args.len() % 2 == 1 => {
             let scope = bound.len();
@@ -160,8 +165,22 @@ fn lifts_to_values<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool
 }
 
 /// Whether a selector or lookup value can lift its call: an array, a multi-cell range, an
-/// `Unknown` shape, or a variable, whose own shape does not tell what it holds.
+/// `Unknown` shape, or a variable, whose own shape does not tell what it holds. `INDIRECT` of
+/// text naming one cell is a scalar condition, not an unknown shape
+/// (`TAKE(IF(INDIRECT("K1"),H1:H2,I1:I2),2)` is 7, probes/subtotal-take-array-selector-b A130,
+/// T-2012); any other INDIRECT stays unknown, which is safe, though `if_pick` reads any
+/// INDIRECT that gives one cell as a scalar at run time.
 fn is_lifting_selector(arg: &Node) -> bool {
+    if let Node::FunctionKind {
+        kind: Function::Indirect,
+        args,
+    } = arg.ungrouped()
+    {
+        if matches!(args.as_slice(), [Node::StringKind(text)] if parse_reference_a1(text).is_some())
+        {
+            return false;
+        }
+    }
     matches!(arg.ungrouped(), Node::NamedVariableKind { .. })
         || !matches!(
             run_static_analysis_on_node(arg),

@@ -8,7 +8,7 @@ use super::holidays::{days_per_weekday, working_days, Holidays};
 use super::{bare_error, DEFAULT_WEEKEND};
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, types::CellReferenceIndex},
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     functions::{
         lift::{number_or_error, LiftCost},
         Function,
@@ -62,8 +62,8 @@ impl Model {
         )
     }
 
-    /// One element of NETWORKDAYS(.INTL): the dates (booleans are rejected), the weekend
-    /// (NETWORKDAYS.INTL only), then the holidays. An end before the start counts the same days,
+    /// One element of NETWORKDAYS(.INTL): the weekend (NETWORKDAYS.INTL only), the dates (booleans
+    /// are rejected), then the holidays. An end before the start counts the same days,
     /// negated. Both dates must be dates (`#NUM!` otherwise); the dates of a date system are one
     /// run of serials, so every day between is one too, and its weekday follows the first day's.
     /// The days are counted in closed form (T-1808).
@@ -77,12 +77,15 @@ impl Model {
         let [start, end, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let start = self.cast_number_no_bools_ref(start, cell)?.floor() as i64;
-        let end = self.cast_number_no_bools_ref(end, cell)?.floor() as i64;
+        // NETWORKDAYS.INTL reads the weekend before the dates: `NETWORKDAYS.INTL(NA(),45030,99)` is
+        // `#NUM!` and `NETWORKDAYS.INTL(1/0,45030,NA())` `#VALUE!` (probes/date-text-weekend-3d
+        // Q2, Q32, Q33).
         let weekend = match rest.first() {
-            Some(weekend) if holidays_at == 3 => Self::weekend_mask(weekend, cell)?,
+            Some(weekend) if holidays_at == 3 => Self::weekend_mask(weekend, Error::VALUE, cell)?,
             _ => DEFAULT_WEEKEND,
         };
+        let start = self.cast_number_no_bools_ref(start, cell)?.floor() as i64;
+        let end = self.cast_number_no_bools_ref(end, cell)?.floor() as i64;
         let holidays = holidays.as_ref().map_err(Clone::clone)?;
         let (from, to, sign) = if start <= end {
             (start, end, 1.0)

@@ -5,9 +5,10 @@
 //! cleared [`MIN_CLEARS`] times and it builds a state more often than every [`MIN_BYTES_PER_STATE`]
 //! bytes. The DFA's work is measured from its cache (bytes scanned and state memory built), so a
 //! simple pattern over a long column costs what it really costs. A search the DFA gives up on
-//! (or quits, on a Unicode word boundary) runs on a `PikeVM` instead, charged its span times the
-//! NFA's state count before it runs, a bound on its work. Capture groups are resolved by the
-//! `PikeVM` over the match alone, as the `regex` crate does. Patterns, matches and replacements
+//! (or quits, on a Unicode word boundary) runs on a `PikeVM` instead, over only the span a scan of
+//! the NFA's states shows it needs, charged the states that scan visits (`regex_reach`, T-1829).
+//! Capture groups are resolved by the `PikeVM` over the match alone, as the `regex` crate does.
+//! Patterns, matches and replacements
 //! follow the `regex` crate exactly: the same syntax, leftmost-first semantics, UTF-8 empty-match
 //! rules and `$name` interpolation (all from `regex_automata`, which `regex` is built on).
 //!
@@ -15,7 +16,10 @@
 //! `a[ab]{100}c|b[ab]{100}c` (210 states) on a `PikeVM` costs about 4.2 ns a state-byte; lazy DFA
 //! state building about 6 ns a byte built; DFA scanning 1-3 ns a byte.
 
-use super::lifted::to_u64;
+use super::{
+    lifted::to_u64,
+    regex_reach::{Reach, Visits},
+};
 use regex_automata::{
     hybrid::{
         dfa::{Cache as DfaCache, Config as DfaConfig, DFA},
@@ -48,6 +52,25 @@ const BUILT_BYTE: u64 = 8;
 /// Units charged per NFA state per byte a `PikeVM` searches.
 const PIKE_STATE_BYTE: u64 = 5;
 
+/// Units charged per NFA state the reach scan visits (T-1829: `a.*z|a|\bq` iterated over
+/// `REPT("a",20000)&"é"` scans about 17 ns a visit in a release build).
+const SCAN_VISIT: u64 = 16;
+
+/// Units charged per look-around assertion the reach scan evaluates, on top of its visit: the
+/// scan and the `PikeVM` each evaluate it, and a Unicode `\b` decodes the characters on both
+/// sides and looks them up in the word table. T-1829, release build: a visit costs about 19 ns
+/// (`a.*z|a|\bq` iterated over `REPT("a",20000)&"é"`), an assertion about 54 ns more for `\B`
+/// over `é` (`REPT("\B",40)&"q"` tested on `REPT("éa ",10000)&SEQUENCE(300)`), 49 ns for `\b`
+/// over `𝒜`, 27 ns for `(?:\b|\B){40}q`; the worst is charged, so each runs out of work in
+/// about 1 s.
+const LOOK_VISIT: u64 = 54;
+
+/// Units charged per range of a sparse class state the reach scan walks, on top of its visit:
+/// the scan and the `PikeVM` each walk them. T-1988, release build: at a flat visit charge
+/// `\b[\w\s\d]{30}q` tested on `REPT("日a ",8000)&SEQUENCE(80)` ran out of work in 1.6 s; at 3 a
+/// range it does in 0.9-1.0 s (1.0-1.2 s over `ж`), at 2 in 1.0-1.15 s, at 4 in 0.8 s.
+const SPARSE_TRANSITION: u64 = 3;
+
 /// Units charged per search, whatever its length: a pattern that matches everywhere does one
 /// search a character.
 const SEARCH: u64 = 64;
@@ -64,6 +87,20 @@ pub(super) enum BuildFailure {
 #[derive(Debug)]
 pub(super) struct Spent;
 
+/// Takes `units` from `work`; spent once they do not fit.
+pub(super) fn charge(work: &mut u64, units: u64) -> Result<(), Spent> {
+    match work.checked_sub(units) {
+        Some(left) => {
+            *work = left;
+            Ok(())
+        }
+        None => {
+            *work = 0;
+            Err(Spent)
+        }
+    }
+}
+
 /// A compiled pattern.
 pub(super) struct Engine {
     dfa: Option<DfaRegex>,
@@ -75,6 +112,7 @@ pub(super) struct Engine {
 pub(super) struct Caches {
     dfa: Option<RegexCache>,
     pike: PikeCache,
+    reach: Reach,
 }
 
 impl Engine {
@@ -141,6 +179,7 @@ impl Engine {
         Caches {
             dfa: self.dfa.as_ref().map(DfaRegex::create_cache),
             pike: self.pike.create_cache(),
+            reach: Reach::new(self.pike.get_nfa()),
         }
     }
 
@@ -169,6 +208,7 @@ impl Engine {
         }) + caches.dfa.as_ref().map_or(0, RegexCache::memory_usage)
             + self.pike.get_nfa().memory_usage()
             + caches.pike.memory_usage()
+            + caches.reach.memory_usage()
     }
 }
 
@@ -209,23 +249,11 @@ pub(super) struct Search<'a> {
 }
 
 impl Search<'_> {
-    fn charge(&mut self, units: u64) -> Result<(), Spent> {
-        match self.work.checked_sub(units) {
-            Some(left) => {
-                *self.work = left;
-                Ok(())
-            }
-            None => {
-                *self.work = 0;
-                Err(Spent)
-            }
-        }
-    }
-
     /// Charges a `PikeVM` search over `len` bytes.
     fn charge_pike(&mut self, len: usize) -> Result<(), Spent> {
         let len = to_u64(len);
-        self.charge(
+        charge(
+            self.work,
             len.saturating_mul(self.engine.states)
                 .saturating_mul(PIKE_STATE_BYTE),
         )
@@ -233,7 +261,7 @@ impl Search<'_> {
 
     /// The leftmost-first match in `input`.
     fn find_in(&mut self, input: &Input<'_>) -> Result<Option<Match>, Spent> {
-        self.charge(SEARCH)?;
+        charge(self.work, SEARCH)?;
         if let (Some(dfa), Some(cache)) = (self.engine.dfa.as_ref(), self.caches.dfa.as_mut()) {
             let before = {
                 let (fwd, rev) = cache.as_parts();
@@ -245,13 +273,28 @@ impl Search<'_> {
                 dfa_work(before.0, dfa_progress(fwd))
                     .saturating_add(dfa_work(before.1, dfa_progress(rev)))
             };
-            self.charge(work)?;
+            charge(self.work, work)?;
             if let Ok(found) = found {
                 return Ok(found);
             }
         }
-        self.charge_pike(input.end().saturating_sub(input.start()))?;
-        Ok(self.engine.pike.find(&mut self.caches.pike, input.clone()))
+        if input.get_anchored().is_anchored() {
+            self.charge_pike(input.end().saturating_sub(input.start()))?;
+            return Ok(self.engine.pike.find(&mut self.caches.pike, input.clone()));
+        }
+        // Each state the scan visits stands for one the PikeVM visits too, so both are charged.
+        let reach = self.caches.reach.scan(
+            self.engine.pike.get_nfa(),
+            input,
+            &Visits {
+                states: SCAN_VISIT + PIKE_STATE_BYTE,
+                looks: LOOK_VISIT,
+                transitions: SPARSE_TRANSITION,
+            },
+            self.work,
+        )?;
+        let input = input.clone().span(input.start()..reach);
+        Ok(self.engine.pike.find(&mut self.caches.pike, input))
     }
 
     /// Fills `caps` from the match `m`, found in `input`.

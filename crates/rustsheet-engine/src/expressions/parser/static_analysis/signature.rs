@@ -253,13 +253,6 @@ pub(super) fn args_signature_filter(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-pub(super) fn args_signature_sequence(arg_count: usize) -> Vec<Signature> {
-    if !(1..=4).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    vec![Signature::Scalar; arg_count]
-}
-
 pub(super) fn args_signature_randarray(arg_count: usize) -> Vec<Signature> {
     if arg_count > 5 {
         return vec![Signature::Error; arg_count];

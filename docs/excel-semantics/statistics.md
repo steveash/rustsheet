@@ -470,7 +470,9 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
     near-cancellation snap does not apply inside ERF(a, b): 1 of 129 points differs from the cell formula.
   - Legacy ERF and ERFC are identical to the .PRECISE forms.
   - CHIDIST, CHISQ.TEST at df 1 and Z.TEST are wrappers too.
-  - Z.TEST with a single-value array returns #DIV/0!.
+  - Z.TEST with a single-value array returns #DIV/0!. A typed TRUE as the array is such a single value:
+    `Z.TEST(TRUE,0.5,1)` is #DIV/0! (probes-numeric/t1049-ztest A51; ours #VALUE!, T-2027), while typed text is
+    #VALUE! (`Z.TEST("a",4)`, A50) and `Z.TEST(7,4)` #DIV/0! (A41).
   - Odd-df upper chi-square (Q(1.5), Q(2.5)) and the shape-0.5 density use separate generic paths, not this kernel.
 - ERFC kernel for 0.5 < x <= 4 (rounds 7-9): bit-exact.
   - **Form.** The same family as the tail. ERFC = fl53(fl64(E*R)) with R = fl53(fl64(N/D)). N (degree 9) and D
@@ -636,7 +638,9 @@ Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An a
 `unsupportedWorkbook`; `RANK(5,SORT(A1:C1))` as well), so their values are not observable through the web oracle (M14 desktop question, decision 0039).
 Evidence: probes/rank-nonref-06..08 (references), rank-nonref-12..14 (arrays), probes/multiarea-order-stats H14:J14 (excel-graph, 2026-10-09, T-1203).
 Ours: matches since T-1203: the RANK family returns a `#VALUE!` array of the argument's shape, and static analysis
-(`static_analysis_rank`) makes such a formula a dynamic-array anchor so it spills. For a literal array (`{7,1,5}`) we also spill `#VALUE!` 1x3; that is
+makes such a formula a dynamic-array anchor so it spills (since T-1999 the `ref` is `ArgKind::ReferenceByCaller`: static
+analysis broadcasts the array's shape with the lifted `number` and `order`, and the driver broadcasts its errors).
+For a literal array (`{7,1,5}`) we also spill `#VALUE!` 1x3; that is
 UNVERIFIED (the oracle refuses the workbook). Scalar literals (`RANK(5,5)`, `"5"`, `TRUE`) still rank as a
 one-element list, also UNVERIFIED (decision 0039).
 Error and text arguments next to such a ref (probes/rank-nonref-errors, excel-graph, 2026-10-09, T-1208; RANK and RANK.AVG
@@ -696,8 +700,9 @@ plain 8-point series on the timeline 1..8 (T-1293). These decide the generator m
 Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080).
 Ours: LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN lift (T-1772, section below), and so do the
 44 functions whose every argument is scalar and whose kernel is bounded (T-1290, "Later arguments and element values
-of the scalar statistical functions" below); the other scalar arguments do not (`#N/IMPL!` for an array, `#VALUE!` for
-a range): RANK, FORECAST and T.TEST (T-1982; Z.TEST and PROB lift since T-1813); BETA.INV, F.INV, T.INV, CONFIDENCE.T and their variants lift
+of the scalar statistical functions" below); the other scalar arguments lift since their own tasks (before, `#N/IMPL!`
+for an array, `#VALUE!` for a range): Z.TEST and PROB since T-1813, FORECAST and T.TEST since T-1982, RANK since T-1999;
+BETA.INV, F.INV, T.INV, CONFIDENCE.T and their variants lift
 since T-1848 ("Quantile searches: per-call cap and lifting" below), the incomplete-gamma functions (CHISQ.*,
 CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV, GAMMAINV, POISSON, POISSON.DIST) since T-1872 ("Incomplete gamma:
 per-call cap and lifting" below), and HYPGEOM.DIST and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and
@@ -908,6 +913,51 @@ HYPGEOMDIST is `Constant` and lifts up to the output cap.
 Status: VERIFIED (excel-graph) for the lifting (the Rule's cells); the term cap is a DEVIATION whose Excel values are unprobed (T-1896)
 Tasks: T-1873, T-1896, T-0977
 
+## Discrete distributions: within an ulp of the exact sum (T-0927)
+Rule: BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST are close to the exact value of their finite sums, not to a
+regularized incomplete beta evaluated in doubles: over the 148 numeric cells of those three sheets of ironcalc-calc
+STATISTICAL/BINOM.xlsx, the exact sum rounded once (ours, below; checked against Python `fractions` from the double `p`)
+is Excel's double at 78, within 4 ulp of it at 57 more, and within 4E-14 relative at the other 13 (below). Exact arithmetic also reproduces the cells whose exact value is a short decimal: `BINOM.DIST(7,8,0.7,TRUE)` is 0.94235199 and
+`BINOM.DIST(2,10,0.5,TRUE)` 0.0546875, where statrs' incomplete beta gave 0.9423519899999973 and 0.05468750000000168.
+Excel is not always the exact value: `BINOM.DIST(3,10,0.5,TRUE)` is 0.17187500000000006, one ulp above the exact
+0.171875, and `NEGBINOM.DIST(5,10,0.5,TRUE)` 0.15087890625000006. `NEGBINOM.DIST(0,100,0.01,TRUE)` (the pmf p^r) is
+1.0000000000000348E-200, which is `exp(100*ln(0.01))` in doubles bit for bit, 226 ulp from the exact 0.01^100
+(1.000000000000002E-200): Excel's prefactor is `exp(a*ln x)`, as for BETA.DIST ("Incomplete beta: Excel's closed forms
+and the best candidate", T-1744). The 13 cells further than 4 ulp from both the exact value and ours are tails where that
+prefactor's rounding shows: BINOM.DIST E24, E32, E67; BINOM.DIST.RANGE E10, E21, E23; NEGBINOM.DIST E3, E26, E30, E37,
+E40, E74, E75 (for example E24, `BINOM.DIST(2,10,0.999999,TRUE)`: Excel 4.499992001038836E-47, exact
+4.499992001038802E-47). Neither Loader's saddle-point pmf summed (R's `dbinom_raw`: bit-exact at 49 of the 122 cells
+tried, more than 4 ulp off at 15) nor the prefactor `exp(a*ln x)` times the exact remaining factor reproduces them.
+POISSON.DIST is unfitted. On ironcalc-calc STATISTICAL/POISSON.xlsx, `fl(fl(S)*exp(-mean))`, with S the partial
+exponential series `sum mean^i/i!` over i <= k (cdf) or its last term (pmf) summed exactly, reproduces all 5 distinct
+small pmfs and 8 of 11 small cdfs bit for bit, against 6 of 11 for the exact value rounded. The excel-graph probes
+contradict it, though: probes-numeric/t1048-poisson `POISSON.DIST(10,4,FALSE)` is 0.005292476676420117 (that model
+...0195), `POISSON.DIST(1,0.1,FALSE)` 0.09048374180359597 (...596), `POISSON(10,4,TRUE)` 0.9971602338794863 (...862)
+and `POISSON(1,0.1,TRUE)` 0.9953211598395555 (...556), all of which statrs gets right. Applied to even-df
+CHISQ.DIST.RT through T-1778's identity, the same model gives `CHISQ.DIST.RT(1E-06,30)` = 1.0000000000000002 where
+Excel gives 1.0 (probes-numeric/m9-legacy-chidist A15, A16), and it misses m9-chisq-dist-rt A32 and t1049-chisqdistrt
+A8. So POISSON.DIST stays on statrs here (T-2055).
+Evidence: ironcalc-calc STATISTICAL/BINOM.xlsx and POISSON.xlsx (Excel-cached); probes-numeric/t1048-poisson,
+m9-legacy-chidist, m9-chisq-dist-rt, t1049-chisqdistrt (excel-graph); the exact values from Python `fractions`.
+Ours (T-0927): `statistical/discrete.rs` walks the pmf terms, each from the last by the exact ratio of consecutive
+terms, in double-double with a power-of-two exponent beside it (the terms start at q^n, as small as 0.5^3000), and
+rounds once: the binomial from the nearer end (a pmf), from 0 (a cdf, stopping once the terms past the mode no longer
+move the sum; past the budget 1 minus the sum from n where that is at least 2^-20), and from the cheaper end (a
+BINOM.DIST.RANGE). NEGBINOM.DIST is that binomial with n = f + r and the roles of p and q swapped: P(F <= f) is the
+probability of at most f failures in f + r trials, and its pmf is r/(f + r) times the binomial pmf at f. A walk takes
+at most 2^10 steps (`MAX_STEPS`); past it the functions fall back to statrs as before. The 13 binomial cells above are
+the residue. probes-numeric/m9-legacy-binomdist (21 -> 33 of 54 bit-exact) and t1048-negbinomdist (18 -> 28 of 40)
+lose no passing cell, but three of their tails move further from Excel, the same `exp(a*ln x)` residue:
+`BINOMDIST(2,5,0.999,FALSE)` (A35, A36: Excel 9.980010000000044E-09, main ...049, ours ...027) and
+`NEGBINOMDIST(10,2,0.9)` (A4, B4: Excel 8.909999999999952E-10, main ...973, ours ...981).
+DEVIATION (decision 0014, CLAUDE.md directive 5): BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE, NEGBINOM.DIST and
+NEGBINOMDIST are charged 4096 units an element against the shared cell-visit cap of 2^27
+(`limits::MAX_LIFTED_CELL_VISITS`), the bound of two walks of 2^10 steps at about 32 ns, so a lifted call of more than
+32,768 elements is `#ERROR!` before it runs where Excel computes it (as BINOM.INV, "Later arguments and element values of
+the scalar statistical functions" above).
+Status: VERIFIED (excel-cached) for the values; the weight is a DEVIATION
+Tasks: T-0927, T-1744, T-2055
+
 ## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
 Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the
 right tail and `#NUM!` for the pdf (`F.DIST(1E308,2,3,TRUE)` `#DIV/0!`, `F.DIST(1E308,2,3,FALSE)` `#NUM!`,
@@ -958,13 +1008,23 @@ and `Z.TEST({"a","b"},"x")` (no numbers) are `#VALUE!`, and `PROB(A1:A3,F1:F4,{1
 non-reference `ref` broadcasts with the ref's shape, every element `#VALUE!` (`RANK({4;"x"},IF(A1:C1>0,A1:C1))` is
 2x3). A 1x1 array argument gives a 1x1 array (`TYPE(Z.TEST(A1:A8,{4}))`, `TYPE(RANK({4},A1:A8))`,
 `TYPE(LARGE(A1:A8,{1}))` are 64).
-Evidence: probes/stat-test-lift P1-P89, stat-test-lift-b P90-P95 (excel-graph, 2026-10-19, T-1813).
+Evidence: probes/stat-test-lift P1-P89, stat-test-lift-b P90-P95 (excel-graph, 2026-10-19, T-1813); probes/rank-direct-boolean (T-1999).
 Ours: Z.TEST/ZTEST and PROB match since T-1813 (`statistical/z_test.rs`, `prob.rs`: the data argument is
 `WholeByCaller`, read once). FORECAST/FORECAST.LINEAR, T.TEST/TTEST and the order-statistic precedence match
 since T-1982 (`forecast.rs`, `t_dist.rs`; PERCENTILE's and TRIMMEAN's readers keep an error value). T.TEST's
 P64-P67 are still NumericClose (P64: 0.32346094498174827 against 0.32346094498173894), which is T-0969's
-work. Not yet probed (T-2000): T.TEST's `type` against the samples' error, FORECAST's `x` against the data's
-own validation, and an error data argument of PERCENTRANK, QUARTILE, PROB and FREQUENCY. RANK: T-1999.
+work. RANK, RANK.EQ and RANK.AVG match since T-1999 (`statistical/rank_eq_avg.rs`: `number` and `order` lift, a
+reference `ref` is read once, a non-reference `ref` broadcasts its errors through `lift_call_beside`).
+RANK's `number` and `order` outside an array (probes/rank-direct-boolean H1-H18, excel-graph, 2026-10-19, T-1999; RANK,
+RANK.EQ and RANK.AVG agree where probed): `number` coerces a boolean and numeric text, typed or from a cell (`RANK(TRUE,A1:A8)` and
+`RANK(K1,A1:A8)` with K1 = TRUE are 8, the rank of 1; `RANK("4",A1:A8)` and a text cell "4" are 5; FALSE is 0, absent, `#N/A`).
+`order` coerces a boolean (`RANK(4,A1:A8,TRUE)` is 4, ascending; FALSE and a FALSE cell are 5) but not text, numeric
+text included: `RANK(4,A1:A8,"1")` is `#VALUE!`. `order` is read before the data's error: with D2 = `#N/A`,
+`RANK(4,D1:D3,"x")` and `RANK(1,D1:D3,"x")` are `#VALUE!` and `RANK(4,D1:D3,1/0)` is `#DIV/0!`. So an element reads
+`number`, then `order`, then the data's error, then ranks (`#N/A` when absent). Before T-1999 a direct boolean was `#VALUE!`,
+`"1"` was an ascending order and the data's error came before `order`'s. Not probed: an `order` from a cell holding text, and `number`'s error against `order`'s (T-2019).
+Not yet probed (T-2000): T.TEST's `type` against the samples' error, FORECAST's `x` against the data's
+own validation, and an error data argument of PERCENTRANK, QUARTILE, PROB and FREQUENCY.
 Status: VERIFIED (excel-graph)
 Tasks: T-1813, T-1982, T-1999, T-2000
 
@@ -1013,25 +1073,27 @@ the paired unequal-size `#N/A`; whether an error array argument beats a bad tail
 9.332621544394404E+155), `TREND(#NUM!)` is `#NUM!`, and `GROWTH(B2:B3,<number>,..)` with B2:B3 = "?b", 0 is `#REF!` (the size
 check before the text check). LARGE of an error is that error (`LARGE(<#VALUE!>,k)`, `LARGE(<#REF!>,0.1)`), and so is
 PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). `QUARTILE(D6,7)` with D6 = " x " is inferred `#NUM!` (inside a BETAINV whose
-probability is also invalid, so UNVERIFIED; T-1403 probes it), and `PERCENTILE.EXC(A8:B8,<#VALUE!>)`
+probability is also invalid, so UNVERIFIED; T-2066 probes it), and `PERCENTILE.EXC(A8:B8,<#VALUE!>)`
 with no number in A8:B8 is `#VALUE!` (k's error before the empty-data `#NUM!`). `PERCENTRANK.EXC(B11,1.005)` with B11 =
-1.005 is not 0.5 (inferred `#N/A` through `VLOOKUP(..)`; UNVERIFIED, T-1403 probes it).
+1.005 is not 0.5 (inferred `#N/A` through `VLOOKUP(..)`; later probed: a single value equal to x is 1, probes/percentrank-single-value B6).
 Evidence: gen-m9 (excel-graph, 2026-10-12, T-1289): 1782efcecd5d4b1b Calc!A10, A25, A38; 3462856259a37891 A22;
 50f10c4062fb2e98 A3, A17, A31; 696af2c8cee2f57e A9; 89693ab0cafc29df A24, A30; a2e51f48717af2a1 A34; adb3fd63c7368166 A26,
 A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, A21; eefcc3989f31de76 A22;
 95efb37a9874f82e A2; b5352ebdb9c5f1a1 A24; 288b99797f58f149 A3; d5bd4272655c5211 A31; 65faaeb48419087d A17. The arguments
 are read from the cases' Data sheets; each cell's other operands were checked not to decide the result.
-Ours: the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal stays `#VALUE!`, unprobed); `LARGE(#N/A,1)` is `#N/IMPL!`; PERCENTILE.EXC checks empty data
-before k; `PERCENTRANK.EXC` of a single value equal to x is 1, not 0.5 (probes/percentrank-single-value B6). `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); with one value, x below or above it is `#N/A` for all three, an error x (`#DIV/0!`, text `#VALUE!`) beats that `#N/A`, and any numeric significance (0, negative, fractional) gives 1 rather than `#NUM!` (a text significance is `#VALUE!`) (probes/percentrank-single-value B2-B20); an empty array is `#N/A`.
+Ours: GROWTH and TREND match the single-value, error and size-before-text rules (T-1402); the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal stays `#VALUE!`, unprobed); `LARGE(#N/A,1)` is that error (gen-m9/1782efcecd5d4b1b A25); PERCENTILE.EXC reports k's error before the empty-data `#NUM!` (T-1403; PERCENTILE.INC's order is unprobed);
+`PERCENTRANK.EXC` of a single value equal to x is 1, not 0.5 (probes/percentrank-single-value B6). `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); with one value, x below or above it is `#N/A` for all three, an error x (`#DIV/0!`, text `#VALUE!`) beats that `#N/A`, and any numeric significance (0, negative, fractional) gives 1 rather than `#NUM!` (a text significance is `#VALUE!`) (probes/percentrank-single-value B2-B20); an empty array is `#N/A`.
 Status: VERIFIED (web) for the listed cells
 Tasks: T-1401, T-1402, T-1403
 
 ## SKEW.P of two numbers is #DIV/0!
 Rule: `SKEW.P` of two numbers is `#DIV/0!`, like SKEW: `SKEW.P(E11:E11,A11:A12,A5:A7)` over -0.0001 and 1 (blank, FALSE,
-TRUE and "a" skipped) is `#DIV/0!`. Whether three numbers are enough is unprobed.
-Evidence: gen-m9/3b8e9078261b5bd2 Calc!A13 (`LAMBDA(v,acc,v)(SKEW.P(..),..)`, excel-graph, 2026-10-12, T-1289).
-Ours: 0 (`SKEW.P(1,2)` and `SKEW.P(1,2,3)` are 0).
-Status: VERIFIED (web) for two numbers; three numbers UNVERIFIED
+TRUE and "a" skipped) is `#DIV/0!`. Three numbers are enough: `SKEW.P(1,2,3)` is 0, `SKEW.P(1,2,4)` 0.3818017741606059; a constant series of
+three or more (`SKEW.P(5,5,5)`) and one number are `#DIV/0!`. Same bound as SKEW (`SKEW(1,2)` `#DIV/0!`, `SKEW(1,2,3)` 0).
+Evidence: gen-m9/3b8e9078261b5bd2 Calc!A13 (`LAMBDA(v,acc,v)(SKEW.P(..),..)`, excel-graph, 2026-10-12, T-1289);
+probes/skew-p-bound A1-A14 (excel-graph, 2026-10-19, T-1404).
+Ours: matches (T-1404).
+Status: VERIFIED (excel-graph)
 Tasks: T-1404
 
 ## FORECAST.ETS.CONFINT in the generated gen-m9 suite: argument errors only
@@ -1062,7 +1124,7 @@ desktop Excel, so the family stays `#N/IMPL!` until desktop values exist (M14, P
 Evidence: probes/forecast-ets-longer-series.case.json K1:K42 (excel-graph, 2026-10-14, T-1293).
 Ours: `#N/IMPL!` for every call.
 Status: VERIFIED (web) that the family is `#N/A` there; desktop behavior UNKNOWN
-Tasks: T-1293, T-1553
+Tasks: T-1293, T-1553, T-2028 (the text `target_date` and the lifting cells)
 
 ## Database function argument modes
 Rule: in the database functions (DAVERAGE, DCOUNT, DCOUNTA, DGET, DMAX, DMIN, DPRODUCT, DSTDEV, DSTDEVP, DSUM,
@@ -1355,7 +1417,7 @@ Oracle sweep (excel-graph), 16 cases, 34-102 cells each; every paired cell (colu
 - ZTEST: sigma 0 or negative is #NUM!; a one-element range is #DIV/0! (with or without sigma); an empty range is #N/A; text x "5" and TRUE coerce, non-numeric text is #VALUE!; an omitted sigma (empty argument) is #NUM!, while an omitted x (`ZTEST(D1:D10,)`) returns a value (1.3161580317707342E-09; that it equals x = 0 was not probed); a range as x lifts and spills (see "Statistical function argument modes").
 Evidence: probes-numeric cases `t1048-gammadist`, `-gammainv`, `-hypgeomdist`, `-loginv`, `-lognormdist`, `-negbinomdist`, `-normdist`, `-norminv`, `-normsdist`, `-normsinv`, `-poisson`, `-tdist`, `-tinv`, `-ttest`, `-weibull`, `-ztest`. Oracle: excel-graph, 2026-10-14.
 Status: VERIFIED (excel-graph)
-Tasks: T-1048
+Tasks: T-1048, T-2035
 
 ## F-distribution df limit (T-1530)
 Rule: either df above 1E10 (after truncation) makes every F function `#NUM!`: F.DIST (cumulative and pdf), F.DIST.RT,
@@ -1493,7 +1555,9 @@ Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by 
   (`phi` A37:C37 = PHI(0), PHI(1), PHI(2)). `PHI(1E300)` and `PHI(-1E300)` are `#NUM!`, while `PHI(38.5)` underflows to 0.
 - **Density at 0:** `F.DIST(0,1,7,FALSE)` and `CHISQ.DIST(0,1,FALSE)` are `#NUM!` (the density is
   infinite), the df=2 value is 1 (F) and 0.5 (CHISQ), higher df give 0; `WEIBULL.DIST(0,0.5,3,FALSE)`
-  is 0, not `#NUM!`. `F.DIST.RT(0,...)` and `CHISQ.DIST.RT(0,...)` are 1.
+  is 0, not `#NUM!`, and so is the shape-1 density at 0, which is mathematically 1/lambda:
+  `WEIBULL.DIST(0,1,3,FALSE)` = 0 (`weibulldist` A27; `WEIBULL(0,1,1,FALSE)` = 0 too, probes-numeric/t1048-weibull A16,
+  gap triage 2026-10-19). The density at x = 0 is 0 for every probed shape. Implementing these edges is T-2035. `F.DIST.RT(0,...)` and `CHISQ.DIST.RT(0,...)` are 1.
 - **Boundary probabilities:** `CHISQ.INV(0,3)`, `F.INV(0,3,7)` are 0 and p = 1 is `#NUM!`; the RT inverses
   are the mirror (`p=1` -> 0, `p=0` -> `#NUM!`). TRUE as p is 1 (`CHISQ.INV(TRUE,3)` = `#NUM!`).
   `CHISQ.INV(0.5,1E10)` = 9999999999.333334 (not probed above 1E10; the T.INV and F limits are in T-1043 and T-1530).
@@ -1520,7 +1584,7 @@ Evidence: `probes-numeric/t1049-{fdist,fdistrt,finv,finvrt,ftest,chisqdist,chisq
 chisqinvrt,chisqtest,hypgeomdist,weibulldist,ztest,phi,ttest}` and their `*.oracle.json`
 (`hypgeomdist` has 61 cells for the T-0977 fit).
 Status: VERIFIED (excel-graph observation)
-Tasks: T-1049
+Tasks: T-1049, T-2035
 
 ## CORREL, PEARSON and RSQ over arrays of different sizes, and their last digit
 Rule: CORREL, PEARSON and RSQ of two arrays of different sizes are `#N/A`, and of the same 10-value array twice not exactly
@@ -1551,6 +1615,7 @@ Tasks: T-1621, T-1741, T-1742, T-1743, T-2006 (shared least-squares kernel)
 Rule: CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX, COVAR and FORECAST(.LINEAR) pair their two arrays cell by cell and
 skip a pair when either cell of a range is text, blank or boolean (COVAR too: `COVAR(D1:D6,B1:B6)` with D2 blank 2.52,
 `COVAR(A1:A6,C1:C6)` 2.6399999999999997). A text scalar argument is `#N/A` (`CORREL(A1:A6,"a")`, `COVAR(A1:A6,"a")`).
+COVARIANCE.P and COVARIANCE.S skip pairs the same way (`COVARIANCE.P(D1:D6,B1:B6)` 2.52, `COVARIANCE.S(D1:D6,B1:B6)` 3.15, `COVARIANCE.S(J1:J6,B1:B6)` 4.3) and give `#N/A` for a text scalar; with every pair skipped (`{1,2,3}` against `{TRUE,FALSE,TRUE}`) both are `#DIV/0!` (probes/covariance-pairs-skip, excel-graph, 2026-10-19, T-1724). Ours: matches for COVAR, COVARIANCE.P and .S (T-1724); a typed text in T.TEST's samples is unprobed and stays `#VALUE!`.
 RSQ is not CORREL squared in its last digit: `CORREL(J1:J6,B1:B6)` is 1 while `RSQ` of the same pair is
 1.0000000000000004, and `CORREL(A1:A6,C1:C6)` 0.9999999999999998 while RSQ is 1 (probes/regression-pairs-a L23/N23,
 L10/N10). COVAR of an x or y with zero variance is 0, not `#DIV/0!` (probes/regression-pairs-b L6, L7).
@@ -1585,7 +1650,7 @@ makes the whole result `#VALUE!` (`TREND(A1:A6,B1:B6,D1:D2)`, trend L39-O39). Wi
 gives a row result (`TREND(A1:A6,B1:B6,{7,8})` is 1x2, SUM 15.17142857142857, trend L6-N6; ours 1 column, SUM 7.2). The multi-column known_x cases of the probe (L32, L33) hit text and blank cells, so the
 plain multi-column shape is unprobed.
 Evidence: probes/regression-trend (excel-graph, 2026-10-16, T-1620).
-Ours: differs for the empty arguments, array constants, single points, zero-variance x and the text/error inputs.
+Ours: differs for the empty arguments, array constants, zero-variance x and the text/error inputs. A single point with a constant term matches (T-1402: TREND is that value whatever new_x is, GROWTH its ln/exp round trip); a single point without one (`TREND(5,2,4,FALSE)`) is a fit through the origin, UNVERIFIED. The error-before-text and size-before-text order also applies to TREND, LINEST and LOGEST here, inferred from GROWTH/TREND cells and unprobed for them; a range that holds text and then an error cell gives that error, where probes/regression-trend says `#VALUE!` (T-1726). LINEST and LOGEST of one point are accepted by Excel (linest-modes K141, logest-modes K162); ours still rejects them (T-1741, T-1742).
 Status: VERIFIED (web)
 Tasks: T-1726 (overlaps T-1402)
 
@@ -1623,5 +1688,5 @@ as does a wrong argument count (`STANDARDIZE(5,3)`, a three-range `SUMX2PY2`); `
 written `_xlfn.`-prefixed in the file.
 Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
 Status: VERIFIED (excel-graph).
-Ours: the mismatches above are open.
+Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755

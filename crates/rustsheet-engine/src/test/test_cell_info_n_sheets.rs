@@ -63,23 +63,50 @@ fn info_timezones() {
     assert!(timezones > 400);
 }
 
+/// `CELL("filename")` is `#VALUE!` in every form, named workbook or not (probes/
+/// info-cell-address-cross-sheet Calc!B1:B4, excel-graph, T-2052).
 #[test]
-fn cell_filename() {
-    // Default workbook name is model
+fn cell_filename_is_value_error() {
     let mut model = new_empty_model();
-
+    model.add_sheet("Data").unwrap();
     model._set("A1", "=CELL(\"filename\")");
-
+    model._set("A2", "=CELL(\"filename\",B2)");
+    model._set("A3", "=CELL(\"filename\",Data!B2)");
     model.evaluate();
+    for cell in ["A1", "A2", "A3"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!");
+    }
 
-    assert_eq!(model._get_text("A1"), *"[model.xlsx]Sheet1");
-
-    model.workbook.name = "Expenses".to_string();
-    model.rename_sheet("Sheet1", "2026").unwrap();
-
+    model.workbook.name = String::new();
     model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+}
 
-    assert_eq!(model._get_text("A1"), *"[Expenses.xlsx]2026");
+/// `CELL("address")` of a reference on another sheet is prefixed `[<file>]<sheet>!`, the sheet
+/// name never quoted, a range giving its top-left cell (probes/info-cell-address-cross-sheet,
+/// excel-graph, T-2042).
+#[test]
+fn cell_address_on_another_sheet_names_the_file() {
+    let mut model = new_empty_model();
+    model.workbook.name = "book".to_string();
+    model.add_sheet("My Sheet").unwrap();
+    model.add_sheet("Bob's").unwrap();
+    model._set("A1", "=CELL(\"address\",'My Sheet'!B2)");
+    model._set("A2", "=CELL(\"address\",'Bob''s'!B2:C3)");
+    model._set("A3", "=CELL(\"address\",Sheet1!B2)");
+    model._set("A4", "=CELL(\"address\",('My Sheet'!B2,'My Sheet'!C3))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"[book.xlsx]My Sheet!$B$2");
+    assert_eq!(model._get_text("A2"), *"[book.xlsx]Bob's!$B$2");
+    assert_eq!(model._get_text("A3"), *"$B$2");
+    // A union on another sheet is unprobed.
+    assert_eq!(model._get_text("A4"), *"#N/IMPL!");
+
+    // Excel's form for an unsaved workbook is unprobed.
+    model.workbook.name = String::new();
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A3"), *"$B$2");
 }
 
 /// N lifts over an array, an error element kept (probes/n-array-lift; T-1616).

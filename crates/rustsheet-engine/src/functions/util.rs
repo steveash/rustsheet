@@ -12,7 +12,7 @@ use crate::{
     functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
-    reference_operators::RefArg,
+    reference_operators::{Picked, RefArg},
 };
 
 pub(crate) mod aggregate_args;
@@ -180,21 +180,24 @@ pub(crate) fn is_at_xlookup_take(node: &Node) -> bool {
     )
 }
 
+/// Whether `node` is a written multi-sheet 3-D span (`Sheet1:Sheet2!A1`, a one-cell one included).
+pub(crate) fn is_multi_sheet_span(node: &Node) -> bool {
+    matches!(
+        node.ungrouped(),
+        Node::SheetSpanKind { first_index, last_index, .. } if first_index != last_index
+    )
+}
+
 /// Whether `node` is a multi-sheet 3-D span, possibly as a branch of IF (which hands its branch on
 /// as a reference). Recursion is bounded by the parser's depth cap.
 pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
     let node = node.ungrouped();
     match node {
-        Node::SheetSpanKind {
-            first_index,
-            last_index,
-            ..
-        } => first_index != last_index,
         Node::FunctionKind {
             kind: Function::If,
             args,
         } => args.iter().skip(1).any(is_span_or_if_of_span),
-        _ => false,
+        _ => is_multi_sheet_span(node),
     }
 }
 
@@ -407,6 +410,11 @@ impl Model {
             Node::LambdaCallKind { lambda, args } => {
                 return self.call_callee_as_reference(lambda, args, cell)
             }
+            // A lifted OFFSET is an array of references (SPEC-0014).
+            Node::FunctionKind {
+                kind: Function::Offset,
+                args,
+            } => return self.offset_reference(args, cell),
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
@@ -426,8 +434,9 @@ impl Model {
 
     /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL, AREAS, SUM, COUNT, AVERAGE, MIN, MAX
     /// and AVERAGEA take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a
-    /// range are also the cells they pick (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c
-    /// H4:H14, T-1206; -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
+    /// range, also as the arm a scalar IF, CHOOSE, IFS or SWITCH picks or a LET body (T-2009,
+    /// T-2014), are the cells they pick (probes/subtotal-reference-operands-b H12, H15:H17,
+    /// T-1175; -c H4:H14, T-1206; -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
     /// same rule. The call list is [`Function::picks_reference`].
     pub(crate) fn evaluate_picked_reference_arg(
         &mut self,
@@ -445,14 +454,33 @@ impl Model {
         blanks: CachedBlanks,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        if let Node::FunctionKind { kind, args } = node.ungrouped() {
-            if kind.picks_reference() {
-                if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
-                    return RefArg::from(result);
-                }
-            }
+        // The arm a scalar IF, CHOOSE, IFS or SWITCH picks and a LET body follow the same rule,
+        // however deeply they nest: `SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))` is 9 and
+        // `AREAS(LET(v,1,XLOOKUP(..)))` 1 (probes/subtotal-if-choose-over-xlookup A10-A42,
+        // T-2009); `SUBTOTAL(9,IFS(TRUE,XLOOKUP(..)))` is 9 and `SUBTOTAL(9,SWITCH(1,1,(H1,I2)))`
+        // 11 (probes/subtotal-ifs-switch-reference-picks, T-2014). Each condition, index, case
+        // and binding is read once, as `reference_arg_reading` reads them.
+        let Node::FunctionKind { kind, args } = node.ungrouped() else {
+            return self.reference_arg_reading(node, blanks, cell);
+        };
+        if let Some(picked) = self.pick_step(kind, args, cell) {
+            return match picked {
+                Picked::Node(arm) => self.picked_reference_arg_reading(arm, blanks, cell),
+                Picked::Value(value) => RefArg::Value(value),
+            };
         }
-        self.reference_arg_reading(node, blanks, cell)
+        match kind {
+            Function::Let => self
+                .let_scope(args, cell, |model, body| {
+                    model.picked_reference_arg_reading(body, blanks, cell)
+                })
+                .unwrap_or_else(RefArg::Value),
+            _ if kind.picks_reference() => match self.evaluate_reference_form(kind, args, cell) {
+                Some(result) => RefArg::from(result),
+                None => self.reference_arg_reading(node, blanks, cell),
+            },
+            _ => self.reference_arg_reading(node, blanks, cell),
+        }
     }
 
     /// [`Self::evaluate_picked_reference_arg`] for an aggregate that skips the blanks of a range

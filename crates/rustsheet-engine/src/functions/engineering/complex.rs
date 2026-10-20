@@ -18,7 +18,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    number_format::{number_to_text, to_precision},
+    number_format::{complex_part_to_text, to_precision},
 };
 
 /// The angle `atan2(y,x)·n` at which IMPOWER stops answering. Bracketed by probe, not derived:
@@ -65,9 +65,9 @@ impl fmt::Display for Complex {
         } else if y == -1.0 {
             "-".to_string()
         } else {
-            number_to_text(y)
+            complex_part_to_text(y)
         };
-        let x_str = number_to_text(x);
+        let x_str = complex_part_to_text(x);
         if y == 0.0 && x == 0.0 {
             write!(f, "0")
         } else if y == 0.0 {
@@ -202,15 +202,24 @@ fn complex_result(x: f64, y: f64, suffix: Suffix) -> CalcResult {
     CalcResult::String(Complex { x, y, suffix }.to_string().into())
 }
 
-/// How a complex argument reads empty text: IMCOS, IMCOSH, IMCOT, IMCSC, IMCSCH, IMSUM,
-/// IMPRODUCT parse it (`#NUM!`), the other functions read it as 0. `Zero` is our older behavior,
-/// not Excel's rule for IMSQRT (probably `#NUM!`, T-1385).
+/// A result part that overflows or is NaN is `#NUM!`, not `inf` text: `IMCOSH("1000")`,
+/// `IMSIN("1+1000i")` (probes/eng-complex-overflow A1-A4; engineering.md "IM* results that overflow").
+fn finite_complex_result(x: f64, y: f64, suffix: Suffix, cell: CellReferenceIndex) -> CalcResult {
+    if x.is_finite() && y.is_finite() {
+        complex_result(x, y, suffix)
+    } else {
+        num_error(cell)
+    }
+}
+
+/// How a complex argument reads a blank and empty text.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum EmptyText {
-    Zero,
+    /// IMSUM and IMPRODUCT: both are parsed (their walk handles a blank cell itself).
     Parse,
-    /// IMSUB, IMDIV and IMPOWER: a blank cell is 0 (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
-    /// Sheet2 G7:G10), empty text is `#NUM!` (probes/eng-imsub A12, A13).
+    /// Every other IM* argument: a blank cell is 0 (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
+    /// Sheet2 G7:G10, probes/eng-gen-sample-edges D3, D26:D32), empty text, typed or from a
+    /// formula, is `#NUM!` (probes/eng-imsub A12, A13, probes/eng-gen-sample-edges D1:D25).
     ZeroIfBlank,
 }
 
@@ -252,9 +261,7 @@ impl Model {
         }
         let blank = matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg);
         let value = Self::cast_string_ref(value, cell)?;
-        if value.is_empty()
-            && (empty == EmptyText::Zero || (empty == EmptyText::ZeroIfBlank && blank))
-        {
+        if value.is_empty() && empty == EmptyText::ZeroIfBlank && blank {
             return Ok((0.0, 0.0, Suffix::I));
         }
         parse_complex_number(&value).map_err(|_| num_error(cell))
@@ -266,7 +273,6 @@ impl Model {
         &mut self,
         kind: Function,
         args: &[Node],
-        empty: EmptyText,
         op: ComplexFn,
         cell: CellReferenceIndex,
     ) -> CalcResult {
@@ -274,7 +280,7 @@ impl Model {
             let [value] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
-            match Self::complex_of(value, empty, cell) {
+            match Self::complex_of(value, EmptyText::ZeroIfBlank, cell) {
                 Ok(z) => op(z, cell),
                 Err(error) => error,
             }
@@ -329,51 +335,39 @@ impl Model {
     }
 
     pub(crate) fn fn_imabs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imabs, args, EmptyText::Zero, imabs, cell)
+        self.lift_complex(Function::Imabs, args, imabs, cell)
     }
 
     pub(crate) fn fn_imaginary(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imaginary, args, EmptyText::Zero, imaginary, cell)
+        self.lift_complex(Function::Imaginary, args, imaginary, cell)
     }
 
     pub(crate) fn fn_imargument(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(
-            Function::Imargument,
-            args,
-            EmptyText::Zero,
-            imargument,
-            cell,
-        )
+        self.lift_complex(Function::Imargument, args, imargument, cell)
     }
 
     pub(crate) fn fn_imconjugate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(
-            Function::Imconjugate,
-            args,
-            EmptyText::Zero,
-            imconjugate,
-            cell,
-        )
+        self.lift_complex(Function::Imconjugate, args, imconjugate, cell)
     }
 
     pub(crate) fn fn_imcos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcos, args, EmptyText::Parse, imcos, cell)
+        self.lift_complex(Function::Imcos, args, imcos, cell)
     }
 
     pub(crate) fn fn_imcosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcosh, args, EmptyText::Parse, imcosh, cell)
+        self.lift_complex(Function::Imcosh, args, imcosh, cell)
     }
 
     pub(crate) fn fn_imcot(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcot, args, EmptyText::Parse, imcot, cell)
+        self.lift_complex(Function::Imcot, args, imcot, cell)
     }
 
     pub(crate) fn fn_imcsc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcsc, args, EmptyText::Parse, imcsc, cell)
+        self.lift_complex(Function::Imcsc, args, imcsc, cell)
     }
 
     pub(crate) fn fn_imcsch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imcsch, args, EmptyText::Parse, imcsch, cell)
+        self.lift_complex(Function::Imcsch, args, imcsch, cell)
     }
 
     /// `IMDIV(inumber1, inumber2)`: both lift over an array and refuse a multi-cell range
@@ -398,27 +392,24 @@ impl Model {
                 let d = x2 * r + y2;
                 ((x1 * r + y1) / d, (y1 * r - x1) / d)
             };
-            if !re.is_finite() || !im.is_finite() {
-                return num_error(cell);
-            }
-            complex_result(re, im, suffix)
+            finite_complex_result(re, im, suffix, cell)
         })
     }
 
     pub(crate) fn fn_imexp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imexp, args, EmptyText::Zero, imexp, cell)
+        self.lift_complex(Function::Imexp, args, imexp, cell)
     }
 
     pub(crate) fn fn_imln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imln, args, EmptyText::Zero, imln, cell)
+        self.lift_complex(Function::Imln, args, imln, cell)
     }
 
     pub(crate) fn fn_imlog10(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imlog10, args, EmptyText::Zero, imlog10, cell)
+        self.lift_complex(Function::Imlog10, args, imlog10, cell)
     }
 
     pub(crate) fn fn_imlog2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imlog2, args, EmptyText::Zero, imlog2, cell)
+        self.lift_complex(Function::Imlog2, args, imlog2, cell)
     }
 
     // IMPOWER(imnumber, power): both lift over an array and refuse a multi-cell range
@@ -463,10 +454,7 @@ impl Model {
                 return num_error(cell);
             };
             let (x, y) = (radius * cos, radius * sin);
-            if !x.is_finite() || !y.is_finite() {
-                return num_error(cell);
-            }
-            complex_result(x, y, suffix)
+            finite_complex_result(x, y, suffix, cell)
         })
     }
 
@@ -477,27 +465,27 @@ impl Model {
     }
 
     pub(crate) fn fn_imreal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imreal, args, EmptyText::Zero, imreal, cell)
+        self.lift_complex(Function::Imreal, args, imreal, cell)
     }
 
     pub(crate) fn fn_imsec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsec, args, EmptyText::Zero, imsec, cell)
+        self.lift_complex(Function::Imsec, args, imsec, cell)
     }
 
     pub(crate) fn fn_imsech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsech, args, EmptyText::Zero, imsech, cell)
+        self.lift_complex(Function::Imsech, args, imsech, cell)
     }
 
     pub(crate) fn fn_imsin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsin, args, EmptyText::Zero, imsin, cell)
+        self.lift_complex(Function::Imsin, args, imsin, cell)
     }
 
     pub(crate) fn fn_imsinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsinh, args, EmptyText::Zero, imsinh, cell)
+        self.lift_complex(Function::Imsinh, args, imsinh, cell)
     }
 
     pub(crate) fn fn_imsqrt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imsqrt, args, EmptyText::Zero, imsqrt, cell)
+        self.lift_complex(Function::Imsqrt, args, imsqrt, cell)
     }
 
     /// `IMSUB(inumber1, inumber2)`: both lift over an array and refuse a multi-cell range
@@ -509,12 +497,11 @@ impl Model {
             cell,
             &mut |_, values| match Self::complex_pair_of(values, cell) {
                 Ok(((x1, y1, suffix), (x2, y2, _))) => {
-                    let (re, im) = (x1 - x2, y1 - y2);
-                    if re.is_finite() && im.is_finite() {
-                        complex_result(re, im, suffix)
-                    } else {
-                        num_error(cell)
-                    }
+                    // Excel: a part that overflows is 0 and the other part stays
+                    // (`IMSUB("9E307","-9E307")` is "0", `IMSUB("9E307+1i","-9E307")` is "i";
+                    // probes/eng-complex-overflow A7, A13-A15, A21).
+                    let finite_or_zero = |part: f64| if part.is_finite() { part } else { 0.0 };
+                    complex_result(finite_or_zero(x1 - x2), finite_or_zero(y1 - y2), suffix)
                 }
                 Err(error) => error,
             },
@@ -593,6 +580,13 @@ impl Model {
                     let cells: usize = array.iter().map(Vec::len).sum();
                     (0, u64::try_from(cells).unwrap_or(u64::MAX))
                 }
+                RefArg::Grid(grid) => {
+                    let (rows, columns) = grid.dims();
+                    (
+                        0,
+                        u64::try_from(rows.saturating_mul(columns)).unwrap_or(u64::MAX),
+                    )
+                }
                 RefArg::Value(_) => (0, 1),
             };
             visits = visits.saturating_add(walked);
@@ -619,14 +613,22 @@ impl Model {
                         }
                         value => Self::complex_of(&value, EmptyText::Parse, cell)?,
                     };
-                    total = Some(match total {
+                    let next = match total {
                         None => z,
                         Some((x, y, suffix)) if suffix == z.2 => match fold {
                             ComplexFold::Sum => (x + z.0, y + z.1, suffix),
                             ComplexFold::Product => (x * z.0 - y * z.1, x * z.1 + y * z.0, suffix),
                         },
                         Some(_) => return Err(value_error(cell)),
-                    });
+                    };
+                    // An overflow is `#VALUE!` at once: it beats a later bad argument, a later
+                    // blank and a later cancelling term (`IMSUM("9E307","9E307","-9E307")`,
+                    // `IMSUM("9E307","9E307",1,"x")`, `IMPRODUCT("1E200","1E200",<blank>)`;
+                    // probes/eng-complex-overflow A5, A8-A10).
+                    if !next.0.is_finite() || !next.1.is_finite() {
+                        return Err(value_error(cell));
+                    }
+                    total = Some(next);
                     Ok(())
                 },
             );
@@ -653,7 +655,7 @@ impl Model {
     }
 
     pub(crate) fn fn_imtan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_complex(Function::Imtan, args, EmptyText::Zero, imtan, cell)
+        self.lift_complex(Function::Imtan, args, imtan, cell)
     }
 }
 
@@ -678,12 +680,12 @@ fn imconjugate((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResul
     complex_result(x, -y, suffix)
 }
 
-fn imcos((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    complex_result(x.cos() * y.cosh(), -x.sin() * y.sinh(), suffix)
+fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    finite_complex_result(x.cos() * y.cosh(), -x.sin() * y.sinh(), suffix, cell)
 }
 
-fn imcosh((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix)
+fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    finite_complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix, cell)
 }
 
 fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -729,14 +731,17 @@ fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 }
 
 fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    let (re, im) = (x.exp() * y.cos(), x.exp() * y.sin());
     // Overflow of a pure real argument is `#NUM!` (probes/eng-im-overflow A9, A10;
-    // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus
-    // instead (A12, engineering.md); that is not implemented, TODO(T-2002).
-    if !re.is_finite() || !im.is_finite() {
-        return num_error(cell);
+    // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus at
+    // DBL_MAX instead (A12: `IMEXP("1000+1i")` is `9.71297746009434E+307+1.51270661257499E+308i`,
+    // DBL_MAX times cos 1 and sin 1). Only A12 is evidenced, so a negative imaginary part or a tiny
+    // one are unprobed (engineering.md).
+    let modulus = x.exp();
+    if modulus == f64::INFINITY && y != 0.0 && y.is_finite() {
+        return complex_result(f64::MAX * y.cos(), f64::MAX * y.sin(), suffix);
     }
-    complex_result(re, im, suffix)
+    let (re, im) = (modulus * y.cos(), modulus * y.sin());
+    finite_complex_result(re, im, suffix, cell)
 }
 
 fn imln((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -783,12 +788,12 @@ fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     complex_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, suffix)
 }
 
-fn imsin((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    complex_result(x.sin() * y.cosh(), x.cos() * y.sinh(), suffix)
+fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    finite_complex_result(x.sin() * y.cosh(), x.cos() * y.sinh(), suffix, cell)
 }
 
-fn imsinh((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix)
+fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
 }
 
 fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {

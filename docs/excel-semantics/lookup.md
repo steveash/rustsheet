@@ -681,9 +681,18 @@ call's result), not a value. What the caller sees depends on who reads the eleme
   `INDEX(TRIMRANGE(A1:B5,0,{0;1}),1,1)`). This is the nested-array `#SPILL!` of lookup-argument-modes H34:H35.
 - The shape is the lifted argument's: `ROWS`/`COLUMNS` count elements (`ROWS(OFFSET(A1,0,0,{1;2}))` is 2,
   `COLUMNS(TRIMRANGE(A1:B5,0,{0;1}))` is 1), and `ISREF` of the whole result is a single FALSE.
-- SUM adds a one-cell element's value; a multi-cell element seems to add only its first cell
-  (`SUM(OFFSET(A1,0,0,{1;2}))` is 2 with A1 = 1, A2 = 2: A1 + A1). `SUM(INDIRECT(C1:C3))` is A1 + B2 + A3,
-  `SUM(OFFSET(A1,{0;1},0))` is A1 + A2. Unconfirmed: one probe cell only.
+- SUM, AVERAGE, MIN, MAX and PRODUCT read each element's top-left cell as a range cell (text,
+  booleans and blanks skipped; an error element is its error): with A1 = 1, A2 = 100,
+  `SUM(OFFSET(A1,0,0,{1;2}))` and `SUM(OFFSET(A1,0,0,{2;3}))` are 2, `SUM(OFFSET(A2,0,0,{1;2}))` 200,
+  `SUM(OFFSET(A1,{0;1},{0,1}))` 303, `SUM(INDIRECT({"A1";"Nope"}))` and `AVERAGE(OFFSET(A1,{0;-1},0))` `#REF!`. COUNT counts no element (0), COUNTA every
+  element, a blank one too, and SUMPRODUCT reads each as 0. SUBTOTAL, COUNTIF, SUMIF(S), COUNTBLANK, AREAS,
+  ROW, COLUMN, CELL, ISFORMULA, N and T lift, once per whole element (`SUBTOTAL(9,OFFSET(A1,0,0,{1;2;3}))`
+  spills 1, 101, 10101). Operators, IS* functions, IFERROR, TEXTJOIN and AGGREGATE see `#VALUE!` per element;
+  IF, CHOOSE, LET, VSTACK, TAKE and DROP inside SUM hand the elements on; OFFSET over such a result lifts
+  again. Full table with cells: SPEC-0014 "Excel behavior to match" (probes/reference-lift-consumers,
+  -b1c, -b1d, -b2, excel-graph, 2026-10-19, T-1955). MEDIAN, STDEV.S, VAR.S, LARGE, SMALL, COUNTIFS,
+  AVERAGEIF, MAXIFS, SUMSQ, AVERAGEA, MAXA and CONCAT over one are open: the workbooks holding them did
+  not open in Excel for the web (T-2065).
 - Per element, the scalar rules hold: an element off the sheet is `#REF!` (`OFFSET(A1,{0;-1},0)`, second element);
   `INDIRECT("R2C1",{TRUE;FALSE})` is `#REF!`, A2; a scalar error argument next to the lifted one is that error in every
   element (`INDEX(OFFSET(A1,{0;1},NA()),1,1)` is `#N/A`).
@@ -695,9 +704,14 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 Evidence: probes/reference-lift-elements (excel-graph, 2026-10-19, T-1810); probes/lookup-argument-modes F14:H15,
 F20:H21, F34:H35 (excel-graph, 2026-10-09, T-1238).
 Status: VERIFIED (excel-graph)
-Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier: not yet, specified by T-1955
-and built by T-1956 (OFFSET) and T-1957 (INDIRECT, TRIMRANGE).
-Tasks: T-1810, T-1955, T-1956, T-1957, T-1958
+Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier (SPEC-0014, T-1956): `RefGrid` and
+`RefArg::Grid` (reference_operators.rs) with its value view `RefGrid::to_values`; OFFSET as producer
+(`Model::offset_reference`, lookup_and_reference/offset.rs, lifted by `Model::lift_references` in lift/driver.rs; its
+spill shape from `static_analysis_offset`); INDEX's pick (`Model::index_grid`, index.rs), ROWS/COLUMNS (the value
+view's shape) and ISREF (FALSE). Not yet: INDIRECT and TRIMRANGE (T-1957), the top-left aggregates such as
+`SUM(OFFSET(A1,{0;1},0))` (reference-lift-elements G12, H12; T-2063), the per-element callers (T-2064) and the
+LET, IF and CHOOSE pass-through (T-2078).
+Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065
 
 ## XLOOKUP: an error lookup_value beats a size mismatch
 Rule (VERIFIED, probes/workday-serial-zero F40, excel-graph, 2026-10-19, T-1254): `XLOOKUP(NA(),A1:A4,B1:B5)` is

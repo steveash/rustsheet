@@ -331,13 +331,20 @@ compiling, too-big attempts included (2,048 small patterns), and hold 64 MiB of 
 after each search (none is evicted, so patterns that cycle compile once). Its searches (functions/text/regex_engine.rs)
 run on a lazy DFA that gives up when it thrashes (after 3 cache clears, below 10 bytes a state, the regex crate's own
 setting) and then on a PikeVM; the DFA is charged what its cache says it scanned (4 a byte) and built (8 a byte of
-state), the PikeVM its span times its NFA's state count (5 a state-byte) before it runs, 64 a search, and a call may
+state), the PikeVM (T-1829) 21 for each NFA state a scan visits that measures the span a leftmost-first search needs, and
+54 more for each look-around it evaluates (a Unicode `\b` or `\B` costs about three visits; a chain of 40 over
+`REPT("éa ",10000)&SEQUENCE(300)` is `#ERROR!` after about 1 s), and 3 more for each range of a sparse class state
+(a large Unicode class) its byte step walks (T-1988: `\b[\w\s\d]{30}q` over `REPT("日a ",8000)&SEQUENCE(80)` is
+`#ERROR!` after about 1 s, not 1.6) (the PikeVM then runs over that span alone; an anchored search is charged its span times its state count, 5 a
+state-byte), 64 a search, and a call may
 spend 2^30 (about 1 s of the slowest searches; `SUM(--REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x"))` fits, 20 MB).
 A pattern whose DFA thrashes over a lot of text (`a[ab]{100}c|b[ab]{100}c` over 560 texts of 30,000 bytes) and a call
-past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). Iterating matches on the PikeVM
-charges every successive search the rest of the text, and a pattern with `\b` runs on the PikeVM over non-ASCII
-text (the lazy DFA quits there), so `COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is `#ERROR!` where
-Excel returns an array (T-1829 charges it by the work done). A REGEXREPLACE searches twice,
+past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). A pattern with `\b` runs on the
+PikeVM over non-ASCII text (the lazy DFA quits there); iterating its matches costs what the searches read
+(`COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is 500 since T-1829, the match count Excel's
+`REPT("naïve ",3)` case (3, probes/regex-ascii-classes A5) leads one to expect; T-1272 charged each
+search the rest of the text), while a search that truly reads to the end every time (`a.*z|a|\bq` over
+`REPT("a",20000)&"é"`) is still `#ERROR!`. A REGEXREPLACE searches twice,
 once to size its result: over 65,535 UTF-16 units it is
 `#CALC!` as Excel's is, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`;
 "REGEXREPLACE results are capped at 65,535 UTF-16 units" below); a lifted REGEXREPLACE whose results pass the text
@@ -351,7 +358,7 @@ Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directi
 Status: DEVIATION (decision 0014)
 Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829
+Tasks: T-1272, T-1829, T-1988
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
@@ -614,6 +621,21 @@ Ours: matches. Implemented in `Replacement::new`, `CaseState` (functions/text/re
 Status: VERIFIED (excel-graph)
 Tasks: T-1688, T-1897
 
+## REGEX* character classes are Unicode; `$` and `.` around line breaks (T-1829)
+Rule: Excel's PCRE2 runs with Unicode properties (UCP): `\w` matches any letter or digit, `é`, `日` and the Kelvin sign
+included (`REGEXEXTRACT("naïve","\w+")` is "naïve"; `\W` does not match `é`; `[\w]`, `[^\W]` alike); `\b` sees
+`é` as a word character (`REGEXREPLACE("café foo","\bfoo\b","x")` is "café x", `"caféfoo"` is unchanged, `a\b` does
+not match in "aé"); `\d` matches the Arabic-Indic three and the full-width digit; `\s` matches NBSP, U+2003, U+3000,
+U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]]` and `[[:word:]]` match `é`;
+`(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
+`a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
+Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
+Ours: matches except that `[[:alpha:]]` and `[[:word:]]` are ASCII (A15, A16), `(*UCP)`, `\X`, `\h` and `\R` are
+`#VALUE!` (A17, A27, A41, A42) and `$` does not match before a final LF (A34): the POSIX classes are T-1903's, the
+rest the matcher work of T-1898-T-1900.
+Status: VERIFIED (excel-graph)
+Tasks: T-1829 (probe), T-1900, T-1903
+
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
 `(?<n>abc)\k<n>`, `(a)\g1`; with case_sensitivity 1 `(a)\1` matches `Aa`), a backreference to a missing group is
@@ -682,11 +704,12 @@ on `A` and `&` is FALSE); a literal `^`, `-` or `&` next to a class stays litera
 Syntax: `[a[:digit:]]` and `[[:alpha:][:digit:]]` mix classes with other items; `[\[:alpha:]]` is no class (`":"` FALSE).
 `[:alpha:]` outside a bracket, an unknown or upper-case name (`[[:foo:]]`, `[[:ALPHA:]]`), `[[.a.]]`, `[[=a=]]` and a range from a class
 (`[[:alpha:]-z]`, `[a[:upper:]-z]`) are invalid patterns (`#VALUE!`, ERROR.TYPE 3; probes/regex-posix-classes Z1-Z3, Z8-Z10, regex-posix-classes-b A4, A5; T-1985).
-UNVERIFIED (probe pending): `[[:alpha:]-]` and `[-[:alpha:]]` stay valid; a top-level `[.a.]` or `[..]`, a multi-character `[[.ab.]]` and a range that ends at a class (`[a-[:alpha:]]`) are taken as invalid by PCRE2's rules (`check_posix_syntax`, ERR50), and ours matches for all but the last (not yet matched).
+`[[:alpha:]-]` and `[-[:alpha:]]` stay valid (a literal hyphen next to a class); a top-level `[.a.]` or `[..]`, a multi-character `[[.ab.]]` and a range that ends at a class (`[a-[:alpha:]]`, `[a-[:digit:]]`, and `[^a-[:alpha:]]`) are invalid patterns (`#VALUE!`, ERROR.TYPE 3), as PCRE2's `check_posix_syntax` has it (probes/regex-posix-syntax-edges A1-A14, excel-graph, 2026-10-19, T-2010). Ours already agrees on all fourteen.
 UNVERIFIED: the characters the probe does not cover (U+180E and U+061C, U+2066-U+2069 in graph and print, U+180E in blank, spacing marks
 in word) follow PCRE2's documented UCP definitions; Excel already departs from stock PCRE2 once (`&&` intersects), so the docs are weak evidence.
 Evidence: probes/regex-posix-classes (excel-graph, 2026-10-19): 47 characters × 19 patterns, and column Z for the syntax;
 probes/regex-posix-classes-b (bracket neighbours, nested and negated `(?i)`, `&&`, case_sensitivity 1);
+probes/regex-posix-syntax-edges (hyphen next to a class, `[.a.]`, `[..]`, `[[.ab.]]`, a range ending at a class);
 probes/regexreplace-limit-and-syntax A23.
 Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled (and rejects the invalid syntax above in `invalid_ast`);
 upper and lower become a `(?-i:...)` alternative of their bracket.
