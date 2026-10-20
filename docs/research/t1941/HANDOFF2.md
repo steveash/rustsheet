@@ -221,3 +221,27 @@ The continuation task is `docs/tasks/M9/T-2122-continue-t-1941-crack-the-four-op
 `docs/tasks/M9/T-2123-ship-t-1941-gamma-models-bit-exact-pieces.md`. Its "How to run" section is the restart prompt: one
 coordinator plus one worker per kernel (K1, K2, K3, (1.5,2]) and one reviewer, all on this branch, each starting
 from sections 3-7 here.
+
+## 11. Log after the restart snapshot
+
+- **08:00 (1.5,2], W6.**
+  - A "low stages + final N/D in 80-bit" model gave 56.8% exact R. W6's own planted control refuted it:
+    - lowfit80 residual on a planted MASK_80 truth: 5.83e-17;
+    - on a planted all-stored truth: 1.31e-16;
+    - on real data: 1.14e-16, which is stored-like.
+  - So the low stages ARE stored, and the dark low sites mean wrong coefficients. Trap §5.1 again.
+  - The honest best is 42.7% exact R (all-stored, `w6/data/xl_chain_d3ls`).
+  - D0 ≈ 0.00164.
+  - N8/D8 alias scans are running.
+- **08:00 K1, W4.**
+  - A dip-weighted global climb (BKZ basis, pairs, singles, held-out half) finds no set serving both the dip and
+    [1, 1.8); plain1 is a local maximum.
+  - Next: the k1l ladder unwrap.
+- **08:00 K3, W5.** The first real ladder slopes (anchors a, b) are 1e5-1.5e6 cycles/x, so the true offsets are far
+  (≥ 1e7 scale). W5 added rungs 22-26 (`k3l[a-f]2[2-6]`) and anchors g-l (`k3l[g-l]`), 138 cases.
+- **Fill queue** (coordinator scratch `fillqueue.sh`):
+  1. k3l a-f 00-21 (in progress);
+  2. k3l a-f rungs 22-26;
+  3. k1l (78, generator `w4/gen_k1ladder.py`);
+  4. k3l g-l;
+  5. then w6t/k3t.
