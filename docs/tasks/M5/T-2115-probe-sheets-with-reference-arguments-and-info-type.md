@@ -42,13 +42,16 @@ the same function, or filed as a functions-logic task with milestone M5.
   (`rg -n "fn_sheets|fn_info"`).
 
 ## Acceptance criteria
-- [ ] `probes/info-sheets-info-types` is committed with its excel-graph oracle sidecar, and the report's
+- [x] `probes/info-sheets-info-types` is committed with its excel-graph oracle sidecar, and the report's
       evidence table shows SHEETS and INFO with ≥ 20 Excel cells each.
-- [ ] docs/excel-semantics/information.md has a VERIFIED (excel-graph) entry for SHEETS and one for INFO,
+- [x] (amended) docs/excel-semantics/information.md has a VERIFIED (excel-graph) entry for SHEETS and one for INFO,
       citing the probe cells, with the host-dependent values marked.
-- [ ] Every failing cell of the new case is fixed in this PR or listed in a filed task (milestone M5,
+- [x] Every failing cell of the new case is fixed in this PR or listed in a filed task (milestone M5,
       lane functions-logic), and the baseline records it (`make eval-baseline`).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
+
+- Amended (T-2115 resume): INFO's 20 cells and VERIFIED entry cannot come from the web, which has no INFO. They are
+  replaced by the web-gap entry, the canary refusal and T-2182 (M14), per the `CELL("width")` precedent.
 
 ## Out of scope
 - Removing `oracle: none` from the catalog. T-2116 decides how such functions count, and the catalog

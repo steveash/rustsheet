@@ -342,6 +342,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1729
 
 ## SHEETS counts the sheets a reference spans (VERIFIED, excel-graph)
+Status: VERIFIED (excel-graph). Tasks: T-2115, T-2181.
 Rule: `SHEETS(reference)` is the number of sheets the reference covers: 1 for a cell or range on one sheet, written
 bare, sheet-qualified or quoted (`SHEETS(A1)`, `SHEETS($A$1:$B$2)`, `SHEETS(Data!A1:B2)`, `SHEETS('Beta'!A1)`), and the
 count of sheets between the corners, inclusive, for a 3-D span in either order: with sheets Alpha, Beta, Gamma, Data,
@@ -356,6 +357,7 @@ Excel for the web (`SHEETS(S1:S3!A1)` and `SUM(S1:S3!A1)` were `#VALUE!`, while 
 fill of the same case). Excel quotes such names (`'S1:S3'!A1`); give probe sheets names that are not cell references.
 
 ## INFO is not implemented in Excel for the web
+Status: OBSERVED (excel-graph, web gap; desktop pending T-2182). Tasks: T-2115, T-2182.
 Rule (web): every INFO call is `#VALUE!` on Excel for the web, whatever the type_text: "recalc", "system", "release",
 "directory", "osversion", "origin", the legacy "memavail", "memused" and "totmem", `""` and `"x"`, in lower, upper or
 mixed case (`TYPE(INFO("release"))` 16, `ERROR.TYPE(INFO("x"))` 3, `ISTEXT(INFO("recalc"))` FALSE). Like

@@ -17,8 +17,9 @@ content-type override), not a value parser: values are still decoded only by the
 An extra sheet is invisible to formulas except through the sheet count, so workbooks whose
 answer depends on it are refused rather than answered wrongly: `SHEETS()` with no argument and
 `INFO("numfile")`. The canary is appended after the last sheet, so `SHEETS(ref)` of a cell, range
-or 3-D span and `INFO` with another literal type cannot see it (every INFO call is refused anyway:
-Excel for the web does not implement INFO, T-2115). Whatever the
+or 3-D span cannot see it and is accepted. (`INFO` with another literal type cannot see it either,
+but every INFO call is refused separately: Excel for the web does not implement INFO, T-2115; the
+sheet-count check keeps its INFO branch for a desktop backend, T-2182.) Whatever the
 check cannot decide (`INFO(A1)`, `INFO("num"&"file")`, a non-reference `SHEETS` argument) is
 refused (T-2113).
 
@@ -100,7 +101,7 @@ def sheet_count_call(run: str) -> str | None:
     """The first SHEETS/INFO call in `run` whose answer the canary sheet would change, as text.
 
     Refuses when unsure: only `SHEETS(<plain reference>)` and `INFO("<literal other than
-    numfile>")` are let through.
+    numfile>")` pass this check (`_REFUSALS` still refuses every INFO call on the web).
     """
     for m in _SHEET_COUNT_CALL.finditer(run):
         arg = _call_argument(run, m.end())
