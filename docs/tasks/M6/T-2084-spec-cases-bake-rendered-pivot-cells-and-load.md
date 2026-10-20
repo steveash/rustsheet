@@ -19,6 +19,8 @@ SPEC-0015 "Spec cases in the eval adapter": add `rendered` to `PivotTableSpec` (
 
 ## Acceptance criteria
 - [ ] probes/getpivotdata-real-pivot is baked and, with T-2083 merged, passes all cells (baseline shrinks by 22).
+- [ ] `Txn::add_pivot_table` is `#[doc(hidden)]` test support with a typed `EditError::Pivot`; the Python binding defers it.
+- [ ] A probe with oracle values for the rendered label, caption, blank and grand-total cells the GETPIVOTDATA probes read (A5, C3, ...), so the baked layout rests on committed evidence.
 - [ ] spec2xlsx rejects a case whose `rendered` disagrees with the layout (test).
 - [ ] `make check` green; reviewers approve.
 

@@ -15,7 +15,7 @@ spec: docs/specs/SPEC-0015-pivot-tables-and-getpivotdata.md
 Excel evidence for the GETPIVOTDATA cases SPEC-0015 leaves unprobed.
 
 ## Context
-SPEC-0015 "Excel behavior to match", unknowns: several data fields (blank data_field, the Values field), an empty intersection of Average/Count/Max/Min pivots, number/date/boolean items, page fields and hidden items, two row fields with subtotals. Extend tools/src/rustsheet_tools/pivot.py only as far as each shape needs (filters/hidden items may need the builder to grow; cut a harness task if so). Record findings in docs/excel-semantics/web.md "GETPIVOTDATA against a pivot table".
+SPEC-0015 "Excel behavior to match", unknowns: several data fields (blank data_field, the Values field), an empty intersection of Average/Count/Max/Min pivots, number/date/boolean items, page fields and hidden items, two row fields with subtotals; the twelve numbered unknowns of SPEC-0015 "Excel behavior to match" (same field twice with the same item, an error in a record, array data_field/pivot_table/field, `""` as data_field, overlapping pivots, page-field areas, summation order on non-representable decimals, grouped/calculated fields and `saveData="0"`). Extend tools/src/rustsheet_tools/pivot.py only as far as each shape needs (filters/hidden items may need the builder to grow; cut a harness task if so). Record findings in docs/excel-semantics/web.md "GETPIVOTDATA against a pivot table".
 
 ## Acceptance criteria
 - [ ] Probe cases with oracle values for each unknown the builder can express; the rest listed as unprobed with why.
