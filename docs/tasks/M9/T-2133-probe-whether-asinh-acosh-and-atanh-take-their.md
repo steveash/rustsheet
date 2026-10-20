@@ -3,7 +3,7 @@ id: T-2133
 title: "Probe whether ASINH, ACOSH and ATANH take their ln from FYL2X like LN"
 milestone: M9
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ different results, then switch only if the oracle says so.
 ## Out of scope
 - LN itself (T-2123) and the gamma functions (T-2128, T-2129).
 - ATANH and ACOTH (T-0917).
+
+## Outcome
+Probe `probes-numeric/t2133-asinh-acosh-ln` (240 cells chosen where libm `ln` and `excel_ln` differ; excel-graph 2026-10-20): libm 2/240, `excel_ln` 238/240. ASINH and ACOSH now use `excel_ln`; the two one-ulp ACOSH misses (x = 20.82932287508296, 180.0774330018289) are baselined and recorded in numbers.md. ATANH was done by T-0917.
