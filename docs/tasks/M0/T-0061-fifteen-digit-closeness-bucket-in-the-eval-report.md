@@ -80,8 +80,9 @@ IM* functions.
   `quality/`. The count moves in most function PRs, and each change under `quality/` needs a
   decision record. A full `rustsheet-eval check` (`make eval-check`) holds the count to the lock;
   `update-baseline` (`make eval-baseline`) records drops, and rises that new cases account for.
-  The lock is 1,787: the in-scope visibly-off cells of the vendored gated suites (probes 1,207,
-  ironcalc-calc 323, gen-m5 181, gen-m10 67, fixtures 9). The lock read/write code shared with
+  The lock is 1,784: the in-scope visibly-off cells of the vendored gated suites (probes 1,207,
+  ironcalc-calc 323, gen-m5 178, gen-m10 67, fixtures 9). It was 1,787 until the merge of `main`
+  brought in three gen-m5 fixes. The lock read/write code shared with
   the evidence floor moved to `lock_file.rs`.
 - **Hand counts**: I ran this harness on the engine and suites at 35a5e71, the commit
   decision 0083 measured. The vendored suites (no poi or corpus-bench) give 4,581 visibly-off
