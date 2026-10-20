@@ -65,11 +65,11 @@ cases: `SUMXMY2("2",4)`, `SUMXMY2(TRUE,1)`, `SUMXMY2(,1)`, `SUMXMY2(range_with_e
 - Other `fn_get_two_matrices` callers.
 
 ## Outcome
-probes/sumx-blank-text-error-order (86 cells, excel-graph, 2026-10-20) settles the order of checks, now in coercion.md
+probes/sumx-blank-text-error-order (93 cells, excel-graph, 2026-10-20) settles the order of checks, now in coercion.md
 "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing". Arguments are checked one at a time, the first one first. An error value, or a
 one-cell reference holding an error, is returned at once. A blank one-cell reference or an omitted argument is `#VALUE!`.
 Next, different counts are `#N/A`, ahead of any error inside a range or an array. Then that error is returned. Then the
 result is `#DIV/0!` only when one side holds no number at all. Otherwise it is the sum over the numeric pairs, which is 0
 when there are none. `sumx_arg` and `sumx_fold` (sum.rs) implement this, so the shared `paired_values` and its other
-callers are unchanged. Unit tests are in test_sumx_pairing.rs.
-Eval: gen-m5 known failures 260 -> 232 (all 28 T-0961 cells fixed); probes +1 case (86/86 pass); 0 regressions in every suite (poi fetched).
+callers are unchanged (their count now comes from the shared `PairedArg::cell_count`). Unit tests are in test_sumx_pairing.rs; test_clipped_range_walks now expects `#N/A` for SUMXMY2 of a whole column with a late error against 3 cells (probe G7, G23).
+Eval: gen-m5 known failures 260 -> 232 (all 28 T-0961 cells fixed); probes +1 case (93/93 pass); 0 regressions in every suite (poi fetched).
