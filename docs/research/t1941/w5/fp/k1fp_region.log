@@ -1,0 +1,15 @@
+[1.20,1.70) seed 1 (150000 pts): real rms 1.928 med 1.135 | planted plain1 rms 1.956 med 1.177 | real-planted -0.028 | exact(plain1) 0.875 | outliers 0
+[1.20,1.70) seed 2 (150000 pts): real rms 0.932 med 0.633 | planted plain1 rms 0.938 med 0.638 | real-planted -0.006 | exact(plain1) 0.876 | outliers 0
+[1.20,1.70) seed 3 (150000 pts): real rms 1.085 med 0.707 | planted plain1 rms 1.146 med 0.738 | real-planted -0.061 | exact(plain1) 0.876 | outliers 0
+[1.84,1.97) seed 1 (150000 pts): real rms 1.214 med 0.831 | planted plain1 rms 1.219 med 0.832 | real-planted -0.005 | exact(plain1) 0.412 | outliers 0
+[1.84,1.97) seed 2 (150000 pts): real rms 1.247 med 0.847 | planted plain1 rms 1.325 med 0.903 | real-planted -0.078 | exact(plain1) 0.412 | outliers 0
+[1.84,1.97) seed 3 (150000 pts): real rms 1.217 med 0.830 | planted plain1 rms 1.267 med 0.842 | real-planted -0.050 | exact(plain1) 0.411 | outliers 0
+[1.00,1.20) seed 1 (150000 pts): real rms 0.964 med 0.658 | planted plain1 rms 0.948 med 0.648 | real-planted +0.017 | exact(plain1) 0.874 | outliers 0
+[1.00,1.20) seed 2 (150000 pts): real rms 0.951 med 0.655 | planted plain1 rms 0.975 med 0.669 | real-planted -0.023 | exact(plain1) 0.874 | outliers 0
+[1.00,1.20) seed 3 (150000 pts): real rms 1.004 med 0.680 | planted plain1 rms 0.965 med 0.660 | real-planted +0.039 | exact(plain1) 0.874 | outliers 0
+[1.70,1.84) seed 1 (150000 pts): real rms 1.156 med 0.774 | planted plain1 rms 1.113 med 0.761 | real-planted +0.043 | exact(plain1) 0.822 | outliers 0
+[1.70,1.84) seed 2 (150000 pts): real rms 1.110 med 0.760 | planted plain1 rms 1.117 med 0.764 | real-planted -0.007 | exact(plain1) 0.823 | outliers 0
+[1.70,1.84) seed 3 (150000 pts): real rms 1.355 med 0.831 | planted plain1 rms 1.111 med 0.763 | real-planted +0.243 | exact(plain1) 0.822 | outliers 0
+[1.97,2.00) seed 1 (150000 pts): real rms 1.328 med 0.904 | planted plain1 rms 1.305 med 0.886 | real-planted +0.023 | exact(plain1) 0.635 | outliers 0
+[1.97,2.00) seed 2 (150000 pts): real rms 1.268 med 0.867 | planted plain1 rms 1.275 med 0.869 | real-planted -0.007 | exact(plain1) 0.633 | outliers 0
+[1.97,2.00) seed 3 (150000 pts): real rms 9.389 med 1.537 | planted plain1 rms 1.333 med 0.911 | real-planted +8.056 | exact(plain1) 0.634 | outliers 41555

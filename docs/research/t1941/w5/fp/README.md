@@ -29,3 +29,17 @@ that coefficient bits alone move the calibration by about ±0.03, so a structure
 W4's x87-top mask (0.07 below real) is excluded. The mildest mask (N top 4 / D top 3, 0.015 below) is NOT
 excluded. **K1 is plain stored or has at most a small 80-bit head.** Mask lifts on K1 are coefficient errors hidden by unstored
 ops, as on K3.
+
+## K1 regional fingerprint (W4's request; `k1fp_region.py`, `k1fp_region.log`)
+A (7,7) Chebyshev LS fit per region; real vs planted plain1 (W4's best K1 set, all stored); 3 subsamples of 150k.
+| region | exact(plain1) | real − planted rms (3 seeds) | medians real / planted |
+|---|---|---|---|
+| [1.20,1.70) | 0.876 | −0.028, −0.006, −0.061 | 1.135/1.177, 0.633/0.638, 0.707/0.738 |
+| [1.84,1.97) (the dip) | 0.412 | −0.005, −0.078, −0.050 | 0.831/0.832, 0.847/0.903, 0.830/0.842 |
+| [1.00,1.20) | 0.874 | +0.017, −0.023, +0.039 | |
+| [1.70,1.84) | 0.822 | +0.043, −0.007, +0.243 (seed 3 fit) | |
+| [1.97,2.00) | 0.634 | +0.023, −0.007, fit failure | |
+Narrow-region fits are less stable (rms varies by seed), so compare within a seed. In the dip, Excel's noise is NOT above
+a stored chain's; it sits at or slightly below plain1's. So the model-free test finds no structural difference in
+[1.84,1.97). The low exact rate there points at coefficients (plain1 is wrong where that region is sensitive),
+not a different computation.
