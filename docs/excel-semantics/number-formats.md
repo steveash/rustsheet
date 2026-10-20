@@ -170,12 +170,23 @@ Tasks: T-1075 (Phase 4; decision 0039)
 
 ## Conditional sections
 Rule: a format with a single `[cond]` section that does not match prints the number in General
-(`[<10]#" Wow"` on 10 → "10", A3; `[>10]#" Big"` on 10 → "10", A5); `[<>10]` is a valid
-condition (A17 "1 Wow", A18 "10"); spaces inside the brackets are allowed (`[< 10]` → "1 Wow",
-A23; `[<      10]`, A25).
-Evidence: poi/FormatChoiceTests.xlsx A3:A25.
+(`[<10]#" Wow"` on 10 → "10", A3; `[>10]#" Big"` on 10 → "10", A5); `[<>10]` is a valid condition
+(A17 "1 Wow", A18 "10"); spaces between the comparator and the number are allowed (`[< 10]` → "1
+Wow", A23; `[< 10]`, A25). The same holds when the condition sits in a date section or after other
+tokens (`TEXT(1,"d"&<119 quoted a>&"[>5]d")` is "1", probes/text-format-length-limit-q A16) and when
+literals pad it (`TEXT(1,"[>5]0"&REPT(" ",79))` is "1", -d S!A31, -f A41:A42, -j A43). The evidence
+does not decide whether the fallback is General or the section without its literals: every probed
+value prints the same either way. The engine uses General, the simpler rule. The condition compares
+the signed value, and a matched one-section format keeps the minus: `[=-10]#" Wow"` on -11 is "-11",
+`[<>-10]#" Wow"` on -11 is "-11 Wow" and on -9 "-9 Wow" (poi/FormatConditionTests A32, A35, A37).
+Only a one-section format is covered; how conditions choose among two or three sections is not
+probed here (poi/FormatConditionTests is Excel-cached; the cells this rule fixes there are
+one-section ones).
+Evidence: poi/FormatChoiceTests.xlsx A3:A26 (excel-graph); probes/text-format-length-limit-d
+S!A31, -f Sheet1!A41:A42, -j Sheet1!A43, -q Sheet1!A16 (excel-graph); poi/FormatConditionTests.xlsx
+A3:A50 (Excel-cached).
 Status: VERIFIED
-Tasks: T-0936
+Tasks: T-0936 (implemented)
 
 ## Scientific formats with literals after `E`
 Rule: literals may sit between `E+`/`E-` and the exponent digits; the exponent sign is printed
@@ -308,7 +319,7 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
 Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g, -h, -i (T-1434), -j (T-1449), -k (T-1455), -l, -m (T-1481), -n to -s (T-1486), all excel-graph.
 Not explained or not implemented (known failures):
 - Unquoted letters after `_"` or `*"`: `_` and `*` take a following `"` as their character, so `@_"a` is "x a", `@_"aa` "x aa", `@_"a-"b"` "x a-b", `@*"a` "xa", `0_"a` on 7 "7 a" and `0*"a` "7a" (probes/text-format-length-limit-n A1, A6, -o A35, A37:A40; matched since T-1262 prints bare letters, except -o A37: `*` takes the `"` as its fill, which adds nothing in a number section, but we print a space for every fill, giving "7 a"; T-1735). `@_"aaa` is `#VALUE!`, and so are 20, 40 and 80 letters (n A2, A7:A9). We print the letters for those ("x aaa"). Unexplained: `aaa` may read as a weekday code, which T-1656's `@`-with-a-date-token rule would reject (T-1880).
-- `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. So is `"[>55555]0"` plus 79 spaces (-j A43), and `TEXT(1,"d"&<119 quoted>&"[>5]d")` is "1" (-q A16). We do not apply conditions yet (see "Conditional sections", T-0936).
+- `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. So is `"[>55555]0"` plus 79 spaces (-j A43), and `TEXT(1,"d"&<119 quoted>&"[>5]d")` is "1" (-q A16). Implemented by T-0936 (see "Conditional sections").
 - `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted (-g A42, A43; -i A100:A104). T-1450; implemented T-1262.
 
 Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook). The colon-run and text-section rules live in the shared formatter, so they apply to cell display too; they are probed through TEXT only.
@@ -447,9 +458,11 @@ Evidence: probes/displayed-text-formats S!A1:A24, B1:B4 (excel-graph `text`, 202
 Desktop `.Text` does depend on the width (`####` when a number does not fit), unprobed here: the
 excel-graph text is what the M10 suite scores (decision 0068).
 Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030), "1,234" for
-`TEXT(1234.5,"#,##0")` (a value failure too) and `#VALUE!` for the negative date (both T-1711).
+`TEXT(1234.5,"#,##0")` (a value failure too: Excel rounds the 15-digit decimal half away from zero,
+as General and ROUND do; ours rounds an exact binary tie to even, T-2206) and `#VALUE!` for the
+negative date (T-1711, T-1731).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1610, T-1711, T-2030
+Tasks: T-1610, T-1711, T-2030, T-2206
 
 ## Displayed text over an edge-value pool (T-1611)
 Rule: suite gen-m10 records Excel's displayed text (`Range.text`) of 135 format codes (every built-in,
@@ -486,10 +499,10 @@ text" section lists every cell ours gets wrong.
 Not implemented: ours passes 6,961 of 10,400 text cells (66.9%). Fill characters (T-1735),
 out-of-range dates (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
-scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), round-half (T-1711), the sign of -0.5 (T-1129),
+scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), round-half (T-2206: `0`, `#,##0`, `0%`, `"("0")"` ... on 2.5, -2.5, 36.5, 0.125 and 12.345 are "3", "-3", "37", "13%" and "1235%", half away from zero on the 15-digit decimal), the sign of -0.5 (T-1129),
 fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030
+Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030, T-2206
 
 ## Fraction formats
 Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells named by case-id prefix):
@@ -555,9 +568,31 @@ B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
   two digits, zero padded to two: 1.5 "3/02", -0.5 "-1/02", 0 "0/01", 1.99 "197/99", 1 "1/01", 0.5 "1/02",
   1234.5 "2469/02" (B13:I13); `# ?/00` on 1.5 "1 1/02", 1.99 "1 98/99", 1 "1     " (B14:G14).
 Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the displayed text.
-Mismatches with the probes (42 of 128 cells; the other 86 match, including currency, literals and `%`) are filed as
-T-2072 (`,` after the denominator), T-2073 (`0` numerator placeholders, minus and separator under `#`/`0`) and T-2074
-(`00` denominator, the `?/100` minus and the grouped integer). Placeholder denominators are implemented as above
+Mismatches with the probes (18 of 128 cells after T-0982, which fixed T-2073 and the `00` padding) are filed as
+T-2072 (`,` after the denominator) and T-2074 (the minus of `?/100` and `?/00` on a tiny negative, `?/100` on
+1234.5, the grouped integer). Placeholder denominators are implemented as above
 (T-2030). An overflowing numerator still prints in full (T-1740).
-Status: VERIFIED (Excel for the web)
+Literals between the parts (poi/NumberFormatTests.xlsx Tests!A120:A332, desktop Excel cached values, Mac Excel
+16.0; `=TEXT(Cn, Bn)` with `|` literals around each code; a 3×3×3 matrix `|I\:N=/=D|` of integer, numerator and
+denominator kinds over 0, ±0.75, ±1, T-0982):
+- **Literals may stand on either side of the `/`** (`=/=`, `\:`, quoted text, `_x`): the numerator is the last run of
+  placeholders before the `/`, the denominator the first after it: `|#\:#=/=#|` on 23.75 "|23:3=/=4|" (A134);
+  `|#_#/#|` on 3.75 "|15 /4|" (A165: `_#` is a space, so there is no integer part).
+- **`0` in a placeholder denominator pads on the left**: `|#\:? ?0#/000` on 23.75 "|2:3  03/004" (A160); `?` pads
+  on the right as before.
+- **A zero numerator prints when the numerator has a `0`**: `|#\:0=/=#|` on 1 "|1:0=/=1|" (A258); on 0 the
+  integer is dropped under `#` with its separator ("|0=/=1|", A204) and prints under `?` or `0` ("|0:0=/=1|",
+  A213, A224).
+- **Otherwise a zero numerator blanks the fraction**: into spaces of its full width, separator and literals
+  included, under a `?` numerator, a `?` integer or a `?` in the denominator (`|#\:#=/=?|` on 1 "|1      |",
+  A253; `|?\:#=/=#|` A261); into nothing, separator included, when all of them are `#` or `0`
+  (`|#\:#=/=#|`, `|#\:#=/=0|`, `|0\:#=/=#|` on 1 "|1|", A252, A254, A270).
+- **The separator after a zero integer** prints under a `0` integer ("|0:3=/=4|", A243), turns into spaces under a
+  `?` integer ("|  3=/=4|", A234) or under a `#` integer before a `?` numerator ("| 3=/=4|", A228), and is dropped
+  under a `#` integer otherwise ("|3=/=4|", A225, A231). Literals between integer placeholders always print
+  (`|#-#-#\:#/#|` on 0.75 "|--3/4|", A129).
+Ours: implemented in formatter/parser.rs (`is_fraction_literal`) and formatter/fraction.rs (T-0982); all 325 cells pass.
+Unprobed engine choices (T-2209): a mixed `0`/`?` denominator puts its zeros left and spaces right; plain spaces or quoted
+text around the `/` also make a fraction; a `/` with no denominator after its literals stays a literal.
+Status: VERIFIED (Excel for the web; desktop Mac Excel cached values for the literals between the parts)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061, T-2072, T-2073, T-2074
