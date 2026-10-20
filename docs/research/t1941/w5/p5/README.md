@@ -173,3 +173,31 @@ D.S3; per run, the best (δN, δD). 12 runs × 2048 points: mean exact 0.346 at 
 run goes beyond a few points (`deltameter.log`). On K2 the late chain was right (99.97% per anchor) and one hand-off
 offset explained the rest. On K3, ss_fc is ~35% exact and the mismatch is spread over many stages, so the
 N.S5/D.S3 hot spots are coefficient symptoms (review 3 §12.4), not a single fixable site.
+
+## Is K3's D0 a power of two? (after W6: Excel's D0 is not 1 on (1.5,2])
+The K3 tools never normalise by D0; they hold D0 = 2^-13, which W1 fixed in its fit (q0 = 2^-13), never measured.
+- `d0scan.py` (D0 alone, everything else fixed, 100k real points): exact rate flat at 0.3555 for |k| ≲ 600 ulps
+  (±1.3e-13 relative), falling outside (0.30 at ±4096, 0 beyond ±2.6e5). D0 alone is pinned to 2^-13 within 1.3e-13.
+- `cscan.py` (exact common scaling (N, D) → (fl(cN), fl(cD)), c = 1 + k·2^-52, |k| ≤ 8192, i.e. ±1.8e-12): the
+  function is unchanged and only the roundings move. c = 1 is best (0.3555; median 0.269, sd 0.036; next 0.3532 at
+  k = +1618). There is no peak above it. ss_fc was fitted at c = 1, so a peak there is built in; a true c* ≠ 1 would
+  have to beat it, and none does in this range. A far c* is not excluded. `d0scan.log`, `cscan.log`.
+
+## Far-truth range control: detected (S-only)
+`launch_farctl_parts.sh` (4 parts, merged with MERGE=1; `scan_farctl_NS7_merged.log`). Planted truth at TSIZE 1e7:
+N.S7 (b, c) = (−55365.7, 608.47), wide box b ±1e5, c ±2000 (8001 c values × 64 phases × ~2e5 b, ~1.6e9 cells),
+rows3, 751 runs.
+- S-only: the truth is rank 0 (274.1 at a 0.48, b −55365.6, c 608.5; ranks 1–2 are its neighbours). The best
+  unrelated candidate is 232.6, an alias at the true c with wrong b (17285.5). Kept-candidate median 157, sd 6.8.
+- Joint (S + P6): worse. A base-like candidate (b ≈ 0) comes first, and the truth's P term is −46.6. For K3, use
+  S-only to rank.
+So a function-unconstrained top tail 1e7 ulps away is found by this box scan on current data.
+
+## Data hygiene: q501/q502 have B = GAMMA, not GAMMALN
+The shared extractor (`t1941/extract_runs.py`) assumes column B is GAMMALN.PRECISE for every kmyst-gam case.
+kmyst-gam-q501 (x0 1.3171, inside K3) and q502 (x0 ≈ 1.77) have B = GAMMA. rows3/rows4/rows5 contain q501 (one run of
+8192 points with residuals ~1e16 units); rows2 (ss_fc's fit) does not.
+- Affected: the real D.S6 scan (rows4) and the killed real N.S7 wide scan (rows3). The controls synthesise B and
+  are unaffected; the exact-rate screens lose only 8192 points.
+- `mkrows.py` builds the clean set (B formula checked): rows6, 5.68M points, 369 cases incl. 112 k3t.
+- Real wide N.S7 scan relaunched on rows6 (918 runs), 4 resumable parts (`launch_real_parts.sh`).
