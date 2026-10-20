@@ -291,10 +291,13 @@ Tasks: T-1385
 - Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, and IMPOWER as `|z|^n` by Excel's `^` (square-and-multiply for an integer `n`) times Excel's SIN/COS of the double `atan2(y,x)·n` (argument reduction by the x87 64-bit pi, numbers.md "Trig of a huge angle"). That reproduces all four values bit for bit: the tiny part of `IMPOWER("i",2)` is `π₆₄ − π_double`, the real part of `(1+i)^100` is `sqrt(2)^100` by square-and-multiply (2^50 + 12.5; libm `pow` gives 2^50 + 7.75) and its imaginary part is that times `sin(double(100·π/4))` reduced by `π₆₄`. Each part prints as number-to-text does (E notation past 20 plain characters).
 - A blank first argument is 0 in IMDIV and IMPOWER (`IMDIV(blank,"1+i")` and `IMPOWER(blank,2)` are "0"; `IMPOWER(blank,0)` and `IMDIV(blank,blank)` are `#NUM!`). IMDIV by Smith's algorithm matches Excel to the last digit on a sweep of 13 non-trivial divisors, including `1E10+1E-10i` over `1E-5+1E5i` and `1+i` over `1E-200+1E-200i` (`1E+200`).
 - IMPOWER changes rule once the angle `atan2(y,x)·n` is near 2^27, but not at 2^27 (a radius-1 base stops answering; others: "IMPOWER past the angle cut"): `IMPOWER("i",85445658)` (angle 134217725.7) answers, `IMPOWER("i",85445659)` (134217727.3) is `#NUM!`. We cut at 134217727 (a bracket, not a derived value). A radius that underflows to 0 is "0" whatever the angle (`IMPOWER("0.5i",134217728)`, `IMPOWER("0.5",134217728)`); one that overflows is `#NUM!` (`IMPOWER("1E-200+1E-200i",-2)`, `IMPOWER("1E200",2)`; `IMPOWER("1+i",170891317)` is this overflow, its angle is under the cut).
-- Excel's modulus is `hypot`, not `sqrt(x²+y²)`: `IMABS("0.7071067811865476+0.7071067811865476i")` is
-  0.9999999999999993 (1-6·2^-53; `sqrt` gives 1-7·2^-53), and IMPOWER's `|z|^n` of that base matches Excel from it
+- Excel's modulus matches `hypot`, and `sqrt(x²+y²)` is ruled out: the 16-digit literal reads as the 15-digit
+  0.707106781186547 (`IMREAL(..)-0.707106781186547` is 0, A17), and `IMABS("0.7071067811865476+0.7071067811865476i")`
+  is 0.9999999999999993 (1-6·2^-53; `sqrt` gives 1-7·2^-53; a scaled `|x|·sqrt(1+(y/x)²)` also gives it, so one cell
+  does not single out `hypot`), and IMPOWER's `|z|^n` of that base matches Excel from it
   (`IMPOWER(..,170891300)` = `-0.999999886163532+1.2252504385364E-08i`; probes/eng-impower-angle-cut A9-A17,
-  eng-impower-past-cut A15; T-1950). See "IMPOWER past the angle cut" for bases past the cut.
+  eng-impower-past-cut A15; T-1950; excel-graph). Mac desktop's cached IMABS digits in COMPLEXs.xlsx match neither
+  (below, "neither `sqrt(x²+y²)` nor `hypot`"), unexplained. See "IMPOWER past the angle cut" for bases past the cut.
 Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950).
 Status: VERIFIED (excel-graph)
 Tasks: T-1766, T-1892, T-1950
@@ -302,7 +305,8 @@ Tasks: T-1766, T-1892, T-1950
 ## IMPOWER past the angle cut
 Rule: once IMPOWER's angle `atan2(y,x)·n` passes the cut (about 134217727), Excel's sine and cosine both read as the
 largest double, 1.7976931348623157E+308, in every quadrant: each part is `|z|^n · DBL_MAX`, both positive and equal,
-and the result is `#NUM!` when that is not below DBL_MAX, that is for a radius of 1 or more. A pure imaginary or real
+and the result is `#NUM!` when that is not below DBL_MAX: evidenced for a radius of exactly 1 and above 1; a radius
+just below 1 whose product rounds to DBL_MAX is unprobed (ours `#NUM!`). A pure imaginary or real
 base of radius 1 is therefore `#NUM!` (`IMPOWER("i",85445659)`, `IMPOWER("-1",42722830)`), and so is
 `IMPOWER("1.0000000001i",85445659)` and a negative power of a radius below 1 (`IMPOWER(..,-170891318)`), while
 `IMPOWER("0.99999973i",85445659)` is `1.71948380972175E+298+1.71948380972175E+298i` (|z|^n ≈ 9.565E-11, the radius of

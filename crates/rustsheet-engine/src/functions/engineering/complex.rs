@@ -684,10 +684,11 @@ fn imabs((x, y, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     CalcResult::Number(modulus(x, y))
 }
 
-/// `|x+yi|` as Excel computes it: `hypot`, not `sqrt(x²+y²)`. They differ in the last bit:
-/// `IMABS("0.7071067811865476+0.7071067811865476i")` is 0.9999999999999993 (1-6·2^-53), where
-/// `sqrt` gives 1-7·2^-53, and IMPOWER's 170891300th power of that number confirms the per-factor
-/// value (probes/eng-impower-past-cut A15, eng-impower-angle-cut A9-A17; T-1950).
+/// `|x+yi|` as Excel computes it: it matches `hypot`, not `sqrt(x²+y²)`. They differ in the last
+/// bit: `IMABS("0.7071067811865476+0.7071067811865476i")` (read as the 15-digit 0.707106781186547)
+/// is 0.9999999999999993 (1-6·2^-53), where `sqrt` gives 1-7·2^-53, and IMPOWER's 170891300th
+/// power of that number confirms the per-factor value (probes/eng-impower-past-cut A15,
+/// eng-impower-angle-cut A9-A17; T-1950).
 fn modulus(x: f64, y: f64) -> f64 {
     x.hypot(y)
 }
