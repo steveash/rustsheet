@@ -132,6 +132,8 @@ f = np.round(bsel * NB * cell).astype(np.int64)
 t0 = time.time()
 # explicit grids over the higher terms (c for DEG >= 2, d for DEG 3), FFT over b for each, batched
 cg = np.arange(-CMAX, CMAX + 1e-9, float(os.environ.get("CSTEP", 0.5))) if DEG >= 2 else np.array([0.0])
+if os.environ.get("CLO"):  # split the c range across processes: keep CLO <= c < CHI
+    cg = cg[(cg >= float(os.environ["CLO"])) & (cg < float(os.environ["CHI"]))]
 dg = np.arange(-DMAX, DMAX + 1e-9, float(os.environ.get("DSTEP", 2.0))) if DEG >= 3 else np.array([0.0])
 if truth and os.environ.get("NEAR"):  # control only: grids around the truth (validation of the search itself)
     w_ = float(os.environ["NEAR"])
