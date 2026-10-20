@@ -314,9 +314,10 @@ pub(crate) fn round_to_bits(value: u128, bits: u32, inexact: bool) -> (u128, i32
     let mut significand = value >> shift;
     let dropped = value & ((1 << shift) - 1);
     let half = 1 << (shift - 1);
-    if dropped > half || (dropped == half && (inexact || significand & 1 == 1)) {
-        significand += 1;
-    }
+    // Integer bit operations, not `||`: the round-up is data-dependent, and a branch on it
+    // mispredicts about half the time (T-1945 measured 10 ns a call of x87_exp::excel_exp).
+    significand += u128::from(dropped > half)
+        | (u128::from(dropped == half) & (u128::from(inexact) | (significand & 1)));
     // A u128 has at most 128 bits, so the shift fits an i32.
     let mut shift = i32::try_from(shift).unwrap_or(0);
     // A carry out of the top bit (all ones rounded up) is one more bit to drop.

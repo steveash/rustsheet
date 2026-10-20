@@ -43,15 +43,18 @@ Rule: RustSheet returns `#NUM!` for BESSELI, BESSELJ, BESSELK and BESSELY orders
 untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0` (probes-numeric/m9-bessel, T-1004), so the engine differs above 100,000 for J.
 BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's values above
 100,000 are unprobed for them.
-A lifted Bessel call is also charged 2^16 units per element against the lifting visit cap (SPEC-0011
-`KernelWork::Weighted`), so one call lifts at most 2,048 elements: `ROWS(BESSELJ(2.5,SEQUENCE(2100)))` is `#ERROR!`
-where Excel gives 2100. At the order cap a BESSELI element runs about 2·10^5 recurrence steps; 2,048 such elements
-take about 2 s in a release build (8,192 took 8 s, T-1383).
+A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
+(SPEC-0011 `KernelWork::ByArg`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
+cap and 1 for n = 0; an order past the cap is refused (`#NUM!`) before the kernel loops and costs 1. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
+the cap (`ROWS(BESSELI(2.5,SEQUENCE(2100,1,100000,0)))` is `#ERROR!`), while small orders lift freely
+(`ROWS(BESSELJ(2.5,SEQUENCE(2100)))` = 2100 and `ROWS(BESSELJ(SEQUENCE(5000)/100,0))` = 5000, as in Excel). A text order
+is charged as at the cap. At the order cap a BESSELI element runs about 2·10^5
+recurrence steps; 2,048 such elements take about 2 s in a release build (8,192 took 8 s, T-1383).
 Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orders; the cap itself is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Tasks: T-1004, T-1383; T-1819 narrows the lifted cap to an order-based work budget.
+Tasks: T-1004, T-1383; T-1819 (the lifted cap is an order-based work budget).
 Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`), bessel_i.rs, bessel_k.rs;
-functions/lift/kinds/engineering.rs (`BESSEL_WEIGHT`)
+functions/lift/kinds/engineering.rs (`BESSEL`, `BESSEL_WEIGHT`), functions/lift/driver.rs (`kernel_units`)
 
 ## DECIMAL of unreadable text
 Rule: DECIMAL reads its first argument as text (a number or TRUE goes through its text form, so `DECIMAL(0.5,13)`, `DECIMAL(1E+20,10)` and `DECIMAL(TRUE,10)` read "0.5", "1E+20", "TRUE"). Leading spaces and tabs are skipped; empty or all-blank text is 0. Any other unreadable character is `#NUM!` (not `#VALUE!`): a sign (`"-1"`, `"+1"`), a point, trailing space, a non-breaking space, a digit not below the radix. Text over 255 UTF-16 units (200 emoji is too long) is `#VALUE!`, checked before the radix (`DECIMAL(REPT("1",256),37)` is `#VALUE!`), as is a non-numeric radix. Newline and fullwidth digits are unreadable (`#NUM!`); the overflow is `#NUM!` inside a larger formula too (`ERROR.TYPE` 6, `IFERROR` falls through). Error arguments: the text argument's error wins (`DECIMAL(#N/A,#DIV/0!)` is `#N/A`). Radix 16 only also skips leading zeros and one `x`/`X` (`"0x1F"`, `"x1F"`, `"00x1F"` are 31; `"0x0x1"`, `"1x1F"`, `"0x 1F"` are `#NUM!`; in radix 10 or 15 `"0x1F"` is `#NUM!`, in radix 36 the x is a digit). The sum is a float with no 2^53 limit (255 ones in radix 2 is 5.78960446186581E+76; 198 `Z`s in radix 36 is 1.4057081148316923E+308), but a result past the largest double is `#NUM!` (199 `Z`s in radix 36, 255 `Z`s).
@@ -359,18 +362,29 @@ Evidence: probes/eng-im-overflow (excel-graph).
   (`IMEXP("1000-1i")`), for `709.9+1i` (exp overflows only past 709.78) and for `1000+3.14159i`
   (`-1.79769313485599E+308+4.770340154251E+302i`), down to `1000+1.5E-8i`; but `IMEXP("710+1E-300i")`,
   `"1000+1E-300i"`, `"1000-1E-300i"` and every imaginary part up to `1.4E-8` are `#NUM!`. The
-  boundary (1.4E-8 error, 1.5E-8 capped) is sqrt(DBL_EPSILON) = 1.49E-8, so
-  such an argument is treated like a pure real one. The same rule near y = pi (y within sqrt(DBL_EPSILON) of pi) is unprobed, as is the exact cutoff (T-2087).
+  boundary is exactly 2^-26 = sqrt(DBL_EPSILON) = 1.4901161193847656E-8: `1000+1.4901161193847E-8i` is
+  `#NUM!` and `1000+1.4901161193848E-8i` is capped (probes/eng-imexp-overflow-cutoff A1, A2; `1.49E-8`
+  and `1.4901E-8` error, `1.4902E-8` caps). The window is independent of x (`800`, `709.9`:
+  eng-imexp-overflow-cutoff-pi A21-A24). The same kind of window applies around every other multiple of
+  pi/2, but smaller; it was only bracketed (probes/eng-imexp-overflow-cutoff-pi, -pi2, -halfpi): pi
+  below (1.04, 1.06]E-8, pi above and 2pi both sides (1.05, 1.10]E-8, pi/2 and 3pi/2 both sides
+  (1.0, 1.2]E-8. So `IMEXP("1000+3.14159265i")`, `IMEXP("1000+3.14159265358979i")` and
+  `IMEXP("1000+pi/2 i")` (y = 1.5707963267948966) are `#NUM!` while `3.14159264i` (1.36E-8 below pi)
+  caps. Implemented as 2^-26/sqrt(2) = 1.0537E-8 around multiples other than 0, which fits every
+  bracket but is fitted, not derived: UNVERIFIED beyond n = 4 quarter turns and at the exact
+  boundary (T-2101).
 - IMEXP's sine and cosine of the imaginary part reduce the argument as SIN and COS do (the x87
   64-bit pi, see the IMPOWER entry above): `IMEXP("1000+3.14159i")` is
   `-1.79769313485599E+308+4.770340154251E+302i` (probes/eng-imexp-overflow-imag A3) and
   `IMEXP("710i")` is `0.999999998182636+0.0000602887066915739i` (probes/eng-im-overflow A42); libm's
-  sin gives other last digits. Implemented with `excel_sin_cos` (T-2060). Past the SIN limit
-  (|y| >= 134217727) ours falls back to libm: UNVERIFIED (T-2087).
+  sin gives other last digits. Implemented with `excel_sin_cos` (T-2060). `IMEXP("1000+134217727i")` is
+  `-5.27422318923931E+307-1.7185826441088E+308i` but every positive y >= 134217728 (negative y unprobed, T-2101) (`1000+134217728i`, `2E8`,
+  `1E9`, `1E15`) is `#NUM!`, even when x is small (`IMEXP("1+134217728i")`;
+  probes/eng-imexp-overflow-cutoff A17-A24); implemented as the SIN limit (T-2087).
 - A part near DBL_MAX is written as `1.79769313486232E+308`, a decimal above DBL_MAX: the 15-digit
   rounding of 1.7976931348623157E+308 is not clamped (probes/eng-imexp-overflow-imag A22, A24, A27,
-  A30). Ours keeps the unrounded part when the rounding overflows (T-2060). Whether `&""` or TEXT
-  of DBL_MAX does the same is unprobed (T-2087).
+  A30). Ours keeps the unrounded part when the rounding overflows (T-2060). Numeric `DBL_MAX&""` and TEXT of
+  DBL_MAX are unprobed: a DBL_MAX literal in a formula makes excel-graph reject the workbook (T-2101).
 - IM* text keeps 15 significant digits for an exponent past 98, unlike `&""` (numbers.md): A11,
   A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
   `1.65498402768026E+308`, which ours now matches (T-2001: `complex_part_to_text` keeps 15 digits). This is a
