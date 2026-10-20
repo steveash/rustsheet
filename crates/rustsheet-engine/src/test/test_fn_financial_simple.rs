@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 // =============================================================================
@@ -249,4 +250,55 @@ fn fn_fvschedule_boolean_principal_is_value_error() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("A2"), *"1100");
+}
+
+#[test]
+fn discount_securities_divide_by_day_count_over_year_length() {
+    // Excel's bits (financial.md "Discount securities: day count and year length", T-2032):
+    // ironcalc-calc DISC.xlsx F2 and INTRATE.xlsx F2 (Excel-cached), probes/discount-security-modes
+    // A14, A80, A113, A126 and A103 (excel-graph).
+    let cases: [(&str, &str, f64); 7] = [
+        (
+            "A1",
+            "=DISC(39472,39614,97.975,100,0)",
+            0.052_071_428_571_428_84,
+        ),
+        ("A2", "=INTRATE(46433,46522,2000000,2040000,0)", 0.08),
+        (
+            "A3",
+            "=INTRATE(43159,43189,1000,1100,0)",
+            1.200_000_000_000_000_2,
+        ),
+        (
+            "A4",
+            "=YIELDDISC(42400,42460,95,100,1)",
+            0.321_052_631_578_947_3,
+        ),
+        (
+            "A5",
+            "=YIELDMAT(43101,43466,42736,0.06,98,0)",
+            0.076_923_076_923_076_98,
+        ),
+        (
+            "A6",
+            "=YIELDMAT(43159,43189,42736,0.06,98,0)",
+            0.271_557_884_707_002,
+        ),
+        (
+            "A7",
+            "=PRICEMAT(43159,43189,42736,0.06,0.05,0)",
+            100.057_743_362_831_86,
+        ),
+    ];
+    let mut model = new_empty_model();
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, excel) in cases {
+        match model.get_cell_value_by_ref(&format!("Sheet1!{cell}")) {
+            Ok(CellValue::Number(n)) => assert_eq!(n.to_bits(), excel.to_bits(), "{formula}: {n}"),
+            other => panic!("{formula}: expected a number, got {other:?}"),
+        }
+    }
 }
