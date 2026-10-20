@@ -1,0 +1,175 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "b",
+    "v": true
+   },
+   "A10": {
+    "t": "b",
+    "v": true
+   },
+   "A11": {
+    "t": "b",
+    "v": false
+   },
+   "A12": {
+    "t": "b",
+    "v": true
+   },
+   "A13": {
+    "t": "b",
+    "v": true
+   },
+   "A14": {
+    "t": "b",
+    "v": false
+   },
+   "A15": {
+    "t": "b",
+    "v": true
+   },
+   "A16": {
+    "t": "b",
+    "v": true
+   },
+   "A17": {
+    "t": "b",
+    "v": true
+   },
+   "A18": {
+    "t": "b",
+    "v": true
+   },
+   "A19": {
+    "t": "b",
+    "v": true
+   },
+   "A2": {
+    "t": "b",
+    "v": true
+   },
+   "A20": {
+    "t": "b",
+    "v": true
+   },
+   "A21": {
+    "t": "b",
+    "v": true
+   },
+   "A22": {
+    "t": "b",
+    "v": true
+   },
+   "A23": {
+    "t": "b",
+    "v": false
+   },
+   "A24": {
+    "t": "b",
+    "v": true
+   },
+   "A25": {
+    "t": "b",
+    "v": true
+   },
+   "A26": {
+    "t": "b",
+    "v": true
+   },
+   "A27": {
+    "t": "b",
+    "v": true
+   },
+   "A28": {
+    "t": "b",
+    "v": false
+   },
+   "A29": {
+    "t": "b",
+    "v": false
+   },
+   "A3": {
+    "t": "b",
+    "v": false
+   },
+   "A30": {
+    "t": "b",
+    "v": true
+   },
+   "A31": {
+    "t": "b",
+    "v": false
+   },
+   "A32": {
+    "t": "b",
+    "v": true
+   },
+   "A33": {
+    "t": "b",
+    "v": true
+   },
+   "A34": {
+    "t": "b",
+    "v": false
+   },
+   "A35": {
+    "t": "b",
+    "v": true
+   },
+   "A36": {
+    "t": "b",
+    "v": true
+   },
+   "A37": {
+    "t": "b",
+    "v": true
+   },
+   "A38": {
+    "t": "b",
+    "v": true
+   },
+   "A39": {
+    "t": "b",
+    "v": true
+   },
+   "A4": {
+    "t": "b",
+    "v": true
+   },
+   "A40": {
+    "t": "b",
+    "v": true
+   },
+   "A5": {
+    "t": "b",
+    "v": true
+   },
+   "A6": {
+    "t": "b",
+    "v": true
+   },
+   "A7": {
+    "t": "b",
+    "v": true
+   },
+   "A8": {
+    "t": "b",
+    "v": false
+   },
+   "A9": {
+    "t": "b",
+    "v": false
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "aa47591ee5df9ecf49297fc87551f74b4ca46b6fe1fa34db187098db3cc366f1",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-20T06:27:49+00:00",
+  "version": null,
+  "workbook_name": "728147ce14fcbd2ca0b7c9cb08b97a17ca59da3b10c949247c9332d38f70702d.xlsx"
+ }
+}

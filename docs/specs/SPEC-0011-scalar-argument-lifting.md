@@ -648,6 +648,11 @@ IRR's and MIRR's flows first). IRR is `Weighted(512)`: its solver makes at most 
 (`financial_util::compute_irr`), so a lift is charged elements × flows × 512 and `IRR(A1:A300000,{0.1;0.1})` is
 refused before its first element.
 
+As built (T-1843): XNPV is `[LiftArrays, WholeByCaller, WholeByCaller]`, XIRR `[WholeByCaller, WholeByCaller,
+LiftArrays]` and FVSCHEDULE `[LiftArrays, WholeByCaller]`, read as NPV, IRR and MIRR are. XIRR is `Weighted(512)`: its
+solver makes at most 401 XNPV passes per call (`financial_util::compute_xirr`: XNPV(0), two bracket walks of 100
+points, 200 bisection steps).
+
 As built (T-1775): the element-wise text functions are `Lift` entries (`lift/kinds/text.rs`), LEFT to VALUETOTEXT with
 their *B twins, CODE, UNICHAR, UNICODE (T-2090), BAHTTEXT, FILTERXML, DATEVALUE, TIMEVALUE and CONCATENATE (`repeat: Lift` up to 255
 arguments). Their kernels go through `Model::lift_text` (`functions/text/text_kernel.rs`), which keeps `broadcast_text`'s
