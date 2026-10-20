@@ -8,6 +8,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
+use crate::catalog_coverage::{self, MilestoneCoverage};
+use crate::closeness::Closeness;
 use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
@@ -127,6 +129,9 @@ pub struct FunctionStat {
     pub cells: usize,
     pub passed: usize,
     pub verdicts: BTreeMap<Verdict, usize>,
+    /// The scored cells per closeness bucket, which the parity page reads (T-2036).
+    #[serde(default)]
+    pub closeness: Closeness,
 }
 
 /// Scored cells with Excel-sourced expectations that call one function.
@@ -255,6 +260,10 @@ pub struct RunReport {
     /// suite did not run.
     #[serde(default)]
     pub function_scope: Option<FunctionScope>,
+    /// Catalog coverage per function milestone (T-2112); filled by the caller, which knows the
+    /// suites' origin and milestone tags.
+    #[serde(default)]
+    pub catalog_coverage: Vec<MilestoneCoverage>,
 }
 
 impl RunReport {
@@ -319,6 +328,7 @@ impl RunReport {
                         st.passed += 1;
                     }
                     *st.verdicts.entry(c.verdict).or_default() += 1;
+                    st.closeness.add(c);
                 }
             }
         }
@@ -361,6 +371,7 @@ impl RunReport {
             milestone_lists: Vec::new(),
             probe_milestones: Vec::new(),
             function_scope: function_scope::summarize(catalog, results),
+            catalog_coverage: Vec::new(),
         }
     }
 
@@ -602,6 +613,7 @@ impl RunReport {
             let _ = writeln!(md);
         }
         self.write_evidence(&mut md);
+        catalog_coverage::write_markdown(&self.catalog_coverage, &mut md);
         self.write_out_of_scope(&mut md);
         md
     }
@@ -743,6 +755,38 @@ mod tests {
             "{md}"
         );
         assert!(md.contains("- `probes/a\tS!A1`"));
+    }
+
+    /// Each function counts its scored cells per closeness bucket, which sum to its cells minus
+    /// the unsupported ones (T-2036).
+    #[test]
+    fn function_closeness_buckets_sum_to_the_scored_cells() {
+        let mut r = case("probes/a", 1);
+        let ulp = |n: u64| CellResult {
+            actual: crate::value::Value::Number(f64::from_bits(1.0_f64.to_bits() + n)),
+            ..cell("ABS(1)+SIGN(1)", Verdict::NumericUlp)
+        };
+        r.cells = vec![
+            cell("ABS(1)", Verdict::Pass),
+            ulp(1),
+            ulp(3),
+            cell("ABS(2)", Verdict::NumericClose),
+            cell("ABS(3)", Verdict::NumericMismatch),
+            cell("ABS(4)", Verdict::Unsupported),
+        ];
+        let report = RunReport::build("e", &[r], &[], &Catalog::default());
+        let abs = report.functions.iter().find(|f| f.name == "ABS");
+        let abs = abs.map(|f| (f.cells, f.closeness));
+        let expected = Closeness {
+            pass: 1,
+            ulp1: 1,
+            ulp4: 1,
+            close: 1,
+            off: 1,
+        };
+        assert_eq!(abs, Some((6, expected)));
+        let sign = report.functions.iter().find(|f| f.name == "SIGN");
+        assert_eq!(sign.map(|f| f.closeness.scored()), Some(2));
     }
 
     #[test]

@@ -3,7 +3,7 @@ id: T-1997
 title: "Accept a defined name spelled like a cell, as Excel opens such a workbook"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,8 +24,16 @@ name may well stay (Excel's Name Manager refuses one), so the fix may belong to 
 only. Do not let such a name shadow the cell.
 
 ## Acceptance criteria
-- [ ] Both probe cases pass (baseline shrinks); a unit test loads such a name and reads the cell.
-- [ ] `make check` green; reviewers approve.
+- [x] Both probe cases pass (baseline shrinks); a unit test loads such a name and reads the cell.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The marker spelling itself (T-1936).
+
+## Outcome
+New `Model::define_loaded_name` / `Txn::load_defined_name` (the eval harness's loading path) accept a name
+spelled like an A1 cell (`is_cell_spelled_name`); `define_name` and `new_defined_name` (Name Manager) still
+refuse it. The
+lexer reads such a spelling as the cell, so the name never shadows it. xlsx import never validated
+names, so it already loaded them. Eval: probes legacy-marker-spelling-name-nlg1 and -tlg1 now pass
+(12 cells; two `!EngineError` known failures removed).

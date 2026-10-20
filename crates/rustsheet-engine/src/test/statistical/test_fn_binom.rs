@@ -190,3 +190,37 @@ fn test_booleans() {
     assert_eq!(model._get_text("A3"), *"1");
     assert_eq!(model._get_text("A4"), *"0.7");
 }
+
+/// No trials and a certain outcome (p = 0 or 1) take the shortcut before the double-double walk
+/// (T-0927). Excel values: ironcalc-calc STATISTICAL/BINOM.xlsx BINOM.DIST E17, E25, E26 and
+/// BINOM.DIST.RANGE E14, E24, E25; the rest follow from P(X = n p) = 1.
+#[test]
+fn no_trials_and_certain_outcomes() {
+    let mut model = new_empty_model();
+    let cells = [
+        ("=BINOM.DIST(0,0,0,TRUE)", "1"),
+        ("=BINOM.DIST(0,0,0.3,TRUE)", "1"),
+        ("=BINOM.DIST(0,0,0.3,FALSE)", "1"),
+        ("=BINOM.DIST(2,10,0,TRUE)", "1"),
+        ("=BINOM.DIST(0,10,0,FALSE)", "1"),
+        ("=BINOM.DIST(2,10,0,FALSE)", "0"),
+        ("=BINOM.DIST(2,10,1,TRUE)", "0"),
+        ("=BINOM.DIST(10,10,1,TRUE)", "1"),
+        ("=BINOM.DIST(10,10,1,FALSE)", "1"),
+        ("=BINOM.DIST(9,10,1,FALSE)", "0"),
+        ("=BINOM.DIST.RANGE(0,0,0,0)", "1"),
+        ("=BINOM.DIST.RANGE(10,0,2,3)", "0"),
+        ("=BINOM.DIST.RANGE(10,0,0,3)", "1"),
+        ("=BINOM.DIST.RANGE(10,1,2,3)", "0"),
+        ("=BINOM.DIST.RANGE(10,1,9,10)", "1"),
+        ("=NEGBINOM.DIST(2,3,1,TRUE)", "#NUM!"),
+        ("=NEGBINOM.DIST(2,3,0,FALSE)", "#NUM!"),
+    ];
+    for (row, (formula, _)) in (1..).zip(&cells) {
+        model._set(&format!("A{row}"), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in (1..).zip(&cells) {
+        assert_eq!(model._get_text(&format!("A{row}")), *expected, "{formula}");
+    }
+}

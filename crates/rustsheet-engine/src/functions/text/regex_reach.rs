@@ -6,21 +6,26 @@
 //! the real search runs over that span alone: it then costs about what it really costs, while a
 //! truly quadratic iteration (`a.*z|a` over `aaa...`) is still charged every byte it reads.
 //!
-//! Soundness: the scan keeps every thread the `PikeVM` keeps. Until the `PikeVM` has a match it
-//! drops no thread, so the two have the same states; once a thread matches, both stop starting
-//! new threads, and the scan keeps the lower-priority threads the `PikeVM` drops. When the scan has
-//! a match and no thread left at `at`, neither does the `PikeVM`, whose result is then final, and
-//! a search over the span up to `at` gives it (look-around at the span's end still sees the whole
-//! haystack). An empty match that splits a UTF-8 character is not a match for the `PikeVM`, which
-//! searches on past it, so the scan counts a match only at a character boundary.
+//! Soundness: the scan runs the `PikeVM`'s own search (T-2015). Its sets hold the states the
+//! `PikeVM`'s do, match states included, in the same priority order: the closure follows a union's
+//! alternates depth first, first alternate first, as `epsilon_closure` does, and the thread
+//! started at each position comes after those already running. Stepping a set in that order, a
+//! match state ends the step and drops the threads below it, as `nexts` does, and from then on
+//! no thread starts; when no thread is left at `at` the `PikeVM` stops there too, with the same
+//! match, and a search over the span up to `at` gives it (look-around at the span's end still
+//! sees the whole haystack). Cutting below a match also keeps a lazy `.*?` from holding a
+//! lower-priority thread to the end of the text, which made iterating it quadratic.
 //!
-//! That retry (`skip_splits_fwd`) runs the `PikeVM` again from one byte later, over the same span.
-//! It restarts at or before the scan's first boundary match, and until then the scan starts a
-//! thread at every position, so each retry's state sets are subsets of the scan's: the span still
-//! holds the retry's match. A pattern that is always anchored (`^abc`) starts threads only at the
-//! search's start in the `PikeVM`, while the scan starts one at every position until it has a
-//! match, so the scan overcharges it: a visit or two a byte, linear in the span, never less than
-//! the work done.
+//! An empty match that splits a UTF-8 character is not a match for the `PikeVM`, which retries
+//! (`skip_splits_fwd`) from one byte later over the same span. The NFA is built for UTF-8, so a
+//! match that ends inside a character is empty and comes from the thread started there. Once the
+//! scan meets one, which is before any match at a boundary (after that no thread starts), it
+//! stops cutting and keeps every thread, still starting one at each position until a match at a
+//! boundary: each retry restarts at or before that match, so its state sets are subsets of the
+//! scan's and the span still holds the retry's match. A pattern that is always anchored (`^abc`)
+//! starts threads only at the search's start in the `PikeVM`, while the scan starts one at every
+//! position until it has a match, so the scan overcharges it: a visit or two a byte, linear in
+//! the span, never less than the work done.
 
 use regex_automata::{
     nfa::thompson::{State, NFA},
@@ -32,7 +37,7 @@ use super::regex_engine::{charge, Spent};
 
 /// The state sets of the scan, kept between searches.
 pub(super) struct Reach {
-    /// The states consuming a byte at the current position.
+    /// The states consuming a byte, or matching, at the current position, in priority order.
     curr: Vec<StateID>,
     /// Those at the next position.
     next: Vec<StateID>,
@@ -71,8 +76,8 @@ impl Reach {
     }
 
     /// Adds the states reachable from `start` without consuming a byte at `at` to the `next`
-    /// set; whether one of them is a match. `visits` counts every state looked at and every
-    /// look-around assertion evaluated.
+    /// set, in priority order. `visits` counts every state looked at and every look-around
+    /// assertion evaluated.
     fn close(
         &mut self,
         nfa: &NFA,
@@ -80,8 +85,7 @@ impl Reach {
         at: usize,
         start: StateID,
         visits: &mut Visits,
-    ) -> bool {
-        let mut matched = false;
+    ) {
         self.stack.push(start);
         while let Some(id) = self.stack.pop() {
             visits.states += 1;
@@ -93,21 +97,23 @@ impl Reach {
             }
             *mark = self.generation;
             match nfa.state(id) {
-                State::ByteRange { .. } | State::Sparse(_) | State::Dense(_) => self.next.push(id),
+                State::ByteRange { .. }
+                | State::Sparse(_)
+                | State::Dense(_)
+                | State::Match { .. } => self.next.push(id),
                 State::Look { look, next } => {
                     visits.looks += 1;
                     if nfa.look_matcher().matches(*look, haystack, at) {
                         self.stack.push(*next);
                     }
                 }
-                State::Union { alternates } => self.stack.extend(alternates.iter().copied()),
-                State::BinaryUnion { alt1, alt2 } => self.stack.extend([*alt1, *alt2]),
+                // Pushed last first, so the first alternate is followed first.
+                State::Union { alternates } => self.stack.extend(alternates.iter().rev().copied()),
+                State::BinaryUnion { alt1, alt2 } => self.stack.extend([*alt2, *alt1]),
                 State::Capture { next, .. } => self.stack.push(*next),
                 State::Fail => {}
-                State::Match { .. } => matched = true,
             }
         }
-        matched
     }
 
     /// The end of the span a leftmost-first search of `input` needs, charging `costs` for the
@@ -122,52 +128,63 @@ impl Reach {
     ) -> Result<usize, Spent> {
         let haystack = input.haystack();
         let end = input.end();
+        // After an empty match at the end the next search starts past it: the `PikeVM` reads
+        // nothing, and look-around past the haystack would panic.
+        if input.is_done() {
+            return Ok(end);
+        }
         let mut at = input.start();
+        // A match at a character boundary: no thread starts after it.
         let mut matched = false;
+        // An empty match inside a character was met: no thread is cut from then on.
+        let mut split = false;
         self.next.clear();
         self.new_set();
         loop {
             let mut visits = Visits::default();
-            if !matched
-                && self.close(nfa, haystack, at, nfa.start_anchored(), &mut visits)
-                && is_boundary(haystack, at)
-            {
-                matched = true;
+            if !matched {
+                self.close(nfa, haystack, at, nfa.start_anchored(), &mut visits);
             }
             std::mem::swap(&mut self.curr, &mut self.next);
             self.next.clear();
             self.new_set();
             let done = (matched && self.curr.is_empty()) || at >= end;
-            if !done {
-                let byte = haystack.get(at).copied().unwrap_or_default();
-                for index in 0..self.curr.len() {
-                    let Some(&id) = self.curr.get(index) else {
-                        break;
-                    };
-                    let to = step(nfa, id, byte);
-                    if let Some(to) = to {
-                        if self.close(nfa, haystack, at + 1, to, &mut visits)
-                            && is_boundary(haystack, at + 1)
-                        {
-                            matched = true;
+            if done {
+                charge(work, visits.units(costs))?;
+                return Ok(at.min(end));
+            }
+            let byte = haystack.get(at).copied().unwrap_or_default();
+            for index in 0..self.curr.len() {
+                let Some(&id) = self.curr.get(index) else {
+                    break;
+                };
+                if let State::Match { .. } = nfa.state(id) {
+                    if !is_boundary(haystack, at) {
+                        split = true;
+                    } else {
+                        matched = true;
+                        // The `PikeVM` drops the threads below a match.
+                        if !split {
+                            break;
                         }
                     }
+                } else if let Some(to) = step(nfa, id, byte, &mut visits) {
+                    self.close(nfa, haystack, at + 1, to, &mut visits);
                 }
             }
             charge(work, visits.units(costs))?;
-            if done {
-                return Ok(at.min(end));
-            }
             at += 1;
         }
     }
 }
 
-/// States visited and look-around assertions evaluated by the scan, or the units each costs.
+/// States visited, look-around assertions evaluated and sparse transitions walked by the scan,
+/// or the units each costs.
 #[derive(Default)]
 pub(super) struct Visits {
     pub(super) states: u64,
     pub(super) looks: u64,
+    pub(super) transitions: u64,
 }
 
 impl Visits {
@@ -176,14 +193,28 @@ impl Visits {
         self.states
             .saturating_mul(costs.states)
             .saturating_add(self.looks.saturating_mul(costs.looks))
+            .saturating_add(self.transitions.saturating_mul(costs.transitions))
     }
 }
 
-/// The state `id` moves to on `byte`, if it consumes it.
-fn step(nfa: &NFA, id: StateID, byte: u8) -> Option<StateID> {
+/// The state `id` moves to on `byte`, if it consumes it. A `Sparse` state is walked as
+/// `SparseTransitions::matches_byte` walks it (in order, up to the first range past `byte`),
+/// counting each range looked at: a large Unicode class costs a visit many times over (T-1988).
+fn step(nfa: &NFA, id: StateID, byte: u8, visits: &mut Visits) -> Option<StateID> {
     match nfa.state(id) {
         State::ByteRange { trans } => trans.matches_byte(byte).then_some(trans.next),
-        State::Sparse(sparse) => sparse.matches_byte(byte),
+        State::Sparse(sparse) => {
+            for trans in &sparse.transitions {
+                visits.transitions += 1;
+                if trans.start > byte {
+                    break;
+                }
+                if trans.matches_byte(byte) {
+                    return Some(trans.next);
+                }
+            }
+            None
+        }
         State::Dense(dense) => dense.matches_byte(byte),
         _ => None,
     }
@@ -192,4 +223,108 @@ fn step(nfa: &NFA, id: StateID, byte: u8) -> Option<StateID> {
 /// Whether `at` is a character boundary of the UTF-8 `haystack` (its end included).
 fn is_boundary(haystack: &[u8], at: usize) -> bool {
     haystack.get(at).is_none_or(|&b| b & 0xC0 != 0x80)
+}
+
+#[cfg(test)]
+mod tests {
+    use rand::{rngs::StdRng, Rng, SeedableRng};
+    use regex_automata::{
+        nfa::thompson::{pikevm::PikeVM, NFA},
+        util::iter::Searcher,
+        Input,
+    };
+
+    use super::{Reach, Visits};
+
+    /// The units `scan` charges `pattern` over `text` at one unit a sparse transition.
+    fn transitions(pattern: &str, text: &str) -> u64 {
+        let nfa = NFA::new(pattern).unwrap();
+        let mut work = u64::MAX;
+        let costs = Visits {
+            transitions: 1,
+            ..Visits::default()
+        };
+        Reach::new(&nfa)
+            .scan(&nfa, &Input::new(text), &costs, &mut work)
+            .unwrap();
+        u64::MAX - work
+    }
+
+    #[test]
+    fn scan_charges_the_sparse_transitions_it_walks() {
+        assert_eq!(transitions("x", "xxxx"), 0);
+        // A large Unicode class is a `Sparse` state walked range by range on every visit.
+        assert!(transitions(r"[\w\s\d]", "日") > 1);
+        assert!(transitions(r"[\w\s\d]{3}q", "日日日q") > transitions(r"[\w\s\d]", "日"));
+    }
+
+    /// Every match `PikeVM` iteration finds in `text`, as `Search::for_each_match` iterates
+    /// (a search after an empty match starts a byte later, maybe inside a character), each
+    /// search run over the span the scan measured (`spans`) or over the rest of the text.
+    fn matches(pattern: &str, text: &str, spans: bool) -> Vec<(usize, usize)> {
+        let pike = PikeVM::new(pattern).unwrap();
+        let mut cache = pike.create_cache();
+        let mut reach = Reach::new(pike.get_nfa());
+        let mut searcher = Searcher::new(Input::new(text));
+        let mut found = Vec::new();
+        while let Some(m) = searcher.advance(|input| {
+            let mut work = u64::MAX;
+            let end = if spans {
+                reach
+                    .scan(pike.get_nfa(), input, &Visits::default(), &mut work)
+                    .unwrap()
+            } else {
+                input.end()
+            };
+            Ok(pike.find(&mut cache, input.clone().span(input.start()..end)))
+        }) {
+            found.push((m.start(), m.end()));
+        }
+        found
+    }
+
+    // T-2015: the scan cuts the threads below a match, as the `PikeVM` does; over random
+    // patterns and texts, searching the measured span finds what searching the rest finds.
+    #[test]
+    fn scan_span_keeps_every_match() {
+        const ATOMS: [&str; 16] = [
+            "a", "b", "é", " ", ".", r"\b", r"\B", "(?:)", "[ab]", r"\w", "^", "$", "a|b", "é|",
+            "(a|é)", "(?m:^)",
+        ];
+        const SUFFIXES: [&str; 7] = ["", "*", "*?", "+", "+?", "?", "??"];
+        const CHARS: [char; 5] = ['a', 'b', 'é', ' ', '日'];
+        let mut rng = StdRng::seed_from_u64(2015);
+        for _ in 0..3000 {
+            let mut pattern = String::new();
+            for _ in 0..rng.gen_range(1..5) {
+                if rng.gen_bool(0.2) {
+                    pattern.push('|');
+                }
+                let atom = ATOMS[rng.gen_range(0..ATOMS.len())];
+                pattern.push_str(&format!("(?:{atom})"));
+                pattern.push_str(SUFFIXES[rng.gen_range(0..SUFFIXES.len())]);
+            }
+            let text: String = (0..rng.gen_range(0..12))
+                .map(|_| CHARS[rng.gen_range(0..CHARS.len())])
+                .collect();
+            assert_eq!(
+                matches(&pattern, &text, true),
+                matches(&pattern, &text, false),
+                "{pattern:?} over {text:?}"
+            );
+        }
+    }
+
+    // T-2015: a lazy pattern's lower-priority greedy thread is cut once the lazy one matches,
+    // so the scan stops at the match instead of reading to the end of the text.
+    #[test]
+    fn scan_stops_at_a_lazy_match() {
+        let nfa = NFA::new(r"\bab.*?\b").unwrap();
+        let text = "é ab ".repeat(100);
+        let mut work = u64::MAX;
+        let end = Reach::new(&nfa)
+            .scan(&nfa, &Input::new(&text), &Visits::default(), &mut work)
+            .unwrap();
+        assert!(end < 10, "{end}");
+    }
 }

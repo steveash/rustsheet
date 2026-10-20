@@ -8,6 +8,7 @@ use chrono::{Datelike, NaiveDate};
 
 use crate::{
     calc_result::CalcResult,
+    constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{token::Error, types::CellReferenceIndex},
     formatter::dates::{from_excel_date, EPOCH_1904_IN_1900_SERIALS},
     functions::lift::num_error,
@@ -74,12 +75,13 @@ impl Model {
         Ok(self.financial_date(serial))
     }
 
-    /// The settlement check of the COUP* functions, PRICE, YIELD and DURATION: #NUM! unless the
-    /// settlement is a calendar date before the maturity. Excel is #NUM! for a settlement below
-    /// serial 1 in a 1900 workbook (0, 0.5, -0.5, -1, -1E15: probes/fin-coupon-walk-bounds A1-A13,
-    /// A19, A20, fin-coupon-walk-bounds-b A11) and for a negative one in a 1904 workbook, whose 0
-    /// reads as the 1900 serial 2924 (probes/date-system-1904-financial A35-A40). The check also
-    /// keeps the coupon schedule walk back from the maturity inside the calendar: without it
+    /// The settlement check of PRICE, YIELD and DURATION: #NUM! unless the settlement is a
+    /// calendar date before the maturity. Excel is #NUM! for a settlement below serial 1 in a 1900
+    /// workbook (0, 0.5, -1: probes/fin-coupon-walk-bounds A10-A13, A20, fin-coupon-walk-bounds-c
+    /// M3-N5) and for a negative one in a 1904 workbook, whose 0 reads as the 1900 serial 2924
+    /// (probes/date-system-1904-financial A35-A40). The COUP* functions check their own settlement
+    /// (`Model::coupon_args`: 0 is a date to them). The check also keeps the coupon schedule
+    /// walk back from the maturity inside the calendar: without it
     /// `COUPNUM(-1E15,43831,4)` stepped about 10^6 quarters back to chrono's first year
     /// (directive 5, T-1822; docs/excel-semantics/financial.md "Coupon settlement before the
     /// calendar").
@@ -93,6 +95,23 @@ impl Model {
             return Err(num_error(cell));
         }
         Ok(())
+    }
+
+    /// A date argument of the TBILL functions as read: its number, #NUM! unless it floors to a
+    /// serial from 0 to 9999-12-31, checked before the next argument is read (`TBILLEQ(-1,1/0,0.05)`
+    /// and `TBILLEQ(39000,2958466,1/0)` are #NUM!, `TBILLEQ(0,39100,1/0)` #DIV/0!;
+    /// probes/securities-argument-error-order C1:F16; financial.md, T-1406).
+    pub(super) fn financial_calendar_date_of(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let serial = self.cast_number_no_bools_ref(value, cell)?;
+        let calendar = 0..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        if !calendar.contains(&self.financial_date(serial)) {
+            return Err(num_error(cell));
+        }
+        Ok(serial)
     }
 
     /// The date checks PRICE, YIELD and DURATION make before computing: [`Model::check_settlement`]
@@ -173,15 +192,24 @@ pub(crate) fn days_30_360_us_ymd(d1: (i32, u32, u32), d2: (i32, u32, u32)) -> f6
 // Days d1→d2 via US 30/360 with the `ModifyBothDates` rule — the "PSA hack"
 // the odd-last-coupon code uses for basis 0.
 pub(super) fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let mut day1 = d1.day() as i32;
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let mut day2 = d2.day() as i32;
+    days_30_360_us_both_ymd(
+        (d1.year(), d1.month(), d1.day()),
+        (d2.year(), d2.month(), d2.day()),
+    )
+}
 
-    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
-    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+// `days_30_360_us_both` over `(year, month, day)` triples, so the coupon day counts can read
+// serial 0 (1900-01-00) and Excel's fictitious 1900-02-29.
+pub(super) fn days_30_360_us_both_ymd(d1: (i32, u32, u32), d2: (i32, u32, u32)) -> f64 {
+    let (y1, month1, day1_raw) = d1;
+    let (y2, month2, day2_raw) = d2;
+    let m1 = month1 as i32;
+    let m2 = month2 as i32;
+    let mut day1 = day1_raw as i32;
+    let mut day2 = day2_raw as i32;
+
+    let start_is_feb_last = month1 == 2 && day1_raw == last_day_of_feb(y1);
+    let end_is_feb_last = month2 == 2 && day2_raw == last_day_of_feb(y2);
 
     if end_is_feb_last {
         day2 = 30;
@@ -200,17 +228,32 @@ pub(super) fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
 
 // Days d1→d2 via the EU 30/360 convention (basis 4).
 pub(super) fn days_30_360_eu(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let day1 = (d1.day() as i32).min(30);
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let day2 = (d2.day() as i32).min(30);
-    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
+    days_30_360_eu_ymd(
+        (d1.year(), d1.month(), d1.day()),
+        (d2.year(), d2.month(), d2.day()),
+    )
+}
+
+// `days_30_360_eu` over `(year, month, day)` triples (see `days_30_360_us_both_ymd`).
+pub(super) fn days_30_360_eu_ymd(d1: (i32, u32, u32), d2: (i32, u32, u32)) -> f64 {
+    let (y1, m1, day1) = d1;
+    let (y2, m2, day2) = d2;
+    let day1 = day1.min(30) as i32;
+    let day2 = day2.min(30) as i32;
+    (360 * (y2 - y1) + 30 * (m2 as i32 - m1 as i32) + (day2 - day1)) as f64
 }
 
 pub(super) fn actual_days(d1: NaiveDate, d2: NaiveDate) -> f64 {
     (d2 - d1).num_days() as f64
+}
+
+/// The day-count basis a number names: 0 to 4 after truncation, `None` (Excel's #NUM!) for any
+/// other number. Every negative basis is #NUM!, -1E-300 and -0.5 too (not truncated toward 0),
+/// while 4.9 is 4 (probes/fin-bond-negative-basis; financial.md "Day-count basis: a negative basis
+/// is #NUM!").
+pub(crate) fn day_count_basis(basis: f64) -> Option<u32> {
+    // `as u32` truncates in range; out of range (NaN too) the saturated value is discarded.
+    (0.0..5.0).contains(&basis).then_some(basis as u32)
 }
 
 // Basis-aware days from d1 to d2.

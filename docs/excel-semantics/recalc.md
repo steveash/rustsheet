@@ -112,4 +112,4 @@ Evidence: probes/data-tables (excel-graph, 2026-10-16, T-0428).
 Ours: the result cells are blank (the import has no data tables), so the reads are 0 or wrong.
 The table formulas themselves already match.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428
+Tasks: T-0428, T-0441

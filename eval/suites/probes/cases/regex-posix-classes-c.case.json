@@ -1,0 +1,54 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1989 probe: is (?i)[[[:upper:]]] a nested bracket or PCRE2's [[[:upper:]] then ] (A1-A4); nested brackets [[a]] (A5-A7); (?i)[[:ascii:]] against the Kelvin sign and long s (A8-A10); negated brackets mixing [:upper:]/[:lower:] with a folded item (A11-A19); [:upper:] beside other classes, ranges, && and in a scoped (?i:) (A20-A26); the unprobed code points of T-1903 (A27-A36).",
+  "tags": [
+    "M7",
+    "probe",
+    "T-1989",
+    "regextest"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=IFERROR(REGEXTEST(\"A\",\"(?i)[[[:upper:]]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"(?i)[[[:upper:]]]\")))",
+        "A2": "=IFERROR(REGEXTEST(\"A]\",\"(?i)[[[:upper:]]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A]\",\"(?i)[[[:upper:]]]\")))",
+        "A3": "=IFERROR(REGEXTEST(\"a]\",\"(?i)[[[:upper:]]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a]\",\"(?i)[[[:upper:]]]\")))",
+        "A4": "=IFERROR(REGEXTEST(\"[]\",\"(?i)[[[:upper:]]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"[]\",\"(?i)[[[:upper:]]]\")))",
+        "A5": "=IFERROR(REGEXTEST(\"[\",\"[[a]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"[\",\"[[a]]\")))",
+        "A6": "=IFERROR(REGEXTEST(\"a\",\"[[a]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[[a]]\")))",
+        "A7": "=IFERROR(REGEXTEST(\"a]\",\"[[a]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a]\",\"[[a]]\")))",
+        "A8": "=IFERROR(REGEXTEST(UNICHAR(8490),\"(?i)[[:ascii:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(8490),\"(?i)[[:ascii:]]\")))",
+        "A9": "=IFERROR(REGEXTEST(UNICHAR(383),\"(?i)[[:ascii:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(383),\"(?i)[[:ascii:]]\")))",
+        "A10": "=IFERROR(REGEXTEST(UNICHAR(8490),\"(?i)k\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(8490),\"(?i)k\")))",
+        "A11": "=IFERROR(REGEXTEST(\"X\",\"(?i)[^[:upper:]x]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"X\",\"(?i)[^[:upper:]x]\")))",
+        "A12": "=IFERROR(REGEXTEST(\"x\",\"(?i)[^[:upper:]x]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"x\",\"(?i)[^[:upper:]x]\")))",
+        "A13": "=IFERROR(REGEXTEST(\"B\",\"(?i)[^[:upper:]x]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"B\",\"(?i)[^[:upper:]x]\")))",
+        "A14": "=IFERROR(REGEXTEST(\"b\",\"(?i)[^[:upper:]x]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"b\",\"(?i)[^[:upper:]x]\")))",
+        "A15": "=IFERROR(REGEXTEST(\"X\",\"(?i)[[:^upper:]x]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"X\",\"(?i)[[:^upper:]x]\")))",
+        "A16": "=IFERROR(REGEXTEST(\"A\",\"(?i)[^[:lower:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"(?i)[^[:lower:]]\")))",
+        "A17": "=IFERROR(REGEXTEST(\"a\",\"(?i)[^[:lower:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[^[:lower:]]\")))",
+        "A18": "=IFERROR(REGEXTEST(\"A\",\"(?i)[[:^lower:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"(?i)[[:^lower:]]\")))",
+        "A19": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[:^lower:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[:^lower:]]\")))",
+        "A20": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[:upper:][:digit:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[:upper:][:digit:]]\")))",
+        "A21": "=IFERROR(REGEXTEST(\"B\",\"(?i)[[:lower:]a-c]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"B\",\"(?i)[[:lower:]a-c]\")))",
+        "A22": "=IFERROR(REGEXTEST(\"D\",\"(?i)[[:lower:]a-c]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"D\",\"(?i)[[:lower:]a-c]\")))",
+        "A23": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[:upper:]&&[:alpha:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[:upper:]&&[:alpha:]]\")))",
+        "A24": "=IFERROR(REGEXTEST(\"A\",\"(?i)[[:upper:]&&[:alpha:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"(?i)[[:upper:]&&[:alpha:]]\")))",
+        "A25": "=IFERROR(REGEXTEST(\"a\",\"(?i:[[:upper:]])\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i:[[:upper:]])\")))",
+        "A26": "=IFERROR(REGEXTEST(\"a\",\"(?i)(?-i)(?i)[^[:^upper:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)(?-i)(?i)[^[:^upper:]]\")))",
+        "A27": "=IFERROR(REGEXTEST(UNICHAR(1564),\"[[:graph:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(1564),\"[[:graph:]]\")))",
+        "A28": "=IFERROR(REGEXTEST(UNICHAR(1564),\"[[:cntrl:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(1564),\"[[:cntrl:]]\")))",
+        "A29": "=IFERROR(REGEXTEST(UNICHAR(6158),\"[[:space:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(6158),\"[[:space:]]\")))",
+        "A30": "=IFERROR(REGEXTEST(UNICHAR(6158),\"[[:blank:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(6158),\"[[:blank:]]\")))",
+        "A31": "=IFERROR(REGEXTEST(UNICHAR(6158),\"[[:graph:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(6158),\"[[:graph:]]\")))",
+        "A32": "=IFERROR(REGEXTEST(UNICHAR(8294),\"[[:graph:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(8294),\"[[:graph:]]\")))",
+        "A33": "=IFERROR(REGEXTEST(UNICHAR(8297),\"[[:graph:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(8297),\"[[:graph:]]\")))",
+        "A34": "=IFERROR(REGEXTEST(UNICHAR(2307),\"[[:word:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(2307),\"[[:word:]]\")))",
+        "A35": "=IFERROR(REGEXTEST(UNICHAR(2307),\"[[:graph:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(2307),\"[[:graph:]]\")))",
+        "A36": "=IFERROR(REGEXTEST(UNICHAR(2307),\"[[:alpha:]]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(2307),\"[[:alpha:]]\")))"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -261,6 +261,26 @@ fn typed_date_clock_text_shapes_pick_their_formats() {
         ("1/2/2020 10:00 P", Some("m/d/yyyy h:mm")),
         ("1/2/2020 10 p", Some("m/d/yyyy h:mm")),
         ("July 1, 2026 10:00 A", Some("m/d/yyyy h:mm")),
+        // probes/date-text-single-letter-ap N9, N12 (T-2011)
+        ("1/2/2020 10:00 A.", Some("m/d/yyyy h:mm")),
+        ("10:00 A", Some("h:mm AM/PM")),
+        ("10:00 p", Some("h:mm AM/PM")),
+        ("10:00 A.", Some("h:mm AM/PM")),
+        ("10 A", Some("h:mm AM/PM")),
+        ("10:00 AM", Some("h:mm AM/PM")),
+        ("10:00:30 A", Some("h:mm:ss AM/PM")),
+        // probes/date-text-single-letter-ap N21-N29 (T-2053)
+        ("10 A.", Some("h:mm AM/PM")),
+        ("0:00 A", Some("h:mm AM/PM")),
+        ("13:00 A", None),
+        ("10:00:30.5 A", Some("mm:ss.0")),
+        ("10:00.5 A", Some("mm:ss.0")),
+        ("10 AM", Some("h:mm AM/PM")),
+        ("10:00:30 AM", Some("h:mm:ss AM/PM")),
+        ("12:00 A", Some("h:mm AM/PM")),
+        ("10 PM", Some("h:mm AM/PM")),
+        ("1/2/2020 10 A.", Some("m/d/yyyy h:mm")),
+        ("1/2/2020 10:00:30 P.", Some("m/d/yyyy h:mm")),
         ("1/2/2020 10:00  AM", Some("m/d/yyyy h:mm")),
         ("1/2/2020 10:00:30.5", Some("mm:ss.0")),
         ("1/2/2020 10:00.5", Some("mm:ss.0")),
@@ -293,6 +313,8 @@ fn typed_date_text_with_a_rejected_clock_stays_text_and_keeps_the_date_format() 
     // (excel-graph, T-1986; formats from docs/research/rejected-clock-text-formats-2026-10-19.md).
     let cases = [
         ("1/2/2020 13:00 PM", "m/d/yyyy"),
+        // probes/date-text-single-letter-ap N16 (T-2011)
+        ("1/2/2020 13:00 A.", "m/d/yyyy"),
         ("1/2/2020 13:00 AM", "m/d/yyyy"),
         ("1/2/2020 24:00 PM", "m/d/yyyy"),
         ("1/2/2020 13 PM", "m/d/yyyy"),

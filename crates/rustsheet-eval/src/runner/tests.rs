@@ -19,10 +19,14 @@ impl Engine for Scripted {
     fn name(&self) -> &'static str {
         "scripted"
     }
-    fn evaluate_xlsx(&self, _: &[u8]) -> Result<Box<dyn Evaluated>, String> {
+    fn evaluate_xlsx(&self, _: &[u8], _: Option<&str>) -> Result<Box<dyn Evaluated>, String> {
         Err("unused".into())
     }
-    fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String> {
+    fn evaluate_spec(
+        &self,
+        spec: &CaseSpec,
+        _: Option<&str>,
+    ) -> Result<Box<dyn Evaluated>, String> {
         match spec.description.as_str() {
             "panic" => panic!("boom"),
             "error" => Err("cannot materialize".into()),

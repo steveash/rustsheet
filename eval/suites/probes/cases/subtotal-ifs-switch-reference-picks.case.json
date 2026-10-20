@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2014: SUBTOTAL, AREAS, ISREF, SUM and COUNTA over an IFS or SWITCH whose chosen value is a reference-returning XLOOKUP or TAKE, a union, a cell or a value, with no-match, array-condition and nested IF controls, and ISREF over IF/CHOOSE/LET of XLOOKUP or TAKE; each formula in column A from row 10 every 4 rows, in clear space so a spill shows its shape. H1:H2 = 3,4; I1:I2 = 6,8; J1:J2 = 1,2 (keys); K1 = \"x\", L1 = TRUE.",
+  "tags": [
+    "M6",
+    "probe",
+    "T-2014"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "H1": 3,
+        "H2": 4,
+        "I1": 6,
+        "I2": 8,
+        "J1": 1,
+        "J2": 2,
+        "K1": "x",
+        "L1": true,
+        "A10": "=AREAS(IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2)))",
+        "A14": "=AREAS(SWITCH(1,1,XLOOKUP(1,J1:J2,H1:I2)))",
+        "A18": "=ISREF(IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2)))",
+        "A22": "=ISREF(SWITCH(1,1,XLOOKUP(1,J1:J2,H1:I2)))",
+        "A26": "=ISREF(IFS(TRUE,H1))",
+        "A30": "=ISREF(SWITCH(1,1,H1))",
+        "A34": "=ISREF(IFS(TRUE,1))",
+        "A38": "=ISREF(LET(v,1,XLOOKUP(1,J1:J2,H1:I2)))",
+        "A42": "=SUBTOTAL(9,IFS(TRUE,(H1,I2)))",
+        "A46": "=AREAS(IFS(TRUE,(H1,I2)))",
+        "A50": "=SUBTOTAL(9,SWITCH(1,1,(H1,I2)))",
+        "A54": "=AREAS(SWITCH(2,1,H1,(H1,I2)))",
+        "A58": "=SUBTOTAL(9,IFS(FALSE,1,TRUE,TAKE(H1:I2,1)))",
+        "A62": "=SUBTOTAL(9,SWITCH(2,1,H1,XLOOKUP(1,J1:J2,H1:I2)))",
+        "A66": "=SUBTOTAL(9,IFS(TRUE,XLOOKUP({1;2},J1:J2,H1:H2)))",
+        "A70": "=SUBTOTAL(9,IFS({TRUE,FALSE},H1,TRUE,I1))",
+        "A74": "=SUBTOTAL(9,IFS(FALSE,H1))",
+        "A78": "=SUBTOTAL(9,SWITCH(3,1,H1))",
+        "A82": "=SUM(IFS(TRUE,XLOOKUP(1,J1:J2,K1:L2)),5)",
+        "A86": "=SUM(SWITCH(1,1,XLOOKUP(1,J1:J2,K1:L2)),5)",
+        "A90": "=SUM(IFS(TRUE,(H1,I2)))",
+        "A94": "=ISREF(IFS(TRUE,(H1,I2)))",
+        "A98": "=SUBTOTAL(9,IF(TRUE,IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2))))",
+        "A102": "=SUBTOTAL(9,IFS(TRUE,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2))))",
+        "A106": "=COUNTA(IFS(TRUE,XLOOKUP(1,J1:J2,K1:L2)))",
+        "A110": "=ISREF(IF(TRUE,TAKE(H1:I2,1)))"
+      }
+    }
+  ]
+}

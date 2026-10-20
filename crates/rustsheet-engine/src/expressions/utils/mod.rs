@@ -340,6 +340,12 @@ pub fn is_valid_identifier(name: &str) -> bool {
     !is_r1c1_shaped(name) && is_identifier_text(name)
 }
 
+/// Whether `name` is made only of letters and digits and reads as an A1 cell (`NLG1`): the one
+/// kind of name [`is_valid_identifier`] refuses that Excel still loads from a workbook.
+pub(crate) fn is_cell_spelled_name(name: &str) -> bool {
+    name.chars().all(|c| c.is_ascii_alphanumeric()) && parse_reference_a1(name).is_some()
+}
+
 pub(crate) fn name_needs_quoting(name: &str) -> bool {
     // Excel only leaves a sheet name unquoted when it is made of letters, digits,
     // '_' and '.', and does not start with a digit or a '.'. Anything else

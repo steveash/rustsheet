@@ -1,0 +1,59 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2062 probe: ASINH and ACOSH where x*x overflows a double (|x| above about 1.3407807929942596E154), to tell whether Excel's log formula gives #NUM! (ln of infinity) or a finite value.",
+ "tags": [
+  "M9",
+  "probe",
+  "numeric"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1e+154,
+    "B1": "=ASINH(A1)",
+    "A2": 1.3e+154,
+    "B2": "=ASINH(A2)",
+    "A3": 1.35e+154,
+    "B3": "=ASINH(A3)",
+    "A4": 1.4e+154,
+    "B4": "=ASINH(A4)",
+    "A5": 1e+200,
+    "B5": "=ASINH(A5)",
+    "A6": 1e+308,
+    "B6": "=ASINH(A6)",
+    "A7": 1.7976931348623157e+308,
+    "B7": "=ASINH(A7)",
+    "A8": -1e+154,
+    "B8": "=ASINH(A8)",
+    "A9": -1.3e+154,
+    "B9": "=ASINH(A9)",
+    "A10": -1.35e+154,
+    "B10": "=ASINH(A10)",
+    "A11": -1.4e+154,
+    "B11": "=ASINH(A11)",
+    "A12": -1e+200,
+    "B12": "=ASINH(A12)",
+    "A13": -1e+308,
+    "B13": "=ASINH(A13)",
+    "A14": -1.7976931348623157e+308,
+    "B14": "=ASINH(A14)",
+    "A15": 1e+154,
+    "B15": "=ACOSH(A15)",
+    "A16": 1.3e+154,
+    "B16": "=ACOSH(A16)",
+    "A17": 1.35e+154,
+    "B17": "=ACOSH(A17)",
+    "A18": 1.4e+154,
+    "B18": "=ACOSH(A18)",
+    "A19": 1e+200,
+    "B19": "=ACOSH(A19)",
+    "A20": 1e+308,
+    "B20": "=ACOSH(A20)",
+    "A21": 1.7976931348623157e+308,
+    "B21": "=ACOSH(A21)"
+   }
+  }
+ ],
+ "expected": {}
+}

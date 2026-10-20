@@ -3,7 +3,7 @@ id: T-1430
 title: "Probe DATEDIF and DAYS360 error order when a date and the unit or method are both bad"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -27,11 +27,19 @@ to a probe case.
 Evidence from T-1785: `INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)` is `#N/A` in Excel (probes/date-math-lift-driver-edges G43, a known failure: ours gives the reversed pair's `#NUM!`), so the unit's error may come before the reversed-pair check. The DATEDIF and DAYS360 kernels are in `fn_datedif`/`fn_days360` on the SPEC-0011 driver.
 
 ## Acceptance criteria
-- [ ] A probe case holds `DATEDIF(10,5,NA())`, `DATEDIF(1/0,5,NA())`, `DAYS360(-5,5,NA())`, `DAYS360(1/0,5,NA())`
+- [x] A probe case holds `DATEDIF(10,5,NA())`, `DATEDIF(1/0,5,NA())`, `DAYS360(-5,5,NA())`, `DAYS360(1/0,5,NA())`
   with oracle values; ours matches them (baseline updated).
-- [ ] dates.md's entry is VERIFIED (or records the difference) and the code comments cite the probe.
-- [ ] probes/date-math-lift-driver-edges Sheet1!G43 (`=INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)`, Excel #N/A) passes; the baseline shrinks.
-- [ ] `make check` green; reviewers approve.
+- [x] dates.md's entry is VERIFIED (or records the difference) and the code comments cite the probe.
+- [x] probes/date-math-lift-driver-edges Sheet1!G43 (`=INDEX(DATEDIF(46000,45000,{"d";#N/A}),2)`, Excel #N/A) passes; the baseline shrinks.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+New probe probes/datedif-days360-error-order (41 cells, excel-graph): both functions read every
+argument's value first (start, end, then unit/method), and only then check the dates' range. DAYS360
+already matched. DATEDIF checked a reversed pair before the unit's error; `datedif_value` now reads
+the unit's error first, so `DATEDIF(10,5,NA())` is #N/A. dates.md's entry is VERIFIED.
+Eval: probes known failures 1812 → 1811 (date-math-lift-driver-edges G43 fixed), a new case of 41
+passing cells, 0 regressions.

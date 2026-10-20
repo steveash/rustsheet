@@ -9,7 +9,7 @@ mod kernel_work;
 mod metamorphic;
 
 use super::driver::{LiftCost, LiftOptions, LiftedArg, Reuse};
-use super::kinds::{ArgKind, ArgKinds, KernelWork};
+use super::kinds::{ArgKind, ArgKinds, CallResult, KernelWork};
 use crate::calc_result::CalcResult;
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::Error;
@@ -105,6 +105,7 @@ const LIFT_ALL: ArgKinds = ArgKinds {
     repeat: Some(ArgKind::Lift),
     max: 255,
     work: KernelWork::Constant,
+    result: CallResult::Value,
 };
 
 /// A whole argument, then a lifted one.
@@ -128,7 +129,7 @@ fn the_table_reads_its_kinds_and_counts() {
         let kinds = function.arg_kinds().unwrap();
         assert_eq!(kinds.work, KernelWork::Constant, "{function:?}");
     }
-    assert!(Function::Db.arg_kinds().is_none());
+    assert!(Function::Sum.arg_kinds().is_none());
 }
 
 // ---------------------------------------------------------------- the unlifted path
@@ -647,6 +648,7 @@ fn a_weighted_kernel_is_charged_its_weight() {
         let options = LiftOptions {
             reuse: Reuse::Never,
             work: KernelWork::Weighted(weight),
+            result: CallResult::Value,
         };
         let mut calls = 0;
         let mut kernel = |_: &mut Model, _: &[CalcResult]| {
@@ -661,14 +663,20 @@ fn a_weighted_kernel_is_charged_its_weight() {
 
 #[test]
 fn a_lifted_yield_over_many_elements_is_refused_before_its_first_element() {
-    // YIELD's elements are charged its solver bound (`YIELD_SOLVER_WEIGHT`, 2^24): 8 elements
-    // run, the ninth makes the call #ERROR! with no kernel call (T-1842).
+    // YIELD's elements across the whole calendar quarterly are charged its solver bound
+    // (`YIELD_SOLVER_WEIGHT`, 2^24): 8 elements run, the ninth makes the call #ERROR! with no
+    // kernel call (T-1842); a shorter schedule is charged less (T-1869), so 9 ten-year ones run.
     let mut model = model_with(&[]);
     let Some(kinds) = Function::Yield.arg_kinds() else {
         panic!("YIELD has a lifting table entry");
     };
-    for (elements, runs) in [(8, true), (9, false), (1 << 20, false)] {
-        let formula = format!("YIELD(SEQUENCE({elements})+39000,43831,0.05,95,100,2)");
+    for (elements, maturity, runs) in [
+        (8, 2_958_465, true),
+        (9, 2_958_465, false),
+        (1 << 20, 2_958_465, false),
+        (9, 43_831, true),
+    ] {
+        let formula = format!("YIELD(SEQUENCE({elements})*0+1,{maturity},0.05,95,100,4)");
         let (result, calls) = run_counting(&mut model, kinds, &formula, LiftCost::Unit, |_| {
             CalcResult::Number(1.0)
         });
@@ -685,6 +693,7 @@ fn element_texts_count_against_the_text_budget() {
     let options = LiftOptions {
         reuse: Reuse::Never,
         work: KernelWork::Constant,
+        result: CallResult::Value,
     };
     let mut kernel = |_: &mut Model, _: &[CalcResult]| long.clone();
     // 2048 texts of 32,767 bytes fit 64 MiB; 2049 are #VALUE!.
@@ -695,7 +704,7 @@ fn element_texts_count_against_the_text_budget() {
 }
 
 #[test]
-fn lifted_args_are_grids_for_arrays_and_ranges() {
+fn args_read_as_grids_for_arrays_and_ranges() {
     assert!(LiftedArg::is_grid(&CalcResult::Array(vec![])));
 }
 

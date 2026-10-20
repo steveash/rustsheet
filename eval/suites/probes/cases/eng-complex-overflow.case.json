@@ -1,0 +1,39 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2003: complex overflow in IMSIN IMCOS IMSINH IMCOSH IMPRODUCT IMSUB IMSUM.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-2003"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMCOSH(\"1000\")",
+    "A2": "=IMSINH(\"1000\")",
+    "A3": "=IMSIN(\"1+1000i\")",
+    "A4": "=IMCOS(\"1+1000i\")",
+    "A5": "=IMPRODUCT(\"1E200\",\"1E200\",C1)",
+    "A6": "=IMPRODUCT(\"1E200\",\"1E200\")",
+    "A7": "=IMSUB(\"9E307\",\"-9E307\")",
+    "A8": "=IMSUM(\"9E307\",\"9E307\",\"-9E307\")",
+    "A9": "=IMSUM(\"9E307\",\"9E307\",1,\"x\")",
+    "A10": "=IMPRODUCT(\"1E200\",\"1E200\",\"x\")",
+    "A11": "=IMSUM(\"9E307\",\"9E307\")",
+    "A12": "=IMEXP(\"1000\")",
+    "A13": "=IMSUB(\"-9E307\",\"9E307\")",
+    "A14": "=IMSUB(\"9E307+1i\",\"-9E307\")",
+    "A15": "=IMSUB(\"1+9E307i\",\"1-9E307i\")",
+    "A16": "=IMSUB(\"9E307\",\"-9E307\")&\"|\"",
+    "A17": "=IMSUB(\"5E307\",\"-5E307\")",
+    "A18": "=IMSUB(\"1E308\",\"0\")",
+    "A19": "=IMSUB(\"9E307\",\"-9E307\")+0",
+    "A20": "=IMABS(IMSUB(\"9E307\",\"-9E307\"))",
+    "A21": "=IMSUB(\"9E307j\",\"-9E307j\")"
+   }
+  }
+ ],
+ "expected": {}
+}

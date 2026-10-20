@@ -1,0 +1,53 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1999: RANK/RANK.EQ/RANK.AVG with a direct or referenced boolean or text `number` and `order` (an array element TRUE coerces, probes/stat-test-lift P26), and an `order` error against the data's error.",
+  "tags": [
+    "M9",
+    "statistical",
+    "rank",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 4,
+        "A4": 3,
+        "A5": 7,
+        "A6": 5,
+        "A7": 8,
+        "A8": 6,
+        "D1": 1,
+        "D2": "=NA()",
+        "D3": 3,
+        "K1": true,
+        "K2": {
+          "t": "s",
+          "v": "4"
+        },
+        "K3": false,
+        "H1": "=RANK(TRUE,A1:A8)",
+        "H2": "=RANK.EQ(TRUE,A1:A8)",
+        "H3": "=RANK.AVG(TRUE,A1:A8)",
+        "H4": "=RANK(4,A1:A8,TRUE)",
+        "H5": "=RANK(4,A1:A8,FALSE)",
+        "H6": "=RANK(K1,A1:A8)",
+        "H7": "=RANK(4,A1:A8,K1)",
+        "H8": "=RANK(K2,A1:A8)",
+        "H9": "=RANK(\"4\",A1:A8)",
+        "H10": "=RANK(4,A1:A8,\"1\")",
+        "H11": "=RANK(4,D1:D3,\"x\")",
+        "H12": "=RANK(4,D1:D3,1/0)",
+        "H13": "=RANK(1,D1:D3,\"x\")",
+        "H14": "=INDEX(RANK(4,A1:A8,{TRUE;FALSE}),1)",
+        "H15": "=RANK(4,A1:A8,K3)",
+        "H16": "=RANK(FALSE,A1:A8)",
+        "H17": "=RANK(K3,A1:A8)",
+        "H18": "=RANK.AVG(4,A1:A8,TRUE)"
+      }
+    }
+  ],
+  "expected": {}
+}

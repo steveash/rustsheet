@@ -69,12 +69,15 @@ impl Model {
             Err(s) => return s,
         };
         let n = match self.cast_number_no_bools_ref(n, cell) {
-            Ok(f) => f.trunc() as i32,
+            Ok(f) => f,
             Err(s) => return s,
         };
-        if n < 0 {
+        // The sign is checked before truncation: any negative order, even -1E-300, is `#NUM!`
+        // (probes/eng-gen-sample-edges E1:E9).
+        if n < 0.0 {
             return CalcResult::new_error(Error::NUM, cell, String::new());
         }
+        let n = n.trunc() as i32;
         let result = bessel(n, x);
         if result.is_infinite() || result.is_nan() {
             return CalcResult::new_error(Error::NUM, cell, String::new());

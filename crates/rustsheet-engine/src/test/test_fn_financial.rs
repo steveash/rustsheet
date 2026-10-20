@@ -568,3 +568,28 @@ fn fn_xnpv_argument_count() {
     assert_eq!(model._get_text("D3"), *"#ERROR!");
     assert_eq!(model._get_text("D4"), *"9.962109338");
 }
+
+/// When `pv*(1+rate)^nper` overflows PMT is the quotient divided through by P (limit
+/// `-pv*rate`), and a P that underflows to 0 is #NUM! (probes/pmt-overflow, excel-graph, T-1405).
+#[test]
+fn fn_pmt_when_the_power_overflows_or_underflows() {
+    let mut model = new_empty_model();
+    model._set("A1", "=PMT(100,184,439103)");
+    model._set("A2", "=PMT(100,184,439103,0,1)");
+    model._set("A3", "=PMT(100,153,1)");
+    model._set("A4", "=PMT(1,2000,0,5)");
+    model._set("A5", "=PMT(-0.5,1070,0,5)");
+    model._set("A6", "=IPMT(100,1,184,439103)");
+    model._set("A7", "=PPMT(100,1,184,439103)");
+    model._set("A8", "=FV(100,184,1)");
+    model.evaluate();
+    let number = |row| model.get_cell_value_by_index(0, row, 1);
+    assert_eq!(number(1), Ok(CellValue::Number(-43_910_300.0)));
+    assert_eq!(number(2), Ok(CellValue::Number(-43_910_300.0 / 101.0)));
+    assert_eq!(number(3), Ok(CellValue::Number(-100.0)));
+    assert_eq!(number(4), Ok(CellValue::Number(0.0)));
+    assert_eq!(model._get_text("A5"), "#NUM!");
+    assert_eq!(number(6), Ok(CellValue::Number(-43_910_300.0)));
+    assert_eq!(number(7), Ok(CellValue::Number(0.0)));
+    assert_eq!(model._get_text("A8"), "#NUM!");
+}

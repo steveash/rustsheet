@@ -5,7 +5,9 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, ItemSource},
+    functions::util::aggregate_args::{
+        AggregatePolicy, ArgReading, ErrorRule, GridReading, ItemSource,
+    },
     functions::util::array_node_to_calc_result,
     model::Model,
 };
@@ -135,4 +137,5 @@ const LOGICAL_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::First,
     skip_empty_args: false,
+    grids: GridReading::Values,
 };

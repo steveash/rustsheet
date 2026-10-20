@@ -2,9 +2,10 @@
 //! kind in the table, and the kernel runs once (nothing lifted) or once per element.
 
 use super::arg_buf::ArgBuf;
-use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg, Reuse};
+use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::is_multi_sheet_span;
 use crate::functions::Function;
 use crate::limits::{check_range_size, too_many_visits, MAX_LIFTED_CELL_VISITS};
 use crate::{
@@ -68,11 +69,7 @@ impl Model {
                     return result;
                 }
             }
-            Node::SheetSpanKind {
-                first_index,
-                last_index,
-                ..
-            } if first_index != last_index => return refused_range(cell),
+            node if is_multi_sheet_span(node) => return refused_range(cell),
             _ => {}
         }
         self.evaluate_node_in_context(node, cell)
@@ -149,11 +146,8 @@ impl Model {
         if !kinds.accepts(args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let options = LiftOptions {
-            reuse: Reuse::Never,
-            work: kinds.work,
-        };
-        // One- and two-argument calls (most of the math functions) read into locals: building,
+        let options = LiftOptions::for_entry(kinds);
+        // Calls of up to three arguments (most of the math functions) read into locals: building,
         // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
         // most of the per-call overhead over the old math macros (T-1773 bench).
         // Each argument is read by `read_lift_arg_with`, as in `read_lift_args`: a change to how
@@ -181,6 +175,31 @@ impl Model {
                     Err(error) => return error,
                 }
             }
+            // Three arguments (MID, FIND, DATE, ...): a per-row `=MID(A{r},2,3)` was about 15%
+            // slower through `read_lift_args` than through `broadcast_text` (T-1775 bench).
+            [first, second, third] => {
+                let mut input_cells = 0;
+                let read = self
+                    .read_lift_arg_at(kinds, 0, first, &mut input_cells, cell)
+                    .and_then(|first| {
+                        let second =
+                            self.read_lift_arg_at(kinds, 1, second, &mut input_cells, cell)?;
+                        let third =
+                            self.read_lift_arg_at(kinds, 2, third, &mut input_cells, cell)?;
+                        Ok((first, second, third))
+                    });
+                match read {
+                    Ok((
+                        LiftedArg::Scalar(first),
+                        LiftedArg::Scalar(second),
+                        LiftedArg::Scalar(third),
+                    )) => {
+                        return kernel(self, &[first, second, third]);
+                    }
+                    Ok((first, second, third)) => vec![first, second, third],
+                    Err(error) => return error,
+                }
+            }
             _ => {
                 let read = match self.read_lift_args(kinds, args, MAX_LIFTED_CELL_VISITS, cell) {
                     Ok(read) => read,
@@ -194,6 +213,37 @@ impl Model {
             }
         };
         self.lift_grids(lifted, cost, &options, cell, kernel)
+    }
+
+    /// [`Model::lift_call_costed`] for a call whose `ReferenceByCaller` argument at `index` was
+    /// not a reference: its caller read it into `grid` (one error per element), which broadcasts
+    /// with the lifted arguments as a grid in that position. `grid` counts toward the read cap.
+    pub(crate) fn lift_call_beside(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        (index, grid): (usize, Vec<Vec<ArrayNode>>),
+        cost: LiftCost,
+        cell: CellReferenceIndex,
+        kernel: &mut Kernel<'_>,
+    ) -> CalcResult {
+        let Some(kinds) = kind.arg_kinds() else {
+            // As in `lift_call_costed`: only called with the caller's own constant `Function`.
+            debug_assert!(false, "{kind:?} has no lifting table entry");
+            return CalcResult::new_args_number_error(cell);
+        };
+        debug_assert_eq!(kinds.kind(index), Some(ArgKind::ReferenceByCaller));
+        if !kinds.accepts(args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let input_cap = MAX_LIFTED_CELL_VISITS.saturating_sub(grid_cells(&grid));
+        let mut read = match self.read_lift_args(kinds, args, input_cap, cell) {
+            Ok(read) => read,
+            Err(error) => return error,
+        };
+        read.grids.push((index, grid));
+        let options = LiftOptions::for_entry(kinds);
+        self.lift_grids(read.into_lifted(), cost, &options, cell, kernel)
     }
 
     /// [`Model::read_lift_arg_with`] for argument `index` of a call read by `kinds`, under
@@ -210,7 +260,7 @@ impl Model {
         self.read_lift_arg_with(kind, node, input_cells, MAX_LIFTED_CELL_VISITS, cell)
     }
 
-    /// The read phase for calls of three or more arguments (`lift_call_with` reads shorter ones
+    /// The read phase for calls of four or more arguments (`lift_call_with` reads shorter ones
     /// into locals): each argument once, by its kind (SPEC-0011's read table). An array is a
     /// grid; a multi-cell range is a grid for `Lift` (read through `evaluate_range`, bounded
     /// before it is read) and `#VALUE!` for `LiftArrays`, with no intersection; a one-cell range
@@ -251,7 +301,9 @@ impl Model {
         // The `#ERROR!` of `too_many_visits`, past the cap.
         let over_cap = |cells: u64| (cells > input_cap).then(|| too_many_visits(u64::MAX, cell));
         let value = match kind {
-            ArgKind::WholeByCaller => return Ok(LiftedArg::Scalar(CalcResult::EmptyArg)),
+            ArgKind::WholeByCaller | ArgKind::ReferenceByCaller => {
+                return Ok(LiftedArg::Scalar(CalcResult::EmptyArg))
+            }
             ArgKind::Whole => {
                 return Ok(LiftedArg::Scalar(
                     self.evaluate_node_with_reference(node, cell),

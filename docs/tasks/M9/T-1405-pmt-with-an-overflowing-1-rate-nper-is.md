@@ -3,7 +3,7 @@ id: T-1405
 title: "PMT with an overflowing (1+rate)^nper is a number, not #NUM! (gen-m9 3b8e9078261b5bd2 A34)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,9 +27,21 @@ formulation is T-0901's (docs/excel-semantics/financial.md "Annuity evaluation o
 Code: `fn_pmt` in crates/rustsheet-engine/src/functions/financial/mod.rs.
 
 ## Acceptance criteria
-- [ ] gen-m9/3b8e9078261b5bd2 A34 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] The overflow probe cells pass; financial.md records the rule (VERIFIED).
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/3b8e9078261b5bd2 A34 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] The overflow probe cells pass; financial.md records the rule (VERIFIED).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+- Probe probes/pmt-overflow (excel-graph, 2026-10-19), 40 scored cells, all pass: when `pv*P` overflows, PMT is the
+  annuity quotient divided through by P (limit `-pv*rate`, `/(1+rate)` for type 1; fv vanishes), also for a finite
+  P (101^153); IPMT/PPMT follow; PV/FV/NPER stay `#NUM!`; a P whose reciprocal overflows (0, 2^-1070) is `#NUM!` for
+  PMT/IPMT/PPMT/CUMIPMT whatever fv and type; `FLOOR(NA(),1/0)` is `#N/A` (the A34 inference holds).
+- `compute_payment` keeps the fitted quotient whenever it is finite (no finite result changes digits) and falls back
+  to the divided-through form; financial.md entry rewritten (VERIFIED).
+- gen-m9/3b8e9078261b5bd2 A34 passes (39/40 in that case; A13 was already failing; gen-m9 is ungated, no baseline file).
+- B8 `PPMT(1,1,60,1)` = -2^-60 (ours 0) is recorded but unscored: a last-digit question, filed as a new hypothesis on
+  T-1528.
+- Eval delta: fixed 1 (gen-m9 A34, ungated), new coverage 40 passing cells (probes/pmt-overflow), regressions 0.

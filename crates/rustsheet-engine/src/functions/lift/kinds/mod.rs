@@ -5,13 +5,19 @@
 //!
 //! The table is split by family, each file with its weight constants and their measurements next
 //! to its entries: `general.rs` (dates, information, lookup, math), `financial.rs`,
-//! `statistical.rs` and `engineering.rs`. The argument shapes several families share are here.
+//! `statistical.rs`, `engineering.rs` and `text.rs`. The argument shapes several families share
+//! are here.
 
 mod engineering;
 mod financial;
 mod general;
 mod statistical;
+mod text;
 
+use crate::calc_result::CalcResult;
+use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
+use crate::expressions::parser::ArrayNode;
+use crate::formatter::dates::FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
 use crate::functions::Function;
 
 /// How one parameter takes an array or a range (SPEC-0011).
@@ -32,6 +38,12 @@ pub(crate) enum ArgKind {
     /// WORKDAY's holidays),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
+    /// Read by the caller, which needs a reference there (RANK's `ref`): a reference is data,
+    /// captured by the kernel, and its slot is `EmptyArg`. An array that is not a reference is an
+    /// array of errors of its own shape, which the caller hands back to broadcast with the lifted
+    /// arguments (`Model::lift_call_beside`; statistics.md "RANK of a non-reference array",
+    /// probes/stat-test-lift P28-P31; T-1999). Static analysis gives it that array's shape.
+    ReferenceByCaller,
 }
 
 /// What one kernel call may cost, beyond reading its arguments (SPEC-0011 "Security rule for
@@ -45,16 +57,212 @@ pub(crate) enum KernelWork {
     /// against the visit cap, and the kernel also keeps its own per-call cap, as T-1197 bounds
     /// MULTINOMIAL's loop.
     Weighted(u32),
+    /// The kernel builds an array (SPEC-0011 "Array-valued functions" rule 3): a lifted element
+    /// is charged one unit before the call and the cells of its own result after it, times
+    /// `weight` (MAKEARRAY's 128 for its LAMBDA call per cell).
+    Output { weight: u32 },
+    /// A loop whose length the element's own argument values predict in O(1) (T-1819, T-1846):
+    /// each element is charged [`ValueWork::units`] of its values before anything runs, summed
+    /// over the broadcast (`lift/driver.rs` `kernel_units`).
+    ByValue(ValueWork),
+}
+
+/// How a [`KernelWork::ByValue`] kernel's work follows from one element's argument values. Every
+/// estimate is at least 1 and at most [`ValueWork::most`], so a lift charged by value never costs
+/// more than the flat worst case it replaces.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ValueWork {
+    /// A loop whose length is the value of argument `arg`: the Bessel recurrences run about once
+    /// or twice per order, up to the kernel's own per-call cap `cap` (T-1819). An element is
+    /// charged `1 + trunc(n) * weight / cap` units for a number with `0 <= trunc(n) <= cap`, so
+    /// `1 + weight` at the cap; a text is charged as at the cap (the kernel may read it as a
+    /// number), and anything else (an order past the cap or negative, an error, a logical, a
+    /// blank) 1, as the kernel refuses it before looping or runs order 0.
+    Loop { arg: usize, cap: u32, weight: u32 },
+    /// `walks` passes over a coupon schedule that steps one period at a time between the earliest
+    /// and the latest of the date arguments `dates`, `frequency` periods a year (T-1846; T-1869
+    /// for the solvers, whose one pass is the walk and every price sum). A pass is charged
+    /// `weight` units at the longest schedule (quarterly across the whole calendar,
+    /// [`COUPON_SPAN_DAYS`]) and in proportion to its period count plus one below that; see
+    /// [`coupon_walk_units`].
+    CouponWalks {
+        dates: &'static [usize],
+        frequency: usize,
+        walks: u32,
+        weight: u32,
+    },
+}
+
+/// The widest span of days a coupon schedule walk can cross: the calendar's last serial, as the
+/// kernels read every date in the 1900 financial space from serial 0 to 9999-12-31 (a 1904
+/// serial is shifted by the same 2 * 1462 days at both ends, `DateSystem::financial_1900_serial`).
+pub(crate) const COUPON_SPAN_DAYS: u64 = MAXIMUM_DATE_SERIAL_NUMBER.unsigned_abs() as u64;
+
+/// What a [`KernelWork::ByValue`] argument's value is, for its charge.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum ArgValue {
+    Number(f64),
+    Boolean(bool),
+    Text,
+    /// A blank cell or an omitted argument: the kernels read it as 0.
+    Blank,
+    Error,
+}
+
+impl ArgValue {
+    pub(crate) fn of(value: &CalcResult) -> Self {
+        match value {
+            CalcResult::Number(n) => ArgValue::Number(*n),
+            CalcResult::Boolean(b) => ArgValue::Boolean(*b),
+            CalcResult::String(_) => ArgValue::Text,
+            CalcResult::EmptyCell | CalcResult::EmptyArg => ArgValue::Blank,
+            _ => ArgValue::Error,
+        }
+    }
+
+    /// The whole number a coupon kernel reads: a number floored, a logical as 1 or 0 (ACCRINT
+    /// reads one; the others refuse it, so this over-charges them).
+    fn whole_number(self) -> Option<f64> {
+        match self {
+            ArgValue::Number(n) => Some(n.floor()),
+            ArgValue::Boolean(b) => Some(f64::from(u8::from(b))),
+            ArgValue::Text | ArgValue::Blank | ArgValue::Error => None,
+        }
+    }
+
+    pub(crate) fn of_node(node: &ArrayNode) -> Self {
+        match node {
+            ArrayNode::Number(n) => ArgValue::Number(*n),
+            ArrayNode::Boolean(b) => ArgValue::Boolean(*b),
+            ArrayNode::String(_) => ArgValue::Text,
+            ArrayNode::Empty => ArgValue::Blank,
+            ArrayNode::Error(_) => ArgValue::Error,
+        }
+    }
+}
+
+impl ValueWork {
+    /// The most one element is charged.
+    pub(crate) fn most(self) -> u64 {
+        match self {
+            // An argument at the cap.
+            ValueWork::Loop { weight, .. } => u64::from(weight).saturating_add(1),
+            // Every walk at the longest schedule.
+            ValueWork::CouponWalks { walks, weight, .. } => {
+                u64::from(walks).saturating_mul(u64::from(weight)).max(1)
+            }
+        }
+    }
+
+    /// The units one element is charged, from its argument values (`value(i)` is argument `i`'s,
+    /// `None` past the arguments given).
+    pub(crate) fn units(self, value: impl Fn(usize) -> Option<ArgValue>) -> u64 {
+        match self {
+            ValueWork::Loop { arg, cap, weight } => {
+                let order = match value(arg) {
+                    // Past the cap the kernel refuses the order before it loops.
+                    Some(ArgValue::Number(n)) if (0.0..=f64::from(cap)).contains(&n.trunc()) => {
+                        n.trunc()
+                    }
+                    Some(ArgValue::Text) => f64::from(cap),
+                    _ => 0.0,
+                };
+                // `order` is a whole number in [0, cap], so the cast is exact.
+                let order = order as u64;
+                1 + order.saturating_mul(u64::from(weight)) / u64::from(cap.max(1))
+            }
+            ValueWork::CouponWalks {
+                dates,
+                frequency,
+                walks,
+                weight,
+            } => {
+                // An invalid frequency is #NUM! and an error argument its error, both before any
+                // walk (`Model::coupon_args`, `Model::bond_args`, `Model::accrint_of`). A logical
+                // is charged as its number: ACCRINT reads it as one.
+                let per_year = match value(frequency) {
+                    // A text may read as any frequency.
+                    Some(ArgValue::Text) => 4.0,
+                    Some(arg) => match arg.whole_number() {
+                        Some(n) => n,
+                        None => return 1,
+                    },
+                    None => return 1,
+                };
+                if !matches!(per_year as u64, 1 | 2 | 4) {
+                    return 1;
+                }
+                let mut earliest = f64::INFINITY;
+                let mut latest = f64::NEG_INFINITY;
+                for &arg in dates {
+                    let date = match value(arg) {
+                        Some(ArgValue::Blank) | None => 0.0,
+                        // A text may read as any date.
+                        Some(ArgValue::Text) => return self.most(),
+                        Some(ArgValue::Error) => return 1,
+                        Some(arg) => arg.whole_number().unwrap_or(0.0),
+                    };
+                    earliest = earliest.min(date);
+                    latest = latest.max(date);
+                }
+                // A 1904 workbook reads a date 2 * 1462 days on, but not a negative one
+                // (`DateSystem::financial_1900_serial`, `odd_period_1900_serial`): a span from a
+                // negative date may be that much wider.
+                let shift = if earliest < 0.0 {
+                    FINANCIAL_EPOCH_1904_IN_1900_SERIALS as f64
+                } else {
+                    0.0
+                };
+                let span = (latest - earliest + shift).clamp(0.0, COUPON_SPAN_DAYS as f64);
+                // `span` is a whole number in [0, COUPON_SPAN_DAYS], so the cast is exact.
+                let walk = coupon_walk_units(span as u64, per_year as u64, weight);
+                u64::from(walks).saturating_mul(walk).max(1)
+            }
+        }
+    }
+}
+
+/// The units one coupon schedule walk across `span` days at `per_year` (1, 2 or 4) periods a
+/// year is charged: `weight` for the longest walk, a quarterly schedule across
+/// [`COUPON_SPAN_DAYS`], and in proportion to the period count `span * per_year / 365` plus one
+/// below it, rounded up. The extra period is each pass's fixed cost: a solver price over a
+/// one-coupon schedule costs about as much as one more coupon term (T-1869: 20,000 two-coupon
+/// YIELDs at the solver's extremes took 12 ms, four-coupon ones 223 ms; a release build).
+pub(crate) fn coupon_walk_units(span: u64, per_year: u64, weight: u32) -> u64 {
+    let longest = COUPON_SPAN_DAYS * 4 + 365;
+    // At most 2^24 * (2958465 * 4 + 365), far inside a u64.
+    let scaled = u64::from(weight) * (span.min(COUPON_SPAN_DAYS) * per_year.min(4) + 365);
+    scaled.div_ceil(longest)
 }
 
 impl KernelWork {
-    /// The units one kernel call is charged.
+    /// The units one kernel call is charged before it runs (for `ByValue`, the most it can be).
     pub(crate) fn weight(self) -> u64 {
         match self {
-            KernelWork::Constant => 1,
+            KernelWork::Constant | KernelWork::Output { .. } => 1,
             KernelWork::Weighted(weight) => u64::from(weight),
+            KernelWork::ByValue(work) => work.most(),
         }
     }
+
+    /// The units a lifted element is charged after its call, for a result of `cells` cells: 0
+    /// unless the kernel builds an array.
+    pub(crate) fn output_charge(self, cells: u64) -> u64 {
+        match self {
+            KernelWork::Output { weight } => cells.saturating_mul(u64::from(weight)),
+            KernelWork::Constant | KernelWork::Weighted(_) | KernelWork::ByValue(_) => 0,
+        }
+    }
+}
+
+/// What one unlifted call returns (SPEC-0011 "Array-valued functions" rule 1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CallResult {
+    /// One value: every entry before T-1834.
+    Value,
+    /// An array (SEQUENCE, MAKEARRAY): unlifted, the static shape is `Unknown`, and a lifted
+    /// element is the top-left value of its call.
+    Array,
 }
 
 /// The parameters of one function: `params[i]` is the kind of argument `i`. Arguments past
@@ -65,6 +273,7 @@ pub(crate) struct ArgKinds {
     pub(crate) repeat: Option<ArgKind>,
     pub(crate) max: usize,
     pub(crate) work: KernelWork,
+    pub(crate) result: CallResult,
 }
 
 impl ArgKinds {
@@ -80,6 +289,15 @@ impl ArgKinds {
             repeat: None,
             max: params.len(),
             work,
+            result: CallResult::Value,
+        }
+    }
+
+    /// The same kinds for a function whose unlifted call returns an array.
+    pub(crate) const fn array(self) -> Self {
+        Self {
+            result: CallResult::Array,
+            ..self
         }
     }
 
@@ -130,6 +348,10 @@ const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 /// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
 /// ISPMT and SYD.
 const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
+/// `DAYS360(start_date, end_date, [method])`, FIND and SEARCH.
+const LIFT_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift], Constant);
+/// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])` and SUBSTITUTE.
+const LIFT_3_OF_4: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Constant);
 const LIFT_4: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Constant);
 /// `PMT(rate, nper, pv, [fv], [type])` and PV, FV, NPER alike.
 const LIFT_3_OF_5: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift], Constant);
@@ -147,12 +369,13 @@ impl Function {
             .or_else(|| financial::arg_kinds(self))
             .or_else(|| statistical::arg_kinds(self))
             .or_else(|| engineering::arg_kinds(self))
+            .or_else(|| text::arg_kinds(self))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{engineering, financial, general, statistical};
+    use super::{engineering, financial, general, statistical, text};
     use crate::functions::Function;
 
     /// One `match` caught a function entered twice as an unreachable pattern; across the
@@ -165,6 +388,7 @@ mod tests {
                 financial::arg_kinds(&function),
                 statistical::arg_kinds(&function),
                 engineering::arg_kinds(&function),
+                text::arg_kinds(&function),
             ];
             let entered = families.iter().filter(|kinds| kinds.is_some()).count();
             assert!(entered <= 1, "{function:?} is in {entered} families");

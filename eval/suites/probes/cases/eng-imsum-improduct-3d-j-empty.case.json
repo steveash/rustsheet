@@ -1,0 +1,98 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1828: IMSUM/IMPRODUCT over a 3-D reference (D), a real number next to a j number (E, also IMSUB/IMDIV), calls whose arguments hold no number (F), and a boolean (typed and a TRUE cell) across the IM* functions and COMPLEX's i_num T-1384 left unprobed (G). M1 \"1+2i\", M2 3, M4 TRUE, M5 \"x\", M6 \"2-i\", M8 \"3+4j\", M9 =\"\"; Sheet2/Sheet3 A1:A2 hold 1, 2 / 10, 20.",
+ "tags": [
+  "M9",
+  "engineering",
+  "argument-modes",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "M1": "1+2i",
+    "M2": 3,
+    "M4": true,
+    "M5": "x",
+    "M6": "2-i",
+    "M8": "3+4j",
+    "M9": "=\"\"",
+    "D1": "=IMSUM(Sheet2:Sheet3!A1:A2)",
+    "D2": "=IMPRODUCT(Sheet2:Sheet3!A1:A2)",
+    "D3": "=IMSUM(Sheet2:Sheet3!A1)",
+    "D4": "=IMSUM(M1,Sheet2:Sheet3!A1:A2)",
+    "E1": "=IMSUM(\"3+4j\",\"3\")",
+    "E2": "=IMSUM(M8,M2)",
+    "E3": "=IMPRODUCT(\"3+4j\",\"3\")",
+    "E4": "=IMPRODUCT(M8,M2)",
+    "E5": "=IMSUM(\"3\",\"3+4j\")",
+    "E6": "=IMSUB(\"3+4j\",\"3\")",
+    "E7": "=IMDIV(\"3+4j\",\"3\")",
+    "E8": "=IMSUM(M8,Q1)",
+    "E9": "=IMSUM(M8,M2:M2)",
+    "E10": "=IMSUM(\"3+4j\",3)",
+    "F1": "=IMSUM(Q1:Q3)",
+    "F2": "=IMPRODUCT(Q1)",
+    "F3": "=IMSUM(,)",
+    "F4": "=IMPRODUCT(,)",
+    "F5": "=IMSUM(Q1,Q2)",
+    "F6": "=IMPRODUCT(Q1:Q3)",
+    "F7": "=IMSUM(\"\")",
+    "F8": "=IMSUM(M9)",
+    "F9": "=IMPRODUCT(M9)",
+    "F10": "=IMPRODUCT(\"\")",
+    "F11": "=IMSUM({\"\",\"\"})",
+    "F12": "=IMSUM(M9,Q1)",
+    "G1": "=IMDIV(TRUE,\"1\")",
+    "G2": "=IMAGINARY(TRUE)",
+    "G3": "=IMARGUMENT(TRUE)",
+    "G4": "=IMCOSH(TRUE)",
+    "G5": "=IMCOT(TRUE)",
+    "G6": "=IMCSC(TRUE)",
+    "G7": "=IMCSCH(TRUE)",
+    "G8": "=IMEXP(TRUE)",
+    "G9": "=IMLN(TRUE)",
+    "G10": "=IMLOG10(TRUE)",
+    "G11": "=IMLOG2(TRUE)",
+    "G12": "=IMSEC(TRUE)",
+    "G13": "=IMSECH(TRUE)",
+    "G14": "=IMSIN(TRUE)",
+    "G15": "=IMSINH(TRUE)",
+    "G16": "=IMTAN(TRUE)",
+    "G17": "=COMPLEX(1,TRUE)",
+    "G18": "=COMPLEX(1,M4)",
+    "G19": "=IMDIV(M4,\"1\")",
+    "G20": "=IMAGINARY(M4)",
+    "G21": "=IMARGUMENT(M4)",
+    "G22": "=IMCOSH(M4)",
+    "G23": "=IMCOT(M4)",
+    "G24": "=IMCSC(M4)",
+    "G25": "=IMCSCH(M4)",
+    "G26": "=IMEXP(M4)",
+    "G27": "=IMLN(M4)",
+    "G28": "=IMLOG10(M4)",
+    "G29": "=IMLOG2(M4)",
+    "G30": "=IMSEC(M4)",
+    "G31": "=IMSECH(M4)",
+    "G32": "=IMSIN(M4)",
+    "G33": "=IMSINH(M4)",
+    "G34": "=IMTAN(M4)"
+   }
+  },
+  {
+   "name": "Sheet2",
+   "cells": {
+    "A1": 1,
+    "A2": 2
+   }
+  },
+  {
+   "name": "Sheet3",
+   "cells": {
+    "A1": 10,
+    "A2": 20
+   }
+  }
+ ]
+}

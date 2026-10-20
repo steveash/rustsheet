@@ -1,4 +1,4 @@
-"""Pieces the probe policies share (`names-3d`, `operators-refs`, `tables`)."""
+"""Pieces the generator policies share (`names-3d`, `operators-refs`, `tables`, edge pools, number formats)."""
 
 from __future__ import annotations
 
@@ -23,6 +23,11 @@ class SeededDraws:
 
     def num(self) -> str:
         return self.pick(self.numbers)
+
+
+def quoted(text: str) -> str:
+    """`text` as a formula string literal (a quote inside is doubled)."""
+    return '"' + text.replace('"', '""') + '"'
 
 
 def draw_unseen(draw: Callable[[], str], seen: set[str], redraws: int = REDRAWS) -> str | None:

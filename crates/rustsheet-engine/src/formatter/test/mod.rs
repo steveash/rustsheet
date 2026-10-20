@@ -3,6 +3,7 @@ mod test_dates;
 mod test_de_examples;
 mod test_en_examples;
 mod test_fr_examples;
+mod test_fraction;
 mod test_general;
 mod test_locale_tag;
 mod test_parse_formatted_number;

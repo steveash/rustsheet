@@ -30,6 +30,51 @@ fn sort_omitted_index_and_order_use_defaults() {
     assert_eq!(model._get_text("A3"), "3");
 }
 
+// T-1837: an array sort_index is a list of keys, ties broken by the next one; a sort_order list
+// must be as long (probes/m7-argument-modes F10:H11).
+#[test]
+fn sort_index_list_breaks_ties_with_the_next_key() {
+    let mut model = new_empty_model();
+    // Rows (1,9), (1,2), (0,5): by column 1, then column 2.
+    model._set("A1", "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;2}))");
+    model._set("A2", "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1,2},{1;-1}))");
+    model._set("A3", "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;2},-1))");
+    // Columns by row 1, then row 2.
+    model._set("A4", "=TEXTJOIN(\",\",,SORT({1,1,0;9,2,5},{1;2},,TRUE))");
+    model._set("A5", "=SORT({1,9;1,2;0,5},1,{1;-1})");
+    model._set("A6", "=SORT({1,9;1,2;0,5},{1;2},{1;-1;1})");
+    model._set("A7", "=SORT({1,9;1,2;0,5},{1;3})");
+    model._set("A8", "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},2,-1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0,5,1,2,1,9");
+    assert_eq!(model._get_text("A2"), "0,5,1,9,1,2");
+    assert_eq!(model._get_text("A3"), "1,9,1,2,0,5");
+    assert_eq!(model._get_text("A4"), "0,1,1,5,2,9");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "#VALUE!");
+    assert_eq!(model._get_text("A8"), "1,9,0,5,1,2");
+}
+
+#[test]
+fn sort_keys_may_repeat_up_to_the_array_width() {
+    // probes/sort-index-key-ties A6, A15-A19: a repeated key is allowed, more keys than columns
+    // is `#VALUE!` (so a long list costs nothing); a 2-D list and an error element are `#VALUE!`
+    // after a later argument's error (A8, A11, A20).
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTJOIN(\",\",,SORT({1,9;1,2;0,5},{1;1}))");
+    model._set("A2", "=SORT({1,9;1,2;0,5},SEQUENCE(100000,1,1,0))");
+    model._set("A3", "=SORT({1,9;1,2;0,5},{1,2;2,1})");
+    model._set("A4", "=SORT({1,9;1,2;0,5},IF({TRUE;FALSE},1,NA()))");
+    model._set("A5", "=SORT({1,9;1,2;0,5},IF({TRUE;FALSE},1,NA()),1/0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0,5,1,9,1,2");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#DIV/0!");
+}
+
 #[test]
 fn sort_single_column_descending() {
     let mut model = new_empty_model();

@@ -306,6 +306,14 @@ fn defined_name_errors_are_typed() {
 }
 
 #[test]
+fn loading_a_cell_spelled_name_is_accepted() {
+    let mut wb = book();
+    assert!(wb.edit(|tx| tx.define_name("NLG1", "=1")).is_err());
+    wb.edit(|tx| tx.load_defined_name(None, "NLG1", "=1"))
+        .unwrap();
+}
+
+#[test]
 fn deleting_a_sheet_reports_its_cells_and_dependents() {
     let mut wb = book();
     let (data, _) = wb.edit(|tx| tx.add_sheet("Data")).unwrap();

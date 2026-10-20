@@ -11,7 +11,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::{
-        util::{is_at_if, is_at_xlookup_take},
+        util::{is_at_if, is_at_xlookup_take, is_multi_sheet_span},
         Function,
     },
     model::Model,
@@ -136,6 +136,8 @@ impl Deref for Ranges {
 pub(crate) enum RefArg {
     /// A reference: one range or several areas.
     Ranges(Ranges),
+    /// A lifted call whose elements are references (SPEC-0014).
+    Grid(RefGrid),
     /// Anything else: a value, an array or an error. Never a `CalcResult::Range`.
     Value(CalcResult),
 }
@@ -209,14 +211,105 @@ impl RefArg {
         }
     }
 
+    /// The argument's reference, or its value: an array of references as its value view
+    /// ([`RefGrid::to_values`]), for a consumer that reads no element of one yet (SPEC-0014
+    /// Rollout steps 4-5, T-2063 and T-2064).
+    pub(crate) fn into_ranges_or_value(self) -> Result<Ranges, CalcResult> {
+        match self {
+            RefArg::Ranges(ranges) => Ok(ranges),
+            RefArg::Grid(grid) => Err(grid.to_values()),
+            RefArg::Value(value) => Err(value),
+        }
+    }
+
     /// The argument where only one area is taken: a reference of several areas is `#VALUE!`,
     /// as in a value context, and one range is a `CalcResult::Range`.
     pub(crate) fn into_single_area(self, cell: CellReferenceIndex) -> CalcResult {
         match self {
             RefArg::Ranges(Ranges::One(Range { left, right })) => CalcResult::Range { left, right },
             RefArg::Ranges(Ranges::Areas(_)) => several_areas(cell),
+            RefArg::Grid(grid) => grid.to_values(),
             RefArg::Value(value) => value,
         }
+    }
+}
+
+/// One element of an array of references: the reference a scalar call returned, or its error.
+#[derive(Clone)]
+pub(crate) enum RefElement {
+    Reference(Range),
+    Error(Error),
+}
+
+/// A lifted call whose elements are references (SPEC-0014 "Representation"): `rows` x
+/// `columns` elements in row-major order, at least one, within `check_array_size`; each
+/// reference on one sheet with its corners in order. Shared, so a pass-through never copies it.
+/// It is not a [`CalcResult`], so only code that asks for a [`RefArg`] ever sees it; everywhere
+/// else it is its value view, [`RefGrid::to_values`].
+#[derive(Clone)]
+pub(crate) struct RefGrid {
+    rows: usize,
+    columns: usize,
+    elements: Arc<[RefElement]>,
+}
+
+impl RefGrid {
+    /// The grid of `rows` x `columns` `elements`, row-major; `None` unless the counts agree and
+    /// the grid is not empty.
+    pub(crate) fn new(rows: usize, columns: usize, elements: Vec<RefElement>) -> Option<RefGrid> {
+        (rows > 0 && columns > 0 && rows.checked_mul(columns) == Some(elements.len())).then(|| {
+            RefGrid {
+                rows,
+                columns,
+                elements: Arc::from(elements),
+            }
+        })
+    }
+
+    /// Rows and columns of elements.
+    pub(crate) fn dims(&self) -> (usize, usize) {
+        (self.rows, self.columns)
+    }
+
+    /// The element at 0-based (`row`, `column`), `None` past the grid.
+    pub(crate) fn get(&self, row: usize, column: usize) -> Option<&RefElement> {
+        if row >= self.rows || column >= self.columns {
+            return None;
+        }
+        self.elements.get(row * self.columns + column)
+    }
+
+    /// The elements in row-major order.
+    pub(crate) fn elements(&self) -> &[RefElement] {
+        &self.elements
+    }
+
+    /// Whether `other` is a clone of this grid, holding the same elements in memory.
+    pub(crate) fn shares_elements(&self, other: &RefGrid) -> bool {
+        Arc::ptr_eq(&self.elements, &other.elements)
+    }
+
+    /// The value view (SPEC-0014 rule 2): every reference element is `#VALUE!` and an error
+    /// element is itself, so `=OFFSET(A1,{0;1},0)` spills two `#VALUE!` (probes/
+    /// reference-lift-elements K1, K4, K13).
+    pub(crate) fn to_values(&self) -> CalcResult {
+        CalcResult::Array(self.to_array(ArrayNode::Error(Error::VALUE)))
+    }
+
+    /// The grid as array rows: every reference element is `reference`, an error element is
+    /// itself.
+    pub(crate) fn to_array(&self, reference: ArrayNode) -> Vec<Vec<ArrayNode>> {
+        self.elements
+            .chunks(self.columns)
+            .map(|row| {
+                row.iter()
+                    .map(|element| match element {
+                        RefElement::Reference(_) => reference.clone(),
+                        RefElement::Error(error) => ArrayNode::Error(error.clone()),
+                    })
+                    .collect()
+            })
+            .collect()
     }
 }
 
@@ -616,10 +709,13 @@ impl Model {
                 kind: Function::If | Function::Choose | Function::Let,
                 ..
             } => true,
-            // So may a name whose body does (probes/union-defined-name H4).
-            Node::DefinedNameKind(_) => self
-                .defined_name_formula(node)
-                .is_some_and(|body| !look_through_names || self.may_be_multi_area(&body, false)),
+            // So may a name whose body does (probes/union-defined-name H4), and one bound to a
+            // 3-D span, which aggregates read sheet by sheet (gen-m8a 8982982d63e058ed; T-1640).
+            Node::DefinedNameKind(_) => self.defined_name_formula(node).is_some_and(|body| {
+                !look_through_names
+                    || is_multi_sheet_span(&body)
+                    || self.may_be_multi_area(&body, false)
+            }),
             Node::OpIntersectKind { left, right, .. } => {
                 self.may_be_multi_area(left, look_through_names)
                     || self.may_be_multi_area(right, look_through_names)
@@ -880,18 +976,9 @@ impl Model {
 /// (`(1+0) A1`) or spans sheets.
 fn single_sheet_area(operand: CalcResult, cell: CellReferenceIndex) -> Result<Range, CalcResult> {
     match operand {
-        CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
-            left: CellReferenceIndex {
-                sheet: left.sheet,
-                row: left.row.min(right.row),
-                column: left.column.min(right.column),
-            },
-            right: CellReferenceIndex {
-                sheet: left.sheet,
-                row: left.row.max(right.row),
-                column: left.column.max(right.column),
-            },
-        }),
+        CalcResult::Range { left, right } if left.sheet == right.sheet => {
+            Ok(Range::between(left, right))
+        }
         error @ CalcResult::Error { .. } => Err(error),
         _ => Err(CalcResult::new_error(
             Error::VALUE,

@@ -7,16 +7,17 @@ mod coupon_schedule;
 mod yield_closed;
 
 use super::dates::{
-    basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us, days_30_360_us_both,
+    basis_days, broken_schedule_days, broken_schedule_error, day_count_basis, days_30_360_us_both,
     BROKEN_SCHEDULE_PCD,
 };
 use coupon_schedule::{
-    change_month, coupdays_actual, coupon_count, coupon_days_a, coupon_days_e, find_pcd_ncd,
-    is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
+    change_month, coupdays_actual, coupon_count, coupon_days_a, coupon_days_e, coupon_days_nc,
+    find_pcd_ncd, is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
 
 use super::number_or_error;
 use crate::{
+    arithmetic::power,
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
@@ -59,12 +60,8 @@ fn validate_frequency(frequency: u32, cell: CellReferenceIndex) -> Result<(), Ca
     }
 }
 
-fn validate_basis(basis: u32, cell: CellReferenceIndex) -> Result<(), CalcResult> {
-    if basis <= 4 {
-        Ok(())
-    } else {
-        Err(num_error(cell))
-    }
+fn validate_basis(basis: f64, cell: CellReferenceIndex) -> Result<u32, CalcResult> {
+    day_count_basis(basis).ok_or_else(|| num_error(cell))
 }
 
 // ============================================================
@@ -555,8 +552,10 @@ type CouponBody = fn(&Model, CouponArgs, CellReferenceIndex) -> CalcResult;
 // ============================================================
 
 impl Model {
-    /// Reads and checks the COUP* arguments: every one is read, in order, before any value is
-    /// checked. A settlement before the calendar is #NUM! (`Model::check_settlement`).
+    /// Reads the COUP* arguments in order, each checked (#NUM!) before the next is read: settlement,
+    /// date order, frequency, basis (probes/securities-argument-error-order; financial.md, T-1406).
+    /// A lifted call is charged before it runs by `ValueWork::CouponWalks` (lift/kinds), which
+    /// mirrors these reads, and `bond_args`' and `accrint_of`'s: keep it in step with them.
     fn coupon_args(
         &self,
         values: &[CalcResult],
@@ -566,14 +565,19 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         };
         let settlement = self.financial_date_of(settlement, cell)?;
+        // Settlement 0 is a date to the COUP* functions (`COUPPCD(0,43831,2)` is 0); COUPNUM is
+        // #NUM! there because its previous coupon date falls before the calendar (`coupon_count`).
+        if settlement < 0 {
+            return Err(num_error(cell));
+        }
         let maturity = self.financial_date_of(maturity, cell)?;
+        if settlement >= maturity {
+            return Err(num_error(cell));
+        }
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self
-            .cast_number_no_bools_or(rest.first(), 0.0, cell)?
-            .floor() as u32;
         validate_frequency(frequency, cell)?;
-        validate_basis(basis, cell)?;
-        self.check_settlement(settlement, maturity, cell)?;
+        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
+        let basis = validate_basis(basis, cell)?;
         Ok((settlement, maturity, frequency, basis))
     }
 
@@ -622,9 +626,9 @@ impl Model {
             None => 100.0,
         };
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?.floor() as u32;
+        let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?;
         validate_frequency(frequency, cell)?;
-        validate_basis(basis, cell)?;
+        let basis = validate_basis(basis, cell)?;
         // YIELD's price must be positive, a yield may be 0.
         let bad_fourth = match function {
             BondFunction::Yield => yld <= 0.0,
@@ -670,19 +674,23 @@ impl Model {
         let coupon = redemption * bond.rate / frequency as f64;
         let v = 1.0 + bond.yld_or_pr / frequency as f64;
 
+        // Each cash flow is discounted by Excel's `^` and its weighted term is `(t·cf)/v^t`, not
+        // `t·(cf/v^t)`: with libm `powf` 6 of 12 DURATION cells miss by an ulp, and the zero-coupon
+        // `DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)` is 5.541666666666668, one ulp above
+        // t/2 (probes/fin-mduration-rri-fit A1-A36, fin-mduration; T-1975).
         let mut num = 0.0; // sum of t * PV(CF)
         let mut den = 0.0; // dirty price (sum of PV(CF))
-
+        let mut add_cash_flow = |t: f64, cash_flow: f64| {
+            // `v` > 1 and `t` > 0 here, so `^` fails only by overflowing: the flow's present value
+            // is then 0, as `powf`'s infinity gave before.
+            let growth = power(v, t).unwrap_or(f64::INFINITY);
+            num += t * cash_flow / growth;
+            den += cash_flow / growth;
+        };
         for k in 1..=(n as u32) {
-            let t = dsc_over_e + k as f64 - 1.0;
-            let pv = coupon / v.powf(t);
-            num += t * pv;
-            den += pv;
+            add_cash_flow(dsc_over_e + k as f64 - 1.0, coupon);
         }
-        let t_final = dsc_over_e + n - 1.0;
-        let pv_red = redemption / v.powf(t_final);
-        num += t_final * pv_red;
-        den += pv_red;
+        add_cash_flow(dsc_over_e + n - 1.0, redemption);
 
         if den == 0.0 {
             return Err(div_error(cell));
@@ -697,19 +705,20 @@ impl Model {
         })
     }
 
-    /// DURATION, then the Modified Duration adjustment. It reads yld and frequency before
-    /// DURATION reads every argument, so their errors come first, as they did before the lift.
+    /// DURATION, then the Modified Duration adjustment. DURATION reads every argument in order
+    /// first, so a settlement error comes before a yld or frequency one
+    /// (`MDURATION(NA(),43831,0.08,"x",2)` is #N/A: probes/fin-coupon-walk-bounds-c M8, N8).
     fn mduration_of(
         &self,
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
+        let duration = self.duration_of(values, cell)?;
         let [_, _, _, yld, frequency, ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
         let yld = self.cast_number_no_bools_ref(yld, cell)?;
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let duration = self.duration_of(values, cell)?;
         Ok(duration / (1.0 + yld / frequency as f64))
     }
 
@@ -794,16 +803,14 @@ impl Model {
         let yld_or_pr = self.cast_number_no_bools_ref(yld_or_pr, cell)?;
         let redemption = self.cast_number_no_bools_ref(redemption, cell)?;
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self
-            .cast_number_no_bools_or(rest.first(), 0.0, cell)?
-            .floor() as u32;
+        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         // A date Excel's reading moves off the calendar (`DateSystem::odd_period_1900_serial`).
         let mut dates = [0; N];
         for (date, read) in dates.iter_mut().zip(read) {
             *date = read.ok_or_else(|| num_error(cell))?;
         }
         validate_frequency(frequency, cell)?;
-        validate_basis(basis, cell)?;
+        let basis = validate_basis(basis, cell)?;
         check_dates(&dates, frequency)?;
         let bad_fourth = if price_given {
             yld_or_pr <= 0.0
@@ -954,7 +961,7 @@ impl Model {
             if model.coupon_schedule_breaks(maturity) {
                 return broken_schedule_days(settlement, maturity, basis, cell);
             }
-            date_number(coupdaysnc(settlement, maturity, frequency, basis), cell)
+            date_number(coupon_days_nc(settlement, maturity, frequency, basis), cell)
         })
     }
 
@@ -1011,21 +1018,4 @@ fn date_number(days: Result<f64, String>, cell: CellReferenceIndex) -> CalcResul
         Ok(days) => CalcResult::Number(days),
         Err(_) => num_error(cell),
     }
-}
-
-/// COUPDAYSNC's days from settlement to the next coupon date.
-fn coupdaysnc(settlement: i64, maturity: i64, frequency: u32, basis: u32) -> Result<f64, String> {
-    let next_date = from_excel_date(next_coupon_date(settlement, maturity, frequency)?)?;
-    let set_date = from_excel_date(settlement)?;
-    if basis == 0 {
-        // ExcelFinancialFunctions enforces coupDaysNC = coupDays - coupDaysBS
-        // for the US 30/360 basis: the total 30/360 days in the coupon period
-        // (ModifyBothDates) minus the days from its start to settlement
-        // (ModifyStartDate). This is *not* simply 30/360(settlement, next).
-        let prev_date = from_excel_date(prev_coupon_date(settlement, maturity, frequency)?)?;
-        let total = days_30_360_us_both(prev_date, next_date);
-        let to_settlement = days_30_360_us(prev_date, set_date);
-        return Ok(total - to_settlement);
-    }
-    Ok(basis_days(set_date, next_date, basis))
 }

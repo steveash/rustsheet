@@ -24,9 +24,11 @@ use clap::{Parser, Subcommand};
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::catalog::Catalog;
+use rustsheet_eval::catalog_coverage;
 use rustsheet_eval::deviations;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::evidence_floor::{self, Lock, EVIDENCE_FLOOR, LOCK_PATH};
+use rustsheet_eval::exit_exceptions::ExitExceptions;
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::lift_kinds;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
@@ -255,16 +257,20 @@ fn check_deviations(root: &Path, suites: &[Suite]) -> Result<()> {
     Ok(())
 }
 
-/// The frozen milestone probe lists (decision 0044) and the probe-milestone rules (decision 0051).
+/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051)
+/// and the named exit exceptions (decision 0087).
 struct Milestones {
     lists: Vec<MilestoneList>,
     rules: Rules,
+    exceptions: ExitExceptions,
 }
 
 /// Loads the frozen lists and the probe-milestone mapping, and fails when a line of either names
 /// a case that no suite discovers, or a cell line names a cell its case holds no expectation for.
+/// A malformed line of the exit exceptions fails too.
 fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
     let lists = milestone_lists::load_all(root)?;
+    let exceptions = ExitExceptions::load(root)?;
     let mapping = Mapping::load(root)?;
     if !lists.is_empty() || mapping != Mapping::default() {
         let mut files = BTreeMap::new();
@@ -286,12 +292,17 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
         mapping.check_cells(&expectations)?;
     }
     let rules = Rules::new(&lists, mapping, catalog);
-    Ok(Milestones { lists, rules })
+    Ok(Milestones {
+        lists,
+        rules,
+        exceptions,
+    })
 }
 
 /// Fills the report's milestone sections from the run's `results`.
 fn score_milestones(
     milestones: &Milestones,
+    catalog: &Catalog,
     suites: &[Suite],
     results: &[CaseResult],
     report: &mut RunReport,
@@ -310,6 +321,16 @@ fn score_milestones(
         .copied()
         .unwrap_or(BaselineMode::Cells);
     report.probe_milestones = probe_milestones::summarize(&milestones.rules, results, probes_mode);
+    if let Some(scope) = report.function_scope.as_mut() {
+        scope.apply_exceptions(&milestones.exceptions);
+    }
+    let generated: BTreeMap<String, Vec<String>> = suites
+        .iter()
+        .filter(|s| s.manifest.origin == "generated")
+        .map(|s| (s.manifest.name.clone(), s.manifest.milestone.clone()))
+        .collect();
+    report.catalog_coverage =
+        catalog_coverage::summarize(catalog, results, &report.evidence, &generated);
 }
 
 fn print_summary(report: &RunReport) {
@@ -379,7 +400,7 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         &RustSheetEngine.implemented_functions(),
         &catalog,
     );
-    score_milestones(&milestones, &suites, &results, &mut report);
+    score_milestones(&milestones, &catalog, &suites, &results, &mut report);
     print_summary(&report);
     let mut failed = false;
     for suite in &suites {
@@ -614,7 +635,7 @@ fn run() -> Result<ExitCode> {
                 &RustSheetEngine.implemented_functions(),
                 &catalog,
             );
-            score_milestones(&milestones, &suites, &results, &mut report);
+            score_milestones(&milestones, &catalog, &suites, &results, &mut report);
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(

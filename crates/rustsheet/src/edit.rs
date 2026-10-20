@@ -459,7 +459,23 @@ impl Txn<'_> {
     /// [`EditError::DefinedName`] when the name is not a valid identifier, already exists, or the
     /// formula does not parse.
     pub fn define_name(&mut self, name: &str, formula: &str) -> Result<(), EditError> {
-        self.add_defined_name(name, None, formula)
+        self.add_defined_name(name, None, formula, false)
+    }
+
+    /// Adds a defined name as a workbook being loaded defines it (`sheet` `None` is workbook
+    /// scope). Unlike [`Txn::define_name`] it accepts a name spelled like an A1 cell (`NLG1`):
+    /// Excel opens such a workbook, and a formula still reads the cell, not the name.
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet; otherwise as [`Txn::define_name`], except for the
+    /// cell-like spelling.
+    pub fn load_defined_name(
+        &mut self,
+        sheet: Option<SheetId>,
+        name: &str,
+        formula: &str,
+    ) -> Result<(), EditError> {
+        self.add_defined_name(name, sheet, formula, true)
     }
 
     /// Adds a sheet-scoped defined name, as Excel's `Sheet1!Print_Area` or a name whose scope is
@@ -474,7 +490,7 @@ impl Txn<'_> {
         name: &str,
         formula: &str,
     ) -> Result<(), EditError> {
-        self.add_defined_name(name, Some(sheet), formula)
+        self.add_defined_name(name, Some(sheet), formula, false)
     }
 
     fn add_defined_name(
@@ -482,14 +498,19 @@ impl Txn<'_> {
         name: &str,
         sheet: Option<SheetId>,
         formula: &str,
+        loading: bool,
     ) -> Result<(), EditError> {
         let scope = sheet.map(|id| sheet_index(self.model, id)).transpose()?;
         // Stored without the `=`, as xlsx `definedName` text is: the engine reads a name body as
         // a reference only in that form.
         let body = formula.trim();
-        self.model
-            .define_name(name, scope, body.strip_prefix('=').unwrap_or(body))
-            .map_err(EditError::DefinedName)?;
+        let body = body.strip_prefix('=').unwrap_or(body);
+        let defined = if loading {
+            self.model.define_loaded_name(name, scope, body)
+        } else {
+            self.model.define_name(name, scope, body)
+        };
+        defined.map_err(EditError::DefinedName)?;
         self.sheet_op = true;
         self.undo.push(Undo::DefinedName {
             name: name.to_string(),

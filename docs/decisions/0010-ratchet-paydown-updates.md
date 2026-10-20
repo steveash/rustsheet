@@ -190,5 +190,15 @@
   steward 2026-10-19: the size lock was loose on main. expressions/parser/static_analysis.rs off the oversized list
   (`check_file_size.py --update`, 12 -> 11 entries; evaluation.rs 1096 -> 1071 and
   financial/financial_bonds.rs 1083 -> 1031 locked too); no code change in this PR.
+  T-2004: duplicated lines 3630 -> 3619 (`check_duplication.py --update`): MULTINOMIAL's 170-entry `LOG10_OF`
+  literal table is now built from the shared `excel_log10` kernel.
+  T-1723: duplicated lines 3619 -> 3318 (`check_duplication.py --update`): CORREL, PEARSON, RSQ, SLOPE, INTERCEPT,
+  STEYX and FORECAST share one `PairedMoments` instead of seven copies of their sums loop.
+  T-1775: duplicated lines 3318 -> 3268 (`check_duplication.py --update`): the element-wise text functions'
+  `TextArg`/`broadcast_text` loops became `Lift` entries through `Model::lift_text`.
+  T-0908: duplicated lines 3268 -> 3202 (`check_duplication.py --update`): the fdlibm BESSELJ/BESSELY port
+  (`bessel_j0_y0.rs`, `bessel_j1_y1.rs`, `bessel_jn_yn.rs`) is deleted; Excel's asymptotic tables replace it.
+  T-1639: duplicated lines 3202 -> 3176 (`check_duplication.py --update`): `parse_reference_formula`'s cell and
+  range arms share one sheet lookup, and `Range::between` replaces the corner min/max of `single_sheet_area`.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

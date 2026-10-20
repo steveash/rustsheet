@@ -105,18 +105,32 @@ Tasks: T-0935
 
 ## Elapsed-time tokens
 Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
-- Fractional elapsed seconds work: `[h]:m:s.000` on 3.14159 → "75:23:53.376" (A2).
-- A plain `h`/`ss` after `[h]`/`[s]` of the same unit shows the elapsed total too:
-  "It was 75 [yes, 75] hours and 23:53" (A10), "271433 [yes, 271433] seconds" (A11).
+- Fractional elapsed seconds work: `[h]:m:s.000` on 3.14159 → "75:23:53.376" (A2), `[m]:s.000` →
+  "4523:53.376" (A3), `[s].000` → "271433.376" (A4), `[ss].000` on 0 → "00.000" (A27). The value is
+  rounded to the shown digit first and every field is cut from that: `[hh]:mm:ss.0` → "75:23:53.4"
+  (A5; .376 rounds up), and an elapsed count before the fraction is the whole part of that rounded
+  total (`[s].000` is 271433 then ".376", A4).
+- A plain `h`/`s`/`ss` after `[h]`/`[hh]`/`[s]`/`[ss]` shows the elapsed total too:
+  "It was 75 [yes, 75] hours and 23:53" (A10), "271433 [yes, 271433] seconds" (A11), "7384 [yes,
+  7384] seconds" (A21); padding stays (`ss` on 0 is "00", A31). `m` after `[m]` is unprobed; the
+  engine keeps it a clock minute (T-2135).
+- Past 9999-12-31 a fraction of a second is #VALUE! with or without an elapsed token:
+  `TEXT(1234567890,"[mm]:ss.0")` and `TEXT(1234567890,"h:mm:ss.00")` (gen-m10 810fee377a42575b
+  T!A16, b4f66526f822ff2c T!A20; fbdab487cb11409e T!A25 on 123456789012345). Four or more zeros
+  (`s.0000`) are unprobed; the engine keeps them #VALUE!. Also unprobed: where that cutoff sits
+  (the engine uses serial 2958466, also in a 1904 workbook) and whether a date token rolls over
+  with a fraction that rounds past midnight (the engine's does not); T-2135 probes them.
 - A negative value prints one leading "-" before any literal text:
   "-It was 2 [yes, 2] hours and 03:04" (A40).
 In the 1900 date system TEXT of a negative under a format that mixes an elapsed token with a date/time token (`[h]:mm`, `[s] yy`, `[s].00`) is #VALUE! instead; a format whose only date/time token is one elapsed token still prints a minus, with any literals (below; dates.md "Negative serials under an explicit negative section", probes/text-negative-serial-elapsed-mixed, probes/negative-date-sections-1900, T-1079/T-1105); the minus above is the 1904-workbook behavior. Two elapsed tokens in one section (`[h]:[mm]`) are #VALUE! in both systems, for positive values too (same evidence).
 An elapsed token works on the magnitude of the value and keeps a minus for a negative one, in both date systems (VERIFIED, probes/elapsed-tiny-negatives-1900/-1904 and elapsed-fractions-1900/-1904, excel-graph, T-1338, T-1346): `[s]`/`[ss]` round it to nearest (1.7 s = "2", 1.2 s = "1", 1.5 s = "2", -0.9 s = "-1", -1.7 s = "-2", `TEXT(-1E-10,"[s]")` = "-0"); `[m]`/`[mm]`/`[h]`/`[hh]` truncate it (1.7 min = "1", 1.7 h = "1", -1.7 min = "-1", -0.3 h = "-0"). Padding follows the sign (`[ss]` of -1E-10 = "-00", of -1.7 s = "-02", of 1.7 s = "02"). Binary noise is absorbed: -1.5/86400 days is "-2", `TEXT(-(3-1E-7)/24,"[h]")` = "-3", `TEXT(-(2-1E-9)/1440,"[m]")` = "-2", yet `TEXT(-0.49999999999/86400,"[s]")` = "-0" and `TEXT(-(5-1E-6)/86400,"[s]")` = "-5". The engine models that as a 1e-12 snap of the seconds for `[s]` and a millisecond snap for `[h]`/`[m]`: fitted to these cells, not known (the true threshold is unprobed). The positive near-integers behave the same (VERIFIED, probes/elapsed-positive-large-1900/-1904, excel-graph, T-1362): `TEXT((3-1E-7)/24,"[h]")` = "3", `TEXT((5-1E-6)/86400,"[s]")` = "5", `TEXT(0.49999999999/86400,"[s]")` = "0". The count is plain arithmetic with no 32-bit limit in either date system: `TEXT(30000,"[s]")` = "2592000000", `TEXT(24856,"[s]")` = "2147558400", `TEXT(2958465,"[s]")` = "255611376000", `TEXT(1E9,"[h]")` = "24000000000". `TEXT(-1.5,"[s]")` = "-129600".
 
 **Elapsed tokens beyond the i64 range** (VERIFIED, probes/elapsed-huge-a/b0/b1/b2/c/d/e/f/g/h/i-1900, excel-graph, T-1375): the count is printed in full, never in scientific notation, but only its first 15 significant digits are kept and the rest are zeros, from 1e15 up (`TEXT(1E15,"[s]")` = "86400000000000000000", `TEXT(1.234567890123456E16,"[s]")` = "1066666657066660000000", `TEXT(1E100,"[h]")` = 1 followed by 99 zeros times 24; the same at `[m]`/`[ss]`; negatives keep the minus). Below 1e15 it is the exact integer. The result is `#VALUE!` once it is over 255 characters (`TEXT(1E253,"[h]")` is 255 digits and works, `TEXT(1E254,"[h]")` is #VALUE!; `TEXT(1E250,"[s]")` works, `TEXT(-1E250,"[s]")` is #VALUE! because of the minus; `TEXT(1E300,"[s]")` is #VALUE!). When the count itself overflows a double the result is "0" ("-0" for a negative): `[s]` once days*86400 overflows (`TEXT(2.0807E303,"[s]")` = "0" while `TEXT(2.0806E303,"[s]")` is #VALUE!), `[m]`/`[h]` once days*1440 / days*24 does (`TEXT(1.5E307,"[h]")` = "0", `TEXT(1E305,"[m]")` is still #VALUE!). A literal 1.7E308 in a formula made excel-graph reject the whole workbook, so serials that high are unprobed. The 255-character `#VALUE!` is probed for elapsed tokens only; the engine applies the 255-character cap to every date/time section as an assumption. Corrected (T-1388): a far lower limit on the format code itself decides first (see "TEXT format code complexity limit" below), so a date/time TEXT cannot reach 255 characters through repeated tokens; whether any can exceed 255 is unprobed.
-Evidence: poi/ElapsedFormatTests.xlsx A2, A10, A11, A40 (web and the desktop Excel that saved the
-workbook agree).
+Evidence: poi/ElapsedFormatTests.xlsx A2-A7, A10-A17, A21-A27, A31-A37, A40-A47, A50, A51 (web and
+the desktop Excel that saved the workbook agree); gen-m10 cells above.
 Status: VERIFIED
+Implemented in: `Parser::parse_part` (formatter/parser.rs: `TextToken::SecondFraction`, plain
+`h`/`s` after an elapsed one), `FractionalSeconds` and `elapsed_text` (formatter/elapsed.rs).
 Tasks: T-0934
 
 ## CONFLICTING: elapsed token after a plain `s`
@@ -263,7 +277,8 @@ many digits: on 36191.1702084375 (04:05:06.009) `hh:mm:ss.000 am/pm` → "04:05:
 Evidence: poi/DateFormatTests.xlsx Tests!A12, A13, A17, A18, A31, A32, A36, A37, A40 (desktop Excel cached
 values, Microsoft Macintosh Excel 16.0; the 1904 date system does not change the time of day).
 Status: VERIFIED
-Tasks: T-0981
+Implemented in: `FractionalSeconds` (formatter/elapsed.rs), shared with the elapsed tokens (T-0934).
+Tasks: T-0981, T-0934
 
 ## TEXT format code complexity limit
 Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens long before 255 characters. The model below is fitted to the probed boundaries of probes c to k (524 cells; VERIFIED, excel-graph; excel-desktop unprobed); every probed cell fits. Its weights look like the size in bytes of a compiled code, a quoted character being one UTF-16 unit (2) and an unquoted one 3.
@@ -302,6 +317,28 @@ Status: VERIFIED (excel-graph, fitted model)
 Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455, T-1481, T-1486, T-1735, T-1880
 
 TEXT over an array of format codes (T-1451): one result per format, value and formats broadcast together (see text.md). `TEXT(1,{"0",#N/A})` is "1", `#N/A` (-f A54:B54). The error-precedence and lifting rules are verified by probes/text-format-array (T-1458) for error and too-complex format elements; a syntactically invalid format element next to an error value is not probed.
+
+## TEXT checks the code before it looks at a text or boolean value (T-2157)
+Rule: a code that is `#VALUE!` for a number is `#VALUE!` for a text or boolean value too, even where the text section would
+apply: `TEXT(" x ","TRUE")`, `TEXT("TRUE",TRUE)`, `TEXT("a",FALSE)`, `TEXT(FALSE,FALSE)`, `TEXT(FALSE,"FALSE")`,
+`TEXT(TRUE,"#N/A")`, `TEXT("TRUE","HELLO ")`, `TEXT("a*",FALSE)` and `TEXT(FALSE,"x~*0.1Hello World")` are `#VALUE!` (a bare
+`E` without a sign, an `N`, or a date token beside digit placeholders: "Bare letters and digits in a number format" above).
+Ours returns the text or boolean unchanged. Also `TEXT(2.5,"a*?b1")` is `#VALUE!` (ours "a "); which part Excel rejects (the
+`*?` fill followed by `b1`) is unprobed.
+Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/25768de48ae7f2f9 Calc!A395, gen-m5/5704666097cbc5b2 Calc!A133,
+gen-m5/651e713f5ae232ed Calc!A3, gen-m5/6b831f5e2a20bc34 Calc!A320, gen-m5/8a387c26d182e73c Calc!A281, gen-m5/8df4830f888f16ae Calc!A149,
+gen-m5/a6fec430ac350c1a Calc!A331, gen-m5/c688ca172fe533dc Calc!A139, gen-m5/d1b251fd6e9c4b4b Calc!A120, gen-m5/d9fb1e918971111b Calc!A243,
+gen-m5/f0f205865a3a4328 Calc!A262.
+Status: VERIFIED (excel-graph); not implemented (T-2157). Related: T-1130 (text values under 1-3 section codes).
+
+## TEXT reads a number-like text value as its number; control characters are literals (T-2158)
+Rule: a text value that reads as a number is formatted as that number: `TEXT("1","0,000.0")` is "0,001.0" and
+`TEXT("$3.14","h:mm:ss.00")` (`DOLLAR(3.14159)`) is "3:21:36.00" (ours "1" and "$3.14"). A control character in the code prints
+as a literal: `TEXT(100,CHAR(10))` is a line feed and `TEXT(-2.5,CHAR(1))` is "-" followed by CHAR(1) (ours `#VALUE!` for both).
+Evidence (excel-graph, 2026-10-20): gen-m5/901e91c09b347914 Calc!A210, gen-m5/eb942f4a59b1c004 Calc!A54,
+gen-m5/d586a1e0c9896942 Calc!A38, gen-m5/c0651f0e0fb544d0 Calc!A336.
+Unprobed: date-like and percent text values, other control characters.
+Status: VERIFIED (excel-graph); not implemented (T-2158).
 
 ## Unquoted ASCII letters in a number format (T-1450)
 
@@ -409,10 +446,10 @@ General `1.5` "1.5", `1234567890123` "1.23457E+12", `1E-10` "1E-10"; `0.00` on P
 Evidence: probes/displayed-text-formats S!A1:A24, B1:B4 (excel-graph `text`, 2026-10-16, T-1610).
 Desktop `.Text` does depend on the width (`####` when a number does not fit), unprobed here: the
 excel-graph text is what the M10 suite scores (decision 0068).
-Not implemented (T-1711): ours gives " 1/2" for `# ?/?` on 12.5, "1,234" for
-`TEXT(1234.5,"#,##0")` (a value failure too) and `#VALUE!` for the negative date.
+Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030), "1,234" for
+`TEXT(1234.5,"#,##0")` (a value failure too) and `#VALUE!` for the negative date (both T-1711).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1610, T-1711
+Tasks: T-1610, T-1711, T-2030
 
 ## Displayed text over an edge-value pool (T-1611)
 Rule: suite gen-m10 records Excel's displayed text (`Range.text`) of 135 format codes (every built-in,
@@ -449,7 +486,78 @@ text" section lists every cell ours gets wrong.
 Not implemented: ours passes 6,961 of 10,400 text cells (66.9%). Fill characters (T-1735),
 out-of-range dates (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
-scientific (T-1730), fractions and round-half (T-1711, T-0982), the sign of -0.5 (T-1129),
-fractional seconds (T-0981, T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
+scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), round-half (T-1711), the sign of -0.5 (T-1129),
+fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740
+Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030
+
+## Fraction formats
+Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells named by case-id prefix):
+- **Fixed denominator** (`# ?/4`, `# ??/16`, `?/100`): the numerator is the fraction part times the
+  denominator rounded half away from zero, never reduced (`# ?/4` on 1.5 "1 2/4", 039accab F7; 0.125
+  " 1/4", F12; `# ??/16` on 1.5 "1  8/16", 05c1c646 A3). A numerator that rounds up to the denominator
+  carries into the integer (`# ?/2` on 1.75 "2    ", bfb1a4b0 S16).
+- **Placeholder denominator** (`?/?`, `??/??`, `???/???`): the fraction is the last continued-fraction
+  convergent of the fraction part whose denominator has at most that many digits, not the closest
+  fraction: `# ??/??` on PI() is "3  1/7 " (4c6a49fe G13; 14/99 is closer) and on 123456.789 "123456 15/19"
+  (20512106 L16; 71/90 is closer); `# ???/???` on PI() "3  16/113" (05c1c646 C18). Fitted during gap
+  triage 2026-10-19 on all 317 gen-m10 text cells that show an n/d (the closest fraction fits 308).
+  Implemented (T-2030): the continued fraction of the binary fraction part, stopping at the first
+  convergent whose denominator would not fit or when the remainder drops below 1e-12. Every one of
+  the 488 placeholder-denominator cells matches with that rule, but the 1e-12 cut-off is not pinned
+  down by them (no cell has a remainder near it); 123456.789 (fraction part 0.78900000000430737...)
+  gives 15/19 under `??/??` either way.
+- **No integer part** (`?/?`, `?/100`): the whole value is the numerator, so the fraction is improper:
+  `?/?` on 36.5 "73/2", PI() "22/7", 1234567890 "1234567890/1", 0 "0/1" (039accab E18, 43980980 Z14,
+  039accab E2, 43980980 Z5); `?/100` on 61 "6100/100" (05c1c646 D5).
+- **A zero numerator** blanks the fraction to spaces of its width and the integer prints even under `#`:
+  `# ?/4` on 1E-5 "0    ", `# ??/16` on 61 "61      ", `# ?/2` on 0.125 "0    " (039accab F4, 05c1c646
+  A5, 43980980 N10); `?/?` keeps "0/1".
+- **A zero integer part** is left out under `#` with its space kept (`# ?/?` on 0.125 " 1/8", 20512106
+  P1) and printed under `0` (`0 ?/?` on 1/3 "0 1/3", 0e3d8eba W4). The minus leads, also on a value that
+  rounds to zero: `# ?/4` on -0.5 "- 2/4" (9a8b7d68 A1), `# ?/2` on -1/7 "-0    " (bfb1a4b0 S4), `0 ?/?`
+  on -1/7 "-0 1/7" (71ad5f93 G7).
+- **Padding:** `?` pads the numerator on the left and the denominator on the right (`# ???/???` on 1.5
+  "1   1/2  ", 05c1c646 C3; `??/??` on 0.5 " 1/2 "); `#` does not (`# #/#` on 0.5 "1/2", on 1234567890
+  "1234567890", 039accab K8, K2). Under a `#` numerator the literal between the integer and the
+  fraction goes too when either side prints nothing ("1/2", not " 1/2"; "1234567890" with no
+  trailing blanks), yet stays when both print (`# #/#` on 1.5 "1 1/2").
+- A numerator that overflows is 255 `#` ("Displayed text over an edge-value pool" above, T-1740).
+Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
+codes, all failing in the 2026-10-19 report.
+- **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
+  (12.345 × 100 is 1234.4999999999998 in binary), while `# ?/10` on 12.345 is "12 3/10" (43980980 P16; the binary
+  fraction part 0.34499999999999886 × 10 stays below the half).
+Probed (T-2061, excel-graph 2026-10-19, probes/fraction-format-features, cells named by row of column A; values
+B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
+- **Currency and leading literals** sit after the minus: `$# ?/4` on -0.5 "-$ 2/4" (C2), `"x"# ?/4` "-x 2/4" (C3),
+  `€# ?/4` (C17) and `[Red]$# ?/4` (C16) alike; a tiny negative keeps the minus: "-$0    " (F2).
+- **`%` scales the value before the fraction** and prints after the blanked fraction: `# ?/4%` on 1.5 "150    %" (B4),
+  1234.5 "123450    %" (I4), -0.001 "-0    %" (F4).
+- **A trailing `,` after the denominator scales the value up, not down by 1000**: `# ?/4,` is #VALUE! for every value but 0, which prints
+  "0    " (B5:I5); `# ?/4,,` multiplies the value by 1E250 and prints the integer in full with the fraction blanked ("15" + 249
+  zeros + 4 spaces on 1.5, B6; -0.001 "-1" + 247 zeros, F6; 253 to 255 characters), and is #VALUE! on 1234.5 (I6),
+  whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! on the same pattern (a larger
+  factor, or the limit); the per-comma factor and the limit's role are hypotheses to probe (T-2072). Not
+  implemented: we print "0    ".
+- **`0` numerator placeholders print**: a zero numerator is not blanked, it pads with zeros: `# 00/16` on 0 "00/16",
+  on 1.99 "2 00/16" (D8, E8), and `# 0/4` on 0 "0/4", 1 "1 0/4" (D15, G15); the integer part is dropped under `#` when
+  zero and the separator goes with it (`# 00/16` on 0.5 "08/16", H8; `# 0/4` on 0.5 "2/4", H15; -0.5 "-08/16", "-2/4",
+  C8, C15). `# #/4` blanks the fraction and its separator: on 0 "0", 1.99 "2", -0.001 "-0", 1 "1" (D7:G7), on
+  0.5 "2/4" (H7), -0.5 "-2/4" (C7). With `0` as the integer, `0 #/4` on 0.5 is "0 2/4" and on -0.5 "-0 2/4" (H12, C12):
+  the separator stays.
+- **A tiny negative loses its minus in a format with no integer section**: `?/100` on -0.001 is "0/100" (F9), as is
+  `?/00` "0/01" (F13); formats with an integer section keep it ("-0    ", F11; `# 00/16` "-00/16", F8; `# 0/4`
+  "-0/4", F15).
+- **`?/100` on 1234.5 is #VALUE!** (I9), although 12.345 and 61 print (05c1c646 D11, D5).
+- **Grouping applies**: `#,##0 ?/4` on 1234.5 "1,234 2/4" (I10), on -0.5 "-0 2/4" (C10).
+- **`00` in a denominator is a placeholder denominator, not a fixed 00**: `?/00` is the best fraction of at most
+  two digits, zero padded to two: 1.5 "3/02", -0.5 "-1/02", 0 "0/01", 1.99 "197/99", 1 "1/01", 0.5 "1/02",
+  1234.5 "2469/02" (B13:I13); `# ?/00` on 1.5 "1 1/02", 1.99 "1 98/99", 1 "1     " (B14:G14).
+Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the displayed text.
+Mismatches with the probes (42 of 128 cells; the other 86 match, including currency, literals and `%`) are filed as
+T-2072 (`,` after the denominator), T-2073 (`0` numerator placeholders, minus and separator under `#`/`0`) and T-2074
+(`00` denominator, the `?/100` minus and the grouped integer). Placeholder denominators are implemented as above
+(T-2030). An overflowing numerator still prints in full (T-1740).
+Status: VERIFIED (Excel for the web)
+Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061, T-2072, T-2073, T-2074

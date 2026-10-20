@@ -1,13 +1,16 @@
-use super::trig::{excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT};
-use crate::arithmetic::{divide, extended_sqrt, flush_subnormal, power};
+use super::trig::{excel_cos, excel_sin, excel_tan, EXCEL_TRIG_LIMIT};
+use crate::arithmetic::{divide, extended_quotient, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_result, value_error};
 use crate::functions::statistical::IfsShape;
-use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+};
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
+use crate::x87_log10::{excel_ln, excel_log10};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -30,6 +33,15 @@ fn trig_arg(f: f64) -> Result<f64, Error> {
     }
 }
 
+/// COT, CSC and SEC (and COTH, CSCH, SECH): 1 over the rounded TAN, SIN or COS (TANH, SINH,
+/// COSH), divided as the `/` operator divides
+/// (rounded to 64 bits, then to a double), so `COT(PI()/4)` is 1 and `CSC(PI()/6)` 2 like
+/// `1/TAN(PI()/4)` and `1/SIN(PI()/6)` (probes/trig-reciprocal-special-angles; ironcalc-calc
+/// TRIGONOMETRIC.xlsx `COT_CSC_SEC` B47, C48; numbers.md "Division rounds twice").
+fn reciprocal_trig(value: f64) -> f64 {
+    extended_quotient(1.0, value)
+}
+
 /// MIN and MAX: a referenced-cell error ranks below a direct scalar error; the leftmost wins
 /// (probes/aggregate-error-precedence C9-C24). A direct LAMBDA's `#VALUE!` ranks with the
 /// referenced errors, as does an array error (every `Ranked` policy: probes/aggregate-direct-lambda-
@@ -38,6 +50,7 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
+    grids: GridReading::TopLeft,
 };
 
 impl Model {
@@ -370,7 +383,9 @@ impl Model {
             if f <= 0.0 {
                 Err(Error::NUM)
             } else {
-                Ok(f64::log10(f))
+                // Excel's x87 log10, not the platform's (numbers.md "LOG with one argument is
+                // LOG10", T-2004).
+                Ok(excel_log10(f))
             }
         })
     }
@@ -379,19 +394,17 @@ impl Model {
             if f <= 0.0 {
                 Err(Error::NUM)
             } else {
-                Ok(f64::ln(f))
+                // Excel's x87 FLDLN2 + FYL2X, not the platform's ln (numbers.md "LN is FLDLN2
+                // then FYL2X", T-2123).
+                Ok(excel_ln(f))
             }
         })
     }
     pub(crate) fn fn_sin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Sin, args, cell, |f| {
-            trig_arg(f).map(|x| excel_sin_cos(x).0)
-        })
+        self.number_fn(Function::Sin, args, cell, |f| trig_arg(f).map(excel_sin))
     }
     pub(crate) fn fn_cos(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Cos, args, cell, |f| {
-            trig_arg(f).map(|x| excel_sin_cos(x).1)
-        })
+        self.number_fn(Function::Cos, args, cell, |f| trig_arg(f).map(excel_cos))
     }
     pub(crate) fn fn_tan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Tan, args, cell, |f| trig_arg(f).map(excel_tan))
@@ -429,21 +442,49 @@ impl Model {
     pub(crate) fn fn_atan(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Atan, args, cell, |f| Ok(f64::atan(f)))
     }
+    // ASINH and ACOSH are the textbook log formulas in doubles, not libm, so small arguments lose
+    // precision exactly as Excel's do: ASINH(1E-10) = 1.000000082690371E-10 and
+    // ACOSH(1.000000000001) = 1.414276423083533E-6 (docs/excel-semantics/numbers.md, "Inverse
+    // hyperbolics, COTH/CSCH and the SINH/TANH thresholds", probes-numeric/m9-hyperbolic, T-2031).
+    // The log is the worksheet LN kernel (`excel_ln`, FYL2X), not libm `ln`: at 240 points chosen
+    // where the two differ it is 238 right against 2 (probes-numeric/t2133-asinh-acosh-ln, T-2133).
+    // Where `x*x` overflows (|x| above about 1.3407807929942596E154) Excel gives `#NUM!`
+    // (probes-numeric/t2062-asinh-acosh-overflow, excel-graph, T-2062).
     pub(crate) fn fn_asinh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Asinh, args, cell, |f| Ok(f64::asinh(f)))
+        self.number_fn(Function::Asinh, args, cell, |f: f64| {
+            let square = f * f;
+            if square.is_infinite() {
+                Err(Error::NUM)
+            } else if f < 0.0 {
+                Ok(-excel_ln(-f + (square + 1.0).sqrt()))
+            } else {
+                Ok(excel_ln(f + (square + 1.0).sqrt()))
+            }
+        })
     }
     pub(crate) fn fn_acosh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Acosh, args, cell, |f| Ok(f64::acosh(f)))
-    }
-    // ATANH(+-1) is `#NUM!` at once, like any other out-of-domain argument; f64::atanh gives an
-    // infinity there, which the macro's NaN mapping misses (probes/atanh-unit-argument A1:A8,
-    // excel-graph, T-1569).
-    pub(crate) fn fn_atanh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Atanh, args, cell, |f: f64| {
-            if f.abs() == 1.0 {
+        self.number_fn(Function::Acosh, args, cell, |f: f64| {
+            // Checked first: for a large negative argument `f + sqrt(f*f - 1)` rounds to 0 and the
+            // log is -inf, not NaN.
+            if f < 1.0 {
+                return Err(Error::NUM);
+            }
+            let square = f * f;
+            if square.is_infinite() {
                 Err(Error::NUM)
             } else {
-                Ok(f64::atanh(f))
+                Ok(excel_ln(f + (square - 1.0).sqrt()))
+            }
+        })
+    }
+    // ATANH(+-1) is `#NUM!` at once, like any other out-of-domain argument (probes/atanh-unit-
+    // argument A1:A8, excel-graph, T-1569). Inside, Excel's x87 formulation (`hyperbolic::atanh`).
+    pub(crate) fn fn_atanh(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.number_fn(Function::Atanh, args, cell, |f: f64| {
+            if f.abs() >= 1.0 {
+                Err(Error::NUM)
+            } else {
+                Ok(super::hyperbolic::atanh(f))
             }
         })
     }
@@ -494,10 +535,10 @@ impl Model {
     }
     pub(crate) fn fn_acoth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Acoth, args, cell, |f: f64| {
-            if f.abs() == 1.0 {
+            if f.abs() <= 1.0 {
                 Err(Error::NUM)
             } else {
-                Ok(0.5 * (f64::ln((f + 1.0) / (f - 1.0))))
+                Ok(super::hyperbolic::acoth(f))
             }
         })
     }
@@ -508,20 +549,21 @@ impl Model {
             } else if f == 0.0 {
                 Err(Error::DIV)
             } else {
-                // 1/TAN, not COS/SIN (probes-numeric/m9-trig-reduction F6-F81).
-                Ok(1.0 / excel_tan(f))
+                // 1/TAN, not COS/SIN (probes-numeric/m9-trig-reduction F6-F81), divided as `/`
+                // divides: rounded twice, so COT(PI()/4) is 1 (`reciprocal_trig`).
+                Ok(reciprocal_trig(excel_tan(f)))
             }
         })
     }
+    // COTH, CSCH and SECH are 1 over Excel's own TANH, SINH and COSH, divided as `/` divides: all
+    // 66 pairs of probes-numeric t0917-hyperbolic-switchover agree bit for bit, including where
+    // those are an ulp off libm (docs/excel-semantics/numbers.md "COTH, CSCH and SECH", T-0917).
     pub(crate) fn fn_coth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Coth, args, cell, |f: f64| {
             if f == 0.0 {
                 Err(Error::DIV)
-            } else if f.abs() > 20.0 {
-                // for values > 20.0 this is exact in f64
-                Ok(f.signum())
             } else {
-                Ok(f64::cosh(f) / f64::sinh(f))
+                Ok(reciprocal_trig(super::hyperbolic::tanh(f)))
             }
         })
     }
@@ -532,7 +574,7 @@ impl Model {
             } else if f == 0.0 {
                 Err(Error::DIV)
             } else {
-                Ok(1.0 / excel_sin_cos(f).0)
+                Ok(reciprocal_trig(excel_sin(f)))
             }
         })
     }
@@ -542,17 +584,19 @@ impl Model {
                 Err(Error::DIV)
             } else {
                 // Excel: a subnormal CSCH result is a true 0 (CSCH(710), docs/excel-semantics/numbers.md).
-                Ok(flush_subnormal(1.0 / f64::sinh(f)))
+                Ok(flush_subnormal(reciprocal_trig(super::hyperbolic::sinh(f))))
             }
         })
     }
     pub(crate) fn fn_sec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Sec, args, cell, |f| {
-            trig_arg(f).map(|x| 1.0 / excel_sin_cos(x).1)
+            trig_arg(f).map(|x| reciprocal_trig(excel_cos(x)))
         })
     }
     pub(crate) fn fn_sech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Sech, args, cell, |f| Ok(1.0 / f64::cosh(f)))
+        self.number_fn(Function::Sech, args, cell, |f| {
+            Ok(reciprocal_trig(super::hyperbolic::cosh(f)))
+        })
     }
     /// `EXP(number)`: Excel's own x87 evaluation, model V6, which is not the correctly rounded exp
     /// (docs/excel-semantics/numbers.md "EXP is an x87 2^(a*log2 e) evaluation, not correctly
@@ -689,11 +733,13 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
+        // The base omitted is LOG10, not ln(x)/ln(10): `LOG(1000)` is 3 (numbers.md "LOG with
+        // one argument is LOG10"; probes/log10-kernel, T-2004).
         let y = if n_args == 1 {
-            10.0
+            None
         } else {
             match self.get_number(&args[1], cell) {
-                Ok(f) => f,
+                Ok(f) => Some(f),
                 Err(s) => return s,
             }
         };
@@ -704,6 +750,9 @@ impl Model {
                 message: "Number must be positive".to_string(),
             };
         }
+        let Some(y) = y else {
+            return CalcResult::Number(excel_log10(x));
+        };
         if y == 1.0 {
             return CalcResult::Error {
                 error: Error::DIV,
