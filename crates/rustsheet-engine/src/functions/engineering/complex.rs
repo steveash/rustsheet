@@ -54,8 +54,15 @@ struct Complex {
 
 impl fmt::Display for Complex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let x = to_precision(self.x, 15);
-        let y = to_precision(self.y, 15);
+        // 15-digit rounding of a part near DBL_MAX overflows to infinity; Excel writes
+        // `1.79769313486232E+308` (probes/eng-imexp-overflow-imag A22), so keep the unrounded part.
+        let round15 = |v: f64| {
+            Some(to_precision(v, 15))
+                .filter(|r| r.is_finite())
+                .unwrap_or(v)
+        };
+        let x = round15(self.x);
+        let y = round15(self.y);
         let suffix = &self.suffix;
         // Each part is written as Excel's number-to-text writes it: plain up to 20 characters,
         // then E notation (`1.22514845490862E-16`, probes/eng-impower A9; `1E+200`,
