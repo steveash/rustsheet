@@ -127,7 +127,8 @@ pub(super) fn kernel_units(
     };
     let charge = |value: ArgCharge| -> u64 {
         let order = match value {
-            ArgCharge::Number(n) if n >= 0.0 => n.trunc().min(f64::from(cap)),
+            // Past the cap the kernel refuses the order before it loops.
+            ArgCharge::Number(n) if (0.0..=f64::from(cap)).contains(&n.trunc()) => n.trunc(),
             ArgCharge::Text => f64::from(cap),
             ArgCharge::Number(_) | ArgCharge::Other => 0.0,
         };

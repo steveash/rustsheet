@@ -58,10 +58,10 @@ pub(crate) enum KernelWork {
     /// A loop whose length is the value of argument `arg`: the Bessel recurrences run about once
     /// or twice per order, up to the kernel's own per-call cap `cap` (T-1819). An element is
     /// charged by that argument's value before anything runs, summed over the broadcast
-    /// (`lift/driver.rs` `kernel_units`): `1 + min(trunc(n), cap) * weight / cap` units for a
-    /// number `n >= 0`, so `1 + weight` at the cap; a text is charged as at the cap (the kernel
-    /// may read it as a number), and anything else (a negative number, an error, a logical, a
-    /// blank) 1, as the kernel refuses it or runs order 0.
+    /// (`lift/driver.rs` `kernel_units`): `1 + trunc(n) * weight / cap` units for a number with
+    /// `0 <= trunc(n) <= cap`, so `1 + weight` at the cap; a text is charged as at the cap (the
+    /// kernel may read it as a number), and anything else (an order past the cap or negative, an
+    /// error, a logical, a blank) 1, as the kernel refuses it before looping or runs order 0.
     ByArg { arg: usize, cap: u32, weight: u32 },
 }
 

@@ -670,8 +670,9 @@ COMBIN, FACT and MULTINOMIAL (T-1197), and the RATE/IRR/YIELD solvers (they have
 they are `Constant` only if the cap is fixed). A kernel whose loop length is one argument's value
 may instead be `ByArg { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order)):
 before any element runs, the driver sums each element's charge over the broadcast,
-`1 + min(trunc(n), cap) * weight / cap` for a number `n >= 0` in argument `arg`, `1 + weight` for a
-text (the kernel may read it as a number) and 1 for anything else. That pass is O(elements). The
+`1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument `arg`,
+`1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the kernel
+refuses it before looping). That pass is O(elements). The
 kernel still keeps `cap` as its own per-call cap. T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`
 silently.

@@ -42,7 +42,8 @@ This changes the SPEC-0011 driver: amend the spec's "Security rule for kernel wo
 ## Outcome
 New `KernelWork::ByArg { arg, cap, weight }` (lift/kinds/mod.rs). Before any element runs, the
 driver (`lift/driver.rs` `kernel_units`) charges each element by its order:
-`1 + min(trunc(n), cap) * weight / cap` for a number, the cap for a text, and 1 otherwise. That is
+`1 + trunc(n) * weight / cap` for a number with
+`0 <= trunc(n) <= cap`, the cap for a text, and 1 otherwise (past the cap the kernel refuses first). That is
 one O(elements) pass. BESSELI/J/K/Y use `arg: 1, cap: MAX_ORDER, weight: 2^16 - 1`. An element at
 the cap still costs 2^16, so at most 2,048 run, as before. Small orders now lift freely:
 `ROWS(BESSELJ(2.5,SEQUENCE(2100)))` = 2100 and `ROWS(BESSELJ(SEQUENCE(5000)/100,0))` = 5000.

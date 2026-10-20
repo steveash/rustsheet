@@ -44,11 +44,11 @@ untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0`
 BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's values above
 100,000 are unprobed for them.
 A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
-(SPEC-0011 `KernelWork::ByArg`, T-1819): `1 + 65535·min(n, 100000)/100000` units, so 2^16 at the cap and 1 for
-n = 0. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
+(SPEC-0011 `KernelWork::ByArg`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
+cap and 1 for n = 0; an order past the cap is refused (`#NUM!`) before the kernel loops and costs 1. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
 the cap (`ROWS(BESSELI(2.5,SEQUENCE(2100,1,100000,0)))` is `#ERROR!`), while small orders lift freely
 (`ROWS(BESSELJ(2.5,SEQUENCE(2100)))` = 2100 and `ROWS(BESSELJ(SEQUENCE(5000)/100,0))` = 5000, as in Excel). A text order
-is charged as at the cap, and an order above the cap as at it. At the order cap a BESSELI element runs about 2·10^5
+is charged as at the cap. At the order cap a BESSELI element runs about 2·10^5
 recurrence steps; 2,048 such elements take about 2 s in a release build (8,192 took 8 s, T-1383).
 Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orders; the cap itself is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)

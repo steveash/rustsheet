@@ -136,7 +136,7 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
 ];
 
 /// The entries of `list` that break the rule: `Constant` with no cap named, or a `Weighted`
-/// weight of 1, which charges no more than `Constant`.
+/// weight of 1 or a `ByArg` weight of 0, which charge no more than `Constant`.
 fn violations(list: &[(Function, Option<&str>)]) -> Vec<String> {
     list.iter()
         .filter_map(|(function, cap)| {
@@ -147,6 +147,9 @@ fn violations(list: &[(Function, Option<&str>)]) -> Vec<String> {
                 )),
                 (KernelWork::Weighted(weight), _) if weight <= 1 => Some(format!(
                     "{function:?} is Weighted({weight}), no more than Constant"
+                )),
+                (KernelWork::ByArg { weight: 0, .. }, _) => Some(format!(
+                    "{function:?} is ByArg with weight 0, no more than Constant"
                 )),
                 _ => None,
             }
@@ -171,8 +174,8 @@ fn a_constant_kernel_without_a_cap_is_caught() {
 
 /// BESSEL's `ByArg` charge (T-1819): an element at the order cap costs `2^16`, so exactly 2,048
 /// of them fit under `MAX_LIFTED_CELL_VISITS` (as the flat weight allowed before) and 2,049 do
-/// not; an order-0 element costs 1, a text order is charged as at the cap and a past-the-cap order
-/// no more than it.
+/// not; an order-0 element costs 1, a text order is charged as at the cap and a past-the-cap
+/// order, which the kernel refuses before looping, 1.
 #[test]
 fn bessel_elements_are_charged_by_order() {
     use super::super::driver::{kernel_units, LiftedArg};
@@ -197,7 +200,10 @@ fn bessel_elements_are_charged_by_order() {
     assert_eq!(units(&column(&[ArrayNode::Number(0.0)]), 1), 1);
     assert_eq!(units(&column(&[ArrayNode::Number(1.9)]), 1), 1);
     assert_eq!(units(&column(&[ArrayNode::Number(-5.0)]), 1), 1);
-    assert_eq!(units(&column(&[ArrayNode::Number(1E300)]), 1), 1 << 16);
+    assert_eq!(units(&column(&[ArrayNode::Number(100_000.9)]), 1), 1 << 16);
+    assert_eq!(units(&column(&[ArrayNode::Number(100_001.0)]), 1), 1);
+    assert_eq!(units(&column(&[ArrayNode::Number(1E300)]), 1), 1);
+    assert_eq!(units(&column(&[ArrayNode::Number(f64::INFINITY)]), 1), 1);
     assert_eq!(units(&column(&[ArrayNode::String("7".into())]), 1), 1 << 16);
     assert_eq!(units(&column(&[ArrayNode::Boolean(true)]), 1), 1);
     // A scalar order over a lifted x: every element is charged that order.

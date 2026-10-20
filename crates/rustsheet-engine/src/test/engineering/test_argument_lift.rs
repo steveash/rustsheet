@@ -153,7 +153,7 @@ fn bessel_work_is_bounded() {
     // A text order may read as a number, so it is charged as at the cap.
     model._set("A7", "=ROWS(BESSELJ(2.5,IF(SEQUENCE(2100),\"3\")))");
     model._set("A8", "=ROWS(BESSELJ(2.5,IF(SEQUENCE(2000),\"3\")))");
-    // Orders past the cap are charged as at it, though each element is a quick `#NUM!`.
+    // Orders past the cap are refused before the kernel loops, so they cost 1 each.
     model._set("A9", "=ROWS(BESSELJ(2.5,SEQUENCE(2100,1,1E9,0)))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#NUM!");
@@ -164,7 +164,7 @@ fn bessel_work_is_bounded() {
     assert_eq!(model._get_text("A6"), *"#ERROR!");
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"2000");
-    assert_eq!(model._get_text("A9"), *"#ERROR!");
+    assert_eq!(model._get_text("A9"), *"2100");
 }
 
 /// A lift of many order-0 elements runs, each the scalar call's value (T-1819 Goal).
