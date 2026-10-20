@@ -1,3 +1,14 @@
 runs 918 prep 102s; u_S values [3.46944695e-18]
 joint null mean -0.7 sd 53.1
 c values to scan: 2001 (resumed 0)
+scan 5934s, 20010 candidates
+top S-only: 346.7 (a 0.55 b 0.0 c 0.00) | 340.1 (a 0.62 b 0.0 c -2.00) | 327.7 (a 0.58 b 0.3 c -2.00)
+top joint:
+  joint 591.0 (Z 11.1)  S 327.6  a 0.516 b -0.32 c 0.00
+  joint 560.3 (Z 10.6)  S 306.5  a 0.438 b -0.65 c 2.00
+  joint 558.1 (Z 10.5)  S 279.1  a 0.609 b -0.65 c 0.00
+  joint 523.8 (Z 9.9)  S 340.1  a 0.625 b 0.00 c -2.00
+  joint 521.3 (Z 9.8)  S 314.1  a 0.375 b -0.32 c 2.00
+  joint 518.6 (Z 9.8)  S 302.1  a 0.641 b -0.32 c -2.00
+  joint 484.6 (Z 9.1)  S 288.7  a 0.453 b -1.30 c 4.00
+  joint 482.1 (Z 9.1)  S 327.7  a 0.578 b 0.32 c -2.00

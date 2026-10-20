@@ -157,6 +157,14 @@ nul = np.array(
     [sum(joint(rng.random(), rng.uniform(-2e4, 2e4), rng.uniform(-200, 200))) for _ in range(5000)]
 )
 print("joint null mean %.1f sd %.1f" % (nul.mean(), nul.std()), flush=True)
+if os.environ.get("APROFILE"):
+    # S and P objectives at zero move (b = c = 0) as a function of the constant phase a; null over random (a, b, c)
+    nS = np.array([joint(rng.random(), rng.uniform(-2e4, 2e4), rng.uniform(-200, 200))[0] for _ in range(3000)])
+    print("S null (random hypotheses): mean %.1f sd %.1f" % (nS.mean(), nS.std()))
+    for a_ in np.arange(0, 1, 1 / 32):
+        s1, s2 = joint(a_, 0.0, 0.0)
+        print("  a %.3f  S %7.1f (Z %5.1f)  P %7.1f" % (a_, s1, (s1 - nS.mean()) / nS.std(), s2))
+    raise SystemExit(0)
 # FFT scan on the S objective
 H = int(os.environ.get("H", 6))
 Ch = np.fft.fft(CS, axis=1) / CS.shape[1]
