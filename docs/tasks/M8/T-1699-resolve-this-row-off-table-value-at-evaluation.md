@@ -3,7 +3,7 @@ id: T-1699
 title: "Resolve #This Row off-table #VALUE! at evaluation, not parse time"
 milestone: M8
 lane: engine
-status: in-progress
+status: blocked
 priority: P1
 size: S
 tier: opus
@@ -26,3 +26,11 @@ T-1675 returns `Node::ErrorKind(VALUE)` at parse time in `structured_reference_o
 
 ## Visible-parity stage
 Decision 0083: wrong values here are visible to anyone using defined names or tables (gen-m8b `[#This Row]` off-table cells), so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Blocked because
+Needs the evaluation model of SPEC-0016 (T-2194): the parser lowers every structured reference to a
+range at parse time (`structured_reference_operand`, parser/operands.rs), `to_rc_format` stores the
+lowered range, and shared formulas parse at (1, 1), so neither the off-table `#VALUE!` nor the grown
+table can be decided later without a kept structured-reference node. T-2194 (the spec) is blocked at
+the review-round limit on its pushed branch `agent/engine/T-2194-spec-structured-refs`, which also
+re-scopes this task as rollout step 2 with `depends_on: [T-2195]`. Unblock when T-2195 is done.
