@@ -3,7 +3,7 @@ id: T-1957
 title: "INDIRECT and TRIMRANGE lift into an array of references"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
