@@ -17,7 +17,7 @@ CDF at every df, so a fit no longer reads a fit-lab artefact as an Excel quirk.
 ## Context
 Found by T-0969's second attempt (2026-10-20). `t_cdf` in
 `tools/src/rustsheet_tools/fitlab/kernels/beta.py` takes `fn(y, n/2, 0.5)/2` for a lower tail under
-0.1 with `y = n/(n + t^2)` rounded to a double first. At n = 1E6, `1 - y` is about 4E-6, so that
+0.1 on its y <= z branch, with `y = n/(n + t^2)` rounded to a double first. At n = 1E6, `1 - y` is about 4E-6, so that
 rounding moves the result far more than any I_x algorithm does: the "correctly rounded" candidate
 misses `T.DIST(-2,1E6,TRUE)` by 152,191 ulp and `T.DIST(-10,1E6,TRUE)` by 43,561 ulp. Both figures
 reproduce exactly by evaluating the exact I_x (mpmath, 60 digits) at the rounded y. At the exact
