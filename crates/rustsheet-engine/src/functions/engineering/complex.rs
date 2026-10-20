@@ -25,7 +25,7 @@ use crate::{
 
 /// The angle `atan2(y,x)·n` at which IMPOWER stops answering. Bracketed by probe, not derived:
 /// `IMPOWER("i",85445658)` (angle 134217725.7) answers and `IMPOWER("i",85445659)` (134217727.3)
-/// is `#NUM!`; SIN's own cut is 2^27, which is not this one.
+/// is `#NUM!`; SIN's own cut is 2^27 (`EXCEL_TRIG_LIMIT`), which is not this one for a fractional angle.
 const IMPOWER_ANGLE_LIMIT: f64 = 134_217_727.0;
 
 /// This implements all functions with complex arguments in the standard
@@ -767,8 +767,8 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
 
 /// Half-width of the window around a multiple of pi/2 where an overflowing IMEXP is `#NUM!`
 /// rather than capped. Around 0 it is exactly 2^-26 (`1000+1.4901161193847E-8i` is `#NUM!`,
-/// `...848E-8i` is capped); around the other multiples it was only bracketed, between 1.05E-8 and
-/// 1.06E-8 (pi, 2pi, pi/2, 3pi/2), and 2^-26/sqrt(2) = 1.0537E-8 is the fitted value (T-2087).
+/// `...848E-8i` is capped); around the other multiples it was only bracketed, within (1.0, 1.2]E-8 (pi, 2pi, pi/2,
+/// 3pi/2; engineering.md), and 2^-26/sqrt(2) = 1.0537E-8 is the fitted value (T-2101).
 fn imexp_cap_window(quarter_turns: i64) -> f64 {
     let base = f64::EPSILON.sqrt();
     if quarter_turns == 0 {
