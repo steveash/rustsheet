@@ -625,3 +625,217 @@ needs.
 - K2: the s4/s5 anomaly is an upstream re-hash artefact of the single-phase meter, not a law violation.
 - K2's inner and K3's inner are plain stored quotients; no composition links the three GAMMALN kernels.
 - Dyadic anchors cannot pin the top stages; the next probes are non-dyadic.
+
+## 12. Third review (Fable): what the K2 hand-off signature is, and is not
+
+State at 2026-10-20 03:30 UTC. Scripts and a README are under `review3/`.
+- Every number below was computed on committed oracle data with exact x87 simulation (numpy longdouble,
+  `astype(float64)` after each stored op).
+- grid_a is used exactly as committed in `w2/grid_a.txt`.
+- Data: the long consecutive runs in (2,3] (r701, r112, p401, r702, r610, r901, r703, r113, r704, r611, r705, v401a,
+  v404a, v407a), 8,192 or 16,384 doubles each.
+- I did not run the oracle and pushed nothing.
+
+The brief asked for early-evaluation code shapes that inject 2-3x Horner noise at s4/d3 and leave the rest of the chain
+plain. Before brainstorming I measured what such a shape must satisfy, and the measurements exclude the whole category.
+- 12.1 gives the facts.
+- 12.2 gives the candidate list with verdicts and op sequences, so nobody re-screens them.
+- 12.3 gives the surviving explanation and the cheap screens.
+- 12.4 is the cross-kernel critique.
+- 12.5 says what is settled.
+
+### 12.1 Headline: the stage-4 sum is a plain stored Horner sum, and the "noise" is not pre-rounding noise
+1. **Excel has the plain-Horner N.S4 and D.S3 sum lines, at the plain-Horner frequency, phase-coherent, at full
+   amplitude.** `review3/freq.py` fits the sum line of s4 = fl(P4 + p4) and d3 = fl(P3 + q3) to 1e-5 cycles/step on each
+   long run, in Excel - exact rational and in sim(grid_a) - exact rational. The last column is the frequency the line
+   would have if the head were a two-part sum lacking the x^3 slope.
+
+   | run | x0 | N.S4 f_base | Excel f | sim f | Excel/sim power | two-part-head f |
+   |---|---|---|---|---|---|---|
+   | r701 | 2.0612 | 0.40542 | 0.40542 | 0.40542 | 196x / 230x | 0.40329 |
+   | r112 | 2.2361 | 0.41158 | (other line dominates) | | 2897x / 2782x | 0.40907 |
+   | p401 | 2.3300 | 0.41490 | 0.41490 | 0.41490 | 256x / 209x | 0.41218 |
+   | r610 | 2.4568 | 0.41939 | 0.41940 | 0.41939 | 78x / 78x | 0.41637 |
+   | r901 | 2.5000 | 0.42093 | 0.42093 | 0.42092 | 121x / 91x | 0.41780 |
+   | r703 | 2.6123 | 0.42493 | 0.42493 | 0.42493 | 88x / 79x | 0.42151 |
+   | r113 | 2.7183 | 0.42872 | 0.42880 | 0.42880 | 1630x / 1685x | 0.42501 |
+   | r704 | 2.8765 | 0.43439 | 0.43428 | 0.43427 | 64x / 79x | 0.43025 |
+
+   - D.S3 behaves the same: Excel f = sim f = f_base on every run, powers within 30%.
+   - The line's frequency is s4'(x)·2^-51/ulp(s4), i.e. the slope of the full cubic head p0 x^3 + p1 x^2 + p2 x + p3
+     times x.
+     - It is not shifted by the x^3-term slope (0.002-0.004 cycles/step, 200-400 resolution elements).
+     - It is not replaced by an x-independent line at 8·p3 = 0.3351, the signature of a (p4 + p3 x) pair. In
+       `spec2.py` the power at 0.3351 equals the sim's on every run.
+   - The per-run phase offset, Excel minus sim, is -0.30..+0.32 cycles and differs by run. That is the per-anchor
+     smooth offset of P4 + p4 that W2's single-anchor fits absorb.
+2. **The pre-rounding jitter of P4 + p4 is at most about 0.1 ulp.**
+   - A sawtooth with pointwise phase jitter of sigma s cycles keeps a fundamental of exp(-2 pi^2 s^2).
+   - The measured Excel/sim amplitude ratios (0.8-1.4, mean 1.07) bound s < 0.1 u.
+   - A pre-rounding noise of 0.27 u, which is what "sigma 0.30 against 0.13" would mean, would leave 24% of the line.
+   - So the hand-off reader's extra sigma is not noise in P4 and not noise in the sum's operand. It has to be a change in
+     WHICH WAY the sum rounds on a subset of points.
+3. **Per point, everything is reachable from the stored chain with +-1 or +-2 at the hand-off** (`flips.py`, late
+   chain = grid_a from s5/d4).
+   - 99.8-99.9% of Excel's outputs on r112/r113 equal fl(t·fl(N/D)) for some |dN|, |dD| <= 2 ulps of s4/d3.
+   - 23-27% of points need a shift. Of those, the minimal shift is N +-1 for 68-74%, D +-1 for 17-26% and N +-2 for
+     2-6%.
+   - The N side carries the anomaly, as the (5,3) versus (4,3) fingerprints already said.
+4. **The needed shifts are not a constant per cluster, in either sign or size, and they are phase-locked to the s4
+   sawtooth.**
+   - `clusters.py`: the best constant integer (dN, dD) per 512-double cluster gains nothing over (0, 0) on r112 and r113
+     (0.766 -> 0.766, 0.730 -> 0.730).
+   - 7-9% of points need +1 while others in the same cluster need -1. A synthetic smooth head offset gives no sign
+     mixing.
+   - `dgridlike.py` reproduces W2's fingerprint (an 80-bit head plus a fractional pre-rounding offset in 1/8 ulp per
+     cluster). It gives REAL 0.821 / 0.813 / 0.844 / 0.761 on r112 / r113 / r901 / r703, against
+     0.912 / 0.900 / 0.939 / 0.932 for an all-stored grid_a truth scored the same way. That reproduces W2's deficit with
+     the committed grid_a.
+   - The need-shift rate by octile of frac(P4/u) is concentrated in the two quarters around the sum's midpoint, where the
+     u/4-quantised P4 produces exact ties and ties-to-even decides:
+     - r112: 0.56 1.32 1.25 1.54 1.49 0.67 0.56 0.62;
+     - r113: 0.84 0.87 1.52 1.46 1.06 0.96 0.70 0.59.
+5. **Unstored-op variants are followed by Excel at a rate that depends on the run** (`keeptest.py`: where a variant of
+   the stored chain differs from it, which one does Excel follow). Each cell is "follows variant / follows stored chain";
+   the remainder matches neither.
+
+   | variant | r112 (2.236) | r901 (2.500) | r703 (2.612) | r113 (2.718) |
+   |---|---|---|---|---|
+   | Nmul4 unstored (P4 at 64 bits) | 0.54 / 0.41 | 0.79 / 0.16 | 0.48 / 0.45 | 0.83 / 0.14 |
+   | Nadd4 unstored (s4 kept) | 0.55 / 0.39 | 0.54 / 0.40 | 0.75 / 0.19 | 0.86 / 0.12 |
+   | Dmul3 unstored | 0.68 / 0.17 | 0.44 / 0.43 | 0.49 / 0.33 | 0.55 / 0.23 |
+   | head products N1-4, D1-3 unstored | 0.58 / 0.36 | 0.68 / 0.25 | 0.48 / 0.43 | 0.79 / 0.16 |
+   | whole-chain products unstored | 0.06 / 0.76 | 0.07 / 0.78 | 0.06 / 0.75 | 0.11 / 0.71 |
+
+   - A structural difference would give the same rate on every run.
+   - A rate that swings from 0.48 to 0.83 with x is what a run-dependent sub-ulp offset of P4 + p4 does to the tie class.
+     With offset 0 the stored chain wins everywhere; with offset u/8 the "true side" wins on 75% of the tie points; with
+     u/4 on 50%.
+   - This is review 2's re-hash mechanism (11.1.4) seen through a different meter, and it is the same thing W2 calls
+     "2.3x noise".
+
+### 12.2 Candidate code shapes considered, with verdicts
+Conventions:
+- p/q are highest degree first; stage i = multiply by x, then add c[i]; `sd()` = store to double.
+- head = stages 1..4 (N) and 1..3 (D); tail = stored raw-x Horner.
+- The predicted "first-rounding line" is the frequency of the sawtooth of the sum in which c4 (q3) enters, in cycles per
+  x-step, at x = 2 / 2.5 / 3.
+
+| shape | op sequence (N head; D analogous) | predicted hand-off sigma N / D | predicted line | verdict |
+|---|---|---|---|---|
+| M-A bottom-paired Estrin (Estrin cubic/quartic) | `A=sd(sd(p3*x)+p4); r=sd(sd(sd(p0*x)+p1)*x+p2); s4=sd(A+sd(r*x2))` | 0.30 / 0.29 | 0.3351 flat, partner 0.068-0.104 | dead: no 0.3351 line, N.S4 line present (12.1.1) |
+| M-B even/odd in x^2 (fdlibm style; W2's closest) | `E=sd(sd(sd(sd(p0*x2)+p2)*x2)+p4); O=sd(sd(p1*x2)+p3); s4=sd(E+sd(O*x))` | 0.33 / 0.17 (D's even part 0.219-0.222 sits below 0.25, half grid) | 0.066-0.099 | dead: D side too smooth (W2's "3 points too smooth"), N.S4 line present |
+| M-C x^3 term added last | `X=sd(sd(p3*x)+sd(p2*x2)); A=sd(X+p4); s4=sd(A+sd(p1*x3))` | 0.30 / 0.29, slow partner | f_base - 8·3 p1 x^2 (0.002-0.0045 lower) | dead: Excel's line is at f_base to 1e-5 |
+| M-D pair trees, power sums with c4 entering before the last addition | any order with >= 2 sums at the s4 grid | 0.41+ | doublets near f_base | dead: too noisy and the doublets are absent; W2's 120 orders agree |
+| M-E root-pair `p3*(x+a)`, a = p4/p3 | `A=sd(sd(x+a)*p3)` | 0.39 / - | exactly 0.25 (fl(x+a) on grid 2^-49) | dead: no period-4 line (spectra), N.S4 line present |
+| split constant c4 = a + b, correction terms, c0 x^4 added separately | `s4=sd(sd(P4+a)+b)` | 0 extra (b constant or slow) | none | cannot produce noise; a slow term is a per-run constant |
+| x-jitter in the head (x' = x + O(ulp)) | `P4=sd(s3*x')` | 0.3 / 0.14 | none | dead: would reduce the line to 10% (12.1.2) |
+| products unstored in the head (x87 `fmul`/`fadd`/`fstp` codegen without /Op) | keep Nmul1-4, Dmul1-3 | tie flips 12.5% (x<2.76) / 25%; D 6% / 12% | none | disfavoured: the 80-bit-head model fits real data worse than it fits a stored truth (12.1.4), and the follow rate is run-dependent (12.1.5) |
+| head all 80-bit, stored once (combo m=8) | `s4=sd(head_80)` | as above, plus removal of s3 jitter | N.S3/D.S2 lines absent | disfavoured for the same reasons; W2's refit under it gave 85.5% against a 98.6% control |
+| sub-grid late residues (p6 +12 ulps etc.) | | 0 | none | output-identical (`clusters.py`: exact 1.000 against grid_a); only plateau constants move |
+
+Why the earlier screens missed nothing:
+- Every member of the "different association" family either removes the s4 sum line, moves it by >= 0.002
+  cycles/step, or adds an Excel-only line. None of these is in the data.
+- Every member of the "rounding-mask" family makes the hand-off smoother than a stored Horner relative to an 80-bit
+  head. The data are rougher.
+
+### 12.3 What does produce exactly this signature
+A stored raw-x Horner head whose pre-rounding value P4 + p4 (and P3 + q3) differs from grid_a's by a smooth, sub-ulp,
+anchor-dependent offset. Through the u/4 quantisation of P4 and ties-to-even, such an offset:
+- flips the stored s4 by +-1 on a phase-selected subset (both signs, the middle quarters of the sawtooth);
+- leaves the sum line's frequency and amplitude untouched;
+- shifts its phase by a run-dependent constant;
+- reads as "2.3x noise" in any reader that assumes grid_a's upstream values.
+
+All five facts in 12.1 follow. So the question is not "which op is different" but "why can no single early coefficient
+set produce the offsets at all anchors at once". Two explanations remain; W2 has stated the first itself
+(`w2/x87tools/README.md`, caveat).
+- **(a) grid_a's late or cross-N/D coefficients are displaced along function-null directions.** A joint integer move of
+  several late coefficients, mixing N and D:
+  - keeps the function and every plateau residue c_k mod ulp(S_k);
+  - is not found by single-coordinate needle scans (review 2 showed every candidate is a local maximum in every
+    coordinate);
+  - forces the head to compensate differently at each anchor.
+
+  W2's own controls show the symptom: with the late part frozen on a displaced truth, early-only fits stall at 34-67%.
+- **(b) The single-anchor 99.97% fits lock onto aliases**, so their per-anchor offsets are not Excel's and the joint
+  solve inherits wrong rungs. The "2.5 cluster" figure comes from ladder rungs whose P4 phase is the same on every rung,
+  so a single anchor cannot test the rounding structure. Only consecutive runs can (r901 at 2.5 gives 78.4%).
+
+Cheap screens, in order:
+1. **Per-anchor offset meter from the tie class** (no phases, no unwrap; minutes per run).
+   - For each long run, compute the triple of 12.1.5 (follows variant, follows stored, neither) for Nmul4 and Dmul3.
+   - For a grid of offsets delta in [-u/2, u/2], in 1/32 steps, add delta to the pre-rounding P4 (P3_D) of the stored
+     model and compute the same triple from simulation.
+   - The delta that reproduces the real triple is Excel's hand-off offset modulo u/4 at that anchor. `flips.py`'s octile
+     profile is the cross-check.
+   - Positive control: plant a p3 move and recover it.
+   - Output: delta_N(x_i) and delta_D(x_i) on the 14 long runs and the 1,024 dense clusters.
+2. **Consistency test on the offsets.**
+   - Fit delta_N(x) = x·(dp0 x^3 + dp1 x^2 + dp2 x + dp3) + dp4 with integer ulp moves of the early coefficients:
+     5 unknowns, dozens of congruences mod u/4, by enumeration or LLL.
+   - If a solution exists, the early coefficients follow and the joint-fit failure was (b).
+   - If none exists within the function's box, it is (a): the late chain must move.
+3. **For (a): a function-null search over the late and cross-N/D coefficients, scored by `flips.py`'s per-point
+   admissible-shift tables** rather than by exact match.
+   - The score is the fraction of points needing no hand-off shift at (4,3), summed over anchors.
+   - The right displacement collapses the 23-27% need-shift rate toward the base level.
+   - W2's `ysearch.py` function-preserving segment search is the engine; the objective is new.
+4. **Rerun the fingerprint with the exact late set used for REAL.** Applying "p5 -4 ulps, q4 -1 ulp" literally to the
+   committed grid_a drops r112 from 0.766 to 0.172 exact, and the +-2 reach from 0.998 to 0.955 (`flips.py 1`). So either
+   those units are not coefficient ulps, or the REAL fingerprint row was computed with a different late set. Worth one
+   line of clarification in `w2/x87tools/README.md`.
+5. **If 1-3 fail: test the x87 control word.** The only x87 behaviours not covered by stored/unstored masks are the
+   rounding mode and the precision control word.
+   - A truncating control word at the hand-off would show as a one-sided offset of -0.5 ulp at every anchor in the meter
+     of step 1.
+   - A 53-bit precision control word differs from stored only on 64-bit near-ties, and is already excluded by 11.1.1.
+   - Neither is expected, but step 1 tests both for free.
+
+### 12.4 Cross-kernel critique
+- **K1 (GAMMA's G).** It comes from a different code generation era: GAMMA arrived in 2010, and GAMMALN.PRECISE equals
+  legacy GAMMALN at 100% (P4). Review 2 showed the top N stages exist as stored doubles with AN2's phases.
+  - Nothing in 12.1 transfers except the method. The tie-class meter of 12.3 step 1 works on K1 too: products sit 1-2
+    binades below sums, so the tie classes are 1/4 and 1/8 of the points, and it gives per-run stage offsets without
+    phase unwrapping.
+  - The frozen status and the I1 route (per-run readings, top-down integer recovery) stand. No oracle spend on K1 before
+    W4 reports the unwrap control.
+- **K3 (near 1).** W5's unstored-op hot spots, N.S5 and D.S3 in W5's ascending numbering, are the sums that add the fifth
+  coefficient from the top of N and the fourth of D.
+  - These are the same chain positions as K2's Nadd4 and Dadd3: the first sums whose product is quantised two or more
+    binades below the sum.
+  - By 12.1-12.3 that is where a smooth upstream offset first turns into phase-selected +-1 flips, so these hot spots are
+    coefficient symptoms, not structure. W5's "hand-off model not diagnostic" result is consistent.
+  - Apply the tie-class meter and the per-point reach test (`flips.py` with ss_fc at (4,3)) before any further
+    structural screen.
+- **(1.5,2].** The W6 pipeline's positive controls are on stored-Horner synthetics. Since K2's head is a stored Horner
+  after all, there is no structural reason to doubt them.
+  - The 27-32% candidate is at the stage where exact match is a needle. The stall is the lattice problem W6 documented,
+    not a hidden op.
+  - One cheap check from this review: W6's 16 crisp tracks all have |dF/dx| >= 0.015. An exactly flat track would mean a
+    pair sum (c + c' x) and would contradict the stored-Horner reading, so its absence is a mild confirmation.
+- **Common cause.** The three GAMMALN rationals share one failure mode. It is methodological, not a shared codegen
+  quirk.
+  - Every pipeline freezes the late coefficients on plateau residues and the function, then searches the head.
+  - But the function-null space contains integer cross-N/D moves of late coefficients that preserve both residues and
+    function, and change the roundings.
+  - Controls validate the search under that assumption, so they cannot see it. W2's own displaced-truth controls
+    (34-67% ceilings) are the exception and show the symptom.
+  - Lifting the freeze (12.3 step 3) is the common fix. K1's problem is different in kind: mid-stage phases are readable
+    per run but not yet unwrapped.
+
+### 12.5 What this review settles
+- Excel's K2 head is evaluated as a stored raw-x Horner through stage 4 (N) and 3 (D): the sum lines are at the Horner
+  frequency to 1e-5 cycles/step with full amplitude. Every different-association shape (bottom-paired Estrin, even/odd,
+  x^3-last, pair trees, root pairs) is excluded by data, in all variants.
+- The "2.3x / 3x noise" is not pre-rounding noise (jitter bound 0.1 ulp). It is phase-selected +-1 flips from a
+  run-dependent sub-ulp offset of the hand-off sum, acting on the quantised product and ties-to-even. The stored-chain
+  reader and the 80-bit-head fingerprint both convert that offset into apparent noise.
+- Unstored-op structures at the head are disfavoured: Excel is rougher than a stored Horner relative to an 80-bit head,
+  and the follow rates swing with x.
+- The open problem is coefficient consistency across anchors, with late or cross-N/D displacement as the leading cause.
+  The tie-class offset meter and the per-point admissible-shift objective are the cheap tools for it; both need only
+  committed data.
+- One hygiene item: the committed grid_a with "p5 -4, q4 -1" applied as coefficient ulps is far worse than grid_a. The
+  REAL fingerprint's late set should be stated exactly.
