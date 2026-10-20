@@ -653,6 +653,17 @@ LiftArrays]` and FVSCHEDULE `[LiftArrays, WholeByCaller]`, read as NPV, IRR and 
 solver makes at most 401 XNPV passes per call (`financial_util::compute_xirr`: XNPV(0), two bracket walks of 100
 points, 200 bisection steps).
 
+As built (T-1775): the element-wise text functions are `Lift` entries (`lift/kinds/text.rs`), LEFT to VALUETOTEXT with
+their *B twins, CODE, UNICHAR, UNICODE (T-2090), BAHTTEXT, FILTERXML, DATEVALUE, TIMEVALUE and CONCATENATE (`repeat: Lift` up to 255
+arguments). Their kernels go through `Model::lift_text` (`functions/text/text_kernel.rs`), which keeps `broadcast_text`'s
+first-failure rule (an error argument is the result only when it is the element's first failure, T-1022); TEXT and
+VALUETOTEXT, which order their own errors, call `lift_call` directly. The element functions read `&CalcResult` through the
+borrowing `cast::calc_result_to_text` and `Model::calc_result_to_number`, so an unlifted call copies no text. `TextArg` and
+`broadcast_text` are deleted. Three unprobed edges now follow the driver (a LAMBDA argument, a 1x1 array, VALUETOTEXT's
+scalar error format; text.md, T-1963). FIND and SEARCH are `Constant` with their scan named as the cap
+(`lift/tests/kernel_work.rs`); T-1961 charges it. The final grep finds two `bcast_get` loops the table above missed or
+another task owns: IMAGE's `image_grid` (information/offline_errors.rs, T-1962) and CHOOSE's `choose_array` (T-1810).
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and

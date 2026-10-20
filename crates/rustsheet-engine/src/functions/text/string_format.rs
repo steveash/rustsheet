@@ -2,7 +2,7 @@
 
 use crate::{
     calc_result::CalcResult,
-    cast::array_node_to_text,
+    cast::calc_result_to_text,
     cast::number_text_too_long,
     cast::MAX_TEXT_UNITS,
     expressions::{
@@ -10,11 +10,11 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::Function,
     model::Model,
     number_format::parse_excel_number,
 };
 
-use super::text_arg::broadcast_text;
 use crate::functions::util::near_integer_count;
 
 fn format_thousands(n: u64) -> String {
@@ -233,53 +233,33 @@ impl Model {
     /// Replaces `num_chars` characters starting at `start_num` (1-indexed) with `new_text`.
     /// If any of the arguments is an array it works element by element.
     pub(crate) fn fn_replace(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 4 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let old_text = match self.text_arg(&args[0], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let start_num = match self.text_arg(&args[1], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let num_chars = match self.text_arg(&args[2], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        let new_text = match self.text_arg(&args[3], cell) {
-            Ok(o) => o,
-            Err(e) => return e,
-        };
-        broadcast_text(
-            cell,
-            &[&old_text, &start_num, &num_chars, &new_text],
-            |i, j| {
-                replace_element(
-                    old_text.elem(i, j),
-                    self.array_node_to_number(start_num.elem(i, j)),
-                    self.array_node_to_number(num_chars.elem(i, j)),
-                    new_text.elem(i, j),
-                )
-            },
-        )
+        self.lift_text(Function::Replace, args, cell, &mut |model, values| {
+            let [old_text, start_num, num_chars, new_text] = values else {
+                return Err(Error::ERROR);
+            };
+            replace_element(
+                old_text,
+                model.calc_result_to_number(start_num),
+                model.calc_result_to_number(num_chars),
+                new_text,
+            )
+        })
     }
 }
 
 /// Computes a single REPLACE result from one element of each argument.
 fn replace_element(
-    old_text: &ArrayNode,
+    old_text: &CalcResult,
     start_num: Result<f64, Error>,
     num_chars: Result<f64, Error>,
-    new_text: &ArrayNode,
+    new_text: &CalcResult,
 ) -> Result<ArrayNode, Error> {
     // Every argument is coerced before the range checks: an error argument beats a start or length
     // failure (docs/excel-semantics/arrays.md, probes/error-arg-vs-range-check, T-1056).
-    let old_text = array_node_to_text(old_text)?;
+    let old_text = calc_result_to_text(old_text)?;
     let start_num = start_num?;
     let num_chars = num_chars?;
-    let new_text = array_node_to_text(new_text)?;
+    let new_text = calc_result_to_text(new_text)?;
     super::common::reject_over_limit(&old_text)?;
     // Excel: both numbers count as whole like LEFT's (near an integer they round up, so
     // `REPLACE(t,1-2E-7,1,"z")` starts at 1) and either one above 32,767 is #VALUE!, even
