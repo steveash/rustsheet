@@ -1237,6 +1237,10 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   n = 2.5 acts as n = 2).
 - Values are not exactly symmetric: `T.INV(0.1,1)` = -3.077683537175254 but `T.INV(0.9,1)` =
   3.0776835371752544; `T.DIST.2T(1,1)` = 0.5000000000000001 and `T.DIST.RT(1,1)` = 0.25000000000000006.
+- At very large df the CDF is off the true value by about 1e-10 relative: `T.DIST(1,1E6,TRUE)` =
+  0.8413446250832111, 152,191 ulp from the correctly rounded CDF (`uv run rustsheet-fitlab t-dist`). Hill's
+  integer-df series (AS 3) does not reproduce it either: 22,257 ulp off there, 74/150 m9-t-dist-cdf cells exact
+  (T-0969 note, 2026-10-20).
 Evidence: probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-inv`,
 `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13.
 Status: VERIFIED (excel-graph)
