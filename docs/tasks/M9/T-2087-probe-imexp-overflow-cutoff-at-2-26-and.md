@@ -3,7 +3,7 @@ id: T-2087
 title: "Probe IMEXP overflow cutoff at 2^-26 and near y = pi (T-2060)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2060 found `IMEXP("1000+yi")` is `#NUM!` for 1.4E-8 and capped for 1.5E-8; `im
 
 ## Out of scope
 -
+
+## Outcome
+Probed (probes/eng-imexp-overflow-cutoff, -pi, -pi2, -halfpi; excel-graph). The cutoff around 0 is exactly 2^-26; around other multiples of pi/2 it is a smaller window bracketed to 1.05-1.06E-8 (fitted as 2^-26/sqrt(2)); |y| >= 2^27 is `#NUM!` for any x. `imexp` and engineering.md updated. Eval: 4 new probe cases, all passing, no regressions. Open: the exact window around non-zero multiples and TEXT of a DBL_MAX literal (excel-graph rejects such a workbook).
