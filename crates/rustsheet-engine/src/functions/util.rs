@@ -9,7 +9,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     external_links::CachedBlanks,
-    functions::{logical::IfBranchMode, Function},
+    functions::{logical::IfBranchMode, lookup_and_reference::Edge, Function},
     model::Model,
     number_format::cmp_excel_precision,
     reference_operators::{Picked, RefArg},
@@ -414,9 +414,15 @@ impl Model {
             Node::LambdaCallKind { lambda, args } => {
                 return self.call_callee_as_reference(lambda, args, cell)
             }
-            // A lifted OFFSET, INDIRECT or TRIMRANGE is an array of references (SPEC-0014).
+            // A lifted OFFSET, INDIRECT, TRIMRANGE, TAKE or DROP is an array of references
+            // (SPEC-0014; T-1838); an unlifted TAKE or DROP gives its value, as before.
             Node::FunctionKind {
-                kind: kind @ (Function::Offset | Function::Indirect | Function::Trimrange),
+                kind:
+                    kind @ (Function::Offset
+                    | Function::Indirect
+                    | Function::Trimrange
+                    | Function::Take
+                    | Function::Drop),
                 args,
             } => return self.reference_producer(kind, args, cell),
             Node::FunctionKind {
@@ -483,6 +489,9 @@ impl Model {
             // top-left cells (`SUM(TRIMRANGE(A1:B5,{0;1}))` is 10 with A1 = 5;
             // probes/trimrange-lift-sources D27).
             Function::Trimrange => self.trimrange_reference(args, cell, true),
+            // So does a lifted TAKE or DROP over a range (T-1838).
+            Function::Take => self.take_drop_reference(args, cell, Edge::Take, true),
+            Function::Drop => self.take_drop_reference(args, cell, Edge::Drop, true),
             _ if kind.picks_reference() => match self.evaluate_reference_form(kind, args, cell) {
                 Some(result) => RefArg::from(result),
                 None => self.reference_arg_reading(node, blanks, cell),
