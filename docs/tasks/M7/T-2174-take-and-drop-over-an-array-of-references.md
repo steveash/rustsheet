@@ -3,7 +3,7 @@ id: T-2174
 title: "TAKE and DROP over an array of references keep its elements (SPEC-0014 rule 7)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -25,11 +25,21 @@ pick the counted elements of the `RefGrid` (a sub-grid, the elements shared or c
 Unlifted counts over a grid only; a lifted count over a grid (`TAKE(OFFSET(..),{1;2})`) is unprobed: file a probe.
 
 ## Acceptance criteria
-- [ ] probes/reference-lift-consumers-b2 E153 passes and leaves eval/baseline/probes.txt; E101 keeps passing.
-- [ ] Unit tests: TAKE and DROP of a lifted OFFSET grid, by rows and by columns, read by SUM, INDEX and ROWS; an
+- [x] probes/reference-lift-consumers-b2 E153 passes and leaves eval/baseline/probes.txt; E101 keeps passing.
+- [x] Unit tests: TAKE and DROP of a lifted OFFSET grid, by rows and by columns, read by SUM, INDEX and ROWS; an
   error element is kept; `TAKE(grid,0)` is `#CALC!`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Lifted counts over a grid (probe first).
 - Per-element consumers (SUBTOTAL, COUNTIF, ...: T-2064).
+
+## Outcome
+- `take_drop_reference` (functions/lookup_and_reference/drop_take.rs) reads its array with
+  `evaluate_value_or_grid`. In reference mode (SUM's read), it does so only for an OFFSET or INDIRECT source.
+- A `RefGrid` with unlifted counts keeps the counted elements as a sub-grid, in `take_drop_of_grid`.
+- A lifted count over a grid keeps the value view; T-2193 is the probe for it.
+- Unit test: `take_drop_keep_an_array_of_references`. It covers rows, columns, SUM, ROWS, COLUMNS and INDEX, an
+  error element, and `TAKE(grid,0)` = `#CALC!`.
+- Eval: probes/reference-lift-consumers E101 and -b2 E153 left eval/baseline/probes.txt, with 0 regressions.
+  E101 was in the baseline too, contrary to the task text.
