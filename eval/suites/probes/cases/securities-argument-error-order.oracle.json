@@ -705,15 +705,79 @@
    "E9": {
     "t": "e",
     "v": "#DIV/0!"
+   },
+   "F1": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F10": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F11": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F12": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F13": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F14": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F15": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F16": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F2": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F3": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F4": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "F5": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "F6": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "F7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "F8": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "F9": {
+    "t": "e",
+    "v": "#VALUE!"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "92106477fa9397643b408dfe5c6563f75e71eb312a85087465685320c7809b83",
+  "input_sha256": "3343948bf9ecf5e1bd0535df106bd3193eba3cc3ae242e7227666fb2ab5e734f",
   "kind": "excel-graph",
-  "produced_at": "2026-10-20T00:20:58+00:00",
+  "produced_at": "2026-10-20T01:02:08+00:00",
   "version": null,
-  "workbook_name": "afc13b04a85d565cd1a927cf454f0aa9a31efdf310d3d94db29f023e6623ada2.xlsx"
+  "workbook_name": "155ea554725088e054696592032e58c3f4fe3686e8c974d70740f292d603f0a3.xlsx"
  }
 }

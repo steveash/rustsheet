@@ -7,8 +7,8 @@ mod coupon_schedule;
 mod yield_closed;
 
 use super::dates::{
-    basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us, days_30_360_us_both,
-    BROKEN_SCHEDULE_PCD,
+    basis_days, broken_schedule_days, broken_schedule_error, check_settlement_serial,
+    days_30_360_us, days_30_360_us_both, BROKEN_SCHEDULE_PCD,
 };
 use coupon_schedule::{
     change_month, coupdays_actual, coupon_count, coupon_days_a, coupon_days_e, find_pcd_ncd,
@@ -566,14 +566,15 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         };
         let settlement = self.financial_date_of(settlement, cell)?;
-        self.check_settlement(settlement, i64::MAX, cell)?; // alone: below serial 1
+        check_settlement_serial(settlement, cell)?;
         let maturity = self.financial_date_of(maturity, cell)?;
         self.check_settlement(settlement, maturity, cell)?;
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
         validate_frequency(frequency, cell)?;
         let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
-        validate_basis(basis.floor() as u32, cell)?;
-        Ok((settlement, maturity, frequency, basis.floor() as u32))
+        let basis = basis.floor() as u32;
+        validate_basis(basis, cell)?;
+        Ok((settlement, maturity, frequency, basis))
     }
 
     /// Runs a COUP* function through the lifting driver: `body` over the checked arguments of

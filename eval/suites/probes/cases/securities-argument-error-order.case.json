@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Error order of COUPDAYSNC, COUPNUM, TBILLEQ, TBILLPRICE and TBILLYIELD: an error or text in each argument position against an invalid frequency, basis, date order or discount, and two errors at once (T-1406).",
+  "description": "Error order of COUPDAYSNC, COUPNUM, TBILLEQ, TBILLPRICE and TBILLYIELD: an error or text in each argument position against an invalid frequency, basis, date order or discount, and two errors at once (T-1406); column F: an invalid T-bill settlement, serial 0 and serials past 9999-12-31 before a later error.",
   "tags": [
     "M9",
     "financial",
@@ -185,7 +185,23 @@
         "E25": "=TBILLYIELD(NA(),1/0,0.05)",
         "E26": "=TBILLYIELD(NA(),1/0,0)",
         "E27": "=TBILLYIELD(NA(),39100,1/0)",
-        "E28": "=TBILLYIELD(39000,NA(),1/0)"
+        "E28": "=TBILLYIELD(39000,NA(),1/0)",
+        "F1": "=TBILLEQ(-1,1/0,0.05)",
+        "F2": "=TBILLEQ(-1,39100,\"x\")",
+        "F3": "=TBILLPRICE(-1,39100,1/0)",
+        "F4": "=TBILLYIELD(-1,39100,\"x\")",
+        "F5": "=TBILLEQ(0,39100,1/0)",
+        "F6": "=TBILLPRICE(0,39100,1/0)",
+        "F7": "=TBILLYIELD(0.5,39100,\"x\")",
+        "F8": "=TBILLEQ(39000,0,1/0)",
+        "F9": "=TBILLEQ(39000,0.5,\"x\")",
+        "F10": "=TBILLEQ(39000,2958466,1/0)",
+        "F11": "=TBILLEQ(2958466,39000,\"x\")",
+        "F12": "=TBILLPRICE(39000,2958466,\"x\")",
+        "F13": "=TBILLYIELD(2958466,2958467,1/0)",
+        "F14": "=TBILLEQ(2958465,2958466,1/0)",
+        "F15": "=TBILLPRICE(-1,1/0,\"x\")",
+        "F16": "=TBILLYIELD(39000,-1,NA())"
       }
     }
   ]

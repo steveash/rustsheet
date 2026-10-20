@@ -708,13 +708,14 @@ it, left to right, so a bad value is `#NUM!` before a later argument's error or 
 4. basis: its error or text, then a basis outside 0-4 is `#NUM!`.
 Two errors give the first one's (`COUPDAYSNC(NA(),40000,3,1/0)` and `COUPDAYSNC(39000,40000,NA(),1/0)` are `#N/A`).
 TBILLEQ, TBILLPRICE and TBILLYIELD read settlement, maturity and the discount (price) in order, and check only that each date
-is a calendar date as they read it: `TBILLEQ(39000,-1,1/0)` and `TBILLEQ(39000,-1,"x")` are `#NUM!`, and
-`TBILLEQ(38887,1e-15-2,TEXTSPLIT("a*",A1:D2))` is `#NUM!`, but a reversed or equal date pair, or a maturity more than a year
-after settlement, comes after the discount (`TBILLEQ(39100,39000,1/0)` is `#DIV/0!`, `TBILLPRICE(39000,39500,"x")`
-`#VALUE!`). An error settlement beats an invalid maturity (`TBILLYIELD(1/0,-1,0.05)` is `#DIV/0!`).
-Evidence: probes/securities-argument-error-order (176 cells, excel-graph, 2026-10-20, T-1406); gen-m9/0c7fc447bc2eebfd
-Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289). Unprobed: an invalid settlement serial
-with a later error for the TBILL functions (assumed to match the maturity), and serial 0 as a T-bill date.
+floors to a serial from 0 to 2958465 (9999-12-31) as they read it: `TBILLEQ(39000,-1,1/0)`, `TBILLEQ(-1,39100,"x")`,
+`TBILLEQ(39000,2958466,1/0)` and `TBILLPRICE(-1,1/0,"x")` are `#NUM!`, and `TBILLEQ(38887,1e-15-2,TEXTSPLIT("a*",A1:D2))` is
+`#NUM!`. Serial 0 passes this check (`TBILLEQ(0,39100,1/0)` is `#DIV/0!`, `TBILLYIELD(0.5,39100,"x")` `#VALUE!`). A reversed
+or equal date pair, or a maturity more than a year after settlement, comes after the discount (`TBILLEQ(39100,39000,1/0)`
+is `#DIV/0!`, `TBILLPRICE(39000,39500,"x")` `#VALUE!`). An error settlement beats an invalid maturity
+(`TBILLYIELD(1/0,-1,0.05)` is `#DIV/0!`).
+Evidence: probes/securities-argument-error-order (192 cells, excel-graph, 2026-10-20, T-1406); gen-m9/0c7fc447bc2eebfd
+Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289).
 Ours: matches since T-1406 (`coupon_args` in financial_bonds.rs, `tbill_arguments` in discount.rs).
 Status: VERIFIED (web)
 Tasks: T-1406
