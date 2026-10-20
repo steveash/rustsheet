@@ -160,7 +160,10 @@ pub fn write_markdown(rows: &[MilestoneCoverage], md: &mut String) {
                 if u.misses_generated {
                     miss.push("b".to_string());
                 }
-                let tags: String = u.tags.iter().map(|t| format!(", {t}")).collect();
+                let mut tags = String::new();
+                for t in &u.tags {
+                    let _ = write!(tags, ", {t}");
+                }
                 format!("{} ({}{tags})", u.name, miss.join(", "))
             })
             .collect();

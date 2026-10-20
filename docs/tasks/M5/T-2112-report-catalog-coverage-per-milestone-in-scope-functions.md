@@ -3,7 +3,7 @@ id: T-2112
 title: "Report catalog coverage per milestone: in-scope functions with Excel evidence and with cells in the milestone's generated suite"
 milestone: M5
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -54,3 +54,11 @@ suite tagged with that milestone, whose formula calls the function. Each functio
 - Deciding whether `oracle: none` and volatile functions are exempt from M5's 100% (T-2116).
 - The §13 coverage matrix (edge classes, argument positions).
 - Gating on the numbers.
+
+## Outcome
+Added `catalog_coverage.rs` and the "Catalog coverage per milestone" section to report.md and
+report.json (informational, not gated). It reuses `functions_in`, the report's evidence counts,
+`Catalog` and `volatile::is_volatile`; no new parser or counter. Real rows on this tree
+(functions / (a) floor / (b) generated / both): M2 37/37/35/35, **M5 135/133/61/61**,
+M6 39/39/38/38, M7 32/32/31/31, M9 263/260/185/184, M10 0/0/0/0. M5 (b) matches the 61 expected;
+T-2108 is the fix. No eval cell changes, so the baseline is untouched.
