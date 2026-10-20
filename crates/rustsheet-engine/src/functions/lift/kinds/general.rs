@@ -49,6 +49,12 @@ const SEQUENCE: ArgKinds =
 /// "Array-valued functions" rule 3).
 const MAKEARRAY: ArgKinds =
     ArgKinds::fixed(3, &[Lift, Lift, Whole], Output { weight: 128 }).array();
+/// `TAKE(array, rows, [columns])` and `DROP(array, rows, [columns])`: rows and columns lift over
+/// an array and a range (`ROWS(TAKE(A1:B3,A1:A2))` and `ROWS(DROP(A1:B3,{1;2}))` are 2,
+/// probes/m7-argument-modes F4:F6; columns by the spec's per-parameter rule, T-1960), the array
+/// is read whole by the function itself, a reference kept (`Model::take_drop_reference`, T-1838).
+/// Each lifted element is charged the cells it builds.
+const TAKE_DROP: ArgKinds = ArgKinds::fixed(2, &[Whole, Lift, Lift], Output { weight: 1 }).array();
 // --- End array-valued (T-1834) ---------------------------------------------------------------
 
 /// This family's part of the lifting table (`Function::arg_kinds`).
@@ -100,6 +106,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Address => Some(&ADDRESS),
         Function::Sequence => Some(&SEQUENCE),
         Function::Makearray => Some(&MAKEARRAY),
+        Function::Take | Function::Drop => Some(&TAKE_DROP),
         Function::Hyperlink => Some(&LIFT_1_OF_2),
         // --- Math (T-1802) ---
         // QUOTIENT, FACTDOUBLE and SERIESSUM's x, n and m are Analysis ToolPak arguments: they

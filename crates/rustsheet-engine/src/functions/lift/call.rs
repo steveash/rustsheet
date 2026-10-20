@@ -2,7 +2,7 @@
 //! kind in the table, and the kernel runs once (nothing lifted) or once per element.
 
 use super::arg_buf::ArgBuf;
-use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg, Reuse};
+use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::is_multi_sheet_span;
@@ -146,11 +146,7 @@ impl Model {
         if !kinds.accepts(args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let options = LiftOptions {
-            reuse: Reuse::Never,
-            work: kinds.work,
-            result: kinds.result,
-        };
+        let options = LiftOptions::for_entry(kinds);
         // Calls of up to three arguments (most of the math functions) read into locals: building,
         // moving and dropping a whole `ArgBuf` cost about as much as a scalar kernel, and was
         // most of the per-call overhead over the old math macros (T-1773 bench).
@@ -246,11 +242,7 @@ impl Model {
             Err(error) => return error,
         };
         read.grids.push((index, grid));
-        let options = LiftOptions {
-            reuse: Reuse::Never,
-            work: kinds.work,
-            result: kinds.result,
-        };
+        let options = LiftOptions::for_entry(kinds);
         self.lift_grids(read.into_lifted(), cost, &options, cell, kernel)
     }
 
