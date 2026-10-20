@@ -99,12 +99,13 @@ fn image_error(source: &ArrayNode, valid: bool) -> Error {
 }
 
 /// One element of a lifted IMAGE call: `element` is the source and its options (`alt_text`,
-/// `sizing`, `height`, `width`) at that position. The first error among them is the result, the
-/// source's first; otherwise the source's error under the options (see [`Model::fn_image`]).
+/// `sizing`, `height`, `width`) at that position. The result is the first error in argument
+/// order, or else [`image_error`] of the source under those options (see [`Model::fn_image`]).
 fn image_element(element: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
     if let Some(error) = element.iter().find(|value| value.is_error()) {
         return error.clone();
     }
+    // The driver always passes the source; an empty element is unreachable.
     let Some((source, options)) = element.split_first() else {
         return CalcResult::new_args_number_error(cell);
     };
