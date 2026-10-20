@@ -25,6 +25,9 @@ use crate::{
 /// `IMPOWER("i",85445658)` (angle 134217725.7) answers and `IMPOWER("i",85445659)` (134217727.3)
 /// is `#NUM!`; SIN's own cut is 2^27, which is not this one.
 const IMPOWER_ANGLE_LIMIT: f64 = 134_217_727.0;
+/// IMEXP's overflow cap is refused when sin or cos of the imaginary part is below this and |y| >= 1;
+/// Excel's cutoff lies in (1.0539E-8, 1.0545E-8) (probes/eng-imexp-cutoff).
+const IMEXP_AXIS_CUTOFF: f64 = 1.0542e-8;
 
 /// This implements all functions with complex arguments in the standard
 /// NOTE: If performance is ever needed we should have a new entry in `CalcResult`,
@@ -742,18 +745,28 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     // Overflow of a pure real argument is `#NUM!` (probes/eng-im-overflow A9, A10;
     // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus at
     // DBL_MAX instead (A12: `IMEXP("1000+1i")` is `9.71297746009434E+307+1.51270661257499E+308i`,
-    // DBL_MAX times cos 1 and sin 1), unless |y| < sqrt(DBL_EPSILON) (1.49E-8): `IMEXP("1000+1.4E-8i")` is
+    // DBL_MAX times cos 1 and sin 1), unless the angle is that close to an axis (see below): `IMEXP("1000+1.4E-8i")` is
     // `#NUM!` and `"1000+1.5E-8i"` is capped (probes/eng-imexp-overflow-imag; engineering.md).
     // The sine and cosine reduce y as SIN and COS do, which is what gives A3's last digits
-    // (`...+4.770340154251E+302i`); past the SIN limit libm stands in, unprobed.
-    let (sin_y, cos_y) = if y.abs() < IMPOWER_ANGLE_LIMIT {
-        excel_sin_cos(y)
-    } else {
-        (y.sin(), y.cos())
-    };
+    // (`...+4.770340154251E+302i`). |y| = 134217728 or more is `#NUM!` whatever x is
+    // (probes/eng-imexp-cutoff A17-A21, B6-B8, B10, B11).
+    if y.abs() > IMPOWER_ANGLE_LIMIT {
+        return num_error(cell);
+    }
+    let (sin_y, cos_y) = excel_sin_cos(y);
     let modulus = x.exp();
-    if modulus == f64::INFINITY && y.is_finite() && y.abs() >= f64::EPSILON.sqrt() {
-        return complex_result(f64::MAX * cos_y, f64::MAX * sin_y, suffix);
+    if modulus == f64::INFINITY && y.is_finite() {
+        // The cap needs the angle far enough from a multiple of pi/2: a distance (min(|sin|, |cos|))
+        // of sqrt(DBL_EPSILON) for |y| < 1, about 1.054E-8 beyond (probes/eng-imexp-cutoff A1-A6,
+        // B1-B5, D1-D5, E, F; engineering.md). The second bound is bracketed, not derived.
+        let near_axis = if y.abs() < 1.0 {
+            y.abs() <= f64::EPSILON.sqrt()
+        } else {
+            sin_y.abs().min(cos_y.abs()) < IMEXP_AXIS_CUTOFF
+        };
+        if !near_axis {
+            return complex_result(f64::MAX * cos_y, f64::MAX * sin_y, suffix);
+        }
     }
     let (re, im) = (modulus * cos_y, modulus * sin_y);
     finite_complex_result(re, im, suffix, cell)
