@@ -1,7 +1,7 @@
 ---
 id: T-1944
 title: "Probe EXP's overflow and underflow edges (T-1931)"
-milestone: M9
+milestone: M5
 lane: functions-math
 status: todo
 priority: P3
