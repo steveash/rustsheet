@@ -200,6 +200,7 @@ def test_fill_records_the_workbook_name_the_oracle_used(
         ("=_xlfn.SHEETS()", r"uses _xlfn\.SHEETS\(\)"),
         ("=_xlfn.SHEETS(Sheet1:Sheet1)", r"uses _xlfn\.SHEETS\(Sheet1:Sheet1\)"),
         ('=SHEETS(INDIRECT("A1"))', r"uses (_xlfn\.)?SHEETS\(INDIRECT"),
+        ("=SHEETS(RustSheetCanary!A1)", r"uses (_xlfn\.)?SHEETS\(RustSheetCanary"),
         ('=INFO("numfile")', r'uses INFO\("numfile"\)'),
         ('=INFO("NUMFILE")', r'uses INFO\("NUMFILE"\)'),
         ('=INFO( "numfile" )', r'uses INFO\( "numfile" \)'),

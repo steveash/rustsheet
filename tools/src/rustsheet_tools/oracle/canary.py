@@ -100,7 +100,12 @@ def sheet_count_call(run: str) -> str | None:
         arg = _call_argument(run, m.end())
         arg_text = (arg or "").strip()
         if m.group(1).upper() == "SHEETS":
-            safe = arg is not None and _REFERENCE.fullmatch(arg_text) is not None
+            # A reference naming the canary sheet would resolve only because we appended it.
+            safe = (
+                arg is not None
+                and _REFERENCE.fullmatch(arg_text) is not None
+                and SHEET.lower() not in arg_text.lower()
+            )
         else:
             literal = _STRING_LITERAL.fullmatch(arg_text)
             safe = literal is not None and "numfile" not in literal.group(1).lower().replace(" ", "")
