@@ -78,3 +78,4 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 37 in eval/baseli
 
 ## Outcome
 `hyperbolic::{sinh,cosh}` now overflow to infinity at ±710 (SECH/CSCH give 0), and `number_fn` maps any non-finite result to `#NUM!`, so SINH/COSH/EXP overflow no longer reaches an enclosing function as a number. numbers.md entry marked implemented. Eval: 36 known-failure lines removed from eval/baseline/gen-m5.txt (the task listed 37); no new failures.
+One listed cell still fails, gen-m5/4febabc66cfdf9a1 Calc!A156 (`ARRAYTOTEXT(SINH(134217727),2)`, Excel `#NUM!`): SINH itself is now `#NUM!`, so the remaining difference is in how ARRAYTOTEXT takes an error argument, not in this task's overflow rule. TODO(T-2169) follow-up: file a task for ARRAYTOTEXT with an error scalar argument.

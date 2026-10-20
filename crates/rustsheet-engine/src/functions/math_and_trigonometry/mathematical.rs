@@ -220,10 +220,11 @@ impl Model {
         self.sum_ifs(args, cell, IfsShape::Strict)
     }
 
-    /// A one-number math function on the SPEC-0011 driver (`LIFT_1`): `op` per element. A NaN
-    /// result (ACOS(2), ACOSH(-1), ...) is `#NUM!` at once: left as a number it is swallowed by an
-    /// enclosing function (`x^0` is 1, `ADDRESS` takes row 0, a comparison is FALSE) instead of
-    /// reaching the cell as `#NUM!` (T-1202, gen-m5/gen-m6/gen-m7 cells).
+    /// A one-number math function on the SPEC-0011 driver (`LIFT_1`): `op` per element. A
+    /// non-finite result (NaN: ACOS(2), ACOSH(-1); infinite: SINH(1E+9), EXP(2^53+1)) is `#NUM!`
+    /// at once: left as a number it is swallowed by an enclosing function (`x^0` is 1, `ADDRESS`
+    /// takes row 0, a comparison is FALSE) instead of reaching the cell as `#NUM!` (T-1202,
+    /// T-2169, gen-m5/gen-m6/gen-m7 cells).
     fn number_fn(
         &mut self,
         kind: Function,
