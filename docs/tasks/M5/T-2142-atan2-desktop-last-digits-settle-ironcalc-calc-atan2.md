@@ -64,4 +64,6 @@ No candidate gives both desktop cells. The engine's model (a correctly rounded a
 and 257/257 web (probes/atan2-quadrants 120, atan2-error-edges 17, asin-atan-sign-source G 120). fdlibm `atan` (19/248) and a
 π/4 reduction (19/231) give D14 but not D26, and they lose web cells. numbers.md records all nine candidates. Decision 0086 keeps the
 web value and names D14 and D26 as an Excel-vs-Excel conflict. Its M14 item is T-1075 item 14, and docs/milestones.md adds the
-two cells to M5's ironcalc-calc exception. Eval delta: none (no engine change; the two baseline lines stay).
+two cells to M5's ironcalc-calc exception. probes/atan2-kept-subnormal (16 cells) was not
+scored by the fit: its inputs are formulas of subnormal differences. Every candidate takes the same tiny-quotient path there, and
+the engine passes all 16. Eval delta: none (no engine change; the two baseline lines stay).
