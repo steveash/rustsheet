@@ -173,7 +173,7 @@ density's exp(a ln y) form; then re-cut the 4-ulp criterion per decision 0056 if
   worse at small t (`T.DIST.RT(0.5,100)` 1 -> 29, (0.5,1000) -1 -> 97) and catastrophic from df 1E6 (y's rounding is n eps).
   No df/t cut separates the two on the swept cells (df 100 t = 5 and df 1000 t = 3 prefer the exact tail). For df 2,
   0.5 - 0.5 sqrt(1 - fl(2/(2+t^2))) is bit-exact at t = 0.1 and 1.
-- Harness and cell table: `docs/research/t0969/` (`t_probe.rs`, `tcells.tsv`). Next: probe Excel at df 3 and 4 densities
+- Cell table: `docs/research/t0969/tcells.tsv` (README there). The acceptance criteria stand until the probes below; re-cut them per decisions 0056/0083 only if those find no model. Next: probe Excel at df 3 and 4 densities
   on a dense t grid (and the same t at df 2 as a control) to find the df >= 3 formula; and probe the centre tail on a dense
   (df, t) grid to locate where Excel switches between the rounded-y and the t form.
 
