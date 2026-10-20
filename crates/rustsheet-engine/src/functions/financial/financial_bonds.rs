@@ -555,8 +555,8 @@ type CouponBody = fn(&Model, CouponArgs, CellReferenceIndex) -> CalcResult;
 // ============================================================
 
 impl Model {
-    /// Reads and checks the COUP* arguments: every one is read, in order, before any value is
-    /// checked. A settlement before the calendar is #NUM! (`Model::check_settlement`).
+    /// Reads the COUP* arguments in order, each checked (#NUM!) before the next is read: settlement,
+    /// date order, frequency, basis (probes/securities-argument-error-order; financial.md, T-1406).
     fn coupon_args(
         &self,
         values: &[CalcResult],
@@ -566,15 +566,14 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         };
         let settlement = self.financial_date_of(settlement, cell)?;
+        self.check_settlement(settlement, i64::MAX, cell)?; // alone: below serial 1
         let maturity = self.financial_date_of(maturity, cell)?;
-        let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self
-            .cast_number_no_bools_or(rest.first(), 0.0, cell)?
-            .floor() as u32;
-        validate_frequency(frequency, cell)?;
-        validate_basis(basis, cell)?;
         self.check_settlement(settlement, maturity, cell)?;
-        Ok((settlement, maturity, frequency, basis))
+        let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
+        validate_frequency(frequency, cell)?;
+        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
+        validate_basis(basis.floor() as u32, cell)?;
+        Ok((settlement, maturity, frequency, basis.floor() as u32))
     }
 
     /// Runs a COUP* function through the lifting driver: `body` over the checked arguments of

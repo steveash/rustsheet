@@ -12,6 +12,7 @@
 
 use super::dates::is_less_than_one_year;
 use super::number_or_error;
+use crate::formatter::dates::from_excel_date;
 use crate::functions::lift::{div_error, num_error};
 use crate::{
     calc_result::CalcResult,
@@ -299,8 +300,19 @@ impl Model {
         let [settlement, maturity, rate] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let settlement = self.cast_number_no_bools_ref(settlement, cell)?;
-        let maturity = self.cast_number_no_bools_ref(maturity, cell)?;
+        // A date that is no calendar date is #NUM! as soon as it is read, before the discount's
+        // error or text; the date order and the one-year limit are checked after the discount
+        // (probes/securities-argument-error-order C1:E28, gen-m9/4df1b22d3ed63f58 A20; financial.md
+        // "Analysis ToolPak securities functions check frequency and dates first").
+        let calendar_date = |value| {
+            let serial = self.cast_number_no_bools_ref(value, cell)?;
+            match from_excel_date(self.financial_date(serial)) {
+                Ok(_) => Ok(serial),
+                Err(_) => Err(num_error(cell)),
+            }
+        };
+        let settlement = calendar_date(settlement)?;
+        let maturity = calendar_date(maturity)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let less_than_one_year = is_less_than_one_year(
             self.financial_date(settlement),

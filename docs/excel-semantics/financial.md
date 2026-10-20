@@ -697,13 +697,26 @@ divided-through form, so no finite result changes digits; a P whose reciprocal o
 Tasks: T-1405
 
 ## Analysis ToolPak securities functions check frequency and dates first
-Rule: COUPDAYSNC with an invalid frequency is `#NUM!` even when its basis argument is an error:
-`COUPDAYSNC(37342,46362,-0.0001,<#DIV/0!>)` is `#NUM!`. TBILLEQ with a negative maturity serial is `#NUM!` even when the
-discount is a TEXTSPLIT result (text or an error): `TBILLEQ(38887,1e-15-2,TEXTSPLIT("a*",A1:D2))` is `#NUM!`
-(gen-m9/4df1b22d3ed63f58 Calc!A20); that dates come before the discount is inferred from this one cell. The general order (which argument errors still win) is unprobed.
-Evidence: gen-m9/0c7fc447bc2eebfd Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289).
-Ours: the basis error (`#DIV/0!`) and `#VALUE!` for the text discount.
-Status: VERIFIED (web) for these two shapes; the general order UNVERIFIED
+Rule: the COUP* functions (COUPDAYSNC and COUPNUM probed; they share one argument reader) check each argument as they read
+it, left to right, so a bad value is `#NUM!` before a later argument's error or text:
+1. settlement: an error or text is that error (`#VALUE!` for text); a serial below 1 is `#NUM!` at once
+   (`COUPDAYSNC(-1,1/0,2,0)` and `COUPDAYSNC(-1,"x",2,0)` are `#NUM!`);
+2. maturity: its error or text, then settlement >= maturity is `#NUM!` (`COUPDAYSNC(40000,39000,1/0,0)`,
+   `COUPDAYSNC(39000,39000,"x",0)`, `COUPNUM(40000,39000,NA(),1/0)` are `#NUM!`);
+3. frequency: its error or text, then a frequency other than 1, 2 or 4 is `#NUM!` (`COUPDAYSNC(39000,40000,3,1/0)` and
+   `COUPDAYSNC(37342,46362,-0.0001,<#DIV/0!>)` are `#NUM!`);
+4. basis: its error or text, then a basis outside 0-4 is `#NUM!`.
+Two errors give the first one's (`COUPDAYSNC(NA(),40000,3,1/0)` and `COUPDAYSNC(39000,40000,NA(),1/0)` are `#N/A`).
+TBILLEQ, TBILLPRICE and TBILLYIELD read settlement, maturity and the discount (price) in order, and check only that each date
+is a calendar date as they read it: `TBILLEQ(39000,-1,1/0)` and `TBILLEQ(39000,-1,"x")` are `#NUM!`, and
+`TBILLEQ(38887,1e-15-2,TEXTSPLIT("a*",A1:D2))` is `#NUM!`, but a reversed or equal date pair, or a maturity more than a year
+after settlement, comes after the discount (`TBILLEQ(39100,39000,1/0)` is `#DIV/0!`, `TBILLPRICE(39000,39500,"x")`
+`#VALUE!`). An error settlement beats an invalid maturity (`TBILLYIELD(1/0,-1,0.05)` is `#DIV/0!`).
+Evidence: probes/securities-argument-error-order (176 cells, excel-graph, 2026-10-20, T-1406); gen-m9/0c7fc447bc2eebfd
+Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289). Unprobed: an invalid settlement serial
+with a later error for the TBILL functions (assumed to match the maturity), and serial 0 as a T-bill date.
+Ours: matches since T-1406 (`coupon_args` in financial_bonds.rs, `tbill_arguments` in discount.rs).
+Status: VERIFIED (web)
 Tasks: T-1406
 
 ## ODDFPRICE and ODDFYIELD need the first coupon on the maturity's schedule
