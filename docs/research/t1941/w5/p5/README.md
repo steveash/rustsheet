@@ -160,3 +160,9 @@ over ±3 ulps, with the exact stored chain below. Per-run best hit rates (`hando
 On K3 the upper Horner's point-to-point rounding noise stays visible down to the output, so even the true model is
 not explained by a per-run δ. Real data at S1 is about the same as this control. The test cannot separate plain
 Horner from a smooth (higher-precision) upper part on K3, unlike K2 where the upper is invisible.
+
+## Restartable scans
+A container restart killed the real wide N.S7 scan (~7.5 h in) and the first far-truth control. scan2.py now takes
+CPART=i/n (scan every n-th c; parallel parts), CKPT (per-c candidate checkpoint; a rerun resumes and skips the done
+c values) and MERGE=1 with CKPTS=f0,f1,... (no scanning; jointly rescore the union of the parts' candidates).
+`launch_farctl_parts.sh` runs the far-truth control as 4 resumable parts (~2.2 h).
