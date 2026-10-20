@@ -231,6 +231,26 @@ fn span_edge_forms_match_excel() {
     );
 }
 
+#[test]
+fn sheets_counts_the_sheets_a_reference_spans() {
+    let mut model = sample();
+    assert_eq!(eval(&mut model, "=SHEETS(B1)"), "1");
+    assert_eq!(eval(&mut model, "=SHEETS(Data2!A1:B2)"), "1");
+    assert_eq!(eval(&mut model, "=SHEETS(Data1:Data3!A1)"), "3");
+    assert_eq!(eval(&mut model, "=SHEETS(Data3:Data1!A1)"), "3");
+    assert_eq!(eval(&mut model, "=SHEETS(Sheet1:Data2!B2)"), "3");
+    assert_eq!(eval(&mut model, "=SHEETS('Sheet1:Q 4'!B2)"), "5");
+    assert_eq!(eval(&mut model, "=SHEETS()"), "5");
+    assert_eq!(eval(&mut model, "=SHEETS(1)"), "#N/IMPL!");
+}
+
+#[test]
+fn sheets_leaves_unprobed_argument_forms_unimplemented() {
+    let mut model = sample();
+    assert_eq!(eval(&mut model, "=SHEETS(OFFSET(A1,0,0))"), "#N/IMPL!");
+    assert_eq!(eval(&mut model, "=SHEETS((B1,C1))"), "#N/IMPL!");
+}
+
 // A name bound to a 3-D range reads like the span in aggregates and LAMBDA arguments; where a
 // value is needed it is #VALUE!, not the inline #REF!, and IFERROR keeps that #VALUE!
 // (gen-m8a 8982982d63e058ed, b221d72cc501675a; references.md "3-D references in defined names";
