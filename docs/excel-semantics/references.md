@@ -1859,7 +1859,7 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   not for a relative reference inside a formula-bodied name); `INDIRECT("rel_same")`, which
   the engine reads from the INDIRECT's cell; and a mixed-anchor name used above its anchor
   (`Jan!$B$5:$B1` from row 1), which the engine reads as B1:B5, as an inline reference. Probe:
-  T-2185.
+  T-2188.
 - **3-D references in defined names.** A name bound to a 3-D range (`span3` = `=Jan:Mar!$A$1:$B$2`,
   `span_calc` = `=Mar:Apr!$A$1:$C$3`) is read by the aggregates like the inline span (`COUNT(span3)`
   10, `STDEV.S`, `SUMSQ`, a LAMBDA `sumsq(span3)`). Where the bare inline span and its arithmetic
