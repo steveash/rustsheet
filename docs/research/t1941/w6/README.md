@@ -378,6 +378,21 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       do not remove (synthetic with N.P0/S0/P1/S1 unstored loses exactly N.Pn10/11). Open; the arbiter is the
       top-down peel on Excel. KEEP support: `synth.horner_keep/simR`, scoreR, climb6, oprep6.
 
+29. **Excel S6 scan: no detection; Excel's start is the blocker** (`scan6.py`, CLO/CHI slices).
+    - Control finish (item 28 continued): D.S7 quadratic scan (Z 14.1, truth found), m-scans D7..D5, climb -> 99.95%;
+      S8 exact-R grids (`grid8.py`) + a 100k-point climb -> **99.97% exact on all 1.57M control points** (both S8s stay
+      ~130-170 / 16-20 u off the truth, on output-equivalent plateaus).
+    - Excel: S6 4-D scan from xlL3b on Rall + 149 w6t cases (5.03M rows, 1,432 runs), window b +-2e3, c +-1e3, d +-600:
+      best joint Z 4.5-4.9, scattered (null sd 207 vs 82 on the control).
+    - Cause: Excel's S6 is pinned only to ~1e5-1e6 u(S6). Excel chains disagree on N.S6 by 1e6..1e11 u (the closest
+      family by 1e6..5e7 u); the ladder + function rows leave >= 8 weak directions in N5..N9, each a 1-sigma move of
+      0.9e5..4.6e5 u(S6), so there is no low-dimensional null space to scan instead. The control's lattice pass 1 had
+      N.S5 exact and N.S6 within ~300 u because its phase rows pinned stage values; on Excel every phase-using pass
+      disagreed (S5 differs by 1e6..1e9 u between passes).
+    - So the Excel route needs value constraints that work: either the stage phases are mis-modelled on Excel (phase
+      convention or an op the model gets wrong) or the phase rows need a better start. Next: measure Excel's N.T5 /
+      D.T5 anchor phases on the K = 0 ladder runs (q440a) and test whether any smooth S5 shift explains them.
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
