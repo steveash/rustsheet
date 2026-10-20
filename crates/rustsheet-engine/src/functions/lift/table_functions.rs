@@ -64,6 +64,8 @@ macro_rules! lifting_table_functions {
             | Function::Address
             | Function::Sequence
             | Function::Makearray
+            | Function::Take
+            | Function::Drop
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv
