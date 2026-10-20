@@ -1,4 +1,7 @@
 # K2 (GAMMALN on (2,3]) reference model (W2 + reviewer 3, 2026-10-20 07:00 UTC). Not bit-exact.
+# CAUTION (07:20): reviewer 3's near-2 ladder test (139k points, x-2 < 5e-7) favours ALL-STORED x87 Horner over the
+# 80-bit-head mask used below (grid_a stored 0.9953 vs one extended head sum 0.9685); the mask's +1% on [2,3] may be
+# compensating coefficient error. Structure under re-test (far-only refit scored on the near-2 ladders).
 # Plain x87 raw-x Horner N(9)/D(8) with plain double coefficients; the HEAD (N stages 1..3, D stages 1..2) is kept in
 # 80-bit registers and every op from the hand-off product on (N: P4, D: P3) is stored to double (x87 double rounding);
 # y = fl(fl(x-2) * fl(N/D)). Only p1..p5, q0..q4 differ from grid_a (review3/spec.py): grid_a's head was off by a large
