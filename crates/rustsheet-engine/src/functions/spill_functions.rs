@@ -206,8 +206,9 @@ impl Model {
         // Argument errors come before value validation and are reported left to right: sort_index,
         // then sort_order, then by_col (probes/sort-error-args H29-H53; docs/excel-semantics/arrays.md
         // "SORT argument errors come before validation").
-        // A multi-cell sort_order (c5d278a8662ef4b2 A39) fails to coerce here but is only a
-        // validation error to Excel, so by_col is evaluated before a #VALUE! sort_order is returned.
+        // A sort_order that cannot be read as numbers is `#VALUE!` only after by_col is read, as a
+        // validation error is (a multi-cell sort_order is a list since T-1837, checked against
+        // sort_index below: c5d278a8662ef4b2 A39).
         let raw_index = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
             self.sort_number_list(&args[1], cell)
         } else {
@@ -247,21 +248,19 @@ impl Model {
         };
         // An array or range sort_index is a list of keys, applied in order, and a sort_order list
         // must be as long (`SORT(A1:B3,{1;2})` sorts by column 1 then 2; `SORT(A1:B3,1,{1;-1})` is
-        // `#VALUE!`: probes/m7-argument-modes F10:H11). A single sort_order applies to every key
-        // (unprobed with several keys).
-        if raw_order.len() > 1 && raw_order.len() != raw_index.len() {
+        // `#VALUE!`: probes/m7-argument-modes F10:H11). Rows tied on a key are ordered by the
+        // next, and a single sort_order applies to every key (probes/sort-index-key-ties A1-A5).
+        // A key may repeat, but more keys than the array has columns (rows, by_col) is `#VALUE!`
+        // (A6, A15-A19), which also bounds the comparison's work by the array's size.
+        let extent = if by_col { num_rows } else { num_cols };
+        if raw_index.len() > extent || (raw_order.len() > 1 && raw_order.len() != raw_index.len()) {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
-                "sort_order must have one entry per sort_index".to_string(),
+                "more sort keys than the array has, or a sort_order of another length".to_string(),
             );
         }
-        let extent = if by_col { num_rows } else { num_cols };
-        // A key repeated after its first use never decides a comparison (the rows already tie on
-        // it), so it is dropped: the comparison then reads at most one key per row or column of
-        // the array, however long the list (CLAUDE.md directive 5).
-        let mut used = vec![false; extent];
-        let mut keys: Vec<(usize, bool)> = Vec::new();
+        let mut keys: Vec<(usize, bool)> = Vec::with_capacity(raw_index.len());
         for (k, &index) in raw_index.iter().enumerate() {
             let index = index as i64;
             if index < 1 {
@@ -287,11 +286,7 @@ impl Model {
                     "sort_index exceeds the array".to_string(),
                 );
             }
-            let key = index as usize - 1;
-            if let Some(seen @ false) = used.get_mut(key) {
-                *seen = true;
-                keys.push((key, ascending));
-            }
+            keys.push((index as usize - 1, ascending));
         }
 
         if !by_col {
@@ -321,9 +316,11 @@ impl Model {
         }
     }
 
-    /// SORT's `sort_index` or `sort_order` as a list of numbers: an array or a multi-cell range is
-    /// each of its values in row-major order (the first error element is the result), anything
-    /// else one number.
+    /// SORT's `sort_index` or `sort_order` as a list of numbers: a one-row or one-column array or
+    /// multi-cell range is each of its values, anything else one number. An error element and a
+    /// 2-D list are invalid (NaN), so they fail validation as `#VALUE!` after the later
+    /// arguments' errors: `SORT(D,IF({TRUE;FALSE},1,NA()),1/0)` is `#DIV/0!` and
+    /// `SORT(D,{1,2;2,1})` `#VALUE!` (probes/sort-index-key-ties A8, A11, A20).
     fn sort_number_list(
         &mut self,
         node: &Node,
@@ -339,11 +336,17 @@ impl Model {
             return Ok(vec![self.cast_to_number(value, cell)?]);
         }
         let grid = self.result_to_array(value, cell)?;
-        let mut numbers = Vec::new();
-        for node in grid.iter().flatten() {
-            numbers.push(self.cast_number_ref(&array_node_to_calc_result(node, cell), cell)?);
+        if grid.len() > 1 && grid.first().is_some_and(|row| row.len() > 1) {
+            return Ok(vec![f64::NAN]);
         }
-        Ok(numbers)
+        Ok(grid
+            .iter()
+            .flatten()
+            .map(|node| {
+                self.cast_number_ref(&array_node_to_calc_result(node, cell), cell)
+                    .unwrap_or(f64::NAN)
+            })
+            .collect())
     }
 
     // ── SORTBY ────────────────────────────────────────────────────────────────

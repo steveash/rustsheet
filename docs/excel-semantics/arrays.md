@@ -348,9 +348,14 @@ F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and ste
 per-parameter rule, unprobed, and a 1x1 array argument still runs one unlifted call, both pending T-1960);
 none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a
 sort_order list of the same length since T-1837 (F10:H11; `fn_sort` with `Model::sort_number_list`, spill_functions.rs;
-a single sort_order with several keys applies to each, unprobed; row and column lists alike, and with by_col the keys
-are rows: `SORT(A1:C3,{1,2},{1,-1},TRUE)` sorts columns by row 1, then row 2 descending, and `SORT(A1:C3,1,{1,-1},TRUE)`
-is `#VALUE!`, probes/sort-error-args H57:J71);
+row and column lists alike, and with by_col the keys are rows: `SORT(A1:C3,{1,2},{1,-1},TRUE)` sorts columns by row 1,
+then row 2 descending, and `SORT(A1:C3,1,{1,-1},TRUE)` is `#VALUE!`, probes/sort-error-args H57:J71). With rows
+(1,9), (1,2), (0,5), a tie on the first key is broken by the next (`SORT(..,{1;2})` 0,5,1,2,1,9; `{1;2},{1;-1}`
+0,5,1,9,1,2), a single sort_order applies to every key (`{1;2},-1` 1,9,1,2,0,5), a key may repeat (`{1;1}`) but more
+keys than the array has columns (rows, by_col) is `#VALUE!` (`{1;1;1}`, `{1;2;1}`; `{1;1;2}` over three columns
+sorts), a 2-D list (`{1,2;2,1}`) and an error element are `#VALUE!` as validation errors, so a later argument's error
+wins (`SORT(..,IF({TRUE;FALSE},1,NA()),1/0)` is `#DIV/0!`), a blank range element reads as 0 and text "1" as 1
+(probes/sort-index-key-ties, excel-graph, 2026-10-20, T-1837);
 GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; `_xleta.` names work since T-1466, see "Functions passed by name" below); INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
 is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)
@@ -1007,9 +1012,9 @@ Evidence (T-1850, probes/sort-error-args, excel-graph): errors are reported left
 - SORTBY: by_array1, order1, by_array2... left to right (H77, H89 `C,NA(),B,1/0` is #N/A, H93 is #DIV/0!); an error in a later pair beats an invalid earlier order (H85 `C,0,B,NA()` is #N/A); an error order beats a by_array row-count mismatch (H105).
 - Invalid values: `SORT(arr,0,1)`, `SORT(arr,1,0)`, `SORTBY(arr,key,0)`, a row-count mismatch and a two-column by_array (`SORTBY(A1:A3,C1:B3,1)`, H101) are #VALUE!. `SORT(NA(),0,1)` and `SORTBY(NA(),...)` are #N/A.
 - Array sort arguments: `SORT(arr,{1,2},1)` is a multi-key sort (H57), `SORT(arr,{1,2},{1,-1},TRUE)` too (H69), `SORT(arr,1,{1,-1})` is #VALUE! (H61, H65), and `SORTBY(A1:A3,C1:C3,{1;-1;1})` returns {1;0;0} (H97-H99).
-Ours: errors left to right and the two-column by_array rejected (T-1850). A #VALUE! sort_order is still returned after by_col's error (multi-cell order of c5d278a8662ef4b2 A39 needs it; a real `"a"+1` order against a later error argument is UNVERIFIED for both SORT and SORTBY, which returns it at once). Array sort_index/sort_order are not implemented (T-1902).
+Ours: errors left to right and the two-column by_array rejected (T-1850). A #VALUE! sort_order is still returned after by_col's error (multi-cell order of c5d278a8662ef4b2 A39 needs it; a real `"a"+1` order against a later error argument is UNVERIFIED for both SORT and SORTBY, which returns it at once). SORT reads array sort_index/sort_order lists since T-1837 (H57:J71 pass; see "Dynamic-array and LAMBDA function argument modes" for the list rules); SORTBY's array sort_order is T-1839.
 Status: VERIFIED (excel-graph)
-Tasks: T-1351, T-1850, T-1902
+Tasks: T-1351, T-1837, T-1850, T-1902
 
 ## SORT: omitted sort_index / sort_order take their defaults
 

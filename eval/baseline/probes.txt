@@ -792,6 +792,7 @@ C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/skew-p-bound.case.json	14
 C	probes/solver-iteration-traces.case.json	353
 C	probes/sort-error-args.case.json	48
+C	probes/sort-index-key-ties.case.json	25
 C	probes/sort-omitted-args.case.json	75
 C	probes/sqrtpi-range-operands.case.json	10
 C	probes/stat-a-computed-arrays.case.json	18
