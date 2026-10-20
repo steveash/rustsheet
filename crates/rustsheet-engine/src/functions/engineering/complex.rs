@@ -582,9 +582,10 @@ impl Model {
         {
             return CalcResult::new_args_number_error(cell);
         }
-        // Excel: a call of nothing but empty arguments is `#N/A` (`IMSUM(,)`), where blank cells
-        // are "0": probes/eng-imsum-improduct-3d-j-empty F1-F4.
-        if args.iter().all(|arg| matches!(arg, Node::EmptyArgKind)) {
+        // Excel: an empty first argument is `#N/A` (`IMSUM(,)`, `IMSUM(,Q1)`, `IMPRODUCT(,M8)`), where
+        // blank cells are "0" and a later empty argument is skipped (`IMSUM(M8,,M8)`):
+        // probes/eng-imsum-improduct-3d-j-empty F1-F4, probes/eng-imsub-imdiv-blank-j C1-C7, D1-D6.
+        if matches!(args.first(), Some(Node::EmptyArgKind)) {
             return CalcResult::new_error(Error::NA, cell, String::new());
         }
         let mut total: Option<ComplexParts> = None;
