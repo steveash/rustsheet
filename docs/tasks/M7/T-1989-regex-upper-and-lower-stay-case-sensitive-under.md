@@ -3,7 +3,7 @@ id: T-1989
 title: "REGEX* [:upper:] and [:lower:] stay case-sensitive under (?i) when nested or negated"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
