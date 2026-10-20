@@ -6,6 +6,7 @@ workbook for one (docs/excel-semantics/numbers.md). `number_edges` is the target
 
 from __future__ import annotations
 
+from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM
 
 # The longest text a formula can hold as one string literal.
@@ -15,11 +16,6 @@ MAX_STRING_LITERAL = 255
 def entries(text: str) -> list[str]:
     """The `|`-separated formula texts of `text` (a pool written compactly)."""
     return [e.strip() for e in text.split("|")]
-
-
-def quoted(text: str) -> str:
-    """`text` as a formula string literal."""
-    return '"' + text.replace('"', '""') + '"'
 
 
 POOLS: dict[str, list[str]] = {

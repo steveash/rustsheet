@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from rustsheet_tools import repo_root
+from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.generator import NAME_POOL, Catalog, Gen, generate_case
 from rustsheet_tools.gen.names_3d import CATEGORIES as NAMES_3D_CATEGORIES
 from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
@@ -700,6 +701,8 @@ def test_text_pools_respect_the_string_literal_limit_and_clock_free_values() -> 
 
 
 def test_number_formats_pool_is_a_quoted_subset_of_the_policy_codes() -> None:
-    codes = {'"' + c.replace('"', '""') + '"' for c in (*BUILTIN, *CUSTOM)}
+    assert quoted('0.00 "x"') == '"0.00 ""x"""'
+    assert quoted("") == '""'
+    codes = {quoted(c) for c in (*BUILTIN, *CUSTOM)}
     assert POOLS["number_formats"]
     assert set(POOLS["number_formats"]) <= codes

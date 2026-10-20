@@ -17,6 +17,8 @@ from typing import Any
 
 from xlsxwriter.utility import xl_rowcol_to_cell
 
+from rustsheet_tools.gen.common import quoted
+
 CASES = 20
 FORMATS_PER_CASE = 26
 VALUES_PER_CASE = 20
@@ -245,8 +247,7 @@ def _case(
     for row in range(TEXT_CHECKS_PER_CASE):
         code = formats[row % len(formats)]
         _, argument = rng.choice(values)
-        quoted = code.replace('"', '""')
-        checks[xl_rowcol_to_cell(row, 0)] = f'=TEXT({argument},"{quoted}")'
+        checks[xl_rowcol_to_cell(row, 0)] = f"=TEXT({argument},{quoted(code)})"
     return {
         "format": "rustsheet-case/v1",
         "description": (

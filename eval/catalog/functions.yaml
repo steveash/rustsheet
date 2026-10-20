@@ -30,7 +30,8 @@
 # a range, so a range would spill into the next formula). `always: true` on an optional param means the generator
 # never omits it (CELL without a reference reads the last changed cell, which no oracle value can match).
 # `pool: <name>` on a `value` param: 35% of its values come from that edge pool in
-# tools/src/rustsheet_tools/gen/pools.py (number_edges, unit_interval, angle, code_point; T-2109; text_edges, numeric_text, number_formats, errors; T-2110), after the `domain`
+# tools/src/rustsheet_tools/gen/pools.py (T-2109: number_edges, unit_interval, angle, code_point; T-2110: text_edges,
+# numeric_text, number_formats, errors), after the `domain`
 # draw and never on a `hard` domain.
 # `vector: true` on a `range` param makes the generator pass a one-column range (LOOKUP and XLOOKUP/XMATCH lookup
 # vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself; WRAPROWS/WRAPCOLS on an
