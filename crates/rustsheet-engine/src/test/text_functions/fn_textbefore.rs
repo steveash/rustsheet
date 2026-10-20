@@ -328,7 +328,7 @@ fn empty_delimiter_matches_at_start_or_end() {
     assert_eq!(model._get_text("A10"), *"a");
 }
 
-// T-1799: probes/textbefore-sigma-contexts A1-A9 (excel-graph): a capital sigma is `σ` before a
+// T-1799: probes/textbefore-sigma-contexts (excel-graph; the probe wraps cells in IFERROR, so an error there is #N/A by the delimiter-not-found rule): a capital sigma is `σ` before a
 // letter or digit and `ς` otherwise, and a lone delimiter `Σ` is `ς` even against a text `Σ`.
 #[test]
 fn test_textbefore_textafter_sigma_contexts() {
