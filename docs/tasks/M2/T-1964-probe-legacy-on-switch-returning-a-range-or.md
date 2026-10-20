@@ -3,7 +3,7 @@ id: T-1964
 title: "Probe legacy @ on SWITCH returning a range or nested under scalar functions"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1910 drops the legacy `@` only from a formula-root SWITCH returning array cons
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/legacy-switch-at-shapes` (57 cells, excel-graph): Excel puts no `@` on a SWITCH in a legacy cell, on its range or one-element results, or on a scalar call over it (`ABS`, `LEN`, unary minus); they spill. The engine matches now: `is_switch_result` skips the `@` on SWITCH results (import and export mirror), SWITCH never takes the call `@`, `legacy_call_reads_a_value` treats a SWITCH argument as no value to intersect; the root-only T-1910 special case is gone. Findings in docs/excel-semantics/references.md. Eval delta: probes +57 cells, all passing, 0 regressions (the slow `union-walk-repeated-in-lambda` case needs `--timeout` above 60 s on this sandbox, unrelated: main takes as long).
