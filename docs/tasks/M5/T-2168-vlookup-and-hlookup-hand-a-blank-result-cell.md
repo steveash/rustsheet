@@ -3,7 +3,7 @@ id: T-2168
 title: "VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0"
 milestone: M5
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
