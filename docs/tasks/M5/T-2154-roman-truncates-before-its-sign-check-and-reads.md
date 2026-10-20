@@ -3,7 +3,7 @@ id: T-2154
 title: "ROMAN truncates before its sign check and reads its form first; BASE of a negative fraction is #NUM!"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
