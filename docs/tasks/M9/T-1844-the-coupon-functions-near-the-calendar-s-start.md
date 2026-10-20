@@ -3,7 +3,7 @@ id: T-1844
 title: "The coupon functions near the calendar's start and end match Excel (probes/fin-coupon-walk-bounds)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -34,3 +34,17 @@ skill), then match it in functions/financial/financial_bonds/coupon_schedule.rs 
 
 ## Out of scope
 - The 1904 date system's coupon schedule break (T-1440).
+
+## Outcome
+The rule is a calendar one, not a coupon-count cap. The coupon walk reads its dates as Excel 1900 serials: 1900-01-01
+is serial 1, dates from March 1900 count the fictitious 1900-02-29, and a previous coupon before 1900-01-01 reads as 0.
+COUPPCD is then 0, while COUPNUM, PRICE, YIELD, DURATION and MDURATION are #NUM!. The COUP* functions take
+settlement 0. COUPDAYS basis 1 counts a pre-1900 period in the real calendar and treats 1900-02-28 like a 29 February.
+MDURATION reports a settlement error first. These are in coupon_schedule.rs, and financial.md records them.
+
+The probe sweeps probes/fin-coupon-walk-bounds-c (200 cells) and -1904 (14) were run on excel-graph. Every failing
+cell of fin-coupon-walk-bounds, the -b cells other than A9, and fin-remaining-later-argument-ranges K6-K9 now pass
+(probes: 19 fixed, 0 regressions). The new cases' remaining failures are:
+- -b A9 and the -c ACCRINT column O, deferred to T-2124.
+- 1904 COUPNUM A5/A6, deferred to T-2125.
+- PRICE/YIELD/DURATION last-digit misses in -c rows 10-14, the existing PRICE/YIELD precision gaps.
