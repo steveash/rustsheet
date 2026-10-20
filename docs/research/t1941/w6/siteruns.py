@@ -5,7 +5,7 @@ import os, re, collections, numpy as np
 
 
 def load_runs(rf, npts, minrun=1024, seed=3):
-    """env PERRUN: keep only a random contiguous chunk of that many points per run (more distinct x0 per point)"""
+    """env XLO/XHI: runs inside an x window; env PERRUN: keep only a random contiguous chunk of that many points per run (more distinct x0 per point)"""
     per = int(os.environ.get("PERRUN", "0"))
     by = collections.defaultdict(list)
     for l in open(rf):
@@ -16,6 +16,8 @@ def load_runs(rf, npts, minrun=1024, seed=3):
         v = np.array(sorted(v))
         br = np.where(np.nextafter(v[:-1, 0], np.inf) != v[1:, 0])[0] + 1
         runs += [v[s] for s in np.split(np.arange(len(v)), br) if len(s) >= minrun]
+    xlo, xhi = float(os.environ.get("XLO", "-inf")), float(os.environ.get("XHI", "inf"))  # x window (env)
+    runs = [r for r in runs if xlo <= r[0, 0] and r[-1, 0] < xhi]
     rng = np.random.default_rng(seed)
     order = rng.permutation(len(runs))
     pts, gid, tot = [], [], 0

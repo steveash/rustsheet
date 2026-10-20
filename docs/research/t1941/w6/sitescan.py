@@ -43,7 +43,7 @@ y = np.array(((lo.astype(L) + hi.astype(L)) / 2 - R) / R, dtype=float)
 w = np.array(XL**J / (Nv if ch == "N" else -Dv), dtype=float)
 u = np.spacing(np.abs(st(pre))).astype(L)
 # S sites: scan in ulps of the coefficient (a constant shift across binades of the site); P sites: in site ulps
-if op == "S":
+if op == "S" and os.environ.get("UNIT") != "site":  # env UNIT=site: scan S sites in site ulps too
     u = L(np.spacing(abs(C[J]))) * np.ones_like(XL)
 y = detrend(y)
 out = []
@@ -56,7 +56,7 @@ for d in np.arange(-RG, RG + 1e-12, SP):
     se = np.sqrt(np.mean(r**2) / ee)
     out.append((b / se, b, d))
 out.sort(reverse=True)
-print("site %s: top deltas (%s):" % (site, "ulps of c%d" % J if op == "S" else "ulps of the site"))
+print("site %s: top deltas (%s):" % (site, "ulps of c%d" % J if op == "S" and os.environ.get("UNIT") != "site" else "ulps of the site"))
 for z, b, d in out[:8]:
     print("  delta %+8.4f  beta %+.3f  Z %.1f" % (d, b, z))
 z0 = [o for o in out if abs(o[2]) < 1e-12][0]
