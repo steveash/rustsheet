@@ -23,6 +23,8 @@ use lookup_each::LookupSearch;
 use lookup_table::SearchVector;
 use ref_lift::lifts;
 
+pub(crate) use drop_take::Edge;
+
 mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
