@@ -3,7 +3,7 @@ id: T-2120
 title: "Probe TRIMRANGE lifted over an error, multi-area or empty source with an invalid trim element"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
