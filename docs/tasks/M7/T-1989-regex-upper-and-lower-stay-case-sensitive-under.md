@@ -59,6 +59,8 @@ regex_functions.rs (`index = usize::from(case_insensitive)`) already key the com
 AST as regex-syntax does. Where it is on, a bracket holding any POSIX class, at any depth, negated or under `&&`, becomes
 `(?-i:[...])` with every other item replaced by its case closure (regex-syntax's own folding, a union's plain items folded
 together), so no POSIX class folds and the rest still does. This replaces `case_sensitive_split`. `[:space:]` gained U+180E.
-A bracket that would print past 64 KiB is `#VALUE!` (DEVIATION, directive 5, recorded in text.md).
+A pattern whose brackets would print past 64 KiB that way, together, is `#VALUE!` (DEVIATION, directive 5,
+recorded in text.md).
 Eval delta: 13 known failures fewer (regex-posix-classes-b A8-A11, regex-posix-classes-c A3, A8, A9, A14, A16, A18, A23,
-A26, A29), none new; the new probe case adds 36 Excel cells.
+A26, A29: the -c failures were recorded by the probe commit on this branch and leave again), none new; the new
+probe case adds 36 Excel cells.

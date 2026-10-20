@@ -348,8 +348,8 @@ search the rest of the text), while a search that truly reads to the end every t
 once to size its result: over 65,535 UTF-16 units it is
 `#CALC!` as Excel's is, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`;
 "REGEXREPLACE results are capped at 65,535 UTF-16 units" below); a lifted REGEXREPLACE whose results pass the text
-broadcast cap (64 MiB, first entry) is one `#VALUE!`. A bracket holding a POSIX class under `(?i)` that would be
-rewritten past 64 KiB (its other items folded explicitly, "REGEX* POSIX classes are Unicode (T-1903)") is an invalid
+broadcast cap (64 MiB, first entry) is one `#VALUE!`. The brackets holding a POSIX class under `(?i)` of one
+pattern that would together be rewritten past 64 KiB (their other items folded explicitly, "REGEX* POSIX classes are Unicode (T-1903)") is an invalid
 pattern, `#VALUE!` (T-1989).
 The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
 ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE), as
@@ -714,7 +714,7 @@ Syntax: `[a[:digit:]]` and `[[:alpha:][:digit:]]` mix classes with other items; 
 (`[[:alpha:]-z]`, `[a[:upper:]-z]`) are invalid patterns (`#VALUE!`, ERROR.TYPE 3; probes/regex-posix-classes Z1-Z3, Z8-Z10, regex-posix-classes-b A4, A5; T-1985).
 `[[:alpha:]-]` and `[-[:alpha:]]` stay valid (a literal hyphen next to a class); a top-level `[.a.]` or `[..]`, a multi-character `[[.ab.]]` and a range that ends at a class (`[a-[:alpha:]]`, `[a-[:digit:]]`, and `[^a-[:alpha:]]`) are invalid patterns (`#VALUE!`, ERROR.TYPE 3), as PCRE2's `check_posix_syntax` has it (probes/regex-posix-syntax-edges A1-A14, excel-graph, 2026-10-19, T-2010). Ours already agrees on all fourteen.
 U+061C, U+180E and U+2066-U+2069 are not graph; U+061C is not cntrl either; U+180E is blank and space (so space is White_Space plus U+180E,
-not White_Space alone: ours misses U+180E); U+0903 (a spacing mark, Mc) is graph but neither word nor alpha (probes/regex-posix-classes-c
+not White_Space alone; ours includes it since T-1989); U+0903 (a spacing mark, Mc) is graph but neither word nor alpha (probes/regex-posix-classes-c
 A27-A36, excel-graph, 2026-10-20, T-1989). UNVERIFIED: the same code points in print.
 Evidence: probes/regex-posix-classes (excel-graph, 2026-10-19): 47 characters × 19 patterns, and column Z for the syntax;
 probes/regex-posix-classes-b (bracket neighbours, nested and negated `(?i)`, `&&`, case_sensitivity 1);
@@ -724,7 +724,7 @@ probes/regexreplace-limit-and-syntax A23.
 Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled (and rejects the invalid syntax above in `invalid_ast`);
 where `(?i)` is on (tracked through flag groups and scopes, starting from the case_sensitivity argument), a bracket
 holding a POSIX class becomes `(?-i:[...])` with its other items replaced by their case closure (`unfolded_posix_bracket`). A
-bracket that would print past 64 KiB that way is `#VALUE!`, a DEVIATION recorded under the REGEX* limits entry above.
+pattern whose brackets would print past 64 KiB that way is `#VALUE!`, a DEVIATION recorded under the REGEX* limits entry above.
 Status: VERIFIED (excel-graph)
 
 ## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)
