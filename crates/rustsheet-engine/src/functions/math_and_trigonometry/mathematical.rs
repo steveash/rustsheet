@@ -237,7 +237,13 @@ impl Model {
             };
             match model.kernel_number(value, cell) {
                 Ok(number) => number_result(
-                    op(number).and_then(|x| if x.is_finite() { Ok(x) } else { Err(Error::NUM) }),
+                    op(number).and_then(|x| {
+                        if x.is_finite() {
+                            Ok(x)
+                        } else {
+                            Err(Error::NUM)
+                        }
+                    }),
                     cell,
                 ),
                 Err(error) => error,

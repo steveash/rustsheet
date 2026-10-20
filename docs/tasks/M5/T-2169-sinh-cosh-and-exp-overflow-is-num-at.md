@@ -3,7 +3,7 @@ id: T-2169
 title: "SINH, COSH and EXP overflow is #NUM! at once (no infinity reaches a caller); SECH past the overflow is 0"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -75,3 +75,6 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 37 in eval/baseli
 ## Out of scope
 - The exact SINH/COSH cut inside (709.78, 710) and EXP's overflow edge (T-1944).
 - The SINH/TANH kernel on (0, 1) (T-2134).
+
+## Outcome
+`hyperbolic::{sinh,cosh}` now overflow to infinity at ±710 (SECH/CSCH give 0), and `number_fn` maps any non-finite result to `#NUM!`, so SINH/COSH/EXP overflow no longer reaches an enclosing function as a number. numbers.md entry marked implemented. Eval: 36 known-failure lines removed from eval/baseline/gen-m5.txt (the task listed 37); no new failures.
