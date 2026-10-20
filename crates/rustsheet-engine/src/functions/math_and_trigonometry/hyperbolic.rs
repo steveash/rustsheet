@@ -7,14 +7,14 @@
 //! `docs/excel-semantics/numbers.md`.
 //!
 //! ATANH and ACOTH are x87 code (T-0917, numbers.md "ATANH and ACOTH"): a halved FYL2X of a
-//! quotient ([`excel_half_ln`]) or the atanh power series with its running term in an 80-bit
+//! quotient (`0.5 * excel_ln`, exact: halving commutes with both roundings) or the atanh power series with its running term in an 80-bit
 //! register ([`atanh_series`]), each branch on its own range.
 
 use crate::arithmetic::{
     extended_div, extended_mul, extended_of, extended_quotient, extended_sum, store_extended,
     Extended,
 };
-use crate::x87_log10::excel_half_ln;
+use crate::x87_log10::excel_ln;
 
 /// Below this |x| the exp formulation loses precision and Excel's values match the Taylor series
 /// (evidence: `SINH_COSH_TANH!B10`, B18, B42; the exp form matches all cells with |x| >= 0.5).
@@ -121,7 +121,7 @@ pub(super) fn atanh(x: f64) -> f64 {
         // The series is odd and every rounding is symmetric, so the sign comes back exactly.
         atanh_series(extended_of(x)).map_or(x, |value| value.copysign(x))
     } else {
-        excel_half_ln(extended_quotient(
+        0.5 * excel_ln(extended_quotient(
             extended_sum(1.0, x),
             extended_sum(1.0, -x),
         ))
@@ -135,7 +135,7 @@ pub(super) fn atanh(x: f64) -> f64 {
 pub(super) fn acoth(x: f64) -> f64 {
     let magnitude = x.abs();
     let value = if magnitude < ACOTH_SERIES_FROM {
-        excel_half_ln(extended_quotient(
+        0.5 * excel_ln(extended_quotient(
             extended_sum(magnitude, 1.0),
             extended_sum(magnitude, -1.0),
         ))

@@ -39,7 +39,7 @@ cached workbooks give. Fit against the T-1005 sweep (`probes-numeric/m9-hyperbol
 - ATANH and ACOTH are x87 code, fitted on all 62 ATANH and 402 ACOTH cells (TRIGONOMETRIC.xlsx and four
   probes-numeric cases, three of them new: `t0917-hyperbolic-switchover`, `t0917-acoth-switch`,
   `t0917-acoth-switch-edge`, excel-graph 2026-10-20): a halved FYL2X of the twice-rounded quotient
-  (`x87_log10::excel_half_ln`, sharing LOG10's kernel) on one range, an atanh series with y and the power in
+  (`0.5 * x87_log10::excel_ln`, the worksheet LN kernel) on one range, an atanh series with y and the power in
   80-bit registers on the other (ATANH series at |x| <= 1E-4; ACOTH series from |x| = 3.69665, odd).
 - COTH, CSCH and SECH are 1 over Excel's own TANH, SINH, COSH (66 of 66 probe pairs).
 - Eval: ironcalc-calc known failures 1046 -> 1009 (39 fixed, 2 unmasked: COTH_CSCH_SECH!B10 and C54,

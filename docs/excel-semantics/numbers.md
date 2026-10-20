@@ -769,7 +769,7 @@ and the series starts by 3.69668 (t0917-acoth-switch-edge A11, A12). Neither con
 Rejected: libm `atanh`/`atanh(1/x)`, `0.5*ln((x+1)/(x-1))` in doubles (24 of 44 cached ACOTH cells), `0.5*log1p(2/(x-1))`
 (32), the correctly rounded `0.5*ln` of the twice-rounded quotient (the x87 FYL2X rounding matters at ACOTH(1.0001)),
 the RN64 quotient instead of the stored double one (misses ACOTH(1.9), 2.5, 3.35, 3.39, 3.49).
-Status: VERIFIED (excel-graph). Implemented in `hyperbolic::atanh`, `hyperbolic::acoth`, `x87_log10::excel_half_ln`.
+Status: VERIFIED (excel-graph). Implemented in `hyperbolic::atanh`, `hyperbolic::acoth` (`0.5 * x87_log10::excel_ln`, the worksheet LN kernel).
 
 ### COTH, CSCH and SECH are 1 over Excel's own TANH, SINH and COSH (T-0917)
 Rule: COTH(x) = 1/TANH(x), CSCH(x) = 1/SINH(x), SECH(x) = 1/COSH(x), Excel's own TANH/SINH/COSH, so wherever those are an ulp
@@ -936,6 +936,28 @@ roundings; 30,000 random inputs equal a decimal reference of the model), used by
 (`10^(LOG10(E)/C)`).
 Status: VERIFIED (excel-graph, and desktop for the 13 workbook inputs)
 Tasks: T-2004
+
+## LN is FLDLN2 then FYL2X
+Rule: `LN(x)` is the x87 `FLDLN2; FYL2X` result stored to a double, `RN53(RN64(y * log2 x))` with `y = RN64(ln 2)` =
+`0xB17217F7D1CF79AC * 2^-64`: the same two-rounding evaluation as LOG10 above, with the other constant. It is not glibc's `log`
+and not always the correctly rounded ln: `LN(1234.5617000014759)` is 7.11847128728637 and `LN(2.7182911000046204)`
+1.000003410805188 in Excel, one ulp from the model, and the model in turn differs from the correctly rounded ln elsewhere.
+Evidence: the T-1941 research runs (excel-graph, 2026-10-19/20; `kmyst-gam-*` on branch
+`agent/research/T-1941-crack-gammaln-gamma-ln`, every cell whose formula is `=LN(A<row>)`): 2,887,551 cells, 2,677,612
+distinct x from 1.37e-9 to 7.8e299. The model (`docs/research/t1941/lnmodels.py`) matches 2,887,521; the 30 misses are each
+one ulp, at points where Excel's FYL2X rounds the other way (the research's first 114,688-cell run had one, x =
+0.612354100000274). At those near-ties Excel is not even consistent with itself: probes/ln-fyl2x-kernel (excel-graph,
+2026-10-20; the 30 points plus 223 sampled ones) returned the model's value at 3 of the 30 (2.426003200000124,
+9.612345678912595, 1.2345670000006508e100) where the research run of 2026-10-19 returned the other neighbour, and agreed with
+the research run on the other 250 cells, so the last-bit rounding of an FYL2X near-tie varies between runs (plausibly the
+server's CPU), and following the model is the stable choice. glibc's `log` matches 2,674,450 of the 2,677,612 distinct x (the engine used it before).
+The probe keeps the 27 near-ties of that run as known failures in eval/baseline/probes.txt.
+Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
+sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,
+`test/fixtures/ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.
+GAMMALN (T-2128) and GAMMA (T-2129) still use the platform ln until they ship.
+Status: VERIFIED (excel-graph)
+Tasks: T-2123, T-1941
 
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
