@@ -702,7 +702,8 @@ A-F, a-f and their fullwidth forms (not Arabic-Indic digits). `[:^name:]` and `[
 are FALSE, and so is `(?i)[[[:upper:]]]` on `a`; negated, they complement the unfolded class (`(?i)[^[:upper:]]` and `(?i)[[:^upper:]]` on `a`
 are TRUE). Next to a literal they still are (`(?i)[[:upper:]x]` on `a` FALSE). The other items of the same bracket do fold:
 `(?i)[^[:upper:]x]` is FALSE on `X`, `x` and `B` and TRUE on `b` (the complement of unfolded Lu plus folded x), `(?i)[[:^upper:]x]` matches `X`,
-`(?i)[[:lower:]a-c]` matches `B` but not `D`. Through `&&` and a scoped or re-set flag too: `(?i)[[:upper:]&&[:alpha:]]`,
+`(?i)[[:lower:]a-c]` matches `B` but not `D`. UNVERIFIED: ours folds a `\p{..}`, `\w`, `\d` or `\s` item of such a bracket too, and `(?i)\p{Lu}`
+outside one, while PCRE2 documents that caseless matching leaves `\p` alone (T-2092 probes it). Through `&&` and a scoped or re-set flag too: `(?i)[[:upper:]&&[:alpha:]]`,
 `(?i:[[:upper:]])` and `(?i)(?-i)(?i)[^[:^upper:]]` are FALSE on `a`. No POSIX class folds: `(?i)[[:ascii:]]` is FALSE on the Kelvin sign
 (U+212A) and long s (U+017F), though `(?i)k` matches the Kelvin sign (for the other classes folding changes nothing).
 Brackets nest, unlike stock PCRE2 (which reads `[[a]]` as `[[a]` then `]`): `[[a]]` matches `a` but not `[`, `(?i)[[[:upper:]]]`
@@ -724,7 +725,7 @@ probes/regexreplace-limit-and-syntax A23.
 Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled (and rejects the invalid syntax above in `invalid_ast`);
 where `(?i)` is on (tracked through flag groups and scopes, starting from the case_sensitivity argument), a bracket
 holding a POSIX class becomes `(?-i:[...])` with its other items replaced by their case closure (`unfolded_posix_bracket`). A
-pattern whose brackets would print past 64 KiB that way is `#VALUE!`, a DEVIATION recorded under the REGEX* limits entry above.
+pattern whose brackets would print past 64 KiB that way, together, is `#VALUE!` (a few `(?i)[[:alpha:]\pL]` can be enough), a DEVIATION recorded under the REGEX* limits entry above.
 Status: VERIFIED (excel-graph)
 
 ## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)

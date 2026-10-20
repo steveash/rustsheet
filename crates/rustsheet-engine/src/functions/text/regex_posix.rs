@@ -498,6 +498,7 @@ mod tests {
             ("(?i)[[:^lower:]]", "A", true),
             ("(?i)[^[:lower:]]", "a", false),
             ("(?i)[^[:upper:]x]", "X", false),
+            ("(?i)[^[:upper:]x]", "x", false),
             ("(?i)[^[:upper:]x]", "B", false),
             ("(?i)[^[:upper:]x]", "b", true),
             ("(?i)[[:^upper:]x]", "X", true),
