@@ -3,7 +3,7 @@ id: T-2133
 title: "Probe whether ASINH, ACOSH and ATANH take their ln from FYL2X like LN"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
