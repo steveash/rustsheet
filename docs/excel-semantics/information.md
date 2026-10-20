@@ -177,7 +177,7 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   `IMAGE(url,{#DIV/0!,#DIV/0!,#DIV/0!},{0,0})` and `IMAGE(url,"alt",{#DIV/0!,#DIV/0!,#DIV/0!},{5,5})` are `#DIV/0!` in their third
   column; a scalar `#DIV/0!` height before a two-wide width too), and a later one loses (`IMAGE(url,"alt",{3,3},{#DIV/0!,#DIV/0!,#DIV/0!})`
   and a two-wide source with a three-wide `{#DIV/0!,...}` sizing are `#N/A` there). It also beats an invalid option (`{9,9,9}` with
-  width `{5,5}` is `#N/A` in the third column) (probes/rich-errors-image-past-end, 8 cells, excel-graph, 2026-10-20, T-1962; VERIFIED).
+  width `{5,5}` is `#N/A` in the third column; probed with an invalid sizing only) (probes/rich-errors-image-past-end, 8 cells, excel-graph, 2026-10-20, T-1962; VERIFIED).
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
 - A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
   `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!`, and `{1;2;3}` with `{"a","b"}` is 3x2 of `#FIELD!`; the row-axis form (`{1;2;3}` with `{"a";"b"}`) is UNVERIFIED (probes/rich-errors-image-sizing). A
