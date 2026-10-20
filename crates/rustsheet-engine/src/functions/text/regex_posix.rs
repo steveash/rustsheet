@@ -91,6 +91,46 @@ pub(super) fn unicode_posix_classes(
     Ok(Cow::Owned(out))
 }
 
+/// The code points the explicit ranges of `pattern` cover when it may fold case (`case_insensitive`
+/// or a `(?` group), 0 when it cannot or does not parse. regex-syntax closes every range of a
+/// case-insensitive class under case before the NFA is built, about 5 ns per code point however
+/// short the result, so [`PatternCache`](super::regex_functions) charges this to the compile budget
+/// (T-2138). The walk is iterative (`ast::visit`), so deep nesting cannot overflow the stack.
+pub(super) fn foldable_span(pattern: &str, case_insensitive: bool) -> usize {
+    if !case_insensitive && !pattern.contains("(?") {
+        return 0;
+    }
+    let Ok(ast) = Parser::new().parse(pattern) else {
+        return 0;
+    };
+    ast::visit(&ast, RangeSpan(0)).unwrap_or(0)
+}
+
+/// The code points between the ends of `range`, one less than it covers.
+fn range_span(range: &ast::ClassSetRange) -> usize {
+    let span = u32::from(range.end.c).saturating_sub(u32::from(range.start.c));
+    usize::try_from(span).unwrap_or(usize::MAX)
+}
+
+/// Sums the span of every range in a bracket.
+struct RangeSpan(usize);
+
+impl ast::Visitor for RangeSpan {
+    type Output = usize;
+    type Err = std::convert::Infallible;
+
+    fn finish(self) -> Result<usize, Self::Err> {
+        Ok(self.0)
+    }
+
+    fn visit_class_set_item_pre(&mut self, item: &ClassSetItem) -> Result<(), Self::Err> {
+        if let ClassSetItem::Range(range) = item {
+            self.0 = self.0.saturating_add(range_span(range));
+        }
+        Ok(())
+    }
+}
+
 /// Whether a bracket under `ast` holds POSIX syntax PCRE2 rejects. The recursion is bounded by
 /// the parser's nesting limit.
 fn invalid_ast(ast: &Ast, pattern: &str) -> bool {
@@ -408,10 +448,7 @@ fn folded(item: ClassSetItem, budget: &mut usize) -> Result<ClassSetItem, Invali
 /// classes are charged by what they print.
 fn folding_cost(item: &ClassSetItem) -> usize {
     match item {
-        ClassSetItem::Range(range) => {
-            let (start, end) = (u64::from(range.start.c), u64::from(range.end.c));
-            usize::try_from(end.saturating_sub(start) / 256).unwrap_or(usize::MAX)
-        }
+        ClassSetItem::Range(range) => range_span(range) / 256,
         ClassSetItem::Union(union) => union
             .items
             .iter()
@@ -445,7 +482,7 @@ fn parse_bracket(text: &str) -> Option<ast::ClassBracketed> {
 
 #[cfg(test)]
 mod tests {
-    use super::{unicode_posix_classes, InvalidPosixSyntax};
+    use super::{foldable_span, unicode_posix_classes, InvalidPosixSyntax};
 
     fn rewritten(pattern: &str) -> String {
         unicode_posix_classes(pattern, false).unwrap().into_owned()
@@ -571,5 +608,14 @@ mod tests {
         assert!(start.elapsed().as_secs() < 5);
         // Without (?i) nothing folds, so nothing is spent.
         assert!(unicode_posix_classes(&many, false).is_ok());
+    }
+
+    #[test]
+    fn foldable_span_sums_ranges_that_may_fold() {
+        let full = "[\\x{0}-\\x{10FFFF}a-c]";
+        assert_eq!(foldable_span(full, false), 0);
+        assert_eq!(foldable_span(full, true), 0x10FFFF + 2);
+        assert_eq!(foldable_span(&format!("(?i){full}"), false), 0x10FFFF + 2);
+        assert_eq!(foldable_span("[", true), 0);
     }
 }

@@ -751,6 +751,13 @@ Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: 
   true value 1.4142764231805424E-6). The same two formulas also give all 33 ASINH and 17 ACOSH cells of ironcalc-calc
   TRIGONOMETRIC.xlsx sheet ASINH_ACOSH_ATANH (gap triage 2026-10-19). Implemented (T-2031): `fn_asinh`/`fn_acosh` evaluate
   these formulas; where `x*x` overflows (|x| above about 1.3E154, unprobed) the engine keeps libm `asinh`/`acosh`.
+- The `ln` in those formulas is the worksheet LN kernel (FLDLN2; FYL2X, "LN is FLDLN2 then FYL2X"), not libm (T-2133).
+  At 120 ASINH and 120 ACOSH points picked so that libm `ln` and `excel_ln` of the argument `x + sqrt(x*x +- 1)` differ
+  (probes-numeric/t2133-asinh-acosh-ln, excel-graph 2026-10-20), `excel_ln` matches 238 of 240 cells and libm `ln` 2: the
+  earlier fitting sets (which libm and `excel_ln` both pass) could not tell them apart. The two misses are ACOSH(20.82932287508296)
+  (Excel 3.7289322075948337, ours ...332) and ACOSH(180.0774330018289) (Excel 5.886526412787136, ours ...137), one ulp each;
+  sqrt((x-1)(x+1)) and an fma `x*x-1` do not change them, so the argument or an 80-bit intermediate (unprobed) or an FYL2X near-tie
+  is the cause (follow-up T-2141). Negative ASINH is `-excel_ln(-x + sqrt(x*x+1))`, as before; the new probe has no negative x. Implemented in `fn_asinh`/`fn_acosh` (`excel_ln`).
 - ACOTH for large x (A101-A110, x = 15 .. 1.5E10) tracks libm `atanh(1/x)` within 1 ulp: bit-for-bit on A105 and
   A107-A110, 1 ulp off glibc `atanh(1/x)` on A101-A104 and A106 (A103 matches Rust's `f64::atanh`), so Excel is not
   correctly rounded there either; the formula is the x87 atanh series ("ATANH and ACOTH" below, T-0917). The engine uses `0.5*ln((x+1)/(x-1))`
