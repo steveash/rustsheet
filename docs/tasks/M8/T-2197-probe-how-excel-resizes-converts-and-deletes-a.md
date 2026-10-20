@@ -16,6 +16,8 @@ docs/excel-semantics/references.md "Structured references when the table changes
 ## Context
 SPEC-0016 keeps structured references in the parsed formula and re-derives their area when the table list changes, but Excel's own behavior is unprobed: row and column inserts and deletes inside and at the edge of a table, a table resize, "Convert to Range", and deleting a table. The engine's tables do not move on structural edits (`insert_rows` never touches `workbook.tables`). Use the `excel-probe` skill; the oracle may only be able to evaluate files, not run table edits, so say which questions it cannot answer.
 
+Explicit questions: does a table move with a row or column inserted or deleted wholly before it, and grow with rows inserted inside its data rows (SPEC-0016's hand assumption)? What do cut and paste and row and column moves of table cells do? What is `ISREF` of `Sales[@Qty]` off the data rows? What does Excel do with a loaded formula naming an unknown table or column?
+
 ## Acceptance criteria
 - [ ] Probe cases or a documented reason why each question cannot be probed with the oracle.
 - [ ] references.md updated with the findings; an implementation task filed for what is probed.

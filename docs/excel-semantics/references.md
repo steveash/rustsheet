@@ -2050,8 +2050,8 @@ Tasks: T-1672, T-1683
 Rule (unprobed): a formula keeps its structured reference and is evaluated against the table as it is
 now (gen-m8b in-table 19fdc25163755713 shows the evaluation against a fixed table). What Excel does to the
 reference, and to the formula's value, when the table is resized (rows or columns inserted or deleted
-inside or at its edge, or a resize), converted to a range or deleted is not probed. Open question for T-2197: does
-"Convert to Range" turn the references into plain cell references?
+inside or at its edge, or a resize), converted to a range or deleted is not probed. Open questions for T-2197: does a table move with an edit wholly before it
+(SPEC-0016 assumes so), and does "Convert to Range" turn the references into plain cell references?
 Status: UNVERIFIED
 Implemented in: no. The engine lowers every structured reference to a range at parse time and stores that
 range; tables do not move on structural edits. SPEC-0016 keeps the reference in the parsed formula and
@@ -2059,7 +2059,8 @@ re-derives its area whenever the table list changes (engine API behavior, not Ex
 rule until T-2197 (SPEC-0016 "Structural edits", with its edge-case table): a table moves with row/column
 edits wholly before it and grows or shrinks with row edits strictly inside its data rows, as a range would;
 any other edit that crosses a table (between header and data, between data and totals, touching the header or
-totals row, inside its columns) rewrites the formulas that refer to it to the displaced plain range (today's
+totals row, inside its columns), every row/column move or cell shift on its sheet, and a cut and paste that
+intersects it, rewrites the formulas that refer to it to the displaced plain range (today's
 behavior).
 Tasks: T-2194, T-2195, T-1699, T-2197
 

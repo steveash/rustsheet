@@ -1,6 +1,6 @@
 # SPEC-0016 — Structured references kept in the parsed formula
 
-- **Status:** accepted (on merge of T-2194; architecture, quality, security and Excel-fidelity reviewers approved)
+- **Status:** draft (T-2194 blocked at the review-round limit; see the task)
 - **Milestone / lane:** M8 / engine
 - **Tasks:** T-2194 (this spec); T-2195 (step 1), T-1699 (step 2), T-2196 (step 3); T-1683 builds on steps 1-2; T-2197 (probe)
 
@@ -39,7 +39,7 @@ when the cell's row is known, which is at evaluation time.
 Goals:
 1. A structured reference survives parse and print in the storage and in-engine printers:
    `to_rc_format` (storage), `to_english_string`, `to_localized_string`, `to_string_displaced` and
-   `to_string_moved`. The xlsx export printer (`to_excel_string`) keeps printing the lowered area
+   `to_string_moved`. The xlsx export printers (`to_excel_string` and `to_excel_array_formula_string`, which share its export flag) keep printing the lowered area
    until the exporter writes table parts (step 3, T-2196). The exporter writes no
    `<tableParts>` or `xl/tables/*.xml` today, so a structured reference in an exported file would
    name a table the file does not have.
@@ -48,7 +48,8 @@ Goals:
 3. `#This Row` is resolved against the evaluating cell's row. Off the data rows it is `#VALUE!`
    (T-1675's rule), at evaluation time.
 4. No value changes: every eval case and unit test that passes today still passes, and every
-   structural edit gives the values it gives today (see "Structural edits" below).
+   formula that exists when a structural edit runs has the value it has today after the edit (see
+   "Structural edits" below). Moving table metadata is the one new behavior.
 
 Non-goals:
 - Excel's own rules for tables under structural edits (resize, convert to range, delete, inserts
@@ -73,7 +74,7 @@ Non-goals:
   So the storage form uses `[#This Row]`, and so will the export form once T-2196 lands.
 - A bare table name is stored in the file as `Sales[]`. A stored bare `Sales` makes Excel refuse
   the file as corrupt (same entry). So when step 3 prints structured references into the file,
-  `to_excel_string` writes a bare name as `Table[]`.
+  `to_excel_string` and `to_excel_array_formula_string` write a bare name as `Table[]`.
 - The escape `'` goes before the special character (`Sales[C'#]`); a quote first is refused (same
   entry; gen-m8b d86ef297e840325f).
 - Unprobed: what Excel does to its structured references when a table is resized, converted to a
@@ -125,8 +126,8 @@ overflow lowers to `#REF!`. Evaluation is a plain comparison and builds the area
 unchecked arithmetic.
 
 A parse error inside a structured reference stays a `ParseErrorKind`: an unknown table, an
-unknown column, or a missing table sheet. Excel rejects those formulas, and this spec does not
-change that. A `ParseErrorKind` prints the whole formula text it was parsed from
+unknown column, or a missing table sheet. This is today's behavior, and this spec does not change
+it; Excel's result for such a formula in a loaded file is unprobed. A `ParseErrorKind` prints the whole formula text it was parsed from
 (`stringify`), so a reparse against a table list without the table (between `remove_table` and
 `add_table`) keeps the formula text, and the next reparse with the table restores the reference.
 The value the cell has in between is today's parse-error value; Excel's is unprobed (T-2197).
@@ -170,26 +171,38 @@ the next reparse re-derives `lowered` from the table.
 Today `insert_rows`, `delete_rows`, `insert_columns` and `delete_columns` (actions.rs) displace
 every formula and never touch `workbook.tables`. `displace_cells` walks the cells, and
 `shift_cell_formula` rewrites a cell only when `to_string_displaced` gives a different text. So
-`=SUM(Sales[Qty])` follows its data when a row is inserted above the table. That is very likely
-Excel's value, since Excel moves the table. Once the text is printed from `reference`, the
+`=SUM(Sales[Qty])` follows its data when a row is inserted above the table. Once the text is printed from `reference`, the
 displaced text would equal the old text, the cell would not be rewritten, and the next reparse
-would read the table's unmoved range. Step 1 keeps today's values with this mechanism:
+would read the table's unmoved range. Step 1 keeps the values of every formula that exists at
+the time of the edit, using the mechanism below. Moving the table metadata is new behavior,
+though: formulas typed after the edit resolve against the moved table, where today they use the
+unmoved one. The rule that a table moves with an edit wholly before it, and grows with rows
+inserted inside its data, is a hand assumption. T-2197 is to confirm it.
+
+The mechanism covers every edit that rewrites formulas through `to_string_displaced` or
+`to_string_moved`: row and column inserts and deletes, row and column moves (`move_rows_action`,
+`move_columns_action`: `DisplaceData::RowMove`/`ColumnMove`), cell shifts, and cut and paste
+(`move_formula` → `to_string_moved`, cut_paste.rs). It also covers every formula such an edit
+rewrites: cell formulas, conditional-format formulas (`displace_cfvo`), and defined names.
 
 1. **Classify, before the walk.** For a `DisplaceData::Row` or `DisplaceData::Column` edit, each
    table whose `sheet_name` is the edited sheet is classified as *move*, *grow/shrink* or
    *fallback* by the table below, and its new `reference` is computed by the same rule
    `to_string_displaced` applies to a range. A table on another sheet is untouched. For every
    other `DisplaceData` variant (cell shifts, row and column moves), every table on the edited
-   sheet is *fallback*.
-2. **Walk.** `to_string_displaced` takes the set of *fallback* table names (a new parameter;
-   empty for callers that are not structural edits). A `StructuredReferenceKind` whose table is
+   sheet is *fallback*. For a cut and paste, every table whose range intersects the cut area
+   or the paste area is *fallback*, and no table moves.
+2. **Walk.** `to_string_displaced` and `to_string_moved` take the set of *fallback* table names (a
+   new parameter; empty for callers that are not structural edits). A `StructuredReferenceKind` whose table is
    in the set prints its displaced `lowered` node, which is today's text. Any other prints
    `reference`, unchanged. Formulas on every sheet are walked, as today, so a formula on another
    sheet that refers to a table on the edited sheet is handled the same way.
 3. **Update, then reparse.** After the walk, the *move* and *grow/shrink* tables get their new
    `reference` in `workbook.tables`, then `Model::reset_tables` hands the list to the parser and
    reparses. A cell rewritten during the walk may have been parsed against the old list; the
-   reparse in this step corrects it. The full reparse happens only when a table on the edited
+   reparse in this step corrects it. `shift_cell_formula` does not reparse a cell whose text is
+   unchanged, and the parser holds its own copy of the tables, so this `reset_tables` is required:
+   without it, cells keep stale areas. The full reparse happens only when a table on the edited
    sheet changed.
 
 Edge cases, for a table with header row `h`, data rows `d1..d2` and an optional totals row `t`
@@ -212,7 +225,9 @@ move; an edit wholly right of `c2` changes nothing; every other column edit that
 
 A fallback leaves the table metadata as it is today and loses the structured text of the
 formulas that refer to that table, as today. T-2197's findings replace the fallback. The interim
-rule is recorded in references.md "Structured references when the table changes".
+rule is recorded in references.md "Structured references when the table changes". If the
+classification costs more than it is worth in step 1, the split hint in T-2195 lets every table
+be *fallback* at first, which is exactly today's behavior.
 
 From step 2, a `ThisRowKind` printed as a lowered area (a fallback, or `to_excel_string` until
 step 3) is first resolved at the printing cell's row. It becomes the absolute cell or row range on
@@ -252,8 +267,9 @@ same reference. `ThisRowKind` evaluation is O(1).
     from step 3, in `to_excel_string`; until then it prints the lowered area).
   - Escaped column names round-trip.
   - ISREF, `@`, the `:` and space operators, and SUM work with `Sales[@Qty]` as with `$A$3`.
-    Excel evidence: gen-m8b in-table 19fdc25163755713 (`SUM(Sales[@[2024]:[Val]])`) and specials
-    e804cf2f8af00680 (`ISREF(Stock[#Totals])` FALSE, `ISREF(Wide[#Totals])` TRUE).
+    Excel evidence for SUM: gen-m8b in-table 19fdc25163755713 D11 (`SUM(Sales[@[2024]:[Val]])`).
+    `ISREF` of `#This Row` is unprobed (specials e804cf2f8af00680 has `ISREF` of `#Totals` only):
+    TRUE on a data row is a hand expectation, and off the data rows is a question for T-2197.
 - Structural edits: one test per row of the edge-case table and per column case, each pinning
   today's values before the change. The move and grow/shrink cases keep the structured text; the
   fallback cases print today's lowered text. One test has the formula on a different sheet from
