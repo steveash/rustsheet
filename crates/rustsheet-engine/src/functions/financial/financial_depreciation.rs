@@ -102,9 +102,10 @@ fn vdb_depr_between(
 }
 
 /// The most periods one DB or VDB call walks (`period`, `end_period`): their schedules step one
-/// period at a time, so a larger one is `#NUM!` where Excel gives a value (DEVIATION, decision
-/// 0014; docs/excel-semantics/financial.md "DB and VDB period cap", T-1820). `DB(1,0,1E15,1E15)`
-/// ran for hours before the cap. The lifting table charges each element by its period up to it.
+/// period at a time, so a larger one is `#NUM!`; Excel's result there is unprobed (DEVIATION,
+/// decision 0014; docs/excel-semantics/financial.md "DB and VDB period cap", T-1820).
+/// `DB(1,0,1E15,1E15)` ran for hours before the cap. The lifting table charges each element by
+/// its period up to it.
 pub(crate) const MAX_DEPRECIATION_PERIODS: u32 = 100_000;
 
 /// Whether `period` is past [`MAX_DEPRECIATION_PERIODS`].
