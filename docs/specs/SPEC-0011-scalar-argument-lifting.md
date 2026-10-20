@@ -943,7 +943,8 @@ count lifts (an array or a multi-cell range, as for OFFSET), a single-sheet rang
 `LiftCost::Cells` of the array (each element copies at most the whole array, so the bound is checked before
 any element runs). An unlifted call is unchanged. TAKE and DROP join OFFSET, INDIRECT and TRIMRANGE in
 `reference_producer`, so INDEX, ROWS, COLUMNS, SUMPRODUCT, the aggregates and LET read the grid as they read
-a lifted OFFSET's.
+a lifted OFFSET's. IF, CHOOSE and OFFSET's reference argument (`may_hand_on_grid`) do not hand a TAKE or DROP
+grid on yet: unprobed either way, asked in T-1960.
 
 ## Alternatives considered
 - **A helper per family** (status quo, "lift literals only" variants for financial and
