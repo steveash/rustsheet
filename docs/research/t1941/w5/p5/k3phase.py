@@ -27,7 +27,7 @@ def fsig(C, x0, j):                 # signed sum-line frequency of S_j at x0 (cy
     u = F(2)**(math.floor(math.log2(abs(float(S))))-52); ux = F(math.ulp(float(x0)))
     f = float((dS*ux/u) % 1); return f-1 if f > 0.5 else f
 def amp(r, f): k = np.arange(len(r)); return np.dot(r-r.mean(), np.exp(-2j*np.pi*f*k))
-z = np.load('/tmp/claude-0/-home-user-rustsheet/3a20e203-66f6-532b-8608-5ba2c7a655ee/scratchpad/rows6.npz'); X, Y = z['x'], z['b']
+z = np.load(os.environ.get('NPZ', '/tmp/claude-0/-home-user-rustsheet/3a20e203-66f6-532b-8608-5ba2c7a655ee/scratchpad/rows6.npz')); X, Y = z['x'], z['b']
 br = np.where(np.nextafter(X[:-1], np.inf) != X[1:])[0]+1
 MIN, CH = int(os.environ.get('MINLEN', 4096)), int(os.environ.get('CH', 8192))
 chunks = [s[a:a+CH] for s in np.split(np.arange(len(X)), br) if len(s) >= MIN for a in range(0, len(s)-MIN+1, CH) if len(s[a:a+CH]) >= MIN]

@@ -1,0 +1,3 @@
+# W4's K1 best set plain1 (ascending, raw y, G = fl(N/D), D0 = -1/16), from W4's message 2026-10-20
+N 0x1.b5834abbea656p+15 0x1.514773450caefp+14 0x1.664795a0f0ed9p+13 0x1.36c636bfa4529p+11 0x1.5ff5a1f1140c6p+9 0x1.b983b931db2b8p+6 0x1.c11d5cf35dd45p+3 0x1.4aa356fdcd9d5p+1
+D -0x1.0000000000000p-4 0x1.b584ae6185b27p+15 0x1.a52694226b55ep+15 -0x1.8fd0726115aa1p+13 -0x1.d079cbb8d7baap+12 0x1.811c89b66abb2p+11 -0x1.9f2c6b220f0dap+8 0x1.3f2e03e3a10e2p+4
