@@ -81,10 +81,14 @@ pub(crate) fn student_t_tails(t: f64, n: f64) -> (f64, f64) {
 
 /// L = P(T > t) for t > 0.
 fn upper_tail(t: f64, n: f64) -> f64 {
-    let tail = unflushed_upper_tail(t, n);
-    // Main (statrs) returned 0 for a subnormal tail and `T.DIST.2T(...)` in gen-m9/3ec66461400faf2f
-    // A15 is 0 in Excel; the graph oracle cannot tell 0 from a kept subnormal (decision 0042), so
-    // the flush stays until a probe with a companion cell decides it.
+    flush_subnormal(unflushed_upper_tail(t, n))
+}
+
+/// A tail below the normal range is 0. Main (statrs) returned 0 for a subnormal tail and
+/// `T.DIST.2T(...)` in gen-m9/3ec66461400faf2f A15 is 0 in Excel; the graph oracle cannot tell 0
+/// from a kept subnormal (decision 0042), so the flush stays until a probe with a companion cell
+/// decides it.
+fn flush_subnormal(tail: f64) -> f64 {
     if tail < f64::MIN_POSITIVE {
         0.0
     } else {
@@ -144,12 +148,7 @@ pub(crate) fn student_t_tail_at(y: f64, n: f64) -> f64 {
         inside_one: z * n <= y,
         series,
     };
-    let tail = tail_from(&args, n);
-    if tail < f64::MIN_POSITIVE {
-        0.0
-    } else {
-        tail
-    }
+    flush_subnormal(tail_from(&args, n))
 }
 
 /// The inputs one tail is computed from, z = t^2/(n+t^2) and y = n/(n+t^2) among them, so that
@@ -186,7 +185,8 @@ fn tail_from(args: &TailArguments, n: f64) -> f64 {
     centre_tail(args, n, z, ratio)
 }
 
-/// L = `I_y(n/2, 1/2)`/2 for 0 < t^2 < n and an integer n, from z = t^2/(n+t^2), t^2/n and
+/// L = `I_y(n/2, 1/2)`/2 for 0 < t^2 < n and an integer n (or T.TEST's fractional Welch df,
+/// checked only on the probes-numeric t1048/t1049-ttest cells), from z = t^2/(n+t^2), t^2/n and
 /// n/t^2 (each within an ulp or two) with `ratio` = Gamma((n+1)/2)/(Gamma(n/2) Gamma(1/2)) and y^(n/2) = exp(-(n/2)
 /// log1p(t^2/n)). Up to t = 1 the centre A = `I_z(1/2, n/2)` by `incbcf` (6 steps at most) and
 /// L = (1 - A)/2; beyond it L itself by `incbd` on the ratio y/z = n/t^2. Each fraction converges
@@ -461,6 +461,11 @@ mod tests {
         assert_eq!(student_t_tail_at(1.0, 5.0), 0.5);
         assert_eq!(student_t_tail_at(0.0, 5.0), 0.0);
         assert!(student_t_tail_at(f64::NAN, 5.0).is_nan());
+        // A fractional (Welch) df, t1048-ttest B27 `T.TEST(D1:D10,F1:F11,2,3)`: within 5 ulp of
+        // Excel's 0.32079800240540124, where libm's Gamma ratio and Cephes' plain fraction are
+        // 9 and 111 ulp off on t1048-ttest cells.
+        let welch = 2.0 * student_t_tail_at(0.946_466_489_851_057_3, 18.405_961_938_104_15);
+        assert!(ulps(welch, 0.320_798_002_405_401_24) <= 5);
     }
 
     #[test]
