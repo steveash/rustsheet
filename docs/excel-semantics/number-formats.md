@@ -170,17 +170,17 @@ Tasks: T-1075 (Phase 4; decision 0039)
 
 ## Conditional sections
 Rule: a format with a single `[cond]` section that does not match prints the number in General
-(`[<10]#" Wow"` on 10 → "10", A3; `[>10]#" Big"` on 10 → "10", A5); `[<>10]` is a valid
-condition (A17 "1 Wow", A18 "10"); spaces between the comparator and the number are allowed
-(`[< 10]` → "1 Wow", A23; `[<      10]`, A25). The same holds when the condition sits in a date
-section or after other tokens (`TEXT(1,"d"&<119 quoted a>&"[>5]d")` is "1", probes/text-format-length-limit-q A16)
-and when literals pad it (`TEXT(1,"[>5]0"&REPT(" ",79))` is "1", -d S!A31, -f A41:A42, -j A43).
-The evidence does not decide whether the fallback is General or the section without its
-literals: every probed value prints the same either way. The engine uses General, the simpler
-rule. The condition compares the signed value, and a matched one-section format keeps the minus:
-`[=-10]#" Wow"` on -11 is "-11", `[<>-10]#" Wow"` on -11 is "-11 Wow" and on -9 "-9 Wow"
-(poi/FormatConditionTests A32, A35, A37). Only a one-section format is covered; how conditions choose among two or three sections is
-not probed here (poi/FormatConditionTests is Excel-cached; the cells this rule fixes there are
+(`[<10]#" Wow"` on 10 → "10", A3; `[>10]#" Big"` on 10 → "10", A5); `[<>10]` is a valid condition
+(A17 "1 Wow", A18 "10"); spaces between the comparator and the number are allowed (`[< 10]` → "1
+Wow", A23; `[< 10]`, A25). The same holds when the condition sits in a date section or after other
+tokens (`TEXT(1,"d"&<119 quoted a>&"[>5]d")` is "1", probes/text-format-length-limit-q A16) and when
+literals pad it (`TEXT(1,"[>5]0"&REPT(" ",79))` is "1", -d S!A31, -f A41:A42, -j A43). The evidence
+does not decide whether the fallback is General or the section without its literals: every probed
+value prints the same either way. The engine uses General, the simpler rule. The condition compares
+the signed value, and a matched one-section format keeps the minus: `[=-10]#" Wow"` on -11 is "-11",
+`[<>-10]#" Wow"` on -11 is "-11 Wow" and on -9 "-9 Wow" (poi/FormatConditionTests A32, A35, A37).
+Only a one-section format is covered; how conditions choose among two or three sections is not
+probed here (poi/FormatConditionTests is Excel-cached; the cells this rule fixes there are
 one-section ones).
 Evidence: poi/FormatChoiceTests.xlsx A3:A26 (excel-graph); probes/text-format-length-limit-d
 S!A31, -f Sheet1!A41:A42, -j Sheet1!A43, -q Sheet1!A16 (excel-graph); poi/FormatConditionTests.xlsx
