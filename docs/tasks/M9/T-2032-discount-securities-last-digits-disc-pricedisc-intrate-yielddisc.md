@@ -76,6 +76,6 @@ YIELDMAT from `getMatFactors` parts (B of issue to settlement, A, DIM, DSM = DIM
 `((1 + DIM/B*rate) - T)/T * (B/DSM)`. Recorded in financial.md "Discount securities: day count and year length".
 Eval delta: 73 known failures fixed (ironcalc-calc 916 -> 906: DISC.xlsx F2, F6, F10, F15, F19, INTRATE.xlsx F2-F6;
 probes 1632 -> 1569: discount-security-modes, date-system-1900/1904-financial-daycount, date-system-1904-financial
-A25, A27, fin-argument-modes H139, H352), 0 regressions, visibly-off cells 1750 -> 1716 (baselines rewritten by `make eval-baseline`). No cell resisted.
+A25, A27, fin-argument-modes H139, H352, fin-bond-negative-basis E21, G21), 0 regressions, visibly-off cells 1750 -> 1716 (baselines rewritten by `make eval-baseline`). No cell resisted.
 RECEIVED is regrouped to `discount*(DIM/B)`, the same number as before; no oracle cell separates RECEIVED's
 candidate groupings, and none fails, so no sweep is filed for it.

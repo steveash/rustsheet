@@ -767,8 +767,9 @@ Evidence: probes/fin-bond-negative-basis (176 cells, excel-graph, 2026-10-20, T-
 Ours: one reader, `day_count_basis` (functions/financial/dates.rs), serves the coupon-bond and ODD* kernels, ACCRINT,
 AMORLINC, AMORDEGRC and YEARFRAC. ACCRINTM and the discount-security functions go through YEARFRAC (its parts since T-2032). Before T-1870,
 `floor() as u32` saturated a negative basis to 0, and the `as i32` of YEARFRAC and the `trunc()` of AMOR* turned -0.5
-into 0. The probe's ten failing cells, rows 1, 2, 9, 17 and 21 in columns E and G (YIELD, PRICE,
-ODDFPRICE, ODDFYIELD and INTRATE at bases 0 and 4.9), are last-digit misses of the T-1374 and T-2007 class, not basis reads.
+into 0. The probe's eight failing cells, rows 1, 2, 9 and 17 in columns E and G (YIELD, PRICE,
+ODDFPRICE and ODDFYIELD at bases 0 and 4.9), are last-digit misses of the T-1374 and T-2007 class, not basis reads;
+row 21 (INTRATE) matches since T-2032.
 Status: VERIFIED (excel-graph)
 Tasks: T-1842, T-1870
 
