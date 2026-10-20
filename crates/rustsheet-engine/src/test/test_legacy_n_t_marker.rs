@@ -327,6 +327,18 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
             true,
             "N(CHOOSE({1;2},{2;3},{4;5}))",
         ),
+        // probes/subtotal-take-array-selector D1, D3 (T-1915): N over a row index and two range
+        // arms is marked with no `@`; T is unprobed and keeps its `@`s.
+        (
+            "N(CHOOSE({1,2},H1:H2,I1:I2))",
+            true,
+            "N(CHOOSE({1,2},H1:H2,I1:I2))",
+        ),
+        (
+            "T(CHOOSE({1,2},H1:H2,I1:I2))",
+            false,
+            "T(@CHOOSE(@{1,2},H1:H2,I1:I2))",
+        ),
         // A reference result reads the same marked or not (J10, 7).
         ("N(IF(1,Z1:Z2))", true, "N(IF(1,Z1:Z2))"),
         // Not a value position: a vector argument, IF's arms, SUMPRODUCT's array context.

@@ -519,6 +519,7 @@ C	probes/match-empty-text-lift.case.json	13
 C	probes/match-error-lookup-value-array-match-type.case.json	8
 C	probes/match-fractional-match-type.case.json	8
 C	probes/match-lookup-value-lift.case.json	19
+C	probes/match-single-cell-forms-and-texts.case.json	36
 C	probes/match-single-value-lookup-array.case.json	26
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
@@ -969,6 +970,7 @@ C	probes/textbefore-delimiter-list-elements.case.json	41
 C	probes/textbefore-delimiter-range.case.json	55
 C	probes/textbefore-empty-delimiter-list.case.json	240
 C	probes/textbefore-number-delimiter.case.json	31
+C	probes/textbefore-sigma-contexts.case.json	18
 C	probes/textjoin-array-arguments.case.json	34
 C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
@@ -2563,9 +2565,6 @@ F	probes/stats-evidence-floor-t1623.case.json	S!Q36
 F	probes/stats-evidence-floor-t1623.case.json	S!Q50
 F	probes/stats-evidence-floor-t1623.case.json	S!Q58
 F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
-F	probes/subtotal-take-array-selector.case.json	Sheet1!D1
-F	probes/subtotal-take-array-selector.case.json	Sheet1!D3
-F	probes/subtotal-take-array-selector.case.json	Sheet1!D7
 F	probes/t1626-regexreplace.case.json	Sheet1!C34
 F	probes/t1626-regextest.case.json	Sheet1!C29
 F	probes/text-currency-locale-date.case.json	S!A14
