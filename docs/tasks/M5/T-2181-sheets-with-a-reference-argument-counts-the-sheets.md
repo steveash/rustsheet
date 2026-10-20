@@ -3,7 +3,7 @@ id: T-2181
 title: "SHEETS with a reference argument counts the sheets the reference spans"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
