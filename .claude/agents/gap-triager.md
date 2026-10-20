@@ -13,7 +13,12 @@ For each group, use `make eval-show CASE=...` on 1–3 examples, then create a t
 `make new-task` (it assigns the id; set `tier` by the rubric in docs/process/task-format.md) in the `functions-*` lane of the module the fix touches (lane table in docs/process/agent-workflow.md; decision 0022), or `engine` for engine-level issues, including:
 the failing case ids/cells, expected vs actual, the suspected root cause, and acceptance
 criteria "these N known-failure lines disappear from eval/baseline/<suite>.txt with no new ones".
-Rank groups by the function's `milestone` in eval/catalog/functions.yaml, earliest first, then
+Groups with visibly-off cells come first (decision 0083). A cell is visibly off when it is numeric
+and more than half a unit in the 15th significant digit from Excel's value, or when it has the
+wrong type, error or text. Each such group's task gets `campaign: visible` and a
+`## Visible-parity stage` section (docs/process/task-format.md). Exotic locales and calendars are
+the exception: they never get the key. Within that first band and among all other groups, rank
+by the function's `milestone` in eval/catalog/functions.yaml, earliest first, then
 by failing cells × its `prior` (decision 0026): a current-milestone function comes before any M9
 last-digit tail, however many cells the tail has. Create each task with `--milestone` set to that
 catalog milestone (operators count as M1; a function missing from the catalog is M9, the

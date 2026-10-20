@@ -4,9 +4,10 @@ title: "CUMIPMT and CUMPRINC closed form: fit Excel's last digits over many peri
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-1845]
 ---
 
@@ -44,3 +45,12 @@ denominator) is described in financial.md; Excel's form is closer to `log1p`/`ex
 
 ## Out of scope
 - The short-range misses (T-1374) unless the same formulation fixes them.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 26 in total.
+- CUMIPMT: 6 cells (13-14 digits right 6, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx` 4; `probes/fin-cumipmt-period-bound.case.json` 1. e.g. `CUMIPMT(A2,B2,C2,D2,E2,F2)` Excel -520.1181191021385, ours -520.1181191021378
+- CUMPRINC: 20 cells (13-14 digits right 16, 10-12 1, 6-9 2, fewer or 0 vs nonzero 1); most in `ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx` 14; `probes/fin-remaining-later-argument-ranges.case.json` 5. e.g. `CUMPRINC(A2,B2,C2,D2,E2,F2)` Excel -2038.518055313885, ours -2038.518055313892
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
