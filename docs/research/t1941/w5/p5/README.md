@@ -225,3 +225,14 @@ separate these yet. Per-site map running (`sitemap.sh`).
 moves only roundings. 50k clean points, every N and D stage, c in ulp(S_{j−1}) units, ±10,000 step 4
 (`hidden_ssfc.log`), and at the top stages c in ulp(S_j)/32 over ±4 ulps (`hidden_fine_top.log`). Best gains +0.7%
 (D.S2 0.3393, D.S4 0.3389 vs 0.3320) and +0.85% (N.S6 fine). No K2-like jump (K2: 0.74 → 0.88).
+
+## Per-site anti-base map (real rows6, ss_fc base; `sitemap.sh` → `sitemap_N.log`, `sitemap_D.log`)
+Z of the S objective at a = 0 against random-hypothesis nulls. Strongly negative means the base's rounding pattern at
+that site is missing from Excel (wrong phase, wrong coefficients or unstored); near 0 at a strong site means present.
+- N: S8 −0.7 (no signal), S7 −17.5, S6 −28.0, S5 −8.9, S4 −16.1, S3 −28.4, S2 −2.9, S1 −2.3.
+- D: S8 −0.3 (no signal), S7 −4.0, S6 −18.0, S5 −28.4, S4 −95.2, S3 −66.8, S2 −2.8, S1 +1.9.
+N.S1, N.S2 and D.S2 are strong sites (null sd ~300) whose base pattern IS present. Excel stores them, and ss_fc's
+read constants there are right. Everything from N.S3 and D.S3 up is mismatched; D.S3/D.S4 are the worst. This
+argues against an all-80-bit D chain and an unstored N.S2. A no-refit mask gain is not evidence either
+(`maskctl.py`, `maskctl.log`): on a fully stored synthetic truth, ss_fc with D unstored and N stored only below 1
+gains +8.6% (real: N<2 with D unstored, +5.7%).

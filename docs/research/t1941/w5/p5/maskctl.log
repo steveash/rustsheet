@@ -1,0 +1,6 @@
+truth e2e_truth.txt (all stored); ss_fc scored with masks
+N stored below 99: D<99:0.2987 D<3:0.3141 D<2:0.2851 D<1:0.3195 D<0:0.3257
+N stored below  5: D<99:0.2955 D<3:0.3103 D<2:0.2774 D<1:0.3151 D<0:0.3209
+N stored below  3: D<99:0.2986 D<3:0.3150 D<2:0.2799 D<1:0.3207 D<0:0.3269
+N stored below  2: D<99:0.2989 D<3:0.3145 D<2:0.2755 D<1:0.3216 D<0:0.3275
+N stored below  1: D<99:0.3346 D<3:0.3568 D<2:0.3368 D<1:0.3737 D<0:0.3844
