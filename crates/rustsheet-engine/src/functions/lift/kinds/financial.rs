@@ -67,8 +67,8 @@ const MIRR: ArgKinds = ArgKinds::fixed(3, &[WholeByCaller, Lift, Lift], Constant
 const XNPV: ArgKinds = ArgKinds::fixed(3, &[LiftArrays, WholeByCaller, WholeByCaller], Constant);
 /// What one XIRR element is charged per cash flow (`LiftCost::Cells` of the flows): the most XNPV
 /// passes over the flows one call can make, 401 (`financial_util::compute_xirr`: XNPV(0), two
-/// bracket walks of `WALK_CAP` 100 points and the bisection's `BISECTION_CAP` 200 steps), rounded
-/// up.
+/// bracket walks of `WALK_CAP` 100 points and the bisection's `BISECTION_CAP` 200 steps), plus its
+/// few sign and extent scans, rounded up.
 const XIRR_WEIGHT: u32 = 1 << 9;
 /// `XIRR(values, dates, [guess])`: the values and dates are read whole by the caller (T-1843).
 const XIRR: ArgKinds = ArgKinds::fixed(

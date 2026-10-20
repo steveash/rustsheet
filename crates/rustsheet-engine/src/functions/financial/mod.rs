@@ -355,10 +355,13 @@ impl Model {
         let [_, values, dates] = args else {
             return CalcResult::new_args_number_error(cell);
         };
+        // The dates are truncated and checked once, not per element: each element is charged
+        // only the values' count.
         let flows = self
             .get_array_of_numbers_xpnv(values, &cell, Error::NUM)
             .and_then(|values| {
                 let dates = self.get_array_of_numbers_xpnv(dates, &cell, Error::VALUE)?;
+                let dates = xnpv_dates(&values, &dates);
                 Ok((values, dates))
             })
             .map_err(CalcResult::without_message);
@@ -378,7 +381,15 @@ impl Model {
                     (Err(error), _) => error,
                     (Ok(_), Err(error)) => error.clone(),
                     (Ok(rate), Ok((values, dates))) => {
-                        number_result(xnpv_of(rate, values, dates), cell)
+                        let xnpv = dates.as_ref().map_err(Clone::clone).and_then(|dates| {
+                            // It seems Excel returns #NUM! if rate < 0, this is only necessary
+                            // if r <= -1
+                            if rate <= 0.0 {
+                                return Err(Error::NUM);
+                            }
+                            compute_xnpv(rate, values, dates).map_err(|error| error.0)
+                        });
+                        number_result(xnpv, cell)
                     }
                 }
             },
@@ -394,10 +405,12 @@ impl Model {
         let ([values, dates] | [values, dates, _]) = args else {
             return CalcResult::new_args_number_error(cell);
         };
+        // The dates are truncated and checked once, not per element, as XNPV's.
         let flows = self
             .get_array_of_numbers_xirr(values, &cell)
             .and_then(|values| {
                 let dates = self.get_array_of_numbers_xirr(dates, &cell)?;
+                let dates = xirr_dates(&values, &dates);
                 Ok((values, dates))
             })
             .map_err(CalcResult::without_message);
@@ -414,7 +427,12 @@ impl Model {
                     Err(error) => return error.clone(),
                 };
                 match model.cast_number_or(arguments.get(2), 0.1, cell) {
-                    Ok(guess) => number_result(xirr_of(values, dates, guess), cell),
+                    Ok(guess) => {
+                        let xirr = dates.as_ref().map_err(Clone::clone).and_then(|dates| {
+                            compute_xirr(values, dates, guess).map_err(|error| error.0)
+                        });
+                        number_result(xirr, cell)
+                    }
                     Err(error) => error,
                 }
             },
@@ -533,18 +551,21 @@ impl Model {
     }
 }
 
-/// XNPV of `values` on `dates` (each truncated to a whole day) at `rate`, with the scalar call's
-/// checks in its order: the counts, then the dates, then the rate.
-fn xnpv_of(rate: f64, values: &[f64], dates: &[f64]) -> Result<f64, Error> {
-    // Decimal points on dates are truncated
-    let dates: Vec<f64> = dates.iter().map(|s| s.floor()).collect();
-    // If values and dates contain a different number of values, XNPV returns the #NUM! error value.
-    let Some(&first_date) = dates.first() else {
-        return Err(Error::NUM);
-    };
-    if values.len() != dates.len() {
-        return Err(Error::NUM);
+/// XNPV's and XIRR's dates truncated to whole days, with the first: `#NUM!` when there are none
+/// or when the values and dates differ in count. The errors carry no message: the kernels run
+/// lifted, where an element's message is dropped (SPEC-0011).
+fn whole_day_dates(values: &[f64], dates: &[f64]) -> Result<(Vec<f64>, f64), Error> {
+    let dates: Vec<f64> = dates.iter().map(|date| date.floor()).collect();
+    match dates.first() {
+        Some(&first_date) if values.len() == dates.len() => Ok((dates, first_date)),
+        _ => Err(Error::NUM),
     }
+}
+
+/// XNPV's dates truncated to whole days, with the scalar call's checks in its order: the counts,
+/// then the dates (the rate is checked after them, per element).
+fn xnpv_dates(values: &[f64], dates: &[f64]) -> Result<Vec<f64>, Error> {
+    let (dates, first_date) = whole_day_dates(values, dates)?;
     for date in &dates {
         // Excel docs claim that if any number in dates is not a valid date,
         // XNPV returns the #VALUE! error value, but it seems to return #NUM!.
@@ -556,25 +577,13 @@ fn xnpv_of(rate: f64, values: &[f64], dates: &[f64]) -> Result<f64, Error> {
             return Err(Error::NUM);
         }
     }
-    // It seems Excel returns #NUM! if rate < 0, this is only necessary if r <= -1
-    if rate <= 0.0 {
-        return Err(Error::NUM);
-    }
-    compute_xnpv(rate, values, &dates).map_err(|error| error.0)
+    Ok(dates)
 }
 
-/// XIRR of `values` on `dates` (each truncated to a whole day) from `guess`, with the scalar
-/// call's checks in its order: the counts, then the dates, then the solver's own.
-fn xirr_of(values: &[f64], dates: &[f64], guess: f64) -> Result<f64, Error> {
-    // Decimal points on dates are truncated
-    let dates: Vec<f64> = dates.iter().map(|s| s.floor()).collect();
-    // If values and dates contain a different number of values, XIRR returns the #NUM! error value.
-    let Some(&first_date) = dates.first() else {
-        return Err(Error::NUM);
-    };
-    if values.len() != dates.len() {
-        return Err(Error::NUM);
-    }
+/// XIRR's dates truncated to whole days, with the scalar call's checks in its order: the counts,
+/// then the dates (the solver's own checks follow, per element).
+fn xirr_dates(values: &[f64], dates: &[f64]) -> Result<Vec<f64>, Error> {
+    let (dates, first_date) = whole_day_dates(values, dates)?;
     // Excel reads an empty value or date cell as 0 and accepts date 0 and dates before the
     // first one, but is #NUM! for a negative date, a date past 9999-12-31, or when no date is
     // later than the first: {-1000,1100} on {0,45365} is 1.1^(365/45365) - 1,
@@ -588,5 +597,5 @@ fn xirr_of(values: &[f64], dates: &[f64], guess: f64) -> Result<f64, Error> {
     {
         return Err(Error::NUM);
     }
-    compute_xirr(values, &dates, guess).map_err(|error| error.0)
+    Ok(dates)
 }

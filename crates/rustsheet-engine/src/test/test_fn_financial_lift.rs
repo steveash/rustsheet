@@ -502,6 +502,9 @@ fn a_lifted_xirr_over_long_flows_is_refused_by_the_work_bound() {
         ("C2", "=ROWS(XIRR(A1:A100,B1:B100,{0.1;0.1}))"),
         ("C3", "=ROWS(XNPV(SEQUENCE(500),A1:A300000,B1:B300000))"),
         ("C4", "=ROWS(FVSCHEDULE(SEQUENCE(500),A1:A300000))"),
+        // Mismatched counts: the long dates are checked once, so each element is O(1).
+        ("C5", "=SUM(--ISERROR(XNPV(SEQUENCE(100000),A1,B1:B300000)))"),
+        ("C6", "=SUM(--ISERROR(XIRR(A1:A2,B1:B300000,SEQUENCE(100000))))"),
     ] {
         model._set(cell, formula);
     }
@@ -510,4 +513,6 @@ fn a_lifted_xirr_over_long_flows_is_refused_by_the_work_bound() {
     assert_eq!(model._get_text("C2"), "2");
     assert_eq!(model._get_text("C3"), "#ERROR!");
     assert_eq!(model._get_text("C4"), "#ERROR!");
+    assert_eq!(model._get_text("C5"), "100000");
+    assert_eq!(model._get_text("C6"), "100000");
 }
