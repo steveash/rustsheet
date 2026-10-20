@@ -557,6 +557,8 @@ type CouponBody = fn(&Model, CouponArgs, CellReferenceIndex) -> CalcResult;
 impl Model {
     /// Reads the COUP* arguments in order, each checked (#NUM!) before the next is read: settlement,
     /// date order, frequency, basis (probes/securities-argument-error-order; financial.md, T-1406).
+    /// A lifted call is charged before it runs by `ValueWork::CouponWalks` (lift/kinds), which
+    /// mirrors these reads, and `bond_args`' and `accrint_of`'s: keep it in step with them.
     fn coupon_args(
         &self,
         values: &[CalcResult],

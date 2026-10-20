@@ -400,7 +400,7 @@ Rule: RustSheet returns `#NUM!` for DB with a `period`, and VDB with an `end_per
 100,000, after Excel's own argument checks, to bound per-call work on untrusted input (CLAUDE.md directive 5). Both
 schedules step one period at a time (`DB(1,0,1E15,1E15)` ran for hours before the cap). Excel's values above the cap are
 unprobed. A lifted DB or VDB call is also charged by each element's period
-(SPEC-0011 `KernelWork::ByArg`, T-1820): 2^17 units at the cap, so at most 1,024 such elements per call, while small
+(SPEC-0011 `ValueWork::Loop`, T-1820): 2^17 units at the cap, so at most 1,024 such elements per call, while small
 periods lift freely (`ROWS(DB(G25:G26,1000,6,2,7))` is 2 in Excel, probes/fin-argument-modes). Within the cap the values are unchanged.
 Evidence: the cap is a resource limit, not an Excel observation; probes/fin-argument-modes shows Excel lifting DB and VDB.
 Status: DEVIATION (decision 0014)
@@ -558,35 +558,46 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1822, T-1844, T-2124, T-2125
 
 ## Coupon schedule work cap
-Rule: RustSheet charges a lifted COUP*, ACCRINT, DURATION, MDURATION or PRICE call for its coupon schedule walks, so one
-call lifts at most 1,024 elements (COUP*, ACCRINT) or 512 (DURATION, MDURATION, PRICE):
-`ROWS(COUPNUM(SEQUENCE(1025)+39000,43831,2))` and `ROWS(PRICE(SEQUENCE(513)+39000,43831,0.05,0.06,100,2))` are `#ERROR!`
-where Excel lifts every element (probes/fin-argument-modes: they lift over arrays; Excel's own limit is unprobed). A
-walk steps one coupon period at a time, up to about 32,400 quarters inside the calendar, about 1 ms in a release build;
-each element is charged that worst case (`COUPON_WALK_WEIGHT`, 2^16 units per walk against SPEC-0011's 2^27 visit cap),
-so a lifted call at the cap takes 1-2 s at the longest schedule. The scalar calls are not capped.
+Rule: RustSheet charges a lifted COUP*, ACCRINT, DURATION, MDURATION or PRICE call for its coupon schedule walks, in
+proportion to each element's schedule length, so one call lifts at most 1,024 elements (COUP*, ACCRINT) or 512
+(DURATION, MDURATION, PRICE) at the calendar's longest schedule, and more over shorter ones:
+`ROWS(COUPNUM(SEQUENCE(1025)*0+1,DATE(9999,12,31),4))` and
+`ROWS(PRICE(SEQUENCE(513)*0+1,DATE(9999,12,31),0.05,0.06,100,4))` are `#ERROR!` where Excel lifts every element
+(probes/fin-argument-modes: they lift over arrays; Excel's own limit is unprobed), while
+`ROWS(PRICE(SEQUENCE(513)+39000,43831,0.05,0.04,100,2))` is 513. A walk steps one coupon period at a time, up to about
+32,400 quarters inside the calendar, about 1 ms in a release build. Each walk is charged 2^16 units at that longest
+schedule (`COUPON_WALK_WEIGHT`, against SPEC-0011's 2^27 visit cap) and in proportion to its period count below it:
+the days between the element's earliest and latest date times its frequency (`ValueWork::CouponWalks`, T-1846), plus
+one period (T-1869), so a 10-year semiannual walk is 43 units. A text date is charged as the longest schedule. A lifted call
+at the cap takes 1-2 s at the longest schedule. The scalar calls are not capped.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds/financial.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`, `BOND_6_OF_7`)
-Tasks: T-1822; T-1846 narrows the cap to a schedule-length budget.
+Implemented in: functions/lift/kinds/financial.rs (`COUPON_WALK_WEIGHT`, `COUPON`, `ACCRINT`, `BOND_5_OF_6`,
+`BOND_6_OF_7`), functions/lift/kinds/mod.rs (`ValueWork::CouponWalks`)
+Tasks: T-1822, T-1846
 
 ## Yield and odd-coupon work cap
-Rule: RustSheet charges a lifted YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE or ODDLYIELD call for its worst-case solver and
-schedule work, so one call lifts at most 8 elements (YIELD, ODDFYIELD), 256 (ODDFPRICE) or 1,024 (ODDLPRICE, ODDLYIELD):
-`ROWS(YIELD(SEQUENCE(9)+39000,43831,0.05,95,100,2))` is `#ERROR!` where Excel lifts every element (probes/fin-argument-modes,
-fin-yield-odd-lift: they lift over arrays; Excel's own limit is unprobed). YIELD's and ODDFYIELD's kernels walk the coupon
-schedule once (up to 4.4 and 6.3 ms at the calendar's longest schedule, release build), then the solver evaluates the price
-at most 397 times (100 Newton steps of three prices, 97 bisection prices), each a sum over up to 32,400 quarterly coupons
-(0.55 ms): about 0.23 s an element at that bound, charged 2^24 units against SPEC-0011's 2^27 visit cap (8 elements, about
-1.8 s; the slowest inputs found, a price of 1E300 over 9990 years, take 54 ms an element). ODDFPRICE walks and sums its
-odd first period once (up to 6.3 ms, 8 walks of `COUPON_WALK_WEIGHT`: 256 elements took 1.7 s), ODDLPRICE and ODDLYIELD
-walk to the maturity once in closed form (up to 2.2 ms, 2 walks: 1,024 elements took 2.2 s). The scalar calls are not
-capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver step (about 2.4 s a scalar call at the solver bound, 0.6 s measured); the walk
-is now hoisted out of the solver, with the same values.
+Rule: RustSheet charges a lifted YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE or ODDLYIELD call for its solver and schedule work,
+in proportion to each element's coupon count plus one, so one call lifts at most 8 elements (YIELD, ODDFYIELD), 256
+(ODDFPRICE) or 1,024 (ODDLPRICE, ODDLYIELD) at the calendar's longest schedule, and more over shorter ones:
+`ROWS(YIELD(SEQUENCE(9)*0+1,2958465,0.05,1E300,100,4,1))` is `#ERROR!` where Excel lifts every element
+(probes/fin-argument-modes, fin-yield-odd-lift: they lift over arrays; Excel's own limit is unprobed), while
+`ROWS(YIELD(SEQUENCE(9)+39000,43831,0.05,95,100,2))` is 9. YIELD's and ODDFYIELD's kernels walk the coupon schedule once
+(up to 4.4 and 6.3 ms at the calendar's longest schedule, release build), then the solver evaluates the price at most
+397 times (100 Newton steps of three prices, 97 bisection prices), each a sum over up to 32,400 quarterly coupons
+(0.55 ms): about 0.23 s an element at that bound, charged 2^24 units against SPEC-0011's 2^27 visit cap (8 elements,
+about 1.8 s; the slowest inputs found, a price of 1E300 over 9990 years, take 54 ms an element). ODDFPRICE walks and sums
+its odd first period once (up to 6.3 ms, 8 walks of `COUPON_WALK_WEIGHT`: 256 elements took 1.7 s), ODDLPRICE and
+ODDLYIELD walk to the maturity once in closed form (up to 2.2 ms, 2 walks: 1,024 elements took 2.2 s). Below the longest
+schedule each element is charged in proportion to its coupon count plus one, the extra period covering a pass's fixed cost
+(`ValueWork::CouponWalks`, T-1869): a 10-year semiannual YIELD is 10,873 units (12,344 elements), and a one-period one
+524. The scalar calls are not capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver step (about
+2.4 s a scalar call at the solver bound, 0.6 s measured); the walk is now hoisted out of the solver, with the same values.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
-Implemented in: functions/lift/kinds/financial.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`)
-Tasks: T-1842; T-1869 narrows the cap to a schedule-length budget (after T-1846).
+Implemented in: functions/lift/kinds/financial.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`),
+functions/lift/kinds/mod.rs (`ValueWork::CouponWalks`)
+Tasks: T-1842, T-1869
 
 ## CUMIPMT and CUMPRINC over many periods
 Rule: Excel computes CUMIPMT and CUMPRINC in constant time whatever the period count, also where `(1+rate)^nper`
