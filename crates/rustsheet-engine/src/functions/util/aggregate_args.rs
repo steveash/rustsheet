@@ -259,8 +259,8 @@ impl Model {
         F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
     {
         let items = walk.policy.errors == ErrorRule::Items;
-        match read {
-            RefArg::Ranges(areas) => {
+        match read.into_ranges_or_value() {
+            Ok(areas) => {
                 // Once an error is held, later references are not read at all, as before.
                 if walk.held.is_some() {
                     return Ok(());
@@ -289,7 +289,7 @@ impl Model {
                     Err(error) => walk.referenced_error(error),
                 }
             }
-            RefArg::Value(CalcResult::Array(array)) => {
+            Err(CalcResult::Array(array)) => {
                 for node in array.into_iter().flatten() {
                     match array_item(node) {
                         Ok(value) => visit(self, ItemSource::ArrayElement, value)?,
@@ -304,8 +304,8 @@ impl Model {
                 }
                 Ok(())
             }
-            RefArg::Value(error @ CalcResult::Error { .. }) if !items => Err(error),
-            RefArg::Value(value) => {
+            Err(error @ CalcResult::Error { .. }) if !items => Err(error),
+            Err(value) => {
                 let source = if is_reference {
                     ItemSource::ReferenceValue
                 } else {
