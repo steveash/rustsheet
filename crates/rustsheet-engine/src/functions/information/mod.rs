@@ -452,11 +452,9 @@ impl Model {
                 // Let's see if it is a defined name
                 if let Some(defined_name) = self.parsed_defined_name(name, *scope) {
                     match defined_name {
-                        ParsedDefinedName::CellReference(reference) => {
-                            return CalcResult::Number(reference.sheet as f64 + 1.0)
-                        }
-                        ParsedDefinedName::RangeReference(range) => {
-                            return CalcResult::Number(range.left.sheet as f64 + 1.0)
+                        ParsedDefinedName::CellReference(reference)
+                        | ParsedDefinedName::RangeReference(reference) => {
+                            return CalcResult::Number(f64::from(reference.sheet()) + 1.0)
                         }
                         // Excel: SHEET of a name whose body is an error literal is that error
                         // (docs/excel-semantics/references.md "A sheet-qualified #REF! is #REF!").
