@@ -135,9 +135,10 @@ impl Visible {
 ///
 /// The boundary itself counts as within. An expected 0 has no 15th digit, so only an exact 0
 /// (either sign) is within. For a subnormal `expected` (and the smallest normals) half the unit
-/// underflows to 0 or a few subnormal steps, so in practice only an equal value is within. Non-finite values are never within. The half unit is the double nearest
-/// `5e(E-15)` for the decimal exponent `E` of `expected`, so a gap within half an ulp of it may
-/// land on either side; the unit tests pin the exactly representable boundary.
+/// underflows to 0 or a few subnormal steps, so in practice only an equal value is within.
+/// Non-finite values are never within. The half unit is the double nearest `5e(E-15)` for the
+/// decimal exponent `E` of `expected`, so a gap within half an ulp of it may land on either side;
+/// the unit tests pin the exactly representable boundary.
 #[must_use]
 pub fn within_fifteen_digits(expected: f64, actual: f64) -> bool {
     if !expected.is_finite() || !actual.is_finite() {

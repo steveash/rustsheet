@@ -103,7 +103,9 @@ pub fn judge(lock: Lock, count: VisibleCount, update: Option<bool>) -> Judgement
     match update {
         _ if count.cells == locked => Judgement::Unchanged,
         None if count.cells < locked => Judgement::Stale,
-        Some(allow) if allow || count.cells <= locked + count.new_coverage => Judgement::Record,
+        Some(allow) if allow || count.cells <= locked.saturating_add(count.new_coverage) => {
+            Judgement::Record
+        }
         None | Some(_) => Judgement::Regressed,
     }
 }

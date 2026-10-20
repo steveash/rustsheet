@@ -167,8 +167,17 @@ Only `pass` counts as passing. Case statuses:
   in-scope functions, how many have at least 20 Excel cells, how many have an Excel-backed scored
   cell in a generated suite tagged with that milestone, and how many have both. Functions missing
   either are listed by name, tagged `oracle: none` or `volatile`. Informational; never gated.
-- `report.json`: the same data, machine-readable.
+  A "Visibly off (fifteen digits)" section (T-0061, decision 0088) splits each suite's in-scope
+  scored cells into the closeness buckets of `closeness.rs` (bit-exact, 1 ulp, 2–4 ulp,
+  `digits15` within half a unit in the 15th significant digit, `visible_numeric`,
+  `visible_other`) and lists the functions with visibly-off cells, worst first. A visibly-off
+  cell is blamed on the functions it calls other than glue (`closeness::GLUE`: IF, SUM, DATE,
+  INDEX and the like), or on its glue when it calls nothing else.
+- `report.json`: the same data, machine-readable. Each function's `closeness` holds its bucket
+  counts and `visible` its blamed visibly-off cells; each suite's `closeness` holds its in-scope
+  bucket counts.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
+- `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088).
 
 ## Milestone probe lists
 `eval/milestones/<name>.txt` (decisions 0043, 0044) freezes the cases a milestone's probe criterion

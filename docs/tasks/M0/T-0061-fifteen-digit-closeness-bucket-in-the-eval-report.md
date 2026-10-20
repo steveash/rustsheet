@@ -3,7 +3,7 @@ id: T-0061
 title: "Fifteen-digit closeness bucket in the eval report and parity page, with a ratchet on visibly-off cells"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -34,7 +34,7 @@ this to measure progress and to say when it is done.
     INDEX. Otherwise IF and SUM look visibly off because of what they wrap.
 
 ## Acceptance criteria
-- [ ] `Closeness` splits the current `close` and `off` buckets:
+- [x] `Closeness` splits the current `close` and `off` buckets:
   - `digits15`: within half a unit in the 15th significant digit of the expected value, more than
     4 ulp apart;
   - `visible_numeric`: numbers further than that, and 0 against nonzero;
@@ -42,16 +42,16 @@ this to measure progress and to say when it is done.
 
   The definitions are documented, with unit tests on boundary values: exactly half a unit, an
   expected 0, and subnormals.
-- [ ] report.json carries the new counts per function and per suite, and report.md lists the
+- [x] report.json carries the new counts per function and per suite, and report.md lists the
       functions with visibly-off cells, worst first.
-- [ ] The parity page shows a "Visibly off" column for functions and cells. The landing summary
+- [x] The parity page shows a "Visibly off" column for functions and cells. The landing summary
       states how many in-scope functions are visibly off.
-- [ ] A ratchet file (for example `quality/visible-parity.json`, protected; decision record)
+- [x] A ratchet file (for example `quality/visible-parity.json`, protected; decision record)
       holds the in-scope visibly-off cell count. `make check` fails when the count grows. The
       ratchet updates through `make eval-baseline`.
-- [ ] The run of this PR's `main` reproduces the hand counts above within the attribution
+- [x] The run of this PR's `main` reproduces the hand counts above within the attribution
       difference, explained in the Outcome.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing any function.
@@ -62,3 +62,36 @@ This task is the campaign's measuring stick. After it lands, run the gap-triager
 remaining visibly-off functions that no tagged task covers yet. Examples: WEIBULL.DIST,
 NORM.S.DIST tails, LOGNORM.DIST, F.DIST, ODDFPRICE, AMORDEGRC, LINEST, LOGEST, GROWTH and the
 IM* functions.
+
+## Outcome
+- **Buckets** (`crates/rustsheet-eval/src/closeness.rs`): `close` and `off` became `digits15`,
+  `visible_numeric` and `visible_other`. `within_fifteen_digits` defines the half unit and is
+  unit-tested at the boundary: exactly half a unit at 1e15 and 1e16, an expected 0, subnormals
+  and non-finite values.
+- **Report**: report.json carries per-function `closeness` and `visible` (the visibly-off cells
+  blamed on the function rather than on glue, `closeness::GLUE`). Each suite carries `closeness`
+  over its in-scope cells. report.md has a "Visibly off (fifteen digits)" section with the counts
+  per suite and the blamed functions, worst first.
+- **Parity page** (`parity_report.py`): six buckets, a "Visibly off" column per function and per
+  suite, a "Visibly off" table, and a landing summary that says how many in-scope functions are
+  visibly off. docs/parity.md is not regenerated here; the next `make parity-report` on `main`
+  picks the new columns up.
+- **Ratchet**: decision 0088. The lock is `eval/baseline/visible-parity.json`, not
+  `quality/`. The count moves in most function PRs, and each change under `quality/` needs a
+  decision record. A full `rustsheet-eval check` (`make eval-check`) holds the count to the lock;
+  `update-baseline` (`make eval-baseline`) records drops, and rises that new cases account for.
+  The lock is 1,787: the in-scope visibly-off cells of the vendored gated suites (probes 1,207,
+  ironcalc-calc 323, gen-m5 181, gen-m10 67, fixtures 9). The lock read/write code shared with
+  the evidence floor moved to `lock_file.rs`.
+- **Hand counts**: I ran this harness on the engine and suites at 35a5e71, the commit
+  decision 0083 measured. The vendored suites (no poi or corpus-bench) give 4,581 visibly-off
+  numeric cells (hand count 4,613) and 1,459 wrong type, error or text cells (hand count 1,459),
+  plus 867 `digits15` cells. Blamed functions: 114 with a visibly-off number (hand count 110), 134
+  with a wrong type or text (131), 192 in all (186). The differences come from the glue list and
+  the in-scope rule: a cell that calls an out-of-scope function is left out.
+- **Current `main`**: the same vendored suites give 3,375 numeric and 1,451 other. GAMMA, GAMMALN,
+  LN, BESSELJ/BESSELY and the Student-t family were fixed since 35a5e71. With poi and
+  corpus-bench added, the totals are 3,412 numeric, 2,260 other and 853 `digits15`, over 266
+  blamed functions.
+- Eval delta: none. The baselines and gate verdicts are unchanged; only the new lock is added.
+
