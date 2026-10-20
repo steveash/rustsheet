@@ -3,7 +3,7 @@ id: T-2088
 title: "fitlab t-dist: evaluate the deep lower tail without rounding y = n/(n+t^2)"
 milestone: M9
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -35,3 +35,10 @@ only `x`, so the mapping cannot hand the kernel `1 - y` exactly. Either give the
 
 ## Out of scope
 - The engine's T.DIST kernel (T-0969).
+
+## Outcome
+`t_cdf_reference` (fitlab/kernels/beta.py) now keeps y = n/(n+t^2) an exact decimal into the 70-digit
+I_y, so the "correctly rounded" candidate is within 1 ulp on T.DIST(-2,1E6,TRUE) and 38 ulp on
+T.DIST(-10,1E6,TRUE). Over the 150 t-dist cells it is 118 bit-exact, 145 within 4 ulp, max 45 ulp
+(T.DIST(-10,1000,TRUE)). Other candidates' scores are unchanged (best Cephes 105 exact, engine 78).
+No engine or eval change.
