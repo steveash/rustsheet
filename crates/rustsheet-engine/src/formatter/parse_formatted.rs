@@ -338,7 +338,7 @@ fn parse_percent_or_currency(
 /// The value of number text `f` followed by `%`. Excel shifts the decimal text two places and
 /// rounds once (`VALUE("23.123%")` is 0.23123, the double nearest 23.123e-2), where dividing
 /// the double by 100 rounds twice (0.23123000000000002); ironcalc-calc
-/// TEXT/T_VALUE_VALUETOTEXT.xlsx `I4`, docs/excel-semantics/coercion.md "Percent text is
+/// `TEXT/T_VALUE_VALUETOTEXT.xlsx` `I4`, docs/excel-semantics/coercion.md "Percent text is
 /// rounded once". `f` came from at most 15 significant digits, so its shortest round-trip text
 /// is that number text.
 fn percent_value(f: f64) -> f64 {
