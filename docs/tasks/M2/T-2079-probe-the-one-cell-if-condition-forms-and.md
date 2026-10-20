@@ -3,7 +3,7 @@ id: T-2079
 title: "Probe the one-cell IF condition forms and SWITCH array case after an earlier match (T-2012 follow-up)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -23,3 +23,10 @@ T-2012 made `if_pick` read any one-cell range condition as a scalar (`collapse_s
 
 ## Out of scope
 -
+
+## Outcome
+probes/if-switch-one-cell-selector (12 formulas, excel-graph 2026-10-20): every one-cell range condition form (K1:K1, OFFSET,
+INDEX, INDIRECT with `$K$1` and with a1 TRUE) is read as a scalar, a text or error condition cell is `#VALUE!`/`#N/A`, and
+SWITCH short-circuits on an earlier match and returns an earlier error case value without lifting. The engine already
+matched all 13 cells (T-2012's inference confirmed); references.md's "unconfirmed" note is replaced by the evidence. Eval:
+one new passing probes case, no known-failure change.
