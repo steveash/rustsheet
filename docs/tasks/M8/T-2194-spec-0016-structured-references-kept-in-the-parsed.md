@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-A reviewed spec says how structured references stay in the parsed formula: kept in storage and export, re-resolved when the table list changes, and `#This Row` decided at evaluation. With it, T-1699 and T-1683 can be implemented.
+A reviewed spec says how structured references stay in the parsed formula: kept in the engine's storage (the export keeps lowered ranges until the exporter writes tables), re-resolved when the table list changes, kept through structural edits with today's values, and `#This Row` decided at evaluation. With it, T-1699 and T-1683 can be implemented.
 
 ## Context
 T-1699 found that the parser lowers every structured reference to a range at parse time (`structured_reference_operand`, parser/operands.rs). `to_rc_format` then stores that range, so `=SUM(Sales[Qty])` is stored and exported as `=SUM($A$2:$A$3)`, and `=Sales[@Qty]` off the data rows as `=#VALUE!`. Re-adding the table over a larger range changes neither. Shared formulas are parsed with the context (1, 1), so a preserved `#This Row` cannot be resolved at parse time. Fixing this changes the evaluation model, so it needs a spec first (CLAUDE.md directive 4).

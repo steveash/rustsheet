@@ -47,24 +47,21 @@ Goals:
    formula (`Model::reset_tables`, tables.rs), so the area is re-derived from the preserved text.
 3. `#This Row` is resolved against the evaluating cell's row. Off the data rows it is `#VALUE!`
    (T-1675's rule), at evaluation time.
-4. No value changes: every eval case and unit test that passes today still passes. There is one
-   observable exception, from the first non-goal: after a structural edit, a reference follows
-   the table metadata instead of the shifted range.
+4. No value changes: every eval case and unit test that passes today still passes, and every
+   structural edit gives the values it gives today (see "Structural edits" below).
 
 Non-goals:
-- Tables that grow, shrink or move when rows or columns are inserted or deleted. Today the table
-  metadata does not move with structural edits (`insert_rows` never touches
-  `workbook.tables`). Excel's rules for this are unprobed, so it needs its own task. Before this
-  spec, a lowered range shifted with the edit while the table stayed put. After it, the reference
-  follows the table, which is the authority. Neither matches Excel when the edit is inside the
-  table.
+- Excel's own rules for tables under structural edits (resize, convert to range, delete, inserts
+  and deletes that cross a table's columns). They are unprobed (T-2197). This spec only keeps
+  today's values through those edits (see "Structural edits").
 - Renaming a table or a column. There is no API for either.
 - The FORMULATEXT and UI spelling (`[@Qty]` versus `[[#This Row],[Qty]]`). T-1683 probes it and
   picks the printer. This spec stores one canonical spelling and lets T-1683 decide what the
   user-facing printers show.
 
 ## Excel behavior to match
-- Structured references re-resolve against the table as it is now. Evidence is the existing
+- Structured references evaluate against the table's current metadata. The evidence is for a
+  fixed table only; behavior after the table changes is unprobed (T-2197). The cases are the
   gen-m8b cases (in-table 19fdc25163755713, this-row e1bf5aa0ffb4ed87, column-range
   44cecbb1ecd5b2da). Excel computed them from formulas written in the long form
   (`Sales[[#This Row],[Qty]]`), so the values need no further probe.
@@ -168,6 +165,26 @@ and from then on writes a bare name as `Table[]` (see above).
 text comes from `reference`, so a sheet rename or a cut and paste leaves the text unchanged, and
 the next reparse re-derives `lowered` from the table.
 
+### Structural edits
+Today `insert_rows`, `delete_rows`, `insert_columns` and `delete_columns` (actions.rs) displace
+every formula's lowered range and never touch `workbook.tables`. So `=SUM(Sales[Qty])` follows its
+data when a row is inserted above the table. That is very likely Excel's value, since Excel moves
+the table. Once the printed text comes from `reference`, the displaced text equals the old text,
+and the next reparse would read the table's unmoved range. Step 1 therefore moves table metadata
+with the edit, by the same rule `to_string_displaced` applies to a range, in the cases where that
+needs no new Excel rule:
+
+- an edit wholly above, below, left or right of a table moves or leaves its `reference`;
+- inserting or deleting rows strictly inside the data rows grows or shrinks it, as the lowered
+  range does today. The header and totals rows stay, and the column list does not change.
+
+Every other edit that crosses a table falls back to today's behavior for the formulas that refer
+to that table: inserting or deleting columns inside it (that would change its column list),
+deleting its header or totals row, or deleting all its data rows. Those formulas are rewritten to
+their displaced lowered text, so the structured text is lost, as it is today, and the table
+metadata is left as it is today. T-2197's findings replace the fallback. The interim behavior is
+recorded in references.md "Structured references when the table changes".
+
 ### Shared formulas and storage
 The storage text is now `Sales[[#This Row],[Qty]]` in every cell of a filled column. It does not
 depend on the cell, so one shared formula serves the whole column, as Excel stores it. Parsing it
@@ -201,6 +218,12 @@ same reference. `ThisRowKind` evaluation is O(1).
     in `to_excel_string`.
   - Escaped column names round-trip.
   - ISREF, `@`, the `:` and space operators, and SUM work with `Sales[@Qty]` as with `$A$3`.
+    Excel evidence: gen-m8b in-table 19fdc25163755713 (`SUM(Sales[@[2024]:[Val]])`) and specials
+    e804cf2f8af00680 (`ISREF(Stock[#Totals])` FALSE, `ISREF(Wide[#Totals])` TRUE).
+- Structural edits: a row or column inserted or deleted above or left of the table, and rows
+  inserted or deleted inside the data rows, keep today's values (pinned before the change) and
+  keep the structured text. A column inserted inside the table falls back to the lowered text with
+  today's values.
 - Missing table: after `remove_table` the cell's formula text is unchanged, and after
   `add_table` the reference works again.
 - Printer round trip: a property test over adversarial table and column names
@@ -217,7 +240,8 @@ same reference. `ThisRowKind` evaluation is O(1).
 
 ## Rollout
 1. **T-2195 (M): static areas.** Add `StructuredReference` and `StructuredReferenceKind`, make
-   `ungrouped()` transparent to it, wire the printers, and audit the 29 `ReferenceKind` sites.
+   `ungrouped()` transparent to it, wire the printers, audit the reference match sites, and move
+   table metadata on structural edits with the fallback above.
    Every structured reference except `#This Row` emits the wrapper. `#This Row` keeps today's
    parse-time lowering, so its text is still lost. Export is unchanged. This step is complete on
    its own. If the diff gets too large, the printer escapes and their property test can be split
