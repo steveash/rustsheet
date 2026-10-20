@@ -3,7 +3,7 @@ id: T-0915
 title: "SIN/COS/TAN (and SEC/CSC/COT): Excel's argument reduction near multiples of pi"
 milestone: M9
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -37,3 +37,15 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 Hyperbolic functions (T-0914).
+
+## Outcome
+T-1563 had already implemented the reduction: SIN, COS and TAN reduce by the x87 64-bit pi (`trig.rs` `reduce`, shared
+by all six functions), so the SIN/COS/TAN cells, the poi/47813 lines and probes-numeric/m9-trig-reduction had left the
+baselines. The two cells still failing, ironcalc-calc TRIGONOMETRIC.xlsx COT_CSC_SEC B47 `COT(PI()/4)` = 1 and C48
+`CSC(PI()/6)` = 2, come from the division, not the reduction. COT, CSC and SEC are 1 over the rounded TAN, SIN or COS,
+divided as the `/` operator divides: rounded to 64 bits, then to a double (`reciprocal_trig`, which uses
+`arithmetic::extended_quotient`). The new probe probes/trig-reciprocal-special-angles (14 cells, excel-graph) confirms
+`1/TAN(PI()/4)` = 1 on the web backend too. A correctly rounded reciprocal of the unrounded tangent was tried and ruled
+out: it broke 17 cells of m9-trig-reduction.
+Eval: ironcalc-calc fixed 2 (1048 -> 1046); probes +1 case (14/14 pass); no regressions. numbers.md "Division rounds
+twice" records the rule. NumericClose cells left: none on the SIN_COS_TAN or COT_CSC_SEC sheets.

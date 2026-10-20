@@ -992,6 +992,7 @@ C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/trig-huge-argument.case.json	86
+C	probes/trig-reciprocal-special-angles.case.json	14
 C	probes/trimrange-fractional-trim.case.json	20
 C	probes/trimrange-lift-sources.case.json	44
 C	probes/trunc-decimal-stages.case.json	56

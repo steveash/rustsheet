@@ -269,6 +269,10 @@ lands on the midpoint, and the second rounds it to the even neighbor.
 The reciprocal inside `^` and POWER is the same division: `x^-1`, `POWER(x,-1)`, `x^-3` (1 over
 the square-and-multiply power), `x^-0.5` (1 over `sqrt`) and `x^-0.3` (1 over `exp(0.3·ln x)`) all
 round twice, so `8^(-1/3)` = 0.5 and `(-8)^(-1/3)` = -0.5 although `8^(1/3)` = 1.9999999999999998.
+COT, CSC and SEC are the same division of 1 by the rounded TAN, SIN or COS: `COT(PI()/4)` is 1 like `1/TAN(PI()/4)`
+(TAN is 0.9999999999999999, whose correctly rounded reciprocal is 1.0000000000000002), `CSC(PI()/6)` and `CSC(5*PI()/6)`
+are 2 (SIN 0.49999999999999994), and `SEC(PI()/3)` is 1.9999999999999996 (probes/trig-reciprocal-special-angles, 14
+cells, excel-graph, 2026-10-20, and Excel desktop's cached ironcalc-calc TRIGONOMETRIC.xlsx COT_CSC_SEC B47, C48; T-0915).
 Evidence: probes-numeric/power-reciprocal-rounding (72 cells: 8 values whose reciprocal rounds
 differently, each through `^-1`, `POWER(,-1)` and `/`, 4 controls, 6 each through `^-3`, `^-0.5`
 and `^-0.3`, every one double-rounded; oracle: excel-graph, 2026-10-13, T-0221);
@@ -760,8 +764,9 @@ Observed (no formulation is claimed; T-0915 fits it):
 - Hypothesis, not a rule: Excel's `SIN(PI())` is exactly the 15-digit literal 1.22514845490862E-16 and `SIN(2*PI())` is exactly twice that
   with the opposite sign, which would fit a reduction by a two-part pi whose low part is that literal (true pi - fl(pi) is 1.2246467991473532E-16).
 Evidence: `probes-numeric/m9-trig-reduction` (`rustsheet-eval show probes-numeric/m9-trig-reduction.case.json`). As of 2026-10-08,
-247 of 666 cells pass; the 419 others differ from the engine (252 clear mismatches, 152 close, 15 ulp).
-Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0915.
+247 of 666 cells passed. The formulation is the x87 64-bit pi reduction ("Trig of a huge angle", T-1563), and COT, CSC and SEC
+divide as "Division rounds twice" does (T-0915); all 666 cells pass since then.
+Status: VERIFIED (excel-graph); implemented (functions/math_and_trigonometry/trig.rs, `reciprocal_trig`).
 
 ## Non-integer exponents: exp(y·ln x)
 Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
