@@ -394,6 +394,7 @@ C	probes/index-array-indices.case.json	60
 C	probes/index-lifted-edge-cases.case.json	61
 C	probes/index-literal-scalar.case.json	12
 C	probes/index-one-index-array-shape.case.json	36
+C	probes/index-reference-args.case.json	25
 C	probes/index-scalar-indexes.case.json	23
 C	probes/index-single-index.case.json	6
 C	probes/index-snap-tolerance.case.json	67
@@ -447,6 +448,7 @@ C	probes/legacy-marker-spelling-name-tlg1.case.json	6
 C	probes/legacy-marker-spelling-name-xlfn.case.json	2
 C	probes/legacy-marker-spelling-undefined.case.json	5
 C	probes/legacy-match-lookup-array-intersection.case.json	41
+C	probes/legacy-n-t-choose-array-index-shapes.case.json	64
 C	probes/legacy-n-t-choose-index-shapes.case.json	36
 C	probes/legacy-n-t-marker-shapes.case.json	24
 C	probes/legacy-n-t-reference-args-2.case.json	30
@@ -1749,6 +1751,8 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
+F	probes/index-reference-args.case.json	Calc!A4
+F	probes/index-reference-args.case.json	Calc!A5
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
@@ -2565,6 +2569,7 @@ F	probes/stat-argument-modes.case.json	Sheet1!H380
 F	probes/stat-argument-modes.case.json	Sheet1!H424
 F	probes/stat-argument-modes.case.json	Sheet1!H429
 F	probes/stat-argument-modes.case.json	Sheet1!H5
+F	probes/stat-argument-modes.case.json	Sheet1!H505
 F	probes/stat-argument-modes.case.json	Sheet1!H510
 F	probes/stat-argument-modes.case.json	Sheet1!H514
 F	probes/stat-argument-modes.case.json	Sheet1!H518
