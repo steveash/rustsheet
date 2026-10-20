@@ -3,7 +3,7 @@ id: T-0969
 title: "T.DIST/T.DIST.RT/T.DIST.2T/T.TEST: accurate Student-t CDF with direct upper tail (55 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -109,6 +109,23 @@ T_TEST F3, F4, F6, F7, F8). The density cells (D3, D10, D32, ...) are Excel nois
 around the correctly rounded density. Next: model the centre-tail noise (scan the 31 swept tail
 cells > 4 ulp: (3,100) 23 ulp, (5,1000) 65, (30,1000) 125 in the exact-centre region) and the
 density's exp(a ln y) form; then re-cut the 4-ulp criterion per decision 0056 if no model fits.
+
+## Attempt 4 (2026-10-20, opus run; merged as progress, decision 0082)
+- Above df 1000 (integer df), the centre no longer uses Cephes' fraction on the rounded y, and no longer statrs'
+  cdf above 1E7. `centre_tail` in `student_t.rs` takes every input from z, t^2/n and n/t^2:
+  - up to t = 1, `incbcf` for the centre I_z(1/2, n/2), at most 6 steps;
+  - beyond t = 1, `incbd` on n/t^2 for L itself, under 160 steps.
+
+  Integer-df series tails below 1E-12 take the same path. The density from df 1000 on is ratio / sqrt(n) *
+  exp(-((n+1)/2) log1p(t^2/n)), replacing statrs above 1000. The density at a truncated df of 0 is `#DIV/0!`.
+- Visibly-off T.DIST/T.DIST.RT/T.DIST.2T/TDIST/T.TEST/TTEST cells went from 128 to 69 (59 fixed, 0 newly visible, 19 more
+  bit-exact). No baseline line changed. The ungated probes-numeric cases carry the gain: m9-t-dist-cdf/-rt/-2t/-pdf at
+  df 1E6, m9-t-edges, m9-t-nonint-df and t1518-t-df-cut at df 1E10 and up, plus the five `#DIV/0!` cells.
+- What is left is Excel's own noise (statistics.md "Student t sweep", "Large df stays exact"): in deep-ish tails and
+  densities Excel is tens to hundreds of ulp from the exact value, and ours is within a few ulp of it. T.TEST/TTEST is
+  20 cells and the integer-df centre noise (T.DIST.2T(3,30), (2,100), (0.1,2)) another 10. Next: model the density's
+  exp(E) error at df <= 100 (38 to 165 ulp) and the T.TEST noise. A kernel that is only more accurate cannot close
+  these.
 
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
