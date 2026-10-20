@@ -10,7 +10,7 @@ merged since its last run.
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
 | ironcalc-calc | 219 | 72,223 | 98.54% | 1,056 (was 1,144) |
-| poi | 336 | 27,290 | 98.36% | 462 (was 481; 4 fixed cells recorded in this PR) |
+| poi | 336 | 27,290 | 98.36% | 462 (was 481; 4 fixed ASINH cells, recorded by T-1775 during this run) |
 | gen-m2 | 30 | 12,000 | **100%** | 0 |
 | gen-m1 | 15 | 3,750 | **100%** | 0 |
 | gen-m10 | 20 | 1,690 | 95.38% | 78 (was 117) |
@@ -26,7 +26,7 @@ merged since its last run.
 | gen-m9 | 25 | 998 | 98.90% | not gated |
 | probes-numeric | 153 | 80,719 | 91.41% | not gated |
 
-`make eval-check` on `main` (380ffed2) shows 0 regressions in every gated suite. poi had 4 unrecorded fixes, now recorded by `make eval-baseline` in this PR. poi and corpus-bench were fetched for this run.
+`make eval-check` on `main` (380ffed2) shows 0 regressions in every gated suite. poi had 4 unrecorded fixes, which T-1775 (#1164) recorded during this run. poi and corpus-bench were fetched for this run.
 
 CI on `main` is green at 380ffed2. No CI run on `main` failed since the last snapshot; 17 were cancelled by the next push. The nightly fuzz run 39366329072 (2026-10-20, 5ef2d6f1) passed all three targets.
 
