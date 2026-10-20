@@ -379,3 +379,27 @@ fn quadratic_pike_iteration_is_still_bounded() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#ERROR!");
 }
+
+// T-2015: a lazy `.*?` keeps a lower-priority greedy thread alive to the end of the text; the
+// reach scan drops it once the lazy thread matches, as the `PikeVM` does, so each search reads
+// only to its match and the iteration fits its work.
+#[test]
+fn lazy_pike_iteration_reads_only_to_each_match() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=COLUMNS(REGEXEXTRACT(REPT(\"é ab \",4000),\"\\bab.*?\\b\",1))",
+    );
+    model._set(
+        "A2",
+        "=TEXTJOIN(\"|\",FALSE,REGEXEXTRACT(\"é ab abc é abé ab\",\"\\bab.*?\\b\",1))",
+    );
+    model._set(
+        "A3",
+        "=TEXTJOIN(\"|\",FALSE,REGEXEXTRACT(\"é aéz az aé\",\"\\ba.*?z|\\ba\",1))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"4000");
+    assert_eq!(model._get_text("A2"), *"ab|abc|abé|ab");
+    assert_eq!(model._get_text("A3"), *"aéz|az|a");
+}
