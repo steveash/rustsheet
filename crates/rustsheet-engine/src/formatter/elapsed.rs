@@ -1,4 +1,4 @@
-//! Elapsed `[h]`/`[m]`/`[s]` token text.
+//! Elapsed `[h]`/`[m]`/`[s]` token text and fractional seconds (`s.000`, `[s].000`).
 
 /// The unit of an elapsed `[h]`/`[m]`/`[s]` token.
 #[derive(Clone, Copy)]
@@ -6,6 +6,60 @@ pub(super) enum ElapsedUnit {
     Hour,
     Minute,
     Second,
+}
+
+/// A non-negative serial counted in the shown fraction of a second (`.0`, `.00`, `.000`). Excel
+/// rounds the whole value to that precision and splits it from there, so the clock, elapsed and
+/// fraction tokens agree: `[h]:m:s.000` on 3.14159 is "75:23:53.376", `[hh]:mm:ss.0` "75:23:53.4",
+/// `[s].000` "271433.376" (an elapsed count before a fraction truncates instead of rounding);
+/// poi/ElapsedFormatTests A2-A7, number-formats.md "Elapsed-time tokens".
+pub(super) struct FractionalSeconds {
+    /// The value in units of `1/scale` second, rounded.
+    units: f64,
+    scale: f64,
+    digits: usize,
+}
+
+impl FractionalSeconds {
+    /// `None` for more digits than a format may show. The caller has rejected serials past
+    /// 9999-12-31, so the units stay far below 2^53 and count exactly.
+    pub(super) fn new(value: f64, digits: usize) -> Option<Self> {
+        let scale = [1.0, 10.0, 100.0, 1000.0].get(digits).copied()?;
+        Some(Self {
+            units: (value * 86400.0 * scale).round(),
+            scale,
+            digits,
+        })
+    }
+
+    /// Hours, minutes and seconds of the time of day after rounding.
+    pub(super) fn clock(&self) -> (f64, f64, f64) {
+        let seconds = (self.units % (86400.0 * self.scale) / self.scale).floor();
+        (
+            (seconds / 3600.0).floor(),
+            (seconds % 3600.0 / 60.0).floor(),
+            seconds % 60.0,
+        )
+    }
+
+    /// The whole elapsed count of `unit` after rounding.
+    fn elapsed(&self, unit: ElapsedUnit) -> f64 {
+        let seconds = (self.units / self.scale).floor();
+        match unit {
+            ElapsedUnit::Hour => (seconds / 3600.0).floor(),
+            ElapsedUnit::Minute => (seconds / 60.0).floor(),
+            ElapsedUnit::Second => seconds,
+        }
+    }
+
+    /// The fraction digits, zero-padded (`376`, `4`, `00`).
+    pub(super) fn digits_text(&self) -> String {
+        format!(
+            "{:0>width$.0}",
+            self.units % self.scale,
+            width = self.digits
+        )
+    }
 }
 
 /// `x` rounded to `1/scale`; a magnitude whose scaled value overflows is already integral, and
@@ -27,15 +81,24 @@ fn snap(x: f64, scale: f64) -> f64 {
 /// 1e-12 (1.5/86400 days is "2" although it is 1.4999999999999998 s, yet 0.49999999999 s stays
 /// "0"), `[h]`/`[m]` snap them to the millisecond ((3-1E-7) h is "3"). Those snaps are fitted to
 /// the probes, not documented. Excel has no 32-bit limit (T-1362) and no i64 one (T-1375).
-pub(super) fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> String {
+/// With a fraction token in the section the count comes from `fraction` instead.
+pub(super) fn elapsed_text(
+    value: f64,
+    padded: bool,
+    unit: ElapsedUnit,
+    fraction: Option<&FractionalSeconds>,
+) -> String {
     let secs = value * 86400.0;
-    let n = match unit {
-        ElapsedUnit::Second => snap(secs, 1e12).round(),
-        // Excel counts minutes and hours from the serial itself once the seconds overflow.
-        ElapsedUnit::Minute if secs.is_infinite() => (value * 1440.0).floor(),
-        ElapsedUnit::Hour if secs.is_infinite() => (value * 24.0).floor(),
-        ElapsedUnit::Minute => (snap(secs, 1e3) / 60.0).floor(),
-        ElapsedUnit::Hour => (snap(secs, 1e3) / 3600.0).floor(),
+    let n = match (fraction, unit) {
+        (Some(fraction), _) => fraction.elapsed(unit),
+        (None, unit) => match unit {
+            ElapsedUnit::Second => snap(secs, 1e12).round(),
+            // Excel counts minutes and hours from the serial itself once the seconds overflow.
+            ElapsedUnit::Minute if secs.is_infinite() => (value * 1440.0).floor(),
+            ElapsedUnit::Hour if secs.is_infinite() => (value * 24.0).floor(),
+            ElapsedUnit::Minute => (snap(secs, 1e3) / 60.0).floor(),
+            ElapsedUnit::Hour => (snap(secs, 1e3) / 3600.0).floor(),
+        },
     };
     // Excel: a count that overflows f64 prints as 0, and from 1e15 up the digits are the first 15
     // significant ones followed by zeros (docs/excel-semantics/number-formats.md, "Elapsed tokens
@@ -79,24 +142,27 @@ mod tests {
 
     #[test]
     fn huge_counts_keep_fifteen_significant_digits() {
-        assert_eq!(elapsed_text(1e15, false, Second), "86400000000000000000");
         assert_eq!(
-            elapsed_text(1e100, false, Hour),
+            elapsed_text(1e15, false, Second, None),
+            "86400000000000000000"
+        );
+        assert_eq!(
+            elapsed_text(1e100, false, Hour, None),
             format!("24{}", "0".repeat(100))
         );
-        assert_eq!(elapsed_text(1e10, false, Second), "864000000000000");
+        assert_eq!(elapsed_text(1e10, false, Second, None), "864000000000000");
     }
 
     #[test]
     fn overflowed_counts_are_zero() {
-        assert_eq!(elapsed_text(2.0807e303, false, Second), "0");
-        assert_eq!(elapsed_text(1.5e307, false, Hour), "0");
-        assert_eq!(elapsed_text(1.5e307, false, Minute), "0");
+        assert_eq!(elapsed_text(2.0807e303, false, Second, None), "0");
+        assert_eq!(elapsed_text(1.5e307, false, Hour, None), "0");
+        assert_eq!(elapsed_text(1.5e307, false, Minute, None), "0");
     }
 
     #[test]
     fn finite_huge_counts_do_not_collapse_to_zero() {
-        assert!(elapsed_text(2.08e303, false, Second).len() > 300);
-        assert!(elapsed_text(1e305, false, Minute).len() > 300);
+        assert!(elapsed_text(2.08e303, false, Second, None).len() > 300);
+        assert!(elapsed_text(1e305, false, Minute, None).len() > 300);
     }
 }
