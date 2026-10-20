@@ -1,8 +1,8 @@
 //! SPEC-0011 "Security rule for kernel work" (T-1893): a kernel whose work could depend on its
-//! argument values is `KernelWork::Weighted` in the lifting table, or `Constant` with its fixed
-//! cap named below, so no family task can enter one as `Constant` silently. A family task that
-//! enters a value-dependent function adds it here. The check does not see a `Weighted` kernel's
-//! own per-call cap; its table entry's doc comment cites it.
+//! argument values is `KernelWork::Weighted` (or `ByArg`) in the lifting table, or `Constant`
+//! with its fixed cap named below, so no family task can enter one as `Constant` silently. A
+//! family task that enters a value-dependent function adds it here. The check does not see a
+//! `Weighted` kernel's own per-call cap; its table entry's doc comment cites it.
 
 use super::super::kinds::KernelWork;
 use crate::functions::Function;
@@ -25,7 +25,8 @@ const WORKDAY_SEARCH: &str = "at most about 44 closed-form counts of the prepare
 const NETWORKDAYS_COUNT: &str = "one closed-form count of the prepared holidays";
 
 /// The value-dependent kernels: each with the fixed cap that lets its entry be `Constant`, or
-/// `None` when it must be `Weighted` (a cap that grows with the values, or one not yet read).
+/// `None` when it must be `Weighted` or `ByArg` (a cap that grows with the values, or one not yet
+/// read).
 /// A function with no table entry yet is checked once it is entered.
 const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     // Fixed caps, read in each kernel.
@@ -135,7 +136,7 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
 ];
 
 /// The entries of `list` that break the rule: `Constant` with no cap named, or a `Weighted`
-/// weight of 1, which charges no more than `Constant`.
+/// weight of 1 or a `ByArg` weight of 0, which charge no more than `Constant`.
 fn violations(list: &[(Function, Option<&str>)]) -> Vec<String> {
     list.iter()
         .filter_map(|(function, cap)| {
@@ -146,6 +147,9 @@ fn violations(list: &[(Function, Option<&str>)]) -> Vec<String> {
                 )),
                 (KernelWork::Weighted(weight), _) if weight <= 1 => Some(format!(
                     "{function:?} is Weighted({weight}), no more than Constant"
+                )),
+                (KernelWork::ByArg { weight: 0, .. }, _) => Some(format!(
+                    "{function:?} is ByArg with weight 0, no more than Constant"
                 )),
                 _ => None,
             }
@@ -166,4 +170,46 @@ fn a_constant_kernel_without_a_cap_is_caught() {
         violations(&seeded),
         ["Permut is Constant: make it Weighted or name its fixed cap"]
     );
+}
+
+/// BESSEL's `ByArg` charge (T-1819): an element at the order cap costs `2^16`, so exactly 2,048
+/// of them fit under `MAX_LIFTED_CELL_VISITS` (as the flat weight allowed before) and 2,049 do
+/// not; an order-0 element costs 1, a text order is charged as at the cap and a past-the-cap
+/// order, which the kernel refuses before looping, 1.
+#[test]
+fn bessel_elements_are_charged_by_order() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    let work = Function::Besselj.arg_kinds().map(|kinds| kinds.work);
+    let Some(work @ KernelWork::ByArg { arg: 1, .. }) = work else {
+        panic!("BESSELJ is not charged by its order: {work:?}");
+    };
+    let column = |orders: &[ArrayNode]| {
+        vec![
+            LiftedArg::Scalar(CalcResult::Number(2.5)),
+            LiftedArg::Grid(orders.iter().map(|n| vec![n.clone()]).collect()),
+        ]
+    };
+    let at_cap = |count: usize| column(&vec![ArrayNode::Number(100_000.0); count]);
+    let units = |args: &[LiftedArg], rows: usize| kernel_units(work, args, rows, 1, rows as u64);
+    assert_eq!(units(&at_cap(2048), 2048), MAX_LIFTED_CELL_VISITS);
+    assert!(units(&at_cap(2049), 2049) > MAX_LIFTED_CELL_VISITS);
+    assert_eq!(units(&column(&[ArrayNode::Number(0.0)]), 1), 1);
+    assert_eq!(units(&column(&[ArrayNode::Number(1.9)]), 1), 1);
+    assert_eq!(units(&column(&[ArrayNode::Number(-5.0)]), 1), 1);
+    assert_eq!(units(&column(&[ArrayNode::Number(100_000.9)]), 1), 1 << 16);
+    assert_eq!(units(&column(&[ArrayNode::Number(100_001.0)]), 1), 1);
+    assert_eq!(units(&column(&[ArrayNode::Number(1E300)]), 1), 1);
+    assert_eq!(units(&column(&[ArrayNode::Number(f64::INFINITY)]), 1), 1);
+    assert_eq!(units(&column(&[ArrayNode::String("7".into())]), 1), 1 << 16);
+    assert_eq!(units(&column(&[ArrayNode::Boolean(true)]), 1), 1);
+    // A scalar order over a lifted x: every element is charged that order.
+    let scalar = [
+        LiftedArg::Grid(vec![vec![ArrayNode::Number(1.0)]; 10]),
+        LiftedArg::Scalar(CalcResult::Number(100_000.0)),
+    ];
+    assert_eq!(kernel_units(work, &scalar, 10, 1, 10), 10 << 16);
 }

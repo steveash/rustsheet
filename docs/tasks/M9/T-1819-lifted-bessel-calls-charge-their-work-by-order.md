@@ -3,7 +3,7 @@ id: T-1819
 title: "Lifted BESSEL calls charge their work by order, not a flat weight"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -30,11 +30,24 @@ per-call cap. Measured worst case: about 1 ms per element at n = 100,000 (releas
 This changes the SPEC-0011 driver: amend the spec's "Security rule for kernel work" in the same PR.
 
 ## Acceptance criteria
-- [ ] The two calls in the Goal give Excel's values (scalar controls / a probe), and a lift whose
+- [x] The two calls in the Goal give Excel's values (scalar controls / a probe), and a lift whose
   summed order work exceeds the budget is `#ERROR!` without running any element (test).
-- [ ] The worst case stays bounded to about 2 s in release (measure it and note the figure).
-- [ ] The engineering.md DEVIATION entry and SPEC-0011 describe the narrowed cap.
-- [ ] `make check` green; reviewers approve.
+- [x] The worst case stays bounded to about 2 s in release (measure it and note the figure).
+- [x] The engineering.md DEVIATION entry and SPEC-0011 describe the narrowed cap.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other value-dependent kernels; this task only adds the work kind and uses it for BESSEL*.
+
+## Outcome
+New `KernelWork::ByArg { arg, cap, weight }` (lift/kinds/mod.rs). Before any element runs, the
+driver (`lift/driver.rs` `kernel_units`) charges each element by its order:
+`1 + trunc(n) * weight / cap` for a number with
+`0 <= trunc(n) <= cap`, the cap for a text, and 1 otherwise (past the cap the kernel refuses first). That is
+one O(elements) pass. BESSELI/J/K/Y use `arg: 1, cap: MAX_ORDER, weight: 2^16 - 1`. An element at
+the cap still costs 2^16, so at most 2,048 run, as before. Small orders now lift freely:
+`ROWS(BESSELJ(2.5,SEQUENCE(2100)))` = 2100 and `ROWS(BESSELJ(SEQUENCE(5000)/100,0))` = 5000.
+`ROWS(BESSELI(2.5,SEQUENCE(2100,1,100000,0)))` is `#ERROR!` before any element runs.
+Worst case in release, 2,048 elements at the cap: BESSELI 1.88 s, BESSELJ 0.73 s, BESSELK 0.52 s,
+BESSELY 0.51 s. SPEC-0011's security rule and the engineering.md "BESSEL order cap" DEVIATION
+describe the narrowed cap. Eval delta: none; no suite cell lifts a Bessel call past 2,048 elements.
