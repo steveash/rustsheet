@@ -1,7 +1,7 @@
 # T-1941 W6: chain-top polish with W5's exact objective (hypo.c via top6.py; J0 = top-2, withlast = 0, i.e. scored on
 # the sites S_top-1, P_top-2, S_top-2 only, independent of c_J0's whole-u shifts): a coarse (c_top-1, c_top) grid, then
 # a fine one around the best. Usage: topgrid6.py RFILE CHAIN OUT CH [TRUTH]
-#   env R1/S1 (c_top-1 half-range/step, 300/2), R2/S2 (c_top, 8e4/128), MAXRUNS (500), HYPOLIB
+#   env R1/S1 (c_top-1 half-range/step, 300/2), R2/S2 (c_top, 8e4/128), MAXRUNS (500), HYPOLIB, SHEAR (x0)
 import sys, os, time, numpy as np
 sys.path.insert(0, sys.path[0])
 from top6 import Top6
@@ -17,12 +17,17 @@ R2, S2 = int(float(os.environ.get("R2", 8e4))), int(float(os.environ.get("S2", 1
 t0 = time.time()
 k1 = np.arange(-R1, R1 + 1, S1)
 k2 = np.arange(-R2, R2 + 1, S2)
-H = np.array([[C[J0], C[top - 1] + a * u1, C[top] + b * u2] for a in k1 for b in k2])
+# SHEAR=X0: for each c_top step b, c_top-1 moves by -b x0 u2/u1 (keeps S_top-1 fixed at x0) plus a +-R1 band, since
+# the objective's capture in c_top-1 is ~1 ulp and each c_top step shifts S_top-1 by more than that
+X0s = float(os.environ.get("SHEAR", 0))
+sh = (lambda b: int(round(-b * X0s * u2 / u1))) if X0s else (lambda b: 0)
+H = np.array([[C[J0], C[top - 1] + (a + sh(b)) * u1, C[top] + b * u2] for a in k1 for b in k2])
 v = t.obj(CH, J0, H, 0)
 o = np.argsort(v)[::-1]
 mu, sd = np.median(v), v.std()
-print("coarse %d hyps (%d runs, %d pts) %.0fs; top: %s" % (len(H), t.nr, len(t.x), time.time() - t0, " | ".join("d%d %+d d%d %+d %.1f (Z %.1f)" % (top - 1, k1[i // len(k2)], top, k2[i % len(k2)], v[i], (v[i] - mu) / sd) for i in o[:4])), flush=True)
-b1, b2 = k1[o[0] // len(k2)], k2[o[0] % len(k2)]
+print("coarse %d hyps (%d runs, %d pts) %.0fs; top: %s" % (len(H), t.nr, len(t.x), time.time() - t0, " | ".join("d%d %+d d%d %+d %.1f (Z %.1f)" % (top - 1, k1[i // len(k2)] + sh(k2[i % len(k2)]), top, k2[i % len(k2)], v[i], (v[i] - mu) / sd) for i in o[:4])), flush=True)
+b2 = k2[o[0] % len(k2)]
+b1 = k1[o[0] // len(k2)] + sh(b2)
 f1 = np.arange(b1 - S1, b1 + S1 + 1)
 f2 = np.arange(b2 - S2, b2 + S2 + 1, max(1, S2 // 16))
 Hf = np.array([[C[J0], C[top - 1] + a * u1, C[top] + b * u2] for a in f1 for b in f2])
