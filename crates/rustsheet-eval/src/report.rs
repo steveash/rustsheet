@@ -8,6 +8,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
+use crate::catalog_coverage::{self, MilestoneCoverage};
 use crate::closeness::Closeness;
 use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
 use crate::function_scope::{self, FunctionScope};
@@ -259,6 +260,10 @@ pub struct RunReport {
     /// suite did not run.
     #[serde(default)]
     pub function_scope: Option<FunctionScope>,
+    /// Catalog coverage per function milestone (T-2112); filled by the caller, which knows the
+    /// suites' origin and milestone tags.
+    #[serde(default)]
+    pub catalog_coverage: Vec<MilestoneCoverage>,
 }
 
 impl RunReport {
@@ -366,6 +371,7 @@ impl RunReport {
             milestone_lists: Vec::new(),
             probe_milestones: Vec::new(),
             function_scope: function_scope::summarize(catalog, results),
+            catalog_coverage: Vec::new(),
         }
     }
 
@@ -607,6 +613,7 @@ impl RunReport {
             let _ = writeln!(md);
         }
         self.write_evidence(&mut md);
+        catalog_coverage::write_markdown(&self.catalog_coverage, &mut md);
         self.write_out_of_scope(&mut md);
         md
     }
