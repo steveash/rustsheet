@@ -669,7 +669,18 @@ impl Model {
         })
     }
     pub(crate) fn fn_int(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Int, args, cell, |f| Ok(f64::floor(f)))
+        // Excel cuts to 15 significant digits first, then rounds down: INT(1-2^-53) = 1
+        // (docs/excel-semantics/numbers.md "INT cuts to 15 significant digits first", T-2171).
+        // On the cut value, down is toward zero for a positive number and away from zero for a
+        // negative one; the negative case is unprobed and follows the same cut.
+        self.number_fn(Function::Int, args, cell, |f| {
+            let mode = if f < 0.0 {
+                RoundMode::Up
+            } else {
+                RoundMode::Down
+            };
+            Ok(round_decimal(f, 0.0, mode).unwrap_or_else(|| f.floor()))
+        })
     }
 
     pub(crate) fn fn_pi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
