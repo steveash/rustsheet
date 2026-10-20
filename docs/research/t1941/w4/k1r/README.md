@@ -52,3 +52,14 @@ Setup:
      sign only on K1.
    - Stage grid ratios u(S)/u(P): N S1 4-8, S2 4-8, S3 2-4, S4 2-4, S5 2-4, S6 1-4, S7 1-2; D S1 8-16, S2 4-8, S3 0.5-2,
      S4 4, S5 0.5-2, S6 2, S7 1.
+
+## Final scripts (2026-10-20 pause)
+- `gsimo2.c`, `gsimn.c`, `gsimd2.c`: offset-cap, no-op-shift and per-point no-op-delta simulators.
+- `runcap2.py` is the per-run 26-site cap for y ≥ 1.8. `runfit2.py` is the per-run (alpha + beta·ramp) no-op shift.
+- `gclimb.py`: dip-weighted BKZ null-lattice global climb (fit on even rows, test on odd). Needs fpylll.
+  `uplat.py` (not committed) is the same thing with free = the upper coefficients and the plain exact objective.
+  It found plain1 to be a strict local maximum.
+- `plainconv.py` turns the hidden e/y terms into plain coefficients. `mclimb.py` is the generic exact climb.
+- `dtrack.py`: per dense run, the strongest disagreement line vs the predicted site frequency (the base for the
+  D P2 ladder unwrap).
+- `forensics.py`: the smallest N/D ulp change that matches Excel, by region.
