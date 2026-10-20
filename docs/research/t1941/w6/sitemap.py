@@ -4,8 +4,8 @@
 # vs the exact rational of the base chain on all site regressors (per run: mean and linear trend removed, which also
 # absorbs smooth coefficient errors): beta ~ 1 with large Z = stored (lit); beta ~ 0 = kept in 80 bits (dark). Run it on
 # Excel and on synthetics from the same chain (all stored, or with KEEP masks) to read the signatures.
-# Usage: sitemap.py RFILE CHAIN [npts]
-import sys, numpy as np
+# Usage: sitemap.py RFILE CHAIN [npts]   env KEEP (unstored sites), PERRUN
+import sys, os, numpy as np
 
 sys.path.insert(0, sys.path[0])
 from lib6 import st, L
@@ -22,17 +22,22 @@ detrend = Detrend(x, gid)
 XL = x.astype(L)
 
 
+KEEP = set(os.environ.get("KEEP", "").split(",")) - {""}  # sites modelled unstored (80-bit, no regressor)
+
+
 def sites(C, ch):
     """stored-Horner site errors (long double, absolute) and the x^j weights"""
     out = {}
     s = L(C[-1]) * np.ones_like(XL)
     for j in range(len(C) - 2, -1, -1):
         p = s * XL
-        ps = L(st(p))
-        out["%s.P%d" % (ch, j)] = (ps - p) * XL**j
+        ps = p if "%s.P%d" % (ch, j) in KEEP else L(st(p))
+        if ps is not p:
+            out["%s.P%d" % (ch, j)] = (ps - p) * XL**j
         sv = ps + L(C[j])
-        ss = L(st(sv))
-        out["%s.S%d" % (ch, j)] = (ss - sv) * XL**j
+        ss = sv if "%s.S%d" % (ch, j) in KEEP else L(st(sv))
+        if ss is not sv:
+            out["%s.S%d" % (ch, j)] = (ss - sv) * XL**j
         s = ss
     return out, np.polyval(np.array(C, dtype=L)[::-1], XL)
 
