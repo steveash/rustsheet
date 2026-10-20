@@ -15,8 +15,8 @@ pub(crate) use super::parse_formatted::{
 };
 use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
-    locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     lexer::Compare,
+    locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     parser::{GeneralPart, ParsePart, Parser, TextToken},
 };
 
