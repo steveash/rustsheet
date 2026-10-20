@@ -17,6 +17,7 @@ mod text;
 use crate::calc_result::CalcResult;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::parser::ArrayNode;
+use crate::formatter::dates::FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
 use crate::functions::Function;
 
 /// How one parameter takes an array or a range (SPEC-0011).
@@ -78,10 +79,11 @@ pub(crate) enum ValueWork {
     /// number), and anything else (an order past the cap or negative, an error, a logical, a
     /// blank) 1, as the kernel refuses it before looping or runs order 0.
     Loop { arg: usize, cap: u32, weight: u32 },
-    /// `walks` walks of a coupon schedule that step one period at a time between the earliest and
-    /// the latest of the date arguments `dates`, `frequency` periods a year (T-1846). A walk is
-    /// charged `weight` units at the longest schedule (quarterly across the whole calendar,
-    /// [`COUPON_SPAN_DAYS`]) and in proportion to its period count below that, at least 1; see
+    /// `walks` passes over a coupon schedule that steps one period at a time between the earliest
+    /// and the latest of the date arguments `dates`, `frequency` periods a year (T-1846; T-1869
+    /// for the solvers, whose one pass is the walk and every price sum). A pass is charged
+    /// `weight` units at the longest schedule (quarterly across the whole calendar,
+    /// [`COUPON_SPAN_DAYS`]) and in proportion to its period count plus one below that; see
     /// [`coupon_walk_units`].
     CouponWalks {
         dates: &'static [usize],
@@ -203,7 +205,15 @@ impl ValueWork {
                     earliest = earliest.min(date);
                     latest = latest.max(date);
                 }
-                let span = (latest - earliest).clamp(0.0, COUPON_SPAN_DAYS as f64);
+                // A 1904 workbook reads a date 2 * 1462 days on, but not a negative one
+                // (`DateSystem::financial_1900_serial`, `odd_period_1900_serial`): a span from a
+                // negative date may be that much wider.
+                let shift = if earliest < 0.0 {
+                    FINANCIAL_EPOCH_1904_IN_1900_SERIALS as f64
+                } else {
+                    0.0
+                };
+                let span = (latest - earliest + shift).clamp(0.0, COUPON_SPAN_DAYS as f64);
                 // `span` is a whole number in [0, COUPON_SPAN_DAYS], so the cast is exact.
                 let walk = coupon_walk_units(span as u64, per_year as u64, weight);
                 u64::from(walks).saturating_mul(walk).max(1)
@@ -214,13 +224,15 @@ impl ValueWork {
 
 /// The units one coupon schedule walk across `span` days at `per_year` (1, 2 or 4) periods a
 /// year is charged: `weight` for the longest walk, a quarterly schedule across
-/// [`COUPON_SPAN_DAYS`], and in proportion to the period count `span * per_year` below it,
-/// rounded up so that a walk of a period or two still costs a unit.
+/// [`COUPON_SPAN_DAYS`], and in proportion to the period count `span * per_year / 365` plus one
+/// below it, rounded up. The extra period is each pass's fixed cost: a solver price over a
+/// one-coupon schedule costs about as much as one more coupon term (T-1869: 20,000 two-coupon
+/// YIELDs at the solver's extremes took 12 ms, four-coupon ones 223 ms; a release build).
 pub(crate) fn coupon_walk_units(span: u64, per_year: u64, weight: u32) -> u64 {
-    let longest = COUPON_SPAN_DAYS * 4;
-    // At most 2^16 * 2958465 * 4, far inside a u64.
-    let scaled = u64::from(weight) * span.min(COUPON_SPAN_DAYS) * per_year.min(4);
-    scaled.div_ceil(longest).max(1)
+    let longest = COUPON_SPAN_DAYS * 4 + 365;
+    // At most 2^24 * (2958465 * 4 + 365), far inside a u64.
+    let scaled = u64::from(weight) * (span.min(COUPON_SPAN_DAYS) * per_year.min(4) + 365);
+    scaled.div_ceil(longest)
 }
 
 impl KernelWork {
