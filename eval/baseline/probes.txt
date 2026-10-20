@@ -844,6 +844,7 @@ C	probes/steyx-exact-fit.case.json	28
 C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-boundaries.case.json	30
 C	probes/subnormal-function-results.case.json	129
+C	probes/subnormal-saved-as-zero.case.json	11
 C	probes/subnormal-sumsq-sumproduct-edges.case.json	24
 C	probes/subnormal-text-and-tail-companions.case.json	30
 C	probes/substitute-overlapping-instances.case.json	24
