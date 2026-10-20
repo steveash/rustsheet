@@ -314,6 +314,7 @@ C	probes/fin-amor-period-bound-c.case.json	6
 C	probes/fin-amor-period-bound.case.json	31
 C	probes/fin-amordegrc.case.json	23
 C	probes/fin-argument-modes.case.json	386
+C	probes/fin-bond-negative-basis.case.json	176
 C	probes/fin-coupon-walk-bounds-1904.case.json	14
 C	probes/fin-coupon-walk-bounds-b.case.json	13
 C	probes/fin-coupon-walk-bounds-c.case.json	200
@@ -1355,6 +1356,16 @@ F	probes/fin-argument-modes.case.json	Sheet1!H72
 F	probes/fin-argument-modes.case.json	Sheet1!H80
 F	probes/fin-argument-modes.case.json	Sheet1!H88
 F	probes/fin-argument-modes.case.json	Sheet1!H95
+F	probes/fin-bond-negative-basis.case.json	Sheet1!E1
+F	probes/fin-bond-negative-basis.case.json	Sheet1!E17
+F	probes/fin-bond-negative-basis.case.json	Sheet1!E2
+F	probes/fin-bond-negative-basis.case.json	Sheet1!E21
+F	probes/fin-bond-negative-basis.case.json	Sheet1!E9
+F	probes/fin-bond-negative-basis.case.json	Sheet1!G1
+F	probes/fin-bond-negative-basis.case.json	Sheet1!G17
+F	probes/fin-bond-negative-basis.case.json	Sheet1!G2
+F	probes/fin-bond-negative-basis.case.json	Sheet1!G21
+F	probes/fin-bond-negative-basis.case.json	Sheet1!G9
 F	probes/fin-coupon-walk-bounds-1904.case.json	Sheet1!A5
 F	probes/fin-coupon-walk-bounds-1904.case.json	Sheet1!A6
 F	probes/fin-coupon-walk-bounds-b.case.json	Sheet1!A9
@@ -1471,7 +1482,6 @@ F	probes/fin-yield-odd-lift.case.json	Sheet1!A5
 F	probes/fin-yield-odd-lift.case.json	Sheet1!I5
 F	probes/fin-yield-odd-lift.case.json	Sheet1!I7
 F	probes/fin-yield-odd-lift.case.json	Sheet1!I9
-F	probes/fin-yield-odd-lift.case.json	Sheet1!L5
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K1
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K10
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K11
