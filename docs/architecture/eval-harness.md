@@ -199,6 +199,18 @@ the row's known-failure item count there (most first, then by id; also
 The console summary prints the M0–M2 row.
 The rows are exit measures; `eval-check` is the gate.
 
+## Milestone function scope
+`crates/rustsheet-eval/src/function_scope.rs` scores the `ironcalc-calc` cells by the functions
+their formulas call (T-1472, T-2111). report.md has a "Milestone function scope (ironcalc-calc)"
+section (report.json: `function_scope.rows`) with one cumulative row for each report row of the probe
+milestones (M2, M5 to M11; the same list, plus any other catalog milestone; M0 and M1 functions count in M2): a cell is in the row of `Mk` when every
+function its formula calls (an array member: its anchor's; plus the functions of any defined name it
+calls, up to 16 levels) has a catalog milestone of at most `k`. A function-free formula is in every
+row and a function the catalog does not list counts as in scope. Each row has scored cells,
+bit-exact, deviations and failing; the failing cells are listed once, under the first row that has
+them ("Newly failing at Mk"). Cells with neither formula nor anchor (spill children) are left out and
+counted separately. The M2 row is the M2 exit measure and the M5 row the M5 one (docs/milestones.md).
+
 ## CLI
 ```
 rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check | update-baseline [--allow-regressions]
