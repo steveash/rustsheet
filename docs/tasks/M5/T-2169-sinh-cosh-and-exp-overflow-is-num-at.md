@@ -1,5 +1,5 @@
 ---
-id: T-2142
+id: T-2169
 title: "SINH, COSH and EXP overflow is #NUM! at once (no infinity reaches a caller); SECH past the overflow is 0"
 milestone: M5
 lane: functions-math

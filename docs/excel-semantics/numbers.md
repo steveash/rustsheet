@@ -75,7 +75,7 @@ Evidence: probes/trunc-decimal-stages A1–A56 (excel-graph, 2026-10-11, T-0297)
 Status: VERIFIED
 Implemented in: `fn_trunc` in functions/math_and_trigonometry/mathematical.rs, via `round_decimal` (T-0297)
 
-## INT cuts to 15 significant digits first (T-2144)
+## INT cuts to 15 significant digits first (T-2171)
 Rule: INT rounds down after the same 15-significant-digit cut as TRUNC and ROUNDDOWN, so binary noise just below an
 integer does not drop a unit: `INT(1-2^-53)` = 1 (0.99999999999999989 reads 1.00000000000000), so does
 `FLOOR.PRECISE(INT(1-2^-53))`, and INT of 999999876543311.88 (`(1.005+E11)+(1E+15-A8)`) is 999999876543312.
@@ -83,16 +83,16 @@ Ours: `f64::floor`, which gives 0 and 999999876543311.
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/0362d48f56108faa Calc!A364, gen-m5/043ee562f32eb901 Calc!A62,
 gen-m5/1962de140dae0111 Calc!A352, gen-m5/38b1b8e51dbad326 Calc!A212, gen-m5/b0d597ec5af5fb92 Calc!A173.
 Unprobed: negatives (`INT(-(1-2^-53))`) and a 16th-digit tie.
-Status: VERIFIED (excel-graph, 5 cells); not implemented (T-2144).
+Status: VERIFIED (excel-graph, 5 cells); not implemented (T-2171).
 
-## ODD and EVEN above 2^53: last digits not explained (T-2146)
+## ODD and EVEN above 2^53: last digits not explained (T-2173)
 Observation: `ODD(9999999999999999)` (the literal reads 9999999999999990) is 9999999999999992; ours is 9999999999999988, from
 `ceil((|x|-1)/2)*2+1` in doubles, where `|x|-1` already rounds down. `RADIANS(ODD(9999999999999999)*(-1-B11))` follows it.
 `EVEN(6.223015277861143E+37)` (the engine's value of `(0.1/E5)*SERIESSUM(-2.5,B10,3,0.1)`) is 6.223015277861144E+37 in
 Excel, one ulp above; ours returns the input (it is already even). The EVEN input may itself differ by an ulp in Excel
 (SERIESSUM's power, T-2163). No formulation is fitted yet.
 Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224, gen-m5/38b1b8e51dbad326 Calc!A10.
-Status: OBSERVED; T-2146 (after the T-2145 oracle sweep).
+Status: OBSERVED; T-2173 (after the T-2172 oracle sweep).
 
 ## MROUND rounds the quotient as a 15-digit decimal (T-2167)
 Observation: `MROUND(0.3,0.2)` is 0.4. In doubles 0.3/0.2 is 1.4999999999999998, which rounds to 1 (ours: 0.2); Excel rounds
@@ -812,7 +812,7 @@ exp forms regressed COTH_CSCH_SECH B10, B47 and C54 came from the engine's TANH/
 The division is the worksheet `/` (twice-rounded, like COT/CSC/SEC); no probed cell tells it from a plain division.
 Status: VERIFIED (excel-graph). Implemented in `fn_coth`, `fn_csch`, `fn_sech` (mathematical.rs) on `hyperbolic::{tanh, sinh, cosh}`.
 
-### SINH and COSH overflow is `#NUM!` at once; SECH there is 0 (T-2142)
+### SINH and COSH overflow is `#NUM!` at once; SECH there is 0 (T-2169)
 Rule: SINH and COSH are `#NUM!` once `e^|x|` overflows a double, although the true sinh(710) = 1.117E+308 is finite:
 `SINH(710)`, `SINH(-710)`, `COSH(710)` and `COSH(-710)` are `#NUM!` (SINH(709.78) is a number, above; the cut in
 (709.78, 710) is unprobed). SECH of the same arguments is 0, not an error, as CSCH(710) is: `SECH(710)` = `SECH(-710)` = 0, so
@@ -827,8 +827,8 @@ Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1962de140dae0111 Calc!A30 and
 gen-m5/25768de48ae7f2f9 Calc!A315 (SINH(710)), gen-m5/399071ff6782ab16 Calc!A3, gen-m5/9284730052aff46c Calc!A396, gen-m5/90bf45bea539723d Calc!A86,
 gen-m5/38b1b8e51dbad326 Calc!A331, gen-m5/bbbd316c346ce645 Calc!A327, gen-m5/97737fad5004ba83 Calc!A21, gen-m5/6a511beadb56b932 Calc!A107,
 gen-m5/4febabc66cfdf9a1 Calc!A156, gen-m5/6ba5e4aceeef8209 Calc!A316, gen-m5/d9fb1e918971111b Calc!A108, gen-m5/fc81c2f704bef138 Calc!A46,
-gen-m5/ecd1b828aebad1e8 Calc!A185; the full list of 37 cells is in T-2142.
-Status: VERIFIED (excel-graph); not implemented (T-2142).
+gen-m5/ecd1b828aebad1e8 Calc!A185; the full list of 37 cells is in T-2169.
+Status: VERIFIED (excel-graph); not implemented (T-2169).
 
 ### SINH and TANH on 0.4 .. 1: no formula found yet (T-0917, negative result)
 Excel's SINH and TANH are not correctly rounded on (0.4, 1): errors up to 1.45 ulp (SINH(0.7)) and 1.8 ulp (TANH(0.54)) against
@@ -1758,7 +1758,7 @@ distinguished by any probed cell.
 TAN misses this model by 1 ulp at arguments near 1.2E+8: `TAN(123456789.123)` is 56.41575748007382 (model and ours
 56.415757480073815, also `SIN(x)/COS(x)`) and `TAN(123456788.123)` is 0.6173408433901317 (ours ...318). Evidence (excel-graph,
 2026-10-20): gen-m5/d0419fa09d6a756a Calc!A311, gen-m5/f0f205865a3a4328 Calc!A227, gen-m5/c688ca172fe533dc Calc!A284. SIN and COS at these
-arguments are unprobed (T-2145 sweeps them; T-2147 fits).
+arguments are unprobed (T-2172 sweeps them; T-2147 fits).
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 
@@ -1775,7 +1775,7 @@ Just below -1 as well: `ASIN(-1-2^-52)` and `ACOS(-1-2^-52)` (-1.000000000000000
 (`LOG(ACOS(-1-2^-52))` is `#NUM!`, and `COUNT(..,ASIN(-1-2^-52))` does not count it). Ours: `excel_asin` forms `1-x`, which
 rounds to exactly 2, so the radicand `y*(2-y)` is 0 and the result is -pi/2 (ACOS pi) instead of NaN. Evidence (excel-graph,
 2026-10-20): gen-m5/38b1b8e51dbad326 Calc!A222, gen-m5/3b813881f835cd90 Calc!A273, gen-m5/90bf45bea539723d Calc!A236,
-gen-m5/b0ecb7ca78460b77 Calc!A320 and the other 10 cells listed in T-2143 (not implemented).
+gen-m5/b0ecb7ca78460b77 Calc!A320 and the other 10 cells listed in T-2170 (not implemented).
 
 ATANH(1) and ATANH(-1) are `#NUM!` too, at once: `IFERROR(ATANH(1),"err")` is "err", `ISERR(ATANH(1))` TRUE,
 `SUM(ATANH(1),1)` `#NUM!`; ATANH(0.9999999999999999) is 17.616361586450413 and ATANH(1.0000000000000002) `#NUM!`.

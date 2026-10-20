@@ -1,5 +1,5 @@
 ---
-id: T-2144
+id: T-2171
 title: "INT cuts to 15 significant digits first, as TRUNC does (INT(1-2^-53) = 1)"
 milestone: M5
 lane: functions-math
@@ -35,4 +35,4 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 5 in eval/baselin
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- ODD/EVEN (T-2146), other rounding functions.
+- ODD/EVEN (T-2173), other rounding functions.

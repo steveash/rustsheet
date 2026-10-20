@@ -59,9 +59,9 @@ Commands: `cd tools && uv run rustsheet-gen --milestone M5 --focus --count 55 --
 Coverage: each of the 132 M5 functions the generator emits is the outer call of at least 165 formulas (minimum: ISTEXT, SEARCHB, FLOOR.MATH and ISO.CEILING, 165 each).
 
 Mismatch families (gap-triager, traced to the innermost diverging sub-expression; cells):
-T-2142 SINH/COSH/EXP overflow (37), T-2134 SINH/TANH/COTH/CSCH last digit (19, extended),
-T-2143 ASIN/ACOS just below -1 (14), T-2144 INT 15-digit cut (5), T-2146 ODD/EVEN above 2^53 (3),
-T-2147 TAN near 1.2E8 (3; T-2146 and T-2147 both depend on the sweep T-2145), T-2148 FIXED/DOLLAR/BAHTTEXT 15-digit cut (15),
+T-2169 SINH/COSH/EXP overflow (37), T-2134 SINH/TANH/COTH/CSCH last digit (19, extended),
+T-2170 ASIN/ACOS just below -1 (14), T-2171 INT 15-digit cut (5), T-2173 ODD/EVEN above 2^53 (3),
+T-2147 TAN near 1.2E8 (3; T-2173 and T-2147 both depend on the sweep T-2172), T-2148 FIXED/DOLLAR/BAHTTEXT 15-digit cut (15),
 T-2149 FIXED/DOLLAR past 2^64 (5), T-0980 TEXT 15-digit cut (2, extended), T-1730 TEXT exponent sign (1, extended),
 T-0961 SUMX2MY2/SUMX2PY2/SUMXMY2 blanks and shapes (28, extended), T-2150 SUMPRODUCT blank/error order (9),
 T-2151 NUMBERVALUE currency/dates (24), T-2152 NUMBERVALUE separators/empty (12), T-2153 ARABIC blank/trim (12),

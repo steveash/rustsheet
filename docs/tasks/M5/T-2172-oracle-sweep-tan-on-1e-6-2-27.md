@@ -1,5 +1,5 @@
 ---
-id: T-2145
+id: T-2172
 title: "Oracle sweep: TAN on 1E+6 .. 2^27 and ODD/EVEN above 2^53"
 milestone: M5
 lane: research
@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-An excel-graph oracle sweep gives the fitting points T-2146 (ODD/EVEN above 2^53) and T-2147 (TAN near 1.2E+8) need.
+An excel-graph oracle sweep gives the fitting points T-2173 (ODD/EVEN above 2^53) and T-2147 (TAN near 1.2E+8) need.
 
 ## Context
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). Both functions show last-digit misses in gen-m5 that 2-3 cells cannot fit (docs/excel-semantics/numbers.md "ODD and EVEN above
@@ -29,4 +29,4 @@ Sweep, as stored inputs (probes-numeric case, `excel-probe` skill):
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Fitting (T-2146, T-2147).
+- Fitting (T-2173, T-2147).
