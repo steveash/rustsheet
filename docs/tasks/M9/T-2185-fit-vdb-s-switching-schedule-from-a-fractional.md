@@ -30,5 +30,7 @@ switch, end at life) should separate the hypotheses.
 - [ ] probes/fin-vdb-schedule A42-A46 pass, with fin-vdb-modes still 20/20.
 - [ ] `make check` green; reviewers approve.
 
+Replacing that path should delete `vdb_total_depr`, whose `straight_line` parameter is now always true (T-1975 review).
+
 ## Out of scope
 - The no_switch TRUE path and whole start periods (T-1975).

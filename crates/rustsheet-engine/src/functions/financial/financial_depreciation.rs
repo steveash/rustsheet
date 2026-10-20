@@ -152,6 +152,8 @@ fn vdb_no_switch_between(
                 0.0
             }
         } else {
+            // 0 < 1-rate < 1 and `elapsed` is a whole number, so `^` cannot fail; 0 is its
+            // underflow limit.
             cost * power(1.0 - rate, elapsed).unwrap_or(0.0)
         };
         let charge = (book * rate).min(book - salvage).max(0.0);

@@ -681,6 +681,8 @@ impl Model {
         let mut num = 0.0; // sum of t * PV(CF)
         let mut den = 0.0; // dirty price (sum of PV(CF))
         let mut add_cash_flow = |t: f64, cash_flow: f64| {
+            // `v` > 1 and `t` > 0 here, so `^` fails only by overflowing: the flow's present value
+            // is then 0, as `powf`'s infinity gave before.
             let growth = power(v, t).unwrap_or(f64::INFINITY);
             num += t * cash_flow / growth;
             den += cash_flow / growth;

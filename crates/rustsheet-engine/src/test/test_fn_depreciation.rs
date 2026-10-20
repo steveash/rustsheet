@@ -165,3 +165,23 @@ fn fn_vdb_charge_order_bits() {
     assert_eq!(bits("A5"), 379.885_448_741_749_9_f64.to_bits());
     assert_eq!(bits("A6"), (-600.0_f64).to_bits());
 }
+
+// RRI and DURATION use Excel's own operators (financial.md "DURATION and RRI operation order";
+// probes/fin-mduration-rri-fit A13, A37, T-1975).
+#[test]
+fn fn_rri_and_duration_bits() {
+    let mut model = new_empty_model();
+    model._set("A1", "=RRI(10,1,200)");
+    model._set(
+        "A2",
+        "=DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)",
+    );
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+
+    assert_eq!(bits("A1"), 0.698_646_464_634_247_2_f64.to_bits());
+    assert_eq!(bits("A2"), 5.541_666_666_666_668_f64.to_bits());
+}
