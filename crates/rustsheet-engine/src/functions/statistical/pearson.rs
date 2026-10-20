@@ -5,17 +5,18 @@ use crate::{
 
 use super::variance::VarianceKind;
 
-/// Excel's correlation coefficient of the numeric pairs `(xs[i], ys[i])`, divided as
-/// `COVARIANCE / (STDEV(xs) * STDEV(ys))` with the divisor `kind` picks (`n` or `n - 1`).
+/// Excel's correlation coefficient of the numeric pairs `(xs[i], ys[i])`:
+/// `COVARIANCE / (STDEV(xs) * STDEV(ys))`, with the divisor `kind` picks (`n` or `n - 1`).
 ///
 /// Every sum is a plain left-to-right two-pass sum about the means `Σx/n` and `Σy/n`, with no
 /// one-pass/two-pass switch (unlike VAR, statistics.md "VAR/STDEV switch"). CORREL and PEARSON
-/// use the population form and RSQ squares the sample form, which is why the same array twice is
-/// 1.0000000000000002 for CORREL but 0.9999999999999998 for RSQ: each of these forms reproduces
-/// all 29 CORREL/PEARSON and 15 RSQ oracle values of probes/regression-pairs-a,
-/// groupby-pivotby-functions(2) and ironcalc `CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx`, and every
-/// other tried form misses some (statistics.md "CORREL, PEARSON and RSQ ... their last digit",
-/// T-1707).
+/// use the population form; RSQ squares the sample form. The two forms differ in the last digit:
+/// the same array twice is 1.0000000000000002 for CORREL but 0.9999999999999998 for RSQ.
+///
+/// Evidence: these forms reproduce all 29 CORREL/PEARSON and 15 RSQ oracle values of
+/// probes/regression-pairs-a, groupby-pivotby-functions(2) and ironcalc
+/// `CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx`; every other form tried misses some (statistics.md
+/// "CORREL, PEARSON and RSQ ... their last digit", T-1707).
 ///
 /// `None` when there are fewer than two pairs or a series has no spread (Excel `#DIV/0!`).
 fn excel_correlation(xs: &[f64], ys: &[f64], kind: VarianceKind) -> Option<f64> {

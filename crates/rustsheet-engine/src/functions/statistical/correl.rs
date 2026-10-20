@@ -3,6 +3,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+// CORREL, PEARSON and RSQ share `excel_correlation` in pearson.rs (T-1707).
 impl Model {
     // SLOPE(known_y's, known_x's) - Returns the slope of the linear regression line
     pub(crate) fn fn_slope(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
