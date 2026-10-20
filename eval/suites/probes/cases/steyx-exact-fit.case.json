@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1723: STEYX on exact linear fits whose residual sum Syy - Sxy*Sxy/Sxx rounds below zero, to zero or above.",
+ "description": "T-1723: STEYX on exact linear fits whose residual sum Syy - Sxy*Sxy/Sxx rounds below zero, to zero or above. Formula literals are read to 15 significant digits, so the 0.30000000000000004-style values are 0.3 and those fits cancel to exactly 0.",
  "tags": [
   "M9",
   "statistical",
