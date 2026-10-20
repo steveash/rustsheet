@@ -63,9 +63,9 @@ Blocked: 28 (26 last run). None can be unblocked.
 - New: T-0441 (data tables), which needs the M3 graph (Phase 2), and T-2037 (the steward regenerates the parity page), which needs an owner routine change.
 - The rest are unchanged: Phase 2 (T-0400, T-0401, T-0402, T-0423, T-1066), time-boxed fits with no new hypothesis (T-0968, T-1528, T-1529, T-1592), T-1099/T-1284 (GEOMEAN), T-0431 (FUSE corpus) and 14 M14 desktop-oracle tasks (decision 0039).
 
-Open PRs: 10 after T-2107 merged. None has been open 24 h yet (the oldest, #1164, opened 2026-10-19 07:23 UTC), so no orphan merge was possible (decision 0050).
+Open PRs: 9 after T-2107 (#1283) and T-1898 (#1167) merged during this run. None has been open 24 h yet (the oldest, #1164, opened 2026-10-19 07:23 UTC), so no orphan merge was possible (decision 0050).
 - Drafts: #1164 (T-1775), #1226 (T-0439), #1245 (T-1484).
-- Open: #1167 (T-1898), #1202 (T-1993), #1209 (T-1996), #1210 (T-1943), #1212 (T-1878), #1230 (T-1835), #1284 (T-2101).
+- Open: #1202 (T-1993), #1209 (T-1996), #1210 (T-1943), #1212 (T-1878), #1230 (T-1835), #1284 (T-2101).
 - No duplicate task ids.
 
 Queues at the start of the run:
