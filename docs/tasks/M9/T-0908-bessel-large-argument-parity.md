@@ -43,3 +43,4 @@ NOTICE line are gone.
 - probes-numeric/m9-bessel (not gated): 362/364 bit-exact, up from 14. The other 2 are `BESSELJ(10|50,1000000)`,
   the documented order-cap DEVIATION.
 - Excel's real order cap was not probed. It stays the existing DEVIATION.
+- Follow-ups: T-2139 (order-cap probe), T-2140 (gated m9-bessel subset and x > 100).

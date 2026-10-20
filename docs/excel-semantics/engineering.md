@@ -28,6 +28,7 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   - `BESSELJ(0,n)` is 0 for n >= 2; `BESSELY` of x <= 0 is `#NUM!`.
   Implemented in `functions/engineering/transcendental/bessel_excel.rs` (`J0_LARGE` and friends);
   the fdlibm port is gone.
+  The asymptotic branch is evidenced only for 8 <= x <= 100; larger x is unprobed (T-2140).
 
 Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cells (14 x values in 8..100 x
 orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
