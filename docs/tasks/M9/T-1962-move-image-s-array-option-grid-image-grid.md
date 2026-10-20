@@ -3,7 +3,7 @@ id: T-1962
 title: "Move IMAGE's array-option grid (image_grid) onto the SPEC-0011 driver"
 milestone: M9
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
