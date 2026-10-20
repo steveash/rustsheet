@@ -115,7 +115,7 @@ print(
         len(x),
         Rr,
         Rr * M,
-        " | ".join("k=%+d %.1f (Z %.1f)" % (k, v_, (v_ - mu) / sd) for v_, k in best[:5]),
+        " | ".join("k=%+d %.1f (Z %.1f)" % (k, v_, (v_ - mu) / sd) for v_, k in best[: int(os.environ.get("SHOW", 5))]),
     ),
     flush=True,
 )
