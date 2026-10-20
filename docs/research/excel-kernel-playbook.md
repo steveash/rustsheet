@@ -162,7 +162,7 @@ These use the same machinery and are still unsolved. Each has its own entries in
 - The odd-degree-of-freedom chi-square paths.
 
 ## 8. Lessons from T-1941 (GAMMALN, GAMMA, LN)
-Details: `docs/research/t1941/` on the T-1941 research branch (HANDOFF.md sections 9-10, README.md, wc/, w5/p4/,
+Details: `docs/research/t1941/` on the T-1941 research branch `agent/research/T-1941-crack-gammaln-gamma-ln` (HANDOFF.md sections 9-10, README.md, wc/, w5/p4/,
 w2/wa/).
 1. **Triangle lines.** A product P = fl(M*y) rounded into a sum S = fl(P + c) that lies one binade up gives a line
    with local frequency S'(y)/2^(eS+1), not the product's (M + tM')/2^e.

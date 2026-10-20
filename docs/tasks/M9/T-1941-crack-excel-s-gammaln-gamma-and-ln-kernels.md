@@ -39,14 +39,14 @@ inverses (about 5,000 near-miss cells in `docs/research/numeric-kernel-map.md`, 
   points) or a documented structure and the remaining gap, in `docs/excel-semantics/` plus coefficient
   files under `docs/research/t1941/`.
 - [x] Lessons are added to `docs/research/excel-kernel-playbook.md`. T-0973 and T-1529 are updated to
-  point at the model, and engine follow-ups are filed.
+  point at the model, and engine follow-ups are filed (T-2122, T-2123, T-2128, T-2129).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine implementation (T-0973 / T-1529 and follow-ups).
 - Incomplete gamma and beta (T-0971, T-0970), which come next.
 
-## Outcome (2026-10-19, research in progress; status stays in-progress)
+## Outcome (interim, 2026-10-19; superseded by the close-out below)
 Full record: `docs/research/t1941/README.md` and `HANDOFF.md` on branch agent/research/T-1941-crack-gammaln-gamma-ln.
 
 **Bit-exact or essentially so** (statistics.md, "GAMMA, GAMMALN and LN kernels (T-1941)"):
@@ -66,18 +66,14 @@ Full record: `docs/research/t1941/README.md` and `HANDOFF.md` on branch agent/re
 | GAMMALN (2,3] | (x-2)*fl(N/D), (9,8) raw x | grid_a 77% / efC 35% | efC is function- and staircase-correct; Excel's N s4/s5 and D s3/s4 lines contradict the stored-product law |
 | GAMMALN (1.5,2] | not a composition of neighbours | none yet | open |
 
-**Follow-ups to file:**
-- An engine task to ship the bit-exact pieces now, with the best sets for the open kernels behind a "not bit-exact"
-  note.
-- Per-line law validation for K2's s4/s5 lines.
-- The K3 product-level phase lattice on top of ss_fc.
-- (1.5,2] structure.
-- The optional K1 route (i).
+**Follow-ups (filed):**
+- Engine shipping: T-2123, split into T-2128 (GAMMALN) and T-2129 (GAMMA), all done.
+- K2's s4/s5 line laws, the K3 phase lattice, the (1.5,2] structure and the K1 route: T-2122.
 
 Playbook lessons are in `docs/research/excel-kernel-playbook.md` section 8.
 
 ## Outcome update (2026-10-20 08:00 UTC)
-- Restart file: `docs/research/t1941/HANDOFF2.md`. Continuation: T-2122. Engine: T-2123.
+- Restart file: `docs/research/t1941/HANDOFF2.md`. Continuation: T-2122. Engine: T-2123 (split into T-2128 and T-2129).
 - K2 (GAMMALN (2,3]): 0.74 → 0.950 exact (0.978 within 1 ulp), from a per-cluster phase-law read. grid_a's head
   was off by a near-null move along c·g(x) (cubic ≈ 1/x), with the next coefficient −c. The model is plain
   doubles (`k2_ref.py`, `k2_plain.txt`); stored vs 80-bit head is still open.
@@ -97,9 +93,12 @@ The research ends here; the coefficient hunt continues as T-2122.
 - **On main (this close-out).**
   - The task files T-1941 and T-2122. Main cited both, but neither file was there.
   - The restart file `docs/research/t1941/HANDOFF2.md`.
-  - The best-set coefficient files that `gamma_kernels.rs` cites.
+  - The best-set coefficient files that `gamma_kernels.rs` cites, and the scripts that the engine comments cite:
+    `lnmodels.py` with `rnd.py`, `extract_runs.py`, and `k2_ref.py` with `review3/spec.py`.
   - Playbook section 8 (lessons).
   - Update notes on T-0973 and T-1529.
+- **Criterion 2.** LN is bit-exact. GAMMALN and GAMMA meet the criterion by documented structure plus the remaining
+  gap: K1, K2, K3 and (1.5,2] are measured and documented in statistics.md, and continue in T-2122.
 - **Archive only.** The full research tree stays on branch `agent/research/T-1941-crack-gammaln-gamma-ln`: worker
   scripts, logs `README.md` / `HANDOFF.md`, and 3,129 `kmyst-gam-*` probe files. The probes are filled, but they
   take 3.8 GB and about 172M lines, so they cannot be merged.

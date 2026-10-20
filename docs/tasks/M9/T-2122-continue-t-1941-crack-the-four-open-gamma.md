@@ -25,7 +25,7 @@ Every other piece of GAMMA, GAMMALN and LN is already bit-exact or reduces exact
   - K1: `w4/k1r/plain1.txt`, 0.776 / 0.878. The [1.8,2) dip is 0.50 and looks like a coefficient problem.
   - K3: `w5/p5` / `w5/p4/ss_fc.txt`, 0.33. Ladder probes `kmyst-gam-k3l*` are filling, with an unwrap tool ready.
   - (1.5,2]: W6's chain in `w6/data/`, 42.7% exact on R.
-- Engine shipping of the current best models is T-2123 (independent of this task).
+- Engine shipping of the current best models was T-2123, split into T-2128 (GAMMALN) and T-2129 (GAMMA); `gamma_kernels.rs` holds the coefficient arrays to swap.
 
 ## How to run (restart prompt)
 Paste this to a fresh coordinator session (Opus, auto mode), on the research branch above:
@@ -58,7 +58,7 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
 > - route results between workers;
 > - verify every claimed model yourself on the 14 long runs / dense clusters before committing it;
 > - keep a ~40-minute self check-in;
-> - when a kernel goes bit-exact (≥ 99.9% with only documented x87 near-ties), update T-2123's model list and
+> - when a kernel goes bit-exact (≥ 99.9% with only documented x87 near-ties), update `gamma_kernels.rs` (a new engine task) and
 >   `docs/excel-semantics/statistics.md`.
 
 ## Acceptance criteria
@@ -67,10 +67,10 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
       ceiling and the remaining hypotheses in HANDOFF2.md.
 - [ ] Every new probe case is filled and committed. Coefficient files and scripts are under `docs/research/t1941/`.
 - [ ] Quirks recorded in `docs/excel-semantics/statistics.md` ("GAMMA, GAMMALN and LN kernels"). Lessons added
-      to `docs/research/excel-kernel-playbook.md`. T-2123's model list updated.
+      to `docs/research/excel-kernel-playbook.md`. An engine task is filed to swap `gamma_kernels.rs`'s arrays.
 - [ ] `make check` green; reviewers approve. Land notes, coefficient files and verifiers on main in a slim PR, as the T-1941
       close-out did. Bulk probe data (`kmyst-gam-*`, gigabytes) stays on the research branch.
 
 ## Out of scope
-- Engine implementation (T-2123).
+- Engine implementation (T-2123, T-2128, T-2129 and follow-ups).
 - Incomplete gamma / beta kernels (T-0971, T-0970).
