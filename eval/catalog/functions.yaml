@@ -1989,7 +1989,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: principal, mode: value, type: number, domain: { int: true, min: 100, max: 10000 } }
+      - { name: principal, mode: value, lift: arrays, type: number, domain: { int: true, min: 100, max: 10000 } }
       - { name: schedule, mode: array, type: number }
   - name: GAMMA
     category: statistical
@@ -4597,7 +4597,7 @@ functions:
     params:
       - { name: values, mode: array, type: number }
       - { name: dates, mode: array, type: number }
-      - { name: guess, mode: value, type: number, optional: true }
+      - { name: guess, mode: value, lift: arrays, type: number, optional: true }
   - name: XLOOKUP
     category: lookup
     milestone: M6
@@ -4629,7 +4629,7 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: rate, mode: value, type: number }
+      - { name: rate, mode: value, lift: arrays, type: number }
       - { name: values, mode: array, type: number }
       - { name: dates, mode: array, type: number }
   # Like AND: text and blanks in a range or array are skipped, direct text is coerced, a lone text cell is #VALUE! (probes/info-logic-argument-modes A1:A5, -2 A10:A11); XOR() is refused (T-1088).

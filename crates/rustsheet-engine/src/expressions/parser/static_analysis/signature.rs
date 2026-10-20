@@ -390,24 +390,6 @@ pub(super) fn args_signature_npv(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-pub(super) fn args_signature_xirr(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector; arg_count]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Scalar]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
-
-pub(super) fn args_signature_xnpv(arg_count: usize) -> Vec<Signature> {
-    if arg_count != 3 {
-        vec![Signature::Error; arg_count]
-    } else {
-        vec![Signature::Scalar, Signature::Vector, Signature::Vector]
-    }
-}
-
 // FIXME: This is terrible duplications of efforts. We use the signature in at least three different places:
 // 1. When computing the function
 // 2. Checking the arguments to see if we need to insert the implicit intersection operator

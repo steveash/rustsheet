@@ -30,8 +30,8 @@ use signature::{
     args_signature_scalars, args_signature_scan, args_signature_sort, args_signature_sortby,
     args_signature_sumif, args_signature_take, args_signature_textafter, args_signature_textjoin,
     args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_unique, args_signature_wrapcols, args_signature_xirr, args_signature_xlookup,
-    args_signature_xmatch, args_signature_xnpv, Signature,
+    args_signature_unique, args_signature_wrapcols, args_signature_xlookup, args_signature_xmatch,
+    Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -469,9 +469,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Minifs => args_signature_ifs(arg_count, 2),
         Function::Now => args_signature_scalars(arg_count, 0, 0),
         Function::Today => args_signature_scalars(arg_count, 0, 0),
-        Function::Fvschedule => vec![Signature::Scalar, Signature::Vector],
-        Function::Xirr => args_signature_xirr(arg_count),
-        Function::Xnpv => args_signature_xnpv(arg_count),
         Function::Subtotal | Function::Aggregate => args_signature_npv(arg_count),
         Function::Rand => args_signature_scalars(arg_count, 0, 0),
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
@@ -744,9 +741,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Minifs => criteria_static_result(args, 2),
         Function::Now => not_implemented(args),
         Function::Today => not_implemented(args),
-        Function::Fvschedule => StaticResult::Scalar,
-        Function::Xirr => not_implemented(args),
-        Function::Xnpv => not_implemented(args),
         Function::Subtotal => aggregate::subtotal_static_result(args),
         Function::Aggregate => aggregate::aggregate_static_result(args),
         Function::Rand => not_implemented(args),
