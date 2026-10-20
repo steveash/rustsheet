@@ -973,6 +973,9 @@ impl Model {
     }
 }
 
+mod register;
+pub(crate) use register::{extended_div, extended_mul, extended_of, store_extended, Extended};
+
 #[cfg(test)]
 mod power_tests;
 
