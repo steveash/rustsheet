@@ -385,10 +385,10 @@ Tasks: T-1114, T-1124
 ## DB and VDB period cap
 Rule: RustSheet returns `#NUM!` for DB with a `period`, and VDB with an `end_period`, whose integer part is above
 100,000, after Excel's own argument checks, to bound per-call work on untrusted input (CLAUDE.md directive 5). Both
-schedules step one period at a time (`DB(1,0,1E15,1E15)` ran for hours before the cap). Excel computes a value there;
-none of its values above the cap are probed. A lifted DB or VDB call is also charged by each element's period
+schedules step one period at a time (`DB(1,0,1E15,1E15)` ran for hours before the cap). Excel's values above the cap are
+unprobed. A lifted DB or VDB call is also charged by each element's period
 (SPEC-0011 `KernelWork::ByArg`, T-1820): 2^17 units at the cap, so at most 1,024 such elements per call, while small
-periods lift freely (`ROWS(DB(G25:G26,1000,6,2,7))` = 2, as in Excel). Within the cap the values are unchanged.
+periods lift freely (`ROWS(DB(G25:G26,1000,6,2,7))` is 2 in Excel, probes/fin-argument-modes). Within the cap the values are unchanged.
 Evidence: the cap is a resource limit, not an Excel observation; probes/fin-argument-modes shows Excel lifting DB and VDB.
 Status: DEVIATION (decision 0014)
 Tasks: T-1820
@@ -457,15 +457,15 @@ Evidence: probes/fin-argument-modes (386 cells, excel-graph, 2026-10-11, T-1084)
 2026-10-17, T-1822), probes/fin-yield-odd-lift (51 cells, excel-graph, 2026-10-18, T-1842). The cash flow is K1:K5 and its
 dates are M1:M5. L1:L8 is the same flow with typed text, a boolean, text and a blank mixed in, and N1:N5 is a
 schedule containing text.
-Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift` and EFFECT, NOMINAL, DOLLARDE,
+Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift`, since T-1820 DB and VDB too,
+charged by their period up to their own cap ("DB and VDB period cap"), and EFFECT, NOMINAL, DOLLARDE,
 DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
 (SPEC-0011); since T-1822 so are ACCRINT, the COUP* family, DURATION, MDURATION and PRICE, each element charged for its
 coupon schedule walks ("Coupon schedule work cap"), and since T-1842 YIELD and the ODD* functions, charged for their
 solvers and walks ("Yield and odd-coupon work cap"), and since T-1845 CUMIPMT and
 CUMPRINC, charged for their bounded period sums ("CUMIPMT and CUMPRINC work cap"), and since T-1841 AMORDEGRC and
-AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and
-VDB `#VALUE!` for a range): DB and VDB need their period loops bounded first (T-1820), NPV's rate, IRR's guess and
-MIRR's rates sit beside a whole cash flow (T-1821), and XNPV's rate,
+AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet
+(`#N/IMPL!` for an array literal): NPV's rate, IRR's guess and MIRR's rates sit beside a whole cash flow (T-1821), and XNPV's rate,
 XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few

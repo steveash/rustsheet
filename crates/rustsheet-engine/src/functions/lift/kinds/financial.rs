@@ -5,7 +5,7 @@
 use super::ArgKind::{Lift, LiftArrays};
 use super::KernelWork::{ByArg, Constant, Weighted};
 use super::{ArgKinds, ATP_2, ATP_3, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
-use crate::functions::financial::financial_depreciation::MAX_DEPRECIATION_PERIODS;
+use crate::functions::financial::MAX_DEPRECIATION_PERIODS;
 use crate::functions::Function;
 
 /// `DDB(cost, salvage, life, period, [factor])`.
