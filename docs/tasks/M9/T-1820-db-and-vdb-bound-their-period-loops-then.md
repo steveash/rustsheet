@@ -3,7 +3,7 @@ id: T-1820
 title: "DB and VDB bound their period loops, then lift over arrays and ranges (SPEC-0011)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,9 +26,19 @@ workbooks, probes-numeric), or a per-call cap with a DEVIATION entry. Then enter
 functions/lift/kinds.rs (the `TODO(T-1820)` there), `KernelWork::Weighted` if a value-dependent loop remains.
 
 ## Acceptance criteria
-- [ ] `DB` and `VDB` with a life of 1E9 or more finish in milliseconds; any capped result is a DEVIATION entry.
-- [ ] The DB and VDB lift cells of probes/fin-argument-modes pass (baseline lines removed), with no new failures.
-- [ ] `make check` green; reviewers approve.
+- [x] `DB` and `VDB` with a life of 1E9 or more finish in milliseconds; any capped result is a DEVIATION entry.
+- [x] The DB and VDB lift cells of probes/fin-argument-modes pass (baseline lines removed), with no new failures.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - DB's and VDB's base-value ulp misses (T-1374, T-1764).
+
+## Outcome
+DB and VDB are on the SPEC-0011 driver: every argument `Lift`. Each element is charged by its period (`KernelWork::ByArg`
+from T-1819; DB's `period`, VDB's `end_period`), 2^17 units at the cap, so at most 1,024 such elements per lifted call.
+Each kernel refuses a period past `MAX_DEPRECIATION_PERIODS` (100,000) with `#NUM!` after Excel's own checks. That is a
+DEVIATION ("DB and VDB period cap" in docs/excel-semantics/financial.md), so `DB(1,0,1E15,1E15)` and
+`VDB(1000,0,1E9,0,1E9)` now return at once. Scalar coercion and check order are unchanged. Eval delta:
+probes/fin-argument-modes 14 lines leave eval/baseline/probes.txt (the DB/VDB array and range lift cells); no
+regressions. Worst case by the performance review's estimate from the loop code (not measured): 1,024 VDB elements at the
+cap take about 1.6 to 2.1 s in release, DB about 0.4 s.

@@ -263,3 +263,42 @@ fn the_table_enters_rate_as_weighted() {
     assert_eq!(weight(Function::Rate), Some(50));
     assert_eq!(weight(Function::Pmt), Some(1));
 }
+
+/// DB and VDB lift every argument (probes/fin-argument-modes; T-1820), each element the scalar
+/// call, and stay bounded: a period past 100,000 is `#NUM!` (docs/excel-semantics/financial.md
+/// "DB and VDB period cap", DEVIATION) and a lift is charged by each element's period.
+#[test]
+fn db_and_vdb_lift_and_bound_their_periods() {
+    check(&[
+        ("G1", "1000", "1000"),
+        ("G2", "2000", "2000"),
+        ("H1", "=ROWS(DB(G1:G2,100,6,2,7))", "2"),
+        ("H2", "=ROWS(VDB(G1:G2,300,10,0,1,2,FALSE))", "2"),
+        (
+            "H3",
+            "=INDEX(DB({1000;2000},100,6,2,7),2)=DB(2000,100,6,2,7)",
+            "TRUE",
+        ),
+        (
+            "H4",
+            "=INDEX(VDB(2400,300,10,0,{1;2},2,FALSE),2)=VDB(2400,300,10,0,2,2,FALSE)",
+            "TRUE",
+        ),
+        ("H5", "=DB(1,0,1E15,1E15)", "#NUM!"),
+        ("H6", "=VDB(1000,0,1E9,0,1E9)", "#NUM!"),
+        ("H7", "=DB(1000,1,1E6,100000)>=0", "TRUE"),
+        (
+            "H8",
+            "=ROWS(DB(1000,1,1E6,SEQUENCE(1100,1,100000,0)))",
+            "#ERROR!",
+        ),
+        ("H9", "=ROWS(DB(1000,1,1E6,SEQUENCE(3000,1,1,0)))", "3000"),
+        (
+            "H10",
+            "=ROWS(VDB(1000,1,1E6,0,SEQUENCE(1100,1,100000,0)))",
+            "#ERROR!",
+        ),
+        // Excel's own checks come before the cap: a period past life + 1 is `#NUM!` either way.
+        ("H11", "=DB(1000,100,6,8)", "#NUM!"),
+    ]);
+}

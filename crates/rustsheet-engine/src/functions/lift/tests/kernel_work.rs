@@ -213,3 +213,33 @@ fn bessel_elements_are_charged_by_order() {
     ];
     assert_eq!(kernel_units(work, &scalar, 10, 1, 10), 10 << 16);
 }
+
+/// DB's and VDB's `ByArg` charge (T-1820): an element at the period cap costs `2^17`, so exactly
+/// 1,024 of them fit under `MAX_LIFTED_CELL_VISITS` and 1,025 do not.
+#[test]
+fn depreciation_elements_are_charged_by_period() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    for (function, arg) in [(Function::Db, 3), (Function::Vdb, 4)] {
+        let work = function.arg_kinds().map(|kinds| kinds.work);
+        let Some(work @ KernelWork::ByArg { arg: charged, .. }) = work else {
+            panic!("{function:?} is not charged by its period: {work:?}");
+        };
+        assert_eq!(charged, arg, "{function:?}");
+        let at_cap = |count: usize| {
+            let mut args: Vec<LiftedArg> = (0..arg)
+                .map(|_| LiftedArg::Scalar(CalcResult::Number(1.0)))
+                .collect();
+            args.push(LiftedArg::Grid(vec![
+                vec![ArrayNode::Number(100_000.0)];
+                count
+            ]));
+            kernel_units(work, &args, count, 1, count as u64)
+        };
+        assert_eq!(at_cap(1024), MAX_LIFTED_CELL_VISITS, "{function:?}");
+        assert!(at_cap(1025) > MAX_LIFTED_CELL_VISITS, "{function:?}");
+    }
+}
