@@ -5,6 +5,7 @@ use crate::functions::lift::{num_error, number_or_error, LiftCost};
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
 use crate::functions::statistical::paired::PairedValues;
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
+use crate::functions::statistical::student_t::{student_t_density, student_t_tails};
 use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -211,16 +212,10 @@ fn t_test_p(
         return error(Error::DIV);
     }
 
-    let Ok(dist) = StudentsT::new(0.0, 1.0, df) else {
-        return error(Error::NUM);
-    };
-
-    let t_abs = t_stat.abs();
-    let cdf = dist.cdf(t_abs);
-
+    let tail = student_t_tails(t_stat.abs(), df).1;
     let mut p = match tails {
-        TTestTails::OneTailed => 1.0 - cdf,
-        TTestTails::TwoTailed => 2.0 * (1.0 - cdf),
+        TTestTails::OneTailed => tail,
+        TTestTails::TwoTailed => 2.0 * tail,
     };
 
     // clamp tiny fp noise
@@ -343,8 +338,15 @@ impl Model {
         if df < 1.0 || (cumulative && df > T_DF_MAX) {
             return Err(num_error(cell));
         }
-        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
+        let result = if cumulative {
+            student_t_tails(x, df).0
+        } else if let Some(density) = student_t_density(x, df) {
+            density
+        } else {
+            StudentsT::new(0.0, 1.0, df)
+                .map_err(|_| num_error(cell))?
+                .pdf(x)
+        };
         if !result.is_finite() {
             return Err(num_error(cell));
         }
@@ -378,8 +380,7 @@ impl Model {
         if x < 0.0 || !(1.0..=T_DF_MAX).contains(&df) {
             return Err(num_error(cell));
         }
-        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
-        let result = (2.0 * (1.0 - dist.cdf(x))).clamp(0.0, 1.0);
+        let result = 2.0 * student_t_tails(x, df).1;
         if !result.is_finite() {
             return Err(num_error(cell));
         }
@@ -412,8 +413,7 @@ impl Model {
         if !(1.0..=T_DF_MAX).contains(&df) {
             return Err(num_error(cell));
         }
-        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
-        let result = 1.0 - dist.cdf(x);
+        let result = student_t_tails(x, df).1;
         if !result.is_finite() || result < 0.0 {
             return Err(num_error(cell));
         }
