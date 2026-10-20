@@ -133,8 +133,8 @@ The value the cell has in between is today's parse-error value; Excel's is unpro
 
 ### Transparency
 The wrapper is transparent the way `Group` is (SPEC-0007). `Node::ungrouped()` also steps into
-`StructuredReferenceKind.lowered`, and its doc comment says so. So all 86 existing `ungrouped()`
-call sites see the lowered node, with no change at the call sites. That covers evaluation,
+`StructuredReferenceKind.lowered`, and its doc comment says so. So every existing `ungrouped()`
+call site (about 86; `rg "\.ungrouped\(\)" crates/rustsheet-engine/src`) sees the lowered node, with no change at the call sites. That covers evaluation,
 ISREF/ISFORMULA-style shape checks, static analysis and reference operators. Every site that
 matches on `Node::ReferenceKind` or `Node::RangeKind` without calling `ungrouped()`
 (`rg "Node::(ReferenceKind|RangeKind)" crates/rustsheet-engine/src`) is checked one by one in
@@ -155,7 +155,8 @@ canonical long form:
 `Table[[#Spec],[Col]]`, `Table[[#Spec],[A]:[B]]`, `Table[Col]`, `Table[[A]:[B]]`, `Table[#Spec]`
 or `Table[]`. Names that need escaping get Excel's `'` escapes (`'[`, `']`, `'#`, `''`, `'@`),
 the inverse of `consume_escaped_until`. `ThisRowKind` is never printed on its own, because it
-only appears inside a wrapper.
+only appears inside a wrapper. Where a wrapper prints its lowered area instead, the rule at the
+end of "Structural edits" applies.
 
 A bare table name (`ROWS(Sales)`, operands.rs) keeps printing as the bare name in these
 printers; T-1683 may change how it is spelled. `to_excel_string` prints `lowered` until step 3,
@@ -167,23 +168,56 @@ the next reparse re-derives `lowered` from the table.
 
 ### Structural edits
 Today `insert_rows`, `delete_rows`, `insert_columns` and `delete_columns` (actions.rs) displace
-every formula's lowered range and never touch `workbook.tables`. So `=SUM(Sales[Qty])` follows its
-data when a row is inserted above the table. That is very likely Excel's value, since Excel moves
-the table. Once the printed text comes from `reference`, the displaced text equals the old text,
-and the next reparse would read the table's unmoved range. Step 1 therefore moves table metadata
-with the edit, by the same rule `to_string_displaced` applies to a range, in the cases where that
-needs no new Excel rule:
+every formula and never touch `workbook.tables`. `displace_cells` walks the cells, and
+`shift_cell_formula` rewrites a cell only when `to_string_displaced` gives a different text. So
+`=SUM(Sales[Qty])` follows its data when a row is inserted above the table. That is very likely
+Excel's value, since Excel moves the table. Once the text is printed from `reference`, the
+displaced text would equal the old text, the cell would not be rewritten, and the next reparse
+would read the table's unmoved range. Step 1 keeps today's values with this mechanism:
 
-- an edit wholly above, below, left or right of a table moves or leaves its `reference`;
-- inserting or deleting rows strictly inside the data rows grows or shrinks it, as the lowered
-  range does today. The header and totals rows stay, and the column list does not change.
+1. **Classify, before the walk.** For a `DisplaceData::Row` or `DisplaceData::Column` edit, each
+   table whose `sheet_name` is the edited sheet is classified as *move*, *grow/shrink* or
+   *fallback* by the table below, and its new `reference` is computed by the same rule
+   `to_string_displaced` applies to a range. A table on another sheet is untouched. For every
+   other `DisplaceData` variant (cell shifts, row and column moves), every table on the edited
+   sheet is *fallback*.
+2. **Walk.** `to_string_displaced` takes the set of *fallback* table names (a new parameter;
+   empty for callers that are not structural edits). A `StructuredReferenceKind` whose table is
+   in the set prints its displaced `lowered` node, which is today's text. Any other prints
+   `reference`, unchanged. Formulas on every sheet are walked, as today, so a formula on another
+   sheet that refers to a table on the edited sheet is handled the same way.
+3. **Update, then reparse.** After the walk, the *move* and *grow/shrink* tables get their new
+   `reference` in `workbook.tables`, then `Model::reset_tables` hands the list to the parser and
+   reparses. A cell rewritten during the walk may have been parsed against the old list; the
+   reparse in this step corrects it. The full reparse happens only when a table on the edited
+   sheet changed.
 
-Every other edit that crosses a table falls back to today's behavior for the formulas that refer
-to that table: inserting or deleting columns inside it (that would change its column list),
-deleting its header or totals row, or deleting all its data rows. Those formulas are rewritten to
-their displaced lowered text, so the structured text is lost, as it is today, and the table
-metadata is left as it is today. T-2197's findings replace the fallback. The interim behavior is
-recorded in references.md "Structured references when the table changes".
+Edge cases, for a table with header row `h`, data rows `d1..d2` and an optional totals row `t`
+(columns `c1..c2`). A row edit at row `r`, inserting `n` rows or deleting `r..r+n-1`:
+
+| Edit | Class | Why |
+|---|---|---|
+| Insert, `r <= h` | move | every area shifts by `n` |
+| Insert, `r` after the last table row | none | no area changes |
+| Insert, `d1 < r <= d2` | grow | data, `#All` and totals areas grow or shift together, as the lowered ranges do |
+| Insert, `r == d1` (between header and data) | fallback | the lowered data area shifts and the header does not: not a table shape |
+| Insert, `r == t` (between data and totals) | fallback | the data area stays and the totals row shifts: not a table shape |
+| Delete wholly above `h` or wholly below the last row | move / none | |
+| Delete wholly inside `d1..d2`, at least one data row left | shrink | |
+| Delete touching `h` or `t`, all data rows, or straddling an edge of the table | fallback | the lowered areas become trimmed or `#REF!`, which a table cannot represent |
+
+A column edit at column `c`: an insert with `c <= c1`, or a delete wholly left of `c1`, is a
+move; an edit wholly right of `c2` changes nothing; every other column edit that crosses
+`c1..c2` is a fallback, since it would change the column list.
+
+A fallback leaves the table metadata as it is today and loses the structured text of the
+formulas that refer to that table, as today. T-2197's findings replace the fallback. The interim
+rule is recorded in references.md "Structured references when the table changes".
+
+From step 2, a `ThisRowKind` printed as a lowered area (a fallback, or `to_excel_string` until
+step 3) is first resolved at the printing cell's row. It becomes the absolute cell or row range on
+that row, or `#VALUE!` off the data rows, which is exactly today's text. Only then is it
+displaced.
 
 ### Shared formulas and storage
 The storage text is now `Sales[[#This Row],[Qty]]` in every cell of a filled column. It does not
@@ -214,16 +248,18 @@ same reference. `ThisRowKind` evaluation is O(1).
   - E1, D3 and D4 from the table above. The stored text is kept (`get_cell_formula`). After
     re-adding the table over A1:B4, E1 sums A2:A4 and D4 reads A4 (T-1699's acceptance test).
   - Every specifier (`#All`, `#Data`, `#Headers`, `#Totals`, `[#Headers],[#Data]`,
-    `[#Data],[#Totals]`, none) and the column forms print back unchanged in `to_rc_format` and
-    in `to_excel_string`.
+    `[#Data],[#Totals]`, none) and the column forms print back unchanged in `to_rc_format` (and,
+    from step 3, in `to_excel_string`; until then it prints the lowered area).
   - Escaped column names round-trip.
   - ISREF, `@`, the `:` and space operators, and SUM work with `Sales[@Qty]` as with `$A$3`.
     Excel evidence: gen-m8b in-table 19fdc25163755713 (`SUM(Sales[@[2024]:[Val]])`) and specials
     e804cf2f8af00680 (`ISREF(Stock[#Totals])` FALSE, `ISREF(Wide[#Totals])` TRUE).
-- Structural edits: a row or column inserted or deleted above or left of the table, and rows
-  inserted or deleted inside the data rows, keep today's values (pinned before the change) and
-  keep the structured text. A column inserted inside the table falls back to the lowered text with
-  today's values.
+- Structural edits: one test per row of the edge-case table and per column case, each pinning
+  today's values before the change. The move and grow/shrink cases keep the structured text; the
+  fallback cases print today's lowered text. One test has the formula on a different sheet from
+  the table.
+- From step 2: `to_excel_string` of `Sales[@Qty]` on and off the data rows prints today's `$A$3` and
+  `#VALUE!`.
 - Missing table: after `remove_table` the cell's formula text is unchanged, and after
   `add_table` the reference works again.
 - Printer round trip: a property test over adversarial table and column names

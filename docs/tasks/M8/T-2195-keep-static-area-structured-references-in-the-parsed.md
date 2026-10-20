@@ -23,9 +23,12 @@ SPEC-0016 rollout step 1. Today `=SUM(Sales[Qty])` is stored as `=SUM($A$2:$A$3)
 - [ ] `to_rc_format`, `to_english_string`, `to_localized_string`, `to_string_displaced` and `to_string_moved` print the canonical long form with escapes; a bare table name prints as written. `to_excel_string` still prints the lowered area (a regression test pins it).
 - [ ] Unit test: with `Sales` over A1:B3, `=SUM(Sales[Qty])` keeps its text (`get_cell_formula`). After `remove_table` the text is unchanged, and after `add_table` over A1:B4 it sums A2:A4.
 - [ ] Every specifier and the column forms round-trip through `to_rc_format`. A property test over adversarial table and column names (`[`, `]`, `#`, `'`, `@`, spaces, empty, non-ASCII) checks `parse(print(x)) == x` and that printing never panics. A depth test covers many nested structured references.
-- [ ] Structural edits per SPEC-0016 "Structural edits": tables move with row/column edits wholly outside them and grow or shrink with row edits inside the data rows (structured text kept); other edits that cross a table fall back to the displaced lowered text. Tests pin today's values for each case before the change.
+- [ ] Structural edits per SPEC-0016 "Structural edits": tables on the edited sheet are classified before the walk (move, grow/shrink, fallback) by the spec's edge-case table; `to_string_displaced` takes the fallback table names and prints their lowered areas; the moved tables' `reference` is updated after the walk, then `reset_tables` reparses. One test per edge-case row and column case pins today's values, and one has the formula on another sheet.
 - [ ] UPSTREAM.md notes the new `Node` variant.
 - [ ] `#This Row` is unchanged (T-1699). `make eval` shows no regression; `make check` green; reviewers approve.
+
+## Split hint
+If the diff gets large, split it: (a) the node, transparency and printers, with structural edits on the fallback path for every table (today's behavior, so nothing regresses), then (b) the move and grow/shrink classes.
 
 ## Out of scope
 - `#This Row` (T-1699); export of structured references and table parts (T-2196); the FORMULATEXT spelling (T-1683); tables that move or grow on row/column inserts (T-2197).

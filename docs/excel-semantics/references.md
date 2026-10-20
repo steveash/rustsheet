@@ -2056,9 +2056,11 @@ Status: UNVERIFIED
 Implemented in: no. The engine lowers every structured reference to a range at parse time and stores that
 range; tables do not move on structural edits. SPEC-0016 keeps the reference in the parsed formula and
 re-derives its area whenever the table list changes (engine API behavior, not Excel evidence). Interim
-rule until T-2197: a table moves with row/column edits wholly outside it and grows or shrinks with row edits
-inside its data rows, as a range would; any other edit that crosses a table rewrites the formulas that refer
-to it to the displaced plain range (today's behavior).
+rule until T-2197 (SPEC-0016 "Structural edits", with its edge-case table): a table moves with row/column
+edits wholly before it and grows or shrinks with row edits strictly inside its data rows, as a range would;
+any other edit that crosses a table (between header and data, between data and totals, touching the header or
+totals row, inside its columns) rewrites the formulas that refer to it to the displaced plain range (today's
+behavior).
 Tasks: T-2194, T-2195, T-1699, T-2197
 
 ## Unknown function call names: spelling in FORMULATEXT
