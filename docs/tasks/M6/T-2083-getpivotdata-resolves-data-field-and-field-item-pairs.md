@@ -19,6 +19,8 @@ SPEC-0015 "GETPIVOTDATA": pick the pivot by the reference, the data field by cap
 
 ## Acceptance criteria
 - [ ] Unit tests against a model built in code cover every rule row of SPEC-0015's table.
+- [ ] The index lives in the Model's evaluation state keyed by pivot (not on `PivotTable`/`PivotCache`, so `Workbook`'s `PartialEq`/`Clone` are unaffected), invalidated by changes to that pivot or cache; the memo is cleared at each `Model::evaluate` (bounded), and the bench counts it.
+- [ ] If T-2085 shows Excel sums in record or display order on non-representable decimals, the index keeps per-tuple record lists (or exact sums) instead of folded accumulators; re-run the bench then.
 - [ ] Names resolved once per call, never case-folded per record.
 - [ ] Any change to pivot_tables/pivot_caches dirties every GETPIVOTDATA cell (holds under full recalc; a test pins it).
 - [ ] The lazy per-pivot index and memo of SPEC-0015 "Untrusted-input limits" bound the work; a bench or test shows N calls over a large cache cost O(records + N).
