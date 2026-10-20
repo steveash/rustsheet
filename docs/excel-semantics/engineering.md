@@ -378,7 +378,7 @@ Evidence: probes/eng-im-overflow (excel-graph).
   `-1.79769313485599E+308+4.770340154251E+302i` (probes/eng-imexp-overflow-imag A3) and
   `IMEXP("710i")` is `0.999999998182636+0.0000602887066915739i` (probes/eng-im-overflow A42); libm's
   sin gives other last digits. Implemented with `excel_sin_cos` (T-2060). `IMEXP("1000+134217727i")` is
-  `-5.27422318923931E+307-1.7185826441088E+308i` but every |y| >= 134217728 (`1000+134217728i`, `2E8`,
+  `-5.27422318923931E+307-1.7185826441088E+308i` but every positive y >= 134217728 (negative y unprobed, T-2101) (`1000+134217728i`, `2E8`,
   `1E9`, `1E15`) is `#NUM!`, even when x is small (`IMEXP("1+134217728i")`;
   probes/eng-imexp-overflow-cutoff A17-A24); implemented as the SIN limit (T-2087).
 - A part near DBL_MAX is written as `1.79769313486232E+308`, a decimal above DBL_MAX: the 15-digit
