@@ -267,3 +267,21 @@ gains +8.6% (real: N<2 with D unstored, +5.7%).
   fixed read constants are part of the gap.
 So ss_fc is near a local maximum in the near-null lattice, as AN2 is on K1 (W4). The truth is far along null
 directions; local search from ss_fc does not reach it.
+
+## Per-stage phase read on K3 (review 3's phase method, generalised: `k3phase.py`, `k3phase_an.py`)
+Per chunk of ≤ 8192 consecutive doubles (594 chunks from 376 rows6 runs), each stored sum S_j leaves its rounding
+sawtooth as a spectral line in (y − exact)/ulp(y) at f_j = S_j'(x)·ulp(x)/ulp(S_j). The phase of Excel's line relative
+to the stored ss_fc model's, signed by a planted +0.25 u offset, is the pre-rounding offset δ_j mod 1 u
+(`k3phase_ssfc.npy`: x, then per stage phase, amplitude ratio, calibration shift, line power, f).
+- Readable stages (|calib| > 0.12, amplitude ratio 0.5–2, power > 4): N7 240 chunks, N6 412, N5 96, N3 518, D6 243,
+  D5 426, D4 91 (D3 22, D2 32). N8, N4, N2, N1, D8, D7, D1 have no usable line.
+- Neighbouring chunks agree better than random (adjacent |Δphase| vs random): N3 0.138 vs 0.251, N6 0.157 vs
+  0.252, D5 0.146 vs 0.251, N7 0.185 vs 0.247. So δ_j(x) is a smooth law for these stages.
+- But no simple global law fits (x, 1/x, x², x³ with |B| ≤ 400: resultant R ≤ 0.31, `k3phase_an.log`). Between chunks
+  ~0.01 apart the phase moves 0.3–0.5 cycles, so the laws have slopes of order 10²–10⁵ cycles per unit x. The
+  current sampling cannot unwrap that: runs ~0.002 apart, chunks within a run ~1e-12 apart, and the V3 rungs
+  (2^-24..2^-46) resolve slopes ≳ 1e7.
+- Data that would unwrap them: ladders near a few anchors (e.g. 1.25, 1.35, 1.45, 0.8, 0.95, 1.1), each with ~12 runs
+  of 8192 consecutive doubles at offsets Δx = 2^-10 .. 2^-21 from the anchor. That is 72 runs, 0.6M points. The
+  local slope of δ_j at each anchor then comes out by stepwise unwrapping, giving one far null coordinate per
+  readable stage.
