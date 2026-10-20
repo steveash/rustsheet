@@ -19,6 +19,7 @@ from typing import Any
 
 import yaml
 
+from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.pools import POOLS
 
 MILESTONES = ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"]
@@ -160,8 +161,7 @@ class Gen:
             return repr(v) if v >= 0 else f"({v!r})"
         if typ == "bool":
             return self.rng.choice(["TRUE", "FALSE"])
-        s = self.rng.choice(TEXT_POOL)
-        return '"' + s.replace('"', '""') + '"'
+        return quoted(self.rng.choice(TEXT_POOL))
 
     # -- expressions -----------------------------------------------------------------------
     def expr(self, typ: str, depth: int) -> str:

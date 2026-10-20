@@ -30,7 +30,8 @@
 # a range, so a range would spill into the next formula). `always: true` on an optional param means the generator
 # never omits it (CELL without a reference reads the last changed cell, which no oracle value can match).
 # `pool: <name>` on a `value` param: 35% of its values come from that edge pool in
-# tools/src/rustsheet_tools/gen/pools.py (number_edges, unit_interval, angle, code_point; T-2109), after the `domain`
+# tools/src/rustsheet_tools/gen/pools.py (T-2109: number_edges, unit_interval, angle, code_point; T-2110: text_edges,
+# numeric_text, number_formats, errors), after the `domain`
 # draw and never on a `hard` domain.
 # `vector: true` on a `range` param makes the generator pass a one-column range (LOOKUP and XLOOKUP/XMATCH lookup
 # vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself; WRAPROWS/WRAPCOLS on an
@@ -155,7 +156,7 @@ functions:
     prior: 4
     returns: any
     params:
-      - { name: value, mode: value, type: any }
+      - { name: value, mode: value, type: any, pool: errors }
       - { name: value_if_error, mode: value, type: any }
   - name: ROUND
     category: math
@@ -209,7 +210,7 @@ functions:
     milestone: M2
     prior: 2
     returns: number
-    params: [{ name: text, mode: value, type: text }]
+    params: [{ name: text, mode: value, type: text, pool: text_edges }]
   - name: HLOOKUP
     category: lookup
     milestone: M2
@@ -307,19 +308,19 @@ functions:
     milestone: M2
     prior: 2
     returns: text
-    params: [{ name: text, mode: value, type: text }]
+    params: [{ name: text, mode: value, type: text, pool: text_edges }]
   - name: UPPER
     category: text
     milestone: M2
     prior: 1
     returns: text
-    params: [{ name: text, mode: value, type: text }]
+    params: [{ name: text, mode: value, type: text, pool: text_edges }]
   - name: LOWER
     category: text
     milestone: M2
     prior: 1
     returns: text
-    params: [{ name: text, mode: value, type: text }]
+    params: [{ name: text, mode: value, type: text, pool: text_edges }]
   - name: CONCAT
     category: text
     milestone: M2
@@ -941,7 +942,7 @@ functions:
     prior: 0.3
     returns: text
     params:
-      - { name: text, mode: value, type: text }
+      - { name: text, mode: value, type: text, pool: text_edges }
   - name: CODE
     category: text
     milestone: M5
@@ -949,7 +950,7 @@ functions:
     prior: 0.3
     returns: number
     params:
-      - { name: text, mode: value, type: text }
+      - { name: text, mode: value, type: text, pool: text_edges }
   - name: COLUMN
     category: lookup
     milestone: M6
@@ -1636,7 +1637,7 @@ functions:
     scope: in
     prior: 0.3
     returns: number
-    params: [{ name: error_val, mode: value, type: any }]
+    params: [{ name: error_val, mode: value, type: any, pool: errors }]
   - { name: EUROCONVERT, category: addin, milestone: M5, scope: out, reason: "Euro Currency Tools add-in (decision 0027)" }
   - name: EVEN
     category: math
@@ -1652,8 +1653,8 @@ functions:
     prior: 0.5
     returns: bool
     params:
-      - { name: text1, mode: value, type: text }
-      - { name: text2, mode: value, type: text }
+      - { name: text1, mode: value, type: text, pool: text_edges }
+      - { name: text2, mode: value, type: text, pool: text_edges }
   - name: EXP
     category: math
     milestone: M5
@@ -1802,7 +1803,7 @@ functions:
     returns: number
     params:
       - { name: find_text, mode: value, type: text }
-      - { name: within_text, mode: value, type: text }
+      - { name: within_text, mode: value, type: text, pool: text_edges }
       - { name: start_num, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 8 } }
   - name: FINDB
     category: text
@@ -2205,7 +2206,7 @@ functions:
     prior: 1
     returns: any
     params:
-      - { name: value, mode: value, type: any }
+      - { name: value, mode: value, type: any, pool: errors }
       - { name: value_if_na, mode: value, type: any }
   # IFS and SWITCH lift over array conditions (docs/excel-semantics/logic.md).
   - name: IFS
@@ -2491,21 +2492,21 @@ functions:
     scope: in
     prior: 1.5
     returns: bool
-    params: [{ name: value, mode: value, type: any }]
+    params: [{ name: value, mode: value, type: any, pool: errors }]
   - name: ISERR
     category: information
     milestone: M5
     scope: in
     prior: 0.3
     returns: bool
-    params: [{ name: value, mode: value, type: any }]
+    params: [{ name: value, mode: value, type: any, pool: errors }]
   - name: ISERROR
     category: information
     milestone: M5
     scope: in
     prior: 2
     returns: bool
-    params: [{ name: value, mode: value, type: any }]
+    params: [{ name: value, mode: value, type: any, pool: errors }]
   # ISEVEN and ISODD are #VALUE! for a multi-cell range (no lift) and lift over an array (information.md).
   - name: ISEVEN
     category: information
@@ -2528,28 +2529,28 @@ functions:
     scope: in
     prior: 0.1
     returns: bool
-    params: [{ name: value, mode: value, type: any }]
+    params: [{ name: value, mode: value, type: any, pool: errors }]
   - name: ISNA
     category: information
     milestone: M5
     scope: in
     prior: 1
     returns: bool
-    params: [{ name: value, mode: value, type: any }]
+    params: [{ name: value, mode: value, type: any, pool: errors }]
   - name: ISNONTEXT
     category: information
     milestone: M5
     scope: in
     prior: 0.1
     returns: bool
-    params: [{ name: value, mode: value, type: any }]
+    params: [{ name: value, mode: value, type: any, pool: errors }]
   - name: ISNUMBER
     category: information
     milestone: M5
     scope: in
     prior: 1
     returns: bool
-    params: [{ name: value, mode: value, type: any }]
+    params: [{ name: value, mode: value, type: any, pool: errors }]
   - name: ISO.CEILING
     category: math
     milestone: M5
@@ -2607,7 +2608,7 @@ functions:
     scope: in
     prior: 0.5
     returns: bool
-    params: [{ name: value, mode: value, type: any }]
+    params: [{ name: value, mode: value, type: any, pool: errors }]
   # #NAME? on the web (availability-22 A8, function-name-forms-2 A1/A2); desktop confirmation T-1081
   - name: JIS
     category: text
@@ -2666,7 +2667,7 @@ functions:
     prior: 0.02
     returns: number
     params:
-      - { name: text, mode: value, type: text }
+      - { name: text, mode: value, type: text, pool: text_edges }
   - name: LET
     category: logical
     milestone: M7
@@ -3119,7 +3120,7 @@ functions:
     prior: 0.1
     returns: number
     params:
-      - { name: text, mode: value, type: text }
+      - { name: text, mode: value, type: text, pool: numeric_text }
       - { name: decimal_separator, mode: value, type: text, optional: true }
       - { name: group_separator, mode: value, type: text, optional: true }
   - name: OCT2BIN
@@ -3491,7 +3492,7 @@ functions:
     prior: 0.3
     returns: text
     params:
-      - { name: text, mode: value, type: text }
+      - { name: text, mode: value, type: text, pool: text_edges }
   - name: PV
     category: financial
     milestone: M9
@@ -3707,7 +3708,7 @@ functions:
     prior: 0.3
     returns: text
     params:
-      - { name: text, mode: value, type: text }
+      - { name: text, mode: value, type: text, pool: text_edges }
       - { name: number_times, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
   - name: RIGHTB
     category: text
@@ -3781,7 +3782,7 @@ functions:
     returns: number
     params:
       - { name: find_text, mode: value, type: text }
-      - { name: within_text, mode: value, type: text }
+      - { name: within_text, mode: value, type: text, pool: text_edges }
       - { name: start_num, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 8 } }
   - name: SEARCHB
     category: text
@@ -4013,7 +4014,7 @@ functions:
     prior: 1
     returns: text
     params:
-      - { name: text, mode: value, type: text }
+      - { name: text, mode: value, type: text, pool: text_edges }
       - { name: old_text, mode: value, type: text }
       - { name: new_text, mode: value, type: text }
       - { name: instance_num, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
@@ -4097,7 +4098,7 @@ functions:
     prior: 0.1
     returns: text
     params:
-      - { name: value, mode: value, type: any }
+      - { name: value, mode: value, type: any, pool: numeric_text }
   - name: T.DIST
     category: statistical
     milestone: M9
@@ -4227,7 +4228,7 @@ functions:
     returns: text
     params:
       - { name: value, mode: value, type: any }
-      - { name: format_text, mode: value, type: text }
+      - { name: format_text, mode: value, type: text, pool: number_formats }
   - name: TEXTAFTER
     category: text
     milestone: M7
@@ -4414,7 +4415,7 @@ functions:
     prior: 0.05
     returns: number
     params:
-      - { name: text, mode: value, type: text }
+      - { name: text, mode: value, type: text, pool: text_edges }
   - name: UNIQUE
     category: lookup
     milestone: M7
@@ -4432,7 +4433,7 @@ functions:
     prior: 1
     returns: number
     params:
-      - { name: text, mode: value, type: text }
+      - { name: text, mode: value, type: text, pool: numeric_text }
   - name: VALUETOTEXT
     category: text
     milestone: M5
