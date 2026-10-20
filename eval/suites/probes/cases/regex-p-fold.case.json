@@ -1,0 +1,58 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2092 probe: does (?i) / case_sensitivity 1 fold \\p{..}, \\P{..} and Perl classes, outside a bracket and inside one holding a POSIX class (A1-A20 inline (?i), A21-A40 the same patterns with case_sensitivity 1).",
+  "tags": [
+    "M7",
+    "probe",
+    "T-2092",
+    "regextest"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=IFERROR(REGEXTEST(\"a\",\"(?i)\\p{Lu}\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)\\p{Lu}\")))",
+        "A2": "=IFERROR(REGEXTEST(\"A\",\"(?i)\\p{Ll}\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"(?i)\\p{Ll}\")))",
+        "A3": "=IFERROR(REGEXTEST(\"a\",\"(?i)\\P{Lu}\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)\\P{Lu}\")))",
+        "A4": "=IFERROR(REGEXTEST(\"a\",\"(?i)[\\p{Lu}]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[\\p{Lu}]\")))",
+        "A5": "=IFERROR(REGEXTEST(\"A\",\"(?i)[\\p{Ll}]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"(?i)[\\p{Ll}]\")))",
+        "A6": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[:digit:]\\p{Lu}]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[:digit:]\\p{Lu}]\")))",
+        "A7": "=IFERROR(REGEXTEST(\"A\",\"(?i)[[:digit:]\\p{Ll}]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"(?i)[[:digit:]\\p{Ll}]\")))",
+        "A8": "=IFERROR(REGEXTEST(\"A\",\"(?i)[^\\p{Ll}]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"(?i)[^\\p{Ll}]\")))",
+        "A9": "=IFERROR(REGEXTEST(\"a\",\"(?i)[^\\p{Lu}]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[^\\p{Lu}]\")))",
+        "A10": "=IFERROR(REGEXTEST(\"a\",\"(?i)[^\\P{Lu}]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[^\\P{Lu}]\")))",
+        "A11": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[:digit:]\\P{Lu}]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[:digit:]\\P{Lu}]\")))",
+        "A12": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[:digit:]\\w]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[:digit:]\\w]\")))",
+        "A13": "=IFERROR(REGEXTEST(\"a\",\"(?i)[^\\W]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[^\\W]\")))",
+        "A14": "=IFERROR(REGEXTEST(\"a\",\"(?i)\\W\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)\\W\")))",
+        "A15": "=IFERROR(REGEXTEST(\"5\",\"(?i)[[:alpha:]\\d]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"5\",\"(?i)[[:alpha:]\\d]\")))",
+        "A16": "=IFERROR(REGEXTEST(\" \",\"(?i)[[:alpha:]\\s]\"),\"err \"&ERROR.TYPE(REGEXTEST(\" \",\"(?i)[[:alpha:]\\s]\")))",
+        "A17": "=IFERROR(REGEXTEST(\"a\",\"(?i)[[:alpha:]\\D]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"(?i)[[:alpha:]\\D]\")))",
+        "A18": "=IFERROR(REGEXTEST(UNICHAR(8490),\"(?i)[[:digit:]k]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(8490),\"(?i)[[:digit:]k]\")))",
+        "A19": "=IFERROR(REGEXTEST(UNICHAR(8490),\"(?i)[[:digit:]\\p{Ll}]\"),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(8490),\"(?i)[[:digit:]\\p{Ll}]\")))",
+        "A20": "=IFERROR(REGEXTEST(\"k\",\"(?i)[[:digit:]\\x{212A}]\"),\"err \"&ERROR.TYPE(REGEXTEST(\"k\",\"(?i)[[:digit:]\\x{212A}]\")))",
+        "A21": "=IFERROR(REGEXTEST(\"a\",\"\\p{Lu}\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"\\p{Lu}\",1)))",
+        "A22": "=IFERROR(REGEXTEST(\"A\",\"\\p{Ll}\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"\\p{Ll}\",1)))",
+        "A23": "=IFERROR(REGEXTEST(\"a\",\"\\P{Lu}\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"\\P{Lu}\",1)))",
+        "A24": "=IFERROR(REGEXTEST(\"a\",\"[\\p{Lu}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[\\p{Lu}]\",1)))",
+        "A25": "=IFERROR(REGEXTEST(\"A\",\"[\\p{Ll}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"[\\p{Ll}]\",1)))",
+        "A26": "=IFERROR(REGEXTEST(\"a\",\"[[:digit:]\\p{Lu}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[[:digit:]\\p{Lu}]\",1)))",
+        "A27": "=IFERROR(REGEXTEST(\"A\",\"[[:digit:]\\p{Ll}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"[[:digit:]\\p{Ll}]\",1)))",
+        "A28": "=IFERROR(REGEXTEST(\"A\",\"[^\\p{Ll}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"A\",\"[^\\p{Ll}]\",1)))",
+        "A29": "=IFERROR(REGEXTEST(\"a\",\"[^\\p{Lu}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[^\\p{Lu}]\",1)))",
+        "A30": "=IFERROR(REGEXTEST(\"a\",\"[^\\P{Lu}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[^\\P{Lu}]\",1)))",
+        "A31": "=IFERROR(REGEXTEST(\"a\",\"[[:digit:]\\P{Lu}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[[:digit:]\\P{Lu}]\",1)))",
+        "A32": "=IFERROR(REGEXTEST(\"a\",\"[[:digit:]\\w]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[[:digit:]\\w]\",1)))",
+        "A33": "=IFERROR(REGEXTEST(\"a\",\"[^\\W]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[^\\W]\",1)))",
+        "A34": "=IFERROR(REGEXTEST(\"a\",\"\\W\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"\\W\",1)))",
+        "A35": "=IFERROR(REGEXTEST(\"5\",\"[[:alpha:]\\d]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"5\",\"[[:alpha:]\\d]\",1)))",
+        "A36": "=IFERROR(REGEXTEST(\" \",\"[[:alpha:]\\s]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\" \",\"[[:alpha:]\\s]\",1)))",
+        "A37": "=IFERROR(REGEXTEST(\"a\",\"[[:alpha:]\\D]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"a\",\"[[:alpha:]\\D]\",1)))",
+        "A38": "=IFERROR(REGEXTEST(UNICHAR(8490),\"[[:digit:]k]\",1),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(8490),\"[[:digit:]k]\",1)))",
+        "A39": "=IFERROR(REGEXTEST(UNICHAR(8490),\"[[:digit:]\\p{Ll}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(UNICHAR(8490),\"[[:digit:]\\p{Ll}]\",1)))",
+        "A40": "=IFERROR(REGEXTEST(\"k\",\"[[:digit:]\\x{212A}]\",1),\"err \"&ERROR.TYPE(REGEXTEST(\"k\",\"[[:digit:]\\x{212A}]\",1)))"
+      }
+    }
+  ],
+  "expected": {}
+}
