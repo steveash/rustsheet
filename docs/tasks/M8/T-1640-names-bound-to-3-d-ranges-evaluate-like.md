@@ -3,7 +3,7 @@ id: T-1640
 title: "Names bound to 3-D ranges evaluate like the 3-D reference, not #REF! (gen-m8a 3d-names, 3d-misuse)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
