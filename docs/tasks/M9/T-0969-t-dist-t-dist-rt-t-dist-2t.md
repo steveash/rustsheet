@@ -92,6 +92,23 @@ before touching the engine. That alone does not meet the acceptance criteria: F7
 F18 stay above 4 ulp unless Excel's tail noise is reproduced, so the 4-ulp criterion may need to be
 re-cut per decision 0056 once (1) and (2) land.
 
+## Attempt 3 (2026-10-20, opus run; merged as progress, decision 0082)
+`functions/statistical/student_t.rs` now holds the kernel: one tail L = P(T > |t|), T.DIST(t>0) =
+1 - L, T.DIST.RT(x<0) = 1 - L, T.DIST.2T = 2 L (Excel's T.DIST.RT(x) = T.DIST(-x) on every swept
+pair); L exact in double-double (Hill's integer-df series) for y > z and df <= 1000; Cephes'
+power series with exp((n/2) ln y) and a correctly rounded Gamma ratio in the deep tail (y <= z);
+Cephes' fraction (`beta_reg_upper`) for the centre above df 1000 (follow-up T-2126); the density
+in double-double for integer df <= 1000. probes-numeric bit-exact: T.DIST 78 -> 118 / 150,
+T.DIST.RT 34 -> 73 / 150, T.DIST.2T 24 -> 51 / 123, density 9 -> 38 / 150. Gated: 27 of the 55
+lines left `ironcalc-calc.txt`; three cells regressed (decision 0082).
+Still open, in `T_DIST.xlsx`: F7, F8, C7, C8 (`T.DIST.RT(1.959999998,60)` and row 8: 13 ulp from
+the exact tail, Excel's tail noise) stay NumericClose; the other remaining listed lines are
+NumericUlp (D3, D5, D6, D10, D19, D32, D40, D52, F3, F4, F6, F16, F17, F18, C3, C4, C6, C16, C17;
+T_TEST F3, F4, F6, F7, F8). The density cells (D3, D10, D32, ...) are Excel noise of 1 to 4 ulp
+around the correctly rounded density. Next: model the centre-tail noise (scan the 31 swept tail
+cells > 4 ulp: (3,100) 23 ulp, (5,1000) 65, (30,1000) 125 in the exact-centre region) and the
+density's exp(a ln y) form; then re-cut the 4-ulp criterion per decision 0056 if no model fits.
+
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
       NumericMismatch verdict (`rustsheet-eval show` on both cases), at least 30 of the 55 lines

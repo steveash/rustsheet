@@ -3,7 +3,7 @@ id: T-0934
 title: "TEXT elapsed-time formats: fractional seconds, negatives and plain h/m/s after [h]/[m]/[s] (47 known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -40,11 +40,22 @@ Root causes:
    (decision 0039).
 
 ## Acceptance criteria
-- [ ] The 37 lines for root causes 1-3 (A2:A7, A10:A17, A21:A27, A32:A37, A40:A47, A50, A51)
+- [x] The 37 lines for root causes 1-3 (A2:A7, A10:A17, A21:A27, A32:A37, A40:A47, A50, A51)
       disappear from eval/baseline/poi.txt with no new F lines.
-- [ ] Each rule is recorded in `docs/excel-semantics/number-formats.md` with the cells above.
-- [ ] `make check` green; reviewers approve.
+- [x] Each rule is recorded in `docs/excel-semantics/number-formats.md` with the cells above.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Empty format strings (T-0933). Date/time formats without elapsed tokens
 (`poi/DateFormatTests.xlsx`, `poi/DateFormatNumberTests.xlsx`, excel-cached).
+
+## Outcome
+Fractional seconds (`.0`/`.00`/`.000` after `s`, `ss`, `[s]`, `[ss]`) parse as
+`TextToken::SecondFraction` and render from the value rounded to that digit (`FractionalSeconds`,
+formatter/elapsed.rs), shared by clock and elapsed tokens; a plain `h`/`s`/`ss` after the same
+unit's elapsed token is elapsed; a fraction past 9999-12-31 is #VALUE! (gen-m10). Negatives
+already worked (T-1079/T-1105). Rules in number-formats.md "Elapsed-time tokens".
+Eval: poi known failures 462 -> 409 (all 36 ElapsedFormatTests lines, plus DateFormatTests and
+DateFormatNumberTests fractional-second cells, which also completes T-0981); gen-m10 text cells
+2637 -> 2350 (297 fixed), known failures 78 -> 68; probes 1669 -> 1668
+(negative-date-sections-1904 S!A10). No regressions.
