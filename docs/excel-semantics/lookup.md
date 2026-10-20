@@ -743,8 +743,8 @@ Implemented in: `Model::lifted_trimrange` (lookup_and_reference/trimrange.rs): t
 `evaluate_picked_reference_arg`, a reference lifted by `Model::lift_references`, anything else by `Model::lift_values`
 with its top-left value per element; SUM and the walker's other aggregates take TRIMRANGE's grid from
 `picked_reference_arg_reading` (functions/util.rs). Unprobed: which error wins when the source is an error and an
-element's trim is invalid (`TRIMRANGE(NA(),{0;5})`; ours: the source's), and a multi-area source (ours: `#VALUE!` per
-element).
+element's trim is invalid (`TRIMRANGE(NA(),{0;5})`; ours: the source's), a multi-area source (ours: `#VALUE!` per
+element), and a source with no cells under a lifted trim (ours: one `#REF!`, as unlifted).
 Tasks: T-2089
 
 ## Arrays of references through LET, IF, CHOOSE and OFFSET

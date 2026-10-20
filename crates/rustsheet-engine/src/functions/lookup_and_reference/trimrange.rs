@@ -174,7 +174,10 @@ impl Model {
                 cell,
                 &mut |model, values| match model.trim_of(&data, non_blank.as_ref(), values, cell) {
                     Ok((rows, columns)) => {
-                        array_node_to_calc_result(&data[rows.start][columns.start], cell)
+                        match data.get(rows.start).and_then(|row| row.get(columns.start)) {
+                            Some(node) => array_node_to_calc_result(node, cell),
+                            None => CalcResult::new_error(Error::VALUE, cell, String::new()),
+                        }
                     }
                     Err(error) => error,
                 },
