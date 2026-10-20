@@ -1272,8 +1272,8 @@ EXP model V6 (numbers.md), and the reflection's sine an FSIN, RN53(RN64(sin)) of
 comparisons Excel makes, in order:
 - **Integers n <= 88**: the downward product (n-1)(n-2)...2 (T-1524); 0 and the negative integers are `#NUM!`.
 - **Exact half-integers** (x = floor(x) + 0.5): the ascending product 0.5 * 1.5 * ... * (x - 1) times √π
-  (0x1.c5bf891b4ef6bp+0); a negative one is ±fl(fl(π/Gh(-x))/(-x)); from x = -171.5 on the result is a subnormal that
-  Excel gives as +0.
+  (0x1.c5bf891b4ef6bp+0); a negative one is ±fl(fl(π/Gh(-x))/(-x)). At -171.5 that is a subnormal, which Excel gives
+  as +0 (`kmyst-gam-h102`); from -172.5 down Gh(q) overflows and the result is 0.
 - **x >= 10** (integers from 89 on included): h = x/2, r = x^floor(h) by right-to-left binary powering, v = r EXP((h -
   floor(h)) LN(x)) = x^(x/2), the Stirling series s in 1/x (the same ten-term sum as GAMMALN's), and EXP(-x) √(1/x) v v
   2.50662827463100050242 EXP(s), multiplied in that order. Because v is used twice, GAMMA near 150 is up to about ±40 ulp
@@ -1282,8 +1282,10 @@ comparisons Excel makes, in order:
 - **0 < x < 1**: fl(fl(1/x) G(fl(x + 1))).
 - **-10 <= x < 0**: z = 1/x, y = x + 1, then z = z/y and y = y + 1 while y < 1, and z G(y).
 - **x < -10**: q = -x, z = q - round-half-down(q), s = |FSIN(fl(π z))|, ±fl(fl(π/GAMMA(q))/fl(q s)); 0 once GAMMA(q)
-  overflows. The cut is exactly -x > 10 (`kmyst-gam-h104`).
-- Past 171.6243769563027 GAMMA overflows (`#NUM!`); GAMMA(171.6) is finite.
+  overflows: GAMMA(-172.0000000001), GAMMA(-171.55) and GAMMA(-200.3) are 0 while GAMMA(-171.0000000001) is
+  8.058901809475927e-300 (probes/gamma-x87-edges). The cut is exactly -x > 10 (`kmyst-gam-h104`).
+- The last finite argument is 171.6243769563027 (GAMMA = 1.7976931348622233e308); the next double up is `#NUM!`
+  (probes/gamma-x87-edges, the three doubles either side; the model gives the same edge).
 G on [1, 2) is a (7,7) raw-y rational fl(N/D) with D0 = -1/16 and Excel's own coefficients, not yet known to the bit
 (T-2122); the engine uses W4's best set (`gamma_kernels.rs` `K1_N`, `K1_D`). Exact rates on the T-1941 GAMMA cells
 (4,680,197 distinct x, excel-graph):
@@ -1297,11 +1299,13 @@ G on [1, 2) is a (7,7) raw-y rational fl(N/D) with D0 = -1/16 and Excel's own co
 | [-10, 0) (through G) | 0.876 | 24,620 |
 | x < -10 | 0.999 (6,304 of 6,308) | 6,308 |
 
-The four reflection misses are one ulp and inherit it from GAMMA(q) (the research checker, given Excel's own GAMMA(q)
-column, misses only an FSIN tie). The [1.8, 2) part of G is the weakest (about 0.5, HANDOFF2 §3.3). The misses through G
+Of the four reflection misses, three inherit 1-3 ulp from the engine's GAMMA(q) (Excel's own GAMMA(-x) column in
+`kmyst-gam-h103` differs there by as much), and the fourth, x = -0x1.94efe288f63adp+5, is the FSIN tie the research found:
+RN64(sin) lands on a 53-bit midpoint. The [1.8, 2) part of G is the weakest (about 0.5, HANDOFF2 §3.3). The misses through G
 are a few ulps, invisible at 15 digits.
 Evidence: `docs/research/t1941/` and the `kmyst-gam-*` cases on branch `agent/research/T-1941-crack-gammaln-gamma-ln`
 (README "GAMMA for x >= 10", HANDOFF2 §2, §3.3; `gamma_big_check.c`, `gamma_neg_check.py`, `w4/k1r/plain1.txt`);
+probes/gamma-x87-edges (excel-graph, 2026-10-20: the overflow edge and the reflection past it, 15 of 15);
 ironcalc-calc/STATISTICAL/GAMMA.xlsx passes every GAMMA cell (13 known failures gone; what is left there is GAMMA.DIST and
 GAMMA.INV), BETA_GAMMA.xlsx 8 more and probes/stat-argument-modes one more.
 Implemented in `functions/statistical/gamma_x87.rs` (`excel_gamma`), `gamma_kernels.rs` (K1) and `trig.rs` (`excel_fsin`).

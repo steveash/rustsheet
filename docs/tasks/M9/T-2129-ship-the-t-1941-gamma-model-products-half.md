@@ -58,10 +58,11 @@ the shared Stirling series (`gammaln.rs` `stirling_series`), the descending prod
 [1,2), and the reflection below -10 with FSIN (`trig.rs` `excel_fsin`: RN53(RN64) of the true sine in double-double). K1 is
 W4's `plain1.txt` in `gamma_kernels.rs` with its measured rate and a T-2122 pointer. Every loop is bounded (at most 8, 10, 172
 or 64 steps). Rates on 4,680,197 distinct T-1941 points: integers and half-integers 330/330, x ≥ 10 0.998, [1,10) 0.784, (0,1)
-0.838, [-10,0) 0.876, x < -10 6,304 of 6,308 (the 4 inherit an ulp from GAMMA(q)). The committed fixture (600 per region plus
+0.838, [-10,0) 0.876, x < -10 6,304 of 6,308 (three inherit 1-3 ulp from GAMMA(q); the fourth is the research's FSIN tie). The committed fixture (600 per region plus
 every integer and half-integer) equals the composed Python checkers (`docs/research/t1941/engine/garef.py`, x87 rounding; the
 same composition with single SSE rounding scores lower in every region, e.g. x ≥ 10 0.960 against 0.993 on the sample) on all
-3,330 points. Eval: ironcalc-calc GAMMA.xlsx every GAMMA cell (13 fixed; GAMMA.DIST / GAMMA.INV remain, T-0971 / T-0970),
+3,330 points. New probe probes/gamma-x87-edges (excel-graph): the model's overflow edge (171.6243769563027 is the last finite
+argument) and its 0 past the reflection's overflow are Excel's, 15 of 15. Eval: ironcalc-calc GAMMA.xlsx every GAMMA cell (13 fixed; GAMMA.DIST / GAMMA.INV remain, T-0971 / T-0970),
 BETA_GAMMA.xlsx 8 fixed, probes/stat-argument-modes 1 fixed, 0 regressions. The non-gated t1042 cases: every GAMMA cell at the
 integers 1..171 and the half-integers matches (the n ≥ 89 item of T-0973 included), 4 of 24 unit-interval and 2 negatives-edges
 cells (GAMMA(-0.1), GAMMA(-1.1)) miss by an ulp through G. `special.rs` `ln_gamma` stays for GAMMA.DIST and the incomplete
