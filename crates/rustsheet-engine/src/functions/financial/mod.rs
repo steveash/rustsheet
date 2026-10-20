@@ -313,16 +313,11 @@ impl Model {
         Ok(values)
     }
 
-    // Returns the internal rate of return for a series of cash flows represented by the numbers
-    // in values.
-    // These cash flows do not have to be even, as they would be for an annuity.
-    // However, the cash flows must occur at regular intervals, such as monthly or annually.
-    // The internal rate of return is the interest rate received for an investment consisting
-    // of payments (negative values) and income (positive values) that occur at regular periods.
-    /// `IRR(values, [guess])`: the guess lifts over arrays and ranges; the values are read once,
-    /// whole, and an error in them is every element's (T-1821). Each element may run the solver's
-    /// every pass over the flows, so the call is charged their count per element, weighted by the
-    /// table's `IRR_WEIGHT`.
+    /// `IRR(values, [guess])`: the internal rate of return of cash flows at regular intervals.
+    /// The guess lifts over arrays and ranges; the values are read once, whole, and an error in
+    /// them is every element's (T-1821). Each element may run the solver's every pass over the
+    /// flows, so the call is charged their count per element, weighted by the table's
+    /// `IRR_WEIGHT`.
     pub(crate) fn fn_irr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let (Some(values), 1..=2) = (args.first(), args.len()) else {
             return CalcResult::new_args_number_error(cell);
