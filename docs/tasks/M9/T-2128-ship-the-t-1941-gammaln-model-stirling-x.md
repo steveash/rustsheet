@@ -44,7 +44,7 @@ Expected parity (HANDOFF2 §3): x ≥ 8 ~100%; (2,3] and [3,8) ~95% (98% within 
    module so T-2122 can swap them.
 
 ## Acceptance criteria
-- [x] GAMMALN x ≥ 8 matches the committed T-1941 runs (291,957 of 291,957); x < 0.7 and [3,8) reproduce the research composition.
+- [x] GAMMALN x ≥ 8 matches the committed T-1941 runs (292,645 of 292,649; the 4 misses are LN near-ties where Excel's own LN cell differs too, so the series is exact given Excel's LN); x < 0.7 and (3,8) reproduce the research composition.
 - [x] K2, K3 and (1.5,2] reproduce the research models' exact rates (±0.5%) on the committed runs, and equal the Python checkers on a committed sample; cand9 near 2 decided by measurement and documented.
 - [x] GAMMALN(1) = GAMMALN(2) = 0; no panics or unbounded loops on any f64.
 - [x] `eval/baseline/` known failures only shrink; the GAMMALN lines from T-1529 are reduced or explained.

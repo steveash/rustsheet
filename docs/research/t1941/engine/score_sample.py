@@ -10,6 +10,6 @@ for name in dict.fromkeys(reg):
     s=reg==name; print(f"{name:8s} n={s.sum()} exact={np.mean(m[s]==y[s]):.4f}")
 bits=lambda f: format(struct.unpack('<Q',struct.pack('<d',f))[0],'016x')
 with open(S+'/gl.fixture','w') as o:
-    o.write("# T-2128 GAMMALN fixture: x excel model (f64 bits). 1,500 random distinct x per region (x<0.7, K3, [1.5,2],\n")
-    o.write("# (2,2.02), [2.02,3), [3,8), x>=8) from the T-1941 kmyst-gam-* GAMMALN.PRECISE cells; model = the research checkers composed (glref.py).\n")
+    o.write("# T-2128 GAMMALN fixture: x excel model (f64 bits). 1,500 random distinct x per region (x<0.7, K3 [0.7,1.5], (1.5,2],\n")
+    o.write("# (2,2.02), [2.02,3], (3,8), x>=8) from the T-1941 kmyst-gam-* GAMMALN.PRECISE cells; model = the research checkers composed (glref.py).\n")
     for xi,yi,mi in zip(x,y,m): o.write(f"{bits(xi)} {bits(yi)} {bits(mi)}\n")

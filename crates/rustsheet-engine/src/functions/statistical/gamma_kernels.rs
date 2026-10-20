@@ -40,7 +40,7 @@ pub(super) const K2_D: [f64; 9] = [
 
 /// Reviewer 3's "cand9" K2 numerator (HANDOFF2 §12.1), evaluated all-stored, used for
 /// x - 2 below 0.01 (`gammaln.rs` `K2_CAND9_BELOW`, the measured optimum, statistics.md). Excel's structure with the best known coefficients near 2,
-/// not bit-exact; measured exact rate 0.983 on (2, 2.02) (192,512 distinct x); see T-2122. Only p1..p5 differ from [`K2_N`].
+/// not bit-exact; measured exact rate 0.983 on (2, 2.02) (192,512 distinct x); see T-2122. Only p1..p3 differ from [`K2_N`] (HANDOFF2's "p1..p5" is relative to grid_a).
 #[rustfmt::skip]
 pub(super) const K2_CAND9_N: [f64; 10] = [
     f64::from_bits(0x3CC5_7179_94EF_45D1), // 0x1.5717994ef45d1p-51
@@ -55,7 +55,7 @@ pub(super) const K2_CAND9_N: [f64; 10] = [
     f64::from_bits(0xBF92_2260_ED97_843D), // -0x1.22260ed97843dp-6
 ];
 
-/// The cand9 denominator (see [`K2_CAND9_N`]); only q0..q4 differ from [`K2_D`].
+/// The cand9 denominator (see [`K2_CAND9_N`]); only q0..q2 differ from [`K2_D`].
 #[rustfmt::skip]
 pub(super) const K2_CAND9_D: [f64; 9] = [
     f64::from_bits(0x3ED0_3CAD_F2CC_5614), // 0x1.03cadf2cc5614p-18
