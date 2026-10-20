@@ -3,7 +3,7 @@ id: T-0970
 title: "BETA.DIST/F.DIST/F.DIST.RT/F.TEST: accurate regularized incomplete beta (45 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
