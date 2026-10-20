@@ -64,11 +64,12 @@ taken exactly (I_y(n/2,1/2)/2 when y <= z, else 1/2 - I_z(1/2,n/2)/2).
   from the fit lab's `t_cdf`, which rounds y to a double before I_y in the lower tail: the exact I at
   the rounded y reproduces 152,191 ulp (and 43,561 at t = -10) exactly. Fit-lab fix: T-2088.
 - **T.DIST (cumulative)**: the exact CDF, rounded, is bit-exact on 127 of 160 probes-numeric cells
-  (engine 78), 155 within 4 ulp, worst 45 ulp (`T.DIST(-10,1000,TRUE)`). On `T_DIST.xlsx` it is
+  (engine 78 on m9-t-dist-cdf; 118 of its 150 cells, the other 10 in m9-t-nonint-df and m9-t-edges), 155 within 4 ulp, worst 45 ulp (`T.DIST(-10,1000,TRUE)`). On `T_DIST.xlsx` it is
   bit-exact on every T.DIST cell but D6 (1 ulp) and D19 (33 ulp, the deep tail `T.DIST(-1E6,10,TRUE)`).
 - **T.DIST.RT / T.DIST.2T**: T.DIST.2T is exactly 2 * T.DIST.RT on every cell. Excel's upper tail is
-  not 1 - T.DIST (none of 9 `T_DIST.xlsx` pairs) and not 0.5 - c with c the centre
-  I_z(1/2,n/2)/2 rounded (RT(5,30) is then 12,050 ulp off): it is computed directly, near the exact
+  not 1 - T.DIST (it fails on 11 of the 21 `T_DIST.xlsx` T.DIST/T.DIST.RT row pairs: rows 2, 4,
+  6, 7, 8, 13, 15, 16, 17, 18, 28) and not 0.5 - c with c the centre
+  I_z(1/2,n/2)/2 rounded (RT(5,30) is then about 12,050 ulp off): it is computed directly, near the exact
   value but with algorithm noise: exact RT is bit-exact on 79 of 167 cells and within 4 ulp on 134.
   On `T_DIST.xlsx` the exact tails are 0 to 4 ulp off except F7, F8, C7, C8 (`T.DIST.RT(1.96,60)`:
   13 ulp) and F18 (33 ulp).
@@ -76,7 +77,7 @@ taken exactly (I_y(n/2,1/2)/2 when y <= z, else 1/2 - I_z(1/2,n/2)/2).
   power series (`pseries`, b x <= 1) with x^a = exp(a * ln y), y = n/(n+t^2) as a double, and a
   correctly rounded Gamma ratio Gamma(a+b)/(Gamma(a) Gamma(b)) (ln Gamma when a + b >= 171.6),
   product `x^a * s * ratio`, is within 4 ulp on 131 of 135 deep-tail cells (38 bit-exact, worst 7);
-  the exact value has worst 269 (`T.DIST.RT(1E6,30)`). Rejected on the same cells: ln y as
+  the correctly rounded I at the double y has worst 269 (`T.DIST.RT(1E6,30)`; 275 from the exact value). Rejected on the same cells: ln y as
   -log1p(t^2/n) (worst 498) or ln n - ln(n+t^2) (worst 464), one exp() over ln-prefactor + a ln y
   (worst >= 201), libm tgamma ratio (worst 5 to 6, fewer within 4 ulp), x^a by pow (worst 269),
   NR betai (worst 449), LibreOffice GetBetaDist (worst 96).
