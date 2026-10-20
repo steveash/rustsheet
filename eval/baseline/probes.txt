@@ -1324,15 +1324,8 @@ F	probes/fin-argument-modes.case.json	Sheet1!H117
 F	probes/fin-argument-modes.case.json	Sheet1!H125
 F	probes/fin-argument-modes.case.json	Sheet1!H137
 F	probes/fin-argument-modes.case.json	Sheet1!H139
-F	probes/fin-argument-modes.case.json	Sheet1!H155
-F	probes/fin-argument-modes.case.json	Sheet1!H156
 F	probes/fin-argument-modes.case.json	Sheet1!H163
-F	probes/fin-argument-modes.case.json	Sheet1!H172
-F	probes/fin-argument-modes.case.json	Sheet1!H173
-F	probes/fin-argument-modes.case.json	Sheet1!H174
 F	probes/fin-argument-modes.case.json	Sheet1!H186
-F	probes/fin-argument-modes.case.json	Sheet1!H187
-F	probes/fin-argument-modes.case.json	Sheet1!H188
 F	probes/fin-argument-modes.case.json	Sheet1!H189
 F	probes/fin-argument-modes.case.json	Sheet1!H200
 F	probes/fin-argument-modes.case.json	Sheet1!H236
