@@ -2046,6 +2046,18 @@ Status: VERIFIED for evaluation; UNVERIFIED for FORMULATEXT (RustSheet shows the
 Implemented in: `Lexer::consume_this_row_shorthand`.
 Tasks: T-1672, T-1683
 
+## Structured references when the table changes
+Rule (unprobed): a formula keeps its structured reference and is evaluated against the table as it is
+now (gen-m8b in-table 19fdc25163755713 shows the evaluation against a fixed table). What Excel does to the
+reference, and to the formula's value, when the table is resized (rows or columns inserted or deleted
+inside or at its edge, or a resize), converted to a range or deleted is not probed. "Convert to Range" is
+believed to turn the references into plain cell references.
+Status: UNVERIFIED
+Implemented in: no. The engine lowers every structured reference to a range at parse time and stores that
+range; tables do not move on structural edits. SPEC-0016 keeps the reference in the parsed formula and
+re-derives its area whenever the table list changes (engine API behavior, not Excel evidence).
+Tasks: T-2194, T-2195, T-1699, T-2197
+
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
 and FORMULATEXT prints the name with the spelling of the *first* occurrence of that name (compared
