@@ -145,6 +145,12 @@ def joint(a, bb, cc):
 if truth:
     s1, s2 = joint(*truth)
     print("at truth: S %.1f  P %.1f  joint %.1f" % (s1, s2, s1 + s2))
+    if os.environ.get("PERRUN"):
+        # per-run truth contribution and per-run spread over phase (where the top-stage information lives)
+        phr = ((truth[0] + truth[1] * dx + truth[2] * dx**2) * u0 / uS) % 1.0
+        kk = np.floor(phr * 64).astype(int) % 64
+        np.savez(os.environ["PERRUN"], xm=xm, tv=CS[np.arange(len(xm)), kk], sd=CS.std(1))
+        raise SystemExit(0)
 # null for the joint objective
 rng = np.random.default_rng(3)
 nul = np.array(

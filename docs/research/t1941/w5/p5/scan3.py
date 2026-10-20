@@ -118,7 +118,7 @@ u0 = float(np.median(uS))
 truth = None
 if mode == "control":
     tp = np.polyfit(dx, np.array(tS), 3)
-    truth = (tp[3] / u0, tp[2] / u0, tp[1] / u0)
+    truth = (tp[3] / u0, tp[2] / u0, tp[1] / u0, tp[0] / u0)
     print('truth cubic coefficient d = %.3f' % (tp[0] / u0))
     print(
         "truth (alpha, beta, gamma)/u_S = (%.3f, %.3f, %.3f), a mod 1 = %.3f"
@@ -138,14 +138,20 @@ def obj(C, ph):
     )
 
 
-def joint(a, bb, cc):
-    dS = (a + bb * dx + cc * dx**2) * u0  # absolute
+def joint(a, bb, cc, dd=0.0):
+    dS = (a + bb * dx + cc * dx**2 + dd * dx**3) * u0  # absolute
     return obj(CS, dS / uS), obj(CP, dS * xm / uP)
 
 
 if truth:
     s1, s2 = joint(*truth)
     print("at truth: S %.1f  P %.1f  joint %.1f" % (s1, s2, s1 + s2))
+    if os.environ.get("PERRUN"):
+        # per-run truth contribution and per-run spread over phase (where the top-stage information lives)
+        phr = ((truth[0] + truth[1] * dx + truth[2] * dx**2 + truth[3] * dx**3) * u0 / uS) % 1.0
+        kk = np.floor(phr * 64).astype(int) % 64
+        np.savez(os.environ["PERRUN"], xm=xm, tv=CS[np.arange(len(xm)), kk], sd=CS.std(1))
+        raise SystemExit(0)
 # null for the joint objective
 rng = np.random.default_rng(3)
 nul = np.array(
