@@ -124,6 +124,12 @@ if __name__=='__main__':
     # embedding lattice
     B=[float(abs(v))+1 for v in m_true] if len(sys.argv)>5 else None
     bound=[mp.mpf(10)**int(sys.argv[5])]*nu if len(sys.argv)>5 else [mp.mpf(1e15)]*nu
+    if os.environ.get('BOUNDV'):
+        # per-coefficient log10 bounds, e.g. "N0:15,N1:15,N5:4,D9:4" (unlisted keep the uniform bound): tight bounds on
+        # coefficients already pinned by phases leave the lattice to resolve only their whole-ulp branch ambiguities
+        nm=['N%d'%k for k in range(len(Nc))]+['D%d'%k for k in range(1,len(Dc))]
+        for t in os.environ['BOUNDV'].split(','):
+            k,v=t.split(':'); bound[nm.index(k)]=mp.mpf(10)**int(v)
     Wp=mp.mpf(2)**int(np.ceil(np.log2(1/max(sig,1e-4))))*64   # phase scale
     Wf=mp.mpf(10)**16*64*mp.mpf(os.environ.get('FUNCW','1'))   # FUNCW < 1 loosens the function rows (Excel's own approximation error)
     ne=len(rows); nf=len(frows); nq=len(qrows); dim=nu+ne+1; cols=nu+ne+nf+nq+1
