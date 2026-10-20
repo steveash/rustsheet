@@ -186,7 +186,11 @@ fn fractional_and_repeated_elapsed_seconds() {
         (3.14159, "[ss].000", "271433.376"),
         (-3.14159, "[h]:m:s.000", "-75:23:53.376"),
         (two_03_04, "[hh]:mm:ss.0", "02:03:04.0"),
-        (two_03_04, "[s]\" [yes, \"ss\"] seconds\"", "7384 [yes, 7384] seconds"),
+        (
+            two_03_04,
+            "[s]\" [yes, \"ss\"] seconds\"",
+            "7384 [yes, 7384] seconds",
+        ),
         (0.0, "[ss].000", "00.000"),
         (0.0, "[s]\" [yes, \"ss\"] seconds\"", "0 [yes, 00] seconds"),
         (
