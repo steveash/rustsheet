@@ -586,9 +586,9 @@ denominator kinds over 0, ±0.75, ±1, T-0982):
   (`|#-#-#\:#/#|` on 0.75 "|--3/4|", A129).
 Ours: implemented in formatter/parser.rs (`is_fraction_literal`) and formatter/fraction.rs (T-0982); all 325 cells pass.
 Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the displayed text.
-Mismatches with the probes (42 of 128 cells; the other 86 match, including currency, literals and `%`) are filed as
-T-2072 (`,` after the denominator), T-2073 (`0` numerator placeholders, minus and separator under `#`/`0`) and T-2074
-(`00` denominator, the `?/100` minus and the grouped integer). Placeholder denominators are implemented as above
+Mismatches with the probes (18 of 128 cells after T-0982, which fixed T-2073 and the `00` padding) are filed as
+T-2072 (`,` after the denominator) and T-2074 (the minus of `?/100` and `?/00` on a tiny negative, `?/100` on
+1234.5, the grouped integer). Placeholder denominators are implemented as above
 (T-2030). An overflowing numerator still prints in full (T-1740).
 Status: VERIFIED (Excel for the web; desktop Mac Excel cached values for the literals between the parts)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061, T-2072, T-2073, T-2074

@@ -3,7 +3,7 @@ id: T-0982
 title: "TEXT fraction formats with escaped literals, =/= separators and _ spacers between the parts (211 poi known failures)"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -38,10 +38,10 @@ Excel-cached evidence from Mac Excel 16.0; if a rule looks platform-specific, ch
 excel-probe skill (decision 0019/0030) before implementing it.
 
 ## Acceptance criteria
-- [ ] The NumberFormatTests F lines in A120:A332 disappear from eval/baseline/poi.txt with no new F
+- [x] The NumberFormatTests F lines in A120:A332 disappear from eval/baseline/poi.txt with no new F
       lines; any cell left over is listed in the Outcome with its cause and a follow-up task.
-- [ ] Rules recorded in number-formats.md citing the cells.
-- [ ] `make check` green; reviewers approve.
+- [x] Rules recorded in number-formats.md citing the cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The fraction section itself and the choice of fraction: T-2029 and T-2030 (gap triage 2026-10-19);
@@ -52,3 +52,12 @@ excel-probe skill (decision 0019/0030) before implementing it.
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+The fraction parser accepts literals on either side of the `/` (`=/=`, `\:`, quoted text, `_x`; `is_fraction_literal` in formatter/parser.rs). The renderer (formatter/fraction.rs) now:
+- prints a zero numerator under a `0` placeholder;
+- blanks a zero numerator to spaces or to nothing by the integer, numerator and denominator kinds;
+- prints, spaces or drops the separator after a zero integer by the same kinds;
+- pads a `0` denominator on the left.
+
+Rules are in number-formats.md "Fraction formats", citing the cells. Eval delta: poi 377 -> 181 known failures (all 196 NumberFormatTests lines fixed; 325/325 pass). probes 1682 -> 1658 (24 fraction-format-features cells: all of T-2073, and rows 13-14 of T-2074). Visible parity: 1806 -> 1782 cells off. No regressions. T-2073 is done by this PR; T-2074 keeps F9, F13, I9 and I10.
