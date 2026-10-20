@@ -354,8 +354,9 @@ then row 2 descending, and `SORT(A1:C3,1,{1,-1},TRUE)` is `#VALUE!`, probes/sort
 0,5,1,9,1,2), a single sort_order applies to every key (`{1;2},-1` 1,9,1,2,0,5), a key may repeat (`{1;1}`) but more
 keys than the array has columns (rows, by_col) is `#VALUE!` (`{1;1;1}`, `{1;2;1}`; `{1;1;2}` over three columns
 sorts), a 2-D list (`{1,2;2,1}`) and an error element are `#VALUE!` as validation errors, so a later argument's error
-wins (`SORT(..,IF({TRUE;FALSE},1,NA()),1/0)` is `#DIV/0!`), a blank range element reads as 0 and text "1" as 1
-(probes/sort-index-key-ties, excel-graph, 2026-10-20, T-1837);
+wins (`SORT(..,IF({TRUE;FALSE},1,NA()),1/0)` is `#DIV/0!`), a range sort_index with a blank cell (D1 = 1, D2 blank) is
+`#VALUE!` (A9; read as 0 here), and text "1" in an array constant is key 1 (A13); an error cell inside a range list is
+read as an error element by analogy, UNVERIFIED (probes/sort-index-key-ties, excel-graph, 2026-10-20, T-1837);
 GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; `_xleta.` names work since T-1466, see "Functions passed by name" below); INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
 is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)
