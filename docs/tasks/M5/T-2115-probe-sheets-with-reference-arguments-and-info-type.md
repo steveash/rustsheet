@@ -3,7 +3,7 @@ id: T-2115
 title: "Probe SHEETS with reference arguments and INFO type_text values on excel-graph (oracle: none evidence gap)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -55,7 +55,7 @@ the same function, or filed as a functions-logic task with milestone M5.
   edit can follow once the evidence is in.
 - Bare `SHEETS()` and `INFO("numfile")` (canary-dependent).
 
-## Handoff
+## Handoff (resumed)
 Tried: wrote `eval/suites/probes/cases/info-sheets-info-types.case.json` (24 SHEETS cells, ~30 INFO cells; no sidecar committed).
 The canary (`oracle/canary.py` `sheet_count_call`) accepts only plain references for SHEETS and literal INFO types, so the task's
 union, INDIRECT, OFFSET, name, error, text, number, boolean and array SHEETS forms and INFO(1)/TRUE/#N/A/array are refused; I dropped them.
