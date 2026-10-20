@@ -3,7 +3,7 @@ id: T-2175
 title: "Catalog coverage counts volatile and oracle-none functions with the evidence floor as covered (decision 0085 item 4)"
 milestone: M5
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -54,3 +54,11 @@ or when it is volatile or `oracle: none` and has (a). The row is at 100% when `c
 - Removing `oracle: none` from the catalog.
 - Any gate on the numbers. The table is an exit measure, not a gate.
 - The combined exit section (T-2177).
+
+## Outcome
+`MilestoneCoverage` gains `covered` and `exempt`; report.md has a `covered (decision 0085)` column
+and a separate "Mk exempt from b" list; the rule applies to every row. Unit test covers volatile
+with and without the floor, `oracle: none` with the floor, and an ordinary function with (a) only.
+`make eval` on this branch, M5 row: 135 functions, 135 (a), 131 (b), 131 both, 135 covered (INFO
+and SHEETS already meet (a) at the base). No baseline change. Documented in
+docs/architecture/eval-harness.md.
