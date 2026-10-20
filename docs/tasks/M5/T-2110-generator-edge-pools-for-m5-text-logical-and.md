@@ -3,7 +3,7 @@ id: T-2110
 title: "Generator edge pools for M5 text, logical and information params: text, numeric-text, number-format and error pools"
 milestone: M5
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -62,3 +62,8 @@ error values.
 ## Out of scope
 - Error cells on the generated Data sheet (a later generator change).
 - Regenerating gen-m5 (T-2114).
+
+## Outcome
+Added the pools `text_edges`, `numeric_text`, `number_formats` (quoted from `number_formats.py` BUILTIN + CUSTOM, none over 255 characters) and `errors` to `gen/pools.py`, and `pool:` on 30 catalog params (TEXT, VALUE, NUMBERVALUE, T, the text functions, the IS*/IFNA/IFERROR value params, ERROR.TYPE). Left out: `N` (no `params` signature in the catalog yet) and TYPE/ISREF (`array`-mode param; the draw was not extended, per the task). Tools tests: pool strings <= 255 characters, no year-less date in `numeric_text`, `number_formats` is a quoted subset of the policy codes.
+
+Smoke case (one formula per entry of the four new pools, 194 cells): spec2xlsx `build_xlsx` converts it; `rustsheet-eval --root <scratch> run --suite smoke` executes it without a crash; `rustsheet-oracle fill -b excel-graph` on a scratch suite returned a value for all 194 cells, so the oracle accepts error literals such as `#REF!`. The scratch suite was deleted. No eval change (T-2114 regenerates gen-m5).
