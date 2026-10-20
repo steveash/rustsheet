@@ -116,8 +116,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 
 Anything that changes architecture, storage, the evaluation model or the public API starts with a
 **spec task**: `docs/specs/SPEC-XXXX-<slug>.md` (template in `docs/specs/TEMPLATE.md`). The spec
-PR is reviewed by the architecture reviewer (the performance reviewer is off, decision 0081). Implementation tasks link the spec
-and may not contradict it without amending it first.
+PR is reviewed by the architecture reviewer (the performance reviewer is off, decision 0081).
+Implementation tasks link the spec and may not contradict it without amending it first.
 
 ## Excel-behavior questions
 

@@ -12,12 +12,13 @@
 - **Decision:**
   1. The `review` skill does not launch `reviewer-performance`. A PR merges when the security,
      architecture, quality and (where it applies) Excel-fidelity reviewers approve and CI is green.
-  2. A benchmark criterion in a task or spec ("within 5%", "no slower") is read as **no more than
+  2. A benchmark criterion in a task or spec ("within 5%", "no slower"; e.g. the tables in SPEC-0009 and SPEC-0011) is read as **no more than
      50% slower** than main on the named bench. Beyond 50% needs a decision record. Measuring is
      optional; a task that measures records the numbers in its Outcome.
   3. Directive 5 is unchanged: no unbounded recursion, allocation or work on untrusted input. That is
      a safety rule, and the security reviewer keeps enforcing it (resource caps, `LiftCost`,
-     cancellation), as do the fuzzers.
+     cancellation), as do the fuzzers. A quadratic or unbounded regression on untrusted input is
+     not a bench-percentage question: it still blocks under the security review.
   4. PRs held only by a performance review or a bench criterion when this lands are re-judged under
      it: T-1898 (#1167), T-1775 (#1164), T-1829 (#1153).
   5. Optimization tasks (lane `perf`, e.g. T-1932) stay filed and are picked after correctness work.

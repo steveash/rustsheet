@@ -17,7 +17,7 @@ deduplicated strings/styles/formulas, and efficient row/column insertion. Do not
 2. Memory: per-cell overhead, duplicated strings/styles/formulas (must be interned/shared),
    unbounded caches.
 3. Evidence: hot-path changes include benchmark numbers (before → after) from the bench suite
-   once it exists (M3+); regressions > 5% need justification.
+   once it exists (M3+); regressions > 50% need a decision record (decision 0081).
 4. Correctness of laziness/incrementality: dirty propagation must be conservative (never skip a
    needed recompute); volatile and dynamic-dependency functions (INDIRECT, OFFSET, NOW) handled.
 
