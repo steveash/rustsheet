@@ -100,3 +100,8 @@ The `ParsePart::Number` branch of `formatter/format.rs` now rounds at the shown 
 `decimal_round::round_decimal(.., HalfAwayFromZero)` (15-digit decimal, as General and ROUND);
 scientific formats keep the significant-digit cut (T-1730). Unit test `number_format_ties_round_half_away_from_zero`.
 Eval delta: gen-m10 known failures 67 -> 62 (129 text cells fixed), probes 1632 -> 1631 (2 text), 0 regressions.
+
+Side effect: rounding before the sign test also fixed 29 gen-m10 TF lines outside the list above: the -0.5
+minus under `0`-style formats (T-1129) and 0.0049 under `0%`/`%0` (T-1738), all oracle-backed. T-1129 and
+T-1738 keep only what is still open (values that round to zero, `#,` on -500, `?.??`, `#%` of 0.0049).
+Follow-up probe wanted: `TEXT(999999999999957.5,"0")` (16th-digit tie in a displayed format).
