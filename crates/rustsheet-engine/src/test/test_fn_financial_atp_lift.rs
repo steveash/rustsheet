@@ -140,12 +140,11 @@ fn a_range_is_refused_in_every_argument() {
 }
 
 #[test]
-fn mduration_reads_yld_and_frequency_first() {
-    // MDURATION reads its yld and frequency before DURATION reads every argument, as it did
-    // before the lift: the typed text yld wins over the settlement's `#N/A`. Not oracle-confirmed:
-    // T-1844 probes it.
+fn mduration_reads_its_arguments_in_order() {
+    // MDURATION reads every argument in order, as DURATION does: the settlement's `#N/A` wins over
+    // the typed text yld (probes/fin-coupon-walk-bounds-c M8, N8; excel-graph, T-1844).
     check(&[
-        ("A1", "=MDURATION(NA(),43831,0.08,\"x\",2)", "#VALUE!"),
+        ("A1", "=MDURATION(NA(),43831,0.08,\"x\",2)", "#N/A"),
         ("A2", "=DURATION(NA(),43831,0.08,\"x\",2)", "#N/A"),
     ]);
 }
@@ -153,7 +152,7 @@ fn mduration_reads_yld_and_frequency_first() {
 #[test]
 fn a_settlement_before_the_calendar_is_num() {
     // probes/fin-coupon-walk-bounds A1-A13, A19, A20 and -b A11: a settlement below serial 1 is
-    // #NUM!, so the schedule walk back from the maturity stays inside the calendar
+    // #NUM! (below 0 for COUPPCD and the COUPDAYS functions, T-1844), so the schedule walk back from the maturity stays inside the calendar
     // (`COUPNUM(-1E15,..)` stepped about 10^6 quarters before T-1822).
     check(&[
         ("A1", "=COUPNUM(-1E15,43831,4)", "#NUM!"),

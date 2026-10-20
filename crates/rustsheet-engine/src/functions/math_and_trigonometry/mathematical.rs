@@ -1,5 +1,5 @@
 use super::trig::{excel_cos, excel_sin, excel_tan, EXCEL_TRIG_LIMIT};
-use crate::arithmetic::{divide, extended_sqrt, flush_subnormal, power};
+use crate::arithmetic::{divide, extended_quotient, extended_sqrt, flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::expressions::types::CellReferenceIndex;
@@ -31,6 +31,14 @@ fn trig_arg(f: f64) -> Result<f64, Error> {
     } else {
         Ok(f)
     }
+}
+
+/// COT, CSC and SEC: 1 over the rounded TAN, SIN or COS, divided as the `/` operator divides
+/// (rounded to 64 bits, then to a double), so `COT(PI()/4)` is 1 and `CSC(PI()/6)` 2 like
+/// `1/TAN(PI()/4)` and `1/SIN(PI()/6)` (probes/trig-reciprocal-special-angles; ironcalc-calc
+/// TRIGONOMETRIC.xlsx `COT_CSC_SEC` B47, C48; numbers.md "Division rounds twice").
+fn reciprocal_trig(value: f64) -> f64 {
+    extended_quotient(1.0, value)
 }
 
 /// MIN and MAX: a referenced-cell error ranks below a direct scalar error; the leftmost wins
@@ -538,8 +546,9 @@ impl Model {
             } else if f == 0.0 {
                 Err(Error::DIV)
             } else {
-                // 1/TAN, not COS/SIN (probes-numeric/m9-trig-reduction F6-F81).
-                Ok(1.0 / excel_tan(f))
+                // 1/TAN, not COS/SIN (probes-numeric/m9-trig-reduction F6-F81), divided as `/`
+                // divides: rounded twice, so COT(PI()/4) is 1 (`reciprocal_trig`).
+                Ok(reciprocal_trig(excel_tan(f)))
             }
         })
     }
@@ -562,7 +571,7 @@ impl Model {
             } else if f == 0.0 {
                 Err(Error::DIV)
             } else {
-                Ok(1.0 / excel_sin(f))
+                Ok(reciprocal_trig(excel_sin(f)))
             }
         })
     }
@@ -578,7 +587,7 @@ impl Model {
     }
     pub(crate) fn fn_sec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Sec, args, cell, |f| {
-            trig_arg(f).map(|x| 1.0 / excel_cos(x))
+            trig_arg(f).map(|x| reciprocal_trig(excel_cos(x)))
         })
     }
     pub(crate) fn fn_sech(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

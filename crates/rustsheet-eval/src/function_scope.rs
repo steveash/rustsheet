@@ -1,12 +1,15 @@
-//! Milestone function scope: the M2 exit criterion "ironcalc-calc cells using only M1/M2
-//! functions at 100%" (docs/milestones.md) as a reported number.
+//! Milestone function scope: the exit criteria of the form "ironcalc-calc cells using only the
+//! functions of milestones up to Mk at 100%" (docs/milestones.md, M2 and M5) as reported numbers.
 //!
-//! A scored `ironcalc-calc` cell is in scope when every function its formula calls has a catalog
-//! milestone of M0, M1 or M2; a formula that calls no function is in scope too. A function the
-//! catalog does not list counts as in scope, so no cell drops out silently (the same
-//! convention as [`Catalog::in_scope`]). An array-member cell is classified by its anchor's formula
-//! (T-1877). Cells with neither a formula nor an array anchor (spill children) cannot be
-//! classified; they are left out and counted on their own line so the gap stays visible.
+//! A scored `ironcalc-calc` cell is in the row of milestone `Mk` when every function its formula
+//! calls has a catalog milestone of at most `k`; a formula that calls no function is in every row.
+//! A function the catalog does not list counts as in scope, so no cell drops out silently (the same
+//! convention as [`Catalog::in_scope`]). The rows are the report rows of the probe milestones (M2, M5 to
+//! M11), plus any other catalog milestone, in phase order; M0 and M1 functions count in the M2 row
+//! (decision 0051, item 3). An
+//! array-member cell is classified by its anchor's formula (T-1877). Cells with neither a formula
+//! nor an array anchor (spill children) cannot be classified; they are left out and counted on
+//! their own line so the gap stays visible.
 //! A call of a workbook defined name also counts the functions of the name's formula, so
 //! `gelu(A1:C1)` over a `LAMBDA` name is classified by `LAMBDA`, `TANH`, `POWER`, ... (T-1970,
 //! as decision 0051 item 2 reads name bodies); names calling names are followed up to
@@ -19,30 +22,37 @@ use std::fmt::Write as _;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
-use crate::probe_milestones::parse_milestone;
+use crate::probe_milestones::{parse_milestone, row_of, REPORT_ROWS};
 use crate::report::functions_in;
 use crate::runner::CaseResult;
 
 /// The suite scored.
 pub const SUITE: &str = "ironcalc-calc";
-/// The highest catalog milestone that counts toward M2's exit.
-const MAX_MILESTONE: u32 = 2;
 /// How many levels of defined names calling defined names are followed; untrusted workbooks
 /// can nest names arbitrarily (CLAUDE.md directive 5).
 const MAX_NAME_DEPTH: usize = 16;
 
-/// How the M0–M2-only cells of [`SUITE`] scored.
+/// How the cells of [`SUITE`] that use only the functions up to one milestone scored.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FunctionScope {
-    /// Scored cells whose formula calls only M0–M2 functions (or none).
+pub struct MilestoneScope {
+    /// The function milestone, `M<n>`.
+    pub milestone: String,
+    /// Scored cells whose formula calls only functions up to this milestone (or none).
     pub cells: usize,
     /// Of those, the cells that match Excel bit-exact.
     pub bit_exact: usize,
     /// Of those, the cells that gave their pinned by-design value (decision 0036).
     pub deviations: usize,
-    /// The failing cells, as `case!Sheet!A1`.
+    /// All failing cells of the row, as `case!Sheet!A1`, sorted.
     pub failing: Vec<String>,
-    /// Scored cells with no formula and no array anchor (spill children), left out of the counts above.
+}
+
+/// How the [`SUITE`] cells scored, one cumulative row per function milestone.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FunctionScope {
+    /// The rows in phase order, each a superset of the one before.
+    pub rows: Vec<MilestoneScope>,
+    /// Scored cells with no formula and no array anchor (spill children), left out of every row.
     pub no_formula: usize,
     /// Of those, the cells that are known failures.
     pub no_formula_failing: usize,
@@ -59,7 +69,24 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
         .functions()
         .filter_map(|f| Some((f.name.as_str(), parse_milestone(&f.milestone)?)))
         .collect();
-    let mut scope = FunctionScope::default();
+    // The report rows of the probe milestones (one list for both reports), plus any catalog milestone they lack.
+    let limits: Vec<u32> = milestones
+        .values()
+        .map(|&m| row_of(m))
+        .chain(REPORT_ROWS)
+        .collect::<BTreeSet<u32>>()
+        .into_iter()
+        .collect();
+    let mut scope = FunctionScope {
+        rows: limits
+            .iter()
+            .map(|m| MilestoneScope {
+                milestone: format!("M{m}"),
+                ..MilestoneScope::default()
+            })
+            .collect(),
+        ..FunctionScope::default()
+    };
     for r in cases {
         for c in &r.cells {
             let Some(formula) = c.formula.as_deref().or(c.anchor_formula.as_deref()) else {
@@ -67,27 +94,28 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
                 scope.no_formula_failing += usize::from(c.verdict.is_failure());
                 continue;
             };
-            let only_early = calls_through_names(formula, &r.defined_names)
+            // The latest milestone among the functions called; the cell is in every row from there on.
+            let needed = calls_through_names(formula, &r.defined_names)
                 .iter()
-                .all(|f| {
-                    milestones
-                        .get(f.as_str())
-                        .is_none_or(|&m| m <= MAX_MILESTONE)
-                });
-            if !only_early {
-                continue;
-            }
-            scope.cells += 1;
-            if c.verdict.is_pass() {
-                scope.bit_exact += 1;
-            } else if c.verdict.is_failure() {
-                scope.failing.push(format!("{}!{}", r.id, c.key()));
-            } else {
-                scope.deviations += 1;
+                .filter_map(|f| milestones.get(f.as_str()).copied())
+                .max()
+                .unwrap_or(0);
+            let first = limits.partition_point(|&limit| limit < needed);
+            for row in &mut scope.rows[first..] {
+                row.cells += 1;
+                if c.verdict.is_pass() {
+                    row.bit_exact += 1;
+                } else if c.verdict.is_failure() {
+                    row.failing.push(format!("{}!{}", r.id, c.key()));
+                } else {
+                    row.deviations += 1;
+                }
             }
         }
     }
-    scope.failing.sort();
+    for row in &mut scope.rows {
+        row.failing.sort();
+    }
     Some(scope)
 }
 
@@ -130,25 +158,42 @@ pub fn write_markdown(scope: Option<&FunctionScope>, md: &mut String) {
     let _ = writeln!(
         md,
         "\n## Milestone function scope ({SUITE})\n\n`{SUITE}` formula cells whose functions all have \
-         a catalog milestone of M0–M2 (none counts too): the M2 exit criterion. A call of a \
-         defined name counts the functions of the name's formula; precedents are not followed.\n"
+         a catalog milestone up to the row's (none counts too): the exit criteria of M2 and M5. Each \
+         row includes the rows above it. A call of a defined name counts the functions of the \
+         name's formula; precedents are not followed. {} scored cells with no formula or anchor \
+         are left out ({} failing).\n",
+        s.no_formula, s.no_formula_failing
     );
     let _ = writeln!(
         md,
-        "| scored cells | bit-exact | deviations | failing | no formula or anchor (left out) | of those failing |\n\
-         |---|---|---|---|---|---|\n| {} | {} | {} | {} | {} | {} |",
-        s.cells,
-        s.bit_exact,
-        s.deviations,
-        s.failing.len(),
-        s.no_formula,
-        s.no_formula_failing
+        "| milestone | scored cells | bit-exact | deviations | failing |\n|---|---|---|---|---|"
     );
-    if !s.failing.is_empty() {
-        let _ = writeln!(md, "\nFailing cells:\n");
-        for id in &s.failing {
-            let _ = writeln!(md, "- `{id}`");
+    for row in &s.rows {
+        let _ = writeln!(
+            md,
+            "| {} | {} | {} | {} | {} |",
+            row.milestone,
+            row.cells,
+            row.bit_exact,
+            row.deviations,
+            row.failing.len()
+        );
+    }
+    let mut listed: &[String] = &[];
+    for row in &s.rows {
+        // Each cell is listed once, under the first row that has it.
+        let new: Vec<&String> = row
+            .failing
+            .iter()
+            .filter(|id| listed.binary_search(id).is_err())
+            .collect();
+        if !new.is_empty() {
+            let _ = writeln!(md, "\nNewly failing at {}:\n", row.milestone);
+            for id in new {
+                let _ = writeln!(md, "- `{id}`");
+            }
         }
+        listed = &row.failing;
     }
 }
 
@@ -204,6 +249,17 @@ mod tests {
         }
     }
 
+    fn row<'a>(s: &'a FunctionScope, milestone: &str) -> &'a MilestoneScope {
+        s.rows
+            .iter()
+            .find(|r| r.milestone == milestone)
+            .expect("row")
+    }
+
+    fn counts(r: &MilestoneScope) -> (usize, usize, usize) {
+        (r.cells, r.bit_exact, r.deviations)
+    }
+
     #[test]
     fn scopes_function_free_early_and_late_formulas() {
         let catalog = Catalog::from_functions([function("SUM", "M1"), function("LATE", "M9")]);
@@ -225,9 +281,55 @@ mod tests {
             ),
         ];
         let s = summarize(&catalog, &results).expect("suite ran");
-        assert_eq!((s.cells, s.bit_exact, s.deviations), (3, 2, 0));
-        assert_eq!(s.failing, vec!["ironcalc-calc/a!S!A2".to_string()]);
+        // The probe milestones' report rows, so a milestone without catalog functions has its row too.
+        assert_eq!(
+            s.rows
+                .iter()
+                .map(|r| r.milestone.as_str())
+                .collect::<Vec<_>>(),
+            ["M2", "M5", "M6", "M7", "M8", "M9", "M10", "M11"]
+        );
+        let m2 = row(&s, "M2");
+        assert_eq!(counts(m2), (3, 2, 0));
+        assert_eq!(m2.failing, vec!["ironcalc-calc/a!S!A2".to_string()]);
+        let m9 = row(&s, "M9");
+        assert_eq!(counts(m9), (5, 3, 0));
+        assert_eq!(
+            m9.failing,
+            vec![
+                "ironcalc-calc/a!S!A2".to_string(),
+                "ironcalc-calc/a!S!A3".to_string()
+            ]
+        );
         assert_eq!((s.no_formula, s.no_formula_failing), (1, 1));
+    }
+
+    #[test]
+    fn a_formula_is_in_the_rows_from_its_latest_function_on() {
+        let catalog = Catalog::from_functions([
+            function("SUM", "M1"),
+            function("COT", "M5"),
+            function("EARLIER", "M6"),
+        ]);
+        let results = [case(
+            SUITE,
+            vec![
+                cell("A1", Some("1+1"), Verdict::NumericMismatch),
+                cell("A2", Some("SUM(COT(1))"), Verdict::NumericMismatch),
+                cell("A3", Some("COT(EARLIER(1))"), Verdict::NumericMismatch),
+            ],
+        )];
+        let s = summarize(&catalog, &results).expect("suite ran");
+        // A function-free formula is in every row; an M5 formula is not in M2; an M6 call is in neither.
+        assert_eq!(row(&s, "M2").cells, 1);
+        assert_eq!(row(&s, "M5").cells, 2);
+        assert_eq!(row(&s, "M6").cells, 3);
+        let mut md = String::new();
+        write_markdown(Some(&s), &mut md);
+        // Each failing cell is listed once, under the first row that has it.
+        assert_eq!(md.matches("`ironcalc-calc/a!S!A1`").count(), 1);
+        assert!(md.contains("Newly failing at M5:\n\n- `ironcalc-calc/a!S!A2`"));
+        assert!(md.contains("Newly failing at M6:\n\n- `ironcalc-calc/a!S!A3`"));
     }
 
     #[test]
@@ -247,8 +349,10 @@ mod tests {
             ],
         )];
         let s = summarize(&catalog, &results).expect("suite ran");
-        assert_eq!((s.cells, s.bit_exact), (2, 1));
-        assert_eq!(s.failing, vec!["ironcalc-calc/a!S!B2".to_string()]);
+        let m2 = row(&s, "M2");
+        assert_eq!((m2.cells, m2.bit_exact), (2, 1));
+        assert_eq!(m2.failing, vec!["ironcalc-calc/a!S!B2".to_string()]);
+        assert_eq!(row(&s, "M9").cells, 3);
         assert_eq!((s.no_formula, s.no_formula_failing), (1, 1));
     }
 
@@ -288,8 +392,14 @@ mod tests {
         )];
         results[0].defined_names = names;
         let s = summarize(&catalog, &results).expect("suite ran");
-        assert_eq!((s.cells, s.bit_exact), (4, 4));
-        assert!(s.failing.is_empty());
+        let m2 = row(&s, "M2");
+        assert_eq!((m2.cells, m2.bit_exact), (4, 4));
+        assert!(m2.failing.is_empty());
+        assert_eq!(
+            row(&s, "M5").failing,
+            vec!["ironcalc-calc/a!S!A4".to_string()]
+        );
+        assert_eq!(row(&s, "M7").cells, 6);
     }
 
     #[test]
