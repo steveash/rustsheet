@@ -3,7 +3,7 @@ id: T-0443
 title: "eval check reports the probes baseline out of date on main: 2 new-coverage failures (1632 -> 1633)"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
