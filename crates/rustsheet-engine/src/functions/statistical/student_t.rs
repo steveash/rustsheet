@@ -44,9 +44,9 @@ const FRAC_1_PI_DD: Dd = (
 );
 /// 1/sqrt(pi), rounded.
 const FRAC_1_SQRT_PI: f64 = 0.564_189_583_547_756_3;
-/// Coefficients of Gamma(a + 1/2)/(Gamma(a) sqrt(a)) in powers of 1/a: 1 - 1/(8a) + 1/(128a^2)
-/// + 5/(1024a^3) - 21/(32768a^4) - 399/(262144a^5) + 869/(4194304a^6). The first omitted term
-/// is below 2^-53 relative from a = 85 on.
+/// Coefficients of Gamma(a + 1/2)/(Gamma(a) sqrt(a)) in powers of 1/a, 1 - 1/(8a) +
+/// 1/(128a^2) + 5/(1024a^3) - 21/(32768a^4) - 399/(262144a^5) + 869/(4194304a^6): the first
+/// omitted term is below 2^-53 relative from a = 85 on.
 const ASYMPTOTIC_RATIO: [f64; 7] = [
     1.0,
     -1.0 / 8.0,
@@ -224,7 +224,7 @@ fn centre_series(t: f64, n: f64) -> Option<Dd> {
 /// double-double: ratio cos^(n+1) / sqrt(n) with cos^2 = n/(n+t^2) and the ratio of
 /// [`integer_ratio`]. `None` elsewhere.
 pub(crate) fn student_t_density(t: f64, n: f64) -> Option<f64> {
-    if !(t.abs() < 1e150) {
+    if t.is_nan() || t.abs() >= 1e150 {
         return None;
     }
     let ratio = integer_ratio(n)?;
@@ -257,8 +257,8 @@ fn dd_sqrt(a: Dd) -> Dd {
     two_sum(root, residual.0 / (2.0 * root))
 }
 
-/// atan of a positive double-double u: the double atan theta_0, then one Newton step on
-/// tan(theta) = u, d = (u cos - sin)/(cos + u sin), with sin and cos of theta_0 by their
+/// atan of a positive double-double u: the double atan `theta_0`, then one Newton step on
+/// tan(theta) = u, d = (u cos - sin)/(cos + u sin), with sin and cos of `theta_0` by their
 /// double-double Taylor series.
 fn dd_atan(u: Dd) -> Dd {
     let theta = u.0.atan();
