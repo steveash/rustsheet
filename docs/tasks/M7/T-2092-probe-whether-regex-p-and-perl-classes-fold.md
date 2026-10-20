@@ -32,4 +32,4 @@ the UNVERIFIED line to replace. If `\p` does not fold, `folded` in regex_posix.r
 - The POSIX classes themselves (T-1989).
 
 ## Outcome
-Probed (probes/regex-p-fold, 40 cells, excel-graph): Excel folds `\p{..}`/`\P{..}` and Perl classes under `(?i)` and case_sensitivity 1, inside and outside a bracket, exactly as ours already does. No code change; recorded in text.md (replaced the UNVERIFIED line). Eval delta: +40 probe cells, all passing.
+Probed (probes/regex-p-fold, 40 cells, excel-graph): Excel folds `\p{..}`/`\P{..}` under `(?i)` and case_sensitivity 1, inside and outside a bracket, exactly as ours already does; Perl classes (`\w`, `\d`, `\s`) match as usual but the probe cannot show whether they fold (UNVERIFIED). No code change; recorded in text.md (replaced the UNVERIFIED line). Eval delta: +40 probe cells, all passing.
