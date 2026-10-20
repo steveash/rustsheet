@@ -3,7 +3,7 @@ id: T-1915
 title: "Legacy N over CHOOSE with an array index: no @ and #VALUE!"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/subtotal-take-array-selector D1, D3, D7 (D5 passes; ours 3 and `=N(@CHOOS
 
 ## Out of scope
 -
+
+## Outcome
+N and T over a CHOOSE with an array-constant index over plain references now leave the call whole (no `@`) and read `#VALUE!` (`chooses_references_by_an_array_index`). probes/subtotal-take-array-selector D1, D3, D7 pass; baseline shrank by those 3 cells.
