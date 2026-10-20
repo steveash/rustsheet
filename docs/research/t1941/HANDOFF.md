@@ -1346,3 +1346,27 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
   - The residual is about 12%.
   - Running: a unit scan of (c_N, c_D); the same form at other stages (s3, d2, ...); jfull on top of the model; the link between H9 and c/x; where such a term arises in code.
   - The same test has been sent to W6 ((1.5,2]), W4 (K1, whose dark upper sites may be this) and W5 (K3).
+
+### 12.18 K2 3p/2p reference, residual, and the cross-kernel transfer (06:15-06:30)
+
+- **K2 reference (`k2_ref.py`).** The c/x term enters the hand-off PRODUCT before it is rounded:
+  - N: P4 = fl(s3·x + c_N/x), s4 = fl(P4 + p4), and stage 5 uses p5 − c_N.
+  - D: P3_D = fl(d2·x + c_D/x), d3 = fl(P3_D + q3), and stage 4 uses q4 − c_D.
+  - Score: 0.9089 on 14 runs and 0.9111 on the dense clusters, ahead of grid_a on 99.9% of clusters.
+  - (−3128, 552) is the unique optimum in every form tested.
+  - None of these add anything: splitting the term, a c2/x² or c3/x³ term, or a stage-3 term.
+  - H9 (an 80-bit hand-off) is excluded: it halves the S4/D3 line amplitude.
+- **Residual of about 9% (reviewer 3, W2).**
+  - It sits in two u/4 cells per run. The flip is selected by the sign of the hand-off product's rounding residue, i.e. a product-level displacement of ±u/8 whose sign varies with x.
+  - Per-run caps: 0.946 at the P4 input.
+- **W2's per-cluster fit of r = (1+ε)/x** reaches 0.953.
+  - ε(x) is smooth (neighbour correlation 0.84) and equioscillates at ±2e-4 with extrema near 2.07, 2.42, 2.80 and 2.97, which is the error shape of a quadratic approximation to 1/x.
+  - A low-precision reciprocal is excluded.
+- **Hypothesis H10.** There is no extra term. Excel's head coefficients differ from grid_a by a low-degree polynomial ≈ c/x, p5 by −c, and p6..p9 are unchanged: plain doubles in plain Horner. Being tested.
+- **K1 (W4): the same hidden-term structure transfers.**
+  - D term at c3, compensated at c2: k = −350 ulp(c2). N term at c2, compensated at c1: k = +852 ulp(c1).
+  - The model goes from 0.673 (AN2) to 0.757, exactly at the sites the per-site map showed at 7-10% strength.
+  - It also explains the earlier local fits' "D2 +350" demand.
+- **(1.5,2] (W6).**
+  - D.P2 is lit at D3 −2,070,784 ulps (Z 163), and N4 is +3 mod 8.
+  - These are large near-null coefficient moves, the same family. The c/x test and the polynomial-pattern check have been requested.
