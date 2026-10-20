@@ -523,6 +523,16 @@ surrogate pair (`LEN(UNICHAR(65536))` is 2). A fractional value is truncated fir
 Evidence: probes/dollar-fixed-unichar-edges A30-A45, A51-A53, D54-D68 (excel-graph, T-1281).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
+## UNICODE lifts over arrays and ranges
+Rule: UNICODE's argument lifts element by element over an array or a multi-cell range and spills, as CODE's does.
+`UNICODE(INDIRECT("Data!A2:A4",VSTACK(Data!C6:E7)))` lifts over INDIRECT's 2x3 result, and in a cell whose spill area
+is occupied it is `#SPILL!`. The element values (each element's scalar UNICODE, an empty element `#VALUE!`) are
+unprobed: the evidence fixes only the shape.
+Evidence: gen-m9/675763979c1defb6 Calc!A25 (excel-graph).
+Status: VERIFIED (excel-graph) for the spill; element values UNVERIFIED
+Implemented in: `fn_unicode`, `unicode_element` (functions/text/common.rs)
+Tasks: T-2090
+
 ## UNICHAR argument shapes
 Rule: UNICHAR's argument is coerced like any number argument: TRUE is 1 (`UNICHAR(TRUE)` and `UNICHAR(A4)` with A4 = TRUE
 give U+0001), numeric text converts (`UNICHAR(A5)` with A5 = "67" is "C"), an empty cell is 0 so `#VALUE!`, and

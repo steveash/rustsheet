@@ -1,7 +1,6 @@
 use super::text_arg::{broadcast_text, TextArg};
 use super::util::substitute_element;
 use crate::cast::number_text_too_long;
-use crate::number_format::number_to_text;
 use crate::{
     arithmetic::{array_of_errors, own_error},
     calc_result::CalcResult,
@@ -445,61 +444,18 @@ impl Model {
         }
     }
 
+    /// UNICODE(text): the code point of the first character. Lifts over a range or array
+    /// argument, as CODE does: `UNICODE(INDIRECT("Data!A2:A4",VSTACK(Data!C6:E7)))` spills
+    /// (gen-m9/675763979c1defb6 Calc!A25 is `#SPILL!` where the spill is blocked; T-2090).
     pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => Text::from(number_to_text(v)),
-                CalcResult::String(v) => v,
-                CalcResult::Boolean(b) => Text::from(if b { "TRUE" } else { "FALSE" }),
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::Range { .. } => {
-                    // Implicit Intersection not implemented
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Implicit Intersection not implemented".to_string(),
-                    };
-                }
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Empty cell".to_string(),
-                    }
-                }
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
-            };
-
-            // Excel: a lone high surrogate is #VALUE!, a lone low one gives its code
-            // (probes/text-lone-surrogates A3, A4; text-surrogate-positions A38).
-            match s.chars_lossless().next() {
-                Some(Char::Scalar(c)) => return CalcResult::Number(f64::from(c as u32)),
-                Some(Char::Lone(u)) if !(0xD800..0xDC00).contains(&u) => {
-                    return CalcResult::Number(f64::from(u));
-                }
-                Some(Char::Lone(_)) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Lone high surrogate".to_string(),
-                    };
-                }
-                None => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Empty cell".to_string(),
-                    };
-                }
-            }
-        }
-        CalcResult::new_args_number_error(cell)
+        let [arg] = args else {
+            return CalcResult::new_args_number_error(cell);
+        };
+        let text = match self.text_arg(arg, cell) {
+            Ok(text) => text,
+            Err(error) => return error,
+        };
+        broadcast_text(cell, &[&text], |i, j| unicode_element(text.elem(i, j)))
     }
 
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -793,5 +749,18 @@ mod rept_tests {
             rept_element(&text, Ok(2.0)),
             Ok(ArrayNode::String("aa".into()))
         );
+    }
+}
+
+/// One UNICODE element: the code point of the first character, `#VALUE!` for empty text.
+/// Excel: a lone high surrogate is `#VALUE!`, a lone low one gives its code
+/// (probes/text-lone-surrogates A3, A4; text-surrogate-positions A38).
+fn unicode_element(node: &ArrayNode) -> Result<ArrayNode, Error> {
+    match array_node_to_text(node)?.chars_lossless().next() {
+        Some(Char::Scalar(c)) => Ok(ArrayNode::Number(f64::from(c as u32))),
+        Some(Char::Lone(u)) if !(0xD800..0xDC00).contains(&u) => {
+            Ok(ArrayNode::Number(f64::from(u)))
+        }
+        Some(Char::Lone(_)) | None => Err(Error::VALUE),
     }
 }

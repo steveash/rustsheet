@@ -761,7 +761,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Textafter | Function::Textbefore => StaticResult::Unknown,
         Function::Textjoin => not_implemented(args),
         Function::Trim => scalar_arguments(args),
-        Function::Unicode => not_implemented(args),
+        Function::Unicode => scalar_arguments(args),
         Function::Unichar => scalar_arguments(args),
         Function::Char => not_implemented(args),
         Function::Clean => scalar_arguments(args),
