@@ -3,7 +3,7 @@ id: T-1836
 title: "TOCOL and UNIQUE lift their scalar arguments over a range or an array"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
