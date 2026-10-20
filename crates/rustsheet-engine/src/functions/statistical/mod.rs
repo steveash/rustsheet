@@ -13,6 +13,8 @@ mod fisher;
 mod forecast;
 mod frequency;
 mod gamma;
+mod gamma_kernels;
+mod gammaln;
 mod gauss;
 mod geomean;
 mod hypegeom;

@@ -1008,7 +1008,7 @@ sample of 4,000 points plus every miss pins it to the Python model and to Excel 
 `test/fixtures/ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.
 GAMMALN (T-2128) and GAMMA (T-2129) still use the platform ln until they ship.
 Status: VERIFIED (excel-graph)
-Tasks: T-2123, T-1941
+Tasks: T-2123, T-1941, T-2143, T-2144
 
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
@@ -1244,6 +1244,13 @@ correctly rounded. Fit over those 38 and 224 web cells (m9-trig-reduction and tr
 - All of these give ...282 except the double-π reduction (...284).
 So no formulation reaches the desktop value. The three cells stay known failures as an Excel-vs-Excel last-digit conflict, and the
 desktop target waits for T-1075 (M14).
+ATAN2 (gap triage 2026-10-20, T-2142): the two ATAN2 cells of `ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx`
+(Mac 16.0300) where desktop and web differ have the same shape as SIN(4). Sheet1!D14 is `ATAN2(1,3.141592653589793)`:
+desktop 1.2626272556789115, web and engine ...118. D26 is `ATAN2(TRUE,2)`: desktop 1.1071487177940906, web and engine ...904.
+The exact atan(pi) is 1.26262725567891167... and the exact atan(2) is 1.10714871779409050.... So the web values are
+correctly rounded (0.41 and 0.42 ulp off). The desktop values are 0.59 and 0.58 ulp off, and both points lie within
+0.09 ulp of a rounding midpoint. The other 18 numeric desktop ATAN2 cells of the workbook match the web model.
+T-2142 settles the target.
 MIRR (T-0959): Mac 16.0300 caches `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` as 0.3933280241536672, the web gives ...674. The engine keeps
 the desktop value with MIRR's own root (financial.md "MIRR's evaluation order"); `^` follows the web.
 
