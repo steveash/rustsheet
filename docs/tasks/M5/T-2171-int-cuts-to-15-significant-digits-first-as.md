@@ -3,7 +3,7 @@ id: T-2171
 title: "INT cuts to 15 significant digits first, as TRUNC does (INT(1-2^-53) = 1)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
