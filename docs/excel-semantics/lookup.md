@@ -614,7 +614,7 @@ Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); 
 probes/index-zero-index-scalar-shape (excel-graph, 2026-10-20, T-1943).
 Status: VERIFIED (excel-graph)
 Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs), except a legacy N over `INDEX(5,0,0)` or
-`INDEX(5,0)` (a scalar first argument) returns 5 and its FORMULATEXT gains an `@` (T-2190).
+`INDEX(5,0)` (a scalar first argument) returns 5 and its FORMULATEXT gains an `@` (T-2191).
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round

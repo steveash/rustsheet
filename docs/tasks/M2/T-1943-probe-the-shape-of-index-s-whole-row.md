@@ -33,4 +33,4 @@ differs, file a functions-lookup fix task.
 -
 
 ## Outcome
-Probe probes/index-zero-index-scalar-shape (excel-graph) shows every index-0 pick of a scalar, a 1x1 array and 1-row/1-column array constants is an array (`TYPE` 64); a legacy `N` over each is `#VALUE!`, with no `@` in FORMULATEXT. Recorded in lookup.md. The engine matches except legacy N/FORMULATEXT over `INDEX(5,0,0)` and `INDEX(5,0)` (4 cells): filed T-2190. Eval: 51 of 55 new probe cells pass; the 4 failures are baselined.
+Probe probes/index-zero-index-scalar-shape (excel-graph) shows every index-0 pick of a scalar, a 1x1 array and 1-row/1-column array constants is an array (`TYPE` 64); a legacy `N` over each is `#VALUE!`, with no `@` in FORMULATEXT. Recorded in lookup.md. The engine matches except legacy N/FORMULATEXT over `INDEX(5,0,0)` and `INDEX(5,0)` (4 cells): filed T-2191. Eval: 51 of 55 new probe cells pass; the 4 failures are baselined.

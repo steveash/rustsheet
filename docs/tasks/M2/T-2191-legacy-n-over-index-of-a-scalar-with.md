@@ -1,5 +1,5 @@
 ---
-id: T-2190
+id: T-2191
 title: "Legacy N over INDEX of a scalar with a 0 index is #VALUE! and FORMULATEXT shows no @"
 milestone: M2
 lane: functions-lookup
