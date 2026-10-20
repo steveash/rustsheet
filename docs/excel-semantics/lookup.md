@@ -297,6 +297,15 @@ Status: VERIFIED
 Implemented in: `fn_index` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs`
 Tasks: T-0213
 
+## VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0 (T-2168)
+Rule: when VLOOKUP or HLOOKUP lands on a blank cell, the enclosing function sees the number 0, not an empty value:
+`ASC(IFS(..,VLOOKUP(123456789.123,D3:E7,2),..))` landing on blank E6 is "0" (ours ""), and
+`SEC(AVERAGE(HLOOKUP(2.5,B8:D11,4),-2.5,B7:B9))` averages the blank result as 0, 1.2724471433871758 = SEC(-2/3) (ours skips it:
+SEC(-1) = 1.8508157176809255). XLOOKUP already returns a blank return cell as 0 (below).
+Evidence: gen-m5/49bfbf67a1409563 Calc!A103, gen-m5/aac6230c2fb40e1e Calc!A334 (excel-graph, 2026-10-20).
+Unprobed: `ISBLANK` and `&""` of such a result, LOOKUP and INDEX/MATCH.
+Status: VERIFIED (excel-graph, 2 cells); not implemented (T-2168).
+
 ## Whole-column / whole-row search vectors: blank tail
 Rule: as above, blanks never match and the type-skipping search steps over them, so a whole
 column with data in A1:A3 behaves like A1:A3 for an approximate lookup (`MATCH(99,A:A,1)` is
