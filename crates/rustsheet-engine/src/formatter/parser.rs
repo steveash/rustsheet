@@ -49,6 +49,8 @@ pub enum TextToken {
     ElapsedMinutePadded,
     ElapsedSecond,
     ElapsedSecondPadded,
+    /// `.0`, `.00` or `.000` right after a seconds token: that many digits of the second.
+    SecondFraction(usize),
     AMPM,
     AP(char, char),
 }
@@ -117,6 +119,9 @@ pub struct Parser {
     pub parts: Vec<ParsePart>,
     lexer: Lexer,
 }
+
+/// The most digits of a second a format may show (`.000`, poi/ElapsedFormatTests A2).
+const MAX_SECOND_FRACTION_DIGITS: usize = 3;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum NumberState {
@@ -216,6 +221,12 @@ impl Parser {
         // (`TEXT(45000,"[$-40C]mmmm [$-40C]mmmm")`; probes/text-locale-name-tables A568-A575).
         let mut repeated_locale = false;
         let mut fraction = None;
+        // Excel: a plain `h` or `s`/`ss` after `[h]`/`[hh]` or `[s]`/`[ss]` shows the elapsed
+        // count too ("It was 75 [yes, 75] hours", poi/ElapsedFormatTests A10, A11, A21;
+        // number-formats.md "Elapsed-time tokens"). `m` after `[m]` is unprobed and stays a clock
+        // minute.
+        let mut elapsed_hour = false;
+        let mut elapsed_second = false;
 
         while token != Token::EOF && token != Token::Separator {
             let mut next_token = self.lexer.next_token();
@@ -256,6 +267,31 @@ impl Parser {
                 Token::Percent => {
                     tokens.push(TextToken::Literal('%'));
                     percent += 1;
+                }
+                // `.0`, `.00`, `.000` after a seconds token are the fraction of the second
+                // (number-formats.md "Elapsed-time tokens", "Fractional seconds in clock
+                // formats"); more zeros are unprobed and stay an error.
+                Token::Period
+                    if next_token == Token::Zero
+                        && matches!(
+                            tokens.last(),
+                            Some(
+                                TextToken::Second
+                                    | TextToken::SecondPadded
+                                    | TextToken::ElapsedSecond
+                                    | TextToken::ElapsedSecondPadded
+                            )
+                        ) =>
+                {
+                    let mut digits = 0;
+                    while next_token == Token::Zero {
+                        digits += 1;
+                        next_token = self.lexer.next_token();
+                    }
+                    if digits > MAX_SECOND_FRACTION_DIGITS {
+                        return ParsePart::Error(ErrorPart {});
+                    }
+                    tokens.push(TextToken::SecondFraction(digits));
                 }
                 Token::Period => {
                     if !is_number && !is_date && !found_decimal_dot {
@@ -471,22 +507,38 @@ impl Parser {
                 Token::Hour => {
                     is_date = true;
                     is_time = true;
-                    tokens.push(TextToken::Hour);
+                    tokens.push(if elapsed_hour {
+                        TextToken::ElapsedHour
+                    } else {
+                        TextToken::Hour
+                    });
                 }
                 Token::HourPadded => {
                     is_date = true;
                     is_time = true;
-                    tokens.push(TextToken::HourPadded);
+                    tokens.push(if elapsed_hour {
+                        TextToken::ElapsedHourPadded
+                    } else {
+                        TextToken::HourPadded
+                    });
                 }
                 Token::Second => {
                     is_date = true;
                     is_time = true;
-                    tokens.push(TextToken::Second);
+                    tokens.push(if elapsed_second {
+                        TextToken::ElapsedSecond
+                    } else {
+                        TextToken::Second
+                    });
                 }
                 Token::SecondPadded => {
                     is_date = true;
                     is_time = true;
-                    tokens.push(TextToken::SecondPadded);
+                    tokens.push(if elapsed_second {
+                        TextToken::ElapsedSecondPadded
+                    } else {
+                        TextToken::SecondPadded
+                    });
                 }
                 Token::AMPM => {
                     is_date = true;
@@ -528,6 +580,7 @@ impl Parser {
                 Token::ElapsedHour => {
                     is_date = true;
                     is_time = true;
+                    elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHour);
                 }
                 Token::ElapsedMinute => {
@@ -538,11 +591,13 @@ impl Parser {
                 Token::ElapsedSecond => {
                     is_date = true;
                     is_time = true;
+                    elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecond);
                 }
                 Token::ElapsedHourPadded => {
                     is_date = true;
                     is_time = true;
+                    elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHourPadded);
                 }
                 Token::ElapsedMinutePadded => {
@@ -553,6 +608,7 @@ impl Parser {
                 Token::ElapsedSecondPadded => {
                     is_date = true;
                     is_time = true;
+                    elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecondPadded);
                 }
             }

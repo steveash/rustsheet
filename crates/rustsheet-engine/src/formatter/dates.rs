@@ -35,7 +35,7 @@ pub(crate) const EPOCH_1904_IN_1900_SERIALS: i64 = 1462;
 
 /// The 1900 serial the financial functions read for 1904 serial 0: the epoch offset applied twice
 /// (see `DateSystem::financial_1900_serial`).
-const FINANCIAL_EPOCH_1904_IN_1900_SERIALS: i64 = 2 * EPOCH_1904_IN_1900_SERIALS;
+pub(crate) const FINANCIAL_EPOCH_1904_IN_1900_SERIALS: i64 = 2 * EPOCH_1904_IN_1900_SERIALS;
 
 impl DateSystem {
     /// The 1900-system serial of this system's day `serial`, the form the calendar helpers
