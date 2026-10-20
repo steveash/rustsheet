@@ -1250,7 +1250,7 @@ desktop 1.2626272556789115, web and engine ...118. D26 is `ATAN2(TRUE,2)`: deskt
 The exact atan(pi) is 1.26262725567891167... and the exact atan(2) is 1.10714871779409050.... So the web values are
 correctly rounded (0.41 and 0.42 ulp off). The desktop values are 0.59 and 0.58 ulp off, and both points lie within
 0.09 ulp of a rounding midpoint. The other 18 numeric desktop ATAN2 cells of the workbook match the web model.
-T-2142 ran a fit over the 20 numeric desktop cells and 257 web cells: probes/atan2-quadrants (120), atan2-error-edges (17)
+T-2142 ran a fit (`docs/research/t2142/fit_atan2.py`, run command in its docstring) over the 20 numeric desktop cells and 257 web cells: probes/atan2-quadrants (120), atan2-error-edges (17)
 and column G of asin-atan-sign-source (120). The quotient is Excel's `/` (rounded to 64 bits, then to a double), and atan is exact to
 90 digits. atan2-kept-subnormal was left out, because its inputs are formulas of subnormal differences; the engine passes it.
 Results, desktop / web:
