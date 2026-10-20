@@ -1292,3 +1292,57 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
   - kmyst-gam-q501 and q502 carry GAMMA in column B (C/D = GAMMA.DIST). The old extract_runs.py read B blindly, which invalidated W5's real K3 D.S6 scan (being redone on rows6).
   - W6's and W2's sets select by formula and are clean.
   - extract_runs.py is being rewritten to select columns by formula.
+
+### 12.16 K2: the head offset is a smooth, steep cubic, not erratic (reviewer 3, 05:28; verification running)
+
+- **Ruled out first (W2).**
+  - Single-coefficient wide scans, with all lower coefficients exact-LS re-solved to double (gwide.py): p3 and q2 ±4000, p2 and q1 ±1e4 (coarse ±1e5). The best is always grid_a, and planted +1234 / +3777 are recovered exactly.
+  - Per-run LS-late integer fit: grid_a on r112, r113 and r901.
+- **Reviewer 3, rule level.** The parity "offset" is a TIE-RULE change, not a value shift. A real odd-ulp shift carried into stage 5 drops r112 to 0.36. The rule is constant within runs (8 chunks), reproducible across independent runs at the same x, and has no binary-prefix cell boundaries at 2.125, 2.25 or 2.5.
+- **Decimal transport is excluded.** Excel's Y is 16-digit-stable at exactly the model's rate, and x ± 1 ulp fixes at most 14 misses per run.
+- **Model-free phase read.** The hand-off offset can be read from the PHASE of the N.S4 / D.S3 sawtooth (Excel−exact vs sim−exact), calibrated per run with a planted +0.25 u. Measured on 1,024 dense clusters plus the long runs, the offsets are smooth cubics in x:
+  - N: dδ4/dx = 619.5 − 556.0(x−2.25) + 310(x−2.25)² u per unit x; δ4(2.25) = −0.116 mod 1. Resultant 0.591 vs 0.13-0.16 for permutations.
+  - D: dδ3/dx = −109.5 + 93.0(x−2.25) − 40(x−2.25)² u per unit x; δ3(2.25) = +0.463. Resultant 0.741 vs 0.28.
+  - Out of sample, the long runs agree within 0.00-0.07 u (N, 8 runs) and 0.01-0.14 u (D, 10 runs).
+- **Why it looked erratic.** At about 600 u per unit x, clusters 0.001 apart differ by 0.6 u. Every earlier global search capped the slope at about 100 u per unit x.
+- **Candidate head null-space move.**
+  - N: Δp1 ≈ +1.69e6, Δp2 ≈ −124,900, Δp3 ≈ +27,500 ulps.
+  - D: Δq0 ≈ −8.7e5, Δq1 ≈ +69,900, Δq2 ≈ −8,340 ulps.
+  - p4 / q3 are free up to δ(2.25) mod 1 and parity.
+  - grid_a's head was never pinned beyond the function's null space; only the stored-chain rounding sees it.
+- **Verification (reviewer 3 and W2 in parallel).** Apply the move, re-solve the lower coefficients by exact LS to double, simulate the full chain, then do a local search. Acceptance: one coefficient set lifts ALL runs.
+
+### 12.17 K2 breakthroughs (05:50-06:00): an 80-bit boundary, then the hidden c/x term (global, every run lifts)
+
+- **W2: 80-bit boundary map** (bnd.py; 14 runs, no per-run freedom).
+  - The unique optimum stores N first at P5 and D first at P4_D, with everything above in 80-bit and one rounding: 0.8026 vs grid_a 0.739. That is the H9 family.
+  - The final assembly fl(t·fl(N/D)) is confirmed. N·fl(1/D), fl(fl(t·N)/D), D-first, an 80-bit quotient and 80-bit N/D are all worse.
+  - A per-run offset at P5's input caps it at 0.825, so the H9 boundary alone is not the mechanism.
+- **Reviewer 3: the hidden c/x term (`review3/cx.py`).**
+  - Model: grid_a's stored Horner, except at the hand-off.
+    - N: s4 = RNE(P4 + p4 + c_N/x), formed in extended precision with one store; stage 5 uses (p5 − c_N).
+    - D: d3 = RNE(P3 + q3 + c_D/x); stage 4 uses (q4 − c_D).
+    - c_N = −3128·2^-54 and c_D = +552·2^-54.
+  - It is algebraically a no-op, so the function, the late chain and the lines are unchanged.
+  - Found from the hand-off sawtooth phase per dense cluster, which follows A + B/x (N: B = −3131 u; D: +553 u).
+  - Result: grid_a 0.744 → 0.875 mean on 13 runs, and 0.757 → 0.878 on the 1,024 dense clusters, where 97.9% improve.
+  - Coordinator's independent check on 14 runs:
+
+    | run | grid_a → c/x | run | grid_a → c/x |
+    |---|---|---|---|
+    | r701 | .703 → .901 | r112 | .766 → .892 |
+    | p401 | .761 → .901 | r702 | .712 → .843 |
+    | r610 | .775 → .914 | r901 | .757 → .898 |
+    | r703 | .737 → .921 | r113 | .730 → .869 |
+    | v401a | .737 → .885 | r704 | .759 → .837 |
+    | r611 | .782 → .869 | r705 | .757 → .861 |
+    | v407a | .675 → .778 | v404a (held out) | .664 → .866 |
+
+  - Sensitivity: the landscape has period 4 u in c_N and 8 u in c_D (the next stage's grid). The way c/x is formed matters:
+    - exact, inside the extended sum: 0.875;
+    - rounded first: 0.850;
+    - added after the store: 0.800.
+- **Open.**
+  - The residual is about 12%.
+  - Running: a unit scan of (c_N, c_D); the same form at other stages (s3, d2, ...); jfull on top of the model; the link between H9 and c/x; where such a term arises in code.
+  - The same test has been sent to W6 ((1.5,2]), W4 (K1, whose dark upper sites may be this) and W5 (K3).

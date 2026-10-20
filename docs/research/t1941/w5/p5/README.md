@@ -201,3 +201,27 @@ kmyst-gam-q501 (x0 1.3171, inside K3) and q502 (x0 ≈ 1.77) have B = GAMMA. row
   are unaffected; the exact-rate screens lose only 8192 points.
 - `mkrows.py` builds the clean set (B formula checked): rows6, 5.68M points, 369 cases incl. 112 k3t.
 - Real wide N.S7 scan relaunched on rows6 (918 runs), 4 resumable parts (`launch_real_parts.sh`).
+
+## Real wide N.S7 scan on clean rows6 (918 runs): no far top inside the box
+S-only, merged over 4 parts (`scan_real_NS7_merged_Sonly.log`): the top is the base shape (b = 0, c ≈ −1..0) at phase
+a ≈ 0.5–0.6 (352.1). The best candidate away from the base is 317.8 (b −11.0, c 20.5). Nothing distinct like the far
+control's truth (rank 0 there, 41 above the best unrelated candidate).
+
+What "base shape at a ≈ 0.5" means (`APROFILE=1` in scan2/scan3: S at b = c = 0 as a function of a). The residual is
+Excel − (stored base model). If Excel's rounding at a site is unrelated to the base's (far-off coefficients, or an
+unstored site), the residual carries −w·e0, the base's own rounding at that site, removed. Then
+C(a) ≈ −ρ(a): strongly negative at a = 0, peak at a = 0.5, symmetric about 0.5.
+- Real N.S7: S(0) = −728 (Z −17.5); S(0.5) = 352 (Z 8.6); S(0.375) 272 vs S(0.625) 290, S(0.125) −203 vs
+  S(0.875) −261. Nearly symmetric, so this is not a specific hidden phase offset; Excel lacks the base's N.S7 pattern.
+- Real N.S3: S(0) Z −28.4. Real N.S1: Z −2.3. Real D.S2: Z −2.8. The read sites (N1, D2) mostly match; N.S3 does
+  not (N3 is fitted, not read).
+- Control (truth = ss_fc = base) at N.S7: S(0) Z −1.5 (≈ 0, as it should be).
+So the D.S6 "a = 0.53" result and this one say the same thing: the base's top-site rounding is absent from Excel,
+either because the true top is outside the box or because the top is unstored (W4's K1 finding). The data cannot
+separate these yet. Per-site map running (`sitemap.sh`).
+
+## Hidden-term test (the coordinator's K2 lead): no effect on K3
+`hidden.py`: S_j = fl(P_j + C_j + c/x) (extended, one store), C_{j−1} − c at the next sum; an algebraic no-op that
+moves only roundings. 50k clean points, every N and D stage, c in ulp(S_{j−1}) units, ±10,000 step 4
+(`hidden_ssfc.log`), and at the top stages c in ulp(S_j)/32 over ±4 ulps (`hidden_fine_top.log`). Best gains +0.7%
+(D.S2 0.3393, D.S4 0.3389 vs 0.3320) and +0.85% (N.S6 fine). No K2-like jump (K2: 0.74 → 0.88).
