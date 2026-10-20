@@ -143,7 +143,7 @@ impl WorkbookSnapshot {
     /// XlsxWriter and some other libraries also claim `Microsoft Excel` but with the Excel 2007
     /// `AppVersion` `12.0000` and placeholder cached values, so that version is rejected.
     /// LibreOffice Calc also claims `Microsoft Excel` in `docProps/app.xml`, but its
-    /// `<fileVersion appName="Calc"/>` gives it away (poi/clone_sheet.xlsx, poi/56295.xlsx): a present
+    /// `<fileVersion appName="Calc"/>` gives it away (`poi/clone_sheet.xlsx`, `poi/56295.xlsx`): a present
     /// `appName` other than `xl` is not Excel (T-0442).
     #[must_use]
     pub fn is_excel_authored(&self) -> bool {
