@@ -129,7 +129,7 @@ fn the_table_reads_its_kinds_and_counts() {
         let kinds = function.arg_kinds().unwrap();
         assert_eq!(kinds.work, KernelWork::Constant, "{function:?}");
     }
-    assert!(Function::Db.arg_kinds().is_none());
+    assert!(Function::Xnpv.arg_kinds().is_none());
 }
 
 // ---------------------------------------------------------------- the unlifted path
