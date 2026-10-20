@@ -6,11 +6,12 @@
 //!   positive t is 1 - L, T.DIST.RT(x) of a negative x is 1 - L, T.DIST.2T is 2 L. In Excel
 //!   `T.DIST.RT(x,n)` = `T.DIST(-x,n,TRUE)` wherever the sweep has both, and 1 - L is bit-exact
 //!   on 118 of the 146 nonzero T.DIST cells against 113 for the correctly rounded CDF;
-//! - with y = n/(n+t^2) and z = t^2/(n+t^2), L = `I_y(n/2, 1/2)`/2. Away from the deep tail
-//!   (y > z), where the rounded y below does not apply, L is the exact value, rounded once:
-//!   for an integer n up to [`SERIES_MAX_DF`] the finite series for integer df in double-double. In the deep tail (y <= z) Excel's L carries
-//!   the error of exp((n/2) ln y): Cephes' power series with that power and a correctly rounded
-//!   Gamma ratio reproduces it (`T.DIST.RT(1E6,10)` = 1.230468749943611E-56, F18 of `T_DIST.xlsx`).
+//! - with y = n/(n+t^2) and z = t^2/(n+t^2), L = `I_y(n/2, 1/2)`/2. For t <= 1 or y > 0.99
+//!   (the next item covers the rest) and away from the deep tail (y > z), L is the exact value,
+//!   rounded once: for an integer n up to [`SERIES_MAX_DF`] the finite series for integer df in
+//!   double-double. In the deep tail (y <= z) Excel's L carries the error of exp((n/2) ln y):
+//!   Cephes' power series with that power and a correctly rounded Gamma ratio reproduces it
+//!   (`T.DIST.RT(1E6,10)` = 1.230468749943611E-56, F18 of `T_DIST.xlsx`).
 //! - beyond t = 1 and short of y = 0.99, deep tail included, L is `I_y(n/2, 1/2)`/2 at y as the
 //!   worksheet rounds it, fl(n / fl(n + fl(t*t))), through the same kernel as T.TEST's
 //!   [`student_t_tail_at`] (T-0969 attempt 7, probes-numeric t0969-t-tail-grid);
