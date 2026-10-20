@@ -3,7 +3,7 @@ id: T-2177
 title: "Report a Milestone exit (decision 0085) section: the four M5 and M6 exit measures against their thresholds"
 milestone: M5
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -59,3 +59,10 @@ comes from a row the report already computes, so this section adds no new scorin
 - Changing how any of the four source rows are computed.
 - Changing the steward routine (`.claude/`, owner-only) to read the section. File that as a
   follow-up if wanted.
+
+## Outcome
+Added `crates/rustsheet-eval/src/milestone_exit.rs`: report.md "Milestone exit (decision 0085)" section
+and report.json `milestone_exit`, one row each for M5 and M6, reading only existing report rows.
+Unit tests cover all-met, each measure failing alone, and a missing gen suite (`n/a`). Eval delta:
+none (no cell changes). M5 row at base: coverage 135/135 met; gen 22400 scored, 0.99147, 191/22 not
+met; ironcalc-calc 9 not met; probes 40 not met; exit not met.
