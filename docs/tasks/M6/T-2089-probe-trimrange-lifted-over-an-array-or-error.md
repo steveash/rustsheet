@@ -29,6 +29,7 @@ known failures 1669 -> 1668 counting the new case's cells, no regressions). An a
 each element is the trimmed array's top-left value (`INDEX(TRIMRANGE({1,2},{0;1}),1,1)` = 1, SUM 2). Every
 one-cell reference source, written or not (defined name, CHOOSE, INDIRECT, OFFSET, IF), gives references. An error
 source lifts into an array of its error (`ROWS(TRIMRANGE(NA(),{0;1}))` = 2). In passing: SUM over any lifted TRIMRANGE,
-written ranges too, was `#VALUE!` because `picked_reference_arg_reading` flattened its grid; it now reads the grid (10).
+written ranges too, was `#VALUE!` because `picked_reference_arg_reading` flattened its grid; it now reads the grid (10;
+this also fixes probes/reference-lift-consumers-b2 E141).
 Code: `Model::lifted_trimrange` (trimrange.rs), one arm in util.rs. lookup.md: new VERIFIED entry "TRIMRANGE lifted
 over an array, a computed reference or an error".
