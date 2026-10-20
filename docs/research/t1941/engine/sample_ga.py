@@ -1,3 +1,5 @@
+"""Usage: sample_ga.py ga.u2 ga.sample K. Reservoir-samples K distinct x per GAMMA region from the sorted rows
+(x_hex y_hex case) and writes x_hex y_hex region lines."""
 import random, sys, math
 random.seed(2129)
 def reg(x):

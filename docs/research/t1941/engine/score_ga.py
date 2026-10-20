@@ -1,3 +1,5 @@
+"""Usage: score_ga.py DIR MODE (x87 or sse). Scores garef.py on DIR/ga.sample by region and, for x87, writes
+DIR/ga.fixture.x87 (x excel model as f64 bit patterns)."""
 import sys, struct
 S=sys.argv[1]; mode=sys.argv[2]
 sys.argv=[sys.argv[0], S, mode]

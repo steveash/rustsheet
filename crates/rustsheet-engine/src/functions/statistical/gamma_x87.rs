@@ -16,7 +16,9 @@
 //! known coefficients, not yet bit-exact (T-2122).
 
 use super::gamma_kernels::{K1_D, K1_N};
-use crate::arithmetic::{extended_product, extended_quotient, extended_sqrt, extended_sum};
+use crate::arithmetic::{
+    extended_product, extended_quotient, extended_sqrt, extended_sum, flush_subnormal,
+};
 use crate::functions::math_and_trigonometry::excel_fsin;
 use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
@@ -103,6 +105,7 @@ fn half_integer(x: f64) -> f64 {
         return extended_product(product, SQRT_PI);
     }
     let q = -x;
+    // A subnormal result is 0, as Excel gives GAMMA(-171.5) (`kmyst-gam-h102`).
     let magnitude = flush_subnormal(extended_quotient(extended_quotient(PI, half_integer(q)), q));
     signed(q, magnitude)
 }
@@ -114,7 +117,7 @@ fn large(x: f64) -> f64 {
     let half = 0.5 * x;
     let whole = half.floor();
     let fraction = half - whole;
-    // 2^63 > whole for every finite x here (x < 2^1024): the powering runs at most 1024 rounds.
+    // x <= 172 here (`excel_gamma`), so whole <= 86 and the powering runs at most 7 rounds.
     let mut exponent = if whole < 9.0e18 {
         whole as u64
     } else {
@@ -174,15 +177,6 @@ fn signed(q: f64, magnitude: f64) -> f64 {
         -magnitude
     } else {
         magnitude
-    }
-}
-
-/// Excel flushes a subnormal GAMMA to 0 (GAMMA(-171.5) = 0, `kmyst-gam-h102`).
-fn flush_subnormal(v: f64) -> f64 {
-    if v.abs() < f64::MIN_POSITIVE {
-        0.0
-    } else {
-        v
     }
 }
 
@@ -294,6 +288,8 @@ mod tests {
         for x in [
             -1e300,
             -1e15 - 0.5,
+            4_503_599_627_370_495.5,
+            -4_503_599_627_370_495.5,
             -170.6,
             -10.000_000_000_000_002,
             -9.999_999_999_999_998,

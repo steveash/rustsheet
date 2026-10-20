@@ -18,10 +18,10 @@
 //! sum runs only for a remainder close to a rounding boundary (about 1 call in 500; T-1637).
 
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
+use std::ops::Neg;
 
 use crate::arithmetic::round_extended_to_double;
 use crate::x87_exp::dd_to_extended;
-use std::ops::Neg;
 
 /// `π₆₄/2 − FRAC_PI_2`: the 11 low bits of the 64-bit significand that a double drops
 /// (`0x235·2^-63`). It is COS(PI()/2) in Excel.
