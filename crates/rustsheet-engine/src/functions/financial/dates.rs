@@ -80,8 +80,8 @@ impl Model {
     /// workbook (0, 0.5, -1: probes/fin-coupon-walk-bounds A10-A13, A20, fin-coupon-walk-bounds-c
     /// M3-N5) and for a negative one in a 1904 workbook, whose 0 reads as the 1900 serial 2924
     /// (probes/date-system-1904-financial A35-A40). The COUP* functions check their own settlement
-    /// (`Model::coupon_args`: 0 is a date to them). The check also
-    /// keeps the coupon schedule walk back from the maturity inside the calendar: without it
+    /// (`Model::coupon_args`: 0 is a date to them). The check also keeps the coupon schedule
+    /// walk back from the maturity inside the calendar: without it
     /// `COUPNUM(-1E15,43831,4)` stepped about 10^6 quarters back to chrono's first year
     /// (directive 5, T-1822; docs/excel-semantics/financial.md "Coupon settlement before the
     /// calendar").
