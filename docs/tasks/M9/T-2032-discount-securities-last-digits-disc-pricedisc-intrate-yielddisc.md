@@ -3,7 +3,7 @@ id: T-2032
 title: "Discount securities last digits: DISC, PRICEDISC, INTRATE, YIELDDISC, PRICEMAT, YIELDMAT (split from T-1374)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
