@@ -20,6 +20,7 @@ SPEC-0015 "xlsx import" and "Untrusted-input limits": new `crates/rustsheet-xlsx
 ## Acceptance criteria
 - [ ] Unit tests: a hand-written minimal package with shared and inline record values, `saveData="0"`, out-of-range indices, an OLAP source, and each limit.
 - [ ] Relationship targets through package.rs `resolve_target`; External, escaping or missing targets and duplicate cacheIds skip the pivot (tests).
+- [ ] A test proves `resolve_target` rejects `..` escapes and absolute paths (it returns a `String`; tighten it if it only normalizes).
 - [ ] The limits are totals counted while parsing (SPEC-0015), and the DEVIATION entry is in web.md in the same PR.
 - [ ] A test workbook in crates/rustsheet-xlsx/tests with a pivot imports its cache and definition.
 - [ ] `make check` green; reviewers approve.
