@@ -746,10 +746,15 @@ Status: VERIFIED (excel-graph)
 Implemented in: `Model::lifted_trimrange` (lookup_and_reference/trimrange.rs): the source read by
 `evaluate_picked_reference_arg`, a reference lifted by `Model::lift_references`, anything else by `Model::lift_values`
 with its top-left value per element; SUM and the walker's other aggregates take TRIMRANGE's grid from
-`picked_reference_arg_reading` (functions/util.rs). Unprobed: which error wins when the source is an error and an
-element's trim is invalid (`TRIMRANGE(NA(),{0;5})`; ours: the source's), a multi-area source (ours: `#VALUE!` per
-element), and a source with no cells under a lifted trim (ours: one `#REF!`, as unlifted).
-Tasks: T-2089
+`picked_reference_arg_reading` (functions/util.rs). Probed in T-2120 (probes/trimrange-lift-edge-sources, excel-graph, 2026-10-20): an error source with an invalid
+trim element is the source's error in every element (`TRIMRANGE(NA(),{0;5})` and `TRIMRANGE(1/0,{0;5})` are 2 elements,
+`ERROR.TYPE` 7 and 2); a multi-area source `(A1,B2)` is `#VALUE!` in every element (`ROWS` 2, `ERROR.TYPE` 3); an
+all-blank source (C20:C21) keeps its full extent while trim_rows is 0, whatever trim_cols is: `TRIMRANGE(C20:C21,0)`
+and `(…,0,3)` are the 2x1 range, so `=TRIMRANGE(C20:C21,{0;1})` spills `#VALUE!` (the untrimmed multi-cell element) then
+`#REF!`; a nonzero trim_rows gives `#REF!` (`(…,3,0)`, `(…,1,0)`); the unlifted call behaves the same. Unprobed:
+an all-blank multi-column or single-row source with trim_rows 0 and trim_cols 1-3 (ours keeps the full extent,
+generalized from the single-column probe; T-2127).
+Tasks: T-2089, T-2120
 
 ## Arrays of references through LET, IF, CHOOSE and OFFSET
 Rule: a LET variable or a LAMBDA parameter bound to a lifted OFFSET (or INDIRECT, TRIMRANGE) holds the array of

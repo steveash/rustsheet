@@ -3,7 +3,7 @@ id: T-2120
 title: "Probe TRIMRANGE lifted over an error, multi-area or empty source with an invalid trim element"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,8 +23,11 @@ element) and a source with no cells under a lifted trim (ours: one `#REF!`). Pro
 (functions/lookup_and_reference/trimrange.rs).
 
 ## Acceptance criteria
-- [ ] A probe case holds the three questions with excel-graph values; lookup.md records them as VERIFIED and the engine matches (no regression).
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case holds the three questions with excel-graph values; lookup.md records them as VERIFIED and the engine matches (no regression).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other producers' lifts (OFFSET, INDIRECT).
+
+## Outcome
+Probe `probes/trimrange-lift-edge-sources` (28 cells, excel-graph) answers the three cases; lookup.md records them. The error-source and multi-area guesses were right; the all-blank one was not: Excel keeps an all-blank source whole while trim_rows is 0 (so the lifted `{0;1}` spills `#VALUE!`, `#REF!`), and `trim_of` now does the same. Eval: the new case passes 28/28; no regressions.
