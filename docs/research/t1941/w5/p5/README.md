@@ -130,3 +130,23 @@ is now included in scan3's at-truth score):
 - D.S6: total Z 11.2, broad (Z²/run 0.05–0.25 everywhere).
 - N.S6: total Z 8.6, patchy. Not better than N.S7 here (W6's (1.5,2] kernel differs).
 So new K3 data for the top scans should go to x in [1.2, 1.47) for N, spread uniformly for D.
+
+## Unstored-op fingerprint on K3 (after W2's K2 finding: N s4, D s3 unstored)
+`oprep.py` (400k real points, ss_fc constants): drop the fl53 store at one op and count repaired minus broken rows.
+D.S3 is clearly first (repaired 12999, broken 9986, net +0.75%), then D.P3 +0.38%, N.P5 +0.23%, N.S5 +0.17%. Every
+other op is neutral or negative (low stages −0.2% to −2.5%). Pairs: D.S3+N.P5 +0.98%, D.S3+N.S5 +0.93%;
+D.S3+D.P3 cancels (+0.03%). `oprep_real.log`.
+`structclimb.py` (greedy single-coefficient climb from ss_fc, 200k points): all-stored 0.3542 → 0.3591; D.S3
+unstored 0.3621 → 0.3655; D.S3+N.P5 0.3643 → 0.3644. The climbs stall at once (sloppy directions), so this is
+suggestive only. `oprep_ctl.py` (synthetic truth e2e_truth under a structure, screened with ss_fc) is not a valid
+control: the lower-coefficient mismatch between e2e_truth and ss_fc makes every low op "repair". A real control
+needs constants fitted under the wrong structure (W2's method).
+
+## Per-point stage reads (W2's K2 route) on K3: not informative
+`stageread.py`: with the late chain from ss_fc, a per-point shift of ±3 ulps at the stored N.S5 and D.S3 explains
+91.6% of 200k real points (±8: 96.0%). But B shifted by 1 ulp, which is wrong by construction, is also explained at
+~70%, with a median of 7 of 49 solutions per point. The reads are too ambiguous to sample the stage functions.
+`runread.py`: within a run a smooth stage error would be constant, but no run-constant (dn, dd) explains the runs.
+The peak hit rate per run has median 0.30 (2nd best 0.297, null 0.27). So K3's mismatch at these stages varies from
+point to point (rounding-pattern type), not a smooth stage offset. W2's correction applies: the oprep hot spots
+(D.S3, N.P5/N.S5) localise the mismatch; they do not show an unstored op. `stageread.log`, `runread.log`.

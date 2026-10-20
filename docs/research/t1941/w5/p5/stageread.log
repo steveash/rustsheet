@@ -1,0 +1,6 @@
+SET ss_fc.txt, N.S5 / D.S3, K 3, 200000 pts: base exact 0.3551, explained 0.9160; median #solutions among explained 7
+  explained with dd=0 only: 0.5983; with dn=0 only: 0.7703
+[null B up1] SET ss_fc.txt, N.S5 / D.S3, K 3, 200000 pts: base exact 0.1504, explained 0.6931; median #solutions among explained 7
+[null B up1]   explained with dd=0 only: 0.3162; with dn=0 only: 0.5691
+[null B dn1] SET ss_fc.txt, N.S5 / D.S3, K 3, 200000 pts: base exact 0.1847, explained 0.7105; median #solutions among explained 7
+[null B dn1]   explained with dd=0 only: 0.3645; with dn=0 only: 0.5878

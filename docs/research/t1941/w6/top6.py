@@ -14,7 +14,7 @@ Pl = ctypes.POINTER(ctypes.c_long)
 
 
 class Top6:
-    def __init__(self, rfile, chain, minrun=256, npts=None):
+    def __init__(self, rfile, chain, minrun=256, npts=None, maxruns=None):
         lib = ctypes.CDLL(os.environ["HYPOLIB"])
         lib.hypo_obj.argtypes = [
             Pd,
@@ -55,6 +55,11 @@ class Top6:
                 xs.append(x)
                 rs.append(r - r.mean())
                 starts.append(starts[-1] + len(seg))
+        if maxruns and len(xs) > maxruns:  # an evenly spread subset of runs (the objective sums per-run correlations)
+            pick = np.linspace(0, len(xs) - 1, maxruns).astype(int)
+            xs = [xs[i] for i in pick]
+            rs = [rs[i] for i in pick]
+            starts = [0] + list(np.cumsum([len(v) for v in xs]))
         self.x = np.ascontiguousarray(np.concatenate(xs))
         self.r = np.ascontiguousarray(np.concatenate(rs))
         self.rs = np.array(starts, dtype=np.int64)
