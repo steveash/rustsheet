@@ -20,8 +20,15 @@ def key(law,j): return ('T%d'%j) if law=='T' else 'P%dn1'%j
 def dft(e,f):
     n=len(e); w=np.hanning(n); k=np.arange(n); return np.sum((e-e.mean())*w*np.exp(-2j*np.pi*f*k))
 out=open(sys.argv[3],'w')
-for rk,v in sorted(rows.items()):
-    v=np.array(sorted(v)); x=v[:,0]; n=len(x)
+# a case may hold several runs of consecutive doubles (e.g. q440a: three K = 0 anchor runs): split them
+runs={}
+for rk,v in rows.items():
+    v=np.array(sorted(v)); br=np.where(np.nextafter(v[:-1,0],np.inf)!=v[1:,0])[0]+1
+    segs=np.split(np.arange(len(v)),br)
+    for i,sg in enumerate(segs):
+        if len(sg)>=1024: runs[rk if len(segs)==1 else '%s#%d'%(rk,i)]=v[sg]
+for rk,v in sorted(runs.items()):
+    x=v[:,0]; n=len(x)
     ed=resid(x,v[:,1],v[:,2])
     R=st(L(horner(list(N[::-1]),x))/L(horner(list(D[::-1]),x))); B=kern.outer(x,R); lo,hi=extractR(x,B); es=resid(x,lo,hi)
     xc=x[n//2]

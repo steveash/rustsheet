@@ -48,7 +48,18 @@ for l in open(ladf):
         continue
     g = freq_rows(N, D, [(q[1], q[2], int(q[3]))], [float(q[0])])[0]
     rows.append(([g[c_] for c_ in cols], (mp.mpf(q[4]) - mp.mpf(Fc)) % 1, SL, "F  " + key))
-nu, ne = len(cols), len(rows)
+# FREEOFF=1: one free constant phase offset per line (in 1/QOFF cycles): if the residuals then collapse, the line
+# carries a structural constant shift (e.g. a different rounding precision at that stage), not a coefficient error
+offl = sorted({r[3] for r in rows if r[3].startswith("ph")}) if os.environ.get("FREEOFF") else []
+QOFF = 256
+for i, kind in enumerate(offl):
+    for r in rows:
+        r[0].extend([mp.mpf(1) / QOFF if r[3] == kind else mp.mpf(0)])
+for r in rows:
+    if offl and len(r[0]) == len(cols):
+        r[0].extend([mp.mpf(0)] * len(offl))
+cols_n = len(cols)
+nu, ne = len(cols) + len(offl), len(rows)
 print(
     "unknowns %s%d..%s%d, rows: %d phase + %d ladder"
     % (ch, k0, ch, k1, sum(r[3].startswith("ph") for r in rows), sum(r[3].startswith("F") for r in rows))
@@ -57,7 +68,7 @@ SC = mp.mpf(2) ** 70
 dim = nu + ne + 1
 M = [[0] * (nu + ne + 1) for _ in range(dim)]
 for k in range(nu):
-    M[k][k] = int(SC / BOUND)
+    M[k][k] = int(SC / BOUND) if k < cols_n else int(SC / QOFF)
     for e, (g, _, s, _) in enumerate(rows):
         M[k][nu + e] = int(mp.nint(SC * g[k] / s))
 for e, (_, _, s, _) in enumerate(rows):
@@ -73,14 +84,20 @@ for i in range(A.nrows):
     r = [A[i, j] for j in range(A.ncols)]
     if abs(r[-1]) == int(SC):
         sg = 1 if r[-1] > 0 else -1
-        best = [int(round(float(sg * mp.mpf(r[k]) / int(SC / BOUND)))) for k in range(nu)]
+        best = [int(round(float(sg * mp.mpf(r[k]) / (int(SC / BOUND) if k < cols_n else int(SC / QOFF))))) for k in range(nu)]
         break
-print("m (%s%d..%s%d):" % (ch, k0, ch, k1), best)
+print("m (%s%d..%s%d):" % (ch, k0, ch, k1), best[:cols_n] if best else best)
+if best and offl:
+    print("free per-line offsets (cycles):", " ".join("%s %+.3f" % (k[3:], best[cols_n + i] / QOFF) for i, k in enumerate(offl)))
 if best:
     res = {}
     for g, t, s, kind in rows:
         v = float((sum(g[k] * best[k] for k in range(nu)) - t + mp.mpf(0.5)) % 1 - mp.mpf(0.5))
         res.setdefault(kind, []).append(v / (s if kind.startswith("F") else 1))
+    for kind, v in sorted(res.items()):
+        if kind.startswith("ph"):
+            z = np.exp(2j * np.pi * np.array(v))
+            print("  %-12s circular mean %+.3f  |R| %.2f" % (kind, np.angle(z.mean()) / (2 * np.pi), abs(z.mean())))
     for kind, v in sorted(res.items()):
         v = np.array(v)
         print(
