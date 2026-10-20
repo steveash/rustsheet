@@ -191,8 +191,8 @@ coarse grid for df 2 to 10; and `t0969-t-tail-grid`, 3,232 T.DIST.RT cells on a 
     `T_DIST.xlsx` F7, F8, C7, C8 (13 ulp) are now NumericUlp, 0 to 2 ulp, so no T.DIST/T.DIST.RT/T.DIST.2T/T.TEST
     line in `T_DIST.xlsx` or `T_TEST.xlsx` is NumericClose or NumericMismatch any more (only T.INV/T.INV.2T ones,
     T-0967). probes-numeric bit-exact: m9-t-dist-cdf 122 -> 124, m9-t-dist-rt 75 -> 77, m9-t-dist-2t 52 -> 53.
-    Seven more cells move from NumericClose to NumericUlp, among them (2,100), (3,100), (3,30), (5,30) and
-    t1048-tdist A7/B7/A8/B8. One cell gets worse: `T.DIST.RT(5,100)` and `T.DIST.2T(5,100)` go from 2 to 15 ulp,
+    Eleven more m9-t-dist cells move from NumericClose to NumericUlp, among them (2,100), (3,100), (3,30) and
+    (5,30), and so do t1048-tdist A7/B7/A8/B8. One cell gets worse: `T.DIST.RT(5,100)` and `T.DIST.2T(5,100)` go from 2 to 15 ulp,
     still within 15 digits.
 - **df 15 is an outlier:** Excel is 6 to 27 ulp off both models, with a sign flip at t = 1, as from a Gamma ratio
   about 1.5E-15 relative off at a = 7.5. Not modelled.
