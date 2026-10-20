@@ -179,4 +179,7 @@ fn an_unmatched_single_condition_prints_general() {
     assert_eq!(text(10.0, "[<>10]#\" Wow\""), "10");
     assert_eq!(text(10.0, "[< 10]#\" Wow\""), "10");
     assert_eq!(text(1.0, "[>5]d"), "1");
+    // The signed value is compared and keeps its minus (poi FormatConditionTests A32, A35).
+    assert_eq!(text(-11.0, "[=-10]#\" Wow\""), "-11");
+    assert_eq!(text(-11.0, "[<>-10]#\" Wow\""), "-11 Wow");
 }
