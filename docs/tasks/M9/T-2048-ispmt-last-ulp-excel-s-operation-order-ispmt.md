@@ -3,7 +3,7 @@ id: T-2048
 title: "ISPMT last ulp: Excel's operation order (ISPMT.xlsx E2)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -29,10 +29,16 @@ values, so ironcalc-calc/FINANCIAL/ISPMT.xlsx passes in full.
   (fin-argument-modes and the lifting probes) before choosing.
 
 ## Acceptance criteria
-- [ ] The known-failure line `ironcalc-calc/FINANCIAL/ISPMT.xlsx Sheet1!E2` leaves
+- [x] The known-failure line `ironcalc-calc/FINANCIAL/ISPMT.xlsx Sheet1!E2` leaves
       eval/baseline/ironcalc-calc.txt with no new lines in any suite.
-- [ ] docs/excel-semantics/financial.md records ISPMT's order with the cells that decide it.
-- [ ] `make check` green; reviewers approve.
+- [x] docs/excel-semantics/financial.md records ISPMT's order with the cells that decide it.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other annuity functions (T-1528).
+
+## Outcome
+Probed 24 ISPMT cells where the candidate orders differ in the last bit (probes/fin-ispmt-order, excel-graph): only
+`(per - nper) * pv * rate / nper` fits all 24 (the old `pv*rate*(per/nper-1)` fits 8; the two tied candidates from
+triage fit 6 and 17). `ispmt_of` uses it; financial.md records "ISPMT's operation order".
+Eval: ironcalc-calc known failures 1056 -> 1055 (ISPMT.xlsx Sheet1!E2), +24 new passing probe cells, no regressions.
