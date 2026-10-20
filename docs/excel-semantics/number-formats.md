@@ -171,11 +171,19 @@ Tasks: T-1075 (Phase 4; decision 0039)
 ## Conditional sections
 Rule: a format with a single `[cond]` section that does not match prints the number in General
 (`[<10]#" Wow"` on 10 → "10", A3; `[>10]#" Big"` on 10 → "10", A5); `[<>10]` is a valid
-condition (A17 "1 Wow", A18 "10"); spaces inside the brackets are allowed (`[< 10]` → "1 Wow",
-A23; `[<      10]`, A25).
-Evidence: poi/FormatChoiceTests.xlsx A3:A25.
+condition (A17 "1 Wow", A18 "10"); spaces between the comparator and the number are allowed
+(`[< 10]` → "1 Wow", A23; `[<      10]`, A25). The same holds when the condition sits in a date
+section or after other tokens (`TEXT(1,"d"&<119 quoted a>&"[>5]d")` is "1", probes/text-format-length-limit-q A16)
+and when literals pad it (`TEXT(1,"[>5]0"&REPT(" ",79))` is "1", -d S!A31, -f A41:A42, -j A43).
+The evidence does not decide whether the fallback is General or the section without its
+literals: every probed value prints the same either way. The engine uses General, the simpler
+rule. Only a one-section format is covered; how conditions choose among two or three sections is
+not probed here (poi/FormatConditionTests is Excel-cached; the cells this rule fixes there are
+one-section ones).
+Evidence: poi/FormatChoiceTests.xlsx A3:A26 (excel-graph); probes/text-format-length-limit-d
+S!A31, -f Sheet1!A41:A42, -j Sheet1!A43, -q Sheet1!A16 (excel-graph).
 Status: VERIFIED
-Tasks: T-0936
+Tasks: T-0936 (implemented)
 
 ## Scientific formats with literals after `E`
 Rule: literals may sit between `E+`/`E-` and the exponent digits; the exponent sign is printed
@@ -308,7 +316,7 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
 Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g, -h, -i (T-1434), -j (T-1449), -k (T-1455), -l, -m (T-1481), -n to -s (T-1486), all excel-graph.
 Not explained or not implemented (known failures):
 - Unquoted letters after `_"` or `*"`: `_` and `*` take a following `"` as their character, so `@_"a` is "x a", `@_"aa` "x aa", `@_"a-"b"` "x a-b", `@*"a` "xa", `0_"a` on 7 "7 a" and `0*"a` "7a" (probes/text-format-length-limit-n A1, A6, -o A35, A37:A40; matched since T-1262 prints bare letters, except -o A37: `*` takes the `"` as its fill, which adds nothing in a number section, but we print a space for every fill, giving "7 a"; T-1735). `@_"aaa` is `#VALUE!`, and so are 20, 40 and 80 letters (n A2, A7:A9). We print the letters for those ("x aaa"). Unexplained: `aaa` may read as a weekday code, which T-1656's `@`-with-a-date-token rule would reject (T-1880).
-- `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. So is `"[>55555]0"` plus 79 spaces (-j A43), and `TEXT(1,"d"&<119 quoted>&"[>5]d")` is "1" (-q A16). We do not apply conditions yet (see "Conditional sections", T-0936).
+- `TEXT(1,"[>5]0"&REPT(" ",79))` is "1" (also with 40 spaces): an unmatched single condition prints General, dropping the padding. So is `"[>55555]0"` plus 79 spaces (-j A43), and `TEXT(1,"d"&<119 quoted>&"[>5]d")` is "1" (-q A16). Implemented by T-0936 (see "Conditional sections").
 - `TEXT(1,"0:a:")` is "1:a:" and an escaped backslash followed by an unquoted `x` prints "\x": Excel accepts these letters unquoted (-g A42, A43; -i A100:A104). T-1450; implemented T-1262.
 
 Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook). The colon-run and text-section rules live in the shared formatter, so they apply to cell display too; they are probed through TEXT only.
