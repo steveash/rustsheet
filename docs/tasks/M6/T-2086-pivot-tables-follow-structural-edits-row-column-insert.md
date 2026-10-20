@@ -19,6 +19,7 @@ SPEC-0015 "Data model", structural edits. Tables have no such handling to copy, 
 
 ## Acceptance criteria
 - [ ] Unit tests: inserts above/left shift the location, inserts inside grow it, deletes shrink it, deleting the top-left cell or the sheet drops the pivot, renaming the source sheet keeps GETPIVOTDATA answering.
+- [ ] web.md records that Excel refuses deleting a pivot's top-left cell while the engine drops the pivot, and the T-2081 interim gap is removed.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

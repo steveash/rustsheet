@@ -54,7 +54,7 @@ T-1703 behavior where one exists), never a guessed value:
 3. numbers, dates and booleans as items (match by value or by text);
 4. page (filter) fields with a selected item, and hidden items on an axis;
 5. the same field twice with the same item;
-6. an error value in an aggregated record;
+6. an error, blank or text value in an aggregated record's data field (the probe source has none);
 7. an array `data_field`, `pivot_table` or field name (only array items are evidenced: L1, L5;
    web.md records the others as unprobed; T-1703 gives one `#REF!`, kept);
 8. `""` as `data_field` against a pivot (J7 is an empty cell; `""` is only probed with no pivot);
@@ -167,7 +167,7 @@ refers to the list in "Excel behavior to match".
    twice is `#REF!`, with different items (H17) or the same (unknown 5).
 4. The value: the data field's aggregate over the records whose fields equal every chosen item. A
    Sum over no records is 0 (H13); any other aggregate over no records is `#REF!` (unknown 2). A
-   record holding an error in the data field makes the answer `#REF!` (unknown 6).
+   record holding an error, a blank or text in the data field makes the answer `#REF!` (unknown 6).
 5. An array of items lifts per SPEC-0011 (L1, L5), each element a scalar call; an array
    `data_field`, `pivot_table` or field name keeps T-1703's single `#REF!` (unknown 7).
 
