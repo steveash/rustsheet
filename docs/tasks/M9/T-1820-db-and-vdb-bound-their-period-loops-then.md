@@ -3,7 +3,7 @@ id: T-1820
 title: "DB and VDB bound their period loops, then lift over arrays and ranges (SPEC-0011)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
