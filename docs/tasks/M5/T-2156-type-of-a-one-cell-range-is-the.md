@@ -3,7 +3,7 @@ id: T-2156
 title: "TYPE of a one-cell range is the cell's type, not 64"
 milestone: M5
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,8 +27,12 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 2 in eval/baselin
 | gen-m5/c0651f0e0fb544d0 Calc!A203 | `=TYPE(Data!B3:B3)` | 1.0 | 64.0 |
 
 ## Acceptance criteria
-- [ ] These 2 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] These 2 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Legacy implicit intersection of TYPE (T-1526, done).
+
+## Outcome
+`fn_type` evaluates the cell of a one-cell range reference and reports its type, so `TYPE(D7:D7)` is 1; multi-cell
+ranges stay 64. Eval: gen-m5 known failures 260 -> 258 (fixed 2), no regressions, no new known failures.
