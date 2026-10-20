@@ -3,7 +3,7 @@ id: T-1819
 title: "Lifted BESSEL calls charge their work by order, not a flat weight"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
