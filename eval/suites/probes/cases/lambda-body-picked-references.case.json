@@ -1,0 +1,46 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2075: a LAMBDA call whose body is a reference-returning XLOOKUP, TAKE or DROP, directly or as the arm an IF, CHOOSE, IFS, SWITCH or LET picks, read in reference context: ISREF, SUM over a text cell (K1:K2 = text \"5\",\"7\"), SUBTOTAL, AREAS, COUNTA over a blank cell (M1:M2 empty), and as a GROUPBY/PIVOTBY function (one-cell reference results, with a +0 value control). Each formula in column A from row 10 every 4 rows, in clear space so a spill shows its shape. H1:H2 = 3,4; I1:I2 = 6,8; J1:J2 = 1,2 (keys).",
+  "tags": [
+    "M7",
+    "probe",
+    "T-2075"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "H1": 3,
+        "H2": 4,
+        "I1": 6,
+        "I2": 8,
+        "J1": 1,
+        "J2": 2,
+        "K1": "5",
+        "K2": "7",
+        "A10": "=ISREF(LAMBDA(x,XLOOKUP(1,J1:J2,H1:I2))(1))",
+        "A14": "=ISREF(LAMBDA(x,TAKE(H1:I2,1))(1))",
+        "A18": "=ISREF(LAMBDA(x,IF(TRUE,TAKE(H1:I2,1)))(1))",
+        "A22": "=ISREF(LAMBDA(x,CHOOSE(1,XLOOKUP(1,J1:J2,H1:I2)))(1))",
+        "A26": "=ISREF(LAMBDA(x,LET(v,1,XLOOKUP(1,J1:J2,H1:I2)))(1))",
+        "A30": "=ISREF(LAMBDA(x,IFS(TRUE,XLOOKUP(1,J1:J2,H1:I2)))(1))",
+        "A34": "=ISREF(LAMBDA(x,SWITCH(1,1,DROP(H1:I2,1)))(1))",
+        "A38": "=SUM(LAMBDA(x,IF(TRUE,XLOOKUP(1,J1:J2,K1:K2)))(1))",
+        "A42": "=SUM(LAMBDA(x,XLOOKUP(1,J1:J2,K1:K2))(1))",
+        "A46": "=SUBTOTAL(9,LAMBDA(x,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))(1))",
+        "A50": "=SUBTOTAL(9,LAMBDA(x,XLOOKUP(1,J1:J2,H1:I2))(1))",
+        "A54": "=AREAS(LAMBDA(x,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))(1))",
+        "A58": "=COUNTA(LAMBDA(x,IF(TRUE,XLOOKUP(1,J1:J2,M1:M2)))(1))",
+        "A62": "=SUM(LAMBDA(x,IF(TRUE,TAKE(K1:K2,1)))(1))",
+        "A66": "=GROUPBY(J1:J2,H1:H2,LAMBDA(x,IF(TRUE,XLOOKUP(1,J1:J2,H1:H2))),0,0)",
+        "A70": "=GROUPBY(J1:J2,H1:H2,LAMBDA(x,XLOOKUP(1,J1:J2,H1:H2)),0,0)",
+        "A74": "=GROUPBY(J1:J2,H1:H2,LAMBDA(x,TAKE(H1:H2,1)),0,0)",
+        "A78": "=GROUPBY(J1:J2,H1:H2,LAMBDA(x,IF(TRUE,TAKE(H1:H2,1))),0,0)",
+        "A82": "=GROUPBY(J1:J2,H1:H2,LAMBDA(x,IF(TRUE,XLOOKUP(1,J1:J2,H1:H2))+0),0,0)",
+        "A86": "=PIVOTBY(J1:J2,J1:J2,H1:H2,LAMBDA(x,IF(TRUE,XLOOKUP(1,J1:J2,H1:H2))),0,0,,0)",
+        "A90": "=PIVOTBY(J1:J2,J1:J2,H1:H2,LAMBDA(x,XLOOKUP(1,J1:J2,H1:H2)),0,0,,0)"
+      }
+    }
+  ]
+}

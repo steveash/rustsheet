@@ -3,7 +3,7 @@ id: T-1724
 title: "COVAR skips pairs with text, blanks or booleans and accepts scalars as Excel (T-1620 probes)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,6 @@ Reuse `PairedMoments` (statistical/correl.rs, T-1723: two-pass sums about the me
 
 ## Out of scope
 - Probing further inputs (file a probe task instead).
+
+## Outcome
+COVAR, COVARIANCE.P and COVARIANCE.S skip pairs with text, blanks or booleans (the count-mismatch `#N/A` is gone) and a typed text sample is `#N/A`. New probe probes/covariance-pairs-skip (excel-graph) covers P and S. Scalar `COVAR(5,5)` already passed. Eval: probes known failures shrank (see PR).
