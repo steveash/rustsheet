@@ -53,8 +53,7 @@ evidence: Excel cells whose YIELD is forced to stop after k iterations do not ex
 - Or the same back-chain analysis on PRICE's inverse with other day-count bases (probe cells with
   basis 1 to 4 and more than one coupon).
 
-Needs an oracle sweep: T-2187 (redemption 100 to 101 in 0.05 steps at frequencies 1, 2 and 4, bases 1 to 4,
-and a price sweep at fixed dates, each cell with its back-chain). Reopen when it lands.
+Waiting on T-2187 (oracle sweep). Reopen when it lands.
 
 ## Visible-parity stage
 Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
