@@ -1,0 +1,24 @@
+(1.5,1.98) 200000 points
+  real                         rms 1.424 median 0.956
+  sim xl_chain_80        all stored  rms 1.539 median 1.006
+  sim xl_chain_80        MASK_80     rms 1.083 median 0.734
+  sim xl_chain_80        mask 51.3%  rms 1.107 median 0.744
+  sim xl_chain_d3ls      all stored  rms 1.466 median 0.958
+  sim xl_chain_d3ls      MASK_80     rms 1.120 median 0.726
+  sim xl_chain_d3ls      mask 51.3%  rms 1.249 median 0.812
+[seed 2] (1.5,1.98) 200000 points
+[seed 2]   real                         rms 1.287 median 0.859
+[seed 2]   sim xl_chain_80        all stored  rms 1.428 median 0.947
+[seed 2]   sim xl_chain_80        MASK_80     rms 1.036 median 0.700
+[seed 2]   sim xl_chain_80        mask 51.3%  rms 1.037 median 0.701
+[seed 2]   sim xl_chain_d3ls      all stored  rms 1.396 median 0.940
+[seed 2]   sim xl_chain_d3ls      MASK_80     rms 1.046 median 0.702
+[seed 2]   sim xl_chain_d3ls      mask 51.3%  rms 1.115 median 0.709
+[seed 3] (1.5,1.98) 200000 points
+[seed 3]   real                         rms 1.298 median 0.857
+[seed 3]   sim xl_chain_80        all stored  rms 1.424 median 0.958
+[seed 3]   sim xl_chain_80        MASK_80     rms 1.073 median 0.712
+[seed 3]   sim xl_chain_80        mask 51.3%  rms 1.077 median 0.713
+[seed 3]   sim xl_chain_d3ls      all stored  rms 1.407 median 0.941
+[seed 3]   sim xl_chain_d3ls      MASK_80     rms 1.062 median 0.711
+[seed 3]   sim xl_chain_d3ls      mask 51.3%  rms 1.035 median 0.700

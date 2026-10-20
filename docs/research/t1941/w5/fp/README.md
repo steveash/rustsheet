@@ -43,3 +43,22 @@ Narrow-region fits are less stable (rms varies by seed), so compare within a see
 a stored chain's; it sits at or slightly below plain1's. So the model-free test finds no structural difference in
 [1.84,1.97). The low exact rate there points at coefficients (plain1 is wrong where that region is sensitive),
 not a different computation.
+
+## (1.5,2] (W6's kernel) fingerprint (`w6fp.py`, `w6fp_partial.py`; logs `w6fp.log`, `w6fp_partial.log`)
+y = st(L(x−1)·L(st(L(x−2)·L(R)))), R = st(N/D), raw-x (9,9). W6's synth.simR, kern.outer and kern.extract are used
+verbatim. Points: W6's Rall (rows_all.py + rext.py, 7.70M rows); x ∈ (1.5, 1.98); 200k per seed; R* = mean of the
+reproducing doubles. Calibration with both W6 chains (xl_chain_80, xl_chain_d3ls). Median of |r| in ulp(R),
+real − sim, 4 seeds × 2 chains:
+| structure | real − sim median (range) | mean |
+|---|---|---|
+| all stored | −0.003 … −0.103 | −0.076 |
+| final P0, S0 of N and D unstored | −0.020 … +0.054 | +0.011 |
+| N P0..S1 unstored | −0.058 … +0.080 | +0.008 |
+| N P0..S3 unstored | +0.047 … +0.147 | +0.10 |
+| W6 MASK_80 (N P0..S3 + D S2..S0) | +0.145 … +0.229 | +0.18 |
+| W6 earlier 51.3% mask | ~+0.15 | |
+The seed/chain spread is ~±0.05 on this kernel (larger than on K1/K3). **MASK_80 is excluded** (~4 spreads) and the
+larger N-low mask is disfavoured. Real sits between all-stored and a minimal mask on the last product/sum; that
+small difference (~0.08 at most) is at the test's resolution limit. W6's 42.7% → 56.8% lift under MASK_80 is
+therefore mostly coefficient error hidden by unstored ops (as on K1/K3). At most the last op or two may be
+80-bit.
