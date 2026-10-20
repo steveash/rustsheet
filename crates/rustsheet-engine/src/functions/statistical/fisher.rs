@@ -2,6 +2,7 @@ use statrs::distribution::{Continuous, ContinuousCDF, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
+use crate::functions::statistical::incomplete_beta::{beta_density, beta_reg};
 use crate::functions::statistical::inverse_beta::f_inverse_cdf;
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::functions::statistical::t_dist::sample_var;
@@ -18,6 +19,18 @@ const F_DF_MAX: f64 = 1e10;
 
 fn f_df_ok(df: f64) -> bool {
     (1.0..=F_DF_MAX).contains(&df)
+}
+
+/// P(F <= x) for the F distribution: I_y(df1/2, df2/2) with y = df1 x / (df1 x + df2).
+fn f_cdf(df1: f64, df2: f64, x: f64) -> f64 {
+    let scaled = df1 * x;
+    beta_reg(scaled / (scaled + df2), df1 / 2.0, df2 / 2.0)
+}
+
+/// P(F > x), computed directly as I_w(df2/2, df1/2) with w = df2 / (df2 + df1 x), not as
+/// 1 - [`f_cdf`] (T-0970: `F.DIST.RT(0.7,4,2.4)` is 0.6597222222222223 in `F_DIST.xlsx`).
+fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
+    beta_reg(df2 / (df2 + df1 * x), df2 / 2.0, df1 / 2.0)
 }
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
@@ -56,10 +69,19 @@ fn f_quantile(dist: &FisherSnedecor, df1: f64, df2: f64, p: f64) -> f64 {
 /// `F.DIST(2,5,1E10,FALSE)` is 0.14167277676179968, probes-numeric/t1530-f-df-cut; TODO(T-1864)).
 fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
     let direct = dist.pdf(x);
+    // Where the direct form is finite: the beta density at y = df1 x / (df1 x + df2) times
+    // dy/dx = y (1 - y) / x, while Gamma((df1 + df2)/2) is finite. `F.DIST(0.7,4,2,FALSE)` is
+    // then 1 ulp from Excel's 0.40509259259259256 (`F_DIST.xlsx` F3), statrs' form 28 ulp (T-0970).
+    if direct.is_finite() {
+        let scaled = df1 * x;
+        let y = scaled / (scaled + df2);
+        return beta_density(y, df1 / 2.0, df2 / 2.0)
+            .map_or(direct, |density| density * y * (1.0 - y) / x);
+    }
     let total = df1 + df2;
     let small_powers =
         df1.powf(df1).is_finite() && df2.powf(df2).is_finite() && total.powf(total).is_finite();
-    if direct.is_finite() || x <= 0.0 || !small_powers {
+    if x <= 0.0 || !small_powers {
         return direct;
     }
     let scaled = df1 * x;
@@ -124,7 +146,7 @@ impl Model {
 
     /// `F.DIST(x, deg_freedom1, deg_freedom2, cumulative)`: every argument lifts over an array
     /// and a range (probes/stat-argument-modes H215-H220, probes/stat-later-argument-lift H69).
-    /// The cdf is statrs' incomplete beta, a continued fraction of at most 140 steps.
+    /// The cdf is [`f_cdf`], an incomplete beta of at most 300 continued-fraction steps.
     pub(crate) fn fn_f_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::FDist, args, cell, &mut |model, values| {
             number_or_error(model.f_dist_of(values, cell))
@@ -162,7 +184,7 @@ impl Model {
         }
         let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
         let result = if cumulative {
-            dist.cdf(x)
+            f_cdf(df1, df2, x)
         } else {
             f_pdf(&dist, df1, df2, x)
         };
@@ -201,9 +223,7 @@ impl Model {
         if !(df1 * x).is_finite() {
             return Err(div_error(cell));
         }
-        let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
-        // Right-tail probability: P(F > x) = 1 - CDF(x)
-        let result = 1.0 - dist.cdf(x);
+        let result = f_sf(df1, df2, x);
         if result.is_nan() || result.is_infinite() || result < 0.0 {
             return Err(num_error(cell));
         }
@@ -344,22 +364,19 @@ impl Model {
         let df1 = (n1 - 1) as f64;
         let df2 = (n2 - 1) as f64;
 
-        let dist = match FisherSnedecor::new(df1, df2) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid parameters for F distribution in F.TEST".to_string(),
-                );
-            }
-        };
+        if FisherSnedecor::new(df1, df2).is_err() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Invalid parameters for F distribution in F.TEST".to_string(),
+            );
+        }
 
         // Two-tailed: twice the smaller tail. The smaller tail is not always the one a variance
         // ratio above 1 picks (F(df1, df2) has its median away from 1), so take the minimum
         // (F.TEST(C1:C6,B1:B8) of probes/stat-argument-modes is 0.9196, not 2 - 0.9196; T-1292).
-        let lower = dist.cdf(f);
-        let mut p = 2.0 * lower.min(1.0 - lower);
+        let lower = f_cdf(df1, df2, f);
+        let mut p = 2.0 * lower.min(f_sf(df1, df2, f));
 
         // Clamp tiny FP noise
         if p < 0.0 && p > -1e-15 {
