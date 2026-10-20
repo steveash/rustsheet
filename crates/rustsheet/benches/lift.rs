@@ -85,8 +85,9 @@ fn workbook(rows: u32, formula: &str) -> Result<Workbook, Box<dyn Error>> {
     })
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let cases = [
+/// Each case: its name, the rows of data, and the formula (`{r}`: one per row).
+fn cases() -> Vec<(&'static str, u32, &'static str)> {
+    vec![
         (
             "COUNTIFS, lifted whole column",
             100_000,
@@ -197,7 +198,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             1,
             "=ROWS(HYPGEOM.DIST(SEQUENCE(32)*0+99994114707,200000000000,200000000000,400000000000,TRUE))",
         ),
-    ];
+    ]
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let cases = cases();
     let filters: Vec<String> = std::env::args()
         .skip(1)
         .filter(|a| !a.starts_with('-'))
