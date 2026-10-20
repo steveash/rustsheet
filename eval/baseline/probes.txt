@@ -164,6 +164,7 @@ C	probes/countblank-error-forms-b.case.json	8
 C	probes/countblank-formula-names-b.case.json	17
 C	probes/countblank-formula-names.case.json	21
 C	probes/coupdays-feb-month-end.case.json	296
+C	probes/covariance-pairs-skip.case.json	17
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
 C	probes/criteria-ifs-bare-equals.case.json	12
@@ -2417,13 +2418,6 @@ F	probes/regression-pairs-a.case.json	Sheet1!N5
 F	probes/regression-pairs-a.case.json	Sheet1!O19
 F	probes/regression-pairs-a.case.json	Sheet1!O22
 F	probes/regression-pairs-a.case.json	Sheet1!O26
-F	probes/regression-pairs-b.case.json	Sheet1!L10
-F	probes/regression-pairs-b.case.json	Sheet1!L11
-F	probes/regression-pairs-b.case.json	Sheet1!L12
-F	probes/regression-pairs-b.case.json	Sheet1!L13
-F	probes/regression-pairs-b.case.json	Sheet1!L23
-F	probes/regression-pairs-b.case.json	Sheet1!L26
-F	probes/regression-pairs-b.case.json	Sheet1!L9
 F	probes/regression-pairs-b.case.json	Sheet1!M11
 F	probes/regression-pairs-b.case.json	Sheet1!M13
 F	probes/regression-pairs-b.case.json	Sheet1!M21
