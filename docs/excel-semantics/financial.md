@@ -382,6 +382,19 @@ The zero-first-value result and the date-0-first root match since T-1583 and T-0
 "XIRR is a bracketing bisection, not Newton" above; T-1155 done).
 Tasks: T-1114, T-1124
 
+## DB and VDB period cap
+Rule: RustSheet returns `#NUM!` for DB with a `period`, and VDB with an `end_period`, whose integer part is above
+100,000, after Excel's own argument checks, to bound per-call work on untrusted input (CLAUDE.md directive 5). Both
+schedules step one period at a time (`DB(1,0,1E15,1E15)` ran for hours before the cap). Excel computes a value there;
+none of its values above the cap are probed. A lifted DB or VDB call is also charged by each element's period
+(SPEC-0011 `KernelWork::ByArg`, T-1820): 2^17 units at the cap, so at most 1,024 such elements per call, while small
+periods lift freely (`ROWS(DB(G25:G26,1000,6,2,7))` = 2, as in Excel). Within the cap the values are unchanged.
+Evidence: the cap is a resource limit, not an Excel observation; probes/fin-argument-modes shows Excel lifting DB and VDB.
+Status: DEVIATION (decision 0014)
+Tasks: T-1820
+Implemented in: functions/financial/financial_depreciation.rs (`MAX_DEPRECIATION_PERIODS`),
+functions/lift/kinds/financial.rs (`DB`, `VDB`)
+
 ## Financial function argument modes
 Rule: every scalar argument of the M9 financial functions lifts elementwise over an array literal: all 256
 `ROWS(F(..{v;v}..))` cells are 2, the dates, frequency, basis, type and guess arguments included. Over a two-cell

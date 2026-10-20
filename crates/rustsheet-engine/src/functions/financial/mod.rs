@@ -17,7 +17,7 @@ mod dates;
 pub(crate) use dates::days_30_360_us_ymd;
 mod discount;
 mod financial_bonds;
-mod financial_depreciation;
+pub(crate) mod financial_depreciation;
 mod financial_util;
 mod mirr;
 mod rate_conversions;
@@ -448,52 +448,6 @@ impl Model {
                 message,
             },
         }
-    }
-
-    // DB(cost, salvage, life, period, [month])
-    pub(crate) fn fn_db(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(4..=5).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let cost = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let salvage = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let life = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let period = match self.get_number(&args[3], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let month = if arg_count > 4 {
-            match self.get_number_no_bools(&args[4], cell) {
-                Ok(f) => f.trunc(),
-                Err(s) => return s,
-            }
-        } else {
-            12.0
-        };
-        if month == 12.0 && period > life
-            || (period > life + 1.0)
-            || month <= 0.0
-            || month > 12.0
-            || period <= 0.0
-            || cost < 0.0
-        {
-            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
-        };
-        if cost == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        let result = financial_depreciation::db_depreciation(cost, salvage, life, period, month);
-        CalcResult::Number(result)
     }
 
     fn get_yearfrac(
