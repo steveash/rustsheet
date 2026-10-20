@@ -226,7 +226,7 @@ More evidence, gen-m5 (excel-graph, 2026-10-20, T-2114; all 28 cells listed in T
 (`B12`, `C8:C8`, `A$1`, or `IF(..,E5)` returning a blank cell) is `#VALUE!` whatever the other argument is: a range of another
 size (`SUMXMY2(B12,D1:E8)`, gen-m5/043ee562f32eb901 Calc!A36), a number (`SUMX2MY2(YEAR(50111),D1)`, gen-m5/eb942f4a59b1c004 Calc!A231), a
 text cell (`SUMXMY2(B$8,E12)` with E12 "TRUE", gen-m5/f0f205865a3a4328 Calc!A103), a boolean, or an error (`SUMX2PY2(C$4,<#NUM!>)`,
-gen-m5/1962de140dae0111 Calc!A388; gen-m5/ee1667411bbe2ccc Calc!A84). A number against an array of another count is `#N/A`
+gen-m5/1962de140dae0111 Calc!A388; gen-m5/ee1667411bbe2ccc Calc!A84). A number or a range against an array of another count is `#N/A`
 (`SUMX2PY2(2.5,<6-element array>)`, gen-m5/204b68ebb5812d50 Calc!A218; gen-m5/aac6230c2fb40e1e Calc!A11), where ours says `#VALUE!`.
 Two non-blank ranges of equal count with no numeric pair are 0, not `#DIV/0!`: `SUMX2MY2(A8:D9,C6:D9)` (gen-m5/8a387c26d182e73c
 Calc!A307) and `SUMX2MY2(C10:D12,C11:E12)` (gen-m5/d1b251fd6e9c4b4b Calc!A397), whose pairs hold text, booleans and blanks only

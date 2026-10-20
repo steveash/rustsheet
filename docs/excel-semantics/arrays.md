@@ -303,8 +303,8 @@ filled column: `DECIMAL(..,INDEX(A1:D5,1E-15,4))`, `DECIMAL(INDEX(A8:D10,0,3)&..
 Ours: `#N/IMPL!` over an array (none of these lifts) and `#VALUE!` over a multi-cell range.
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/043ee562f32eb901 Calc!A204, gen-m5/1d22a002d4f380b3 Calc!A115,
 gen-m5/8a387c26d182e73c Calc!A42, gen-m5/aac6230c2fb40e1e Calc!A258, gen-m5/c0651f0e0fb544d0 Calc!A84, gen-m5/f0f205865a3a4328 Calc!A208,
-gen-m5/5704666097cbc5b2 Calc!A153, gen-m5/6361fdf5993da954 Calc!A378, gen-m5/7d1a5d223624fc70 Calc!A380, gen-m5/d586a1e0c9896942 Calc!A364,
-gen-m5/aac6230c2fb40e1e Calc!A213, gen-m5/ae9ed30812c4d62c Calc!A154.
+gen-m5/6361fdf5993da954 Calc!A378, gen-m5/7d1a5d223624fc70 Calc!A380, gen-m5/d586a1e0c9896942 Calc!A364,
+gen-m5/aac6230c2fb40e1e Calc!A213, gen-m5/ae9ed30812c4d62c Calc!A154; consistent with it but not evidence (a scalar `#VALUE!` base): gen-m5/5704666097cbc5b2 Calc!A153.
 Unprobed: which arguments of each lift, and whether a multi-cell range given directly is lifted or refused
 (Analysis ToolPak functions refuse it, numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes").
 Status: VERIFIED (excel-graph) for the cells above; not implemented (T-2159 math, T-2160 text).

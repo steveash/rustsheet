@@ -27,6 +27,8 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 2 in eval/baselin
 | gen-m5/49bfbf67a1409563 Calc!A103 | `=ASC(IFS(IF(Data!$B5,Data!B5),VLOOKUP(Data!E12,Data!D3:E7,2),ISNA(Data!E10),(1e-15/Data!A9),CELL("...` | "0" | "" |
 | gen-m5/aac6230c2fb40e1e Calc!A334 | `=SEC(AVERAGE(HLOOKUP(2.5,Data!B8:D11,4),(Data!$A$12+Data!C1),Data!B7:B9))` | 1.2724471433871758 | 1.8508157176809255 |
 
+The probe must separate VLOOKUP/HLOOKUP from IFS: the ASC cell (49bfbf67 A103) passes the blank through IFS, which may be what makes it 0; the HLOOKUP→AVERAGE cell (aac6230c A334) has no IFS.
+
 ## Acceptance criteria
 - [ ] These 2 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] lookup.md entry updated with the probe results.

@@ -98,7 +98,7 @@ Status: OBSERVED; T-2146 (after the T-2145 oracle sweep).
 Observation: `MROUND(0.3,0.2)` is 0.4. In doubles 0.3/0.2 is 1.4999999999999998, which rounds to 1 (ours: 0.2); Excel rounds
 it as 1.5, half away from zero, which fits a 15-significant-digit cut of the quotient before rounding (as ROUND's stage 1).
 Evidence (excel-graph, 2026-10-20): gen-m5/043ee562f32eb901 Calc!A199. Unprobed: other near-half quotients, and whether the
-product `n*multiple` is formed in binary (`MROUND(0.5,0.2)` is 0.6000000000000001 here).
+product `n*multiple` is formed in binary (our engine gives `MROUND(0.5,0.2)` = 0.6000000000000001; Excel unprobed).
 Status: OBSERVED (1 cell); T-2167.
 
 ## ROUNDUP adds the unit in binary
@@ -820,7 +820,7 @@ Rule: SINH and COSH are `#NUM!` once `e^|x|` overflows a double, although the tr
 and survives nesting, as for EXP: `ISERR(COSH(-710))` is TRUE, `ISNUMBER(SINH(134217728))` FALSE, and `ISODD(EXP(2^53+1))`,
 `ATAN(COSH(1E+15))`, `MOD(2^53+1,SINH(1E+9))`, `MOD(ACOT(SINH(1E+15)),<#REF!>)`, `GCD(EXP(1E+15),..)`,
 `ARRAYTOTEXT(SINH(134217727),2)`, `TEXTJOIN(..,COSH(1E+9))`, `VALUETOTEXT(x-SINH(-710),0)` and
-`SUMXMY2(<blank A4:A4>,EXP(2958465))` are all `#NUM!`.
+`SUMXMY2(<TRUE A4:A4>,EXP(2958465))` (a boolean one-cell argument beside the error) are all `#NUM!`.
 Ours: SINH/COSH give +-1.117E+308 at +-710 and SECH 8.95E-309; SINH, COSH and EXP hand an infinity to the enclosing
 function (only the cell store turns it into `#NUM!`), so `ISNUMBER(SINH(1E+9))` is TRUE and TEXTJOIN prints "inf".
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1962de140dae0111 Calc!A30 and gen-m5/1b30e4d075b252ea Calc!A318 (SECH),
