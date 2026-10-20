@@ -3,7 +3,7 @@ id: T-2178
 title: "Oracle sweep: SINH and TANH on (-1, 1) for the T-2134 kernel fit"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
