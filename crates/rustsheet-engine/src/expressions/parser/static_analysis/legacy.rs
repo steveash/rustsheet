@@ -413,7 +413,9 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
 /// boolean, out of range) and however many arms (`=N(CHOOSE({1,2},H1:H2,I1:I2))`,
 /// `=T(CHOOSE({1;2},V1,W1))`, `=N(CHOOSE({1},X1:X2,Y1:Y2))`; probes/subtotal-take-array-selector
 /// D1-D7, T-1915, probes/legacy-n-t-choose-array-index-shapes, T-2100). Arms other than plain
-/// cell or range references are unprobed and keep their `@`. A one-element index already has its
+/// same-sheet cell or range references (other sheets, other kinds of argument) and an explicit `@`
+/// on the index are unprobed; the predicate takes the probed same-sheet behavior for references on
+/// other sheets, and leaves an explicit `@` alone. A one-element index already has its
 /// automatic `@` when N or T is marked, which [`mark_legacy_reading`] then drops.
 fn chooses_references_by_an_array_index(kind: &Function, args: &[Node]) -> bool {
     let [index, arms @ ..] = args else {
