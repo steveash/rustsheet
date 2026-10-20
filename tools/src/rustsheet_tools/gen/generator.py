@@ -185,7 +185,10 @@ class Gen:
 
     def call(self, typ: str, depth: int) -> str:
         fns = [f for f in self.catalog.functions if typ in ("any", f["returns"]) or f["returns"] == "any"]
-        fn = self.weighted(fns or self.catalog.functions)
+        return self.call_fn(self.weighted(fns or self.catalog.functions), depth)
+
+    def call_fn(self, fn: dict[str, Any], depth: int) -> str:
+        """A call to `fn` with generated arguments."""
         self.used.add(fn["name"])
         args: list[str] = []
         params: list[dict[str, Any]] = fn["params"]
@@ -344,9 +347,20 @@ def generate_case(
     data_rows: int = 12,
     data_cols: int = 5,
     max_depth: int = 3,
+    focus: bool = False,
+    case_index: int = 0,
 ) -> dict[str, Any]:
+    """One case. With `focus`, every formula's outer call is a function whose own milestone is `milestone`,
+    taking turns through a seeded shuffle (each case reshuffles from its own seed; `case_index` offsets the
+    position, so counts are exactly even within a case and roughly even across a run)."""
     rng = random.Random(seed)
     g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth)
+    targets = [f for f in g.catalog.functions if f.get("milestone") == milestone] if focus else []
+    if focus:
+        if not targets:
+            msg = f"no generator-ready functions at milestone {milestone} to focus on"
+            raise ValueError(msg)
+        rng.shuffle(targets)
     data: dict[str, Any] = {}
     for r in range(1, data_rows + 1):
         for c in range(data_cols):
@@ -357,6 +371,9 @@ def generate_case(
                 data[f"{chr(ord('A') + c)}{r}"] = v
     calc: dict[str, Any] = {}
     for i in range(1, formulas + 1):
+        if focus:
+            calc[f"A{i}"] = "=" + g.call_fn(targets[(case_index * formulas + i - 1) % len(targets)], 0)
+            continue
         typ = rng.choice(["number", "number", "any", "text", "bool"])
         calc[f"A{i}"] = "=" + g.expr(typ, 0)
     return {
