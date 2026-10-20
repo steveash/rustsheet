@@ -1,7 +1,8 @@
 # 0083 — Visible parity first: fifteen significant digits before ulps and bits
 
 - **Status:** accepted (2026-10-20, T-0060; asked for by the owner in session
-  https://claude.ai/code/session_01WTJ7rq9tsQyspbybqNLk1a)
+  https://claude.ai/code/session_01WTJ7rq9tsQyspbybqNLk1a). Amends decision 0026 (pick
+  order and triage rank) for campaign tasks only.
 - **Context:**
   - The owner wants every in-scope function to reach three levels of parity, in this order:
     first visible parity (the 15 significant digits Excel shows are the same, and the type,
@@ -57,7 +58,8 @@
     3. the PR fixes more visibly-off cells than it regresses;
     4. the task's Outcome lists every regressed cell, and a follow-up ulp task names them.
 
-    Reviewers check all four from the eval report and the baseline diff. Any other regression
+    Reviewers check all four from the eval report and the baseline diff. The Excel-fidelity
+    reviewer quotes the regressed cells, with their ulp distances, in its verdict. Any other regression
     still needs its own decision record.
   - *Triage.* The gap-triager ranks visibly-off groups (numeric or text) before the
     milestone order, and gives the task it files for such a group `campaign: visible`.
