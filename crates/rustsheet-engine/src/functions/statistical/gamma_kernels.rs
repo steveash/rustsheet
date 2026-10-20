@@ -137,7 +137,8 @@ pub(super) const R15_D: [f64; 10] = [
 
 /// GAMMA's G on [1, 2), K1, numerator: G = `fl(N/D)`, degree (7,7), raw-y Horner with every op stored,
 /// the constant term first (W4's `w4/k1r/plain1.txt`). Excel's structure with the best known
-/// coefficients, not bit-exact; measured exact rate @K1@; see T-2122.
+/// coefficients, not bit-exact; measured exact rate 0.784 on GAMMA [1, 10) (4,229,812 distinct x), 0.838
+/// on (0, 1) and 0.876 on [-10, 0), all through G; see T-2122.
 #[rustfmt::skip]
 pub(super) const K1_N: [f64; 8] = [
     f64::from_bits(0x40EB_5834_ABBE_A656), // 0x1.b5834abbea656p+15

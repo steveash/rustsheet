@@ -1214,8 +1214,7 @@ and the two functions have different domains.
   correctly rounded sqrt(pi) 1.772453850905516), correctly rounded and any 64-bit recurrence 45, the engine 0.
   Excel's GAMMA does not keep 64-bit intermediates either: that model only ties the correctly
   rounded value (numbers.md "x87 precision is per operator, not per kernel").
-Ours: GAMMA is `statrs` Lanczos (not exact at integers) and returns `#NUM!` for `GAMMA(171.5)` and
-`GAMMA(171.6)` (until T-2129); GAMMALN is Excel's own routine since T-2128 ("GAMMALN is Excel's own x87 routine" below).
+Ours: GAMMA is Excel's own routine since T-2129 ("GAMMA is Excel's own x87 routine" below); GAMMALN is Excel's own routine since T-2128 ("GAMMALN is Excel's own x87 routine" below).
 Evidence: probes-numeric cases `t1042-gamma-int-1-90`, `t1042-gamma-int-91-171`, `t1042-gamma-half-int`,
 `t1042-gamma-unit-interval`, `t1042-gamma-negatives-edges` (first half of each case's cells is GAMMA,
 second half GAMMALN, in formula order; GAMMA overflow edge: `t1042-gamma-negatives-edges` Calc!A18:A24;
@@ -1266,6 +1265,52 @@ every point; `gammaln_matches_the_t1941_runs` reruns the table above from `RUSTS
 Status: VERIFIED (excel-graph and desktop) for the structure and the bit-exact pieces; the four rationals are best known
 models (T-2122)
 Tasks: T-1941, T-2128, T-2122
+
+## GAMMA is Excel's own x87 routine (T-1941, T-2129)
+Rule: GAMMA is its own routine (not EXP(GAMMALN)), x87 ops each stored to a double (fl53(fl64(.))), LN the FYL2X model,
+EXP model V6 (numbers.md), and the reflection's sine an FSIN, RN53(RN64(sin)) of the true sine. By the exact
+comparisons Excel makes, in order:
+- **Integers n <= 88**: the downward product (n-1)(n-2)...2 (T-1524); 0 and the negative integers are `#NUM!`.
+- **Exact half-integers** (x = floor(x) + 0.5): the ascending product 0.5 * 1.5 * ... * (x - 1) times √π
+  (0x1.c5bf891b4ef6bp+0); a negative one is ±fl(fl(π/Gh(-x))/(-x)); from x = -171.5 on the result is a subnormal that
+  Excel gives as +0.
+- **x >= 10** (integers from 89 on included): h = x/2, r = x^floor(h) by right-to-left binary powering, v = r EXP((h -
+  floor(h)) LN(x)) = x^(x/2), the Stirling series s in 1/x (the same ten-term sum as GAMMALN's), and EXP(-x) √(1/x) v v
+  2.50662827463100050242 EXP(s), multiplied in that order. Because v is used twice, GAMMA near 150 is up to about ±40 ulp
+  from the true value.
+- **1 <= x < 10**: the descending stored product (x-1)(x-2)... down to y in [1, 2), times G(y).
+- **0 < x < 1**: fl(fl(1/x) G(fl(x + 1))).
+- **-10 <= x < 0**: z = 1/x, y = x + 1, then z = z/y and y = y + 1 while y < 1, and z G(y).
+- **x < -10**: q = -x, z = q - round-half-down(q), s = |FSIN(fl(π z))|, ±fl(fl(π/GAMMA(q))/fl(q s)); 0 once GAMMA(q)
+  overflows. The cut is exactly -x > 10 (`kmyst-gam-h104`).
+- Past 171.6243769563027 GAMMA overflows (`#NUM!`); GAMMA(171.6) is finite.
+G on [1, 2) is a (7,7) raw-y rational fl(N/D) with D0 = -1/16 and Excel's own coefficients, not yet known to the bit
+(T-2122); the engine uses W4's best set (`gamma_kernels.rs` `K1_N`, `K1_D`). Exact rates on the T-1941 GAMMA cells
+(4,680,197 distinct x, excel-graph):
+
+| Region | Exact | of |
+|---|---|---|
+| integers, half-integers | 1.000 | 330 |
+| x >= 10 | 0.998 | 138,552 |
+| [1, 10) (through G) | 0.784 | 4,229,812 |
+| (0, 1) (through G) | 0.838 | 280,575 |
+| [-10, 0) (through G) | 0.876 | 24,620 |
+| x < -10 | 0.999 (6,304 of 6,308) | 6,308 |
+
+The four reflection misses are one ulp and inherit it from GAMMA(q) (the research checker, given Excel's own GAMMA(q)
+column, misses only an FSIN tie). The [1.8, 2) part of G is the weakest (about 0.5, HANDOFF2 §3.3). The misses through G
+are a few ulps, invisible at 15 digits.
+Evidence: `docs/research/t1941/` and the `kmyst-gam-*` cases on branch `agent/research/T-1941-crack-gammaln-gamma-ln`
+(README "GAMMA for x >= 10", HANDOFF2 §2, §3.3; `gamma_big_check.c`, `gamma_neg_check.py`, `w4/k1r/plain1.txt`);
+ironcalc-calc/STATISTICAL/GAMMA.xlsx passes every GAMMA cell (13 known failures gone; what is left there is GAMMA.DIST and
+GAMMA.INV), BETA_GAMMA.xlsx 8 more and probes/stat-argument-modes one more.
+Implemented in `functions/statistical/gamma_x87.rs` (`excel_gamma`), `gamma_kernels.rs` (K1) and `trig.rs` (`excel_fsin`).
+`test/fixtures/gamma_kernel.fixture` (600 random points per region plus every integer and half-integer) pins the engine to
+the composed research checkers (`docs/research/t1941/engine/garef.py`) on every point; `gamma_matches_the_t1941_runs` reruns
+the table from `RUSTSHEET_T1941_ROWS`.
+Status: VERIFIED (excel-graph and desktop) for the structure and the products, half-integers, x >= 10 and reflection; G is a
+best known model (T-2122)
+Tasks: T-1941, T-2129, T-2122
 
 ## Student t sweep: df truncation, df limits, T.INV.2T above 1 (T-1043)
 Oracle sweep of the Student t family over df in {1,2,3,4,5,10,30,100,1000,1E6}, x up to 1E6 and p
