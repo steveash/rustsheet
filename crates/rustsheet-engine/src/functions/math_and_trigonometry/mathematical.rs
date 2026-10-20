@@ -237,7 +237,7 @@ impl Model {
             };
             match model.kernel_number(value, cell) {
                 Ok(number) => number_result(
-                    op(number).and_then(|x| if x.is_nan() { Err(Error::NUM) } else { Ok(x) }),
+                    op(number).and_then(|x| if x.is_finite() { Ok(x) } else { Err(Error::NUM) }),
                     cell,
                 ),
                 Err(error) => error,
@@ -600,8 +600,7 @@ impl Model {
     /// `EXP(number)`: Excel's own x87 evaluation, model V6, which is not the correctly rounded exp
     /// (docs/excel-semantics/numbers.md "EXP is an x87 2^(a*log2 e) evaluation, not correctly
     /// rounded"; probes-numeric `t1931-exp-*`). A subnormal result is kept (probes/
-    /// subnormal-function-results C4, C6), and an overflow is infinite, which the cell turns into
-    /// `#NUM!` as before.
+    /// subnormal-function-results C4, C6), and an overflow is `#NUM!` at once (`number_fn`).
     pub(crate) fn fn_exp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Exp, args, cell, |f: f64| Ok(excel_exp(f)))
     }

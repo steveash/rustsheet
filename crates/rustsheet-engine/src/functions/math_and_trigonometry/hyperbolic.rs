@@ -19,8 +19,6 @@ use crate::x87_log10::excel_ln;
 /// Below this |x| the exp formulation loses precision and Excel's values match the Taylor series
 /// (evidence: `SINH_COSH_TANH!B10`, B18, B42; the exp form matches all cells with |x| >= 0.5).
 const SINH_SERIES_LIMIT: f64 = 0.5;
-/// `exp(x)` overflows near here; defer to libm so the finite/infinite boundary is unchanged.
-const EXP_SAFE_LIMIT: f64 = 700.0;
 /// |tanh(x)| rounds to 1.0 in f64 beyond this.
 const TANH_SATURATION: f64 = 20.0;
 
@@ -38,22 +36,18 @@ fn sinh_series(x: f64) -> f64 {
     sum
 }
 
+/// Overflows to infinity where `e^|x|` does (710): SINH/COSH report that as `#NUM!` and SECH/CSCH
+/// as 0 (numbers.md "SINH and COSH overflow is `#NUM!` at once").
 pub(super) fn sinh(x: f64) -> f64 {
     if x.abs() < SINH_SERIES_LIMIT {
         sinh_series(x)
-    } else if x.abs() > EXP_SAFE_LIMIT {
-        x.sinh()
     } else {
         (x.exp() - (-x).exp()) / 2.0
     }
 }
 
 pub(super) fn cosh(x: f64) -> f64 {
-    if x.abs() > EXP_SAFE_LIMIT {
-        x.cosh()
-    } else {
-        (x.exp() + (-x).exp()) / 2.0
-    }
+    (x.exp() + (-x).exp()) / 2.0
 }
 
 pub(super) fn tanh(x: f64) -> f64 {
