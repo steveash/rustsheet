@@ -367,11 +367,11 @@ Evidence: probes/eng-im-overflow (excel-graph).
   `1000+1.4901161193847656E-8i` (sqrt(DBL_EPSILON) itself) are `#NUM!`, `1000+1.4901161193848E-8i` is capped
   (probes/eng-imexp-cutoff A1-A6). The refusal is about the angle's distance from a multiple of pi/2, not
   about y: `1000+1.5707963267949i`, `1000+4.71238898038469i` and the points within 1E-9 of pi/2 are `#NUM!`
-  (B4, B5, E), as are `1000+3.14159265i`, `1000+3.14159266i`, `1000+6.2831853i` and `1000+6.28318531i`
+  (B4, B5, D9, G1, H1), as are `1000+3.14159265i`, `1000+3.14159266i`, `1000+6.2831853i` and `1000+6.28318531i`
   (A9, A14, B2, B3), while `1000+3.1415926i` and `1000+3.1415927i` are capped (A8, A15). Beyond |y| = 1 the
   cutoff on that distance (sin or cos, whichever is small) is not sqrt(DBL_EPSILON) = 1.49E-8 but
-  between 1.0539E-8 and 1.0545E-8 (E and F bisections, same at pi/2 and pi; sqrt(DBL_EPSILON / 2) =
-  1.0537E-8 is just outside, so the cause is unknown). Ours uses 1.0542E-8 (UNVERIFIED in the sliver).
+  between 1.0539E-8 (`#NUM!`) and 1.0541E-8 (capped), the same at pi/2 and pi (probes/eng-imexp-cutoff G, H; E and F are capped points further out; sqrt(DBL_EPSILON / 2) =
+  1.0537E-8 is just outside, so the cause is unknown). Ours uses 1.054E-8 (UNVERIFIED in the sliver).
   The cap is a function of the angle only: `800+1.5707963267949i` and `709.9+1.5707963267949i` are `#NUM!`
   too (D6, D7), and `1+1.5707963267949i` is finite (`-9.49076209569415E-15+2.71828182845905i`, D8).
 - IMEXP's sine and cosine of the imaginary part reduce the argument as SIN and COS do (the x87
@@ -380,8 +380,9 @@ Evidence: probes/eng-im-overflow (excel-graph).
   `IMEXP("710i")` is `0.999999998182636+0.0000602887066915739i` (probes/eng-im-overflow A42); libm's
   sin gives other last digits. Implemented with `excel_sin_cos` (T-2060). Excel's SIN limit
   applies: `1000+134217727i` is capped (`-5.27422318923931E+307-1.7185826441088E+308i`, A17; the
-  negative form too, B6), `|y| = 134217728` or more is `#NUM!` for any x, also when nothing overflows
+  negative form too, B6), any `|y|` above 134217727 is `#NUM!` for any x (`134217727.3` and `.99` too: I1-I4), also when nothing overflows
   (`1+134217728i`, `0+134217728i`, `1000-2E8i`, `1000+1E15i`, `710+2E8i`: A16, A18-A21, B7, B8, B10, B11). Implemented (T-2087).
+- `IMEXP("1+1.4E-8i")` real part is `2.71828182845905` in Excel, ours `...904` (probes/eng-imexp-cutoff B9, known failure, T-2099).
 - A part near DBL_MAX is written as `1.79769313486232E+308`, a decimal above DBL_MAX: the 15-digit
   rounding of 1.7976931348623157E+308 is not clamped (probes/eng-imexp-overflow-imag A22, A24, A27,
   A30). Ours keeps the unrounded part when the rounding overflows (T-2060). Plain number text does not: `((2-2^-52)*2^1023)&""` is `1.7976931348623E+308` and TEXT(..., "General") is `1.7977E+308` (probes/eng-imexp-cutoff C1, C2), which ours matches. A DBL_MAX literal in a formula is rejected by the Graph workbook, so DBL_MAX is built by arithmetic.
@@ -410,4 +411,3 @@ Evidence: probes/eng-im-overflow (excel-graph).
 Evidence: probes/eng-complex-overflow A1-A21 (excel-graph, 2026-10-19). Implemented in complex.rs
 (`finite_complex_result`, `fn_imsub`, `fold_complex`).
 
-- `IMEXP("1+1.4E-8i")` real part is `2.71828182845905` in Excel, ours `...904` (probes/eng-imexp-cutoff B9, known failure, T-2099).

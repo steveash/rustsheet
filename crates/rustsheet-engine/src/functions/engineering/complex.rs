@@ -26,8 +26,8 @@ use crate::{
 /// is `#NUM!`; SIN's own cut is 2^27, which is not this one.
 const IMPOWER_ANGLE_LIMIT: f64 = 134_217_727.0;
 /// IMEXP's overflow cap is refused when sin or cos of the imaginary part is below this and |y| >= 1;
-/// Excel's cutoff lies in (1.0539E-8, 1.0545E-8) (probes/eng-imexp-cutoff).
-const IMEXP_AXIS_CUTOFF: f64 = 1.0542e-8;
+/// Excel's cutoff lies in (1.0539E-8, 1.0541E-8) (probes/eng-imexp-cutoff).
+const IMEXP_AXIS_CUTOFF: f64 = 1.054e-8;
 
 /// This implements all functions with complex arguments in the standard
 /// NOTE: If performance is ever needed we should have a new entry in `CalcResult`,
@@ -745,11 +745,11 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     // Overflow of a pure real argument is `#NUM!` (probes/eng-im-overflow A9, A10;
     // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus at
     // DBL_MAX instead (A12: `IMEXP("1000+1i")` is `9.71297746009434E+307+1.51270661257499E+308i`,
-    // DBL_MAX times cos 1 and sin 1), unless the angle is that close to an axis (see below): `IMEXP("1000+1.4E-8i")` is
+    // DBL_MAX times cos 1 and sin 1), unless the angle is near an axis (see below): `IMEXP("1000+1.4E-8i")` is
     // `#NUM!` and `"1000+1.5E-8i"` is capped (probes/eng-imexp-overflow-imag; engineering.md).
     // The sine and cosine reduce y as SIN and COS do, which is what gives A3's last digits
-    // (`...+4.770340154251E+302i`). |y| = 134217728 or more is `#NUM!` whatever x is
-    // (probes/eng-imexp-cutoff A17-A21, B6-B8, B10, B11).
+    // (`...+4.770340154251E+302i`). |y| above 134217727 is `#NUM!` whatever x is
+    // (probes/eng-imexp-cutoff A17-A21, B6-B8, B10, B11, I1-I4).
     if y.abs() > IMPOWER_ANGLE_LIMIT {
         return num_error(cell);
     }
@@ -758,7 +758,8 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if modulus == f64::INFINITY && y.is_finite() {
         // The cap needs the angle far enough from a multiple of pi/2: a distance (min(|sin|, |cos|))
         // of sqrt(DBL_EPSILON) for |y| < 1, about 1.054E-8 beyond (probes/eng-imexp-cutoff A1-A6,
-        // B1-B5, D1-D5, E, F; engineering.md). The second bound is bracketed, not derived.
+        // B1-B5, G, H; engineering.md). The second bound is bracketed, not derived, and the switch
+        // at |y| = 1 moves no probed value.
         let near_axis = if y.abs() < 1.0 {
             y.abs() <= f64::EPSILON.sqrt()
         } else {

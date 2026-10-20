@@ -24,4 +24,4 @@ T-2060 found `IMEXP("1000+yi")` is `#NUM!` for 1.4E-8 and capped for 1.5E-8; `im
 -
 
 ## Outcome
-New probe `probes/eng-imexp-cutoff` (65 cells). Findings (engineering.md): the cap is refused by the angle's distance from a multiple of pi/2 (cutoff 1.49E-8 near 0, about 1.054E-8 at pi/2 and pi, bracketed not derived), the SIN limit applies (|y| >= 134217728 is `#NUM!` for any x; 134217727 is capped), and DBL_MAX as text is `1.7976931348623E+308`. `imexp` implements these. One cell (B9) stays a known failure: T-2099.
+New probe `probes/eng-imexp-cutoff` (81 cells). Findings (engineering.md): the cap is refused by the angle's distance from a multiple of pi/2 (cutoff 1.49E-8 near 0, about 1.054E-8 at pi/2 and pi, bracketed not derived), the SIN limit applies (|y| >= 134217728 is `#NUM!` for any x; 134217727 is capped), and DBL_MAX as text is `1.7976931348623E+308`. `imexp` implements these. One cell (B9) stays a known failure: T-2099.
