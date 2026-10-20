@@ -3,7 +3,7 @@ id: T-2204
 title: "Decide how ironcalc-calc EXP_SIGN B44 (a cached 0 where Excel keeps 2^-1074) counts for the M5 exit"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -40,18 +40,31 @@ the engine already gives Excel's in-memory value.
 - T-1944 (functions-math) owns the EXP edges. With this task, B44 leaves T-1944's scope.
 
 ## Acceptance criteria
-- [ ] A decision record (`make new-decision`) chooses among the options with the evidence above. It says whether the
+- [x] A decision record (`make new-decision`) chooses among the options with the evidence above. It says whether the
       saved xlsx holds 0 for a kept subnormal, citing the file or case checked, and what the decision means for any
       later excel-cached subnormal cell.
-- [ ] If the decision names B44 as an exception: the same PR adds its line to eval/milestones/exit-exceptions.tsv
+- [x] If the decision names B44 as an exception: the same PR adds its line to eval/milestones/exit-exceptions.tsv
       (decision 0087 format, milestone M5), and the cumulative M5 row's "failing excl. exceptions" drops by 1 in
       `make eval`. If it calls for a harness rule: a harness task is filed with the rule and its test cells, and B44 is
       named as that task's acceptance cell.
-- [ ] docs/milestones.md M5 names the outcome next to the other exceptions, if any. numbers.md "Worksheet EXP (T-1931)"
+- [x] docs/milestones.md M5 names the outcome next to the other exceptions, if any. numbers.md "Worksheet EXP (T-1931)"
       records the file-serialization finding. T-1944's Context points to the decision, and B44 leaves T-1944's scope.
-- [ ] Eval: no baseline change (B44 stays an F line in eval/baseline/ironcalc-calc.txt unless a harness rule passes it).
-- [ ] `make check` green; reviewers approve.
+- [x] Eval: no baseline change (B44 stays an F line in eval/baseline/ironcalc-calc.txt unless a harness rule passes it).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - EXP's overflow and underflow edges (T-1944, T-2203).
 - Changing EXP or V6.
+
+## Outcome
+- Excel writes a kept subnormal to the saved xlsx as 0. New probe probes/subnormal-saved-as-zero (excel-graph,
+  2026-10-20, 11 cells, all pass): `EXP(-745)`, `EXP(-720)` and `=A1` of such a cell are `<v>0</v>` in the file Excel
+  for the web saved (oracle cache `609761bee2d9…d69.xlsx`), while their `(x)=0` companions are FALSE and
+  `EXP(-745)*2^1000` is exactly 2^-74. So B44's cached 0 is Excel's own save artifact, the same one decision 0042
+  attributes to Graph.
+- Decision 0089: B44 is an M5 exit exception (exit-exceptions.tsv, owner T-2210); later Excel-saved 0s against an
+  engine subnormal count the same way only with FALSE-companion evidence for the same formula and inputs.
+- numbers.md, docs/milestones.md M5 and T-1944 updated. Follow-ups: T-2210 (harness: pass B44 with cross-case
+  companion evidence), T-2211 (xlsx export writes a kept subnormal as 0).
+- Eval: probes +1 case (11 cells, 0 known failures); no baseline line changes; the M5 row's "failing excl.
+  exceptions" drops by 1.
