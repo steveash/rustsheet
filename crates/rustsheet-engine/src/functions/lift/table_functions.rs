@@ -78,6 +78,8 @@ macro_rules! lifting_table_functions {
             | Function::Sln
             | Function::Syd
             | Function::Ddb
+            | Function::Db
+            | Function::Vdb
             | Function::Effect
             | Function::Nominal
             | Function::Dollarde

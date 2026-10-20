@@ -3,12 +3,40 @@
 //! weights of their coupon walks, solvers and period loops.
 
 use super::ArgKind::{Lift, LiftArrays};
-use super::KernelWork::{Constant, Weighted};
+use super::KernelWork::{ByArg, Constant, Weighted};
 use super::{ArgKinds, ATP_2, ATP_3, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
+use crate::functions::financial::MAX_DEPRECIATION_PERIODS;
 use crate::functions::Function;
 
 /// `DDB(cost, salvage, life, period, [factor])`.
 const LIFT_4_OF_5: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift, Lift], Constant);
+/// `DB(cost, salvage, life, period, [month])`: the schedule steps once per period up to `period`,
+/// at most `MAX_DEPRECIATION_PERIODS`, the kernel's own per-call cap; each element is charged by
+/// its period (T-1820).
+const DB: ArgKinds = ArgKinds::fixed(
+    4,
+    &[Lift, Lift, Lift, Lift, Lift],
+    ByArg {
+        arg: 3,
+        cap: MAX_DEPRECIATION_PERIODS,
+        weight: DEPRECIATION_WEIGHT,
+    },
+);
+/// `VDB(cost, salvage, life, start_period, end_period, [factor], [no_switch])`: two schedules,
+/// to `start_period` and to `end_period`, each stepping once per period up to the cap; each
+/// element is charged by its `end_period` (T-1820).
+const VDB: ArgKinds = ArgKinds::fixed(
+    5,
+    &[Lift, Lift, Lift, Lift, Lift, Lift, Lift],
+    ByArg {
+        arg: 4,
+        cap: MAX_DEPRECIATION_PERIODS,
+        weight: DEPRECIATION_WEIGHT,
+    },
+);
+/// The units a DB or VDB element at the period cap is charged (one more for the call): at most
+/// 1,024 such elements per lifted call.
+const DEPRECIATION_WEIGHT: u32 = (1 << 17) - 1;
 /// `RATE(nper, pmt, pv, [fv], [type], [guess])`: Newton's method with a fixed cap of 50 steps
 /// (`financial_util::compute_rate`), each element charged that weight (SPEC-0011 security rule).
 /// Under the 2^20-element output cap the charge never reaches `MAX_LIFTED_CELL_VISITS`, so it
@@ -197,14 +225,15 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // `{v;v}`, the first over a range), probes/fin-later-argument-ranges K1-K25 (the last
         // over a range), probes/scalar-lift-shapes H13-H48 (docs/excel-semantics/financial.md
         // "Financial function argument modes"). Their kernels run in closed form; RATE is
-        // weighted by its step cap. DB and VDB loop over the periods without a cap of their
-        // own, so they are not entered yet (TODO(T-1820)).
+        // weighted by its step cap; DB and VDB by their periods, up to their own cap (T-1820).
         Function::Pmt | Function::Pv | Function::Fv | Function::Nper => Some(&LIFT_3_OF_5),
         Function::Rate => Some(&RATE),
         Function::Ipmt | Function::Ppmt => Some(&LIFT_4_OF_6),
         Function::Ispmt | Function::Syd => Some(&LIFT_4),
         Function::Rri | Function::Pduration | Function::Sln => Some(&LIFT_3),
         Function::Ddb => Some(&LIFT_4_OF_5),
+        Function::Db => Some(&DB),
+        Function::Vdb => Some(&VDB),
         // Analysis ToolPak functions whose every argument has been probed over a range on
         // its own rows: all are refused, while an array lifts (fin-argument-modes; EFFECT:
         // scalar-lift-shapes H11, H12; DOLLARDE, DOLLARFR: scalar-lift-open-a Y16-Y18; the
