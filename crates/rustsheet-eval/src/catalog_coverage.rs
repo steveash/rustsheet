@@ -10,13 +10,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::evidence_floor::EVIDENCE_FLOOR;
+use crate::probe_milestones::{parse_milestone, row_of, REPORT_ROWS};
 use crate::report::{functions_in, FunctionEvidence};
 use crate::runner::CaseResult;
 use crate::value::Verdict;
-use crate::volatile::is_volatile;
-
-/// The function milestones the section reports, in phase order.
-pub const MILESTONES: [&str; 6] = ["M2", "M5", "M6", "M7", "M9", "M10"];
+use crate::volatile::is_volatile_function;
 
 /// A function that misses the floor or the generated-suite condition.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,7 +48,8 @@ pub struct MilestoneCoverage {
     pub missing: Vec<Uncovered>,
 }
 
-/// Rows for [`MILESTONES`]. `evidence` is the report's per-function Excel evidence;
+/// One row per report row of the probe milestones ([`REPORT_ROWS`], plus any catalog milestone
+/// they lack), as in `function_scope`; M0 and M1 functions fold into the M2 row. `evidence` is the report's per-function Excel evidence;
 /// `generated` maps each generated suite's name to the milestones it is tagged with.
 #[must_use]
 pub fn summarize(
@@ -63,8 +62,8 @@ pub fn summarize(
         .iter()
         .map(|e| (e.name.as_str(), e.cells))
         .collect();
-    // milestone -> functions with an Excel-backed scored cell in one of its generated suites.
-    let mut reached: BTreeMap<&str, BTreeSet<String>> = BTreeMap::new();
+    // row -> functions with an Excel-backed scored cell in one of its generated suites.
+    let mut reached: BTreeMap<u32, BTreeSet<String>> = BTreeMap::new();
     for r in results {
         let Some(tags) = generated.get(&r.suite) else {
             continue;
@@ -77,28 +76,31 @@ pub fn summarize(
             let Some(formula) = c.formula.as_deref() else {
                 continue;
             };
-            for m in tags {
+            for m in tags.iter().filter_map(|t| parse_milestone(t)) {
                 reached
-                    .entry(m.as_str())
+                    .entry(row_of(m))
                     .or_default()
                     .extend(functions_in(formula));
             }
         }
     }
-    MILESTONES
-        .iter()
-        .map(|&m| {
+    let rows: BTreeSet<u32> = catalog
+        .functions()
+        .filter_map(|f| parse_milestone(&f.milestone).map(row_of))
+        .chain(REPORT_ROWS)
+        .collect();
+    rows.into_iter()
+        .map(|m| {
             let mut row = MilestoneCoverage {
-                milestone: m.to_string(),
+                milestone: format!("M{m}"),
                 ..MilestoneCoverage::default()
             };
-            for f in catalog
-                .functions()
-                .filter(|f| f.milestone == m && catalog.in_scope(&f.name))
-            {
+            for f in catalog.functions().filter(|f| {
+                parse_milestone(&f.milestone).map(row_of) == Some(m) && catalog.in_scope(&f.name)
+            }) {
                 let n = cells.get(f.name.as_str()).copied().unwrap_or(0);
                 let a = n >= EVIDENCE_FLOOR;
-                let b = reached.get(m).is_some_and(|s| s.contains(&f.name));
+                let b = reached.get(&m).is_some_and(|s| s.contains(&f.name));
                 row.functions += 1;
                 row.with_evidence += usize::from(a);
                 row.in_generated += usize::from(b);
@@ -108,7 +110,7 @@ pub fn summarize(
                     if catalog.needs_other_evidence(&f.name) {
                         tags.push("oracle: none".to_string());
                     }
-                    if is_volatile(&format!("{}(", f.name), false) {
+                    if is_volatile_function(&f.name) {
                         tags.push("volatile".to_string());
                     }
                     row.missing.push(Uncovered {
@@ -269,6 +271,13 @@ mod tests {
                 )
             })
             .collect();
+        let mut md = String::new();
+        write_markdown(&rows, &mut md);
+        assert!(md.contains("| M5 | 5 | 2 | 2 | 1 |"), "{md}");
+        assert!(
+            md.contains("M5 missing (4): HANDMADE (b); INFO (a: 0 cells, b, oracle: none); RAND (a: 0 cells, b, volatile); THIN (a: 19 cells)"),
+            "{md}"
+        );
         assert_eq!(
             missing,
             [

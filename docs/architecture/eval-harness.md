@@ -163,7 +163,7 @@ Only `pass` counts as passing. Case statuses:
   need another evidence source, and, by catalog category, the ones below the evidence floor
   (fewer than 20 Excel cells; T-0056, decision 0062). Suite cell counts and baselines still cover every checked cell.
   A "Catalog coverage per milestone" section (T-2112, `catalog_coverage.rs`) has one row per
-  function milestone (M2, M5, M6, M7, M9, M10; the catalog's own milestone, not cumulative): its
+  function-milestone report row (`REPORT_ROWS`, as in the function-scope section; M0 and M1 count in M2; not cumulative): its
   in-scope functions, how many have at least 20 Excel cells, how many have an Excel-backed scored
   cell in a generated suite tagged with that milestone, and how many have both. Functions missing
   either are listed by name, tagged `oracle: none` or `volatile`. Informational; never gated.
