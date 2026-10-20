@@ -201,3 +201,29 @@ fn numbervalue_text_longer_than_255_characters_is_value_error() {
     assert_eq!(model._get_text("A1"), "1E-253");
     assert_eq!(model._get_text("A2"), "#VALUE!");
 }
+
+// T-0980: a wide fixed-decimal format prints the value rounded to 15 significant digits, then zeros
+// (probes-numeric/4f413cc257ce15c4 A7, A23, A51, A59).
+#[test]
+fn wide_fixed_decimals_pad_after_15_significant_digits() {
+    let fmt = "0.000000000000000000";
+    let cases = [
+        (0.1 + 0.2 - 0.3, "0.000000000000000056"),
+        (2.0 / 3.0, "0.666666666666667000"),
+        (0.000_123_456_789_012_345, "0.000123456789012345"),
+        (1e15 + 0.3, "1000000000000000.000000000000000000"),
+    ];
+    for (value, text) in cases {
+        assert_eq!(format_number(value, fmt, "en").text, text, "{value}");
+    }
+}
+
+// T-0980: rounding at the format's places carries into the integer part and a 1e15+ value keeps
+// 15 significant digits.
+#[test]
+fn rounding_at_the_shown_places_carries_into_the_integer_part() {
+    assert_eq!(
+        format_number(0.999_999_999_999_999_6, "0.00", "en").text,
+        "1.00"
+    );
+}

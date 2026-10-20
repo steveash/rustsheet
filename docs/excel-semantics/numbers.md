@@ -190,7 +190,10 @@ significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
 and the count is of significant digits, not decimal places: `TEXT(2/3,…)` = `0.666666666666667000`,
 `TEXT(0.000123456789012345,…)` = `0.000123456789012345`, `TEXT(1.005*1000,…)` = `1005.000000000000000000`,
 `TEXT(2^53+1,…)` = `9007199254740990.000000000000000000`, `TEXT(0.1+0.2-0.3,…)` = `0.000000000000000056`
-(probes-numeric/4f413cc257ce15c4 A23, A51, A79, A71, A7; T-0980).
+(probes-numeric/4f413cc257ce15c4 A23, A51, A79, A71, A7; T-0980). Same in the integer part
+(gen-m5/1962de140dae0111 Calc!A267: `2.5E+29` → "250000000000000000000000000000"; gen-m5/25768de48ae7f2f9 Calc!A99:
+`-909090909090902.6` → "(909,090,909,090,903.00)").
+Implemented in: `get_fract_part` and the `ParsePart::Number` branch of `format_number` (formatter/format.rs), T-0980.
 Notation rule (T-0107): plain notation whenever the plain string, without the sign, has at most
 20 characters, otherwise `d.dddE±XX` with at least two exponent digits: `99999999999999900000`
 and `-10000000000000000000` stay plain, `1E+20`/`-1E+20`/`1E+21` do not; `0.000000000000000001`

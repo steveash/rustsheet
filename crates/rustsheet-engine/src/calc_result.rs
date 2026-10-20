@@ -10,6 +10,25 @@ pub struct Range {
     pub right: CellReferenceIndex,
 }
 
+impl Range {
+    /// The range between two corners on the sheet of `a`, its corners in order (top-left, then
+    /// bottom-right) whichever way round `a` and `b` are.
+    pub(crate) fn between(a: CellReferenceIndex, b: CellReferenceIndex) -> Range {
+        Range {
+            left: CellReferenceIndex {
+                sheet: a.sheet,
+                row: a.row.min(b.row),
+                column: a.column.min(b.column),
+            },
+            right: CellReferenceIndex {
+                sheet: a.sheet,
+                row: a.row.max(b.row),
+                column: a.column.max(b.column),
+            },
+        }
+    }
+}
+
 #[derive(Clone)]
 pub(crate) enum CalcResult {
     String(Text),
