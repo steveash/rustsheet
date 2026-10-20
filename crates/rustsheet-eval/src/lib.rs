@@ -14,6 +14,7 @@ pub mod calibrate;
 pub mod case;
 pub mod case_log;
 pub mod catalog;
+pub mod catalog_coverage;
 pub mod cellref;
 pub mod closeness;
 pub mod deviations;

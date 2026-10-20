@@ -1,7 +1,10 @@
-use super::elapsed::{elapsed_text, ElapsedUnit};
+use super::elapsed::{elapsed_text, ElapsedUnit, FractionalSeconds};
 use super::fraction::format_fraction;
 use super::general::format_general;
-use crate::{locale::Locale, number_format::to_precision, text::Text, types::DateSystem};
+use crate::{
+    constants::MAXIMUM_DATE_SERIAL_NUMBER, locale::Locale, number_format::to_precision, text::Text,
+    types::DateSystem,
+};
 use std::collections::BTreeSet;
 
 pub(crate) use super::parse_formatted::{
@@ -378,10 +381,29 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let mut text = if value < 0.0 { "-" } else { "" }.to_string();
             let value = value.abs();
             let tokens = &p.tokens;
-            let time_fract = value.fract();
-            let hours = (time_fract * 24.0).floor();
-            let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
-            let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
+            let fraction_digits = tokens.iter().find_map(|t| match t {
+                TextToken::SecondFraction(digits) => Some(*digits),
+                _ => None,
+            });
+            // Excel: a fraction of a second over a serial past 9999-12-31 is #VALUE!, elapsed
+            // tokens or not (`TEXT(1234567890,"[mm]:ss.0")`, `"h:mm:ss.00"`; gen-m10
+            // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20, fbdab487cb11409e T!A25). The
+            // same for the other clock tokens is T-1731.
+            if fraction_digits.is_some() && value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0 {
+                return invalid_date(value_original);
+            }
+            let fraction = fraction_digits.and_then(|digits| FractionalSeconds::new(value, digits));
+            let fraction = fraction.as_ref();
+            let (hours, minutes, seconds) = match fraction {
+                Some(fraction) => fraction.clock(),
+                None => {
+                    let time_fract = value.fract();
+                    let hours = (time_fract * 24.0).floor();
+                    let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
+                    let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
+                    (hours, minutes, seconds)
+                }
+            };
             // Day/month/year and weekday tokens show Excel's exact components (including the
             // fictitious 1900-02-29) and "1900-01-00" (serial 0). In a 1904 workbook they read the
             // 1904 epoch (`TEXT(0,"yyyy-mm-dd")` is "1904-01-01"; dates.md "The 1904 date system");
@@ -622,28 +644,35 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = elapsed_text(value, false, ElapsedUnit::Hour);
+                        let hour = elapsed_text(value, false, ElapsedUnit::Hour, fraction);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = elapsed_text(value, true, ElapsedUnit::Hour);
+                        let hour = elapsed_text(value, true, ElapsedUnit::Hour, fraction);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = elapsed_text(value, false, ElapsedUnit::Minute);
+                        let minute = elapsed_text(value, false, ElapsedUnit::Minute, fraction);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = elapsed_text(value, true, ElapsedUnit::Minute);
+                        let minute = elapsed_text(value, true, ElapsedUnit::Minute, fraction);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = elapsed_text(value, false, ElapsedUnit::Second);
+                        let second = elapsed_text(value, false, ElapsedUnit::Second, fraction);
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = elapsed_text(value, true, ElapsedUnit::Second);
+                        let second = elapsed_text(value, true, ElapsedUnit::Second, fraction);
                         text = format!("{text}{second}");
+                    }
+                    TextToken::SecondFraction(digits) => {
+                        text.push('.');
+                        match fraction {
+                            Some(fraction) => text.push_str(&fraction.digits_text()),
+                            None => text.extend(std::iter::repeat_n('0', *digits)),
+                        }
                     }
                 }
             }
@@ -910,6 +939,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     TextToken::ElapsedMinutePadded => {}
                     TextToken::ElapsedSecond => {}
                     TextToken::ElapsedSecondPadded => {}
+                    TextToken::SecondFraction(_) => {}
                 }
             }
             Formatted {

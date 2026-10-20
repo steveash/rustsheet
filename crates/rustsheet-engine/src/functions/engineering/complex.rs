@@ -37,12 +37,27 @@ const IMPOWER_ANGLE_LIMIT: f64 = 134_217_727.0;
 enum Suffix {
     I,
     J,
+    /// A number with no imaginary part and no suffix ("3"): it takes the suffix of the number it
+    /// meets, so `IMSUM("3+4j","3")` is "6+4j" (probes/eng-imsum-improduct-3d-j-empty E1-E10).
+    Real,
+}
+
+impl Suffix {
+    /// The suffix two operands share, or `None` when one is `i` and the other `j`.
+    fn join(self, other: Suffix) -> Option<Suffix> {
+        match (self, other) {
+            (Suffix::Real, suffix) | (suffix, Suffix::Real) => Some(suffix),
+            (a, b) if a == b => Some(a),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Suffix {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Suffix::I => write!(f, "i"),
+            // A `Real` only prints when it has an imaginary part, which an unsuffixed number never has.
+            Suffix::I | Suffix::Real => write!(f, "i"),
             Suffix::J => write!(f, "j"),
         }
     }
@@ -121,8 +136,7 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
                 TokenType::Number(f) => f,
                 _ => return Err(format!("Not a complex number: {s}")),
             };
-            // i is the default
-            Ok((sign * number1, 0.0, Suffix::I))
+            Ok((sign * number1, 0.0, Suffix::Real))
         }
         2 => {
             // number2 i
@@ -308,10 +322,10 @@ impl Model {
         };
         let first = Self::complex_of(first, EmptyText::ZeroIfBlank, cell)?;
         let second = Self::complex_of(second, EmptyText::ZeroIfBlank, cell)?;
-        if first.2 != second.2 {
+        let Some(suffix) = first.2.join(second.2) else {
             return Err(num_error(cell));
-        }
-        Ok((first, second))
+        };
+        Ok(((first.0, first.1, suffix), (second.0, second.1, suffix)))
     }
 
     /// `COMPLEX(real_num, i_num, [suffix])`: every argument lifts over an array and refuses a
@@ -561,6 +575,11 @@ impl Model {
         {
             return CalcResult::new_args_number_error(cell);
         }
+        // Excel: a call of nothing but empty arguments is `#N/A` (`IMSUM(,)`), where blank cells
+        // are "0": probes/eng-imsum-improduct-3d-j-empty F1-F4.
+        if args.iter().all(|arg| matches!(arg, Node::EmptyArgKind)) {
+            return CalcResult::new_error(Error::NA, cell, String::new());
+        }
         let mut total: Option<ComplexParts> = None;
         let mut has_blank = false;
         let mut visits: u64 = 0;
@@ -634,11 +653,17 @@ impl Model {
                     };
                     let next = match total {
                         None => z,
-                        Some((x, y, suffix)) if suffix == z.2 => match fold {
-                            ComplexFold::Sum => (x + z.0, y + z.1, suffix),
-                            ComplexFold::Product => (x * z.0 - y * z.1, x * z.1 + y * z.0, suffix),
-                        },
-                        Some(_) => return Err(value_error(cell)),
+                        Some((x, y, total_suffix)) => {
+                            let Some(suffix) = total_suffix.join(z.2) else {
+                                return Err(value_error(cell));
+                            };
+                            match fold {
+                                ComplexFold::Sum => (x + z.0, y + z.1, suffix),
+                                ComplexFold::Product => {
+                                    (x * z.0 - y * z.1, x * z.1 + y * z.0, suffix)
+                                }
+                            }
+                        }
                     };
                     // An overflow is `#VALUE!` at once: it beats a later bad argument, a later
                     // blank and a later cancelling term (`IMSUM("9E307","9E307","-9E307")`,
@@ -886,16 +911,24 @@ mod tests {
     use super::parse_complex_number as parse;
 
     #[test]
+    fn suffix_join() {
+        assert_eq!(Suffix::I.join(Suffix::J), None);
+        assert_eq!(Suffix::Real.join(Suffix::J), Some(Suffix::J));
+        assert_eq!(Suffix::I.join(Suffix::Real), Some(Suffix::I));
+        assert_eq!(Suffix::Real.join(Suffix::Real), Some(Suffix::Real));
+    }
+
+    #[test]
     fn test_parse_complex() {
         assert_eq!(parse("1+2i"), Ok((1.0, 2.0, Suffix::I)));
         assert_eq!(parse("2i"), Ok((0.0, 2.0, Suffix::I)));
-        assert_eq!(parse("7.5"), Ok((7.5, 0.0, Suffix::I)));
-        assert_eq!(parse("-7.5"), Ok((-7.5, 0.0, Suffix::I)));
+        assert_eq!(parse("7.5"), Ok((7.5, 0.0, Suffix::Real)));
+        assert_eq!(parse("-7.5"), Ok((-7.5, 0.0, Suffix::Real)));
         assert_eq!(parse("7-5i"), Ok((7.0, -5.0, Suffix::I)));
         assert_eq!(parse("i"), Ok((0.0, 1.0, Suffix::I)));
         assert_eq!(parse("7+i"), Ok((7.0, 1.0, Suffix::I)));
         assert_eq!(parse("7-i"), Ok((7.0, -1.0, Suffix::I)));
         assert_eq!(parse("-i"), Ok((0.0, -1.0, Suffix::I)));
-        assert_eq!(parse("0"), Ok((0.0, 0.0, Suffix::I)));
+        assert_eq!(parse("0"), Ok((0.0, 0.0, Suffix::Real)));
     }
 }
