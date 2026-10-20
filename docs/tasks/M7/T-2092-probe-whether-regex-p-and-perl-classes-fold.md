@@ -3,7 +3,7 @@ id: T-2092
 title: "Probe whether REGEX* \p{..} and Perl classes fold under (?i), inside and outside a POSIX bracket"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
