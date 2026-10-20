@@ -1587,12 +1587,25 @@ Status: VERIFIED (excel-graph observation)
 Tasks: T-1049, T-2035
 
 ## CORREL, PEARSON and RSQ over arrays of different sizes, and their last digit
-Rule: CORREL, PEARSON and RSQ of two arrays of different sizes are `#N/A`, and of the same 10-value array twice not exactly
-1: CORREL and PEARSON give 1.0000000000000002 and RSQ 0.9999999999999998 (COVARIANCE.P of it is 161.7225, exact).
+Rule: CORREL, PEARSON and RSQ of two arrays of different sizes are `#N/A`. Their value is a two-pass quotient with plain
+left-to-right double sums about the means m = Σx/n (no one-pass/two-pass switch, unlike VAR above):
+- CORREL = PEARSON = `(Sxy/n) / (sqrt(Sxx/n) * sqrt(Syy/n))`, that is COVARIANCE.P/(STDEV.P*STDEV.P), with
+  Sxy = Σ(x-mx)(y-my), Sxx = Σ(x-mx)², Syy = Σ(y-my)²;
+- RSQ = r², with r the sample form `(Sxy/(n-1)) / (sqrt(Sxx/(n-1)) * sqrt(Syy/(n-1)))`, so RSQ is not CORREL squared in its
+  last digit.
+So the same 10-value array twice is 1.0000000000000002 for CORREL and PEARSON and 0.9999999999999998 for RSQ (COVARIANCE.P
+of it is 161.7225, exact), and `CORREL(A2:A13,B2:B13)` of CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx is -0.13574278487946612.
+These two forms reproduce all 29 CORREL/PEARSON and 15 RSQ numeric oracle values of probes/regression-pairs-a, the
+GROUPBY cells below and the ironcalc workbook (C2, F2), large offsets included. Rejected, each missing 2 to 25 of those
+cells: `Sxy/sqrt(Sxx*Syy)`, `Sxy/(sqrt(Sxx)*sqrt(Syy))`, `Sxy/sqrt(Sxx)/sqrt(Syy)` (either order), the n-1 form for
+CORREL, the n form for RSQ, the one-pass `n*Σxy - Σx*Σy` forms, `Sxy²/(Sxx*Syy)`, `(Sxy/Sxx)*(Sxy/Syy)`, `1 - SSE/Syy`, and
+STDEV with VAR's one-pass/two-pass switch (misses L19 and N5, N10, N19, N23). Whether Excel computes these with x87
+intermediates is untested: plain doubles fit every cell.
 Evidence: GROUPBY passing these functions by name gives each group's values and all values
 (probes/groupby-pivotby-functions G!B421:B426, -functions2 G!B281:B286, G!B301:B306, G!B326; PIVOTBY functions2 P!A121),
 excel-graph, 2026-10-16, T-1325. The plain different-size call is `#N/A` too (`CORREL({2,4,5},{1,2})`, probes/regression-pairs-a L17, T-1620).
-Ours: `#VALUE!` for different sizes, and exactly 1 for the same array twice.
+Fit: T-1707 (2026-10-19) over the cells named above.
+Ours: matches since T-1707 (`excel_correlation` in crates/rustsheet-engine/src/functions/statistical/pearson.rs).
 Status: VERIFIED (web)
 Tasks: T-1707
 
@@ -1627,11 +1640,11 @@ Unequal sizes and single points follow "Array arguments given a scalar, a single
 - RSQ is not clamped to 1: `RSQ(J1:J6,B1:B6)` is 1.0000000000000004 (pairs-a N23), as is `RSQ({1,2;3,4},{4,3;2,1})` (N28).
 - Large offset (10000000001...) keeps its variance: `CORREL(I1:I6,B1:B6)` 0.9402561526801988, `FORECAST(7,A1:A6,I1:I6)`
   -7285714278.784956, `SLOPE(A1:A6,I1:I6)` 0.7285714285713528, `INTERCEPT(A1:A6,I1:I6)` -7285714283.884956, `STEYX(I1:I6,B1:B6)` 0.822308017832176 (pairs-b M21; ours 0.8223080178319075), `STEYX(A1:A6,I1:I6)` 0.5277986629120525 (M22). A two-pass sum of
-  squares about the means reproduces these bits except CORREL (…987 against Excel's …988) and RSQ(A1:A6,I1:I6) (two-pass 0.917460317460222, Excel 0.9174603174602222); the exact r and r² formula is open.
+  squares about the means reproduces these bits; CORREL and RSQ need the exact quotient form of "CORREL, PEARSON and RSQ ... their last digit" (T-1707).
 - FORECAST x: TRUE is 1 (2.571428571428571), "7" is 7, "" is `#VALUE!` (forecast L6, L10, L12); an array x spills one
   forecast per element (`FORECAST.LINEAR({7,8},A1:A6,B1:B6)` 7.2, 7.9714285714285715 in P7, Q7), a range x that
   collides is `#SPILL!`; unequal sizes are `#N/A`.
-- Last-digit differences: `FORECAST(0,A1:A6,B1:B6)` 1.7999999999999998 (ours 1.8), `CORREL(A1:A6,C1:C6)` 0.9999999999999998 (ours 1.0).
+- Last-digit differences: `FORECAST(0,A1:A6,B1:B6)` 1.7999999999999998 (ours 1.8), `CORREL(A1:A6,C1:C6)` 0.9999999999999998 (matches since T-1707).
 Evidence: probes/regression-pairs-a, regression-pairs-b, regression-forecast (excel-graph, 2026-10-16, T-1620); the
 error cells in these cases are `#DIV/0!`, so whether a range error propagates or is replaced is unprobed.
 Ours: differs in most bullets (the unequal-size `#N/A` of FORECAST, STEYX and INTERCEPT matches since T-1292; fix tasks below); the large-offset data gives `#DIV/0!` or a last-digits-off value, a single point `#VALUE!`.

@@ -3,7 +3,7 @@ id: T-1707
 title: "CORREL, PEARSON, RSQ: arrays of different sizes are #N/A, and the last digit of their results"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -25,8 +25,8 @@ Also the same last-digit rule (gap triage 2026-10-19): ironcalc-calc/STATISTICAL
 Sheet1!C2 `CORREL(A2:A13,B2:B13)`: Excel (Mac cache, web agrees) -0.13574278487946612, ours -0.1357427848794661.
 
 ## Acceptance criteria
-- [ ] Those cells and ironcalc-calc CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx C2 pass and leave eval/baseline (probes.txt, ironcalc-calc.txt).
-- [ ] `make check` green; reviewers approve.
+- [x] Those cells and ironcalc-calc CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx C2 pass and leave eval/baseline (probes.txt, ironcalc-calc.txt).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -37,3 +37,9 @@ must be `#N/A` (small, but probe `CORREL({1;2},{1;2;3})` first); (2) the last-di
 1.0000000000000002 / 0.9999999999999998 and CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx C2) is numeric fitting of Excel's
 summation order, which is beyond the sonnet tier (see docs/research/excel-kernel-playbook.md). Next: split (1) into its
 own sonnet task if wanted, and fit (2) with the playbook's probe designs.
+
+## Outcome
+The `#N/A` for different sizes was already on main (T-1292/T-1620's size check). The last digit: CORREL and PEARSON
+are now COVARIANCE.P/(STDEV.P*STDEV.P) and RSQ the square of the sample form, all plain two-pass sums
+(`excel_correlation`, pearson.rs), fitted to all 44 numeric oracle cells (statistics.md entry). Eval: probes known
+failures 1948 -> 1917 (31 fixed), ironcalc-calc 1057 -> 1056 (C2 fixed); no regressions.

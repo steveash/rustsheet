@@ -3,111 +3,152 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+use super::variance::VarianceKind;
+
+/// Excel's correlation coefficient of the numeric pairs `(xs[i], ys[i])`, divided as
+/// `COVARIANCE / (STDEV(xs) * STDEV(ys))` with the divisor `kind` picks (`n` or `n - 1`).
+///
+/// Every sum is a plain left-to-right two-pass sum about the means `Σx/n` and `Σy/n`, with no
+/// one-pass/two-pass switch (unlike VAR, statistics.md "VAR/STDEV switch"). CORREL and PEARSON
+/// use the population form and RSQ squares the sample form, which is why the same array twice is
+/// 1.0000000000000002 for CORREL but 0.9999999999999998 for RSQ: each of these forms reproduces
+/// all 29 CORREL/PEARSON and 15 RSQ oracle values of probes/regression-pairs-a,
+/// groupby-pivotby-functions(2) and ironcalc `CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx`, and every
+/// other tried form misses some (statistics.md "CORREL, PEARSON and RSQ ... their last digit",
+/// T-1707).
+///
+/// `None` when there are fewer than two pairs or a series has no spread (Excel `#DIV/0!`).
+fn excel_correlation(xs: &[f64], ys: &[f64], kind: VarianceKind) -> Option<f64> {
+    if xs.len() < 2 {
+        return None;
+    }
+    let n = xs.len() as f64;
+    let mean_x = xs.iter().sum::<f64>() / n;
+    let mean_y = ys.iter().sum::<f64>() / n;
+    let (mut sum_xx, mut sum_yy, mut sum_xy) = (0.0, 0.0, 0.0);
+    for (&x, &y) in xs.iter().zip(ys) {
+        let (dx, dy) = (x - mean_x, y - mean_y);
+        sum_xx += dx * dx;
+        sum_yy += dy * dy;
+        sum_xy += dx * dy;
+    }
+    let divisor = match kind {
+        VarianceKind::Population => n,
+        VarianceKind::Sample => n - 1.0,
+    };
+    let spread = (sum_xx / divisor).sqrt() * (sum_yy / divisor).sqrt();
+    let r = (sum_xy / divisor) / spread;
+    (spread != 0.0 && r.is_finite()).then_some(r)
+}
+
 impl Model {
-    // PEARSON(array1, array2)
-    pub(crate) fn fn_pearson(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (_, _, values_left, values_right) = match self.fn_get_two_matrices(args, cell) {
-            Ok(result) => result,
-            Err(e) => return e,
-        };
-
-        // Flatten into (x, y) pairs, skipping non-numeric entries (None)
-        let mut n: f64 = 0.0;
-        let mut sum_x = 0.0;
-        let mut sum_y = 0.0;
-        let mut sum_x2 = 0.0;
-        let mut sum_y2 = 0.0;
-        let mut sum_xy = 0.0;
-
-        let len = values_left.len().min(values_right.len());
-        for i in 0..len {
-            match (values_left[i], values_right[i]) {
-                (Some(x), Some(y)) => {
-                    n += 1.0;
-                    sum_x += x;
-                    sum_y += y;
-                    sum_x2 += x * x;
-                    sum_y2 += y * y;
-                    sum_xy += x * y;
-                }
-                _ => {
-                    // Ignore pairs where at least one side is non-numeric
-                }
-            }
-        }
-
-        if n < 2.0 {
-            return CalcResult::new_error(
+    /// CORREL and PEARSON (one function in Excel) and RSQ: the paired numbers of the two
+    /// arguments, or the error to return.
+    fn correlation(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        kind: VarianceKind,
+    ) -> Result<f64, CalcResult> {
+        let (_, _, values_left, values_right) = self.fn_get_two_matrices(args, cell)?;
+        // Pairs where either side is not a number are skipped.
+        let (xs, ys): (Vec<f64>, Vec<f64>) = values_left
+            .into_iter()
+            .zip(values_right)
+            .filter_map(|pair| match pair {
+                (Some(x), Some(y)) => Some((x, y)),
+                _ => None,
+            })
+            .unzip();
+        excel_correlation(&xs, &ys, kind).ok_or_else(|| {
+            CalcResult::new_error(
                 Error::DIV,
                 cell,
-                "PEARSON requires at least two numeric pairs".to_string(),
-            );
-        }
-
-        // Pearson correlation:
-        // r = [ n*Σxy - (Σx)(Σy) ] / sqrt( [n*Σx² - (Σx)²] [n*Σy² - (Σy)²] )
-        let num = n * sum_xy - sum_x * sum_y;
-        let denom_x = n * sum_x2 - sum_x * sum_x;
-        let denom_y = n * sum_y2 - sum_y * sum_y;
-
-        if denom_x.abs() < 1e-15 || denom_y.abs() < 1e-15 {
-            // Zero variance in at least one series
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "PEARSON cannot be computed when one series has zero variance".to_string(),
-            );
-        }
-
-        let denom = (denom_x * denom_y).sqrt();
-
-        CalcResult::Number(num / denom)
+                "Correlation needs two pairs and a spread in each array".to_string(),
+            )
+        })
     }
 
-    // RSQ(array1, array2) = CORREL(array1, array2)^2
+    // CORREL(array1, array2)
+    pub(crate) fn fn_correl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        match self.correlation(args, cell, VarianceKind::Population) {
+            Ok(r) => CalcResult::Number(r),
+            Err(error) => error,
+        }
+    }
+
+    // PEARSON(array1, array2): CORREL under another name, bit for bit (probes/regression-pairs-a
+    // column M against L).
+    pub(crate) fn fn_pearson(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.fn_correl(args, cell)
+    }
+
+    // RSQ(array1, array2): the square of the sample-form correlation, not CORREL squared
+    // (`RSQ(J1:J6,B1:B6)` is 1.0000000000000004 while CORREL is 1, probes/regression-pairs-a N23).
     pub(crate) fn fn_rsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (_rows, _cols, values1, values2) = match self.fn_get_two_matrices(args, cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-
-        let mut n = 0.0_f64;
-        let mut sum_x = 0.0_f64;
-        let mut sum_y = 0.0_f64;
-        let mut sum_x2 = 0.0_f64;
-        let mut sum_y2 = 0.0_f64;
-        let mut sum_xy = 0.0_f64;
-
-        let len = values1.len().min(values2.len());
-        for i in 0..len {
-            if let (Some(x), Some(y)) = (values1[i], values2[i]) {
-                n += 1.0;
-                sum_x += x;
-                sum_y += y;
-                sum_x2 += x * x;
-                sum_y2 += y * y;
-                sum_xy += x * y;
-            }
+        match self.correlation(args, cell, VarianceKind::Sample) {
+            Ok(r) => CalcResult::Number(r * r),
+            Err(error) => error,
         }
+    }
+}
 
-        if n < 2.0 {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "RSQ requires at least two numeric data points in each range".to_string(),
-            );
-        }
+#[cfg(test)]
+mod tests {
+    use super::{excel_correlation, VarianceKind};
 
-        let num = n * sum_xy - sum_x * sum_y;
-        let denom_x = n * sum_x2 - sum_x * sum_x;
-        let denom_y = n * sum_y2 - sum_y * sum_y;
-        let denom = (denom_x * denom_y).sqrt();
+    const POPULATION: VarianceKind = VarianceKind::Population;
+    const SAMPLE: VarianceKind = VarianceKind::Sample;
 
-        if denom == 0.0 || !denom.is_finite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by zero in RSQ".to_string());
-        }
+    // Expected values are Excel's (oracle: excel-graph).
+    #[test]
+    fn the_same_array_twice_is_not_exactly_one() {
+        // probes/groupby-pivotby-functions G!B426 (CORREL), -functions2 G!B286 (RSQ).
+        let sales = [10.0, 20.0, 30.0, 40.0, 5.0, 7.0, 0.0, 9.0, -3.0, 12.5];
+        assert_eq!(
+            excel_correlation(&sales, &sales, POPULATION),
+            Some(1.0000000000000002)
+        );
+        let r = excel_correlation(&sales, &sales, SAMPLE).map(|r| r * r);
+        assert_eq!(r, Some(0.9999999999999998));
+    }
 
-        let r = num / denom;
-        CalcResult::Number(r * r)
+    #[test]
+    fn last_digits_follow_the_two_pass_quotient() {
+        // ironcalc CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx Sheet1!C2 and F2.
+        let x = [1.0, 2.0, 5.0, 8.0, 12.0, 3.0];
+        let y = [2.0, 3.0, 5.0, 1.0, 3.0, 4.0];
+        assert_eq!(
+            excel_correlation(&x, &y, POPULATION),
+            Some(-0.13574278487946612)
+        );
+        let r = excel_correlation(&x, &y, SAMPLE).map(|r| r * r);
+        assert_eq!(r, Some(0.018426103646833007));
+        // probes/regression-pairs-a L21 and N22: an offset of 1E10 keeps its digits.
+        let offset = [
+            1e10 + 1.0,
+            1e10 + 2.0,
+            1e10 + 4.0,
+            1e10 + 3.0,
+            1e10 + 5.0,
+            1e10 + 7.0,
+        ];
+        let counts = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        assert_eq!(
+            excel_correlation(&offset, &counts, POPULATION),
+            Some(0.9402561526801988)
+        );
+        let small = [2.0, 4.0, 5.0, 4.0, 5.0, 7.0];
+        let r = excel_correlation(&small, &offset, SAMPLE).map(|r| r * r);
+        assert_eq!(r, Some(0.9174603174602222));
+    }
+
+    #[test]
+    fn no_spread_or_one_pair_is_none() {
+        assert_eq!(excel_correlation(&[1.0], &[2.0], POPULATION), None);
+        assert_eq!(
+            excel_correlation(&[3.0, 3.0, 3.0], &[1.0, 2.0, 3.0], SAMPLE),
+            None
+        );
     }
 }
