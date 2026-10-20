@@ -2232,9 +2232,7 @@ F	probes/reference-lift-consumers.case.json	Sheet1!E9
 F	probes/reference-lift-consumers.case.json	Sheet1!E97
 F	probes/reference-lift-consumers.case.json	Sheet1!E98
 F	probes/reference-lift-elements.case.json	Sheet1!F12
-F	probes/reference-lift-elements.case.json	Sheet1!G10
 F	probes/reference-lift-elements.case.json	Sheet1!G12
-F	probes/reference-lift-elements.case.json	Sheet1!H10
 F	probes/reference-lift-elements.case.json	Sheet1!H12
 F	probes/regex-ascii-classes.case.json	Sheet1!A17
 F	probes/regex-ascii-classes.case.json	Sheet1!A27
