@@ -343,7 +343,9 @@ past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`
 PikeVM over non-ASCII text (the lazy DFA quits there); iterating its matches costs what the searches read
 (`COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is 500 since T-1829, the match count Excel's
 `REPT("naïve ",3)` case (3, probes/regex-ascii-classes A5) leads one to expect; T-1272 charged each
-search the rest of the text), while a search that truly reads to the end every time (`a.*z|a|\bq` over
+search the rest of the text; a lazy `.*?` is charged up to each match since T-2015, the scan dropping the threads
+below a match as the PikeVM does: `COLUMNS(REGEXEXTRACT(REPT("é ab ",4000),"\bab.*?\b",1))` is 4000), while a
+search that truly reads to the end every time (`a.*z|a|\bq` over
 `REPT("a",20000)&"é"`) is still `#ERROR!`. A REGEXREPLACE searches twice,
 once to size its result: over 65,535 UTF-16 units it is
 `#CALC!` as Excel's is, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`;
