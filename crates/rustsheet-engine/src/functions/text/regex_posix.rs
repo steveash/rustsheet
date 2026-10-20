@@ -106,6 +106,12 @@ pub(super) fn foldable_span(pattern: &str, case_insensitive: bool) -> usize {
     ast::visit(&ast, RangeSpan(0)).unwrap_or(0)
 }
 
+/// The code points between the ends of `range`, one less than it covers.
+fn range_span(range: &ast::ClassSetRange) -> usize {
+    let span = u32::from(range.end.c).saturating_sub(u32::from(range.start.c));
+    usize::try_from(span).unwrap_or(usize::MAX)
+}
+
 /// Sums the span of every range in a bracket.
 struct RangeSpan(usize);
 
@@ -119,10 +125,7 @@ impl ast::Visitor for RangeSpan {
 
     fn visit_class_set_item_pre(&mut self, item: &ClassSetItem) -> Result<(), Self::Err> {
         if let ClassSetItem::Range(range) = item {
-            let span = u32::from(range.end.c).saturating_sub(u32::from(range.start.c));
-            self.0 = self
-                .0
-                .saturating_add(usize::try_from(span).unwrap_or(usize::MAX));
+            self.0 = self.0.saturating_add(range_span(range));
         }
         Ok(())
     }
@@ -445,10 +448,7 @@ fn folded(item: ClassSetItem, budget: &mut usize) -> Result<ClassSetItem, Invali
 /// classes are charged by what they print.
 fn folding_cost(item: &ClassSetItem) -> usize {
     match item {
-        ClassSetItem::Range(range) => {
-            let (start, end) = (u64::from(range.start.c), u64::from(range.end.c));
-            usize::try_from(end.saturating_sub(start) / 256).unwrap_or(usize::MAX)
-        }
+        ClassSetItem::Range(range) => range_span(range) / 256,
         ClassSetItem::Union(union) => union
             .items
             .iter()
