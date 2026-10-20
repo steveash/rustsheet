@@ -18,6 +18,7 @@ mod table_functions;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use arg_buf::ArgBuf;
 pub(crate) use driver::{grid_dims, LiftCost, LiftOptions, LiftedArg};
 pub(crate) use kinds::{ArgKind, ArgKinds, CallResult};
 pub(crate) use table_functions::lifting_table_functions;

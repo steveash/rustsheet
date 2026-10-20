@@ -240,7 +240,7 @@ eval/suites/probes/deviations, decision 0036).
 Status: DEVIATION (decision 0014)
 Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::chosen_indices` (CHOOSECOLS/CHOOSEROWS) and FORMULATEXT over a range in
-crates/rustsheet-engine/src/functions/lookup_and_reference/; `Model::read_lift_args` and `Model::lift_grids` in
+crates/rustsheet-engine/src/functions/lookup_and_reference/; `Model::read_lift_args`, `Model::lift_grids` and `Model::lift_references` (OFFSET's array of references, T-1956) in
 crates/rustsheet-engine/src/functions/lift/; `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs;
 `broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs; `ExternalArea::blocked_value` in
 crates/rustsheet-engine/src/external_reference.rs (a spilled range into another workbook, T-1454);
