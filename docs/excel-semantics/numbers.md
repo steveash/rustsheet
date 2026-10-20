@@ -609,7 +609,9 @@ The probe leaves out
 literals with exponent below -308 (`1E-310`, `1E-320`, `1E-620`): the Graph workbook builder rejected the
 file (`unsupportedWorkbook`) when they appeared.
 Scoring (decision 0042): an excel-graph 0 against a kept subnormal scores as a pass when the case has a
-FALSE excel-graph companion `(x)=0` for the same formula, since Graph reports both as 0.
+FALSE excel-graph companion `(x)=0` for the same formula, since Graph reports both as 0. A cached 0 in an xlsx
+suite takes the same rule through a `cached_overrides` line naming a probe cell of the same formula on the same
+inputs whose own companion is FALSE (decision 0090; EXP_SIGN!B44 against probes/subnormal-saved-as-zero S!A1).
 Implemented in: `arithmetic::plus`/`minus` keep subnormals (T-1027); number text below the smallest
 normal reads as 0 (`Model::parse_number_text`; VERIFIED for the strings `1e-308` and `1e-309` only, T-1143: the `(x)=0` companions of `("1e-308"+0)`, `("1e-308"-0)`, `VALUE("1e-309")` and `VALUE("1e-308")` are all TRUE, probes/subnormal-text-and-tail-companions); `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
 flushes the results of PRODUCT and SUMPRODUCT (each running product, T-1007), SUMSQ (each square, T-1057), AVERAGE, AVERAGEA, AVERAGEIF(S) and

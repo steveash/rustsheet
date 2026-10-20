@@ -39,6 +39,17 @@ pub enum CellInput {
     },
 }
 
+impl CellInput {
+    /// The formula text without its leading `=`, or `None` for any other input.
+    #[must_use]
+    pub fn formula(&self) -> Option<&str> {
+        match self {
+            Self::Str(f) => f.strip_prefix('='),
+            _ => None,
+        }
+    }
+}
+
 /// A stored error constant (`{"t":"e","v":"#N/A","stored":true}`); only that exact shape matches.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StoredError {
@@ -316,6 +327,29 @@ pub struct OracleFile {
     /// Displayed text of the cells a case lists in `text`: sheet → A1 → text (T-1610).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub text: BTreeMap<String, BTreeMap<String, String>>,
+}
+
+/// The formulas `x` of `spec` whose companion `=(x)=0` the excel-graph `oracle` answers FALSE:
+/// Excel kept `x` non-zero, though it saves a kept subnormal to the file, and so Graph reports
+/// it, as 0 (decisions 0042, 0089). Empty for any other oracle kind.
+pub(crate) fn kept_nonzero_formulas(spec: &CaseSpec, oracle: &OracleFile) -> BTreeSet<String> {
+    if oracle.source.kind != GRAPH_ORACLE {
+        return BTreeSet::new();
+    }
+    spec.sheets
+        .iter()
+        .flat_map(|sheet| {
+            let answers = oracle.sheets.get(&sheet.name);
+            sheet.cells.iter().filter_map(move |(a1, input)| {
+                let addr = Addr::parse(a1)?;
+                if answers?.get(&addr.to_string()) != Some(&Value::Bool(false)) {
+                    return None;
+                }
+                let x = input.formula()?.strip_prefix('(')?.strip_suffix(")=0")?;
+                Some(x.to_string())
+            })
+        })
+        .collect()
 }
 
 /// Splits `Sheet!A1` / `'My Sheet'!A1` into (sheet, cell).
