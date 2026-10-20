@@ -241,6 +241,16 @@ section to report.md (report.json: `catalog_coverage`), one row per function mil
 functions, which report.md lists apart as "Mk exempt from b". The row is at 100% when `covered` equals
 `functions`. The table is an exit measure, not a gate; M6 inherits the rule.
 
+## Milestone exit
+`crates/rustsheet-eval/src/milestone_exit.rs` (T-2177) adds a "Milestone exit (decision 0085)" section to
+report.md (report.json: `milestone_exit`) with one row each for M5 and M6 (M7 to M11 need their own
+decision first). It reads four rows the report already computes and scores nothing itself: catalog
+coverage (`covered == functions`), the `gen-m<k>` suite (at least 20,000 scored cells, `cells -
+deviations`, at a 0.999 pass rate; known failures print beside the allowance `floor(0.001 * scored)`),
+`ironcalc-calc` failing cells excluding exit exceptions (0), and the probe row's known failures (0). A
+missing input prints `n/a` and is never `met`; `exit` is `met` only when all four are. It is an exit
+measure, not a gate.
+
 ## CLI
 ```
 rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check | update-baseline [--allow-regressions]
