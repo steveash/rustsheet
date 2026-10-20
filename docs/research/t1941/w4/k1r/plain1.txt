@@ -1,0 +1,8 @@
+# K1 (GAMMA G(y), y in [1,2)) plain-double coefficient set plain1 (W4, 2026-10-20 06:57 UTC). Plain stored x87 raw-y
+# Horner (7,7), G = fl(N/D), raw chain with D0 = -1/16 (same form as g_candidate_w4_AN2.txt; index = power of y).
+# Built with the K2 recipe: the hidden e/y terms (N at c2, e=+852 ulp(N1); D at c3, e=-350 ulp(D2)) converted to
+# e*g(y) (g = LS polynomial ~ 1/y, degree 5/4) on the coefficients at and above each stage, -e on the next, then an
+# integer climb. Exact on k1R 1/10 subsample 0.7751 (held-out half 0.7743); AN2 0.6736. By tenth:
+# .897 .838 .857 .906 .848 .856 .909 .839 .452 .542 (the [1.84,1.97] dip is a smooth ramp, disagreement at D P2).
+N 0x1.b5834abbea656p+15 0x1.514773450caefp+14 0x1.664795a0f0ed9p+13 0x1.36c636bfa4529p+11 0x1.5ff5a1f1140c6p+9 0x1.b983b931db2b8p+6 0x1.c11d5cf35dd45p+3 0x1.4aa356fdcd9d5p+1
+D -0x1.0000000000000p-4 0x1.b584ae6185b27p+15 0x1.a52694226b55ep+15 -0x1.8fd0726115aa1p+13 -0x1.d079cbb8d7baap+12 0x1.811c89b66abb2p+11 -0x1.9f2c6b220f0dap+8 0x1.3f2e03e3a10e2p+4

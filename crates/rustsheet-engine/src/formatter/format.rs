@@ -15,6 +15,7 @@ pub(crate) use super::parse_formatted::{
 };
 use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
+    lexer::Compare,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     parser::{GeneralPart, ParsePart, Parser, TextToken},
 };
@@ -288,6 +289,15 @@ fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
     }
 }
 
+/// The `[cond]` of a number or date section, if it has one.
+fn section_condition(part: &ParsePart) -> Option<(Compare, f64)> {
+    match part {
+        ParsePart::Number(p) => p.condition,
+        ParsePart::Date(p) => p.condition,
+        ParsePart::General(_) | ParsePart::Error(_) => None,
+    }
+}
+
 pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> Formatted {
     let locale = ctx.locale;
     let mut parser = Parser::new(format);
@@ -328,6 +338,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         // A single text section (`@` in it) does not apply to numbers, which print in General:
         // `TEXT(1,"@""aaa""")` is "1" (probes/text-format-length-limit-i A19:A26, T-1434).
         1 if is_text_section(&parts[0]) => {
+            part = &general;
+        }
+        // Excel: a single section whose condition the value fails is not used, and the value
+        // prints in General (`TEXT(10,"[<10]#"" Wow""")` is "10", poi FormatChoiceTests
+        // A3-A26; `TEXT(1,"[>5]0"&REPT(" ",79))` is "1", probes/text-format-length-limit-d S!A31).
+        1 if section_condition(&parts[0]).is_some_and(|(cmp, bound)| !cmp.holds(value, bound)) => {
             part = &general;
         }
         1 => {

@@ -13,7 +13,7 @@ use crate::{
         types::{CellReferenceIndex, CellReferenceRC},
         utils::{is_cell_spelled_name, is_valid_identifier},
     },
-    functions::logical::SharedLambda,
+    functions::{logical::SharedLambda, util::is_multi_sheet_span},
     model::Model,
     reference_operators::RefArg,
     types::DefinedName,
@@ -186,6 +186,15 @@ impl Model {
         body: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        // A name bound to a 3-D span is `#VALUE!` as a value, where the span written inline is
+        // `#REF!`: `=span3`, `span3+100`, `ROWS(span3)` (gen-m8a b221d72cc501675a; T-1640).
+        if is_multi_sheet_span(body) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("Defined name \"{name}\" is a 3-D reference."),
+            );
+        }
         self.within_defined_name(|model| model.evaluate_formula_root(body, cell))
             .unwrap_or_else(|| name_refers_to_itself(name, cell))
     }
@@ -211,6 +220,13 @@ impl Model {
             Some(ParsedDefinedName::Formula(body)) => Some(std::sync::Arc::clone(body)),
             _ => None,
         }
+    }
+
+    /// Whether `node` is a defined name bound to a 3-D span over several sheets
+    /// (`span3` = `=Jan:Mar!$A$1:$B$2`).
+    pub(crate) fn is_sheet_span_name(&self, node: &Node) -> bool {
+        self.defined_name_formula(node)
+            .is_some_and(|body| is_multi_sheet_span(&body))
     }
 
     /// The error a defined-name `node` is by itself: an error literal (`=Sheet1!#REF!`) or a body
@@ -254,10 +270,10 @@ impl Model {
     ) -> RefArg {
         if let Node::DefinedNameKind((name, ..)) = node {
             if let Some(body) = self.defined_name_formula(node) {
-                // Only a body that may stand for several areas leaves the value path, which
-                // snaps the body at its root (`SUM(nz)` with `nz` = `0.1+0.2-0.3` is 0,
-                // probes/near-zero-snap-groups C5).
-                if !self.is_multi_area(&body) {
+                // Only a body that may stand for several areas, a 3-D span included, leaves
+                // the value path, which snaps the body at its root (`SUM(nz)` with `nz` =
+                // `0.1+0.2-0.3` is 0, probes/near-zero-snap-groups C5).
+                if !self.is_multi_area(&body) && !is_multi_sheet_span(&body) {
                     return RefArg::from(self.evaluate_node_with_reference(node, cell));
                 }
                 return self

@@ -250,3 +250,33 @@ fn sheets_leaves_unprobed_argument_forms_unimplemented() {
     assert_eq!(eval(&mut model, "=SHEETS(OFFSET(A1,0,0))"), "#N/IMPL!");
     assert_eq!(eval(&mut model, "=SHEETS((B1,C1))"), "#N/IMPL!");
 }
+
+// A name bound to a 3-D range reads like the span in aggregates and LAMBDA arguments; where a
+// value is needed it is #VALUE!, not the inline #REF!, and IFERROR keeps that #VALUE!
+// (gen-m8a 8982982d63e058ed, b221d72cc501675a; references.md "3-D references in defined names";
+// T-1640).
+#[test]
+fn a_name_bound_to_a_span_reads_like_the_span() {
+    let mut model = sample();
+    model
+        .define_name("span3", None, "=Data1:Data3!$A$1:$A$2")
+        .unwrap();
+    model
+        .new_defined_name("sumsq", None, "=LAMBDA(r,SUMSQ(r))")
+        .unwrap();
+    assert_eq!(eval(&mut model, "=COUNT(span3)"), "4");
+    assert_eq!(eval(&mut model, "=COUNTA(span3,1)"), "6");
+    assert_eq!(eval(&mut model, "=SUM(span3,1)"), "114");
+    assert_eq!(eval(&mut model, "=sumsq(span3)"), "10105");
+    for formula in [
+        "=span3",
+        "=span3+100",
+        "=ROWS(span3)",
+        "=INDEX(span3,1,1)",
+        "=IFERROR(span3,2)",
+    ] {
+        assert_eq!(eval(&mut model, formula), "#VALUE!", "{formula}");
+    }
+    assert_eq!(eval(&mut model, "=ISREF(span3)"), "FALSE");
+    assert_eq!(eval(&mut model, "=ISERROR(span3)"), "TRUE");
+}
