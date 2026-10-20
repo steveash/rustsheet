@@ -292,3 +292,21 @@ to the stored ss_fc model's, signed by a planted +0.25 u offset, is the pre-roun
   Z 4–5 with second peaks almost as high, and the sign jumps between windows. That is the noise maximum for ~1.2e5
   slope values: not resolved. Pairs closer than 1e-6 (the V3 rungs) agree in phase at N3 (0.130 vs random 0.237), so the
   reads are real and |slope| ≪ 1e6 there. The unwrap needs the ladders.
+
+## Ladder unwrap, built and validated on controls before the data lands (`phaselib.py`, `ladder.py`)
+`ladder.py`, per anchor and per readable stage:
+- read the line phase of the base run and of each rung (anchor + 2^-kk), relative to the base;
+- unwrap from kk = 21 up to 10, giving the local slope s_j(anchor) of the pre-rounding offset (cycles of ulp(S_j) per
+  unit x);
+- jointly solve the slopes for the coefficient moves (s_j·ulp(S_j) = Σ_{k>j} ΔC_k (k−j) a^(k−j−1)), with iterative
+  outlier rejection (residual > 300 cycles/x).
+Controls with B synthesised at the exact ladder x from planted far truths (`ladder_ctl_1e7.log`,
+`ladder_ctl_seeds.log`):
+- Single slopes with ≥ 10 usable rungs match the truth to < 0.2% (N3 at every anchor, D5 at every anchor; N6, D6
+  mostly). Failures come with few rungs (D4, N7 at a and b).
+- Joint solve, TSIZE 1e7: D6, D7 within 0.1–5% for seeds 1, 2 and 4; D8 within ~10% or worse. N chain: seed 1 N4, N5, N6
+  within 4–7%; seeds 2–4 fail (slopes reach ~1e6 cycles/x, too many unwrap failures; ≤ 7 equations kept for 6
+  unknowns).
+- TSIZE 1e6 (seed 1): N4..N8 within ~10% (N7 −94882 vs −95140), D6 within 5%.
+So the ladders turn into direct reads of the mid/top coefficients within ~10%, well inside the peel's range (fscan
+±2e6 + exact rescore). More anchors would make the N chain robust for very far truths.
