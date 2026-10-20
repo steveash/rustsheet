@@ -111,9 +111,10 @@ fn an_end_period_past_nper_is_num() {
 
 #[test]
 fn up_to_32_periods_are_the_per_period_sum() {
-    // The kernel keeps main's sum of IPMT and PPMT up to `CUMULATIVE_LOOP_PERIODS` (32), bit for
-    // bit (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26); past it, the closed
-    // form. The per-period sums are rebuilt here from IPMT and PPMT.
+    // The kernel keeps main's sum of IPMT up to `CUMULATIVE_LOOP_PERIODS` (32), bit for bit
+    // (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26); past it, the closed form.
+    // The principal is the closed form at any length, close to the PPMT sum (T-1890). The
+    // per-period sums are rebuilt here from IPMT and PPMT.
     let mut model = new_empty_model();
     let pairs = [
         (
@@ -136,7 +137,10 @@ fn up_to_32_periods_are_the_per_period_sum() {
     model.evaluate();
     let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
     assert_eq!(number("A1").to_bits(), number("B1").to_bits());
-    assert_eq!(number("A2").to_bits(), number("B2").to_bits());
+    // The PPMT sum cancels (each principal is a fiftieth of its payment); the closed form is
+    // within an ulp of the exact -2.33419231896298640 (T-1890).
+    assert!((number("A2") / -2.334_192_318_962_986_4 - 1.0).abs() < 4E-16);
+    assert!((number("A2") / number("B2") - 1.0).abs() < 1E-12);
     // 33 periods: the closed form, within an ulp or two of the sum.
     assert_ne!(number("A3").to_bits(), number("B3").to_bits());
     assert!((number("A3") / number("B3") - 1.0).abs() < 1E-14);
@@ -150,6 +154,12 @@ fn up_to_32_periods_are_the_per_period_sum() {
             "-3165.8852276668513",
         ),
         ("A3", "=CUMPRINC(0.004,1024,1000,1,1024,1)", "-1000"),
+        // CUMPRINC_CUMIPMT.xlsx H6, which the PPMT sum missed by 3 ulps.
+        (
+            "A4",
+            "=CUMPRINC(0.01,36,8000,1.2,8.53,1)",
+            "-1339.6579298169904",
+        ),
     ]);
 }
 

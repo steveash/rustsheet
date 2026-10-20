@@ -263,15 +263,12 @@ F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H16
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H17
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H2
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H21
-F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H22
-F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H25
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H26
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H29
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H3
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H31
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H4
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H5
-F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H6
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H7
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H9
 F	ironcalc-calc/FINANCIAL/DB_DDB.xlsx	Sheet1!G10
