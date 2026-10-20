@@ -83,3 +83,20 @@ Fingerprints at (4,3) / (5,3) / (5,4), 2.40 window:
   - Whole-chain even/odd, product of quadratics, split N = A*x^5 + B, monic D and t-centred Horner are all rejected.
   - Constants scaled by powers of two (x/2, x/4) and an accumulator started at 0 give identical roundings to the base
     structure.
+
+## Correction (late-set hygiene, HANDOFF 12.3 step 4)
+Every REAL fingerprint row labelled "after greedy" (0.859 / 0.870 / 0.826) used grid_a with p5 -4 and q4 -1 applied as
+coefficient ulps (nextafter). That is the window-local tweak, retracted globally because dense-run exact drops to 0.37.
+The function-correct REAL rows use the committed, unmodified grid_a:
+- 2.40 window: 0.818 / 0.856 / 0.826;
+- 2.80 window: 0.842 / 0.860 / 0.806.
+
+## Offset meter (HANDOFF 12.3 step 1)
+Tools: `offm.c` / `offm.py`, in W2's scratchpad. Per run, a constant offset is added to the pre-rounding hand-off sums
+(2-D grid, +-2.5 ulps, 1/32 step), with the late chain = grid_a.
+- It recovers every function-preserving EARLY-only displacement to 0.92-0.96 on every run.
+- It recovers LATE + cross-N/D displacements only partially and erratically.
+- REAL, 14 long runs: 0.66-0.78 -> 0.71-0.83, never near 0.92.
+
+So the late chain itself differs from grid_a by a joint cross-N/D move, (a) in HANDOFF 12.3. Single-coordinate
+plateau, needle and line readers cannot see such a move.
