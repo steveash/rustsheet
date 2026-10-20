@@ -28,6 +28,8 @@ grid is lost. Design: `Binding::Grid(RefGrid)` (an `Arc` clone, variable_stack.r
 - [ ] The LET, IF and CHOOSE cells of rule 7 that need no aggregate walker pass (INDEX, ROWS/COLUMNS readers).
 - [ ] `VariableStack` charges newly built grids against `MAX_HELD_GRID_ELEMENTS = 4 * MAX_SIZE`, past it the
       binding is `#VALUE!`; recorded as a DEVIATION (decision 0014) under lookup.md, with a unit test.
+- [ ] OFFSET over a reference argument that is itself an array of references lifts again (SPEC-0014 rule 7:
+      `ROWS(OFFSET(OFFSET(A1,{0;1},0),1,0))` 2), with a unit test of a deep nest staying bounded.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

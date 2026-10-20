@@ -517,7 +517,7 @@ impl Model {
     /// INDEX into an array of references (SPEC-0014 rule 3): element (row, column) is that
     /// reference itself, read as INDEX reads a one-area reference's cell or range, or its error;
     /// `INDEX(OFFSET(A1,0,0,{1;2}),1,1)` is A1's value and `ISREF` of it TRUE, element 2 spills
-    /// (probes/reference-lift-elements G2, H2, H15). An area_num past 1 is `#REF!`, one index
+    /// (probes/reference-lift-elements G2, H2, H15). An `area_num` past 1 is `#REF!`, one index
     /// is `#VALUE!` (probes/reference-lift-consumers-b1d E109), and a whole row or column
     /// (index 0) is the value view of those elements.
     fn index_grid(
@@ -546,9 +546,8 @@ impl Model {
             let CalcResult::Array(values) = grid.to_values() else {
                 return wrong_reference(cell);
             };
-            let row_eff = numbers.row;
-            let col_eff = numbers.col;
-            return index_from_array(&values, row_eff, col_eff, form == IndexForm::TopLeft, cell);
+            let top_left = form == IndexForm::TopLeft;
+            return index_from_array(&values, numbers.row, numbers.col, top_left, cell);
         }
         match grid.get(numbers.row - 1, numbers.col - 1) {
             Some(RefElement::Reference(range)) => {
