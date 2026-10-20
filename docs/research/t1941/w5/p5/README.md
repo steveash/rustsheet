@@ -236,3 +236,52 @@ read constants there are right. Everything from N.S3 and D.S3 up is mismatched; 
 argues against an all-80-bit D chain and an unstored N.S2. A no-refit mask gain is not evidence either
 (`maskctl.py`, `maskctl.log`): on a fully stored synthetic truth, ss_fc with D unstored and N stored only below 1
 gains +8.6% (real: N<2 with D unstored, +5.7%).
+
+## Structure controls for the K3 refit, and a failed quick check
+- `maskmodel.py`: the masked model ("stored below k": the ops at coefficient index j are rounded iff j < k).
+- `mkctl.py`: planted controls (ss_fc + a function-preserving move, TSIZE 1e5), with B synthesised under a mask:
+  `ctl_m3.txt` (stored below 3 on both chains), `ctl_m2.txt` (W2's mask: N below 2, D fully 80-bit) and
+  `ctl_st.txt` (all stored). Handed to W2 for the integer refit.
+- Quick check (`lsmask.py`, `lsmask.log`): a Gauss–Newton LS refit of N3..N9 and D4..D9 under each mask, then the
+  exact rate. It FAILS its controls. On the all-stored control the m2 mask wins after refit (0.367 vs 0.308 for the
+  true stored structure), and m2 also wins on ctl_m3. The head runs off along function-null directions (D9 by
+  ~7e15 ulps). Masked models score higher whatever the truth, because they carry fewer mis-phased roundings. Real
+  data ranks m2 0.382 > m3 0.354 > stored 0.309, which by the controls means nothing. Only an integer refit that
+  closes on its own control can decide.
+- W2's function-free structure test (W2's k3/lsmask.py): from Excel's y, take the target A* (doubles with
+  fl(t·A) = y), weighted-LS fit N − A*·D, residual rms in ulp(A); each structure is simulated with the fitted
+  function as calibration. Real 1.013 / median 0.663; all-stored simulation 1.018 / 0.665 (match); W2's mask
+  0.579 / 0.375; partial masks 0.72–0.93. **K3 is fully stored.** The mask lift was ss_fc's coefficient errors being
+  hidden by unstored ops. So the site map's mismatch from N.S3/D.S3 up is wrong mid and top coefficients.
+
+## Mid-coefficient near-null lattice from ss_fc (K3 is stored: W2's fingerprint and `../fp/`)
+- `k3lat.py`: BKZ on [I | λJ] over N3..N9, D3..D9 (N0..N2, D1, D2, D0 fixed). Eleven mid vectors of 1–4 ulps with a
+  function change of 0.002–0.022 ulp(A) (`k3lat_100.log`).
+- `k3climb.py`: exact-count climb (±1, ±2 of each vector and all ±pairs; 300k train / 300k held-out on rows6).
+  0.3320 → 0.3391 train, 0.3332 → 0.3405 held-out, then a local maximum after 10 steps. Total move N5 −2 N6 +1 N7 −1
+  N8 +9 N9 −3 D6 +1 D7 −4 D8 −7 (`k3climb.log`, `k3lat_climb.txt`).
+- `k3cvp.py`: integer move (CVP) taking ss_fc's function toward the real-data LS fit (`../fp/` fit, residual 1.01
+  ulp(A)). The ss_fc → LS gap is max 2.6, rms 0.99 ulp(A). The CVP moves cut it to rms 0.54 / 0.47 / 0.38 (λ = 30 /
+  300 / 3000, moves up to ~1100 ulps), but held-out exact DROPS: 0.333 → 0.295 / 0.291 / 0.284. So the LS-fit
+  function is not the stored chain's function target (the LS fit absorbs the stored chain's rounding bias), or the
+  fixed read constants are part of the gap.
+So ss_fc is near a local maximum in the near-null lattice, as AN2 is on K1 (W4). The truth is far along null
+directions; local search from ss_fc does not reach it.
+
+## Per-stage phase read on K3 (review 3's phase method, generalised: `k3phase.py`, `k3phase_an.py`)
+Per chunk of ≤ 8192 consecutive doubles (594 chunks from 376 rows6 runs), each stored sum S_j leaves its rounding
+sawtooth as a spectral line in (y − exact)/ulp(y) at f_j = S_j'(x)·ulp(x)/ulp(S_j). The phase of Excel's line relative
+to the stored ss_fc model's, signed by a planted +0.25 u offset, is the pre-rounding offset δ_j mod 1 u
+(`k3phase_ssfc.npy`: x, then per stage phase, amplitude ratio, calibration shift, line power, f).
+- Readable stages (|calib| > 0.12, amplitude ratio 0.5–2, power > 4): N7 240 chunks, N6 412, N5 96, N3 518, D6 243,
+  D5 426, D4 91 (D3 22, D2 32). N8, N4, N2, N1, D8, D7, D1 have no usable line.
+- Neighbouring chunks agree better than random (adjacent |Δphase| vs random): N3 0.138 vs 0.251, N6 0.157 vs
+  0.252, D5 0.146 vs 0.251, N7 0.185 vs 0.247. So δ_j(x) is a smooth law for these stages.
+- But no simple global law fits (x, 1/x, x², x³ with |B| ≤ 400: resultant R ≤ 0.31, `k3phase_an.log`). Between chunks
+  ~0.01 apart the phase moves 0.3–0.5 cycles, so the laws have slopes of order 10²–10⁵ cycles per unit x. The
+  current sampling cannot unwrap that: runs ~0.002 apart, chunks within a run ~1e-12 apart, and the V3 rungs
+  (2^-24..2^-46) resolve slopes ≳ 1e7.
+- Data that would unwrap them: ladders near a few anchors (e.g. 1.25, 1.35, 1.45, 0.8, 0.95, 1.1), each with ~12 runs
+  of 8192 consecutive doubles at offsets Δx = 2^-10 .. 2^-21 from the anchor. That is 72 runs, 0.6M points. The
+  local slope of δ_j at each anchor then comes out by stepwise unwrapping, giving one far null coordinate per
+  readable stage.
