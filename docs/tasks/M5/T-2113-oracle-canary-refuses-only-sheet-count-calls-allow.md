@@ -3,7 +3,7 @@ id: T-2113
 title: "Oracle canary refuses only sheet-count calls: allow SHEETS with a reference and INFO with a literal type other than numfile"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
