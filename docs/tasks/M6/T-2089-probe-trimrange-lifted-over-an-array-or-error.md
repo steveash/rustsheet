@@ -3,7 +3,7 @@ id: T-2089
 title: "Probe TRIMRANGE lifted over an array or error source"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
