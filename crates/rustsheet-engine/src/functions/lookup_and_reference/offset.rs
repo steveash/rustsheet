@@ -1,25 +1,15 @@
 //! OFFSET: a reference moved and resized from another, lifted into an array of references when
 //! rows, cols, height or width is an array or a multi-cell range (SPEC-0014; T-1956).
 
+use super::ref_lift::lifts;
 use crate::calc_result::{CalcResult, Range};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::Node;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{ArgBuf, LiftedArg};
+use crate::functions::lift::ArgBuf;
 use crate::model::Model;
 use crate::reference_operators::RefArg;
-
-/// Whether an OFFSET argument's value lifts the call: an array or a range of more than one
-/// cell. A one-cell range and a 1x1 array are their value, as before (whether Excel lifts
-/// `OFFSET(A1,{1},0)` is unprobed; `Model::lift_references` keeps a 1x1 broadcast scalar too).
-fn lifts(value: &CalcResult) -> bool {
-    match value {
-        CalcResult::Range { left, right } => left != right,
-        CalcResult::Array(rows) => rows.len() > 1 || rows.first().is_some_and(|row| row.len() > 1),
-        _ => false,
-    }
-}
 
 impl Model {
     // OFFSET(reference, rows, cols, [height], [width])
@@ -65,22 +55,14 @@ impl Model {
             Ok(reference) => reference,
             Err(error) => return RefArg::Value(error),
         };
-        let mut values = self.offset_values(args, cell);
+        let values = self.offset_values(args, cell);
         if !values.as_slice().iter().any(lifts) {
             return RefArg::from(self.offset_of(&reference, values.as_slice(), cell));
         }
-        let mut lifted = Vec::with_capacity(values.as_slice().len());
-        for value in values.as_mut_slice() {
-            let value = std::mem::replace(value, CalcResult::EmptyArg);
-            if lifts(&value) {
-                match LiftedArg::read(self, value, cell) {
-                    Ok(arg) => lifted.push(arg),
-                    Err(error) => return RefArg::Value(error),
-                }
-            } else {
-                lifted.push(LiftedArg::Scalar(value));
-            }
-        }
+        let lifted = match self.reference_lift_args(values, cell) {
+            Ok(lifted) => lifted,
+            Err(error) => return RefArg::Value(error),
+        };
         self.lift_references(lifted, cell, &mut |model, values| {
             model.offset_of(&reference, values, cell)
         })
@@ -90,14 +72,7 @@ impl Model {
     /// scalar call, SPEC-0014 "Producers"); a written empty argument is `EmptyArg`, so a missing
     /// or empty height/width keeps the reference's size.
     fn offset_values(&mut self, args: &[Node], cell: CellReferenceIndex) -> ArgBuf<CalcResult> {
-        let rest = args.get(1..).unwrap_or_default();
-        let mut values = ArgBuf::filled(rest.len(), || CalcResult::EmptyArg);
-        for (slot, arg) in values.as_mut_slice().iter_mut().zip(rest) {
-            if !matches!(arg, Node::EmptyArgKind) {
-                *slot = self.evaluate_node_in_context(arg, cell);
-            }
-        }
-        values
+        self.reference_lift_values(args.get(1..).unwrap_or_default(), cell)
     }
 
     /// Whether an OFFSET call lifts into an array of references, its own arguments evaluated
