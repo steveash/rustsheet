@@ -198,5 +198,7 @@
   `TextArg`/`broadcast_text` loops became `Lift` entries through `Model::lift_text`.
   T-0908: duplicated lines 3268 -> 3202 (`check_duplication.py --update`): the fdlibm BESSELJ/BESSELY port
   (`bessel_j0_y0.rs`, `bessel_j1_y1.rs`, `bessel_jn_yn.rs`) is deleted; Excel's asymptotic tables replace it.
+  T-1639: duplicated lines 3202 -> 3176 (`check_duplication.py --update`): `parse_reference_formula`'s cell and
+  range arms share one sheet lookup, and `Range::between` replaces the corner min/max of `single_sheet_area`.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

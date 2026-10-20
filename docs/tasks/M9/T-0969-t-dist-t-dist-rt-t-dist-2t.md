@@ -4,9 +4,10 @@ title: "T.DIST/T.DIST.RT/T.DIST.2T/T.TEST: accurate Student-t CDF with direct up
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
+campaign: visible
 depends_on: [T-1744, T-2088]
 ---
 
@@ -109,6 +110,25 @@ around the correctly rounded density. Next: model the centre-tail noise (scan th
 cells > 4 ulp: (3,100) 23 ulp, (5,1000) 65, (30,1000) 125 in the exact-centre region) and the
 density's exp(a ln y) form; then re-cut the 4-ulp criterion per decision 0056 if no model fits.
 
+## Attempt 4 (2026-10-20, opus run; merged as progress, decision 0082)
+- Above df 1000 (integer df), the centre no longer uses Cephes' fraction on the rounded y, and no longer statrs'
+  cdf above 1E7. `centre_tail` in `student_t.rs` takes every input from z, t^2/n and n/t^2:
+  - up to t = 1, `incbcf` for the centre I_z(1/2, n/2), at most 6 steps;
+  - beyond t = 1, `incbd` on n/t^2 for L itself, under 160 steps.
+
+  Integer-df series tails below 1E-12 take the same path. The density from df 1000 on is ratio / sqrt(n) *
+  exp(-((n+1)/2) log1p(t^2/n)), replacing statrs above 1000. The density at a truncated df of 0 is `#DIV/0!`.
+- Visibly-off T.DIST/T.DIST.RT/T.DIST.2T/TDIST/T.TEST/TTEST cells went from 128 to 69 (59 fixed, 0 newly visible, 19 more
+  bit-exact). No baseline line changed. The ungated probes-numeric cases carry the gain: m9-t-dist-cdf/-rt/-2t/-pdf at
+  df 1E6, m9-t-edges, m9-t-nonint-df and t1518-t-df-cut at df 1E10 and up, plus the five `#DIV/0!` cells.
+- What is left is Excel's own noise (statistics.md "Student t sweep", "Large df stays exact"): in deep-ish tails and
+  densities Excel is tens to hundreds of ulp from the exact value. Our tails, and our densities up to |t| = 5, are within
+  a few ulp of it. Our large-t densities carry their own |E| eps error (-96 ulp at `T.DIST(30,1000,FALSE)`, +148 at
+  (30,1E6)). T.TEST/TTEST is
+  20 cells and the integer-df centre noise (T.DIST.2T(3,30), (2,100), (0.1,2)) another 10. Next: model the density's
+  exp(E) error at every df (38 to 200 ulp, df 30 to 1E6) and the T.TEST noise. A kernel that is only more accurate cannot close
+  these.
+
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
       NumericMismatch verdict (`rustsheet-eval show` on both cases), at least 30 of the 55 lines
@@ -125,3 +145,16 @@ legacy TDIST/TTEST evidence (T-1048).
 
 ## Fit result (T-1744)
 Through I_x (mapped via the smaller of n/(n+t^2) and t^2/(n+t^2), which large n needs, but I_y/2 directly for a lower tail under 0.1: 0.5 - I_z/2 cancels to 0 at T.DIST(-10,1000,TRUE) = 8.3E-23), Cephes incbet is bit-exact on 105 of 150 T.DIST cells and the correctly rounded value on 113, against 78 today; no candidate is Excel's algorithm yet.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 470 in total.
+- T.DIST: 161 cells (13-14 digits right 87, 10-12 45, 6-9 29, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-t-dist-pdf.case.json` 96; `probes-numeric/m9-t-dist-cdf.case.json` 42. e.g. `T.DIST(1,2,TRUE)` Excel 0.7886751345948129, ours 0.7886751345948135
+- T.DIST.RT: 114 cells (13-14 digits right 47, 10-12 28, 6-9 16, fewer or 0 vs nonzero 23); most in `probes-numeric/m9-t-dist-rt.case.json` 93; `ironcalc-calc/STATISTICAL/T_DIST.xlsx` 10. e.g. `T.DIST.RT(1,2)` Excel 0.21132486540518708, ours 0.21132486540518647
+- T.DIST.2T: 108 cells (13-14 digits right 43, 10-12 27, 6-9 15, fewer or 0 vs nonzero 23); most in `probes-numeric/m9-t-dist-2t.case.json` 88; `ironcalc-calc/STATISTICAL/T_DIST.xlsx` 10. e.g. `T.DIST.2T(1,2)` Excel 0.42264973081037416, ours 0.42264973081037294
+- TDIST: 12 cells (13-14 digits right 9, 10-12 2, 6-9 0, fewer or 0 vs nonzero 1); most in `probes-numeric/t1048-tdist.case.json` 11; `probes/stat-argument-modes.case.json` 1. e.g. `TDIST(2,10,1)` Excel 0.0366940173853702, ours 0.03669401738537015
+- T.TEST: 46 cells (13-14 digits right 37, 10-12 9, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-ttest.case.json` 28; `probes-numeric/t1049-ttest.case.json` 9. e.g. `T.TEST(C1:C6,B1:B8,1,2)` Excel 0.07941923058217022, ours 0.07941923058217071
+- TTEST: 29 cells (13-14 digits right 20, 10-12 9, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-ttest.case.json` 28; `probes/stat-argument-modes.case.json` 1. e.g. `TTEST(C1:C6,B1:B8,1,2)` Excel 0.07941923058217022, ours 0.07941923058217071
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.

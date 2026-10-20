@@ -32,3 +32,12 @@ expansion (Cornish-Fisher / Hill's asymptotic) for very large n; score against p
 
 ## Out of scope
 - Excel's tail noise at moderate df (T-0969's remaining F7/F8/C7/C8).
+
+## Progress (2026-10-20, T-0969 attempt 4)
+`centre_tail` in `student_t.rs` implements this task's remedy for integer df: the fractions on z, t^2/n and n/t^2.
+- m9-t-edges has no NumericMismatch left at df 1E10.
+- The df-1E6 cells of m9-t-dist-cdf are within a few ulp of the exact value. The ones still more than 4 ulp from Excel
+  (`T.DIST(-10,1E6,TRUE)`, A150) are Excel's own noise.
+
+Open: Welch's fractional df keeps the plain fraction, because the new path moved t1048-ttest A3 and t1049-ttest A21 the
+wrong way. This task now covers fractional df only.

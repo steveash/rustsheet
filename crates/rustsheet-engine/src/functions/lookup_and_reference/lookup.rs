@@ -107,7 +107,11 @@ impl Model {
             };
             // Vector form: result_vector is read only once the search has succeeded.
             let result = args.get(2).map(|node| self.lookup_result(node, cell));
-            return self.lookup_pick(&search, result.as_ref(), position, cell);
+            // A blank result cell is the empty value (lookup.md "VLOOKUP and HLOOKUP hand a
+            // blank result cell to their caller as 0"; probes/lookup-vector-blank-result-to-caller).
+            return self
+                .lookup_pick(&search, result.as_ref(), position, cell)
+                .blank_as_empty_value();
         }
         let result = args.get(2).map(|node| self.lookup_result(node, cell));
         // Each element tests the evaluated cells of the searched row or column once.

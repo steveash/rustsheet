@@ -1,0 +1,13 @@
+# Milestone exit exceptions (decision 0087): ironcalc-calc cells that a decision leaves out of the
+# "Milestone function scope" exit measure of docs/milestones.md. One cell per line, tab-separated:
+# case!Sheet!A1 (as report.md names failing cells), the milestone from whose row on the cell is left
+# out, the decision that names it (four digits), and the task that owns the cell. A line hides no
+# cell from eval/baseline or the gate: the cell stays a known failure. Add a line only in the PR that
+# takes the decision naming it (decision 0044 protects eval/milestones/).
+# IF_ARRAY C4, E4 and C11 cache the Mac desktop SIN(4), one ulp from Excel for the web (decision
+# 0074 for C11 from M2; decision 0085 item 1 adds C4 and E4 from M5); their M14 item is T-1075.
+ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C11	M2	0074	T-1075
+ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C4	M5	0085	T-1075
+ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!E4	M5	0085	T-1075
+ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx!Sheet1!D14	M5	0086	T-1075
+ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx!Sheet1!D26	M5	0086	T-1075

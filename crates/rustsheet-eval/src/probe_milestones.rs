@@ -55,6 +55,15 @@ pub(crate) fn parse_milestone(s: &str) -> Option<u32> {
     digits.parse().ok()
 }
 
+/// The data lines of a tab-separated file under `eval/milestones/`: each line's 1-based number
+/// and its fields, skipping blank lines and `#` comment lines.
+pub(crate) fn data_lines(text: &str) -> impl Iterator<Item = (usize, Vec<&str>)> {
+    text.lines()
+        .enumerate()
+        .filter(|(_, raw)| !raw.trim().is_empty() && !raw.starts_with('#'))
+        .map(|(n, raw)| (n + 1, raw.split('\t').collect()))
+}
+
 /// The report row a milestone counts in: M0 and M1 count with M2 (decision 0051, item 3).
 pub(crate) fn row_of(milestone: u32) -> u32 {
     milestone.max(DEFAULT_MILESTONE)
@@ -122,13 +131,8 @@ impl Mapping {
     /// The first malformed line, or the first that repeats a case or a cell.
     pub fn parse(text: &str) -> Result<Mapping, MappingError> {
         let mut mapping = Mapping::default();
-        for (n, raw) in text.lines().enumerate() {
-            let line = n + 1;
-            if raw.trim().is_empty() || raw.starts_with('#') {
-                continue;
-            }
+        for (line, fields) in data_lines(text) {
             let bad = |why| MappingError::Line { line, why };
-            let fields: Vec<&str> = raw.split('\t').collect();
             let (case, cell, milestone, subject) = match fields.as_slice() {
                 [case, milestone, subject] => (*case, None, *milestone, *subject),
                 [case, cell, milestone, subject] => (*case, Some(*cell), *milestone, *subject),

@@ -17,8 +17,11 @@
 //! rounding test, [`rounds_safely`]), that double is the rounding of the full sum too, so the full
 //! sum runs only for a remainder close to a rounding boundary (about 1 call in 500; T-1637).
 
-use std::f64::consts::FRAC_PI_2;
+use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 use std::ops::Neg;
+
+use crate::arithmetic::round_extended_to_double;
+use crate::x87_exp::dd_to_extended;
 
 /// `π₆₄/2 − FRAC_PI_2`: the 11 low bits of the 64-bit significand that a double drops
 /// (`0x235·2^-63`). It is COS(PI()/2) in Excel.
@@ -290,6 +293,33 @@ fn by_quadrant<T: Neg<Output = T>>(n: i64, sin: T, cos: T) -> (T, T) {
         2 => (-sin, -cos),
         _ => (-cos, sin),
     }
+}
+
+/// π/2 - `FRAC_PI_2`, the tail of π/2 as a double-double (6.123233995736766e-17).
+const HALF_PI_TAIL: f64 = f64::from_bits(0x3C91_A626_3314_5C07);
+
+/// The x87 FSIN of |v| <= π/2 as GAMMA's reflection uses it (T-1941 `gamma_neg_check.py`,
+/// T-2129): the true sine, not SIN's reduction by the 64-bit π, rounded to a 64-bit significand
+/// and then stored, RN53(RN64(sin v)). The sine is the double-double series (error below 2^-80),
+/// as cos(π/2 - |v|) above π/4, where π/2 - |v| is exact (Sterbenz) plus the tail of π/2.
+pub(crate) fn excel_fsin(v: f64) -> f64 {
+    let magnitude = v.abs();
+    if magnitude == 0.0 || !magnitude.is_finite() {
+        return v * 0.0 + v;
+    }
+    let sine = if magnitude <= FRAC_PI_4 {
+        let r = DoubleDouble::new(magnitude, 0.0);
+        r.mul(SINE.full(r.mul(r)))
+    } else {
+        let r = DoubleDouble::two_sum(FRAC_PI_2 - magnitude.min(FRAC_PI_2), HALF_PI_TAIL);
+        COSINE.full(r.mul(r))
+    };
+    let (extended, exponent) = dd_to_extended((sine.hi, sine.lo));
+    round_extended_to_double(extended, exponent, v < 0.0).unwrap_or(if v < 0.0 {
+        -sine.hi
+    } else {
+        sine.hi
+    })
 }
 
 /// Excel's SIN(x), for |x| < [`EXCEL_TRIG_LIMIT`].

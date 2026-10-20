@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 fn num(model: &mut crate::model::Model, cell: &str) -> f64 {
@@ -138,4 +139,49 @@ fn fn_forecast_ets_family_not_implemented() {
     assert_eq!(model._get_text("A2"), *"#N/IMPL!");
     assert_eq!(model._get_text("A3"), *"#N/IMPL!");
     assert_eq!(model._get_text("A4"), *"#N/IMPL!");
+}
+
+// Excel's exact doubles for VDB's two charge orders (docs/excel-semantics/financial.md
+// "VDB charge order"; probes/fin-vdb-modes, fin-vdb-schedule, T-1975).
+#[test]
+fn fn_vdb_charge_order_bits() {
+    let mut model = new_empty_model();
+    model._set("A1", "=VDB(2400,300,10,7,10,2,FALSE)");
+    model._set("A2", "=VDB(2400,300,10,7,10,2,TRUE)");
+    model._set("A3", "=VDB(2400,300,10,0,10,3,TRUE)");
+    model._set("A4", "=VDB(2400,0,10,5,6)");
+    model._set("A5", "=VDB(1234.56,78.9,12,4,9,1.75,FALSE)");
+    model._set("A6", "=VDB(2400,3000,10,0,1)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+
+    assert_eq!(bits("A1"), 203.316_480_000_000_07_f64.to_bits());
+    assert_eq!(bits("A2"), 203.316_480_000_000_4_f64.to_bits());
+    assert_eq!(bits("A3"), 2_099.999_999_999_999_5_f64.to_bits());
+    assert_eq!(bits("A4"), 157.286_400_000_000_01_f64.to_bits());
+    assert_eq!(bits("A5"), 379.885_448_741_749_9_f64.to_bits());
+    assert_eq!(bits("A6"), (-600.0_f64).to_bits());
+}
+
+// RRI and DURATION use Excel's own operators (financial.md "DURATION and RRI operation order";
+// probes/fin-mduration-rri-fit A13, A37, T-1975).
+#[test]
+fn fn_rri_and_duration_bits() {
+    let mut model = new_empty_model();
+    model._set("A1", "=RRI(10,1,200)");
+    model._set(
+        "A2",
+        "=DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)",
+    );
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+
+    assert_eq!(bits("A1"), 0.698_646_464_634_247_2_f64.to_bits());
+    assert_eq!(bits("A2"), 5.541_666_666_666_668_f64.to_bits());
 }

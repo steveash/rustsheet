@@ -973,18 +973,9 @@ impl Model {
 /// (`(1+0) A1`) or spans sheets.
 fn single_sheet_area(operand: CalcResult, cell: CellReferenceIndex) -> Result<Range, CalcResult> {
     match operand {
-        CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
-            left: CellReferenceIndex {
-                sheet: left.sheet,
-                row: left.row.min(right.row),
-                column: left.column.min(right.column),
-            },
-            right: CellReferenceIndex {
-                sheet: left.sheet,
-                row: left.row.max(right.row),
-                column: left.column.max(right.column),
-            },
-        }),
+        CalcResult::Range { left, right } if left.sheet == right.sheet => {
+            Ok(Range::between(left, right))
+        }
         error @ CalcResult::Error { .. } => Err(error),
         _ => Err(CalcResult::new_error(
             Error::VALUE,

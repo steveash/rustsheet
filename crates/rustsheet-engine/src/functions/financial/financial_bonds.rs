@@ -7,7 +7,7 @@ mod coupon_schedule;
 mod yield_closed;
 
 use super::dates::{
-    basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us_both,
+    basis_days, broken_schedule_days, broken_schedule_error, day_count_basis, days_30_360_us_both,
     BROKEN_SCHEDULE_PCD,
 };
 use coupon_schedule::{
@@ -17,6 +17,7 @@ use coupon_schedule::{
 
 use super::number_or_error;
 use crate::{
+    arithmetic::power,
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
@@ -59,12 +60,8 @@ fn validate_frequency(frequency: u32, cell: CellReferenceIndex) -> Result<(), Ca
     }
 }
 
-fn validate_basis(basis: u32, cell: CellReferenceIndex) -> Result<(), CalcResult> {
-    if basis <= 4 {
-        Ok(())
-    } else {
-        Err(num_error(cell))
-    }
+fn validate_basis(basis: f64, cell: CellReferenceIndex) -> Result<u32, CalcResult> {
+    day_count_basis(basis).ok_or_else(|| num_error(cell))
 }
 
 // ============================================================
@@ -580,8 +577,7 @@ impl Model {
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
         validate_frequency(frequency, cell)?;
         let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
-        let basis = basis.floor() as u32;
-        validate_basis(basis, cell)?;
+        let basis = validate_basis(basis, cell)?;
         Ok((settlement, maturity, frequency, basis))
     }
 
@@ -630,9 +626,9 @@ impl Model {
             None => 100.0,
         };
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?.floor() as u32;
+        let basis = self.cast_number_no_bools_or(basis, 0.0, cell)?;
         validate_frequency(frequency, cell)?;
-        validate_basis(basis, cell)?;
+        let basis = validate_basis(basis, cell)?;
         // YIELD's price must be positive, a yield may be 0.
         let bad_fourth = match function {
             BondFunction::Yield => yld <= 0.0,
@@ -678,19 +674,23 @@ impl Model {
         let coupon = redemption * bond.rate / frequency as f64;
         let v = 1.0 + bond.yld_or_pr / frequency as f64;
 
+        // Each cash flow is discounted by Excel's `^` and its weighted term is `(t·cf)/v^t`, not
+        // `t·(cf/v^t)`: with libm `powf` 6 of 12 DURATION cells miss by an ulp, and the zero-coupon
+        // `DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)` is 5.541666666666668, one ulp above
+        // t/2 (probes/fin-mduration-rri-fit A1-A36, fin-mduration; T-1975).
         let mut num = 0.0; // sum of t * PV(CF)
         let mut den = 0.0; // dirty price (sum of PV(CF))
-
+        let mut add_cash_flow = |t: f64, cash_flow: f64| {
+            // `v` > 1 and `t` > 0 here, so `^` fails only by overflowing: the flow's present value
+            // is then 0, as `powf`'s infinity gave before.
+            let growth = power(v, t).unwrap_or(f64::INFINITY);
+            num += t * cash_flow / growth;
+            den += cash_flow / growth;
+        };
         for k in 1..=(n as u32) {
-            let t = dsc_over_e + k as f64 - 1.0;
-            let pv = coupon / v.powf(t);
-            num += t * pv;
-            den += pv;
+            add_cash_flow(dsc_over_e + k as f64 - 1.0, coupon);
         }
-        let t_final = dsc_over_e + n - 1.0;
-        let pv_red = redemption / v.powf(t_final);
-        num += t_final * pv_red;
-        den += pv_red;
+        add_cash_flow(dsc_over_e + n - 1.0, redemption);
 
         if den == 0.0 {
             return Err(div_error(cell));
@@ -803,16 +803,14 @@ impl Model {
         let yld_or_pr = self.cast_number_no_bools_ref(yld_or_pr, cell)?;
         let redemption = self.cast_number_no_bools_ref(redemption, cell)?;
         let frequency = self.cast_number_no_bools_ref(frequency, cell)?.floor() as u32;
-        let basis = self
-            .cast_number_no_bools_or(rest.first(), 0.0, cell)?
-            .floor() as u32;
+        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
         // A date Excel's reading moves off the calendar (`DateSystem::odd_period_1900_serial`).
         let mut dates = [0; N];
         for (date, read) in dates.iter_mut().zip(read) {
             *date = read.ok_or_else(|| num_error(cell))?;
         }
         validate_frequency(frequency, cell)?;
-        validate_basis(basis, cell)?;
+        let basis = validate_basis(basis, cell)?;
         check_dates(&dates, frequency)?;
         let bad_fourth = if price_given {
             yld_or_pr <= 0.0
