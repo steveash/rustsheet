@@ -359,8 +359,8 @@ Evidence: probes/eng-im-overflow (excel-graph).
   (`IMEXP("1000-1i")`), for `709.9+1i` (exp overflows only past 709.78) and for `1000+3.14159i`
   (`-1.79769313485599E+308+4.770340154251E+302i`), down to `1000+1.5E-8i`; but `IMEXP("710+1E-300i")`,
   `"1000+1E-300i"`, `"1000-1E-300i"` and every imaginary part up to `1.4E-8` are `#NUM!`. The
-  boundary (1.4E-8 error, 1.5E-8 capped) is sqrt(DBL_EPSILON) = 1.49E-8, where cos y rounds to 1, so
-  such an argument is treated like a pure real one. The same rule near y = pi (cos y rounds to -1) is unprobed.
+  boundary (1.4E-8 error, 1.5E-8 capped) is sqrt(DBL_EPSILON) = 1.49E-8, so
+  such an argument is treated like a pure real one. The same rule near y = pi (y within sqrt(DBL_EPSILON) of pi) is unprobed.
 - IM* text keeps 15 significant digits for an exponent past 98, unlike `&""` (numbers.md): A11,
   A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
   `1.65498402768026E+308`, which ours now matches (T-2001: `complex_part_to_text` keeps 15 digits). This is a
