@@ -4,8 +4,8 @@
 //! or RN64(ln 2)), rounds it to a 64-bit significand, and the store rounds that to a double: two
 //! roundings, so neither is always correctly rounded. LOG10 matches 92 of 92 cells of
 //! probes/log10-kernel (excel-graph), where the correctly rounded log10 matches 78 and glibc's 56;
-//! LN matches 114,687 of the 114,688 T-1941 `kmyst-gam-*` LN cells (the miss is a near-tie, see
-//! [`excel_ln`]). LOG10, one-argument LOG and MULTINOMIAL's `log10(k)` terms use [`excel_log10`];
+//! LN matches 2,887,521 of the 2,887,551 T-1941 `kmyst-gam-*` LN cells (the misses are FYL2X
+//! near-ties, see [`excel_ln`]). LOG10, one-argument LOG and MULTINOMIAL's `log10(k)` terms use [`excel_log10`];
 //! the worksheet LN uses [`excel_ln`].
 
 use crate::arithmetic::{round_extended_to_double, significand_and_exponent};
@@ -19,7 +19,7 @@ const LOG10_2_64_OVER_LN_2_LO: f64 = f64::from_bits(0x3C69_5D79_BCB5_84BC); // 0
 
 /// `RN64(ln 2) / ln 2` as a double-double, from 400-bit mpmath: `y * log2(x)` is `ln(x)` times
 /// this. FLDLN2 loads ln 2 rounded up in the last bit of a 64-bit significand,
-/// `0xB17217F7D1CF79AC * 2^-64`, so the factor is 1 + 0x1.384291b5ee917p-66 (about 1 + 2.6e-20).
+/// `0xB17217F7D1CF79AC * 2^-64`, so the factor is 1 + 0x1.384291b5ee917p-66 (about 1 + 1.65e-20).
 const LN_2_64_OVER_LN_2_HI: f64 = 1.0;
 const LN_2_64_OVER_LN_2_LO: f64 = f64::from_bits(0x3BD3_8429_1B5E_E917); // 0x1.384291b5ee917p-66
 
@@ -60,9 +60,10 @@ pub(crate) fn excel_log10(x: f64) -> f64 {
 
 /// Excel's LN(x) for a positive finite `x`: RN53(RN64(RN64(ln 2) * log2 x)) (module docs);
 /// anything else is NaN. The research model (`docs/research/t1941/lnmodels.py`, on branch
-/// `agent/research/T-1941-crack-gammaln-gamma-ln` until it merges) matches 114,687 of
-/// 114,688 Excel cells; the miss, x = 0.612354100000274, is an FYL2X near-tie where Excel's
-/// microcode rounds the other way, and this follows the model.
+/// `agent/research/T-1941-crack-gammaln-gamma-ln` until it merges) matches 2,887,521 of
+/// 2,887,551 Excel cells; each of the 30 misses (one ulp, e.g. x = 0.612354100000274) is an FYL2X
+/// near-tie, where Excel's own result varies between runs (probes/ln-fyl2x-kernel), and this
+/// follows the model.
 pub(crate) fn excel_ln(x: f64) -> f64 {
     fyl2x(x, (LN_2_64_OVER_LN_2_HI, LN_2_64_OVER_LN_2_LO))
 }

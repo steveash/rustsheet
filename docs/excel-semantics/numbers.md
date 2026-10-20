@@ -897,7 +897,12 @@ Evidence: the T-1941 research runs (excel-graph, 2026-10-19/20; `kmyst-gam-*` on
 `agent/research/T-1941-crack-gammaln-gamma-ln`, every cell whose formula is `=LN(A<row>)`): 2,887,551 cells, 2,677,612
 distinct x from 1.37e-9 to 7.8e299. The model (`docs/research/t1941/lnmodels.py`) matches 2,887,521; the 30 misses are each
 one ulp, at points where Excel's FYL2X rounds the other way (the research's first 114,688-cell run had one, x =
-0.612354100000274). glibc's `log` matches 2,674,450 of the 2,677,612 distinct x (the engine used it before).
+0.612354100000274). At those near-ties Excel is not even consistent with itself: probes/ln-fyl2x-kernel (excel-graph,
+2026-10-20; the 30 points plus 223 sampled ones) returned the model's value at 3 of the 30 (2.426003200000124,
+9.612345678912595, 1.2345670000006508e100) where the research run of 2026-10-19 returned the other neighbour, and agreed with
+the research run on the other 250 cells, so the last-bit rounding of an FYL2X near-tie varies between runs (plausibly the
+server's CPU), and following the model is the stable choice. glibc's `log` matches 2,674,450 of the 2,677,612 distinct x (the engine used it before).
+The probe keeps the 27 near-ties of that run as known failures in eval/baseline/probes.txt.
 Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
 sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,
 `test/fixtures/ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.

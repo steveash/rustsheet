@@ -93,6 +93,9 @@ it gives Excel's bits on 2,887,521; the 30 misses are one ulp each and are the r
 (`lnmodels.py`), FYL2X near-ties Excel rounds the other way. The handoff's 114,688-point set is one run of these. A
 committed fixture (`test/fixtures/ln_kernel.fixture`: 4,000 random distinct x plus the 30 misses, with Excel's and the Python model's
 bits) pins the engine to the model on every point; `ln_matches_the_t1941_runs` (ignored) reruns the full set from
-`RUSTSHEET_T1941_ROWS` (`crate::test::kernel_rows`). glibc's log, used before, matches 2,674,450 of the distinct x. Eval:
-no change in any suite (0 fixes, 0 regressions). numbers.md "LN is FLDLN2 then FYL2X" records the rule. GAMMALN (T-2128)
+`RUSTSHEET_T1941_ROWS` (`crate::test::kernel_rows`). glibc's log, used before, matches 2,674,450 of the distinct x. New gated probe
+probes/ln-fyl2x-kernel (excel-graph, 2026-10-20): the 30 near-ties plus 223 sampled points; it agrees with the research run on
+250 cells and returns the model's value at 3 of the near-ties, so Excel's last bit at an FYL2X near-tie varies between runs.
+Its 27 remaining near-ties are new-coverage known failures in eval/baseline/probes.txt; no other suite changes (0 fixes,
+0 regressions). numbers.md "LN is FLDLN2 then FYL2X" records the rule. GAMMALN (T-2128)
 and GAMMA (T-2129) follow, using `excel_ln` for their internal LN.
