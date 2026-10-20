@@ -3,7 +3,7 @@ id: T-2109
 title: "Generator edge pools: a catalog pool key on params, with numeric pools for the M5 math functions"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
