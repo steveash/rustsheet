@@ -1,6 +1,6 @@
 //! Named milestone exit exceptions (decision 0087): the `ironcalc-calc` cells that a decision
 //! leaves out of a milestone's function-scope exit measure (docs/milestones.md, M2 and M5; decisions
-//! 0074 and 0085). One line per cell, tab-separated: `case!Sheet!A1`, the milestone from which the
+//! 0074, 0085 and 0086). One line per cell, tab-separated: `case!Sheet!A1`, the milestone from which the
 //! exception applies, the decision that names it, and the task that owns the cell.
 //!
 //! The file only changes how the "Milestone function scope" rows are read: it hides no cell from
@@ -211,6 +211,16 @@ mod tests {
                 ("ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C11", 2, "0074"),
                 ("ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C4", 5, "0085"),
                 ("ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!E4", 5, "0085"),
+                (
+                    "ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx!Sheet1!D14",
+                    5,
+                    "0086"
+                ),
+                (
+                    "ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx!Sheet1!D26",
+                    5,
+                    "0086"
+                ),
             ]
         );
     }

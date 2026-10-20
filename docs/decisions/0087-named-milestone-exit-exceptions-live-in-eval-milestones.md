@@ -1,12 +1,13 @@
 # 0087 — Named milestone exit exceptions live in eval/milestones/exit-exceptions.tsv
 
-- **Status:** accepted (2026-10-20, T-2176). It records exceptions that decisions 0074 and 0085
-  already made and weakens no gate: no baseline, ratchet or CI check changes.
+- **Status:** accepted (2026-10-20, T-2176). It records exceptions that decisions 0074, 0085
+  and 0086 already made and weakens no gate: no baseline, ratchet or CI check changes.
 - **Context:**
   - The ironcalc-calc exit measures of M2 and M5 (docs/milestones.md; decision 0085 item 1) leave
     out cells that a decision names: `LOGICAL/IF_ARRAY.xlsx` Sheet1!C11 from M2 (decision 0074),
-    Sheet1!C4 and E4 from M5 (decision 0085). Decision 0085 item 3 lets the PR that blocks an M5 fit
-    task under decision 0056's time-box name more cells within 4 ulp.
+    Sheet1!C4 and E4 from M5 (decision 0085), and `MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx` Sheet1!D14
+    and D26 from M5 (decision 0086). Decision 0085 item 3 lets the PR that blocks an M5 fit task
+    under decision 0056's time-box name more cells within 4 ulp.
   - Those cells were named only in the prose of docs/milestones.md, so the "Milestone function
     scope" rows of report.md showed `failing` with them included and the steward subtracted them
     by hand.

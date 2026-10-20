@@ -164,8 +164,9 @@ Decision 0085 fixes how each is measured from `make eval`'s report:
   cells and a scored gen-m5 cell; volatile and `oracle: none` functions need the 20 cells only.
 - Generated suites: the gen-m5 suite row alone, ≥ 20,000 scored cells, deviations excluded.
 - ironcalc-calc: the cumulative M5 row of "Milestone function scope" (catalog milestone ≤ M5).
-  Exception (decisions 0074, 0085): `LOGICAL/IF_ARRAY.xlsx` Sheet1!C4, E4 and C11 copy the Mac
-  desktop SIN(4); their M14 item (T-1075) counts as a filed task (decision 0039 rule 3). A cell
+  Exception (decisions 0074, 0085, 0086): `LOGICAL/IF_ARRAY.xlsx` Sheet1!C4, E4 and C11 copy the Mac
+  desktop SIN(4), and `MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx` Sheet1!D14 and D26 the Mac desktop ATAN2;
+  their M14 items (T-1075) count as filed tasks (decision 0039 rule 3). A cell
   whose M5 fit task is blocked under decision 0056's time-box and is within 4 ulp is named here
   by the PR that blocks the task, and then stops blocking. Each exception is a line of
   `eval/milestones/exit-exceptions.tsv`, so the measure is the M5 row's "failing excl. exceptions"

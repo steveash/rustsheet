@@ -73,10 +73,11 @@ item 1) can then be read from report.md without hand arithmetic.
 
 ## Outcome
 `eval/milestones/exit-exceptions.tsv` names IF_ARRAY Sheet1!C11 (M2, decision 0074) and C4, E4 (M5,
-decision 0085), owned by T-1075; `exit_exceptions.rs` parses it (`data_lines`, now shared with
+decision 0085), and ATAN2_POWER Sheet1!D14, D26 (M5, decision 0086, which T-2142 merged while this
+task was in review; so five lines, not the three the criteria name), all owned by T-1075; `exit_exceptions.rs` parses it (`data_lines`, now shared with
 `probe-milestones.tsv`'s reader) and `run`/`check` refuse a malformed line, milestone, decision, task
 or a repeated cell; an absent file holds none. Each function-scope row gains `excepted` and report.md
 the column "failing excl. exceptions"; a listed cell that fails in no row is listed under "Stale exit
 exceptions" without failing the run. Decision 0087; milestones.md (M2, M5) and eval-harness.md point
-to the file. `make eval` at base 959e076d: M2 failing 1, excl. exceptions 0; M5 failing 14, excl.
-exceptions 11. Eval delta: none (baseline and gate unchanged).
+to the file. `make eval` at base 959e076d (M5 re-run on the merge with 1fd0f69a): M2 failing 1, excl. exceptions 0; M5 failing 14, excl.
+exceptions 9 (5 lines). Eval delta: none (baseline and gate unchanged).
