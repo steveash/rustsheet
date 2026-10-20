@@ -3,7 +3,7 @@ id: T-2132
 title: "Probe IMSUB/IMDIV with a blank operand next to a j number, and IMSUM with mixed empty-argument forms"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
