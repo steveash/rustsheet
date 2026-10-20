@@ -228,3 +228,58 @@ fn fn_offset_lifted_into_other_aggregates_is_its_value_view() {
         assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
     }
 }
+
+// LET, a LAMBDA parameter, IF and CHOOSE hand an array of references on, and OFFSET over one
+// lifts again (SPEC-0014 rule 7; probes/reference-lift-consumers E89, E145, E149,
+// reference-lift-pass-through).
+#[test]
+fn fn_offset_grid_passes_through_let_if_choose_and_nested_offset() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "100");
+    model._set("A3", "10000");
+    model._set("C1", "=LET(x,OFFSET(A1,{0;1},0),INDEX(x,2,1))");
+    model._set(
+        "C2",
+        "=LET(x,OFFSET(A1,{0;1},0),y,x,SUM(INDEX(y,2,1),INDEX(x,1,1)))",
+    );
+    model._set("C3", "=LET(f,LAMBDA(r,INDEX(r,2,1)),f(OFFSET(A1,{0;1},0)))");
+    model._set("C4", "=ROWS(OFFSET(OFFSET(A1,{0;1},0),1,0))");
+    model._set("C5", "=SUM(OFFSET(OFFSET(A1,{0;1},0),{0,1},0))");
+    model._set(
+        "C6",
+        "=ERROR.TYPE(INDEX(OFFSET(OFFSET(A1,{0;-1},0),1,0),2,1))",
+    );
+    model._set("C7", "=SUM(OFFSET(LET(x,OFFSET(A1,{0;1},0),x),1,0))");
+    model._set("C8", "=SUMPRODUCT(IF(TRUE,OFFSET(A1,{0;1},0)))");
+    model._set("C9", "=LET(x,OFFSET(A1,{0;1},0),ISREF(x))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"100");
+    assert_eq!(model._get_text("C2"), *"101");
+    assert_eq!(model._get_text("C3"), *"100");
+    assert_eq!(model._get_text("C4"), *"2");
+    assert_eq!(model._get_text("C5"), *"10201");
+    assert_eq!(model._get_text("C6"), *"4");
+    assert_eq!(model._get_text("C7"), *"10100");
+    assert_eq!(model._get_text("C8"), *"0");
+    assert_eq!(model._get_text("C9"), *"FALSE");
+}
+
+// Each level of a deep OFFSET nest over an array of references is one lift of the grid's
+// elements, so the work grows with depth times elements, not exponentially (SPEC-0014 "Bounds").
+#[test]
+fn fn_offset_deep_nest_over_a_grid_stays_bounded() {
+    let mut model = new_empty_model();
+    let depth = 60;
+    let mut formula = "OFFSET(A1,SEQUENCE(1000)-1,0)".to_string();
+    for _ in 0..depth {
+        formula = format!("OFFSET({formula},{{0,1}},0)");
+    }
+    model._set("C1", &format!("=ROWS({formula})"));
+    model._set("C2", &format!("=COLUMNS({formula})"));
+    model._set("C3", &format!("=COUNTA({formula})"));
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"1000");
+    assert_eq!(model._get_text("C2"), *"2");
+    assert_eq!(model._get_text("C3"), *"2000");
+}

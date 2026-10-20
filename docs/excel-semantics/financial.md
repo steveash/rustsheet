@@ -382,6 +382,19 @@ The zero-first-value result and the date-0-first root match since T-1583 and T-0
 "XIRR is a bracketing bisection, not Newton" above; T-1155 done).
 Tasks: T-1114, T-1124
 
+## DB and VDB period cap
+Rule: RustSheet returns `#NUM!` for DB with a `period`, and VDB with an `end_period`, whose integer part is above
+100,000, after Excel's own argument checks, to bound per-call work on untrusted input (CLAUDE.md directive 5). Both
+schedules step one period at a time (`DB(1,0,1E15,1E15)` ran for hours before the cap). Excel's values above the cap are
+unprobed. A lifted DB or VDB call is also charged by each element's period
+(SPEC-0011 `KernelWork::ByArg`, T-1820): 2^17 units at the cap, so at most 1,024 such elements per call, while small
+periods lift freely (`ROWS(DB(G25:G26,1000,6,2,7))` is 2 in Excel, probes/fin-argument-modes). Within the cap the values are unchanged.
+Evidence: the cap is a resource limit, not an Excel observation; probes/fin-argument-modes shows Excel lifting DB and VDB.
+Status: DEVIATION (decision 0014)
+Tasks: T-1820
+Implemented in: functions/financial/financial_depreciation.rs (`MAX_DEPRECIATION_PERIODS`),
+functions/lift/kinds/financial.rs (`DB`, `VDB`)
+
 ## Financial function argument modes
 Rule: every scalar argument of the M9 financial functions lifts elementwise over an array literal: all 256
 `ROWS(F(..{v;v}..))` cells are 2, the dates, frequency, basis, type and guess arguments included. Over a two-cell
@@ -444,15 +457,17 @@ Evidence: probes/fin-argument-modes (386 cells, excel-graph, 2026-10-11, T-1084)
 2026-10-17, T-1822), probes/fin-yield-odd-lift (51 cells, excel-graph, 2026-10-18, T-1842). The cash flow is K1:K5 and its
 dates are M1:M5. L1:L8 is the same flow with typed text, a boolean, text and a blank mixed in, and N1:N5 is a
 schedule containing text.
-Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift` and EFFECT, NOMINAL, DOLLARDE,
+Ours: since T-1372 the core functions but DB, VDB, NPV, IRR and MIRR are `Lift`, since T-1820 DB and VDB too,
+charged by their period up to their own cap ("DB and VDB period cap"), since T-1821 NPV's rate, IRR's guess and
+MIRR's rates too, beside cash flows read once, whole, and charged per element for their walks over the flows ("NPV,
+IRR and MIRR cash-flow work cap", a DEVIATION); and EFFECT, NOMINAL, DOLLARDE,
 DOLLARFR, ACCRINTM, DISC, INTRATE, PRICEDISC, PRICEMAT, RECEIVED, YIELDDISC, YIELDMAT and the T-bills `LiftArrays`
 (SPEC-0011); since T-1822 so are ACCRINT, the COUP* family, DURATION, MDURATION and PRICE, each element charged for its
 coupon schedule walks ("Coupon schedule work cap"), and since T-1842 YIELD and the ODD* functions, charged for their
 solvers and walks ("Yield and odd-coupon work cap"), and since T-1845 CUMIPMT and
 CUMPRINC, charged for their bounded period sums ("CUMIPMT and CUMPRINC work cap"), and since T-1841 AMORDEGRC and
-AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet (`#N/IMPL!` for an array literal; DB and
-VDB `#VALUE!` for a range): DB and VDB need their period loops bounded first (T-1820), NPV's rate, IRR's guess and
-MIRR's rates sit beside a whole cash flow (T-1821), and XNPV's rate,
+AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work cap"). The rest do not lift yet
+(`#N/IMPL!` for an array literal): XNPV's rate,
 XIRR's guess and FVSCHEDULE's principal sit beside whole data (T-1843). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
 The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
@@ -576,6 +591,33 @@ Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-
 Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds/financial.rs (`CUMULATIVE_WEIGHT`, `CUMULATIVE`)
 Tasks: T-1845
+
+## NPV, IRR and MIRR cash-flow work cap
+Rule: RustSheet charges each lifted NPV, IRR or MIRR element for its walks over the cash flows, against SPEC-0011's
+2^27 visit cap. NPV and MIRR elements cost one unit per flow. An IRR element costs 512 units per flow (`IRR_WEIGHT`),
+because `compute_irr` makes at most 455 NPV passes per call: two secant runs of 52, then the fallback's Newton from the
+guess (100 with its derivative passes), its bisection's 51, and its Newtons from 200 and -2 (200). A call over too
+many flows times elements is `#ERROR!` before its first element, where Excel lifts every element (the lifts:
+probes/fin-argument-modes H155-H156, H172-H174, H187-H188; Excel's own limit is unprobed).
+`ROWS(IRR(A1:A300000,{0.1;0.1}))`, `ROWS(NPV(SEQUENCE(500),A1:A300000))` and
+`ROWS(MIRR(A1:A300000,SEQUENCE(500),0.1))` are `#ERROR!`. `ROWS(NPV(SEQUENCE(100),A1:A300000))` is 100. The scalar
+calls are not capped.
+Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
+Status: DEVIATION (decision 0014)
+Implemented in: functions/lift/kinds/financial.rs (`NPV`, `IRR_WEIGHT`, `IRR`, `MIRR`); functions/financial/mod.rs
+(`flow_count`)
+Tasks: T-1821
+
+## NPV, IRR and MIRR error order
+Rule (ours, unprobed): NPV reads its rate before its cash flows, so a rate error wins over an error in the flows. IRR
+and MIRR read their flows first, so a flows error wins over a guess or rate error. This is the order the scalar calls
+had before T-1821. When the rate lifts, an error in the flows is every element's error, after that element's own
+earlier arguments. The flows are evaluated once per call, before the elements, even when NPV's rate is an error. The
+values are the same, but it is not Excel's evaluation order, which is unprobed.
+Evidence: none yet (T-2103).
+Status: UNVERIFIED
+Implemented in: functions/financial/mod.rs (`fn_npv`, `fn_irr`), functions/financial/mirr.rs (`fn_mirr`)
+Tasks: T-1821, T-2103
 
 ## AMORLINC and AMORDEGRC over many periods
 Rule: Excel walks AMORLINC's and AMORDEGRC's periods one by one in doubles, so a long walk carries every rounding:
