@@ -16,7 +16,7 @@ use crate::{
     get_all_timezones,
     limits::check_range_size,
     model::Model,
-    reference_operators::RefArg,
+    reference_operators::{Ranges, RefArg},
 };
 
 /// Applies `f` to every element of a 2-D array, keeping its shape.
@@ -576,10 +576,31 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         if arg_count == 1 {
+            // A reference counts the sheets between its corners, in either order
+            // (probes/info-sheets-info-types D1:D24, excel-graph; T-2181).
+            // Only a written reference is read: a union, a name, OFFSET, INDIRECT, INDEX, an
+            // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So are a
+            // range operator over function operands (`A1:OFFSET(..)`) and a cross-sheet one
+            // (`Alpha!A1:Beta!B1`); the arm below reads whatever such a form evaluates to.
+            if matches!(
+                args[0].ungrouped(),
+                Node::ReferenceKind { .. }
+                    | Node::RangeKind { .. }
+                    | Node::OpRangeKind { .. }
+                    | Node::SheetSpanKind { .. }
+            ) {
+                if let RefArg::Ranges(Ranges::One(area)) =
+                    self.evaluate_reference_arg(&args[0], cell)
+                {
+                    return CalcResult::Number(
+                        f64::from(area.left.sheet.abs_diff(area.right.sheet)) + 1.0,
+                    );
+                }
+            }
             return CalcResult::Error {
                 error: Error::NIMPL,
                 origin: cell,
-                message: "Sheets function with an argument is not implemented".to_string(),
+                message: "Sheets function with this argument is not implemented".to_string(),
             };
         }
         let sheet_count = self.workbook.worksheets.len() as f64;
