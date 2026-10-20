@@ -3,7 +3,7 @@ id: T-2198
 title: "Probe the lift argument kinds of LOG, DECIMAL, BASE, ATAN2, ARABIC, DOLLAR, FIXED and NUMBERVALUE (T-2159, T-2160)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -51,3 +51,7 @@ array constant, and does it lift over or refuse a multi-cell range given directl
 ## Out of scope
 - Changing the engine (T-2159, T-2160).
 - Legacy (pre-dynamic-array) formulas of these functions.
+
+## Outcome
+Added `probes/t2198-m5-lift-argument-kinds` (excel-graph sidecar filled). Result: every argument of the 8 functions lifts
+over both an array and a direct 3x1 range, so T-2159 and T-2160 use `Lift` for all arguments. Recorded in arrays.md.

@@ -305,8 +305,22 @@ Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/043ee562f32eb901 Calc!A204, g
 gen-m5/8a387c26d182e73c Calc!A42, gen-m5/aac6230c2fb40e1e Calc!A258, gen-m5/c0651f0e0fb544d0 Calc!A84, gen-m5/f0f205865a3a4328 Calc!A208,
 gen-m5/6361fdf5993da954 Calc!A378, gen-m5/7d1a5d223624fc70 Calc!A380, gen-m5/d586a1e0c9896942 Calc!A364,
 gen-m5/aac6230c2fb40e1e Calc!A213, gen-m5/ae9ed30812c4d62c Calc!A154; consistent with it but not evidence (a scalar `#VALUE!` base): gen-m5/5704666097cbc5b2 Calc!A153.
-Unprobed: which arguments of each lift, and whether a multi-cell range given directly is lifted or refused
-(Analysis ToolPak functions refuse it, numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes").
+Argument kinds (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds, rows 10-27): every argument of all eight
+functions lifts both over an array constant and over a 3x1 range given directly, on rows off the range (`ROWS` is 3 in each
+case; element 2 equals the scalar control). So every argument is `Lift` (arrays and ranges), none is `LiftArrays`; unlike the
+Analysis ToolPak functions (numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes"), no argument refuses a range.
+| Function | Arguments that lift over a range and an array |
+|---|---|
+| LOG | number, base |
+| DECIMAL | text, radix |
+| BASE | number, radix, min_length |
+| ATAN2 | x_num, y_num |
+| ARABIC | text |
+| DOLLAR | number, decimals |
+| FIXED | number, decimals, no_commas |
+| NUMBERVALUE | text, decimal_separator, group_separator |
+Two array arguments broadcast: `{1;2}` with `{1,2,3}` is 2x3 (rows 29-35 A-C), and `{v;v}` with a 3x1 array gives `#N/A` in
+the missing third row (D29-D35).
 Status: VERIFIED (excel-graph) for the cells above; not implemented (T-2159 math, T-2160 text).
 
 ## Legacy (CSE) array formula over a larger range
