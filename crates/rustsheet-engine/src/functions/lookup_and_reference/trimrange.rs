@@ -257,6 +257,14 @@ impl Model {
         }
 
         let (num_rows, num_cols) = (data.len(), data[0].len());
+        // Excel: an all-blank source keeps its full extent while trim_rows is 0, whatever
+        // trim_cols is (`TRIMRANGE(C20:C21,0)` is the 2x1 range, `TRIMRANGE(C20:C21,3,0)` is
+        // #REF!); see docs/excel-semantics/lookup.md "TRIMRANGE lifted over an array, a computed
+        // reference or an error" (probes/trimrange-lift-edge-sources; a single column only, other
+        // shapes are TODO(T-2127)).
+        if non_blank.is_none() && trim_rows == 0 {
+            return Ok((0..num_rows, 0..num_cols));
+        }
         // Trimming a mode removes leading blanks (1), trailing (2) or both (3); with no value
         // at all the leading edge is past the end and the trailing one before the start.
         let edges = |mode: i32, found: Option<&Range<usize>>, len: usize| {
