@@ -442,6 +442,28 @@ longdouble, then `astype(float64)` after every op). Scripts run from the repo ro
       1.14e-16 on Excel (stored-like). Masks also raise the score on stored truth (29.3% -> 34.1%).
     - Reviewer 3's K2 hand-off term (c/x at stage k, -c at k-1), scanned per stage: no jump beyond the N4 shift.
 
+## Pick-up (paused 2026-10-20)
+- **Best honest chain:** `data/xl_chain_d3ls.txt`, all ops stored, exact R 42.7% on 200k points of the 6.34M-row
+  Rall. `data/xl_chain_80.txt` is 56.8% only under the suspect MASK_80.
+- **Settled:**
+  - raw-x Horner, degree (9,9), D9 ~ 0;
+  - upper stages stored (lit sites N.P5..N.S4, D.P5..D.P2);
+  - N6, D6, N7, D7 at their current values;
+  - N4 = +3 mod 8 from xl_pcD0;
+  - D3 = xl_pcD0 - 2,070,784 ulps;
+  - D0 near 0.0016, held fixed; the low block N0..N3, D1, D2 comes from `lowsolve.py` with DATAF rows.
+- **Open:**
+  - N.P3 and D.P1 are dark. Search for the N4 alias beyond ±1e7 or for the structure below S4/P2.
+  - N.S6 and D.S6 are only partly lit (beta 0.7-0.8), which points to N8, N9 or D8 aliases.
+  - Wide N8/D8 scans (`DEPTH=3 PERRUN=256 pkscan.py RALL CHAIN N 8 70000 1 30000`) were stopped unfinished.
+  - W5's noise fingerprint (all-stored vs MASK_80) is pending.
+- **Next step:**
+  1. Run the N8/D8 depth scans. If an alias lights, bump it (`bump.py`) and re-map with `sitemap.py`.
+  2. Then do `pkscan.py` at N.P3 and D.P1 with the corrected upper block.
+  3. Then `lowsolve.py` and `scoreR.py` / `climb6.py`.
+- **Data:** Rall comes from `rows_all.py OUT 1.5 2` + `rext.py` (scratch only, never committed). It used the w6t
+  fill as dumped 05:20 (about 234-253 of 750 cases).
+
 ## Negative so far
 - Relative-LS rationals of R on [1.5,2] in raw x, with D0 = 1:
   - maximum relative error 7e-16 for (4,4), 2e-19 for (5,5) and 7e-23 for (6,6);
