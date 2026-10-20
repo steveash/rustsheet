@@ -20,6 +20,7 @@ pub mod closeness;
 pub mod deviations;
 pub mod engine;
 pub mod evidence_floor;
+pub mod exit_exceptions;
 pub mod fetch;
 pub mod function_scope;
 pub mod lift_kinds;

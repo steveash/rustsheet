@@ -18,6 +18,12 @@ fn test_fn_t_dist_smoke() {
     // Domain error: df < 1 -> #NUM!
     model._set("A4", "=T.DIST(2, 0, TRUE)");
     model._set("A5", "=T.DIST(2, -1, TRUE)");
+    // The density divides by the truncated df: (-1, 1) is #DIV/0!, -1 and below #NUM!
+    // (probes-numeric m9-t-edges A27-A42).
+    model._set("A6", "=T.DIST(2, 0.5, FALSE)");
+    model._set("A7", "=T.DIST(2, -0.5, FALSE)");
+    model._set("A8", "=T.DIST(2, -1, FALSE)");
+    model._set("A9", "=T.DIST(2, 0.5, TRUE)");
 
     model.evaluate();
 
@@ -28,6 +34,10 @@ fn test_fn_t_dist_smoke() {
     assert_eq!(model._get_text("A3"), *"#ERROR!");
     assert_eq!(model._get_text("A4"), *"#NUM!");
     assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
+    assert_eq!(model._get_text("A7"), *"#DIV/0!");
+    assert_eq!(model._get_text("A8"), *"#NUM!");
+    assert_eq!(model._get_text("A9"), *"#NUM!");
 }
 
 #[test]

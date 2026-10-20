@@ -224,6 +224,13 @@ row and a function the catalog does not list counts as in scope. Each row has sc
 bit-exact, deviations and failing; the failing cells are listed once, under the first row that has
 them ("Newly failing at Mk"). Cells with neither formula nor anchor (spill children) are left out and
 counted separately. The M2 row is the M2 exit measure and the M5 row the M5 one (docs/milestones.md).
+The cells a decision leaves out of an exit measure are named in `eval/milestones/exit-exceptions.tsv`
+(`exit_exceptions.rs`, decision 0087; one line per cell: `case!Sheet!A1`, the first milestone whose row
+leaves it out, the decision, the owning task). Each row lists them as `excepted` (report.json
+`function_scope.rows[].excepted`) and report.md shows `failing excl. exceptions` beside `failing`, which
+keeps its meaning. `run` and `check` refuse a malformed line or a repeated cell; a listed cell that fails
+in no row is listed under "Stale exit exceptions" without failing the run. The file never touches
+eval/baseline or the gate.
 
 ## CLI
 ```
