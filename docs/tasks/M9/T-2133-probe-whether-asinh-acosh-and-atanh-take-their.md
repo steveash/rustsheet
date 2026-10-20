@@ -25,5 +25,9 @@ different results, then switch only if the oracle says so.
 - [ ] The engine follows the evidence; numbers.md records the rule.
 - [ ] `make check` green; reviewers approve.
 
+**ATANH is done (T-0917):** its log branch is `0.5 * excel_ln` of the twice-rounded quotient, fitted on 62 cells
+(numbers.md "ATANH and ACOTH"); only ASINH and ACOSH remain here.
+
 ## Out of scope
 - LN itself (T-2123) and the gamma functions (T-2128, T-2129).
+- ATANH and ACOTH (T-0917).

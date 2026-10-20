@@ -407,8 +407,19 @@ while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). The engine matches all six (T-0235).
 ISFORMULA reads the cell INDEX picks, as it reads the cell OFFSET or INDIRECT gives: `ISFORMULA(INDEX(Data!D1:D3,1))` is TRUE
 with Data!D1 = `=1+1` (probes/ifna-isformula-edges Calc!B12, excel-graph; B10, B11 for INDIRECT and OFFSET). The engine
-matches since T-1453 (`evaluate_call_with_reference` evaluates INDEX in its reference form). Unprobed: INDEX as the
-argument of the other reference readers (SHEET, CELL, FORMULATEXT), which take the same path.
+matches since T-1453 (`evaluate_call_with_reference` evaluates INDEX in its reference form).
+INDEX as the reference argument of FORMULATEXT, CELL and OFFSET (probes/index-reference-args, excel-graph 2026-10-20, T-2059;
+Data!A2 `=A1+1`, B2 `=B1*2`, A1/A3 constants): the picked cell is a reference everywhere. `FORMULATEXT(INDEX(Data!A1:A3,2))` is
+`=A1+1` and `INDEX(Data!A1:B3,2,2)` gives `=B1*2` (A2, A3 of Calc); a constant pick is `#N/A` (`INDEX(Data!A1:A3,1)`); an
+out-of-range index is `#REF!` (`INDEX(Data!A1:A3,9)`) and an array-constant source is `#VALUE!` (`INDEX({1,2,3},2)`), not `#N/A`.
+`INDEX(Data!A1:A3,0)` is the whole column, so FORMULATEXT spills its three results (`#N/A`, `=A1+1`, `#N/A`).
+`CELL("address",INDEX(Data!A1:B3,2,2))` is the cross-sheet `[file]Data!$B$2`, `"row"` and `"col"` are 2, and `"contents"` is 2
+(Calc!B2's own value, the formula's-own-sheet rule of information.md "CELL(contents, ref) reads the formula's own sheet"); `INDEX(..,9)` is `#REF!` and an array
+constant `#VALUE!`; `INDEX(Data!A1:B3,0,2)` gives the address of its top-left cell `[file]Data!$B$1`.
+`OFFSET(INDEX(Data!A1:A3,2),1,0)` is Data!A3 (3), `OFFSET(INDEX(Data!A1:B3,2,2),-1,0)` is Data!B1 (10), a 2-row OFFSET off the
+picked cell has 2 rows, `OFFSET(INDEX(Data!A1:B3,0,2),1,0)` spills B2:B4 (20, 30, 0), `INDEX(..,9)` is `#REF!` and an array
+constant `#VALUE!`. The engine matches all but the two FORMULATEXT error forms: it returns `#ERROR!` for
+`FORMULATEXT(INDEX(Data!A1:A3,9))` (Excel `#REF!`) and `FORMULATEXT(INDEX({1,2,3},2))` (Excel `#VALUE!`), filed as T-2137.
 XLOOKUP, TAKE, DROP and TRIMRANGE are references to ISREF when they pick cells of a range:
 `ISREF(XLOOKUP(2,A1:A3,B1:B3))`, `ISREF(TAKE(A1:B3,1))`, `ISREF(DROP(A1:B3,1))` and `ISREF(TRIMRANGE(A1:B3))` are
 TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a range return); over an array

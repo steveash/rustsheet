@@ -393,6 +393,7 @@ C	probes/index-array-indices.case.json	60
 C	probes/index-lifted-edge-cases.case.json	61
 C	probes/index-literal-scalar.case.json	12
 C	probes/index-one-index-array-shape.case.json	36
+C	probes/index-reference-args.case.json	25
 C	probes/index-scalar-indexes.case.json	23
 C	probes/index-single-index.case.json	6
 C	probes/index-snap-tolerance.case.json	67
@@ -1739,6 +1740,8 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E4
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E5
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
+F	probes/index-reference-args.case.json	Calc!A4
+F	probes/index-reference-args.case.json	Calc!A5
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
@@ -2122,7 +2125,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!K7
 F	probes/m7-argument-modes.case.json	Sheet1!K8
 F	probes/negative-date-sections-1900.case.json	S!A21
 F	probes/negative-date-sections-1900.case.json	S!A22
-F	probes/negative-date-sections-1904.case.json	S!A10
 F	probes/negative-date-sections-1904.case.json	S!A21
 F	probes/negative-date-sections-1904.case.json	S!A22
 F	probes/negative-date-sections-1904.case.json	S!A23
