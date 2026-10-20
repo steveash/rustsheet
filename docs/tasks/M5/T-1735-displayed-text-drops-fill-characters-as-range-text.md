@@ -1,7 +1,7 @@
 ---
 id: T-1735
 title: "Displayed text drops * fill characters, as Range.text does (accounting formats, *.0.00, 0.00*-)"
-milestone: M10
+milestone: M5
 lane: functions-text
 status: todo
 priority: P2
@@ -14,6 +14,8 @@ depends_on: []
 A `*x` fill (repeat) character adds nothing to the displayed text, as Excel's `Range.text` shows it; `_x` still adds a space.
 
 ## Context
+- Milestone M10 -> M5 (gap triage 2026-10-20): this task owns gen-m5 known failures of an M5 catalog function, and decision 0085 item 3 requires every failing cell of an M5 exit criterion to be owned by a task with milestone M5 so the pick order reaches it while M5 is current. Id and scope are unchanged.
+
 The four accounting built-ins (`_(* #,##0_);...`, `_("$"* #,##0.00_);...`; 320 text cells, all fail),
 `*.0.00` and `0.00*-` (146 fail). Excel: 1000 under `_(* #,##0_)...` " 1,000 ", 1234567890 under
 `_("$"* #,##0.00_)...` " $1,234,567,890.00 ", PI() under `*.0.00` "3.14", under `0.00*-` "3.14"; ours adds a
