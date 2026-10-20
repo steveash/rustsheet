@@ -1,5 +1,5 @@
 ---
-id: T-2108
+id: T-2119
 title: "BETA.DIST cdf on incomplete_beta::beta_reg; decide the nine chained BETA.INV cells it moves"
 milestone: M9
 lane: functions-stat
@@ -28,7 +28,7 @@ crossing (T-1745)".
 Recording the regressions needs `update-baseline --allow-regressions` under a decision record
 (directive 2; precedent decision 0064). An autonomous run was not permitted to run that command,
 so a person, or a reviewer-approved decision, has to settle it first.
-Code: `functions/statistical/beta.rs` `beta_dist_of` (TODO(T-2108)), `inverse_beta.rs`
+Code: `functions/statistical/beta.rs` `beta_dist_of` (TODO(T-2119)), `inverse_beta.rs`
 (`beta_inverse_cdf` should invert the same cdf), the lift weights' comments.
 F.INV and F.INV.RT have the same mismatch: they still invert statrs' F cdf while F.DIST uses
 `incomplete_beta` (`F_DIST.xlsx` J2, J3, L2, L3 stay NumericClose). Move them in the same

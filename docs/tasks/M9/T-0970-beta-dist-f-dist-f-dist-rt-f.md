@@ -50,7 +50,7 @@ T-0974 (BETA.INV/F.INV) and possibly T-0927 reuse it. Reference: `rg beta_reg` s
 definition afterwards.
 
 ## Acceptance criteria
-- [ ] (Partly: deferred to T-2108; BETADIST_BETAINV G5 and G26 remain NumericClose) No BETA.DIST/F.DIST/F.DIST.RT/F.TEST line listed above remains NumericClose (`rustsheet-eval show`),
+- [ ] (Partly: deferred to T-2119; BETADIST_BETAINV G5 and G26 remain NumericClose) No BETA.DIST/F.DIST/F.DIST.RT/F.TEST line listed above remains NumericClose (`rustsheet-eval show`),
       at least 25 of the 45 lines leave `eval/baseline/ironcalc-calc.txt`, no new lines in any
       baseline (BINOM/NEGBINOM must not regress if they switch kernel).
 - [x] Remaining lines (<= 4 ulp) listed in the PR with expected/actual; they wait for the T-1044
@@ -112,7 +112,7 @@ Measured on this branch, moving BETA.DIST's cdf to `beta_reg` fixes 16 more cell
 8 exact and 23 within 4 ulp of the 33 cumulative cells. But it moves nine chained
 BETA.INV(BETA.DIST()) cells from exact to 1-2 ulp, with any inversion tried.
 Recording those needs `--allow-regressions` under a decision record. This run was not permitted
-to do that, so the switch is T-2108. G5 (160 ulp, Excel correctly rounded) and G26 (30 ulp,
+to do that, so the switch is T-2119. G5 (160 ulp, Excel correctly rounded) and G26 (30 ulp,
 Excel 34 from correct) would stay NumericClose even then. Details are in
 docs/excel-semantics/statistics.md "Incomplete beta in the ironcalc-calc workbooks".
 Release microbenchmark, 200k calls each: `beta_reg` against statrs `beta_reg`.

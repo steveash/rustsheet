@@ -102,7 +102,7 @@ impl Model {
         }
         let t = (x - a) / width;
         let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
-        // TODO(T-2108): the cdf moves to `incomplete_beta::beta_reg` (bit-exact on more of
+        // TODO(T-2119): the cdf moves to `incomplete_beta::beta_reg` (bit-exact on more of
         // BETADIST_BETAINV.xlsx), once the chained BETA.INV cells it moves are decided.
         let result = if cumulative {
             dist.cdf(t)

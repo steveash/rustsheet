@@ -1403,11 +1403,11 @@ Moving the BETA.DIST cdf to this kernel also moves nine BETA.INV(BETA.DIST(...))
 statrs' inversion or with the inversion run on the new cdf. Under statrs they passed by chance,
 with both functions wrong in the same way. Excel's own pair lands on x exactly at H2 (3) and H14
 (0.7) but not at H23 (-0.23399999999999987) or H42 (0.23399999999999999), as T-1745 found. The
-switch waits for T-2108.
+switch waits for T-2119.
 Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
 densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
 stays UNVERIFIED (T-1744).
-Tasks: T-0970, T-2108, T-1744, T-1745
+Tasks: T-0970, T-2119, T-1744, T-1745
 
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
 Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)
