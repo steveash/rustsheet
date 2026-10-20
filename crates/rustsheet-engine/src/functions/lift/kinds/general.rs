@@ -4,7 +4,8 @@
 use super::ArgKind::{Lift, LiftArrays, Whole, WholeByCaller};
 use super::KernelWork::{Constant, Output};
 use super::{
-    ArgKinds, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2, LIFT_2, LIFT_3,
+    ArgKinds, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2, LIFT_2, LIFT_2_OF_3,
+    LIFT_3,
 };
 use crate::functions::Function;
 
@@ -21,8 +22,6 @@ const WORKDAYS_INTL: ArgKinds =
     ArgKinds::fixed(2, &[LiftArrays, LiftArrays, Lift, WholeByCaller], Constant);
 /// `CEILING.MATH(number, [significance], [mode])` and FLOOR.MATH.
 const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
-/// `DAYS360(start_date, end_date, [method])`.
-const LIFT_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift], Constant);
 
 // --- Math (T-1802) --------------------------------------------------------------------------
 /// `SERIESSUM(x, n, m, coefficients)`: x, n and m are Analysis `ToolPak` arguments, and the

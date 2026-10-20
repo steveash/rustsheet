@@ -5,7 +5,8 @@ use std::borrow::Cow;
 
 use super::casefold::fold_case;
 use crate::{
-    cast::array_node_to_text,
+    calc_result::CalcResult,
+    cast::calc_result_to_text,
     expressions::{parser::ArrayNode, token::Error},
     functions::{
         criteria::WildcardPattern,
@@ -17,13 +18,13 @@ use crate::{
 /// Computes a single FIND or SEARCH result from one element of each argument.
 /// SEARCH is the one that is not case sensitive and understands wildcards.
 pub(super) fn find_element(
-    find_text: &ArrayNode,
-    within_text: &ArrayNode,
+    find_text: &CalcResult,
+    within_text: &CalcResult,
     start_num: Result<f64, Error>,
     is_search: bool,
 ) -> Result<ArrayNode, Error> {
-    let find_text = array_node_to_text(find_text)?;
-    let within_text = array_node_to_text(within_text)?;
+    let find_text = calc_result_to_text(find_text)?;
+    let within_text = calc_result_to_text(within_text)?;
     let start_num = start_num?.floor();
     if start_num < 1.0 {
         return Err(Error::VALUE);
