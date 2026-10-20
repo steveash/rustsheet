@@ -3,7 +3,7 @@ id: T-2204
 title: "Decide how ironcalc-calc EXP_SIGN B44 (a cached 0 where Excel keeps 2^-1074) counts for the M5 exit"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
