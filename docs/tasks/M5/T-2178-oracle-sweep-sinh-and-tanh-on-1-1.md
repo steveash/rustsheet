@@ -53,5 +53,5 @@ formulation of Excel's hyperbolic kernel there instead of guessing from the few 
 - The overflow edge (T-2169) and the inverse hyperbolics (T-0917, T-2062).
 
 ## Outcome
-Added `t2178-hyperbolic-unit-sweep` (1034 x, SINH/TANH/COSH) with excel-graph sidecar. Engine matches 2235/3102 cells (SINH misses 402, TANH 463, COSH 2). numbers.md and T-2134 link it.
+Added `t2178-hyperbolic-unit-sweep` (1035 x, SINH/TANH/COSH) with excel-graph sidecar. Engine matches 2236/3105 cells (SINH misses 403, TANH 464, COSH 2). numbers.md and T-2134 link it.
 Recipe (to regenerate or extend): `random.Random(2178)`; order = k/500 (k=1..499), 300 `rng.random()` doubles, 100 log-spaced `10**(-8+6*i/99)` formatted `%.17g`, then the literal arguments (|x|<1) of SINH/TANH/COSH/COTH/CSCH/SECH cells in m9-hyperbolic and t0917-hyperbolic-switchover plus 0.2/0.3/0.4/0.41/0.5/pi/4, then negatives of 100 `Random(21780).sample` of those, then 20 points `1+0.5*(i+0.5)/20`; duplicates dropped.
