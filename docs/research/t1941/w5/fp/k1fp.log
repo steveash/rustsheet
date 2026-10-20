@@ -1,0 +1,7 @@
+K1 real (300000 points): rms 1.045 median 0.700
+  AN2 exact on these points (all stored): 0.6752
+  sim all stored                           rms 1.043 median 0.697
+  sim W4 x87-top: N top5 / D top4 80-bit   rms 0.973 median 0.660
+  sim N top4 / D top3 80-bit               rms 1.029 median 0.690
+  sim N top6 / D top5 80-bit               rms 0.883 median 0.605
+  sim all 80-bit                           rms 0.289 median 0.250

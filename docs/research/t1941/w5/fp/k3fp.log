@@ -1,0 +1,6 @@
+targets found for 1.0000 of points
+real: rms 1.025 median 0.669
+sim all stored           rms 1.028 median 0.669
+sim stored below 3 both  rms 0.855 median 0.538
+sim N<2, D 80-bit        rms 0.596 median 0.386
+sim all 80-bit           rms 0.335 median 0.264
