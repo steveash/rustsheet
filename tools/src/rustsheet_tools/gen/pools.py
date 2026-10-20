@@ -1,7 +1,8 @@
 """Edge pools for catalog parameters (`pool: <name>`, synthetic-generator.md §3.2 and §6.1).
 
-Each entry is formula text. Nothing here may
-be a literal at or above 1E+308: Excel rejects the whole workbook for one (docs/excel-semantics/numbers.md)."""
+Each entry is formula text. Nothing here may be a literal at or above 1E+308: Excel rejects the whole
+workbook for one (docs/excel-semantics/numbers.md). `number_edges` is the targeted counterpart of the generic
+`NUMBER_POOL` in generator.py, which every number literal draws from."""
 
 from __future__ import annotations
 
