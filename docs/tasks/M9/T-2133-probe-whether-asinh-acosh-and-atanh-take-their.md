@@ -21,9 +21,9 @@ Excel-fidelity review. Probe (excel-probe skill) a few hundred x per function wh
 different results, then switch only if the oracle says so.
 
 ## Acceptance criteria
-- [ ] A probes case with excel-graph values for ASINH, ACOSH and ATANH at points where the two ln models differ.
-- [ ] The engine follows the evidence; numbers.md records the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] A probes case with excel-graph values for ASINH, ACOSH and ATANH at points where the two ln models differ.
+- [x] The engine follows the evidence; numbers.md records the rule.
+- [x] `make check` green; reviewers approve.
 
 **ATANH is done (T-0917):** its log branch is `0.5 * excel_ln` of the twice-rounded quotient, fitted on 62 cells
 (numbers.md "ATANH and ACOTH"); only ASINH and ACOSH remain here.
