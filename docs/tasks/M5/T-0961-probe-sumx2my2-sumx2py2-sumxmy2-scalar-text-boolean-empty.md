@@ -1,7 +1,7 @@
 ---
 id: T-0961
 title: "Probe SUMX2MY2/SUMX2PY2/SUMXMY2 scalar text, boolean, empty args and error-vs-#N/A precedence"
-milestone: M9
+milestone: M5
 lane: functions-math
 status: todo
 priority: P3
@@ -15,6 +15,8 @@ Excel's behavior for SUMX2MY2/SUMX2PY2/SUMXMY2 with scalar text, numeric text, b
 arguments, and error-versus-`#N/A` precedence, is established by oracle probes and implemented.
 
 ## Context
+- Milestone M9 -> M5 (gap triage 2026-10-20): this task owns gen-m5 known failures of an M5 catalog function, and decision 0085 item 3 requires every failing cell of an M5 exit criterion to be owned by a task with milestone M5 so the pick order reaches it while M5 is current. Id and scope are unchanged.
+
 T-0944 treats any non-number scalar as one skipped pair (so `SUMXMY2("a","b")` is `#DIV/0!`) and
 returns the first error found before the element-count `#N/A` check. Neither choice has Excel
 evidence (reviewer finding). Code: `sumx_values` / `sumx_fold` in

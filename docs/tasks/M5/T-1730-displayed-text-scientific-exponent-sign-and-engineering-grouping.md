@@ -1,7 +1,7 @@
 ---
 id: T-1730
 title: "Displayed text: scientific exponent sign and engineering grouping (E+0 for a zero exponent, ##0.0E+0, 00.0E+0)"
-milestone: M10
+milestone: M5
 lane: functions-text
 status: todo
 priority: P2
@@ -14,6 +14,8 @@ depends_on: []
 Scientific formats show the exponent sign and group the mantissa as Excel's displayed text does.
 
 ## Context
+- Milestone M10 -> M5 (gap triage 2026-10-20): this task owns gen-m5 known failures of an M5 catalog function, and decision 0085 item 3 requires every failing cell of an M5 exit criterion to be owned by a task with milestone M5 so the pick order reaches it while M5 is current. Id and scope are unchanged.
+
 Codes `0.00E+00`, `0.0E+00`, `0E+0`, `#E+0`, `0.000E-00`, `##0.0E+0`, `##0.00E+00`, `00.0E+0` (~240 failing
 text cells). Excel: 1.5 `0.00E+00` "1.50E+00" (ours "1.50E-00": a zero exponent gets `-`); `0.000E-00` 1.5
 "1.500E00" (ours "1.500E-00"); `##0.0E+0` 123456.789 "123.5E+3" and 61 "61.0E+0" (engineering: the exponent a
