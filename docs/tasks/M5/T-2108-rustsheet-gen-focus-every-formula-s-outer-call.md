@@ -3,7 +3,7 @@ id: T-2108
 title: "rustsheet-gen --focus: every formula's outer call is a function of the target milestone, cycled evenly"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
