@@ -8,6 +8,7 @@ use chrono::{Datelike, NaiveDate};
 
 use crate::{
     calc_result::CalcResult,
+    constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{token::Error, types::CellReferenceIndex},
     formatter::dates::{from_excel_date, EPOCH_1904_IN_1900_SERIALS},
     functions::lift::num_error,
@@ -41,6 +42,18 @@ pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bo
     let start_day = start.day();
     let end_day = end.day();
     Ok(end_day <= start_day)
+}
+
+/// The settlement half of [`Model::check_settlement`]: #NUM! below serial 1. The COUP*
+/// functions check it before they read the maturity (probes/securities-argument-error-order A15).
+pub(super) fn check_settlement_serial(
+    settlement: i64,
+    cell: CellReferenceIndex,
+) -> Result<(), CalcResult> {
+    if settlement < 1 {
+        return Err(num_error(cell));
+    }
+    Ok(())
 }
 
 impl Model {
@@ -89,10 +102,28 @@ impl Model {
         maturity: i64,
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
-        if settlement < 1 || settlement >= maturity {
+        check_settlement_serial(settlement, cell)?;
+        if settlement >= maturity {
             return Err(num_error(cell));
         }
         Ok(())
+    }
+
+    /// A date argument of the TBILL functions as read: its number, #NUM! unless it floors to a
+    /// serial from 0 to 9999-12-31, checked before the next argument is read (`TBILLEQ(-1,1/0,0.05)`
+    /// and `TBILLEQ(39000,2958466,1/0)` are #NUM!, `TBILLEQ(0,39100,1/0)` #DIV/0!;
+    /// probes/securities-argument-error-order C1:F16; financial.md, T-1406).
+    pub(super) fn financial_calendar_date_of(
+        &self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let serial = self.cast_number_no_bools_ref(value, cell)?;
+        let calendar = 0..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
+        if !calendar.contains(&self.financial_date(serial)) {
+            return Err(num_error(cell));
+        }
+        Ok(serial)
     }
 
     /// The date checks PRICE, YIELD and DURATION make before computing: [`Model::check_settlement`]
