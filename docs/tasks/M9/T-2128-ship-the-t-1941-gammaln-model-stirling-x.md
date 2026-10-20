@@ -3,7 +3,7 @@ id: T-2128
 title: "Ship the T-1941 GAMMALN model: Stirling x>=8, recursions and the K2, K3, (1.5,2] kernels"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
