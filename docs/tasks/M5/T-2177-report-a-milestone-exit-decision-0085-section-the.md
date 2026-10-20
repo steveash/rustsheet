@@ -3,7 +3,7 @@ id: T-2177
 title: "Report a Milestone exit (decision 0085) section: the four M5 and M6 exit measures against their thresholds"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
