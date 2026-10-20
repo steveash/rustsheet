@@ -365,6 +365,7 @@ C	probes/groupby-sort-filter-args2.case.json	38
 C	probes/groupby-subtotals.case.json	3386
 C	probes/growth-modes.case.json	112
 C	probes/if-index-ref-args-aggregates.case.json	54
+C	probes/if-switch-one-cell-selector.case.json	13
 C	probes/iferror-blank-value.case.json	23
 C	probes/ifna-isformula-edges.case.json	40
 C	probes/ifs-array-criteria-edges.case.json	22
