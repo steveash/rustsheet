@@ -26,7 +26,9 @@ fn arguments() {
     assert_eq!(model._get_text("A7"), *"#ERROR!");
 }
 
-// gen-m5 excel-graph oracle, 2026-10-20 (T-2154; numbers.md "ROMAN truncates before its sign check").
+// gen-m5 excel-graph oracle, 2026-10-20 (T-2154; numbers.md "ROMAN truncates before its sign check;
+// BASE checks the sign first"). A1-A3, A5-A6 are oracle cells; A4 (`ROMAN(-1)`), A7 (`BASE(-1,5)`) and A8
+// (`BASE(0.9,5,2)`) are hand-written expectations from the documented rules, not probed.
 #[test]
 fn roman_truncates_before_the_sign_check_and_reads_its_form_for_zero() {
     let mut model = new_empty_model();

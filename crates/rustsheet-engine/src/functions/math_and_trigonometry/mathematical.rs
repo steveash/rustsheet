@@ -147,7 +147,7 @@ impl Model {
         }
 
         // number must be >= 0, checked before truncation: `BASE(-0.0001,5,4)` is `#NUM!`
-        // (gen-m5/a6fec430ac350c1a Calc!A31; numbers.md "ROMAN truncates before its sign check").
+        // (gen-m5/a6fec430ac350c1a Calc!A31; numbers.md "ROMAN truncates before its sign check; BASE checks the sign first").
         if number < 0.0 {
             return CalcResult::Error {
                 error: Error::NUM,

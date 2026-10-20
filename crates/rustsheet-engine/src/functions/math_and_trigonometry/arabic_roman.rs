@@ -211,7 +211,7 @@ impl Model {
         }
         let number = match self.get_number(&args[0], cell) {
             // Excel truncates before the sign check: `ROMAN(-0.5025)` is "" and not `#VALUE!`
-            // (gen-m5/49bfbf67a1409563 Calc!A179; numbers.md "ROMAN truncates before its sign check").
+            // (gen-m5/49bfbf67a1409563 Calc!A179; numbers.md "ROMAN truncates before its sign check; BASE checks the sign first").
             Ok(f) => f.trunc(),
             Err(s) => return s,
         };
