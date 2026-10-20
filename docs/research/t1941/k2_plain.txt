@@ -1,0 +1,7 @@
+# K2 (GAMMALN on (2,3]) plain-double coefficient candidate (reviewer 3, 2026-10-20 06:45 UTC). PLAIN stored x87 Horner
+# (every product and sum rounded to double), y = fl(fl(x-2) * fl(N/D)), high-order first as review3/spec.py.
+# Only p1..p5 and q0..q4 differ from grid_a; p0, p6..p9, q5..q8 = grid_a.
+# Coordinator check, 14 long runs: mean 0.921 (v404a held out 0.912); reviewer 3: 1,024 clusters 0.933.
+# p4 and q3 are whole-ulp pinned; p1..p3 / q0..q2 lie on a near-null continuum (not yet unique). Not bit-exact.
+p 0x1.5717994ef45d1p-51 0x1.5e5b7382770d2p-16 0x1.0ee2f11891878p-9 0x1.572bf86841a77p-5 0x1.09fd1ad1d8fecp-2 0x1.f0a8c053986d7p-2 -0x1.08305b47998b9p-6 -0x1.0ae34eb3cbad6p-1 -0x1.de852aee8c153p-3 -0x1.22260ed97843dp-6
+q 0x1.03cadf2cc5614p-18 0x1.52fc9914bdd6cp-11 0x1.5303658ef4484p-6 0x1.bb43b464d3964p-3 0x1.c515177eb1641p-1 0x1.7b39fc9194438p+0 0x1.eddf2040d2bc2p-1 0x1.9b252b2fab347p-3 0x1.00000000000eap-7
