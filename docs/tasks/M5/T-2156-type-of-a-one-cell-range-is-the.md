@@ -3,7 +3,7 @@ id: T-2156
 title: "TYPE of a one-cell range is the cell's type, not 64"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
