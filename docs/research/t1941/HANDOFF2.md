@@ -245,3 +245,146 @@ from sections 3-7 here.
   3. k1l (78, generator `w4/gen_k1ladder.py`);
   4. k3l g-l;
   5. then w6t/k3t.
+
+## 12. Pause (2026-10-20 ~08:15): final worker states and pickup points
+
+The owner paused the research track to save usage. All workers are stopped and every oracle that landed is
+committed. Each worker's scripts are committed: W2 in `w2/` (with `w2/fingerprint/` and `w2/k3/`), W4 in `w4/k1r/`,
+W5 in `w5/p5/` and `w5/fp/`, W6 in `w6/`, and reviewer 3 in `review3/` and `review3/final/`. Paths inside the
+pasted scripts point at a scratchpad. Reviewer 3 uses the literal `SCRATCH/`. Edit them before running.
+
+### 12.1 K2 (2,3]: structure now argued to be plain stored; residual is a per-run offset at N.s3
+- **Reviewer 3's structure verdict:**
+  - The near-2 ladders are e401-e403, e501-e504, e511, e512 and r204: 139k points with x−2 from 4e-16 to 5e-7.
+  - They score 0.9953 with grid_a stored. Every single-op variant is worse:
+    - N.s3 unstored: 0.9685;
+    - N.P4: 0.938;
+    - D.d2: 0.990;
+    - FMA at any stage: ≤ 0.987;
+    - pure SSE2 double: 0.2 points worse;
+    - all-extended: 0.29.
+  - Near 2 the product ops are insensitive to the coefficients, so these mask tests stand.
+  - Head-80 (M\*) costs 3 points near 2. Its +1 point far from 2 is compensating coefficient error.
+  - The N.s3 rounding line is present in Excel's residual with amplitude ratio ≈ 1. An exact s3 would have no such
+    line.
+  - Not done: the far-only-refit transfer control.
+- **Reviewer 3's "cand9" set** (stored; p0, p6..p9 and q5..q8 as grid_a in `review3/spec.py`):
+  - p1 `0x1.5e5b738276791p-16`, p2 `0x1.0ee2f118918cdp-9`, p3 `0x1.572bf86841a71p-5`, p4 `0x1.09fd1ad1d8fecp-2`,
+    p5 `0x1.f0a8c053986d7p-2`.
+  - q0 `0x1.03cadf2cc5614p-18`, q1 `0x1.52fc9914bdd53p-11`, q2 `0x1.5303658ef4486p-6`, q3 `0x1.bb43b464d3964p-3`,
+    q4 `0x1.c515177eb1641p-1`.
+  - How it was built: a cubic fit to the cluster bias curve, plus the near-2 constraint 16δp1 + 8δp2 + 4δp3 = 7290u
+    with δp4 = −5209u and δp5 = +3128u, then a bit-match scan (`review3/final/cand9.py`, `clusterbias.py`).
+  - p4's parity is pinned odd.
+- **Coordinator check (my own runs, same data, stored sim, points in (2,3]):**
+
+  | Set | Near-2 ladders | 14 long runs | q2 cluster files |
+  |---|---|---|---|
+  | cand9 (stored) | **0.9926** | 0.9332 | 0.9384 |
+  | `k2_ref.py` (head-80 mask) | 0.9465 | **0.9498** | **0.9540** |
+
+  Neither dominates. cand9 is the better set close to 2, and k2_ref is better everywhere else. Both are good
+  starts.
+- **Residual (reviewer 3):** a per-run constant pre-rounding offset c3 at the N.s3 sum, with a weaker analogue at D.d2.
+  - A per-run c3 scan over all 1,825 runs (2.33M cells) lifts 0.9416 to 0.9549. Single runs gain up to 4.7 points
+    (r901: c3 = −0.25 ulp(s3), constant over 16 sub-blocks, 0.957 → 0.988).
+  - c3 is deterministic (551k duplicate x, no conflicts).
+  - It is constant for Δx < 5e-5 and decorrelated by 3e-4 to 5e-4.
+  - It is exactly 0 for x−2 < 1e-5, then winds faster as t = x−2 grows:
+    - −0.125 at t = 1.1e-4 to 2.2e-4;
+    - −0.25 at 2.6e-4;
+    - −0.375 at 4.3e-4;
+    - −0.69 at 8.4e-4;
+    - −1.31 at 1.6e-3;
+    - −1.9 at 2.0e-3.
+  - Far from 2 it looks pseudo-random per run, plus a slow ±0.35 wave.
+  - Excluded:
+    - head-coefficient changes (the bias curve forbids a winding Δ3);
+    - an exact or 54-64-bit s3;
+    - rounding modes and FMA;
+    - 64-bit constants;
+    - lookup tables on binary grids of x or t (2^-8 to 2^-16);
+    - frozen s1 residues;
+    - oracle batch effects.
+  - An A/x² term at the s3 level has the right winding magnitude and vanishes at 2. But R5's phase prediction does
+    not match (coherence ≤ 0.34), and the near-2 ramp is too slow.
+- **K2 pickup:**
+  1. Fill reviewer 3's micro-ladders. These are new probe cases, not written yet.
+     - At x0 ∈ {2.05, 2.25, 2.5, 2.75, 2.95}: runs of 256 consecutive doubles every 2e-5 across 3e-3, which is 750
+       runs.
+     - Plus x−2 ∈ [1e-5, 3e-3] every 1e-5, which is 300 runs.
+     - About 190k + 77k cells, ≤ 16,384 rows per case.
+  2. Unwrap c3(x) with `review3/final/c3all.py` and `c3table.py`, and test the laws A/x², A/x³, log, (x−2)^k and
+     bit patterns.
+  3. Fit D's q0..q2 on the near-2 ladders. D wants about −0.2 ulp(d2) there.
+  4. Re-check the s4, P4 and s5 line phases under cand9 (`review3/phaseM.py`-style).
+  5. Exclude the e404 glitch point x = 2.0000661560063.
+- **W2's view:**
+  - The R3-basin set in `k2_ref.py` is the committed reference. W2's alternative basin scores 0.9522.
+  - The fingerprint (`w2/fingerprint/finger.py`, `k2fp2.py`) cannot separate the K2 structures. It needs ≥ ~0.05
+    rms to tell structures apart, so the near-2 ladder test above is the better discriminator.
+
+### 12.2 K1 [1,2): W4 final
+- `w4/k1r/plain1.txt`: 0.776 exact, 0.878 within 1 ulp. My recheck is on 3.59M points.
+- plain1 is a strict local maximum under three searches:
+  - the upper-coefficient BKZ lattice (multiples ×1..×64);
+  - the dip-weighted global climb (`gclimb.py`);
+  - pairs and singles (`mclimb.py`).
+- W5's fingerprint says K1 is stored, or at most has a small 80-bit head. The x87-top mask is excluded. In the
+  [1.84,1.97] dip, real noise is not above planted plain1, so the dip is a coefficient problem.
+- **Pickup:**
+  1. Fill `kmyst-gam-k1l*` (78 cases, committed, no oracles).
+  2. Unwrap the D P2 line per rung (`dtrack.py` is the base).
+  3. Reconstruct S3(y). Fit D3..D7 with D2 pinned, then refit N.
+- Data: `k1R.txt` (3.33M rows) is rebuilt from the oracles with W4's extractor. `forensics.py` shows the
+  smallest N/D ulp change needed per region.
+
+### 12.3 K3 [0.7,1.5): W5 final (details in `w5/p5/README.md` "PAUSED")
+- Best set: `w5/p4/ss_fc.txt`, 33.37% exact on rows6 (5.68M points; q501/q502 excluded because they are GAMMA).
+  A lattice climb gives +0.7% at most.
+- Plain stored (fingerprint: real 1.025 vs stored 1.028; masks 0.34-0.86). W2 agrees.
+- **Ladder slopes so far** (cycles/x; some may be aliased by 2^21 until rungs 22-26 land):
+  - a (0.8013): N5 −8.1e5, N3 +5.6e5, D6 +2.4e5.
+  - b (0.9517): N6 −8.8e5, N5 +1.5e5, N3 −2.7e5, D6 +4.1e5, D5 +8.7e5, D4 −9.6e4.
+  - c (1.1023): N6 −2.8e5, N5 −1.7e5, N3 +8.5e5, D6 −6.1e4, D5 +5.0e5.
+- **Pickup:**
+  1. Fill the oracles in this order:
+     - `kmyst-gam-k3l[a-f]2[2-6]` (30);
+     - the one missing f rung;
+     - `kmyst-gam-k3l[g-l](00|1[0-9]|2[0-6])` (108).
+  2. From `w5/p5`, run `KMAX=26 MINRUNG=12 python3 ladder.py ../p4/ss_fc.txt real`, with the `control` run first.
+  3. Apply the solved N4..N7 / D5..D7 moves.
+  4. Peel: `peelstep.sh` for N j = 6..1, then D, then `n0scan.py`.
+- **W2's K3 c/x needle scans** (`w2/k3/lscan.py`):
+  - N5, D3, N4, D4, N6 and D2 are flat.
+  - Remaining: N3, D5, N7, D6, N2, D1, N8, D7, N1, D8 (the default `STAGES`). Build `libk3s.so` from `k3s.c`.
+
+### 12.4 (1.5,2]: W6 final (details in `w6/README.md` "Pick-up")
+- Honest best: `w6/data/xl_chain_d3ls.txt`, all stored, 42.7% exact R.
+- `xl_chain_80.txt` (56.8%) depends on MASK_80. Both W6's planted control (§11) and W5's fingerprint exclude
+  MASK_80:
+  - real minus sim, median: +0.18 against MASK_80, versus −0.076 for all-stored;
+  - at most the very last product/sum can be 80-bit, which is at the resolution limit.
+  - So the 56.8% lift is hidden coefficient error.
+- **Pickup:**
+  1. Run `DEPTH=3 PERRUN=256 python3 w6/pkscan.py RALL w6/data/xl_chain_d3ls.txt N 8 70000 1 30000`, and the same
+     for D 8.
+  2. If an alias lights, run `bump.py` and then `sitemap.py`.
+  3. Run `pkscan` at N.P3 (CH N J 4 PER 8) and D.P1 (CH D J 2 PER 512).
+  4. Then `lowsolve.py`, `scoreR.py` and `climb6.py`.
+- Rall is rebuilt with `rows_all.py OUT 1.5 2` plus `rext.py`.
+
+### 12.5 Unfilled probe cases at the pause
+- Committed without oracles:
+  - k3l a-f rungs 22-26 (30) and the one missing f rung;
+  - k3l g-l (108);
+  - k1l (78).
+- The rest of the w6t (750 total, 312 committed) and k3t (220 committed) sets were generated locally and never
+  committed. Their generators are committed; re-run them to regenerate.
+- The fill command is in T-2122. Commit landed oracles per batch.
+
+### 12.6 Engine implications (T-2123)
+- K2: ship `k2_ref.py` as the default. It scores best over most of (2,3].
+- cand9 is 0.99 within about 0.02 of 2, and t near 2 also feeds GAMMALN on [3,8) just above each integer.
+  Switching to cand9 there is a measured option, but it is not Excel's algorithm. Decide it with the eval data.
+- Nothing else changes for T-2123.

@@ -40,7 +40,10 @@ What to implement, in order (each piece cites its evidence file):
    - 3 ≤ x < 8: reduce t into [2,3), p = ascending stored product, fl(Gbase(t) + LN(p)); Gbase = K2.
    - (2,3]: K2 = (x−2)·fl(N/D), raw-x Horner N(9)/D(8), coefficients and structure from
      `docs/research/t1941/k2_ref.py` (0.95 exact, 0.978 within 1 ulp). If T-2122 has settled the structure as
-     all-stored, use stored ops throughout with the T-2122 coefficient set.
+     all-stored, use stored ops throughout with the T-2122 coefficient set. Reviewer 3's stored "cand9" set
+     (HANDOFF2 §12.1) scores 0.993 on the near-2 ladders against k2_ref's 0.946, but is worse further out
+     (0.933 against 0.950 on the long runs). Whether to use it for x−2 below about 0.02 is a measured choice
+     for this task; see HANDOFF2 §12.6.
    - (1.5,2]: fl((x−1)·fl((x−2)·R)), R = N/D from W6's current chain (`w6/data/`, with D3 and the low block as in
      HANDOFF2 §3.5), D0 not normalised.
    - [0.7, 1.5): K3 = (x−1)·fl(N/D), (9,9), coefficients `w5/p4/ss_fc.txt`.
