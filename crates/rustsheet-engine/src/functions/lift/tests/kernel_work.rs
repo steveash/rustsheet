@@ -328,21 +328,21 @@ fn coupon_elements_are_charged_by_schedule_length() {
         coupnum(ArrayNode::Number(1.0), 2_954_994.0, quarterly(), 1),
         2 * 65_460
     );
-    // 2007-01-01 to 2020-01-01 semiannually: 2 walks of 53 units (26 periods).
+    // 2007-01-01 to 2020-01-01 semiannually: 2 walks of 55 units (26 periods).
     assert_eq!(
         coupnum(ArrayNode::Number(39_083.0), 43_831.0, number(2.0), 1),
-        2 * 53
+        2 * 55
     );
-    // A settlement a day before the maturity: one unit a walk.
+    // A settlement a day before the maturity: a walk's one period, 3 units.
     assert_eq!(
         coupnum(ArrayNode::Number(43_830.0), 43_831.0, number(1.0), 1),
-        2
+        2 * 3
     );
     // A settlement after the maturity is #NUM! before any walk, but the estimate does not read
     // the argument order: it is charged its span, an over-estimate.
     assert_eq!(
         coupnum(ArrayNode::Number(50_000.0), 43_831.0, number(1.0), 1),
-        2 * 35
+        2 * 37
     );
     let text = || ArrayNode::String("2020-01-01".into());
     assert_eq!(coupnum(text(), 43_831.0, number(1.0), 1), 2 << 16);
@@ -384,7 +384,7 @@ fn coupon_elements_are_charged_by_schedule_length() {
         number(2.0),
     ];
     let units = kernel_units(work(Function::Price), &price, 513, 1, 513);
-    assert_eq!(units, 513 * 4 * 54);
+    assert_eq!(units, 513 * 4 * 56);
     let accrint = [
         number(39_083.0),
         LiftedArg::Grid(vec![vec![ArrayNode::Number(43_831.0)]]),
@@ -395,6 +395,47 @@ fn coupon_elements_are_charged_by_schedule_length() {
     ];
     assert_eq!(
         kernel_units(work(Function::Accrint), &accrint, 1, 1, 1),
-        2 * 53
+        2 * 55
+    );
+}
+
+/// YIELD's and the ODD* functions' `ByValue` charge (T-1869): the solver's walk and price sums are
+/// one pass charged `2^24` at the longest schedule, so 8 YIELD elements there fit and 9 do not,
+/// while a schedule of one period still costs its fixed part (524 units); a span from a negative
+/// date is widened by the 1904 shift, which a negative date does not take.
+#[test]
+fn yield_and_odd_elements_are_charged_by_schedule_length() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use super::super::kinds::COUPON_SPAN_DAYS;
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    let number = |n: f64| LiftedArg::Scalar(CalcResult::Number(n));
+    let yield_units = |settlement: f64, maturity: f64, frequency: f64, count: usize| {
+        let args = [
+            LiftedArg::Grid(vec![vec![ArrayNode::Number(settlement)]; count]),
+            number(maturity),
+            number(0.05),
+            number(95.0),
+            number(100.0),
+            number(frequency),
+        ];
+        let work = Function::Yield.arg_kinds().map(|kinds| kinds.work);
+        let Some(work @ KernelWork::ByValue(ValueWork::CouponWalks { .. })) = work else {
+            panic!("YIELD is not charged by its schedule: {work:?}");
+        };
+        kernel_units(work, &args, count, 1, count as u64)
+    };
+    let longest = COUPON_SPAN_DAYS as f64;
+    assert_eq!(yield_units(0.0, longest, 4.0, 8), MAX_LIFTED_CELL_VISITS);
+    assert!(yield_units(0.0, longest, 4.0, 9) > MAX_LIFTED_CELL_VISITS);
+    assert_eq!(yield_units(43_830.0, 43_831.0, 4.0, 1), 524);
+    // The Goal's call: 9 elements of about 13 years semiannually.
+    assert_eq!(yield_units(39_001.0, 43_831.0, 2.0, 9), 9 * 14_213);
+    // -1 to 10 is 11 days as written, but up to 2,935 in a 1904 workbook.
+    assert_eq!(
+        yield_units(-1.0, 10.0, 4.0, 1),
+        yield_units(0.0, 2_935.0, 4.0, 1)
     );
 }

@@ -2122,7 +2122,6 @@ F	probes/m7-argument-modes.case.json	Sheet1!K7
 F	probes/m7-argument-modes.case.json	Sheet1!K8
 F	probes/negative-date-sections-1900.case.json	S!A21
 F	probes/negative-date-sections-1900.case.json	S!A22
-F	probes/negative-date-sections-1904.case.json	S!A10
 F	probes/negative-date-sections-1904.case.json	S!A21
 F	probes/negative-date-sections-1904.case.json	S!A22
 F	probes/negative-date-sections-1904.case.json	S!A23

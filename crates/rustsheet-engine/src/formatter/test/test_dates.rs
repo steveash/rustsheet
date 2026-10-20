@@ -172,3 +172,62 @@ fn odd_period_1900_serial_reads_two_epochs_on() {
     assert_eq!(Excel1904.odd_period_1900_serial(-1.0), Some(-1));
     assert_eq!(Excel1900.odd_period_1900_serial(45000.7), Some(45000));
 }
+
+// poi/ElapsedFormatTests.xlsx (a 1904 workbook) A2-A27, A42-A51 and poi/DateFormatTests.xlsx A13,
+// A32, A40 (T-0934, T-0981): fractional seconds and plain `h`/`s` after an elapsed token.
+#[test]
+fn fractional_and_repeated_elapsed_seconds() {
+    // The workbook's 3.14159, written as a quotient (the same double) for clippy's PI lint.
+    let value = 314_159.0 / 100_000.0;
+    let two_03_04 = 2.0 / 24.0 + 3.0 / (24.0 * 60.0) + 4.0 / (24.0 * 60.0 * 60.0);
+    let cases = [
+        (value, "[h]:m:s.000", "75:23:53.376"),
+        (value, "[m]:s.000", "4523:53.376"),
+        (value, "[s].000", "271433.376"),
+        (value, "[hh]:mm:ss.0", "75:23:53.4"),
+        (value, "[ss].000", "271433.376"),
+        (-value, "[h]:m:s.000", "-75:23:53.376"),
+        (two_03_04, "[hh]:mm:ss.0", "02:03:04.0"),
+        (
+            two_03_04,
+            "[s]\" [yes, \"ss\"] seconds\"",
+            "7384 [yes, 7384] seconds",
+        ),
+        (0.0, "[ss].000", "00.000"),
+        (0.0, "[s]\" [yes, \"ss\"] seconds\"", "0 [yes, 00] seconds"),
+        (
+            value,
+            "\"It was \"[h]\" [yes, \"h\"] hours and \"mm:ss",
+            "It was 75 [yes, 75] hours and 23:53",
+        ),
+        (
+            -value,
+            "[s]\" [yes, \"ss\"] seconds\"",
+            "-271433 [yes, 271433] seconds",
+        ),
+        // Clock formats round the second to the shown digits (04:05:06.008999934).
+        (36191.1702084375, "hh:mm:ss.000 am/pm", "04:05:06.009 AM"),
+        (36191.1702084375, "h:m:s.00", "4:5:6.01"),
+        (17816.607951388887, "hh:mm:ss.000 am/pm", "02:35:27.000 PM"),
+    ];
+    for (value, format, expected) in cases {
+        assert_eq!(
+            format_in(value, format, DateSystem::Excel1904),
+            expected,
+            "{value} {format}"
+        );
+    }
+    // gen-m10 T!A16, T!A20: past 9999-12-31 a fraction of a second is #VALUE!; four zeros are
+    // unprobed and stay an error.
+    for (value, format) in [
+        (1_234_567_890.0, "[mm]:ss.0"),
+        (1_234_567_890.0, "h:mm:ss.00"),
+        (1.0, "s.0000"),
+    ] {
+        assert_eq!(
+            format_in(value, format, DateSystem::Excel1900),
+            "#VALUE!",
+            "{value} {format}"
+        );
+    }
+}
