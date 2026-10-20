@@ -29,4 +29,4 @@ the UNVERIFIED line to replace. If `\p` does not fold, `folded` in regex_posix.r
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The POSIX classes themselves (T-1989).
