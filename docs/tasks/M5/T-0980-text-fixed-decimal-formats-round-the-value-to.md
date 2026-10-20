@@ -3,7 +3,7 @@ id: T-0980
 title: "TEXT fixed-decimal formats round the value to 15 significant digits before padding (16 probes-numeric failures)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
