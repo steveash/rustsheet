@@ -26,9 +26,14 @@ Excel rounds it away from zero. More value known failures with the same cause, e
 4398098060a7fa9d T!A5 `TEXT(0.125,"#.#0")` ".13"; 659cd5776d423ce3 T!A5 `TEXT(2.5,"#,##0 ;(#,##0)")` "3 ";
 b4f66526f822ff2c T!A24 `TEXT(36.5,"0\%")` "37%". `to_precision` has other callers: check each before changing it.
 
+Gap triage 2026-10-20: the round-half cells (S!A21 and the gen-m10 TEXT() and displayed-text ties) moved to
+T-2206 (M5, functions-text): TEXT is an M5 function, so its value failures belong to M5's pick order. This
+task keeps S!B4, the negative serial under `yyyy-mm-dd` (255 `#` in Excel, ours `#VALUE!`), which T-1731's
+out-of-range-date rule also covers; close this task as done by T-1731 if that lands first.
+
 ## Acceptance criteria
-- [ ] probes/displayed-text-formats S!A21 leaves eval/baseline/probes.txt, and its text section shows A21 and B4 passing (`make eval`).
-- [ ] The six gen-m10 TEXT() lines above leave eval/baseline/gen-m10.txt; no new F or TF lines.
+- [ ] The `TF probes/displayed-text-formats.case.json S!B4` line leaves eval/baseline/probes.txt; no new F or TF lines.
+      (S!A21 and the gen-m10 TEXT() lines above are T-2206's.)
 - [ ] number-formats.md updated.
 - [ ] `make check` green; reviewers approve.
 
