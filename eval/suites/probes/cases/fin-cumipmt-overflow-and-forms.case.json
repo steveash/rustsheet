@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1890: CUMIPMT and CUMPRINC where a payment or the per-period sum overflows, periods past 2^53 at a tiny rate, and single periods near nper 1E15 and of type 1 that tell the summation form apart.",
+ "description": "T-1890: CUMIPMT and CUMPRINC where a payment or the per-period sum overflows, periods past 2^53 at a tiny rate, and single periods near nper 1E15 and of type 1 that tell the summation form apart. A15-A19: a large rate over a short range, where expm1 of the range overflows.",
  "tags": [
   "M9",
   "financial",
@@ -27,7 +27,12 @@
     "A11": "=CUMIPMT(0.01,1E15,100000,1E15,1E15,0)",
     "A12": "=CUMIPMT(0.01,100,100000,100,100,0)",
     "A13": "=CUMIPMT(0.0083,36,8000,3,3,0)",
-    "A14": "=CUMIPMT(0.0083,36,8000,3,4,0)"
+    "A14": "=CUMIPMT(0.0083,36,8000,3,4,0)",
+    "A15": "=CUMPRINC(1E10,40,1,10,40,0)",
+    "A16": "=CUMPRINC(1E10,40,1,1,31,0)",
+    "A17": "=CUMPRINC(1E300,10,1,1,10,0)",
+    "A18": "=CUMIPMT(1E300,10,1,1,10,0)",
+    "A19": "=CUMIPMT(1E10,40,1,10,40,0)"
    }
   }
  ],

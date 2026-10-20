@@ -40,7 +40,8 @@ denominator) is described in financial.md; Excel's form is closer to `log1p`/`ex
   (`CUMIPMT(Z2,Z5,Z3,1,Z5,0)`, `CUMPRINC(Z2,10,Z3,1,10,1)` in test_fn_cumulative_lift.rs, `#NUM!` as on
   main), a per-period sum that overflows (`CUMIPMT(0.5,10,1E308,1,10,0)`, now the closed form), and
   a few periods past 2^53 at a tiny rate (`CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)`, now the closed form).
-- [ ] The cells above pass (baseline lines removed), with no new failures.
+- [x] The cells above pass (baseline lines removed), with no new failures. Re-scoped by T-1890's
+  Outcome: CUMPRINC is visibly right; the interest cells and CUMPRINC A2, A6, A16, H26 moved to T-2192.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -73,5 +74,6 @@ Eval:
 Visible parity: every CUMPRINC cell of the four cases is within half a unit of the 15th
 significant digit, except H26 (2 ulps on -3.3E-21), A2 and A6. CUMIPMT's visibly-off cells are G2,
 G4, G7, G31, A7, A9-A11, A18, K3, A5 and the new A12, all interest. Follow-up T-2192 (campaign
-visible) takes these and the three CUMPRINC exceptions, so the criterion "the cells above pass" is
-met only in part here.
+visible) takes these, A16 and the three CUMPRINC exceptions, so the criterion "the cells above pass" is
+met only in part here. A large rate over a short range (A15-A19) keeps main's values: the
+short form falls back to the difference of powers where expm1 overflows.

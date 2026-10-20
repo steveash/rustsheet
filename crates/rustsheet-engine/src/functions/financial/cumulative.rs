@@ -174,6 +174,11 @@ impl Periods {
         } else {
             self.start
         };
+        let difference = || {
+            payment
+                * ((discount(self.end - self.nper) - discount(first - 1.0 - self.nper))
+                    / log_growth.exp_m1())
+        };
         let mut principal = if self.end < first {
             0.0
         } else if self.end - first < CUMULATIVE_LOOP_PERIODS && self.end < EXACT_INTEGER_LIMIT {
@@ -181,16 +186,20 @@ impl Periods {
             // `v^(a-1-nper)·expm1((b-a+1)·L)`: `CUMPRINC(0.01,360,100000,1,12,0)` is
             // -362.8793467231003, where the difference gives ...0994 and Excel -362.8793467231
             // (probes/fin-remaining-later-argument-ranges I75; CUMPRINC_CUMIPMT.xlsx H6, H22 and
-            // H25 to the bit; T-1890). Over a long range the difference stays closer to Excel
-            // (fin-cumipmt-period-bound A6).
-            payment
+            // H25 to the bit; T-1890). Where `expm1` overflows (a rate of 1E10 over 31 periods)
+            // the difference has the value (probes/fin-cumipmt-overflow-and-forms A15-A19). Over
+            // a long range the difference stays closer to Excel (fin-cumipmt-period-bound A6).
+            let product = payment
                 * (discount(first - 1.0 - self.nper)
                     * ((self.end - first + 1.0) * log_growth).exp_m1()
-                    / log_growth.exp_m1())
+                    / log_growth.exp_m1());
+            if product.is_finite() {
+                product
+            } else {
+                difference()
+            }
         } else {
-            payment
-                * ((discount(self.end - self.nper) - discount(first - 1.0 - self.nper))
-                    / log_growth.exp_m1())
+            difference()
         };
         if self.period_start && self.start == 1.0 {
             principal += payment;

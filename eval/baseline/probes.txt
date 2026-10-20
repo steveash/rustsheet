@@ -319,7 +319,7 @@ C	probes/fin-coupon-walk-bounds-1904.case.json	14
 C	probes/fin-coupon-walk-bounds-b.case.json	13
 C	probes/fin-coupon-walk-bounds-c.case.json	200
 C	probes/fin-coupon-walk-bounds.case.json	28
-C	probes/fin-cumipmt-overflow-and-forms.case.json	15
+C	probes/fin-cumipmt-overflow-and-forms.case.json	20
 C	probes/fin-cumipmt-period-bound.case.json	30
 C	probes/fin-fvschedule-bool-ref.case.json	6
 C	probes/fin-fvschedule.case.json	20
@@ -1397,6 +1397,7 @@ F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A10
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A11
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A12
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A14
+F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A16
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A2
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A5
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A6

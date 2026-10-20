@@ -636,10 +636,12 @@ T-1890 (probes/fin-cumipmt-overflow-and-forms A1-A14, excel-graph 2026-10-20):
   (CUMPRINC_CUMIPMT.xlsx H5 -0.0047565423422487076).
 Ours since T-1890: the principal is the closed form at any length. Over up to 32 periods its
 difference of powers is written `exp((first-1-nper)*L)*expm1((end-first+1)*L)`, which does not cancel
+(where that `expm1` overflows, a rate of 1E10 over 31 periods, the difference is kept: A15-A19)
 (H6, H22 and H25 to the bit; `CUMPRINC(0.01,360,100000,1,12,0)` -362.8793467231003, Excel
 -362.8793467231). The PPMT sum it replaces lost a small principal's digits (H5 8 right, H7 7). The
 interest keeps the IPMT sum up to 32 periods.
-Status: PARTLY VERIFIED (excel-graph; CUMPRINC visibly right but for A2 and A6; CUMIPMT's remaining
+Status: PARTLY VERIFIED (excel-graph; CUMPRINC visibly right but for A2, A6, A16 and
+CUMPRINC_CUMIPMT.xlsx H26; CUMIPMT's remaining
 visible misses in T-2192, the short sums' last digits in T-1374)
 Tasks: T-1845, T-1890, T-2192, T-1374
 
