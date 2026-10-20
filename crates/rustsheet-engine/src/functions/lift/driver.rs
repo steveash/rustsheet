@@ -111,6 +111,71 @@ pub(crate) enum LiftCost {
     Prepared(u64),
 }
 
+/// The kernel units the computed `elements` of a `rows` x `columns` broadcast are charged before
+/// any runs: `elements` times the table weight, or for [`KernelWork::ByArg`] the sum of each
+/// element's charge by its argument's value. That sum runs over every element, reused or not, so
+/// it never charges less than the elements computed; it is one pass over the grid, O(elements).
+pub(super) fn kernel_units(
+    work: KernelWork,
+    lifted: &[LiftedArg],
+    rows: usize,
+    columns: usize,
+    elements: u64,
+) -> u64 {
+    let KernelWork::ByArg { arg, cap, weight } = work else {
+        return elements.saturating_mul(work.weight());
+    };
+    let charge = |value: ArgCharge| -> u64 {
+        let order = match value {
+            ArgCharge::Number(n) if n >= 0.0 => n.trunc().min(f64::from(cap)),
+            ArgCharge::Text => f64::from(cap),
+            ArgCharge::Number(_) | ArgCharge::Other => 0.0,
+        };
+        // `order` is a whole number in [0, cap], so the cast is exact.
+        let order = order as u64;
+        1 + order.saturating_mul(u64::from(weight)) / u64::from(cap.max(1))
+    };
+    match lifted.get(arg) {
+        Some(grid @ LiftedArg::Grid(_)) => {
+            let mut units: u64 = 0;
+            for row in 0..rows {
+                for column in 0..columns {
+                    let node = grid.element(row, column);
+                    units = units.saturating_add(charge(ArgCharge::of_node(node)));
+                }
+            }
+            units
+        }
+        Some(LiftedArg::Scalar(value)) => elements.saturating_mul(charge(ArgCharge::of(value))),
+        None => elements,
+    }
+}
+
+/// What a [`KernelWork::ByArg`] argument's value is, for its charge.
+enum ArgCharge {
+    Number(f64),
+    Text,
+    Other,
+}
+
+impl ArgCharge {
+    fn of(value: &CalcResult) -> Self {
+        match value {
+            CalcResult::Number(n) => ArgCharge::Number(*n),
+            CalcResult::String(_) => ArgCharge::Text,
+            _ => ArgCharge::Other,
+        }
+    }
+
+    fn of_node(node: Option<&ArrayNode>) -> Self {
+        match node {
+            Some(ArrayNode::Number(n)) => ArgCharge::Number(*n),
+            Some(ArrayNode::String(_)) => ArgCharge::Text,
+            _ => ArgCharge::Other,
+        }
+    }
+}
+
 /// Which elements reuse an earlier element's result instead of running the kernel.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Reuse {
@@ -413,11 +478,11 @@ impl Model {
                 (plan, count_walks(&lifted, rows, columns, reuse))
             }
         };
-        let weight = options.work.weight();
+        let units = kernel_units(options.work, &lifted, rows, columns, elements);
         let visits = match cost {
-            LiftCost::Unit => elements.saturating_mul(weight),
-            LiftCost::Cells(cells) => cells.saturating_mul(weight).saturating_mul(elements),
-            LiftCost::Prepared(cells) => cells.saturating_add(elements.saturating_mul(weight)),
+            LiftCost::Unit => units,
+            LiftCost::Cells(cells) => cells.saturating_mul(units),
+            LiftCost::Prepared(cells) => cells.saturating_add(units),
         };
         if let Some(error) = too_many_visits(visits, cell) {
             return error;

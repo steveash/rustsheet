@@ -43,15 +43,18 @@ Rule: RustSheet returns `#NUM!` for BESSELI, BESSELJ, BESSELK and BESSELY orders
 untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0` (probes-numeric/m9-bessel, T-1004), so the engine differs above 100,000 for J.
 BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's values above
 100,000 are unprobed for them.
-A lifted Bessel call is also charged 2^16 units per element against the lifting visit cap (SPEC-0011
-`KernelWork::Weighted`), so one call lifts at most 2,048 elements: `ROWS(BESSELJ(2.5,SEQUENCE(2100)))` is `#ERROR!`
-where Excel gives 2100. At the order cap a BESSELI element runs about 2·10^5 recurrence steps; 2,048 such elements
-take about 2 s in a release build (8,192 took 8 s, T-1383).
+A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
+(SPEC-0011 `KernelWork::ByArg`, T-1819): `1 + 65535·min(n, 100000)/100000` units, so 2^16 at the cap and 1 for
+n = 0. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
+the cap (`ROWS(BESSELI(2.5,SEQUENCE(2100,1,100000,0)))` is `#ERROR!`), while small orders lift freely
+(`ROWS(BESSELJ(2.5,SEQUENCE(2100)))` = 2100 and `ROWS(BESSELJ(SEQUENCE(5000)/100,0))` = 5000, as in Excel). A text order
+is charged as at the cap, and an order above the cap as at it. At the order cap a BESSELI element runs about 2·10^5
+recurrence steps; 2,048 such elements take about 2 s in a release build (8,192 took 8 s, T-1383).
 Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orders; the cap itself is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Tasks: T-1004, T-1383; T-1819 narrows the lifted cap to an order-based work budget.
+Tasks: T-1004, T-1383; T-1819 (the lifted cap is an order-based work budget).
 Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`), bessel_i.rs, bessel_k.rs;
-functions/lift/kinds/engineering.rs (`BESSEL_WEIGHT`)
+functions/lift/kinds/engineering.rs (`BESSEL`, `BESSEL_WEIGHT`), functions/lift/driver.rs (`kernel_units`)
 
 ## DECIMAL of unreadable text
 Rule: DECIMAL reads its first argument as text (a number or TRUE goes through its text form, so `DECIMAL(0.5,13)`, `DECIMAL(1E+20,10)` and `DECIMAL(TRUE,10)` read "0.5", "1E+20", "TRUE"). Leading spaces and tabs are skipped; empty or all-blank text is 0. Any other unreadable character is `#NUM!` (not `#VALUE!`): a sign (`"-1"`, `"+1"`), a point, trailing space, a non-breaking space, a digit not below the radix. Text over 255 UTF-16 units (200 emoji is too long) is `#VALUE!`, checked before the radix (`DECIMAL(REPT("1",256),37)` is `#VALUE!`), as is a non-numeric radix. Newline and fullwidth digits are unreadable (`#NUM!`); the overflow is `#NUM!` inside a larger formula too (`ERROR.TYPE` 6, `IFERROR` falls through). Error arguments: the text argument's error wins (`DECIMAL(#N/A,#DIV/0!)` is `#N/A`). Radix 16 only also skips leading zeros and one `x`/`X` (`"0x1F"`, `"x1F"`, `"00x1F"` are 31; `"0x0x1"`, `"1x1F"`, `"0x 1F"` are `#NUM!`; in radix 10 or 15 `"0x1F"` is `#NUM!`, in radix 36 the x is a digit). The sum is a float with no 2^53 limit (255 ones in radix 2 is 5.78960446186581E+76; 198 `Z`s in radix 36 is 1.4057081148316923E+308), but a result past the largest double is `#NUM!` (199 `Z`s in radix 36, 255 `Z`s).
