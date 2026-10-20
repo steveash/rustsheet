@@ -2,7 +2,10 @@ use super::elapsed::{elapsed_text, ElapsedUnit, FractionalSeconds};
 use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
-    constants::MAXIMUM_DATE_SERIAL_NUMBER, locale::Locale, number_format::to_precision, text::Text,
+    constants::{EXCEL_PRECISION, MAXIMUM_DATE_SERIAL_NUMBER},
+    locale::Locale,
+    number_format::{cut_15_digits, to_precision},
+    text::Text,
     types::DateSystem,
 };
 use std::collections::BTreeSet;
@@ -39,9 +42,6 @@ impl<'a> FormatContext<'a> {
     }
 }
 
-/// Significant digits Excel keeps of a number it formats.
-const EXCEL_DIGITS: usize = 15;
-
 /// Returns the vector of chars of the fractional part of a *positive* number, read off its 15
 /// significant digits (the value is already rounded to them) and without trailing zeros:
 /// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
@@ -49,41 +49,27 @@ const EXCEL_DIGITS: usize = 15;
 /// cut counts significant digits, not positions after the point (`TEXT(2/3,"0.000000000000000000")`
 /// is "0.666666666666667000", probes-numeric/4f413cc257ce15c4 A23).
 fn get_fract_part(value: f64, precision: i32) -> Vec<char> {
-    let s = format!("{:.*e}", EXCEL_DIGITS - 1, value);
-    let Some((mantissa, exp)) = s.split_once('e') else {
-        return vec![];
-    };
-    let Ok(exp) = exp.parse::<i32>() else {
-        return vec![];
-    };
-    let digits: Vec<char> = mantissa.chars().filter(char::is_ascii_digit).collect();
-    // value = 0.d1d2d3... * 10^(exp + 1)
-    let mut fract: Vec<char> = if exp < 0 {
-        let zeros = usize::try_from(-exp - 1).unwrap_or(0);
-        std::iter::repeat_n('0', zeros).chain(digits).collect()
-    } else {
-        digits.into_iter().skip(exp as usize + 1).collect()
-    };
+    let (_, fract) = cut_15_digits(value, true);
+    let mut fract: Vec<u8> = fract;
     // Round half up on the decimal digits. A carry out of the integer-part digits is not
     // propagated here: the value was rounded to its shown places before it was split.
     let shown = usize::try_from(precision).unwrap_or(0);
-    if fract.get(shown).is_some_and(|d| *d >= '5') {
-        fract.truncate(shown);
+    let round_up = fract.get(shown).is_some_and(|d| *d >= 5);
+    fract.truncate(shown);
+    if round_up {
         for d in fract.iter_mut().rev() {
-            if *d == '9' {
-                *d = '0';
+            if *d == 9 {
+                *d = 0;
             } else {
-                *d = char::from(*d as u8 + 1);
+                *d += 1;
                 break;
             }
         }
-    } else {
-        fract.truncate(shown);
     }
-    while fract.last() == Some(&'0') {
+    while fract.last() == Some(&0) {
         fract.pop();
     }
-    fract
+    fract.into_iter().map(|d| char::from(b'0' + d)).collect()
 }
 
 /// Return true if we need to add a separator in position `digit_index`
@@ -725,12 +711,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let general_value = value;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
             // p.precision is the number of significant digits _after_ the decimal point
-            // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text")
+            // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";
+            // probes-numeric/4f413cc257ce15c4 A23)
             value = to_precision(
                 value,
                 usize::min(
                     (p.precision as usize) + format!("{}", value.abs().floor()).len(),
-                    EXCEL_DIGITS,
+                    EXCEL_PRECISION,
                 ),
             );
             let mut value_abs = value.abs();

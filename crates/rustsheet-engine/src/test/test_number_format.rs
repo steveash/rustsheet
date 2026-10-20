@@ -217,3 +217,13 @@ fn wide_fixed_decimals_pad_after_15_significant_digits() {
         assert_eq!(format_number(value, fmt, "en").text, text, "{value}");
     }
 }
+
+// T-0980: rounding at the format's places carries into the integer part and a 1e15+ value keeps
+// 15 significant digits.
+#[test]
+fn rounding_at_the_shown_places_carries_into_the_integer_part() {
+    assert_eq!(
+        format_number(0.999_999_999_999_999_6, "0.00", "en").text,
+        "1.00"
+    );
+}
