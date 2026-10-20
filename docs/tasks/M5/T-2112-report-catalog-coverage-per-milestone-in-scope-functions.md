@@ -3,7 +3,7 @@ id: T-2112
 title: "Report catalog coverage per milestone: in-scope functions with Excel evidence and with cells in the milestone's generated suite"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
