@@ -504,6 +504,11 @@ whole-suite policies rather than per-workbook draws.
 Every pool entry has an `edge_class` id. A literal is drawn as
 `P(edge pool) = 0.35, P(realistic) = 0.65`, adjusted by policy.
 
+**Implemented (T-2109).** A catalog `value` parameter with `pool: <name>` draws from
+`tools/src/rustsheet_tools/gen/pools.py` 35% of the time, after its `domain` draw and never on a `hard`
+domain; other parameters still build a free expression. The pools there are `number_edges`, `unit_interval`,
+`angle` and `code_point`. Text, number-format and error pools are T-2110.
+
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),
   `1`, `-1`, `0.5`, `-0.5`.

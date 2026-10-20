@@ -19,6 +19,8 @@ from typing import Any
 
 import yaml
 
+from rustsheet_tools.gen.pools import POOLS
+
 MILESTONES = ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"]
 
 # Edge-value pools per type (P0 subset of the research design).
@@ -67,6 +69,8 @@ NAME_POOL: list[str] = ["x", "y", "z", "w", "v", "acc"]
 # and a bare `SUM` read from a file is #NAME? (docs/excel-semantics/xlsx-storage.md). They take 1 to 255
 # arguments, so any arity fits (probes/m7-argument-modes: `MAKEARRAY(2,2,SUM)` is SUM(row,col)).
 ETA_POOL: list[str] = ["SUM", "MAX", "MIN", "AVERAGE", "COUNT", "PRODUCT"]
+# Share of a `pool` parameter's values drawn from its edge pool (synthetic-generator.md §3.2).
+POOL_RATE = 0.35
 MASK_OPS: list[str] = [">", "<", "=", "<>"]
 
 
@@ -295,8 +299,18 @@ class Gen:
             return repr(c) if isinstance(c, int) else '"' + str(c) + '"'
         if mode in ("aggregate", "aggregate_a") and self.rng.random() < 0.5:
             return self.range_ref()
-        in_domain = self.domain_value(p.get("domain") or {})
-        return in_domain if in_domain is not None else self.value_expr(p, depth)
+        return self.scalar_text(p, depth)
+
+    def scalar_text(self, p: dict[str, Any], depth: int) -> str:
+        """A `value` param: an in-domain literal, else an edge-pool entry, else a free expression."""
+        dom = p.get("domain") or {}
+        in_domain = self.domain_value(dom)
+        if in_domain is not None:
+            return in_domain
+        # A `hard` domain is never overridden: outside it Excel refuses the workbook (MUNIT).
+        if p.get("pool") and not dom.get("hard") and self.rng.random() < POOL_RATE:
+            return self.rng.choice(POOLS[p["pool"]])
+        return self.value_expr(p, depth)
 
     def value_expr(self, p: dict[str, Any], depth: int) -> str:
         """A free expression for a `value` param. A `lift: arrays` param refuses a multi-cell range
