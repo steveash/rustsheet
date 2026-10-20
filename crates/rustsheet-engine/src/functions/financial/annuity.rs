@@ -477,8 +477,9 @@ impl Model {
         }
         // Excel computes `(fv/pv)^(1/nper)-1` with its own `/`, `^` and `-`:
         // `RRI(10,1,200)` is 0.6986464646342472 like `(200/1)^(1/10)-1`, where libm `powf` is
-        // 2 ulps higher (probes/fin-rri A14, fin-mduration-rri-fit A37-A60, T-1975). A negative
-        // ratio stays #NUM! even for an odd root, which `^` would take (unprobed for RRI).
+        // 2 ulps higher (probes/fin-rri A14, fin-mduration-rri-fit A37-A60, T-1975). Unlike `^`, a
+        // negative ratio is always #NUM!: `RRI(1,-100,200)` is #NUM! where `(200/-100)^1-1` is -3,
+        // and so are odd roots (probes/fin-rri-vdb-edges A1-A16).
         let ratio = extended_quotient(fv, pv);
         if ratio < 0.0 {
             return Err(num_error(cell));

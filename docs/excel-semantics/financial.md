@@ -1014,6 +1014,9 @@ build the per-period charges differently, so the same inputs give different last
   value raised directly, `b = cost·(1-rate)^(i-1)` (square-and-multiply, like the operator `^`). The charges are
   summed in doubles; a partial first or last period is that charge times its share of the window.
   `VDB(2400,300,10,7,10,2,TRUE)` is 203.3164800000004 and `VDB(2400,300,10,0,10,3,TRUE)` is 2099.9999999999995.
+  The floor at 0 holds from the first period: with salvage above cost, `VDB(2400,3000,10,0,1,2,TRUE)` is 0, where the
+  switching mode gives -600. With `factor >= life` the rate is 1: `VDB(1000,100,2,0,1,3,TRUE)` is 900 and the next
+  period 0 (probes/fin-rri-vdb-edges A17-A24).
 - `no_switch` FALSE, from a whole start period: the book value steps down by each charge,
   `min(b·factor/life, b - salvage)`, until the straight-line charge `(b - salvage)/(life - p)` is larger; from then on
   every period charges that same amount. The window's declining-balance charges (and a prorated last period) are summed
@@ -1022,7 +1025,7 @@ build the per-period charges differently, so the same inputs give different last
   `VDB(2400,300,10,7,10,2,FALSE)` is 203.31648000000007.
 - `no_switch` FALSE from a fractional start period is not fitted yet: probes/fin-vdb-schedule A42-A46 still miss
   (T-2185, which records a restart model that passes 89 of 92 cells).
-Evidence: probes/fin-vdb-schedule (78 cells), fin-vdb-modes (excel-graph, 2026-10-20, T-1975).
+Evidence: probes/fin-vdb-schedule (78 cells), fin-vdb-modes, fin-rri-vdb-edges (excel-graph, 2026-10-20, T-1975).
 Status: VERIFIED (excel-graph)
 Implemented (T-1975): `vdb_no_switch_between` and `vdb_switching_between` in functions/financial/financial_depreciation.rs.
 Tasks: T-1975, T-2185
@@ -1033,6 +1036,9 @@ Rule: DURATION discounts each cash flow with Excel's `^` (not libm `pow`) and we
 `DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)` is 5.541666666666668, one ulp above `t/2`, because `(t·cf)/v^t`
 divided by `cf/v^t` is not exactly `t`. RRI is exactly the worksheet `(fv/pv)^(1/nper)-1`: `RRI(10,1,200)` is
 0.6986464646342472, where libm `pow` gives ...474.
+A negative `fv/pv` is always `#NUM!` for RRI, even where the worksheet form is a number: `RRI(1,-100,200)`,
+`RRI(0.5,-100,200)` and `RRI(1/3,-1,8)` are `#NUM!`, while `(200/-100)^(1/1)-1` is -3 and `(8/-1)^3-1` is -513
+(probes/fin-rri-vdb-edges A1-A16).
 Evidence: probes/fin-mduration-rri-fit (60 cells: 12 DURATION/MDURATION/quotient triples, 12 RRI/`^` pairs),
 fin-mduration, fin-rri (excel-graph, 2026-10-20, T-1975).
 Status: VERIFIED (excel-graph)
