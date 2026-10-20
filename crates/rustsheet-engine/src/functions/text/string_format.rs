@@ -12,56 +12,73 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    number_format::parse_excel_number,
+    number_format::{cut_15_digits, increment_digits, parse_excel_number},
 };
 
 use crate::functions::util::near_integer_count;
 
-fn format_thousands(n: u64) -> String {
-    let s = n.to_string();
-    let mut result = String::with_capacity(s.len() + s.len() / 3);
-    for (i, c) in s.chars().rev().enumerate() {
-        if i > 0 && i % 3 == 0 {
+/// Groups the digits of an integer part in threes (`1234567` → `1,234,567`).
+fn group_thousands(digits: &str) -> String {
+    let mut result = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
             result.push(',');
         }
         result.push(c);
     }
-    result.chars().rev().collect()
+    result
 }
 
 /// Formats a non-negative f64 with the given decimal places and optional thousands separator.
-/// Returns the formatted string without sign.
+/// Returns the formatted string without sign. The value is cut to 15 significant digits and then
+/// rounded half away from zero at `decimals`, in decimal as ROUND does.
 fn format_abs(abs_value: f64, decimals: i32, use_thousands: bool) -> String {
+    let (mut int, mut frac) = cut_15_digits(abs_value, false);
     if decimals >= 0 {
-        let factor = 10f64.powi(decimals);
-        let rounded = (abs_value * factor).round() / factor;
-        let int_part = rounded.floor() as u64;
-        let int_str = if use_thousands {
-            format_thousands(int_part)
-        } else {
-            int_part.to_string()
-        };
-        if decimals == 0 {
-            int_str
-        } else {
-            let frac = rounded - rounded.floor();
-            let frac_digits = (frac * factor).round() as u64;
-            format!(
-                "{}.{:0>width$}",
-                int_str,
-                frac_digits,
-                width = decimals as usize
-            )
+        let keep = usize::try_from(decimals).unwrap_or(0);
+        let round_up = frac.get(keep).is_some_and(|&d| d >= 5);
+        frac.resize(keep, 0);
+        if round_up {
+            let mut all = int;
+            all.extend(frac);
+            increment_digits(&mut all);
+            let split = all.len() - keep;
+            frac = all.split_off(split);
+            int = all;
         }
     } else {
-        // Negative decimals: round to 10^(-decimals) places
-        let factor = 10f64.powi(-decimals);
-        let rounded = ((abs_value / factor).round() * factor) as u64;
-        if use_thousands {
-            format_thousands(rounded)
+        // Negative decimals round the integer part; a place past its length gives 0.
+        let places = usize::try_from(decimals.unsigned_abs()).unwrap_or(usize::MAX);
+        if places >= int.len() {
+            let round_up = places == int.len() && int[0] >= 5;
+            int = if round_up { vec![1] } else { vec![0] };
+            if round_up {
+                int.resize(places + 1, 0);
+            }
         } else {
-            rounded.to_string()
+            let split = int.len() - places;
+            let round_up = int[split] >= 5;
+            int[split..].fill(0);
+            if round_up {
+                let mut head = int[..split].to_vec();
+                increment_digits(&mut head);
+                head.resize(head.len() + places, 0);
+                int = head;
+            }
         }
+        frac.clear();
+    }
+    let int_text: String = int.iter().map(|&d| char::from(b'0' + d)).collect();
+    let int_text = if use_thousands {
+        group_thousands(&int_text)
+    } else {
+        int_text
+    };
+    if frac.is_empty() {
+        int_text
+    } else {
+        let frac_text: String = frac.iter().map(|&d| char::from(b'0' + d)).collect();
+        format!("{int_text}.{frac_text}")
     }
 }
 
@@ -101,7 +118,11 @@ impl Model {
             Err(e) => return e,
         };
         let formatted = format_abs(value.abs(), decimals, true);
-        let result = if value < 0.0 {
+        // A negative value that rounds to zero at negative `decimals` has no parentheses
+        // (docs/excel-semantics/text.md "FIXED, DOLLAR and BAHTTEXT cut to 15 significant digits
+        // first": `DOLLAR(-0.5,-1)` is "$0"), while `DOLLAR(-0.004)` keeps "($0.00)".
+        let rounds_to_zero = !formatted.bytes().any(|b| matches!(b, b'1'..=b'9'));
+        let result = if value < 0.0 && !(decimals < 0 && rounds_to_zero) {
             format!("(${formatted})")
         } else {
             format!("${formatted}")
@@ -368,4 +389,53 @@ fn proper_case(s: &str) -> String {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_abs;
+
+    // Expected strings come from docs/excel-semantics/text.md "FIXED, DOLLAR and BAHTTEXT cut to
+    // 15 significant digits first" (excel-graph, gen-m5) and from ROUND's decimal rules.
+    #[test]
+    fn cuts_to_15_digits_before_rounding() {
+        assert_eq!(format_abs(1.005, 2, true), "1.01");
+        assert_eq!(
+            format_abs(9_007_199_254_740_993.0, 0, true),
+            "9,007,199,254,740,990"
+        );
+        assert_eq!(
+            format_abs(999_999_999_999_998.1, 2, true),
+            "999,999,999,999,998.00"
+        );
+        assert_eq!(
+            format_abs(4_999_999_999_999_995.0, 2, true),
+            "4,999,999,999,999,990.00"
+        );
+    }
+
+    #[test]
+    fn carries_into_a_new_leading_digit() {
+        assert_eq!(format_abs(999.9996, 3, true), "1,000.000");
+        assert_eq!(format_abs(0.999, 2, false), "1.00");
+        assert_eq!(format_abs(0.0, 2, true), "0.00");
+        assert_eq!(format_abs(0.004, 2, true), "0.00");
+    }
+
+    #[test]
+    fn negative_decimals_round_the_integer_part() {
+        assert_eq!(format_abs(5.0, -1, true), "10");
+        assert_eq!(format_abs(4.0, -1, true), "0");
+        assert_eq!(format_abs(500.0, -3, true), "1,000");
+        assert_eq!(format_abs(15.0, -5, true), "0");
+        assert_eq!(format_abs(1234.0, -2, false), "1200");
+        assert_eq!(format_abs(1.0, -1000, true), "0");
+    }
+
+    #[test]
+    fn largest_doubles_stay_bounded() {
+        let text = format_abs(f64::MAX, 127, false);
+        assert_eq!(text.len(), 309 + 1 + 127);
+        assert!(text.starts_with("17976931348623200000"));
+    }
 }
