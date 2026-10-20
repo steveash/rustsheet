@@ -306,18 +306,19 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
         || chooses_references_by_an_array_index(kind, args)
 }
 
-/// Whether `kind(args)` is a CHOOSE with an array constant for its index over plain references:
-/// Excel shows no `@` on it and N or T read it as `#VALUE!` on the arms' rows and off them
+/// Whether `kind(args)` is a CHOOSE with a one-row array constant of several elements for its index
+/// over ranges: Excel shows no `@` on it and N reads it as `#VALUE!` on the arms' rows and off them
 /// (`=N(CHOOSE({1,2},H1:H2,I1:I2))`; probes/subtotal-take-array-selector D1, D3, D5, D7, T-1915).
+/// Only that shape is probed, with N: T, single-cell arms, column or 2-D indexes and other arm
+/// counts are unprobed and keep their `@` (T-1915 follow-up probe).
 fn chooses_references_by_an_array_index(kind: &Function, args: &[Node]) -> bool {
     let [index, arms @ ..] = args else {
         return false;
     };
     matches!(kind, Function::Choose)
-        && matches!(index, Node::ArrayKind(_))
-        && !is_one_element_array(index)
-        && !arms.is_empty()
-        && arms.iter().all(is_plain_reference)
+        && matches!(index, Node::ArrayKind(rows) if rows.len() == 1 && rows[0].len() > 1)
+        && arms.len() == 2
+        && arms.iter().all(|arm| matches!(arm, Node::RangeKind { .. }))
 }
 
 /// Whether `kind` has an argument it can return ([`is_returned_argument`]) and every one is an
