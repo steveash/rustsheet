@@ -42,26 +42,28 @@ impl<'a> FormatContext<'a> {
     }
 }
 
-/// Returns the vector of chars of the fractional part of a *positive* number, read off its 15
+/// Returns the chars of the fractional part of a *positive* number and whether rounding it to
+/// `precision` places carried into the integer part, read off its 15
 /// significant digits (the value is already rounded to them) and without trailing zeros:
 /// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
 /// Excel shows only 15 significant digits and pads the rest of a wide format with zeros, so the
 /// cut counts significant digits, not positions after the point (`TEXT(2/3,"0.000000000000000000")`
 /// is "0.666666666666667000", probes-numeric/4f413cc257ce15c4 A23).
-fn get_fract_part(value: f64, precision: i32) -> Vec<char> {
+fn get_fract_part(value: f64, precision: i32) -> (Vec<char>, bool) {
     let (_, fract) = cut_15_digits(value, true);
     let mut fract: Vec<u8> = fract;
-    // Round half up on the decimal digits. A carry out of the integer-part digits is not
-    // propagated here: the value was rounded to its shown places before it was split.
+    // Round half up on the decimal digits; the flag says the rounding carried into the integer part.
     let shown = usize::try_from(precision).unwrap_or(0);
     let round_up = fract.get(shown).is_some_and(|d| *d >= 5);
     fract.truncate(shown);
+    let mut carry = round_up;
     if round_up {
         for d in fract.iter_mut().rev() {
             if *d == 9 {
                 *d = 0;
             } else {
                 *d += 1;
+                carry = false;
                 break;
             }
         }
@@ -69,7 +71,10 @@ fn get_fract_part(value: f64, precision: i32) -> Vec<char> {
     while fract.last() == Some(&0) {
         fract.pop();
     }
-    fract.into_iter().map(|d| char::from(b'0' + d)).collect()
+    (
+        fract.into_iter().map(|d| char::from(b'0' + d)).collect(),
+        carry,
+    )
 }
 
 /// Return true if we need to add a separator in position `digit_index`
@@ -737,16 +742,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 }
             }
             let l_exp = exponent_part.len() as i32;
+            let (fract_part, fract_carry) = get_fract_part(value_abs, p.precision);
             let int_number = if p.precision == 0 {
                 value_abs.round()
             } else {
-                value_abs.floor()
+                value_abs.floor() + if fract_carry { 1.0 } else { 0.0 }
             };
             let mut int_part: Vec<char> = format!("{int_number}").chars().collect();
             if int_number as i64 == 0 {
                 int_part = vec![];
             }
-            let fract_part = get_fract_part(value_abs, p.precision);
             // ln is the number of digits of the integer part of the value
             let ln = int_part.len() as i32;
             // digit count is the number of digit tokens ('0', '?' and '#') to the left of the decimal point
