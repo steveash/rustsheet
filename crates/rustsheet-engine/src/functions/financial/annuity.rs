@@ -424,7 +424,7 @@ impl Model {
         ))
     }
 
-    /// `ISPMT(rate, per, nper, pv)`: `pv*rate*(per/nper - 1)`.
+    /// `ISPMT(rate, per, nper, pv)`: `(per - nper) * pv * rate / nper`, in Excel's order (`ispmt_of`).
     pub(crate) fn fn_ispmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ispmt, args, cell, &mut |model, values| {
             number_or_error(model.ispmt_of(values, cell))

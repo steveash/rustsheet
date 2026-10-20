@@ -41,4 +41,5 @@ values, so ironcalc-calc/FINANCIAL/ISPMT.xlsx passes in full.
 Probed 24 ISPMT cells where the candidate orders differ in the last bit (probes/fin-ispmt-order, excel-graph): only
 `(per - nper) * pv * rate / nper` fits all 24 (the old `pv*rate*(per/nper-1)` fits 8; the two tied candidates from
 triage fit 6 and 17). `ispmt_of` uses it; financial.md records "ISPMT's operation order".
-Eval: ironcalc-calc known failures 1056 -> 1055 (ISPMT.xlsx Sheet1!E2), +24 new passing probe cells, no regressions.
+Eval: ironcalc-calc known failures 1056 -> 1055 (ISPMT.xlsx Sheet1!E2), +24 new passing probe cells, no regressions; the
+existing ISPMT probe cells (fin-argument-modes, fin-later-argument-ranges) still pass.
