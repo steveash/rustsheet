@@ -26,7 +26,21 @@ where `1 - T.DIST` would be 0. Small df have closed-form-exact CDFs: `T.DIST(1,2
 0.7886751345948129 = 0.5 + 1/(2*sqrt(3)) in doubles.
 Evidence: `ironcalc-calc/STATISTICAL/T_DIST.xlsx` `T.DIST T.INV T.DIST.RT`!D15, F15, D16, F18, D19;
 `T.DIST.2T T.INV.2T`!C15.
-Status: VERIFIED (observation); Excel's algorithm is UNVERIFIED (T-0969)
+Model (T-0969, probes-numeric `m9-t-dist-*`): everything follows from one tail L = P(T > |t|):
+`T.DIST.RT(x,n)` = `T.DIST(-x,n,TRUE)` wherever the sweep has both, T.DIST of a positive t is
+1 - L (bit-exact on 118 of the 146 nonzero T.DIST cells, against 113 for the correctly rounded
+CDF: `T.DIST(1,1,TRUE)` = 1 - 0.25000000000000006 = 0.75), and T.DIST.2T is 2 L. With
+y = n/(n+t^2) and z = t^2/(n+t^2), L = I_y(n/2,1/2)/2. In the deep tail (y <= z) Excel's L
+carries the error of exp((n/2) ln y): Cephes' power series with that power and a correctly
+rounded Gamma ratio is within 4 ulp on all but 2 deep-tail cells (`T.DIST.RT(1E6,10)` is 1 ulp
+off it, 33 ulp off the exact value). Away from it the exact L is 0 to 4 ulp from Excel on most
+cells but not all: `T.DIST.RT(1.959999998,60)` (`T_DIST.xlsx` F7) is 13 ulp off, and Excel's own
+tail noise there is not modelled yet. The density (cumulative FALSE) is noisy too: correctly
+rounded on 38 of 150 cells; `T.DIST(0,10,FALSE)` = 0.38910838396603115 is 3 ulp above the
+correctly rounded 945/(768 sqrt 10), and the error grows with |t| (165 ulp at
+`T.DIST(1000,100,FALSE)`), the signature of a power computed as exp(a ln y).
+Status: VERIFIED (observation); the tail model is UNVERIFIED (fits, T-0969); Excel's algorithm is
+UNVERIFIED
 Tasks: T-0969
 
 ## Inverse distribution functions do not round-trip exactly
