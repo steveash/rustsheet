@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
+campaign: visible
 depends_on: [T-0953, T-2029, T-2030]
 ---
 
@@ -48,3 +49,6 @@ excel-probe skill (decision 0019/0030) before implementing it.
 - Thousands grouping (T-0952); literal `|`, `£`, `¥` (T-0953).
 - The split into smaller PRs if the re-triage after T-0953 finds independent causes: file them as
   separate tasks instead of growing this one.
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
