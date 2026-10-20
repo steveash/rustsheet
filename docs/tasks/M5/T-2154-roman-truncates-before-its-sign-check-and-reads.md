@@ -3,7 +3,7 @@ id: T-2154
 title: "ROMAN truncates before its sign check and reads its form first; BASE of a negative fraction is #NUM!"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,8 +30,11 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 6 in eval/baselin
 | gen-m5/d1b251fd6e9c4b4b Calc!A24 | `=BASE(AVERAGE((-0.0001)),9,1)` | "#NUM!" | "0" |
 
 ## Acceptance criteria
-- [ ] These 6 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] These 6 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - BASE/DECIMAL lifting (T-2159).
+
+## Outcome
+`fn_roman` truncates (not floors) its number, reads and checks the form before returning "" for 0; `fn_base` checks the sign on the untruncated number. Eval: 6 known failures left eval/baseline/gen-m5.txt; no new ones.
