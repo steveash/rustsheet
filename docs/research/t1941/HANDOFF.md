@@ -1370,3 +1370,32 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
 - **(1.5,2] (W6).**
   - D.P2 is lit at D3 −2,070,784 ulps (Z 163), and N4 is +3 mod 8.
   - These are large near-null coefficient moves, the same family. The c/x test and the polynomial-pattern check have been requested.
+
+### 12.19 K2 is a plain coefficient set with an 80-bit head (06:30-06:57); K1 transfer
+
+- **The "c/x" term is really different plain coefficients (W2).**
+  - The per-cluster ε(x) is fit by c·g(x) with g a CUBIC ≈ 1/x on [2,3]; the a-priori cubic minimax alone gives 0.905.
+  - The head coefficients p1..p4 (q0..q3) carry c·g, p5 −= c and q4 −= c, with the late chain unchanged.
+  - Reviewer 3: a quadratic is excluded (minimax relative error 2.06e-3 vs the cubic's 2.08e-4).
+- **Best plain-double set (`k2_plain.txt`)** from W2's LLL null-lattice refinement:
+  - 1,024 clusters 0.9381, 14 runs 0.9381 (coordinator recheck 0.9377), worst run 0.908, cluster-mean bias rms 0.047 ulp(y).
+  - Reviewer 3's independent set scores 0.933 / 0.923. The sets differ along a p3/p4 (q2/q3) near-null ridge, so the sharp p4/q3 peaks are conditional.
+  - The late coefficients are identifiable only up to plateaus.
+  - Coefficients are exhausted: LLL moves over p0..p3 / q0..q2 are flat, all 19 single profiles sit at their optima, and per-cluster s3/d2 integer shifts are wanted on only 42 of 1,024 clusters.
+- **80-bit head (reviewer 3, W2).**
+  - Keeping the head in 80-bit registers up to the hand-off product, with stored double from P4 (N) / P3_D (D) onward, gives 0.953 on the clusters (reviewer 3, no refit) and 0.952 on the long runs (W2).
+  - W2's greedy best: N s2 and s3 unstored, and D d2's add unstored. Refitting the coefficients under this structure moves nothing.
+  - Rejected alternatives: stored everywhere 0.940; pure double 0.938; FMA 0.32; all-extended 0.29.
+- **Residual of about 5% (W2).**
+  - It is not a per-run phase: the per-run cap is 0.959.
+  - About half the misses are 2 ulps or more, so they originate upstream.
+  - There is only mild boundary enrichment, ≤ 2× at NP4 / D s3 / DP3: a small distributed value difference at the head.
+  - Screening: an 80-bit sub-polynomial, an 80-bit power table, a spill inside the head, then 80-bit constants.
+- **K1 (W4).**
+  - The hidden e/y terms at D c3 (−350·ulp(c2)) and N c2 (+852·ulp(c1)) give 0.770 (`w4/k1r/ch1.txt`, `gsimh.c`). Three more terms add +0.6 points held out.
+  - A smooth ±0.17 G-ulp one-period output bias is the same fingerprint K2 had. Asked: convert the terms to plain cubic-≈-e/y coefficient changes with a pinned compensation, then a bias fit.
+  - The [1.84, 1.97] dip (exact 0.30-0.48) is open. Tests requested: composition via exp(GAMMALN) and a fine step-vs-ramp scan.
+- **(1.5,2] (W6).**
+  - D3 is at −2,070,784 ulps; the low block reaches the noise floor with D0 fixed; exact R is 42.7%.
+  - The hidden-term form gives nothing there beyond N4 +3 mod 8.
+- **Fill:** w6t 277+/750, k3t 181+/450.
