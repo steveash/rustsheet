@@ -361,6 +361,16 @@ Evidence: probes/eng-im-overflow (excel-graph).
   `"1000+1E-300i"`, `"1000-1E-300i"` and every imaginary part up to `1.4E-8` are `#NUM!`. The
   boundary (1.4E-8 error, 1.5E-8 capped) is sqrt(DBL_EPSILON) = 1.49E-8, so
   such an argument is treated like a pure real one. The same rule near y = pi (y within sqrt(DBL_EPSILON) of pi) is unprobed, as is the exact cutoff (T-2087).
+- IMEXP's sine and cosine of the imaginary part reduce the argument as SIN and COS do (the x87
+  64-bit pi, see the IMPOWER entry above): `IMEXP("1000+3.14159i")` is
+  `-1.79769313485599E+308+4.770340154251E+302i` (probes/eng-imexp-overflow-imag A3) and
+  `IMEXP("710i")` is `0.999999998182636+0.0000602887066915739i` (probes/eng-im-overflow A42); libm's
+  sin gives other last digits. Implemented with `excel_sin_cos` (T-2060). Past the SIN limit
+  (|y| >= 134217727) ours falls back to libm: UNVERIFIED (T-2087).
+- A part near DBL_MAX is written as `1.79769313486232E+308`, a decimal above DBL_MAX: the 15-digit
+  rounding of 1.7976931348623157E+308 is not clamped (probes/eng-imexp-overflow-imag A22, A24, A27,
+  A30). Ours keeps the unrounded part when the rounding overflows (T-2060). Whether `&""` or TEXT
+  of DBL_MAX does the same is unprobed (T-2087).
 - IM* text keeps 15 significant digits for an exponent past 98, unlike `&""` (numbers.md): A11,
   A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
   `1.65498402768026E+308`, which ours now matches (T-2001: `complex_part_to_text` keeps 15 digits). This is a
