@@ -845,6 +845,9 @@ Excel's x87 EXP (model V6), the same in 80-bit, the engine's Taylor series (forw
 TANH `(e^2x - 1)/(e^2x + 1)`, `1 - 2/(e^2x + 1)`, `sinh/cosh`, `expm1` forms, each with libm or V6 exp. The engine keeps T-0914's
 piecewise forms (SINH 60/85, TANH 67/87 cells); COTH/CSCH inherit every one of their misses (see the failing COTH/CSCH cells
 of probes-numeric `m9-hyperbolic` and `t0917-hyperbolic-switchover`; decision 0084 lists those that libm used to pass).
+Dense fitting set (T-2178): probes-numeric `t2178-hyperbolic-unit-sweep` (1034 arguments on (-1.5, 1.5): k/500, seeded random,
+log-spaced 1E-8 .. 1E-2, the cached misses' arguments, 100 negatives, 20 control points past 1; SINH/TANH/COSH each; excel-graph).
+The current engine matches 2235 of 3102 cells: SINH misses 402, TANH 463, COSH 2 (all 1 ulp or so).
 Status: OPEN.
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)

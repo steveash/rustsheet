@@ -3,7 +3,7 @@ id: T-2178
 title: "Oracle sweep: SINH and TANH on (-1, 1) for the T-2134 kernel fit"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -51,3 +51,6 @@ formulation of Excel's hyperbolic kernel there instead of guessing from the few 
 ## Out of scope
 - Fitting or changing SINH/TANH (T-2134).
 - The overflow edge (T-2169) and the inverse hyperbolics (T-0917, T-2062).
+
+## Outcome
+Added `t2178-hyperbolic-unit-sweep` (1034 x, SINH/TANH/COSH) with excel-graph sidecar. Engine matches 2235/3102 cells (SINH misses 402, TANH 463, COSH 2). numbers.md and T-2134 link it.

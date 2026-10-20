@@ -15,6 +15,7 @@ SINH and TANH give Excel's exact doubles on |x| < 1 (where Excel is up to 1.8 ul
 value), so COTH, CSCH and SECH, which are 1 over them (T-0917), follow.
 
 ## Context
+- Fitting set: probes-numeric `t2178-hyperbolic-unit-sweep` (T-2178), 1034 SINH/TANH/COSH points on (-1.5, 1.5) from excel-graph.
 T-0917 tried and rejected every simple formulation (docs/excel-semantics/numbers.md "SINH and TANH
 on 0.4 .. 1: no formula found yet"): libm, exp forms with libm or the x87 EXP model V6, 80-bit
 forms, Taylor series in several summation orders, `expm1` forms. Excel misses the true value by
