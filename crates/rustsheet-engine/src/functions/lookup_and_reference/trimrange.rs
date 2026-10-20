@@ -1,6 +1,8 @@
 use super::drop_take::sub_range;
 use super::ref_lift::lifts;
-use crate::reference_operators::RefArg;
+use crate::functions::lift::{ArgBuf, Kernel, LiftCost, LiftOptions};
+use crate::functions::util::array_node_to_calc_result;
+use crate::reference_operators::{Ranges, RefArg};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
@@ -45,6 +47,12 @@ impl NonBlank {
     }
 }
 
+/// `#REF!` for a source with no cells.
+fn empty_source(data: &[Vec<ArrayNode>], cell: CellReferenceIndex) -> Option<CalcResult> {
+    (data.is_empty() || data[0].is_empty())
+        .then(|| CalcResult::new_error(Error::REF, cell, "Range is empty".to_string()))
+}
+
 /// A trim argument as an integer; a fractional one (even `0.9` or `3.9`) is out of range, like
 /// `4` and `-1` (docs/excel-semantics/lookup.md "TRIMRANGE with a fractional trim argument").
 fn trim_mode(n: f64) -> i32 {
@@ -75,9 +83,10 @@ impl Model {
     /// TRIMRANGE; `as_reference` gives the trimmed part of a single-sheet range argument as a
     /// reference, as an intersection operand sees it: `=A1:A3 TRIMRANGE(A2:B2)` is 2
     /// (probes/intersection-function-operands H14; T-0165). When `trim_rows` or `trim_cols` is an
-    /// array or a multi-cell range the call lifts into an array of references, each the scalar
-    /// call's trimmed reference of the source range or its error (SPEC-0014; docs/excel-semantics/
-    /// lookup.md "OFFSET, INDIRECT and TRIMRANGE lift into arrays of references").
+    /// array or a multi-cell range the call lifts ([`Self::lifted_trimrange`]): into an array of
+    /// references, each the scalar call's trimmed reference of the source range or its error
+    /// (SPEC-0014; docs/excel-semantics/lookup.md "OFFSET, INDIRECT and TRIMRANGE lift into
+    /// arrays of references"), or into values for a source that is no reference.
     pub(crate) fn trimrange_reference(
         &mut self,
         args: &[Node],
@@ -88,6 +97,11 @@ impl Model {
             return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
 
+        // A missing trim argument is 3; a written empty one is 0.
+        let values = self.reference_lift_values(&args[1..], cell);
+        if values.as_slice().iter().any(lifts) {
+            return self.lifted_trimrange(&args[0], values, cell);
+        }
         let source = if as_reference {
             self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
         } else {
@@ -101,56 +115,100 @@ impl Model {
             Ok(d) => d,
             Err(e) => return RefArg::Value(e),
         };
-
-        if data.is_empty() || data[0].is_empty() {
-            return RefArg::Value(CalcResult::new_error(
-                Error::REF,
-                cell,
-                "Range is empty".to_string(),
-            ));
+        if let Some(error) = empty_source(&data, cell) {
+            return RefArg::Value(error);
         }
-
-        // A missing trim argument is 3; a written empty one is 0.
-        let non_blank = NonBlank::of(&data);
-        let values = self.reference_lift_values(&args[1..], cell);
-        if !values.as_slice().iter().any(lifts) {
-            return match self.trim_of(&data, non_blank.as_ref(), values.as_slice(), cell) {
-                Ok((rows, columns)) => match reference_corner {
-                    Some(left) if as_reference => RefArg::from(sub_range(left, &rows, &columns)),
-                    _ => RefArg::Value(CalcResult::Array(
-                        data[rows]
-                            .iter()
-                            .map(|row| row[columns.clone()].to_vec())
-                            .collect(),
-                    )),
-                },
-                Err(error) => RefArg::Value(error),
-            };
-        }
-        // A one-cell reference evaluates to its value, but its trim is still a reference
-        // (`INDEX(TRIMRANGE(A1,{0;1}),2,1)` is A1; probes/reference-lift-elements).
-        let reference_corner = reference_corner.or_else(|| match args[0].ungrouped() {
-            node @ Node::ReferenceKind { .. } => match self.get_reference(node, cell) {
-                Ok(range) => Some(range.left),
-                Err(_) => None,
+        match self.trim_of(&data, NonBlank::of(&data).as_ref(), values.as_slice(), cell) {
+            Ok((rows, columns)) => match reference_corner {
+                Some(left) if as_reference => RefArg::from(sub_range(left, &rows, &columns)),
+                _ => RefArg::Value(CalcResult::Array(
+                    data[rows]
+                        .iter()
+                        .map(|row| row[columns.clone()].to_vec())
+                        .collect(),
+                )),
             },
+            Err(error) => RefArg::Value(error),
+        }
+    }
+
+    /// TRIMRANGE lifted over its trim arguments (`values`, at least one of which [`lifts`]).
+    /// The source is read as a reference wherever it is one, written or not: a defined name,
+    /// `CHOOSE(1,A1)`, `INDIRECT("A1")` and `IF(TRUE,A1)` give a one-cell reference per element
+    /// as `A1` does, and the elements are references. The trim of any other source is a value,
+    /// so the call lifts into values: each element is its trimmed array's top-left value
+    /// (`INDEX(TRIMRANGE({1,2},{0;1}),1,1)` is 1, `SUM(..)` 2), and an error source is that
+    /// error in every element (`ROWS(TRIMRANGE(NA(),{0;1}))` is 2). Excel: see
+    /// docs/excel-semantics/lookup.md "TRIMRANGE lifted over an array, a computed reference or
+    /// an error" (probes/trimrange-lift-sources).
+    fn lifted_trimrange(
+        &mut self,
+        source: &Node,
+        values: ArgBuf<CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        let source = match self.evaluate_picked_reference_arg(source, cell) {
+            RefArg::Ranges(Ranges::One(range)) if range.left.sheet == range.right.sheet => {
+                CalcResult::Range {
+                    left: range.left,
+                    right: range.right,
+                }
+            }
+            other => other.into_single_area(cell),
+        };
+        let reference_corner = match source {
+            CalcResult::Range { left, .. } => Some(left),
             _ => None,
-        });
+        };
+        let data = match self.result_to_array(source, cell) {
+            Ok(data) => data,
+            Err(error) => return self.lift_trimmed_values(values, cell, &mut |_, _| error.clone()),
+        };
+        if let Some(error) = empty_source(&data, cell) {
+            return RefArg::Value(error);
+        }
+        let non_blank = NonBlank::of(&data);
+        let Some(left) = reference_corner else {
+            return self.lift_trimmed_values(
+                values,
+                cell,
+                &mut |model, values| match model.trim_of(&data, non_blank.as_ref(), values, cell) {
+                    Ok((rows, columns)) => {
+                        array_node_to_calc_result(&data[rows.start][columns.start], cell)
+                    }
+                    Err(error) => error,
+                },
+            );
+        };
         let lifted = match self.reference_lift_args(values, cell) {
             Ok(lifted) => lifted,
             Err(error) => return RefArg::Value(error),
         };
-        self.lift_references(lifted, cell, &mut |model, values| {
-            match (
-                model.trim_of(&data, non_blank.as_ref(), values, cell),
-                reference_corner,
-            ) {
-                (Ok((rows, columns)), Some(left)) => sub_range(left, &rows, &columns),
-                // The trim of an array is a value, not a reference.
-                (Ok(_), None) => CalcResult::new_error(Error::VALUE, cell, String::new()),
-                (Err(error), _) => error,
-            }
+        self.lift_references(lifted, cell, &mut |model, values| match model.trim_of(
+            &data,
+            non_blank.as_ref(),
+            values,
+            cell,
+        ) {
+            Ok((rows, columns)) => sub_range(left, &rows, &columns),
+            Err(error) => error,
         })
+    }
+
+    /// The value lift of a TRIMRANGE whose source is no reference: `kernel` per element.
+    fn lift_trimmed_values(
+        &mut self,
+        values: ArgBuf<CalcResult>,
+        cell: CellReferenceIndex,
+        kernel: &mut Kernel<'_>,
+    ) -> RefArg {
+        RefArg::Value(self.lift_values(
+            values.into_iter().collect(),
+            LiftCost::Unit,
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            kernel,
+        ))
     }
 
     /// Whether a TRIMRANGE call lifts into an array of references, its own arguments evaluated
