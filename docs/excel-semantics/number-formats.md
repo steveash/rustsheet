@@ -590,7 +590,7 @@ denominator kinds over 0, ±0.75, ±1, T-0982):
   under a `#` integer otherwise ("|3=/=4|", A225, A231). Literals between integer placeholders always print
   (`|#-#-#\:#/#|` on 0.75 "|--3/4|", A129).
 Ours: implemented in formatter/parser.rs (`is_fraction_literal`) and formatter/fraction.rs (T-0982); all 325 cells pass.
-Unprobed engine choices (T-2198): a mixed `0`/`?` denominator puts its zeros left and spaces right; plain spaces or quoted
+Unprobed engine choices (T-2209): a mixed `0`/`?` denominator puts its zeros left and spaces right; plain spaces or quoted
 text around the `/` also make a fraction; a `/` with no denominator after its literals stays a literal.
 Status: VERIFIED (Excel for the web; desktop Mac Excel cached values for the literals between the parts)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061, T-2072, T-2073, T-2074
