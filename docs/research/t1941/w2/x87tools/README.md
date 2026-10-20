@@ -64,3 +64,22 @@ The late "pins" from the plateau reader are single-coordinate scans.
   late coefficients.
 - So "late part = grid_a" holds only modulo those directions.
 - The window solvers do NOT recover late or cross-N/D displacements, even on controls: truthL 38-64%, truthN 34-67%.
+
+## Hand-off fingerprint tools (added later)
+- **`dgrid.c` / `dgrid.py`** — per-cluster exhaustive scan of a smooth hand-off offset (dN, dD in ulps of `s_kN`,
+  `d_kD`), with the late stored Horner exact. The overall best is the structure fingerprint at `(kN, kD)`.
+  - Calibration: 5 constant sets for the same structure agree to ±0.006.
+  - Build: `gcc -O2 -shared -fPIC -o libdgrid.so dgrid.c -lm`.
+- **`lgreedy2.py`** — late-coefficient needle reader: greedy over each coefficient's full residue range, with dgrid as the
+  inner scan. Control: from 4 simultaneous late errors it recovers to the base-structure ceiling of 94.3%.
+- **`combo.c`** — synthetic truths with a per-chain early scheme (Horner, Estrin, FMA, power sums, 80-bit variants,
+  even/odd, pairwise; see the header comment), followed by a stored raw-x Horner.
+
+Fingerprints at (4,3) / (5,3) / (5,4), 2.40 window:
+- REAL (late part = grid_a with p5 -4, q4 -1): 0.859 / 0.870 / 0.826 (2.80: 0.811 / 0.831 / 0.806).
+- Base structure: 0.933-0.943 / 0.879-0.890 / 0.814-0.824.
+- About 45 N-scheme x D-scheme combinations screened.
+  - Closest: early even/odd in x^2 with the final add unstored. Still about 3 points too smooth at 2.80.
+  - Whole-chain even/odd, product of quadratics, split N = A*x^5 + B, monic D and t-centred Horner are all rejected.
+  - Constants scaled by powers of two (x/2, x/4) and an accumulator started at 0 give identical roundings to the base
+    structure.
