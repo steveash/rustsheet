@@ -23,7 +23,7 @@ fn arguments() {
     assert_eq!(model._get_text("A1"), *"$A$1");
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 
-    assert_eq!(model._get_text("A3"), *"Automatic");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");
 
     assert_eq!(model._get_text("A5"), *"1");
@@ -34,33 +34,22 @@ fn arguments() {
     assert_eq!(model._get_text("A9"), *"#N/IMPL!");
 }
 
+/// INFO is `#VALUE!` for every type_text (probes/info-sheets-info-types Alpha!D25:D49, excel-graph).
 #[test]
-fn info_timezone() {
+fn info_is_value_error_for_every_type_text() {
     let mut model = new_empty_model();
-    model._set("A1", "=INFO(\"timezone\")");
-
+    for (i, text) in [
+        "recalc", "SYSTEM", "release", "timezone", "numfile", "memavail", "", "x",
+    ]
+    .iter()
+    .enumerate()
+    {
+        model._set(&format!("A{}", i + 1), &format!("=INFO(\"{text}\")"));
+    }
     model.evaluate();
-
-    assert_eq!(model._get_text("A1"), *"UTC");
-
-    model.set_timezone("America/Panama").unwrap();
-
-    model.evaluate();
-
-    assert_eq!(model._get_text("A1"), *"America/Panama");
-}
-
-#[test]
-fn info_timezones() {
-    let mut model = new_empty_model();
-    model._set("A1", "=INFO(\"timezones\")");
-    model._set("B1", "=COUNTA(A:A)");
-
-    model.evaluate();
-
-    assert_ne!(model._get_text("A1"), *"");
-    let timezones = model._get_text("B1").parse::<i32>().unwrap();
-    assert!(timezones > 400);
+    for i in 1..=8 {
+        assert_eq!(model._get_text(&format!("A{i}")), *"#VALUE!");
+    }
 }
 
 /// `CELL("filename")` is `#VALUE!` in every form, named workbook or not (probes/
