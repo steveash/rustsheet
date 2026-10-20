@@ -2,7 +2,7 @@
  "format": "rustsheet-case/v1",
  "description": "IMAGE array arguments: an error element against another argument's position past its end (T-1962)",
  "tags": [
-  "M1",
+  "M6",
   "probe",
   "image",
   "T-1962"
