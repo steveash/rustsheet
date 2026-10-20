@@ -1700,7 +1700,9 @@ above 4) is `#VALUE!`. BASE does the opposite: a negative number is `#NUM!` befo
 "0000000000", "0".
 Evidence (excel-graph, 2026-10-20): gen-m5/49bfbf67a1409563 Calc!A179, gen-m5/0362d48f56108faa Calc!A39, gen-m5/1962de140dae0111 Calc!A206,
 gen-m5/a6fec430ac350c1a Calc!A31, gen-m5/c0651f0e0fb544d0 Calc!A253, gen-m5/d1b251fd6e9c4b4b Calc!A24.
-Status: VERIFIED (excel-graph); not implemented (T-2154).
+Unprobed: which error wins when both the number and the form are bad (`ROMAN(-5,NA())`, `ROMAN(4000,9)`); the engine
+reports the number's.
+Status: VERIFIED (excel-graph); implemented (T-2154).
 
 ## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes
 Rule: QUOTIENT (both arguments), FACTDOUBLE and SERIESSUM's `x`, `n` and `m` are Analysis ToolPak arguments. They lift
@@ -1794,7 +1796,7 @@ Just below -1 as well: `ASIN(-1-2^-52)` and `ACOS(-1-2^-52)` (-1.000000000000000
 (`LOG(ACOS(-1-2^-52))` is `#NUM!`, and `COUNT(..,ASIN(-1-2^-52))` does not count it). Ours: `excel_asin` forms `1-x`, which
 rounds to exactly 2, so the radicand `y*(2-y)` is 0 and the result is -pi/2 (ACOS pi) instead of NaN. Evidence (excel-graph,
 2026-10-20): gen-m5/38b1b8e51dbad326 Calc!A222, gen-m5/3b813881f835cd90 Calc!A273, gen-m5/90bf45bea539723d Calc!A236,
-gen-m5/b0ecb7ca78460b77 Calc!A320 and the other 10 cells listed in T-2170 (not implemented).
+gen-m5/b0ecb7ca78460b77 Calc!A320 and the other 10 cells listed in T-2170. Implemented (T-2170): `excel_asin` returns NaN for `|x| > 1` before the kernel.
 
 ATANH(1) and ATANH(-1) are `#NUM!` too, at once: `IFERROR(ATANH(1),"err")` is "err", `ISERR(ATANH(1))` TRUE,
 `SUM(ATANH(1),1)` `#NUM!`; ATANH(0.9999999999999999) is 17.616361586450413 and ATANH(1.0000000000000002) `#NUM!`.

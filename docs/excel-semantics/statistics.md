@@ -1374,11 +1374,41 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   `T.DIST(30,1000,FALSE)` (2 ulp against 94). It is further away at `T.DIST(30,1E6,FALSE)` (348 against 200) and
   below df 1000. No tried double formula (pow,
   exp of ln, exp of log1p, ln Gamma differences) reproduces Excel's density noise at df <= 100.
+- **The density at df 2 is `EXP(-1.5*LN(2+t^2))`** (T-0969 attempt 6): bit-exact on all 13 df-2 density cells
+  of m9-t-dist-pdf, m9-t-nonint-df and m9-t-edges, including `T.DIST(1E6,2,FALSE)` = Excel's value 15 ulp from the
+  exact one; `POWER(2+t^2,-1.5)` matches 9, the 1 + t^2/2 form 11. From df 3 on no single exp of one double exponent
+  of the forms exp(C - h ln(n+t^2)) or exp(C - h ln(1+t^2/n)), h = (n+1)/2, reproduces a df's cells for any double C,
+  though Excel's value is always within about one ulp of the exact exponent's exp. Excel's density and tails are
+  up to 482 ulp from the exact value (`T.DIST(1E6,30,FALSE)`, `T.DIST.RT(30,1E6)` 398), so an exact kernel cannot match them.
+- **The centre tail at small df can follow the rounded y** (T-0969 attempt 6): for t^2 < n, I_y(n/2,1/2)/2 at
+  y = fl(n/(n+t^2)), as T.TEST computes it, is bit-exact at `T.DIST.2T(0.1,2)`, (2,100) and (3,100) where the
+  exact tail is 8 to 23 ulp off, but 29 and 97 ulp off at `T.DIST.RT(0.5,100)` and (0.5,1000), where the exact
+  tail is within 1. No (df, t) cut on the swept cells separates the two.
 Evidence: probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-inv`,
 `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13. Exact reference values for
 the T.DIST accuracy bullets: mpmath `betainc` at 60 digits (T-0969 attempt 2, 2026-10-20).
 Status: VERIFIED (excel-graph)
 Tasks: T-0969 (T.DIST family), T-0967 (T.INV, T.INV.2T, CONFIDENCE.T)
+
+## T.TEST rounds y = df/(df+t^2) to a double before the tail (T-0969)
+Rule: T.TEST (and TTEST) is `I_y(df/2, 1/2)` x tails/2 at y = df/(df + t^2) rounded to a double, not the Student-t
+tail at its own t, which is what T.DIST.RT and T.DIST.2T compute. The rounded y moves the p-value by up to tens of
+ulp where y is near 1 (small t). At `T.TEST(G1:G10,H1:H10,2,2)` (df 17, t = 0.19827206571599848), Excel's
+0.8451838964108318 is exactly I_y at the rounded y = 0.9976928755998522. The exact two tails are 42 ulp away, both at
+the double t and at the exact t, so the gap is not in the statistic (probes-numeric t1048-ttest B31).
+- t^2 is the square of the double statistic for types 2 and 3. For type 1 (paired) it is md^2 / (vd / n): bit-exact
+  on 7 of the 11 paired cells, and every one within 4 ulp. md^2 n / vd and (md / (sd / sqrt n))^2 are each worse on
+  at least one cell.
+- With exact I at the rounded y (exact statistic), 32 of the 43 T.TEST cells in t1048/t1049-ttest are within 2 ulp
+  of Excel, against 18 for the exact tail at t. The rest are 3 to 6 ulp off: Excel's incomplete beta has its own noise, as in the T.DIST sweep.
+- Welch's df is fractional. There `I_y` needs an accurate Gamma ratio: libm's tgamma ratio is 9 ulp off at
+  `T.TEST(D1:D10,F1:F10,2,3)` (B18), and Cephes' plain fraction is 111 ulp off at `T.TEST(D1:D10,F1:F11,2,3)` (B27).
+Evidence: probes-numeric `t1048-ttest`, `t1049-ttest`; ironcalc-calc `STATISTICAL/T_TEST.xlsx`. Exact values: mpmath
+`betainc` at 50 digits (T-0969 attempt 5, 2026-10-20).
+Ours: `student_t.rs` `student_t_tail_at` since T-0969 attempt 5. T.TEST/TTEST visibly-off cells went from 19 to 3:
+t1048-ttest A3/B3 (6 ulp) and t1049-ttest A48 (5 ulp), all Welch.
+Status: VERIFIED (excel-graph)
+Tasks: T-0969
 
 ## Incomplete beta sweep (T-1044)
 Rule: Excel's incomplete-beta values are not the correctly rounded ones, are not exactly symmetric, and saturate to exactly 1.

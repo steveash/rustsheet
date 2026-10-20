@@ -7,13 +7,14 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-2199]
 ---
 
 ## Goal
 REPT, CODE and UNICODE are `#VALUE!` when their text argument is longer than 255 characters, at the exact cut Excel uses.
 
 ## Context
+- Evidence first (planner, 2026-10-20): the probe this task asks for is T-2199 (research), which fills `probes/t2199-text-length-and-combin-cuts`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). Rule: docs/excel-semantics/text.md "REPT, CODE and UNICODE refuse a text argument over 255 characters" (added by this triage):
 600 characters fail, 255 work (`REPT(REPT("x",255),3)`, 033e65b9 A55). Probe the cut first (`excel-probe`: 256, 257 and 300
 characters, an astral character straddling 255 UTF-16 units) and check whether other text functions with a one-character or

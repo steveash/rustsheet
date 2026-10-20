@@ -5,7 +5,9 @@ use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
 use crate::functions::statistical::paired::PairedValues;
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
-use crate::functions::statistical::student_t::{student_t_density, student_t_tails};
+use crate::functions::statistical::student_t::{
+    student_t_density, student_t_tail_at, student_t_tails,
+};
 use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -117,7 +119,7 @@ fn t_test_p(
         return error(Error::DIV);
     }
 
-    let (t_stat, df) = match test_type {
+    let (t_square, df) = match test_type {
         TTestType::Paired => {
             if n1 != n2 {
                 return error(Error::NA);
@@ -138,10 +140,12 @@ fn t_test_p(
             if vd <= 0.0 {
                 return error(Error::DIV);
             }
-            let sd = vd.sqrt();
-            let t_stat = md / (sd / (nd as f64).sqrt());
+            // Excel's squared statistic is md^2 / (vd / n): bit-exact on 7 of the 11 paired
+            // cells (probes-numeric t1048/t1049-ttest, `T_TEST.xlsx` F2 and F5) and within
+            // 4 ulp on the rest; md^2 n / vd misses F2 by 2 ulp.
+            let t_square = md * md / (vd / (nd as f64));
             let df = (nd - 1) as f64;
-            (t_stat, df)
+            (t_square, df)
         }
 
         // 2: two-sample, equal variance (homoscedastic)
@@ -174,7 +178,7 @@ fn t_test_p(
             }
 
             let t_stat = (m1 - m2) / denom;
-            (t_stat, df)
+            (t_stat * t_stat, df)
         }
 
         // two-sample, unequal variance (Welch)
@@ -204,7 +208,7 @@ fn t_test_p(
                 return error(Error::DIV);
             }
             let df = num_df / den_df;
-            (t_stat, df)
+            (t_stat * t_stat, df)
         }
     };
 
@@ -212,7 +216,8 @@ fn t_test_p(
         return error(Error::DIV);
     }
 
-    let tail = student_t_tails(t_stat.abs(), df).1;
+    // Excel rounds y = df/(df + t^2) to a double before the tail (`student_t_tail_at`).
+    let tail = student_t_tail_at(df / (df + t_square), df);
     let mut p = match tails {
         TTestTails::OneTailed => tail,
         TTestTails::TwoTailed => 2.0 * tail,
