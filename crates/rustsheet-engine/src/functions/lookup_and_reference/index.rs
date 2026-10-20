@@ -8,7 +8,7 @@ use crate::functions::util::{
     array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
 };
 use crate::limits::check_array_size;
-use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
+use crate::reference_operators::{three_d_needs_one_sheet, RefArg, RefElement, RefGrid};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
@@ -424,6 +424,9 @@ impl Model {
             col: col_num,
             area: area_num,
         } = numbers;
+        if let RefArg::Grid(grid) = arg {
+            return self.index_grid(grid, numbers, two_arg, cell, form);
+        }
         let area_range;
         let reference = if let Some(areas) = arg.single_sheet_areas() {
             // NaN is out of range too; in range the conversion below is exact.
@@ -435,7 +438,7 @@ impl Model {
             &area_range
         } else {
             match arg {
-                RefArg::Ranges(_) => return three_d_needs_one_sheet(cell),
+                RefArg::Ranges(_) | RefArg::Grid(_) => return three_d_needs_one_sheet(cell),
                 RefArg::Value(_) if area_num != 1.0 => {
                     return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
                 }
@@ -510,6 +513,63 @@ impl Model {
     }
 }
 
+impl Model {
+    /// INDEX into an array of references (SPEC-0014 rule 3): element (row, column) is that
+    /// reference itself, read as INDEX reads a one-area reference's cell or range, or its error;
+    /// `INDEX(OFFSET(A1,0,0,{1;2}),1,1)` is A1's value and `ISREF` of it TRUE, element 2 spills
+    /// (probes/reference-lift-elements G2, H2, H15). An area_num past 1 is `#REF!`, one index
+    /// is `#VALUE!` (probes/reference-lift-consumers-b1d E109), and a whole row or column
+    /// (index 0) is the value view of those elements.
+    fn index_grid(
+        &mut self,
+        grid: &RefGrid,
+        numbers: IndexNumbers,
+        two_arg: bool,
+        cell: CellReferenceIndex,
+        form: IndexForm,
+    ) -> CalcResult {
+        if numbers.area != 1.0 {
+            return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
+        }
+        if two_arg {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "INDEX of an array of references needs a row and a column".into(),
+            );
+        }
+        let (rows, columns) = grid.dims();
+        if numbers.row > rows || numbers.col > columns {
+            return wrong_reference(cell);
+        }
+        if numbers.row == 0 || numbers.col == 0 {
+            let CalcResult::Array(values) = grid.to_values() else {
+                return wrong_reference(cell);
+            };
+            let row_eff = numbers.row;
+            let col_eff = numbers.col;
+            return index_from_array(&values, row_eff, col_eff, form == IndexForm::TopLeft, cell);
+        }
+        match grid.get(numbers.row - 1, numbers.col - 1) {
+            Some(RefElement::Reference(range)) => {
+                let single = range.left == range.right;
+                if form == IndexForm::TopLeft || (form == IndexForm::Value && single) {
+                    self.evaluate_cell(range.left)
+                } else {
+                    CalcResult::Range {
+                        left: range.left,
+                        right: range.right,
+                    }
+                }
+            }
+            Some(RefElement::Error(error)) => {
+                CalcResult::new_error(error.clone(), cell, "Error element".into())
+            }
+            None => wrong_reference(cell),
+        }
+    }
+}
+
 /// The area INDEX picks from `areas` of another workbook with `numbers` (`two_arg` when no
 /// `column_num` is given), or the error it gives: `#REF!` past the last area or the area's edge.
 fn external_index_area(
@@ -552,6 +612,6 @@ fn external_index_area(
 fn scalar_as_one_element_array(arg: RefArg) -> RefArg {
     match arg {
         RefArg::Value(scalar) => RefArg::Value(scalar_as_array(scalar)),
-        ranges @ RefArg::Ranges(_) => ranges,
+        reference @ (RefArg::Ranges(_) | RefArg::Grid(_)) => reference,
     }
 }

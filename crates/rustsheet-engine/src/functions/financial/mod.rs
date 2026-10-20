@@ -7,7 +7,6 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
-    reference_operators::RefArg,
 };
 
 mod accrint;
@@ -248,33 +247,36 @@ impl Model {
             // number is #VALUE! (probes/fin-argument-modes H368-H371; probes/npv-fvschedule-typed
             // A5, A6, A8, A9; probes/npv-fvschedule-edges A1, A5).
             // docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments".
-            match self.evaluate_reference_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
+            match self
+                .evaluate_reference_arg(arg, cell)
+                .into_ranges_or_value()
+            {
+                Ok(areas) => {
                     if let Err(e) = self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
                     {
                         return e;
                     }
                 }
-                RefArg::Value(CalcResult::Number(value)) => values.push(value),
-                RefArg::Value(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
+                Err(CalcResult::Number(value)) => values.push(value),
+                Err(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
                     match self.cast_number_ref(&direct, cell) {
                         Ok(value) => values.push(value),
                         Err(error) => return error,
                     }
                 }
                 // A written empty argument is a cash flow of 0 (probes/npv-fvschedule-edges A2).
-                RefArg::Value(CalcResult::EmptyArg) => values.push(0.0),
+                Err(CalcResult::EmptyArg) => values.push(0.0),
                 // An array is read whole: its numbers are the cash flows, its text and booleans
                 // are skipped and its first error is the result (H368; probes/npv-reference-forms
                 // A7, A8, A13).
-                RefArg::Value(array @ CalcResult::Array(_)) => {
+                Err(array @ CalcResult::Array(_)) => {
                     match self.array_of_numbers_from(array, &cell, true, || Ok(None), || Ok(None)) {
                         Ok(numbers) => values.extend(numbers),
                         Err(error) => return error,
                     }
                 }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
-                RefArg::Value(_) => {}
+                Err(error @ CalcResult::Error { .. }) => return error,
+                Err(_) => {}
             }
         }
         match compute_npv(rate, &values) {
