@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "Percent number text rounded once across VALUE, 0+ coercion and typed cell input, incl. e-notation and subnormal-range text: B VALUE, C 0+, D typed value, E ISNUMBER(typed), F typed=VALUE (T-2136).",
+ "description": "Percent number text rounded once across VALUE, 0+ coercion and typed cell input, incl. e-notation and near-underflow text: B VALUE, C 0+, D typed value, E ISNUMBER(typed), F typed=VALUE (T-2136).",
  "tags": [
   "M2",
   "coercion",
