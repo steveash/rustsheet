@@ -3,7 +3,7 @@ id: T-2138
 title: "Charge regex-syntax case folding of non-POSIX (?i) brackets to the compile budget"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
