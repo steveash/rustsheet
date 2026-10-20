@@ -90,15 +90,13 @@ pub(super) fn elapsed_text(
 ) -> String {
     let secs = value * 86400.0;
     let n = match (fraction, unit) {
-        (Some(fraction), _) => fraction.elapsed(unit),
-        (None, unit) => match unit {
-            ElapsedUnit::Second => snap(secs, 1e12).round(),
-            // Excel counts minutes and hours from the serial itself once the seconds overflow.
-            ElapsedUnit::Minute if secs.is_infinite() => (value * 1440.0).floor(),
-            ElapsedUnit::Hour if secs.is_infinite() => (value * 24.0).floor(),
-            ElapsedUnit::Minute => (snap(secs, 1e3) / 60.0).floor(),
-            ElapsedUnit::Hour => (snap(secs, 1e3) / 3600.0).floor(),
-        },
+        (Some(fraction), unit) => fraction.elapsed(unit),
+        (None, ElapsedUnit::Second) => snap(secs, 1e12).round(),
+        // Excel counts minutes and hours from the serial itself once the seconds overflow.
+        (None, ElapsedUnit::Minute) if secs.is_infinite() => (value * 1440.0).floor(),
+        (None, ElapsedUnit::Hour) if secs.is_infinite() => (value * 24.0).floor(),
+        (None, ElapsedUnit::Minute) => (snap(secs, 1e3) / 60.0).floor(),
+        (None, ElapsedUnit::Hour) => (snap(secs, 1e3) / 3600.0).floor(),
     };
     // Excel: a count that overflows f64 prints as 0, and from 1e15 up the digits are the first 15
     // significant ones followed by zeros (docs/excel-semantics/number-formats.md, "Elapsed tokens

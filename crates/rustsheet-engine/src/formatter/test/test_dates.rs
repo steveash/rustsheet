@@ -177,14 +177,16 @@ fn odd_period_1900_serial_reads_two_epochs_on() {
 // A32, A40 (T-0934, T-0981): fractional seconds and plain `h`/`s` after an elapsed token.
 #[test]
 fn fractional_and_repeated_elapsed_seconds() {
+    // The workbook's 3.14159, written as a quotient (the same double) for clippy's PI lint.
+    let value = 314_159.0 / 100_000.0;
     let two_03_04 = 2.0 / 24.0 + 3.0 / (24.0 * 60.0) + 4.0 / (24.0 * 60.0 * 60.0);
     let cases = [
-        (3.14159, "[h]:m:s.000", "75:23:53.376"),
-        (3.14159, "[m]:s.000", "4523:53.376"),
-        (3.14159, "[s].000", "271433.376"),
-        (3.14159, "[hh]:mm:ss.0", "75:23:53.4"),
-        (3.14159, "[ss].000", "271433.376"),
-        (-3.14159, "[h]:m:s.000", "-75:23:53.376"),
+        (value, "[h]:m:s.000", "75:23:53.376"),
+        (value, "[m]:s.000", "4523:53.376"),
+        (value, "[s].000", "271433.376"),
+        (value, "[hh]:mm:ss.0", "75:23:53.4"),
+        (value, "[ss].000", "271433.376"),
+        (-value, "[h]:m:s.000", "-75:23:53.376"),
         (two_03_04, "[hh]:mm:ss.0", "02:03:04.0"),
         (
             two_03_04,
@@ -194,12 +196,12 @@ fn fractional_and_repeated_elapsed_seconds() {
         (0.0, "[ss].000", "00.000"),
         (0.0, "[s]\" [yes, \"ss\"] seconds\"", "0 [yes, 00] seconds"),
         (
-            3.14159,
+            value,
             "\"It was \"[h]\" [yes, \"h\"] hours and \"mm:ss",
             "It was 75 [yes, 75] hours and 23:53",
         ),
         (
-            -3.14159,
+            -value,
             "[s]\" [yes, \"ss\"] seconds\"",
             "-271433 [yes, 271433] seconds",
         ),
