@@ -3,7 +3,7 @@ id: T-0929
 title: "VALUE: exact percent parsing (1 known failure)"
 milestone: M9
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
