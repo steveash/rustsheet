@@ -1028,3 +1028,32 @@ Reading:
 5. **Caveat on the method:** a mismatch of +-1 ulp(y) caused elsewhere can be "decided" by an s4 neighbour by
    coincidence. The joint seed-1 truth calibrates this: 36% misses from late stages leave the N classes at 0.94-0.97, so
    the contamination is a few points, far below the real 8-39%.
+
+### 12.8 W2's truths, the mixture test, and determinism (coordinator summary, 2026-10-20 03:05 UTC)
+- **Class tables on W2's own synthetic truths.** Truths: cE30 and cE100 (early-only function-null moves); cL30 and
+  cL100 (joint late + cross-N/D). Each is scored against grid_a on r112, r113, r901 and r703 (reviewer 3).
+  - All four are ONE-SIDED: one quarter class is near-perfect and the other far off (cE30: N 1/4 0.94 vs 3/4 0.29-0.45;
+    D 1/4 0.88-0.92 vs 3/4 0.07-0.10).
+  - cE30 matches real's exact rate on every run, yet its pattern is opposite to real's TWO-SIDED pattern: N
+    |1/4 - 3/4| = 0.00-0.27 and D 0.02-0.15 for real, against 0.49-0.85 for cE30.
+  - So the offset meter recovering early-only truths is expected, and neither displacement family is real's mechanism.
+- **Determinism.** Coordinator check: 2,054,772 distinct x in (2,3], of which 551,309 are evaluated more than once in
+  different cases and rows. Zero conflicting outputs.
+  - W2: a row-index analysis of the q2 data (row mod 2..1024, row blocks, case, part) is at binomial noise. The excess
+    variance is run-to-run in x.
+  - Reviewer 3: v401a/v404a/v407a hold the same x (ladder rungs 1e-13 apart) in rows 1-8192 and 8193-16384. The two
+    halves agree to three decimals.
+  - Excel's K2 output is a deterministic function of x. No thread, chunk or row effect.
+- **Mixture-of-paths test (reviewer 3).**
+  - Pure single rounding (SSE2 / PC=53) differs on 0.1-0.3% of points, and Excel follows double rounding there.
+  - Fused-everywhere and all-80-bit are rejected (follow rates 0.05-0.14).
+  - The only alternative Excel follows above chance is the stage-4 product entering the sum unquantised (identical to a
+    fused s3*x+p4). Its follow rate is flat within each run and swings between runs: 0.83 at 2.718, 0.79 at 2.5, 0.54 at
+    2.236, 0.48 at 2.612. That is the signature of a fixed structure seen through a per-anchor sub-ulp offset, not a
+    per-point switch.
+  - No low-bit, parity, row or autocorrelation predictor exists.
+- **Standing recommendation.** K2 = stored x87 Horner, with at most the stage-4 (N) / stage-3 (D) product unquantised.
+  The remaining 17-20% of points are decided by the sub-ulp positions of P4+p4 and P3+q3, i.e. by p0-p3 / q0-q2.
+  Recovering them needs an exact per-anchor fit over p0-p3 / q0-q2 on consecutive runs, with the stage-4/3 product's
+  quantisation as a free bit, followed by a lattice intersection of the per-anchor integer vectors (modulo aliases)
+  across anchors.
