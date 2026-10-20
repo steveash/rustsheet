@@ -343,6 +343,25 @@ impl Model {
         self.reference_arg_reading(node, CachedBlanks::Kept, cell)
     }
 
+    /// A value argument whose consumer reads an array of references by its elements (SPEC-0014
+    /// "Consumers"): a lifted producer is its grid, anything else its value as
+    /// `evaluate_node_in_context` gives it, a range as `RefArg::Ranges`. OFFSET, INDIRECT and
+    /// TRIMRANGE are the producers so far: TODO(T-1838) TAKE and DROP, and TODO(T-2078) the IF,
+    /// CHOOSE and LET pass-through join them here.
+    pub(crate) fn evaluate_value_or_grid(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        match node.ungrouped() {
+            Node::FunctionKind {
+                kind: kind @ (Function::Offset | Function::Indirect | Function::Trimrange),
+                args,
+            } => self.reference_producer(kind, args, cell),
+            _ => RefArg::from(self.evaluate_node_in_context(node, cell)),
+        }
+    }
+
     /// [`Self::evaluate_reference_arg`] with a cached area of a linked workbook read as `blanks`
     /// says ([`Model::external_aggregate_value`]).
     fn reference_arg_reading(
@@ -410,11 +429,11 @@ impl Model {
             Node::LambdaCallKind { lambda, args } => {
                 return self.call_callee_as_reference(lambda, args, cell)
             }
-            // A lifted OFFSET is an array of references (SPEC-0014).
+            // A lifted OFFSET, INDIRECT or TRIMRANGE is an array of references (SPEC-0014).
             Node::FunctionKind {
-                kind: Function::Offset,
+                kind: kind @ (Function::Offset | Function::Indirect | Function::Trimrange),
                 args,
-            } => return self.offset_reference(args, cell),
+            } => return self.reference_producer(kind, args, cell),
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
