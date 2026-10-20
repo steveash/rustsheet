@@ -181,38 +181,38 @@ fn a_lifted_coupon_call_is_charged_for_its_schedule_walks() {
             "#ERROR!",
         ),
         (
-            "A4",
+            "A3",
             "=ROWS(ACCRINT(39083,39264,SEQUENCE(1025)+39448,0.1,1000,2))",
             "1025",
         ),
         (
-            "A5",
+            "A4",
             "=ROWS(ACCRINT(1,39264,SEQUENCE(1025)*0+2958465,0.1,1000,4))",
             "#ERROR!",
         ),
         (
-            "A6",
+            "A5",
             "=ROWS(PRICE(SEQUENCE(513)+39000,43831,0.05,0.04,100,2))",
             "513",
         ),
         (
-            "A7",
+            "A6",
             "=ROWS(PRICE(SEQUENCE(513)*0+1,DATE(9999,12,31),0.05,0.06,100,4))",
             "#ERROR!",
         ),
         (
-            "A8",
+            "A7",
             "=ROWS(MDURATION(SEQUENCE(513)*0+1,DATE(9999,12,31),0.05,0.06,4))",
             "#ERROR!",
         ),
         (
-            "A9",
+            "A8",
             "=ROWS(DURATION(SEQUENCE(4096)+39000,43831,0.05,0.06,2))",
             "4096",
         ),
         // A text date may read as any date, so it is charged as the longest schedule.
         (
-            "A10",
+            "A9",
             "=ROWS(COUPNUM(IF(SEQUENCE(1025),\"2020-01-01\"),43831,4))",
             "#ERROR!",
         ),

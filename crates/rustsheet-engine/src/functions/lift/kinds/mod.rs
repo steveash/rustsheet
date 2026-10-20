@@ -118,6 +118,16 @@ impl ArgValue {
         }
     }
 
+    /// The whole number a coupon kernel reads: a number floored, a logical as 1 or 0 (ACCRINT
+    /// reads one; the others refuse it, so this over-charges them).
+    fn whole_number(self) -> Option<f64> {
+        match self {
+            ArgValue::Number(n) => Some(n.floor()),
+            ArgValue::Boolean(b) => Some(f64::from(u8::from(b))),
+            ArgValue::Text | ArgValue::Blank | ArgValue::Error => None,
+        }
+    }
+
     pub(crate) fn of_node(node: &ArrayNode) -> Self {
         match node {
             ArrayNode::Number(n) => ArgValue::Number(*n),
@@ -169,11 +179,13 @@ impl ValueWork {
                 // walk (`Model::coupon_args`, `Model::bond_args`, `Model::accrint_of`). A logical
                 // is charged as its number: ACCRINT reads it as one.
                 let per_year = match value(frequency) {
-                    Some(ArgValue::Number(n)) => n.floor(),
-                    Some(ArgValue::Boolean(b)) => f64::from(u8::from(b)),
                     // A text may read as any frequency.
                     Some(ArgValue::Text) => 4.0,
-                    _ => return 1,
+                    Some(arg) => match arg.whole_number() {
+                        Some(n) => n,
+                        None => return 1,
+                    },
+                    None => return 1,
                 };
                 if !matches!(per_year as u64, 1 | 2 | 4) {
                     return 1;
@@ -182,12 +194,11 @@ impl ValueWork {
                 let mut latest = f64::NEG_INFINITY;
                 for &arg in dates {
                     let date = match value(arg) {
-                        Some(ArgValue::Number(n)) => n.floor(),
-                        Some(ArgValue::Boolean(b)) => f64::from(u8::from(b)),
                         Some(ArgValue::Blank) | None => 0.0,
                         // A text may read as any date.
                         Some(ArgValue::Text) => return self.most(),
                         Some(ArgValue::Error) => return 1,
+                        Some(arg) => arg.whole_number().unwrap_or(0.0),
                     };
                     earliest = earliest.min(date);
                     latest = latest.max(date);

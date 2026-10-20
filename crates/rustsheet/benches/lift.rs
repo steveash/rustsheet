@@ -203,6 +203,15 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             1,
             "=ROWS(HYPGEOM.DIST(SEQUENCE(32)*0+99994114707,200000000000,200000000000,400000000000,TRUE))",
         ),
+    ]
+    .into_iter()
+    .chain(coupon_cases())
+    .collect()
+}
+
+/// The coupon functions' cases (T-1846), apart to keep `cases` short.
+fn coupon_cases() -> Vec<(&'static str, u32, &'static str)> {
+    vec![
         (
             "COUPDAYSNC, the longest schedule at the element cap",
             1,
