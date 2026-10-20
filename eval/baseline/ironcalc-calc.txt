@@ -424,7 +424,6 @@ F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E3
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E4
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E5
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C4
-F	ironcalc-calc/FINANCIAL/ISPMT.xlsx	Sheet1!E2
 F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!C8
 F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D17
 F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D2
@@ -712,7 +711,6 @@ F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G24
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G25
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G26
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G29
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G3
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G30
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G31
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G32
@@ -759,7 +757,6 @@ F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H64
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H65
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H72
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!G3
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!G4
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!J3
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L2
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L3
@@ -882,17 +879,12 @@ F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E53
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E54
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E56
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E8
-F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!F2
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!F3
-F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!H2
-F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!H3
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!J2
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!J3
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L2
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L3
 F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!D1
-F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!F1
-F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!F3
 F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!K1
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B10
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B11

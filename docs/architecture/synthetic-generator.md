@@ -467,6 +467,12 @@ separately in the dashboard.
   feature such as cross-sheet refs or names) is independently disabled with probability
   0.5, subject to the mask leaving at least 5 functions enabled [3]. The mask is recorded
   in the IR for reproducibility and coverage attribution.
+- **Focus mask** (`rustsheet-gen --focus`, T-2108): every formula's outermost call is a
+  generator-ready function whose catalog milestone is exactly the target. The functions take
+  turns through a seeded shuffle (reshuffled per case), so a run gives each about the same
+  number of outer calls; arguments are still drawn from everything in scope at or below the
+  milestone. Without it, the sqrt(prior) weighting lets high-prior earlier-milestone functions
+  crowd out the target's own. A milestone with no such function is an error.
 
 ### 5.5 Generation policies (anti-saturation)
 
@@ -497,6 +503,11 @@ whole-suite policies rather than per-workbook draws.
 
 Every pool entry has an `edge_class` id. A literal is drawn as
 `P(edge pool) = 0.35, P(realistic) = 0.65`, adjusted by policy.
+
+**Implemented (T-2109).** A catalog `value` parameter with `pool: <name>` draws from
+`tools/src/rustsheet_tools/gen/pools.py` 35% of the time, after its `domain` draw and never on a `hard`
+domain; other parameters still build a free expression. The pools there are `number_edges`, `unit_interval`,
+`angle` and `code_point`. Text, number-format and error pools are T-2110.
 
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),

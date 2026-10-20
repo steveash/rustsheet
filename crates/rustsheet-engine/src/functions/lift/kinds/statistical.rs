@@ -207,7 +207,9 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // over a range, K3-K16: the optional ones over an array; scalar-lift-shapes H15,
         // H16; docs/excel-semantics/statistics.md "Statistical function argument modes").
         // Their kernels are closed form, or call statrs' incomplete beta (a continued
-        // fraction of at most 140 steps) a fixed number of times: measured in release over
+        // fraction of at most 140 steps) or, for the F family, `incomplete_beta` (at most 300
+        // steps; 1.95 us at its worst measured, shapes 5E9 = df 1E10, T-0970, still under
+        // BINOM.DIST's 3.2 us below) a fixed number of times: measured in release over
         // 2^20 elements, BETA.DIST with shapes of 1E6 costs about 0.29 us an element, F.DIST
         // and T.DIST with 1E9 degrees of freedom 0.28 and 0.30 us, NORM.DIST 0.14 us, and the
         // slowest, BINOM.DIST with 1E18 trials, about 3.2 us (3.3 s for 2^20 elements), and
