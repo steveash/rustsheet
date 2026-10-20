@@ -179,6 +179,25 @@ t0 = time.time()
 cgrid = np.arange(-CMAX, CMAX + CSTEP / 2, CSTEP)
 if truth and os.environ.get("NEAR"):
     cgrid = np.arange(truth[2] - 1, truth[2] + 1, CSTEP)
+# CPART=i/n: this process scans every n-th c (parallel parts). CKPT: per-c candidate checkpoint (resume skips done c);
+# CKPTS: extra checkpoint files merged in (MERGE=1 with CKPTS rescans nothing and only rescores the union).
+if os.environ.get("CPART"):
+    pi, pn = map(int, os.environ["CPART"].split("/"))
+    cgrid = cgrid[pi::pn]
+CKPT = os.environ.get("CKPT")
+done = set()
+for fn in ([CKPT] if CKPT else []) + [f_ for f_ in os.environ.get("CKPTS", "").split(",") if f_]:
+    if os.path.exists(fn):
+        for l in open(fn):
+            v_, a_, b_, c_ = map(float, l.split())
+            cand.append((v_, a_, b_, c_))
+            if fn == CKPT:
+                done.add(round(c_ / CSTEP))
+if os.environ.get("MERGE"):
+    cgrid = cgrid[:0]
+cgrid = np.array([c_ for c_ in cgrid if round(c_ / CSTEP) not in done])
+print("c values to scan: %d (resumed %d)" % (len(cgrid), len(done)), flush=True)
+ck = open(CKPT, "a") if CKPT else None
 for cc in cgrid:
     tot = np.zeros((64, len(bsel)))
     for h in range(1, H + 1):
@@ -191,6 +210,10 @@ for cc in cgrid:
     vals = tot[ia, np.arange(len(bsel))]
     for i in np.argpartition(vals, -KEEP)[-KEEP:]:
         cand.append((vals[i], ag[ia[i]], bsel[i], cc))
+        if ck:
+            ck.write("%r %r %r %r\n" % (float(vals[i]), float(ag[ia[i]]), float(bsel[i]), float(cc)))
+    if ck:
+        ck.flush()
 print("scan %.0fs, %d candidates" % (time.time() - t0, len(cand)), flush=True)
 cand.sort(reverse=True)
 print("top S-only:", " | ".join("%.1f (a %.2f b %.1f c %.2f)" % c for c in cand[:3]))
