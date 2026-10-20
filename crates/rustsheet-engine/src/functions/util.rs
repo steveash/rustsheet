@@ -343,6 +343,23 @@ impl Model {
         self.reference_arg_reading(node, CachedBlanks::Kept, cell)
     }
 
+    /// A value argument whose consumer reads an array of references by its elements (SPEC-0014
+    /// "Consumers"): a lifted producer is its grid, anything else its value as
+    /// `evaluate_node_in_context` gives it, a range as `RefArg::Ranges`.
+    pub(crate) fn evaluate_value_or_grid(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        match node.ungrouped() {
+            Node::FunctionKind {
+                kind: Function::Offset,
+                args,
+            } => self.offset_reference(args, cell),
+            _ => RefArg::from(self.evaluate_node_in_context(node, cell)),
+        }
+    }
+
     /// [`Self::evaluate_reference_arg`] with a cached area of a linked workbook read as `blanks`
     /// says ([`Model::external_aggregate_value`]).
     fn reference_arg_reading(

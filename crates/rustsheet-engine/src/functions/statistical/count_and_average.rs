@@ -1,6 +1,6 @@
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ArrayNumbers, CellNumbers, DirectNumbers,
-    ErrorRule, ItemSource, NumberRules,
+    ErrorRule, GridReading, ItemSource, NumberRules,
 };
 
 use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
@@ -23,6 +23,16 @@ const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
+    grids: GridReading::Values,
+};
+
+/// AVERAGE itself: [`AVERAGE_ARGS`], but an array of references is read by its elements'
+/// top-left cells (SPEC-0014 rule 4: `AVERAGE(OFFSET(A1,{0;1},0))` is 50.5;
+/// probes/reference-lift-consumers E21, E133, -b2 E137, E165, E181). The rest of the family is
+/// unprobed there and keeps the value view (T-2065).
+const AVERAGE_ONLY_ARGS: AggregatePolicy = AggregatePolicy {
+    grids: GridReading::TopLeft,
+    ..AVERAGE_ARGS
 };
 
 /// DEVSQ, AVEDEV and SUMSQ: an empty argument is skipped (TODO(T-1748): Excel counts it as 0, probes/stat-order-floor-batch
@@ -33,6 +43,7 @@ const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: true,
+    grids: GridReading::Values,
 };
 
 /// AVERAGEA, MAXA and MINA rank errors as the AVERAGE family does: a scalar direct error beats a
@@ -148,10 +159,12 @@ impl Model {
         }
         let mut count = 0.0;
         let mut sum = 0.0;
-        if let Err(e) = self.for_each_value(args, cell, |f| {
-            count += 1.0;
-            sum = extended_sum(sum, f);
-        }) {
+        if let Err(e) =
+            self.for_each_aggregate_number(args, cell, AVERAGE_ONLY_ARGS, AVERAGE_NUMBERS, |f| {
+                count += 1.0;
+                sum = extended_sum(sum, f);
+            })
+        {
             return e;
         }
 
