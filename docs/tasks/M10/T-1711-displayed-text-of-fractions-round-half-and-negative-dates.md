@@ -3,7 +3,7 @@ id: T-1711
 title: "Displayed text of fractions, round-half #,##0 and negative dates matches Excel"
 milestone: M10
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -32,13 +32,20 @@ task keeps S!B4, the negative serial under `yyyy-mm-dd` (255 `#` in Excel, ours 
 out-of-range-date rule also covers; close this task as done by T-1731 if that lands first.
 
 ## Acceptance criteria
-- [ ] The `TF probes/displayed-text-formats.case.json S!B4` line leaves eval/baseline/probes.txt; no new F or TF lines.
+- [x] The `TF probes/displayed-text-formats.case.json S!B4` line leaves eval/baseline/probes.txt; no new F or TF lines.
       (S!A21 and the gen-m10 TEXT() lines above are T-2206's.)
-- [ ] number-formats.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] number-formats.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Column width: excel-graph's displayed text does not depend on it (decision 0068).
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+`Formatted` (new formatter/formatted.rs) carries `unshowable` for every serial the formatter rejects
+as a date; `Formatted::displayed` turns it into 255 `#` and `Model::get_formatted_cell_value` (so
+`Workbook::formatted`) uses it, while TEXT stays `#VALUE!`. Eval: probes/displayed-text-formats S!B4
+and 699 gen-m10 displayed-text cells (TF lines) left the baselines; no regressions. Clock codes past
+9999-12-31 that still format stay with T-1731 (its Context updated).
