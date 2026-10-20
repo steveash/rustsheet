@@ -79,6 +79,10 @@ fn excel_bessel_large_args_are_bit_exact() {
     assert_eq!(excel_bessel_y(0, 8.0), 0.223_521_489_249_680_93);
     assert_eq!(excel_bessel_y(1, 8.5), -0.026_168_679_623_921_92);
     assert_eq!(excel_bessel_y(8, 10.0), 0.001_075_473_508_846_236_4);
+    // BESSEL.xlsx (Excel-cached) has x = -10 and -32: J of an odd order is odd in x, even is even.
+    assert_eq!(excel_bessel_j(1, -30.0), 0.118_751_060_911_231_17);
+    assert_eq!(excel_bessel_j(0, -8.0), excel_bessel_j(0, 8.0));
+    assert_eq!(excel_bessel_j(4, -8.5), excel_bessel_j(4, 8.5));
     assert_eq!(excel_bessel_j(3, 0.0), 0.0);
     assert!(excel_bessel_y(0, 0.0).is_nan());
     assert!(excel_bessel_y(2, -10.0).is_nan());

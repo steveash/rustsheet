@@ -11,6 +11,7 @@
 
 use crate::functions::util::poly;
 
+/// `|x|` from which J0, J1, Y0 and Y1 switch from the rational to the asymptotic form.
 const SMALL_ARG_LIMIT: f64 = 8.0;
 /// Orders above this yield NaN (reported as `#NUM!`): every Bessel algorithm here, BESSELI's and
 /// BESSELK's included, is O(n) per cell and the formula layer truncates `n` from untrusted input.
@@ -302,7 +303,7 @@ pub(crate) fn excel_bessel_y(n: i32, x: f64) -> f64 {
         return f64::NAN;
     }
     // Y is undefined for x <= 0 (`#NUM!` at the formula layer).
-    if !(x > 0.0) {
+    if x <= 0.0 || x.is_nan() {
         return f64::NAN;
     }
     if n == 0 {
