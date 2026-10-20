@@ -3,7 +3,7 @@ id: T-2116
 title: "Decision record: how M5's exit criteria are measured, and the milestone of fit tasks for M5 functions"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
