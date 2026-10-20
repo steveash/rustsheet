@@ -10,7 +10,7 @@ use crate::{
     functions::lift::{grid_dims, ArgBuf, LiftCost, LiftOptions},
     functions::Function,
     model::Model,
-    reference_operators::{Picked, RefArg},
+    reference_operators::{Picked, RefArg, RefGrid},
 };
 
 use super::ref_lift::lifts;
@@ -95,14 +95,38 @@ impl Model {
         if args.len() < 2 || args.len() > 3 {
             return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
-        let source = if as_reference {
-            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
+        // An array of references keeps its elements (SPEC-0014 rule 7). As a reference argument
+        // (SUM's read) only a lifted OFFSET or INDIRECT is read for one, so the picked sources
+        // of `evaluate_picked_source` keep their reference reading.
+        let reads_grid = !as_reference
+            || matches!(
+                args[0].ungrouped(),
+                Node::FunctionKind {
+                    kind: Function::Offset | Function::Indirect,
+                    ..
+                }
+            );
+        let mut grid = None;
+        let source = if reads_grid {
+            match self.evaluate_value_or_grid(&args[0], cell) {
+                RefArg::Grid(elements) => {
+                    let values = elements.to_values();
+                    grid = Some(elements);
+                    values
+                }
+                other => other.into_single_area(cell),
+            }
         } else {
-            self.evaluate_node_in_context(&args[0], cell)
+            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
         };
         let counts = self.reference_lift_values(&args[1..], cell);
         if counts.as_slice().iter().any(lifts) {
+            // TODO(T-2193) a lifted count over an array of references is unprobed; it reads the
+            // grid's value view.
             return self.take_drop_lifted(source, counts, edge, cell);
+        }
+        if let Some(grid) = grid {
+            return self.take_drop_of_grid(&grid, counts.as_slice(), edge, cell);
         }
         if let CalcResult::Range { left, right } = source {
             if as_reference && left.sheet == right.sheet {
@@ -172,6 +196,40 @@ impl Model {
             cell,
             &mut |model, values| model.take_drop_of_array(&data, values, edge, cell),
         ))
+    }
+
+    /// TAKE or DROP over an array of references (SPEC-0014 rule 7, "Pass-through"): the counted
+    /// elements, still references, so `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
+    /// `SUM(DROP(OFFSET(A1,{0;1;2},0),1))` 10100 (probes/reference-lift-consumers E101, -b2
+    /// E153). An error element stays itself; the result is never larger than `grid`.
+    fn take_drop_of_grid(
+        &mut self,
+        grid: &RefGrid,
+        counts: &[CalcResult],
+        edge: Edge,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        let (num_rows, num_cols) = grid.dims();
+        let (rows, columns) = match self.edge_spans(counts, cell, edge, num_rows, num_cols) {
+            Ok(spans) => spans,
+            Err(error) => return RefArg::Value(error),
+        };
+        let (kept_rows, kept_columns) = (rows.len(), columns.len());
+        let elements = rows
+            .flat_map(|row| {
+                columns
+                    .clone()
+                    .filter_map(move |column| grid.get(row, column).cloned())
+            })
+            .collect();
+        match RefGrid::new(kept_rows, kept_columns, elements) {
+            Some(kept) => RefArg::Grid(kept),
+            None => RefArg::Value(CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "TAKE or DROP over an array of references lost its shape".to_string(),
+            )),
+        }
     }
 
     /// The scalar TAKE or DROP of `data` by the values of rows and the optional cols.
