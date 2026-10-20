@@ -1,7 +1,7 @@
 ---
 id: T-1731
 title: "Displayed text of a date or time format over a serial outside 0..2958465.99999 is 255 #"
-milestone: M10
+milestone: M5
 lane: functions-text
 status: todo
 priority: P2
@@ -14,6 +14,8 @@ depends_on: []
 A date or time format over a serial Excel cannot show as a date (negative, or past 2958465.99999 = 9999-12-31 23:59:59) displays 255 `#`, as Excel's text does.
 
 ## Context
+- Milestone M10 -> M5 (gap triage 2026-10-20): this task owns gen-m5 known failures of an M5 catalog function, and decision 0085 item 3 requires every failing cell of an M5 exit criterion to be owned by a task with milestone M5 so the pick order reaches it while M5 is current. Id and scope are unchanged.
+
 Every date and clock-time code in gen-m10 (`m/d/yyyy`, `d-mmm-yy`, `mmm-yy`, `dddd`, `yyyy-mm-dd`, `h:mm`,
 `h:mm:ss`, `h:mm AM/PM`, `[$-409]mmmm d, yyyy`, `e`, ...; ~450 failing text cells) over a negative value or one
 past 2958465.99999 (1234567890, 1E15): Excel shows 255 `#` (the report truncates them), ours `#VALUE!` (dates)
