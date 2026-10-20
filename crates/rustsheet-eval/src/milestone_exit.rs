@@ -70,6 +70,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 let scored = s.cells.saturating_sub(s.deviations);
                 let passed = s.cells_passed.min(scored);
                 row.gen_scored = Some(scored);
+                // Cell counts are far below 2^52.
                 #[allow(clippy::cast_precision_loss)]
                 {
                     row.gen_rate = (scored > 0).then(|| passed as f64 / scored as f64);
