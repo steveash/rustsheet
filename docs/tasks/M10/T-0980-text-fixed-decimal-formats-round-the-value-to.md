@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -64,3 +65,6 @@ probes-numeric is not gated (`gate = false`, no baseline file), so progress is r
 ## Out of scope
 - Near-zero snapping of `+`/`-` results (T-0110).
 - General format (T-0938) and scientific formats (T-0937).
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

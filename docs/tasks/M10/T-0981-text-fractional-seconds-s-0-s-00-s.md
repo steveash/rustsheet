@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -54,3 +55,6 @@ Rule: docs/excel-semantics/number-formats.md, "Fractional seconds in clock forma
 - The date part of these workbooks (1904 date system: DateFormatTests A2:A9, A14, A19:A28, ...,
   DateFormatNumberTests).
 - Elapsed `[h]`/`[m]`/`[s]` formats (T-0934).
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

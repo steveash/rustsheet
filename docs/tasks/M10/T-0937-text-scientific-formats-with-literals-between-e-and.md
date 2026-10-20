@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -34,3 +35,6 @@ What the evidence shows: the exponent sign goes next to the exponent digits, aft
 
 ## Out of scope
 The `?`/fraction failures in `poi/NumberFormatTests.xlsx` (excel-cached, pre-existing).
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

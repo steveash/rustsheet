@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -48,3 +49,6 @@ Root causes:
 ## Out of scope
 Empty format strings (T-0933). Date/time formats without elapsed tokens
 (`poi/DateFormatTests.xlsx`, `poi/DateFormatNumberTests.xlsx`, excel-cached).
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

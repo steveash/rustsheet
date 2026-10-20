@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -41,3 +42,6 @@ condition lexer and section choice are in `crates/rustsheet-engine/src/formatter
 
 ## Out of scope
 FormatConditionTests (excel-cached) unless it is fixed by the same change. Empty formats (T-0933).
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
