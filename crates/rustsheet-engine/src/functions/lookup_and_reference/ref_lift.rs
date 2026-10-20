@@ -6,7 +6,9 @@ use crate::calc_result::CalcResult;
 use crate::expressions::parser::Node;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{ArgBuf, LiftedArg};
+use crate::functions::Function;
 use crate::model::Model;
+use crate::reference_operators::RefArg;
 
 /// Whether an argument's value lifts the call: an array or a range of more than one cell. A
 /// one-cell range and a 1x1 array are their value, as before (whether Excel lifts
@@ -20,6 +22,21 @@ pub(super) fn lifts(value: &CalcResult) -> bool {
 }
 
 impl Model {
+    /// OFFSET, INDIRECT or TRIMRANGE read as a reference argument: one reference, or an array of
+    /// references when an argument lifts the call (`kind` is one of the three).
+    pub(crate) fn reference_producer(
+        &mut self,
+        kind: &Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        match kind {
+            Function::Indirect => self.indirect_reference(args, cell),
+            Function::Trimrange => self.trimrange_reference(args, cell, false),
+            _ => self.offset_reference(args, cell),
+        }
+    }
+
     /// The values of `args`, held inline (no heap allocation for the scalar call, SPEC-0014
     /// "Producers"); a written empty argument is `EmptyArg`.
     pub(super) fn reference_lift_values(
