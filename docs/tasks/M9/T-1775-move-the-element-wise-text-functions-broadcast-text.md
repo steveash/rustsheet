@@ -44,6 +44,9 @@ met. T-1932 still owns the driver's per-call cost. `make check` green, eval 0 fi
 reviewers' blocking findings fixed (excel-fidelity's filterxml-array-forms A9 regression; quality's duplication
 `--update`). Merging main brought in T-2090's UNICODE lift, which used `broadcast_text`; UNICODE is now a `Lift` entry
 like CODE, through `lift_text` and the borrowing `calc_result_to_text` (lone surrogates kept).
+`eval/baseline/poi.txt` drops EverythingTests!E160, F160, H160 and L160: ASINH fixes from T-2031 (7d9b91ef) that main
+never recorded, picked up by `make eval-baseline` after the merge; none comes from T-1775 (both builds score
+FormulaEvalTestData_Copy.xlsx 1279/1295).
 
 Measured on a noisy 4-core box, main 2b52f8cd (the branch point) vs the branch head, release, `text` bench, min of 11 recalcs, three alternating runs each:
 
