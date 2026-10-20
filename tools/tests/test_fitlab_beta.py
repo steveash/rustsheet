@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import struct
 from fractions import Fraction
 
 import pytest
@@ -72,10 +73,8 @@ def test_libreoffice_scores() -> None:
 
 
 def _ulp_distance(a: float, b: float) -> int:
-    import struct
-
     def key(x: float) -> int:
-        return struct.unpack("<q", struct.pack("<d", x))[0]
+        return int(struct.unpack("<q", struct.pack("<d", x))[0])
 
     return abs(key(a) - key(b))
 
