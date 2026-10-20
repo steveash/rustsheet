@@ -3,7 +3,7 @@ id: T-1870
 title: "YIELD and the other coupon-bond functions: a negative basis is #NUM!, not basis 0"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
