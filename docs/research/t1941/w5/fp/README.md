@@ -24,6 +24,8 @@ Three 200k subsamples; calibration with AN2 and with lat1:
 - W4's x87-top mask (N top 5, D top 4 in 80-bit = stored below 2 / below 3): 0.970–0.974;
 - N top 4 / D top 3 80-bit: 1.028–1.030;
 - N top 6 / D top 5 80-bit: 0.883; all 80-bit: 0.289.
-Spread across subsamples and calibration sets is ±0.002. **K1 is plain stored.** W4's mask is excluded (~35
-spreads); even the mildest mask tested is ~7 spreads off. Mask lifts on K1 are coefficient errors hidden by unstored
+Spread across subsamples and calibration sets is ±0.002, but AN2 and lat1 are close relatives. W2 measured on K2
+that coefficient bits alone move the calibration by about ±0.03, so a structure call needs a gap well above 0.03.
+W4's x87-top mask (0.07 below real) is excluded. The mildest mask (N top 4 / D top 3, 0.015 below) is NOT
+excluded. **K1 is plain stored or has at most a small 80-bit head.** Mask lifts on K1 are coefficient errors hidden by unstored
 ops, as on K3.
