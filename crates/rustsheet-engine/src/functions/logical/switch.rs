@@ -5,6 +5,7 @@ use crate::{
     expressions::{parser::Node, types::CellReferenceIndex},
     functions::util::compare_values,
     model::Model,
+    reference_operators::Picked,
 };
 
 impl Model {
@@ -24,48 +25,89 @@ impl Model {
         cell: CellReferenceIndex,
         as_reference: bool,
     ) -> CalcResult {
+        match self.switch_pick(args, cell) {
+            Picked::Node(value) => self.evaluate_node_as(value, cell, as_reference),
+            Picked::Value(value) => value,
+        }
+    }
+
+    /// SWITCH lifted over an array `expr` or case value: every argument is read, and each element
+    /// compares its value with the cases. `cases` are the case values `switch_pick` has already
+    /// read, in order; they are reused, not read again, so nested array-case `SWITCH`es stay linear.
+    fn switch_lifted(
+        &mut self,
+        expr: CalcResult,
+        cases: Vec<CalcResult>,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let mut lifted = vec![expr];
+        let mut read = cases.into_iter();
+        for (index, node) in args.iter().enumerate().skip(1) {
+            // Odd positions are the case values, the first `read.len()` of which are in hand.
+            let value = (index % 2 == 1).then(|| read.next()).flatten();
+            lifted.push(value.unwrap_or_else(|| self.evaluate_node_in_context(node, cell)));
+        }
+        // One unit per argument.
+        let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
+        self.lift_values(
+            lifted,
+            LiftCost::Cells(units),
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut |_, element| switch_element(element, cell),
+        )
+    }
+
+    /// What SWITCH's scalar expression picks: the value of the first matching case or the
+    /// default, unevaluated; otherwise the value SWITCH gives (an argument-count error, the
+    /// expression's or a case's error, `#N/A`, or SWITCH lifted over an array expression).
+    /// Reference context follows the picked value as it follows IF's branch:
+    /// `SUBTOTAL(9,SWITCH(1,1,(H1,I2)))` is 11 (probes/subtotal-ifs-switch-reference-picks, T-2014).
+    pub(crate) fn switch_pick<'a>(
+        &mut self,
+        args: &'a [Node],
+        cell: CellReferenceIndex,
+    ) -> Picked<'a> {
         let args_count = args.len();
         if args_count < 3 {
-            return CalcResult::new_args_number_error(cell);
+            return Picked::Value(CalcResult::new_args_number_error(cell));
         }
         let expr = self.evaluate_node_in_context(&args[0], cell);
         if LiftedArg::is_grid(&expr) {
-            let mut lifted = vec![expr];
-            for node in &args[1..] {
-                lifted.push(self.evaluate_node_in_context(node, cell));
-            }
-            // Each element compares its value with the cases: one unit per argument.
-            let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
-            return self.lift_values(
-                lifted,
-                LiftCost::Cells(units),
-                &LiftOptions::REUSE_EQUAL_RUNS,
-                cell,
-                &mut |_, element| switch_element(element, cell),
-            );
+            return Picked::Value(self.switch_lifted(expr, Vec::new(), args, cell));
         }
         if expr.is_error() {
-            return expr;
+            return Picked::Value(expr);
         }
 
         // How many cases we have?
         // 3, 4 args -> 1 case
         let case_count = (args_count - 1) / 2;
+        let mut cases = Vec::new();
         for case_index in 0..case_count {
             let case = self.evaluate_node_in_context(&args[2 * case_index + 1], cell);
+            // An array case value lifts the call like an array expression does, though the
+            // expression is a scalar (`SUBTOTAL(9,TAKE(SWITCH(1,{1,2},H1:H2,I1:I2),2))` is a 2x2
+            // of `#VALUE!`, probes/subtotal-take-array-selector-b A10, T-2012).
+            if LiftedArg::is_grid(&case) {
+                cases.push(case);
+                return Picked::Value(self.switch_lifted(expr, cases, args, cell));
+            }
             if case.is_error() {
-                return case;
+                return Picked::Value(case);
             }
             if compare_values(&expr, &case) == 0 {
-                return self.evaluate_node_as(&args[2 * case_index + 2], cell, as_reference);
+                return Picked::Node(&args[2 * case_index + 2]);
             }
+            cases.push(case);
         }
         // None of the cases matched so we return the default
         // If there is an even number of args is the last one otherwise is #N/A
         if args_count.is_multiple_of(2) {
-            return self.evaluate_node_as(&args[args_count - 1], cell, as_reference);
+            return Picked::Node(&args[args_count - 1]);
         }
-        no_match(cell)
+        Picked::Value(no_match(cell))
     }
 }
 

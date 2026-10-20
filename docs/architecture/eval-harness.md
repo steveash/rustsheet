@@ -107,7 +107,8 @@ The same conventions are implemented by `tools/.../spec2xlsx.py` (for Excel) and
 JSON numbers are written shortest-round-trip, so they are exact.
 
 **`rustsheet-oracle/v1`** sidecar (`<case>.oracle.json`, next to the case or under `oracle_dir`):
-`{format, source{kind, application, version, produced_at, input_sha256}, sheets{Sheet:{A1:value}}}`.
+`{format, source{kind, application, version, produced_at, input_sha256, workbook_name?}, sheets{Sheet:{A1:value}}}`.
+`workbook_name` (since T-2042) is the file name the workbook had in the oracle (`<sha256>.xlsx` for excel-graph); the adapter gives the engine the same name (`WorkbookOptions::name`), so `CELL("address")` of a reference on another sheet compares.
 `input_sha256` hashes the `spec2xlsx` output, which is deterministic since T-0015 (creation time pinned in `docProps/core.xml`). Sidecars filled before T-0015 carry hashes of non-reproducible bytes: treat them as legacy; they refresh on the next fill, and values do not depend on the hash.
 Oracle values override hand expectations. `libreoffice` results are never written as sidecars.
 A sidecar may also hold `text{Sheet:{A1:"shown text"}}`: Excel's displayed text of the cells a spec

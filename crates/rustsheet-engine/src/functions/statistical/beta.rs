@@ -2,6 +2,7 @@ use statrs::distribution::{Beta, Continuous, ContinuousCDF};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
+use crate::functions::statistical::incomplete_beta::beta_density;
 use crate::functions::statistical::inverse_beta::beta_inverse_cdf;
 use crate::functions::statistical::special::bisect_unit_interval;
 use crate::functions::Function;
@@ -50,7 +51,7 @@ impl Model {
     /// `BETA.DIST(x, alpha, beta, cumulative, [A], [B])`: every argument lifts over an array and
     /// a range (SPEC-0011; probes/stat-argument-modes H84-H89, probes/stat-later-argument-lift
     /// H1-H5, K3-K6). The cdf is statrs' incomplete beta, a continued fraction of at most 140
-    /// steps.
+    /// steps; the density is `incomplete_beta::beta_density` where it applies.
     pub(crate) fn fn_beta_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaDist, args, cell, &mut |model, values| {
             let [x, alpha, beta, cumulative, bounds @ ..] = values else {
@@ -101,11 +102,13 @@ impl Model {
         }
         let t = (x - a) / width;
         let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
+        // TODO(T-2119): the cdf moves to `incomplete_beta::beta_reg` (bit-exact on more of
+        // BETADIST_BETAINV.xlsx), once the chained BETA.INV cells it moves are decided.
         let result = if cumulative {
             dist.cdf(t)
         } else {
             // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A)
-            dist.pdf(t) / width
+            beta_density(t, alpha, beta_param).unwrap_or_else(|| dist.pdf(t)) / width
         };
         if result.is_nan() || result.is_infinite() {
             return Err(num_error(cell));

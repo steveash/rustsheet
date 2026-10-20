@@ -7,7 +7,7 @@
 //! sum main always computed and a long one a closed form (docs/excel-semantics/financial.md
 //! "CUMIPMT and CUMPRINC over many periods"). Moved out of `financial/mod.rs` (T-1845).
 
-use super::annuity::{compute_ipmt, compute_ppmt};
+use super::annuity::{compute_ipmt, compute_ppmt, payment_overflows};
 use super::number_or_error;
 use crate::functions::lift::num_error;
 use crate::{
@@ -112,10 +112,15 @@ struct Periods {
 }
 
 impl Periods {
-    /// The per-period IPMT or PPMT sum, `None` when a period's `(1+r)^n` overflows (nper 1E6 or
-    /// 1E15, a rate of 1E10), where Excel still has a value (probes/fin-cumipmt-period-bound
+    /// The per-period IPMT or PPMT sum, `None` when PMT's `pv·(1+r)^nper` overflows (nper 1E6 or
+    /// 1E15, a rate of 1E10) or a period fails, where Excel still has a value (probes/fin-cumipmt-period-bound
     /// A13-A19) and the closed form takes over.
     fn summed(&self, paid: Paid) -> Option<f64> {
+        // IPMT/PPMT have a value past PMT's overflow since T-1405, but Excel's sums there are the
+        // closed form's (A15 is -8910.89108910891, not the summed -8910.891089108913).
+        if payment_overflows(self.rate, self.nper, self.pv, self.period_start) {
+            return None;
+        }
         let step = match paid {
             Paid::Interest => compute_ipmt,
             Paid::Principal => compute_ppmt,

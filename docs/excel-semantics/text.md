@@ -4,7 +4,7 @@
 Rule: a text function broadcast over arrays (LEFT, REPT, SUBSTITUTE, ...) returns a single scalar `#VALUE!` (no spill) once the total bytes of its string results exceed 64 MiB, to bound allocation on untrusted input (CLAUDE.md directive 5). A broadcast whose shape is above 1,048,576 cells is refused with `#ERROR!` before any element is computed, so that bound takes precedence over this one (arrays.md "Array results above 1,048,576 cells", T-1771). Excel's behavior (expected, not measured): compute the whole array, limited only by memory and the 32,767-char per-cell limit. Ours differs on legitimate data too: the budget counts UTF-8 bytes (not Excel's UTF-16 characters, so CJK text hits it about 3x sooner in characters), and a full-column text formula such as `=UPPER(A:A)` over ~65-char strings exceeds 64 MiB and returns `#VALUE!` where Excel spills normally.
 Evidence: none for Excel's behavior; this is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
-Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by functions/text/common.rs (`broadcast_text`), the lift driver and FORMULATEXT over a range
+Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by the lift driver (functions/lift/driver.rs, which runs the element-wise text functions since T-1775) and FORMULATEXT over a range
 
 ## Text functions broadcast over array arguments
 Rule: EXACT, FIND, LEN, REPT, SEARCH, SUBSTITUTE, TRIM, CLEAN, PROPER and REPLACE lift element-wise over
@@ -331,17 +331,26 @@ compiling, too-big attempts included (2,048 small patterns), and hold 64 MiB of 
 after each search (none is evicted, so patterns that cycle compile once). Its searches (functions/text/regex_engine.rs)
 run on a lazy DFA that gives up when it thrashes (after 3 cache clears, below 10 bytes a state, the regex crate's own
 setting) and then on a PikeVM; the DFA is charged what its cache says it scanned (4 a byte) and built (8 a byte of
-state), the PikeVM its span times its NFA's state count (5 a state-byte) before it runs, 64 a search, and a call may
+state), the PikeVM (T-1829) 21 for each NFA state a scan visits that measures the span a leftmost-first search needs, and
+54 more for each look-around it evaluates (a Unicode `\b` or `\B` costs about three visits; a chain of 40 over
+`REPT("éa ",10000)&SEQUENCE(300)` is `#ERROR!` after about 1 s), and 3 more for each range of a sparse class state
+(a large Unicode class) its byte step walks (T-1988: `\b[\w\s\d]{30}q` over `REPT("日a ",8000)&SEQUENCE(80)` is
+`#ERROR!` after about 1 s, not 1.6) (the PikeVM then runs over that span alone; an anchored search is charged its span times its state count, 5 a
+state-byte), 64 a search, and a call may
 spend 2^30 (about 1 s of the slowest searches; `SUM(--REGEXTEST(REPT("y",200)&SEQUENCE(100000),"x"))` fits, 20 MB).
 A pattern whose DFA thrashes over a lot of text (`a[ab]{100}c|b[ab]{100}c` over 560 texts of 30,000 bytes) and a call
-past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). Iterating matches on the PikeVM
-charges every successive search the rest of the text, and a pattern with `\b` runs on the PikeVM over non-ASCII
-text (the lazy DFA quits there), so `COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is `#ERROR!` where
-Excel returns an array (T-1829 charges it by the work done). A REGEXREPLACE searches twice,
+past any of these limits is `#ERROR!` (`ROWS(REGEXTEST("a","a"&SEQUENCE(5000)))`). A pattern with `\b` runs on the
+PikeVM over non-ASCII text (the lazy DFA quits there); iterating its matches costs what the searches read
+(`COLUMNS(REGEXEXTRACT(REPT("naïve ",500),"\b\w+\b",1))` is 500 since T-1829, the match count Excel's
+`REPT("naïve ",3)` case (3, probes/regex-ascii-classes A5) leads one to expect; T-1272 charged each
+search the rest of the text), while a search that truly reads to the end every time (`a.*z|a|\bq` over
+`REPT("a",20000)&"é"`) is still `#ERROR!`. A REGEXREPLACE searches twice,
 once to size its result: over 65,535 UTF-16 units it is
 `#CALC!` as Excel's is, its length known before it is built (`LEN(REGEXREPLACE(REPT("a",32767),"","bbbbbbbbbb"))`;
 "REGEXREPLACE results are capped at 65,535 UTF-16 units" below); a lifted REGEXREPLACE whose results pass the text
-broadcast cap (64 MiB, first entry) is one `#VALUE!`.
+broadcast cap (64 MiB, first entry) is one `#VALUE!`. The brackets holding a POSIX class under `(?i)` of one
+pattern that would together be rewritten past 64 KiB (their other items folded explicitly, "REGEX* POSIX classes are Unicode (T-1903)") is an invalid
+pattern, `#VALUE!` (T-1989).
 The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
 ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE), as
 Excel's are (T-1817, below); POSIX classes are rewritten to Excel's Unicode ones ("REGEX* POSIX classes are Unicode (T-1903)").
@@ -349,9 +358,9 @@ The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE r
 pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
-Implemented in: `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
+Implemented in: `MAX_UNFOLDED_BRACKET_LEN` (functions/text/regex_posix.rs), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829
+Tasks: T-1272, T-1829, T-1988, T-1989
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
@@ -436,14 +445,15 @@ the Kelvin sign U+212A does not match `k` in either direction (`TEXTBEFORE("a"&U
 U+212A against "akbkc" is `#N/A`), `ß` does not match `ss` (`TEXTBEFORE("aßbSSc","ss",1,1)` is "aßb") and `ẞ` (U+1E9E) does not match
 the delimiter `ß` (`TEXTBEFORE("assbẞc","ß",1,1)` is `#N/A`, although `ẞ` lowercases to `ß`), and `Ä` matches `ä`
 (`TEXTBEFORE("ÄxäyÄ","ä",2,1)` is "Äx"). The result is cut from the original text, so it keeps its case. Positive and negative
-instance numbers behave the same on `"İİİ,a,b"`. Sigma is positional, unlike TEXTSPLIT and SEARCH: `Σ` followed by a letter is `σ`, any
-other `Σ` is `ς`, and `ς` is only `ς`. So the delimiter `Σ` alone matches a text `ς` but not `σ`, the delimiter `ς` matches a final `Σ`
+instance numbers behave the same on `"İİİ,a,b"`. Sigma is positional, unlike TEXTSPLIT and SEARCH, with LOWER's final-sigma rule: `Σ` followed by a letter or digit is `σ`, any
+other `Σ` (end of text, space, punctuation) is `ς`, and `ς` is only `ς`. So the delimiter `Σ` alone matches a text `ς` but not `σ`, the delimiter `ς` matches a final `Σ`
 ("aΟΣ") but neither `σ` nor a `Σ` followed by a letter, and the delimiter `σ` matches a `Σ` followed by a letter but not `ς`.
-Evidence: probes/textbefore-casefold-length A1-A25 (excel-graph, 2026-10-17, T-1796).
+The same holds for the text and a delimiter that are both `Σ` (`TEXTBEFORE("aΣb","Σ",1,1)` is `#N/A`: the text's `Σ` is `σ`, the lone delimiter `Σ` is `ς`), and for TEXTAFTER.
+A `Σ` before a digit is `σ` (`TEXTBEFORE("ΟΔΟΣ1","σ",1,1)` is "ΟΔΟ", delimiter `ς` is `#N/A`); before a space or a comma it is `ς` (`"ΟΔΟΣ ΚΑΙ"` and `"ΟΔΟΣ,Α"` match `ς`, not `σ`).
+Evidence: probes/textbefore-casefold-length A1-A25 (excel-graph, 2026-10-17, T-1796); probes/textbefore-sigma-contexts A1-A18 (excel-graph, 2026-10-19, T-1799).
 Ours: `fold_for_before_after` (text/casefold.rs) folds char by char with `fold_for_split`'s İ/Kelvin exceptions plus the sigma and `ẞ` rules,
 and `match_text` (util.rs) maps the match back to byte offsets of the original with `str::get`. Before T-1796 it searched `to_lowercase()` of the text
-and sliced the original at those offsets, which panicked on `TEXTBEFORE("İİİ,a",",",1,1)`. UNVERIFIED: a delimiter with the same `Σ` as the text, which our separate folds miss (`TEXTBEFORE("aΣb","Σ",1,1)` is `#N/A` here: the text's `Σ` is `σ`, the lone delimiter `Σ` is `ς`), and a `Σ` followed by a space, digit or punctuation (`"ΟΔΟΣ ΚΑΙ"`; only a `Σ` at the end of the text is probed, A25), both T-1799; the exact sigma context rule
-(whether a `Σ` after a non-letter, or before a combining mark, is final; the code ignores what precedes it), the folding of other chars (Å U+212B, ſ, µ,
+and sliced the original at those offsets, which panicked on `TEXTBEFORE("İİİ,a",",",1,1)`. Ours: the final-sigma rule is `sigma_is_final` (string_format.rs), shared with LOWER. UNVERIFIED: whether a `Σ` before a combining mark, `’` or a zero-width space is `σ` (LOWER's rule, assumed), whether a letter must precede the `Σ` (the code ignores what precedes it), the folding of other chars (Å U+212B, ſ, µ,
 titlecase digraphs, which follow SEARCH's `fold_char`), `ẞ` against the delimiter `ß`'s mirror (text `ß`, delimiter `ẞ`), and whether TEXTSPLIT shares the
 `ẞ` and sigma rules (its probe has no such cell).
 Status: VERIFIED (web) for the listed forms
@@ -513,6 +523,16 @@ above 1114111 (U+10FFFF) is `#VALUE!`. A surrogate (55296-57343) or a Unicode no
 surrogate pair (`LEN(UNICHAR(65536))` is 2). A fractional value is truncated first (`UNICHAR(55296.5)` is `#N/A`).
 Evidence: probes/dollar-fixed-unichar-edges A30-A45, A51-A53, D54-D68 (excel-graph, T-1281).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+
+## UNICODE lifts over arrays and ranges
+Rule: UNICODE's argument lifts element by element over an array or a multi-cell range and spills, as CODE's does.
+`UNICODE(INDIRECT("Data!A2:A4",VSTACK(Data!C6:E7)))` lifts over INDIRECT's 2x3 result, and in a cell whose spill area
+is occupied it is `#SPILL!`. The element values (each element's scalar UNICODE, an empty element `#VALUE!`) are
+unprobed: the evidence fixes only the shape.
+Evidence: gen-m9/675763979c1defb6 Calc!A25 (excel-graph).
+Status: VERIFIED (excel-graph) for the spill; element values UNVERIFIED
+Implemented in: `fn_unicode`, `unicode_element` (functions/text/common.rs)
+Tasks: T-2090, T-2104
 
 ## UNICHAR argument shapes
 Rule: UNICHAR's argument is coerced like any number argument: TRUE is 1 (`UNICHAR(TRUE)` and `UNICHAR(A4)` with A4 = TRUE
@@ -614,6 +634,21 @@ Ours: matches. Implemented in `Replacement::new`, `CaseState` (functions/text/re
 Status: VERIFIED (excel-graph)
 Tasks: T-1688, T-1897
 
+## REGEX* character classes are Unicode; `$` and `.` around line breaks (T-1829)
+Rule: Excel's PCRE2 runs with Unicode properties (UCP): `\w` matches any letter or digit, `é`, `日` and the Kelvin sign
+included (`REGEXEXTRACT("naïve","\w+")` is "naïve"; `\W` does not match `é`; `[\w]`, `[^\W]` alike); `\b` sees
+`é` as a word character (`REGEXREPLACE("café foo","\bfoo\b","x")` is "café x", `"caféfoo"` is unchanged, `a\b` does
+not match in "aé"); `\d` matches the Arabic-Indic three and the full-width digit; `\s` matches NBSP, U+2003, U+3000,
+U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]]` and `[[:word:]]` match `é`;
+`(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
+`a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
+Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
+Ours: matches (the POSIX classes since T-1903) except that `(*UCP)`, `\X`, `\h` and `\R` are `#VALUE!` (A17, A27,
+A41, A42) and `$` does not match before a final LF (A34): SPEC-0013 gives `$`, `\h` and `(*UCP)` to T-1973 and
+`\X` and `\R` to a follow-up task after T-1900.
+Status: VERIFIED (excel-graph)
+Tasks: T-1829 (probe), T-1900, T-1903, T-1973
+
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
 `(?<n>abc)\k<n>`, `(a)\g1`; with case_sensitivity 1 `(a)\1` matches `Aa`), a backreference to a missing group is
@@ -630,10 +665,10 @@ ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around 
 Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
 Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, atomic groups, `\K`, conditionals and
 comments as invalid (`#VALUE!`), reads `a++` as `a+` followed by `+` (so `a++a` matches `aaa`, C11, B29), and
-iterates as Rust does (`bababab`). The matcher is T-1898
-(spec), T-1899 (iteration) and T-1900 (pattern features).
+iterates as Rust does (`bababab`). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
+unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
 Status: VERIFIED (excel-graph)
-Tasks: T-1688, T-1898, T-1899, T-1900
+Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
@@ -657,11 +692,23 @@ its function as an array and `ARRAYTOTEXT` of it is "" (probes/groupby-blank-val
 Evidence: probes/arraytotext-empty-ref A1-A25 (excel-graph, 2026-10-17, T-1718).
 Status: VERIFIED (excel-graph). Implemented in: `fn_arraytotext`. Tasks: T-1718
 
+## Element-wise text functions on the lift driver: a LAMBDA, a 1x1 array, VALUETOTEXT's error format (T-1775)
+Rule (the engine's, unprobed): since the element-wise text functions (LEFT/RIGHT/MID and their *B twins, LEN/LENB, FIND/SEARCH, REPT, SUBSTITUTE, REPLACE, EXACT, TEXT, VALUE, VALUETOTEXT, CODE, UNICHAR, BAHTTEXT, FILTERXML, CONCATENATE, DATEVALUE, TIMEVALUE) lift through the SPEC-0011 driver, three edges follow the driver's rule rather than the old `broadcast_text`'s:
+- a LAMBDA argument makes every element `#VALUE!`, whatever the other arguments hold, as before (`FILTERXML(LAMBDA(x,x),NA())` is `#VALUE!` in Excel, probes/filterxml-array-forms A9; an error before the LAMBDA, `LEFT(NA(),LAMBDA(x,x))`, is unprobed), but an array argument now keeps its shape (`COLUMNS(LEFT({"a","b"},LAMBDA(x,x)))` is 2, was one `#VALUE!`);
+- a 1x1 array argument gives a 1x1 array, as in every other lifted family and in TEXTSPLIT ("TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift ..." above): `TYPE(LEFT({"abc"},2))` is 64, `ARRAYTOTEXT(MID({"abc"},"x",NA()),1)` "{#VALUE!}" (was 2 and `#VALUE!`). A one-cell range is still its cell's value (`TYPE(LEFT(A1:A1,2))` is 2);
+- VALUETOTEXT with an array value and a scalar error format is an array of that error, one per element (was the one error).
+A legacy (pre-dynamic-array) `RIGHT(A1:A3)` now gets the implicit-intersection `@`: the old hand-written static arm wanted two arguments, the table says one or two (`RIGHT(text, [num_chars])`), as LEFT's arm did.
+The probed behaviour is unchanged (error precedence, the broadcast padding, the size and text bounds; eval 0 fixes, 0 regressions).
+Evidence: probes/filterxml-array-forms A9 for the LAMBDA's precedence; none for the shapes (crates/rustsheet-engine/src/test/text_functions/lift_driver.rs pins the engine's values).
+Status: UNVERIFIED (probe pending, T-1963)
+Implemented in: `Model::lift_text` (functions/text/text_kernel.rs), the text table entries (functions/lift/kinds/text.rs).
+Tasks: T-1775, T-1963
+
 ## VALUE lifts over a range or an array (T-1791)
 Rule: VALUE lifts over a multi-cell range or an array, each element read as a scalar argument: text converts as in scalar VALUE (`"1 "` is 1, `" $2 "` 2, `"1/2/2020"` 43832, `" 3%"` 0.03), a number stays, a blank cell is 0, a boolean or `""` is `#VALUE!` and an error stays (`VALUE(A1:A8)` spills 8 rows). So `{=SUM(IFERROR(VALUE(LEFT(range,FIND(...)-1)),0))}` adds the numbers in front of the found text (corpus-bench/42181 B14 is 3).
 Not probed: a multi-cell range in a legacy (non-dynamic-array) cell, which takes the implicit intersection of the other lifted text functions.
 Evidence: probes/value-argument-lift (excel-graph, 2026-10-18); corpus-bench/42181 B14 (Excel cached value).
-Implemented in: `fn_value` (functions/text/common.rs), through `text_arg` and `broadcast_text`.
+Implemented in: `fn_value` (functions/text/common.rs), through the lift driver (`Model::lift_text`, T-1775).
 Status: VERIFIED (excel-graph)
 Tasks: T-1791
 
@@ -675,20 +722,32 @@ symbols (`$`, `+`, `<`, `^`, `@`, the backtick and `~` are punctuation; `×` and
 Ll and `upper` Lu (`ª` is not lower, `ǅ` neither); `word` L, N, Mn and Pc (`_`, `²`, a combining mark; not an emoji); `xdigit` 0-9,
 A-F, a-f and their fullwidth forms (not Arabic-Indic digits). `[:^name:]` and `[^[:name:]]` are the complements.
 `[:upper:]` and `[:lower:]` ignore case-insensitive matching: `REGEXTEST("a","(?i)[[:upper:]]")` and `REGEXTEST("A","(?i)[[:lower:]]")`
-are FALSE, and so is `(?i)[[[:upper:]]]` on `a` (which cannot tell a nested bracket from PCRE2's `[[:upper:]` then `]`: nesting is unconfirmed); negated, they complement the unfolded class (`(?i)[^[:upper:]]` and `(?i)[[:^upper:]]` on `a`
-are TRUE). Next to a literal they still are (`(?i)[[:upper:]x]` on `a` FALSE). Ours handles only a plain non-negated bracket (T-1989).
+are FALSE, and so is `(?i)[[[:upper:]]]` on `a`; negated, they complement the unfolded class (`(?i)[^[:upper:]]` and `(?i)[[:^upper:]]` on `a`
+are TRUE). Next to a literal they still are (`(?i)[[:upper:]x]` on `a` FALSE). The other items of the same bracket do fold:
+`(?i)[^[:upper:]x]` is FALSE on `X`, `x` and `B` and TRUE on `b` (the complement of unfolded Lu plus folded x), `(?i)[[:^upper:]x]` matches `X`,
+`(?i)[[:lower:]a-c]` matches `B` but not `D`. `(?i)` (and case_sensitivity 1) does fold `\p{..}` and `\P{..}`, unlike older PCRE2 documentation, which says caseless matching leaves `\p` alone: `(?i)\p{Lu}` and `(?i)[\p{Lu}]` match `a`, `(?i)\p{Ll}` matches `A`, `(?i)[^\p{Ll}]` does not match `A`, `(?i)\P{Lu}` and `(?i)[[:digit:]\P{Lu}]` do not match `a` (the complement of the folded set), `(?i)[^\P{Lu}]` does; the same inside a bracket beside a POSIX class (`(?i)[[:digit:]\p{Lu}]`, Kelvin sign against `[[:digit:]\p{Ll}]`), `\w`, `\d`, `\s`, `\W` and `\D` match as usual inside and outside such a bracket (A12-A17, A32-A37), but these inputs cannot show whether they fold (UNVERIFIED). Ours matches all forty cells (probes/regex-p-fold A1-A40, excel-graph, 2026-10-20, T-2092). Through `&&` and a scoped or re-set flag too: `(?i)[[:upper:]&&[:alpha:]]`,
+`(?i:[[:upper:]])` and `(?i)(?-i)(?i)[^[:^upper:]]` are FALSE on `a`. No POSIX class folds: `(?i)[[:ascii:]]` is FALSE on the Kelvin sign
+(U+212A) and long s (U+017F), though `(?i)k` matches the Kelvin sign (for the other classes folding changes nothing).
+Brackets nest, unlike stock PCRE2 (which reads `[[a]]` as `[[a]` then `]`): `[[a]]` matches `a` but not `[`, `(?i)[[[:upper:]]]`
+matches `A` and not `[]` (probes/regex-posix-classes-c A1-A26, excel-graph, 2026-10-20, T-1989). Ours matches all of these (T-1989).
 The case_sensitivity argument 1 behaves the same (`REGEXTEST("a","[[:upper:]]",1)` is FALSE). `&&` in a bracket intersects (`[[:alpha:]&&[:lower:]]`
 on `A` and `&` is FALSE); a literal `^`, `-` or `&` next to a class stays literal (`[[:upper:]^a]` matches `^`, not `b`).
 Syntax: `[a[:digit:]]` and `[[:alpha:][:digit:]]` mix classes with other items; `[\[:alpha:]]` is no class (`":"` FALSE).
 `[:alpha:]` outside a bracket, an unknown or upper-case name (`[[:foo:]]`, `[[:ALPHA:]]`), `[[.a.]]`, `[[=a=]]` and a range from a class
-(`[[:alpha:]-z]`, `[a[:upper:]-z]`) are invalid patterns (ERROR.TYPE 3); ours accepts them (T-1985).
-UNVERIFIED: the characters the probe does not cover (U+180E and U+061C, U+2066-U+2069 in graph and print, U+180E in blank, spacing marks
-in word) follow PCRE2's documented UCP definitions; Excel already departs from stock PCRE2 once (`&&` intersects), so the docs are weak evidence.
+(`[[:alpha:]-z]`, `[a[:upper:]-z]`) are invalid patterns (`#VALUE!`, ERROR.TYPE 3; probes/regex-posix-classes Z1-Z3, Z8-Z10, regex-posix-classes-b A4, A5; T-1985).
+`[[:alpha:]-]` and `[-[:alpha:]]` stay valid (a literal hyphen next to a class); a top-level `[.a.]` or `[..]`, a multi-character `[[.ab.]]` and a range that ends at a class (`[a-[:alpha:]]`, `[a-[:digit:]]`, and `[^a-[:alpha:]]`) are invalid patterns (`#VALUE!`, ERROR.TYPE 3), as PCRE2's `check_posix_syntax` has it (probes/regex-posix-syntax-edges A1-A14, excel-graph, 2026-10-19, T-2010). Ours already agrees on all fourteen.
+U+061C, U+180E and U+2066-U+2069 are not graph; U+061C is not cntrl either; U+180E is blank and space (so space is White_Space plus U+180E,
+not White_Space alone; ours includes it since T-1989); U+0903 (a spacing mark, Mc) is graph but neither word nor alpha (probes/regex-posix-classes-c
+A27-A36, excel-graph, 2026-10-20, T-1989). UNVERIFIED: the same code points in print.
 Evidence: probes/regex-posix-classes (excel-graph, 2026-10-19): 47 characters × 19 patterns, and column Z for the syntax;
 probes/regex-posix-classes-b (bracket neighbours, nested and negated `(?i)`, `&&`, case_sensitivity 1);
+probes/regex-posix-classes-c (nesting, folding of the other items, `[:ascii:]` under `(?i)`, the code points above; T-1989);
+probes/regex-posix-syntax-edges (hyphen next to a class, `[.a.]`, `[..]`, `[[.ab.]]`, a range ending at a class);
 probes/regexreplace-limit-and-syntax A23.
-Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled;
-upper and lower become a `(?-i:...)` alternative of their bracket.
+Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled (and rejects the invalid syntax above in `invalid_ast`);
+where `(?i)` is on (tracked through flag groups and scopes, starting from the case_sensitivity argument), a bracket
+holding a POSIX class becomes `(?-i:[...])` with its other items replaced by their case closure (`unfolded_posix_bracket`). A
+pattern whose brackets would print past 64 KiB that way, together, is `#VALUE!` (a few `(?i)[[:alpha:]\pL]` can be enough), a DEVIATION recorded under the REGEX* limits entry above.
 Status: VERIFIED (excel-graph)
 
 ## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)

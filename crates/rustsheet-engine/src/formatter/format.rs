@@ -1,4 +1,5 @@
 use super::elapsed::{elapsed_text, ElapsedUnit};
+use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{locale::Locale, number_format::to_precision, text::Text, types::DateSystem};
 use std::collections::BTreeSet;
@@ -658,6 +659,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             }
         }
         ParsePart::Number(p) => {
+            if let Some(fraction) = &p.fraction {
+                return Formatted {
+                    text: format_fraction(value, p, fraction),
+                    color: p.color,
+                    error: None,
+                };
+            }
             let mut text = "".to_string();
             if let Some(c) = p.currency {
                 text = format!("{c}");

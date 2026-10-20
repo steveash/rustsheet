@@ -3,7 +3,7 @@ id: T-1832
 title: "Probe QUOTIENT, FACTDOUBLE and SERIESSUM over a 3-D range and in legacy formulas"
 milestone: M9
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,12 +22,17 @@ unprobed for these functions: a 3-D range in QUOTIENT, FACTDOUBLE or SERIESSUM's
 `SERIESSUM(2,0,1,Sheet1:Sheet2!A1)` is `#REF!` in ours, through the coefficient reader.
 
 ## Acceptance criteria
-- [ ] One probe case pins `QUOTIENT(Sheet1:Sheet2!A1,2)`, `FACTDOUBLE(Sheet1:Sheet2!A1)`,
+- [x] One probe case pins `QUOTIENT(Sheet1:Sheet2!A1,2)`, `FACTDOUBLE(Sheet1:Sheet2!A1)`,
   `SERIESSUM(Sheet1:Sheet2!A1,0,1,1)`, `SERIESSUM(2,0,1,Sheet1:Sheet2!A1)` and the FORMULATEXT of a
   legacy `=QUOTIENT(A1:A60,2)`, and ours matches it (or follow-ups are filed).
-- [ ] docs/excel-semantics/numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes" drops its
+- [x] docs/excel-semantics/numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes" drops its
   unprobed note for whatever passes.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other functions' 3-D ranges.
+
+## Outcome
+Probe `probes/quotient-factdouble-seriessum-3d-legacy` (8 cells, excel-graph): all four 3-D forms and both legacy bare ranges are
+`#VALUE!`, FORMULATEXT shows no `@`. Seven cells already matched; `SERIESSUM(2,0,1,Sheet1:Sheet2!A1)` was `#REF!` and is now
+`#VALUE!` (`series_coefficients`). numbers.md updated. Eval delta: probes +1 case, 8/8 cells.

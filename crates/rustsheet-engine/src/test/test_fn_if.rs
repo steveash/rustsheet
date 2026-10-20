@@ -67,3 +67,24 @@ fn test_if_and_index_pass_references_to_aggregates() {
     assert_eq!(model._get_text("B9"), *"5");
     assert_eq!(model._get_text("B10"), *"FALSE");
 }
+
+// An eta-reduced IF called with one argument is `#VALUE!` per element that is not an error
+// (probes/eta-if-one-argument, T-1947).
+#[test]
+fn eta_if_with_one_argument() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "0");
+    model._set("C1", "=LET(f,_xleta.IF,f(TRUE))");
+    model._set("C2", "=LET(f,_xleta.IF,f(NA()))");
+    model._set("C3", "=LET(f,_xleta.IF,f({1,#DIV/0!}))");
+    model._set("C5", "=BYROW(A1:B1,_xleta.IF)");
+    model._set("C6", "=LET(f,_xleta.IF,f(FALSE,5))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C2"), "#N/A");
+    assert_eq!(model._get_text("C3"), "#VALUE!");
+    assert_eq!(model._get_text("D3"), "#DIV/0!");
+    assert_eq!(model._get_text("C5"), "#CALC!");
+    assert_eq!(model._get_text("C6"), "FALSE");
+}

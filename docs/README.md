@@ -5,6 +5,7 @@
 | `research-plan.md` | workstreams, open questions, risks |
 | `milestones.md` | M0–M12 scope and exit criteria |
 | `status.md` | scoreboard, health, needs-owner, log |
+| `parity.md` | per-function Excel parity page with charts (generated: `make eval && make parity-report`) |
 | `architecture/` | overview, API design, eval harness, oracle, synthetic generator (normative) |
 | `process/` | agent workflow, review policy, quality gates, task format |
 | `specs/` | feature specs written before implementation |

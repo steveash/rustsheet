@@ -349,3 +349,21 @@ fn fn_oct2dec_misc() {
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"-536870912");
 }
+
+/// Excel: a negative result is ten digits whatever a valid `places` says
+/// (probes/eng-gen-sample-edges C1:C6, C11).
+#[test]
+fn negative_hex_result_ignores_places() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=HEX2OCT("FFFFFFFFFF",4)"#);
+    model._set("A2", r#"=HEX2BIN("FFFFFFFFFF",4)"#);
+    model._set("A3", r#"=HEX2OCT("FFFFFFFFFF",11)"#);
+    model._set("A4", r#"=HEX2BIN("FFFFFFFFFF",0)"#);
+    model._set("A5", r#"=HEX2OCT("1F",1)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"7777777777");
+    assert_eq!(model._get_text("A2"), *"1111111111");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+}

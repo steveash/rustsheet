@@ -3,7 +3,7 @@ id: T-1985
 title: "REGEX* POSIX class syntax errors match PCRE2 (outside a bracket, unknown names, collating elements, class range ends)"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,8 +29,16 @@ invalid, and `compile` treats it as `BuildFailure::Invalid`. See docs/excel-sema
 "REGEX* POSIX classes are Unicode (T-1903)".
 
 ## Acceptance criteria
-- [ ] probes/regex-posix-classes Z1, Z2, Z3, Z8, Z9 and Z10 and probes/regex-posix-classes-b A4 and A5 pass; no other probes cell regresses.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/regex-posix-classes Z1, Z2, Z3, Z8, Z9 and Z10 and probes/regex-posix-classes-b A4 and A5 pass; no other probes cell regresses.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - `\Q..\E` (T-1688) and any other PCRE2 dialect gap.
+
+## Outcome
+`unicode_posix_classes` now returns `Err(InvalidPosixSyntax)` for a bracket shaped `[:x:]`, `[.x.]`
+or `[=x=]` that the parser kept as a plain bracket (outside a bracket, unknown or upper-case name,
+collating element, equivalence class) and for a class followed by `-` and another item;
+`compile` treats it as an invalid pattern (`#VALUE!`). Eval: probes known failures 1876 -> 1868
+(Z1, Z2, Z3, Z8, Z9, Z10, A4, A5 fixed), no regressions. Not done: a range that ends at a class
+(`[a-[:alpha:]]`), which the task did not list and no probe covers.

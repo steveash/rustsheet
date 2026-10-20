@@ -1,0 +1,35 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1949: one-period YIELD when the DAYS360 settlement-to-maturity count is 0 although settlement < maturity (settlement the 30th, maturity the 31st, bases 0 and 4, frequencies 1/2/4, maturities Jan 31 and Mar 31) (A), a DSR 2 control and PRICE at DSR 0 (B), a zero numerator (rate 0, pr = redemption) and a numerator that vanishes against A/E (C).",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=YIELD(45321,45322,0.06,99,100,1,0)",
+        "A2": "=YIELD(45015,45016,0.06,99,100,1,0)",
+        "A3": "=YIELD(45321,45322,0.06,99,100,2,0)",
+        "A4": "=YIELD(45015,45016,0.06,99,100,2,0)",
+        "A5": "=YIELD(45321,45322,0.06,99,100,4,0)",
+        "A6": "=YIELD(45015,45016,0.06,99,100,4,0)",
+        "A7": "=YIELD(45321,45322,0.06,99,100,1,4)",
+        "A8": "=YIELD(45015,45016,0.06,99,100,1,4)",
+        "A9": "=YIELD(45321,45322,0.06,99,100,2,4)",
+        "A10": "=YIELD(45015,45016,0.06,99,100,2,4)",
+        "A11": "=YIELD(45321,45322,0.06,99,100,4,4)",
+        "A12": "=YIELD(45015,45016,0.06,99,100,4,4)",
+        "B1": "=YIELD(45320,45322,0.06,99,100,2,0)",
+        "B2": "=PRICE(45321,45322,0.06,0.05,100,2,0)",
+        "B3": "=PRICE(45321,45322,0.06,0.05,100,2,4)",
+        "C1": "=YIELD(45321,45322,0,100,100,2,0)",
+        "C2": "=YIELD(45321,45322,0,100,100,2,4)",
+        "C3": "=YIELD(45321,45322,0.06,100,100,2,0)"
+      }
+    }
+  ]
+}

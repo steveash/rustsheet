@@ -1,6 +1,7 @@
 use super::lambda::LambdaCaller;
 use crate::cast::calc_result_to_array_node;
 use crate::functions::util::array_node_to_calc_result;
+use crate::functions::Function;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -357,50 +358,48 @@ impl Model {
     ///
     /// Returns an array of the given size by calling `lambda(row, col)` (1-based) for each cell.
     pub(crate) fn fn_makearray(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 3 {
+        // rows and cols lift over an array and a range, one MAKEARRAY per element whose value is
+        // that call's top-left; the LAMBDA is read whole (SPEC-0011 "Array-valued functions",
+        // T-1834).
+        self.lift_call(Function::Makearray, args, cell, &mut |model, values| {
+            model.makearray_kernel(values, cell)
+        })
+    }
+
+    /// One MAKEARRAY call over argument values: `[rows, cols, lambda]`.
+    fn makearray_kernel(&mut self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let [rows, cols, lambda_result] = values else {
             return CalcResult::new_args_number_error(cell);
-        }
-
-        let rows = match self.get_number(&args[0], cell) {
-            Ok(f) => {
-                let n = f.floor() as i64;
-                if n < 1 {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "rows must be >= 1".to_string(),
-                    );
-                }
-                n as usize
-            }
-            Err(e) => return e,
         };
-
-        let cols = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                let n = f.floor() as i64;
-                if n < 1 {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "cols must be >= 1".to_string(),
-                    );
-                }
-                n as usize
+        let extent = |value: &CalcResult, name: &str| -> Result<usize, CalcResult> {
+            let n = self.cast_number_ref(value, cell)?.floor() as i64;
+            if n < 1 {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("{name} must be >= 1"),
+                ));
             }
-            Err(e) => return e,
+            Ok(usize::try_from(n).unwrap_or(usize::MAX))
+        };
+        let rows = match extent(rows, "rows") {
+            Ok(rows) => rows,
+            Err(error) => return error,
+        };
+        let cols = match extent(cols, "cols") {
+            Ok(cols) => cols,
+            Err(error) => return error,
         };
 
         if let Some((error, message)) = check_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
         }
 
-        let lambda_result = self.evaluate_node_in_context(&args[2], cell);
         if lambda_result.is_error() {
-            return lambda_result;
+            return lambda_result.clone();
         }
 
-        let mut caller = self.lambda_caller(&lambda_result, 2);
+        let mut caller = self.lambda_caller(lambda_result, 2);
         let mut result = Vec::with_capacity(rows);
         for r in 1..=rows {
             let mut row = Vec::with_capacity(cols);

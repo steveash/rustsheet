@@ -299,8 +299,9 @@ impl Model {
         let [settlement, maturity, rate] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        let settlement = self.cast_number_no_bools_ref(settlement, cell)?;
-        let maturity = self.cast_number_no_bools_ref(maturity, cell)?;
+        // The date order and the one-year limit are checked after the discount is read.
+        let settlement = self.financial_calendar_date_of(settlement, cell)?;
+        let maturity = self.financial_calendar_date_of(maturity, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let less_than_one_year = is_less_than_one_year(
             self.financial_date(settlement),

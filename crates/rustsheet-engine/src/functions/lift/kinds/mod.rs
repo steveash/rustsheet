@@ -5,12 +5,14 @@
 //!
 //! The table is split by family, each file with its weight constants and their measurements next
 //! to its entries: `general.rs` (dates, information, lookup, math), `financial.rs`,
-//! `statistical.rs` and `engineering.rs`. The argument shapes several families share are here.
+//! `statistical.rs`, `engineering.rs` and `text.rs`. The argument shapes several families share
+//! are here.
 
 mod engineering;
 mod financial;
 mod general;
 mod statistical;
+mod text;
 
 use crate::functions::Function;
 
@@ -32,6 +34,12 @@ pub(crate) enum ArgKind {
     /// WORKDAY's holidays),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
+    /// Read by the caller, which needs a reference there (RANK's `ref`): a reference is data,
+    /// captured by the kernel, and its slot is `EmptyArg`. An array that is not a reference is an
+    /// array of errors of its own shape, which the caller hands back to broadcast with the lifted
+    /// arguments (`Model::lift_call_beside`; statistics.md "RANK of a non-reference array",
+    /// probes/stat-test-lift P28-P31; T-1999). Static analysis gives it that array's shape.
+    ReferenceByCaller,
 }
 
 /// What one kernel call may cost, beyond reading its arguments (SPEC-0011 "Security rule for
@@ -45,16 +53,49 @@ pub(crate) enum KernelWork {
     /// against the visit cap, and the kernel also keeps its own per-call cap, as T-1197 bounds
     /// MULTINOMIAL's loop.
     Weighted(u32),
+    /// The kernel builds an array (SPEC-0011 "Array-valued functions" rule 3): a lifted element
+    /// is charged one unit before the call and the cells of its own result after it, times
+    /// `weight` (MAKEARRAY's 128 for its LAMBDA call per cell).
+    Output { weight: u32 },
+    /// A loop whose length is the value of argument `arg`: the Bessel recurrences run about once
+    /// or twice per order, up to the kernel's own per-call cap `cap` (T-1819). An element is
+    /// charged by that argument's value before anything runs, summed over the broadcast
+    /// (`lift/driver.rs` `kernel_units`): `1 + trunc(n) * weight / cap` units for a number with
+    /// `0 <= trunc(n) <= cap`, so `1 + weight` at the cap; a text is charged as at the cap (the
+    /// kernel may read it as a number), and anything else (an order past the cap or negative, an
+    /// error, a logical, a blank) 1, as the kernel refuses it before looping or runs order 0.
+    ByArg { arg: usize, cap: u32, weight: u32 },
 }
 
 impl KernelWork {
-    /// The units one kernel call is charged.
+    /// The units one kernel call is charged before it runs (for `ByArg`, the most it can be).
     pub(crate) fn weight(self) -> u64 {
         match self {
-            KernelWork::Constant => 1,
+            KernelWork::Constant | KernelWork::Output { .. } => 1,
             KernelWork::Weighted(weight) => u64::from(weight),
+            // The most an element is charged: its argument at the cap.
+            KernelWork::ByArg { weight, .. } => u64::from(weight).saturating_add(1),
         }
     }
+
+    /// The units a lifted element is charged after its call, for a result of `cells` cells: 0
+    /// unless the kernel builds an array.
+    pub(crate) fn output_charge(self, cells: u64) -> u64 {
+        match self {
+            KernelWork::Output { weight } => cells.saturating_mul(u64::from(weight)),
+            KernelWork::Constant | KernelWork::Weighted(_) | KernelWork::ByArg { .. } => 0,
+        }
+    }
+}
+
+/// What one unlifted call returns (SPEC-0011 "Array-valued functions" rule 1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CallResult {
+    /// One value: every entry before T-1834.
+    Value,
+    /// An array (SEQUENCE, MAKEARRAY): unlifted, the static shape is `Unknown`, and a lifted
+    /// element is the top-left value of its call.
+    Array,
 }
 
 /// The parameters of one function: `params[i]` is the kind of argument `i`. Arguments past
@@ -65,6 +106,7 @@ pub(crate) struct ArgKinds {
     pub(crate) repeat: Option<ArgKind>,
     pub(crate) max: usize,
     pub(crate) work: KernelWork,
+    pub(crate) result: CallResult,
 }
 
 impl ArgKinds {
@@ -80,6 +122,15 @@ impl ArgKinds {
             repeat: None,
             max: params.len(),
             work,
+            result: CallResult::Value,
+        }
+    }
+
+    /// The same kinds for a function whose unlifted call returns an array.
+    pub(crate) const fn array(self) -> Self {
+        Self {
+            result: CallResult::Array,
+            ..self
         }
     }
 
@@ -130,6 +181,10 @@ const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
 /// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
 /// ISPMT and SYD.
 const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
+/// `DAYS360(start_date, end_date, [method])`, FIND and SEARCH.
+const LIFT_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift], Constant);
+/// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])` and SUBSTITUTE.
+const LIFT_3_OF_4: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Constant);
 const LIFT_4: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift], Constant);
 /// `PMT(rate, nper, pv, [fv], [type])` and PV, FV, NPER alike.
 const LIFT_3_OF_5: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift], Constant);
@@ -147,12 +202,13 @@ impl Function {
             .or_else(|| financial::arg_kinds(self))
             .or_else(|| statistical::arg_kinds(self))
             .or_else(|| engineering::arg_kinds(self))
+            .or_else(|| text::arg_kinds(self))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{engineering, financial, general, statistical};
+    use super::{engineering, financial, general, statistical, text};
     use crate::functions::Function;
 
     /// One `match` caught a function entered twice as an unreachable pattern; across the
@@ -165,6 +221,7 @@ mod tests {
                 financial::arg_kinds(&function),
                 statistical::arg_kinds(&function),
                 engineering::arg_kinds(&function),
+                text::arg_kinds(&function),
             ];
             let entered = families.iter().filter(|kinds| kinds.is_some()).count();
             assert!(entered <= 1, "{function:?} is in {entered} families");

@@ -252,8 +252,9 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
    an array element is its top-left value (probes/m7-argument-modes K5-K10; SORTBY excepted, H97-H99),
    the elements of OFFSET, INDIRECT and TRIMRANGE are references (probes/reference-lift-elements),
    and TAKE's and DROP's are whole (K1-K4), which this spec reads as references, pending T-1960. Design: "Array-valued functions" (T-1834 to T-1839) and
-   "Elements that are references" (T-1955). Still open: a TAKE or DROP over an array value, and
-   SUM, `=` and arithmetic over a result of references (T-1960, T-1955).
+   "Elements that are references"; the carrier and its consumers are SPEC-0014 (T-1955), which
+   answers SUM, `=` and arithmetic over a result of references. Still open: a TAKE or DROP over an
+   array value (T-1960).
 6. **Answered.** A function-returned multi-cell reference in a `Lift` argument [lifts like a written
    range]: it does (IF, INDEX, OFFSET, INDIRECT, CHOOSE; -a W31-W36).
 7. **Answered.** The precedence and element-value gaps: precedence is the kernel's order (-a W14-W17
@@ -303,6 +304,10 @@ pub(crate) enum ArgKind {
     /// Read by the caller before the driver runs (an aggregate walk, a prepared search vector),
     /// and captured by the kernel. The driver does not evaluate it, and its slot is `EmptyArg`.
     WholeByCaller,
+    /// Read by the caller, which needs a reference there (RANK's `ref`, T-1999). A reference's
+    /// slot is `EmptyArg`; a non-reference array is handed back as a grid of errors that
+    /// broadcasts with the lifted arguments (`lift_call_beside`).
+    ReferenceByCaller,
 }
 
 /// What one kernel call may cost, beyond reading its arguments (security rule below).
@@ -369,6 +374,7 @@ cites its probe.
   | `LiftArrays` | `mode: value`, `lift: arrays` |
   | `LiftArraysRangeWhole` | `mode: criteria` or `range`, `lift: arrays` |
   | `Whole`, `WholeByCaller` | `mode: array`, `aggregate`, `aggregate_a`, `range`, `criteria` or `lambda`, without `lift` |
+  | `ReferenceByCaller` | `mode: range`, without `lift` |
 
   The generator stops passing ranges to `mode: value, lift: arrays` parameters, because they are
   refused anyway.
@@ -462,6 +468,7 @@ Each argument is read once, by its kind:
 | `LiftArraysRangeWhole` | `Grid` | `Scalar(the range)`, read whole | `Scalar(the range)` | `Scalar(value)` |
 | `Whole` | `Scalar` of the value as `evaluate_node_with_reference` read it, once | | | |
 | `WholeByCaller` | `Scalar(EmptyArg)`, not evaluated | | | |
+| `ReferenceByCaller` | `Scalar(EmptyArg)`, not evaluated; the caller reads it, and a non-reference array comes back through `lift_call_beside` as a `Grid` of errors (T-1999) | | | |
 
 A range across sheets (`Sheet1:Sheet2!C1:C2`, 3-D) is `Scalar(#REF!)` in a `Lift` position and
 `Scalar(#VALUE!)` in a `LiftArrays` position (open question 2; T-1801). That holds for a one-cell
@@ -634,6 +641,29 @@ up to 2^20 periods and finishes in a closed form that can be a unit off the walk
 "AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
 elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
 
+As built (T-1821): NPV is `[Lift]` with a repeated `WholeByCaller`, IRR `[WholeByCaller, Lift]` and MIRR
+`[WholeByCaller, Lift, Lift]`. Each caller reads its cash flows once, before the driver, and calls `lift_call_costed`
+with `LiftCost::Cells` of the flows; each kernel checks the arguments in the scalar order (NPV's rate before the flows,
+IRR's and MIRR's flows first). IRR is `Weighted(512)`: its solver makes at most 455 NPV passes per call
+(`financial_util::compute_irr`), so a lift is charged elements × flows × 512 and `IRR(A1:A300000,{0.1;0.1})` is
+refused before its first element.
+
+As built (T-1843): XNPV is `[LiftArrays, WholeByCaller, WholeByCaller]`, XIRR `[WholeByCaller, WholeByCaller,
+LiftArrays]` and FVSCHEDULE `[LiftArrays, WholeByCaller]`, read as NPV, IRR and MIRR are. XIRR is `Weighted(512)`: its
+solver makes at most 401 XNPV passes per call (`financial_util::compute_xirr`: XNPV(0), two bracket walks of 100
+points, 200 bisection steps).
+
+As built (T-1775): the element-wise text functions are `Lift` entries (`lift/kinds/text.rs`), LEFT to VALUETOTEXT with
+their *B twins, CODE, UNICHAR, UNICODE (T-2090), BAHTTEXT, FILTERXML, DATEVALUE, TIMEVALUE and CONCATENATE (`repeat: Lift` up to 255
+arguments). Their kernels go through `Model::lift_text` (`functions/text/text_kernel.rs`), which keeps `broadcast_text`'s
+first-failure rule (an error argument is the result only when it is the element's first failure, T-1022); TEXT and
+VALUETOTEXT, which order their own errors, call `lift_call` directly. The element functions read `&CalcResult` through the
+borrowing `cast::calc_result_to_text` and `Model::calc_result_to_number`, so an unlifted call copies no text. `TextArg` and
+`broadcast_text` are deleted. Three unprobed edges now follow the driver (a LAMBDA argument, a 1x1 array, VALUETOTEXT's
+scalar error format; text.md, T-1963). FIND and SEARCH are `Constant` with their scan named as the cap
+(`lift/tests/kernel_work.rs`); T-1961 charges it. The final grep finds two `bcast_get` loops the table above missed or
+another task owns: IMAGE's `image_grid` (information/offline_errors.rs, T-1962) and CHOOSE's `choose_array` (T-1810).
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
@@ -659,8 +689,14 @@ stack frames (T-1110) stay as they are, and the driver runs inside `fn_edate`.
 **Security rule for kernel work.** A table entry is `KernelWork::Constant` only if its kernel is
 O(1) or loops a fixed number of times, whatever the argument values. A value-dependent kernel
 must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.INV, POISSON,
-COMBIN, FACT and MULTINOMIAL (T-1197), the RATE/IRR/YIELD solvers (they have iteration caps, so
-they are `Constant` only if the cap is fixed), and the Bessel series. T-1776 checks a list of
+COMBIN, FACT and MULTINOMIAL (T-1197), and the RATE/IRR/YIELD solvers (they have iteration caps, so
+they are `Constant` only if the cap is fixed). A kernel whose loop length is one argument's value
+may instead be `ByArg { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order)):
+before any element runs, the driver sums each element's charge over the broadcast,
+`1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument `arg`,
+`1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the kernel
+refuses it before looping). That pass is O(elements). The
+kernel still keeps `cap` as its own per-call cap. T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`
 silently.
 
@@ -785,6 +821,13 @@ Test formulas (T-1834, T-1835):
 - `=ROWS(EXPAND(1,SEQUENCE(1024),1024))` is `#ERROR!`, as the first formula is.
 - `=ROWS(SEQUENCE({3;4}))` is 2 and charges 7 cells.
 
+**As built (T-1834).** The conversion is `element_node` in `lift/driver.rs`, which also applies the
+charge; entries that are `CallResult::Value` with no `Output` work skip both. One rule the spec did
+not name: an `Array` entry whose lifted arguments are all 1x1 runs one unlifted call and keeps its
+whole array (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows, as before T-1834), and its static shape
+is `Unknown`. Whether Excel lifts a 1x1 array there (`SEQUENCE({3})`) is open until T-1960, which
+deletes the rule or keeps it.
+
 **4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds:
 ```rust
 pub(crate) struct ArgKinds {
@@ -866,7 +909,7 @@ references.md, probes/isref-reference-lookups). So this spec reads a lifted TAKE
   not probed: T-1960 asks `TAKE({1,10;2,20;3,30},{1;2})`. If Excel keeps a whole sub-array there,
   T-1960 records it and this section gains a nested-array element in its PR.
 
-Then no new nested-array carrier is needed. The array-of-references carrier is T-1955's (one
+Then no new nested-array carrier is needed. The array-of-references carrier is SPEC-0014's `RefGrid` (T-1955; one
 definition for OFFSET, INDIRECT, TRIMRANGE, TAKE and DROP: directive 3). Rule 2's `element_value`
 hands a multi-cell reference to that carrier. The consumers are the ones T-1955 lists, with the
 evidence it has:
@@ -874,7 +917,7 @@ evidence it has:
 - ROWS and COLUMNS count the outer array (F4-F6; `ROWS(OFFSET(A1,0,0,{1;2}))` is 2);
 - ISREF of the whole result is one FALSE (reference-lift-elements F15, G15);
 - spilled directly, an OFFSET element is `#VALUE!`; SUM, `=` and arithmetic over such a result are
-  open (T-1955 for OFFSET; T-1960 asks the same of TAKE).
+  answered in SPEC-0014 rules 2-7 (T-1960 asks the same of TAKE).
 So T-1838 builds on T-1955's spec and T-1956's carrier, and adds TAKE and DROP as two more
 producers.
 

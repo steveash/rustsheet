@@ -43,6 +43,13 @@ macro_rules! lifting_table_functions {
             | Function::ZTest
             | Function::ZTestCompat
             | Function::Prob
+            | Function::Forecast
+            | Function::ForecastLinear
+            | Function::TTest
+            | Function::TTestCompat
+            | Function::RankCompat
+            | Function::RankEq
+            | Function::RankAvg
             | Function::Small
             | Function::PercentileCompat
             | Function::PercentileInc
@@ -55,6 +62,8 @@ macro_rules! lifting_table_functions {
             | Function::QuartileExc
             | Function::Trimmean
             | Function::Address
+            | Function::Sequence
+            | Function::Makearray
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv
@@ -69,6 +78,11 @@ macro_rules! lifting_table_functions {
             | Function::Sln
             | Function::Syd
             | Function::Ddb
+            | Function::Db
+            | Function::Vdb
+            | Function::Npv
+            | Function::Irr
+            | Function::Mirr
             | Function::Effect
             | Function::Nominal
             | Function::Dollarde
@@ -220,6 +234,11 @@ macro_rules! lifting_table_functions {
             | Function::Amorlinc
             | Function::Amordegrc
             // --- End financial ATP (T-1841) ---
+            // --- Financial ATP (T-1843) ---
+            | Function::Xnpv
+            | Function::Xirr
+            | Function::Fvschedule
+            // --- End financial ATP (T-1843) ---
             // --- Statistical (T-1290) ---
             | Function::BetaDist
             | Function::BetaDistCompat
@@ -312,6 +331,36 @@ macro_rules! lifting_table_functions {
             | Function::Mround
             | Function::Sqrtpi
             // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
+            // --- Text lifts (T-1775) ---
+            | Function::Len
+            | Function::Lenb
+            | Function::Value
+            | Function::Code
+            | Function::Unichar
+            | Function::Unicode
+            | Function::Bahttext
+            | Function::Datevalue
+            | Function::Timevalue
+            | Function::Left
+            | Function::Leftb
+            | Function::Right
+            | Function::Rightb
+            | Function::Valuetotext
+            | Function::Rept
+            | Function::Exact
+            | Function::Text
+            | Function::Filterxml
+            | Function::Find
+            | Function::Findb
+            | Function::Search
+            | Function::Searchb
+            | Function::Mid
+            | Function::Midb
+            | Function::Substitute
+            | Function::Replace
+            | Function::Replaceb
+            | Function::Concatenate
+            // --- End text lifts (T-1775) ---
     };
 }
 pub(crate) use lifting_table_functions;

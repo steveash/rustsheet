@@ -18,7 +18,6 @@
 | architecture | | |
 | quality | | |
 | excel-fidelity | | |
-| performance (if applicable) | | |
 
 ## Follow-ups filed
 

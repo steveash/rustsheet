@@ -7,7 +7,6 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
-    reference_operators::RefArg,
 };
 
 mod accrint;
@@ -19,13 +18,22 @@ pub(crate) use dates::days_30_360_us_ymd;
 mod discount;
 mod financial_bonds;
 mod financial_depreciation;
+pub(crate) use financial_depreciation::MAX_DEPRECIATION_PERIODS;
 mod financial_util;
 mod mirr;
 mod rate_conversions;
 
 use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
 
-use crate::functions::lift::number_or_error;
+use crate::functions::lift::{number_or_error, number_result, LiftCost};
+use crate::functions::Function;
+
+/// The cash flows (or FVSCHEDULE's rates) a lifted NPV, IRR, MIRR, XNPV, XIRR or FVSCHEDULE
+/// element walks, at least 1: what the call is charged per element (`LiftCost::Cells`).
+fn flow_count(flows: Result<&[f64], &CalcResult>) -> u64 {
+    let count = flows.map_or(1, |flows| flows.len().max(1));
+    u64::try_from(count).unwrap_or(u64::MAX)
+}
 
 /// A computation's error as the cell's error, with no message: the kernels run lifted, where an
 /// element's message is dropped (`calc_result_to_array_node`), so building one only allocates
@@ -225,19 +233,51 @@ impl Model {
         )
     }
 
-    // NPV(rate, value1, [value2],...)
-    // npv = Sum[value[i]/(1+rate)^i, {i, 1, n}]
+    /// `NPV(rate, value1, [value2], ...)`: `Sum[value[i]/(1+rate)^i, {i, 1, n}]`. The rate lifts
+    /// over arrays and ranges; the values are read once, whole, and handed to every element, whose
+    /// rate is checked first: a rate error wins over an error in the values, the scalar order kept
+    /// from before T-1821. The values are evaluated before the rate, also when the rate is an
+    /// error, since the call's charge needs their count; Excel's order is unprobed (financial.md
+    /// "NPV, IRR and MIRR error order", T-2103).
     pub(crate) fn fn_npv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if arg_count < 2 {
+        let [_, flows @ ..] = args else {
+            return CalcResult::new_args_number_error(cell);
+        };
+        if flows.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let rate = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
+        let flows = self
+            .npv_cash_flows(flows, cell)
+            .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Npv,
+            args,
+            LiftCost::Cells(flow_count(flows.as_deref())),
+            cell,
+            &mut |model, values| {
+                let rate = match values.first() {
+                    Some(rate) => model.cast_number_ref(rate, cell),
+                    None => Err(CalcResult::new_args_number_error(cell)),
+                };
+                match (rate, &flows) {
+                    (Err(error), _) => error,
+                    (Ok(_), Err(error)) => error.clone(),
+                    (Ok(rate), Ok(flows)) => {
+                        number_result(compute_npv(rate, flows).map_err(|error| error.0), cell)
+                    }
+                }
+            },
+        )
+    }
+
+    /// The cash flows of NPV, read from its value arguments in order.
+    fn npv_cash_flows(
+        &mut self,
+        flows: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
-        for arg in &args[1..] {
+        for arg in flows {
             // Excel: an argument read as a reference skips the text and booleans of its cells,
             // however the reference is written: `B1`, `(B1)`, `@B1:B1`, `IF(TRUE,B1)`,
             // `INDEX(B1:B2,1)`, `CHOOSE(1,B1)`, `OFFSET(B1,0,0)`, `INDIRECT("B1")`, `LET`, a
@@ -248,250 +288,155 @@ impl Model {
             // number is #VALUE! (probes/fin-argument-modes H368-H371; probes/npv-fvschedule-typed
             // A5, A6, A8, A9; probes/npv-fvschedule-edges A1, A5).
             // docs/excel-semantics/financial.md "NPV and FVSCHEDULE arguments".
-            match self.evaluate_reference_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if let Err(e) = self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
-                    {
-                        return e;
-                    }
-                }
-                RefArg::Value(CalcResult::Number(value)) => values.push(value),
-                RefArg::Value(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
-                    match self.cast_number_ref(&direct, cell) {
-                        Ok(value) => values.push(value),
-                        Err(error) => return error,
-                    }
+            match self
+                .evaluate_reference_arg(arg, cell)
+                .into_ranges_or_value()
+            {
+                Ok(areas) => self.for_each_number_in_areas(&areas, cell, |v| values.push(v))?,
+                Err(CalcResult::Number(value)) => values.push(value),
+                Err(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
+                    values.push(self.cast_number_ref(&direct, cell)?);
                 }
                 // A written empty argument is a cash flow of 0 (probes/npv-fvschedule-edges A2).
-                RefArg::Value(CalcResult::EmptyArg) => values.push(0.0),
+                Err(CalcResult::EmptyArg) => values.push(0.0),
                 // An array is read whole: its numbers are the cash flows, its text and booleans
                 // are skipped and its first error is the result (H368; probes/npv-reference-forms
                 // A7, A8, A13).
-                RefArg::Value(array @ CalcResult::Array(_)) => {
-                    match self.array_of_numbers_from(array, &cell, true, || Ok(None), || Ok(None)) {
-                        Ok(numbers) => values.extend(numbers),
-                        Err(error) => return error,
-                    }
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
-                RefArg::Value(_) => {}
+                Err(array @ CalcResult::Array(_)) => values.extend(self.array_of_numbers_from(
+                    array,
+                    &cell,
+                    true,
+                    || Ok(None),
+                    || Ok(None),
+                )?),
+                Err(error @ CalcResult::Error { .. }) => return Err(error),
+                Err(_) => {}
             }
         }
-        match compute_npv(rate, &values) {
-            Ok(f) => CalcResult::Number(f),
-            Err(error) => CalcResult::new_error(error.0, cell, error.1),
-        }
+        Ok(values)
     }
 
-    // Returns the internal rate of return for a series of cash flows represented by the numbers
-    // in values.
-    // These cash flows do not have to be even, as they would be for an annuity.
-    // However, the cash flows must occur at regular intervals, such as monthly or annually.
-    // The internal rate of return is the interest rate received for an investment consisting
-    // of payments (negative values) and income (positive values) that occur at regular periods
-
-    // IRR(values, [guess])
+    /// `IRR(values, [guess])`: the internal rate of return of cash flows at regular intervals.
+    /// The guess lifts over arrays and ranges; the values are read once, whole, and an error in
+    /// them is every element's (T-1821). Each element may run the solver's every pass over the
+    /// flows, so the call is charged their count per element, weighted by the table's
+    /// `IRR_WEIGHT`.
     pub(crate) fn fn_irr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if arg_count > 2 || arg_count == 0 {
+        let (Some(values), 1..=2) = (args.first(), args.len()) else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let values = match self.get_array_of_numbers(&args[0], &cell) {
-            Ok(s) => s,
-            Err(error) => return error,
         };
-        let guess = if arg_count == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            0.1
-        };
-        match compute_irr(&values, guess) {
-            Ok(f) => CalcResult::Number(f),
-            Err(error) => CalcResult::Error {
-                error: error.0,
-                origin: cell,
-                message: error.1,
+        let flows = self
+            .get_array_of_numbers(values, &cell)
+            .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Irr,
+            args,
+            LiftCost::Cells(flow_count(flows.as_deref())),
+            cell,
+            &mut |model, values| {
+                let flows = match &flows {
+                    Ok(flows) => flows,
+                    Err(error) => return error.clone(),
+                };
+                let guess = match model.cast_number_or(values.get(1), 0.1, cell) {
+                    Ok(guess) => guess,
+                    Err(error) => return error,
+                };
+                number_result(compute_irr(flows, guess).map_err(|error| error.0), cell)
             },
-        }
+        )
     }
 
-    // XNPV(rate, values, dates)
+    /// `XNPV(rate, values, dates)`: the rate lifts over arrays (a multi-cell range is refused);
+    /// the values and dates are read once, whole, and handed to every element, whose rate is
+    /// checked first, the scalar order (T-1843).
     pub(crate) fn fn_xnpv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // All three are required (docs/excel-semantics/syntax.md, "Minimum argument counts").
-        let [rate, values, dates] = args else {
+        let [_, values, dates] = args else {
             return CalcResult::new_args_number_error(cell);
         };
-        let rate = match self.get_number(rate, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let values = match self.get_array_of_numbers_xpnv(values, &cell, Error::NUM) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let dates = match self.get_array_of_numbers_xpnv(dates, &cell, Error::VALUE) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        // Decimal points on dates are truncated
-        let dates: Vec<f64> = dates.iter().map(|s| s.floor()).collect();
-        let values_count = values.len();
-        // If values and dates contain a different number of values, XNPV returns the #NUM! error value.
-        if values_count != dates.len() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Values and dates must be the same length".to_string(),
-            );
-        }
-        if values_count == 0 {
-            return CalcResult::new_error(Error::NUM, cell, "Not enough values".to_string());
-        }
-        let first_date = dates[0];
-        for date in &dates {
-            if *date < MINIMUM_DATE_SERIAL_NUMBER as f64
-                || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64
-            {
-                // Excel docs claim that if any number in dates is not a valid date,
-                // XNPV returns the #VALUE! error value, but it seems to return #VALUE!
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid number for date".to_string(),
-                );
-            }
-            // If any number in dates precedes the starting date, XNPV returns the #NUM! error value.
-            if date < &first_date {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Date precedes the starting date".to_string(),
-                );
-            }
-        }
-        // It seems Excel returns #NUM! if rate < 0, this is only necessary if r <= -1
-        if rate <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "rate needs to be > 0".to_string());
-        }
-        match compute_xnpv(rate, &values, &dates) {
-            Ok(f) => CalcResult::Number(f),
-            Err((error, message)) => CalcResult::new_error(error, cell, message),
-        }
-    }
-
-    // XIRR(values, dates, [guess])
-    pub(crate) fn fn_xirr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(2..=3).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let values = match self.get_array_of_numbers_xirr(&args[0], &cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let dates = match self.get_array_of_numbers_xirr(&args[1], &cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let guess = if arg_count == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        } else {
-            0.1
-        };
-        // Decimal points on dates are truncated
-        let dates: Vec<f64> = dates.iter().map(|s| s.floor()).collect();
-        let values_count = values.len();
-        // If values and dates contain a different number of values, XNPV returns the #NUM! error value.
-        if values_count != dates.len() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Values and dates must be the same length".to_string(),
-            );
-        }
-        if values_count == 0 {
-            return CalcResult::new_error(Error::NUM, cell, "Not enough values".to_string());
-        }
-        // Excel reads an empty value or date cell as 0 and accepts date 0 and dates before the
-        // first one, but is #NUM! for a negative date, a date past 9999-12-31, or when no date is
-        // later than the first: {-1000,1100} on {0,45365} is 1.1^(365/45365) - 1,
-        // {-1000,1100,-1000} on {45000,45365,44000} is -0.2467, and {-1000,1100} on
-        // {45365,45000} is #NUM! although it has a root (financial.md, "XIRR reads empty cells as
-        // 0 and accepts earlier dates"; probes/xirr-mismatched-empties, xirr-early-dates; T-1124).
-        let first_date = dates[0];
-        if dates
-            .iter()
-            .any(|date| *date < 0.0 || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64)
-        {
-            return CalcResult::new_error(Error::NUM, cell, "Invalid number for date".to_string());
-        }
-        if !dates.iter().any(|date| *date > first_date) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "No date is later than the starting date".to_string(),
-            );
-        }
-        match compute_xirr(&values, &dates, guess) {
-            Ok(f) => CalcResult::Number(f),
-            Err((error, message)) => CalcResult::Error {
-                error,
-                origin: cell,
-                message,
+        // The dates are truncated and checked once, not per element: each element is charged
+        // only the values' count.
+        let flows = self
+            .get_array_of_numbers_xpnv(values, &cell, Error::NUM)
+            .and_then(|values| {
+                let dates = self.get_array_of_numbers_xpnv(dates, &cell, Error::VALUE)?;
+                let dates = xnpv_dates(&values, &dates);
+                Ok((values, dates))
+            })
+            .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Xnpv,
+            args,
+            LiftCost::Cells(flow_count(
+                flows.as_ref().map(|(values, _)| values.as_slice()),
+            )),
+            cell,
+            &mut |model, values| {
+                let rate = match values.first() {
+                    Some(rate) => model.cast_number_ref(rate, cell),
+                    None => Err(CalcResult::new_args_number_error(cell)),
+                };
+                match (rate, &flows) {
+                    (Err(error), _) => error,
+                    (Ok(_), Err(error)) => error.clone(),
+                    (Ok(rate), Ok((values, dates))) => {
+                        let xnpv = dates.as_ref().map_err(Clone::clone).and_then(|dates| {
+                            // It seems Excel returns #NUM! if rate < 0, this is only necessary
+                            // if r <= -1
+                            if rate <= 0.0 {
+                                return Err(Error::NUM);
+                            }
+                            compute_xnpv(rate, values, dates).map_err(|error| error.0)
+                        });
+                        number_result(xnpv, cell)
+                    }
+                }
             },
-        }
+        )
     }
 
-    // DB(cost, salvage, life, period, [month])
-    pub(crate) fn fn_db(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(4..=5).contains(&arg_count) {
+    /// `XIRR(values, dates, [guess])`: the guess lifts over arrays (a multi-cell range is
+    /// refused); the values and dates are read once, whole, and an error in them is every
+    /// element's, before the guess's, the scalar order (T-1843). Each element may run the bracket
+    /// walks and the bisection over the flows, so the call is charged their count per element,
+    /// weighted by the table's `XIRR_WEIGHT`.
+    pub(crate) fn fn_xirr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let ([values, dates] | [values, dates, _]) = args else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let cost = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
         };
-        let salvage = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let life = match self.get_number(&args[2], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let period = match self.get_number(&args[3], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let month = if arg_count > 4 {
-            match self.get_number_no_bools(&args[4], cell) {
-                Ok(f) => f.trunc(),
-                Err(s) => return s,
-            }
-        } else {
-            12.0
-        };
-        if month == 12.0 && period > life
-            || (period > life + 1.0)
-            || month <= 0.0
-            || month > 12.0
-            || period <= 0.0
-            || cost < 0.0
-        {
-            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
-        };
-        if cost == 0.0 {
-            return CalcResult::Number(0.0);
-        }
-        let result = financial_depreciation::db_depreciation(cost, salvage, life, period, month);
-        CalcResult::Number(result)
+        // The dates are truncated and checked once, not per element, as XNPV's.
+        let flows = self
+            .get_array_of_numbers_xirr(values, &cell)
+            .and_then(|values| {
+                let dates = self.get_array_of_numbers_xirr(dates, &cell)?;
+                let dates = xirr_dates(&values, &dates);
+                Ok((values, dates))
+            })
+            .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Xirr,
+            args,
+            LiftCost::Cells(flow_count(
+                flows.as_ref().map(|(values, _)| values.as_slice()),
+            )),
+            cell,
+            &mut |model, arguments| {
+                let (values, dates) = match &flows {
+                    Ok(flows) => flows,
+                    Err(error) => return error.clone(),
+                };
+                match model.cast_number_or(arguments.get(2), 0.1, cell) {
+                    Ok(guess) => {
+                        let xirr = dates.as_ref().map_err(Clone::clone).and_then(|dates| {
+                            compute_xirr(values, dates, guess).map_err(|error| error.0)
+                        });
+                        number_result(xirr, cell)
+                    }
+                    Err(error) => error,
+                }
+            },
+        )
     }
 
     fn get_yearfrac(
@@ -553,25 +498,20 @@ impl Model {
         Ok((a, dim, dim - a))
     }
 
-    // FVSCHEDULE(principal, schedule)
+    /// `FVSCHEDULE(principal, schedule)`: the principal lifts over arrays (a multi-cell range is
+    /// refused); the schedule is read once, whole, and handed to every element, whose principal
+    /// is checked first, the scalar order (T-1843).
     pub(crate) fn fn_fvschedule(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
+        let [_, schedule] = args else {
             return CalcResult::new_args_number_error(cell);
-        }
-        // A boolean principal is #VALUE!, though a text number is converted
-        // (probes/fin-fvschedule A18, A9).
-        let principal = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
         };
         // Excel: text in the schedule, in a range or an array literal, is #VALUE!
         // (probes/fin-argument-modes H382-H384).
         // Typed text that reads as a number is a one-rate schedule: `FVSCHEDULE(1000,"0.1")`,
         // `("0.1")` and `T("0.1")` are 1100, `"x"` and `TRUE` are #VALUE!
         // (probes/npv-fvschedule-typed A12, A13; probes/npv-fvschedule-edges A3, A4, A6).
-        let not_a_number =
-            || CalcResult::new_error(Error::VALUE, cell, "Expected number".to_string());
-        let parsed = match self.evaluate_node_in_context(&args[1], cell) {
+        let not_a_number = || CalcResult::new_error(Error::VALUE, cell, String::new());
+        let schedule = match self.evaluate_node_in_context(schedule, cell) {
             CalcResult::String(text) => self
                 .cast_number(&text)
                 .map(|rate| vec![rate])
@@ -579,18 +519,83 @@ impl Model {
             result => {
                 self.array_of_numbers_from(result, &cell, true, || Ok(None), || Err(not_a_number()))
             }
-        };
-        let schedule = match parsed {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-        let mut result = principal;
-        for rate in schedule {
-            result *= 1.0 + rate;
         }
-        if result.is_infinite() {
-            return CalcResult::new_error(Error::DIV, cell, "Division by zero".to_string());
-        }
-        CalcResult::Number(result)
+        .map_err(CalcResult::without_message);
+        self.lift_call_costed(
+            Function::Fvschedule,
+            args,
+            LiftCost::Cells(flow_count(schedule.as_deref())),
+            cell,
+            &mut |model, values| {
+                // A boolean principal is #VALUE!, though a text number is converted
+                // (probes/fin-fvschedule A18, A9).
+                let principal = match values.first() {
+                    Some(principal) => model.cast_number_no_bools_ref(principal, cell),
+                    None => Err(CalcResult::new_args_number_error(cell)),
+                };
+                match (principal, &schedule) {
+                    (Err(error), _) => error,
+                    (Ok(_), Err(error)) => error.clone(),
+                    (Ok(principal), Ok(schedule)) => {
+                        let result = schedule
+                            .iter()
+                            .fold(principal, |result, rate| result * (1.0 + rate));
+                        if result.is_infinite() {
+                            return CalcResult::new_error(Error::DIV, cell, String::new());
+                        }
+                        CalcResult::Number(result)
+                    }
+                }
+            },
+        )
     }
+}
+
+/// XNPV's and XIRR's dates truncated to whole days, with the first: `#NUM!` when there are none
+/// or when the values and dates differ in count. The errors carry no message: the kernels run
+/// lifted, where an element's message is dropped (SPEC-0011).
+fn whole_day_dates(values: &[f64], dates: &[f64]) -> Result<(Vec<f64>, f64), Error> {
+    let dates: Vec<f64> = dates.iter().map(|date| date.floor()).collect();
+    match dates.first() {
+        Some(&first_date) if values.len() == dates.len() => Ok((dates, first_date)),
+        _ => Err(Error::NUM),
+    }
+}
+
+/// XNPV's dates truncated to whole days, with the scalar call's checks in its order: the counts,
+/// then the dates (the rate is checked after them, per element).
+fn xnpv_dates(values: &[f64], dates: &[f64]) -> Result<Vec<f64>, Error> {
+    let (dates, first_date) = whole_day_dates(values, dates)?;
+    for date in &dates {
+        // Excel docs claim that if any number in dates is not a valid date,
+        // XNPV returns the #VALUE! error value, but it seems to return #NUM!.
+        // If any number in dates precedes the starting date, XNPV returns the #NUM! error value.
+        if *date < MINIMUM_DATE_SERIAL_NUMBER as f64
+            || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64
+            || *date < first_date
+        {
+            return Err(Error::NUM);
+        }
+    }
+    Ok(dates)
+}
+
+/// XIRR's dates truncated to whole days, with the scalar call's checks in its order: the counts,
+/// then the dates (the solver's own checks follow, per element).
+fn xirr_dates(values: &[f64], dates: &[f64]) -> Result<Vec<f64>, Error> {
+    let (dates, first_date) = whole_day_dates(values, dates)?;
+    // Excel reads an empty value or date cell as 0 and accepts date 0 and dates before the
+    // first one, but is #NUM! for a negative date, a date past 9999-12-31, or when no date is
+    // later than the first: {-1000,1100} on {0,45365} is 1.1^(365/45365) - 1,
+    // {-1000,1100,-1000} on {45000,45365,44000} is -0.2467, and {-1000,1100} on
+    // {45365,45000} is #NUM! although it has a root (financial.md, "XIRR reads empty cells as
+    // 0 and accepts earlier dates"; probes/xirr-mismatched-empties, xirr-early-dates; T-1124).
+    if dates
+        .iter()
+        .any(|date| *date < 0.0 || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64)
+        || !dates.iter().any(|date| *date > first_date)
+    {
+        return Err(Error::NUM);
+    }
+    Ok(dates)
 }

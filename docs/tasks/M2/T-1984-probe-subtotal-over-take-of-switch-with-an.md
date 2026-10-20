@@ -3,7 +3,7 @@ id: T-1984
 title: "Probe SUBTOTAL over TAKE of SWITCH with an array case value, IFS with only a later array condition, and IF/CHOOSE/LET-wrapped array selectors"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,9 +32,12 @@ engine today gives, unevidenced (H1:H2 = 3,4; I1:I2 = 6,8):
 Probe each in clear space (so the spill shape shows) with the `excel-probe` skill.
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values covers every formula above.
-- [ ] Findings recorded in docs/excel-semantics/references.md; an engine task filed for any mismatch.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with oracle values covers every formula above.
+- [x] Findings recorded in docs/excel-semantics/references.md; an engine task filed for any mismatch.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+probes/subtotal-take-array-selector-b covers all 13 formulas (excel-graph). 11 already match the engine; A10 (array SWITCH case value) and A130 (one-cell INDIRECT condition, 7) differ, filed as T-2012. Findings in docs/excel-semantics/references.md. Eval: the two new mismatches are known failures until T-2012.

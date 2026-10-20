@@ -81,13 +81,17 @@ range. A2 = "b", B2 = 2: `MATCH("b","b",0)`, `MATCH(2,"b",0)`, `MATCH("b","b")`,
 `MATCH(2,INDEX(B2:B3,1),0)` 1, `VLOOKUP(2,B2,1,FALSE)` 2, `HLOOKUP("b",A2,1,FALSE)` "b". A legacy
 formula reaches this through its intersected lookup table (references.md "Legacy MATCH, VLOOKUP
 and HLOOKUP intersect an operation in their lookup table"). LOOKUP differs: it reads a single
-value as a one-element array ("LOOKUP vector form with 2-D or short vectors"). Only "b", "x"
-and "2" are probed: the engine's line between them is its number coercion (`cast_number`), so
-dates, currency, percents and padded text are inferred, not probed (T-1939).
-Evidence: probes/match-single-value-lookup-array (excel-graph, 2026-10-18, T-1862).
+value as a one-element array ("LOOKUP vector form with 2-D or short vectors"). One-cell
+references picked by CHOOSE, OFFSET or INDIRECT, and a defined name for one cell, are one-cell
+ranges too (`MATCH("b",CHOOSE(1,A2),0)`, `MATCH(2,nmB,0)` are 1; `VLOOKUP(2,nmB,1,FALSE)` is 2).
+Single texts as the MATCH/VLOOKUP table: `1/2/2020`, `$1`, `50%`, ` 2 `, `1E2`, `2:30` and
+`1,000` read as numeric (`#N/A`); `TRUE`, the empty text and `0x1` do not (`#VALUE!`), matching
+the engine's `cast_number`.
+Evidence: probes/match-single-value-lookup-array (excel-graph, 2026-10-18, T-1862);
+probes/match-single-cell-forms-and-texts (36 cells, excel-graph, 2026-10-20, T-1939).
 Engine: `Model::lookup_table` (lookup.rs) and `Model::evaluate_single_sheet_arg` (util.rs).
 Status: VERIFIED
-Tasks: T-1862
+Tasks: T-1862, T-1939
 
 ## LOOKUP vector form with 2-D or short vectors
 Rule: in `LOOKUP(value, lookup_vector, result_vector)`:
@@ -442,7 +446,7 @@ Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-12
 friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
 Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
 one result per cell, and CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). OFFSET, INDIRECT and TRIMRANGE
-still do not lift (their elements are references; T-1810 probed them, T-1955 to T-1957 implement them),
+lift too, into arrays of references (T-1810 probed them; T-1955 to T-1957 implement them),
 and INDEX of a single value is `#VALUE!` (T-1242).
 Status: VERIFIED (web)
 Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1810 (reference-valued lifts; split into
@@ -681,9 +685,18 @@ call's result), not a value. What the caller sees depends on who reads the eleme
   `INDEX(TRIMRANGE(A1:B5,0,{0;1}),1,1)`). This is the nested-array `#SPILL!` of lookup-argument-modes H34:H35.
 - The shape is the lifted argument's: `ROWS`/`COLUMNS` count elements (`ROWS(OFFSET(A1,0,0,{1;2}))` is 2,
   `COLUMNS(TRIMRANGE(A1:B5,0,{0;1}))` is 1), and `ISREF` of the whole result is a single FALSE.
-- SUM adds a one-cell element's value; a multi-cell element seems to add only its first cell
-  (`SUM(OFFSET(A1,0,0,{1;2}))` is 2 with A1 = 1, A2 = 2: A1 + A1). `SUM(INDIRECT(C1:C3))` is A1 + B2 + A3,
-  `SUM(OFFSET(A1,{0;1},0))` is A1 + A2. Unconfirmed: one probe cell only.
+- SUM, AVERAGE, MIN, MAX and PRODUCT read each element's top-left cell as a range cell (text,
+  booleans and blanks skipped; an error element is its error): with A1 = 1, A2 = 100,
+  `SUM(OFFSET(A1,0,0,{1;2}))` and `SUM(OFFSET(A1,0,0,{2;3}))` are 2, `SUM(OFFSET(A2,0,0,{1;2}))` 200,
+  `SUM(OFFSET(A1,{0;1},{0,1}))` 303, `SUM(INDIRECT({"A1";"Nope"}))` and `AVERAGE(OFFSET(A1,{0;-1},0))` `#REF!`. COUNT counts no element (0), COUNTA every
+  element, a blank one too, and SUMPRODUCT reads each as 0. SUBTOTAL, COUNTIF, SUMIF(S), COUNTBLANK, AREAS,
+  ROW, COLUMN, CELL, ISFORMULA, N and T lift, once per whole element (`SUBTOTAL(9,OFFSET(A1,0,0,{1;2;3}))`
+  spills 1, 101, 10101). Operators, IS* functions, IFERROR, TEXTJOIN and AGGREGATE see `#VALUE!` per element;
+  IF, CHOOSE, LET, VSTACK, TAKE and DROP inside SUM hand the elements on; OFFSET over such a result lifts
+  again. Full table with cells: SPEC-0014 "Excel behavior to match" (probes/reference-lift-consumers,
+  -b1c, -b1d, -b2, excel-graph, 2026-10-19, T-1955). MEDIAN, STDEV.S, VAR.S, LARGE, SMALL, COUNTIFS,
+  AVERAGEIF, MAXIFS, SUMSQ, AVERAGEA, MAXA and CONCAT over one are open: the workbooks holding them did
+  not open in Excel for the web (T-2065).
 - Per element, the scalar rules hold: an element off the sheet is `#REF!` (`OFFSET(A1,{0;-1},0)`, second element);
   `INDIRECT("R2C1",{TRUE;FALSE})` is `#REF!`, A2; a scalar error argument next to the lifted one is that error in every
   element (`INDEX(OFFSET(A1,{0;1},NA()),1,1)` is `#N/A`).
@@ -695,9 +708,86 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 Evidence: probes/reference-lift-elements (excel-graph, 2026-10-19, T-1810); probes/lookup-argument-modes F14:H15,
 F20:H21, F34:H35 (excel-graph, 2026-10-09, T-1238).
 Status: VERIFIED (excel-graph)
-Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier: not yet, specified by T-1955
-and built by T-1956 (OFFSET) and T-1957 (INDIRECT, TRIMRANGE).
-Tasks: T-1810, T-1955, T-1956, T-1957, T-1958
+Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier (SPEC-0014, T-1956): `RefGrid` and
+`RefArg::Grid` (reference_operators.rs) with its value view `RefGrid::to_values`; OFFSET as producer
+(`Model::offset_reference`, lookup_and_reference/offset.rs, lifted by `Model::lift_references` in lift/driver.rs; its
+spill shape from `static_analysis_offset`); INDEX's pick (`Model::index_grid`, index.rs), ROWS/COLUMNS (the value
+view's shape) and ISREF (FALSE). The aggregates (T-2063): SUM, AVERAGE, MIN, MAX and PRODUCT through the
+walker's `GridReading::TopLeft` (`Model::walk_top_left_cells`, util/aggregate_args.rs), COUNT and COUNTA through
+the value view (`GridReading::Values`), SUMPRODUCT through `Model::sumproduct_array` (sumproduct.rs); the aggregates already see a grid through IF and
+CHOOSE (`SUM(IF(TRUE,r))` 101, b1c E69, E73), which their reference reading picks. INDIRECT
+(`Model::indirect_reference`) and TRIMRANGE (`Model::trimrange_reference`) are producers on the same carrier (T-1957;
+shared helpers in lookup_and_reference/ref_lift.rs); TRIMRANGE's array, computed-reference and error sources:
+"TRIMRANGE lifted over an array, a computed reference or an error" below (T-2089). Not yet: the
+per-element callers (T-2064). The pass-through of IF, CHOOSE, LET and a LAMBDA parameter, and OFFSET over a grid:
+"Arrays of references through LET, IF, CHOOSE and OFFSET" below (T-2078).
+Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065, T-2078, T-2089
+
+## TRIMRANGE lifted over an array, a computed reference or an error
+Rule: what a TRIMRANGE lifted over trim_rows or trim_cols holds per element depends on its source (A1 = 5, A2 = 7,
+the rest blank):
+- A reference, written or not, gives references, as for a written range: a defined name (`srcOne` = `S!$A$1`),
+  `CHOOSE(1,A1)`, `INDIRECT("A1")`, `OFFSET(A1,0,0)`, `IF(TRUE,A1)`, `A1:A1` and `A1` all give
+  `INDEX(TRIMRANGE(src,{0;1}),2,1)` = 5, `ISREF` of the pick is TRUE (probed for the name, CHOOSE and INDIRECT), and
+  `=TRIMRANGE(CHOOSE(1,A1),{0;1})` spills `#VALUE!`, `#VALUE!`.
+  SUM reads each element's top-left cell: `SUM(TRIMRANGE(src,{0;1}))` is 10 for those one-cell sources and for the
+  multi-cell `A1:B5`, `CHOOSE(1,A1:B5)`, a name for `S!$A$1:$B$5` and `INDIRECT("A1:B5")`.
+- An array is trimmed to an array, and each element is that array's top-left *value*, not `#VALUE!`:
+  `=TRIMRANGE({1,2},{0;1})` spills 1, 1; `INDEX(…,1,1)` and `INDEX(…,2,1)` are 1 (a 1x1, `ROWS*100+COLUMNS` of the pick
+  is 101), `ISREF` of the pick FALSE, `SUM(…)` 2, `COUNTA(…)` 2, `ROWS` 2 and `COLUMNS` 1;
+  `INDEX(TRIMRANGE({1;2},0,{0,1}),1,2)` is 1 and its SUM 2.
+- An error source is that error in every element, in the trim argument's shape: `=TRIMRANGE(NA(),{0;1})` spills
+  `#N/A`, `#N/A`, `ROWS(…)` is 2, `COUNTA(…)` 2, `ERROR.TYPE(INDEX(…,2,1))` 7, and `ERROR.TYPE(…)` itself spills (here
+  `#SPILL!`, the cell below being taken); `TRIMRANGE(1/0,0,{0,1})` is a 1x2 of `#DIV/0!`; a written reference to an
+  `#N/A` cell (`TRIMRANGE(A9,{0;1})`) is a 2x1 too, `ERROR.TYPE` of its pick 7. Unlifted, `TRIMRANGE(NA())` stays one
+  `#N/A`.
+Evidence: probes/trimrange-lift-sources (44 cells, excel-graph, 2026-10-20, T-2089).
+Status: VERIFIED (excel-graph)
+Implemented in: `Model::lifted_trimrange` (lookup_and_reference/trimrange.rs): the source read by
+`evaluate_picked_reference_arg`, a reference lifted by `Model::lift_references`, anything else by `Model::lift_values`
+with its top-left value per element; SUM and the walker's other aggregates take TRIMRANGE's grid from
+`picked_reference_arg_reading` (functions/util.rs). Unprobed: which error wins when the source is an error and an
+element's trim is invalid (`TRIMRANGE(NA(),{0;5})`; ours: the source's), a multi-area source (ours: `#VALUE!` per
+element), and a source with no cells under a lifted trim (ours: one `#REF!`, as unlifted).
+Tasks: T-2089
+
+## Arrays of references through LET, IF, CHOOSE and OFFSET
+Rule: a LET variable or a LAMBDA parameter bound to a lifted OFFSET (or INDIRECT, TRIMRANGE) holds the array of
+references itself, and IF and CHOOSE hand the one they pick on, so every reader that sees the bare call's elements
+sees them through these too; OFFSET whose reference argument is such an array lifts again over its elements.
+With A1 = 1, A2 = 100, A3 = 10000:
+- INDEX picks the element: `LET(x,OFFSET(A1,{0;1},0),INDEX(x,2,1))` is 100, also through a second variable
+  (`LET(x,..,y,x,INDEX(y,2,1))`), a LAMBDA parameter (`LET(f,LAMBDA(r,INDEX(r,2,1)),f(OFFSET(A1,{0;1},0)))`),
+  `INDEX(IF(TRUE,..),2,1)`, `INDEX(CHOOSE(1,..),2,1)` and `INDEX(LET(x,..,x),2,1)`; `ISREF(INDEX(x,1,1))` is TRUE
+  and `SUM(INDEX(x,2,1))` over `OFFSET(A1,0,0,{1;2})` reads the whole element (101).
+- ROWS/COLUMNS count elements (`LET(x,..,ROWS(x))` 2) and `ISREF(x)`, `ISREF(IF(TRUE,..))` are FALSE.
+- The top-left aggregates read the elements through the variable (`LET(x,..,SUM(x))` 101, `SUM(IF(TRUE,x))` 101),
+  and SUMPRODUCT reads each element as 0 through IF, CHOOSE and LET (`SUMPRODUCT(IF(TRUE,OFFSET(A1,{0;1},0)))` 0).
+- OFFSET over the array lifts again, broadcast with its own lifted arguments: `ROWS(OFFSET(OFFSET(A1,{0;1},0),1,0))`
+  is 2, its SUM 10100, `SUM(OFFSET(OFFSET(A1,{0;1},0),{0,1},0))` 10201 (a 2x2), `SUM(OFFSET(OFFSET(A1,0,0,{1;2}),1,0))`
+  200 (SUM reads each moved element's top-left cell, A2 twice), also over a variable, IF, CHOOSE or LET; an error element stays itself
+  (`ERROR.TYPE(INDEX(OFFSET(OFFSET(A1,{0;-1},0),1,0),2,1))` 4) and spilled the result is `#VALUE!` per element.
+- INDIRECT and TRIMRANGE grids do the same: `LET(x,INDIRECT({"A1";"A2"}),INDEX(x,2,1))` is 100, its ROWS 2, its SUM
+  101, `SUM(OFFSET(INDIRECT({"A1";"A2"}),1,0))` 10100, `SUMPRODUCT(LET(x,INDIRECT(..),x))` 0,
+  `LET(x,TRIMRANGE(A1:B3,0,{0;1}),SUM(INDEX(x,2,1)))` 30303 and `SUM(OFFSET(TRIMRANGE(A1:B3,0,{0;1}),1,0))` 200.
+Evidence: probes/reference-lift-consumers E89, E145, E149, E209, reference-lift-consumers-b1c E77, E81 (excel-graph,
+2026-10-19, T-1955); probes/reference-lift-pass-through E1-E34, G1, H1, reference-lift-pass-through-b E1-E10
+(excel-graph, 2026-10-20, T-2078).
+Status: VERIFIED (excel-graph)
+Implemented in: `Binding::Grid` (variable_stack.rs), bound by `Model::bind_argument` and read by
+`Model::variable_reference` (functions/logical/let.rs); `Model::evaluate_value_or_grid` (functions/util.rs) for
+SUMPRODUCT; `Model::offset_source` and `Model::offset_over_grid` (lookup_and_reference/offset.rs). IF and CHOOSE
+already handed grids on to INDEX and the aggregates through their reference reading.
+Tasks: T-2078
+
+## Arrays of references held by LET variables are bounded
+Rule: Excel's limit on the arrays of references the LET variables and LAMBDA parameters in scope may hold is not
+known. Ours: their distinct grids may hold 4 x 2^20 elements together (a grid shared by several bindings counts once);
+a binding past that is `#VALUE!`, as a union binding past its own budget is (references.md "Union area cap").
+Evidence: none of Excel's (directive 5 bound); unit test `variable_stack::tests::held_grids_are_charged_once_and_bounded`.
+Status: DEVIATION (decision 0014)
+Implemented in: `VariableStack::insert` (variable_stack.rs), `MAX_HELD_GRID_ELEMENTS`.
+Tasks: T-2078
 
 ## XLOOKUP: an error lookup_value beats a size mismatch
 Rule (VERIFIED, probes/workday-serial-zero F40, excel-graph, 2026-10-19, T-1254): `XLOOKUP(NA(),A1:A4,B1:B5)` is

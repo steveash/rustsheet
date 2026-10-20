@@ -44,14 +44,24 @@ fn leftmost_error_and_single_cell_ranges() {
     assert_eq!(model._get_text("A3"), *"0.4375");
 }
 
-// Review of T-1235: a 3D-range weekend is unprobed (T-1428), so it keeps main's result.
+// T-1428: a 3-D weekend reads as `#REF!`, which WORKDAY.INTL turns into `#NUM!` after the
+// holidays and NETWORKDAYS.INTL into `#VALUE!` before the dates; a 3-D holidays is `#VALUE!`
+// (probes/date-text-weekend-3d K3, J3, P23, Q22, M9).
 #[test]
-fn three_d_range_weekend_is_unchanged() {
+fn three_d_weekend_and_holidays() {
     let mut model = new_empty_model();
     model.new_sheet();
     model._set("A1", "=NETWORKDAYS.INTL(1,30,Sheet1:Sheet2!B1:B3)");
+    model._set("A2", "=WORKDAY.INTL(45000,5,Sheet1:Sheet2!B1:B3)");
+    model._set("A3", "=WORKDAY.INTL(45000,5,Sheet1:Sheet2!B1,1/0)");
+    model._set("A4", "=NETWORKDAYS.INTL(1/0,30,Sheet1:Sheet2!B1)");
+    model._set("A5", "=WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!B1)");
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#REF!");
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
 }

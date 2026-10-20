@@ -19,7 +19,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::lift::{LiftCost, LiftOptions, LiftedArg},
+    functions::{
+        lift::{LiftCost, LiftOptions, LiftedArg},
+        Function,
+    },
     limits::check_array_size,
     model::Model,
     reference_operators::{Picked, RefArg},
@@ -150,24 +153,56 @@ impl Model {
             IfBranchMode::Aggregate => self.evaluate_reference_arg(node, cell),
             IfBranchMode::SingleSheet => self.evaluate_single_sheet_arg(node, cell).into(),
             IfBranchMode::Chosen => self.evaluate_chosen_reference(node, cell).into(),
-            // A reference into another workbook picked is read as INDEX reads the cell it picks:
-            // `IF(TRUE,…!A1)` is 0, `&"x"` "x", ERROR.TYPE `#N/A`, where the written `…!A1` is
-            // `#BLOCKED!` (probes/external-ref-no-link-index A26, external-ref-no-link-ifchoose).
-            IfBranchMode::Value => self
-                .external_reference_picked_value(node, cell)
-                .unwrap_or_else(|| self.evaluate_node_in_context(node, cell))
-                .into(),
+            IfBranchMode::Value => self.if_branch_value(node, cell).into(),
         }
+    }
+
+    /// The branch an ordinary IF picked, as a value. A reference into another workbook is read
+    /// as INDEX reads the cell it picks: `IF(TRUE,…!A1)` is 0, `&"x"` "x", ERROR.TYPE `#N/A`,
+    /// where the written `…!A1` is `#BLOCKED!` (probes/external-ref-no-link-index A26,
+    /// external-ref-no-link-ifchoose).
+    pub(crate) fn if_branch_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        self.external_reference_picked_value(node, cell)
+            .unwrap_or_else(|| self.evaluate_node_in_context(node, cell))
+    }
+
+    /// The pick step of a function that stands for one of its arguments once its condition,
+    /// index or expression is read: IF, CHOOSE, IFS and SWITCH ([`Self::if_pick`],
+    /// [`Self::choose_pick`], [`Self::ifs_pick`], [`Self::switch_pick`]). `None` for any other
+    /// function, unread. Reference context follows the argument picked for all four alike
+    /// (probes/subtotal-ifs-switch-reference-picks, take-drop-over-ifs-switch-picks; T-2014,
+    /// T-2071).
+    pub(crate) fn pick_step<'a>(
+        &mut self,
+        kind: &Function,
+        args: &'a [Node],
+        cell: CellReferenceIndex,
+    ) -> Option<Picked<'a>> {
+        Some(match kind {
+            Function::If => self.if_pick(args, cell),
+            Function::Choose => self.choose_pick(args, cell),
+            Function::Ifs => self.ifs_pick(args, cell),
+            Function::Switch => self.switch_pick(args, cell),
+            _ => return None,
+        })
     }
 
     /// What IF's condition picks: with a scalar condition the branch it chooses, unevaluated;
     /// otherwise the value IF gives (the condition's error, FALSE for a missing branch, or IF
-    /// over an array condition, its branches evaluated).
+    /// over an array condition, its branches evaluated). IF with no branch at all, as an
+    /// eta-reduced IF called with one argument is (`BYROW(A1:B3,_xleta.IF)`), gives `#VALUE!`
+    /// for each element of its condition that is not an error, passing an error on
+    /// (`LET(f,_xleta.IF,f({1,#N/A}))` is `{#VALUE!,#N/A}`, probes/eta-if-one-argument;
+    /// docs/excel-semantics/arrays.md "Functions passed by name").
     pub(crate) fn if_pick<'a>(&mut self, args: &'a [Node], cell: CellReferenceIndex) -> Picked<'a> {
-        if args.len() != 2 && args.len() != 3 {
+        if !(1..=3).contains(&args.len()) {
             return Picked::Value(CalcResult::new_args_number_error(cell));
         }
-        let cond_result = self.evaluate_node_in_context(&args[0], cell);
+        // A one-cell range (`INDIRECT("K1")`) is a scalar condition: it picks a branch, it does
+        // not lift (`SUBTOTAL(9,TAKE(IF(INDIRECT("K1"),H1:H2,I1:I2),2))` is 7,
+        // probes/subtotal-take-array-selector-b A130, T-2012).
+        let cond = self.evaluate_node_in_context(&args[0], cell);
+        let cond_result = self.collapse_single_cell(cond);
 
         // Normalize cond to a 2-D array, or take the scalar early-return path.
         let cond_array: Vec<Vec<ArrayNode>> = match cond_result {
@@ -177,6 +212,13 @@ impl Model {
                 Err(error) => return Picked::Value(error),
             },
             CalcResult::Array(a) => a,
+            _ if args.len() == 1 => {
+                return Picked::Value(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "IF needs a value_if_true".to_string(),
+                ))
+            }
             other => {
                 // Scalar cond: cast to bool and pick the chosen branch.
                 // The branch result may itself be an array (it will spill).
@@ -189,6 +231,20 @@ impl Model {
                 };
             }
         };
+        if args.len() == 1 {
+            let values = cond_array
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|value| match value {
+                            error @ ArrayNode::Error(_) => error,
+                            _ => ArrayNode::Error(Error::VALUE),
+                        })
+                        .collect()
+                })
+                .collect();
+            return Picked::Value(CalcResult::Array(values));
+        }
         Picked::Value(self.if_array(args, cond_array, cell))
     }
 
@@ -397,13 +453,29 @@ impl Model {
         cell: CellReferenceIndex,
         as_reference: bool,
     ) -> CalcResult {
+        match self.ifs_pick(args, cell) {
+            Picked::Node(value) => self.evaluate_node_as(value, cell, as_reference),
+            Picked::Value(value) => value,
+        }
+    }
+
+    /// What IFS's conditions pick: the value of the first TRUE scalar condition, unevaluated;
+    /// otherwise the value IFS gives (an argument-count error, a condition's error, `#N/A`, or
+    /// IFS lifted over an array condition). Reference context follows the picked value as it
+    /// follows IF's branch: `SUBTOTAL(9,IFS(TRUE,(H1,I2)))` is 11 and
+    /// `ISREF(IFS(TRUE,XLOOKUP(..)))` TRUE (probes/subtotal-ifs-switch-reference-picks, T-2014).
+    pub(crate) fn ifs_pick<'a>(
+        &mut self,
+        args: &'a [Node],
+        cell: CellReferenceIndex,
+    ) -> Picked<'a> {
         let args_count = args.len();
         if args_count < 2 {
-            return CalcResult::new_args_number_error(cell);
+            return Picked::Value(CalcResult::new_args_number_error(cell));
         }
         if !args_count.is_multiple_of(2) {
             // Missing value for last condition
-            return CalcResult::new_args_number_error(cell);
+            return Picked::Value(CalcResult::new_args_number_error(cell));
         }
         let case_count = args_count / 2;
         for case_index in 0..case_count {
@@ -418,23 +490,21 @@ impl Model {
                 }
                 // Each element reads its condition and value pairs: one unit per argument.
                 let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
-                return self.lift_values(
+                return Picked::Value(self.lift_values(
                     lifted,
                     LiftCost::Cells(units),
                     &LiftOptions::REUSE_EQUAL_RUNS,
                     cell,
                     &mut |model, pairs| model.ifs_element(pairs, cell),
-                );
+                ));
             }
             match self.cast_to_bool(condition, cell) {
-                Ok(true) => {
-                    return self.evaluate_node_as(&args[2 * case_index + 1], cell, as_reference)
-                }
+                Ok(true) => return Picked::Node(&args[2 * case_index + 1]),
                 Ok(false) => {}
-                Err(error) => return error,
+                Err(error) => return Picked::Value(error),
             }
         }
-        no_match(cell)
+        Picked::Value(no_match(cell))
     }
 
     /// IFS on one element of lifted (condition, value) pairs: the value of the first TRUE

@@ -61,6 +61,10 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    SPEC-0012 rule 6 assumes that a legacy `=N(IF(1,{2;3}))+A5` (a plain `<f>`, `#VALUE!`) stays legacy when it is copied, moved or
    filled. A row insert was confirmed on excel-graph. Graph refuses copyFrom, moveTo and autoFill
    (docs/research/t1853-legacy-cell-edits-2026-10-18.md). Do each edit on desktop, save, and check the `<f>` kind and the value.
+13. **MIRR's root vs `^`** (T-0959; financial.md "MIRR's evaluation order", web vs desktop). ironcalc-calc/FINANCIAL/MIRR.xlsx
+   Sheet2!N16 caches Mac 16.0300's 0.3933280241536672 for `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)`; the web gives ...674
+   (probes-numeric/power-mirr-root). The engine keeps the desktop value with libm `exp` in MIRR's root while `^` follows the web's
+   EXP kernel. Does Windows desktop give ...672, and does its `^` agree with its MIRR?
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

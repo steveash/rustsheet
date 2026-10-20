@@ -1,0 +1,39 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SKEW.P and SKEW minimum point counts and constant series: two, three and four numbers, constant series (T-1404).",
+  "tags": [
+    "M9",
+    "statistical",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SKEW.P(1,2)",
+        "A2": "=SKEW.P(1,2,3)",
+        "A3": "=SKEW.P(1,2,4)",
+        "A4": "=SKEW.P(5,5,5)",
+        "A5": "=SKEW.P(5,5,5,5)",
+        "A6": "=SKEW.P(1,2,3,10)",
+        "A7": "=SKEW.P(1)",
+        "A8": "=SKEW.P(2,2)",
+        "A9": "=SKEW(1,2)",
+        "A10": "=SKEW(1,2,3)",
+        "A11": "=SKEW(1,2,4)",
+        "A12": "=SKEW(5,5,5)",
+        "A13": "=SKEW.P(Data!A1:A3)",
+        "A14": "=SKEW.P(Data!A1:A2)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 4
+      }
+    }
+  ],
+  "expected": {}
+}

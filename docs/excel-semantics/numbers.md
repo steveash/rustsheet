@@ -481,6 +481,7 @@ EXP itself, a in (709.7827, 709.79).
   them (a correctly rounded F2XM1 and a correctly rounded exp can agree), so these 43 cells pass under libm and fail
   under V6; the switch still gains 5,968 cells. Unlike the 20 ERFC near-tie cells of T-1916 (statistics.md), all 87
   came back identical in the 2026-10-19 re-fill.
+- POWER and `^` with a non-integer exponent use `excel_exp` since T-0959 (see "Non-integer exponents: exp(y·ln x)").
 - Other EXP users stay on libm's `exp`: with SINH, COSH, TANH and FISHERINV switched to `excel_exp` as an experiment, no
   cell of probes, probes-numeric (`m9-hyperbolic`), ironcalc-calc (`TRIGONOMETRIC.xlsx`), poi, fixtures or gen-m9
   changed verdict (the probed arguments are small, where V6 and libm agree), so the evidence cannot tell the two apart
@@ -717,7 +718,9 @@ Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: 
   `-ln(-x + sqrt(x*x + 1))`) and `ln(x + sqrt(x*x - 1))` bit-for-bit in IEEE doubles. So small arguments lose precision:
   ASINH(1E-10) = 1.000000082690371E-10 (relative error 8e-8), ASINH(3E-10) = 3.000000247771113E-10,
   ASINH(1E-9) = 1.000000082240371E-9, and ACOSH(1.000000000001) = 1.414276423083533E-6 (about 7e-11 relative below the
-  true value 1.4142764231805424E-6). The engine returns the correctly rounded value (ASINH: 22 failing cells, 6 of them clear mismatches).
+  true value 1.4142764231805424E-6). The same two formulas also give all 33 ASINH and 17 ACOSH cells of ironcalc-calc
+  TRIGONOMETRIC.xlsx sheet ASINH_ACOSH_ATANH (gap triage 2026-10-19). Implemented (T-2031): `fn_asinh`/`fn_acosh` evaluate
+  these formulas; where `x*x` overflows (|x| above about 1.3E154, unprobed) the engine keeps libm `asinh`/`acosh`.
 - ACOTH for large x (A101-A110, x = 15 .. 1.5E10) tracks libm `atanh(1/x)` within 1 ulp: bit-for-bit on A105 and
   A107-A110, 1 ulp off glibc `atanh(1/x)` on A101-A104 and A106 (A103 matches Rust's `f64::atanh`), so Excel is not
   correctly rounded there either; the exact formula is left open for T-0917. The engine uses `0.5*ln((x+1)/(x-1))`
@@ -736,7 +739,7 @@ Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: 
 - SINH/TANH values on 0.40..1.0 (step 0.01 / 0.02 / 0.025, plus 0.9950546550253772 and 0.9999999999) are in the case; the
   engine's 0.5 (SINH) and 0.9 (TANH) cutoffs are fitted against them by T-0917. Not probed: SINH in (709.78, 710).
 Evidence: `probes-numeric/m9-hyperbolic` (`rustsheet-eval show probes-numeric/m9-hyperbolic.case.json`).
-Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0917.
+Status: VERIFIED (excel-graph); the remaining engine mismatches are tracked by T-0917 (ASINH and ACOSH implemented by T-2031).
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
 Probe `probes-numeric/m9-trig-reduction` (666 cells = 111 arguments x 6 functions, oracle: excel-graph, 2026-10-08) is the fitting
@@ -767,6 +770,9 @@ Rule: for an exponent that is not an integer, Excel computes `x^y` as follows:
 - `y` = 0.5: `sqrt(x)`. `2^0.5` = 1.4142135623730951, where `exp(0.5·ln 2)` is 1.4142135623730950.
 - `y` = -0.5: `1/sqrt(x)`. `3^-0.5` = 0.5773502691896258 and `0.5^-0.5` = 1.414213562373095.
 - Each `1/` is the operator `/`, which rounds twice (see "Division rounds twice"): `8^(-1/3)` = 0.5.
+- `exp` is EXP's own kernel (see "EXP is an x87 2^(a*log2 e) evaluation"), and `y·ln x` is the twice-rounded `*`: `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` =
+  9.999999999999827E+99, where libm `exp` gives 9.999999999999825E+99, and `8^(1/101+28·2^-59)` = 1.0208019359564402
+  (probes-numeric/power-ulp-sources A13-A18, power-odd-root-tolerance A72/A74; excel-graph, 2026-10-19, T-0959).
 
 An odd root of a negative base is minus the same formula on the magnitude. `(-8)^(1/3)` = -exp(ln 8/3) = -1.9999999999999998, which is the value Excel's own workbook caches.
 
@@ -789,7 +795,7 @@ Evidence:
 Not probed: other negative bases; exponents within 1E-15 of ±0.5.
 Implemented in: `non_integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
 Status: VERIFIED (excel-graph)
-Tasks: T-1319, T-1421, T-0221
+Tasks: T-1319, T-1421, T-0221, T-0959
 
 ## POWER and `^`: odd roots of negatives, zero and overflow
 Rule: `POWER(-8, 1/3)` is -1.9999999999999998 (an odd root of a negative number is real; see "Non-integer exponents: exp(y·ln x)"); `POWER(0,0)` is #NUM!;
@@ -799,10 +805,27 @@ D3 and F9 (-1.9999999999999998, matched since T-1319: see "Non-integer exponents
 The operator `^` shares the zero case: `0^-0`, `+0^0`, `(-0)^0` and `0%^0` are all `#NUM!`, while
 `-0^0.5` = 0 (gen-m1/6462bf910ef9f28f Calc!A19, A30, A205, A222; gen-m1/1c62c4bff4ed1976 Calc!A60;
 oracle: excel-graph, 2026-10-05, T-0109).
-Status: VERIFIED for `0^0` → #NUM! (POWER and `^`). UNVERIFIED for (a) overflow of a non-zero base
-being #NUM! (not #DIV/0!), (b) the 2^-48 relative tolerance that decides whether an exponent "is"
-1/odd (only exactly 1/3 is evidenced; probe `POWER(-8,0.333333333333333)`), (c) the operator `^`
-sharing the other special cases.
+Which exponents count as 1/odd: Excel rounds `1/y` to 15 significant digits and takes the root when that is an odd
+integer below 2^31 - 1 in magnitude; any other non-integer exponent of a negative base is #NUM!. The root then uses `y`
+itself, not 1/n: `(-8)^(1/3+8·2^-54)` is -2.0000000000000018.
+- `1/3 + 10·2^-54` counts (1/y = 2.9999999999999951 → 3) but `1/3 - 10·2^-54` does not (3.0000000000000053 → 3.00000000000001),
+  so the cut is not symmetric in y and is not a relative tolerance on y: `1/5 + 8·2^-55` is #NUM! while `1/3 + 8·2^-54` counts.
+- `1/101 ± 28·2^-59` counts and `± 29·2^-59` does not (the 15th digit of 101.000000000000).
+- Literals: `0.333333333333333` counts (-1.9999999999999984), `0.33333333333333` does not; `0.0909090909090909` (1/11) counts,
+  `0.142857142857143` (1/7, 1/y = 6.999999999999993) does not.
+- Size: `1/(2^31-3)` and `1/(2^31-5)` count; `1/(2^31-1)`, `1/(2^31+1)`, `1/(2^40+1)` and `1/(2^52+1)` are #NUM!, although
+  1/y is exactly the odd integer there. Not probed: negative exponents at the limit (`-1/(2^31-1)`, `-1/(2^31-3)`); the engine
+  takes the limit on |1/y|.
+- Even reciprocals (`1/4 + 2^-55`, `1/2^20`) are #NUM!; `3/9`, `2/6` and `1/(-3)` are odd roots like 1/3 and -1/3.
+Overflow of a non-zero base is #NUM! (`10^309`, `(-10)^309`, `1E300^1.5`, `(-1E300)^3`, `2^1024`) and underflow follows
+"Non-integer exponents" (`1E-300^-1.5` #DIV/0!, `10^-309` 0). The operator `^` and POWER agree on every cell probed: the
+odd-root cut, overflow, zero (`0^-1` #DIV/0!, `0^-0.5` #DIV/0!), negative bases (`(-8)^0.5` #NUM!), the 2^32 - 1 exponent limit,
+text (`"2"^2` = 4, `"a"^2` #VALUE!, `""^2` #VALUE!), logicals (`TRUE^2` = 1), blank cells (`Z99^Z99` #NUM!, `Z99^-1` #DIV/0!) and
+errors (`NA()^0` #N/A, `(1/0)^0` #DIV/0!).
+Evidence: probes-numeric/power-odd-root-tolerance (A is `^`, B is POWER; rows 1-59 the cut, 60-101 the special cases) and
+power-odd-root-tolerance-2 (the cut's edges and the size limit); oracle excel-graph, 2026-10-19, T-0959. A workbook holding
+the literal `1E308` cannot be filled by excel-graph (engineering.md "CONVERT"), so `1^9E307` stands in for `1^1E308`.
+Status: VERIFIED (excel-graph).
 Implemented in: `arithmetic::power` (POWER and `^`).
 
 ## SIN / COS at multiples of 90° return k·6.1257422745431E-17
@@ -841,6 +864,29 @@ companions, decision 0042); excel-graph, 2026-10-19, T-1930.
 Implemented in: `fn_atan2` (functions/math_and_trigonometry/mathematical.rs). IMARGUMENT may share the kernel (not probed).
 Status: VERIFIED
 Tasks: T-1930, T-1797
+
+## LOG with one argument is LOG10
+Rule: `LOG(x)` with the base omitted returns the same double as `LOG10(x)`, not ln(x)/ln(10): `LOG(1000)` is exactly 3
+(ln/ln gives 2.9999999999999996). That log10 is an x87 `FLDLG2; FYL2X` result stored to a double: `RN53(RN64(y * log2 x))`
+with `y = RN64(log10 2)` = `0x9A209A84FBCFF799 * 2^-65`, two roundings. It is therefore neither glibc's `log10` nor always
+the correctly rounded log10: `LOG10(295344268)` is 8.47032854654939 (correctly rounded: 8.470328546549387) and
+`LOG10(616.3769781444394)` 2.7898464093268007 (correctly rounded: ...003), while glibc misses `LOG10(11)` (Excel
+1.0413926851582251, glibc ...225). On k = 1..170 the model equals the correctly rounded log10 (the MULTINOMIAL fit, "MULTINOMIAL
+is inexact", needed exactly those terms). The doubles nearest 10^k (k = -20..20) give k exactly.
+Evidence: probes/log10-kernel (excel-graph, 2026-10-19, T-2004): 92 inputs (the workbook's 7 numbers, 10^-20..10^20,
+32 doubles where glibc is not correctly rounded, 16 where the correctly rounded value and the x87 models differ) for LOG10 and
+LOG: LOG = LOG10 in all 92, and the model matches 92 of 92 (correctly rounded 78, one rounding of the exact y·log2 x 85,
+glibc 56, ln/ln 42). The web agrees with the desktop cell `LOG10(1.3)` = 0.11394335230683679.
+ironcalc-calc/MATH_AND_TRIGONOMETRY/LOG_LOG10_LN.xlsx (desktop cache, Microsoft Macintosh Excel 16.x): LOG!B2:B14 equals
+LOG10!B2:B14 cell for cell, including B5 (1000 → 3), B12 (0.004 → -2.3979400086720375) and B13 (1.3).
+Two-argument LOG is ln(x)/ln(b) in doubles (`f64::log`): it matches all 92 `LOG(x,2)` and 92 `LOG(x,3)` cells of the probe
+(columns D and E); other bases are not probed.
+Implemented in `x87_log10.rs` (`excel_log10`: ln x in double-double, about 2^-104 relative, times `y / ln 2`, then the two
+roundings; 30,000 random inputs equal a decimal reference of the model), used by LOG10, one-argument LOG and MULTINOMIAL's
+`log10(k)` terms (which replaced their 170-entry table). It also fixes probes/geomean-root-models Root!I6 and I9
+(`10^(LOG10(E)/C)`).
+Status: VERIFIED (excel-graph, and desktop for the 13 workbook inputs)
+Tasks: T-2004
 
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
@@ -1076,6 +1122,8 @@ correctly rounded. Fit over those 38 and 224 web cells (m9-trig-reduction and tr
 - All of these give ...282 except the double-π reduction (...284).
 So no formulation reaches the desktop value. The three cells stay known failures as an Excel-vs-Excel last-digit conflict, and the
 desktop target waits for T-1075 (M14).
+MIRR (T-0959): Mac 16.0300 caches `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` as 0.3933280241536672, the web gives ...674. The engine keeps
+the desktop value with MIRR's own root (financial.md "MIRR's evaluation order"); `^` follows the web.
 
 ## GEOMEAN last digits differ from a log-sum evaluation
 
@@ -1490,11 +1538,12 @@ Ours: implemented (T-1802): QUOTIENT and FACTDOUBLE are `LiftArrays` entries of 
 `x`, `n`, `m` too with its coefficients `WholeByCaller` (read once by `series_coefficients`, each element charged their
 cells); MULTINOMIAL, GCD and LCM have no entry. Before T-1802 FACTDOUBLE read a boolean as 1 or 0 and lifted over a range,
 and QUOTIENT and SERIESSUM's `x`, `n`, `m` intersected a range and were `#N/IMPL!` over an array.
-Unprobed for these three functions (T-1832), taken from the arrays.md Analysis ToolPak rule (EDATE, WEEKNUM,
-EOMONTH, YEARFRAC): a 3-D range in QUOTIENT, FACTDOUBLE or SERIESSUM's `x`, `n`, `m` is `#VALUE!` (FACTDOUBLE gave
-`#ERROR!` before), and a legacy bare range gets no `@`. `SERIESSUM(2,0,1,Sheet1:Sheet2!A1)` is `#REF!` in ours.
+A one-cell 3-D range (`Sheet1:Sheet2!A1`) is `#VALUE!` in QUOTIENT's first argument, FACTDOUBLE's, SERIESSUM's `x` and
+SERIESSUM's coefficients (`SERIESSUM(2,0,1,Sheet1:Sheet2!A1)`; ours was `#REF!` there until T-1832, now `#VALUE!` in
+`series_coefficients`), and a legacy bare range, `=QUOTIENT(A1:A3,2)` or `=FACTDOUBLE(A1:A3)`, gets no `@` (FORMULATEXT shows it
+as written) and is `#VALUE!` (probes/quotient-factdouble-seriessum-3d-legacy C1-C8, excel-graph, 2026-10-19, T-1832).
 Status: VERIFIED (excel-graph)
-Tasks: T-1777, T-1802
+Tasks: T-1777, T-1802, T-1832
 
 ## ECMA.CEILING
 Rule: `ECMA.CEILING(number, significance)` is a real Excel function with exactly the two-argument `CEILING` semantics (rounds away from zero for negative `number` with negative `significance`; `#NUM!` when `number` is positive and `significance` negative; zero significance gives 0; number text `"2.5"` and `TRUE` are read as numbers; text significance is `#VALUE!`). It is stored in a file as `_xlfn.ECMA.CEILING`, and `FORMULATEXT` prints it as `=ECMA.CEILING(2.5,2)` (no prefix). Written bare (`ECMA.CEILING(...)`) in a file, Graph rejects the whole workbook (`createSession` 501 `unsupportedWorkbook`); the one-argument form `_xlfn.ECMA.CEILING(2.5)` is rejected the same way (arity is exactly 2, like CEILING).

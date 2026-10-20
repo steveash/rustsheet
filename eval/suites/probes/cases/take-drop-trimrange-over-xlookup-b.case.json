@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1998 (-b): TAKE, DROP and TRIMRANGE over a reference-returning XLOOKUP written directly in a LET body, under nested TAKE/TRIMRANGE, under IF nested in CHOOSE, in a later IF or CHOOSE arm, under IFERROR, and SUBTOTAL over IF/CHOOSE of XLOOKUP itself; each formula in column A from row 10 every 4 rows, in clear space so a spill shows its shape. H1:H2 = 3,4; I1:I2 = 6,8; J1:J2 = 1,2 (keys).",
+ "tags": [
+  "M7",
+  "probe",
+  "T-1998"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "H1": 3,
+    "H2": 4,
+    "I1": 6,
+    "I2": 8,
+    "J1": 1,
+    "J2": 2,
+    "A10": "=SUBTOTAL(9,TAKE(LET(v,1,XLOOKUP(1,J1:J2,H1:I2)),1,1))",
+    "A14": "=SUBTOTAL(9,TAKE(LET(v,J1,XLOOKUP(v,J1:J2,H1:I2)),1,-1))",
+    "A18": "=SUBTOTAL(9,TAKE(TAKE(XLOOKUP(1,J1:J2,H1:I2),1,2),1,1))",
+    "A22": "=SUBTOTAL(9,TAKE(TAKE(H1:I2,1),1,1))",
+    "A26": "=SUBTOTAL(9,DROP(TRIMRANGE(XLOOKUP(1,J1:J2,H1:I2)),0,1))",
+    "A30": "=SUBTOTAL(9,TAKE(IF(TRUE,CHOOSE(1,XLOOKUP(1,J1:J2,H1:I2))),1,1))",
+    "A34": "=SUBTOTAL(9,IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)))",
+    "A38": "=SUBTOTAL(9,CHOOSE(1,XLOOKUP(1,J1:J2,H1:I2)))",
+    "A42": "=SUBTOTAL(9,TAKE(IF(FALSE,1,XLOOKUP(1,J1:J2,H1:I2)),1,1))",
+    "A46": "=SUBTOTAL(9,TAKE(CHOOSE(2,H1:H2,XLOOKUP(1,J1:J2,H1:I2)),1,-1))",
+    "A50": "=SUBTOTAL(9,TAKE(IFERROR(XLOOKUP(1,J1:J2,H1:I2),0),1,1))",
+    "A54": "=ISREF(TAKE(IF(TRUE,XLOOKUP(1,J1:J2,H1:I2)),1))",
+    "A58": "=ISREF(DROP(CHOOSE(1,XLOOKUP(1,J1:J2,H1:I2)),0,1))",
+    "A62": "=ISREF(TRIMRANGE(LET(v,1,XLOOKUP(1,J1:J2,H1:I2))))"
+   }
+  }
+ ]
+}

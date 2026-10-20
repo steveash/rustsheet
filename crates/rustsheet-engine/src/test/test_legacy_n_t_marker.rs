@@ -327,6 +327,18 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
             true,
             "N(CHOOSE({1;2},{2;3},{4;5}))",
         ),
+        // probes/subtotal-take-array-selector D1, D3 (T-1915): N over a row index and two range
+        // arms is marked with no `@`; T is unprobed and keeps its `@`s.
+        (
+            "N(CHOOSE({1,2},H1:H2,I1:I2))",
+            true,
+            "N(CHOOSE({1,2},H1:H2,I1:I2))",
+        ),
+        (
+            "T(CHOOSE({1,2},H1:H2,I1:I2))",
+            false,
+            "T(@CHOOSE(@{1,2},H1:H2,I1:I2))",
+        ),
         // A reference result reads the same marked or not (J10, 7).
         ("N(IF(1,Z1:Z2))", true, "N(IF(1,Z1:Z2))"),
         // Not a value position: a vector argument, IF's arms, SUMPRODUCT's array context.
@@ -480,4 +492,25 @@ fn the_legacy_rewrite_is_idempotent_over_the_probes_legacy_cells() {
         assert_eq!(to_rc_format(&again), stored, "{body} shown as {display}");
     }
     assert!(marked >= 20, "{marked}");
+}
+
+/// A workbook may define a name spelled like a cell (`NLG1`): the load takes it, the Name
+/// Manager path still refuses it, and a formula reads the cell, not the name (T-1997;
+/// probes/legacy-marker-spelling-name-nlg1).
+#[test]
+fn cell_spelled_name_loads_and_reads_the_cell() {
+    let mut model = new_empty_model();
+    assert!(model
+        .new_defined_name("NLG1", None, "LAMBDA(x,x*10+7)")
+        .is_err());
+    assert!(model.define_name("NLG1", None, "LAMBDA(x,x*10+7)").is_err());
+    model
+        .define_loaded_name("NLG1", None, "LAMBDA(x,x*10+7)")
+        .unwrap();
+    model._set("A1", "5");
+    model._set("B1", "=SUM(NLG1)");
+    model._set("B2", "=ISREF(NLG1)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "0");
+    assert_eq!(model._get_text("B2"), "TRUE");
 }

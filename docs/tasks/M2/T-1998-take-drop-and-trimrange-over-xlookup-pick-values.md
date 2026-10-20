@@ -3,7 +3,7 @@ id: T-1998
 title: "TAKE, DROP and TRIMRANGE over XLOOKUP pick values instead of the cells XLOOKUP returns"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,10 +27,20 @@ Excel's XLOOKUP returns a reference, so Excel most likely sums the cells (unprob
 picking cells, that arm can narrow to match.
 
 ## Acceptance criteria
-- [ ] Probe of SUBTOTAL/AREAS over TAKE, DROP and TRIMRANGE of XLOOKUP (scalar and lifting
+- [x] Probe of SUBTOTAL/AREAS over TAKE, DROP and TRIMRANGE of XLOOKUP (scalar and lifting
   lookup values, direct and under IF/LET) recorded in `docs/excel-semantics/`.
-- [ ] Engine matches the probe; debug tests show no scalar-context assertion (decision 0035).
-- [ ] `make check` green; reviewers approve.
+- [x] Engine matches the probe; debug tests show no scalar-context assertion (decision 0035).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The static analysis of T-1987, unless the runtime change lets it narrow.
+
+## Outcome
+Probe (excel-graph, probes/take-drop-trimrange-over-xlookup and -b): Excel keeps a reference-returning
+XLOOKUP a reference below TAKE, DROP and TRIMRANGE, also through a scalar IF or CHOOSE arm, a LET
+body or binding and a nested TAKE/TRIMRANGE; a lifting lookup value, a literal return array and
+IFERROR give values. New `Model::evaluate_picked_source` (drop_take.rs) does that walk for the
+reference form of TAKE, DROP and TRIMRANGE; IF's and CHOOSE's arm reads became `if_branch_value`
+and `choose_arm_value`, shared. Static analysis is unchanged (a nested XLOOKUP still counts as
+lifting, leaving the shape to run time). Eval delta: probes +2 cases, 37 Excel cells, 33 pass; the 4
+known failures (SUBTOTAL over IF/CHOOSE of XLOOKUP itself) are T-2009.

@@ -7,9 +7,15 @@
 //! inside an escaped `\[` or a literal. A pattern that does not parse is returned unchanged: it
 //! fails to compile the same way.
 //!
-//! `[:upper:]` and `[:lower:]` ignore case-insensitive matching (`(?i)[[:upper:]]` does not match
-//! `a`), so a non-negated top-level bracket that holds them becomes an alternation of the rest of
-//! the bracket and `(?-i:\p{Lu})` / `(?-i:\p{Ll})`.
+//! PCRE2 rejects POSIX syntax the parser keeps as plain brackets or literals: `[:alpha:]` outside a
+//! bracket, an unknown or upper-case class name, collating elements (`[.a.]`) and equivalence
+//! classes (`[=a=]`), and a range that starts at a class (`[[:alpha:]-z]`); Excel gives
+//! `#VALUE!` for each (probes/regex-posix-classes Z1-Z3, Z8-Z10; T-1985). [`unicode_posix_classes`]
+//! reports them as an [`InvalidPosixSyntax`].
+//!
+//! No POSIX class folds under case-insensitive matching (`(?i)[[:upper:]]` does not match `a`,
+//! `(?i)[[:ascii:]]` not the Kelvin sign), while the other items of its bracket do, so where
+//! `(?i)` is on such a bracket becomes `(?-i:[...])` with those items folded explicitly.
 
 use std::borrow::Cow;
 
@@ -38,8 +44,9 @@ fn unicode_class(kind: &ClassAsciiKind) -> Option<&'static str> {
         }
         // Every P, plus the ASCII symbols (`$+<=>^`|~`); `×` and `€` are not punctuation.
         ClassAsciiKind::Punct => r"[\p{P}[\x00-\x7F&&\p{S}]]",
-        // White_Space: NEL, NBSP, U+2028 and U+3000 are spaces, ZWSP is not.
-        ClassAsciiKind::Space => r"[\p{White_Space}]",
+        // White_Space plus U+180E (probes/regex-posix-classes-c A29): NEL, NBSP, U+2028 and
+        // U+3000 are spaces, ZWSP is not.
+        ClassAsciiKind::Space => r"[\p{White_Space}\x{180E}]",
         ClassAsciiKind::Upper => r"[\p{Lu}]",
         // Letters, all numbers (`²`, `½`, `Ⅳ`), non-spacing marks and connectors.
         ClassAsciiKind::Word => r"[\p{L}\p{N}\p{Mn}\p{Pc}]",
@@ -49,41 +56,52 @@ fn unicode_class(kind: &ClassAsciiKind) -> Option<&'static str> {
     })
 }
 
+/// A pattern whose POSIX class syntax PCRE2 rejects.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct InvalidPosixSyntax;
+
 /// `pattern` with its POSIX classes rewritten to Excel's Unicode ones; borrowed when it has none
-/// or does not parse.
-pub(super) fn unicode_posix_classes(pattern: &str) -> Cow<'_, str> {
-    if !pattern.contains("[:") {
-        return Cow::Borrowed(pattern);
+/// or does not parse (it then fails to compile the same way). `case_insensitive` is the
+/// `case_sensitivity` argument's choice, which `(?i)` and `(?-i)` in the pattern override. `Err`
+/// when PCRE2 rejects its POSIX syntax, or when its brackets under `(?i)` would grow past
+/// [`MAX_UNFOLDED_LEN`].
+pub(super) fn unicode_posix_classes(
+    pattern: &str,
+    case_insensitive: bool,
+) -> Result<Cow<'_, str>, InvalidPosixSyntax> {
+    if !["[:", "[.", "[="].iter().any(|open| pattern.contains(open)) {
+        return Ok(Cow::Borrowed(pattern));
     }
     let Ok(mut ast) = Parser::new().parse(pattern) else {
-        return Cow::Borrowed(pattern);
+        return Ok(Cow::Borrowed(pattern));
     };
-    if !rewrite(&mut ast) {
-        return Cow::Borrowed(pattern);
+    if invalid_ast(&ast, pattern) {
+        return Err(InvalidPosixSyntax);
+    }
+    if !rewrite(&mut ast, &mut { case_insensitive }, &mut {
+        MAX_UNFOLDED_LEN
+    })? {
+        return Ok(Cow::Borrowed(pattern));
     }
     let mut out = String::with_capacity(pattern.len() * 2);
     // Printing to a String cannot fail.
     if Printer::new().print(&ast, &mut out).is_err() {
-        return Cow::Borrowed(pattern);
+        return Ok(Cow::Borrowed(pattern));
     }
-    Cow::Owned(out)
+    Ok(Cow::Owned(out))
 }
 
-/// Rewrites the POSIX classes under `ast`; whether there were any. The recursion is bounded by
+/// Whether a bracket under `ast` holds POSIX syntax PCRE2 rejects. The recursion is bounded by
 /// the parser's nesting limit.
-fn rewrite(ast: &mut Ast) -> bool {
+fn invalid_ast(ast: &Ast, pattern: &str) -> bool {
     match ast {
         Ast::ClassBracketed(class) => {
-            if let Some(group) = case_sensitive_split(class) {
-                *ast = group;
-                return true;
-            }
-            rewrite_set(&mut class.kind)
+            posix_shaped(&class.span, pattern) || invalid_set(&class.kind, pattern)
         }
-        Ast::Repetition(rep) => rewrite(&mut rep.ast),
-        Ast::Group(group) => rewrite(&mut group.ast),
-        Ast::Alternation(alt) => alt.asts.iter_mut().fold(false, |any, a| rewrite(a) | any),
-        Ast::Concat(cat) => cat.asts.iter_mut().fold(false, |any, a| rewrite(a) | any),
+        Ast::Repetition(rep) => invalid_ast(&rep.ast, pattern),
+        Ast::Group(group) => invalid_ast(&group.ast, pattern),
+        Ast::Alternation(alt) => alt.asts.iter().any(|a| invalid_ast(a, pattern)),
+        Ast::Concat(cat) => cat.asts.iter().any(|a| invalid_ast(a, pattern)),
         Ast::Empty(_)
         | Ast::Flags(_)
         | Ast::Literal(_)
@@ -91,6 +109,125 @@ fn rewrite(ast: &mut Ast) -> bool {
         | Ast::Assertion(_)
         | Ast::ClassUnicode(_)
         | Ast::ClassPerl(_) => false,
+    }
+}
+
+/// Walks the `lhs` chain of set operations in a loop: `[a&&b&&c...]` nests as deep as the pattern
+/// is long, which the parser's nesting limit does not bound.
+fn invalid_set(mut set: &ClassSet, pattern: &str) -> bool {
+    while let ClassSet::BinaryOp(op) = set {
+        if invalid_set(&op.rhs, pattern) {
+            return true;
+        }
+        set = &op.lhs;
+    }
+    matches!(set, ClassSet::Item(item) if invalid_item(item, pattern))
+}
+
+fn invalid_item(item: &ClassSetItem, pattern: &str) -> bool {
+    match item {
+        // The parser reads a class followed by `-` and an item as three items, not a range.
+        ClassSetItem::Union(union) => {
+            union.items.iter().any(|i| invalid_item(i, pattern))
+                || union.items.windows(3).any(|w| {
+                    matches!(w[0], ClassSetItem::Ascii(_))
+                        && matches!(&w[1], ClassSetItem::Literal(lit)
+                            if lit.c == '-' && lit.kind == ast::LiteralKind::Verbatim)
+                })
+        }
+        ClassSetItem::Bracketed(class) => {
+            posix_shaped(&class.span, pattern) || invalid_set(&class.kind, pattern)
+        }
+        ClassSetItem::Empty(_)
+        | ClassSetItem::Literal(_)
+        | ClassSetItem::Range(_)
+        | ClassSetItem::Ascii(_)
+        | ClassSetItem::Unicode(_)
+        | ClassSetItem::Perl(_) => false,
+    }
+}
+
+/// Whether the bracket at `span` reads `[:name:]`, `[.name.]` or `[=name=]`: a POSIX class, which
+/// PCRE2 allows only as a valid name directly inside a bracket (the parser has turned a valid
+/// one into [`ClassSetItem::Ascii`] already), or a collating element or equivalence class, which
+/// it never does.
+fn posix_shaped(span: &ast::Span, pattern: &str) -> bool {
+    let Some(text) = pattern.get(span.start.offset..span.end.offset) else {
+        return false;
+    };
+    let Some(inner) = text.strip_prefix('[').and_then(|t| t.strip_suffix(']')) else {
+        return false;
+    };
+    [':', '.', '='].iter().any(|&mark| {
+        inner.len() >= 2
+            && inner.starts_with(mark)
+            && inner.ends_with(mark)
+            && !inner[1..inner.len() - 1].contains(['[', ']', '\\'])
+    })
+}
+
+/// Rewrites the POSIX classes under `ast`; whether there were any. `case_insensitive` is whether
+/// `(?i)` is on where `ast` starts; it is updated as the regex-syntax translator does: a flag
+/// group (`(?i)`) sets it for the rest of its enclosing group, across `|`, and a group restores
+/// it on exit. The recursion is bounded by the parser's nesting limit.
+fn rewrite(
+    ast: &mut Ast,
+    case_insensitive: &mut bool,
+    budget: &mut usize,
+) -> Result<bool, InvalidPosixSyntax> {
+    Ok(match ast {
+        Ast::ClassBracketed(class) => {
+            if *case_insensitive && has_posix_class(&class.kind) {
+                *ast = unfolded_posix_bracket(class, budget)?;
+                return Ok(true);
+            }
+            rewrite_set(&mut class.kind)
+        }
+        Ast::Flags(flags) => {
+            set_case_insensitive(&flags.flags, case_insensitive);
+            false
+        }
+        Ast::Repetition(rep) => rewrite(&mut rep.ast, case_insensitive, budget)?,
+        Ast::Group(group) => {
+            let mut inner = *case_insensitive;
+            if let ast::GroupKind::NonCapturing(flags) = &group.kind {
+                set_case_insensitive(flags, &mut inner);
+            }
+            rewrite(&mut group.ast, &mut inner, budget)?
+        }
+        Ast::Alternation(alt) => rewrite_all(&mut alt.asts, case_insensitive, budget)?,
+        Ast::Concat(cat) => rewrite_all(&mut cat.asts, case_insensitive, budget)?,
+        Ast::Empty(_)
+        | Ast::Literal(_)
+        | Ast::Dot(_)
+        | Ast::Assertion(_)
+        | Ast::ClassUnicode(_)
+        | Ast::ClassPerl(_) => false,
+    })
+}
+
+/// [`rewrite`] over `asts` in order, the flags of one carrying to the next; whether any rewrote.
+fn rewrite_all(
+    asts: &mut [Ast],
+    case_insensitive: &mut bool,
+    budget: &mut usize,
+) -> Result<bool, InvalidPosixSyntax> {
+    let mut any = false;
+    for ast in asts {
+        any |= rewrite(ast, case_insensitive, budget)?;
+    }
+    Ok(any)
+}
+
+/// Applies the `i` items of `flags` (`(?i)`, `(?-i)`, `(?x-i)`) to `case_insensitive`.
+fn set_case_insensitive(flags: &ast::Flags, case_insensitive: &mut bool) {
+    let mut negated = false;
+    for item in &flags.items {
+        match item.kind {
+            ast::FlagsItemKind::Negation => negated = true,
+            ast::FlagsItemKind::Flag(ast::Flag::CaseInsensitive) => *case_insensitive = !negated,
+            ast::FlagsItemKind::Flag(_) => {}
+        }
     }
 }
 
@@ -124,60 +261,142 @@ fn rewrite_item(item: &mut ClassSetItem) -> bool {
     }
 }
 
-/// A non-negated bracket of plain items holding `[:upper:]` or `[:lower:]`, as
-/// `(?:[rest]|(?-i:\p{Lu}))`, so case-insensitive matching leaves those two alone (Excel:
-/// `REGEXTEST("a","(?i)[[:upper:]]")` is FALSE). `None` for any other bracket.
-fn case_sensitive_split(class: &ast::ClassBracketed) -> Option<Ast> {
-    if class.negated {
-        return None;
+/// Whether `set` holds a POSIX class at any depth.
+fn has_posix_class(set: &ClassSet) -> bool {
+    match set {
+        ClassSet::Item(item) => item_has_posix_class(item),
+        ClassSet::BinaryOp(op) => has_posix_class(&op.lhs) || has_posix_class(&op.rhs),
     }
-    let items: Vec<&ClassSetItem> = match &class.kind {
-        ClassSet::Item(ClassSetItem::Union(union)) => union.items.iter().collect(),
-        ClassSet::Item(item) => vec![item],
-        ClassSet::BinaryOp(_) => return None,
-    };
-    let cased = |item: &ClassSetItem| {
-        matches!(item, ClassSetItem::Ascii(a)
-            if !a.negated && matches!(a.kind, ClassAsciiKind::Upper | ClassAsciiKind::Lower))
-    };
-    if !items.iter().any(|i| cased(i)) {
-        return None;
+}
+
+fn item_has_posix_class(item: &ClassSetItem) -> bool {
+    match item {
+        ClassSetItem::Ascii(_) => true,
+        ClassSetItem::Bracketed(class) => has_posix_class(&class.kind),
+        ClassSetItem::Union(union) => union.items.iter().any(item_has_posix_class),
+        ClassSetItem::Empty(_)
+        | ClassSetItem::Literal(_)
+        | ClassSetItem::Range(_)
+        | ClassSetItem::Unicode(_)
+        | ClassSetItem::Perl(_) => false,
     }
-    let mut alternatives = Vec::new();
-    let mut rest = String::new();
-    for item in items {
-        match item {
-            ClassSetItem::Ascii(a) if cased(item) => alternatives.push(match a.kind {
-                ClassAsciiKind::Upper => r"(?-i:\p{Lu})",
-                _ => r"(?-i:\p{Ll})",
-            }),
-            _ => {
-                let mut one = ClassSetItem::Union(ast::ClassSetUnion {
-                    span: class.span,
-                    items: vec![escaped(item)],
-                });
-                rewrite_item(&mut one);
-                let bracket = Ast::class_bracketed(ast::ClassBracketed {
-                    span: class.span,
-                    negated: false,
-                    kind: ClassSet::Item(one),
-                });
-                let mut printed = String::new();
-                Printer::new().print(&bracket, &mut printed).ok()?;
-                // `[x]` → `x`, so the rest prints as one bracket.
-                rest.push_str(printed.get(1..printed.len().checked_sub(1)?)?);
+}
+
+/// The most text the brackets under `(?i)` of one pattern may be rewritten to, all together. A
+/// folded `\p{L}` prints as some thousand ranges, so a pattern of many such items is refused as
+/// soon as their printed folds pass this, before the rest is built (CLAUDE.md directive 5); the
+/// NFA size limit would refuse it next anyway.
+const MAX_UNFOLDED_LEN: usize = 1 << 16;
+
+/// Takes `len` bytes from `budget`, or refuses the pattern when it has not that many left.
+fn spend(budget: &mut usize, len: usize) -> Result<(), InvalidPosixSyntax> {
+    *budget = budget.checked_sub(len).ok_or(InvalidPosixSyntax)?;
+    Ok(())
+}
+
+/// A bracket holding a POSIX class where `(?i)` is on, as `(?-i:[...])` with its POSIX classes
+/// rewritten and every other item replaced by its case closure: no POSIX class folds, the other
+/// items still do, whatever the negation, nesting or set operation (`(?i)[^[:upper:]x]` matches
+/// `b` but neither `B` nor `X`; probes/regex-posix-classes-b A8-A11, -c A1-A26, T-1989).
+fn unfolded_posix_bracket(
+    class: &ast::ClassBracketed,
+    budget: &mut usize,
+) -> Result<Ast, InvalidPosixSyntax> {
+    let mut class = class.clone();
+    fold_set(&mut class.kind, budget)?;
+    rewrite_set(&mut class.kind);
+    let mut text = String::from("(?-i:");
+    Printer::new()
+        .print(&Ast::class_bracketed(class), &mut text)
+        .map_err(|_| InvalidPosixSyntax)?;
+    text.push(')');
+    spend(budget, text.len())?;
+    Parser::new().parse(&text).map_err(|_| InvalidPosixSyntax)
+}
+
+/// Replaces the items of `set` that are no POSIX class by their case closure. The `lhs` chain of
+/// set operations is walked in a loop (see [`invalid_set`]).
+fn fold_set(mut set: &mut ClassSet, budget: &mut usize) -> Result<(), InvalidPosixSyntax> {
+    loop {
+        match set {
+            ClassSet::BinaryOp(op) => {
+                fold_set(&mut op.rhs, budget)?;
+                set = &mut op.lhs;
             }
+            ClassSet::Item(item) => return fold_item(item, budget),
         }
     }
-    let mut text = String::from("(?:");
-    if !rest.is_empty() {
-        text.push('[');
-        text.push_str(&rest);
-        text.push_str("]|");
+}
+
+/// [`fold_set`] for one item: a union's plain items fold together, into one bracket.
+fn fold_item(item: &mut ClassSetItem, budget: &mut usize) -> Result<(), InvalidPosixSyntax> {
+    match item {
+        ClassSetItem::Bracketed(class) => fold_set(&mut class.kind, budget),
+        ClassSetItem::Union(union) => {
+            let mut plain = Vec::new();
+            let mut kept = Vec::new();
+            for mut one in union.items.drain(..) {
+                match one {
+                    ClassSetItem::Literal(_)
+                    | ClassSetItem::Range(_)
+                    | ClassSetItem::Unicode(_)
+                    | ClassSetItem::Perl(_) => plain.push(escaped(&one)),
+                    ClassSetItem::Empty(_) => {}
+                    _ => {
+                        fold_item(&mut one, budget)?;
+                        kept.push(one);
+                    }
+                }
+            }
+            if !plain.is_empty() {
+                let span = union.span;
+                let union = ClassSetItem::Union(ast::ClassSetUnion { span, items: plain });
+                kept.push(folded(union, budget)?);
+            }
+            union.items = kept;
+            Ok(())
+        }
+        ClassSetItem::Literal(_)
+        | ClassSetItem::Range(_)
+        | ClassSetItem::Unicode(_)
+        | ClassSetItem::Perl(_) => {
+            *item = folded(escaped(item), budget)?;
+            Ok(())
+        }
+        ClassSetItem::Empty(_) | ClassSetItem::Ascii(_) => Ok(()),
     }
-    text.push_str(&alternatives.join("|"));
-    text.push(')');
-    Parser::new().parse(&text).ok()
+}
+
+/// The case closure of `item` (regex-syntax's simple case folding, the one `(?i)` applies), as a
+/// bracket.
+fn folded(item: ClassSetItem, budget: &mut usize) -> Result<ClassSetItem, InvalidPosixSyntax> {
+    let span = *item.span();
+    let bracket = Ast::class_bracketed(ast::ClassBracketed {
+        span,
+        negated: false,
+        kind: ClassSet::Item(item),
+    });
+    let mut text = String::from("(?i)");
+    Printer::new()
+        .print(&bracket, &mut text)
+        .map_err(|_| InvalidPosixSyntax)?;
+    let hir = regex_syntax::Parser::new()
+        .parse(&text)
+        .map_err(|_| InvalidPosixSyntax)?;
+    let mut printed = String::new();
+    regex_syntax::hir::print::Printer::new()
+        .print(&hir, &mut printed)
+        .map_err(|_| InvalidPosixSyntax)?;
+    spend(budget, printed.len())?;
+    // A class prints as one bracket; anything else (a single character prints bare) is wrapped.
+    let class = if printed.starts_with('[') {
+        parse_bracket(&printed)
+    } else {
+        parse_bracket(&format!("[{printed}]"))
+    };
+    class
+        .map(|class| ClassSetItem::Bracketed(Box::new(class)))
+        .ok_or(InvalidPosixSyntax)
 }
 
 /// `item` with a meta-character literal escaped: once the cased classes are taken out, a
@@ -205,33 +424,122 @@ fn parse_bracket(text: &str) -> Option<ast::ClassBracketed> {
 
 #[cfg(test)]
 mod tests {
-    use super::unicode_posix_classes;
+    use super::{unicode_posix_classes, InvalidPosixSyntax};
 
-    #[test]
-    fn rewrites_only_bracketed_posix_classes() {
-        assert_eq!(unicode_posix_classes("a[b]"), "a[b]");
-        assert_eq!(unicode_posix_classes("[[:alpha:]]"), r"[[\p{L}]]");
-        assert_eq!(unicode_posix_classes("[[:^digit:]x]"), r"[[^\p{Nd}]x]");
-        assert_eq!(unicode_posix_classes(r"[\[:alpha:]]"), r"[\[:alpha:]]");
-        assert_eq!(unicode_posix_classes("[[:ascii:]]"), "[[:ascii:]]");
-        assert_eq!(unicode_posix_classes("[[:foo:]]"), "[[:foo:]]");
+    fn rewritten(pattern: &str) -> String {
+        unicode_posix_classes(pattern, false).unwrap().into_owned()
     }
 
     #[test]
-    fn upper_and_lower_stay_case_sensitive() {
+    fn rewrites_only_bracketed_posix_classes() {
+        assert_eq!(rewritten("a[b]"), "a[b]");
+        assert_eq!(rewritten("[[:alpha:]]"), r"[[\p{L}]]");
+        assert_eq!(rewritten("[[:^digit:]x]"), r"[[^\p{Nd}]x]");
+        assert_eq!(rewritten(r"[\[:alpha:]]"), r"[\[:alpha:]]");
+        assert_eq!(rewritten("[[:ascii:]]"), "[[:ascii:]]");
+    }
+
+    #[test]
+    fn long_set_operation_chain_does_not_overflow_the_stack() {
+        let chain = format!("[a{}[.a.]]", "&&a".repeat(20_000));
+        // Only that it returns: the parser may itself refuse a chain this long.
+        let _ = unicode_posix_classes(&chain, true);
+    }
+
+    #[test]
+    fn rejects_posix_syntax_pcre2_rejects() {
+        for pattern in [
+            "[:alpha:]",
+            "[[:foo:]]",
+            "[[:ALPHA:]]",
+            "[[.a.]]",
+            "[[=a=]]",
+            "[[:alpha:]-z]",
+            "[a[:upper:]-z]",
+            "x(?:[[.a.]])+",
+        ] {
+            assert_eq!(
+                unicode_posix_classes(pattern, false),
+                Err(InvalidPosixSyntax),
+                "{pattern}"
+            );
+        }
+        for pattern in [
+            r"[\[:alpha:]]",
+            "[[:alpha:]-]",
+            "[-[:alpha:]]",
+            "[:a]",
+            "[a:]",
+            "[[:alpha:]]",
+        ] {
+            assert!(unicode_posix_classes(pattern, false).is_ok(), "{pattern}");
+        }
+    }
+
+    /// Whether `pattern` matches `text`, compiled as REGEXTEST compiles it.
+    fn matches(pattern: &str, text: &str, case_insensitive: bool) -> bool {
+        let rewritten = unicode_posix_classes(pattern, case_insensitive).unwrap();
+        regex_automata::meta::Regex::builder()
+            .syntax(regex_automata::util::syntax::Config::new().case_insensitive(case_insensitive))
+            .build(&rewritten)
+            .unwrap()
+            .is_match(text)
+    }
+
+    #[test]
+    fn no_posix_class_folds_while_the_other_items_do() {
+        // probes/regex-posix-classes-b A8-A11, -c A1-A26 (excel-graph, T-1989).
+        for (pattern, text, expected) in [
+            ("(?i)[[:upper:]]", "a", false),
+            ("(?i)[[[:upper:]]]", "a", false),
+            ("(?i)[[[:upper:]]]", "A", true),
+            ("(?i)[^[:upper:]]", "a", true),
+            ("(?i)[[:^upper:]]", "a", true),
+            ("(?i)[[:^lower:]]", "A", true),
+            ("(?i)[^[:lower:]]", "a", false),
+            ("(?i)[^[:upper:]x]", "X", false),
+            ("(?i)[^[:upper:]x]", "x", false),
+            ("(?i)[^[:upper:]x]", "B", false),
+            ("(?i)[^[:upper:]x]", "b", true),
+            ("(?i)[[:^upper:]x]", "X", true),
+            ("(?i)[[:lower:]a-c]", "B", true),
+            ("(?i)[[:lower:]a-c]", "D", false),
+            ("(?i)[[:upper:]&&[:alpha:]]", "a", false),
+            ("(?i:[[:upper:]])", "a", false),
+            ("(?i)(?-i)(?i)[^[:^upper:]]", "a", false),
+            ("(?i)[[:ascii:]]", "\u{212A}", false),
+            ("(?i)[[:ascii:]]", "\u{17F}", false),
+            ("(?i)k", "\u{212A}", true),
+            ("(?-i)[[:upper:]x]|(?i)[[:upper:]x]", "X", true),
+            ("[[:upper:]x]", "X", true),
+        ] {
+            assert_eq!(
+                matches(pattern, text, false),
+                expected,
+                "{pattern} on {text}"
+            );
+        }
+        // The case_sensitivity argument 1 starts with (?i) on, which (?-i) turns off.
+        assert!(!matches("[^[:upper:]x]", "X", true));
+        assert!(matches("[^[:upper:]x]", "b", true));
+        assert!(matches("[[:lower:]x]", "X", true));
+        assert!(!matches("(?-i)[[:lower:]x]", "X", true));
+    }
+
+    #[test]
+    fn brackets_under_case_insensitive_share_one_size_budget() {
+        let one = "(?i)[[:upper:]\\pL\\pN\\pS\\pM]";
+        assert!(unicode_posix_classes(one, false).is_ok());
+        // Each folded `\pL` prints as kilobytes: many of them, in one bracket's `&&` chain or in
+        // many brackets, spend the shared budget and are refused before the rest is folded.
+        let chain = format!("(?i)[[:upper:]{}]", "&&\\pL".repeat(100));
         assert_eq!(
-            unicode_posix_classes("[x[:upper:]]"),
-            r"(?:[x]|(?-i:\p{Lu}))"
+            unicode_posix_classes(&chain, false),
+            Err(InvalidPosixSyntax)
         );
-        assert_eq!(unicode_posix_classes("[[:lower:]]+"), r"(?:(?-i:\p{Ll}))+");
-        assert_eq!(unicode_posix_classes("[^[:upper:]]"), r"[^[\p{Lu}]]");
-        assert_eq!(
-            unicode_posix_classes("[[:upper:]^a]"),
-            r"(?:[\^a]|(?-i:\p{Lu}))"
-        );
-        assert_eq!(
-            unicode_posix_classes(r"[&[:lower:]\&]"),
-            r"(?:[\&\&]|(?-i:\p{Ll}))"
-        );
+        let many = "[[:upper:]\\pL]".repeat(2_000);
+        assert_eq!(unicode_posix_classes(&many, true), Err(InvalidPosixSyntax));
+        // Without (?i) nothing folds, so nothing is spent.
+        assert!(unicode_posix_classes(&many, false).is_ok());
     }
 }

@@ -1,0 +1,78 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A10": {
+    "t": "n",
+    "v": 4.0
+   },
+   "A3": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A4": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A5": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A6": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A7": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A8": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "A9": {
+    "t": "b",
+    "v": true
+   },
+   "B10": {
+    "t": "s",
+    "v": "=ERROR.TYPE(D1(1))"
+   },
+   "B3": {
+    "t": "s",
+    "v": "=XFD1048576(1)"
+   },
+   "B4": {
+    "t": "s",
+    "v": "=XFD1048576(1)"
+   },
+   "B5": {
+    "t": "s",
+    "v": "=$D$1(1)"
+   },
+   "B6": {
+    "t": "s",
+    "v": "=D$1(1)"
+   },
+   "B7": {
+    "t": "s",
+    "v": "=Sheet1!D1(1)"
+   },
+   "B8": {
+    "t": "s",
+    "v": "=D1()"
+   },
+   "B9": {
+    "t": "s",
+    "v": "=ISERROR(D1(1))"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2e203aa280ea8db16adeb872194c69f325047f4b8b3bcc9864b3ac5a7e2279ca",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-19T13:16:57+00:00",
+  "version": null
+ }
+}

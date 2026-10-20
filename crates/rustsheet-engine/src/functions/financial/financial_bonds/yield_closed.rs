@@ -18,6 +18,11 @@ pub(super) fn yield_one_period(bond: &BondArgs, schedule: &CouponSchedule) -> Re
         from_excel_date(maturity)?,
         bond.basis,
     );
+    // DSR 0 (settlement the 30th, maturity the 31st on bases 0 and 4) gives 0, not #NUM!, even
+    // when the numerator is 0 too (probes/yield-one-period-dsr-zero, excel-graph, T-1949).
+    if dsr == 0.0 {
+        return Ok(0.0);
+    }
     let f = bond.frequency as f64;
     let (rate, pr, red) = (bond.rate, bond.yld_or_pr, bond.redemption);
     let result = ((red / 100.0 + rate / f) - (pr / 100.0 + schedule.a / e * rate / f))
