@@ -5,6 +5,16 @@
 //! shows Excel uses `(e^x ∓ e^-x)/2` (COSH matches 34/34 cells vs 33/34 for libm), with a Taylor
 //! series for small |x| in SINH (cells B10, B42; libm misses B42). See
 //! `docs/excel-semantics/numbers.md`.
+//!
+//! ATANH and ACOTH are x87 code (T-0917, numbers.md "ATANH and ACOTH"): a halved FYL2X of a
+//! quotient ([`excel_half_ln`]) or the atanh power series with its running term in an 80-bit
+//! register ([`atanh_series`]), each branch on its own range.
+
+use crate::arithmetic::{
+    extended_quotient, extended_sum, round_extended_to_double, round_to_bits,
+    significand_and_exponent,
+};
+use crate::x87_log10::excel_half_ln;
 
 /// Below this |x| the exp formulation loses precision and Excel's values match the Taylor series
 /// (evidence: `SINH_COSH_TANH!B10`, B18, B42; the exp form matches all cells with |x| >= 0.5).
@@ -66,6 +76,108 @@ pub(super) fn tanh(x: f64) -> f64 {
     }
 }
 
+/// ATANH takes the series at or below this |x| and the log above it (probes-numeric
+/// t0917-hyperbolic-switchover A58-A78: the series through 1E-4, the log from 1.1E-4 on).
+const ATANH_SERIES_TO: f64 = 1E-4;
+
+/// ACOTH takes the log below this |x| and the series in 1/x from it on: probes-numeric
+/// t0917-acoth-switch-edge has the log at 3.69662 and the series at 3.69668.
+const ACOTH_SERIES_FROM: f64 = 3.69665;
+
+/// The series stops once a term no longer changes the sum; for |y| <= 0.2706 each term is under
+/// 0.074 of the one before, so it stops after about 15 terms. This only bounds the loop.
+const SERIES_TERMS: u32 = 64;
+
+/// A positive x87 register value `significand * 2^exponent`, the significand of 64 bits.
+type Extended = (u128, i32);
+
+fn extended_of(x: f64) -> Extended {
+    let (significand, exponent) = significand_and_exponent(x.abs());
+    (u128::from(significand) << 11, exponent - 11)
+}
+
+/// `a * b` rounded to 64 bits (FMUL).
+fn extended_mul(a: Extended, b: Extended) -> Extended {
+    let (product, shift) = round_to_bits(a.0 * b.0, 64, false);
+    (product, a.1 + b.1 + shift)
+}
+
+/// `a / b` rounded to 64 bits (FDIV); `b` is nonzero.
+fn extended_div(a: Extended, b: Extended) -> Extended {
+    // 64 or 65 quotient bits, then two more from the remainder (under 2^66, no overflow) so the
+    // rounding always has a guard bit, and what is left is the sticky bit.
+    let numerator = a.0 << 64;
+    let remainder = (numerator % b.0) << 2;
+    let quotient = ((numerator / b.0) << 2) | (remainder / b.0);
+    let (rounded, shift) = round_to_bits(quotient, 64, remainder % b.0 != 0);
+    (rounded, a.1 - 66 - b.1 + shift)
+}
+
+/// The register value stored to a double (the second rounding), or `None` outside the normal
+/// range.
+fn store(value: Extended) -> Option<f64> {
+    round_extended_to_double(value.0, value.1, false)
+}
+
+/// Excel's atanh series `y + y^3/3 + y^5/5 + ...` for a positive register value `y`, as x87 code
+/// runs it: the power `y^(2k+1)` and `y^2` stay in 80-bit registers, each term `power/(2k+1)` and
+/// each partial sum is stored to a double (every sum rounded twice), and the loop ends when a term
+/// leaves the sum unchanged. Keeping `y` and the power in a register is what fits ACOTH(4.7),
+/// ACOTH(4.92) and ACOTH(3.69734) (probes-numeric t0917-acoth-switch-edge); an all-double series
+/// misses them. `None` when `y` is not a normal double.
+fn atanh_series(y: Extended) -> Option<f64> {
+    let mut sum = store(y)?;
+    let square = extended_mul(y, y);
+    let mut power = y;
+    for k in 1..=SERIES_TERMS {
+        power = extended_mul(power, square);
+        let term = extended_div(power, extended_of(f64::from(2 * k + 1)));
+        // A term under the normal range cannot change a normal sum.
+        let next = extended_sum(sum, store(term).unwrap_or(0.0));
+        if next == sum {
+            break;
+        }
+        sum = next;
+    }
+    Some(sum)
+}
+
+/// Excel's ATANH(x) for |x| < 1: the series at or below 1E-4, else `0.5*ln((1+x)/(1-x))` with the
+/// sums and the quotient rounded twice and the x87 half log. A negative `x` is evaluated as it is,
+/// not as `-ATANH(-x)`: ATANH(-0.0002) and ATANH(-0.0003) need that (probes-numeric
+/// t0917-hyperbolic-switchover A77, A78). The log branch keeps the cancellation of `1+x` for small
+/// |x|: ATANH(0.0005) is 327 ulp below the true value (probes-numeric m9-hyperbolic A96).
+pub(super) fn atanh(x: f64) -> f64 {
+    if x.abs() <= ATANH_SERIES_TO {
+        // The series is odd and every rounding is symmetric, so the sign comes back exactly.
+        atanh_series(extended_of(x)).map_or(x, |value| value.copysign(x))
+    } else {
+        excel_half_ln(extended_quotient(
+            extended_sum(1.0, x),
+            extended_sum(1.0, -x),
+        ))
+    }
+}
+
+/// Excel's ACOTH(x) for |x| > 1, odd: `0.5*ln((|x|+1)/(|x|-1))` (sums and quotient rounded twice,
+/// x87 half log) below 3.69665, else the atanh series in `1/|x|` with the reciprocal kept in a
+/// register. Unlike ATANH the sign comes last: ACOTH(-3.5) is -ACOTH(3.5), not the log of
+/// `(-2.5)/(-4.5)` (probes-numeric t0917-hyperbolic-switchover A44, A45).
+pub(super) fn acoth(x: f64) -> f64 {
+    let magnitude = x.abs();
+    let value = if magnitude < ACOTH_SERIES_FROM {
+        excel_half_ln(extended_quotient(
+            extended_sum(magnitude, 1.0),
+            extended_sum(magnitude, -1.0),
+        ))
+    } else {
+        // Past about 4.5E307 the reciprocal is subnormal; no Excel value is known there.
+        atanh_series(extended_div(extended_of(1.0), extended_of(magnitude)))
+            .unwrap_or_else(|| extended_quotient(1.0, magnitude))
+    };
+    value.copysign(x)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -88,5 +200,28 @@ mod tests {
     fn overflow_defers_to_libm() {
         assert!(sinh(1000.0).is_infinite());
         assert!(cosh(-1000.0).is_infinite());
+    }
+
+    // probes-numeric m9-hyperbolic and t0917-* (excel-graph): one cell per branch and quirk.
+    #[test]
+    fn atanh_matches_excel() {
+        assert_eq!(atanh(5e-5), 5.000_000_004_166_667e-5); // series (m9-hyperbolic A95)
+        assert_eq!(atanh(1e-4), 0.000_100_000_000_333_333_34); // series edge (switchover A62)
+        assert_eq!(atanh(0.0005), 0.000_500_000_041_666_637_5); // log, 327 ulp low (A96)
+        assert_eq!(atanh(0.005), 0.005_000_041_667_291_589); // A97
+        assert_eq!(atanh(-0.5), -0.549_306_144_334_054_9); // TRIGONOMETRIC.xlsx D11
+        assert_eq!(atanh(0.0), 0.0);
+    }
+
+    #[test]
+    fn acoth_matches_excel() {
+        assert_eq!(acoth(1.0001), 4.951_768_775_643_139); // x87 FYL2X rounding (m9-hyperbolic A54)
+        assert_eq!(acoth(1.9), 0.585_035_626_325_127_3); // stored, not RN64, quotient
+        assert_eq!(acoth(3.5), 0.293_893_332_451_059_53); // switchover A44
+        assert_eq!(acoth(-3.5), -0.293_893_332_451_059_53); // odd (A45)
+        assert_eq!(acoth(4.74), 0.214_186_799_452_517_17); // series, 2 ulp low (switchover A38)
+        assert_eq!(acoth(4.7), 0.216_066_677_595_162_85); // series with y in a register
+        assert_eq!(acoth(3.69734), 0.277_365_144_421_817_53);
+        assert_eq!(acoth(1.5e10), 6.666_666_666_666_667e-11); // m9-hyperbolic A110
     }
 }

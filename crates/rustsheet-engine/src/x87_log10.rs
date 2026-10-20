@@ -4,6 +4,9 @@
 //! two roundings, so it is not always the correctly rounded log10. It matches 92 of 92 cells of
 //! probes/log10-kernel (excel-graph), where the correctly rounded log10 matches 78 and glibc's 56.
 //! LOG10, one-argument LOG and MULTINOMIAL's `log10(k)` terms use it.
+//!
+//! The same FYL2X with FLDLN2's constant, halved, is ATANH's and ACOTH's `0.5*ln(q)`
+//! ([`excel_half_ln`], T-0917).
 
 use crate::arithmetic::{round_extended_to_double, significand_and_exponent};
 use crate::x87_exp::{dd_add, dd_div, dd_mul, dd_to_extended, two_sum, LN_2_HI, LN_2_LO};
@@ -13,6 +16,12 @@ use crate::x87_exp::{dd_add, dd_div, dd_mul, dd_to_extended, two_sum, LN_2_HI, L
 /// `0x9A209A84FBCFF798_8F89`... rounds up).
 const LOG10_2_64_OVER_LN_2_HI: f64 = f64::from_bits(0x3FDB_CB7B_1526_E50E); // 0x1.bcb7b1526e50ep-2
 const LOG10_2_64_OVER_LN_2_LO: f64 = f64::from_bits(0x3C69_5D79_BCB5_84BC); // 0x1.95d79bcb584bcp-57
+
+/// `RN64(ln 2) / (2 ln 2)` as a double-double, from 300-bit mpmath: `y * log2(x)` with FLDLN2's
+/// `y`, halved, is `ln(x)` times this. RN64(ln 2) is `0xB17217F7D1CF79AC * 2^-64` (ln 2 =
+/// `0xB17217F7D1CF79AB_C9E3`... rounds up).
+const HALF_LN_2_64_OVER_LN_2_HI: f64 = 0.5;
+const HALF_LN_2_64_OVER_LN_2_LO: f64 = f64::from_bits(0x3BC3_8429_1B5E_E917); // 0x1.384291b5ee917p-67
 
 /// The coefficients 1/(2k+1) of the atanh series below as double-doubles, k = 0..23 (from 60-digit
 /// decimal arithmetic): |s| <= 3 - 2√2 < 0.1716, so the next term is under 0.1716^46 < 2^-117 of
@@ -46,12 +55,42 @@ const ATANH_COEFFICIENTS: [(f64, f64); 23] = [
 
 /// Excel's LOG10(x) for a positive finite `x` (module docs); anything else is NaN.
 pub(crate) fn excel_log10(x: f64) -> f64 {
+    fyl2x(x, (LOG10_2_64_OVER_LN_2_HI, LOG10_2_64_OVER_LN_2_LO))
+}
+
+/// Excel's `0.5*ln(x)` inside ATANH and ACOTH: FLDLN2, FYL2X (one rounding to 64 bits), halved
+/// (exact) and stored to a double. It fits all 402 ACOTH and 62 ATANH cells of
+/// ironcalc-calc TRIGONOMETRIC.xlsx and probes-numeric `m9-hyperbolic` and `t0917-*` (excel-graph)
+/// on the branches that use it, where the correctly rounded `0.5*ln(x)` misses some
+/// (docs/excel-semantics/numbers.md "ATANH and ACOTH", T-0917). NaN unless `x` is positive and finite.
+pub(crate) fn excel_half_ln(x: f64) -> f64 {
+    fyl2x(x, (HALF_LN_2_64_OVER_LN_2_HI, HALF_LN_2_64_OVER_LN_2_LO))
+}
+
+/// `ln(x) * y_over_ln_2` rounded to a 64-bit significand and then to a double: FYL2X with
+/// `y = y_over_ln_2 * ln 2`, then the store. NaN unless `x` is positive and finite.
+fn fyl2x(x: f64, y_over_ln_2: (f64, f64)) -> f64 {
     if !(x > 0.0 && x.is_finite()) {
         return f64::NAN;
     }
     if x == 1.0 {
         return 0.0;
     }
+    let product = dd_mul(ln_dd(x), y_over_ln_2);
+    // FYL2X's 64-bit rounding, then the store's rounding to a double (|result| < 745, never tiny:
+    // the smallest, at x = 1 ± 2^-53, is about 5e-17).
+    let negative = product.0 < 0.0;
+    let magnitude = if negative {
+        (-product.0, -product.1)
+    } else {
+        product
+    };
+    let (extended, extended_exponent) = dd_to_extended(magnitude);
+    round_extended_to_double(extended, extended_exponent, negative).unwrap_or(product.0)
+}
+
+/// `ln x` of a positive finite double, as a double-double.
+fn ln_dd(x: f64) -> (f64, f64) {
     // x = f * 2^e with f in [√2/2, √2], f a double (an exact scaling of x's significand).
     let (significand, exponent) = significand_and_exponent(x);
     let mut f = significand as f64 * f64::EPSILON; // in [1, 2)
@@ -72,14 +111,7 @@ pub(crate) fn excel_log10(x: f64) -> f64 {
     let ln_f = dd_mul(s, series);
     let ln_f = (2.0 * ln_f.0, 2.0 * ln_f.1);
     // ln x = e ln 2 + ln f; |e| <= 1075 is exact in a double.
-    let ln_x = dd_add(dd_mul((f64::from(e), 0.0), (LN_2_HI, LN_2_LO)), ln_f);
-    let log = dd_mul(ln_x, (LOG10_2_64_OVER_LN_2_HI, LOG10_2_64_OVER_LN_2_LO));
-    // FYL2X's 64-bit rounding, then the store's rounding to a double (|log| < 324, never tiny:
-    // the smallest, at x = 1 ± 2^-53, is about 4.8e-17).
-    let negative = log.0 < 0.0;
-    let magnitude = if negative { (-log.0, -log.1) } else { log };
-    let (extended, extended_exponent) = dd_to_extended(magnitude);
-    round_extended_to_double(extended, extended_exponent, negative).unwrap_or(log.0)
+    dd_add(dd_mul((f64::from(e), 0.0), (LN_2_HI, LN_2_LO)), ln_f)
 }
 
 #[cfg(test)]

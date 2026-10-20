@@ -3,7 +3,7 @@ id: T-0917
 title: "ASINH/ACOSH/ATANH/ACOTH, COTH/CSCH, small-x TANH: finish Excel ulp parity"
 milestone: M9
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -34,3 +34,18 @@ cached workbooks give. Fit against the T-1005 sweep (`probes-numeric/m9-hyperbol
 - [ ] Oracle-probe (T-0004) the fitted SINH 0.5 / TANH 1.0 switchover thresholds, the 20 TANH cutoff and the 700 sinh/cosh overflow guard, and confirm the formulas between cached points.
 - [ ] Findings (including negative results) in `docs/excel-semantics/numbers.md`.
 - [ ] `make check` green.
+
+## Outcome
+- ATANH and ACOTH are x87 code, fitted on all 62 ATANH and 402 ACOTH cells (TRIGONOMETRIC.xlsx and four
+  probes-numeric cases, three of them new: `t0917-hyperbolic-switchover`, `t0917-acoth-switch`,
+  `t0917-acoth-switch-edge`, excel-graph 2026-10-20): a halved FYL2X of the twice-rounded quotient
+  (`x87_log10::excel_half_ln`, sharing LOG10's kernel) on one range, an atanh series with y and the power in
+  80-bit registers on the other (ATANH series at |x| <= 1E-4; ACOTH series from |x| = 3.69665, odd).
+- COTH, CSCH and SECH are 1 over Excel's own TANH, SINH, COSH (66 of 66 probe pairs).
+- Eval: ironcalc-calc known failures 1046 -> 1009 (39 fixed, 2 unmasked: COTH_CSCH_SECH!B10 and C54,
+  decision 0084, owned by T-2134); gen-m5 2e604cf8d308920e Calc!A36 (`ACOTH(FACT(14))`) passes. The first
+  criterion (40 lines, no new ones) is met at 39 with 2 decision-backed regressions.
+- Not done: the SINH 0.5 / TANH 0.9 thresholds. Excel's SINH/TANH on (0, 1) fit no formula tried
+  (numbers.md "SINH and TANH on 0.4 .. 1", negative result); T-2134 owns the kernel, the TANH cells
+  (D10, D40), SINH B51 and the COTH/CSCH cells that inherit them. The 20 cutoff and 700 guard stay as
+  m9-hyperbolic probed them.

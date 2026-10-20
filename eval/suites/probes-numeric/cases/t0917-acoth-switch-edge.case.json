@@ -1,0 +1,59 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-0917: ACOTH just around x = 3.697, where it switches from the x87 log of (x+1)/(x-1) to the atanh series in 1/x, and a re-check of ACOTH(4.7) and ACOTH(4.92).",
+ "tags": [
+  "M9",
+  "probe",
+  "numeric",
+  "T-0917",
+  "hyperbolic"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=ACOTH(3.696)",
+    "A2": "=ACOTH(3.69608)",
+    "A3": "=ACOTH(3.69622)",
+    "A4": "=ACOTH(3.69634)",
+    "A5": "=ACOTH(3.69642)",
+    "A6": "=ACOTH(3.69652)",
+    "A7": "=ACOTH(3.69662)",
+    "A8": "=ACOTH(3.69668)",
+    "A9": "=ACOTH(3.69674)",
+    "A10": "=ACOTH(3.69682)",
+    "A11": "=ACOTH(3.6969)",
+    "A12": "=ACOTH(3.69706)",
+    "A13": "=ACOTH(3.69716)",
+    "A14": "=ACOTH(3.69728)",
+    "A15": "=ACOTH(3.69734)",
+    "A16": "=ACOTH(3.6974)",
+    "A17": "=ACOTH(3.69752)",
+    "A18": "=ACOTH(3.69758)",
+    "A19": "=ACOTH(3.69766)",
+    "A20": "=ACOTH(3.6978)",
+    "A21": "=ACOTH(3.69788)",
+    "A22": "=ACOTH(3.69798)",
+    "A23": "=ACOTH(3.69812)",
+    "A24": "=ACOTH(3.69818)",
+    "A25": "=ACOTH(3.69824)",
+    "A26": "=ACOTH(3.6983)",
+    "A27": "=ACOTH(3.6984)",
+    "A28": "=ACOTH(3.69854)",
+    "A29": "=ACOTH(3.69866)",
+    "A30": "=ACOTH(3.69872)",
+    "A31": "=ACOTH(3.69882)",
+    "A32": "=ACOTH(3.69894)",
+    "A33": "=ACOTH(4.7)",
+    "A34": "=ACOTH(47/10)",
+    "A35": "=ACOTH(4.92)",
+    "A36": "=ACOTH(492/100)",
+    "A37": "=ACOTH(-4.7)",
+    "A38": "=ACOTH(-4.92)",
+    "A39": "=ATANH(1/4.7)",
+    "A40": "=ATANH(1/4.92)"
+   }
+  }
+ ],
+ "expected": {}
+}
