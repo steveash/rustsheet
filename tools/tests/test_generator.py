@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import functools
+import hashlib
 import io
 import json
 import random
@@ -619,3 +620,35 @@ def test_tables_probes_never_read_their_own_formula_column() -> None:
 def test_table_columns_are_escaped(header: str, escaped: str, at: str) -> None:
     assert escape_column(header) == escaped
     assert this_row(escaped) == at
+
+
+def _outer_function(formula: str) -> str:
+    return formula.removeprefix("=").split("(", 1)[0]
+
+
+def test_unfocused_output_is_unchanged() -> None:
+    # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw.
+    body = json.dumps(generate_case(_loaded_catalog(), 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
+    assert hashlib.sha256(body.encode()).hexdigest() == "866c628ae89f0f953bf667e60bbbaad9c0fb6d510b297988862867da51405f92"
+
+
+def test_focus_cycles_target_milestone_functions_evenly() -> None:
+    catalog = _loaded_catalog()
+    targets = {
+        f["name"]: f.get("spelled", f["name"])
+        for f in catalog.scoped("M5").functions
+        if f.get("milestone") == "M5"
+    }
+    assert len(targets) == 131
+    spelled = set(targets.values())
+    outer: Counter[str] = Counter()
+    for i in range(50):
+        spec = generate_case(catalog, 2 * 1_000_003 + i, milestone="M5", formulas=400, focus=True, case_index=i)
+        outer.update(_outer_function(f) for f in spec["sheets"][1]["cells"].values())
+    assert set(outer) <= spelled
+    assert min(outer[name] for name in spelled) >= 100
+
+
+def test_focus_without_target_functions_is_an_error() -> None:
+    with pytest.raises(ValueError, match="no generator-ready functions"):
+        generate_case(_loaded_catalog(), 1, milestone="M0", focus=True)

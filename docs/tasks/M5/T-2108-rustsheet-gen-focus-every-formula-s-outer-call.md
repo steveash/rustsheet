@@ -3,7 +3,7 @@ id: T-2108
 title: "rustsheet-gen --focus: every formula's outer call is a function of the target milestone, cycled evenly"
 milestone: M5
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -53,3 +53,6 @@ the output is byte-identical to today.
 - Generating or oracle-filling gen-m5 (T-2114).
 - Edge pools (T-2109, T-2110).
 - Changing the weighting of the inner arguments.
+
+## Outcome
+`rustsheet-gen --focus` added (`generate_case(focus=, case_index=)`, `Gen.call_fn`); tools tests pin the unfocused digest, even cycling (>=100 outer calls for each of 131 M5 functions) and the empty-milestone error; docs §5.4. No eval change (T-2114 generates the suite).
