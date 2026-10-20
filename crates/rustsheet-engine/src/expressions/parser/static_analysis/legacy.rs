@@ -302,6 +302,21 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
     (matches!(kind, Function::Choose | Function::Index | Function::Ifs)
         && returns_only_array_constants(kind, args))
         || chooses_between_references_and_array_constants(kind, args)
+        || chooses_references_by_an_array_index(kind, args)
+}
+
+/// Whether `kind(args)` is a CHOOSE with an array constant for its index over plain references:
+/// Excel shows no `@` on it and N or T read it as `#VALUE!` on the arms' rows and off them
+/// (`=N(CHOOSE({1,2},H1:H2,I1:I2))`; probes/subtotal-take-array-selector D1, D3, D5, D7, T-1915).
+fn chooses_references_by_an_array_index(kind: &Function, args: &[Node]) -> bool {
+    let [index, arms @ ..] = args else {
+        return false;
+    };
+    matches!(kind, Function::Choose)
+        && matches!(index, Node::ArrayKind(_))
+        && !is_one_element_array(index)
+        && !arms.is_empty()
+        && arms.iter().all(is_plain_reference)
 }
 
 /// Whether `kind` has an argument it can return ([`is_returned_argument`]) and every one is an
