@@ -286,7 +286,9 @@ impl Model {
         let blank = matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg);
         let value = Self::cast_string_ref(value, cell)?;
         if value.is_empty() && empty == EmptyText::ZeroIfBlank && blank {
-            return Ok((0.0, 0.0, Suffix::I));
+            // Excel: a blank takes the suffix of the number it meets, as a suffixless number does
+            // (`IMSUB("3+4j",Q1)` is "3+4j"): probes/eng-imsub-imdiv-blank-j A1:A6, B1, B5.
+            return Ok((0.0, 0.0, Suffix::Real));
         }
         parse_complex_number(&value).map_err(|_| num_error(cell))
     }
@@ -320,6 +322,11 @@ impl Model {
         let [first, second] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
+        // Excel: an empty argument, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`):
+        // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4.
+        if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
+            return Err(CalcResult::new_error(Error::NA, cell, String::new()));
+        }
         let first = Self::complex_of(first, EmptyText::ZeroIfBlank, cell)?;
         let second = Self::complex_of(second, EmptyText::ZeroIfBlank, cell)?;
         let Some(suffix) = first.2.join(second.2) else {
