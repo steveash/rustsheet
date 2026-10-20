@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import struct
 from fractions import Fraction
 
 import pytest
 
 from rustsheet_tools.fitlab import fit
 from rustsheet_tools.fitlab.kernels import beta, registry
+from rustsheet_tools.fitlab.score import ulp_distance
 from rustsheet_tools.fitlab.sweep import Cell
 
 
@@ -72,16 +72,9 @@ def test_libreoffice_scores() -> None:
     }
 
 
-def _ulp_distance(a: float, b: float) -> int:
-    def key(x: float) -> int:
-        return int(struct.unpack("<q", struct.pack("<d", x))[0])
-
-    return abs(key(a) - key(b))
-
-
 def test_t_cdf_reference_keeps_y_exact_in_the_deep_lower_tail() -> None:
     # T-2088: probes-numeric m9-t-dist-cdf A149/A150; rounding y first was 152,191 / 43,561 ulp off.
-    assert _ulp_distance(beta.t_cdf_reference(-2, 1e6), 0.022750266925659606) <= 1
-    assert _ulp_distance(beta.t_cdf_reference(-10, 1e6), 7.63930538408907e-24) == 38
+    assert ulp_distance(beta.t_cdf_reference(-2, 1e6), 0.022750266925659606) <= 1
+    assert ulp_distance(beta.t_cdf_reference(-10, 1e6), 7.63930538408907e-24) == 38
     assert beta.t_cdf_reference(0, 5) == 0.5
-    assert beta.t_cdf_reference(2, 1e6) == pytest.approx(1 - 0.022750266925659606, rel=1e-12)
+    assert ulp_distance(beta.t_cdf_reference(2, 1e6), 1 - 0.022750266925659606) <= 1

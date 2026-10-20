@@ -567,7 +567,7 @@ def t_cdf(fn: Ibeta, t: float, n: float) -> float:
     """T.DIST(t,n,TRUE) = 1 - I_y(n/2, 1/2)/2 for t > 0 (I_y/2 below), y = n/(n + t^2), or
     0.5 +- I_z(1/2, n/2)/2 with z = 1 - y when z is smaller (back to I_y/2 for a lower tail under
     0.1, where the difference cancels); Excel truncates n to an integer
-    (docs/excel-semantics/statistics.md, T-1043)."""
+    (docs/excel-semantics/statistics.md, T-1043). `t_cdf_reference` is the exact-decimal twin."""
     n = float(math.trunc(n))
     if t == 0:
         return 0.5
@@ -587,7 +587,8 @@ def t_cdf(fn: Ibeta, t: float, n: float) -> float:
 
 def t_cdf_reference(t: float, n: float) -> float:
     """T.DIST(t,n,TRUE) correctly rounded: y = n/(n + t^2) stays an exact decimal into I_y, because
-    rounding y to a double first moves the deep tail (n = 1E6, t = -2) by 152,191 ulp (T-2088)."""
+    rounding y to a double first moves the deep tail (n = 1E6, t = -2) by 152,191 ulp (T-2088).
+    Same mapping as `t_cdf`; Excel truncates n (statistics.md, T-1043)."""
     n = float(math.trunc(n))
     if t == 0:
         return 0.5
