@@ -1090,3 +1090,45 @@ Reviewer 3's mechanism analysis:
 
 The direct read is a table of Excel's shift on the s4 exact class, against e3 = P3_80 - P3_q in 1/16 steps jointly with
 the eighth-position class of P3_q + p3, per run. The positive control is a planted p2 move.
+
+### 12.10 The s3 and D-side tables are flat; what K2's deviation must be (reviewer 3, 2026-10-20 03:28 UTC)
+Runs: r112, r901, r113, r703, all against grid_a. Script: `review3/s3table.py`; the D-side table is a variant that was
+not committed.
+
+**s3 table** (the stored chain's s4 exact class).
+- **The deviations are 2-3 ulp(s3), not 1.**
+  - Excel needs s4 +-1 on 9-17% of points.
+  - The minimal s3 shift that explains each such point is mostly +-2 or +-3 ulp(s3): for example, 4.7% / 3.3% of exact
+    points on r112 and 11.4% / 2.2% on r703.
+- **Flat across all covariates.** Rates are flat within noise across the 32 cells of P3 eighth-position x parity x
+  sign(e3), and across e3 in 1/16 bins. Among s3 +-1 shifts, sign(k) agrees with sign(e3) only at 0.44-0.59, i.e. chance.
+- **Controls.** p2 +5 / +40 ulps give one-sided s4 +1 that is flat across classes: smooth upstream offsets are
+  one-sided and class-flat, whereas real is two-sided and class-flat.
+
+**D-side table.**
+- Against N's exact class, D's hand-off geometry has no predictive power.
+- D re-decides its own ties (position 4/8) at 13-34%, the same rate N does. This is not a cross-chain rule.
+- The mirrored table (D's exact class against N's geometry) is flat.
+
+**Deterministic x-jitter rules.** Round trips in the head ((x+k)-k, (x*m)/m, (x/m)*m, exp(log x), sqrt(x)^2) are all
+rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the time and the rule only 0.06-0.42.
+
+**Synthesis (12.6-12.10).**
+- Excel differs from grid_a at the stage-4/3 hand-off sums by +-1 u on 15-30% of points:
+  - two-sided, zero-mean, and deterministic in x;
+  - including points where the stored sum is exactly representable.
+- None of these predicts it:
+  - x bits or row position;
+  - the geometry of any earlier stage (P1-P4, s1-s3, d1-d3);
+  - the cross chain;
+  - any smooth per-run offset.
+- The needed pre-rounding change is >= u/2, which excludes every x87 rounding, product-resolution and operand-precision
+  variant.
+- The late chain is right to within 1% of outputs (12.9).
+- These are the properties of a DIFFERENT polynomial value at s3/s4, of order 2-3 ulp(s3), point-wise and not a function
+  of grid_a's own intermediate geometry. One family produces exactly that:
+  - head coefficients differing from grid_a's by enough (hundreds to thousands of ulps on p0-p3, allowed by the function
+    null space) that their s2/s3 rounding patterns are unrelated to grid_a's;
+  - late coefficients compensating below the reach threshold.
+- Additive offsets (hoffF) cannot emulate this, because they add constants rather than re-hashing the chain.
+- The tool is W2's joint solver, with the 12.9 reach bound as its constraint.

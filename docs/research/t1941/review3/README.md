@@ -32,3 +32,4 @@ The q2xx dense cases are 512-double clusters and are too short for sub-bin frequ
 | `latescan.py cases...` | each late coefficient moved in whole units of its stored sum's grid, m in [-6,6], scored by the (4,3)-pre meter's best rate per run |
 | `ties.py cases...` | direct test of how Excel resolves each position class (exact tie, 1/4, 3/4, 0) of the hand-off sums against ties-to-even and the true side of the unquantised product |
 | `ties_truth.py cases...` | (12.7) the same class table for synthetic truths displaced along function-null directions (early-only, joint), next to REAL |
+| `s3table.py [--control K] cases...` | (12.10) on the s4 exact class, Excel's required s4 shift and minimal s3 shift against the P3 position class, parity and e3; all flat on real |
