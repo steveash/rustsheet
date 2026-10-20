@@ -152,3 +152,34 @@ fn too_many_h() {
     assert!(matches!(token, Token::ILLEGAL));
     assert!(matches!(lexer.next_token(), Token::EOF));
 }
+
+#[test]
+fn condition_not_equal_and_spaces_after_the_comparator() {
+    // Excel (poi FormatChoiceTests A17-A19, A23-A26).
+    let mut lexer = Lexer::new("[<>10]");
+    assert!(matches!(
+        lexer.next_token(),
+        Token::Condition(Compare::NotEqual, 10.0)
+    ));
+    let mut lexer = Lexer::new("[<      10]");
+    assert!(matches!(
+        lexer.next_token(),
+        Token::Condition(Compare::LessThan, 10.0)
+    ));
+}
+
+#[test]
+fn an_unmatched_single_condition_prints_general() {
+    use crate::formatter::format::{format_number, FormatContext};
+    let ctx = FormatContext::new(crate::locale::get_locale("en").unwrap());
+    let text = |v: f64, f: &str| format_number(v, f, &ctx).text;
+    assert_eq!(text(10.0, "[<10]#\" Wow\""), "10");
+    assert_eq!(text(1.0, "[<10]#\" Wow\""), "1 Wow");
+    assert_eq!(text(1.0, "[<>10]#\" Wow\""), "1 Wow");
+    assert_eq!(text(10.0, "[<>10]#\" Wow\""), "10");
+    assert_eq!(text(10.0, "[< 10]#\" Wow\""), "10");
+    assert_eq!(text(1.0, "[>5]d"), "1");
+    // The signed value is compared and keeps its minus (poi FormatConditionTests A32, A35).
+    assert_eq!(text(-11.0, "[=-10]#\" Wow\""), "-11");
+    assert_eq!(text(-11.0, "[<>-10]#\" Wow\""), "-11 Wow");
+}
