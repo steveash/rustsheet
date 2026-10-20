@@ -3,10 +3,10 @@ id: T-2115
 title: "Probe SHEETS with reference arguments and INFO type_text values on excel-graph (oracle: none evidence gap)"
 milestone: M5
 lane: research
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: [T-2113]
 ---
 
@@ -54,3 +54,17 @@ the same function, or filed as a functions-logic task with milestone M5.
 - Removing `oracle: none` from the catalog. T-2116 decides how such functions count, and the catalog
   edit can follow once the evidence is in.
 - Bare `SHEETS()` and `INFO("numfile")` (canary-dependent).
+
+## Handoff
+Tried: wrote `eval/suites/probes/cases/info-sheets-info-types.case.json` (24 SHEETS cells, ~30 INFO cells; no sidecar committed).
+The canary (`oracle/canary.py` `sheet_count_call`) accepts only plain references for SHEETS and literal INFO types, so the task's
+union, INDIRECT, OFFSET, name, error, text, number, boolean and array SHEETS forms and INFO(1)/TRUE/#N/A/array are refused; I dropped them.
+First raw excel-graph fill of the accepted forms (not committed) looks like a web limitation, not Excel semantics:
+- every `INFO("...")` is `#VALUE!` (directory, origin, osversion, recalc, release, system, memavail, memused, totmem, "", "x"),
+  yet `TYPE(INFO("release"))`=16 and `ERROR.TYPE(INFO("x"))`=3, `ISTEXT(INFO("recalc"))` FALSE;
+- single-sheet `SHEETS(ref)` = 1, but every multi-sheet 3-D span (`S1:S3!A1`, `S2:Data!A1:B2`, ...) is `#VALUE!`
+  while the reversed `S3:S1!A1` is 1. Desktop Excel documents `SHEETS(S1:S3!A1)` = 3.
+Open question (why I stopped): decision 0039 makes excel-graph the oracle of record, but INFO all-`#VALUE!` and 3-D `SHEETS` `#VALUE!`
+look like Excel-for-the-web gaps (compare `_WEB_UNSUPPORTED` for CELL("width")). Opus should decide: treat as goldens, or refuse
+INFO/multi-sheet SHEETS in the canary like CELL("width"), record the web gap in information.md, and file an M14 desktop item.
+The 20-cell floor for INFO cannot be met honestly from web values if they are the gap. Next: refill with `rustsheet-oracle fill -b excel-graph --suite probes`, decide, then docs + `make eval-baseline`.

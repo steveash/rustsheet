@@ -1,0 +1,93 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "SHEETS with plain, 3-D and range references, and INFO type_text values in both cases plus invalid ones; host-dependent INFO values are scored by shape only (T-2115).",
+ "tags": [
+  "M5",
+  "information",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S1",
+   "cells": {
+    "A1": 1,
+    "B1": 2,
+    "A2": 3,
+    "B2": 4,
+    "D1": "=SHEETS(A1)",
+    "D2": "=SHEETS(A1:B2)",
+    "D3": "=SHEETS(S2!A1)",
+    "D4": "=SHEETS(S1:S3!A1)",
+    "D5": "=SHEETS(S2:S3!A1:B2)",
+    "D6": "=SHEETS(S1:Data!A1)",
+    "D7": "=ISNUMBER(SHEETS(A1))",
+    "D8": "=SHEETS(S1:S3!A1)+0",
+    "D9": "=SHEETS(Data!A1)",
+    "D10": "=SHEETS(S3:S1!A1)",
+    "D11": "=SHEETS(S2:Data!A1:B2)",
+    "D12": "=SHEETS(S1!A1)",
+    "D13": "=SHEETS(S3!A1:B2)",
+    "D14": "=SHEETS(S1:S2!A1)",
+    "D15": "=SHEETS(S2:S3!A1)",
+    "D16": "=SHEETS(Data!A1:B2)",
+    "D17": "=SHEETS(S1:Data!A1:B2)",
+    "D18": "=SHEETS('S2'!A1)",
+    "D19": "=SHEETS(S1:S3!$A$1)",
+    "D20": "=SHEETS($A$1:$B$2)",
+    "D21": "=SHEETS(S1:S3!A1)*1",
+    "D22": "=SHEETS(S1:S3!A1)=3",
+    "D23": "=TYPE(SHEETS(A1))",
+    "D24": "=SHEETS(S1:Data!B2)",
+    "D25": "=INFO(\"recalc\")",
+    "D26": "=INFO(\"RECALC\")",
+    "D27": "=INFO(\"system\")",
+    "D28": "=INFO(\"SYSTEM\")",
+    "D29": "=INFO(\"Recalc\")",
+    "D30": "=INFO(\"System\")",
+    "D31": "=INFO(\"memavail\")",
+    "D32": "=INFO(\"memused\")",
+    "D33": "=INFO(\"totmem\")",
+    "D34": "=INFO(\"\")",
+    "D35": "=INFO(\"x\")",
+    "D36": "=TYPE(INFO(\"release\"))",
+    "D37": "=ISTEXT(INFO(\"directory\"))",
+    "D38": "=LEN(INFO(\"osversion\"))>0",
+    "D39": "=LEN(INFO(\"release\"))>0",
+    "D40": "=LEN(INFO(\"origin\"))>0",
+    "D41": "=ISTEXT(INFO(\"recalc\"))",
+    "D42": "=ERROR.TYPE(INFO(\"x\"))",
+    "D43": "=ISTEXT(INFO(\"DIRECTORY\"))",
+    "D44": "=LEN(INFO(\"OSVERSION\"))>0",
+    "D45": "=LEN(INFO(\"RELEASE\"))>0",
+    "D46": "=LEN(INFO(\"ORIGIN\"))>0",
+    "D47": "=ISERROR(INFO(\"memavail\"))",
+    "D48": "=ISERROR(INFO(\"memused\"))",
+    "D49": "=ISERROR(INFO(\"totmem\"))"
+   }
+  },
+  {
+   "name": "S2",
+   "cells": {
+    "A1": 5,
+    "B1": 6
+   }
+  },
+  {
+   "name": "S3",
+   "cells": {
+    "A1": 7,
+    "B1": 8
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 9,
+    "B1": 10,
+    "A2": 11,
+    "B2": 12
+   }
+  }
+ ],
+ "expected": {}
+}
