@@ -1,7 +1,7 @@
 ---
 id: T-0980
 title: "TEXT fixed-decimal formats round the value to 15 significant digits before padding (16 probes-numeric failures)"
-milestone: M10
+milestone: M5
 lane: functions-text
 status: todo
 priority: P2
@@ -16,6 +16,8 @@ significant digits and pads the rest with zeros, like Excel, instead of cutting 
 decimal position.
 
 ## Context
+- Milestone M10 -> M5 (gap triage 2026-10-20): this task owns gen-m5 known failures of an M5 catalog function, and decision 0085 item 3 requires every failing cell of an M5 exit criterion to be owned by a task with milestone M5 so the pick order reaches it while M5 is current. Id and scope are unchanged.
+
 Rule: docs/excel-semantics/numbers.md, "Number → text" (`TEXT(x,"0.000…")` pads after 15 significant
 digits; the 15th digit is rounded, not cut). Evidence: `probes-numeric/4f413cc257ce15c4` (excel-graph),
 16 failing cells, all TextMismatch, format `"0.000000000000000000"`:
