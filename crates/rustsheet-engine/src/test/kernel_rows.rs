@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, reason = "test helper: a malformed fixture fails the test")]
 
 //! Excel kernel rows for the T-1941 / T-2123 x87 kernel tests: committed fixtures (a sample of the
 //! oracle runs with the research model's value beside Excel's) and, when the research data is on

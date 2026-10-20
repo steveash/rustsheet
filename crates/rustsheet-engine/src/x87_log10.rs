@@ -18,8 +18,8 @@ const LOG10_2_64_OVER_LN_2_HI: f64 = f64::from_bits(0x3FDB_CB7B_1526_E50E); // 0
 const LOG10_2_64_OVER_LN_2_LO: f64 = f64::from_bits(0x3C69_5D79_BCB5_84BC); // 0x1.95d79bcb584bcp-57
 
 /// `RN64(ln 2) / ln 2` as a double-double, from 400-bit mpmath: `y * log2(x)` is `ln(x)` times
-/// this. RN64(ln 2) is `0xB17217F7D1CF79AC * 2^-64` (ln 2 = `0xB17217F7D1CF79AB_C9E3`... rounds
-/// up), so the factor is 1 plus about 2.6e-20.
+/// this. FLDLN2 loads ln 2 rounded up in the last bit of a 64-bit significand,
+/// `0xB17217F7D1CF79AC * 2^-64`, so the factor is 1 + 0x1.384291b5ee917p-66 (about 1 + 2.6e-20).
 const LN_2_64_OVER_LN_2_HI: f64 = 1.0;
 const LN_2_64_OVER_LN_2_LO: f64 = f64::from_bits(0x3BD3_8429_1B5E_E917); // 0x1.384291b5ee917p-66
 
@@ -59,7 +59,8 @@ pub(crate) fn excel_log10(x: f64) -> f64 {
 }
 
 /// Excel's LN(x) for a positive finite `x`: RN53(RN64(RN64(ln 2) * log2 x)) (module docs);
-/// anything else is NaN. The research model (`docs/research/t1941/lnmodels.py`) matches 114,687 of
+/// anything else is NaN. The research model (`docs/research/t1941/lnmodels.py`, on branch
+/// `agent/research/T-1941-crack-gammaln-gamma-ln` until it merges) matches 114,687 of
 /// 114,688 Excel cells; the miss, x = 0.612354100000274, is an FYL2X near-tie where Excel's
 /// microcode rounds the other way, and this follows the model.
 pub(crate) fn excel_ln(x: f64) -> f64 {
@@ -169,12 +170,12 @@ mod tests {
         }
     }
 
-    /// The committed sample of the T-1941 LN runs (`ln_kernel.fixture`: 4,000 random distinct x
+    /// The committed sample of the T-1941 LN runs (`test/fixtures/ln_kernel.fixture`: 4,000 random distinct x
     /// plus all 30 points where Excel differs from the research model): the engine equals the
     /// Python model (`docs/research/t1941/lnmodels.py`) on every point, and Excel on all but those.
     #[test]
     fn ln_equals_the_research_model_on_the_fixture() {
-        let rows = crate::test::kernel_rows::fixture_rows(include_str!("ln_kernel.fixture"));
+        let rows = crate::test::kernel_rows::fixture_rows(include_str!("test/fixtures/ln_kernel.fixture"));
         assert_eq!(rows.len(), 4030);
         let mut excel_misses = 0;
         for row in &rows {
@@ -207,7 +208,8 @@ mod tests {
     }
 
     /// The full T-1941 LN runs (`kmyst-gam-*`, every cell whose formula is `=LN(A<row>)`), when
-    /// `RUSTSHEET_T1941_ROWS` points at the extracted rows (crate::test::kernel_rows).
+    /// `RUSTSHEET_T1941_ROWS` points at the extracted rows (`crate::test::kernel_rows`): Excel's
+    /// bits on 2,887,521 of 2,887,551 cells, the 30 misses being the model's own (numbers.md).
     #[test]
     #[ignore = "needs the T-1941 research data (RUSTSHEET_T1941_ROWS)"]
     fn ln_matches_the_t1941_runs() {
@@ -215,13 +217,7 @@ mod tests {
             return;
         };
         let exact = crate::test::kernel_rows::exact_count(&rows, excel_ln);
-        let misses: Vec<_> = rows
-            .iter()
-            .filter(|&&(x, y)| excel_ln(x).to_bits() != y.to_bits())
-            .take(20)
-            .collect();
-        println!("LN exact {exact} of {} ; misses {misses:?}", rows.len());
-        assert!(exact + 2 >= rows.len());
+        assert_eq!((exact, rows.len()), (2_887_521, 2_887_551));
     }
 
     #[test]

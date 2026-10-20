@@ -900,8 +900,8 @@ one ulp, at points where Excel's FYL2X rounds the other way (the research's firs
 0.612354100000274). glibc's `log` matches 2,674,450 of the 2,677,612 distinct x (the engine used it before).
 Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
 sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,
-`ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.
-GAMMA and GAMMALN still use the platform ln until their own T-2123 follow-ups.
+`test/fixtures/ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.
+GAMMALN (T-2128) and GAMMA (T-2129) still use the platform ln until they ship.
 Status: VERIFIED (excel-graph)
 Tasks: T-2123, T-1941
 
