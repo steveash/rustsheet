@@ -113,11 +113,13 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
 - A plain `h`/`s`/`ss` after `[h]`/`[hh]`/`[s]`/`[ss]` shows the elapsed total too:
   "It was 75 [yes, 75] hours and 23:53" (A10), "271433 [yes, 271433] seconds" (A11), "7384 [yes,
   7384] seconds" (A21); padding stays (`ss` on 0 is "00", A31). `m` after `[m]` is unprobed; the
-  engine keeps it a clock minute.
+  engine keeps it a clock minute (T-2135).
 - Past 9999-12-31 a fraction of a second is #VALUE! with or without an elapsed token:
   `TEXT(1234567890,"[mm]:ss.0")` and `TEXT(1234567890,"h:mm:ss.00")` (gen-m10 810fee377a42575b
   T!A16, b4f66526f822ff2c T!A20; fbdab487cb11409e T!A25 on 123456789012345). Four or more zeros
-  (`s.0000`) are unprobed; the engine keeps them #VALUE!.
+  (`s.0000`) are unprobed; the engine keeps them #VALUE!. Also unprobed: where that cutoff sits
+  (the engine uses serial 2958466, also in a 1904 workbook) and whether a date token rolls over
+  with a fraction that rounds past midnight (the engine's does not); T-2135 probes them.
 - A negative value prints one leading "-" before any literal text:
   "-It was 2 [yes, 2] hours and 03:04" (A40).
 In the 1900 date system TEXT of a negative under a format that mixes an elapsed token with a date/time token (`[h]:mm`, `[s] yy`, `[s].00`) is #VALUE! instead; a format whose only date/time token is one elapsed token still prints a minus, with any literals (below; dates.md "Negative serials under an explicit negative section", probes/text-negative-serial-elapsed-mixed, probes/negative-date-sections-1900, T-1079/T-1105); the minus above is the 1904-workbook behavior. Two elapsed tokens in one section (`[h]:[mm]`) are #VALUE! in both systems, for positive values too (same evidence).
