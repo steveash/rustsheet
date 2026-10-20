@@ -81,13 +81,16 @@ range. A2 = "b", B2 = 2: `MATCH("b","b",0)`, `MATCH(2,"b",0)`, `MATCH("b","b")`,
 `MATCH(2,INDEX(B2:B3,1),0)` 1, `VLOOKUP(2,B2,1,FALSE)` 2, `HLOOKUP("b",A2,1,FALSE)` "b". A legacy
 formula reaches this through its intersected lookup table (references.md "Legacy MATCH, VLOOKUP
 and HLOOKUP intersect an operation in their lookup table"). LOOKUP differs: it reads a single
-value as a one-element array ("LOOKUP vector form with 2-D or short vectors"). Only "b", "x"
-and "2" are probed: the engine's line between them is its number coercion (`cast_number`), so
-dates, currency, percents and padded text are inferred, not probed (T-1939).
-Evidence: probes/match-single-value-lookup-array (excel-graph, 2026-10-18, T-1862).
+value as a one-element array ("LOOKUP vector form with 2-D or short vectors"). One-cell
+references picked by CHOOSE, OFFSET or INDIRECT, and a defined name for one cell, are one-cell
+ranges too (`MATCH("b",CHOOSE(1,A2),0)`, `MATCH(2,nmB,0)` are 1; `VLOOKUP(2,nmB,1,FALSE)` is 2).
+Single texts as MATCH/VLOOKUP table (`1/2/2020`, `$1`, `50%`, ` 2 `, `TRUE`, empty, `1E2`, `2:30`,
+`1,000`) follow the engine's `cast_number` line between `#N/A` and `#VALUE!` exactly.
+Evidence: probes/match-single-value-lookup-array (excel-graph, 2026-10-18, T-1862);
+probes/match-single-cell-forms-and-texts (36 cells, excel-graph, 2026-10-20, T-1939).
 Engine: `Model::lookup_table` (lookup.rs) and `Model::evaluate_single_sheet_arg` (util.rs).
 Status: VERIFIED
-Tasks: T-1862
+Tasks: T-1862, T-1939
 
 ## LOOKUP vector form with 2-D or short vectors
 Rule: in `LOOKUP(value, lookup_vector, result_vector)`:

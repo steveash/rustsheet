@@ -281,7 +281,11 @@ impl Model {
             // One cell is a one-cell range, searched as one: `MATCH("b",A2,0)` is 1 and
             // `VLOOKUP(2,B2,1,FALSE)` 2 where B2 is 2, also picked by IF or INDEX
             // (probes/match-single-value-lookup-array U2, V2, W2, Z2, AA2; T-1862).
-            Node::ReferenceKind { .. } => self.evaluate_node_with_reference(node, cell),
+            // A name for one cell is the same one-cell range (probes/match-single-cell-forms-and-texts
+            // O2:R2, T-1939).
+            Node::ReferenceKind { .. } | Node::DefinedNameKind(_) => {
+                self.evaluate_node_with_reference(node, cell)
+            }
             Node::FunctionKind {
                 kind: Function::Index,
                 ..
