@@ -713,8 +713,7 @@ A-F, a-f and their fullwidth forms (not Arabic-Indic digits). `[:^name:]` and `[
 are FALSE, and so is `(?i)[[[:upper:]]]` on `a`; negated, they complement the unfolded class (`(?i)[^[:upper:]]` and `(?i)[[:^upper:]]` on `a`
 are TRUE). Next to a literal they still are (`(?i)[[:upper:]x]` on `a` FALSE). The other items of the same bracket do fold:
 `(?i)[^[:upper:]x]` is FALSE on `X`, `x` and `B` and TRUE on `b` (the complement of unfolded Lu plus folded x), `(?i)[[:^upper:]x]` matches `X`,
-`(?i)[[:lower:]a-c]` matches `B` but not `D`. UNVERIFIED: ours folds a `\p{..}`, `\w`, `\d` or `\s` item of such a bracket too, and `(?i)\p{Lu}`
-outside one, while PCRE2 documents that caseless matching leaves `\p` alone (T-2092 probes it). Through `&&` and a scoped or re-set flag too: `(?i)[[:upper:]&&[:alpha:]]`,
+`(?i)[[:lower:]a-c]` matches `B` but not `D`. `(?i)` (and case_sensitivity 1) does fold `\p{..}` and `\P{..}`, unlike PCRE2's documented behaviour: `(?i)\p{Lu}` and `(?i)[\p{Lu}]` match `a`, `(?i)\p{Ll}` matches `A`, `(?i)[^\p{Ll}]` does not match `A`, `(?i)\P{Lu}` and `(?i)[[:digit:]\P{Lu}]` do not match `a` (the complement of the folded set), `(?i)[^\P{Lu}]` does; the same inside a bracket beside a POSIX class (`(?i)[[:digit:]\p{Lu}]`, Kelvin sign against `[[:digit:]\p{Ll}]`), and `\w`, `\d`, `\s` (`\W` does not match `a`). Ours matches all forty cells (probes/regex-p-fold A1-A40, excel-graph, 2026-10-20, T-2092). Through `&&` and a scoped or re-set flag too: `(?i)[[:upper:]&&[:alpha:]]`,
 `(?i:[[:upper:]])` and `(?i)(?-i)(?i)[^[:^upper:]]` are FALSE on `a`. No POSIX class folds: `(?i)[[:ascii:]]` is FALSE on the Kelvin sign
 (U+212A) and long s (U+017F), though `(?i)k` matches the Kelvin sign (for the other classes folding changes nothing).
 Brackets nest, unlike stock PCRE2 (which reads `[[a]]` as `[[a]` then `]`): `[[a]]` matches `a` but not `[`, `(?i)[[[:upper:]]]`

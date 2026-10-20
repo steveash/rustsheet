@@ -714,6 +714,7 @@ C	probes/reference-lift-pass-through-b.case.json	10
 C	probes/reference-lift-pass-through.case.json	38
 C	probes/regex-ascii-classes.case.json	42
 C	probes/regex-optional-args.case.json	149
+C	probes/regex-p-fold.case.json	40
 C	probes/regex-pcre2-features.case.json	62
 C	probes/regex-posix-classes-b.case.json	18
 C	probes/regex-posix-classes-c.case.json	36
