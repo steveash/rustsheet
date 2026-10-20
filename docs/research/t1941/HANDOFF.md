@@ -1166,3 +1166,33 @@ rejected: where they differ, Excel follows the stored chain 0.52-0.78 of the tim
     - If the fit reaches 1.0 as W shrinks, a hidden quantity varies slowly in x (piecewise tables or breakpoints).
     - If the fit stays capped, the freedom is per point (a different op or precision).
   - W6 runs an absolute-phase smooth-shift test on the K=0 and L runs. It also checks whether phases are constant within a window but drift between anchors, and whether the mismatch is a fixed fraction of a cycle (a different precision at one stage).
+
+### 12.12 W2 locality and precise-head screens (03:50-03:55): both negative
+
+- **Window-length scan (winscan.py).** Joint fit per window of W consecutive doubles.
+
+  | W | REAL | controls (cH, rh1e6, cLH) |
+  |---|---|---|
+  | 64 | 0.885 | 0.95-0.98 |
+  | 256 | 0.859 | 0.95-0.98 |
+  | 1k / 4k | 0.851 | 0.95-0.98 |
+
+  - The extra freedom is **point-local**: no piecewise tables, breakpoints or slowly varying hidden quantity.
+- **Low-bit screen (bitfeat.py, exact rational).** The features were exact, tie, guard, near-tie and quarter positions at 53 bits, exact-at-64, the double-rounding window and the fl24 half.
+  - Nothing beyond propagation sensitivity and the known D tie effect.
+  - Hidden extended precision on a single op, or float32 anywhere, is excluded.
+- **Precise heads (vheads.py).**
+  - Variants:
+    - V1N: exactly-rounded N head;
+    - V1D: exactly-rounded D head;
+    - V1ND: both.
+  - CompHorner and double-double hi are identical to V1ND on every point.
+  - Results:
+    - Excel follows the variant on 0.49-0.88 of the points where it differs; the planted control is followed at 1.00.
+    - That lifts the exact rate by only 1-8 points.
+    - An exact block through s5/d4 and power sums (forward and reverse) are worse than stored.
+  - Rejected.
+- **Net.** Excel's K2 head behaves like stored Horner, re-decided point-wise partly toward the exact value. The strength of that re-decision varies by run.
+- **Queued next.**
+  - W2: the follow-strength map vs x, and head forms H1-H4 (shifted variable, hi+lo coefficients, Dekker-split x, two-order combination).
+  - Reviewer 3: asked for a concrete structural form.
