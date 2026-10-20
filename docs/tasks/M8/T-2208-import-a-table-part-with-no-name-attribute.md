@@ -45,6 +45,9 @@ the pinned rev into eval/.cache/suites/poi), then `make eval` or
       cell of it with its cause).
 - [ ] An importer test loads a table part with `displayName` and no `name` and resolves a structured
       reference to it; it fails before the change.
+- [ ] Importer tests for untrusted names: a part with neither `name` nor `displayName` is still an import
+      error (no panic), and an empty, non-ASCII or duplicate `displayName` is an error or a loaded table,
+      never a panic.
 - [ ] docs/excel-semantics/xlsx-storage.md "A table part without a name attribute is named by its
       displayName" gets the implementation line.
 - [ ] No new line in any baseline; `make check` green; reviewers approve.
