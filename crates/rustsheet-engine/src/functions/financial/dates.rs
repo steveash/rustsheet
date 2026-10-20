@@ -247,6 +247,15 @@ pub(super) fn actual_days(d1: NaiveDate, d2: NaiveDate) -> f64 {
     (d2 - d1).num_days() as f64
 }
 
+/// The day-count basis a number names: 0 to 4 after truncation, `None` (Excel's #NUM!) for any
+/// other number. Every negative basis is #NUM!, -1E-300 and -0.5 too (not truncated toward 0),
+/// while 4.9 is 4 (probes/fin-bond-negative-basis; financial.md "Day-count basis: a negative basis
+/// is #NUM!").
+pub(crate) fn day_count_basis(basis: f64) -> Option<u32> {
+    // `as u32` truncates in range; out of range (NaN too) the saturated value is discarded.
+    (0.0..5.0).contains(&basis).then_some(basis as u32)
+}
+
 // Basis-aware days from d1 to d2.
 pub(super) fn basis_days(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
     match basis {

@@ -1,6 +1,6 @@
 use chrono::{Datelike, NaiveDate};
 
-use super::dates::broken_schedule_error;
+use super::dates::{broken_schedule_error, day_count_basis};
 use crate::{
     calc_result::CalcResult,
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
@@ -342,7 +342,8 @@ impl Model {
                 self.cast_number_ref(rate, cell)?,
                 self.cast_number_ref(par, cell)?,
                 self.cast_number_ref(frequency, cell)?.floor() as i32,
-                self.cast_number_or(rest.first(), 0.0, cell)?.floor() as i32,
+                day_count_basis(self.cast_number_or(rest.first(), 0.0, cell)?)
+                    .and_then(|basis| i32::try_from(basis).ok()),
                 rest.get(1)
                     .map_or(Ok(true), |value| Self::cast_bool_ref(value, cell))?,
             ))
@@ -363,11 +364,13 @@ impl Model {
         if rate <= 0.0
             || par <= 0.0
             || !matches!(frequency, 1 | 2 | 4)
-            || !(0..=4).contains(&basis)
             || issue_serial >= settlement_serial
         {
             return num_error(cell);
         }
+        let Some(basis) = basis else {
+            return num_error(cell);
+        };
 
         // ACCRINT walks the coupon schedule of `first_interest`, which in a 1904 workbook breaks
         // from 9995-12-31 on as a maturity's does: #NUM! for any settlement and calc_method,

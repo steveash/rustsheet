@@ -140,13 +140,18 @@ fn stirling(x: f64) -> f64 {
     let b = extended_product(a, corr);
     let d = extended_sum(b, -x);
     let e = extended_sum(d, LN_SQRT_2PI);
-    let z = extended_quotient(1.0, x);
+    extended_sum(e, stirling_series(extended_quotient(1.0, x)))
+}
+
+/// The Stirling series in z = 1/x as both GAMMALN and GAMMA's x >= 10 path sum it: z2 = z z;
+/// r = `B_10`; r = r z2 + `B_k` for k = 9..1; the series is r z, every op stored.
+pub(super) fn stirling_series(z: f64) -> f64 {
     let z2 = extended_product(z, z);
     let mut r = STIRLING[9];
     for &term in STIRLING[..9].iter().rev() {
         r = extended_sum(extended_product(r, z2), term);
     }
-    extended_sum(e, extended_product(r, z))
+    extended_product(r, z)
 }
 
 /// Raw-x Horner with every product and sum stored, the leading coefficient first.
@@ -157,7 +162,7 @@ fn stored_horner_leading_first(coefficients: &[f64], x: f64) -> f64 {
 }
 
 /// Raw-x Horner with every product and sum stored, the constant term first.
-fn stored_horner_constant_first(coefficients: &[f64], x: f64) -> f64 {
+pub(super) fn stored_horner_constant_first(coefficients: &[f64], x: f64) -> f64 {
     let (&leading, rest) = coefficients.split_last().unwrap_or((&0.0, &[]));
     rest.iter()
         .rev()
