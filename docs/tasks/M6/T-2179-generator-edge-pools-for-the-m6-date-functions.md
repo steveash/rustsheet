@@ -3,7 +3,7 @@ id: T-2179
 title: "Generator edge pools for the M6 date functions: date serials, date and time text, weekend masks and return types"
 milestone: M6
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
