@@ -354,6 +354,8 @@ broadcast cap (64 MiB, first entry) is one `#VALUE!`. The brackets holding a POS
 pattern that would together be rewritten past 64 KiB (their other items folded explicitly, "REGEX* POSIX classes are Unicode (T-1903)") is an invalid
 pattern, `#VALUE!` (T-1989). Folding an item also spends one byte of that 64 KiB per 256 code points its ranges cover, however short it
 prints: about 15 `(?i)[[:upper:]\x{0}-\x{10FFFF}]` are `#VALUE!` (T-2098; Excel accepts them).
+Any pattern that may fold case (case_sensitivity 1 or a `(?` group) is also charged one byte of the call's compile budget per code point its
+explicit ranges cover, before it compiles: about 110 distinct `(?i)[\x{0}-\x{10FFFF}]` in one call are `#ERROR!` (T-2138; Excel accepts them).
 The REGEX* dialect is the regex crate's on every target (wasm32 used `regex_lite`, whose `\w`, `\d` and `\s` are
 ASCII and which rejects `\pL`, before T-1272): `\w` and `\b` are Unicode (`REGEXTEST("é","\w")` is TRUE), as
 Excel's are (T-1817, below); POSIX classes are rewritten to Excel's Unicode ones ("REGEX* POSIX classes are Unicode (T-1903)").
@@ -361,9 +363,9 @@ The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE r
 pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
-Implemented in: `MAX_UNFOLDED_LEN` and `folding_cost` (functions/text/regex_posix.rs), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
+Implemented in: `MAX_UNFOLDED_LEN`, `folding_cost` and `foldable_span` (functions/text/regex_posix.rs), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829, T-1988, T-1989, T-2098
+Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
