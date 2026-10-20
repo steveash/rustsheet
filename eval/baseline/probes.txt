@@ -995,6 +995,7 @@ C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/trig-huge-argument.case.json	86
 C	probes/trimrange-fractional-trim.case.json	20
+C	probes/trimrange-lift-sources.case.json	44
 C	probes/trunc-decimal-stages.case.json	56
 C	probes/type-long-text-refs.case.json	8
 C	probes/type-long-text.case.json	30
@@ -2166,7 +2167,6 @@ F	probes/reference-lift-consumers-b2.case.json	Sheet1!E129
 F	probes/reference-lift-consumers-b2.case.json	Sheet1!E130
 F	probes/reference-lift-consumers-b2.case.json	Sheet1!E133
 F	probes/reference-lift-consumers-b2.case.json	Sheet1!E134
-F	probes/reference-lift-consumers-b2.case.json	Sheet1!E141
 F	probes/reference-lift-consumers-b2.case.json	Sheet1!E153
 F	probes/reference-lift-consumers-b2.case.json	Sheet1!E177
 F	probes/reference-lift-consumers-b2.case.json	Sheet1!E178

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import functools
+import hashlib
 import io
 import json
 import random
@@ -19,6 +20,7 @@ from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
+from rustsheet_tools.gen.pools import POOLS
 from rustsheet_tools.gen.tables import CATEGORIES as TABLES_CATEGORIES
 from rustsheet_tools.gen.tables import FORMULA_HEADERS, escape_column, generate_tables, this_row
 from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1, prefix_bound_names
@@ -370,7 +372,7 @@ def test_hard_domains_are_never_violated() -> None:
 
 def test_array_params_are_sometimes_ranges() -> None:
     cat = catalog().scoped("M5")
-    spec = generate_case(cat, 2, milestone="M5", formulas=400)
+    spec = generate_case(cat, 3, milestone="M5", formulas=400)
     formulas = list(spec["sheets"][1]["cells"].values())
     # Expressions never produce a bare range: only the array branch passes one to SUMPRODUCT.
     assert any(re.search(r"SUMPRODUCT\(Data!\w+:\w+[,)]", f) for f in formulas)
@@ -405,7 +407,7 @@ def test_paired_repeat_groups_stay_paired() -> None:
     cat = catalog().scoped("M2")
     countifs = next(f for f in cat.functions if f["name"] == "COUNTIFS")
     assert countifs["params"][0]["repeat"]["group"] == ["criteria_range", "criteria"]
-    spec = generate_case(cat, 5, milestone="M2", formulas=300)
+    spec = generate_case(cat, 3, milestone="M2", formulas=300)
     # criteria are literals and ranges contain no commas, so a bare COUNTIFS has 2n-1 commas.
     bare = [f for f in spec["sheets"][1]["cells"].values() if re.fullmatch(r"=COUNTIFS\([^()]*\)", f)]
     assert bare
@@ -619,3 +621,70 @@ def test_tables_probes_never_read_their_own_formula_column() -> None:
 def test_table_columns_are_escaped(header: str, escaped: str, at: str) -> None:
     assert escape_column(header) == escaped
     assert this_row(escaped) == at
+
+
+def _outer_function(formula: str) -> str:
+    return formula.removeprefix("=").split("(", 1)[0]
+
+
+def test_unfocused_output_is_unchanged() -> None:
+    # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw. The catalog has its
+    # `pool:` keys (T-2109) removed, which do draw from the rng.
+    catalog = copy.deepcopy(_loaded_catalog())
+    for f in catalog.functions:
+        for p in f.get("params", []):
+            p.pop("pool", None)
+    body = json.dumps(generate_case(catalog, 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
+    assert (
+        hashlib.sha256(body.encode()).hexdigest()
+        == "866c628ae89f0f953bf667e60bbbaad9c0fb6d510b297988862867da51405f92"
+    )
+
+
+def test_focus_cycles_target_milestone_functions_evenly() -> None:
+    catalog = _loaded_catalog()
+    targets = {
+        f["name"]: f.get("spelled", f["name"])
+        for f in catalog.scoped("M5").functions
+        if f.get("milestone") == "M5"
+    }
+    assert len(targets) == 131
+    spelled = set(targets.values())
+    outer: Counter[str] = Counter()
+    for i in range(50):
+        spec = generate_case(
+            catalog, 2 * 1_000_003 + i, milestone="M5", formulas=400, focus=True, case_index=i
+        )
+        outer.update(_outer_function(f) for f in spec["sheets"][1]["cells"].values())
+    assert set(outer) <= spelled
+    assert min(outer[name] for name in spelled) >= 100
+
+
+def test_focus_without_target_functions_is_an_error() -> None:
+    with pytest.raises(ValueError, match="no generator-ready functions"):
+        generate_case(_loaded_catalog(), 1, milestone="M0", focus=True)
+
+
+def test_every_catalog_pool_exists_and_stays_under_the_literal_limit() -> None:
+    named = {
+        p["pool"]
+        for f in _loaded_catalog().functions
+        for p in f.get("params", [])
+        if isinstance(p, dict) and "pool" in p
+    }
+    assert named
+    assert named <= set(POOLS)
+    for entries in POOLS.values():
+        for text in entries:
+            for literal in re.findall(r"\d+(?:\.\d+)?(?:E[+-]?\d+)?", text):
+                assert float(literal) < 1e308, text
+
+
+def test_pool_param_draws_from_its_pool_about_35_percent_of_the_time() -> None:
+    g = Gen(random.Random(5), Catalog([], []), 12, 5, 3)
+    pooled = {"name": "x", "mode": "value", "type": "number", "pool": "angle"}
+    draws = [g.argument_text(pooled, "value", 0) for _ in range(2000)]
+    share = sum(d in POOLS["angle"] for d in draws) / len(draws)
+    assert 0.25 <= share <= 0.45
+    hard = {**pooled, "domain": {"int": True, "min": 1, "max": 9, "hard": True}}
+    assert not any(g.argument_text(hard, "value", 0) in POOLS["angle"] for _ in range(500))
