@@ -102,7 +102,8 @@ fn switch_lifts_over_an_array_case_value_and_nests_linearly() {
     model.evaluate();
     assert_eq!(model._get_text("D1"), "10");
     assert_eq!(model._get_text("E1"), "40");
-    assert!(!model._get_text("D3").is_empty());
+    // {10,20} at the innermost level; every outer level misses its cases and takes the default.
+    assert_eq!(model._get_text("D3"), "20");
 }
 
 /// A one-cell range condition (`INDIRECT("K1")`) picks a branch like a cell does, and a missing
