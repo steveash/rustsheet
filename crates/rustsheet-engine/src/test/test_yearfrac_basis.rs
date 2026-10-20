@@ -131,8 +131,10 @@ fn test_negative_basis_is_num_error() {
     model._set("A5", "=PRICE(39448,43831,0.0575,0.065,100,2,-1E-300)");
     model._set("A6", "=ODDLYIELD(39448,39630,39264,0.08,98,100,2,-0.5)");
     model._set("A7", "=COUPDAYS(39448,43831,2,4.9)");
+    model._set("A8", "=AMORLINC(2400,39679,39813,300,1,0.15,-0.5)");
+    model._set("A9", "=ACCRINT(39083,39264,39448,0.08,1000,2,-1E-300)");
     model.evaluate();
-    for cell in ["A1", "A2", "A4", "A5", "A6"] {
+    for cell in ["A1", "A2", "A4", "A5", "A6", "A8", "A9"] {
         assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
     }
     assert_eq!(model._get_text("A3"), *"1");

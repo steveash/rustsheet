@@ -757,16 +757,18 @@ Tasks: T-1841
 ## Day-count basis: a negative basis is #NUM!
 Rule: every function with a day-count basis argument rejects any basis below 0 with `#NUM!`: -1, -0.5, -0.9999999999,
 -1E-300, and -1E300 or -0.5 read from a cell, are all `#NUM!`. A basis in [0, 5) truncates (4.9 is basis 4). A negative
-basis is not truncated toward 0. Probed for YIELD, PRICE, DURATION, MDURATION, COUPDAYS, COUPNUM, COUPDAYBS, ACCRINT,
-ACCRINTM, ODDFPRICE, ODDLYIELD, YEARFRAC, DISC and PRICEMAT. Also `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` with
+basis is not truncated toward 0. Probed for 22 functions: YIELD, PRICE, DURATION, MDURATION, COUPDAYS, COUPNUM,
+COUPDAYBS, COUPNCD, ACCRINT, ACCRINTM, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, YEARFRAC, DISC, INTRATE, RECEIVED,
+PRICEMAT, YIELDMAT, AMORLINC and AMORDEGRC. The functions not probed (COUPDAYSNC, COUPPCD, PRICEDISC, YIELDDISC) share
+the readers of probed ones. Also `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` with
 -1E300 read from a cell (fin-yield-odd-lift L5).
-Evidence: probes/fin-bond-negative-basis (112 cells, excel-graph, 2026-10-20, T-1870); probes/fin-yield-odd-lift L5
+Evidence: probes/fin-bond-negative-basis (176 cells, excel-graph, 2026-10-20, T-1870); probes/fin-yield-odd-lift L5
 (excel-graph, 2026-10-18, T-1842).
-Ours: one reader, `day_count_basis` (functions/financial/dates.rs), is used by the coupon-bond and ODD* kernels and by
-YEARFRAC, which ACCRINTM and the discount-security functions go through. Before T-1870, `floor() as u32` saturated a
-negative basis to 0, and YEARFRAC's `as i32` truncated -0.5 to 0. ACCRINT keeps its own read, `floor() as i32` and a
-0..=4 check, which gives the same answers. The probe's E1, E2, E9, G1, G2 and G9 (YIELD, PRICE, ODDFPRICE at bases 0 and
-4.9) are last-digit misses of the T-1374 class, not basis reads.
+Ours: one reader, `day_count_basis` (functions/financial/dates.rs), serves the coupon-bond and ODD* kernels, ACCRINT,
+AMORLINC, AMORDEGRC and YEARFRAC. ACCRINTM and the discount-security functions go through YEARFRAC. Before T-1870,
+`floor() as u32` saturated a negative basis to 0, and the `as i32` of YEARFRAC and the `trunc()` of AMOR* turned -0.5
+into 0. The probe's ten failing cells, rows 1, 2, 9, 17 and 21 in columns E and G (YIELD, PRICE,
+ODDFPRICE, ODDFYIELD and INTRATE at bases 0 and 4.9), are last-digit misses of the T-1374 and T-2007 class, not basis reads.
 Status: VERIFIED (excel-graph)
 Tasks: T-1842, T-1870
 
