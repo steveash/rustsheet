@@ -371,6 +371,8 @@ fn fold_item(item: &mut ClassSetItem, budget: &mut usize) -> Result<(), InvalidP
 /// bracket.
 fn folded(item: ClassSetItem, budget: &mut usize) -> Result<ClassSetItem, InvalidPosixSyntax> {
     let span = *item.span();
+    let cost = folding_cost(&item);
+    spend(budget, cost)?;
     let bracket = Ast::class_bracketed(ast::ClassBracketed {
         span,
         negated: false,
@@ -397,6 +399,25 @@ fn folded(item: ClassSetItem, budget: &mut usize) -> Result<ClassSetItem, Invali
     class
         .map(|class| ClassSetItem::Bracketed(Box::new(class)))
         .ok_or(InvalidPosixSyntax)
+}
+
+/// The budget one fold of `item` costs for the code points its ranges cover: regex-syntax walks
+/// every one to close it under case, about 5 ns each, however short the folded class prints
+/// (`[\x{0}-\x{10FFFF}]` prints as itself but takes ~6 ms to fold). One byte per 256 code points
+/// keeps the time of a pattern's folds near what the printed-size charge allows. `\p` and `\w`
+/// classes are charged by what they print.
+fn folding_cost(item: &ClassSetItem) -> usize {
+    match item {
+        ClassSetItem::Range(range) => {
+            let (start, end) = (u64::from(range.start.c), u64::from(range.end.c));
+            usize::try_from(end.saturating_sub(start) / 256).unwrap_or(usize::MAX)
+        }
+        ClassSetItem::Union(union) => union
+            .items
+            .iter()
+            .fold(0, |sum, i| sum.saturating_add(folding_cost(i))),
+        _ => 0,
+    }
 }
 
 /// `item` with a meta-character literal escaped: once the cased classes are taken out, a
@@ -539,6 +560,15 @@ mod tests {
         );
         let many = "[[:upper:]\\pL]".repeat(2_000);
         assert_eq!(unicode_posix_classes(&many, true), Err(InvalidPosixSyntax));
+        // A full range prints short but is slow to fold, so it is charged by the code points it
+        // covers (T-2098).
+        let ranges = "[[:upper:]\\x{0}-\\x{10FFFF}]".repeat(1_000);
+        let start = std::time::Instant::now();
+        assert_eq!(
+            unicode_posix_classes(&ranges, true),
+            Err(InvalidPosixSyntax)
+        );
+        assert!(start.elapsed().as_secs() < 5);
         // Without (?i) nothing folds, so nothing is spent.
         assert!(unicode_posix_classes(&many, false).is_ok());
     }
