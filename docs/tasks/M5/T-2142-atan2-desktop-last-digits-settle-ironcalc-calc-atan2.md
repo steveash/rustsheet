@@ -3,7 +3,7 @@ id: T-2142
 title: "ATAN2 desktop last digits: settle ironcalc-calc ATAN2_POWER D14 and D26 (Mac desktop 0.58 ulp off, web and engine correctly rounded)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
