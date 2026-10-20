@@ -3,7 +3,7 @@ id: T-0982
 title: "TEXT fraction formats with escaped literals, =/= separators and _ spacers between the parts (211 poi known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
