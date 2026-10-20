@@ -3,7 +3,7 @@ id: T-0969
 title: "T.DIST/T.DIST.RT/T.DIST.2T/T.TEST: accurate Student-t CDF with direct upper tail (55 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P2
 size: M
 tier: opus
@@ -50,6 +50,14 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 - gen-m9/4df1b22d3ed63f58 Calc!A9 `=CHIINV(T.DIST(0.1,7,Data!D1),2)`: Excel 1.2382105318705625, engine 1.2382105318705663 (engine T.DIST(0.1,7,TRUE) = 0.5384259701976026); shared with T-0972.
 
 Oracle sweep (T-1043): probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-nonint-df`, `m9-t-edges`; findings in docs/excel-semantics/statistics.md "Student t sweep".
+
+Rejected hypothesis (2026-10-20, opus run): Hill's integer-df series (AS 3: atan series for odd df,
+sqrt series for even df), with the lower tail as 0.5 ± A/2, against probes-numeric m9-t-dist-cdf: 74/150
+cells bit-exact (the engine has 78) and 117 within 4 ulp. At df = 1E6, Excel misses the true CDF by
+about 1e-10 relative (`T.DIST(1,1E6,TRUE)` 0.8413446250832111). The series is 22,257 ulp away and a
+correctly rounded CDF 152,191 ulp away, so Excel's large-df path is neither of them, and the fit lab
+(`uv run rustsheet-fitlab t-dist`, T-1744) has no candidate for it. A new hypothesis should start from
+the df = 1E6 cells, e.g. a normal-based asymptotic expansion or a cutover in df.
 
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
