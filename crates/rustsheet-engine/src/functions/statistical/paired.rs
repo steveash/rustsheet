@@ -51,6 +51,21 @@ impl PairedArg {
             other => other,
         }
     }
+
+    /// The number of cells this argument stands for, known before its values are read: rows
+    /// times columns of a one-sheet reference or an array, the length of the values. `None` for
+    /// a 3-D reference, whose count is the list it walks, and for an error.
+    pub(crate) fn cell_count(&self) -> Option<u64> {
+        let span = |from: i32, to: i32| u64::try_from(i64::from(to) - i64::from(from) + 1).ok();
+        match self {
+            Self::Range(Range { left, right }) if left.sheet == right.sheet => {
+                span(left.row, right.row)?.checked_mul(span(left.column, right.column)?)
+            }
+            Self::Range(_) | Self::Error(_) => None,
+            Self::Array(array) => u64::try_from(array.iter().map(Vec::len).sum::<usize>()).ok(),
+            Self::Values(values) => u64::try_from(values.len()).ok(),
+        }
+    }
 }
 
 /// The flattened arguments of a paired function, aligned by row-major position: a number is
@@ -179,10 +194,10 @@ impl Model {
             let cells = u64::try_from(values.len()).unwrap_or(u64::MAX);
             (cells, (0..).zip(values).collect())
         };
+        let cells = arg.cell_count().unwrap_or(0);
         match arg {
             PairedArg::Range(Range { left, right }) if left.sheet == right.sheet => {
-                let span = |from: i32, to: i32| u64::try_from(to - from + 1).unwrap_or(0);
-                let width = span(left.column, right.column);
+                let width = u64::try_from(right.column - left.column + 1).unwrap_or(0);
                 let mut entries = Vec::new();
                 self.for_each_position_in_areas(&[Range { left, right }], cell, |model, at| {
                     let value = match model.evaluate_cell(at) {
@@ -197,7 +212,7 @@ impl Model {
                     entries.push((position, value));
                     Ok(())
                 })?;
-                Ok((span(left.row, right.row) * width, entries))
+                Ok((cells, entries))
             }
             // A 3-D reference is walked sheet by sheet over each sheet's existing cells (T-0196):
             // its list is all it has, so positions count in that list.
