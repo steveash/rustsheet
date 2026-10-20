@@ -162,6 +162,11 @@ Only `pass` counts as passing. Case statuses:
   section lists in-scope catalog functions with no Excel evidence, the `oracle: none` ones that
   need another evidence source, and, by catalog category, the ones below the evidence floor
   (fewer than 20 Excel cells; T-0056, decision 0062). Suite cell counts and baselines still cover every checked cell.
+  A "Catalog coverage per milestone" section (T-2112, `catalog_coverage.rs`) has one row per
+  function-milestone report row (`REPORT_ROWS`, as in the function-scope section; M0 and M1 count in M2; not cumulative): its
+  in-scope functions, how many have at least 20 Excel cells, how many have an Excel-backed scored
+  cell in a generated suite tagged with that milestone, and how many have both. Functions missing
+  either are listed by name, tagged `oracle: none` or `volatile`. Informational; never gated.
 - `report.json`: the same data, machine-readable.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 
@@ -198,6 +203,18 @@ the row's known-failure item count there (most first, then by id; also
 `probe_milestones[].failing_cases`).
 The console summary prints the M0–M2 row.
 The rows are exit measures; `eval-check` is the gate.
+
+## Milestone function scope
+`crates/rustsheet-eval/src/function_scope.rs` scores the `ironcalc-calc` cells by the functions
+their formulas call (T-1472, T-2111). report.md has a "Milestone function scope (ironcalc-calc)"
+section (report.json: `function_scope.rows`) with one cumulative row for each report row of the probe
+milestones (M2, M5 to M11; the same list, plus any other catalog milestone; M0 and M1 functions count in M2): a cell is in the row of `Mk` when every
+function its formula calls (an array member: its anchor's; plus the functions of any defined name it
+calls, up to 16 levels) has a catalog milestone of at most `k`. A function-free formula is in every
+row and a function the catalog does not list counts as in scope. Each row has scored cells,
+bit-exact, deviations and failing; the failing cells are listed once, under the first row that has
+them ("Newly failing at Mk"). Cells with neither formula nor anchor (spill children) are left out and
+counted separately. The M2 row is the M2 exit measure and the M5 row the M5 one (docs/milestones.md).
 
 ## CLI
 ```

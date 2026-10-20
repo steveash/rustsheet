@@ -44,18 +44,6 @@ pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bo
     Ok(end_day <= start_day)
 }
 
-/// The settlement half of [`Model::check_settlement`]: #NUM! below serial 1. The COUP*
-/// functions check it before they read the maturity (probes/securities-argument-error-order A15).
-pub(super) fn check_settlement_serial(
-    settlement: i64,
-    cell: CellReferenceIndex,
-) -> Result<(), CalcResult> {
-    if settlement < 1 {
-        return Err(num_error(cell));
-    }
-    Ok(())
-}
-
 impl Model {
     /// The floored 1900 serial a financial function's day counts read for the date argument
     /// `serial`: 2 * 1462 days on in a 1904 workbook (`DateSystem::financial_1900_serial`).
@@ -87,12 +75,13 @@ impl Model {
         Ok(self.financial_date(serial))
     }
 
-    /// The settlement check of the COUP* functions, PRICE, YIELD and DURATION: #NUM! unless the
-    /// settlement is a calendar date before the maturity. Excel is #NUM! for a settlement below
-    /// serial 1 in a 1900 workbook (0, 0.5, -0.5, -1, -1E15: probes/fin-coupon-walk-bounds A1-A13,
-    /// A19, A20, fin-coupon-walk-bounds-b A11) and for a negative one in a 1904 workbook, whose 0
-    /// reads as the 1900 serial 2924 (probes/date-system-1904-financial A35-A40). The check also
-    /// keeps the coupon schedule walk back from the maturity inside the calendar: without it
+    /// The settlement check of PRICE, YIELD and DURATION: #NUM! unless the settlement is a
+    /// calendar date before the maturity. Excel is #NUM! for a settlement below serial 1 in a 1900
+    /// workbook (0, 0.5, -1: probes/fin-coupon-walk-bounds A10-A13, A20, fin-coupon-walk-bounds-c
+    /// M3-N5) and for a negative one in a 1904 workbook, whose 0 reads as the 1900 serial 2924
+    /// (probes/date-system-1904-financial A35-A40). The COUP* functions check their own settlement
+    /// (`Model::coupon_args`: 0 is a date to them). The check also keeps the coupon schedule
+    /// walk back from the maturity inside the calendar: without it
     /// `COUPNUM(-1E15,43831,4)` stepped about 10^6 quarters back to chrono's first year
     /// (directive 5, T-1822; docs/excel-semantics/financial.md "Coupon settlement before the
     /// calendar").
@@ -102,8 +91,7 @@ impl Model {
         maturity: i64,
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
-        check_settlement_serial(settlement, cell)?;
-        if settlement >= maturity {
+        if settlement < 1 || settlement >= maturity {
             return Err(num_error(cell));
         }
         Ok(())
@@ -204,15 +192,24 @@ pub(crate) fn days_30_360_us_ymd(d1: (i32, u32, u32), d2: (i32, u32, u32)) -> f6
 // Days d1→d2 via US 30/360 with the `ModifyBothDates` rule — the "PSA hack"
 // the odd-last-coupon code uses for basis 0.
 pub(super) fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let mut day1 = d1.day() as i32;
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let mut day2 = d2.day() as i32;
+    days_30_360_us_both_ymd(
+        (d1.year(), d1.month(), d1.day()),
+        (d2.year(), d2.month(), d2.day()),
+    )
+}
 
-    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
-    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
+// `days_30_360_us_both` over `(year, month, day)` triples, so the coupon day counts can read
+// serial 0 (1900-01-00) and Excel's fictitious 1900-02-29.
+pub(super) fn days_30_360_us_both_ymd(d1: (i32, u32, u32), d2: (i32, u32, u32)) -> f64 {
+    let (y1, month1, day1_raw) = d1;
+    let (y2, month2, day2_raw) = d2;
+    let m1 = month1 as i32;
+    let m2 = month2 as i32;
+    let mut day1 = day1_raw as i32;
+    let mut day2 = day2_raw as i32;
+
+    let start_is_feb_last = month1 == 2 && day1_raw == last_day_of_feb(y1);
+    let end_is_feb_last = month2 == 2 && day2_raw == last_day_of_feb(y2);
 
     if end_is_feb_last {
         day2 = 30;
@@ -231,13 +228,19 @@ pub(super) fn days_30_360_us_both(d1: NaiveDate, d2: NaiveDate) -> f64 {
 
 // Days d1→d2 via the EU 30/360 convention (basis 4).
 pub(super) fn days_30_360_eu(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let day1 = (d1.day() as i32).min(30);
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let day2 = (d2.day() as i32).min(30);
-    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
+    days_30_360_eu_ymd(
+        (d1.year(), d1.month(), d1.day()),
+        (d2.year(), d2.month(), d2.day()),
+    )
+}
+
+// `days_30_360_eu` over `(year, month, day)` triples (see `days_30_360_us_both_ymd`).
+pub(super) fn days_30_360_eu_ymd(d1: (i32, u32, u32), d2: (i32, u32, u32)) -> f64 {
+    let (y1, m1, day1) = d1;
+    let (y2, m2, day2) = d2;
+    let day1 = day1.min(30) as i32;
+    let day2 = day2.min(30) as i32;
+    (360 * (y2 - y1) + 30 * (m2 as i32 - m1 as i32) + (day2 - day1)) as f64
 }
 
 pub(super) fn actual_days(d1: NaiveDate, d2: NaiveDate) -> f64 {

@@ -32,8 +32,8 @@ that waits behind M5. Decision 0083 has the full measurement and the task list.
       Tests in `scripts/test_tasks.py` pin both.
 - [x] docs/process/task-format.md and `.claude/agents/gap-triager.md` describe the key; decision
       0083 records the policy and the standing ulp-regression allowance.
-- [x] New tasks filed: T-0061 (the fifteen-digit bucket and ratchet), T-2128 (GAMMA at
-      non-integers), T-2129 (ACOTH), T-2130 (PMT, IPMT and PPMT) and T-2131 (IRR).
+- [x] New tasks filed: T-0061 (the fifteen-digit bucket and ratchet), T-2183 (ACOTH), T-2130
+      (PMT, IPMT and PPMT) and T-2131 (IRR). GAMMA is the existing T-2129 (T-1941 model), tagged.
 - [x] The existing tasks listed in decision 0083 carry `campaign: visible` and a
       `## Visible-parity stage` section.
 - [x] `make check` green; reviewers approve.
@@ -43,5 +43,6 @@ that waits behind M5. Decision 0083 has the full measurement and the task list.
 - Changing the routines, the critical-lane line or milestone exit criteria.
 
 ## Outcome
-Docs, task files, `scripts/tasks.py` ordering and its tests only; no eval delta. Tagged 43
-existing tasks plus the 5 new ones (decision 0083 lists them).
+Docs, task files, `scripts/tasks.py` ordering and its tests only; no eval delta. Tagged 41
+existing tasks plus the 4 new ones (decision 0083 lists all 45). Ids T-2128 and T-2129 collided with
+tasks landed on `main` meanwhile: the GAMMA scope moved to main's T-2129 and ACOTH became T-2183.

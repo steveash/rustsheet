@@ -3,7 +3,7 @@ id: T-2059
 title: "Probe INDEX as the reference argument of FORMULATEXT, CELL and OFFSET"
 milestone: M5
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1453 made `evaluate_call_with_reference` (functions/logical/lambda.rs) evaluat
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/index-reference-args (25 cells, excel-graph 2026-10-20) and recorded the findings in docs/excel-semantics/references.md. The engine matches 23 of 25; the two FORMULATEXT error forms are filed as T-2137.

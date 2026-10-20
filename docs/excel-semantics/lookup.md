@@ -297,6 +297,15 @@ Status: VERIFIED
 Implemented in: `fn_index` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs`
 Tasks: T-0213
 
+## VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0 (T-2168)
+Rule: when VLOOKUP or HLOOKUP lands on a blank cell, the enclosing function sees the number 0, not an empty value:
+`ASC(IFS(..,VLOOKUP(123456789.123,D3:E7,2),..))` landing on blank E6 is "0" (ours ""), and
+`SEC(AVERAGE(HLOOKUP(2.5,B8:D11,4),-2.5,B7:B9))` averages the blank result as 0, 1.2724471433871758 = SEC(-2/3) (ours skips it:
+SEC(-1) = 1.8508157176809255). XLOOKUP already returns a blank return cell as 0 (below).
+Evidence: gen-m5/49bfbf67a1409563 Calc!A103, gen-m5/aac6230c2fb40e1e Calc!A334 (excel-graph, 2026-10-20).
+Unprobed: `ISBLANK` and `&""` of such a result, LOOKUP and INDEX/MATCH.
+Status: VERIFIED (excel-graph, 2 cells); not implemented (T-2168).
+
 ## Whole-column / whole-row search vectors: blank tail
 Rule: as above, blanks never match and the type-skipping search steps over them, so a whole
 column with data in A1:A3 behaves like A1:A3 for an approximate lookup (`MATCH(99,A:A,1)` is
@@ -746,10 +755,15 @@ Status: VERIFIED (excel-graph)
 Implemented in: `Model::lifted_trimrange` (lookup_and_reference/trimrange.rs): the source read by
 `evaluate_picked_reference_arg`, a reference lifted by `Model::lift_references`, anything else by `Model::lift_values`
 with its top-left value per element; SUM and the walker's other aggregates take TRIMRANGE's grid from
-`picked_reference_arg_reading` (functions/util.rs). Unprobed: which error wins when the source is an error and an
-element's trim is invalid (`TRIMRANGE(NA(),{0;5})`; ours: the source's), a multi-area source (ours: `#VALUE!` per
-element), and a source with no cells under a lifted trim (ours: one `#REF!`, as unlifted).
-Tasks: T-2089
+`picked_reference_arg_reading` (functions/util.rs). Probed in T-2120 (probes/trimrange-lift-edge-sources, excel-graph, 2026-10-20): an error source with an invalid
+trim element is the source's error in every element (`TRIMRANGE(NA(),{0;5})` and `TRIMRANGE(1/0,{0;5})` are 2 elements,
+`ERROR.TYPE` 7 and 2); a multi-area source `(A1,B2)` is `#VALUE!` in every element (`ROWS` 2, `ERROR.TYPE` 3); an
+all-blank source (C20:C21) keeps its full extent while trim_rows is 0, whatever trim_cols is: `TRIMRANGE(C20:C21,0)`
+and `(…,0,3)` are the 2x1 range, so `=TRIMRANGE(C20:C21,{0;1})` spills `#VALUE!` (the untrimmed multi-cell element) then
+`#REF!`; a nonzero trim_rows gives `#REF!` (`(…,3,0)`, `(…,1,0)`); the unlifted call behaves the same. Unprobed:
+an all-blank multi-column or single-row source with trim_rows 0 and trim_cols 1-3 (ours keeps the full extent,
+generalized from the single-column probe; T-2127).
+Tasks: T-2089, T-2120
 
 ## Arrays of references through LET, IF, CHOOSE and OFFSET
 Rule: a LET variable or a LAMBDA parameter bound to a lifted OFFSET (or INDIRECT, TRIMRANGE) holds the array of

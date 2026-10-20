@@ -11,9 +11,24 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   upward recurrence for higher orders, and Miller downward recurrence for `J_n(x)` when `n >= x`.
   `Y_n` recurrence is only bit-exact as `b * (2j * (1/x)) - a`.
   Implemented in `functions/engineering/transcendental/bessel_excel.rs`.
-- For `|x| >= 8` (cells at x = 10 and 32) Excel differs from both fdlibm and the NR asymptotic
-  branch (e.g. `BESSELJ(10,1)` = 0.04347224965 vs true 0.04347274617), so another algorithm is
-  used there. UNRESOLVED; tracked in T-0908. fdlibm is kept for `|x| >= 8`.
+- For `|x| >= 8` Excel is the NR asymptotic branch (`sqrt(0.636619772/x) * (P cos(xx) - z Q sin(xx))`
+  for J, `(P sin(xx) + z Q cos(xx))` for Y; `z = 8/x`, `xx = x - 0.785398164` or `x - 2.356194491`),
+  but three of its coefficients differ from the book (T-0908, fitted by least squares on the
+  m9-bessel sweep, then bit-exact on every one of its 354 integer-order cells):
+  - J0's `P` has `-0.1098628267e-2` where NR has `-0.1098628627e-2` (two digits swapped). J0 is
+    ~3e-10 off true; Y0 keeps the book's value.
+  - Y0's `Q` has `-0.934945152e-7` where NR has `-0.934935152e-7`; J0 keeps the book's value.
+  - J1's `P` repeats `-0.3516396496e-4`: `1 + y(0.183105e-2 + y(-0.3516396496e-4 + y(-0.3516396496e-4 +
+    y(0.2457520174e-5 + y(-0.240337019e-6)))))`. That is why `BESSELJ(10,1)` = 0.04347224965225415
+    against true 0.04347274617 (and up to 3.4e-5 off at x = 8). Y1 uses the book's `P`.
+  - Higher orders run the same recurrences as for small x: J's upward recurrence (n < x) is bit-exact
+    only as `b * (2j * (1/x)) - a`, like Y's (11 cells are 1 ulp off with `(2j/x) * b`), and Miller's
+    for n >= x. In the asymptotic form `(z * Q) * sin` is bit-exact; `z * sin * Q` is 1 ulp off at
+    `BESSELY(8.5,1)`.
+  - `BESSELJ(0,n)` is 0 for n >= 2; `BESSELY` of x <= 0 is `#NUM!`.
+  Implemented in `functions/engineering/transcendental/bessel_excel.rs` (`J0_LARGE` and friends);
+  the fdlibm port is gone.
+  The asymptotic branch is evidenced only for 8 <= x <= 100; larger x is unprobed (T-2140).
 
 Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cells (14 x values in 8..100 x
 orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
@@ -26,14 +41,14 @@ orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
   x = 10; 6e-9 at x = 8, 3e-9 at x = 100). Values are at the oracle sidecar's cells, e.g. `BESSELJ(30,1)` =
   -0.11875106091123117, `BESSELY(8,0)` = 0.22352148924968093.
 - At x = 10 the sweep equals the Excel-desktop cached values of `ironcalc-calc/ENGINEERING/BESSEL.xlsx`, at the orders the workbook covers (0, 1, 7, 10).
-- The engine's fdlibm fallback is bit-exact on only 14 of the 364 cells; `rustsheet-eval show` lists the other
-  350 as non-exact (164 within tolerance, 184 beyond it, 2 type mismatches).
+- The fdlibm fallback used before T-0908 was bit-exact on only 14 of the 364 cells; the asymptotic model above
+  is bit-exact on all of them except the order cap (`BESSELJ(10,1000000)`, below).
 - A fractional order truncates: `BESSELJ(8,9.99)` equals `BESSELJ(8,9)`, `BESSELY(30,1.99)` equals `BESSELY(30,1)`.
 - Large orders: `BESSELJ(x,n)` is `0` (not an error) for n = 1000, 10000, 100000 and 1000000 (x = 10, 50), and
   `BESSELY(x,n)` is `#NUM!` for those n. The engine matches this up to n = 100000 but gives `#NUM!` for
   `BESSELJ(10,1000000)` (see "BESSEL order cap"). J underflows to 0, so no cap shows for J; Y is `#NUM!` from n = 1000 (where Y starts to give `#NUM!`
   between 101 and 1000 is not probed).
-Status: VERIFIED for these cells; fitting the algorithm is T-0908.
+Status: VERIFIED for these cells; the algorithm is fitted (T-0908, above).
 
 Provenance: the coefficients are the published Numerical Recipes (2nd ed., §6.5) rational
 approximations, reproduced only because Excel's output matches them bit-for-bit.
@@ -44,7 +59,7 @@ untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0`
 BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's values above
 100,000 are unprobed for them.
 A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
-(SPEC-0011 `KernelWork::ByArg`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
+(SPEC-0011 `ValueWork::Loop`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
 cap and 1 for n = 0; an order past the cap is refused (`#NUM!`) before the kernel loops and costs 1. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
 the cap (`ROWS(BESSELI(2.5,SEQUENCE(2100,1,100000,0)))` is `#ERROR!`), while small orders lift freely
 (`ROWS(BESSELJ(2.5,SEQUENCE(2100)))` = 2100 and `ROWS(BESSELJ(SEQUENCE(5000)/100,0))` = 5000, as in Excel). A text order
@@ -167,9 +182,10 @@ Typed coercion follows the ToolPak rule:
   argument refuses one, typed, in a cell or as an array element, and so does COMPLEX's `real_num`
   (probes/eng-imsum-improduct-whole C1-C15: IMREAL, IMSUB's both arguments, IMDIV's second, IMPOWER's both,
   IMCOS, IMCONJUGATE, IMSQRT and IMABS of a TRUE cell, `INDEX(IMREAL({TRUE;"3"}),1)`, `COMPLEX(TRUE,1)`).
-  Unprobed, inferred from the shared parse path (T-1828): IMDIV's first argument, IMAGINARY, IMARGUMENT,
-  IMCOSH, IMCOT, IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH, IMSIN, IMSINH, IMTAN, and
-  COMPLEX's `i_num`. The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
+  The same holds, typed and as a TRUE cell, for IMDIV's first argument, IMAGINARY, IMARGUMENT, IMCOSH, IMCOT,
+  IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH, IMSIN, IMSINH, IMTAN, and COMPLEX's `i_num`
+  (probes/eng-imsum-improduct-3d-j-empty G1-G34, T-1828).
+  The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
 - A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
 - COMPLEX's suffix is case-sensitive: `COMPLEX(3,4,"I")` is `#VALUE!`.
 - Non-complex text is `#NUM!` (`IMSUB("x","1")`), and a number cell is a real number (`IMDIV("3+4i",M2)` with M2 = 3 is
@@ -228,11 +244,27 @@ row-major order inside a range or array, and the first bad item is the result.
 Evidence: probes/eng-argument-modes A60-A83, B/C/E42, B/C/E50 (excel-graph, 2026-10-11, T-1085);
 probes/eng-imsum-improduct-whole B1-B28 (excel-graph, 2026-10-17, T-1384). The data is M1 "1+2i", M2 3, M3 blank,
 M4 TRUE, M5 "x", M6 "2-i", M7 `=1/0`, M8 "3+4j", M9 `=""`.
-Unprobed: a 3-D reference (ours `#VALUE!`, as a union), a real number next to a `j` number (ours `#VALUE!`: a real
-reads as an `i` number), a call whose arguments hold no number at all (ours "0") (T-1828).
+Probed in T-1828 (probes/eng-imsum-improduct-3d-j-empty, excel-graph, 2026-10-20):
+- A 3-D reference is `#VALUE!`, as a union is: `IMSUM(Sheet2:Sheet3!A1:A2)`, `IMPRODUCT(...)`, a one-cell
+  `IMSUM(Sheet2:Sheet3!A1)`, and the same next to a valid argument (D1-D4).
+- A real number (no suffix) takes the suffix of the number it meets, not `i`: `IMSUM("3+4j","3")`, `IMSUM(M8,M2)`
+  (M8 "3+4j", M2 3), `IMSUM("3","3+4j")` are "6+4j", `IMPRODUCT("3+4j","3")` is "9+12j", `IMSUB("3+4j","3")` is "4j"
+  and `IMDIV("3+4j","3")` is "1+1.33333333333333j" (E1-E10). Only a suffixless number is neutral; `i` and `j` numbers
+  still clash.
+- A call whose arguments hold no number is "0" when they are blank cells (`IMSUM(Q1:Q3)`, `IMPRODUCT(Q1)`,
+  `IMSUM(Q1,Q2)`), `#N/A` when they are empty arguments (`IMSUM(,)`, `IMPRODUCT(,)`), and `#NUM!` when they are
+  empty text, typed, in a cell or in an array (`IMSUM("")`, `IMSUM(M9)`, `IMSUM({"",""})`) (F1-F12).
+Probed in T-2132 (probes/eng-imsub-imdiv-blank-j, excel-graph, 2026-10-20):
+- A blank cell takes the suffix of the other operand, as a suffixless number does: `IMSUB("3+4j",Q1)` is "3+4j",
+  `IMSUB(Q1,"3+4j")` "-3-4j", `IMDIV(Q1,"3+4j")` "0" and `IMDIV("3+4j",Q1)` `#NUM!` (A1, A2, A5, A6, B1, B2, B5).
+- An empty argument of IMSUB or IMDIV, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`; A3, A4, B3, B4).
+- An empty FIRST argument of IMSUM or IMPRODUCT is `#N/A` whatever follows (`IMSUM(,Q1)`, `IMSUM(,"")`,
+  `IMSUM(,M9)`, `IMSUM(,"3+4j")`, `IMPRODUCT(,M8)`, `IMSUM(,,M8)`; C1, C2, C5, C6, D1, D2, D5). A later empty argument is
+  skipped: `IMSUM(Q1,)` "0", `IMSUM("3+4j",)` "3+4j", `IMSUM(M8,,M8)` "6+8j", `IMPRODUCT(M8,,M8)` "-7+24j"; `IMSUM("",)`
+  is `#NUM!` (C3, C4, C7, D3, D4, D6).
 Status: VERIFIED (excel-graph)
 Implemented in: `fold_complex` in functions/engineering/complex.rs (T-1384)
-Tasks: T-1384, T-1828
+Tasks: T-1384, T-1828, T-2132
 
 ## IMSUM and IMPRODUCT read cap
 Rule: RustSheet stops an IMSUM or IMPRODUCT call with `#ERROR!` once the cells its ranges walk and the elements of its

@@ -3,11 +3,10 @@ id: T-0981
 title: "TEXT: fractional seconds (s.0, s.00, s.000) in clock-time formats (5 poi known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
-campaign: visible
 depends_on: []
 ---
 
@@ -43,18 +42,21 @@ fraction rendering; if not, write the helper so T-0934 can use it (one routine f
 Rule: docs/excel-semantics/number-formats.md, "Fractional seconds in clock formats".
 
 ## Acceptance criteria
-- [ ] The 5 lines `F	poi/DateFormatTests.xlsx	Tests!A13`, A18, A32, A37 and A40 disappear from
+- [x] The 5 lines `F	poi/DateFormatTests.xlsx	Tests!A13`, A18, A32, A37 and A40 disappear from
       eval/baseline/poi.txt with no new F lines in any suite.
-- [ ] If T-0954 has merged first, A12, A17, A31 and A36 disappear too; otherwise the Outcome says
+- [x] If T-0954 has merged first, A12, A17, A31 and A36 disappear too; otherwise the Outcome says
       they wait for T-0954.
-- [ ] Formatter unit tests for `hh:mm:ss.000` and `h:m:s.00` on the two values above.
-- [ ] The number-formats.md entry gets an `Implemented in:` line.
-- [ ] `make check` green; reviewers approve.
+- [x] Formatter unit tests for `hh:mm:ss.000` and `h:m:s.00` on the two values above.
+- [x] The number-formats.md entry gets an `Implemented in:` line.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The date part of these workbooks (1904 date system: DateFormatTests A2:A9, A14, A19:A28, ...,
   DateFormatNumberTests).
 - Elapsed `[h]`/`[m]`/`[s]` formats (T-0934).
 
-## Visible-parity stage
-Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+## Outcome
+Done by T-0934, whose fractional-second routine covers plain `s`/`ss` too (one routine for both,
+as this task asked): DateFormatTests A12, A13, A17, A18, A31, A32, A36, A37, A40 pass and left
+eval/baseline/poi.txt; unit tests in formatter/test/test_dates.rs
+(`fractional_and_repeated_elapsed_seconds`).

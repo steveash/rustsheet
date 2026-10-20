@@ -64,16 +64,19 @@
   - *Triage.* The gap-triager ranks visibly-off groups (numeric or text) before the
     milestone order, and gives the task it files for such a group `campaign: visible`.
 - **Consequences:**
-  - The campaign tasks at the start are:
+  - The campaign tasks at the start (45) are:
     - harness: T-0061;
-    - kernels Excel computes accurately: T-2128, T-2129, T-2130, T-0969, T-0967, T-2119, T-0971,
-      T-0972, T-0973, T-0974, T-0977, T-1890, T-2034 and T-2032;
-    - Excel algorithms to reproduce: T-2131, T-2005, T-2007, T-2045, T-1592, T-0908 and T-0925;
+    - kernels Excel computes accurately: T-2183, T-2130, T-0969, T-0967, T-2119, T-0971, T-0972,
+      T-0973, T-0974, T-0977, T-1890, T-2034 and T-2032;
+    - Excel algorithms to reproduce: T-2129 (the T-1941 GAMMA model), T-2131, T-2005, T-2007,
+      T-2045, T-1592 and T-0925;
     - names and tables: T-1639, T-1640, T-1671 and T-1699;
     - TEXT and displayed text: T-1711, T-1730, T-1731, T-1732, T-1733, T-1734, T-1735, T-1737,
-      T-1738, T-1740, T-0934, T-0936, T-0937, T-0954, T-0980, T-0981, T-0982, T-1366, T-2072,
-      T-2073, T-2074 and T-1883.
+      T-1738, T-1740, T-0936, T-0937, T-0954, T-0980, T-0982, T-1366, T-2072, T-2073, T-2074 and
+      T-1883.
 
+    BESSELJ/BESSELY (T-0908) and two TEXT tasks (T-0934, T-0981) were fixed on `main` while this
+    was being filed, so they are not tagged.
     Each of them carries a "Visible-parity stage" section stating its stage-1 target.
   - Milestone exit criteria and the `**Critical lane:**` line are unchanged. Workers reach
     campaign tasks through `make next-task LANE=functions` (and the other lanes) as before. The

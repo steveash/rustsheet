@@ -14,13 +14,14 @@ from pathlib import Path
 import pytest
 
 from rustsheet_tools import repo_root
+from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.generator import NAME_POOL, Catalog, Gen, generate_case
 from rustsheet_tools.gen.names_3d import CATEGORIES as NAMES_3D_CATEGORIES
 from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
-from rustsheet_tools.gen.pools import POOLS
+from rustsheet_tools.gen.pools import MAX_STRING_LITERAL, POOLS
 from rustsheet_tools.gen.tables import CATEGORIES as TABLES_CATEGORIES
 from rustsheet_tools.gen.tables import FORMULA_HEADERS, escape_column, generate_tables, this_row
 from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1, prefix_bound_names
@@ -688,3 +689,20 @@ def test_pool_param_draws_from_its_pool_about_35_percent_of_the_time() -> None:
     assert 0.25 <= share <= 0.45
     hard = {**pooled, "domain": {"int": True, "min": 1, "max": 9, "hard": True}}
     assert not any(g.argument_text(hard, "value", 0) in POOLS["angle"] for _ in range(500))
+
+
+def test_text_pools_respect_the_string_literal_limit_and_clock_free_values() -> None:
+    for name in ("text_edges", "numeric_text", "number_formats"):
+        for text in POOLS[name]:
+            for literal in re.findall(r'"((?:[^"]|"")*)"', text):
+                assert len(literal.replace('""', '"')) <= MAX_STRING_LITERAL, (name, text)
+    # A year-less date such as "1/2" reads as a date in the current year, so its value depends on the clock.
+    assert not any(re.fullmatch(r'"\d{1,2}[/-]\d{1,2}"', t) for t in POOLS["numeric_text"])
+
+
+def test_number_formats_pool_is_a_quoted_subset_of_the_policy_codes() -> None:
+    assert quoted('0.00 "x"') == '"0.00 ""x"""'
+    assert quoted("") == '""'
+    codes = {quoted(c) for c in (*BUILTIN, *CUSTOM)}
+    assert POOLS["number_formats"]
+    assert set(POOLS["number_formats"]) <= codes

@@ -65,6 +65,11 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    Sheet2!N16 caches Mac 16.0300's 0.3933280241536672 for `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)`; the web gives ...674
    (probes-numeric/power-mirr-root). The engine keeps the desktop value with libm `exp` in MIRR's root while `^` follows the web's
    EXP kernel. Does Windows desktop give ...672, and does its `^` agree with its MIRR?
+14. **ATAN2 last digits** (T-2142, decision 0086; numbers.md "Excel for the web and desktop Excel differ in the last digits").
+   ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx Sheet1!D14 `ATAN2(1,PI())` and D26 `ATAN2(TRUE,2)` cache Mac 16.0300's
+   1.2626272556789115 and 1.1071487177940906; the web and the engine give the correctly rounded ...118 and ...904. Does Windows
+   desktop give the Mac values? If it does, sweep desktop ATAN near rounding midpoints to find the kernel (fdlibm `atan` gives D14
+   but not D26). The engine follows the web, and the two cells stay known failures.
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

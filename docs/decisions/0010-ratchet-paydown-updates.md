@@ -196,5 +196,7 @@
   STEYX and FORECAST share one `PairedMoments` instead of seven copies of their sums loop.
   T-1775: duplicated lines 3318 -> 3268 (`check_duplication.py --update`): the element-wise text functions'
   `TextArg`/`broadcast_text` loops became `Lift` entries through `Model::lift_text`.
+  T-0908: duplicated lines 3268 -> 3202 (`check_duplication.py --update`): the fdlibm BESSELJ/BESSELY port
+  (`bessel_j0_y0.rs`, `bessel_j1_y1.rs`, `bessel_jn_yn.rs`) is deleted; Excel's asymptotic tables replace it.
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

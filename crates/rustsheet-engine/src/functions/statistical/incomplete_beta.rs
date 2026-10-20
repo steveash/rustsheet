@@ -287,11 +287,11 @@ fn rlog1(t: f64) -> f64 {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
 
     /// The ulps between two doubles of the same sign.
-    fn ulps(a: f64, b: f64) -> u64 {
+    pub(in crate::functions::statistical) fn ulps(a: f64, b: f64) -> u64 {
         let (ia, ib) = (a.to_bits() as i64, b.to_bits() as i64);
         ia.abs_diff(ib)
     }

@@ -3,11 +3,10 @@ id: T-0908
 title: "BESSELJ/BESSELY parity for |x| >= 8"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
-campaign: visible
 depends_on: [T-0900, T-1004]
 ---
 
@@ -26,16 +25,22 @@ Also probe Excel's real cap on the order `n` (currently UNVERIFIED: > 100_000 re
 cached workbooks give. Fit against the T-1004 sweep (`eval/suites/probes-numeric/cases/m9-bessel.case.json`, filled), never blind.
 
 ## Acceptance criteria
-- [ ] Identify Excel's large-argument algorithm from the cached values (fit candidate asymptotic
+- [x] Identify Excel's large-argument algorithm from the cached values (fit candidate asymptotic
   expansions; use the oracle for more points via `excel-probe` if available).
-- [ ] Remaining BESSELJ/BESSELY known failures removed from `eval/baseline/ironcalc-calc.txt`.
-- [ ] `docs/excel-semantics/engineering.md` updated.
+- [x] Remaining BESSELJ/BESSELY known failures removed from `eval/baseline/ironcalc-calc.txt`.
+- [x] `docs/excel-semantics/engineering.md` updated.
 
-## Visible-parity stage
-Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
-
-Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 370 in total.
-- BESSELJ: 187 cells (13-14 digits right 6, 10-12 18, 6-9 120, fewer or 0 vs nonzero 43); most in `probes-numeric/m9-bessel.case.json` 170; `ironcalc-calc/ENGINEERING/BESSEL.xlsx` 17. e.g. `BESSELJ(8,0)` Excel 0.17165080731769355, ours 0.1716508071375539
-- BESSELY: 183 cells (13-14 digits right 0, 10-12 20, 6-9 163, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-bessel.case.json` 174; `ironcalc-calc/ENGINEERING/BESSEL.xlsx` 9. e.g. `BESSELY(8,0)` Excel 0.22352148924968093, ours 0.2235214893875662
-
-Excel is the inaccurate side here (errors 1e-9 to 7e-5 against the true value); the engine's fdlibm values are accurate, so only reproducing Excel's algorithm reaches 15 digits.
+## Outcome
+Excel's `|x| >= 8` branch is the Numerical Recipes asymptotic form (`sqrt(0.636619772/x)`, phase shifts
+0.785398164 and 2.356194491), but its coefficient tables have three differences from the book. They were
+found by least squares over the m9-bessel sweep (14 x values per function) and then confirmed bit-exact:
+J0's `P` uses `-0.1098628267e-2` (the book has `…627e-2`), Y0's `Q` uses `-0.934945152e-7` (the book has
+`…935…`), and J1's `P` repeats `-0.3516396496e-4`. J's upward recurrence also needs the `b * (2j * (1/x))`
+association that Y already used. `bessel_excel.rs` now covers every x, and the fdlibm port
+(`bessel_j0_y0.rs`, `bessel_j1_y1.rs`, `bessel_jn_yn.rs`, `bessel_util.rs`, about 1,140 lines) and its
+NOTICE line are gone.
+- Eval: ironcalc-calc known failures 1008 → 982 (26 fixed; `ENGINEERING/BESSEL.xlsx` 476/476), 0 regressions.
+- probes-numeric/m9-bessel (not gated): 362/364 bit-exact, up from 14. The other 2 are `BESSELJ(10|50,1000000)`,
+  the documented order-cap DEVIATION.
+- Excel's real order cap was not probed. It stays the existing DEVIATION.
+- Follow-ups: T-2139 (order-cap probe), T-2140 (gated m9-bessel subset and x > 100).
