@@ -70,13 +70,29 @@ pub enum Token {
     EOF,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum Compare {
     Equal,
+    NotEqual,
     LessThan,
     GreaterThan,
     LessOrEqualThan,
     GreaterOrEqualThan,
+}
+
+impl Compare {
+    /// Whether `value` meets the condition `[<self><bound>]`.
+    #[must_use]
+    pub fn holds(self, value: f64, bound: f64) -> bool {
+        match self {
+            Compare::Equal => value == bound,
+            Compare::NotEqual => value != bound,
+            Compare::LessThan => value < bound,
+            Compare::GreaterThan => value > bound,
+            Compare::LessOrEqualThan => value <= bound,
+            Compare::GreaterOrEqualThan => value >= bound,
+        }
+    }
 }
 
 impl Token {
@@ -222,14 +238,18 @@ impl Lexer {
     fn consume_condition(&mut self) -> Option<(Compare, f64)> {
         let cmp;
         match self.read_next_char() {
-            Some('<') => {
-                if let Some('=') = self.peek_char() {
+            Some('<') => match self.peek_char() {
+                Some('=') => {
                     self.read_next_char();
                     cmp = Compare::LessOrEqualThan;
-                } else {
-                    cmp = Compare::LessThan;
                 }
-            }
+                // Excel: `[<>10]` is "not equal" (poi FormatChoiceTests A17-A19).
+                Some('>') => {
+                    self.read_next_char();
+                    cmp = Compare::NotEqual;
+                }
+                _ => cmp = Compare::LessThan,
+            },
             Some('>') => {
                 if let Some('=') = self.peek_char() {
                     self.read_next_char();
@@ -246,6 +266,11 @@ impl Lexer {
             }
         }
 
+        // Excel: spaces between the comparator and the number are allowed (`[< 10]`,
+        // `[<      10]`; poi FormatChoiceTests A23-A26).
+        while self.peek_char() == Some(' ') {
+            self.read_next_char();
+        }
         let start = self.position;
         let value = match self.consume_number() {
             Some(v) => v,

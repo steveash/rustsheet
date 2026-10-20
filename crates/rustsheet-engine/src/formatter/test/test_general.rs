@@ -82,12 +82,15 @@ fn test_failed_to_parse_color() {
 
 #[test]
 fn test_conditional() {
+    // A condition without a number compares with 0. Each value below meets its condition; a
+    // value that does not prints in General (poi FormatChoiceTests A14, A16; T-0936).
     let ctx = FormatContext::new(get_default_locale());
-    assert_eq!(format_number(42.00, "[=]0.00", &ctx).text, "42.00");
-    assert_eq!(format_number(42.00, "[<]0.00", &ctx).text, "42.00");
+    assert_eq!(format_number(0.0, "[=]0.00", &ctx).text, "0.00");
+    assert_eq!(format_number(-42.00, "[<]0.00", &ctx).text, "-42.00");
     assert_eq!(format_number(42.00, "[>]0.00", &ctx).text, "42.00");
-    assert_eq!(format_number(42.00, "[<=]0.00", &ctx).text, "42.00");
+    assert_eq!(format_number(0.0, "[<=]0.00", &ctx).text, "0.00");
     assert_eq!(format_number(42.00, "[>=]0.00", &ctx).text, "42.00");
+    assert_eq!(format_number(42.00, "[=]0.00", &ctx).text, "42");
 }
 
 #[test]
@@ -122,11 +125,12 @@ fn test_failed_to_parse_string() {
 
 #[test]
 fn test_exponential_conditional() {
+    // Each bound reads as 0, which 0 meets (an unmet condition prints General; T-0936).
     let ctx = FormatContext::new(get_default_locale());
-    assert_eq!(format_number(42.00, "[=0.0e0]0.00", &ctx).text, "42.00");
-    assert_eq!(format_number(42.00, "[=0.0e00]0.00", &ctx).text, "42.00");
-    assert_eq!(format_number(42.00, "[=0.0e+0]0.00", &ctx).text, "42.00");
-    assert_eq!(format_number(42.00, "[=0.0e-0]0.00", &ctx).text, "42.00");
+    assert_eq!(format_number(0.0, "[=0.0e0]0.00", &ctx).text, "0.00");
+    assert_eq!(format_number(0.0, "[=0.0e00]0.00", &ctx).text, "0.00");
+    assert_eq!(format_number(0.0, "[=0.0e+0]0.00", &ctx).text, "0.00");
+    assert_eq!(format_number(0.0, "[=0.0e-0]0.00", &ctx).text, "0.00");
 }
 
 #[test]
