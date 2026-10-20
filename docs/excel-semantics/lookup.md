@@ -704,8 +704,13 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 Evidence: probes/reference-lift-elements (excel-graph, 2026-10-19, T-1810); probes/lookup-argument-modes F14:H15,
 F20:H21, F34:H35 (excel-graph, 2026-10-09, T-1238).
 Status: VERIFIED (excel-graph)
-Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier: not yet, specified by SPEC-0014
-(T-1955) and built by T-1956 (OFFSET), T-1957 (INDIRECT, TRIMRANGE), T-2063 and T-2064 (consumers).
+Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier (SPEC-0014, T-1956): `RefGrid` and
+`RefArg::Grid` (reference_operators.rs) with its value view `RefGrid::to_values`; OFFSET as producer
+(`Model::offset_reference`, lookup_and_reference/offset.rs, lifted by `Model::lift_references` in lift/driver.rs; its
+spill shape from `static_analysis_offset`); INDEX's pick (`Model::index_grid`, index.rs), ROWS/COLUMNS (the value
+view's shape) and ISREF (FALSE). Not yet: INDIRECT and TRIMRANGE (T-1957), the top-left aggregates such as
+`SUM(OFFSET(A1,{0;1},0))` (reference-lift-elements G12, H12; T-2063), the per-element callers (T-2064) and the
+LET, IF and CHOOSE pass-through (T-2078).
 Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065
 
 ## XLOOKUP: an error lookup_value beats a size mismatch
