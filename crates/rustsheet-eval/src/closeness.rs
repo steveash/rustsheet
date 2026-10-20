@@ -3,7 +3,9 @@
 //!
 //! The buckets follow decision 0083's order of parity: a cell is *visibly* right when the 15
 //! significant digits Excel shows are right (`digits15` and better), and visibly off otherwise
-//! (`visible_numeric`, `visible_other`; T-0061).
+//! (`visible_numeric`, `visible_other`; T-0061). The ulp buckets take precedence: a number within
+//! 4 ulp is never visibly off, even where 4 ulp exceed half a unit in the 15th digit (decision
+//! 0088).
 
 use std::collections::BTreeSet;
 

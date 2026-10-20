@@ -20,6 +20,10 @@
     (crates/rustsheet-eval/src/closeness.rs). A number is within 15 digits when |actual − expected|
     ≤ half a unit in the 15th significant digit of the expected value (the boundary counts as
     within). An expected 0 needs an exact 0. `visible_numeric` and `visible_other` are visibly off.
+    The ulp buckets come first, as T-0061 asks: a cell within 4 ulp is never visibly off, even
+    where 4 ulp exceed half a unit in the 15th digit (an expected value just under a power of
+    ten, such as 9.5, or a subnormal one). Those few cells count toward ulp parity, not against
+    visible parity.
   - Per function, report.json also carries `visible`: the visibly-off cells blamed on that
     function. A cell is blamed on the functions it calls other than glue (`GLUE`: IF, IFS,
     IFERROR, IFNA, SWITCH, CHOOSE, LET, AND, OR, NOT, TRUE, FALSE, SUM, DATE, TIME, INDEX, ROW,
