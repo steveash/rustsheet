@@ -3,7 +3,7 @@ id: T-2101
 title: "Probe IMEXP cap window at non-zero multiples of pi/2 and numeric DBL_MAX text"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2087 fitted 2^-26/sqrt(2) in `imexp_cap_window` (complex.rs). Brackets so far:
 
 ## Out of scope
 -
+
+## Outcome
+Probed (probes/eng-imexp-cap-window, dbl-max-text-a/-b). The cap needs a remainder strictly past 2^-26 (the tie is `#NUM!`); around pi/2, pi, 2pi and 100pi, either side, the window is bracketed to (1.053, 1.054]E-8, i.e. 2^-26.5, which `imexp_cap_window` now uses; negative y behaves as positive, including the 2^27 cut. Numeric `DBL_MAX&""` is `1.7976931348623E+308`; `TEXT(DBL_MAX,"0.00E+00")` is `1.80E+308` and ours differs (follow-up T-2106). Eval: 3 new probe cases, 2 passing, 1 new known failure (T-2106), no regressions.

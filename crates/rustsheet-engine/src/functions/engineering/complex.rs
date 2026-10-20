@@ -757,7 +757,7 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let modulus = x.exp();
     if modulus == f64::INFINITY && y.is_finite() {
         let (n, remainder) = excel_quarter_turn_remainder(y);
-        if remainder >= imexp_cap_window(n) {
+        if remainder > imexp_cap_window(n) {
             return complex_result(f64::MAX * cos_y, f64::MAX * sin_y, suffix);
         }
     }
@@ -765,10 +765,11 @@ fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     finite_complex_result(re, im, suffix, cell)
 }
 
-/// Half-width of the window around a multiple of pi/2 where an overflowing IMEXP is `#NUM!`
-/// rather than capped. Around 0 it is exactly 2^-26 (`1000+1.4901161193847E-8i` is `#NUM!`,
-/// `...848E-8i` is capped); around the other multiples it was only bracketed, within (1.0, 1.2]E-8 (pi, 2pi, pi/2,
-/// 3pi/2; engineering.md), and 2^-26/sqrt(2) = 1.0537E-8 is the fitted value (T-2101).
+/// Half-width of the window around a multiple of pi/2 inside which an overflowing IMEXP is
+/// `#NUM!` rather than capped (the cap needs a remainder strictly past it). Around 0 it is exactly
+/// 2^-26: `1000+1.4901161193847656E-8i` is `#NUM!`, `...848E-8i` is capped. Around every other
+/// multiple (pi/2 to 100pi, either side) the boundary lies in (1.053, 1.054]E-8, i.e. 2^-26.5 =
+/// 2^-26/sqrt(2) = 1.0537E-8 (probes/eng-imexp-cap-window; engineering.md).
 fn imexp_cap_window(quarter_turns: i64) -> f64 {
     let base = f64::EPSILON.sqrt();
     if quarter_turns == 0 {
