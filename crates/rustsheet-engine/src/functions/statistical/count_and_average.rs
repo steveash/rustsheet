@@ -30,7 +30,7 @@ const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
 /// top-left cells (SPEC-0014 rule 4: `AVERAGE(OFFSET(A1,{0;1},0))` is 50.5;
 /// probes/reference-lift-consumers E21, E133, -b2 E137, E165, E181). The rest of the family is
 /// unprobed there and keeps the value view (T-2065).
-const AVERAGE_ONLY_ARGS: AggregatePolicy = AggregatePolicy {
+const AVERAGE_TOP_LEFT_ARGS: AggregatePolicy = AggregatePolicy {
     grids: GridReading::TopLeft,
     ..AVERAGE_ARGS
 };
@@ -159,12 +159,16 @@ impl Model {
         }
         let mut count = 0.0;
         let mut sum = 0.0;
-        if let Err(e) =
-            self.for_each_aggregate_number(args, cell, AVERAGE_ONLY_ARGS, AVERAGE_NUMBERS, |f| {
+        if let Err(e) = self.for_each_aggregate_number(
+            args,
+            cell,
+            AVERAGE_TOP_LEFT_ARGS,
+            AVERAGE_NUMBERS,
+            |f| {
                 count += 1.0;
                 sum = extended_sum(sum, f);
-            })
-        {
+            },
+        ) {
             return e;
         }
 

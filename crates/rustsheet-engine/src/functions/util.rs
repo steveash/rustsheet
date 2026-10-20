@@ -345,7 +345,9 @@ impl Model {
 
     /// A value argument whose consumer reads an array of references by its elements (SPEC-0014
     /// "Consumers"): a lifted producer is its grid, anything else its value as
-    /// `evaluate_node_in_context` gives it, a range as `RefArg::Ranges`.
+    /// `evaluate_node_in_context` gives it, a range as `RefArg::Ranges`. OFFSET is the only
+    /// producer so far: TODO(T-1957) INDIRECT and TRIMRANGE, TODO(T-1838) TAKE and DROP, and
+    /// TODO(T-2078) the IF, CHOOSE and LET pass-through join it here.
     pub(crate) fn evaluate_value_or_grid(
         &mut self,
         node: &Node,

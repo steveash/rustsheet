@@ -7,8 +7,7 @@
 //! from the others as an [`AggregatePolicy`]. The number layer
 //! ([`Model::for_each_aggregate_number`]) adds the coercion of the consumers that fold numbers.
 
-use crate::calc_result::CalcResult;
-use crate::calc_result::Range;
+use crate::calc_result::{CalcResult, Range};
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
@@ -68,7 +67,8 @@ pub(crate) enum GridReading {
     /// E17, -b2 E169). The aggregates whose Excel result is not known yet keep it (T-2065).
     Values,
     /// Each element's top-left cell, read as a range cell, so text, booleans and blanks are
-    /// skipped; an error element ranks as a referenced error (SPEC-0014 rule 4: SUM, AVERAGE,
+    /// skipped; an error element ranks as a referenced error, so a direct error beats it either
+    /// side (UNVERIFIED: only a lone error element is probed; T-2065) (SPEC-0014 rule 4: SUM, AVERAGE,
     /// MIN, MAX, PRODUCT; `SUM(OFFSET(A1,0,0,{1;2}))` is 2, `AVERAGE(OFFSET(A1,{0;-1},0))`
     /// `#REF!`; probes/reference-lift-consumers E1-E25, -b2 E117-E121, E181, E185).
     TopLeft,
@@ -372,6 +372,10 @@ impl Model {
         F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
     {
         for element in grid.elements() {
+            // Once an error is held, nothing later in the grid can change the result.
+            if walk.held.is_some() {
+                return Ok(());
+            }
             match element {
                 RefElement::Reference(range) => {
                     let top_left = Range {
