@@ -129,6 +129,24 @@ density's exp(a ln y) form; then re-cut the 4-ulp criterion per decision 0056 if
   exp(E) error at every df (38 to 200 ulp, df 30 to 1E6) and the T.TEST noise. A kernel that is only more accurate cannot close
   these.
 
+## Attempt 5 (2026-10-20, opus run; merged as progress, decision 0082)
+- T.TEST/TTEST: Excel takes `I_y(df/2, 1/2)` at y = df/(df+t^2) rounded to a double, not the tail at t
+  (statistics.md "T.TEST rounds y = df/(df+t^2) to a double before the tail"). t1048-ttest B31 is bit-exact
+  that way and 42 ulp off at the exact t.
+- `student_t.rs`:
+  - `student_t_tail_at(y, n)` feeds the same kernel from a double y. The kernel's inputs are now
+    `TailArguments` / `SeriesArguments`, so the t path computes exactly what it did before.
+  - The fractional (Welch) df takes the accurate centre path. Its Gamma ratio is a recurrence up to the
+    asymptotic series instead of libm's tgamma.
+- Paired t^2 is md^2 / (vd / n).
+- Visibly-off T.TEST/TTEST cells went from 19 to 3, with none new. The 3 left are Welch, at 5 to 6 ulp:
+  t1048-ttest A3/B3 and t1049-ttest A48.
+- Gated: 4 known failures left the baselines (`T_TEST.xlsx` F3, F6; probes/stat-argument-modes H540, H546), with
+  0 regressions.
+- T.DIST, T.DIST.RT and T.DIST.2T are unchanged.
+- Not cracked: the density's noise. Its error is not a rounded exponent E: no double form of
+  E = ((n+1)/2) ln(1+t^2/n) predicts Excel at df <= 100, with residuals of tens of ulp.
+
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
       NumericMismatch verdict (`rustsheet-eval show` on both cases), at least 30 of the 55 lines
