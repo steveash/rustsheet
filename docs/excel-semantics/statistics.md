@@ -1378,9 +1378,8 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   of m9-t-dist-pdf, m9-t-nonint-df and m9-t-edges, including `T.DIST(1E6,2,FALSE)` = Excel's value 15 ulp from the
   exact one; `POWER(2+t^2,-1.5)` matches 9, the 1 + t^2/2 form 11. From df 3 on no single exp of one double exponent
   of the forms exp(C - h ln(n+t^2)) or exp(C - h ln(1+t^2/n)), h = (n+1)/2, reproduces a df's cells for any double C,
-  though Excel's value is always within about one ulp of the exact exponent's exp. Of the 46 literal-argument
-  visibly-off Student-t cells on main a15f80ae, Excel is 4.6 to 482 ulp from the exact value on 41 and the engine
-  within 1.7 ulp of it, so parity there needs Excel's noise, not accuracy.
+  though Excel's value is always within about one ulp of the exact exponent's exp. Excel's density and tails are
+  up to 482 ulp from the exact value (`T.DIST(1E6,30,FALSE)`, `T.DIST.RT(30,1E6)` 398), so an exact kernel cannot match them.
 - **The centre tail at small df can follow the rounded y** (T-0969 attempt 6): for t^2 < n, I_y(n/2,1/2)/2 at
   y = fl(n/(n+t^2)), as T.TEST computes it, is bit-exact at `T.DIST.2T(0.1,2)`, (2,100) and (3,100) where the
   exact tail is 8 to 23 ulp off, but 29 and 97 ulp off at `T.DIST.RT(0.5,100)` and (0.5,1000), where the exact
