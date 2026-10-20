@@ -3,7 +3,7 @@ id: T-1991
 title: "Share one places-coercion helper across the nine base conversions"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
