@@ -315,10 +315,10 @@ Status: VERIFIED
 Tasks: T-0283, T-1335
 
 ## Percent text is rounded once
-Rule (en-US): number text ending in `%` (VALUE, `0+"…"`, typed cell input) is the decimal text shifted two places and rounded to the nearest double once: `VALUE("23.123%")` = 0.23123, not the double 23.123 divided by 100 (0.23123000000000002). The 15-significant-digit truncation of number text applies before the shift. Only VALUE is evidenced; `0+` coercion and typed input share the same parser (`parse_formatted_number`) and are unprobed, as is e-notation percent text, to which the engine (T-0929) applies the same single rounding (`23e-12%` = 23e-14); T-2133 probes them. The `%` operator in a formula (`=23.123%`) is a separate path and is not covered here.
+Rule (en-US): number text ending in `%` (VALUE, `0+"…"`, typed cell input) is the decimal text shifted two places and rounded to the nearest double once: `VALUE("23.123%")` = 0.23123, not the double 23.123 divided by 100 (0.23123000000000002). The 15-significant-digit truncation of number text applies before the shift. Only VALUE is evidenced; `0+` coercion and typed input share the same parser (`parse_formatted_number`) and are unprobed, as is e-notation percent text, to which the engine (T-0929) applies the same single rounding (`23e-12%` = 23e-14); T-2136 probes them. The `%` operator in a formula (`=23.123%`) is a separate path and is not covered here.
 Evidence: ironcalc-calc TEXT/T_VALUE_VALUETOTEXT.xlsx `Sheet1!I4` (Excel-authored cached value 0.23123).
-Status: PARTLY VERIFIED (VALUE only; `0+`, typed input and e-notation pending in T-2133)
-Tasks: T-0929, T-2133
+Status: PARTLY VERIFIED (VALUE only; `0+`, typed input and e-notation pending in T-2136)
+Tasks: T-0929, T-2136
 
 ## AND/OR/XOR text arguments
 Rule: in Microsoft 365, AND, OR and XOR skip every text argument that is not "TRUE" or "FALSE",
