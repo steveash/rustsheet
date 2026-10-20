@@ -68,6 +68,14 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Function::Seriessum,
         Some("one step per coefficient, charged per element as their cells (LiftCost::Cells)"),
     ),
+    (
+        Function::Npv,
+        Some("one pass over the cash flows, charged per element as their count (LiftCost::Cells)"),
+    ),
+    (
+        Function::Mirr,
+        Some("one pass over the cash flows, charged per element as their count (LiftCost::Cells)"),
+    ),
     (Function::Workday, Some(WORKDAY_SEARCH)),
     (Function::WorkdayIntl, Some(WORKDAY_SEARCH)),
     (Function::Networkdays, Some(NETWORKDAYS_COUNT)),
