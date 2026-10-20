@@ -163,6 +163,17 @@ impl Model {
                 return false;
             }
         }
+        // So is a lifted INDIRECT or TRIMRANGE (probes/reference-lift-elements).
+        if let Node::FunctionKind { kind, args } = node {
+            let lifted = match kind {
+                crate::functions::Function::Indirect => self.indirect_lifts(args, cell),
+                crate::functions::Function::Trimrange => self.trimrange_lifts(args, cell),
+                _ => false,
+            };
+            if lifted {
+                return false;
+            }
+        }
         match node {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => true,
             // A range whose corners are on two sheets is `#VALUE!`, so not a reference:

@@ -727,7 +727,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
                 .filter(|(i, _)| *i != 1)
                 .map(|(_, a)| a),
         ),
-        Function::Trimrange => StaticResult::Unknown,
+        Function::Trimrange => reference_result::static_analysis_trimrange(args),
         Function::Sort | Function::Sortby | Function::Unique => StaticResult::Unknown,
         Function::Filter | Function::Take | Function::Drop => StaticResult::Unknown,
         Function::Tocol | Function::Torow | Function::Transpose => StaticResult::Unknown,
