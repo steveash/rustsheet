@@ -20,7 +20,9 @@ unprobed (references.md "Relative references in defined names"): `rel_down` = `J
 row 1048576 (and `Jan!B1` used in column XFD), where Excel is believed to wrap to row 1 / column A
 while the engine reads cells past the grid as empty; and `INDIRECT("rel_same")`, which the engine
 reads from the INDIRECT's cell. Write a probe case (excel-probe skill) with both, plus a
-formula-bodied name over a relative range (`=SUM(Jan!A1:A2)`) used on the last row.
+formula-bodied name over a relative range (`=SUM(Jan!A1:A2)`) used on the last row, and a
+mixed-anchor name used above its anchor (`inv` = `Jan!$B$5:$B1` from row 1: the engine reads
+B1:B5, ROWS 5, as an inline reference is).
 
 ## Acceptance criteria
 - [ ] A probe case under eval/suites/probes with oracle values for the edge cells above.

@@ -100,3 +100,21 @@ fn relative_name_past_the_last_row_is_bounded() {
     assert_eq!(model._get_text("C1048576"), "0");
     assert_eq!(model._get_text("D1048576"), "0");
 }
+
+// A name whose corners have different anchors (`$B$5:$B1`) used above its anchor row is the range
+// between its corners, B1:B5, not an upside-down B5:B1.
+#[test]
+fn relative_name_corners_stay_in_order() {
+    let mut model = new_empty_model();
+    model.define_name("inv", None, "Sheet1!$B$5:$B1").unwrap();
+    for row in 1..=5 {
+        model._set(&format!("B{row}"), &row.to_string());
+    }
+    model._set("A1", "=ROWS(inv)");
+    model._set("C1", "=SUM(inv)");
+    model._set("D1", "=INDEX(inv,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model._get_text("C1"), "15");
+    assert_eq!(model._get_text("D1"), "1");
+}
