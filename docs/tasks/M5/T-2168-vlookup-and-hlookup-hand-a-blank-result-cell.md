@@ -3,7 +3,7 @@ id: T-2168
 title: "VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0"
 milestone: M5
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -30,9 +30,18 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 2 in eval/baselin
 The probe must separate VLOOKUP/HLOOKUP from IFS: the ASC cell (49bfbf67 A103) passes the blank through IFS, which may be what makes it 0; the HLOOKUP→AVERAGE cell (aac6230c A334) has no IFS.
 
 ## Acceptance criteria
-- [ ] These 2 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] lookup.md entry updated with the probe results.
-- [ ] `make check` green; reviewers approve.
+- [x] These 2 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] lookup.md entry updated with the probe results.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - XLOOKUP (already returns 0).
+
+## Outcome
+Probed first (probes/lookup-blank-result-to-caller, lookup-vector-blank-result-to-caller; excel-graph): a
+VLOOKUP, HLOOKUP or LOOKUP that lands on a blank cell gives the same empty value IFERROR gives for one (ISBLANK
+TRUE, `&""` "", but COUNT, COUNTA and AVERAGE count it as 0), and IFS and SWITCH turn that empty value into 0,
+while IF, CHOOSE and LET keep it and INDEX/MATCH stays a reference. Implemented as
+`CalcResult::blank_as_empty_value` on the scalar result of the three lookups and `empty_value_as_zero` on what IFS
+and SWITCH pick. Eval: gen-m5 known failures 212 → 210 (both target cells), 2 new probe cases at 173/173, no
+regressions. lookup.md entry rewritten with the probe results.

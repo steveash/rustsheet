@@ -271,6 +271,7 @@ impl Model {
                 table.pick(model, row, column as i32, cell, as_reference)
             },
         )
+        .blank_as_empty_value()
     }
 
     /// `VLOOKUP(lookup_value`, `table_array`, `row_index`, [`is_sorted`])
@@ -320,6 +321,7 @@ impl Model {
                 table.pick(model, row as i32, column, cell, as_reference)
             },
         )
+        .blank_as_empty_value()
     }
 
     // HYPERLINK(link_location, [friendly_name])
@@ -718,7 +720,7 @@ impl Model {
                 right: reference,
             },
             Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
-            Err(message) => match self.indirect_defined_name(&ref_text, cell.sheet) {
+            Err(message) => match self.indirect_defined_name(&ref_text, cell) {
                 Some(found) => found,
                 None => CalcResult::Error {
                     error: Error::REF,
@@ -737,7 +739,12 @@ impl Model {
     /// reference": `a1` FALSE still resolves a name, trailing (not leading) spaces are ignored, and
     /// a `Sheet!name` prefix picks the name scoped to that sheet, else the workbook name
     /// (probes/indirect-defined-name-text A5, A8, A22; T-1682).
-    fn indirect_defined_name(&self, text: &str, sheet: u32) -> Option<CalcResult> {
+    ///
+    /// A relative name (`=Jan!A1`) is read from `cell`, the cell of the INDIRECT, as any other use
+    /// of it is; that INDIRECT case is not probed yet (references.md "Relative references in
+    /// defined names").
+    fn indirect_defined_name(&self, text: &str, cell: CellReferenceIndex) -> Option<CalcResult> {
+        let sheet = cell.sheet;
         let text = text.trim_end_matches(' ');
         if is_out_of_range_r1c1_name(text) {
             return None;
@@ -756,14 +763,8 @@ impl Model {
             .parsed_defined_name(text, Some(scope))
             .or_else(|| self.parsed_defined_name(text, None));
         match found? {
-            ParsedDefinedName::CellReference(reference) => Some(CalcResult::Range {
-                left: *reference,
-                right: *reference,
-            }),
-            ParsedDefinedName::RangeReference(range) => Some(CalcResult::Range {
-                left: range.left,
-                right: range.right,
-            }),
+            ParsedDefinedName::CellReference(reference)
+            | ParsedDefinedName::RangeReference(reference) => Some(reference.range_at(cell)),
             _ => None,
         }
     }
