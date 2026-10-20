@@ -284,6 +284,11 @@ impl RefGrid {
         &self.elements
     }
 
+    /// Whether `other` is a clone of this grid, holding the same elements in memory.
+    pub(crate) fn shares_elements(&self, other: &RefGrid) -> bool {
+        Arc::ptr_eq(&self.elements, &other.elements)
+    }
+
     /// The value view (SPEC-0014 rule 2): every reference element is `#VALUE!` and an error
     /// element is itself, so `=OFFSET(A1,{0;1},0)` spills two `#VALUE!` (probes/
     /// reference-lift-elements K1, K4, K13).

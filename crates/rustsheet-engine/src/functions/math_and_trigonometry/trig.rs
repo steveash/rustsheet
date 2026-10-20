@@ -100,19 +100,14 @@ impl DoubleDouble {
 
     /// `a + b` exactly, for any `a` and `b` (Knuth's two-sum).
     fn two_sum(a: f64, b: f64) -> Self {
-        let hi = a + b;
-        let b_virtual = hi - a;
-        let lo = (a - (hi - b_virtual)) + (b - b_virtual);
+        let (hi, lo) = crate::x87_exp::two_sum(a, b);
         Self { hi, lo }
     }
 
     /// `hi + lo` renormalized, for |hi| >= |lo| (or `hi == 0`).
     fn fast_two_sum(hi: f64, lo: f64) -> Self {
-        let sum = hi + lo;
-        Self {
-            hi: sum,
-            lo: lo - (sum - hi),
-        }
+        let (hi, lo) = crate::x87_exp::fast_two_sum(hi, lo);
+        Self { hi, lo }
     }
 
     const fn new(hi: f64, lo: f64) -> Self {
@@ -307,6 +302,13 @@ pub(super) fn excel_sin(x: f64) -> f64 {
 pub(super) fn excel_cos(x: f64) -> f64 {
     let (n, r) = reduce(x);
     rounded_sine(n + 1, r, r.mul(r))
+}
+
+/// The quarter-turn count `n` and the size of the remainder `|x − n·π/2|` as SIN reduces `x`, for
+/// |x| < [`EXCEL_TRIG_LIMIT`].
+pub(crate) fn excel_quarter_turn_remainder(x: f64) -> (i64, f64) {
+    let (n, r) = reduce(x);
+    (n, r.hi.abs())
 }
 
 /// Excel's SIN(x) and COS(x), for |x| < [`EXCEL_TRIG_LIMIT`].

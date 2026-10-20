@@ -80,6 +80,9 @@ macro_rules! lifting_table_functions {
             | Function::Ddb
             | Function::Db
             | Function::Vdb
+            | Function::Npv
+            | Function::Irr
+            | Function::Mirr
             | Function::Effect
             | Function::Nominal
             | Function::Dollarde

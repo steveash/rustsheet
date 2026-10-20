@@ -2,9 +2,9 @@
 //! worksheet functions (PMT, RATE, DDB, ...) and the Analysis `ToolPak` ones, with the work
 //! weights of their coupon walks, solvers and period loops.
 
-use super::ArgKind::{Lift, LiftArrays};
+use super::ArgKind::{Lift, LiftArrays, WholeByCaller};
 use super::KernelWork::{ByArg, Constant, Weighted};
-use super::{ArgKinds, ATP_2, ATP_3, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
+use super::{ArgKinds, CallResult, ATP_2, ATP_3, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
 use crate::functions::financial::MAX_DEPRECIATION_PERIODS;
 use crate::functions::Function;
 
@@ -42,6 +42,26 @@ const DEPRECIATION_WEIGHT: u32 = (1 << 17) - 1;
 /// Under the 2^20-element output cap the charge never reaches `MAX_LIFTED_CELL_VISITS`, so it
 /// records the work rather than refusing a call: at worst about 2^20 × 50 Newton steps.
 const RATE: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift, Lift], Weighted(50));
+/// `NPV(rate, value1, [value2], ...)`: the values are read whole by the caller, once, and every
+/// element walks them, so the call is charged their count per element (`LiftCost::Cells`, T-1821).
+const NPV: ArgKinds = ArgKinds {
+    required: 2,
+    params: &[Lift],
+    repeat: Some(WholeByCaller),
+    max: 255,
+    work: Constant,
+    result: CallResult::Value,
+};
+/// What one IRR element is charged per cash flow (`LiftCost::Cells` of the flows): the most NPV
+/// passes over the flows one call can make, 455 (`financial_util::compute_irr`: two secant runs
+/// of 52, then the fallback's Newton from the guess, 100 with its derivative passes, its
+/// bisection's 51 and its Newtons from 200 and -2, 200), rounded up.
+const IRR_WEIGHT: u32 = 1 << 9;
+/// `IRR(values, [guess])`: the values are read whole by the caller (T-1821).
+const IRR: ArgKinds = ArgKinds::fixed(1, &[WholeByCaller, Lift], Weighted(IRR_WEIGHT));
+/// `MIRR(values, finance_rate, reinvest_rate)`: the values are read whole by the caller and one
+/// pass over them is charged per element (`LiftCost::Cells`, T-1821).
+const MIRR: ArgKinds = ArgKinds::fixed(3, &[WholeByCaller, Lift, Lift], Constant);
 /// `ACCRINTM(issue, settlement, rate, [par], [basis])`.
 const ATP_3_OF_5: ArgKinds = ArgKinds::fixed(
     3,
@@ -234,6 +254,14 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Ddb => Some(&LIFT_4_OF_5),
         Function::Db => Some(&DB),
         Function::Vdb => Some(&VDB),
+        // NPV's rate, IRR's guess and MIRR's rates lift over arrays and ranges beside their
+        // whole cash flows (`ROWS(NPV(G59:G60,K1:K5))`, `ROWS(IRR(K1:K5,G47:G48))` and
+        // `ROWS(MIRR(K1:K5,G53:G54,0.12))` are 2: probes/fin-argument-modes H155-H156,
+        // H172-H174, H187-H188), while a values array does not lift (`ROWS(NPV(0.1,{1;2}))`
+        // is 1, H386; T-1821).
+        Function::Npv => Some(&NPV),
+        Function::Irr => Some(&IRR),
+        Function::Mirr => Some(&MIRR),
         // Analysis ToolPak functions whose every argument has been probed over a range on
         // its own rows: all are refused, while an array lifts (fin-argument-modes; EFFECT:
         // scalar-lift-shapes H11, H12; DOLLARDE, DOLLARFR: scalar-lift-open-a Y16-Y18; the
