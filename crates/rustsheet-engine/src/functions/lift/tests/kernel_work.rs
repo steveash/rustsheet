@@ -12,7 +12,7 @@ use crate::functions::Function;
 const BETA_CDF: &str = "one statrs incomplete beta: at most 140 continued-fraction steps";
 
 /// ERF's and ERFC's cap: `erf::small_erf` and `erf::erfc_kernel` are fixed-degree rationals, and
-/// `x87_exp::excel_exp` sums a fixed 26-term series.
+/// `x87_exp::excel_exp` runs a fixed-length estimate and at most one fixed 26-term series.
 const ERF_KERNELS: &str =
     "erf kernels: fixed-degree rationals and one fixed-length excel_exp series";
 
@@ -58,7 +58,7 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
     (Function::Permutationa, Some("O(1): one powf")),
     (
         Function::Exp,
-        Some("one x87_exp::excel_exp: a fixed 26-term series"),
+        Some("one x87_exp::excel_exp: a fixed estimate, at most one fixed 26-term series"),
     ),
     (Function::Erf, Some(ERF_KERNELS)),
     (Function::ErfPrecise, Some(ERF_KERNELS)),
