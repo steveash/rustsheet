@@ -12,8 +12,8 @@
 //! The replacement must come from a golden oracle sidecar (`excel-graph` or `excel-desktop`):
 //! an override never carries a hand-written value. When that sidecar is excel-graph and its probe
 //! has a FALSE companion `=(<formula>)=0` for the evidence cell, the override also carries
-//! Excel's evidence that a 0 there is a kept subnormal saved as 0 (decision 0090). The same file tells `rustsheet_xlsx`'s generated tests which
-//! cached values not to compare (its `build.rs`).
+//! Excel's evidence that a 0 there is a kept subnormal saved as 0 (decision 0090). The same file
+//! tells `rustsheet_xlsx`'s generated tests which cached values not to compare (its `build.rs`).
 
 use std::path::{Component, Path};
 
@@ -88,9 +88,10 @@ pub fn parse(text: &str) -> Result<Vec<CachedOverride>, String> {
     Ok(out)
 }
 
-/// The golden cell an override points at.
+/// What an override's evidence cell says: its value and whether Excel kept it non-zero.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Evidence {
+    /// The golden value that replaces the cached expectation.
     pub value: Value,
     /// Whether the evidence probe's companion `=(<evidence formula>)=0` is FALSE in the same
     /// excel-graph sidecar: Excel kept the result non-zero, so a 0 there is a kept subnormal that

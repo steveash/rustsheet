@@ -32,7 +32,8 @@
     Then decision 0042's rule applies unchanged: exactly 0 expected, a non-zero engine value below the
     smallest normal double.
   - Where Excel flushes (`*`, `/`, PRODUCT, ...), the companion is TRUE and the cell still fails, as does
-    an override without a companion, with a companion for another formula, or from excel-desktop.
+    an override without a companion, with a companion for another formula, from excel-desktop, or whose
+    sidecar has no `.case.json` beside it (the flag fails closed).
   - As for every override, the PR adding the line cites the probe, and reviewers check that the probe
     cell computes the same formula on the same inputs (the harness cannot).
 - **Consequences:**
