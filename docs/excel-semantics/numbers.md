@@ -100,7 +100,8 @@ Rule: `MROUND(number, multiple)` (after the sign and zero checks) is
 2. `k = floor(q)`, plus 1 when the fractional part `q - k` (exact in doubles) is at least `0.5 - 5E-15`: an absolute
    tolerance on the fraction, not a 15-significant-digit cut of `q` (`fr >= 0.5 - 5e-15` in doubles, or equally the
    fraction rounded half up to 14 decimals reaching 0.5);
-3. the result `k * |multiple|` as one binary multiply, with the sign of `number`.
+3. the result `k * |multiple|` as one binary multiply, with the sign of `number`; a zero result is +0 (rows 211 and 213,
+   `MROUND(-0.49999999999999495,-1)`, are 0).
 Consequences: `MROUND(0.3,0.2)` = 0.4 (q = 1.4999999999999998); `MROUND(1.15,0.1)` = 1.2000000000000002 (12*0.1);
 `MROUND(0.5,0.2)` = 0.6000000000000001 and `MROUND(0.29,0.1)` = 0.30000000000000004 (binary products; the `(x)=0.6`
 companions are TRUE only because `=` compares to 15 digits); `MROUND(1234.4999999999998,1)` = 1234 and
@@ -111,7 +112,7 @@ companions are TRUE only because `=` compares to 15 digits); `MROUND(1234.499999
 Evidence: probes/t2201-mround-quotient-rounding (excel-graph, 2026-10-20, 213 cells: T-2167's near-half quotients and
 negatives, exact quotients at k+0.5 +- 1..48 ulp for four magnitudes, 80 seeded pairs within 4 ulp of a half, product
 forming with companions, 1E-15 and 1E+15 controls, and the cutoff sweep); generator docs/research/t2201/gen.py. The rule
-predicts all 213 cells. Rivals that miss: a 15-digit cut of `q` (146/213: misses 1234.5 - 1 ulp and most seeded pairs), a
+predicts all 213 cells. Rivals that miss: a 15-digit cut of `q` (145 or 146 of 213, by cut variant: misses 1234.5 - 1 ulp and most seeded pairs), a
 tolerance of 4.5E-15 or 4.9E-15 (196, 207) or 5.3E-15 (203), an x87 quotient, and a decimal product (the products are
 binary). gen-m5/043ee562f32eb901 Calc!A199 is `MROUND(0.3,0.2)`.
 Status: VERIFIED (excel-graph, 213 cells); not implemented (T-2167).

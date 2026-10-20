@@ -1,6 +1,6 @@
-"""T-2201 probe generator: MROUND near-half quotients. seed 2201."""
+"""T-2201 probe generator: MROUND near-half quotients, seed 2201. Run from the repo root; groups 1-5 were
+the first oracle fill and group 6 the second."""
 import json, math, random
-from fractions import Fraction
 from decimal import Decimal
 random.seed(2201)
 rows = []  # (number, multiple, companion_decimal or None, group)
@@ -42,7 +42,6 @@ case = {"format": "rustsheet-case/v1",
  "description": "T-2201 probe: MROUND quotient rounding near half-multiples and product forming. Stored inputs A (number), B (multiple); C = MROUND(A,B); D = (C)=<decimal> companions on the product rows. Rows 1-10: T-2167 near-half quotients and negatives; 11-90: exact quotients (multiple 1) at k+0.5 +- {1,2,4,8,12,16,20,24,32,48} ulp for k+0.5 in 1.5, 2.5, 1234.5, 98765432.5; 91-170: 80 seeded pairs (Python random.seed(2201), multiples from a fixed list, n = nearest double of m*(k+0.5) moved by -3..3 ulp, kept when n/m lies within 4 ulp of k+0.5, generator at docs/research/t2201/gen.py); 171-178: product forming; 179-183: controls with multiples 1E-15 and 1E+15.",
  "tags": ["M5", "probe", "math"], "sheets": [{"name": "M", "cells": cells}]}
 print(len(rows), sum(1 for r in rows if r[2]) )
-json.dump(case, open("eval/suites/probes/cases/t2201-mround-quotient-rounding.case.json", "w"), indent=1)
 # group 6 (second fill): pin the tolerance t in frac(q) >= 0.5 - t between 4.44E-15 and 5.33E-15
 extra = []
 u = math.ulp(0.4)  # 2^-54, the ulp just below 0.5

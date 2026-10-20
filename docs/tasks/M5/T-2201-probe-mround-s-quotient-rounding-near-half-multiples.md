@@ -61,6 +61,6 @@ predict every probed cell, in a form T-2167 can implement directly. Today one ce
 - Rule (numbers.md, VERIFIED): MROUND rounds `|number/multiple|` up when its fractional part is at least `0.5 - 5E-15`
   (an absolute tolerance; cutoff between 4.996E-15 and 5.0515E-15, the same at 0.5 and 1.5, for multiple 2 and for
   negatives), then multiplies `k * |multiple|` in binary (`MROUND(0.5,0.2)` = 0.6000000000000001). It predicts all 213
-  cells; the 15-digit cut of the quotient fits 146 (it misses `MROUND(1234.4999999999998,1)` = 1234).
+  cells; the 15-digit cut of the quotient fits 145 or 146, by cut variant (it misses `MROUND(1234.4999999999998,1)` = 1234).
 - Eval: probes +1 case, 38 new-coverage known failures (T-2167's to fix), 0 regressions; visible-parity lock 1748 -> 1786
   (all 38 in the new case). T-2167's Context names the case and the rule.
