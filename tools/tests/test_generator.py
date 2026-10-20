@@ -692,12 +692,13 @@ def test_pool_param_draws_from_its_pool_about_35_percent_of_the_time() -> None:
 
 
 def test_text_pools_respect_the_string_literal_limit_and_clock_free_values() -> None:
-    for name in ("text_edges", "numeric_text", "number_formats"):
+    for name in ("text_edges", "numeric_text", "number_formats", "date_text", "time_text", "weekend_mask"):
         for text in POOLS[name]:
             for literal in re.findall(r'"((?:[^"]|"")*)"', text):
                 assert len(literal.replace('""', '"')) <= MAX_STRING_LITERAL, (name, text)
     # A year-less date such as "1/2" reads as a date in the current year, so its value depends on the clock.
-    assert not any(re.fullmatch(r'"\d{1,2}[/-]\d{1,2}"', t) for t in POOLS["numeric_text"])
+    for name in ("numeric_text", "date_text", "time_text"):
+        assert not any(re.fullmatch(r'"\d{1,2}[/-]\d{1,2}"', t) for t in POOLS[name]), name
 
 
 def test_number_formats_pool_is_a_quoted_subset_of_the_policy_codes() -> None:
