@@ -220,7 +220,8 @@ probes/sumx-blank-text-error-order, excel-graph, 2026-10-20; all three functions
    `#VALUE!` but `SUMXMY2(NA(),A4)` `#N/A`, and `SUMXMY2(E1:E2,A4)` (E2 `#DIV/0!`) and `SUMXMY2(1/{1,0},A4)` are `#VALUE!`.
 2. Different element counts are `#N/A`, ahead of an error inside a range or an array of either argument
    (`SUMXMY2(C1:C3,E1:E4)`, `SUMXMY2(C1:C3,1/{1,0})`, `SUMXMY2(5,1/{1,0})`).
-3. Then such an error (`SUMXMY2({1,2},1/{1,0})` and `SUMXMY2(E1:E3,C1:C3)` are `#DIV/0!`).
+3. Then such an error (`SUMXMY2({1,2},1/{1,0})` and `SUMXMY2(E1:E3,C1:C3)` are `#DIV/0!`). The first argument's error
+   comes first, wherever it sits: `SUMXMY2({1,#N/A,3},1/{0,1,1})` is `#N/A`, `SUMXMY2(E1:E3,{1,2,#N/A})` `#DIV/0!`.
 4. Then `#DIV/0!` when either argument holds no number at all (`SUMXMY2(A2:A3,B1:B2)` with A2:A3 text and TRUE,
    `SUMXMY2(C1:C2,{"a","b"})`, a one-cell text or boolean reference or a typed text or boolean against a number).
    Otherwise the result is the sum over the pairs where both sides are numbers, and it is 0 when no such pair exists:
@@ -239,7 +240,7 @@ More evidence, gen-m5 (excel-graph, 2026-10-20, T-2114; all 28 cells listed in T
 size (`SUMXMY2(B12,D1:E8)`, gen-m5/043ee562f32eb901 Calc!A36), a number (`SUMX2MY2(YEAR(50111),D1)`, gen-m5/eb942f4a59b1c004 Calc!A231), a
 text cell (`SUMXMY2(B$8,E12)` with E12 "TRUE", gen-m5/f0f205865a3a4328 Calc!A103), a boolean, or an error (`SUMX2PY2(C$4,<#NUM!>)`,
 gen-m5/1962de140dae0111 Calc!A388; gen-m5/ee1667411bbe2ccc Calc!A84). A number or a range against an array of another count is `#N/A`
-(`SUMX2PY2(2.5,<6-element array>)`, gen-m5/204b68ebb5812d50 Calc!A218; gen-m5/aac6230c2fb40e1e Calc!A11), where ours says `#VALUE!`.
+(`SUMX2PY2(2.5,<6-element array>)`, gen-m5/204b68ebb5812d50 Calc!A218; gen-m5/aac6230c2fb40e1e Calc!A11).
 Two non-blank ranges of equal count with no numeric pair are 0, not `#DIV/0!`: `SUMX2MY2(A8:D9,C6:D9)` (gen-m5/8a387c26d182e73c
 Calc!A307) and `SUMX2MY2(C10:D12,C11:E12)` (gen-m5/d1b251fd6e9c4b4b Calc!A397), whose pairs hold text, booleans and blanks only
 (two all-blank ranges stay `#DIV/0!`, above): each side holds a number, so rule 4 gives 0. Implemented in T-0961.

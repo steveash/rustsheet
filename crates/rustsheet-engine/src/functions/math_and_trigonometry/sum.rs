@@ -22,20 +22,6 @@ fn is_same_shape_or_1d(rows1: i64, cols1: i64, rows2: i64, cols2: i64) -> bool {
         || (rows2 == 1 && cols1 == 1 && cols2 == rows1)
 }
 
-// The number of cells of a SUMX argument, known before its values are read; `None` for a 3-D
-// reference, whose count is its walked list.
-fn sumx_cell_count(arg: &PairedArg) -> Option<usize> {
-    let span = |from: i32, to: i32| usize::try_from(i64::from(to) - i64::from(from) + 1).ok();
-    match arg {
-        PairedArg::Range(Range { left, right }) if left.sheet == right.sheet => {
-            span(left.row, right.row)?.checked_mul(span(left.column, right.column)?)
-        }
-        PairedArg::Range(_) | PairedArg::Error(_) => None,
-        PairedArg::Array(array) => Some(array.iter().map(Vec::len).sum()),
-        PairedArg::Values(values) => Some(values.len()),
-    }
-}
-
 impl Model {
     // SUMX2MY2(array_x, array_y) - Returns the sum of the difference of squares
     pub(crate) fn fn_sumx2my2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -83,7 +69,7 @@ impl Model {
                 "Arrays must have the same number of elements".to_string(),
             )
         };
-        if let (Some(m), Some(n)) = (sumx_cell_count(&first), sumx_cell_count(&second)) {
+        if let (Some(m), Some(n)) = (first.cell_count(), second.cell_count()) {
             if m != n {
                 return unequal_counts();
             }
