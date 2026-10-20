@@ -24,6 +24,7 @@ use clap::{Parser, Subcommand};
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::catalog::Catalog;
+use rustsheet_eval::catalog_coverage;
 use rustsheet_eval::deviations;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::evidence_floor::{self, Lock, EVIDENCE_FLOOR, LOCK_PATH};
@@ -292,6 +293,7 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
 /// Fills the report's milestone sections from the run's `results`.
 fn score_milestones(
     milestones: &Milestones,
+    catalog: &Catalog,
     suites: &[Suite],
     results: &[CaseResult],
     report: &mut RunReport,
@@ -310,6 +312,13 @@ fn score_milestones(
         .copied()
         .unwrap_or(BaselineMode::Cells);
     report.probe_milestones = probe_milestones::summarize(&milestones.rules, results, probes_mode);
+    let generated: BTreeMap<String, Vec<String>> = suites
+        .iter()
+        .filter(|s| s.manifest.origin == "generated")
+        .map(|s| (s.manifest.name.clone(), s.manifest.milestone.clone()))
+        .collect();
+    report.catalog_coverage =
+        catalog_coverage::summarize(catalog, results, &report.evidence, &generated);
 }
 
 fn print_summary(report: &RunReport) {
@@ -379,7 +388,7 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         &RustSheetEngine.implemented_functions(),
         &catalog,
     );
-    score_milestones(&milestones, &suites, &results, &mut report);
+    score_milestones(&milestones, &catalog, &suites, &results, &mut report);
     print_summary(&report);
     let mut failed = false;
     for suite in &suites {
@@ -614,7 +623,7 @@ fn run() -> Result<ExitCode> {
                 &RustSheetEngine.implemented_functions(),
                 &catalog,
             );
-            score_milestones(&milestones, &suites, &results, &mut report);
+            score_milestones(&milestones, &catalog, &suites, &results, &mut report);
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(
