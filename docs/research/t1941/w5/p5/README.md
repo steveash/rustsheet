@@ -285,3 +285,10 @@ to the stored ss_fc model's, signed by a planted +0.25 u offset, is the pre-roun
   of 8192 consecutive doubles at offsets Δx = 2^-10 .. 2^-21 from the anchor. That is 72 runs, 0.6M points. The
   local slope of δ_j at each anchor then comes out by stepwise unwrapping, giving one far null coordinate per
   readable stage.
+- Ladder probes for the unwrap are committed: kmyst-gam-k3l[a-f](00|10..21), 78 runs × 8192 (`../gen_k3ladder.py`),
+  queued for the oracle.
+- Interim slope read from existing close pairs (`k3slope.py`, `k3slope.log`; rows7 with 208 k3t, 786 chunks). Per
+  0.05-wide window, the slope s maximising Σcos 2π(Δφ − sΔx) over pairs with 1e-5 < Δx < 1e-2, |s| ≤ 3e4: peaks at
+  Z 4–5 with second peaks almost as high, and the sign jumps between windows. That is the noise maximum for ~1.2e5
+  slope values: not resolved. Pairs closer than 1e-6 (the V3 rungs) agree in phase at N3 (0.130 vs random 0.237), so the
+  reads are real and |slope| ≪ 1e6 there. The unwrap needs the ladders.
