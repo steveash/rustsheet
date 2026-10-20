@@ -166,3 +166,10 @@ A container restart killed the real wide N.S7 scan (~7.5 h in) and the first far
 CPART=i/n (scan every n-th c; parallel parts), CKPT (per-c candidate checkpoint; a rerun resumes and skips the done
 c values) and MERGE=1 with CKPTS=f0,f1,... (no scanning; jointly rescore the union of the parts' candidates).
 `launch_farctl_parts.sh` runs the far-truth control as 4 resumable parts (~2.2 h).
+
+## Sub-ulp offset meter at N.S5/D.S3 (HANDOFF §12.3 step 1, adapted): no lift
+`deltameter.py`: stored chain, with an offset δ (u/16 grid, |δ| ≤ u/2) added to the pre-rounding sums at N.S5 and
+D.S3; per run, the best (δN, δD). 12 runs × 2048 points: mean exact 0.346 at δ = 0, 0.365 at the per-run best. No
+run goes beyond a few points (`deltameter.log`). On K2 the late chain was right (99.97% per anchor) and one hand-off
+offset explained the rest. On K3, ss_fc is ~35% exact and the mismatch is spread over many stages, so the
+N.S5/D.S3 hot spots are coefficient symptoms (review 3 §12.4), not a single fixable site.
