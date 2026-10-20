@@ -564,7 +564,10 @@ mod tests {
         // covers (T-2098).
         let ranges = "[[:upper:]\\x{0}-\\x{10FFFF}]".repeat(1_000);
         let start = std::time::Instant::now();
-        assert_eq!(unicode_posix_classes(&ranges, true), Err(InvalidPosixSyntax));
+        assert_eq!(
+            unicode_posix_classes(&ranges, true),
+            Err(InvalidPosixSyntax)
+        );
         assert!(start.elapsed().as_millis() < 1_000);
         // Without (?i) nothing folds, so nothing is spent.
         assert!(unicode_posix_classes(&many, false).is_ok());
