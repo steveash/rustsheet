@@ -3,7 +3,7 @@ id: T-0961
 title: "Probe SUMX2MY2/SUMX2PY2/SUMXMY2 scalar text, boolean, empty args and error-vs-#N/A precedence"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
