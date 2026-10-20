@@ -66,6 +66,8 @@ Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate /
 other order tried misses cells where the orders differ in the last bit: `pv*rate*(per/nper-1)` (the old engine form)
 fits 8 of 24, `pv*rate*(per-nper)/nper` 16, `pv*(rate*(per-nper))/nper` 17, `pv*rate/nper*(per-nper)` 6. It also gives
 the Mac cache's `ISPMT(0.2,1,3,100)` = -13.333333333333334, where the old form gave ...336.
+Unprobed: inputs where the three-factor product overflows before the division (`ISPMT(1,0,1E300,1E300)`: ours
+`#NUM!`, where dividing first stays finite).
 Evidence: probes/fin-ispmt-order A1-A24 (inputs chosen where the candidate orders differ, excel-graph, 2026-10-20,
 T-2048); ironcalc-calc/FINANCIAL/ISPMT.xlsx Sheet1!E2 (Mac desktop cache).
 Status: VERIFIED (excel-graph)
