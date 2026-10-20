@@ -133,8 +133,10 @@ fn two_to_the_minus_one(magnitude: u128, drop: u32) -> (u128, i32) {
 
 /// The distance from a 64-bit rounding midpoint, in half-units of the 64-bit grid, beyond which
 /// the estimate's rounding is trusted: 2^-9 half-units, at least 2^-74 of the value (a grid unit
-/// is at least 2^-64 of it). The estimate's error is about 2^-85 (module tests check 2^-80 on a
-/// sweep), so the margin is wide; the series runs for about 1 call in 2^9.
+/// is at least 2^-64 of it). The estimate's error budget: the f64 tail about 2^-89, the neglected
+/// yl yh^4/24 about 2^-87, the rounded cross terms and the table 2^-104 or less, times at most 3.4
+/// for the E + e sum: under 2^-84 (module tests check 2^-80 on a sweep). The series runs for
+/// about 1 call in 2^9.
 const MIDPOINT_MARGIN: f64 = 1.0 / 512.0;
 
 /// 2^(j/64) - 1 for j = 0..=32 as double-doubles (the bits of hi, lo; |lo| <= ulp(hi)/2), from
@@ -292,7 +294,8 @@ pub(crate) fn fast_two_sum(a: f64, b: f64) -> (f64, f64) {
 
 /// The exact product `a * b` as a rounded head and its error (Dekker's `TwoProduct` with
 /// Veltkamp splitting), for operands well inside the double range. Plain arithmetic, unlike
-/// `mul_add`, which without the `fma` target feature is a runtime-dispatched call.
+/// `mul_add` (trig.rs's `DoubleDouble::two_prod`), which without the `fma` target feature is a
+/// runtime-dispatched call: on this hot path that call cost more than the 17 flops.
 fn two_prod(a: f64, b: f64) -> (f64, f64) {
     let p = a * b;
     let (a_hi, a_lo) = veltkamp_split(a);
@@ -393,7 +396,9 @@ mod tests {
         let mut state = 0x9E37_79B9_7F4A_7C15_u64;
         let mut checked = 0;
         for drop in 53..=130_u32 {
-            let limit = (1_u128 << (drop - 1)).min(u128::from(u64::MAX));
+            let limit = 1_u128
+                .checked_shl(drop - 1)
+                .map_or(u128::from(u64::MAX), |l| l.min(u128::from(u64::MAX)));
             let mut magnitudes: Vec<u128> = (0..4_000)
                 .map(|i| {
                     // Random bit lengths, so tiny f (j = 0, r tiny) is as common as large f.
@@ -432,7 +437,9 @@ mod tests {
     fn estimate_error_bound() {
         let mut state = 0x6A09_E667_F3BC_C908_u64;
         for drop in 53..=130_u32 {
-            let limit = (1_u128 << (drop - 1)).min(u128::from(u64::MAX));
+            let limit = 1_u128
+                .checked_shl(drop - 1)
+                .map_or(u128::from(u64::MAX), |l| l.min(u128::from(u64::MAX)));
             for _ in 0..2_000 {
                 let bits = 1 + u32::try_from(next(&mut state) % 64).unwrap_or(0);
                 let m = (u128::from(next(&mut state)) >> (64 - bits)).clamp(1, limit);
