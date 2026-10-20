@@ -587,6 +587,13 @@ impl Model {
                     let cells: usize = array.iter().map(Vec::len).sum();
                     (0, u64::try_from(cells).unwrap_or(u64::MAX))
                 }
+                RefArg::Grid(grid) => {
+                    let (rows, columns) = grid.dims();
+                    (
+                        0,
+                        u64::try_from(rows.saturating_mul(columns)).unwrap_or(u64::MAX),
+                    )
+                }
                 RefArg::Value(_) => (0, 1),
             };
             visits = visits.saturating_add(walked);

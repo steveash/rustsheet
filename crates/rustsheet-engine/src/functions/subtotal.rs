@@ -248,6 +248,8 @@ impl Model {
                 RefArg::Ranges(ranges) => resolved.push(SubtotalArg::Areas(ranges)),
                 RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 RefArg::Value(CalcResult::Array(rows)) => return Err(not_a_reference_array(rows)),
+                // Per element in Excel (SPEC-0014 rule 6, T-2064); the value view until then.
+                RefArg::Grid(grid) => return Err(grid.to_values()),
                 RefArg::Value(_) => {
                     return Err(CalcResult::new_error(
                         Error::VALUE,

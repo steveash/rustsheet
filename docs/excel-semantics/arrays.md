@@ -240,7 +240,7 @@ eval/suites/probes/deviations, decision 0036).
 Status: DEVIATION (decision 0014)
 Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::chosen_indices` (CHOOSECOLS/CHOOSEROWS) and FORMULATEXT over a range in
-crates/rustsheet-engine/src/functions/lookup_and_reference/; `Model::read_lift_args` and `Model::lift_grids` in
+crates/rustsheet-engine/src/functions/lookup_and_reference/; `Model::read_lift_args`, `Model::lift_grids` and `Model::lift_references` (OFFSET's array of references, T-1956) in
 crates/rustsheet-engine/src/functions/lift/; `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs;
 `broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs; `ExternalArea::blocked_value` in
 crates/rustsheet-engine/src/external_reference.rs (a spilled range into another workbook, T-1454);
@@ -719,8 +719,9 @@ total_depth ±2, and the default layout otherwise). Since T-1324: subtotals (gro
 an array field_relationship (below). Since T-1325 (functions/lookup_and_reference/group_functions.rs): the function
 argument is read as a grid of functions and labels (`Model::function_elements`, `Model::function_argument`), paired with
 the value columns (`Functions::pair_with`) and laid out as columns or rows (`Functions::shape`); each function is called
-through `Model::lambda_caller` with one or two arguments, its body read in reference context so a reference result is
-`#VALUE!` (`LambdaCaller::keeping_references`); PERCENTOF passed by name sums each relative set once and divides
+through `Model::lambda_caller` with one or two arguments, its body read in reference context so a reference result, also
+one an XLOOKUP, TAKE or DROP picks (probes/lambda-body-picked-references A66-A90, T-2075), is `#VALUE!`
+(`LambdaCaller::keeping_references`); PERCENTOF passed by name sums each relative set once and divides
 (`percent_of`, shared with the PERCENTOF function), and a two-parameter LAMBDA is charged against the cell-visit cap (see
 "GROUPBY and PIVOTBY: two-parameter LAMBDAs and the cell-visit cap").
 PIVOTBY (T-1326, functions/lookup_and_reference/pivotby.rs): two `Grouping`s of the same records (rows, columns), both size
