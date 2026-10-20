@@ -3,7 +3,7 @@ id: T-1406
 title: "COUPDAYSNC and TBILLEQ report their date and frequency #NUM! before a later argument's error or text"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,9 +31,16 @@ docs/excel-semantics/financial.md. Code: `fn_coupdaysnc` (functions/financial/fi
 Semantics: docs/excel-semantics/financial.md "Analysis ToolPak securities functions check frequency and dates first".
 
 ## Acceptance criteria
-- [ ] gen-m9/0c7fc447bc2eebfd A24 and gen-m9/4df1b22d3ed63f58 A20 pass in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] The error-order probe cells pass; financial.md's entry is VERIFIED.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/0c7fc447bc2eebfd A24 and gen-m9/4df1b22d3ed63f58 A20 pass in `./target/release/rustsheet-eval show gen-m9/<case>.case.json`, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] The error-order probe cells pass; financial.md's entry is VERIFIED.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probed the error order (probes/securities-argument-error-order, 192 excel-graph cells): the COUP* reader checks settlement,
+the date order, frequency and basis as it reads each one; the TBILL reader checks only that each date is a serial from 0
+to 9999-12-31 before the discount. `coupon_args` and `tbill_arguments` now follow that order (financial.md entry VERIFIED). Eval: the new
+case passes in full (192 cells), gen-m9 0c7fc447bc2eebfd A24 and 4df1b22d3ed63f58 A20 fixed with no new gen-m9 failure
+(15 -> 13), no regressions in the gated suites.

@@ -708,9 +708,12 @@ Implemented in: XMATCH's search_mode: xmatch.rs (T-1958). The reference carrier 
 `RefArg::Grid` (reference_operators.rs) with its value view `RefGrid::to_values`; OFFSET as producer
 (`Model::offset_reference`, lookup_and_reference/offset.rs, lifted by `Model::lift_references` in lift/driver.rs; its
 spill shape from `static_analysis_offset`); INDEX's pick (`Model::index_grid`, index.rs), ROWS/COLUMNS (the value
-view's shape) and ISREF (FALSE). Not yet: INDIRECT and TRIMRANGE (T-1957), the top-left aggregates such as
-`SUM(OFFSET(A1,{0;1},0))` (reference-lift-elements G12, H12; T-2063), the per-element callers (T-2064) and the
-LET, IF and CHOOSE pass-through (T-2078).
+view's shape) and ISREF (FALSE). The aggregates (T-2063): SUM, AVERAGE, MIN, MAX and PRODUCT through the
+walker's `GridReading::TopLeft` (`Model::walk_top_left_cells`, util/aggregate_args.rs), COUNT and COUNTA through
+the value view (`GridReading::Values`), SUMPRODUCT through `Model::sumproduct_array` (sumproduct.rs); the aggregates already see a grid through IF and
+CHOOSE (`SUM(IF(TRUE,r))` 101, b1c E69, E73), which their reference reading picks. Not yet: INDIRECT and
+TRIMRANGE (T-1957), the per-element callers (T-2064), LET's pass-through and SUMPRODUCT through IF, CHOOSE or
+LET (T-2078).
 Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065
 
 ## XLOOKUP: an error lookup_value beats a size mismatch
