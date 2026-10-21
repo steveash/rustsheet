@@ -3,7 +3,12 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 pub use crate::external_links::ExternalBook;
-use crate::{cf_types::ConditionalFormatting, expressions::token::Error, text::Text};
+use crate::{
+    cf_types::ConditionalFormatting,
+    expressions::token::Error,
+    pivot::{PivotCache, PivotTable},
+    text::Text,
+};
 
 fn default_as_false() -> bool {
     false
@@ -157,6 +162,10 @@ pub struct Workbook {
     pub theme: Theme,
     /// The linked workbooks formulas name by index, `[1]` first (`[1]Sheet!A1`, `[1]!Name`).
     pub external_books: Vec<ExternalBook>,
+    /// The pivot caches pivot tables read, by index (SPEC-0015); a new workbook has none.
+    pub pivot_caches: Vec<PivotCache>,
+    /// The pivot tables on the worksheets (SPEC-0015); a new workbook has none.
+    pub pivot_tables: Vec<PivotTable>,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
