@@ -1117,6 +1117,19 @@ Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping
 Status: UNVERIFIED (the algorithm); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304
 
+
+T-2304 (probes/yield-start-rate-term, excel-graph 2026-10-21; 50 bonds x frequency 2, 1, 4; basis 0, settlement
+2096-03-01, redemption 100.5, maturities 30 June 2098 to 2126, rates 0 to 0.12, prices 98 and 90): 122 of 150 cells
+stop below PRICE's root (PRICE(y) - price from +3e-10 to +7.7e-8, so they show S) and 28 sit at the root
+(|residual| 2e-11 or less): all three frequencies of the 2098 bonds at price 90 (rows 26 to 30, frequency 1 only
+at 3 coupons), price 98 rate 0 frequency 1 (row 1), and price 90 at the higher rates and longer terms (rows 33 to 35,
+39, 40, 44, 45, 48 to 50). The residual grows with the
+term and the rate at price 98 (+1e-8 at rate 0; +4e-8 at rate 0.12 on 2126) and is largest, 7.7e-8, at price
+90 and 0.05 on 2110 (frequency 1). Stepping Newton back (frequency 2, lab arithmetic): 98 / rate 0.05 / 2100 reaches 0.05523443 two
+steps back (the S of T-1592), but 98 / 0.05 / 2098 reaches 0.0593019, 98 / 0.05 / 2110 reaches 0.0519331, 90 / 0 / 2098
+0.0456823 and 90 / 0.05 / 2110 0.0600873, so S moves with term, rate and price and is not one constant near the
+redemption-100 root. The cells at the root need no S.
+
 ## TBILLEQ and TBILLYIELD
 Rule: Excel's TBILLYIELD is `(100 - pr)/pr * (360/DSM)`, evaluated in that order; the textbook
 `(100 - pr)*360/(pr*DSM)` is 1 ulp off (`TBILLYIELD(45366,45731,2000)` is -0.9369863013698629, not
