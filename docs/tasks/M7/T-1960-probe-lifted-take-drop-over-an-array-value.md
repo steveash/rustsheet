@@ -6,7 +6,7 @@ lane: research
 status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -33,3 +33,12 @@ From T-1833. The spec reads a lifted TAKE's or DROP's whole element (probes/m7-a
 
 ## Out of scope
 - Any implementation (T-1834 to T-1839).
+
+## Handoff
+Handed off by a sonnet run without starting the probes (no cells written, no oracle calls made). Reason:
+item 5 asks for a rule fitted to the oracle ("until a rule gives {1;0;0}") and items 1, 3 and 7 decide
+whether SPEC-0011's reading stands, which is analysis and a spec decision beyond the sonnet rubric.
+Oracle: `rustsheet-oracle status` showed `excel-graph OK` at hand-off time. Suggested order: write one probe
+case under eval/suites/probes for items 1-4, 6 and 7 (mechanical `ROWS`/`COLUMNS`/`INDEX(..,i,1)` cells), fill it,
+record the answers in arrays.md, then iterate item 5 with extra cells until a rule fits, and update SPEC-0011
+and T-1834 to T-1839 where an answer differs.
