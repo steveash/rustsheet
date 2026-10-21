@@ -502,7 +502,7 @@ C	probes/long-text-args-min-criteria.case.json	25
 C	probes/lookup-2d-vector-wide.case.json	13
 C	probes/lookup-2d-vector.case.json	19
 C	probes/lookup-approximate-search.case.json	44
-C	probes/lookup-argument-edges.case.json	149
+C	probes/lookup-argument-edges.case.json	154
 C	probes/lookup-argument-modes.case.json	117
 C	probes/lookup-blank-result-to-caller.case.json	135
 C	probes/lookup-bool-empty-scalar-vector.case.json	10

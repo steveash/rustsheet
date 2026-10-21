@@ -147,7 +147,9 @@ search runs, not found is `#N/A` (before any index is looked at), and otherwise 
 validated in reading order and the first bad one is the error of the whole call, with no spill
 (`{0,9}` is `#VALUE!`, `{9,0}` is `#REF!`, `{2,"a"}` and `{2,#DIV/0!}` are `#REF!`, an element is read like
 a referenced cell, so text and errors are `#REF!`); valid indexes give a same-shaped array
-(`VLOOKUP(2,A1:B4,{2,1},FALSE)` is "two", 2; a fractional element truncates). When lookup_value or
+(`VLOOKUP(2,A1:B4,{2,1},FALSE)` is "two", 2). A fractional element is floored with the near-integer snap, as a scalar
+index is (`{2.9999999,1.999999}` reads columns 3 and 1, `{3.9999999,1.9999999}` is `#REF!` on a 3-column table;
+probes/lookup-argument-edges H366-H370, T-2234). When lookup_value or
 range_lookup lifts, the index uses only its first element (`VLOOKUP({2;3},A1:B4,{1;2},FALSE)` is 2, 3,
 `{2;"a"}` is "two", "three", `{#DIV/0!;2}` is `#REF!` twice, a 2-D index likewise).
 A multi-cell *range* range_lookup lifts like an array and spills (gen-m2/942bdade381b7537 Calc!A381,
@@ -161,7 +163,9 @@ index (`1/0`, `NA()`) and a text index (`"a"` is `#VALUE!`, not the `#REF!` of a
 each fill every row with that scalar error (VLOOKUP with a range or an array range_lookup; HLOOKUP and
 `NA()` probed with an array range_lookup only, the engine shares one path) (probes/vlookup-error-arg-lifting-range-lookup, 22 cells, excel-graph, 2026-10-13, T-1491).
 Matches the engine (`LookupIndexArg::Failed`).
-A multi-cell range *index* stays implicitly intersected (T-1426).
+A multi-cell range *index* lifts once the value is found, and `@` intersects it (T-1426; see "VLOOKUP / HLOOKUP search
+before validating the index"). With a table error, an array index gives one scalar error, not a spill
+(`VLOOKUP(2,1/0,{2,3})` is `#DIV/0!`, probes/lookup-argument-edges H372, H375).
 When a lookup_value element and a range_lookup element are both errors, the lookup_value's error wins:
 `VLOOKUP({#N/A;2},A1:C3,2,{#DIV/0!;TRUE})` spills `#N/A`, "y", and `VLOOKUP({2;#N/A},A1:C3,2,{#DIV/0!;#NUM!})`
 spills `#DIV/0!`, `#N/A`. The same holds unlifted: `VLOOKUP(NA(),A1:C3,2,1/0)` is `#N/A`, and `VLOOKUP(1/0,A1:C3,2,NA())`

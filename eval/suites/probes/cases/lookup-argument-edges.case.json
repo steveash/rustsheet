@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2234: VLOOKUP/HLOOKUP argument edges. H30 down (every third row, room for a 2-row spill): (1) two failing arguments, lifted and scalar, and a table_array error (1/0, #REF!) against the other arguments; (2) blank elements of a computed index array (IF/CHOOSE over blank Z1, INDEX of E10:E11 with E11 blank) and a blank reference index; (3) fractional indexes next to the -2^31 cut-off and past the table, found (2) and not found (9, exact). VLOOKUP over A1:C3, HLOOKUP over A20:C22, each formula's HLOOKUP twin on the next used row. (4) A multi-cell range index E1:E2 (2, 3) outside the intersection rows: J10/R10 with the row below empty, L10/T10 with it filled, N1/V1 and P2/X2 inside the rows. H336 on: a table error next to a lifted range_lookup or an error element of a lifted lookup_value. H360, H363: a lifted lookup_value with a range index E14:E15 = 2, 3.",
+ "description": "T-2234: VLOOKUP/HLOOKUP argument edges. H30 down (every third row, room for a 2-row spill): (1) two failing arguments, lifted and scalar, and a table_array error (1/0, #REF!) against the other arguments; (2) blank elements of a computed index array (IF/CHOOSE over blank Z1, INDEX of E10:E11 with E11 blank) and a blank reference index; (3) fractional indexes next to the -2^31 cut-off and past the table, found (2) and not found (9, exact). VLOOKUP over A1:C3, HLOOKUP over A20:C22, each formula's HLOOKUP twin on the next used row. (4) A multi-cell range index E1:E2 (2, 3) outside the intersection rows: J10/R10 with the row below empty, L10/T10 with it filled, N1/V1 and P2/X2 inside the rows. H336 on: a table error next to a lifted range_lookup or an error element of a lifted lookup_value. H360, H363: a lifted lookup_value with a range index E14:E15 = 2, 3. H366-H375: array index elements near an integer, and a table error with an array index.",
  "tags": [
   "M2",
   "lookup",
@@ -157,7 +157,11 @@
     "E14": 2,
     "E15": 3,
     "H360": "=VLOOKUP({2;2},A1:C3,E14:E15)",
-    "H363": "=HLOOKUP({2;2},A20:C22,E14:E15)"
+    "H363": "=HLOOKUP({2;2},A20:C22,E14:E15)",
+    "H366": "=VLOOKUP(2,A1:C3,{3.9999999,1.9999999})",
+    "H369": "=VLOOKUP(2,A1:C3,{2.9999999,1.999999})",
+    "H372": "=VLOOKUP(2,1/0,{2,3})",
+    "H375": "=HLOOKUP(2,1/0,{2,3})"
    }
   }
  ]
