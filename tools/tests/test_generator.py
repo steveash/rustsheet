@@ -723,6 +723,12 @@ def test_focus_narrowing_errors(kw: dict[str, Any], match: str) -> None:
         generate_case(_loaded_catalog(), 1, milestone="M5", focus=True, **kw)
 
 
+@pytest.mark.parametrize("kw", [{"functions": ["MROUND"]}, {"category": "math"}])
+def test_narrowing_without_focus_is_an_error(kw: dict[str, Any]) -> None:
+    with pytest.raises(ValueError, match="pass --focus"):
+        generate_case(_loaded_catalog(), 1, milestone="M5", **kw)
+
+
 def test_focus_functions_and_category_with_empty_intersection_is_an_error() -> None:
     m5 = [f for f in _loaded_catalog().functions if f.get("milestone") == "M5"]
     first = m5[0]
