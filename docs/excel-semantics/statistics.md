@@ -1470,6 +1470,34 @@ Status: VERIFIED (excel-graph) from y = 0.100112 up and below y = 0.099900. The 
 itself takes the closed form, and whether Excel tests y or z = 1 - y, need a dense probe near t = sqrt(18).
 Tasks: T-0969
 
+## T.DIST.RT is BETA.DIST's incomplete beta, switched at the mean (T-0969)
+Rule: Excel's Student-t tail is its BETA.DIST kernel. With the worksheet-rounded y = fl(n / fl(n + fl(t*t))) and
+z = fl(fl(t*t) / fl(n + fl(t*t))):
+- beyond t = 1 (and y <= 0.99), `T.DIST.RT(t,n)` = `BETA.DIST(y,n/2,0.5,TRUE)/2`, to the bit;
+- up to t = 1, `T.DIST.RT(t,n)` = `0.5 - BETA.DIST(z,0.5,n/2,TRUE)/2`, to the bit, with z formed from t, not as 1 - y
+  (`BETA.DIST(1-y,0.5,n/2,TRUE)` is up to 197 ulp away at df 1000).
+t = 1 is y = n/(n+1), the mean of Beta(n/2, 1/2): the switch of "T.DIST.RT follows the rounded y beyond t = 1" is the
+incomplete beta's usual side choice (Cephes `incbet` swaps to the complement when x > a/(a+b)). So what is left of
+the family's noise beyond t = 1 is Excel's BETA.DIST noise, df 15 included, and an accurate Student-t kernel cannot
+remove it; only Excel's incomplete-beta algorithm can (T-1744, T-1759).
+- Evidence: probes-numeric `t0969-t-beta-link` (excel-graph, 2026-10-21), 184 (t, df) pairs, t in {0.5, 1.5, 2, 2.5,
+  3, 4, 5, 8} by df in {1 to 10, 12, 13, 15, 16, 17, 20, 25, 30, 50, 100, 200, 500, 1000}, with the worksheet's y and
+  z in cells D and G:
+  - t > 1 and y <= 0.99: T.DIST.RT = E/2 on 136 of 155 cells. The other 19 are 1 to 4 ulp off, all at df 7 to 30
+    and t = 1.5 to 3, 11 of them at t = 1.5 (nearest the mean).
+  - t <= 1: T.DIST.RT = 0.5 - H/2 on 22 of 23 cells; the other is df 2 (1 ulp), where the closed form of "T.DIST.RT at
+    df 2" applies.
+  - t > 1 and y > 0.99 (df 500 and 1000, t = 1.5 to 3; 6 cells): the two at t = 1.5 take the centre form
+    0.5 - H/2 to the bit, as attempt 7's y > 0.99 rule says; the other four are 8 to 155 ulp from both forms. Not
+    modelled.
+  - `T.DIST(-t,n,TRUE)` = `T.DIST.RT(t,n)` on all 184.
+- The density is not tied to BETA.DIST's: `BETA.DIST(y,n/2,0.5,FALSE) * t n/(n+t^2)^2` and four regroupings of it are
+  bit-exact on at most 20 of the 184 `T.DIST(t,n,FALSE)` cells.
+- Ours: `student_t.rs` is a separate, more accurate kernel; our BETA.DIST cdf is still statrs (T-2119) and is visibly
+  off on 142 of the probe's 184 `BETA.DIST(y,n/2,0.5,TRUE)` cells, where our T.DIST.RT is visibly off on 15.
+Status: VERIFIED (excel-graph) for df 1 to 1000 at those t; region y > 0.99 beyond t = 1 UNVERIFIED
+Tasks: T-0969, T-2119
+
 ## Student t prefactor per df (T-0969)
 Rule: Excel's tails carry a relative error that is fixed for a df and the same at every t, the signature of a
 prefactor (the ratio Gamma((n+1)/2)/(Gamma(n/2) sqrt(pi))) that is not correctly rounded. It is large at df 15 and
@@ -1489,6 +1517,15 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
   and `GAMMA(7.5)` itself is correctly rounded (1871.2543057977884, probes-numeric t1042-gamma-half-int A19).
 - One fixed prefactor double does not explain df 15 either: scaling the exact tail by any one double ratio is
   bit-exact on at most 24 of the 120 df-15 cells of the two probes, as Excel's other tail noise stays on top.
+- It is BETA.DIST's Beta function, B(1/2, 7.5), and only a narrow band of b is off (T-0969 attempt 9). probes-numeric
+  `t0969-beta-density-b` (excel-graph, 2026-10-21): `BETA.DIST(x,0.5,b,FALSE)` at x = 0.05 and 0.01, b = 0.25 to 40 by
+  0.25, is within 8.1 x 2^-53 of the exact density at every b except 7.5 (-18.0, -20.3) and 7.75 (-37.3, -38.8);
+  b = 7.25 is +7.8 and +6.0, b = 8 is +4.3 and +3.5. `BETA.DIST(x,1.5,b,FALSE)` is within 8 at every b, 7.5 and 7.75
+  included. So the error belongs to the pair (1/2, b) for b just below 8, the signature of a method switch in Excel's
+  Beta function near 8, not of GAMMA(7.5) (correctly rounded) or of a + b alone. probes-numeric
+  `t0969-beta-prefactor` (BETA.DIST cdf and pdf for a around 7.5 and several b at x = 0.05 and 0.2) shows the same
+  -14 to -22 at (7.5, 0.5), but its other cells carry 10 to 90 x 2^-53 of power-term noise, too much to isolate
+  a prefactor.
 Status: VERIFIED (excel-graph) as an observation; the algorithm is UNVERIFIED
 Tasks: T-0969
 
