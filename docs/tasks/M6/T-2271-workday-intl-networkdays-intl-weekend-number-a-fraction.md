@@ -3,7 +3,7 @@ id: T-2271
 title: "WORKDAY.INTL/NETWORKDAYS.INTL weekend number: a fraction truncates, a blank weekend cell is #NUM!; probe a boolean weekend"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -49,3 +49,6 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 9 in eval/baselin
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`weekend_mask` reads a number weekend truncated, TRUE/FALSE as 1/0 and a blank cell as 0. Probe: probes/weekend-number-coercion (excel-graph). Eval delta: see PR.

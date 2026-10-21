@@ -1096,8 +1096,9 @@ start's, and a blank weekend cell is weekend 0 (`#NUM!`), not the default: `NETW
 = 32394, `WORKDAY.INTL(45351,10,1.005)` = 45365, `NETWORKDAYS.INTL(44926," x ",3.14159)` is the end's `#VALUE!` (not the weekend's `#NUM!`),
 `NETWORKDAYS.INTL((0/0)^..,40608,IFERROR(#N/A,TRUE),..)` is the start's `#DIV/0!`, `WORKDAY.INTL(16895,22,<blank>,..)` is `#NUM!`
 (gen-m6/c93ea588c271840e Calc!A31, 1a404a0379a1372c A62, ee56a4ed5a612a0d A186, c96ac1ada46179c4 A287, ee56a4ed5a612a0d A387,
-fde83d52a9d1fc63 A219). Ours: `#NUM!` for a fractional weekend, `#VALUE!` for TRUE, the default weekend for a blank cell.
-Status: VERIFIED, except what a TRUE or FALSE weekend gives on valid dates: UNVERIFIED (no cell shows it; T-2271 probes it).
+fde83d52a9d1fc63 A219). A boolean weekend is its number: TRUE is weekend 1 (`WORKDAY.INTL(45000,5,TRUE)` = 45007, `NETWORKDAYS.INTL(45000,45030,TRUE)` = 23, as weekend 1) and FALSE is weekend 0 (`#NUM!`), both as a literal and read from a cell; 3.9 is weekend 3, 11.5 is 11, 0.5 is 0 (`#NUM!`) and a blank cell is `#NUM!` (probes/weekend-number-coercion A1:A26, excel-graph, 2026-10-21). An omitted weekend is still weekend 1; an empty argument (`WORKDAY.INTL(x,5,)`) is unprobed (the engine keeps the default).
+Ours: implemented (T-2271).
+Status: VERIFIED
 Tasks: T-2271
 
 ## WEEKNUM of a boolean serial is `#VALUE!` (T-2276)

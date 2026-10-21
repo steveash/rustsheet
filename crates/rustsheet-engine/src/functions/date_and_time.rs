@@ -404,70 +404,33 @@ impl Model {
         error_as: Error,
         cell: CellReferenceIndex,
     ) -> Result<[bool; 7], CalcResult> {
-        // Default: Saturday-Sunday weekend (pattern 1)
-        let mut weekend = DEFAULT_WEEKEND;
-        match value {
-            CalcResult::Number(n) => {
-                let code = n.trunc() as i32;
-                if (n - n.trunc()).abs() > f64::EPSILON {
-                    return Err(CalcResult::new_error(
-                        Error::NUM,
-                        cell,
-                        "Invalid weekend".to_string(),
-                    ));
-                }
-                weekend = match WeekendPattern::try_from(code) {
-                    Ok(pattern) => pattern.to_mask(),
-                    Err(_) => {
-                        return Err(CalcResult::new_error(
-                            Error::NUM,
-                            cell,
-                            "Invalid weekend".to_string(),
-                        ))
-                    }
-                };
-                Ok(weekend)
-            }
+        // A number weekend truncates (3.9 is 3), a boolean is 1 or 0, and a blank cell is 0, which
+        // is `#NUM!` like FALSE; only an omitted or empty argument is the default weekend
+        // (probes/weekend-number-coercion; dates.md "weekend number coercion").
+        let invalid = |error| CalcResult::new_error(error, cell, "Invalid weekend".to_string());
+        let code = match value {
+            CalcResult::Number(n) => n.trunc() as i32,
+            CalcResult::Boolean(b) => i32::from(*b),
+            CalcResult::EmptyCell => 0,
+            CalcResult::EmptyArg => return Ok(DEFAULT_WEEKEND),
             CalcResult::String(s) => {
-                if s.len() != 7 {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Invalid weekend".to_string(),
-                    ));
+                if s.len() != 7 || !s.chars().all(|c| c == '0' || c == '1') {
+                    return Err(invalid(Error::VALUE));
                 }
-                if !s.chars().all(|c| c == '0' || c == '1') {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Invalid weekend".to_string(),
-                    ));
+                let mut weekend = [false; 7];
+                for (day, ch) in weekend.iter_mut().zip(s.chars()) {
+                    *day = ch == '1';
                 }
-                weekend = [false; 7];
-                for (i, ch) in s.chars().enumerate() {
-                    weekend[i] = ch == '1';
-                }
-                Ok(weekend)
+                return Ok(weekend);
             }
-            CalcResult::Boolean(_) => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Invalid weekend".to_string(),
-            )),
-            CalcResult::Error { .. } => Err(CalcResult::new_error(
-                error_as,
-                cell,
-                "Invalid weekend".to_string(),
-            )),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(weekend),
+            CalcResult::Error { .. } => return Err(invalid(error_as)),
             CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                Err(CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid weekend".to_string(),
-                })
+                return Err(invalid(Error::VALUE));
             }
-        }
+        };
+        WeekendPattern::try_from(code)
+            .map(WeekendPattern::to_mask)
+            .map_err(|_| invalid(Error::NUM))
     }
 
     /// The serial of the model clock's now in the optional timezone argument of TODAY / NOW (the
