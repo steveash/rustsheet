@@ -3,12 +3,12 @@ id: T-1592
 title: "Fit YIELD's Newton start: a frequency-independent first iterate"
 milestone: M9
 lane: research
-status: todo
+status: blocked
 priority: P2
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2187]
+depends_on: [T-2187, T-2304]
 ---
 
 ## Goal
@@ -59,6 +59,13 @@ It returns the iterate after the first step below about 7e-6 (the cut lies betwe
 financial.md "YIELD stops short of PRICE's root" has the T-2187 paragraph. Next hypothesis: fit the start S as a
 function of rate, price and the basis's time to maturity (it moves with price, column E, and with basis 1/3 against
 0/4, column D, but not with redemption or frequency), then this step-size stop.
+
+## Blocked because
+Blocked because: needs T-2304 (YIELD probe cells across coupon rate and term). Second round (2026-10-21): the basis
+moves the start as days over 360 or 365 do (lab test), but none of six frequency-free start models raises the lab
+fit past the best candidate (Newton from 0.1 to 1e-12, 4/178 bit-exact), and every probe so far fixes the rate at
+0.05 and one set of dates, so a start formula in rate and term cannot be tested. Candidates and counts:
+financial.md "YIELD stops short of PRICE's root", T-1592 second round. Unblock when T-2304 is done.
 
 ## Visible-parity stage
 Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
