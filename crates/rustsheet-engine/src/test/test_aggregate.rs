@@ -128,6 +128,7 @@ fn subtotal_product_over_no_numbers_is_zero() {
     model._set("A1", "abc");
     model._set("A2", "?b");
     model._set("B1", "=SUBTOTAL(6,A1:A2)");
+    // 106 is a hand expectation (same code path as 6), not oracle-verified.
     model._set("B2", "=SUBTOTAL(106,C1:C3)");
     model._set("B3", "=PRODUCT(A1:A2)");
     model._set("D1", "3");
