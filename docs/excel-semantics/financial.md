@@ -642,12 +642,12 @@ the product would lose its digits there. For example, `CUMPRINC(1E10,32,1,1,25,0
 -9.99999999300011E-71 in Excel and ...3000182E-71 here, where the product gave -9.999888696826292E-71.
 The other cells of that kind are `(1E10,32,1,1,10,0)` -9.999999978000387E-221, `(1E10,31.5,1,1,20,0)`
 -9.999999988500136E-116, and `CUMPRINC(1E10,40,1,1,20,0)` and `(…,15,20,0)` -9.999999980000501E-201
-(ours ...0004E-201, exact ...0000E-201): probes/fin-cumipmt-overflow-and-forms A20-A24, excel-graph
+(ours ...0004E-201 for A23 and ...0572E-201 for A24, exact ...0000E-201): probes/fin-cumipmt-overflow-and-forms A20-A24, excel-graph
 2026-10-21. Their last digits are T-2192's.
 The closed form gets H6, H22 and H25 to the bit ( `CUMPRINC(0.01,360,100000,1,12,0)` -362.8793467231003, Excel
 -362.8793467231). The PPMT sum it replaces lost a small principal's digits (H5 8 right, H7 7). The
 interest keeps the IPMT sum up to 32 periods.
-Status: PARTLY VERIFIED (excel-graph; CUMPRINC visibly right but for A2, A6, A16 and
+Status: PARTLY VERIFIED (excel-graph; CUMPRINC visibly right but for A2, A6, A16, A20-A24 and
 CUMPRINC_CUMIPMT.xlsx H26; CUMIPMT's remaining
 visible misses in T-2192, the short sums' last digits in T-1374)
 Tasks: T-1845, T-1890, T-2192, T-1374

@@ -83,7 +83,9 @@ fn extreme_values_from_cells_are_values_without_a_panic() {
         ("A1", "=CUMIPMT(Z1,Z2,Z3,1,Z2,0)", "-5.819767068693264E299"),
         ("A2", "=CUMPRINC(Z4,Z2,Z1,1,Z2,1)", "-1E-300"),
         ("A3", "=CUMPRINC(Z6,Z7,Z3,1,Z7,0)", "-9.999999999999999E299"),
-        // Unprobed: a payment that overflows is #NUM!, as main's was.
+        // A payment that overflows: CUMIPMT is #NUM! as in Excel (probes/fin-cumipmt-overflow-and-forms
+        // A1, A3). Excel's CUMPRINC is -1E300 there (A2); this pins today's #NUM!, a known miss.
+        // TODO(T-2192): CUMPRINC of an overflowing payment.
         ("A4", "=CUMIPMT(Z2,Z5,Z3,1,Z5,0)", "#NUM!"),
         ("A5", "=CUMPRINC(Z2,10,Z3,1,10,1)", "#NUM!"),
         (

@@ -73,7 +73,7 @@ Eval:
   digits; T-2192).
 - No regressions.
 Visible parity: every CUMPRINC cell of the four cases is within half a unit of the 15th
-significant digit, except H26 (2 ulps on -3.3E-21), A2 and A6. CUMIPMT's visibly-off cells are G2,
+significant digit, except H26 (2 ulps on -3.3E-21), A2, A6, A16 and A20-A24. CUMIPMT's visibly-off cells are G2,
 G4, G7, G31, A7, A9-A11, A18, K3, A5 and the new A12, all interest. Follow-up T-2192 (campaign
 visible) takes these, A16 and the three CUMPRINC exceptions, so the criterion "the cells above pass" is
 met only in part here. A large rate over a short range (A15-A19) keeps main's values: the
