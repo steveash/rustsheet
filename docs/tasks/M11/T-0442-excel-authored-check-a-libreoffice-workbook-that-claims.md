@@ -3,7 +3,7 @@ id: T-0442
 title: "Excel-authored check: a LibreOffice workbook that claims Microsoft Excel is not Excel evidence (poi/clone_sheet.xlsx)"
 milestone: M11
 lane: harness
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -48,3 +48,13 @@ known failures.
 - Oracle-filling clone_sheet.xlsx from excel-graph (after this change `rustsheet-eval cases` lists it as
   pending, so a later fill can try; Excel may refuse the `(-4,3)` formula).
 - corpus-bench, whose expectations come from excel-graph sidecars (decision 0030), not cached values.
+
+## Outcome
+`WorkbookSnapshot` now records `xl/workbook.xml` `fileVersion appName` (`file_app_name`, serde default) and
+`is_excel_authored` is false when it is present and not `xl`; unit test with a `Calc` workbook claiming
+Microsoft Excel (`a_calc_workbook_claiming_excel_is_not_excel_authored`). The rule is in
+docs/research/test-suites-and-oracle.md. Eval delta: poi known failures 181 -> 142 (39 F lines and the C line of
+poi/clone_sheet.xlsx leave eval/baseline/poi.txt, which has no other change; the case is now pending, no cell
+regressed). Updated with `rustsheet-eval update-baseline --suite poi` because `make eval-baseline` also bakes in a
+probes drift that is already on main (probes 1632 -> 1633, 2 new-coverage failures, same with this change stashed);
+follow-up filed for it if the steward does not already have one.

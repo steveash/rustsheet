@@ -192,10 +192,17 @@ Tasks: T-0936 (implemented)
 Rule: literals may sit between `E+`/`E-` and the exponent digits; the exponent sign is printed
 next to the digits, after the literal, and a zero mantissa prints "0.": `|#.#|E+|#|` → "|1.2|E|+5|"
 (A41) and "|0.|E|+0|" for 0 (A137); `E-` omits a positive sign: "|1.2|E|5|" (A40), "|1.2|E|-5|"
-(A96).
-Evidence: poi/NumberFormatApproxTests.xlsx A40, A41, A96, A97, A136, A137, A176, A177, A216, A217.
+(A96). The `E` stays where the format puts it; only the sign moves to the digits.
+- The zero-mantissa digit also shows in a cell's displayed text: `#E+0` on 0 displays "0E+0", not "E+0"
+  (gen-m10/5eb95c63c7d6180c F!G13, gen-m10/71ad5f93362f4ff4 F!V19). The minus of a negative number still leads
+  everything ("-|1.2|E|5|", A176).
+Evidence: poi/NumberFormatApproxTests.xlsx A40, A41, A96, A97, A136, A137, A176, A177, A216, A217
+(excel-graph); gen-m10 cells above (excel-graph).
+Ours: `formatter/parser.rs` pushes the `E` as a literal at the format's `E+`/`E-`; `formatter/format.rs`
+prints the sign before the first exponent digit and a `0` for the last `#` integer placeholder of a zero
+mantissa (T-0937).
 Status: VERIFIED
-Tasks: T-0937
+Tasks: T-0937 (implemented)
 
 ## `TEXT(x,"General")` uses an 11-character fixed-notation limit
 Rule: General prints fixed notation, with at most 9 decimals ("0." plus 9 decimals is 11
@@ -447,7 +454,8 @@ Rule: excel-graph's `Range.text` is the cell's value under its number format, an
 depend on the column width. At width 4 a General `12345678` stays "12345678" and `=1/3` stays
 "0.333333333" (the 11-character General rule of `TEXT(x,"General")`, not a width-fitted
 shortening), and text is not cut ("long text"). A number a date format cannot show (a negative date
-serial) is 255 `#` characters, not a width-sized `####`. The other probed cells:
+serial; more cases in "Displayed text over an edge-value pool" below) is 255 `#` characters, not a
+width-sized `####`. The other probed cells:
 General `1.5` "1.5", `1234567890123` "1.23457E+12", `1E-10` "1E-10"; `0.00` on PI() "3.14";
 `#,##0.00` on -1234.5 "-1,234.50"; `0%`/`0.0%` on 0.256 "26%"/"25.6%"; `yyyy-mm-dd` on 45000
 "2023-03-15"; `m/d/yyyy h:mm` on 45000.75 "3/15/2023 18:00"; `0.00;(0.00)` on -5 "(5.00)";
@@ -458,9 +466,12 @@ Evidence: probes/displayed-text-formats S!A1:A24, B1:B4 (excel-graph `text`, 202
 Desktop `.Text` does depend on the width (`####` when a number does not fit), unprobed here: the
 excel-graph text is what the M10 suite scores (decision 0068).
 Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030), "1,234" for
-`TEXT(1234.5,"#,##0")` (a value failure too) and `#VALUE!` for the negative date (both T-1711).
+`TEXT(1234.5,"#,##0")` (a value failure too: Excel rounds the 15-digit decimal half away from zero,
+as General and ROUND do; ours rounds an exact binary tie to even, T-2206).
+Implemented in: formatter/formatted.rs (`Formatted::displayed`: every serial the formatter rejects as a
+date, where TEXT is `#VALUE!`, displays 255 `#`; T-1711).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1610, T-1711, T-2030
+Tasks: T-1610, T-1711, T-2030, T-2206
 
 ## Displayed text over an edge-value pool (T-1611)
 Rule: suite gen-m10 records Excel's displayed text (`Range.text`) of 135 format codes (every built-in,
@@ -475,9 +486,9 @@ TEXT() with the same codes. Points the earlier probes did not show:
   elapsed code does not: `[s]` on -1.5 is "-129600" and on 1E15 "86400000000000000000" (see
   "Elapsed-time tokens"). TEXT() on the same codes is `#VALUE!` exactly where the display is 255 `#`;
   every other paired TEXT() result equals the displayed text.
-- A fraction whose numerator overflows is 255 `#` too: `?/100` on 1000, 999.9999 and 1234567890
-  (numerator 100000 and up; 99.5 is "9950/100"), `?/?` on 123456789012345 and 1E15 while 1234567890
-  is "1234567890/1". The threshold is unprobed (T-1740).
+- A fraction whose numerator overflows is 255 `#` too: `?/100` on 1000, 999.9999 and 1234567890,
+  `?/?` on 123456789012345 and 1E15 while 1234567890 is "1234567890/1". The thresholds: "Fraction
+  formats", "A numerator that overflows".
 - Clock and date fields come from the serial rounded to the shown second: 0.9999999999 is "0:00"
   under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
 - `mm:ss` with no hour is minutes: 123456.789 is "56:10".
@@ -492,15 +503,24 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - `[$USD]` is currency text ("-1.50 USD") and `[Cyan]` a color.
 - Engineering and padded mantissas: `##0.0E+0` on 123456.789 is "123.5E+3", `00.0E+0` on 36.5
   "36.5E+0", `0.000E-00` on 1.5 "1.500E00".
+- Rule (T-1730, implemented for the exponent only): the exponent is the decimal exponent rounded down to a
+  multiple of the integer-placeholder count (`##0.0E+0` on 61 "61.0E+0"); a zero exponent prints `E+00`
+  (never `E-00`) and `E00` under `E-`. The group size for grouped codes (`#,##0.0E+0`) is unprobed.
+- Not implemented (VERIFIED, gen-m10): the mantissa is rounded after the shift (`##0.0E+0` on 1/3
+  "333.3E-3", `##0.00E+00` "333.33E-03"; T-2226); zero prints all integer placeholders (`##0.0E+0` on 0
+  "000.0E+0", `##0.00E+00` "000.00E+00", `#E+0` "0E+0") and a carry renormalises (`0.0E+00` on 99.5
+  "1.0E+02") (T-2227).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
-Not implemented: ours passes 6,961 of 10,400 text cells (66.9%). Fill characters (T-1735),
-out-of-range dates (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
+Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every serial the formatter
+rejects as a date (TEXT `#VALUE!`) displays 255 `#`.
+Not implemented: ours passes 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
+clock and elapsed-with-clock codes past 2958465.99999, which still format (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
-scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), round-half (T-1711), the sign of -0.5 (T-1129),
+scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), round-half (T-2206: `0`, `#,##0`, `0%`, `"("0")"` ... on 2.5, -2.5, 36.5, 0.125 and 12.345 are "3", "-3", "37", "13%" and "1235%", half away from zero on the 15-digit decimal), the sign of -0.5 (T-1129),
 fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
-Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030
+Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030, T-2206
 
 ## Fraction formats
 Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells named by case-id prefix):
@@ -533,7 +553,29 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   "1234567890", 039accab K8, K2). Under a `#` numerator the literal between the integer and the
   fraction goes too when either side prints nothing ("1/2", not " 1/2"; "1234567890" with no
   trailing blanks), yet stays when both print (`# #/#` on 1.5 "1 1/2").
-- A numerator that overflows is 255 `#` ("Displayed text over an edge-value pool" above, T-1740).
+- **A numerator that overflows** is 255 `#` as displayed text and `#VALUE!` from TEXT (VERIFIED,
+  probes/fraction-numerator-overflow and -overflow2, excel-graph 2026-10-21, T-1740; cells A<n> of sheet S,
+  TEXT on T). Only a fraction with no integer part overflows. With a fixed denominator the rounded
+  numerator may be at most 32767 (2^15 - 1) in magnitude, whatever the denominator: `?/1` on 32767 is
+  "32767/1" and on 32768 255 `#`; `?/2` 16383.5 / 16384, `?/10` 3276.7 / 3276.8, `?/100` 327.67 / 327.68 and
+  -327.67 / -327.68, `?/1000` 32.767 / 32.768 and `?/16` 2047.9375 / 2048 alike (overflow2 A1-A52). The
+  numerator is the 15-digit rounded one: `?/100` on 327.674 is "32767/100" and on 327.675 255 `#`
+  (A55-A56). With a placeholder denominator (`?/?`, `??/??`, `???/???`) the value may be at most just under
+  2147483647 (2^31 - 1) in magnitude: `?/?` on 2147483646.9 is "2147483647/1", on 2147483647, 2147483647.5,
+  -2147483647 and 2147483648 255 `#`; -2147483646 is "-2147483646/1" (overflow A43-A64, overflow2 A58-A64).
+  A whole part takes the rest: `# ?/100` on 1E15 is "1000000000000000      ", `# ?/?` on 2147483648.5
+  "2147483648 1/2" and `0 ?/10` on 1E14+0.5 "100000000000000 5/10" (overflow A37-A42, A74-A76).
+  Implemented in `format_fraction` (formatter/fraction.rs). UNVERIFIED: the engine applies both bounds to the
+  value after `%` and `,` scaling, and the fixed bound to denominators past 32767; neither is probed (T-2233).
+- **Placeholder fractions past 2^30** are not the last convergent (VERIFIED, excel-graph 2026-10-21, T-1740,
+  probe cells kept out of the suites until the follow-up implements them; T-2233): `?/?` on 1073741824.5 is
+  "1073741825/1" (not 2147483649/2), -1073741824.5 "-1073741825/1", 1431655765.5 "1431655766/1",
+  1610612735.5 "1610612736/1", 2147483646.5 "2147483647/1", 1073741824.25 and 1073741823.75 "1073741824/1",
+  1E9+0.25 "1000000000/1", 2147483646.4 "2147483646/1", yet 2147483646.6 "4294967293/2" (not 10737418233/5)
+  and 715827882.5 "1431655765/2", 5E8+0.25 "2000000001/4"; `??/??` on 2147483646.5 "2147483647/1 " and on
+  1073741824.5 "1073741825/1 ". No bound on the numerator or on the denominator times the value fits every
+  cell (4294967293/2 is refused for 2147483646.5 and taken for 2147483646.6). The engine prints the
+  convergent.
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
@@ -566,9 +608,31 @@ B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
   two digits, zero padded to two: 1.5 "3/02", -0.5 "-1/02", 0 "0/01", 1.99 "197/99", 1 "1/01", 0.5 "1/02",
   1234.5 "2469/02" (B13:I13); `# ?/00` on 1.5 "1 1/02", 1.99 "1 98/99", 1 "1     " (B14:G14).
 Ours: fixed denominators are implemented as above (T-2029, formatter/fraction.rs), in TEXT and the displayed text.
-Mismatches with the probes (42 of 128 cells; the other 86 match, including currency, literals and `%`) are filed as
-T-2072 (`,` after the denominator), T-2073 (`0` numerator placeholders, minus and separator under `#`/`0`) and T-2074
-(`00` denominator, the `?/100` minus and the grouped integer). Placeholder denominators are implemented as above
+Mismatches with the probes (18 of 128 cells after T-0982, which fixed T-2073 and the `00` padding) are filed as
+T-2072 (`,` after the denominator) and T-2074 (the minus of `?/100` and `?/00` on a tiny negative, `?/100` on
+1234.5, the grouped integer). Placeholder denominators are implemented as above
 (T-2030). An overflowing numerator still prints in full (T-1740).
-Status: VERIFIED (Excel for the web)
+Literals between the parts (poi/NumberFormatTests.xlsx Tests!A120:A332, desktop Excel cached values, Mac Excel
+16.0; `=TEXT(Cn, Bn)` with `|` literals around each code; a 3×3×3 matrix `|I\:N=/=D|` of integer, numerator and
+denominator kinds over 0, ±0.75, ±1, T-0982):
+- **Literals may stand on either side of the `/`** (`=/=`, `\:`, quoted text, `_x`): the numerator is the last run of
+  placeholders before the `/`, the denominator the first after it: `|#\:#=/=#|` on 23.75 "|23:3=/=4|" (A134);
+  `|#_#/#|` on 3.75 "|15 /4|" (A165: `_#` is a space, so there is no integer part).
+- **`0` in a placeholder denominator pads on the left**: `|#\:? ?0#/000` on 23.75 "|2:3  03/004" (A160); `?` pads
+  on the right as before.
+- **A zero numerator prints when the numerator has a `0`**: `|#\:0=/=#|` on 1 "|1:0=/=1|" (A258); on 0 the
+  integer is dropped under `#` with its separator ("|0=/=1|", A204) and prints under `?` or `0` ("|0:0=/=1|",
+  A213, A224).
+- **Otherwise a zero numerator blanks the fraction**: into spaces of its full width, separator and literals
+  included, under a `?` numerator, a `?` integer or a `?` in the denominator (`|#\:#=/=?|` on 1 "|1      |",
+  A253; `|?\:#=/=#|` A261); into nothing, separator included, when all of them are `#` or `0`
+  (`|#\:#=/=#|`, `|#\:#=/=0|`, `|0\:#=/=#|` on 1 "|1|", A252, A254, A270).
+- **The separator after a zero integer** prints under a `0` integer ("|0:3=/=4|", A243), turns into spaces under a
+  `?` integer ("|  3=/=4|", A234) or under a `#` integer before a `?` numerator ("| 3=/=4|", A228), and is dropped
+  under a `#` integer otherwise ("|3=/=4|", A225, A231). Literals between integer placeholders always print
+  (`|#-#-#\:#/#|` on 0.75 "|--3/4|", A129).
+Ours: implemented in formatter/parser.rs (`is_fraction_literal`) and formatter/fraction.rs (T-0982); all 325 cells pass.
+Unprobed engine choices (T-2209): a mixed `0`/`?` denominator puts its zeros left and spaces right; plain spaces or quoted
+text around the `/` also make a fraction; a `/` with no denominator after its literals stays a literal.
+Status: VERIFIED (Excel for the web; desktop Mac Excel cached values for the literals between the parts)
 Tasks: T-1611, T-2029, T-2030, T-1740, T-0982, T-2061, T-2072, T-2073, T-2074

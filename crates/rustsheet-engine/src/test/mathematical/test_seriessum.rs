@@ -77,3 +77,30 @@ fn test_seriessum_overflow_num_error() {
     model.evaluate();
     assert_eq!(model._get_text("B1"), "#NUM!");
 }
+
+#[test]
+fn test_seriessum_drops_blank_coefficient_cells() {
+    // Excel: B2 is skipped and B4 takes power 1, so 42 + 2.5*97^0.5 + 2*97 (gen-m5/34f69d858a39f497
+    // Calc!A170, 260.6221445044903); reading the blank as a 0 term would give 2*97^1.5.
+    let mut model = new_empty_model();
+    model._set("B1", "42");
+    model._set("B3", "2.5");
+    model._set("B4", "2");
+    model._set("C1", "=SERIESSUM(97,0,0.5,B1:B4)");
+    model._set("C2", "=SERIESSUM(97,0,0.5,{42,2.5,2})");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), model._get_text("C2"));
+    assert_eq!(model._get_text("C1"), "260.6221445");
+}
+
+#[test]
+fn test_seriessum_overflowing_term_beats_a_later_text_cell() {
+    // Excel: the first term overflows, so #NUM! before the text in A2 is read
+    // (gen-m5/6b831f5e2a20bc34 Calc!A130).
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "x");
+    model._set("B1", "=SERIESSUM(64,1E+15,0,A1:A2)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#NUM!");
+}
