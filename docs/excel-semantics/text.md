@@ -560,7 +560,7 @@ gen-m5/ecd1b828aebad1e8 Calc!A60 (T-2152); the array lift is in arrays.md (T-216
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
 Unprobed: a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
-when only their first characters agree.
+when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
 Status: VERIFIED (excel-graph); T-2152 implemented (first-character separators, empty text); VALUE-like parsing not implemented (T-2151).
 
 ## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)
