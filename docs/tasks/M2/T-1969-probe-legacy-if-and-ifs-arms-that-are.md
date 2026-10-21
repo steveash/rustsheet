@@ -3,7 +3,7 @@ id: T-1969
 title: "Probe legacy IF and IFS arms that are other references (name, OFFSET, INDEX, a : range)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ row 12), `SUM(IF(TRUE,Rng))` with a defined name Rng = B1:B6, `SUM(IF(TRUE,OFFSE
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/legacy-if-arm-other-references` (excel-graph, 2026-10-21): in a legacy formula a defined name for a range, OFFSET, INDEX, a `:` range operation, and IFS's value arms all pass whole like a bare range (no `@`; `=IFS(TRUE,B1:B6)` shows `=@IFS(TRUE,B1:B6)`). `is_range_arm`/`is_reference_arm`/`returns_range_arm` in static_analysis/legacy.rs now cover them; the new case passes 22/22 (16 cells were failing). references.md updated.

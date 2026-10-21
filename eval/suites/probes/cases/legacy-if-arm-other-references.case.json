@@ -1,0 +1,71 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1969: a legacy (no cm) IF/IFS arm that is a reference other than a bare range: defined name Rng = B1:B6, OFFSET, INDEX, a `B1:INDEX(..)` range operation, and IFS value arms. Row 2 on the range's rows, row 10 off them; row 12 shows row 2's formula text. B1:B6 = 1,2,3,1,2,3, C1:C6 = 10,20,30,10,20,30. Z10 = B1:B6*1 proves the formulas stayed legacy.",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "names": {
+    "Rng": "=Sheet1!$B$1:$B$6"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 1,
+        "C1": 10,
+        "B2": 2,
+        "C2": 20,
+        "B3": 3,
+        "C3": 30,
+        "B4": 1,
+        "C4": 10,
+        "B5": 2,
+        "C5": 20,
+        "B6": 3,
+        "C6": 30,
+        "D2": "=SUM(IF(TRUE,Rng))",
+        "D10": "=SUM(IF(TRUE,Rng))",
+        "D12": "=FORMULATEXT(D2)",
+        "E2": "=SUM(IF(TRUE,OFFSET(B1,0,0,6)))",
+        "E10": "=SUM(IF(TRUE,OFFSET(B1,0,0,6)))",
+        "E12": "=FORMULATEXT(E2)",
+        "F2": "=SUM(IF(TRUE,INDEX(B1:C6,0,1)))",
+        "F10": "=SUM(IF(TRUE,INDEX(B1:C6,0,1)))",
+        "F12": "=FORMULATEXT(F2)",
+        "G2": "=SUM(IF(TRUE,B1:INDEX(B1:B6,6)))",
+        "G10": "=SUM(IF(TRUE,B1:INDEX(B1:B6,6)))",
+        "G12": "=FORMULATEXT(G2)",
+        "H2": "=SUM(IFS(TRUE,B1:B6))",
+        "H10": "=SUM(IFS(TRUE,B1:B6))",
+        "H12": "=FORMULATEXT(H2)",
+        "I2": "=MATCH(3,IFS(TRUE,B1:B6),0)",
+        "I10": "=MATCH(3,IFS(TRUE,B1:B6),0)",
+        "I12": "=FORMULATEXT(I2)",
+        "J2": "=IFS(TRUE,B1:B6)",
+        "J10": "=IFS(TRUE,B1:B6)",
+        "J12": "=FORMULATEXT(J2)",
+        "Z10": "=B1:B6*1"
+      },
+      "legacy_formulas": [
+        "D2",
+        "D10",
+        "E2",
+        "E10",
+        "F2",
+        "F10",
+        "G2",
+        "G10",
+        "H2",
+        "H10",
+        "I2",
+        "I10",
+        "J2",
+        "J10",
+        "Z10"
+      ]
+    }
+  ],
+  "expected": {}
+}

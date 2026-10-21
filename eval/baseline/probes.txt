@@ -461,6 +461,7 @@ C	probes/legacy-array-at-shapes.case.json	40
 C	probes/legacy-array-result.case.json	46
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-choose-array-index.case.json	12
+C	probes/legacy-if-arm-other-references.case.json	22
 C	probes/legacy-if-arm-range-argument-b.case.json	43
 C	probes/legacy-if-arm-range-argument.case.json	73
 C	probes/legacy-index-array-index.case.json	30

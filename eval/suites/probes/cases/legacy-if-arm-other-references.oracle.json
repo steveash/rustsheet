@@ -1,0 +1,103 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "D10": {
+    "t": "n",
+    "v": 12.0
+   },
+   "D12": {
+    "t": "s",
+    "v": "=SUM(IF(TRUE,Rng))"
+   },
+   "D2": {
+    "t": "n",
+    "v": 12.0
+   },
+   "E10": {
+    "t": "n",
+    "v": 12.0
+   },
+   "E12": {
+    "t": "s",
+    "v": "=SUM(IF(TRUE,OFFSET(B1,0,0,6)))"
+   },
+   "E2": {
+    "t": "n",
+    "v": 12.0
+   },
+   "F10": {
+    "t": "n",
+    "v": 12.0
+   },
+   "F12": {
+    "t": "s",
+    "v": "=SUM(IF(TRUE,INDEX(B1:C6,0,1)))"
+   },
+   "F2": {
+    "t": "n",
+    "v": 12.0
+   },
+   "G10": {
+    "t": "n",
+    "v": 12.0
+   },
+   "G12": {
+    "t": "s",
+    "v": "=SUM(IF(TRUE,B1:INDEX(B1:B6,6)))"
+   },
+   "G2": {
+    "t": "n",
+    "v": 12.0
+   },
+   "H10": {
+    "t": "n",
+    "v": 12.0
+   },
+   "H12": {
+    "t": "s",
+    "v": "=SUM(IFS(TRUE,B1:B6))"
+   },
+   "H2": {
+    "t": "n",
+    "v": 12.0
+   },
+   "I10": {
+    "t": "n",
+    "v": 3.0
+   },
+   "I12": {
+    "t": "s",
+    "v": "=MATCH(3,IFS(TRUE,B1:B6),0)"
+   },
+   "I2": {
+    "t": "n",
+    "v": 3.0
+   },
+   "J10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "J12": {
+    "t": "s",
+    "v": "=@IFS(TRUE,B1:B6)"
+   },
+   "J2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "Z10": {
+    "t": "e",
+    "v": "#VALUE!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "8f2dcf7f6dea09b6f1db6f88aea8ee4aee43e156ba6e08e33511137303d90c3e",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-21T18:20:47+00:00",
+  "version": null,
+  "workbook_name": "c571ebefcb4dff358960f6a6c6d815d890c351fb3d4b651f822309dd66e19272.xlsx"
+ }
+}
