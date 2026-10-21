@@ -2,7 +2,8 @@ use super::elapsed::{elapsed_text, ElapsedUnit, FractionalSeconds};
 use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
-    constants::{EXCEL_PRECISION, MAXIMUM_DATE_SERIAL_NUMBER},
+    constants::MAXIMUM_DATE_SERIAL_NUMBER,
+    decimal_round::round_shown_place,
     locale::Locale,
     number_format::{cut_15_digits, to_precision},
     text::Text,
@@ -735,13 +736,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // p.precision is the number of significant digits _after_ the decimal point
             // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";
             // probes-numeric/4f413cc257ce15c4 A23)
-            value = to_precision(
-                value,
-                usize::min(
-                    (p.precision as usize) + format!("{}", value.abs().floor()).len(),
-                    EXCEL_PRECISION,
-                ),
-            );
+            value = round_shown_place(value, p.precision, p.is_scientific);
             let mut value_abs = value.abs();
             let mut exponent_part: Vec<char> = vec![];
             let mut exponent_is_negative = false;
