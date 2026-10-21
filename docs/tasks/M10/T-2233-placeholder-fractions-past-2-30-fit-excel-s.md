@@ -22,7 +22,8 @@ the visible-parity lock refuses new visibly-off cells. Excel does not take the l
 10737418233/5. No bound on the numerator, or on the denominator times the value, fits every cell. Candidate rules to
 test: a relative-error stop, nearest-integer partial quotients, a 32-bit product in Excel's loop.
 Code: `last_convergent` (crates/rustsheet-engine/src/formatter/fraction.rs). Re-probe with the excel-probe skill:
-denser values between 2^29 and 2^31, x.5, x.25, x.75 and x.6, and `???/???`. Commit the probe cells together with
+denser values between 2^29 and 2^31, x.5, x.25, x.75 and x.6, and `???/???`. Probe the T-1740 overflow bounds
+under scaling and a large denominator too (`?/?%`, `?/100,`, `?/40000`), which T-1740 extrapolated without evidence. Commit the probe cells together with
 the fix that makes them pass.
 
 ## Acceptance criteria
