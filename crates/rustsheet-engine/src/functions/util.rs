@@ -426,6 +426,13 @@ impl Model {
                 args,
             } => return self.reference_producer(kind, args, cell),
             Node::FunctionKind {
+                kind: Function::Vstack,
+                args,
+            } => match self.vstack_reference(args, cell) {
+                Some(arg) => return arg,
+                None => self.evaluate_node_in_context(node, cell),
+            },
+            Node::FunctionKind {
                 kind: Function::Index,
                 args,
             } => self.index_reference(args, cell),

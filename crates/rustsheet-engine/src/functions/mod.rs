@@ -2172,6 +2172,9 @@ impl Model {
             Function::SkewP => Self::fn_skew_p,
             Function::Small => Self::fn_small,
         };
+        if let Some(per_element) = kind.per_reference_element(args.len()) {
+            return self.call_per_reference_element(args, per_element, cell, implementation);
+        }
         implementation(self, args, cell)
     }
 }

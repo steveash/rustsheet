@@ -346,6 +346,36 @@ fn criteria_static_result(args: &[Node], first: usize) -> StaticResult {
     broadcast_static_result(args.iter().skip(first).step_by(2))
 }
 
+/// COUNTIF, SUMIF and SUMIFS also call themselves once per element of an array of references in
+/// a range argument (a lifted OFFSET or INDIRECT: SPEC-0014 rule 6, `COUNTIF(OFFSET(A1,{0;1},0),
+/// ">0")` spills 1, 1, probes/reference-lift-consumers E57): a range argument that is a lifted
+/// OFFSET, INDIRECT or TRIMRANGE broadcasts its array shape with the criteria. Anything else does
+/// not: `SUMIF(IF(TRUE,A1:A6),"a",B1:B6)` stays a scalar call (probes/legacy-if-arm-range-argument
+/// U12).
+fn criteria_and_grid_static_result(args: &[Node], first: usize) -> StaticResult {
+    let grids = args.iter().enumerate().filter_map(|(index, arg)| {
+        let range = index < first || (index - first) % 2 == 1;
+        let producer = matches!(
+            arg.ungrouped(),
+            Node::FunctionKind {
+                kind: Function::Offset | Function::Indirect | Function::Trimrange,
+                ..
+            }
+        );
+        match run_static_analysis_on_node(arg) {
+            shape @ StaticResult::Array(..) if range && producer => Some(shape),
+            _ => None,
+        }
+    });
+    broadcast_shapes(
+        args.iter()
+            .skip(first)
+            .step_by(2)
+            .map(run_static_analysis_on_node)
+            .chain(grids),
+    )
+}
+
 // The signature of the functions should be defined only once
 
 // Given a function and a number of arguments this returns the arguments at each position
@@ -650,8 +680,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Product => not_implemented(args),
         Function::Log => scalar_arguments(args),
         Function::Sum => StaticResult::Scalar,
-        Function::Sumif => criteria_static_result(args, 1),
-        Function::Sumifs => criteria_static_result(args, 2),
+        Function::Sumif => criteria_and_grid_static_result(args, 1),
+        Function::Sumifs => criteria_and_grid_static_result(args, 2),
         Function::Isformula => scalar_arguments(args),
         Function::Isomitted => not_implemented(args),
         Function::Isref => not_implemented(args),
@@ -730,7 +760,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Count => not_implemented(args),
         Function::Counta => not_implemented(args),
         Function::Countblank => reference_parameter::countblank_static_result(args),
-        Function::Countif => criteria_static_result(args, 1),
+        Function::Countif => criteria_and_grid_static_result(args, 1),
         Function::Countifs => criteria_static_result(args, 1),
         Function::Maxifs => criteria_static_result(args, 2),
         Function::Minifs => criteria_static_result(args, 2),

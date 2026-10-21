@@ -1,3 +1,4 @@
+use super::ref_lift::may_hand_on_grid;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -7,6 +8,7 @@ use crate::{
     },
     limits::check_stack_size,
     model::Model,
+    reference_operators::{RefArg, RefElement, RefGrid},
 };
 
 impl Model {
@@ -123,5 +125,56 @@ impl Model {
         }
 
         CalcResult::Array(result)
+    }
+
+    /// VSTACK where a reference is taken (SPEC-0014 rule 7): when every argument is an array of
+    /// references, the stacked grid, narrower ones padded with `#N/A` elements, so
+    /// `SUM(VSTACK(OFFSET(A1,{0;1},0)))` reads each element's top-left cell, 101
+    /// (probes/reference-lift-consumers-b2 E225). `None` when an argument cannot be one, which
+    /// is read without evaluating it; otherwise the call's value, as [`Model::fn_vstack`] gives it.
+    pub(crate) fn vstack_reference(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Option<RefArg> {
+        if args.is_empty() || !args.iter().all(may_hand_on_grid) {
+            return None;
+        }
+        let mut grids = Vec::with_capacity(args.len());
+        for arg in args {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Grid(grid) => grids.push(grid),
+                // Not every argument is a grid: the value, as before. The arguments are read
+                // again, as the value form reads them.
+                _ => return Some(RefArg::from(self.fn_vstack(args, cell))),
+            }
+        }
+        let columns = grids.iter().map(|grid| grid.dims().1).max().unwrap_or(1);
+        let rows = grids
+            .iter()
+            .map(|grid| grid.dims().0)
+            .fold(0_usize, usize::saturating_add);
+        if let Some((error, message)) = check_stack_size(rows, columns) {
+            return Some(RefArg::Value(CalcResult::new_error(error, cell, message)));
+        }
+        let mut elements = Vec::with_capacity(rows.saturating_mul(columns));
+        for grid in &grids {
+            let width = grid.dims().1;
+            for row in grid.elements().chunks(width) {
+                elements.extend_from_slice(row);
+                elements.extend(std::iter::repeat_n(
+                    RefElement::Error(Error::NA),
+                    columns - width,
+                ));
+            }
+        }
+        Some(match RefGrid::new(rows, columns, elements) {
+            Some(grid) => RefArg::Grid(grid),
+            None => RefArg::Value(CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "Empty array of references".to_string(),
+            )),
+        })
     }
 }

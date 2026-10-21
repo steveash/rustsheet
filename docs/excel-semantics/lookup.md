@@ -797,8 +797,19 @@ the value view (`GridReading::Values`), SUMPRODUCT through `Model::sumproduct_ar
 CHOOSE (`SUM(IF(TRUE,r))` 101, b1c E69, E73), which their reference reading picks. INDIRECT
 (`Model::indirect_reference`) and TRIMRANGE (`Model::trimrange_reference`) are producers on the same carrier (T-1957;
 shared helpers in lookup_and_reference/ref_lift.rs); TRIMRANGE's array, computed-reference and error sources:
-"TRIMRANGE lifted over an array, a computed reference or an error" below (T-2089). Not yet: the
-per-element callers (T-2064). The pass-through of IF, CHOOSE, LET and a LAMBDA parameter, and OFFSET over a grid:
+"TRIMRANGE lifted over an array, a computed reference or an error" below (T-2089). The
+per-element callers (T-2064): `Function::per_reference_element` lists them and the arguments that take a reference,
+and `Model::call_per_reference_element` (lookup_and_reference/ref_lift.rs, called from `Model::evaluate_function`)
+runs each once per element with the element as an absolute reference in its place (a SUMIF or SUMIFS with several
+grids broadcasts them); COUNTIF, SUMIF and SUMIFS spill by `criteria_and_grid_static_result`. SHEET of a grid is
+one `#N/A` (b1d E101), and VSTACK of grids in a reference position stacks them (`Model::vstack_reference`, b2 E225).
+Unprobed: an error element in a per-element call (ours: the call with that error in the reference's place); a grid
+reached through TAKE or DROP by SUBTOTAL, AREAS or the other per-element callers (ours: the value view).
+DEVIATION (decision 0014, CLAUDE.md directive 5): before any element runs, each element of a per-element call is
+charged one visit (ROW, COLUMN, AREAS, CELL, ISFORMULA, N, T) or the cells of its reference inside the used area
+(SUBTOTAL, COUNTIF, SUMIF, COUNTBLANK; SUMIFS times its criteria pairs) against the shared cell-visit cap of
+criteria.md; past it the call is `#ERROR!` where Excel computes it
+(`SUBTOTAL(9,OFFSET(A:A,0,0,,SEQUENCE(1,1000)))` with A1048576 filled). The pass-through of IF, CHOOSE, LET and a LAMBDA parameter, and OFFSET over a grid:
 "Arrays of references through LET, IF, CHOOSE and OFFSET" below (T-2078).
 Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065, T-2078, T-2089
 
