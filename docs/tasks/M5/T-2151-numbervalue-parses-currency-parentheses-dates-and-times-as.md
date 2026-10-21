@@ -7,6 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
+campaign: visible
 depends_on: [T-2152]
 ---
 
@@ -54,6 +55,11 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 24 in eval/baseli
 - [ ] These 24 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] text.md entry marked implemented.
 - [ ] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
+number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
+criteria above are already the visible-parity stage.
 
 ## Out of scope
 - Array lifting (T-2160).
