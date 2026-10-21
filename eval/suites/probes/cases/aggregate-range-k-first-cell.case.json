@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "AGGREGATE 14-19 with a multi-cell range k (its top-left cell is k) and with a text, error, numeric-text or boolean k, over a full and an empty array; ROWS/INDEX over it and EDATE of it (T-2281).",
+  "description": "AGGREGATE 14-19 with a multi-cell range k (its top-left cell is k), a k that is an error cell under several options, a k a function returns as a reference, and a text, error, numeric-text or boolean k, over a full and an empty array; ROWS/INDEX over it and EDATE of it (T-2281).",
   "tags": [
     "M5",
     "aggregate",
@@ -19,7 +19,9 @@
         "B3": 0.5,
         "B4": 2,
         "C1": "y",
-        "D1": "=NA()"
+        "D1": "=NA()",
+        "E1": "=NA()",
+        "E2": 2
       }
     },
     {
@@ -54,7 +56,22 @@
         "A28": "=AGGREGATE(14,6,Data!A1:A5,\"2\")",
         "A29": "=AGGREGATE(14,6,Data!A1:A5,Data!D1:D2)",
         "A30": "=AGGREGATE(14,6,Data!A1:A5,Data!D1)",
-        "A31": "=AGGREGATE(14,6,Data!C1:C2,Data!D1)"
+        "A31": "=AGGREGATE(14,6,Data!C1:C2,Data!D1)",
+        "C1": "=AGGREGATE(14,4,Data!A1:A5,Data!D1)",
+        "C2": "=AGGREGATE(14,0,Data!A1:A5,Data!D1)",
+        "C3": "=AGGREGATE(14,4,Data!C1:C2,Data!D1)",
+        "C4": "=AGGREGATE(14,0,Data!A1:A5,Data!D1:D2)",
+        "C5": "=AGGREGATE(14,6,Data!A1:A5,OFFSET(Data!B4,0,0))",
+        "C6": "=AGGREGATE(14,6,Data!A1:A5,INDIRECT(\"Data!D1\"))",
+        "C7": "=AGGREGATE(14,6,Data!C1:C2,OFFSET(Data!B1,0,0))",
+        "C8": "=AGGREGATE(14,4,Data!E1:E2,\"x\")",
+        "C9": "=AGGREGATE(14,6,Data!A1:A5,NA())",
+        "C10": "=AGGREGATE(14,6,Data!A1:A5,IF(TRUE,Data!D1))",
+        "C11": "=AGGREGATE(14,4,Data!E1:E2,Data!D1)",
+        "C12": "=AGGREGATE(14,6,Data!A1:A5,INDIRECT(\"Data!B4\"))",
+        "C13": "=AGGREGATE(14,6,Data!A1:A5,IF(TRUE,Data!B4))",
+        "C14": "=AGGREGATE(14,0,Data!C1:C2,Data!D1)",
+        "E1": "=AGGREGATE(14,6,Data!A1:A5,OFFSET(Data!B4,0,0,2,1))"
       }
     }
   ],

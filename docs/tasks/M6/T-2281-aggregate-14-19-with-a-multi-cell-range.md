@@ -38,8 +38,9 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baselin
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
 
 ## Outcome
-Probed (probes/aggregate-range-k-first-cell, excel-graph, 32 cells): AGGREGATE 14-19 coerce k
-before counting the array's numbers (a text k over no numbers is `#VALUE!`, an error k its error),
-a reference k reads its top-left cell, and a referenced error cell as k is `#VALUE!`. New
-`Model::aggregate_k` replaces `top_left_k`. Eval: gen-m6 known failures 172 -> 171
-(03333cc38ec06a14 Calc!A120); the new probe case passes 32/32; no regressions.
+Probed (probes/aggregate-range-k-first-cell, excel-graph, 48 cells): AGGREGATE 14-19 read k as a
+number before the array (a text k is `#VALUE!` and an error k its error even over an array error
+or no numbers), a reference k (written, OFFSET, INDIRECT, IF) reads its top-left cell, and a
+referenced error cell as k is `#VALUE!` under every option. New `Model::aggregate_k` replaces
+`top_left_k`; `fn_aggregate` reads its fourth argument as a picked reference. Eval: gen-m6 known
+failures 172 -> 171 (03333cc38ec06a14 Calc!A120); the new probe case passes 48/48; no regressions.

@@ -125,10 +125,74 @@
    "A9": {
     "t": "e",
     "v": "#VALUE!"
+   },
+   "C1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C11": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C12": {
+    "t": "n",
+    "v": 4.0
+   },
+   "C13": {
+    "t": "n",
+    "v": 4.0
+   },
+   "C14": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C5": {
+    "t": "n",
+    "v": 4.0
+   },
+   "C6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C8": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C9": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "E1": {
+    "t": "n",
+    "v": 4.0
    }
   },
   "Data": {
    "D1": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "E1": {
     "t": "e",
     "v": "#N/A"
    }
@@ -136,10 +200,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "1e4268a9b1d4b28016e4531401d98846f02031250586323dbc7932f740973cb9",
+  "input_sha256": "e206ea6e9e5624887bb229526aada6e0b42b7364aa452adf317ee0e47255073b",
   "kind": "excel-graph",
-  "produced_at": "2026-10-21T22:27:15+00:00",
+  "produced_at": "2026-10-21T22:46:19+00:00",
   "version": null,
-  "workbook_name": "f4d1ee3feee0138ebc1c8f2c39660c06e72f92905e379dbe9989e69d369aff89.xlsx"
+  "workbook_name": "e76246a84de57451d1d8b402427f3c44c1612eeeadf7b413899fbf6768cd7f41.xlsx"
  }
 }
