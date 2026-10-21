@@ -3,7 +3,7 @@ id: T-2266
 title: "YEARFRAC: an out-of-calendar start date is #NUM! before an error in the end date"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,13 +30,16 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 2 in eval/baselin
 | gen-m6/d0c30225243fde60 Calc!A266 | `=YEARFRAC(((Data!A1+Data!D6)-SWITCH(Data!E3,"1.5",Data!E4,Data!E11,Data!E$6,Data!B6)),(NETWORKDAYS.INTL(513...` | "#NUM!" | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] These 2 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] A unit test covers `YEARFRAC(-1,1/0)` (`#NUM!`) and `YEARFRAC(NA(),-1)` (`#N/A`).
-- [ ] dates.md's entry says Ours: implemented (T-2266).
-- [ ] `make check` green; reviewers approve.
+- [x] These 2 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] A unit test covers `YEARFRAC(-1,1/0)` (`#NUM!`) and `YEARFRAC(NA(),-1)` (`#N/A`).
+- [x] dates.md's entry says Ours: implemented (T-2266).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The discount-security functions' error order.
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+YEARFRAC range-checks its start (same serial range on every basis) before reading the end, so an out-of-calendar start is #NUM! even with an error end; an error start keeps its own error. Eval: 2 gen-m6 known failures fixed, no regressions.
