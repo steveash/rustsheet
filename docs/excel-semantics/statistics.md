@@ -1774,7 +1774,7 @@ ironcalc-calc WEIBULL_DIST.xlsx E2 exactly (`WEIBULL.DIST(0.8,1,9,TRUE)` = 0.085
 The re-runs used libm `exp`/`log`, not Excel's EXP and LN kernels, so the bit-level form is still
 open (T-0978).
 Status: a lead from the oracle values (gap triage 2026-10-21), not yet a verified Excel formula.
-Tasks: T-2233 (15 digits), T-0978 (last digits)
+Tasks: T-2239 (15 digits), T-0978 (last digits)
 
 ## Legacy distribution names sweep (T-1047)
 Rule: each legacy name returns exactly the same value or error as its modern equivalent on every paired cell (BETADIST = BETA.DIST cum, BETAINV = BETA.INV, BINOMDIST = BINOM.DIST, CHIDIST = CHISQ.DIST.RT, CHIINV = CHISQ.INV.RT, CHITEST = CHISQ.TEST, CONFIDENCE = CONFIDENCE.NORM, CRITBINOM = BINOM.INV, EXPONDIST = EXPON.DIST, FDIST = F.DIST.RT, FINV = F.INV.RT, FTEST = F.TEST); the aliases need no separate kernel.
