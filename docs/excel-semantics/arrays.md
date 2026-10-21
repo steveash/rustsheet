@@ -307,7 +307,7 @@ gen-m5/6361fdf5993da954 Calc!A378, gen-m5/7d1a5d223624fc70 Calc!A380, gen-m5/d58
 gen-m5/aac6230c2fb40e1e Calc!A213, gen-m5/ae9ed30812c4d62c Calc!A154; consistent with it but not evidence (a scalar `#VALUE!` base): gen-m5/5704666097cbc5b2 Calc!A153.
 Argument kinds (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds, rows 10-27): every argument of all eight
 functions lifts both over an array constant and over a 3x1 range given directly, on rows off the range (`ROWS` is 3 in each
-case; element 2 equals the scalar control). So every argument is `Lift` (arrays and ranges), none is `LiftArrays`; unlike the
+case; element 2 equals the scalar control, a value in every row; ARABIC has one argument, so it has no mixed-shape cell, only row 36). So every argument is `Lift` (arrays and ranges), none is `LiftArrays`; unlike the
 Analysis ToolPak functions (numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes"), no argument refuses a range.
 | Function | Arguments that lift over a range and an array |
 |---|---|
