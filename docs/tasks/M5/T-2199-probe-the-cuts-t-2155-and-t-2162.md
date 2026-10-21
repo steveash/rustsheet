@@ -3,7 +3,7 @@ id: T-2199
 title: "Probe the cuts T-2155 and T-2162 need: REPT, CODE and UNICODE near 255 characters, COMBIN and COMBINA near 2^31"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -47,3 +47,6 @@ functions tasks can then implement the cuts without probing first.
 ## Out of scope
 - Changing the engine (T-2155, T-2162).
 - REPT's 32,767-unit result limit, which is already implemented.
+
+## Outcome
+Added `probes/t2199-text-length-and-combin-cuts` (excel-graph filled). Rules recorded in text.md (255 UTF-16 units; T shares it) and numbers.md (COMBIN number >= 2^31-1; COMBINA n+k-1 >= 2^31-1); T-2155 and T-2162 point at the results. No engine change; failing cells are new-coverage F lines in eval/baseline/probes.txt.

@@ -568,8 +568,14 @@ count: `REPT(REPT("ab",300),0)`, `REPT(REPT("ab",300),3)`, `REPT(REPT("ab",300),
 (gen-m5/033e65b92653f425 Calc!A55) and LENB, PROPER, UPPER, EXACT, FIND and SEARCH take the same 600-character text.
 Evidence (excel-graph, 2026-10-20): gen-m5/6a8bb7cd6d7769ad Calc!A191, gen-m5/8a387c26d182e73c Calc!A228, gen-m5/901e91c09b347914 Calc!A45,
 gen-m5/4d099bea7898ebf1 Calc!A359, gen-m5/ecd1b828aebad1e8 Calc!A1, gen-m5/b237245054b4fedb Calc!A394.
-Unprobed: the exact cut (256 to 600 characters) and whether it counts UTF-16 units.
-Status: VERIFIED (excel-graph) at 600 and 255; not implemented (T-2155).
+Cut (probes/t2199-text-length-and-combin-cuts, excel-graph, T-2199): the limit is 255 UTF-16 units. Text of 254 and 255 "x" works
+in all three (A1, A2, B1-B2, C1-C2: REPT doubles it, CODE and UNICODE give 120) and 256, 257, 300 and 32767 are `#VALUE!`
+(A3-A6, B3-B6, C3-C6). It counts UTF-16 units, not code points: 254 "x" plus `UNICHAR(128512)` is 255 code points but 256
+units (`LEN` 256) and is `#VALUE!` in all three (row 7), as is 255 "x" plus it (row 8). T shares the cut:
+`T(REPT("x",256))` is `#VALUE!` (A12). CLEAN, TRIM, LOWER and LEFT(..,1) take the same 256-character text
+(A9-A11, A13, `LEN` 256 for the first three). `VALUE(REPT("1",256))` is `#VALUE!` (A14), which the probe cannot tell
+from a numeral-length limit.
+Status: VERIFIED (excel-graph); not implemented (T-2155).
 
 ## UNICHAR code point bounds
 Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or

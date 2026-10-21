@@ -1559,8 +1559,12 @@ Tasks: T-0905
 Bound (T-2162): a large `number` is `#NUM!`: `COMBINA(9007199254740992,1)`, `COMBINA(6227020800,10)` (`FACT(13)`),
 `COMBINA(1E+15-0.0001,2)`, `COMBINA(1000000000000107,..)` and `COMBIN(1E+15,0)` (from `COMBIN(1E+15,1E-15)`) are `#NUM!`
 (ours: the coefficient, e.g. 2.4156840630757255E+91), while `COMBINA(25,123456789.123)` and `COMBIN(123456789.123,10)` are
-numbers. So the cut on `number` lies between 1.23E+8 and 6.2E+9 (2^31 is a guess); whether it applies to `n` or to `n+k-1`
-is unprobed. Evidence (excel-graph, 2026-10-20): gen-m5/34f69d858a39f497 Calc!A231, gen-m5/50d8a085335c05e6 Calc!A173,
+numbers. Cut (probes/t2199-text-length-and-combin-cuts A20-A37, B20-B34, excel-graph, T-2199): COMBIN is `#NUM!` when `number` >= 2^31-1
+(2147483647), whatever `k` (0, 1 and 2 all `#NUM!` there; at 2^31-2 they are 1, 2147483646 and 2.3058430038449848E+18),
+and `COMBIN(2^31+1, 2^31+1)` is `#NUM!`. COMBINA is `#NUM!` when `n+k-1` >= 2^31-1, not on `n` alone:
+`COMBINA(2^31-1,0)` is 1 and `COMBINA(2^31-2,1)` is 2147483646, while `COMBINA(2^31-2,2)`, `COMBINA(2^31-1,1)`,
+`COMBINA(2^31-1,2)` and `COMBINA(2^31-10,20)` are `#NUM!`; with k = 0 it is `#NUM!` from `n` = 2^31. Both agree with COMBINA(n,k) being COMBIN(n+k-1,k).
+Evidence (excel-graph, 2026-10-20): gen-m5/34f69d858a39f497 Calc!A231, gen-m5/50d8a085335c05e6 Calc!A173,
 gen-m5/e0087a1fb9a36188 Calc!A379, gen-m5/fc81c2f704bef138 Calc!A265, gen-m5/6b831f5e2a20bc34 Calc!A5; numbers from gen-m5/1b30e4d075b252ea Calc!A213,
 gen-m5/c688ca172fe533dc Calc!A288. Status: OBSERVED; T-2162.
 
