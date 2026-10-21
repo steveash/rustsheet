@@ -34,4 +34,4 @@ row 12), `SUM(IF(TRUE,Rng))` with a defined name Rng = B1:B6, `SUM(IF(TRUE,OFFSE
 -
 
 ## Outcome
-Probe `probes/legacy-if-arm-other-references` (excel-graph, 2026-10-21): in a legacy formula a defined name for a range, OFFSET, INDEX, a `:` range operation, and IFS's value arms all pass whole like a bare range (no `@`; `=IFS(TRUE,B1:B6)` shows `=@IFS(TRUE,B1:B6)`). `is_range_arm`/`is_reference_arm`/`returns_range_arm` in static_analysis/legacy.rs now cover them; the new case passes 22/22 (16 cells were failing). references.md updated.
+Probe `probes/legacy-if-arm-other-references` (excel-graph, 2026-10-21): in a legacy formula a defined name for a range, OFFSET, INDEX, a `:` range operation, and IFS's value arms all pass whole like a bare range (no `@`; `=IFS(TRUE,B1:B6)` shows `=@IFS(TRUE,B1:B6)`). `is_range_arm`/`is_reference_arm`/`returns_range_arm` (moved to static_analysis/if_arm.rs to keep legacy.rs under the size limit) now cover them; the new case passes 22/22 (16 cells were failing). references.md updated.

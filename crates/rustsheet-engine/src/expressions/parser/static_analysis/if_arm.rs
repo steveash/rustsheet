@@ -4,16 +4,15 @@
 use super::Node;
 use crate::functions::Function;
 
-/// Whether `arg` is an arm of IF that is a range, possibly in parentheses, which a legacy formula
-/// passes on whole as IF's result: the `@` goes on the IF where its result is a value
-/// (`=IF(TRUE,B1:B6)` shows as `=@IF(TRUE,B1:B6)`, `=ABS(IF(TRUE,B1:B6))` as
+/// Whether `arg` is a value arm of IF or IFS that is a reference ([`is_range_arm`]), which a legacy
+/// formula passes on whole as the call's result: the `@` goes on the call where its result is a
+/// value (`=IF(TRUE,B1:B6)` shows as `=@IF(TRUE,B1:B6)`, `=ABS(IF(TRUE,B1:B6))` as
 /// `=ABS(@IF(TRUE,B1:B6))`), and none where it is a range argument (`=SUM(IF(TRUE,B1:B6))` is 12
 /// and `=MATCH(3,IF(B1:B6>0,B1:B6),0)` 3 on and off the range's rows, the condition intersected;
 /// probes/legacy-if-arm-range-argument, legacy-match-lookup-array-intersection J2, excel-graph,
 /// T-1935). An operation over the range is still a value (`=MATCH(3,IF(TRUE,@B1:B6+0),0)`), and
-/// so is IFERROR's value (`=MATCH(3,IFERROR(@B1:B6,0),0)`); an OFFSET or INDEX of a range, a `B1:INDEX(..)` range operation and
-/// IFS's value arms pass whole like a range (probes/legacy-if-arm-other-references, T-1969). An explicit `@` on the range is looked through, so the export
-/// keeps it (`SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))`).
+/// so is IFERROR's value (`=MATCH(3,IFERROR(@B1:B6,0),0)`). An explicit `@` on the range is
+/// looked through, so the export keeps it (`SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))`).
 pub(super) fn is_reference_arm(kind: &Function, index: usize, arg: &Node) -> bool {
     is_value_arm(kind, index) && is_range_arm(arg)
 }
@@ -32,7 +31,9 @@ fn is_value_arm(kind: &Function, index: usize) -> bool {
 /// an OFFSET or INDEX of one (a defined name for a range is already a range), or an IF or IFS that
 /// returns one ([`returns_range_arm`]): `=MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)` shows no `@` and
 /// is 3 off the range's rows (probes/legacy-if-arm-range-argument T). An explicit stack keeps the
-/// walk off the call stack: a formula's tree is untrusted input.
+/// walk off the call stack: a formula's tree is untrusted input. Unlike `is_plain_reference`
+/// (legacy.rs, N and T's reads) this accepts OFFSET with any arguments and any INDEX of a range
+/// (probes/legacy-if-arm-other-references E, F, T-1969).
 fn is_range_arm(arm: &Node) -> bool {
     let mut pending = vec![arm];
     while let Some(node) = pending.pop() {

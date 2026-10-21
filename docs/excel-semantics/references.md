@@ -1651,12 +1651,13 @@ row 2 (on the ranges' rows) / row 10 (off them):
   `=INDEX(IF(TRUE,B1:B6,5),3)`, 3 / 3 with no `@`.
 Evidence: probes/legacy-if-arm-range-argument and -b (excel-graph, 2026-10-19, T-1935),
 probes/legacy-match-lookup-array-intersection J2, Y2.
-Engine: `is_reference_arm`, `returns_range_arm` (static_analysis/legacy.rs).
+Engine: `is_reference_arm`, `is_range_arm`, `returns_range_arm` (static_analysis/if_arm.rs; moved out of legacy.rs, T-1969).
 Other reference arms pass whole the same way (T-1969; B1:B6 = 1,2,3,1,2,3, row 2 / row 10, Rng = B1:B6):
 `=SUM(IF(TRUE,Rng))`, `=SUM(IF(TRUE,OFFSET(B1,0,0,6)))`, `=SUM(IF(TRUE,INDEX(B1:C6,0,1)))` and
 `=SUM(IF(TRUE,B1:INDEX(B1:B6,6)))` are 12 / 12 with no `@`. IFS's value arms too:
 `=SUM(IFS(TRUE,B1:B6))` 12 / 12, `=MATCH(3,IFS(TRUE,B1:B6),0)` 3 / 3, and at the root
 `=IFS(TRUE,B1:B6)` shows as `=@IFS(TRUE,B1:B6)` (2 / `#VALUE!`).
+Only `INDEX(B1:C6,0,1)` was probed: an INDEX with row and column numbers (a single cell) is treated the same, unprobed.
 Evidence: probes/legacy-if-arm-other-references (excel-graph, 2026-10-21, T-1969).
 Status: VERIFIED
 Tasks: T-1935, T-1969
