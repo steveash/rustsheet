@@ -770,6 +770,7 @@ C	probes/rich-errors-field.case.json	5
 C	probes/rich-errors-image-array-error-elements.case.json	99
 C	probes/rich-errors-image-array-options.case.json	61
 C	probes/rich-errors-image-grid-error-option.case.json	25
+C	probes/rich-errors-image-grid-error-past-end.case.json	18
 C	probes/rich-errors-image-past-end.case.json	8
 C	probes/rich-errors-image-sizing.case.json	58
 C	probes/rich-errors-image.case.json	15
