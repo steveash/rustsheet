@@ -7,7 +7,11 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{util::array_node_to_calc_result, Function},
+    functions::{
+        lift::{LiftCost, LiftOptions, LiftedArg},
+        util::{array_node_to_calc_result, near_integer_count},
+        Function,
+    },
     model::Model,
     reference_operators::{several_areas_ref, Ranges, RefArg},
 };
@@ -59,14 +63,19 @@ impl LookupIndexArg {
 }
 
 impl Model {
-    /// Reads `lookup_value`, the index and `range_lookup` of VLOOKUP/HLOOKUP in argument order.
-    /// An error in the first two returns at once, unless `range_lookup` is a multi-cell range or
-    /// an array: that still lifts, so each element is the error and the result spills
-    /// (gen-m2/f7e6d351c8538ef5 Calc!A296 and 942bdade381b7537 Calc!A381, T-1468). Which error
-    /// wins when several arguments fail is unprobed.
+    /// Reads `lookup_value`, the index and `range_lookup` of VLOOKUP/HLOOKUP in argument order,
+    /// with `table_error` the `table_array`'s error, if it has one. An error in `lookup_value` or
+    /// the index returns at once, unless `range_lookup` is a multi-cell range or an array: that
+    /// still lifts, so each element is the error and the result spills (gen-m2/f7e6d351c8538ef5
+    /// Calc!A296 and 942bdade381b7537 Calc!A381, T-1468). Arguments fail in the order
+    /// `lookup_value`, `table_array`, index, `range_lookup`, so a table error beats the last two,
+    /// and a lifted `lookup_value` gives each element the table error
+    /// (probes/lookup-argument-edges H66-H123, T-2234). The `lookup_value`'s error beats
+    /// `range_lookup`'s, lifted or not (H30-H51).
     pub(super) fn lookup_head(
         &mut self,
         args: &[Node],
+        table_error: Option<CalcResult>,
         cell: CellReferenceIndex,
     ) -> Result<(CalcResult, LookupIndexArg, CalcResult), CalcResult> {
         let lookup_value = self.evaluate_node_in_context(&args[0], cell);
@@ -79,12 +88,58 @@ impl Model {
         if lookup_value.is_error() && !lifts {
             return Err(lookup_value);
         }
+        if let Some(error) = table_error {
+            let sorted_grid = is_sorted.ok().filter(LiftedArg::is_grid);
+            return Err(self.table_error_each(lookup_value, sorted_grid, error, cell));
+        }
         let index = match index {
             Ok(index) => index,
             Err(error) if lifts => LookupIndexArg::Failed(error),
             Err(error) => return Err(error),
         };
         Ok((lookup_value, index, is_sorted?))
+    }
+
+    /// A failed `table_array` under `lookup_value`: the table's error, or, lifted over an array
+    /// or multi-cell range `lookup_value` or `range_lookup` (`sorted_grid`), that error in each
+    /// element whose `lookup_value` is not an error itself: `VLOOKUP({2;9},1/0,2)` and
+    /// `VLOOKUP(2,1/0,2,{TRUE;FALSE})` spill `#DIV/0!` twice, `VLOOKUP(NA(),1/0,2,{TRUE;FALSE})`
+    /// `#N/A` twice (probes/lookup-argument-edges H120-H124, H336-H352).
+    fn table_error_each(
+        &mut self,
+        lookup_value: CalcResult,
+        sorted_grid: Option<CalcResult>,
+        error: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        // The engine's own `#ERROR!` (a table past the array-size limit, arrays.md "Array results
+        // above 1,048,576 cells are #ERROR!") stops the call: spread over a lifted lookup_value
+        // it would build a grid as large as the one the limit refused.
+        let is_limit = matches!(
+            error,
+            CalcResult::Error {
+                error: Error::ERROR,
+                ..
+            }
+        );
+        let mut criteria = vec![lookup_value];
+        criteria.extend(sorted_grid);
+        if is_limit || !criteria.iter().any(LiftedArg::is_grid) {
+            return error;
+        }
+        self.lift_values(
+            criteria,
+            LiftCost::Unit,
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut |_, values| {
+                if values[0].is_error() {
+                    values[0].clone()
+                } else {
+                    error.clone()
+                }
+            },
+        )
     }
 
     /// Reads the index argument of VLOOKUP/HLOOKUP. A value argument is coerced now, so literal
@@ -151,6 +206,7 @@ impl Model {
     /// Validates the index once the lookup value is found and returns it 0-based. A referenced
     /// cell that is not a number (text, an error) is `#REF!`; an index below 1 is `#VALUE!`, past
     /// `size` or at or below the 32-bit integer minimum is `#REF!` (probes/lookup-index-order, excel-graph).
+    /// A fractional index is floored, snapping up within [`near_integer_count`]'s tolerance.
     pub(super) fn resolve_lookup_index(
         &mut self,
         index: LookupIndexArg,
@@ -173,14 +229,19 @@ impl Model {
                 return Err(invalid_reference())
             }
         };
+        // The index is floored, but a fraction within NEAR_INTEGER_TOLERANCE below an integer
+        // counts as that integer, as in INDEX: `VLOOKUP(1,B1:CW1,2-2^-22)` reads column 2 and
+        // 3.9999999 is past a 3-column table (probes/lookup-index-near-integer, T-2234).
+        let number = near_integer_count(number);
         // -2147483648 is already #REF! while -2147483647 is #VALUE! (probes/lookup-index-shapes
-        // H19-H20, H31-H32); a fractional index near the cut-off is unprobed.
+        // H19-H20, H31-H32), tested after flooring: -2147483647.5 is #REF! and -2147483646.5
+        // #VALUE! (probes/lookup-argument-edges H192, H228).
         if number <= f64::from(i32::MIN) {
             return Err(invalid_reference());
         }
         // In range now, so the cast cannot saturate on the low side; a huge positive index
         // saturates to i32::MAX, which is past any table.
-        let index = number.floor() as i32;
+        let index = number as i32;
         if index < 1 {
             return Err(CalcResult::Error {
                 error: Error::VALUE,
