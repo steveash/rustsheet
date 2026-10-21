@@ -911,7 +911,7 @@ C	probes/t2198-m5-lift-argument-kinds.case.json	104
 C	probes/t2199-text-length-and-combin-cuts.case.json	77
 C	probes/t2200-blank-and-padded-m5-args.case.json	70
 C	probes/t2201-mround-quotient-rounding.case.json	221
-C	probes/t2275-address-bounds.case.json	294
+C	probes/t2275-address-bounds.case.json	298
 C	probes/take-drop-over-ifs-switch-picks.case.json	20
 C	probes/take-drop-trimrange-over-xlookup-b.case.json	14
 C	probes/take-drop-trimrange-over-xlookup.case.json	23
