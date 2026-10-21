@@ -11,6 +11,26 @@ use crate::{
 
 /// `value / significance` with Excel's precision applied, so floating-point noise does not
 /// push an exact multiple over a step boundary.
+/// MROUND of two non-zero, same-signed numbers. Excel rounds the double quotient `|n / m|` up
+/// when its fraction is within 5E-15 of a half (not a 15-digit cut of the quotient) and multiplies
+/// in binary; a zero result is +0 (numbers.md "MROUND rounds the quotient up within 5E-15 of a
+/// half, and multiplies in binary", probes/t2201-mround-quotient-rounding).
+pub(crate) fn mround_value(value: f64, multiple: f64) -> f64 {
+    let quotient = (value / multiple).abs();
+    let floor = quotient.floor();
+    let steps = if quotient - floor >= 0.5 - 5e-15 {
+        floor + 1.0
+    } else {
+        floor
+    };
+    let result = steps * multiple.abs();
+    if result == 0.0 {
+        0.0
+    } else {
+        result.copysign(value)
+    }
+}
+
 fn snap_ratio(value: f64, significance: f64) -> f64 {
     to_excel_precision(value / significance, EXCEL_PRECISION)
 }
