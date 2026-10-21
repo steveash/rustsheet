@@ -44,7 +44,17 @@ Owned cells, probes/m7-lift-take-drop-sortby (T-1960, excel-graph, 2026-10-21; S
 | probes/m7-lift-take-drop-sortby Sheet1!W66 | `(spilled cell)` | <empty> | 2.0 |
 | probes/m7-lift-take-drop-sortby Sheet1!X66 | `(spilled cell)` | <empty> | 20.0 |
 
+gen-m7 cells (T-2225 triage, 2026-10-21): A 1x1 array (BYROW of one cell, MINVERSE of a scalar, a one-cell SCAN, SORT of one cell) in a lifted parameter of SEQUENCE, WRAPROWS, EXPAND and TOCOL: Excel lifts it to one element, ours keeps the whole array (or `#SPILL!`).
+
+Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 6 known-failure lines in eval/baseline/gen-m7.txt, 4 formulas. One line per formula: case, anchor, the anchor formula, Excel vs ours at the first failing cell, then every failing cell (sheet Calc; a range is consecutive cells of one row).
+
+- gen-m7/18b80d3fd292d63a.case.json A1753 `=EXPAND(((0.5/Data!D$6)+2),SCAN(IF(FALSE,"TRUE",Data!D9),Data!D10:D10,_xleta.MAX))`: A1754 Excel <empty>, ours #N/A; cells (1): A1754
+- gen-m7/7307132bb8820f17.case.json A422 `=SEQUENCE(4,2,((100+Data!A$2)*BYROW(Data!D7,LAMBDA(v,v))),(AVERAGE(Data!A4,123456789.123,0.2)*MAX(Data!B5:B6)))`: A422 Excel 100.0, ours #SPILL!; cells (1): A422
+- gen-m7/8044dce50616cfe9.case.json A1780 `=WRAPROWS(Data!D10:D11,1,MINVERSE(SUMPRODUCT(Data!A10:B12)))`: A1781 Excel <empty>, ours 0.3; cells (1): A1781
+- gen-m7/c36ff5f42a1a4d47.case.json A804 `=MAP(TOCOL(Data!B7:E12,1,SORT(Data!$C$4)),Data!A11:C11,LAMBDA(x,v,DAY(1e-15)))`: A804 Excel 0.0, ours #SPILL!; cells (3): A804:C804
+
 ## Acceptance criteria
+- [ ] The 6 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 6 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
 - [ ] The cells above pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures; Sheet1 rows 38-42 still pass.
 - [ ] SPEC-0011 "As built (T-1834)" and the driver comment say the 1x1 rule is gone and cite the probe.
 - [ ] Unit tests: `SEQUENCE({3})` is a 1x1 lifted result; `SEQUENCE(A3:A3)` and `SEQUENCE(A3*1)` keep spilling 3 rows.

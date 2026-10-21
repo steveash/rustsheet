@@ -46,7 +46,17 @@ Owned cells, probes/m7-lift-take-drop-sortby (T-1960, excel-graph, 2026-10-21; S
 | probes/m7-lift-take-drop-sortby Sheet1!R37 | `=COLUMNS(INDEX(UNIQUE(D1:D3,FALSE,{FALSE;FALSE;TRUE}),3,1))` | #VALUE! | 1.0 |
 | probes/m7-lift-take-drop-sortby Sheet1!S37 | `=SUM(INDEX(UNIQUE(D1:D3,FALSE,{FALSE;FALSE;TRUE}),3,1))` | 0.0 | #VALUE! |
 
+gen-m7 cells (T-2225 triage, 2026-10-21): UNIQUE with an array by_col or exactly_once (UNIQUE, SORT, XOR, FILTER or HSTACK results): Excel's later elements are empty (or `#VALUE!` for the 1x2 HSTACK by_col of 8044dce50616cfe9 A1434), ours each call's top-left.
+
+Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 34 known-failure lines in eval/baseline/gen-m7.txt, 4 formulas. One line per formula: case, anchor, the anchor formula, Excel vs ours at the first failing cell, then every failing cell (sheet Calc; a range is consecutive cells of one row).
+
+- gen-m7/2c5ea078f25443a2.case.json A483 `=UNIQUE(Data!D8:D9,UNIQUE(Data!B10:C11,VLOOKUP(Data!$B6,Data!A2:D4,2),("x~*"=3.14159)),(0.3=123456789.123))`: B483 Excel 0.0, ours 0.5; cells (3): B483, A484:B484
+- gen-m7/7307132bb8820f17.case.json A1173 `=UNIQUE(Data!B6:D9,SORT(-Data!A$12),XOR(Data!C11,AND(Data!E1:E12,TRUE),Data!B5:B8))`: B1173 Excel <empty>, ours 0.0; cells (11): B1173:C1173, A1174:C1174, A1175:C1175, A1176:C1176
+- gen-m7/7d67c559ce7536fa.case.json A185 `=UNIQUE(Data!B4:D6,Data!C$8,FILTER(Data!D1:E12,(Data!A1:A12<>(-2.5)),Data!B7:D9))`: B186 Excel 0.0, ours 123456789.123; cells (19): B186, A187:B187, A188:B188, A190:B190, A191:B191, A192:B192, A193:B193, A194:B194, A195:B195, A196:B196
+- gen-m7/8044dce50616cfe9.case.json A1434 `=UNIQUE(SUMPRODUCT((100+42),Data!C8:E8,Data!A8:D12),HSTACK(0.2,1000000000000000.0),(Data!B2<=((-1)/(-0.5))))`: B1434 Excel #VALUE!, ours <empty>; cells (1): B1434
+
 ## Acceptance criteria
+- [ ] The 34 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 34 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
 - [ ] The cells above pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures; rows 24, 35 and 36 still pass.
 - [ ] The rule is one driver option with a unit test (uniform entries, a differing later entry, a differing entry equal to the first after a differing one), documented in SPEC-0011 "Array-valued functions" rule 2.
 - [ ] `make check` green; reviewers approve.
