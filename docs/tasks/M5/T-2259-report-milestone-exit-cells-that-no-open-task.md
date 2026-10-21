@@ -3,7 +3,7 @@ id: T-2259
 title: "Report milestone exit cells that no open task of the milestone owns (decision 0085 item 3)"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
