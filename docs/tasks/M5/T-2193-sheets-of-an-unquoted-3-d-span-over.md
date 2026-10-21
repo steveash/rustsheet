@@ -3,7 +3,7 @@ id: T-2193
 title: "SHEETS of an unquoted 3-D span over cell-like sheet names (S1:S3!A1) gives #VALUE!"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
