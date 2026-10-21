@@ -23,9 +23,9 @@ else (row fields?). GROUPBY's and the row sort's rules: docs/excel-semantics/arr
 (sort_order past the keys). Code: `Model::sort_order` (groupby.rs), called by `Model::pivotby_args`.
 
 ## Acceptance criteria
-- [ ] Probe col_sort_order 2, 3, -3, 4 with one and two column fields and one, two and three value columns
+- [x] Probe col_sort_order 2, 3, -3, 4 with one and two column fields and one, two and three value columns
   (and the row sort for contrast); record the rule in arrays.md.
-- [ ] S!A73 and the new probe cells pass; `make check` green; reviewers approve.
+- [x] S!A73 and the new probe cells pass; `make check` green; reviewers approve.
 
 ## Out of scope
 - Sort semantics once the index is valid.
