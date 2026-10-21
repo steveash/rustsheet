@@ -81,3 +81,26 @@ fn test_chooserows_out_of_range() {
     model.evaluate();
     assert_eq!(model._get_text("C1"), "#VALUE!");
 }
+
+// T-2273: an error in any argument beats the #VALUE! of an out-of-range index, wherever it sits.
+#[test]
+fn test_chooserows_error_argument_beats_out_of_range_index() {
+    let mut model = new_empty_model();
+    model._set("C1", "=CHOOSEROWS(A1:B2,9,NA())");
+    model._set("C2", "=CHOOSEROWS(A1:B2,0,1,1/0)");
+    model._set("C3", "=CHOOSEROWS(A1:B2,9)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#N/A");
+    assert_eq!(model._get_text("C2"), "#DIV/0!");
+    assert_eq!(model._get_text("C3"), "#VALUE!");
+}
+
+#[test]
+fn test_choosecols_error_argument_beats_out_of_range_index() {
+    let mut model = new_empty_model();
+    model._set("C1", "=CHOOSECOLS(A1:B2,0,1/0)");
+    model._set("C2", "=CHOOSECOLS(A1:B2,9,NA(),1/0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#DIV/0!");
+    assert_eq!(model._get_text("C2"), "#N/A");
+}

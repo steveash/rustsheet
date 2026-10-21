@@ -3,7 +3,7 @@ id: T-2273
 title: "CHOOSEROWS/CHOOSECOLS: an error argument beats an out-of-range index's #VALUE!"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -65,3 +65,10 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 26 in eval/baseli
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`chosen_indices` records the first out-of-range index and keeps scanning, so an error in any argument
+wins over `#VALUE!`; of two errors the first in argument order is kept (UNVERIFIED, lookup.md).
+Unit tests cover `CHOOSEROWS(A1:B2,9,NA())` and `CHOOSECOLS(A1:B2,0,1/0)`. Eval: 24 gen-m6 known
+failures fixed, no regressions. Still waiting on inner fixes: c4edd76f46980c5f A232 (T-2288) and
+da0289bc74cdf6af A195 (T-2267); 7f3606fef4cb9df7 A111 passes.
