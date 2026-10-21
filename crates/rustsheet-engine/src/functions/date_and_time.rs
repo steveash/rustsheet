@@ -131,19 +131,25 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
-/// One TIME argument as Excel counts it: [`near_integer_floor`] with the shared
-/// [`NEAR_INTEGER_TOLERANCE`] (half of it for a negative value), in each argument's own unit, so
-/// `TIME(1-2^-22,0,0)` is 1:00 and `TIME(1,0,-1E-7)` 1:00; then `#NUM!` outside -32768..=32767.
-// Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is `#NUM!`"
-// (probes/time-argument-*, T-2267): the positive edge lies in (2^-22+1E-12, 2.4E-7), the
-// negative one in (2^-23+1E-12, 1.2E-7), and both hold at every magnitude up to 32768.
-fn time_argument(value: f64) -> Result<f64, Error> {
+/// A DATE or TIME argument as Excel reads it: [`near_integer_floor`] with the shared
+/// [`NEAR_INTEGER_TOLERANCE`], half of it for a negative value, in the argument's own unit, so
+/// `TIME(1-2^-22,0,0)` is 1:00, `TIME(1,0,-1E-7)` 1:00 and `DATE(1983,12,-1E-15)` day 0.
+// Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is `#NUM!`" and "DATE: a
+// year, month or day just below an integer" (probes/time-argument-*, date-argument-window; T-2267,
+// T-2268): the positive edge lies in (2^-22+1E-12, 2.4E-7), the negative one in
+// (2^-23+1E-12, 1.2E-7), the same for every argument of both and at every magnitude probed.
+fn date_time_whole(value: f64) -> f64 {
     let tolerance = if value < 0.0 {
         NEAR_INTEGER_TOLERANCE / 2.0
     } else {
         NEAR_INTEGER_TOLERANCE
     };
-    let whole = near_integer_floor(value, tolerance);
+    near_integer_floor(value, tolerance)
+}
+
+/// One TIME argument: [`date_time_whole`], then `#NUM!` outside -32768..=32767.
+fn time_argument(value: f64) -> Result<f64, Error> {
+    let whole = date_time_whole(value);
     if (-32768.0..=32767.0).contains(&whole) {
         Ok(whole)
     } else {
@@ -269,7 +275,8 @@ impl Model {
     pub(crate) fn fn_date(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let date_system = self.workbook.settings.date_system;
         self.numbers_fn(Function::Date, args, [0.0; 3], cell, |[year, month, day]| {
-            let mut year = year.floor() as i32;
+            let [year, month, day] = [year, month, day].map(date_time_whole);
+            let mut year = year as i32;
             if year < 0 {
                 return Err(Error::NUM);
             }

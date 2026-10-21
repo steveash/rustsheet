@@ -178,6 +178,7 @@ C	probes/criteria-wildcard-tilde.case.json	16
 C	probes/d-function-prefix-lone-surrogates.case.json	35
 C	probes/data-tables.case.json	20
 C	probes/date-argument-modes.case.json	168
+C	probes/date-argument-window.case.json	90
 C	probes/date-clock-text-length-limit.case.json	36
 C	probes/date-huge-month-day.case.json	63
 C	probes/date-lift-open.case.json	175
