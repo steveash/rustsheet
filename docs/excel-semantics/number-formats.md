@@ -515,9 +515,10 @@ TEXT() with the same codes. Points the earlier probes did not show:
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
 Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every serial the formatter
-rejects as a date (TEXT `#VALUE!`) displays 255 `#`.
+rejects as a date (TEXT `#VALUE!`) displays 255 `#`; formatter/format.rs (T-1731) rejects any date or
+clock token other than a lone elapsed token past serial 2958465.99999.
 Not implemented: ours passes 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
-clock and elapsed-with-clock codes past 2958465.99999, which still format (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
+fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
 scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), round-half (T-2206: `0`, `#,##0`, `0%`, `"("0")"` ... on 2.5, -2.5, 36.5, 0.125 and 12.345 are "3", "-3", "37", "13%" and "1235%", half away from zero on the 15-digit decimal), the sign of -0.5 (T-1129),
 fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
