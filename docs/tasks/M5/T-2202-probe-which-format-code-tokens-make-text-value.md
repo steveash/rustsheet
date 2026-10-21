@@ -3,7 +3,7 @@ id: T-2202
 title: "Probe which format-code tokens make TEXT #VALUE! (T-2157)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
