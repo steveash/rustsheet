@@ -3,7 +3,7 @@ id: T-1721
 title: "LET picking an external reference: mixed arms, and OFFSET over it, as Excel (T-1710 probe)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
