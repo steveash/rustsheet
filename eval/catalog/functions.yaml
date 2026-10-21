@@ -40,6 +40,10 @@
 # (GROUPBY, SORTBY, FILTER); `mask: true` makes an `array` param a comparison of a full one-column range
 # (FILTER's include). `spelled` is the name as a formula writes it when the case builder does not add the
 # prefix itself (`_xlfn.GROUPBY`: a bare GROUPBY in a file is #NAME?, docs/excel-semantics/xlsx-storage.md).
+# `dynamic_array: true` marks a function that can return a multi-cell array by its own design (FILTER, SEQUENCE,
+# MMULT, TRANSPOSE, LINEST, XLOOKUP's row, ROW of a range), not only by lifting a scalar parameter over an array.
+# `rustsheet-gen --spill` reserves an empty footprint under such an outer call (synthetic-generator.md §5.2 shape 3);
+# tools/tests/test_catalog.py pins the list.
 #
 # milestone: the first milestone in which the function is in scope for the gate.
 # prior: relative real-world frequency (Enron/EUSES/FUSE-derived, see research report). Most
@@ -227,6 +231,7 @@ functions:
     milestone: M2
     prior: 6
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: range, type: any }
       - { name: row_num, mode: value, type: number, domain: { int: true, min: 0, max: 6 } }
@@ -777,6 +782,7 @@ functions:
     scope: in
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: function, mode: lambda, arity: 1, type: any }
@@ -786,6 +792,7 @@ functions:
     scope: in
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: function, mode: lambda, arity: 1, type: any }
@@ -924,6 +931,7 @@ functions:
     scope: in
     prior: 0.2
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: col_num, mode: value, type: number, repeat: true, min: 1, max: 254, domain: { int: true, min: -2, max: 3 } }
@@ -933,6 +941,7 @@ functions:
     scope: in
     prior: 0.2
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: row_num, mode: value, type: number, repeat: true, min: 1, max: 254, domain: { int: true, min: -3, max: 6 } }
@@ -958,6 +967,7 @@ functions:
     scope: in
     prior: 0.8
     returns: number
+    dynamic_array: true
     params:
       - { name: reference, mode: range, type: any, optional: true, cell: true }
   - name: COLUMNS
@@ -1485,6 +1495,7 @@ functions:
     scope: in
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: rows, mode: value, type: number, domain: { int: true, min: -3, max: 3 } }
@@ -1669,6 +1680,7 @@ functions:
     scope: in
     prior: 0.2
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: rows, mode: value, type: number, domain: { int: true, min: 1, max: 5 } }
@@ -1782,6 +1794,7 @@ functions:
     scope: in
     prior: 2
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any, full: true }
       - { name: include, mode: array, type: bool, full: true, mask: true }
@@ -1793,6 +1806,7 @@ functions:
     scope: in
     prior: 0.05
     returns: any
+    dynamic_array: true
     params:
       - { name: xml, mode: value, type: text }
       - { name: xpath, mode: value, type: text }
@@ -1963,6 +1977,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
+    dynamic_array: true
     params:
       - { name: data_array, mode: array, type: number }
       - { name: bins_array, mode: array, type: number }
@@ -2098,6 +2113,7 @@ functions:
     spelled: _xlfn.GROUPBY
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: row_fields, mode: array, type: any, full: true }
       - { name: values, mode: array, type: any, full: true }
@@ -2113,6 +2129,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
+    dynamic_array: true
     params:
       - { name: "known_y's", mode: array, type: number }
       - { name: "known_x's", mode: array, type: number, optional: true }
@@ -2165,6 +2182,7 @@ functions:
     scope: in
     prior: 0.5
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any, repeat: true, min: 1, max: 254 }
   - name: HYPERLINK
@@ -2333,8 +2351,8 @@ functions:
     returns: text
     params:
       - { name: inumber, mode: value, lift: arrays, type: text, domain: { enum: ["3+4i", "1-2i", "2i", "-i", "5", "-1.5+0.5i", "0.25-3i", "4"] } }
-  - { name: IMPORTCSV, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
-  - { name: IMPORTTEXT, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
+  - { name: IMPORTCSV, category: lookup, milestone: M6, dynamic_array: true, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
+  - { name: IMPORTTEXT, category: lookup, milestone: M6, dynamic_array: true, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
   - name: IMPOWER
     category: engineering
     milestone: M9
@@ -2685,6 +2703,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
+    dynamic_array: true
     params:
       - { name: "known_y's", mode: array, type: number }
       - { name: "known_x's", mode: array, type: number, optional: true }
@@ -2719,6 +2738,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
+    dynamic_array: true
     params:
       - { name: "known_y's", mode: array, type: number }
       - { name: "known_x's", mode: array, type: number, optional: true }
@@ -2781,6 +2801,7 @@ functions:
     scope: in
     prior: 0.2
     returns: any
+    dynamic_array: true
     params:
       - { name: rows, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
       - { name: columns, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
@@ -2791,6 +2812,7 @@ functions:
     scope: in
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any, repeat: true, min: 1, max: 253 }
       - { name: function, mode: lambda, arity: repeat, type: any }
@@ -2879,6 +2901,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
+    dynamic_array: true
     params: [{ name: array, mode: array, type: number }]
   - name: MIRR
     category: financial
@@ -2896,6 +2919,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
+    dynamic_array: true
     params:
       - { name: array1, mode: array, type: number }
       - { name: array2, mode: array, type: number }
@@ -2921,6 +2945,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
+    dynamic_array: true
     params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
   - name: MODE.SNGL
     category: statistical
@@ -2951,6 +2976,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
+    dynamic_array: true
     params: [{ name: dimension, mode: value, type: number, domain: { int: true, min: 1, max: 4, hard: true } }]
   # A range gives its top-left cell, no lift and no implicit intersection (probes/info-logic-argument-modes A6, -2 A7).
   - name: "N"
@@ -3225,6 +3251,7 @@ functions:
     scope: in
     prior: 2
     returns: any
+    dynamic_array: true
     params:
       - { name: reference, mode: range, type: any }
       - { name: rows, mode: value, type: number, domain: { int: true, min: -1, max: 6 } }
@@ -3363,6 +3390,7 @@ functions:
     spelled: _xlfn.PIVOTBY
     prior: 0.2
     returns: any
+    dynamic_array: true
     params:
       - { name: row_fields, mode: array, type: any, full: true }
       - { name: col_fields, mode: array, type: any, full: true }
@@ -3565,6 +3593,7 @@ functions:
     volatile: true
     prior: 0.3
     returns: number
+    dynamic_array: true
     params:
       - { name: rows, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 4 } }
       - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 4 } }
@@ -3652,6 +3681,7 @@ functions:
     scope: in
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: text, mode: value, type: text }
       - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] } }
@@ -3735,6 +3765,7 @@ functions:
     scope: in
     prior: 0.8
     returns: number
+    dynamic_array: true
     params:
       - { name: reference, mode: range, type: any, optional: true, cell: true }
   - name: ROWS
@@ -3771,6 +3802,7 @@ functions:
     scope: in
     prior: 0.2
     returns: any
+    dynamic_array: true
     params:
       - { name: initial_value, mode: value, type: any }
       - { name: array, mode: array, type: any }
@@ -3823,6 +3855,7 @@ functions:
     scope: in
     prior: 1
     returns: number
+    dynamic_array: true
     params:
       - { name: rows, mode: value, type: number, domain: { int: true, min: 0, max: 4 } }
       - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
@@ -3917,6 +3950,7 @@ functions:
     scope: in
     prior: 1.5
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: sort_index, mode: array, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
@@ -3928,6 +3962,7 @@ functions:
     scope: in
     prior: 0.5
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any, full: true }
       - { name: by_array, mode: array, type: any, full: true, vector: true, repeat: { group: [by_array, sort_order], min: 1, max: 126 } }
@@ -4007,7 +4042,7 @@ functions:
     params:
       - { name: "known_y's", mode: array, type: number }
       - { name: "known_x's", mode: array, type: number }
-  - { name: STOCKHISTORY, category: information, milestone: M5, scope: out, reason: "online financial data service (decision 0027)" }
+  - { name: STOCKHISTORY, category: information, milestone: M5, dynamic_array: true, scope: out, reason: "online financial data service (decision 0027)" }
   - name: SUBSTITUTE
     category: text
     milestone: M5
@@ -4163,6 +4198,7 @@ functions:
     scope: in
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: rows, mode: value, type: number, domain: { int: true, min: -3, max: 3 } }
@@ -4272,6 +4308,7 @@ functions:
     scope: in
     prior: 0.5
     returns: any
+    dynamic_array: true
     params:
       - { name: text, mode: value, type: text }
       - { name: col_delimiter, mode: array, type: text, domain: { enum: [",", "-", " ", "a", ""] } }
@@ -4312,6 +4349,7 @@ functions:
     scope: in
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: ignore, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
@@ -4323,6 +4361,7 @@ functions:
     scope: in
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: ignore, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
@@ -4334,6 +4373,7 @@ functions:
     scope: in
     prior: 0.3
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
   - name: TREND
@@ -4342,6 +4382,7 @@ functions:
     scope: in
     prior: 0.1
     returns: number
+    dynamic_array: true
     params:
       - { name: "known_y's", mode: array, type: number }
       - { name: "known_x's", mode: array, type: number, optional: true }
@@ -4362,6 +4403,7 @@ functions:
     scope: in
     prior: 0.05
     returns: any
+    dynamic_array: true
     params:
       - { name: range, mode: range, type: any }
       - { name: trim_rows, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
@@ -4423,6 +4465,7 @@ functions:
     scope: in
     prior: 1.5
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any }
       - { name: by_col, mode: value, type: bool, optional: true }
@@ -4506,6 +4549,7 @@ functions:
     scope: in
     prior: 0.5
     returns: any
+    dynamic_array: true
     params:
       - { name: array, mode: array, type: any, repeat: true, min: 1, max: 254 }
   - { name: WEBSERVICE, category: web, milestone: M5, scope: out, reason: "calls a web service (decision 0027)" }
@@ -4579,6 +4623,7 @@ functions:
     scope: in
     prior: 0.2
     returns: any
+    dynamic_array: true
     params:
       - { name: vector, mode: array, type: any, vector: true }
       - { name: wrap_count, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
@@ -4589,6 +4634,7 @@ functions:
     scope: in
     prior: 0.2
     returns: any
+    dynamic_array: true
     params:
       - { name: vector, mode: array, type: any, vector: true }
       - { name: wrap_count, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
@@ -4609,6 +4655,7 @@ functions:
     scope: in
     prior: 1.5
     returns: any
+    dynamic_array: true
     params:
       - { name: lookup_value, mode: value, type: any }
       - { name: lookup_array, mode: range, type: any, vector: true }

@@ -28,7 +28,7 @@ Gap triage 2026-10-21 (`make eval` on main d48456cd; `make eval-show CASE=ironca
   25 numeric Excel RRI cells: the 12 excel-graph cells of probes/fin-mduration-rri-fit, the 8 numeric cells of probes/fin-rri
   (A1, A9-A14, A16), and the Mac cells RRI.xlsx D3-D6 and D12; the special-case cells (fin-rri A5/A6, RRI.xlsx D2/D8)
   and error cells (RRI.xlsx D7, D9-D11) are not counted. D12 is the only cell where they differ from the current form. Plain libm
-  `exp(log(r)/n)-1` also fits all 25 (libm `pow` misses A37 and A57), so T-2216 must also tell it apart.
+  `exp(log(r)/n)-1` also fits all 25 (libm `pow` misses fin-mduration-rri-fit A37 and A57, fin-rri A14 and RRI.xlsx D12), so T-2216 must also tell it apart.
 - **Needs an oracle sweep** (T-2216): one discriminating point, and a desktop-only one, is too few to fit
   blind. If the web disagrees with the Mac value of `RRI(0.5,3,4)`, the web value is the target (decision 0039 item 4;
   decision 0074 is the precedent): D12 then stays a known failure, recorded in numbers.md as a web-vs-desktop
@@ -40,8 +40,9 @@ Gap triage 2026-10-21 (`make eval` on main d48456cd; `make eval-show CASE=ironca
       (`make eval-baseline`), with no new F lines in any baseline. In particular, probes/fin-rri, fin-rri-vdb-edges,
       fin-mduration-rri-fit and T-2216's sweep pass in full. If no single formulation fits every point, the PR
       lists the points that still miss and files a follow-up.
-- [ ] If the EXP/LN form lands, `nper` 0, `fv/pv` 0 and a negative ratio still return the same errors as today
-      (probes/fin-rri, fin-rri-vdb-edges), with no panic.
+- [ ] If the EXP/LN form lands, the edges keep today's values (probes/fin-rri, fin-rri-vdb-edges, RRI.xlsx): nper <= 0
+      and a negative ratio are `#NUM!`, fv = 0 is -1, pv = fv = 0 is 0, and the overflow `RRI(1E-5,1,2)` (fin-rri A15)
+      is `#NUM!`; no panic.
 - [ ] `rri_of` cites the fitted points in its comment; financial.md's RRI paragraph states the rule and is
       marked implemented.
 - [ ] `make check` green; reviewers approve.

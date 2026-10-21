@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-2199]
 ---
 
@@ -15,6 +16,7 @@ COMBIN and COMBINA are `#NUM!` for a `number` past Excel's bound, at the exact c
 
 ## Context
 - Evidence first (planner, 2026-10-20): the probe this task asks for is T-2199 (research), which fills `probes/t2199-text-length-and-combin-cuts`. Use that case; do not probe again. Its failing cells are this task's cells too.
+- Result (T-2199): COMBIN is `#NUM!` for number >= 2^31-1; COMBINA for n+k-1 >= 2^31-1. See docs/excel-semantics/numbers.md.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). `COMBINA(FACT(13),10)` (6227020800) is `#NUM!` in Excel and 2.4E+91 here; `COMBINA(25,123456789.123)` and
 `COMBIN(123456789.123,10)` are numbers, so the cut lies in (1.23E+8, 6.2E+9]; 2^31 is the guess. Observation:
 docs/excel-semantics/numbers.md "COMBINA is COMBIN(n+k-1, k)", paragraph "Bound" (added by this triage). Probe first
@@ -35,6 +37,11 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 5 in eval/baselin
 - [ ] These 5 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] numbers.md entry updated with the probed cut.
 - [ ] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
+number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
+criteria above are already the visible-parity stage.
 
 ## Out of scope
 - COMBIN rounding (T-1598, done).
