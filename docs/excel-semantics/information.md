@@ -282,14 +282,17 @@ Tasks: T-2042, T-2052
 ## TYPE of a one-cell range, ISEVEN/ISODD past 2^63, CELL over a range info_type (T-2156, T-2165, T-2161)
 - `TYPE` of a one-cell range is its cell's type, not 64: `TYPE(D7:D7)` and `TYPE(B3:B3)` are 1 (ours 64). Multi-cell ranges
   stay 64 (above). Evidence: gen-m5/2abdc1524e5aa685 Calc!A371, gen-m5/c0651f0e0fb544d0 Calc!A203 (excel-graph, 2026-10-20).
+  The cell's kind decides: blank 1, number 1, text 2, boolean 4, error 16, text over 255 units 64, a blocked spill anchor
+  (`#SPILL!`) 16 and a working numeric one 1; one-cell `OFFSET(A2,0,0,1,1)` and `INDIRECT("A2:A2")` results classify the same way.
+  Evidence: probes/type-one-cell-range-kinds (T-2262, excel-graph).
 - ISEVEN and ISODD of a value at or above 2^63 read it as even (every double from 2^53 up is an even integer):
   `ISODD(INT(1E+21))` is FALSE, `ISEVEN(3.333333333333325E+29)` and `ISEVEN(8.999999753086524E+28)` TRUE. Implemented in `Model::parity_of`
   (functions/information/mod.rs) with an f64 remainder (an i64 cast saturated to i64::MAX, which is odd). This settles the ">= 2^63" line of "ISEVEN/ISODD over a range". Evidence: gen-m5/ee1667411bbe2ccc
   Calc!A159, gen-m5/1315170eef6c413e Calc!A396, gen-m5/50d8a085335c05e6 Calc!A92.
 - CELL lifts over a multi-cell range given as info_type, as over an array: `CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
   filled column (ours was `#VALUE!` before T-2161). Evidence: gen-m5/c0651f0e0fb544d0 Calc!A293.
-Status: VERIFIED (excel-graph) for the cells cited; TYPE of a one-cell range over a text, boolean, error or blank cell, or
-an OFFSET/INDIRECT result, is UNVERIFIED (every cited cell is numeric; T-2262 probes it). ISEVEN/ISODD implemented (T-2165);
+Status: VERIFIED (excel-graph, desktop Excel not checked) for the cells cited, including TYPE of a one-cell range over a
+text, boolean, error or blank cell and over an OFFSET/INDIRECT result (T-2262). ISEVEN/ISODD implemented (T-2165);
 CELL's range info_type implemented (T-2161, `fn_cell`); TYPE of a one-cell range implemented (T-2156, `fn_type`).
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
@@ -387,12 +390,3 @@ Phases 1-3 (decision 0039): the engine follows it in T-2190, which is expected t
 non-literal INFO, T-2113), and `INFO("numfile")` (canary-dependent). The engine also returns `#VALUE!` for `"numfile"` and its
 engine-only `"timezone"`/`"timezones"` (T-2190), unprobed and awaiting oracle confirmation (T-2182).
 Evidence: probes/info-sheets-info-types Alpha!D25:D49 (excel-graph, 2026-10-20, T-2115).
-
-## TYPE of a one-cell range
-Rule: `TYPE(X:X)` over a one-cell range classifies the cell itself, as `TYPE(X)` does: blank 1, number 1, text 2, boolean 4,
-error 16, and text over 255 units 64. A blocked spill anchor (`#SPILL!`) is 16 and a working numeric spill anchor 1.
-One-cell `OFFSET(A2,0,0,1,1)` and `INDIRECT("A2:A2")` results classify the same way (text 2, boolean 4, error 16, blank 1).
-Evidence: probes/type-one-cell-range-kinds (excel-graph oracle sidecar). Desktop Excel was not checked.
-Implemented in: `fn_type` (functions/information/mod.rs).
-Status: VERIFIED (excel-graph)
-Tasks: T-2156, T-2262
