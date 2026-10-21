@@ -285,6 +285,8 @@ C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
 C	probes/eng-impower-past-cut.case.json	19
 C	probes/eng-impower.case.json	22
+C	probes/eng-imsqrt-large-b.case.json	12
+C	probes/eng-imsqrt-large.case.json	18
 C	probes/eng-imsub-imdiv-blank-j.case.json	25
 C	probes/eng-imsub.case.json	21
 C	probes/eng-imsum-improduct-3d-j-empty.case.json	61
@@ -1284,8 +1286,6 @@ F	probes/eng-im-overflow-edges.case.json	S!A58
 F	probes/eng-im-overflow-edges.case.json	S!A6
 F	probes/eng-im-overflow-edges.case.json	S!A9
 F	probes/eng-im-overflow-edges.case.json	S!A95
-F	probes/eng-im-overflow.case.json	S!A33
-F	probes/eng-im-overflow.case.json	S!A34
 F	probes/external-ref-no-link-let-index.case.json	Calc!A3
 F	probes/external-ref-no-link-let-index.case.json	Calc!A4
 F	probes/external-ref-no-link-let-index.case.json	Calc!A5
