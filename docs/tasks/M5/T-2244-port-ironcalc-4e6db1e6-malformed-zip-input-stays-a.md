@@ -19,7 +19,7 @@ workspace takes the patched `zip` 9.0.5 that upstream moved to.
 Upstream IronCalc abd55b64 ("migrate XLSX ZIP dependency to patched zip 9") moved `xlsx/` from zip
 0.6.6 to 9.0.5, and 4e6db1e6 added the test `malformed_zip_inputs_remain_zip_errors` in
 `xlsx/src/import/mod.rs`. We are already on zip 9 (9.0.3 in `crates/rustsheet-xlsx`,
-`crates/rustsheet` and `crates/rustsheet-eval`, all `deflate-flate2-zlib-rs`), so the migration
+`crates/rustsheet` and `crates/rustsheet-eval`, all with the zlib-rs deflate backend), so the migration
 itself does not apply; the test and the patch bump do. Our import path goes through
 `import/package.rs` (zip-bomb limits); the fuzz target `xlsx_import` covers no-panic but not the
 error kind. Triaged by the 2026-10-21 steward run.
