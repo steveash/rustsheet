@@ -1104,7 +1104,7 @@ Tasks: T-2271
 Rule (excel-graph, gen-m6, 2026-10-21): a boolean serial read from a cell is `#VALUE!` in WEEKNUM (unlike WEEKDAY and ISOWEEKNUM,
 where it is serial 1, "Date function argument modes"), and it beats an invalid return_type: `WEEKNUM(Data!A12,1)`, `WEEKNUM(Data!C9,2)`,
 `WEEKNUM(Data!$E$2)` and `WEEKNUM(Data!D$4,SUM(0.5))` with FALSE cells are `#VALUE!` (gen-m6/0bcac2d96e96b3df Calc!A234,
-3df034e67b14fccb A149, 4ca39e0876796fa5 A274, 3a26794015dfbe9d A242). Ours: implemented (T-2276); a typed `WEEKNUM(TRUE)` reads the same, which is unprobed.
+3df034e67b14fccb A149, 4ca39e0876796fa5 A274, 3a26794015dfbe9d A242). A typed boolean is `#VALUE!` as well: `WEEKNUM(TRUE)`, `WEEKNUM(FALSE,0.5)`, `WEEKNUM({TRUE})` and `WEEKNUM(IF(TRUE,TRUE))`, and so is the text "TRUE"; `WEEKNUM(B1+0)` is 1 (probes/weeknum-boolean-serial, excel-graph, 2026-10-21). Ours: implemented (T-2276).
 Status: VERIFIED
 Tasks: T-2276
 

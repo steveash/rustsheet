@@ -1069,8 +1069,11 @@ fn weeknum_of_a_boolean_serial_is_value_error() {
     model._set("A3", "=WEEKNUM(B1,0.5)");
     model._set("A4", "=WEEKNUM(B2,0.5)");
     model._set("A5", "=WEEKNUM(B2)");
+    model._set("A6", "=WEEKNUM(TRUE)");
+    model._set("A7", "=WEEKNUM(FALSE,0.5)");
+    model._set("A8", "=WEEKNUM({TRUE})");
     model.evaluate();
-    for row in 1..=5 {
+    for row in 1..=8 {
         assert_eq!(model._get_text(&format!("A{row}")), "#VALUE!", "A{row}");
     }
 }

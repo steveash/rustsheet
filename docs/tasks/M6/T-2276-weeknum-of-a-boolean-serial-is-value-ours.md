@@ -43,4 +43,4 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 4 in eval/baselin
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
 
 ## Outcome
-`weeknum_of` reads the serial with `cast_number_no_bools_ref`, so a boolean serial is `#VALUE!` before the return_type. A typed `WEEKNUM(TRUE)` reads the same (unprobed). Eval delta: gen-m6 known failures 172 -> 168 (4 fixed: 0bcac2d96e96b3df A234, 3a26794015dfbe9d A242, 3df034e67b14fccb A149, 4ca39e0876796fa5 A274), no regressions.
+`weeknum_of` reads the serial with `cast_number_no_bools_ref`, so a boolean serial is `#VALUE!` before the return_type. A typed boolean is `#VALUE!` too (probes/weeknum-boolean-serial). Eval delta: gen-m6 known failures 172 -> 168 (4 fixed: 0bcac2d96e96b3df A234, 3a26794015dfbe9d A242, 3df034e67b14fccb A149, 4ca39e0876796fa5 A274), no regressions.

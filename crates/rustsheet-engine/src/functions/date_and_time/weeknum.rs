@@ -28,7 +28,8 @@ impl Model {
         };
         // A boolean serial is #VALUE!, before the return_type is read (`WEEKNUM(<FALSE cell>,1)`;
         // dates.md "WEEKNUM of a boolean serial is #VALUE!", gen-m6, T-2276); WEEKDAY and
-        // ISOWEEKNUM read it as 1. A typed `WEEKNUM(TRUE)` is unprobed and reads the same.
+        // ISOWEEKNUM read it as 1. A typed or array-constant boolean is `#VALUE!` too
+        // (probes/weeknum-boolean-serial A1:A8, A11).
         let serial = match self.cast_number_no_bools_ref(serial, cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
