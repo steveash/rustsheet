@@ -79,11 +79,11 @@ Implemented in: `fn_trunc` in functions/math_and_trigonometry/mathematical.rs, v
 Rule: INT rounds down after the same 15-significant-digit cut as TRUNC and ROUNDDOWN, so binary noise just below an
 integer does not drop a unit: `INT(1-2^-53)` = 1 (0.99999999999999989 reads 1.00000000000000), so does
 `FLOOR.PRECISE(INT(1-2^-53))`, and INT of 999999876543311.88 (`(1.005+E11)+(1E+15-A8)`) is 999999876543312.
-Ours: `f64::floor`, which gives 0 and 999999876543311.
+Implemented in `fn_int` (mathematical.rs, T-2171) via `round_decimal`: Down for a positive value, Up (away from zero) for a negative one. A value of 1E+15 or more is floored as it is (`INT(2^53+1)` = 2^53: gen-m5/d586a1e0c9896942 Calc!A64; a sum of 1000000000000006 stays 1000000000000006: gen-m5/1315170eef6c413e Calc!A332; the cut would drop integer digits). Unprobed: the exact 1E+15 boundary and a fraction between 1E+15 and 2^53.
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/0362d48f56108faa Calc!A364, gen-m5/043ee562f32eb901 Calc!A62,
 gen-m5/1962de140dae0111 Calc!A352, gen-m5/38b1b8e51dbad326 Calc!A212, gen-m5/b0d597ec5af5fb92 Calc!A173.
 Unprobed: negatives (`INT(-(1-2^-53))`) and a 16th-digit tie.
-Status: VERIFIED (excel-graph, 5 cells); not implemented (T-2171).
+Status: VERIFIED (excel-graph, 5 cells); implemented (T-2171).
 
 ## ODD and EVEN above 2^53: last digits not explained (T-2173)
 Observation: `ODD(9999999999999999)` (the literal reads 9999999999999990) is 9999999999999992; ours is 9999999999999988, from
