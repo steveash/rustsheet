@@ -23,8 +23,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::exit_exceptions::{ExitExceptions, EXCEPTIONS_PATH};
+use crate::formula_calls::functions_in;
 use crate::probe_milestones::{parse_milestone, row_of, REPORT_ROWS};
-use crate::report::functions_in;
 use crate::runner::CaseResult;
 
 /// The suite scored.

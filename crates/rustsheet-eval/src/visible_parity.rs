@@ -12,9 +12,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::closeness::{self, Visible};
+use crate::formula_calls::{calls_only_in_scope, functions_in};
 use crate::lock_file;
 pub use crate::lock_file::LockError;
-use crate::report::{calls_only_in_scope, functions_in, FunctionStat, RunReport};
+use crate::report::{FunctionStat, RunReport};
 use crate::runner::CaseResult;
 
 /// The committed lock, relative to the repository root. It sits with the baselines because

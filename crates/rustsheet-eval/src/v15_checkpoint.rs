@@ -10,7 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::evidence_floor::EVIDENCE_FLOOR;
-use crate::report::{outer_call, RunReport};
+use crate::formula_calls::outer_call;
+use crate::report::RunReport;
 use crate::runner::CaseResult;
 use crate::value::Verdict;
 

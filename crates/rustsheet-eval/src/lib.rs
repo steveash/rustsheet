@@ -22,6 +22,7 @@ pub mod engine;
 pub mod evidence_floor;
 pub mod exit_exceptions;
 pub mod fetch;
+pub mod formula_calls;
 pub mod function_scope;
 pub mod lift_kinds;
 pub mod lock_file;

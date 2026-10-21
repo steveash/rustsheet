@@ -1,16 +1,14 @@
 //! Aggregation of case results into the scoreboard and the gap report.
 
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
-use std::sync::LazyLock;
-
-use regex::Regex;
-use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::catalog_coverage::{self, MilestoneCoverage};
 use crate::closeness::{self, Closeness, Visible};
 use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
+use crate::formula_calls::{calls_only_in_scope, functions_in};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
 use crate::probe_milestones::{self, MilestoneRow};
@@ -19,64 +17,6 @@ use crate::text_expect;
 use crate::v15_checkpoint::{self, V15Checkpoint};
 use crate::value::Verdict;
 use crate::visible_parity;
-
-static FUNCTION_CALL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)(?:_xlfn\.|_xlws\.)?\b([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
-        .unwrap_or_else(|e| unreachable!("static regex: {e}"))
-});
-static OUTER_CALL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^=?\s*(?:_xlfn\.|_xlws\.)?([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
-        .unwrap_or_else(|e| unreachable!("static regex: {e}"))
-});
-static QUOTED_SHEET: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"'(?:[^']|'')*'").unwrap_or_else(|e| unreachable!("static regex: {e}"))
-});
-static STRING_LITERAL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#""(?:[^"]|"")*""#).unwrap_or_else(|e| unreachable!("static regex: {e}"))
-});
-
-/// Upper-cased function names called by a formula (string literals ignored).
-#[must_use]
-pub fn functions_in(formula: &str) -> BTreeSet<String> {
-    let stripped = STRING_LITERAL.replace_all(formula, "\"\"");
-    FUNCTION_CALL
-        .captures_iter(&stripped)
-        .filter_map(|c| c.get(1).map(|m| m.as_str().to_ascii_uppercase()))
-        .collect()
-}
-
-/// The upper-cased function a formula is one call of (`ABS(SQRT(4))` is ABS), or `None` when the
-/// formula is anything else at the top (`ABS(1)+SQRT(4)`, `-ABS(1)`, a reference). Decision 0094
-/// counts a generated cell for its outer call only.
-#[must_use]
-pub fn outer_call(formula: &str) -> Option<String> {
-    let stripped = STRING_LITERAL.replace_all(formula.trim(), "\"\"");
-    let stripped = QUOTED_SHEET.replace_all(&stripped, "''");
-    let call = OUTER_CALL.captures(&stripped)?;
-    let open = call.get(0)?.end();
-    let mut depth = 1usize;
-    for (i, ch) in stripped[open..].char_indices() {
-        match ch {
-            '(' => depth += 1,
-            ')' => {
-                depth -= 1;
-                if depth == 0 {
-                    let rest = &stripped[open + i + 1..];
-                    return rest.trim().is_empty().then(|| call[1].to_ascii_uppercase());
-                }
-            }
-            _ => {}
-        }
-    }
-    None
-}
-
-/// Whether a cell calling `called` counts toward parity: it calls no out-of-scope catalog function
-/// (decision 0027).
-#[must_use]
-pub fn calls_only_in_scope(catalog: &Catalog, called: &BTreeSet<String>) -> bool {
-    called.iter().all(|f| catalog.in_scope(f))
-}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SuiteSummary {
@@ -1030,13 +970,5 @@ pub(crate) mod tests {
         };
         assert_eq!(base(&fast), base(&slow));
         assert!(!diff(&base(&fast), &base(&slow)).is_dirty());
-    }
-
-    #[test]
-    fn extracts_function_names() {
-        let f =
-            functions_in(r#"IF(_xlfn.XLOOKUP(A1,B:B,C:C)>0,SUM(A1:A3),"NOW()")+ERF.PRECISE(1)"#);
-        let v: Vec<&str> = f.iter().map(String::as_str).collect();
-        assert_eq!(v, vec!["ERF.PRECISE", "IF", "SUM", "XLOOKUP"]);
     }
 }
