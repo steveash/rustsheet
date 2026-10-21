@@ -650,23 +650,18 @@ impl Model {
         };
         // An array info_type lifts: one result per element (CELL({"row","col"},B2) spills 2, 2;
         // probes/info-logic-argument-modes A27:B27, excel-graph).
+        // A multi-cell range lifts the same way (`CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
+        // filled column; gen-m5/c0651f0e0fb544d0 Calc!A293, excel-graph, information.md).
         let info_type = match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::String(s) => s.into_lossy_string(),
+            CalcResult::Range { left, right } if left != right && left.sheet == right.sheet => {
+                return match self.evaluate_range(left, right, cell) {
+                    Ok(types) => self.lifted_cell(&types, ranges.as_deref(), reference, cell),
+                    Err(error) => error,
+                };
+            }
             CalcResult::Array(types) => {
-                let lifted = types
-                    .iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|item| match item {
-                                ArrayNode::String(name) => calc_result_to_array_node(
-                                    self.cell_info(name, ranges.as_deref(), reference, cell),
-                                ),
-                                _ => ArrayNode::Error(Error::VALUE),
-                            })
-                            .collect()
-                    })
-                    .collect();
-                return CalcResult::Array(lifted);
+                return self.lifted_cell(&types, ranges.as_deref(), reference, cell);
             }
             _ => match self.get_string(&args[0], cell) {
                 Ok(s) => s,
@@ -674,6 +669,30 @@ impl Model {
             },
         };
         self.cell_info(&info_type, ranges.as_deref(), reference, cell)
+    }
+
+    /// One `CELL` result per element of an `info_type` grid; a non-text element is `#VALUE!`.
+    fn lifted_cell(
+        &mut self,
+        types: &[Vec<ArrayNode>],
+        ranges: Option<&[Range]>,
+        reference: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let lifted = types
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|item| match item {
+                        ArrayNode::String(name) => {
+                            calc_result_to_array_node(self.cell_info(name, ranges, reference, cell))
+                        }
+                        _ => ArrayNode::Error(Error::VALUE),
+                    })
+                    .collect()
+            })
+            .collect();
+        CalcResult::Array(lifted)
     }
 
     /// The workbook's file name as CELL names it (`Budget.xlsx`), `None` for an unnamed workbook
