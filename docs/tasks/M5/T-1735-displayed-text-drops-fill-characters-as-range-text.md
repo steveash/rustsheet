@@ -49,3 +49,6 @@ Decision 0083: a wrong TEXT or displayed-text result is visible to every user of
 A `*x` fill (`TextToken::Spacer`) now prints nothing in both number branches of `format_number`
 (format.rs). gen-m10 known failures 54 -> 35 (447 text cells fixed), gen-m5 165 -> 164, probes
 1599 -> 1598 (text-format-length-limit-o A37); no regressions.
+The 38 gen-m10 text cells still failing under the fill codes are not fill problems: round-half
+(T-2206) and the text section on text, booleans and "" (T-1736). A fill inside a fraction format is
+unprobed and filed as T-2261.
