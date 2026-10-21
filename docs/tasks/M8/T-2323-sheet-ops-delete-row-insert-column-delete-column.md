@@ -3,7 +3,7 @@ id: T-2323
 title: "Sheet ops delete_row, insert_column, delete_column, delete_sheet and table convert/delete in the oracle and engine adapter"
 milestone: M8
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: sonnet
