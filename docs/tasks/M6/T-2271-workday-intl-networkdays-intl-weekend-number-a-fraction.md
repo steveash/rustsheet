@@ -3,7 +3,7 @@ id: T-2271
 title: "WORKDAY.INTL/NETWORKDAYS.INTL weekend number: a fraction truncates, a blank weekend cell is #NUM!; probe a boolean weekend"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
