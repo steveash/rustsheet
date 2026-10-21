@@ -113,13 +113,16 @@ impl Model {
             // external-ref-no-link-index A8, A10, A12, A23, A30). An error instead of a
             // reference is a value, counted. So for one IF or CHOOSE picks (`COUNTA(IF(TRUE,
             // …!A1:B2))` is 0; probes/external-ref-no-link-ifchoose A4, A18, A30).
-            match self.pick_reference(arg, cell) {
-                PickedReference::External(areas) => match areas {
-                    Ok(areas) => {
-                        external += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+            let read = match self.pick_reference(arg, cell) {
+                PickedReference::External(areas) => {
+                    match areas {
+                        Ok(areas) => {
+                            external += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+                        }
+                        Err(_) => external += 1.0,
                     }
-                    Err(_) => external += 1.0,
-                },
+                    continue;
+                }
                 PickedReference::Node(arg) => {
                     // So do those of a 3-D span of its cached sheets, on each sheet
                     // (`COUNTA([1]Uses:Defines!$A$1:$C$3)` is 9;
@@ -135,15 +138,13 @@ impl Model {
                     if let Err(error) = self.walk_aggregate_arg(arg, cell, &mut walk, &mut visit) {
                         return error;
                     }
+                    continue;
                 }
-                PickedReference::Value(value) => {
-                    let read = RefArg::Value(value);
-                    if let Err(error) =
-                        self.walk_aggregate_read(read, false, cell, &mut walk, &mut visit)
-                    {
-                        return error;
-                    }
-                }
+                PickedReference::Read(read) => read,
+                PickedReference::Value(value) => RefArg::Value(value),
+            };
+            if let Err(error) = self.walk_aggregate_read(read, false, cell, &mut walk, &mut visit) {
+                return error;
             }
         }
         CalcResult::Number(result + external)
@@ -163,6 +164,7 @@ impl Model {
             let (arg, picked_value) = match self.pick_reference(arg, cell) {
                 PickedReference::Node(node) => (node, None),
                 PickedReference::Value(value) => (arg, Some(value)),
+                PickedReference::Read(read) => (arg, Some(read.into_single_sheet_area(cell))),
                 PickedReference::External(areas) => {
                     return match areas {
                         Ok(_) => CalcResult::new_error(
