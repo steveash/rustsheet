@@ -234,23 +234,15 @@ impl Model {
         cell: CellReferenceIndex,
         op: fn(f64) -> Result<f64, Error>,
     ) -> CalcResult {
-        self.lift_call(kind, args, cell, &mut |model, values| {
-            let [value] = values else {
-                return CalcResult::new_args_number_error(cell);
-            };
-            match model.kernel_number(value, cell) {
-                Ok(number) => number_result(
-                    op(number).and_then(|x| {
-                        if x.is_finite() {
-                            Ok(x)
-                        } else {
-                            Err(Error::NUM)
-                        }
-                    }),
-                    cell,
-                ),
-                Err(error) => error,
-            }
+        // `numbers_fn` reads its one number as `kernel_number` does (`LIFT_1` takes one argument).
+        self.numbers_fn(kind, args, [0.0], cell, |[number]| {
+            op(number).and_then(|x| {
+                if x.is_finite() {
+                    Ok(x)
+                } else {
+                    Err(Error::NUM)
+                }
+            })
         })
     }
 
@@ -265,7 +257,15 @@ impl Model {
         cell: CellReferenceIndex,
         op: impl Fn([f64; N]) -> Result<f64, Error>,
     ) -> CalcResult {
-        self.lift_call(kind, args, cell, &mut |model, values| {
+        // The driver's shortcut (T-1932): the arguments written, all numbers, then the defaults.
+        let shortcut = |present: &[f64]| {
+            let mut numbers = defaults;
+            for (slot, number) in numbers.iter_mut().zip(present) {
+                *slot = *number;
+            }
+            op(numbers)
+        };
+        self.lift_call_numbers(kind, args, cell, &shortcut, &mut |model, values| {
             let mut numbers = defaults;
             for (index, slot) in numbers.iter_mut().enumerate() {
                 // A number, the usual argument, skips the coercion chain (T-1785 bench).
