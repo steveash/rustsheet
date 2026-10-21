@@ -3,7 +3,7 @@ id: T-2222
 title: "Probe RRI with a fractional nper and an inexact ratio (Mac desktop RRI(0.5,3,4) is 0.7777777777777775, the worksheet form ...777)"
 milestone: M9
 lane: research
-status: todo
+status: dropped
 priority: P3
 size: S
 tier: sonnet
@@ -46,3 +46,6 @@ to M14.
 
 ## Out of scope
 - Changing `rri_of` (functions/financial/annuity.rs) in this task.
+
+## Outcome
+Dropped on 2026-10-21: superseded by T-2216 (filed the same day in #1385), whose sweep includes this grid plus the EXP/LN candidate columns. T-2217 implements the fit.
