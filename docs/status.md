@@ -26,7 +26,7 @@ merged since its last run.
 | gen-m9 | 25 | 998 | 99.10% | not gated |
 | probes-numeric | 167 | 115,809 | 75.58% (99.72% within 1e-9) | not gated |
 
-`make eval` on `main` (7dab5361) shows 0 regressions in every gated suite. poi and corpus-bench were fetched for this run. After `main` was merged into this branch, `make eval-lower-visible-lock` counted 1,809 visibly-off cells, so this PR lowers the lock from 1,842 to 1,809 (decision 0093).
+`make eval` on `main` (7dab5361) shows 0 regressions in every gated suite. poi and corpus-bench were fetched for this run. After `main` was merged into this branch, `make eval-lower-visible-lock` counted 1,777 visibly-off cells, so this PR lowers the lock from 1,842 to 1,777 (decision 0093).
 
 The run shared a 4-core machine with four `make check` runs (the orphan-PR updates below), at a load average of about 15. Under that load, 9 corpus-bench workbooks and `probes/union-walk-repeated-in-lambda` hit the 60 s case timeout. `make eval-baseline` wanted to record them as `!Timeout` known failures. I did not commit those lines because they are load, not engine changes. A later rerun on a quiet machine (`make eval-lower-visible-lock`) recorded no timeouts. The probe case passes on its own (15/15) but takes about 36 s of CPU, so a contended CI runner could time it out.
 
@@ -69,7 +69,7 @@ Open PRs: 20 at 08:10 UTC. Seven agent PRs were open longer than 24 h at the sta
 - Session `01HP2RnX…` held the merge lock and merged all three between 07:49 and 08:02 UTC (#1284, #1209, #1212), so this run merged none itself.
 - #1230 (T-1835) conflicted with `main` in the lift code. Once merged, it raised duplication by 4 lines, from repeated WRAPCOLS/WRAPROWS argument reads. I deduplicated those reads, but a live session pushed its own merge at 07:17 UTC, so my version was not pushed. Whoever lands #1230 must still pass the duplication ratchet.
 - Duplicates: T-1943 is in both #1210 (older) and #1347 (newer, closer to `main`). #1347 survives. Close #1210 with a link once #1347 has merged (decision 0050).
-- Decision 0093 (T-2245, #1414) landed during this run. Fix PRs no longer write the visible-parity lock, and this steward PR lowers it once a day. Measured on this branch after merging `main`, the lock goes from 1,842 to 1,809.
+- Decision 0093 (T-2245, #1414) landed during this run. Fix PRs no longer write the visible-parity lock, and this steward PR lowers it once a day. Measured on this branch after merging `main`, the lock goes from 1,842 to 1,777.
 
 Queues at the start of the run:
 - functions: 8 ready (≥ 3), so the gap-triager did not run (a worker already triaged today, #1388/#1409). The sonnet buffer is 29 (≥ 10).
