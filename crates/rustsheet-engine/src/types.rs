@@ -3,7 +3,12 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 
 pub use crate::external_links::ExternalBook;
-use crate::{cf_types::ConditionalFormatting, expressions::token::Error, text::Text};
+use crate::{
+    cf_types::ConditionalFormatting,
+    expressions::token::Error,
+    pivot::{PivotCache, PivotTable},
+    text::Text,
+};
 
 fn default_as_false() -> bool {
     false
@@ -157,6 +162,10 @@ pub struct Workbook {
     pub theme: Theme,
     /// The linked workbooks formulas name by index, `[1]` first (`[1]Sheet!A1`, `[1]!Name`).
     pub external_books: Vec<ExternalBook>,
+    /// The pivot caches pivot tables read, by index (SPEC-0015); a new workbook has none.
+    pub pivot_caches: Vec<PivotCache>,
+    /// The pivot tables on the worksheets (SPEC-0015); a new workbook has none.
+    pub pivot_tables: Vec<PivotTable>,
 }
 
 /// A defined name. The `sheet_id` is the sheet index in case the name is local
@@ -933,50 +942,6 @@ pub struct Theme {
     pub accent6: String,
     pub hlink: String,
     pub fol_hlink: String,
-}
-
-impl Default for Theme {
-    fn default() -> Self {
-        Theme {
-            name: "Office".to_string(),
-            dk1: "#000000".to_string(),
-            lt1: "#FFFFFF".to_string(),
-            dk2: "#44546A".to_string(),
-            lt2: "#E7E6E6".to_string(),
-            accent1: "#4472C4".to_string(),
-            accent2: "#ED7D31".to_string(),
-            accent3: "#A5A5A5".to_string(),
-            accent4: "#FFC000".to_string(),
-            accent5: "#5B9BD5".to_string(),
-            accent6: "#70AD47".to_string(),
-            hlink: "#0563C1".to_string(),
-            fol_hlink: "#954F72".to_string(),
-        }
-    }
-}
-
-impl Theme {
-    /// Resolves a `theme="N"` attribute (and optional `tint`) to an `#RRGGBB` string.
-    /// Applies the OOXML dk/lt swap for indices 0–3.
-    pub fn resolve(&self, theme_index: i32, tint: f64) -> String {
-        use crate::colors::hex_with_tint_to_rgb;
-        let color = match theme_index {
-            0 => &self.lt1,
-            1 => &self.dk1,
-            2 => &self.lt2,
-            3 => &self.dk2,
-            4 => &self.accent1,
-            5 => &self.accent2,
-            6 => &self.accent3,
-            7 => &self.accent4,
-            8 => &self.accent5,
-            9 => &self.accent6,
-            10 => &self.hlink,
-            11 => &self.fol_hlink,
-            _ => &self.dk1,
-        };
-        hex_with_tint_to_rgb(color, tint)
-    }
 }
 
 #[cfg(test)]

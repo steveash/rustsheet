@@ -57,6 +57,18 @@ impl Model {
             Ok(c) => c,
             Err(s) => return s,
         };
+        // A start outside the calendar is #NUM! before the end is read, so it beats an error end
+        // (gen-m6 excel-graph; dates.md "YEARFRAC reads its start's range before the end's
+        // error", T-2266). The range is the same on every basis and for either date order.
+        let start_serial = self
+            .workbook
+            .settings
+            .date_system
+            .financial_1900_serial(start)
+            .floor() as i64;
+        if excel_serial_to_ymd(start_serial).is_none() {
+            return num_error(cell);
+        }
         let end = match self.cast_number_no_bools_ref(end, cell) {
             Ok(c) => c,
             Err(s) => return s,
