@@ -248,12 +248,13 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
    was probed (-d W30); SERIESSUM's coefficients is read whole (-a Y22-Y23, Y27-Y30).
 4. **Answered, with a limit.** `=EDATE({45000;45031},A1:A60)` spills 2 rows, as the static shape says
    (-a AA3, AC3). FORMULATEXT carries no marker, so how Excel saves it needs the file (M14).
-5. **Partly answered.** Lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT):
-   an array element is its top-left value (probes/m7-argument-modes K5-K10; UNIQUE's and SORTBY's later elements are empty unless every entry is equal, H97-H99, T-1960),
-   the elements of OFFSET, INDIRECT and TRIMRANGE are references (probes/reference-lift-elements),
-   and TAKE's and DROP's are whole (K1-K4) references (ISREF of an element TRUE, spilled `#VALUE!`,
-   SUM the top-left cells: probes/m7-lift-take-drop-sortby, T-1960). Design: "Array-valued functions" (T-1834 to T-1839) and
-   "Elements that are references"; the carrier and its consumers are SPEC-0014 (T-1955), which
+5. **Answered.** Lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT):
+   an array element is its top-left value (probes/m7-argument-modes K5-K10; UNIQUE's and SORTBY's
+   later elements are empty unless every entry is equal, H97-H99, T-1960), the elements of OFFSET,
+   INDIRECT and TRIMRANGE are references (probes/reference-lift-elements), and TAKE's and DROP's
+   are whole (K1-K4) references (ISREF of an element TRUE, spilled `#VALUE!`, SUM the top-left
+   cells: probes/m7-lift-take-drop-sortby, T-1960). Design: "Array-valued functions" (T-1834 to
+   T-1839) and "Elements that are references"; the carrier and its consumers are SPEC-0014 (T-1955), which
    answers SUM, `=` and arithmetic over a result of references. A TAKE or DROP over an array value
    gives top-left values (T-1960).
 6. **Answered.** A function-returned multi-cell reference in a `Lift` argument [lifts like a written

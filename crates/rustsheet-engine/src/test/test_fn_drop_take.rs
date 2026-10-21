@@ -202,7 +202,8 @@ fn take_drop_lift_over_a_range_into_references() {
 // The consumers of an array of references read a lifted TAKE or DROP as they read a lifted
 // OFFSET (SPEC-0014 rules 2-7): spilled, each element is `#VALUE!`; ISREF of the whole is FALSE;
 // LET hands it on; an error element stays itself.
-// D1:D2 and E1 match probes/m7-lift-take-drop-sortby W45:W46 and U2; E4 is UNVERIFIED.
+// D1:D2 and E1 match probes/m7-lift-take-drop-sortby W45:W46 and U2; E4 is UNVERIFIED (T-2299
+// owns the rest of the grid hand-on cells).
 #[test]
 fn take_drop_reference_elements_reach_the_grid_consumers() {
     let mut model = lift_model();
