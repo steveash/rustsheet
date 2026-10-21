@@ -44,6 +44,11 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 17 in eval/baseli
 | gen-m6/ee56a4ed5a612a0d Calc!A268 | `=ADDRESS(Data!C1,SWITCH((Data!$D12/0.3),EVEN(60),(Data!E$7<Data!B9)),4,(Data!C$3<=PRODUCT(3.14159)),CHOOSE(...` | "#N/A" | "#VALUE!" |
 | gen-m6/ee56a4ed5a612a0d Calc!A306 | `=ADDRESS(6,20,4,(MINUTE(0.5)>(Data!B$12-Data!$A$11)),TRANSPOSE(("a*">=Data!E5)))` | "FALSE'!T6" | "FALSE!T6" |
 
+T-2275 (2026-10-21) moved ADDRESS's row and column bounds checks after every argument cast, which fixed 8 cells above: 0fd242eb9b2456a8
+A280, 38d4bcdafaed1275 A35, 7ac4ea222977f3b4 A176, 7f3606fef4cb9df7 A232, 9c615d338d990644 A238, a1e6448d0590f7c3 A69, be0e3a1b0fc3f7a0
+A281 and ee56a4ed5a612a0d A268. The others still return abs_num's `#VALUE!` before a later argument's error (abs_num is checked as soon
+as it is cast), or are the sheet_text quoting cells.
+
 ## Acceptance criteria
 - [ ] These 17 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite (04fdc9a67474aab9 A326 may wait for T-2267; say so in the Outcome).
 - [ ] Unit tests cover `ADDRESS(-1,1,1,NA())` (`#N/A`) and `ADDRESS(1,1,1,TRUE,"FALSE")` (`'FALSE'!$A$1`).
