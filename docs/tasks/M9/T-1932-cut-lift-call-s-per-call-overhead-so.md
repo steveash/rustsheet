@@ -3,7 +3,7 @@ id: T-1932
 title: "Cut lift_call's per-call overhead so a one-number kernel costs what apply_number_unary did"
 milestone: M9
 lane: perf
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
