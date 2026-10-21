@@ -3,7 +3,7 @@ id: T-1855
 title: "PIVOTBY col_sort_order past the first value column with one column field"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
