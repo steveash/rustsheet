@@ -3,7 +3,7 @@ id: T-1960
 title: "Probe lifted TAKE/DROP over an array value, and the unprobed M7 lift parameters"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -34,7 +34,7 @@ From T-1833. The spec reads a lifted TAKE's or DROP's whole element (probes/m7-a
 ## Out of scope
 - Any implementation (T-1834 to T-1839).
 
-## Handoff
+## Handoff (resumed)
 Handed off by a sonnet run without starting the probes (no cells written, no oracle calls made). Reason:
 item 5 asks for a rule fitted to the oracle ("until a rule gives {1;0;0}") and items 1, 3 and 7 decide
 whether SPEC-0011's reading stands, which is analysis and a spec decision beyond the sonnet rubric.
