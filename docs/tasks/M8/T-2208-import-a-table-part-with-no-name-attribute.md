@@ -3,7 +3,7 @@ id: T-2208
 title: "Import a table part with no name attribute by its displayName, as Excel does (poi/LIBRE_OFFICE-128382-0.xlsx)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
