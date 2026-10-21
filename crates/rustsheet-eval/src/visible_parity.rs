@@ -112,6 +112,7 @@ pub fn judge(lock: Lock, count: VisibleCount, update: Option<Update>) -> Judgeme
     let locked = lock.visibly_off_cells;
     match update {
         _ if count.cells == locked => Judgement::Holds,
+        // A drop is recorded only for the steward's daily run; for everyone else it is slack.
         Some(u) if count.cells < locked && u.lower => Judgement::Record,
         _ if count.cells < locked => Judgement::Holds,
         Some(u)

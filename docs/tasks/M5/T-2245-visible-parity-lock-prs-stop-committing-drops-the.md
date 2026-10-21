@@ -27,7 +27,7 @@ and merge instead of sitting idle with no event to wake their authors.
       `--allow-regressions`), and records a drop only with `--lower-visible-lock`.
 - [x] `make eval-lower-visible-lock` exists; the steward skill runs it daily; docs updated
       (quality-gates.md, eval-harness.md); decision 0093.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Per-cell visibly-off markers in the baselines (the owner chose daily lowering instead).
