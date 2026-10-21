@@ -3,7 +3,7 @@ id: T-2268
 title: "DATE: a year, month or day just below an integer reads as that integer (DATE(1983,12,-1E-15) is DATE(1983,12,0))"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
