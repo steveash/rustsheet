@@ -521,7 +521,7 @@ gen-m10 659cd5776d423ce3 F!F16, 8e073c5b2145567a F!C10). A tie at the 16th signi
 and General do (unprobed for displayed formats).
 Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every serial the formatter
 rejects as a date (TEXT `#VALUE!`) displays 255 `#`.
-Not implemented: ours passes 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
+Not implemented: before T-2206 ours passed 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
 clock and elapsed-with-clock codes past 2958465.99999, which still format (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
 scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), the sign of a value that rounds to zero and `#,` on -500 (T-1129), fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
