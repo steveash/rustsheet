@@ -2683,10 +2683,6 @@ F	probes/text-locale-calendars.case.json	S!A99
 F	probes/text-locale-era-gregorian.case.json	S!A21
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
-F	probes/textsplit-padded-size.case.json	Calc!A1
-F	probes/textsplit-padded-size.case.json	Calc!A2
-F	probes/textsplit-padded-size.case.json	Calc!A3
-F	probes/textsplit-padded-size.case.json	Calc!A4
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1

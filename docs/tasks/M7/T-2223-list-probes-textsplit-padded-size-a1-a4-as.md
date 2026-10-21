@@ -3,7 +3,7 @@ id: T-2223
 title: "List probes/textsplit-padded-size A1-A4 as accepted directive-5 deviations (TEXTSPLIT's 2^20-cell bound)"
 milestone: M7
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -35,20 +35,27 @@ real gaps.
   cited limit is a directive-5 allocation bound, not a convenience.
 
 ## Acceptance criteria
-- [ ] `eval/suites/probes/deviations` has four new lines for
+- [x] `eval/suites/probes/deviations` has four new lines for
       `textsplit-padded-size.case.json` `Calc!A1`..`Calc!A4`, each citing decision 0014 and the arrays.md
       entry above, pinned `#ERROR!`.
-- [ ] A decision record (new, or an amendment of the one that holds the deviations list) states why these
+- [x] A decision record (new, or an amendment of the one that holds the deviations list) states why these
       cells are directive-5 deviations.
-- [ ] `make eval-baseline` (never by hand) drops the four F lines from eval/baseline/probes.txt and adds
+- [x] `make eval-baseline` (never by hand) drops the four F lines from eval/baseline/probes.txt and adds
       no line.
-- [ ] `make eval` reports the four cells in the probes `deviations` column, and the M7 probe-milestone
+- [x] `make eval` reports the four cells in the probes `deviations` column, and the M7 probe-milestone
       known failures drop by 4.
-- [ ] arrays.md's DEVIATION entry names the four cells as listed in eval/suites/probes/deviations,
+- [x] arrays.md's DEVIATION entry names the four cells as listed in eval/suites/probes/deviations,
       next to lifted-range-rows.
-- [ ] `make check` green; reviewers (including Excel-fidelity) approve.
+- [x] `make check` green; reviewers (including Excel-fidelity) approve.
 
 ## Out of scope
 - probes/scalar-lift-open-c3 W1 `ROWS(HSTACK(A:A,1:1))`. Ours is `#CIRC!`, not the pinned `#ERROR!`;
   T-1965 owns it.
 - Raising the bound.
+
+## Outcome
+- probes/textsplit-padded-size `Calc!A1`..`Calc!A4` are listed in eval/suites/probes/deviations (decision 0014, the
+  arrays.md "Array results above 1,048,576 cells are #ERROR!" entry, pinned `#ERROR!`), under decision 0091.
+- `make eval-baseline` dropped their four F lines from eval/baseline/probes.txt (probes known failures 1668 -> 1664,
+  0 regressions) and visible-parity 1769 -> 1765. `make eval`: the case is gone from "Failing cases in M7".
+- arrays.md names the four cells next to lifted-range-rows.
