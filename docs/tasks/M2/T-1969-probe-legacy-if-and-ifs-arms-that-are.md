@@ -3,7 +3,7 @@ id: T-1969
 title: "Probe legacy IF and IFS arms that are other references (name, OFFSET, INDEX, a : range)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
