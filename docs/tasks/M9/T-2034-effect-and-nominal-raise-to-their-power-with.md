@@ -3,7 +3,7 @@ id: T-2034
 title: "EFFECT and NOMINAL raise to their power with Excel's ^ kernel (NOMINAL_EFFECT.xlsx, fin-argument-modes H125)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
