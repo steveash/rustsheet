@@ -88,10 +88,10 @@ Status: VERIFIED (excel-graph, 5 cells); implemented (T-2171).
 ## ODD and EVEN above 2^53: last digits not explained (T-2173)
 Observation: `ODD(9999999999999999)` (the literal reads 9999999999999990) is 9999999999999992; ours is 9999999999999988, from
 `ceil((|x|-1)/2)*2+1` in doubles, where `|x|-1` already rounds down. `RADIANS(ODD(9999999999999999)*(-1-B11))` follows it.
-`EVEN(6.223015277861143E+37)` (the engine's value of `(0.1/E5)*SERIESSUM(-2.5,B10,3,0.1)`) is 6.223015277861144E+37 in
-Excel, one ulp above; ours returns the input (it is already even). The EVEN input may itself differ by an ulp in Excel
-(SERIESSUM's power, T-2163). No formulation is fitted yet.
-Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224, gen-m5/38b1b8e51dbad326 Calc!A10.
+`EVEN((0.1/E5)*SERIESSUM(-2.5,B10,3,0.1))` (gen-m5/38b1b8e51dbad326 Calc!A10) was not an EVEN miss: the EVEN input was an
+ulp low through SERIESSUM's own power, and the cell passes since T-2163 raised with the `^` kernel. No formulation is fitted
+yet for the ODD cells.
+Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224 (gen-m5/38b1b8e51dbad326 Calc!A10 fixed by T-2163).
 Status: OBSERVED; T-2173 (after the T-2172 oracle sweep).
 
 ## MROUND rounds the quotient up within 5E-15 of a half, and multiplies in binary (T-2201)
@@ -1709,7 +1709,9 @@ blank as a 0 term and gives 2*97^1.5, 1977.3005580529345); likewise `SERIESSUM(-
 is -437500000000000 and `SERIESSUM(16,-1,2,B11:E11)` over -1, blank, 42, 0.5 is 2719.9375.
 A term that overflows is `#NUM!` even when a text, boolean or numeric-text cell of the range comes later:
 `SERIESSUM(64,1E+15,0,E3:E12)` (E3 = 1, E4 = "1.5", E5 = "ü") and `SERIESSUM(-2.49995,0,5040,A4:A6)` (A6 = TRUE, the second term
-overflows) are `#NUM!`; ours `#VALUE!`. Compare the x = 0 precedence above, where a text cell of a range wins.
+overflows) are `#NUM!`; ours `#VALUE!`. That agrees with the x = 0 precedence above: the coefficients are read in order.
+Unprobed: an all-blank coefficient range (`SERIESSUM(0,0,1,A1)` with A1 blank: 0 with no terms, or `#NUM!`), and a negative
+power that underflows (`^` gives `#DIV/0!`; SERIESSUM gives `#NUM!` as before); T-2218.
 The power is Excel's `^`: `SERIESSUM(1.005/42,3,1,C5)` = 1.3769443103134108E-05 and `SERIESSUM(-100.0001,42,2,42)` =
 4.200176403616261E+85 equal `C5*(1.005/42)^3` and `42*(-100.0001)^42` bit for bit, where ours is an ulp off.
 `SERIESSUM(LOG10(999999999999999),-2.5,1,10.005)` is 0.011481243964090428, a non-integer power: the old SERIESSUM `powf` gave
