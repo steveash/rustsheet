@@ -3,7 +3,7 @@ id: T-2251
 title: "INFO and SHEETS are no longer oracle: none since T-2113: correct the catalog and generate their accepted forms"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
