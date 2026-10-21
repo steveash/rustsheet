@@ -467,10 +467,10 @@ Evidence: probes/eng-complex-overflow A1-A21 (excel-graph, 2026-10-19). Implemen
 
 Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
 
-- A blank cell met earlier in IMPRODUCT makes the running product 0, so a later overflow cannot
+- A blank cell argument met earlier in IMPRODUCT (a blank inside a range is UNVERIFIED, T-2231) makes the running product 0, so a later overflow cannot
   happen: `IMPRODUCT(<blank>,"1E200","1E200")` is `0`; the blank last is `#VALUE!` (the overflow
   came first). Implemented.
-- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78),
+- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78 by analogy with SINH/COSH in numbers.md; probed only at 710.4 and 711, T-2231),
   whatever the real part (`IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`), although `cosh y` is still
   finite there. IMCOSH and IMSINH are `#NUM!` for a zero imaginary part when `exp(|x|)` overflows
   (`IMCOSH("710.4+0i")`) but answer text with a nonzero one (`IMCOSH("710.4+1.5i")` is
@@ -481,5 +481,5 @@ Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
   `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented.
 - IMTAN and IMCOT near the edge answer `i` / `-i` (`IMTAN("1.5+710.4i")`); IMLN, IMLOG10, IMLOG2
   and IMSQRT do not overflow there. Already matched.
-- Last-digit differences remain as known failures (a kernel question, not a rule): IMCOSH/IMSINH
-  `710.4+1.5i` and `1.5+710.4i`, IMSECH `1.5+711i`, IMCOT `711+1.5i`, IMLOG2 and IMLOG10 at 710-800.
+- Last-digit differences remain as known failures (a kernel question, not a rule; T-2231): IMCOSH/IMSINH
+  `710.4+1.5i` (several units in the 15th digit) and `1.5+710.4i`, IMSECH `1.5+711i`, IMCOT `711+1.5i`, IMLOG2 and IMLOG10 at 710-800.
