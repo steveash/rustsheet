@@ -39,6 +39,10 @@
     (T-0062). It shows, per function, its Excel cells, generated cells, exemption and visibly-off
     count, and a met or not-met line overall. The steward copies that line into the docs/status.md
     scoreboard on every run.
+  - *Implementation (T-0062).* The catalog key is `v15: exempt` with a required `v15_reason`; PI
+    and NA carry it too, which changes nothing for them while they have 400 cells. The
+    steward skill's "Fifteen-digit parity checkpoint" rule is how the steward copies the line and
+    states whether the previous run was met.
   - *Sweeps.* Coverage comes from oracle-filled generated suites, one task per milestone or
     category (T-2252 to T-2258). Each sweep runs the gap-triager on what it finds, as T-2114 did,
     and files or extends a `campaign: visible` task for every visibly-off family before it is
