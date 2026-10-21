@@ -159,6 +159,13 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
             }
         }
         Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
+        // A structured reference is its area: a range gets the `@` a plain range gets, around
+        // the reference as written (SPEC-0016).
+        Node::StructuredReferenceKind { lowered, .. } => {
+            if add && matches!(lowered.as_ref(), Node::RangeKind { .. }) {
+                *node = Node::automatic_at(node.clone());
+            }
+        }
         // A range of another workbook too (fixtures/external-link-cached-ranges Refs!B44, T-1526).
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::WrongRangeKind { .. } => {
             if add {
@@ -278,7 +285,9 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::WrongReferenceKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
         Node::WrongRangeKind { .. } => wrong_range_shape(node), // T-1454
-        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+        Node::UnaryKind { right: child, .. }
+        | Node::Group { child, .. }
+        | Node::StructuredReferenceKind { lowered: child, .. } => {
             run_static_analysis_on_node(child)
         }
         Node::NamedFunctionKind { .. } => {

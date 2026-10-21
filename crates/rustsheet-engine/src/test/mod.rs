@@ -107,6 +107,7 @@ mod test_sheet_scoped_name_qualified;
 mod test_sheet_span_references;
 mod test_sheets;
 mod test_statistical_functions;
+mod test_structured_references;
 mod test_styles;
 mod test_subtotal_reference_args;
 mod test_sumsq;

@@ -100,6 +100,7 @@ pub use locale::get_supported_locales;
 pub use merged_cells::MergeStructure;
 pub use model::FmtSettings;
 pub use model::Model;
+pub use sheet_undo::TakenSheet;
 pub use text::Text;
 pub use user_model::BorderArea;
 pub use user_model::ClipboardData;

@@ -14,6 +14,7 @@ mod diff;
 use rustsheet_engine::clock::Clock;
 use rustsheet_engine::types::{Cell, Link, Worksheet};
 use rustsheet_engine::Model;
+use rustsheet_engine::TakenSheet;
 
 use self::diff::{capture_derived, input_changes, value_changes, Before, Key, KeySet};
 use crate::error::{EditError, RefError};
@@ -157,7 +158,7 @@ enum Undo {
     },
     DeletedSheet {
         index: u32,
-        sheet: Box<Worksheet>,
+        sheet: Box<TakenSheet>,
     },
     /// A sheet moved by `move_sheet`, with its position before the move.
     Moved {

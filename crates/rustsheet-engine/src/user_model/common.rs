@@ -622,10 +622,10 @@ impl UserModel {
     /// * [`Model::delete_sheet`]
     pub fn delete_sheet(&mut self, sheet: u32) -> Result<(), String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
-
         self.push_diff_list(vec![Diff::DeleteSheet {
             sheet,
             old_data: Box::new(worksheet.clone()),
+            tables: self.model.tables_on_sheet(&worksheet.name),
         }]);
 
         let sheet_count = self.model.workbook.worksheets.len() as u32;
