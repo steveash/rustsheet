@@ -376,7 +376,7 @@ impl Model {
             if (value > 0.0 && multiple < 0.0) || (value < 0.0 && multiple > 0.0) {
                 return num_error(cell);
             }
-            CalcResult::Number((value / multiple).round() * multiple)
+            CalcResult::Number(super::ceiling_floor::mround_value(value, multiple))
         })
     }
 

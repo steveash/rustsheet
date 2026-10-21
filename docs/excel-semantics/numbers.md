@@ -107,7 +107,7 @@ Consequences: `MROUND(0.3,0.2)` = 0.4 (q = 1.4999999999999998); `MROUND(1.15,0.1
 companions are TRUE only because `=` compares to 15 digits); `MROUND(1234.4999999999998,1)` = 1234 and
 `MROUND(98765432.49999999,1)` = 98765432 (one ulp below the half is more than 5E-15 there), while
 `MROUND(1.4999999999999956,1)` = 2 (20 ulp below, 4.4E-15). The cutoff: fraction 0.5 - 4.996E-15 rounds up,
-0.5 - 5.0515E-15 down, the same at 0.5, 1.5, with multiple 2 and for negatives (rows 184-213). Ours today:
+0.5 - 5.0515E-15 down, the same at 0.5, 1.5, with multiple 2 and for negatives (rows 184-213). Before T-2167 ours was:
 `(value / multiple).round() * multiple`, which misses every within-tolerance cell below a half.
 Evidence: probes/t2201-mround-quotient-rounding (excel-graph, 2026-10-20, 213 cells: T-2167's near-half quotients and
 negatives, exact quotients at k+0.5 +- 1..48 ulp for four magnitudes, 80 seeded pairs within 4 ulp of a half, product
@@ -115,7 +115,7 @@ forming with companions, 1E-15 and 1E+15 controls, and the cutoff sweep); genera
 predicts all 213 cells. Rivals that miss: a 15-digit cut of `q` (145 or 146 of 213, by cut variant: misses 1234.5 - 1 ulp and most seeded pairs), a
 tolerance of 4.5E-15 or 4.9E-15 (196, 207) or 5.3E-15 (203), an x87 quotient, and a decimal product (the products are
 binary). gen-m5/043ee562f32eb901 Calc!A199 is `MROUND(0.3,0.2)`.
-Status: VERIFIED (excel-graph, 213 cells); not implemented (T-2167).
+Status: VERIFIED (excel-graph, 213 cells); implemented (T-2167, `mround_value` in ceiling_floor.rs).
 
 ## ROUNDUP adds the unit in binary
 Rule: when ROUNDUP has to round up, it does not return the double nearest the rounded-up decimal.
