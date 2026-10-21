@@ -940,10 +940,10 @@ pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
 /// index share it.
 pub(crate) const NEAR_INTEGER_TOLERANCE: f64 = 1.0 / 4_194_304.0 + 1.0 / 8_589_934_592.0;
 
-/// The whole number LEFT, RIGHT, REPLACE, INDEX, VLOOKUP and HLOOKUP read from a count, position or
-/// index: `x`
-/// truncated, except that a fraction within [`NEAR_INTEGER_TOLERANCE`] of the next integer counts
-/// as that integer, so `LEFT("abc",1-2^-22)` is "a". MID truncates exactly and does not use this.
+/// The whole number LEFT, RIGHT, REPLACE, INDEX, VLOOKUP and HLOOKUP read from a count, position
+/// or index: `x` floored, except that a fraction within [`NEAR_INTEGER_TOLERANCE`] of the next
+/// integer counts as that integer, so `LEFT("abc",1-2^-22)` is "a". MID truncates exactly and does
+/// not use this.
 // Excel: docs/excel-semantics/text.md "LEFT, RIGHT and REPLACE round counts up near an
 // integer" (probes/text-count-argument-bounds) and lookup.md "INDEX rounds an index up near an
 // integer" (probes/index-snap-tolerance).

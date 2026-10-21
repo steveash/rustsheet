@@ -168,10 +168,11 @@ spills `#DIV/0!`, `#N/A`. The same holds unlifted: `VLOOKUP(NA(),A1:C3,2,1/0)` i
 is `#DIV/0!`. A range_lookup error still beats a value that is not found: `VLOOKUP(9,A1:C3,2,1/0)` is `#DIV/0!`.
 HLOOKUP behaves alike (probes/lookup-argument-edges H30-H63, excel-graph, 2026-10-21, T-2234).
 A blank element of a computed index array is `#VALUE!` for the whole call, not a spill:
-`VLOOKUP(2,A1:C3,IF({1,0},2,Z1))` and `CHOOSE({1,2},2,Z1)` with Z1 blank, `INDEX(E10:E11,{1;2})` with E11 blank, and
-`{2,1}*Z1` (zeros). A text element (`IF({1,0},2,"")`) is `#REF!`. Not found is `#N/A` in each case. A blank
-reference index (`Z1`, `+Z1`) is `#VALUE!`. A lifted lookup_value with a blank-holding range index reads only its first
-cell: `VLOOKUP({2;2},A1:C3,E10:E11)` spills "y" twice (same probe, H126-H189).
+`VLOOKUP(2,A1:C3,IF({1,0},2,Z1))` and `CHOOSE({1,2},2,Z1)` with Z1 blank, and `INDEX(E10:E11,{1;2})` with E11 blank. The
+same holds for `{2,1}*Z1`, though that is just an index below 1. A text element (`IF({1,0},2,"")`) is `#REF!`. Not found is
+`#N/A` in each case. A blank reference index (`Z1`, `+Z1`) is `#VALUE!`. A lifted lookup_value with a range index reads
+only the range's first cell: `VLOOKUP({2;2},A1:C3,E10:E11)` (E11 blank) and `VLOOKUP({2;2},A1:C3,E14:E15)` (2, 3) both
+spill "y" twice (same probe, H126-H189, H360-H364).
 Evidence: probes/vlookup-array-index-range-lookup (155 cells, excel-graph, 2026-10-12, T-1269); the
 first-fill reading that an array range_lookup "looks unlifted" (T-0270) does not hold: each probe here has its own rows, so no spill collides.
 Implemented in: `Model::lookup_each` and `Model::pick_each` (lookup_each.rs), `LookupIndexArg::Array`
@@ -230,8 +231,9 @@ A table_array error comes after lookup_value and before the index and range_look
 `VLOOKUP(NA(),#REF!,2)` are `#N/A`. `VLOOKUP(2,1/0,NA())`, `VLOOKUP(2,1/0,2,NA())` and `VLOOKUP(9,1/0,2)` are `#DIV/0!`.
 `VLOOKUP(2,#REF!,"a")` is `#REF!`. A lifted lookup_value spills the table error once per element: `VLOOKUP({2;9},1/0,2)`
 gives two `#DIV/0!` (probes/lookup-argument-edges H66-H123, excel-graph, 2026-10-21, T-2234).
-Unprobed: a table error next to a lifted range_lookup, and an error element of a lifted lookup_value with a table error
-(the engine gives the element's own error).
+A lifted range_lookup spreads the table error too, as `VLOOKUP(2,1/0,2,{TRUE;FALSE})` spilling `#DIV/0!` twice shows.
+A lookup_value error still comes first, element by element: `VLOOKUP(NA(),1/0,2,{TRUE;FALSE})` spills `#N/A` twice, and
+`VLOOKUP({#N/A;2},1/0,2)` spills `#N/A`, `#DIV/0!` (same probe, H336-H358, HLOOKUP alike).
 A table that is the engine's own `#ERROR!` (arrays.md "Array results above 1,048,576 cells are #ERROR!", a DEVIATION)
 is returned once, not spread over a lifted lookup_value, so the limit still refuses the call.
 Status: VERIFIED

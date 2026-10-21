@@ -332,7 +332,13 @@ fn table_error_comes_after_lookup_value_and_before_index() {
     model._set("A3", "=HLOOKUP(2,1/0,2,NA())");
     model._set("A4", "=VLOOKUP(2,#REF!,\"a\")");
     model._set("B1", "=VLOOKUP({2;9},1/0,2)");
+    model._set("C1", "=VLOOKUP(NA(),1/0,2,{TRUE;FALSE})");
+    model._set("D1", "=VLOOKUP(2,1/0,2,{TRUE;FALSE})");
     model.evaluate();
+    assert_eq!(model._get_text("C1"), *"#N/A");
+    assert_eq!(model._get_text("C2"), *"#N/A");
+    assert_eq!(model._get_text("D1"), *"#DIV/0!");
+    assert_eq!(model._get_text("D2"), *"#DIV/0!");
     assert_eq!(model._get_text("A1"), *"#N/A");
     assert_eq!(model._get_text("A2"), *"#DIV/0!");
     assert_eq!(model._get_text("A3"), *"#DIV/0!");

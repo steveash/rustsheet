@@ -89,7 +89,8 @@ impl Model {
             return Err(lookup_value);
         }
         if let Some(error) = table_error {
-            return Err(self.table_error_each(lookup_value, error, cell));
+            let sorted_grid = is_sorted.ok().filter(LiftedArg::is_grid);
+            return Err(self.table_error_each(lookup_value, sorted_grid, error, cell));
         }
         let index = match index {
             Ok(index) => index,
@@ -99,12 +100,15 @@ impl Model {
         Ok((lookup_value, index, is_sorted?))
     }
 
-    /// A failed `table_array` under `lookup_value`: the table's error, or for an array or
-    /// multi-cell range `lookup_value` that error in each element that is not an error itself
-    /// (`VLOOKUP({2;9},1/0,2)` spills `#DIV/0!` twice, probes/lookup-argument-edges H120-H124).
+    /// A failed `table_array` under `lookup_value`: the table's error, or, lifted over an array
+    /// or multi-cell range `lookup_value` or `range_lookup` (`sorted_grid`), that error in each
+    /// element whose `lookup_value` is not an error itself: `VLOOKUP({2;9},1/0,2)` and
+    /// `VLOOKUP(2,1/0,2,{TRUE;FALSE})` spill `#DIV/0!` twice, `VLOOKUP(NA(),1/0,2,{TRUE;FALSE})`
+    /// `#N/A` twice (probes/lookup-argument-edges H120-H124, H336-H352).
     fn table_error_each(
         &mut self,
         lookup_value: CalcResult,
+        sorted_grid: Option<CalcResult>,
         error: CalcResult,
         cell: CellReferenceIndex,
     ) -> CalcResult {
@@ -118,11 +122,13 @@ impl Model {
                 ..
             }
         );
-        if is_limit || !LiftedArg::is_grid(&lookup_value) {
+        let mut criteria = vec![lookup_value];
+        criteria.extend(sorted_grid);
+        if is_limit || !criteria.iter().any(LiftedArg::is_grid) {
             return error;
         }
         self.lift_values(
-            vec![lookup_value],
+            criteria,
             LiftCost::Unit,
             &LiftOptions::REUSE_EQUAL_RUNS,
             cell,

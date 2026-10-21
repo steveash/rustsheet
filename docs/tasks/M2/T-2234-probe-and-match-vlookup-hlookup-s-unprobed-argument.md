@@ -59,15 +59,15 @@ becomes a rule with its cells). Change `lookup_each.rs` / `index_arg.rs` only wh
 - An array of references as the table (SPEC-0014, T-2064).
 
 ## Outcome
-Done 2026-10-21. Two new excel-graph probes: `probes/lookup-argument-edges` (129 cells, the four groups for VLOOKUP and
+Done 2026-10-21. Two new excel-graph probes: `probes/lookup-argument-edges` (149 cells, the four groups for VLOOKUP and
 HLOOKUP, found and not found) and `probes/lookup-index-near-integer` (1,095 cells, indexes just below and above an
-integer at 2, 3, 50 and 100). Before the fix, 16 of the 129 cells failed. Now both cases pass in full.
+integer at 2, 3, 50 and 100). Before the fix, 22 of the 149 cells failed. Now both cases pass in full.
 - A table_array error comes after lookup_value and before the index and range_lookup, and a lifted lookup_value spills
-  it per element (`lookup_head`, `table_error_each` in index_arg.rs).
+  it per element, as does a lifted range_lookup (`lookup_head`, `table_error_each` in index_arg.rs).
 - The index is floored with INDEX's near-integer snap (`near_integer_count`, 2^-22 + 2^-33), and the -2^31 cut-off is
   tested on the floored value: -2147483647.5 is `#REF!` and 3.9999999 is column 4.
 - The rest was already right in the engine: the two-error pairs (lookup_value wins), blank index elements (`#VALUE!`
   for the whole call) and a range index's spill. lookup.md now records them with cells. No "unprobed" sentence is left
   for the four points.
-- Eval delta: the gated probes suite gains 2 cases (1,224 cells), all passing. 16 of them failed before the fix. 0
+- Eval delta: the gated probes suite gains 2 cases (1,244 cells), all passing. 22 of them failed before the fix. 0
   regressions, no baseline line changed.
