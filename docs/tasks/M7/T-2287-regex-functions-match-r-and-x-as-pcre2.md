@@ -1,5 +1,5 @@
 ---
-id: T-2259
+id: T-2287
 title: "REGEX functions match \R and \X as PCRE2 does (regex-ascii-classes A27, A42)"
 milestone: M7
 lane: functions-text

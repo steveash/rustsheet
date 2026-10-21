@@ -58,7 +58,7 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 6 cells, 0 numeric pas
   `Look::EndLF` on one whose only `\n` is the final one, so regex-ascii-classes A34 passes. A text that ends in `\n`
   and holds another one keeps `\z` until T-1900's memoized mode, pinned by a unit test.
 - [ ] `\h` and a leading `(*UCP)` are accepted (regex-ascii-classes A41, A17 pass). `\R` and `\X` (A42, A27) parse
-  and stay `#VALUE!`; T-2259 (functions-text, depends on T-1900) implements them.
+  and stay `#VALUE!`; T-2287 (functions-text, depends on T-1900) implements them.
 - [ ] A unit test pins `a++` as `#VALUE!` until T-1900.
 - [ ] A differential unit test checks our parser's `Hir` against `regex-syntax`'s for random patterns both dialects
   read alike.
@@ -74,4 +74,4 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 6 cells, 0 numeric pas
 - Iteration (T-1899).
 
 ## Visible-parity stage
-Decision 0083: the cells listed under Context are visibly off (`#VALUE!` or FALSE where Excel accepts `(?#..)`, `\Q..\E`, `(*UCP)`, `\h` and `$` before a final LF), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. `\X` and `\R` (A27, A42) are T-2259.
+Decision 0083: the cells listed under Context are visibly off (`#VALUE!` or FALSE where Excel accepts `(?#..)`, `\Q..\E`, `(*UCP)`, `\h` and `$` before a final LF), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. `\X` and `\R` (A27, A42) are T-2287.
