@@ -55,10 +55,10 @@ def test_source_list_rows_are_well_formed() -> None:
         assert row["page"].startswith("https://support.microsoft.com/"), name
 
 
-def test_only_functions_the_web_oracle_cannot_evaluate_are_oracle_none() -> None:
-    # The oracle canary refuses SHEETS()/INFO() workbooks (oracle/canary.py). JIS (#NAME?) and
-    # FILTERXML (#VALUE!) do get web values, which are goldens (decision 0039, T-0040).
-    assert {f["name"] for f in _functions() if f.get("oracle") == "none"} == {"INFO", "SHEETS"}
+def test_no_function_is_oracle_none() -> None:
+    # INFO and SHEETS left `none` with T-2113: the canary refuses only SHEETS() and INFO("numfile"). JIS (#NAME?)
+    # and FILTERXML (#VALUE!) get web values, which are goldens (decision 0039, T-0040).
+    assert {f["name"] for f in _functions() if f.get("oracle") == "none"} == set()
 
 
 # Functions whose result can be a multi-cell array by design (T-2224): `rustsheet-gen --spill` reserves a
