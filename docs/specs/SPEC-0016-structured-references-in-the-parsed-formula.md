@@ -1,6 +1,6 @@
 # SPEC-0016 — Structured references kept in the parsed formula
 
-- **Status:** draft (T-2194 blocked at the review-round limit; see the task)
+- **Status:** accepted (2026-10-21, T-2194)
 - **Milestone / lane:** M8 / engine
 - **Tasks:** T-2194 (this spec); T-2195 (step 1), T-1699 (step 2), T-2196 (step 3); T-1683 builds on steps 1-2; T-2197 (probe)
 
@@ -259,10 +259,12 @@ parse-error value.
 3. **Restore.** `restore_sheet` (undo of a delete) puts the kept tables back in
    `workbook.tables`. The other sheets' formulas stay as the delete left them (today's undo
    behavior for plain references).
-4. **Export.** Until T-2196, `to_excel_string` prints `lowered`, never `reference`, and a formula
-   that fails to reparse is never left holding a structured reference, so an export after a rename
-   or a delete never writes a structured reference into a file without table parts
-   (xlsx-storage.md "Structured references in the file").
+4. **Export.** Until T-2196, `to_excel_string` prints `lowered`, never `reference`. After a rename
+   or a delete no formula is left as a parse error holding a structured reference, so an export
+   then never writes a structured reference into a file without table parts (xlsx-storage.md
+   "Structured references in the file"). The engine-API missing-table path is different: after
+   `remove_table` the formula is a `ParseErrorKind` that prints its structured text, so T-2195
+   decides what `to_excel_string` writes for it.
 
 ### Shared formulas and storage
 The storage text is now `Sales[[#This Row],[Qty]]` in every cell of a filled column. It does not

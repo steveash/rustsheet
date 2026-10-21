@@ -3,7 +3,7 @@ id: T-2194
 title: "SPEC-0016: structured references kept in the parsed formula"
 milestone: M8
 lane: engine
-status: blocked
+status: done
 priority: P1
 size: S
 tier: opus
@@ -19,18 +19,11 @@ T-1699 found that the parser lowers every structured reference to a range at par
 ## Acceptance criteria
 - [x] `docs/specs/SPEC-0016-structured-references-in-the-parsed-formula.md` covers the node design, transparency (`ungrouped()`), printers, shared formulas, alternatives, test plan and rollout.
 - [x] Rollout tasks filed: T-2195 (step 1), T-1699 re-scoped as step 2 with `depends_on: [T-2195]`, T-2196 (step 3, table parts in the export) and T-2197 (probe).
-- [ ] `make check` green; the architecture reviewer approves.
+- [x] `make check` green; the architecture reviewer approves.
 
 ## Out of scope
 - Implementation (T-2195, T-1699).
 
-## Blocked because
-The review-round limit (work-loop step 5, 3 rounds) ran out on 2026-10-20. Security and quality approved round 1. Architecture approved round 1 and requested changes in round 2. Excel fidelity requested changes in all three rounds, with fewer findings each time:
-- Round 1: export without table parts, and the bare name in a file. Fixed: export stays lowered until T-2196.
-- Round 2: values on structural edits. Fixed: the "Structural edits" section.
-- Round 3: moves, cut and paste, and CF and defined-name formulas left out; the evidence for ISREF of `#This Row` overstated. Fixed in the last commit, which has not been re-reviewed.
-
-Architecture round 2 also asked for the mechanism for passing tables into the displace printer, the edge-case table, and the `ThisRowKind` printing rule; those are fixed and not re-reviewed either. Next: re-run `reviewer-architecture` and `reviewer-excel-fidelity` on the branch head (`review` skill). If both approve, set the status to `done`, set the spec status to `accepted`, and merge. `make check` passed on the first commit, and every later change is docs only.
-
-## Outcome (draft, for when it merges)
+## Outcome
 SPEC-0016: a `StructuredReferenceKind { reference, lowered }` wrapper made transparent through `ungrouped()`, plus a late-bound `ThisRowKind` for `#This Row` (shared formulas parse at (1, 1), so the row has to be bound at evaluation). The xlsx export keeps lowered ranges until the exporter writes table parts (T-2196), because a structured reference in a file without its table, or a bare table name, breaks the file in Excel (xlsx-storage.md). Filed T-2195, T-2196 and T-2197; T-1699 now depends on T-2195. Added the UNVERIFIED references.md entry "Structured references when the table changes". Eval delta: none (docs only).
+Unblocked on 2026-10-21 in the owner's session: a fresh review round on the round-3 fixes. Architecture approved; Excel fidelity found one more gap (sheet rename and delete would have changed existing values), now covered by the "Sheet rename, delete and restore" section, and approved.
