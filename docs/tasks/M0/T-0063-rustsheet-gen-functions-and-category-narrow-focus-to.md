@@ -3,7 +3,7 @@ id: T-0063
 title: "rustsheet-gen --functions and --category narrow --focus to named functions or a catalog category"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
