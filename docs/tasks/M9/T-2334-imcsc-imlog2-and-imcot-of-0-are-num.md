@@ -19,7 +19,6 @@ Found by T-2043's sweep: probes-numeric `im-last-digit-sweep` D21, M21, P21 (exp
 ## Acceptance criteria
 - [ ] D21:F21, M21:R21 of the sweep pass; a unit test covers the three calls.
 - [ ] `make check` green; eval baseline updated for the cells that now pass; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Last-digit kernels (T-2044).

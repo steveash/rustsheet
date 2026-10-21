@@ -19,7 +19,6 @@ Found by T-2043's sweep: `IMCSC("-724.227-562.884i")` is -6.94796703439417E-245 
 ## Acceptance criteria
 - [ ] E55, F55, H55, I55, K42, L42 of the sweep pass without regressing the overflow-to-0 cells already matched.
 - [ ] `make check` green; baseline updated; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Last-digit kernels (T-2044).
