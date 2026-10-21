@@ -464,3 +464,22 @@ Evidence: probes/eng-im-overflow (excel-graph).
   (`IMSUM("9E307","9E307","-9E307")`) and a later blank cell (`IMPRODUCT("1E200","1E200",<blank>)`, not "0") (T-2003).
 Evidence: probes/eng-complex-overflow A1-A21 (excel-graph, 2026-10-19). Implemented in complex.rs
 (`finite_complex_result`, `fn_imsub`, `fold_complex`).
+
+Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
+
+- A blank cell met earlier in IMPRODUCT makes the running product 0, so a later overflow cannot
+  happen: `IMPRODUCT(<blank>,"1E200","1E200")` is `0`; the blank last is `#VALUE!` (the overflow
+  came first). Implemented.
+- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78),
+  whatever the real part (`IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`), although `cosh y` is still
+  finite there. IMCOSH and IMSINH are `#NUM!` for a zero imaginary part when `exp(|x|)` overflows
+  (`IMCOSH("710.4+0i")`) but answer text with a nonzero one (`IMCOSH("710.4+1.5i")` is
+  `1.17873946358278E+307+1.6621900184285E+308i`); past cosh's own range it is `#NUM!`
+  (`IMCOSH("711+1.5i")`). A tiny nonzero imaginary part with a large real one is UNVERIFIED. Implemented.
+- IMSEC, IMCSC, IMSECH and IMCSCH answer `0` (both parts) where the denominator overflows
+  (`IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`, `IMSEC("1.5+711i")`); a zero denominator stays
+  `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented.
+- IMTAN and IMCOT near the edge answer `i` / `-i` (`IMTAN("1.5+710.4i")`); IMLN, IMLOG10, IMLOG2
+  and IMSQRT do not overflow there. Already matched.
+- Last-digit differences remain as known failures (a kernel question, not a rule): IMCOSH/IMSINH
+  `710.4+1.5i` and `1.5+710.4i`, IMSECH `1.5+711i`, IMCOT `711+1.5i`, IMLOG2 and IMLOG10 at 710-800.
