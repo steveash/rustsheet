@@ -1144,6 +1144,7 @@ C	probes/written-parens-reference-context.case.json	35
 C	probes/written-parens-reference-only.case.json	35
 C	probes/xirr-early-dates.case.json	16
 C	probes/xirr-mismatched-empties.case.json	14
+C	probes/xirr-span-zero-first.case.json	30
 C	probes/xirr-xnpv-whole-column-nogaps.case.json	8
 C	probes/xlookup-array-lookup-value-args.case.json	57
 C	probes/xlookup-array-lookup-value.case.json	27
@@ -3220,6 +3221,12 @@ F	probes/weeknum-stale-sheet-moved.case.json	Second!A1
 F	probes/weeknum-stale-sheet-order.case.json	Second!A1
 F	probes/whole-column-empty-walkers.case.json	Sheet1!E7
 F	probes/whole-column-empty-walkers.case.json	Sheet1!F3
+F	probes/xirr-span-zero-first.case.json	Sheet1!A11
+F	probes/xirr-span-zero-first.case.json	Sheet1!A14
+F	probes/xirr-span-zero-first.case.json	Sheet1!A20
+F	probes/xirr-span-zero-first.case.json	Sheet1!A28
+F	probes/xirr-span-zero-first.case.json	Sheet1!A29
+F	probes/xirr-span-zero-first.case.json	Sheet1!A30
 F	probes/yield-solver-sweep.case.json	S!A1
 F	probes/yield-solver-sweep.case.json	S!A10
 F	probes/yield-solver-sweep.case.json	S!A11
