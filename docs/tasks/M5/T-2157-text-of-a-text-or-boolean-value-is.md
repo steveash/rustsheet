@@ -15,6 +15,7 @@ depends_on: [T-2202]
 TEXT is `#VALUE!` when its format code is invalid, whatever the value: a text or boolean value no longer bypasses the code check.
 
 ## Context
+- Evidence (T-2202): `eval/suites/probes/cases/t2202-text-code-check-on-text` probes which codes are rejected and that the check covers text, empty text and booleans; its cells must pass here (see number-formats.md).
 - Evidence first (planner, 2026-10-20): the probe this task asks for is T-2202 (research), which fills `probes/t2202-text-code-check-on-text`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). `fn_text` (crates/rustsheet-engine/src/functions/text/common.rs) sends text and booleans to `format_text_value`
 (formatter/format.rs), which never validates the number sections, so codes like "TRUE", "FALSE", "#N/A" and "HELLO " (a bare

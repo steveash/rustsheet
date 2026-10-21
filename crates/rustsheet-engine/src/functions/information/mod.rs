@@ -507,10 +507,23 @@ impl Model {
                 // (probes/info-logic-argument-modes A12, excel-graph).
                 // Reached through INDEX, IF or a union it is the same: a union of areas on one
                 // sheet gives that sheet (probes/volatile-and-info-rand-true-false-sheet D18, D19, D26).
-                if let RefArg::Ranges(ranges) = self.evaluate_reference_arg(arg, cell) {
-                    if let Some(first) = ranges.first() {
-                        return CalcResult::Number(first.left.sheet as f64 + 1.0);
+                match self.evaluate_reference_arg(arg, cell) {
+                    RefArg::Ranges(ranges) => {
+                        if let Some(first) = ranges.first() {
+                            return CalcResult::Number(first.left.sheet as f64 + 1.0);
+                        }
                     }
+                    // An array of references is neither lifted nor read as a value: one #N/A
+                    // (`SHEET(OFFSET(A1,{0;1},0))`, probes/reference-lift-consumers-b1d E101;
+                    // SPEC-0014 rule 2).
+                    RefArg::Grid(_) => {
+                        return CalcResult::new_error(
+                            Error::NA,
+                            cell,
+                            "SHEET of an array of references".to_string(),
+                        )
+                    }
+                    RefArg::Value(_) => {}
                 }
                 // Now it should be the name of a sheet
                 let sheet_name = match self.get_string(arg, cell) {
