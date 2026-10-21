@@ -155,7 +155,7 @@ fn up_to_32_periods_are_the_per_period_sum() {
         ),
         ("A3", "=CUMPRINC(0.004,1024,1000,1,1024,1)", "-1000"),
         // A large rate over a short range, where expm1 of the range overflows: the difference
-        // of powers (probes/fin-cumipmt-overflow-and-forms A15, A18; T-1890 review).
+        // of powers (probes/fin-cumipmt-overflow-and-forms A15-A19).
         ("A5", "=CUMPRINC(1E10,40,1,10,40,0)", "-1.0000000000000013"),
         ("A6", "=CUMIPMT(1E300,10,1,1,10,0)", "-1E301"),
         // CUMPRINC_CUMIPMT.xlsx H6, which the PPMT sum missed by 3 ulps.

@@ -3,7 +3,7 @@ id: T-1890
 title: "CUMIPMT and CUMPRINC closed form: fit Excel's last digits over many periods"
 milestone: M9
 lane: functions-financial
-status: blocked
+status: done
 priority: P1
 size: S
 tier: opus
@@ -42,7 +42,7 @@ denominator) is described in financial.md; Excel's form is closer to `log1p`/`ex
   a few periods past 2^53 at a tiny rate (`CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)`, now the closed form).
 - [x] The cells above pass (baseline lines removed), with no new failures. Re-scoped by T-1890's
   Outcome: CUMPRINC is visibly right; the interest cells and CUMPRINC A2, A6, A16, H26 moved to T-2192.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The short-range misses (T-1374) unless the same formulation fixes them.
@@ -63,32 +63,22 @@ PPMT sum, which lost a small principal's digits: CUMPRINC_CUMIPMT.xlsx H5 had 8 
 CUMIPMT keeps the IPMT sum up to 32 periods. The exact term sum `-pmt*expm1((k-1-nper)*L)` was
 tried. It fixed G4, G21, G22 and G25, but it lost G3, G9 and G15 to the bit. The new probe also
 shows that Excel's own interest is not the exact sum: A11 and A12 are off by 10^-14 relative.
-Probe probes/fin-cumipmt-overflow-and-forms (excel-graph, A1-A14) answers the first criterion:
+Probe probes/fin-cumipmt-overflow-and-forms (excel-graph, A1-A24) answers the first criterion:
 - An overflowing payment is `#NUM!` for CUMIPMT (A1, A3), which matches.
 - `CUMPRINC(1E300,10,1E300,1,10,1)` is -1E300 (A2), where ours is `#NUM!`.
 - The past-2^53 cells A5 and A6 have their own digits.
 Eval:
 - ironcalc-calc: 918 → 915 known failures (H6, H22, H25 now bit-exact).
-- probes: one new case, 14 cells, 9 known failures.
+- probes: one new case, 25 cells, 15 known failures (A20-A24 are within 15 digits but miss Excel's last
+  digits; T-2192).
 - No regressions.
 Visible parity: every CUMPRINC cell of the four cases is within half a unit of the 15th
 significant digit, except H26 (2 ulps on -3.3E-21), A2 and A6. CUMIPMT's visibly-off cells are G2,
 G4, G7, G31, A7, A9-A11, A18, K3, A5 and the new A12, all interest. Follow-up T-2192 (campaign
 visible) takes these, A16 and the three CUMPRINC exceptions, so the criterion "the cells above pass" is
 met only in part here. A large rate over a short range (A15-A19) keeps main's values: the
-short form falls back to the difference of powers where expm1 overflows.
+short form falls back to the difference of powers where expm1 overflows. It also falls back where the
+leading power is subnormal or underflows (A20-A24), which round 3 of the first review found losing about
+1E-5 relative. Unblocked on 2026-10-21 in the owner's session: the round-3 fixes, the A20-A24 oracle
+cells, and a fresh review round.
 
-## Blocked because
-Review round 3 (reviewer-excel-fidelity, 2026-10-20, on head 637e3703) asked for changes, and the work loop allows
-three review rounds (work-loop step 5). The next run that unblocks this task re-reviews from round 1 after these fixes:
-- BLOCKING, `functions/financial/cumulative.rs` short-range product form: the fallback to `difference()` only
-  catches a product that underflows to 0. When `discount(first - 1 - nper)` is subnormal, the product is nonzero but
-  has lost digits: `CUMPRINC(1E10,32,1,1,25,0)` is -9.999888696826292e-71 on this head (main -9.999999993000182e-71,
-  exact -9.9999999930e-71); `(1E10,32,1,1,10,0)` -9.999888681826738e-221; `(1E10,31.5,1,1,20,0)`
-  -1.0000000004816859e-115 (exact -9.9999999885e-116). Fix: use the product only when that power `is_normal()`
-  and the product is finite; otherwise `difference()`. Update the comment to name the subnormal precision loss.
-- The cited excel-graph values `CUMPRINC(1E10,40,1,1,20,0)` and `(1E10,40,1,15,20,0)` = -9.999999980000501E-201
-  are in no committed oracle file. Add them, and the inputs above, to `probes/fin-cumipmt-overflow-and-forms` (or a
-  sibling case), fill excel-graph, and `make eval-baseline`.
-- Minor: once that oracle cell exists, the unit test's A7 hand expectation can lean on the eval case.
-Unblock when someone takes these fixes (no external dependency).

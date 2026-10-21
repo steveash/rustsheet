@@ -635,15 +635,16 @@ T-1890 (probes/fin-cumipmt-overflow-and-forms A1-A14, excel-graph 2026-10-20):
 - Its principal is within a few ulps of the exact sum, also where it is a tiny part of the payments
   (CUMPRINC_CUMIPMT.xlsx H5 -0.0047565423422487076).
 Ours since T-1890: the principal is the closed form at any length. Over up to 32 periods its
-difference of powers is written `exp((first-1-nper)*L)*expm1((end-first+1)*L)`, which does not cancel
-(where that `expm1` overflows, a rate of 1E10 over 31 periods, the difference is kept: A15-A19; so it is
-where the first power is subnormal or underflows, as the product would lose its digits:
-`CUMPRINC(1E10,32,1,1,25,0)` is -9.99999999300011E-71 in Excel, ours ...3000182E-71 (the product
-gave -9.999888696826292E-71), `(1E10,32,1,1,10,0)` -9.999999978000387E-221, `(1E10,31.5,1,1,20,0)`
--9.999999988500136E-116, and `CUMPRINC(1E10,40,1,1,20,0)` and `(…,15,20,0)` -9.999999980000501E-201,
-ours ...0004E-201, exact ...0000E-201: probes/fin-cumipmt-overflow-and-forms A20-A24, excel-graph
-2026-10-21; their last digits are T-2192's)
-(H6, H22 and H25 to the bit; `CUMPRINC(0.01,360,100000,1,12,0)` -362.8793467231003, Excel
+difference of powers is written `exp((first-1-nper)*L)*expm1((end-first+1)*L)`, which does not cancel.
+The plain difference of powers is kept in two places. One is where that `expm1` overflows (a rate of
+1E10 over 31 periods: A15-A19). The other is where the first power is subnormal or underflows, because
+the product would lose its digits there. For example, `CUMPRINC(1E10,32,1,1,25,0)` is
+-9.99999999300011E-71 in Excel and ...3000182E-71 here, where the product gave -9.999888696826292E-71.
+The other cells of that kind are `(1E10,32,1,1,10,0)` -9.999999978000387E-221, `(1E10,31.5,1,1,20,0)`
+-9.999999988500136E-116, and `CUMPRINC(1E10,40,1,1,20,0)` and `(…,15,20,0)` -9.999999980000501E-201
+(ours ...0004E-201, exact ...0000E-201): probes/fin-cumipmt-overflow-and-forms A20-A24, excel-graph
+2026-10-21. Their last digits are T-2192's.
+The closed form gets H6, H22 and H25 to the bit ( `CUMPRINC(0.01,360,100000,1,12,0)` -362.8793467231003, Excel
 -362.8793467231). The PPMT sum it replaces lost a small principal's digits (H5 8 right, H7 7). The
 interest keeps the IPMT sum up to 32 periods.
 Status: PARTLY VERIFIED (excel-graph; CUMPRINC visibly right but for A2, A6, A16 and
