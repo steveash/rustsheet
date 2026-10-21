@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-2016: a subnormal number typed as a cell constant (5e-324, 2.2e-308, 1e-310) as LOG10, LN, =0 and ISNUMBER see it, next to the smallest normal 2.2250738585072014e-308",
+  "description": "T-2016, T-2228: a subnormal number constant in a loaded workbook (an xlsx <v>: 5e-324, 2.2e-308, 1e-310 and the negatives -5e-324, -1e-310) as LOG10, LN, =0, ISNUMBER and *1E+300 see it, next to the smallest normal 2.2250738585072014e-308 and its negative",
   "tags": [
     "M2",
     "probe",
@@ -33,7 +33,25 @@
         "C4": "=LN(A4)",
         "D4": "=A4=0",
         "E4": "=ISNUMBER(A4)",
-        "F4": "=A4*1E+300"
+        "F4": "=A4*1E+300",
+        "A5": -5e-324,
+        "B5": "=LOG10(A5)",
+        "C5": "=LN(A5)",
+        "D5": "=A5=0",
+        "E5": "=ISNUMBER(A5)",
+        "F5": "=A5*1E+300",
+        "A6": -1e-310,
+        "B6": "=LOG10(A6)",
+        "C6": "=LN(A6)",
+        "D6": "=A6=0",
+        "E6": "=ISNUMBER(A6)",
+        "F6": "=A6*1E+300",
+        "A7": -2.2250738585072014e-308,
+        "B7": "=LOG10(A7)",
+        "C7": "=LN(A7)",
+        "D7": "=A7=0",
+        "E7": "=ISNUMBER(A7)",
+        "F7": "=A7*1E+300"
       }
     }
   ],

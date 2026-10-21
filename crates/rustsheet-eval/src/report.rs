@@ -1,48 +1,22 @@
 //! Aggregation of case results into the scoreboard and the gap report.
 
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
-use std::sync::LazyLock;
-
-use regex::Regex;
-use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::catalog_coverage::{self, MilestoneCoverage};
 use crate::closeness::{self, Closeness, Visible};
 use crate::evidence_floor::{self, below_floor, BelowFloor, EVIDENCE_FLOOR};
+use crate::formula_calls::{calls_only_in_scope, functions_in};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
 use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::text_expect;
+use crate::v15_checkpoint::{self, V15Checkpoint};
 use crate::value::Verdict;
 use crate::visible_parity;
-
-static FUNCTION_CALL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)(?:_xlfn\.|_xlws\.)?\b([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
-        .unwrap_or_else(|e| unreachable!("static regex: {e}"))
-});
-static STRING_LITERAL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#""(?:[^"]|"")*""#).unwrap_or_else(|e| unreachable!("static regex: {e}"))
-});
-
-/// Upper-cased function names called by a formula (string literals ignored).
-#[must_use]
-pub fn functions_in(formula: &str) -> BTreeSet<String> {
-    let stripped = STRING_LITERAL.replace_all(formula, "\"\"");
-    FUNCTION_CALL
-        .captures_iter(&stripped)
-        .filter_map(|c| c.get(1).map(|m| m.as_str().to_ascii_uppercase()))
-        .collect()
-}
-
-/// Whether a cell calling `called` counts toward parity: it calls no out-of-scope catalog function
-/// (decision 0027).
-#[must_use]
-pub fn calls_only_in_scope(catalog: &Catalog, called: &BTreeSet<String>) -> bool {
-    called.iter().all(|f| catalog.in_scope(f))
-}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SuiteSummary {
@@ -279,6 +253,10 @@ pub struct RunReport {
     /// The exit measures of decision 0085 per milestone (T-2177); derived from the rows above.
     #[serde(default)]
     pub milestone_exit: Vec<crate::milestone_exit::ExitRow>,
+    /// The fifteen-digit parity checkpoint of decision 0094 (T-0062); filled by the caller, which
+    /// knows which suites are generated.
+    #[serde(default)]
+    pub v15_checkpoint: V15Checkpoint,
 }
 
 impl RunReport {
@@ -402,6 +380,7 @@ impl RunReport {
             function_scope: function_scope::summarize(catalog, results),
             catalog_coverage: Vec::new(),
             milestone_exit: Vec::new(),
+            v15_checkpoint: V15Checkpoint::default(),
         }
     }
 
@@ -566,6 +545,7 @@ impl RunReport {
         self.write_suites_table(&mut md);
         crate::milestone_exit::write_markdown(&self.milestone_exit, &mut md);
         visible_parity::write_markdown(self, &mut md);
+        v15_checkpoint::write_markdown(&self.v15_checkpoint, &mut md);
         text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
@@ -919,6 +899,8 @@ pub(crate) mod tests {
             scope,
             reason: reason.map(String::from),
             oracle,
+            v15: None,
+            v15_reason: None,
         };
         let catalog = Catalog::from_functions([
             entry("ABS", Scope::In, None, None),
@@ -988,13 +970,5 @@ pub(crate) mod tests {
         };
         assert_eq!(base(&fast), base(&slow));
         assert!(!diff(&base(&fast), &base(&slow)).is_dirty());
-    }
-
-    #[test]
-    fn extracts_function_names() {
-        let f =
-            functions_in(r#"IF(_xlfn.XLOOKUP(A1,B:B,C:C)>0,SUM(A1:A3),"NOW()")+ERF.PRECISE(1)"#);
-        let v: Vec<&str> = f.iter().map(String::as_str).collect();
-        assert_eq!(v, vec!["ERF.PRECISE", "IF", "SUM", "XLOOKUP"]);
     }
 }
