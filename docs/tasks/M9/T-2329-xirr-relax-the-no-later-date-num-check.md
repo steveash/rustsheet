@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-2328]
 ---
 
 ## Goal
@@ -22,4 +22,4 @@ probes/xirr-span-zero-first A28-A30 (engine `#NUM!`, Excel 2.98e-9 / 3.73e-9) co
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-Probing the exact condition (a zero first value with all other dates equal).
+Probing the exact condition (a zero first value with all other dates equal): file a research probe if needed.
