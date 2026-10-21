@@ -1,0 +1,43 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "How deep LAMBDA calls may nest: a LAMBDA that calls itself through a parameter, and a chain of closures built by REDUCE, at 10 to 300 levels (T-0439). Deeper versions (1,000 to 20,000 levels) made Excel for the web's createSession fail.",
+  "tags": [
+    "M7",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "H1": "=LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,10))",
+        "I1": "=ERROR.TYPE(H1)",
+        "H2": "=LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,100))",
+        "I2": "=ERROR.TYPE(H2)",
+        "H3": "=LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,300))",
+        "I3": "=ERROR.TYPE(H3)",
+        "H4": "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(10),LAMBDA(f,x,LAMBDA(z,f(z)+x))),g(0))",
+        "I4": "=ERROR.TYPE(H4)",
+        "H5": "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(100),LAMBDA(f,x,LAMBDA(z,f(z)+x))),g(0))",
+        "I5": "=ERROR.TYPE(H5)",
+        "H6": "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(300),LAMBDA(f,x,LAMBDA(z,f(z)+x))),g(0))",
+        "I6": "=ERROR.TYPE(H6)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!I1",
+    "Sheet1!H2",
+    "Sheet1!I2",
+    "Sheet1!H3",
+    "Sheet1!I3",
+    "Sheet1!H4",
+    "Sheet1!I4",
+    "Sheet1!H5",
+    "Sheet1!I5",
+    "Sheet1!H6",
+    "Sheet1!I6"
+  ]
+}

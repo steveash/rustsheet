@@ -216,7 +216,7 @@ RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 
 criteria grid (broadcast criteria included), a GROUPBY result (groups x columns, checked while grouping, before any
 LAMBDA call; T-1322), the broadcast result of `lift_numbers` (DATE) and of the SPEC-0011 driver (ROUND family, MOD; functions/lift/driver.rs), a lifted INDEX's broadcast indices (T-1260), the broadcast of a binary operator over two arrays
 (arithmetic, `&` and comparisons: a whole column against a whole row, `=D:D+4:4`, would be 2^34
-cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), the broadcast of IF, IFERROR and IFNA (`=IF(D:D,4:4)`, `=IFERROR(D:D,4:4)`; T-1448), the broadcast of the element-wise text functions (`broadcast_text`: LEFT, RIGHT, MID, FIND, SEARCH, LEN, REPT, EXACT, CONCATENATE, TEXT, CHAR, CODE, BAHTTEXT and the other callers; `=LEFT(A:A,1:1)` would be 2^34 cells and FIND's numbers do not count against the 64 MiB text budget, so `ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` is `#ERROR!`; T-1771), the padded result of HSTACK and VSTACK (rows x summed columns, or summed rows x columns, checked before any argument is padded or copied: `ROWS(HSTACK(A1:A2000,A1:ALL1))` is `#ERROR!`, and a stack past the grid follows "Stacked results past the grid" below (`check_stack_size`: rows past it are `#NUM!` as in Excel, columns past it are allowed, so `ROWS(HSTACK(A:A,1:1))`, 2^34 cells, is `#ERROR!`; T-1803); T-1780), the padded results of EXPAND, WRAPCOLS and WRAPROWS and the product of MMULT (rows x columns, checked before allocating and, for EXPAND and MMULT, after their own argument checks: `ROWS(EXPAND(1,2000,1000))` and `ROWS(MMULT(A1:A2000,B1#))` with a 1,000-column B1# are `#ERROR!`, and `EXPAND(1,1E9,1E9)` is `#NUM!` past the grid as in Excel (`check_stack_size`; "Stacked results past the grid"); WRAPCOLS and WRAPROWS first clamp wrap_count to the vector's length, as Excel does, so they pad at most wrap_count - 1 cells; XMATCH builds no result array, only a one-row or one-column search vector; T-1786), the padded result of MAP over arrays of different sizes (largest rows x largest columns, checked before allocating; T-1349), the padded result of TEXTSPLIT (rows x widest row, checked before any row is padded: a 32,767-char text with the column delimiters first and the row delimiters after pads ~2^28 cells, and `ROWS(TEXTSPLIT(REPT(",",1500)&REPT(";",1500),",",";"))`, 1501 x 1501, is `#ERROR!`, where Excel builds the array and gives 1501 for ROWS and for COLUMNS, and 1025 for the 1025 x 1025 text just above 2^20, and 1024 for the 1024 x 1024 text of exactly 2^20 cells (A5, which fits) and 1001 for 1001 x 1001 (A6): probe `textsplit-padded-size` A1:A6; the bound is the cell count only, `check_array_cells`, because Excel builds a row wider than the grid: `COLUMNS(TEXTSPLIT(REPT(",",16384),","))` is 16385 and the 16383-comma text 16384, probe `textsplit-wide` A1:A2, and a 32,001-row split gives 32001, A4; the bare 16,385-column spill is `#SPILL!` in Excel, A6; T-1781), the broadcast of SPEC-0011's lifting driver (`lift_call`: EDATE, EOMONTH, WEEKNUM and YEARFRAC, and LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN, charged numbers + elements, TRIMMEAN numbers × elements, statistics.md, T-1772; checked before any element runs, and the call is also `#ERROR!` when the cells of its lifted arrays and ranges add up past 2^27 (`limits::MAX_LIFTED_CELL_VISITS`, checked before the next range is read) or when its kernel calls, weighted by the table's `KernelWork`, would cost more than that cap; Excel has neither limit; T-1770), the lifted SEQUENCE and MAKEARRAY (SPEC-0011 "Array-valued functions", T-1834: each lifted element is charged the cells it builds, `KernelWork::Output`, MAKEARRAY 128 per cell for its LAMBDA calls, against the same 2^27 cap, so `=ROWS(SEQUENCE(SEQUENCE(1024),1024))`, about 2^29 cells, and `=ROWS(MAKEARRAY(SEQUENCE(2048),1024,LAMBDA(r,c,r)))` are `#ERROR!`; Excel is expected to answer 1024 and 2048, worked out from probes/m7-argument-modes F1, F2 and F23, not measured), the lifted TAKE and DROP over an array value (T-1838: each element may copy the whole array, so the call is charged the array's cells per element, `LiftCost::Cells`, against the same 2^27 cap before any element runs: `=ROWS(TAKE(SEQUENCE(1000,1000),SEQUENCE(1000)))`, about 2^30, is `#ERROR!` where Excel is expected to answer 1000; over a range each element is a reference and is charged 1), and every range lifted into an array (`Model::evaluate_range`: scalar functions
+cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), the broadcast of IF, IFERROR and IFNA (`=IF(D:D,4:4)`, `=IFERROR(D:D,4:4)`; T-1448), the broadcast of the element-wise text functions (`broadcast_text`: LEFT, RIGHT, MID, FIND, SEARCH, LEN, REPT, EXACT, CONCATENATE, TEXT, CHAR, CODE, BAHTTEXT and the other callers; `=LEFT(A:A,1:1)` would be 2^34 cells and FIND's numbers do not count against the 64 MiB text budget, so `ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` is `#ERROR!`; T-1771), the padded result of HSTACK and VSTACK (rows x summed columns, or summed rows x columns, checked before any argument is padded or copied: `ROWS(HSTACK(A1:A2000,A1:ALL1))` is `#ERROR!`, and a stack past the grid follows "Stacked results past the grid" below (`check_stack_size`: rows past it are `#NUM!` as in Excel, columns past it are allowed, so `ROWS(HSTACK(A:A,1:1))`, 2^34 cells, is `#ERROR!`; T-1803); T-1780), the padded results of EXPAND, WRAPCOLS and WRAPROWS and the product of MMULT (rows x columns, checked before allocating and, for EXPAND and MMULT, after their own argument checks: `ROWS(EXPAND(1,2000,1000))` and `ROWS(MMULT(A1:A2000,B1#))` with a 1,000-column B1# are `#ERROR!`, and `EXPAND(1,1E9,1E9)` is `#NUM!` past the grid as in Excel (`check_stack_size`; "Stacked results past the grid"); WRAPCOLS and WRAPROWS first clamp wrap_count to the vector's length, as Excel does, so they pad at most wrap_count - 1 cells; XMATCH builds no result array, only a one-row or one-column search vector; T-1786), the padded result of MAP over arrays of different sizes (largest rows x largest columns, checked before allocating; T-1349), the padded result of TEXTSPLIT (rows x widest row, checked before any row is padded: a 32,767-char text with the column delimiters first and the row delimiters after pads ~2^28 cells, and `ROWS(TEXTSPLIT(REPT(",",1500)&REPT(";",1500),",",";"))`, 1501 x 1501, is `#ERROR!`, where Excel builds the array and gives 1501 for ROWS and for COLUMNS, and 1025 for the 1025 x 1025 text just above 2^20, and 1024 for the 1024 x 1024 text of exactly 2^20 cells (A5, which fits) and 1001 for 1001 x 1001 (A6): probe `textsplit-padded-size` A1:A6; the bound is the cell count only, `check_array_cells`, because Excel builds a row wider than the grid: `COLUMNS(TEXTSPLIT(REPT(",",16384),","))` is 16385 and the 16383-comma text 16384, probe `textsplit-wide` A1:A2, and a 32,001-row split gives 32001, A4; the bare 16,385-column spill is `#SPILL!` in Excel, A6; T-1781), the broadcast of SPEC-0011's lifting driver (`lift_call`: EDATE, EOMONTH, WEEKNUM and YEARFRAC, and LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN, charged numbers + elements, TRIMMEAN numbers × elements, statistics.md, T-1772; checked before any element runs, and the call is also `#ERROR!` when the cells of its lifted arrays and ranges add up past 2^27 (`limits::MAX_LIFTED_CELL_VISITS`, checked before the next range is read) or when its kernel calls, weighted by the table's `KernelWork`, would cost more than that cap; Excel has neither limit; T-1770), the lifted SEQUENCE and MAKEARRAY (SPEC-0011 "Array-valued functions", T-1834: each lifted element is charged the cells it builds, `KernelWork::Output`, MAKEARRAY 128 per cell for its LAMBDA calls, against the same 2^27 cap, so `=ROWS(SEQUENCE(SEQUENCE(1024),1024))`, about 2^29 cells, and `=ROWS(MAKEARRAY(SEQUENCE(2048),1024,LAMBDA(r,c,r)))` are `#ERROR!`; Excel is expected to answer 1024 and 2048, worked out from probes/m7-argument-modes F1, F2 and F23, not measured), the lifted TAKE and DROP over an array value (T-1838: each element may copy the whole array, so the call is charged the array's cells per element, `LiftCost::Cells`, against the same 2^27 cap before any element runs: `=ROWS(TAKE(SEQUENCE(1000,1000),SEQUENCE(1000)))`, about 2^30, is `#ERROR!` where Excel is expected to answer 1000; over a range each element is a reference and is charged 1), the lifted TOCOL and UNIQUE (T-1836: the array is read once and every element walks it, so the call is charged the array's cells per element, `LiftCost::Cells`, plus the cells it builds, against the same 2^27 cap before any element runs: `=ROWS(TOCOL(SEQUENCE(131072),SEQUENCE(1100,1,0,0)))`, about 1.4 x 2^27, is `#ERROR!` where Excel is expected to answer 1100, worked out from probes/m7-argument-modes F9 and F12, not measured), and every range lifted into an array (`Model::evaluate_range`: scalar functions
 over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
 before any cell is read, to bound allocation on untrusted input (CLAUDE.md directive 5); so
 `DATE(11:1899,12,1)` and `ROWS(DATE(11:1899,12,1))` are `#ERROR!`. Past-the-grid dimensions are
@@ -306,8 +306,22 @@ Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/043ee562f32eb901 Calc!A204, g
 gen-m5/8a387c26d182e73c Calc!A42, gen-m5/aac6230c2fb40e1e Calc!A258, gen-m5/c0651f0e0fb544d0 Calc!A84, gen-m5/f0f205865a3a4328 Calc!A208,
 gen-m5/6361fdf5993da954 Calc!A378, gen-m5/7d1a5d223624fc70 Calc!A380, gen-m5/d586a1e0c9896942 Calc!A364,
 gen-m5/aac6230c2fb40e1e Calc!A213, gen-m5/ae9ed30812c4d62c Calc!A154; consistent with it but not evidence (a scalar `#VALUE!` base): gen-m5/5704666097cbc5b2 Calc!A153.
-Unprobed: which arguments of each lift, and whether a multi-cell range given directly is lifted or refused
-(Analysis ToolPak functions refuse it, numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes").
+Argument kinds (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds, rows 10-27): every argument of all eight
+functions lifts both over an array constant and over a 3x1 range given directly, on rows off the range (`ROWS` is 3 in each
+case; element 2 equals the scalar control, a value in every row; ARABIC has one argument, so it has no mixed-shape cell, only row 36). So every argument is `Lift` (arrays and ranges), none is `LiftArrays`; unlike the
+Analysis ToolPak functions (numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes"), no argument refuses a range.
+| Function | Arguments that lift over a range and an array |
+|---|---|
+| LOG | number, base |
+| DECIMAL | text, radix |
+| BASE | number, radix, min_length |
+| ATAN2 | x_num, y_num |
+| ARABIC | text |
+| DOLLAR | number, decimals |
+| FIXED | number, decimals, no_commas |
+| NUMBERVALUE | text, decimal_separator, group_separator |
+Two array arguments broadcast: `{1;2}` with `{1,2,3}` is 2x3 (rows 29-35 A-C), and `{v;v}` with a 3x1 array gives `#N/A` in
+the missing third row (D29-D35).
 Status: VERIFIED (excel-graph) for the cells above; not implemented (T-2159 math, T-2160 text).
 
 ## Legacy (CSE) array formula over a larger range
@@ -368,7 +382,7 @@ case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
 Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
-per-parameter rule, unprobed, and a 1x1 array argument still runs one unlifted call, both pending T-1960);
+per-parameter rule, unprobed, and a 1x1 array argument still runs one unlifted call, both pending T-1960); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, unprobed, pending T-1960);
 none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a
 sort_order list of the same length since T-1837 (F10:H11; `fn_sort` with `Model::sort_number_list`, spill_functions.rs;
 row and column lists alike, and with by_col the keys are rows: `SORT(A1:C3,{1,2},{1,-1},TRUE)` sorts columns by row 1,
@@ -381,7 +395,7 @@ wins (`SORT(..,IF({TRUE;FALSE},1,NA()),1/0)` is `#DIV/0!`), a range sort_index w
 `#VALUE!` (A9; read as 0 here), and text "1" in an array constant is key 1 (A13); an error cell inside a range list is
 read as an error element by analogy, UNVERIFIED (probes/sort-index-key-ties, excel-graph, 2026-10-20, T-1837);
 GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; `_xleta.` names work since T-1466, see "Functions passed by name" below); INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
-is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
+is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 91 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)
 Tasks: T-1083 (generator modes)
 
@@ -956,6 +970,63 @@ Ours: `value_extent` (cast.rs), `is_predicate` and `parity_of` (information/mod.
 INDEX of a LAMBDA with an index of 2 is `#REF!` there, as for a scalar, which is unprobed (T-1946).
 Status: VERIFIED (excel-graph)
 Tasks: T-1511
+
+## LAMBDAs that outlive their call
+Rule: a LAMBDA made inside a LET or a LAMBDA call is a lexical closure: called after that LET or call is over, it reads the
+values its outer names had when it was made, not their names' later bindings. `LET(g,REDUCE(LAMBDA(z,z),{1,2,3},LAMBDA(f,x,
+LAMBDA(z,f(z)*10+x))),g(0))` is 123 (each step's LAMBDA captures the previous accumulator and that step's x);
+`LET(mk,LAMBDA(a,LAMBDA(b,a+b)),plus,mk(5),plus(1))` 6; two closures from one maker keep their own values,
+`LET(mk,..,fa,mk(1),fb,mk(100),fa(0)+fb(0)*1000)` 100001; a later binding of the same name changes nothing,
+`LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1),a,50,f(0))` 1 and `LET(a,1,f,LAMBDA(b,a+b),LET(a,2,f(0)))` 1; a closure reads names of
+several scopes, `LET(x,10,mk,LAMBDA(a,LAMBDA(b,a+b+x)),f,mk(1),f(100))` 111; a closure over a REDUCE chain is a function MAP can
+take, `MAP({10,20},g)` spills 16, 26. An inner parameter shadows the captured one, `LET(mk,LAMBDA(x,LAMBDA(x,x*2)),f,mk(5),
+f(3))` 6 (H13), and a LAMBDA made and called inside a REDUCE step reads that step's x (H17, 60). A captured reference stays a reference: `INDEX(r,2)` through it is 2, `ISREF(r)` TRUE, and a
+captured union keeps its areas (`AREAS` 2, `SUM` of `(A1,A3)` 4); a captured error is read as the error (`mk(1/0)` then `f(1)` is
+`#DIV/0!`), and an omitted optional parameter stays omitted (`ISOMITTED(c)` TRUE inside the closure: H20 is `"om"+0`, `#VALUE!`). Calling a call,
+`LAMBDA(a,LAMBDA(b,a*b))(3)(4)`, is 12 and three levels give 123; `MAP(SCAN(LAMBDA(z,z),{1,2,3},..),LAMBDA(g,g(0)))` spills the
+array of LAMBDAs SCAN makes as 1, 12, 123, and `INDEX` of that array called, `INDEX(s,1,3)(0)`, is 123. A cell holding the
+REDUCE result itself (a LAMBDA) is `#CALC!`, as for any uncalled LAMBDA. LET names spelled like cells (`add5`, `f1`), stored with
+their `_xlpm.` prefix, bind like any name (H4 6, H5 100001).
+Evidence: probes/lambda-escaping-closures H1-H25, I2, J2, I14 (excel-graph, 2026-10-19, T-0439).
+Ours: when a LET or a LAMBDA call ends, `Model::close_over` gives the LAMBDAs reachable from its result (the only way one
+leaves it) the variables of that scope their bodies read (one shared copy per variable, `VariableStack::shared`), and
+`call_prepared` binds those not in scope for each call (T-0439); a LAMBDA that never leaves its scope captures nothing. A
+captured union re-bound for a call counts toward the held-areas cap where it is called (references.md "Union area cap").
+A call binds what its closure captured shared, not copied (`Binding::Shared`), so MAP over an escaped closure that captured
+a large array costs no copy per call. How many cells closures may capture is capped ("LAMBDAs capture at most 4,194,304
+cells", DEVIATION). Open gaps: chained calls
+`f(..)(..)` are a parse error (H3, H8, H10: T-2038), an array element cannot hold a LAMBDA (H2:J2: T-2039), and cell-shaped
+LET names are read as cells (H4, H5: T-2040).
+Status: VERIFIED (excel-graph)
+Tasks: T-0439, T-2038, T-2039, T-2040
+
+## LAMBDAs capture at most 4,194,304 cells
+Rule: Excel's limit on what the LAMBDAs that outlive their call ("LAMBDAs that outlive their call") may capture is unprobed;
+it is expected to keep every value a closure captured, however large.
+Evidence: none for Excel; this is a resource limit, not an Excel observation.
+Ours: the closures made while one root cell of an evaluation pass is evaluated, the cells evaluated as its dependencies
+included, may hold copies of at most 4,194,304 captured cells together (`MAX_CAPTURED_CELLS`, an array counting its cells,
+anything else 1; the budget is reset after each root cell, `Model::evaluate_root_cell`). A capture past it is `#NUM!`, so a
+REDUCE whose steps each return a closure over a fresh large array cannot hold memory without bound (CLAUDE.md directive 5).
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/functions/logical/lambda.rs (`MAX_CAPTURED_CELLS`, `Model::close_over`)
+Tasks: T-0439
+
+## How deep LAMBDA calls nest
+Rule: Excel evaluates LAMBDA calls nested 300 deep, both a LAMBDA that calls itself through a parameter,
+`LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,300))` 300, and a chain of 300 closures made by REDUCE,
+`LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(300),LAMBDA(f,x,LAMBDA(z,f(z)+x))),g(0))` 45150. What it gives deeper is unknown: workbooks
+with 1,000 to 20,000 levels made Excel for the web's createSession fail (`rustsheet-oracle fill`, 2026-10-19).
+Evidence: probes/lambda-call-depth H1-H6, I1-I6 (excel-graph, 2026-10-19, T-0439).
+Ours: nested LAMBDA calls may use four times the evaluation's stack budget (decision 0080; `set_max_evaluation_stack`,
+256 KB by default), counted from the cell's own base so cells and calls share it (`Model::lambda_stack_base`); past it a call
+is `#NUM!` instead of overflowing the stack. With the defaults that is about 200 levels in a release build, so the 300-level
+probe cells H3 and H6 (and I3, I6 that read them) are `#NUM!` and listed in eval/suites/probes/deviations; a debug build stops
+near 50 levels, its call frames being about four times larger. Before T-0439 such recursion overflowed the stack and aborted
+the process. Smaller call frames or a larger default budget would let 300 levels fit (T-0444).
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/functions/logical/lambda.rs (`LAMBDA_STACK_SHARE`, `Model::lambda_stack_base`).
+Tasks: T-0439, T-0444
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
 Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a

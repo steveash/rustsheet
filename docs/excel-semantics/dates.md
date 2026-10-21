@@ -37,7 +37,7 @@ anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKN
 `WEEKNUM(100,2)` = 16, `WEEKNUM(100)` = 15, `WEEKNUM(200,2)` = 30, `WEEKNUM(366,2)` = 54, `WEEKNUM(366)` = 53, `WEEKNUM(0,12)` = 1, `WEEKNUM(0,17)` = 0,
 and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor((serial - first)/7) + 1 with first the last serial <= 1 on the
 start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
-type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
+type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" and "WEEKNUM's stale return_type state" below).
 Negative serials under a date/time format (T-1035, VERIFIED, probes/text-ddd-negative-fraction, excel-graph 2026-10-07): `TEXT(-0.5,"dddd")`, `TEXT(-0.5,"d")`, `TEXT(-0.0001,"ddd")`, `TEXT(-0.0001,"d")`, `TEXT(-0.5,"yyyy-mm-dd")`, `TEXT(-0.5,"h:mm")` and `TEXT(-1,"dddd")` are all #VALUE!: a negative value never truncates toward serial 0 (A1-A9). Elapsed-time sections are NOT exempt in the 1900 date system (T-1079, VERIFIED, probes/text-negative-serial-elapsed-mixed, excel-graph 2026-10-07): `TEXT(-0.5,"[h] dddd")`, `TEXT(-1.5,"[h]:mm yyyy")`, `TEXT(-0.5,"[h]:mm")`, `TEXT(-1.5,"[h] d")`, `TEXT(-0.5,"[mm] mmm")` and `TEXT(-0.5,"[s] yy")` are all #VALUE! (A1-A6); non-negative values with the same formats work (`TEXT(0.5,"[h] dddd")` = "12 Saturday", A8). Those cells used to print a leading "-" because the poi ElapsedFormatTests workbook (A40-A47) is a 1904 workbook, where negatives are valid; the formatter now reads the workbook's date system (T-1105, SPEC-0005; see "Negative serials under an explicit negative section" below for the exact 1900 rule). Implemented in the `ParsePart::Date` arm of formatter/format.rs, which also serves cell number-format rendering (cell display of negatives is unprobed).
 Implemented in: `fn_weeknum` (T-0995); TEXT ddd/dddd via `excel_weekday_index` (formatter/format.rs, T-0996,
 `(serial - 1) mod 7` from Sunday, one formula for every non-negative serial; negatives are #VALUE!, see above). EDATE/EOMONTH of serial 0 via `month_arithmetic_date` (T-0997); EDATE of serial 0 returns one serial before the shifted month's first day (VERIFIED for months 0, 1, 2, 3, 12, 13, 14, 24 and 25, T-1052: `EDATE(0,2)` = 60, the fictitious 1900-02-29, `EDATE(0,3)` = 91, `EDATE(0,13)` = 397, `EDATE(0,14)` = 425, `EDATE(0,24)` = 731, `EDATE(0,25)` = 762, `EOMONTH(0,2)` = 91; negative months are #NUM! (tested: -1 and -12): `EDATE(0,-1)`, `EDATE(0,-12)`, `EOMONTH(0,-1)`; evidence probes/edate-serial-0-months A1-A12, excel-graph 2026-10-07).
@@ -59,11 +59,9 @@ Evidence: probes/weeknum-modern-boundaries A1-A67 (excel-graph, 2026-10-17).
 ### WEEKNUM return_type edge cases and serial 0 (T-1023)
 Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21);
 0, 3-10 and 18-20 are always `#NUM!` (not `#VALUE!`). A return_type of 22 or more, or negative, is
-NOT simply an error: it reuses the start weekday of the last WEEKNUM with a valid type evaluated
-earlier in the same recalc (type 21 leaves "start Monday"; ISOWEEKNUM leaves nothing), and is
-`#NUM!` only when none has run. On a fresh load Excel evaluates bottom to top, so with
-`A1=WEEKNUM(100,99)` and `A2=WEEKNUM(100,2)` both are 16, while the swapped layout gives 16 and
-`#NUM!`; `WEEKNUM(0,99)` was 0 or 1 in the 94-cell workbook depending on its neighbours. A boolean
+NOT simply an error: it reads a start-weekday state that other WEEKNUM calls of the same recalc
+leave behind, and is `#NUM!` only when the state is empty (see "WEEKNUM's stale return_type state"
+below for which calls set and clear it and in what order Excel runs them). A boolean
 return_type is `#VALUE!` (`WEEKNUM(100,TRUE)`, also from a reference), text that reads as a number is
 accepted (`WEEKNUM(100,"2")` = 16), other text is `#VALUE!`. An error in the serial wins
 (`WEEKNUM(-1,21)` is `#NUM!`, `WEEKNUM(0,NA())` is `#N/A`). Under ISO numbering serial 0 shares
@@ -72,13 +70,63 @@ Evidence (oracle: excel-graph, 2026-10-06, T-1023): probes/weeknum-serial-0 (57 
 probes/weeknum-invalid-type (8 cells, no valid WEEKNUM in the workbook: all `#NUM!`),
 probes/weeknum-stale-return-type (13 cells over five layouts: Up, Down, Mixed, Type21, Type1);
 the first 94-cell version of weeknum-serial-0 (commit 042ad31) reproduces deterministically.
-Ours: RustSheet always gives `#NUM!` for 22+ and negatives, which is Excel's value only when no
-valid WEEKNUM ran earlier in the recalc. The stale value depends on Excel's calc order (and so on
-its calc chain and edit history), which RustSheet does not reproduce yet;
-probes/weeknum-stale-return-type Up!A1, Mixed!A3, Mixed!A4, Type21!A1 and Type1!A1 stay known
-failures. A known gap, not a deviation (decision 0052): T-1484.
 Status: VERIFIED
 Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
+
+### WEEKNUM's stale return_type state (T-1484)
+Rule: one start-weekday state, Sunday, Monday or empty, lives for one recalculation. It is
+empty when the recalc starts, the WEEKNUM and ISOWEEKNUM calls Excel runs update it in the order
+it runs them, and a WEEKNUM with a return_type of 22 or more, or negative, reads it:
+- **Reading.** A return_type of 22+ or negative numbers the weeks as return_type 1 does (system 1),
+  starting on the state's weekday, and is `#NUM!` when the state is empty. Reading leaves the state
+  as it is: six reads in one formula all see it. After type 21 or ISOWEEKNUM the read is system 1
+  with a Monday start, not ISO (`WEEKNUM(100,99)` = 16 while `WEEKNUM(100,21)` = 15).
+- **Setting Sunday:** a scalar WEEKNUM with return_type 1 (or omitted) or 17.
+- **Setting Monday:** a scalar WEEKNUM with return_type 2, 11 or 21, and ISOWEEKNUM (serial 0
+  included). Text and fractions convert first: `"2"` and 2.9 set Monday.
+- **Emptying:** a scalar WEEKNUM with return_type 12-16 (Tuesday to Saturday starts are never
+  kept), one with an always-#NUM! return_type (0, 3-10, 18-20; probed 0, 3, 10, 18, 20), and any WEEKNUM that lifts over an
+  array, valid types included (`SUM(WEEKNUM(100,{2,2}))`, `SUM(WEEKNUM({100,101},2))`).
+- **No effect:** a call whose serial is an error (`WEEKNUM(-1,2)`, `WEEKNUM(-1,0)`,
+  `ISOWEEKNUM(-1)`), a `#VALUE!` return_type (`TRUE`, `"x"`), a call IF does not run, and WEEKDAY of
+  any return_type.
+- **Order.** On a freshly loaded workbook (the probes read the values after the oracle's
+  FullRebuild; load, Full and FullRebuild agree, research note) Excel runs the formula cells in the reverse of the order
+  they were loaded: the last sheet first, and within a sheet the bottom row first and each row right
+  to left (reverse row-major). The state carries from one sheet to the next. A cell whose formula
+  reads a formula cell not yet calculated is abandoned at that read, moved to just after that
+  precedent in the order, and run again from its start when its new turn comes; the cells between
+  run first. The abandoned run leaves the state as it was: `WEEKNUM(100,2)&reader-of-A1` in A3
+  sets Monday before its read of A1, yet the plain reader in A2, which runs next, reads nothing
+  (probes/weeknum-stale-precedent-abort-keeps). With A1 a Monday marker, A2 a
+  reader-then-Sunday cell and A3 a reader of A1 that then sets Sunday, the order is A2, A1, A3: A2
+  reads nothing and A3 reads Monday (not A1, A3, A2). `WEEKNUM(100,12)&reader-of-A1` in A2 below a
+  Sunday marker in A1 reads nothing: the re-run starts with its own type 12. Moving a sheet does
+not change the order: it keeps its load position. `calcChain.xml` is ignored on a full-calc load:
+  three different chains for one sheet gave the layout's values (docs/research/t1484-weeknum-calc-order-2026-10-19.md).
+- **Recalcs and edits.** The state does not outlive a recalc: a volatile reader recalculated alone
+  is `#NUM!` though its marker ran in the previous recalc, and a formula entered or edited in a
+  session is recalculated alone, so a reader is `#NUM!` then. A marker edited in a session does not
+  recalculate the readers that used it. Formulas entered in a live session also stop sharing the
+  state with the formulas loaded from the file, even at a later full recalc (FullRebuild); that
+  history is not in the file, so this part is not reproducible from a workbook (same research note).
+Evidence (oracle: excel-graph, 2026-10-19, T-1484): probes/weeknum-stale-setters (28 sheets),
+probes/weeknum-stale-sheet-order, probes/weeknum-stale-sheet-moved, probes/weeknum-stale-grid,
+probes/weeknum-stale-order-row, -column, -column-40, -2x3 and -3x2, probes/weeknum-stale-dependency,
+probes/weeknum-stale-reset-num-type, -reset-isoweeknum and -reset-error-serial,
+probes/weeknum-stale-precedent-between, -precedent-restart and -precedent-abort-keeps, probes/weeknum-stale-num-types,
+probes/weeknum-stale-down-alone and probes/weeknum-stale-volatile-reader; the grid case gave the same
+values twice. This corrects two earlier readings: ISOWEEKNUM does set the state (to Monday), and the
+state is not "the last valid WEEKNUM": types 12-16 empty it. probes/weeknum-stale-return-type
+Down!A2 is `#NUM!` because Mixed!A1 (type 0) emptied the state just before it, not because the
+state resets per sheet.
+Ours: always `#NUM!` for 22+ and negatives, which matches only where the state is empty.
+SPEC-0017 specifies the state and the order; implementation tasks are listed there.
+Status: VERIFIED
+Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), where a spilling formula sits
+in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and
+a return_type in (-1, 0) (truncates to 0, so presumably empties), and whether a reference to an
+uncalculated cell in an IF branch that is not taken also moves the cell.
 
 ## DATE month and day bounds
 Rule: DATE floors its month and day, then a month outside -32767..=32766 is `#NUM!` even when the
@@ -421,7 +469,7 @@ Probed directly (probes/weekday-serial-zero A1:A18, excel-graph, 2026-10-17, T-1
 Ours: WEEKDAY implemented (T-1253); WORKDAY and NETWORKDAYS implemented (T-1254).
 More serial-0 cells (gen-m9, excel-graph, 2026-10-12, T-1289): `YEARFRAC(33752,0)` is 92.41111111111 (from
 `(0.3+YEARFRAC(33752,Data!$C12))^SUM(-0.0001)` = 0.9995471537332011 with C12 = 0), which is basis 0 counted from
-1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours matches for basis 0, where a start or end in [0, 1) counts as day 0 of January 1900, T-1409; other bases with serial 0 stay `#NUM!`, UNVERIFIED; the pair is ordered before counting like every basis; serial 0 paired with a date in January-February 1900, including the fictitious serial 60, is UNVERIFIED).
+1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; every basis, and serial 0 next to the fictitious serial 60, is now probed: see "YEARFRAC accepts serial 0" below).
 `NETWORKDAYS.INTL(44900,0.2)` is a number (`AVERAGE(NETWORKDAYS.INTL(44900,0.2)/<#VALUE!>,..)` is `#VALUE!`,
 gen-m9/50f10c4062fb2e98 Calc!A12; ours `#NUM!`). `WORKDAY(33393,0,A3:D3)` with holidays "a", 0.3, 0.3, 0.5 is 33393
 (`COLUMNS(B8:E10)%+WORKDAY(..)` = 33393.04, gen-m9/288b99797f58f149 Calc!A10): neither the fractional holidays below 1
@@ -797,6 +845,36 @@ reversed cell equal to its forward cell; gen-m7/c263b43217a5898b Calc!A38 for ba
 Ours: all bases swap before counting (T-1354 for basis 1, T-1826 for the rest).
 Status: VERIFIED (web)
 Tasks: T-1354, T-1826
+
+## YEARFRAC accepts serial 0
+Rule: YEARFRAC takes a start or end date in [0, 1) (serial 0, 1900-01-00) on every basis; only a negative serial
+is `#NUM!`. The pair is ordered first (see "YEARFRAC swaps reversed dates"). Each basis then reads the dates its
+own way:
+- Basis 0 (US 30/360) counts on Excel's own day, month and year: serial 0 is day 0 of January, serial 60 is the
+  fictitious 1900-02-29, and 1900-02-28 is still February's last day, so it is read as day 30. That makes
+  `YEARFRAC(60,59,0)` = **-1/360** (probed reversed; by the swap rule `(59,60,0)` is the same), a negative fraction, and `YEARFRAC(60,61,0)` = 2/360
+  (29 February is not February's last day). `YEARFRAC(0,59,0)` = 58/360, `(0,60,0)` = 59/360, `(0,61,0)` = 61/360,
+  `(0,366,0)` = 361/360, `(0,33752,0)` = 92.41111111111111.
+- Bases 1, 2 and 3 count serials as days, so the fictitious 1900-02-29 is a day: `YEARFRAC(0,60,3)` = 60/365,
+  `(59,60,2)` = 1/360. Basis 1's year length reads the real calendar: serial 0 is a day of 1900 and 1900-02-29 is
+  no leap day, so `YEARFRAC(0,33752,1)` = 33752 / (average year of 1900-1992) = 92.4086198775318 (counted from
+  1899 it would be 92.40928...), `YEARFRAC(1,33752,1)` = 92.4058820065944 also averages from 1900, and
+  `YEARFRAC(59,60,1)` = `(60,61,1)` = 1/365.
+- Basis 4 (European 30/360) reads serial 0 as day 0 and serial 60 as day 29: `(0,31,4)` = 30/360,
+  `(0,366,4)` = 1, `(59,60,4)` = 1/360, `(60,61,4)` = 2/360.
+- `YEARFRAC(0,0,b)` and `YEARFRAC(0.5,0.25,b)` are 0 on every basis; 0.5 and 0.9999 count as serial 0.
+The discount securities read the same parts (financial.md "Discount securities: day count and year length"), so
+they meet the same rules, negative day count included: `ACCRINTM(59,60,0.1,1000,0)` = -0.2777777777777778,
+`DISC(59,60,95,100,0)` = -18.000000000000014, `PRICEDISC(59,60,0.05,100,0)` = 100.01388888888889, and serial 0
+settles on bases 1-4 (`DISC(0,366,95,100,1)` = 0.04986338797814212).
+In a 1904 workbook the financial day counts read a 1904 serial 0 as 1900-serial 2924, so none of this applies there:
+`YEARFRAC(0,59,1)` = 59/366 (1908 is a leap year), `YEARFRAC(0,366,0)` = 1.
+Evidence: probes/yearfrac-serial-zero (205 cells), probes/yearfrac-serial-zero-1904 (25 cells),
+probes/discount-serial-zero (50 cells), excel-graph, 2026-10-21, T-2237.
+Ours: `Model::year_fraction_parts` (functions/date_and_time/yearfrac.rs): basis 0 on `excel_serial_to_ymd`, basis 1
+on `month_arithmetic_date`, bases 1-3 serial differences; YEARFRAC and ACCRINTM keep the sign (T-2237).
+Status: VERIFIED (excel-graph)
+Tasks: T-1409, T-2237
 
 ## DATEDIF argument errors before date checks
 Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
