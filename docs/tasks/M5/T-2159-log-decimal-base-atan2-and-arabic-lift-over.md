@@ -3,7 +3,7 @@ id: T-2159
 title: "LOG, DECIMAL, BASE, ATAN2 and ARABIC lift over arrays and ranges (SPEC-0011)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -36,9 +36,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 7 in eval/baselin
 | gen-m5/f0f205865a3a4328 Calc!A208 | `=ERROR.TYPE(ARABIC(INDEX(Data!C5:E12,Data!C10,3)))` | "#SPILL!" | 3.0 |
 
 ## Acceptance criteria
-- [ ] These 7 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] arrays.md entry updated with the probed argument kinds and marked implemented for these five.
-- [ ] `make check` green; reviewers approve.
+- [x] These 7 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] arrays.md entry updated with the probed argument kinds and marked implemented for these five.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -47,3 +47,16 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - DOLLAR, FIXED, NUMBERVALUE (T-2160).
+
+## Outcome
+- LOG, DECIMAL, BASE, ATAN2 and ARABIC run on the SPEC-0011 driver with every argument `Lift`
+  (`lift/kinds/general.rs`, `lifting_table_functions!`, their static-analysis fallbacks removed;
+  eval/catalog/lift-kinds.json regenerated). Each kernel reads its arguments left to right and keeps
+  its old checks in order (`excel_log`, `base_text` in mathematical.rs). As in every lifted kernel,
+  element errors carry no message. DECIMAL, BASE and ARABIC have their caps in
+  `lift/tests/kernel_work.rs`.
+- Tests: `test/test_fn_log_base_lift.rs` (array and range lifting, broadcast, `#SPILL!`, the
+  scalar rules kept).
+- Eval: gen-m5 known failures 107 -> 100 (the 7 cells above), probes 1738 -> 1690
+  (probes/t2198-m5-lift-argument-kinds, 48 cells); regressions 0; visibly-off cells 1750 -> 1730.
+- ARABIC of a blank cell stays `#VALUE!` (Excel: 0), T-2153's.
