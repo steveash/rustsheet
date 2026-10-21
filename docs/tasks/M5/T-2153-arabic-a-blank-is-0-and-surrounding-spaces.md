@@ -39,7 +39,16 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 12 in eval/baseli
 | gen-m5/f0f205865a3a4328 Calc!A269 | `=ARABIC(" x ")` | 10.0 | "#VALUE!" |
 | gen-m5/fc81c2f704bef138 Calc!A174 | `=SUMX2MY2(ARABIC(INDEX(Data!D6:D12,1,0)),Data!B6:D8)` | "#N/A" | "#VALUE!" |
 
+gen-m6 triage (T-2180, excel-graph oracle, 2026-10-21): One more cell: `XMATCH(ARABIC(<blank>),Data!C4:C8)` is `#N/A` in Excel (ARABIC of a blank is 0, not found), ours `#VALUE!`.
+
+Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baseline/gen-m6.txt:
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m6/b62dd1ebd266b71c Calc!A179 | `=XMATCH(ARABIC(Data!D10),Data!C4:C8)` | "#N/A" | "#VALUE!" |
+
 ## Acceptance criteria
+- [ ] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
 - [ ] These 12 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] numbers.md entry updated with the probe results and marked implemented.
 - [ ] `make check` green; reviewers approve.

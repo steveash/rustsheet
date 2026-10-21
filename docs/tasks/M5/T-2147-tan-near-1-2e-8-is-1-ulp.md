@@ -27,7 +27,16 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 3 in eval/baselin
 | gen-m5/d0419fa09d6a756a Calc!A311 | `=TAN(123456789.123)` | 56.41575748007382 | 56.415757480073815 |
 | gen-m5/f0f205865a3a4328 Calc!A227 | `=TAN(SUMIF(Data!C5:E6,">=2"))` | 56.41575748007382 | 56.415757480073815 |
 
+gen-m6 triage (T-2180, excel-graph oracle, 2026-10-21): One more cell, TAN(123456789.123) inside CHOOSE, 1 ulp off as in the cells above.
+
+Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baseline/gen-m6.txt:
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m6/b62dd1ebd266b71c Calc!A39 | `=CHOOSE(Data!B7,TAN(Data!D4),3.14159,(SUM(Data!C6:C12)*(Data!$A9/Data!A$1)))` | 56.41575748007382 | 56.415757480073815 |
+
 ## Acceptance criteria
+- [ ] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
 - [ ] These 3 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] No m9-trig-reduction or trig-huge-argument cell regresses; T-2172's TAN cells pass or are listed residuals.
 - [ ] `make check` green; reviewers approve.

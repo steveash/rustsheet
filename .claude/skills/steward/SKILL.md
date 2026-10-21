@@ -129,5 +129,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   consecutive runs are met.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
   is not reopened when its dependencies land, only when a new hypothesis is recorded there.
+- **Review-round limit** (decision 0095): list every PR whose task is `Blocked because: review-round
+  limit` under open PRs in `docs/status.md` with its age; the opus worker re-reviews it once its
+  branch is idle 2 h, so do not merge or unblock it yourself. A task `Blocked because: review-round
+  limit, twice` goes under "Needs owner" with the PR link and the findings still open.
 - **Stuck**: after 3 failed fix attempts on the same failure, mark the task blocked with details,
   leave the PR as draft, and move on. Do not leave `main` red: if a merge broke `main`, revert first.

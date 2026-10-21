@@ -35,7 +35,18 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 7 in eval/baselin
 | gen-m5/c0651f0e0fb544d0 Calc!A84 | `=ATAN2(IFS(TRUE,(Data!C12*Data!A4)),INDEX(Data!A2:A5,MIN(Data!A1:A9,Data!A7:A10),COUNTIF(Data!A9:C...` | "#SPILL!" | "#VALUE!" |
 | gen-m5/f0f205865a3a4328 Calc!A208 | `=ERROR.TYPE(ARABIC(INDEX(Data!C5:E12,Data!C10,3)))` | "#SPILL!" | 3.0 |
 
+gen-m6 triage (T-2180, excel-graph oracle, 2026-10-21): Three more cells where the callers lift over a LOG, DECIMAL or ARABIC result over a range: `COLUMNS(LOG(OFFSET(Data!A6:C6,0,2)))` is 3 (ours `#VALUE!`); `XLOOKUP(..,DECIMAL(OFFSET(Data!B10:E11,5,3,3,2),21),0)` is `#SPILL!` (DECIMAL lifts, so XLOOKUP's match_mode is an array); `TRIMRANGE(..,ARABIC(OFFSET(Data!B6:E12,1E-15,1,-0.5)),3)` is `#SPILL!` (ARABIC lifts over the OFFSET range).
+
+Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 3 in eval/baseline/gen-m6.txt:
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m6/535caabe1e635e2d Calc!A140 | `=TRIMRANGE(Data!A7:D12,ARABIC(OFFSET(Data!B6:E12,Data!E$2,1,(-0.5))),3)` | "#SPILL!" | "#VALUE!" |
+| gen-m6/60bcd25271767317 Calc!A380 | `=COLUMNS(LOG(OFFSET(Data!A6:C6,0,Data!B7)))` | 3.0 | "#VALUE!" |
+| gen-m6/fe0972380d030e4a Calc!A224 | `=XLOOKUP(VALUE((Data!$E$1&Data!D6)),Data!A5:A10,Data!C1:D9,ISERR(FIND(" x ","ü",1)),DECIMAL(OFFSET(Data!B10...` | "#SPILL!" | "#VALUE!" |
+
 ## Acceptance criteria
+- [ ] The 3 gen-m6 known-failure lines above disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
 - [ ] These 7 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] arrays.md entry updated with the probed argument kinds and marked implemented for these five.
 - [ ] `make check` green; reviewers approve.

@@ -3,7 +3,7 @@ id: T-2240
 title: "Fit Excel's expm1 under SINH and TANH below 1 (PI()/4, 0.9999999999, 0.88)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -43,11 +43,20 @@ Owned cells. They fail because libm's expm1 is an ulp off Excel's, under T-2134'
   A218, aac6230c2fb40e1e A94.
 
 ## Acceptance criteria
-- [ ] The cells above pass; no new known failures in any baseline.
-- [ ] The t2178 sweep's SINH and TANH cells below 1 do not lose against T-2134 (773 and 781 of 1015).
-- [ ] The expm1 formulation and its evidence are in `docs/excel-semantics/numbers.md`, including
+- [x] The cells above pass; no new known failures in any baseline.
+- [x] The t2178 sweep's SINH and TANH cells below 1 do not lose against T-2134 (773 and 781 of 1015).
+- [x] The expm1 formulation and its evidence are in `docs/excel-semantics/numbers.md`, including
       negative results.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - COSH (already `(e^x + e^-x)/2`, 1033 of 1035 sweep cells) and |x| >= 1.
+
+## Outcome
+Excel's expm1 is Kahan's formula: u = EXP(x) (Excel's model-V6 EXP), x if u = 1, else (u - 1) * x / LN(u) with
+Excel's LN, each step a double. It fits all 1015 SINH and all 1015 TANH cells below 1 of probes-numeric
+t2178-hyperbolic-unit-sweep (libm's expm1: 773 / 781); the sweep's only misses left are its 2 COSH cells (out of
+scope). Every owned cell passes, including COTH_CSCH_SECH!C54, t0917-hyperbolic-switchover A159 and
+SINH_COSH_TANH!B51. Negative results (other associations, EXP - 1, libm exp/log inside the formula) are in
+numbers.md "Excel's expm1 is Kahan's formula".
+Eval delta: 28 known failures fixed (gen-m5 165 -> 147, ironcalc-calc 890 -> 880), 0 regressions.
