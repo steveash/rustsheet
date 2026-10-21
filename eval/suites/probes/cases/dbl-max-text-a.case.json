@@ -1,0 +1,19 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2101: numeric DBL_MAX text.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-2101"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=(2^1023*(2-2^-52))&\"\""
+   }
+  }
+ ],
+ "expected": {}
+}

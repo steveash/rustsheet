@@ -42,7 +42,7 @@ Status: VERIFIED
 Implemented in: `Lexer::next_token` (formatter/lexer.rs), `Parser::parse_part` (formatter/parser.rs, the implicit `#`
 before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: `General` next to digit
 placeholders or date tokens, or twice (the engine says `#VALUE!`; T-1614), a negative's minus for a value that rounds to
-zero under a literal-only format or `.` (`TEXT(-0.4,"x")` is "x" and `TEXT(-0.5,".")` "1." here; T-1129), and a lowercase
+zero under a literal-only format or `.` (`TEXT(-0.4,"x")` is "x" and `TEXT(-0.5,".")` is "-1." here, unprobed; T-1129), and a lowercase
 scientific `0.0e+0` (always the year token here, so `#VALUE!` as before).
 Tasks: T-1262, T-1450
 
@@ -465,9 +465,9 @@ General `1.5` "1.5", `1234567890123` "1.23457E+12", `1E-10` "1E-10"; `0.00` on P
 Evidence: probes/displayed-text-formats S!A1:A24, B1:B4 (excel-graph `text`, 2026-10-16, T-1610).
 Desktop `.Text` does depend on the width (`####` when a number does not fit), unprobed here: the
 excel-graph text is what the M10 suite scores (decision 0068).
-Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030), "1,234" for
-`TEXT(1234.5,"#,##0")` (a value failure too: Excel rounds the 15-digit decimal half away from zero,
-as General and ROUND do; ours rounds an exact binary tie to even, T-2206).
+Implemented (T-2206): Excel rounds the shown place on the 15-digit decimal half away from zero, as
+General and ROUND do, so `TEXT(1234.5,"#,##0")` is "1,235".
+Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030).
 Implemented in: formatter/formatted.rs (`Formatted::displayed`: every serial the formatter rejects as a
 date, where TEXT is `#VALUE!`, displays 255 `#`; T-1711).
 Status: VERIFIED (Excel for the web)
@@ -512,13 +512,19 @@ TEXT() with the same codes. Points the earlier probes did not show:
   "1.0E+02") (T-2227).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
+Implemented (T-2206): the shown place rounds the 15-digit decimal half away from zero (`0`, `#,##0`,
+`0%`, `"("0")"` on 2.5, -2.5, 36.5, 0.125 and 12.345 are "3", "-3", "37", "13%" and "1235%"). Rounding now runs
+before the sign test, so a negative that rounds to one unit keeps its minus (-0.5 under `0` is "-1",
+`00000` "-00001", `[$¥-411]#,##0` "-¥1"; gen-m10 810fee377a42575b F!B16, e1c29d3fe448682c F!B19,
+9a8b7d68507d7ada F!B1) and 0.0049 under `0%` is "0%" and under `%0` "%0" (no double rounding through 0.5;
+gen-m10 659cd5776d423ce3 F!F16, 8e073c5b2145567a F!C10). A tie at the 16th significant digit goes toward zero, as ROUND
+and General do (unprobed for displayed formats).
 Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every serial the formatter
 rejects as a date (TEXT `#VALUE!`) displays 255 `#`.
-Not implemented: ours passes 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
+Not implemented: before T-2206 ours passed 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
 clock and elapsed-with-clock codes past 2958465.99999, which still format (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
-scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), round-half (T-2206: `0`, `#,##0`, `0%`, `"("0")"` ... on 2.5, -2.5, 36.5, 0.125 and 12.345 are "3", "-3", "37", "13%" and "1235%", half away from zero on the 15-digit decimal), the sign of -0.5 (T-1129),
-fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
+scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), the sign of a value that rounds to zero and `#,` on -500 (T-1129), fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030, T-2206
 
