@@ -2,9 +2,10 @@
 //! unreadable text").
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::lift::{num_error, value_error};
+use crate::functions::Function;
 use crate::{
-    calc_result::CalcResult, cast::MAX_SHORT_TEXT_UNITS, expressions::parser::Node,
-    expressions::token::Error, model::Model,
+    calc_result::CalcResult, cast::MAX_SHORT_TEXT_UNITS, expressions::parser::Node, model::Model,
 };
 
 /// Reads `text` in `radix` the way Excel's DECIMAL does: leading spaces and tabs are skipped,
@@ -25,38 +26,34 @@ fn decimal_from_text(text: &str, radix: u32) -> Option<f64> {
 }
 
 impl Model {
+    /// `DECIMAL(text, radix)`: both arguments lift over arrays and ranges
+    /// (probes/t2198-m5-lift-argument-kinds; docs/excel-semantics/arrays.md).
     pub(crate) fn fn_decimal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let radix = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        // Excel: see docs/excel-semantics/engineering.md#decimal-of-unreadable-text. The length
-        // is in UTF-16 units and is checked before the radix (probes/decimal-unreadable).
-        if text.encode_utf16().count() > MAX_SHORT_TEXT_UNITS {
-            return CalcResult::new_error(Error::VALUE, cell, "Text is too long".to_string());
-        }
-        if !(2..=36).contains(&radix) {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "Radix must be between 2 and 36".to_string(),
-            );
-        }
-        // The range check above makes the cast to u32 lossless.
-        match decimal_from_text(&text, radix as u32) {
-            Some(n) => CalcResult::Number(n),
-            None => CalcResult::new_error(
-                Error::NUM,
-                cell,
-                format!("'{text}' is not a valid number in base {radix}"),
-            ),
-        }
+        self.lift_call(Function::Decimal, args, cell, &mut |model, values| {
+            let [text, radix] = values else {
+                return CalcResult::new_args_number_error(cell);
+            };
+            let text = match Model::cast_string_ref(text, cell) {
+                Ok(text) => text,
+                Err(error) => return error,
+            };
+            let radix = match model.kernel_number(radix, cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(error) => return error,
+            };
+            // Excel: see docs/excel-semantics/engineering.md#decimal-of-unreadable-text. The
+            // length is in UTF-16 units and is checked before the radix (probes/decimal-unreadable).
+            if text.encode_utf16().count() > MAX_SHORT_TEXT_UNITS {
+                return value_error(cell);
+            }
+            if !(2..=36).contains(&radix) {
+                return num_error(cell);
+            }
+            // The range check above makes the cast to u32 lossless.
+            match decimal_from_text(&text, radix as u32) {
+                Some(n) => CalcResult::Number(n),
+                None => num_error(cell),
+            }
+        })
     }
 }
