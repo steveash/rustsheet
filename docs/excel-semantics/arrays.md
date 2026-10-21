@@ -432,7 +432,9 @@ Tasks: T-1083 (generator modes)
 Rule: when UNIQUE's by_col or exactly_once, or SORTBY's sort_order, lifts over entries that are not all equal, only
 the first element is its call's top-left; every later element is empty, even where its entry equals the first. An
 empty element spills as 0, and ISBLANK of it is TRUE, `INDEX(..,i,1)&"|"` is "|", SUM of it 0, and ROWS, COLUMNS and
-`INDEX(INDEX(..,i,1),1,1)` of it `#VALUE!`. When every entry is equal, each element is the top-left of its call.
+`INDEX(INDEX(..,i,1),1,1)` of it `#VALUE!` (the spill, ISBLANK and `&"|"` cells are SORTBY's; UNIQUE's empty elements
+are evidenced by SUM 0 and ROWS, COLUMNS and INDEX `#VALUE!` only). When every entry is equal, each element is the
+top-left of its call.
 - With A1:A3 = 3,1,2 and C1:C3 = 2,1,3: `SORTBY(A1:A3,C1:C3,{1;-1;1})` is 1, empty, empty (it spills {1;0;0}:
   probes/sort-error-args H97-H99); `{1;-1}` 1, empty; `{-1;1}` 2, empty; `{1;1;-1}` 1, empty, empty; E1:E3 = 1,-1,1
   the same as the literal; `{1;1}`, `{1;1}+0` 1, 1; `{1;1;1}` 1,1,1; `{-1;-1;-1}` 2,2,2. The same over B1:B3 =
