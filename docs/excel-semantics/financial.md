@@ -254,20 +254,36 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   the first-value sign with the XNPV bound skipped only for a zero first value 20/22. Two of the 21 are
   coincidences: the model reaches `#NUM!` on xirr-mismatched-empties X12, X13 (no date later than the
   first) by never stopping (the bisection walks away from the root), not by Excel's input check. The span
-  factor's form rests on A8 alone; T-1591 probes it. Why a zero first value drops the XNPV bound is open:
+  factor's form rests on A8 alone; T-1591 probed it and the bullet after this one records the result (it does not hold). Why a zero first value drops the XNPV bound is open:
   normalising XNPV by the first value (0/0, NaN) would explain both the end choice and the stop if the
   tests are written to pass on NaN, but nothing probes that.
 - Unprobed: the cap on the chain walk (up to 17 doublings, X!F15, and 4 halvings are seen; day serials
   1..6, which need about 770 halvings, are `#NUM!`), the bisection cap, the order when both chains have
   a root, a guess at or below -1, and which end an exact XNPV(m) = 0 replaces (the first-value rule
   replaces the upper end, the XNPV(upper end) rule only when XNPV(upper end) <= 0; no cell tells them apart).
+- T-1591 probe (probes/xirr-span-zero-first, excel-graph, 2026-10-21): 21 two-flow cells
+  `XIRR({-1, (1+r)^T}, {d0, d0 + 365*T})` for T = 2, 5, 10, 20, 40, 80, 120 and r = 0.013, 0.1, 0.5, and nine
+  zero-first-value cells `{0,-1000,1100}` with the first date before, equal to and after the second at guesses
+  omitted, 0.2 and 1. Zero first value: Excel returns 2.9802322387695314e-09 (0.1 * 2^-25) at the default guess
+  and at 0.2, and 3.725290298461914e-09 (= 0.125 / 2^25, i.e. the guess-1 bracket walk ends at 0.125, which the T-1583 model reproduces) at guess 1,
+  for every date order (also the first date after the second, where the
+  model gives the same). Span: r = 0.013 and 0.5 return the step-25/26 lattice point the model computes at every
+  span, but r = 0.1 returns 0.10000000596046449 (one lattice point above the model's 0.09999999403953552) at
+  T = 20, 40 and 120 and the model's value at T = 2, 5, 10 and 80. So the T-1583 span factor
+  max(1, years) is NOT confirmed: the bound is not monotone in the span (80 years stops where 40 and 120 do not),
+  and |XNPV(m)| / max|value| at the model's stop is 1.6e-8 (T=20), 4.8e-9 (40), 7.0e-12 (120) for the cells Excel
+  continued past, against 2.1e-10 (80) and up to 7e-8 (r = 0.013, T >= 40) for cells where it stopped. The normaliser
+  or the bound's form for spans over ten years is open (T-2328). Counts on `xirr-oos` (52 cells with
+  the probe): T-1583 candidate 48/52 (misses: xirr-early-dates A7 input check, and span-zero-first A11, A14, A20),
+  engine (Newton) 46/52, "bisect, span-scaled |f| bound" alone 35/52, first-value sign with the bound skipped for a
+  zero first value 41/52, fitted stop 28/52.
 Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
-T-0916): 227/227 on the fit set and 22/22 on `xirr-oos` (the Newton code it replaced: 9 and 11). The walk
+T-0916): 227/227 on the fit set and 22/22 on the pre-T-1591 `xirr-oos` cells (the Newton code it replaced: 9 and 11); 48/52 with T-1591's cells. The walk
 cap (100 points) and bisection cap (200 steps) are engine bounds (DEVIATION, "The IRR and XIRR solver
 caps" below). A trial rate where a power overflows or underflows to 0 has no XNPV, as in the lab model.
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; the XNPV part of the stop
-test is UNVERIFIED beyond the fit set (T-1533; refined by T-1583, the span factor UNVERIFIED until T-1591)
-Tasks: T-1525, T-0916, T-1533, T-1583, T-1591
+test is UNVERIFIED beyond the fit set (T-1533; refined by T-1583; T-1591 shows the span factor misses 3 of 21 long-span cells)
+Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328
 
 ## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of v = 1/(1 + r):
@@ -407,7 +423,9 @@ in the range puts that flow on date 0. 50 on date 0 after -1000 on 45000 and 110
 and is `#NUM!` (X2). Text in either range is `#VALUE!` (X6, X7). Dates before the first are accepted:
 `XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212 (XNPV of the same flows is
 #NUM!), and -1000, 1100, -1000 on 45000, 45365, 44000 = -0.24668241366744048 (X8). But XIRR is `#NUM!`
-when no date is later than the first, even where a root exists: -1000 on 45365 then 1100 on 45000 (X9,
+when no date is later than the first and the first value is nonzero, even where a root exists (with a zero first value
+it is not: probes/xirr-span-zero-first A28-A30, `{0,-1000,1100}` on 46000, 45000, 45365, give 2.98e-9 / 3.73e-9, T-1591; the exact
+condition is unprobed; T-2329 relaxes the engine check): -1000 on 45365 then 1100 on 45000 (X9,
 xirr-early-dates is the same as an array: X12), and 1100, -1000, -1000 on 45365, 45000, 44000 (X13).
 All dates equal is `#NUM!` (A3), while a repeat of the first date next to a later one is fine (A4,
 A5). Positive flows on earlier dates with no root are `#NUM!` (A1, A2, A14, A15). A negative date or
@@ -428,7 +446,7 @@ error to the cells it skips, `get_array_of_numbers_generic`). XIRR follows the e
 and later-date rules since T-1124. Its values still miss in the last digits (the early stop above).
 The zero-first-value result and the date-0-first root match since T-1583 and T-0916 (the solver entry
 "XIRR is a bracketing bisection, not Newton" above; T-1155 done).
-Tasks: T-1114, T-1124
+Tasks: T-1114, T-1124, T-2329
 
 ## DB and VDB period cap
 Rule: RustSheet returns `#NUM!` for DB with a `period`, and VDB with an `end_period`, whose integer part is above

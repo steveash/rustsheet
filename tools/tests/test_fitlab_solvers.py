@@ -67,13 +67,11 @@ def test_xirr_fit_scores() -> None:
     assert s["bisect fitted, m=(a+b)/2"] == 225
     assert s["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 227
     oos = _scores("xirr-oos")
-    assert oos["cells"] == 22  # 11 numbers and 11 errors; the model solves three cells Excel rejects
-    assert (
-        oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 16
-    )  # 8 of 11 numbers, 8 of 11 errors
-    # T-1583: all 11 numbers, and 10 of 11 errors (two by non-convergence, not Excel's input check)
-    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 21
-    assert oos["bisect, first-value sign, fitted stop"] == 18
+    assert oos["cells"] == 52  # T-1591 added 30 cells (probes/xirr-span-zero-first)
+    assert oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 28
+    # T-1583 misses xirr-early-dates A7 (input check) and the root-0.1 cells at 20, 40 and 120 years (T-1591)
+    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 48
+    assert oos["bisect, first-value sign, fitted stop"] == 30
 
 
 @pytest.mark.usefixtures("real_cases")
