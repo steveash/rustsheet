@@ -1275,7 +1275,6 @@ F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
-F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-im-overflow-edges.case.json	S!A104
 F	probes/eng-im-overflow-edges.case.json	S!A107
@@ -2798,4 +2797,3 @@ F	probes/yield-solver-sweep.case.json	S!F6
 TC	probes/displayed-text-formats.case.json	28
 TC	probes/fraction-numerator-overflow.case.json	76
 TC	probes/fraction-numerator-overflow2.case.json	69
-TF	probes/displayed-text-formats.case.json	S!A21
