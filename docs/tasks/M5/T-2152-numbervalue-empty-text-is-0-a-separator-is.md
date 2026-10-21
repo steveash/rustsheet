@@ -3,7 +3,7 @@ id: T-2152
 title: "NUMBERVALUE: empty text is 0, a separator is its first character, an empty separator is #VALUE!"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
