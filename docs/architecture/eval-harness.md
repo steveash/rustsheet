@@ -83,7 +83,10 @@ Input conventions:
   "sheet":"Data","to":"Inputs"}` renames one (formulas that refer to it are rewritten), and
   `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based position, and
   `{"op":"insert_row","sheet":"S","row":1}` inserts one blank row above the 1-based row, shifting
-  the cells below down (T-1933; Graph `range(address='1:1')/insert`). Any other op or key is
+  the cells below down (T-1933; Graph `range(address='1:1')/insert`). T-2323 adds `delete_row`
+  (`row`), `insert_column` and `delete_column` (`column`, a letter), `delete_sheet` and
+  `convert_table` / `delete_table` (`table`); see docs/architecture/oracle.md for the Graph calls
+  and decision 0098 for the engine side (`convert_table` is refused there). Any other op or key is
   refused. spec2xlsx records them as docProps custom properties `rustsheet.sheetop.<n>`. The
   excel-graph backend replays them in the session after the typed entries and keeps its canary
   sheet last: an added sheet goes just before the canary, and a move may not reach the canary's

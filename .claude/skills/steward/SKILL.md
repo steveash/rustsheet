@@ -29,6 +29,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
      do not merge, start again at 1), run check (c), merge with `expectedHeadSha`, then
      `make merge-lock-release`. Red, or any reason to stop
      (review changes, the session ending): release at once, then fix without the lock.
+  A lock whose PR is already merged or closed is never held (decision 0097): `acquire` for a finished
+  PR exits 3 (stop; the PR is done) and any acquirer takes over a finished PR's lock, whatever its age.
   A lock older than 30 minutes is stale and the next acquirer takes it over; renew yours by
   acquiring again if CI runs long. `make merge-lock-status` shows the holder. Orphaned-PR merges,
   the steward's PR and task-only PRs take the lock too.

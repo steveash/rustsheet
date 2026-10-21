@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -29,6 +30,11 @@ class MergeLock(unittest.TestCase):
         self.a, self.b = base / "a", base / "b"
         for clone in (self.a, self.b):
             run("git", "clone", "-q", str(self.origin), str(clone), cwd=base)
+        # No test reads the GitHub API; a test that needs a finished PR patches `finished`.
+        self.finished: set[str] = set()
+        patcher = mock.patch.object(merge_lock, "pr_finished", lambda pr, root=None: pr in self.finished)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def tearDown(self) -> None:
         self.tmp.cleanup()
@@ -60,6 +66,24 @@ class MergeLock(unittest.TestCase):
         lock = self.lock()
         assert lock is not None
         self.assertEqual(lock.holder, "agent-a")
+
+    def test_a_finished_pr_is_refused_and_leaves_the_lock_alone(self) -> None:
+        self.finished.add("101")
+        self.assertEqual(merge_lock.acquire("agent-a", "101", root=self.a), 3)
+        self.assertIsNone(self.lock())
+
+    def test_the_holder_cannot_renew_after_its_pr_merged(self) -> None:
+        merge_lock.acquire("agent-a", "101", root=self.a)
+        self.finished.add("101")
+        self.assertEqual(merge_lock.acquire("agent-a", "101", root=self.a), 3)
+
+    def test_a_live_lock_of_a_finished_pr_is_taken_over(self) -> None:
+        merge_lock.acquire("agent-a", "101", root=self.a)
+        self.finished.add("101")
+        self.assertEqual(merge_lock.acquire("agent-b", "202", root=self.b), 0)
+        lock = self.lock()
+        assert lock is not None
+        self.assertEqual((lock.holder, lock.pr), ("agent-b", "202"))
 
     def test_the_holder_renews_its_own_lock(self) -> None:
         with mock.patch.dict(os.environ, {"GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z"}):
@@ -146,6 +170,42 @@ class MergeLock(unittest.TestCase):
             self.assertEqual(merge_lock.main(["acquire", "--pr", "1"]), 2)
         with self.assertRaises(SystemExit), mock.patch("sys.stderr"):
             merge_lock.main(["acquire", "--pr", "$(whoami)", "--holder", "x"])
+
+
+class PrFinished(unittest.TestCase):
+    """`pr_finished` over a stubbed API (no network)."""
+
+    def read(self, payload: object, url: str = "https://github.com/o/r.git") -> bool | None:
+        class Response:
+            def __enter__(self) -> "Response":
+                return self
+
+            def __exit__(self, *exc: object) -> None:
+                return None
+
+            def read(self, *_: object) -> bytes:
+                return json.dumps(payload).encode()
+
+        remote = subprocess.CompletedProcess([], 0, stdout=url + "\n")
+        with (
+            mock.patch.object(merge_lock, "git", return_value=remote),
+            mock.patch.object(merge_lock.urllib.request, "urlopen", return_value=Response()),
+        ):
+            return merge_lock.pr_finished("7")
+
+    def test_open_merged_and_closed(self) -> None:
+        self.assertIs(self.read({"state": "open", "merged": False}), False)
+        self.assertIs(self.read({"state": "closed", "merged": True}), True)
+        self.assertIs(self.read({"state": "closed", "merged": False}), True)
+
+    def test_an_unreadable_state_is_unknown(self) -> None:
+        self.assertIsNone(self.read({"message": "Not Found"}))
+        self.assertIsNone(self.read({"state": "open"}, url="git@example.com:o/r.git"))
+        with (
+            mock.patch.object(merge_lock, "git", return_value=subprocess.CompletedProcess([], 0, "https://github.com/o/r\n")),
+            mock.patch.object(merge_lock.urllib.request, "urlopen", side_effect=OSError("offline")),
+        ):
+            self.assertIsNone(merge_lock.pr_finished("7"))
 
 
 if __name__ == "__main__":
