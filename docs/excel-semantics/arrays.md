@@ -324,8 +324,8 @@ Two array arguments broadcast: `{1;2}` with `{1,2,3}` is 2x3 (rows 29-35 A-C), a
 the missing third row (D29-D35).
 Implemented in: LOG, DECIMAL, BASE, ATAN2 and ARABIC on the SPEC-0011 driver with every argument `Lift`
 (`functions/lift/kinds/general.rs`; `fn_log`, `fn_base`, `fn_atan2` in math_and_trigonometry/mathematical.rs, `fn_decimal`
-in decimal_text.rs, `fn_arabic` in arabic_roman.rs; T-2159). Within an element the arguments are read left to right and
-the first error wins, then each function's own checks run in their old order.
+in decimal_text.rs, `fn_arabic` in arabic_roman.rs; T-2159). The engine reads an element's arguments left to right, the
+first error winning, then runs each function's own checks in their old order; two errors in one element are unprobed.
 Status: VERIFIED (excel-graph) for the cells above; implemented for LOG, DECIMAL, BASE, ATAN2 and ARABIC (T-2159), not
 for DOLLAR, FIXED and NUMBERVALUE (T-2160).
 
