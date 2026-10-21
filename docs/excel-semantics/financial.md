@@ -1074,12 +1074,30 @@ T-1583. The start S does not depend on redemption or frequency; it does depend o
   bond: F6 = A1 = E8 = 0.05523587030251456, F7 = A6, F8 = A11, F9 = A16, F1 = D10 = B1.
 - Lab: `uv run python` on `solvers.newton_back_chain`, pinned in
   tools/tests/test_fitlab_solvers.py::test_yield_start_sweep_newton_from_a_shared_start.
-Next hypothesis (T-1592): S is a function of rate, price and the basis's time to maturity only. Candidates are an
-earlier phase run on a redemption-free model (for example a perpetuity, or a bond priced at par), and the stop is the
-step-size cut above.
+T-1592 (second round, lab fit `yield`, now 178 cells with yield-start-sweep):
+- The basis moves S as the term T = settlement-to-maturity days in the basis over 360 (basis 0, 1559/360) or 365
+  (basis 1, 1581/365) moves a frequency-free annuity's root: D2's start minus D11's (1.04e-6) is matched to 1e-8
+  whatever the compounding, against 1e-6 to 1.3e-5 off for 1581/366 or 1581/365.25 (pinned in
+  tools/tests/test_fitlab_solvers.py::test_yield_start_moves_with_the_basis_days_over_its_year). So S
+  uses the term in years, not the coupon schedule, and actual days over 365 on basis 1 (not YEARFRAC's
+  average year).
+- S is not the root of such a model. Newton with the step cut from the root of an annuity of 100 * rate a year
+  over T, paid m times a year, with redemption 100: m = 1 0/178 bit-exact (2 within 4 ulp), m = 2 1/178 (3),
+  m = 3 2/178 (6), m = 4 0/178 (11), continuous 3/178 (8); from PRICE's own root at frequency 2 and
+  redemption 100: 0/178 (5). The best candidate overall stays Newton from 0.1 to a 1e-12 step, 4/178 (10).
+  No compounding fits more than one price: an annuity's root minus S at price 98, 80 and 50 is +2.2e-5,
+  +5.2e-5 and +1.9e-4 for m = 2, and +4e-7, -4.1e-4 and -3.0e-3 for m = 3.
+- S is not an iterate of Newton, the secant, regula falsi, Illinois or bisection run on PRICE at a fixed
+  frequency 1, 2 or 4 with redemption 100 from 0, 0.01, 0.02, 0.05, 0.1, 0.5, 1 or 1e-6 (pairs for the
+  bracketing methods): no iterate comes within 3e-9 relative of the starts of A1, D2, E1, E4 or E5.
+- On price alone the S values are ambiguous: only price 98 (frequency independence) pins the step count. With
+  one or two steps back, price 80 (E4) gives 0.109134476 or 0.10825933, price 90 (E5) 0.0776002232 or
+  0.0774089333, price 50 (E1) 0.242782115 or 0.2424219411.
+Next (T-2304): the probes fix the coupon rate at 0.05 and one set of dates; a rate and term grid at redemption
+100.5 (where every frequency stops below the root) is needed before S can be fitted.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304
 
 ## TBILLEQ and TBILLYIELD
 Rule: Excel's TBILLYIELD is `(100 - pr)/pr * (360/DSM)`, evaluated in that order; the textbook
