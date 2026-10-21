@@ -3,7 +3,7 @@ id: T-2265
 title: "YEARFRAC with a date in January-February 1900 (serials 1-60): count on the displayed calendar (ours a day off)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
