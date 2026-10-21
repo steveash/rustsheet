@@ -3,7 +3,7 @@ id: T-2262
 title: "Probe TYPE of a one-cell range over text, boolean, error, blank, OFFSET and INDIRECT cells"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
