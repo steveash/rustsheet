@@ -914,6 +914,7 @@ C	probes/t2200-blank-and-padded-m5-args.case.json	70
 C	probes/t2201-mround-quotient-rounding.case.json	221
 C	probes/t2202-text-code-check-on-text.case.json	88
 C	probes/t2275-address-bounds.case.json	298
+C	probes/t2280-ifs-one-cell-range-condition.case.json	82
 C	probes/take-drop-over-ifs-switch-picks.case.json	20
 C	probes/take-drop-trimrange-over-xlookup-b.case.json	14
 C	probes/take-drop-trimrange-over-xlookup.case.json	23
@@ -3132,6 +3133,10 @@ F	probes/t2275-address-bounds.case.json	Calc!J15
 F	probes/t2275-address-bounds.case.json	Calc!J20
 F	probes/t2275-address-bounds.case.json	Calc!J25
 F	probes/t2275-address-bounds.case.json	Calc!J28
+F	probes/t2280-ifs-one-cell-range-condition.case.json	Calc!A61
+F	probes/t2280-ifs-one-cell-range-condition.case.json	Calc!A62
+F	probes/t2280-ifs-one-cell-range-condition.case.json	Calc!A64
+F	probes/t2280-ifs-one-cell-range-condition.case.json	Calc!A65
 F	probes/text-currency-locale-date.case.json	S!A14
 F	probes/text-format-length-limit-n.case.json	Sheet1!A2
 F	probes/text-format-length-limit-n.case.json	Sheet1!A7

@@ -3,7 +3,7 @@ id: T-2280
 title: "Probe IFS with a one-cell range condition holding text under ROWS (Excel 1, ours #VALUE!)"
 milestone: M6
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -29,12 +29,21 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baselin
 | gen-m6/870c5e38f51ce5d4 Calc!A360 | `=ROWS((IFS(Data!A$7,Data!D$10)*Data!C10))` | 1.0 | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] This 1 known-failure line disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] A new probes case (excel-graph) holds the grid; logic.md states the rule with cells.
-- [ ] `make check` green; reviewers approve.
+- [x] This 1 known-failure line disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] A new probes case (excel-graph) holds the grid; logic.md states the rule with cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Legacy IFS arms (T-1969).
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+Probed IFS, IF and SWITCH over text, TRUE, FALSE, number, blank and error conditions, given as cells, one-cell ranges,
+literals and formula results (probes/t2280-ifs-one-cell-range-condition, 80 cells, excel-graph). Excel's IFS turns a
+non-boolean text condition into a 1x1 array of `#VALUE!` and reads a one-cell range condition as a scalar. `ifs_pick`
+now does both. logic.md has the rule. The case also probes SWITCH over a range with a blank element, for T-2166's
+lifted path: Calc!A61:A67 agree with #1454's rule, and its 4 cells pass once T-2166 is merged.
+Eval: gen-m6 known failures 243 -> 242 (the task's cell); probes gained 1 case with 82 scored cells, of which 78 pass on this
+branch; the 4 lifted SWITCH cells are T-2166's; regressions 0.
