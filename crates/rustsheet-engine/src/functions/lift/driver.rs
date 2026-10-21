@@ -3,7 +3,7 @@
 //! the in-place single-grid path and the text budget.
 
 use super::arg_buf::ArgBuf;
-use super::kinds::{CallResult, KernelWork};
+use super::kinds::{ArgKinds, ArgValue, CallResult, KernelWork};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
@@ -111,6 +111,37 @@ pub(crate) enum LiftCost {
     Prepared(u64),
 }
 
+/// The kernel units the computed `elements` of a `rows` x `columns` broadcast are charged before
+/// any runs: `elements` times the table weight, or for [`KernelWork::ByValue`] the sum of each
+/// element's charge by its argument values. That sum runs over every element, reused or not, so
+/// it never charges less than the elements computed; it is one pass over the grid, O(elements).
+pub(super) fn kernel_units(
+    work: KernelWork,
+    lifted: &[LiftedArg],
+    rows: usize,
+    columns: usize,
+    elements: u64,
+) -> u64 {
+    let KernelWork::ByValue(work) = work else {
+        return elements.saturating_mul(work.weight());
+    };
+    let mut units: u64 = 0;
+    for row in 0..rows {
+        for column in 0..columns {
+            let value = |index: usize| {
+                lifted.get(index).map(|arg| match arg {
+                    LiftedArg::Scalar(value) => ArgValue::of(value),
+                    LiftedArg::Grid(grid) => {
+                        ArgValue::of_node(bcast_get(grid, row, column).unwrap_or(&MISSING))
+                    }
+                })
+            };
+            units = units.saturating_add(work.units(value));
+        }
+    }
+    units
+}
+
 /// Which elements reuse an earlier element's result instead of running the kernel.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Reuse {
@@ -139,6 +170,15 @@ pub(crate) struct LiftOptions {
 }
 
 impl LiftOptions {
+    /// The options of a table entry's call: every element runs, at the entry's work and result.
+    pub(crate) fn for_entry(kinds: &ArgKinds) -> Self {
+        Self {
+            reuse: Reuse::Never,
+            work: kinds.work,
+            result: kinds.result,
+        }
+    }
+
     /// AGGREGATE, IFS, SWITCH and the lookups reuse equal runs, as T-1784's `lift_with_cost` did.
     pub(crate) const REUSE_EQUAL_RUNS: Self = Self {
         reuse: Reuse::EqualRuns,
@@ -413,11 +453,11 @@ impl Model {
                 (plan, count_walks(&lifted, rows, columns, reuse))
             }
         };
-        let weight = options.work.weight();
+        let units = kernel_units(options.work, &lifted, rows, columns, elements);
         let visits = match cost {
-            LiftCost::Unit => elements.saturating_mul(weight),
-            LiftCost::Cells(cells) => cells.saturating_mul(weight).saturating_mul(elements),
-            LiftCost::Prepared(cells) => cells.saturating_add(elements.saturating_mul(weight)),
+            LiftCost::Unit => units,
+            LiftCost::Cells(cells) => cells.saturating_mul(units),
+            LiftCost::Prepared(cells) => cells.saturating_add(units),
         };
         if let Some(error) = too_many_visits(visits, cell) {
             return error;

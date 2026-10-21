@@ -4,9 +4,10 @@ title: "GAMMA and GAMMALN residue: Excel's gamma-function kernel (39 known failu
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -79,3 +80,18 @@ Excel's gamma. Details: statistics.md "GAMMA and GAMMALN sweep (T-1042)".
 
 ## Out of scope
 GAMMALN and GAMMA at non-integers (T-1529, time-boxed); incomplete gamma (T-0971); GAMMA.INV (T-0972).
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 241 in total.
+- GAMMA: 241 cells (13-14 digits right 200, 10-12 41, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1042-gamma-int-1-90.case.json` 84; `probes-numeric/t1042-gamma-int-91-171.case.json` 75. e.g. `GAMMA(3)` Excel 2.0, ours 2.0000000000000067
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+Integer arguments only (non-integers and the T-1941 model are T-2129). Excel is exact at small integers, so the downward product reaches 15 digits there; for 89..171 the stage-1 target is 15 digits, not bits.
+
+## Update 2026-10-20: T-1941 identified Excel's algorithms
+GAMMALN and GAMMA are mapped to Excel's own x87 routines (T-1941; `docs/research/t1941/HANDOFF2.md`). T-2128 and
+T-2129 ship them; the four open kernels' remaining coefficient bits are T-2122. This supersedes the hypotheses above
+(named library routines, Lanczos, ln of the product).

@@ -3,8 +3,8 @@
 //! ```text
 //! rustsheet-eval suites                         # list suites
 //! rustsheet-eval run [--suite S] [--filter X]   # run + write eval/runs/latest/{report.json,report.md}
-//! rustsheet-eval check                          # gate: fail on any baseline regression
-//! rustsheet-eval update-baseline                # ratchet baselines up (refuses regressions)
+//! rustsheet-eval check                          # gate: fail on any baseline or visible-parity regression
+//! rustsheet-eval update-baseline                # ratchet baselines and visible parity (refuses regressions)
 //! rustsheet-eval evidence-floor [--update]      # ratchet functions below the evidence floor
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
 //! rustsheet-eval snapshot <file.xlsx>           # dump stored formulas/values as JSON
@@ -24,17 +24,21 @@ use clap::{Parser, Subcommand};
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::catalog::Catalog;
+use rustsheet_eval::catalog_coverage;
 use rustsheet_eval::deviations;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::evidence_floor::{self, Lock, EVIDENCE_FLOOR, LOCK_PATH};
+use rustsheet_eval::exit_exceptions::ExitExceptions;
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::lift_kinds;
+use rustsheet_eval::milestone_exit;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
 use rustsheet_eval::text_expect;
+use rustsheet_eval::visible_parity::{self, VisibleCount};
 use rustsheet_eval::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
 #[derive(Parser)]
@@ -96,6 +100,10 @@ enum Cmd {
         /// Permit removing previously passing items (requires PR justification).
         #[arg(long)]
         allow_regressions: bool,
+        /// Also record a drop in the visible-parity lock. The steward's daily run only: a PR
+        /// leaves drops to it so fix PRs do not conflict on the lock (decision 0093).
+        #[arg(long)]
+        lower_visible_lock: bool,
     },
     /// Fail if more in-scope functions are below the evidence floor than
     /// quality/evidence-floor.json allows, or if the lock is stale (T-0056, decision 0062).
@@ -255,16 +263,20 @@ fn check_deviations(root: &Path, suites: &[Suite]) -> Result<()> {
     Ok(())
 }
 
-/// The frozen milestone probe lists (decision 0044) and the probe-milestone rules (decision 0051).
+/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051)
+/// and the named exit exceptions (decision 0087).
 struct Milestones {
     lists: Vec<MilestoneList>,
     rules: Rules,
+    exceptions: ExitExceptions,
 }
 
 /// Loads the frozen lists and the probe-milestone mapping, and fails when a line of either names
 /// a case that no suite discovers, or a cell line names a cell its case holds no expectation for.
+/// A malformed line of the exit exceptions fails too.
 fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
     let lists = milestone_lists::load_all(root)?;
+    let exceptions = ExitExceptions::load(root)?;
     let mapping = Mapping::load(root)?;
     if !lists.is_empty() || mapping != Mapping::default() {
         let mut files = BTreeMap::new();
@@ -286,12 +298,17 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
         mapping.check_cells(&expectations)?;
     }
     let rules = Rules::new(&lists, mapping, catalog);
-    Ok(Milestones { lists, rules })
+    Ok(Milestones {
+        lists,
+        rules,
+        exceptions,
+    })
 }
 
 /// Fills the report's milestone sections from the run's `results`.
 fn score_milestones(
     milestones: &Milestones,
+    catalog: &Catalog,
     suites: &[Suite],
     results: &[CaseResult],
     report: &mut RunReport,
@@ -310,6 +327,17 @@ fn score_milestones(
         .copied()
         .unwrap_or(BaselineMode::Cells);
     report.probe_milestones = probe_milestones::summarize(&milestones.rules, results, probes_mode);
+    if let Some(scope) = report.function_scope.as_mut() {
+        scope.apply_exceptions(&milestones.exceptions);
+    }
+    let generated: BTreeMap<String, Vec<String>> = suites
+        .iter()
+        .filter(|s| s.manifest.origin == "generated")
+        .map(|s| (s.manifest.name.clone(), s.manifest.milestone.clone()))
+        .collect();
+    report.catalog_coverage =
+        catalog_coverage::summarize(catalog, results, &report.evidence, &generated);
+    report.milestone_exit = milestone_exit::summarize(report);
 }
 
 fn print_summary(report: &RunReport) {
@@ -362,7 +390,42 @@ fn baseline_path(root: &Path, suite: &str) -> PathBuf {
     root.join("eval/baseline").join(format!("{suite}.txt"))
 }
 
-fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitCode> {
+/// Holds `count` to the visible-parity lock, recording it on `update` when
+/// [`visible_parity::judge`] allows (T-0061, decisions 0088 and 0093); returns whether the gate
+/// passes.
+fn visible_parity_gate(
+    root: &Path,
+    count: VisibleCount,
+    update: Option<visible_parity::Update>,
+) -> Result<bool> {
+    use visible_parity::{Judgement, Lock, LOCK_PATH};
+    let lock = Lock::read(root)?;
+    println!(
+        "visible parity: {} in-scope cells visibly off ({} in new cases), lock {}",
+        count.cells, count.new_coverage, lock.visibly_off_cells
+    );
+    Ok(match visible_parity::judge(lock, count, update) {
+        Judgement::Holds => true,
+        Judgement::Record => {
+            Lock {
+                visibly_off_cells: count.cells,
+            }
+            .write(root)?;
+            println!("  updated {LOCK_PATH}: commit it");
+            true
+        }
+        Judgement::Regressed => {
+            println!("  REGRESSION: more cells are visibly off than {LOCK_PATH} allows; the report's \"Visibly off\" section names the functions");
+            false
+        }
+    })
+}
+
+fn cmd_check(
+    root: &Path,
+    sel: &Selection,
+    update: Option<visible_parity::Update>,
+) -> Result<ExitCode> {
     if sel.filter.is_some() {
         bail!(
             "--filter is not allowed for baseline operations (partial runs look like regressions)"
@@ -379,9 +442,10 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         &RustSheetEngine.implemented_functions(),
         &catalog,
     );
-    score_milestones(&milestones, &suites, &results, &mut report);
+    score_milestones(&milestones, &catalog, &suites, &results, &mut report);
     print_summary(&report);
     let mut failed = false;
+    let mut visible = VisibleCount::default();
     for suite in &suites {
         if suite.manifest.baseline == BaselineMode::None {
             continue;
@@ -391,6 +455,11 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         let current = Baseline::from_results(suite.manifest.baseline, &mine);
         let path = baseline_path(root, name);
         let old = Baseline::read(&path)?;
+        if suite.manifest.fetch.is_none() {
+            for r in &mine {
+                visible.add(&catalog, r, !old.checked.contains_key(&r.id));
+            }
+        }
         let delta = baseline::diff(&old, &current);
         println!(
             "[{name}] known failures {} -> {}, text {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, new cases {}, removed cases {})",
@@ -416,8 +485,8 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
                     }
                 }
             }
-            Some(allow) => {
-                if !delta.regressions.is_empty() && !allow {
+            Some(u) => {
+                if !delta.regressions.is_empty() && !u.allow_regressions {
                     failed = true;
                     println!("  refusing to record regressions without --allow-regressions");
                 } else {
@@ -425,6 +494,10 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
                 }
             }
         }
+    }
+    // A partial run (`--suite`) would undercount, so only a full gated run is held to the lock.
+    if sel.suites.is_empty() && !visible_parity_gate(root, visible, update)? {
+        failed = true;
     }
     Ok(if failed {
         ExitCode::FAILURE
@@ -614,7 +687,7 @@ fn run() -> Result<ExitCode> {
                 &RustSheetEngine.implemented_functions(),
                 &catalog,
             );
-            score_milestones(&milestones, &suites, &results, &mut report);
+            score_milestones(&milestones, &catalog, &suites, &results, &mut report);
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(
@@ -630,7 +703,15 @@ fn run() -> Result<ExitCode> {
         Cmd::UpdateBaseline {
             sel,
             allow_regressions,
-        } => cmd_check(&root, &sel, Some(allow_regressions)),
+            lower_visible_lock,
+        } => cmd_check(
+            &root,
+            &sel,
+            Some(visible_parity::Update {
+                allow_regressions,
+                lower: lower_visible_lock,
+            }),
+        ),
         Cmd::EvidenceFloor {
             update,
             allow_increase,

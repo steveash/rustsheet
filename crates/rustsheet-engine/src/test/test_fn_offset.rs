@@ -169,3 +169,117 @@ fn ref_element_is_small() {
     // SPEC-0014 "Bounds": no larger than the `ArrayNode` it stands in for.
     assert!(std::mem::size_of::<crate::reference_operators::RefElement>() <= 32);
 }
+
+// SPEC-0014 rules 4-5 (T-2063): SUM, AVERAGE, MIN, MAX and PRODUCT read each element's top-left
+// cell; COUNT counts no element, COUNTA every one; SUMPRODUCT reads an element as 0 and an error
+// element as its error (probes/reference-lift-consumers E1-E29, -b2 E117-E189).
+#[test]
+fn fn_offset_lifted_into_top_left_aggregates() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "100");
+    model._set("A3", "10000");
+    model._set("A4", "'5");
+    model._set("A6", "TRUE");
+    model._set("A7", "7");
+    model._set("C1", "=SUM(OFFSET(A1,0,0,{1;2}))");
+    model._set("C2", "=AVERAGE(OFFSET(A1,{0;1},0))");
+    model._set("C3", "=MAX(OFFSET(A1,0,0,{1;3}))");
+    model._set("C4", "=MIN(OFFSET(A4,0,0,{1;3}))");
+    model._set("C5", "=PRODUCT(OFFSET(A1,{0;1},0))");
+    model._set("C6", "=SUM(OFFSET(A1,{0;1},0),1)");
+    model._set("C7", "=AVERAGE(OFFSET(A1,{0;-1},0))");
+    model._set("C8", "=COUNT(OFFSET(A1,0,0,{1;2}))");
+    model._set("C9", "=COUNTA(OFFSET(A5,0,0,{1;2}))");
+    model._set("C10", "=SUMPRODUCT(OFFSET(A1,{0;1},0))");
+    model._set("C11", "=SUMPRODUCT(OFFSET(A1,{0;-1},0))");
+    model._set("C12", "=SUM(OFFSET(A4,{0;3},0))");
+    model._set("C13", "=SUM(OFFSET(A6,0,0,{1;2}))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"2");
+    assert_eq!(model._get_text("C2"), *"50.5");
+    assert_eq!(model._get_text("C3"), *"1");
+    assert_eq!(model._get_text("C4"), *"0");
+    assert_eq!(model._get_text("C5"), *"100");
+    assert_eq!(model._get_text("C6"), *"102");
+    assert_eq!(model._get_text("C7"), *"#REF!");
+    assert_eq!(model._get_text("C8"), *"0");
+    assert_eq!(model._get_text("C9"), *"2");
+    assert_eq!(model._get_text("C10"), *"0");
+    assert_eq!(model._get_text("C11"), *"#REF!");
+    assert_eq!(model._get_text("C12"), *"7");
+    assert_eq!(model._get_text("C13"), *"0");
+}
+
+// The aggregates SPEC-0014 rules 4-5 do not name keep the value view, every reference element
+// `#VALUE!`, until their Excel results are known (T-2065).
+#[test]
+fn fn_offset_lifted_into_other_aggregates_is_its_value_view() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "100");
+    model._set("C1", "=MEDIAN(OFFSET(A1,{0;1},0))");
+    model._set("C2", "=AVERAGEA(OFFSET(A1,{0;1},0))");
+    model._set("C3", "=STDEV.S(OFFSET(A1,{0;1},0))");
+    model._set("C4", "=MAXA(OFFSET(A1,{0;1},0))");
+    model._set("C5", "=SUMSQ(OFFSET(A1,{0;1},0))");
+    model.evaluate();
+    for cell in ["C1", "C2", "C3", "C4", "C5"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
+    }
+}
+
+// LET, a LAMBDA parameter, IF and CHOOSE hand an array of references on, and OFFSET over one
+// lifts again (SPEC-0014 rule 7; probes/reference-lift-consumers E89, E145, E149,
+// reference-lift-pass-through).
+#[test]
+fn fn_offset_grid_passes_through_let_if_choose_and_nested_offset() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "100");
+    model._set("A3", "10000");
+    model._set("C1", "=LET(x,OFFSET(A1,{0;1},0),INDEX(x,2,1))");
+    model._set(
+        "C2",
+        "=LET(x,OFFSET(A1,{0;1},0),y,x,SUM(INDEX(y,2,1),INDEX(x,1,1)))",
+    );
+    model._set("C3", "=LET(f,LAMBDA(r,INDEX(r,2,1)),f(OFFSET(A1,{0;1},0)))");
+    model._set("C4", "=ROWS(OFFSET(OFFSET(A1,{0;1},0),1,0))");
+    model._set("C5", "=SUM(OFFSET(OFFSET(A1,{0;1},0),{0,1},0))");
+    model._set(
+        "C6",
+        "=ERROR.TYPE(INDEX(OFFSET(OFFSET(A1,{0;-1},0),1,0),2,1))",
+    );
+    model._set("C7", "=SUM(OFFSET(LET(x,OFFSET(A1,{0;1},0),x),1,0))");
+    model._set("C8", "=SUMPRODUCT(IF(TRUE,OFFSET(A1,{0;1},0)))");
+    model._set("C9", "=LET(x,OFFSET(A1,{0;1},0),ISREF(x))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"100");
+    assert_eq!(model._get_text("C2"), *"101");
+    assert_eq!(model._get_text("C3"), *"100");
+    assert_eq!(model._get_text("C4"), *"2");
+    assert_eq!(model._get_text("C5"), *"10201");
+    assert_eq!(model._get_text("C6"), *"4");
+    assert_eq!(model._get_text("C7"), *"10100");
+    assert_eq!(model._get_text("C8"), *"0");
+    assert_eq!(model._get_text("C9"), *"FALSE");
+}
+
+// Each level of a deep OFFSET nest over an array of references is one lift of the grid's
+// elements, so the work grows with depth times elements, not exponentially (SPEC-0014 "Bounds").
+#[test]
+fn fn_offset_deep_nest_over_a_grid_stays_bounded() {
+    let mut model = new_empty_model();
+    let depth = 60;
+    let mut formula = "OFFSET(A1,SEQUENCE(1000)-1,0)".to_string();
+    for _ in 0..depth {
+        formula = format!("OFFSET({formula},{{0,1}},0)");
+    }
+    model._set("C1", &format!("=ROWS({formula})"));
+    model._set("C2", &format!("=COLUMNS({formula})"));
+    model._set("C3", &format!("=COUNTA({formula})"));
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"1000");
+    assert_eq!(model._get_text("C2"), *"2");
+    assert_eq!(model._get_text("C3"), *"2000");
+}

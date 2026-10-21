@@ -1,9 +1,9 @@
 use statrs::distribution::{Continuous, Gamma};
-use statrs::function::gamma::gamma;
 
 use super::erf::gamma_half_lower;
+use super::gamma_x87::excel_gamma;
+use super::gammaln::excel_gammaln;
 use super::incomplete_gamma::{gamma_cdf, gamma_inverse_cdf};
-use super::special::ln_gamma;
 
 use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
@@ -35,17 +35,16 @@ fn gamma_dist_cdf(dist: &Gamma, x: f64, beta: f64) -> f64 {
 
 impl Model {
     /// `GAMMA(x)`: lifts over an array and a range (SPEC-0011; probes/stat-argument-modes
-    /// H284-H286). The Lanczos sum is closed form.
+    /// H284-H286).
     pub(crate) fn fn_gamma(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Gamma, args, cell, &mut |model, values| {
             let [x] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
             number_or_error(model.cast_number_ref(x, cell).and_then(|x| {
-                if x < 0.0 && x.floor() == x {
-                    return Err(num_error(cell));
-                }
-                let result = gamma(x);
+                // Excel's own x87 routine (gamma_x87.rs, T-2129): NaN at the poles, infinity past
+                // the double range, both #NUM!.
+                let result = excel_gamma(x);
                 if result.is_nan() || result.is_infinite() {
                     return Err(num_error(cell));
                 }
@@ -126,8 +125,8 @@ impl Model {
         Ok(x)
     }
 
-    /// `GAMMALN(x)` and GAMMALN.PRECISE: lift over an array and a range (SPEC-0011;
-    /// probes/stat-argument-modes H287-H292).
+    /// `GAMMALN(x)` and GAMMALN.PRECISE (one routine, `gammaln.rs`): lift over an array and a
+    /// range (SPEC-0011; probes/stat-argument-modes H287-H292).
     pub(crate) fn fn_gamma_ln(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::GammaLn, args, cell, &mut |model, values| {
             let [x] = values else {
@@ -137,7 +136,8 @@ impl Model {
                 if x < 0.0 {
                     return Err(num_error(cell));
                 }
-                let result = ln_gamma(x);
+                // Excel's own x87 routine (gammaln.rs, T-2128); x = 0 is NaN there, #NUM!.
+                let result = excel_gammaln(x);
                 if result.is_nan() || result.is_infinite() {
                     return Err(num_error(cell));
                 }

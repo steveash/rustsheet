@@ -3,7 +3,8 @@ use std::borrow::Cow;
 use super::casefold::{char_offsets, fold_for_before_after};
 
 use crate::{
-    cast::{array_node_to_text, MAX_TEXT_UNITS},
+    calc_result::CalcResult,
+    cast::{calc_result_to_text, MAX_TEXT_UNITS},
     expressions::{parser::ArrayNode, token::Error},
     text::Text,
 };
@@ -296,14 +297,14 @@ pub(crate) fn within_text_budget(total: &mut usize, len: usize) -> bool {
 /// Computes a single SUBSTITUTE result from one element of each argument.
 /// Without an `instance_num` every instance is replaced.
 pub(super) fn substitute_element(
-    text: &ArrayNode,
-    old_text: &ArrayNode,
-    new_text: &ArrayNode,
+    text: &CalcResult,
+    old_text: &CalcResult,
+    new_text: &CalcResult,
     instance_num: Option<Result<f64, Error>>,
 ) -> Result<ArrayNode, Error> {
-    let text = array_node_to_text(text)?;
-    let old_text = array_node_to_text(old_text)?;
-    let new_text = array_node_to_text(new_text)?;
+    let text = calc_result_to_text(text)?;
+    let old_text = calc_result_to_text(old_text)?;
+    let new_text = calc_result_to_text(new_text)?;
     let instance_num = match instance_num {
         Some(n) => {
             let n = n?.floor();

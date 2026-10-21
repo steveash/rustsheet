@@ -21,6 +21,9 @@ use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
 use lookup_table::SearchVector;
+use ref_lift::lifts;
+
+pub(crate) use drop_take::Edge;
 
 mod address_areas;
 mod choosecols_chooserows;
@@ -39,6 +42,7 @@ mod lookup_each;
 pub(crate) mod lookup_table;
 pub(crate) mod offset;
 mod pivotby;
+mod ref_lift;
 mod relative_to;
 mod tocol_torow;
 mod transpose;
@@ -83,7 +87,9 @@ impl Model {
             Function::Xlookup => self.xlookup_impl(args, cell, true),
             Function::Take => self.take_drop_impl(args, cell, drop_take::Edge::Take, true),
             Function::Drop => self.take_drop_impl(args, cell, drop_take::Edge::Drop, true),
-            Function::Trimrange => self.trimrange_impl(args, cell, true),
+            Function::Trimrange => self
+                .trimrange_reference(args, cell, true)
+                .into_single_area(cell),
             _ => return None,
         })
     }
@@ -265,6 +271,7 @@ impl Model {
                 table.pick(model, row, column as i32, cell, as_reference)
             },
         )
+        .blank_as_empty_value()
     }
 
     /// `VLOOKUP(lookup_value`, `table_array`, `row_index`, [`is_sorted`])
@@ -314,6 +321,7 @@ impl Model {
                 table.pick(model, row as i32, column, cell, as_reference)
             },
         )
+        .blank_as_empty_value()
     }
 
     // HYPERLINK(link_location, [friendly_name])
@@ -642,20 +650,55 @@ impl Model {
     // Returns the reference specified by 'ref_text'. It is read in A1 notation
     // unless 'a1' is FALSE, in which case it is read in R1C1 notation.
     pub(crate) fn fn_indirect(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.indirect_reference(args, cell).into_single_area(cell)
+    }
+
+    /// INDIRECT in reference context: one reference, or, when `ref_text` or a1 is an array or a
+    /// multi-cell range, an array of references in their broadcast shape, each element the scalar
+    /// INDIRECT of its values or that call's error (SPEC-0014; docs/excel-semantics/lookup.md
+    /// "OFFSET, INDIRECT and TRIMRANGE lift into arrays of references").
+    pub(crate) fn indirect_reference(&mut self, args: &[Node], cell: CellReferenceIndex) -> RefArg {
         if args.len() > 2 || args.is_empty() {
-            return CalcResult::new_args_number_error(cell);
+            return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
-        let ref_text = match self.get_string(&args[0], cell) {
+        let values = self.reference_lift_values(args, cell);
+        if !values.as_slice().iter().any(lifts) {
+            return RefArg::from(self.indirect_of(values.as_slice(), cell));
+        }
+        match self.reference_lift_args(values, cell) {
+            Ok(lifted) => self.lift_references(lifted, cell, &mut |model, values| {
+                model.indirect_of(values, cell)
+            }),
+            Err(error) => RefArg::Value(error),
+        }
+    }
+
+    /// Whether an INDIRECT call lifts into an array of references, its own arguments evaluated
+    /// but no element computed: ISREF's question.
+    pub(crate) fn indirect_lifts(&mut self, args: &[Node], cell: CellReferenceIndex) -> bool {
+        args.len() <= 2
+            && self
+                .reference_lift_values(args, cell)
+                .as_slice()
+                .iter()
+                .any(lifts)
+    }
+
+    /// The scalar INDIRECT of the values of `ref_text` and the optional a1 (TRUE when missing).
+    fn indirect_of(&mut self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        let ref_text = match self.cast_to_string(
+            values.first().cloned().unwrap_or(CalcResult::EmptyArg),
+            cell,
+        ) {
             Ok(s) => s,
             Err(v) => return v,
         };
-        let a1 = if args.len() == 2 {
-            match self.get_boolean(&args[1], cell) {
+        let a1 = match values.get(1) {
+            Some(value) => match self.cast_to_bool(value.clone(), cell) {
                 Ok(b) => b,
                 Err(v) => return v,
-            }
-        } else {
-            true
+            },
+            None => true,
         };
 
         let parsed_reference = if a1 {
@@ -677,7 +720,7 @@ impl Model {
                 right: reference,
             },
             Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
-            Err(message) => match self.indirect_defined_name(&ref_text, cell.sheet) {
+            Err(message) => match self.indirect_defined_name(&ref_text, cell) {
                 Some(found) => found,
                 None => CalcResult::Error {
                     error: Error::REF,
@@ -696,7 +739,12 @@ impl Model {
     /// reference": `a1` FALSE still resolves a name, trailing (not leading) spaces are ignored, and
     /// a `Sheet!name` prefix picks the name scoped to that sheet, else the workbook name
     /// (probes/indirect-defined-name-text A5, A8, A22; T-1682).
-    fn indirect_defined_name(&self, text: &str, sheet: u32) -> Option<CalcResult> {
+    ///
+    /// A relative name (`=Jan!A1`) is read from `cell`, the cell of the INDIRECT, as any other use
+    /// of it is; that INDIRECT case is not probed yet (references.md "Relative references in
+    /// defined names").
+    fn indirect_defined_name(&self, text: &str, cell: CellReferenceIndex) -> Option<CalcResult> {
+        let sheet = cell.sheet;
         let text = text.trim_end_matches(' ');
         if is_out_of_range_r1c1_name(text) {
             return None;
@@ -715,14 +763,8 @@ impl Model {
             .parsed_defined_name(text, Some(scope))
             .or_else(|| self.parsed_defined_name(text, None));
         match found? {
-            ParsedDefinedName::CellReference(reference) => Some(CalcResult::Range {
-                left: *reference,
-                right: *reference,
-            }),
-            ParsedDefinedName::RangeReference(range) => Some(CalcResult::Range {
-                left: range.left,
-                right: range.right,
-            }),
+            ParsedDefinedName::CellReference(reference)
+            | ParsedDefinedName::RangeReference(reference) => Some(reference.range_at(cell)),
             _ => None,
         }
     }

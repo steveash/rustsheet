@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -24,3 +25,6 @@ T-1865 made the one-character `[$€-40C]` work; the lexer's currency path (form
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

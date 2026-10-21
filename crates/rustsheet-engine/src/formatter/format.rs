@@ -1,23 +1,26 @@
-use super::elapsed::{elapsed_text, ElapsedUnit};
+use super::elapsed::{elapsed_text, ElapsedUnit, FractionalSeconds};
 use super::fraction::format_fraction;
 use super::general::format_general;
-use crate::{locale::Locale, number_format::to_precision, text::Text, types::DateSystem};
+use crate::{
+    constants::{EXCEL_PRECISION, MAXIMUM_DATE_SERIAL_NUMBER},
+    locale::Locale,
+    number_format::{cut_15_digits, to_precision},
+    text::Text,
+    types::DateSystem,
+};
 use std::collections::BTreeSet;
 
+pub use super::formatted::Formatted;
+use super::formatted::MAX_TEXT_FORMAT_CHARS;
 pub(crate) use super::parse_formatted::{
     parse_formatted_number, parse_typed_number, rejected_clock_text_format,
 };
 use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
+    lexer::Compare,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     parser::{GeneralPart, ParsePart, Parser, TextToken},
 };
-
-pub struct Formatted {
-    pub color: Option<i32>,
-    pub text: String,
-    pub error: Option<String>,
-}
 
 /// The workbook inputs of number formatting: the locale and the date system (SPEC-0005).
 #[derive(Clone, Copy)]
@@ -36,30 +39,39 @@ impl<'a> FormatContext<'a> {
     }
 }
 
-/// Returns the vector of chars of the fractional part of a *positive* number:
+/// Returns the chars of the fractional part of a *positive* number and whether rounding it to
+/// `precision` places carried into the integer part, read off its 15
+/// significant digits (the value is already rounded to them) and without trailing zeros:
 /// 3.1415926 ==> ['1', '4', '1', '5', '9', '2', '6']
-fn get_fract_part(value: f64, precision: i32, int_len: usize) -> Vec<char> {
-    let b = format!("{:.1$}", value.fract(), precision as usize)
-        .chars()
-        .collect::<Vec<char>>();
-    let l = b.len() - 1;
-    let mut last_non_zero = b.len() - 1;
-    for i in 0..l {
-        if b[l - i] != '0' {
-            last_non_zero = l - i + 1;
-            break;
+/// Excel shows only 15 significant digits and pads the rest of a wide format with zeros, so the
+/// cut counts significant digits, not positions after the point (`TEXT(2/3,"0.000000000000000000")`
+/// is "0.666666666666667000", probes-numeric/4f413cc257ce15c4 A23).
+fn get_fract_part(value: f64, precision: i32) -> (Vec<char>, bool) {
+    let (_, fract) = cut_15_digits(value, true);
+    let mut fract: Vec<u8> = fract;
+    // Round half up on the decimal digits; the flag says the rounding carried into the integer part.
+    let shown = usize::try_from(precision).unwrap_or(0);
+    let round_up = fract.get(shown).is_some_and(|d| *d >= 5);
+    fract.truncate(shown);
+    let mut carry = round_up;
+    if round_up {
+        for d in fract.iter_mut().rev() {
+            if *d == 9 {
+                *d = 0;
+            } else {
+                *d += 1;
+                carry = false;
+                break;
+            }
         }
     }
-    if last_non_zero < 2 {
-        return vec![];
+    while fract.last() == Some(&0) {
+        fract.pop();
     }
-    let max_len = if int_len > 15 {
-        2_usize
-    } else {
-        15_usize - int_len + 1
-    };
-    let last_non_zero = usize::min(last_non_zero, max_len + 1);
-    b[2..last_non_zero].to_vec()
+    (
+        fract.into_iter().map(|d| char::from(b'0' + d)).collect(),
+        carry,
+    )
 }
 
 /// Return true if we need to add a separator in position `digit_index`
@@ -87,11 +99,7 @@ fn excel_weekday_index(serial: i64) -> usize {
 }
 
 fn invalid_date(value: f64) -> Formatted {
-    Formatted {
-        text: "#VALUE!".to_owned(),
-        color: None,
-        error: Some(format!("Invalid date value: '{value}'")),
-    }
+    Formatted::unshowable(format!("Invalid date value: '{value}'"))
 }
 
 /// Formats a TEXT value, `None` being a blank. A blank with an empty format gives "" and any other
@@ -103,6 +111,7 @@ pub fn format_text(value: Option<f64>, format: &str, ctx: &FormatContext) -> For
             color: None,
             text: String::new(),
             error: None,
+            unshowable: false,
         };
     }
     format_number(value.unwrap_or(0.0), format, ctx)
@@ -205,10 +214,6 @@ pub(crate) fn format_text_value_exact(text: &Text, format: &str) -> Result<Text,
     Ok(out)
 }
 
-/// Excel: TEXT of a text value is `#VALUE!` once the result is over 255 characters, also when the
-/// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
-const MAX_TEXT_FORMAT_CHARS: usize = 255;
-
 /// The Buddhist era counts from 543 BC: serial 100 (1900-04-09) is "43" under `b` and "2443" under
 /// `bbbb` (probes/text-format-bare-literals A41-A46; gen-m7/6db767d720c5b55a A30).
 const BUDDHIST_ERA_OFFSET: i32 = 543;
@@ -225,6 +230,7 @@ fn value_error(message: &str) -> Formatted {
         text: "#VALUE!".to_owned(),
         color: None,
         error: Some(message.to_owned()),
+        unshowable: false,
     }
 }
 
@@ -246,6 +252,7 @@ fn capped_text(text: String) -> Formatted {
         color: None,
         text,
         error: None,
+        unshowable: false,
     }
 }
 
@@ -269,6 +276,15 @@ fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
     match part {
         ParsePart::Number(p) => Some(&p.tokens),
         ParsePart::Date(p) => Some(&p.tokens),
+        ParsePart::General(_) | ParsePart::Error(_) => None,
+    }
+}
+
+/// The `[cond]` of a number or date section, if it has one.
+fn section_condition(part: &ParsePart) -> Option<(Compare, f64)> {
+    match part {
+        ParsePart::Number(p) => p.condition,
+        ParsePart::Date(p) => p.condition,
         ParsePart::General(_) | ParsePart::Error(_) => None,
     }
 }
@@ -308,11 +324,18 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text: if value < 0.0 { "-" } else { "" }.to_owned(),
                 color: None,
                 error: None,
+                unshowable: false,
             };
         }
         // A single text section (`@` in it) does not apply to numbers, which print in General:
         // `TEXT(1,"@""aaa""")` is "1" (probes/text-format-length-limit-i A19:A26, T-1434).
         1 if is_text_section(&parts[0]) => {
+            part = &general;
+        }
+        // Excel: a single section whose condition the value fails is not used, and the value
+        // prints in General (`TEXT(10,"[<10]#"" Wow""")` is "10", poi FormatChoiceTests
+        // A3-A26; `TEXT(1,"[>5]0"&REPT(" ",79))` is "1", probes/text-format-length-limit-d S!A31).
+        1 if section_condition(&parts[0]).is_some_and(|(cmp, bound)| !cmp.holds(value, bound)) => {
             part = &general;
         }
         1 => {
@@ -353,6 +376,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text: "#VALUE!".to_owned(),
                 color: None,
                 error: Some("Too many parts".to_owned()),
+                unshowable: false,
             };
         }
     }
@@ -362,6 +386,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             text: general_text(value, locale),
             color: None,
             error: None,
+            unshowable: false,
         },
         ParsePart::Date(p) => {
             // Excel: whether a negative serial formats or is #VALUE! depends on the value's own
@@ -378,10 +403,29 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let mut text = if value < 0.0 { "-" } else { "" }.to_string();
             let value = value.abs();
             let tokens = &p.tokens;
-            let time_fract = value.fract();
-            let hours = (time_fract * 24.0).floor();
-            let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
-            let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
+            let fraction_digits = tokens.iter().find_map(|t| match t {
+                TextToken::SecondFraction(digits) => Some(*digits),
+                _ => None,
+            });
+            // Excel: a fraction of a second over a serial past 9999-12-31 is #VALUE!, elapsed
+            // tokens or not (`TEXT(1234567890,"[mm]:ss.0")`, `"h:mm:ss.00"`; gen-m10
+            // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20, fbdab487cb11409e T!A25). The
+            // same for the other clock tokens is T-1731.
+            if fraction_digits.is_some() && value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0 {
+                return invalid_date(value_original);
+            }
+            let fraction = fraction_digits.and_then(|digits| FractionalSeconds::new(value, digits));
+            let fraction = fraction.as_ref();
+            let (hours, minutes, seconds) = match fraction {
+                Some(fraction) => fraction.clock(),
+                None => {
+                    let time_fract = value.fract();
+                    let hours = (time_fract * 24.0).floor();
+                    let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
+                    let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
+                    (hours, minutes, seconds)
+                }
+            };
             // Day/month/year and weekday tokens show Excel's exact components (including the
             // fictitious 1900-02-29) and "1900-01-00" (serial 0). In a 1904 workbook they read the
             // 1904 epoch (`TEXT(0,"yyyy-mm-dd")` is "1904-01-01"; dates.md "The 1904 date system");
@@ -622,28 +666,35 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = elapsed_text(value, false, ElapsedUnit::Hour);
+                        let hour = elapsed_text(value, false, ElapsedUnit::Hour, fraction);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = elapsed_text(value, true, ElapsedUnit::Hour);
+                        let hour = elapsed_text(value, true, ElapsedUnit::Hour, fraction);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = elapsed_text(value, false, ElapsedUnit::Minute);
+                        let minute = elapsed_text(value, false, ElapsedUnit::Minute, fraction);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = elapsed_text(value, true, ElapsedUnit::Minute);
+                        let minute = elapsed_text(value, true, ElapsedUnit::Minute, fraction);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = elapsed_text(value, false, ElapsedUnit::Second);
+                        let second = elapsed_text(value, false, ElapsedUnit::Second, fraction);
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = elapsed_text(value, true, ElapsedUnit::Second);
+                        let second = elapsed_text(value, true, ElapsedUnit::Second, fraction);
                         text = format!("{text}{second}");
+                    }
+                    TextToken::SecondFraction(digits) => {
+                        text.push('.');
+                        match fraction {
+                            Some(fraction) => text.push_str(&fraction.digits_text()),
+                            None => text.extend(std::iter::repeat_n('0', *digits)),
+                        }
                     }
                 }
             }
@@ -656,14 +707,21 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text,
                 color: p.color,
                 error: None,
+                unshowable: false,
             }
         }
         ParsePart::Number(p) => {
             if let Some(fraction) = &p.fraction {
-                return Formatted {
-                    text: format_fraction(value, p, fraction),
-                    color: p.color,
-                    error: None,
+                return match format_fraction(value, p, fraction) {
+                    Some(text) => Formatted {
+                        text,
+                        color: p.color,
+                        error: None,
+                        unshowable: false,
+                    },
+                    None => {
+                        Formatted::unshowable(format!("Fraction numerator overflows: '{value}'"))
+                    }
                 };
             }
             let mut text = "".to_string();
@@ -675,20 +733,29 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let general_value = value;
             value = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
             // p.precision is the number of significant digits _after_ the decimal point
+            // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";
+            // probes-numeric/4f413cc257ce15c4 A23)
             value = to_precision(
                 value,
-                (p.precision as usize) + format!("{}", value.abs().floor()).len(),
+                usize::min(
+                    (p.precision as usize) + format!("{}", value.abs().floor()).len(),
+                    EXCEL_PRECISION,
+                ),
             );
             let mut value_abs = value.abs();
             let mut exponent_part: Vec<char> = vec![];
-            let mut exponent_is_negative = value_abs < 10.0;
+            let mut exponent_is_negative = false;
             if p.is_scientific {
                 if value_abs == 0.0 {
                     exponent_part = vec!['0'];
-                    exponent_is_negative = false;
                 } else {
-                    // TODO: Implement engineering formatting.
-                    let exponent = value_abs.log10().floor();
+                    // Engineering: the exponent is a multiple of the integer-placeholder count,
+                    // rounded down (`##0.0E+0` on 123456.789 is "123.5E+3", on 61 "61.0E+0";
+                    // `00.0E+0` on 36.5 "36.5E+0"; eval/suites/gen-m10, T-1730). A zero
+                    // exponent carries no minus (`0.00E+00` on 1.5 is "1.50E+00").
+                    let group = f64::from(p.digit_count.max(1));
+                    let exponent = (value_abs.log10().floor() / group).floor() * group;
+                    exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
                     value /= 10.0_f64.powf(exponent);
                     value = to_precision(value, 15);
@@ -696,16 +763,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 }
             }
             let l_exp = exponent_part.len() as i32;
+            let (fract_part, fract_carry) = get_fract_part(value_abs, p.precision);
             let int_number = if p.precision == 0 {
                 value_abs.round()
             } else {
-                value_abs.floor()
+                value_abs.floor() + if fract_carry { 1.0 } else { 0.0 }
             };
             let mut int_part: Vec<char> = format!("{int_number}").chars().collect();
             if int_number as i64 == 0 {
                 int_part = vec![];
             }
-            let fract_part = get_fract_part(value_abs, p.precision, int_part.len());
             // ln is the number of digits of the integer part of the value
             let ln = int_part.len() as i32;
             // digit count is the number of digit tokens ('0', '?' and '#') to the left of the decimal point
@@ -773,7 +840,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             if ln <= digit_count {
                                 // The number of digits is less or equal than the number of digit tokens
                                 // i.e. the value is 123 and the format_code is ##### (ln = 3 and digit_count = 5)
-                                if !(number_index < 0 && digit.kind == '#') {
+                                // A zero mantissa still shows one integer digit, even for `#`:
+                                // `|#.#|E-|#|` on 0 is "|0.|E|0|" (poi/NumberFormatApproxTests.xlsx
+                                // A136), where `#.#` alone gives ".".
+                                let zero_mantissa = p.is_scientific
+                                    && ln == 0
+                                    && number_index == -1
+                                    && digit.kind == '#';
+                                if zero_mantissa {
+                                    text = format!("{text}0");
+                                } else if !(number_index < 0 && digit.kind == '#') {
                                     let c = if number_index < 0 {
                                         if digit.kind == '0' {
                                             '0'
@@ -849,13 +925,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         } else if digit.number.is_exponent() {
                             // 3. Exponent part
                             let index = digit.index;
+                            // The `E` itself is a literal at the format's `E+`/`E-` (parser).
                             if index == 0 {
                                 if exponent_is_negative {
-                                    text = format!("{text}E-");
-                                } else if p.scientific_minus {
-                                    text = format!("{text}E");
-                                } else {
-                                    text = format!("{text}E+");
+                                    text.push('-');
+                                } else if !p.scientific_minus {
+                                    text.push('+');
                                 }
                             }
                             let number_index = l_exp - (p.exponent_digit_count - index);
@@ -910,12 +985,14 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     TextToken::ElapsedMinutePadded => {}
                     TextToken::ElapsedSecond => {}
                     TextToken::ElapsedSecondPadded => {}
+                    TextToken::SecondFraction(_) => {}
                 }
             }
             Formatted {
                 text,
                 color: p.color,
                 error: None,
+                unshowable: false,
             }
         }
     }

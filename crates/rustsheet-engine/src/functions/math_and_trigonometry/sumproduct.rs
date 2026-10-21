@@ -7,6 +7,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
+    reference_operators::RefArg,
 };
 
 impl Model {
@@ -28,7 +29,7 @@ impl Model {
         let mut ref_cols: Option<usize> = None;
 
         for arg in args {
-            let arr = match self.eval_to_array(arg, cell) {
+            let arr = match self.sumproduct_array(arg, cell) {
                 Ok(a) => a,
                 Err(e) => return e,
             };
@@ -89,5 +90,23 @@ impl Model {
         }
 
         CalcResult::finite_number_or_num(flush_subnormal(total), cell)
+    }
+
+    /// One SUMPRODUCT argument as an array. An array of references reads each reference
+    /// element as a non-number (0) and an error element as its error (SPEC-0014 rule 5:
+    /// `SUMPRODUCT(OFFSET(A1,{0;1},0))` is 0, `SUMPRODUCT(OFFSET(A1,{0;-1},0))` `#REF!`;
+    /// probes/reference-lift-consumers E29, -b2 E189).
+    fn sumproduct_array(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        match self.evaluate_value_or_grid(arg, cell) {
+            RefArg::Grid(grid) => Ok(grid.to_array(ArrayNode::Empty)),
+            read => {
+                let result = read.into_single_area(cell);
+                self.result_to_array(result, cell)
+            }
+        }
     }
 }

@@ -2,9 +2,11 @@ use std::fmt;
 
 use crate::arithmetic::power;
 use crate::functions::lift::{num_error, value_error};
-use crate::functions::math_and_trigonometry::excel_sin_cos;
+use crate::functions::math_and_trigonometry::{
+    excel_quarter_turn_remainder, excel_sin_cos, EXCEL_TRIG_LIMIT,
+};
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, ItemSource,
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
 };
 use crate::limits::too_many_visits;
 use crate::reference_operators::RefArg;
@@ -23,7 +25,7 @@ use crate::{
 
 /// The angle `atan2(y,x)·n` at which IMPOWER stops answering. Bracketed by probe, not derived:
 /// `IMPOWER("i",85445658)` (angle 134217725.7) answers and `IMPOWER("i",85445659)` (134217727.3)
-/// is `#NUM!`; SIN's own cut is 2^27, which is not this one.
+/// is `#NUM!`; SIN's own cut is 2^27 (`EXCEL_TRIG_LIMIT`), which is not this one for a fractional angle.
 const IMPOWER_ANGLE_LIMIT: f64 = 134_217_727.0;
 
 /// This implements all functions with complex arguments in the standard
@@ -35,12 +37,27 @@ const IMPOWER_ANGLE_LIMIT: f64 = 134_217_727.0;
 enum Suffix {
     I,
     J,
+    /// A number with no imaginary part and no suffix ("3"): it takes the suffix of the number it
+    /// meets, so `IMSUM("3+4j","3")` is "6+4j" (probes/eng-imsum-improduct-3d-j-empty E1-E10).
+    Real,
+}
+
+impl Suffix {
+    /// The suffix two operands share, or `None` when one is `i` and the other `j`.
+    fn join(self, other: Suffix) -> Option<Suffix> {
+        match (self, other) {
+            (Suffix::Real, suffix) | (suffix, Suffix::Real) => Some(suffix),
+            (a, b) if a == b => Some(a),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Suffix {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Suffix::I => write!(f, "i"),
+            // A `Real` only prints when it has an imaginary part, which an unsuffixed number never has.
+            Suffix::I | Suffix::Real => write!(f, "i"),
             Suffix::J => write!(f, "j"),
         }
     }
@@ -54,8 +71,15 @@ struct Complex {
 
 impl fmt::Display for Complex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let x = to_precision(self.x, 15);
-        let y = to_precision(self.y, 15);
+        // 15-digit rounding of a part near DBL_MAX overflows to infinity; Excel writes
+        // `1.79769313486232E+308` (probes/eng-imexp-overflow-imag A22), so keep the unrounded part.
+        let round15 = |v: f64| {
+            Some(to_precision(v, 15))
+                .filter(|r| r.is_finite())
+                .unwrap_or(v)
+        };
+        let x = round15(self.x);
+        let y = round15(self.y);
         let suffix = &self.suffix;
         // Each part is written as Excel's number-to-text writes it: plain up to 20 characters,
         // then E notation (`1.22514845490862E-16`, probes/eng-impower A9; `1E+200`,
@@ -112,8 +136,7 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
                 TokenType::Number(f) => f,
                 _ => return Err(format!("Not a complex number: {s}")),
             };
-            // i is the default
-            Ok((sign * number1, 0.0, Suffix::I))
+            Ok((sign * number1, 0.0, Suffix::Real))
         }
         2 => {
             // number2 i
@@ -212,6 +235,32 @@ fn finite_complex_result(x: f64, y: f64, suffix: Suffix, cell: CellReferenceInde
     }
 }
 
+/// IMSIN and IMCOS are `#NUM!` once `exp(|y|)` overflows (|y| above about 709.78), whatever the
+/// real part, although `cosh y` is still finite there: `IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`
+/// (probes/eng-im-overflow-edges A25-A27, A33-A35).
+fn trig_exp_overflows(y: f64) -> bool {
+    y.abs().exp().is_infinite()
+}
+
+/// IMCOSH and IMSINH are `#NUM!` for a zero imaginary part once `exp(|x|)` overflows, although
+/// `cosh x` is still finite: `IMCOSH("710.4+0i")`. With a nonzero imaginary part they answer
+/// (`IMCOSH("710.4+1.5i")`); a tiny nonzero one is UNVERIFIED (probes/eng-im-overflow-edges A8,
+/// A16).
+fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
+    y == 0.0 && x.abs().exp().is_infinite()
+}
+
+/// The result of a reciprocal (IMSEC, IMCSC, IMSECH, IMCSCH) whose denominator `t` overflowed to
+/// infinity or NaN: Excel answers `0` where `inf / inf` is NaN. A zero or finite `t` is not this
+/// case and stays an error. Examples: `IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`,
+/// `IMSEC("1.5+711i")` (probes/eng-im-overflow-edges A55, A56, A64, A74, A82).
+fn reciprocal_result(x: f64, y: f64, t: f64, suffix: Suffix) -> CalcResult {
+    if !t.is_finite() && (x.is_nan() || y.is_nan()) {
+        return complex_result(0.0, 0.0, suffix);
+    }
+    complex_result(x, y, suffix)
+}
+
 /// How a complex argument reads a blank and empty text.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum EmptyText {
@@ -238,6 +287,7 @@ const COMPLEX_FOLD_POLICY: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::PickedKeepingBlanks,
     errors: ErrorRule::First,
     skip_empty_args: false,
+    grids: GridReading::Values,
 };
 
 /// The cells of the rectangle `rows` x `columns`, 0 when either is not positive.
@@ -262,7 +312,9 @@ impl Model {
         let blank = matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg);
         let value = Self::cast_string_ref(value, cell)?;
         if value.is_empty() && empty == EmptyText::ZeroIfBlank && blank {
-            return Ok((0.0, 0.0, Suffix::I));
+            // Excel: a blank takes the suffix of the number it meets, as a suffixless number does
+            // (`IMSUB("3+4j",Q1)` is "3+4j"): probes/eng-imsub-imdiv-blank-j A1:A6, B1, B5.
+            return Ok((0.0, 0.0, Suffix::Real));
         }
         parse_complex_number(&value).map_err(|_| num_error(cell))
     }
@@ -296,12 +348,17 @@ impl Model {
         let [first, second] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
+        // Excel: an empty argument, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`):
+        // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4.
+        if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
+            return Err(CalcResult::new_error(Error::NA, cell, String::new()));
+        }
         let first = Self::complex_of(first, EmptyText::ZeroIfBlank, cell)?;
         let second = Self::complex_of(second, EmptyText::ZeroIfBlank, cell)?;
-        if first.2 != second.2 {
+        let Some(suffix) = first.2.join(second.2) else {
             return Err(num_error(cell));
-        }
-        Ok((first, second))
+        };
+        Ok(((first.0, first.1, suffix), (second.0, second.1, suffix)))
     }
 
     /// `COMPLEX(real_num, i_num, [suffix])`: every argument lifts over an array and refuses a
@@ -432,7 +489,7 @@ impl Model {
             if n == 0.0 && x == 0.0 && y == 0.0 {
                 return num_error(cell); // probes/eng-impower A6
             }
-            let r = f64::sqrt(x * x + y * y);
+            let r = modulus(x, y);
             // Excel's `^` (square-and-multiply for an integer power) and its x87-reduced sine
             // and cosine: `IMPOWER("i",2)` = `-1+1.22514845490862E-16i` and
             // `IMPOWER("1+i",100)` = `-1125899906842640-0.551513671875006i`
@@ -441,20 +498,29 @@ impl Model {
                 return num_error(cell);
             };
             let angle = f64::atan2(y, x) * n;
-            // An angle past `IMPOWER_ANGLE_LIMIT` is `#NUM!` (evidenced for a pure imaginary base only), but an
-            // underflowed radius of 0 is "0" without reading the angle: `IMPOWER("i",85445659)` is
-            // `#NUM!`, `IMPOWER("0.5i",134217728)` is 0 (probes/eng-impower-imdiv-edges A28-A35,
-            // eng-impower-angle-cut; engineering.md "T-1625 probes").
-            let (sin, cos) = if radius == 0.0 {
-                (0.0, 0.0)
-            } else if angle.abs() < IMPOWER_ANGLE_LIMIT {
-                excel_sin_cos(angle)
+            // An underflowed radius of 0 is "0" without reading the angle
+            // (`IMPOWER("0.5i",134217728)`; probes/eng-impower-imdiv-edges A28-A35).
+            if radius == 0.0 {
+                return complex_result(0.0, 0.0, suffix);
+            }
+            if angle.abs() < IMPOWER_ANGLE_LIMIT {
+                let (sin, cos) = excel_sin_cos(angle);
+                return finite_complex_result(radius * cos, radius * sin, suffix, cell);
+            }
+            // Past the cut Excel's sine and cosine both read as the largest double, whatever the
+            // quadrant, so each part is `radius·DBL_MAX`, and `#NUM!` once that is not below
+            // DBL_MAX (a radius of 1 or more): `IMPOWER("0.99999973i",85445659)` is
+            // `1.71948380972175E+298+1.71948380972175E+298i` (the radius 9.56E-11 of the 85445658th
+            // power times 1.797E+308), every quadrant of `0.7071067811865476±0.7071067811865476i`
+            // gives two equal positive parts, and `IMPOWER("i",85445659)`, `IMPOWER("-1",42722830)`
+            // and `IMPOWER("1.0000000001i",85445659)` are `#NUM!` (probes/eng-impower-past-cut,
+            // eng-impower-angle-cut A18-A19; engineering.md "IMPOWER past the angle cut").
+            let part = radius * f64::MAX;
+            if part < f64::MAX {
+                complex_result(part, part, suffix)
             } else {
-                // TODO(T-1950): Excel gives values near 1.797E+308 for a base that is not pure imaginary.
-                return num_error(cell);
-            };
-            let (x, y) = (radius * cos, radius * sin);
-            finite_complex_result(x, y, suffix, cell)
+                num_error(cell)
+            }
         })
     }
 
@@ -542,6 +608,12 @@ impl Model {
         {
             return CalcResult::new_args_number_error(cell);
         }
+        // Excel: an empty first argument is `#N/A` (`IMSUM(,)`, `IMSUM(,Q1)`, `IMPRODUCT(,M8)`), where
+        // blank cells are "0" and a later empty argument is skipped (`IMSUM(M8,,M8)`):
+        // probes/eng-imsum-improduct-3d-j-empty F1-F4, probes/eng-imsub-imdiv-blank-j C1-C7, D1-D6.
+        if matches!(args.first(), Some(Node::EmptyArgKind)) {
+            return CalcResult::new_error(Error::NA, cell, String::new());
+        }
         let mut total: Option<ComplexParts> = None;
         let mut has_blank = false;
         let mut visits: u64 = 0;
@@ -615,11 +687,22 @@ impl Model {
                     };
                     let next = match total {
                         None => z,
-                        Some((x, y, suffix)) if suffix == z.2 => match fold {
-                            ComplexFold::Sum => (x + z.0, y + z.1, suffix),
-                            ComplexFold::Product => (x * z.0 - y * z.1, x * z.1 + y * z.0, suffix),
-                        },
-                        Some(_) => return Err(value_error(cell)),
+                        Some((x, y, total_suffix)) => {
+                            let Some(suffix) = total_suffix.join(z.2) else {
+                                return Err(value_error(cell));
+                            };
+                            match fold {
+                                ComplexFold::Sum => (x + z.0, y + z.1, suffix),
+                                // A blank cell met earlier makes the running product 0, which
+                                // cannot overflow later: `IMPRODUCT(<blank>,"1E200","1E200")`
+                                // is "0", the blank last is `#VALUE!` (probes/eng-im-overflow-edges
+                                // A2, A3).
+                                ComplexFold::Product if has_blank => (0.0, 0.0, suffix),
+                                ComplexFold::Product => {
+                                    (x * z.0 - y * z.1, x * z.1 + y * z.0, suffix)
+                                }
+                            }
+                        }
                     };
                     // An overflow is `#VALUE!` at once: it beats a later bad argument, a later
                     // blank and a later cancelling term (`IMSUM("9E307","9E307","-9E307")`,
@@ -662,7 +745,16 @@ impl Model {
 // The one-argument complex functions, of a parsed number.
 
 fn imabs((x, y, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    CalcResult::Number(f64::sqrt(x * x + y * y))
+    CalcResult::Number(modulus(x, y))
+}
+
+/// `|x+yi|` as Excel computes it: it matches `hypot`, not `sqrt(x²+y²)`. They differ in the last
+/// bit: `IMABS("0.7071067811865476+0.7071067811865476i")` (read as the 15-digit 0.707106781186547)
+/// is 0.9999999999999993 (1-6·2^-53), where `sqrt` gives 1-7·2^-53, and IMPOWER's 170891300th
+/// power of that number confirms the per-factor value (probes/eng-impower-past-cut A15,
+/// eng-impower-angle-cut A9-A17; T-1950).
+fn modulus(x: f64, y: f64) -> f64 {
+    x.hypot(y)
 }
 
 fn imaginary((_, y, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -681,10 +773,16 @@ fn imconjugate((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResul
 }
 
 fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if trig_exp_overflows(y) {
+        return num_error(cell);
+    }
     finite_complex_result(x.cos() * y.cosh(), -x.sin() * y.sinh(), suffix, cell)
 }
 
 fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if hyperbolic_exp_overflows(x, y) {
+        return num_error(cell);
+    }
     finite_complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix, cell)
 }
 
@@ -716,7 +814,7 @@ fn imcsc((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let y_sinh = y.sinh();
 
     let t = x_sin * x_sin * y_cosh * y_cosh + x_cos * x_cos * y_sinh * y_sinh;
-    complex_result(x_sin * y_cosh / t, -x_cos * y_sinh / t, suffix)
+    reciprocal_result(x_sin * y_cosh / t, -x_cos * y_sinh / t, t, suffix)
 }
 
 fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -727,21 +825,45 @@ fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let y_sin = y.sin();
 
     let t = x_sinh * x_sinh * y_cos * y_cos + x_cosh * x_cosh * y_sin * y_sin;
-    complex_result(x_sinh * y_cos / t, -x_cosh * y_sin / t, suffix)
+    reciprocal_result(x_sinh * y_cos / t, -x_cosh * y_sin / t, t, suffix)
 }
 
 fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     // Overflow of a pure real argument is `#NUM!` (probes/eng-im-overflow A9, A10;
     // `IMEXP("709.7")` is still finite). With a nonzero imaginary part Excel caps the modulus at
     // DBL_MAX instead (A12: `IMEXP("1000+1i")` is `9.71297746009434E+307+1.51270661257499E+308i`,
-    // DBL_MAX times cos 1 and sin 1). Only A12 is evidenced, so a negative imaginary part or a tiny
-    // one are unprobed (engineering.md).
-    let modulus = x.exp();
-    if modulus == f64::INFINITY && y != 0.0 && y.is_finite() {
-        return complex_result(f64::MAX * y.cos(), f64::MAX * y.sin(), suffix);
+    // DBL_MAX times cos 1 and sin 1), unless y is within `imexp_cap_window` of a multiple of
+    // pi/2, where the smaller part is treated as zero and the overflow is `#NUM!`
+    // (probes/eng-imexp-overflow-cutoff*; engineering.md). IMEXP is `#NUM!` for |y| >= 2^27
+    // whatever x is (A16-A24 of eng-imexp-overflow-cutoff).
+    // The sine and cosine reduce y as SIN and COS do, which is what gives A3's last digits
+    // (`...+4.770340154251E+302i`).
+    if y.abs() >= EXCEL_TRIG_LIMIT {
+        return num_error(cell);
     }
-    let (re, im) = (modulus * y.cos(), modulus * y.sin());
+    let (sin_y, cos_y) = excel_sin_cos(y);
+    let modulus = x.exp();
+    if modulus == f64::INFINITY && y.is_finite() {
+        let (n, remainder) = excel_quarter_turn_remainder(y);
+        if remainder >= imexp_cap_window(n) {
+            return complex_result(f64::MAX * cos_y, f64::MAX * sin_y, suffix);
+        }
+    }
+    let (re, im) = (modulus * cos_y, modulus * sin_y);
     finite_complex_result(re, im, suffix, cell)
+}
+
+/// Half-width of the window around a multiple of pi/2 where an overflowing IMEXP is `#NUM!`
+/// rather than capped. Around 0 it is exactly 2^-26 (`1000+1.4901161193847E-8i` is `#NUM!`,
+/// `...848E-8i` is capped); around the other multiples it was only bracketed, within (1.0, 1.2]E-8 (pi, 2pi, pi/2,
+/// 3pi/2; engineering.md), and 2^-26/sqrt(2) = 1.0537E-8 is the fitted value (T-2101).
+fn imexp_cap_window(quarter_turns: i64) -> f64 {
+    let base = f64::EPSILON.sqrt();
+    if quarter_turns == 0 {
+        base
+    } else {
+        base * std::f64::consts::FRAC_1_SQRT_2
+    }
 }
 
 fn imln((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -774,7 +896,7 @@ fn imsec((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let y_sinh = y.sinh();
 
     let t = x_cos * x_cos * y_cosh * y_cosh + x_sin * x_sin * y_sinh * y_sinh;
-    complex_result(x_cos * y_cosh / t, x_sin * y_sinh / t, suffix)
+    reciprocal_result(x_cos * y_cosh / t, x_sin * y_sinh / t, t, suffix)
 }
 
 fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -785,14 +907,20 @@ fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let y_sin = y.sin();
 
     let t = x_cosh * x_cosh * y_cos * y_cos + x_sinh * x_sinh * y_sin * y_sin;
-    complex_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, suffix)
+    reciprocal_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, t, suffix)
 }
 
 fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if trig_exp_overflows(y) {
+        return num_error(cell);
+    }
     finite_complex_result(x.sin() * y.cosh(), x.cos() * y.sinh(), suffix, cell)
 }
 
 fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if hyperbolic_exp_overflows(x, y) {
+        return num_error(cell);
+    }
     finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
 }
 
@@ -834,16 +962,24 @@ mod tests {
     use super::parse_complex_number as parse;
 
     #[test]
+    fn suffix_join() {
+        assert_eq!(Suffix::I.join(Suffix::J), None);
+        assert_eq!(Suffix::Real.join(Suffix::J), Some(Suffix::J));
+        assert_eq!(Suffix::I.join(Suffix::Real), Some(Suffix::I));
+        assert_eq!(Suffix::Real.join(Suffix::Real), Some(Suffix::Real));
+    }
+
+    #[test]
     fn test_parse_complex() {
         assert_eq!(parse("1+2i"), Ok((1.0, 2.0, Suffix::I)));
         assert_eq!(parse("2i"), Ok((0.0, 2.0, Suffix::I)));
-        assert_eq!(parse("7.5"), Ok((7.5, 0.0, Suffix::I)));
-        assert_eq!(parse("-7.5"), Ok((-7.5, 0.0, Suffix::I)));
+        assert_eq!(parse("7.5"), Ok((7.5, 0.0, Suffix::Real)));
+        assert_eq!(parse("-7.5"), Ok((-7.5, 0.0, Suffix::Real)));
         assert_eq!(parse("7-5i"), Ok((7.0, -5.0, Suffix::I)));
         assert_eq!(parse("i"), Ok((0.0, 1.0, Suffix::I)));
         assert_eq!(parse("7+i"), Ok((7.0, 1.0, Suffix::I)));
         assert_eq!(parse("7-i"), Ok((7.0, -1.0, Suffix::I)));
         assert_eq!(parse("-i"), Ok((0.0, -1.0, Suffix::I)));
-        assert_eq!(parse("0"), Ok((0.0, 0.0, Suffix::I)));
+        assert_eq!(parse("0"), Ok((0.0, 0.0, Suffix::Real)));
     }
 }

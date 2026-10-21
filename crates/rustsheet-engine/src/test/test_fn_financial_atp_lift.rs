@@ -140,12 +140,11 @@ fn a_range_is_refused_in_every_argument() {
 }
 
 #[test]
-fn mduration_reads_yld_and_frequency_first() {
-    // MDURATION reads its yld and frequency before DURATION reads every argument, as it did
-    // before the lift: the typed text yld wins over the settlement's `#N/A`. Not oracle-confirmed:
-    // T-1844 probes it.
+fn mduration_reads_its_arguments_in_order() {
+    // MDURATION reads every argument in order, as DURATION does: the settlement's `#N/A` wins over
+    // the typed text yld (probes/fin-coupon-walk-bounds-c M8, N8; excel-graph, T-1844).
     check(&[
-        ("A1", "=MDURATION(NA(),43831,0.08,\"x\",2)", "#VALUE!"),
+        ("A1", "=MDURATION(NA(),43831,0.08,\"x\",2)", "#N/A"),
         ("A2", "=DURATION(NA(),43831,0.08,\"x\",2)", "#N/A"),
     ]);
 }
@@ -153,7 +152,7 @@ fn mduration_reads_yld_and_frequency_first() {
 #[test]
 fn a_settlement_before_the_calendar_is_num() {
     // probes/fin-coupon-walk-bounds A1-A13, A19, A20 and -b A11: a settlement below serial 1 is
-    // #NUM!, so the schedule walk back from the maturity stays inside the calendar
+    // #NUM! (below 0 for COUPPCD and the COUPDAYS functions, T-1844), so the schedule walk back from the maturity stays inside the calendar
     // (`COUPNUM(-1E15,..)` stepped about 10^6 quarters before T-1822).
     check(&[
         ("A1", "=COUPNUM(-1E15,43831,4)", "#NUM!"),
@@ -171,33 +170,50 @@ fn a_settlement_before_the_calendar_is_num() {
 #[test]
 fn a_lifted_coupon_call_is_charged_for_its_schedule_walks() {
     // SPEC-0011 "Security rule for kernel work": the COUP* functions and ACCRINT are charged two
-    // schedule walks per element (1,024 elements), DURATION, MDURATION and PRICE four (512);
-    // financial.md "Coupon schedule work cap" (a DEVIATION).
+    // schedule walks per element, DURATION, MDURATION and PRICE four, each in proportion to the
+    // element's period count (T-1846): short schedules lift far past the 1,024 / 512 elements
+    // the longest schedule allows; financial.md "Coupon schedule work cap" (a DEVIATION).
     check(&[
-        ("A1", "=ROWS(COUPNUM(SEQUENCE(1024)+39000,43831,2))", "1024"),
+        ("A1", "=ROWS(COUPNUM(SEQUENCE(1025)+39000,43831,2))", "1025"),
         (
             "A2",
-            "=ROWS(COUPNUM(SEQUENCE(1025)+39000,43831,2))",
+            "=ROWS(COUPNUM(SEQUENCE(1025)*0+1,DATE(9999,12,31),4))",
             "#ERROR!",
         ),
         (
             "A3",
             "=ROWS(ACCRINT(39083,39264,SEQUENCE(1025)+39448,0.1,1000,2))",
-            "#ERROR!",
+            "1025",
         ),
         (
             "A4",
-            "=ROWS(PRICE(SEQUENCE(512)+39000,43831,0.05,0.06,100,2))",
-            "512",
-        ),
-        (
-            "A5",
-            "=ROWS(PRICE(SEQUENCE(513)+39000,43831,0.05,0.06,100,2))",
+            "=ROWS(ACCRINT(1,39264,SEQUENCE(1025)*0+2958465,0.1,1000,4))",
             "#ERROR!",
         ),
         (
+            "A5",
+            "=ROWS(PRICE(SEQUENCE(513)+39000,43831,0.05,0.04,100,2))",
+            "513",
+        ),
+        (
             "A6",
-            "=ROWS(MDURATION(SEQUENCE(513)+39000,43831,0.05,0.06,2))",
+            "=ROWS(PRICE(SEQUENCE(513)*0+1,DATE(9999,12,31),0.05,0.06,100,4))",
+            "#ERROR!",
+        ),
+        (
+            "A7",
+            "=ROWS(MDURATION(SEQUENCE(513)*0+1,DATE(9999,12,31),0.05,0.06,4))",
+            "#ERROR!",
+        ),
+        (
+            "A8",
+            "=ROWS(DURATION(SEQUENCE(4096)+39000,43831,0.05,0.06,2))",
+            "4096",
+        ),
+        // A text date may read as any date, so it is charged as the longest schedule.
+        (
+            "A9",
+            "=ROWS(COUPNUM(IF(SEQUENCE(1025),\"2020-01-01\"),43831,4))",
             "#ERROR!",
         ),
     ]);

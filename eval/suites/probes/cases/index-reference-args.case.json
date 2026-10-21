@@ -1,0 +1,47 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2059 probe: a single-cell INDEX(range,n) as the reference argument of FORMULATEXT, CELL and OFFSET, plus error forms (out-of-range index, array-constant source). Data!A2 and B2 are formulas.",
+ "tags": [
+  "M5",
+  "probe",
+  "references",
+  "information"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 1,
+    "A2": "=A1+1",
+    "A3": 3,
+    "B1": 10,
+    "B2": "=B1*2",
+    "B3": 30
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=FORMULATEXT(INDEX(Data!A1:A3,2))",
+    "A2": "=FORMULATEXT(INDEX(Data!A1:A3,1))",
+    "A3": "=FORMULATEXT(INDEX(Data!A1:B3,2,2))",
+    "A4": "=FORMULATEXT(INDEX(Data!A1:A3,9))",
+    "A5": "=FORMULATEXT(INDEX({1,2,3},2))",
+    "A6": "=FORMULATEXT(INDEX(Data!A1:A3,0))",
+    "B1": "=CELL(\"address\",INDEX(Data!A1:B3,2,2))",
+    "B2": "=CELL(\"row\",INDEX(Data!A1:B3,2,2))",
+    "B3": "=CELL(\"col\",INDEX(Data!A1:B3,2,2))",
+    "B4": "=CELL(\"contents\",INDEX(Data!A1:B3,2,2))",
+    "B5": "=CELL(\"address\",INDEX(Data!A1:A3,9))",
+    "B6": "=CELL(\"address\",INDEX({1,2,3},2))",
+    "B7": "=CELL(\"address\",INDEX(Data!A1:B3,0,2))",
+    "C1": "=OFFSET(INDEX(Data!A1:A3,2),1,0)",
+    "C2": "=OFFSET(INDEX(Data!A1:B3,2,2),-1,0)",
+    "C3": "=OFFSET(INDEX(Data!A1:A3,9),1,0)",
+    "C4": "=OFFSET(INDEX({1,2,3},2),1,0)",
+    "C5": "=ROWS(OFFSET(INDEX(Data!A1:A3,2),0,0,2,1))",
+    "C6": "=OFFSET(INDEX(Data!A1:B3,0,2),1,0)"
+  }
+  }
+ ]
+}

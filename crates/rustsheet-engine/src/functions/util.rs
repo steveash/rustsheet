@@ -9,7 +9,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     external_links::CachedBlanks,
-    functions::{logical::IfBranchMode, Function},
+    functions::{logical::IfBranchMode, lookup_and_reference::Edge, Function},
     model::Model,
     number_format::cmp_excel_precision,
     reference_operators::{Picked, RefArg},
@@ -281,7 +281,11 @@ impl Model {
             // One cell is a one-cell range, searched as one: `MATCH("b",A2,0)` is 1 and
             // `VLOOKUP(2,B2,1,FALSE)` 2 where B2 is 2, also picked by IF or INDEX
             // (probes/match-single-value-lookup-array U2, V2, W2, Z2, AA2; T-1862).
-            Node::ReferenceKind { .. } => self.evaluate_node_with_reference(node, cell),
+            // A name for one cell is the same one-cell range
+            // (probes/match-single-cell-forms-and-texts O2:R2, T-1939).
+            Node::ReferenceKind { .. } | Node::DefinedNameKind(_) => {
+                self.evaluate_node_with_reference(node, cell)
+            }
             Node::FunctionKind {
                 kind: Function::Index,
                 ..
@@ -410,11 +414,17 @@ impl Model {
             Node::LambdaCallKind { lambda, args } => {
                 return self.call_callee_as_reference(lambda, args, cell)
             }
-            // A lifted OFFSET is an array of references (SPEC-0014).
+            // A lifted OFFSET, INDIRECT, TRIMRANGE, TAKE or DROP is an array of references
+            // (SPEC-0014; T-1838); an unlifted TAKE or DROP gives its value, as before.
             Node::FunctionKind {
-                kind: Function::Offset,
+                kind:
+                    kind @ (Function::Offset
+                    | Function::Indirect
+                    | Function::Trimrange
+                    | Function::Take
+                    | Function::Drop),
                 args,
-            } => return self.offset_reference(args, cell),
+            } => return self.reference_producer(kind, args, cell),
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
@@ -475,6 +485,13 @@ impl Model {
                     model.picked_reference_arg_reading(body, blanks, cell)
                 })
                 .unwrap_or_else(RefArg::Value),
+            // A lifted TRIMRANGE keeps its array of references, which SUM reads by its
+            // top-left cells (`SUM(TRIMRANGE(A1:B5,{0;1}))` is 10 with A1 = 5;
+            // probes/trimrange-lift-sources D27).
+            Function::Trimrange => self.trimrange_reference(args, cell, true),
+            // So does a lifted TAKE or DROP over a range (T-1838).
+            Function::Take => self.take_drop_reference(args, cell, Edge::Take, true),
+            Function::Drop => self.take_drop_reference(args, cell, Edge::Drop, true),
             _ if kind.picks_reference() => match self.evaluate_reference_form(kind, args, cell) {
                 Some(result) => RefArg::from(result),
                 None => self.reference_arg_reading(node, blanks, cell),

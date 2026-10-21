@@ -1,10 +1,13 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{num_error, number_or_error, LiftCost};
+use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
 use crate::functions::statistical::paired::PairedValues;
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
+use crate::functions::statistical::student_t::{
+    student_t_density, student_t_tail_at, student_t_tails,
+};
 use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -116,7 +119,7 @@ fn t_test_p(
         return error(Error::DIV);
     }
 
-    let (t_stat, df) = match test_type {
+    let (t_square, df) = match test_type {
         TTestType::Paired => {
             if n1 != n2 {
                 return error(Error::NA);
@@ -137,10 +140,12 @@ fn t_test_p(
             if vd <= 0.0 {
                 return error(Error::DIV);
             }
-            let sd = vd.sqrt();
-            let t_stat = md / (sd / (nd as f64).sqrt());
+            // Excel's squared statistic is md^2 / (vd / n): bit-exact on 7 of the 11 paired
+            // cells (probes-numeric t1048/t1049-ttest, `T_TEST.xlsx` F2 and F5) and within
+            // 4 ulp on the rest; md^2 n / vd misses F2 by 2 ulp.
+            let t_square = md * md / (vd / (nd as f64));
             let df = (nd - 1) as f64;
-            (t_stat, df)
+            (t_square, df)
         }
 
         // 2: two-sample, equal variance (homoscedastic)
@@ -173,7 +178,7 @@ fn t_test_p(
             }
 
             let t_stat = (m1 - m2) / denom;
-            (t_stat, df)
+            (t_stat * t_stat, df)
         }
 
         // two-sample, unequal variance (Welch)
@@ -203,7 +208,7 @@ fn t_test_p(
                 return error(Error::DIV);
             }
             let df = num_df / den_df;
-            (t_stat, df)
+            (t_stat * t_stat, df)
         }
     };
 
@@ -211,16 +216,11 @@ fn t_test_p(
         return error(Error::DIV);
     }
 
-    let Ok(dist) = StudentsT::new(0.0, 1.0, df) else {
-        return error(Error::NUM);
-    };
-
-    let t_abs = t_stat.abs();
-    let cdf = dist.cdf(t_abs);
-
+    // Excel rounds y = df/(df + t^2) to a double before the tail (`student_t_tail_at`).
+    let tail = student_t_tail_at(df / (df + t_square), df);
     let mut p = match tails {
-        TTestTails::OneTailed => 1.0 - cdf,
-        TTestTails::TwoTailed => 2.0 * (1.0 - cdf),
+        TTestTails::OneTailed => tail,
+        TTestTails::TwoTailed => 2.0 * tail,
     };
 
     // clamp tiny fp noise
@@ -322,7 +322,7 @@ pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
 impl Model {
     /// `T.DIST(x, deg_freedom, cumulative)`: every argument lifts over an array and a range
     /// (SPEC-0011; probes/stat-argument-modes H505-H509, probes/stat-later-argument-lift H61).
-    /// The cdf is statrs' incomplete beta, a continued fraction of at most 140 steps.
+    /// The cdf and the integer-df density come from `student_t` (T-0969); other densities from statrs.
     pub(crate) fn fn_t_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::TDist, args, cell, &mut |model, values| {
             number_or_error(model.t_dist_of(values, cell))
@@ -340,11 +340,24 @@ impl Model {
         let x = self.cast_number_ref(x, cell)?;
         let df = self.cast_number_ref(df, cell)?.trunc();
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
+        // The density divides by the truncated df: df in (-1, 1) is `#DIV/0!`, not `#NUM!`
+        // (`T.DIST(2,0.5,FALSE)`, `T.DIST(2,-0.5,FALSE)`; probes-numeric m9-t-edges A27-A41,
+        // statistics.md "Student t sweep").
+        if !cumulative && df == 0.0 {
+            return Err(div_error(cell));
+        }
         if df < 1.0 || (cumulative && df > T_DF_MAX) {
             return Err(num_error(cell));
         }
-        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
+        let result = if cumulative {
+            student_t_tails(x, df).0
+        } else if let Some(density) = student_t_density(x, df) {
+            density
+        } else {
+            StudentsT::new(0.0, 1.0, df)
+                .map_err(|_| num_error(cell))?
+                .pdf(x)
+        };
         if !result.is_finite() {
             return Err(num_error(cell));
         }
@@ -378,8 +391,7 @@ impl Model {
         if x < 0.0 || !(1.0..=T_DF_MAX).contains(&df) {
             return Err(num_error(cell));
         }
-        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
-        let result = (2.0 * (1.0 - dist.cdf(x))).clamp(0.0, 1.0);
+        let result = 2.0 * student_t_tails(x, df).1;
         if !result.is_finite() {
             return Err(num_error(cell));
         }
@@ -412,8 +424,7 @@ impl Model {
         if !(1.0..=T_DF_MAX).contains(&df) {
             return Err(num_error(cell));
         }
-        let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
-        let result = 1.0 - dist.cdf(x);
+        let result = student_t_tails(x, df).1;
         if !result.is_finite() || result < 0.0 {
             return Err(num_error(cell));
         }

@@ -241,6 +241,26 @@ fn key_and_value_sorts() {
 }
 
 #[test]
+fn col_sort_order_counts_one_value_column() {
+    // probes/pivotby-sort-order-past-keys: past the column fields only the first value column
+    // may be named (S!A8-A9, A46), while row_sort_order counts every value column (S!A80-A82).
+    for (options, error) in [
+        (",,,,3", true),
+        (",,,,-3", true),
+        (",,3", false),
+        (",,4", true),
+    ] {
+        let formula = format!("=PIVOTBY(A2:A11,C2:C11,D2:E11,{SUM},{options})");
+        assert_eq!(pivot(&formula, 1, 1)[0][0] == "#VALUE!", error, "{formula}");
+    }
+    let formula = format!("=PIVOTBY(A2:A11,B2:C11,D2:E11,{SUM},,,,,4)");
+    assert_eq!(pivot(&formula, 1, 1)[0][0], "#VALUE!");
+    // With two column fields 3 is the first value column: Banana's Sales are the least.
+    let formula = format!("=PIVOTBY(A2:A11,B2:C11,D2:E11,{SUM},,,,,3)");
+    assert_eq!(pivot(&formula, 1, 2)[0], ["", "Banana"]);
+}
+
+#[test]
 fn filter_and_argument_errors() {
     // P!Y73: filtering out 2025 drops that column and South.
     let grid = pivot(

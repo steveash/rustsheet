@@ -116,6 +116,21 @@ fn lu_decompose(mat: &mut [f64], n: usize, min_pivot: f64) -> Result<(f64, Vec<u
 }
 
 impl Model {
+    /// Evaluates a matrix-function argument. Unlike `eval_to_array`, a one-cell reference to a
+    /// blank cell stays blank (so `#VALUE!`) rather than becoming a scalar 0
+    /// (gen-m5 `MINVERSE(Data!$B4)`, `MDETERM(Data!D$1)`, `MMULT(Data!A5,Data!B11)`:
+    /// docs/excel-semantics/arrays.md "MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!").
+    pub(crate) fn eval_matrix_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
+            other => self.result_to_array(other, cell),
+        }
+    }
+
     // ── MDETERM ───────────────────────────────────────────────────────────────
 
     /// `=MDETERM(array)`
@@ -126,7 +141,7 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let arr = match self.eval_to_array(&args[0], cell) {
+        let arr = match self.eval_matrix_arg(&args[0], cell) {
             Ok(a) => a,
             Err(e) => return e,
         };
@@ -162,7 +177,7 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let arr = match self.eval_to_array(&args[0], cell) {
+        let arr = match self.eval_matrix_arg(&args[0], cell) {
             Ok(a) => a,
             Err(e) => return e,
         };

@@ -9,7 +9,7 @@ is the normative description of that loop. The executable version is the `work-l
 | Role | Implemented as | Responsibility |
 |---|---|---|
 | **Worker** | a Claude Code session running the `work-loop` skill for one lane | pick task → implement → gates → review → PR → merge |
-| **Reviewers** | subagents in `.claude/agents/reviewer-*.md` | independent verdicts on the diff (security, architecture, quality/duplication, Excel fidelity, performance) |
+| **Reviewers** | subagents in `.claude/agents/reviewer-*.md` | independent verdicts on the diff (security, architecture, quality/duplication, Excel fidelity; performance is off, decision 0081) |
 | **Planner** | `.claude/agents/planner.md` | milestone → specs → small tasks with dependencies |
 | **Gap triager** | `.claude/agents/gap-triager.md` | eval report → root-cause-grouped function tasks |
 | **Oracle** | `rustsheet-oracle` + `.github/workflows/oracle.yml` | fills pending Excel expectations |
@@ -116,8 +116,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 
 Anything that changes architecture, storage, the evaluation model or the public API starts with a
 **spec task**: `docs/specs/SPEC-XXXX-<slug>.md` (template in `docs/specs/TEMPLATE.md`). The spec
-PR is reviewed by the architecture and performance reviewers. Implementation tasks link the spec
-and may not contradict it without amending it first.
+PR is reviewed by the architecture reviewer (the performance reviewer is off, decision 0081).
+Implementation tasks link the spec and may not contradict it without amending it first.
 
 ## Excel-behavior questions
 

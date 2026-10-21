@@ -31,7 +31,7 @@ build: ## Release build of the eval harness
 	$(CARGO) build --release -p rustsheet_eval
 
 # ---------------------------------------------------------------- Eval (Excel compatibility)
-.PHONY: eval eval-check eval-baseline eval-show evidence-floor
+.PHONY: eval eval-check eval-baseline eval-lower-visible-lock eval-show evidence-floor
 eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
 	$(EVAL_GUARDED) run
 
@@ -41,6 +41,9 @@ eval-check: build ## Gate: fail on any regression vs eval/baseline (CI)
 eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json after fixes (refuses regressions)
 	$(EVAL_GUARDED) update-baseline
 	$(EVAL) evidence-floor --update
+
+eval-lower-visible-lock: build ## Steward only, daily: also record a drop in eval/baseline/visible-parity.json (decision 0093)
+	$(EVAL_GUARDED) update-baseline --lower-visible-lock
 
 evidence-floor: build ## Gate: no more in-scope functions below the evidence floor (T-0056, CI)
 	$(EVAL) evidence-floor

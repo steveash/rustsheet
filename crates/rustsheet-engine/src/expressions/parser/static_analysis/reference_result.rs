@@ -42,9 +42,23 @@ pub(super) fn static_analysis_offset(args: &[Node]) -> StaticResult {
     StaticResult::Scalar
 }
 
-pub(super) fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
+pub(super) fn static_analysis_indirect(args: &[Node]) -> StaticResult {
     // We will always insert the @, but we don't need to do that in every scenario`
-    StaticResult::Unknown
+    lifted_or_unknown(args)
+}
+
+/// TRIMRANGE: an array or range in `trim_rows` or `trim_cols` lifts the call into an array of
+/// references (SPEC-0014; T-1957), otherwise the shape is not known.
+pub(super) fn static_analysis_trimrange(args: &[Node]) -> StaticResult {
+    lifted_or_unknown(args.get(1..).unwrap_or_default())
+}
+
+/// The broadcast shape of `args` when one of them lifts the call, else `Unknown`.
+fn lifted_or_unknown(args: &[Node]) -> StaticResult {
+    match broadcast_shapes(args.iter().map(run_static_analysis_on_node)) {
+        StaticResult::Scalar => StaticResult::Unknown,
+        lifted => lifted,
+    }
 }
 
 /// CHOOSE is a reference function: with a range arm the call itself is reference-shaped, so
