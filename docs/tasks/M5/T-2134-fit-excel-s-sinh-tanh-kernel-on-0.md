@@ -3,7 +3,7 @@ id: T-2134
 title: "Fit Excel's SINH/TANH kernel on 0 .. 1 (COTH/CSCH inherit it)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -69,3 +69,20 @@ A81, A97, A105, A109, A159 (decision 0084), plus the other SINH/TANH/COTH/CSCH m
 
 ## Out of scope
 - SINH/COSH overflow near 710 (SINH(710) is `#NUM!` in Excel).
+
+## Outcome
+Below |x| = 1, Excel's SINH is (a - b)/2 and its TANH is (a - b)/((a + b) + 2), with a = expm1(x) and
+b = expm1(-x) (numbers.md "SINH and TANH below 1 are built from expm1"). `hyperbolic.rs` now uses them
+in place of T-0914's series SINH, sinh/cosh TANH and e^2x TANH. COTH and CSCH follow.
+- Fit, on the t2178 sweep below 1 (1015 arguments): SINH 612 -> 773, TANH 551 -> 781. Some (a, b) within
+  3 ulp of libm's pair fits both cells at every argument, so the misses are Excel's expm1, which is not
+  libm's. Rejected: Cephes, Cody-Waite, fdlibm, x87 F2XM1 expm1 variants, and other orderings.
+- Eval (gated): 14 fixed, among them `TRIGONOMETRIC.xlsx` SINH_COSH_TANH!D10, D40, COTH_CSCH_SECH!B10,
+  B40, `POWER.xlsx` inside_a_lambda!C3/C4 and eight gen-m5 cells. 13 regress, at two arguments only
+  (PI()/4 and +-0.9999999999), under decision 0092. Visible-parity count unchanged (1707).
+- Ungated probes-numeric: t2178 sweep 2236 -> 2627 of 3105, m9-hyperbolic 220 -> 241,
+  t0917-hyperbolic-switchover 164 -> 176, power-ulp-sources 13 -> 20.
+- Acceptance: of the listed cells, B10, m9-hyperbolic A126 and switchover A81, A97, A105 and A109 pass.
+  C54 and A159 (CSCH(0.88)) still miss by Excel's expm1. Those two, the "no new known failures"
+  criterion (decision 0092's thirteen) and SINH_COSH_TANH!B51 move to T-2240, the fit of Excel's
+  expm1.
