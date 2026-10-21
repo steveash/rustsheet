@@ -565,7 +565,8 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   -2147483647 and 2147483648 255 `#`; -2147483646 is "-2147483646/1" (overflow A43-A64, overflow2 A58-A64).
   A whole part takes the rest: `# ?/100` on 1E15 is "1000000000000000      ", `# ?/?` on 2147483648.5
   "2147483648 1/2" and `0 ?/10` on 1E14+0.5 "100000000000000 5/10" (overflow A37-A42, A74-A76).
-  Implemented in `format_fraction` (formatter/fraction.rs).
+  Implemented in `format_fraction` (formatter/fraction.rs). UNVERIFIED: the engine applies both bounds to the
+  value after `%` and `,` scaling, and the fixed bound to denominators past 32767; neither is probed (T-2233).
 - **Placeholder fractions past 2^30** are not the last convergent (VERIFIED, excel-graph 2026-10-21, T-1740,
   probe cells kept out of the suites until the follow-up implements them; T-2233): `?/?` on 1073741824.5 is
   "1073741825/1" (not 2147483649/2), -1073741824.5 "-1073741825/1", 1431655765.5 "1431655766/1",
