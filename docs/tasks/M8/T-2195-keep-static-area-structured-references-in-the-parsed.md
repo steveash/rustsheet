@@ -3,7 +3,7 @@ id: T-2195
 title: "Keep static-area structured references in the parsed formula (SPEC-0016 step 1)"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -33,3 +33,21 @@ If the diff gets large, split it: (a) the node, transparency and printers, with 
 
 ## Out of scope
 - `#This Row` (T-1699); export of structured references and table parts (T-2196); the FORMULATEXT spelling (T-1683); tables that move or grow on row/column inserts (T-2197).
+
+## Outcome
+Split per the split hint: this PR is part (a); the *move* and *grow/shrink* classes are T-2297.
+- `Node::StructuredReferenceKind { reference, lowered }` (parser/structured_reference.rs) wraps every
+  structured reference except `#This Row`, `ErrorKind` lowerings included; `ungrouped()` sees through it and
+  a new `Node::lowered()` serves the sites that keep groups apart (legacy, ROW/COLUMN, OFFSET shape).
+  Every `ReferenceKind`/`RangeKind` site was audited; exhaustive matches got arms.
+- Storage and in-engine printers print the canonical long form with `'` escapes; the export
+  (`to_excel_string`, `to_excel_array_formula_string`) prints the area. The R1C1 lexer now reads structured
+  references (storage is R1C1).
+- Structural edits and cut and paste: every table is *fallback*, refined so a reference keeps its text when
+  the edit leaves its area unchanged; values equal today's (twin-formula tests for row/column inserts,
+  deletes, moves and cut and paste).
+- Sheet rename moves the tables with the sheet; delete lowers the other sheets' and defined names'
+  references to the deleted sheet's tables (today's `#REF!`) and keeps the tables in `TakenSheet`;
+  `restore_sheet` puts them back.
+- After `remove_table` the formula is a parse error that keeps its text; the export writes it as `#REF!`.
+- Eval delta: none expected (no gen-m8b case uses FORMULATEXT); see the PR.
