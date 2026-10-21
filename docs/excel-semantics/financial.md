@@ -1043,6 +1043,11 @@ Evidence: probes/fin-mduration-rri-fit (60 cells: 12 DURATION/MDURATION/quotient
 fin-mduration, fin-rri (excel-graph, 2026-10-20, T-1975).
 Status: VERIFIED (excel-graph)
 Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in annuity.rs.
+Open (gap triage 2026-10-21): RRI is not always the worksheet `^`. `ironcalc-calc/FINANCIAL/RRI.xlsx` Sheet1!D12
+`RRI(0.5,3,4)` is 0.7777777777777775 (Mac Excel 16.x cached; ours 0.7777777777777777). E12 in the same sheet,
+`POWER(4/3,1/0.5)-1`, is 0.7777777777777777. `EXP(LN(fv/pv)/nper)-1` with Excel's EXP and LN fits D12 and every
+excel-graph RRI cell above. Only D12, fin-mduration-rri-fit A37 and A57 tell it apart from `^`, so it is a
+candidate, not a rule, until the T-2216 sweep. Fix: T-2217.
 Tasks: T-1975
 
 ## NPV and FVSCHEDULE arguments
