@@ -2,12 +2,11 @@ use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
 
-use crate::types::Table;
-
 use crate::{
     cf_types::CfRule,
     types::{
-        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
+        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Table, Theme,
+        Worksheet,
     },
 };
 

@@ -31,12 +31,18 @@ fn combine_specifiers(
 
 impl Lexer {
     /// A structured reference after `name` in R1C1 mode: one is stored as written (SPEC-0016),
-    /// so storage (R1C1) reads it too. A name of only `R`, `C` and digits before `[` is a
-    /// relative reference (`R[`, `R[3]C[`), never a table. `None` when there is none.
+    /// so storage (R1C1) reads it too. A name that a relative reference can start with before
+    /// `[` (`R`, `C`, `RC`, `R<n>C`: `R[1]C1`, `RC[1]`, `R1C[1]`) is never a table here.
+    /// `None` when there is none.
     pub(super) fn r1c1_structured_reference(&mut self, name: &str) -> Option<TokenType> {
-        let is_reference_part = name
-            .chars()
-            .all(|c| matches!(c, 'R' | 'r' | 'C' | 'c') || c.is_ascii_digit());
+        let upper = name.to_ascii_uppercase();
+        let is_reference_part = match upper.strip_prefix('R') {
+            Some(rest) => {
+                let rest = rest.trim_start_matches(|c: char| c.is_ascii_digit());
+                rest.is_empty() || rest == "C"
+            }
+            None => upper == "C",
+        };
         if self.peek_char() != Some('[')
             || !crate::expressions::utils::is_valid_a1_identifier(name)
             || is_reference_part

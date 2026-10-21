@@ -399,3 +399,23 @@ fn undoing_a_sheet_delete_brings_the_tables_back() {
     user.set_user_input(1, 20, 1, "=SUM(Sales[Qty])").unwrap();
     assert_eq!(user.get_formatted_cell_value(1, 20, 1).unwrap(), "3");
 }
+
+/// Table names made of `R`, `C` and digits that no relative R1C1 reference starts with still read
+/// back from storage (R1C1) after a reparse.
+#[test]
+fn r_and_c_table_names_survive_a_reparse() {
+    for name in ["CR", "RR", "CC", "RCR", "RCC"] {
+        let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+        for (row, value) in [(1, "Qty"), (2, "1"), (3, "2")] {
+            model.set_user_input(0, row, 1, value.to_string()).unwrap();
+        }
+        model.add_table(0, name, (1, 1, 3, 1), false).unwrap();
+        model
+            .set_user_input(0, 1, 5, format!("=SUM({name}[Qty])"))
+            .unwrap();
+        model.rename_sheet("Sheet1", "Moved").unwrap();
+        model.evaluate();
+        assert_eq!(value(&model, 0, 1, 5), "3", "{name}");
+        assert_eq!(formula(&model, 0, 1, 5), format!("=SUM({name}[Qty])"));
+    }
+}
