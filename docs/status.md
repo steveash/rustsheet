@@ -5,89 +5,101 @@ still add or remove "Needs owner" entries. PRs no longer append log lines (decis
 of merged work is `git log --first-parent main` plus each task's Outcome, and the steward lists what
 merged since its last run.
 
-## Snapshot — 2026-10-20 (M5 is current: M2's exit criteria are met)
+## Snapshot — 2026-10-21 (M5 is current)
 
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
-| ironcalc-calc | 219 | 72,223 | 98.54% | 1,056 (was 1,144) |
-| poi | 336 | 27,290 | 98.36% | 462 (was 481; 4 fixed ASINH cells, recorded by T-1775 during this run) |
+| ironcalc-calc | 219 | 72,223 | 98.77% | 890 (was 1,056) |
+| poi | 336 | 27,205 | 99.57% | 131 (was 462; this run recorded 1 unrecorded fix, `EverythingTests!I1360`) |
+| gen-m5 | 65 | 22,400 | 99.26% | 165 (new: T-2114 gated it) |
 | gen-m2 | 30 | 12,000 | **100%** | 0 |
 | gen-m1 | 15 | 3,750 | **100%** | 0 |
-| gen-m10 | 20 | 1,690 | 95.38% | 78 (was 117) |
-| probes | 1,061 | 68,836 | 97.62% (4 accepted deviations, 11 cells passed by decision 0042; 3 cases pending) | 1,666 (was 2,006) |
+| gen-m10 | 20 | 1,690 | 96.80% | 54 (was 78); displayed text 1,347 |
+| probes | 1,101 | 71,315 | 97.77% (8 accepted deviations; 3 cases pending) | 1,599 (was 1,666) |
 | smoke | 6 | 46 | 100% | 0 |
 | fixtures | 17 | 248 | 96.37% | 9 |
-| corpus-bench | 912 | 134,348 | 99.63% | 14; 5 load timeouts (T-0430) |
-| gen-m5 | 10 | 400 | 99.50% | not gated |
-| gen-m6 | 25 | 1,000 | 99.90% | not gated |
+| corpus-bench | 912 | 117,121 | 99.58% | 14 (see the timeout note below) |
+| gen-m6 | 25 | 1,000 | 100% | not gated |
 | gen-m7 | 25 | 994 | 99.90% | not gated |
-| gen-m8a | 12 | 3,577 | 83.20% | not gated |
+| gen-m8a | 12 | 3,577 | 100% | not gated |
 | gen-m8b | 9 | 3,368 | 91.78% | not gated |
-| gen-m9 | 25 | 998 | 98.90% | not gated |
-| probes-numeric | 153 | 80,719 | 91.41% | not gated |
+| gen-m9 | 25 | 998 | 99.10% | not gated |
+| probes-numeric | 167 | 115,809 | 75.58% (99.72% within 1e-9) | not gated |
 
-`make eval-check` on `main` (380ffed2) shows 0 regressions in every gated suite. poi had 4 unrecorded fixes, which T-1775 (#1164) recorded during this run. poi and corpus-bench were fetched for this run.
+`make eval` on `main` (7dab5361) shows 0 regressions in every gated suite. poi and corpus-bench were fetched for this run. After `main` was merged into this branch, `make eval-lower-visible-lock` counted 1,795 visibly-off cells, so this PR lowers the lock from 1,842 to 1,795 (decision 0093).
 
-CI on `main` is green at 380ffed2. No CI run on `main` failed since the last snapshot; 17 were cancelled by the next push. The nightly fuzz run 39366329072 (2026-10-20, 5ef2d6f1) passed all three targets.
+The run shared a 4-core machine with four `make check` runs (the orphan-PR updates below), at a load average of about 15. Under that load, 9 corpus-bench workbooks and `probes/union-walk-repeated-in-lambda` hit the 60 s case timeout. `make eval-baseline` wanted to record them as `!Timeout` known failures. I did not commit those lines because they are load, not engine changes. A later rerun on a quiet machine (`make eval-lower-visible-lock`) recorded no timeouts. The probe case passes on its own (15/15) but takes about 36 s of CPU, so a contended CI runner could time it out.
 
-**M2's exit criteria are all met**, so M5 is now the current milestone (docs/milestones.md phase order):
-- gen-m2: 100%.
-- M0–M2 probes (decision 0051): 427 cases, 12,147 cells, 12,143 bit-exact, 4 deviations, **0 known failures** (was 45). The frozen m1-probes list is also at 0.
-- ironcalc-calc cells using only M1/M2 functions: 4,245 scored, 4,244 bit-exact. The 1 failing cell is `LOGICAL/IF_ARRAY.xlsx!Sheet1!C11`, the decision 0074 exception (T-1075, M14). T-1970 fixed the defined-name scope, so POWER's `inside_a_lambda!C3` no longer counts as M2.
-- One criteria/aggregate walk: met. Duplication is 3,268 lines on current `main` (T-1775 locked it), 64% below the fork's 9,153.
+CI on `main` is green at 7dab5361. No CI run on `main` failed since the last snapshot; about 15 were cancelled by the next push. The nightly fuzz run (2026-10-21) passed.
 
-The M2 todo tasks that are left (T-1939, T-1943, T-1964, T-1969, T-1981, T-2008, T-2018, T-2100, and perf T-1599) are follow-up probes, not exit gaps.
+**M2's exit is no longer fully met: M0–M2 probes (decision 0051) have 12 known failures** (436 cases, 12,555 cells, 12,539 bit-exact, 4 deviations).
+- All 12 are in `probes/subnormal-cell-constants`, a case T-2016 (#1397) added today. It is new coverage, not a regression. A subnormal number constant in a loaded workbook reads as 0 in Excel.
+- T-2228 (engine, sonnet) owns it, and #1422 for it opened during this run. This run raised it from P3 to P1, and engine leads the Critical lane until it lands.
+- The frozen m1-probes list is still at 0. ironcalc-calc's M2 row is unchanged: 1 failing cell, the decision 0074 exception.
 
-Where M5's exit stands (the planner checked this run):
-- M5 probes: 202 cases, 8,549/8,549 bit-exact. Met.
-- Generated suite ≥ 20k cells at ≥ 99.9%: **not met**. gen-m5 has 400 cells, calls 61 of the 131 generator-ready M5 functions, and is mostly M2 calls. Filed T-2108, T-2109 and T-2110 (harness: generator focus and edge pools) and T-2114 (research: generate and fill ≥ 20k cells, then gate the suite).
-- ironcalc-calc at 100% for M5 categories: **not measured yet**. `function_scope.rs` stops at M2. Filed T-2111 (harness: one cumulative row per milestone). The planner estimates about 53 failing cells in scope, all last-digit math families. They are owned by T-0915, T-0917, T-0929 and T-1944, but those are tagged M9.
-- Catalog coverage: every function is catalogued. INFO and SHEETS have no Excel cells because the oracle canary refuses them. Filed T-2112 (harness: a coverage report), T-2113 (harness: narrow the canary) and T-2115 (research: probe INFO/SHEETS).
-- T-2116 (research, opus) is a decision record on how M5's exit is measured. It covers the cumulative scope, whether decision 0074 extends to IF_ARRAY C4/E4, and moving T-0915/T-0917/T-0929/T-1944 to M5.
+Where M5's exit stands ("Milestone exit (decision 0085)" in the report):
+- Catalog coverage: 135/135. Met.
+- gen-m5: 22,400 scored cells at 0.99263, 165 known failures against an allowance of 22. **Not met.** The planner checked every failing cell this run. All 165 have an open M5 owner:
+  - largest groups: T-2169 (SINH/COSH/EXP overflow, 37 cells), T-2151 and T-2152 (NUMBERVALUE), T-2240 (expm1 ulps);
+  - also T-2150, T-2153, T-2155–T-2162, T-2166, T-2167, T-2173, T-2147, T-2067, T-2199 and T-1735.
+- ironcalc-calc cumulative M5 row: 15 failing, 10 after exit exceptions. **Not met.** All 10 are SINH/TANH/COTH/CSCH below 1, owned by T-2240 (Excel's expm1, the T-2134 follow-up).
+- M5 probes: 208 cases, 8,977 cells, 54 known failures. **Not met** (it was 0 last run; new probes since). Owners:
+  - T-2167: MROUND, 38 cells;
+  - T-2190: INFO, 14 cells;
+  - T-2137: INDEX reference arguments, 2 cells.
 
-Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 3,268 (ratchet 3,318 → 3,268, locked by T-1775 during this run) · oversized files 11 (= last run) · evidence floor: 3 in-scope functions under 20 Excel cells (= lock).
+Hygiene: lint-debt 91 allow entries (= last run) · duplicated lines 3,147 (was 3,268) · oversized files 11 (= last run) · evidence floor: 3 in-scope functions under 20 Excel cells (= lock).
 
-Since the 2026-10-19 snapshot (steward PR #1160), 109 commits landed on `main` through 380ffed2, touching 104 task ids. None was reverted.
-- All 109 came through PRs and were squash-merged on GitHub. 15 have no `(#n)` in the title; I checked them, for example T-1799 is #1257. No commit was pushed straight to `main` this time.
-- T-2107 (#1283) merged during this run as 4d9b7754 (decision 0081: reviewer-performance off, a 50% bench regression budget). Its PR says the owner asked for this on 2026-10-20. See "Needs owner".
+Since the 2026-10-20 snapshot (steward PR #1287), 109 commits landed on `main` through 7dab5361, touching 102 task ids. None was reverted.
+- All 109 were squash-merged through PRs on GitHub (committer GitHub). Every task commit matches a merged PR, including the 16 whose titles carry no `(#n)`. No direct pushes to `main`.
 - Task ids merged:
-  - T-0408, T-0425, T-0438, T-0440, T-0927, T-0959, T-0969, T-1254, T-1385, T-1402–T-1406, T-1408, T-1428, T-1430, T-1453
-  - T-1637, T-1708, T-1723, T-1724, T-1751, T-1764, T-1765, T-1795, T-1798, T-1799, T-1806, T-1813, T-1816, T-1819–T-1821, T-1823, T-1827, T-1829
-  - T-1832, T-1834, T-1837, T-1852, T-1903, T-1911, T-1914, T-1915, T-1936, T-1945, T-1947, T-1949, T-1951–T-1953, T-1955–T-1959, T-1967
-  - T-1970, T-1971, T-1976, T-1979, T-1982, T-1984–T-1990, T-1992, T-1994, T-1995, T-1997–T-1999, T-2001–T-2004, T-2009–T-2012, T-2014
-  - T-2029–T-2031, T-2036, T-2041, T-2042, T-2052, T-2053, T-2060, T-2061, T-2063, T-2071, T-2075, T-2076, T-2078, T-2079, T-2087, T-2088, T-2090
-  - Five task-only queue refills (#1197, #1215, #1218, #1220, #1263).
-- The P0 fuzz task T-1914 is done.
+  - T-0060, T-0061, T-0442, T-0443, T-0908, T-0915, T-0917, T-0929, T-0934, T-0936, T-0937, T-0961, T-0969 (attempts 4–10), T-0970, T-0980, T-0982
+  - T-1333, T-1592, T-1639, T-1640, T-1711, T-1730, T-1740, T-1828, T-1838, T-1843, T-1844, T-1846, T-1855, T-1869, T-1870, T-1941, T-1962, T-1964, T-1975, T-1991, T-1993
+  - T-2015, T-2016, T-2032, T-2034, T-2048, T-2056, T-2059, T-2062, T-2077, T-2089, T-2092, T-2098, T-2100, T-2108–T-2116, T-2120, T-2123, T-2127–T-2129, T-2132–T-2134, T-2136, T-2138, T-2142, T-2148, T-2149
+  - T-2154, T-2163–T-2165, T-2167, T-2168, T-2170, T-2171, T-2174–T-2179, T-2181, T-2183, T-2187, T-2193, T-2201, T-2204–T-2208, T-2210, T-2219, T-2223–T-2225, T-2229
+  - Nine task-only queue refills: #1320, #1325, #1329, #1340, #1360, #1365, #1388, #1389, #1409.
+- Every M5 harness task filed last run (T-2108–T-2113) and the research tasks T-2114–T-2116 are done. gen-m5 now has 22,400 Excel-backed cells and is gated.
 
-Blocked: 28 (26 last run). None can be unblocked.
-- New: T-0441 (data tables), which needs the M3 graph (Phase 2), and T-2037 (the steward regenerates the parity page), which needs an owner routine change.
-- The rest are unchanged: Phase 2 (T-0400, T-0401, T-0402, T-0423, T-1066), time-boxed fits with no new hypothesis (T-0968, T-1528, T-1529, T-1592), T-1099/T-1284 (GEOMEAN), T-0431 (FUSE corpus) and 14 M14 desktop-oracle tasks (decision 0039).
+Blocked: 29 (28 last run). None can be unblocked.
+- New: T-2182 (desktop evidence for INFO type_text, M14, decision 0039).
+- The rest are unchanged: Phase 2 (T-0400, T-0401, T-0402, T-0423, T-1066, T-0441), time-boxed fits with no new hypothesis (T-0968, T-1528, T-1529, T-1592; T-2187 is the oracle sweep T-1592 needs), T-1099/T-1284 (GEOMEAN), T-0431 (FUSE corpus), T-2037 (needs a routine change) and the M14 desktop-oracle tasks (decision 0039).
 
-Open PRs: 9 after T-2107 (#1283) and T-1898 (#1167) merged during this run. None has been open 24 h yet (the oldest, #1164, opened 2026-10-19 07:23 UTC), so no orphan merge was possible (decision 0050).
-- Drafts: #1164 (T-1775), #1226 (T-0439), #1245 (T-1484).
-- Open: #1202 (T-1993), #1209 (T-1996), #1210 (T-1943), #1212 (T-1878), #1230 (T-1835), #1284 (T-2101).
-- No duplicate task ids.
+Open PRs: 23 at 07:45 UTC. Seven agent PRs were open longer than 24 h at the start of the run: #1209 (T-1996), #1210 (T-1943), #1212 (T-1878), #1230 (T-1835), #1284 (T-2101), and the drafts #1226 (T-0439) and #1245 (T-1484). No orphan merge happened this run.
+- #1209, #1212 and #1284: this run merged `origin/main` into each, taking `main`'s side of baseline conflicts as decision 0093 says, and then ran all four reviewers on each diff. Every reviewer said APPROVE. CI went green on #1209 and #1284.
+- Before I got the merge lock, session `01HP2RnX…` pushed fresh `main` merges to #1209 and #1230, and another session took the lock for #1284. Those branches have now moved within 2 h, so decision 0050 no longer treats them as orphans. They are left to the session driving them.
+- #1230 (T-1835) conflicted with `main` in the lift code. Once merged, it raised duplication by 4 lines, from repeated WRAPCOLS/WRAPROWS argument reads. I deduplicated those reads, but a live session pushed its own merge at 07:17 UTC, so my version was not pushed. Whoever lands #1230 must still pass the duplication ratchet.
+- Duplicates: T-1943 is in both #1210 (older) and #1347 (newer, closer to `main`). #1347 survives. Close #1210 with a link once #1347 has merged (decision 0050).
+- Decision 0093 (T-2245, #1414) landed during this run. Fix PRs no longer write the visible-parity lock, and this steward PR lowers it once a day. In this run's commits the lock goes from 1,758 to 1,795.
 
 Queues at the start of the run:
-- functions: 7 ready (≥ 3), so the gap-triager did not run. The sonnet buffer is 17 (≥ 10).
-- engine 0, harness 0, research 0, quality 1, api 2 (M12), perf 19 (Phase 2).
-- The planner ran for M5 and filed T-2108–T-2116 (above). Ready now: harness 5, research 3. Engine, quality and api have no M5 exit gap, so it filed nothing there.
+- functions: 8 ready (≥ 3), so the gap-triager did not run (a worker already triaged today, #1388/#1409). The sonnet buffer is 29 (≥ 10).
+- M5 ready by lane: engine 1, harness 0, research 0, quality 0, api 0.
+- The planner ran for M5:
+  - It filed T-2259 (harness, opus): `make exit-owners`, which lists failing exit cells that no open task owns. The planner found 13 by hand.
+  - It linked those 13 cells to T-2240.
+  - Research shows 0 ready only because T-2199 holds the lane. Seven M5 research tasks are queued. Engine M5 work is all in T-2137, so it filed nothing there.
 
-Upstream IronCalc: one new commit under base/, xlsx/ or bindings/python, 2331734c ("fix: apply default font color to existing templates"). It only restyles 14 `xlsx/tests/docs` workbooks and fixes no calculation or import, so no port task. UPSTREAM.md is triaged through 2331734c.
+Upstream IronCalc: three new commits under base/, xlsx/ or bindings/python.
+- abd55b64 moves xlsx to zip 9.0.5. We are already on zip 9 (9.0.3).
+- 4e6db1e6 adds a malformed-ZIP error-kind test.
+- 179d0221 adds license files only.
+- Filed T-2244 (quality, sonnet): port the test and take zip 9.0.5. UPSTREAM.md is triaged through 179d0221.
 
 Oracle: excel-graph credentials are present (`rustsheet-oracle status`: excel-graph OK).
-- probes: 0 written, 1 failure. `typed-if-one-argument` (T-1990) is refused with 501 `FileCorruptTryRepair`, as its Outcome records. The other 2 pending cases are the unfillable M10 locale cases.
-- ironcalc-calc: 0 written, 216 skipped.
+- probes: 0 written, 1 failure. `typed-if-one-argument` (T-1990) is still refused with 501 `FileCorruptTryRepair`. The other 2 pending cases are the unfillable M10 locale cases.
+- ironcalc-calc: 0 written, 216 skipped (Excel-authored).
+- poi's 205 pending cases are web-vs-desktop conflicts (decision 0019), so they were not refilled.
 
 Spot-audit: the last one was 2026-10-16, so none is due (next on or after 2026-10-23).
 
-**Critical lane:** harness, research
+**Critical lane:** engine, harness, research
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M5.
-- harness: T-2108 → T-2109 → T-2110 make the generator able to reach the ≥ 20k-cell criterion. T-2111 and T-2112 make the ironcalc-calc and coverage criteria measurable. T-2113 lets INFO/SHEETS be filled.
-- research: T-2116 (measurement decision), then T-2114 (generate and fill gen-m5), plus T-2115, T-2059 and T-2062 (probes).
-- The M5 failures themselves sit in functions-math and functions-text (T-0915, T-0917, T-0929, T-1944), which the workers reach through `functions`.
-- engine, quality and api have no M5 exit work. perf stays out: Phase 2.)
+- engine: T-2228 puts the M0–M2 probes back at 0 (sonnet, P1). T-2137 owns the M5 INDEX reference-argument probe cells.
+- harness: T-2259 (exit-owner report) keeps every M5 exit cell owned.
+- research: T-2199, T-2198, then the queued M5 probes (T-2067, T-2143, T-2172, T-2189, T-2200, T-2202, T-2203).
+- Most of the M5 exit gap sits in the functions lanes (T-2169, T-2151/T-2152, T-2240, T-2167 and the rest above), which the workers reach through `functions`.
+- quality (T-2244) and api have no M5 exit work. perf stays out: Phase 2.)
 
 ## Needs owner
 
