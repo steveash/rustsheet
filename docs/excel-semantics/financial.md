@@ -623,8 +623,34 @@ K3). The fit tried `(1+r)^m` by libm and by Excel's `^` against `exp(m*log1p r)`
 parenthesizations, and `r` against `expm1(log1p r)` as the denominator (72 cells): no single form matches both the short
 sums and the long ones. Before T-1845 the engine looped over every period (10^9 steps for A1), was `#NUM!` once
 `(1+rate)^nper` overflowed (A13-A19, K1-K3) and computed A21.
-Status: PARTLY VERIFIED (excel-graph; the closed form's last digits open in T-1890, the short sums' in T-1374)
-Tasks: T-1845, T-1890, T-1374
+T-1890 (probes/fin-cumipmt-overflow-and-forms A1-A14, excel-graph 2026-10-20):
+- A payment that overflows is `#NUM!` for CUMIPMT (`CUMIPMT(1E300,1E308,1E300,1,1E308,0)`, A1;
+  `CUMIPMT(0.5,10,1E308,1,10,0)`, A3) but not always for CUMPRINC: `CUMPRINC(1E300,10,1E300,1,10,1)`
+  is -1E300 (A2, ours `#NUM!`) and `CUMPRINC(0.5,10,1E308,1,10,0)` -1E308 (A4).
+- Excel's interest is not the exact sum: one period, `CUMIPMT(0.01,100,100000,100,100,0)`, is
+  -15.708656559792416 where the exact value is ...592 (A12), and `CUMIPMT(0.01,1E15,100000,1E15,1E15,0)`
+  -9.900990099009732 where it is ...901 (A11).
+- A 1E-15 rate past period 2^53 has its own digits: `CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)` is
+  -8.999591419181679E-15 and the CUMPRINC -4.085993687045525E-19 (A5, A6).
+- Its principal is within a few ulps of the exact sum, also where it is a tiny part of the payments
+  (CUMPRINC_CUMIPMT.xlsx H5 -0.0047565423422487076).
+Ours since T-1890: the principal is the closed form at any length. Over up to 32 periods its
+difference of powers is written `exp((first-1-nper)*L)*expm1((end-first+1)*L)`, which does not cancel.
+The plain difference of powers is kept in two places. One is where that `expm1` overflows (a rate of
+1E10 over 31 periods: A15-A19). The other is where the first power is subnormal or underflows, because
+the product would lose its digits there. For example, `CUMPRINC(1E10,32,1,1,25,0)` is
+-9.99999999300011E-71 in Excel and ...3000182E-71 here, where the product gave -9.999888696826292E-71.
+The other cells of that kind are `(1E10,32,1,1,10,0)` -9.999999978000387E-221, `(1E10,31.5,1,1,20,0)`
+-9.999999988500136E-116, and `CUMPRINC(1E10,40,1,1,20,0)` and `(…,15,20,0)` -9.999999980000501E-201
+(ours ...0004E-201 for A23 and ...0572E-201 for A24, exact ...0000E-201): probes/fin-cumipmt-overflow-and-forms A20-A24, excel-graph
+2026-10-21. Their last digits are T-2192's.
+The closed form gets H6, H22 and H25 to the bit ( `CUMPRINC(0.01,360,100000,1,12,0)` -362.8793467231003, Excel
+-362.8793467231). The PPMT sum it replaces lost a small principal's digits (H5 8 right, H7 7). The
+interest keeps the IPMT sum up to 32 periods.
+Status: PARTLY VERIFIED (excel-graph; CUMPRINC visibly right but for A2, A6, A16, A20-A24 and
+CUMPRINC_CUMIPMT.xlsx H26; CUMIPMT's remaining
+visible misses in T-2192, the short sums' last digits in T-1374)
+Tasks: T-1845, T-1890, T-2192, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's
