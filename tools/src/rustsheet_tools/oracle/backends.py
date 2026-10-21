@@ -288,6 +288,9 @@ class GraphBackend:
             escaped = quote(name.replace("'", "''"), safe="")
             return f"{sheets}('{escaped}')"
 
+        def table_url(name: str) -> str:
+            return f"{item_url}/workbook/tables('{quote(name.replace(chr(39), chr(39) * 2), safe='')}')"
+
         def position(name: str) -> int:
             return int(self._call("GET", ref(name), headers=sid).json()["position"])
 
@@ -325,9 +328,7 @@ class GraphBackend:
                     raise OracleError(f"sheet op delete_sheet {sheet!r}: the canary sheet stays")
                 self._call("DELETE", ref(sheet), headers=sid)
             elif op in ("convert_table", "delete_table"):
-                table = (
-                    f"{item_url}/workbook/tables('{quote(str(to).replace(chr(39), chr(39) * 2), safe='')}')"
-                )
+                table = table_url(str(to))
                 if op == "convert_table":
                     self._call("POST", f"{table}/convertToRange", headers=sid)
                 else:

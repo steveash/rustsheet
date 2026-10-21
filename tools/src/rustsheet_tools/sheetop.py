@@ -39,28 +39,44 @@ def _op_key(kind: object) -> str | None:
     return _OP_KEYS.get(kind) if isinstance(kind, str) else None
 
 
+def column_number(letters: str) -> int:
+    """The 1-based column number of column letters (`B` is 2); letters are A-Z in either case."""
+    number = 0
+    for ch in letters.upper():
+        number = number * 26 + ord(ch) - ord("A") + 1
+    return number
+
+
 def _is_column(value: object) -> bool:
     """Whether `value` is a column letter within Excel's XFD."""
-    if not isinstance(value, str) or not _COLUMN_LETTERS.fullmatch(value):
-        return False
-    index = 0
-    for ch in value.upper():
-        index = index * 26 + ord(ch) - ord("A") + 1
-    return index <= _LAST_COLUMN
+    return (
+        isinstance(value, str)
+        and _COLUMN_LETTERS.fullmatch(value) is not None
+        and column_number(value) <= _LAST_COLUMN
+    )
+
+
+def _is_int_at_least(value: object, minimum: int) -> bool:
+    """Whether `value` is an int (not a bool) of at least `minimum`."""
+    return isinstance(value, int) and not isinstance(value, bool) and value >= minimum
+
+
+def _is_name(value: object) -> bool:
+    """Whether `value` is a non-empty string."""
+    return isinstance(value, str) and bool(value)
 
 
 def _valid_op_argument(kind: str, to: object) -> bool:
     """Whether `to` is a valid argument for sheet op `kind`."""
-    is_int = isinstance(to, int) and not isinstance(to, bool)
     return {
-        "rename": isinstance(to, str) and bool(to),
-        "move": is_int and to >= 0,  # type: ignore[operator]
-        "insert_row": is_int and to >= 1,  # type: ignore[operator]
-        "delete_row": is_int and to >= 1,  # type: ignore[operator]
+        "rename": _is_name(to),
+        "move": _is_int_at_least(to, 0),
+        "insert_row": _is_int_at_least(to, 1),
+        "delete_row": _is_int_at_least(to, 1),
         "insert_column": _is_column(to),
         "delete_column": _is_column(to),
-        "convert_table": isinstance(to, str) and bool(to),
-        "delete_table": isinstance(to, str) and bool(to),
+        "convert_table": _is_name(to),
+        "delete_table": _is_name(to),
     }.get(kind, to is None)
 
 

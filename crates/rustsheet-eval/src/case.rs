@@ -266,11 +266,11 @@ impl SheetOp {
                 ..addr
             },
             SheetOp::InsertColumn { sheet: at, column } if at == sheet => Addr {
-                col: column_index(column).map_or(addr.col, |c| shift(addr.col, c, 1)),
+                col: Addr::col_index(column).map_or(addr.col, |c| shift(addr.col, c, 1)),
                 ..addr
             },
             SheetOp::DeleteColumn { sheet: at, column } if at == sheet => Addr {
-                col: column_index(column)
+                col: Addr::col_index(column)
                     .filter(|c| addr.col > *c)
                     .map_or(addr.col, |_| addr.col - 1),
                 ..addr
@@ -278,16 +278,6 @@ impl SheetOp {
             _ => addr,
         }
     }
-}
-
-/// The 1-based index of a column letter (`B` is 2), `None` for anything but 1 to 3 letters
-/// within Excel's `XFD`.
-#[must_use]
-pub fn column_index(letters: &str) -> Option<u32> {
-    if !letters.chars().all(|c| c.is_ascii_alphabetic()) {
-        return None;
-    }
-    Addr::parse(&format!("{letters}1")).map(|a| a.col)
 }
 
 /// A self-contained workbook test case.
@@ -491,10 +481,10 @@ mod tests {
 
     #[test]
     fn column_letters_are_one_to_three_letters_within_xfd() {
-        assert_eq!(column_index("B"), Some(2));
-        assert_eq!(column_index("xfd"), Some(16_384));
+        assert_eq!(Addr::col_index("B"), Some(2));
+        assert_eq!(Addr::col_index("xfd"), Some(16_384));
         for bad in ["", "XFE", "A1", "$B", "AAAA", "é"] {
-            assert_eq!(column_index(bad), None, "{bad}");
+            assert_eq!(Addr::col_index(bad), None, "{bad}");
         }
     }
 

@@ -89,7 +89,7 @@ import xlsxwriter
 
 from rustsheet_tools.oracle.package import patch_parts, read_parts
 from rustsheet_tools.pivot import PivotParts, pivot_tables, relationships_xml
-from rustsheet_tools.sheetop import sheet_op
+from rustsheet_tools.sheetop import column_number, sheet_op
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
@@ -329,10 +329,7 @@ def parse_a1(a1: str) -> tuple[int, int]:
     if not m:
         msg = f"bad cell address {a1!r}"
         raise ValueError(msg)
-    col = 0
-    for ch in m.group(1).upper():
-        col = col * 26 + (ord(ch) - ord("A") + 1)
-    return int(m.group(2)) - 1, col - 1
+    return int(m.group(2)) - 1, column_number(m.group(1)) - 1
 
 
 def build_xlsx(spec: dict[str, Any]) -> bytes:

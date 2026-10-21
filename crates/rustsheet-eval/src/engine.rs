@@ -12,7 +12,7 @@ use rustsheet::{
 use rustsheet_engine::text::{lone_escape, Segment};
 use rustsheet_engine::Text;
 
-use crate::case::{column_index, split_qualified, CaseSpec, CellInput, SheetOp};
+use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp};
 use crate::cellref::{parse_range, Addr};
 use crate::spec_pivots;
 use crate::value::Value;
@@ -337,22 +337,24 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
                 let row = row
                     .checked_sub(1)
                     .ok_or_else(|| format!("sheet op {op:?}: rows are 1-based"))?;
-                match op {
-                    SheetOp::InsertRow { .. } => workbook.insert_rows(id, row, 1),
-                    _ => workbook.delete_rows(id, row, 1),
-                }
-                .map(|()| workbook.recalculate())
+                let result = if matches!(op, SheetOp::InsertRow { .. }) {
+                    workbook.insert_rows(id, row, 1)
+                } else {
+                    workbook.delete_rows(id, row, 1)
+                };
+                result.map(|()| workbook.recalculate())
             }
             SheetOp::InsertColumn { sheet, column } | SheetOp::DeleteColumn { sheet, column } => {
                 let id = sheet_id_of(workbook, sheet)?;
-                let column = column_index(column)
+                let column = Addr::col_index(column)
                     .map(|c| c - 1)
                     .ok_or_else(|| format!("sheet op {op:?}: not a column letter"))?;
-                match op {
-                    SheetOp::InsertColumn { .. } => workbook.insert_columns(id, column, 1),
-                    _ => workbook.delete_columns(id, column, 1),
-                }
-                .map(|()| workbook.recalculate())
+                let result = if matches!(op, SheetOp::InsertColumn { .. }) {
+                    workbook.insert_columns(id, column, 1)
+                } else {
+                    workbook.delete_columns(id, column, 1)
+                };
+                result.map(|()| workbook.recalculate())
             }
         };
         done.map_err(|e| format!("sheet op {op:?}: {e}"))?;
