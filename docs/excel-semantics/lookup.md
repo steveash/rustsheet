@@ -803,8 +803,13 @@ and `Model::call_per_reference_element` (lookup_and_reference/ref_lift.rs, calle
 runs each once per element with the element as an absolute reference in its place (a SUMIF or SUMIFS with several
 grids broadcasts them); COUNTIF, SUMIF and SUMIFS spill by `criteria_and_grid_static_result`. SHEET of a grid is
 one `#N/A` (b1d E101), and VSTACK of grids in a reference position stacks them (`Model::vstack_reference`, b2 E225).
-Unprobed: an error element in a per-element call (ours: the call with that error in the reference's place); a grid
-reached through TAKE or DROP by SUBTOTAL, AREAS or the other per-element callers (ours: the value view).
+The other arguments are read once before the elements run and put back as literals or absolute references, so a
+nest of such calls is evaluated once per level. Unprobed (T-2290): an error element in a per-element call (ours: the
+call with that error in the reference's place, `AREAS(OFFSET(A1,{0;-1},0))` 1, `#REF!`); a criteria or function_num
+array beside a grid (ours: each element's call cut to its top-left value, so `COUNTIF(OFFSET(A1,{0;1},0),{">0",">5"})`
+is 2x1, where a broadcast would give 2x2); VSTACK of several grids (ours: narrower ones padded with `#N/A` elements);
+a grid reached through IF, CHOOSE, LET, TAKE, DROP or TRIMRANGE by a per-element caller (ours: the value view, only
+a direct OFFSET or INDIRECT is read per element).
 DEVIATION (decision 0014, CLAUDE.md directive 5): before any element runs, each element of a per-element call is
 charged one visit (ROW, COLUMN, AREAS, CELL, ISFORMULA, N, T) or the cells of its reference inside the used area
 (SUBTOTAL, COUNTIF, SUMIF, COUNTBLANK; SUMIFS times its criteria pairs) against the shared cell-visit cap of

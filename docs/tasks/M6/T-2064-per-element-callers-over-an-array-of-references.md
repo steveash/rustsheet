@@ -63,9 +63,11 @@ Decision 0083: the cells listed under Context are visibly off (`#VALUE!` where E
 ## Outcome
 `Function::per_reference_element` lists the per-element callers (SUBTOTAL, COUNTIF, SUMIF, SUMIFS, COUNTBLANK,
 AREAS, ROW, COLUMN, CELL, ISFORMULA, N, T) and the arguments that take a reference; `Model::evaluate_function` hands
-them to `Model::call_per_reference_element` (lookup_and_reference/ref_lift.rs), which reads those arguments once
-(a plain range is put back as an absolute reference, so nothing is evaluated twice), and over a grid calls the
-function once per element after checking the shape and charging every element's cells (DEVIATION in lookup.md).
-COUNTIF/SUMIF/SUMIFS spill by `criteria_and_grid_static_result`; SHEET of a grid is one `#N/A`; VSTACK of grids
-in a reference position stacks them (`Model::vstack_reference`). Eval: probes known failures 1738 -> 1695
-(43 cells: the 23 listed plus their spilled neighbours), no regressions; visible parity 1760 -> 1742.
+them to `Model::call_per_reference_element` (lookup_and_reference/ref_lift.rs). It reads a direct OFFSET or INDIRECT
+reference argument once and puts back what it gave (`put_back`: an absolute reference, a union, a literal), so a
+nest of calls stays linear. Over a grid it reads the other arguments once the same way, checks the shape, charges
+every element's walks and the other arguments' reads (DEVIATION in lookup.md), then calls the function per element.
+COUNTIF/SUMIF/SUMIFS spill by `criteria_and_grid_static_result`; SHEET of a grid is one `#N/A`; VSTACK of grids in
+a reference position stacks them (`Model::vstack_reference`). Eval: probes known failures 1738 -> 1695 (43 cells:
+the 23 listed plus their spilled neighbours), no regressions; visible parity 1760 -> 1742. Follow-up: T-2290
+probes the cases lookup.md lists as unprobed.

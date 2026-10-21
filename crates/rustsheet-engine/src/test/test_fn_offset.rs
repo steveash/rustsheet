@@ -340,7 +340,28 @@ fn fn_offset_lifted_per_element_walk_past_the_budget_is_refused() {
     model._set("A1048576", "1");
     model._set("C1", "=SUBTOTAL(9,OFFSET(A:A,0,0,,SEQUENCE(1,1000)))");
     model._set("D1", "=SUBTOTAL(9,OFFSET(A:A,0,0,,SEQUENCE(1,3)))");
+    // A reference beside the grid is walked by every element, and charged so.
+    model._set("E5", "=SUBTOTAL(9,OFFSET(B1,SEQUENCE(1000),0),A:A)");
+    // A criteria argument is read once, not once per element.
+    model._set("F5", "=COUNTIF(OFFSET(A1,{0;1},0),SUM(1,2))");
     model.evaluate();
     assert_eq!(model._get_text("C1"), *"#ERROR!");
     assert_eq!(model._get_text("D1"), *"1");
+    assert_eq!(model._get_text("E5"), *"#ERROR!");
+    assert_eq!(model._get_text("F5"), *"0");
+}
+
+// A per-element consumer reads a lifting argument once and puts back what it gave, so a nest of
+// them costs one evaluation per level, not two (2^depth).
+#[test]
+fn fn_offset_per_element_consumers_nest_linearly() {
+    let mut model = new_empty_model();
+    model._set("A1", "0");
+    let mut formula = "0".to_string();
+    for _ in 0..60 {
+        formula = format!("N(OFFSET(A1,{formula},0))");
+    }
+    model._set("C1", &format!("={formula}"));
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"0");
 }
