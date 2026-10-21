@@ -99,17 +99,7 @@ fn excel_weekday_index(serial: i64) -> usize {
 }
 
 fn invalid_date(value: f64) -> Formatted {
-    unshowable(format!("Invalid date value: '{value}'"))
-}
-
-/// A number the format cannot show: TEXT is `#VALUE!` and the cell displays 255 `#`.
-fn unshowable(error: String) -> Formatted {
-    Formatted {
-        text: "#VALUE!".to_owned(),
-        color: None,
-        error: Some(error),
-        unshowable: true,
-    }
+    Formatted::unshowable(format!("Invalid date value: '{value}'"))
 }
 
 /// Formats a TEXT value, `None` being a blank. A blank with an empty format gives "" and any other
@@ -729,7 +719,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         error: None,
                         unshowable: false,
                     },
-                    None => unshowable(format!("Fraction numerator overflows: '{value}'")),
+                    None => {
+                        Formatted::unshowable(format!("Fraction numerator overflows: '{value}'"))
+                    }
                 };
             }
             let mut text = "".to_string();
