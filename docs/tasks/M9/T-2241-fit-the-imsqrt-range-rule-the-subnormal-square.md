@@ -15,7 +15,7 @@ IMSQRT's out-of-range answers, the IMLN/IMLOG10/IMLOG2 modulus for parts whose s
 1E±150..155 pairs match Excel.
 
 ## Context
-T-2117 switched IMLN, IMLOG10, IMLOG2 and IMSQRT to the `hypot` `modulus` and added the `#NUM!` rule for the three
+T-2117 switched IMLN, IMLOG10 and IMLOG2 to the `hypot` `modulus` (IMSQRT stays on `sqrt(x*x+y*y)`) and added the `#NUM!` rule for the three
 logs. Still failing (docs/excel-semantics/engineering.md, "Not yet fitted"): IMSQRT `3E200+4E200i`, `1E155+1E155i`,
 `1E160+0i` are `#NUM!` while `1E154+1E154i`, `1E-154+1E-154i`, `1E-160+0i` are "0";
 `IMLN("1E-154+1E-153i")` is ln(1E-153) (a subnormal x² looks flushed to 0); IMABS of 1E±150..155 pairs differs from

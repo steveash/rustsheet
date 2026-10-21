@@ -337,14 +337,14 @@ Tasks: T-1385
   `1E154+1E154i` (sum 2E308) and `1E-154+1E-154i` (sum 2E-308 < 2.2250738585072014E-308) are `#NUM!`, `1.5E-154+1.5E-154i`
   (2.25E-308), `1E-160+1i` and `1.1E154+0.1E154i` work, and a zero part exempts the number (`IMLN("1E-160+0i")`,
   `IMLN("1E160i")`, `IMLN("1E154+0i")` answer). Implemented (T-2117; probes/eng-imln-modulus-range A1-A42, A71-A78, A81-A84).
-- Not yet fitted (T-2117 follow-up): Excel seems to flush a subnormal square to 0 inside the modulus: `IMLN("1E-154+1E-153i")`
+- Not yet fitted (T-2241): Excel seems to flush a subnormal square to 0 inside the modulus: `IMLN("1E-154+1E-153i")`
   is -352.295519228089 (= ln 1E-153, the 1E-154 part ignored), where `hypot` gives -352.290544062662; IMSQRT has its own
   range rule (`IMSQRT("1E154+1E154i")` is "0", `IMSQRT("1E155+1E155i")`, `IMSQRT("1E160+0i")` and `IMSQRT("3E200+4E200i")` are `#NUM!`,
   `IMSQRT("1E-155+0i")` is "0"); IMABS of 1E±150..155 pairs differs from `hypot` by 1 ulp
   (probes/eng-imln-modulus-range A43-A70, A79, A80, eng-imln-modulus A17).
 Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950); probes/eng-imln-modulus, eng-imln-modulus-range (excel-graph, 2026-10-21, T-2117).
 Status: VERIFIED (excel-graph)
-Tasks: T-1766, T-1892, T-1950, T-2117
+Tasks: T-1766, T-1892, T-1950, T-2117, T-2241
 
 ## IMPOWER past the angle cut
 Rule: once IMPOWER's angle `atan2(y,x)·n` passes the cut (about 134217727), Excel's sine and cosine both read as the
