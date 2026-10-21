@@ -3,7 +3,7 @@ id: T-2151
 title: "NUMBERVALUE parses currency, parentheses, dates and times as VALUE does"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
