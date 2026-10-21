@@ -4,7 +4,7 @@ use super::{run_static_analysis_on_node, Node, StaticResult};
 /// reference stays within one row (ROW) or one column (COLUMN). Otherwise they
 /// give a vector of numbers, one for each row or column of the reference.
 pub(super) fn static_analysis_row_column(args: &[Node], is_row: bool) -> StaticResult {
-    let Some(reference) = args.first() else {
+    let Some(reference) = args.first().map(Node::lowered) else {
         return StaticResult::Scalar;
     };
     // The vector is `Unknown` and not `Array`: a formula from before dynamic

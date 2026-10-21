@@ -30,6 +30,30 @@ fn combine_specifiers(
 }
 
 impl Lexer {
+    /// A structured reference after `name` in R1C1 mode: one is stored as written (SPEC-0016),
+    /// so storage (R1C1) reads it too. A name that a relative reference can start with before
+    /// `[` (`R`, `C`, `RC`, `R<n>C`: `R[1]C1`, `RC[1]`, `R1C[1]`) is never a table here.
+    /// `None` when there is none.
+    pub(super) fn r1c1_structured_reference(&mut self, name: &str) -> Option<TokenType> {
+        let upper = name.to_ascii_uppercase();
+        let is_reference_part = match upper.strip_prefix('R') {
+            Some(rest) => {
+                let rest = rest.trim_start_matches(|c: char| c.is_ascii_digit());
+                rest.is_empty() || rest == "C"
+            }
+            None => upper == "C",
+        };
+        if self.peek_char() != Some('[')
+            || !crate::expressions::utils::is_valid_a1_identifier(name)
+            || is_reference_part
+        {
+            return None;
+        }
+        Some(self.consume_structured_reference(name).unwrap_or_else(|_| {
+            TokenType::Illegal(self.set_error("Invalid structured reference", self.position))
+        }))
+    }
+
     fn consume_table_specifier(&mut self) -> Result<Option<TableSpecifier>> {
         if self.peek_char() == Some('#') {
             // It's a specifier

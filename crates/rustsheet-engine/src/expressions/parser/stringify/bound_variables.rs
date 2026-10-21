@@ -99,6 +99,7 @@ where
         | Node::StringKind(_)
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
+        | Node::StructuredReferenceKind { .. }
         | Node::SheetSpanKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }

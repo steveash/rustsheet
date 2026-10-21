@@ -18,6 +18,7 @@ SPEC-0016 keeps structured references in the parsed formula and re-derives their
 
 Explicit questions: does a table move with a row or column inserted or deleted wholly before it, and grow with rows inserted inside its data rows (SPEC-0016's hand assumption)? What do cut and paste and row and column moves of table cells do? What is `ISREF` of `Sales[@Qty]` off the data rows? What does Excel do with a loaded formula naming an unknown table or column? What does a structured reference on another sheet become when the table's sheet is deleted (SPEC-0016 assumes `#REF!`), and after undo?
 
+- Also probe (from T-2195): what a duplicated sheet does with its tables and the structured references to them (Excel is believed to add a renamed table to the copy; the engine writes retargeted plain ranges), and how Excel loads a formula naming a table the file does not have (the engine exports it as `#REF!`).
 ## Acceptance criteria
 - [ ] Probe cases or a documented reason why each question cannot be probed with the oracle.
 - [ ] references.md updated with the findings; an implementation task filed for what is probed.

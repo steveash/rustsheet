@@ -187,6 +187,10 @@ The mechanism covers every edit that rewrites formulas through `to_string_displa
 (`move_formula` → `to_string_moved`, cut_paste.rs). It also covers every formula such an edit
 rewrites: cell formulas, conditional-format formulas (`displace_cfvo`), and defined names.
 
+Step 1 (T-2195) shipped every table as *fallback*, refined: a reference whose displaced or moved area is
+the same text as its area keeps its written text, and only one whose area changes prints the area. T-2297
+adds the *move* and *grow/shrink* classes on top of that rule.
+
 1. **Classify, before the walk.** For a `DisplaceData::Row` or `DisplaceData::Column` edit, each
    table whose `sheet_name` is the edited sheet is classified as *move*, *grow/shrink* or
    *fallback* by the table below, and its new `reference` is computed by the same rule
