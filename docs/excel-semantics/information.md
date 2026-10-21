@@ -287,8 +287,8 @@ Tasks: T-2042, T-2052
   (functions/information/mod.rs) with an f64 remainder (an i64 cast saturated to i64::MAX, which is odd). This settles the ">= 2^63" line of "ISEVEN/ISODD over a range". Evidence: gen-m5/ee1667411bbe2ccc
   Calc!A159, gen-m5/1315170eef6c413e Calc!A396, gen-m5/50d8a085335c05e6 Calc!A92.
 - CELL lifts over a multi-cell range given as info_type, as over an array: `CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
-  filled column (ours `#VALUE!`). Evidence: gen-m5/c0651f0e0fb544d0 Calc!A293.
-Status: VERIFIED (excel-graph); ISEVEN/ISODD implemented (T-2165); not implemented (T-2156, T-2161).
+  filled column (ours was `#VALUE!` before T-2161). Evidence: gen-m5/c0651f0e0fb544d0 Calc!A293.
+Status: VERIFIED (excel-graph); ISEVEN/ISODD implemented (T-2165); CELL's range info_type implemented (T-2161, `fn_cell`); TYPE not implemented (T-2156).
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`

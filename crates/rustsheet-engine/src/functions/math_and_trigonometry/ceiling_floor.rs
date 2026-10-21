@@ -15,6 +15,26 @@ fn snap_ratio(value: f64, significance: f64) -> f64 {
     to_excel_precision(value / significance, EXCEL_PRECISION)
 }
 
+/// MROUND of two non-zero, same-signed numbers. Excel rounds the double quotient `|n / m|` up
+/// when its fraction is within 5E-15 of a half (not a 15-digit cut of the quotient) and multiplies
+/// in binary; a zero result is +0 (numbers.md "MROUND rounds the quotient up within 5E-15 of a
+/// half, and multiplies in binary", probes/t2201-mround-quotient-rounding).
+pub(super) fn mround_value(value: f64, multiple: f64) -> f64 {
+    let quotient = (value / multiple).abs();
+    let floor = quotient.floor();
+    let steps = if quotient - floor >= 0.5 - 5e-15 {
+        floor + 1.0
+    } else {
+        floor
+    };
+    let result = steps * multiple.abs();
+    if result == 0.0 {
+        0.0
+    } else {
+        result.copysign(value)
+    }
+}
+
 impl Model {
     // The CEILING/FLOOR family lifts element-wise over arrays and ranges in every argument
     // (gen-m7/e5a361112d83d0c3 Calc!A9, gen-m9/89693ab0cafc29df Calc!A14). The ratio gets
@@ -154,5 +174,26 @@ impl Model {
                 Ok(snap_ratio(value, significance).floor() * significance)
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::mround_value;
+
+    #[test]
+    fn mround_quotient_tolerance() {
+        // probes/t2201-mround-quotient-rounding: q = 1.4999999999999998 rounds up.
+        assert_eq!(mround_value(0.3, 0.2), 0.4);
+        // Binary product, not the decimal 0.6.
+        assert_eq!(mround_value(0.5, 0.2), 0.600_000_000_000_000_1);
+        // One ulp below the half at 1234.5 is more than 5E-15 away: rounds down.
+        assert_eq!(mround_value(1_234.499_999_999_999_8, 1.0), 1234.0);
+        // 20 ulp below 1.5 (4.4E-15) is inside the tolerance; 0.5 - 5.05E-15 is outside.
+        assert_eq!(mround_value(1.499_999_999_999_995_6, 1.0), 2.0);
+        assert_eq!(mround_value(0.499_999_999_999_994_95, 1.0), 0.0);
+        // Negatives keep the sign of the number; a zero result is +0.
+        assert_eq!(mround_value(-0.3, -0.2), -0.4);
+        assert!(mround_value(-0.499_999_999_999_994_95, -1.0).is_sign_positive());
     }
 }

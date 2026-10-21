@@ -3,7 +3,7 @@ id: T-2167
 title: "MROUND rounds the quotient up within 5E-15 of a half (MROUND(0.3,0.2) = 0.4)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -37,13 +37,13 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 | gen-m5/043ee562f32eb901 Calc!A199 | `=MROUND(0.3,Data!B6)` | 0.4 | 0.2 |
 
 ## Acceptance criteria
-- [ ] These 1 known-failure lines disappear from eval/baseline/gen-m5.txt, and the 38 `probes/t2201-mround-quotient-rounding`
+- [x] These 1 known-failure lines disappear from eval/baseline/gen-m5.txt, and the 38 `probes/t2201-mround-quotient-rounding`
       lines from eval/baseline/probes.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] Unit tests in mathematical.rs cover a quotient just inside and just outside `0.5 - 5E-15`, a negative number and
+- [x] Unit tests (in ceiling_floor.rs beside `mround_value`) cover a quotient just inside and just outside `0.5 - 5E-15`, a negative number and
       `MROUND(0.5,0.2)` = 0.6000000000000001 (binary product), citing the probe cells.
-- [ ] A comment at the change cites docs/excel-semantics/numbers.md "MROUND rounds the quotient up within 5E-15 of a
+- [x] A comment at the change cites docs/excel-semantics/numbers.md "MROUND rounds the quotient up within 5E-15 of a
       half, and multiplies in binary" (T-2201 already replaced the 15-digit observation there).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083: every cell this task owns is visibly off (a wrong rounding step). The acceptance criteria above are the
@@ -51,3 +51,6 @@ visible-parity stage.
 
 ## Out of scope
 -
+
+## Outcome
+`fn_mround` now uses `mround_value` (ceiling_floor.rs): quotient fraction >= 0.5 - 5e-15 rounds up, binary product, +0 for zero. Eval: gen-m5 -1 known failure, probes -38; visible-off cells 1765 -> 1726. Unit test `mround_quotient_tolerance`.
