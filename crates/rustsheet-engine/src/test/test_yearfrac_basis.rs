@@ -194,3 +194,35 @@ fn test_negative_basis_is_num_error() {
     assert_eq!(model._get_text("A3"), *"1");
     assert_eq!(model._get_text("A7"), *"180");
 }
+
+// Serials 1-60 on bases 0 and 1: basis 0 reads the displayed date (serial 60 is 29 February, with
+// no end-of-February adjustment), basis 1 counts serial days over the real calendar's average year
+// (probes/yearfrac-early-1900 A1-A22, A61-A70, excel-graph, T-2265; dates.md "Serials below 61 in
+// DATEDIF, EDATE, DAYS360, WEEKNUM and YEARFRAC").
+#[test]
+fn test_yearfrac_serials_1_to_60_on_bases_0_and_1() {
+    let mut model = new_empty_model();
+    let cells = [
+        ("A1", "=YEARFRAC(1,45000,0)", 123.205_555_555_555_55),
+        ("A2", "=YEARFRAC(59,45000,0)", 123.041_666_666_666_67),
+        ("A3", "=YEARFRAC(60,45000,0)", 123.044_444_444_444_45),
+        ("A4", "=YEARFRAC(60.5,366,0)", 0.838_888_888_888_888_9),
+        ("A5", "=YEARFRAC(60,425,0)", 0.997_222_222_222_222_2),
+        ("A6", "=YEARFRAC(1,45000,1)", 123.203_267_829_542_94),
+        ("A7", "=YEARFRAC(59,366,1)", 0.841_095_890_410_958_9),
+        ("A8", "=YEARFRAC(60,45000,1)", 123.041_731_066_460_58),
+        ("A9", "=YEARFRAC(60.5,366,1)", 0.838_356_164_383_561_6),
+        ("A10", "=YEARFRAC(60,1520,1)", 3.997_809_419_496_166_4),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        let actual = number_at(&model, cell);
+        assert!(
+            (actual - expected).abs() <= 1e-15 * expected.abs().max(1.0),
+            "{formula}: {actual} != {expected}"
+        );
+    }
+}

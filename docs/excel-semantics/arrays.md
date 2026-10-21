@@ -301,7 +301,6 @@ filled column: `DECIMAL(..,INDEX(A1:D5,1E-15,4))`, `DECIMAL(INDEX(A8:D10,0,3)&..
 `DOLLAR(ABS(MUNIT(4)))`, `FIXED(MUNIT(3),3,<#REF!>)`, `NUMBERVALUE("(100)",INDEX(A4:B9,0,2),"#N/A")` and
 `NUMBERVALUE(..,REPT(INDEX(B5:E10,0,0),..))` are `#SPILL!`. Horizontal results spill: `BASE(INDEX(C10:E10,0)*(7*B11),34)` shows
 "0" and `LOG(INDEX(B8:E12,2,0.1)^-1.5,1^"?b")` shows `#VALUE!` (its first element: the base is `#VALUE!`).
-Ours: `#N/IMPL!` over an array (none of these lifts) and `#VALUE!` over a multi-cell range.
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/043ee562f32eb901 Calc!A204, gen-m5/1d22a002d4f380b3 Calc!A115,
 gen-m5/8a387c26d182e73c Calc!A42, gen-m5/aac6230c2fb40e1e Calc!A258, gen-m5/c0651f0e0fb544d0 Calc!A84, gen-m5/f0f205865a3a4328 Calc!A208,
 gen-m5/6361fdf5993da954 Calc!A378, gen-m5/7d1a5d223624fc70 Calc!A380, gen-m5/d586a1e0c9896942 Calc!A364,
@@ -324,10 +323,11 @@ Two array arguments broadcast: `{1;2}` with `{1,2,3}` is 2x3 (rows 29-35 A-C), a
 the missing third row (D29-D35).
 Implemented in: LOG, DECIMAL, BASE, ATAN2 and ARABIC on the SPEC-0011 driver with every argument `Lift`
 (`functions/lift/kinds/general.rs`; `fn_log`, `fn_base`, `fn_atan2` in math_and_trigonometry/mathematical.rs, `fn_decimal`
-in decimal_text.rs, `fn_arabic` in arabic_roman.rs; T-2159). The engine reads an element's arguments left to right, the
+in decimal_text.rs, `fn_arabic` in arabic_roman.rs; T-2159), and DOLLAR, FIXED and NUMBERVALUE
+likewise (`functions/lift/kinds/text.rs`; `fn_dollar`, `fn_fixed`, `fn_numbervalue` in
+text/string_format.rs; T-2160). The engine reads an element's arguments left to right, the
 first error winning, then runs each function's own checks in their old order; two errors in one element are unprobed.
-Status: VERIFIED (excel-graph) for the cells above; implemented for LOG, DECIMAL, BASE, ATAN2 and ARABIC (T-2159), not
-for DOLLAR, FIXED and NUMBERVALUE (T-2160).
+Status: VERIFIED (excel-graph) for the cells above; implemented for all eight (T-2159, T-2160).
 
 ## Legacy (CSE) array formula over a larger range
 Rule: a legacy array formula entered over a range larger than its result fills the range: a 1x1

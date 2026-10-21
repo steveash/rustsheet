@@ -3,7 +3,7 @@ id: T-2265
 title: "YEARFRAC with a date in January-February 1900 (serials 1-60): count on the displayed calendar (ours a day off)"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -59,10 +59,10 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 27 in eval/baseli
 | gen-m6/ef10bf3afb9658f6 Calc!A368 | `=YEARFRAC(53701,7)` | 147.00555555555556 | 147.00833333333333 |
 
 ## Acceptance criteria
-- [ ] These 27 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite; no financial cell changes.
-- [ ] dates.md states YEARFRAC's rule for serials 1-60 per basis with its cells, and drops the UNVERIFIED note for basis 1 if probed.
-- [ ] Unit tests in test/test_yearfrac_basis.rs cover serial 1, 59, 60 and 60.5 on basis 0 and 1.
-- [ ] `make check` green; reviewers approve.
+- [x] These 27 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite; no financial cell changes.
+- [x] dates.md states YEARFRAC's rule for serials 1-60 per basis with its cells, and drops the UNVERIFIED note for basis 1 if probed.
+- [x] Unit tests in test/test_yearfrac_basis.rs cover serial 1, 59, 60 and 60.5 on basis 0 and 1.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Serials in [0, 1) (T-2237).
@@ -70,3 +70,11 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 27 in eval/baseli
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+T-2237 (#1424) already fixed YEARFRAC for serials 1-60 while it handled [0, 1): all 27 cells above were gone from
+eval/baseline/gen-m6.txt before this task started, and no engine change was needed here. This task adds the probe the Context
+asked for, probes/yearfrac-early-1900 (70 excel-graph cells: serials 1, 31, 59, 60, 60.5 and 61 against 366 and 45000 on bases 0-4,
+plus serial-60 and basis-1 edges), which passes in full. It also adds a unit test for serials 1, 59, 60 and 60.5 on bases 0 and 1
+in test/test_yearfrac_basis.rs, and rewrites dates.md's YEARFRAC rule per basis with the cells, dropping the basis-1 UNVERIFIED note.
+Eval delta: probes +70 passing cells; no known-failure changes (the 27 cells were already fixed on main by T-2237); no financial cell moves.

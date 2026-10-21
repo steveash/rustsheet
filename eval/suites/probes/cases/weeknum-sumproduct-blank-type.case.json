@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM with a return_type built from PRODUCT and SUMPRODUCT of a blank cell: gen-m6/c96ac1ada46179c4 A105 is #VALUE! (T-2263).",
+  "tags": [
+    "M6",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=WEEKNUM(60.5,(PRODUCT(Data!D11:D12)+SUMPRODUCT(Data!A3)))",
+        "A2": "=PRODUCT(Data!D11:D12)+SUMPRODUCT(Data!A3)",
+        "A3": "=SUMPRODUCT(Data!A3)",
+        "A4": "=WEEKNUM(60.5,PRODUCT(Data!D11:D12))",
+        "A5": "=WEEKNUM(60.5,21.99113+SUMPRODUCT(Data!A3))",
+        "A6": "=WEEKNUM(45000,(PRODUCT(Data!D11:D12)+SUMPRODUCT(Data!A3)))",
+        "A7": "=WEEKNUM(60.5,PRODUCT(3.14159,7))",
+        "A8": "=WEEKNUM(60.5,21+SUMPRODUCT(Data!A3))",
+        "A9": "=WEEKNUM(60.5,SUMPRODUCT(Data!A3)+21)",
+        "A10": "=WEEKNUM(60.5,2+SUMPRODUCT(Data!A3))",
+        "A11": "=WEEKNUM(60.5,SUMPRODUCT(21))",
+        "A12": "=WEEKNUM(60.5,SUMPRODUCT(Data!D12)*3)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "D11": 3.14159,
+        "D12": 7
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!A1",
+    "Calc!A2",
+    "Calc!A3",
+    "Calc!A4",
+    "Calc!A5",
+    "Calc!A6",
+    "Calc!A7",
+    "Calc!A8",
+    "Calc!A9",
+    "Calc!A10",
+    "Calc!A11",
+    "Calc!A12"
+  ]
+}
