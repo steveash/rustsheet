@@ -252,7 +252,8 @@ Rule: SUMPRODUCT is `#VALUE!` when one argument is a blank cell given as a one-c
 is `#VALUE!`, not SHEET's `#N/A`). A lone one-cell boolean is 0 (`SUMPRODUCT(B4:B4)` with B4 TRUE, gen-m5/3e134e52393061b1 Calc!A222); the probe below shows a lone blank is `#VALUE!`.
 An error argument beats a shape mismatch earlier in the list: `SUMPRODUCT(TYPE(B11:B11),B9:E10,<VLOOKUP #N/A>)` is `#N/A`
 (ours `#VALUE!`, and ours is `#VALUE!` for `SUMPRODUCT(1,B9:E10,NA())` too).
-Ours: the blank is a 0 factor, so these are 0 (and their callers go on).
+Ours (since T-2150): every argument is read in order, and the first whole-argument error, error element or blank one-cell
+reference (a cell or a one-cell range such as `D4:D4`) decides the result; the shapes are compared only after that.
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1b30e4d075b252ea Calc!A365, gen-m5/6a8bb7cd6d7769ad Calc!A79,
 gen-m5/aac6230c2fb40e1e Calc!A79, gen-m5/fc81c2f704bef138 Calc!A165, gen-m5/c688ca172fe533dc Calc!A183, gen-m5/7d1a5d223624fc70 Calc!A33,
 gen-m5/aac6230c2fb40e1e Calc!A64, gen-m5/f0f205865a3a4328 Calc!A396, gen-m5/399071ff6782ab16 Calc!A145.
@@ -262,8 +263,10 @@ three-argument list, and alone (`SUMPRODUCT(Data!A1)`, A6). A one-cell text or b
 reference is a 0 factor beside a number (0, either order) and alone (0), but `#VALUE!` beside a 2x2 range (a 1x1 against a 2x2
 is a shape mismatch). A blank plus a shape mismatch is `#VALUE!` in every position (the cells all hold the blank, so they do not separate the two causes). The blank was a never-written cell; `SUMPRODUCT(blank:blank)` written as a range was not probed. An error argument ahead of the blank wins
 (`SUMPRODUCT(NA(),blank)`, `SUMPRODUCT(NA(),R,blank)` are `#N/A`); the blank ahead of the error gives `#VALUE!`.
-Status: VERIFIED (excel-graph); not implemented (T-2150).
-Tasks: T-0944
+Status: VERIFIED (excel-graph); implemented in `fn_sumproduct` / `sumproduct_array` (T-2150).
+Open: whether an error element inside a range (not a whole-argument error) also beats an earlier shape mismatch is
+unprobed; ours treats it like a whole-argument error.
+Tasks: T-0944, T-2150
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
 Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =

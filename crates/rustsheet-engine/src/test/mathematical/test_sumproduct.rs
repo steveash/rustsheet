@@ -88,3 +88,46 @@ fn test_sumproduct_2d() {
     // 1*5 + 2*6 + 3*7 + 4*8 = 5+12+21+32 = 70
     assert_eq!(model._get_text("E1"), "70");
 }
+
+#[test]
+fn test_sumproduct_blank_one_cell_argument() {
+    // A blank one-cell reference is #VALUE!; a one-cell text or boolean is a 0 factor
+    // (probes/t2200-blank-and-padded-m5-args A4-A16).
+    let mut model = new_empty_model();
+    model._set("A2", "x");
+    model._set("A3", "TRUE");
+    model._set("A4", "7");
+    model._set("C1", "=SUMPRODUCT(A1,A4)");
+    model._set("C2", "=SUMPRODUCT(A4:A4,A1:A1)");
+    model._set("C3", "=SUMPRODUCT(A1)");
+    model._set("C4", "=SUMPRODUCT(A2,A4)");
+    model._set("C5", "=SUMPRODUCT(A3)");
+    model._set("C6", "=SUMPRODUCT(A1,7)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C2"), "#VALUE!");
+    assert_eq!(model._get_text("C3"), "#VALUE!");
+    assert_eq!(model._get_text("C4"), "0");
+    assert_eq!(model._get_text("C5"), "0");
+    assert_eq!(model._get_text("C6"), "#VALUE!");
+}
+
+#[test]
+fn test_sumproduct_first_error_beats_later_shape_mismatch() {
+    // Every argument is read before shapes are compared: the first error or blank wins
+    // (probes/t2200-blank-and-padded-m5-args A20-A23).
+    let mut model = new_empty_model();
+    model._set("D1", "1");
+    model._set("E1", "2");
+    model._set("D2", "3");
+    model._set("E2", "4");
+    model._set("C1", "=SUMPRODUCT(1,D1:E2,NA())");
+    model._set("C2", "=SUMPRODUCT(NA(),D1:E2,A1)");
+    model._set("C3", "=SUMPRODUCT(A1,D1:E2,NA())");
+    model._set("C4", "=SUMPRODUCT(D1:D2,D1:E2)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#N/A");
+    assert_eq!(model._get_text("C2"), "#N/A");
+    assert_eq!(model._get_text("C3"), "#VALUE!");
+    assert_eq!(model._get_text("C4"), "#VALUE!");
+}

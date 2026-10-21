@@ -16,41 +16,27 @@ impl Model {
     /// `=SUMPRODUCT(array1, [array2], ...)`
     ///
     /// Multiplies corresponding elements across all arrays and returns the sum.
-    /// Non-numeric values (text, booleans, empty) are treated as 0.
-    /// All arrays must have the same dimensions; a mismatch yields `#VALUE!`.
+    /// Non-numeric values (text, booleans, empty) are treated as 0, but a blank one-cell
+    /// reference is `#VALUE!`. All arrays must have the same dimensions; a mismatch yields
+    /// `#VALUE!` once every argument is read without an error.
     pub(crate) fn fn_sumproduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Evaluate all arrays up front.
+        // Read every argument in order before comparing shapes: the first error or blank
+        // one-cell argument wins over a shape mismatch between earlier arguments
+        // (`SUMPRODUCT(NA(),D1:E2,blank)` is `#N/A`, `SUMPRODUCT(blank,D1:E2,NA())` `#VALUE!`;
+        // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150).
         let mut arrays: Vec<Vec<Vec<f64>>> = Vec::with_capacity(args.len());
-        let mut ref_rows: Option<usize> = None;
-        let mut ref_cols: Option<usize> = None;
-
         for arg in args {
             let arr = match self.sumproduct_array(arg, cell) {
                 Ok(a) => a,
                 Err(e) => return e,
             };
-            let rows = arr.len();
-            let cols = if rows == 0 { 0 } else { arr[0].len() };
-
-            if let Some(r) = ref_rows {
-                if rows != r || cols != ref_cols.unwrap_or(0) {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "SUMPRODUCT: arrays must have the same dimensions".to_string(),
-                    );
-                }
-            } else {
-                ref_rows = Some(rows);
-                ref_cols = Some(cols);
-            }
 
             // Coerce to f64: non-numeric → 0.0, errors propagate.
-            let mut num_arr: Vec<Vec<f64>> = Vec::with_capacity(rows);
+            let mut num_arr: Vec<Vec<f64>> = Vec::with_capacity(arr.len());
             for row in &arr {
                 let mut num_row: Vec<f64> = Vec::with_capacity(row.len());
                 for node in row {
@@ -72,8 +58,15 @@ impl Model {
             arrays.push(num_arr);
         }
 
-        let rows = ref_rows.unwrap_or(0);
-        let cols = ref_cols.unwrap_or(0);
+        let shape = |a: &Vec<Vec<f64>>| (a.len(), a.first().map_or(0, Vec::len));
+        let (rows, cols) = arrays.first().map_or((0, 0), shape);
+        if arrays.iter().any(|a| shape(a) != (rows, cols)) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "SUMPRODUCT: arrays must have the same dimensions".to_string(),
+            );
+        }
         let mut total = 0.0f64;
 
         for i in 0..rows {
@@ -92,7 +85,7 @@ impl Model {
         CalcResult::finite_number_or_num(flush_subnormal(total), cell)
     }
 
-    /// One SUMPRODUCT argument as an array. An array of references reads each reference
+    /// One SUMPRODUCT argument as an array; a blank one-cell reference is `#VALUE!`. An array of references reads each reference
     /// element as a non-number (0) and an error element as its error (SPEC-0014 rule 5:
     /// `SUMPRODUCT(OFFSET(A1,{0;1},0))` is 0, `SUMPRODUCT(OFFSET(A1,{0;-1},0))` `#REF!`;
     /// probes/reference-lift-consumers E29, -b2 E189).
@@ -105,6 +98,23 @@ impl Model {
             RefArg::Grid(grid) => Ok(grid.to_array(ArrayNode::Empty)),
             read => {
                 let result = read.into_single_area(cell);
+                // A blank cell given as a cell or one-cell range reference is `#VALUE!`, alone or
+                // beside other arguments, while a one-cell text or boolean is a 0 factor
+                // (probes/t2200-blank-and-padded-m5-args A1-A19; coercion.md, T-2150).
+                let blank = match &result {
+                    CalcResult::EmptyCell => true,
+                    CalcResult::Range { left, right } if left == right => {
+                        matches!(self.evaluate_cell(*left), CalcResult::EmptyCell)
+                    }
+                    _ => false,
+                };
+                if blank {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "SUMPRODUCT: a one-cell argument is blank".to_string(),
+                    ));
+                }
                 self.result_to_array(result, cell)
             }
         }
