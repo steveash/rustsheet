@@ -410,3 +410,24 @@ fn buddhist_year_era_and_calendar_tokens() {
         );
     }
 }
+
+// A tie on the 15-digit decimal rounds half away from zero at the shown place
+// (excel-graph probes/displayed-text-formats S!A21, gen-m10 T-1611; T-2206).
+#[test]
+fn number_format_ties_round_half_away_from_zero() {
+    let ctx = FormatContext::new(get_default_locale());
+    for (value, code, expected) in [
+        (2.5, "0", "3"),
+        (-2.5, "0", "-3"),
+        (36.5, "0", "37"),
+        (0.125, "0%", "13%"),
+        (12.345, "0%", "1235%"),
+        (1234.5, "#,##0", "1,235"),
+    ] {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{code} {value}"
+        );
+    }
+}

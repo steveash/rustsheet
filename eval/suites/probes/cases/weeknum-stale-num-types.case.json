@@ -1,0 +1,58 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM stale return_type: do the always-#NUM! return_types 3, 10, 18 and 20 empty the state as 0 does? Each sheet is A1 reader, A2 the call, A3 a Monday marker. Readers decode the reused start weekday: WEEKNUM(2..7,99) joined gives 111111 Sun, 222222 Mon, 122222 Tue, 112222 Wed, 111222 Thu, 111122 Fri, 111112 Sat; markers WEEKNUM(100,t) with t 1 Sun, 2 Mon, 12 Tue, 13 Wed, 14 Thu (T-1484)",
+  "tags": [
+    "M6",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "T3",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,3)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "T10",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,10)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "T18",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,18)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "T20",
+      "cells": {
+        "A1": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A2": "=WEEKNUM(100,20)",
+        "A3": "=WEEKNUM(100,2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "T3!A1",
+    "T3!A2",
+    "T3!A3",
+    "T10!A1",
+    "T10!A2",
+    "T10!A3",
+    "T18!A1",
+    "T18!A2",
+    "T18!A3",
+    "T20!A1",
+    "T20!A2",
+    "T20!A3"
+  ]
+}
