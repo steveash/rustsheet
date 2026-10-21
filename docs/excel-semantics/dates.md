@@ -649,6 +649,27 @@ Ours: every cell matches. The text coercion, typed input and criteria cells A20-
 Status: VERIFIED (web)
 Tasks: T-1416, T-1435, T-1436, T-1441, T-1444
 
+## Excel for the web changed 1904 financial results (2026-10)
+Rule: unknown until T-2337. On 2026-10-21 a re-fill of the 24 committed `date-system-1904-*` and
+`fin-coupon-walk-bounds-1904` probe cases through excel-graph changed 111 of their 1,041 cells, all in financial
+functions. The date readers did not change, nor did `COUPPCD(DATE(2030,1,15),DATE(2030,8,30),4)`, the one-day-late
+coupon date below. The committed sidecars were produced from 2026-10-12 to 2026-10-20.
+- ACCRINT lost its large 2·1462-day values: `date-system-1904-accrint-settlement-bound` S!A1 410415.8333333334 → 300,
+  and many `#NUM!` cells there and in `date-system-1904-financial-settlement-bound` D1-E9 now compute.
+- ACCRINT near 9999 (`date-system-1904-odd-accrint-bound` B11-D15, calc_method TRUE and FALSE) went from `#NUM!`
+  to values, e.g. `ACCRINT(DATE(9994,1,1),DATE(9995,12,31),DATE(9995,12,21),0.05,1000,2,0,TRUE)` 98.61111111111111.
+- COUPNUM with a previous coupon before 1904-01-01 became `#NUM!` (financial.md "COUPNUM in a 1904 workbook");
+  `date-system-1904-financial` S!A38 25 → `#NUM!`, S!A41 10 → `#NUM!`.
+- Several day counts moved by about a day (`date-system-1904-financial-readers` A11, B11, D11, E11 and the 22 and 33
+  rows; `-financial-shift` A5 (COUPNUM 2 → 3), A17, A18; `-financial-daycount` A26), and TBILLPRICE, TBILLYIELD and
+  TBILLEQ over 2023-02-28 to 2024-02-29 became `#NUM!` (`-financial-shift` A31-A33).
+The full cell list, with both values, is docs/research/excel-1904-drift-2026-10.md. The committed sidecars are left as
+they were until T-2337 decides how to adopt the new values; the next entry describes the older behavior.
+Evidence: re-fill of 2026-10-21 (excel-graph), not committed; probes/fin-coupnum-1904-epoch and
+fin-coupnum-1904-maturity-sweep (committed, 2026-10-21).
+Status: OBSERVED (excel-graph), not yet reconciled
+Tasks: T-2337, T-2125
+
 ## The 1904 date system: financial day counts read a 1904 serial as the 1900 serial + 2·1462
 Rule: in a 1904 workbook, YEARFRAC and the financial functions with date arguments read serial s as the 1900
 serial s + 2·1462 (T-1489, T-1492), while every other reader adds 1462. Within a four-year span with one 29 February

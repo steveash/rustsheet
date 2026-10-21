@@ -606,9 +606,37 @@ is `#NUM!` (fin-coupon-walk-bounds-c O1-O13) but 0 with a settlement in 9990
 (`ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`, -b A9), and ACCRINT's day counts before
 1900-03-01 miss the fictitious 1900-02-29 (-c O10, O14; ours compute them; T-2124). In a 1904 workbook
 `COUPNUM(0,400,2)` and `COUPNUM(1,400,2)` are `#NUM!` (previous coupon 1903-08-04, before the 1904 calendar) while
-`COUPPCD(1,400,2)` is -150 (-1904 A5-A7; ours 3; T-2125).
+`COUPPCD(1,400,2)` is -150 (-1904 A5-A7); see "COUPNUM in a 1904 workbook".
 Status: VERIFIED (excel-graph)
 Tasks: T-1822, T-1844, T-2124, T-2125
+
+## COUPNUM in a 1904 workbook
+Rule: in a 1904 workbook COUPNUM is `#NUM!` exactly when the previous coupon date is before 1904-01-01 (a negative
+1904 serial); a previous coupon on 1904-01-01 (serial 0) counts. Nothing else takes this cut: COUPPCD returns the
+negative serial, and COUPNCD, COUPDAYBS, COUPDAYS, COUPDAYSNC, PRICE, YIELD, DURATION and MDURATION compute with that
+period. The cut is the same at frequency 1, 2 and 4, on bases 0, 1 and 3, and with fractional dates.
+- Previous coupon -1: `COUPNUM(0,181,2)`, `COUPNUM(0,365,1)`, `COUPNUM(0,90,4)` are `#NUM!` while `COUPPCD` is -1
+  (A1, A7, A13); `PRICE(0,181,0.05,0.06,100,2)` is 99.51677950405495 and `COUPDAYBS(0,181,2)` 1 (A20, A23).
+- Previous coupon 0: `COUPNUM(0,182,2)` is 1 and `COUPPCD` 0 (A3, A4); likewise frequencies 1 and 4 (A9, A15).
+- Also `#NUM!`: bases 1 and 3, settlement 0.5, maturity 181.5, a previous coupon a year back (A37-A41).
+- Every maturity tried whose previous coupon is 1903-12-31 is `#NUM!`, quarterly, semiannual and annual, out to
+  1912 (fin-coupnum-1904-maturity-sweep A1-A72, A77, A78), including `COUPNUM(0,DATE(1910,3,31),4)`.
+  `COUPNUM(0,DATE(1908,1,1),4)` (previous coupon 1904-01-01) is 16 (A73).
+- ACCRINT has its own cut: `#NUM!` when the issue is serial 0 (C1-C9, C11, C12, C17) or when the issue's previous
+  coupon is before 1904-01-01 (`ACCRINT(10,DATE(1904,6,30),DATE(1904,3,1),0.06,1000,2,0)`, C10); an issue of 1 or
+  later whose previous coupon is on or after 1904-01-01 computes (C15, C16, C18, C19).
+- `ACCRINT(200,DATE(1904,12,31),DATE(1905,3,1),0.06,1000,2,0)` is 37.16666666666667, ours 37 (C14); with
+  calc_method FALSE it is 37 (C21).
+Conflict: these values are from 2026-10-21. On 2026-10-12 the same excel-graph oracle gave 25 for
+`COUPNUM(0,DATE(1910,3,31),4)` (probes/date-system-1904-financial S!A38), and a re-fill of the 24 committed 1904 cases on
+2026-10-21 changed 111 of their 1,041 cells; see dates.md "Excel for the web changed 1904 financial results (2026-10)".
+The rule above is today's Excel; how it fits with the rest of the 1904 financial rules is T-2337's to work out.
+Evidence: probes/fin-coupnum-1904-epoch A1-A41, fin-coupnum-1904-maturity-sweep A1-A79, C1-C21 (excel-graph,
+2026-10-21, T-2125), fin-coupon-walk-bounds-1904 A5-A7.
+Ours: not implemented. A COUPNUM-only check is drafted in docs/research/excel-1904-drift-2026-10.md; it is parked until
+T-2337 settles the 1904 rules, because on its own it breaks date-system-1904-financial S!A38 against the older value.
+Status: OBSERVED (excel-graph, 2026-10-21), conflicts with older excel-graph evidence (T-2337)
+Tasks: T-2125, T-2337
 
 ## Coupon schedule work cap
 Rule: RustSheet charges a lifted COUP*, ACCRINT, DURATION, MDURATION or PRICE call for its coupon schedule walks, in
