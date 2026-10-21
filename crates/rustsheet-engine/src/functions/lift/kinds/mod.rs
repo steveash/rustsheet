@@ -344,6 +344,8 @@ const ARRAYS_1: ArgKinds = ArgKinds::fixed(1, &[LiftArrays], Constant);
 /// `HYPERLINK(link_location, [friendly_name])`: both arguments lift. So do TRUNC,
 /// CEILING.PRECISE, ISO.CEILING and FLOOR.PRECISE.
 const LIFT_1_OF_2: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift], Constant);
+/// `CEILING.MATH(number, [significance], [mode])`, FLOOR.MATH, FIXED and NUMBERVALUE.
+const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
 
 /// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
 /// ISPMT and SYD.

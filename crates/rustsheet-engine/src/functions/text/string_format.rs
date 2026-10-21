@@ -10,7 +10,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::Function,
+    functions::{lift::number_or_error, Function},
     model::Model,
     number_format::{cut_15_digits, increment_digits, parse_excel_number},
 };
@@ -86,12 +86,12 @@ impl Model {
     /// The `decimals` argument of DOLLAR and FIXED (default 2): truncated toward zero, and
     /// `#VALUE!` from 128 up (docs/excel-semantics/text.md#dollar-and-fixed-decimals).
     fn decimals_arg(
-        &mut self,
-        arg: Option<&Node>,
+        &self,
+        arg: Option<&CalcResult>,
         cell: CellReferenceIndex,
     ) -> Result<i32, CalcResult> {
-        let Some(node) = arg else { return Ok(2) };
-        let d = self.get_number(node, cell)?.trunc();
+        let Some(value) = arg else { return Ok(2) };
+        let d = self.cast_number_ref(value, cell)?.trunc();
         if d >= 128.0 {
             return Err(CalcResult::new_error(
                 Error::VALUE,
@@ -104,19 +104,25 @@ impl Model {
     }
 
     /// DOLLAR(number, [decimals]) — Formats a number as a dollar currency string.
-    /// Negative numbers use parentheses: ($1,234.57)
+    /// Negative numbers use parentheses: ($1,234.57). Both arguments lift over an array and a
+    /// range (probes/t2198-m5-lift-argument-kinds rows 20, 21 and 33).
     pub(crate) fn fn_dollar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+        self.lift_call(Function::Dollar, args, cell, &mut |model, values| {
+            model.dollar_of(values, cell).unwrap_or_else(|e| e)
+        })
+    }
+
+    /// One DOLLAR element.
+    fn dollar_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<CalcResult, CalcResult> {
+        let Some(number) = values.first() else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
-        let decimals = match self.decimals_arg(args.get(1), cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
+        let value = self.cast_number_ref(number, cell)?;
+        let decimals = self.decimals_arg(values.get(1), cell)?;
         let formatted = format_abs(value.abs(), decimals, true);
         // A negative value that rounds to zero at negative `decimals` has no parentheses
         // (docs/excel-semantics/text.md "FIXED, DOLLAR and BAHTTEXT cut to 15 significant digits
@@ -127,32 +133,34 @@ impl Model {
         } else {
             format!("${formatted}")
         };
-        CalcResult::String(result.into())
+        Ok(CalcResult::String(result.into()))
     }
 
     /// FIXED(number, [decimals], [`no_commas`]) — Formats a number as text with fixed decimal places.
+    /// Every argument lifts over an array and a range (probes/t2198-m5-lift-argument-kinds rows
+    /// 22-24 and 34).
     pub(crate) fn fn_fixed(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(e) => return e,
+        self.lift_call(Function::Fixed, args, cell, &mut |model, values| {
+            model.fixed_of(values, cell).unwrap_or_else(|e| e)
+        })
+    }
+
+    /// One FIXED element.
+    fn fixed_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<CalcResult, CalcResult> {
+        let Some(number) = values.first() else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
-        let decimals = match self.decimals_arg(args.get(1), cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+        let value = self.cast_number_ref(number, cell)?;
+        let decimals = self.decimals_arg(values.get(1), cell)?;
+        let no_commas = match values.get(2) {
+            Some(flag) => Self::cast_bool_ref(flag, cell)?,
+            None => false,
         };
-        let no_commas = if args.len() == 3 {
-            match self.get_boolean(&args[2], cell) {
-                Ok(b) => b,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
-        let use_thousands = !no_commas;
-        let formatted = format_abs(value.abs(), decimals, use_thousands);
+        let formatted = format_abs(value.abs(), decimals, !no_commas);
         // Excel drops the sign when the value rounds to zero: look at the rounded text, not the
         // value (docs/excel-semantics/text.md "FIXED drops the sign of a value that rounds to
         // zero"; gen-m6/f94b5b8236742618 A24, probes/dollar-fixed-unichar-edges A49, A50).
@@ -162,35 +170,36 @@ impl Model {
         } else {
             formatted
         };
-        CalcResult::String(result.into())
+        Ok(CalcResult::String(result.into()))
     }
 
     /// NUMBERVALUE(text, [`decimal_separator`], [`group_separator`])
-    /// Converts text to a number using the given separators.
+    /// Converts text to a number using the given separators. Every argument lifts over an array
+    /// and a range (probes/t2198-m5-lift-argument-kinds rows 25-27 and 35).
     pub(crate) fn fn_numbervalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(e) => return e,
+        self.lift_call(Function::Numbervalue, args, cell, &mut |model, values| {
+            number_or_error(model.numbervalue_of(values, cell))
+        })
+    }
+
+    /// One NUMBERVALUE element.
+    fn numbervalue_of(
+        &self,
+        values: &[CalcResult],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let Some(text) = values.first() else {
+            return Err(CalcResult::new_args_number_error(cell));
         };
-        let decimal_sep = if args.len() >= 2 {
-            match self.get_string(&args[1], cell) {
-                Ok(s) => s,
-                Err(e) => return e,
-            }
-        } else {
-            ".".to_string()
+        let text = Self::cast_string_ref(text, cell)?;
+        let separator = |i: usize, default: &str| -> Result<String, CalcResult> {
+            values.get(i).map_or_else(
+                || Ok(default.to_string()),
+                |v| Self::cast_string_ref(v, cell),
+            )
         };
-        let group_sep = if args.len() == 3 {
-            match self.get_string(&args[2], cell) {
-                Ok(s) => s,
-                Err(e) => return e,
-            }
-        } else {
-            ",".to_string()
-        };
+        let decimal_sep = separator(1, ".")?;
+        let group_sep = separator(2, ",")?;
 
         // Only the first character of each separator counts, and an empty one is #VALUE!
         // (docs/excel-semantics/text.md "NUMBERVALUE reads text as VALUE does"; gen-m5/5704666097cbc5b2
@@ -198,23 +207,35 @@ impl Model {
         let (Some(decimal_sep), Some(group_sep)) =
             (decimal_sep.chars().next(), group_sep.chars().next())
         else {
-            return CalcResult::new_error(Error::VALUE, cell, "Invalid separators".to_string());
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Invalid separators".to_string(),
+            ));
         };
         if decimal_sep == group_sep {
-            return CalcResult::new_error(Error::VALUE, cell, "Invalid separators".to_string());
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Invalid separators".to_string(),
+            ));
         }
 
         // Excel counts the text with its spaces: 255 characters parse, 256 are #VALUE!
         // (probes/text-number-long-paths A13, A14).
         if number_text_too_long(&text) {
-            return CalcResult::new_error(Error::VALUE, cell, "Text too long".to_string());
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Text too long".to_string(),
+            ));
         }
         // Every occurrence of the group character goes before anything else is read; text that is
         // empty then is 0 (gen-m5/5704666097cbc5b2 Calc!A392).
         let text = text.replace(group_sep, "");
         let trimmed = text.trim();
         if trimmed.is_empty() {
-            return CalcResult::Number(0.0);
+            return Ok(0.0);
         }
 
         // Handle percentage suffix
@@ -230,18 +251,22 @@ impl Model {
 
         // Only a bare "%" run is left empty here; empty text returned 0 above.
         if trimmed.is_empty() {
-            return CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string());
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Empty string".to_string(),
+            ));
         }
 
         let cleaned = trimmed.replace(decimal_sep, ".");
 
         // Reject if more than one '.' after replacement
         if cleaned.matches('.').count() > 1 {
-            return CalcResult::new_error(
+            return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "Multiple decimal separators".to_string(),
-            );
+            ));
         }
 
         match parse_excel_number(&cleaned) {
@@ -249,9 +274,13 @@ impl Model {
                 for _ in 0..pct_count {
                     v /= 100.0;
                 }
-                CalcResult::Number(v)
+                Ok(v)
             }
-            None => CalcResult::new_error(Error::VALUE, cell, "Cannot parse number".to_string()),
+            None => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Cannot parse number".to_string(),
+            )),
         }
     }
 

@@ -3,7 +3,7 @@ id: T-2160
 title: "DOLLAR, FIXED and NUMBERVALUE lift over arrays and ranges (SPEC-0011)"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -32,9 +32,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 5 in eval/baselin
 | gen-m5/d586a1e0c9896942 Calc!A364 | `=FIXED(MUNIT(3),3,INDEX(Data!B8:B9,6,1))` | "#SPILL!" | "#N/IMPL!" |
 
 ## Acceptance criteria
-- [ ] These 5 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] arrays.md entry marked implemented for these three.
-- [ ] `make check` green; reviewers approve.
+- [x] These 5 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] arrays.md entry marked implemented for these three.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -43,3 +43,10 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - The math functions (T-2159); NUMBERVALUE parsing (T-2151, T-2152).
+
+## Outcome
+DOLLAR (`LIFT_1_OF_2`), FIXED and NUMBERVALUE (`LIFT_1_OF_3`, moved from general.rs to kinds/mod.rs so the
+text family shares it) run on the SPEC-0011 driver (`lift_call`), every argument `Lift` per T-2198's probe; their
+scalar kernels are unchanged and read each element as `get_number`/`get_boolean`/`get_string` did. The static-analysis
+fallback arms went, lift-kinds.json regenerated, unit tests in test_fn_dollar_fixed_numbervalue_lift.rs. Eval: fixed
+5 (gen-m5), 1 (gen-m7), 36 (probes), 0 regressions, no new known failures.
