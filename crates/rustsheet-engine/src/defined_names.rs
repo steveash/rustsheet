@@ -11,9 +11,9 @@ use crate::{
         },
         token::Error,
         types::{CellReferenceIndex, CellReferenceRC},
-        utils::is_valid_identifier,
+        utils::{is_cell_spelled_name, is_valid_identifier},
     },
-    functions::logical::SharedLambda,
+    functions::{logical::SharedLambda, util::is_multi_sheet_span},
     model::Model,
     reference_operators::RefArg,
     types::DefinedName,
@@ -29,13 +29,75 @@ fn name_refers_to_itself(name: &str, cell: CellReferenceIndex) -> CalcResult {
     )
 }
 
+/// A defined name's reference body (`=Jan!$A$1`, `=Jan!A1:B2`). xlsx stores a relative row or
+/// column relative to A1, and Excel reads it at the same offset from the cell that uses the name:
+/// `=Jan!A2` used in Calc!K6 is Jan!K7, `=Jan!$A1` there Jan!$A6 (docs/excel-semantics/
+/// references.md "Relative references in defined names", gen-m8a case 051f538767ab0cfb; T-1639).
+#[derive(Clone)]
+pub(crate) struct NameReference {
+    /// The corners as written, relative parts counted from A1.
+    written: Range,
+    /// The `(row, column)` absolute (`$`) flags of the left corner, then of the right one.
+    absolute: [(bool, bool); 2],
+}
+
+impl NameReference {
+    pub(crate) fn new(
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        absolute: [(bool, bool); 2],
+    ) -> Self {
+        NameReference {
+            written: Range { left, right },
+            absolute,
+        }
+    }
+
+    /// The sheet the reference is on; using the name elsewhere does not move it.
+    pub(crate) fn sheet(&self) -> u32 {
+        self.written.left.sheet
+    }
+
+    /// The range the reference stands for when the name is used in `cell`.
+    pub(crate) fn at(&self, cell: CellReferenceIndex) -> Range {
+        let corner = |written: CellReferenceIndex,
+                      (absolute_row, absolute_column): (bool, bool)| {
+            CellReferenceIndex {
+                sheet: written.sheet,
+                row: if absolute_row {
+                    written.row
+                } else {
+                    written.row - 1 + cell.row
+                },
+                column: if absolute_column {
+                    written.column
+                } else {
+                    written.column - 1 + cell.column
+                },
+            }
+        };
+        // Mixed anchors can move one corner past the other (`Jan!$B$5:$B1` used in row 1 is
+        // B5:B1); the range is the one between them, B1:B5, as an inline reference is.
+        Range::between(
+            corner(self.written.left, self.absolute[0]),
+            corner(self.written.right, self.absolute[1]),
+        )
+    }
+
+    /// The reference as a reference-context result, used in `cell`.
+    pub(crate) fn range_at(&self, cell: CellReferenceIndex) -> CalcResult {
+        let Range { left, right } = self.at(cell);
+        CalcResult::Range { left, right }
+    }
+}
+
 /// A parsed formula for a defined name
 #[derive(Clone)]
 pub(crate) enum ParsedDefinedName {
     /// `CellReference` (`=C4`)
-    CellReference(CellReferenceIndex),
+    CellReference(NameReference),
     /// A Range (`=C4:D6`)
-    RangeReference(Range),
+    RangeReference(NameReference),
     /// `=LAMBDA(params..., body)`, shared with the lambdas a call creates (T-0440)
     LambdaDefinition(SharedLambda),
     /// An error literal, possibly sheet-qualified (`=Sheet1!#REF!`): the name evaluates to it
@@ -124,6 +186,15 @@ impl Model {
         body: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        // A name bound to a 3-D span is `#VALUE!` as a value, where the span written inline is
+        // `#REF!`: `=span3`, `span3+100`, `ROWS(span3)` (gen-m8a b221d72cc501675a; T-1640).
+        if is_multi_sheet_span(body) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("Defined name \"{name}\" is a 3-D reference."),
+            );
+        }
         self.within_defined_name(|model| model.evaluate_formula_root(body, cell))
             .unwrap_or_else(|| name_refers_to_itself(name, cell))
     }
@@ -149,6 +220,13 @@ impl Model {
             Some(ParsedDefinedName::Formula(body)) => Some(std::sync::Arc::clone(body)),
             _ => None,
         }
+    }
+
+    /// Whether `node` is a defined name bound to a 3-D span over several sheets
+    /// (`span3` = `=Jan:Mar!$A$1:$B$2`).
+    pub(crate) fn is_sheet_span_name(&self, node: &Node) -> bool {
+        self.defined_name_formula(node)
+            .is_some_and(|body| is_multi_sheet_span(&body))
     }
 
     /// The error a defined-name `node` is by itself: an error literal (`=Sheet1!#REF!`) or a body
@@ -192,10 +270,10 @@ impl Model {
     ) -> RefArg {
         if let Node::DefinedNameKind((name, ..)) = node {
             if let Some(body) = self.defined_name_formula(node) {
-                // Only a body that may stand for several areas leaves the value path, which
-                // snaps the body at its root (`SUM(nz)` with `nz` = `0.1+0.2-0.3` is 0,
-                // probes/near-zero-snap-groups C5).
-                if !self.is_multi_area(&body) {
+                // Only a body that may stand for several areas, a 3-D span included, leaves
+                // the value path, which snaps the body at its root (`SUM(nz)` with `nz` =
+                // `0.1+0.2-0.3` is 0, probes/near-zero-snap-groups C5).
+                if !self.is_multi_area(&body) && !is_multi_sheet_span(&body) {
                     return RefArg::from(self.evaluate_node_with_reference(node, cell));
                 }
                 return self
@@ -234,7 +312,31 @@ impl Model {
         scope: Option<u32>,
         formula: &str,
     ) -> Result<(), String> {
-        let sheet_id = self.defined_name_slot(name, scope)?;
+        self.insert_defined_name(name, scope, formula, false)
+    }
+
+    /// As [`Model::define_name`], for a name read from a workbook: one spelled like an A1 cell
+    /// (`NLG1`) is accepted too, as Excel opens such a workbook.
+    ///
+    /// # Errors
+    /// As [`Model::define_name`], except for the cell-like spelling.
+    pub fn define_loaded_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<(), String> {
+        self.insert_defined_name(name, scope, formula, true)
+    }
+
+    fn insert_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+        loading: bool,
+    ) -> Result<(), String> {
+        let sheet_id = self.defined_name_slot(name, scope, loading)?;
         // Defined-name formulas are stored internally in English so they keep
         // working when the user switches language/locale.
         let context = self.defined_name_context();
@@ -266,8 +368,18 @@ impl Model {
 
     /// The `sheet_id` a new defined name `name` in `scope` would get, or an error when the name
     /// is not a valid identifier, the scope is not a sheet index, or the name already exists there.
-    fn defined_name_slot(&self, name: &str, scope: Option<u32>) -> Result<Option<u32>, String> {
-        if !is_valid_identifier(name) {
+    ///
+    /// `loading` admits a name spelled like an A1 cell (`NLG1`): Excel opens a workbook defining
+    /// one (its Name Manager refusing one is unverified), so only the loading path
+    /// (`define_loaded_name`) takes it. The lexer reads such a spelling as the cell, so the name never shadows it
+    /// (docs/excel-semantics/references.md "Legacy N and T marker spelling").
+    fn defined_name_slot(
+        &self,
+        name: &str,
+        scope: Option<u32>,
+        loading: bool,
+    ) -> Result<Option<u32>, String> {
+        if !(is_valid_identifier(name) || (loading && is_cell_spelled_name(name))) {
             return Err("Name: Invalid defined name".to_string());
         }
         let name_upper = name.to_uppercase();
@@ -296,7 +408,7 @@ impl Model {
         scope: Option<u32>,
         formula: &str,
     ) -> Result<Option<u32>, String> {
-        let sheet_id = self.defined_name_slot(name, scope)?;
+        let sheet_id = self.defined_name_slot(name, scope, false)?;
 
         // Make sure the formula is valid: a cell/range reference, a LAMBDA definition or an error
         // literal such as `Sheet1!#REF!`.

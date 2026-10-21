@@ -44,6 +44,7 @@ impl Model {
                 // any other data_array; only an error is the result (T-1065 fidelity review).
                 RefArg::Value(error @ CalcResult::Error { .. }) => Err(error),
                 RefArg::Value(value) => self.freq_values_of(value, cell),
+                RefArg::Grid(grid) => self.freq_values_of(grid.to_values(), cell),
             }
         } else {
             self.collect_freq_values(&args[0], cell)

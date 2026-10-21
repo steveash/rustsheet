@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -50,4 +51,24 @@ fn fn_arguments() {
 
     assert_eq!(model._get_text("B7"), *"#ERROR!");
     assert_eq!(model._get_text("B8"), *"#ERROR!");
+}
+
+#[test]
+fn reciprocals_divide_like_the_operator() {
+    // probes/trig-reciprocal-special-angles (excel-graph): 1 over the rounded TAN, SIN or COS,
+    // rounded to 64 bits and then to a double, like `1/TAN(PI()/4)`.
+    let mut model = new_empty_model();
+    model._set("A1", "=COT(PI()/4)");
+    model._set("A2", "=CSC(PI()/6)");
+    model._set("A3", "=SEC(PI()/3)");
+    model._set("A4", "=COT(3*PI()/4)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 1.0_f64.to_bits());
+    assert_eq!(bits("A2"), 2.0_f64.to_bits());
+    assert_eq!(bits("A3"), 1.999_999_999_999_999_6_f64.to_bits());
+    assert_eq!(bits("A4"), (-0.999_999_999_999_999_8_f64).to_bits());
 }

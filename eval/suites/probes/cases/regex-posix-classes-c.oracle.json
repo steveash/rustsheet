@@ -1,0 +1,159 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "b",
+    "v": true
+   },
+   "A10": {
+    "t": "b",
+    "v": true
+   },
+   "A11": {
+    "t": "b",
+    "v": false
+   },
+   "A12": {
+    "t": "b",
+    "v": false
+   },
+   "A13": {
+    "t": "b",
+    "v": false
+   },
+   "A14": {
+    "t": "b",
+    "v": true
+   },
+   "A15": {
+    "t": "b",
+    "v": true
+   },
+   "A16": {
+    "t": "b",
+    "v": true
+   },
+   "A17": {
+    "t": "b",
+    "v": false
+   },
+   "A18": {
+    "t": "b",
+    "v": true
+   },
+   "A19": {
+    "t": "b",
+    "v": false
+   },
+   "A2": {
+    "t": "b",
+    "v": true
+   },
+   "A20": {
+    "t": "b",
+    "v": false
+   },
+   "A21": {
+    "t": "b",
+    "v": true
+   },
+   "A22": {
+    "t": "b",
+    "v": false
+   },
+   "A23": {
+    "t": "b",
+    "v": false
+   },
+   "A24": {
+    "t": "b",
+    "v": true
+   },
+   "A25": {
+    "t": "b",
+    "v": false
+   },
+   "A26": {
+    "t": "b",
+    "v": false
+   },
+   "A27": {
+    "t": "b",
+    "v": false
+   },
+   "A28": {
+    "t": "b",
+    "v": false
+   },
+   "A29": {
+    "t": "b",
+    "v": true
+   },
+   "A3": {
+    "t": "b",
+    "v": false
+   },
+   "A30": {
+    "t": "b",
+    "v": true
+   },
+   "A31": {
+    "t": "b",
+    "v": false
+   },
+   "A32": {
+    "t": "b",
+    "v": false
+   },
+   "A33": {
+    "t": "b",
+    "v": false
+   },
+   "A34": {
+    "t": "b",
+    "v": false
+   },
+   "A35": {
+    "t": "b",
+    "v": true
+   },
+   "A36": {
+    "t": "b",
+    "v": false
+   },
+   "A4": {
+    "t": "b",
+    "v": false
+   },
+   "A5": {
+    "t": "b",
+    "v": false
+   },
+   "A6": {
+    "t": "b",
+    "v": true
+   },
+   "A7": {
+    "t": "b",
+    "v": true
+   },
+   "A8": {
+    "t": "b",
+    "v": false
+   },
+   "A9": {
+    "t": "b",
+    "v": false
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "9dc726c820fd5ceff2349312f088f871ee7cf0264f4b7b7ae00cf40219bbc348",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-20T02:23:53+00:00",
+  "version": null,
+  "workbook_name": "637b4478ad8c2a9df9da505bf69ba45cc478bea9230f8b04488b43ac8cad0984.xlsx"
+ }
+}

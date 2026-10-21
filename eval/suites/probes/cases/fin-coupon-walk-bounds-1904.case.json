@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1844: the coupon walk's start bounds in a 1904 workbook: PRICE, YIELD, DURATION at settlement -1, COUPNUM(-0.5,400,2), and bonds whose previous coupon date reaches serial 0 or below.",
+ "tags": [
+  "M9",
+  "financial",
+  "probe"
+ ],
+ "date_system": 1904,
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=PRICE(-1,43831,0.05,0.06,100,2)",
+    "A2": "=YIELD(-1,43831,0.05,90,100,2)",
+    "A3": "=DURATION(-1,43831,0.05,0.06,2)",
+    "A4": "=COUPNUM(-0.5,400,2)",
+    "A5": "=COUPNUM(0,400,2)",
+    "A6": "=COUPNUM(1,400,2)",
+    "A7": "=COUPPCD(1,400,2)",
+    "A8": "=COUPPCD(0,400,2)",
+    "A9": "=COUPNUM(1,43831,2)",
+    "A10": "=COUPPCD(1,43831,4)",
+    "A11": "=COUPNUM(1,43831,4)",
+    "A12": "=PRICE(0,43831,0.05,0.06,100,2)",
+    "A13": "=COUPPCD(-1,43831,2)",
+    "A14": "=MDURATION(-1,43831,0.05,0.06,2)"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -14,8 +14,12 @@ workbook costs nothing extra and covers each result individually (no separate pr
 content-type override), not a value parser: values are still decoded only by the Rust snapshot
 (decision 0006). Package shapes it does not recognise are refused, never guessed at.
 
-An extra sheet is invisible to formulas except through the sheet count, so workbooks using
-SHEETS() or INFO() (`INFO("numfile")`) are refused rather than answered wrongly.
+An extra sheet is invisible to formulas except through the sheet count, so workbooks whose
+answer depends on it are refused rather than answered wrongly: `SHEETS()` with no argument and
+`INFO("numfile")`. The canary is appended after the last sheet, so `SHEETS(ref)` of a cell, range
+or 3-D span and `INFO` with another literal type cannot see it and are accepted. Whatever the
+check cannot decide (`INFO(A1)`, `INFO("num"&"file")`, a non-reference `SHEETS` argument) is
+refused (T-2113).
 
 Evidence for the expected values: live excel-graph runs on 2026-10-04
 (docs/architecture/oracle.md, "Is Excel really calculating?").
@@ -48,7 +52,15 @@ SHEET = "RustSheetCanary"
 _PART = "worksheets/rustsheet-canary.xml"
 _REL_ID = "rIdRustSheetCanary"
 _WORKSHEET_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"
-_SHEET_COUNT_FUNCTIONS = re.compile(r"\b(?:_xlfn\.)?(?:SHEETS|INFO)\s*\(", re.IGNORECASE)
+_SHEET_COUNT_CALL = re.compile(r"\b(?:_xlfn\.)?(SHEETS|INFO)\s*\(", re.IGNORECASE)
+_STRING_LITERAL = re.compile(r'"((?:[^"]|"")*)"')
+# A plain reference: optional (3-D) sheet prefix, then a cell or range. Anything else (names,
+# functions, text) may hide a bare sheet count, so it is not matched.
+_REFERENCE = re.compile(
+    r"(?:(?:'(?:[^']|'')+'|[^\s!'(),]+)!)?\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?",
+    re.IGNORECASE,
+)
+_CALL_TEXT_LIMIT = 60
 # Excel for the web does not implement CELL("width") and returns #VALUE!, where desktop Excel
 # returns the column width (poi/47804.xlsx: desktop cached 10 and 11). Not Excel semantics.
 # Only a literal "width" argument is caught; the fill's desktop-conflict check is the backstop.
@@ -59,9 +71,48 @@ _SHEET_LIST_MACRO = re.compile(r"\bGET\.WORKBOOK\s*\(", re.IGNORECASE)
 
 _REFUSALS = (
     (_SHEET_LIST_MACRO, "uses GET.WORKBOOK(), whose answer the canary sheet would change"),
-    (_SHEET_COUNT_FUNCTIONS, "uses SHEETS() or INFO(), whose answer the canary sheet would change"),
     (_WEB_UNSUPPORTED, 'uses CELL("width"), which Excel for the web does not implement'),
 )
+
+
+def _call_argument(run: str, start: int) -> str | None:
+    """The text between the parenthesis at `start - 1` and its match, or None when unbalanced."""
+    depth = 1
+    in_text = False
+    for i in range(start, len(run)):
+        c = run[i]
+        if c == '"':  # a doubled quote closes and reopens the text, so toggling stays correct
+            in_text = not in_text
+        elif not in_text and c in "()":
+            depth += 1 if c == "(" else -1
+            if depth == 0:
+                return run[start:i]
+    return None
+
+
+def sheet_count_call(run: str) -> str | None:
+    """The first SHEETS/INFO call in `run` whose answer the canary sheet would change, as text.
+
+    Refuses when unsure: only `SHEETS(<plain reference>)` and `INFO("<literal other than
+    numfile>")` are let through.
+    """
+    for m in _SHEET_COUNT_CALL.finditer(run):
+        arg = _call_argument(run, m.end())
+        arg_text = (arg or "").strip()
+        if m.group(1).upper() == "SHEETS":
+            # A reference naming the canary sheet would resolve only because we appended it.
+            safe = (
+                arg is not None
+                and _REFERENCE.fullmatch(arg_text) is not None
+                and SHEET.lower() not in arg_text.lower()
+            )
+        else:
+            literal = _STRING_LITERAL.fullmatch(arg_text)
+            safe = literal is not None and "numfile" not in literal.group(1).lower().replace(" ", "")
+        if not safe:
+            end = m.end() + len(arg) + 1 if arg is not None else len(run)
+            return run[m.start() : end][:_CALL_TEXT_LIMIT]
+    return None
 
 
 def _number(pred: Callable[[float], bool]) -> Callable[[Any], bool]:
@@ -160,6 +211,12 @@ def embed_canary(xlsx: bytes) -> bytes:
         raise OracleError("cannot embed the canary: unexpected package layout")
 
     for name, runs in scanned:
+        for run in runs:
+            call = sheet_count_call(run)
+            if call:
+                raise OracleError(
+                    f"refusing to recalculate: {name} uses {call}, whose answer the canary sheet would change"
+                )
         for pattern, why in _REFUSALS:
             if any(pattern.search(run) for run in runs):
                 raise OracleError(f"refusing to recalculate: {name} {why}")

@@ -7,7 +7,8 @@ status: blocked
 priority: P2
 size: M
 tier: opus
-depends_on: []
+campaign: visible
+depends_on: [T-2187]
 ---
 
 ## Goal
@@ -51,3 +52,13 @@ evidence: Excel cells whose YIELD is forced to stop after k iterations do not ex
   to map how the shared iterate depends on each.
 - Or the same back-chain analysis on PRICE's inverse with other day-count bases (probe cells with
   basis 1 to 4 and more than one coupon).
+
+Waiting on T-2187 (oracle sweep). Reopen when it lands.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 139 in total.
+- YIELD: 139 cells (13-14 digits right 48, 10-12 66, 6-9 25, fewer or 0 vs nonzero 0); most in `probes/yield-solver-sweep.case.json` 60; `probes/solver-iteration-traces.case.json` 22. e.g. `YIELD(A3,B3,C3,H3,E3,F3,G3)` Excel 0.06499999999999766, ours 0.06499999999999986
+
+Excel stops below the root by up to ~1e-9 relative (financial.md "YIELD stops short of PRICE's root"); 15 digits means reproducing that stop.

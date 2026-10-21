@@ -95,11 +95,35 @@ fn percentage() {
     // Percentage in scientific notation will not be formatted as percentage
     assert_eq!(
         parse("23e-12%", &["$"]),
-        Ok((23e-12 / 100.0, Some("0.00E+00".to_string())))
+        Ok((23e-14, Some("0.00E+00".to_string())))
     );
     assert_eq!(
         parse("2.3E4%", &["$"]),
         Ok((230.0, Some("0.00E+00".to_string())))
+    );
+}
+
+#[test]
+fn percent_text_is_rounded_once() {
+    // ironcalc-calc TEXT/T_VALUE_VALUETOTEXT.xlsx I4: VALUE("23.123%") is 0.23123, not
+    // 23.123 / 100 = 0.23123000000000002 (coercion.md "Percent text is rounded once").
+    assert_eq!(
+        parse("23.123%", &["$"]),
+        Ok((0.23123, Some("0.00%".to_string())))
+    );
+    assert_eq!(
+        parse("-23.123%", &["$"]),
+        Ok((-0.23123, Some("0.00%".to_string())))
+    );
+    assert_eq!(
+        parse("0.07%", &["$"]),
+        Ok((0.0007, Some("0.00%".to_string())))
+    );
+    assert_eq!(parse("0%", &["$"]), Ok((0.0, Some("0%".to_string()))));
+    // 15 significant digits are kept before the shift.
+    assert_eq!(
+        parse("12345.6789012345678%", &["$"]),
+        Ok((123.456789012345, Some("0.00%".to_string())))
     );
 }
 

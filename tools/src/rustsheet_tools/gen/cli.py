@@ -1,6 +1,7 @@
 """`rustsheet-gen` — generate synthetic spec cases into an eval suite.
 
   rustsheet-gen --milestone M2 --count 25 --seed 1 --suite gen-m2
+  rustsheet-gen --milestone M7 --focus --spill --seed 0    # spilling probes with reserved footprints
   rustsheet-gen --policy operators-refs --seed 0          # suite gen-m1 (M1, no functions)
   rustsheet-gen --policy names-3d --seed 0                # suite gen-m8a (M8 names, 3-D refs)
   rustsheet-gen --policy tables --seed 0                  # suite gen-m8b (M8 tables, structured refs)
@@ -69,6 +70,16 @@ def main() -> None:
             "all five ignore --milestone/--count/--formulas/--depth"
         ),
     )
+    ap.add_argument(
+        "--focus",
+        action="store_true",
+        help="every formula's outer call is a function of exactly --milestone, cycled evenly (arguments stay in scope)",
+    )
+    ap.add_argument(
+        "--spill",
+        action="store_true",
+        help="a formula whose outer call is dynamic_array gets an empty footprint to spill into, all checked (§5.2 shape 3)",
+    )
     ap.add_argument("--catalog", type=Path, default=None)
     args = ap.parse_args()
 
@@ -119,16 +130,22 @@ def main() -> None:
         )
         return
     catalog = Catalog.load(args.catalog or root / "eval" / "catalog" / "functions.yaml")
-    specs = [
-        generate_case(
-            catalog,
-            args.seed * 1_000_003 + i,
-            milestone=args.milestone,
-            formulas=args.formulas,
-            max_depth=args.depth,
-        )
-        for i in range(args.count)
-    ]
+    try:
+        specs = [
+            generate_case(
+                catalog,
+                args.seed * 1_000_003 + i,
+                milestone=args.milestone,
+                formulas=args.formulas,
+                max_depth=args.depth,
+                focus=args.focus,
+                case_index=i,
+                spill=args.spill,
+            )
+            for i in range(args.count)
+        ]
+    except ValueError as e:
+        raise SystemExit(f"rustsheet-gen: {e}") from e
     write_suite(
         root,
         args.suite or f"gen-{args.milestone.lower()}",

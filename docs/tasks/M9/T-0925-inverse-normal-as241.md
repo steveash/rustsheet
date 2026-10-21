@@ -7,6 +7,7 @@ status: todo
 priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-1006, T-1746]
 ---
 
@@ -57,3 +58,14 @@ this task: `normal.rs` `ppnd16_tail` for |p - 0.5| > 0.425 in NORM.S.INV, NORM.I
 stays centrally). With it ironcalc-calc lost 18 NORM.INV, 18 NORM.S.INV/NORM.S.DIST and 17 CONFIDENCE.NORM
 known-failure lines and none regressed. What remains here: the central region (an iterative search on Excel's
 NORM.S.DIST, statistics.md "NORM.S.INV is AS 241 PPND16 in the tails") and LOGNORM.INV, which still calls statrs.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 85 in total.
+- NORM.S.INV: 65 cells (13-14 digits right 65, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1746-norm-s-inv-central.case.json` 38; `probes-numeric/t1759-norm-s-inv-roundtrip.case.json` 20. e.g. `NORM.S.INV(A35)` Excel -0.9944578832097497, ours -0.9944578832097531
+- NORMSINV: 2 cells (13-14 digits right 2, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-norm-s-inv.case.json` 2. e.g. `NORMSINV(NORM.S.DIST(1.0,TRUE))` Excel 0.9999999999999996, ours 1.0000000000000004
+- NORM.INV: 6 cells (13-14 digits right 6, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` 4; `probes-numeric/m9-norm-s-inv.case.json` 2. e.g. `_xlfn.NORM.INV(E8,B8,C8)` Excel 0.9999999999999996, ours 1.0000000000000004
+- LOGNORM.INV: 12 cells (13-14 digits right 11, 10-12 1, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1543-inverse-cdf-tiny-p.case.json` 11; `ironcalc-calc/STATISTICAL/LOGNORM.xlsx` 1. e.g. `LOGNORM.INV(1E-20,0,1)` Excel 9.493291347224372e-05, ours 9.493291347224338e-05
+
+Excel's centre is about 1e-15 from the true quantile while the engine is closer to the truth, so 15 digits needs Excel's centre formula; LOGNORM.INV still calls statrs `LogNormal::inverse_cdf` (log_normal.rs) and should move onto the same kernel.

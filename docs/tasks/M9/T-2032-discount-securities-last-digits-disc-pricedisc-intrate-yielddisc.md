@@ -3,10 +3,11 @@ id: T-2032
 title: "Discount securities last digits: DISC, PRICEDISC, INTRATE, YIELDDISC, PRICEMAT, YIELDMAT (split from T-1374)"
 milestone: M9
 lane: functions-financial
-status: todo
-priority: P2
+status: done
+priority: P1
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -45,13 +46,36 @@ If a function's cells do not separate the candidates, say so in the Outcome and 
 sweep for it (research lane) rather than guessing.
 
 ## Acceptance criteria
-- [ ] The DISC.xlsx and INTRATE.xlsx F lines above leave eval/baseline/ironcalc-calc.txt, and the
+- [x] The DISC.xlsx and INTRATE.xlsx F lines above leave eval/baseline/ironcalc-calc.txt, and the
       discount-security-modes, date-system-*-daycount, date-system-1904-financial and fin-argument-modes
       H139/H352 F lines above leave eval/baseline/probes.txt (each removed line listed in the PR); no
       new F lines anywhere. Lines that resist stay, listed in the Outcome with expected/actual.
-- [ ] Each function's formulation is in docs/excel-semantics/financial.md, citing the cells.
-- [ ] `make check` green; reviewers approve.
+- [x] Each function's formulation is in docs/excel-semantics/financial.md, citing the cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - TBILLPRICE, TBILLYIELD, TBILLEQ (matched by T-1475); bond functions (PRICE, YIELD, DURATION; T-1374, T-1592).
 - Argument-mode and error-order cells of the same functions.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 34 in total.
+- INTRATE: 7 cells (13-14 digits right 7, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes/discount-security-modes.case.json` 3; `ironcalc-calc/FINANCIAL/INTRATE.xlsx` 2. e.g. `INTRATE(A2,B2,C2,D2,E2)` Excel 0.08, ours 0.08000000000000007
+- YIELDDISC: 14 cells (13-14 digits right 14, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes/discount-security-modes.case.json` 12; `probes/date-system-1904-financial-daycount.case.json` 1. e.g. `YIELDDISC(43101,43466,95,100)` Excel 0.05263157894736842, ours 0.05263157894736836
+- YIELDMAT: 13 cells (13-14 digits right 13, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes/discount-security-modes.case.json` 11; `probes/date-system-1904-financial-daycount.case.json` 1. e.g. `YIELDMAT(43101,43466,42736,0.06,98)` Excel 0.07692307692307698, ours 0.0769230769230771
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Outcome
+The kernels now take YEARFRAC's two parts, the basis day count and the basis year length
+(`Model::year_fraction_parts`, which YEARFRAC itself now divides), instead of the year fraction, and round in
+Excel's order: DISC `(1 - pr/redemption) * (B/DSM)`, INTRATE `(redemption - investment)/investment * (B/DIM)`,
+YIELDDISC `(redemption - pr)/pr * (B/DSM)`, PRICEDISC `redemption - discount*redemption*DSM/B`, and PRICEMAT and
+YIELDMAT from `getMatFactors` parts (B of issue to settlement, A, DIM, DSM = DIM - A), YIELDMAT as
+`((1 + DIM/B*rate) - T)/T * (B/DSM)`. Recorded in financial.md "Discount securities: day count and year length".
+Eval delta: 73 known failures fixed (ironcalc-calc 916 -> 906: DISC.xlsx F2, F6, F10, F15, F19, INTRATE.xlsx F2-F6;
+probes 1632 -> 1569: discount-security-modes, date-system-1900/1904-financial-daycount, date-system-1904-financial
+A25, A27, fin-argument-modes H139, H352, fin-bond-negative-basis E21, G21), 0 regressions, visibly-off cells 1750 -> 1716 (baselines rewritten by `make eval-baseline`). No cell resisted.
+RECEIVED is regrouped to `discount*(DIM/B)`, the same number as before; no oracle cell separates RECEIVED's
+candidate groupings, and none fails, so no sweep is filed for it.

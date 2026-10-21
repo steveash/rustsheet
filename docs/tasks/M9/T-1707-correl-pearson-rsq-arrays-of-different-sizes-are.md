@@ -3,7 +3,7 @@ id: T-1707
 title: "CORREL, PEARSON, RSQ: arrays of different sizes are #N/A, and the last digit of their results"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,8 @@ Sheet1!C2 `CORREL(A2:A13,B2:B13)`: Excel (Mac cache, web agrees) -0.135742784879
 
 ## Out of scope
 -
+
+## Outcome
+Landed by T-1723 (its task file says to fold this one in): unequal sizes were already `#N/A` (T-1292), and the shared
+two-pass moments with Excel's divisors (n for CORREL/PEARSON, n - 1 for RSQ) make the GROUPBY total rows
+(functions G!B426, functions2 G!B286, G!B306) and ironcalc-calc CORREL_SLOPE_INTERCEPT_RSQ_STEYX.xlsx C2 pass.

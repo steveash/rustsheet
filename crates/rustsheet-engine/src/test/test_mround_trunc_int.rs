@@ -63,3 +63,27 @@ fn trunc_rounds_down_in_decimal_like_rounddown() {
     assert_eq!(model._get_text("A6"), "#NUM!");
     assert_eq!(model._get_text("A7"), "0");
 }
+
+/// INT cuts to 15 significant digits before rounding down (gen-m5/0362d48f56108faa Calc!A364,
+/// T-2171). The negative case is unprobed: it follows the same cut, so noise just above -1 is -1.
+#[test]
+fn int_cuts_to_15_digits_first() {
+    let mut model = new_empty_model();
+    for (cell, formula) in [
+        ("A1", "=INT(1-2^-53)"),
+        ("A2", "=INT(-(1-2^-53))"),
+        ("A3", "=INT(-10.5)"),
+        ("A4", "=INT(10.5)"),
+        ("A5", "=INT(-3)&\"\""),
+        ("A6", "=INT(0.5)&\"\""),
+    ] {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "-1");
+    assert_eq!(model._get_text("A3"), "-11");
+    assert_eq!(model._get_text("A4"), "10");
+    assert_eq!(model._get_text("A5"), "-3");
+    assert_eq!(model._get_text("A6"), "0");
+}

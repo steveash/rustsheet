@@ -1,0 +1,323 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "s",
+    "v": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "A10": {
+    "t": "s",
+    "v": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "A11": {
+    "t": "s",
+    "v": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "A12": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A13": {
+    "t": "s",
+    "v": "x"
+   },
+   "A14": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A2": {
+    "t": "s",
+    "v": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "A20": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A21": {
+    "t": "n",
+    "v": 2147483646.0
+   },
+   "A22": {
+    "t": "n",
+    "v": 2.3058430038449848e+18
+   },
+   "A23": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A24": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A25": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A26": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A27": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A28": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A29": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A30": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A31": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A32": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A33": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A34": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A35": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A36": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A37": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A8": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A9": {
+    "t": "s",
+    "v": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "B1": {
+    "t": "n",
+    "v": 120.0
+   },
+   "B10": {
+    "t": "n",
+    "v": 256.0
+   },
+   "B11": {
+    "t": "n",
+    "v": 256.0
+   },
+   "B12": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B13": {
+    "t": "n",
+    "v": 1.0
+   },
+   "B14": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B2": {
+    "t": "n",
+    "v": 120.0
+   },
+   "B20": {
+    "t": "n",
+    "v": 1.0
+   },
+   "B21": {
+    "t": "n",
+    "v": 2147483646.0
+   },
+   "B22": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B23": {
+    "t": "n",
+    "v": 1.0
+   },
+   "B24": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B25": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B26": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B27": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B28": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B29": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B30": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B31": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B32": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B33": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B34": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "B4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B8": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B9": {
+    "t": "n",
+    "v": 256.0
+   },
+   "C1": {
+    "t": "n",
+    "v": 120.0
+   },
+   "C2": {
+    "t": "n",
+    "v": 120.0
+   },
+   "C3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C8": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "D1": {
+    "t": "n",
+    "v": 254.0
+   },
+   "D2": {
+    "t": "n",
+    "v": 255.0
+   },
+   "D3": {
+    "t": "n",
+    "v": 256.0
+   },
+   "D4": {
+    "t": "n",
+    "v": 257.0
+   },
+   "D5": {
+    "t": "n",
+    "v": 300.0
+   },
+   "D6": {
+    "t": "n",
+    "v": 32767.0
+   },
+   "D7": {
+    "t": "n",
+    "v": 256.0
+   },
+   "D8": {
+    "t": "n",
+    "v": 257.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "f3383ced3c842875958650f102238cee00992884442080f49033f6e4ff7e1590",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-21T04:24:43+00:00",
+  "version": null,
+  "workbook_name": "d5440fe9ce343db887ee8dbfed8fac68ec648db2bc90d8b94ae07a4becdc9ae7.xlsx"
+ }
+}

@@ -4,9 +4,10 @@ title: "GAMMA.INV/CHISQ.INV/CHISQ.INV.RT: gamma quantile parity (39 known failur
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-0971, T-1045]
 ---
 
@@ -56,3 +57,15 @@ More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/ru
 
 ## Out of scope
 The CDF kernel (T-0971); legacy GAMMAINV/CHIINV evidence (T-1047, T-1048).
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 236 in total.
+- GAMMA.INV: 87 cells (13-14 digits right 58, 10-12 2, 6-9 14, fewer or 0 vs nonzero 13); most in `probes-numeric/m9-gamma-inv.case.json` 53; `ironcalc-calc/STATISTICAL/GAMMA.xlsx` 21. e.g. `GAMMA.INV(0.5,9,1)` Excel 8.668951184370373, ours 8.668951184370435
+- GAMMAINV: 4 cells (13-14 digits right 4, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-gammainv.case.json` 4. e.g. `GAMMAINV(0.5,50,2)` Excel 99.33412923598846, ours 99.33412923598982
+- CHISQ.INV: 44 cells (13-14 digits right 26, 10-12 2, 6-9 9, fewer or 0 vs nonzero 7); most in `probes-numeric/m9-chisq-inv.case.json` 28; `probes-numeric/t1543-inverse-cdf-tiny-p.case.json` 8. e.g. `CHISQ.INV(0.4,5)` Excel 3.6554996231415857, ours 3.655499623141595
+- CHISQ.INV.RT: 73 cells (13-14 digits right 56, 10-12 4, 6-9 11, fewer or 0 vs nonzero 2); most in `probes-numeric/m9-chisq-inv-rt.case.json` 34; `probes-numeric/m9-legacy-chiinv.case.json` 26. e.g. `CHISQ.INV.RT(0.4,5)` Excel 5.131867074401821, ours 5.131867074401809
+- CHIINV: 28 cells (13-14 digits right 22, 10-12 2, 6-9 4, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-legacy-chiinv.case.json` 26; `probes/stat-argument-modes.case.json` 1. e.g. `CHIINV(0.4,5)` Excel 5.131867074401821, ours 5.131867074401809
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.

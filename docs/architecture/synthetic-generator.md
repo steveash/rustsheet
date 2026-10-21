@@ -419,6 +419,22 @@ Each probe is a single formula cell, plus optional sidecar cells. Shapes:
 3. **Lifted probe** (dynamic arrays): `=f(range_or_array)` that spills. The probe region
    reserves a `rows×cols` empty footprint to avoid unintended `#SPILL!`. Spill
    collisions are generated on purpose under edge class `spill_blocked`.
+   *Implemented* (T-2224) as `rustsheet-gen --spill`, off by default, so existing suites
+   regenerate byte for byte. A formula whose outer call is `dynamic_array: true` in the
+   catalog gets its anchor in column A followed by an empty footprint of
+   `min(12, data rows) × min(6, data columns)` cells, starting at the anchor
+   (`SPILL_ROWS`, `SPILL_COLS` in `gen/generator.py`). Other formulas take one row, and no
+   formula sits to the right of column A, so no footprint overlaps a formula or another
+   footprint. The case's `check` lists the anchor and every footprint cell. The oracle records
+   the cells Excel fills, and those are scored. A footprint cell Excel leaves empty is not in
+   the sidecar, so the spill-extent check (T-1660) fails any engine value there against
+   empty. A result taller than its footprint is `#SPILL!` on the formula below it in both
+   Excel and the engine. A wider one spills right into unchecked cells: the extent check
+   fails an engine value where Excel left the cell empty, but Excel's values there are not
+   compared. `SPILL_BLOCKED_RATE` (5%) of footprints get a blocker constant just
+   below or just right of the anchor. The blocker is an input, so it is not checked, and the
+   case is tagged `spill_blocked`. The layout draws from its own seeded stream, so the
+   formulas are the same with and without `--spill`.
 4. **Implicit intersection probe**: `=@A1:A10` or legacy-style `=A1:A10` written as a
    non-DA formula on row k. Expected to return row k's value or `#VALUE!` outside the
    range.
@@ -467,6 +483,12 @@ separately in the dashboard.
   feature such as cross-sheet refs or names) is independently disabled with probability
   0.5, subject to the mask leaving at least 5 functions enabled [3]. The mask is recorded
   in the IR for reproducibility and coverage attribution.
+- **Focus mask** (`rustsheet-gen --focus`, T-2108): every formula's outermost call is a
+  generator-ready function whose catalog milestone is exactly the target. The functions take
+  turns through a seeded shuffle (reshuffled per case), so a run gives each about the same
+  number of outer calls; arguments are still drawn from everything in scope at or below the
+  milestone. Without it, the sqrt(prior) weighting lets high-prior earlier-milestone functions
+  crowd out the target's own. A milestone with no such function is an error.
 
 ### 5.5 Generation policies (anti-saturation)
 
@@ -497,6 +519,12 @@ whole-suite policies rather than per-workbook draws.
 
 Every pool entry has an `edge_class` id. A literal is drawn as
 `P(edge pool) = 0.35, P(realistic) = 0.65`, adjusted by policy.
+
+**Implemented (T-2109).** A catalog `value` parameter with `pool: <name>` draws from
+`tools/src/rustsheet_tools/gen/pools.py` 35% of the time, after its `domain` draw and never on a `hard`
+domain; other parameters still build a free expression. The pools there are `number_edges`, `unit_interval`,
+`angle` and `code_point` (T-2109), and `text_edges`, `numeric_text`, `number_formats` (the codes of
+`number_formats.py`, quoted) and `errors` (T-2110).
 
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),

@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -51,3 +52,6 @@ PM"; those cells also need fractional seconds and stay out of scope).
   A13, A17, A18, A31, A32, A36, A37, A40, which return `#VALUE!` today). Same lexer area as T-0934
   root cause 1, so leave them to that work or a follow-up.
 - The 1904 date system (every date-part cell in DateFormatTests and DateFormatNumberTests).
+
+## Visible-parity stage
+Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

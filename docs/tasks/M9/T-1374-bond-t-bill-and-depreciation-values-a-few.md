@@ -44,6 +44,9 @@ PRICE_YIELD.xlsx K column) moved to T-2007 (gap triage 2026-10-19); this task ke
 Gap triage 2026-10-19 split three families out: the discount securities (INTRATE H139, YIELDDISC H352 and the
 probes/discount-security-modes acceptance line below) to T-2032; DB H88 and DDB H95 to T-2033 (fitted there);
 EFFECT H125 to T-2034. This task keeps CUMIPMT, CUMPRINC, DURATION, MDURATION, ODDFPRICE and PRICE.
+Gap triage 2026-10-20: PRICE and ODDFPRICE's coupon discounting (libm `powf` where Excel uses its `^`;
+the `^` model gives Excel's bits on PRICE_YIELD.xlsx H2-H5, H8-H11) moved to T-2207 with their visibly-off
+cells; this task keeps whatever PRICE/ODDFPRICE residue T-2207 leaves.
 One probe point per function is not enough to fit a formulation: first add an oracle sweep per function family
 (excel-probe skill; probes-numeric like T-0942), then fit. Split per family if larger than M.
 
