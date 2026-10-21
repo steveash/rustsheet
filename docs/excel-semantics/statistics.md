@@ -1539,7 +1539,22 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
   - b > 8, or a >= 1.5: Excel is within the power terms' noise of the exact B, and the GAMMALN form misses
     (at most 4 of each 48-row region). GAMMALN switches to Stirling's series at 8 ("GAMMA, GAMMALN and LN kernels").
   - For the Student t this is B(n/2, 1/2) for df up to 16. In the engine only df 13 to 16 take it. Below df 13
-    (b under 6.5, not probed) it costs probes-numeric cells, as the df-ratio errors there are small.
+    it costs probes-numeric cells, as the df-ratio errors there are small.
+  - b under 6.5 (T-0969 attempt 11, from the existing `t0969-beta-density-b`, b = 0.25 to 8 by 0.25): the same form
+    holds for a = 1/2. At x = 0.05 it predicts Excel's density error within 2 x 2^-53 at 29 of the 32 b (b = 3.75,
+    4.25 and 4.5 are within 4). At x = 0.01, every b carries about -2 more, the power terms' share. For a = 1.5 it
+    misses by up to 21 (b = 6.75). The form's own error below b = 6.5 is under 7 x 2^-53 (df 11 and 12: -4 to -7),
+    so the tails' loss below df 13 is the tail kernel's noise, not B.
+  - The branch structure is that of TOMS 708's `betaln` (Didonato and Morris 1992). For min(a,b) < 1 and
+    max(a,b) < 8 it is `gamln(a0) + (gamln(b0) - gamln(a0 + b0))`, and from 8 `algdiv`. That makes TOMS 708 a
+    candidate for BETA.DIST (an interpretation). Its `bratio` (R's `toms708.c`, with TOMS 708's own `gamln`) is not
+    Excel's tail: on `t0969-t-beta-link` column E (`BETA.DIST(y,n/2,0.5,TRUE)`, 176 cells), it is bit-exact on 27 and
+    the exact I_y on 36, in every bratio branch (bpser 19 of 86 against the exact 25, bup+bgrat 6 of 29 against 7). On
+    the centre columns H and I (`BETA.DIST(z,0.5,n/2,TRUE)`) it does better than the exact value: 122 and 131 of 176,
+    against 102 and 115.
+  - The tail takes the GAMMALN terms smaller shape first, `GAMMALN(1/2) + (GAMMALN(n/2) - GAMMALN(n/2 + 1/2))`.
+    BETA.DIST's argument order, `GAMMALN(n/2) + (GAMMALN(1/2) - ...)`, scored in `log_gamma_ratio` for df 13 to 16,
+    gains 8 probes-numeric cells but loses 13 (10 of them df-15 `t0969-t-tail-grid` cells).
 - Ours: `student_t.rs` `log_gamma_ratio`, which scales the series tail for df 13 to 16. Visibly-off cells:
   `t0969-t-tail-grid` 260 -> 245, `t0969-t-df-ratio` 9 -> 8, `t0969-t-beta-link` 42 -> 40, with none lost
   in the family's probes.
