@@ -158,6 +158,14 @@ fn text_value_node(value: &CalcResult, format: &str) -> ArrayNode {
     }
 }
 
+/// Whether `format` may have a text section (an `@`, or a fourth section). Number-like text takes
+/// the number path only for codes without one, the shape the oracle cells cover; with a text
+/// section it stays text (UNVERIFIED, number-formats.md, T-2158). A `;` inside quotes counts, which
+/// errs towards the text path.
+fn has_text_section(format: &str) -> bool {
+    format.contains('@') || format.matches(';').count() >= 3
+}
+
 /// The TEXT element for one value: numbers and blanks by the number sections, text and booleans
 /// by the text section. An omitted value is 0, not a blank (`TEXT(,"General")`).
 fn text_element(value: &CalcResult, format: &str, ctx: &FormatContext) -> ArrayNode {
@@ -180,7 +188,7 @@ impl Model {
     /// the format's error over a text value (`error_broadcast.xlsx` Sheet2!A1, `TEXT("x",NA())`).
     pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let ctx = self.format_context();
-        self.lift_call(Function::Text, args, cell, &mut |_, values| {
+        self.lift_call(Function::Text, args, cell, &mut |model, values| {
             let [value, format] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
@@ -200,7 +208,30 @@ impl Model {
             if rejects_format_code(&format_code) {
                 return CalcResult::new_error(Error::VALUE, cell, String::new());
             }
+            // A text value that reads as a number is formatted as that number (number-formats.md,
+            // T-2158), read the way VALUE reads it.
+            let number_text = match value {
+                CalcResult::String(text) if !has_text_section(&format_code) => {
+                    model.value_text_number(text).map(CalcResult::Number)
+                }
+                _ => None,
+            };
+            let value = number_text.as_ref().unwrap_or(value);
             text_result(&[], Ok(text_element(value, &format_code, &ctx)), cell)
+        })
+    }
+
+    /// A text value read as VALUE reads it: `None` when it is over the number-text length cap or
+    /// does not read as a number. VALUE trims spaces around date and clock text, unlike number
+    /// coercion, but only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!, and clock
+    /// text and date text with a clock suffix read as in number coercion (probes/date-text-grammar
+    /// C7, C30, C31, C53, C55, C63; probes/value-clock-text B14, B44, column B against C).
+    fn value_text_number(&self, text: &str) -> Option<f64> {
+        if number_text_too_long(text) {
+            return None;
+        }
+        self.parse_number_text(text.trim_matches(' '), &["$", "€"], &|| {
+            self.current_year()
         })
     }
 
@@ -437,20 +468,10 @@ impl Model {
                 return Err(Error::ERROR);
             };
             match text {
-                CalcResult::String(text) if number_text_too_long(text) => Err(Error::VALUE),
-                CalcResult::String(text) => {
-                    // VALUE trims spaces around date and clock text, unlike number coercion, but
-                    // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
-                    // (probes/date-text-grammar C7, value-clock-text B14, B44).
-                    let text = text.trim_matches(' ');
-                    // Clock text and date text with a clock suffix read as in number coercion,
-                    // with surrounding spaces trimmed (probes/value-clock-text column B against
-                    // C; date-text-grammar C30, C31, C53, C55, C63).
-                    model
-                        .parse_number_text(text, &["$", "€"], &|| model.current_year())
-                        .map(ArrayNode::Number)
-                        .ok_or(Error::VALUE)
-                }
+                CalcResult::String(text) => model
+                    .value_text_number(text)
+                    .map(ArrayNode::Number)
+                    .ok_or(Error::VALUE),
                 CalcResult::Number(f) => Ok(ArrayNode::Number(*f)),
                 CalcResult::Error { error, .. } => Err(error.clone()),
                 CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(ArrayNode::Number(0.0)),
