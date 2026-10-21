@@ -265,7 +265,7 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   `XIRR({-1, (1+r)^T}, {d0, d0 + 365*T})` for T = 2, 5, 10, 20, 40, 80, 120 and r = 0.013, 0.1, 0.5, and nine
   zero-first-value cells `{0,-1000,1100}` with the first date before, equal to and after the second at guesses
   omitted, 0.2 and 1. Zero first value: Excel returns 2.9802322387695314e-09 (0.1 * 2^-25) at the default guess
-  and at 0.2, and 3.725290298461914e-09 (= 0.125 / 2^25, i.e. a bracket upper end of 0.125, which the fit does not derive) at guess 1,
+  and at 0.2, and 3.725290298461914e-09 (= 0.125 / 2^25, i.e. the guess-1 bracket walk ends at 0.125, which the T-1583 model reproduces) at guess 1,
   for every date order (also the first date after the second, where the
   model gives the same). Span: r = 0.013 and 0.5 return the step-25/26 lattice point the model computes at every
   span, but r = 0.1 returns 0.10000000596046449 (one lattice point above the model's 0.09999999403953552) at
@@ -423,7 +423,9 @@ in the range puts that flow on date 0. 50 on date 0 after -1000 on 45000 and 110
 and is `#NUM!` (X2). Text in either range is `#VALUE!` (X6, X7). Dates before the first are accepted:
 `XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212 (XNPV of the same flows is
 #NUM!), and -1000, 1100, -1000 on 45000, 45365, 44000 = -0.24668241366744048 (X8). But XIRR is `#NUM!`
-when no date is later than the first, even where a root exists: -1000 on 45365 then 1100 on 45000 (X9,
+when no date is later than the first and the first value is nonzero, even where a root exists (with a zero first value
+it is not: probes/xirr-span-zero-first A28-A30, `{0,-1000,1100}` on 46000, 45000, 45365, give 2.98e-9 / 3.73e-9, T-1591; the exact
+condition is unprobed, T-2329): -1000 on 45365 then 1100 on 45000 (X9,
 xirr-early-dates is the same as an array: X12), and 1100, -1000, -1000 on 45365, 45000, 44000 (X13).
 All dates equal is `#NUM!` (A3), while a repeat of the first date next to a later one is fine (A4,
 A5). Positive flows on earlier dates with no root are `#NUM!` (A1, A2, A14, A15). A negative date or
@@ -444,7 +446,7 @@ error to the cells it skips, `get_array_of_numbers_generic`). XIRR follows the e
 and later-date rules since T-1124. Its values still miss in the last digits (the early stop above).
 The zero-first-value result and the date-0-first root match since T-1583 and T-0916 (the solver entry
 "XIRR is a bracketing bisection, not Newton" above; T-1155 done).
-Tasks: T-1114, T-1124
+Tasks: T-1114, T-1124, T-2329
 
 ## DB and VDB period cap
 Rule: RustSheet returns `#NUM!` for DB with a `period`, and VDB with an `end_period`, whose integer part is above
