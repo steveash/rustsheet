@@ -3,7 +3,7 @@ id: T-2275
 title: "ADDRESS: probe row/column bounds per abs_num and a1 (relative R1C1 takes 0 and negative offsets, past the grid is #VALUE!)"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -41,13 +41,24 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 10 in eval/baseli
 | gen-m6/d0c30225243fde60 Calc!A63 | `=ADDRESS(SUM(Data!E1:E11),3,1,ISNA(SUMPRODUCT(Data!$A2)),"Data")` | "#VALUE!" | "Data!R123456831C3" |
 
 ## Acceptance criteria
-- [ ] These 10 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] A new probes case (excel-graph) holds the grid; every cell passes or is a filed task named in the Outcome.
-- [ ] lookup.md's third bullet states the rule with cells and no UNVERIFIED left.
-- [ ] `make check` green; reviewers approve.
+- [x] These 10 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] A new probes case (excel-graph) holds the grid; every cell passes or is a filed task named in the Outcome.
+- [x] lookup.md's third bullet states the rule with cells and no UNVERIFIED left.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Argument error order and sheet quoting (T-2274).
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+Probe `probes/t2275-address-bounds` (excel-graph, 2026-10-21; 278 ADDRESS cells over abs_num 1-4 and a1 TRUE/FALSE, plus 16 GCD/LCM/
+MULTINOMIAL cells) settles the bounds: row and column are floored in every mode, an index must be 1..1048576 / 1..16384, a relative
+R1C1 offset -1048575..1048575 / -16383..16383, and a 0 offset is written bare (`RC3`, `R9C`). `address_index` and `r1c1_part`
+(address_areas.rs) implement it, and every argument is now cast before the bounds are checked. lookup.md's third bullet states it,
+with no UNVERIFIED left.
+gen-m6 A167 is not ADDRESS's: Excel's `MULTINOMIAL(<blank cell>)` is `#VALUE!` (GCD, LCM and MULTINOMIAL are `#VALUE!` when every
+argument is a lone blank cell; coercion.md). That and the probe's J1, J15, J20, J25 and J28 are T-2294's (functions-math, filed here).
+Eval delta: gen-m6 274 -> 257 known failures (17 fixed: 9 of the 10 above, plus 8 of T-2274's argument-error-order cells, noted
+in T-2274); probes 1674 -> 1679 (+5, new coverage in the new case, owned by T-2294); 0 regressions.

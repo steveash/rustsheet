@@ -7,6 +7,7 @@ use crate::{
     reference_operators::{not_a_reference_array, three_d_needs_one_sheet, RefArg},
 };
 
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::utils::number_to_column;
 
 /// Quotes `sheet_text` for ADDRESS. A leading `[workbook]` part does not by
@@ -21,6 +22,33 @@ fn address_sheet_text(s: &str) -> String {
         }
     }
     quote_name(s)
+}
+
+/// ADDRESS's row or column index from `n` (an index up to `last`, or a relative R1C1 offset),
+/// or `None` when it is out of range. Excel floors the number in every mode (2.9 is 2, -2.5,
+/// -2.4 and -0.5 are -3, -3 and -1) and accepts an index in 1..=last, an offset in
+/// -(last - 1)..=last - 1: `ADDRESS(1048577,3)` and `ADDRESS(-1048576,3,4,FALSE)` are `#VALUE!`
+/// (probes/t2275-address-bounds; docs/excel-semantics/lookup.md "ADDRESS: argument errors
+/// first, sheet_text "TRUE"/"FALSE" quoted, bounds").
+fn address_index(n: f64, last: i32, relative: bool) -> Option<i32> {
+    let n = n.floor();
+    let (lo, hi) = if relative {
+        (f64::from(1 - last), f64::from(last - 1))
+    } else {
+        (1.0, f64::from(last))
+    };
+    // In range, so the cast is exact.
+    (lo..=hi).contains(&n).then_some(n as i32)
+}
+
+/// One R1C1 part: `R5`, or relative `R[-3]`, with a 0 offset written bare (`ADDRESS(0,3,3,FALSE)`
+/// is `RC3`, probes/t2275-address-bounds).
+fn r1c1_part(letter: char, n: i32, relative: bool) -> String {
+    match (relative, n) {
+        (false, n) => format!("{letter}{n}"),
+        (true, 0) => letter.to_string(),
+        (true, n) => format!("{letter}[{n}]"),
+    }
 }
 
 impl Model {
@@ -42,28 +70,22 @@ impl Model {
         })
     }
 
-    /// ADDRESS of one element. The arguments are checked left to right, as the scalar call
-    /// always did.
+    /// ADDRESS of one element. The arguments are cast left to right, as the scalar call always
+    /// did; row and column bounds depend on abs_num and a1, so they are checked after every cast
+    /// (an argument error beats a bad row: docs/excel-semantics/lookup.md).
     fn address_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let (row_num, col_num, rest) = match values {
             [row_num, col_num, rest @ ..] => (row_num, col_num, rest),
             _ => return CalcResult::new_args_number_error(cell),
         };
         let row_num = match self.cast_number_ref(row_num, cell) {
-            Ok(n) => n as i32,
+            Ok(n) => n,
             Err(e) => return e,
         };
-        if row_num < 1 {
-            return CalcResult::new_error(Error::VALUE, cell, "row_num must be >= 1".to_string());
-        }
-
         let col_num = match self.cast_number_ref(col_num, cell) {
-            Ok(n) => n as i32,
+            Ok(n) => n,
             Err(e) => return e,
         };
-        if col_num < 1 {
-            return CalcResult::new_error(Error::VALUE, cell, "col_num must be >= 1".to_string());
-        }
 
         let abs_num = match rest.first() {
             Some(value) => match self.cast_number_ref(value, cell) {
@@ -100,6 +122,17 @@ impl Model {
             None => String::new(),
         };
 
+        // The row is relative in R1C1 style for abs_num 3 and 4, the column for 2 and 4; in A1
+        // style both are written as plain numbers and letters, so both are absolute indexes.
+        let row_relative = !use_a1 && (abs_num == 3 || abs_num == 4);
+        let col_relative = !use_a1 && (abs_num == 2 || abs_num == 4);
+        let Some(row_num) = address_index(row_num, LAST_ROW, row_relative) else {
+            return CalcResult::new_error(Error::VALUE, cell, "row_num out of range".to_string());
+        };
+        let Some(col_num) = address_index(col_num, LAST_COLUMN, col_relative) else {
+            return CalcResult::new_error(Error::VALUE, cell, "col_num out of range".to_string());
+        };
+
         let address = if use_a1 {
             let col_letter = match number_to_column(col_num) {
                 Some(s) => s,
@@ -111,32 +144,12 @@ impl Model {
                     )
                 }
             };
-            match abs_num {
-                1 => format!("{sheet_prefix}${col_letter}${row_num}"),
-                2 => format!("{sheet_prefix}{col_letter}${row_num}"),
-                3 => format!("{sheet_prefix}${col_letter}{row_num}"),
-                4 => format!("{sheet_prefix}{col_letter}{row_num}"),
-                _ => {
-                    // This should never happen due to the earlier check
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "invalid abs_num".to_string(),
-                    );
-                }
-            }
+            let col_mark = if abs_num == 1 || abs_num == 3 { "$" } else { "" };
+            let row_mark = if abs_num == 1 || abs_num == 2 { "$" } else { "" };
+            format!("{sheet_prefix}{col_mark}{col_letter}{row_mark}{row_num}")
         } else {
-            // R1C1 style
-            let row_part = if abs_num == 1 || abs_num == 2 {
-                format!("R{row_num}")
-            } else {
-                format!("R[{row_num}]")
-            };
-            let col_part = if abs_num == 1 || abs_num == 3 {
-                format!("C{col_num}")
-            } else {
-                format!("C[{col_num}]")
-            };
+            let row_part = r1c1_part('R', row_num, row_relative);
+            let col_part = r1c1_part('C', col_num, col_relative);
             format!("{sheet_prefix}{row_part}{col_part}")
         };
 

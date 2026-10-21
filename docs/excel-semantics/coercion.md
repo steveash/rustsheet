@@ -413,6 +413,12 @@ MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md
 These decide the generator's argument modes (eval/catalog/functions.yaml `array`, T-1082); the
 SUMX2MY2 family's `array` mode rests on "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing" above, and
 PERCENTOF's `aggregate` on Microsoft's page and on probes/percentof-snap-overflow-union (T-0416): direct text `"1"` and TRUE count as numbers (`PERCENTOF("1",2)` and `PERCENTOF(TRUE,2)` = 0.5), as in SUM.
+A blank cell is 0 only beside another argument or inside a multi-cell range: when every argument is a lone blank cell, GCD,
+LCM and MULTINOMIAL are `#VALUE!` (`MULTINOMIAL(Z200)`, `MULTINOMIAL(Z200:Z200)`, `MULTINOMIAL(Z200,Z201)`, `MULTINOMIAL(IF(TRUE,Z200))`,
+`GCD(Z200)`, `GCD(Z200:Z200)`, `LCM(Z200)` with Z200 and Z201 blank), while `MULTINOMIAL(Z200,2)`, `MULTINOMIAL(2,Z200)`,
+`MULTINOMIAL(Z200:Z201)` and `MULTINOMIAL(Z200:Z201,2)` are 1, `GCD(Z200,4)` and `LCM(Z200,4)` 4, and a cell holding 0 is 1
+(`MULTINOMIAL(Z210)`) (probes/t2275-address-bounds J1, J15:J30, excel-graph, 2026-10-21). Ours reads every blank as 0
+(MULTINOMIAL and `GCD(Z200:Z200)`; T-2294). Unprobed: how this `#VALUE!` ranks against a later negative or omitted argument.
 The type check wins over a negative argument whatever the order: `GCD(-1,B1:B11)` with the text "TRUE" in B1 is
 `#VALUE!`, and `MULTINOMIAL(A6:D9)` whose first cell is -2.5 and later cells hold FALSE and text is `#VALUE!`
 (gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m6/2c1a6e93a1974f48 Calc!A35, gen-m7/4629e931955aa4b8 Calc!A7, excel-graph; fixed in
