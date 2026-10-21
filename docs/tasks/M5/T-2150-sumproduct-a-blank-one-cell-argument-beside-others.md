@@ -3,7 +3,7 @@ id: T-2150
 title: "SUMPRODUCT: a blank one-cell argument beside others is #VALUE!, and an error argument beats a shape mismatch"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
