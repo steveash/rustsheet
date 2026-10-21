@@ -393,6 +393,7 @@ C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
 C	probes/ifs-switch-lift-edges.case.json	26
 C	probes/ifs-volatile-range-once.case.json	5
+C	probes/implicit-intersection-one-row-plain.case.json	18
 C	probes/incomplete-gamma-cap.case.json	38
 C	probes/index-1x1-array-index.case.json	29
 C	probes/index-area-num-snap.case.json	11
@@ -2268,7 +2269,6 @@ F	probes/scalar-lift-shapes.case.json	Sheet1!J1
 F	probes/scalar-lift-shapes.case.json	Sheet1!J3
 F	probes/scalar-lift-shapes.case.json	Sheet1!J4
 F	probes/scalar-lift-shapes.case.json	Sheet1!K3
-F	probes/sheet-names-like-cells-3d-spans.case.json	S1!B3
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!A1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B2
