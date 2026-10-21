@@ -358,9 +358,10 @@ the web keeps the cache on upload):
   ROWS `#VALUE!`, as for a span of this workbook ("3-D references outside the aggregates"), while
   without a link `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` (T-1381). Engine (T-1654): the lexer
   reads the unquoted `[n]First:Last!` prefix as the quoted `'[n]First:Last'!` (the formula text
-  keeps the quoted form, as for `'[1]Uses'!`), and `Model::cached_external_span` gives the written
-  area on each cached sheet between the two ends in `sheetNames` order, which the aggregates and
-  COUNTA read; it is `#REF!` as a value and `#VALUE!` where one sheet is needed. A span with an
+  keeps the quoted form, as for `'[1]Uses'!`), and `Model::cached_span_cells` gives the cells the
+  cache holds in the written area on the sheets between the two ends in `sheetNames` order, in
+  sheet, row and column order, in one walk of the cache, which the aggregates and COUNTA read
+  (blanks skipped); it is `#REF!` as a value and `#VALUE!` where one sheet is needed. A span with an
   end the cache does not hold stays `#BLOCKED!`. Unprobed, so UNVERIFIED: a one-sheet span
   (`[1]Uses:Uses!A1`), read here as a span (`#REF!` as a value, not that sheet's cell as a
   one-sheet span of this workbook is), `@` of a span, and the reversed span in the other

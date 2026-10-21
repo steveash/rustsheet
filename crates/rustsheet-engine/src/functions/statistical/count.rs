@@ -124,8 +124,8 @@ impl Model {
                     // So do those of a 3-D span of its cached sheets, on each sheet
                     // (`COUNTA([1]Uses:Defines!$A$1:$C$3)` is 9;
                     // fixtures/external-link-cached-3d-span Refs!B5, T-1654).
-                    if let Some(areas) = self.cached_external_span(arg, cell) {
-                        external += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+                    if let Some(rows) = self.cached_span_cells(arg, cell) {
+                        external += rows.iter().map(Vec::len).sum::<usize>() as f64;
                         continue;
                     }
                     // A reference, 3-D ones included, arrives as a Range: its non-empty cells

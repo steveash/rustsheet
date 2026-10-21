@@ -33,13 +33,13 @@ impl Lexer {
         if book_len == 0 || rest[book_len] != ']' {
             return None;
         }
+        let book: String = rest[..book_len].iter().collect();
         self.position = start + book_len + 1;
         let sheet = self.consume_identifier();
         // A 3-D span of that workbook's sheets, `[1]Uses:Defines!$B$2`, is the reference
         // `'[1]Uses:Defines'!$B$2` (fixtures/external-link-cached-3d-span; T-1654).
         if !sheet.is_empty() && self.peek_char() == Some(':') {
             if let Some(span) = self.consume_sheet_span(&sheet) {
-                let book: String = self.chars[start..start + book_len].iter().collect();
                 let token = self.consume_range(Some(format!("[{book}]{span}")));
                 if !matches!(token, TokenType::Illegal(_)) {
                     return Some(token);
@@ -53,7 +53,6 @@ impl Lexer {
             return None;
         }
         self.position += 1;
-        let book: String = self.chars[start..start + book_len].iter().collect();
         let prefix = format!("[{book}]{sheet}");
         if !sheet.is_empty() {
             let after_bang = self.position;

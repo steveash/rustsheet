@@ -24,7 +24,7 @@ use crate::{
 };
 
 use bitcode::{Decode, Encode};
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::RangeInclusive};
 
 /// Whether a reader of a cached area of a linked workbook sees the blanks around the cells the
 /// cache holds ([`Model::external_aggregate_value`]).
@@ -127,34 +127,60 @@ impl Model {
         })
     }
 
-    /// The areas of a 3-D span of a linked workbook's cached sheets, `[1]Uses:Defines!$B$2`: the
-    /// written area on each sheet from one end of the span to the other in the cache's
-    /// `sheetNames` order, whichever way it was written (`SUM([1]Defines:Uses!$B$2)` is 142;
-    /// fixtures/external-link-cached-3d-span Refs!B9, T-1654). `None` when `node` is no such span
-    /// or the cache does not hold both of its ends.
-    pub(crate) fn cached_external_span(
+    /// A 3-D span of a linked workbook's cached sheets, `[1]Uses:Defines!$B$2`: its book, the
+    /// indices in the cache's `sheetNames` order from one end of the span to the other, whichever
+    /// way it was written (`SUM([1]Defines:Uses!$B$2)` is 142; fixtures/external-link-cached-3d-span
+    /// Refs!B9, T-1654), and the written area. `None` when `node` is no such span or the cache does
+    /// not hold both of its ends.
+    fn cached_span(
         &self,
         node: &Node,
         cell: CellReferenceIndex,
-    ) -> Option<Vec<ExternalArea>> {
+    ) -> Option<(&ExternalBook, RangeInclusive<u32>, ExternalArea)> {
         let (name, area) = written_external_area(node, cell)?;
         let (book, sheets) = split_book_prefix(name)?;
         let (first, last) = sheets.split_once(':')?;
-        let book_index = external_book_index(book)?;
-        let cached = self.workbook.external_books.get(book_index)?;
-        let (first, last) = (sheet_index(cached, first)?, sheet_index(cached, last)?);
-        let sheets = first.min(last)..=first.max(last);
-        Some(
-            sheets
-                .map(|sheet| ExternalArea {
-                    cache: Some(CachedSheet {
-                        book: book_index,
-                        sheet,
-                    }),
-                    ..area
-                })
-                .collect(),
-        )
+        let book = self.external_book(book)?;
+        let (first, last) = (sheet_index(book, first)?, sheet_index(book, last)?);
+        Some((book, first.min(last)..=first.max(last), area))
+    }
+
+    /// Whether `node` is a 3-D span of a linked workbook's cached sheets ([`Model::cached_span`]).
+    pub(crate) fn is_cached_external_span(&self, node: &Node, cell: CellReferenceIndex) -> bool {
+        self.cached_span(node, cell).is_some()
+    }
+
+    /// The cached cells of a 3-D span of a linked workbook's sheets ([`Model::cached_span`]) in
+    /// sheet, row and column order, as an aggregate reads a span of this workbook sheet by sheet:
+    /// SUM 157, COUNT 4, MAX 142 and COUNTA 9 over `[1]Uses:Defines!…` (the count of the array)
+    /// (fixtures/external-link-cached-3d-span Refs!B2:B6, T-1654). Blanks are skipped, so one walk
+    /// of the cache serves the span however many sheets it names (CLAUDE.md directive 5). One row,
+    /// none when the cache holds no cell of the span, as [`Model::external_aggregate_value`] gives.
+    /// `None` when `node` is no such span.
+    pub(crate) fn cached_span_cells(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<Vec<Vec<ArrayNode>>> {
+        let (book, sheets, area) = self.cached_span(node, cell)?;
+        let mut keys: Vec<_> = book
+            .cells
+            .keys()
+            .filter(|&&(sheet, row, column)| sheets.contains(&sheet) && area.contains(row, column))
+            .copied()
+            .collect();
+        keys.sort_unstable();
+        let row: Vec<_> = keys
+            .into_iter()
+            .map(|(sheet, row, column)| {
+                calc_result_to_array_node(self.cached_cell(book, sheet, row, column, cell))
+            })
+            .collect();
+        Some(if row.is_empty() {
+            Vec::new()
+        } else {
+            vec![row]
+        })
     }
 
     /// A reference written into another workbook or onto a sheet this workbook lacks, where a
@@ -183,13 +209,13 @@ impl Model {
         };
         value
             .or_else(|| {
-                self.cached_external_span(node, cell)
-                    .map(|_| three_d_value_error(cell))
+                self.is_cached_external_span(node, cell)
+                    .then(|| three_d_value_error(cell))
             })
             .unwrap_or_else(|| Self::wrong_sheet_error(sheet_name.as_deref(), cell, message))
     }
 
-    /// A 3-D span of a linked workbook's cached sheets ([`Model::cached_external_span`]) where one
+    /// A 3-D span of a linked workbook's cached sheets ([`Model::cached_span`]) where one
     /// sheet is needed: `#VALUE!`, as for a span of this workbook
     /// (`ROWS([1]Uses:Defines!$A$1:$B$3)`; fixtures/external-link-cached-3d-span Refs!B10,
     /// T-1654). `None` for any other node.
@@ -198,8 +224,8 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
-        self.cached_external_span(node, cell)
-            .map(|_| three_d_needs_one_sheet(cell))
+        self.is_cached_external_span(node, cell)
+            .then(|| three_d_needs_one_sheet(cell))
     }
 
     /// [`external_area`] with the cache of the sheet it names, if the workbook holds one.
