@@ -53,6 +53,7 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 24 in eval/baseli
 
 ## Acceptance criteria
 - [ ] These 24 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [ ] gen-m6/07171fa3f7493f51 Calc!A261 (`NUMBERVALUE("1,000",FALSE,2.5)` = 1000, moved from T-2152) disappears from eval/baseline/gen-m6.txt.
 - [ ] text.md entry marked implemented.
 - [ ] `make check` green; reviewers approve.
 
