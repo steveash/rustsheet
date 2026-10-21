@@ -1069,6 +1069,7 @@ Evidence: probes/date-argument-window (90 cells, excel-graph, 2026-10-21).
 Ours: `fn_date` reads each argument through the same near-integer floor as TIME (T-2268).
 Status: VERIFIED
 Tasks: T-2268
+
 ## WORKDAY and NETWORKDAYS holidays: blank and number-text cells, and the error order (T-2270, T-2272)
 Rule (excel-graph, gen-m6, 2026-10-21):
 - A one-cell `holidays` reference to a blank cell is no holiday, not `#VALUE!`: `NETWORKDAYS(17247,33116,Data!E9)` = 11336,
