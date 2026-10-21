@@ -3,7 +3,7 @@ id: T-2130
 title: "PMT, IPMT and PPMT to 15 significant digits on the shared power kernel, off powf"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -36,9 +36,10 @@ every sweep cell. They no longer use `powf`, and a bit-level fit is not required
 
 ## Acceptance criteria
 - [ ] Every PMT, IPMT and PPMT cell of m9-fin-pmt and IPMT_PPMT.xlsx is within half a unit of
-      the 15th significant digit.
-- [ ] Any cell that regresses follows decision 0083's allowance, and the Outcome lists it.
-- [ ] `make check` green; reviewers approve.
+      the 15th significant digit. (All but four PPMT cells, where Excel itself is 7-41 ulp from the
+      exact value: moved to T-2242.)
+- [x] Any cell that regresses follows decision 0083's allowance, and the Outcome lists it.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit parity (T-1528, still time-boxed).
@@ -46,3 +47,23 @@ every sweep cell. They no longer use `powf`, and a bit-level fit is not required
 
 ## Visible-parity stage
 This whole task is the visible-parity stage (decision 0083).
+
+## Outcome
+- PMT, IPMT and PPMT compute the exact payment in double-double arithmetic: `accurate_growth`
+  (square-and-multiply from the exact `1+rate`, times `1 + expm1(f*ln_1p(rate))` for a fractional
+  exponent) and closed forms that do not cancel (`accurate_payment`, `accurate_period_split`). The
+  double forms remain as the fallback past |P| ≈ 1E±270 or |nper| > 2^32 (the overflow edges of
+  probes/pmt-overflow), with `powf` replaced by Excel's `^`. IPMT's `FutureValueForm::IpmtRecurrence`
+  is gone (the T-1528 TODO).
+- Visible parity: m9-fin-pmt visibly-off cells 250 → 4 (PMT 81 → 0, IPMT 32 → 0, PPMT 137 → 4);
+  IPMT_PPMT.xlsx 28 → 0. The four left (A82, A166, A412, A418) are period 1 of long terms, where
+  Excel is 7-41 ulp from the exact value; T-2242 has the lead (`PMT*exp((per-1-nper)*log1p(rate))`
+  fits 153 of the 154 fv-0 type-0 PPMT cells).
+- Eval: 71 known failures fixed (ironcalc-calc 903 → 855, probes 1600 → 1590; m9-fin-pmt bit-exact
+  258 → 445 of 924), visible-parity lock 1716 → 1662.
+- Regressed under decision 0083's standing allowance (numeric, ≤ 4 ulp, none visibly off; listed
+  in T-2243): IPMT_PPMT.xlsx G12, G14, H13, H31, H4 (1 ulp each); PMT.xlsx F15, F33, G10 (1 ulp),
+  and the PV/FV cells on them J15 (2), J33 (1), K10 (1), M10 (1), L15 (4).
+- The eight PV/NPER cells of decision 0064 did not move to passing: they take Excel's cached PMT
+  bits, which are not the exact payment.
+- Follow-ups: T-2242 (the four PPMT cells, campaign visible), T-2243 (the 13 one-ulp cells).

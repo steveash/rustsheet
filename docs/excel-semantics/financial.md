@@ -5,7 +5,8 @@ Rule: with `P = (1+r)^n` by right-to-left square-and-multiply (numbers.md, "Inte
 `k = 1+r*type` and `T = pmt*(k*((P-1)/r))`, Excel computes PV = `-(fv+T)/P` and FV = `-(pv*P+T)`
 (integer nper, rate ≠ 0), and NPER = `ln((pmt*k - fv*r)/(pmt*k + pv*r)) / ln(1+r)`, every
 operation in doubles and each logarithm a double logarithm of the double `1+r` (libm or correctly
-rounded; the sweep does not separate them), not `log1p`. PMT, IPMT, PPMT and NPV are still
+rounded; the sweep does not separate them), not `log1p`. PMT, IPMT and PPMT are the exact payment
+to 15 digits but not to the bit ("PMT, IPMT and PPMT are the exact payment" below); NPV is still
 unexplained; 64-bit intermediates do not explain them either (below).
 Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `FV.xlsx`):
 - `PMT.xlsx` Sheet1!F36 (rate 0.2, nper 5, pv -200): Excel's `(1+r)^n` behaves as exactly `2.48832`
@@ -55,11 +56,45 @@ Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `F
 - Extrapolated, not yet probed (T-1684): non-integer nper (where `^` is exp(y·ln x)), NPER with
   pmt = 0 (the general formula, not `-fv/pv`) or pv/fv = 0, and rates within a few ulps of -1 (`1+r`
   by Excel's `+`). The sweeps have integer nper and non-zero pmt only.
-Status: PARTLY VERIFIED (PV/FV/NPER fitted on the sweep and implemented, for integer nper and pmt ≠ 0; PMT/IPMT/PPMT/NPV open, time-boxed per
+Status: PARTLY VERIFIED (PV/FV/NPER fitted on the sweep and implemented, for integer nper and pmt ≠ 0; PMT/IPMT/PPMT/NPV bits open, time-boxed per
 decision 0056 after T-1524's two attempts, in T-1528)
-Implemented in: `annuity_power`, `annuity_factor`, `compute_future_value` (`FutureValueForm::Fitted`),
+Implemented in: `annuity_power`, `annuity_factor`, `compute_future_value`,
 `fn_pv` and `fn_nper` (crates/rustsheet-engine/src/functions/financial/mod.rs, T-0901). Salvaged from
 draft PR #13 by T-0031.
+
+## PMT, IPMT and PPMT are the exact payment
+Rule: Excel's PMT, IPMT and PPMT are within a few ulp of the exact value of the payment on the
+double arguments, with `1+rate` exact (not the double `1+rate` of PV and FV), for integer and
+fractional nper and period alike. With `P_x = (1+rate)^x`, `e` = period-1 (period-2 for type 1),
+`k = 1+rate*type` and the balance `B = (pv*P_e*(P_(n-e)-1) - fv*(P_e-1))/(P_n-1)`: PMT =
+`-(fv+pv*P_n)*rate/(k*(P_n-1))`, IPMT = `-rate*B` (`-rate*(B+PMT)` for type 1, 0 in period 1) and
+PPMT = `-(pv+fv)*rate*P_e/(P_n-1)` (PMT in period 1 of type 1). So IPMT is not the FV recurrence
+on the rounded PMT, and PPMT is not PMT − IPMT of rounded doubles: `PPMT(0.2,1,360,10000)` is
+-6.248581209907205E-26, where both PMT and IPMT are about -2000 (A82).
+Evidence (oracle: excel-graph, probes-numeric/m9-fin-pmt, 924 cells, 2026-10-06; Excel-cached
+values of ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx), each model computed exactly in rationals or at
+200 bits and rounded once (T-2130):
+- The exact model is within half a unit of the 15th significant digit on 308/308 PMT, 308/308
+  IPMT and 304/308 PPMT cells of m9-fin-pmt. With `1+rate` rounded to a double first it is 221,
+  305 and 194; IPMT on the PMT rounded to a double is 294 (`IPMT(0.2,180,360,10000,0,1)`: Excel
+  -1666.6666666666588, that model -1666.8616136989206, A83).
+- The same closed forms with real exponents match the fractional cells of IPMT_PPMT.xlsx (`PPMT(0.1,
+  3.3,30,8000)`, `PPMT(0.1,3,29.9,8000,10,1)`, `IPMT(0.0083,12.5,36,8000,1234,1)`: J13, I15,
+  G30) to 15 digits.
+- Excel is not the exact value to the bit: 3.5 ulp at most for PMT ("Annuity evaluation order").
+  Where PPMT cancels, Excel's error grows: the four period-1 cells of long terms A82, A166, A412,
+  A418 are 7 to 41 ulp from the exact value and visibly different from it. For the 154 fv-0,
+  type-0 PPMT cells, `PMT*exp((per-1-nper)*log1p(rate))` (the exact PMT rounded to a double, libm
+  `exp` and `log1p`) is within 15 digits on 153, all but A166 (Excel -1.2549699967849914E-12,
+  that model -1.254969996784983E-12), and bit-exact on 63; with `ln` of the double `1+rate` it is
+  131. Not yet explained (T-2242).
+- Not probed: whether the exact form also holds where P_n leaves about 1E±270 (the engine falls
+  back to its double forms there; probes/pmt-overflow covers the overflow edges), and for |nper|
+  above 2^32.
+Status: VERIFIED to 15 digits (m9-fin-pmt and IPMT_PPMT.xlsx), except the four PPMT cells above (T-2242);
+bits open (T-1528, T-2243)
+Implemented in: `accurate_growth`, `accurate_payment` and `accurate_period_split`
+(crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2130).
 
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
