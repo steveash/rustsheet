@@ -39,6 +39,13 @@ tail noise there is not modelled yet. The density (cumulative FALSE) is noisy to
 rounded on 38 of 150 cells; `T.DIST(0,10,FALSE)` = 0.38910838396603115 is 3 ulp above the
 correctly rounded 945/(768 sqrt 10), and the error grows with |t| (165 ulp at
 `T.DIST(1000,100,FALSE)`), the signature of a power computed as exp(a ln y).
+At df 2 the density is `EXP(-1.5*LN(2+t^2))` with Excel's EXP and LN, bit-exact on all 1,024 cells of a run of
+consecutive doubles. At df 3, 4, 5 and 10, a regression of Excel's relative error on the intermediates' rounding errors
+over runs of consecutive t shows t*t rounded to a double but neither n + t^2 nor 1 + t^2/n. The noise left is about 1
+to 5 x 2^-53 relative rms and grows with the exponent's size, as from one stored exponent. Still, no form
+D * exp(E) or exp(C + E) with E = RN(-((n+1)/2) ln(1 + t^2/n)) or the ln(n + t^2) form is bit-exact on more than
+about 60% of a df's cells, for any D or C (probes-numeric `t0969-t-pdf-runs`, excel-graph, 2026-10-20; T-0969
+attempt 7).
 Tiny t: Excel forms n + t^2 in doubles, so where it rounds to n the tail is exactly 1/2:
 `T.DIST.RT(1E-10,3)` = `TDIST(1E-10,3,1)` = 0.5 (probes-numeric t1048-tdist A27, B27), not the
 exact 0.49999999996324...
@@ -1383,7 +1390,8 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
 - **The centre tail at small df can follow the rounded y** (T-0969 attempt 6): for t^2 < n, I_y(n/2,1/2)/2 at
   y = fl(n/(n+t^2)), as T.TEST computes it, is bit-exact at `T.DIST.2T(0.1,2)`, (2,100) and (3,100) where the
   exact tail is 8 to 23 ulp off, but 29 and 97 ulp off at `T.DIST.RT(0.5,100)` and (0.5,1000), where the exact
-  tail is within 1. No (df, t) cut on the swept cells separates the two.
+  tail is within 1. No (df, t) cut on the swept cells separates the two (superseded: the denser grid of T-0969 attempt 7
+  finds the cut, see "T.DIST.RT follows the rounded y beyond t = 1").
 Evidence: probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-inv`,
 `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13. Exact reference values for
 the T.DIST accuracy bullets: mpmath `betainc` at 60 digits (T-0969 attempt 2, 2026-10-20).
@@ -1408,6 +1416,32 @@ Evidence: probes-numeric `t1048-ttest`, `t1049-ttest`; ironcalc-calc `STATISTICA
 Ours: `student_t.rs` `student_t_tail_at` since T-0969 attempt 5. T.TEST/TTEST visibly-off cells went from 19 to 3:
 t1048-ttest A3/B3 (6 ulp) and t1049-ttest A48 (5 ulp), all Welch.
 Status: VERIFIED (excel-graph)
+Tasks: T-0969
+
+## T.DIST.RT follows the rounded y beyond t = 1 (T-0969)
+Rule: away from the deep tail, T.DIST.RT (and so T.DIST, T.DIST.2T and TDIST) takes the tail at
+y = n/(n + t^2) as the worksheet rounds it, fl(n / fl(n + fl(t*t))), as T.TEST does, once t > 1 and
+y <= 0.99. For t up to 1, or y above 0.99 (t^2 under about n/99, so from df 100 on the switch moves out to
+t = sqrt(n/99)), it is the exact tail at t.
+- Evidence: probes-numeric `t0969-t-tail-grid` (excel-graph, 2026-10-20): T.DIST.RT on t = 0.0013 + 0.05k for
+  df 2 to 1000, and runs of 512 consecutive doubles at (df, t) = (100, 2.0123456789), (30, 3.0123456789),
+  (3, 1.0123456789).
+- On the runs, Excel's relative error against the exact tail regresses on the rounding errors of the
+  intermediates with coefficient -1 on fl(n + t^2) and +1 on fl(n / that), in units of d ln L / d ln y (df 100;
+  1.2 and -1.26 at df 30). That is the signature of I_y at that doubly rounded y. Excel's own incomplete-beta noise
+  (about 2.5 x 2^-53 relative rms) remains on top.
+- The switch shows on the grid as the side where the two models differ by 6 ulp or more:
+  - for df 20 to 100, the exact tail wins up to t = 1 and the rounded y from about 1.05;
+  - for df 200, 500 and 1000, the exact tail wins up to t = 1.40, 2.20 and 3.10, and the rounded y from 1.45, 2.25
+    and 3.20.
+  These bracket both y = 0.99 and y = 100/101; the cut is not pinned to the ulp.
+- Our model with that switch is bit-exact on 548 of the grid's 3,232 cells and within 4 ulp on 2,210, against 325
+  and 1,229 for the exact tail everywhere.
+- df 15 is an outlier: Excel is 6 to 27 ulp off both models on almost every cell, with one sign beyond t = 1 and
+  the other inside it. That is the pattern of a prefactor (a Gamma ratio at a = 7.5) about 1.5E-15 relative
+  off. It is not modelled.
+Ours: `student_t.rs` `unflushed_upper_tail` (since T-0969 attempt 7).
+Status: VERIFIED (excel-graph) for df 2 to 1000; above df 1000, and the cut's exact position, UNVERIFIED
 Tasks: T-0969
 
 ## Incomplete beta sweep (T-1044)
@@ -1524,6 +1558,25 @@ them and oracle cells contradict them.
 - **The closed forms are the exception.** They read the upper tail from w itself:
   `F.DIST.RT(0.7,4,2.4)` = 1 - exp(2 ln(1-w)) (H3), 2 ulp off with the exact complement.
 
+- **Accuracy against a 50-digit reference (2026-10-21 gap triage).** mpmath `betainc` at 50 digits,
+  regularized, at y = d1*x/(d1*x+d2), plus the closed-form density. Excel is not uniformly correctly
+  rounded on this family, and neither side is uniformly closer to the true value:
+  - At larger shapes Excel is close to correctly rounded and the engine is the inaccurate side.
+    `F.DIST(1,50,100,TRUE)` = 0.5108794921920699 (Excel +3.4E-17, ours -3.7E-15),
+    `F.DIST(1,50,100,FALSE)` = 1.6223539167134502 (Excel -4.4E-17, ours +4.2E-15) and
+    `F.DIST.RT(1,100,3)` = 0.6038137503819936 (Excel +3.9E-16, ours +3.9E-15) (probes-numeric/m9-f-dist
+    A27, A28, m9-legacy-fdist A40). `F.DIST(3,50,100,FALSE)` is 1.05292998522241E-05, where ours is
+    `#NUM!` (m9-f-dist A30).
+  - Elsewhere Excel is off the true value by more than half a unit in the 15th digit. No accurate kernel
+    reproduces these, only Excel's formulation:
+    - `F.DIST.RT(10,10,10)` = 0.0005715525434020334, Excel +1.4E-15 (m9-f-dist-rt A16).
+    - `FDIST(3.5,5,50)` = 0.008642212995925193, +7.1E-16 (m9-legacy-fdist A47).
+    - `F.DIST(2.5,3,7,FALSE)` = 0.09478619896436714, +9.5E-16 (t1049-fdist A16).
+    - `F.DIST.RT(10,50,100)` = 3.009600356083383E-22, -4.1E-15 (m9-f-dist-rt A20).
+  - At d1 = d2 = 1 and x = 1 the exact value is 0.5, yet Excel gives `F.DIST(1,1,1,TRUE)` =
+    0.5000000000000001 and `F.DIST.RT(1,1,1)` = 0.4999999999999999 (t1049-fdist A7, m9-legacy-fdist A31).
+  - Tasks: T-2219 (the accuracy cells, visible parity) and T-2221 (the fit, after the T-2220 sweep).
+
 The engine follows both PARTIAL rules. Against statrs, the probes-numeric F and BETA cases gain
 72 bit-exact cells and lose 3, a net gain of 69. The three lost cells are now 1 ulp off:
 `FDIST(100,1,1)` and `F.DIST.RT(100,1,1)` (m9-legacy-fdist A61, A62: 0.06345103486110715) and
@@ -1562,7 +1615,7 @@ switch waits for T-2119.
 Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
 densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
 stays UNVERIFIED (T-1744).
-Tasks: T-0970, T-2119, T-1744, T-1745
+Tasks: T-0970, T-2119, T-1744, T-1745, T-2219, T-2220, T-2221
 
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
 Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)

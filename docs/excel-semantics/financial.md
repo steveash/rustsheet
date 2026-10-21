@@ -1067,9 +1067,15 @@ A negative `fv/pv` is always `#NUM!` for RRI, even where the worksheet form is a
 (probes/fin-rri-vdb-edges A1-A16).
 Evidence: probes/fin-mduration-rri-fit (60 cells: 12 DURATION/MDURATION/quotient triples, 12 RRI/`^` pairs),
 fin-mduration, fin-rri (excel-graph, 2026-10-20, T-1975).
+Open point (2026-10-21 gap triage): the web probes above have an integer nper or an exact `fv/pv`.
+The one fractional-nper, inexact-ratio cell in the repo is Mac desktop: ironcalc-calc
+FINANCIAL/RRI.xlsx Sheet1!D12, `RRI(0.5,3,4)` = 0.7777777777777775 ("Microsoft Macintosh Excel"
+16.0300). The worksheet form `(4/3)^2-1` gives 0.7777777777777777, the engine's value. So either Mac
+desktop differs from the web here, as for SIN(4) and ATAN2 (decision 0074), or RRI is not the
+worksheet form when nper is fractional. T-2222 probes it on excel-graph.
 Status: VERIFIED (excel-graph)
 Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in annuity.rs.
-Tasks: T-1975
+Tasks: T-1975, T-2222
 
 ## NPV and FVSCHEDULE arguments
 Rule: NPV reads an array literal whole (`NPV(0.1,{-10000,2750,4250,3250,2750})` is 302.233453999042) and skips
