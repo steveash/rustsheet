@@ -3,7 +3,7 @@ id: T-2266
 title: "YEARFRAC: an out-of-calendar start date is #NUM! before an error in the end date"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
