@@ -335,6 +335,13 @@ macro_rules! lifting_table_functions {
             | Function::Mround
             | Function::Sqrtpi
             // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
+            // --- LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
+            | Function::Log
+            | Function::Decimal
+            | Function::Base
+            | Function::Atan2
+            | Function::Arabic
+            // --- End LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
             // --- Text lifts (T-1775) ---
             | Function::Len
             | Function::Lenb

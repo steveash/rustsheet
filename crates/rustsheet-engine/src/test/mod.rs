@@ -163,6 +163,7 @@ mod test_fn_isomitted;
 mod test_fn_isref;
 mod test_fn_lambda;
 mod test_fn_let;
+mod test_fn_log_base_lift;
 mod test_fn_map_reduce;
 mod test_fn_max_min;
 mod test_fn_mmult;

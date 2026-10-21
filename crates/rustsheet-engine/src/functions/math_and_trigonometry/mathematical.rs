@@ -22,6 +22,10 @@ const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
 
 /// The largest `min_length` BASE accepts (probes/base-min-length).
 const BASE_MAX_MIN_LENGTH: f64 = 255.0;
+/// COMBIN's `number`, and COMBINA's `number + number_chosen - 1`, at or above which Excel gives
+/// `#NUM!`, whatever the coefficient: 2^31-1 (probes/t2199-text-length-and-combin-cuts A20-A37,
+/// B20-B34; numbers.md "COMBINA is COMBIN(n+k-1, k)", "Bound").
+const COMBIN_MAX_NUMBER: f64 = 2_147_483_647.0;
 
 /// SIN, COS, TAN, COT, SEC and CSC are `#NUM!` from |x| = 2^27 (SIN(2^27-1) is a number, SIN(2^27)
 /// is `#NUM!`; probes/trig-huge-argument, docs/excel-semantics/numbers.md "Trig of a huge angle").
@@ -52,6 +56,57 @@ const MIN_MAX_ARGS: AggregatePolicy = AggregatePolicy {
     skip_empty_args: false,
     grids: GridReading::TopLeft,
 };
+
+/// LOG of `x` in `base`, or LOG10 with the base omitted: not ln(x)/ln(10), as `LOG(1000)` is 3
+/// (numbers.md "LOG with one argument is LOG10"; probes/log10-kernel, T-2004).
+fn excel_log(x: f64, base: Option<f64>) -> Result<f64, Error> {
+    if x <= 0.0 {
+        return Err(Error::NUM);
+    }
+    match base {
+        None => Ok(excel_log10(x)),
+        Some(1.0) => Err(Error::DIV),
+        Some(base) if base <= 0.0 => Err(Error::NUM),
+        Some(base) => Ok(f64::log(x, base)),
+    }
+}
+
+/// BASE's text of `number` in `radix`, padded with zeros to `min_length`.
+fn base_text(number: f64, radix: i64, min_length: f64) -> Result<String, Error> {
+    // Excel: min_length truncates and may be at most 255 (`BASE(1,2,255.9)` pads to 255,
+    // `BASE(1,2,256)` is #NUM!; probes/base-min-length). Checking before padding also bounds the
+    // allocation (CLAUDE.md directive 5).
+    if min_length < 0.0 || min_length.trunc() > BASE_MAX_MIN_LENGTH {
+        return Err(Error::NUM);
+    }
+    let min_length = min_length.trunc() as usize;
+    if !(2..=36).contains(&radix) {
+        return Err(Error::NUM);
+    }
+    // number must be >= 0, checked before truncation: `BASE(-0.0001,5,4)` is `#NUM!`
+    // (gen-m5/a6fec430ac350c1a Calc!A31; numbers.md "ROMAN truncates before its sign check; BASE checks the sign first").
+    if number < 0.0 {
+        return Err(Error::NUM);
+    }
+    let mut value = number.trunc() as i64;
+    let mut digits = Vec::new();
+    loop {
+        // `radix` is 2..=36, so the digit is below 36 and `from_digit` never fails: the `'0'`
+        // fallback is unreachable.
+        digits.push(
+            char::from_digit((value % radix) as u32, 36).map_or('0', |c| c.to_ascii_uppercase()),
+        );
+        value /= radix;
+        if value == 0 {
+            break;
+        }
+    }
+    let padding = min_length.saturating_sub(digits.len());
+    let mut text = String::with_capacity(padding + digits.len());
+    text.extend(std::iter::repeat_n('0', padding));
+    text.extend(digits.iter().rev());
+    Ok(text)
+}
 
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
@@ -92,100 +147,33 @@ impl Model {
         self.fold_min_max(args, cell, f64::max)
     }
 
+    /// `BASE(number, radix, [min_length])`: every argument lifts over arrays and ranges
+    /// (probes/t2198-m5-lift-argument-kinds; arrays.md). The arguments are read left to right,
+    /// the first error winning, then checked: `min_length`, the radix, the number's sign.
     pub(crate) fn fn_base(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(2..=3).contains(&arg_count) {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        // number to convert
-        let number = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        // radix
-        let radix = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc() as i64,
-            Err(s) => return s,
-        };
-        // optional min_length
-        let min_length = if arg_count == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => {
-                    if f < 0.0 {
-                        return CalcResult::Error {
-                            error: Error::NUM,
-                            origin: cell,
-                            message: "Minimum length must be non-negative".to_string(),
-                        };
-                    }
-                    // Excel: min_length truncates and may be at most 255 (`BASE(1,2,255.9)` pads to 255,
-                    // `BASE(1,2,256)` is #NUM!; probes/base-min-length). Checking before padding also
-                    // bounds the allocation (CLAUDE.md directive 5).
-                    let min_length = f.trunc();
-                    if min_length > BASE_MAX_MIN_LENGTH {
-                        return CalcResult::Error {
-                            error: Error::NUM,
-                            origin: cell,
-                            message: "Minimum length must be at most 255".to_string(),
-                        };
-                    }
-                    min_length as usize
-                }
-                Err(s) => return s,
-            }
-        } else {
-            0
-        };
-
-        if !(2..=36).contains(&radix) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Radix must be between 2 and 36".to_string(),
+        self.lift_call(Function::Base, args, cell, &mut |model, values| {
+            let (number, radix, min_length) = match values {
+                [number, radix] => (number, radix, None),
+                [number, radix, min_length] => (number, radix, Some(min_length)),
+                _ => return CalcResult::new_args_number_error(cell),
             };
-        }
-
-        // number must be >= 0, checked before truncation: `BASE(-0.0001,5,4)` is `#NUM!`
-        // (gen-m5/a6fec430ac350c1a Calc!A31; numbers.md "ROMAN truncates before its sign check; BASE checks the sign first").
-        if number < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Number must be non-negative".to_string(),
+            let number = match model.kernel_number(number, cell) {
+                Ok(f) => f,
+                Err(error) => return error,
             };
-        }
-
-        let mut value = number.trunc() as i64;
-        let mut buf = String::new();
-        if value == 0 {
-            buf.push('0');
-        } else {
-            while value > 0 {
-                let digit = (value % radix) as u8;
-                let ch = match digit {
-                    0..=9 => (b'0' + digit) as char,
-                    10..=35 => (b'A' + (digit - 10)) as char,
-                    _ => unreachable!(),
-                };
-                buf.push(ch);
-                value /= radix;
+            let radix = match model.kernel_number(radix, cell) {
+                Ok(f) => f.trunc() as i64,
+                Err(error) => return error,
+            };
+            let min_length = match model.kernel_number_or(min_length, 0.0, cell) {
+                Ok(f) => f,
+                Err(error) => return error,
+            };
+            match base_text(number, radix, min_length) {
+                Ok(text) => CalcResult::String(text.into()),
+                Err(error) => CalcResult::new_error(error, cell, String::new()),
             }
-            // we built it in reverse
-            buf = buf.chars().rev().collect();
-        }
-
-        // pad with leading zeros if needed
-        if buf.len() < min_length {
-            let mut padded = String::with_capacity(min_length);
-            for _ in 0..(min_length - buf.len()) {
-                padded.push('0');
-            }
-            padded.push_str(&buf);
-            buf = padded;
-        }
-
-        CalcResult::String(buf.into())
+        })
     }
 
     pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -702,97 +690,52 @@ impl Model {
         CalcResult::Number(PI)
     }
 
+    /// `ATAN2(x_num, y_num)`: both arguments lift over arrays and ranges
+    /// (probes/t2198-m5-lift-argument-kinds; arrays.md).
     pub(crate) fn fn_atan2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let y = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        // Excel: see docs/excel-semantics/numbers.md "ATAN2 is ATAN(y/x) plus or minus pi" (probes/atan2-*).
-        if x == 0.0 {
-            if y == 0.0 {
-                return CalcResult::Error {
-                    error: Error::DIV,
-                    origin: cell,
-                    message: "Arguments can't be both zero".to_string(),
-                };
-            }
-            return CalcResult::Number(FRAC_PI_2.copysign(y));
-        }
-        // The quotient is Excel's `/`: a subnormal x divides like zero (#DIV/0!), overflow is #NUM!.
-        let q = match divide(y, x) {
-            Ok(q) => q,
-            Err(error) => {
-                return CalcResult::Error {
-                    error,
-                    origin: cell,
-                    message: "Invalid quotient".to_string(),
+        self.numbers_fn(Function::Atan2, args, [0.0, 0.0], cell, |[x, y]| {
+            // Excel: see docs/excel-semantics/numbers.md "ATAN2 is ATAN(y/x) plus or minus pi" (probes/atan2-*).
+            if x == 0.0 {
+                if y == 0.0 {
+                    return Err(Error::DIV);
                 }
+                return Ok(FRAC_PI_2.copysign(y));
             }
-        };
-        // `+ 0.0` turns -0 into +0, which Excel never returns.
-        let a = flush_subnormal(q.atan()) + 0.0;
-        CalcResult::Number(if x < 0.0 {
-            if y >= 0.0 {
-                a + PI
+            // The quotient is Excel's `/`: a subnormal x divides like zero (#DIV/0!), overflow is #NUM!.
+            let q = divide(y, x)?;
+            // `+ 0.0` turns -0 into +0, which Excel never returns.
+            let a = flush_subnormal(q.atan()) + 0.0;
+            Ok(if x < 0.0 {
+                if y >= 0.0 {
+                    a + PI
+                } else {
+                    a - PI
+                }
             } else {
-                a - PI
-            }
-        } else {
-            a
+                a
+            })
         })
     }
 
+    /// `LOG(number, [base])`: both arguments lift over arrays and ranges
+    /// (probes/t2198-m5-lift-argument-kinds; arrays.md).
     pub(crate) fn fn_log(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let n_args = args.len();
-        if !(1..=2).contains(&n_args) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let x = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        // The base omitted is LOG10, not ln(x)/ln(10): `LOG(1000)` is 3 (numbers.md "LOG with
-        // one argument is LOG10"; probes/log10-kernel, T-2004).
-        let y = if n_args == 1 {
-            None
-        } else {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => Some(f),
-                Err(s) => return s,
-            }
-        };
-        if x <= 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Number must be positive".to_string(),
+        self.lift_call(Function::Log, args, cell, &mut |model, values| {
+            let (number, base) = match values {
+                [number] => (number, None),
+                [number, base] => (number, Some(base)),
+                _ => return CalcResult::new_args_number_error(cell),
             };
-        }
-        let Some(y) = y else {
-            return CalcResult::Number(excel_log10(x));
-        };
-        if y == 1.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Logarithm base cannot be 1".to_string(),
+            let x = match model.kernel_number(number, cell) {
+                Ok(x) => x,
+                Err(error) => return error,
             };
-        }
-        if y <= 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Logarithm base must be positive".to_string(),
+            let base = match base.map(|base| model.kernel_number(base, cell)).transpose() {
+                Ok(base) => base,
+                Err(error) => return error,
             };
-        }
-        CalcResult::Number(f64::log(x, y))
+            number_result(excel_log(x, base), cell)
+        })
     }
 
     // POWER(number, power)
@@ -840,18 +783,13 @@ impl Model {
             Err(s) => return s,
         };
         if n < 0.0 || k < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Arguments must be non-negative integers".to_string(),
-            };
+            return num_error(cell);
         }
         if k > n {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "k cannot be greater than n".to_string(),
-            };
+            return num_error(cell);
+        }
+        if n >= COMBIN_MAX_NUMBER {
+            return num_error(cell);
         }
         match combin(n, k) {
             Ok(result) => CalcResult::Number(result),
@@ -887,15 +825,15 @@ impl Model {
             Err(s) => return s,
         };
         if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Arguments must be non-negative integers".to_string(),
-            };
+            return num_error(cell);
         }
         // COMBINA(n, k) is Excel's COMBIN(n + k - 1, k), rounding included: `COMBINA(20,19)` is
-        // 35345263799.999985 (numbers.md "COMBINA is COMBIN(n+k-1, k)"). `combin` also bounds the
-        // loop by the smaller of k and n - 1, so `COMBINA(1,1E10)` is 1 at once (directive 5).
+        // 35345263799.999985 (numbers.md "COMBINA is COMBIN(n+k-1, k)"), and so is its bound:
+        // `COMBINA(2^31-2,1)` is 2147483646, `COMBINA(2^31-2,2)` and `COMBINA(2^31-1,1)` are #NUM!.
+        // That also caps `combin`'s loop below 2^31 steps; it runs min(k, n - 1) of them.
+        if n + k - 1.0 >= COMBIN_MAX_NUMBER {
+            return num_error(cell);
+        }
         match combin(n + k - 1.0, k) {
             Ok(result) => CalcResult::Number(result),
             Err(error) => CalcResult::Error {

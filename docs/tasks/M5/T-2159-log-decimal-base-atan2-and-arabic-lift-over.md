@@ -3,7 +3,7 @@ id: T-2159
 title: "LOG, DECIMAL, BASE, ATAN2 and ARABIC lift over arrays and ranges (SPEC-0011)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -46,10 +46,10 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 3 in eval/baselin
 | gen-m6/fe0972380d030e4a Calc!A224 | `=XLOOKUP(VALUE((Data!$E$1&Data!D6)),Data!A5:A10,Data!C1:D9,ISERR(FIND(" x ","ü",1)),DECIMAL(OFFSET(Data!B10...` | "#SPILL!" | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] The 3 gen-m6 known-failure lines above disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
-- [ ] These 7 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] arrays.md entry updated with the probed argument kinds and marked implemented for these five.
-- [ ] `make check` green; reviewers approve.
+- [x] The 3 gen-m6 known-failure lines above disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
+- [x] These 7 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] arrays.md entry updated with the probed argument kinds and marked implemented for these five.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -58,3 +58,19 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - DOLLAR, FIXED, NUMBERVALUE (T-2160).
+
+## Outcome
+- LOG, DECIMAL, BASE, ATAN2 and ARABIC run on the SPEC-0011 driver with every argument `Lift`
+  (`lift/kinds/general.rs`, `lifting_table_functions!`, their static-analysis fallbacks removed;
+  eval/catalog/lift-kinds.json regenerated). Each kernel reads its arguments left to right and keeps
+  its old checks in order (`excel_log`, `base_text` in mathematical.rs). As in every lifted kernel,
+  element errors carry no message. DECIMAL, BASE and ARABIC have their caps in
+  `lift/tests/kernel_work.rs`.
+- Tests: `test/test_fn_log_base_lift.rs` (array and range lifting, broadcast, `#SPILL!`, the
+  scalar rules kept).
+- Eval: gen-m5 known failures 107 -> 100 (the 7 cells above), probes 1738 -> 1690
+  (probes/t2198-m5-lift-argument-kinds, 48 cells); regressions 0; visibly-off cells 1750 -> 1730.
+- gen-m6 (after main's T-2180 merged in): 276 -> 274, A140 (TRIMRANGE over ARABIC) and A380 (COLUMNS of LOG) fixed.
+  fe0972380d030e4a A224 remains: DECIMAL now returns its 3x2 array, but XLOOKUP does not lift a match_mode array
+  (ours `#VALUE!`, Excel `#SPILL!`); filed as T-2290.
+- ARABIC of a blank cell stays `#VALUE!` (Excel: 0), T-2153's. Follow-ups: T-2289 (BASE past 2^53), T-2290.

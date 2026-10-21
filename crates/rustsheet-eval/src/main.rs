@@ -38,6 +38,7 @@ use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
 use rustsheet_eval::text_expect;
+use rustsheet_eval::v15_checkpoint;
 use rustsheet_eval::visible_parity::{self, VisibleCount};
 use rustsheet_eval::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
@@ -337,6 +338,8 @@ fn score_milestones(
         .collect();
     report.catalog_coverage =
         catalog_coverage::summarize(catalog, results, &report.evidence, &generated);
+    let generated_names: Vec<&str> = generated.keys().map(String::as_str).collect();
+    report.v15_checkpoint = v15_checkpoint::summarize(catalog, results, report, &generated_names);
     report.milestone_exit = milestone_exit::summarize(report);
 }
 
