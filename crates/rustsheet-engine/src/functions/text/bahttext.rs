@@ -9,7 +9,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    number_format::significant_15,
+    number_format::{cut_15_digits, increment_digits},
 };
 
 const DIGITS: [&str; 10] = [
@@ -64,33 +64,14 @@ fn push_integer(out: &mut String, digits: &[u8]) {
     }
 }
 
-/// BAHTTEXT of a finite number: the value is cut to 15 significant digits, then rounded half
-/// away from zero to two decimals (satang); the sign prints as ลบ even when the value rounds to
+/// BAHTTEXT of a finite number: the value is cut to 15 significant digits (a 16th-digit tie goes
+/// toward zero, docs/excel-semantics/text.md "FIXED, DOLLAR and BAHTTEXT cut to 15 significant
+/// digits first"), then rounded half away from zero to two decimals (satang); the sign prints as ลบ even when the value rounds to
 /// zero (probes/text-bahttext-wide, -wide2).
 fn baht_text(value: f64) -> String {
     let negative = value < 0.0;
     // (integer digits, fraction digits) of |value| cut to 15 significant digits.
-    let (mut baht, mut frac): (Vec<u8>, Vec<u8>) = if value == 0.0 {
-        (vec![0], Vec::new())
-    } else {
-        let (mantissa, exponent) = significant_15(value.abs(), true);
-        let digits: Vec<u8> = format!("{mantissa:015}")
-            .bytes()
-            .map(|b| b - b'0')
-            .collect();
-        if exponent >= 14 {
-            let mut int = digits;
-            int.resize(usize::try_from(exponent).unwrap_or(0) + 1, 0);
-            (int, Vec::new())
-        } else if exponent >= 0 {
-            let split = usize::try_from(exponent).unwrap_or(0) + 1;
-            (digits[..split].to_vec(), digits[split..].to_vec())
-        } else {
-            let mut frac = vec![0; usize::try_from(-exponent - 1).unwrap_or(0)];
-            frac.extend(digits);
-            (vec![0], frac)
-        }
-    };
+    let (mut baht, mut frac) = cut_15_digits(value.abs(), false);
     frac.resize(3, 0);
     let mut satang = u32::from(frac[0]) * 10 + u32::from(frac[1]);
     if frac[2] >= 5 {
@@ -98,20 +79,7 @@ fn baht_text(value: f64) -> String {
     }
     if satang == 100 {
         satang = 0;
-        // Carry into the baht digits.
-        let mut carry = true;
-        for d in baht.iter_mut().rev() {
-            if *d == 9 {
-                *d = 0;
-            } else {
-                *d += 1;
-                carry = false;
-                break;
-            }
-        }
-        if carry {
-            baht.insert(0, 1);
-        }
+        increment_digits(&mut baht);
     }
     while baht.len() > 1 && baht[0] == 0 {
         baht.remove(0);

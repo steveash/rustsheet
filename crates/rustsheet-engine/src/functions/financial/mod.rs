@@ -14,7 +14,7 @@ mod amortization;
 mod annuity;
 mod cumulative;
 mod dates;
-pub(crate) use dates::days_30_360_us_ymd;
+pub(crate) use dates::{day_count_basis, days_30_360_us_ymd};
 mod discount;
 mod financial_bonds;
 mod financial_depreciation;
@@ -25,7 +25,7 @@ mod rate_conversions;
 
 use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
 
-use crate::functions::lift::{number_or_error, number_result, LiftCost};
+use crate::functions::lift::{num_error, number_or_error, number_result, LiftCost};
 use crate::functions::Function;
 
 /// The cash flows (or FVSCHEDULE's rates) a lifted NPV, IRR, MIRR, XNPV, XIRR or FVSCHEDULE
@@ -446,56 +446,42 @@ impl Model {
         basis: f64,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let args = [
-            Node::NumberKind(start as f64),
-            Node::NumberKind(end as f64),
-            Node::NumberKind(basis),
-        ];
-        match self.fn_yearfrac(&args, cell) {
-            CalcResult::Number(yf) => Ok(yf),
-            error => Err(error),
-        }
+        let (days, year) = self.year_parts(start, end, basis, cell)?;
+        Ok((days / year).abs())
     }
 
-    // Day-count factors shared by PRICEMAT and YIELDMAT, mirroring
-    // `getMatFactors` in ExcelFinancialFunctions: all three terms share a single
-    // denominator `b = DaysInYear(issue, settlement)`, and the settlement→maturity
-    // span is `dim - a` (issue-anchored), not an independent year fraction.
-    //
-    // Returns `(a, dim, dsm)` already divided by `b`, i.e. in year units:
-    //   a   = DaysBetween(issue, settlement) / b   (= YEARFRAC(issue, settlement))
-    //   dim = DaysBetween(issue, maturity)   / b
-    //   dsm = dim - a
+    /// YEARFRAC's `(day count, year length)` from `start` to `end` (`Model::year_fraction_parts`),
+    /// `#NUM!` for a basis outside 0-4 or a date outside the calendar.
+    fn year_parts(
+        &self,
+        start: i64,
+        end: i64,
+        basis: f64,
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64), CalcResult> {
+        day_count_basis(basis)
+            .and_then(|basis| self.year_fraction_parts(start as f64, end as f64, basis))
+            .ok_or_else(|| num_error(cell))
+    }
+
+    /// Day-count parts shared by PRICEMAT and YIELDMAT, as Excel's `getMatFactors`: one year
+    /// length `b`, the year of issue to settlement (so basis 1 reads the year length of that
+    /// span), and the issue-to-maturity and issue-to-settlement day counts, with
+    /// settlement-to-maturity their difference (financial.md "PRICEMAT and YIELDMAT count the
+    /// settlement-to-maturity days").
+    ///
+    /// Returns `(b, dim, a, dsm)` in days.
     fn get_mat_factors(
-        &mut self,
+        &self,
         issue: i64,
         settlement: i64,
         maturity: i64,
         basis: f64,
         cell: CellReferenceIndex,
-    ) -> Result<(f64, f64, f64), CalcResult> {
-        let a = self.get_yearfrac(issue, settlement, basis, cell)?;
-        let dim = if basis == 1.0 {
-            // Actual/Actual has a date-dependent DaysInYear, so YEARFRAC(issue,
-            // maturity) would use a different denominator. Re-base onto `b` via
-            // the actual day counts: dim = dim_days * a / a_days = dim_days / b.
-            let a_days = (settlement - issue) as f64;
-            let dim_days = (maturity - issue) as f64;
-            // Callers guarantee `issue < settlement`, so `a_days > 0`; this guard
-            // is defensive only.
-            if a_days == 0.0 {
-                return Err(CalcResult::new_error(
-                    Error::DIV,
-                    cell,
-                    "Division by zero".to_string(),
-                ));
-            }
-            dim_days * a / a_days
-        } else {
-            // Constant DaysInYear, so the common denominator is automatic.
-            self.get_yearfrac(issue, maturity, basis, cell)?
-        };
-        Ok((a, dim, dim - a))
+    ) -> Result<(f64, f64, f64, f64), CalcResult> {
+        let (a, b) = self.year_parts(issue, settlement, basis, cell)?;
+        let (dim, _) = self.year_parts(issue, maturity, basis, cell)?;
+        Ok((b, dim, a, dim - a))
     }
 
     /// `FVSCHEDULE(principal, schedule)`: the principal lifts over arrays (a multi-cell range is

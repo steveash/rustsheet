@@ -1,5 +1,5 @@
 ---
-id: T-2179
+id: T-2262
 title: "Probe TYPE of a one-cell range over text, boolean, error, blank, OFFSET and INDIRECT cells"
 milestone: M5
 lane: functions-logic

@@ -3,7 +3,7 @@ id: T-2149
 title: "FIXED and DOLLAR past 2^64 or with more than 20 decimals print 15 digits then zeros"
 milestone: M5
 lane: functions-text
-status: todo
+status: dropped
 priority: P2
 size: S
 tier: sonnet
@@ -36,3 +36,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 5 in eval/baselin
 
 ## Out of scope
 - The 15-digit cut of ordinary values (T-2148).
+
+## Outcome (dropped, 2026-10-21, gap triage)
+Already fixed on `main`: T-2148 (c1d95281, "FIXED, DOLLAR and BAHTTEXT round at 15 significant digits first") removed
+all 5 known-failure lines this task owned from eval/baseline/gen-m5.txt (399071ff A122, 6b831f5e A232, b0ecb7ca A128,
+e0087a1f A291, fc81c2f7 A366); a fresh `make eval` on 475eac98 shows them passing and no other FIXED/DOLLAR failure in
+gen-m5. Nothing is left to do, so a worker run here would be wasted.

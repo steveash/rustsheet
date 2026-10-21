@@ -665,6 +665,8 @@ borrowing `cast::calc_result_to_text` and `Model::calc_result_to_number`, so an 
 scalar error format; text.md, T-1963). FIND and SEARCH are `Constant` with their scan named as the cap
 (`lift/tests/kernel_work.rs`); T-1961 charges it. The final grep finds two `bcast_get` loops the table above missed or
 another task owns: IMAGE's `image_grid` (information/offline_errors.rs, T-1962) and CHOOSE's `choose_array` (T-1810).
+As built (T-1962): IMAGE's array path calls `lift_values` with one kernel, `image_element`, and `image_grid` is gone; a
+position past a shorter array is the driver's `#N/A` element in argument order, as Excel does (probes/rich-errors-image-past-end).
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
@@ -936,6 +938,15 @@ evidence it has:
   answered in SPEC-0014 rules 2-7 (T-1960 asks the same of TAKE).
 So T-1838 builds on T-1955's spec and T-1956's carrier, and adds TAKE and DROP as two more
 producers.
+
+**As built (T-1838).** `Model::take_drop_reference` reads the array once and the counts as values; when a
+count lifts (an array or a multi-cell range, as for OFFSET), a single-sheet range source goes through
+`lift_references` and any other source through `lift_values` with the table entry's options and
+`LiftCost::Cells` of the array (each element copies at most the whole array, so the bound is checked before
+any element runs). An unlifted call is unchanged. TAKE and DROP join OFFSET, INDIRECT and TRIMRANGE in
+`reference_producer`, so INDEX, ROWS, COLUMNS, SUMPRODUCT, the aggregates and LET read the grid as they read
+a lifted OFFSET's. IF, CHOOSE and OFFSET's reference argument (`may_hand_on_grid`) do not hand a TAKE or DROP
+grid on yet: unprobed either way, asked in T-1960.
 
 ## Alternatives considered
 - **A helper per family** (status quo, "lift literals only" variants for financial and

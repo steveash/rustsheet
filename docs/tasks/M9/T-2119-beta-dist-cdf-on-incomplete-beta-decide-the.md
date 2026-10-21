@@ -4,9 +4,10 @@ title: "BETA.DIST cdf on incomplete_beta::beta_reg; decide the nine chained BETA
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-0970]
 ---
 
@@ -43,3 +44,14 @@ change, or measure them and file a separate task.
 ## Out of scope
 - BETADIST_BETAINV G5 and G26 (Cephes' fraction 160 ulp off where Excel is correctly rounded;
   Excel 34 ulp from correct): the T-1044 sweep work.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 510 in total.
+- BETA.DIST: 505 cells (13-14 digits right 384, 10-12 120, 6-9 1, fewer or 0 vs nonzero 0); most in `probes-numeric/t1745-beta-inv-roundtrip.case.json` 276; `probes-numeric/m9-beta-dist-a100.case.json` 43. e.g. `BETA.DIST(0.1,1,2,TRUE)` Excel 0.18999999999999995, ours 0.1900000000000007
+- BETADIST: 5 cells (13-14 digits right 5, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-legacy-betadist.case.json` 5. e.g. `BETADIST(0.01,2,3)` Excel 0.0005920300000000006, ours 0.0005920300000000013
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+The nine chained BETA.INV cells that move from bit-exact to 1-2 ulp are exactly the trade decision 0083 allows: record them under its allowance instead of waiting for a separate decision.

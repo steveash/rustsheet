@@ -19,6 +19,7 @@
 use chrono::{Datelike, NaiveDate};
 
 use super::accrint::acc_days_between;
+use super::dates::day_count_basis;
 use super::number_or_error;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
@@ -88,19 +89,18 @@ impl Model {
         let salvage = self.cast_number_ref(salvage, cell)?;
         let period = self.cast_number_ref(period, cell)?;
         let rate = self.cast_number_ref(rate, cell)?;
-        let basis = self
-            .cast_number_no_bools_or(rest.first(), 0.0, cell)?
-            .trunc() as i32;
+        let basis = self.cast_number_no_bools_or(rest.first(), 0.0, cell)?;
+        let basis = day_count_basis(basis).and_then(|basis| i32::try_from(basis).ok());
         let valid = cost >= 0.0
             && salvage >= 0.0
             && salvage < cost
             && period >= 0.0
             && rate > 0.0
             && purchased < first_period
-            && matches!(basis, 0 | 1 | 3 | 4);
-        if !valid {
+            && matches!(basis, Some(0 | 1 | 3 | 4));
+        let Some(basis) = basis.filter(|_| valid) else {
             return Err(num_error(cell));
-        }
+        };
         let asset = Asset {
             cost,
             purchased: from_excel_date(purchased).map_err(|_| num_error(cell))?,

@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "3-D spans over sheets named like cells (S1, S2, S3), written unquoted: Excel for the web reads S1:S3!A1 differently from S3:S1!A1 (T-2115)",
+  "tags": [
+    "M8",
+    "probe",
+    "3d-reference",
+    "sheets"
+  ],
+  "sheets": [
+    {
+      "name": "S1",
+      "cells": {
+        "A1": 1,
+        "B1": "=SUM(S1:S3!A1)",
+        "B2": "=SUM(S3:S1!A1)",
+        "B3": "=SHEETS(S1:S3!A1)",
+        "B4": "=SHEETS(S3:S1!A1)",
+        "B5": "=SUM('S1:S3'!A1)",
+        "B6": "=SHEETS('S1:S3'!A1)",
+        "B7": "=SUM(S2!A1)"
+      }
+    },
+    {
+      "name": "S2",
+      "cells": {
+        "A1": 5
+      }
+    },
+    {
+      "name": "S3",
+      "cells": {
+        "A1": 7
+      }
+    }
+  ],
+  "expected": {}
+}

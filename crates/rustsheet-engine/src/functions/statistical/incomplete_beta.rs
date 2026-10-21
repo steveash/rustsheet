@@ -143,19 +143,30 @@ fn gamma_ratio(a: f64, b: f64) -> f64 {
 /// fraction w with `I_x(a,b) = x^a y^b / (a B(a,b)) * w`, at most [`MAX_FRACTION_TERMS`] steps.
 fn cephes_fraction(a: f64, b: f64, x: f64, y: f64) -> f64 {
     if x * (a + b - 2.0) - (a - 1.0) < 0.0 {
-        fraction(
-            x,
-            [a, a + b, a, a + 1.0, 1.0, b - 1.0, a + 1.0, a + 2.0],
-            false,
-        )
+        incbcf(a, b, x)
     } else {
-        let z = x / y;
-        fraction(
-            z,
-            [a, b - 1.0, a, a + 1.0, 1.0, a + b, a + 1.0, a + 2.0],
-            true,
-        ) / y
+        incbd(a, b, x / y) / y
     }
+}
+
+/// Cephes' `incbcf`: the continued fraction w with `I_x(a,b) = x^a (1-x)^b / (a B(a,b)) * w`.
+pub(super) fn incbcf(a: f64, b: f64, x: f64) -> f64 {
+    fraction(
+        x,
+        [a, a + b, a, a + 1.0, 1.0, b - 1.0, a + 1.0, a + 2.0],
+        false,
+    )
+}
+
+/// Cephes' `incbd` before its final division by 1 - x, taking `ratio` = x/(1-x) from the caller:
+/// `I_x(a,b) = x^a (1-x)^b / (a B(a,b)) * incbd(a, b, ratio) / (1-x)`. A caller that knows 1 - x
+/// better than x forms the ratio without rounding x first (the Student-t tails, `student_t.rs`).
+pub(super) fn incbd(a: f64, b: f64, ratio: f64) -> f64 {
+    fraction(
+        ratio,
+        [a, b - 1.0, a, a + 1.0, 1.0, a + b, a + 1.0, a + 2.0],
+        true,
+    )
 }
 
 /// The convergent loop shared by `incbcf` (`second` false) and `incbd`.

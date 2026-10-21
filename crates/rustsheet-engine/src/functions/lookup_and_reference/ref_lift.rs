@@ -2,6 +2,7 @@
 //! (SPEC-0014 "Producers"): which argument values lift the call, and their conversion to the
 //! driver's arguments; and where IF, CHOOSE, LET and variables hand such an array on (rule 7).
 
+use super::drop_take::Edge;
 use crate::calc_result::CalcResult;
 use crate::expressions::parser::Node;
 use crate::expressions::types::CellReferenceIndex;
@@ -43,8 +44,8 @@ pub(super) fn may_hand_on_grid(node: &Node) -> bool {
 impl Model {
     /// A value argument whose consumer reads an array of references by its elements (SPEC-0014
     /// "Consumers"): a lifted producer is its grid, anything else its value as
-    /// `evaluate_node_in_context` gives it, a range as `RefArg::Ranges`. OFFSET, INDIRECT and
-    /// TRIMRANGE are the producers so far (TODO(T-1838) TAKE and DROP join them); IF, CHOOSE,
+    /// `evaluate_node_in_context` gives it, a range as `RefArg::Ranges`. The producers are
+    /// OFFSET, INDIRECT, TRIMRANGE, TAKE and DROP ([`Model::reference_producer`]); IF, CHOOSE,
     /// LET and a variable hand a producer's grid on, as they do to an aggregate:
     /// `SUMPRODUCT(IF(TRUE,OFFSET(A1,{0;1},0)))` is 0 as the bare OFFSET is (rule 7;
     /// probes/reference-lift-pass-through E5-E7). Each picks its argument as its value form does
@@ -56,7 +57,12 @@ impl Model {
     ) -> RefArg {
         match node.ungrouped() {
             Node::FunctionKind {
-                kind: kind @ (Function::Offset | Function::Indirect | Function::Trimrange),
+                kind:
+                    kind @ (Function::Offset
+                    | Function::Indirect
+                    | Function::Trimrange
+                    | Function::Take
+                    | Function::Drop),
                 args,
             } => self.reference_producer(kind, args, cell),
             Node::FunctionKind {
@@ -94,8 +100,9 @@ impl Model {
         }
     }
 
-    /// OFFSET, INDIRECT or TRIMRANGE read as a reference argument: one reference, or an array of
-    /// references when an argument lifts the call (`kind` is one of the three).
+    /// OFFSET, INDIRECT, TRIMRANGE, TAKE or DROP read as a reference argument: one reference (an
+    /// unlifted TAKE or DROP: its value, as a value argument reads it), or an array of
+    /// references when an argument lifts the call (`kind` is one of the five).
     pub(crate) fn reference_producer(
         &mut self,
         kind: &Function,
@@ -105,6 +112,8 @@ impl Model {
         match kind {
             Function::Indirect => self.indirect_reference(args, cell),
             Function::Trimrange => self.trimrange_reference(args, cell, false),
+            Function::Take => self.take_drop_reference(args, cell, Edge::Take, false),
+            Function::Drop => self.take_drop_reference(args, cell, Edge::Drop, false),
             _ => self.offset_reference(args, cell),
         }
     }

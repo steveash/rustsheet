@@ -286,16 +286,6 @@ F	ironcalc-calc/FINANCIAL/DB_DDB.xlsx	Sheet1!G42
 F	ironcalc-calc/FINANCIAL/DB_DDB.xlsx	Sheet1!G5
 F	ironcalc-calc/FINANCIAL/DB_DDB.xlsx	Sheet1!G7
 F	ironcalc-calc/FINANCIAL/DB_DDB.xlsx	Sheet1!H10
-F	ironcalc-calc/FINANCIAL/DISC.xlsx	Sheet1!F10
-F	ironcalc-calc/FINANCIAL/DISC.xlsx	Sheet1!F15
-F	ironcalc-calc/FINANCIAL/DISC.xlsx	Sheet1!F19
-F	ironcalc-calc/FINANCIAL/DISC.xlsx	Sheet1!F2
-F	ironcalc-calc/FINANCIAL/DISC.xlsx	Sheet1!F6
-F	ironcalc-calc/FINANCIAL/INTRATE.xlsx	Sheet1!F2
-F	ironcalc-calc/FINANCIAL/INTRATE.xlsx	Sheet1!F3
-F	ironcalc-calc/FINANCIAL/INTRATE.xlsx	Sheet1!F4
-F	ironcalc-calc/FINANCIAL/INTRATE.xlsx	Sheet1!F5
-F	ironcalc-calc/FINANCIAL/INTRATE.xlsx	Sheet1!F6
 F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G16
 F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G17
 F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G29
@@ -398,19 +388,6 @@ F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E3
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E4
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E5
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C4
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!C8
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D17
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D2
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D3
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D4
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!E15
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!E17
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!E4
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F17
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F2
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F3
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F4
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F8
 F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K2
 F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K4
 F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K5
@@ -623,17 +600,16 @@ F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C4
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!E4
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	Sheet1!D14
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	Sheet1!D26
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/EXP_SIGN.xlsx	EXP_SIGN!B44
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	inside_a_lambda!C3
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	inside_a_lambda!C4
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	COTH_CSCH_SECH!B10
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	COTH_CSCH_SECH!B40
+F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	COTH_CSCH_SECH!B51
+F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	COTH_CSCH_SECH!C15
+F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	COTH_CSCH_SECH!C17
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	COTH_CSCH_SECH!C51
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	COTH_CSCH_SECH!C54
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	COTH_CSCH_SECH!C55
+F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	SINH_COSH_TANH!B15
+F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	SINH_COSH_TANH!B17
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	SINH_COSH_TANH!B51
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	SINH_COSH_TANH!D10
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	SINH_COSH_TANH!D40
+F	ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx	SINH_COSH_TANH!D51
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G11
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G14
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G15
@@ -698,14 +674,6 @@ F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L3
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L4
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L5
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L6
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B10
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B11
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B12
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B13
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B4
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B6
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B7
-F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	Sheet1!B8
 F	ironcalc-calc/STATISTICAL/BINOM.xlsx	BINOM.DIST!E13
 F	ironcalc-calc/STATISTICAL/BINOM.xlsx	BINOM.DIST!E15
 F	ironcalc-calc/STATISTICAL/BINOM.xlsx	BINOM.DIST!E18
@@ -815,19 +783,6 @@ F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L2
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L3
 F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!D1
 F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!K1
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B10
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B11
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B16
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B2
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B20
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B22
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B28
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B3
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B4
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B6
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B7
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B8
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA!B9
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E10
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E11
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E16
@@ -1101,7 +1056,6 @@ F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!E7
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!E75
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!E76
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!E8
-F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!F16
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!F17
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!F18
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!F3
@@ -1109,7 +1063,6 @@ F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!F4
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!F6
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!F7
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST T.INV T.DIST.RT!F8
-F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST.2T T.INV.2T!C16
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST.2T T.INV.2T!C17
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST.2T T.INV.2T!C3
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST.2T T.INV.2T!C4
@@ -1153,9 +1106,7 @@ F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST.2T T.INV.2T!D7
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST.2T T.INV.2T!D72
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST.2T T.INV.2T!D73
 F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST.2T T.INV.2T!D8
-F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F3
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F4
-F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F6
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F7
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F8
 F	ironcalc-calc/STATISTICAL/WEIBULL_DIST.xlsx	Sheet1!E2
