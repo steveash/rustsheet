@@ -3,7 +3,7 @@ id: T-2145
 title: "Oracle sweep for the binomial family: BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST pmf and cdf on short-decimal p"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
