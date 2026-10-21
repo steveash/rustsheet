@@ -3,7 +3,7 @@ id: T-2273
 title: "CHOOSEROWS/CHOOSECOLS: an error argument beats an out-of-range index's #VALUE!"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
