@@ -656,8 +656,8 @@ functions. The date readers did not change, nor did `COUPPCD(DATE(2030,1,15),DAT
 coupon date below. The committed sidecars were produced from 2026-10-12 to 2026-10-20.
 - ACCRINT lost its large 2·1462-day values: `date-system-1904-accrint-settlement-bound` S!A1 410415.8333333334 → 300,
   and many `#NUM!` cells there and in `date-system-1904-financial-settlement-bound` D1-E9 now compute.
-- ACCRINT near 9999 (`date-system-1904-odd-accrint-bound` B11-D15, calc_method TRUE and FALSE) went from `#NUM!`
-  to values, e.g. `ACCRINT(DATE(9994,1,1),DATE(9995,12,31),DATE(9995,12,21),0.05,1000,2,0,TRUE)` 98.61111111111111.
+- ACCRINT near 9999 (`date-system-1904-odd-accrint-bound` B11-B14, C11-C15, D11-D15, calc_method TRUE and FALSE)
+  went from `#NUM!` to values (A13 and A14 moved in the 6th digit), e.g. `ACCRINT(DATE(9994,1,1),DATE(9995,12,31),DATE(9995,12,21),0.05,1000,2,0,TRUE)` 98.61111111111111.
 - COUPNUM with a previous coupon before 1904-01-01 became `#NUM!` (financial.md "COUPNUM in a 1904 workbook");
   `date-system-1904-financial` S!A38 25 → `#NUM!`, S!A41 10 → `#NUM!`.
 - Several day counts moved by about a day (`date-system-1904-financial-readers` A11, B11, D11, E11 and the 22 and 33
@@ -667,7 +667,7 @@ The full cell list, with both values, is docs/research/excel-1904-drift-2026-10.
 they were until T-2337 decides how to adopt the new values; the next entry describes the older behavior.
 Evidence: re-fill of 2026-10-21 (excel-graph), not committed; probes/fin-coupnum-1904-epoch and
 fin-coupnum-1904-maturity-sweep (committed, 2026-10-21).
-Status: OBSERVED (excel-graph), not yet reconciled
+Status: UNVERIFIED (one re-fill, not committed; T-2337 confirms it on a second day)
 Tasks: T-2337, T-2125
 
 ## The 1904 date system: financial day counts read a 1904 serial as the 1900 serial + 2·1462
@@ -789,6 +789,8 @@ YEARFRAC and the financial date readers. Every shift cell matches, COUPNCD at 99
 The other failing cells are last-digit misses (DISC, INTRATE, PRICEDISC, PRICEMAT, YIELDDISC, YIELDMAT, TBILL*; T-1374)
 or iteration stopping points (XIRR, YIELD, ODDFYIELD; T-0916). Most fail in the 1900 twin too; PRICEDISC
 daycount A20 is 1 ulp off in 1904 only.
+Conflict: a 2026-10-21 re-fill changed 111 of the 1904 financial cells this entry rests on; see "Excel for the web
+changed 1904 financial results (2026-10)" above (T-2337).
 Status: VERIFIED (web)
 Tasks: T-1436, T-1440, T-1447, T-1457, T-1489, T-1492, T-1494
 
