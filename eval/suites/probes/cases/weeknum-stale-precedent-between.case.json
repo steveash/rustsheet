@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM stale return_type: a reader (A3) refers to a marker (A1) with another cell (A2) between them in the order. If the precedent is calculated on demand, the order is A1, A3, A2 and A2 reads A3's Sunday; if A3 is moved to after A1 and re-run, the order is A2, A1, A3 and A2 reads nothing. Readers decode the reused start weekday: WEEKNUM(2..7,99) joined gives 111111 Sun, 222222 Mon, 122222 Tue, 112222 Wed, 111222 Thu, 111122 Fri, 111112 Sat; markers WEEKNUM(100,t) with t 1 Sun, 2 Mon, 12 Tue, 13 Wed, 14 Thu (T-1484)",
+  "tags": [
+    "M6",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Between",
+      "cells": {
+        "A1": "=WEEKNUM(100,2)",
+        "A2": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")&\"|\"&WEEKNUM(100,1)",
+        "A3": "=IFERROR(WEEKNUM(2+0*A1,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")&\"|\"&WEEKNUM(100,1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Between!A1",
+    "Between!A2",
+    "Between!A3"
+  ]
+}

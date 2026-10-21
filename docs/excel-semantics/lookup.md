@@ -604,11 +604,17 @@ a column number and picks one cell, a scalar: `INDEX({2,3},1)` and `INDEX({2},1)
 `TYPE(INDEX(Z1:Z2,1))` is 1 (one cell). So a legacy N or T over it is `#VALUE!` (references.md "Legacy N and T over a
 reference-returning call"): `=N(INDEX({2;3},2))`, `=T(INDEX({"a";"b"},1))` and `=N(INDEX({2;3},1,0))` are `#VALUE!`, while
 `=N(INDEX({2,3},2))` is 3 and `=N(INDEX({2},1))` 2; a legacy `=TYPE(INDEX({2;3},1))` is shown `=TYPE(@INDEX({2;3},1))`, 1.
-`TYPE(INDEX({7},0,0))` and the other whole-row and whole-column selections of a scalar or a 1x1 array are unprobed (their
-values are, "INDEX of a scalar or a 1x1 array"); the engine gives them the same array.
-Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); probes/legacy-n-t-marker-shapes F10.
+Every whole-row and whole-column pick (an index of 0) of a scalar or a 1x1 array is an array too: `TYPE` is 64 and `ROWS` and
+`COLUMNS` are 1 for `INDEX({7},0,0)`, `INDEX({7},1,0)`, `INDEX({7},0,1)`, `INDEX({7},0)`, `INDEX(5,0,0)` and `INDEX(5,0)`;
+`INDEX({2,3},0,1)` (one cell of a one-row array's column) is a 1x1 array (`TYPE` 64, value 2) and `INDEX({2;3},0,1)` a 2x1 one.
+`INDEX({2,3},0)` is the whole 1x2 row (`TYPE` 64, `COLUMNS` 2; a spill that collides is `#SPILL!`). A legacy `=N(...)` over
+any of them is `#VALUE!` and `FORMULATEXT` shows the formula as typed, with no `@`, including for the scalar `INDEX(5,0,0)`
+and `INDEX(5,0)`.
+Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); probes/legacy-n-t-marker-shapes F10;
+probes/index-zero-index-scalar-shape (excel-graph, 2026-10-20, T-1943).
 Status: VERIFIED (excel-graph)
-Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs).
+Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs), except a legacy N over `INDEX(5,0,0)` or
+`INDEX(5,0)` (a scalar first argument) returns 5 and its FORMULATEXT gains an `@` (T-2191).
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
