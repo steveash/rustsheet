@@ -26,7 +26,11 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     {"op": "move", "sheet": "Inputs", "to": 0}]` at the top level are sheet edits made after the
     workbook loads and before it is recalculated (T-1608): `add` appends a sheet, `rename` renames
     one (Excel rewrites the formulas that refer to it), `move` puts one at a 0-based position,
-    `{"op": "insert_row", "sheet": "S", "row": 1}` inserts a blank row above row 1 (T-1933). The
+    `{"op": "insert_row", "sheet": "S", "row": 1}` inserts a blank row above row 1 (T-1933),
+    `delete_row` (same keys) deletes row 1, `{"op": "insert_column", "sheet": "S", "column": "B"}`
+    inserts a blank column left of B and `delete_column` deletes it, `{"op": "delete_sheet",
+    "sheet": "S"}` deletes a sheet, and `{"op": "convert_table", "sheet": "S", "table": "T1"}` /
+    `delete_table` turn a table into a range / delete it (T-2323). The
     docProps custom properties `rustsheet.sheetop.<n>` hold them as JSON, n from 1 in order, and the
     oracle backend replays them in Excel; the engine adapter applies them through its edit API.
   * A sheet may list `"hidden_rows": [3, 5]` (1-based rows written with `hidden="1"`) and
@@ -93,7 +97,31 @@ _FIXED_CREATED = datetime(2000, 1, 1)
 ENTERED_PROPERTY = "rustsheet.entered"
 SHEET_OP_PROPERTY = "rustsheet.sheetop"
 TEXT_PROPERTY = "rustsheet.text"
-SHEET_OPS = ("add", "rename", "move", "insert_row")
+SHEET_OPS = (
+    "add",
+    "rename",
+    "move",
+    "insert_row",
+    "delete_row",
+    "insert_column",
+    "delete_column",
+    "delete_sheet",
+    "convert_table",
+    "delete_table",
+)
+# The spec key holding each op's argument; the ops not listed (add, delete_sheet) take none.
+_OP_KEYS = {
+    "rename": "to",
+    "move": "to",
+    "insert_row": "row",
+    "delete_row": "row",
+    "insert_column": "column",
+    "delete_column": "column",
+    "convert_table": "table",
+    "delete_table": "table",
+}
+_COLUMN_LETTERS = re.compile(r"[A-Za-z]{1,3}")
+_LAST_COLUMN = 16384  # XFD
 
 _A1 = re.compile(r"^\$?([A-Za-z]{1,3})\$?(\d+)$")
 
@@ -805,37 +833,62 @@ def text_cells(xlsx: bytes) -> list[tuple[str, str]]:
         raise ValueError(msg) from e
 
 
-def _op_key(kind: object) -> str:
-    """The spec key of a sheet op's argument: `row` for insert_row, `to` for the others."""
-    return "row" if kind == "insert_row" else "to"
+def _op_key(kind: object) -> str | None:
+    """The spec key of a sheet op's argument (`to`, `row`, `column` or `table`), None for an op
+    that takes none."""
+    return _OP_KEYS.get(kind) if isinstance(kind, str) else None
+
+
+def _is_column(value: object) -> bool:
+    """Whether `value` is a column letter within Excel's XFD."""
+    if not isinstance(value, str) or not _COLUMN_LETTERS.fullmatch(value):
+        return False
+    index = 0
+    for ch in value.upper():
+        index = index * 26 + ord(ch) - ord("A") + 1
+    return index <= _LAST_COLUMN
+
+
+def _valid_op_argument(kind: str, to: object) -> bool:
+    """Whether `to` is a valid argument for sheet op `kind`."""
+    is_int = isinstance(to, int) and not isinstance(to, bool)
+    return {
+        "rename": isinstance(to, str) and bool(to),
+        "move": is_int and to >= 0,  # type: ignore[operator]
+        "insert_row": is_int and to >= 1,  # type: ignore[operator]
+        "delete_row": is_int and to >= 1,  # type: ignore[operator]
+        "insert_column": _is_column(to),
+        "delete_column": _is_column(to),
+        "convert_table": isinstance(to, str) and bool(to),
+        "delete_table": isinstance(to, str) and bool(to),
+    }.get(kind, to is None)
 
 
 def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
     """A spec's sheet op as `(op, sheet, to)`: `to` is the new name of a rename, the 0-based
-    position of a move, the 1-based row of an insert_row (spec key `row`; one blank row goes
-    above it, T-1933) and None for an add. Raises ValueError for an unknown or malformed op."""
+    position of a move, the 1-based row of an insert_row or delete_row (spec key `row`; the
+    blank row goes above it, T-1933), the column letter of an insert_column or delete_column
+    (spec key `column`), the table name of a convert_table or delete_table (spec key `table`;
+    T-2323) and None for an add or delete_sheet. Raises ValueError for an unknown or malformed op."""
     if isinstance(op, (list, tuple)) and len(op) == 3:
-        op = {"op": op[0], "sheet": op[1], **({} if op[2] is None else {_op_key(op[0]): op[2]})}
+        key = _op_key(op[0])
+        op = {"op": op[0], "sheet": op[1], **({} if op[2] is None or key is None else {key: op[2]})}
     if not isinstance(op, dict) or op.get("op") not in SHEET_OPS or not isinstance(op.get("sheet"), str):
         msg = f"unknown sheet op {op!r}: expected op {'/'.join(SHEET_OPS)} with a sheet name"
         raise ValueError(msg)
     kind, sheet = op["op"], op["sheet"]
     key = _op_key(kind)
-    to = op.get(key)
+    to = op.get(key) if key else None
     if set(op) - {"op", "sheet", key}:
         msg = f"sheet op {op!r} has unknown keys"
         raise ValueError(msg)
-    if kind == "add" and to is None:
-        return kind, sheet, None
-    if kind == "rename" and isinstance(to, str) and to:
-        return kind, sheet, to
-    if kind == "move" and isinstance(to, int) and not isinstance(to, bool) and to >= 0:
-        return kind, sheet, to
-    if kind == "insert_row" and isinstance(to, int) and not isinstance(to, bool) and to >= 1:
+    if _valid_op_argument(kind, to):
         return kind, sheet, to
     msg = (
-        f"sheet op {op!r}: `to` must be absent for add, a name for rename, a position >= 0 for move;"
-        " `row` a 1-based row for insert_row"
+        f"sheet op {op!r}: `to` must be absent for add and delete_sheet, a name for rename, a position"
+        " >= 0 for move; `row` a 1-based row for insert_row and delete_row; `column` a column letter"
+        " (A to XFD) for insert_column and delete_column; `table` a table name for convert_table and"
+        " delete_table"
     )
     raise ValueError(msg)
 

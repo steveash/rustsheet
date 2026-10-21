@@ -12,7 +12,7 @@ use rustsheet::{
 use rustsheet_engine::text::{lone_escape, Segment};
 use rustsheet_engine::Text;
 
-use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp};
+use crate::case::{column_index, split_qualified, CaseSpec, CellInput, SheetOp};
 use crate::cellref::{parse_range, Addr};
 use crate::spec_pivots;
 use crate::value::Value;
@@ -316,17 +316,43 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
                 let id = sheet_id_of(workbook, sheet)?;
                 workbook.edit(|tx| tx.move_sheet(id, *to)).map(drop)
             }
-            // Not a `Txn` edit: the facade has no row insert yet, so the harness uses its
-            // feature-gated one (decision 0076). `row` is 1-based, as in the case file.
-            SheetOp::InsertRow { sheet, row } => {
+            SheetOp::DeleteSheet { sheet } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                workbook.edit(|tx| tx.delete_sheet(id)).map(drop)
+            }
+            // The engine has no convert to range yet: the case scores as an adapter error.
+            SheetOp::ConvertTable { .. } => {
+                return Err(format!(
+                    "sheet op {op:?}: the engine cannot convert a table to a range"
+                ));
+            }
+            // Not `Txn` edits: the facade has no structural edits yet, so the harness uses its
+            // feature-gated ones (decisions 0076, 0098). Rows and columns are 1-based in the case
+            // file. A `Txn` edit recalculates on commit; these do not.
+            SheetOp::DeleteTable { table, .. } => workbook
+                .remove_table(table)
+                .map(|()| workbook.recalculate()),
+            SheetOp::InsertRow { sheet, row } | SheetOp::DeleteRow { sheet, row } => {
                 let id = sheet_id_of(workbook, sheet)?;
                 let row = row
                     .checked_sub(1)
                     .ok_or_else(|| format!("sheet op {op:?}: rows are 1-based"))?;
-                // A `Txn` edit recalculates on commit; this one does not.
-                workbook
-                    .insert_rows(id, row, 1)
-                    .map(|()| workbook.recalculate())
+                match op {
+                    SheetOp::InsertRow { .. } => workbook.insert_rows(id, row, 1),
+                    _ => workbook.delete_rows(id, row, 1),
+                }
+                .map(|()| workbook.recalculate())
+            }
+            SheetOp::InsertColumn { sheet, column } | SheetOp::DeleteColumn { sheet, column } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                let column = column_index(column)
+                    .map(|c| c - 1)
+                    .ok_or_else(|| format!("sheet op {op:?}: not a column letter"))?;
+                match op {
+                    SheetOp::InsertColumn { .. } => workbook.insert_columns(id, column, 1),
+                    _ => workbook.delete_columns(id, column, 1),
+                }
+                .map(|()| workbook.recalculate())
             }
         };
         done.map_err(|e| format!("sheet op {op:?}: {e}"))?;
@@ -491,6 +517,60 @@ mod tests {
             evaluated.value("New", Addr { row: 1, col: 1 }),
             Some(Value::Empty)
         );
+    }
+
+    #[test]
+    fn structural_sheet_ops_shift_cells_and_rewrite_references() {
+        // T-2323: A3 refers to B2; a row delete above, a column insert left of it and a delete
+        // of the sheet and the table named by the later ops all replay in order.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1",
+                "sheets":[{"name":"Calc","cells":{"A1":1,"B2":5,"A3":"=B2*2","B3":"=SUM(A1:A2)",
+                                     "D1":"x","E1":"y","D2":1,"E2":2},
+                           "tables":[{"name":"Sales","ref":"D1:E2"}]},
+                          {"name":"Gone","cells":{"A1":1}}],
+                "sheet_ops":[{"op":"delete_row","sheet":"Calc","row":1},
+                             {"op":"insert_column","sheet":"Calc","column":"A"},
+                             {"op":"delete_column","sheet":"Calc","column":"A"},
+                             {"op":"delete_sheet","sheet":"Gone"},
+                             {"op":"delete_table","sheet":"Calc","table":"Sales"}]}"#,
+        );
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
+        // The deleted row 1 took A1; B2 moved to B1 and A3 to A2, still pointing at it.
+        assert_eq!(
+            evaluated.value("Calc", Addr { row: 2, col: 1 }),
+            Some(Value::Number(10.0))
+        );
+        assert_eq!(
+            evaluated.value("Calc", Addr { row: 1, col: 2 }),
+            Some(Value::Number(5.0))
+        );
+    }
+
+    #[test]
+    fn convert_table_and_bad_structural_ops_are_adapter_errors() {
+        for op in [
+            r#"{"op":"convert_table","sheet":"Calc","table":"Sales"}"#,
+            r#"{"op":"delete_table","sheet":"Calc","table":"Nope"}"#,
+            r#"{"op":"delete_row","sheet":"Calc","row":0}"#,
+            r#"{"op":"delete_row","sheet":"Nope","row":1}"#,
+            r#"{"op":"insert_column","sheet":"Calc","column":"A1"}"#,
+            r#"{"op":"delete_column","sheet":"Calc","column":"XFE"}"#,
+            r#"{"op":"delete_sheet","sheet":"Calc"}"#,
+        ] {
+            let json = format!(
+                r#"{{"format":"rustsheet-case/v1",
+                    "sheets":[{{"name":"Calc","cells":{{"A1":"h","A2":1}},
+                                "tables":[{{"name":"Sales","ref":"A1:A2"}}]}}],
+                    "sheet_ops":[{op}]}}"#
+            );
+            assert!(
+                RustSheetEngine.evaluate_spec(&spec(&json), None).is_err(),
+                "{op}"
+            );
+        }
     }
 
     #[test]

@@ -106,6 +106,13 @@ def recorded_sheet_ops(xlsx: bytes) -> list[tuple[str, str, str | int | None]]:
 
 
 GRAPH = "https://graph.microsoft.com/v1.0"
+# A row or column sheet op → the Graph range verb and `shift` it replays with.
+_RANGE_EDITS = {
+    "insert_row": ("insert", "Down"),
+    "delete_row": ("delete", "Up"),
+    "insert_column": ("insert", "Right"),
+    "delete_column": ("delete", "Left"),
+}
 SCOPES = ["Files.ReadWrite"]
 
 
@@ -301,15 +308,30 @@ class GraphBackend:
                 if not isinstance(to, int) or to >= position(CANARY_SHEET):
                     raise OracleError(f"sheet op move {sheet!r} to {to}: past the last sheet")
                 move(sheet, to)
-            elif op == "insert_row":
-                # One blank row above row `to`, cells below shifted down, as the T-1853 session did
-                # (docs/research/t1853-legacy-cell-edits-2026-10-18.md).
+            elif op in _RANGE_EDITS:
+                # One blank row above row `to` with the cells below shifted down, as the T-1853
+                # session did (docs/research/t1853-legacy-cell-edits-2026-10-18.md); the other
+                # row and column edits (T-2323) are the same call with another verb and shift.
+                # The address is `3:3` for a row and `C:C` for a column letter.
+                verb, shift = _RANGE_EDITS[op]
                 self._call(
                     "POST",
-                    f"{ref(sheet)}/range(address='{to}:{to}')/insert",
-                    json={"shift": "Down"},
+                    f"{ref(sheet)}/range(address='{str(to).upper()}:{str(to).upper()}')/{verb}",
+                    json={"shift": shift},
                     headers=sid,
                 )
+            elif op == "delete_sheet":
+                if sheet == CANARY_SHEET:
+                    raise OracleError(f"sheet op delete_sheet {sheet!r}: the canary sheet stays")
+                self._call("DELETE", ref(sheet), headers=sid)
+            elif op in ("convert_table", "delete_table"):
+                table = (
+                    f"{item_url}/workbook/tables('{quote(str(to).replace(chr(39), chr(39) * 2), safe='')}')"
+                )
+                if op == "convert_table":
+                    self._call("POST", f"{table}/convertToRange", headers=sid)
+                else:
+                    self._call("DELETE", table, headers=sid)
             print(f"SHEET OP {op} {sheet!r} {to!r}", file=sys.stderr)
 
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
