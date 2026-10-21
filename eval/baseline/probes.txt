@@ -342,6 +342,8 @@ C	probes/formula-length-nonbmp-33pieces.case.json	1
 C	probes/formula-length-nonbmp-8192u.case.json	1
 C	probes/formulatext-written-groups-shapes.case.json	12
 C	probes/fraction-format-features.case.json	128
+C	probes/fraction-numerator-overflow.case.json	76
+C	probes/fraction-numerator-overflow2.case.json	69
 C	probes/gamma-x87-edges.case.json	15
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/gcd-lcm-multinomial-error-order.case.json	52
@@ -1453,7 +1455,6 @@ F	probes/fraction-format-features.case.json	Sheet1!H6
 F	probes/fraction-format-features.case.json	Sheet1!I10
 F	probes/fraction-format-features.case.json	Sheet1!I5
 F	probes/fraction-format-features.case.json	Sheet1!I6
-F	probes/fraction-format-features.case.json	Sheet1!I9
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C24
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C28
 F	probes/geomean-exponent-sum.case.json	Sheet1!C2
@@ -2689,4 +2690,6 @@ F	probes/yield-solver-sweep.case.json	S!F4
 F	probes/yield-solver-sweep.case.json	S!F5
 F	probes/yield-solver-sweep.case.json	S!F6
 TC	probes/displayed-text-formats.case.json	28
+TC	probes/fraction-numerator-overflow.case.json	76
+TC	probes/fraction-numerator-overflow2.case.json	69
 TF	probes/displayed-text-formats.case.json	S!A21
