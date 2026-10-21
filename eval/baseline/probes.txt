@@ -27,6 +27,7 @@ C	probes/aggregate-picked-direct-a-variants.case.json	27
 C	probes/aggregate-product-trimrange-picks.case.json	15
 C	probes/aggregate-range-args.case.json	38
 C	probes/aggregate-range-function-num-grid.case.json	22
+C	probes/aggregate-range-k-first-cell.case.json	48
 C	probes/anchorarray-at-operand-kinds.case.json	16
 C	probes/anchorarray-at-operand.case.json	2
 C	probes/anchorarray-if-operands.case.json	21
@@ -1118,6 +1119,7 @@ C	probes/volatile-now-today-shapes.case.json	48
 C	probes/vstack-scalar-error.case.json	40
 C	probes/weekday-serial-zero.case.json	18
 C	probes/weeknum-1900-later.case.json	23
+C	probes/weeknum-boolean-serial.case.json	12
 C	probes/weeknum-invalid-type.case.json	8
 C	probes/weeknum-modern-boundaries.case.json	67
 C	probes/weeknum-serial-0.case.json	57
