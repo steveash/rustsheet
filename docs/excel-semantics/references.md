@@ -1651,11 +1651,23 @@ row 2 (on the ranges' rows) / row 10 (off them):
   `=INDEX(IF(TRUE,B1:B6,5),3)`, 3 / 3 with no `@`.
 Evidence: probes/legacy-if-arm-range-argument and -b (excel-graph, 2026-10-19, T-1935),
 probes/legacy-match-lookup-array-intersection J2, Y2.
-Engine: `is_reference_arm`, `returns_range_arm` (static_analysis/legacy.rs). Other reference
-shapes in an arm (a defined name, OFFSET, INDEX, a `:` range operation) are unprobed and keep
-their `@`.
+Engine: `is_reference_arm`, `is_range_arm`, `returns_range_arm` (static_analysis/if_arm.rs; moved out of legacy.rs, T-1969).
+Other reference arms pass whole the same way (T-1969; B1:B6 = 1,2,3,1,2,3, row 2 / row 10, Rng = B1:B6):
+`=SUM(IF(TRUE,Rng))`, `=SUM(IF(TRUE,OFFSET(B1,0,0,6)))`, `=SUM(IF(TRUE,INDEX(B1:C6,0,1)))` and
+`=SUM(IF(TRUE,B1:INDEX(B1:B6,6)))` are 12 / 12 with no `@`. IFS's value arms too:
+`=SUM(IFS(TRUE,B1:B6))` 12 / 12, `=MATCH(3,IFS(TRUE,B1:B6),0)` 3 / 3, and at the root
+`=IFS(TRUE,B1:B6)` shows as `=@IFS(TRUE,B1:B6)` (2 / `#VALUE!`).
+Value contexts hold the same way (probes/legacy-if-arm-other-references K-T, excel-graph): `=IF(TRUE,OFFSET(B1,0,0,6))`
+shows `=@IF(TRUE,OFFSET(B1,0,0,6))`, `=ABS(IFS(TRUE,B1:B6))` `=ABS(@IFS(TRUE,B1:B6))`,
+`=INDEX(IF(TRUE,OFFSET(B1,0,0,6)),3)` is 3. A single-cell INDEX arm, `=IF(TRUE,INDEX(B1:B6,3))`, shows no
+`@` at all in Excel; ours puts `@` on the IF (known failure, probes M12, filed as a follow-up task).
+Also in Excel (same probe, our engine passes): `=IF(TRUE,OFFSET(B1,0,0))` (one cell, no resize) shows no `@` and
+`=SUM(IF(TRUE,OFFSET(B1,0,0)))` is 1 (S, T); `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (R);
+`=IF(TRUE,B1:INDEX(B1:B6,6))` shows `=@IF(...)` (N); `=SUM(IF(TRUE,INDEX(B1:B6,3)))` is 3 with no `@` (P).
+Excel drops the `@` for both one-cell arms (M12, S12), which T-2326 needs.
+Evidence: probes/legacy-if-arm-other-references (excel-graph, 2026-10-21, T-1969).
 Status: VERIFIED
-Tasks: T-1935
+Tasks: T-1935, T-1969
 
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value

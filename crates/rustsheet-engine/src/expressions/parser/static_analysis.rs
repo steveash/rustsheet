@@ -4,15 +4,16 @@ use crate::functions::lift::lifting_table_functions;
 use crate::functions::lookup_and_reference::lifts_into_references;
 use crate::functions::Function;
 use broadcast::{broadcast_shapes, static_analysis_operator_chain};
+use if_arm::returns_range_arm;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
     legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
-    returns_range_arm,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
 mod aggregate;
 mod broadcast;
+mod if_arm;
 mod legacy;
 mod lifted;
 mod redundant;
