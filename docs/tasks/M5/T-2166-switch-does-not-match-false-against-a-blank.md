@@ -3,7 +3,7 @@ id: T-2166
 title: "SWITCH does not match FALSE against a blank cell case value"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
