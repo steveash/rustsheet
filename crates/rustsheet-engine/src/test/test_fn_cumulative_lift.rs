@@ -175,11 +175,31 @@ fn a_subnormal_or_underflowed_leading_power_keeps_its_digits() {
     // probes/fin-cumipmt-overflow-and-forms A20-A24 (excel-graph). The difference is main's value,
     // within 1E-13 relative of Excel's (5E-14 for A23, A24); the last digits are T-2192's.
     let cells = [
-        ("A1", "=CUMPRINC(1E10,32,1,1,25,0)", -9.999_999_993_000_11E-71),
-        ("A2", "=CUMPRINC(1E10,32,1,1,10,0)", -9.999_999_978_000_387E-221),
-        ("A3", "=CUMPRINC(1E10,31.5,1,1,20,0)", -9.999_999_988_500_136E-116),
-        ("A4", "=CUMPRINC(1E10,40,1,1,20,0)", -9.999_999_980_000_501E-201),
-        ("A5", "=CUMPRINC(1E10,40,1,15,20,0)", -9.999_999_980_000_501E-201),
+        (
+            "A1",
+            "=CUMPRINC(1E10,32,1,1,25,0)",
+            -9.999_999_993_000_11E-71,
+        ),
+        (
+            "A2",
+            "=CUMPRINC(1E10,32,1,1,10,0)",
+            -9.999_999_978_000_387E-221,
+        ),
+        (
+            "A3",
+            "=CUMPRINC(1E10,31.5,1,1,20,0)",
+            -9.999_999_988_500_136E-116,
+        ),
+        (
+            "A4",
+            "=CUMPRINC(1E10,40,1,1,20,0)",
+            -9.999_999_980_000_501E-201,
+        ),
+        (
+            "A5",
+            "=CUMPRINC(1E10,40,1,15,20,0)",
+            -9.999_999_980_000_501E-201,
+        ),
     ];
     let mut model = new_empty_model();
     for (cell, formula, _) in cells {
