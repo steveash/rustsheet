@@ -83,7 +83,9 @@ fn extreme_values_from_cells_are_values_without_a_panic() {
         ("A1", "=CUMIPMT(Z1,Z2,Z3,1,Z2,0)", "-5.819767068693264E299"),
         ("A2", "=CUMPRINC(Z4,Z2,Z1,1,Z2,1)", "-1E-300"),
         ("A3", "=CUMPRINC(Z6,Z7,Z3,1,Z7,0)", "-9.999999999999999E299"),
-        // Unprobed: a payment that overflows is #NUM!, as main's was.
+        // A payment that overflows: CUMIPMT is #NUM! as in Excel (probes/fin-cumipmt-overflow-and-forms
+        // A1, A3). Excel's CUMPRINC is -1E300 there (A2); this pins today's #NUM!, a known miss.
+        // TODO(T-2192): CUMPRINC of an overflowing payment.
         ("A4", "=CUMIPMT(Z2,Z5,Z3,1,Z5,0)", "#NUM!"),
         ("A5", "=CUMPRINC(Z2,10,Z3,1,10,1)", "#NUM!"),
         (
@@ -111,9 +113,10 @@ fn an_end_period_past_nper_is_num() {
 
 #[test]
 fn up_to_32_periods_are_the_per_period_sum() {
-    // The kernel keeps main's sum of IPMT and PPMT up to `CUMULATIVE_LOOP_PERIODS` (32), bit for
-    // bit (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26); past it, the closed
-    // form. The per-period sums are rebuilt here from IPMT and PPMT.
+    // The kernel keeps main's sum of IPMT up to `CUMULATIVE_LOOP_PERIODS` (32), bit for bit
+    // (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26); past it, the closed form.
+    // The principal is the closed form at any length, close to the PPMT sum (T-1890). The
+    // per-period sums are rebuilt here from IPMT and PPMT.
     let mut model = new_empty_model();
     let pairs = [
         (
@@ -136,7 +139,10 @@ fn up_to_32_periods_are_the_per_period_sum() {
     model.evaluate();
     let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
     assert_eq!(number("A1").to_bits(), number("B1").to_bits());
-    assert_eq!(number("A2").to_bits(), number("B2").to_bits());
+    // The PPMT sum cancels (each principal is a fiftieth of its payment); the closed form is
+    // within an ulp of the exact -2.33419231896298640 (T-1890).
+    assert!((number("A2") / -2.334_192_318_962_986_4 - 1.0).abs() < 4E-16);
+    assert!((number("A2") / number("B2") - 1.0).abs() < 1E-12);
     // 33 periods: the closed form, within an ulp or two of the sum.
     assert_ne!(number("A3").to_bits(), number("B3").to_bits());
     assert!((number("A3") / number("B3") - 1.0).abs() < 1E-14);
@@ -150,7 +156,65 @@ fn up_to_32_periods_are_the_per_period_sum() {
             "-3165.8852276668513",
         ),
         ("A3", "=CUMPRINC(0.004,1024,1000,1,1024,1)", "-1000"),
+        // A large rate over a short range, where expm1 of the range overflows: the difference
+        // of powers (probes/fin-cumipmt-overflow-and-forms A15-A19).
+        ("A5", "=CUMPRINC(1E10,40,1,10,40,0)", "-1.0000000000000013"),
+        ("A6", "=CUMIPMT(1E300,10,1,1,10,0)", "-1E301"),
+        // CUMPRINC_CUMIPMT.xlsx H6, which the PPMT sum missed by 3 ulps.
+        (
+            "A4",
+            "=CUMPRINC(0.01,36,8000,1.2,8.53,1)",
+            "-1339.6579298169904",
+        ),
     ]);
+}
+
+#[test]
+fn a_subnormal_or_underflowed_leading_power_keeps_its_digits() {
+    // A rate of 1E10 over a short range: `v^(a-1-nper)` is subnormal (A20-A22) or underflows
+    // (A23, A24), so the short-range product `v^(a-1-nper)·expm1(..)` would lose digits
+    // (-9.999888696826292E-71 for A20) and the difference of powers decides. Excel's values are
+    // probes/fin-cumipmt-overflow-and-forms A20-A24 (excel-graph). The difference is main's value,
+    // within 1E-13 relative of Excel's (5E-14 for A23, A24); the last digits are T-2192's.
+    let cells = [
+        (
+            "A1",
+            "=CUMPRINC(1E10,32,1,1,25,0)",
+            -9.999_999_993_000_11E-71,
+        ),
+        (
+            "A2",
+            "=CUMPRINC(1E10,32,1,1,10,0)",
+            -9.999_999_978_000_387E-221,
+        ),
+        (
+            "A3",
+            "=CUMPRINC(1E10,31.5,1,1,20,0)",
+            -9.999_999_988_500_136E-116,
+        ),
+        (
+            "A4",
+            "=CUMPRINC(1E10,40,1,1,20,0)",
+            -9.999_999_980_000_501E-201,
+        ),
+        (
+            "A5",
+            "=CUMPRINC(1E10,40,1,15,20,0)",
+            -9.999_999_980_000_501E-201,
+        ),
+    ];
+    let mut model = new_empty_model();
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, excel) in cells {
+        let ours = round_trip_value(&model, cell).parse::<f64>().unwrap();
+        assert!(
+            (ours / excel - 1.0).abs() < 1E-13,
+            "{formula}: ours {ours:e}, Excel {excel:e}"
+        );
+    }
 }
 
 #[test]

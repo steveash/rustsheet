@@ -9,6 +9,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::{lift::LiftCost, Function},
     model::Model,
 };
 
@@ -78,6 +79,82 @@ pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
         // ERROR.TYPE codes are distinct per kind, so they key errors exactly.
         ArrayNode::Error(e) => CellKey::Error(e.error_type_code()),
         ArrayNode::Empty => CellKey::Empty,
+    }
+}
+
+/// One UNIQUE call over `data`: its distinct rows (or columns), or those that occur once.
+fn unique_of(
+    data: &[Vec<ArrayNode>],
+    by_col: bool,
+    exactly_once: bool,
+    cell: CellReferenceIndex,
+) -> CalcResult {
+    if !by_col {
+        let num_rows = data.len();
+
+        // First pass: count how many times each row key appears.
+        let mut counts: HashMap<Vec<CellKey>, usize> = HashMap::with_capacity(num_rows);
+        for row in data {
+            *counts.entry(row_key(row)).or_insert(0) += 1;
+        }
+
+        // Second pass: collect rows in original order.
+        let result: Vec<Vec<ArrayNode>> = if exactly_once {
+            data.iter()
+                .filter(|row| counts[&row_key(row)] == 1)
+                .cloned()
+                .collect()
+        } else {
+            let mut seen: HashSet<Vec<CellKey>> = HashSet::with_capacity(num_rows);
+            data.iter()
+                .filter(|row| seen.insert(row_key(row)))
+                .cloned()
+                .collect()
+        };
+
+        if result.is_empty() {
+            return CalcResult::new_error(
+                Error::CALC,
+                cell,
+                "UNIQUE found no matching rows".to_string(),
+            );
+        }
+
+        CalcResult::Array(result)
+    } else {
+        let num_cols = data[0].len();
+
+        // First pass: count how many times each column key appears.
+        let mut counts: HashMap<Vec<CellKey>, usize> = HashMap::with_capacity(num_cols);
+        for j in 0..num_cols {
+            *counts.entry(col_key(data, j)).or_insert(0) += 1;
+        }
+
+        // Second pass: collect column indices in original order.
+        let result_cols: Vec<usize> = if exactly_once {
+            (0..num_cols)
+                .filter(|&j| counts[&col_key(data, j)] == 1)
+                .collect()
+        } else {
+            let mut seen: HashSet<Vec<CellKey>> = HashSet::with_capacity(num_cols);
+            (0..num_cols)
+                .filter(|&j| seen.insert(col_key(data, j)))
+                .collect()
+        };
+
+        if result_cols.is_empty() {
+            return CalcResult::new_error(
+                Error::CALC,
+                cell,
+                "UNIQUE found no matching columns".to_string(),
+            );
+        }
+
+        CalcResult::Array(
+            data.iter()
+                .map(|row| result_cols.iter().map(|&c| row[c].clone()).collect())
+                .collect(),
+        )
     }
 }
 
@@ -434,102 +511,41 @@ impl Model {
     ///   * `exactly_once` – FALSE = return one copy of every distinct value (default)
     ///     TRUE  = return only rows/columns that appear exactly once
     pub(crate) fn fn_unique(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 3 {
+        let kind = Function::Unique;
+        if !kind
+            .arg_kinds()
+            .is_some_and(|kinds| kinds.accepts(args.len()))
+        {
             return CalcResult::new_args_number_error(cell);
         }
-
+        // The array is read once and handed to every element whole; by_col and exactly_once lift
+        // over an array and a range (SPEC-0011 "Array-valued functions", T-1836). Each element
+        // walks the array, so the call is charged its cells per element.
         let data = match self.eval_to_array(&args[0], cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
-
         if data.is_empty() || data[0].is_empty() {
             return CalcResult::Array(vec![]);
         }
-
-        let by_col: bool = if args.len() >= 2 {
-            match self.get_boolean(&args[1], cell) {
-                Ok(b) => b,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
-
-        let exactly_once: bool = if args.len() >= 3 {
-            match self.get_boolean(&args[2], cell) {
-                Ok(b) => b,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
-
-        if !by_col {
-            let num_rows = data.len();
-
-            // First pass: count how many times each row key appears.
-            let mut counts: HashMap<Vec<CellKey>, usize> = HashMap::with_capacity(num_rows);
-            for row in &data {
-                *counts.entry(row_key(row)).or_insert(0) += 1;
-            }
-
-            // Second pass: collect rows in original order.
-            let result: Vec<Vec<ArrayNode>> = if exactly_once {
-                data.into_iter()
-                    .filter(|row| counts[&row_key(row)] == 1)
-                    .collect()
-            } else {
-                let mut seen: HashSet<Vec<CellKey>> = HashSet::with_capacity(num_rows);
-                data.into_iter()
-                    .filter(|row| seen.insert(row_key(row)))
-                    .collect()
-            };
-
-            if result.is_empty() {
-                return CalcResult::new_error(
-                    Error::CALC,
-                    cell,
-                    "UNIQUE found no matching rows".to_string(),
-                );
-            }
-
-            CalcResult::Array(result)
-        } else {
-            let num_cols = data[0].len();
-
-            // First pass: count how many times each column key appears.
-            let mut counts: HashMap<Vec<CellKey>, usize> = HashMap::with_capacity(num_cols);
-            for j in 0..num_cols {
-                *counts.entry(col_key(&data, j)).or_insert(0) += 1;
-            }
-
-            // Second pass: collect column indices in original order.
-            let result_cols: Vec<usize> = if exactly_once {
-                (0..num_cols)
-                    .filter(|&j| counts[&col_key(&data, j)] == 1)
-                    .collect()
-            } else {
-                let mut seen: HashSet<Vec<CellKey>> = HashSet::with_capacity(num_cols);
-                (0..num_cols)
-                    .filter(|&j| seen.insert(col_key(&data, j)))
-                    .collect()
-            };
-
-            if result_cols.is_empty() {
-                return CalcResult::new_error(
-                    Error::CALC,
-                    cell,
-                    "UNIQUE found no matching columns".to_string(),
-                );
-            }
-
-            CalcResult::Array(
-                data.iter()
-                    .map(|row| result_cols.iter().map(|&c| row[c].clone()).collect())
-                    .collect(),
-            )
-        }
+        let cells = data.iter().map(Vec::len).sum::<usize>();
+        let cells = u64::try_from(cells).unwrap_or(u64::MAX).max(1);
+        self.lift_call_costed(
+            kind,
+            args,
+            LiftCost::Cells(cells),
+            cell,
+            &mut |_, values| {
+                let flag = |index: usize| match values.get(index) {
+                    None | Some(CalcResult::EmptyArg) => Ok(false),
+                    Some(value) => Self::cast_bool_ref(value, cell),
+                };
+                match (flag(1), flag(2)) {
+                    (Ok(by_col), Ok(exactly_once)) => unique_of(&data, by_col, exactly_once, cell),
+                    (Err(error), _) | (_, Err(error)) => error,
+                }
+            },
+        )
     }
 
     // ── FILTER ────────────────────────────────────────────────────────────────
