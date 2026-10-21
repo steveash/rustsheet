@@ -3,7 +3,7 @@ id: T-1730
 title: "Displayed text: scientific exponent sign and engineering grouping (E+0 for a zero exponent, ##0.0E+0, 00.0E+0)"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -40,3 +40,6 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+The exponent sign now follows the exponent (a zero exponent is `E+00` / `E00`, not `E-00`) and the exponent is a multiple of the integer-placeholder count (engineering). 240 gen-m10 and 1 gen-m5 known failures left the baselines; no regressions.

@@ -496,6 +496,9 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - `[$USD]` is currency text ("-1.50 USD") and `[Cyan]` a color.
 - Engineering and padded mantissas: `##0.0E+0` on 123456.789 is "123.5E+3", `00.0E+0` on 36.5
   "36.5E+0", `0.000E-00` on 1.5 "1.500E00".
+- Rule (T-1730, implemented): the exponent is the decimal exponent rounded down to a multiple of the
+  integer-placeholder count (`##0.0E+0` on 61 "61.0E+0"); a zero exponent prints `E+00` (never `E-00`)
+  and `E00` under `E-`.
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
 Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every serial the formatter
