@@ -3,7 +3,7 @@ id: T-2155
 title: "REPT, CODE and UNICODE are #VALUE! on a text argument over 255 characters"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
