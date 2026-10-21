@@ -162,3 +162,19 @@ fn t_reads_the_top_left_cell_of_a_range() {
         assert_eq!(text, legacy, "{formula}");
     }
 }
+
+/// A multi-cell range `info_type` lifts like an array one (gen-m5/c0651f0e0fb544d0 Calc!A293).
+#[test]
+fn cell_lifts_over_a_range_info_type() {
+    let mut model = new_empty_model();
+    model._set("D1", "row");
+    model._set("D2", "col");
+    model._set("F1", "=CELL(D1:D2,B3)");
+    model._set("H2", "x");
+    model._set("H1", "=CELL(D1:D2,B3)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("F1"), *"3");
+    assert_eq!(model._get_text("F2"), *"2");
+    assert_eq!(model._get_text("H1"), *"#SPILL!");
+}
