@@ -246,3 +246,23 @@ fn empty_text_is_num_error_blank_is_zero() {
     assert_eq!(model._get_text("A5"), *"0");
     assert_eq!(model._get_text("A6"), *"1");
 }
+
+#[test]
+fn im_overflow_edges() {
+    // probes/eng-im-overflow-edges (excel-graph): A2, A3, A8, A27, A55, A64.
+    let mut model = new_empty_model();
+    model._set("B1", r#"=IMPRODUCT(A1,"1E200","1E200")"#);
+    model._set("B2", r#"=IMPRODUCT("1E200","1E200",A1)"#);
+    model._set("B3", r#"=IMCOSH("710.4+0i")"#);
+    model._set("B4", r#"=IMSIN("710.4i")"#);
+    model._set("B5", r#"=IMSECH("711+1.5i")"#);
+    model._set("B6", r#"=IMCSCH("710.4+0i")"#);
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), *"0");
+    assert_eq!(model._get_text("B2"), *"#VALUE!");
+    assert_eq!(model._get_text("B3"), *"#NUM!");
+    assert_eq!(model._get_text("B4"), *"#NUM!");
+    assert_eq!(model._get_text("B5"), *"0");
+    assert_eq!(model._get_text("B6"), *"0");
+}

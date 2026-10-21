@@ -10,12 +10,14 @@
 //! ```
 //!
 //! The replacement must come from a golden oracle sidecar (`excel-graph` or `excel-desktop`):
-//! an override never carries a hand-written value. The same file tells `rustsheet_xlsx`'s generated tests which
-//! cached values not to compare (its `build.rs`).
+//! an override never carries a hand-written value. When that sidecar is excel-graph and its probe
+//! has a FALSE companion `=(<formula>)=0` for the evidence cell, the override also carries
+//! Excel's evidence that a 0 there is a kept subnormal saved as 0 (decision 0090). The same file
+//! tells `rustsheet_xlsx`'s generated tests which cached values not to compare (its `build.rs`).
 
 use std::path::{Component, Path};
 
-use crate::case::{split_qualified, OracleFile};
+use crate::case::{kept_nonzero_formulas, split_qualified, CaseSpec, OracleFile};
 use crate::cellref::Addr;
 use crate::value::Value;
 
@@ -86,22 +88,31 @@ pub fn parse(text: &str) -> Result<Vec<CachedOverride>, String> {
     Ok(out)
 }
 
-/// The golden value an override points at.
+/// What an override's evidence cell says: its value and whether Excel kept it non-zero.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Evidence {
+    /// The golden value that replaces the cached expectation.
+    pub value: Value,
+    /// Whether the evidence probe's companion `=(<evidence formula>)=0` is FALSE in the same
+    /// excel-graph sidecar: Excel kept the result non-zero, so a 0 there is a kept subnormal that
+    /// Excel saved as 0 (decisions 0042, 0089, 0090).
+    pub kept_nonzero: bool,
+}
+
+/// The golden cell an override points at.
 ///
 /// # Errors
-/// When the sidecar is unreadable, not from an Excel oracle, or lacks the cell.
-pub fn evidence_value(o: &CachedOverride, suites_dir: &Path) -> Result<Value, String> {
-    let path = suites_dir.join(&o.evidence);
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let oracle: OracleFile =
-        serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+/// When the sidecar is unreadable, not from an Excel oracle, or lacks the cell, or when the
+/// probe case beside it cannot be parsed.
+pub fn evidence(o: &CachedOverride, suites_dir: &Path) -> Result<Evidence, String> {
+    let oracle: OracleFile = read_json(&suites_dir.join(&o.evidence))?;
     if !GOLDEN_KINDS.contains(&oracle.source.kind.as_str()) {
         return Err(format!(
             "{}: override evidence must come from an Excel oracle, not {:?}",
             o.evidence, oracle.source.kind
         ));
     }
-    oracle
+    let value = oracle
         .sheets
         .get(&o.evidence_sheet)
         .and_then(|cells| cells.get(&o.evidence_addr.to_string()))
@@ -111,7 +122,31 @@ pub fn evidence_value(o: &CachedOverride, suites_dir: &Path) -> Result<Value, St
                 "{} has no value for {}!{}",
                 o.evidence, o.evidence_sheet, o.evidence_addr
             )
-        })
+        })?;
+    // `parse` guarantees the `.oracle.json` suffix; the probe's spec sits beside it.
+    let spec_path = suites_dir.join(o.evidence.replace(".oracle.json", ".case.json"));
+    let kept_nonzero = if spec_path.exists() {
+        let spec: CaseSpec = read_json(&spec_path)?;
+        let formula = spec
+            .sheets
+            .iter()
+            .filter(|s| s.name == o.evidence_sheet)
+            .flat_map(|s| &s.cells)
+            .find(|(a1, _)| Addr::parse(a1) == Some(o.evidence_addr))
+            .and_then(|(_, input)| input.formula());
+        formula.is_some_and(|f| kept_nonzero_formulas(&spec, &oracle).contains(f))
+    } else {
+        false
+    };
+    Ok(Evidence {
+        value,
+        kept_nonzero,
+    })
+}
+
+fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 #[cfg(test)]
@@ -156,13 +191,49 @@ mod tests {
         };
         let o = &parse("a.xlsx\tS!A1\tx.oracle.json\tSheet1!B1").expect("parse")[0];
         std::fs::write(dir.join("x.oracle.json"), sidecar("excel-graph")).expect("write");
-        assert_eq!(evidence_value(o, &dir), Ok(Value::Number(30.0)));
+        assert_eq!(evidence(o, &dir).map(|e| e.value), Ok(Value::Number(30.0)));
         for kind in ["libreoffice", "excel-cached", "hand"] {
             std::fs::write(dir.join("x.oracle.json"), sidecar(kind)).expect("write");
-            assert!(evidence_value(o, &dir).is_err(), "{kind}");
+            assert!(evidence(o, &dir).is_err(), "{kind}");
         }
         let missing = &parse("a.xlsx\tS!A1\tx.oracle.json\tSheet1!C9").expect("parse")[0];
-        assert!(evidence_value(missing, &dir).is_err());
+        assert!(evidence(missing, &dir).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Only a FALSE excel-graph companion `(x)=0` of the evidence cell's own formula marks a 0
+    /// as a kept subnormal (decision 0090); a TRUE companion (Excel flushed), another cell's
+    /// companion, a missing probe spec or a desktop sidecar does not.
+    #[test]
+    fn kept_nonzero_needs_a_false_graph_companion() {
+        let dir = std::env::temp_dir().join(format!("overrides-kept-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("dir");
+        let write = |kind: &str, b1: bool, companion: &str| {
+            let oracle = format!(
+                r#"{{"format":"rustsheet-oracle/v1","source":{{"kind":"{kind}"}},
+                "sheets":{{"S":{{"A1":{{"t":"n","v":0.0}},"B1":{{"t":"b","v":{b1}}}}}}}}}"#
+            );
+            let spec = format!(
+                r#"{{"format":"rustsheet-case/v1","sheets":[{{"name":"S",
+                "cells":{{"A1":"=EXP(-745)","B1":"{companion}"}}}}]}}"#
+            );
+            std::fs::write(dir.join("p.oracle.json"), oracle).expect("write");
+            std::fs::write(dir.join("p.case.json"), spec).expect("write");
+        };
+        let o = &parse("a.xlsx\tS!B44\tp.oracle.json\tS!A1").expect("parse")[0];
+        let kept = |dir: &Path| evidence(o, dir).map(|e| e.kept_nonzero);
+        write("excel-graph", false, "=(EXP(-745))=0");
+        assert_eq!(evidence(o, &dir).map(|e| e.value), Ok(Value::Number(0.0)));
+        assert_eq!(kept(&dir), Ok(true));
+        write("excel-graph", true, "=(EXP(-745))=0");
+        assert_eq!(kept(&dir), Ok(false));
+        write("excel-graph", false, "=(EXP(-746))=0");
+        assert_eq!(kept(&dir), Ok(false));
+        write("excel-desktop", false, "=(EXP(-745))=0");
+        assert_eq!(kept(&dir), Ok(false));
+        write("excel-graph", false, "=(EXP(-745))=0");
+        std::fs::remove_file(dir.join("p.case.json")).expect("remove");
+        assert_eq!(kept(&dir), Ok(false));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
