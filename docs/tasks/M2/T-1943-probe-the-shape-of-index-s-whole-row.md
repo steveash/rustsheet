@@ -3,7 +3,7 @@ id: T-1943
 title: "Probe the shape of INDEX's whole-row and whole-column picks of a scalar or a 1x1 array"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,9 +25,12 @@ array) and `INDEX({2;3},0,1)` as a control. Then record the result in lookup.md.
 differs, file a functions-lookup fix task.
 
 ## Acceptance criteria
-- [ ] A probe case with excel-graph values, tagged M2, covers the shapes above.
-- [ ] lookup.md records the result. A fix task is filed if the engine differs.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with excel-graph values, tagged M2, covers the shapes above.
+- [x] lookup.md records the result. A fix task is filed if the engine differs.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/index-zero-index-scalar-shape (excel-graph) shows every index-0 pick of a scalar, a 1x1 array and 1-row/1-column array constants is an array (`TYPE` 64); a legacy `N` over each is `#VALUE!`, with no `@` in FORMULATEXT. Recorded in lookup.md. The engine matches except legacy N/FORMULATEXT over `INDEX(5,0,0)` and `INDEX(5,0)` (4 cells): filed T-2191. Eval: 51 of 55 new probe cells pass; the 4 failures are baselined.

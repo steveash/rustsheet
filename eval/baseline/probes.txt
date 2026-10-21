@@ -172,6 +172,7 @@ C	probes/criteria-lone-surrogates.case.json	48
 C	probes/criteria-operands.case.json	25
 C	probes/criteria-padded-operand.case.json	18
 C	probes/criteria-padded-text.case.json	14
+C	probes/criteria-tilde-blank-single-cell-edges.case.json	88
 C	probes/criteria-wildcard-newline.case.json	17
 C	probes/criteria-wildcard-tilde.case.json	16
 C	probes/d-function-prefix-lone-surrogates.case.json	35
@@ -415,6 +416,7 @@ C	probes/index-scalar-indexes.case.json	23
 C	probes/index-single-index.case.json	6
 C	probes/index-snap-tolerance.case.json	67
 C	probes/index-tiny-negative.case.json	150
+C	probes/index-zero-index-scalar-shape.case.json	55
 C	probes/indirect-defined-name-text.case.json	32
 C	probes/indirect-r1c1-offset-overflow.case.json	7
 C	probes/indirect-text-broadcast.case.json	58
@@ -1698,6 +1700,10 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/index-reference-args.case.json	Calc!A4
 F	probes/index-reference-args.case.json	Calc!A5
+F	probes/index-zero-index-scalar-shape.case.json	S!E5
+F	probes/index-zero-index-scalar-shape.case.json	S!E6
+F	probes/index-zero-index-scalar-shape.case.json	S!F5
+F	probes/index-zero-index-scalar-shape.case.json	S!F6
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
