@@ -3076,14 +3076,6 @@ F	probes/t2198-m5-lift-argument-kinds.case.json	Sheet1!C35
 F	probes/t2198-m5-lift-argument-kinds.case.json	Sheet1!D33
 F	probes/t2198-m5-lift-argument-kinds.case.json	Sheet1!D34
 F	probes/t2198-m5-lift-argument-kinds.case.json	Sheet1!D35
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A28
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A29
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A32
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A33
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A38
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A40
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A42
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A44
 F	probes/t2202-text-code-check-on-text.case.json	Calc!A1
 F	probes/t2202-text-code-check-on-text.case.json	Calc!A17
 F	probes/t2202-text-code-check-on-text.case.json	Calc!A25
