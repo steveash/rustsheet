@@ -597,7 +597,7 @@ fn fn_pmt_when_the_power_overflows_or_underflows() {
 /// PMT, IPMT and PPMT are the exact payment on the double arguments to Excel's 15 digits, which
 /// the double forms miss where they cancel: long terms, type 1, the first periods of PPMT and
 /// fractional periods (probes-numeric/m9-fin-pmt A86, A91, A503, A504; ironcalc-calc
-/// FINANCIAL/IPMT_PPMT.xlsx G17, J13; T-2130).
+/// `FINANCIAL/IPMT_PPMT.xlsx` G17, J13; T-2130).
 #[test]
 fn pmt_ipmt_and_ppmt_are_the_exact_payment() {
     let cells: [(&str, f64); 6] = [
