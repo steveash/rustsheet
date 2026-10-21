@@ -4,7 +4,7 @@ title: "A subnormal cell constant reads as 0 (LOG10 #NUM!, =0 TRUE), as Excel lo
 milestone: M2
 lane: engine
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: sonnet
 campaign: visible
