@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -33,7 +34,10 @@ way is to read it as a sample with no numbers. FTEST (`Function::FTestCompat`) s
 Leave a boolean or an error value as it is now: no probe shows what Excel does with
 `F.TEST(TRUE,B1:B5)` or `F.TEST(NA(),B1:B5)`.
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 1 cell, 0 numeric past half a unit in the 15th digit and 1 with a wrong type, error or text, blamed on FTEST 1. Every one is listed above.
+
 ## Acceptance criteria
+- [ ] Visible parity: the visibly-off cell listed under Context (2026-10-21) has Excel's value to 15 significant digits, or its type, error and text: the 1 cell of the ungated probes-numeric suite passes in `make eval`, with no new known-failure lines in any baseline.
 - [ ] The five cells above pass in `make eval`. t1049-ftest A15, A16 and A22 still pass, and no
       gated baseline (eval/baseline/*.txt) gains an F line.
 - [ ] A unit test covers `F.TEST(3,4)`, `F.TEST("a",{1,2,3})` and `FTEST(1,{1,2,3})`, each `#DIV/0!`.
@@ -44,3 +48,6 @@ Leave a boolean or an error value as it is now: no probe shows what Excel does w
 ## Out of scope
 - A boolean or error-valued scalar argument (unprobed; file a probe task if needed).
 - F.TEST's last digits (T-1927, T-0970).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (`#VALUE!` where Excel is `#DIV/0!`), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.

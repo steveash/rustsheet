@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-1841]
 ---
 
@@ -39,9 +40,15 @@ failures:
     further (a scalar cut-off kept apart from the lifting weight is a fallback) or document.
 Probe more points first (periods 0.1, 0.9, 1.5, 3.5 at rate 0.15; costs 1E290 to 1E308 at periods 0, 1 and 2).
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 6 cells, 6 numeric past half a unit in the 15th digit and 0 with a wrong type, error or text, blamed on AMORDEGRC 6. Every one is listed above.
+
 ## Acceptance criteria
+- [ ] Visible parity: the 6 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 6 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] fin-amor-period-bound B17, fin-amor-period-bound-b B2 and fin-amor-period-bound-c A1, A3-A5 pass (baseline lines removed), with no new failures.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The AMORDEGRC rate thresholds (T-1764).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (AMORDEGRC 0 or a different 13th-15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083).
