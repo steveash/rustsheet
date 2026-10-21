@@ -269,6 +269,7 @@ C	probes/eng-base-conv-blank.case.json	46
 C	probes/eng-complex-overflow.case.json	21
 C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
+C	probes/eng-im-overflow-edges.case.json	116
 C	probes/eng-im-overflow.case.json	48
 C	probes/eng-im-small-part.case.json	28
 C	probes/eng-imdiv.case.json	24
@@ -1265,6 +1266,16 @@ F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
+F	probes/eng-im-overflow-edges.case.json	S!A104
+F	probes/eng-im-overflow-edges.case.json	S!A107
+F	probes/eng-im-overflow-edges.case.json	S!A109
+F	probes/eng-im-overflow-edges.case.json	S!A14
+F	probes/eng-im-overflow-edges.case.json	S!A17
+F	probes/eng-im-overflow-edges.case.json	S!A47
+F	probes/eng-im-overflow-edges.case.json	S!A58
+F	probes/eng-im-overflow-edges.case.json	S!A6
+F	probes/eng-im-overflow-edges.case.json	S!A9
+F	probes/eng-im-overflow-edges.case.json	S!A95
 F	probes/eng-im-overflow.case.json	S!A33
 F	probes/eng-im-overflow.case.json	S!A34
 F	probes/external-ref-no-link-let-index.case.json	Calc!A3
