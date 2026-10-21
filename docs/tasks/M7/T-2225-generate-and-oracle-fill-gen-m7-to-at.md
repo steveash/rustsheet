@@ -3,7 +3,7 @@ id: T-2225
 title: "Generate and oracle-fill gen-m7 to at least 10,000 cells with spill shapes, gate it, and file its gaps"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
