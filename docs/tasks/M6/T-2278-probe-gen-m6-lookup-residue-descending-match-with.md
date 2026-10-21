@@ -45,3 +45,13 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 3 in eval/baselin
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Progress (opus run, 2026-10-21, session budget reached)
+Probes committed with oracle values: probes/lookup-match-descending-blank (18 cells, ours 8 off) and
+probes/lookup-short-result-vector (7 cells, ours 2 off); findings in lookup.md "Unexplained gen-m6 lookup cells". Their
+known failures are not baselined yet: run `make eval-baseline` only as part of the fix, or record them first if the
+fix is split. Left to do: reconcile the MATCH result (a scan that stops at the first value below the key?) with
+lookup.md "MATCH descending search skips backward" and its evidence before changing lookup_table.rs; make an
+extended LOOKUP result the blank-cell value (lookup.rs); probe the XLOOKUP/INDIRECT cell in a smaller case (Excel for
+the web refused one holding INDIRECT over XLOOKUP with array search_mode and CELL("address",..)).
+

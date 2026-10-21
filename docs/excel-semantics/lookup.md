@@ -958,5 +958,15 @@ Observed (excel-graph, gen-m6, 2026-10-21), not yet explained:
   one-cell result vector); ours 7. A LOOKUP result read as a blank *cell* would make MMULT `#VALUE!` (arrays.md: a blank matrix
   cell), UNVERIFIED (50f0dd9a8ee2cb57 A315).
 - `INDIRECT(XLOOKUP(<blank>,Data!E5:E9,Data!C3:D8,..,101,INDEX(Data!D4:E11,0)),0.2)` is `#REF!`; ours `#VALUE!` (e3a562557696e2fc A33).
-Status: UNVERIFIED (T-2278 probes them)
+Probed (excel-graph, 2026-10-21, T-2278):
+- MATCH, probes/lookup-match-descending-blank: a blank key is 0, and -2.2 is -1. Over this unsorted vector, keys 0, blank and
+  -0.0001 give 3 and 0.0001 gives 2, over the whole vector and over its 5- to 8-cell prefixes alike; `""` is `#N/A`. That is
+  where a scan from the top meets the first value below the key (-2.5, or 0 for 0.0001), not what the descending search above
+  gives (ours 9 for all of them). Not yet reconciled with that rule's own evidence: the rule is open (T-2278).
+- LOOKUP past a one-cell result vector, probes/lookup-short-result-vector: the result shows as 0, but it is no reference
+  (`ISREF` FALSE, a two-cell result vector too), and `ROWS` of it, `MMULT` of it with 2.5 and the gen-m6 `WEEKDAY(MMULT(..))` are
+  `#VALUE!` (ours 0, 0 and 7). It behaves like the blank-cell value arrays.md describes, not like a number 0.
+- XLOOKUP with an array search_mode under INDIRECT: not probed yet. Excel for the web refused the workbook holding those
+  formulas (`unsupportedWorkbook`, also with CELL("address",LOOKUP(..))); split them into smaller cases.
+Status: VERIFIED for the MATCH and LOOKUP observations above (excel-graph); the MATCH search rule and the XLOOKUP cell UNVERIFIED
 Tasks: T-2278
