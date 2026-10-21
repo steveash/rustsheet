@@ -271,6 +271,24 @@ coarse grid for df 2 to 10; and `t0969-t-tail-grid`, 3,232 T.DIST.RT cells on a 
 - Next: probe B(1/2, b) for b = 0.5 to 6.5 to find where the GAMMALN form starts; the remaining visibly-off
   tails (df 50 to 1000) are still Excel's incomplete-beta noise (attempt 9).
 
+## Attempt 11 (2026-10-21, opus run; findings only, merged as progress)
+- **Excel's B(1/2, b) is the GAMMALN form at every b up to 8, not only from 6.5.** On the existing
+  `t0969-beta-density-b` (b = 0.25 to 8 by 0.25), `EXP(GAMMALN(1/2) + (GAMMALN(b) - GAMMALN(b + 1/2)))` predicts Excel's
+  density error within 2 x 2^-53 at 29 of 32 b (x = 0.05). For a = 1.5 it does not hold. Its error at df 11 and 12 is
+  -4 to -7 x 2^-53, at most a few ulp, so the cells attempt 10 lost below df 13 come from the tail kernel's own noise,
+  not from B.
+- **TOMS 708, tested and rejected as the tail kernel.** The B form's branches (a0 < 1, b0 < 8, then `algdiv`) are
+  those of TOMS 708's `betaln`. R's `toms708.c` `bratio`, compiled standalone, is bit-exact on 27 of 176
+  `t0969-t-beta-link` column-E cells, against 36 for the exact I_y, and is no better in any branch. It is closer than
+  the exact value on the centre columns H and I: 122 and 131 of 176, against 102 and 115 (statistics.md "Student t
+  prefactor per df").
+- **Rejected:** the GAMMALN sum in BETA.DIST's argument order (a = n/2 first) for df 13 to 16. On probes-numeric,
+  probes and ironcalc-calc it fixes 8 cells and breaks 13, all in the family's own probes.
+- Eval delta: no engine change, no baseline line moved.
+- Next: (1) score bratio with Excel's GAMMALN as `gamln` (needs `excel_gammaln` callable from the harness) on
+  columns E, H and I; (2) bratio's `bgrat`/`bup` against the df 50 to 1000 rounded-y cells. That is the region of the
+  tail grid's 175 noise cells, where TOMS 708's asymptotic expansion for large a would run.
+
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
       NumericMismatch verdict (`rustsheet-eval show` on both cases), at least 30 of the 55 lines
