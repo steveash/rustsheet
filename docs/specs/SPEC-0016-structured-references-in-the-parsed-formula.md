@@ -225,6 +225,10 @@ Edge cases, for a table with header row `h`, data rows `d1..d2` and an optional 
 | Delete wholly inside `d1..d2`, at least one data row left | shrink | |
 | Delete touching `h` or `t`, all data rows, or straddling an edge of the table | fallback | the lowered areas become trimmed or `#REF!`, which a table cannot represent |
 
+T-2197 probed the row inserts (references.md "Structured references when the table changes"): Excel
+*grows* the table on an insert at `r == d1` and at `r == t`, so those two fallback rows are superseded
+(T-2321); the other insert rows hold.
+
 A column edit at column `c`: an insert with `c <= c1`, or a delete wholly left of `c1`, is a
 move; an edit wholly right of `c2` changes nothing; every other column edit that crosses
 `c1..c2` is a fallback, since it would change the column list.

@@ -1,0 +1,69 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "F": {
+   "A1": {
+    "t": "n",
+    "v": 15.0
+   },
+   "A10": {
+    "t": "n",
+    "v": 15.0
+   },
+   "A11": {
+    "t": "n",
+    "v": 9.0
+   },
+   "A12": {
+    "t": "s",
+    "v": "=Sales[[#Totals],[Qty]]"
+   },
+   "A2": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A3": {
+    "t": "n",
+    "v": 7.0
+   },
+   "A4": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A5": {
+    "t": "s",
+    "v": "=SUM(Sales[Qty])"
+   },
+   "A6": {
+    "t": "n",
+    "v": 15.0
+   },
+   "A7": {
+    "t": "s",
+    "v": "=SUM(S!C4:C8)"
+   },
+   "A8": {
+    "t": "n",
+    "v": 4.0
+   },
+   "A9": {
+    "t": "s",
+    "v": "=COUNTA(Sales[Region])"
+   }
+  },
+  "S": {
+   "C9": {
+    "t": "n",
+    "v": 15.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "76ce8048e36a228cd43792dc814b7295d228fac56a2793603a269d6e9ba7a730",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-21T17:52:44+00:00",
+  "version": null,
+  "workbook_name": "77f34364a6f9f6527f1c564920d6f30ed76a55d5098360282e34bbb3da216692.xlsx"
+ }
+}
