@@ -297,8 +297,8 @@ impl Workbook {
             .map_err(crate::error::EditError::Engine)
     }
 
-    /// Deletes `count` rows from the 0-based `row` of `sheet`, shifting the cells below up; the
-    /// formulas that refer to a deleted row become `#REF!`. Harness only (decisions 0076, 0098):
+    /// Deletes `count` rows from the 0-based `row` of `sheet`, shifting the cells below up; the engine
+    /// rewrites the formulas that refer to them (not yet checked against Excel, T-2324). Harness only (decisions 0076, 0098):
     /// as [`Self::insert_rows`], it has no undo and does not recalculate.
     ///
     /// # Errors
