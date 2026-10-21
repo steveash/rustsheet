@@ -32,6 +32,10 @@ PPMT cell made visibly off.
   `exp` model (x87, numbers.md) instead of libm gives the same 153; `ln` of the 64-bit `1+rate`
   gives 150. At A166 Excel's exponent looks one ulp below RN(360*log1p(0.1)). Nothing is known yet
   for fv ≠ 0 or type 1, where the exact form already passes every cell.
+- T-2130's fit counts came from one-off scripts over m9-fin-pmt.oracle.json. Reproduce them as a
+  `rustsheet-fitlab annuity-ppmt` candidate before relying on them.
+- probes-numeric is not gated (`gate = false`), so nothing locks T-2130's m9-fin-pmt gain
+  (visibly off 250 → 4). Re-check the case with `make eval-show` after any change here.
 
 ## Acceptance criteria
 - [ ] A82, A166, A412 and A418 are within half a unit of the 15th digit; every other PMT, IPMT
