@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
+campaign: visible
 depends_on: [T-1770, T-1833, T-1834]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
@@ -29,7 +30,24 @@ Owned cells:
 
 EXPAND's columns and pad_with and WRAPROWS's pad_with are `Lift` by SPEC-0011's per-parameter list ("Array-valued functions"); T-1960 probes them. `KernelWork::Output { weight: 1 }`.
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric past half a unit in the 15th digit and 10 with a wrong type, error or text, blamed on WRAPROWS 5, EXPAND 4, ROWS 4, COLUMNS 4, WRAPCOLS 2, UNIQUE 1.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m7/6db767d720c5b55a Calc!A12 | `=WRAPCOLS(Data!D3:D3,UNIQUE(Data!B3:E4,SWITCH((-0.5),"a*",Data!$E9,Data!A12,1.005,Data!B9,Data!A6,(-0.0001))))` | #SPILL! | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!F7 | `=ROWS(EXPAND(A1:A2,{3;4}))` | 2 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!F8 | `=ROWS(WRAPROWS(A1:A3,{1;2}))` | 2 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!G42 | `=COLUMNS(WRAPCOLS(A1:A3,2,{0;1}))` | 1 | 2 |
+| probes/m7-argument-modes Sheet1!G7 | `=COLUMNS(EXPAND(A1:A2,{3;4}))` | 1 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!G8 | `=COLUMNS(WRAPROWS(A1:A3,{1;2}))` | 1 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!H7 | `=INDEX(EXPAND(A1:A2,{3;4}),1,1)` | 1 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!H8 | `=INDEX(WRAPROWS(A1:A3,{1;2}),1,1)` | 1 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!K5 | `=ROWS(INDEX(EXPAND(A1:A2,{3;4}),1,1))` | 1 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!K6 | `=ROWS(INDEX(WRAPROWS(A1:A3,{1;2}),1,1))` | 1 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!K7 | `=COLUMNS(INDEX(WRAPROWS(A1:A3,{1;2}),2,1))` | 1 | #N/IMPL! |
+
 ## Acceptance criteria
+- [ ] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 10 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 1 cell of the ungated gen-m7 suite passes in `make eval`, with no new known-failure lines in any baseline.
 - [ ] probes/m7-argument-modes F7:H7, F8:H8, G42 and K5-K7 pass, and F42, H42 still pass.
 - [ ] gen-m7/6db767d720c5b55a A12 passes, with no new failing gen-m7 cell.
 - [ ] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
@@ -40,3 +58,6 @@ EXPAND's columns and pad_with and WRAPROWS's pad_with are `Lift` by SPEC-0011's 
 ## Out of scope
 - WRAPCOLS of a single value and wrap_count below 1 (T-1348).
 - Any change to the lift driver or the element rules (T-1834); if they do not fit, hand the task up (work-loop 5b).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (`#N/IMPL!` and a wrong width where Excel lifts EXPAND, WRAPROWS and WRAPCOLS), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.

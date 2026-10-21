@@ -469,7 +469,7 @@ Probed directly (probes/weekday-serial-zero A1:A18, excel-graph, 2026-10-17, T-1
 Ours: WEEKDAY implemented (T-1253); WORKDAY and NETWORKDAYS implemented (T-1254).
 More serial-0 cells (gen-m9, excel-graph, 2026-10-12, T-1289): `YEARFRAC(33752,0)` is 92.41111111111 (from
 `(0.3+YEARFRAC(33752,Data!$C12))^SUM(-0.0001)` = 0.9995471537332011 with C12 = 0), which is basis 0 counted from
-1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours matches for basis 0, where a start or end in [0, 1) counts as day 0 of January 1900, T-1409; other bases with serial 0 stay `#NUM!`, UNVERIFIED; the pair is ordered before counting like every basis; serial 0 paired with a date in January-February 1900, including the fictitious serial 60, is UNVERIFIED).
+1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; every basis, and serial 0 next to the fictitious serial 60, is now probed: see "YEARFRAC accepts serial 0" below).
 `NETWORKDAYS.INTL(44900,0.2)` is a number (`AVERAGE(NETWORKDAYS.INTL(44900,0.2)/<#VALUE!>,..)` is `#VALUE!`,
 gen-m9/50f10c4062fb2e98 Calc!A12; ours `#NUM!`). `WORKDAY(33393,0,A3:D3)` with holidays "a", 0.3, 0.3, 0.5 is 33393
 (`COLUMNS(B8:E10)%+WORKDAY(..)` = 33393.04, gen-m9/288b99797f58f149 Calc!A10): neither the fractional holidays below 1
@@ -845,6 +845,36 @@ reversed cell equal to its forward cell; gen-m7/c263b43217a5898b Calc!A38 for ba
 Ours: all bases swap before counting (T-1354 for basis 1, T-1826 for the rest).
 Status: VERIFIED (web)
 Tasks: T-1354, T-1826
+
+## YEARFRAC accepts serial 0
+Rule: YEARFRAC takes a start or end date in [0, 1) (serial 0, 1900-01-00) on every basis; only a negative serial
+is `#NUM!`. The pair is ordered first (see "YEARFRAC swaps reversed dates"). Each basis then reads the dates its
+own way:
+- Basis 0 (US 30/360) counts on Excel's own day, month and year: serial 0 is day 0 of January, serial 60 is the
+  fictitious 1900-02-29, and 1900-02-28 is still February's last day, so it is read as day 30. That makes
+  `YEARFRAC(60,59,0)` = **-1/360** (probed reversed; by the swap rule `(59,60,0)` is the same), a negative fraction, and `YEARFRAC(60,61,0)` = 2/360
+  (29 February is not February's last day). `YEARFRAC(0,59,0)` = 58/360, `(0,60,0)` = 59/360, `(0,61,0)` = 61/360,
+  `(0,366,0)` = 361/360, `(0,33752,0)` = 92.41111111111111.
+- Bases 1, 2 and 3 count serials as days, so the fictitious 1900-02-29 is a day: `YEARFRAC(0,60,3)` = 60/365,
+  `(59,60,2)` = 1/360. Basis 1's year length reads the real calendar: serial 0 is a day of 1900 and 1900-02-29 is
+  no leap day, so `YEARFRAC(0,33752,1)` = 33752 / (average year of 1900-1992) = 92.4086198775318 (counted from
+  1899 it would be 92.40928...), `YEARFRAC(1,33752,1)` = 92.4058820065944 also averages from 1900, and
+  `YEARFRAC(59,60,1)` = `(60,61,1)` = 1/365.
+- Basis 4 (European 30/360) reads serial 0 as day 0 and serial 60 as day 29: `(0,31,4)` = 30/360,
+  `(0,366,4)` = 1, `(59,60,4)` = 1/360, `(60,61,4)` = 2/360.
+- `YEARFRAC(0,0,b)` and `YEARFRAC(0.5,0.25,b)` are 0 on every basis; 0.5 and 0.9999 count as serial 0.
+The discount securities read the same parts (financial.md "Discount securities: day count and year length"), so
+they meet the same rules, negative day count included: `ACCRINTM(59,60,0.1,1000,0)` = -0.2777777777777778,
+`DISC(59,60,95,100,0)` = -18.000000000000014, `PRICEDISC(59,60,0.05,100,0)` = 100.01388888888889, and serial 0
+settles on bases 1-4 (`DISC(0,366,95,100,1)` = 0.04986338797814212).
+In a 1904 workbook the financial day counts read a 1904 serial 0 as 1900-serial 2924, so none of this applies there:
+`YEARFRAC(0,59,1)` = 59/366 (1908 is a leap year), `YEARFRAC(0,366,0)` = 1.
+Evidence: probes/yearfrac-serial-zero (205 cells), probes/yearfrac-serial-zero-1904 (25 cells),
+probes/discount-serial-zero (50 cells), excel-graph, 2026-10-21, T-2237.
+Ours: `Model::year_fraction_parts` (functions/date_and_time/yearfrac.rs): basis 0 on `excel_serial_to_ymd`, basis 1
+on `month_arithmetic_date`, bases 1-3 serial differences; YEARFRAC and ACCRINTM keep the sign (T-2237).
+Status: VERIFIED (excel-graph)
+Tasks: T-1409, T-2237
 
 ## DATEDIF argument errors before date checks
 Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
