@@ -3,7 +3,7 @@ id: T-2323
 title: "Sheet ops delete_row, insert_column, delete_column, delete_sheet and table convert/delete in the oracle and engine adapter"
 milestone: M8
 lane: harness
-status: todo
+status: done
 priority: P2
 size: M
 tier: sonnet
@@ -35,3 +35,11 @@ endpoint and stay out (desktop questions, decision 0039).
 
 ## Out of scope
 - Probing Excel with them (T-2324).
+
+## Outcome
+spec2xlsx, the Graph backend (`_RANGE_EDITS` and the sheet/table calls) and the engine adapter accept
+`delete_row`, `insert_column`, `delete_column`, `delete_sheet`, `convert_table` and `delete_table`, with
+tools pytest and engine/eval unit tests, and refuse malformed ones. The facade gained harness-gated
+`delete_rows`, `insert_columns`, `delete_columns` and `remove_table` (decision 0098; `Txn::delete_sheet`
+already existed). The adapter refuses `convert_table` (no engine convert-to-range). Docs: oracle.md,
+eval-harness.md, spec2xlsx docstring. No eval cases changed; eval baseline unchanged.
