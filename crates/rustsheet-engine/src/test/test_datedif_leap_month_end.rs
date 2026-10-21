@@ -4,17 +4,16 @@ use crate::test::util::new_empty_model;
 fn test_datedif_yd_leap_year_edge_cases() {
     let mut model = new_empty_model();
 
-    // 29 Feb 2020 → 28 Feb 2021: the end's month and day come first, so it moves into 2021 and
-    // the count runs from the start; UNVERIFIED, no oracle cell starts on 29 February (dates.md "DATEDIF "MD" and "YD" day counts", T-2264)
+    // From a 29 February start, 28 February of a non-leap year is 365 days on and 1 March is 0:
+    // `DATEDIF(1521,1886,"YD")` = 365 and `DATEDIF(1521,1887,"YD")` = 0 (1904-02-29 to 1905-03-01;
+    // probes/dates-early-1900-displayed A78, A79; dates.md "DATEDIF "MD" and "YD" day counts", T-2263).
     model._set("A1", "=DATEDIF(\"2/29/2020\", \"2/28/2021\", \"YD\")");
-
-    // 29 Feb 2020 → 1 Mar 2021    (should be 1 day)
     model._set("A2", "=DATEDIF(\"2/29/2020\", \"2021-03-01\", \"YD\")");
 
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"365");
-    assert_eq!(model._get_text("A2"), *"1");
+    assert_eq!(model._get_text("A2"), *"0");
 }
 
 #[test]
