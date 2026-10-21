@@ -188,6 +188,75 @@ fn a_wrong_count_is_the_count_error_before_anything_is_read() {
     assert_eq!(model._get_text("A2"), "#ERROR!");
 }
 
+// ---------------------------------------------------------------- the number shortcut (T-1932)
+
+/// `lift_call_numbers` for ROUND (`LIFT_2`) over `formula`'s arguments, counting the shortcut's
+/// calls and the kernel's: the result, the shortcut's calls and the kernel's. The shortcut sums
+/// its numbers; the kernel returns its first value, or the sum when every value is a number.
+fn run_numbers(model: &mut Model, formula: &str) -> (CalcResult, usize, usize) {
+    let args = args_of(model, formula);
+    let shortcuts = std::cell::Cell::new(0);
+    let shortcut = |numbers: &[f64]| {
+        shortcuts.set(shortcuts.get() + 1);
+        Ok(numbers.iter().sum())
+    };
+    let mut calls = 0;
+    let mut kernel = |_: &mut Model, values: &[CalcResult]| {
+        calls += 1;
+        let sum: Option<f64> = values
+            .iter()
+            .map(|value| match value {
+                CalcResult::Number(number) => Some(*number),
+                _ => None,
+            })
+            .sum();
+        sum.map_or_else(|| first(values), CalcResult::Number)
+    };
+    let result = model.lift_call_numbers(Function::Round, &args, AT, &shortcut, &mut kernel);
+    (result, shortcuts.get(), calls)
+}
+
+#[test]
+fn numbers_run_the_shortcut_and_anything_else_the_kernel() {
+    let mut model = model_with(&[("A1", "2"), ("A2", "x")]);
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND(A1,3)");
+    assert!(matches!(result, CalcResult::Number(n) if n == 5.0));
+    assert_eq!((shortcuts, calls), (1, 0));
+    // Text first, then text second: the numbers read before it are handed on, not read again.
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND(A2,3)");
+    assert!(matches!(&result, CalcResult::String(text) if &**text == "x"));
+    assert_eq!((shortcuts, calls), (0, 1));
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND(A1,\"3\")");
+    assert!(matches!(result, CalcResult::Number(n) if n == 2.0));
+    assert_eq!((shortcuts, calls), (0, 1));
+    // A wrong count is the count error before anything runs.
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND(1,2,3)");
+    assert!(is_error(&result, &Error::ERROR));
+    assert_eq!((shortcuts, calls), (0, 0));
+}
+
+#[test]
+fn lifted_number_elements_run_the_shortcut_in_place() {
+    let mut model = model_with(&[]);
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND({1,2;3,4},10)");
+    assert_eq!(numbers(&result), vec![vec![11.0, 12.0], vec![13.0, 14.0]]);
+    assert_eq!((shortcuts, calls), (4, 0));
+    // A text element runs the kernel; the number elements beside it the shortcut.
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND({1,\"x\"},10)");
+    assert_eq!(shortcuts, 1);
+    assert_eq!(calls, 1);
+    let CalcResult::Array(rows) = result else {
+        panic!("not an array");
+    };
+    assert!(matches!(&rows[0][1], ArrayNode::String(text) if &**text == "x"));
+    // A scalar that is not a number, or a second grid, leaves every element to the kernel.
+    let (_, shortcuts, calls) = run_numbers(&mut model, "ROUND({1,2},\"3\")");
+    assert_eq!((shortcuts, calls), (0, 2));
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND({1,2},{10;20})");
+    assert_eq!(numbers(&result), vec![vec![11.0, 12.0], vec![21.0, 22.0]]);
+    assert_eq!((shortcuts, calls), (0, 4));
+}
+
 // ---------------------------------------------------------------- shapes
 
 #[test]

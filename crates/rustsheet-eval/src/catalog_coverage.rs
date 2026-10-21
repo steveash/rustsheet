@@ -11,8 +11,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::evidence_floor::EVIDENCE_FLOOR;
+use crate::formula_calls::functions_in;
 use crate::probe_milestones::{parse_milestone, row_of, REPORT_ROWS};
-use crate::report::{functions_in, FunctionEvidence};
+use crate::report::FunctionEvidence;
 use crate::runner::CaseResult;
 use crate::value::Verdict;
 use crate::volatile::is_volatile_function;
@@ -224,6 +225,8 @@ mod tests {
             scope,
             reason: None,
             oracle,
+            v15: None,
+            v15_reason: None,
         }
     }
 
