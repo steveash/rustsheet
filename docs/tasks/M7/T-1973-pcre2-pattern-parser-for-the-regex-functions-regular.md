@@ -8,7 +8,7 @@ priority: P2
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-1898, T-1830]
+depends_on: [T-1898]
 ---
 
 ## Goal
@@ -63,8 +63,10 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 6 cells, 0 numeric pas
 - [ ] A differential unit test checks our parser's `Hir` against `regex-syntax`'s for random patterns both dialects
   read alike.
 - [ ] `regex-syntax = "0.8"` is a direct dependency with one locked copy (`cargo tree -d`) and a short decision record.
-- [ ] T-1830's REGEX* benchmarks, plus `^\d{5}$` over a column and many distinct small patterns in one call, have
-  before and after numbers in the PR. A slowdown over 5% is justified there.
+- [ ] Before and after timings of REGEX* over a column, `^\d{5}$` over a column and many distinct small patterns
+  in one call are in the PR, measured ad hoc (T-1830's benchmark suite is not required; dropped as a dependency
+  2026-10-21 so this campaign task does not wait on the perf lane). A slowdown over 50% is justified there
+  (decision 0081).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
