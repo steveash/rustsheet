@@ -251,9 +251,10 @@ Rule: SUMPRODUCT is `#VALUE!` when one argument is a blank cell given as a one-c
 `SUMPRODUCT(A11:A11,1.005,C11:C11)` (A11 text, C11 blank), and the `#VALUE!` reaches the caller (`SHEET(7+SUMPRODUCT(E1,100,-1))`
 is `#VALUE!`, not SHEET's `#N/A`). A lone one-cell boolean is 0 (`SUMPRODUCT(B4:B4)` with B4 TRUE, gen-m5/3e134e52393061b1 Calc!A222); the probe below shows a lone blank is `#VALUE!`.
 An error argument beats a shape mismatch earlier in the list: `SUMPRODUCT(TYPE(B11:B11),B9:E10,<VLOOKUP #N/A>)` is `#N/A`
-(ours `#VALUE!`, and ours is `#VALUE!` for `SUMPRODUCT(1,B9:E10,NA())` too).
-Ours (since T-2150): every argument is read in order, and the first whole-argument error, error element or blank one-cell
-reference (a cell or a one-cell range such as `D4:D4`) decides the result; the shapes are compared only after that.
+(ours was `#VALUE!` before T-2150, as was `SUMPRODUCT(1,B9:E10,NA())`).
+Ours (since T-2150): every argument is read in order, and the first whole-argument error or blank one-cell reference
+(a cell or a one-cell range such as `D4:D4`) decides the result, even after a shape mismatch; an error element inside a
+range wins only ahead of the first mismatched argument.
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1b30e4d075b252ea Calc!A365, gen-m5/6a8bb7cd6d7769ad Calc!A79,
 gen-m5/aac6230c2fb40e1e Calc!A79, gen-m5/fc81c2f704bef138 Calc!A165, gen-m5/c688ca172fe533dc Calc!A183, gen-m5/7d1a5d223624fc70 Calc!A33,
 gen-m5/aac6230c2fb40e1e Calc!A64, gen-m5/f0f205865a3a4328 Calc!A396, gen-m5/399071ff6782ab16 Calc!A145.
@@ -261,12 +262,13 @@ Probed (excel-graph, 2026-10-21, T-2200, probes/t2200-blank-and-padded-m5-args, 
 `#VALUE!` beside a 2x2 range in either order, beside a number reference in either order, in all three positions of a
 three-argument list, and alone (`SUMPRODUCT(Data!A1)`, A6). A one-cell text or boolean
 reference is a 0 factor beside a number (0, either order) and alone (0), but `#VALUE!` beside a 2x2 range (a 1x1 against a 2x2
-is a shape mismatch). A blank plus a shape mismatch is `#VALUE!` in every position (the cells all hold the blank, so they do not separate the two causes). The blank was a never-written cell; `SUMPRODUCT(blank:blank)` written as a range was not probed. An error argument ahead of the blank wins
+is a shape mismatch). A blank plus a shape mismatch is `#VALUE!` in every position (the cells all hold the blank, so they do not separate the two causes). The blank was a never-written cell written as a cell reference; a one-cell range to a blank is `#VALUE!` too (gen-m5
+`SUMPRODUCT(<number>,D4:D4)` fc81c2f704bef138 A165, `SUMPRODUCT(A11:A11,1.005,C11:C11)` aac6230c2fb40e1e A64). An error argument ahead of the blank wins
 (`SUMPRODUCT(NA(),blank)`, `SUMPRODUCT(NA(),R,blank)` are `#N/A`); the blank ahead of the error gives `#VALUE!`.
 Status: VERIFIED (excel-graph); implemented in `fn_sumproduct` / `sumproduct_array` (T-2150).
-Open: whether an error element inside a range (not a whole-argument error) also beats an earlier shape mismatch is
-unprobed; ours treats it like a whole-argument error.
-Tasks: T-0944, T-2150
+Open: whether an error element inside a range (not a whole-argument error) beats an earlier shape mismatch is
+unprobed; ours keeps the pre-T-2150 order, where the first mismatched argument wins (T-2296).
+Tasks: T-0944, T-2150, T-2296
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
 Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =

@@ -18,22 +18,31 @@ impl Model {
     /// Multiplies corresponding elements across all arrays and returns the sum.
     /// Non-numeric values (text, booleans, empty) are treated as 0, but a blank one-cell
     /// reference is `#VALUE!`. All arrays must have the same dimensions; a mismatch yields
-    /// `#VALUE!` once every argument is read without an error.
+    /// `#VALUE!` unless a later argument is itself an error or blank.
     pub(crate) fn fn_sumproduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Read every argument in order before comparing shapes: the first error or blank
-        // one-cell argument wins over a shape mismatch between earlier arguments
+        // Read every argument in order: a whole-argument error or a blank one-cell argument
+        // wins even over a shape mismatch between earlier arguments
         // (`SUMPRODUCT(NA(),D1:E2,blank)` is `#N/A`, `SUMPRODUCT(blank,D1:E2,NA())` `#VALUE!`;
-        // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150).
+        // probes/t2200-blank-and-padded-m5-args A22, A23; coercion.md, T-2150). Once the shapes
+        // disagree, the elements of that and later arguments are not read, so an error element
+        // there does not win: unprobed, TODO(T-2296).
         let mut arrays: Vec<Vec<Vec<f64>>> = Vec::with_capacity(args.len());
+        let mut shape: Option<(usize, usize)> = None;
+        let mut mismatch = false;
         for arg in args {
             let arr = match self.sumproduct_array(arg, cell) {
                 Ok(a) => a,
                 Err(e) => return e,
             };
+            let arg_shape = (arr.len(), arr.first().map_or(0, Vec::len));
+            mismatch = mismatch || *shape.get_or_insert(arg_shape) != arg_shape;
+            if mismatch {
+                continue;
+            }
 
             // Coerce to f64: non-numeric → 0.0, errors propagate.
             let mut num_arr: Vec<Vec<f64>> = Vec::with_capacity(arr.len());
@@ -58,15 +67,14 @@ impl Model {
             arrays.push(num_arr);
         }
 
-        let shape = |a: &Vec<Vec<f64>>| (a.len(), a.first().map_or(0, Vec::len));
-        let (rows, cols) = arrays.first().map_or((0, 0), shape);
-        if arrays.iter().any(|a| shape(a) != (rows, cols)) {
+        if mismatch {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "SUMPRODUCT: arrays must have the same dimensions".to_string(),
             );
         }
+        let (rows, cols) = shape.unwrap_or((0, 0));
         let mut total = 0.0f64;
 
         for i in 0..rows {

@@ -52,8 +52,8 @@ criteria above are already the visible-parity stage.
 - The SUMX family (T-0961).
 
 ## Outcome
-`fn_sumproduct` now reads every argument in order and compares shapes only afterwards, so the first whole-argument error,
-error element or blank one-cell reference decides the result; `sumproduct_array` makes a blank cell given as a cell or
-one-cell range reference `#VALUE!`. Eval: 17 known failures fixed, 0 regressions (gen-m5 95 -> 86, the 9 cells above;
+`fn_sumproduct` now reads every argument in order, so a whole-argument error or blank one-cell reference beats a shape
+mismatch between earlier arguments; an error element still wins only ahead of the first mismatch (unprobed, follow-up
+T-2296). `sumproduct_array` makes a blank cell given as a cell or one-cell range reference `#VALUE!`. Eval: 17 known failures fixed, 0 regressions (gen-m5 95 -> 86, the 9 cells above;
 gen-m6 274 -> 273, c96ac1ada46179c4 A105; probes 1674 -> 1667, t2200 A4-A9, A20). coercion.md entry marked implemented,
-with the one open point (an error element inside a range against an earlier shape mismatch is unprobed).
+with the one open point (an error element inside a range against an earlier shape mismatch is unprobed, T-2296).

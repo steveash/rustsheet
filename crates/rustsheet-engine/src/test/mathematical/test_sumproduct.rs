@@ -92,7 +92,8 @@ fn test_sumproduct_2d() {
 #[test]
 fn test_sumproduct_blank_one_cell_argument() {
     // A blank one-cell reference is #VALUE!; a one-cell text or boolean is a 0 factor
-    // (probes/t2200-blank-and-padded-m5-args A4-A16).
+    // (probes/t2200-blank-and-padded-m5-args A4-A16; beside a typed value, gen-m5
+    // 1b30e4d075b252ea A365).
     let mut model = new_empty_model();
     model._set("A2", "x");
     model._set("A3", "TRUE");
@@ -130,4 +131,19 @@ fn test_sumproduct_first_error_beats_later_shape_mismatch() {
     assert_eq!(model._get_text("C2"), "#N/A");
     assert_eq!(model._get_text("C3"), "#VALUE!");
     assert_eq!(model._get_text("C4"), "#VALUE!");
+}
+
+#[test]
+fn test_sumproduct_error_element_after_shape_mismatch() {
+    // An error element is not read once the shapes disagree; unprobed (T-2296), kept as before
+    // T-2150. An error element ahead of the mismatch wins.
+    let mut model = new_empty_model();
+    model._set("D1", "1");
+    model._set("D2", "2");
+    model._set("E1", "=1/0");
+    model._set("C1", "=SUMPRODUCT(D1:D2,D1:E2)");
+    model._set("C2", "=SUMPRODUCT(D1:E2,D1:D2)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C2"), "#DIV/0!");
 }
