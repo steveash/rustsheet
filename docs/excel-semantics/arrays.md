@@ -363,6 +363,26 @@ A lifted TAKE or DROP keeps each call's whole result as the element: `INDEX(TAKE
 {1,10} (it spills; ROWS 1, COLUMNS 2) and `INDEX(DROP(A1:B3,{1;2}),1,1)` the 2x2 block {2,20;3,30}. The other lifts
 keep one value per element: INDEX of a lifted EXPAND, WRAPROWS, TOCOL, SEQUENCE or MAKEARRAY element has 1 row and 1
 column, although `EXPAND(A1:A2,3)` and `WRAPROWS(A1:A3,1)` alone are 3x1.
+The rest of the scalar parameters lift too (probes/m7-lift-take-drop-sortby, T-1960): SEQUENCE's columns and step
+(`SEQUENCE(2,{1;3})`, `SEQUENCE(3,1,1,{1;2})` 2x1, each element 1x1), MAKEARRAY's cols (`MAKEARRAY(2,{1;2},LAMBDA(r,c,r+c))`
+2x1, elements 2, 2), EXPAND's columns, WRAPROWS's pad_with (`WRAPROWS(A1:A3,2,{0;1})` 2x1), WRAPCOLS's wrap_count over
+an array literal, TOCOL's scan_by_column, UNIQUE's exactly_once, SORTBY's later sort_orders and the columns of TAKE
+and DROP (`TAKE(A1:B3,2,{1;2})` elements A1:A2 and A1:B2; `DROP(A1:B3,1,{1;2})` B2:B3, then `#CALC!`). EXPAND's
+pad_with does not: `EXPAND(A1:A2,3,1,{0;1})` is one `#VALUE!`. Over an array value a lifted TAKE or DROP keeps the
+top-left value, as EXPAND does: `TAKE({1,10;2,20;3,30},{1;2})`, `TAKE(SEQUENCE(3,2),{1;2})` and `TAKE(A1:B3*1,{1;2})`
+are 1, 1, `DROP({1,10;2,20;3,30},{1;2})` 2, 3 (each element 1x1, ISREF FALSE; spilled directly 1, 1). Over a range its
+elements are references and behave as a lifted OFFSET's (lookup.md "OFFSET, INDIRECT and TRIMRANGE lift into arrays
+of references"): `=TAKE(A1:B3,{1;2})` spills `#VALUE!`, `#VALUE!`, `+0` gives `#VALUE!` per element, `SUM` is 2 (the
+top-left cells), SUMPRODUCT 0, ISREF of the whole FALSE and of `INDEX(..,1,1)` TRUE; IF and CHOOSE hand the
+references on (ISREF of an element TRUE, `SUM(IF(TRUE,..))` 2, `SUMPRODUCT(IF(TRUE,..))` 0), OFFSET over them lifts
+again (`OFFSET(TAKE(A1:B3,{1;2}),1,0)` elements A2:B2, A2:B3), and `TAKE(NA(),{1;2})` is two `#N/A` elements.
+A 1x1 array in a lifted parameter lifts to one element, but a single cell does not: `SEQUENCE({3})`,
+`SEQUENCE({3},2)`, `SEQUENCE(A3+{0})` and `EXPAND(A1:A2,{3})` are the 1x1 1 (ROWS 1; `=SEQUENCE({3})` spills one
+cell), `TOCOL(A1:B3,{0})` and `UNIQUE(D1:D3,{FALSE})` are 1x1, `TAKE(A1:B3,{2})` is one reference element A1:B2
+(spilled `#VALUE!`), while `SEQUENCE(A3*1)`, `SEQUENCE(INDIRECT("A3")*1)`, `SEQUENCE(A3:A3)`, `SEQUENCE(IF(TRUE,A3))`
+and `SEQUENCE(INDEX({3},1,1))` with A3 = 3 spill 3 rows. A lifted element error stays in place:
+`INDEX(SEQUENCE({1;0}),2,1)` is `#CALC!`. UNIQUE's and SORTBY's later elements follow their own rule ("UNIQUE's and
+SORTBY's lifted elements" below).
 These take an array whole: the delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are a list of delimiters
 (`TEXTSPLIT("a,b-c",{",";"-"})` is 1x3; `TEXTAFTER(C1:C3,{",";"-"})` is 3x1 "b", "d", "f" and
 `TEXTBEFORE(C1:C3,{",";"-"})` "a", "c", "e", not broadcast against the text), SORT's sort_index is a
@@ -376,7 +396,9 @@ empty (`REDUCE(,A1:A3,LAMBDA(a,v,a+v))` = 6). An uncalled `LAMBDA(x,x)` is one v
 `#CALC!`); a BYROW LAMBDA that returns a row is `#CALC!`; `ISOMITTED(A1)` outside a LAMBDA is FALSE;
 `REGEXTEST(A1,1)` with A1 = 1 is TRUE (both numbers read as text); `TOCOL(A1:E1,"1")` reads "1" as ignore = 1 (4 rows past the blank E1, ignore 0 gives 5);
 `SEQUENCE(0)` and the mismatched `SORTBY(A1:A3,B1:B2)` are `#CALC!` and `#VALUE!`.
-Evidence: probes/m7-argument-modes (68 questions, excel-graph, 2026-10-09, T-1083). Three questions are left out because
+Evidence: probes/m7-argument-modes (68 questions, excel-graph, 2026-10-09, T-1083); probes/m7-lift-take-drop-sortby
+(Sheet1, excel-graph, 2026-10-21, T-1960: column E holds each row's formula, F:S its ROWS, COLUMNS and per element
+`INDEX(INDEX(..,i,1),1,1)`, ROWS, COLUMNS and SUM of `INDEX(..,i,1)`; U1-U21 the scalar questions, W45-W75 direct spills). Three questions are left out because
 excel-graph returns an error it cannot decode: `GROUPBY(D1:D3,A1:A2,SUM)` (heights differ), `MAP(A1:A3,LAMBDA(x,y,x))`
 (too many parameters) and `GROUPBY(D1:D3,A1:A3,{1;2;3})` (an array as the function). A LAMBDA with an optional
 parameter: `LAMBDA(x,[y],ISOMITTED(y))(1)` is TRUE, `(1,2)` FALSE, and an empty argument `(1,)` is omitted too (TRUE);
@@ -387,7 +409,9 @@ case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
 Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
-per-parameter rule, unprobed, and a 1x1 array argument still runs one unlifted call, both pending T-1960); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, unprobed, pending T-1960);
+per-parameter rule, which T-1960 confirmed; a 1x1 array argument still runs one unlifted call where Excel lifts it, T-2298); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
+EXPAND's columns, WRAPROWS's pad_with and WRAPCOLS's array wrap_count are T-1835's, and EXPAND's array pad_with is `#VALUE!` there too (ours lifts it);
+TAKE and DROP lift since T-1838 (reference elements; IF, CHOOSE and OFFSET do not hand the grid on, and `TAKE(NA(),{1;2})` is one `#N/A`: T-2299);
 none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a
 sort_order list of the same length since T-1837 (F10:H11; `fn_sort` with `Model::sort_number_list`, spill_functions.rs;
 row and column lists alike, and with by_col the keys are rows: `SORT(A1:C3,{1,2},{1,-1},TRUE)` sorts columns by row 1,
@@ -403,6 +427,31 @@ GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; 
 is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 91 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)
 Tasks: T-1083 (generator modes)
+
+## UNIQUE's and SORTBY's lifted elements
+Rule: when UNIQUE's by_col or exactly_once, or SORTBY's sort_order, lifts over entries that are not all equal, only
+the first element is its call's top-left; every later element is empty, even where its entry equals the first. An
+empty element spills as 0, and ISBLANK of it is TRUE, `INDEX(..,i,1)&"|"` is "|", SUM of it 0, and ROWS, COLUMNS and
+`INDEX(INDEX(..,i,1),1,1)` of it `#VALUE!` (the spill, ISBLANK and `&"|"` cells are SORTBY's; UNIQUE's empty elements
+are evidenced by SUM 0 and ROWS, COLUMNS and INDEX `#VALUE!` only). When every entry is equal, each element is the
+top-left of its call.
+- With A1:A3 = 3,1,2 and C1:C3 = 2,1,3: `SORTBY(A1:A3,C1:C3,{1;-1;1})` is 1, empty, empty (it spills {1;0;0}:
+  probes/sort-error-args H97-H99); `{1;-1}` 1, empty; `{-1;1}` 2, empty; `{1;1;-1}` 1, empty, empty; E1:E3 = 1,-1,1
+  the same as the literal; `{1;1}`, `{1;1}+0` 1, 1; `{1;1;1}` 1,1,1; `{-1;-1;-1}` 2,2,2. The same over B1:B3 =
+  30,10,20 (10 or 20 first) and text D1:D3 = c,a,b ("a" or "b" first), over a 2-column array and with other keys
+  (F1:F3 = 1,2,3: `{1;-1;1}` 3, empty, empty).
+- SORTBY's later elements are `#VALUE!` instead, SUM `#VALUE!` too, where an entry is not 1 or -1 (`{1;2}`,
+  `{1;"x"}`: element 2) or the call has a second by_array/sort_order pair (`SORTBY(A1:A3,C1:C3,{1;-1},A1:A3,1)`,
+  `SORTBY(A1:A3,C1:C3,1,A1:A3,{1;-1})` and `{-1;1}`: element 2). A uniform later sort_order lifts
+  (`SORTBY(A1:A3,C1:C3,1,A1:A3,{1;1})` and `{-1;-1}`: 1, 1). `{1,-1}` is 1x2 and `{1}`, `{-1}` 1x1.
+- With D1:D3 = x,y,x: `UNIQUE(D1:D3,FALSE,{FALSE;TRUE})` is "x", empty; `{TRUE;FALSE}` "y", empty;
+  `{FALSE;FALSE;TRUE}` "x", empty, empty; `UNIQUE(D1:D3,{FALSE;TRUE})` and `{TRUE;FALSE}` "x", empty;
+  `UNIQUE(D1:D3,{FALSE;FALSE})` "x", "x"; `UNIQUE(D1:D3,FALSE,{TRUE;TRUE})` "y", "y".
+- TOCOL's scan_by_column (`TOCOL(A1:B3,0,{FALSE;TRUE})`: element 2 is 1, ROWS 1) and the other M7 lifts do not show it.
+Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 30, 35-37; excel-graph, 2026-10-21, T-1960).
+Ours: lifted SORTBY is `#N/IMPL!` (T-1839); UNIQUE's later elements are each call's top-left (T-2300).
+Status: VERIFIED (web)
+Tasks: T-2300 (UNIQUE), T-1839 (SORTBY)
 
 ## Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule
 Rule: a function whose scalar argument gets an array lifts, one call per element, and the arguments
@@ -1116,7 +1165,7 @@ Evidence (T-1850, probes/sort-error-args, excel-graph): errors are reported left
 - SORT: sort_index error beats sort_order error (H29 `NA(),1/0` is #N/A, H33 `1/0,NA()` is #DIV/0!); sort_index (H37) and sort_order (H53) errors beat a by_col error; an error sort_order with sort_index 0 returns the error (H13); an error by_col with sort_index 0 returns the error (H25); an error sort_order with a valid sort_index returns the error (H17).
 - SORTBY: by_array1, order1, by_array2... left to right (H77, H89 `C,NA(),B,1/0` is #N/A, H93 is #DIV/0!); an error in a later pair beats an invalid earlier order (H85 `C,0,B,NA()` is #N/A); an error order beats a by_array row-count mismatch (H105).
 - Invalid values: `SORT(arr,0,1)`, `SORT(arr,1,0)`, `SORTBY(arr,key,0)`, a row-count mismatch and a two-column by_array (`SORTBY(A1:A3,C1:B3,1)`, H101) are #VALUE!. `SORT(NA(),0,1)` and `SORTBY(NA(),...)` are #N/A.
-- Array sort arguments: `SORT(arr,{1,2},1)` is a multi-key sort (H57), `SORT(arr,{1,2},{1,-1},TRUE)` too (H69), `SORT(arr,1,{1,-1})` is #VALUE! (H61, H65), and `SORTBY(A1:A3,C1:C3,{1;-1;1})` returns {1;0;0} (H97-H99).
+- Array sort arguments: `SORT(arr,{1,2},1)` is a multi-key sort (H57), `SORT(arr,{1,2},{1,-1},TRUE)` too (H69), `SORT(arr,1,{1,-1})` is #VALUE! (H61, H65), and `SORTBY(A1:A3,C1:C3,{1;-1;1})` returns {1;0;0} (H97-H99; the rule is "UNIQUE's and SORTBY's lifted elements").
 Ours: errors left to right and the two-column by_array rejected (T-1850). A #VALUE! sort_order is still returned after by_col's error (multi-cell order of c5d278a8662ef4b2 A39 needs it; a real `"a"+1` order against a later error argument is UNVERIFIED for both SORT and SORTBY, which returns it at once). SORT reads array sort_index/sort_order lists since T-1837 (H57:J71 pass; see "Dynamic-array and LAMBDA function argument modes" for the list rules); SORTBY's array sort_order is T-1839.
 Status: VERIFIED (excel-graph)
 Tasks: T-1351, T-1837, T-1850, T-1902

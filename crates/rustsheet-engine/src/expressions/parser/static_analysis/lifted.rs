@@ -59,7 +59,8 @@ pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticRes
         .collect();
     match (kinds.result, broadcast_shapes(shapes)) {
         // Unlifted, or lifted over 1x1 arrays only, the call runs once and keeps its whole array
-        // (the driver's 1x1 rule, pending T-1960), so its shape is not known.
+        // (the driver's 1x1 rule; Excel lifts a 1x1 array, TODO(T-2298)), so its shape is not
+        // known.
         (CallResult::Array, StaticResult::Scalar | StaticResult::Array(1, 1)) => {
             StaticResult::Unknown
         }

@@ -202,7 +202,8 @@ fn take_drop_lift_over_a_range_into_references() {
 // The consumers of an array of references read a lifted TAKE or DROP as they read a lifted
 // OFFSET (SPEC-0014 rules 2-7): spilled, each element is `#VALUE!`; ISREF of the whole is FALSE;
 // LET hands it on; an error element stays itself.
-// UNVERIFIED: no oracle cell yet for D1:D2, E1 and E4 (T-1960 items 2 and 7); they may flip.
+// D1:D2 and E1 match probes/m7-lift-take-drop-sortby W45:W46 and U2; E4 is UNVERIFIED (T-2299
+// owns the rest of the grid hand-on cells).
 #[test]
 fn take_drop_reference_elements_reach_the_grid_consumers() {
     let mut model = lift_model();
@@ -228,9 +229,9 @@ fn take_drop_reference_elements_reach_the_grid_consumers() {
     }
 }
 
-// Over an array value each element is its call's top-left value (SPEC-0011 rule 2, pending
-// T-1960), errors in place; an unlifted call and a 1x1 count keep the whole array.
-// UNVERIFIED: the lifted cells have no oracle evidence yet (T-1960 item 1); they may flip.
+// Over an array value each element is its call's top-left value (SPEC-0011 rule 2;
+// probes/m7-lift-take-drop-sortby rows 5-7), errors in place; an unlifted call and a 1x1 count
+// keep the whole array (Excel lifts the 1x1 count, TODO(T-2298)).
 #[test]
 fn take_drop_lift_over_an_array_value_gives_top_left_values() {
     let mut model = new_empty_model();

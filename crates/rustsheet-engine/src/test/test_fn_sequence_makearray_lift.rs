@@ -102,8 +102,8 @@ fn lifted_output_is_charged_against_the_visit_cap() {
 }
 
 /// A call whose lifted arguments are all 1x1 runs once and keeps its whole array, as before
-/// T-1834 (`SEQUENCE(C3*1)` with C3 = 3 spills three rows). Whether Excel lifts a 1x1 array here
-/// (`SEQUENCE({3})`) is open until T-1960, which may change this pin.
+/// T-1834 (`SEQUENCE(C3*1)` with C3 = 3 spills three rows). Excel lifts a 1x1 array here
+/// (`SEQUENCE({3})` is 1x1, probes/m7-lift-take-drop-sortby row 12), so B1's pin is TODO(T-2298).
 #[test]
 fn a_one_cell_array_argument_runs_one_unlifted_call() {
     let mut model = new_empty_model();

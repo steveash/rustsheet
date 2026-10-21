@@ -8,12 +8,12 @@ priority: P2
 size: S
 tier: opus
 campaign: visible
-depends_on: [T-1770, T-1833, T-1834, T-1960]
+depends_on: [T-1770, T-1833, T-1834, T-1960, T-2298, T-2300]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
 
 ## Goal
-SORTBY's sort_order arguments lift over a multi-cell range and an array, one call per element whose value follows the element rule T-1960 establishes (not the top-left: SPEC-0011 rule 2's SORTBY exception, probes/sort-error-args H97-H99), while its array and by_array arguments stay whole, as in Excel; the lifting table can describe SORTBY's alternating (by_array, sort_order) pairs (SPEC-0011 rule 4).
+SORTBY's sort_order arguments lift over a multi-cell range and an array, one call per element whose value follows the element rule T-1960 established (Context: uniform entries give the top-left of each call, otherwise later elements are empty or `#VALUE!`; probes/sort-error-args H97-H99), while its array and by_array arguments stay whole, as in Excel; the lifting table can describe SORTBY's alternating (by_array, sort_order) pairs (SPEC-0011 rule 4).
 
 ## Context
 Split from T-1271. `ArgKinds` has a single `repeat` kind, and SORTBY's arguments after the first alternate `Whole` by_array and `Lift` sort_order; SPEC-0011 "Array-valued functions" rule 4 (T-1833) makes `repeat` a cycle of kinds (`&'static [ArgKind]`, whole cycles only in `accepts`); SORTBY is `params: [Whole, Whole, Lift]`, `repeat: [Whole, Lift]`. This task builds it (functions/lift/kinds/ (mod.rs and the per-family files), and `lifted_static_result`/`get_function_args_signature` where they read it) with SORTBY as its consumer. Each element sorts the whole array, so charge it the array's and by_arrays' cells per element (`lift_call_costed`) (SPEC-0011 rule 3). Put the entry in its own `// --- M7 (T-1839) ---` block so T-1835 and T-1836 can land in parallel. Delete SORTBY's `fallback_signature`/`fallback_shape` arms in expressions/parser/static_analysis.rs.
@@ -24,6 +24,8 @@ Owned cells, probes/m7-argument-modes (T-1083, excel-graph, 2026-10-09; arrays.m
 - F26:H26 `SORTBY(A1:A3,B1:B3,{1;-1})`: ROWS 2, COLUMNS 1, `INDEX(..,1,1)` 1 (ours `#N/IMPL!`).
 - probes/sort-error-args H97-H99 `SORTBY(A1:A3,C1:C3,{1;-1;1})` is {1;0;0} (moved here from T-1902): SPEC-0011's top-left rule gives {1;2;1}, so the element rule comes from T-1960's probe.
 F56:H56 (`SORTBY(A1:A3,B1:B2)` is `#VALUE!`) passes today and must keep passing.
+
+The element rule (T-1960, probes/m7-lift-take-drop-sortby sheet Sort, excel-graph, 2026-10-21; A1:A3 = 3,1,2, B1:B3 = 30,10,20, C1:C3 = 2,1,3, D1:D3 = c,a,b, E1:E3 = 1,-1,1, F1:F3 = 1,2,3; arrays.md "UNIQUE's and SORTBY's lifted elements"): the result has one element per entry. When every entry is equal each element is the top-left of that call (`{1;1;1}` 1,1,1, `{-1;-1;-1}` 2,2,2, `{1;1}+0` 1,1). Otherwise element 1 is the top-left of the call with the first entry and every later element is **empty** (spills as 0; ISBLANK TRUE, SUM 0, ROWS, COLUMNS and INDEX of it `#VALUE!`), even where its entry equals the first (`{1;-1;1}` gives 1, empty, empty: H97-H99's {1;0;0}; `{1;1;-1}` 1, empty, empty; a range E1:E3 the same), unless an entry is not 1 or -1 (`{1;2}`, `{1;"x"}`: that element is `#VALUE!`) or the call has a later by_array/sort_order pair (`SORTBY(A1:A3,C1:C3,{1;-1},A1:A3,1)` and `SORTBY(A1:A3,C1:C3,1,A1:A3,{1;-1})`: element 2 is `#VALUE!`, SUM `#VALUE!` too). A later sort_order lifts the same way when uniform (`1,A1:A3,{1;1}` and `{-1;-1}`: two elements, 1). A row `{1,-1}` is 1x2; `{1}` and `{-1}` are 1x1 (T-2298's 1x1 rule). The empty-later-elements rule is UNIQUE's too: reuse T-2300's driver option, do not copy it. The case's Sort sheet (452 failing cells today) is owned here.
 
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 4 cells, 0 numeric past half a unit in the 15th digit and 4 with a wrong type, error or text, blamed on SORTBY 4, ROWS 1, COLUMNS 1.
 
@@ -36,6 +38,7 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 4 cells, 0 numeric pas
 
 ## Acceptance criteria
 - [ ] Visible parity: the 4 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 4 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Sheet Sort of probes/m7-lift-take-drop-sortby passes.
 - [ ] probes/m7-argument-modes F26:H26 and probes/sort-error-args H97-H99 pass and F56:H56 still pass; their lines leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures.
 - [ ] SORTBY has a table entry citing those cells; its fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes); a unit test checks the kinds of arguments 1-6 and that the accepted argument counts are those `fn_sortby` accepts today (2, 3, then odd counts from 5; an even count above 3 is the count error).
 - [ ] Unit tests: an unlifted SORTBY is unchanged (value and static shape); a lifted sort_order2 in a two-key call lifts; a by_array given as an array literal is not lifted; a lifted call over a large array is `#ERROR!` past the visit cap.
