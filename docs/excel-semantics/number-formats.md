@@ -359,7 +359,12 @@ Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/25768de48ae7f2f9 Calc!A395, g
 gen-m5/651e713f5ae232ed Calc!A3, gen-m5/6b831f5e2a20bc34 Calc!A320, gen-m5/8a387c26d182e73c Calc!A281, gen-m5/8df4830f888f16ae Calc!A149,
 gen-m5/a6fec430ac350c1a Calc!A331, gen-m5/c688ca172fe533dc Calc!A139, gen-m5/d1b251fd6e9c4b4b Calc!A120, gen-m5/d9fb1e918971111b Calc!A243,
 gen-m5/f0f205865a3a4328 Calc!A262.
-Status: VERIFIED (excel-graph); not implemented (T-2157). Related: T-1130 (text values under 1-3 section codes).
+Ours (T-2157): `format_text_value` (formatter/format.rs) is `#VALUE!` when a number section of the code does not parse, and
+the lexer rejects a `B1`/`B2` calendar prefix after any token that prints in its section (a color, condition or locale
+bracket before it is fine), so the 11 gen-m5 cells above and the rejected probe codes pass. A bad section a number would
+not use in a multi-section code (`TEXT("a","0;ab1")`) rejects a text value too: UNVERIFIED. The fill characters of the
+accepted codes (`TEXT(2.5,"a*?")` "a", ours "a ") are T-1735's.
+Status: VERIFIED (excel-graph); implemented (T-2157). Related: T-1130 (text values under 1-3 section codes).
 
 ## TEXT reads a number-like text value as its number; control characters are literals (T-2158)
 Rule: a text value that reads as a number is formatted as that number: `TEXT("1","0,000.0")` is "0,001.0" and
@@ -535,7 +540,7 @@ Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every s
 rejects as a date (TEXT `#VALUE!`) displays 255 `#`.
 Not implemented: before T-2206 ours passed 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
 clock and elapsed-with-clock codes past 2958465.99999, which still format (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
-the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
+the text section on text and booleans (T-1736), `[Cyan]` (T-1737; `[$USD]` currency text is implemented since T-2157, which needed it), `?.??`/`#%` (T-1738),
 scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), the sign of a value that rounds to zero and `#,` on -500 (T-1129), fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030, T-2206

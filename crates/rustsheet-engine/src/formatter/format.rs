@@ -126,10 +126,22 @@ pub fn format_text(value: Option<f64>, format: &str, ctx: &FormatContext) -> For
 /// `TEXT("abc","0;x@")` is "xabc", probes/text-at-token-sections A10, A11, T-1656). Any other
 /// format with fewer than four sections returns the text unchanged; that case is unprobed. A
 /// result over 255 characters is `#VALUE!` ([`MAX_TEXT_FORMAT_CHARS`]).
+///
+/// Excel checks the number sections first: a code with an unparsable number section is `#VALUE!`
+/// for a text value too, even where the text section would apply (`TEXT("a","ab1")`,
+/// `TEXT(TRUE,"n;n;n;@")`; probes/t2202-text-code-check-on-text; number-formats.md "TEXT checks
+/// the code before it looks at a text or boolean value"). A bad section a number would not use
+/// in a multi-section code rejects the text too; that case is unprobed.
 pub fn format_text_value(text: &str, format: &str) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
     let parts = parser.parts.as_slice();
+    if parts[..numeric_section_count(parts)]
+        .iter()
+        .any(|part| matches!(part, ParsePart::Error(_)))
+    {
+        return format_error();
+    }
     let section = match parts.last() {
         Some(last) if parts.len() < 4 && is_text_section(last) => parts.len() - 1,
         _ if parts.len() < 4 => return capped_text(text.to_string()),
@@ -268,6 +280,16 @@ fn general_text(value: f64, locale: &Locale) -> String {
 }
 
 /// Whether `part` holds `@`, which makes it a text section.
+/// How many of `parts` are number sections. A last section with `@` in a format of two or three
+/// sections is the text section: numbers use the sections before it (`TEXT(-1,"0;x@")` is "-1",
+/// `TEXT(-1,"0;0;x@")` "1"; probes/text-at-token-sections C10, C11, T-1656).
+fn numeric_section_count(parts: &[ParsePart]) -> usize {
+    match parts.last() {
+        Some(last) if (2..4).contains(&parts.len()) && is_text_section(last) => parts.len() - 1,
+        _ => parts.len(),
+    }
+}
+
 fn is_text_section(part: &ParsePart) -> bool {
     section_tokens(part).is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw)))
 }
@@ -309,14 +331,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     let mut value = value_original;
     let general = ParsePart::General(GeneralPart {});
     let part;
-    // A last section with `@` in a format of two or three sections is the text section: numbers
-    // use the sections before it (`TEXT(-1,"0;x@")` is "-1", `TEXT(-1,"0;0;x@")` "1";
-    // probes/text-at-token-sections C10, C11, T-1656).
-    let numeric_sections = match parts.last() {
-        Some(last) if (2..4).contains(&parts.len()) && is_text_section(last) => parts.len() - 1,
-        _ => parts.len(),
-    };
-    match numeric_sections {
+    match numeric_section_count(&parts) {
         // Excel: an empty format shows nothing but a negative's minus, also for a value that
         // rounds to zero (`TEXT(-0.0001,"")` = "-", `TEXT(5,"")` = ""; probes/text-format-bare-literals
         // A32-A35).
