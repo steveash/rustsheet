@@ -3,7 +3,7 @@ use super::util::substitute_element;
 use crate::cast::number_text_too_long;
 use crate::{
     calc_result::CalcResult,
-    cast::{calc_result_to_string, calc_result_to_text, MAX_TEXT_UNITS},
+    cast::{calc_result_to_string, calc_result_to_text, MAX_SHORT_TEXT_UNITS, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -24,6 +24,18 @@ use crate::{
 /// (probes/regexreplace-long-result-d, -e, text-long-input-a, -b, -c).
 pub(super) fn reject_over_limit(text: &Text) -> Result<(), Error> {
     if text.len_utf16() > MAX_TEXT_UNITS {
+        return Err(Error::VALUE);
+    }
+    Ok(())
+}
+
+/// Excel: REPT's text and the text of CODE, UNICODE and T are `#VALUE!` over 255 UTF-16 units
+/// (an astral character counts two), whatever else the call asks: `REPT(REPT("x",256),0)` is
+/// `#VALUE!`, while CLEAN, TRIM, LOWER and LEFT take that text (docs/excel-semantics/text.md
+/// "REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units",
+/// probes/t2199-text-length-and-combin-cuts A1-C8, A12).
+pub(crate) fn reject_over_short_limit(text: &Text) -> Result<(), Error> {
+    if text.len_utf16() > MAX_SHORT_TEXT_UNITS {
         return Err(Error::VALUE);
     }
     Ok(())
@@ -93,6 +105,7 @@ fn len_element(text: &CalcResult) -> Result<ArrayNode, Error> {
 /// Computes a single REPT result from one element of each argument.
 fn rept_element(text: &CalcResult, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let text = calc_result_to_text(text)?;
+    reject_over_short_limit(&text)?;
     let number_times = number_times?.floor();
     // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
     // it also bounds the allocation (CLAUDE.md directive 5).
@@ -335,7 +348,9 @@ impl Model {
             let [text] = values else {
                 return Err(Error::ERROR);
             };
-            unicode_element(calc_result_to_text(text)?.as_ref())
+            let text = calc_result_to_text(text)?;
+            reject_over_short_limit(&text)?;
+            unicode_element(&text)
         })
     }
 
