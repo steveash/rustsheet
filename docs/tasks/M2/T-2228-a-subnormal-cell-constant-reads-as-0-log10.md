@@ -32,10 +32,11 @@ Excel for the web reads it: `LOG10(A1)` and `LN(A1)` are `#NUM!`, `A1=0` is TRUE
 
 ## Outcome
 The flush is at load, the one place Excel's evidence covers: `rustsheet-xlsx` import passes a `<v>` number constant through
-`flush_subnormal` (now `pub` and re-exported from the engine, still the one definition), and `rustsheet-eval`'s `spec_input`
+`flush_subnormal` (via `util.rs` `parse_constant_number`; now `pub` and re-exported from the engine, still the one definition), and `rustsheet-eval`'s `spec_input`
 does the same for a case's number constants, since `spec2xlsx` writes them as `<v>` and that is what Excel loaded. A spill's
 cached value (a formula result) is not flushed, nor is a number set through the API (`Model::update_cell_with_number`,
-facade `Input::from`): typing a subnormal is unprobed. probes/subnormal-cell-constants passes 20/20 (12 known failures gone);
+facade `Input::from`): typing a subnormal is unprobed. The probe now also has the negatives -5E-324 and -1E-310 (both flushed: `=0` TRUE) and -2.2250738585072014E-308 (kept),
+refilled by excel-graph 2026-10-21; probes/subnormal-cell-constants passes 35/35 (12 known failures gone);
 `make eval-baseline` also recorded poi FormulaEvalTestData_Copy.xlsx EverythingTests!I1360, which already passed on main
 without this change. Test: `rustsheet-xlsx/tests/subnormal_constant_import.rs` (round trip: 5e-324 and 1e-310 load as 0,
 `=A1=0` TRUE, LOG10 `#NUM!`; the smallest normal and a reloaded `=EXP(-745)` keep their values).

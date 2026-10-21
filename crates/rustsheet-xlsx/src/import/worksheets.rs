@@ -16,7 +16,6 @@ use rustsheet_engine::{
         types::CellReferenceRC,
         utils::{column_to_number, parse_reference_a1},
     },
-    flush_subnormal,
     types::{
         ArrayKind, Cell, Color, Comment, Dxf, FormulaValue, Link, MergedCell, SheetState,
         SpillValue, Table, Theme, Worksheet, WorksheetView,
@@ -357,11 +356,8 @@ pub(super) fn get_cell_from_excel(
                         a: anchor,
                     }
                 } else {
-                    // Excel reads a subnormal constant as 0 (`=A1=0` TRUE, LOG10 `#NUM!`; numbers.md
-                    // "A subnormal cell constant reads as 0", probes/subnormal-cell-constants). A
-                    // spill's cached value is a formula result, which keeps its subnormal.
                     Cell::NumberCell {
-                        v: flush_subnormal(parse_cell_number(cell_value)),
+                        v: super::util::parse_constant_number(cell_value),
                         s: cell_style,
                     }
                 }
