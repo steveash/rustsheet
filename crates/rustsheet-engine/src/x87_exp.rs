@@ -320,6 +320,15 @@ pub(crate) fn dd_mul(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
     two_sum(p, error)
 }
 
+/// [`dd_mul`] by [`two_prod`] instead of `mul_add`, for operands well inside the double range
+/// (|a|, |b| < 2^995, product not subnormal): the same exact product error, so the same result,
+/// without the runtime-dispatched FMA call that costs most of a hot kernel built on it
+/// (`x87_log10`, T-2016).
+pub(crate) fn dd_mul_in_range(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
+    let (p, p_error) = two_prod(a.0, b.0);
+    two_sum(p, p_error + (a.0 * b.1 + a.1 * b.0))
+}
+
 /// `1 + a` in double-double arithmetic.
 fn dd_add_one(a: (f64, f64)) -> (f64, f64) {
     let (s, e) = two_sum(1.0, a.0);
