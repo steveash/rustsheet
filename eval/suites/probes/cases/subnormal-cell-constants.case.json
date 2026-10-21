@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2016: a subnormal number typed as a cell constant (5e-324, 2.2e-308, 1e-310) as LOG10, LN, =0 and ISNUMBER see it, next to the smallest normal 2.2250738585072014e-308",
+  "tags": [
+    "M2",
+    "probe",
+    "numbers"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 5e-324,
+        "B1": "=LOG10(A1)",
+        "C1": "=LN(A1)",
+        "D1": "=A1=0",
+        "E1": "=ISNUMBER(A1)",
+        "F1": "=A1*1E+300",
+        "A2": 2.2e-308,
+        "B2": "=LOG10(A2)",
+        "C2": "=LN(A2)",
+        "D2": "=A2=0",
+        "E2": "=ISNUMBER(A2)",
+        "F2": "=A2*1E+300",
+        "A3": 1e-310,
+        "B3": "=LOG10(A3)",
+        "C3": "=LN(A3)",
+        "D3": "=A3=0",
+        "E3": "=ISNUMBER(A3)",
+        "F3": "=A3*1E+300",
+        "A4": 2.2250738585072014e-308,
+        "B4": "=LOG10(A4)",
+        "C4": "=LN(A4)",
+        "D4": "=A4=0",
+        "E4": "=ISNUMBER(A4)",
+        "F4": "=A4*1E+300"
+      }
+    }
+  ],
+  "expected": {}
+}

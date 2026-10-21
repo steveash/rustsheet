@@ -99,12 +99,7 @@ fn excel_weekday_index(serial: i64) -> usize {
 }
 
 fn invalid_date(value: f64) -> Formatted {
-    Formatted {
-        text: "#VALUE!".to_owned(),
-        color: None,
-        error: Some(format!("Invalid date value: '{value}'")),
-        unshowable: true,
-    }
+    Formatted::unshowable(format!("Invalid date value: '{value}'"))
 }
 
 /// Formats a TEXT value, `None` being a blank. A blank with an empty format gives "" and any other
@@ -717,11 +712,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         ParsePart::Number(p) => {
             if let Some(fraction) = &p.fraction {
-                return Formatted {
-                    text: format_fraction(value, p, fraction),
-                    color: p.color,
-                    error: None,
-                    unshowable: false,
+                return match format_fraction(value, p, fraction) {
+                    Some(text) => Formatted {
+                        text,
+                        color: p.color,
+                        error: None,
+                        unshowable: false,
+                    },
+                    None => {
+                        Formatted::unshowable(format!("Fraction numerator overflows: '{value}'"))
+                    }
                 };
             }
             let mut text = "".to_string();
@@ -744,14 +744,18 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             );
             let mut value_abs = value.abs();
             let mut exponent_part: Vec<char> = vec![];
-            let mut exponent_is_negative = value_abs < 10.0;
+            let mut exponent_is_negative = false;
             if p.is_scientific {
                 if value_abs == 0.0 {
                     exponent_part = vec!['0'];
-                    exponent_is_negative = false;
                 } else {
-                    // TODO: Implement engineering formatting.
-                    let exponent = value_abs.log10().floor();
+                    // Engineering: the exponent is a multiple of the integer-placeholder count,
+                    // rounded down (`##0.0E+0` on 123456.789 is "123.5E+3", on 61 "61.0E+0";
+                    // `00.0E+0` on 36.5 "36.5E+0"; eval/suites/gen-m10, T-1730). A zero
+                    // exponent carries no minus (`0.00E+00` on 1.5 is "1.50E+00").
+                    let group = f64::from(p.digit_count.max(1));
+                    let exponent = (value_abs.log10().floor() / group).floor() * group;
+                    exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
                     value /= 10.0_f64.powf(exponent);
                     value = to_precision(value, 15);
@@ -836,7 +840,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             if ln <= digit_count {
                                 // The number of digits is less or equal than the number of digit tokens
                                 // i.e. the value is 123 and the format_code is ##### (ln = 3 and digit_count = 5)
-                                if !(number_index < 0 && digit.kind == '#') {
+                                // A zero mantissa still shows one integer digit, even for `#`:
+                                // `|#.#|E-|#|` on 0 is "|0.|E|0|" (poi/NumberFormatApproxTests.xlsx
+                                // A136), where `#.#` alone gives ".".
+                                let zero_mantissa = p.is_scientific
+                                    && ln == 0
+                                    && number_index == -1
+                                    && digit.kind == '#';
+                                if zero_mantissa {
+                                    text = format!("{text}0");
+                                } else if !(number_index < 0 && digit.kind == '#') {
                                     let c = if number_index < 0 {
                                         if digit.kind == '0' {
                                             '0'
@@ -912,13 +925,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         } else if digit.number.is_exponent() {
                             // 3. Exponent part
                             let index = digit.index;
+                            // The `E` itself is a literal at the format's `E+`/`E-` (parser).
                             if index == 0 {
                                 if exponent_is_negative {
-                                    text = format!("{text}E-");
-                                } else if p.scientific_minus {
-                                    text = format!("{text}E");
-                                } else {
-                                    text = format!("{text}E+");
+                                    text.push('-');
+                                } else if !p.scientific_minus {
+                                    text.push('+');
                                 }
                             }
                             let number_index = l_exp - (p.exponent_digit_count - index);
