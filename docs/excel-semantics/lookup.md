@@ -726,7 +726,10 @@ call's result), not a value. What the caller sees depends on who reads the eleme
   ROW, COLUMN, CELL, ISFORMULA, N and T lift, once per whole element (`SUBTOTAL(9,OFFSET(A1,0,0,{1;2;3}))`
   spills 1, 101, 10101). Operators, IS* functions, IFERROR, TEXTJOIN and AGGREGATE see `#VALUE!` per element;
   IF, CHOOSE, LET, VSTACK, TAKE and DROP inside SUM hand the elements on; OFFSET over such a result lifts
-  again. Full table with cells: SPEC-0014 "Excel behavior to match" (probes/reference-lift-consumers,
+  again. TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
+  `SUM(DROP(OFFSET(A1,{0;1;2},0),1))` 10100 (E101, -b2 E153). Ours: since T-2174 for an unlifted count. Inside SUM
+  only a direct OFFSET or INDIRECT source keeps it (TRIMRANGE, IF, LET and nested TAKE/DROP sources there read
+  values), and a lifted count over such a grid is unprobed (T-2212). Full table with cells: SPEC-0014 "Excel behavior to match" (probes/reference-lift-consumers,
   -b1c, -b1d, -b2, excel-graph, 2026-10-19, T-1955). MEDIAN, STDEV.S, VAR.S, LARGE, SMALL, COUNTIFS,
   AVERAGEIF, MAXIFS, SUMSQ, AVERAGEA, MAXA and CONCAT over one are open: the workbooks holding them did
   not open in Excel for the web (T-2065).

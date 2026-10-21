@@ -510,10 +510,13 @@ impl Model {
         }
         functions.pair_with(value_columns, cell)?;
         let shape = functions.shape();
-        // GROUPBY's sort_order rules hold on both axes (P!A141, P!A161, P!A721, P!A1001, P!A1321-A1381),
-        // over the output value columns (functions2 P!A181-A221).
+        // GROUPBY's sort_order rules hold on both axes (P!A141, P!A161, P!A721, P!A1001, P!A1321-A1381).
+        // row_sort_order counts the output value columns past the keys (functions2 P!A181-A221),
+        // col_sort_order only one, the first, whatever the value columns or functions: 3 with one
+        // column field over two values is #VALUE!, 3 with two fields sorts by the first value
+        // (probes/pivotby-sort-order-past-keys S!A1-A72, A154-A167).
         let row_sort = self.sort_order(row_sort, row_fields, shape.columns, cell)?;
-        let col_sort = self.sort_order(col_sort, col_fields, shape.columns, cell)?;
+        let col_sort = self.sort_order(col_sort, col_fields, 1, cell)?;
         let header_row = match headers {
             // Only the values decide, as in GROUPBY (probes/pivotby-followup P!A1, P!A1021).
             FieldHeaders::Detect => values_have_header(&values).ok_or_else(|| {

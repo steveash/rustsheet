@@ -107,3 +107,83 @@ fn sharp_numerator_drops_the_separator() {
     assert_eq!(text(1_234_567_890.0, "# #/#"), "1234567890"); // 039accab K2
     assert_eq!(text(1.5, "# #/#"), "1 1/2");
 }
+
+// The next tests are desktop Excel's cached values in poi/NumberFormatTests.xlsx (Tests!A<row>,
+// `=TEXT(C<row>, B<row>)`), with `|` literals around each code.
+
+#[test]
+fn literals_around_the_slash() {
+    assert_eq!(text(23.75, r"|#\:#=/=#|"), "|23:3=/=4|"); // A134
+    assert_eq!(text(-23.75, r"|#\:#=/=#|"), "-|23:3=/=4|"); // A135
+    assert_eq!(text(23.75, r"|#\:? ?=/=#|"), "|2:3 3=/=4|"); // A149
+    assert_eq!(text(3.75, "|#_#/#|"), "|15 /4|"); // A165
+    assert_eq!(text(0.0, "|#_#/#|"), "|0 /1|"); // A169
+    assert_eq!(text(-3.75, "|#_?=/=?|"), "-|15 =/=4|"); // A193
+}
+
+#[test]
+fn zero_padded_denominator_pads_on_the_left() {
+    assert_eq!(text(23.75, r"|#\:? ?0#/000"), "|2:3  03/004"); // A160
+    assert_eq!(text(0.0, r"|#\:? ?0#/000"), "|:0  00/001"); // A162
+    assert_eq!(text(1.0, r"|#\:? ?0#/000"), "|:1  00/001"); // A163
+}
+
+#[test]
+fn blank_fraction_is_spaces_unless_all_sharp() {
+    assert_eq!(text(1.0, r"|#\:#=/=#|"), "|1|"); // A252
+    assert_eq!(text(1.0, r"|#\:#=/=?|"), "|1      |"); // A253
+    assert_eq!(text(1.0, r"|#\:#=/=0|"), "|1|"); // A254
+    assert_eq!(text(1.0, r"|#\:?=/=#|"), "|1      |"); // A255
+    assert_eq!(text(1.0, r"|?\:#=/=#|"), "|1      |"); // A261
+    assert_eq!(text(1.0, r"|0\:#=/=#|"), "|1|"); // A270
+    assert_eq!(text(0.0, r"|?\:#=/=0|"), "|0      |"); // A209
+}
+
+#[test]
+fn zero_numerator_prints_under_a_zero_placeholder() {
+    assert_eq!(text(1.0, r"|#\:0=/=#|"), "|1:0=/=1|"); // A258
+    assert_eq!(text(0.0, r"|#\:0=/=#|"), "|0=/=1|"); // A204
+    assert_eq!(text(0.0, r"|?\:0=/=#|"), "|0:0=/=1|"); // A213
+    assert_eq!(text(0.0, r"|0\:0=/=0|"), "|0:0=/=1|"); // A224
+}
+
+#[test]
+fn separator_after_a_zero_integer() {
+    assert_eq!(text(0.75, r"|#\:#=/=#|"), "|3=/=4|"); // A225
+    assert_eq!(text(0.75, r"|#\:?=/=#|"), "| 3=/=4|"); // A228
+    assert_eq!(text(0.75, r"|#\:0=/=#|"), "|3=/=4|"); // A231
+    assert_eq!(text(0.75, r"|?\:#=/=#|"), "|  3=/=4|"); // A234
+    assert_eq!(text(0.75, r"|0\:#=/=#|"), "|0:3=/=4|"); // A243
+    assert_eq!(text(-0.75, r"|?\:0=/=0|"), "-|  3=/=4|"); // A296
+    assert_eq!(text(0.75, r"|?\:?0=/=#|"), "|   3=/=4|"); // A161
+}
+
+/// Engine behavior, not Excel evidence: with no denominator after the literals the `/` is a
+/// literal and the section is no fraction.
+#[test]
+fn slash_without_a_denominator_stays_a_literal() {
+    assert_eq!(text(5.0, r#"0 /"x""#), "5 /x");
+    assert_eq!(text(5.0, "0=/"), "5=/");
+}
+
+/// probes/fraction-numerator-overflow and -overflow2 (excel-graph, T-1740): with no integer part a
+/// fixed numerator past 32767 and a placeholder value from 2147483647 on cannot be shown (TEXT
+/// `#VALUE!`, displayed text 255 `#`); a whole part takes the rest.
+#[test]
+fn numerator_past_excels_bound_is_unshowable() {
+    let ctx = FormatContext::new(get_locale("en").unwrap());
+    let unshowable = |value: f64, format: &str| format_number(value, format, &ctx).unshowable;
+    assert_eq!(text(327.67, "?/100"), "32767/100");
+    assert!(unshowable(327.68, "?/100"));
+    assert!(unshowable(-327.68, "?/100"));
+    // 327.675 * 100 rounds to 32768 at 15 digits.
+    assert!(unshowable(327.675, "?/100"));
+    assert_eq!(text(32767.0, "?/1"), "32767/1");
+    assert!(unshowable(32768.0, "?/1"));
+    assert_eq!(text(327.68, "# ?/100"), "327 68/100");
+    assert_eq!(text(2_147_483_646.0, "?/?"), "2147483646/1");
+    assert!(unshowable(2_147_483_647.0, "?/?"));
+    assert!(unshowable(-2_147_483_647.0, "??/??"));
+    assert_eq!(text(1E15, "# ?/?"), "1000000000000000    ");
+    assert_eq!(format_number(1000.0, "?/100", &ctx).text, "#VALUE!");
+}

@@ -1474,7 +1474,11 @@ inside the range, including when the cell is also in the range's row number and 
 `@XLOOKUP(2,Data!A1:A3,Data!B1:C3)` (the reference Data!B2:C2) is Data!B2 entered in another sheet's B2 and
 Data!C2 in C2. Column ranges intersect by row; a 2-D range never intersects (`#VALUE!`).
 Evidence: probes/xlookup-row-column-picks B2, C2, G3, E4, G15 (excel-graph, 2026-10-11, T-0962), through `@XLOOKUP`
-only; a plain `@Data!B2:C2` is unprobed (T-1333).
+and, plain (excel-graph, T-1333, probes/implicit-intersection-one-row-plain): `=@Data!B2:C2` is Data!B2 in
+another sheet's B2 and B5 (column wins, the row is irrelevant), Data!C2 in C2 and C5, and `#VALUE!` in E2 (outside
+the columns). The legacy form `=Data!B2:C2` (no `@`, legacy formula) gives the same values. On the same sheet
+`=@B10:C10` is B10's value in B12 and C10's in C12, `#VALUE!` in E12 and in E10 (row 10, outside B:C); the legacy
+form agrees.
 Implemented in: `implicit_intersection` (crates/rustsheet-engine/src/implicit_intersection.rs), shared by every
 implicit intersection.
 Status: VERIFIED (web)
@@ -1868,7 +1872,8 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   are `#VALUE!`, while the inline `IFERROR(Feb:Apr!A7:B12,0.5)` is 0.5, yet `ISERROR(span3)` and
   `ISERROR(span_calc)` are TRUE. A span that crosses the
   formula's own sheet (Calc) and the blank sheet Gap aggregates normally. Cases 8982982d63e058ed,
-  b221d72cc501675a; engine follow-up T-1640.
+  b221d72cc501675a; implemented by T-1640 (IFNA is unprobed; the engine gives it the same
+  `#VALUE!`, which IFNA does not replace either way).
 - **A name whose span is quoted on one side only is `#NAME?`.** `span_all` = `=Jan:'My Data'!$A$1`
   (the valid spelling is `='Jan:My Data'!$A$1`) is `#NAME?` in every value use (`=span_all`,
   `span_all+2`, `sumsq(span_all)`); `COUNT(span_all)` is 0, `COUNTA(span_all,7)` 2 (the error

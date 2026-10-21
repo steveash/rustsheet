@@ -3,7 +3,7 @@ id: T-2170
 title: "ASIN and ACOS are #NUM! just below -1 (ASIN(-1-2^-52))"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -44,3 +44,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 14 in eval/baseli
 
 ## Out of scope
 - ASIN accuracy inside [-1, 1].
+
+## Outcome
+`excel_asin` (ASIN, and ACOS through it) returns NaN, hence `#NUM!`, for `|x| > 1` before the kernel,
+so `1 - x` rounding to 2 can no longer yield ±π/2. Unit test `asin_acos_just_below_minus_one_are_num`.
+Eval delta: the 14 T-2170 known-failure lines left eval/baseline/gen-m5.txt, no new failures.
+numbers.md "Just below -1 as well" now marks it implemented.

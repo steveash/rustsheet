@@ -3,7 +3,7 @@ id: T-1740
 title: "Displayed text: a fraction format whose numerator overflows is 255 #"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -28,12 +28,23 @@ failures (wrong digits) are T-2029 (fixed denominators), T-2030 (placeholder den
 Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "Displayed text" section, which lists each failing text cell (Excel vs ours). Text cells are scored apart from values and are not baselined (decision 0068); the TEXT() cells on sheet T that use the same codes are value known failures in eval/baseline/gen-m10.txt. Formatter: crates/rustsheet-engine/src/formatter/ (shared by `Workbook::formatted` and TEXT). docs/excel-semantics/number-formats.md.
 
 ## Acceptance criteria
-- [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
-- [ ] number-formats.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
+- [x] number-formats.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+Probed the thresholds (probes/fraction-numerator-overflow and -overflow2, excel-graph, 145 TEXT cells plus their
+displayed text). With no integer part, a fixed denominator's rounded numerator may be at most 32767, and a placeholder
+denominator's value must be under 2147483647 in magnitude. A whole part never overflows. `format_fraction` now
+returns `None` past those bounds, and `format_number` turns that into an unshowable result: TEXT `#VALUE!`,
+displayed text 255 `#`. Recorded in number-formats.md "Fraction formats". Eval: gen-m10 failing text cells
+1374 -> 1347 (27 fixed), probes known failures -1, two new cases pass 145/145, visible parity -1, no regressions.
+The 27 fixed text cells (TF lines) left eval/baseline/gen-m10.txt. gen-m10 has no overflowing TEXT() value cell
+on sheet T, so no value line changed. Follow-up: T-2233. Excel picks a
+coarser fraction than the last convergent for `?/?` past 2^30; the cells are kept out of the suites until it is fitted.

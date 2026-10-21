@@ -3,10 +3,11 @@ id: T-2161
 title: "CELL with a multi-cell range as info_type lifts over it"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -26,8 +27,16 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 | gen-m5/c0651f0e0fb544d0 Calc!A293 | `=CELL(INDEX(Data!D2:E9,0,1),Data!A9)` | "#SPILL!" | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] These 1 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] These 1 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
+number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
+criteria above are already the visible-parity stage.
 
 ## Out of scope
 - CELL's reference argument as a range (already settled: no intersection).
+
+## Outcome
+`fn_cell` now lifts a multi-cell range `info_type` (read once into its cells) like an array one, so `CELL(INDEX(D2:E9,0,1),A9)` spills / is `#SPILL!` under a filled column. gen-m5/c0651f0e0fb544d0 Calc!A293 now passes; eval: 1 known failure fixed, 0 regressions. Unit test cell_lifts_over_a_range_info_type.

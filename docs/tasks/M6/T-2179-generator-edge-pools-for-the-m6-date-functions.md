@@ -3,7 +3,7 @@ id: T-2179
 title: "Generator edge pools for the M6 date functions: date serials, date and time text, weekend masks and return types"
 milestone: M6
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -58,3 +58,13 @@ those edges.
 - Regenerating or oracle-filling gen-m6 (T-2180).
 - Lookup-function pools (functions-lookup lane's params keep their domains).
 - Engine changes for anything the new edges reveal (T-2180 files them).
+
+## Outcome
+Added the eight pools (`date_serial`, `time_serial`, `date_text`, `time_text`, `weekend_mask`, `weekday_return`,
+`weeknum_return`, `month_offset`) to `tools/src/rustsheet_tools/gen/pools.py` and `pool:` on 30 M6 date params in
+`eval/catalog/functions.yaml` (no `hard` domain touched). The text-pool test now covers `date_text`, `time_text`
+and `weekend_mask` and rejects year-less dates in all three text pools. Check: `rustsheet-gen --milestone M6
+--count 3 --seed 99 --formulas 400 --focus --suite gen-m6-pooltest` drew every `date_serial`, `time_serial`,
+`weekday_return` and `weeknum_return` entry; `rustsheet-spec2xlsx` converted all three cases and
+`rustsheet-eval run --suite gen-m6-pooltest` ran them with 0 crashes (3 pending, no oracle values yet); the scratch
+suite was deleted. Eval delta: none (gen-m6 is not regenerated; T-2180 does that).
