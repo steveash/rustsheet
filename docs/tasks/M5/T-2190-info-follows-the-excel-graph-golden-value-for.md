@@ -3,7 +3,7 @@ id: T-2190
 title: "INFO follows the excel-graph golden: #VALUE! for every type_text"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,9 +24,12 @@ INFO gives what Excel for the web, the oracle of record (decision 0039 rule 2), 
   propagates as they are unless evidence says otherwise (unprobed: `INFO(#N/A)`, `INFO(1)`, arrays).
 
 ## Acceptance criteria
-- [ ] probes/info-sheets-info-types Alpha!D25:D49 pass and leave eval/baseline/probes.txt, with no new known failures.
-- [ ] A comment at the change cites the probe cells and T-2182.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/info-sheets-info-types Alpha!D25:D49 pass and leave eval/baseline/probes.txt, with no new known failures.
+- [x] A comment at the change cites the probe cells and T-2182.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Desktop INFO values (T-2182).
+
+## Outcome
+`fn_info` is `#VALUE!` for every type_text (argument errors and arg count unchanged); dropped the engine-only recalc/system/release/timezone/numfile values. probes/info-sheets-info-types: 14 known failures fixed, 0 regressions.
