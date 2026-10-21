@@ -447,7 +447,8 @@ Rule: excel-graph's `Range.text` is the cell's value under its number format, an
 depend on the column width. At width 4 a General `12345678` stays "12345678" and `=1/3` stays
 "0.333333333" (the 11-character General rule of `TEXT(x,"General")`, not a width-fitted
 shortening), and text is not cut ("long text"). A number a date format cannot show (a negative date
-serial) is 255 `#` characters, not a width-sized `####`. The other probed cells:
+serial; more cases in "Displayed text over an edge-value pool" below) is 255 `#` characters, not a
+width-sized `####`. The other probed cells:
 General `1.5` "1.5", `1234567890123` "1.23457E+12", `1E-10` "1E-10"; `0.00` on PI() "3.14";
 `#,##0.00` on -1234.5 "-1,234.50"; `0%`/`0.0%` on 0.256 "26%"/"25.6%"; `yyyy-mm-dd` on 45000
 "2023-03-15"; `m/d/yyyy h:mm` on 45000.75 "3/15/2023 18:00"; `0.00;(0.00)` on -5 "(5.00)";
@@ -459,8 +460,9 @@ Desktop `.Text` does depend on the width (`####` when a number does not fit), un
 excel-graph text is what the M10 suite scores (decision 0068).
 Not implemented: ours gives " 1/2" for `# ?/?` on 12.5 (T-2030), "1,234" for
 `TEXT(1234.5,"#,##0")` (a value failure too: Excel rounds the 15-digit decimal half away from zero,
-as General and ROUND do; ours rounds an exact binary tie to even, T-2206) and `#VALUE!` for the
-negative date (T-1711, T-1731).
+as General and ROUND do; ours rounds an exact binary tie to even, T-2206).
+Implemented in: formatter/formatted.rs (`Formatted::displayed`: every serial the formatter rejects as a
+date, where TEXT is `#VALUE!`, displays 255 `#`; T-1711).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1610, T-1711, T-2030, T-2206
 
@@ -496,8 +498,10 @@ TEXT() with the same codes. Points the earlier probes did not show:
   "36.5E+0", `0.000E-00` on 1.5 "1.500E00".
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); the report's "Displayed
 text" section lists every cell ours gets wrong.
-Not implemented: ours passes 6,961 of 10,400 text cells (66.9%). Fill characters (T-1735),
-out-of-range dates (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
+Implemented in: formatter/formatted.rs (`Formatted::displayed`, T-1711): every serial the formatter
+rejects as a date (TEXT `#VALUE!`) displays 255 `#`.
+Not implemented: ours passes 8,797 of 10,400 text cells (84.6%). Fill characters (T-1735),
+clock and elapsed-with-clock codes past 2958465.99999, which still format (T-1731), fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
 the text section on text and booleans (T-1736), `[$USD]`/`[Cyan]` (T-1737), `?.??`/`#%` (T-1738),
 scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), round-half (T-2206: `0`, `#,##0`, `0%`, `"("0")"` ... on 2.5, -2.5, 36.5, 0.125 and 12.345 are "3", "-3", "37", "13%" and "1235%", half away from zero on the 15-digit decimal), the sign of -0.5 (T-1129),
 fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
