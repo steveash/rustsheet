@@ -3,7 +3,7 @@ id: T-1592
 title: "Fit YIELD's Newton start: a frequency-independent first iterate"
 milestone: M9
 lane: research
-status: blocked
+status: todo
 priority: P2
 size: M
 tier: opus
@@ -53,7 +53,12 @@ evidence: Excel cells whose YIELD is forced to stop after k iterations do not ex
 - Or the same back-chain analysis on PRICE's inverse with other day-count bases (probe cells with
   basis 1 to 4 and more than one coupon).
 
-Waiting on T-2187 (oracle sweep). Reopen when it lands.
+Unblocked by T-2187 (2026-10-21). probes/yield-start-sweep is now in `YIELD_CASES`. On its 63 basis-0 cells across
+redemption and frequency, analytic Newton run forward from the fixed start 0.0552344627 matches Excel to 2e-12 relative.
+It returns the iterate after the first step below about 7e-6 (the cut lies between 6.66e-6 and 7.11e-6).
+financial.md "YIELD stops short of PRICE's root" has the T-2187 paragraph. Next hypothesis: fit the start S as a
+function of rate, price and the basis's time to maturity (it moves with price, column E, and with basis 1/3 against
+0/4, column D, but not with redemption or frequency), then this step-size stop.
 
 ## Visible-parity stage
 Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.

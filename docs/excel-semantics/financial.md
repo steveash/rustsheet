@@ -1060,7 +1060,24 @@ both 10.33 years) gives no consistent T: annual or semi-annual annuities over a 
 compounding, and the approximate yield over (red + P)/2, P or (red + 2P)/3.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592
+T-2187 (probes/yield-start-sweep, excel-graph, 2026-10-21; the base bond `YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,R,F,B)`):
+analytic Newton run *forward* from the fixed start S = 0.0552344627 reproduces Excel on all 63 cells of columns A, B
+and C (redemption 100 to 101 by 0.05 at frequency 2, 1 and 4, basis 0), every one to within 2e-12 relative, when it
+returns the iterate after the first step smaller than about 7e-6. The step count changes with the inputs: one step at
+R = 100 for F = 1 and 2 (A1, B1, a 1.4e-6 step), two steps up to A17 (R = 100.8, last step 6.37e-6), B16 (6.26e-6) and
+C18 (6.66e-6), and three steps from A18 (7.19e-6), B17 (7.11e-6) and C19 (7.47e-6). C1 (F = 4, R = 100) takes two
+steps, 1.52e-5 then 5.0e-10. So the step-size cut lies between 6.66e-6 and 7.11e-6 absolute, or between 1.17e-4 and
+1.25e-4 relative to the iterate; these cells do not separate the two. This replaces the residual-stop reading of
+T-1583. The start S does not depend on redemption or frequency; it does depend on price and on the day-count basis:
+- Back-chain starts by price (column E): about 0.10913448 at price 80 (E4) and 0.2427821 at price 50 (E1).
+- Back-chain starts by basis (column D, R = 100): 0.0552334228 on bases 1 and 3 (D1, D2, D8) against 0.0552344627
+  on bases 0 and 4 (D10, D11; these dates count the same on 30/360 and 30E/360).
+- Lab: `uv run python` on `solvers.newton_back_chain`, pinned in
+  tools/tests/test_fitlab_solvers.py::test_yield_start_sweep_newton_from_a_shared_start.
+Next hypothesis (T-1592): S is a function of rate, price and the basis's time to maturity only. Candidates are an
+earlier phase run on a redemption-free model (for example a perpetuity, or a bond priced at par), and the stop is the
+step-size cut above.
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187
 
 ## TBILLEQ and TBILLYIELD
 Rule: Excel's TBILLYIELD is `(100 - pr)/pr * (360/DSM)`, evaluated in that order; the textbook

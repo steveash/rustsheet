@@ -47,7 +47,12 @@ XIRR_OOS_CASES = [
     "probes/xirr-mismatched-empties",
     "probes/xirr-early-dates",
 ]
-YIELD_CASES = ["probes/solver-iteration-traces", "probes/bond-one-period-bases", "probes/yield-solver-sweep"]
+YIELD_CASES = [
+    "probes/solver-iteration-traces",
+    "probes/bond-one-period-bases",
+    "probes/yield-solver-sweep",
+    "probes/yield-start-sweep",
+]
 
 
 class NoResultError(ExcelError):
@@ -721,9 +726,9 @@ def dprice(y: float, bond: Bond) -> float:
 
 
 def _bond_price(args: tuple[Arg, ...]) -> tuple[Callable[[float], float], Bond, float]:
-    """The cell's PRICE(y) function on basis 0, its bond tuple and the target price."""
-    settle, maturity, rate, pr, red, freq, _ = _bond(args)
-    a, e, _, dsc, n = day_counts(settle, maturity, freq, 0, period_e=False)
+    """The cell's PRICE(y) function in its day-count basis, its bond tuple and the target price."""
+    settle, maturity, rate, pr, red, freq, basis = _bond(args)
+    a, e, _, dsc, n = day_counts(settle, maturity, freq, basis, period_e=False)
     bond: Bond = (rate, red, freq, a, e, dsc, n)
     return partial(price, bond=bond), bond, pr
 
