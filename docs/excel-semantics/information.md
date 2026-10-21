@@ -387,3 +387,12 @@ Phases 1-3 (decision 0039): the engine follows it in T-2190, which is expected t
 non-literal INFO, T-2113), and `INFO("numfile")` (canary-dependent). The engine also returns `#VALUE!` for `"numfile"` and its
 engine-only `"timezone"`/`"timezones"` (T-2190), unprobed and awaiting oracle confirmation (T-2182).
 Evidence: probes/info-sheets-info-types Alpha!D25:D49 (excel-graph, 2026-10-20, T-2115).
+
+## TYPE of a one-cell range
+Rule: `TYPE(X:X)` over a one-cell range classifies the cell itself, as `TYPE(X)` does: blank 1, number 1, text 2, boolean 4,
+error 16, and text over 255 units 64. A blocked spill anchor (`#SPILL!`) is 16 and a working numeric spill anchor 1.
+One-cell `OFFSET(A2,0,0,1,1)` and `INDIRECT("A2:A2")` results classify the same way (text 2, boolean 4, error 16, blank 1).
+Evidence: probes/type-one-cell-range-kinds (excel-graph oracle sidecar). Desktop Excel was not checked.
+Implemented in: `fn_type` (functions/information/mod.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2156, T-2262
