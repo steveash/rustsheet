@@ -3,7 +3,7 @@ id: T-2130
 title: "PMT, IPMT and PPMT to 15 significant digits on the shared power kernel, off powf"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
