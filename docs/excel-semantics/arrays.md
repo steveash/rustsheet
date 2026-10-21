@@ -1208,8 +1208,8 @@ TEXTJOIN over A1:C3 with ignore 0, 1 is `#N/A` because A2 is `#N/A`, so those ce
 ISOMITTED inside `LAMBDA(x,[y],...)` matches ours in every probed form (A20-A49): an omitted argument is TRUE, an empty slot
 (`(1,)`, A24-A25) counts as omitted and so does a required parameter left empty (`(,2)`, A34), while `""` (A26-A27) and a reference to a
 filled cell (A28-A31) count as supplied (FALSE), and so is a reference to a blank cell: `LAMBDA(x,[y],ISOMITTED(y))(1,C1)` with C1 blank is FALSE (probes/dynamic-array-reshape-reprobe E20-E21); outside a LAMBDA `ISOMITTED(5)`, `ISOMITTED(A1)` and `ISOMITTED(#N/A)` are FALSE (A43-A45).
-A function result that is a blank cell is not omitted either: `ISOMITTED(LOOKUP(ROWS(Data!D$3),Data!C9:C12,Data!B10:B12))`, whose LOOKUP
-returns an empty cell, is FALSE (gen-m7/2c5ea078f25443a2 Calc!A1087, excel-graph, 2026-10-21, T-2225). Ours: TRUE (T-2317).
+A function result is not omitted either: `ISOMITTED(LOOKUP(ROWS(Data!D$3),Data!C9:C12,Data!B10:B12))` (an unsorted lookup vector, a
+shorter result vector over blank cells) is FALSE (gen-m7/2c5ea078f25443a2 Calc!A1087, excel-graph, 2026-10-21, T-2225). Ours: TRUE (T-2317).
 Status: VERIFIED (excel-graph)
 Tasks: T-1627, T-1630, T-1632
 
@@ -1227,6 +1227,7 @@ The same holds for a multi-cell array value, not only a range: `MAP(Data!C4:D12,
 result (7307132bb8820f17 A619) or a TRIMRANGE (2c5ea078f25443a2 A1717), a MAP step raising to a BYROW column (7307132bb8820f17 A1324) and a SCAN
 whose array initial value is returned as the accumulator (9359f03972e94026 A1705) are each one `#CALC!` with nothing spilled (excel-graph,
 2026-10-21, T-2225). Ours: a `#VALUE!` per element, spilled (T-2309).
+Tasks: T-2309
 
 ## SCAN and REDUCE keep errors in the LAMBDA
 Rule: SCAN and REDUCE do not stop at an error. An error initial_value, an error accumulator and an error element are handed
@@ -1261,8 +1262,8 @@ Tasks: T-2308
 Rule: a by_array that is one value (not a range or an array of the array's height) does not make SORTBY `#VALUE!`: the array comes back
 in its own order. `SORTBY(Data!E1:E12,MAX(..)%,-1)` is Data!E1:E12 unchanged (gen-m7/18b80d3fd292d63a Calc!A123:A134) and
 `SORTBY(Data!C1:C12,IFNA(TIMEVALUE("2024-02-29 07:05:09"),..),1)` is Data!C1:C12 with its blanks as 0 (7307132bb8820f17 A966:A977).
-A fractional sort_order is read by its sign: `SORTBY(Data!B1:E12,Data!E1:E12,-0.0001,Data!B1:B12,-1)` equals the call with -1
-(07d27aa0add0247f A658). A positive fraction and a one-cell range as by_array are UNVERIFIED. The "Invalid values" list of
+A fractional sort_order is not `#VALUE!`: `SORTBY(Data!B1:E12,Data!E1:E12,-0.0001,Data!B1:B12,-1)` inside a TEXTSPLIT is a value
+(07d27aa0add0247f A658), and reading it as -1 reproduces that value; that it is read by its sign is derived, not a measured -1 control (UNVERIFIED). A positive fraction and a one-cell range as by_array are UNVERIFIED. The "Invalid values" list of
 "SORT and SORTBY argument errors" (`SORTBY(arr,key,0)` `#VALUE!`) still holds.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
 Ours: `#VALUE!` for both (T-2310).
@@ -1285,7 +1286,8 @@ Tasks: T-2311
 Rule: a wrap_count around 1E+15 or more is `#NUM!`, although a wrap_count past the vector's length is otherwise clamped (see
 "Stacked results past the grid": `COLUMNS(WRAPROWS(SEQUENCE(16385),16385))` is 16385). `WRAPROWS(Data!E6:E10,1000000000000001.5,..)`
 (gen-m7/7d67c559ce7536fa Calc!A384), `WRAPCOLS(Data!D5:D7,1000000000000044.1)` (8044dce50616cfe9 A1187), `WRAPCOLS(Data!E9:E12,
-1000000000000000.1)` (c36ff5f42a1a4d47 A877) and `WRAPROWS(..,3.78E+17,1E-15)` (7307132bb8820f17 A1372) are `#NUM!`. The threshold
+1000000000000000.1)` (c36ff5f42a1a4d47 A877) are `#NUM!`. `WRAPROWS(..,3.78E+17,1E-15)` (7307132bb8820f17 A1372) is `#NUM!` too, but its wrap_count is `ODD(2^53)*42`, so
+the error may come from ODD. The threshold
 between 16385 and 1E+15 is UNVERIFIED.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
 Ours: clamps and spills (T-2312).
@@ -1295,9 +1297,11 @@ Tasks: T-2312
 ## SEQUENCE and TAKE: an argument error before zero rows
 Rule: SEQUENCE with 0 rows or columns, and TAKE with 0 rows, return an error in another argument rather than `#CALC!`:
 `SEQUENCE(0,4,<array start>,<step>)` is `#VALUE!` (gen-m7/07d27aa0add0247f Calc!A817), `SEQUENCE(0,1,LOOKUP(NETWORKDAYS(..),..),
-TOCOL(Data!E7:E11))` spills five `#NUM!` (36809e9faa59553f A334), `SEQUENCE(WRAPROWS(..)+..,0,..)` is `#VALUE!` (611ce3bbfab27cef A1065),
+TOCOL(Data!E7:E11))` spills five `#NUM!` (36809e9faa59553f A334),
 `SEQUENCE(0,1,ROUNDDOWN(SORT(..),-6),COLUMNS(COTH(..)))` has `#VALUE!` elements (611ce3bbfab27cef A1633) and `TAKE(Data!B9:C10,0,
-LN(ROUND(..)))` is `#VALUE!` (7d67c559ce7536fa A1296). `SEQUENCE(0)` alone stays `#CALC!`.
+LN(ROUND(..)))` is `#VALUE!` (7d67c559ce7536fa A1296). `SEQUENCE(0)` alone stays `#CALC!`. A817's error argument (its start, a UNIQUE over an XLOOKUP) is not isolated.
+`SEQUENCE(WRAPROWS(Data!C2,3,Data!$A$3)+..,0,..)` (611ce3bbfab27cef A1065) is one `#VALUE!` with no error argument: its rows is
+an array (WRAPROWS pads with a blank) of about 1E+15; its cause is UNVERIFIED and not this rule.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
 Ours: `#CALC!` (T-2316).
 Status: VERIFIED (excel-graph)

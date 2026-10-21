@@ -29,6 +29,8 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 10 known-failure li
 - gen-m7/611ce3bbfab27cef.case.json A1633 `=SEQUENCE(0,1,ROUNDDOWN(SORT(Data!B6:C12,1,1),-6),COLUMNS(COTH(Data!$A$1)))`: B1634 Excel #VALUE!, ours #CALC!; cells (2): B1634, B1636
 - gen-m7/7d67c559ce7536fa.case.json A1296 `=TAKE(Data!B9:C10,0,LN(ROUND(Data!B$9,Data!B3)))`: A1296 Excel #VALUE!, ours #CALC!; cells (1): A1296
 
+- Review note (T-2225): 611ce3bbfab27cef A1065 has no error argument (its rows is an array of about 1E+15 from WRAPROWS with a blank pad), so its `#VALUE!` is not this rule; probe it before fixing it here. A817's error argument (a UNIQUE over an XLOOKUP as start) is not isolated.
+
 ## Acceptance criteria
 - [ ] Visible parity: the 10 gen-m7 cells listed under Context have Excel's value, type, error and text: these 10 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.

@@ -67,4 +67,6 @@ rich-value error type cannot be decoded yet. Those cells are unscored, never gue
     SCAN/REDUCE error propagation (219).
   - Extended: T-1839 (80), T-2300 (34), T-1835 (28), T-2298 (6), T-1946 (3), T-2288 (2), T-1973 (1).
   - The quirks found are in docs/excel-semantics/arrays.md and text.md.
+- **Visible parity:** `make eval-baseline` rewrote eval/baseline/visible-parity.json from 2551 to 3838. The rise comes only from
+  visibly-off cells in the new cases, which quality-gates.md allows (decision 0093).
 - **Eval delta:** +9,997 scored gen-m7 cells, 1,341 new-coverage known failures, 0 regressions.

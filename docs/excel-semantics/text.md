@@ -844,8 +844,9 @@ Tasks: T-2169, T-2250
 ## TEXTBEFORE and TEXTAFTER: instance_num past the text, a number if_not_found
 Rule: an instance_num whose size is greater than the text's length is `#VALUE!`, whatever the delimiter, match_end and if_not_found
 (the empty delimiter excepted, see above): `TEXTBEFORE("b","a",-2,1,1)` (gen-m7/2c5ea078f25443a2 Calc!A360), `TEXTBEFORE("x~*","1",
-WORKDAY(..))` (611ce3bbfab27cef A336), `TEXTBEFORE(<blank>,Data!A6:A11,2,123456789.123,1,FALSE)` (c36ff5f42a1a4d47 A148) and
-`TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767) are `#VALUE!`. A number if_not_found comes back as text:
+WORKDAY(..))` (611ce3bbfab27cef A336), and
+`TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767) are `#VALUE!`. `TEXTBEFORE(<blank>,Data!A6:A11,2,123456789.123,1,FALSE)`
+(c36ff5f42a1a4d47 A148) is `#VALUE!` too, but its match_mode 123456789.123 is itself invalid, so it does not isolate this rule. A number if_not_found comes back as text:
 `TEXTAFTER(..,"a",..,0,1,-2.5)` is "-2.5" (ac67253061bba16a A776) and `TEXTBEFORE(..,",",2,..,1,3)` is "3" (A1345).
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
 Ours: `#N/A`, "" or the if_not_found number (T-2314).
