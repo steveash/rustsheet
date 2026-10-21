@@ -265,6 +265,18 @@ impl Model {
                         handle(serial)
                     }
                     CalcResult::EmptyCell => Ok(()),
+                    CalcResult::String(text) => {
+                        let serial = model.cast_number(&text).map(|v| v.floor() as i64);
+                        let Some(serial) = serial else {
+                            return Err(CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "Invalid holiday date".to_string(),
+                            ));
+                        };
+                        model.excel_date(serial, cell)?;
+                        handle(serial)
+                    }
                     _ => Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
@@ -300,6 +312,22 @@ impl Model {
                 }
             }
             e @ CalcResult::Error { .. } => return Err(e),
+            // A one-cell reference arrives as its value: a blank cell is no holiday and number
+            // text is a holiday, as in a range (docs/excel-semantics/dates.md "WORKDAY and
+            // NETWORKDAYS holidays: blank and number-text cells", T-2270).
+            CalcResult::EmptyCell => {}
+            CalcResult::String(text) => {
+                let Some(v) = self.cast_number(&text) else {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Invalid holiday date".to_string(),
+                    ));
+                };
+                let serial = v.floor() as i64;
+                self.excel_date(serial, cell)?;
+                handle(serial)?;
+            }
             _ => {
                 return Err(CalcResult::new_error(
                     Error::VALUE,

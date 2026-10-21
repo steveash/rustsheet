@@ -3,7 +3,7 @@ id: T-2270
 title: "WORKDAY/NETWORKDAYS(.INTL): a blank one-cell holidays reference and numeric-text holiday cells are accepted (ours #VALUE!)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -49,3 +49,6 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 11 in eval/baseli
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`collect_serial_numbers` (date_and_time.rs) accepts a blank one-cell reference (no holiday) and a text cell that reads as a number (a holiday), in a range and as a one-cell reference; other text stays `#VALUE!`. Number text in a range is counted, not skipped (UNVERIFIED, dates.md). Unit test covers all four functions with a blank and a "1" cell. Eval: 20 gen-m6 known failures fixed (the 11 here plus 9 that shared the cause), no regressions.

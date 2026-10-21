@@ -80,3 +80,33 @@ fn whole_week_skipping_lifted_weekend() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"1446000");
 }
+
+// T-2270: a one-cell holidays reference to a blank cell is no holiday, and a cell holding number
+// text is a holiday (dates.md "WORKDAY and NETWORKDAYS holidays: blank and number-text cells").
+#[test]
+fn blank_and_number_text_holiday_cells_are_accepted() {
+    let mut model = new_empty_model();
+    model._set("B1", r#"="1""#);
+    model._set("B2", r#"="abc""#);
+    model._set("A1", "=WORKDAY(18260,-30,C4)");
+    model._set("A2", "=WORKDAY(18260,-30,B1)");
+    model._set("A3", "=WORKDAY.INTL(60,PI(),4,C5)");
+    model._set("A4", "=WORKDAY.INTL(60,PI(),4,B1)");
+    model._set("A5", "=NETWORKDAYS(17247,33116,C4)");
+    model._set("A6", "=NETWORKDAYS(17247,33116,B1)");
+    model._set("A7", "=NETWORKDAYS.INTL(59460,0,4,C4)");
+    model._set("A8", "=NETWORKDAYS.INTL(59460,0,4,B1)");
+    model._set("A9", "=NETWORKDAYS(17247,33116,B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "18218");
+    assert_eq!(model._get_text("A2"), "18218");
+    assert_eq!(model._get_text("A3"), "63");
+    assert_eq!(model._get_text("A4"), "63");
+    assert_eq!(model._get_text("A5"), "11336");
+    assert_eq!(model._get_text("A6"), "11336");
+    assert_eq!(model._get_text("A7"), "-42473");
+    // Serial 1 is a working day inside the span, so counting "1" as a holiday removes one.
+    assert_eq!(model._get_text("A8"), "-42472");
+    // Non-number text stays #VALUE! (probes/workday-serial-zero F56).
+    assert_eq!(model._get_text("A9"), "#VALUE!");
+}
