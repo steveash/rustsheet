@@ -42,4 +42,4 @@ corners), checks the references' rows with `check_stack_size`, then reads them; 
 drop_take.rs is shared. arrays.md "Stacked results past the grid" records the rule.
 Eval delta: probes/scalar-lift-open-c2 W1 fixed (`#NUM!`); the new case passes 10 of 11; W9 is a
 new-coverage known failure owned by the circular-reference semantics (ours is `#CIRC!`, Excel 0;
-recalc.md "A circular reference without iteration is 0", M3 / T-0401). No regressions.
+recalc.md "A circular reference without iteration is 0"; follow-up T-0445). No regressions.
