@@ -646,7 +646,10 @@ A subnormal cell constant reads as 0 (T-2016, VERIFIED, probes/subnormal-cell-co
 number constant below 2.2250738585072014E-308 (5E-324, 2.2E-308, 1E-310) in a loaded workbook (an xlsx `<v>`; typing
 one in is unprobed) is `=0` TRUE and `ISNUMBER` TRUE, `*1E+300`
 gives 0, and `LOG10` and `LN` of it are `#NUM!`; the smallest normal is kept. So LOG10 and LN never see a subnormal
-argument from a cell. Not implemented yet: T-2228 (the engine keeps the subnormal).
+argument from a cell. Implemented at load (T-2228): xlsx import flushes a `<v>` number constant with
+`arithmetic::flush_subnormal`, and so does the eval harness for a spec case's number (it stands for the same xlsx load). A
+spill's cached value and any formula result keep their subnormal; a constant set through the API is kept too (typing one is
+unprobed).
 Comparison and literals (T-0989): a comparison decides on the two 15-digit values alone, with no absolute tolerance, so
 `EXP(-708)=0` is FALSE (C4-C6, C60-C62, C65 pass), while a literal below the smallest normal is flushed to 0 when it is
 read (`=1E-308=0` is TRUE). Still failing: the engine flushes the result of `+` and `-` (`3E-308-2.5E-308`, C69, C73-C75;

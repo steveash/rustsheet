@@ -3,7 +3,7 @@ id: T-2228
 title: "A subnormal cell constant reads as 0 (LOG10 #NUM!, =0 TRUE), as Excel loads it"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,8 +24,18 @@ Excel for the web reads it: `LOG10(A1)` and `LN(A1)` are `#NUM!`, `A1=0` is TRUE
   result such as `EXP(-745)` is kept in memory.
 
 ## Acceptance criteria
-- [ ] probes/subnormal-cell-constants passes in full and leaves the probes baseline (`make eval-baseline`).
-- [ ] `make check` green; reviewers approve.
+- [x] probes/subnormal-cell-constants passes in full and leaves the probes baseline (`make eval-baseline`).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Subnormal formula results (kept, numbers.md "Worksheet EXP") and their export (T-2211).
+
+## Outcome
+The flush is at load, the one place Excel's evidence covers: `rustsheet-xlsx` import passes a `<v>` number constant through
+`flush_subnormal` (now `pub` and re-exported from the engine, still the one definition), and `rustsheet-eval`'s `spec_input`
+does the same for a case's number constants, since `spec2xlsx` writes them as `<v>` and that is what Excel loaded. A spill's
+cached value (a formula result) is not flushed, nor is a number set through the API (`Model::update_cell_with_number`,
+facade `Input::from`): typing a subnormal is unprobed. probes/subnormal-cell-constants passes 20/20 (12 known failures gone);
+`make eval-baseline` also recorded poi FormulaEvalTestData_Copy.xlsx EverythingTests!I1360, which already passed on main
+without this change. Test: `rustsheet-xlsx/tests/subnormal_constant_import.rs` (round trip: 5e-324 and 1e-310 load as 0,
+`=A1=0` TRUE, LOG10 `#NUM!`; the smallest normal and a reloaded `=EXP(-745)` keep their values).
