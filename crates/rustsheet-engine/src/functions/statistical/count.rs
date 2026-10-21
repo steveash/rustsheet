@@ -121,6 +121,13 @@ impl Model {
                     Err(_) => external += 1.0,
                 },
                 PickedReference::Node(arg) => {
+                    // So do those of a 3-D span of its cached sheets, on each sheet
+                    // (`COUNTA([1]Uses:Defines!$A$1:$C$3)` is 9;
+                    // fixtures/external-link-cached-3d-span Refs!B5, T-1654).
+                    if let Some(areas) = self.cached_external_span(arg, cell) {
+                        external += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+                        continue;
+                    }
                     // A reference, 3-D ones included, arrives as a Range: its non-empty cells
                     // count. TAKE, DROP, INDEX, OFFSET and the like over a range pick a reference
                     // too, so `COUNTA(TAKE(B3:B3,1))` of a blank is 0

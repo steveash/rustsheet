@@ -14,9 +14,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    external_reference::{external_area, external_blocked, ExternalArea},
+    external_reference::{external_area, external_blocked, written_external_area, ExternalArea},
     implicit_intersection::implicit_intersection,
     limits::check_array_size,
+    reference_operators::three_d_value_error,
     types::{DefinedName, SpillValue},
     utils::ParsedReference,
     Model,
@@ -124,6 +125,48 @@ impl Model {
             book: book_index,
             sheet,
         })
+    }
+
+    /// The areas of a 3-D span of a linked workbook's cached sheets, `[1]Uses:Defines!$B$2`: the
+    /// written area on each sheet from one end of the span to the other in the cache's
+    /// `sheetNames` order, whichever way it was written (`SUM([1]Defines:Uses!$B$2)` is 142;
+    /// fixtures/external-link-cached-3d-span Refs!B9, T-1654). `None` when `node` is no such span
+    /// or the cache does not hold both of its ends.
+    pub(crate) fn cached_external_span(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<Vec<ExternalArea>> {
+        let (name, area) = written_external_area(node, cell)?;
+        let (book, sheets) = split_book_prefix(name)?;
+        let (first, last) = sheets.split_once(':')?;
+        let book_index = external_book_index(book)?;
+        let cached = self.workbook.external_books.get(book_index)?;
+        let (first, last) = (sheet_index(cached, first)?, sheet_index(cached, last)?);
+        let sheets = first.min(last)..=first.max(last);
+        Some(
+            sheets
+                .map(|sheet| ExternalArea {
+                    cache: Some(CachedSheet {
+                        book: book_index,
+                        sheet,
+                    }),
+                    ..area
+                })
+                .collect(),
+        )
+    }
+
+    /// A 3-D span of a linked workbook's cached sheets ([`Model::cached_external_span`]) where a
+    /// value is needed: `#REF!`, as for a span of this workbook (`ERROR.TYPE([1]Uses:Defines!$A$1)`
+    /// is 4; fixtures/external-link-cached-3d-span Refs!B8, T-1654). `None` for any other node.
+    pub(crate) fn cached_external_span_value(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        self.cached_external_span(node, cell)
+            .map(|_| three_d_value_error(cell))
     }
 
     /// [`external_area`] with the cache of the sheet it names, if the workbook holds one.

@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::functions::logical::{Captures, NamedLambdas, SharedLambda};
+use crate::reference_operators::three_d_needs_one_sheet;
 use crate::{
     calc_result::{CalcResult, Range},
     cell::{spill_value_to_calc_result, CellValue},
@@ -364,6 +365,14 @@ impl Model {
                     _ => self.evaluate_node_in_context(node, cell),
                 }
             }
+            // A 3-D span of a linked workbook's cached sheets where one sheet is needed:
+            // `#VALUE!`, as for a span of this workbook (`ROWS([1]Uses:Defines!$A$1:$B$3)`;
+            // fixtures/external-link-cached-3d-span Refs!B10, T-1654).
+            Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. }
+                if self.cached_external_span(node, cell).is_some() =>
+            {
+                three_d_needs_one_sheet(cell)
+            }
             _ => self.evaluate_call_with_reference(node, cell),
         }
     }
@@ -583,6 +592,7 @@ impl Model {
             }
             WrongReferenceKind { sheet_name, .. } => self
                 .external_reference_value(node, cell)
+                .or_else(|| self.cached_external_span_value(node, cell))
                 .unwrap_or_else(|| {
                     Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
                 }),
@@ -597,7 +607,11 @@ impl Model {
             OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
             WrongRangeKind { sheet_name, .. } => match self.cached_external_area(node, cell) {
                 Some(area) => self.external_area_value(area, cell),
-                None => Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range"),
+                None => self
+                    .cached_external_span_value(node, cell)
+                    .unwrap_or_else(|| {
+                        Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range")
+                    }),
             },
             RangeKind {
                 sheet_index,

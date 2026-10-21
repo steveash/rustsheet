@@ -373,6 +373,11 @@ impl Model {
                 })
             }
         };
+        // A 3-D span of a linked workbook's cached sheets is read sheet by sheet, as a span of
+        // this workbook is (fixtures/external-link-cached-3d-span Refs!B2:B6; T-1654).
+        if let Some(areas) = self.cached_external_span(node, cell) {
+            return RefArg::Value(self.external_aggregate_value(&areas, blanks, cell));
+        }
         let result = match node {
             Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if self.is_multi_area(node) => {
                 return match self.reference_ranges(node, cell) {
