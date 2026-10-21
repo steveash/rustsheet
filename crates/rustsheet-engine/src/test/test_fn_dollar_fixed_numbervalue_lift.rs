@@ -89,3 +89,33 @@ fn dollar_fixed_numbervalue_keep_their_scalar_rules() {
         );
     }
 }
+
+/// After its separators, NUMBERVALUE reads the text as VALUE does (docs/excel-semantics/text.md
+/// "NUMBERVALUE reads text as VALUE does, with its own separators", T-2151; gen-m5 cells cited there).
+#[test]
+fn numbervalue_reads_currency_parentheses_dates_and_times() {
+    let mut model = new_empty_model();
+    let cases = [
+        ("=NUMBERVALUE(\"$1,000.50\")", "1000.5"),
+        ("=NUMBERVALUE(\"(100)\",\"M\")", "-100"),
+        ("=NUMBERVALUE(\"2024-02-29\")", "45351"),
+        ("=NUMBERVALUE(\"1900-02-29\")", "60"),
+        ("=NUMBERVALUE(\"25:00\")*24", "25"),
+        ("=NUMBERVALUE(\"12:30\")*48", "25"),
+        // Group "5" turns "25:00" into "2:00" (gen-m5/34f69d858a39f497 A227).
+        ("=NUMBERVALUE(\"25:00\",\"x\",\"5\")*24", "2"),
+        // Decimal "F", group "2": "1,000" keeps its comma as VALUE reads it (gen-m6/07171fa3f7493f51 A261).
+        ("=NUMBERVALUE(\"1,000\",FALSE,2.5)", "1000"),
+    ];
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", i + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
