@@ -3,7 +3,7 @@ id: T-2278
 title: "Probe gen-m6 lookup residue: descending MATCH with a blank key, LOOKUP's extended result vector as a reference, INDIRECT over XLOOKUP"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
