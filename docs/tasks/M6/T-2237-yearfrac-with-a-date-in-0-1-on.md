@@ -18,7 +18,9 @@ returns `#NUM!` for bases 1-4 only because nothing was probed.
 
 ## Context
 Gap triage 2026-10-21. YEARFRAC is an M6 function. One generated cell showed that Excel accepts
-serial 0 on basis 0: gen-m9/a2e51f48717af2a1 Calc!A32, `YEARFRAC(33752,0)` = 92.41111111111,
+serial 0 on basis 0: gen-m9/a2e51f48717af2a1 Calc!A32,
+`=((0.3+YEARFRAC(33752,Data!$C12))^SUM((-0.0001)))` with Data!C12 = 0, is 0.9995471537332011, which
+(0.3+92.41111111111111)^-0.0001 reproduces bit for bit: `YEARFRAC(33752,0)` is derived as 92.41111111111,
 counted from 1900-01-00 as (92*360 + 4*30 + 28)/360 (T-1409). Everything around that cell is
 still a guess:
 - `functions/date_and_time/yearfrac.rs` `year_fraction_parts` says that a serial in [0, 1) is "a

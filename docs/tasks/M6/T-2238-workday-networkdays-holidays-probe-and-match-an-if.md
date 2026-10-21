@@ -17,8 +17,8 @@ argument is an IF whose taken branch is an ordinary reference but whose other br
 In the second, the holidays argument is a 3-D span and the day count is 0.
 
 ## Context
-Gap triage 2026-10-21. These are M6 functions. dates.md "WORKDAY and NETWORKDAYS from serial 0"
-(probes/workday-serial-zero M9-N13, excel-graph, T-1254) shows that a 3-D `holidays` is
+Gap triage 2026-10-21. These are M6 functions. dates.md "An error-valued or 3-D weekend, 3-D date text and holidays"
+(probes/date-text-weekend-3d Sheet1!M9-N13, excel-graph, T-1428) shows that a 3-D `holidays` is
 `#VALUE!`, also as the taken branch of IF:
 `WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)` and `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`.
 It then says: "Unprobed: an IF whose 3-D branch is not taken (`IF(FALSE,Sheet1:Sheet2!A1,A1)`, ours
@@ -30,8 +30,8 @@ whatever the condition. So `IF(FALSE,Sheet1:Sheet2!A1,A1)` is refused before the
 COUNT uses the same helper (`statistical/count.rs`), so change the holidays caller, not the shared
 helper, unless COUNT is probed to behave the same way.
 
-Probe (excel-probe skill, excel-graph oracle; about 30 cells), in the workbook layout of
-probes/workday-serial-zero:
+Probe (excel-probe skill, excel-graph oracle; about 30 cells), in the two-sheet layout of
+probes/date-text-weekend-3d:
 - each of the four functions with holidays `IF(FALSE,Sheet1:Sheet2!A1,A1)`,
   `IF(TRUE,A1,Sheet1:Sheet2!A1)`, `IF(A9,Sheet1:Sheet2!A1,A1)` with A9 FALSE, and
   `CHOOSE(2,Sheet1:Sheet2!A1,A1)`;
@@ -39,7 +39,7 @@ probes/workday-serial-zero:
 - NETWORKDAYS with equal start and end and a 3-D holidays;
 - for each holidays form, a lifted one, `ROWS(WORKDAY({45000;45001},5,IF(FALSE,Sheet1:Sheet2!A1,A1)))`.
 
-Record the rule in dates.md under "WORKDAY and NETWORKDAYS from serial 0" (or its own section),
+Record the rule in dates.md under "An error-valued or 3-D weekend, 3-D date text and holidays",
 replacing the "Unprobed" sentence. Implement it in `holiday_serials` / `workday_call`.
 
 ## Acceptance criteria

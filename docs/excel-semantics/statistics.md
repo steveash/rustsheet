@@ -1748,7 +1748,7 @@ Evidence: probes-numeric case `m9-weibull-dist` (cells A1:A176). Oracle: excel-g
 Status: VERIFIED (excel-graph)
 Tasks: T-1046 (sweep), T-0978
 
-### The far-tail density is less accurate than exp(-t): t = (x/l)^k goes through EXP(k*LN(x/l))
+### The far-tail density is less accurate than exp(-t), consistent with t = (x/l)^k through EXP(k*LN(x/l)) (lead)
 In the tail, Excel's density is off the true value by about one rounded logarithm's error times t.
 Match it; do not correct it.
 - `WEIBULL.DIST(100,1,1,FALSE)` = 3.7200759760206773E-44, while exp(-100) = 3.720075976020836E-44
@@ -1757,13 +1757,13 @@ Match it; do not correct it.
 - `WEIBULL.DIST(5,3.7,1,FALSE)` = 9.363099887555361E-166 (A146).
 
 Computing t = exp(k*ln(x/l)), not `powf`, reproduces this. A double-precision re-run covered the
-228 in-domain cells (x > 0) of m9-weibull-dist, t1048-weibull and t1049-weibulldist. Visibly-off
-counts are of 114 cells per form:
+230 in-domain cells (x, k, l > 0; 116 cdf, 114 density) of m9-weibull-dist, t1048-weibull and
+t1049-weibulldist. Visibly-off and bit-exact counts are per form:
 
 | form | visibly off | bit-exact |
 |---|---|---|
-| cdf `-expm1(-t)` | 0 | 92 |
-| cdf `-expm1(-(x/l)^k)` | 1 | 72 |
+| cdf `-expm1(-t)` | 0 | 94 |
+| cdf `-expm1(-(x/l)^k)` | 1 | 74 |
 | cdf `1-EXP(-t)` (loses the small-x cells) | 24 | |
 | density `k/l*exp((k-1)*ln(x/l))*exp(-t)` | 4 (m9 A158, A168; t1048 A8, B8) | |
 | density `k/l^k*exp((k-1)*ln x)*exp(-t)` | 2 (t1048 A8, B8) | |

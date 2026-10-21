@@ -48,8 +48,8 @@ The visibly-off cells (excel-graph; probes-numeric is ungated, so read them from
 | t1049-weibulldist A22 | `WEIBULL.DIST(10,2,3,FALSE)` | 3.321186338840311e-05 | 3.321186338840322e-05 |
 
 Lead, recorded in docs/excel-semantics/statistics.md "The far-tail density is less accurate than
-exp(-t)". Compute t = (x/l)^k as exp(k*ln(x/l)). In a libm re-run over all 228 in-domain cells:
-- the cdf `-expm1(-t)` leaves no cell visibly off, and 92 of 114 are bit-exact, against 72 for the
+exp(-t)". Compute t = (x/l)^k as exp(k*ln(x/l)). In a libm re-run over all 230 in-domain cells (116 cdf, 114 density):
+- the cdf `-expm1(-t)` leaves no cell visibly off, and 94 of 116 are bit-exact, against 74 for the
   current form;
 - the density `k/l*exp((k-1)*ln(x/l))*exp(-t)` leaves 4 visibly off (m9 A158, A168; t1048 A8, B8);
 - `k/l^k*exp((k-1)*ln x)*exp(-t)` leaves 2 (t1048 A8, B8), against 15 for the statrs form.

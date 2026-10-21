@@ -36,9 +36,11 @@ probed:
    cells, not an empty-string cell'). Read the shape with ROWS/COLUMNS and the elements with INDEX.
 3. **Single-cell ranges in AVERAGEIF, COUNTIFS and MAXIFS.** criteria.md "SUMIF/AVERAGEIF resize
    clamps at the sheet edge; single-cell ranges are 1x1": these share code paths with the probed
-   functions, but they are not probed themselves. Probe `AVERAGEIF(A1,">0",D1)`,
-   `AVERAGEIF(A1:B2,">0",XFD1048576)`, `COUNTIFS(A1,">0",B1,"<5")`, `MAXIFS(D1,A1,">0")` and
-   `MINIFS(D1:D1,A1,">0")` in the style of probes/sumif-edge-single-cell F1-F15.
+   functions. Some are probed already: `AVERAGEIF(A1:B2,">0",XFD1048576)` is
+   probes/sumif-edge-single-cell F6 (30/1), and F8/F9 are MINIFS/MAXIFS over one-cell ranges, so
+   criteria.md's "MAXIFS ... not probed" contradicts its own evidence: fix that sentence. Probe what is
+   left, e.g. `AVERAGEIF(A1,">0",D1)`, `COUNTIFS(A1,">0",B1,"<5")`, `MAXIFS(D1,A1,">0")` (a bare cell,
+   not `A1:A1`) and `MINIFS(D1:D1,A1,">0")`, in the style of probes/sumif-edge-single-cell F1-F15.
 
 Write one excel-probe case (excel-graph oracle), about 60 cells. Code: `functions/criteria.rs`
 (`wildcard_text_matcher`, `WildcardPattern::new`, the `Database` flavor),
