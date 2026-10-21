@@ -244,6 +244,29 @@ fn sheets_counts_the_sheets_a_reference_spans() {
     assert_eq!(eval(&mut model, "=SHEETS(1)"), "#N/IMPL!");
 }
 
+// Over sheets named like cells an unquoted span is a range operator: `S1:S3!A1` joins S1 of the
+// formula's sheet with S3!A1 and is #VALUE!; `S3:S1!A1` joins on S1 and spans one sheet
+// (probes/sheet-names-like-cells-3d-spans B1:B7; T-2193).
+#[test]
+fn sheets_of_an_unquoted_span_over_cell_like_sheet_names() {
+    let mut model = new_empty_model();
+    model.rename_sheet("Sheet1", "S1").unwrap();
+    for (name, value) in [("S2", "5"), ("S3", "7")] {
+        model.add_sheet(name).unwrap();
+        model._set(&format!("{name}!A1"), value);
+    }
+    model._set("S1!B1", "1");
+    let mut eval = |formula: &str| {
+        model._set("S1!A1", formula);
+        model.evaluate();
+        model._get_text("S1!A1")
+    };
+    assert_eq!(eval("=SUM(S1:S3!B1)"), "#VALUE!");
+    assert_eq!(eval("=SHEETS(S1:S3!A1)"), "#VALUE!");
+    assert_eq!(eval("=SHEETS(S3:S1!B1)"), "1");
+    assert_eq!(eval("=SHEETS('S1:S3'!B1)"), "3");
+}
+
 #[test]
 fn sheets_leaves_unprobed_argument_forms_unimplemented() {
     let mut model = sample();

@@ -579,22 +579,36 @@ impl Model {
             // A reference counts the sheets between its corners, in either order
             // (probes/info-sheets-info-types D1:D24, excel-graph; T-2181).
             // Only a written reference is read: a union, a name, OFFSET, INDIRECT, INDEX, an
-            // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So are a
-            // range operator over function operands (`A1:OFFSET(..)`) and a cross-sheet one
-            // (`Alpha!A1:Beta!B1`); the arm below reads whatever such a form evaluates to.
+            // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So is a
+            // range operator over function operands (`A1:OFFSET(..)`).
+            let argument = args[0].ungrouped();
             if matches!(
-                args[0].ungrouped(),
+                argument,
                 Node::ReferenceKind { .. }
                     | Node::RangeKind { .. }
                     | Node::OpRangeKind { .. }
                     | Node::SheetSpanKind { .. }
             ) {
-                if let RefArg::Ranges(Ranges::One(area)) =
-                    self.evaluate_reference_arg(&args[0], cell)
-                {
-                    return CalcResult::Number(
-                        f64::from(area.left.sheet.abs_diff(area.right.sheet)) + 1.0,
-                    );
+                match self.evaluate_reference_arg(&args[0], cell) {
+                    RefArg::Ranges(Ranges::One(area)) => {
+                        return CalcResult::Number(
+                            f64::from(area.left.sheet.abs_diff(area.right.sheet)) + 1.0,
+                        );
+                    }
+                    // A range operator joining references on two sheets is its `#VALUE!`: over
+                    // sheets named like cells, `SHEETS(S1:S3!A1)` reads as `S1:(S3!A1)` and is
+                    // `#VALUE!`, while `SHEETS(S3:S1!A1)` joins on one sheet and is 1
+                    // (probes/sheet-names-like-cells-3d-spans B3:B4, excel-graph; T-2193).
+                    RefArg::Value(error @ CalcResult::Error { .. })
+                        if matches!(argument, Node::OpRangeKind { left, right }
+                        if [left, right].iter().all(|operand| matches!(
+                            operand.ungrouped(),
+                            Node::ReferenceKind { .. } | Node::RangeKind { .. }
+                        ))) =>
+                    {
+                        return error;
+                    }
+                    _ => {}
                 }
             }
             return CalcResult::Error {
