@@ -3,7 +3,7 @@ id: T-2158
 title: "TEXT reads a number-like text value as its number and prints control characters in the code"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
