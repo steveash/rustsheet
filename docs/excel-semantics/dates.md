@@ -883,14 +883,14 @@ Rule (excel-graph, gen-m6, 2026-10-21): these functions read a serial below 61 o
 serial 1 is 1900-01-01, serial 60 the fictitious 1900-02-29 and a serial in [0, 1) is day 0 of January 1900, not on the
 weekday-faithful stand-in (serial 1 = 1899-12-31) that `DateSystem::date_of_serial` gives them today:
 - DATEDIF accepts a date in [0, 1) as 1900-01-00: `DATEDIF(0.5,60,"D")` = 60, `DATEDIF(0.5,17471,"Y")` = 47,
-  `DATEDIF(0.5,44241,"YD")` = 45, `DATEDIF(<blank>,45382,"MD")` = 31 (day 0), `DATEDIF(0.5*1.005*..,7872,"YM")` = 6,
+  `DATEDIF(0.5,44241,"YD")` = 45, `DATEDIF(<blank>,45382,"MD")` = 31 (day 0), `DATEDIF(0.3*1.005,7872,"YM")` = 6,
   `DATEDIF(SUBTOTAL(6,..),0.5,"Y")` = 0 (gen-m6/144bceacd894868a Calc!A14, 3a26794015dfbe9d A190, a1e6448d0590f7c3 A168,
   1a404a0379a1372c A324, 121a7c17092038d9 A152, c96ac1ada46179c4 A312; 18 cells in T-2263). Ours: `#NUM!`.
 - DATEDIF of serials 1-60: `DATEDIF(1,45291,"Y")` = 123, `DATEDIF(3.14159,22195,"MD")` = 3, `DATEDIF(2,1462,"MD")` = 30,
   `DATEDIF(60.5,45291,"MD")` = 2 (day 29), `DATEDIF(59.999988426,38168,"YD")` = 123 and `DATEDIF(2.5,59221,"YD")` = 48 (07171fa3f7493f51
   A210, 03333cc38ec06a14 A128, 0bcac2d96e96b3df A94, ee56a4ed5a612a0d A185, b54448af3fde07ca A55, d0c30225243fde60 A81). Ours one day off.
 - EDATE: `EDATE(60.5,5)` = 211, `EDATE(60.5,10)` = 364 (0fd242eb9b2456a8 A152, 1aa50086e42bff9a A183); ours 210 and 363.
-- DAYS360: `DAYS360(60,1)` = -59 (36d5ce763ea63631 A380, end `ROUNDDOWN(TRUE,5)`); ours -58. A negative end a few ulps below 0
+- DAYS360: `DAYS360(60,1)` = -59 (36d5ce763ea63631 A380, end `ROUNDDOWN(TRUE,5)`); ours -58. A tiny negative end (-5E-15)
   is `#NUM!`: `DAYS360(56330,-5E-15)` (50f0dd9a8ee2cb57 A12); ours -55522.
 - WEEKNUM: `WEEKNUM(60.5,21.99113)` (return_type `PRODUCT(3.14159,7)+SUMPRODUCT(<blank>)`) is `#VALUE!` (c96ac1ada46179c4 A105); ours 9.
   Unexplained: ISO numbering of the fictitious day, or the fractional type 21.99, UNVERIFIED (T-2263 probes it).
@@ -948,7 +948,8 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   (Non-number text is still `#VALUE!`: "WORKDAY and NETWORKDAYS from serial 0" F56.)
 - `#NUM!` from the dates, the result or a numeric holiday beats a text or boolean holiday's `#VALUE!`: `WORKDAY(0,-23,Data!A5:A5)`
   ("ABC", the result would be before serial 0), `WORKDAY(2958465,18,..)` (past the calendar), `NETWORKDAYS(-1,3214,Data!B5)` ("abc"),
-  `WORKDAY(10651,-7,Data!B8:D12)` (holidays "1.5", "ABC" and -1) and `WORKDAY.INTL(42,-10,18,Data!C9:E9)` (weekend 18; holidays TRUE, 0, FALSE) are all `#NUM!`
+  `WORKDAY(10651,-7,Data!B8:D12)` (holidays "1.5", "ABC" and -1) are all `#NUM!`; and an invalid weekend's `#NUM!` beats a boolean holiday's `#VALUE!`: `WORKDAY.INTL(42,-10,18,Data!C9:E9)`
+  (weekend 18 is not a weekend number; holidays TRUE, 0, FALSE) is `#NUM!`
   (1a404a0379a1372c A199, 121a7c17092038d9 A95, 870c5e38f51ce5d4 A8, 216e3c05f407ca79 A312, 9843ec1f29523dd2 A331; 58 cells in T-2272).
   The result's `#NUM!` beats a holidays error value too: `WORKDAY(1462,NETWORKDAYS.INTL(21128,12887,"1000001"),-2.5/0)` and
   `WORKDAY.INTL(1,-18,13,ERROR.TYPE("x~*"))` are `#NUM!` (d0c30225243fde60 A332, 9130ade4b1924cc8 A361), which "An error-valued or 3-D
@@ -959,13 +960,13 @@ Status: VERIFIED for the cells; the full order (which `#NUM!` sources beat which
 Tasks: T-2270, T-2272
 
 ## WORKDAY.INTL and NETWORKDAYS.INTL: weekend number coercion (T-2271)
-Rule (excel-graph, gen-m6, 2026-10-21): a weekend number truncates like the other integer arguments, `TRUE` is weekend 1, and a blank
-weekend cell is weekend 0 (`#NUM!`), not the default: `NETWORKDAYS.INTL(16492,11827,3.14159)` = -3334, `NETWORKDAYS.INTL(0.5,45351,2.5^0.3)`
+Rule (excel-graph, gen-m6, 2026-10-21): a weekend number truncates like the other integer arguments, a boolean weekend does not raise its own error before the
+start's, and a blank weekend cell is weekend 0 (`#NUM!`), not the default: `NETWORKDAYS.INTL(16492,11827,3.14159)` = -3334, `NETWORKDAYS.INTL(0.5,45351,2.5^0.3)`
 = 32394, `WORKDAY.INTL(45351,10,1.005)` = 45365, `NETWORKDAYS.INTL(44926," x ",3.14159)` is the end's `#VALUE!` (not the weekend's `#NUM!`),
 `NETWORKDAYS.INTL((0/0)^..,40608,IFERROR(#N/A,TRUE),..)` is the start's `#DIV/0!`, `WORKDAY.INTL(16895,22,<blank>,..)` is `#NUM!`
 (gen-m6/c93ea588c271840e Calc!A31, 1a404a0379a1372c A62, ee56a4ed5a612a0d A186, c96ac1ada46179c4 A287, ee56a4ed5a612a0d A387,
 fde83d52a9d1fc63 A219). Ours: `#NUM!` for a fractional weekend, `#VALUE!` for TRUE, the default weekend for a blank cell.
-Status: VERIFIED
+Status: VERIFIED, except what a TRUE or FALSE weekend gives on valid dates: UNVERIFIED (no cell shows it; T-2271 probes it).
 Tasks: T-2271
 
 ## WEEKNUM of a boolean serial is `#VALUE!` (T-2276)

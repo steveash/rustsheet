@@ -1,6 +1,6 @@
 ---
 id: T-2271
-title: "WORKDAY.INTL/NETWORKDAYS.INTL weekend number: a fraction truncates, TRUE is 1, a blank weekend cell is #NUM!"
+title: "WORKDAY.INTL/NETWORKDAYS.INTL weekend number: a fraction truncates, a blank weekend cell is #NUM!; probe a boolean weekend"
 milestone: M6
 lane: functions-date
 status: todo
@@ -12,7 +12,9 @@ campaign: visible
 ---
 
 ## Goal
-WORKDAY.INTL and NETWORKDAYS.INTL read a weekend number as Excel does: a fraction truncates (3.14159 is 3), TRUE is weekend 1, and a blank weekend cell is weekend 0 (`#NUM!`), not the default.
+WORKDAY.INTL and NETWORKDAYS.INTL read a weekend number as Excel does: a fraction truncates (3.14159 is 3) and a blank weekend cell is weekend 0 (`#NUM!`), not the default. What a TRUE or FALSE weekend gives on
+valid dates is unprobed (the one boolean-weekend cell, ee56a4ed5a612a0d A387, only shows the start's error wins): probe it with the
+excel-probe skill before implementing it.
 
 ## Context
 Gap triage of gen-m6 (T-2180, excel-graph oracle, 2026-10-21). Rule and cells: docs/excel-semantics/dates.md "WORKDAY.INTL and NETWORKDAYS.INTL:
@@ -37,7 +39,8 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 9 in eval/baselin
 
 ## Acceptance criteria
 - [ ] These 9 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] Unit tests cover weekend 3.9, 11.5, TRUE, FALSE and a blank cell for both functions; probes/date-text-weekend-3d still passes.
+- [ ] A probe case (excel-graph) gives TRUE and FALSE weekends on valid dates for both functions; dates.md records it.
+- [ ] Unit tests cover weekend 3.9, 11.5, TRUE, FALSE (as probed) and a blank cell for both functions; probes/date-text-weekend-3d still passes.
 - [ ] dates.md's entry says Ours: implemented (T-2271).
 - [ ] `make check` green; reviewers approve.
 
