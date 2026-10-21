@@ -3,7 +3,7 @@ id: T-2285
 title: "The merge lock is never held for a PR that is already merged or closed"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
