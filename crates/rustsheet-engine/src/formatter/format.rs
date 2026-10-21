@@ -20,7 +20,10 @@ use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
     lexer::Compare,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
-    parser::{GeneralPart, ParsePart, Parser, TextToken},
+    parser::{
+        is_text_section, numeric_section_count, section_tokens, GeneralPart, ParsePart, Parser,
+        TextToken,
+    },
 };
 
 /// The workbook inputs of number formatting: the locale and the date system (SPEC-0005).
@@ -138,7 +141,7 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
     let parts = parser.parts.as_slice();
     if parts[..numeric_section_count(parts)]
         .iter()
-        .any(|part| matches!(part, ParsePart::Error(_)))
+        .any(ParsePart::is_error)
     {
         return format_error();
     }
@@ -276,30 +279,6 @@ fn general_text(value: f64, locale: &Locale) -> String {
         text
     } else {
         text.replace('.', &locale.numbers.symbols.decimal)
-    }
-}
-
-/// How many of `parts` are number sections. A last section with `@` in a format of two or three
-/// sections is the text section: numbers use the sections before it (`TEXT(-1,"0;x@")` is "-1",
-/// `TEXT(-1,"0;0;x@")` "1"; probes/text-at-token-sections C10, C11, T-1656).
-fn numeric_section_count(parts: &[ParsePart]) -> usize {
-    match parts.last() {
-        Some(last) if (2..4).contains(&parts.len()) && is_text_section(last) => parts.len() - 1,
-        _ => parts.len(),
-    }
-}
-
-/// Whether `part` holds `@`, which makes it a text section.
-fn is_text_section(part: &ParsePart) -> bool {
-    section_tokens(part).is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw)))
-}
-
-/// The tokens of a number or date section; `None` for General or an unparsable section.
-fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
-    match part {
-        ParsePart::Number(p) => Some(&p.tokens),
-        ParsePart::Date(p) => Some(&p.tokens),
-        ParsePart::General(_) | ParsePart::Error(_) => None,
     }
 }
 
