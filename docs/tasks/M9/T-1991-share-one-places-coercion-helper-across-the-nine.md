@@ -3,10 +3,10 @@ id: T-1991
 title: "Share one places-coercion helper across the nine base conversions"
 milestone: M9
 lane: functions-engineering
-status: done
+status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -24,5 +24,5 @@ T-1816 moved the `places` coercion before the number coercion in all nine kernel
 ## Out of scope
 - Any change to which error wins (T-1816).
 
-## Outcome
-All nine base conversions now coerce `places` through `Model::number_and_places` in number_basis.rs (which also owns the arity check). Pure refactor: eval output unchanged, no baseline edits; duplication ratchet updated to 3147.
+## Handoff
+Refactor is done and approved by all four reviewers; `make check` passed locally and the eval is unchanged (PR #1384, branch agent/functions-engineering/T-1991-places-helper). CI hygiene fails in `scripts/check_governance.py`: `quality/duplication.json` (3176 -> 3147 via `scripts/check_duplication.py --update`) is a protected path and needs a decision record in the same PR. Next: either `make new-decision TITLE=...` for the ratchet bump and keep the json change, or restore the json to origin/main's value. Then rewrite the Outcome note (removed on handoff) and set `status: done`.
