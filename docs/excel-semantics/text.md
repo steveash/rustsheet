@@ -822,3 +822,10 @@ Evidence: probes/regexreplace-limit-and-syntax, probes/regexreplace-result-cap, 
 Implemented in: `MAX_REPLACED_UNITS` / `over_cap` in functions/text/regex_functions.rs, checked on the measured length before the result is built.
 Status: VERIFIED (excel-graph)
 Tasks: T-1817
+
+## SUBSTITUTE with an instance_num of 1E+15 is `#VALUE!` (T-2279)
+Observed (excel-graph, gen-m6, 2026-10-21): `LOOKUP(SUBSTITUTE("x~*"&<blank>,RIGHTB("ü"),-0.0001,<blank>+1E+15),Data!C8:C8,Data!B8:B12)`
+is `#VALUE!` (gen-m6/9615a6de0f3ac417 Calc!A144); only SUBSTITUTE's instance_num can make it so. Ours returns the text unchanged
+(no 1E+15th match) and LOOKUP gives `#N/A`. The bound (2^31, 2^53, 32767 ...) is UNVERIFIED (T-2279 probes it).
+Status: UNVERIFIED (one cell)
+Tasks: T-2279

@@ -3,7 +3,7 @@ id: T-2180
 title: "Generate and oracle-fill gen-m6 to at least 20,000 cells with --focus and edge pools, gate it, and file its gaps"
 milestone: M6
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -41,14 +41,26 @@ criterion needs: "same as M5" (docs/milestones.md), so bit-exact >= 99.9% on the
   and new semantics entries.
 
 ## Acceptance criteria
-- [ ] `make eval` shows gen-m6 with >= 20,000 scored cells, all with excel-graph oracle sidecars committed.
-- [ ] Every generator-ready, non-volatile M6 function is the outer call of at least 100 scored cells (state the
+- [x] `make eval` shows gen-m6 with >= 20,000 scored cells, all with excel-graph oracle sidecars committed.
+- [x] Every generator-ready, non-volatile M6 function is the outer call of at least 100 scored cells (state the
       minimum in the Outcome).
-- [ ] eval/suites/gen-m6/suite.toml has `gate = true`, and `make eval-baseline` has recorded eval/baseline/gen-m6.txt.
-- [ ] Every known failure in eval/baseline/gen-m6.txt is cited by an open task (new or extended), listed by case and
+- [x] eval/suites/gen-m6/suite.toml has `gate = true`, and `make eval-baseline` has recorded eval/baseline/gen-m6.txt.
+- [x] Every known failure in eval/baseline/gen-m6.txt is cited by an open task (new or extended), listed by case and
       cell.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the gaps found (the filed tasks do).
 - GETPIVOTDATA cases (SPEC-0015).
+
+## Outcome
+gen-m6 grew from 25 to 80 cases (`rustsheet-gen --milestone M6 --focus --count 55 --formulas 400 --seed 2`), all
+oracle-filled by excel-graph with no refused workbook and no web-vs-desktop conflict: 23,000 scored cells, 22,670
+bit-exact (98.57%), 331 known failures. `gate = true`; eval/baseline/gen-m6.txt records the failures and
+visible-parity.json rises 1758 -> 2088 for the new cases only (quality-gates.md, decision 0093).
+Every in-scope non-volatile M6 function is the outer call of at least 554 cells (DAYS360); GETPIVOTDATA (SPEC-0015)
+and the volatile INDIRECT/OFFSET have none as outer calls.
+Triage: every known failure is cited by case and cell in an open task. New: T-2262 to T-2281 (293 cells). Extended:
+T-2237 (22), T-2169 (4), T-1484 (4), T-2159 (3), T-2147, T-2152, T-2153, T-2156, T-2161 (1 each). The quirks found are in
+docs/excel-semantics/dates.md, lookup.md, numbers.md, text.md, logic.md and statistics.md.
+Eval delta: +22,000 scored gen-m6 cells, 331 new-coverage known failures, 0 regressions.

@@ -26,7 +26,16 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 |---|---|---|---|
 | gen-m5/c0651f0e0fb544d0 Calc!A293 | `=CELL(INDEX(Data!D2:E9,0,1),Data!A9)` | "#SPILL!" | "#VALUE!" |
 
+gen-m6 triage (T-2180, excel-graph oracle, 2026-10-21): One more cell: `EOMONTH(CELL(INDEX(Data!A8:D10,0,2),Data!B$1),-9)` is `#SPILL!` in Excel (CELL lifts over the 3-cell info_type column, EOMONTH lifts over the result), ours `#VALUE!`.
+
+Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baseline/gen-m6.txt:
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m6/3df034e67b14fccb Calc!A223 | `=EOMONTH(CELL(INDEX(Data!A8:D10,0,2),Data!B$1),-9)` | "#SPILL!" | "#VALUE!" |
+
 ## Acceptance criteria
+- [ ] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
 - [ ] These 1 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] `make check` green; reviewers approve.
 

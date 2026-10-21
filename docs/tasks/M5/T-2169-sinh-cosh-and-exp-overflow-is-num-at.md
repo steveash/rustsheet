@@ -67,7 +67,19 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 37 in eval/baseli
 | gen-m5/f0f205865a3a4328 Calc!A263 | `=COSH((-710))` | "#NUM!" | 1.1169973830808557e+308 |
 | gen-m5/fc81c2f704bef138 Calc!A46 | `=SUMXMY2(Data!A4:A4,EXP(2958465))` | "#NUM!" | "#DIV/0!" |
 
+gen-m6 triage (T-2180, excel-graph oracle, 2026-10-21): Four more cells where an overflowed EXP or SINH reaches a caller as a number: `ROWS(SINH(710))` is `#NUM!` (ours 1), `DATE(1969,4,EXP(2958465))` `#NUM!` (ours 58060, the day capped at 32767), `LOOKUP(EXP(617283945.6),..)` `#NUM!` (ours `#N/A`) and `SECOND(SUMXMY2(EXP(1E+15),..))` `#NUM!` (ours `#N/A`).
+
+Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 4 in eval/baseline/gen-m6.txt:
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m6/03333cc38ec06a14 Calc!A276 | `=LOOKUP(EXP((123456789.123/0.2)),Data!A1:A2,Data!C4:C12)` | "#NUM!" | "#N/A" |
+| gen-m6/04fdc9a67474aab9 Calc!A144 | `=SECOND(SUMXMY2(EXP(Data!$E7),Data!A11:B11))` | "#NUM!" | "#N/A" |
+| gen-m6/3e51213f35889d06 Calc!A42 | `=ROWS(SINH(710))` | "#NUM!" | 1.0 |
+| gen-m6/44194b2fefa30de2 Calc!A254 | `=DATE(1969,4,EXP(2958465))` | "#NUM!" | 58060.0 |
+
 ## Acceptance criteria
+- [ ] The 4 gen-m6 known-failure lines above disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
 - [ ] These 37 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] numbers.md entry marked implemented.
 - [ ] `make check` green; reviewers approve.

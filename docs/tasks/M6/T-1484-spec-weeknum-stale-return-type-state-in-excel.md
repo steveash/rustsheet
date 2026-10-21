@@ -25,7 +25,19 @@ a sheet"; after edits Excel follows its calc chain (`calcChain.xml`). Decision 0
 and (b) list the problems: RustSheet's storage-order passes, restarts on spill reordering, and a
 hidden dependency that incremental recalc cannot see.
 
+gen-m6 triage (T-2180, excel-graph oracle, 2026-10-21): Four more cells with a return_type of 22 or more or negative, where Excel reuses an earlier WEEKNUM's start weekday and ours is `#NUM!` (return types `SUM(..)`, `YEAR(<blank>)` = 1900, `-ROUND(100,2)`).
+
+Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 4 in eval/baseline/gen-m6.txt:
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m6/121a7c17092038d9 Calc!A238 | `=WEEKNUM(22503,SUM(Data!A6:A8,Data!D2:D4))` | 33.0 | "#NUM!" |
+| gen-m6/3e51213f35889d06 Calc!A74 | `=WEEKNUM(367,YEAR(Data!E7))` | 1.0 | "#NUM!" |
+| gen-m6/c96ac1ada46179c4 Calc!A219 | `=WEEKNUM(16038,SUM((Data!A3-7),Data!B11:B12,Data!E6:E9))` | 48.0 | "#NUM!" |
+| gen-m6/c96ac1ada46179c4 Calc!A295 | `=WEEKNUM(26714,-ROUND(100,2))` | 8.0 | "#NUM!" |
+
 ## Acceptance criteria
+- [ ] The implementation tasks the spec files cite the 4 gen-m6 cells above (case and cell), so they are owned when this task closes.
 - [ ] Probe what decides the order across sheets and after edits (excel-probe skill), and record it
       in docs/excel-semantics/dates.md.
 - [ ] docs/specs/SPEC-NNNN-*.md states how the state is kept and which calc order it follows, and
