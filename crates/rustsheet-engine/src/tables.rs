@@ -4,7 +4,12 @@
 
 use crate::{
     expressions::{
-        parser::parse_range,
+        lexer::LexerMode,
+        parser::{
+            parse_range,
+            stringify::{to_english_string, to_string_lowering},
+        },
+        types::CellReferenceRC,
         utils::{is_valid_identifier, number_to_column},
     },
     model::Model,
@@ -118,8 +123,86 @@ impl Model {
     }
 
     /// Hands the table list to the parser and reparses every formula against it.
-    fn reset_tables(&mut self) {
+    pub(crate) fn reset_tables(&mut self) {
         self.parser.set_tables(self.workbook.tables.clone());
         self.reset_parsed_structures();
+    }
+
+    /// Points the tables of the sheet named `old_name` at `new_name` and hands the list to the
+    /// parser, so the reparse after a sheet rename still finds them (SPEC-0016 "Sheet rename,
+    /// delete and restore").
+    pub(crate) fn rename_tables_sheet(&mut self, old_name: &str, new_name: &str) {
+        let old_name = old_name.to_uppercase();
+        for table in self.workbook.tables.values_mut() {
+            if table.sheet_name.to_uppercase() == old_name {
+                new_name.clone_into(&mut table.sheet_name);
+            }
+        }
+        self.parser.set_tables(self.workbook.tables.clone());
+    }
+
+    /// Takes out the tables of the sheet at `sheet_index`, before the sheet is deleted. The
+    /// structured references to them in the other sheets' formulas and in defined names are
+    /// first rewritten as the areas they stand for, which the delete turns into `#REF!`, as
+    /// before SPEC-0016; a sheet added later under the old name brings none of them back.
+    pub(crate) fn take_tables_of_sheet(&mut self, sheet_index: u32) -> Vec<(String, Table)> {
+        let Ok(sheet_name) = self.workbook.worksheet(sheet_index).map(|w| w.get_name()) else {
+            return Vec::new();
+        };
+        let sheet_name = sheet_name.to_uppercase();
+        let names: Vec<String> = self
+            .workbook
+            .tables
+            .iter()
+            .filter(|(_, table)| table.sheet_name.to_uppercase() == sheet_name)
+            .map(|(name, _)| name.clone())
+            .collect();
+        if names.is_empty() {
+            return Vec::new();
+        }
+        let lowercase: Vec<String> = names.iter().map(|name| name.to_lowercase()).collect();
+        self.parser.set_lexer_mode(LexerMode::R1C1);
+        for (index, worksheet) in self.workbook.worksheets.iter_mut().enumerate() {
+            if index == sheet_index as usize {
+                continue;
+            }
+            let context = CellReferenceRC {
+                sheet: worksheet.get_name(),
+                row: 1,
+                column: 1,
+            };
+            for formula in &mut worksheet.shared_formulas {
+                let node = self.parser.parse(formula, &context);
+                *formula = to_string_lowering(&node, None, &lowercase);
+            }
+        }
+        self.parser.set_lexer_mode(LexerMode::A1);
+        for defined_name in &mut self.workbook.defined_names {
+            // Defined names have no cell context; any cell of a remaining sheet does.
+            let Some(sheet) = self
+                .workbook
+                .worksheets
+                .iter()
+                .find(|w| w.get_name().to_uppercase() != sheet_name)
+            else {
+                break;
+            };
+            let context = CellReferenceRC {
+                sheet: sheet.get_name(),
+                row: 1,
+                column: 1,
+            };
+            let stored = defined_name.formula.trim_start();
+            let (eq, body) = stored.strip_prefix('=').map_or(("", stored), |b| ("=", b));
+            let node = self.parser.parse(body, &context);
+            let lowered = to_string_lowering(&node, Some(&context), &lowercase);
+            if lowered != to_english_string(&node, &context) {
+                defined_name.formula = format!("{eq}{lowered}");
+            }
+        }
+        names
+            .into_iter()
+            .filter_map(|name| self.workbook.tables.remove_entry(&name))
+            .collect()
     }
 }

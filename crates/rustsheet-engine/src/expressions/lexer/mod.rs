@@ -532,6 +532,20 @@ impl Lexer {
                                         }
                                         self.position = pos;
 
+                                        // A structured reference is stored as written
+                                        // (SPEC-0016), so storage (R1C1) reads it too.
+                                        if self.peek_char() == Some('[')
+                                            && utils::is_valid_a1_identifier(&name)
+                                        {
+                                            if let Ok(r) = self.consume_structured_reference(&name)
+                                            {
+                                                return r;
+                                            }
+                                            return TokenType::Illegal(self.set_error(
+                                                "Invalid structured reference",
+                                                self.position,
+                                            ));
+                                        }
                                         if is_valid_r1c1_identifier(&name, self.peek_char()) {
                                             return TokenType::Ident(name);
                                         } else {

@@ -561,6 +561,8 @@ impl Model {
         self.drop_pivots_on(sheet_index)?;
         // Update the name of the worksheet
         self.workbook.worksheet_mut(sheet_index)?.set_name(new_name);
+        // The tables follow their sheet, so their structured references still resolve.
+        self.rename_tables_sheet(&old_name, new_name);
         self.reset_parsed_structures();
         Ok(())
     }

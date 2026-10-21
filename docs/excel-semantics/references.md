@@ -2059,8 +2059,16 @@ inside or at its edge, or a resize), converted to a range or deleted is not prob
 Renaming the table's sheet keeps its structured references working (hand, certain). A structured reference
 on another sheet to a table whose sheet is deleted is assumed to become `#REF!` (hand; a question for T-2197).
 Status: UNVERIFIED
-Implemented in: no. The engine lowers every structured reference to a range at parse time and stores that
-range; tables do not move on structural edits. SPEC-0016 keeps the reference in the parsed formula and
+Implemented in: partly (T-2195, SPEC-0016 step 1). Every structured reference except `#This Row` (T-1699)
+is kept as written (`Node::StructuredReferenceKind`, parser/structured_reference.rs) and its area is
+re-derived whenever the table list changes; a sheet rename moves the tables with the sheet; a sheet delete
+first rewrites the other sheets' references to its tables as plain ranges (so they become `#REF!`, as
+before), and `restore_sheet` puts the tables back. Tables do not move on structural edits yet: every edit
+that changes the area a structured reference resolves to rewrites it to the displaced plain range (the
+fallback below for every table); one that leaves the area unchanged keeps the text. The move and
+grow/shrink classes are T-2297. With no table of that name (engine API `remove_table`), the formula is a
+parse error that keeps its text and is exported as `#REF!`, so a file never holds a structured reference
+without table parts (engine decision, not Excel evidence). SPEC-0016 keeps the reference in the parsed formula and
 re-derives its area whenever the table list changes (engine API behavior, not Excel evidence). Interim
 rule until T-2197 (SPEC-0016 "Structural edits", with its edge-case table): a table moves with row/column
 edits wholly before it and grows or shrinks with row edits strictly inside its data rows, as a range would;
@@ -2068,7 +2076,7 @@ any other edit that crosses a table (between header and data, between data and t
 totals row, inside its columns), every row/column move or cell shift on its sheet, and a cut and paste that
 intersects it, rewrites the formulas that refer to it to the displaced plain range (today's
 behavior).
-Tasks: T-2194, T-2195, T-1699, T-2197
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

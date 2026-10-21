@@ -207,7 +207,7 @@ impl Model {
             Node::ImplicitIntersection { .. } => None,
             Node::SpillRangeOperator { .. } => None,
             // Unreachable: peeled above.
-            Node::Group { .. } => None,
+            Node::Group { .. } | Node::StructuredReferenceKind { .. } => None,
             Node::LambdaDefKind { .. } => None,
             Node::LambdaCallKind { .. } => None,
         }

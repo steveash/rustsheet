@@ -3,6 +3,7 @@ use super::reference_operators::{
     at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
     union_text,
 };
+use super::structured_reference::is_unresolved_structured_reference;
 use super::{
     super::utils::{name_needs_quoting, quote_name, rename_defined_name_sheet},
     for_each_chain_operand_mut, left_chain,
@@ -59,6 +60,10 @@ pub enum DisplaceData {
 enum Rewrite<'a> {
     Displace(&'a DisplaceData),
     Move(&'a MoveContext<'a>),
+    /// Prints the area of every structured reference to one of these tables (lowercase names)
+    /// instead of its text: the tables of a sheet being deleted (SPEC-0016 "Sheet rename, delete
+    /// and restore").
+    Lower(&'a [String]),
 }
 
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
@@ -126,6 +131,29 @@ pub fn to_string_displaced(
 ) -> String {
     let rewrite = Rewrite::Displace(displace_data);
     stringify(node, Some(context), &rewrite, false, locale, language)
+}
+
+/// The text of `node`, in R1C1 without `context` and in English A1 with it, with every structured
+/// reference to one of `tables` (lowercase names) printed as the area it resolves to. Deleting
+/// the sheet of those tables then turns them into `#REF!`, as it does any reference to the sheet.
+pub(crate) fn to_string_lowering(
+    node: &Node,
+    context: Option<&CellReferenceRC>,
+    tables: &[String],
+) -> String {
+    super::unparsed::stored_text(node)
+        .filter(|_| context.is_none())
+        .unwrap_or_else(|| {
+            let (locale, language) = (get_default_locale(), get_default_language());
+            stringify(
+                node,
+                context,
+                &Rewrite::Lower(tables),
+                false,
+                locale,
+                language,
+            )
+        })
 }
 
 /// The text of `node` cut from the cell `move_context` names and pasted by its deltas: the
@@ -467,6 +495,7 @@ fn stringify(
             }
             &DisplaceData::None
         }
+        Rewrite::Lower(_) => &DisplaceData::None,
     };
     let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {
@@ -726,9 +755,42 @@ fn stringify(
             }
         }
         ErrorKind(kind) => format!("{kind}"),
+        ParseErrorKind { message, .. }
+            if export_to_excel && is_unresolved_structured_reference(message) =>
+        {
+            "#REF!".to_string()
+        }
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
+        StructuredReferenceKind { reference, lowered } => {
+            // The export prints the area until it writes table parts (SPEC-0016 step 3, T-2196).
+            if export_to_excel {
+                return sub(lowered);
+            }
+            match rewrite {
+                Rewrite::Displace(DisplaceData::None) => return reference.text(),
+                Rewrite::Lower(tables) => {
+                    let name = reference.table_name.to_lowercase();
+                    return if tables.contains(&name) {
+                        sub(lowered)
+                    } else {
+                        reference.text()
+                    };
+                }
+                Rewrite::Displace(_) | Rewrite::Move(_) => {}
+            }
+            // A structural edit or a cut and paste that changes the area prints the changed
+            // area, as before SPEC-0016, since the table itself does not move (the fallback of
+            // SPEC-0016 "Structural edits"); otherwise the reference stays as written.
+            let rewritten = sub(lowered);
+            let unchanged = stringify(lowered, context, &NO_REWRITE, false, locale, language);
+            if rewritten == unchanged {
+                reference.text()
+            } else {
+                rewritten
+            }
+        }
         SpillRangeOperator { child } => {
             if export_to_excel {
                 return format!("_xlfn.ANCHORARRAY({})", sub(child));
@@ -954,6 +1016,9 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
+        Node::StructuredReferenceKind { lowered, .. } => {
+            rename_sheet_in_node(lowered, sheet_index, new_name);
+        }
 
         // Do nothing
         Node::BooleanKind(_)
@@ -1045,6 +1110,7 @@ pub(crate) fn rename_defined_name_in_node(
         Node::SheetSpanKind { .. } => {}
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
+        Node::StructuredReferenceKind { .. } => {}
         Node::NamedVariableKind { .. } => {}
         Node::LambdaDefKind {
             parameters: _,
