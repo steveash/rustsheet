@@ -132,9 +132,8 @@ impl Model {
     /// parser, so the reparse after a sheet rename still finds them (SPEC-0016 "Sheet rename,
     /// delete and restore").
     pub(crate) fn rename_tables_sheet(&mut self, old_name: &str, new_name: &str) {
-        let old_name = old_name.to_uppercase();
         for table in self.workbook.tables.values_mut() {
-            if table.sheet_name.to_uppercase() == old_name {
+            if table.is_on_sheet(old_name) {
                 new_name.clone_into(&mut table.sheet_name);
             }
         }
@@ -149,12 +148,11 @@ impl Model {
         let Ok(sheet_name) = self.workbook.worksheet(sheet_index).map(|w| w.get_name()) else {
             return Vec::new();
         };
-        let sheet_name = sheet_name.to_uppercase();
         let names: Vec<String> = self
             .workbook
             .tables
             .iter()
-            .filter(|(_, table)| table.sheet_name.to_uppercase() == sheet_name)
+            .filter(|(_, table)| table.is_on_sheet(&sheet_name))
             .map(|(name, _)| name.clone())
             .collect();
         if names.is_empty() {
@@ -177,18 +175,20 @@ impl Model {
             }
         }
         self.parser.set_lexer_mode(LexerMode::A1);
+        // Defined names have no cell context; any cell of a remaining sheet does.
+        let remaining = self
+            .workbook
+            .worksheets
+            .iter()
+            .enumerate()
+            .find(|(index, _)| *index != sheet_index as usize)
+            .map(|(_, worksheet)| worksheet.get_name());
         for defined_name in &mut self.workbook.defined_names {
-            // Defined names have no cell context; any cell of a remaining sheet does.
-            let Some(sheet) = self
-                .workbook
-                .worksheets
-                .iter()
-                .find(|w| w.get_name().to_uppercase() != sheet_name)
-            else {
+            let Some(sheet) = &remaining else {
                 break;
             };
             let context = CellReferenceRC {
-                sheet: sheet.get_name(),
+                sheet: sheet.clone(),
                 row: 1,
                 column: 1,
             };

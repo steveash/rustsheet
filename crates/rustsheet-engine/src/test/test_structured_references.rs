@@ -190,7 +190,7 @@ fn the_export_of_a_missing_table_is_a_ref_error() {
 fn row_inserts_keep_values() {
     for row in [1, 2, 3, 4, 5, 10] {
         check_edit(&format!("insert row {row}"), |m| {
-            m.insert_rows(0, row, 1).unwrap()
+            m.insert_rows(0, row, 1).unwrap();
         });
     }
 }
