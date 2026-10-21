@@ -31,4 +31,4 @@ guarding against a quadratic (or unbounded) regression without failing when the 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Speeding up the code under test.
