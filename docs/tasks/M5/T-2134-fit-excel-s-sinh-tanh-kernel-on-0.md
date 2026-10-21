@@ -3,7 +3,7 @@ id: T-2134
 title: "Fit Excel's SINH/TANH kernel on 0 .. 1 (COTH/CSCH inherit it)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
