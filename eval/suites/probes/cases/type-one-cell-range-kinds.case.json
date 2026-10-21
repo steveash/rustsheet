@@ -2,7 +2,7 @@
   "format": "rustsheet-case/v1",
   "description": "T-2262: TYPE of a one-cell range over blank, text, boolean, error, 256-unit text and a spill anchor, and of one-cell OFFSET and INDIRECT results. A6 is a blocked spill anchor (#SPILL!), E1 a working one.",
   "tags": [
-    "M5",
+    "M6",
     "probe",
     "T-2262",
     "type"
