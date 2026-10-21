@@ -532,25 +532,8 @@ impl Lexer {
                                         }
                                         self.position = pos;
 
-                                        // A structured reference is stored as written
-                                        // (SPEC-0016), so storage (R1C1) reads it too. A
-                                        // name of only `R`, `C` and digits before `[` is a
-                                        // relative reference (`R[`, `R[3]C[`), never a table.
-                                        if self.peek_char() == Some('[')
-                                            && utils::is_valid_a1_identifier(&name)
-                                            && !name.chars().all(|c| {
-                                                matches!(c, 'R' | 'r' | 'C' | 'c')
-                                                    || c.is_ascii_digit()
-                                            })
-                                        {
-                                            if let Ok(r) = self.consume_structured_reference(&name)
-                                            {
-                                                return r;
-                                            }
-                                            return TokenType::Illegal(self.set_error(
-                                                "Invalid structured reference",
-                                                self.position,
-                                            ));
+                                        if let Some(token) = self.r1c1_structured_reference(&name) {
+                                            return token;
                                         }
                                         if is_valid_r1c1_identifier(&name, self.peek_char()) {
                                             return TokenType::Ident(name);

@@ -12,6 +12,7 @@ use crate::{
             static_analysis::run_static_analysis_on_node,
             stringify::{
                 rename_sheet_in_node, to_english_string, to_localized_string, to_rc_format,
+                to_string_lowering,
             },
             CallNameSpellings, Node, Parser,
         },
@@ -397,11 +398,14 @@ impl Model {
             row: 1,
             column: 1,
         };
+        // The copy gets no tables: a structured reference to a table on the source sheet is
+        // written as the retargeted area, which reads the copy's cells, as before SPEC-0016.
+        let source_tables = self.table_names_on_sheet(&source_name);
         let mut shared_formulas = Vec::with_capacity(new_worksheet.shared_formulas.len());
         for formula in &new_worksheet.shared_formulas {
             let mut t = self.parser.parse(formula, &cell_reference);
             rename_sheet_in_node(&mut t, source_index, &new_name);
-            shared_formulas.push(to_rc_format(&t));
+            shared_formulas.push(to_string_lowering(&t, None, &source_tables));
         }
         new_worksheet.shared_formulas = shared_formulas;
         self.parser.set_lexer_mode(LexerMode::A1);

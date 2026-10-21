@@ -1,4 +1,6 @@
 pub(super) mod bound_variables;
+mod rename_defined_name;
+mod structured;
 use super::reference_operators::{
     at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
     union_text,
@@ -17,6 +19,8 @@ use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
+pub(crate) use rename_defined_name::rename_defined_name_in_node;
+pub(crate) use structured::to_string_lowering;
 
 pub enum DisplaceData {
     Column {
@@ -131,29 +135,6 @@ pub fn to_string_displaced(
 ) -> String {
     let rewrite = Rewrite::Displace(displace_data);
     stringify(node, Some(context), &rewrite, false, locale, language)
-}
-
-/// The text of `node`, in R1C1 without `context` and in English A1 with it, with every structured
-/// reference to one of `tables` (lowercase names) printed as the area it resolves to. Deleting
-/// the sheet of those tables then turns them into `#REF!`, as it does any reference to the sheet.
-pub(crate) fn to_string_lowering(
-    node: &Node,
-    context: Option<&CellReferenceRC>,
-    tables: &[String],
-) -> String {
-    super::unparsed::stored_text(node)
-        .filter(|_| context.is_none())
-        .unwrap_or_else(|| {
-            let (locale, language) = (get_default_locale(), get_default_language());
-            stringify(
-                node,
-                context,
-                &Rewrite::Lower(tables),
-                false,
-                locale,
-                language,
-            )
-        })
 }
 
 /// The text of `node` cut from the cell `move_context` names and pasted by its deltas: the
@@ -763,34 +744,14 @@ fn stringify(
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
-        StructuredReferenceKind { reference, lowered } => {
-            // The export prints the area until it writes table parts (SPEC-0016 step 3, T-2196).
-            if export_to_excel {
-                return sub(lowered);
-            }
-            match rewrite {
-                Rewrite::Displace(DisplaceData::None) => return reference.text(),
-                Rewrite::Lower(tables) => {
-                    let name = reference.table_name.to_lowercase();
-                    return if tables.contains(&name) {
-                        sub(lowered)
-                    } else {
-                        reference.text()
-                    };
-                }
-                Rewrite::Displace(_) | Rewrite::Move(_) => {}
-            }
-            // A structural edit or a cut and paste that changes the area prints the changed
-            // area, as before SPEC-0016, since the table itself does not move (the fallback of
-            // SPEC-0016 "Structural edits"); otherwise the reference stays as written.
-            let rewritten = sub(lowered);
-            let unchanged = stringify(lowered, context, &NO_REWRITE, false, locale, language);
-            if rewritten == unchanged {
-                reference.text()
-            } else {
-                rewritten
-            }
-        }
+        StructuredReferenceKind { reference, lowered } => structured::reference_text(
+            reference,
+            lowered,
+            context,
+            rewrite,
+            export_to_excel,
+            (locale, language),
+        ),
         SpillRangeOperator { child } => {
             if export_to_excel {
                 return format!("_xlfn.ANCHORARRAY({})", sub(child));
@@ -1040,88 +1001,6 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
             rename_sheet_in_node(lambda, sheet_index, new_name);
             for arg in args {
                 rename_sheet_in_node(arg, sheet_index, new_name);
-            }
-        }
-    }
-}
-
-pub(crate) fn rename_defined_name_in_node(
-    node: &mut Node,
-    name: &str,
-    scope: Option<u32>,
-    new_name: &str,
-) {
-    match node {
-        Node::DefinedNameKind((n, s, _)) => {
-            let prefix_len = n.len() - crate::expressions::utils::bare_defined_name(n).len();
-            if name.to_lowercase() == n[prefix_len..].to_lowercase() && *s == scope {
-                n.replace_range(prefix_len.., new_name); // `Sheet!` stays as typed
-            }
-        }
-        // Go next level
-        Node::OpRangeKind { left, right }
-        | Node::OpIntersectKind { left, right, .. }
-        | Node::OpUnionKind { left, right, .. } => {
-            rename_defined_name_in_node(left, name, scope, new_name);
-            rename_defined_name_in_node(right, name, scope, new_name);
-        }
-        Node::OpConcatenateKind { .. }
-        | Node::OpSumKind { .. }
-        | Node::OpProductKind { .. }
-        | Node::OpPowerKind { .. }
-        | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| {
-                rename_defined_name_in_node(operand, name, scope, new_name);
-            });
-        }
-        Node::FunctionKind { kind: _, args } => {
-            for arg in args {
-                rename_defined_name_in_node(arg, name, scope, new_name);
-            }
-        }
-        Node::NamedFunctionKind {
-            name: _,
-            args,
-            id: _,
-        } => {
-            for arg in args {
-                rename_defined_name_in_node(arg, name, scope, new_name);
-            }
-        }
-        Node::UnaryKind { kind: _, right } => {
-            rename_defined_name_in_node(right, name, scope, new_name);
-        }
-        Node::ImplicitIntersection { child, .. } => {
-            rename_defined_name_in_node(child, name, scope, new_name);
-        }
-        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
-            rename_defined_name_in_node(child, name, scope, new_name);
-        }
-        // Do nothing
-        Node::BooleanKind(_) => {}
-        Node::NumberKind(_) => {}
-        Node::StringKind(_) => {}
-        Node::ErrorKind(_) => {}
-        Node::ParseErrorKind { .. } => {}
-        Node::ArrayKind(_) => {}
-        Node::EmptyArgKind => {}
-        Node::ReferenceKind { .. } => {}
-        Node::RangeKind { .. } => {}
-        Node::SheetSpanKind { .. } => {}
-        Node::WrongReferenceKind { .. } => {}
-        Node::WrongRangeKind { .. } => {}
-        Node::StructuredReferenceKind { .. } => {}
-        Node::NamedVariableKind { .. } => {}
-        Node::LambdaDefKind {
-            parameters: _,
-            body,
-        } => {
-            rename_defined_name_in_node(body, name, scope, new_name);
-        }
-        Node::LambdaCallKind { lambda, args } => {
-            rename_defined_name_in_node(lambda, name, scope, new_name);
-            for arg in args {
-                rename_defined_name_in_node(arg, name, scope, new_name);
             }
         }
     }

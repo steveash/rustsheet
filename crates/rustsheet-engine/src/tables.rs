@@ -140,6 +140,35 @@ impl Model {
         self.parser.set_tables(self.workbook.tables.clone());
     }
 
+    /// The tables on the sheet `sheet_name`, by name.
+    pub(crate) fn tables_on_sheet(&self, sheet_name: &str) -> Vec<(String, Table)> {
+        self.workbook
+            .tables
+            .iter()
+            .filter(|(_, table)| table.is_on_sheet(sheet_name))
+            .map(|(name, table)| (name.clone(), table.clone()))
+            .collect()
+    }
+
+    /// Puts back tables taken out with their sheet (the undo of a sheet delete), and reparses.
+    /// A table added since under the same name keeps its place.
+    pub(crate) fn restore_tables(&mut self, tables: Vec<(String, Table)>) {
+        for (name, table) in tables {
+            self.workbook.tables.entry(name).or_insert(table);
+        }
+        self.reset_tables();
+    }
+
+    /// The lowercase names of the tables on the sheet `sheet_name`, for [`to_string_lowering`].
+    pub(crate) fn table_names_on_sheet(&self, sheet_name: &str) -> Vec<String> {
+        self.workbook
+            .tables
+            .iter()
+            .filter(|(_, table)| table.is_on_sheet(sheet_name))
+            .map(|(name, _)| name.to_lowercase())
+            .collect()
+    }
+
     /// Takes out the tables of the sheet at `sheet_index`, before the sheet is deleted. The
     /// structured references to them in the other sheets' formulas and in defined names are
     /// first rewritten as the areas they stand for, which the delete turns into `#REF!`, as
@@ -148,17 +177,10 @@ impl Model {
         let Ok(sheet_name) = self.workbook.worksheet(sheet_index).map(|w| w.get_name()) else {
             return Vec::new();
         };
-        let names: Vec<String> = self
-            .workbook
-            .tables
-            .iter()
-            .filter(|(_, table)| table.is_on_sheet(&sheet_name))
-            .map(|(name, _)| name.clone())
-            .collect();
-        if names.is_empty() {
+        let lowercase = self.table_names_on_sheet(&sheet_name);
+        if lowercase.is_empty() {
             return Vec::new();
         }
-        let lowercase: Vec<String> = names.iter().map(|name| name.to_lowercase()).collect();
         self.parser.set_lexer_mode(LexerMode::R1C1);
         for (index, worksheet) in self.workbook.worksheets.iter_mut().enumerate() {
             if index == sheet_index as usize {
@@ -200,9 +222,10 @@ impl Model {
                 defined_name.formula = format!("{eq}{lowered}");
             }
         }
-        names
+        let (taken, kept) = std::mem::take(&mut self.workbook.tables)
             .into_iter()
-            .filter_map(|name| self.workbook.tables.remove_entry(&name))
-            .collect()
+            .partition(|(_, table)| table.is_on_sheet(&sheet_name));
+        self.workbook.tables = kept;
+        taken.into_iter().collect()
     }
 }

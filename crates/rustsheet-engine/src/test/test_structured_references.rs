@@ -363,3 +363,39 @@ fn many_structured_references_parse_and_print() {
     assert_eq!(formula(&model, 1, 31, 1), format!("={nested}"));
     assert_eq!(value(&model, 1, 31, 1), "3");
 }
+
+#[test]
+fn a_duplicated_sheet_reads_its_own_cells() {
+    let mut model = model();
+    model
+        .set_user_input(0, 10, 6, "=SUM(Sales[Qty])".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 11, 6, "=SUM($A$2:$A$3)".to_string())
+        .unwrap();
+    let (_, copy) = model.duplicate_sheet(0).unwrap();
+    model.set_user_input(copy, 2, 1, "100".to_string()).unwrap();
+    model.evaluate();
+    // As before SPEC-0016: the copy has no table, and its formula reads the copy's cells.
+    assert_eq!(value(&model, copy, 10, 6), value(&model, copy, 11, 6));
+    assert_eq!(value(&model, copy, 10, 6), "102");
+    assert_eq!(formula(&model, 0, 10, 6), "=SUM(Sales[Qty])");
+    assert_eq!(value(&model, 0, 10, 6), "3");
+}
+
+#[test]
+fn undoing_a_sheet_delete_brings_the_tables_back() {
+    let mut user = crate::UserModel::from_model(model());
+    user.delete_sheet(0).unwrap();
+    assert_eq!(user.get_formatted_cell_value(0, 1, 1).unwrap(), "#REF!");
+    user.undo().unwrap();
+    assert_eq!(user.get_formatted_cell_value(1, 1, 1).unwrap(), "3");
+    // The other sheets' formulas stay as the delete left them (SPEC-0016), as plain ranges.
+    assert_eq!(
+        user.get_cell_content(1, 1, 1).unwrap(),
+        "=SUM(Data!$A$2:$A$3)"
+    );
+    // The table is back: a new structured reference resolves.
+    user.set_user_input(1, 20, 1, "=SUM(Sales[Qty])").unwrap();
+    assert_eq!(user.get_formatted_cell_value(1, 20, 1).unwrap(), "3");
+}

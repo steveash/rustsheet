@@ -14,7 +14,7 @@ depends_on: []
 FORMULATEXT of a formula with a structured reference shows what Excel shows, and an unterminated structured reference (`=T[@Qty`, `=T[Col`) is a parse error.
 
 ## Context
-- The parser lowers structured references to cell references (`structured_reference_operand`, parser/operands.rs), so FORMULATEXT shows `=$A$2` for `=T[@Qty]`. Excel's FORMULATEXT output is unprobed: use the `excel-probe` skill first.
+- Since T-2195 every structured reference except `#This Row` is kept as written, and FORMULATEXT shows the canonical long form the storage printer writes (`=SUM(Sales[Qty])`, the table name in its typed case, `Sales[]` as bare `Sales`); `#This Row` is still lowered, so FORMULATEXT shows `=$A$2` for `=T[@Qty]` until T-1699. Excel's FORMULATEXT output is unprobed: use the `excel-probe` skill first.
 - `consume_escaped_until` (lexer/structured_references.rs) accepts input with no closing `]` and moves the position past the end; found in T-1672 review. Confirm Excel rejects it by probe.
 
 ## Acceptance criteria

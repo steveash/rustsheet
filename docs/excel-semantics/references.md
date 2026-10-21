@@ -2068,7 +2068,11 @@ that changes the area a structured reference resolves to rewrites it to the disp
 fallback below for every table); one that leaves the area unchanged keeps the text. The move and
 grow/shrink classes are T-2297. With no table of that name (engine API `remove_table`), the formula is a
 parse error that keeps its text and is exported as `#REF!`, so a file never holds a structured reference
-without table parts (engine decision, not Excel evidence). SPEC-0016 keeps the reference in the parsed formula and
+without table parts (engine decision, not Excel evidence; how Excel loads a formula naming a missing table is a
+question for T-2197). FORMULATEXT now shows the stored canonical form (`=SUM(Sales[Qty])`), whose spelling is
+unprobed (T-1683). A duplicated sheet gets no table: its references to the source sheet's tables are written as
+the retargeted plain ranges, which read the copy's cells as before (Excel adds a renamed table to the copy,
+hand and unprobed). SPEC-0016 keeps the reference in the parsed formula and
 re-derives its area whenever the table list changes (engine API behavior, not Excel evidence). Interim
 rule until T-2197 (SPEC-0016 "Structural edits", with its edge-case table): a table moves with row/column
 edits wholly before it and grows or shrinks with row edits strictly inside its data rows, as a range would;

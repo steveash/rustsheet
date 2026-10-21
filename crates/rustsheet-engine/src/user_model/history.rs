@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use bitcode::{Decode, Encode};
 
+use crate::types::Table;
+
 use crate::{
     cf_types::CfRule,
     types::{
@@ -151,6 +153,8 @@ pub(crate) enum Diff {
     DeleteSheet {
         sheet: u32,
         old_data: Box<Worksheet>,
+        /// The tables on the sheet, which the delete takes out of the workbook (SPEC-0016).
+        tables: Vec<(String, Table)>,
     },
     SetFrozenRowsCount {
         sheet: u32,

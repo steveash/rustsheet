@@ -30,6 +30,24 @@ fn combine_specifiers(
 }
 
 impl Lexer {
+    /// A structured reference after `name` in R1C1 mode: one is stored as written (SPEC-0016),
+    /// so storage (R1C1) reads it too. A name of only `R`, `C` and digits before `[` is a
+    /// relative reference (`R[`, `R[3]C[`), never a table. `None` when there is none.
+    pub(super) fn r1c1_structured_reference(&mut self, name: &str) -> Option<TokenType> {
+        let is_reference_part = name
+            .chars()
+            .all(|c| matches!(c, 'R' | 'r' | 'C' | 'c') || c.is_ascii_digit());
+        if self.peek_char() != Some('[')
+            || !crate::expressions::utils::is_valid_a1_identifier(name)
+            || is_reference_part
+        {
+            return None;
+        }
+        Some(self.consume_structured_reference(name).unwrap_or_else(|_| {
+            TokenType::Illegal(self.set_error("Invalid structured reference", self.position))
+        }))
+    }
+
     fn consume_table_specifier(&mut self) -> Result<Option<TableSpecifier>> {
         if self.peek_char() == Some('#') {
             // It's a specifier

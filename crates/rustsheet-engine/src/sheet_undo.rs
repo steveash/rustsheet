@@ -58,11 +58,7 @@ impl Model {
             return Err("A worksheet already exists with that name".to_string());
         }
         self.workbook.worksheets.insert(sheet_index as usize, sheet);
-        // A table added since the delete under the same name keeps its place.
-        for (name, table) in tables {
-            self.workbook.tables.entry(name).or_insert(table);
-        }
-        self.reset_tables();
+        self.restore_tables(tables);
         Ok(())
     }
 }
