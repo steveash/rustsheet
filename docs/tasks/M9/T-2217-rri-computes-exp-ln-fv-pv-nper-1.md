@@ -1,6 +1,6 @@
 ---
 id: T-2217
-title: "RRI computes exp(ln(fv/pv)/nper)-1, not Excel's ^ (RRI(0.5,3,4) is 0.7777777777777775)"
+title: "RRI matches Excel's last ulp at RRI(0.5,3,4) (candidate: exp(ln(fv/pv)/nper)-1, not ^)"
 milestone: M9
 lane: functions-financial
 status: todo
@@ -25,8 +25,8 @@ Gap triage 2026-10-21 (`make eval` on main d48456cd; `make eval-show CASE=ironca
   probes/fin-rri, but not D12.
 - Candidate (triage check in a scratch case): `EXP(LN(fv/pv)/nper)-1` and `EXP(LN(fv/pv)*(1/nper))-1`, with the
   engine's `excel_exp` (x87_exp.rs) and `excel_ln` (x87_log10.rs), match all 15 points, D12 included.
-  Only 3 points tell them apart from the current form: D12, fin-mduration-rri-fit A37 and A57.
-- **Needs an oracle sweep** (T-2216): 3 discriminating points, one of them desktop-only, are too few to fit
+  D12 is the only point where they differ from the current form (A37 and A57 agree under every form).
+- **Needs an oracle sweep** (T-2216): one discriminating point, and a desktop-only one, is too few to fit
   blind. Decision 0030 makes the desktop value the target if the web disagrees on `RRI(0.5,3,4)`.
 - docs/excel-semantics/financial.md "DURATION and RRI operation order" records the D12/E12 quirk.
 
@@ -35,6 +35,8 @@ Gap triage 2026-10-21 (`make eval` on main d48456cd; `make eval-show CASE=ironca
       (`make eval-baseline`), with no new F lines in any baseline. In particular, probes/fin-rri, fin-rri-vdb-edges,
       fin-mduration-rri-fit and T-2216's sweep pass in full. If no single formulation fits every point, the PR
       lists the points that still miss and files a follow-up.
+- [ ] If the EXP/LN form lands, `nper` 0, `fv/pv` 0 and a negative ratio still return the same errors as today
+      (probes/fin-rri, fin-rri-vdb-edges), with no panic.
 - [ ] `rri_of` cites the fitted points in its comment; financial.md's RRI paragraph states the rule and is
       marked implemented.
 - [ ] `make check` green; reviewers approve.

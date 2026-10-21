@@ -22,16 +22,16 @@ workbook, E12 `=POWER(C12/B12,1/A12)-1` is 0.7777777777777777. So RRI does not u
 contradicts financial.md "DURATION and RRI operation order".
 `EXP(LN(fv/pv)/nper)-1`, computed with the engine's `excel_exp`/`excel_ln`, matches all 15 Excel points we have:
 the 12 excel-graph RRI cells of probes/fin-mduration-rri-fit, the computed cells of probes/fin-rri, and D12.
-The current `(fv/pv)^(1/nper)-1` (arithmetic.rs `power`) matches 14 of them. Only 3 points tell the two apart:
-D12, fin-mduration-rri-fit A37 `RRI(10,1,200)` and A57 `RRI(0.75,1,2)`. `/nper` and `*(1/nper)` are not
-told apart at all. The note is in docs/excel-semantics/financial.md "DURATION and RRI operation order".
+The current `(fv/pv)^(1/nper)-1` (arithmetic.rs `power`) matches 14 of them, missing only D12. D12 is the only
+point where the two forms differ at all (fin-mduration-rri-fit A37 and A57 give the same value under every form),
+and fin-rri A5/A6 match only through RRI's special cases. `/nper` and `*(1/nper)` are not told apart at all. The note is in docs/excel-semantics/financial.md "DURATION and RRI operation order".
 
 Sweep, as stored inputs (probes-numeric case, `excel-probe` skill). Pick each point off-line so that the engine's
 `EXP(LN(r)/n)-1`, `EXP(LN(r)*(1/n))-1` and `(r)^(1/n)-1` do not all agree (evaluate the candidates in a scratch
 case with `rustsheet-eval --root <scratch> show`):
 - `RRI(0.5,3,4)` (D12 on the web), plus `POWER(4/3,2)-1` and `EXP(LN(4/3)/0.5)-1` beside it.
 - About 150 RRI calls: fractional nper (0.25 .. 0.95), small integer nper (2 .. 12) with ratios p/q of small
-  integers, large nper (100 .. 1E+6), and ratios below 1. For each, add the worksheet forms
+  integers, large nper (100 .. 1E+6), ratios below 1, and the error edges (nper 0, pv or fv 0, negative ratio). For each, add the worksheet forms
   `(fv/pv)^(1/nper)-1`, `EXP(LN(fv/pv)/nper)-1` and `EXP(LN(fv/pv)*(1/nper))-1` in the next columns.
 
 ## Acceptance criteria

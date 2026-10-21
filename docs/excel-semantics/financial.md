@@ -1034,8 +1034,8 @@ Tasks: T-1975, T-2185
 Rule: DURATION discounts each cash flow with Excel's `^` (not libm `pow`) and weights it as `(t·cf)/v^t`, then
 `num/den/frequency`; MDURATION is exactly the worksheet `DURATION(...)/(1+yld/frequency)`. A zero-coupon
 `DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)` is 5.541666666666668, one ulp above `t/2`, because `(t·cf)/v^t`
-divided by `cf/v^t` is not exactly `t`. RRI is exactly the worksheet `(fv/pv)^(1/nper)-1`: `RRI(10,1,200)` is
-0.6986464646342472, where libm `pow` gives ...474.
+divided by `cf/v^t` is not exactly `t`. On the excel-graph evidence RRI is exactly the worksheet `(fv/pv)^(1/nper)-1`
+(but see Open below: Mac D12 differs): `RRI(10,1,200)` is 0.6986464646342472, where libm `pow` gives ...474.
 A negative `fv/pv` is always `#NUM!` for RRI, even where the worksheet form is a number: `RRI(1,-100,200)`,
 `RRI(0.5,-100,200)` and `RRI(1/3,-1,8)` are `#NUM!`, while `(200/-100)^(1/1)-1` is -3 and `(8/-1)^3-1` is -513
 (probes/fin-rri-vdb-edges A1-A16).
@@ -1046,8 +1046,8 @@ Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `
 Open (gap triage 2026-10-21): RRI is not always the worksheet `^`. `ironcalc-calc/FINANCIAL/RRI.xlsx` Sheet1!D12
 `RRI(0.5,3,4)` is 0.7777777777777775 (Mac Excel 16.x cached; ours 0.7777777777777777). E12 in the same sheet,
 `POWER(4/3,1/0.5)-1`, is 0.7777777777777777. `EXP(LN(fv/pv)/nper)-1` with Excel's EXP and LN fits D12 and every
-excel-graph RRI cell above. Only D12, fin-mduration-rri-fit A37 and A57 tell it apart from `^`, so it is a
-candidate, not a rule, until the T-2216 sweep. Fix: T-2217.
+excel-graph RRI cell above (fin-rri A5/A6 only through RRI's own special cases). D12 is the only point we have
+where it and `^` differ, so it is a candidate, not a rule, until the T-2216 sweep. Fix: T-2217.
 Tasks: T-1975
 
 ## NPV and FVSCHEDULE arguments
