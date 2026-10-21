@@ -19,6 +19,18 @@ use crate::{
     reference_operators::{Ranges, RefArg},
 };
 
+/// Whether `node` is `A1:Sheet!B1`, an unqualified cell joined to a sheet-qualified one. Over
+/// sheets named like cells an unquoted span reads this way: written on sheet S1,
+/// `SHEETS(S1:S3!A1)` is `S1:(S3!A1)`, which cannot join across sheets and is `#VALUE!`, while
+/// `SHEETS(S3:S1!A1)` joins on S1 and is 1 (probes/sheet-names-like-cells-3d-spans B3:B4,
+/// excel-graph; T-2193). A range operator between two sheet-qualified cells
+/// (`Alpha!A1:Beta!B1`) is unprobed: the oracle canary refuses it.
+fn joins_a_cell_to_a_sheet_qualified_one(node: &Node) -> bool {
+    matches!(node, Node::OpRangeKind { left, right }
+        if matches!(left.ungrouped(), Node::ReferenceKind { sheet_name: None, .. })
+            && matches!(right.ungrouped(), Node::ReferenceKind { sheet_name: Some(_), .. }))
+}
+
 /// Applies `f` to every element of a 2-D array, keeping its shape.
 pub(crate) fn map_elements(
     values: &[Vec<ArrayNode>],
@@ -579,8 +591,9 @@ impl Model {
             // A reference counts the sheets between its corners, in either order
             // (probes/info-sheets-info-types D1:D24, excel-graph; T-2181).
             // Only a written reference is read: a union, a name, OFFSET, INDIRECT, INDEX, an
-            // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So is a
-            // range operator over function operands (`A1:OFFSET(..)`).
+            // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So are a
+            // range operator over function operands (`A1:OFFSET(..)`) and a cross-sheet one
+            // other than [`joins_a_cell_to_a_sheet_qualified_one`] (`Alpha!A1:Beta!B1`).
             let argument = args[0].ungrouped();
             if matches!(
                 argument,
@@ -595,16 +608,8 @@ impl Model {
                             f64::from(area.left.sheet.abs_diff(area.right.sheet)) + 1.0,
                         );
                     }
-                    // A range operator joining references on two sheets is its `#VALUE!`: over
-                    // sheets named like cells, `SHEETS(S1:S3!A1)` reads as `S1:(S3!A1)` and is
-                    // `#VALUE!`, while `SHEETS(S3:S1!A1)` joins on one sheet and is 1
-                    // (probes/sheet-names-like-cells-3d-spans B3:B4, excel-graph; T-2193).
                     RefArg::Value(error @ CalcResult::Error { .. })
-                        if matches!(argument, Node::OpRangeKind { left, right }
-                        if [left, right].iter().all(|operand| matches!(
-                            operand.ungrouped(),
-                            Node::ReferenceKind { .. } | Node::RangeKind { .. }
-                        ))) =>
+                        if joins_a_cell_to_a_sheet_qualified_one(argument) =>
                     {
                         return error;
                     }

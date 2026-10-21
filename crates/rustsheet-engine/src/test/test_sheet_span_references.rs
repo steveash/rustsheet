@@ -272,6 +272,7 @@ fn sheets_leaves_unprobed_argument_forms_unimplemented() {
     let mut model = sample();
     assert_eq!(eval(&mut model, "=SHEETS(OFFSET(A1,0,0))"), "#N/IMPL!");
     assert_eq!(eval(&mut model, "=SHEETS((B1,C1))"), "#N/IMPL!");
+    assert_eq!(eval(&mut model, "=SHEETS(Data1!A1:Data2!B1)"), "#N/IMPL!");
 }
 
 // A name bound to a 3-D range reads like the span in aggregates and LAMBDA arguments; where a
