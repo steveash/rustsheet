@@ -144,8 +144,16 @@ impl Model {
                     )
                 }
             };
-            let col_mark = if abs_num == 1 || abs_num == 3 { "$" } else { "" };
-            let row_mark = if abs_num == 1 || abs_num == 2 { "$" } else { "" };
+            let col_mark = if abs_num == 1 || abs_num == 3 {
+                "$"
+            } else {
+                ""
+            };
+            let row_mark = if abs_num == 1 || abs_num == 2 {
+                "$"
+            } else {
+                ""
+            };
             format!("{sheet_prefix}{col_mark}{col_letter}{row_mark}{row_num}")
         } else {
             let row_part = r1c1_part('R', row_num, row_relative);
