@@ -24,6 +24,7 @@ The holder is `CLAUDE_CODE_SESSION_ID` unless `--holder` is given.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import re
@@ -133,18 +134,18 @@ def pr_finished(pr: str, root: Path = ROOT) -> bool | None:
     GitHub API read fails (no network, rate limit, a private repository without a token)."""
     url = git("remote", "get-url", REMOTE, root=root, check=False).stdout.strip()
     match = re.search(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", url)
-    if match is None or not pr.isdigit():
+    if match is None or not (pr.isascii() and pr.isdigit()):
         return None
     request = urllib.request.Request(
         f"https://api.github.com/repos/{match[1]}/{match[2]}/pulls/{pr}",
         headers={"Accept": "application/vnd.github+json", "User-Agent": "rustsheet-merge-lock"},
     )
     if token := os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN"):
-        request.add_header("Authorization", f"Bearer {token}")
+        request.add_unredirected_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(request, timeout=API_TIMEOUT) as response:  # noqa: S310 (fixed https URL)
             state = json.load(response)
-    except (urllib.error.URLError, OSError, ValueError):
+    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError):
         return None
     if not isinstance(state, dict) or "state" not in state:
         return None
