@@ -6,11 +6,15 @@
 //!   positive t is 1 - L, T.DIST.RT(x) of a negative x is 1 - L, T.DIST.2T is 2 L. In Excel
 //!   `T.DIST.RT(x,n)` = `T.DIST(-x,n,TRUE)` wherever the sweep has both, and 1 - L is bit-exact
 //!   on 118 of the 146 nonzero T.DIST cells against 113 for the correctly rounded CDF;
-//! - with y = n/(n+t^2) and z = t^2/(n+t^2), L = `I_y(n/2, 1/2)`/2. Away from the deep tail
-//!   (y > z) L is the exact value, rounded once: for an integer n up to [`SERIES_MAX_DF`] the
-//!   finite series for integer df in double-double. In the deep tail (y <= z) Excel's L carries
-//!   the error of exp((n/2) ln y): Cephes' power series with that power and a correctly rounded
-//!   Gamma ratio reproduces it (`T.DIST.RT(1E6,10)` = 1.230468749943611E-56, F18 of `T_DIST.xlsx`).
+//! - with y = n/(n+t^2) and z = t^2/(n+t^2), L = `I_y(n/2, 1/2)`/2. For t <= 1 or y > 0.99
+//!   (the next item covers the rest) and away from the deep tail (y > z), L is the exact value,
+//!   rounded once: for an integer n up to [`SERIES_MAX_DF`] the finite series for integer df in
+//!   double-double. In the deep tail (y <= z) Excel's L carries the error of exp((n/2) ln y):
+//!   Cephes' power series with that power and a correctly rounded Gamma ratio reproduces it
+//!   (`T.DIST.RT(1E6,10)` = 1.230468749943611E-56, F18 of `T_DIST.xlsx`).
+//! - beyond t = 1 and short of y = 0.99, deep tail included, L is `I_y(n/2, 1/2)`/2 at y as the
+//!   worksheet rounds it, fl(n / fl(n + fl(t*t))), through the same kernel as T.TEST's
+//!   [`student_t_tail_at`] (T-0969 attempt 7, probes-numeric t0969-t-tail-grid);
 //! - elsewhere away from the deep tail (an integer df above [`SERIES_MAX_DF`], or a series tail too
 //!   small to keep its digits) L comes from Cephes' fractions with every input
 //!   formed from z and t^2/n, never from the rounded y ([`centre_tail`]): Excel is within a few ulp
@@ -42,6 +46,9 @@ const MAX_POWER_SERIES_TERMS: u32 = 200;
 const TAYLOR_TERMS: u32 = 40;
 /// Below this the double-double tail 1/2 - A/2 keeps fewer than 40 of its 106 bits.
 const MIN_SERIES_TAIL: f64 = 1e-12;
+/// Largest rounded y = n/(n+t^2) at which the tail of a t beyond 1 is taken at that y
+/// ([`unflushed_upper_tail`]).
+const ROUNDED_Y_MAX: f64 = 0.99;
 /// 1/pi as a double-double.
 const FRAC_1_PI_DD: Dd = (
     f64::from_bits(0x3FD4_5F30_6DC9_C883),
@@ -103,6 +110,15 @@ fn unflushed_upper_tail(t: f64, n: f64) -> f64 {
     if n + t * t == n {
         return 0.5;
     }
+    // Beyond t = 1, and short of y = 0.99, Excel evaluates the tail at y rounded as the
+    // worksheet would round it, fl(n / fl(n + fl(t^2))), as T.TEST does (`student_t_tail_at`);
+    // inside it the tail is the exact one at t (docs/excel-semantics/statistics.md, "T.DIST.RT
+    // follows the rounded y beyond t = 1"). A t whose square overflows (y = 0) keeps the
+    // path below, which still gives a far tail for a small n.
+    let rounded_y = n / (n + t * t);
+    if t > 1.0 && rounded_y > 0.0 && rounded_y <= ROUNDED_Y_MAX {
+        return tail_at(rounded_y, n);
+    }
     let (z, y) = beta_arguments(t, n);
     let square = t * t;
     let args = TailArguments {
@@ -126,6 +142,11 @@ pub(crate) fn student_t_tail_at(y: f64, n: f64) -> f64 {
     if y.is_nan() || n.is_nan() {
         return f64::NAN;
     }
+    flush_subnormal(tail_at(y, n))
+}
+
+/// [`student_t_tail_at`] before the subnormal flush, for a y in [0, 1].
+fn tail_at(y: f64, n: f64) -> f64 {
     if y >= 1.0 {
         return 0.5;
     }
@@ -148,7 +169,7 @@ pub(crate) fn student_t_tail_at(y: f64, n: f64) -> f64 {
         inside_one: z * n <= y,
         series,
     };
-    flush_subnormal(tail_from(&args, n))
+    tail_from(&args, n)
 }
 
 /// The inputs one tail is computed from, z = t^2/(n+t^2) and y = n/(n+t^2) among them, so that
@@ -447,6 +468,23 @@ fn dd_atan(u: Dd) -> Dd {
 mod tests {
     use super::super::incomplete_beta::tests::ulps;
     use super::*;
+
+    #[test]
+    fn tail_beyond_one_is_taken_at_the_rounded_y() {
+        // probes-numeric t0969-t-tail-grid B1117 and B1078: `T.DIST.RT(3.2013,100)` and
+        // `T.DIST.RT(1.2513,100)` are I_y/2 at y = fl(100/fl(100 + fl(t*t))); the exact tails at t
+        // are 33 and 25 ulp away.
+        assert_eq!(
+            student_t_tails(3.2013, 100.0).1,
+            0.000_917_214_524_131_372_6
+        );
+        assert_eq!(student_t_tails(1.2513, 100.0).1, 0.106_872_219_526_027_31);
+        let y = 100.0 / (100.0 + 3.2013 * 3.2013);
+        assert_eq!(
+            student_t_tails(3.2013, 100.0).1,
+            student_t_tail_at(y, 100.0)
+        );
+    }
 
     #[test]
     fn t_test_tail_at_a_rounded_y() {

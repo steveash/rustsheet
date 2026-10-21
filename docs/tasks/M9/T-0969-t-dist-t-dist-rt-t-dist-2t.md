@@ -177,6 +177,35 @@ density's exp(a ln y) form; then re-cut the 4-ulp criterion per decision 0056 if
   on a dense t grid (and the same t at df 2 as a control) to find the df >= 3 formula; and probe the centre tail on a dense
   (df, t) grid to locate where Excel switches between the rounded-y and the t form.
 
+## Attempt 7 (2026-10-20, opus run; merged as progress)
+Two new excel-graph probes (probes-numeric): `t0969-t-pdf-runs`, 14,914 densities on runs of consecutive doubles and a
+coarse grid for df 2 to 10; and `t0969-t-tail-grid`, 3,232 T.DIST.RT cells on a (df, t) grid plus three runs.
+- **Centre tail: cracked where it switches.** Excel's tail is `I_y(n/2,1/2)/2` at y = fl(n / fl(n + fl(t*t))) (the
+  T.TEST kernel, `student_t_tail_at`) once t > 1 and y <= 0.99, and the exact tail at t otherwise. On the runs, a
+  regression on the intermediates' rounding errors gives -1 on fl(n + t^2) and +1 on fl(n/.) (df 100). The grid
+  brackets the switch at t = 1 for df <= 100 and at t^2 = n/99 to n/100 above. statistics.md has the entry
+  "T.DIST.RT follows the rounded y beyond t = 1".
+  - `unflushed_upper_tail` now takes that path.
+  - The grid goes from 325 to 548 bit-exact cells of 3,232, and from 1,229 to 2,210 within 4 ulp.
+  - Eval delta: no baseline line changed and no regressions; visibly-off in-scope cells 1774 -> 1772.
+    `T_DIST.xlsx` F7, F8, C7, C8 (13 ulp) are now NumericUlp, 0 to 2 ulp, so no T.DIST/T.DIST.RT/T.DIST.2T/T.TEST
+    line in `T_DIST.xlsx` or `T_TEST.xlsx` is NumericClose or NumericMismatch any more (only T.INV/T.INV.2T ones,
+    T-0967). probes-numeric bit-exact: m9-t-dist-cdf 122 -> 124, m9-t-dist-rt 75 -> 77, m9-t-dist-2t 52 -> 53.
+    Eleven more m9-t-dist cells move from NumericClose to NumericUlp, among them (2,100), (3,100), (3,30) and
+    (5,30), and so do t1048-tdist A7/B7/A8/B8. One cell gets worse: `T.DIST.RT(5,100)` and `T.DIST.2T(5,100)` go from 2 to 15 ulp,
+    still within 15 digits.
+- **df 15 is an outlier:** Excel is 6 to 27 ulp off both models, with a sign flip at t = 1, as from a Gamma ratio
+  about 1.5E-15 relative off at a = 7.5. Not modelled.
+- **Density: structure found, kernel not cracked.**
+  - df 2 is confirmed: `EXP(-1.5*LN(2+t^2))`, 1,024 of 1,024 cells.
+  - For df >= 3, t*t is rounded but n + t^2 (or 1 + t^2/n) is not.
+  - The residual noise is 1 to 5 x 2^-53 relative rms, growing with |exponent|.
+  - None of these fit more than about 60% of a df's cells: D * EXP(RN(E)), EXP(RN(C + E)), D * exp(RN(E)) with exp
+    unrounded, or D * exp(-h RN(ln u)), each for the u = 1 + t^2/n and n + t^2 forms and any D or C. In the
+    D * exp(-h RN(ln u)) model the residuals spread over +-4 ulp.
+  - Next: a model where the stored exponent carries a constant ln-Gamma term computed in extended precision, and a
+    probe of `T.DIST(t,n,FALSE)` at t with t*t exact (t = k/2^m) to separate the exponent's rounding from that of t^2.
+
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
       NumericMismatch verdict (`rustsheet-eval show` on both cases), at least 30 of the 55 lines
