@@ -115,8 +115,7 @@ pub fn judge(lock: Lock, count: VisibleCount, update: Option<Update>) -> Judgeme
         Some(u) if count.cells < locked && u.lower => Judgement::Record,
         _ if count.cells < locked => Judgement::Holds,
         Some(u)
-            if u.allow_regressions
-                || count.cells <= locked.saturating_add(count.new_coverage) =>
+            if u.allow_regressions || count.cells <= locked.saturating_add(count.new_coverage) =>
         {
             Judgement::Record
         }
@@ -225,7 +224,10 @@ mod tests {
         assert_eq!(judge(lock, count(7, 0), Some(steward)), Judgement::Record);
         assert_eq!(judge(lock, count(13, 3), Some(PR)), Judgement::Record);
         assert_eq!(judge(lock, count(13, 2), Some(PR)), Judgement::Regressed);
-        assert_eq!(judge(lock, count(13, 2), Some(steward)), Judgement::Regressed);
+        assert_eq!(
+            judge(lock, count(13, 2), Some(steward)),
+            Judgement::Regressed
+        );
         let allow = Update {
             allow_regressions: true,
             ..PR
