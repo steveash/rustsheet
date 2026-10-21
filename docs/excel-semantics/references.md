@@ -2011,6 +2011,12 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   above or below the table) it is `#VALUE!`: this-row e1bf5aa0ffb4ed87, `Sales` at A2:C16, Data!AA11 gives
   the row-11 value (`#N/A`), Data!AE19, AF17 and AH22 give `#VALUE!`; a cell in the header row (Data!AA1
   for `Tiny` at J1:K2) is `#VALUE!` too.
+- The formula's row is used from another sheet too, and the result is a reference: with `Sales` at S!B3:C7
+  (data rows 4-7), `=Sales[@Qty]` on sheet F row 6 is S!C6's value and `ISREF(Sales[@Qty])` on F row 5 is
+  TRUE; off the data rows (S rows 1, 2, 3 = the header, 9 and 10; F rows 1 and 2) the value is `#VALUE!`
+  and `ISREF` FALSE.
+  `ISREF` of `Sales[Qty]`, `Sales` and `Sales[#Headers]` is TRUE (excel-graph, 2026-10-21, T-2197,
+  probes/table-edits/table-this-row-off-data-isref).
 - Inside the table (a formula column) `[@Col]` reads the same row; `Sales[Col]` there is the whole column
   (in-table 19fdc25163755713).
 - `Table[#Totals]` and `Table[[#Totals],[Col]]` of a table without a totals row are `#REF!`
@@ -2051,36 +2057,64 @@ Implemented in: `Lexer::consume_this_row_shorthand`.
 Tasks: T-1672, T-1683
 
 ## Structured references when the table changes
-Rule (unprobed): a formula keeps its structured reference and is evaluated against the table as it is
-now (gen-m8b in-table 19fdc25163755713 shows the evaluation against a fixed table). What Excel does to the
-reference, and to the formula's value, when the table is resized (rows or columns inserted or deleted
-inside or at its edge, or a resize), converted to a range or deleted is not probed. Open questions for T-2197: does a table move with an edit wholly before it
-(SPEC-0016 assumes so), and does "Convert to Range" turn the references into plain cell references?
-Renaming the table's sheet keeps its structured references working (hand, certain). A structured reference
-on another sheet to a table whose sheet is deleted is assumed to become `#REF!` (hand; a question for T-2197).
-Status: UNVERIFIED
+Rule (excel-graph, 2026-10-21, T-2197; probes/table-edits, `Sales` at S!B3:C7 with header row 3, data rows
+4-7 and in the totals cases a totals row 8, the formulas on sheet F; each `insert_row` is one whole sheet row
+inserted above row r, Graph `range('r:r')/insert` shift Down): a formula keeps its structured reference
+through the edit (FORMULATEXT still prints `=SUM(Sales[Qty])`, `=COUNTA(Sales[Region])`,
+`=Sales[[#Totals],[Qty]]`) and evaluates against the table as it now is:
+- Insert above the header row or any row before it (r = 3, r = 1): the table moves down by one row
+  (`ROW(Sales[#Headers])` 4, `ROWS(Sales)` 4); a plain `S!C4:C7` shifts to `S!C5:C8`
+  (table-insert-row-above-header, table-insert-row-before).
+- Insert between the header and the first data row (r = 4), strictly inside the data (r = 6) or above the
+  last data row (r = 7): the table grows by one blank data row (header stays at 3, `ROWS(Sales)` 5,
+  `#All` 6, `SUM(Sales[Qty])` 15) (table-insert-row-above-first-data, -inside-data, -above-last-data).
+- Insert between the last data row and the totals row (r = 8 with a totals row): the table grows too (data
+  5 rows, `#All` 7, the totals row moves to 9 and `Sales[[#Totals],[Qty]]` is still 15)
+  (table-insert-row-above-totals).
+- Insert just below the table (r = 8 without a totals row, r = 9 with one): the table is unchanged
+  (table-insert-row-below, table-insert-row-below-totals).
+- Quirk: a plain range onto the table's data column grows with the two edge inserts. `=SUM(S!C4:C7)` (the
+  data rows) becomes `=SUM(S!C4:C8)` after the insert above row 4, where an ordinary insert at a range's
+  first row shifts it (`S!C5:C8`, as above the header), and after the insert above the totals row 8, where
+  an ordinary insert just below a range leaves it (as `S!C4:C7` stays for r = 8 without totals).
+- So SPEC-0016's edge-case table is wrong on two rows: an insert at r == d1 and at r == t *grows* the
+  table (it said fallback); the move, grow-inside and none rows hold (T-2321).
+- A loaded formula naming a table the file does not have (`=SUM(Nope[Qty])`) or a column its table does not
+  have (`=SUM(Sales[Nope])`) loads without a repair prompt, is `#REF!`, and FORMULATEXT prints
+  `=SUM(#REF!)` (table-unknown-name-load, table-unknown-column-load).
+- Renaming the table's sheet keeps its structured references working (hand, certain).
+Status: VERIFIED (excel-graph)
 Implemented in: partly (T-2195, SPEC-0016 step 1). Every structured reference except `#This Row` (T-1699)
 is kept as written (`Node::StructuredReferenceKind`, parser/structured_reference.rs) and its area is
 re-derived whenever the table list changes; a sheet rename moves the tables with the sheet; a sheet delete
 first rewrites the other sheets' references to its tables as plain ranges (so they become `#REF!`, as
 before), and `restore_sheet` puts the tables back. Tables do not move on structural edits yet: every edit
 that changes the area a structured reference resolves to rewrites it to the displaced plain range (the
-fallback below for every table); one that leaves the area unchanged keeps the text. The move and
-grow/shrink classes are T-2297. With no table of that name (engine API `remove_table`), the formula is a
-parse error that keeps its text and is exported as `#REF!`, so a file never holds a structured reference
-without table parts (engine decision, not Excel evidence; how Excel loads a formula naming a missing table is a
-question for T-2197). FORMULATEXT now shows the stored canonical form (`=SUM(Sales[Qty])`), whose spelling is
-unprobed (T-1683). A duplicated sheet gets no table: its references to the source sheet's tables are written as
-the retargeted plain ranges, which read the copy's cells as before (Excel adds a renamed table to the copy,
-hand and unprobed). SPEC-0016 keeps the reference in the parsed formula and
-re-derives its area whenever the table list changes (engine API behavior, not Excel evidence). Interim
-rule until T-2197 (SPEC-0016 "Structural edits", with its edge-case table): a table moves with row/column
-edits wholly before it and grows or shrinks with row edits strictly inside its data rows, as a range would;
-any other edit that crosses a table (between header and data, between data and totals, touching the header or
-totals row, inside its columns), every row/column move or cell shift on its sheet, and a cut and paste that
-intersects it, rewrites the formulas that refer to it to the displaced plain range (today's
-behavior).
-Tasks: T-2194, T-2195, T-1699, T-2197, T-2297
+fallback of SPEC-0016 for every table); one that leaves the area unchanged keeps the text. So today the
+values match Excel except where the table grows (`ROWS(Sales)` stays 4) and FORMULATEXT prints the plain
+range; the plain-range quirk is not implemented. The move and grow classes are T-2297, the two edge rows
+and the quirk T-2321. With no table of that name (engine API `remove_table`), the formula is a parse
+error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
+is a parse error too (`#ERROR!`, FORMULATEXT the original text; T-2322). FORMULATEXT shows the stored
+canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The eval adapter registers a
+table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322
+
+## Structured references under the unprobed table edits
+Rule (unprobed): what Excel does to a table and its structured references on a row delete, a column insert
+or delete, "Convert to Range", deleting the table, and deleting the table's sheet (SPEC-0016 assumes a
+reference from another sheet becomes `#REF!`). excel-graph can make these edits through Graph
+(`range/delete`, `range/insert` shift Right, `tables/convertToRange`, `DELETE tables`, `DELETE worksheets`),
+but the oracle replays only `add`, `rename`, `move` and `insert_row` sheet ops: T-2323 adds the ops and
+T-2324 probes them. Cut and paste of table cells, row and column moves, undo after a sheet delete and a
+duplicated sheet have no Graph REST endpoint (no range move, no undo, no worksheet copy), so only desktop
+Excel can answer them (M14, T-2325). Engine behavior until then (engine decision, SPEC-0016 "Structural
+edits"): every such edit that changes the area a reference resolves to rewrites it to the displaced plain
+range; a duplicated sheet gets no table and its references to the source sheet's tables are written as the
+retargeted plain ranges (Excel is believed to add a renamed table to the copy, hand).
+Status: UNVERIFIED
+Implemented in: no (fallback only).
+Tasks: T-2197, T-2323, T-2324, T-2325
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
