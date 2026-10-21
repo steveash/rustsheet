@@ -3,7 +3,7 @@ id: T-2237
 title: "YEARFRAC with a date in [0, 1) on bases 1-4 and next to January-February 1900: probe and match (today #NUM! until probed)"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -48,14 +48,28 @@ The discount-security functions also call `year_fraction_parts` (financial.md "D
 day count and year length"). Check that no financial cell moves, or measure and list the ones that do.
 
 ## Acceptance criteria
-- [ ] A new probes case, oracle-filled (excel-graph), covers the grid above. Every cell passes, or
+- [x] A new probes case, oracle-filled (excel-graph), covers the grid above. Every cell passes, or
       its known failure is recorded with `make eval-baseline` and has a filed task named in the Outcome.
-- [ ] dates.md states the rule for each basis with its cells, and the UNVERIFIED notes above are gone.
-- [ ] Unit tests in `test/test_yearfrac_basis.rs` cover each basis's serial-0 rule. No gated baseline
+- [x] dates.md states the rule for each basis with its cells, and the UNVERIFIED notes above are gone.
+- [x] Unit tests in `test/test_yearfrac_basis.rs` cover each basis's serial-0 rule. No gated baseline
       gains a line, and no financial cell changes, or each change is listed in the Outcome.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - DAYS360, COUP* and the bond functions at serial 0 (probe separately if YEARFRAC's rule suggests
   they differ).
 - Negative serials (still `#NUM!`).
+
+## Outcome
+Probed (excel-graph, 2026-10-21): probes/yearfrac-serial-zero (205 cells: the grid, reversed pairs, serial 60
+pairs, plus serials 1 and 59 against later dates), probes/yearfrac-serial-zero-1904 (25 cells) and
+probes/discount-serial-zero (50 cells, since the discount securities share `year_fraction_parts`). Rules in dates.md
+"YEARFRAC accepts serial 0" (the section the code comment cited now exists; the UNVERIFIED note is gone):
+- Serial 0 is a date on every basis.
+- Basis 0 counts on Excel's own calendar with 1900-02-28 as February's last day, so `YEARFRAC(59,60,0)` is
+  **-1/360**. YEARFRAC and ACCRINTM no longer take `abs()`; ACCRINTM, DISC and PRICEDISC go negative the same way.
+- Bases 1-3 count serials, and basis 1's year length reads the real calendar from 1900. This also fixes serials
+  1-59, which were read as 1899 (`YEARFRAC(1,33752,1)`).
+- Basis 4 was already right once serial 0 was accepted.
+Financial cells that moved: only the new probes/discount-serial-zero cells; no gated baseline gained a line. Follow-up T-2283 probes PRICEMAT/YIELDMAT with issue or settlement at serials 0-60 (they read the same parts; review finding).
+Eval: 3 new probes cases, 280 cells, all bit-exact (baseline coverage lines only); 0 regressions and 0 fixed in every gated suite.
