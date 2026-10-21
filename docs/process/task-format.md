@@ -43,8 +43,8 @@ When unsure, `opus`. A sonnet run that gets stuck hands the task up (work-loop s
 
 `campaign: visible` (decision 0083) marks a task whose target is visible parity: every cell it owns
 within half a unit of the 15th significant digit of Excel's value, or with the right type, error
-and text. `make next-task` picks campaign tasks after P0 tasks and handoffs, before the milestone
-order. Such a task has a `## Visible-parity stage` section with that target, and it is done when
+and text. `make next-task` picks campaign tasks, and every open task a campaign task depends on directly or
+not (decision 0094), after P0 tasks and handoffs and before the milestone order. A campaign task has a `## Visible-parity stage` section with that target, and it is done when
 the target is met. Bit-level criteria still unmet then move to a follow-up task filed without the
 key.
 

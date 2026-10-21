@@ -855,14 +855,17 @@ and survives nesting, as for EXP: `ISERR(COSH(-710))` is TRUE, `ISNUMBER(SINH(13
 `ATAN(COSH(1E+15))`, `MOD(2^53+1,SINH(1E+9))`, `MOD(ACOT(SINH(1E+15)),<#REF!>)`, `GCD(EXP(1E+15),..)`,
 `ARRAYTOTEXT(SINH(134217727),2)`, `TEXTJOIN(..,COSH(1E+9))`, `VALUETOTEXT(x-SINH(-710),0)` and
 `SUMXMY2(<TRUE A4:A4>,EXP(2958465))` (a boolean one-cell argument beside the error) are all `#NUM!`.
-Ours: SINH/COSH give +-1.117E+308 at +-710 and SECH 8.95E-309; SINH, COSH and EXP hand an infinity to the enclosing
-function (only the cell store turns it into `#NUM!`), so `ISNUMBER(SINH(1E+9))` is TRUE and TEXTJOIN prints "inf".
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1962de140dae0111 Calc!A30 and gen-m5/1b30e4d075b252ea Calc!A318 (SECH),
 gen-m5/25768de48ae7f2f9 Calc!A315 (SINH(710)), gen-m5/399071ff6782ab16 Calc!A3, gen-m5/9284730052aff46c Calc!A396, gen-m5/90bf45bea539723d Calc!A86,
 gen-m5/38b1b8e51dbad326 Calc!A331, gen-m5/bbbd316c346ce645 Calc!A327, gen-m5/97737fad5004ba83 Calc!A21, gen-m5/6a511beadb56b932 Calc!A107,
 gen-m5/4febabc66cfdf9a1 Calc!A156, gen-m5/6ba5e4aceeef8209 Calc!A316, gen-m5/d9fb1e918971111b Calc!A108, gen-m5/fc81c2f704bef138 Calc!A46,
-gen-m5/ecd1b828aebad1e8 Calc!A185; the full list of 37 cells is in T-2169.
-Status: VERIFIED (excel-graph); not implemented (T-2169).
+gen-m5/ecd1b828aebad1e8 Calc!A185; the full list of 37 cells is in T-2169. A156 still fails, for ARRAYTOTEXT's own reason
+(text.md, T-2250).
+Unprobed: COSH and SECH on (700, 710). libm's cosh was finite up to 710.47 and ours now overflows just above 709.78, as SINH does.
+Status: VERIFIED (excel-graph) for SINH, COSH and EXP. Implemented (T-2169): `hyperbolic::{sinh,cosh}` overflow to infinity and
+`number_fn` maps a non-finite result to `#NUM!`. That mapping applies to every one-number math function through `number_fn`
+(DEGREES, RADIANS, FACT, the reciprocal trig functions, ...); outside SINH, COSH and EXP it is unprobed (hand: Excel has no
+infinities).
 
 ### SINH and TANH on 0.4 .. 1: no formula found yet (T-0917, negative result)
 Excel's SINH and TANH are not correctly rounded on (0.4, 1): errors up to 1.45 ulp (SINH(0.7)) and 1.8 ulp (TANH(0.54)) against

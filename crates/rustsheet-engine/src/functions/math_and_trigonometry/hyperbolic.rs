@@ -19,8 +19,6 @@ use crate::x87_log10::excel_ln;
 
 /// Below this |x| SINH and TANH are built from `expm1` ([`expm1_pair`]); from it on, from `exp`.
 const EXPM1_FORM_LIMIT: f64 = 1.0;
-/// `exp(x)` overflows near here; defer to libm so the finite/infinite boundary is unchanged.
-const EXP_SAFE_LIMIT: f64 = 700.0;
 /// |tanh(x)| rounds to 1.0 in f64 beyond this.
 const TANH_SATURATION: f64 = 20.0;
 
@@ -47,24 +45,21 @@ fn excel_expm1(x: f64) -> f64 {
     u_minus_1 * x / excel_ln(u)
 }
 
+/// Overflows to infinity where `e^|x|` does (just above 709.78; Excel's exact cut is unprobed,
+/// T-1944): SINH/COSH report that as `#NUM!` and SECH/CSCH
+/// as 0 (numbers.md "SINH and COSH overflow is `#NUM!` at once").
 pub(super) fn sinh(x: f64) -> f64 {
     if x.abs() < EXPM1_FORM_LIMIT {
         // (a - b)/2 is exact in its halving; a - b is the one rounding.
         let (a, b) = expm1_pair(x);
         (a - b) / 2.0
-    } else if x.abs() > EXP_SAFE_LIMIT {
-        x.sinh()
     } else {
         (x.exp() - (-x).exp()) / 2.0
     }
 }
 
 pub(super) fn cosh(x: f64) -> f64 {
-    if x.abs() > EXP_SAFE_LIMIT {
-        x.cosh()
-    } else {
-        (x.exp() + (-x).exp()) / 2.0
-    }
+    (x.exp() + (-x).exp()) / 2.0
 }
 
 pub(super) fn tanh(x: f64) -> f64 {

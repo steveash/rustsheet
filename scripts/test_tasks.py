@@ -176,6 +176,22 @@ class Tiers(unittest.TestCase):
             write_task(root, "T-0001", tier="opus", priority="P0", milestone="M9")
             self.assertEqual(run_next(root, "opus"), "T-0001")
 
+    def test_open_dependency_of_a_campaign_task_is_picked_as_campaign(self) -> None:
+        # Decision 0094: a sweep the campaign fix waits on beats milestone order; a done one does not count.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0210", tier="opus", priority="P1", milestone="M2")
+            write_task(root, "T-2145", tier="opus", priority="P3", milestone="M9", lane="research", depends_on="T-2144")
+            write_task(root, "T-2144", tier="opus", priority="P3", milestone="M9", lane="research")
+            write_task(root, "T-2146", tier="opus", milestone="M9", lane="functions-stat", depends_on="T-2145",
+                       campaign="visible")
+            self.assertEqual(run_next(root, "opus"), "T-2144")
+            write_task(root, "T-2144", tier="opus", priority="P3", milestone="M9", lane="research", status="done")
+            self.assertEqual(run_next(root, "opus"), "T-2145")
+            write_task(root, "T-2146", tier="opus", milestone="M9", lane="functions-stat", depends_on="T-2145",
+                       campaign="visible", status="done")
+            self.assertEqual(run_next(root, "opus"), "T-0210")
+
     def test_unknown_campaign_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

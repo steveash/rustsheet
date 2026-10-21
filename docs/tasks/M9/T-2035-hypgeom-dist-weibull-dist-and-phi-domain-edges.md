@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -40,7 +41,10 @@ Code: crates/rustsheet-engine/src/functions/statistical/hypegeom.rs (the four co
 the arguments listed above to the boolean-accepting read the statistical functions already use (see
 T-1849 for the same change elsewhere; reuse the helper, do not add one); cite the probe cell in a comment.
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 2 cells, 0 numeric past half a unit in the 15th digit and 2 with a wrong type, error or text, blamed on PHI 2. Every one is listed above.
+
 ## Acceptance criteria
+- [ ] Visible parity: the 2 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 2 cells of the ungated probes-numeric suite pass in `make eval`, with no new known-failure lines in any baseline.
 - [ ] Every cell listed above passes in `make eval` (28 cells: 17 HYPGEOM, 9 WEIBULL, 2 PHI), and no gated baseline gains an F line.
 - [ ] The two statistics.md entries say which rules are implemented (T-2035).
 - [ ] `make check` green; reviewers approve.
@@ -49,4 +53,7 @@ T-1849 for the same change elsewhere; reuse the helper, do not add one); cite th
 - Booleans in the other HYPGEOM.DIST, WEIBULL.DIST arguments (unprobed: probe first, as T-1849 says).
 - HYPGEOM.DIST at huge populations (t1049 A16-A18, A50, A51: T-1896, T-0977) and its last digits (T-0977).
 - `PHI(1E300)` and `PHI(-1E300)` are `#NUM!` while `PHI(38.5)` is 0 (t1049-phi A25, A26): the threshold is
-  unprobed, so it waits for a probe.
+  unprobed, so it waits for the T-2260 probe.
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (PHI of a boolean is `#VALUE!` where Excel reads it as a number), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. PHI(1E300) and PHI(-1E300) (t1049-phi A25, A26) stay out of scope until T-2260 probes the cut.

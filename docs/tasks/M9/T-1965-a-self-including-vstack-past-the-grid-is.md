@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -16,10 +17,16 @@ depends_on: []
 ## Context
 From T-1803. probes/scalar-lift-open-c2 W1 (excel-graph, 2026-10-17) is `#NUM!`: Excel answers the stack's size error although W1 is inside `1:1`; ours reports the circular reference first (`#CIRC!`). -c3 W1 `ROWS(HSTACK(A:A,1:1))` is `#CIRC!` too (Excel's Graph 0 is not trusted; arrays.md "Stacked results past the grid"). Find what Excel does with a self-including whole-row or whole-column argument whose result is an error before any cell is read: probe (excel-probe skill) e.g. `=ROWS(VSTACK(A:A,1:1))` and `=ROWS(1:1)`, `=COLUMNS(1:1)`, `=ISREF(1:1)` placed in row 1, against the same formulas outside it, before changing the cycle detection (recalc.md has the existing circular-reference rules).
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 2 cells with a wrong error, blamed on ROWS 2, VSTACK 1, HSTACK 1: -c2 W1 `ROWS(VSTACK(A:A,1:1))` (Excel `#NUM!`, ours `#CIRC!`) and -c3 W1 `ROWS(HSTACK(A:A,1:1))` (Graph 0, ours `#CIRC!`). Only -c2 W1 is this task's visible-parity target: -c3 W1's 0 is a 2^34-cell result arrays.md "Stacked results past the grid" does not trust, and ours is bounded by the cell-count limit (directive 5), so it is not owned here.
+
 ## Acceptance criteria
+- [ ] Visible parity: probes/scalar-lift-open-c2 W1 is `#NUM!` and its line leaves eval/baseline/probes.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/scalar-lift-open-c2 W1 passes, or a probe shows why it cannot and arrays.md/recalc.md records the rule.
 - [ ] No other eval cell regresses.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 2^34-cell HSTACK bound (DEVIATION).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (`#CIRC!` where Excel gives a size result), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. -c3 W1 (`ROWS(HSTACK(A:A,1:1))`, Graph 0) is not owned: arrays.md "Stacked results past the grid" does not trust that 0, and the 2^34-cell result is past the directive-5 cell-count bound.

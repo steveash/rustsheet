@@ -4,9 +4,10 @@ title: "A subnormal cell constant reads as 0 (LOG10 #NUM!, =0 TRUE), as Excel lo
 milestone: M2
 lane: engine
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -23,9 +24,21 @@ Excel for the web reads it: `LOG10(A1)` and `LN(A1)` are `#NUM!`, `A1=0` is TRUE
   Reuse `arithmetic::flush_subnormal`. Keep the export side (T-2211, formula results) apart: a subnormal formula
   result such as `EXP(-745)` is kept in memory.
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 3 cells, 0 numeric past half a unit in the 15th digit and 3 with a wrong type, error or text, blamed on LOG10 3.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| probes/subnormal-cell-constants Sheet1!B1 | `=LOG10(A1)` | #NUM! | -323.3062153431158 |
+| probes/subnormal-cell-constants Sheet1!B2 | `=LOG10(A2)` | #NUM! | -307.6575773191778 |
+| probes/subnormal-cell-constants Sheet1!B3 | `=LOG10(A3)` | #NUM! | -310 |
+
 ## Acceptance criteria
+- [ ] Visible parity: the 3 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 3 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/subnormal-cell-constants passes in full and leaves the probes baseline (`make eval-baseline`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Subnormal formula results (kept, numbers.md "Worksheet EXP") and their export (T-2211).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (LOG10 of a subnormal cell constant is a number where Excel is `#NUM!`), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
