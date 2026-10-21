@@ -3,7 +3,7 @@ id: T-1991
 title: "Share one places-coercion helper across the nine base conversions"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,3 +26,10 @@ T-1816 moved the `places` coercion before the number coercion in all nine kernel
 
 ## Handoff (resumed)
 Refactor is done and approved by all four reviewers; `make check` passed locally and the eval is unchanged (PR #1384, branch agent/functions-engineering/T-1991-places-helper). CI hygiene fails in `scripts/check_governance.py`: `quality/duplication.json` (3176 -> 3147 via `scripts/check_duplication.py --update`) is a protected path and needs a decision record in the same PR. Next: either `make new-decision TITLE=...` for the ratchet bump and keep the json change, or restore the json to origin/main's value. Then rewrite the Outcome note (removed on handoff) and set `status: done`.
+
+## Outcome
+- `Model::number_and_places` (number_basis.rs) owns the `places` coercion for all nine base conversions: it splits the
+  element's arguments and coerces `places` before `number` is read (Excel's second-argument-first order,
+  probes/eng-first-vs-second-error), replacing nine copies of the block. No behavior change.
+- Duplicated lines 3176 -> 3147 (`check_duplication.py --update`), recorded under decision 0010.
+- Eval delta: none (no baseline edits).
