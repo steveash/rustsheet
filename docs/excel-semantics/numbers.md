@@ -1598,8 +1598,7 @@ Rule: COMBINA rounds exactly as COMBIN of `n+k-1` and `k` does ("COMBIN is inexa
 `COMBINA(20,19)` 35345263799.999985 and `COMBINA(1000,200)` 1.6676833067813678e+233, all three bit for bit (a running
 product of `(n+i)/(i+1)` over k gives 92377.99999999999 and 35345263800 instead). `COMBINA(0,0)` is 1.
 Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/COMBIN_COMBINA.xlsx D4, D5, D16, and D11 for `COMBINA(0,0)` (Excel-cached,
-Excel Online). Not probed: k at or above 2^53, where `n+k-1` rounds (`COMBINA(2,1E300)` gives `combin(1E300,1E300)` = 1
-here; Excel's answer is unknown).
+Excel Online). A huge k is past the bound below (`COMBINA(2,1E300)` is `#NUM!`).
 Ours: `fn_combina` calls `combin(n+k-1, k)`. Its loop runs min(k, n-1) times and stops at overflow; the bound below
 keeps `n+k-1` under 2^31-1, so `COMBINA(1,1E10)` is `#NUM!` at once (directive 5; the old loop ran k times).
 Status: VERIFIED (3 cached cells; the rule is a fit to them)
