@@ -54,3 +54,4 @@ criteria above are already the visible-parity stage.
   evidence; the test is updated and a cut test added (`test_combin_combina.rs`).
 - Eval: gen-m5 known failures 107 -> 102 (the task's 5 cells), probes 1738 -> 1711 (27
   t2199-text-length-and-combin-cuts cells); regressions 0.
+- Follow-up: T-2291 (COMBINA with a small number and a k past 2^31, extrapolated here).
