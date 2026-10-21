@@ -192,10 +192,17 @@ Tasks: T-0936 (implemented)
 Rule: literals may sit between `E+`/`E-` and the exponent digits; the exponent sign is printed
 next to the digits, after the literal, and a zero mantissa prints "0.": `|#.#|E+|#|` → "|1.2|E|+5|"
 (A41) and "|0.|E|+0|" for 0 (A137); `E-` omits a positive sign: "|1.2|E|5|" (A40), "|1.2|E|-5|"
-(A96).
-Evidence: poi/NumberFormatApproxTests.xlsx A40, A41, A96, A97, A136, A137, A176, A177, A216, A217.
+(A96). The `E` stays where the format puts it; only the sign moves to the digits.
+- The zero-mantissa digit also shows in a cell's displayed text: `#E+0` on 0 displays "0E+0", not "E+0"
+  (gen-m10/5eb95c63c7d6180c F!G13, gen-m10/71ad5f93362f4ff4 F!V19). The minus of a negative number still leads
+  everything ("-|1.2|E|5|", A176).
+Evidence: poi/NumberFormatApproxTests.xlsx A40, A41, A96, A97, A136, A137, A176, A177, A216, A217
+(excel-graph); gen-m10 cells above (excel-graph).
+Ours: `formatter/parser.rs` pushes the `E` as a literal at the format's `E+`/`E-`; `formatter/format.rs`
+prints the sign before the first exponent digit and a `0` for the last `#` integer placeholder of a zero
+mantissa (T-0937).
 Status: VERIFIED
-Tasks: T-0937
+Tasks: T-0937 (implemented)
 
 ## `TEXT(x,"General")` uses an 11-character fixed-notation limit
 Rule: General prints fixed notation, with at most 9 decimals ("0." plus 9 decimals is 11

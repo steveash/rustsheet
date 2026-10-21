@@ -54,3 +54,29 @@ fn scientific_zero_exponent_and_engineering() {
         assert_eq!(format_number(value, code, &ctx).text, expected, "{code}");
     }
 }
+
+// Literals between `E+`/`E-` and the exponent digits: the `E` stays put and the sign moves to the
+// digits; a zero mantissa keeps one integer digit (poi/NumberFormatApproxTests.xlsx, excel-graph,
+// T-0937; gen-m10/5eb95c63c7d6180c F!G13 for `#E+0`).
+#[test]
+fn scientific_literals_before_the_exponent_digits() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (123_456.789, "|#.#|E-|#|", "|1.2|E|5|"),
+        (123_456.789, "|#.#|E+|#|", "|1.2|E|+5|"),
+        (1.234_567_89e-5, "|#.#|E-|#|", "|1.2|E|-5|"),
+        (1.234_567_89e-5, "|#.#|E+|#|", "|1.2|E|-5|"),
+        (0.0, "|#.#|E-|#|", "|0.|E|0|"),
+        (0.0, "|#.#|E+|#|", "|0.|E|+0|"),
+        (-123_456.789, "|#.#|E-|#|", "-|1.2|E|5|"),
+        (-1.234_567_89e-5, "|#.#|E+|#|", "-|1.2|E|-5|"),
+        (0.0, "#E+0", "0E+0"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{code} {value}"
+        );
+    }
+}
