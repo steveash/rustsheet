@@ -180,27 +180,6 @@ pub(crate) fn is_at_xlookup_take(node: &Node) -> bool {
     )
 }
 
-/// Whether `node` is a written multi-sheet 3-D span (`Sheet1:Sheet2!A1`, a one-cell one included).
-pub(crate) fn is_multi_sheet_span(node: &Node) -> bool {
-    matches!(
-        node.ungrouped(),
-        Node::SheetSpanKind { first_index, last_index, .. } if first_index != last_index
-    )
-}
-
-/// Whether `node` is a multi-sheet 3-D span, possibly as a branch of IF (which hands its branch on
-/// as a reference). Recursion is bounded by the parser's depth cap.
-pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
-    let node = node.ungrouped();
-    match node {
-        Node::FunctionKind {
-            kind: Function::If,
-            args,
-        } => args.iter().skip(1).any(is_span_or_if_of_span),
-        _ => is_multi_sheet_span(node),
-    }
-}
-
 /// Most columns holding cells that a union area may have to be walked through the column index
 /// ([`Model::for_each_indexed_position`]); a wider one is walked by rows. The merge compares the
 /// next row of every column still being merged for each row it hands on, and a row is charged at
@@ -373,6 +352,11 @@ impl Model {
                 })
             }
         };
+        // A 3-D span of a linked workbook's cached sheets is read sheet by sheet, as a span of
+        // this workbook is (fixtures/external-link-cached-3d-span Refs!B2:B6; T-1654).
+        if let Some(rows) = self.cached_span_cells(node, cell) {
+            return RefArg::Value(CalcResult::Array(rows));
+        }
         let result = match node {
             Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if self.is_multi_area(node) => {
                 return match self.reference_ranges(node, cell) {

@@ -66,6 +66,19 @@ impl ExternalArea {
 /// (`'[other.xlsx]S1:S2'!A1`) is not a reference: ISREF is FALSE (external-ref-no-link-shapes
 /// A12). `None` also for an area off the grid.
 pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<ExternalArea> {
+    match written_external_area(node, cell)? {
+        (name, area) if !name.contains(':') => Some(area),
+        _ => None,
+    }
+}
+
+/// The sheet prefix of `node` and the area it covers when it is a reference written into another
+/// workbook, on one sheet (`[1]Uses`) or a 3-D span of its sheets (`[1]Uses:Defines`); `None`
+/// for any other node and an area off the grid.
+pub(crate) fn written_external_area(
+    node: &Node,
+    cell: CellReferenceIndex,
+) -> Option<(&str, ExternalArea)> {
     let (sheet_name, first, last) = match node.ungrouped() {
         Node::WrongReferenceKind {
             sheet_name,
@@ -94,10 +107,9 @@ pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<Ext
         ),
         _ => return None,
     };
-    let name = sheet_name.as_deref();
-    if !names_other_workbook(name) || name.is_some_and(|name| name.contains(':')) {
-        return None;
-    }
+    let name = sheet_name
+        .as_deref()
+        .filter(|name| names_other_workbook(Some(name)))?;
     // Relative coordinates are offsets from the formula's cell, as for a reference on a sheet.
     let absolute = |(row, column, absolute_row, absolute_column): (i32, i32, bool, bool)| {
         (
@@ -117,7 +129,7 @@ pub(crate) fn external_area(node: &Node, cell: CellReferenceIndex) -> Option<Ext
         && area.first_column >= 1
         && area.last_row <= LAST_ROW
         && area.last_column <= LAST_COLUMN;
-    on_grid.then_some(area)
+    on_grid.then_some((name, area))
 }
 
 impl ExternalArea {

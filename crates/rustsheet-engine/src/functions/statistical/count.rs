@@ -1,11 +1,11 @@
 use crate::calc_result::Range;
+use crate::expressions::parser::is_span_or_if_of_span;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::external_reference::PickedReference;
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
 };
-use crate::functions::util::is_span_or_if_of_span;
 use crate::reference_operators::{not_a_reference_array, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -121,6 +121,13 @@ impl Model {
                     Err(_) => external += 1.0,
                 },
                 PickedReference::Node(arg) => {
+                    // So do those of a 3-D span of its cached sheets, on each sheet
+                    // (`COUNTA([1]Uses:Defines!$A$1:$C$3)` is 9;
+                    // fixtures/external-link-cached-3d-span Refs!B5, T-1654).
+                    if let Some(rows) = self.cached_span_cells(arg, cell) {
+                        external += rows.iter().map(Vec::len).sum::<usize>() as f64;
+                        continue;
+                    }
                     // A reference, 3-D ones included, arrives as a Range: its non-empty cells
                     // count. TAKE, DROP, INDEX, OFFSET and the like over a range pick a reference
                     // too, so `COUNTA(TAKE(B3:B3,1))` of a blank is 0
