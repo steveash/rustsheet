@@ -136,6 +136,9 @@ def main() -> None:
         )
         return
     catalog = Catalog.load(args.catalog or root / "eval" / "catalog" / "functions.yaml")
+    names = [n for n in args.functions.split(",") if n.strip()]
+    if args.functions and not names:
+        raise SystemExit("rustsheet-gen: --functions names no function")
     try:
         specs = [
             generate_case(
@@ -147,7 +150,7 @@ def main() -> None:
                 focus=args.focus,
                 case_index=i,
                 spill=args.spill,
-                functions=[n for n in args.functions.split(",") if n.strip()],
+                functions=names,
                 category=args.category,
             )
             for i in range(args.count)
