@@ -15,6 +15,7 @@ depends_on: [T-2200]
 SWITCH does not match a FALSE expression against a blank cell given as a case value, as Excel does.
 
 ## Context
+- Evidence (T-2200): `eval/suites/probes/cases/t2200-blank-and-padded-m5-args` holds the probed blank, padded and shape cases for this rule (see the matching docs/excel-semantics entry); its cells must pass here.
 - Evidence first (planner, 2026-10-20): the probe this task asks for is T-2200 (research), which fills `probes/t2200-blank-and-padded-m5-args`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). `SWITCH(FALSE,..,A11,FALSE,..)` with A11 blank is `#N/A` in Excel (no match, no default); ours matches the blank and returns FALSE.
 The omitted-argument case (`SWITCH(0,,"a","b")` = "a") must keep matching (logic.md "IFERROR / IFNA of a blank cell"). Probe first

@@ -1,3 +1,4 @@
+use super::ref_lift::{lifts_into_references, put_back};
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -7,6 +8,7 @@ use crate::{
     },
     limits::check_stack_size,
     model::Model,
+    reference_operators::{RefArg, RefElement, RefGrid},
 };
 
 impl Model {
@@ -123,5 +125,78 @@ impl Model {
         }
 
         CalcResult::Array(result)
+    }
+
+    /// VSTACK where a reference is taken (SPEC-0014 rule 7): when every argument is an array of
+    /// references, the stacked grid, narrower ones padded with `#N/A` elements, so
+    /// `SUM(VSTACK(OFFSET(A1,{0;1},0)))` reads each element's top-left cell, 101
+    /// (probes/reference-lift-consumers-b2 E225). `None` unless every argument is an OFFSET
+    /// or INDIRECT (read without evaluating); otherwise the call's value, as
+    /// [`Model::fn_vstack`] gives it. Several grids, padded with `#N/A` where narrower, are
+    /// unprobed (E225 has one).
+    pub(crate) fn vstack_reference(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Option<RefArg> {
+        if args.is_empty() || !args.iter().all(lifts_into_references) {
+            return None;
+        }
+        let reads: Vec<RefArg> = args
+            .iter()
+            .map(|arg| self.evaluate_reference_arg(arg, cell))
+            .collect();
+        if !reads.iter().all(|read| matches!(read, RefArg::Grid(_))) {
+            // Not every argument is a grid: the value, as before, from what each one gave
+            // (never read twice).
+            let mut put = Vec::with_capacity(reads.len());
+            for read in &reads {
+                match put_back(read) {
+                    Some(node) => put.push(node),
+                    None => {
+                        return Some(RefArg::Value(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "VSTACK of a reference it cannot read".to_string(),
+                        )))
+                    }
+                }
+            }
+            return Some(RefArg::from(self.fn_vstack(&put, cell)));
+        }
+        let grids: Vec<RefGrid> = reads
+            .into_iter()
+            .filter_map(|read| match read {
+                RefArg::Grid(grid) => Some(grid),
+                _ => None,
+            })
+            .collect();
+        let columns = grids.iter().map(|grid| grid.dims().1).max().unwrap_or(1);
+        let rows = grids
+            .iter()
+            .map(|grid| grid.dims().0)
+            .fold(0_usize, usize::saturating_add);
+        if let Some((error, message)) = check_stack_size(rows, columns) {
+            return Some(RefArg::Value(CalcResult::new_error(error, cell, message)));
+        }
+        let mut elements = Vec::with_capacity(rows.saturating_mul(columns));
+        for grid in &grids {
+            let width = grid.dims().1;
+            for row in grid.elements().chunks(width) {
+                elements.extend_from_slice(row);
+                elements.extend(std::iter::repeat_n(
+                    RefElement::Error(Error::NA),
+                    columns - width,
+                ));
+            }
+        }
+        Some(match RefGrid::new(rows, columns, elements) {
+            Some(grid) => RefArg::Grid(grid),
+            None => RefArg::Value(CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "Empty array of references".to_string(),
+            )),
+        })
     }
 }

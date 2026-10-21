@@ -1,0 +1,35 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Col": {
+   "A1": {
+    "t": "s",
+    "v": "222222|15"
+   },
+   "A2": {
+    "t": "s",
+    "v": "-|16"
+   },
+   "A3": {
+    "t": "s",
+    "v": "-|15"
+   },
+   "A4": {
+    "t": "s",
+    "v": "-|15"
+   },
+   "A5": {
+    "t": "s",
+    "v": "-|15"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d091f8f7e0326eae03ad4330de5d84e3bac1ed36af67b14051e1ef0665a2fd3a",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-21T10:51:05+00:00",
+  "version": null,
+  "workbook_name": "f66c11da96e5b06e3e9372bd6000d11cc76c3c9fd8234c1fadd46c3146773db5.xlsx"
+ }
+}
