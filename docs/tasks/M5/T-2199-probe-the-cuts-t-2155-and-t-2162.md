@@ -3,7 +3,7 @@ id: T-2199
 title: "Probe the cuts T-2155 and T-2162 need: REPT, CODE and UNICODE near 255 characters, COMBIN and COMBINA near 2^31"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
