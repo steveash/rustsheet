@@ -88,6 +88,10 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Sonnet queue buffer** (decision 0021): in the steward's queue step, also run
   `make ready-tasks TIER=sonnet`; below 10 ready, run the gap-triager and/or planner to cut
   sonnet-sized tasks by the tier rubric (never relabel a task to reach the number).
+- **Visible-parity lock** (decision 0093): task PRs never lower `eval/baseline/visible-parity.json`.
+  In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and commit the lower
+  lock with the snapshot. When an open PR conflicts on the lock, take `main`'s side and re-run
+  `make eval-baseline`.
 - **Generated files**: never hand-edit `eval/baseline/*.txt` or `quality/*.json`; regenerate with
   `make eval-baseline` and the `scripts/check_*.py --update` commands. `docs/tasks/BOARD.md` is
   git-ignored and never committed (decision 0017).

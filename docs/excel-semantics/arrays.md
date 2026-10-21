@@ -236,7 +236,8 @@ Excel for the web refuses to open a workbook whose formula sums such a
 31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
 C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
-eval/suites/probes/deviations, decision 0036).
+eval/suites/probes/deviations, decision 0036); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph, 2026-10-17;
+listed in eval/suites/probes/deviations, decision 0091, T-2223).
 Status: DEVIATION (decision 0014)
 Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::chosen_indices` (CHOOSECOLS/CHOOSEROWS) and FORMULATEXT over a range in
@@ -597,7 +598,8 @@ T-1326 follow-up (probes/pivotby-followup, 63 PIVOTBY questions over the same Da
 - Totals: -1 puts the Total column right after the row keys and the Total row right after the headers (P!A101, P!A121, P!A1241).
   ±2 with one field on that axis is `#VALUE!` (P!A401, P!A701); 3 is `#VALUE!` (P!A381). Two values with col_total_depth 0 have
   no Total columns; with row_total_depth 0, no Total row (P!A561, P!A581).
-- Sort orders follow GROUPBY: signed indices over the axis' key fields, then the values; 0, 1.5 and past the last column are
+- Sort orders follow GROUPBY: signed indices over the axis' key fields, then the values (col_sort_order only the first
+  value: see below); 0, 1.5 and past the last column are
   `#VALUE!` (P!A141, P!A721, P!A161, P!A1001); scalar 2 over two row fields is the second key (P!A1041, P!A1061); `{-1}` is
   accepted (P!A641); an error argument is passed on (P!A1261). With two value columns, `{3}` sorts by the second and `{-2}`
   by the first descending (P!A1321, P!A1361); a key and a value column in one array are `#VALUE!` on both axes (`{1,3}`,
@@ -685,9 +687,13 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
 - sort_order past the keys counts the output value columns: 3 is the second function of a row (functions G!A141, functions2
   G!A221, PIVOTBY P!A181); a column of functions sorts by its first function (functions2 G!A201, G!A261, P!A201, P!A221), each
   group's rows staying in function order.
-- Not implemented (T-1855): PIVOTBY's col_sort_order -3 with one column field over two value columns is `#VALUE!`
-  (probes/pivotby-total-columns-one-group S!A73), while -3 with two column fields sorts (probes/pivotby-col-subtotals-values
-  S!A111); the engine sorts by the second value column.
+- PIVOTBY's col_sort_order counts one value column past the column fields, whatever the value columns or functions:
+  with one column field 2 sorts the column groups by the first value column and ±3, ±4 and 5 are `#VALUE!` over one, two
+  or three value columns and over `HSTACK(SUM,MAX)` (also with row_total_depth 0 or an explicit col_total_depth); with two
+  column fields ±3 sorts by the first value column and ±4 is `#VALUE!` (probes/pivotby-sort-order-past-keys S!A1-A72,
+  A145-A167; pivotby-total-columns-one-group S!A73; pivotby-col-subtotals-values S!A111). Arrays follow (`{3}` `#VALUE!`
+  with one field, sorting with two: S!A162-A165). row_sort_order instead counts every output value column, as GROUPBY's
+  sort_order does: 3 and 4 are the second and third of three values, 5 is `#VALUE!` (S!A73-A144, two functions: S!A155-A161).
 - Arguments: a function passed by name gets its minimum argument count: one (SUM, MEDIAN, SUMPRODUCT, ABS, STDEV.S), two
   (PERCENTOF, CORREL, PEARSON, RSQ, COVARIANCE.P, and IF, ROUND, SUMIF, whose array results are `#VALUE!` per cell); none or
   three or more (NOW, TEXTJOIN, XLOOKUP) make the whole result `#VALUE!` (functions G!A421, functions2 G!A281-A501). A LAMBDA gets

@@ -3,7 +3,7 @@ id: T-2077
 title: "Probe complex overflow edges: blank before the overflow in IMPRODUCT, and IMCOSH near 710"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,9 @@ T-2003 review: `IMPRODUCT(<blank>,"1E200","1E200")` (blank before the overflow) 
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/eng-im-overflow-edges` (116 cells, excel-graph). Fixed in complex.rs: IMPRODUCT with an
+earlier blank, IMSIN/IMCOS/IMCOSH/IMSINH `#NUM!` edges, and `0` from IMSEC/IMCSC/IMSECH/IMCSCH on
+denominator overflow. 10 last-digit kernel differences remain as known failures; recorded in
+engineering.md.

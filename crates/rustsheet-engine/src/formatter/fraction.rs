@@ -11,14 +11,25 @@
 //! - a zero integer part prints as its placeholders do with no digit (`#` nothing, `?` a space,
 //!   `0` a zero: `# ?/4` on 0.5 is " 2/4");
 //! - the minus leads the whole text, also when the value rounds to zero (`# ?/2` on -1/7 is
-//!   "-0    ").
+//!   "-0    ");
+//! - with no integer part a numerator past Excel's bound cannot be shown ([`format_fraction`]
+//!   returns `None`).
 
 use super::parser::{Denominator, Fraction, NumberPart, TextToken};
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::number_format::to_precision;
 
-/// The text of `value` under the number section `part`, which holds `fraction`.
-pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction) -> String {
+/// The text of `value` under the number section `part`, which holds `fraction`, or `None` when
+/// Excel cannot show it: with no integer part, a fixed denominator's numerator past 32767 and a
+/// placeholder denominator's value from 2147483647 on, either sign (`?/100` on 327.67 is
+/// "32767/100" and on 327.68 255 `#`, `TEXT` `#VALUE!`; `?/?` on 2147483646.9 is "2147483647/1"
+/// and on 2147483647 255 `#`; probes/fraction-numerator-overflow, -overflow2). A whole part takes
+/// the rest, so `# ?/100` and `# ?/?` show 1E15.
+pub(super) fn format_fraction(
+    value: f64,
+    part: &NumberPart,
+    fraction: &Fraction,
+) -> Option<String> {
     let negative = value < 0.0;
     let value = value.abs() * 100.0_f64.powi(part.percent) / 1000.0_f64.powi(part.comma);
     let tokens = &part.tokens;
@@ -41,6 +52,13 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
             last_convergent(value - integer, 10.0_f64.powi(digits) - 1.0)
         }
     };
+    let overflows = match &fraction.denominator {
+        Denominator::Fixed(_) => numerator > MAX_FIXED_NUMERATOR,
+        Denominator::Placeholders(_) => value >= MAX_PLACEHOLDER_VALUE,
+    };
+    if !has_integer && overflows {
+        return None;
+    }
     if has_integer && numerator >= denominator {
         integer += 1.0;
         numerator = 0.0;
@@ -128,7 +146,7 @@ pub(super) fn format_fraction(value: f64, part: &NumberPart, fraction: &Fraction
     if fraction.denominator_at == tokens.len() {
         push_denominator(&mut text, &denominator_text, blank, blank_spaces);
     }
-    text
+    Some(text)
 }
 
 /// How the separator (the literals between the integer part and the numerator) prints, given
@@ -211,6 +229,13 @@ fn last_convergent(x: f64, max_denominator: f64) -> (f64, f64) {
         (p1, q1)
     }
 }
+
+/// The largest numerator a fixed denominator shows with no integer part (2^15 - 1).
+const MAX_FIXED_NUMERATOR: f64 = 32767.0;
+
+/// The magnitude from which a placeholder denominator with no integer part cannot show a value
+/// (2^31 - 1).
+const MAX_PLACEHOLDER_VALUE: f64 = 2_147_483_647.0;
 
 /// A remainder below this ends the continued fraction.
 const CONVERGENT_EPSILON: f64 = 1e-12;
