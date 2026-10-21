@@ -643,7 +643,8 @@ The order does not matter: `SUMSQ(1E-150,1E-155)` is also exactly 1E-300, so it 
 SUMPRODUCT with three arrays flushes after each factor, left to right: `SUMPRODUCT({1E-200},{1E-110},{1E+300})` is 0 while
 `SUMPRODUCT({1E-200},{1E+300},{1E-110})` is 1E-10.
 A subnormal cell constant reads as 0 (T-2016, VERIFIED, probes/subnormal-cell-constants, excel-graph 2026-10-21): a
-number typed in a cell below 2.2250738585072014E-308 (5E-324, 2.2E-308, 1E-310) is `=0` TRUE and `ISNUMBER` TRUE, `*1E+300`
+number constant below 2.2250738585072014E-308 (5E-324, 2.2E-308, 1E-310) in a loaded workbook (an xlsx `<v>`; typing
+one in is unprobed) is `=0` TRUE and `ISNUMBER` TRUE, `*1E+300`
 gives 0, and `LOG10` and `LN` of it are `#NUM!`; the smallest normal is kept. So LOG10 and LN never see a subnormal
 argument from a cell. Not implemented yet: T-2228 (the engine keeps the subnormal).
 Comparison and literals (T-0989): a comparison decides on the two 15-digit values alone, with no absolute tolerance, so

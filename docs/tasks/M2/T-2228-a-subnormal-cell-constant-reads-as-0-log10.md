@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-A number cell constant that is a non-zero subnormal (below 2.2250738585072014E-308) evaluates as 0 in formulas, as
+A number cell constant in a loaded workbook (xlsx `<v>`) that is a non-zero subnormal (below 2.2250738585072014E-308) evaluates as 0 in formulas, as
 Excel for the web reads it: `LOG10(A1)` and `LN(A1)` are `#NUM!`, `A1=0` is TRUE, `A1*1E+300` is 0.
 
 ## Context
