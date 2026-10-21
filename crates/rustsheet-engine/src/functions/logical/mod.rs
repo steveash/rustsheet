@@ -520,9 +520,9 @@ impl Model {
                 Ok(true) => return Picked::Node(&args[2 * case_index + 1]),
                 Ok(false) => {}
                 Err(error) if is_text => {
-                    return Picked::Value(CalcResult::Array(vec![vec![
-                        calc_result_to_array_node(error),
-                    ]]))
+                    return Picked::Value(CalcResult::Array(vec![vec![calc_result_to_array_node(
+                        error,
+                    )]]))
                 }
                 Err(error) => return Picked::Value(error),
             }
