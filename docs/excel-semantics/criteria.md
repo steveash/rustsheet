@@ -23,10 +23,10 @@ is literal (`"abc~"` matches "abc~", not "abc"). `~~` is **not** an escape for o
 does not match the text "~" and `"a~~c"` does not match "a~c". Matching, with or without
 wildcards, is case-insensitive (`"ABC"` → abc and ABC; `"A?C"`, `"*C"` → 5).
 Verified with COUNTIF, for patterns without `*`/`?`; inside wildcard patterns and in MATCH/XMATCH see "Tildes inside wildcard patterns and wildcard-mode lookups" below.
-D-functions follow the same plain-text tilde rule inside their prefix match (`~` stays literal, `~~` is two tildes, a trailing `~`
-is literal): over Data!A2:A9 = a~c, ac, abc~, abc, ~, a~~c, a~b, a~bx (v = 1..128), DSUM with criterion `a~c` 1, `a~~c` 32,
-`abc~` 4 (not abc), `~` 16, `~~` 0, `a~` 225 (a~c, a~~c, a~b, a~bx: prefix "a~", not "a"), `=a~c` 1, `=abc~` 4, `=~` 16, and the
-wildcard pattern `a~*` 0 (an escaped `*`); DCOUNTA counts agree (`a~` 4).
+D-functions follow the same plain-text tilde rule inside their prefix match (`~` before a non-wildcard and a trailing `~` stay
+literal): over Data!A2:A9 = a~c, ac, abc~, abc, ~, a~~c, a~b, a~bx (v = 1..128), DSUM with criterion `a~c` 1, `a~~c` 32,
+`abc~` 4 (not abc), `~` 16, `~~` 0 (not 16: `~~` is not an escape for the cell "~"), `a~` 225 (a~c, a~~c, a~b, a~bx: prefix "a~", not "a"), `=a~c` 1, `=abc~` 4, `=~` 16, and the
+wildcard pattern `a~*` 0 (an escaped `*`; a literal `~` before a live `*` would give 225); DCOUNTA counts agree (`a~` 4).
 Evidence: probes/criteria-tilde-blank-single-cell-edges Calc!A1:B10 (excel-graph, 2026-10-21, T-2235).
 Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, abc~, a*c, a?c, a~c,
 *, ~: 1, 1, 1, 0, 0, 1, 2, 5, 10, 5, 1; probes/criteria-grammar C8. Oracle: excel-graph, 2026-10-05 (T-0011).
@@ -208,7 +208,7 @@ give 0 and AVERAGEIFS `#DIV/0!` at that position, and the COUNTIF result keeps i
 over a searched range A1:A4 = blank, `=""`, 0, "0" (weights 1, 2, 4, 8) the array criterion `{"","=","<>",0,"0","=0"}` gives, per element,
 exactly the scalar criterion's result, in a 1x6 array for COUNTIF, SUMIF, SUMIFS, AVERAGEIFS and MAXIFS alike: COUNTIF 2, 1, 3, 2, 2, 2
 (`""` the blank and the `""` cell, `"="` the blank only, `"<>"` all but the blank, and `0`, `"0"`, `"=0"` each the number 0 and the text "0"),
-SUMIF/SUMIFS 3, 1, 14, 12, 12, 12, AVERAGEIFS 1.5, 1, 4.67, 6, 6, 6, MAXIFS 2, 1, 8, 8, 8, 8
+SUMIF/SUMIFS 3, 1, 14, 12, 12, 12, AVERAGEIFS 1.5, 1, 14/3, 6, 6, 6, MAXIFS 2, 1, 8, 8, 8, 8
 (probes/criteria-tilde-blank-single-cell-edges Arr!D1:K8, excel-graph 2026-10-21, T-2235);
 for SUMIFS and SUMIF an error in the sum range is `#N/A` only at the criteria positions whose rows select it
 (`SUMIFS(E1:E3,A1:A3,{"a","b"})` with E1 = #N/A is #N/A, 5; AVERAGEIFS and MAXIFS probed only at position 1: `#N/A`);
