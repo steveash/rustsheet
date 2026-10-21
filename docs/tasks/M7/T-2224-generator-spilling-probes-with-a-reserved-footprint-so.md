@@ -3,7 +3,7 @@ id: T-2224
 title: "Generator: spilling probes with a reserved footprint, so gen suites score spill shapes (synthetic-generator 5.2 shape 3)"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
