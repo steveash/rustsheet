@@ -3,7 +3,7 @@ id: T-2306
 title: "SCAN and REDUCE pass an error initial value or accumulator to the LAMBDA and keep per-element errors (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
