@@ -46,6 +46,8 @@ agree with today's Excel for the web again.
       a filed task. T-2125's COUPNUM check lands here or in T-2125 once the rule is settled.
 - [ ] `make eval-baseline` records the change. Cells whose committed expectation changed are explained in the
       Outcome, and any regression goes through a decision record (directive 2).
+- [ ] docs/research/excel-1904-drift-2026-10.md is deleted (its findings moved into dates.md and financial.md, its
+      COUPNUM draft landed or dropped), and dates.md and financial.md stop citing it.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
