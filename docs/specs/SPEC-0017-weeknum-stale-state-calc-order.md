@@ -1,4 +1,4 @@
-# SPEC-0015 — WEEKNUM's stale return_type state and Excel's fresh-load calc order
+# SPEC-0017 — WEEKNUM's stale return_type state and Excel's fresh-load calc order
 
 - **Status:** accepted
 - **Milestone / lane:** M6 / engine

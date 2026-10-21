@@ -3,7 +3,7 @@ id: T-1484
 title: "Spec: WEEKNUM stale return_type state in Excel's calc order (decision 0038 reopened)"
 milestone: M6
 lane: engine
-status: blocked
+status: done
 priority: P3
 size: M
 tier: opus
@@ -30,12 +30,13 @@ hidden dependency that incremental recalc cannot see.
       in docs/excel-semantics/dates.md.
 - [x] docs/specs/SPEC-NNNN-*.md states how the state is kept and which calc order it follows, and
       files implementation tasks with `make new-task`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing calc-chain import in general, beyond what the spec needs.
 
 ## Outcome
+Unblocked on 2026-10-21 in the owner's session: the only open verdict was reviewer-performance, which decision 0081 turned off; its two asks (a constant floor on the move budget, a long-chain probe in T-2070) are in 3189053e. The spec is renumbered SPEC-0017 because SPEC-0015 went to pivot tables (T-1708) while this PR was open.
 - Probed the order and the state (excel-graph, 2026-10-19): 21 new probes/weeknum-stale-* cases.
   The state is Sunday, Monday or empty, one per recalc. Types 1 and 17 set Sunday; 2, 11, 21 and
   ISOWEEKNUM set Monday; types 12-16, the always-`#NUM!` types and array-lifted calls empty it; 22+
@@ -46,16 +47,9 @@ hidden dependency that incremental recalc cannot see.
   Both are in docs/research/t1484-weeknum-calc-order-2026-10-19.md.
 - Recorded in docs/excel-semantics/dates.md ("WEEKNUM's stale return_type state") and recalc.md
   ("The order Excel calculates a freshly loaded workbook in").
-- SPEC-0015 specifies a per-pass state, with an Excel-order pass that runs only when a WEEKNUM
+- SPEC-0017 specifies a per-pass state, with an Excel-order pass that runs only when a WEEKNUM
   reader ran, so other workbooks keep today's order and cost. Follow-ups: T-2068 (engine, opus, M),
   T-2069 (engine, sonnet, S, moved sheets) and T-2070 (research, sonnet, S, open questions).
 - Eval: probes known failures +42 (1913 -> 1955), all in the new M6 cases; no existing cell
   changed. With the 5 already listed, T-2068 and T-2069 own 47 cells.
 
-## Blocked because
-The review hit the work-loop's 3-round limit with one reviewer short. After round 3, security,
-architecture, quality and excel-fidelity APPROVE. Performance asked for a constant floor on the
-Excel-order move budget (SPEC-0015 "Cost") and a long-chain probe in T-2070. Both are in commit
-3189053e, and the reviewer said it would approve once they were in, but no round confirmed them.
-To unblock: run `reviewer-performance` on the current diff. On APPROVE, set `status: done` and
-merge PR #1245 under the steward merge policy.

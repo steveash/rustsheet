@@ -121,7 +121,7 @@ state is not "the last valid WEEKNUM": types 12-16 empty it. probes/weeknum-stal
 Down!A2 is `#NUM!` because Mixed!A1 (type 0) emptied the state just before it, not because the
 state resets per sheet.
 Ours: always `#NUM!` for 22+ and negatives, which matches only where the state is empty.
-SPEC-0015 specifies the state and the order; implementation tasks are listed there.
+SPEC-0017 specifies the state and the order; implementation tasks are listed there.
 Status: VERIFIED
 Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), where a spilling formula sits
 in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and

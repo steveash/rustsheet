@@ -82,5 +82,5 @@ Column: the cell edited, then A1 (and A2 where it matters) after each step.
   recalc (F7).
 
 None of this history is in the saved file. RustSheet recalculates the whole model on every
-`evaluate()`. SPEC-0015 therefore matches the fresh-load order and leaves session history as a
+`evaluate()`. SPEC-0017 therefore matches the fresh-load order and leaves session history as a
 non-goal.

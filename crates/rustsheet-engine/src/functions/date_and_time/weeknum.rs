@@ -70,7 +70,7 @@ impl Model {
             // Excel gives 22+ and negatives the start weekday from a state that earlier WEEKNUM and
             // ISOWEEKNUM calls of the recalc left, #NUM! only when it is empty (docs/excel-semantics/
             // dates.md "WEEKNUM's stale return_type state", probes/weeknum-stale-*). We give #NUM!,
-            // Excel's empty-state value, until TODO(T-2068) reproduces the state (SPEC-0015).
+            // Excel's empty-state value, until TODO(T-2068) reproduces the state (SPEC-0017).
             _ => return num_error(cell),
         };
         // Excel numbers the weeks of 1900 as if serial 1 were a Sunday (the real 1 Jan 1900 is a

@@ -32,7 +32,7 @@ Evidence: probes/weeknum-stale-grid, -order-row, -order-column, -order-column-40
 -order-3x2, -sheet-order, -sheet-moved, -dependency, -precedent-between and -precedent-restart (excel-graph, 2026-10-19, T-1484);
 calcChain.xml and session edits: docs/research/t1484-weeknum-calc-order-2026-10-19.md.
 Ours: `Model::run_pass` evaluates spill anchors first, then every cell in forward storage order
-(sheet, row, column ascending). SPEC-0015 reproduces Excel's order where WEEKNUM's state needs it.
+(sheet, row, column ascending). SPEC-0017 reproduces Excel's order where WEEKNUM's state needs it.
 Status: VERIFIED (excel-graph)
 Tasks: T-1484, T-2068, T-2069, T-2070
 
