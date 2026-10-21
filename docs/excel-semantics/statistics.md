@@ -1748,6 +1748,34 @@ Evidence: probes-numeric case `m9-weibull-dist` (cells A1:A176). Oracle: excel-g
 Status: VERIFIED (excel-graph)
 Tasks: T-1046 (sweep), T-0978
 
+### The far-tail density is less accurate than exp(-t): t = (x/l)^k goes through EXP(k*LN(x/l))
+In the tail, Excel's density is off the true value by about one rounded logarithm's error times t.
+Match it; do not correct it.
+- `WEIBULL.DIST(100,1,1,FALSE)` = 3.7200759760206773E-44, while exp(-100) = 3.720075976020836E-44
+  (4E-14 relative; m9-weibull-dist A64).
+- `WEIBULL.DIST(1000,1,9,FALSE)` = 6.177532755504216E-50 (A88).
+- `WEIBULL.DIST(5,3.7,1,FALSE)` = 9.363099887555361E-166 (A146).
+
+Computing t = exp(k*ln(x/l)), not `powf`, reproduces this. A double-precision re-run covered the
+228 in-domain cells (x > 0) of m9-weibull-dist, t1048-weibull and t1049-weibulldist. Visibly-off
+counts are of 114 cells per form:
+
+| form | visibly off | bit-exact |
+|---|---|---|
+| cdf `-expm1(-t)` | 0 | 92 |
+| cdf `-expm1(-(x/l)^k)` | 1 | 72 |
+| cdf `1-EXP(-t)` (loses the small-x cells) | 24 | |
+| density `k/l*exp((k-1)*ln(x/l))*exp(-t)` | 4 (m9 A158, A168; t1048 A8, B8) | |
+| density `k/l^k*exp((k-1)*ln x)*exp(-t)` | 2 (t1048 A8, B8) | |
+| density, statrs form | 15 | |
+
+t1048 A8 and B8 are `WEIBULL.DIST(10,3,8,FALSE)` = 0.08310360884023987. The same t gives
+ironcalc-calc WEIBULL_DIST.xlsx E2 exactly (`WEIBULL.DIST(0.8,1,9,TRUE)` = 0.08505277126996899).
+The re-runs used libm `exp`/`log`, not Excel's EXP and LN kernels, so the bit-level form is still
+open (T-0978).
+Status: a lead from the oracle values (gap triage 2026-10-21), not yet a verified Excel formula.
+Tasks: T-2233 (15 digits), T-0978 (last digits)
+
 ## Legacy distribution names sweep (T-1047)
 Rule: each legacy name returns exactly the same value or error as its modern equivalent on every paired cell (BETADIST = BETA.DIST cum, BETAINV = BETA.INV, BINOMDIST = BINOM.DIST, CHIDIST = CHISQ.DIST.RT, CHIINV = CHISQ.INV.RT, CHITEST = CHISQ.TEST, CONFIDENCE = CONFIDENCE.NORM, CRITBINOM = BINOM.INV, EXPONDIST = EXPON.DIST, FDIST = F.DIST.RT, FINV = F.INV.RT, FTEST = F.TEST); the aliases need no separate kernel.
 Oracle sweep (excel-graph), 12 cases, 33-92 cells each. Aliases were paired with the modern name on the typical-value grid only; the edge, coercion and empty-reference bullets below were probed on the legacy names only. Quirks seen:
