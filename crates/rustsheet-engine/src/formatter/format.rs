@@ -452,11 +452,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         // This is what the TEXT function does
                         text = format!("{text} ");
                     }
-                    TextToken::Spacer(_) => {
-                        // we just leave a whitespace
-                        // This is what the TEXT function does
-                        text = format!("{text} ");
-                    }
+                    // Excel: a `*x` fill adds nothing to the text (`TEXT(7,"0*""a")` is "7a",
+                    // `TEXT(3,"*.0.00")` "3.00"; probes/text-format-length-limit-o A37; gen-m5
+                    // 3e134e52393061b1 Calc!A240; gen-m10 "Displayed text").
+                    TextToken::Spacer(_) => {}
                     TextToken::Raw => {
                         text = format!("{text}{value}");
                     }
@@ -809,11 +808,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         // This is what the TEXT function does
                         text = format!("{text} ");
                     }
-                    TextToken::Spacer(_) => {
-                        // we just leave a whitespace
-                        // This is what the TEXT function does
-                        text = format!("{text} ");
-                    }
+                    // Excel: a `*x` fill adds nothing to the text (`TEXT(7,"0*""a")` is "7a",
+                    // `TEXT(3,"*.0.00")` "3.00"; probes/text-format-length-limit-o A37; gen-m5
+                    // 3e134e52393061b1 Calc!A240; gen-m10 "Displayed text").
+                    TextToken::Spacer(_) => {}
                     TextToken::Raw => {
                         text = format!("{text}{value}");
                     }

@@ -70,3 +70,12 @@ fn elapsed_hour_padded() {
     let formatted = format_number(value, format, &ctx);
     assert_eq!(formatted.text, "02:24:00");
 }
+
+/// A `*x` fill adds nothing to a number section; `_x` still adds a space (T-1735).
+#[test]
+fn fill_adds_nothing_but_ghost_adds_a_space() {
+    let ctx = FormatContext::new(get_default_locale());
+    assert_eq!(format_number(3.0, "*.0.00", &ctx).text, "3.00");
+    assert_eq!(format_number(7.0, "0*\"a", &ctx).text, "7a");
+    assert_eq!(format_number(1000.0, "_(* #,##0_)", &ctx).text, " 1,000 ");
+}

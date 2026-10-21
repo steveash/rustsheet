@@ -3,7 +3,7 @@ id: T-1735
 title: "Displayed text drops * fill characters, as Range.text does (accounting formats, *.0.00, 0.00*-)"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -44,3 +44,8 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+A `*x` fill (`TextToken::Spacer`) now prints nothing in both number branches of `format_number`
+(format.rs). gen-m10 known failures 54 -> 35 (447 text cells fixed), gen-m5 165 -> 164, probes
+1599 -> 1598 (text-format-length-limit-o A37); no regressions.
