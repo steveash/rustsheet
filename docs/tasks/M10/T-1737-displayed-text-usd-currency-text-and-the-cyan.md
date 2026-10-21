@@ -21,6 +21,8 @@ names are Black, Blue, Cyan, Green, Magenta, Red, White, Yellow, plus `[ColorN]`
 that localize month names; a bracket with only currency text is a literal.
 Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "Displayed text" section, which lists each failing text cell (Excel vs ours). Text cells are scored apart from values and are not baselined (decision 0068); the TEXT() cells on sheet T that use the same codes are value known failures in eval/baseline/gen-m10.txt. Formatter: crates/rustsheet-engine/src/formatter/ (shared by `Workbook::formatted` and TEXT). docs/excel-semantics/number-formats.md.
 
+Update (T-2157, 2026-10-21): `[$USD]` currency text now prints as it is (formatter/lexer.rs, a multi-character `[$...]` is `Token::Text`); what is left here is the `[Cyan]` color and any `[$USD]` text cell still failing in the report.
+
 ## Acceptance criteria
 - [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
 - [ ] number-formats.md updated.
