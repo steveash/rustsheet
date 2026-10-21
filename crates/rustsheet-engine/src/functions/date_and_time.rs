@@ -131,6 +131,26 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
+/// One TIME argument as Excel counts it: [`near_integer_floor`] with the shared
+/// [`NEAR_INTEGER_TOLERANCE`] (half of it for a negative value), in each argument's own unit, so
+/// `TIME(1-2^-22,0,0)` is 1:00 and `TIME(1,0,-1E-7)` 1:00; then `#NUM!` outside -32768..=32767.
+// Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is `#NUM!`"
+// (probes/time-argument-*, T-2267): the positive edge lies in (2^-22+1E-12, 2.4E-7), the
+// negative one in (2^-23+1E-12, 1.2E-7), and both hold at every magnitude up to 32768.
+fn time_argument(value: f64) -> Result<f64, Error> {
+    let tolerance = if value < 0.0 {
+        NEAR_INTEGER_TOLERANCE / 2.0
+    } else {
+        NEAR_INTEGER_TOLERANCE
+    };
+    let whole = near_integer_floor(value, tolerance);
+    if (-32768.0..=32767.0).contains(&whole) {
+        Ok(whole)
+    } else {
+        Err(Error::NUM)
+    }
+}
+
 /// The hour, minute and second of a serial's time of day, as HOUR, MINUTE and SECOND take it
 /// apart. Half a second is added to the serial, then its fraction of a day is split by floors,
 /// through hours (x24) and minutes (x60), each step in double precision. So the time rounds to the
@@ -154,6 +174,7 @@ use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::functions::lift::{num_error, number_result, value_error};
+use crate::functions::util::{near_integer_floor, NEAR_INTEGER_TOLERANCE};
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
 use crate::types::DateSystem;
@@ -510,7 +531,12 @@ impl Model {
         // Lifts over a range or array in every argument (probes/date-argument-modes F43:F46).
         let kind = Function::Time;
         self.numbers_fn(kind, args, [0.0; 3], cell, |[hour, minute, second]| {
-            let total_seconds = hour.floor() * 3600.0 + minute.floor() * 60.0 + second.floor();
+            let [hour, minute, second] = [
+                time_argument(hour)?,
+                time_argument(minute)?,
+                time_argument(second)?,
+            ];
+            let total_seconds = hour * 3600.0 + minute * 60.0 + second;
             if total_seconds < 0.0 {
                 return Err(Error::NUM);
             }

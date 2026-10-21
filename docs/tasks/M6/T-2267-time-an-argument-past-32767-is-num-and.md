@@ -3,7 +3,7 @@ id: T-2267
 title: "TIME: an argument past 32767 is #NUM!, and a near-integer hour rounds before it truncates (probe the bound)"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -64,13 +64,21 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 34 in eval/baseli
 | gen-m6/ee56a4ed5a612a0d Calc!A289 | `=TIME(DATEVALUE("2023-03-01"),27,26)` | "#NUM!" | 0.4357175925924821 |
 
 ## Acceptance criteria
-- [ ] These 34 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] A new probes case (excel-graph) holds the bound grid; every cell passes or is a filed task named in the Outcome.
-- [ ] dates.md states the bound and the rounding window with cells (no UNVERIFIED left for them); "TIME divides by 86400 first" still passes.
-- [ ] `make check` green; reviewers approve.
+- [x] These 34 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] A new probes case (excel-graph) holds the bound grid; every cell passes or is a filed task named in the Outcome.
+- [x] dates.md states the bound and the rounding window with cells (no UNVERIFIED left for them); "TIME divides by 86400 first" still passes.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - TIMEVALUE and time text.
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+Probed (excel-graph, five probes cases, 359 cells: time-argument-bound, -rounding, -window, -negative, -negative-window).
+TIME reads each argument on its own: floored, except that a value within about 2.4E-7 below an integer (about 1.2E-7 for a
+negative value) counts as that integer, at any magnitude; then any argument outside -32768..32767 is `#NUM!`. Implemented as
+`time_argument` in `fn_time`; dates.md records the bound, both windows with their measured edges and the probe cells.
+Eval: gen-m6 known failures 212 -> 177 (35 fixed: the 34 listed plus 04fdc9a67474aab9 A326); the five new probe cases pass
+in full; no regressions.
