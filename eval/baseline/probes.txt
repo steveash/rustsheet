@@ -232,6 +232,8 @@ C	probes/datevalue-comma-spaces.case.json	32
 C	probes/datevalue-separator-spaces-paths.case.json	15
 C	probes/datevalue-separator-spaces.case.json	32
 C	probes/db-argument-modes.case.json	121
+C	probes/dbl-max-text-a.case.json	1
+C	probes/dbl-max-text-b.case.json	1
 C	probes/decimal-unreadable.case.json	84
 C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-grouped-reference.case.json	13
@@ -273,6 +275,7 @@ C	probes/eng-im-overflow-edges.case.json	116
 C	probes/eng-im-overflow.case.json	48
 C	probes/eng-im-small-part.case.json	28
 C	probes/eng-imdiv.case.json	24
+C	probes/eng-imexp-cap-window.case.json	40
 C	probes/eng-imexp-overflow-cutoff-halfpi.case.json	20
 C	probes/eng-imexp-overflow-cutoff-pi.case.json	24
 C	probes/eng-imexp-overflow-cutoff-pi2.case.json	29
@@ -282,6 +285,8 @@ C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
 C	probes/eng-impower-past-cut.case.json	19
 C	probes/eng-impower.case.json	22
+C	probes/eng-imsqrt-large-b.case.json	12
+C	probes/eng-imsqrt-large.case.json	18
 C	probes/eng-imsub-imdiv-blank-j.case.json	25
 C	probes/eng-imsub.case.json	21
 C	probes/eng-imsum-improduct-3d-j-empty.case.json	61
@@ -629,6 +634,7 @@ C	probes/negative-date-sections-1904.case.json	23
 C	probes/not-array-cast.case.json	38
 C	probes/npv-fvschedule-edges.case.json	6
 C	probes/npv-fvschedule-typed.case.json	16
+C	probes/npv-fvschedule-unprobed.case.json	8
 C	probes/npv-reference-forms.case.json	20
 C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
@@ -1287,7 +1293,7 @@ F	probes/date-system-1904-odd-years.case.json	S!J3
 F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
-F	probes/displayed-text-formats.case.json	S!A21
+F	probes/dbl-max-text-b.case.json	S!A1
 F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-im-overflow-edges.case.json	S!A104
 F	probes/eng-im-overflow-edges.case.json	S!A107
@@ -1299,8 +1305,6 @@ F	probes/eng-im-overflow-edges.case.json	S!A58
 F	probes/eng-im-overflow-edges.case.json	S!A6
 F	probes/eng-im-overflow-edges.case.json	S!A9
 F	probes/eng-im-overflow-edges.case.json	S!A95
-F	probes/eng-im-overflow.case.json	S!A33
-F	probes/eng-im-overflow.case.json	S!A34
 F	probes/external-ref-no-link-let-index.case.json	Calc!A3
 F	probes/external-ref-no-link-let-index.case.json	Calc!A4
 F	probes/external-ref-no-link-let-index.case.json	Calc!A5
@@ -2068,6 +2072,7 @@ F	probes/npv-fvschedule-typed.case.json	Sheet1!A5
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A6
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A7
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A8
+F	probes/npv-fvschedule-unprobed.case.json	Sheet1!A8
 F	probes/npv-reference-forms.case.json	Sheet1!A1
 F	probes/npv-reference-forms.case.json	Sheet1!A10
 F	probes/npv-reference-forms.case.json	Sheet1!A11
@@ -2853,4 +2858,3 @@ F	probes/yield-solver-sweep.case.json	S!F6
 TC	probes/displayed-text-formats.case.json	28
 TC	probes/fraction-numerator-overflow.case.json	76
 TC	probes/fraction-numerator-overflow2.case.json	69
-TF	probes/displayed-text-formats.case.json	S!A21
