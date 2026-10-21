@@ -3,7 +3,7 @@ id: T-1591
 title: "Probe XIRR's XNPV stop bound against the span and a zero first value"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
