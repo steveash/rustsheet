@@ -37,7 +37,7 @@ rate, 0, 0.1 and the current yield do not give these values.
 ## Out of scope
 - Engine changes (T-1532).
 
-## Blocked because
+## Evidence so far (blocked until T-2187)
 No start formula fits, so the model cannot be raised from 3/90 with the evidence at hand. The lab now has
 `newton_back_chain` (solvers.py). A test pins the shared one-step-back iterate of S!A1 and S!F1:
 0.05523446268, equal to 1.1e-11 across frequencies 2 and 1. Candidates tried, with counts in financial.md

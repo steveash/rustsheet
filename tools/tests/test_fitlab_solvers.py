@@ -172,8 +172,9 @@ def test_yield_back_chain_shares_a_frequency_independent_iterate() -> None:
 def test_yield_start_sweep_newton_from_a_shared_start() -> None:
     # T-2187: yield-start-sweep A1 (frequency 2) and B1 (frequency 1) step back to the same iterate as
     # yield-solver-sweep S!A1; C1 (frequency 4) is at PRICE's root. Run forward from that start,
-    # analytic Newton returning the iterate after the first step below 6.9e-6 gives Excel's value on
+    # analytic Newton returning the iterate after the first step below the cut gives Excel's value on
     # every cell of columns A to C (redemption 100 to 101 at frequency 2, 1 and 4) to 2e-12 relative.
+    # The cells bracket the cut between 6.66e-6 and 7.11e-6; 6.9e-6 is an arbitrary point inside.
     cells = load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells
     by_key = {c.key: c for c in cells}
     a1, b1 = (solvers.newton_back_chain(by_key[k].args, by_key[k].expected, 1)[1] for k in ("S!A1", "S!B1"))
@@ -183,12 +184,6 @@ def test_yield_start_sweep_newton_from_a_shared_start() -> None:
     assert abs(price_of(by_key["S!C1"].expected) - pr) < 1e-12
     swept = [c for c in cells if c.address[0] in "ABC"]
     assert len(swept) == 63
+    newton = solvers._newton_yield(a1, 6.9e-6)
     for cell in swept:
-        price_of, bond, pr = solvers._bond_price(cell.args)
-        y = a1
-        for _ in range(10):
-            step = (price_of(y) - pr) / solvers.dprice(y, bond)
-            y -= step
-            if abs(step) < 6.9e-6:
-                break
-        assert abs(y - cell.expected) < 2e-12 * cell.expected, cell.key
+        assert abs(newton(*cell.args) - cell.expected) < 2e-12 * cell.expected, cell.key
