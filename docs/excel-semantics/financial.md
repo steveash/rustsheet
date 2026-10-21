@@ -787,7 +787,7 @@ a direct 30/360 count: on 2018-02-28 to 2018-03-30 basis 0 and basis 4 agree for
 A126 = A127 = 0.271557884707002, 32 days), whereas INTRATE, PRICEDISC, RECEIVED and YIELDDISC give different results for
 the two bases (INTRATE A14 = 1.2000000000000002 for 30 days, A15 = 1.125 for 32). Ours already matches (`get_mat_factors`).
 Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624).
-Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0 on basis 0; T-1757 added a unit test); the last-digit misses are matched since T-2032 ("Discount securities: day count and year length").
+Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0, on every basis since T-2237, dates.md "YEARFRAC accepts serial 0"; T-1757 added a unit test); the last-digit misses are matched since T-2032 ("Discount securities: day count and year length").
 Status: VERIFIED (excel-graph)
 Tasks: T-1624, T-1757, T-1374, T-2032
 
