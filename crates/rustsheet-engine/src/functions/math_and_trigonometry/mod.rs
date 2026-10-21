@@ -15,7 +15,5 @@ mod sum;
 pub(crate) use sum::SumParts;
 mod sumproduct;
 mod trig;
-#[cfg(test)]
-pub(crate) use ceiling_floor::mround_value;
 pub(crate) use mathematical::percent_of;
 pub(crate) use trig::{excel_fsin, excel_quarter_turn_remainder, excel_sin_cos, EXCEL_TRIG_LIMIT};

@@ -39,7 +39,7 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 ## Acceptance criteria
 - [x] These 1 known-failure lines disappear from eval/baseline/gen-m5.txt, and the 38 `probes/t2201-mround-quotient-rounding`
       lines from eval/baseline/probes.txt (`make eval-baseline`), with no new known failure in any suite.
-- [x] Unit tests in mathematical.rs cover a quotient just inside and just outside `0.5 - 5E-15`, a negative number and
+- [x] Unit tests (in ceiling_floor.rs beside `mround_value`) cover a quotient just inside and just outside `0.5 - 5E-15`, a negative number and
       `MROUND(0.5,0.2)` = 0.6000000000000001 (binary product), citing the probe cells.
 - [x] A comment at the change cites docs/excel-semantics/numbers.md "MROUND rounds the quotient up within 5E-15 of a
       half, and multiplies in binary" (T-2201 already replaced the 15-digit observation there).

@@ -87,20 +87,3 @@ fn int_cuts_to_15_digits_first() {
     assert_eq!(model._get_text("A5"), "-3");
     assert_eq!(model._get_text("A6"), "0");
 }
-
-#[test]
-fn mround_quotient_tolerance() {
-    use crate::functions::math_and_trigonometry::mround_value;
-    // probes/t2201-mround-quotient-rounding: q = 1.4999999999999998 rounds up.
-    assert_eq!(mround_value(0.3, 0.2), 0.4);
-    // Binary product, not the decimal 0.6.
-    assert_eq!(mround_value(0.5, 0.2), 0.600_000_000_000_000_1);
-    // One ulp below the half at 1234.5 is more than 5E-15 away: rounds down.
-    assert_eq!(mround_value(1_234.499_999_999_999_8, 1.0), 1234.0);
-    // 20 ulp below 1.5 (4.4E-15) is inside the tolerance; 0.5 - 5.05E-15 is outside.
-    assert_eq!(mround_value(1.499_999_999_999_995_6, 1.0), 2.0);
-    assert_eq!(mround_value(0.499_999_999_999_994_95, 1.0), 0.0);
-    // Negatives keep the sign of the number; a zero result is +0.
-    assert_eq!(mround_value(-0.3, -0.2), -0.4);
-    assert!(mround_value(-0.499_999_999_999_994_95, -1.0).is_sign_positive());
-}
