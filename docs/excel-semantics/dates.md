@@ -989,7 +989,7 @@ its month and day come before the start's) and counts from the start: `DATEDIF(2
 `DATEDIF(51118,54889,"YD")` = 119, `DATEDIF(41671,51446,"YD")` = 278, `DATEDIF(15974,43001,"YD")` = 364, `DATEDIF(6946,30954,"YD")` = 266.
 Evidence: gen-m6/c96ac1ada46179c4 Calc!A274, 22ce5678fa646215 A294, 3516b9fbbd60269b A87, 144bceacd894868a A356, 3516b9fbbd60269b
 A353, 9c615d338d990644 A231, c6621490a4d67f4e A60, de083028d8b676d2 A38 (excel-graph). Ours: implemented (T-2264). An end of 29 February moved into a non-leap year counts as 1 March.
-Status: VERIFIED for these cells; an end of 29 February moved into a non-leap year is UNVERIFIED.
+Status: VERIFIED for these cells; an end of 29 February moved into a non-leap year, a start on 29 February (`DATEDIF("2/29/2020","2/28/2021","YD")` = 365 by the rule) and a negative "MD" (2015-01-31 to 2015-03-01 = -2 by the rule) are UNVERIFIED.
 Tasks: T-2264
 
 ## TIME: an argument past 32767 is `#NUM!`; a near-integer hour counts as that integer (T-2267)

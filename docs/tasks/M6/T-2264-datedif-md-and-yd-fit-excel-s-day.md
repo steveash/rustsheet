@@ -37,10 +37,10 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 8 in eval/baselin
 | gen-m6/de083028d8b676d2 Calc!A38 | `=DATEDIF(6946,30954,"YD")` | 266.0 | 267.0 |
 
 ## Acceptance criteria
-- [ ] These 8 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] Unit tests cover MD across a 31-to-30 month end, YD across a leap day and YD with the end's month-day before the start's.
-- [ ] dates.md's entry says Ours: implemented (T-2264).
-- [ ] `make check` green; reviewers approve.
+- [x] These 8 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] Unit tests cover MD across a 31-to-30 month end, YD across a leap day and YD with the end's month-day before the start's.
+- [x] dates.md's entry says Ours: implemented (T-2264).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Serials below 61 and serial 0 (T-2263).

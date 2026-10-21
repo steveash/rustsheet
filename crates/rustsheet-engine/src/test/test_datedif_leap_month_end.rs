@@ -5,7 +5,7 @@ fn test_datedif_yd_leap_year_edge_cases() {
     let mut model = new_empty_model();
 
     // 29 Feb 2020 → 28 Feb 2021: the end's month and day come first, so it moves into 2021 and
-    // the count runs from the start (dates.md "DATEDIF "MD" and "YD" day counts", T-2264)
+    // the count runs from the start; UNVERIFIED, no oracle cell starts on 29 February (dates.md "DATEDIF "MD" and "YD" day counts", T-2264)
     model._set("A1", "=DATEDIF(\"2/29/2020\", \"2/28/2021\", \"YD\")");
 
     // 29 Feb 2020 → 1 Mar 2021    (should be 1 day)
