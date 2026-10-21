@@ -51,7 +51,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     T-0428).
   * A sheet's `"pivot_tables": [{"name": "Pv", "source": "Data!A1:C7", "location": "E3", "row": "Region",
     "column": "Product", "value": "Sales", "function": "sum"}]` writes pivot tables, rendered cells
-    included (rustsheet_tools/pivot.py, T-1705). The engine adapter ignores them.
+    included (rustsheet_tools/pivot.py, T-1705). An optional `"rendered"` map of the layout (filled by
+    `rustsheet-spec bake-pivots`) must equal it; the engine adapter writes it and registers the pivot (T-2084).
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
     list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.

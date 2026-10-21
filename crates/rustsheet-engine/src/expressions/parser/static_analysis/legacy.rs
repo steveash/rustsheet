@@ -8,6 +8,7 @@
 //! evaluation results as well as where an `@` goes: a change to it needs a probe's legacy values,
 //! not only its FORMULATEXT (SPEC-0012 "Placement", item 4).
 
+use super::if_arm::{is_reference_arm, returns_range_arm};
 use super::lifted::lifts_arrays_at;
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
@@ -615,52 +616,6 @@ fn legacy_intersects(
         && !reads_reference(kind, arg)
         && !is_reference_arm(kind, index, arg))
         || legacy_value_operand(kind, index, arg)
-}
-
-/// Whether `arg` is an arm of IF that is a range, possibly in parentheses, which a legacy formula
-/// passes on whole as IF's result: the `@` goes on the IF where its result is a value
-/// (`=IF(TRUE,B1:B6)` shows as `=@IF(TRUE,B1:B6)`, `=ABS(IF(TRUE,B1:B6))` as
-/// `=ABS(@IF(TRUE,B1:B6))`), and none where it is a range argument (`=SUM(IF(TRUE,B1:B6))` is 12
-/// and `=MATCH(3,IF(B1:B6>0,B1:B6),0)` 3 on and off the range's rows, the condition intersected;
-/// probes/legacy-if-arm-range-argument, legacy-match-lookup-array-intersection J2, excel-graph,
-/// T-1935). An operation over the range is still a value (`=MATCH(3,IF(TRUE,@B1:B6+0),0)`), and
-/// so is IFERROR's value (`=MATCH(3,IFERROR(@B1:B6,0),0)`); other reference shapes in an arm are
-/// unprobed and keep their `@`. An explicit `@` on the range is looked through, so the export
-/// keeps it (`SUM(IF(TRUE,_xlfn.SINGLE(B1:B6)))`).
-fn is_reference_arm(kind: &Function, index: usize, arg: &Node) -> bool {
-    matches!(kind, Function::If) && index > 0 && is_range_arm(arg)
-}
-
-/// Whether `arm` is a range, possibly in parentheses or under an explicit `@`, or an IF that
-/// returns one ([`returns_range_arm`]): `=MATCH(3,IF(TRUE,IF(TRUE,B1:B6)),0)` shows no `@` and
-/// is 3 off the range's rows (probes/legacy-if-arm-range-argument T). An explicit stack keeps the
-/// walk off the call stack: a formula's tree is untrusted input.
-fn is_range_arm(arm: &Node) -> bool {
-    let mut pending = vec![arm];
-    while let Some(node) = pending.pop() {
-        let node = match node.ungrouped() {
-            Node::ImplicitIntersection { child, .. } => child.ungrouped(),
-            other => other,
-        };
-        match node {
-            Node::RangeKind { .. } => return true,
-            Node::FunctionKind {
-                kind: Function::If,
-                args,
-            } if args.len() > 1 => pending.extend(&args[1..]),
-            _ => {}
-        }
-    }
-    false
-}
-
-/// Whether `kind(args)` is an IF with an arm that is a range ([`is_range_arm`]), which a legacy
-/// formula intersects as a whole wherever it reads the IF as a value, also under a range
-/// argument: `=SUM(IF(TRUE,B1:B6)+0)` shows as `=SUM(@IF(TRUE,B1:B6)+0)`, 2 on the range's rows
-/// and `#VALUE!` off them, and so do `-`, a comparison, `&` and `=MATCH(3,IF(TRUE,B1:B6)*1,0)`
-/// (probes/legacy-if-arm-range-argument-b, excel-graph, T-1935).
-pub(super) fn returns_range_arm(kind: &Function, args: &[Node]) -> bool {
-    matches!(kind, Function::If) && args.len() > 1 && args[1..].iter().any(is_range_arm)
 }
 
 /// Whether `arg` of `kind` needs no intersection although `kind` takes a scalar: a scalar, or

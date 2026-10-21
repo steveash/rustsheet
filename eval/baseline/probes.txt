@@ -462,6 +462,7 @@ C	probes/legacy-array-at-shapes.case.json	40
 C	probes/legacy-array-result.case.json	46
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-choose-array-index.case.json	12
+C	probes/legacy-if-arm-other-references.case.json	52
 C	probes/legacy-if-arm-range-argument-b.case.json	43
 C	probes/legacy-if-arm-range-argument.case.json	73
 C	probes/legacy-index-array-index.case.json	30
@@ -669,6 +670,7 @@ C	probes/paren-number-text-forms.case.json	14
 C	probes/percent-text-paths.case.json	35
 C	probes/percentof-snap-overflow-union.case.json	15
 C	probes/percentrank-single-value.case.json	20
+C	probes/pivot-rendered-cells.case.json	66
 C	probes/pivotby-col-subtotals-values.case.json	1685
 C	probes/pivotby-col-subtotals-values2.case.json	4162
 C	probes/pivotby-col-subtotals-values3.case.json	1080
@@ -1747,6 +1749,7 @@ F	probes/lambda-escaping-closures.case.json	Sheet1!H5
 F	probes/lambda-escaping-closures.case.json	Sheet1!H8
 F	probes/lambda-escaping-closures.case.json	Sheet1!I2
 F	probes/lambda-escaping-closures.case.json	Sheet1!J2
+F	probes/legacy-if-arm-other-references.case.json	Sheet1!M12
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
