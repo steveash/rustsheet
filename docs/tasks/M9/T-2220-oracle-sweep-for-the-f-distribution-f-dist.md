@@ -5,7 +5,7 @@ milestone: M9
 lane: research
 status: todo
 priority: P3
-size: S
+size: M
 tier: sonnet
 depends_on: []
 ---

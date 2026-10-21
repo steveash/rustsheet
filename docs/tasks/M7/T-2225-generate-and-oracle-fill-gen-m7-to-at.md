@@ -5,7 +5,7 @@ milestone: M7
 lane: research
 status: todo
 priority: P2
-size: S
+size: M
 tier: opus
 depends_on: [T-2224]
 ---
