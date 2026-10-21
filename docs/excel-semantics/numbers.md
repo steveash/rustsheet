@@ -917,8 +917,11 @@ Status: VERIFIED (excel-graph); the expm1 kernel is below.
 
 ### Excel's expm1 is Kahan's formula (T-2240)
 Rule. The expm1 under SINH and TANH below 1 is Kahan's: with u = EXP(x) (Excel's own EXP, model V6, "EXP" above),
-expm1(x) = x if u = 1, -1 if u - 1 = -1, and otherwise (u - 1) * x / LN(u), with LN Excel's own (FYL2X, `excel_ln`), each
-operation a double and evaluated left to right: (u - 1) * x first, then the divide.
+expm1(x) = x if u = 1, and otherwise (u - 1) * x / LN(u), with LN Excel's own (FYL2X, `excel_ln`), each
+operation a double and evaluated left to right: (u - 1) * x first, then the divide. (Kahan's -1 for u - 1 = -1 is kept
+as a guard of ours; it cannot occur below |x| = 1 and no cell probes it.)
+- The u = 1 branch (|x| under about 1E-16) is covered only by cached cells: m9-hyperbolic `SINH(1E-10)`, `SINH(3E-10)`,
+  `TANH(5E-10)` and TRIGONOMETRIC.xlsx `SINH(1E-12)`/`TANH(1E-12)` pass; the sweep starts at 1E-8.
 - Evidence: probes-numeric `t2178-hyperbolic-unit-sweep` (excel-graph): all 1015 arguments with 0 < |x| < 1 match in both
   SINH and TANH (libm's expm1: 773 and 781). With libm's exp and log in the same formula it matches 1014 of 1015;
   Excel's EXP with libm's log also 1014.
