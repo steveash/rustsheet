@@ -484,7 +484,7 @@ XIRR's guess and FVSCHEDULE's principal, beside cash flows, dates and a schedule
 FVSCHEDULE beside their whole data", a DEVIATION for the work cap). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
 The base values of CUMIPMT, DB, DDB, DURATION, MDURATION, ODDFPRICE and PRICE are 1 to a few
-ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475, INTRATE and YIELDDISC since T-2032). The
+ulps off, CUMPRINC about 30-40 ulps (EFFECT is exact since T-2034), and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475, INTRATE and YIELDDISC since T-2032). The
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822, T-1841, T-1842, T-1843, T-1845, T-1870
@@ -815,6 +815,21 @@ Ours: `Model::year_fraction_parts` (date_and_time/yearfrac.rs) gives the parts; 
 functions/financial/discount.rs and `get_mat_factors` (financial/mod.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2032
+
+## EFFECT and NOMINAL raise to their power with `^`
+Rule: EFFECT is `(1 + r/n)^n - 1` and NOMINAL is `((1 + e)^(1/n) - 1) * n`, with n floored, and both powers are
+Excel's `^` operator, not libm `pow`. EFFECT's integer n goes through right-to-left square-and-multiply (numbers.md
+"Integer exponents: right-to-left square-and-multiply"). For NOMINAL, n = 1 is an exact integer power, n = 2 is the
+square root, and every other n is `exp(ln(1+e) * (1/n))` (numbers.md "Non-integer exponents: exp(y·ln x)").
+`EFFECT(0.5,10)` is 0.6288946267774416 (libm pow gives ...442), `NOMINAL(0.5,4.5)` is 0.4267276788012868 (...859), and
+`EFFECT(0.05,4)` is 0.050945336914062445 (...222). Columns E and F of NOMINAL_EFFECT.xlsx, which convert the other
+function's result back, match once C and D do.
+Evidence: ironcalc-calc FINANCIAL/NOMINAL_EFFECT.xlsx C8, D2 and the 11 other cells of its baseline lines (Excel-cached;
+all 90 cells now pass), probes/fin-argument-modes H125 (excel-graph).
+Ours: `rate_power` in functions/financial/rate_conversions.rs calls `arithmetic::power`; an error from it is an
+overflow, `#DIV/0!` as an infinite rate was before.
+Status: VERIFIED (excel-graph)
+Tasks: T-2034
 
 ## PMT when (1+rate)^nper overflows or underflows
 Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient

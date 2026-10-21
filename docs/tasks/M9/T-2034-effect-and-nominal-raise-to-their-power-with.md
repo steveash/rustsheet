@@ -3,7 +3,7 @@ id: T-2034
 title: "EFFECT and NOMINAL raise to their power with Excel's ^ kernel (NOMINAL_EFFECT.xlsx, fin-argument-modes H125)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -38,11 +38,11 @@ then `power_with_libm_exp`, and keep the one that clears the lines below. Map an
 to the error EFFECT/NOMINAL return today for an out-of-range result (`rate_result`).
 
 ## Acceptance criteria
-- [ ] The 13 NOMINAL_EFFECT.xlsx lines leave eval/baseline/ironcalc-calc.txt and fin-argument-modes H125
+- [x] The 13 NOMINAL_EFFECT.xlsx lines leave eval/baseline/ironcalc-calc.txt and fin-argument-modes H125
       leaves eval/baseline/probes.txt (`make eval-baseline`), with no new F lines in any baseline.
-- [ ] Unit tests for D2 `EFFECT(0.5,10)` = 0.6288946267774416 and C8 `NOMINAL(0.5,4.5)` = 0.4267276788012868.
-- [ ] A line in docs/excel-semantics/financial.md records that EFFECT and NOMINAL use Excel's `^`, citing D2, C8, H125.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for D2 `EFFECT(0.5,10)` = 0.6288946267774416 and C8 `NOMINAL(0.5,4.5)` = 0.4267276788012868.
+- [x] A line in docs/excel-semantics/financial.md records that EFFECT and NOMINAL use Excel's `^`, citing D2, C8, H125.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - If neither helper clears every line, stop and hand the task up (work-loop step 5b) with the cells
@@ -56,3 +56,12 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - NOMINAL: 1 cells (13-14 digits right 1, 10-12 0, 6-9 0, fewer or 0 vs nonzero 0); most in `ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx` 1. e.g. `NOMINAL(A8,B8)` Excel 0.4267276788012868, ours 0.4267276788012859
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Outcome
+- `fn_effect` and `fn_nominal` raise to their power with `arithmetic::power` (Excel's `^`) through a new
+  `rate_power`, in place of libm `powf`. `power` cleared every line, so `power_with_libm_exp` was not needed. An
+  `Err` from it (overflow, as the base is above 1) is `#DIV/0!`, the error an infinite rate gave before.
+- Eval delta: 14 known failures fixed, 0 regressions. ironcalc-calc 905 -> 892 (the 13 NOMINAL_EFFECT.xlsx lines; all
+  90 cells of the case pass), probes 1601 -> 1600 (fin-argument-modes H125). Visibly-off cells 1731 -> 1727.
+- Unit test `effect_and_nominal_use_excels_power` (D2, C8, H125); financial.md "EFFECT and NOMINAL raise to their
+  power with `^`".

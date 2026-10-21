@@ -388,19 +388,6 @@ F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E3
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E4
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E5
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C4
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!C8
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D17
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D2
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D3
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!D4
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!E15
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!E17
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!E4
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F17
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F2
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F3
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F4
-F	ironcalc-calc/FINANCIAL/NOMINAL_EFFECT.xlsx	Sheet1!F8
 F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K2
 F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K4
 F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K5
