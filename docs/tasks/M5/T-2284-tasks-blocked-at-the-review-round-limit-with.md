@@ -3,7 +3,7 @@ id: T-2284
 title: "Tasks blocked at the review-round limit with fixes pushed get re-reviewed by a worker"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
