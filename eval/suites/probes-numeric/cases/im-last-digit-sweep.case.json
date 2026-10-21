@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2043: oracle sweep for the IM* last-digit residue (T-2044 fits kernels from it). A: input text, rows 2-79 (first 24 are the COMPLEXs.xlsx D-column inputs, the rest cover each quadrant, parts 1E-5..1E3, pure real/imaginary); per function the plain text result and, for the complex-valued ones, IMREAL and IMAGINARY of it as numbers: IMABS B, IMARGUMENT C, IMCSC D:F, IMSEC G:I, IMSECH J:L, IMLOG2 M:O, IMCOT P:R.",
+ "description": "T-2043: oracle sweep for the IM* last-digit residue (T-2044 fits kernels from it). A: input text, rows 2-79 (first 24 are 23 COMPLEXs.xlsx D-column inputs plus A20's 3.2E-19, the rest cover each quadrant, parts 1E-5..1E3, pure real/imaginary); per function the plain text result and, for the complex-valued ones, IMREAL and IMAGINARY of it as numbers: IMABS B, IMARGUMENT C, IMCSC D:F, IMSEC G:I, IMSECH J:L, IMLOG2 M:O, IMCOT P:R.",
  "tags": [
   "M9",
   "engineering",
@@ -12,8 +12,8 @@
    "name": "Calc",
    "cells": {
     "A1": "input",
-    "B1": "IMABS.txt",
-    "C1": "IMARGUMENT.txt",
+    "B1": "IMABS",
+    "C1": "IMARGUMENT",
     "D1": "IMCSC.txt",
     "E1": "IMCSC.re",
     "F1": "IMCSC.im",
