@@ -129,7 +129,7 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
         if t.get("size") == "L" and t.get("status") in ACTIVE:
             errors.append(f"{where}: size L tasks must be split before work starts")
     for t in tasks:
-        for dep in t.get("depends_on", []) or []:  # type: ignore[union-attr]
+        for dep in deps_of(t):
             if dep not in ids:
                 errors.append(f"{t['id']}: unknown dependency {dep}")
     return errors
@@ -167,9 +167,14 @@ def code_files() -> dict[str, str]:
     return files
 
 
+def deps_of(t: dict[str, object]) -> list[str]:
+    """The task ids in `t`'s `depends_on` list (empty when the key is missing or empty)."""
+    deps = t.get("depends_on") or []
+    return [str(d) for d in deps] if isinstance(deps, list) else []
+
+
 def ready(t: dict[str, object], by_id: dict[str, dict[str, object]]) -> bool:
-    deps = t.get("depends_on", []) or []
-    return t.get("status") == "todo" and all(by_id.get(d, {}).get("status") == "done" for d in deps)  # type: ignore[union-attr]
+    return t.get("status") == "todo" and all(by_id.get(d, {}).get("status") == "done" for d in deps_of(t))
 
 
 def git_branch_names(directory: str, pattern: re.Pattern[str], fetch: bool = True) -> set[str]:
@@ -364,14 +369,14 @@ def in_campaign(tasks: list[dict[str, object]], by_id: dict[str, dict[str, objec
     fix waits on would otherwise wait behind the milestone order and stall the fix."""
     tagged = [t for t in tasks if t.get("campaign") in CAMPAIGNS and t.get("status") in OPEN]
     ids = {str(t["id"]) for t in tagged}
-    stack = [str(d) for t in tagged for d in t.get("depends_on", []) or []]  # type: ignore[union-attr]
+    stack = [d for t in tagged for d in deps_of(t)]
     while stack:
         tid = stack.pop()
         dep = by_id.get(tid)
         if dep is None or tid in ids or dep.get("status") not in OPEN:
             continue
         ids.add(tid)
-        stack.extend(str(d) for d in dep.get("depends_on", []) or [])  # type: ignore[union-attr]
+        stack.extend(deps_of(dep))
     return ids
 
 
@@ -383,8 +388,8 @@ def available(
     fetch: bool = True,
 ) -> list[dict[str, object]]:
     """Ready tasks a worker of `tier` may start in `lane`, best first: P0, then handoffs, then
-    campaign tasks and their open dependencies (decisions 0083, 0094), then milestone and priority (a P0 never waits behind an
-    escalated lower-priority task; decision 0023)."""
+    campaign tasks and their open dependencies (decisions 0083, 0094), then milestone and
+    priority (a P0 never waits behind an escalated lower-priority task; decision 0023)."""
     claimed, on_branches, active = branch_claims(fetch=fetch)
     # One task in flight per lane. A branch whose task is already done on main (merged, branch not
     # yet deleted) leaves its lane free, so a looping worker can take the next task at once.

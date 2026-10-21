@@ -1,6 +1,6 @@
 # 0094 — Fifteen-digit parity checkpoint: 400 Excel cells per function with edge sweeps, zero visibly-off cells
 
-- **Status:** accepted (2026-10-21, T-0062; asked for by the owner in session
+- **Status:** accepted (2026-10-21; filed by T-0064, measured by T-0062; asked for by the owner in session
   https://claude.ai/code/session_01WTJ7rq9tsQyspbybqNLk1a). Builds on decision 0083 (visible
   parity first) and decision 0088 (the visible-parity lock).
 - **Context:**
@@ -30,9 +30,9 @@
        they are fetched. Accepted `DEVIATION`s (directive 5) are excluded.
     3. **Stability.** Both hold on two consecutive steward runs.
   - *Exemptions from the 400-cell rule.* Some functions have no inputs or only a small, closed
-    set of them: PI, TRUE, FALSE, NA, the volatile functions (NOW, TODAY, RAND, RANDBETWEEN,
+    set of them: TRUE, FALSE, the volatile functions (NOW, TODAY, RAND, RANDBETWEEN,
     RANDARRAY), and functions whose every input form is enumerable (for example INFO's type
-    texts). They need each input form covered instead, at least 20 Excel cells (the evidence
+    texts). PI and NA qualify as well, but they already have more than 400 cells. They need each input form covered instead, at least 20 Excel cells (the evidence
     floor). The T-0062 report section lists each exemption with its reason. Adding one takes a
     line in the catalog, which is reviewed like any catalog change.
   - *Measurement.* The `make eval` report gains a "Fifteen-digit parity checkpoint" section
