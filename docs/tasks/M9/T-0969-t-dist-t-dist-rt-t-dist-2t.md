@@ -206,6 +206,57 @@ coarse grid for df 2 to 10; and `t0969-t-tail-grid`, 3,232 T.DIST.RT cells on a 
   - Next: a model where the stored exponent carries a constant ln-Gamma term computed in extended precision, and a
     probe of `T.DIST(t,n,FALSE)` at t with t*t exact (t = k/2^m) to separate the exponent's rounding from that of t^2.
 
+## Attempt 8 (2026-10-21, opus run; merged as progress)
+- **df 2 cracked for y >= 0.1.** Excel's tail at df 2 is BETA.DIST's a = 1 closed form, (1 - exp(ln(1 - y)/2))/2, at
+  y = fl(2/fl(2 + fl(t*t))), inside t = 1 too, down to y = 0.1 (t = 4.2426); below it Excel is accurate and no simple
+  form fits (statistics.md "T.DIST.RT at df 2 is BETA.DIST's closed form down to y = 0.1"). New probe
+  `t0969-t-df2-cut` (801 cells, t = 2 to 6): the closed form is 449 of 449 above the cut, 12 of 352 below.
+  `student_t.rs` `closed_form_tail` serves both the t path and T.TEST's y path.
+- Eval delta: on the cases that existed before, 41 cells newly bit-exact and 0 regressions. Of those, `T_DIST.xlsx` F16 and C16
+  left `ironcalc-calc.txt`, 30 are `t0969-t-tail-grid` cells, and 2 are T.TEST cells in t1049-ttest. Also `T.DIST.RT(0.0013,2)` went from 56 ulp to 1.
+  Family visibly-off cells on those cases: 491 -> 487. New-case cells: df2-cut 560 of 801 bit-exact, 0 visibly off.
+  df-ratio has 9 visibly off, the df-15 tails among them.
+- **Per-df prefactor (not modelled).** New probe `t0969-t-df-ratio` (df 1 to 200 and 250 to 1000 by 50, tails at t =
+  0.5, 1.5 and 2, densities at 0.5 and 2): df 15's tails are all -20 x 2^-53 relative off, at every t, while its
+  densities are exact. A handful of other df (7, 13, 16, 26, 147) agree within 0.5 x 2^-53 at t = 0.5 and 2 on errors of 4 to 7.
+  exp of GAMMALN differences with Excel's own GAMMALN reproduces df 13, 15 and 16 but predicts errors of 25 to 215 at df 17, 18, 20, 28
+  and 147, where Excel has under 4. Excel's GAMMA ratios and `GAMMA(7.5)` are correctly rounded. One scaled ratio
+  fits only 24 of df 15's 120 cells (statistics.md "Student t prefactor per df").
+- **Density.** Sheet Exact of the same probe has t*t and n + t*t exact (df 3, 4, 5, 7). Every K * f(u) model, and the
+  correctly rounded density with a fitted K, still tops out near 45%. So the noise is inside Excel's kernel, not the
+  inputs' rounding. R's `dt` (Loader's bd0/stirlerr) is rejected on t0969-t-pdf-runs: 363 of 1,024 at df 2
+  (statistics.md "Student t density noise is not input rounding").
+- Next: the 260 visibly-off tail-grid cells are df 15 (about 60) and Excel's incomplete-beta noise at df 50 to 1000
+  for t = 2.4 to 5.5 (the rounded-y region, 3 to 24 ulp on values of 1E-2 to 1E-7). Both need Excel's
+  incomplete-beta algorithm (T-1744, T-1759: its direct branch is the unknown). The density needs its power/exp kernel. Candidate probes:
+  `BETA.DIST(y,n/2,0.5,TRUE)` at the same rounded y as `T.DIST.RT(t,n)`, to see whether T.DIST.RT calls BETA.DIST's
+  kernel (df 15 included); and BETA.DIST at a = 7.5, b = 0.5 to see whether the df-15 prefactor is BETA.DIST's.
+
+## Attempt 9 (2026-10-21, opus run; findings only, merged as progress)
+- **T.DIST.RT is BETA.DIST, switched at the mean.** New probe `t0969-t-beta-link` (184 (t, df) pairs, df 1 to 1000):
+  with the worksheet's y = fl(n/fl(n + fl(t*t))) and z = fl(fl(t*t)/fl(n + fl(t*t))), `T.DIST.RT(t,n)` is
+  `BETA.DIST(y,n/2,0.5,TRUE)/2` to the bit on 136 of 155 cells beyond t = 1 (y <= 0.99; the rest 1 to 4 ulp, df 7 to 30
+  at t = 1.5 to 3), and `0.5 - BETA.DIST(z,0.5,n/2,TRUE)/2` on 22 of 23 cells at t = 0.5. t = 1 is y = n/(n+1), the mean of
+  Beta(n/2,1/2), so attempt 7's switch reads as the incomplete beta's side choice (an interpretation) (statistics.md "T.DIST.RT is BETA.DIST's
+  incomplete beta, switched at the mean").
+- Consequence: the family's remaining tail noise (the 260 visibly-off `t0969-t-tail-grid` cells: df 15 about 60,
+  df 50 to 1000 for t = 2.4 to 5.5 about 175) is Excel's BETA.DIST noise. Against the exact I at the rounded y the
+  grid's rounded-y region is 373 of 2,853 bit-exact and 2,261 within 4 ulp; the engine is 409 and 2,320. No more
+  accurate Student-t kernel closes it: the stage needs Excel's incomplete-beta algorithm (T-1744, T-1759).
+- **df 15 is B(1/2, 7.5).** New probe `t0969-beta-density-b`: `BETA.DIST(x,0.5,b,FALSE)` at small x is within 8.1 x
+  2^-53 of exact for b = 0.25 to 40 by 0.25 except b = 7.5 (-18, -20) and 7.75 (-37, -39); a = 1.5 is clean at every
+  b. So Excel's Beta function has a method switch near 8 that is off just below it for a = 1/2 (statistics.md
+  "Student t prefactor per df"). Probe `t0969-beta-prefactor` (BETA.DIST around a = 7.5) is too noisy to isolate it.
+  Correctly rounded Gammas, Gamma(a+b)/Gamma(a)/Gamma(b), match Excel's per-df prefactor error within 3 x 2^-53 at 174
+  of 200 df (df-ratio probe, averaged over its three tails); exp of ln-Gamma differences at 15.
+- The density is not BETA.DIST's density times the Jacobian (at most 20 of 184 bit-exact in five orderings).
+- Eval delta: no engine change; no baseline line moved. The three new probes-numeric cases (ungated) add family
+  cells: t0969-t-beta-link has 42 visibly-off T.DIST/T.DIST.RT cells (C 15, J 12, L 15).
+- Next: (1) model Excel's B(a, 1/2) switch near 8 with a dense `BETA.DIST(x,0.5,b,FALSE)` probe for b in [7, 8.5] by
+  1/64 and a = 0.25 to 2 (the df-15 fix: about 60 grid cells); (2) the rounded-y tails need Excel's incomplete beta,
+  so route the tail through one beta kernel once T-2119 moves BETA.DIST's cdf onto `incomplete_beta`, and score it
+  on t0969-t-beta-link column E; (3) in the y > 0.99, t > 1 region (df 500, 1000) t = 1.5 takes the centre form but t = 2 to 3 match neither.
+
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
       NumericMismatch verdict (`rustsheet-eval show` on both cases), at least 30 of the 55 lines

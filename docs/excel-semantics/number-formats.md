@@ -192,10 +192,17 @@ Tasks: T-0936 (implemented)
 Rule: literals may sit between `E+`/`E-` and the exponent digits; the exponent sign is printed
 next to the digits, after the literal, and a zero mantissa prints "0.": `|#.#|E+|#|` → "|1.2|E|+5|"
 (A41) and "|0.|E|+0|" for 0 (A137); `E-` omits a positive sign: "|1.2|E|5|" (A40), "|1.2|E|-5|"
-(A96).
-Evidence: poi/NumberFormatApproxTests.xlsx A40, A41, A96, A97, A136, A137, A176, A177, A216, A217.
+(A96). The `E` stays where the format puts it; only the sign moves to the digits.
+- The zero-mantissa digit also shows in a cell's displayed text: `#E+0` on 0 displays "0E+0", not "E+0"
+  (gen-m10/5eb95c63c7d6180c F!G13, gen-m10/71ad5f93362f4ff4 F!V19). The minus of a negative number still leads
+  everything ("-|1.2|E|5|", A176).
+Evidence: poi/NumberFormatApproxTests.xlsx A40, A41, A96, A97, A136, A137, A176, A177, A216, A217
+(excel-graph); gen-m10 cells above (excel-graph).
+Ours: `formatter/parser.rs` pushes the `E` as a literal at the format's `E+`/`E-`; `formatter/format.rs`
+prints the sign before the first exponent digit and a `0` for the last `#` integer placeholder of a zero
+mantissa (T-0937).
 Status: VERIFIED
-Tasks: T-0937
+Tasks: T-0937 (implemented)
 
 ## `TEXT(x,"General")` uses an 11-character fixed-notation limit
 Rule: General prints fixed notation, with at most 9 decimals ("0." plus 9 decimals is 11
@@ -479,9 +486,9 @@ TEXT() with the same codes. Points the earlier probes did not show:
   elapsed code does not: `[s]` on -1.5 is "-129600" and on 1E15 "86400000000000000000" (see
   "Elapsed-time tokens"). TEXT() on the same codes is `#VALUE!` exactly where the display is 255 `#`;
   every other paired TEXT() result equals the displayed text.
-- A fraction whose numerator overflows is 255 `#` too: `?/100` on 1000, 999.9999 and 1234567890
-  (numerator 100000 and up; 99.5 is "9950/100"), `?/?` on 123456789012345 and 1E15 while 1234567890
-  is "1234567890/1". The threshold is unprobed (T-1740).
+- A fraction whose numerator overflows is 255 `#` too: `?/100` on 1000, 999.9999 and 1234567890,
+  `?/?` on 123456789012345 and 1E15 while 1234567890 is "1234567890/1". The thresholds: "Fraction
+  formats", "A numerator that overflows".
 - Clock and date fields come from the serial rounded to the shown second: 0.9999999999 is "0:00"
   under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
 - `mm:ss` with no hour is minutes: 123456.789 is "56:10".
@@ -546,7 +553,29 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   "1234567890", 039accab K8, K2). Under a `#` numerator the literal between the integer and the
   fraction goes too when either side prints nothing ("1/2", not " 1/2"; "1234567890" with no
   trailing blanks), yet stays when both print (`# #/#` on 1.5 "1 1/2").
-- A numerator that overflows is 255 `#` ("Displayed text over an edge-value pool" above, T-1740).
+- **A numerator that overflows** is 255 `#` as displayed text and `#VALUE!` from TEXT (VERIFIED,
+  probes/fraction-numerator-overflow and -overflow2, excel-graph 2026-10-21, T-1740; cells A<n> of sheet S,
+  TEXT on T). Only a fraction with no integer part overflows. With a fixed denominator the rounded
+  numerator may be at most 32767 (2^15 - 1) in magnitude, whatever the denominator: `?/1` on 32767 is
+  "32767/1" and on 32768 255 `#`; `?/2` 16383.5 / 16384, `?/10` 3276.7 / 3276.8, `?/100` 327.67 / 327.68 and
+  -327.67 / -327.68, `?/1000` 32.767 / 32.768 and `?/16` 2047.9375 / 2048 alike (overflow2 A1-A52). The
+  numerator is the 15-digit rounded one: `?/100` on 327.674 is "32767/100" and on 327.675 255 `#`
+  (A55-A56). With a placeholder denominator (`?/?`, `??/??`, `???/???`) the value may be at most just under
+  2147483647 (2^31 - 1) in magnitude: `?/?` on 2147483646.9 is "2147483647/1", on 2147483647, 2147483647.5,
+  -2147483647 and 2147483648 255 `#`; -2147483646 is "-2147483646/1" (overflow A43-A64, overflow2 A58-A64).
+  A whole part takes the rest: `# ?/100` on 1E15 is "1000000000000000      ", `# ?/?` on 2147483648.5
+  "2147483648 1/2" and `0 ?/10` on 1E14+0.5 "100000000000000 5/10" (overflow A37-A42, A74-A76).
+  Implemented in `format_fraction` (formatter/fraction.rs). UNVERIFIED: the engine applies both bounds to the
+  value after `%` and `,` scaling, and the fixed bound to denominators past 32767; neither is probed (T-2233).
+- **Placeholder fractions past 2^30** are not the last convergent (VERIFIED, excel-graph 2026-10-21, T-1740,
+  probe cells kept out of the suites until the follow-up implements them; T-2233): `?/?` on 1073741824.5 is
+  "1073741825/1" (not 2147483649/2), -1073741824.5 "-1073741825/1", 1431655765.5 "1431655766/1",
+  1610612735.5 "1610612736/1", 2147483646.5 "2147483647/1", 1073741824.25 and 1073741823.75 "1073741824/1",
+  1E9+0.25 "1000000000/1", 2147483646.4 "2147483646/1", yet 2147483646.6 "4294967293/2" (not 10737418233/5)
+  and 715827882.5 "1431655765/2", 5E8+0.25 "2000000001/4"; `??/??` on 2147483646.5 "2147483647/1 " and on
+  1073741824.5 "1073741825/1 ". No bound on the numerator or on the denominator times the value fits every
+  cell (4294967293/2 is refused for 2147483646.5 and taken for 2147483646.6). The engine prints the
+  convergent.
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)

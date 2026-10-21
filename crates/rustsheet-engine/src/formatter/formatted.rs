@@ -15,6 +15,16 @@ pub struct Formatted {
 }
 
 impl Formatted {
+    /// A number the format cannot show: TEXT is `#VALUE!` and the cell displays 255 `#`.
+    pub(super) fn unshowable(error: String) -> Self {
+        Formatted {
+            text: "#VALUE!".to_owned(),
+            color: None,
+            error: Some(error),
+            unshowable: true,
+        }
+    }
+
     /// The text a cell shows under the format, Excel's `Range.text`. Excel displays a date it
     /// cannot show as 255 `#`, not `#VALUE!`, whatever the column width (probes/displayed-text-formats
     /// S!B4; gen-m10 "Displayed text"; docs/excel-semantics/number-formats.md "Displayed text

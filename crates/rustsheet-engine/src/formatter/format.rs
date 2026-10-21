@@ -99,12 +99,7 @@ fn excel_weekday_index(serial: i64) -> usize {
 }
 
 fn invalid_date(value: f64) -> Formatted {
-    Formatted {
-        text: "#VALUE!".to_owned(),
-        color: None,
-        error: Some(format!("Invalid date value: '{value}'")),
-        unshowable: true,
-    }
+    Formatted::unshowable(format!("Invalid date value: '{value}'"))
 }
 
 /// Formats a TEXT value, `None` being a blank. A blank with an empty format gives "" and any other
@@ -717,11 +712,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         ParsePart::Number(p) => {
             if let Some(fraction) = &p.fraction {
-                return Formatted {
-                    text: format_fraction(value, p, fraction),
-                    color: p.color,
-                    error: None,
-                    unshowable: false,
+                return match format_fraction(value, p, fraction) {
+                    Some(text) => Formatted {
+                        text,
+                        color: p.color,
+                        error: None,
+                        unshowable: false,
+                    },
+                    None => {
+                        Formatted::unshowable(format!("Fraction numerator overflows: '{value}'"))
+                    }
                 };
             }
             let mut text = "".to_string();
@@ -840,7 +840,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             if ln <= digit_count {
                                 // The number of digits is less or equal than the number of digit tokens
                                 // i.e. the value is 123 and the format_code is ##### (ln = 3 and digit_count = 5)
-                                if !(number_index < 0 && digit.kind == '#') {
+                                // A zero mantissa still shows one integer digit, even for `#`:
+                                // `|#.#|E-|#|` on 0 is "|0.|E|0|" (poi/NumberFormatApproxTests.xlsx
+                                // A136), where `#.#` alone gives ".".
+                                let zero_mantissa = p.is_scientific
+                                    && ln == 0
+                                    && number_index == -1
+                                    && digit.kind == '#';
+                                if zero_mantissa {
+                                    text = format!("{text}0");
+                                } else if !(number_index < 0 && digit.kind == '#') {
                                     let c = if number_index < 0 {
                                         if digit.kind == '0' {
                                             '0'
@@ -916,13 +925,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         } else if digit.number.is_exponent() {
                             // 3. Exponent part
                             let index = digit.index;
+                            // The `E` itself is a literal at the format's `E+`/`E-` (parser).
                             if index == 0 {
                                 if exponent_is_negative {
-                                    text = format!("{text}E-");
-                                } else if p.scientific_minus {
-                                    text = format!("{text}E");
-                                } else {
-                                    text = format!("{text}E+");
+                                    text.push('-');
+                                } else if !p.scientific_minus {
+                                    text.push('+');
                                 }
                             }
                             let number_index = l_exp - (p.exponent_digit_count - index);
