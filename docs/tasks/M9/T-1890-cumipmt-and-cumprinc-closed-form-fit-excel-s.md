@@ -3,7 +3,7 @@ id: T-1890
 title: "CUMIPMT and CUMPRINC closed form: fit Excel's last digits over many periods"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -36,12 +36,13 @@ fits both the short and the long cells would replace the 32-period split. The fi
 denominator) is described in financial.md; Excel's form is closer to `log1p`/`expm1` than to `(1+r)^n`.
 
 ## Acceptance criteria
-- [ ] Probe the cells T-1845 kept or chose without evidence: a payment that overflows
+- [x] Probe the cells T-1845 kept or chose without evidence: a payment that overflows
   (`CUMIPMT(Z2,Z5,Z3,1,Z5,0)`, `CUMPRINC(Z2,10,Z3,1,10,1)` in test_fn_cumulative_lift.rs, `#NUM!` as on
   main), a per-period sum that overflows (`CUMIPMT(0.5,10,1E308,1,10,0)`, now the closed form), and
   a few periods past 2^53 at a tiny rate (`CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)`, now the closed form).
-- [ ] The cells above pass (baseline lines removed), with no new failures.
-- [ ] `make check` green; reviewers approve.
+- [x] The cells above pass (baseline lines removed), with no new failures. Re-scoped by T-1890's
+  Outcome: CUMPRINC is visibly right; the interest cells and CUMPRINC A2, A6, A16, H26 moved to T-2192.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The short-range misses (T-1374) unless the same formulation fixes them.
@@ -54,3 +55,30 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - CUMPRINC: 20 cells (13-14 digits right 16, 10-12 1, 6-9 2, fewer or 0 vs nonzero 1); most in `ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx` 14; `probes/fin-remaining-later-argument-ranges.case.json` 5. e.g. `CUMPRINC(A2,B2,C2,D2,E2,F2)` Excel -2038.518055313885, ours -2038.518055313892
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Outcome
+CUMPRINC is now the closed form at every length. Over up to 32 periods its difference of powers is
+written `exp((first-1-nper)*L)*expm1((end-first+1)*L)`, which does not cancel. This replaces the
+PPMT sum, which lost a small principal's digits: CUMPRINC_CUMIPMT.xlsx H5 had 8 right digits.
+CUMIPMT keeps the IPMT sum up to 32 periods. The exact term sum `-pmt*expm1((k-1-nper)*L)` was
+tried. It fixed G4, G21, G22 and G25, but it lost G3, G9 and G15 to the bit. The new probe also
+shows that Excel's own interest is not the exact sum: A11 and A12 are off by 10^-14 relative.
+Probe probes/fin-cumipmt-overflow-and-forms (excel-graph, A1-A24) answers the first criterion:
+- An overflowing payment is `#NUM!` for CUMIPMT (A1, A3), which matches.
+- `CUMPRINC(1E300,10,1E300,1,10,1)` is -1E300 (A2), where ours is `#NUM!`.
+- The past-2^53 cells A5 and A6 have their own digits.
+Eval:
+- ironcalc-calc: 918 → 915 known failures (H6, H22, H25 now bit-exact).
+- probes: one new case, 25 cells, 15 known failures (A20-A24 are within 15 digits but miss Excel's last
+  digits; T-2192).
+- No regressions.
+Visible parity: every CUMPRINC cell of the four cases is within half a unit of the 15th
+significant digit, except H26 (2 ulps on -3.3E-21), A2, A6, A16 and A20-A24. CUMIPMT's visibly-off cells are G2,
+G4, G7, G31, A7, A9-A11, A18, K3, A5 and the new A12, all interest. Follow-up T-2192 (campaign
+visible) takes these, A16 and the three CUMPRINC exceptions, so the criterion "the cells above pass" is
+met only in part here. A large rate over a short range (A15-A19) keeps main's values: the
+short form falls back to the difference of powers where expm1 overflows. It also falls back where the
+leading power is subnormal or underflows (A20-A24), which round 3 of the first review found losing about
+1E-5 relative. Unblocked on 2026-10-21 in the owner's session: the round-3 fixes, the A20-A24 oracle
+cells, and a fresh review round.
+
