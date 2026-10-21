@@ -1111,24 +1111,23 @@ T-1592 (second round, lab fit `yield`, now 178 cells with yield-start-sweep):
 - On price alone the S values are ambiguous: only price 98 (frequency independence) pins the step count. With
   one or two steps back, price 80 (E4) gives 0.109134476 or 0.10825933, price 90 (E5) 0.0776002232 or
   0.0774089333, price 50 (E1) 0.242782115 or 0.2424219411.
+T-2304 (probes/yield-start-rate-term, excel-graph 2026-10-21; 50 bonds x frequency 2, 1, 4; basis 0, settlement
+2096-03-01, redemption 100.5, maturities 30 June 2098 to 2126, rates 0 to 0.12, prices 98 and 90): 122 of 150 cells
+stop below PRICE's root (PRICE(y) - price from +3e-10 to +7.7e-8, so they show S) and 28 sit at the root
+(|residual| 2e-11 or less): B1, B26:B30, B33:B35, B39, A40:C40, A44:C45 and A48:C50 (column A is frequency 2, B 1,
+C 4). Residuals fall with the rate and the term at price 98 except on 2126, where they rise with the rate (column A:
+7.9e-9, 2.3e-9, 3.2e-9, 1.1e-8, 3.7e-8); the largest is 7.7e-8 (B43, price 90, rate 0.05, 2110). Stepping Newton
+back two steps (lab arithmetic): 98 / 0.05 / 2100 (A8) reaches 0.05523446, the S of T-1592, but 98 / 0.05 / 2098 (A3)
+reaches 0.0593019, 98 / 0.05 / 2110 (A18) 0.0519331, 90 / 0 / 2098 (A26) 0.0456824 and 90 / 0.05 / 2110 (A43)
+0.0600873, so S moves with term, rate and price and is not one constant. The cells at the root need no S.
+These cells also contradict the stop rule above (first step below about 7e-6): B2 stops 2.0e-8 below the root after a
+last step of 7.54e-6 (2.4e-4 relative), and A26 stops after a step of 6.87e-6 (1.43e-4 relative), which rules out the
+relative reading and raises the absolute lower bound from 6.66e-6 to 6.87e-6. The stop rule needs re-probing.
 Next (T-2304): the probes fix the coupon rate at 0.05 and one set of dates; a rate and term grid at redemption
 100.5 (where every frequency stops below the root) is needed before S can be fitted.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304
-
-
-T-2304 (probes/yield-start-rate-term, excel-graph 2026-10-21; 50 bonds x frequency 2, 1, 4; basis 0, settlement
-2096-03-01, redemption 100.5, maturities 30 June 2098 to 2126, rates 0 to 0.12, prices 98 and 90): 122 of 150 cells
-stop below PRICE's root (PRICE(y) - price from +3e-10 to +7.7e-8, so they show S) and 28 sit at the root
-(|residual| 2e-11 or less): all three frequencies of the 2098 bonds at price 90 (rows 26 to 30, frequency 1 only
-at 3 coupons), price 98 rate 0 frequency 1 (row 1), and price 90 at the higher rates and longer terms (rows 33 to 35,
-39, 40, 44, 45, 48 to 50). The residual grows with the
-term and the rate at price 98 (+1e-8 at rate 0; +4e-8 at rate 0.12 on 2126) and is largest, 7.7e-8, at price
-90 and 0.05 on 2110 (frequency 1). Stepping Newton back (frequency 2, lab arithmetic): 98 / rate 0.05 / 2100 reaches 0.05523443 two
-steps back (the S of T-1592), but 98 / 0.05 / 2098 reaches 0.0593019, 98 / 0.05 / 2110 reaches 0.0519331, 90 / 0 / 2098
-0.0456823 and 90 / 0.05 / 2110 0.0600873, so S moves with term, rate and price and is not one constant near the
-redemption-100 root. The cells at the root need no S.
 
 ## TBILLEQ and TBILLYIELD
 Rule: Excel's TBILLYIELD is `(100 - pr)/pr * (360/DSM)`, evaluated in that order; the textbook
