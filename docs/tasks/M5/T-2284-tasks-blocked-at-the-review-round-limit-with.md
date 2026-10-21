@@ -36,6 +36,8 @@ approves, instead of the branch staying claimed forever.
       once the branch has been idle 2 h, and the work loop's resume step re-runs the full
       reviewer panel from round 1 on the current diff.
 - [ ] The steward lists these PRs under open PRs with their age.
+- [ ] The work-loop skill, scripts/tasks.py and docs/process/routines.md are protected paths: the PR
+      carries a decision record, and the routine prompts change only through the owner (decision 0008).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
