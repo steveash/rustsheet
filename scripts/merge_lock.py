@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The merge lock: agents merge to `main` one at a time (decision 0075).
 
-  scripts/merge_lock.py acquire --pr N [--holder ID] [--ttl MINUTES]  # exit 0: held; 1: busy
+  scripts/merge_lock.py acquire --pr N [--holder ID] [--ttl MINUTES]  # exit 0: held; 1: busy; 3: PR N is done
   scripts/merge_lock.py release [--holder ID]                         # frees only your own lock
   scripts/merge_lock.py status
 
@@ -14,16 +14,24 @@ older than its TTL (the holder died) may be taken over the same way. The empty t
 decision files off the branch (tasks.py scans every origin branch), and CI does not run on it (ci.yml
 runs on pull requests and on `main`).
 
+A PR that is already merged or closed never holds the lock (T-2285): `acquire --pr N` refuses (exit 3)
+when PR N is finished, and any acquirer takes over a lock whose PR is finished, whatever its age. The
+state is one GitHub API read; when it fails the lock behaves as before.
+
 The holder is `CLAUDE_CODE_SESSION_ID` unless `--holder` is given.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import re
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -36,6 +44,10 @@ SEEN_REF = "refs/merge-lock/seen"
 TTL_MINUTES = 30
 # The committer of lock commits, so a clone with no git identity can still take the lock.
 IDENTITY = ("-c", "user.name=merge-lock", "-c", "user.email=merge-lock@invalid")
+
+
+# Seconds to wait for the GitHub API; an unanswered read leaves the lock behaving as before.
+API_TIMEOUT = 10
 
 
 class GitError(Exception):
@@ -116,15 +128,44 @@ def describe(lock: Lock, now: float, ttl_minutes: float) -> str:
     return f"held by {lock.holder} for PR {lock.pr}, {lock.age_minutes(now):.0f} min ago{stale}"
 
 
+def pr_finished(pr: str, root: Path = ROOT) -> bool | None:
+    """Whether PR `pr` of origin's repository is merged or closed: True or False, None when the
+    GitHub API read fails (no network, rate limit, a private repository without a token)."""
+    url = git("remote", "get-url", REMOTE, root=root, check=False).stdout.strip()
+    match = re.search(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", url)
+    if match is None or not pr.isdigit():
+        return None
+    request = urllib.request.Request(
+        f"https://api.github.com/repos/{match[1]}/{match[2]}/pulls/{pr}",
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "rustsheet-merge-lock"},
+    )
+    if token := os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN"):
+        request.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(request, timeout=API_TIMEOUT) as response:  # noqa: S310 (fixed https URL)
+            state = json.load(response)
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+    if not isinstance(state, dict) or "state" not in state:
+        return None
+    return bool(state.get("merged")) or state["state"] != "open"
+
+
 def acquire(holder: str, pr: str, ttl_minutes: float = TTL_MINUTES, root: Path = ROOT) -> int:
-    """Takes the lock, or renews it when `holder` already has it. 0 when held, 1 when busy."""
+    """Takes the lock, or renews it when `holder` already has it. 0 when held, 1 when busy, 3 when
+    PR `pr` is already merged or closed (a finished PR never holds the lock)."""
+    if pr_finished(pr, root):
+        print(f"merge lock refused: PR {pr} is already merged or closed")
+        return 3
     now = time.time()
     lock = read_lock(root)
     current = held(lock)
     mine = current is not None and current.holder == holder
     if current is not None and not mine and not current.is_stale(now, ttl_minutes):
-        print(f"merge lock busy: {describe(current, now, ttl_minutes)}")
-        return 1
+        if not pr_finished(current.pr, root):
+            print(f"merge lock busy: {describe(current, now, ttl_minutes)}")
+            return 1
+        print(f"merge lock: taking over from {current.holder}, whose PR {current.pr} is merged or closed")
     if push_lease(lock.sha if lock else "", lock_commit(holder, pr, root), root):
         print(f"merge lock {'renewed' if mine else 'acquired'} for PR {pr}")
         return 0
