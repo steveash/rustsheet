@@ -104,3 +104,14 @@ fn test_choosecols_error_argument_beats_out_of_range_index() {
     assert_eq!(model._get_text("C1"), "#DIV/0!");
     assert_eq!(model._get_text("C2"), "#N/A");
 }
+
+// An index that saturates to i64::MIN is out of range, not a panic or row 1 (CLAUDE.md directive 5).
+#[test]
+fn test_chooserows_huge_negative_index_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("C1", "=CHOOSEROWS(A1:B2,-1E+30)");
+    model._set("C2", "=CHOOSECOLS(A1:B2,1E+30)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C2"), "#VALUE!");
+}

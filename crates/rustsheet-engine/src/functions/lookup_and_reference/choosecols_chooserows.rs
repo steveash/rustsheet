@@ -79,7 +79,8 @@ impl Model {
     /// itself. An error in any argument beats the `#VALUE!` of an out-of-range index, wherever it
     /// sits (docs/excel-semantics/lookup.md "CHOOSEROWS and CHOOSECOLS: an error argument beats
     /// an out-of-range index"), so the scan goes on after one; of two errors the first in
-    /// argument order is kept (UNVERIFIED). The result is bounded before it is built (CLAUDE.md directive 5).
+    /// argument order is kept (UNVERIFIED). The result is bounded before it is built (CLAUDE.md
+    /// directive 5).
     fn chosen_indices(
         &mut self,
         args: &[Node],
@@ -100,7 +101,7 @@ impl Model {
             }
             for node in list.iter().flatten() {
                 let n = self.cast_number_ref(&array_node_to_calc_result(node, cell), cell)? as i64;
-                if n == 0 || n.abs() > count {
+                if n == 0 || n.unsigned_abs() > count.unsigned_abs() {
                     out_of_range.get_or_insert_with(|| {
                         CalcResult::new_error(Error::VALUE, cell, "Index out of range".to_string())
                     });
