@@ -6,6 +6,7 @@ use crate::{
     expressions::{
         lexer::LexerMode,
         parser::{
+            is_multi_sheet_span,
             stringify::{rename_defined_name_in_node, to_rc_format},
             Node,
         },
@@ -13,7 +14,7 @@ use crate::{
         types::{CellReferenceIndex, CellReferenceRC},
         utils::{is_cell_spelled_name, is_valid_identifier},
     },
-    functions::{logical::SharedLambda, util::is_multi_sheet_span},
+    functions::logical::SharedLambda,
     model::Model,
     reference_operators::RefArg,
     types::DefinedName,
