@@ -3,7 +3,7 @@ id: T-2016
 title: "Faster excel_log10: table-driven argument reduction, bit-identical to the x87 model"
 milestone: M5
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
