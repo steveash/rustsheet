@@ -3,7 +3,7 @@ id: T-2171
 title: "INT cuts to 15 significant digits first, as TRUNC does (INT(1-2^-53) = 1)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -36,3 +36,7 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 5 in eval/baselin
 
 ## Out of scope
 - ODD/EVEN (T-2173), other rounding functions.
+
+## Outcome
+`fn_int` cuts to 15 significant digits through `round_decimal` (Down for positive, Up for negative), and floors a value of 1E+15 or more as it is: the cut would drop integer digits (`INT(2^53+1)`; an eval run without that guard regressed 10 gen-m5 cells). gen-m5: 5 known failures fixed, 0 regressions; visible parity 1744 -> 1739. Negative `INT(-(1-2^-53))` = -1 is unprobed (unit test documents it).
+Follow-up: T-2215 probes the unprobed edges.

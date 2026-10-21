@@ -11,8 +11,8 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::case::{
-    canonical_key, cell_key, is_excel_evidence, load_oracle, split_qualified, CaseSpec, CellInput,
-    CASE_FORMAT, GRAPH_ORACLE,
+    canonical_key, cell_key, is_excel_evidence, kept_nonzero_formulas, load_oracle,
+    split_qualified, CaseSpec, CASE_FORMAT,
 };
 use crate::case_log;
 use crate::cellref::Addr;
@@ -138,7 +138,8 @@ struct Expectation {
     pinned: Option<Value>,
     /// Whether the expectation is an excel-graph value with an excel-graph companion
     /// `=(<formula>)=0` that is FALSE: Excel kept a non-zero result that Graph may report as 0
-    /// (`graph_hides_subnormal`).
+    /// (`graph_hides_subnormal`). A cached override sets it from its evidence probe's companion
+    /// (decision 0090).
     from_graph: bool,
 }
 
@@ -497,12 +498,13 @@ fn apply_cached_overrides(
     let suites_dir = suite.dir.parent().unwrap_or(&suite.dir);
     let rel = relative_case_id(suite, case);
     for o in overrides::parse(&text)?.iter().filter(|o| o.case == rel) {
-        let expected = overrides::evidence_value(o, suites_dir)?;
+        let evidence = overrides::evidence(o, suites_dir)?;
         let target = expectations
             .iter_mut()
             .find(|e| e.sheet == o.sheet && e.addr == o.addr)
             .ok_or_else(|| format!("cached override for unscored cell {}!{}", o.sheet, o.addr))?;
-        target.expected = expected;
+        target.expected = evidence.value;
+        target.from_graph = evidence.kept_nonzero;
     }
     Ok(expectations)
 }
@@ -530,7 +532,10 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     let mut oracle_cells: BTreeSet<String> = BTreeSet::new();
     let mut oracle_is_excel = false;
     let mut workbook_name = None;
+    // Formulas whose excel-graph companion `(x)=0` is FALSE: Excel kept `x` non-zero (decision 0042).
+    let mut kept_nonzero = BTreeSet::new();
     if let Some(o) = load_oracle(case)? {
+        kept_nonzero = kept_nonzero_formulas(&spec, &o);
         source.clone_from(&o.source.kind);
         workbook_name = o.source.workbook_name;
         oracle_is_excel = is_excel_evidence(&o.source.kind);
@@ -544,23 +549,23 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             }
         }
     }
-    let formula_text = |input: &CellInput| match input {
-        CellInput::Str(f) => f.strip_prefix('=').map(str::to_string),
-        _ => None,
-    };
     let formula_of = |sheet: &str, a1: &str| {
         spec.sheets
             .iter()
             .find(|s| s.name == sheet)
             .and_then(|s| s.cells.get(a1))
-            .and_then(formula_text)
+            .and_then(|input| input.formula().map(str::to_string))
     };
     let formulas: Vec<FormulaCell> = spec
         .sheets
         .iter()
         .flat_map(|sheet| {
             sheet.cells.iter().filter_map(|(a1, input)| {
-                Some((sheet.name.clone(), Addr::parse(a1)?, formula_text(input)?))
+                Some((
+                    sheet.name.clone(),
+                    Addr::parse(a1)?,
+                    input.formula()?.to_string(),
+                ))
             })
         })
         .collect();
@@ -572,16 +577,6 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     } else {
         spec.check.clone()
     };
-    // Formulas `(x)=0` whose excel-graph value is FALSE: Excel kept `x` non-zero (decision 0042).
-    let from_graph_oracle = source == GRAPH_ORACLE;
-    let kept_nonzero: BTreeSet<String> = formulas
-        .iter()
-        .filter(|(sheet, addr, _)| {
-            let key = cell_key(sheet, *addr);
-            oracle_cells.contains(&key) && expected.get(&key) == Some(&Value::Bool(false))
-        })
-        .map(|(_, _, formula)| formula.clone())
-        .collect();
     let mut expectations = Vec::new();
     let mut skipped_volatile = 0;
     for q in wanted {
@@ -592,10 +587,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             continue; // pending oracle for this cell (or an undecoded rich error)
         };
         let formula = formula_of(&sheet, &a1);
-        let from_graph = from_graph_oracle
-            && formula
-                .as_deref()
-                .is_some_and(|f| kept_nonzero.contains(&format!("({f})=0")));
+        let from_graph = formula.as_deref().is_some_and(|f| kept_nonzero.contains(f));
         if volatile.contains(&(sheet.clone(), addr)) {
             skipped_volatile += 1;
             continue;

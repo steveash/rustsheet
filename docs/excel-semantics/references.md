@@ -1474,7 +1474,11 @@ inside the range, including when the cell is also in the range's row number and 
 `@XLOOKUP(2,Data!A1:A3,Data!B1:C3)` (the reference Data!B2:C2) is Data!B2 entered in another sheet's B2 and
 Data!C2 in C2. Column ranges intersect by row; a 2-D range never intersects (`#VALUE!`).
 Evidence: probes/xlookup-row-column-picks B2, C2, G3, E4, G15 (excel-graph, 2026-10-11, T-0962), through `@XLOOKUP`
-only; a plain `@Data!B2:C2` is unprobed (T-1333).
+and, plain (excel-graph, T-1333, probes/implicit-intersection-one-row-plain): `=@Data!B2:C2` is Data!B2 in
+another sheet's B2 and B5 (column wins, the row is irrelevant), Data!C2 in C2 and C5, and `#VALUE!` in E2 (outside
+the columns). The legacy form `=Data!B2:C2` (no `@`, legacy formula) gives the same values. On the same sheet
+`=@B10:C10` is B10's value in B12 and C10's in C12, `#VALUE!` in E12 and in E10 (row 10, outside B:C); the legacy
+form agrees.
 Implemented in: `implicit_intersection` (crates/rustsheet-engine/src/implicit_intersection.rs), shared by every
 implicit intersection.
 Status: VERIFIED (web)

@@ -165,3 +165,25 @@ fn slash_without_a_denominator_stays_a_literal() {
     assert_eq!(text(5.0, r#"0 /"x""#), "5 /x");
     assert_eq!(text(5.0, "0=/"), "5=/");
 }
+
+/// probes/fraction-numerator-overflow and -overflow2 (excel-graph, T-1740): with no integer part a
+/// fixed numerator past 32767 and a placeholder value from 2147483647 on cannot be shown (TEXT
+/// `#VALUE!`, displayed text 255 `#`); a whole part takes the rest.
+#[test]
+fn numerator_past_excels_bound_is_unshowable() {
+    let ctx = FormatContext::new(get_locale("en").unwrap());
+    let unshowable = |value: f64, format: &str| format_number(value, format, &ctx).unshowable;
+    assert_eq!(text(327.67, "?/100"), "32767/100");
+    assert!(unshowable(327.68, "?/100"));
+    assert!(unshowable(-327.68, "?/100"));
+    // 327.675 * 100 rounds to 32768 at 15 digits.
+    assert!(unshowable(327.675, "?/100"));
+    assert_eq!(text(32767.0, "?/1"), "32767/1");
+    assert!(unshowable(32768.0, "?/1"));
+    assert_eq!(text(327.68, "# ?/100"), "327 68/100");
+    assert_eq!(text(2_147_483_646.0, "?/?"), "2147483646/1");
+    assert!(unshowable(2_147_483_647.0, "?/?"));
+    assert!(unshowable(-2_147_483_647.0, "??/??"));
+    assert_eq!(text(1E15, "# ?/?"), "1000000000000000    ");
+    assert_eq!(format_number(1000.0, "?/100", &ctx).text, "#VALUE!");
+}

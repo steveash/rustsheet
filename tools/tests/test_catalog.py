@@ -57,3 +57,22 @@ def test_only_functions_the_web_oracle_cannot_evaluate_are_oracle_none() -> None
     # The oracle canary refuses SHEETS()/INFO() workbooks (oracle/canary.py). JIS (#NAME?) and
     # FILTERXML (#VALUE!) do get web values, which are goldens (decision 0039, T-0040).
     assert {f["name"] for f in _functions() if f.get("oracle") == "none"} == {"INFO", "SHEETS"}
+
+
+# Functions whose result can be a multi-cell array by design (T-2224): `rustsheet-gen --spill` reserves a
+# footprint under them. Scalar functions that only lift over an array argument are not listed.
+DYNAMIC_ARRAY = {
+    "BYCOL", "BYROW", "CHOOSECOLS", "CHOOSEROWS", "COLUMN", "DROP", "EXPAND", "FILTER", "FILTERXML",
+    "FREQUENCY", "GROUPBY", "GROWTH", "HSTACK", "IMPORTCSV", "IMPORTTEXT", "INDEX", "LINEST", "LOGEST",
+    "MAKEARRAY", "MAP", "MINVERSE", "MMULT", "MODE.MULT", "MUNIT", "OFFSET", "PIVOTBY", "RANDARRAY",
+    "REGEXEXTRACT", "ROW", "SCAN", "SEQUENCE", "SORT", "SORTBY", "STOCKHISTORY", "TAKE", "TEXTSPLIT",
+    "TOCOL", "TOROW", "TRANSPOSE", "TREND", "TRIMRANGE", "UNIQUE", "VSTACK", "WRAPCOLS", "WRAPROWS",
+    "XLOOKUP",
+}  # fmt: skip
+
+
+def test_dynamic_array_marks_exactly_the_array_returning_functions() -> None:
+    marked = {f["name"] for f in _functions() if "dynamic_array" in f}
+    # Only `true` is written: an unmarked function is not dynamic.
+    assert all(f["dynamic_array"] is True for f in _functions() if "dynamic_array" in f)
+    assert marked == DYNAMIC_ARRAY
