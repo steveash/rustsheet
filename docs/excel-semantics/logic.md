@@ -36,7 +36,8 @@ a 0 or blank expression: `SWITCH(0,blank,..)` and `SWITCH(blank,blank,..)` hit i
 default). A blank expression cell against a case matches 0 and a blank case cell, and not FALSE, "" or TRUE.
 Evidence: gen-m5/d0419fa09d6a756a Calc!A63 (excel-graph, 2026-10-20); probes/t2200-blank-and-padded-m5-args.
 Status: VERIFIED (excel-graph); implemented (T-2166: `switch_matches` reads a blank cell as 0 on either side; an
-omitted case argument keeps the empty-value rule).
+omitted case argument keeps the empty-value rule). Blank elements of a range expression or case
+(`SWITCH(A1:A2,FALSE,..)`) take the same rule on the lifted path, unprobed; T-2280's probe covers them.
 
 ## IFERROR / IFNA of a blank cell is an empty value, not the reference
 Rule: when IFERROR's or IFNA's value argument is a blank cell, the result is the blank's value, not a reference to it.
