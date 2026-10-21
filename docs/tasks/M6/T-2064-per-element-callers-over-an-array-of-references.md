@@ -69,5 +69,5 @@ nest of calls stays linear. Over a grid it reads the other arguments once the sa
 every element's walks and the other arguments' reads (DEVIATION in lookup.md), then calls the function per element.
 COUNTIF/SUMIF/SUMIFS spill by `criteria_and_grid_static_result`; SHEET of a grid is one `#N/A`; VSTACK of grids in
 a reference position stacks them (`Model::vstack_reference`). Eval: probes known failures 1738 -> 1695 (43 cells:
-the 23 listed plus their spilled neighbours), no regressions; visible parity 1760 -> 1742. Follow-up: T-2290
+the 23 listed plus their spilled neighbours), no regressions; visible parity 1760 -> 1742. Follow-up: T-2292
 probes the cases lookup.md lists as unprobed.

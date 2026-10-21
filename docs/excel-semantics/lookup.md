@@ -804,7 +804,7 @@ runs each once per element with the element as an absolute reference in its plac
 grids broadcasts them); COUNTIF, SUMIF and SUMIFS spill by `criteria_and_grid_static_result`. SHEET of a grid is
 one `#N/A` (b1d E101), and VSTACK of grids in a reference position stacks them (`Model::vstack_reference`, b2 E225).
 The other arguments are read once before the elements run and put back as literals or absolute references, so a
-nest of such calls is evaluated once per level. Unprobed (T-2290): an error element in a per-element call (ours: the
+nest of such calls is evaluated once per level. Unprobed (T-2292): an error element in a per-element call (ours: the
 call with that error in the reference's place, `AREAS(OFFSET(A1,{0;-1},0))` 1, `#REF!`); a criteria or function_num
 array beside a grid (ours: each element's call cut to its top-left value, so `COUNTIF(OFFSET(A1,{0;1},0),{">0",">5"})`
 is 2x1, where a broadcast would give 2x2); VSTACK of several grids (ours: narrower ones padded with `#N/A` elements);
