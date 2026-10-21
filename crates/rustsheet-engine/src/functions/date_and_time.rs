@@ -121,7 +121,6 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
-use crate::formatter::dates::shift_months;
 use crate::functions::lift::{num_error, number_result, value_error};
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
@@ -664,52 +663,30 @@ impl Model {
                 Ok(f64::from((months % 12).abs()))
             }
             "YD" => {
-                let make_date = |y: i32, m: u32, d: u32| -> Result<chrono::NaiveDate, Error> {
-                    chrono::NaiveDate::from_ymd_opt(y, m, d).ok_or(Error::NUM)
+                // The end moves into the start's year, or the next one when its month and day come
+                // first; the count runs from the start (gen-m6 excel-graph, dates.md "DATEDIF "MD"
+                // and "YD" day counts", T-2264). A 29 February end in a non-leap year lands on
+                // 1 March (UNVERIFIED: no cell decides it).
+                let year = if (end.month(), end.day()) < (start.month(), start.day()) {
+                    start.year() + 1
+                } else {
+                    start.year()
                 };
-
-                // Compute the last valid day of a given month/year.
-                let make_last_day_of_month = |y: i32, m: u32| -> Result<chrono::NaiveDate, Error> {
-                    let (next_y, next_m) = if m == 12 { (y + 1, 1) } else { (y, m + 1) };
-                    let first_next = make_date(next_y, next_m, 1)?;
-                    let last_day = first_next - chrono::Duration::days(1);
-                    make_date(y, m, last_day.day())
-                };
-
-                // Attempt to build the anniversary date in the end year.
-                let mut start_adj =
-                    match chrono::NaiveDate::from_ymd_opt(end.year(), start.month(), start.day()) {
-                        Some(d) => d,
-                        None => make_last_day_of_month(end.year(), start.month())?,
-                    };
-
-                // If the adjusted date is after the end date, shift one year back.
-                if start_adj > end {
-                    let shift_year = end.year() - 1;
-                    start_adj = match chrono::NaiveDate::from_ymd_opt(
-                        shift_year,
-                        start.month(),
-                        start.day(),
-                    ) {
-                        Some(d) => d,
-                        None => make_last_day_of_month(shift_year, start.month())?,
-                    };
-                }
-
-                Ok((end - start_adj).num_days() as f64)
+                let moved = chrono::NaiveDate::from_ymd_opt(year, end.month(), end.day())
+                    .or_else(|| chrono::NaiveDate::from_ymd_opt(year, 3, 1))
+                    .ok_or(Error::NUM)?;
+                Ok((moved - start).num_days() as f64)
             }
             "MD" => {
-                let mut months =
-                    (end.year() - start.year()) * 12 + (end.month() as i32 - start.month() as i32);
-                if end.day() < start.day() {
-                    months -= 1;
+                // The end's day minus the start's, plus the length of the month before the end's
+                // month when negative (gen-m6 excel-graph, dates.md, T-2264).
+                let days = i64::from(end.day()) - i64::from(start.day());
+                if days >= 0 {
+                    return Ok(days as f64);
                 }
-                // Both dates are in Excel's calendar, so the shift cannot leave chrono's range;
-                // the checked form keeps a panic off this path all the same (T-1419).
-                let Some(start_shifted) = shift_months(start, months) else {
-                    return Err(Error::NUM);
-                };
-                Ok((end - start_shifted).num_days() as f64)
+                let first = end.with_day(1).ok_or(Error::NUM)?;
+                let previous_month = first.pred_opt().ok_or(Error::NUM)?;
+                Ok((days + i64::from(previous_month.day())) as f64)
             }
             _ => Err(Error::VALUE),
         }
