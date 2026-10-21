@@ -257,8 +257,8 @@ impl Model {
 
     /// Walk a scalar / range / array node and invoke the provided closure with every
     /// numeric date serial that is encountered. A blank cell is no holiday; a text cell that
-    /// reads as a number is a holiday, in a range and as a one-cell reference (not as literal
-    /// or computed text, which no cell evidences).
+    /// reads as a number is a holiday, in a range and as a scalar, computed text included
+    /// (gen-m6/acc70339aac84a23 A182; literal text and `{"1"}` are unprobed).
     fn collect_serial_numbers<F>(
         &mut self,
         node: &Node,
@@ -298,7 +298,7 @@ impl Model {
             }
             e @ CalcResult::Error { .. } => return Err(e),
             CalcResult::EmptyCell => {}
-            CalcResult::String(text) if matches!(node.ungrouped(), Node::ReferenceKind { .. }) => {
+            CalcResult::String(text) => {
                 handle(self.text_holiday_serial(&text, cell)?)?;
             }
             _ => return Err(invalid_holiday(cell)),
