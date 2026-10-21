@@ -3,7 +3,7 @@ id: T-2281
 title: "AGGREGATE 14-19 with a multi-cell range k: probe and match (EDATE over it is #VALUE!, ours #NUM!)"
 milestone: M6
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
