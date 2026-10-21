@@ -736,16 +736,11 @@ Status: VERIFIED (Excel-cached)
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`
 (sheet `SINH_COSH_TANH`; T-0914): COSH = `(e^x + e^-x)/2` (34/34 cells; libm 33/34); SINH uses the
-same exp form for |x| >= 0.5 and the Taylor series below (B10, B18, B42; libm misses B42);
-TANH = `(e^x - e^-x)/(e^x + e^-x)` for |x| >= 1 (all cells), `sinh/cosh` below 1 (D18, D19), ±1 for
-|x| > 20. Status: PARTIAL — TANH at 0.123/0.604 still differs by an ulp (T-2134; "SINH and TANH on
-0.4 .. 1" below). COTH/CSCH/SECH are 1 over these (T-0917, "COTH, CSCH and SECH" below); ASINH/ACOSH
+same exp form for |x| >= 1; TANH = `(e^x - e^-x)/(e^x + e^-x)` for |x| >= 1 (all cells), ±1 for |x| > 20.
+Below 1, SINH and TANH are built from expm1 (T-2134, "SINH and TANH below 1 are built from expm1" below),
+replacing T-0914's Taylor series and sinh/cosh. Status: PARTIAL, as Excel's expm1 is not known. COTH/CSCH/SECH are 1 over these (T-0917, "COTH, CSCH and SECH" below); ASINH/ACOSH
 (T-2031) and ATANH/ACOTH (T-0917) are fitted separately.
-T-0111 (empirical fit): for 0.9 <= |x| < 1 TANH uses `(e^2x - 1)/(e^2x + 1)`. Two cached cells need
-it: x = ±0.9999999999 (`SINH_COSH_TANH!D15/D17`, sinh/cosh and libm miss) and x = -0.9950546550253772
-(poi `FormulaEvalTestData_Copy.xlsx` `EverythingTests!G1360`, sinh/cosh and the exp quotient both
-1 ulp high; libm and `e^2x` fit). The 0.9 cutoff is a guess between 0.604 (sinh/cosh fits) and 0.995;
-confirm with an oracle probe of TANH on [0.5, 1) once T-0004 lands.
+T-0111's e^2x TANH on 0.9 <= |x| < 1 is superseded: see "SINH and TANH below 1 are built from expm1" (T-2134).
 
 ### NORM.S.INV / NORMSINV / NORM.INV(p,0,1): oracle sweep (T-1006)
 Probe `probes-numeric/m9-norm-s-inv` (639 sweep cells = 213 arguments x 3 functions, plus 9 flush/subnormal cells, oracle: excel-graph, 2026-10-08) is the fitting set for T-0925.
@@ -885,7 +880,40 @@ mpmath check during the T-2178 review found Excel up to 2.57 ulp from the true v
 for SINH (+-0.8541474891480176), with misses also below 0.4; COSH stayed within 0.98 ulp (looks correctly rounded here).
 Calc!A1035 stores 0.995054655025377: m9-hyperbolic A245/A246 read their 16-digit literal as this 15-digit value
 (engineering.md, 16-digit literal quirk), so their results differ from the sweep's 0.9950546550253772 cells.
-Status: OPEN.
+Status: superseded by "SINH and TANH below 1 are built from expm1" (T-2134), which explains the shape; the expm1
+kernel itself is still OPEN.
+
+### SINH and TANH below 1 are built from expm1 (T-2134)
+Rule. For |x| < 1, with a = expm1(x) and b = expm1(-x), each a double:
+- SINH(x) = (a - b)/2;
+- TANH(x) = (a - b)/((a + b) + 2), summed in that order.
+COTH and CSCH, as 1 over TANH and SINH, follow. COSH is not part of it: it stays `(e^x + e^-x)/2` (1033 of the
+sweep's 1035 COSH cells).
+- Evidence: probes-numeric `t2178-hyperbolic-unit-sweep` (excel-graph), 1015 arguments with 0 < |x| < 1. With libm's
+  (glibc) expm1 the two forms match 773 SINH and 781 TANH cells. T-0914's forms (series SINH below 0.5, exp form above,
+  sinh/cosh TANH, e^2x TANH from 0.9) match 612 and 551. The expm1 forms win or tie in every band from 1E-8 to 1.
+  - At x of 1E-8 to 1E-4, Excel's SINH is up to 0.98 ulp from the true value, and `SINH(1.519911E-8)` is x plus one ulp
+    where x^3/6 is 0.18 ulp. So the result is not x plus a small correction; it is the difference of two rounded
+    values of size x, as in a - b.
+  - TANH below 1E-4 shows the same: `TANH(2.656088E-8)` is x minus 3 ulp where x^3/3 is 1.9 ulp.
+- Excel's expm1 is not libm's. For every one of the 1015 arguments, some pair (a, b) within 3 ulp of libm's
+  (expm1(x), expm1(-x)) gives both Excel's SINH and Excel's TANH. On 747 arguments libm's own pair does. These do not
+  reproduce Excel's expm1 either, being as close to correctly rounded as libm:
+  - x87 F2XM1 of t = RN64(x log2 e) (or t rounded to a double), stored to a double, with or without a reciprocal
+    for t < 0;
+  - expm1 kept in 64 bits and the forms rounded once.
+  At x = PI()/4 and +-0.9999999999 (the cached `TRIGONOMETRIC.xlsx` B51 and B15 rows and the gen-m5 PI()/4 cells) libm's
+  expm1 lands an ulp off Excel's (decision 0092).
+- Rejected on the same 1015 arguments (SINH / TANH cells matched):
+  - Cephes `sinh`/`tanh`: 713 / 545;
+  - Cody-Waite rational forms: 707 / 541;
+  - fdlibm `sinh` and `tanh`, built on expm1 too: 686 / 450;
+  - (a - b)/(2 + a + b): TANH 644;
+  - (a + a/(a + 1))/2 for SINH: 703;
+  - expm1 replaced by exp(x) - 1 above any cut from 0.2 to 1: never better than expm1 throughout.
+- At |x| >= 1 the exp forms stay: they match all 20 of the sweep's control points in (1, 1.5), and the expm1 forms 17.
+Ours: `functions/math_and_trigonometry/hyperbolic.rs` `sinh`, `tanh` (`expm1_pair`; Rust's `exp_m1`, libm).
+Status: VERIFIED (excel-graph) as a shape. Excel's expm1 kernel is UNVERIFIED (follow-up T-2240).
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
 Probe `probes-numeric/m9-trig-reduction` (666 cells = 111 arguments x 6 functions, oracle: excel-graph, 2026-10-08) is the fitting

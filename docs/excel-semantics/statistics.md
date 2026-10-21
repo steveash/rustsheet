@@ -1528,7 +1528,22 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
   `t0969-beta-prefactor` (BETA.DIST cdf and pdf for a around 7.5 and several b at x = 0.05 and 0.2) shows the same
   -14 to -22 at (7.5, 0.5), but its other cells carry 10 to 90 x 2^-53 of power-term noise, too much to isolate
   a prefactor.
-Status: VERIFIED (excel-graph) as an observation; the algorithm is UNVERIFIED
+- The algorithm, for a < 1 and b <= 8 (T-0969 attempt 10): B(a,b) = EXP(GAMMALN(a) + (GAMMALN(b) - GAMMALN(a+b))),
+  with Excel's own GAMMALN and in that grouping. probes-numeric `t0969-beta-switch` (excel-graph, 2026-10-21) has
+  `BETA.DIST(x,a,b,FALSE)` at x = 0.01 and 0.03 for a in {0.25, 0.5, 0.75, 1.5, 2.5} and b = 6.5 to 9.5 by 1/32, with
+  the worksheet's GAMMALN and GAMMA of a, b and a + b beside them:
+  - a < 1, b <= 8: the form predicts the density's error within 3 x 2^-53 on 140 of 147 rows (the other 7 within
+    3.5). Excel's errors run from -39 to +22.
+  - Rejected there: GAMMA(a)*GAMMA(b)/GAMMA(a+b) in three orders (at most 30 of 147), and the other two groupings
+    of the GAMMALN sum (36 and 58).
+  - b > 8, or a >= 1.5: Excel is within the power terms' noise of the exact B, and the GAMMALN form misses
+    (at most 4 of each 48-row region). GAMMALN switches to Stirling's series at 8 ("GAMMA, GAMMALN and LN kernels").
+  - For the Student t this is B(n/2, 1/2) for df up to 16. In the engine only df 13 to 16 take it. Below df 13
+    (b under 6.5, not probed) it costs probes-numeric cells, as the df-ratio errors there are small.
+- Ours: `student_t.rs` `log_gamma_ratio`, which scales the series tail for df 13 to 16. Visibly-off cells:
+  `t0969-t-tail-grid` 260 -> 245, `t0969-t-df-ratio` 9 -> 8, `t0969-t-beta-link` 42 -> 40, with none lost
+  in the family's probes.
+Status: VERIFIED (excel-graph) for a < 1, 6.5 <= b <= 8; b < 6.5 and a in [1, 1.5) UNVERIFIED
 Tasks: T-0969
 
 ## Student t density noise is not input rounding (T-0969)
@@ -1786,6 +1801,39 @@ cum TRUE/FALSE (176 cells). No error appeared on the grid.
 Evidence: probes-numeric case `m9-weibull-dist` (cells A1:A176). Oracle: excel-graph, 2026-10-13.
 Status: VERIFIED (excel-graph)
 Tasks: T-1046 (sweep), T-0978
+
+### The far-tail density is less accurate than exp(-t), consistent with t = (x/l)^k through EXP(k*LN(x/l)) (lead)
+In the tail, Excel's density is off the true value by about one rounded logarithm's error times t.
+Match it; do not correct it.
+- `WEIBULL.DIST(100,1,1,FALSE)` = 3.7200759760206773E-44, while exp(-100) = 3.720075976020836E-44
+  (4E-14 relative; m9-weibull-dist A64).
+- `WEIBULL.DIST(1000,1,9,FALSE)` = 6.177532755504216E-50 (A88).
+- `WEIBULL.DIST(5,3.7,1,FALSE)` = 9.363099887555361E-166 (A146).
+
+Computing t = exp(k*ln(x/l)), not `powf`, reproduces this. A double-precision re-run covered the
+230 in-domain cells (x, k, l > 0 with a literal TRUE/FALSE cumulative; 116 cdf, 114 density) of
+m9-weibull-dist, t1048-weibull and t1049-weibulldist. Visibly-off and bit-exact counts are per form:
+
+| form | visibly off | bit-exact |
+|---|---|---|
+| cdf `-expm1(-t)` | 0 | 94 |
+| cdf `-expm1(-(x/l)^k)`, `(x/l)^k` via powf | 1 | 74 |
+| cdf, statrs form `-expm1(-x^k*l^-k)` (the engine today) | 1 (m9 A159) | 76 |
+| cdf `1-EXP(-t)` (loses the small-x cells) | 24 | |
+| density `k/l*exp((k-1)*ln(x/l))*exp(-t)` | 4 (m9 A158, A168; t1048 A8, B8) | |
+| density `k/l^k*exp((k-1)*ln x)*exp(-t)` | 2 (t1048 A8, B8) | |
+| density `k/l*(x/l)^(k-1)*exp(-(x/l)^k)`, powf | 15 | |
+| density, statrs form `k/l*(x/l)^(k-1)*exp(-x^k*l^-k)` (the engine today) | 17 | |
+
+t1048 A8 is `WEIBULL(10,3,8,FALSE)` and B8 its WEIBULL.DIST twin, both 0.08310360884023987. The same t gives
+ironcalc-calc WEIBULL_DIST.xlsx E2 exactly (`WEIBULL.DIST(0.8,1,9,TRUE)` = 0.08505277126996899).
+The re-runs used libm `exp`/`log`, not Excel's EXP and LN kernels, so the bit-level form is still
+open (T-0978).
+Evidence: probes-numeric m9-weibull-dist A64, A88, A146, t1048-weibull, t1049-weibulldist (excel-graph);
+ironcalc-calc WEIBULL_DIST.xlsx E2 (excel-cached, Microsoft Macintosh Excel).
+Status: the values are VERIFIED (excel-graph); the `exp(k*ln(x/l))` form is UNVERIFIED (a fit lead,
+gap triage 2026-10-21; T-2239, T-0978).
+Tasks: T-2239 (15 digits), T-0978 (last digits)
 
 ## Legacy distribution names sweep (T-1047)
 Rule: each legacy name returns exactly the same value or error as its modern equivalent on every paired cell (BETADIST = BETA.DIST cum, BETAINV = BETA.INV, BINOMDIST = BINOM.DIST, CHIDIST = CHISQ.DIST.RT, CHIINV = CHISQ.INV.RT, CHITEST = CHISQ.TEST, CONFIDENCE = CONFIDENCE.NORM, CRITBINOM = BINOM.INV, EXPONDIST = EXPON.DIST, FDIST = F.DIST.RT, FINV = F.INV.RT, FTEST = F.TEST); the aliases need no separate kernel.

@@ -99,12 +99,7 @@ fn excel_weekday_index(serial: i64) -> usize {
 }
 
 fn invalid_date(value: f64) -> Formatted {
-    Formatted {
-        text: "#VALUE!".to_owned(),
-        color: None,
-        error: Some(format!("Invalid date value: '{value}'")),
-        unshowable: true,
-    }
+    Formatted::unshowable(format!("Invalid date value: '{value}'"))
 }
 
 /// Formats a TEXT value, `None` being a blank. A blank with an empty format gives "" and any other
@@ -717,11 +712,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         ParsePart::Number(p) => {
             if let Some(fraction) = &p.fraction {
-                return Formatted {
-                    text: format_fraction(value, p, fraction),
-                    color: p.color,
-                    error: None,
-                    unshowable: false,
+                return match format_fraction(value, p, fraction) {
+                    Some(text) => Formatted {
+                        text,
+                        color: p.color,
+                        error: None,
+                        unshowable: false,
+                    },
+                    None => {
+                        Formatted::unshowable(format!("Fraction numerator overflows: '{value}'"))
+                    }
                 };
             }
             let mut text = "".to_string();
