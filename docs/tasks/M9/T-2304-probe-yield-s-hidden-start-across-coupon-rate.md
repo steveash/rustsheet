@@ -3,7 +3,7 @@ id: T-2304
 title: "Probe YIELD's hidden start across coupon rate and term"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -39,3 +39,8 @@ That is 50 bonds and 150 cells. Write the grid layout into the case description.
 
 ## Out of scope
 - Fitting S (T-1592).
+
+## Outcome
+Added probes/yield-start-rate-term (150 cells, excel-graph, 2026-10-21) and the findings paragraph in
+financial.md: 122 cells stop below PRICE's root and show S, 28 are at the root; S stepped back moves with
+term, rate and price. No engine change; eval pass counts unchanged.
