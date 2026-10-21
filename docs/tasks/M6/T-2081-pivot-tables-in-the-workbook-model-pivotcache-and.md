@@ -3,7 +3,7 @@ id: T-2081
 title: "Pivot tables in the workbook model: PivotCache and PivotTable types (SPEC-0015)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
