@@ -3,7 +3,7 @@ id: T-2117
 title: "Probe the modulus of IMLN, IMLOG10, IMLOG2 and IMSQRT and use the hypot modulus where Excel does"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
