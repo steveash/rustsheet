@@ -113,11 +113,8 @@ impl Model {
         }
 
         let (mut accumulator, start) = if has_initial {
-            let init = self.evaluate_node_in_context(&args[0], cell);
-            if init.is_error() {
-                return init;
-            }
-            (init, 0)
+            // Excel: an error initial value goes to the LAMBDA like any value (docs/excel-semantics/arrays.md "SCAN and REDUCE keep errors in the LAMBDA").
+            (self.evaluate_node_in_context(&args[0], cell), 0)
         } else {
             (data.at(0, 0), 1)
         };
@@ -129,9 +126,6 @@ impl Model {
                 [accumulator, data.at(index / columns, index % columns)],
                 cell,
             );
-            if accumulator.is_error() {
-                return accumulator;
-            }
         }
 
         accumulator

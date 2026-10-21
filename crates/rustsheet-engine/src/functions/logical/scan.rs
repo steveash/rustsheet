@@ -40,11 +40,8 @@ impl Model {
         let num_cols = data.columns();
 
         let mut accumulator = if has_initial {
-            let init = self.evaluate_node_in_context(&args[0], cell);
-            if init.is_error() {
-                return init;
-            }
-            init
+            // Excel: an error initial value goes to the LAMBDA like any value (docs/excel-semantics/arrays.md "SCAN and REDUCE keep errors in the LAMBDA").
+            self.evaluate_node_in_context(&args[0], cell)
         } else {
             data.at(0, 0)
         };
@@ -69,9 +66,6 @@ impl Model {
             for (j, slot) in result_row.iter_mut().enumerate().skip(col_start) {
                 accumulator =
                     self.call_lambda_caller(&mut caller, [accumulator, data.at(i, j)], cell);
-                if accumulator.is_error() {
-                    return accumulator;
-                }
                 let value = match self.lambda_result_value(accumulator.clone(), cell) {
                     Ok(value) => value,
                     Err(error) => return error,
