@@ -414,15 +414,16 @@ impl Model {
             Node::LambdaCallKind { lambda, args } => {
                 return self.call_callee_as_reference(lambda, args, cell)
             }
-            // A lifted OFFSET, INDIRECT, TRIMRANGE, TAKE or DROP is an array of references
-            // (SPEC-0014; T-1838); an unlifted TAKE or DROP gives its value, as before.
+            // A lifted OFFSET, INDIRECT, TRIMRANGE, TAKE or DROP is an array of references, and
+            // so is a VSTACK of them (SPEC-0014; T-1838, T-2064); unlifted, each gives its value.
             Node::FunctionKind {
                 kind:
                     kind @ (Function::Offset
                     | Function::Indirect
                     | Function::Trimrange
                     | Function::Take
-                    | Function::Drop),
+                    | Function::Drop
+                    | Function::Vstack),
                 args,
             } => return self.reference_producer(kind, args, cell),
             Node::FunctionKind {

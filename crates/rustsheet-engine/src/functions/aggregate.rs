@@ -434,7 +434,7 @@ pub(crate) fn is_multi_cell(left: &CellReferenceIndex, right: &CellReferenceInde
 
 /// An evaluated scalar as a literal argument node, so the scalar path reads it like a typed
 /// value; `None` for a reference or an array.
-fn value_node(value: &CalcResult) -> Option<Node> {
+pub(crate) fn value_node(value: &CalcResult) -> Option<Node> {
     Some(match value {
         CalcResult::Number(number) => Node::NumberKind(*number),
         CalcResult::Boolean(boolean) => Node::BooleanKind(*boolean),

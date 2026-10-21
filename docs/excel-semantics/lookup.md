@@ -797,8 +797,25 @@ the value view (`GridReading::Values`), SUMPRODUCT through `Model::sumproduct_ar
 CHOOSE (`SUM(IF(TRUE,r))` 101, b1c E69, E73), which their reference reading picks. INDIRECT
 (`Model::indirect_reference`) and TRIMRANGE (`Model::trimrange_reference`) are producers on the same carrier (T-1957;
 shared helpers in lookup_and_reference/ref_lift.rs); TRIMRANGE's array, computed-reference and error sources:
-"TRIMRANGE lifted over an array, a computed reference or an error" below (T-2089). Not yet: the
-per-element callers (T-2064). The pass-through of IF, CHOOSE, LET and a LAMBDA parameter, and OFFSET over a grid:
+"TRIMRANGE lifted over an array, a computed reference or an error" below (T-2089). The
+per-element callers (T-2064): `Function::per_reference_element` lists them and the arguments that take a reference,
+and `Model::call_per_reference_element` (lookup_and_reference/ref_lift.rs, called from `Model::evaluate_function`)
+runs each once per element with the element as an absolute reference in its place (a SUMIF or SUMIFS with several
+grids broadcasts them); COUNTIF, SUMIF and SUMIFS spill by `criteria_and_grid_static_result`. SHEET of a grid is
+one `#N/A` (b1d E101), and VSTACK of grids in a reference position stacks them (`Model::vstack_reference`, b2 E225).
+The other arguments are read once before the elements run and put back as literals or absolute references, so a
+nest of such calls is evaluated once per level. Unprobed (T-2292): an error element in a per-element call (ours: the
+call with that error in the reference's place, `AREAS(OFFSET(A1,{0;-1},0))` 1, `#REF!`); a criteria or function_num
+array beside a grid (ours: each element's call cut to its top-left value, so `COUNTIF(OFFSET(A1,{0;1},0),{">0",">5"})`
+is 2x1, where a broadcast would give 2x2); VSTACK of several grids (ours: narrower ones padded with `#N/A` elements);
+an argument beside a grid that reads as an empty value, a 3-D range or a LAMBDA (ours: the call is `#VALUE!`,
+`COUNTIF(OFFSET(A1,{0;1},0),IF(TRUE,C5))` with C5 blank); a grid reached through IF, CHOOSE, LET, TAKE, DROP or TRIMRANGE by a per-element caller (ours: the value view, only
+a direct OFFSET or INDIRECT is read per element).
+DEVIATION (decision 0014, CLAUDE.md directive 5): before any element runs, each element of a per-element call is
+charged one visit (ROW, COLUMN, AREAS, CELL, ISFORMULA, N, T) or the cells of its reference inside the used area
+(SUBTOTAL, COUNTIF, SUMIF, COUNTBLANK; SUMIFS times its criteria pairs) against the shared cell-visit cap of
+criteria.md; past it the call is `#ERROR!` where Excel computes it
+(`SUBTOTAL(9,OFFSET(A:A,0,0,,SEQUENCE(1,1000)))` with A1048576 filled). The pass-through of IF, CHOOSE, LET and a LAMBDA parameter, and OFFSET over a grid:
 "Arrays of references through LET, IF, CHOOSE and OFFSET" below (T-2078).
 Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065, T-2078, T-2089
 
