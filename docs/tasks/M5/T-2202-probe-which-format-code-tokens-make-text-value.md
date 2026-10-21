@@ -47,6 +47,6 @@ which token makes `TEXT(2.5,"a*?b1")` `#VALUE!`. T-2157 can then write one valid
 - Text values under valid 1-3 section codes (T-1130); number-like text values (T-2158).
 
 ## Outcome
-Probed with excel-graph (88 cells). Rejection is all-or-nothing across number, text, empty text and boolean, and an `@`
-section does not rescue it; `b1` after any literal or fill token is rejected, while `*?` and `b1` alone are fine. Recorded in
+Probed with excel-graph (88 cells). For every probed code, rejection is all-or-nothing across number, text, empty text and boolean, and an `@`
+section does not rescue it; `b1` after the probed prefixes `a`, `*x` and `*?` is rejected (other prefixes unprobed), while `*?` and `b1` alone are fine. Recorded in
 number-formats.md; new failing cells baselined as new coverage.

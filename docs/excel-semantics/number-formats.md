@@ -342,14 +342,14 @@ apply: `TEXT(" x ","TRUE")`, `TEXT("TRUE",TRUE)`, `TEXT("a",FALSE)`, `TEXT(FALSE
 `TEXT(TRUE,"#N/A")`, `TEXT("TRUE","HELLO ")`, `TEXT("a*",FALSE)` and `TEXT(FALSE,"x~*0.1Hello World")` are `#VALUE!` (a bare
 `E` without a sign, an `N`, or a date token beside digit placeholders: "Bare letters and digits in a number format" above).
 Ours returns the text or boolean unchanged. Also `TEXT(2.5,"a*?b1")` is `#VALUE!` (ours "a "); which part Excel rejects (the
-`*?` fill followed by `b1`) was probed in T-2202 (below).
+part is `b1` after a prefix) was identified in T-2202 (below).
 Probed (excel-graph, 2026-10-21, T-2202, probes/t2202-text-code-check-on-text, Calc!A1:A88; each code against the number 2.5,
 "a", "" and TRUE): for every probed code the check is all-or-nothing across the four values: a rejected code is `#VALUE!` for every one of them, and
 an accepted code is for none. Rejected: `"*?b1"`, `"ab1"`, `"*xb1"`, `"a*?b1"`, `"n"`, `"0E0"`, `"0b"`, `"0.b"`, and each of
 the last four with an `@` text section added (`"n;n;n;@"`, `"0E0;0E0;0E0;@"`, `"0b;0b;0b;@"`, `"0.b;0.b;0.b;@"`), so an `@` section
 does not rescue a rejected code. Accepted: `"a*?"`, `"b1"`, `"*?"`, `"b"`, `"a*?b"` (2.5 gives "a43"), `"0.0"`, `"@"`,
 `"0;-0;0;@"`, `"\"x\""` and `"General"`; text, empty text and booleans come back unchanged ("a", "", "TRUE") under all of them.
-Answer for `"a*?b1"`: the part Excel rejects is `b1` (a calendar prefix, line 52 above) when something precedes it. Neither
+Answer for `"a*?b1"`: the part Excel rejects is `b1` (a calendar prefix, "Buddhist-era year, era and calendar tokens" above) when something precedes it. Neither
 `*?` alone (`"*?"`, `"a*?"`) nor `b1` alone (`"b1"`) nor `*?` followed by `b` without the digit (`"a*?b"`) is rejected, but
 `b1` after the probed prefixes `a` (`"ab1"`), the fill `*x` (`"*xb1"`) and the fill `*?` (`"*?b1"`, `"a*?b1"`) is. Other prefixes
 (quoted or escaped literals, digit placeholders, spaces, date tokens) were not probed; the likely rule, unprobed, is that a
