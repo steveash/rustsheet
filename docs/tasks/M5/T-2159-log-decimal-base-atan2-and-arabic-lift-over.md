@@ -3,7 +3,7 @@ id: T-2159
 title: "LOG, DECIMAL, BASE, ATAN2 and ARABIC lift over arrays and ranges (SPEC-0011)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
