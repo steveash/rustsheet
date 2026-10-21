@@ -21,7 +21,12 @@ use crate::pivot::{Aggregate, AxisField, CacheItem, PivotCache, PivotTable};
 /// The indices of every pivot used in the current evaluation.
 #[derive(Default)]
 pub(crate) struct PivotIndexes {
+    /// By position in `Workbook::pivot_tables`: code that removes or reorders pivots between
+    /// evaluations must call [`PivotIndexes::clear`] (`Model::drop_pivots_on` does).
     pivots: HashMap<usize, PivotIndex>,
+    /// The `Evaluation::evaluations` count the indices were built in: a new evaluation drops
+    /// them (`Model::pivot_axis`).
+    evaluation: u64,
     /// How many indices were built since the model was made: a test counts the passes over the
     /// records.
     builds: u64,
@@ -121,7 +126,7 @@ fn build(cache: &PivotCache, axis: Vec<u32>) -> Option<PivotIndex> {
 
 /// The data field's aggregate over `values` (cache order). A Sum over nothing is 0
 /// (probes/getpivotdata-real-pivot H13); any other aggregate with no defined value is `#REF!`
-/// (SPEC-0015 unknown 2), and a non-finite result `#NUM!`. Var and `StdDev` reuse the worksheet
+/// (SPEC-0015 unknown 2), and a non-finite result `#NUM!` (unknown 16). Var and `StdDev` reuse the worksheet
 /// functions' algorithm (`excel_variance`); that the pivot computes them alike is UNVERIFIED.
 fn aggregate(function: Aggregate, values: &[f64]) -> Result<f64, Error> {
     let n = values.len();
@@ -165,6 +170,10 @@ impl Model {
             ..
         } = self;
         let indexes = &mut evaluation.pivot_indexes;
+        if indexes.evaluation != evaluation.evaluations {
+            indexes.pivots.clear();
+            indexes.evaluation = evaluation.evaluations;
+        }
         if !indexes.pivots.contains_key(&pivot) {
             let table = workbook.pivot_tables.get(pivot)?;
             let cache = workbook.pivot_caches.get(table.cache as usize)?;

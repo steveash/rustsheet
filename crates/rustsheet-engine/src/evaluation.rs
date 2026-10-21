@@ -25,7 +25,6 @@
 //!   anchor gives them up and only its own inputs were blocked by them, they
 //!   were history, not a dependency. They are dropped for the rest of the
 //!   evaluation and the pass starts again without them.
-//!
 //! * The recursion is bounded, in formulas and in stack. When it would go
 //!   deeper it **unwinds**: the formulas in progress end without storing
 //!   anything but stay on the stack, still `Evaluating`. The outermost one
@@ -467,7 +466,6 @@ impl Model {
     /// is marked, so there is nothing of it to read or to contradict.
     pub fn evaluate(&mut self) {
         self.evaluation.evaluations += 1;
-        self.evaluation.pivot_indexes.clear();
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
@@ -619,13 +617,11 @@ impl Model {
         let mut found = Vec::new();
         for (sheet, worksheet) in self.workbook.worksheets.iter().enumerate() {
             for (row, column, cell) in worksheet.sheet_data.cells() {
-                if matches!(
-                    cell,
-                    Cell::ArrayFormula {
-                        kind: ArrayKind::Dynamic,
-                        ..
-                    }
-                ) {
+                if let Cell::ArrayFormula {
+                    kind: ArrayKind::Dynamic,
+                    ..
+                } = cell
+                {
                     found.push(CellReferenceIndex {
                         sheet: sheet as u32,
                         row,

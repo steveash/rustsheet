@@ -65,6 +65,13 @@ T-1703 behavior where one exists), never a guessed value:
     non-representable decimals;
 12. grouped fields (`<fieldGroup>`, date grouping), calculated fields, and a cache saved without
     records (`saveData="0"`): skipped at import (`#REF!`), a non-parity gap T-2085 records.
+13. an error in a field or item argument (ours `#REF!`), and an error held by a single-cell
+    `pivot_table` inside a pivot (ours: the error, as T-1703 does with no pivot);
+14. an item that matches two cache items differing only in case (ours `#REF!`), and a number or
+    boolean `data_field`, direct or referenced (ours `#REF!`);
+15. the values of Count, CountNums, Max, Min, Product, Var, VarP, StdDev and StdDevP pivots over
+    picked records (ours: the worksheet functions' answers, `excel_variance` for the variances);
+16. an aggregate that overflows (ours `#NUM!`, the rule under "Untrusted-input limits").
 
 ## Design
 
