@@ -3,7 +3,7 @@ id: T-2195
 title: "Keep static-area structured references in the parsed formula (SPEC-0016 step 1)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
