@@ -3,7 +3,7 @@ id: T-2161
 title: "CELL with a multi-cell range as info_type lifts over it"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
