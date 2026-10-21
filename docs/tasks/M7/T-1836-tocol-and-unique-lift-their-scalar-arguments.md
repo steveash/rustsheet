@@ -3,11 +3,10 @@ id: T-1836
 title: "TOCOL and UNIQUE lift their scalar arguments over a range or an array"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
-campaign: visible
 depends_on: [T-1770, T-1833, T-1834]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
@@ -32,32 +31,17 @@ Owned cells:
 
 TOCOL's scan_by_column and UNIQUE's exactly_once are `Lift` by SPEC-0011's per-parameter list; T-1960 probes them.
 
-Visibly-off cells (gap triage 2026-10-21, decision 0083): 9 cells, 0 numeric past half a unit in the 15th digit and 9 with a wrong type, error or text, blamed on TOCOL 5, UNIQUE 4, ROWS 3, COLUMNS 2, HSTACK 1.
-
-| case / cell | formula | Excel | ours |
-|---|---|---|---|
-| gen-m9/1782efcecd5d4b1b Calc!A19 | `=TOCOL(Data!C8:D11,HSTACK(Data!E5:E6),((Data!D$9/0.2)=(Data!$A$5<=Data!A7)))` | #SPILL! | #N/IMPL! |
-| gen-m9/4df1b22d3ed63f58 Calc!A36 | `=UNIQUE(Data!A6:D10,INDEX(Data!D4:D10,0))` | #SPILL! | #VALUE! |
-| probes/m7-argument-modes Sheet1!F12 | `=ROWS(UNIQUE(D1:D3,{FALSE;TRUE}))` | 2 | #N/IMPL! |
-| probes/m7-argument-modes Sheet1!F9 | `=ROWS(TOCOL(A1:B3,{0;1}))` | 2 | #N/IMPL! |
-| probes/m7-argument-modes Sheet1!G12 | `=COLUMNS(UNIQUE(D1:D3,{FALSE;TRUE}))` | 1 | #N/IMPL! |
-| probes/m7-argument-modes Sheet1!G9 | `=COLUMNS(TOCOL(A1:B3,{0;1}))` | 1 | #N/IMPL! |
-| probes/m7-argument-modes Sheet1!H12 | `=INDEX(UNIQUE(D1:D3,{FALSE;TRUE}),1,1)` | "x" | #N/IMPL! |
-| probes/m7-argument-modes Sheet1!H9 | `=INDEX(TOCOL(A1:B3,{0;1}),1,1)` | 1 | #N/IMPL! |
-| probes/m7-argument-modes Sheet1!K8 | `=ROWS(INDEX(TOCOL(A1:B3,{0;1}),1,1))` | 1 | #N/IMPL! |
-
 ## Acceptance criteria
-- [ ] Visible parity: the 9 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 7 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 2 cells of the ungated gen-m9 suite pass in `make eval`, with no new known-failure lines in any baseline.
-- [ ] probes/m7-argument-modes F9:H9, K8 and F12:H12 pass; F54:H54 and K14-K16 still pass.
-- [ ] gen-m9/1782efcecd5d4b1b A19 and gen-m9/4df1b22d3ed63f58 A36 pass, with no new failing gen-m9 cell.
-- [ ] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
-- [ ] TOCOL and UNIQUE have table entries citing those cells; their fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes).
-- [ ] Unit tests: an unlifted call is unchanged (value and static shape); a lifted call over a large array is charged per element and `#ERROR!` past the visit cap; an element error stays in its position.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/m7-argument-modes F9:H9, K8 and F12:H12 pass; F54:H54 and K14-K16 still pass.
+- [x] gen-m9/1782efcecd5d4b1b A19 and gen-m9/4df1b22d3ed63f58 A36 pass, with no new failing gen-m9 cell.
+- [x] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
+- [x] TOCOL and UNIQUE have table entries citing those cells; their fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes).
+- [x] Unit tests: an unlifted call is unchanged (value and static shape); a lifted call over a large array is charged per element and `#ERROR!` past the visit cap; an element error stays in its position.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SORTBY (T-1839) and SORT (T-1837).
 - Any change to the lift driver or the element rules (T-1834); if they do not fit, hand the task up (work-loop 5b).
 
-## Visible-parity stage
-Decision 0083: the cells listed under Context are visibly off (`#N/IMPL!` or `#VALUE!` where Excel lifts TOCOL and UNIQUE), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+## Outcome
+TOCOL (ignore, scan_by_column) and UNIQUE (by_col, exactly_once) have lifting-table entries (`// --- M7 (T-1836) ---` in lift/kinds/general.rs): the array is `WholeByCaller`, read once by the function and handed to every element, charged its cells per element (`LiftCost::Cells`) plus the cells built. TOCOL's flatten and UNIQUE's row/column pass are now pure kernels over the array (`flatten_data`, `unique_of`); TOROW keeps its own argument reading and shares `flatten_data`. Their `fallback_signature`/`fallback_shape` arms and `args_signature_unique` are gone. probes: 7 known failures fixed (m7-argument-modes F9:H9, K8, F12:H12), none added. gen-m9/1782efcecd5d4b1b Calc!A19 and gen-m9/4df1b22d3ed63f58 Calc!A36 both give `#SPILL!` as Excel does (run by the fidelity reviewer). DEVIATION for the work cap recorded in arrays.md. Unit tests in test/test_fn_tocol_unique_lift.rs.
