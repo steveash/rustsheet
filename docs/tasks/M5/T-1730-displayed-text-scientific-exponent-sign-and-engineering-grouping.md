@@ -31,7 +31,7 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 | gen-m5/3b813881f835cd90 Calc!A198 | `=TEXT((SQRT(2.5)+SUM(0.5)),"0.000E-00")` | "2.081E00" | "2.081E-00" |
 
 ## Acceptance criteria
-- [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
+- [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions. About 52 gen-m10 scientific text cells still fail and are filed as T-2226 (mantissa rounding after the shift) and T-2227 (zero, carry, 1E+15).
 - [ ] number-formats.md updated.
 - [ ] `make check` green; reviewers approve.
 
@@ -42,4 +42,4 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
 
 ## Outcome
-The exponent sign now follows the exponent (a zero exponent is `E+00` / `E00`, not `E-00`) and the exponent is a multiple of the integer-placeholder count (engineering). 240 gen-m10 and 1 gen-m5 known failures left the baselines; no regressions.
+The exponent sign now follows the exponent (a zero exponent is `E+00` / `E00`, not `E-00`) and the exponent is a multiple of the integer-placeholder count (engineering). 240 gen-m10 and 1 gen-m5 known failures left the baselines; no regressions. About 52 gen-m10 scientific text cells still fail and are filed as T-2226 (mantissa rounding after the shift) and T-2227 (zero, carry, 1E+15).
