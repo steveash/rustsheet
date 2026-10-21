@@ -54,7 +54,7 @@ evidence: Excel cells whose YIELD is forced to stop after k iterations do not ex
   basis 1 to 4 and more than one coupon).
 
 Unblocked by T-2187 (2026-10-21). probes/yield-start-sweep is now in `YIELD_CASES`. On its 63 basis-0 cells across
-redemption and frequency, analytic Newton run forward from the fixed start 0.0552344627 matches Excel to 2e-12 relative.
+redemption and frequency, analytic Newton run forward from the fixed start 0.0552344627 matches Excel to 1.2e-14 relative.
 It returns the iterate after the first step below about 7e-6 (the cut lies between 6.66e-6 and 7.11e-6).
 financial.md "YIELD stops short of PRICE's root" has the T-2187 paragraph. Next hypothesis: fit the start S as a
 function of rate, price and the basis's time to maturity (it moves with price, column E, and with basis 1/3 against

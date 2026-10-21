@@ -72,7 +72,7 @@ the new cells as well (`uv run rustsheet-fitlab yield`).
   basis 0).
 - Finding: every cell that stops short traces back to one start, 0.0552344627. It is shared across redemption and
   frequency, and it moves with price and basis. Newton run forward from it reproduces all 63 cells of columns A to C
-  (to 2e-12 relative) when it stops after the first step below about 7e-6. That replaces the residual-stop reading.
+  (to 1.2e-14 relative) when it stops after the first step below about 7e-6. That replaces the residual-stop reading.
   `test_yield_start_sweep_newton_from_a_shared_start` pins it.
 - T-1592: unblocked and back to `todo`, with that hypothesis. The finding is in financial.md.
 - Eval: a new case only; no other baseline line changes.

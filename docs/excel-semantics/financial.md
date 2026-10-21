@@ -1060,7 +1060,7 @@ both 10.33 years) gives no consistent T: annual or semi-annual annuities over a 
 compounding, and the approximate yield over (red + P)/2, P or (red + 2P)/3.
 T-2187 (probes/yield-start-sweep, excel-graph, 2026-10-21; the base bond `YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,R,F,B)`):
 analytic Newton run *forward* from the fixed start S = 0.0552344627 reproduces Excel on all 63 cells of columns A, B
-and C (redemption 100 to 101 by 0.05 at frequency 2, 1 and 4, basis 0), every one to within 2e-12 relative, when it
+and C (redemption 100 to 101 by 0.05 at frequency 2, 1 and 4, basis 0), every one to within 1.2e-14 relative, when it
 returns the iterate after the first step smaller than about 7e-6 (the lab test uses 6.9e-6). The step count changes with the inputs: one step at
 R = 100 for F = 1 and 2 (A1, B1, a 1.4e-6 step), two steps up to A17 (R = 100.8, last step 6.37e-6), B16 (6.26e-6) and
 C18 (6.66e-6), and three steps from A18 (7.19e-6), B17 (7.11e-6) and C19 (7.47e-6). C1 (F = 4, R = 100) takes two
@@ -1070,6 +1070,8 @@ T-1583. The start S does not depend on redemption or frequency; it does depend o
 - Back-chain starts by price (column E): about 0.10913448 at price 80 (E4) and 0.2427821 at price 50 (E1).
 - Back-chain starts by basis (column D, R = 100): 0.0552334228 on bases 1 and 3 (D1, D2, D8) against 0.0552344627
   on bases 0 and 4 (D10, D11; these dates count the same on 30/360 and 30E/360).
+- Column F moves the bond to 1 March 2000 to 30 June 2004 (same 30/360 day counts) and gives the same bits as the 2096
+  bond: F6 = A1 = E8 = 0.05523587030251456, F7 = A6, F8 = A11, F9 = A16, F1 = D10 = B1.
 - Lab: `uv run python` on `solvers.newton_back_chain`, pinned in
   tools/tests/test_fitlab_solvers.py::test_yield_start_sweep_newton_from_a_shared_start.
 Next hypothesis (T-1592): S is a function of rate, price and the basis's time to maturity only. Candidates are an

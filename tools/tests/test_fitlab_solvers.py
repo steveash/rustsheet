@@ -173,7 +173,7 @@ def test_yield_start_sweep_newton_from_a_shared_start() -> None:
     # T-2187: yield-start-sweep A1 (frequency 2) and B1 (frequency 1) step back to the same iterate as
     # yield-solver-sweep S!A1; C1 (frequency 4) is at PRICE's root. Run forward from that start,
     # analytic Newton returning the iterate after the first step below the cut gives Excel's value on
-    # every cell of columns A to C (redemption 100 to 101 at frequency 2, 1 and 4) to 2e-12 relative.
+    # every cell of columns A to C (redemption 100 to 101 at frequency 2, 1 and 4) to 5e-14 relative (worst 1.2e-14).
     # The cells bracket the cut between 6.66e-6 and 7.11e-6; 6.9e-6 is an arbitrary point inside.
     cells = load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells
     by_key = {c.key: c for c in cells}
@@ -186,4 +186,4 @@ def test_yield_start_sweep_newton_from_a_shared_start() -> None:
     assert len(swept) == 63
     newton = solvers._newton_yield(a1, 6.9e-6)
     for cell in swept:
-        assert abs(newton(*cell.args) - cell.expected) < 2e-12 * cell.expected, cell.key
+        assert abs(newton(*cell.args) - cell.expected) < 5e-14 * cell.expected, cell.key
