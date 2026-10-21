@@ -3,7 +3,7 @@ id: T-2202
 title: "Probe which format-code tokens make TEXT #VALUE! (T-2157)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -45,3 +45,8 @@ which token makes `TEXT(2.5,"a*?b1")` `#VALUE!`. T-2157 can then write one valid
 ## Out of scope
 - Changing the formatter or `fn_text` (T-2157).
 - Text values under valid 1-3 section codes (T-1130); number-like text values (T-2158).
+
+## Outcome
+Probed with excel-graph (88 cells). Rejection is all-or-nothing across number, text, empty text and boolean, and an `@`
+section does not rescue it; `b1` after any literal or fill token is rejected, while `*?` and `b1` alone are fine. Recorded in
+number-formats.md; new failing cells baselined as new coverage.
