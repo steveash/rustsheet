@@ -236,7 +236,7 @@ Excel for the web refuses to open a workbook whose formula sums such a
 31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
 C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
-eval/suites/probes/deviations, decision 0036); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph;
+eval/suites/probes/deviations, decision 0036); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph, 2026-10-17;
 listed in eval/suites/probes/deviations, decision 0091, T-2223).
 Status: DEVIATION (decision 0014)
 Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
