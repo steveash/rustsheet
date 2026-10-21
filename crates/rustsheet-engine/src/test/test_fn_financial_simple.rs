@@ -303,3 +303,27 @@ fn discount_securities_divide_by_day_count_over_year_length() {
         }
     }
 }
+
+#[test]
+fn effect_and_nominal_use_excels_power() {
+    // Excel's `^` (square-and-multiply for EFFECT's integer n, exp(ln(1+e)*(1/n)) for NOMINAL's
+    // 1/n), not libm pow: ironcalc-calc FINANCIAL/NOMINAL_EFFECT.xlsx D2, C8 and
+    // probes/fin-argument-modes H125 (T-2034).
+    let mut model = new_empty_model();
+    let cases = [
+        ("A1", "=EFFECT(0.5,10)", 0.628_894_626_777_441_6),
+        ("A2", "=NOMINAL(0.5,4.5)", 0.426_727_678_801_286_8),
+        ("A3", "=EFFECT(0.05,4)", 0.050_945_336_914_062_445),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cases {
+        assert_eq!(
+            model.get_cell_value_by_ref(&format!("Sheet1!{cell}")),
+            Ok(CellValue::Number(expected)),
+            "{formula}"
+        );
+    }
+}
