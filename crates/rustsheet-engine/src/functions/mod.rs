@@ -2172,6 +2172,6 @@ impl Model {
             Function::SkewP => Self::fn_skew_p,
             Function::Small => Self::fn_small,
         };
-        implementation(self, args, cell)
+        self.call_by_reference_elements(kind, args, cell, implementation)
     }
 }

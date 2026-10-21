@@ -132,7 +132,7 @@ impl Model {
     }
 
     /// Cells of `value`'s range inside the used area, 1 for a value that is not a range.
-    fn range_walk_cost(&mut self, value: &CalcResult) -> u64 {
+    pub(crate) fn range_walk_cost(&mut self, value: &CalcResult) -> u64 {
         let CalcResult::Range { left, right } = *value else {
             return 1;
         };
