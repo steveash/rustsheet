@@ -39,6 +39,10 @@
 //!   filled-down column takes, comparable with main), and WORKDAY and NETWORKDAYS lifted over a
 //!   100,000-element array with 20 holidays, prepared once per call.
 //!
+//! - LAMBDA calls (T-0439): 300,000 plain calls through MAP, a REDUCE sum and MAP with a LET in the
+//!   body (the per-call cost of binding parameters), and MAP calling 10,000 times an escaped
+//!   closure that captured a 10,000-cell array (bound shared, not copied, on each call).
+//!
 //! - the coupon functions at the longest schedule (T-1846): COUPDAYSNC's two walks over 1,024
 //!   settlements at serial 1 and PRICE's four over 512 at serial 92 (its previous coupon,
 //!   1900-03-31, must be a date), quarterly to 9990-06-30, the most a lift is charged by schedule
@@ -207,8 +211,35 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
         ),
     ]
     .into_iter()
+    .chain(lambda_cases())
     .chain(coupon_cases())
     .collect()
+}
+
+/// The LAMBDA call cases (T-0439), apart to keep `cases` short.
+fn lambda_cases() -> Vec<(&'static str, u32, &'static str)> {
+    vec![
+        (
+            "LAMBDA, MAP over 300,000 plain calls",
+            1,
+            "=SUM(MAP(SEQUENCE(300000),LAMBDA(x,x*2)))",
+        ),
+        (
+            "LAMBDA, REDUCE sum over 300,000 steps",
+            1,
+            "=REDUCE(0,SEQUENCE(300000),LAMBDA(a,x,a+x))",
+        ),
+        (
+            "LAMBDA, MAP with a LET inside over 300,000 calls",
+            1,
+            "=SUM(MAP(SEQUENCE(300000),LAMBDA(x,LET(y,x*2,y+1))))",
+        ),
+        (
+            "LAMBDA, MAP over an escaped closure that captured 10,000 cells",
+            1,
+            "=LET(mk,LAMBDA(r,LAMBDA(i,IF(i<0,INDEX(r,1),i))),f,mk(SEQUENCE(10000)),SUM(MAP(SEQUENCE(10000),f)))",
+        ),
+    ]
 }
 
 /// The coupon functions' cases (T-1846), apart to keep `cases` short.

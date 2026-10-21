@@ -241,6 +241,7 @@ C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
 C	probes/defined-name-non-ascii.case.json	3
 C	probes/discount-security-modes.case.json	135
+C	probes/discount-serial-zero.case.json	50
 C	probes/displayed-text-formats.case.json	10
 C	probes/dollar-fixed-unichar-edges.case.json	76
 C	probes/dvar-one-vs-two-pass.case.json	32
@@ -445,6 +446,8 @@ C	probes/isref-range-operands.case.json	27
 C	probes/isref-reference-lookups.case.json	11
 C	probes/isref-union-operands.case.json	9
 C	probes/lambda-body-picked-references.case.json	52
+C	probes/lambda-call-depth.case.json	12
+C	probes/lambda-escaping-closures.case.json	28
 C	probes/lambda-helper-range-slices.case.json	46
 C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
@@ -1129,6 +1132,8 @@ C	probes/xmatch-xlookup-reference-forms.case.json	17
 C	probes/xnpv-argument-count.case.json	3
 C	probes/yearfrac-basis-order.case.json	14
 C	probes/yearfrac-reversed-bases.case.json	72
+C	probes/yearfrac-serial-zero-1904.case.json	25
+C	probes/yearfrac-serial-zero.case.json	205
 C	probes/yield-one-period-dsr-zero.case.json	18
 C	probes/yield-solver-sweep.case.json	66
 F	probes/circular-iteration-delta-boundary.case.json	S!A1
@@ -1704,6 +1709,14 @@ F	probes/index-zero-index-scalar-shape.case.json	S!E5
 F	probes/index-zero-index-scalar-shape.case.json	S!E6
 F	probes/index-zero-index-scalar-shape.case.json	S!F5
 F	probes/index-zero-index-scalar-shape.case.json	S!F6
+F	probes/lambda-escaping-closures.case.json	Sheet1!H10
+F	probes/lambda-escaping-closures.case.json	Sheet1!H2
+F	probes/lambda-escaping-closures.case.json	Sheet1!H3
+F	probes/lambda-escaping-closures.case.json	Sheet1!H4
+F	probes/lambda-escaping-closures.case.json	Sheet1!H5
+F	probes/lambda-escaping-closures.case.json	Sheet1!H8
+F	probes/lambda-escaping-closures.case.json	Sheet1!I2
+F	probes/lambda-escaping-closures.case.json	Sheet1!J2
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100

@@ -447,7 +447,9 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let (days, year) = self.year_parts(start, end, basis, cell)?;
-        Ok((days / year).abs())
+        // Signed: basis 0 counts 1900-02-28 to the fictitious 1900-02-29 as -1 day, so
+        // `ACCRINTM(59,60,0.1,1000,0)` is negative (probes/discount-serial-zero).
+        Ok(days / year)
     }
 
     /// YEARFRAC's `(day count, year length)` from `start` to `end` (`Model::year_fraction_parts`),
