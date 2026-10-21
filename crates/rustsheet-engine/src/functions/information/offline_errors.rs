@@ -142,9 +142,9 @@ impl Model {
     /// argument: `IMAGE({url,url},1/0)` is a 1x2 array of `#DIV/0!` (probes/rich-errors-shapes-urls
     /// A12:B15, T-1189).
     ///
-    /// With `lift_option_errors` (IMAGE) a scalar argument error beside a scalar `source` is held back
-    /// while an array argument exists, so `fn_image` can lift it over that array; without one it is
-    /// the result. STOCKHISTORY passes `false` and keeps the first-error rule.
+    /// With `lift_option_errors` (IMAGE) a scalar argument error beside a scalar or grid `source` is
+    /// held back while an array option exists, so `fn_image` can lift it over the broadcast shape;
+    /// without one it is the result (a grid source's shape filled with it). STOCKHISTORY passes `false` and keeps the first-error rule.
     fn offline_args(
         &mut self,
         args: &[Node],
@@ -167,20 +167,16 @@ impl Model {
             let value = self.evaluate_node_top_left(arg, cell);
             if let CalcResult::Error { error, .. } = &value {
                 match &first {
-                    // Beside an array option a scalar error lifts over both shapes, so the
-                    // result is the broadcast shape, not the source's (probes/rich-errors-
-                    // image-grid-error-option, T-2205): keep it for `fn_image`.
-                    LiftedArg::Grid(_) if lift_option_errors => {
+                    // A scalar error option beside an array option lifts over it, and over a
+                    // grid source too, so the result is the broadcast shape, not the source's
+                    // (probes/rich-errors-image-array-error-elements, T-1427;
+                    // probes/rich-errors-image-grid-error-option, T-2205): keep it for the
+                    // lift in `fn_image`; with no array option it is the result.
+                    _ if lift_option_errors => {
                         pending.get_or_insert_with(|| value.clone());
                     }
                     LiftedArg::Grid(values) => {
                         return Err(self.error_grid(values.clone(), error, false, cell));
-                    }
-                    // A scalar error option beside an array option lifts over it
-                    // (probes/rich-errors-image-array-error-elements, T-1427): keep it for
-                    // the lift in `fn_image`; with no array option it is the result.
-                    LiftedArg::Scalar(_) if lift_option_errors => {
-                        pending.get_or_insert_with(|| value.clone());
                     }
                     LiftedArg::Scalar(_) => return Err(value),
                 }
