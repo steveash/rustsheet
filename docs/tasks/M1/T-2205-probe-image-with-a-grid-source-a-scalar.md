@@ -3,7 +3,7 @@ id: T-2205
 title: "Probe IMAGE with a grid source, a scalar error option and a wider array option"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found in T-1962 review: `offline_args` (functions/information/offline_errors.rs)
 
 ## Out of scope
 - STOCKHISTORY's first-error rule.
+
+## Outcome
+Probed (excel-graph, probes/rich-errors-image-grid-error-option): a scalar error option beside a grid source and a wider array option lifts over the broadcast shape (`IMAGE({url,url},"alt",1/0,{5,5,5})` is 1x3: `#DIV/0!`, `#DIV/0!`, `#N/A`). `offline_args` now defers the error for `fn_image` when an array option exists; the rule is in information.md. Eval: probes +1 case, 25 cells pass, no regressions.
