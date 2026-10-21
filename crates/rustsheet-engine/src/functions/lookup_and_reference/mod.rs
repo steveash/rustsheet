@@ -22,6 +22,7 @@ use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
 use lookup_table::SearchVector;
 use ref_lift::lifts;
+pub(crate) use ref_lift::lifts_into_references;
 
 pub(crate) use drop_take::Edge;
 

@@ -112,7 +112,7 @@ not change the order: it keeps its load position. `calcChain.xml` is ignored on 
   history is not in the file, so this part is not reproducible from a workbook (same research note).
 Evidence (oracle: excel-graph, 2026-10-19, T-1484): probes/weeknum-stale-setters (28 sheets),
 probes/weeknum-stale-sheet-order, probes/weeknum-stale-sheet-moved, probes/weeknum-stale-grid,
-probes/weeknum-stale-order-row, -column, -column-40, -2x3 and -3x2, probes/weeknum-stale-dependency,
+probes/weeknum-stale-order-row, -column, -column-3..6 (excel-graph, 2026-10-21), -column-40, -2x3 and -3x2, probes/weeknum-stale-dependency,
 probes/weeknum-stale-reset-num-type, -reset-isoweeknum and -reset-error-serial,
 probes/weeknum-stale-precedent-between, -precedent-restart and -precedent-abort-keeps, probes/weeknum-stale-num-types,
 probes/weeknum-stale-down-alone and probes/weeknum-stale-volatile-reader; the grid case gave the same
