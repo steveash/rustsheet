@@ -11,9 +11,24 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   upward recurrence for higher orders, and Miller downward recurrence for `J_n(x)` when `n >= x`.
   `Y_n` recurrence is only bit-exact as `b * (2j * (1/x)) - a`.
   Implemented in `functions/engineering/transcendental/bessel_excel.rs`.
-- For `|x| >= 8` (cells at x = 10 and 32) Excel differs from both fdlibm and the NR asymptotic
-  branch (e.g. `BESSELJ(10,1)` = 0.04347224965 vs true 0.04347274617), so another algorithm is
-  used there. UNRESOLVED; tracked in T-0908. fdlibm is kept for `|x| >= 8`.
+- For `|x| >= 8` Excel is the NR asymptotic branch (`sqrt(0.636619772/x) * (P cos(xx) - z Q sin(xx))`
+  for J, `(P sin(xx) + z Q cos(xx))` for Y; `z = 8/x`, `xx = x - 0.785398164` or `x - 2.356194491`),
+  but three of its coefficients differ from the book (T-0908, fitted by least squares on the
+  m9-bessel sweep, then bit-exact on every one of its 354 integer-order cells):
+  - J0's `P` has `-0.1098628267e-2` where NR has `-0.1098628627e-2` (two digits swapped). J0 is
+    ~3e-10 off true; Y0 keeps the book's value.
+  - Y0's `Q` has `-0.934945152e-7` where NR has `-0.934935152e-7`; J0 keeps the book's value.
+  - J1's `P` repeats `-0.3516396496e-4`: `1 + y(0.183105e-2 + y(-0.3516396496e-4 + y(-0.3516396496e-4 +
+    y(0.2457520174e-5 + y(-0.240337019e-6)))))`. That is why `BESSELJ(10,1)` = 0.04347224965225415
+    against true 0.04347274617 (and up to 3.4e-5 off at x = 8). Y1 uses the book's `P`.
+  - Higher orders run the same recurrences as for small x: J's upward recurrence (n < x) is bit-exact
+    only as `b * (2j * (1/x)) - a`, like Y's (11 cells are 1 ulp off with `(2j/x) * b`), and Miller's
+    for n >= x. In the asymptotic form `(z * Q) * sin` is bit-exact; `z * sin * Q` is 1 ulp off at
+    `BESSELY(8.5,1)`.
+  - `BESSELJ(0,n)` is 0 for n >= 2; `BESSELY` of x <= 0 is `#NUM!`.
+  Implemented in `functions/engineering/transcendental/bessel_excel.rs` (`J0_LARGE` and friends);
+  the fdlibm port is gone.
+  The asymptotic branch is evidenced only for 8 <= x <= 100; larger x is unprobed (T-2140).
 
 Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cells (14 x values in 8..100 x
 orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
@@ -26,14 +41,14 @@ orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
   x = 10; 6e-9 at x = 8, 3e-9 at x = 100). Values are at the oracle sidecar's cells, e.g. `BESSELJ(30,1)` =
   -0.11875106091123117, `BESSELY(8,0)` = 0.22352148924968093.
 - At x = 10 the sweep equals the Excel-desktop cached values of `ironcalc-calc/ENGINEERING/BESSEL.xlsx`, at the orders the workbook covers (0, 1, 7, 10).
-- The engine's fdlibm fallback is bit-exact on only 14 of the 364 cells; `rustsheet-eval show` lists the other
-  350 as non-exact (164 within tolerance, 184 beyond it, 2 type mismatches).
+- The fdlibm fallback used before T-0908 was bit-exact on only 14 of the 364 cells; the asymptotic model above
+  is bit-exact on all of them except the order cap (`BESSELJ(10,1000000)`, below).
 - A fractional order truncates: `BESSELJ(8,9.99)` equals `BESSELJ(8,9)`, `BESSELY(30,1.99)` equals `BESSELY(30,1)`.
 - Large orders: `BESSELJ(x,n)` is `0` (not an error) for n = 1000, 10000, 100000 and 1000000 (x = 10, 50), and
   `BESSELY(x,n)` is `#NUM!` for those n. The engine matches this up to n = 100000 but gives `#NUM!` for
   `BESSELJ(10,1000000)` (see "BESSEL order cap"). J underflows to 0, so no cap shows for J; Y is `#NUM!` from n = 1000 (where Y starts to give `#NUM!`
   between 101 and 1000 is not probed).
-Status: VERIFIED for these cells; fitting the algorithm is T-0908.
+Status: VERIFIED for these cells; the algorithm is fitted (T-0908, above).
 
 Provenance: the coefficients are the published Numerical Recipes (2nd ed., §6.5) rational
 approximations, reproduced only because Excel's output matches them bit-for-bit.
@@ -44,7 +59,7 @@ untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0`
 BESSELI and BESSELK took the cap in T-1383 (before it, `BESSELI(2.5,2E9)` looped about 4·10^9 times); Excel's values above
 100,000 are unprobed for them.
 A lifted Bessel call is also charged against the lifting visit cap by each element's order before any element runs
-(SPEC-0011 `KernelWork::ByArg`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
+(SPEC-0011 `ValueWork::Loop`, T-1819): `1 + 65535·n/100000` units for an order n up to the cap, so 2^16 at the
 cap and 1 for n = 0; an order past the cap is refused (`#NUM!`) before the kernel loops and costs 1. Only a call whose orders sum past that budget is `#ERROR!` where Excel gives values: at most 2,048 elements at
 the cap (`ROWS(BESSELI(2.5,SEQUENCE(2100,1,100000,0)))` is `#ERROR!`), while small orders lift freely
 (`ROWS(BESSELJ(2.5,SEQUENCE(2100)))` = 2100 and `ROWS(BESSELJ(SEQUENCE(5000)/100,0))` = 5000, as in Excel). A text order
@@ -167,9 +182,10 @@ Typed coercion follows the ToolPak rule:
   argument refuses one, typed, in a cell or as an array element, and so does COMPLEX's `real_num`
   (probes/eng-imsum-improduct-whole C1-C15: IMREAL, IMSUB's both arguments, IMDIV's second, IMPOWER's both,
   IMCOS, IMCONJUGATE, IMSQRT and IMABS of a TRUE cell, `INDEX(IMREAL({TRUE;"3"}),1)`, `COMPLEX(TRUE,1)`).
-  Unprobed, inferred from the shared parse path (T-1828): IMDIV's first argument, IMAGINARY, IMARGUMENT,
-  IMCOSH, IMCOT, IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH, IMSIN, IMSINH, IMTAN, and
-  COMPLEX's `i_num`. The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
+  The same holds, typed and as a TRUE cell, for IMDIV's first argument, IMAGINARY, IMARGUMENT, IMCOSH, IMCOT,
+  IMCSC, IMCSCH, IMEXP, IMLN, IMLOG10, IMLOG2, IMSEC, IMSECH, IMSIN, IMSINH, IMTAN, and COMPLEX's `i_num`
+  (probes/eng-imsum-improduct-3d-j-empty G1-G34, T-1828).
+  The 255-argument limit of IMSUM and IMPRODUCT is Excel's documented one, not probed.
 - A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
 - COMPLEX's suffix is case-sensitive: `COMPLEX(3,4,"I")` is `#VALUE!`.
 - Non-complex text is `#NUM!` (`IMSUB("x","1")`), and a number cell is a real number (`IMDIV("3+4i",M2)` with M2 = 3 is
@@ -228,11 +244,27 @@ row-major order inside a range or array, and the first bad item is the result.
 Evidence: probes/eng-argument-modes A60-A83, B/C/E42, B/C/E50 (excel-graph, 2026-10-11, T-1085);
 probes/eng-imsum-improduct-whole B1-B28 (excel-graph, 2026-10-17, T-1384). The data is M1 "1+2i", M2 3, M3 blank,
 M4 TRUE, M5 "x", M6 "2-i", M7 `=1/0`, M8 "3+4j", M9 `=""`.
-Unprobed: a 3-D reference (ours `#VALUE!`, as a union), a real number next to a `j` number (ours `#VALUE!`: a real
-reads as an `i` number), a call whose arguments hold no number at all (ours "0") (T-1828).
+Probed in T-1828 (probes/eng-imsum-improduct-3d-j-empty, excel-graph, 2026-10-20):
+- A 3-D reference is `#VALUE!`, as a union is: `IMSUM(Sheet2:Sheet3!A1:A2)`, `IMPRODUCT(...)`, a one-cell
+  `IMSUM(Sheet2:Sheet3!A1)`, and the same next to a valid argument (D1-D4).
+- A real number (no suffix) takes the suffix of the number it meets, not `i`: `IMSUM("3+4j","3")`, `IMSUM(M8,M2)`
+  (M8 "3+4j", M2 3), `IMSUM("3","3+4j")` are "6+4j", `IMPRODUCT("3+4j","3")` is "9+12j", `IMSUB("3+4j","3")` is "4j"
+  and `IMDIV("3+4j","3")` is "1+1.33333333333333j" (E1-E10). Only a suffixless number is neutral; `i` and `j` numbers
+  still clash.
+- A call whose arguments hold no number is "0" when they are blank cells (`IMSUM(Q1:Q3)`, `IMPRODUCT(Q1)`,
+  `IMSUM(Q1,Q2)`), `#N/A` when they are empty arguments (`IMSUM(,)`, `IMPRODUCT(,)`), and `#NUM!` when they are
+  empty text, typed, in a cell or in an array (`IMSUM("")`, `IMSUM(M9)`, `IMSUM({"",""})`) (F1-F12).
+Probed in T-2132 (probes/eng-imsub-imdiv-blank-j, excel-graph, 2026-10-20):
+- A blank cell takes the suffix of the other operand, as a suffixless number does: `IMSUB("3+4j",Q1)` is "3+4j",
+  `IMSUB(Q1,"3+4j")` "-3-4j", `IMDIV(Q1,"3+4j")` "0" and `IMDIV("3+4j",Q1)` `#NUM!` (A1, A2, A5, A6, B1, B2, B5).
+- An empty argument of IMSUB or IMDIV, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`; A3, A4, B3, B4).
+- An empty FIRST argument of IMSUM or IMPRODUCT is `#N/A` whatever follows (`IMSUM(,Q1)`, `IMSUM(,"")`,
+  `IMSUM(,M9)`, `IMSUM(,"3+4j")`, `IMPRODUCT(,M8)`, `IMSUM(,,M8)`; C1, C2, C5, C6, D1, D2, D5). A later empty argument is
+  skipped: `IMSUM(Q1,)` "0", `IMSUM("3+4j",)` "3+4j", `IMSUM(M8,,M8)` "6+8j", `IMPRODUCT(M8,,M8)` "-7+24j"; `IMSUM("",)`
+  is `#NUM!` (C3, C4, C7, D3, D4, D6).
 Status: VERIFIED (excel-graph)
 Implemented in: `fold_complex` in functions/engineering/complex.rs (T-1384)
-Tasks: T-1384, T-1828
+Tasks: T-1384, T-1828, T-2132
 
 ## IMSUM and IMPRODUCT read cap
 Rule: RustSheet stops an IMSUM or IMPRODUCT call with `#ERROR!` once the cells its ranges walk and the elements of its
@@ -290,12 +322,35 @@ Tasks: T-1385
 - A blank cell argument is 0 in IMSUB (`IMSUB(A7,B7)` with B7 blank), unlike empty text (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet2 G7:G10).
 - Implemented (T-1766): the error rules above, IMDIV by Smith's algorithm, and IMPOWER as `|z|^n` by Excel's `^` (square-and-multiply for an integer `n`) times Excel's SIN/COS of the double `atan2(y,x)·n` (argument reduction by the x87 64-bit pi, numbers.md "Trig of a huge angle"). That reproduces all four values bit for bit: the tiny part of `IMPOWER("i",2)` is `π₆₄ − π_double`, the real part of `(1+i)^100` is `sqrt(2)^100` by square-and-multiply (2^50 + 12.5; libm `pow` gives 2^50 + 7.75) and its imaginary part is that times `sin(double(100·π/4))` reduced by `π₆₄`. Each part prints as number-to-text does (E notation past 20 plain characters).
 - A blank first argument is 0 in IMDIV and IMPOWER (`IMDIV(blank,"1+i")` and `IMPOWER(blank,2)` are "0"; `IMPOWER(blank,0)` and `IMDIV(blank,blank)` are `#NUM!`). IMDIV by Smith's algorithm matches Excel to the last digit on a sweep of 13 non-trivial divisors, including `1E10+1E-10i` over `1E-5+1E5i` and `1+i` over `1E-200+1E-200i` (`1E+200`).
-- IMPOWER stops answering once the angle `atan2(y,x)·n` is near 2^27, but not at 2^27: `IMPOWER("i",85445658)` (angle 134217725.7) answers, `IMPOWER("i",85445659)` (134217727.3) is `#NUM!`. We cut at 134217727 (a bracket, not a derived value). A radius that underflows to 0 is "0" whatever the angle (`IMPOWER("0.5i",134217728)`, `IMPOWER("0.5",134217728)`); one that overflows is `#NUM!` (`IMPOWER("1E-200+1E-200i",-2)`, `IMPOWER("1E200",2)`; `IMPOWER("1+i",170891317)` is this overflow, its angle is under the cut).
-- UNVERIFIED: Excel's modulus power for a base near radius 1 differs from ours, so the "bit for bit" claim above holds for the four evidenced values only: `IMPOWER("0.7071067811865476+0.7071067811865476i",170891300)` is `-0.999999886163532+1.2252504385364E-08i` in Excel and `-0.999999867190789+…` in ours (probes/eng-impower-angle-cut A9-A17, all inside the cut). Per factor that is r ≈ 1-6·2^-53 against our 1-7·2^-53, so Excel computes the modulus differently from `sqrt(x²+y²)` (cause unknown; T-1950).
-- UNVERIFIED: past the cut a base that is not a pure imaginary number does not give `#NUM!`: `IMPOWER("0.7071067811865476+0.7071067811865476i",170891318)` is `1.79769293021926E+308+1.79769293021926E+308i` and `…,170891320` is `1.79769293021925E+308+1.79769293021925E+308i` (the parts differ, so it is not a clamp). Ours gives `#NUM!` there (T-1950).
-Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892).
-Status: VERIFIED (excel-graph), except the bullets marked UNVERIFIED (T-1950)
-Tasks: T-1766, T-1892
+- IMPOWER changes rule once the angle `atan2(y,x)·n` is near 2^27, but not at 2^27 (a radius-1 base stops answering; others: "IMPOWER past the angle cut"): `IMPOWER("i",85445658)` (angle 134217725.7) answers, `IMPOWER("i",85445659)` (134217727.3) is `#NUM!`. We cut at 134217727 (a bracket, not a derived value). A radius that underflows to 0 is "0" whatever the angle (`IMPOWER("0.5i",134217728)`, `IMPOWER("0.5",134217728)`); one that overflows is `#NUM!` (`IMPOWER("1E-200+1E-200i",-2)`, `IMPOWER("1E200",2)`; `IMPOWER("1+i",170891317)` is this overflow, its angle is under the cut).
+- Excel's modulus matches `hypot`, and `sqrt(x²+y²)` is ruled out: the 16-digit literal reads as the 15-digit
+  0.707106781186547 (`IMREAL(..)-0.707106781186547` is 0, A17), and `IMABS("0.7071067811865476+0.7071067811865476i")`
+  is 0.9999999999999993 (1-6·2^-53; `sqrt` gives 1-7·2^-53; a scaled `|x|·sqrt(1+(y/x)²)` also gives it, so one cell
+  does not single out `hypot`), and IMPOWER's `|z|^n` of that base matches Excel from it
+  (`IMPOWER(..,170891300)` = `-0.999999886163532+1.2252504385364E-08i`; probes/eng-impower-angle-cut A9-A17,
+  eng-impower-past-cut A15; T-1950; excel-graph). Mac desktop's cached IMABS digits in COMPLEXs.xlsx match neither
+  (below, "neither `sqrt(x²+y²)` nor `hypot`"), unexplained. See "IMPOWER past the angle cut" for bases past the cut.
+Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950).
+Status: VERIFIED (excel-graph)
+Tasks: T-1766, T-1892, T-1950
+
+## IMPOWER past the angle cut
+Rule: once IMPOWER's angle `atan2(y,x)·n` passes the cut (about 134217727), Excel's sine and cosine both read as the
+largest double, 1.7976931348623157E+308, in every quadrant: each part is `|z|^n · DBL_MAX`, both positive and equal,
+and the result is `#NUM!` when that is not below DBL_MAX: evidenced for a radius of exactly 1 and above 1; a radius
+just below 1 whose product rounds to DBL_MAX is unprobed (ours `#NUM!`). A pure imaginary or real
+base of radius 1 is therefore `#NUM!` (`IMPOWER("i",85445659)`, `IMPOWER("-1",42722830)`), and so is
+`IMPOWER("1.0000000001i",85445659)` and a negative power of a radius below 1 (`IMPOWER(..,-170891318)`), while
+`IMPOWER("0.99999973i",85445659)` is `1.71948380972175E+298+1.71948380972175E+298i` (|z|^n ≈ 9.565E-11, the radius of
+the 85445658th power, A19, times DBL_MAX; the 85445660th and 85445661th powers and the power 85445659.5 follow the
+radius), `IMPOWER("-0.9999999",42722830)` is `2.50776326229151E+306+2.50776326229151E+306i`, and the four quadrants of
+`0.7071067811865476±0.7071067811865476i` past the cut all give two equal positive parts
+(`…,170891318` = `1.79769293021926E+308+1.79769293021926E+308i`). A radius that underflows to 0 is still "0".
+Evidence: probes/eng-impower-past-cut A1-A14, A19 (excel-graph, 2026-10-20, T-1950); probes/eng-impower-angle-cut A18,
+A19 (excel-graph, 2026-10-19, T-1892).
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_impower` in functions/engineering/complex.rs (T-1950)
+Tasks: T-1950
 
 ## IMTAN and IMCOT use the double-angle form (T-0907)
 Rule: IMTAN computes tan(x+iy) as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)`, and IMCOT is the
@@ -356,8 +411,8 @@ Evidence: probes/eng-im-overflow (excel-graph).
   `1.65498402768026E+308`, `IMPOWER("1E154",2)` is `1E+308`.
 - IMEXP with a nonzero imaginary part does not overflow to an error: `IMEXP("1000+1i")` is
   `9.71297746009434E+307+1.51270661257499E+308i` (A12). The modulus is capped at DBL_MAX (the
-  ratio of the parts is tan(1) and re / cos(1) is 1.7977E+308), the same mechanism as the values
-  near 1.797E+308 of IMPOWER (T-1950). Implemented (T-2002, T-2060). Probes
+  ratio of the parts is tan(1) and re / cos(1) is 1.7977E+308), not the mechanism of the values
+  near 1.797E+308 of IMPOWER, which are `|z|^n·DBL_MAX` past its angle cut ("IMPOWER past the angle cut", T-1950). Implemented (T-2002, T-2060). Probes
   (probes/eng-imexp-overflow-imag, excel-graph): the cap holds for a negative imaginary part
   (`IMEXP("1000-1i")`), for `709.9+1i` (exp overflows only past 709.78) and for `1000+3.14159i`
   (`-1.79769313485599E+308+4.770340154251E+302i`), down to `1000+1.5E-8i`; but `IMEXP("710+1E-300i")`,
@@ -391,7 +446,7 @@ Evidence: probes/eng-im-overflow (excel-graph).
   formatting difference, not T-0907 precision.
 - IM* text writes a small part in full past 20 characters: `IMEXP("710i")` is
   `0.999999998182636+0.0000602887066915739i` (A42). Ours now writes a part with decimal exponent -5 or above in plain notation whatever its
-  length (exponent -5 is plain by A42 and -16 is E notation by A9; -6 to -15 are unprobed, T-2056; the 15-digit rule at negative exponents of -99 or below is also unprobed); A42 still
+  length (exponent -5 is plain by A42 and -16 is E notation by A9; -6 to -15 are all E notation, `IMSUM("1.23456789012345E-6","0")` is `1.23456789012345E-06`, while -1 to -5 are plain up to `0.0000123456789012345`, an imaginary part likewise: probes/eng-im-small-part A1-A16, B1-B12, excel-graph, T-2056; the 15-digit rule at negative exponents of -99 or below is also unprobed); A42 still
   fails: the digits differ since Excel reduces a large sine or cosine argument differently (ours
   `...915853`).
 - An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
@@ -409,3 +464,22 @@ Evidence: probes/eng-im-overflow (excel-graph).
   (`IMSUM("9E307","9E307","-9E307")`) and a later blank cell (`IMPRODUCT("1E200","1E200",<blank>)`, not "0") (T-2003).
 Evidence: probes/eng-complex-overflow A1-A21 (excel-graph, 2026-10-19). Implemented in complex.rs
 (`finite_complex_result`, `fn_imsub`, `fold_complex`).
+
+Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
+
+- A blank cell argument met earlier in IMPRODUCT (a blank inside a range is UNVERIFIED, T-2231) makes the running product 0, so a later overflow cannot
+  happen: `IMPRODUCT(<blank>,"1E200","1E200")` is `0`; the blank last is `#VALUE!` (the overflow
+  came first). Implemented.
+- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78 by analogy with SINH/COSH in numbers.md; probed only at 710.4 and 711, T-2231),
+  whatever the real part (`IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`), although `cosh y` is still
+  finite there. IMCOSH and IMSINH are `#NUM!` for a zero imaginary part when `exp(|x|)` overflows
+  (`IMCOSH("710.4+0i")`) but answer text with a nonzero one (`IMCOSH("710.4+1.5i")` is
+  `1.17873946358278E+307+1.6621900184285E+308i`); past cosh's own range it is `#NUM!`
+  (`IMCOSH("711+1.5i")`). A tiny nonzero imaginary part with a large real one is UNVERIFIED. Implemented.
+- IMSEC, IMCSC, IMSECH and IMCSCH answer `0` (both parts) where the denominator overflows
+  (`IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`, `IMSEC("1.5+711i")`); a zero denominator stays
+  `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented.
+- IMTAN and IMCOT near the edge answer `i` / `-i` (`IMTAN("1.5+710.4i")`); IMLN, IMLOG10, IMLOG2
+  and IMSQRT do not overflow there. Already matched.
+- Last-digit differences remain as known failures (a kernel question, not a rule; T-2231): IMCOSH/IMSINH
+  `710.4+1.5i` (several units in the 15th digit) and `1.5+710.4i`, IMSECH `1.5+711i`, IMCOT `711+1.5i`, IMLOG2 and IMLOG10 at 710-800.

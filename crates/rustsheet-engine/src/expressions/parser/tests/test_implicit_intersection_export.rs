@@ -763,7 +763,8 @@ fn legacy_array_values_intersect_in_value_positions() {
             "N(SWITCH(1,1,{2;3}))",
             "N(_xlfn.SWITCH(1,1,{2;3}))",
         ),
-        // A root SWITCH of array constants is unmarked and spills (T-1910); nested, it keeps its `@`.
+        // A SWITCH of array constants is unmarked and spills, at the root (T-1910) and nested under a
+        // scalar function (probes/legacy-switch-at-shapes G20, T-1964).
         (
             "_xlfn.SWITCH(1,1,{2;3})",
             "SWITCH(1,1,{2;3})",
@@ -777,7 +778,7 @@ fn legacy_array_values_intersect_in_value_positions() {
         ),
         (
             "ABS(_xlfn.SWITCH(1,1,{-2;3}))",
-            "ABS(@SWITCH(1,1,{-2;3}))",
+            "ABS(SWITCH(1,1,{-2;3}))",
             "ABS(_xlfn.SWITCH(1,1,{-2;3}))",
         ),
         ("SUM(N({1,2}))", "SUM(N({1,2}))", "SUM(N({1,2}))"),
@@ -1014,4 +1015,107 @@ fn statistical_legacy_ranges_and_shapes_follow_the_table() {
         shape("HYPGEOMDIST(2,3,5,{10,12})"),
         StaticResult::Array(1, 2)
     ));
+}
+
+// T-1964: a legacy cell leaves a SWITCH and its results unmarked, and it spills, at the root
+// (results array constants or ranges) and under ABS, LEN or a unary minus (array constants);
+// probes/legacy-switch-at-shapes. Every other shape is unprobed and keeps the `@` it had before.
+// An `@` typed where the import adds none is kept by the export.
+#[test]
+fn legacy_switch_spills_only_in_the_probed_shapes() {
+    check(&[
+        (
+            "_xlfn.SWITCH(1,1,Z30:Z32)",
+            "SWITCH(1,1,Z30:Z32)",
+            "_xlfn.SWITCH(1,1,Z30:Z32)",
+        ),
+        (
+            "_xlfn.SWITCH(1,1,Z30:AA31)",
+            "SWITCH(1,1,Z30:AA31)",
+            "_xlfn.SWITCH(1,1,Z30:AA31)",
+        ),
+        (
+            "_xlfn.SWITCH(1,1,{5})",
+            "SWITCH(1,1,{5})",
+            "_xlfn.SWITCH(1,1,{5})",
+        ),
+        (
+            "_xlfn.SWITCH(Z29,1,{2;3},{4;5})",
+            "SWITCH(Z29,1,{2;3},{4;5})",
+            "_xlfn.SWITCH(Z29,1,{2;3},{4;5})",
+        ),
+        (
+            "-_xlfn.SWITCH(1,1,{2;3})",
+            "-SWITCH(1,1,{2;3})",
+            "-_xlfn.SWITCH(1,1,{2;3})",
+        ),
+        (
+            "LEN(_xlfn.SWITCH(1,1,{\"ab\";\"c\"}))",
+            "LEN(SWITCH(1,1,{\"ab\";\"c\"}))",
+            "LEN(_xlfn.SWITCH(1,1,{\"ab\";\"c\"}))",
+        ),
+        // A lookup value is still intersected.
+        (
+            "_xlfn.SWITCH(Z30:Z32,1,{2;3})",
+            "SWITCH(@Z30:Z32,1,{2;3})",
+            "_xlfn.SWITCH(Z30:Z32,1,{2;3})",
+        ),
+        // Typed `@`s there are meaningful.
+        (
+            "_xlfn.SWITCH(1,1,_xlfn.SINGLE(Z30:Z32))",
+            "SWITCH(1,1,@Z30:Z32)",
+            "_xlfn.SWITCH(1,1,_xlfn.SINGLE(Z30:Z32))",
+        ),
+        (
+            "_xlfn.SINGLE(_xlfn.SWITCH(1,1,Z30:Z32))",
+            "@SWITCH(1,1,Z30:Z32)",
+            "_xlfn.SINGLE(_xlfn.SWITCH(1,1,Z30:Z32))",
+        ),
+        (
+            "ABS(_xlfn.SINGLE(_xlfn.SWITCH(1,1,{-2;3})))",
+            "ABS(@SWITCH(1,1,{-2;3}))",
+            "ABS(_xlfn.SINGLE(_xlfn.SWITCH(1,1,{-2;3})))",
+        ),
+        (
+            "-_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
+            "-@SWITCH(1,1,{2;3})",
+            "-_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+        // Unprobed shapes keep their `@` (T-2121).
+        (
+            "_xlfn.SWITCH(1,1,{2;3})+0",
+            "@SWITCH(1,1,{2;3})+0",
+            "_xlfn.SWITCH(1,1,{2;3})+0",
+        ),
+        (
+            "SIN(_xlfn.SWITCH(1,1,{2;3}))",
+            "SIN(@SWITCH(1,1,{2;3}))",
+            "SIN(_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+        (
+            "ABS(_xlfn.SWITCH(1,1,Z30:Z32))",
+            "ABS(@SWITCH(1,1,@Z30:Z32))",
+            "ABS(_xlfn.SWITCH(1,1,Z30:Z32))",
+        ),
+        (
+            "ABS((_xlfn.SWITCH(1,1,{-2;3})))",
+            "ABS((@SWITCH(1,1,{-2;3})))",
+            "ABS((_xlfn.SWITCH(1,1,{-2;3})))",
+        ),
+        (
+            "_xlfn.SWITCH(1,1,Z30:Z32*1)",
+            "@SWITCH(1,1,@Z30:Z32*1)",
+            "_xlfn.SWITCH(1,1,Z30:Z32*1)",
+        ),
+        (
+            "_xlfn.SWITCH(1,1,IF(1,{2;3}))",
+            "@SWITCH(1,1,IF(1,{2;3}))",
+            "_xlfn.SWITCH(1,1,IF(1,{2;3}))",
+        ),
+        (
+            "IF(1,_xlfn.SWITCH(1,1,{2;3}))",
+            "IF(1,@SWITCH(1,1,{2;3}))",
+            "IF(1,_xlfn.SWITCH(1,1,{2;3}))",
+        ),
+    ]);
 }

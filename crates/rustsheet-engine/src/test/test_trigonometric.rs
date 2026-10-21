@@ -195,6 +195,19 @@ fn acos_is_half_pi_minus_asin() {
 }
 
 #[test]
+fn asin_acos_just_below_minus_one_are_num() {
+    // gen-m5/3b813881f835cd90 A273 and gen-m5/38b1b8e51dbad326 A222 (excel-graph, T-2170).
+    let mut model = new_empty_model();
+    model._set("A1", "=ASIN(-1-2^-52)");
+    model._set("A2", "=ACOS(-1-2^-52)");
+    model._set("A3", "=ASIN(1+2^-52)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+}
+
+#[test]
 fn asinh_acosh_are_the_log_formulas() {
     // probes-numeric/m9-hyperbolic A1 and A76 (excel-graph, T-1005, T-2031): Excel evaluates
     // ln(x + sqrt(x*x +- 1)) in doubles, losing precision near 0 (ASINH) and 1 (ACOSH).
@@ -217,8 +230,8 @@ fn asinh_acosh_are_the_log_formulas() {
     assert_eq!(bits("A2"), (-1.000_000_082_690_371e-10_f64).to_bits());
     assert_eq!(bits("A3"), 1.414_276_423_083_533e-6_f64.to_bits());
     assert_eq!(model._get_text("A4"), *"#NUM!");
-    // x*x overflows: libm's value, since no Excel value is known there.
-    assert_eq!(bits("A5"), 1e200_f64.asinh().to_bits());
+    // x*x overflows: `#NUM!` (probes-numeric/t2062-asinh-acosh-overflow, excel-graph, T-2062).
+    assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(bits("A6"), 0.0_f64.to_bits());
     // Out of domain is `#NUM!`, also where x + sqrt(x*x - 1) rounds to 0 or x*x overflows.
     for cell in ["A7", "A8", "A9"] {

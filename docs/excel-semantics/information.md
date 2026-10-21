@@ -23,8 +23,8 @@ Evidence: probes/is-functions-array-lift (Calc!A15, B15, D15, E15, J2, K2, L3, M
 excel-graph oracle sidecar, 2026-10-06). Desktop Excel was not checked.
 Also covered by M34:P34 (`{4.5,-7,"3",TRUE}` -> TRUE, FALSE, FALSE, #VALUE!: parity of the truncated
 absolute value, text cast, boolean #VALUE!). UNVERIFIED sub-rules (no probe yet): an array
-expression derived from a range (`ISEVEN(Data!C1:C5+0)`), arguments of magnitude >= 2^63, and the
-dynamic-array flag Excel writes for the range form.
+expression derived from a range (`ISEVEN(Data!C1:C5+0)`), and the
+dynamic-array flag Excel writes for the range form. Magnitude >= 2^63 is settled below (T-2165).
 Legacy (pre-dynamic-array) formulas, UNVERIFIED for ISEVEN/ISODD (T-1774 moved them onto the
 SPEC-0011 `LiftArrays` table entry, so they follow the Analysis ToolPak rule probed for EDATE and
 YEARFRAC, probes/scalar-lift-shapes-c E, F, H, Q): a bare range gets no `@` and is `#VALUE!`, a
@@ -128,6 +128,11 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   `#N/A`. An error element of an array `value` is `#FIELD!` like a scalar error `value` (A9:C10).
 - A later argument's error lifts over an array first argument: `IMAGE({url,url},1/0)` and `STOCKHISTORY({"A","B"},1/0)`
   are 1x2 arrays of `#DIV/0!`, and the column forms have 2 rows (A12:B15).
+- A scalar error option beside a grid `source` and a wider array option lifts over the broadcast shape, not the source's:
+  `IMAGE({url,url},"alt",1/0,{5,5,5})` is 1x3, `#DIV/0!`, `#DIV/0!`, `#N/A` (the source is the first argument, so its past-end
+  position is `#N/A`); `{url,url}` with a column `{5;5;5}` is 3x2, `#DIV/0!` throughout (all six elements); `{url;url}` with `{5;5;5}` is 3x1, `#DIV/0!`, `#DIV/0!`, `#N/A` (the source's past-end row is `#N/A` as in the row case, probes/rich-errors-image-grid-error-past-end, T-2229), and `#N/A` throughout with `NA()`; `IMAGE({url,url,url},"alt",1/0,{5,5})` is 1x3 of
+  `#DIV/0!` (the earlier error argument beats the option's past-end `#N/A`); `NA()` as the option gives `#N/A` throughout
+  (probes/rich-errors-image-grid-error-option, excel-graph, 2026-10-21, T-2205). Without an array option the error fills the source's shape.
 - An error element inside an array `source`/`stock` keeps its error; the other elements are `#BLOCKED!` / `#CONNECT!` (A18:C19).
 - `ERROR.TYPE` over a direct multi-cell range lifts (`ERROR.TYPE(E1:G1)` spills 2, 7, 2), and over a one-cell range it is
   that cell's code, one row (A21:A23).
@@ -172,11 +177,17 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   `{"b",#N/A}` with `{0,0,0}` is `#BLOCKED!`, `#N/A`, `#N/A`) (95 cells, T-1427; VERIFIED).
   A non-URL scalar source keeps the lift: `IMAGE("x",{"a","b"})` is `#VALUE!`, `#VALUE!` (1x2, not a scalar), and a scalar error option beside an array option
   still shapes the grid and wins over the source: `IMAGE(1,"alt",#DIV/0!,{5,5})` is `#DIV/0!`, `#DIV/0!` (probes/rich-errors-image-array-error-elements A189, A193, T-1432; VERIFIED; the engine already matches).
+  A position past the end of a shorter array is an `#N/A` element of that argument, taken in argument order like any error
+  element, not an `#N/A` that overrides the rest: an earlier argument's error wins (`IMAGE({#DIV/0!,#DIV/0!,#DIV/0!},"alt",{0,0})`,
+  `IMAGE(url,{#DIV/0!,#DIV/0!,#DIV/0!},{0,0})` and `IMAGE(url,"alt",{#DIV/0!,#DIV/0!,#DIV/0!},{5,5})` are `#DIV/0!` in their third
+  column; a scalar `#DIV/0!` height before a two-wide width too), and a later one loses (`IMAGE(url,"alt",{3,3},{#DIV/0!,#DIV/0!,#DIV/0!})`
+  and a two-wide source with a three-wide `{#DIV/0!,...}` sizing are `#N/A` there). It also beats an invalid option (`{9,9,9}` with
+  width `{5,5}` is `#N/A` in the third column; probed with an invalid sizing only) (probes/rich-errors-image-past-end, 8 cells, excel-graph, 2026-10-20, T-1962; VERIFIED).
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
 - A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
   `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!`, and `{1;2;3}` with `{"a","b"}` is 3x2 of `#FIELD!`; the row-axis form (`{1;2;3}` with `{"a";"b"}`) is UNVERIFIED (probes/rich-errors-image-sizing). A
   shorter `value` is not padded (above).
-The engine matches all of these (A16 since T-1345; the option lift since T-1370; `Model::image_grid`).
+The engine matches all of these (A16 since T-1345; the option lift since T-1370; through the SPEC-0011 driver, `image_element`, since T-1962, which fixed the past-the-end order: `image_grid` made every past-the-end position `#N/A`).
 Excel fetches the image or the quotes; formulas here do no I/O (CLAUDE.md directive 5).
 Excel returns the same errors only when the fetch fails: `IMAGE("https://example.invalid/none.png")` is
 `#BLOCKED!` and `STOCKHISTORY("QZXQZXQ",DATE(2020,1,2))` is `#CONNECT!`. A reachable URL or a real ticker
@@ -268,6 +279,17 @@ Ours: matches since T-2042; "filename" is `#VALUE!` always since T-2052. An unna
 (`WorkbookOptions::name` `None`, the default) gives `#N/IMPL!` for cross-sheet "address" rather than guess; a union on another sheet is `#N/IMPL!` (unprobed).
 Tasks: T-2042, T-2052
 
+## TYPE of a one-cell range, ISEVEN/ISODD past 2^63, CELL over a range info_type (T-2156, T-2165, T-2161)
+- `TYPE` of a one-cell range is its cell's type, not 64: `TYPE(D7:D7)` and `TYPE(B3:B3)` are 1 (ours 64). Multi-cell ranges
+  stay 64 (above). Evidence: gen-m5/2abdc1524e5aa685 Calc!A371, gen-m5/c0651f0e0fb544d0 Calc!A203 (excel-graph, 2026-10-20).
+- ISEVEN and ISODD of a value at or above 2^63 read it as even (every double from 2^53 up is an even integer):
+  `ISODD(INT(1E+21))` is FALSE, `ISEVEN(3.333333333333325E+29)` and `ISEVEN(8.999999753086524E+28)` TRUE. Implemented in `Model::parity_of`
+  (functions/information/mod.rs) with an f64 remainder (an i64 cast saturated to i64::MAX, which is odd). This settles the ">= 2^63" line of "ISEVEN/ISODD over a range". Evidence: gen-m5/ee1667411bbe2ccc
+  Calc!A159, gen-m5/1315170eef6c413e Calc!A396, gen-m5/50d8a085335c05e6 Calc!A92.
+- CELL lifts over a multi-cell range given as info_type, as over an array: `CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
+  filled column (ours `#VALUE!`). Evidence: gen-m5/c0651f0e0fb544d0 Calc!A293.
+Status: VERIFIED (excel-graph); ISEVEN/ISODD implemented (T-2165); not implemented (T-2156, T-2161).
+
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
 and the XLM `GET.WORKBOOK(...)` sheet list. Workbooks that use `GET.WORKBOOK(` (defined names or macro
@@ -329,3 +351,36 @@ Evidence: probes/legacy-array-result S!G1:G2, probes/t-array-lift (excel-graph, 
 Implemented in fn_t (T-1729).
 Status: VERIFIED (excel-graph)
 Tasks: T-1713, T-1729
+
+## SHEETS counts the sheets a reference spans (VERIFIED, excel-graph)
+Status: VERIFIED (excel-graph). Tasks: T-2115, T-2181.
+Rule: `SHEETS(reference)` is the number of sheets the reference covers: 1 for a cell or range on one sheet, written
+bare, sheet-qualified or quoted (`SHEETS(A1)`, `SHEETS($A$1:$B$2)`, `SHEETS(Data!A1:B2)`, `SHEETS('Beta'!A1)`), and the
+count of sheets between the corners, inclusive, for a 3-D span in either order: with sheets Alpha, Beta, Gamma, Data,
+`SHEETS(Alpha:Gamma!A1)` and `SHEETS(Gamma:Alpha!A1)` are 3, `SHEETS(Beta:Data!A1:B2)` 3, `SHEETS(Alpha:Data!B2)` 4.
+The result is a plain number (`TYPE` 1, `ISNUMBER` TRUE, `+0`, `*1`, `=3` TRUE). A reversed span reads the same in SUM too
+(`SUM(Gamma:Alpha!A1)` = `SUM(Alpha:Gamma!A1)`).
+Evidence: probes/info-sheets-info-types Alpha!D1:D24, D50:D52 (excel-graph, 2026-10-20, T-2115). The engine implements a single-area
+reference and a 3-D span in either order (T-2181); only a written reference (cell, range, 3-D span) is read; a union, a lifted reference grid, a name, OFFSET,
+INDIRECT, INDEX, an IF/CHOOSE pick, a cross-sheet range operator between two sheet-qualified cells
+(`Alpha!A1:Beta!B1`), a non-reference and an error argument stay `#N/IMPL!`. An unqualified cell joined to a cell on
+another sheet is `#VALUE!`: that is how the unquoted cell-like span `SHEETS(S1:S3!A1)` reads, `S1:(S3!A1)`, as in
+Excel (T-2193), and as the range operator itself is between corners on two sheets (references.md "Sheet-qualified
+range corners"). Unprobed, because the oracle canary refuses them (T-2113): a union, INDIRECT,
+OFFSET, a defined name, a non-reference or error argument, bare `SHEETS()`, and a range operator across sheets
+(`SHEETS(Alpha!A1:Beta!B1)`, refused 2026-10-21).
+Probe trap: sheets named like cells (S1, S2, S3) break an unquoted 3-D span on Excel for the web: `SUM(S1:S3!A1)`,
+`SUM(S3:S1!A1)` and `SHEETS(S1:S3!A1)` are `#VALUE!` and `SHEETS(S3:S1!A1)` is 1, while the quoted `'S1:S3'!A1` works
+(`SUM` 13, `SHEETS` 3) and so does a single-sheet `S2!A1` (probes/sheet-names-like-cells-3d-spans B1:B7, excel-graph,
+2026-10-20). Excel writes such names quoted; give probe sheets names that are not cell references.
+
+## INFO is #VALUE! in Excel for the web
+Status: VERIFIED (excel-graph); desktop pending T-2182. Tasks: T-2115, T-2190, T-2182.
+Rule (web): every INFO call is `#VALUE!`, whatever the type_text: "recalc", "system", "release", "directory",
+"osversion", "origin", the legacy "memavail", "memused" and "totmem", `""` and `"x"`, in lower, upper or mixed case
+(`TYPE(INFO("release"))` 16, `ERROR.TYPE(INFO("x"))` 3, `ISTEXT(INFO("recalc"))` FALSE, `LEN(INFO("osversion"))>0`
+`#VALUE!`). So no value turned out host-dependent. As with ENCODEURL and FILTERXML (web.md), this is the golden for
+Phases 1-3 (decision 0039): the engine follows it in T-2190, which is expected to differ from desktop Excel; T-2182
+(M14) asks desktop. Unprobed: `INFO(#N/A)`, `INFO(1)`, `INFO(TRUE)`, an array argument (the oracle canary refuses a
+non-literal INFO, T-2113), and `INFO("numfile")` (canary-dependent).
+Evidence: probes/info-sheets-info-types Alpha!D25:D49 (excel-graph, 2026-10-20, T-2115).

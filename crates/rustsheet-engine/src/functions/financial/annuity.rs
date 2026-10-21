@@ -424,7 +424,7 @@ impl Model {
         ))
     }
 
-    /// `ISPMT(rate, per, nper, pv)`: `pv*rate*(per/nper - 1)`.
+    /// `ISPMT(rate, per, nper, pv)`: `(per - nper) * pv * rate / nper`, in Excel's order (`ispmt_of`).
     pub(crate) fn fn_ispmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ispmt, args, cell, &mut |model, values| {
             number_or_error(model.ispmt_of(values, cell))
@@ -442,7 +442,11 @@ impl Model {
         if nper == 0.0 {
             return Err(div_error(cell));
         }
-        Ok(pv * rate * (per / nper - 1.0))
+        // Excel's operation order, `(per - nper) * pv * rate / nper`, left to right: it alone fits
+        // all 24 cells of probes/fin-ispmt-order (inputs where the candidate orders differ in the
+        // last bit) and ISPMT.xlsx E2 (`ISPMT(0.2,1,3,100)` = -13.333333333333334, where
+        // `pv * rate * (per / nper - 1)` gives ...336; financial.md "ISPMT's operation order").
+        Ok((per - nper) * pv * rate / nper)
     }
 
     /// `RRI(nper, pv, fv)`: `(fv/pv)^(1/nper) - 1`.
@@ -471,8 +475,18 @@ impl Model {
             // Note error is NUM not DIV/0 also below
             return Err(num_error(cell));
         }
-        let result = (fv / pv).powf(1.0 / nper) - 1.0;
-        if result.is_infinite() || result.is_nan() {
+        // Excel computes `(fv/pv)^(1/nper)-1` with its own `/`, `^` and `-`:
+        // `RRI(10,1,200)` is 0.6986464646342472 like `(200/1)^(1/10)-1`, where libm `powf` is
+        // 2 ulps higher (probes/fin-rri A14, fin-mduration-rri-fit A37-A60, T-1975). Unlike `^`, a
+        // negative ratio is always #NUM!: `RRI(1,-100,200)` is #NUM! where `(200/-100)^1-1` is -3,
+        // and so are odd roots (probes/fin-rri-vdb-edges A1-A16).
+        let ratio = extended_quotient(fv, pv);
+        if ratio < 0.0 {
+            return Err(num_error(cell));
+        }
+        let growth = power(ratio, extended_quotient(1.0, nper)).map_err(|_| num_error(cell))?;
+        let result = extended_sum(growth, -1.0);
+        if !result.is_finite() {
             return Err(num_error(cell));
         }
         Ok(result)

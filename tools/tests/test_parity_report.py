@@ -25,25 +25,40 @@ SCOPE: dict[str, Any] = {
 }
 
 
-def fn(name: str, cells: int, passed: int, unsupported: int = 0, **buckets: int) -> dict[str, Any]:
-    """A report `functions[]` entry with its closeness counts (T-2036); `passed` cells are bit-exact."""
-    closeness = {"pass": passed, "ulp1": 0, "ulp4": 0, "close": 0, "off": 0, **buckets}
+ZERO = {"pass": 0, "ulp1": 0, "ulp4": 0, "digits15": 0, "visible_numeric": 0, "visible_other": 0}
+
+
+def fn(
+    name: str, cells: int, passed: int, unsupported: int = 0, blamed: int = 0, **buckets: int
+) -> dict[str, Any]:
+    """A report `functions[]` entry with its closeness counts (T-2036, T-0061); `passed` cells are
+    bit-exact and `blamed` visibly-off cells are held against the function."""
+    closeness = {**ZERO, "pass": passed, **buckets}
     verdicts = {"pass": passed, **({"unsupported": unsupported} if unsupported else {})}
-    return {"name": name, "cells": cells, "passed": passed, "verdicts": verdicts, "closeness": closeness}
+    visible = {"numeric": blamed, "other": 0}
+    return {
+        "name": name,
+        "cells": cells,
+        "passed": passed,
+        "verdicts": verdicts,
+        "closeness": closeness,
+        "visible": visible,
+    }
 
 
 def report() -> dict[str, Any]:
-    """ABS: 1 ulp. LN: one 1-ulp and one 3-ulp cell. SUM: a 1-ulp and an off cell.
-    BETA.DIST: 1e-9 and an off cell, plus a deviation (pinned value, counted as pass).
+    """ABS: 1 ulp. LN: one 1-ulp and one 3-ulp cell. SUM: a 1-ulp and a visibly-off cell that is
+    blamed on BETA.DIST, which has a 15-digit cell, a visibly-off text cell and a deviation (pinned
+    value, counted as pass).
     UPPER: bit-exact but one unsupported. CALL is out of scope."""
     return {
         "functions": [
             fn("ABS", 5, 4, ulp1=1),
-            fn("SUM", 4, 2, ulp1=1, off=1),
+            fn("SUM", 4, 2, ulp1=1, visible_numeric=1),
             fn("LN", 6, 4, ulp1=1, ulp4=1),
-            fn("BETA.DIST", 6, 3, close=1, off=1, **{"pass": 4}),
+            fn("BETA.DIST", 6, 3, blamed=2, digits15=1, visible_other=1, **{"pass": 4}),
             fn("UPPER", 3, 2, unsupported=1),
-            fn("CALL", 2, 0, unsupported=1, off=1),
+            fn("CALL", 2, 0, unsupported=1, visible_other=1),
         ],
         "cases": [],
         "suites": [
@@ -53,6 +68,7 @@ def report() -> dict[str, Any]:
                 "cells": 30,
                 "cells_passed": 22,
                 "verdicts": {"pass": 22, "numeric_ulp": 3, "numeric_close": 1, "unsupported": 1},
+                "closeness": {**ZERO, "visible_numeric": 1, "visible_other": 2},
             }
         ],
     }
@@ -71,13 +87,14 @@ def test_ulp_buckets_are_kept_apart() -> None:
 def test_function_is_placed_by_its_worst_cell() -> None:
     f = by_name()
     assert f["ABS"].worst == "ulp1"
-    assert f["BETA.DIST"].worst == "off"
+    assert f["BETA.DIST"].worst == "visible_other"
+    assert f["SUM"].worst == "visible_numeric"
     assert f["UPPER"].worst == "pass"
 
 
 def test_deviation_counts_as_pass() -> None:
     beta = by_name()["BETA.DIST"]
-    assert beta.counts == {"pass": 4, "ulp1": 0, "ulp4": 0, "close": 1, "off": 1}
+    assert beta.counts == {**ZERO, "pass": 4, "digits15": 1, "visible_other": 1}
 
 
 def test_unsupported_cells_are_dropped() -> None:
@@ -88,7 +105,7 @@ def test_unsupported_cells_are_dropped() -> None:
 
 def test_buckets_come_from_the_report() -> None:
     f = by_name()
-    assert f["SUM"].counts == {"pass": 2, "ulp1": 1, "ulp4": 0, "close": 0, "off": 1}
+    assert f["SUM"].counts == {**ZERO, "pass": 2, "ulp1": 1, "visible_numeric": 1}
     assert f["ABS"].counts["ulp1"] == 1
 
 
@@ -115,9 +132,30 @@ def test_buckets_that_do_not_sum_to_the_scored_cells_fail_loudly() -> None:
 
 def test_totals_and_near_off() -> None:
     p = compute(report(), SCOPE)
-    assert p.functions_per_bucket() == {"ulp1": 1, "ulp4": 1, "off": 2, "pass": 1}
+    assert p.functions_per_bucket() == {
+        "ulp1": 1,
+        "ulp4": 1,
+        "visible_numeric": 1,
+        "visible_other": 1,
+        "pass": 1,
+    }
     assert sum(p.cells_per_bucket().values()) == 5 + 4 + 6 + 6 + 2
     assert p.near_off() == 0
+
+
+def test_visibly_off_functions_are_the_blamed_ones() -> None:
+    p = compute(report(), SCOPE)
+    assert [(f.name, f.visible) for f in p.blamed()] == [("BETA.DIST", 2)]
+    assert p.suite_visible_cells() == 3
+    assert "**1 in-scope functions are visibly off**" in parity_report.takeaway(p)
+    assert "| BETA.DIST | statistical | M9 | 2 | 6 |" in parity_report.visible_table(p)
+
+
+def test_a_report_without_the_fifteen_digit_bucket_fails_loudly() -> None:
+    r = report()
+    del r["functions"][0]["closeness"]["digits15"]
+    with pytest.raises(ParityReportError, match="T-0061"):
+        compute(r, SCOPE)
 
 
 def test_pct_never_rounds_to_the_ends() -> None:
@@ -151,7 +189,7 @@ def test_main_writes_the_pages_and_charts(tmp_path: Path) -> None:
     table = (out / "parity" / "functions.md").read_text()
     rows = [line for line in table.splitlines() if line.startswith("| ")]
     assert [r.split(" | ")[0] for r in rows[2:]] == ["| ABS", "| BETA.DIST", "| LN", "| SUM", "| UPPER"]
-    assert all(r.count("|") == 12 for r in rows)
+    assert all(r.count("|") == 14 for r in rows)
 
 
 def test_nice_step_picks_1_2_5_steps() -> None:
@@ -160,22 +198,22 @@ def test_nice_step_picks_1_2_5_steps() -> None:
 
 def test_stacked_inner_labels_need_room() -> None:
     # 60 of 100 is about 280px wide: labelled. 1 of 100 is under MIN_INNER_LABEL_W: not labelled.
-    svg = bar_chart("t", "d", [Bar("cat", (("pass", 60), ("ulp4", 1), ("off", 39)), "100")])
+    svg = bar_chart("t", "d", [Bar("cat", (("pass", 60), ("ulp4", 1), ("visible_numeric", 39)), "100")])
     assert 'class="num in-pass"' in svg
     assert ">60</text>" in svg
-    assert 'class="num in-off"' in svg
+    assert 'class="num in-visible_numeric"' in svg
     assert 'class="num in-ulp4"' not in svg
     # A one-segment bar has no inner label, only its end label.
-    single = bar_chart("t", "d", [Bar("Off", (("off", 7),), "7 (1%)")])
-    assert "in-off" not in single.split("</style>")[1]
+    single = bar_chart("t", "d", [Bar("Off", (("visible_numeric", 7),), "7 (1%)")])
+    assert "in-visible_numeric" not in single.split("</style>")[1]
     assert ">7 (1%)</text>" in single
 
 
 def test_inner_label_ink_follows_the_theme() -> None:
-    svg = bar_chart("t", "d", [Bar("c", (("close", 50), ("pass", 50)), "100")])
+    svg = bar_chart("t", "d", [Bar("c", (("digits15", 50), ("pass", 50)), "100")])
     light, dark = svg.split("@media (prefers-color-scheme: dark)")
-    assert ".in-close{fill:#ffffff}" in light
-    assert ".in-close{fill:#000000}" in dark
+    assert ".in-digits15{fill:#ffffff}" in light
+    assert ".in-digits15{fill:#000000}" in dark
 
 
 def test_chart_contents() -> None:
@@ -186,7 +224,7 @@ def test_chart_contents() -> None:
         assert f">{label}</text>" in stacked
     assert ">math</text>" in stacked
     assert ">Within 2\N{EN DASH}4 ulp</text>" in svgs["functions-per-bucket.svg"]
-    assert ">2 (40.00%)</text>" in svgs["functions-per-bucket.svg"]
+    assert ">1 (20.00%)</text>" in svgs["functions-per-bucket.svg"]
 
 
 def test_hostile_labels_are_escaped() -> None:

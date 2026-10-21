@@ -26,7 +26,9 @@ impl Model {
         as_reference: bool,
     ) -> CalcResult {
         match self.switch_pick(args, cell) {
-            Picked::Node(value) => self.evaluate_node_as(value, cell, as_reference),
+            Picked::Node(value) => self
+                .evaluate_node_as(value, cell, as_reference)
+                .empty_value_as_zero(),
             Picked::Value(value) => value,
         }
     }

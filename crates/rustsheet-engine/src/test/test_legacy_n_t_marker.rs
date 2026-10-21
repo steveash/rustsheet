@@ -327,6 +327,31 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
             true,
             "N(CHOOSE({1;2},{2;3},{4;5}))",
         ),
+        // probes/subtotal-take-array-selector D1, D3 (T-1915) and
+        // probes/legacy-n-t-choose-array-index-shapes (T-2100): N or T over a CHOOSE with any
+        // array-constant index over cell or range arms is marked with no `@`.
+        (
+            "N(CHOOSE({1,2},H1:H2,I1:I2))",
+            true,
+            "N(CHOOSE({1,2},H1:H2,I1:I2))",
+        ),
+        (
+            "T(CHOOSE({1,2},H1:H2,I1:I2))",
+            true,
+            "T(CHOOSE({1,2},H1:H2,I1:I2))",
+        ),
+        ("T(CHOOSE({1,2},V1,W1))", true, "T(CHOOSE({1,2},V1,W1))"),
+        (
+            "N(CHOOSE({1;2},X1,Y1:Y2))",
+            true,
+            "N(CHOOSE({1;2},X1,Y1:Y2))",
+        ),
+        ("N(CHOOSE({1},X1:X2))", true, "N(CHOOSE({1},X1:X2))"),
+        (
+            "N(CHOOSE({1,2;2,1},X1:X2,Y1:Y2,Z1:Z2))",
+            true,
+            "N(CHOOSE({1,2;2,1},X1:X2,Y1:Y2,Z1:Z2))",
+        ),
         // A reference result reads the same marked or not (J10, 7).
         ("N(IF(1,Z1:Z2))", true, "N(IF(1,Z1:Z2))"),
         // Not a value position: a vector argument, IF's arms, SUMPRODUCT's array context.

@@ -1,4 +1,5 @@
 mod conditional_formatting;
+pub(crate) mod kernel_rows;
 mod test_actions;
 mod test_arabic_roman;
 mod test_bare_union;
@@ -19,6 +20,7 @@ mod test_days360_month_end;
 mod test_days_days360;
 mod test_defined_name_formulas;
 mod test_defined_name_grouped;
+mod test_defined_name_relative;
 mod test_degrees_radians;
 mod test_error_propagation;
 mod test_external_links;

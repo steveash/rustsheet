@@ -4,9 +4,10 @@ title: "Txn::add_table takes a totals row; the eval adapter loads spec totals ro
 milestone: M8
 lane: api
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -32,3 +33,6 @@ totals-row formulas evaluate as in Excel.
 
 ## Out of scope
 - Totals-row functions metadata (`totalsRowFunction`), table resizing.
+
+## Visible-parity stage
+Decision 0083: wrong values here are visible to anyone using defined names or tables (gen-m8b `[#Totals]` cells), so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.

@@ -260,24 +260,6 @@ pub(super) fn args_signature_randarray(arg_count: usize) -> Vec<Signature> {
     vec![Signature::Scalar; arg_count]
 }
 
-pub(super) fn args_signature_take(arg_count: usize) -> Vec<Signature> {
-    if !(2..=3).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
-}
-
-pub(super) fn args_signature_drop(arg_count: usize) -> Vec<Signature> {
-    if !(2..=3).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
-}
-
 pub(super) fn args_signature_tocol(arg_count: usize) -> Vec<Signature> {
     if !(1..=3).contains(&arg_count) {
         return vec![Signature::Error; arg_count];
@@ -388,24 +370,6 @@ pub(super) fn args_signature_npv(arg_count: usize) -> Vec<Signature> {
     let mut result = vec![Signature::Vector; arg_count];
     result[0] = Signature::Scalar;
     result
-}
-
-pub(super) fn args_signature_xirr(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector; arg_count]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Scalar]
-    } else {
-        vec![Signature::Error; arg_count]
-    }
-}
-
-pub(super) fn args_signature_xnpv(arg_count: usize) -> Vec<Signature> {
-    if arg_count != 3 {
-        vec![Signature::Error; arg_count]
-    } else {
-        vec![Signature::Scalar, Signature::Vector, Signature::Vector]
-    }
 }
 
 // FIXME: This is terrible duplications of efforts. We use the signature in at least three different places:

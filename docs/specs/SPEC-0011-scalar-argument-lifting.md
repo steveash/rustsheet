@@ -568,8 +568,9 @@ As built (T-1822): ACCRINT, the COUP* family, DURATION, MDURATION and PRICE are 
 one period at a time, at most about 32,400 quarters once a settlement below serial 1 is `#NUM!` (Excel's rule,
 probes/fin-coupon-walk-bounds; before, a settlement of -1E15 walked about 10^6 quarters). Each walk is charged 2^16
 units (`COUPON_WALK_WEIGHT`, about 1 ms at the longest schedule): two for COUP* and ACCRINT (1,024 elements), four
-for DURATION, MDURATION and PRICE (512; financial.md "Coupon schedule work cap", a DEVIATION; T-1846 narrows it
-to a schedule-length budget). YIELD, the ODD*
+for DURATION, MDURATION and PRICE (512; financial.md "Coupon schedule work cap", a DEVIATION). T-1846 narrows it
+to a schedule-length budget: each walk is charged in proportion to the element's period count (`CouponWalks`
+above), so those counts hold only at the calendar's longest schedule. YIELD, the ODD*
 functions, CUMIPMT/CUMPRINC, AMOR* and the scalars beside XNPV's, XIRR's and FVSCHEDULE's data are T-1841 to T-1843 and T-1845.
 
 As built (T-1290): 44 statistical functions whose every argument is scalar are `Lift` entries. Kernels that call
@@ -585,7 +586,8 @@ values: `CouponSchedule` and `OddFirstSchedule` (functions/financial/financial_b
 solver step is a sum over the coupons (up to 32,400, 0.55 ms in release) rather than four walks and a sum (5 ms). YIELD
 and ODDFYIELD are charged 2^24 (`YIELD_SOLVER_WEIGHT`: at most 397 prices, about 0.23 s an element at the bound, so 8
 elements, about 1.8 s), ODDFPRICE eight walks (256 elements) and the closed-form ODDLPRICE and ODDLYIELD two (1,024);
-financial.md "Yield and odd-coupon work cap", a DEVIATION that T-1869 narrows to a schedule-length budget.
+financial.md "Yield and odd-coupon work cap", a DEVIATION. T-1869 narrows it to a schedule-length budget
+(`CouponWalks` above): those counts hold only at the calendar's longest schedule.
 As built (T-1848): BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T are `Lift` entries.
 Their quantile search was statrs' `inv_beta_reg`, whose loops are open (it panics or never finishes at a tiny p); it is
 now a line-for-line port with a per-call cap of its own (`statistical/inverse_beta.rs`: 512 Newton steps and 4,096
@@ -648,6 +650,24 @@ IRR's and MIRR's flows first). IRR is `Weighted(512)`: its solver makes at most 
 (`financial_util::compute_irr`), so a lift is charged elements × flows × 512 and `IRR(A1:A300000,{0.1;0.1})` is
 refused before its first element.
 
+As built (T-1843): XNPV is `[LiftArrays, WholeByCaller, WholeByCaller]`, XIRR `[WholeByCaller, WholeByCaller,
+LiftArrays]` and FVSCHEDULE `[LiftArrays, WholeByCaller]`, read as NPV, IRR and MIRR are. XIRR is `Weighted(512)`: its
+solver makes at most 401 XNPV passes per call (`financial_util::compute_xirr`: XNPV(0), two bracket walks of 100
+points, 200 bisection steps).
+
+As built (T-1775): the element-wise text functions are `Lift` entries (`lift/kinds/text.rs`), LEFT to VALUETOTEXT with
+their *B twins, CODE, UNICHAR, UNICODE (T-2090), BAHTTEXT, FILTERXML, DATEVALUE, TIMEVALUE and CONCATENATE (`repeat: Lift` up to 255
+arguments). Their kernels go through `Model::lift_text` (`functions/text/text_kernel.rs`), which keeps `broadcast_text`'s
+first-failure rule (an error argument is the result only when it is the element's first failure, T-1022); TEXT and
+VALUETOTEXT, which order their own errors, call `lift_call` directly. The element functions read `&CalcResult` through the
+borrowing `cast::calc_result_to_text` and `Model::calc_result_to_number`, so an unlifted call copies no text. `TextArg` and
+`broadcast_text` are deleted. Three unprobed edges now follow the driver (a LAMBDA argument, a 1x1 array, VALUETOTEXT's
+scalar error format; text.md, T-1963). FIND and SEARCH are `Constant` with their scan named as the cap
+(`lift/tests/kernel_work.rs`); T-1961 charges it. The final grep finds two `bcast_get` loops the table above missed or
+another task owns: IMAGE's `image_grid` (information/offline_errors.rs, T-1962) and CHOOSE's `choose_array` (T-1810).
+As built (T-1962): IMAGE's array path calls `lift_values` with one kernel, `image_element`, and `image_grid` is gone; a
+position past a shorter array is the driver's `#N/A` element in argument order, as Excel does (probes/rich-errors-image-past-end).
+
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
 It reads a value through borrowing casts, `cast_number_ref`, `cast_bool_ref`, `cast_string_ref` and
@@ -674,13 +694,27 @@ stack frames (T-1110) stay as they are, and the driver runs inside `fn_edate`.
 O(1) or loops a fixed number of times, whatever the argument values. A value-dependent kernel
 must be `Weighted` and also keep a per-call cap of its own. Examples are BINOM.INV, POISSON,
 COMBIN, FACT and MULTINOMIAL (T-1197), and the RATE/IRR/YIELD solvers (they have iteration caps, so
-they are `Constant` only if the cap is fixed). A kernel whose loop length is one argument's value
-may instead be `ByArg { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order)):
-before any element runs, the driver sums each element's charge over the broadcast,
-`1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument `arg`,
-`1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the kernel
-refuses it before looping). That pass is O(elements). The
-kernel still keeps `cap` as its own per-call cap. T-1776 checks a list of
+they are `Constant` only if the cap is fixed). A kernel whose loop length its arguments predict in O(1)
+may instead be `ByValue(ValueWork)`: before any element runs, the driver sums each element's
+`ValueWork::units` of its argument values over the broadcast (`lift/driver.rs` `kernel_units`, one
+O(elements) pass), every estimate between 1 and the flat worst case (`ValueWork::most`). Two
+estimators exist:
+- `Loop { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order); DB and VDB,
+  T-1820): `1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument
+  `arg`, `1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the
+  kernel refuses it before looping). The kernel still keeps `cap` as its own per-call cap.
+- `CouponWalks { dates, frequency, walks, weight }` (T-1846, the COUP* functions, ACCRINT,
+  DURATION, MDURATION and PRICE; T-1869, YIELD and the ODD* functions): `walks` times
+  `ceil(weight * (span * f + 365) / (4 * 2958465 + 365))`, where `span` is the days between the
+  earliest and latest date argument (2 * 1462 more when the earliest is negative, which a 1904
+  workbook does not shift), clamped to the calendar's 2958465, and `f` the frequency (1, 2 or 4):
+  proportional to the period count plus one, the extra period being each pass's fixed cost, and
+  `weight` per pass for the longest schedule. A solver's walk and every price sum are one pass
+  (YIELD's 397 prices, 2^24). A text date is charged as the longest schedule and a text frequency
+  as 4; an error argument or an invalid frequency is 1 (refused before any walk). The calendar
+  bounds each walk, so no cap constant is needed.
+
+T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`
 silently.
 
@@ -904,6 +938,15 @@ evidence it has:
   answered in SPEC-0014 rules 2-7 (T-1960 asks the same of TAKE).
 So T-1838 builds on T-1955's spec and T-1956's carrier, and adds TAKE and DROP as two more
 producers.
+
+**As built (T-1838).** `Model::take_drop_reference` reads the array once and the counts as values; when a
+count lifts (an array or a multi-cell range, as for OFFSET), a single-sheet range source goes through
+`lift_references` and any other source through `lift_values` with the table entry's options and
+`LiftCost::Cells` of the array (each element copies at most the whole array, so the bound is checked before
+any element runs). An unlifted call is unchanged. TAKE and DROP join OFFSET, INDIRECT and TRIMRANGE in
+`reference_producer`, so INDEX, ROWS, COLUMNS, SUMPRODUCT, the aggregates and LET read the grid as they read
+a lifted OFFSET's. IF, CHOOSE and OFFSET's reference argument (`may_hand_on_grid`) do not hand a TAKE or DROP
+grid on yet: unprobed either way, asked in T-1960.
 
 ## Alternatives considered
 - **A helper per family** (status quo, "lift literals only" variants for financial and

@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-2004: LOG10(x) and one-argument LOG(x) against glibc log10, correctly rounded log10 and the x87 FYL2X models: the 7 numeric inputs of ironcalc LOG_LOG10_LN.xlsx, the doubles nearest 10^k for k = -20..20, 32 doubles where glibc's log10 is not correctly rounded, and 16 where correctly rounded log10 and an x87 FLDLG2/FYL2X result (rounded once, or through 64 bits) differ. Columns D and E: LOG(x,2) and LOG(x,3), for a later fit.",
+  "description": "T-2004: LOG10(x) and one-argument LOG(x) against glibc log10, correctly rounded log10 and the x87 FYL2X models: the 7 numeric inputs of ironcalc LOG_LOG10_LN.xlsx, the doubles nearest 10^k for k = -20..20, 32 doubles where glibc's log10 is not correctly rounded, and 16 where correctly rounded log10 and an x87 FLDLG2/FYL2X result (rounded once, or through 64 bits) differ. Columns D and E: LOG(x,2) and LOG(x,3), for a later fit. Rows 93-98 (T-2016), LOG10 and LOG only: 1+2^-52, 1-2^-52, 1-2^-53, 1+1e-10, 1-1e-10 and the largest double (subnormal inputs: probes/subnormal-cell-constants).",
   "tags": [
     "M5",
     "math",
@@ -470,7 +470,25 @@
         "B92": "=LOG10(A92)",
         "C92": "=LOG(A92)",
         "D92": "=LOG(A92,2)",
-        "E92": "=LOG(A92,3)"
+        "E92": "=LOG(A92,3)",
+        "A93": 1.0000000000000002,
+        "B93": "=LOG10(A93)",
+        "C93": "=LOG(A93)",
+        "A94": 0.9999999999999998,
+        "B94": "=LOG10(A94)",
+        "C94": "=LOG(A94)",
+        "A95": 0.9999999999999999,
+        "B95": "=LOG10(A95)",
+        "C95": "=LOG(A95)",
+        "A96": 1.0000000001,
+        "B96": "=LOG10(A96)",
+        "C96": "=LOG(A96)",
+        "A97": 0.9999999999,
+        "B97": "=LOG10(A97)",
+        "C97": "=LOG(A97)",
+        "A98": 1.7976931348623157e+308,
+        "B98": "=LOG10(A98)",
+        "C98": "=LOG(A98)"
       }
     }
   ],

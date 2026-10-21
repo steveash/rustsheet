@@ -15,7 +15,8 @@
                        [--tier sonnet|opus] [--no-fetch]
                                          # write a task file with the next free id (decision 0016)
 
-Front matter keys: id, title, milestone, lane, status, priority, size, tier, depends_on, spec.
+Front matter keys: id, title, milestone, lane, status, priority, size, tier, depends_on, spec,
+campaign (optional; decision 0083).
 See docs/process/task-format.md.
 """
 
@@ -50,6 +51,8 @@ BUSY_SECONDS = 2 * 3600  # a lane whose pushed agent branch moved this recently 
 PRIORITIES = ["P0", "P1", "P2", "P3"]
 SIZES = ["S", "M", "L"]
 TIERS = ["sonnet", "opus"]  # model tier that works the task (decision 0018)
+# Campaigns whose tasks `next` picks before the milestone order (decision 0083).
+CAMPAIGNS = ["visible"]
 OPEN = ("todo", "in-progress", "blocked")  # not done or dropped
 ACTIVE = ("todo", "in-progress")
 MILESTONE = re.compile(r"^M\d+$")
@@ -108,6 +111,8 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
         for key, allowed in (("status", STATUSES), ("lane", LANES), ("priority", PRIORITIES), ("size", SIZES)):
             if t.get(key) not in allowed:
                 errors.append(f"{where}: {key}={t.get(key)!r} not in {allowed}")
+        if "campaign" in t and t.get("campaign") not in CAMPAIGNS:
+            errors.append(f"{where}: campaign={t.get('campaign')!r} not in {CAMPAIGNS}")
         if not MILESTONE.match(str(t.get("milestone", ""))):
             errors.append(f"{where}: bad milestone {t.get('milestone')!r}")
         if not t.get("title"):
@@ -361,7 +366,8 @@ def available(
     fetch: bool = True,
 ) -> list[dict[str, object]]:
     """Ready tasks a worker of `tier` may start in `lane`, best first: P0, then handoffs, then
-    milestone and priority (a P0 never waits behind an escalated lower-priority task; decision 0023)."""
+    campaign tasks (decision 0083), then milestone and priority (a P0 never waits behind an
+    escalated lower-priority task; decision 0023)."""
     claimed, on_branches, active = branch_claims(fetch=fetch)
     # One task in flight per lane. A branch whose task is already done on main (merged, branch not
     # yet deleted) leaves its lane free, so a looping worker can take the next task at once.
@@ -386,6 +392,7 @@ def available(
         key=lambda t: (
             str(t.get("priority")) != "P0",
             not handed_off(t, on_branches),
+            t.get("campaign") not in CAMPAIGNS,
             str(t.get("milestone"))[1:].zfill(3),
             str(t.get("priority")),
             str(t["id"]),

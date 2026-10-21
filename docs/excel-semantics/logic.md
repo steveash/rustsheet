@@ -28,6 +28,13 @@ Evidence: probes/info-logic-argument-modes A1:A5, info-logic-argument-modes-2 A1
 Status: VERIFIED (excel-graph); the engine matches.
 Tasks: T-1088
 
+## SWITCH: a blank cell case value does not match FALSE (T-2166)
+Observation: `SWITCH(FALSE,1.005E-15,<#VALUE!>,A11,FALSE,"a?b",<#VALUE!>)` with A11 blank is `#N/A` (no match, no default):
+FALSE does not match a blank cell given as a case value, unlike the omitted case argument below (`SWITCH(0,,"a","b")` is "a").
+Ours matches it and returns FALSE (so `ISEVEN` of it is `#VALUE!` instead of `#N/A`). Unprobed: a blank case against 0 or "".
+Evidence: gen-m5/d0419fa09d6a756a Calc!A63 (excel-graph, 2026-10-20).
+Status: OBSERVED (1 cell); T-2166.
+
 ## IFERROR / IFNA of a blank cell is an empty value, not the reference
 Rule: when IFERROR's or IFNA's value argument is a blank cell, the result is the blank's value, not a reference to it.
 OR and AND read that value as FALSE (`OR(IFERROR(D9,A9))` with D9 blank is FALSE, whereas OR ignores a blank cell it is
@@ -48,6 +55,9 @@ comparisons above were wrong). COUNTA reads its arguments in picked-reference co
 range stay references) and counts every element of an array value, the empty ones included (T-1395).
 Status: VERIFIED (excel-graph)
 Tasks: T-0235, T-0291, T-1294, T-1395
+See also lookup.md "VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0": VLOOKUP, HLOOKUP and LOOKUP
+give the same empty value for a blank result cell, and IFS and SWITCH turn it into 0 (`IFS(TRUE,IFERROR(B2,1))&""` is
+"0") while IF, CHOOSE and LET keep it (probes/lookup-blank-result-to-caller O1-O12, T-2168).
 
 ## IFNA edges: only #N/A is caught, lifts over arrays (excel-graph)
 Rule: IFNA replaces only `#N/A` (`#DIV/0!`, `#VALUE!` pass through); a non-error value of any type is returned as is (`IFNA(5,1)` 5, `IFNA("",1)` ""). An omitted fallback (`IFNA(#N/A,)`) is 0, and an error fallback is returned (`IFNA(#N/A,#DIV/0!)` is `#DIV/0!`). It lifts elementwise: `IFNA({1,#N/A,3},0)` spills 1, 0, 3, `SUM(IFNA({1,#N/A,3},10))` is 14, `IFNA(#N/A,{1,2})` spills 1, 2, and `IFNA(Data!A1:A3,0)` over a range holding `#N/A` is `#SPILL!` in this probe only because Calc!A13 blocks the spill (range lifting itself is shown by the array-constant cells). `IFNA(VLOOKUP(9,..,FALSE),"none")` is "none", `IFNA(MATCH("z",..,0),0)` is 0, `IFNA(<blank cell>,1)` is 0 (see the blank rule above).

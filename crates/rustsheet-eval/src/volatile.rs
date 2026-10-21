@@ -103,6 +103,12 @@ pub fn is_volatile(formula: &str, clock_pinned: bool) -> bool {
     RANDOM.is_match(formula) || (!clock_pinned && CLOCK.is_match(formula))
 }
 
+/// Whether the function named `name` is volatile (its call, with the clock unpinned).
+#[must_use]
+pub fn is_volatile_function(name: &str) -> bool {
+    is_volatile(&format!("{name}("), false)
+}
+
 /// The Excel serial stored next to the label `NOW` in the first rows of a `METADATA` sheet.
 ///
 /// This is IronCalc's METADATA clock convention (`rustsheet_xlsx::metadata_clock`); the engine

@@ -1,0 +1,70 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1964: legacy @ on SWITCH returning a range, nested under a scalar function or operator, typed @, several pairs, a default, and one-element constants; dynamic twins in row 1, FORMULATEXT in row 20. Z29=2, Z30:AA32 data.",
+  "tags": [
+    "M2",
+    "information",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "legacy_formulas": [
+        "A10",
+        "D10",
+        "G10",
+        "J10",
+        "M10",
+        "P10",
+        "S10",
+        "V10",
+        "Y10",
+        "AB10",
+        "AE10"
+      ],
+      "cells": {
+        "Z29": 2,
+        "Z30": 1,
+        "Z31": 2,
+        "Z32": 3,
+        "AA30": 4,
+        "AA31": 5,
+        "A1": "=SWITCH(1,1,Z30:Z32)",
+        "A10": "=SWITCH(1,1,Z30:Z32)",
+        "A20": "=FORMULATEXT(A10)",
+        "D1": "=SWITCH(1,1,Z30:AA31)",
+        "D10": "=SWITCH(1,1,Z30:AA31)",
+        "D20": "=FORMULATEXT(D10)",
+        "G1": "=ABS(SWITCH(1,1,{-2;3}))",
+        "G10": "=ABS(SWITCH(1,1,{-2;3}))",
+        "G20": "=FORMULATEXT(G10)",
+        "J1": "=-SWITCH(1,1,{2;3})",
+        "J10": "=-SWITCH(1,1,{2;3})",
+        "J20": "=FORMULATEXT(J10)",
+        "M1": "=LEN(SWITCH(1,1,{\"ab\";\"c\"}))",
+        "M10": "=LEN(SWITCH(1,1,{\"ab\";\"c\"}))",
+        "M20": "=FORMULATEXT(M10)",
+        "P1": "=@SWITCH(1,1,{2;3})",
+        "P10": "=@SWITCH(1,1,{2;3})",
+        "P20": "=FORMULATEXT(P10)",
+        "S1": "=SWITCH(2,1,{2;3},2,{4;5})",
+        "S10": "=SWITCH(2,1,{2;3},2,{4;5})",
+        "S20": "=FORMULATEXT(S10)",
+        "V1": "=SWITCH(9,1,{2;3},{4;5})",
+        "V10": "=SWITCH(9,1,{2;3},{4;5})",
+        "V20": "=FORMULATEXT(V10)",
+        "Y1": "=SWITCH(1,1,{5})",
+        "Y10": "=SWITCH(1,1,{5})",
+        "Y20": "=FORMULATEXT(Y10)",
+        "AB1": "=SWITCH(1,1,{2;3},2,{4;5})",
+        "AB10": "=SWITCH(1,1,{2;3},2,{4;5})",
+        "AB20": "=FORMULATEXT(AB10)",
+        "AE1": "=SWITCH(Z29,1,{2;3},{4;5})",
+        "AE10": "=SWITCH(Z29,1,{2;3},{4;5})",
+        "AE20": "=FORMULATEXT(AE10)"
+      }
+    }
+  ],
+  "expected": {}
+}

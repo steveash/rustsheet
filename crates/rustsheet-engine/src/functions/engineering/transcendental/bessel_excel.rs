@@ -1,15 +1,17 @@
-//! Excel's BESSELJ / BESSELY for small arguments.
+//! Excel's BESSELJ / BESSELY.
 //!
-//! Excel does not use fdlibm: for `|x| < 8` its results are bit-identical to the rational
-//! approximations of Numerical Recipes (`bessj0/bessj1/bessy0/bessy1`, ~1e-8 accuracy), with
-//! upward recurrence for higher orders and Miller's downward recurrence for `J_n(x)` when `n >= x`.
-//! Evidence: `eval/suites/ironcalc-calc/ENGINEERING/BESSEL.xlsx` (Excel-cached), where these
-//! formulas reproduce every cell with `|x| < 8` exactly.
-//! For `|x| >= 8` the fdlibm implementation is kept (see `docs/excel-semantics/engineering.md`).
+//! Excel does not use fdlibm: its results are bit-identical to Numerical Recipes
+//! (`bessj0/bessj1/bessy0/bessy1`, ~1e-8 accuracy): rational approximations for `|x| < 8`, the
+//! asymptotic `P/Q` form for `|x| >= 8`, upward recurrence for higher orders and Miller's
+//! downward recurrence for `J_n(x)` when `n >= x`. Three of Excel's large-argument coefficients
+//! differ from the book (see `Asymptotic`).
+//! Evidence: `eval/suites/ironcalc-calc/ENGINEERING/BESSEL.xlsx` (Excel-cached) and the
+//! `probes-numeric/m9-bessel` sweep (T-1004), every cell of which these formulas reproduce exactly
+//! (`docs/excel-semantics/engineering.md`, T-0908).
 
-use super::{bessel_j, bessel_y};
 use crate::functions::util::poly;
 
+/// `|x|` from which J0, J1, Y0 and Y1 switch from the rational to the asymptotic form.
 const SMALL_ARG_LIMIT: f64 = 8.0;
 /// Orders above this yield NaN (reported as `#NUM!`): every Bessel algorithm here, BESSELI's and
 /// BESSELK's included, is O(n) per cell and the formula layer truncates `n` from untrusted input.
@@ -20,7 +22,105 @@ pub(crate) const MAX_ORDER: i32 = 100_000;
 // Numerical Recipes truncates 2/pi; Excel's output bakes in the truncated constant.
 const TWO_OVER_PI: f64 = 636_619_772.0 / 1e9; // == 0.636619772 (correctly rounded)
 
+// The book's truncated phase shifts pi/4 and 3pi/4, also baked into Excel's output.
+const QUARTER_PI: f64 = 0.785_398_164;
+const THREE_QUARTER_PI: f64 = 2.356_194_491;
+
+/// The `|x| >= 8` asymptotic coefficients `P` (without its leading 1) and `Q` in `y = (8/x)^2`.
+/// Excel's tables differ from Numerical Recipes in three places, each fitted from the m9-bessel
+/// sweep (least squares on 14 x values per function, then bit-exact on all 354 cells):
+/// J0's `P` has `-0.1098628267e-2` (the book: `-0.1098628627e-2`), Y0's `Q` has
+/// `-0.934945152e-7` (the book: `-0.934935152e-7`), and J1's `P` repeats `-0.3516396496e-4`,
+/// which makes it one degree longer. Y1 uses the book's coefficients.
+struct Asymptotic {
+    p: &'static [f64],
+    q: &'static [f64],
+    shift: f64,
+}
+
+const J0_LARGE: Asymptotic = Asymptotic {
+    p: &[
+        -0.109_862_826_7e-2,
+        0.273_451_040_7e-4,
+        -0.207_337_063_9e-5,
+        0.209_388_721_1e-6,
+    ],
+    q: &[
+        -0.156_249_999_5e-1,
+        0.143_048_876_5e-3,
+        -0.691_114_765_1e-5,
+        0.762_109_516_1e-6,
+        -0.934_935_152e-7,
+    ],
+    shift: QUARTER_PI,
+};
+const Y0_LARGE: Asymptotic = Asymptotic {
+    p: &[
+        -0.109_862_862_7e-2,
+        0.273_451_040_7e-4,
+        -0.207_337_063_9e-5,
+        0.209_388_721_1e-6,
+    ],
+    q: &[
+        -0.156_249_999_5e-1,
+        0.143_048_876_5e-3,
+        -0.691_114_765_1e-5,
+        0.762_109_516_1e-6,
+        -0.934_945_152e-7,
+    ],
+    shift: QUARTER_PI,
+};
+const J1_LARGE: Asymptotic = Asymptotic {
+    p: &[
+        0.183_105e-2,
+        -0.351_639_649_6e-4,
+        -0.351_639_649_6e-4,
+        0.245_752_017_4e-5,
+        -0.240_337_019e-6,
+    ],
+    q: &[
+        0.046_874_999_95,
+        -0.200_269_087_3e-3,
+        0.844_919_909_6e-5,
+        -0.882_289_87e-6,
+        0.105_787_412e-6,
+    ],
+    shift: THREE_QUARTER_PI,
+};
+const Y1_LARGE: Asymptotic = Asymptotic {
+    p: &[
+        0.183_105e-2,
+        -0.351_639_649_6e-4,
+        0.245_752_017_4e-5,
+        -0.240_337_019e-6,
+    ],
+    q: J1_LARGE.q,
+    shift: THREE_QUARTER_PI,
+};
+
+/// `sqrt(2/(pi x)) * (P cos(x - shift) - z Q sin(x - shift))` for J (`is_y` false) or
+/// `sqrt(2/(pi x)) * (P sin(x - shift) + z Q cos(x - shift))` for Y, `z = 8/x`, `x >= 8`.
+/// `(z * Q) * sin` is the association that is bit-exact on every sweep cell; `z * (sin * Q)` is
+/// 1 ulp off at `BESSELY(8.5,1)`.
+fn asymptotic(table: &Asymptotic, x: f64, is_y: bool) -> f64 {
+    let z = 8.0 / x;
+    let y = z * z;
+    let xx = x - table.shift;
+    let p = 1.0 + y * poly(table.p, y);
+    let zq = z * poly(table.q, y);
+    let (sin, cos) = xx.sin_cos();
+    let sum = if is_y {
+        sin * p + zq * cos
+    } else {
+        cos * p - zq * sin
+    };
+    (TWO_OVER_PI / x).sqrt() * sum
+}
+
 fn j0(x: f64) -> f64 {
+    if x.abs() >= SMALL_ARG_LIMIT {
+        return asymptotic(&J0_LARGE, x.abs(), false);
+    }
     let y = x * x;
     let num = poly(
         &[
@@ -48,6 +148,10 @@ fn j0(x: f64) -> f64 {
 }
 
 fn j1(x: f64) -> f64 {
+    if x.abs() >= SMALL_ARG_LIMIT {
+        let ans = asymptotic(&J1_LARGE, x.abs(), false);
+        return if x < 0.0 { -ans } else { ans };
+    }
     let y = x * x;
     let num = x * poly(
         &[
@@ -75,6 +179,9 @@ fn j1(x: f64) -> f64 {
 }
 
 fn y0(x: f64) -> f64 {
+    if x >= SMALL_ARG_LIMIT {
+        return asymptotic(&Y0_LARGE, x, true);
+    }
     let y = x * x;
     let num = poly(
         &[
@@ -102,6 +209,9 @@ fn y0(x: f64) -> f64 {
 }
 
 fn y1(x: f64) -> f64 {
+    if x >= SMALL_ARG_LIMIT {
+        return asymptotic(&Y1_LARGE, x, true);
+    }
     let y = x * x;
     let num = x * poly(
         &[
@@ -163,18 +273,18 @@ pub(crate) fn excel_bessel_j(n: i32, x: f64) -> f64 {
         return f64::NAN;
     }
     let ax = x.abs();
-    // J_0(0) is 1.00000000283141 in Excel (NR numerator/denominator ratio), not exactly 1.
-    let small = ax < SMALL_ARG_LIMIT && (ax > 0.0 || n <= 1);
-    if !small {
-        return bessel_j(n, x);
-    }
     let ans = match n {
+        // J_0(0) is 1.00000000283141 in Excel (NR numerator/denominator ratio), not exactly 1.
         0 => return j0(x),
         1 => return j1(x),
+        _ if ax == 0.0 => return 0.0,
         _ if ax > f64::from(n) => {
+            // `b * (2j * (1/x))`, as for Y below: `(2j / x) * b` is 1 ulp off on 11 m9-bessel
+            // cells (e.g. `BESSELJ(8.5,4)`).
+            let inv_x = 1.0 / ax;
             let (mut a, mut b) = (j0(ax), j1(ax));
             for j in 1..n {
-                (a, b) = (b, (2.0 * f64::from(j) / ax) * b - a);
+                (a, b) = (b, b * (2.0 * f64::from(j) * inv_x) - a);
             }
             b
         }
@@ -192,8 +302,9 @@ pub(crate) fn excel_bessel_y(n: i32, x: f64) -> f64 {
     if n > MAX_ORDER {
         return f64::NAN;
     }
-    if !(x > 0.0 && x < SMALL_ARG_LIMIT) {
-        return bessel_y(n, x);
+    // Y is undefined for x <= 0 (`#NUM!` at the formula layer).
+    if x <= 0.0 || x.is_nan() {
+        return f64::NAN;
     }
     if n == 0 {
         return y0(x);

@@ -11,7 +11,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::{
-        util::{is_at_if, is_at_xlookup_take},
+        util::{is_at_if, is_at_xlookup_take, is_multi_sheet_span},
         Function,
     },
     model::Model,
@@ -282,6 +282,11 @@ impl RefGrid {
     /// The elements in row-major order.
     pub(crate) fn elements(&self) -> &[RefElement] {
         &self.elements
+    }
+
+    /// Whether `other` is a clone of this grid, holding the same elements in memory.
+    pub(crate) fn shares_elements(&self, other: &RefGrid) -> bool {
+        Arc::ptr_eq(&self.elements, &other.elements)
     }
 
     /// The value view (SPEC-0014 rule 2): every reference element is `#VALUE!` and an error
@@ -704,10 +709,13 @@ impl Model {
                 kind: Function::If | Function::Choose | Function::Let,
                 ..
             } => true,
-            // So may a name whose body does (probes/union-defined-name H4).
-            Node::DefinedNameKind(_) => self
-                .defined_name_formula(node)
-                .is_some_and(|body| !look_through_names || self.may_be_multi_area(&body, false)),
+            // So may a name whose body does (probes/union-defined-name H4), and one bound to a
+            // 3-D span, which aggregates read sheet by sheet (gen-m8a 8982982d63e058ed; T-1640).
+            Node::DefinedNameKind(_) => self.defined_name_formula(node).is_some_and(|body| {
+                !look_through_names
+                    || is_multi_sheet_span(&body)
+                    || self.may_be_multi_area(&body, false)
+            }),
             Node::OpIntersectKind { left, right, .. } => {
                 self.may_be_multi_area(left, look_through_names)
                     || self.may_be_multi_area(right, look_through_names)
@@ -968,18 +976,9 @@ impl Model {
 /// (`(1+0) A1`) or spans sheets.
 fn single_sheet_area(operand: CalcResult, cell: CellReferenceIndex) -> Result<Range, CalcResult> {
     match operand {
-        CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
-            left: CellReferenceIndex {
-                sheet: left.sheet,
-                row: left.row.min(right.row),
-                column: left.column.min(right.column),
-            },
-            right: CellReferenceIndex {
-                sheet: left.sheet,
-                row: left.row.max(right.row),
-                column: left.column.max(right.column),
-            },
-        }),
+        CalcResult::Range { left, right } if left.sheet == right.sheet => {
+            Ok(Range::between(left, right))
+        }
         error @ CalcResult::Error { .. } => Err(error),
         _ => Err(CalcResult::new_error(
             Error::VALUE,

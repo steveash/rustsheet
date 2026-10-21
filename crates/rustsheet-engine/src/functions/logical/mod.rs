@@ -356,6 +356,12 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let value = self.evaluate_node_in_context(&args[0], cell);
+        // A name bound to a 3-D span is a reference, not an error, so the fallback is not taken,
+        // and its value is `#VALUE!`: `IFERROR(span3,2)` is `#VALUE!` while `ISERROR(span3)` is
+        // TRUE and the inline `IFERROR(Feb:Apr!A7:B12,0.5)` 0.5 (gen-m8a b221d72cc501675a; T-1640).
+        if self.is_sheet_span_name(args[0].ungrouped()) {
+            return value;
+        }
 
         // Normalize value to a 2-D array, or take the scalar early-return path.
         let value_array: Vec<Vec<ArrayNode>> = match value {
@@ -371,7 +377,7 @@ impl Model {
             }
             // A blank cell gives its value, not the reference: an empty value that OR reads as
             // FALSE and a lookup as 0 (T-0291; gen-m2 7469c3e920e1ade4 A351, ef5c55a81783b7d5 A291).
-            CalcResult::EmptyCell => return CalcResult::EmptyArg,
+            blank @ CalcResult::EmptyCell => return blank.blank_as_empty_value(),
             // A non-error scalar (or an error this function does not handle)
             // passes through unchanged.
             other => return other,
@@ -454,7 +460,9 @@ impl Model {
         as_reference: bool,
     ) -> CalcResult {
         match self.ifs_pick(args, cell) {
-            Picked::Node(value) => self.evaluate_node_as(value, cell, as_reference),
+            Picked::Node(value) => self
+                .evaluate_node_as(value, cell, as_reference)
+                .empty_value_as_zero(),
             Picked::Value(value) => value,
         }
     }
