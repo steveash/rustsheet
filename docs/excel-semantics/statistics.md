@@ -973,7 +973,8 @@ being the factor Excel raises), consistent with a prefactor `exp(a*ln x)` in the
 ulp above or below: the exact short decimal is not Excel's answer in general, so any model that returns exact
 rationals rounded once is wrong at about half of these cells. No error cells and no n or k pattern separates the
 exact ones; the per-cell values are the fitting data for T-2146.
-Evidence: ironcalc-calc STATISTICAL/BINOM.xlsx and POISSON.xlsx (Excel-cached); probes-numeric/t1048-poisson,
+Evidence: ironcalc-calc STATISTICAL/BINOM.xlsx and POISSON.xlsx (Excel-cached); probes-numeric/t2145-binomial-sweep,
+t2145-negbinom-sweep, t2145-binom-range-sweep (per-cell values in their .oracle.json sidecars); probes-numeric/t1048-poisson,
 m9-legacy-chidist, m9-chisq-dist-rt, t1049-chisqdistrt (excel-graph); the exact values from Python `fractions`.
 Ours (T-0927): `statistical/discrete.rs` walks the pmf terms, each from the last by the exact ratio of consecutive
 terms, in double-double with a power-of-two exponent beside it (the terms start at q^n, as small as 0.5^3000), and
