@@ -24,5 +24,5 @@ T-1816 moved the `places` coercion before the number coercion in all nine kernel
 ## Out of scope
 - Any change to which error wins (T-1816).
 
-## Handoff
+## Handoff (resumed)
 Refactor is done and approved by all four reviewers; `make check` passed locally and the eval is unchanged (PR #1384, branch agent/functions-engineering/T-1991-places-helper). CI hygiene fails in `scripts/check_governance.py`: `quality/duplication.json` (3176 -> 3147 via `scripts/check_duplication.py --update`) is a protected path and needs a decision record in the same PR. Next: either `make new-decision TITLE=...` for the ratchet bump and keep the json change, or restore the json to origin/main's value. Then rewrite the Outcome note (removed on handoff) and set `status: done`.
