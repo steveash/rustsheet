@@ -45,5 +45,6 @@ literals and formula results (probes/t2280-ifs-one-cell-range-condition, 80 cell
 non-boolean text condition into a 1x1 array of `#VALUE!` and reads a one-cell range condition as a scalar. `ifs_pick`
 now does both. logic.md has the rule. The case also probes SWITCH over a range with a blank element, for T-2166's
 lifted path: Calc!A61:A67 agree with #1454's rule, and its 4 cells pass once T-2166 is merged.
-Eval: gen-m6 known failures 243 -> 242 (the task's cell); probes gained 1 case with 82 scored cells, of which 78 pass on this
-branch; the 4 lifted SWITCH cells are T-2166's; regressions 0.
+Eval: gen-m6 known failures 243 -> 242 (the task's cell); gen-m7 1341 -> 1340 (8044dce50616cfe9 A1630, an IFS text
+condition inside REDUCE that T-2306 listed; noted there); probes gains 1 case with 82 scored cells, all passing (A61:A67
+with T-2166 merged); regressions 0.

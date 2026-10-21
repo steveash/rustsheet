@@ -77,7 +77,16 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric pa
 | probes/m7-argument-modes Sheet1!K6 | `=ROWS(INDEX(WRAPROWS(A1:A3,{1;2}),1,1))` | 1 | #N/IMPL! |
 | probes/m7-argument-modes Sheet1!K7 | `=COLUMNS(INDEX(WRAPROWS(A1:A3,{1;2}),2,1))` | 1 | #N/IMPL! |
 
+gen-m7 cells (T-2225 triage, 2026-10-21): WRAPROWS/WRAPCOLS calls whose pad_with or wrap_count is an array (TOROW, FILTER or UNIQUE result): Excel lifts (a `#NUM!`/`#VALUE!` grid, or `#SPILL!` for 6db767d720c5b55a A12), ours `#N/IMPL!` or one cell.
+
+Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 28 known-failure lines in eval/baseline/gen-m7.txt, 3 formulas. One line per formula: case, anchor, the anchor formula, Excel vs ours at the first failing cell, then every failing cell (sheet Calc; a range is consecutive cells of one row).
+
+- gen-m7/611ce3bbfab27cef.case.json A1176 `=WRAPROWS(Data!E11:E12,Data!$A$4,((Data!D9-Data!D5)-TOROW(Data!B6:E8,1,Data!E1)))`: B1176 Excel #NUM!, ours <empty>; cells (4): B1176:E1176
+- gen-m7/6db767d720c5b55a.case.json A12 `=WRAPCOLS(Data!D3:D3,UNIQUE(Data!B3:E4,SWITCH((-0.5),"a*",Data!$E9,Data!A12,1.005,Data!B9,Data!A6,(-0.0001))))`: A12 Excel #SPILL!, ours #N/IMPL!; cells (1): A12
+- gen-m7/90de8755a2e565e6.case.json A889 `=WRAPROWS(((Data!B5+Data!C7)-SIGN(Data!B4)),(-1),((Data!B4-(-0.5))*FILTER(Data!A1:D12,(Data!B1:B12>3.14159))))`: B889 Excel #VALUE!, ours <empty>; cells (23): B889:D889, A890:D890, A891:D891, A892:D892, A893:D893, A894:D894
+
 ## Acceptance criteria
+- [ ] The 28 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 28 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
 - [ ] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 10 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 1 cell of the ungated gen-m7 suite passes in `make eval`, with no new known-failure lines in any baseline.
 - [ ] probes/m7-argument-modes F7:H7, F8:H8, G42 and K5-K7 pass, and F42, H42 still pass.
 - [ ] The probes/m7-lift-take-drop-sortby cells listed under Context pass (EXPAND's array pad_with is `#VALUE!`).
