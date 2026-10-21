@@ -7,6 +7,7 @@ status: todo
 priority: P1
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -67,7 +68,13 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 37 in eval/baseli
 | gen-m5/f0f205865a3a4328 Calc!A263 | `=COSH((-710))` | "#NUM!" | 1.1169973830808557e+308 |
 | gen-m5/fc81c2f704bef138 Calc!A46 | `=SUMXMY2(Data!A4:A4,EXP(2958465))` | "#NUM!" | "#DIV/0!" |
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): the 37 gen-m5 cells above (SINH 17, SECH 11, COSH 8 and the
+callers they leak into: MOD, TEXTJOIN, GCD, SIN, ARRAYTOTEXT, ISNUMBER, XOR, ACOT, CEILING, PRODUCT), plus the ungated
+probes-numeric/m9-hyperbolic Calc!A265 `=SINH(710.0)` and A268 `=SINH(-710.0)` (Excel `#NUM!`, ours
++-1.1169973830808557e+308), the same cause.
+
 ## Acceptance criteria
+- [ ] Visible parity: probes-numeric/m9-hyperbolic A265 and A268 pass in `make eval` too (ungated suite).
 - [ ] These 37 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] numbers.md entry marked implemented.
 - [ ] `make check` green; reviewers approve.
@@ -75,3 +82,8 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 37 in eval/baseli
 ## Out of scope
 - The exact SINH/COSH cut inside (709.78, 710) and EXP's overflow edge (T-1944).
 - The SINH/TANH kernel on (0, 1) (T-2134).
+
+## Visible-parity stage
+Decision 0083: every cell listed under Context is visibly off (a number where Excel is `#NUM!`, a subnormal where
+Excel is 0, or a caller that sees an infinity), so this task is in the campaign. Its target is that every cell it owns
+has Excel's type, error and value to 15 significant digits; the acceptance criteria above are that target.

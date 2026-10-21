@@ -44,6 +44,12 @@
     and files or extends a `campaign: visible` task for every visibly-off family before it is
     done. The generator first gets `--functions` and `--category` (T-0063) and the missing edge
     pools (T-2247 to T-2250). All of these tasks carry `campaign: visible`.
+  - *Dependencies come along.* `scripts/tasks.py next` orders every open task that an open
+    campaign task depends on, directly or not, as a campaign task too (`in_campaign`). Without
+    that, a probe or sweep a campaign fix waits on (on 2026-10-21: T-2043, T-2081, T-2145,
+    T-2187, T-2220 and seven others) waits behind the milestone order and stalls the fix.
+    Decision 0083 still keeps the key off probes. The promotion follows the dependency, not a
+    tag, so it ends when the dependent task closes.
 - **Consequences:**
   - The visibly-off count will rise before it falls, as about 100,000 new Excel cells land. The
     decision 0088 lock counts them as new coverage through `update-baseline`, so the gate does not

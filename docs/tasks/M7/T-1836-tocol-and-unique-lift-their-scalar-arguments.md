@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
+campaign: visible
 depends_on: [T-1770, T-1833, T-1834]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
 ---
@@ -31,7 +32,22 @@ Owned cells:
 
 TOCOL's scan_by_column and UNIQUE's exactly_once are `Lift` by SPEC-0011's per-parameter list; T-1960 probes them.
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 9 cells, 0 numeric past half a unit in the 15th digit and 9 with a wrong type, error or text, blamed on TOCOL 5, UNIQUE 4, ROWS 3, COLUMNS 2, HSTACK 1.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| gen-m9/1782efcecd5d4b1b Calc!A19 | `=TOCOL(Data!C8:D11,HSTACK(Data!E5:E6),((Data!D$9/0.2)=(Data!$A$5<=Data!A7)))` | #SPILL! | #N/IMPL! |
+| gen-m9/4df1b22d3ed63f58 Calc!A36 | `=UNIQUE(Data!A6:D10,INDEX(Data!D4:D10,0))` | #SPILL! | #VALUE! |
+| probes/m7-argument-modes Sheet1!F12 | `=ROWS(UNIQUE(D1:D3,{FALSE;TRUE}))` | 2 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!F9 | `=ROWS(TOCOL(A1:B3,{0;1}))` | 2 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!G12 | `=COLUMNS(UNIQUE(D1:D3,{FALSE;TRUE}))` | 1 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!G9 | `=COLUMNS(TOCOL(A1:B3,{0;1}))` | 1 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!H12 | `=INDEX(UNIQUE(D1:D3,{FALSE;TRUE}),1,1)` | "x" | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!H9 | `=INDEX(TOCOL(A1:B3,{0;1}),1,1)` | 1 | #N/IMPL! |
+| probes/m7-argument-modes Sheet1!K8 | `=ROWS(INDEX(TOCOL(A1:B3,{0;1}),1,1))` | 1 | #N/IMPL! |
+
 ## Acceptance criteria
+- [ ] Visible parity: the 9 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 7 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 2 cells of the ungated gen-m9 suite pass in `make eval`, with no new known-failure lines in any baseline.
 - [ ] probes/m7-argument-modes F9:H9, K8 and F12:H12 pass; F54:H54 and K14-K16 still pass.
 - [ ] gen-m9/1782efcecd5d4b1b A19 and gen-m9/4df1b22d3ed63f58 A36 pass, with no new failing gen-m9 cell.
 - [ ] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
@@ -42,3 +58,6 @@ TOCOL's scan_by_column and UNIQUE's exactly_once are `Lift` by SPEC-0011's per-p
 ## Out of scope
 - SORTBY (T-1839) and SORT (T-1837).
 - Any change to the lift driver or the element rules (T-1834); if they do not fit, hand the task up (work-loop 5b).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (`#N/IMPL!` or `#VALUE!` where Excel lifts TOCOL and UNIQUE), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.

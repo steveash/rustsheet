@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
+campaign: visible
 depends_on: [T-1898, T-1830]
 ---
 
@@ -29,7 +30,19 @@ takes a `Hir` (`Compiler::build_from_hir`). Evidence:
 Backtracking-only constructs parse but stay `#VALUE!` until T-1900: backreferences, lookaround, atomic and possessive
 groups, `\K`, conditionals, `\G`, and `\R` and `\X`. Use the nest limit from T-1972 if it has landed, else 250.
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 6 cells, 0 numeric past half a unit in the 15th digit and 6 with a wrong type, error or text, blamed on REGEXTEST 5, REGEXEXTRACT 1.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| probes/regex-ascii-classes Sheet1!A17 | `=IFERROR(REGEXTEST("é","(*UCP)\w"),"E"&ERROR.TYPE(REGEXTEST("é","(*UCP)\w")))` | TRUE | "E3" |
+| probes/regex-ascii-classes Sheet1!A34 | `=IFERROR(REGEXTEST("a"&CHAR(10),"a$"),"E"&ERROR.TYPE(REGEXTEST("a"&CHAR(10),"a$")))` | TRUE | FALSE |
+| probes/regex-ascii-classes Sheet1!A41 | `=IFERROR(REGEXTEST(CHAR(9),"\h"),"E"&ERROR.TYPE(REGEXTEST(CHAR(9),"\h")))` | TRUE | "E3" |
+| probes/regex-pcre2-features Sheet1!C15 | `=REGEXTEST("ab","a(?#note)b")` | TRUE | #VALUE! |
+| probes/regex-pcre2-features Sheet1!C16 | `=REGEXEXTRACT("a.b","\Q.\E")` | "." | #VALUE! |
+| probes/regex-posix-classes Sheet1!Z7 | `=IFERROR(REGEXTEST("[[:alpha:]]","\Q[[:alpha:]]\E"),"err "&ERROR.TYPE(REGEXTEST("[[:alpha:]]","\Q[[:alpha:]]...` | TRUE | "err 3" |
+
 ## Acceptance criteria
+- [ ] Visible parity: the 6 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 6 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The parser is iterative (no recursion on pattern size), caps nesting, and fails closed (`#VALUE!`) on every
   construct it does not know.
 - [ ] regex-pcre2-features C14-C19 pass (`(?#..)`, `\Q..\E`, `(?x)`, `(?-i)`; none needs backtracking), as do
@@ -45,7 +58,7 @@ groups, `\K`, conditionals, `\G`, and `\R` and `\X`. Use the nest limit from T-1
   `Look::EndLF` on one whose only `\n` is the final one, so regex-ascii-classes A34 passes. A text that ends in `\n`
   and holds another one keeps `\z` until T-1900's memoized mode, pinned by a unit test.
 - [ ] `\h` and a leading `(*UCP)` are accepted (regex-ascii-classes A41, A17 pass). `\R` and `\X` (A42, A27) parse
-  and stay `#VALUE!`; one follow-up task (`make new-task`, functions-text, depends on T-1900) implements them.
+  and stay `#VALUE!`; T-2259 (functions-text, depends on T-1900) implements them.
 - [ ] A unit test pins `a++` as `#VALUE!` until T-1900.
 - [ ] A differential unit test checks our parser's `Hir` against `regex-syntax`'s for random patterns both dialects
   read alike.
@@ -57,3 +70,6 @@ groups, `\K`, conditionals, `\G`, and `\R` and `\X`. Use the nest limit from T-1
 ## Out of scope
 - The backtracker (T-1900).
 - Iteration (T-1899).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (`#VALUE!` or FALSE where Excel accepts `(?#..)`, `\Q..\E`, `(*UCP)`, `\h` and `$` before a final LF), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. `\X` and `\R` (A27, A42) are T-2259.

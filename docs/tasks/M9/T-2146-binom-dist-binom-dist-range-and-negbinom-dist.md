@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
+campaign: visible
 depends_on: [T-2145]
 ---
 
@@ -38,7 +39,27 @@ and points back to T-0927, which is done.
 - Code: `crates/rustsheet-engine/src/functions/statistical/discrete.rs` (T-0927's exact walk, capped at 2^10 steps
   with statrs past it).
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 14 cells, 14 numeric past half a unit in the 15th digit and 0 with a wrong type, error or text, blamed on NEGBINOM.DIST 6, BINOM.DIST 4, BINOMDIST 2, NEGBINOMDIST 2.
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| ironcalc-calc/STATISTICAL/BINOM.xlsx BINOM.DIST!E24 | `=_xlfn.BINOM.DIST(A24,B24,C24,D24)` | 4.499992001038836e-47 | 4.499992001038802e-47 |
+| ironcalc-calc/STATISTICAL/BINOM.xlsx BINOM.DIST!E32 | `=_xlfn.BINOM.DIST(A32,B32,C32,D32)` | 9.90100000000073e-197 | 9.90100000000087e-197 |
+| ironcalc-calc/STATISTICAL/BINOM.xlsx NEGBINOM.DIST!E3 | `=_xlfn.NEGBINOM.DIST(A3,B3,C3,D3)` | 6.50284892159999e-10 | 6.502848921600006e-10 |
+| ironcalc-calc/STATISTICAL/BINOM.xlsx NEGBINOM.DIST!E30 | `=_xlfn.NEGBINOM.DIST(A30,B30,C30,D30)` | 6.599988000005536e-59 | 6.599988000005497e-59 |
+| ironcalc-calc/STATISTICAL/BINOM.xlsx NEGBINOM.DIST!E37 | `=_xlfn.NEGBINOM.DIST(A37,B37,C37,D37)` | 1.0000000000000348e-200 | 1.000000000000002e-200 |
+| ironcalc-calc/STATISTICAL/BINOM.xlsx NEGBINOM.DIST!E40 | `=_xlfn.NEGBINOM.DIST(A40,B40,C40,D40)` | 1.690659363904351e-142 | 1.6906593639043344e-142 |
+| probes-numeric/m9-legacy-binomdist Calc!A33 | `=BINOMDIST(2,5,0.999,TRUE)` | 9.985006000000038e-09 | 9.985006000000026e-09 |
+| probes-numeric/m9-legacy-binomdist Calc!A34 | `=BINOM.DIST(2,5,0.999,TRUE)` | 9.985006000000038e-09 | 9.985006000000026e-09 |
+| probes-numeric/m9-legacy-binomdist Calc!A35 | `=BINOMDIST(2,5,0.999,FALSE)` | 9.980010000000044e-09 | 9.980010000000027e-09 |
+| probes-numeric/m9-legacy-binomdist Calc!A36 | `=BINOM.DIST(2,5,0.999,FALSE)` | 9.980010000000044e-09 | 9.980010000000027e-09 |
+| probes-numeric/t1048-negbinomdist Calc!A4 | `=NEGBINOMDIST(10,2,0.9)` | 8.909999999999952e-10 | 8.909999999999981e-10 |
+| probes-numeric/t1048-negbinomdist Calc!A5 | `=NEGBINOMDIST(1,10,0.1)` | 8.999999999999998e-10 | 9.000000000000005e-10 |
+| probes-numeric/t1048-negbinomdist Calc!B4 | `=NEGBINOM.DIST(10,2,0.9,FALSE)` | 8.909999999999952e-10 | 8.909999999999981e-10 |
+| probes-numeric/t1048-negbinomdist Calc!B5 | `=NEGBINOM.DIST(1,10,0.1,FALSE)` | 8.999999999999998e-10 | 9.000000000000005e-10 |
+
 ## Acceptance criteria
+- [ ] Visible parity: the 14 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 6 lines in eval/baseline/ironcalc-calc.txt disappear (`make eval-baseline`); the 8 cells of the ungated probes-numeric suite pass in `make eval`, with no new known-failure lines in any baseline.
 - [ ] statistics.md "Discrete distributions" records the fit: each candidate's count on BINOM.xlsx's 148 numeric
       cells, on T-2145's sweep and on the two probes-numeric cases, including the candidates that lost.
 - [ ] The formulation that wins is implemented. The BINOM.xlsx known-failure lines it fixes disappear from
@@ -49,3 +70,6 @@ and points back to T-0927, which is done.
 
 ## Out of scope
 - POISSON.DIST (T-2055), HYPGEOM.DIST (T-0977, T-1896), BINOM.INV with probability_s 0 (T-2050).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (binomial and negative-binomial values that differ in the 14th-15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083). The fit needs T-2145's oracle sweep first.

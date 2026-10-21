@@ -358,6 +358,23 @@ def in_lane(t: dict[str, object], lane: str | None) -> bool:
     return t.get("lane") == lane
 
 
+def in_campaign(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -> set[str]:
+    """Ids `next` orders as campaign tasks: those with a known `campaign:` and every open task an
+    open campaign task depends on, directly or not (decision 0094). A probe or sweep a campaign
+    fix waits on would otherwise wait behind the milestone order and stall the fix."""
+    tagged = [t for t in tasks if t.get("campaign") in CAMPAIGNS and t.get("status") in OPEN]
+    ids = {str(t["id"]) for t in tagged}
+    stack = [str(d) for t in tagged for d in t.get("depends_on", []) or []]  # type: ignore[union-attr]
+    while stack:
+        tid = stack.pop()
+        dep = by_id.get(tid)
+        if dep is None or tid in ids or dep.get("status") not in OPEN:
+            continue
+        ids.add(tid)
+        stack.extend(str(d) for d in dep.get("depends_on", []) or [])  # type: ignore[union-attr]
+    return ids
+
+
 def available(
     tasks: list[dict[str, object]],
     by_id: dict[str, dict[str, object]],
@@ -366,7 +383,7 @@ def available(
     fetch: bool = True,
 ) -> list[dict[str, object]]:
     """Ready tasks a worker of `tier` may start in `lane`, best first: P0, then handoffs, then
-    campaign tasks (decision 0083), then milestone and priority (a P0 never waits behind an
+    campaign tasks and their open dependencies (decisions 0083, 0094), then milestone and priority (a P0 never waits behind an
     escalated lower-priority task; decision 0023)."""
     claimed, on_branches, active = branch_claims(fetch=fetch)
     # One task in flight per lane. A branch whose task is already done on main (merged, branch not
@@ -388,11 +405,12 @@ def available(
         # One task in flight per lane; a handoff is resumed whatever its lane is doing.
         and (t.get("lane") not in busy or (handed_off(t, on_branches) and tier != "sonnet"))
     ]
+    campaign = in_campaign(tasks, by_id)
     cands.sort(
         key=lambda t: (
             str(t.get("priority")) != "P0",
             not handed_off(t, on_branches),
-            t.get("campaign") not in CAMPAIGNS,
+            str(t["id"]) not in campaign,
             str(t.get("milestone"))[1:].zfill(3),
             str(t.get("priority")),
             str(t["id"]),
