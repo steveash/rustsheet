@@ -3,7 +3,7 @@ id: T-0969
 title: "T.DIST/T.DIST.RT/T.DIST.2T/T.TEST: accurate Student-t CDF with direct upper tail (55 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -256,6 +256,20 @@ coarse grid for df 2 to 10; and `t0969-t-tail-grid`, 3,232 T.DIST.RT cells on a 
   1/64 and a = 0.25 to 2 (the df-15 fix: about 60 grid cells); (2) the rounded-y tails need Excel's incomplete beta,
   so route the tail through one beta kernel once T-2119 moves BETA.DIST's cdf onto `incomplete_beta`, and score it
   on t0969-t-beta-link column E; (3) in the y > 0.99, t > 1 region (df 500, 1000) t = 1.5 takes the centre form but t = 2 to 3 match neither.
+
+## Attempt 10 (2026-10-21, opus run; merged as progress)
+- **Excel's Beta function, cracked for a < 1 and b <= 8.** New probe `t0969-beta-switch`:
+  B(a,b) = EXP(GAMMALN(a) + (GAMMALN(b) - GAMMALN(a+b))), with Excel's own GAMMALN. It predicts 140 of
+  the 147 a < 1, b <= 8 density rows within 3 x 2^-53; past b = 8 (GAMMALN's Stirling switch) Excel's B is
+  accurate. This is the df-15 prefactor: B(7.5, 1/2) (statistics.md "Student t prefactor per df").
+- `student_t.rs` `log_gamma_ratio` scales the integer-df series tail by Excel's 1/B over the exact one for
+  df 13 to 16. Below df 13 the same scaling loses cells (t1049-ttest 34 -> 26, m9-t-dist-rt 80 -> 74), so b < 6.5 is
+  not yet understood. Neither is the ratio inside `gamma_ratio` (fractional df).
+- Eval delta: no gated baseline line moved and none regressed. probes-numeric bit-exact: tail-grid
+  578 -> 587, beta-link 623 -> 625, others unchanged. Visibly-off: tail-grid 260 -> 245, df-ratio 9 -> 8,
+  beta-link 42 -> 40.
+- Next: probe B(1/2, b) for b = 0.5 to 6.5 to find where the GAMMALN form starts; the remaining visibly-off
+  tails (df 50 to 1000) are still Excel's incomplete-beta noise (attempt 9).
 
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
