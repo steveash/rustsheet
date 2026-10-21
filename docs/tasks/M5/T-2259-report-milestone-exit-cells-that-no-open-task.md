@@ -3,7 +3,7 @@ id: T-2259
 title: "Report milestone exit cells that no open task of the milestone owns (decision 0085 item 3)"
 milestone: M5
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -43,22 +43,34 @@ unowned exit gaps without a hand search of `docs/tasks/`.
   decision record (`make new-decision`), hence tier opus.
 
 ## Acceptance criteria
-- [ ] `scripts/exit_owners.py --milestone M5` (and a `make exit-owners MILESTONE=M5` target) prints
+- [x] `scripts/exit_owners.py --milestone M5` (and a `make exit-owners MILESTONE=M5` target) prints
       each unowned failing exit cell as `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line,
       and exits 0; `--strict` exits 1 when the count is non-zero. It reads only report.json,
       `docs/tasks/` and `eval/milestones/exit-exceptions.tsv`; it fails with a clear message when
       report.json is missing or has no `milestone_exit` row for the milestone.
-- [ ] `scripts/test_exit_owners.py` covers: a cell named by an open M5 task is owned; a cell named
+- [x] `scripts/test_exit_owners.py` covers: a cell named by an open M5 task is owned; a cell named
       only by a done task, or only by an open M6 task, is unowned; a case named with no cell list
       owns all its cells; an excepted ironcalc-calc cell is not listed; `A1` does not match `A10`.
       The test runs under `make hygiene` like the other `scripts/test_*.py`.
-- [ ] On the 2026-10-21 report with the T-2240 edit of the same day, `make exit-owners MILESTONE=M5`
+- [x] On the 2026-10-21 report with the T-2240 edit of the same day, `make exit-owners MILESTONE=M5`
       lists 0 cells; with that edit reverted in a scratch copy it lists the 13 cells named above
       (shown in the PR description).
-- [ ] A decision record covers the protected-path change and states the ownership rule above.
-- [ ] `make check` green; reviewers approve.
+- [x] A decision record covers the protected-path change and states the ownership rule above.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Making the check a CI gate or a `make check` step (a follow-up decision, if wanted).
 - Changing the steward skill (`.claude/`) to run it; file a follow-up task.
 - The coverage criterion (it is per function and already reported as met or not).
+
+## Outcome
+`scripts/exit_owners.py` and `make exit-owners MILESTONE=M5 [STRICT=1]` list failing exit cells with
+no open owner of the milestone (decision 0096). Two refinements of the ownership rule above, both
+recorded in the decision: a spec case's stem drops `.case.json` (report ids are
+`probes/<name>.case.json`), and "names the case and no cell" is judged per line (a line naming the
+stem with no A1-shaped token), because report.json keeps only failing cells: under the literal rule,
+T-2240 (which named other `TRIGONOMETRIC.xlsx` cells that pass now) hid C51 and C55.
+On this branch, cut from `main` at 9562cd69: 0 unowned M5 exit cells. On that report with
+the 13 cells re-injected as failing and T-2240 at its pre-edit text (status todo, T-2259 done): 13
+listed, exactly the cells in Context; with T-2240's 2026-10-21 edit: 0.
+Eval delta: none (scripts only). Follow-up: T-2293 (steward and planner run it; `.claude/` change).
