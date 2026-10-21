@@ -237,7 +237,7 @@ coarse grid for df 2 to 10; and `t0969-t-tail-grid`, 3,232 T.DIST.RT cells on a 
   with the worksheet's y = fl(n/fl(n + fl(t*t))) and z = fl(fl(t*t)/fl(n + fl(t*t))), `T.DIST.RT(t,n)` is
   `BETA.DIST(y,n/2,0.5,TRUE)/2` to the bit on 136 of 155 cells beyond t = 1 (y <= 0.99; the rest 1 to 4 ulp, df 7 to 30
   at t = 1.5 to 3), and `0.5 - BETA.DIST(z,0.5,n/2,TRUE)/2` on 22 of 23 cells at t = 0.5. t = 1 is y = n/(n+1), the mean of
-  Beta(n/2,1/2), so attempt 7's switch is the incomplete beta's side choice (statistics.md "T.DIST.RT is BETA.DIST's
+  Beta(n/2,1/2), so attempt 7's switch reads as the incomplete beta's side choice (an interpretation) (statistics.md "T.DIST.RT is BETA.DIST's
   incomplete beta, switched at the mean").
 - Consequence: the family's remaining tail noise (the 260 visibly-off `t0969-t-tail-grid` cells: df 15 about 60,
   df 50 to 1000 for t = 2.4 to 5.5 about 175) is Excel's BETA.DIST noise. Against the exact I at the rounded y the

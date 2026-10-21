@@ -1476,15 +1476,17 @@ z = fl(fl(t*t) / fl(n + fl(t*t))):
 - beyond t = 1 (and y <= 0.99), `T.DIST.RT(t,n)` = `BETA.DIST(y,n/2,0.5,TRUE)/2`, to the bit;
 - up to t = 1, `T.DIST.RT(t,n)` = `0.5 - BETA.DIST(z,0.5,n/2,TRUE)/2`, to the bit, with z formed from t, not as 1 - y
   (`BETA.DIST(1-y,0.5,n/2,TRUE)` is up to 197 ulp away at df 1000).
-t = 1 is y = n/(n+1), the mean of Beta(n/2, 1/2): the switch of "T.DIST.RT follows the rounded y beyond t = 1" is the
-incomplete beta's usual side choice (Cephes `incbet` swaps to the complement when x > a/(a+b)). So what is left of
+t = 1 is y = n/(n+1), the mean of Beta(n/2, 1/2). A reading, not observed (algorithm UNVERIFIED): the switch of
+"T.DIST.RT follows the rounded y beyond t = 1" (pinned by that entry's grid, not by this probe, which samples t = 0.5
+and t >= 1.5) is an incomplete beta's usual side choice at the mean, as Cephes `incbet` swaps to the complement when
+x > a/(a+b), though Excel's centre takes z from t rather than as 1 - y. Either way, what is left of
 the family's noise beyond t = 1 is Excel's BETA.DIST noise, df 15 included, and an accurate Student-t kernel cannot
 remove it; only Excel's incomplete-beta algorithm can (T-1744, T-1759).
 - Evidence: probes-numeric `t0969-t-beta-link` (excel-graph, 2026-10-21), 184 (t, df) pairs, t in {0.5, 1.5, 2, 2.5,
   3, 4, 5, 8} by df in {1 to 10, 12, 13, 15, 16, 17, 20, 25, 30, 50, 100, 200, 500, 1000}, with the worksheet's y and
   z in cells D and G:
   - t > 1 and y <= 0.99: T.DIST.RT = E/2 on 136 of 155 cells. The other 19 are 1 to 4 ulp off, all at df 7 to 30
-    and t = 1.5 to 3, 11 of them at t = 1.5 (nearest the mean).
+    and t = 1.5 to 3, 10 of them at t = 1.5 (nearest the mean).
   - t <= 1: T.DIST.RT = 0.5 - H/2 on 22 of 23 cells; the other is df 2 (1 ulp), where the closed form of "T.DIST.RT at
     df 2" applies.
   - t > 1 and y > 0.99 (df 500 and 1000, t = 1.5 to 3; 6 cells): the two at t = 1.5 take the centre form
