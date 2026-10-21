@@ -3,7 +3,7 @@ id: T-2056
 title: "Probe IM* plain-notation limit for small parts (exponents -6 to -15)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2001 writes parts with exponent -5 to -1 plain past 20 characters (a printf %G
 
 ## Out of scope
 -
+
+## Outcome
+Probed exponents -1 to -16 (real and imaginary parts, 15-digit mantissa) in probes/eng-im-small-part: -5 is the last plain exponent, -6 on is E notation, so `MIN_COMPLEX_PLAIN_EXPONENT = -5` was already right. Comments and engineering.md now cite the probe. No eval delta in code.
