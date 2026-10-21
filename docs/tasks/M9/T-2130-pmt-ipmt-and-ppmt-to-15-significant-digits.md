@@ -60,7 +60,8 @@ This whole task is the visible-parity stage (decision 0083).
   Excel is 7-41 ulp from the exact value; T-2242 has the lead (`PMT*exp((per-1-nper)*log1p(rate))`
   fits 153 of the 154 fv-0 type-0 PPMT cells).
 - Eval: 71 known failures fixed (ironcalc-calc 903 → 855, probes 1600 → 1590; m9-fin-pmt bit-exact
-  258 → 445 of 924), visible-parity lock 1716 → 1662.
+  258 → 445 of 924); in-scope visibly-off cells −54 (1716 → 1662 when measured, 1758 → 1704 on the
+  `main` it merged; the lock itself is left to the steward, decision 0093).
 - Regressed under decision 0083's standing allowance (numeric, ≤ 4 ulp, none visibly off; listed
   in T-2243): IPMT_PPMT.xlsx G12, G14, H13, H31, H4 (1 ulp each); PMT.xlsx F15, F33, G10 (1 ulp),
   and the PV/FV cells on them J15 (2), J33 (1), K10 (1), M10 (1), L15 (4).
