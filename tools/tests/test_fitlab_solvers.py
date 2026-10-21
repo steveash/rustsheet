@@ -9,7 +9,7 @@ import pytest
 
 from rustsheet_tools.fitlab import fit
 from rustsheet_tools.fitlab.kernels import registry, solvers
-from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, parse_arg, serial_date
+from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, load_sweep, parse_arg, serial_date
 
 
 def test_parse_arg_reads_array_literals_and_dates() -> None:
@@ -166,3 +166,24 @@ def test_yield_back_chain_shares_a_frequency_independent_iterate() -> None:
         solvers.newton_back_chain(traces[k].args, traces[k].expected, 3)[3] for k in ("Y!C2", "Y!D2", "Y!E2")
     ]
     assert max(starts) - min(starts) < 1e-6
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_yield_start_sweep_newton_from_a_shared_start() -> None:
+    # T-2187: yield-start-sweep A1 (frequency 2) and B1 (frequency 1) step back to the same iterate as
+    # yield-solver-sweep S!A1; C1 (frequency 4) is at PRICE's root. Run forward from that start,
+    # analytic Newton returning the iterate after the first step below the cut gives Excel's value on
+    # every cell of columns A to C (redemption 100 to 101 at frequency 2, 1 and 4) to 5e-14 relative (worst 1.2e-14).
+    # The cells bracket the cut between 6.66e-6 and 7.11e-6; 6.9e-6 is an arbitrary point inside.
+    cells = load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells
+    by_key = {c.key: c for c in cells}
+    a1, b1 = (solvers.newton_back_chain(by_key[k].args, by_key[k].expected, 1)[1] for k in ("S!A1", "S!B1"))
+    assert abs(a1 - 0.0552344627) < 1e-10
+    assert abs(a1 - b1) < 1e-10
+    price_of, _, pr = solvers._bond_price(by_key["S!C1"].args)
+    assert abs(price_of(by_key["S!C1"].expected) - pr) < 1e-12
+    swept = [c for c in cells if c.address[0] in "ABC"]
+    assert len(swept) == 63
+    newton = solvers._newton_yield(a1, 6.9e-6)
+    for cell in swept:
+        assert abs(newton(*cell.args) - cell.expected) < 5e-14 * cell.expected, cell.key
