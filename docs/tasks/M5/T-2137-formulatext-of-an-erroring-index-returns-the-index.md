@@ -3,7 +3,7 @@ id: T-2137
 title: "FORMULATEXT of an erroring INDEX returns the INDEX error, not #ERROR!"
 milestone: M5
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
