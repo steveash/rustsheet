@@ -357,7 +357,7 @@ pub(super) fn get_cell_from_excel(
                     }
                 } else {
                     Cell::NumberCell {
-                        v: parse_cell_number(cell_value),
+                        v: super::util::parse_constant_number(cell_value),
                         s: cell_style,
                     }
                 }

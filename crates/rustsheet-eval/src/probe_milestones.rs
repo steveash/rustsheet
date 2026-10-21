@@ -23,8 +23,8 @@ use crate::baseline::Baseline;
 use crate::case::split_qualified;
 use crate::catalog::Catalog;
 use crate::cellref::Addr;
+use crate::formula_calls::functions_in;
 use crate::milestone_lists::MilestoneList;
-use crate::report::functions_in;
 use crate::runner::{CaseResult, CellResult};
 use crate::suite::BaselineMode;
 use crate::value::Verdict;
@@ -615,6 +615,8 @@ mod tests {
                 scope: Scope::In,
                 reason: None,
                 oracle: None,
+                v15: None,
+                v15_reason: None,
             }),
         );
         Rules::new(

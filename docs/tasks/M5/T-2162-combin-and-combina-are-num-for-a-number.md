@@ -3,7 +3,7 @@ id: T-2162
 title: "COMBIN and COMBINA are #NUM! for a number past a bound (COMBINA(FACT(13),10))"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -34,9 +34,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 5 in eval/baselin
 | gen-m5/fc81c2f704bef138 Calc!A265 | `=COMBINA(SUM(Data!E4:E8,TAN(710)),SUM(Data!D5:D12,Data!D3:D10))` | "#NUM!" | 1000000000000107.0 |
 
 ## Acceptance criteria
-- [ ] These 5 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] numbers.md entry updated with the probed cut.
-- [ ] `make check` green; reviewers approve.
+- [x] These 5 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] numbers.md entry updated with the probed cut.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -45,3 +45,13 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - COMBIN rounding (T-1598, done).
+
+## Outcome
+- `COMBIN_MAX_NUMBER` (2^31-1) in mathematical.rs. COMBIN is `#NUM!` when its floored `number` is at or above it,
+  and COMBINA when `n+k-1` is, as T-2199's probe shows (numbers.md "COMBINA is COMBIN(n+k-1, k)", "Bound", now
+  VERIFIED and implemented).
+- `COMBINA(1,1E+10)` is now `#NUM!` (n+k-1 = 1E10 is past the bound). It used to be 1, which was never Excel
+  evidence; the test is updated and a cut test added (`test_combin_combina.rs`).
+- Eval: gen-m5 known failures 107 -> 102 (the task's 5 cells), probes 1738 -> 1711 (27
+  t2199-text-length-and-combin-cuts cells); regressions 0.
+- Follow-up: T-2291 (COMBINA with a small number and a k past 2^31, extrapolated here).

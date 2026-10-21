@@ -214,6 +214,12 @@ struct Run<'r> {
 /// A per-element kernel: the scalar function over the argument values of one element.
 pub(crate) type Kernel<'k> = dyn FnMut(&mut Model, &[CalcResult]) -> CalcResult + 'k;
 
+/// A number kernel's shortcut (T-1932): its result for arguments that are all numbers, one per
+/// argument written, exactly what its [`Kernel`] returns for them as `CalcResult::Number`s, but
+/// without building, dispatching on and dropping those values. A per-row `=DAY(A1)` and each
+/// element of `DAY(A1:A1000000)` cost a third more through the kernel than the math macros did.
+pub(crate) type NumbersKernel<'k> = dyn Fn(&[f64]) -> Result<f64, Error> + 'k;
+
 /// Whether every grid slot at (`row`, `column`) equals the one at `previous`.
 fn same_as(args: &[LiftedArg], row: usize, column: usize, previous: (usize, usize)) -> bool {
     args.iter()
@@ -347,8 +353,7 @@ fn element_node(
     visits: &mut u64,
     cell: CellReferenceIndex,
 ) -> Result<ArrayNode, CalcResult> {
-    // Every entry before T-1834: no output charge and no top-left, the loop body as before.
-    if options.result == CallResult::Value && !matches!(options.work, KernelWork::Output { .. }) {
+    if element_is_value(options) {
         return Ok(calc_result_to_array_node(value));
     }
     let cells = match &value {
@@ -368,6 +373,26 @@ fn element_node(
         }
         (_, value) => calc_result_to_array_node(value),
     })
+}
+
+/// Whether an element's result is its value as it is: no output charge and no top-left, every
+/// entry before T-1834.
+fn element_is_value(options: &LiftOptions) -> bool {
+    options.result == CallResult::Value && !matches!(options.work, KernelWork::Output { .. })
+}
+
+/// The arguments of a [`NumbersKernel`] for `values` but the grid's at `grid_index` (left 0),
+/// `None` when one of them is not a number.
+fn scalar_numbers(values: &[CalcResult], grid_index: usize) -> Option<ArgBuf<f64>> {
+    let mut numbers = ArgBuf::filled(values.len(), || 0.0);
+    for (index, (slot, value)) in numbers.as_mut_slice().iter_mut().zip(values).enumerate() {
+        match value {
+            CalcResult::Number(number) => *slot = *number,
+            _ if index == grid_index => {}
+            _ => return None,
+        }
+    }
+    Some(numbers)
 }
 
 /// An array element as a scalar value, by value: a string element moves, not copied.
@@ -406,13 +431,14 @@ impl Model {
                 Err(error) => return error,
             }
         }
-        self.lift_grids(lifted, cost, options, cell, kernel)
+        self.lift_grids(lifted, cost, options, cell, kernel, None)
     }
 
     /// The broadcast over arguments already read, at least one of them a grid (SPEC-0011
     /// `lift_values` steps 3-7): the output bound (`check_array_size`, `#ERROR!` past it) and the
     /// work bound (`cost`, `too_many_visits`) are checked before any element is computed; then
     /// the elements run in row-major order, in place when one grid is the only lifted argument.
+    /// There, an element whose arguments are all numbers runs `numbers` instead of `kernel`.
     pub(super) fn lift_grids(
         &mut self,
         lifted: Vec<LiftedArg>,
@@ -420,6 +446,7 @@ impl Model {
         options: &LiftOptions,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
+        numbers: Option<&NumbersKernel<'_>>,
     ) -> CalcResult {
         let (rows, columns) = match broadcast_shape(&lifted, cell) {
             Ok(shape) => shape,
@@ -484,7 +511,7 @@ impl Model {
             cell,
         };
         match in_place {
-            Some(index) => self.lift_in_place(lifted, index, run, kernel),
+            Some(index) => self.lift_in_place(lifted, index, run, kernel, numbers),
             None => self.lift_broadcast(&lifted, rows, columns, &plan, run, kernel),
         }
     }
@@ -548,13 +575,17 @@ impl Model {
 
     /// One grid at `grid_index`, the rest scalars: each element is moved out of the grid, given
     /// to the kernel, and its result written back into the same slot, so the output is the input
-    /// grid (T-1078: at most one allocation per output element, none for a number).
+    /// grid (T-1078: at most one allocation per output element, none for a number). With a
+    /// `numbers` shortcut and every scalar a number, a number element runs the shortcut on the
+    /// numbers alone (T-1932); the shortcut's elements charge nothing beyond the up-front cost and
+    /// hold no text, so only an entry whose elements are charged nothing takes it.
     fn lift_in_place(
         &mut self,
         lifted: Vec<LiftedArg>,
         grid_index: usize,
         run: Run<'_>,
         kernel: &mut Kernel<'_>,
+        numbers: Option<&NumbersKernel<'_>>,
     ) -> CalcResult {
         let Run {
             options,
@@ -570,9 +601,23 @@ impl Model {
                 LiftedArg::Grid(grid) => output = grid,
             }
         }
+        let mut shortcut = numbers
+            .filter(|_| element_is_value(options))
+            .and_then(|numbers| Some((numbers, scalar_numbers(values.as_slice(), grid_index)?)));
         let mut text_bytes = 0;
         for row in &mut output {
             for node in row {
+                if let (Some((numbers, args)), ArrayNode::Number(number)) = (&mut shortcut, &*node)
+                {
+                    if let Some(slot) = args.as_mut_slice().get_mut(grid_index) {
+                        *slot = *number;
+                    }
+                    *node = match numbers(args.as_slice()) {
+                        Ok(number) => ArrayNode::Number(number),
+                        Err(error) => ArrayNode::Error(error),
+                    };
+                    continue;
+                }
                 let element = std::mem::replace(node, ArrayNode::Empty);
                 if let Some(slot) = values.as_mut_slice().get_mut(grid_index) {
                     *slot = array_node_into_calc_result(element, cell);
