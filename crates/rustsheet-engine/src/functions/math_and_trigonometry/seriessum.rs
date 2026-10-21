@@ -1,4 +1,5 @@
 use crate::{
+    arithmetic::power,
     calc_result::CalcResult,
     expressions::{
         parser::{ArrayNode, Node},
@@ -107,13 +108,20 @@ impl Model {
         };
 
         let mut sum = 0.0f64;
-        for (i, node) in coefficients.iter().flatten().enumerate() {
+        // Excel: a blank coefficient cell is dropped, so the next coefficient takes its power
+        // (docs/excel-semantics/numbers.md "SERIESSUM: blank coefficient cells are dropped").
+        let terms = coefficients
+            .iter()
+            .flatten()
+            .filter(|node| !matches!(node, ArrayNode::Empty));
+        for (i, node) in terms.enumerate() {
             let coeff = match node {
                 ArrayNode::Number(v) => *v,
-                ArrayNode::Empty => 0.0,
                 // Excel: a boolean coefficient is `#VALUE!` in every form (cell, typed, array
                 // literal); probes/seriessum-boolean-coefficients, math-argument-modes C44.
-                ArrayNode::Boolean(_) | ArrayNode::String(_) => return value_error(cell),
+                ArrayNode::Boolean(_) | ArrayNode::String(_) | ArrayNode::Empty => {
+                    return value_error(cell)
+                }
                 ArrayNode::Error(e) => {
                     return CalcResult::new_error(e.clone(), cell, String::new())
                 }
@@ -124,7 +132,18 @@ impl Model {
             if x == 0.0 && exponent <= 0.0 {
                 return num_error(cell);
             }
-            sum += coeff * x.powf(exponent);
+            // Excel raises x with the worksheet `^` (`SERIESSUM(1.005/42,3,1,C5)` equals
+            // `C5*(1.005/42)^3` bit for bit), and a term that overflows is #NUM! at once, before a
+            // text or boolean coefficient later in the range is read (gen-m5/6b831f5e2a20bc34
+            // Calc!A130, gen-m5/461d1c8dbb044769 Calc!A47).
+            let term = match power(x, exponent) {
+                Ok(p) => coeff * p,
+                Err(_) => return num_error(cell),
+            };
+            if !term.is_finite() {
+                return num_error(cell);
+            }
+            sum += term;
         }
 
         if !sum.is_finite() {

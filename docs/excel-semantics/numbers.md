@@ -1693,8 +1693,12 @@ Precedence (probes/seriessum-x-zero-error-precedence E1:E27, excel-graph, 2026-1
 to right and the first problem wins, so with x = 0 a bad-power term before a text or error coefficient gives `#NUM!` (`(0,0,1,{4,"a"})`), but a text or error coefficient
 before or on the bad-power term gives `#VALUE!` or the error (`(0,0,1,{"a"})`, `(0,1,-1,{4,"a"})`, `(0,1,-1,{"a",4})`, `(0,1,-1,{4,#N/A})`, `(0,-1,1,{#N/A})`), the same as for x = 2
 (`(2,0,1,{"a"})`). Between two bad coefficients the left one wins (`{#N/A,"a"}` is `#N/A`, `{"a",#N/A}` is `#VALUE!`, `{#DIV/0!,#N/A}` is `#DIV/0!`). A text or error `x`, `n` or `m`
-(`SERIESSUM(0,"a",1,{1})`, `(0,NA(),1,{1})`, `(0,0,"a",{1})`, `("a",0,1,{1})`) gives `#VALUE!` or the error, with no `#NUM!`. A referenced range of coefficients is not read in order: a text or
-error cell in it is `#VALUE!` even after a bad-power term or with every power positive, unlike the array form (`(0,0,1,B1:B2)` with B1 = 4, B2 = "a" is `#VALUE!` where `(0,0,1,{4,"a"})` is `#NUM!`; `(0,1,1,C1:C2)` with C2 = #N/A is `#VALUE!`), except that a leading error cell is its own error (`(0,1,-1,D1:D2)` with D1 = #N/A is `#N/A`). Other cell orderings in a range (text before an error, a middle error) are unprobed.
+(`SERIESSUM(0,"a",1,{1})`, `(0,NA(),1,{1})`, `(0,0,"a",{1})`, `("a",0,1,{1})`) gives `#VALUE!` or the error, with no `#NUM!`. A referenced range of coefficients is read in order like the array form. The probe's
+range cells B1, C1 and D2 hold the text "4" (the spec string `"4"`), not the number, so `(0,0,1,B1:B2)`, `(0,1,1,C1:C2)` and
+`(0,0,1,C1:C2)` are `#VALUE!` from their leading text cell and `(0,1,-1,D1:D2)` with D1 = #N/A is `#N/A` (T-2163 re-read; an earlier
+note took them for "a range is not read in order"). A range read in order is also what gen-m5 shows: an overflowing term is
+`#NUM!` before a later text or boolean cell ("SERIESSUM: blank coefficient cells are dropped" below). Other cell orderings in a
+range (a number before an error cell) are unprobed.
 Status: VERIFIED
 Tasks: T-1359, T-1653
 
@@ -1708,12 +1712,14 @@ A term that overflows is `#NUM!` even when a text, boolean or numeric-text cell 
 overflows) are `#NUM!`; ours `#VALUE!`. Compare the x = 0 precedence above, where a text cell of a range wins.
 The power is Excel's `^`: `SERIESSUM(1.005/42,3,1,C5)` = 1.3769443103134108E-05 and `SERIESSUM(-100.0001,42,2,42)` =
 4.200176403616261E+85 equal `C5*(1.005/42)^3` and `42*(-100.0001)^42` bit for bit, where ours is an ulp off.
-`SERIESSUM(LOG10(999999999999999),-2.5,1,10.005)` is 0.011481243964090428, which neither our `^` (...43) nor our SERIESSUM
-(...431) gives (a non-integer power, numbers.md "`^` / POWER are not correctly rounded").
+`SERIESSUM(LOG10(999999999999999),-2.5,1,10.005)` is 0.011481243964090428, a non-integer power: the old SERIESSUM `powf` gave
+...431; through `arithmetic::power` (the `^` kernel on main at T-2163) the cell matches.
 Evidence (excel-graph, 2026-10-20): gen-m5/34f69d858a39f497 Calc!A170, gen-m5/5704666097cbc5b2 Calc!A5, Calc!A267,
 gen-m5/6b831f5e2a20bc34 Calc!A130, gen-m5/461d1c8dbb044769 Calc!A47, gen-m5/6a8bb7cd6d7769ad Calc!A373, gen-m5/ee1667411bbe2ccc Calc!A29,
 gen-m5/1d22a002d4f380b3 Calc!A157.
-Status: VERIFIED (excel-graph); not implemented (T-2163).
+Status: VERIFIED (excel-graph); implemented (T-2163) in `fn_seriessum`: blank cells are filtered out before the powers are
+numbered, each term is `coeff * arithmetic::power(x, n + i*m)` and is `#NUM!` at once when the power fails or the term is not
+finite. All 8 cells pass, and so does gen-m5/38b1b8e51dbad326 Calc!A10 (`EVEN(0.1/E5*SERIESSUM(-2.5,B10,3,0.1))`).
 
 ## ARABIC of a blank cell, and padded numerals (T-2153)
 Rule: ARABIC of a blank cell is 0, as `ARABIC("")` is, whether the blank comes as a reference (`ARABIC(C3)`), through

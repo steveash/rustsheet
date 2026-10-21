@@ -3,7 +3,7 @@ id: T-2163
 title: "SERIESSUM drops blank coefficient cells, raises with the ^ kernel, and an overflowing term beats a text coefficient"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -42,3 +42,12 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 8 in eval/baselin
 
 ## Out of scope
 - Non-integer power last digits.
+
+## Outcome
+- `fn_seriessum` drops blank coefficient cells before numbering the powers, raises x with `arithmetic::power` (the
+  worksheet `^`), and gives `#NUM!` as soon as a term's power fails or the term is not finite, before a later text or
+  boolean coefficient is read. The x = 0 precedence probes still pass.
+- numbers.md: the entry is marked implemented. The "SERIESSUM with x = 0" precedence note is corrected: the probe's range
+  cells hold the text "4", so a referenced range is read in order like an array.
+- Eval delta: gen-m5 known failures 176 -> 167 (fixed 9: the 8 listed cells including 1d22a002 A157, plus
+  38b1b8e51dbad326 Calc!A10), 0 regressions in every suite; visible-parity 1777 -> 1771.
