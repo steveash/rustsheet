@@ -29,7 +29,8 @@ fn expm1_pair(x: f64) -> (f64, f64) {
     (x.exp_m1(), (-x).exp_m1())
 }
 
-/// Overflows to infinity where `e^|x|` does (710): SINH/COSH report that as `#NUM!` and SECH/CSCH
+/// Overflows to infinity where `e^|x|` does (just above 709.78; Excel's exact cut is unprobed,
+/// T-1944): SINH/COSH report that as `#NUM!` and SECH/CSCH
 /// as 0 (numbers.md "SINH and COSH overflow is `#NUM!` at once").
 pub(super) fn sinh(x: f64) -> f64 {
     if x.abs() < EXPM1_FORM_LIMIT {
