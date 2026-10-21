@@ -838,6 +838,20 @@ impl Model {
             // An erroring INDEX is its own error (`FORMULATEXT(INDEX(A1:A3,9))` is `#REF!`;
             // probes/index-reference-args Calc!A4, A5, excel-graph; T-2137).
             error
+        } else if matches!(
+            args[0].ungrouped(),
+            Node::FunctionKind {
+                kind: Function::Index,
+                ..
+            }
+        ) {
+            // An INDEX of an array constant picks a value, not a cell
+            // (probes/index-reference-args Calc!A5, excel-graph; T-2137).
+            CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Argument must be a reference".to_string(),
+            )
         } else {
             CalcResult::Error {
                 error: Error::ERROR,
