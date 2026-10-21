@@ -3,7 +3,7 @@ id: T-2275
 title: "ADDRESS: probe row/column bounds per abs_num and a1 (relative R1C1 takes 0 and negative offsets, past the grid is #VALUE!)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
