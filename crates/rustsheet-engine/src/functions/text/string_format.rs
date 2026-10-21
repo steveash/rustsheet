@@ -272,7 +272,7 @@ impl Model {
         // Then the text reads as VALUE reads it: currency, parentheses, dates and clock text past
         // 24 hours too (docs/excel-semantics/text.md "NUMBERVALUE reads text as VALUE does, with
         // its own separators"; gen-m5/033e65b92653f425 A161, ae9ed30812c4d62c A285,
-        // 109fc90dceb50ba9 A144, 6b831f5e2a20bc34 A227), but with every space removed first, so
+        // 6b831f5e2a20bc34 A227), but with every space removed first, so
         // "12:30 PM" is "12:30PM" and #VALUE! where VALUE reads it (gen-m5/bbbd316c346ce645 A207,
         // fc81c2f704bef138 A194, 6a8bb7cd6d A357 against 49bfbf67a1 A217).
         let cleaned = cleaned.replace(' ', "");
