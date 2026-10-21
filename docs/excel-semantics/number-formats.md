@@ -344,14 +344,17 @@ apply: `TEXT(" x ","TRUE")`, `TEXT("TRUE",TRUE)`, `TEXT("a",FALSE)`, `TEXT(FALSE
 Ours returns the text or boolean unchanged. Also `TEXT(2.5,"a*?b1")` is `#VALUE!` (ours "a "); which part Excel rejects (the
 `*?` fill followed by `b1`) was probed in T-2202 (below).
 Probed (excel-graph, 2026-10-21, T-2202, probes/t2202-text-code-check-on-text, Calc!A1:A88; each code against the number 2.5,
-"a", "" and TRUE): the check is all-or-nothing across the four values, so a rejected code is `#VALUE!` for every one of them, and
-an accepted code never is for any. Rejected: `"*?b1"`, `"ab1"`, `"*xb1"`, `"a*?b1"`, `"n"`, `"0E0"`, `"0b"`, `"0.b"`, and each of
+"a", "" and TRUE): for every probed code the check is all-or-nothing across the four values: a rejected code is `#VALUE!` for every one of them, and
+an accepted code is for none. Rejected: `"*?b1"`, `"ab1"`, `"*xb1"`, `"a*?b1"`, `"n"`, `"0E0"`, `"0b"`, `"0.b"`, and each of
 the last four with an `@` text section added (`"n;n;n;@"`, `"0E0;0E0;0E0;@"`, `"0b;0b;0b;@"`, `"0.b;0.b;0.b;@"`), so an `@` section
 does not rescue a rejected code. Accepted: `"a*?"`, `"b1"`, `"*?"`, `"b"`, `"a*?b"` (2.5 gives "a43"), `"0.0"`, `"@"`,
 `"0;-0;0;@"`, `"\"x\""` and `"General"`; text, empty text and booleans come back unchanged ("a", "", "TRUE") under all of them.
-So neither the `*?` fill nor `b` alone is rejected: `"b1"` and `"a*?b"` are fine, and `b1` is rejected once any literal or fill
-token precedes it (`"ab1"`, `"*xb1"`, `"*?b1"`, `"a*?b1"`). The exact token is not isolated further (`"a*?b"` is accepted, so
-the digit after `b` is involved; `"a*?"` is accepted, so the fill is not the cause). `TEXT(2.5,"b1")` is "" and `TEXT(2.5,"b")` is "43" (a Buddhist-year date token).
+Answer for `"a*?b1"`: the part Excel rejects is `b1` (a calendar prefix, line 52 above) when something precedes it. Neither
+`*?` alone (`"*?"`, `"a*?"`) nor `b1` alone (`"b1"`) nor `*?` followed by `b` without the digit (`"a*?b"`) is rejected, but
+`b1` after the probed prefixes `a` (`"ab1"`), the fill `*x` (`"*xb1"`) and the fill `*?` (`"*?b1"`, `"a*?b1"`) is. Other prefixes
+(quoted or escaped literals, digit placeholders, spaces, date tokens) were not probed; the likely rule, unprobed, is that a
+calendar prefix is valid only at the start of a section. `TEXT(2.5,"b1")` is "" and `TEXT(2.5,"b")` is "43" (a Buddhist-year
+date token).
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/25768de48ae7f2f9 Calc!A395, gen-m5/5704666097cbc5b2 Calc!A133,
 gen-m5/651e713f5ae232ed Calc!A3, gen-m5/6b831f5e2a20bc34 Calc!A320, gen-m5/8a387c26d182e73c Calc!A281, gen-m5/8df4830f888f16ae Calc!A149,
 gen-m5/a6fec430ac350c1a Calc!A331, gen-m5/c688ca172fe533dc Calc!A139, gen-m5/d1b251fd6e9c4b4b Calc!A120, gen-m5/d9fb1e918971111b Calc!A243,
