@@ -3,7 +3,7 @@ id: T-1740
 title: "Displayed text: a fraction format whose numerator overflows is 255 #"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
