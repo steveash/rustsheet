@@ -559,11 +559,11 @@ gen-m5/5704666097cbc5b2 Calc!A261, Calc!A392, gen-m5/bbbd316c346ce645 Calc!A76, 
 gen-m5/ecd1b828aebad1e8 Calc!A60 (T-2152); the array lift is in arrays.md (T-2160).
 Every space is removed before the text is read, so `NUMBERVALUE("12:30 PM")` is `#VALUE!` ("12:30PM") where
 `VALUE("12:30 PM")` is 0.5208333333333334 (gen-m5/bbbd316c346ce645 A207, fc81c2f704bef138 A194, 6a8bb7cd6d7769ad A357
-against gen-m5/49bfbf67a1 A217, 901e91c09b A13; Microsoft's NUMBERVALUE page says spaces are ignored "even in the
+against gen-m5/49bfbf67a1409563 A217, 901e91c09b347914 A13; Microsoft's NUMBERVALUE page says spaces are ignored "even in the
 middle"; that "12:30PM" is the reason, not a refusal of AM/PM, is the simplest reading and unprobed).
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
-Unprobed: a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
+Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
 when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
 Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing
 after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs).

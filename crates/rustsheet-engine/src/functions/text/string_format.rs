@@ -274,7 +274,7 @@ impl Model {
         // its own separators"; gen-m5/033e65b92653f425 A161, ae9ed30812c4d62c A285,
         // 6b831f5e2a20bc34 A227), but with every space removed first, so
         // "12:30 PM" is "12:30PM" and #VALUE! where VALUE reads it (gen-m5/bbbd316c346ce645 A207,
-        // fc81c2f704bef138 A194, 6a8bb7cd6d A357 against 49bfbf67a1 A217).
+        // fc81c2f704bef138 A194, 6a8bb7cd6d7769ad A357 against 49bfbf67a1409563 A217).
         let cleaned = cleaned.replace(' ', "");
         let number = parse_excel_number(&cleaned)
             .or_else(|| self.parse_number_text(&cleaned, &["$", "€"], &|| self.current_year()));
