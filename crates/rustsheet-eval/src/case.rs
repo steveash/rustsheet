@@ -123,8 +123,8 @@ pub struct SheetSpec {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub data_tables: Vec<DataTableSpec>,
     /// Pivot tables, written by spec2xlsx with their rendered cells, cache and definition
-    /// (`tools/src/rustsheet_tools/pivot.py`, T-1705). The engine has no pivot tables, so the
-    /// adapter ignores them: a case scores only the GETPIVOTDATA formulas that read them.
+    /// (`tools/src/rustsheet_tools/pivot.py`, T-1705). The engine adapter writes each pivot's
+    /// `rendered` cells and registers the pivot over its source (T-2084).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pivot_tables: Vec<PivotTableSpec>,
     /// A1 address → number format code (`"[h]:mm"`), applied to that cell whatever it holds
@@ -189,6 +189,12 @@ pub struct PivotTableSpec {
     /// `sum` (when absent), `count`, `average`, `max` or `min`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub function: Option<String>,
+    /// The pivot's cells as the builder lays them out, by A1 address: caption, labels, aggregates
+    /// and grand totals (blank intersections absent). `rustsheet-spec bake-pivots` fills it and
+    /// spec2xlsx refuses a case where it differs from the layout (T-2084, SPEC-0015). Their bounding
+    /// box is the pivot's `<location>`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub rendered: BTreeMap<String, CellInput>,
 }
 
 /// A workbook's calculation settings (`<calcPr>`), written by spec2xlsx (T-0428). The engine
