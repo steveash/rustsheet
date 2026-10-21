@@ -3,7 +3,7 @@ id: T-1654
 title: "3-D spans of a cached external workbook ([1]Uses:Defines!) parse and read the cache"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
