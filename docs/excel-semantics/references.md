@@ -361,10 +361,12 @@ the web keeps the cache on upload):
   keeps the quoted form, as for `'[1]Uses'!`), and `Model::cached_span_cells` gives the cells the
   cache holds in the written area on the sheets between the two ends in `sheetNames` order, in
   sheet, row and column order, in one walk of the cache, which the aggregates and COUNTA read
-  (blanks skipped); it is `#REF!` as a value and `#VALUE!` where one sheet is needed. A span with an
-  end the cache does not hold stays `#BLOCKED!`. Unprobed, so UNVERIFIED: a one-sheet span
+  (blanks skipped); it is `#REF!` as a value and `#VALUE!` where one sheet is needed. Unprobed, so
+  UNVERIFIED (T-2331 probes them): a span with an end the cache does not hold, kept `#BLOCKED!`
+  here (a span of this workbook with a missing end is `#NAME?`); blanks for the readers that keep
+  them (`TEXTJOIN(",",FALSE,[1]Uses:Defines!$A$1:$B$2)`), skipped here; a one-sheet span
   (`[1]Uses:Uses!A1`), read here as a span (`#REF!` as a value, not that sheet's cell as a
-  one-sheet span of this workbook is), `@` of a span, and the reversed span in the other
+  one-sheet span of this workbook is); `@` of a span; and the reversed span in the other
   aggregates.
 A workbook whose formulas reference a sheet with `refreshError="1"` (`[1]'56737'!$A$1:$B$2`) does
 not open in Excel for the web ("unsupportedWorkbook"), so what that reads is a desktop question.
