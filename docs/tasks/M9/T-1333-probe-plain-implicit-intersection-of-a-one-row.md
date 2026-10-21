@@ -3,7 +3,7 @@ id: T-1333
 title: "Probe plain implicit intersection of a one-row range from a cell in its row (@Data!B2:C2)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
