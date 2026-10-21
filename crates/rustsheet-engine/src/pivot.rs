@@ -301,6 +301,7 @@ impl CacheBuilder {
             ..CacheField::default()
         });
         self.interned.push(HashMap::new());
+        // At most MAX_FIELDS fields, so the index fits a u32.
         Ok(self.cache.fields.len() as u32 - 1)
     }
 
@@ -388,6 +389,7 @@ impl CacheBuilder {
         if self.items >= MAX_ITEMS {
             return Err(PivotCacheError::TooManyItems);
         }
+        // At most MAX_ITEMS items, so the index fits a u32.
         Ok(f.items.len() as u32)
     }
 
@@ -576,13 +578,16 @@ mod tests {
     }
 
     #[test]
-    fn sheet_rename_and_delete_drop_that_sheets_pivots() {
-        let (mut model, first, second) = model_with_pivots();
+    fn sheet_rename_drops_that_sheets_pivots() {
+        let (mut model, first, _) = model_with_pivots();
         model.rename_sheet_by_index(1, "Renamed").unwrap();
         assert_eq!(pivot_sheets(&model), vec![first]);
-        let (mut model, _, second2) = model_with_pivots();
+    }
+
+    #[test]
+    fn sheet_delete_drops_that_sheets_pivots() {
+        let (mut model, _, second) = model_with_pivots();
         model.delete_sheet(0).unwrap();
-        assert_eq!(pivot_sheets(&model), vec![second2]);
-        assert_eq!(second, second2);
+        assert_eq!(pivot_sheets(&model), vec![second]);
     }
 }
