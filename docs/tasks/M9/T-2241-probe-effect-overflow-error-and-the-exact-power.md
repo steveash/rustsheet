@@ -1,5 +1,5 @@
 ---
-id: T-2228
+id: T-2241
 title: "Probe EFFECT overflow error and the exact-power-of-ten base (EFFECT(1E300,2), EFFECT(270,30))"
 milestone: M9
 lane: functions-financial

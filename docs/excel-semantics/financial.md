@@ -826,7 +826,7 @@ square root, and every other n is `exp(ln(1+e) * (1/n))` (numbers.md "Non-intege
 function's result back, match once C and D do.
 Evidence: ironcalc-calc FINANCIAL/NOMINAL_EFFECT.xlsx C8, D2 and the 11 other cells of its baseline lines (Excel-cached;
 all 90 cells now pass), probes/fin-argument-modes H125 (excel-graph).
-Ours: `rate_power` in functions/financial/rate_conversions.rs calls `arithmetic::power`. Not probed (T-2228): an
+Ours: `rate_power` in functions/financial/rate_conversions.rs calls `arithmetic::power`. Not probed (T-2241): an
 overflowing EFFECT (`EFFECT(1E300,2)`) keeps the `#DIV/0!` an infinite rate gave before, where Excel's `^` itself is
 `#NUM!`; and `power`'s exact powers of ten now apply when 1 + r/n is exactly 10 (`EFFECT(270,30)` = 1E30 - 1).
 Status: VERIFIED (excel-graph)
