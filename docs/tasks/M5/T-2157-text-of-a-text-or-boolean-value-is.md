@@ -3,7 +3,7 @@ id: T-2157
 title: "TEXT of a text or boolean value is #VALUE! when the format code is invalid"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
