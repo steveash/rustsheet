@@ -46,6 +46,7 @@ XIRR_OOS_CASES = [
     "probes/date-system-1900-financial-daycount",
     "probes/xirr-mismatched-empties",
     "probes/xirr-early-dates",
+    "probes/xirr-span-zero-first",
 ]
 YIELD_CASES = [
     "probes/solver-iteration-traces",
