@@ -3,7 +3,7 @@ id: T-1836
 title: "TOCOL and UNIQUE lift their scalar arguments over a range or an array"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,13 +32,16 @@ Owned cells:
 TOCOL's scan_by_column and UNIQUE's exactly_once are `Lift` by SPEC-0011's per-parameter list; T-1960 probes them.
 
 ## Acceptance criteria
-- [ ] probes/m7-argument-modes F9:H9, K8 and F12:H12 pass; F54:H54 and K14-K16 still pass.
-- [ ] gen-m9/1782efcecd5d4b1b A19 and gen-m9/4df1b22d3ed63f58 A36 pass, with no new failing gen-m9 cell.
-- [ ] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
-- [ ] TOCOL and UNIQUE have table entries citing those cells; their fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes).
-- [ ] Unit tests: an unlifted call is unchanged (value and static shape); a lifted call over a large array is charged per element and `#ERROR!` past the visit cap; an element error stays in its position.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/m7-argument-modes F9:H9, K8 and F12:H12 pass; F54:H54 and K14-K16 still pass.
+- [x] gen-m9/1782efcecd5d4b1b A19 and gen-m9/4df1b22d3ed63f58 A36 pass, with no new failing gen-m9 cell.
+- [x] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
+- [x] TOCOL and UNIQUE have table entries citing those cells; their fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes).
+- [x] Unit tests: an unlifted call is unchanged (value and static shape); a lifted call over a large array is charged per element and `#ERROR!` past the visit cap; an element error stays in its position.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SORTBY (T-1839) and SORT (T-1837).
 - Any change to the lift driver or the element rules (T-1834); if they do not fit, hand the task up (work-loop 5b).
+
+## Outcome
+TOCOL (ignore, scan_by_column) and UNIQUE (by_col, exactly_once) have lifting-table entries (`// --- M7 (T-1836) ---` in lift/kinds/general.rs): the array is `WholeByCaller`, read once by the function and handed to every element, charged its cells per element (`LiftCost::Cells`) plus the cells built. TOCOL's flatten and UNIQUE's row/column pass are now pure kernels over the array (`flatten_data`, `unique_of`); TOROW keeps its own argument reading and shares `flatten_data`. Their `fallback_signature`/`fallback_shape` arms and `args_signature_unique` are gone. probes: 7 known failures fixed (m7-argument-modes F9:H9, K8, F12:H12), none added. gen-m9/1782efcecd5d4b1b Calc!A19 and gen-m9/4df1b22d3ed63f58 Calc!A36 both give `#SPILL!` as Excel does (run by the fidelity reviewer). DEVIATION for the work cap recorded in arrays.md. Unit tests in test/test_fn_tocol_unique_lift.rs.
