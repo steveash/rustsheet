@@ -39,7 +39,12 @@ type Dd = (f64, f64);
 /// Largest integer df that the double-double series ([`centre_series`], [`integer_ratio`]) sum:
 /// about df/2 double-double steps a call.
 const SERIES_MAX_DF: f64 = 1000.0;
-/// Up to this shape Excel's B(a, 1/2) is a sum of GAMMALNs ([`log_gamma_ratio`]).
+/// From this shape up to [`LOG_GAMMA_BETA_MAX`] Excel's B(a, 1/2) is a sum of GAMMALNs
+/// ([`log_gamma_ratio`]). Below it (df under 13) the form is not probed and scaling by it loses
+/// probes-numeric cells (statistics.md "Student t prefactor per df").
+const LOG_GAMMA_BETA_MIN: f64 = 6.5;
+/// Up to this shape Excel's B(a, 1/2) is a sum of GAMMALNs: past 8 GAMMALN is Stirling's series and
+/// Excel's B is accurate.
 const LOG_GAMMA_BETA_MAX: f64 = 8.0;
 /// From this shape on, Gamma(a + 1/2)/Gamma(a) comes from its asymptotic series.
 const ASYMPTOTIC_MIN_SHAPE: f64 = 85.0;
@@ -226,8 +231,7 @@ fn tail_from(args: &TailArguments, n: f64) -> f64 {
     if y <= z {
         return 0.5 * power_series(0.5 * n, y, ratio);
     }
-    if let Some(inside) = args.series.as_ref().map(centre_series) {
-        let tail = dd_add((0.5, 0.0), (-0.5 * inside.0, -0.5 * inside.1));
+    if let Some(tail) = args.series.as_ref().map(exact_series_tail) {
         if tail.0 > MIN_SERIES_TAIL {
             return excel_prefactor_scale(tail, 0.5 * n);
         }
@@ -332,16 +336,23 @@ fn gamma_ratio(n: f64) -> Option<f64> {
 /// 1/B(a, 1/2) the way Excel's BETA.DIST forms B for a shape up to [`LOG_GAMMA_BETA_MAX`]:
 /// exp(GAMMALN(a) + (GAMMALN(1/2) - GAMMALN(a + 1/2))) with Excel's own GAMMALN and EXP.
 fn log_gamma_ratio(a: f64) -> Option<f64> {
-    if !(6.5..=LOG_GAMMA_BETA_MAX).contains(&a) {
+    if !(LOG_GAMMA_BETA_MIN..=LOG_GAMMA_BETA_MAX).contains(&a) {
         return None;
     }
     let beta = excel_exp(excel_gammaln(0.5) + (excel_gammaln(a) - excel_gammaln(a + 0.5)));
     Some(1.0 / beta)
 }
 
+/// The exact tail L = 1/2 - A/2 of the integer-df series, in double-double.
+fn exact_series_tail(args: &SeriesArguments) -> Dd {
+    let inside = centre_series(args);
+    dd_add((0.5, 0.0), (-0.5 * inside.0, -0.5 * inside.1))
+}
+
 /// The exact tail L (a double-double) times Excel's 1/B(a, 1/2) over the exact one, rounded once:
 /// where [`log_gamma_ratio`] applies, Excel's tail carries its Beta function's error at every t.
 fn excel_prefactor_scale(tail: Dd, a: f64) -> f64 {
+    // The series tail never used the exact 1/B; it is formed here only as the divisor.
     match (log_gamma_ratio(a), integer_ratio(2.0 * a)) {
         (Some(excel), Some(exact)) => dd_mul(tail, dd_div((excel, 0.0), exact)).0,
         _ => tail.0,
@@ -542,12 +553,7 @@ mod tests {
         // further off than the one ulp left here.
         let excel = 0.031_972_503_642_360_03;
         assert!(ulps(student_t_tails(2.0, 15.0).1, excel) <= 1);
-        let exact = dd_add((0.5, 0.0), {
-            let series = series_arguments(2.0, 15.0).map(|args| centre_series(&args));
-            let inside = series.unwrap_or((f64::NAN, 0.0));
-            (-0.5 * inside.0, -0.5 * inside.1)
-        })
-        .0;
+        let exact = series_arguments(2.0, 15.0).map_or(f64::NAN, |args| exact_series_tail(&args).0);
         assert!(ulps(exact, excel) > 1, "{exact}");
         assert_eq!(log_gamma_ratio(8.5), None);
         assert_eq!(log_gamma_ratio(6.0), None);
