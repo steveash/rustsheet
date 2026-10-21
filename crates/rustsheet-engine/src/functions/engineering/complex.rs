@@ -866,20 +866,35 @@ fn imexp_cap_window(quarter_turns: i64) -> f64 {
     }
 }
 
-fn imln((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let r = f64::sqrt(x * x + y * y);
+/// IMLN, IMLOG10 and IMLOG2 are `#NUM!` when both parts are nonzero and `x²+y²` is infinite or
+/// subnormal; a zero part exempts the number (probes/eng-imln-modulus-range).
+fn log_modulus_out_of_range(x: f64, y: f64) -> bool {
+    x != 0.0 && y != 0.0 && !(x * x + y * y).is_normal()
+}
+
+fn imln((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if log_modulus_out_of_range(x, y) {
+        return num_error(cell);
+    }
+    let r = modulus(x, y);
     let a = f64::atan2(y, x);
     complex_result(r.ln(), a, suffix)
 }
 
-fn imlog10((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let r = f64::sqrt(x * x + y * y);
+fn imlog10((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if log_modulus_out_of_range(x, y) {
+        return num_error(cell);
+    }
+    let r = modulus(x, y);
     let a = f64::atan2(y, x);
     complex_result(r.log10(), a * f64::log10(f64::exp(1.0)), suffix)
 }
 
-fn imlog2((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let r = f64::sqrt(x * x + y * y);
+fn imlog2((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if log_modulus_out_of_range(x, y) {
+        return num_error(cell);
+    }
+    let r = modulus(x, y);
     let a = f64::atan2(y, x);
     complex_result(r.log2(), a * f64::log2(f64::exp(1.0)), suffix)
 }
@@ -925,7 +940,7 @@ fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
 }
 
 fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let r = f64::sqrt(x * x + y * y).sqrt();
+    let r = modulus(x, y).sqrt();
     let a = f64::atan2(y, x);
     complex_result(r * f64::cos(a / 2.0), r * f64::sin(a / 2.0), suffix)
 }
