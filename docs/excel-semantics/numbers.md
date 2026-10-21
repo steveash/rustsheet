@@ -642,6 +642,10 @@ SUMSQ flushes each square too (T-1057, VERIFIED, probes/subnormal-sumsq-sumprodu
 The order does not matter: `SUMSQ(1E-150,1E-155)` is also exactly 1E-300, so it is each square that is flushed, not the running sum.
 SUMPRODUCT with three arrays flushes after each factor, left to right: `SUMPRODUCT({1E-200},{1E-110},{1E+300})` is 0 while
 `SUMPRODUCT({1E-200},{1E+300},{1E-110})` is 1E-10.
+A subnormal cell constant reads as 0 (T-2016, VERIFIED, probes/subnormal-cell-constants, excel-graph 2026-10-21): a
+number typed in a cell below 2.2250738585072014E-308 (5E-324, 2.2E-308, 1E-310) is `=0` TRUE and `ISNUMBER` TRUE, `*1E+300`
+gives 0, and `LOG10` and `LN` of it are `#NUM!`; the smallest normal is kept. So LOG10 and LN never see a subnormal
+argument from a cell. Not implemented yet: T-2228 (the engine keeps the subnormal).
 Comparison and literals (T-0989): a comparison decides on the two 15-digit values alone, with no absolute tolerance, so
 `EXP(-708)=0` is FALSE (C4-C6, C60-C62, C65 pass), while a literal below the smallest normal is flushed to 0 when it is
 read (`=1E-308=0` is TRUE). Still failing: the engine flushes the result of `+` and `-` (`3E-308-2.5E-308`, C69, C73-C75;
