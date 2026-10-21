@@ -3,7 +3,7 @@ id: T-2223
 title: "List probes/textsplit-padded-size A1-A4 as accepted directive-5 deviations (TEXTSPLIT's 2^20-cell bound)"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
