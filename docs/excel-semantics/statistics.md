@@ -2165,3 +2165,10 @@ Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
 Status: VERIFIED (excel-graph).
 Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755
+
+## AGGREGATE 18 with a multi-cell k under EDATE (T-2281)
+Observed (excel-graph, gen-m6, 2026-10-21): `EDATE(AGGREGATE(18,3,Data!C3:D3,Data!C3:D10),-21)` is `#VALUE!`, ours `#NUM!`
+(gen-m6/03333cc38ec06a14 Calc!A120; C3 is "x", the first k). Consistent with AGGREGATE lifting over a range k so that the first
+element is k = "x" (`#VALUE!`), UNVERIFIED (T-2281 probes it).
+Status: UNVERIFIED (one cell)
+Tasks: T-2281
