@@ -3,7 +3,7 @@ id: T-2276
 title: "WEEKNUM of a boolean serial is #VALUE! (ours 0 or 1)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
