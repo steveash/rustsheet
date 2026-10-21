@@ -46,3 +46,7 @@ harness = false
 [[bench]]
 name = "math_lift"
 harness = false
+
+[[bench]]
+name = "pivot"
+harness = false

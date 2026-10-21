@@ -345,6 +345,7 @@ impl Model {
         let node = match self.pick_reference(node, cell) {
             PickedReference::Node(node) => node,
             PickedReference::Value(value) => return RefArg::Value(value),
+            PickedReference::Read(read) => return read,
             PickedReference::External(areas) => {
                 return RefArg::Value(match areas {
                     Ok(areas) => self.external_aggregate_value(&areas, blanks, cell),

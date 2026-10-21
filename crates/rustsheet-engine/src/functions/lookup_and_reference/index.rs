@@ -269,6 +269,7 @@ impl Model {
             PickedReference::Node(reference) => {
                 scalar_as_one_element_array(self.evaluate_reference_arg(reference, cell))
             }
+            PickedReference::Read(read) => scalar_as_one_element_array(read),
             PickedReference::Value(value) => RefArg::Value(scalar_as_array(value)),
         };
         self.index_select(&arg, numbers, two_arg, cell, form)

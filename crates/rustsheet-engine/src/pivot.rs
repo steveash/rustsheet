@@ -418,6 +418,8 @@ impl Model {
     pub(crate) fn drop_pivots_on(&mut self, sheet: u32) -> Result<(), String> {
         let sheet_id = self.workbook.worksheet(sheet)?.sheet_id;
         self.workbook.drop_pivots_on_sheet(sheet_id);
+        // The indices are keyed by position in `pivot_tables`, which dropping shifts.
+        self.evaluation.pivot_indexes.clear();
         Ok(())
     }
 }
