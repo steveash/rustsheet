@@ -3,7 +3,7 @@ id: T-0062
 title: "Fifteen-digit parity checkpoint section in the eval report: per-function Excel cells, generated cells and visibly-off count against decision 0094"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
