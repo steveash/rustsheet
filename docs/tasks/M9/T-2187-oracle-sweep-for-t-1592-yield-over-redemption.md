@@ -3,7 +3,7 @@ id: T-2187
 title: "Oracle sweep for T-1592: YIELD over redemption, frequency and day-count basis at fixed dates, with the Newton back-chain per cell"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
