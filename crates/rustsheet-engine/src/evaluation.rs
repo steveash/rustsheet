@@ -399,6 +399,8 @@ pub(crate) struct Evaluation {
     /// restart, the cells stay on `stack`, still `Evaluating`, to be run again
     /// from the top once the recursion has unwound.
     pub(crate) unwinding: bool,
+    /// GETPIVOTDATA's per-pivot indices and memo, dropped at each `evaluate()` (`pivot_index.rs`).
+    pub(crate) pivot_indexes: crate::functions::lookup_and_reference::pivot_index::PivotIndexes,
 }
 
 /// How deep the recursion may go when nobody has said otherwise, in formulas
@@ -450,6 +452,7 @@ impl Default for Evaluation {
             max_stack: DEFAULT_MAX_STACK,
             stack_base: 0,
             unwinding: false,
+            pivot_indexes: Default::default(),
         }
     }
 }
@@ -464,6 +467,7 @@ impl Model {
     /// is marked, so there is nothing of it to read or to contradict.
     pub fn evaluate(&mut self) {
         self.evaluation.evaluations += 1;
+        self.evaluation.pivot_indexes.clear();
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.

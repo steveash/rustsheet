@@ -3,7 +3,7 @@ id: T-2083
 title: "GETPIVOTDATA resolves data_field and field/item pairs against a loaded pivot table (SPEC-0015)"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -59,3 +59,27 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 19 cells, 0 numeric pa
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#REF!` where Excel answers from a real pivot table), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. The cells score only once T-2081 (model) and T-2084 (adapter loads the baked pivot) are merged too; T-2084 carries the key for the same cells.
+
+## Outcome
+GETPIVOTDATA answers from a loaded pivot (`functions/lookup_and_reference/getpivotdata.rs`): the one
+pivot whose location meets the reference, its data field by caption or source name (ignoring case,
+untrimmed; a blank cell is the only data field), the pairs' fields on the row/column axes and their
+text items ignoring case, and the data field's aggregate over the picked cache records in cache
+order (Sum over none 0). An array or range of items lifts through `lift_values`; static analysis now
+broadcasts the item arguments so the call spills. Every SPEC-0015 unknown answers `#REF!` (listed
+in web.md "GETPIVOTDATA against a pivot table"). The per-pivot index (`pivot_index.rs`: one pass
+over the records, each distinct axis tuple keeping its record list, lowercase item names built once
+per field, a memo per (data field, items)) lives in `Evaluation::pivot_indexes`, keyed by pivot,
+and is dropped at each `Model::evaluate` and whenever pivots are dropped (SPEC-0015 amended: no
+change signal exists to keep it longer). A test pins that a pivot or cache change reaches every
+GETPIVOTDATA cell, and that 201 calls build one index per pivot per evaluation.
+
+Bench (`cargo bench -p rustsheet --bench pivot`, 100,000 records, a recalculation each, index
+rebuilt every time): 1,000 distinct intersections 46 ms, 1,000 equal grand totals 40 ms, one call
+lifted over 100 items 42 ms (the 100k-cell workbook's own evaluation dominates; the T-1703 stub
+had no answer to compare with).
+
+Eval delta: probes/getpivotdata-real-pivot passes all 33 cells (22 known-failure lines gone from
+eval/baseline/probes.txt, the 19 visible-parity cells among them); probes/getpivotdata-evidence-floor
+still passes. Re-check the `#REF!` rules when T-2085 merges.
+
