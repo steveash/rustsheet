@@ -36,7 +36,13 @@ impl Model {
         // row (probes/t-n-range-top-left F2, F10, F12; t-array-lift S!E7; T-0985).
         let result = self.evaluate_node_top_left(&args[0], cell);
         match result {
-            CalcResult::String(_) => result,
+            // Text over 255 UTF-16 units is #VALUE!, as in REPT, CODE and UNICODE:
+            // `T(REPT("x",256))` (docs/excel-semantics/text.md "REPT, CODE, UNICODE and T refuse a
+            // text argument over 255 UTF-16 units", probes/t2199-text-length-and-combin-cuts A12).
+            CalcResult::String(ref text) => match super::common::reject_over_short_limit(text) {
+                Ok(()) => result,
+                Err(error) => CalcResult::new_error(error, cell, String::new()),
+            },
             error @ CalcResult::Error { .. } => error,
             // An array lifts element-wise, text and error elements kept and anything else "":
             // `T({"a",1,#N/A,TRUE})` spills "a", "", #N/A, "" (probes/t-array-lift,
