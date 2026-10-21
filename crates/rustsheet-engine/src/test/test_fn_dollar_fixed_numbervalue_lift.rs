@@ -17,13 +17,25 @@ fn dollar_fixed_numbervalue_lift_over_arrays_and_ranges() {
         ("=INDEX(FIXED(1234.5,{0;1;2},TRUE),2)", "1234.5"),
         ("=INDEX(FIXED(1234.5,2,{TRUE;FALSE;TRUE}),2)", "1,234.50"),
         ("=ROWS(FIXED(D1:D3))", "3"),
-        ("=INDEX(NUMBERVALUE({\"1\";\"2\";\"3\"},\".\",\",\"),2)", "2"),
-        ("=INDEX(NUMBERVALUE(\"1.5\",{\".\";\".\";\",\"},\",\"),2)", "1.5"),
-        ("=INDEX(NUMBERVALUE(\"1.5\",\".\",{\",\";\",\";\".\"}),2)", "1.5"),
+        (
+            "=INDEX(NUMBERVALUE({\"1\";\"2\";\"3\"},\".\",\",\"),2)",
+            "2",
+        ),
+        (
+            "=INDEX(NUMBERVALUE(\"1.5\",{\".\";\".\";\",\"},\",\"),2)",
+            "1.5",
+        ),
+        (
+            "=INDEX(NUMBERVALUE(\"1.5\",\".\",{\",\";\",\";\".\"}),2)",
+            "1.5",
+        ),
         ("=ROWS(NUMBERVALUE(D1:D3))", "3"),
         ("=INDEX(DOLLAR({1.234;2.345},{0,1,2}),2,3)", "$2.35"),
         ("=INDEX(FIXED({1234.5;2345.6},{0;1;2},TRUE),3)", "#N/A"),
-        ("=INDEX(NUMBERVALUE({\"1\";\"2\"},{\".\",\",\",\".\"},\",\"),2,3)", "2"),
+        (
+            "=INDEX(NUMBERVALUE({\"1\";\"2\"},{\".\",\",\",\".\"},\",\"),2,3)",
+            "2",
+        ),
     ];
     for (i, (formula, _)) in cases.iter().enumerate() {
         model._set(&format!("A{}", i + 1), formula);
