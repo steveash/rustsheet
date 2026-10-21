@@ -15,7 +15,7 @@ side by side.
 | `use_cached_values` | for xlsx: Excel's cached `<v>` values are the oracle (when no sidecar exists) |
 | `require_excel_authored` | only trust caches written by Microsoft Excel (`docProps/app.xml`; XlsxWriter's fake `12.0000` rejected) |
 | `oracle_dir` | optional, relative path inside the suite directory: sidecars live there, mirroring the case path, instead of next to the case (for fetched suites, whose cases sit in the git-ignored cache; decision 0019) |
-| `cached_overrides` | xlsx: optional file (relative to the manifest) replacing single cached values that are not en-US evidence with cells of committed `excel-graph`/`excel-desktop` sidecars (`overrides.rs`, decision 0032) |
+| `cached_overrides` | xlsx: optional file (relative to the manifest) replacing single cached values that are not en-US evidence with cells of committed `excel-graph`/`excel-desktop` sidecars (`overrides.rs`, decision 0032); an excel-graph evidence cell whose probe companion `(x)=0` is FALSE also carries decision 0042's kept-subnormal rule (decision 0090) |
 | `gate` | part of the CI no-regression gate |
 | `baseline` | `cells` (default), `cases` (large corpora) or `none` |
 | `milestone` | which milestone(s) the suite measures |

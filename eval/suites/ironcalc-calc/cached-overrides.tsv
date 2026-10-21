@@ -10,3 +10,6 @@ DATE_AND_TIME/NETWORKDAYS_NETWORKDAYS.INTL.xlsx	Sheet1!C60	probes/cases/date-tex
 DATE_AND_TIME/NETWORKDAYS_NETWORKDAYS.INTL.xlsx	Sheet1!D60	probes/cases/date-text-locale.oracle.json	Sheet1!B7
 TEXT/T_VALUE_VALUETOTEXT.xlsx	Sheet1!C15	probes/cases/date-text-locale.oracle.json	Sheet1!B2
 TEXT/T_VALUE_VALUETOTEXT.xlsx	Sheet1!I5	probes/cases/date-text-locale.oracle.json	Sheet1!B3
+# A cached 0 that is Excel's save of a kept subnormal (decisions 0089, 0090): the probe cell computes the same
+# formula on the same inputs (B44 is =EXP(A44), A44 = -745) and its excel-graph companion (EXP(-745))=0 is FALSE.
+MATH_AND_TRIGONOMETRY/EXP_SIGN.xlsx	EXP_SIGN!B44	probes/cases/subnormal-saved-as-zero.oracle.json	S!A1
