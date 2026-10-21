@@ -454,12 +454,14 @@ class BranchClaims(unittest.TestCase):
             f"refs/remotes/origin/agent/engine/T-0002-limit-recent {now - 60}\n"
             f"refs/remotes/origin/agent/harness/T-0003-twice {idle}\n"
             f"refs/remotes/origin/agent/harness/T-0004-other-block {idle}\n"
+            f"refs/remotes/origin/agent/harness/T-0005-$(touch-x) {idle}\n"
         )
         reasons = {
             "T-0001": "review-round limit",
             "T-0002": "review-round limit",
             "T-0003": "review-round limit, twice",
             "T-0004": "time-boxed (decision 0056)",
+            "T-0005": "review-round limit",
         }
 
         def fake_run(cmd: list[str], **_: object) -> mock.Mock:
@@ -476,7 +478,8 @@ class BranchClaims(unittest.TestCase):
         with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
             claimed, _, _, limited = tasks.branch_claims(fetch=False)
         self.assertEqual(claimed, set(reasons))
-        # T-0002 moved a minute ago (its run may still be at it); T-0003 is the owner's now.
+        # T-0002 moved a minute ago (its run may still be at it); T-0003 is the owner's now; T-0005's
+        # branch name is not one `next` will print for an agent to check out.
         self.assertEqual(limited, {"T-0001": "agent/engine/T-0001-limit"})
 
 
