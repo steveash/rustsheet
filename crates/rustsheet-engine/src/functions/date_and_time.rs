@@ -131,22 +131,19 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
-/// One TIME argument as Excel counts it: floored, except that a value about 2.4E-7 or less below
-/// an integer counts as that integer (half that when the value is negative): `TIME(1-2^-22,0,0)`
-/// is 1:00 and `TIME(1-2.4E-7,0,0)` 0:00, `TIME(1,0,-1E-7)` is 1:00 and `TIME(1,0,-1.2E-7)`
-/// 0:59:59, in each argument's own unit and at any magnitude. The windows sit inside the
-/// probed edges (2^-22, 2.4E-7) and (2^-23, 1.2E-7), clear of the gap's rounding error at 32768.
-/// Then `#NUM!` outside
-/// -32768..=32767. Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is
-/// `#NUM!`" (probes/time-argument-*, T-2267).
+/// One TIME argument as Excel counts it: [`near_integer_floor`] with the shared
+/// [`NEAR_INTEGER_TOLERANCE`] (half of it for a negative value), in each argument's own unit, so
+/// `TIME(1-2^-22,0,0)` is 1:00 and `TIME(1,0,-1E-7)` 1:00; then `#NUM!` outside -32768..=32767.
+// Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is `#NUM!`"
+// (probes/time-argument-*, T-2267): the positive edge lies in (2^-22+1E-12, 2.4E-7), the
+// negative one in (2^-23+1E-12, 1.2E-7), and both hold at every magnitude up to 32768.
 fn time_argument(value: f64) -> Result<f64, Error> {
-    let floor = value.floor();
-    let window = if value < 0.0 { 1.195e-7 } else { 2.39e-7 };
-    let whole = if floor + 1.0 - value < window {
-        floor + 1.0
+    let tolerance = if value < 0.0 {
+        NEAR_INTEGER_TOLERANCE / 2.0
     } else {
-        floor
+        NEAR_INTEGER_TOLERANCE
     };
+    let whole = near_integer_floor(value, tolerance);
     if (-32768.0..=32767.0).contains(&whole) {
         Ok(whole)
     } else {
@@ -177,6 +174,7 @@ use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::functions::lift::{num_error, number_result, value_error};
+use crate::functions::util::{near_integer_floor, NEAR_INTEGER_TOLERANCE};
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
 use crate::types::DateSystem;
