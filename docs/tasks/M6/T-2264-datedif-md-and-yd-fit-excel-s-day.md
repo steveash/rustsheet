@@ -3,7 +3,7 @@ id: T-2264
 title: "DATEDIF MD and YD: fit Excel's day counts across month ends and leap years (ours one day off)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
