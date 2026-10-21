@@ -1041,7 +1041,7 @@ Tasks: T-1489, T-1493
 
 ## YIELD stops short of PRICE's root
 Rule: YIELD's last digits are not the exact root of PRICE: Excel stops early, below the root, by up to about 1e-9
-relative (`YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100,2,0)` is 0.05523587030251456; the root, as we compute
+relative (about 6e-9 on the T-2304 grid, B6) (`YIELD(DATE(2096,3,1),DATE(2100,6,30),0.05,98,100,2,0)` is 0.05523587030251456; the root, as we compute
 it, is 0.0552358703070220). Some price, rate and redemption values reach the root (price 101: 0.0474016398691), others stop
 1e-11 to 1e-9 short. The same bond moved by whole four-year blocks (1 March of 2000, 2004, ..., 2040 and 2096, maturity
 30 June four years later, basis 0) gives the same bits, but two bonds with equal coupon count, accrued days and period
@@ -1111,8 +1111,21 @@ T-1592 (second round, lab fit `yield`, now 178 cells with yield-start-sweep):
 - On price alone the S values are ambiguous: only price 98 (frequency independence) pins the step count. With
   one or two steps back, price 80 (E4) gives 0.109134476 or 0.10825933, price 90 (E5) 0.0776002232 or
   0.0774089333, price 50 (E1) 0.242782115 or 0.2424219411.
-Next (T-2304): the probes fix the coupon rate at 0.05 and one set of dates; a rate and term grid at redemption
-100.5 (where every frequency stops below the root) is needed before S can be fitted.
+T-2304 (probes/yield-start-rate-term, excel-graph 2026-10-21; 50 bonds x frequency 2, 1, 4; basis 0, settlement
+2096-03-01, redemption 100.5, maturities 30 June 2098 to 2126, rates 0 to 0.12, prices 98 and 90): 122 of 150 cells
+stop below PRICE's root (PRICE(y) - price from +3e-10 to +7.7e-8, so they show S) and 28 sit at the root
+(|residual| 2e-11 or less): B1, B26:B30, B33:B35, B39, A40:C40, A44:C45 and A48:C50 (column A is frequency 2, B 1,
+C 4). Residuals mostly fall with the rate and the term at price 98, with a rise at the highest rates and longest terms
+(2110 at rate 0.12 in columns A and C; 2126 column A: 7.9e-9, 2.3e-9, 3.2e-9, 1.1e-8, 3.7e-8); the largest is 7.7e-8 (B43, price 90, rate 0.05, 2110). Stepping Newton
+back two steps (lab arithmetic): 98 / 0.05 / 2100 (A8) reaches 0.05523446, the S of T-1592, but 98 / 0.05 / 2098 (A3)
+reaches 0.0593019, 98 / 0.05 / 2110 (A18) 0.0519331, 90 / 0 / 2098 (A26) 0.0456824 and 90 / 0.05 / 2110 (A43)
+0.0600873, so S moves with term, rate and price and is not one constant (Newton forward from S = 0.0552344627 reproduces only A8:C8
+and the root cells). The cells at the root need no S.
+These cells also contradict the stop rule above (first step below about 7e-6): B2 stops with PRICE 2.0e-8 above the
+target after a last step of 7.54e-6, above T-2187's 7.11e-6 upper bound (B17), so the absolute cut is ruled out; B2
+(2.4e-4 relative) and A26 (last step 6.87e-6, 1.43e-4 relative) rule out the relative cut. The stop rule needs
+re-probing (T-2330).
+Next (T-1592, T-2330): fit S on the T-2304 grid (it moves with term, rate and price) and re-probe the stop rule.
 Ours: Newton from the coupon rate to 1e-8, which lands on the root; the stopping rule is unfitted.
 Status: UNVERIFIED (the algorithm); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304

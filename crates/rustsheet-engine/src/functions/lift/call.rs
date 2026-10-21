@@ -7,8 +7,8 @@ use super::arg_buf::ArgBuf;
 use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg, NumbersKernel};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use super::number_result;
+use crate::expressions::parser::is_multi_sheet_span;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::is_multi_sheet_span;
 use crate::functions::Function;
 use crate::limits::{check_range_size, too_many_visits, MAX_LIFTED_CELL_VISITS};
 use crate::{
