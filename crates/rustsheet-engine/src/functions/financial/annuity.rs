@@ -260,46 +260,8 @@ fn compute_future_value(
     Ok(fv)
 }
 
-pub(super) fn compute_ipmt(
-    rate: f64,
-    period: f64,
-    period_count: f64,
-    present_value: f64,
-    future_value: f64,
-    period_start: bool,
-) -> Result<f64, Error> {
-    period_payments(
-        rate,
-        period,
-        period_count,
-        present_value,
-        future_value,
-        period_start,
-    )
-    .map(|(interest, _)| interest)
-}
-
-pub(super) fn compute_ppmt(
-    rate: f64,
-    period: f64,
-    period_count: f64,
-    present_value: f64,
-    future_value: f64,
-    period_start: bool,
-) -> Result<f64, Error> {
-    period_payments(
-        rate,
-        period,
-        period_count,
-        present_value,
-        future_value,
-        period_start,
-    )
-    .map(|(_, principal)| principal)
-}
-
-/// IPMT and PPMT of one period.
-fn period_payments(
+/// `(IPMT, PPMT)` of one period, for IPMT, PPMT, CUMIPMT and CUMPRINC.
+pub(super) fn period_payments(
     rate: f64,
     period: f64,
     period_count: f64,
@@ -506,7 +468,9 @@ impl Model {
     pub(crate) fn fn_ipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ipmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
-                compute_ipmt(a.0, a.1, a.2, a.3, a.4, a.5).map_err(formula_error(cell))
+                period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
+                    .map(|(interest, _)| interest)
+                    .map_err(formula_error(cell))
             }))
         })
     }
@@ -515,7 +479,9 @@ impl Model {
     pub(crate) fn fn_ppmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ppmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
-                compute_ppmt(a.0, a.1, a.2, a.3, a.4, a.5).map_err(formula_error(cell))
+                period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
+                    .map(|(_, principal)| principal)
+                    .map_err(formula_error(cell))
             }))
         })
     }

@@ -7,7 +7,7 @@
 //! sum main always computed and a long one a closed form (docs/excel-semantics/financial.md
 //! "CUMIPMT and CUMPRINC over many periods"). Moved out of `financial/mod.rs` (T-1845).
 
-use super::annuity::{compute_ipmt, compute_ppmt, payment_overflows};
+use super::annuity::{payment_overflows, period_payments};
 use super::number_or_error;
 use crate::functions::lift::num_error;
 use crate::{
@@ -121,17 +121,13 @@ impl Periods {
         if payment_overflows(self.rate, self.nper, self.pv, self.period_start) {
             return None;
         }
-        let step = match paid {
-            Paid::Interest => compute_ipmt,
-            Paid::Principal => compute_ppmt,
-        };
         let mut sum = 0.0;
         // A bounded count, not `period += 1.0`, so the loop ends whatever the period values: the
         // caller passes `end - start < CUMULATIVE_LOOP_PERIODS`, so at most 32 steps.
         let last = (self.end - self.start).clamp(0.0, CUMULATIVE_LOOP_PERIODS) as u32;
         for offset in 0..=last {
             let period = self.start + f64::from(offset);
-            sum += step(
+            let (interest, principal) = period_payments(
                 self.rate,
                 period,
                 self.nper,
@@ -140,6 +136,10 @@ impl Periods {
                 self.period_start,
             )
             .ok()?;
+            sum += match paid {
+                Paid::Interest => interest,
+                Paid::Principal => principal,
+            };
         }
         // 32 finite terms can still add up to an infinity: the closed form then decides
         // (`#NUM!` when it is not finite either; unprobed, T-1890).
