@@ -19,8 +19,11 @@ from rustsheet_tools.gen.generator import (
     NAME_POOL,
     OUTER_CALL,
     SPILL_BLOCKER,
+    SPILL_COLS,
+    SPILL_ROWS,
     Catalog,
     Gen,
+    col_letter,
     generate_case,
     spill_layout,
 )
@@ -741,7 +744,8 @@ def test_spill_keeps_the_formulas_and_gives_each_spilling_one_its_footprint() ->
             if not (m and m.group(1) in dynamic):
                 block = {a1}
             else:
-                block = {f"{chr(ord('A') + c)}{r}" for r in range(row, row + 12) for c in range(5)}
+                rows, cols = min(SPILL_ROWS, 12), min(SPILL_COLS, 5)  # generate_case's data sheet: 12 x 5
+                block = {f"{col_letter(c)}{r}" for r in range(row, row + rows) for c in range(cols)}
             for cell in block:
                 assert cell not in claimed, (cell, a1, claimed.get(cell))
                 claimed[cell] = a1

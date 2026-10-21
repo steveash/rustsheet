@@ -446,10 +446,11 @@ def spill_layout(
 ) -> SpillLayout:
     """Formulas down column A, each spilling one (outer call in `dynamic`) followed by the empty `rows` x `cols`
     footprint it anchors (A..). Nothing else is in a footprint's rows, so footprints never overlap a formula or
-    each other. Every footprint cell is checked, so a cell Excel leaves empty is scored as empty; a result
-    taller than the footprint is `#SPILL!` against the next formula below; a wider one spills right into
-    unchecked cells, where the harness's spill-extent check fails an engine value Excel left empty. `SPILL_BLOCKED_RATE` of the footprints
-    get a blocker constant just below or right of the anchor (`spill_blocked`): an input, not checked."""
+    each other. Every footprint cell is checked, so a cell Excel leaves empty is scored as empty. A result
+    taller than the footprint is `#SPILL!` against the next formula below. A wider one spills right into
+    unchecked cells, where the harness's spill-extent check fails an engine value Excel left empty.
+    `SPILL_BLOCKED_RATE` of the footprints get a blocker constant just below or right of the anchor
+    (`spill_blocked`): an input, not checked."""
     cells: dict[str, Any] = {}
     check: list[str] = []
     blocked = 0
