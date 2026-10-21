@@ -411,8 +411,18 @@ impl Model {
             return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
         // `ROW(IF(TRUE,…!B3))` is 3 (probes/external-ref-no-link-ifchoose A25).
-        let reference = match self.pick_reference(&args[0], cell) {
-            PickedReference::Node(node) => node,
+        // A value IF, CHOOSE or LET gives here is no reference, an error that error:
+        // `ROW(IF(FALSE,…!A1))` is `#VALUE!` (probes/external-ref-no-link-ifchoose-b A4).
+        let not_a_reference = |value: CalcResult| {
+            if value.is_error() {
+                value
+            } else {
+                CalcResult::new_error(Error::VALUE, cell, "Expected a reference".into())
+            }
+        };
+        let ranges = match self.pick_reference(&args[0], cell) {
+            PickedReference::Node(node) => self.reference_ranges(node, cell),
+            PickedReference::Read(read) => read.into_ranges_or_value().map_err(not_a_reference),
             PickedReference::External(areas) => {
                 let area = match one_external_area(areas, cell) {
                     Ok(area) => area,
@@ -425,14 +435,9 @@ impl Model {
                 };
                 return row_or_column_numbers(first, last, by_row, first_only);
             }
-            PickedReference::Value(error @ CalcResult::Error { .. }) => return error,
-            // A value an IF or CHOOSE gives here is no reference: `ROW(IF(FALSE,…!A1))` is
-            // `#VALUE!` (probes/external-ref-no-link-ifchoose-b A4).
-            PickedReference::Value(_) => {
-                return CalcResult::new_error(Error::VALUE, cell, "Expected a reference".into())
-            }
+            PickedReference::Value(value) => Err(not_a_reference(value)),
         };
-        let (first, last) = match self.reference_ranges(reference, cell) {
+        let (first, last) = match ranges {
             // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
             // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
             Ok(Ranges::Areas(_)) => return several_areas_ref(cell),
