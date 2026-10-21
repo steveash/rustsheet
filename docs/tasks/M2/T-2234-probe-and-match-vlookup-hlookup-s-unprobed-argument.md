@@ -3,7 +3,7 @@ id: T-2234
 title: "Probe and match VLOOKUP/HLOOKUP's unprobed argument edges: two lifted errors, blank index elements, a fractional index at the -2^31 cut-off, a range index's spill"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
