@@ -184,6 +184,9 @@ fn load_package<R: Read + Seek>(
         views,
         theme,
         external_books,
+        // TODO(T-2082): read pivot caches and pivot tables (SPEC-0015 "xlsx import").
+        pivot_caches: Vec::new(),
+        pivot_tables: Vec::new(),
     })
 }
 

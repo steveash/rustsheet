@@ -73,3 +73,8 @@ cell as the builder does (a one-off check of the label, value, blank and grand-t
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Not probed: several data fields (the
 `Values` field), two row fields and their subtotals, filters, hidden items, dates and numbers as items, and
 pivots in tabular or outline form.
+Engine (SPEC-0015): the workbook model holds pivot caches and pivot tables (`pivot.rs`, T-2081); the importer (T-2082) and
+GETPIVOTDATA over them (T-2083) are still to come. Known interim gap: until T-2086 moves pivots with their cells, any row
+or column insertion, deletion or move, and any sheet rename or deletion, on a sheet holding pivots drops those pivots, so
+GETPIVOTDATA against them is `#REF!` (Excel keeps the pivot, refusing an edit that would cut it); undoing a sheet deletion
+brings the sheet back without them. xlsx export drops pivots.
