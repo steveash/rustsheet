@@ -3,7 +3,7 @@ id: T-1721
 title: "LET picking an external reference: mixed arms, and OFFSET over it, as Excel (T-1710 probe)"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -25,12 +25,21 @@ Code: `let_picks_external` / `picks_only_external` and `Model::pick_reference` i
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 5 cells, 1 numeric past half a unit in the 15th digit and 4 with a wrong type, error or text, blamed on ISREF 2, ROWS 2, OFFSET 1, COUNTA 1. Every one is listed above.
 
 ## Acceptance criteria
-- [ ] Visible parity: the 5 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 5 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The five failing cells above pass and leave eval/baseline/probes.txt smaller; A1 and A2 keep passing.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 5 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 5 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The five failing cells above pass and leave eval/baseline/probes.txt smaller; A1 and A2 keep passing.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (wrong ISREF, ROWS and COUNTA of a LET that picks an external reference), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+`Model::pick_reference` now reads every LET whose body may pick a reference into another workbook
+with its names bound; when the body picks another argument, that argument is read there in
+reference context (new `PickedReference::Read`), handled by ROWS/COLUMNS, ROW/COLUMN, ISREF, AREAS,
+INDEX, COUNTA, COUNTBLANK and the aggregate reader. OFFSET takes its reference through
+`pick_reference`, so OFFSET over such a LET is `#VALUE!` and ISREF of it FALSE. Eval: probes known
+failures 2229 -> 2224 (external-ref-no-link-let-index A3:A7), no regressions. Follow-up: T-2333
+probes the cases where the LET picks the other argument.

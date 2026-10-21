@@ -789,8 +789,15 @@ impl Model {
     ) -> Result<(usize, usize), CalcResult> {
         // `ROWS(IF(TRUE,…!A1:B3))` is 3 (probes/external-ref-no-link-index A25).
         // `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` too (probes/external-ref-no-link-ifchoose A26).
-        let node = match self.pick_reference(node, cell) {
-            PickedReference::Node(node) => node,
+        // `ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` too (probes/external-ref-no-link-let-index A5).
+        let read = match self.pick_reference(node, cell) {
+            PickedReference::Node(node) if self.is_multi_area(node) => {
+                self.evaluate_reference_arg(node, cell)
+            }
+            PickedReference::Node(node) => {
+                return value_extent(self.evaluate_node_with_reference(node, cell), cell)
+            }
+            PickedReference::Read(read) => read,
             PickedReference::Value(value) => return value_extent(value, cell),
             PickedReference::External(areas) => {
                 return one_external_area(areas, cell).map(ExternalArea::extent)
@@ -798,17 +805,12 @@ impl Model {
         };
         // ROWS/COLUMNS of a reference of several areas is #REF!, not the #VALUE! of a value
         // context (probes/multiarea-count H2, H3; SPEC-0004 row 5).
-        let result = if self.is_multi_area(node) {
-            match self.evaluate_reference_arg(node, cell) {
-                RefArg::Ranges(Ranges::Areas(_)) => return Err(several_areas_ref(cell)),
-                // A 3-D span through a variable, IF or CHOOSE is `#VALUE!`, as the written one
-                // is (probes/3d-ref-let-bound-span C7:C8, 3d-ref-let-values C5).
-                other => other.into_single_sheet_area(cell),
-            }
-        } else {
-            self.evaluate_node_with_reference(node, cell)
-        };
-        value_extent(result, cell)
+        match read {
+            RefArg::Ranges(Ranges::Areas(_)) => Err(several_areas_ref(cell)),
+            // A 3-D span through a variable, IF or CHOOSE is `#VALUE!`, as the written one
+            // is (probes/3d-ref-let-bound-span C7:C8, 3d-ref-let-values C5).
+            other => value_extent(other.into_single_sheet_area(cell), cell),
+        }
     }
 }
 

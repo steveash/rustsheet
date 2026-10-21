@@ -190,6 +190,7 @@ impl Model {
                 };
             }
             PickedReference::Node(node) => self.evaluate_picked_reference_arg(node, cell),
+            PickedReference::Read(read) => read,
             PickedReference::Value(value) => RefArg::Value(value),
         };
         if let Some(areas) = arg.single_sheet_areas() {
