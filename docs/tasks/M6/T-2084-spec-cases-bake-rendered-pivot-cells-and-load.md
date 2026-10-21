@@ -44,5 +44,5 @@ leave eval/baseline/probes.txt; the first acceptance criterion states it.
   not in the Python binding). The eval adapter writes `rendered` as constants and registers each pivot over its source;
   the rendered cells' bounding box is the pivot's location. The spill-extent check counts `rendered` cells as inputs.
 - New probe probes/pivot-rendered-cells (excel-graph oracle): 66 cells, all pass; they match the baked layout.
-- Eval delta: probes +66 cells passing, no baseline change. Criterion 1 (baseline shrinks by 22) needs T-2083, still todo;
+- Eval delta: probes +66 cells passing; the baseline gains one generated line for the new passing case (`make eval-baseline`). Criterion 1 (baseline shrinks by 22) needs T-2083, still todo;
   the real-pivot cells keep failing until its GETPIVOTDATA lands, then run `make eval-baseline`.

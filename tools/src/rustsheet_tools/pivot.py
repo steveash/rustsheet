@@ -193,6 +193,13 @@ class _Pivot:
                 put(top + 2 + i, left + 1 + j, self._aggregate(item, column))
         return out
 
+    def a1_cells(self) -> dict[str, Cell]:
+        """`cells()` by A1 address."""
+        return {
+            xlsxwriter.utility.xl_rowcol_to_cell(row, col): value
+            for (row, col), value in self.cells().items()
+        }
+
     def location(self) -> str:
         rows = len(self.shared[self.row]) + 1
         if self.column is None:
@@ -296,10 +303,7 @@ class _Pivot:
 
 def rendered_cells(spec: dict[str, Any], sheet: dict[str, Any], pivot: dict[str, Any]) -> dict[str, Cell]:
     """The cells the builder renders for `pivot` (a pivot of `sheet`), by A1 address."""
-    return {
-        xlsxwriter.utility.xl_rowcol_to_cell(row, col): value
-        for (row, col), value in _Pivot(spec, sheet, pivot).cells().items()
-    }
+    return _Pivot(spec, sheet, pivot).a1_cells()
 
 
 def relationships_xml(*relationships: str) -> bytes:
@@ -326,9 +330,7 @@ def pivot_tables(spec: dict[str, Any], write: Callable[[int, int, int, Cell], No
         for raw in sheet.get("pivot_tables", ()):
             pivot = _Pivot(spec, sheet, raw)
             cells = pivot.cells()
-            if pivot.rendered is not None and pivot.rendered != {
-                xlsxwriter.utility.xl_rowcol_to_cell(row, col): value for (row, col), value in cells.items()
-            }:
+            if pivot.rendered is not None and pivot.rendered != pivot.a1_cells():
                 msg = f"pivot {pivot.name} has `rendered` cells that differ from its layout (rustsheet-spec bake-pivots)"
                 raise ValueError(msg)
             if overlap := taken & set(cells):

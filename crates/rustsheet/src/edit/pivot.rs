@@ -28,6 +28,33 @@ pub enum PivotFunction {
     Min,
 }
 
+impl PivotFunction {
+    /// The function named `name` in a spec (`sum`, `count`, `average`, `max`, `min`).
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "sum" => Self::Sum,
+            "count" => Self::Count,
+            "average" => Self::Average,
+            "max" => Self::Max,
+            "min" => Self::Min,
+            _ => return None,
+        })
+    }
+
+    /// The word a new data field's caption starts with (`Sum of Sales`).
+    #[must_use]
+    pub fn caption_name(self) -> &'static str {
+        match self {
+            Self::Sum => "Sum",
+            Self::Count => "Count",
+            Self::Average => "Average",
+            Self::Max => "Max",
+            Self::Min => "Min",
+        }
+    }
+}
+
 impl From<PivotFunction> for Aggregate {
     fn from(function: PivotFunction) -> Self {
         match function {
@@ -95,12 +122,11 @@ impl Txn<'_> {
     /// [`EditError::Pivot`] for a malformed source or field, or a cache over a limit.
     #[doc(hidden)]
     pub fn add_pivot_table(&mut self, input: &PivotTableInput) -> Result<(), EditError> {
-        let table = self.build_pivot(input)?;
+        let (cache, table) = self.build_pivot(input)?;
         let (caches, tables) = (
             self.model.workbook.pivot_caches.len(),
             self.model.workbook.pivot_tables.len(),
         );
-        let (cache, table) = table;
         self.model.workbook.pivot_caches.push(cache);
         self.model.workbook.pivot_tables.push(table);
         self.sheet_op = true;
@@ -223,7 +249,7 @@ impl Txn<'_> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::unwrap_used, reason = "tests")]
 
     use super::*;
     use crate::{Input, Workbook, WorkbookOptions};

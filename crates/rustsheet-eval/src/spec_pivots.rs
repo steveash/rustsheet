@@ -6,7 +6,8 @@ use rustsheet::{
 };
 
 use crate::case::{split_qualified, CaseSpec, CellInput, PivotTableSpec, SheetSpec};
-use crate::cellref::{parse_range, Addr};
+use crate::cellref::Addr;
+use crate::engine::range_ref;
 
 /// Writes the rendered cells of every pivot of `sheet` (sheet id `id`) as constants. They go in
 /// with the sheet's other values, before any formula reads them.
@@ -66,15 +67,8 @@ fn pivot_input(
         .ok_or_else(|| {
             EditError::Engine(format!("pivot {}: no sheet {source_sheet}", pivot.name))
         })?;
-    let (first, last) = parse_range(&range)
-        .ok_or_else(|| EditError::Engine(format!("pivot {}: bad source {range}", pivot.name)))?;
-    let source = RangeRef::new(
-        source_id,
-        first.row - 1,
-        first.col - 1,
-        last.row - 1,
-        last.col - 1,
-    )?;
+    let source = range_ref(source_id, &range)
+        .map_err(|_| EditError::Engine(format!("pivot {}: bad source {range}", pivot.name)))?;
     // The rendered cells' bounding box is the pivot's `<location>` (it spans its labels).
     let mut cells = Vec::new();
     for a1 in pivot.rendered.keys() {
@@ -91,7 +85,10 @@ fn pivot_input(
             pivot.name
         )));
     };
-    let function = pivot.function.as_deref().unwrap_or("sum");
+    // The names are those of tools/src/rustsheet_tools/pivot.py `_FUNCTIONS`, the source of truth.
+    let name = pivot.function.as_deref().unwrap_or("sum");
+    let function = PivotFunction::from_name(name)
+        .ok_or_else(|| EditError::Engine(format!("pivot {}: function {name:?}", pivot.name)))?;
     Ok(PivotTableInput {
         name: pivot.name.clone(),
         source,
@@ -99,30 +96,10 @@ fn pivot_input(
         row: pivot.row.clone(),
         column: pivot.column.clone(),
         value: pivot.value.clone(),
-        function: match function {
-            "sum" => PivotFunction::Sum,
-            "count" => PivotFunction::Count,
-            "average" => PivotFunction::Average,
-            "max" => PivotFunction::Max,
-            "min" => PivotFunction::Min,
-            other => {
-                return Err(EditError::Engine(format!(
-                    "pivot {}: function {other:?}",
-                    pivot.name
-                )))
-            }
-        },
+        function,
         // The caption Excel gives a new data field: `Sum of Sales`.
-        caption: format!("{} of {}", capitalized(function), pivot.value),
+        caption: format!("{} of {}", function.caption_name(), pivot.value),
     })
-}
-
-fn capitalized(word: &str) -> String {
-    let mut chars = word.chars();
-    chars
-        .next()
-        .map(|c| c.to_uppercase().chain(chars).collect())
-        .unwrap_or_default()
 }
 
 fn parse_addr(a1: &str) -> Result<Addr, EditError> {

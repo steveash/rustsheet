@@ -355,14 +355,27 @@ fn calculations(spec: &CaseSpec) -> usize {
 /// A spec table's `A1:B9` range on sheet `id`, without its last row when that is a totals row
 /// (`TableSpec::totals_row`).
 fn table_range(id: SheetId, a1: &str, totals_row: bool) -> Result<RangeRef, rustsheet::EditError> {
-    let (first, last) = parse_range(a1)
-        .ok_or_else(|| rustsheet::EditError::Engine(format!("bad table ref {a1}")))?;
-    let bottom = (last.row - 1).saturating_sub(u32::from(totals_row));
+    let range = range_ref(id, a1)
+        .map_err(|_| rustsheet::EditError::Engine(format!("bad table ref {a1}")))?;
+    let bottom = range.bottom.saturating_sub(u32::from(totals_row));
+    Ok(RangeRef::new(
+        id,
+        range.top,
+        range.left,
+        bottom,
+        range.right,
+    )?)
+}
+
+/// An A1 range (`A1:B4`, one-based) of sheet `id` as a facade range.
+pub(crate) fn range_ref(id: SheetId, a1: &str) -> Result<RangeRef, rustsheet::EditError> {
+    let (first, last) =
+        parse_range(a1).ok_or_else(|| rustsheet::EditError::Engine(format!("bad range {a1}")))?;
     Ok(RangeRef::new(
         id,
         first.row - 1,
         first.col - 1,
-        bottom,
+        last.row - 1,
         last.col - 1,
     )?)
 }
