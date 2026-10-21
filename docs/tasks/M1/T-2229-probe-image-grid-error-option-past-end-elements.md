@@ -3,7 +3,7 @@ id: T-2229
 title: "Probe IMAGE grid error option past-end elements in column shapes"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
