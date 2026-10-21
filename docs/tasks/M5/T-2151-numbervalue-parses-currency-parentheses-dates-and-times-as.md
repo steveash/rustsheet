@@ -63,3 +63,5 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - Array lifting (T-2160).
+
+Moved from T-2152: gen-m6/07171fa3f7493f51 Calc!A261 (`NUMBERVALUE("1,000",FALSE,2.5)` = 1000; the comma is kept as a thousands separator by VALUE-like parsing).

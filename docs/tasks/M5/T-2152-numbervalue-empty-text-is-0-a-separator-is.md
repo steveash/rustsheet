@@ -3,7 +3,7 @@ id: T-2152
 title: "NUMBERVALUE: empty text is 0, a separator is its first character, an empty separator is #VALUE!"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -46,9 +46,9 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baselin
 | gen-m6/07171fa3f7493f51 Calc!A261 | `=HYPERLINK("#Data!A1",NUMBERVALUE("1,000",IFERROR(Data!D2,Data!D$5),Data!C2))` | 1000.0 | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
-- [ ] These 12 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
+- [x] These 12 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -57,3 +57,6 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - Currency, parentheses, dates and times (T-2151); array lifting (T-2160).
+
+## Outcome
+`fn_numbervalue` now uses the first character of each separator, is `#VALUE!` for an empty separator (or one equal to the other), removes every group character before parsing, and returns 0 for empty text. gen-m5: 12 known-failure lines removed, no regressions. The gen-m6 cell (07171fa3f7493f51 Calc!A261, `NUMBERVALUE("1,000",FALSE,2.5)` = 1000) still fails: the group separator is "2", so "1,000" keeps its comma and needs VALUE-like parsing; moved to T-2151.
