@@ -31,9 +31,9 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 | gen-m5/3b813881f835cd90 Calc!A198 | `=TEXT((SQRT(2.5)+SUM(0.5)),"0.000E-00")` | "2.081E00" | "2.081E-00" |
 
 ## Acceptance criteria
-- [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions. About 52 gen-m10 scientific text cells still fail and are filed as T-2226 (mantissa rounding after the shift) and T-2227 (zero, carry, 1E+15).
-- [ ] number-formats.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions. About 52 gen-m10 scientific text cells still fail and are filed as T-2226 (mantissa rounding after the shift) and T-2227 (zero, carry, 1E+15).
+- [x] number-formats.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
