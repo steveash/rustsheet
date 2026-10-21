@@ -656,7 +656,7 @@ impl Model {
         let mut restart = None;
         for cell in anchors.into_iter().chain(everything) {
             self.evaluation.root = Some(cell);
-            self.evaluate_cell(cell);
+            self.evaluate_root_cell(cell);
             if self.evaluation.restart.is_some() {
                 restart = self.evaluation.restart.take();
                 break;

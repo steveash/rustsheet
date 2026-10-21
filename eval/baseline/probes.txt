@@ -446,6 +446,8 @@ C	probes/isref-range-operands.case.json	27
 C	probes/isref-reference-lookups.case.json	11
 C	probes/isref-union-operands.case.json	9
 C	probes/lambda-body-picked-references.case.json	52
+C	probes/lambda-call-depth.case.json	12
+C	probes/lambda-escaping-closures.case.json	28
 C	probes/lambda-helper-range-slices.case.json	46
 C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
@@ -1707,6 +1709,14 @@ F	probes/index-zero-index-scalar-shape.case.json	S!E5
 F	probes/index-zero-index-scalar-shape.case.json	S!E6
 F	probes/index-zero-index-scalar-shape.case.json	S!F5
 F	probes/index-zero-index-scalar-shape.case.json	S!F6
+F	probes/lambda-escaping-closures.case.json	Sheet1!H10
+F	probes/lambda-escaping-closures.case.json	Sheet1!H2
+F	probes/lambda-escaping-closures.case.json	Sheet1!H3
+F	probes/lambda-escaping-closures.case.json	Sheet1!H4
+F	probes/lambda-escaping-closures.case.json	Sheet1!H5
+F	probes/lambda-escaping-closures.case.json	Sheet1!H8
+F	probes/lambda-escaping-closures.case.json	Sheet1!I2
+F	probes/lambda-escaping-closures.case.json	Sheet1!J2
 F	probes/linest-modes.case.json	Sheet1!K1
 F	probes/linest-modes.case.json	Sheet1!K10
 F	probes/linest-modes.case.json	Sheet1!K100
