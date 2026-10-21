@@ -35,6 +35,12 @@ Owned cells. They fail because libm's expm1 is an ulp off Excel's, under T-2134'
     A180, b0ecb7ca78460b77 A8 and A294, ee1667411bbe2ccc A141.
 - Still failing from T-2134's list: COTH_CSCH_SECH!C54 and t0917-hyperbolic-switchover A159
   (CSCH(0.88)), and SINH_COSH_TANH!B51 (SINH(PI()/4)).
+- Also left by T-2134 (done) with no open owner, found by the 2026-10-21 planner run (decision 0085
+  item 3): `TRIGONOMETRIC.xlsx` COTH_CSCH_SECH!C51 (CSCH(PI()/4)) and C55, both in the ironcalc-calc
+  M5 exit row, and 11 gen-m5 cells of T-2134's gap-triage list, all SINH/COTH/CSCH below 1:
+  1d22a002d4f380b3 A107 and A391, 2abdc1524e5aa685 A351, 399071ff6782ab16 A344, 461d1c8dbb044769 A80
+  and A211, 4febabc66cfdf9a1 A247, 6361fdf5993da954 A17, 90bf45bea539723d A130, 9284730052aff46c
+  A218, aac6230c2fb40e1e A94.
 
 ## Acceptance criteria
 - [ ] The cells above pass; no new known failures in any baseline.
