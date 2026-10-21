@@ -11,6 +11,7 @@ use crate::{
 use std::collections::BTreeSet;
 
 pub use super::formatted::Formatted;
+use super::formatted::MAX_TEXT_FORMAT_CHARS;
 pub(crate) use super::parse_formatted::{
     parse_formatted_number, parse_typed_number, rejected_clock_text_format,
 };
@@ -217,10 +218,6 @@ pub(crate) fn format_text_value_exact(text: &Text, format: &str) -> Result<Text,
     }
     Ok(out)
 }
-
-/// Excel: TEXT of a text value is `#VALUE!` once the result is over 255 characters, also when the
-/// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
-pub(super) const MAX_TEXT_FORMAT_CHARS: usize = 255;
 
 /// The Buddhist era counts from 543 BC: serial 100 (1900-04-09) is "43" under `b` and "2443" under
 /// `bbbb` (probes/text-format-bare-literals A41-A46; gen-m7/6db767d720c5b55a A30).

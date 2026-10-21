@@ -1,6 +1,8 @@
 //! The result of formatting a value under a number format.
 
-use super::format::MAX_TEXT_FORMAT_CHARS;
+/// Excel: TEXT of a text value is `#VALUE!` once the result is over 255 characters, also when the
+/// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
+pub(super) const MAX_TEXT_FORMAT_CHARS: usize = 255;
 
 /// A formatted value: its text (`#VALUE!` when TEXT fails), the section's color and why it failed.
 pub struct Formatted {
@@ -17,6 +19,7 @@ impl Formatted {
     /// cannot show as 255 `#`, not `#VALUE!`, whatever the column width (probes/displayed-text-formats
     /// S!B4; gen-m10 "Displayed text"; docs/excel-semantics/number-formats.md "Displayed text
     /// (`Range.text`) of a formatted cell").
+    #[must_use]
     pub fn displayed(self) -> String {
         if self.unshowable {
             "#".repeat(MAX_TEXT_FORMAT_CHARS)
