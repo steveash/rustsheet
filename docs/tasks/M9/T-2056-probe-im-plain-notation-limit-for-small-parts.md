@@ -3,7 +3,7 @@ id: T-2056
 title: "Probe IM* plain-notation limit for small parts (exponents -6 to -15)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
