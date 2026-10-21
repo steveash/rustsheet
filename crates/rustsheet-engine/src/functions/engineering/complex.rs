@@ -866,8 +866,7 @@ fn imexp_cap_window(quarter_turns: i64) -> f64 {
     }
 }
 
-/// IMLN, IMLOG10 and IMLOG2 are `#NUM!` when both parts are nonzero and `x²+y²` is infinite or
-/// subnormal; a zero part exempts the number (probes/eng-imln-modulus-range).
+/// The logs are `#NUM!` if both parts are nonzero and `x²+y²` is inf or subnormal (eng-imln-modulus-range).
 fn log_modulus_out_of_range(x: f64, y: f64) -> bool {
     x != 0.0 && y != 0.0 && !(x * x + y * y).is_normal()
 }
@@ -939,8 +938,9 @@ fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
     finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
 }
 
+// Not `modulus`: Excel gives "0" on underflow (probes/eng-imln-modulus A18, A20).
 fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let r = modulus(x, y).sqrt();
+    let r = f64::sqrt(x * x + y * y).sqrt();
     let a = f64::atan2(y, x);
     complex_result(r * f64::cos(a / 2.0), r * f64::sin(a / 2.0), suffix)
 }

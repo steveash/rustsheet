@@ -31,6 +31,6 @@ their Excel modulus is unprobed. Probe each on bases where the two differ in the
 ## Outcome
 Probed (probes/eng-imln-modulus, eng-imln-modulus-range): IMLN, IMLOG10 and IMLOG2 use the `hypot` modulus (the
 16-digit 1/√2 literal) and are `#NUM!` when both parts are nonzero and x²+y² is infinite or subnormal; both implemented.
-IMSQRT cannot be told apart on that literal, so it uses `modulus` too; its range answers, a subnormal-square flush
-and IMABS 1-ulp differences are recorded in engineering.md and filed as T-2241. Eval: probes known failures 1601 -> 1622
-(21 new cells in the two new probe cases, all IMSQRT/IMABS/one IMLN, none regressed).
+IMSQRT stays on `sqrt(x²+y²)` (Excel's "0" on underflow matches only it); its range answers, a subnormal-square flush
+and IMABS 1-ulp differences are recorded in engineering.md and filed as T-2241. Eval: probes known failures 1601 -> 1620
+(19 new cells in the two new probe cases, all IMSQRT/IMABS/one IMLN, none regressed).
