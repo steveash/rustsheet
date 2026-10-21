@@ -137,6 +137,25 @@ fn test_numbervalue_error() {
     assert_eq!(model._get_text("A1"), "#VALUE!");
 }
 
+// Separators count by first character; empty text is 0 (text.md "NUMBERVALUE reads text as VALUE does").
+#[test]
+fn test_numbervalue_separator_first_character() {
+    let mut model = new_empty_model();
+    model._set("A1", "=NUMBERVALUE(\"\",\".\",\",\")");
+    model._set("A2", "=NUMBERVALUE(\"1;2\",\"x\",\";\")");
+    model._set("A3", "=NUMBERVALUE(\"1,5\",\",\",\"abc\")");
+    model._set("A4", "=NUMBERVALUE(\" 42 \",\".\",\"\")");
+    model._set("A5", "=NUMBERVALUE(\"1\",\"\")");
+    model._set("A6", "=NUMBERVALUE(\",,\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0");
+    assert_eq!(model._get_text("A2"), "12");
+    assert_eq!(model._get_text("A3"), "1.5");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "0");
+}
+
 // ── PROPER ────────────────────────────────────────────────────────────────────
 
 #[test]

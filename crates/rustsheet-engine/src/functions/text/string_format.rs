@@ -228,6 +228,7 @@ impl Model {
             (t.trim_end(), count)
         };
 
+        // Only a bare "%" run is left empty here; empty text returned 0 above.
         if trimmed.is_empty() {
             return CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string());
         }
