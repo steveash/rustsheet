@@ -1,7 +1,9 @@
 //! The visible-parity ratchet (T-0061, decision 0088): the in-scope cells of the vendored gated
 //! suites that are visibly off from Excel (decision 0083) may not grow. `rustsheet-eval check`
-//! holds a full gated run to [`LOCK_PATH`] with [`judge`]; `update-baseline` records it next to
-//! the baselines.
+//! holds a full gated run to [`LOCK_PATH`] with [`judge`]; `update-baseline` records a rise that
+//! new cases account for, and only `update-baseline --lower-visible-lock` (the steward, daily)
+//! records a drop. A PR that only fixes cells leaves the lock alone, so parallel fix PRs do not
+//! all conflict on its one number (T-2245, decision 0093).
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -81,29 +83,41 @@ impl VisibleCount {
     }
 }
 
+/// How `update-baseline` may move the lock.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Update {
+    /// `--allow-regressions`: record any rise (needs a decision record).
+    pub allow_regressions: bool,
+    /// `--lower-visible-lock`: record a drop (the steward's daily run, decision 0093).
+    pub lower: bool,
+}
+
 /// What the gate decided about a run's count.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Judgement {
-    /// The count equals the lock.
-    Unchanged,
+    /// The count is at or below the lock, and nothing is to be recorded. Below the lock is slack
+    /// that the steward's daily `--lower-visible-lock` run takes back (decision 0093).
+    Holds,
     /// Record the count (`update-baseline` only).
     Record,
-    /// Fewer cells are visibly off than the lock says: run `make eval-baseline`.
-    Stale,
     /// More cells are visibly off than the lock (plus, when recording, the new coverage) allows.
     Regressed,
 }
 
-/// Judges `count` against `lock`. `update` is `None` for `check` and `Some(allow_regressions)`
-/// for `update-baseline`, which records a drop, a rise that new cases account for, and any rise
-/// with `--allow-regressions` (which needs a decision record).
+/// Judges `count` against `lock`. `update` is `None` for `check`, which fails only a rise. For
+/// `update-baseline` it records a rise that new cases account for, any rise with
+/// `--allow-regressions`, and a drop only with `--lower-visible-lock`.
 #[must_use]
-pub fn judge(lock: Lock, count: VisibleCount, update: Option<bool>) -> Judgement {
+pub fn judge(lock: Lock, count: VisibleCount, update: Option<Update>) -> Judgement {
     let locked = lock.visibly_off_cells;
     match update {
-        _ if count.cells == locked => Judgement::Unchanged,
-        None if count.cells < locked => Judgement::Stale,
-        Some(allow) if allow || count.cells <= locked.saturating_add(count.new_coverage) => {
+        _ if count.cells == locked => Judgement::Holds,
+        Some(u) if count.cells < locked && u.lower => Judgement::Record,
+        _ if count.cells < locked => Judgement::Holds,
+        Some(u)
+            if u.allow_regressions
+                || count.cells <= locked.saturating_add(count.new_coverage) =>
+        {
             Judgement::Record
         }
         None | Some(_) => Judgement::Regressed,
@@ -184,26 +198,42 @@ mod tests {
         }
     }
 
+    const PR: Update = Update {
+        allow_regressions: false,
+        lower: false,
+    };
+
     #[test]
-    fn check_holds_the_count_to_the_lock() {
+    fn check_fails_only_a_rise() {
         let lock = Lock {
             visibly_off_cells: 10,
         };
-        assert_eq!(judge(lock, count(10, 0), None), Judgement::Unchanged);
-        assert_eq!(judge(lock, count(9, 0), None), Judgement::Stale);
+        assert_eq!(judge(lock, count(10, 0), None), Judgement::Holds);
+        assert_eq!(judge(lock, count(9, 0), None), Judgement::Holds);
         assert_eq!(judge(lock, count(11, 5), None), Judgement::Regressed);
     }
 
+    /// A PR's update leaves a drop unrecorded, so fix PRs do not conflict on the lock
+    /// (decision 0093); the steward's `--lower-visible-lock` records it.
     #[test]
-    fn update_records_drops_and_new_coverage_but_not_worse_cells() {
+    fn update_records_new_coverage_and_only_the_steward_records_drops() {
         let lock = Lock {
             visibly_off_cells: 10,
         };
-        assert_eq!(judge(lock, count(7, 0), Some(false)), Judgement::Record);
-        assert_eq!(judge(lock, count(13, 3), Some(false)), Judgement::Record);
-        assert_eq!(judge(lock, count(13, 2), Some(false)), Judgement::Regressed);
-        assert_eq!(judge(lock, count(13, 0), Some(true)), Judgement::Record);
-        assert_eq!(judge(lock, count(10, 4), Some(false)), Judgement::Unchanged);
+        assert_eq!(judge(lock, count(7, 0), Some(PR)), Judgement::Holds);
+        let steward = Update { lower: true, ..PR };
+        assert_eq!(judge(lock, count(7, 0), Some(steward)), Judgement::Record);
+        assert_eq!(judge(lock, count(13, 3), Some(PR)), Judgement::Record);
+        assert_eq!(judge(lock, count(13, 2), Some(PR)), Judgement::Regressed);
+        assert_eq!(judge(lock, count(13, 2), Some(steward)), Judgement::Regressed);
+        let allow = Update {
+            allow_regressions: true,
+            ..PR
+        };
+        assert_eq!(judge(lock, count(13, 0), Some(allow)), Judgement::Record);
+        assert_eq!(judge(lock, count(10, 4), Some(PR)), Judgement::Holds);
+        // New cases inside the slack below the lock need no write either.
+        assert_eq!(judge(lock, count(9, 4), Some(PR)), Judgement::Holds);
     }
 
     #[test]
