@@ -56,10 +56,9 @@ Code: crates/rustsheet-engine/src/functions/lift/call.rs, driver.rs, mod.rs (`ke
   | DAY, per row | 1.996G | 2.224G | 2.090G | +4.7% |
   | DATE, per row | 3.106G | 2.801G | 2.468G | -20.5% |
   | DAY, lifted | 16.254G | 19.083G | 17.029G | +4.8% |
-  | ABS, per row | 2.017G | 2.029G | 1.808G (vs main -10.9%) | -10.4% |
+  | ABS, per row | 2.017G | 2.029G | 1.821G (vs main -10.3%) | -9.7% |
   | HOUR, per row | 2.636G | 2.291G | 2.153G (vs main -6.0%) | -18.3% |
 
-  The ABS and DAY rows were re-measured after `number_fn` moved onto `numbers_fn` (see the PR).
 - **Stack:** the nesting tests (`test_nested_formula_stack`, `test_nesting_depth`) pass unchanged; no
   `unsafe` (the number is kept from its drop with `ManuallyDrop`, which owns nothing for a number).
 - **Eval:** 0 fixes, 0 regressions in every suite. New unit tests in `lift/tests/mod.rs` cover the

@@ -233,6 +233,8 @@ impl Model {
         numbers: &NumbersKernel<'_>,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult {
+        // The entry lookup and count check of `lift_call_costed` and `lift_call_with`, repeated
+        // here to keep this frame flat: a change to either goes in all three.
         let Some(kinds) = kind.arg_kinds() else {
             return self.lift_call(kind, args, cell, kernel);
         };
