@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
 ---
 
@@ -19,6 +20,11 @@ probes/index-reference-args Calc!A4 (Excel `#REF!`, engine `#ERROR!`) and A5 (Ex
 ## Acceptance criteria
 - [ ] probes/index-reference-args A4 and A5 pass and leave eval/baseline/ (`make eval-baseline`).
 - [ ] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
+number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
+criteria above are already the visible-parity stage.
 
 ## Out of scope
 -

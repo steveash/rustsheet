@@ -1,0 +1,96 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SHEETS of plain, range and 3-D references, in both sheet orders, with SUM and COUNT 3-D controls; INFO type_text values in both cases plus invalid ones, host-dependent values scored by shape only (T-2115).",
+  "tags": [
+    "M5",
+    "information",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Alpha",
+      "cells": {
+        "A1": 1,
+        "A2": 3,
+        "B1": 2,
+        "B2": 4,
+        "D1": "=SHEETS(A1)",
+        "D2": "=SHEETS(A1:B2)",
+        "D3": "=SHEETS(Beta!A1)",
+        "D4": "=SHEETS(Alpha:Gamma!A1)",
+        "D5": "=SHEETS(Beta:Gamma!A1:B2)",
+        "D6": "=SHEETS(Alpha:Data!A1)",
+        "D7": "=ISNUMBER(SHEETS(A1))",
+        "D8": "=SHEETS(Alpha:Gamma!A1)+0",
+        "D9": "=SHEETS(Data!A1)",
+        "D10": "=SHEETS(Gamma:Alpha!A1)",
+        "D11": "=SHEETS(Beta:Data!A1:B2)",
+        "D12": "=SHEETS(Alpha!A1)",
+        "D13": "=SHEETS(Gamma!A1:B2)",
+        "D14": "=SHEETS(Alpha:Beta!A1)",
+        "D15": "=SHEETS(Beta:Gamma!A1)",
+        "D16": "=SHEETS(Data!A1:B2)",
+        "D17": "=SHEETS(Alpha:Data!A1:B2)",
+        "D18": "=SHEETS(Beta!A1)",
+        "D19": "=SHEETS(Alpha:Gamma!$A$1)",
+        "D20": "=SHEETS($A$1:$B$2)",
+        "D21": "=SHEETS(Alpha:Gamma!A1)*1",
+        "D22": "=SHEETS(Alpha:Gamma!A1)=3",
+        "D23": "=TYPE(SHEETS(A1))",
+        "D24": "=SHEETS(Alpha:Data!B2)",
+        "D25": "=INFO(\"recalc\")",
+        "D26": "=INFO(\"RECALC\")",
+        "D27": "=INFO(\"system\")",
+        "D28": "=INFO(\"SYSTEM\")",
+        "D29": "=INFO(\"Recalc\")",
+        "D30": "=INFO(\"System\")",
+        "D31": "=INFO(\"memavail\")",
+        "D32": "=INFO(\"memused\")",
+        "D33": "=INFO(\"totmem\")",
+        "D34": "=INFO(\"\")",
+        "D35": "=INFO(\"x\")",
+        "D36": "=TYPE(INFO(\"release\"))",
+        "D37": "=ISTEXT(INFO(\"directory\"))",
+        "D38": "=LEN(INFO(\"osversion\"))>0",
+        "D39": "=LEN(INFO(\"release\"))>0",
+        "D40": "=LEN(INFO(\"origin\"))>0",
+        "D41": "=ISTEXT(INFO(\"recalc\"))",
+        "D42": "=ERROR.TYPE(INFO(\"x\"))",
+        "D43": "=ISTEXT(INFO(\"DIRECTORY\"))",
+        "D44": "=LEN(INFO(\"OSVERSION\"))>0",
+        "D45": "=LEN(INFO(\"RELEASE\"))>0",
+        "D46": "=LEN(INFO(\"ORIGIN\"))>0",
+        "D47": "=ISERROR(INFO(\"memavail\"))",
+        "D48": "=ISERROR(INFO(\"memused\"))",
+        "D49": "=ISERROR(INFO(\"totmem\"))",
+        "D50": "=SUM(Alpha:Gamma!A1)",
+        "D51": "=COUNT(Beta:Data!A1:B2)",
+        "D52": "=SUM(Gamma:Alpha!A1)"
+      }
+    },
+    {
+      "name": "Beta",
+      "cells": {
+        "A1": 5,
+        "B1": 6
+      }
+    },
+    {
+      "name": "Gamma",
+      "cells": {
+        "A1": 7,
+        "B1": 8
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 9,
+        "B1": 10,
+        "A2": 11,
+        "B2": 12
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -15,7 +15,7 @@ side by side.
 | `use_cached_values` | for xlsx: Excel's cached `<v>` values are the oracle (when no sidecar exists) |
 | `require_excel_authored` | only trust caches written by Microsoft Excel (`docProps/app.xml`; XlsxWriter's fake `12.0000` rejected) |
 | `oracle_dir` | optional, relative path inside the suite directory: sidecars live there, mirroring the case path, instead of next to the case (for fetched suites, whose cases sit in the git-ignored cache; decision 0019) |
-| `cached_overrides` | xlsx: optional file (relative to the manifest) replacing single cached values that are not en-US evidence with cells of committed `excel-graph`/`excel-desktop` sidecars (`overrides.rs`, decision 0032) |
+| `cached_overrides` | xlsx: optional file (relative to the manifest) replacing single cached values that are not en-US evidence with cells of committed `excel-graph`/`excel-desktop` sidecars (`overrides.rs`, decision 0032); an excel-graph evidence cell whose probe companion `(x)=0` is FALSE also carries decision 0042's kept-subnormal rule (decision 0090) |
 | `gate` | part of the CI no-regression gate |
 | `baseline` | `cells` (default), `cases` (large corpora) or `none` |
 | `milestone` | which milestone(s) the suite measures |
@@ -167,8 +167,18 @@ Only `pass` counts as passing. Case statuses:
   in-scope functions, how many have at least 20 Excel cells, how many have an Excel-backed scored
   cell in a generated suite tagged with that milestone, and how many have both. Functions missing
   either are listed by name, tagged `oracle: none` or `volatile`. Informational; never gated.
-- `report.json`: the same data, machine-readable.
+  A "Visibly off (fifteen digits)" section (T-0061, decision 0088) splits each suite's in-scope
+  scored cells into the closeness buckets of `closeness.rs` (bit-exact, 1 ulp, 2–4 ulp,
+  `digits15` within half a unit in the 15th significant digit, `visible_numeric`,
+  `visible_other`) and lists the functions with visibly-off cells, worst first. A visibly-off
+  cell is blamed on the functions it calls other than glue (`closeness::GLUE`: IF, SUM, DATE,
+  INDEX and the like), or on its glue when it calls nothing else.
+- `report.json`: the same data, machine-readable. Each function's `closeness` holds its bucket
+  counts and `visible` its blamed visibly-off cells; each suite's `closeness` holds its in-scope
+  bucket counts.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
+- `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
+  it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
 
 ## Milestone probe lists
 `eval/milestones/<name>.txt` (decisions 0043, 0044) freezes the cases a milestone's probe criterion
@@ -215,6 +225,32 @@ row and a function the catalog does not list counts as in scope. Each row has sc
 bit-exact, deviations and failing; the failing cells are listed once, under the first row that has
 them ("Newly failing at Mk"). Cells with neither formula nor anchor (spill children) are left out and
 counted separately. The M2 row is the M2 exit measure and the M5 row the M5 one (docs/milestones.md).
+The cells a decision leaves out of an exit measure are named in `eval/milestones/exit-exceptions.tsv`
+(`exit_exceptions.rs`, decision 0087; one line per cell: `case!Sheet!A1`, the first milestone whose row
+leaves it out, the decision, the owning task). Each row lists them as `excepted` (report.json
+`function_scope.rows[].excepted`) and report.md shows `failing excl. exceptions` beside `failing`, which
+keeps its meaning. `run` and `check` refuse a malformed line or a repeated cell; a listed cell that fails
+in no row is listed under "Stale exit exceptions" without failing the run. The file never touches
+eval/baseline or the gate.
+
+## Catalog coverage per milestone
+`crates/rustsheet-eval/src/catalog_coverage.rs` (T-2112, T-2175) adds a "Catalog coverage per milestone"
+section to report.md (report.json: `catalog_coverage`), one row per function milestone. A function is
+`covered` by the criterion of decision 0085 item 4: it has (a) the evidence floor of Excel cells and
+(b) a scored Excel-backed cell in a generated suite of the milestone, or it is volatile or
+`oracle: none` and has (a) alone. `both` keeps its meaning (a and b); `covered` adds the exempt
+functions, which report.md lists apart as "Mk exempt from b". The row is at 100% when `covered` equals
+`functions`. The table is an exit measure, not a gate; M6 inherits the rule.
+
+## Milestone exit
+`crates/rustsheet-eval/src/milestone_exit.rs` (T-2177) adds a "Milestone exit (decision 0085)" section to
+report.md (report.json: `milestone_exit`) with one row each for M5 and M6 (M7 to M11 need their own
+decision first). It reads four rows the report already computes and scores nothing itself: catalog
+coverage (`covered == functions`), the `gen-m<k>` suite (at least 20,000 scored cells, `cells -
+deviations`, at a 0.999 pass rate; known failures print beside the allowance `floor(0.001 * scored)`),
+`ironcalc-calc` failing cells excluding exit exceptions (0), and the probe row's known failures (0). A
+missing input prints `n/a` and is never `met`; `exit` is `met` only when all four are. It is an exit
+measure, not a gate.
 
 ## CLI
 ```

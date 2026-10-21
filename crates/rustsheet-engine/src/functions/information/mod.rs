@@ -16,8 +16,20 @@ use crate::{
     get_all_timezones,
     limits::check_range_size,
     model::Model,
-    reference_operators::RefArg,
+    reference_operators::{Ranges, RefArg},
 };
+
+/// Whether `node` is `A1:Sheet!B1`, an unqualified cell joined to a sheet-qualified one. Over
+/// sheets named like cells an unquoted span reads this way: written on sheet S1,
+/// `SHEETS(S1:S3!A1)` is `S1:(S3!A1)`, which cannot join across sheets and is `#VALUE!`, while
+/// `SHEETS(S3:S1!A1)` joins on S1 and is 1 (probes/sheet-names-like-cells-3d-spans B3:B4,
+/// excel-graph; T-2193). A range operator between two sheet-qualified cells
+/// (`Alpha!A1:Beta!B1`) is unprobed: the oracle canary refuses it.
+fn joins_a_cell_to_a_sheet_qualified_one(node: &Node) -> bool {
+    matches!(node, Node::OpRangeKind { left, right }
+        if matches!(left.ungrouped(), Node::ReferenceKind { sheet_name: None, .. })
+            && matches!(right.ungrouped(), Node::ReferenceKind { sheet_name: Some(_), .. }))
+}
 
 /// Applies `f` to every element of a 2-D array, keeping its shape.
 pub(crate) fn map_elements(
@@ -307,6 +319,8 @@ impl Model {
     fn parity_of(&mut self, value: CalcResult, even: bool, cell: CellReferenceIndex) -> CalcResult {
         // Parity is taken on the truncated absolute value (4.5 is even, -7 is odd:
         // probes/is-functions-array-lift, Data!C3:C4); a boolean is #VALUE!, text is cast.
+        // The remainder is taken in f64: every double from 2^53 up is an even integer, so
+        // ISODD(INT(1E+21)) is FALSE (an i64 cast would saturate to odd; gen-m5 ee1667411bbe2ccc).
         let value = self.dereference(value, cell);
         if matches!(value, CalcResult::Boolean(_)) {
             return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
@@ -316,7 +330,7 @@ impl Model {
             return Self::lambda_as_number_error(cell);
         }
         match self.cast_to_number(value, cell) {
-            Ok(f) => CalcResult::Boolean((f.abs().trunc() as i64 % 2 == 0) == even),
+            Ok(f) => CalcResult::Boolean((f.abs().trunc() % 2.0 == 0.0) == even),
             Err(error) => error,
         }
     }
@@ -452,11 +466,9 @@ impl Model {
                 // Let's see if it is a defined name
                 if let Some(defined_name) = self.parsed_defined_name(name, *scope) {
                     match defined_name {
-                        ParsedDefinedName::CellReference(reference) => {
-                            return CalcResult::Number(reference.sheet as f64 + 1.0)
-                        }
-                        ParsedDefinedName::RangeReference(range) => {
-                            return CalcResult::Number(range.left.sheet as f64 + 1.0)
+                        ParsedDefinedName::CellReference(reference)
+                        | ParsedDefinedName::RangeReference(reference) => {
+                            return CalcResult::Number(f64::from(reference.sheet()) + 1.0)
                         }
                         // Excel: SHEET of a name whose body is an error literal is that error
                         // (docs/excel-semantics/references.md "A sheet-qualified #REF! is #REF!").
@@ -576,10 +588,38 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         if arg_count == 1 {
+            // A reference counts the sheets between its corners, in either order
+            // (probes/info-sheets-info-types D1:D24, excel-graph; T-2181).
+            // Only a written reference is read: a union, a name, OFFSET, INDIRECT, INDEX, an
+            // IF/CHOOSE pick and a non-reference argument are unprobed (T-2113): left `#N/IMPL!`. So are a
+            // range operator over function operands (`A1:OFFSET(..)`) and a cross-sheet one
+            // other than [`joins_a_cell_to_a_sheet_qualified_one`] (`Alpha!A1:Beta!B1`).
+            let argument = args[0].ungrouped();
+            if matches!(
+                argument,
+                Node::ReferenceKind { .. }
+                    | Node::RangeKind { .. }
+                    | Node::OpRangeKind { .. }
+                    | Node::SheetSpanKind { .. }
+            ) {
+                match self.evaluate_reference_arg(&args[0], cell) {
+                    RefArg::Ranges(Ranges::One(area)) => {
+                        return CalcResult::Number(
+                            f64::from(area.left.sheet.abs_diff(area.right.sheet)) + 1.0,
+                        );
+                    }
+                    RefArg::Value(error @ CalcResult::Error { .. })
+                        if joins_a_cell_to_a_sheet_qualified_one(argument) =>
+                    {
+                        return error;
+                    }
+                    _ => {}
+                }
+            }
             return CalcResult::Error {
                 error: Error::NIMPL,
                 origin: cell,
-                message: "Sheets function with an argument is not implemented".to_string(),
+                message: "Sheets function with this argument is not implemented".to_string(),
             };
         }
         let sheet_count = self.workbook.worksheets.len() as f64;
@@ -610,23 +650,18 @@ impl Model {
         };
         // An array info_type lifts: one result per element (CELL({"row","col"},B2) spills 2, 2;
         // probes/info-logic-argument-modes A27:B27, excel-graph).
+        // A multi-cell range lifts the same way (`CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
+        // filled column; gen-m5/c0651f0e0fb544d0 Calc!A293, excel-graph, information.md).
         let info_type = match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::String(s) => s.into_lossy_string(),
+            CalcResult::Range { left, right } if left != right && left.sheet == right.sheet => {
+                return match self.evaluate_range(left, right, cell) {
+                    Ok(types) => self.lifted_cell(&types, ranges.as_deref(), reference, cell),
+                    Err(error) => error,
+                };
+            }
             CalcResult::Array(types) => {
-                let lifted = types
-                    .iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|item| match item {
-                                ArrayNode::String(name) => calc_result_to_array_node(
-                                    self.cell_info(name, ranges.as_deref(), reference, cell),
-                                ),
-                                _ => ArrayNode::Error(Error::VALUE),
-                            })
-                            .collect()
-                    })
-                    .collect();
-                return CalcResult::Array(lifted);
+                return self.lifted_cell(&types, ranges.as_deref(), reference, cell);
             }
             _ => match self.get_string(&args[0], cell) {
                 Ok(s) => s,
@@ -634,6 +669,30 @@ impl Model {
             },
         };
         self.cell_info(&info_type, ranges.as_deref(), reference, cell)
+    }
+
+    /// One `CELL` result per element of an `info_type` grid; a non-text element is `#VALUE!`.
+    fn lifted_cell(
+        &mut self,
+        types: &[Vec<ArrayNode>],
+        ranges: Option<&[Range]>,
+        reference: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let lifted = types
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|item| match item {
+                        ArrayNode::String(name) => {
+                            calc_result_to_array_node(self.cell_info(name, ranges, reference, cell))
+                        }
+                        _ => ArrayNode::Error(Error::VALUE),
+                    })
+                    .collect()
+            })
+            .collect();
+        CalcResult::Array(lifted)
     }
 
     /// The workbook's file name as CELL names it (`Budget.xlsx`), `None` for an unnamed workbook

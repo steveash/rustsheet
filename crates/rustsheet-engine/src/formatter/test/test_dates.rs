@@ -231,3 +231,27 @@ fn fractional_and_repeated_elapsed_seconds() {
         );
     }
 }
+
+// A date Excel cannot show displays as 255 `#` while TEXT is #VALUE! (probes/displayed-text-formats
+// S!B4: `yyyy-mm-dd` on a negative serial; gen-m10 "Displayed text": dates past 9999-12-31 and
+// elapsed codes with a clock token on a negative). A bare elapsed code keeps its minus.
+#[test]
+fn unshowable_date_displays_hashes() {
+    let ctx = FormatContext::new(get_locale("en").unwrap());
+    let hashes = "#".repeat(255);
+    for (value, format) in [
+        (-1.0, "yyyy-mm-dd"),
+        (1_234_567_890.0, "m/d/yyyy"),
+        (-0.5, "[h]:mm"),
+        (1_234_567_890.0, "h:mm:ss.00"),
+    ] {
+        let formatted = format_number(value, format, &ctx);
+        assert_eq!(formatted.text, "#VALUE!", "{format} on {value}");
+        assert_eq!(formatted.displayed(), hashes, "{format} on {value}");
+    }
+    assert_eq!(format_number(-1.5, "[s]", &ctx).displayed(), "-129600");
+    assert_eq!(
+        format_number(45000.0, "yyyy-mm-dd", &ctx).displayed(),
+        "2023-03-15"
+    );
+}

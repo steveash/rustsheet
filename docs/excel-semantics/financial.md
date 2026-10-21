@@ -483,8 +483,8 @@ AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work c
 XIRR's guess and FVSCHEDULE's principal, beside cash flows, dates and a schedule read once, whole ("XNPV, XIRR and
 FVSCHEDULE beside their whole data", a DEVIATION for the work cap). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
-The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
-ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475). The
+The base values of CUMIPMT, DB, DDB, DURATION, MDURATION, ODDFPRICE and PRICE are 1 to a few
+ulps off, CUMPRINC about 30-40 ulps (EFFECT is exact since T-2034), and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475, INTRATE and YIELDDISC since T-2032). The
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822, T-1841, T-1842, T-1843, T-1845, T-1870
@@ -754,21 +754,30 @@ Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds/financial.rs (`AMORLINC_WEIGHT`, `AMORDEGRC_WEIGHT`, `AMORLINC`, `AMORDEGRC`)
 Tasks: T-1841
 
-## Coupon-bond functions: a negative basis is #NUM!
-Rule: `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` (the basis read from a cell holding -1E300) is `#NUM!`. Basis -1 and a
-fractional negative basis, and the other coupon-bond functions, are unprobed (the discount-security functions are
-`#NUM!` at basis -1, "Discount-security functions").
-Evidence: probes/fin-yield-odd-lift L5 (excel-graph, 2026-10-18, T-1842).
-Ours: the bond kernels read the basis as `floor() as u32`, which saturates a negative number to 0, so YIELD computes basis
-0 (0.063467439).
-Status: VERIFIED (excel-graph) for the one cell
-Tasks: T-1870
+## Day-count basis: a negative basis is #NUM!
+Rule: every function with a day-count basis argument rejects any basis below 0 with `#NUM!`: -1, -0.5, -0.9999999999,
+-1E-300, and -1E300 or -0.5 read from a cell, are all `#NUM!`. A basis in [0, 5) truncates (4.9 is basis 4). A negative
+basis is not truncated toward 0. Probed for 22 functions: YIELD, PRICE, DURATION, MDURATION, COUPDAYS, COUPNUM,
+COUPDAYBS, COUPNCD, ACCRINT, ACCRINTM, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, YEARFRAC, DISC, INTRATE, RECEIVED,
+PRICEMAT, YIELDMAT, AMORLINC and AMORDEGRC. COUPDAYSNC, COUPPCD, PRICEDISC and YIELDDISC are inferred, not probed: they
+share the readers of probed ones. Also `YIELD(39448,43831,0.0575,95.04,100,2,-1E300)` with
+-1E300 read from a cell (fin-yield-odd-lift L5).
+Evidence: probes/fin-bond-negative-basis (176 cells, excel-graph, 2026-10-20, T-1870); probes/fin-yield-odd-lift L5
+(excel-graph, 2026-10-18, T-1842).
+Ours: one reader, `day_count_basis` (functions/financial/dates.rs), serves the coupon-bond and ODD* kernels, ACCRINT,
+AMORLINC, AMORDEGRC and YEARFRAC. ACCRINTM and the discount-security functions go through YEARFRAC (its parts since T-2032). Before T-1870,
+`floor() as u32` saturated a negative basis to 0, and the `as i32` of YEARFRAC and the `trunc()` of AMOR* turned -0.5
+into 0. The probe's eight failing cells, rows 1, 2, 9 and 17 in columns E and G (YIELD, PRICE,
+ODDFPRICE and ODDFYIELD at bases 0 and 4.9), are last-digit misses of the T-1374 and T-2007 class, not basis reads;
+row 21 (INTRATE) matches since T-2032.
+Status: VERIFIED (excel-graph)
+Tasks: T-1842, T-1870
 
 ## Discount-security functions: settlement 0, basis and argument modes
 Rule: INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 and compute with it (`INTRATE(0,43466,1000,1100)` =
 0.0008403165192222404, `PRICEDISC(0,43466,0.05,100)` = -495.0138888888889, `YIELDDISC(0,43466,95,100)` =
 0.00044227185222223174), whereas RECEIVED, PRICEMAT and YIELDMAT return #NUM! for settlement 0 (PRICEMAT and
-YIELDMAT possibly because issue > settlement: inferred, the probe cannot tell it from a rejection of settlement 0 itself). All six: basis 5 and -1 are #NUM!, a fractional basis truncates (1.9 is 1), a text
+YIELDMAT possibly because issue > settlement: inferred, the probe cannot tell it from a rejection of settlement 0 itself). All six: basis 5 and -1 are #NUM!, a fractional basis truncates (1.9 is 1) and any negative basis is #NUM! ("Day-count basis: a negative basis is #NUM!"), a text
 basis "1" is coerced, a boolean basis is #VALUE!, text dates are parsed, fractional dates truncate, settlement >= maturity
 is #NUM!, and a zero or negative investment, price or redemption (probed for INTRATE, PRICEDISC and YIELDDISC; RECEIVED's investment) is #NUM!, as is a zero or negative PRICEDISC discount; RECEIVED is #NUM! once 1 - discount*yearfrac = 0 (the "< 0" side is inferred, not probed) (`RECEIVED(...,1000,1)` is #NUM!, `...,0.99` is 99999.99999999991); a negative PRICEMAT/YIELDMAT rate or yield price is #NUM! (PRICEMAT and YIELDMAT accept a
 zero rate; issue after settlement is #NUM!). Basis 2 is the only mode whose result differs on a one-year span
@@ -778,9 +787,50 @@ a direct 30/360 count: on 2018-02-28 to 2018-03-30 basis 0 and basis 4 agree for
 A126 = A127 = 0.271557884707002, 32 days), whereas INTRATE, PRICEDISC, RECEIVED and YIELDDISC give different results for
 the two bases (INTRATE A14 = 1.2000000000000002 for 30 days, A15 = 1.125 for 32). Ours already matches (`get_mat_factors`).
 Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624).
-Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0 on basis 0; T-1757 added a unit test); all 45 remaining mismatches (including A21, A43 and A88) are last-digit misses in the T-1374 class.
+Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0 on basis 0; T-1757 added a unit test); the last-digit misses are matched since T-2032 ("Discount securities: day count and year length").
 Status: VERIFIED (excel-graph)
-Tasks: T-1624, T-1757, T-1374
+Tasks: T-1624, T-1757, T-1374, T-2032
+
+## Discount securities: day count and year length
+Rule: DISC, INTRATE, PRICEDISC, RECEIVED, YIELDDISC, PRICEMAT and YIELDMAT do not divide by a year fraction. They
+take YEARFRAC's two parts, the basis day count D (30/360 for bases 0 and 4, actual days otherwise) and the basis year
+length B (360, 365, or basis 1's YEARFRAC year), and round in this order, with `b/d` computed first where it appears:
+- DISC = `(1 - pr/redemption) * (B/DSM)`; INTRATE = `(redemption - investment)/investment * (B/DIM)`;
+  YIELDDISC = `(redemption - pr)/pr * (B/DSM)`; PRICEDISC = `redemption - discount*redemption*DSM/B`;
+  RECEIVED = `investment / (1 - discount*(DIM/B))`.
+- PRICEMAT and YIELDMAT read one B, that of issue to settlement, with A = days(issue, settlement), DIM =
+  days(issue, maturity) and DSM = DIM - A: PRICEMAT = `(100 + DIM/B*rate*100) / (1 + DSM/B*yld) - A/B*rate*100`;
+  YIELDMAT = `((1 + DIM/B*rate) - T) / T * (B/DSM)` with T = `pr/100 + A/B*rate`.
+The forms differ from `(...)/YEARFRAC` in the last digit: INTRATE.xlsx F2 (90 days, basis 0, 2000000 to 2040000) is
+exactly 0.08 (the year-fraction form gives 0.08000000000000007), `INTRATE(43159,43189,1000,1100,0)` is
+1.2000000000000002 = 0.1*(360/30), not 1.2, and `YIELDMAT(43101,43466,42736,0.06,98,0)` is 0.07692307692307698 (the
+expanded numerator `DIM/B*rate + 1 - pr/100 - A/B*rate` gives ...704). The grouping `x*(B/D)` is the only one of ten
+candidates matching all eight distinct DISC.xlsx cells (F2:F5 and F15:F18, bases 0-3 on two spans; F6:F10 and F19
+repeat them with basis 4, 2.4 or omitted). RECEIVED's form is the year
+fraction it always used (`DIM/B` is YEARFRAC); no cell separates it from the alternatives.
+Evidence: ironcalc-calc DISC.xlsx F2:F19 and INTRATE.xlsx F2:F6 (Excel-cached); probes/discount-security-modes,
+probes/date-system-1900-financial-daycount, probes/date-system-1904-financial-daycount,
+probes/date-system-1904-financial A25, A27, probes/fin-argument-modes H139, H352 (excel-graph). 73 cells, all now bit-exact.
+Ours: `Model::year_fraction_parts` (date_and_time/yearfrac.rs) gives the parts; the kernels are in
+functions/financial/discount.rs and `get_mat_factors` (financial/mod.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2032
+
+## EFFECT and NOMINAL raise to their power with `^`
+Rule: EFFECT is `(1 + r/n)^n - 1` and NOMINAL is `((1 + e)^(1/n) - 1) * n`, with n floored, and both powers are
+Excel's `^` operator, not libm `pow`. EFFECT's integer n goes through right-to-left square-and-multiply (numbers.md
+"Integer exponents: right-to-left square-and-multiply"). For NOMINAL, n = 1 is an exact integer power, n = 2 is the
+square root, and every other n is `exp(ln(1+e) * (1/n))` (numbers.md "Non-integer exponents: exp(y·ln x)").
+`EFFECT(0.5,10)` is 0.6288946267774416 (libm pow gives ...442), `NOMINAL(0.5,4.5)` is 0.4267276788012868 (...859), and
+`EFFECT(0.05,4)` is 0.050945336914062445 (...222). Columns E and F of NOMINAL_EFFECT.xlsx, which convert the other
+function's result back, match once C and D do.
+Evidence: ironcalc-calc FINANCIAL/NOMINAL_EFFECT.xlsx C8, D2 and the 11 other cells of its baseline lines (Excel-cached;
+all 90 cells now pass), probes/fin-argument-modes H125 (excel-graph).
+Ours: `rate_power` in functions/financial/rate_conversions.rs calls `arithmetic::power`. Not probed (T-2241): an
+overflowing EFFECT (`EFFECT(1E300,2)`) keeps the `#DIV/0!` an infinite rate gave before, where Excel's `^` itself is
+`#NUM!`; and `power`'s exact powers of ten now apply when 1 + r/n is exactly 10 (`EFFECT(270,30)` = 1E30 - 1).
+Status: VERIFIED (excel-graph)
+Tasks: T-2034
 
 ## PMT when (1+rate)^nper overflows or underflows
 Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient
@@ -995,9 +1045,53 @@ Status: VERIFIED (excel-graph)
 Implemented (T-1764): VDB with salvage above cost never switches to straight line (-600); a fractional end period
 prorates the unclipped declining-balance charge and the total is capped at `cost - salvage` (A9 is 0; salvage <= cost only, salvage above cost keeps the clipped charge); AMORDEGRC
 rejects only an asset life (1/rate) in [0, 3] or strictly between 4 and 5 (exactly 4 and 5 are valid, coefficients
-1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. Still open: the ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI), see the T-1764 Outcome.
+1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. The ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI) are fixed by T-1975: see "VDB charge order" and "DURATION and RRI operation order".
 Implemented (T-1765): a typed boolean principal is `#VALUE!` (A18); a text-number principal still converts. A boolean principal read through a reference is `#VALUE!` too, verified by probes/fin-fvschedule-bool-ref (T-1992).
 Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
+
+## VDB charge order
+Rule: VDB sums the charges of the periods inside its window; it never subtracts two running totals. Its two modes
+build the per-period charges differently, so the same inputs give different last bits with `no_switch` TRUE and FALSE:
+- `no_switch` TRUE: period i charges `min(b·rate, b - salvage)` (at least 0), `rate = factor/life`, with the book
+  value raised directly, `b = cost·(1-rate)^(i-1)` (square-and-multiply, like the operator `^`). The charges are
+  summed in doubles; a partial first or last period is that charge times its share of the window.
+  `VDB(2400,300,10,7,10,2,TRUE)` is 203.3164800000004 and `VDB(2400,300,10,0,10,3,TRUE)` is 2099.9999999999995.
+  The floor at 0 holds from the first period: with salvage above cost, `VDB(2400,3000,10,0,1,2,TRUE)` is 0, where the
+  switching mode gives -600. With `factor >= life` the rate is 1: `VDB(1000,100,2,0,1,3,TRUE)` is 900 and the next
+  period 0 (probes/fin-rri-vdb-edges A17-A24).
+- `no_switch` FALSE, from a whole start period: the book value steps down by each charge,
+  `min(b·factor/life, b - salvage)`, until the straight-line charge `(b - salvage)/(life - p)` is larger; from then on
+  every period charges that same amount. The window's declining-balance charges (and a prorated last period) are summed
+  in doubles, and the whole straight-line periods are added at the end as one product `n·sl`:
+  `VDB(1234.56,78.9,12,4,9,1.75)` is 379.8854487417499, one ulp below the period-by-period sum, and
+  `VDB(2400,300,10,7,10,2,FALSE)` is 203.31648000000007.
+- `no_switch` FALSE from a fractional start period is not fitted yet: probes/fin-vdb-schedule A42-A46 still miss
+  (T-2185, which records a restart model that passes 89 of 92 cells).
+Evidence: probes/fin-vdb-schedule (78 cells), fin-vdb-modes, fin-rri-vdb-edges (excel-graph, 2026-10-20, T-1975).
+Status: VERIFIED (excel-graph)
+Implemented (T-1975): `vdb_no_switch_between` and `vdb_switching_between` in functions/financial/financial_depreciation.rs.
+Tasks: T-1975, T-2185
+
+## DURATION and RRI operation order
+Rule: DURATION discounts each cash flow with Excel's `^` (not libm `pow`) and weights it as `(t·cf)/v^t`, then
+`num/den/frequency`; MDURATION is exactly the worksheet `DURATION(...)/(1+yld/frequency)`. A zero-coupon
+`DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)` is 5.541666666666668, one ulp above `t/2`, because `(t·cf)/v^t`
+divided by `cf/v^t` is not exactly `t`. RRI is exactly the worksheet `(fv/pv)^(1/nper)-1`: `RRI(10,1,200)` is
+0.6986464646342472, where libm `pow` gives ...474.
+A negative `fv/pv` is always `#NUM!` for RRI, even where the worksheet form is a number: `RRI(1,-100,200)`,
+`RRI(0.5,-100,200)` and `RRI(1/3,-1,8)` are `#NUM!`, while `(200/-100)^(1/1)-1` is -3 and `(8/-1)^3-1` is -513
+(probes/fin-rri-vdb-edges A1-A16).
+Evidence: probes/fin-mduration-rri-fit (60 cells: 12 DURATION/MDURATION/quotient triples, 12 RRI/`^` pairs),
+fin-mduration, fin-rri (excel-graph, 2026-10-20, T-1975).
+Open point (2026-10-21 gap triage): the web probes above have an integer nper or an exact `fv/pv`.
+The one fractional-nper, inexact-ratio cell in the repo is Mac desktop: ironcalc-calc
+FINANCIAL/RRI.xlsx Sheet1!D12, `RRI(0.5,3,4)` = 0.7777777777777775 ("Microsoft Macintosh Excel"
+16.0300). The worksheet form `(4/3)^2-1` gives 0.7777777777777777, the engine's value. So either Mac
+desktop differs from the web here, as for SIN(4) and ATAN2 (decision 0074), or RRI is not the
+worksheet form when nper is fractional. T-2222 probes it on excel-graph.
+Status: VERIFIED (excel-graph)
+Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in annuity.rs.
+Tasks: T-1975, T-2222
 
 ## NPV and FVSCHEDULE arguments
 Rule: NPV reads an array literal whole (`NPV(0.1,{-10000,2750,4250,3250,2750})` is 302.233453999042) and skips

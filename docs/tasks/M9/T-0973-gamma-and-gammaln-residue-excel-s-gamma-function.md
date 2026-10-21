@@ -90,3 +90,8 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
 
 Integer arguments only (non-integers and the T-1941 model are T-2129). Excel is exact at small integers, so the downward product reaches 15 digits there; for 89..171 the stage-1 target is 15 digits, not bits.
+
+## Update 2026-10-20: T-1941 identified Excel's algorithms
+GAMMALN and GAMMA are mapped to Excel's own x87 routines (T-1941; `docs/research/t1941/HANDOFF2.md`). T-2128 and
+T-2129 ship them; the four open kernels' remaining coefficient bits are T-2122. This supersedes the hypotheses above
+(named library routines, Lanczos, ln of the product).

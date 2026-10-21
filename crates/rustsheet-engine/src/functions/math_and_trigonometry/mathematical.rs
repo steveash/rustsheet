@@ -99,8 +99,8 @@ impl Model {
         }
 
         // number to convert
-        let mut value = match self.get_number(&args[0], cell) {
-            Ok(f) => f.trunc() as i64,
+        let number = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
             Err(s) => return s,
         };
         // radix
@@ -146,8 +146,9 @@ impl Model {
             };
         }
 
-        // number must be >= 0
-        if value < 0 {
+        // number must be >= 0, checked before truncation: `BASE(-0.0001,5,4)` is `#NUM!`
+        // (gen-m5/a6fec430ac350c1a Calc!A31; numbers.md "ROMAN truncates before its sign check; BASE checks the sign first").
+        if number < 0.0 {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -155,6 +156,7 @@ impl Model {
             };
         }
 
+        let mut value = number.trunc() as i64;
         let mut buf = String::new();
         if value == 0 {
             buf.push('0');
@@ -381,7 +383,7 @@ impl Model {
             if (value > 0.0 && multiple < 0.0) || (value < 0.0 && multiple > 0.0) {
                 return num_error(cell);
             }
-            CalcResult::Number((value / multiple).round() * multiple)
+            CalcResult::Number(super::ceiling_floor::mround_value(value, multiple))
         })
     }
 
@@ -673,7 +675,24 @@ impl Model {
         })
     }
     pub(crate) fn fn_int(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.number_fn(Function::Int, args, cell, |f| Ok(f64::floor(f)))
+        // Excel cuts to 15 significant digits first, then rounds down: INT(1-2^-53) = 1
+        // (docs/excel-semantics/numbers.md "INT cuts to 15 significant digits first", T-2171).
+        // On the cut value, down is toward zero for a positive number and away from zero for a
+        // negative one; the negative case is unprobed and follows the same cut.
+        // From 1E+15 up the cut would drop integer digits (`INT(2^53+1)` = 2^53, a sum of 1000000000000006
+        // stays 1000000000000006: gen-m5/d586a1e0c9896942 Calc!A64, gen-m5/1315170eef6c413e Calc!A332),
+        // so a value that large is floored as it is.
+        self.number_fn(Function::Int, args, cell, |f| {
+            if f.abs() >= 1e15 {
+                return Ok(f.floor());
+            }
+            let mode = if f < 0.0 {
+                RoundMode::Up
+            } else {
+                RoundMode::Down
+            };
+            Ok(round_decimal(f, 0.0, mode).unwrap_or_else(|| f.floor()))
+        })
     }
 
     pub(crate) fn fn_pi(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -966,8 +985,12 @@ fn descending_product(n: f64, step: f64) -> Result<f64, Error> {
 /// negative x in -1..-0.5, so ASIN is not odd. libm `asin` fits 186 of the sweep's 268 and
 /// `atan(x / sqrt((1 - x) * (1 + x)))` 235 (docs/excel-semantics/numbers.md "ASIN's formulation").
 /// At ±1 the quotient is ±inf and atan gives ±π/2; outside [-1, 1] the square root is NaN, which
-/// is `#NUM!`.
+/// is `#NUM!`. Just below -1 `1 - f` rounds to 2 and the radicand to 0, so the domain is checked
+/// first (`ASIN(-1-2^-52)` is `#NUM!`, numbers.md "Just below -1 as well", T-2170).
 fn excel_asin(f: f64) -> f64 {
+    if f.abs() > 1.0 {
+        return f64::NAN;
+    }
     let y = 1.0 - f;
     f64::atan(f / extended_sqrt(y * (2.0 - y)))
 }
