@@ -914,6 +914,7 @@ C	probes/t2200-blank-and-padded-m5-args.case.json	70
 C	probes/t2201-mround-quotient-rounding.case.json	221
 C	probes/t2202-text-code-check-on-text.case.json	88
 C	probes/t2275-address-bounds.case.json	298
+C	probes/t2280-ifs-one-cell-range-condition.case.json	82
 C	probes/take-drop-over-ifs-switch-picks.case.json	20
 C	probes/take-drop-trimrange-over-xlookup-b.case.json	14
 C	probes/take-drop-trimrange-over-xlookup.case.json	23
@@ -3076,14 +3077,6 @@ F	probes/t2198-m5-lift-argument-kinds.case.json	Sheet1!C35
 F	probes/t2198-m5-lift-argument-kinds.case.json	Sheet1!D33
 F	probes/t2198-m5-lift-argument-kinds.case.json	Sheet1!D34
 F	probes/t2198-m5-lift-argument-kinds.case.json	Sheet1!D35
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A28
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A29
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A32
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A33
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A38
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A40
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A42
-F	probes/t2200-blank-and-padded-m5-args.case.json	Calc!A44
 F	probes/t2202-text-code-check-on-text.case.json	Calc!A1
 F	probes/t2202-text-code-check-on-text.case.json	Calc!A17
 F	probes/t2202-text-code-check-on-text.case.json	Calc!A25

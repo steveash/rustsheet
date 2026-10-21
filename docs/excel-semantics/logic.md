@@ -35,7 +35,10 @@ Ours matches it and returns FALSE (so `ISEVEN` of it is `#VALUE!` instead of `#N
 a 0 or blank expression: `SWITCH(0,blank,..)` and `SWITCH(blank,blank,..)` hit it; FALSE, "" and TRUE do not (`#N/A`, no
 default). A blank expression cell against a case matches 0 and a blank case cell, and not FALSE, "" or TRUE.
 Evidence: gen-m5/d0419fa09d6a756a Calc!A63 (excel-graph, 2026-10-20); probes/t2200-blank-and-padded-m5-args.
-Status: VERIFIED (excel-graph); not implemented (T-2166).
+Status: VERIFIED (excel-graph); implemented (T-2166: `switch_matches` reads a blank cell as 0 on either side; an
+omitted case argument keeps the empty-value rule). Blank elements of a range expression or case
+(`SWITCH(A1:A2,FALSE,..)`) take the same rule on the lifted path: a blank element matches 0 and a blank
+cell, not FALSE or "" (probes/t2280-ifs-one-cell-range-condition Calc!A61:A67).
 
 ## IFERROR / IFNA of a blank cell is an empty value, not the reference
 Rule: when IFERROR's or IFNA's value argument is a blank cell, the result is the blank's value, not a reference to it.
@@ -67,10 +70,16 @@ Evidence: probes/ifna-isformula-edges Calc!A1:A13, C1:E3 (oracle: excel-graph, 2
 Status: VERIFIED (excel-graph); the engine matches.
 Tasks: T-1279
 
-## ROWS over IFS with a one-cell text condition (T-2280)
-Observed (excel-graph, gen-m6, 2026-10-21): `ROWS((IFS(Data!A$7,Data!D$10)*Data!C10))` with A7 = "a*" is 1 (gen-m6/870c5e38f51ce5d4
-Calc!A360), while `ROWS(SINH(710))` is `#NUM!` (3e51213f35889d06 A42): the IFS product is not a scalar error under ROWS. One reading:
-IFS lifts over a one-cell range condition (a 1x1 array of `#VALUE!`, whose ROWS is 1); IF reads a one-cell range condition as a
-scalar (references.md, T-2079). Ours: `#VALUE!`.
-Status: UNVERIFIED (T-2280 probes it)
+## IFS: a text condition gives a 1x1 array of #VALUE!; a one-cell range condition is a scalar (T-2280)
+Rule: an IFS condition that is text not reading as a boolean ends IFS in a 1x1 array holding `#VALUE!`, not the scalar
+error IF gives. This holds whether the text is a literal, a cell, a one-cell range or a formula result:
+`TYPE(IFS("a*",5))`, `TYPE(IFS(A1,5))`, `TYPE(IFS(A1&"",5))` and `TYPE(IFS(FALSE,1,"a*",5))` are 64, and
+`ROWS(IFS(A1,5)*2)` is 1 with A1 = "a*", while `ROWS(IF(A1,5)*2)` is `#VALUE!` and `TYPE(IF(A1,5)*2)` 16. The cell
+itself shows `#VALUE!` and ISERROR of it is TRUE. Text that reads as a boolean ("TRUE") picks its value (5). An error or
+blank condition and a FALSE-only `#N/A` stay scalar errors (TYPE 16). A one-cell range condition (`A3:A3`) is read as
+its cell's scalar value, as IF reads it (references.md, T-2079): `ROWS(IFS(A3:A3,5))` with A3 FALSE is `#N/A`.
+SWITCH has no such case: `ROWS(SWITCH(A1,TRUE,5)*2)` is `#N/A`.
+Evidence: probes/t2280-ifs-one-cell-range-condition (excel-graph, 2026-10-21), Calc!A1:A60, A68:A80;
+gen-m6/870c5e38f51ce5d4 Calc!A360 (`ROWS((IFS(Data!A$7,Data!D$10)*Data!C10))` is 1).
+Status: VERIFIED (excel-graph); implemented (T-2280, `ifs_pick`).
 Tasks: T-2280

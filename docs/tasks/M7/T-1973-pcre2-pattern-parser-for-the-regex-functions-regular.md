@@ -41,7 +41,14 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 6 cells, 0 numeric pas
 | probes/regex-pcre2-features Sheet1!C16 | `=REGEXEXTRACT("a.b","\Q.\E")` | "." | #VALUE! |
 | probes/regex-posix-classes Sheet1!Z7 | `=IFERROR(REGEXTEST("[[:alpha:]]","\Q[[:alpha:]]\E"),"err "&ERROR.TYPE(REGEXTEST("[[:alpha:]]","\Q[[:alpha:]]...` | TRUE | "err 3" |
 
+gen-m7 cells (T-2225 triage, 2026-10-21): An invalid pattern element in a lifted REGEXEXTRACT pattern: `REGEXEXTRACT(0.2,OFFSET(Data!B2:E9,2,3))` has the pattern "?b" (Data!E10) at A587, where Excel's cell is empty and ours `#VALUE!` (the PCRE2 parser decides whether "?b" compiles).
+
+Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 1 known-failure lines in eval/baseline/gen-m7.txt, 1 formulas. One line per formula: case, anchor, the anchor formula, Excel vs ours at the first failing cell, then every failing cell (sheet Calc; a range is consecutive cells of one row).
+
+- gen-m7/7307132bb8820f17.case.json A581 `=REGEXEXTRACT(Data!C$9,OFFSET(Data!B2:E9,2,3))`: A587 Excel <empty>, ours #VALUE!; cells (1): A587
+
 ## Acceptance criteria
+- [ ] The 1 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 1 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
 - [ ] Visible parity: the 6 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 6 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] The parser is iterative (no recursion on pattern size), caps nesting, and fails closed (`#VALUE!`) on every
   construct it does not know.

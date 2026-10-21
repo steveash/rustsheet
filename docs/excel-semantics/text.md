@@ -840,3 +840,27 @@ Ours: `#VALUE!` (the format is checked first).
 Evidence: gen-m5/4febabc66cfdf9a1 Calc!A156 (excel-graph, 2026-10-20, T-2114).
 Status: VERIFIED (excel-graph); not implemented (T-2250).
 Tasks: T-2169, T-2250
+
+## TEXTBEFORE and TEXTAFTER: instance_num past the text, a number if_not_found
+Rule: an instance_num whose size is greater than the text's length is `#VALUE!`, whatever the delimiter, match_end and if_not_found
+(the empty delimiter excepted, see above): `TEXTBEFORE("b","a",-2,1,1)` (gen-m7/2c5ea078f25443a2 Calc!A360), `TEXTBEFORE("x~*","1",
+WORKDAY(..))` (611ce3bbfab27cef A336), and
+`TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767) are `#VALUE!`. `TEXTBEFORE(<blank>,Data!A6:A11,2,123456789.123,1,FALSE)`
+(c36ff5f42a1a4d47 A148) is `#VALUE!` too, but its match_mode 123456789.123 is itself invalid, so it does not isolate this rule. A number if_not_found comes back as text:
+`TEXTAFTER(..,"a",..,0,1,-2.5)` is "-2.5" (ac67253061bba16a A776) and `TEXTBEFORE(..,",",2,..,1,3)` is "3" (A1345).
+Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
+Ours: `#N/A`, "" or the if_not_found number (T-2314).
+Status: VERIFIED (excel-graph)
+Tasks: T-2314
+
+## TEXTSPLIT: argument errors first, an all-empty result
+Rule: an error in match_mode or ignore_empty is the result before TEXTSPLIT's own `#VALUE!` for an empty text or a blank delimiter
+cell: `TEXTSPLIT("ABC",Data!D4:E7,Data!C5:E9,-1,<#DIV/0!>)` is `#DIV/0!` (gen-m7/90de8755a2e565e6 Calc!A1643) and
+`TEXTSPLIT("","-",Data!A11:D12,<#REF!>)` is `#REF!` (ac67253061bba16a A184). A split whose every piece is dropped by ignore_empty is
+`#CALC!`: `TEXTSPLIT(100,{1.005,100},"a",TRUE)` under LOWER and REGEXEXTRACT gives `#CALC!` (07d27aa0add0247f A768). An array
+ignore_empty lifts (`TEXTSPLIT("x~*",Data!C7:C11," ",UNIQUE(Data!C4:E8),1,..)` spills 15 `#VALUE!`: 8044dce50616cfe9 A1064).
+Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
+Ours: `#VALUE!` (T-2315).
+Status: VERIFIED (excel-graph)
+Tasks: T-2315
+
