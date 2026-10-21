@@ -513,6 +513,7 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
                 text: "#ERROR!".to_owned(),
                 color: None,
                 error: Some("Invalid locale".to_string()),
+                unshowable: false,
             }
         }
     };
