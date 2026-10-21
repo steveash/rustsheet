@@ -988,9 +988,8 @@ before the end's month when that is negative: `DATEDIF(45382,45944,"MD")` (2024-
 its month and day come before the start's) and counts from the start: `DATEDIF(29872,35271,"YD")` (1981-10-13 to 1996-07-25) = 285,
 `DATEDIF(51118,54889,"YD")` = 119, `DATEDIF(41671,51446,"YD")` = 278, `DATEDIF(15974,43001,"YD")` = 364, `DATEDIF(6946,30954,"YD")` = 266.
 Evidence: gen-m6/c96ac1ada46179c4 Calc!A274, 22ce5678fa646215 A294, 3516b9fbbd60269b A87, 144bceacd894868a A356, 3516b9fbbd60269b
-A353, 9c615d338d990644 A231, c6621490a4d67f4e A60, de083028d8b676d2 A38 (excel-graph). Ours: "MD" shifts the start by whole months
-(clamping to the month end) and "YD" moves the start into the end's year, one day off on each cell.
-Status: VERIFIED for these cells; an end of 29 February moved into a non-leap year is UNVERIFIED.
+A353, 9c615d338d990644 A231, c6621490a4d67f4e A60, de083028d8b676d2 A38 (excel-graph). Ours: implemented (T-2264). An end of 29 February moved into a non-leap year counts as 1 March.
+Status: VERIFIED for these cells; an end of 29 February moved into a non-leap year, a start on 29 February (`DATEDIF("2/29/2020","2/28/2021","YD")` = 365 by the rule) and a negative "MD" (2015-01-31 to 2015-03-01 = -2 by the rule) are UNVERIFIED.
 Tasks: T-2264
 
 ## TIME: an argument past 32767 is `#NUM!`; a near-integer hour counts as that integer (T-2267)
@@ -1059,6 +1058,6 @@ Tasks: T-2276
 Rule (excel-graph, gen-m6, 2026-10-21): a start date out of the calendar is `#NUM!` even when the end is an error:
 `YEARFRAC(SUM(-1,FALSE,<blank>),SUMIFS(D10:D12,A5:B7,"abc")+..,0)` (end `#VALUE!` from the SUMIFS shape mismatch) and
 `YEARFRAC(123456790.12..,NETWORKDAYS.INTL(51358,34485,15,<FALSE cell>)+1E-15,0)` are `#NUM!` (gen-m6/3516b9fbbd60269b Calc!A301,
-d0c30225243fde60 A266). Ours: the end's `#VALUE!`.
-Status: VERIFIED for these two cells; an error start against an error end keeps the start's error (UNVERIFIED, T-2266 checks the probes).
+d0c30225243fde60 A266). Ours: implemented (T-2266).
+Status: VERIFIED for these two cells; an error start against an error end keeps the start's error (VERIFIED: probes/scalar-lift-open-d W2 `YEARFRAC(NA(),1/0,1)` and W5 `YEARFRAC(1/0,NA(),1)`). An out-of-calendar start against a text or multi-cell-range end (`YEARFRAC(-1,"x")`, now #NUM!) is UNVERIFIED.
 Tasks: T-2266

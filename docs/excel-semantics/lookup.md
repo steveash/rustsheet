@@ -776,9 +776,11 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 - A TAKE or DROP whose rows or cols lifts over a range is the same kind of result: `INDEX(TAKE(A1:B3,{1;2}),1,1)`
   spills A1:B1 as 1, 10 (ROWS 1, COLUMNS 2), `INDEX(DROP(A1:B3,{1;2}),1,1)` is the 2x2 A2:B3 (`#SPILL!` where blocked),
   and the outer result is 2x1 (probes/m7-argument-modes F4:I6, K1-K4; arrays.md "Dynamic-array and LAMBDA function
-  argument modes"). What its spilled elements, SUM over it and TAKE over an array value give is not probed (T-1960);
-  the engine gives it to INDEX, ROWS, COLUMNS, SUMPRODUCT, the aggregates and LET as a lifted OFFSET's, while IF,
-  CHOOSE and OFFSET's reference argument read it as a value (T-1838).
+  argument modes"). Spilled directly its elements are `#VALUE!`, SUM reads their top-left cells (2), SUMPRODUCT 0,
+  IF and CHOOSE hand it on and OFFSET over it lifts again, as for OFFSET; over an array value TAKE keeps top-left
+  values (probes/m7-lift-take-drop-sortby, T-1960). The engine gives it to INDEX, ROWS, COLUMNS, SUMPRODUCT, the
+  aggregates and LET as a lifted OFFSET's, while IF, CHOOSE and OFFSET's reference argument read it as a value (T-1838;
+  T-2299 owns the difference).
 - XMATCH's search_mode lifts too, as a value (for the array modes only the second element is probed, `INDEX(…,2,1)`): it is 2 in
   `XMATCH(2,A1:A3,0,{1;-1})` and 3 in `XMATCH(2,{1;2;2},0,{2;-2})`; an invalid mode element is `#VALUE!` in its slot
   (`{1;3}`); a boolean range element counts as its number (TRUE is 1). The first array-mode elements are unprobed, as is an error lookup_value next to a lifted search_mode (`XMATCH(NA(),A1:A3,0,{1;-1})`, implemented as a 2x1 of `#N/A` by analogy with MATCH's match_type, UNVERIFIED). Implemented (T-1958): `fn_xmatch` lifts search_mode with lookup_value and match_mode.
@@ -919,11 +921,24 @@ Rule (excel-graph, gen-m6, 2026-10-21):
 - A row past 1048576 or a column past 16384 is `#VALUE!` whatever abs_num and a1 are, R1C1 relative included:
   `ADDRESS(1E+15,7)`, `ADDRESS(21887494,5)`, `ADDRESS(123456831,3,1,..,"Data")`, `ADDRESS(17,123456789.123,2,FALSE)`,
   `ADDRESS(2,45306,2,FALSE,"Data")` (36d5ce763ea63631 A154, b54448af3fde07ca A220, d0c30225243fde60 A63, 04fdc9a67474aab9 A98,
-  acdfeaf6e6eadd4e A379). Ours clamps to 2147483647 or prints the offset. But a relative R1C1 column of -2.5 is accepted:
-  `ADDRESS(10,-2.5,4,FALSE)` = `R[10]C[-3]` (3a26794015dfbe9d A275; ours `#VALUE!`), and `ADDRESS(9,0,2,FALSE,"Data")` must be text,
-  since `DATEVALUE(ADDRESS(9,0,2,FALSE,"Data")&OFFSET(Data!A4:D10,0,-1))` is the OFFSET's `#REF!` (44194b2fefa30de2 A307).
-  How the relative offset rounds (-2.5 to -3) and its bounds are UNVERIFIED (T-2275 probes them).
-Status: VERIFIED for the cells; the relative R1C1 bounds UNVERIFIED.
+  acdfeaf6e6eadd4e A379).
+- Bounds per part (probes/t2275-address-bounds, 282 cells over abs_num 1-4 and a1 TRUE/FALSE, excel-graph, 2026-10-21, T-2275):
+  row_num and column_num are floored, not truncated, in every mode (2.9 is 2, 1048576.9 is 1048576; -0.5, -1.5, -2.4, -2.5
+  and -2.6 are -1, -2, -3, -3 and -3; 0.5 and 0.9 are 0). A part written as an index (every part in A1 style, whatever
+  abs_num; the R part for abs_num 1-2 and the C part for 1 and 3 in R1C1) must then be 1..1048576 for a row and 1..16384 for a
+  column. A relative R1C1 part (R for abs_num 3-4, C for 2 and 4) is an offset in -1048575..1048575 or -16383..16383, so
+  `ADDRESS(1048576,3,3,FALSE)`, `ADDRESS(-1048576,3,4,FALSE)` and `ADDRESS(5,16384,2,FALSE)` are `#VALUE!` while
+  `ADDRESS(-1048575,3,3,FALSE)` = `R[-1048575]C3`, `ADDRESS(1048575,3,3,FALSE)` = `R[1048575]C3`, `ADDRESS(5,-16383,4,FALSE)` =
+  `R[5]C[-16383]` and `ADDRESS(5,16383,2,FALSE)` = `R5C[16383]` (K1:K4 probe both positive edges). An offset of 0 is written
+  bare: `ADDRESS(0,3,3,FALSE)` = `RC3`, `ADDRESS(9,0,2,FALSE,"Data")` = `Data!R9C`, `ADDRESS(0,0,4,FALSE)` = `RC`. So
+  `ADDRESS(10,-2.5,4,FALSE)` = `R[10]C[-3]` (3a26794015dfbe9d A275), and `DATEVALUE(ADDRESS(9,0,2,FALSE,"Data")&OFFSET(Data!A4:D10,0,-1))`
+  is the OFFSET's `#REF!` (44194b2fefa30de2 A307).
+- gen-m6/be0e3a1b0fc3f7a0 A167 `ADDRESS(9,3,4,(Data!A5=MULTINOMIAL(<blank>)),T("1E3"))` is `#VALUE!` because
+  `MULTINOMIAL(<blank cell>)` is (coercion.md "GCD / LCM / MULTINOMIAL range cells", T-2294); ADDRESS itself gives
+  `ADDRESS(9,3,4,FALSE,"1E3")` = `'1E3'!R[9]C[3]`, and quotes "1A", "A1" and "R1C1" sheet_text alike.
+Status: VERIFIED (web).
+Implemented in: `address_index` and `r1c1_part` (crates/rustsheet-engine/src/functions/lookup_and_reference/address_areas.rs,
+T-2275); every argument is cast before the bounds are checked.
 Tasks: T-2274, T-2275
 
 ## HYPERLINK: an error link_location is the result (T-2277)

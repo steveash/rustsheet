@@ -17,6 +17,9 @@ Pivot tables move with the cells around them: row/column inserts and deletes shi
 ## Context
 SPEC-0015 "Data model", structural edits. Tables have no such handling to copy, so this is new code in the row/column insert/delete actions (crates/rustsheet-engine/src/actions.rs) and the sheet rename/delete paths. Replaces T-2081's interim rule (any structural edit on the sheet drops its pivots); remove that gap from the web.md section.
 
+- T-2081 (2026-10-21) drops a sheet's pivots in `Model::take_sheet`, which the undo of a sheet deletion also uses, so `restore_sheet`
+  brings the sheet back without its pivots; moving pivots instead of dropping them should cover that path too.
+
 ## Acceptance criteria
 - [ ] Unit tests: inserts above/left shift the location, inserts inside grow it, deletes shrink it, deleting the top-left cell or the sheet drops the pivot, renaming the source sheet keeps GETPIVOTDATA answering.
 - [ ] web.md records that Excel refuses deleting a pivot's top-left cell while the engine drops the pivot, and the T-2081 interim gap is removed.

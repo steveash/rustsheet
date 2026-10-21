@@ -28,7 +28,38 @@ Owned cells:
   - K5 `=ROWS(INDEX(EXPAND(A1:A2,{3;4}),1,1))` 1; K6 `=ROWS(INDEX(WRAPROWS(A1:A3,{1;2}),1,1))` 1; K7 `=COLUMNS(INDEX(WRAPROWS(A1:A3,{1;2}),2,1))` 1.
 - gen-m7/6db767d720c5b55a Calc!A12 `=WRAPCOLS(Data!D3:D3,UNIQUE(Data!B3:E4,SWITCH(..)))` (wrap_count is UNIQUE's 2-D array): Excel `#SPILL!`, ours `#N/IMPL!` (T-1275, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/6db767d720c5b55a.case.json`).
 
-EXPAND's columns and pad_with and WRAPROWS's pad_with are `Lift` by SPEC-0011's per-parameter list ("Array-valued functions"); T-1960 probes them. `KernelWork::Output { weight: 1 }`.
+T-1960 probed the rest (probes/m7-lift-take-drop-sortby, excel-graph, 2026-10-21; Sheet1 rows 20-23, columns F:S as that case's description says): EXPAND's columns lifts (`EXPAND(A1:A2,3,{1;2})` 2x1, elements 1x1, value 1), WRAPROWS's pad_with lifts (`WRAPROWS(A1:A3,2,{0;1})` 2x1, element 2 is 1, ours a 2-wide result) and WRAPCOLS's wrap_count over an array literal lifts (`WRAPCOLS(A1:A3,{1;2})` 2x1); EXPAND's pad_with does **not** lift: `EXPAND(A1:A2,3,1,{0;1})` is one `#VALUE!` (ROWS, COLUMNS and INDEX of it `#VALUE!`), so pad_with is `Whole` and an array there is `#VALUE!` (SPEC-0011 per-parameter list). A 1x1 array (`EXPAND(A1:A2,{3})`) is T-2298's. `KernelWork::Output { weight: 1 }`.
+
+Owned cells (T-1960):
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| probes/m7-lift-take-drop-sortby Sheet1!F20 | `=ROWS(EXPAND(A1:A2,3,{1;2}))` | 2.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!F21 | `=ROWS(EXPAND(A1:A2,3,1,{0;1}))` | #VALUE! | 3.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!F23 | `=ROWS(WRAPCOLS(A1:A3,{1;2}))` | 2.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!G20 | `=COLUMNS(EXPAND(A1:A2,3,{1;2}))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!G21 | `=COLUMNS(EXPAND(A1:A2,3,1,{0;1}))` | #VALUE! | 1.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!G22 | `=COLUMNS(WRAPROWS(A1:A3,2,{0;1}))` | 1.0 | 2.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!G23 | `=COLUMNS(WRAPCOLS(A1:A3,{1;2}))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!H20 | `=INDEX(INDEX(EXPAND(A1:A2,3,{1;2}),1,1),1,1)` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!H21 | `=INDEX(INDEX(EXPAND(A1:A2,3,1,{0;1}),1,1),1,1)` | #VALUE! | 1.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!H23 | `=INDEX(INDEX(WRAPCOLS(A1:A3,{1;2}),1,1),1,1)` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!I20 | `=ROWS(INDEX(EXPAND(A1:A2,3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!I23 | `=ROWS(INDEX(WRAPCOLS(A1:A3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!J20 | `=COLUMNS(INDEX(EXPAND(A1:A2,3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!J23 | `=COLUMNS(INDEX(WRAPCOLS(A1:A3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!K20 | `=SUM(INDEX(EXPAND(A1:A2,3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!K23 | `=SUM(INDEX(WRAPCOLS(A1:A3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!L20 | `=INDEX(INDEX(EXPAND(A1:A2,3,{1;2}),2,1),1,1)` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!L22 | `=INDEX(INDEX(WRAPROWS(A1:A3,2,{0;1}),2,1),1,1)` | 1.0 | 3.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!L23 | `=INDEX(INDEX(WRAPCOLS(A1:A3,{1;2}),2,1),1,1)` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!M20 | `=ROWS(INDEX(EXPAND(A1:A2,3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!M23 | `=ROWS(INDEX(WRAPCOLS(A1:A3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!N20 | `=COLUMNS(INDEX(EXPAND(A1:A2,3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!N23 | `=COLUMNS(INDEX(WRAPCOLS(A1:A3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!O20 | `=SUM(INDEX(EXPAND(A1:A2,3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!O22 | `=SUM(INDEX(WRAPROWS(A1:A3,2,{0;1}),2,1))` | 1.0 | 3.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!O23 | `=SUM(INDEX(WRAPCOLS(A1:A3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
 
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric past half a unit in the 15th digit and 10 with a wrong type, error or text, blamed on WRAPROWS 5, EXPAND 4, ROWS 4, COLUMNS 4, WRAPCOLS 2, UNIQUE 1.
 
@@ -49,6 +80,7 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric pa
 ## Acceptance criteria
 - [ ] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 10 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 1 cell of the ungated gen-m7 suite passes in `make eval`, with no new known-failure lines in any baseline.
 - [ ] probes/m7-argument-modes F7:H7, F8:H8, G42 and K5-K7 pass, and F42, H42 still pass.
+- [ ] The probes/m7-lift-take-drop-sortby cells listed under Context pass (EXPAND's array pad_with is `#VALUE!`).
 - [ ] gen-m7/6db767d720c5b55a A12 passes, with no new failing gen-m7 cell.
 - [ ] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
 - [ ] The three functions have table entries citing those cells; their fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes).

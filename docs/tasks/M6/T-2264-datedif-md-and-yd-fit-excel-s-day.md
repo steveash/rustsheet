@@ -3,7 +3,7 @@ id: T-2264
 title: "DATEDIF MD and YD: fit Excel's day counts across month ends and leap years (ours one day off)"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -37,13 +37,16 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 8 in eval/baselin
 | gen-m6/de083028d8b676d2 Calc!A38 | `=DATEDIF(6946,30954,"YD")` | 266.0 | 267.0 |
 
 ## Acceptance criteria
-- [ ] These 8 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] Unit tests cover MD across a 31-to-30 month end, YD across a leap day and YD with the end's month-day before the start's.
-- [ ] dates.md's entry says Ours: implemented (T-2264).
-- [ ] `make check` green; reviewers approve.
+- [x] These 8 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] Unit tests cover MD across a 31-to-30 month end, YD across a leap day and YD with the end's month-day before the start's.
+- [x] dates.md's entry says Ours: implemented (T-2264).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Serials below 61 and serial 0 (T-2263).
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+DATEDIF "MD" and "YD" now follow the fitted rule (dates.md). All 8 listed cells pass, plus gen-m6/b54448af3fde07ca Calc!A55 (9 baseline lines removed, no new failures). Three IronCalc-origin unit tests had no oracle evidence and were updated to the rule.
