@@ -42,7 +42,8 @@ impl PivotFunction {
         })
     }
 
-    /// The word a new data field's caption starts with (`Sum of Sales`).
+    /// The word a new data field's caption starts with (`Sum of Sales`). Oracle evidence covers `Sum`
+    /// and `Average` only (probes/pivot-rendered-cells); the others follow the builder.
     #[must_use]
     pub fn caption_name(self) -> &'static str {
         match self {
@@ -195,6 +196,8 @@ impl Txn<'_> {
             builder.push_record(record).map_err(PivotError::from)?;
         }
         let cache = builder.finish();
+        // Exact-case match: the builder gives the header's own spelling. Excel's GETPIVOTDATA matches
+        // field names ignoring case (web.md); this is not that rule.
         let field = |name: &str| {
             names
                 .iter()
