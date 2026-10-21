@@ -231,6 +231,50 @@ fn span_edge_forms_match_excel() {
     );
 }
 
+#[test]
+fn sheets_counts_the_sheets_a_reference_spans() {
+    let mut model = sample();
+    assert_eq!(eval(&mut model, "=SHEETS(B1)"), "1");
+    assert_eq!(eval(&mut model, "=SHEETS(Data2!A1:B2)"), "1");
+    assert_eq!(eval(&mut model, "=SHEETS(Data1:Data3!A1)"), "3");
+    assert_eq!(eval(&mut model, "=SHEETS(Data3:Data1!A1)"), "3");
+    assert_eq!(eval(&mut model, "=SHEETS(Sheet1:Data2!B2)"), "3");
+    assert_eq!(eval(&mut model, "=SHEETS('Sheet1:Q 4'!B2)"), "5");
+    assert_eq!(eval(&mut model, "=SHEETS()"), "5");
+    assert_eq!(eval(&mut model, "=SHEETS(1)"), "#N/IMPL!");
+}
+
+// Over sheets named like cells an unquoted span is a range operator: `S1:S3!A1` joins S1 of the
+// formula's sheet with S3!A1 and is #VALUE!; `S3:S1!A1` joins on S1 and spans one sheet
+// (probes/sheet-names-like-cells-3d-spans B1:B7; T-2193).
+#[test]
+fn sheets_of_an_unquoted_span_over_cell_like_sheet_names() {
+    let mut model = new_empty_model();
+    model.rename_sheet("Sheet1", "S1").unwrap();
+    for (name, value) in [("S2", "5"), ("S3", "7")] {
+        model.add_sheet(name).unwrap();
+        model._set(&format!("{name}!A1"), value);
+    }
+    model._set("S1!B1", "1");
+    let mut eval = |formula: &str| {
+        model._set("S1!A1", formula);
+        model.evaluate();
+        model._get_text("S1!A1")
+    };
+    assert_eq!(eval("=SUM(S1:S3!B1)"), "#VALUE!");
+    assert_eq!(eval("=SHEETS(S1:S3!A1)"), "#VALUE!");
+    assert_eq!(eval("=SHEETS(S3:S1!B1)"), "1");
+    assert_eq!(eval("=SHEETS('S1:S3'!B1)"), "3");
+}
+
+#[test]
+fn sheets_leaves_unprobed_argument_forms_unimplemented() {
+    let mut model = sample();
+    assert_eq!(eval(&mut model, "=SHEETS(OFFSET(A1,0,0))"), "#N/IMPL!");
+    assert_eq!(eval(&mut model, "=SHEETS((B1,C1))"), "#N/IMPL!");
+    assert_eq!(eval(&mut model, "=SHEETS(Data1!A1:Data2!B1)"), "#N/IMPL!");
+}
+
 // A name bound to a 3-D range reads like the span in aggregates and LAMBDA arguments; where a
 // value is needed it is #VALUE!, not the inline #REF!, and IFERROR keeps that #VALUE!
 // (gen-m8a 8982982d63e058ed, b221d72cc501675a; references.md "3-D references in defined names";

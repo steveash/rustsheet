@@ -7,13 +7,15 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: []
+campaign: visible
+depends_on: [T-2200]
 ---
 
 ## Goal
 SUMPRODUCT is `#VALUE!` when, among two or more arguments, a one-cell reference to a blank cell stands beside single values, and an error in any argument beats a shape mismatch between earlier ones.
 
 ## Context
+- Evidence first (planner, 2026-10-20): the probe this task asks for is T-2200 (research), which fills `probes/t2200-blank-and-padded-m5-args`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). Rule and evidence: docs/excel-semantics/coercion.md "SUMPRODUCT: a blank one-cell argument beside other arguments is `#VALUE!`"
 (added by this triage). Code: crates/rustsheet-engine/src/functions/math_and_trigonometry/sumproduct.rs. Ours reads the blank as a 0
 factor (result 0) and checks shapes argument by argument, so `SUMPRODUCT(1,B9:E10,NA())` is `#VALUE!` where Excel evaluates all
@@ -39,6 +41,11 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 9 in eval/baselin
 - [ ] These 9 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] coercion.md entry updated with the probe results and marked implemented.
 - [ ] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
+number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
+criteria above are already the visible-parity stage.
 
 ## Out of scope
 - The SUMX family (T-0961).

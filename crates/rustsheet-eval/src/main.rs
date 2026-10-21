@@ -3,8 +3,8 @@
 //! ```text
 //! rustsheet-eval suites                         # list suites
 //! rustsheet-eval run [--suite S] [--filter X]   # run + write eval/runs/latest/{report.json,report.md}
-//! rustsheet-eval check                          # gate: fail on any baseline regression
-//! rustsheet-eval update-baseline                # ratchet baselines up (refuses regressions)
+//! rustsheet-eval check                          # gate: fail on any baseline or visible-parity regression
+//! rustsheet-eval update-baseline                # ratchet baselines and visible parity (refuses regressions)
 //! rustsheet-eval evidence-floor [--update]      # ratchet functions below the evidence floor
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
 //! rustsheet-eval snapshot <file.xlsx>           # dump stored formulas/values as JSON
@@ -31,12 +31,14 @@ use rustsheet_eval::evidence_floor::{self, Lock, EVIDENCE_FLOOR, LOCK_PATH};
 use rustsheet_eval::exit_exceptions::ExitExceptions;
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::lift_kinds;
+use rustsheet_eval::milestone_exit;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
 use rustsheet_eval::text_expect;
+use rustsheet_eval::visible_parity::{self, VisibleCount};
 use rustsheet_eval::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
 #[derive(Parser)]
@@ -331,6 +333,7 @@ fn score_milestones(
         .collect();
     report.catalog_coverage =
         catalog_coverage::summarize(catalog, results, &report.evidence, &generated);
+    report.milestone_exit = milestone_exit::summarize(report);
 }
 
 fn print_summary(report: &RunReport) {
@@ -383,6 +386,38 @@ fn baseline_path(root: &Path, suite: &str) -> PathBuf {
     root.join("eval/baseline").join(format!("{suite}.txt"))
 }
 
+/// Holds `count` to the visible-parity lock, recording it on `update` when
+/// [`visible_parity::judge`] allows (T-0061, decision 0088); returns whether the gate passes.
+fn visible_parity_gate(root: &Path, count: VisibleCount, update: Option<bool>) -> Result<bool> {
+    use visible_parity::{Judgement, Lock, LOCK_PATH};
+    let lock = Lock::read(root)?;
+    println!(
+        "visible parity: {} in-scope cells visibly off ({} in new cases), lock {}",
+        count.cells, count.new_coverage, lock.visibly_off_cells
+    );
+    Ok(match visible_parity::judge(lock, count, update) {
+        Judgement::Unchanged => true,
+        Judgement::Record => {
+            Lock {
+                visibly_off_cells: count.cells,
+            }
+            .write(root)?;
+            println!("  updated {LOCK_PATH}: commit it");
+            true
+        }
+        Judgement::Stale => {
+            println!(
+                "  fewer cells are visibly off: run `make eval-baseline` and commit {LOCK_PATH}"
+            );
+            false
+        }
+        Judgement::Regressed => {
+            println!("  REGRESSION: more cells are visibly off than {LOCK_PATH} allows; the report's \"Visibly off\" section names the functions");
+            false
+        }
+    })
+}
+
 fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitCode> {
     if sel.filter.is_some() {
         bail!(
@@ -403,6 +438,7 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
     score_milestones(&milestones, &catalog, &suites, &results, &mut report);
     print_summary(&report);
     let mut failed = false;
+    let mut visible = VisibleCount::default();
     for suite in &suites {
         if suite.manifest.baseline == BaselineMode::None {
             continue;
@@ -412,6 +448,11 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         let current = Baseline::from_results(suite.manifest.baseline, &mine);
         let path = baseline_path(root, name);
         let old = Baseline::read(&path)?;
+        if suite.manifest.fetch.is_none() {
+            for r in &mine {
+                visible.add(&catalog, r, !old.checked.contains_key(&r.id));
+            }
+        }
         let delta = baseline::diff(&old, &current);
         println!(
             "[{name}] known failures {} -> {}, text {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, new cases {}, removed cases {})",
@@ -446,6 +487,10 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
                 }
             }
         }
+    }
+    // A partial run (`--suite`) would undercount, so only a full gated run is held to the lock.
+    if sel.suites.is_empty() && !visible_parity_gate(root, visible, update)? {
+        failed = true;
     }
     Ok(if failed {
         ExitCode::FAILURE

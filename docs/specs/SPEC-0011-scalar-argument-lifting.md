@@ -665,6 +665,8 @@ borrowing `cast::calc_result_to_text` and `Model::calc_result_to_number`, so an 
 scalar error format; text.md, T-1963). FIND and SEARCH are `Constant` with their scan named as the cap
 (`lift/tests/kernel_work.rs`); T-1961 charges it. The final grep finds two `bcast_get` loops the table above missed or
 another task owns: IMAGE's `image_grid` (information/offline_errors.rs, T-1962) and CHOOSE's `choose_array` (T-1810).
+As built (T-1962): IMAGE's array path calls `lift_values` with one kernel, `image_element`, and `image_grid` is gone; a
+position past a shorter array is the driver's `#N/A` element in argument order, as Excel does (probes/rich-errors-image-past-end).
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.

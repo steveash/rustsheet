@@ -446,7 +446,7 @@ Evidence: probes/eng-im-overflow (excel-graph).
   formatting difference, not T-0907 precision.
 - IM* text writes a small part in full past 20 characters: `IMEXP("710i")` is
   `0.999999998182636+0.0000602887066915739i` (A42). Ours now writes a part with decimal exponent -5 or above in plain notation whatever its
-  length (exponent -5 is plain by A42 and -16 is E notation by A9; -6 to -15 are unprobed, T-2056; the 15-digit rule at negative exponents of -99 or below is also unprobed); A42 still
+  length (exponent -5 is plain by A42 and -16 is E notation by A9; -6 to -15 are all E notation, `IMSUM("1.23456789012345E-6","0")` is `1.23456789012345E-06`, while -1 to -5 are plain up to `0.0000123456789012345`, an imaginary part likewise: probes/eng-im-small-part A1-A16, B1-B12, excel-graph, T-2056; the 15-digit rule at negative exponents of -99 or below is also unprobed); A42 still
   fails: the digits differ since Excel reduces a large sine or cosine argument differently (ours
   `...915853`).
 - An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
@@ -469,3 +469,22 @@ Evidence: probes/eng-im-overflow (excel-graph).
   (`IMSUM("9E307","9E307","-9E307")`) and a later blank cell (`IMPRODUCT("1E200","1E200",<blank>)`, not "0") (T-2003).
 Evidence: probes/eng-complex-overflow A1-A21 (excel-graph, 2026-10-19). Implemented in complex.rs
 (`finite_complex_result`, `fn_imsub`, `fold_complex`).
+
+Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
+
+- A blank cell argument met earlier in IMPRODUCT (a blank inside a range is UNVERIFIED, T-2231) makes the running product 0, so a later overflow cannot
+  happen: `IMPRODUCT(<blank>,"1E200","1E200")` is `0`; the blank last is `#VALUE!` (the overflow
+  came first). Implemented.
+- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78 by analogy with SINH/COSH in numbers.md; probed only at 710.4 and 711, T-2231),
+  whatever the real part (`IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`), although `cosh y` is still
+  finite there. IMCOSH and IMSINH are `#NUM!` for a zero imaginary part when `exp(|x|)` overflows
+  (`IMCOSH("710.4+0i")`) but answer text with a nonzero one (`IMCOSH("710.4+1.5i")` is
+  `1.17873946358278E+307+1.6621900184285E+308i`); past cosh's own range it is `#NUM!`
+  (`IMCOSH("711+1.5i")`). A tiny nonzero imaginary part with a large real one is UNVERIFIED. Implemented.
+- IMSEC, IMCSC, IMSECH and IMCSCH answer `0` (both parts) where the denominator overflows
+  (`IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`, `IMSEC("1.5+711i")`); a zero denominator stays
+  `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented.
+- IMTAN and IMCOT near the edge answer `i` / `-i` (`IMTAN("1.5+710.4i")`); IMLN, IMLOG10, IMLOG2
+  and IMSQRT do not overflow there. Already matched.
+- Last-digit differences remain as known failures (a kernel question, not a rule; T-2231): IMCOSH/IMSINH
+  `710.4+1.5i` (several units in the 15th digit) and `1.5+710.4i`, IMSECH `1.5+711i`, IMCOT `711+1.5i`, IMLOG2 and IMLOG10 at 710-800.

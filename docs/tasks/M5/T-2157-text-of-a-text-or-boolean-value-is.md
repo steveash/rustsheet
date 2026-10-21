@@ -7,13 +7,15 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: []
+campaign: visible
+depends_on: [T-2202]
 ---
 
 ## Goal
 TEXT is `#VALUE!` when its format code is invalid, whatever the value: a text or boolean value no longer bypasses the code check.
 
 ## Context
+- Evidence first (planner, 2026-10-20): the probe this task asks for is T-2202 (research), which fills `probes/t2202-text-code-check-on-text`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). `fn_text` (crates/rustsheet-engine/src/functions/text/common.rs) sends text and booleans to `format_text_value`
 (formatter/format.rs), which never validates the number sections, so codes like "TRUE", "FALSE", "#N/A" and "HELLO " (a bare
 `E`, an `N`, a date token beside a digit placeholder) return the value. Rule: docs/excel-semantics/number-formats.md "TEXT checks
@@ -40,6 +42,11 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 11 in eval/baseli
 - [ ] These 11 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] number-formats.md entry marked implemented, with the `a*?b1` probe result.
 - [ ] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
+number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
+criteria above are already the visible-parity stage.
 
 ## Out of scope
 - Text values under valid 1-3 section codes (T-1130).

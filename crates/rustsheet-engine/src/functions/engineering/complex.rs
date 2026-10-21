@@ -235,6 +235,32 @@ fn finite_complex_result(x: f64, y: f64, suffix: Suffix, cell: CellReferenceInde
     }
 }
 
+/// IMSIN and IMCOS are `#NUM!` once `exp(|y|)` overflows (|y| above about 709.78), whatever the
+/// real part, although `cosh y` is still finite there: `IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`
+/// (probes/eng-im-overflow-edges A25-A27, A33-A35).
+fn trig_exp_overflows(y: f64) -> bool {
+    y.abs().exp().is_infinite()
+}
+
+/// IMCOSH and IMSINH are `#NUM!` for a zero imaginary part once `exp(|x|)` overflows, although
+/// `cosh x` is still finite: `IMCOSH("710.4+0i")`. With a nonzero imaginary part they answer
+/// (`IMCOSH("710.4+1.5i")`); a tiny nonzero one is UNVERIFIED (probes/eng-im-overflow-edges A8,
+/// A16).
+fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
+    y == 0.0 && x.abs().exp().is_infinite()
+}
+
+/// The result of a reciprocal (IMSEC, IMCSC, IMSECH, IMCSCH) whose denominator `t` overflowed to
+/// infinity or NaN: Excel answers `0` where `inf / inf` is NaN. A zero or finite `t` is not this
+/// case and stays an error. Examples: `IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`,
+/// `IMSEC("1.5+711i")` (probes/eng-im-overflow-edges A55, A56, A64, A74, A82).
+fn reciprocal_result(x: f64, y: f64, t: f64, suffix: Suffix) -> CalcResult {
+    if !t.is_finite() && (x.is_nan() || y.is_nan()) {
+        return complex_result(0.0, 0.0, suffix);
+    }
+    complex_result(x, y, suffix)
+}
+
 /// How a complex argument reads a blank and empty text.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum EmptyText {
@@ -667,6 +693,11 @@ impl Model {
                             };
                             match fold {
                                 ComplexFold::Sum => (x + z.0, y + z.1, suffix),
+                                // A blank cell met earlier makes the running product 0, which
+                                // cannot overflow later: `IMPRODUCT(<blank>,"1E200","1E200")`
+                                // is "0", the blank last is `#VALUE!` (probes/eng-im-overflow-edges
+                                // A2, A3).
+                                ComplexFold::Product if has_blank => (0.0, 0.0, suffix),
                                 ComplexFold::Product => {
                                     (x * z.0 - y * z.1, x * z.1 + y * z.0, suffix)
                                 }
@@ -742,10 +773,16 @@ fn imconjugate((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResul
 }
 
 fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if trig_exp_overflows(y) {
+        return num_error(cell);
+    }
     finite_complex_result(x.cos() * y.cosh(), -x.sin() * y.sinh(), suffix, cell)
 }
 
 fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if hyperbolic_exp_overflows(x, y) {
+        return num_error(cell);
+    }
     finite_complex_result(x.cosh() * y.cos(), x.sinh() * y.sin(), suffix, cell)
 }
 
@@ -777,7 +814,7 @@ fn imcsc((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let y_sinh = y.sinh();
 
     let t = x_sin * x_sin * y_cosh * y_cosh + x_cos * x_cos * y_sinh * y_sinh;
-    complex_result(x_sin * y_cosh / t, -x_cos * y_sinh / t, suffix)
+    reciprocal_result(x_sin * y_cosh / t, -x_cos * y_sinh / t, t, suffix)
 }
 
 fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -788,7 +825,7 @@ fn imcsch((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let y_sin = y.sin();
 
     let t = x_sinh * x_sinh * y_cos * y_cos + x_cosh * x_cosh * y_sin * y_sin;
-    complex_result(x_sinh * y_cos / t, -x_cosh * y_sin / t, suffix)
+    reciprocal_result(x_sinh * y_cos / t, -x_cosh * y_sin / t, t, suffix)
 }
 
 fn imexp((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -859,7 +896,7 @@ fn imsec((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let y_sinh = y.sinh();
 
     let t = x_cos * x_cos * y_cosh * y_cosh + x_sin * x_sin * y_sinh * y_sinh;
-    complex_result(x_cos * y_cosh / t, x_sin * y_sinh / t, suffix)
+    reciprocal_result(x_cos * y_cosh / t, x_sin * y_sinh / t, t, suffix)
 }
 
 fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -870,14 +907,20 @@ fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let y_sin = y.sin();
 
     let t = x_cosh * x_cosh * y_cos * y_cos + x_sinh * x_sinh * y_sin * y_sin;
-    complex_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, suffix)
+    reciprocal_result(x_cosh * y_cos / t, -x_sinh * y_sin / t, t, suffix)
 }
 
 fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if trig_exp_overflows(y) {
+        return num_error(cell);
+    }
     finite_complex_result(x.sin() * y.cosh(), x.cos() * y.sinh(), suffix, cell)
 }
 
 fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if hyperbolic_exp_overflows(x, y) {
+        return num_error(cell);
+    }
     finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
 }
 

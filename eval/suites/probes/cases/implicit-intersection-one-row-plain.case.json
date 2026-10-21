@@ -1,0 +1,65 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1333: plain implicit intersection of a one-row range (Data!B2:C2, B10:C10) from a cell in its columns (B, C), outside them (E) and in other rows; dynamic @ form on S, legacy form on L.",
+ "tags": [
+  "M2",
+  "references",
+  "probe",
+  "T-1333"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "B2": 11,
+    "C2": 12,
+    "B3": 21,
+    "C3": 22
+   }
+  },
+  {
+   "name": "S",
+   "cells": {
+    "B2": "=@Data!B2:C2",
+    "C2": "=@Data!B2:C2",
+    "E2": "=@Data!B2:C2",
+    "B5": "=@Data!B2:C2",
+    "C5": "=@Data!B2:C2",
+    "B10": 5,
+    "C10": 6,
+    "B12": "=@B10:C10",
+    "C12": "=@B10:C10",
+    "E12": "=@B10:C10",
+    "E10": "=@B10:C10"
+   }
+  },
+  {
+   "name": "L",
+   "cells": {
+    "B10": 5,
+    "C10": 6,
+    "B2": "=Data!B2:C2",
+    "C2": "=Data!B2:C2",
+    "E2": "=Data!B2:C2",
+    "B5": "=Data!B2:C2",
+    "C5": "=Data!B2:C2",
+    "B12": "=B10:C10",
+    "C12": "=B10:C10",
+    "E12": "=B10:C10",
+    "E10": "=B10:C10"
+   },
+   "legacy_formulas": [
+    "B2",
+    "C2",
+    "E2",
+    "B5",
+    "C5",
+    "B12",
+    "C12",
+    "E12",
+    "E10"
+   ]
+  }
+ ],
+ "expected": {}
+}
