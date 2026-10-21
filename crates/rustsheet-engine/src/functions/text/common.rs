@@ -180,7 +180,7 @@ impl Model {
     /// the format's error over a text value (`error_broadcast.xlsx` Sheet2!A1, `TEXT("x",NA())`).
     pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let ctx = self.format_context();
-        self.lift_call(Function::Text, args, cell, &mut |_, values| {
+        self.lift_call(Function::Text, args, cell, &mut |model, values| {
             let [value, format] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
@@ -200,6 +200,17 @@ impl Model {
             if rejects_format_code(&format_code) {
                 return CalcResult::new_error(Error::VALUE, cell, String::new());
             }
+            // A text value that reads as a number is formatted as that number (number-formats.md,
+            // T-2158), read the way VALUE reads it.
+            let number_text = match value {
+                CalcResult::String(text) if !number_text_too_long(text) => model
+                    .parse_number_text(text.trim_matches(' '), &["$", "€"], &|| {
+                        model.current_year()
+                    })
+                    .map(CalcResult::Number),
+                _ => None,
+            };
+            let value = number_text.as_ref().unwrap_or(value);
             text_result(&[], Ok(text_element(value, &format_code, &ctx)), cell)
         })
     }

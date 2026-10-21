@@ -699,7 +699,12 @@ impl Lexer {
                 // above) and the digits 1-9 as they are: `TEXT(1,"0x")` = "1x", `TEXT(PI(),"ü")` =
                 // "ü", `TEXT(5,"2")` = "2" (probes/text-format-unquoted-letters,
                 // probes/text-format-bare-literals A1-A7).
-                _ if x.is_alphabetic() || ('1'..='9').contains(&x) => Token::Literal(x),
+                // Control characters print as themselves too: `TEXT(100,CHAR(10))` is a line feed
+                // and `TEXT(-2.5,CHAR(1))` is "-" and CHAR(1) (gen-m5/d586a1e0c9896942 Calc!A38,
+                // gen-m5/c0651f0e0fb544d0 Calc!A336; number-formats.md, T-2158).
+                _ if x.is_alphabetic() || ('1'..='9').contains(&x) || x.is_control() => {
+                    Token::Literal(x)
+                }
                 _ => {
                     self.set_error(&format!("Unexpected character: {x}"));
                     Token::ILLEGAL
