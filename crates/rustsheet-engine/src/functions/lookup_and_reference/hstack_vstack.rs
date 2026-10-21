@@ -1,3 +1,4 @@
+use super::drop_take::range_dims;
 use super::ref_lift::{lifts_into_references, put_back};
 use crate::{
     calc_result::CalcResult,
@@ -84,9 +85,42 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let mut arrays: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(args.len());
+        // Excel evaluates every argument first, a reference without reading its cells, and checks
+        // the stacked rows before it reads any: an error argument wins wherever it stands, and a
+        // stack past the grid is `#NUM!` even when a reference holds this cell, which reading it
+        // would make a cycle (`=ROWS(VSTACK(2:2,A:A))` in W2, `=ROWS(VSTACK(A:A,W8))` in W8;
+        // probes/vstack-self-past-grid, scalar-lift-open-c2 W1; arrays.md "Stacked results past
+        // the grid"; T-1965). A one-cell reference is read after the check (`None` here); a
+        // range is evaluated to its corners, which reads nothing.
+        let mut results: Vec<Option<CalcResult>> = Vec::with_capacity(args.len());
+        let mut reference_rows = 0_usize;
         for arg in args {
-            match self.eval_to_array(arg, cell) {
+            if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) {
+                reference_rows = reference_rows.saturating_add(1);
+                results.push(None);
+                continue;
+            }
+            match self.evaluate_node_in_context(arg, cell) {
+                err @ CalcResult::Error { .. } => return err,
+                result => {
+                    if let CalcResult::Range { left, right } = result {
+                        reference_rows = reference_rows.saturating_add(range_dims(left, right).0);
+                    }
+                    results.push(Some(result));
+                }
+            }
+        }
+        if let Some((error, message)) = check_stack_size(reference_rows, 1) {
+            return CalcResult::new_error(error, cell, message);
+        }
+
+        let mut arrays: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(args.len());
+        for (arg, result) in args.iter().zip(results) {
+            let array = match result {
+                Some(result) => self.result_to_array(result, cell),
+                None => self.eval_to_array(arg, cell),
+            };
+            match array {
                 Ok(a) => arrays.push(a),
                 Err(e) => return e,
             }

@@ -45,6 +45,30 @@ fn whole_column_against_whole_row_is_bounded() {
 }
 
 #[test]
+fn vstack_checks_its_rows_before_reading_a_reference_to_its_own_cell() {
+    // probes/vstack-self-past-grid and scalar-lift-open-c2 W1 (excel-graph, T-1965): each formula
+    // reads its own row, or its own cell, and column A. The rows are checked before a reference
+    // is read, so no cycle; an error argument wins wherever it stands.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("W1", "=ROWS(VSTACK(A:A,1:1))");
+    model._set("W2", "=ROWS(VSTACK(2:2,A:A))");
+    model._set("W3", "=ROWS(VSTACK(A:A,3:3,1/0))");
+    model._set("W4", "=ROWS(VSTACK(1/0,A:A,4:4))");
+    model._set("W8", "=ROWS(VSTACK(A:A,W8))");
+    model._set("W12", "=COLUMNS(VSTACK(A:A,12:12))");
+
+    model.evaluate();
+
+    for cell in ["W1", "W2", "W8", "W12"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+    for cell in ["W3", "W4"] {
+        assert_eq!(model._get_text(cell), *"#DIV/0!", "{cell}");
+    }
+}
+
+#[test]
 fn rows_past_the_grid_are_num_and_columns_past_it_are_allowed() {
     // probes/scalar-lift-open-c W1-W10 (excel-graph, T-1803).
     let mut model = new_empty_model();
