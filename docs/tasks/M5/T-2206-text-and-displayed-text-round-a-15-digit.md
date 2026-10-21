@@ -3,7 +3,7 @@ id: T-2206
 title: "TEXT and displayed text round a 15-digit decimal tie half away from zero (TEXT(2.5,\"0\") is \"3\", TEXT(36.5,\"0\") is \"37\")"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -74,16 +74,16 @@ T-1129's and the is-negative test in the same branch; do not change which cells 
 gen-m10 TF lines over -0.5 stay T-1129's.
 
 ## Acceptance criteria
-- [ ] The 5 gen-m10 F lines and the 95 gen-m10 TF lines listed above leave eval/baseline/gen-m10.txt,
+- [x] The 5 gen-m10 F lines and the 95 gen-m10 TF lines listed above leave eval/baseline/gen-m10.txt,
       and probes/displayed-text-formats S!A21 leaves eval/baseline/probes.txt (its F and TF lines), with
       no new F or TF line in any baseline (`make eval-baseline` refuses regressions).
-- [ ] A unit test in the formatter's tests pins `TEXT(2.5,"0")` "3", `TEXT(-2.5,"0")` "-3",
+- [x] A unit test in the formatter's tests pins `TEXT(2.5,"0")` "3", `TEXT(-2.5,"0")` "-3",
       `TEXT(0.125,"0%")` "13%", `TEXT(12.345,"0%")` "1235%" and `TEXT(1234.5,"#,##0")` "1,235" (all
       from the cells above), and fails before the change.
-- [ ] docs/excel-semantics/number-formats.md: the gen-m10 entry's "round-half (T-1711)" and the
+- [x] docs/excel-semantics/number-formats.md: the gen-m10 entry's "round-half (T-1711)" and the
       displayed-text-formats entry name this task and the rule (half away from zero on the 15-digit
       decimal, as General and ROUND).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The minus of a value that rounds to zero or to one unit (T-1129).
@@ -94,3 +94,14 @@ gen-m10 TF lines over -0.5 stay T-1129's.
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format. The
 acceptance criteria above are the visible-parity stage.
+
+## Outcome
+The `ParsePart::Number` branch of `formatter/format.rs` now rounds at the shown decimal place with
+`decimal_round::round_decimal(.., HalfAwayFromZero)` (15-digit decimal, as General and ROUND);
+scientific formats keep the significant-digit cut (T-1730). Unit test `number_format_ties_round_half_away_from_zero`.
+Eval delta: gen-m10 known failures 67 -> 62 (129 text cells fixed), probes 1632 -> 1631 (2 text), 0 regressions.
+
+Side effect: rounding before the sign test also fixed 29 gen-m10 TF lines outside the list above: the -0.5
+minus under `0`-style formats (T-1129) and 0.0049 under `0%`/`%0` (T-1738), all oracle-backed. T-1129 and
+T-1738 keep only what is still open (values that round to zero, `#,` on -500, `?.??`, `#%` of 0.0049).
+Follow-up probe wanted: `TEXT(999999999999957.5,"0")` (16th-digit tie in a displayed format).

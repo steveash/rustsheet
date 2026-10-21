@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM stale return_type: does a state change made before an abandoned read stay? A3 sets Monday and then reads A1 (not yet calculated), so it is abandoned; A2, a plain reader, runs next and shows Monday if the change stayed, - if it was rolled back. Readers decode the reused start weekday: WEEKNUM(2..7,99) joined gives 111111 Sun, 222222 Mon, 122222 Tue, 112222 Wed, 111222 Thu, 111122 Fri, 111112 Sat; markers WEEKNUM(100,t) with t 1 Sun, 2 Mon, 12 Tue, 13 Wed, 14 Thu (T-1484)",
+  "tags": [
+    "M6",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Abort",
+      "cells": {
+        "A1": "=WEEKNUM(100,1)",
+        "A2": "=IFERROR(WEEKNUM(2,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")",
+        "A3": "=WEEKNUM(100,2)&\"|\"&IFERROR(WEEKNUM(2+0*A1,99)&WEEKNUM(3,99)&WEEKNUM(4,99)&WEEKNUM(5,99)&WEEKNUM(6,99)&WEEKNUM(7,99),\"-\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Abort!A1",
+    "Abort!A2",
+    "Abort!A3"
+  ]
+}
