@@ -423,7 +423,15 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
+        let mut value = self.evaluate_node_in_context(&args[0], cell);
+        // Excel: a one-cell range is its cell's type, `TYPE(D7:D7)` is 1 (docs/excel-semantics/information.md
+        // "TYPE of a one-cell range", gen-m5/2abdc1524e5aa685 Calc!A371).
+        if let CalcResult::Range { left, right } = &value {
+            if left == right {
+                value = self.evaluate_cell(*left);
+            }
+        }
+        match value {
             // Excel: text over 255 UTF-16 units is 64, not 2 (probes/type-long-text A4-A10, C7).
             CalcResult::String(text) if text.len_utf16() > MAX_SHORT_TEXT_UNITS => {
                 CalcResult::Number(64.0)

@@ -21,6 +21,8 @@ and `#` shows no zero; ours "1%"), `%0` of 0.0049 → "%0" (ours "%1"). The roun
 ("-1", ours "1") is T-1129's.
 Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "Displayed text" section, which lists each failing text cell (Excel vs ours). Text cells are scored apart from values and are not baselined (decision 0068); the TEXT() cells on sheet T that use the same codes are value known failures in eval/baseline/gen-m10.txt. Formatter: crates/rustsheet-engine/src/formatter/ (shared by `Workbook::formatted` and TEXT). docs/excel-semantics/number-formats.md.
 
+Update (T-2206): `0%` and `%0` of 0.0049 are fixed by the rounding change; `?.??` and `#%` of 0.0049 remain.
+
 ## Acceptance criteria
 - [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
 - [ ] number-formats.md updated.

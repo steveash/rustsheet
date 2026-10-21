@@ -1,0 +1,45 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2237: 1904 twin of yearfrac-serial-zero. The financial day counts read a 1904 serial 0 as the 1900 serial 2924 (DateSystem::financial_1900_serial), so none of these reach the [0, 1) branch. Columns A-E are bases 0-4.",
+ "tags": [
+  "M6",
+  "probe",
+  "date",
+  "yearfrac",
+  "T-2237"
+ ],
+ "date_system": 1904,
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=YEARFRAC(0,59,0)",
+    "B1": "=YEARFRAC(0,59,1)",
+    "C1": "=YEARFRAC(0,59,2)",
+    "D1": "=YEARFRAC(0,59,3)",
+    "E1": "=YEARFRAC(0,59,4)",
+    "A2": "=YEARFRAC(0,0,0)",
+    "B2": "=YEARFRAC(0,0,1)",
+    "C2": "=YEARFRAC(0,0,2)",
+    "D2": "=YEARFRAC(0,0,3)",
+    "E2": "=YEARFRAC(0,0,4)",
+    "A3": "=YEARFRAC(0.5,1,0)",
+    "B3": "=YEARFRAC(0.5,1,1)",
+    "C3": "=YEARFRAC(0.5,1,2)",
+    "D3": "=YEARFRAC(0.5,1,3)",
+    "E3": "=YEARFRAC(0.5,1,4)",
+    "A4": "=YEARFRAC(1,60,0)",
+    "B4": "=YEARFRAC(1,60,1)",
+    "C4": "=YEARFRAC(1,60,2)",
+    "D4": "=YEARFRAC(1,60,3)",
+    "E4": "=YEARFRAC(1,60,4)",
+    "A5": "=YEARFRAC(0,366,0)",
+    "B5": "=YEARFRAC(0,366,1)",
+    "C5": "=YEARFRAC(0,366,2)",
+    "D5": "=YEARFRAC(0,366,3)",
+    "E5": "=YEARFRAC(0,366,4)"
+   }
+  }
+ ],
+ "expected": {}
+}

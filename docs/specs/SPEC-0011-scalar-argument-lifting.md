@@ -433,6 +433,21 @@ impl Model {
         kernel: &mut Kernel<'_>,
     ) -> CalcResult;
 
+    /// `lift_call` for a kernel of numbers (`number_fn`, `numbers_fn`; T-1932) with its
+    /// shortcut `numbers`, the kernel's result for arguments that are all numbers. While the
+    /// arguments read are numbers they stay `f64`s, and when all are, `numbers` runs with no
+    /// kernel call; at the first that is not, the call goes on as `lift_call`'s on the values
+    /// already read (none is read twice). In the in-place lift, a number element whose scalars
+    /// are numbers runs `numbers` too, for an entry whose elements are charged nothing.
+    pub(crate) fn lift_call_numbers(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        numbers: &NumbersKernel<'_>, // dyn Fn(&[f64]) -> Result<f64, Error>
+        kernel: &mut Kernel<'_>,
+    ) -> CalcResult;
+
     /// The broadcasting core (was `lift_with_cost`). The *IF(S), AGGREGATE, IFS, SWITCH and
     /// lookup lifts call it directly, with their arguments evaluated: a range there, a one-cell
     /// range included, lifts as a grid (their T-1784 contract). It reads them into `LiftedArg`s
@@ -749,7 +764,7 @@ silently.
   | T-1784 | a lifted whole-column COUNTIFS (`=SUM(COUNTIFS(A:A,A1:A100000))`, the `reuse_equal_runs` path) and a *IF(S) bench | within 5% |
   | T-1773 | per-row unlifted cells over ≥ 100k rows, full recalc: `=ROUND(A{r},2)`, `=ABS(A{r})`, `=MOD(A{r},7)` | within 5% each |
   | T-1773 | lifted `=SUM(ROUND(A1:A1000000,2))` and `=SUM(ABS(A1:A1000000))` | within 5% |
-  | T-1785 | per-row unlifted `=DAY(A{r})` over ≥ 100k rows | within 5%; relaxed by decision 0077 (landed at +9.4% instructions), the target moves to T-1932 |
+  | T-1785 | per-row unlifted `=DAY(A{r})` over ≥ 100k rows | within 5%; relaxed by decision 0077 (landed at +9.4% instructions), the target moves to T-1932, which meets it (+4.7%) |
   | T-1775 | `benches/text.rs` | within 5% |
   | T-1372 | `=SUM(PMT(A1:A100000,10,100))` | none: a new path, a smoke number only |
 

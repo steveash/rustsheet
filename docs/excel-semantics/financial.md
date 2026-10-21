@@ -813,7 +813,7 @@ a direct 30/360 count: on 2018-02-28 to 2018-03-30 basis 0 and basis 4 agree for
 A126 = A127 = 0.271557884707002, 32 days), whereas INTRATE, PRICEDISC, RECEIVED and YIELDDISC give different results for
 the two bases (INTRATE A14 = 1.2000000000000002 for 30 days, A15 = 1.125 for 32). Ours already matches (`get_mat_factors`).
 Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624).
-Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0 on basis 0; T-1757 added a unit test); the last-digit misses are matched since T-2032 ("Discount securities: day count and year length").
+Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0, on every basis since T-2237, dates.md "YEARFRAC accepts serial 0"; T-1757 added a unit test); the last-digit misses are matched since T-2032 ("Discount securities: day count and year length").
 Status: VERIFIED (excel-graph)
 Tasks: T-1624, T-1757, T-1374, T-2032
 
@@ -1144,6 +1144,12 @@ array is read like a literal: `NPV(0.1,SEQUENCE(3))` is 4.815927873779113, `B3:B
 FVSCHEDULE is `#VALUE!` when the schedule holds text or a boolean, in a range (`N1:N2` with `"0.11"`, `C1:C2` with
 TRUE) or in an array literal (`{0.09,"0.11"}`); typed text that reads as a number is a one-rate schedule
 (`FVSCHEDULE(1000,"0.1")`, `("0.1")` and `T("0.1")` are 1100) while `"x"` and `TRUE` are `#VALUE!`.
+Typed empty text is `#VALUE!` (`NPV(0.1,-10000,"",4250)`): `""` is no number. An argument that evaluates to an empty value (`IF(TRUE,)`, `LET(x,,x)`) is a cash flow
+of 0, not skipped (`NPV(0.1,-10000,IF(TRUE,),4250)` is -5897.821187077386, equal to the written-empty form;
+adding a trailing 2750 gives -4019.5341848234416). FVSCHEDULE walks the schedule left to right and returns the
+first of text or error it meets in an array literal (`{"x",#N/A}` is `#VALUE!`, `{#N/A,"x"}` is `#N/A`); in a
+range (`B1:B2` holding "x" then #N/A) the text wins as well (`#VALUE!`), and `#N/A` then "x" gives `#N/A`.
+Evidence: probes/npv-fvschedule-unprobed A1-A8 (excel-graph, T-1878).
 Evidence: probes/fin-argument-modes H368, H370, H371, H382-H384; probes/npv-fvschedule-typed A1-A16;
 probes/npv-reference-forms A1-A20; probes/npv-fvschedule-edges A1-A6;
 probes/fin-fvschedule A3, A4, A13, A14, A16, A19 (excel-graph, T-1084, T-1373, T-1625).

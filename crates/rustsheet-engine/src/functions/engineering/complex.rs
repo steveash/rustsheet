@@ -925,8 +925,19 @@ fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
     finite_complex_result(x.sinh() * y.cos(), x.cosh() * y.sin(), suffix, cell)
 }
 
-fn imsqrt((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let r = f64::sqrt(x * x + y * y).sqrt();
+/// Excel squares each part first: a part past `sqrt(DBL_MAX)` (1.34078E154) is `#NUM!`
+/// (`IMSQRT("1.35E154")`, `IMSQRT("1E307")`), but when only the sum of the squares overflows
+/// (`IMSQRT("1E154+1E154i")`) the result is `0`, not an error (probes/eng-imsqrt-large,
+/// eng-imsqrt-large-b; docs/excel-semantics/engineering.md, T-1996).
+fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    let (xx, yy) = (x * x, y * y);
+    if !xx.is_finite() || !yy.is_finite() {
+        return num_error(cell);
+    }
+    if !(xx + yy).is_finite() {
+        return complex_result(0.0, 0.0, suffix);
+    }
+    let r = f64::sqrt(xx + yy).sqrt();
     let a = f64::atan2(y, x);
     complex_result(r * f64::cos(a / 2.0), r * f64::sin(a / 2.0), suffix)
 }

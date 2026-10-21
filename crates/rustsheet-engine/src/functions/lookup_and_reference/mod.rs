@@ -244,13 +244,17 @@ impl Model {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (lookup_value, row_index, is_sorted) = match self.lookup_head(args, cell) {
-            Ok(head) => head,
-            Err(error) => return error,
-        };
-        let as_reference = as_reference && matches!(row_index, LookupIndexArg::Reference(_));
+        // The table is read first: its error beats the index's and range_lookup's
+        // (`Model::lookup_head`).
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
-        let table = match self.lookup_table(range, cell) {
+        let table = self.lookup_table(range, cell);
+        let (lookup_value, row_index, is_sorted) =
+            match self.lookup_head(args, table.as_ref().err().cloned(), cell) {
+                Ok(head) => head,
+                Err(error) => return error,
+            };
+        let as_reference = as_reference && matches!(row_index, LookupIndexArg::Reference(_));
+        let table = match table {
             Ok(table) => table,
             Err(error) => return error,
         };
@@ -294,13 +298,17 @@ impl Model {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let (lookup_value, column_index, is_sorted) = match self.lookup_head(args, cell) {
-            Ok(head) => head,
-            Err(error) => return error,
-        };
-        let as_reference = as_reference && matches!(column_index, LookupIndexArg::Reference(_));
+        // The table is read first: its error beats the index's and range_lookup's
+        // (`Model::lookup_head`).
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
-        let table = match self.lookup_table(range, cell) {
+        let table = self.lookup_table(range, cell);
+        let (lookup_value, column_index, is_sorted) =
+            match self.lookup_head(args, table.as_ref().err().cloned(), cell) {
+                Ok(head) => head,
+                Err(error) => return error,
+            };
+        let as_reference = as_reference && matches!(column_index, LookupIndexArg::Reference(_));
+        let table = match table {
             Ok(table) => table,
             Err(error) => return error,
         };
