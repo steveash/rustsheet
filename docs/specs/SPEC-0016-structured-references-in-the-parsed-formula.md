@@ -164,8 +164,10 @@ printers; T-1683 may change how it is spelled. `to_excel_string` prints `lowered
 and from then on writes a bare name as `Table[]` (see above).
 
 `rename_sheet_in_node` and `move_formula` recurse into `lowered` as they do today. The printed
-text comes from `reference`, so a sheet rename or a cut and paste leaves the text unchanged, and
-the next reparse re-derives `lowered` from the table.
+text comes from `reference`, so a cut and paste leaves the text unchanged, and the next reparse
+re-derives `lowered` from the table. A sheet rename leaves the text unchanged too, but the reparse
+finds the table only if its `sheet_name` follows the rename: see "Sheet rename, delete and
+restore".
 
 ### Structural edits
 Today `insert_rows`, `delete_rows`, `insert_columns` and `delete_columns` (actions.rs) displace
@@ -234,6 +236,34 @@ step 3) is first resolved at the printing cell's row. It becomes the absolute ce
 that row, or `#VALUE!` off the data rows, which is exactly today's text. Only then is it
 displaced.
 
+### Sheet rename, delete and restore
+These are not displacing edits, but once the text is printed from `reference` they would change
+existing values, so step 1 covers them. Today a table's area is resolved at parse time, and the
+lowered range carries the sheet index, so `rename_sheet_by_index` (new_empty.rs) and `take_sheet`
+(sheet_undo.rs) keep today's values without touching `workbook.tables`. Under this spec, the
+reparse after these edits reaches `structured_reference_operand` (operands.rs), which looks the
+sheet up by the table's `sheet_name`. A stale name is "table sheet not found", which becomes a
+parse-error value.
+
+1. **Rename.** `rename_sheet_by_index` sets `sheet_name` on every table of the renamed sheet to the
+   new name before `reset_parsed_structures`, so every formula that refers to the table, on any
+   sheet, keeps its text and its value. Excel keeps structured references working after a sheet
+   rename (certain; hand). References.md records it as hand evidence.
+2. **Delete.** Before the sheet is taken, every table on it is treated as *fallback* for a walk
+   over the formulas on the remaining sheets (and defined names): their structured references print
+   their lowered areas, which the delete then turns into `#REF!`, exactly today's text and value.
+   The tables are then removed from `workbook.tables` and kept with the taken sheet, so a sheet
+   added later under the old name does not bring a deleted table's references back. Excel's
+   result for a cross-sheet structured reference to a deleted sheet's table is assumed to be
+   `#REF!` (unprobed; a question for T-2197).
+3. **Restore.** `restore_sheet` (undo of a delete) puts the kept tables back in
+   `workbook.tables`. The other sheets' formulas stay as the delete left them (today's undo
+   behavior for plain references).
+4. **Export.** Until T-2196, `to_excel_string` prints `lowered`, never `reference`, and a formula
+   that fails to reparse is never left holding a structured reference, so an export after a rename
+   or a delete never writes a structured reference into a file without table parts
+   (xlsx-storage.md "Structured references in the file").
+
 ### Shared formulas and storage
 The storage text is now `Sales[[#This Row],[Qty]]` in every cell of a filled column. It does not
 depend on the cell, so one shared formula serves the whole column, as Excel stores it. Parsing it
@@ -274,6 +304,11 @@ same reference. `ThisRowKind` evaluation is O(1).
   today's values before the change. The move and grow/shrink cases keep the structured text; the
   fallback cases print today's lowered text. One test has the formula on a different sheet from
   the table.
+- Sheet rename, delete and restore: after renaming the table's sheet, a same-sheet and a
+  cross-sheet `=SUM(Sales[Qty])` keep their text and value; a cross-sheet formula is `#REF!` after
+  the table's sheet is deleted, stays `#REF!` when a sheet with the old name is added, and the
+  tables come back with `restore_sheet`; `to_excel_string` after a rename prints the lowered range
+  (no structured text in the export).
 - From step 2: `to_excel_string` of `Sales[@Qty]` on and off the data rows prints today's `$A$3` and
   `#VALUE!`.
 - Missing table: after `remove_table` the cell's formula text is unchanged, and after

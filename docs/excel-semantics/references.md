@@ -2052,6 +2052,8 @@ now (gen-m8b in-table 19fdc25163755713 shows the evaluation against a fixed tabl
 reference, and to the formula's value, when the table is resized (rows or columns inserted or deleted
 inside or at its edge, or a resize), converted to a range or deleted is not probed. Open questions for T-2197: does a table move with an edit wholly before it
 (SPEC-0016 assumes so), and does "Convert to Range" turn the references into plain cell references?
+Renaming the table's sheet keeps its structured references working (hand, certain). A structured reference
+on another sheet to a table whose sheet is deleted is assumed to become `#REF!` (hand; a question for T-2197).
 Status: UNVERIFIED
 Implemented in: no. The engine lowers every structured reference to a range at parse time and stores that
 range; tables do not move on structural edits. SPEC-0016 keeps the reference in the parsed formula and
