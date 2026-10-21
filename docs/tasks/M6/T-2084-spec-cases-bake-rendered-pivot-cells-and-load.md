@@ -3,7 +3,7 @@ id: T-2084
 title: "Spec cases: bake rendered pivot cells and load pivot_tables into the engine adapter (SPEC-0015)"
 milestone: M6
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: sonnet
