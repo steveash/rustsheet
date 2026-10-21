@@ -3,7 +3,7 @@ id: T-2205
 title: "Probe IMAGE with a grid source, a scalar error option and a wider array option"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
