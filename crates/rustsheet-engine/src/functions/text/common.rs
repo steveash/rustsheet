@@ -158,6 +158,14 @@ fn text_value_node(value: &CalcResult, format: &str) -> ArrayNode {
     }
 }
 
+/// Whether `format` may have a text section (an `@`, or a fourth section). Number-like text takes
+/// the number path only for codes without one, the shape the oracle cells cover; with a text
+/// section it stays text (UNVERIFIED, number-formats.md, T-2158). A `;` inside quotes counts, which
+/// errs towards the text path.
+fn has_text_section(format: &str) -> bool {
+    format.contains('@') || format.matches(';').count() >= 3
+}
+
 /// The TEXT element for one value: numbers and blanks by the number sections, text and booleans
 /// by the text section. An omitted value is 0, not a blank (`TEXT(,"General")`).
 fn text_element(value: &CalcResult, format: &str, ctx: &FormatContext) -> ArrayNode {
@@ -203,7 +211,9 @@ impl Model {
             // A text value that reads as a number is formatted as that number (number-formats.md,
             // T-2158), read the way VALUE reads it.
             let number_text = match value {
-                CalcResult::String(text) => model.value_text_number(text).map(CalcResult::Number),
+                CalcResult::String(text) if !has_text_section(&format_code) => {
+                    model.value_text_number(text).map(CalcResult::Number)
+                }
                 _ => None,
             };
             let value = number_text.as_ref().unwrap_or(value);
