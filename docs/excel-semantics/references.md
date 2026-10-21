@@ -1657,7 +1657,10 @@ Other reference arms pass whole the same way (T-1969; B1:B6 = 1,2,3,1,2,3, row 2
 `=SUM(IF(TRUE,B1:INDEX(B1:B6,6)))` are 12 / 12 with no `@`. IFS's value arms too:
 `=SUM(IFS(TRUE,B1:B6))` 12 / 12, `=MATCH(3,IFS(TRUE,B1:B6),0)` 3 / 3, and at the root
 `=IFS(TRUE,B1:B6)` shows as `=@IFS(TRUE,B1:B6)` (2 / `#VALUE!`).
-Only `INDEX(B1:C6,0,1)` was probed: an INDEX with row and column numbers (a single cell) is treated the same, unprobed.
+Value contexts hold the same way (probes/legacy-if-arm-other-references K-T, excel-graph): `=IF(TRUE,OFFSET(B1,0,0,6))`
+shows `=@IF(TRUE,OFFSET(B1,0,0,6))`, `=ABS(IFS(TRUE,B1:B6))` `=ABS(@IFS(TRUE,B1:B6))`,
+`=INDEX(IF(TRUE,OFFSET(B1,0,0,6)),3)` is 3. A single-cell INDEX arm, `=IF(TRUE,INDEX(B1:B6,3))`, shows no
+`@` at all in Excel; ours puts `@` on the IF (known failure, probes M12, filed as a follow-up task).
 Evidence: probes/legacy-if-arm-other-references (excel-graph, 2026-10-21, T-1969).
 Status: VERIFIED
 Tasks: T-1935, T-1969

@@ -86,6 +86,126 @@
     "t": "n",
     "v": 2.0
    },
+   "K10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K12": {
+    "t": "s",
+    "v": "=@IF(TRUE,OFFSET(B1,0,0,6))"
+   },
+   "K2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "L10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "L12": {
+    "t": "s",
+    "v": "=ABS(@IF(TRUE,OFFSET(B1,0,0,6)))"
+   },
+   "L2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "M10": {
+    "t": "n",
+    "v": 3.0
+   },
+   "M12": {
+    "t": "s",
+    "v": "=IF(TRUE,INDEX(B1:B6,3))"
+   },
+   "M2": {
+    "t": "n",
+    "v": 3.0
+   },
+   "N10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "N12": {
+    "t": "s",
+    "v": "=@IF(TRUE,B1:INDEX(B1:B6,6))"
+   },
+   "N2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "O10": {
+    "t": "n",
+    "v": 3.0
+   },
+   "O12": {
+    "t": "s",
+    "v": "=INDEX(IF(TRUE,OFFSET(B1,0,0,6)),3)"
+   },
+   "O2": {
+    "t": "n",
+    "v": 3.0
+   },
+   "P10": {
+    "t": "n",
+    "v": 3.0
+   },
+   "P12": {
+    "t": "s",
+    "v": "=SUM(IF(TRUE,INDEX(B1:B6,3)))"
+   },
+   "P2": {
+    "t": "n",
+    "v": 3.0
+   },
+   "Q10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "Q12": {
+    "t": "s",
+    "v": "=ABS(@IFS(TRUE,B1:B6))"
+   },
+   "Q2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "R10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "R12": {
+    "t": "s",
+    "v": "=@IF(TRUE,Rng)"
+   },
+   "R2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "S10": {
+    "t": "n",
+    "v": 1.0
+   },
+   "S12": {
+    "t": "s",
+    "v": "=IF(TRUE,OFFSET(B1,0,0))"
+   },
+   "S2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T10": {
+    "t": "n",
+    "v": 1.0
+   },
+   "T12": {
+    "t": "s",
+    "v": "=SUM(IF(TRUE,OFFSET(B1,0,0)))"
+   },
+   "T2": {
+    "t": "n",
+    "v": 1.0
+   },
    "Z10": {
     "t": "e",
     "v": "#VALUE!"
@@ -94,10 +214,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "8f2dcf7f6dea09b6f1db6f88aea8ee4aee43e156ba6e08e33511137303d90c3e",
+  "input_sha256": "eb00b4bbb783a8fdb0faa8ce69d250a259af017b47a9d6340c7abc579cd820a2",
   "kind": "excel-graph",
-  "produced_at": "2026-10-21T18:20:47+00:00",
+  "produced_at": "2026-10-21T19:00:42+00:00",
   "version": null,
-  "workbook_name": "c571ebefcb4dff358960f6a6c6d815d890c351fb3d4b651f822309dd66e19272.xlsx"
+  "workbook_name": "bf57eed3d5ad6dcea0293023187fe3f9a16c432175d5533aedaab37e0277c8be.xlsx"
  }
 }
