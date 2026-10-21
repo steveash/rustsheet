@@ -804,7 +804,7 @@ is `#NUM!`. The pair is ordered first (see "YEARFRAC swaps reversed dates"). Eac
 own way:
 - Basis 0 (US 30/360) counts on Excel's own day, month and year: serial 0 is day 0 of January, serial 60 is the
   fictitious 1900-02-29, and 1900-02-28 is still February's last day, so it is read as day 30. That makes
-  `YEARFRAC(59,60,0)` = `YEARFRAC(60,59,0)` = **-1/360**, a negative fraction, and `YEARFRAC(60,61,0)` = 2/360
+  `YEARFRAC(60,59,0)` = **-1/360** (probed reversed; by the swap rule `(59,60,0)` is the same), a negative fraction, and `YEARFRAC(60,61,0)` = 2/360
   (29 February is not February's last day). `YEARFRAC(0,59,0)` = 58/360, `(0,60,0)` = 59/360, `(0,61,0)` = 61/360,
   `(0,366,0)` = 361/360, `(0,33752,0)` = 92.41111111111111.
 - Bases 1, 2 and 3 count serials as days, so the fictitious 1900-02-29 is a day: `YEARFRAC(0,60,3)` = 60/365,

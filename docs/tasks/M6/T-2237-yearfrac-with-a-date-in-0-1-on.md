@@ -71,5 +71,5 @@ probes/discount-serial-zero (50 cells, since the discount securities share `year
 - Bases 1-3 count serials, and basis 1's year length reads the real calendar from 1900. This also fixes serials
   1-59, which were read as 1899 (`YEARFRAC(1,33752,1)`).
 - Basis 4 was already right once serial 0 was accepted.
-Financial cells that moved: only the new probes/discount-serial-zero cells; no gated baseline gained a line.
+Financial cells that moved: only the new probes/discount-serial-zero cells; no gated baseline gained a line. Follow-up T-2283 probes PRICEMAT/YIELDMAT with issue or settlement at serials 0-60 (they read the same parts; review finding).
 Eval: 3 new probes cases, 280 cells, all bit-exact (baseline coverage lines only); 0 regressions and 0 fixed in every gated suite.
