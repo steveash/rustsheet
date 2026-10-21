@@ -513,12 +513,14 @@ C	probes/long-text-args-min-criteria.case.json	25
 C	probes/lookup-2d-vector-wide.case.json	13
 C	probes/lookup-2d-vector.case.json	19
 C	probes/lookup-approximate-search.case.json	44
+C	probes/lookup-argument-edges.case.json	154
 C	probes/lookup-argument-modes.case.json	117
 C	probes/lookup-blank-result-to-caller.case.json	135
 C	probes/lookup-bool-empty-scalar-vector.case.json	10
 C	probes/lookup-index-hlookup.case.json	11
 C	probes/lookup-index-multicell-if.case.json	21
 C	probes/lookup-index-multicell-lifted.case.json	14
+C	probes/lookup-index-near-integer.case.json	1095
 C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
 C	probes/lookup-pick-aggregates.case.json	64
