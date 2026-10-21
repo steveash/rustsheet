@@ -13,8 +13,9 @@ not 0.
 A task owns a cell when its front matter has the milestone and an open status, and its text names
 the case's file stem (the last path segment of the case id less `.case.json`: a gen hash, an
 xlsx file name, a probe name) and either the cell's A1 name as a whole word, or the stem on a line
-with no A1-shaped token (a task that names only the case owns all of it). The ironcalc-calc exceptions are the row's
-`excepted` cells, which `make eval` takes from eval/milestones/exit-exceptions.tsv.
+with no A1-shaped token (a task that names only the case owns all of it). The ironcalc-calc
+exceptions are the row's `excepted` cells, which `make eval` takes from
+eval/milestones/exit-exceptions.tsv.
 """
 
 from __future__ import annotations
@@ -170,6 +171,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--tasks", type=Path, default=tasks.TASKS)
     ap.add_argument("--strict", action="store_true", help="exit 1 when any cell is unowned")
     args = ap.parse_args(argv)
+    if not tasks.MILESTONE.match(args.milestone):
+        print(f"error: --milestone must be M<n>, not {args.milestone!r}", file=sys.stderr)
+        return 2
     if not args.report.is_file():
         print(f"error: {args.report} not found; run `make eval` first", file=sys.stderr)
         return 2

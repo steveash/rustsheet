@@ -73,4 +73,7 @@ T-2240 (which named other `TRIGONOMETRIC.xlsx` cells that pass now) hid C51 and 
 On this branch, cut from `main` at 9562cd69: 0 unowned M5 exit cells. On that report with
 the 13 cells re-injected as failing and T-2240 at its pre-edit text (status todo, T-2259 done): 13
 listed, exactly the cells in Context; with T-2240's 2026-10-21 edit: 0.
+It reads report.json and `docs/tasks/` only: the ironcalc-calc exceptions are the report's
+`excepted` cells, which `make eval` already takes from `eval/milestones/exit-exceptions.tsv`, so the
+script does not re-implement their milestone rule.
 Eval delta: none (scripts only). Follow-up: T-2293 (steward and planner run it; `.claude/` change).

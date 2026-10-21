@@ -123,6 +123,7 @@ class ExitOwners(unittest.TestCase):
             path = self.tasks / "report.json"
             path.write_text(json.dumps(report()))
             self.assertEqual(exit_owners.main(["--milestone", "M7", "--report", str(path)]), 2)
+            self.assertEqual(exit_owners.main(["--milestone", "M5'", "--report", str(path)]), 2)
         self.assertIn("run `make eval` first", err.getvalue())
         self.assertIn("no milestone_exit row for M7", err.getvalue())
 
