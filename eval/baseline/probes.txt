@@ -232,6 +232,8 @@ C	probes/datevalue-comma-spaces.case.json	32
 C	probes/datevalue-separator-spaces-paths.case.json	15
 C	probes/datevalue-separator-spaces.case.json	32
 C	probes/db-argument-modes.case.json	121
+C	probes/dbl-max-text-a.case.json	1
+C	probes/dbl-max-text-b.case.json	1
 C	probes/decimal-unreadable.case.json	84
 C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-grouped-reference.case.json	13
@@ -273,6 +275,7 @@ C	probes/eng-im-overflow-edges.case.json	116
 C	probes/eng-im-overflow.case.json	48
 C	probes/eng-im-small-part.case.json	28
 C	probes/eng-imdiv.case.json	24
+C	probes/eng-imexp-cap-window.case.json	40
 C	probes/eng-imexp-overflow-cutoff-halfpi.case.json	20
 C	probes/eng-imexp-overflow-cutoff-pi.case.json	24
 C	probes/eng-imexp-overflow-cutoff-pi2.case.json	29
@@ -1268,6 +1271,7 @@ F	probes/date-system-1904-odd-years.case.json	S!J3
 F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
+F	probes/dbl-max-text-b.case.json	S!A1
 F	probes/displayed-text-formats.case.json	S!A21
 F	probes/eng-argument-modes.case.json	Calc!A45
 F	probes/eng-im-overflow-edges.case.json	S!A104
