@@ -920,7 +920,7 @@ Rule (excel-graph, gen-m6, 2026-10-21): TIME is `#NUM!` when its hour, minute or
 wrapping: `TIME(9,DATEVALUE("1/15/2024"),39)` (minute 45306), `TIME(DATEVALUE("2023-03-01"),27,26)` (hour 44986),
 `TIME(18,33,FACT(13))`, `TIME(1,-0.0001,COMBIN(26,6))` (second 230230), `TIME(1E+15,44,15)`, `TIME(9,123456789.123,30)`,
 `SECOND(TIME(1E+15,10,48))` (gen-m6/07171fa3f7493f51 Calc!A49, ee56a4ed5a612a0d A289, 9615a6de0f3ac417 A236, 04fdc9a67474aab9
-A163, 2ba5bd794e7e8987 A312, 36d5ce763ea63631 A319, 9e6a1b733ee1e1e0 A77; 34 cells in T-2267). The smallest offending argument in
+A163, `gen-m6/2ba5bd794e7e8987` A312, 36d5ce763ea63631 A319, 9e6a1b733ee1e1e0 A77; 34 cells in T-2267). The smallest offending argument in
 the evidence is 44986, so the bound is somewhere in 23..44986; Microsoft documents 32767, UNVERIFIED until T-2267 probes it.
 An hour of `1/POWER(0.1,2)` (99.99999999999999) counts as 100: `TIME(COLUMNS(A9)/POWER(0.1,2),12,35)` = 0.17540509259259274
 (4:12:35; d183b62596b8e174 A331); ours floors it to 99 (0.13373842592592577).
