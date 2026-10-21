@@ -3,7 +3,7 @@ id: T-2083
 title: "GETPIVOTDATA resolves data_field and field/item pairs against a loaded pivot table (SPEC-0015)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
