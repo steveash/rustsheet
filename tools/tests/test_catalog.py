@@ -44,6 +44,8 @@ def test_every_entry_has_category_milestone_and_scope() -> None:
         # absent = the oracle evaluates it; `none` = it cannot return any value (decision 0039:
         # web values, errors included, are goldens)
         assert f.get("oracle") in {None, "none"}, f["name"]
+        # decision 0094: an exemption from the 400-cell rule says why (T-0062)
+        assert f.get("v15") in {None, "exempt"} and bool(f.get("v15_reason")) == ("v15" in f), f["name"]
 
 
 def test_source_list_rows_are_well_formed() -> None:
