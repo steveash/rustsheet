@@ -65,6 +65,9 @@ This whole task is the visible-parity stage (decision 0083).
 - Regressed under decision 0083's standing allowance (numeric, ≤ 4 ulp, none visibly off; listed
   in T-2243): IPMT_PPMT.xlsx G12, G14, H13, H31, H4 (1 ulp each); PMT.xlsx F15, F33, G10 (1 ulp),
   and the PV/FV cells on them J15 (2), J33 (1), K10 (1), M10 (1), L15 (4).
+  After `main` (with T-1890's CUMPRINC closed form) merged in, three more under the same allowance:
+  CUMPRINC_CUMIPMT.xlsx H15 (1 ulp), H17 (2) and probes/fin-cumipmt-overflow-and-forms A13 (3),
+  also listed in T-2243.
 - The eight PV/NPER cells of decision 0064 did not move to passing: they take Excel's cached PMT
   bits, which are not the exact payment.
 - Follow-ups: T-2242 (the four PPMT cells, campaign visible), T-2243 (the 13 one-ulp cells).

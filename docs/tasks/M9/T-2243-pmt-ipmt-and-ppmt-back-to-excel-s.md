@@ -22,6 +22,9 @@ with no cell made visibly off.
   - IPMT_PPMT.xlsx G12, G14, H13, H31, H4 (IPMT, 1 ulp each);
   - PMT.xlsx F15, F33, G10 (PMT, 1 ulp), and J15 (2), J33, K10, M10 (1) and L15 (4), which are
     PV/FV of those PMT cells.
+  - after `main`'s T-1890 (CUMPRINC closed form) merged in: CUMPRINC_CUMIPMT.xlsx H15 (1 ulp) and
+    H17 (2), the closed form now on the accurate payment, and probes/fin-cumipmt-overflow-and-forms
+    A13 (CUMIPMT over one period, 3 ulp), its interest now from `period_payments`.
 - T-1528 holds the time-boxed bit-level fit of PMT; this task is its regression list.
 
 ## Acceptance criteria
