@@ -373,7 +373,7 @@ Rule: a text value that reads as a number is formatted as that number: `TEXT("1"
 as a literal: `TEXT(100,CHAR(10))` is a line feed and `TEXT(-2.5,CHAR(1))` is "-" followed by CHAR(1) (ours `#VALUE!` for both).
 Evidence (excel-graph, 2026-10-20): gen-m5/901e91c09b347914 Calc!A210, gen-m5/eb942f4a59b1c004 Calc!A54,
 gen-m5/d586a1e0c9896942 Calc!A38, gen-m5/c0651f0e0fb544d0 Calc!A336.
-Unprobed: date-like and percent text values (the VALUE parser reads them here too), other control characters (all are literals).
+Unprobed: date-like and percent text values (they coerce here only because the VALUE parser reads them; UNVERIFIED), other control characters (all are literals).
 Status: VERIFIED (excel-graph); implemented (T-2158).
 
 ## Unquoted ASCII letters in a number format (T-1450)

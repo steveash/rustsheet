@@ -203,15 +203,25 @@ impl Model {
             // A text value that reads as a number is formatted as that number (number-formats.md,
             // T-2158), read the way VALUE reads it.
             let number_text = match value {
-                CalcResult::String(text) if !number_text_too_long(text) => model
-                    .parse_number_text(text.trim_matches(' '), &["$", "€"], &|| {
-                        model.current_year()
-                    })
-                    .map(CalcResult::Number),
+                CalcResult::String(text) => model.value_text_number(text).map(CalcResult::Number),
                 _ => None,
             };
             let value = number_text.as_ref().unwrap_or(value);
             text_result(&[], Ok(text_element(value, &format_code, &ctx)), cell)
+        })
+    }
+
+    /// A text value read as VALUE reads it: `None` when it is over the number-text length cap or
+    /// does not read as a number. VALUE trims spaces around date and clock text, unlike number
+    /// coercion, but only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!, and clock
+    /// text and date text with a clock suffix read as in number coercion (probes/date-text-grammar
+    /// C7, C30, C31, C53, C55, C63; probes/value-clock-text B14, B44, column B against C).
+    fn value_text_number(&self, text: &str) -> Option<f64> {
+        if number_text_too_long(text) {
+            return None;
+        }
+        self.parse_number_text(text.trim_matches(' '), &["$", "€"], &|| {
+            self.current_year()
         })
     }
 
@@ -448,20 +458,10 @@ impl Model {
                 return Err(Error::ERROR);
             };
             match text {
-                CalcResult::String(text) if number_text_too_long(text) => Err(Error::VALUE),
-                CalcResult::String(text) => {
-                    // VALUE trims spaces around date and clock text, unlike number coercion, but
-                    // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
-                    // (probes/date-text-grammar C7, value-clock-text B14, B44).
-                    let text = text.trim_matches(' ');
-                    // Clock text and date text with a clock suffix read as in number coercion,
-                    // with surrounding spaces trimmed (probes/value-clock-text column B against
-                    // C; date-text-grammar C30, C31, C53, C55, C63).
-                    model
-                        .parse_number_text(text, &["$", "€"], &|| model.current_year())
-                        .map(ArrayNode::Number)
-                        .ok_or(Error::VALUE)
-                }
+                CalcResult::String(text) => model
+                    .value_text_number(text)
+                    .map(ArrayNode::Number)
+                    .ok_or(Error::VALUE),
                 CalcResult::Number(f) => Ok(ArrayNode::Number(*f)),
                 CalcResult::Error { error, .. } => Err(error.clone()),
                 CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(ArrayNode::Number(0.0)),
