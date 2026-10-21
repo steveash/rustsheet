@@ -738,7 +738,7 @@ Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOM
 (sheet `SINH_COSH_TANH`; T-0914): COSH = `(e^x + e^-x)/2` (34/34 cells; libm 33/34); SINH uses the
 same exp form for |x| >= 1; TANH = `(e^x - e^-x)/(e^x + e^-x)` for |x| >= 1 (all cells), ±1 for |x| > 20.
 Below 1, SINH and TANH are built from expm1 (T-2134, "SINH and TANH below 1 are built from expm1" below),
-replacing T-0914's Taylor series and sinh/cosh. Status: PARTIAL, as Excel's expm1 is not known. COTH/CSCH/SECH are 1 over these (T-0917, "COTH, CSCH and SECH" below); ASINH/ACOSH
+replacing T-0914's Taylor series and sinh/cosh. Excel's expm1 is Kahan's formula over Excel's EXP and LN (T-2240). COTH/CSCH/SECH are 1 over these (T-0917, "COTH, CSCH and SECH" below); ASINH/ACOSH
 (T-2031) and ATANH/ACOTH (T-0917) are fitted separately.
 T-0111's e^2x TANH on 0.9 <= |x| < 1 is superseded: see "SINH and TANH below 1 are built from expm1" (T-2134).
 
@@ -884,7 +884,7 @@ for SINH (+-0.8541474891480176), with misses also below 0.4; COSH stayed within 
 Calc!A1035 stores 0.995054655025377: m9-hyperbolic A245/A246 read their 16-digit literal as this 15-digit value
 (engineering.md, 16-digit literal quirk), so their results differ from the sweep's 0.9950546550253772 cells.
 Status: superseded by "SINH and TANH below 1 are built from expm1" (T-2134), which explains the shape; the expm1
-kernel itself is still OPEN.
+kernel is Kahan's formula ("Excel's expm1 is Kahan's formula", T-2240).
 
 ### SINH and TANH below 1 are built from expm1 (T-2134)
 Rule. For |x| < 1, with a = expm1(x) and b = expm1(-x), each a double:
@@ -915,8 +915,25 @@ sweep's 1035 COSH cells).
   - (a + a/(a + 1))/2 for SINH: 703;
   - expm1 replaced by exp(x) - 1 above any cut from 0.2 to 1: never better than expm1 throughout.
 - At |x| >= 1 the exp forms stay: they match all 20 of the sweep's control points in (1, 1.5), and the expm1 forms 17.
-Ours: `functions/math_and_trigonometry/hyperbolic.rs` `sinh`, `tanh` (`expm1_pair`; Rust's `exp_m1`, libm).
-Status: VERIFIED (excel-graph) as a shape. Excel's expm1 kernel is UNVERIFIED (follow-up T-2240).
+Ours: `functions/math_and_trigonometry/hyperbolic.rs` `sinh`, `tanh` (`expm1_pair`, `excel_expm1`).
+Status: VERIFIED (excel-graph); the expm1 kernel is below.
+
+### Excel's expm1 is Kahan's formula (T-2240)
+Rule. The expm1 under SINH and TANH below 1 is Kahan's: with u = EXP(x) (Excel's own EXP, model V6, "EXP" above),
+expm1(x) = x if u = 1, and otherwise (u - 1) * x / LN(u), with LN Excel's own (FYL2X, `excel_ln`), each
+operation a double and evaluated left to right: (u - 1) * x first, then the divide. (Kahan's -1 for u - 1 = -1 is kept
+as a guard of ours; it cannot occur below |x| = 1 and no cell probes it.)
+- The u = 1 branch (|x| under about 1E-16) is covered only by cached cells: m9-hyperbolic `SINH(1E-10)`, `SINH(3E-10)`,
+  `TANH(5E-10)` and TRIGONOMETRIC.xlsx `SINH(1E-12)`/`TANH(1E-12)` pass; the sweep starts at 1E-8.
+- Evidence: probes-numeric `t2178-hyperbolic-unit-sweep` (excel-graph): all 1015 arguments with 0 < |x| < 1 match in both
+  SINH and TANH (libm's expm1: 773 and 781). With libm's exp and log in the same formula it matches 1014 of 1015;
+  Excel's EXP with libm's log also 1014.
+- Rejected: the other association (u - 1) * (x / ln u), 828 SINH / 820 TANH, and (u - 1) / (ln u / x), 830 / 824; EXP(x) - 1
+  alone, 486 / 484. Rounding the product and quotient to 64 bits before the double (x87 double rounding) also fits all
+  1015, so the sweep does not tell the two apart; the engine keeps plain doubles. Earlier negative results (x87 F2XM1,
+  64-bit expm1) are in the entry above.
+Ours: `excel_expm1` in `functions/math_and_trigonometry/hyperbolic.rs`.
+Status: VERIFIED (excel-graph).
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
 Probe `probes-numeric/m9-trig-reduction` (666 cells = 111 arguments x 6 functions, oracle: excel-graph, 2026-10-08) is the fitting
