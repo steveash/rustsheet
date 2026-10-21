@@ -3,7 +3,7 @@ id: T-2284
 title: "Tasks blocked at the review-round limit with fixes pushed get re-reviewed by a worker"
 milestone: M5
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -30,15 +30,26 @@ approves, instead of the branch staying claimed forever.
   decision 0056; Phase 2 dependencies; desktop oracle, decision 0039).
 
 ## Acceptance criteria
-- [ ] A machine-readable marker for "blocked at the review-round limit" in the task file (e.g. a
+- [x] A machine-readable marker for "blocked at the review-round limit" in the task file (e.g. a
       `Blocked because: review-round limit` first line), written by work-loop step 5.
-- [ ] `make next-task` offers such a task to the opus worker (after handoffs, before new work),
+- [x] `make next-task` offers such a task to the opus worker (after handoffs, before new work),
       once the branch has been idle 2 h, and the work loop's resume step re-runs the full
       reviewer panel from round 1 on the current diff.
-- [ ] The steward lists these PRs under open PRs with their age.
-- [ ] The work-loop skill, scripts/tasks.py and docs/process/routines.md are protected paths: the PR
+- [x] The steward lists these PRs under open PRs with their age.
+- [x] The work-loop skill, scripts/tasks.py and docs/process/routines.md are protected paths: the PR
       carries a decision record, and the routine prompts change only through the owner (decision 0008).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Raising the round limit.
+
+## Outcome
+Decision 0095. Work-loop step 5 now starts the "Blocked because" section of a task blocked only by
+the round limit with `Blocked because: review-round limit`. `scripts/tasks.py branch_claims` returns
+such tasks (on `status: blocked` branches idle 2 h) with their branch; `next`/`ready` offer them to
+opus only, after P0 tasks and handoffs and before other work, whatever their lane is doing, and
+print `resume <branch>: blocked at the review-round limit (work-loop step 5c)`. New work-loop step
+5c resumes the branch and re-runs the full reviewer panel from round 1; a second limit writes
+`Blocked because: review-round limit, twice`, which is not offered again and goes to the owner.
+The steward skill lists these PRs with their age. Routine prompts are unchanged (decision 0008);
+`next-task` and work-loop step 1 carry the case. Eval delta: none (process change).
