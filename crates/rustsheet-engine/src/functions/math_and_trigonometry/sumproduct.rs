@@ -85,8 +85,9 @@ impl Model {
         CalcResult::finite_number_or_num(flush_subnormal(total), cell)
     }
 
-    /// One SUMPRODUCT argument as an array; a blank one-cell reference is `#VALUE!`. An array of references reads each reference
-    /// element as a non-number (0) and an error element as its error (SPEC-0014 rule 5:
+    /// One SUMPRODUCT argument as an array; a blank one-cell reference is `#VALUE!`. An array of
+    /// references reads each reference element as a non-number (0) and an error element as its
+    /// error (SPEC-0014 rule 5:
     /// `SUMPRODUCT(OFFSET(A1,{0;1},0))` is 0, `SUMPRODUCT(OFFSET(A1,{0;-1},0))` `#REF!`;
     /// probes/reference-lift-consumers E29, -b2 E189).
     fn sumproduct_array(
@@ -97,18 +98,11 @@ impl Model {
         match self.evaluate_value_or_grid(arg, cell) {
             RefArg::Grid(grid) => Ok(grid.to_array(ArrayNode::Empty)),
             read => {
-                let result = read.into_single_area(cell);
                 // A blank cell given as a cell or one-cell range reference is `#VALUE!`, alone or
                 // beside other arguments, while a one-cell text or boolean is a 0 factor
                 // (probes/t2200-blank-and-padded-m5-args A1-A19; coercion.md, T-2150).
-                let blank = match &result {
-                    CalcResult::EmptyCell => true,
-                    CalcResult::Range { left, right } if left == right => {
-                        matches!(self.evaluate_cell(*left), CalcResult::EmptyCell)
-                    }
-                    _ => false,
-                };
-                if blank {
+                let result = self.collapse_single_cell(read.into_single_area(cell));
+                if matches!(result, CalcResult::EmptyCell) {
                     return Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
