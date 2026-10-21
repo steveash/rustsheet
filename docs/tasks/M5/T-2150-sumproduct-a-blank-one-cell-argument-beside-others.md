@@ -3,7 +3,7 @@ id: T-2150
 title: "SUMPRODUCT: a blank one-cell argument beside others is #VALUE!, and an error argument beats a shape mismatch"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -39,9 +39,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 9 in eval/baselin
 | gen-m5/fc81c2f704bef138 Calc!A165 | `=SUMPRODUCT(ECMA.CEILING((Data!E4+123456789.123),Data!D5),Data!D4:D4)` | "#VALUE!" | 0.0 |
 
 ## Acceptance criteria
-- [ ] These 9 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] coercion.md entry updated with the probe results and marked implemented.
-- [ ] `make check` green; reviewers approve.
+- [x] These 9 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] coercion.md entry updated with the probe results and marked implemented.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -50,3 +50,10 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - The SUMX family (T-0961).
+
+## Outcome
+`fn_sumproduct` now reads every argument in order, so a whole-argument error or blank one-cell reference beats a shape
+mismatch between earlier arguments; an error element still wins only ahead of the first mismatch (unprobed, follow-up
+T-2296). `sumproduct_array` makes a blank cell given as a cell or one-cell range reference `#VALUE!`. Eval: 17 known failures fixed, 0 regressions (gen-m5 95 -> 86, the 9 cells above;
+gen-m6 274 -> 273, c96ac1ada46179c4 A105; probes 1674 -> 1667, t2200 A4-A9, A20). coercion.md entry marked implemented,
+with the one open point (an error element inside a range against an earlier shape mismatch is unprobed, T-2296).
