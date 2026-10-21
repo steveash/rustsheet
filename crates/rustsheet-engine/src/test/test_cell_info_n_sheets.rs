@@ -23,7 +23,7 @@ fn arguments() {
     assert_eq!(model._get_text("A1"), *"$A$1");
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 
-    assert_eq!(model._get_text("A3"), *"Automatic");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");
 
     assert_eq!(model._get_text("A5"), *"1");
@@ -34,33 +34,22 @@ fn arguments() {
     assert_eq!(model._get_text("A9"), *"#N/IMPL!");
 }
 
+/// INFO is `#VALUE!` for every `type_text` (probes/info-sheets-info-types Alpha!D25:D49, excel-graph).
 #[test]
-fn info_timezone() {
+fn info_is_value_error_for_every_type_text() {
     let mut model = new_empty_model();
-    model._set("A1", "=INFO(\"timezone\")");
-
+    for (i, text) in [
+        "recalc", "SYSTEM", "release", "timezone", "numfile", "memavail", "", "x",
+    ]
+    .iter()
+    .enumerate()
+    {
+        model._set(&format!("A{}", i + 1), &format!("=INFO(\"{text}\")"));
+    }
     model.evaluate();
-
-    assert_eq!(model._get_text("A1"), *"UTC");
-
-    model.set_timezone("America/Panama").unwrap();
-
-    model.evaluate();
-
-    assert_eq!(model._get_text("A1"), *"America/Panama");
-}
-
-#[test]
-fn info_timezones() {
-    let mut model = new_empty_model();
-    model._set("A1", "=INFO(\"timezones\")");
-    model._set("B1", "=COUNTA(A:A)");
-
-    model.evaluate();
-
-    assert_ne!(model._get_text("A1"), *"");
-    let timezones = model._get_text("B1").parse::<i32>().unwrap();
-    assert!(timezones > 400);
+    for i in 1..=8 {
+        assert_eq!(model._get_text(&format!("A{i}")), *"#VALUE!");
+    }
 }
 
 /// `CELL("filename")` is `#VALUE!` in every form, named workbook or not (probes/
@@ -172,4 +161,20 @@ fn t_reads_the_top_left_cell_of_a_range() {
         let text = model.legacy_formula_text(0, 10, 6, formula).unwrap();
         assert_eq!(text, legacy, "{formula}");
     }
+}
+
+/// A multi-cell range `info_type` lifts like an array one (gen-m5/c0651f0e0fb544d0 Calc!A293).
+#[test]
+fn cell_lifts_over_a_range_info_type() {
+    let mut model = new_empty_model();
+    model._set("D1", "row");
+    model._set("D2", "col");
+    model._set("F1", "=CELL(D1:D2,B3)");
+    model._set("H2", "x");
+    model._set("H1", "=CELL(D1:D2,B3)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("F1"), *"3");
+    assert_eq!(model._get_text("F2"), *"2");
+    assert_eq!(model._get_text("H1"), *"#SPILL!");
 }

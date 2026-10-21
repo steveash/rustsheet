@@ -557,6 +557,8 @@ gen-m5/109fc90dceb50ba9 Calc!A144, gen-m5/1962de140dae0111 Calc!A80, gen-m5/6b83
 gen-m5/38b1b8e51dbad326 Calc!A340, gen-m5/34f69d858a39f497 Calc!A227, gen-m5/b237245054b4fedb Calc!A128, gen-m5/eb942f4a59b1c004 Calc!A115 (T-2151);
 gen-m5/5704666097cbc5b2 Calc!A261, Calc!A392, gen-m5/bbbd316c346ce645 Calc!A76, gen-m5/b237245054b4fedb Calc!A390, gen-m5/a6fec430ac350c1a Calc!A32,
 gen-m5/ecd1b828aebad1e8 Calc!A60 (T-2152); the array lift is in arrays.md (T-2160).
+A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
+`NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
 Unprobed: a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
 when only their first characters agree.
 Status: VERIFIED (excel-graph); not implemented (T-2151, T-2152).
@@ -822,3 +824,10 @@ Evidence: probes/regexreplace-limit-and-syntax, probes/regexreplace-result-cap, 
 Implemented in: `MAX_REPLACED_UNITS` / `over_cap` in functions/text/regex_functions.rs, checked on the measured length before the result is built.
 Status: VERIFIED (excel-graph)
 Tasks: T-1817
+
+## ARRAYTOTEXT: an error in the array argument wins over an invalid format (T-2250)
+Rule: `ARRAYTOTEXT(<error>, 2)` is the array argument's error, not the `#VALUE!` of the invalid format 2: `ARRAYTOTEXT(SINH(134217727),2)` is `#NUM!`. Whether this holds for every error kind and for a non-scalar array is unprobed.
+Ours: `#VALUE!` (the format is checked first).
+Evidence: gen-m5/4febabc66cfdf9a1 Calc!A156 (excel-graph, 2026-10-20, T-2114).
+Status: VERIFIED (excel-graph); not implemented (T-2250).
+Tasks: T-2169, T-2250

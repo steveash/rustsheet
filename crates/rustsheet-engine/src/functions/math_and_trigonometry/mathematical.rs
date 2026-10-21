@@ -222,10 +222,11 @@ impl Model {
         self.sum_ifs(args, cell, IfsShape::Strict)
     }
 
-    /// A one-number math function on the SPEC-0011 driver (`LIFT_1`): `op` per element. A NaN
-    /// result (ACOS(2), ACOSH(-1), ...) is `#NUM!` at once: left as a number it is swallowed by an
-    /// enclosing function (`x^0` is 1, `ADDRESS` takes row 0, a comparison is FALSE) instead of
-    /// reaching the cell as `#NUM!` (T-1202, gen-m5/gen-m6/gen-m7 cells).
+    /// A one-number math function on the SPEC-0011 driver (`LIFT_1`): `op` per element. A
+    /// non-finite result (NaN: ACOS(2), ACOSH(-1); infinite: SINH(1E+9), EXP(2^53+1)) is `#NUM!`
+    /// at once: left as a number it is swallowed by an enclosing function (`x^0` is 1, `ADDRESS`
+    /// takes row 0, a comparison is FALSE) instead of reaching the cell as `#NUM!` (T-1202,
+    /// T-2169, gen-m5/gen-m6/gen-m7 cells).
     fn number_fn(
         &mut self,
         kind: Function,
@@ -239,7 +240,13 @@ impl Model {
             };
             match model.kernel_number(value, cell) {
                 Ok(number) => number_result(
-                    op(number).and_then(|x| if x.is_nan() { Err(Error::NUM) } else { Ok(x) }),
+                    op(number).and_then(|x| {
+                        if x.is_finite() {
+                            Ok(x)
+                        } else {
+                            Err(Error::NUM)
+                        }
+                    }),
                     cell,
                 ),
                 Err(error) => error,
@@ -376,7 +383,7 @@ impl Model {
             if (value > 0.0 && multiple < 0.0) || (value < 0.0 && multiple > 0.0) {
                 return num_error(cell);
             }
-            CalcResult::Number((value / multiple).round() * multiple)
+            CalcResult::Number(super::ceiling_floor::mround_value(value, multiple))
         })
     }
 
@@ -603,8 +610,7 @@ impl Model {
     /// `EXP(number)`: Excel's own x87 evaluation, model V6, which is not the correctly rounded exp
     /// (docs/excel-semantics/numbers.md "EXP is an x87 2^(a*log2 e) evaluation, not correctly
     /// rounded"; probes-numeric `t1931-exp-*`). A subnormal result is kept (probes/
-    /// subnormal-function-results C4, C6), and an overflow is infinite, which the cell turns into
-    /// `#NUM!` as before.
+    /// subnormal-function-results C4, C6), and an overflow is `#NUM!` at once (`number_fn`).
     pub(crate) fn fn_exp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Exp, args, cell, |f: f64| Ok(excel_exp(f)))
     }

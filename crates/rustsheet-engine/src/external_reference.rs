@@ -241,6 +241,15 @@ pub(crate) enum PickedReference<'a> {
     Value(CalcResult),
 }
 
+impl crate::functions::logical::ScopeResult for PickedReference<'_> {
+    fn lambda(&self) -> Option<usize> {
+        match self {
+            PickedReference::Value(value) => value.lambda(),
+            PickedReference::External(_) | PickedReference::Node(_) => None,
+        }
+    }
+}
+
 /// The one area of a reference into another workbook, as ROWS, COLUMNS, ROW and COLUMN read
 /// it: several are `#REF!`, as for a union (probes/multiarea-count H2, multiarea-cellfn H3).
 pub(crate) fn one_external_area(

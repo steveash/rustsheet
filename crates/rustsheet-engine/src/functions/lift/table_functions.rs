@@ -66,6 +66,8 @@ macro_rules! lifting_table_functions {
             | Function::Makearray
             | Function::Take
             | Function::Drop
+            | Function::Tocol
+            | Function::Unique
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv
