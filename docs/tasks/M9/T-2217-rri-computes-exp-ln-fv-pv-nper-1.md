@@ -18,14 +18,16 @@ failure goes away.
 Gap triage 2026-10-21 (`make eval` on main d48456cd; `make eval-show CASE=ironcalc-calc/FINANCIAL/RRI.xlsx`):
 - `ironcalc-calc/FINANCIAL/RRI.xlsx` Sheet1!D12 `=_xlfn.RRI(A12,B12,C12)` (0.5, 3, 4): Excel (Mac 16.x cached)
   0.7777777777777775, ours 0.7777777777777777 (NumericUlp, 2 ulp; not visibly off). In the same workbook, E12
-  `=POWER(C12/B12,1/A12)-1` is 0.7777777777777777. So Excel's RRI is not the worksheet `^` here.
+  `=POWER(C12/B12,1/A12)-1` is 0.7777777777777777. So Excel's RRI is not POWER here (the engine's `^` and POWER agree).
 - `rri_of` (crates/rustsheet-engine/src/functions/financial/annuity.rs) computes
   `extended_sum(power(extended_quotient(fv, pv), extended_quotient(1.0, nper)), -1.0)` (T-1975), and its comment
   says Excel uses its own `^`. That fits the 12 excel-graph RRI cells of probes/fin-mduration-rri-fit A37-A59 and
   probes/fin-rri, but not D12.
 - Candidate (triage check in a scratch case): `EXP(LN(fv/pv)/nper)-1` and `EXP(LN(fv/pv)*(1/nper))-1`, with the
-  engine's `excel_exp` (x87_exp.rs) and `excel_ln` (x87_log10.rs), match all 15 points, D12 included.
-  D12 is the only point where they differ from the current form (A37 and A57 agree under every form).
+  engine's `excel_exp` (x87_exp.rs) and `excel_ln` (x87_log10.rs), match all
+  27 Excel RRI cells: the 12 excel-graph cells of probes/fin-mduration-rri-fit, the 10 numeric cells of probes/fin-rri
+  (A1, A5, A6, A9-A14, A16), and the Mac cells RRI.xlsx D3-D6 and D12. D12 is the only cell where they differ from the current form; every other one
+  agrees under every form. Plain libm `exp(log(r)/n)-1` fits too, so T-2216 must also tell it apart.
 - **Needs an oracle sweep** (T-2216): one discriminating point, and a desktop-only one, is too few to fit
   blind. Decision 0030 makes the desktop value the target if the web disagrees on `RRI(0.5,3,4)`.
 - docs/excel-semantics/financial.md "DURATION and RRI operation order" records the D12/E12 quirk.
