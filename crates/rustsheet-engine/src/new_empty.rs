@@ -558,6 +558,7 @@ impl Model {
         }
         self.workbook.defined_names = defined_names;
 
+        self.drop_pivots_on(sheet_index)?;
         // Update the name of the worksheet
         self.workbook.worksheet_mut(sheet_index)?.set_name(new_name);
         self.reset_parsed_structures();
@@ -709,6 +710,8 @@ impl Model {
             views,
             theme: Default::default(),
             external_books: Vec::new(),
+            pivot_caches: Vec::new(),
+            pivot_tables: Vec::new(),
         };
         let worksheets = &workbook.worksheets;
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();

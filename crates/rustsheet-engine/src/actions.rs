@@ -621,6 +621,7 @@ impl Model {
             );
         }
         self.reset_dynamic_array_spills(sheet)?;
+        self.drop_pivots_on(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
@@ -737,6 +738,7 @@ impl Model {
         }
 
         self.reset_dynamic_array_spills(sheet)?;
+        self.drop_pivots_on(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
@@ -1008,6 +1010,7 @@ impl Model {
         }
 
         self.reset_dynamic_array_spills(sheet)?;
+        self.drop_pivots_on(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
@@ -1108,6 +1111,7 @@ impl Model {
         }
 
         self.reset_dynamic_array_spills(sheet)?;
+        self.drop_pivots_on(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
@@ -1702,6 +1706,7 @@ impl Model {
             return Err("Cannot move columns because that would split a merged cell".to_string());
         }
         self.reset_dynamic_array_spills(sheet)?;
+        self.drop_pivots_on(sheet)?;
 
         // Merged ranges are remapped wholesale at the end; take them out so the
         // per-column rebuild (which goes through `set_user_input`) does not trip
@@ -1777,6 +1782,7 @@ impl Model {
             return Err("Cannot move rows because that would split a merged cell".to_string());
         }
         self.reset_dynamic_array_spills(sheet)?;
+        self.drop_pivots_on(sheet)?;
 
         // Merged ranges are remapped wholesale at the end; take them out so the
         // per-row rebuild (which goes through `set_user_input`) does not trip
