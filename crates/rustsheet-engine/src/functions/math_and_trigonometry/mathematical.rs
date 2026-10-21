@@ -87,7 +87,8 @@ fn base_text(number: f64, radix: i64, min_length: f64) -> Result<String, Error> 
     let mut value = number.trunc() as i64;
     let mut digits = Vec::new();
     loop {
-        // `radix` is 2..=36, so the digit is below 36.
+        // `radix` is 2..=36, so the digit is below 36 and `from_digit` never fails: the `'0'`
+        // fallback is unreachable.
         digits.push(
             char::from_digit((value % radix) as u32, 36).map_or('0', |c| c.to_ascii_uppercase()),
         );

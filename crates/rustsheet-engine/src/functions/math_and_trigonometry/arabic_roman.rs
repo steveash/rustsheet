@@ -272,8 +272,9 @@ impl Model {
     }
 
     /// `ARABIC(text)`: the text lifts over arrays and ranges (probes/t2198-m5-lift-argument-kinds
-    /// row 36; docs/excel-semantics/arrays.md). Anything but text or an error is `#VALUE!`; a
-    /// blank cell is 0 in Excel (numbers.md "ARABIC of a blank cell", TODO(T-2153)).
+    /// row 36; docs/excel-semantics/arrays.md). Anything but text or an error is `#VALUE!`, a
+    /// blank cell too, where Excel gives 0: a known gap (numbers.md "ARABIC of a blank cell",
+    /// TODO(T-2153)).
     pub(crate) fn fn_arabic(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Arabic, args, cell, &mut |_, values| {
             let roman_numeral = match values {
