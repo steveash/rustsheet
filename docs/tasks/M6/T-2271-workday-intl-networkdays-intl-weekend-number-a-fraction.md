@@ -3,7 +3,7 @@ id: T-2271
 title: "WORKDAY.INTL/NETWORKDAYS.INTL weekend number: a fraction truncates, a blank weekend cell is #NUM!; probe a boolean weekend"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -50,7 +50,7 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 9 in eval/baselin
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
 
-## Handoff
+## Handoff (resumed)
 Done on this branch: probe probes/weekend-number-coercion (excel-graph values filled, A1:A26: a number weekend truncates, TRUE is 1, FALSE and a blank cell are 0 = `#NUM!`, for both functions), `weekend_mask` rewritten to match (crates/rustsheet-engine/src/functions/date_and_time.rs), a unit test in test/test_fn_weekend_lift.rs, the dates.md entry updated. The engine tests pass.
 
 Blocker: `make eval-baseline` fixes the 9 owned cells but reports 1 REGRESSION, gen-m6/ef10bf3afb9658f6 Calc!A302 `=NETWORKDAYS.INTL(0,10485,2.5,Data!B3:E12)`: Excel `#NUM!`, ours `#VALUE!`. It passed before only because the fractional weekend 2.5 gave `#NUM!` at once; with weekend 2 valid, the holidays (text "1.5", " x ", "ü", TRUE and negative numbers -1, -2.5) decide, and the error order among them is Excel's, not ours. I tried "a numeric holiday out of the calendar beats a text holiday anywhere in the range" in `collect_serial_numbers`: 130 regressions (e.g. gen-m6/121a7c17092038d9 A171 `WORKDAY(16968,-2,Data!B5:D12)` is `#VALUE!` in Excel), so that was reverted. The holiday error order is T-2272's open question (dates.md "WORKDAY and NETWORKDAYS holidays ... the error order", UNVERIFIED). Next: probe the holiday scan order (text, boolean and negative-number holidays in different positions, NETWORKDAYS.INTL vs WORKDAY.INTL, weekend valid) with excel-probe, implement it in `collect_serial_numbers`/`holiday_serials`, then `make eval-baseline` (needs 0 regressions), `make check`, review.
