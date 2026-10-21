@@ -55,12 +55,13 @@ criterion needs: "same as M5" (docs/milestones.md), so bit-exact >= 99.9% on the
 
 ## Outcome
 gen-m6 grew from 25 to 80 cases (`rustsheet-gen --milestone M6 --focus --count 55 --formulas 400 --seed 2`), all
-oracle-filled by excel-graph with no refused workbook and no web-vs-desktop conflict: 23,000 scored cells, 22,670
-bit-exact (98.57%), 331 known failures. `gate = true`; eval/baseline/gen-m6.txt records the failures and
-visible-parity.json rises 1758 -> 2088 for the new cases only (quality-gates.md, decision 0093).
+oracle-filled by excel-graph with no refused workbook and no web-vs-desktop conflict: 23,000 scored cells, 22,671
+bit-exact (98.57%), 330 known failures. `gate = true`; eval/baseline/gen-m6.txt records the failures and
+visible-parity.json rises 1842 -> 2124 (after merging main), less than the 329 visibly-off cells in the new cases (quality-gates.md, decision 0093).
 Every in-scope non-volatile M6 function is the outer call of at least 554 cells (DAYS360); GETPIVOTDATA (SPEC-0015)
 and the volatile INDIRECT/OFFSET have none as outer calls.
 Triage: every known failure is cited by case and cell in an open task. New: T-2262 to T-2281 (293 cells). Extended:
-T-2237 (22), T-2169 (4), T-1484 (4), T-2159 (3), T-2147, T-2152, T-2153, T-2156, T-2161 (1 each). The quirks found are in
+T-2237 (22), T-2169 (4), T-1484 (4), T-2159 (3), T-2147, T-2152, T-2153, T-2156 (1 each); the one cell filed under
+T-2161 (gen-m6/3df034e67b14fccb A223) passes since T-2161 merged. The quirks found are in
 docs/excel-semantics/dates.md, lookup.md, numbers.md, text.md, logic.md and statistics.md.
-Eval delta: +22,000 scored gen-m6 cells, 331 new-coverage known failures, 0 regressions.
+Eval delta: +22,000 scored gen-m6 cells, 330 new-coverage known failures, 0 regressions.
