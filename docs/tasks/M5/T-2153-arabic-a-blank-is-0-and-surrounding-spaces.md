@@ -3,7 +3,7 @@ id: T-2153
 title: "ARABIC: a blank is 0 and surrounding spaces and tabs are trimmed (ARABIC(' x ') = 10)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -49,10 +49,10 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baselin
 | gen-m6/b62dd1ebd266b71c Calc!A179 | `=XMATCH(ARABIC(Data!D10),Data!C4:C8)` | "#N/A" | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
-- [ ] These 12 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] numbers.md entry updated with the probe results and marked implemented.
-- [ ] `make check` green; reviewers approve.
+- [x] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
+- [x] These 12 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] numbers.md entry updated with the probe results and marked implemented.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -61,3 +61,9 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - ARABIC lifting over arrays (T-2159).
+
+## Outcome
+`fn_arabic` reads a blank cell, or the empty value VLOOKUP/HLOOKUP hand on for one, as `""` (0), and trims space, tab,
+line feed and carriage return from both ends of the text; inner whitespace, CHAR(160), `0` and `FALSE` stay `#VALUE!`
+as probed. Eval: 26 known failures fixed, 0 regressions (gen-m5 86 -> 74, all 12 cells above; gen-m6 264 -> 263,
+b62dd1ebd266b71c A179; probes 1667 -> 1654, t2200 A50-A53, A55-A58, A60-A63, A65). numbers.md entry marked implemented.
