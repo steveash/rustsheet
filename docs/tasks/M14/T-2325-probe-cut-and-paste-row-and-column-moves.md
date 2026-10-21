@@ -23,6 +23,8 @@ table, where Excel is believed (hand) to add a renamed table to the copy (from T
 
 ## Acceptance criteria
 - [ ] Desktop evidence for each of the four edits in references.md, or a recorded reason one cannot be had.
+- [ ] Desktop cross-check of the T-2197 plain-range quirk (`=SUM(S!C4:C7)` becomes `S!C4:C8` on a row
+  inserted above the first data row or above the totals row; seen through Graph's `range/insert` only).
 - [ ] An engine task filed for each finding the engine misses.
 - [ ] `make check` green; reviewers approve.
 
