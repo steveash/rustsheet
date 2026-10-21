@@ -2,7 +2,7 @@
  "format": "rustsheet-case/v1",
  "description": "IMAGE with a grid source, a scalar error option and a wider array option: shape and element errors (T-2205)",
  "tags": [
-  "M1",
+  "M2",
   "probe",
   "image",
   "T-2205"
