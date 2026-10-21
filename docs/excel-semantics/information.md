@@ -357,9 +357,13 @@ The result is a plain number (`TYPE` 1, `ISNUMBER` TRUE, `+0`, `*1`, `=3` TRUE).
 (`SUM(Gamma:Alpha!A1)` = `SUM(Alpha:Gamma!A1)`).
 Evidence: probes/info-sheets-info-types Alpha!D1:D24, D50:D52 (excel-graph, 2026-10-20, T-2115). The engine implements a single-area
 reference and a 3-D span in either order (T-2181); only a written reference (cell, range, 3-D span) is read; a union, a lifted reference grid, a name, OFFSET,
-INDIRECT, INDEX, an IF/CHOOSE pick, a cross-sheet range operator (`Alpha!A1:Beta!B1`), a non-reference and an error argument stay `#N/IMPL!`. The unquoted cell-like span `SHEETS(S1:S3!A1)` (`#VALUE!` in
-Excel) is still a known failure: T-2193. Unprobed, because the oracle canary refuses them (T-2113): a union, INDIRECT,
-OFFSET, a defined name, a non-reference or error argument, and bare `SHEETS()`.
+INDIRECT, INDEX, an IF/CHOOSE pick, a cross-sheet range operator between two sheet-qualified cells
+(`Alpha!A1:Beta!B1`), a non-reference and an error argument stay `#N/IMPL!`. An unqualified cell joined to a cell on
+another sheet is `#VALUE!`: that is how the unquoted cell-like span `SHEETS(S1:S3!A1)` reads, `S1:(S3!A1)`, as in
+Excel (T-2193), and as the range operator itself is between corners on two sheets (references.md "Sheet-qualified
+range corners"). Unprobed, because the oracle canary refuses them (T-2113): a union, INDIRECT,
+OFFSET, a defined name, a non-reference or error argument, bare `SHEETS()`, and a range operator across sheets
+(`SHEETS(Alpha!A1:Beta!B1)`, refused 2026-10-21).
 Probe trap: sheets named like cells (S1, S2, S3) break an unquoted 3-D span on Excel for the web: `SUM(S1:S3!A1)`,
 `SUM(S3:S1!A1)` and `SHEETS(S1:S3!A1)` are `#VALUE!` and `SHEETS(S3:S1!A1)` is 1, while the quoted `'S1:S3'!A1` works
 (`SUM` 13, `SHEETS` 3) and so does a single-sheet `S2!A1` (probes/sheet-names-like-cells-3d-spans B1:B7, excel-graph,
