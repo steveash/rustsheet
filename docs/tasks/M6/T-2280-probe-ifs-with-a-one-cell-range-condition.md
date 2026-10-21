@@ -3,7 +3,7 @@ id: T-2280
 title: "Probe IFS with a one-cell range condition holding text under ROWS (Excel 1, ours #VALUE!)"
 milestone: M6
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
