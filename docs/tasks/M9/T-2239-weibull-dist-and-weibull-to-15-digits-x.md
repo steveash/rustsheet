@@ -19,9 +19,9 @@ accurate value.
 
 ## Context
 Gap triage 2026-10-21 (`make eval` on `main` d77d01b0). `functions/statistical/weibull.rs`
-`weibull_dist_of` calls `statrs::distribution::Weibull` (`cdf` = `-expm1(-(x/l)^k)` with `powf`,
-`pdf` = `k/l (x/l)^(k-1) exp(-(x/l)^k)`). T-0978 owns the last digits. It only names the two
-ironcalc-calc lines and has no 15-digit target, so the visibly-off sweep cells had no
+`weibull_dist_of` calls `statrs::distribution::Weibull` (statrs 0.18: `cdf` = `-expm1(-x.powf(k) * l.powf(-k))`,
+`pdf` = `k/l (x/l)^(k-1) exp(-x^k l^-k)`). T-0978 owns the last digits: it targets the same sweeps
+bit for bit but has no 15-digit (visible-parity) stage, so the visibly-off sweep cells had no
 visible-parity task (decision 0083).
 
 The visibly-off cells (excel-graph; probes-numeric is ungated, so read them from `make eval` /
@@ -48,11 +48,12 @@ The visibly-off cells (excel-graph; probes-numeric is ungated, so read them from
 | t1049-weibulldist A22 | `WEIBULL.DIST(10,2,3,FALSE)` | 3.321186338840311e-05 | 3.321186338840322e-05 |
 
 Lead, recorded in docs/excel-semantics/statistics.md "The far-tail density is less accurate than
-exp(-t)". Compute t = (x/l)^k as exp(k*ln(x/l)). In a libm re-run over all 230 in-domain cells (116 cdf, 114 density):
-- the cdf `-expm1(-t)` leaves no cell visibly off, and 94 of 116 are bit-exact, against 74 for the
-  current form;
+exp(-t)". Compute t = (x/l)^k as exp(k*ln(x/l)). In a libm re-run over all 230 in-domain cells (x, k, l > 0 with a literal TRUE/FALSE cumulative; 116 cdf, 114 density):
+- the cdf `-expm1(-t)` leaves no cell visibly off, and 94 of 116 are bit-exact, against 1 visibly off and 76 bit-exact for the
+  engine's statrs form;
 - the density `k/l*exp((k-1)*ln(x/l))*exp(-t)` leaves 4 visibly off (m9 A158, A168; t1048 A8, B8);
-- `k/l^k*exp((k-1)*ln x)*exp(-t)` leaves 2 (t1048 A8, B8), against 15 for the statrs form.
+- `k/l^k*exp((k-1)*ln x)*exp(-t)` leaves 2 (t1048 A8, B8), against 17 for the engine's statrs form (17 + the cdf's 1 are the
+  18 cells in the table).
 - The same t also gives ironcalc-calc WEIBULL_DIST.xlsx E2 bit for bit (T-0978's line).
 
 The fit is numeric, but the evidence is already in `eval/` (decision 0083 allows fitting at this stage).

@@ -1757,23 +1757,27 @@ Match it; do not correct it.
 - `WEIBULL.DIST(5,3.7,1,FALSE)` = 9.363099887555361E-166 (A146).
 
 Computing t = exp(k*ln(x/l)), not `powf`, reproduces this. A double-precision re-run covered the
-230 in-domain cells (x, k, l > 0; 116 cdf, 114 density) of m9-weibull-dist, t1048-weibull and
-t1049-weibulldist. Visibly-off and bit-exact counts are per form:
+230 in-domain cells (x, k, l > 0 with a literal TRUE/FALSE cumulative; 116 cdf, 114 density) of
+m9-weibull-dist, t1048-weibull and t1049-weibulldist. Visibly-off and bit-exact counts are per form:
 
 | form | visibly off | bit-exact |
 |---|---|---|
 | cdf `-expm1(-t)` | 0 | 94 |
-| cdf `-expm1(-(x/l)^k)` | 1 | 74 |
+| cdf `-expm1(-(x/l)^k)`, `(x/l)^k` via powf | 1 | 74 |
+| cdf, statrs form `-expm1(-x^k*l^-k)` (the engine today) | 1 (m9 A159) | 76 |
 | cdf `1-EXP(-t)` (loses the small-x cells) | 24 | |
 | density `k/l*exp((k-1)*ln(x/l))*exp(-t)` | 4 (m9 A158, A168; t1048 A8, B8) | |
 | density `k/l^k*exp((k-1)*ln x)*exp(-t)` | 2 (t1048 A8, B8) | |
-| density, statrs form | 15 | |
+| density `k/l*(x/l)^(k-1)*exp(-(x/l)^k)`, powf | 15 | |
+| density, statrs form `k/l*(x/l)^(k-1)*exp(-x^k*l^-k)` (the engine today) | 17 | |
 
-t1048 A8 and B8 are `WEIBULL.DIST(10,3,8,FALSE)` = 0.08310360884023987. The same t gives
+t1048 A8 is `WEIBULL(10,3,8,FALSE)` and B8 its WEIBULL.DIST twin, both 0.08310360884023987. The same t gives
 ironcalc-calc WEIBULL_DIST.xlsx E2 exactly (`WEIBULL.DIST(0.8,1,9,TRUE)` = 0.08505277126996899).
 The re-runs used libm `exp`/`log`, not Excel's EXP and LN kernels, so the bit-level form is still
 open (T-0978).
-Status: a lead from the oracle values (gap triage 2026-10-21), not yet a verified Excel formula.
+Evidence: probes-numeric m9-weibull-dist A64, A88, A146, t1048-weibull, t1049-weibulldist (excel-graph).
+Status: the values are VERIFIED (excel-graph); the `exp(k*ln(x/l))` form is UNVERIFIED (a fit lead,
+gap triage 2026-10-21; T-2239, T-0978).
 Tasks: T-2239 (15 digits), T-0978 (last digits)
 
 ## Legacy distribution names sweep (T-1047)
