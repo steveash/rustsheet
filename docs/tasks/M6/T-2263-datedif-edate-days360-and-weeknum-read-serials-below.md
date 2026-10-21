@@ -3,7 +3,7 @@ id: T-2263
 title: "DATEDIF, EDATE, DAYS360 and WEEKNUM read serials below 61 on Excel's displayed 1900 calendar (serial 0 is 1900-01-00, 60 is 1900-02-29)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
