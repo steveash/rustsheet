@@ -1,0 +1,43 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "IMAGE with a grid source, a scalar error option and a wider array option: shape and element errors (T-2205)",
+ "tags": [
+  "M1",
+  "probe",
+  "image",
+  "T-2205"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=ROWS(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5,5}))",
+    "B1": "=COLUMNS(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5,5}))",
+    "C1": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5,5}),1,1))",
+    "D1": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5,5}),1,2))",
+    "E1": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5,5}),1,3))",
+    "A2": "=ROWS(IMAGE({\"https://a.invalid/x.png\";\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}))",
+    "B2": "=COLUMNS(IMAGE({\"https://a.invalid/x.png\";\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}))",
+    "C2": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\";\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}),1,1))",
+    "D2": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\";\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}),1,2))",
+    "E2": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\";\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}),1,3))",
+    "A3": "=ROWS(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}))",
+    "B3": "=COLUMNS(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}))",
+    "C3": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}),1,1))",
+    "D3": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}),1,2))",
+    "E3": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5;5;5}),1,3))",
+    "A4": "=ROWS(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5}))",
+    "B4": "=COLUMNS(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5}))",
+    "C4": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5}),1,1))",
+    "D4": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5}),1,2))",
+    "E4": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",1/0,{5,5}),1,3))",
+    "A5": "=ROWS(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",NA(),{5,5,5}))",
+    "B5": "=COLUMNS(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",NA(),{5,5,5}))",
+    "C5": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",NA(),{5,5,5}),1,1))",
+    "D5": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",NA(),{5,5,5}),1,2))",
+    "E5": "=ERROR.TYPE(INDEX(IMAGE({\"https://a.invalid/x.png\",\"https://a.invalid/x.png\"},\"alt\",NA(),{5,5,5}),1,3))"
+   }
+  }
+ ],
+ "expected": {}
+}
