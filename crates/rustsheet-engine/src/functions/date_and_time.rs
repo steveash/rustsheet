@@ -131,6 +131,29 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
+/// One TIME argument as Excel counts it: floored, except that a value about 2.4E-7 or less below
+/// an integer counts as that integer (half that when the value is negative): `TIME(1-2^-22,0,0)`
+/// is 1:00 and `TIME(1-2.4E-7,0,0)` 0:00, `TIME(1,0,-1E-7)` is 1:00 and `TIME(1,0,-1.2E-7)`
+/// 0:59:59, in each argument's own unit and at any magnitude. The windows sit inside the
+/// probed edges (2^-22, 2.4E-7) and (2^-23, 1.2E-7), clear of the gap's rounding error at 32768.
+/// Then `#NUM!` outside
+/// -32768..=32767. Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is
+/// `#NUM!`" (probes/time-argument-*, T-2267).
+fn time_argument(value: f64) -> Result<f64, Error> {
+    let floor = value.floor();
+    let window = if value < 0.0 { 1.195e-7 } else { 2.39e-7 };
+    let whole = if floor + 1.0 - value < window {
+        floor + 1.0
+    } else {
+        floor
+    };
+    if (-32768.0..=32767.0).contains(&whole) {
+        Ok(whole)
+    } else {
+        Err(Error::NUM)
+    }
+}
+
 /// The hour, minute and second of a serial's time of day, as HOUR, MINUTE and SECOND take it
 /// apart. Half a second is added to the serial, then its fraction of a day is split by floors,
 /// through hours (x24) and minutes (x60), each step in double precision. So the time rounds to the
@@ -510,7 +533,12 @@ impl Model {
         // Lifts over a range or array in every argument (probes/date-argument-modes F43:F46).
         let kind = Function::Time;
         self.numbers_fn(kind, args, [0.0; 3], cell, |[hour, minute, second]| {
-            let total_seconds = hour.floor() * 3600.0 + minute.floor() * 60.0 + second.floor();
+            let [hour, minute, second] = [
+                time_argument(hour)?,
+                time_argument(minute)?,
+                time_argument(second)?,
+            ];
+            let total_seconds = hour * 3600.0 + minute * 60.0 + second;
             if total_seconds < 0.0 {
                 return Err(Error::NUM);
             }

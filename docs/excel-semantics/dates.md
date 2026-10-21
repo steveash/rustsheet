@@ -1021,16 +1021,34 @@ Status: VERIFIED for these cells.
 Tasks: T-2264, T-2263
 
 ## TIME: an argument past 32767 is `#NUM!`; a near-integer hour counts as that integer (T-2267)
-Rule (excel-graph, gen-m6, 2026-10-21): TIME is `#NUM!` when its hour, minute or second is far past a day's worth, instead of
-wrapping: `TIME(9,DATEVALUE("1/15/2024"),39)` (minute 45306), `TIME(DATEVALUE("2023-03-01"),27,26)` (hour 44986),
-`TIME(18,33,FACT(13))`, `TIME(1,-0.0001,COMBIN(26,6))` (second 230230), `TIME(1E+15,44,15)`, `TIME(9,123456789.123,30)`,
-`SECOND(TIME(1E+15,10,48))` (gen-m6/07171fa3f7493f51 Calc!A49, ee56a4ed5a612a0d A289, 9615a6de0f3ac417 A236, 04fdc9a67474aab9
-A163, `gen-m6/2ba5bd794e7e8987` A312, 36d5ce763ea63631 A319, 9e6a1b733ee1e1e0 A77; 34 cells in T-2267). The smallest offending argument in
-the evidence is 44986, so the bound is somewhere in 23..44986; Microsoft documents 32767, UNVERIFIED until T-2267 probes it.
-An hour of `1/POWER(0.1,2)` (99.99999999999999) counts as 100: `TIME(COLUMNS(A9)/POWER(0.1,2),12,35)` = 0.17540509259259274
-(4:12:35; d183b62596b8e174 A331); ours floors it to 99 (0.13373842592592577).
-Ours: `fn_time` floors each argument and wraps any total, so every cell above is a number.
-Status: VERIFIED for the cells; the exact bound and the rounding window are UNVERIFIED.
+Rule (excel-graph, 2026-10-21): TIME reads each of its hour, minute and second on its own, in that argument's own unit and
+at any magnitude: it floors the value, except that a value less than about 2.4E-7 below an integer counts as that integer, and
+for a negative value the window is half as wide, about 1.2E-7. Measured edges: positive, `1-(2^-22+1E-12)` counts as 1 and
+`1-2.4E-7` does not (same at 5, 30000 and 32768); negative, `-1-(2^-23+1E-12)` and `-(2^-23+1E-12)` count as -1 and 0, while
+`-1-1.2E-7` and `-1.2E-7` floor (same at -5, -30000, -32767). We implement the windows as "less than 2.39E-7" and "less
+than 1.195E-7"; the exact constants inside (2^-22+1E-12, 2.4E-7) and (2^-23+1E-12, 1.2E-7) are unprobed. Then any argument outside
+-32768..32767 is `#NUM!` (before the total is formed, so a minute of -32768 is legal and one of -32769 is not, whatever the
+hour), and so is a negative total; otherwise the value is `((h*3600+m*60+s)/86400) % 1` as in "TIME divides by 86400 first".
+Mind Excel's precedence when probing: `-2^-22` is `(-2)^-22`, a positive number; write `-(2^-22)`.
+- Bound: `TIME(32767,0,0)` = 0.29166666666674246, `TIME(600,32767,0)` = 0.7548611111111114, `TIME(10,0,32767)` =
+  0.7959143518518519; the same with 32767.5 or 32767.9999; 32768, 65535, 65536 and -32769 in any position are `#NUM!`;
+  `TIME(600,-32768,0)` = 0.24444444444444446, `TIME(10,0,-32768)` = 0.03740740740740741; `TIME(32767,32767,32767)` =
+  0.4257754629629744; `TIME(600,-32768.5,0)` and `TIME(10,0,-32768.5)` are `#NUM!` (floored to -32769), while
+  `TIME(600,-32768-1E-7,0)` is a number (inside the window). `TIME("32768",0,0)` is `#NUM!`, `TIME("32767",0,0)` a number.
+  (probes/time-argument-bound A1-A35, A77-A79; time-argument-window A73-A76.)
+- Window: `TIME(1-2^-22,0,0)` = 1:00 and `TIME(1-2.4E-7,0,0)` = 0:00; the same edge for the minute (`TIME(0,1-2^-22,0)` =
+  0:01) and the second, at 1, 5, 30000 and 32768 alike (`TIME(0,0,32768-2.3E-7)` is `#NUM!`, `-2.4E-7` gives 9:06:07);
+  `TIME(10,0,-1E-7)` = 10:00 but `TIME(10,0,-1.2E-7)` = 9:59:59, `TIME(10,0,-1-1E-7)` = 9:59:59, `TIME(1,-0.5,0)` = 0:59,
+  `TIME(1,-1E-15,0)` = 1:00,
+  `TIME(-0.5,0,1)` and `TIME(0,0,-0.0005)` are `#NUM!`. So `1/POWER(0.1,2)` (99.99999999999999), 100-1E-7 and 23.9999999 hours
+  count as 100 and 24 (`TIME(23.9999999,0,0)` = 0, `HOUR(TIME(99.99999999999999,0,0))` = 4), but 32767.9999 floors.
+  Each argument floors on its own: `TIME(0,0.5,30)` = 0:00:30 and `TIME(0,0.99999,0.0006)` = 0.
+  (probes/time-argument-bound A36-A76, time-argument-rounding, time-argument-window A1-A72 and A77-A81, time-argument-negative,
+  time-argument-negative-window.)
+- gen-m6 cells (34 in T-2267): `TIME(9,DATEVALUE("1/15/2024"),39)`, `TIME(DATEVALUE("2023-03-01"),27,26)`, `TIME(18,33,FACT(13))`,
+  `TIME(1E+15,44,15)`, `SECOND(TIME(1E+15,10,48))` are `#NUM!`; `TIME(COLUMNS(A9)/POWER(0.1,2),12,35)` = 0.17540509259259274.
+Ours: `time_argument` in `functions/date_and_time.rs` (T-2267).
+Status: VERIFIED (excel-graph probes above, 2026-10-21).
 Tasks: T-2267
 
 ## DATE: a year, month or day just below an integer (T-2268)
