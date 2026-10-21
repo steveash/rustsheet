@@ -3,7 +3,7 @@ id: T-2324
 title: "Probe row and column deletes, column inserts, convert-to-range, table delete and sheet delete on a table (T-2197 part 2)"
 milestone: M8
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
