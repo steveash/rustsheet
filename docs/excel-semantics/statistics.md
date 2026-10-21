@@ -2166,9 +2166,22 @@ Status: VERIFIED (excel-graph).
 Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755
 
-## AGGREGATE 18 with a multi-cell k under EDATE (T-2281)
-Observed (excel-graph, gen-m6, 2026-10-21): `EDATE(AGGREGATE(18,3,Data!C3:D3,Data!C3:D10),-21)` is `#VALUE!`, ours `#NUM!`
-(gen-m6/03333cc38ec06a14 Calc!A120; C3 is "x", the first k). Consistent with AGGREGATE lifting over a range k so that the first
-element is k = "x" (`#VALUE!`), UNVERIFIED (T-2281 probes it).
-Status: UNVERIFIED (one cell)
-Tasks: T-2281
+## AGGREGATE 14-19: k is read before the array, a referenced error k is `#VALUE!` (T-2281)
+Rule: functions 14-19 coerce k to a number before they count the array's numbers, so over an
+array with no numbers a text k is `#VALUE!` and an error k its own error, where a blank, TRUE or
+"2" k gives the empty array's `#NUM!`. A k that is a reference reads its top-left cell (a
+multi-cell range does not lift), and a referenced cell holding an error is `#VALUE!`, not that
+error, over a full or an empty array.
+Cells (probes/aggregate-range-k-first-cell, excel-graph 2026-10-21; A1:A5 = 1..5, B1 "x", B2 blank,
+B3 0.5, B4 2, C1:C2 no numbers, D1 `=NA()`):
+- `AGGREGATE(18,3,C1:C2,B1:B3)`, `AGGREGATE(14,6,C1:C2,"x")`, functions 14-19 over C1:C2 with
+  k B1:B3: `#VALUE!` (A3, A5:A11); `EDATE(…,-21)` `#VALUE!` (A19, and gen-m6/03333cc38ec06a14
+  Calc!A120).
+- `AGGREGATE(18,3,C1:C2,0.5)`, k -1, k B2:B3 (blank), k B3:B4 (0.5), k "2", k TRUE: `#NUM!` (A4,
+  A12, A20, A21, A25, A26); k `1/0`: `#DIV/0!` (A24).
+- `AGGREGATE(14,6,A1:A5,B1:B3)` `#VALUE!` (A2), `AGGREGATE(16,6,A1:A5,B3:B4)` 3 (A14),
+  `AGGREGATE(14,6,A1:A5,B4:B5)` 4 and `ROWS(…)` 1 (A16, A17), `AGGREGATE(14,6,A1:A5,"2")` 4 (A28).
+- `AGGREGATE(14,6,A1:A5,D1)`, `…,D1:D2)` and `AGGREGATE(14,6,C1:C2,D1)` `#VALUE!` (A27, A29:A31).
+- An array k still lifts: `AGGREGATE(14,6,C1:C2,{"x";1})` spills `#VALUE!`, `#NUM!` (A22:A23).
+Engine: `Model::aggregate_k` (crates/rustsheet-engine/src/functions/aggregate.rs).
+Status: implemented (T-2281)

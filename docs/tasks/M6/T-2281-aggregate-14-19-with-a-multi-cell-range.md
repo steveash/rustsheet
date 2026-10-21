@@ -3,7 +3,7 @@ id: T-2281
 title: "AGGREGATE 14-19 with a multi-cell range k: probe and match (EDATE over it is #VALUE!, ours #NUM!)"
 milestone: M6
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -27,12 +27,19 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baselin
 | gen-m6/03333cc38ec06a14 Calc!A120 | `=EDATE(AGGREGATE(18,3,Data!C3:D3,Data!C3:D10),-21)` | "#VALUE!" | "#NUM!" |
 
 ## Acceptance criteria
-- [ ] This 1 known-failure line disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] A new probes case (excel-graph) holds the grid; statistics.md states the rule with cells.
-- [ ] `make check` green; reviewers approve.
+- [x] This 1 known-failure line disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] A new probes case (excel-graph) holds the grid; statistics.md states the rule with cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - AGGREGATE's other function numbers.
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+Probed (probes/aggregate-range-k-first-cell, excel-graph, 32 cells): AGGREGATE 14-19 coerce k
+before counting the array's numbers (a text k over no numbers is `#VALUE!`, an error k its error),
+a reference k reads its top-left cell, and a referenced error cell as k is `#VALUE!`. New
+`Model::aggregate_k` replaces `top_left_k`. Eval: gen-m6 known failures 172 -> 171
+(03333cc38ec06a14 Calc!A120); the new probe case passes 32/32; no regressions.

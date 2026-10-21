@@ -171,19 +171,27 @@ impl Model {
         }
     }
 
-    /// A multi-cell range k reads its top-left cell (probes/aggregate-range-args A31, A61-A71).
-    /// Any other k, or a top-left cell that is not a plain value, is passed on unchanged.
-    fn top_left_k(&mut self, k: &Node, cell: CellReferenceIndex) -> Node {
-        if !matches!(k.ungrouped(), Node::RangeKind { .. }) {
-            return k.clone();
+    /// k's value: a reference k reads its top-left cell, a multi-cell range too (`AGGREGATE(16,6,
+    /// A1:A5,B3:B4)` reads B3; probes/aggregate-range-args A31, A61-A71,
+    /// aggregate-range-k-first-cell A14:A17), and a referenced error cell is `#VALUE!`, not its
+    /// error (aggregate-range-k-first-cell A27, A29:A31). Any other k is its value.
+    fn aggregate_k(&mut self, k: &Node, cell: CellReferenceIndex) -> CalcResult {
+        if !matches!(
+            k.ungrouped(),
+            Node::RangeKind { .. } | Node::ReferenceKind { .. }
+        ) {
+            return self.evaluate_node_in_context(k, cell);
         }
         match self.evaluate_node_with_reference(k, cell) {
-            CalcResult::Range { left, right }
-                if left.sheet == right.sheet && is_multi_cell(&left, &right) =>
-            {
-                value_node(&self.evaluate_cell(left)).unwrap_or_else(|| k.clone())
+            CalcResult::Range { left, right } if left.sheet == right.sheet => {
+                match self.evaluate_cell(left) {
+                    CalcResult::Error { .. } => {
+                        CalcResult::new_error(Error::VALUE, cell, "k is an error cell".to_string())
+                    }
+                    value => value,
+                }
             }
-            _ => k.clone(),
+            _ => self.evaluate_node_in_context(k, cell),
         }
     }
 
@@ -319,11 +327,18 @@ impl Model {
         if let Some(error) = collected.error {
             return error;
         }
+        // k is read as a number before the array's numbers are counted: over an empty range a
+        // text k is `#VALUE!` and an error k its error, while a blank, TRUE or "2" is `#NUM!`
+        // (probes/aggregate-range-k-first-cell A3:A11, A19:A27; gen-m6/03333cc38ec06a14 A120).
+        let k = self.aggregate_k(k, cell);
+        if let Err(error) = self.cast_to_number(k.clone(), cell) {
+            return error;
+        }
         if collected.numbers.is_empty() {
             // probes/aggregate-grid I41:I46 (an empty range).
             return CalcResult::new_error(Error::NUM, cell, "No numbers".to_string());
         }
-        let k = self.top_left_k(k, cell);
+        let k = value_node(&k).unwrap_or(Node::EmptyArgKind);
         let values = [numbers_array(collected.numbers), k];
         match function {
             14 => self.fn_large(&values, cell),

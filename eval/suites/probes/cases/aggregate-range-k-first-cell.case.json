@@ -1,0 +1,62 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "AGGREGATE 14-19 with a multi-cell range k (its top-left cell is k) and with a text, error, numeric-text or boolean k, over a full and an empty array; ROWS/INDEX over it and EDATE of it (T-2281).",
+  "tags": [
+    "M5",
+    "aggregate",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5,
+        "B1": "x",
+        "B3": 0.5,
+        "B4": 2,
+        "C1": "y",
+        "D1": "=NA()"
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=AGGREGATE(18,3,Data!A1:A5,Data!B1:B3)",
+        "A2": "=AGGREGATE(14,6,Data!A1:A5,Data!B1:B3)",
+        "A3": "=AGGREGATE(18,3,Data!C1:C2,Data!B1:B3)",
+        "A4": "=AGGREGATE(18,3,Data!C1:C2,0.5)",
+        "A5": "=AGGREGATE(18,3,Data!C1:C2,\"x\")",
+        "A6": "=AGGREGATE(14,6,Data!C1:C2,\"x\")",
+        "A7": "=AGGREGATE(14,6,Data!C1:C2,Data!B1:B3)",
+        "A8": "=AGGREGATE(15,6,Data!C1:C2,Data!B1:B3)",
+        "A9": "=AGGREGATE(16,6,Data!C1:C2,Data!B1:B3)",
+        "A10": "=AGGREGATE(17,6,Data!C1:C2,Data!B1:B3)",
+        "A11": "=AGGREGATE(19,6,Data!C1:C2,Data!B1:B3)",
+        "A12": "=AGGREGATE(19,6,Data!C1:C2,-1)",
+        "A13": "=AGGREGATE(14,6,Data!A1:A5,Data!B2:B3)",
+        "A14": "=AGGREGATE(16,6,Data!A1:A5,Data!B3:B4)",
+        "A15": "=AGGREGATE(14,6,Data!A1:A5,Data!B3:B4)",
+        "A16": "=AGGREGATE(14,6,Data!A1:A5,Data!B4:B5)",
+        "A17": "=ROWS(AGGREGATE(14,6,Data!A1:A5,Data!B4:B5))",
+        "A18": "=INDEX(AGGREGATE(14,6,Data!A1:A5,{1;2}),2)",
+        "A19": "=EDATE(AGGREGATE(18,3,Data!C1:C2,Data!B1:B3),-21)",
+        "A20": "=AGGREGATE(14,6,Data!C1:C2,Data!B2:B3)",
+        "A21": "=AGGREGATE(16,6,Data!C1:C2,Data!B3:B4)",
+        "A22": "=AGGREGATE(14,6,Data!C1:C2,{\"x\";1})",
+        "A24": "=AGGREGATE(14,6,Data!C1:C2,1/0)",
+        "A25": "=AGGREGATE(14,6,Data!C1:C2,\"2\")",
+        "A26": "=AGGREGATE(14,6,Data!C1:C2,TRUE)",
+        "A27": "=AGGREGATE(14,6,Data!C1:C2,Data!D1:D2)",
+        "A28": "=AGGREGATE(14,6,Data!A1:A5,\"2\")",
+        "A29": "=AGGREGATE(14,6,Data!A1:A5,Data!D1:D2)",
+        "A30": "=AGGREGATE(14,6,Data!A1:A5,Data!D1)",
+        "A31": "=AGGREGATE(14,6,Data!C1:C2,Data!D1)"
+      }
+    }
+  ],
+  "expected": {}
+}
