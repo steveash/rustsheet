@@ -48,7 +48,7 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 219 known-failure l
 - gen-m7/7d67c559ce7536fa.case.json A1496 `=SCAN((SUM(42,Data!A2)/Data!$C9),Data!A4:D7,LAMBDA(x,z,EOMONTH(2958466,-11)))`: B1496 Excel #NUM!, ours <empty>; cells (15): B1496:D1496, A1497:D1497, A1498:D1498, A1499:D1499
 - gen-m7/8044dce50616cfe9.case.json A124 `=SCAN(COMBIN(Data!D1,5),Data!A4:D6,_xleta.MIN)`: B124 Excel #NUM!, ours <empty>; cells (11): B124:D124, A125:D125, A126:D126
 - gen-m7/8044dce50616cfe9.case.json A1544 `=SCAN(MINVERSE(Data!C1:E5),Data!A11:B12,LAMBDA(acc,y,REGEXTEST(TEXTBEFORE(acc,acc,-2),"(\w)(\w)",1)))`: B1544 Excel #VALUE!, ours <empty>; cells (3): B1544, A1545:B1545
-- gen-m7/8044dce50616cfe9.case.json A1630 `=REDUCE((("x~*"&"Hello World")>-Data!E8),(IFS(Data!E9,Data!E9)<Data!A3),LAMBDA(y,acc,Data!B7))`: A1630 Excel 1.0, ours #VALUE!; cells (1): A1630
+- gen-m7/8044dce50616cfe9.case.json A1630 `=REDUCE((("x~*"&"Hello World")>-Data!E8),(IFS(Data!E9,Data!E9)<Data!A3),LAMBDA(y,acc,Data!B7))`: A1630 Excel 1.0, ours #VALUE!; cells (1): A1630 (passes since T-2280: IFS's text condition gives a 1x1 `#VALUE!` array; no longer this task's)
 - gen-m7/90de8755a2e565e6.case.json A49 `=REDUCE(SQRT((Data!E$8+Data!B6)),Data!A1:C6,LAMBDA(y,acc,CHAR(65)))`: A49 Excel "A", ours #VALUE!; cells (1): A49
 - gen-m7/90de8755a2e565e6.case.json A1223 `=SCAN(COUNTIFS(Data!B2:C4,"<>",Data!B4:D6,">0"),Data!A8:B12,_xleta.COUNT)`: A1223 Excel 1.0, ours #VALUE!; cells (10): A1223:B1223, A1224:B1224, A1225:B1225, A1226:B1226, A1227:B1227
 - gen-m7/9359f03972e94026.case.json A285 `=SCAN(Data!$A$12,Data!B4:E6,LAMBDA(x,y,(SECH(y)-x)))`: A285 Excel 0.7999999950000001, ours #VALUE!; cells (12): A285:D285, A286:D286, A287:D287

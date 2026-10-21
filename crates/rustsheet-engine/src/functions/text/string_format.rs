@@ -192,7 +192,15 @@ impl Model {
             ",".to_string()
         };
 
-        if decimal_sep.is_empty() || decimal_sep == group_sep {
+        // Only the first character of each separator counts, and an empty one is #VALUE!
+        // (docs/excel-semantics/text.md "NUMBERVALUE reads text as VALUE does"; gen-m5/5704666097cbc5b2
+        // Calc!A261, gen-m5/a6fec430ac350c1a Calc!A32).
+        let (Some(decimal_sep), Some(group_sep)) =
+            (decimal_sep.chars().next(), group_sep.chars().next())
+        else {
+            return CalcResult::new_error(Error::VALUE, cell, "Invalid separators".to_string());
+        };
+        if decimal_sep == group_sep {
             return CalcResult::new_error(Error::VALUE, cell, "Invalid separators".to_string());
         }
 
@@ -201,7 +209,13 @@ impl Model {
         if number_text_too_long(&text) {
             return CalcResult::new_error(Error::VALUE, cell, "Text too long".to_string());
         }
+        // Every occurrence of the group character goes before anything else is read; text that is
+        // empty then is 0 (gen-m5/5704666097cbc5b2 Calc!A392).
+        let text = text.replace(group_sep, "");
         let trimmed = text.trim();
+        if trimmed.is_empty() {
+            return CalcResult::Number(0.0);
+        }
 
         // Handle percentage suffix
         let (trimmed, pct_count) = {
@@ -214,13 +228,12 @@ impl Model {
             (t.trim_end(), count)
         };
 
+        // Only a bare "%" run is left empty here; empty text returned 0 above.
         if trimmed.is_empty() {
             return CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string());
         }
 
-        // Remove group separators, replace decimal separator with '.'
-        let cleaned = trimmed.replace(&group_sep, "");
-        let cleaned = cleaned.replace(&decimal_sep, ".");
+        let cleaned = trimmed.replace(decimal_sep, ".");
 
         // Reject if more than one '.' after replacement
         if cleaned.matches('.').count() > 1 {

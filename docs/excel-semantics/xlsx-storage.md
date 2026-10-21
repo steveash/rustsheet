@@ -287,7 +287,8 @@ LibreOffice writes it), and its formulas reach the table by the displayName: `SU
 in the totals row of `<table displayName="Таблица1" ref="A2:E13" totalsRowCount="1">` computes.
 Evidence: poi/LIBRE_OFFICE-128382-0.xlsx Basic features!B13:E13 (19239.04, 25215.790000000005, 28393.92,
 27527.01; excel-graph, 2026-10-04, eval/suites/poi/oracle/LIBRE_OFFICE-128382-0.oracle.json).
-Ours: the import fails ("Corrupt XML structure: missing table name"), and `import/tables.rs` reads the display
-name from `name` too.
+Ours: IMPLEMENTED (T-2208): `import/tables.rs` takes each of `name`/`displayName` from the other when one is
+missing; a part with neither is still an import error. Tables stay keyed by `name`: which attribute resolves when
+they differ is unprobed (T-2320).
 Status: VERIFIED (web)
 Tasks: T-2208
