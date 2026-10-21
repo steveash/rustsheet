@@ -3,7 +3,7 @@ id: T-2251
 title: "INFO and SHEETS are no longer oracle: none since T-2113: correct the catalog and generate their accepted forms"
 milestone: M5
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -42,3 +42,10 @@ since T-2113. The report stops listing them as "need an evidence source other th
 
 ## Visible-parity stage
 Bookkeeping for decision 0094: its acceptance criteria are the whole stage.
+
+## Outcome
+INFO and SHEETS lose `oracle: none` (header comment now names the two refused forms). The generator
+emits INFO only with a type text other than "numfile" and SHEETS only with a reference argument; a
+tools test checks it. The unfocused-output digest was re-recorded and the M5 target count is 133.
+Eval baselines unchanged. Local `make eval-check` timed out on `probes/union-walk-repeated-in-lambda`
+in this sandbox, also on `origin/main`; CI is the judge. T-2252's sweep adds the generated cells.
