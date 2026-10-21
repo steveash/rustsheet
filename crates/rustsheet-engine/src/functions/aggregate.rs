@@ -179,8 +179,8 @@ impl Model {
     /// k as a number, read before the array (`AGGREGATE(14,4,E1:E2,"x")` is `#VALUE!` with E1
     /// `#N/A`), or the result to give instead. A reference k, written or returned by OFFSET,
     /// INDIRECT or IF, reads its top-left cell, a multi-cell range too (`AGGREGATE(16,6,A1:A5,
-    /// B3:B4)` reads B3), and a referenced error cell is `#VALUE!` under every option, not its
-    /// error. A text k is `#VALUE!` and an error k its error, while TRUE and "2" coerce
+    /// B3:B4)` reads B3), and a referenced error cell is `#VALUE!`, not its error (options 0, 4
+    /// and 6 probed). A text k is `#VALUE!` and an error k its error, while TRUE and "2" coerce
     /// (probes/aggregate-range-args A31, A61-A71; aggregate-range-k-first-cell).
     fn aggregate_k(&mut self, k: &Node, cell: CellReferenceIndex) -> Result<Node, CalcResult> {
         let value = match self.evaluate_picked_reference_arg(k, cell) {

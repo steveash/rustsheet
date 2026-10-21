@@ -2171,7 +2171,8 @@ Rule: functions 14-19 read k as a number before they read the array, so a text k
 and an error k its own error even where the array holds an error or no numbers, while a blank,
 TRUE or "2" k is coerced and the array decides (no numbers: `#NUM!`). A k that is a reference,
 written or returned by OFFSET, INDIRECT or IF, reads its top-left cell (a multi-cell range does not
-lift), and a referenced cell holding an error is `#VALUE!`, not that error, under every option.
+lift), and a referenced cell holding an error is `#VALUE!`, not that error (options 0, 4 and 6
+probed, the others assumed alike).
 Cells (probes/aggregate-range-k-first-cell, excel-graph 2026-10-21; Data A1:A5 = 1..5, B1 "x",
 B2 blank, B3 0.5, B4 2, C1:C2 no numbers, D1 `=NA()`, E1 `=NA()`, E2 2):
 - `AGGREGATE(18,3,C1:C2,B1:B3)`, `AGGREGATE(14,6,C1:C2,"x")`, functions 14-19 over C1:C2 with
