@@ -32,8 +32,8 @@
   - *Exemptions from the 400-cell rule.* Some functions have no inputs or only a small, closed
     set of them: TRUE, FALSE, the volatile functions (NOW, TODAY, RAND, RANDBETWEEN,
     RANDARRAY), and functions whose every input form is enumerable (for example INFO's type
-    texts). PI and NA qualify as well, but they already have more than 400 cells. They need each input form covered instead, at least 20 Excel cells (the evidence
-    floor). The T-0062 report section lists each exemption with its reason. Adding one takes a
+    texts). An exempt function needs each input form covered instead, with at least 20 Excel
+    cells (the evidence floor). PI and NA would qualify, but they already have more than 400. The T-0062 report section lists each exemption with its reason. Adding one takes a
     line in the catalog, which is reviewed like any catalog change.
   - *Measurement.* The `make eval` report gains a "Fifteen-digit parity checkpoint" section
     (T-0062). It shows, per function, its Excel cells, generated cells, exemption and visibly-off
