@@ -66,11 +66,11 @@ Write one excel-probe case (excel-graph oracle), about 60 cells. Code: `function
 - Conditional-format value operators (T-1051).
 
 ## Outcome
-New probe probes/criteria-tilde-blank-single-cell-edges (84 formula cells, excel-graph 2026-10-21): all pass
+New probe probes/criteria-tilde-blank-single-cell-edges (88 formula cells, excel-graph 2026-10-21): all pass
 with no engine change. D-function criteria keep the plain-text tilde rule inside the prefix match (`a~` is the
 prefix "a~", `abc~` does not match abc, `~~` matches no single tilde); array criteria over blank, `=""`, 0 and
 "0" cells give the scalar criterion's result per element in a 1x6 array; bare single-cell ranges in
 AVERAGEIF/COUNTIFS/MAXIFS/MINIFS/AVERAGEIFS act as 1x1 ranges. criteria.md's three "unprobed" notes are
 replaced with these rules (and the MAXIFS "not probed" contradiction removed). gen-m5/6a8bb7cd6d7769ad A79
 is not COUNTIF's (its COUNTIF is a scalar 0); it is T-2150's SUMPRODUCT blank one-cell argument.
-Eval delta: +84 passing cells (new case), no baseline change.
+Eval delta: +88 passing cells (new case); eval/baseline gains only the case registration line, no known failure.
