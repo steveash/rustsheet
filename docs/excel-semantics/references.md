@@ -421,7 +421,7 @@ picked cell has 2 rows, `OFFSET(INDEX(Data!A1:B3,0,2),1,0)` spills B2:B4 (20, 30
 constant `#VALUE!`. The engine matches, FORMULATEXT's `#REF!` and `#VALUE!` forms
 (`FORMULATEXT(INDEX(Data!A1:A3,9))`, `FORMULATEXT(INDEX({1,2,3},2))`) since T-2137. `fn_formulatext` returns INDEX's own error, and
 `#VALUE!` when INDEX picks a value rather than a cell. UNVERIFIED against Excel: an error argument inside INDEX
-(`INDEX(A1:A3,NA())`), an out-of-range index on an array constant, and an erroring OFFSET, INDIRECT, CHOOSE or IF
+(`INDEX(A1:A3,NA())`), an out-of-range index on an array constant, an array-shaped INDEX result (`INDEX({1,2;3,4},0,1)`), and an erroring OFFSET, INDIRECT, CHOOSE or IF
 argument (the last still give `#ERROR!`).
 XLOOKUP, TAKE, DROP and TRIMRANGE are references to ISREF when they pick cells of a range:
 `ISREF(XLOOKUP(2,A1:A3,B1:B3))`, `ISREF(TAKE(A1:B3,1))`, `ISREF(DROP(A1:B3,1))` and `ISREF(TRIMRANGE(A1:B3))` are
