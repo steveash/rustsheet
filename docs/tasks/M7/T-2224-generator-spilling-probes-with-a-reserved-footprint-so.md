@@ -3,7 +3,7 @@ id: T-2224
 title: "Generator: spilling probes with a reserved footprint, so gen suites score spill shapes (synthetic-generator 5.2 shape 3)"
 milestone: M7
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -36,25 +36,40 @@ gets an empty footprint to spill into, so a generated suite scores Excel's spill
   has only `returns: any`. This task adds it.
 
 ## Acceptance criteria
-- [ ] The catalog marks every function that can return a multi-cell array: `dynamic_array: true`, as in the
+- [x] The catalog marks every function that can return a multi-cell array: `dynamic_array: true`, as in the
       synthetic-generator.md schema. That covers the M7 functions plus MMULT, MINVERSE, MUNIT, TRANSPOSE,
       FREQUENCY, LINEST and the other array-returning functions. The catalog's tools tests check the key.
-- [ ] With a new `--spill` option (or on by default for milestones whose catalog has `dynamic_array`
+- [x] With a new `--spill` option (or on by default for milestones whose catalog has `dynamic_array`
       functions; the choice is documented in synthetic-generator.md), a generated case lays out each formula
       whose outer call is `dynamic_array: true` in its own block. The block is an anchor cell plus a reserved
       empty footprint (a bounded rows x cols, sized from the data sheet's dimensions, at most 12 x 6 by
       default). Footprints never overlap other formulas or footprints.
-- [ ] The case's `check` lists the anchor and every footprint cell, so the oracle sidecar records Excel's
+- [x] The case's `check` lists the anchor and every footprint cell, so the oracle sidecar records Excel's
       spilled values and the cells it leaves empty. A footprint cell Excel leaves empty is scored as empty.
-- [ ] About 5% of spilling probes get a blocker cell in the footprint (`spill_blocked`), so `#SPILL!` stays
+- [x] About 5% of spilling probes get a blocker cell in the footprint (`spill_blocked`), so `#SPILL!` stays
       covered. The fraction is set in the generator and documented.
-- [ ] Generation stays deterministic per seed (same seed, same bytes) and tools tests cover the layout:
+- [x] Generation stays deterministic per seed (same seed, same bytes) and tools tests cover the layout:
       no overlaps, `check` covers each footprint, blocker placement.
-- [ ] synthetic-generator.md §5.2 says shape 3 is implemented and names the option.
-- [ ] Existing generated suites are unchanged (no regeneration in this task).
-- [ ] `make check` green (ruff, mypy strict, tools tests); reviewers approve.
+- [x] synthetic-generator.md §5.2 says shape 3 is implemented and names the option.
+- [x] Existing generated suites are unchanged (no regeneration in this task).
+- [x] `make check` green (ruff, mypy strict, tools tests); reviewers approve.
 
 ## Out of scope
 - Generating or filling gen-m7 (T-2225).
 - Footprints larger than the data sheet (whole-column spills): bounded by design, see arrays.md for the
   directive-5 bound.
+
+## Outcome
+- `rustsheet-gen --spill` (off by default) lays out each formula whose outer call is `dynamic_array: true` as an
+  anchor in column A plus an empty `min(12, data rows) x min(6, data columns)` footprint below and right of it;
+  other formulas take one row, so nothing overlaps. `check` lists the anchor and every footprint cell. A footprint
+  cell Excel leaves empty is not in the sidecar, and the spill-extent check (T-1660) fails an engine value there
+  against empty. 5% of footprints (`SPILL_BLOCKED_RATE`) get a blocker constant below or right of the anchor
+  (tag `spill_blocked`). The layout has its own seeded stream: the formulas are the same with and without
+  `--spill`, and default output is byte-identical to before (checked on 30 M2/M7/M9 cases).
+- Catalog: `dynamic_array: true` on the 46 functions that return a multi-cell array by design (the M7 family,
+  CHOOSECOLS/CHOOSEROWS, TRIMRANGE, MMULT, MINVERSE, MUNIT, TRANSPOSE, FREQUENCY, LINEST, LOGEST, TREND, GROWTH,
+  MODE.MULT, XLOOKUP, INDEX, OFFSET, ROW, COLUMN, FILTERXML, and the out-of-scope IMPORTCSV, IMPORTTEXT,
+  STOCKHISTORY); `tools/tests/test_catalog.py` pins the list.
+- synthetic-generator.md §5.2 shape 3 marked implemented. No suite regenerated (gen-m7 is T-2225). Eval delta: none
+  (tools only).

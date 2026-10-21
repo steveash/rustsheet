@@ -15,7 +15,15 @@ import pytest
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.gen.common import quoted
-from rustsheet_tools.gen.generator import NAME_POOL, Catalog, Gen, generate_case
+from rustsheet_tools.gen.generator import (
+    NAME_POOL,
+    OUTER_CALL,
+    SPILL_BLOCKER,
+    Catalog,
+    Gen,
+    generate_case,
+    spill_layout,
+)
 from rustsheet_tools.gen.names_3d import CATEGORIES as NAMES_3D_CATEGORIES
 from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
@@ -707,3 +715,61 @@ def test_number_formats_pool_is_a_quoted_subset_of_the_policy_codes() -> None:
     codes = {quoted(c) for c in (*BUILTIN, *CUSTOM)}
     assert POOLS["number_formats"]
     assert set(POOLS["number_formats"]) <= codes
+
+
+def test_spill_keeps_the_formulas_and_gives_each_spilling_one_its_footprint() -> None:
+    dynamic = catalog().dynamic_array_names()
+    for seed in range(12):
+        plain = generate_case(catalog(), seed, milestone="M7", focus=True, formulas=20, case_index=seed)
+        spill = generate_case(
+            catalog(), seed, milestone="M7", focus=True, formulas=20, case_index=seed, spill=True
+        )
+        assert spill == generate_case(
+            catalog(), seed, milestone="M7", focus=True, formulas=20, case_index=seed, spill=True
+        )
+        cells = spill["sheets"][1]["cells"]
+        formulas = [v for v in cells.values() if v != SPILL_BLOCKER]
+        assert formulas == list(plain["sheets"][1]["cells"].values())
+        check = set(spill["check"])
+        assert len(check) == len(spill["check"])
+        claimed: dict[str, str] = {}
+        for a1, text in cells.items():
+            if text == SPILL_BLOCKER:
+                continue
+            m = OUTER_CALL.match(text)
+            row = int(a1[1:])
+            if not (m and m.group(1) in dynamic):
+                block = {a1}
+            else:
+                block = {f"{chr(ord('A') + c)}{r}" for r in range(row, row + 12) for c in range(5)}
+            for cell in block:
+                assert cell not in claimed, (cell, a1, claimed.get(cell))
+                claimed[cell] = a1
+                # every footprint cell is checked, except a blocker (an input)
+                assert f"Calc!{cell}" in check or cells.get(cell) == SPILL_BLOCKER
+        assert check == {f"Calc!{c}" for c in claimed if cells.get(c) != SPILL_BLOCKER}
+
+
+def test_spill_layout_places_blockers_just_below_or_right_of_the_anchor() -> None:
+    texts = ["=SEQUENCE(3)", "=SUM(1)"] * 400
+    layout = spill_layout(texts, {"SEQUENCE"}, rows=4, cols=3, rng=random.Random(1))
+    blockers = [a1 for a1, v in layout.cells.items() if v == SPILL_BLOCKER]
+    assert len(blockers) == layout.blocked
+    # SPILL_BLOCKED_RATE = 5% of 400 spilling probes, give or take
+    assert 8 <= layout.blocked <= 35
+    for a1 in blockers:
+        col, row = a1[0], int(a1[1:])
+        anchor = f"A{row - 1}" if col == "A" else f"A{row}"
+        assert col in "AB"
+        assert layout.cells[anchor] == "=SEQUENCE(3)"
+        assert f"Calc!{a1}" not in layout.check
+    # each SEQUENCE takes 4 rows, each SUM one
+    assert layout.cells["A5"] == "=SUM(1)"
+    assert layout.cells["A6"] == "=SEQUENCE(3)"
+    assert len(layout.check) == 400 * (4 * 3 + 1) - layout.blocked
+
+
+def test_spill_is_off_by_default() -> None:
+    spec = generate_case(catalog(), 3, milestone="M7", focus=True, formulas=10)
+    assert spec["check"] == [f"Calc!A{i}" for i in range(1, 11)]
+    assert "spill" not in spec["tags"]
