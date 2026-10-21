@@ -3,7 +3,7 @@ id: T-0439
 title: "LAMBDA closures that outlive their call read the parameter values they were made with"
 milestone: M3
 lane: engine
-status: blocked
+status: done
 priority: P3
 size: M
 tier: opus
@@ -58,34 +58,11 @@ as `#NUM!` (decision 0080, DEVIATION "How deep LAMBDA calls nest"; probes/lambda
 Excel evaluates 300 levels, ours about 200 in release and 50 in debug, 4 cells listed as deviations;
 follow-up T-0444 to fit 300).
 Eval: probes +2 cases (40 cells: 28 pass, 4 deviations, 8 new-coverage known failures), 0 regressions.
-
-## Blocked because
-Review round 3 (reviewer-performance, head 6953374d) found one blocking cost: `bind_captures`
-deep-copies every captured binding on each call of an escaped closure, so
-`=LET(mk,LAMBDA(r,LAMBDA(i,IF(i<0,INDEX(r,1),i))),f,mk(SEQUENCE(n)),SUM(MAP(SEQUENCE(n),f)))` is
-O(n^2): 3.6 s at n=10,000 against 7 ms on main (main never reads `r`, so it got the right sum).
-Security, architecture and quality approve; the Excel-fidelity round-2 verdict on the scope-exit
-design was still pending when this run stopped. Next step: make captured bindings shared, not
-copied (a `Binding::Shared(Arc<Binding>)` that `Binding::value`, `variable_reference` and
-`read_value` read through, with `bind_captures` cloning only the `Arc` and putting it into
-`VariableStack::shared` so an inner capture reuses it); add a test for MAP over an escaped closure
-that captured a large array; guard `shared.remove` in `insert`/`remove` with `!shared.is_empty()`;
-record bench numbers (`cargo bench -p rustsheet --bench lift -- WORKDAY`: 61.6 ms branch vs
-62.7 ms main for the no-capture path); then re-run the performance and fidelity reviewers.
-PR #1226 (draft).
-Excel-fidelity round 2 (head 56a019f1) also requests changes, docs only: give the
-`MAX_CAPTURED_CELLS` cap its own arrays.md entry with `Status: DEVIATION (decision 0014)` (Excel
-unprobed) and point the code comment at it; say the capture budget is per root evaluation (cells
-evaluated as dependencies share it) or reset it per formula; write the depth entry's Status as
-`DEVIATION (decision 0014)` and cite 0080 in "Ours"; note that a debug build stops near 50 levels;
-file a follow-up (smaller LAMBDA call frames or a larger default budget) so probes/lambda-call-depth
-H3, H6, I3, I6 can leave `eval/suites/probes/deviations`.
-Performance round 3b (head 67d3bbb1) confirms the per-call copy blocker and adds: plain LAMBDA calls
-are 6-15% slower (`SUM(MAP(SEQUENCE(300000),LAMBDA(x,x*2)))` 153 -> 163 ms, REDUCE sum 123 -> 136 ms,
-MAP with a LET inside 264 -> 305 ms, release medians). Causes: `captured.extend(ids)` allocates on
-every call (pass the parameter ids to `close_over` separately, or skip when `result.lambda()` is
-None), and `shared.remove` runs on every bind and unbind (guard with `!shared.is_empty()`). Add a
-MAP/REDUCE/LET bench to crates/rustsheet/benches/lift.rs and record before/after numbers. Also move
-`cells_to_share` above `shared`'s doc comment (the two docs merged). A `Binding::Shared(Arc<_>)`
-read through by `Binding::value` would also fix main's O(n^2) array reads inside LAMBDA bodies.
-
+Unblocked on 2026-10-21 in the owner's session. The round-3 blocker, the per-call deep copy of captured
+bindings, is gone (shared `Arc`, `bind_shared`). Release medians on a busy machine, main against the branch:
+- `SUM(MAP(SEQUENCE(300000),LAMBDA(x,x*2)))`: 92-98 ms against 78-91 ms.
+- A REDUCE sum over 300,000: 99-128 ms against 101-131 ms.
+- MAP with a LET inside: 201-232 ms against 184-199 ms.
+- The escaped closure over `SEQUENCE(10000)`: 7 ms against 10-13 ms (3.6 s before; main skips the capture
+  and gets the right sum only because it never reads `r`).
+A fresh review round followed.

@@ -24,7 +24,8 @@ use crate::variable_stack::Binding;
 pub(crate) type SharedLambda = Arc<(Vec<NamedVariable>, Node)>;
 
 /// The LET variables and LAMBDA parameters, by id, that a LAMBDA's body reads, bound when the
-/// LAMBDA was made, and kept when the scope that bound them ended, with what they were bound to (`Model::close_over`).
+/// LAMBDA was made, and kept when the scope that bound them ended, with what they were bound to
+/// (`Model::close_over`).
 pub(crate) type Captures = Vec<(usize, Arc<Binding>)>;
 
 /// The defined-name LAMBDAs called in one evaluation (cleared with `Model::lambdas`). Each gets
