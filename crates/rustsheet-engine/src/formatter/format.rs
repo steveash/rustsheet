@@ -744,14 +744,19 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             );
             let mut value_abs = value.abs();
             let mut exponent_part: Vec<char> = vec![];
-            let mut exponent_is_negative = value_abs < 10.0;
+            let mut exponent_is_negative = false;
             if p.is_scientific {
                 if value_abs == 0.0 {
                     exponent_part = vec!['0'];
                     exponent_is_negative = false;
                 } else {
-                    // TODO: Implement engineering formatting.
-                    let exponent = value_abs.log10().floor();
+                    // Engineering: the exponent is a multiple of the integer-placeholder count,
+                    // rounded down (`##0.0E+0` on 123456.789 is "123.5E+3", on 61 "61.0E+0";
+                    // `00.0E+0` on 36.5 "36.5E+0"; eval/suites/gen-m10, T-1730). A zero
+                    // exponent carries no minus (`0.00E+00` on 1.5 is "1.50E+00").
+                    let group = f64::from(p.digit_count.max(1));
+                    let exponent = (value_abs.log10().floor() / group).floor() * group;
+                    exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
                     value /= 10.0_f64.powf(exponent);
                     value = to_precision(value, 15);
