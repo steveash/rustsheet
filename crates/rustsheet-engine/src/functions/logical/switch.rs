@@ -99,7 +99,7 @@ impl Model {
             if case.is_error() {
                 return Picked::Value(case);
             }
-            if compare_values(&expr, &case) == 0 {
+            if switch_matches(&expr, &case) {
                 return Picked::Node(&args[2 * case_index + 2]);
             }
             cases.push(case);
@@ -111,6 +111,23 @@ impl Model {
         }
         Picked::Value(no_match(cell))
     }
+}
+
+/// Whether SWITCH's expression value matches a case value. A blank cell on either side reads as
+/// the number 0, not as the blank `compare_values` equates with FALSE and "": `SWITCH(FALSE,A1,..)`
+/// and `SWITCH(A1,"",..)` with A1 blank are `#N/A`, while `SWITCH(0,A1,..)` and `SWITCH(A1,A1,..)`
+/// match (probes/t2200-blank-and-padded-m5-args A28:A46, T-2166). An omitted argument
+/// (`SWITCH(0,,"a")`) keeps `compare_values`' empty-value rule.
+fn switch_matches(expr: &CalcResult, case: &CalcResult) -> bool {
+    fn blank_as_zero(value: &CalcResult) -> &CalcResult {
+        static ZERO: CalcResult = CalcResult::Number(0.0);
+        if matches!(value, CalcResult::EmptyCell) {
+            &ZERO
+        } else {
+            value
+        }
+    }
+    compare_values(blank_as_zero(expr), blank_as_zero(case)) == 0
 }
 
 /// SWITCH on one element of lifted `[expression, case1, value1, ..., default?]`: the scalar path's
@@ -127,7 +144,7 @@ fn switch_element(element: &[CalcResult], cell: CellReferenceIndex) -> CalcResul
         if pair[0].is_error() {
             return pair[0].clone();
         }
-        if compare_values(expr, &pair[0]) == 0 {
+        if switch_matches(expr, &pair[0]) {
             return pair[1].clone();
         }
     }
