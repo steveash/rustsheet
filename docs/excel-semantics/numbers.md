@@ -1786,7 +1786,10 @@ finite. All 8 cells pass, and so does gen-m5/38b1b8e51dbad326 Calc!A10 (`EVEN(0.
 Rule: ARABIC of a blank cell is 0, as `ARABIC("")` is, whether the blank comes as a reference (`ARABIC(C3)`), through
 `IF(B4,E5)`, or as the blank cell VLOOKUP or HLOOKUP lands on. Leading and trailing spaces are ignored: `ARABIC(" x ")` = 10,
 also from `RIGHT(" x ",7)` and `INDEX(D6:D12,1,0)` with D6 = " x ". A lone tab is empty: `ARABIC(UPPER(CHAR(9)))` = 0.
-Ours: `#VALUE!` for each. Unprobed: `ARABIC(0)` (a number), inner spaces, other whitespace characters.
+Ours: `#VALUE!` for each. Probed (excel-graph, 2026-10-21, T-2200, probes/t2200-blank-and-padded-m5-args, Calc!A47:A70):
+`ARABIC(0)` and `ARABIC(FALSE)` are `#VALUE!` (non-text arguments are not coerced); an inner space is `#VALUE!` (`ARABIC("X X")`,
+`"X"&CHAR(9|10|13|160)&"I"`); `ARABIC(" ")` and a lone CHAR(9), CHAR(10) or CHAR(13) are 0; CHAR(9), CHAR(10) and CHAR(13)
+padding either side of "XI" is trimmed (11); CHAR(160) is not whitespace: `#VALUE!` as padding and alone.
 Evidence (excel-graph, 2026-10-20): gen-m5/1315170eef6c413e Calc!A37, gen-m5/399071ff6782ab16 Calc!A256, gen-m5/97737fad5004ba83 Calc!A43,
 gen-m5/e0087a1fb9a36188 Calc!A25, gen-m5/6a511beadb56b932 Calc!A106, gen-m5/b0d597ec5af5fb92 Calc!A365, gen-m5/fc81c2f704bef138 Calc!A174 and the
 other cells listed in T-2153.

@@ -31,7 +31,9 @@ Tasks: T-1088
 ## SWITCH: a blank cell case value does not match FALSE (T-2166)
 Observation: `SWITCH(FALSE,1.005E-15,<#VALUE!>,A11,FALSE,"a?b",<#VALUE!>)` with A11 blank is `#N/A` (no match, no default):
 FALSE does not match a blank cell given as a case value, unlike the omitted case argument below (`SWITCH(0,,"a","b")` is "a").
-Ours matches it and returns FALSE (so `ISEVEN` of it is `#VALUE!` instead of `#N/A`). Unprobed: a blank case against 0 or "".
+Ours matches it and returns FALSE (so `ISEVEN` of it is `#VALUE!` instead of `#N/A`). Probed (excel-graph, 2026-10-21, T-2200, probes/t2200-blank-and-padded-m5-args, Calc!A28:A46): a blank case cell matches only
+a 0 or blank expression: `SWITCH(0,blank,..)` and `SWITCH(blank,blank,..)` hit it; FALSE, "" and TRUE do not (`#N/A`, no
+default). A blank expression cell against a case matches 0 and a blank case cell, and not FALSE, "" or TRUE.
 Evidence: gen-m5/d0419fa09d6a756a Calc!A63 (excel-graph, 2026-10-20).
 Status: OBSERVED (1 cell); T-2166.
 

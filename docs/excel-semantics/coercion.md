@@ -257,7 +257,12 @@ Ours: the blank is a 0 factor, so these are 0 (and their callers go on).
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1b30e4d075b252ea Calc!A365, gen-m5/6a8bb7cd6d7769ad Calc!A79,
 gen-m5/aac6230c2fb40e1e Calc!A79, gen-m5/fc81c2f704bef138 Calc!A165, gen-m5/c688ca172fe533dc Calc!A183, gen-m5/7d1a5d223624fc70 Calc!A33,
 gen-m5/aac6230c2fb40e1e Calc!A64, gen-m5/f0f205865a3a4328 Calc!A396, gen-m5/399071ff6782ab16 Calc!A145.
-Unprobed: a blank one-cell argument beside a multi-cell range, and a one-cell text or boolean argument on its own.
+Probed (excel-graph, 2026-10-21, T-2200, probes/t2200-blank-and-padded-m5-args, Calc!A1:A27): a blank one-cell reference is
+`#VALUE!` beside a 2x2 range in either order, beside a number reference in either order, in all three positions of a
+three-argument list, and alone (`SUMPRODUCT(Data!A1)`, A6). A one-cell text or boolean
+reference is a 0 factor beside a number (0, either order) and alone (0), but `#VALUE!` beside a 2x2 range (a 1x1 against a 2x2
+is a shape mismatch). A shape mismatch is `#VALUE!` in every position. An error argument ahead of the blank wins
+(`SUMPRODUCT(NA(),blank)`, `SUMPRODUCT(NA(),R,blank)` are `#N/A`); the blank ahead of the error gives `#VALUE!`.
 Status: VERIFIED (excel-graph); not implemented (T-2150).
 Tasks: T-0944
 

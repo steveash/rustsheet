@@ -3,7 +3,7 @@ id: T-2200
 title: "Probe blank and padded arguments of SUMPRODUCT, SWITCH and ARABIC (T-2150, T-2166, T-2153)"
 milestone: M5
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -51,3 +51,8 @@ excel-graph values for the blank-cell and whitespace questions that T-2150 (SUMP
 - Changing the engine (T-2150, T-2153, T-2166).
 - SUMX2MY2, SUMX2PY2 and SUMXMY2 (T-0961, done).
 - IFS and SWITCH with an omitted value argument (T-2189).
+
+## Outcome
+Probed with excel-graph (70 cells). Findings recorded in coercion.md, logic.md and numbers.md; notable: a lone blank
+one-cell SUMPRODUCT argument is `#VALUE!`, one-cell text/boolean beside a number is 0, `ARABIC(0)` is `#VALUE!`,
+CHAR(160) is not trimmed by ARABIC. New failing cells baselined in eval/baseline/probes.txt as new coverage.
