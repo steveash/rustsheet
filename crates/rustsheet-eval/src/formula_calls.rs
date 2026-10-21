@@ -8,13 +8,14 @@ use regex::Regex;
 
 use crate::catalog::Catalog;
 
+/// A call's name, without its `_xlfn.`/`_xlws.` prefix (group 1), up to its open parenthesis.
+const CALL: &str = r"(?:_xlfn\.|_xlws\.)?\b([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(";
+
 static FUNCTION_CALL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)(?:_xlfn\.|_xlws\.)?\b([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
-        .unwrap_or_else(|e| unreachable!("static regex: {e}"))
+    Regex::new(&format!("(?i){CALL}")).unwrap_or_else(|e| unreachable!("static regex: {e}"))
 });
 static OUTER_CALL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^=?\s*(?:_xlfn\.|_xlws\.)?([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
-        .unwrap_or_else(|e| unreachable!("static regex: {e}"))
+    Regex::new(&format!(r"(?i)^=?\s*{CALL}")).unwrap_or_else(|e| unreachable!("static regex: {e}"))
 });
 static QUOTED_SHEET: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"'(?:[^']|'')*'").unwrap_or_else(|e| unreachable!("static regex: {e}"))

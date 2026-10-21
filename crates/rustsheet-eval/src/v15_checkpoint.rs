@@ -52,7 +52,7 @@ pub struct V15Checkpoint {
     pub visibly_off: usize,
     /// The suites the run scored, vendored and fetched, which `visibly_off` counts.
     pub suites: Vec<String>,
-    /// Every function covered and no visibly-off cell.
+    /// At least one function, every one covered, and no visibly-off cell.
     pub met: bool,
 }
 
@@ -139,7 +139,7 @@ pub fn summarize(
     let visibly_off = report.visibly_off_cells();
     V15Checkpoint {
         in_scope: functions.len(),
-        met: covered == functions.len() && visibly_off == 0,
+        met: !functions.is_empty() && covered == functions.len() && visibly_off == 0,
         functions,
         covered,
         visibly_off,
