@@ -42,3 +42,5 @@ criteria above are already the visible-parity stage.
 
 ## Outcome
 The format lexer prints control characters as literals and `fn_text` reads number-like text with VALUE's parser. gen-m5 known failures 16 -> 12 (the 4 owned cells fixed), no regressions elsewhere. Date and percent text now also coerce (VALUE's parser); still unprobed.
+
+Follow-up: T-2332 probes the unverified choices (text sections, date/percent text, trimming, other control characters).
