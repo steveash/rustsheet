@@ -9,7 +9,9 @@ use crate::{
     calc_result::CalcResult,
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{parser::Node, types::CellReferenceIndex},
-    formatter::dates::{month_arithmetic_date, real_date_to_serial, shift_months},
+    formatter::dates::{
+        excel_serial_to_ymd, real_date_to_serial, shift_displayed_date, shift_months,
+    },
     functions::Function,
     model::Model,
 };
@@ -43,7 +45,7 @@ impl Model {
         let date_system = self.workbook.settings.date_system;
         let Some((serial_number, date)) = date_system
             .to_1900_serial(serial_number)
-            .and_then(|serial| month_arithmetic_date(serial).map(|date| (serial, date)))
+            .and_then(|serial| excel_serial_to_ymd(serial).map(|date| (serial, date)))
         else {
             return num_error(cell);
         };
@@ -51,7 +53,7 @@ impl Model {
             Ok(c) => c.trunc() as i32,
             Err(s) => return s,
         };
-        let Some(native_date) = shift_months(date, months) else {
+        let Some(native_date) = shift_displayed_date(date, months) else {
             return num_error(cell);
         };
         // Serial 0 is day 0 of January 1900, so its result is day 0 of the shifted month: one
@@ -84,8 +86,8 @@ impl Model {
         if serial_number > i64::from(MAXIMUM_DATE_SERIAL_NUMBER) {
             return num_error(cell);
         }
-        let Some(date) = month_arithmetic_date(serial_number)
-            .and_then(|d| chrono::NaiveDate::from_ymd_opt(d.year(), d.month(), 1))
+        let Some(date) = excel_serial_to_ymd(serial_number)
+            .and_then(|(year, month, _)| chrono::NaiveDate::from_ymd_opt(year, month, 1))
         else {
             return num_error(cell);
         };

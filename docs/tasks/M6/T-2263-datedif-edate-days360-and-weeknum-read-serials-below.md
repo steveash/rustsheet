@@ -3,7 +3,7 @@ id: T-2263
 title: "DATEDIF, EDATE, DAYS360 and WEEKNUM read serials below 61 on Excel's displayed 1900 calendar (serial 0 is 1900-01-00, 60 is 1900-02-29)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -68,10 +68,10 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 31 in eval/baseli
 | gen-m6/ee56a4ed5a612a0d Calc!A185 | `=DATEDIF(60.5,45291,"MD")` | 2.0 | 3.0 |
 
 ## Acceptance criteria
-- [ ] These 31 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] A new probes case (excel-graph) holds the edge grid above; every cell passes or is a filed task named in the Outcome.
-- [ ] dates.md's entry states the rule per function with its cells and drops the UNVERIFIED notes it settles; probes/dates-early-1900 and -edges still pass.
-- [ ] `make check` green; reviewers approve.
+- [x] These 31 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] A new probes case (excel-graph) holds the edge grid above; every cell passes or is a filed task named in the Outcome.
+- [x] dates.md's entry states the rule per function with its cells and drops the UNVERIFIED notes it settles; probes/dates-early-1900 and -edges still pass.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - YEARFRAC (T-2265, T-2237).
@@ -79,3 +79,14 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 31 in eval/baseli
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+DATEDIF, EDATE and DAYS360 now read dates on Excel's displayed 1900 calendar (`excel_serial_to_ymd`: serial 0 is
+1900-01-00, 60 is 1900-02-29). DATEDIF counts Y/M/YM/MD/YD on the displayed (year, month, day); "YD" is now
+`DATE(year, month + YM, day) - start + MD`, which fits all 39 excel-graph YD cells (T-2264's "move the end into the start's
+year" missed 29 February and 31 January starts), and an unknown unit is `#NUM!` when a date is day 0. EDATE keeps the displayed
+day and clamps on the real calendar (`shift_displayed_date`). DAYS360 treats 1900-02-29 as February's last day and refuses any
+negative date. WEEKNUM needed nothing: the gen-m6 `#VALUE!` came from `SUMPRODUCT(<lone blank>)` in its return_type, which the
+engine already matches. `DateSystem::date_of_serial` (only DATEDIF used it) is gone.
+Evidence: probes/dates-early-1900-displayed (116 cells, excel-graph) and probes/weeknum-sumproduct-blank-type (12 cells); both pass.
+Eval delta: gen-m6 known failures 243 -> 214 (all 31 cells of this task gone), probes +128 passing cells, no regressions.

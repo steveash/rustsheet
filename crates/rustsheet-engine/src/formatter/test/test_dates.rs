@@ -106,13 +106,12 @@ fn date_system_serial_conversion() {
     assert_eq!(Excel1900.signed_serial_from_1900_serial(1431), 1431);
     // 1904 serial 0 is Friday 1904-01-01; a negative 1904 serial is no date.
     assert_eq!(
-        Excel1904.date_of_serial(0),
+        Excel1904.date_of_serial_from_zero(0),
         chrono::NaiveDate::from_ymd_opt(1904, 1, 1)
     );
-    assert_eq!(Excel1904.date_of_serial(-1), None);
+    assert_eq!(Excel1904.date_of_serial_from_zero(-1), None);
     // WEEKDAY, WORKDAY and NETWORKDAYS also read 1900 serial 0, Saturday 1899-12-30 on the
     // weekday-faithful calendar (T-1254).
-    assert_eq!(Excel1900.date_of_serial(0), None);
     assert_eq!(
         Excel1900.date_of_serial_from_zero(0),
         chrono::NaiveDate::from_ymd_opt(1899, 12, 30)

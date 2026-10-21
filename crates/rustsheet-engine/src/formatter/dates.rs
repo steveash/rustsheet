@@ -156,15 +156,11 @@ impl DateSystem {
     }
 
     /// The weekday-faithful calendar date (`from_excel_date`) of this system's day `serial`, the
-    /// date WEEKDAY, WORKDAY, NETWORKDAYS, YEARFRAC and DATEDIF read; `None` where they are #NUM!.
-    /// A 1904 serial below 0 is no date: `WEEKDAY(-1)` is #NUM! (probes/date-system-1904-readers A41).
-    pub(crate) fn date_of_serial(self, serial: i64) -> Option<NaiveDate> {
-        from_excel_date(self.to_1900_serial(serial)?).ok()
-    }
-
-    /// `date_of_serial`, where 1900 serial 0 (Saturday 0 January 1900, the weekday-faithful
-    /// 1899-12-30) is a date too: WEEKDAY, WORKDAY and NETWORKDAYS read it (probes/weekday-serial-zero,
-    /// probes/workday-serial-zero; dates.md "WORKDAY and NETWORKDAYS from serial 0").
+    /// date WEEKDAY, WORKDAY and NETWORKDAYS read, `None` where they are #NUM!. 1900 serial 0
+    /// (Saturday 0 January 1900) is the weekday-faithful 1899-12-30; a 1904 serial below 0 is no
+    /// date (`WEEKDAY(-1)` is #NUM!, probes/date-system-1904-readers A41). Evidence for serial 0:
+    /// probes/weekday-serial-zero, probes/workday-serial-zero; dates.md "WORKDAY and NETWORKDAYS
+    /// from serial 0".
     pub(crate) fn date_of_serial_from_zero(self, serial: i64) -> Option<NaiveDate> {
         match self.to_1900_serial(serial)? {
             0 => NaiveDate::from_ymd_opt(1899, 12, 30),
@@ -227,15 +223,28 @@ pub fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
     Some((date.year(), date.month(), date.day()))
 }
 
-/// The real calendar date EDATE/EOMONTH do month arithmetic on. Serial 60 (the fictitious
+/// The real calendar date EOMONTH, YEARFRAC and the coupon schedule do month arithmetic on. Serial 60 (the fictitious
 /// 1900-02-29) counts as 1900-02-28 and serial 0 (day 0 of January 1900) stands in as 1900-01-01:
-/// EOMONTH uses only its month, and EDATE steps back one serial from the shifted result.
+/// EOMONTH uses only its month (EDATE reads the displayed day: `shift_displayed_date`).
 /// Evidence: probes/dates-early-1900 A9/A10 (`EDATE(31,1)` = 59), A23/A25 (`EDATE(60,0)` =
 /// `EOMONTH(60,0)` = 59); probes/dates-early-1900-edges A36-A44 (`EOMONTH(0,0)` = 31, `EDATE(0,1)` = 31).
 pub fn month_arithmetic_date(serial: i64) -> Option<NaiveDate> {
     let (year, month, day) = excel_serial_to_ymd(serial)?;
     let day = day.max(1);
     NaiveDate::from_ymd_opt(year, month, day).or_else(|| NaiveDate::from_ymd_opt(year, month, 28))
+}
+
+/// The real calendar date `months` after the displayed `(year, month, day)` of
+/// `excel_serial_to_ymd`, its day clamped to the shifted month's real length: serial 60 reads as
+/// 29 February 1900, so `EDATE(60,1)` is 29 March (89) and `EDATE(60.5,5)` 29 July (211), while a
+/// February result clamps (`EDATE(60,0)` = `EDATE(29,1)` = 59, 28 February). Day 0 (serial 0)
+/// stands in as day 1; EDATE steps back one serial from the result.
+/// Evidence: probes/dates-early-1900 A9/A10, A23; probes/dates-early-1900-edges A36-A44;
+/// probes/dates-early-1900-displayed A38-A47.
+pub fn shift_displayed_date((year, month, day): (i32, u32, u32), months: i32) -> Option<NaiveDate> {
+    let first = shift_months(NaiveDate::from_ymd_opt(year, month, 1)?, months)?;
+    let last = shift_months(first, 1)?.pred_opt()?;
+    first.with_day(day.clamp(1, last.day()))
 }
 
 /// Excel serial of a real calendar date, `None` below serial 1 (e.g. December 1899).
@@ -403,6 +412,29 @@ mod tests {
         assert_eq!(feb_28, Some(59));
         let dec_31 = NaiveDate::from_ymd_opt(1899, 12, 31).and_then(real_date_to_serial);
         assert_eq!(dec_31, None);
+    }
+
+    #[test]
+    fn displayed_dates_shift_keeping_the_fictitious_day() {
+        use super::shift_displayed_date;
+        use chrono::NaiveDate;
+        assert_eq!(
+            shift_displayed_date((1900, 1, 0), 0),
+            NaiveDate::from_ymd_opt(1900, 1, 1)
+        );
+        assert_eq!(
+            shift_displayed_date((1900, 2, 29), 0),
+            NaiveDate::from_ymd_opt(1900, 2, 28)
+        );
+        assert_eq!(
+            shift_displayed_date((1900, 2, 29), 1),
+            NaiveDate::from_ymd_opt(1900, 3, 29)
+        );
+        assert_eq!(
+            shift_displayed_date((1900, 2, 29), 48),
+            NaiveDate::from_ymd_opt(1904, 2, 29)
+        );
+        assert_eq!(shift_displayed_date((9999, 12, 1), i32::MAX), None);
     }
 
     use super::*;
