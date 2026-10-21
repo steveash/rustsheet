@@ -19,8 +19,8 @@
     gen-m5 cells of T-2134's list (`SINH(0.3)`, `TANH(0.2)`, COTH/CSCH of small arguments).
     Thirteen fail that the old forms matched. They are two arguments only, where libm's expm1
     misses Excel's by an ulp:
-    - x = PI()/4: `TRIGONOMETRIC.xlsx` SINH_COSH_TANH!D51 and COTH_CSCH_SECH!B51 (B51, SINH, was a
-      known failure already); gen-m5
+    - x = PI()/4: `TRIGONOMETRIC.xlsx` SINH_COSH_TANH!D51 (TANH) and COTH_CSCH_SECH!B51 (COTH);
+      SINH_COSH_TANH!B51 (SINH) was already a known failure and stays one; gen-m5
       0362d48f56108faa A10, 4d099bea7898ebf1 A361, 651e713f5ae232ed A239, b0d597ec5af5fb92 A180,
       b0ecb7ca78460b77 A8 and A294, ee1667411bbe2ccc A141 (TANH and COTH of PI()/4);
     - x = +-0.9999999999: SINH_COSH_TANH!B15 and B17 and COTH_CSCH_SECH!C15 and C17.
