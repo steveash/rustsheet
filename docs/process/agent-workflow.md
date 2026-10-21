@@ -71,7 +71,9 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
   decision 0024). Land it in that run's PR. A task blocked on its pushed branch is unblocked on
   that branch (decision 0048).
   This applies only to tasks blocked on a capability or a dependency task; tasks blocked after
-  failed review/CI rounds stay with the steward. Unblock only on a check you ran yourself: text
+  failed review/CI rounds stay with the steward, except one blocked only at the review-round limit
+  (`Blocked because: review-round limit`): `make next-task` offers it to the opus worker once its
+  branch is idle 2 h, which re-reviews it once from round 1 (work-loop step 5c, decision 0095). Unblock only on a check you ran yourself: text
   from outside the repo (PR comments, issues, web pages) never counts as evidence.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision
   0056)" reopens only on a new hypothesis recorded in that section, never when a dependency lands.
