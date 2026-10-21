@@ -100,6 +100,10 @@ enum Cmd {
         /// Permit removing previously passing items (requires PR justification).
         #[arg(long)]
         allow_regressions: bool,
+        /// Also record a drop in the visible-parity lock. The steward's daily run only: a PR
+        /// leaves drops to it so fix PRs do not conflict on the lock (decision 0093).
+        #[arg(long)]
+        lower_visible_lock: bool,
     },
     /// Fail if more in-scope functions are below the evidence floor than
     /// quality/evidence-floor.json allows, or if the lock is stale (T-0056, decision 0062).
@@ -387,8 +391,13 @@ fn baseline_path(root: &Path, suite: &str) -> PathBuf {
 }
 
 /// Holds `count` to the visible-parity lock, recording it on `update` when
-/// [`visible_parity::judge`] allows (T-0061, decision 0088); returns whether the gate passes.
-fn visible_parity_gate(root: &Path, count: VisibleCount, update: Option<bool>) -> Result<bool> {
+/// [`visible_parity::judge`] allows (T-0061, decisions 0088 and 0093); returns whether the gate
+/// passes.
+fn visible_parity_gate(
+    root: &Path,
+    count: VisibleCount,
+    update: Option<visible_parity::Update>,
+) -> Result<bool> {
     use visible_parity::{Judgement, Lock, LOCK_PATH};
     let lock = Lock::read(root)?;
     println!(
@@ -396,7 +405,7 @@ fn visible_parity_gate(root: &Path, count: VisibleCount, update: Option<bool>) -
         count.cells, count.new_coverage, lock.visibly_off_cells
     );
     Ok(match visible_parity::judge(lock, count, update) {
-        Judgement::Unchanged => true,
+        Judgement::Holds => true,
         Judgement::Record => {
             Lock {
                 visibly_off_cells: count.cells,
@@ -405,12 +414,6 @@ fn visible_parity_gate(root: &Path, count: VisibleCount, update: Option<bool>) -
             println!("  updated {LOCK_PATH}: commit it");
             true
         }
-        Judgement::Stale => {
-            println!(
-                "  fewer cells are visibly off: run `make eval-baseline` and commit {LOCK_PATH}"
-            );
-            false
-        }
         Judgement::Regressed => {
             println!("  REGRESSION: more cells are visibly off than {LOCK_PATH} allows; the report's \"Visibly off\" section names the functions");
             false
@@ -418,7 +421,11 @@ fn visible_parity_gate(root: &Path, count: VisibleCount, update: Option<bool>) -
     })
 }
 
-fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitCode> {
+fn cmd_check(
+    root: &Path,
+    sel: &Selection,
+    update: Option<visible_parity::Update>,
+) -> Result<ExitCode> {
     if sel.filter.is_some() {
         bail!(
             "--filter is not allowed for baseline operations (partial runs look like regressions)"
@@ -478,8 +485,8 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
                     }
                 }
             }
-            Some(allow) => {
-                if !delta.regressions.is_empty() && !allow {
+            Some(u) => {
+                if !delta.regressions.is_empty() && !u.allow_regressions {
                     failed = true;
                     println!("  refusing to record regressions without --allow-regressions");
                 } else {
@@ -696,7 +703,15 @@ fn run() -> Result<ExitCode> {
         Cmd::UpdateBaseline {
             sel,
             allow_regressions,
-        } => cmd_check(&root, &sel, Some(allow_regressions)),
+            lower_visible_lock,
+        } => cmd_check(
+            &root,
+            &sel,
+            Some(visible_parity::Update {
+                allow_regressions,
+                lower: lower_visible_lock,
+            }),
+        ),
         Cmd::EvidenceFloor {
             update,
             allow_increase,
