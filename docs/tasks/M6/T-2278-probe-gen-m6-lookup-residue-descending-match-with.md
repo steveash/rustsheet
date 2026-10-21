@@ -55,3 +55,7 @@ lookup.md "MATCH descending search skips backward" and its evidence before chang
 extended LOOKUP result the blank-cell value (lookup.rs); probe the XLOOKUP/INDIRECT cell in a smaller case (Excel for
 the web refused one holding INDIRECT over XLOOKUP with array search_mode and CELL("address",..)).
 
+Lead for the LOOKUP cell: `lookup_result_at` (lookup.rs) reads on past the one-cell vector to M11 and returns
+`EmptyCell`, and `eval_matrix_arg` (matrix.rs) maps a scalar `EmptyCell` to `ArrayNode::Empty`, which MMULT refuses with
+`#VALUE!`; yet ours gives 0 for `MMULT(LOOKUP(..),2.5)`, so the blank becomes a number 0 between the two (the argument's
+evaluation context or LOOKUP's array path). Trace that first.
