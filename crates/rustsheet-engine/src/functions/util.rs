@@ -937,8 +937,7 @@ pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
 
 /// How far below the next integer a whole-number argument may fall and still count as that
 /// integer: 2^-22 + 2^-33, the same at 1, 500, 1000, 30000 and 100000 (an absolute bound, not
-/// relative). LEFT, RIGHT, REPLACE counts, INDEX's row and column indexes and VLOOKUP/HLOOKUP's
-/// index share it.
+/// relative). LEFT, RIGHT, REPLACE counts, INDEX's and VLOOKUP/HLOOKUP's indexes and TIME share it.
 pub(crate) const NEAR_INTEGER_TOLERANCE: f64 = 1.0 / 4_194_304.0 + 1.0 / 8_589_934_592.0;
 
 /// The whole number LEFT, RIGHT, REPLACE, INDEX, VLOOKUP and HLOOKUP read from a count, position
@@ -949,13 +948,14 @@ pub(crate) const NEAR_INTEGER_TOLERANCE: f64 = 1.0 / 4_194_304.0 + 1.0 / 8_589_9
 // integer" (probes/text-count-argument-bounds) and lookup.md "INDEX rounds an index up near an
 // integer" (probes/index-snap-tolerance).
 pub(crate) fn near_integer_count(x: f64) -> f64 {
+    near_integer_floor(x, NEAR_INTEGER_TOLERANCE)
+}
+
+/// `x` floored, but a fraction within `tolerance` of the next integer counts as that integer.
+pub(crate) fn near_integer_floor(x: f64, tolerance: f64) -> f64 {
     let whole = x.floor();
     // `x - whole` is exact for every finite double, so the bound is not blurred at large x.
-    if x - whole >= 1.0 - NEAR_INTEGER_TOLERANCE {
-        whole + 1.0
-    } else {
-        whole
-    }
+    whole + f64::from(u8::from(x - whole >= 1.0 - tolerance))
 }
 
 impl Function {

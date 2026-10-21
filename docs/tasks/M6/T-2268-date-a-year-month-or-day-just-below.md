@@ -3,7 +3,7 @@ id: T-2268
 title: "DATE: a year, month or day just below an integer reads as that integer (DATE(1983,12,-1E-15) is DATE(1983,12,0))"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -35,13 +35,20 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 5 in eval/baselin
 | gen-m6/b54448af3fde07ca Calc!A379 | `=DATE(2015,(1e-15*Data!E12)%,3)` | 41976.0 | 41946.0 |
 
 ## Acceptance criteria
-- [ ] These 5 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] A new probes case (excel-graph) holds the grid; every cell passes or is a filed task named in the Outcome.
-- [ ] dates.md states the window with cells; the DATE month/day range cells (probes/date-*) still pass.
-- [ ] `make check` green; reviewers approve.
+- [x] These 5 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] A new probes case (excel-graph) holds the grid; every cell passes or is a filed task named in the Outcome.
+- [x] dates.md states the window with cells; the DATE month/day range cells (probes/date-*) still pass.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - TIME (T-2267).
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+Probed (excel-graph, probes/date-argument-window, 90 cells): DATE reads its year, month and day exactly as TIME reads its
+arguments (T-2267): floored, except that a value within the shared near-integer tolerance below an integer (2^-22+2^-33; half of
+it for a negative value) counts as that integer, before the existing bounds. Both measured edges match TIME's. `fn_date` and TIME
+now share `date_time_whole`. dates.md's entry is VERIFIED with the cells.
+Eval: gen-m6 known failures 177 -> 172 (the 5 listed cells); the new probe case passes in full; no regressions.

@@ -178,6 +178,7 @@ C	probes/criteria-wildcard-tilde.case.json	16
 C	probes/d-function-prefix-lone-surrogates.case.json	35
 C	probes/data-tables.case.json	20
 C	probes/date-argument-modes.case.json	168
+C	probes/date-argument-window.case.json	90
 C	probes/date-clock-text-length-limit.case.json	36
 C	probes/date-huge-month-day.case.json	63
 C	probes/date-lift-open.case.json	175
@@ -1054,6 +1055,11 @@ C	probes/textsplit-empty-text.case.json	19
 C	probes/textsplit-lift-guesses.case.json	90
 C	probes/textsplit-padded-size.case.json	6
 C	probes/textsplit-wide.case.json	5
+C	probes/time-argument-bound.case.json	79
+C	probes/time-argument-negative-window.case.json	28
+C	probes/time-argument-negative.case.json	77
+C	probes/time-argument-rounding.case.json	94
+C	probes/time-argument-window.case.json	81
 C	probes/time-parts-past-max-date.case.json	14
 C	probes/time-parts-rounding-window.case.json	21
 C	probes/timevalue-ampm-limits.case.json	44
