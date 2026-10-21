@@ -26,7 +26,7 @@ merged since its last run.
 | gen-m9 | 25 | 998 | 99.10% | not gated |
 | probes-numeric | 167 | 115,809 | 75.58% (99.72% within 1e-9) | not gated |
 
-`make eval` on `main` (7dab5361) shows 0 regressions in every gated suite. poi and corpus-bench were fetched for this run. After `main` was merged into this branch, `make eval-lower-visible-lock` counted 1,795 visibly-off cells, so this PR lowers the lock from 1,842 to 1,795 (decision 0093).
+`make eval` on `main` (7dab5361) shows 0 regressions in every gated suite. poi and corpus-bench were fetched for this run. After `main` was merged into this branch, `make eval-lower-visible-lock` counted 1,777 visibly-off cells, so this PR lowers the lock from 1,842 to 1,777 (decision 0093).
 
 The run shared a 4-core machine with four `make check` runs (the orphan-PR updates below), at a load average of about 15. Under that load, 9 corpus-bench workbooks and `probes/union-walk-repeated-in-lambda` hit the 60 s case timeout. `make eval-baseline` wanted to record them as `!Timeout` known failures. I did not commit those lines because they are load, not engine changes. A later rerun on a quiet machine (`make eval-lower-visible-lock`) recorded no timeouts. The probe case passes on its own (15/15) but takes about 36 s of CPU, so a contended CI runner could time it out.
 
@@ -64,12 +64,12 @@ Blocked: 29 (28 last run). None can be unblocked.
 - New: T-2182 (desktop evidence for INFO type_text, M14, decision 0039).
 - The rest are unchanged: Phase 2 (T-0400, T-0401, T-0402, T-0423, T-1066, T-0441), time-boxed fits with no new hypothesis (T-0968, T-1528, T-1529, T-1592; T-2187 is the oracle sweep T-1592 needs), T-1099/T-1284 (GEOMEAN), T-0431 (FUSE corpus), T-2037 (needs a routine change) and the M14 desktop-oracle tasks (decision 0039).
 
-Open PRs: 23 at 07:45 UTC. Seven agent PRs were open longer than 24 h at the start of the run: #1209 (T-1996), #1210 (T-1943), #1212 (T-1878), #1230 (T-1835), #1284 (T-2101), and the drafts #1226 (T-0439) and #1245 (T-1484). No orphan merge happened this run.
-- #1209, #1212 and #1284: this run merged `origin/main` into each, taking `main`'s side of baseline conflicts as decision 0093 says, and then ran all four reviewers on each diff. Every reviewer said APPROVE. CI went green on #1209 and #1284.
-- Before I got the merge lock, session `01HP2RnX…` pushed fresh `main` merges to #1209 and #1230, and another session took the lock for #1284. Those branches have now moved within 2 h, so decision 0050 no longer treats them as orphans. They are left to the session driving them.
+Open PRs: 20 at 08:10 UTC. Seven agent PRs were open longer than 24 h at the start of the run: #1209 (T-1996), #1210 (T-1943), #1212 (T-1878), #1230 (T-1835), #1284 (T-2101), and the drafts #1226 (T-0439) and #1245 (T-1484).
+- #1209, #1212 and #1284: this run merged `origin/main` into each, taking `main`'s side of baseline conflicts as decision 0093 says, and then ran all four reviewers on each diff. Every reviewer said APPROVE, and CI went green.
+- Session `01HP2RnX…` held the merge lock and merged all three between 07:49 and 08:02 UTC (#1284, #1209, #1212), so this run merged none itself.
 - #1230 (T-1835) conflicted with `main` in the lift code. Once merged, it raised duplication by 4 lines, from repeated WRAPCOLS/WRAPROWS argument reads. I deduplicated those reads, but a live session pushed its own merge at 07:17 UTC, so my version was not pushed. Whoever lands #1230 must still pass the duplication ratchet.
 - Duplicates: T-1943 is in both #1210 (older) and #1347 (newer, closer to `main`). #1347 survives. Close #1210 with a link once #1347 has merged (decision 0050).
-- Decision 0093 (T-2245, #1414) landed during this run. Fix PRs no longer write the visible-parity lock, and this steward PR lowers it once a day. In this run's commits the lock goes from 1,758 to 1,795.
+- Decision 0093 (T-2245, #1414) landed during this run. Fix PRs no longer write the visible-parity lock, and this steward PR lowers it once a day. Measured on this branch after merging `main`, the lock goes from 1,842 to 1,777.
 
 Queues at the start of the run:
 - functions: 8 ready (≥ 3), so the gap-triager did not run (a worker already triaged today, #1388/#1409). The sonnet buffer is 29 (≥ 10).
