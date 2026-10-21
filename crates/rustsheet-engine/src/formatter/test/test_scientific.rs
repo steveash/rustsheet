@@ -37,3 +37,46 @@ fn scientific_negative() {
     let b = format_number(0.000002, "0.00E+00", &ctx);
     assert_eq!(b.text, "2.00E-06");
 }
+
+// Excel cases from eval/suites/gen-m10 (excel-graph, T-1730).
+#[test]
+fn scientific_zero_exponent_and_engineering() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (1.5, "0.00E+00", "1.50E+00"),
+        (1.5, "0.000E-00", "1.500E00"),
+        (123_456.789, "##0.0E+0", "123.5E+3"),
+        (61.0, "##0.0E+0", "61.0E+0"),
+        (36.5, "00.0E+0", "36.5E+0"),
+        (2_958_465.999_99, "00.0E+0", "03.0E+6"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(format_number(value, code, &ctx).text, expected, "{code}");
+    }
+}
+
+// Literals between `E+`/`E-` and the exponent digits: the `E` stays put and the sign moves to the
+// digits; a zero mantissa keeps one integer digit (poi/NumberFormatApproxTests.xlsx, excel-graph,
+// T-0937; gen-m10/5eb95c63c7d6180c F!G13 for `#E+0`).
+#[test]
+fn scientific_literals_before_the_exponent_digits() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (123_456.789, "|#.#|E-|#|", "|1.2|E|5|"),
+        (123_456.789, "|#.#|E+|#|", "|1.2|E|+5|"),
+        (1.234_567_89e-5, "|#.#|E-|#|", "|1.2|E|-5|"),
+        (1.234_567_89e-5, "|#.#|E+|#|", "|1.2|E|-5|"),
+        (0.0, "|#.#|E-|#|", "|0.|E|0|"),
+        (0.0, "|#.#|E+|#|", "|0.|E|+0|"),
+        (-123_456.789, "|#.#|E-|#|", "-|1.2|E|5|"),
+        (-1.234_567_89e-5, "|#.#|E+|#|", "-|1.2|E|-5|"),
+        (0.0, "#E+0", "0E+0"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{code} {value}"
+        );
+    }
+}
