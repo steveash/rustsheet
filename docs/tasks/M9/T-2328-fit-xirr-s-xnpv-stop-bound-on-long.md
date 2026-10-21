@@ -21,4 +21,4 @@ T-1591 (financial.md "XIRR is a bracketing bisection") found the span factor max
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+Engine changes (T-0916).

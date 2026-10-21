@@ -254,7 +254,7 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   the first-value sign with the XNPV bound skipped only for a zero first value 20/22. Two of the 21 are
   coincidences: the model reaches `#NUM!` on xirr-mismatched-empties X12, X13 (no date later than the
   first) by never stopping (the bisection walks away from the root), not by Excel's input check. The span
-  factor's form rests on A8 alone; T-1591 probes it. Why a zero first value drops the XNPV bound is open:
+  factor's form rests on A8 alone; T-1591 probed it and the bullet after this one records the result (it does not hold). Why a zero first value drops the XNPV bound is open:
   normalising XNPV by the first value (0/0, NaN) would explain both the end choice and the stop if the
   tests are written to pass on NaN, but nothing probes that.
 - Unprobed: the cap on the chain walk (up to 17 doublings, X!F15, and 4 halvings are seen; day serials
@@ -273,17 +273,17 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   max(1, years) is NOT confirmed: the bound is not monotone in the span (80 years stops where 40 and 120 do not),
   and |XNPV(m)| / max|value| at the model's stop is 1.6e-8 (T=20), 4.8e-9 (40), 7.0e-12 (120) for the cells Excel
   continued past, against 2.1e-10 (80) and up to 7e-8 (r = 0.013, T >= 40) for cells where it stopped. The normaliser
-  or the bound's form for spans over ten years is open (T-1591 follow-up). Counts on `xirr-oos` (52 cells with
+  or the bound's form for spans over ten years is open (T-2328). Counts on `xirr-oos` (52 cells with
   the probe): T-1583 candidate 48/52 (misses: xirr-early-dates A7 input check, and span-zero-first A11, A14, A20),
   engine (Newton) 46/52, "bisect, span-scaled |f| bound" alone 35/52, first-value sign with the bound skipped for a
   zero first value 41/52, fitted stop 28/52.
 Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
-T-0916): 227/227 on the fit set and 22/22 on `xirr-oos` (the Newton code it replaced: 9 and 11). The walk
+T-0916): 227/227 on the fit set and 22/22 on the pre-T-1591 `xirr-oos` cells (the Newton code it replaced: 9 and 11); 48/52 with T-1591's cells. The walk
 cap (100 points) and bisection cap (200 steps) are engine bounds (DEVIATION, "The IRR and XIRR solver
 caps" below). A trial rate where a power overflows or underflows to 0 has no XNPV, as in the lab model.
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test; the XNPV part of the stop
 test is UNVERIFIED beyond the fit set (T-1533; refined by T-1583; T-1591 shows the span factor misses 3 of 21 long-span cells)
-Tasks: T-1525, T-0916, T-1533, T-1583, T-1591
+Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328
 
 ## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of v = 1/(1 + r):
