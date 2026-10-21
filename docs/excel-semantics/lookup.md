@@ -880,3 +880,51 @@ Tasks: T-2078
 Rule (VERIFIED, probes/workday-serial-zero F40, excel-graph, 2026-10-19, T-1254): `XLOOKUP(NA(),A1:A4,B1:B5)` is
 `#N/A`, not the `#VALUE!` of lookup and return arrays of different sizes: the lookup value's error is returned first.
 Tasks: T-1254
+
+## CHOOSEROWS and CHOOSECOLS: an error argument beats an out-of-range index (T-2273)
+Rule (excel-graph, gen-m6, 2026-10-21): an error value in any argument, the array or a later index, is the result even when an
+earlier index is 0 or out of range: `CHOOSECOLS(Data!A1,1E+15,ACOSH(-0.3))` is `#NUM!`, `CHOOSEROWS(Data!A7:B8,4,FLOOR(0.3,-0.0001),1)`
+`#NUM!`, `CHOOSECOLS(SQRT(2958465),2,-2,INDEX(Data!A8:D12,6,2))` `#REF!`, `CHOOSEROWS(CHOOSEROWS(Data!D11:E12,1),1E-15,6,2-FLOOR(7,0))`
+`#DIV/0!`, `CHOOSEROWS(Data!B11:E11,2,-1,..SUMX2MY2(<mismatched>))` `#N/A` (gen-m6/121a7c17092038d9 Calc!A298, 07171fa3f7493f51 A333,
+ee56a4ed5a612a0d A19, 535caabe1e635e2d A136, 7ac4ea222977f3b4 A391; 26 cells in T-2273). This answers the UNVERIFIED "which problem
+wins inside a CHOOSECOLS/CHOOSEROWS index list" above for errors against bad indexes; which of two errors wins is still unprobed.
+Ours: the first problem in argument order, so an out-of-range index's `#VALUE!` wins.
+Status: VERIFIED
+Tasks: T-2273
+
+## ADDRESS: argument errors first, sheet_text "TRUE"/"FALSE" quoted, bounds (T-2274, T-2275)
+Rule (excel-graph, gen-m6, 2026-10-21):
+- An error in any argument beats ADDRESS's own `#VALUE!` for a bad row, column or abs_num: `ADDRESS(-1,3.14159,2,NA())` is `#N/A`,
+  `ADDRESS(10,0.1/DATE(2055,0,5),3,INDEX(Data!A6:A7,3))` `#REF!`, `ADDRESS(18,0.1,-2.5,MINUTE(-0.5)<..,..)` `#NUM!`
+  (gen-m6/0fd242eb9b2456a8 Calc!A280, 38d4bcdafaed1275 A35, 07171fa3f7493f51 A245; 15 cells in T-2274).
+- A sheet_text of "TRUE" or "FALSE" is quoted like a name that needs quotes: `ADDRESS(9,26,3,TRUE,"TRUE")` = `'TRUE'!$Z9` and
+  `ADDRESS(6,20,4,TRUE,<a 1x1 array holding the boolean FALSE>)` = `'FALSE'!T6` (a boolean sheet_text becomes "FALSE" and is quoted) (c96ac1ada46179c4 A197, ee56a4ed5a612a0d A306). Ours leaves them bare.
+- A row past 1048576 or a column past 16384 is `#VALUE!` whatever abs_num and a1 are, R1C1 relative included:
+  `ADDRESS(1E+15,7)`, `ADDRESS(21887494,5)`, `ADDRESS(123456831,3,1,..,"Data")`, `ADDRESS(17,123456789.123,2,FALSE)`,
+  `ADDRESS(2,45306,2,FALSE,"Data")` (36d5ce763ea63631 A154, b54448af3fde07ca A220, d0c30225243fde60 A63, 04fdc9a67474aab9 A98,
+  acdfeaf6e6eadd4e A379). Ours clamps to 2147483647 or prints the offset. But a relative R1C1 column of -2.5 is accepted:
+  `ADDRESS(10,-2.5,4,FALSE)` = `R[10]C[-3]` (3a26794015dfbe9d A275; ours `#VALUE!`), and `ADDRESS(9,0,2,FALSE,"Data")` must be text,
+  since `DATEVALUE(ADDRESS(9,0,2,FALSE,"Data")&OFFSET(Data!A4:D10,0,-1))` is the OFFSET's `#REF!` (44194b2fefa30de2 A307).
+  How the relative offset rounds (-2.5 to -3) and its bounds are UNVERIFIED (T-2275 probes them).
+Status: VERIFIED for the cells; the relative R1C1 bounds UNVERIFIED.
+Tasks: T-2274, T-2275
+
+## HYPERLINK: an error link_location is the result (T-2277)
+Rule (excel-graph, gen-m6, 2026-10-21): when link_location is an error, HYPERLINK returns that error as one value, whatever
+friendly_name is: with a number friendly_name (`HYPERLINK(TEXTJOIN(<#VALUE!>..),GCD(..))` is `#VALUE!`), with an array one
+(`HYPERLINK(XLOOKUP(<size mismatch>),MUNIT(2))` is `#VALUE!`, not a spill) and with a range one (`HYPERLINK(HLOOKUP(100,Data!A6:C11,7)&..,
+OFFSET(Data!A6:C12,6,42))` is `#REF!`); `HYPERLINK("abc"&NA(),OFFSET(..)^..)` is a single `#N/A` that spills nothing (gen-m6/0bcac2d96e96b3df
+Calc!A17, 44194b2fefa30de2 A169, d0c30225243fde60 A377, c6621490a4d67f4e A214/B214). Ours returns friendly_name or lifts over it.
+Status: VERIFIED
+Tasks: T-2277
+
+## Unexplained gen-m6 lookup cells (T-2278)
+Observed (excel-graph, gen-m6, 2026-10-21), not yet explained:
+- `DATE(2088,MATCH(<blank>,Data!E4:E12,-2.2),30)` = 68757 (MATCH 3) over 0.5, 0.3, 0, -2.5, 2.5, -1, 1, 0.1, 100; the descending search
+  above gives 9 (ours 68941) (gen-m6/50f0dd9a8ee2cb57 Calc!A204).
+- `WEEKDAY(MMULT(LOOKUP(TRUE,Data!B2:B10,Data!E11:E11),Data!C$2))` is `#VALUE!` (TRUE matches B10, the 9th cell, past the
+  one-cell result vector); ours 7. A LOOKUP result read as a blank *cell* would make MMULT `#VALUE!` (arrays.md: a blank matrix
+  cell), UNVERIFIED (50f0dd9a8ee2cb57 A315).
+- `INDIRECT(XLOOKUP(<blank>,Data!E5:E9,Data!C3:D8,..,101,INDEX(Data!D4:E11,0)),0.2)` is `#REF!`; ours `#VALUE!` (e3a562557696e2fc A33).
+Status: UNVERIFIED (T-2278 probes them)
+Tasks: T-2278

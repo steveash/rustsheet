@@ -64,3 +64,11 @@ Rule: IFNA replaces only `#N/A` (`#DIV/0!`, `#VALUE!` pass through); a non-error
 Evidence: probes/ifna-isformula-edges Calc!A1:A13, C1:E3 (oracle: excel-graph, 2026-10-12, T-1279).
 Status: VERIFIED (excel-graph); the engine matches.
 Tasks: T-1279
+
+## ROWS over IFS with a one-cell text condition (T-2280)
+Observed (excel-graph, gen-m6, 2026-10-21): `ROWS((IFS(Data!A$7,Data!D$10)*Data!C10))` with A7 = "a*" is 1 (gen-m6/870c5e38f51ce5d4
+Calc!A360), while `ROWS(SINH(710))` is `#NUM!` (3e51213f35889d06 A42): the IFS product is not a scalar error under ROWS. One reading:
+IFS lifts over a one-cell range condition (a 1x1 array of `#VALUE!`, whose ROWS is 1); IF reads a one-cell range condition as a
+scalar (references.md, T-2079). Ours: `#VALUE!`.
+Status: UNVERIFIED (T-2280 probes it)
+Tasks: T-2280

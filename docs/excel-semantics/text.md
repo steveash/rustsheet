@@ -825,6 +825,13 @@ Implemented in: `MAX_REPLACED_UNITS` / `over_cap` in functions/text/regex_functi
 Status: VERIFIED (excel-graph)
 Tasks: T-1817
 
+## SUBSTITUTE with an instance_num of 1E+15 is `#VALUE!` (T-2279)
+Observed (excel-graph, gen-m6, 2026-10-21): `LOOKUP(SUBSTITUTE("x~*"&<blank>,RIGHTB("ü"),-0.0001,<blank>+1E+15),Data!C8:C8,Data!B8:B12)`
+is `#VALUE!` (gen-m6/9615a6de0f3ac417 Calc!A144); most likely SUBSTITUTE's instance_num makes it so. Ours returns the text unchanged
+(no 1E+15th match) and LOOKUP gives `#N/A`. The bound (2^31, 2^53, 32767 ...) is UNVERIFIED (T-2279 probes it).
+Status: UNVERIFIED (one cell)
+Tasks: T-2279
+
 ## ARRAYTOTEXT: an error in the array argument wins over an invalid format (T-2250)
 Rule: `ARRAYTOTEXT(<error>, 2)` is the array argument's error, not the `#VALUE!` of the invalid format 2: `ARRAYTOTEXT(SINH(134217727),2)` is `#NUM!`. Whether this holds for every error kind and for a non-scalar array is unprobed.
 Ours: `#VALUE!` (the format is checked first).
