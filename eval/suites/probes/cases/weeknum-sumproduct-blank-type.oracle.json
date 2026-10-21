@@ -1,0 +1,64 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A11": {
+    "t": "n",
+    "v": 9.0
+   },
+   "A12": {
+    "t": "n",
+    "v": 9.0
+   },
+   "A2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A4": {
+    "t": "n",
+    "v": 9.0
+   },
+   "A5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A7": {
+    "t": "n",
+    "v": 9.0
+   },
+   "A8": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A9": {
+    "t": "e",
+    "v": "#VALUE!"
+   }
+  },
+  "Data": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "c5f24f345fb30c60e2da5cf2f4b2c7d737cd9f5bdebb8c3a331e53e046ba4681",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-21T17:41:04+00:00",
+  "version": null,
+  "workbook_name": "a9e4d003e8f111215ae192b6dd322ca558d5b79f375fb73893d795a1a2213892.xlsx"
+ }
+}
