@@ -19,6 +19,7 @@ impl Model {
         if sheet_index as usize >= self.workbook.worksheets.len() {
             return Err("Sheet index too large".to_string());
         }
+        self.drop_pivots_on(sheet_index)?;
         let sheet = self.workbook.worksheets.remove(sheet_index as usize);
         self.reset_parsed_structures();
         Ok(sheet)
