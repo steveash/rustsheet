@@ -5,6 +5,7 @@ use rustsheet_engine::colors::get_indexed_color;
 
 use crate::error::XlsxError;
 
+use rustsheet_engine::flush_subnormal;
 use rustsheet_engine::types::{Color, Theme};
 
 pub(crate) fn get_number(node: &XmlNode, s: &str) -> i32 {
@@ -164,6 +165,13 @@ pub(super) fn parse_cell_number(cell_value: Option<&str>) -> f64 {
         .and_then(|value| value.parse::<f64>().ok())
         .filter(|number| number.is_finite())
         .unwrap_or(0.0)
+}
+
+/// The number of a constant cell's `<v>`: [`parse_cell_number`], with a subnormal read as 0, as
+/// Excel loads it (`=A1=0` TRUE, LOG10 `#NUM!`; numbers.md "A subnormal cell constant reads as
+/// 0", probes/subnormal-cell-constants). A spill's cached value is a formula result and keeps it.
+pub(super) fn parse_constant_number(cell_value: Option<&str>) -> f64 {
+    flush_subnormal(parse_cell_number(cell_value))
 }
 
 #[cfg(test)]

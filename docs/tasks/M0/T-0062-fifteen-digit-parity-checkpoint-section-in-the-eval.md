@@ -3,7 +3,7 @@ id: T-0062
 title: "Fifteen-digit parity checkpoint section in the eval report: per-function Excel cells, generated cells and visibly-off count against decision 0094"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -31,21 +31,21 @@ can watch one line move.
   off.
 
 ## Acceptance criteria
-- [ ] The catalog takes an optional `v15: exempt` key with a reason. The PI, TRUE, FALSE and NA
+- [x] The catalog takes an optional `v15: exempt` key with a reason. The PI, TRUE, FALSE and NA
       entries, the volatile functions and INFO get it. The harness rejects an exempt entry that
       has no reason.
-- [ ] report.json and report.md gain a "Fifteen-digit parity checkpoint" section:
+- [x] report.json and report.md gain a "Fifteen-digit parity checkpoint" section:
   - per function: Excel cells, generated outer-call cells, exemption, visibly-off cells, and
     whether it meets the bar;
   - the functions below the bar, worst first;
   - an overall line: "Fifteen-digit parity: met | not met (coverage N/506, visibly-off cells M)".
-- [ ] The visibly-off total counts every suite that ran (vendored and fetched) and says which
+- [x] The visibly-off total counts every suite that ran (vendored and fetched) and says which
       suites those were.
-- [ ] Unit tests cover counting a generated cell only for its outer call, the exemption path,
+- [x] Unit tests cover counting a generated cell only for its outer call, the exemption path,
       and the overall verdict.
-- [ ] `.claude/skills/steward/SKILL.md` asks the steward to copy the overall line into the
+- [x] `.claude/skills/steward/SKILL.md` asks the steward to copy the overall line into the
       docs/status.md scoreboard each run, and to state whether the previous run also met it.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Raising coverage (T-2252 to T-2258).
@@ -53,3 +53,19 @@ can watch one line move.
 
 ## Visible-parity stage
 This task is the measuring stick for decision 0094's checkpoint.
+
+## Outcome
+- Catalog: optional `v15: exempt` with a required `v15_reason` (functions.yaml, scope.json view,
+  `CatalogFunction`); `Catalog::parse` rejects an exemption without a reason
+  (`CatalogError::ExemptWithoutReason`). Exempt: PI, TRUE, FALSE, NA (no arguments), NOW, TODAY,
+  RAND, RANDBETWEEN, RANDARRAY (volatile) and INFO (closed set of type texts).
+- `v15_checkpoint.rs`: per in-scope catalog function its Excel cells, generated outer-call cells
+  (`formula_calls::outer_call`: the formula is one call of the function), exemption, visibly-off
+  cells, covered/meets; the overall `Fifteen-digit parity: met | not met (coverage N/M,
+  visibly-off cells K)` line, with the suites counted. report.json `v15_checkpoint`, report.md
+  section after "Visibly off".
+- `formula_calls.rs` takes `functions_in`, `calls_only_in_scope` and the new `outer_call` out of
+  report.rs, which was at the 1000-line limit.
+- Steward skill: copy the line into the docs/status.md scoreboard and say whether the previous
+  run met it.
+- Eval delta: none (report only; no baseline line moves).
