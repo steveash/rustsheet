@@ -3,7 +3,7 @@ id: T-2043
 title: "Oracle sweep for the IM* last-digit residue: IMABS, IMARGUMENT, IMCSC, IMSEC, IMSECH, IMLOG2, IMCOT"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
