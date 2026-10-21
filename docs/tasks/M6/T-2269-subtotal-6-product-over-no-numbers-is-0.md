@@ -3,7 +3,7 @@ id: T-2269
 title: "SUBTOTAL 6 (PRODUCT) over no numbers is 0, not 1"
 milestone: M6
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
