@@ -89,4 +89,5 @@ day and clamps on the real calendar (`shift_displayed_date`). DAYS360 treats 190
 negative date. WEEKNUM needed nothing: the gen-m6 `#VALUE!` came from `SUMPRODUCT(<lone blank>)` in its return_type, which the
 engine already matches. `DateSystem::date_of_serial` (only DATEDIF used it) is gone.
 Evidence: probes/dates-early-1900-displayed (116 cells, excel-graph) and probes/weeknum-sumproduct-blank-type (12 cells); both pass.
-Eval delta: gen-m6 known failures 243 -> 214 (all 31 cells of this task gone), probes +128 passing cells, no regressions.
+Eval delta: gen-m6 known failures 243 -> 214 (29 lines; the task's other two cells, b54448af3fde07ca A55 and c96ac1ada46179c4 A105,
+already passed on main), probes +128 passing cells, no regressions. All 31 cells now pass.

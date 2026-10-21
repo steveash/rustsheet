@@ -223,9 +223,9 @@ pub fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
     Some((date.year(), date.month(), date.day()))
 }
 
-/// The real calendar date EOMONTH, YEARFRAC and the coupon schedule do month arithmetic on. Serial 60 (the fictitious
-/// 1900-02-29) counts as 1900-02-28 and serial 0 (day 0 of January 1900) stands in as 1900-01-01:
-/// EOMONTH uses only its month (EDATE reads the displayed day: `shift_displayed_date`).
+/// The real calendar date YEARFRAC and the coupon schedule do month arithmetic on. Serial 60
+/// (the fictitious 1900-02-29) counts as 1900-02-28 and serial 0 (day 0 of January 1900) stands in
+/// as 1900-01-01. EDATE and EOMONTH read the displayed date instead (`shift_displayed_date`).
 /// Evidence: probes/dates-early-1900 A9/A10 (`EDATE(31,1)` = 59), A23/A25 (`EDATE(60,0)` =
 /// `EOMONTH(60,0)` = 59); probes/dates-early-1900-edges A36-A44 (`EOMONTH(0,0)` = 31, `EDATE(0,1)` = 31).
 pub fn month_arithmetic_date(serial: i64) -> Option<NaiveDate> {
