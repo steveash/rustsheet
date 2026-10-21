@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -73,6 +74,14 @@ ETA_POOL: list[str] = ["SUM", "MAX", "MIN", "AVERAGE", "COUNT", "PRODUCT"]
 # Share of a `pool` parameter's values drawn from its edge pool (synthetic-generator.md §3.2).
 POOL_RATE = 0.35
 MASK_OPS: list[str] = [">", "<", "=", "<>"]
+# `--spill` (synthetic-generator.md §5.2 shape 3): the largest footprint reserved under a spilling probe, and the
+# share of spilling probes given a blocker cell in it (edge class `spill_blocked`), so `#SPILL!` stays covered.
+SPILL_ROWS = 12
+SPILL_COLS = 6
+SPILL_BLOCKED_RATE = 0.05
+SPILL_BLOCKER = "x"
+# The outer call of a generated formula: `=NAME(`, after any `_xlfn.`/`_xlws.` prefixes (`spelled`).
+OUTER_CALL = re.compile(r"=(?:_xl[a-z]+\.)*([A-Z][A-Z0-9.]*)\(")
 
 
 def col_letter(index: int) -> str:
@@ -106,6 +115,10 @@ class Catalog:
     def load(path: Path) -> Catalog:
         data = yaml.safe_load(path.read_text())
         return Catalog(operators=data.get("operators", []), functions=data.get("functions", []))
+
+    def dynamic_array_names(self) -> set[str]:
+        """Functions marked `dynamic_array: true`: their result can be a multi-cell array by design."""
+        return {f["name"] for f in self.functions if f.get("dynamic_array")}
 
     def scoped(self, milestone: str) -> Catalog:
         """Operators and generator-ready functions in scope at `milestone`.
@@ -363,10 +376,13 @@ def generate_case(
     max_depth: int = 3,
     focus: bool = False,
     case_index: int = 0,
+    spill: bool = False,
 ) -> dict[str, Any]:
     """One case. With `focus`, every formula's outer call is a function whose own milestone is `milestone`,
     taking turns through a seeded shuffle (each case reshuffles from its own seed; `case_index` offsets the
-    position, so counts are exactly even within a case and roughly even across a run)."""
+    position, so counts are exactly even within a case and roughly even across a run). With `spill`, a formula
+    whose outer call is `dynamic_array` gets an empty footprint to spill into (`spill_layout`); the formulas
+    themselves are the same as without it."""
     rng = random.Random(seed)
     g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth)
     targets = [f for f in g.catalog.functions if f.get("milestone") == milestone] if focus else []
@@ -383,21 +399,79 @@ def generate_case(
                 if isinstance(v, str) and v.startswith("="):
                     v = {"t": "s", "v": v}
                 data[f"{chr(ord('A') + c)}{r}"] = v
-    calc: dict[str, Any] = {}
+    texts: list[str] = []
     for i in range(1, formulas + 1):
         if focus:
-            calc[f"A{i}"] = "=" + g.call_fn(targets[(case_index * formulas + i - 1) % len(targets)], 0)
+            texts.append("=" + g.call_fn(targets[(case_index * formulas + i - 1) % len(targets)], 0))
             continue
         typ = rng.choice(["number", "number", "any", "text", "bool"])
-        calc[f"A{i}"] = "=" + g.expr(typ, 0)
+        texts.append("=" + g.expr(typ, 0))
+    tags = ["generated", milestone, *sorted(g.used)]
+    if spill:
+        # Its own stream: the layout never shifts the formulas' draws.
+        layout = spill_layout(
+            texts,
+            catalog.dynamic_array_names(),
+            rows=min(SPILL_ROWS, data_rows),
+            cols=min(SPILL_COLS, data_cols),
+            rng=random.Random(f"spill-{seed}"),
+        )
+        calc, check = layout.cells, layout.check
+        tags += ["spill", *(["spill_blocked"] if layout.blocked else [])]
+    else:
+        calc = {f"A{i}": text for i, text in enumerate(texts, 1)}
+        check = [f"Calc!A{i}" for i in range(1, formulas + 1)]
     return {
         "format": "rustsheet-case/v1",
-        "description": f"generated P0 seed={seed} milestone={milestone}",
-        "tags": ["generated", milestone, *sorted(g.used)],
+        "description": f"generated P0 seed={seed} milestone={milestone}" + (" spill" if spill else ""),
+        "tags": tags,
         "sheets": [{"name": "Data", "cells": data}, {"name": "Calc", "cells": calc}],
         "expected": {},
-        "check": [f"Calc!A{i}" for i in range(1, formulas + 1)],
+        "check": check,
     }
+
+
+@dataclass
+class SpillLayout:
+    """The Calc sheet of a `--spill` case: its cells (formulas and blockers), the cells to check, and how
+    many footprints have a blocker."""
+
+    cells: dict[str, Any]
+    check: list[str]
+    blocked: int
+
+
+def spill_layout(
+    texts: list[str], dynamic: set[str], *, rows: int, cols: int, rng: random.Random
+) -> SpillLayout:
+    """Formulas down column A, each spilling one (outer call in `dynamic`) followed by the empty `rows` x `cols`
+    footprint it anchors (A..). Nothing else is in a footprint's rows, so footprints never overlap a formula or
+    each other. Every footprint cell is checked, so a cell Excel leaves empty is scored as empty. A result
+    taller than the footprint is `#SPILL!` against the next formula below. A wider one spills right into
+    unchecked cells, where the harness's spill-extent check fails an engine value Excel left empty.
+    `SPILL_BLOCKED_RATE` of the footprints get a blocker constant just below or right of the anchor
+    (`spill_blocked`): an input, not checked."""
+    cells: dict[str, Any] = {}
+    check: list[str] = []
+    blocked = 0
+    row = 1
+    for text in texts:
+        cells[f"A{row}"] = text
+        m = OUTER_CALL.match(text)
+        if not (m and m.group(1) in dynamic):
+            check.append(f"Calc!A{row}")
+            row += 1
+            continue
+        footprint = [f"{col_letter(c)}{r}" for r in range(row, row + rows) for c in range(cols)]
+        blocker = None
+        if rng.random() < SPILL_BLOCKED_RATE and len(footprint) > 1:
+            below, right = f"A{row + 1}", f"B{row}"
+            blocker = rng.choice([a for a in (below, right) if a in footprint])
+            cells[blocker] = SPILL_BLOCKER
+            blocked += 1
+        check += [f"Calc!{a1}" for a1 in footprint if a1 != blocker]
+        row += rows
+    return SpillLayout(cells, check, blocked)
 
 
 def write_case(spec: dict[str, Any], out_dir: Path) -> Path:
