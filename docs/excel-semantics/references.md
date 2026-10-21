@@ -247,16 +247,21 @@ reference into another workbook is that reference. `ROWS(LET(c,TRUE,IF(c,…!A1:
 reference, LET gives IF's value: `ROWS(LET(c,FALSE,IF(c,…!A1:B3)))` is 1, `ISREF(…)` FALSE, and a
 condition error is that error (`ROWS(LET(c,1/0,IF(c,…!A1:B3)))` `#DIV/0!`).
 Evidence: probes/external-ref-no-link-let Calc!A1:A20, external-ref-no-link-ifchoose A26
-(excel-graph, 2026-10-16, T-1535). Engine: `Model::pick_reference` reads such a LET with its names
-bound (`let_scope`) when every argument its body may pick names another workbook; a LET whose body
-may pick any other argument (a reference into this workbook, a value: `IF(c,…!A1:B3,"x")`) is read
-as before. Probed since (T-1710, probes/external-ref-no-link-let-index, excel-graph 2026-10-16):
-INDEX over such a LET is INDEX over the reference it picks (`ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,2))`
-`#N/A`, `ROWS(INDEX(…,2,0))` 1; ours matches), and a LET body that may also pick another argument is
-still read with its names bound and the IF's pick made: `ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))` and
-`ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` are 3, `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` TRUE and
-`COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))` 0; ours gives `#BLOCKED!`, FALSE and 1 (T-1721). OFFSET over
-such a LET is not a reference: `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))` is FALSE (ours TRUE; T-1721), as OFFSET over the bare external reference is (external-ref-no-link-index A16, A17): the miss is that ours does not unwrap the LET first.
+(excel-graph, 2026-10-16, T-1535). Probed since (T-1710, probes/external-ref-no-link-let-index,
+excel-graph 2026-10-16): INDEX over such a LET is INDEX over the reference it picks
+(`ERROR.TYPE(INDEX(LET(c,TRUE,IF(c,…!A1:C4)),2,2))` `#N/A`, `ROWS(INDEX(…,2,0))` 1), and a LET body
+that may also pick another argument is still read with its names bound and the IF's pick made:
+`ROWS(LET(c,TRUE,IF(c,…!A1:B3,"x")))` and `ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` are 3,
+`ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` TRUE and `COUNTA(LET(c,TRUE,IF(c,…!A1:B2,1)))` 0 (A4:A7). OFFSET
+over such a LET is not a reference: `ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))` is FALSE (A3), as OFFSET
+over the bare external reference is (external-ref-no-link-index A16, A17).
+Engine (T-1721): `Model::pick_reference` reads every LET whose body may pick a reference into
+another workbook (`may_be_external`) with its names bound (`let_scope`); when the body picks
+another argument (a reference into this workbook, a value), that argument is read there, in
+reference context, as a LET's body is (`PickedReference::Read`). OFFSET takes its reference
+through `pick_reference`, so OFFSET over a LET picking an external reference is `#VALUE!`.
+Unprobed: what Excel gives when such a LET picks the other argument (ours reads it as any LET body:
+`ISREF(LET(c,FALSE,IF(c,…!A1,D1)))` TRUE, `ROWS(LET(r,D1:D2,c,FALSE,IF(c,…!A1:B3,r)))` 2).
 `ROWS(CHOOSE({1,2},…!A1:B3,A1))` is 3, and the engine matches since T-1508, which broadcasts CHOOSE's
 arms over an index array (external-ref-no-link-ifchoose A32).
 Unprobed: ROW and COLUMN of an IF lifted over an array condition that may pick an external

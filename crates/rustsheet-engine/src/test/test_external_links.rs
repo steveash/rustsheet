@@ -424,6 +424,67 @@ fn let_body_picking_an_external_reference_is_that_reference() {
     }
 }
 
+/// A LET whose body may pick a reference into another workbook or another argument is the
+/// external reference when it picks it (probes/external-ref-no-link-let-index A3:A7), and
+/// otherwise the reference or value it picks, read while its names are bound (T-1721).
+#[test]
+fn let_body_picking_an_external_reference_or_another_argument() {
+    let mut model = new_empty_model();
+    model._set("D1", "1");
+    model._set("D2", "x");
+    let ext = "'[other.xlsx]Sheet1'!";
+    for (formula, expected) in [
+        (format!("=ISREF(OFFSET(LET(c,TRUE,{ext}A1),1,1))"), "FALSE"),
+        (format!("=OFFSET(LET(c,TRUE,{ext}A1),1/0,1)"), "#DIV/0!"),
+        (format!("=ROWS(LET(c,TRUE,IF(c,{ext}A1:B3,\"x\")))"), "3"),
+        (format!("=ROWS(LET(c,TRUE,IF(c,{ext}A1:B3,D1:D2)))"), "3"),
+        (format!("=ISREF(LET(c,TRUE,IF(c,{ext}A1,D1)))"), "TRUE"),
+        (format!("=COUNTA(LET(c,TRUE,IF(c,{ext}A1:B2,1)))"), "0"),
+        (format!("=ROW(LET(c,TRUE,IF(c,{ext}B3,D1)))"), "3"),
+        (
+            format!("=AREAS(LET(c,TRUE,IF(c,({ext}A1,{ext}B2),D1)))"),
+            "2",
+        ),
+        // The other argument, a name bound by the LET included.
+        (format!("=ISREF(LET(c,FALSE,IF(c,{ext}A1,D1)))"), "TRUE"),
+        (format!("=ISREF(LET(c,FALSE,IF(c,{ext}A1,1)))"), "FALSE"),
+        (
+            format!("=ROWS(LET(r,D1:D2,c,FALSE,IF(c,{ext}A1:B3,r)))"),
+            "2",
+        ),
+        (
+            format!("=COUNTA(LET(r,D1:D3,c,FALSE,IF(c,{ext}A1:B2,r)))"),
+            "2",
+        ),
+        (
+            format!("=SUM(LET(r,D1:D3,c,FALSE,IF(c,{ext}A1:B2,r)))"),
+            "1",
+        ),
+        (format!("=ROW(LET(r,D2,c,FALSE,IF(c,{ext}B3,r)))"), "2"),
+        (format!("=ROW(LET(c,FALSE,IF(c,{ext}B3,1)))"), "#VALUE!"),
+        (format!("=AREAS(LET(c,FALSE,IF(c,{ext}A1,(D1,E1))))"), "2"),
+        (
+            format!("=ROWS(LET(c,FALSE,IF(c,{ext}A1,(D1,E1))))"),
+            "#REF!",
+        ),
+        (
+            format!("=INDEX(LET(r,D1:D2,c,FALSE,IF(c,{ext}A1,r)),2)"),
+            "x",
+        ),
+        (
+            format!("=COUNTBLANK(LET(r,D1:D3,c,FALSE,IF(c,{ext}A1,r)))"),
+            "1",
+        ),
+        (
+            format!("=ISREF(OFFSET(LET(c,FALSE,IF(c,{ext}A1,D1)),1,1))"),
+            "TRUE",
+        ),
+        (format!("=OFFSET(LET(c,FALSE,IF(c,{ext}A1,D1)),1,0)"), "x"),
+    ] {
+        assert_eq!(eval(&mut model, &formula), expected, "{formula}");
+    }
+}
+
 // Book `[1]` caches what fixtures/external-link-cached-3d-span does: `Uses` as in
 // [`cached_ranges_fixture`], `Defines` A1 "Test A1", B2 142, and an empty `56737`.
 fn cached_span_fixture() -> Model {
