@@ -551,6 +551,11 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
+        // No numbers at all is 0, as PRODUCT gives, not the empty product 1
+        // (docs/excel-semantics/numbers.md "SUBTOTAL 6 over no numbers is 0").
+        if values.is_empty() {
+            return CalcResult::Number(0.0);
+        }
         let mut result = 1.0;
         for value in values {
             result *= value;

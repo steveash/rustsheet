@@ -3,7 +3,7 @@ id: T-2269
 title: "SUBTOTAL 6 (PRODUCT) over no numbers is 0, not 1"
 milestone: M6
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -37,3 +37,6 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 1 in eval/baselin
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`subtotal_product` (function_num 6 and 106) returns 0 when no numbers are read, as PRODUCT does. Unit test `subtotal_product_over_no_numbers_is_zero`; numbers.md entry marked implemented. Eval delta: gen-m6 known failures -1 (gen-m6/216e3c05f407ca79 Calc!A21), no new failures.
