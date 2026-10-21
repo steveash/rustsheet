@@ -3,7 +3,7 @@ id: T-2267
 title: "TIME: an argument past 32767 is #NUM!, and a near-integer hour rounds before it truncates (probe the bound)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
