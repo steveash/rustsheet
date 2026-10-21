@@ -3,7 +3,7 @@ id: T-2235
 title: "Probe and match the unprobed criteria edges: D-function ~~, array criteria over blank, empty-text and 0 cells, single-cell AVERAGEIF/COUNTIFS/MAXIFS ranges"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
