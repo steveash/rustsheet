@@ -3,7 +3,7 @@ id: T-2229
 title: "Probe IMAGE grid error option past-end elements in column shapes"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2205's probe (probes/rich-errors-image-grid-error-option) read column-shaped r
 
 ## Out of scope
 -
+
+## Outcome
+Probed (excel-graph, probes/rich-errors-image-grid-error-past-end, 18 cells): the row-source/column-option result is 3x2 of `#DIV/0!`; the column/column result is 3x1 with `#N/A` in the source's past-end row 3 (`NA()` option: `#N/A` throughout). The engine already matched, so no code change; information.md updated.

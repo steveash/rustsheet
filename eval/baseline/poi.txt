@@ -259,16 +259,6 @@ F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J84
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J86
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J87
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J88
-F	poi/NumberFormatApproxTests.xlsx	Tests!A136
-F	poi/NumberFormatApproxTests.xlsx	Tests!A137
-F	poi/NumberFormatApproxTests.xlsx	Tests!A176
-F	poi/NumberFormatApproxTests.xlsx	Tests!A177
-F	poi/NumberFormatApproxTests.xlsx	Tests!A216
-F	poi/NumberFormatApproxTests.xlsx	Tests!A217
-F	poi/NumberFormatApproxTests.xlsx	Tests!A40
-F	poi/NumberFormatApproxTests.xlsx	Tests!A41
-F	poi/NumberFormatApproxTests.xlsx	Tests!A96
-F	poi/NumberFormatApproxTests.xlsx	Tests!A97
 F	poi/deep-data.xlsx	!InvalidCase
 F	poi/invalid_cell_reference.xlsx	!EngineError
 F	poi/poc-shared-strings.xlsx	!InvalidCase
