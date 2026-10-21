@@ -1033,17 +1033,23 @@ Ours: `fn_time` floors each argument and wraps any total, so every cell above is
 Status: VERIFIED for the cells; the exact bound and the rounding window are UNVERIFIED.
 Tasks: T-2267
 
-## DATE: a year, month or day just below an integer (T-2268)
-Rule (excel-graph, gen-m6, 2026-10-21): DATE does not floor an argument that is a hair below an integer down to the integer
-below: `DATE(1983,12,-1E-15)` = 30650 (= `DATE(1983,12,0)`), `DATE(2021,6,1-1E-15)` = 44348 (1 June), `DATE(2052,1,COS(-0.0001))`
-(day 0.999999995) = 55519 (1 January), `DATE(2015,-1E-21,3)` = 41976 (month 0, 3 December 2014) and a year of -4.2E-16 is 1900
-(`DATE(-4.2E-16,TAN(1),23)` = 23) (gen-m6/216e3c05f407ca79 Calc!A173, 03333cc38ec06a14 A267, 9843ec1f29523dd2 A265, b54448af3fde07ca
-A379, 07171fa3f7493f51 A311). Ours floors each argument (one day, month or year earlier; `#NUM!` for the year). The tolerance
-(rounding the serial to Excel's time resolution, rounding each argument to some digits, or truncating tiny negatives) is
-UNVERIFIED; "DATE floors its month and day" above still holds for -32767.5.
-Status: VERIFIED for the cells; the rule's window is UNVERIFIED (T-2268 probes it).
+## DATE: a year, month or day just below an integer reads as that integer (T-2268)
+Rule (excel-graph, 2026-10-21): DATE reads its year, month and day as TIME reads its arguments ("TIME: an argument past 32767 is
+`#NUM!`" above): each is floored, except that a value less than about 2.4E-7 below an integer counts as that integer, and half that
+(about 1.2E-7) when the value is negative; then the existing bounds apply ("DATE month and day bounds"). Measured edges, the same
+for year, month and day and the same as TIME's: `DATE(2020,3,2-(2^-22+1E-12))`, `DATE(2020,3-(2^-22+1E-12),2)` and
+`DATE(2021-(2^-22+1E-12),3,2)` are 2 March 2020 / 2021 while `2-2.4E-7` floors (`DATE(2020,3,2-2.4E-7)` = 43891,
+`DATE(2020,3-2.4E-7,2)` = 43863, `DATE(2021-2.4E-7,3,2)` = 43892); `DATE(2020,3,-(2^-23+1E-12))` = 43890 (day 0) and
+`DATE(-(2^-23+1E-12),3,2)` = 62 (year 1900), while `-1.2E-7` floors (`DATE(2020,3,-1.2E-7)` = 43889, `DATE(-1.2E-7,3,2)` is
+`#NUM!`); the same at -5 and at ±30000 (`DATE(2020,3,30000-2^-22)` = 73890, `-2.4E-7` gives 73889). The window comes before the
+bounds: `DATE(9999,12,31+1-1E-7)` is `#NUM!` (1 January 10000) and `DATE(10000-1E-7,1,1)` is `#NUM!`, `DATE(1900-1E-7,1,1)` = 1,
+`DATE(2020,32767-1E-7,1)` is `#NUM!` (month 32767), `DATE(2000,-32768-1E-7,1)` is `#NUM!`. gen-m6 cells: `DATE(1983,12,-1E-15)` =
+30650, `DATE(2015,-1E-21,3)` = 41976, `DATE(-4.2E-16,1,23)` = 23, a day of `COS(-0.0001)` (0.999999995) is 1
+(gen-m6/216e3c05f407ca79 Calc!A173, 03333cc38ec06a14 A267, 9843ec1f29523dd2 A265, b54448af3fde07ca A379, 07171fa3f7493f51 A311).
+Evidence: probes/date-argument-window (90 cells, excel-graph, 2026-10-21).
+Ours: `fn_date` reads each argument through the same near-integer floor as TIME (T-2268).
+Status: VERIFIED
 Tasks: T-2268
-
 ## WORKDAY and NETWORKDAYS holidays: blank and number-text cells, and the error order (T-2270, T-2272)
 Rule (excel-graph, gen-m6, 2026-10-21):
 - A one-cell `holidays` reference to a blank cell is no holiday, not `#VALUE!`: `NETWORKDAYS(17247,33116,Data!E9)` = 11336,
