@@ -3,8 +3,11 @@
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    functions::util::is_span_or_if_of_span,
+    expressions::{
+        parser::{is_span_or_if_of_span, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     model::Model,
 };
 

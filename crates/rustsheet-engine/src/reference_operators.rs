@@ -6,12 +6,12 @@ use std::{ops::Deref, sync::Arc};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
-        parser::{ArrayNode, Node},
+        parser::{is_multi_sheet_span, ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
     functions::{
-        util::{is_at_if, is_at_xlookup_take, is_multi_sheet_span},
+        util::{is_at_if, is_at_xlookup_take},
         Function,
     },
     model::Model,

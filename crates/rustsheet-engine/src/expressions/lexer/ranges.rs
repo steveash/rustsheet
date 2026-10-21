@@ -19,6 +19,58 @@ enum CornerRow {
 }
 
 impl Lexer {
+    /// An unquoted prefix naming a sheet of another workbook, `[book]Sheet!ref`, read as its
+    /// quoted spelling `'[book]Sheet'!ref` is: `=SUM([other.xlsx]Sheet1!A1:B1)` parses and is
+    /// `#BLOCKED!` (probes/external-ref-no-link A7; docs/excel-semantics/references.md "External
+    /// reference with no cached data"). A defined name of that workbook, `[1]!Name` or
+    /// `[1]Sheet!Name` (Excel writes both in xlsx: poi/ref-56737.xlsx Refs!G3, I3), is the
+    /// identifier `[1]!Name` or `[1]Sheet!Name`. Called with the `[` consumed; `None`, with the
+    /// position left after the `[`, when no `book]Sheet!` follows (a LAMBDA's optional `[x]`).
+    pub(super) fn consume_external_sheet_reference(&mut self) -> Option<TokenType> {
+        let start = self.position;
+        let rest = &self.chars[start..];
+        let book_len = rest.iter().position(|&c| c == ']' || c == '[')?;
+        if book_len == 0 || rest[book_len] != ']' {
+            return None;
+        }
+        self.position = start + book_len + 1;
+        let sheet = self.consume_identifier();
+        // A 3-D span of that workbook's sheets, `[1]Uses:Defines!$B$2`, is the reference
+        // `'[1]Uses:Defines'!$B$2` (fixtures/external-link-cached-3d-span; T-1654).
+        if !sheet.is_empty() && self.peek_char() == Some(':') {
+            if let Some(span) = self.consume_sheet_span(&sheet) {
+                let book: String = self.chars[start..start + book_len].iter().collect();
+                let token = self.consume_range(Some(format!("[{book}]{span}")));
+                if !matches!(token, TokenType::Illegal(_)) {
+                    return Some(token);
+                }
+            }
+            self.position = start;
+            return None;
+        }
+        if self.peek_char() != Some('!') {
+            self.position = start;
+            return None;
+        }
+        self.position += 1;
+        let book: String = self.chars[start..start + book_len].iter().collect();
+        let prefix = format!("[{book}]{sheet}");
+        if !sheet.is_empty() {
+            let after_bang = self.position;
+            let token = self.consume_range(Some(prefix.clone()));
+            if !matches!(token, TokenType::Illegal(_)) {
+                return Some(token);
+            }
+            self.position = after_bang;
+        }
+        let name = self.consume_identifier();
+        if name.is_empty() {
+            self.position = start;
+            return None;
+        }
+        Some(TokenType::Ident(format!("{prefix}!{name}")))
+    }
+
     /// `Sheet!LocalName` after a sheet prefix whose range did not parse: a defined name scoped to
     /// a sheet of this workbook, as the identifier `Sheet!LocalName` so the formula text
     /// round-trips (the parser resolves the scope; poi/56737.xlsx Uses!D2). `start` is where the

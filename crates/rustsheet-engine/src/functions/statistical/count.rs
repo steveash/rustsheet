@@ -1,11 +1,11 @@
 use crate::calc_result::Range;
+use crate::expressions::parser::is_span_or_if_of_span;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::external_reference::PickedReference;
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, ItemSource,
 };
-use crate::functions::util::is_span_or_if_of_span;
 use crate::reference_operators::{not_a_reference_array, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 

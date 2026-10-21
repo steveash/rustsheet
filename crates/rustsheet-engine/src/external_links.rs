@@ -17,7 +17,7 @@ use crate::{
     external_reference::{external_area, external_blocked, written_external_area, ExternalArea},
     implicit_intersection::implicit_intersection,
     limits::check_array_size,
-    reference_operators::three_d_value_error,
+    reference_operators::{three_d_needs_one_sheet, three_d_value_error},
     types::{DefinedName, SpillValue},
     utils::ParsedReference,
     Model,
@@ -157,16 +157,49 @@ impl Model {
         )
     }
 
-    /// A 3-D span of a linked workbook's cached sheets ([`Model::cached_external_span`]) where a
-    /// value is needed: `#REF!`, as for a span of this workbook (`ERROR.TYPE([1]Uses:Defines!$A$1)`
-    /// is 4; fixtures/external-link-cached-3d-span Refs!B8, T-1654). `None` for any other node.
-    pub(crate) fn cached_external_span_value(
+    /// A reference written into another workbook or onto a sheet this workbook lacks, where a
+    /// value is needed: what the cache holds for it ([`Model::external_reference_value`],
+    /// [`Model::external_area_value`]); `#REF!` for a 3-D span of cached sheets, as for a span of
+    /// this workbook (`ERROR.TYPE([1]Uses:Defines!$A$1)` is 4; fixtures/external-link-cached-3d-span
+    /// Refs!B8, T-1654); otherwise [`Model::wrong_sheet_error`].
+    pub(crate) fn wrong_reference_value(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let (sheet_name, value, message) = match node.ungrouped() {
+            Node::WrongRangeKind { sheet_name, .. } => (
+                sheet_name,
+                self.cached_external_area(node, cell)
+                    .map(|area| self.external_area_value(area, cell)),
+                "Wrong range",
+            ),
+            Node::WrongReferenceKind { sheet_name, .. } => (
+                sheet_name,
+                self.external_reference_value(node, cell),
+                "Wrong reference",
+            ),
+            _ => (&None, None, "Wrong reference"),
+        };
+        value
+            .or_else(|| {
+                self.cached_external_span(node, cell)
+                    .map(|_| three_d_value_error(cell))
+            })
+            .unwrap_or_else(|| Self::wrong_sheet_error(sheet_name.as_deref(), cell, message))
+    }
+
+    /// A 3-D span of a linked workbook's cached sheets ([`Model::cached_external_span`]) where one
+    /// sheet is needed: `#VALUE!`, as for a span of this workbook
+    /// (`ROWS([1]Uses:Defines!$A$1:$B$3)`; fixtures/external-link-cached-3d-span Refs!B10,
+    /// T-1654). `None` for any other node.
+    pub(crate) fn cached_external_span_reference(
         &self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
         self.cached_external_span(node, cell)
-            .map(|_| three_d_value_error(cell))
+            .map(|_| three_d_needs_one_sheet(cell))
     }
 
     /// [`external_area`] with the cache of the sheet it names, if the workbook holds one.

@@ -50,6 +50,7 @@ use super::token::TokenType;
 use super::types::*;
 
 use sheet_span::with_sheet_span;
+pub(crate) use sheet_span::{is_multi_sheet_span, is_span_or_if_of_span};
 use token::OpCompare;
 
 mod call_names;
