@@ -16,8 +16,9 @@ that docs/excel-semantics/lookup.md and the code still call unprobed. Today the 
 them.
 
 ## Context
-Gap triage 2026-10-21. VLOOKUP and HLOOKUP are M2 functions with a high prior. All their scored
-cells pass, but four behaviors rest on guesses that no case checks:
+Gap triage 2026-10-21. VLOOKUP and HLOOKUP are M2 functions with a high prior. No failing cell is
+VLOOKUP's or HLOOKUP's own miss (the 6 failing cells that contain them miss in DECIMAL, SUMPRODUCT, ARABIC
+or NPV), but four behaviors rest on guesses that no case checks:
 1. **Two errors in one lifted pair.** lookup.md "VLOOKUP / HLOOKUP with an array index or
    range_lookup" says which error wins when a lookup_value element and a range_lookup element are
    both errors is unprobed. The engine gives the lookup_value's error. Example:
@@ -32,8 +33,9 @@ cells pass, but four behaviors rest on guesses that no case checks:
    with Z1 blank, and `INDEX` of a blank-holding range used as the index.
 3. **A fractional index next to the 32-bit cut-off.** lookup.md: -2147483648 is `#REF!` and
    -2147483647 is `#VALUE!` (probes/lookup-index-shapes H19-H36), but a fractional index next to
-   the cut-off is unprobed. `index_arg.rs` compares `number <= f64::from(i32::MIN)` before
-   truncation. Probe -2147483647.5, -2147483648.5, -2147483647.9999999 and the same on the
+   the cut-off is unprobed. `index_arg.rs` compares `number <= f64::from(i32::MIN)` and uses
+   `number.floor()`, while lookup.md says a fractional element truncates: the two differ on these
+   negative fractions (-2147483647.5 floors to -2147483648), so check floor against trunc. Probe -2147483647.5, -2147483648.5, -2147483647.9999999 and the same on the
    positive side past the table, found and not found, for VLOOKUP and HLOOKUP.
 4. **A multi-cell range index outside the intersection rows.** lookup.md: `VLOOKUP(2,A1:C3,E1:E2)`
    unspilled in J10 is `#REF!`, and "whether it spills into J11 is unprobed". Probe it with J11

@@ -40,8 +40,9 @@ Probe (excel-probe skill, excel-graph oracle; about 50 cells) `YEARFRAC(s,e,b)` 
 - `YEARFRAC(0,0,b)`;
 - each basis with s = 60 against e in {1, 59, 61}.
 
-Add a 1904-workbook twin for a few cells: `financial_1900_serial` shifts 1904 serials by 2·1462,
-and serial 0 there is 1904-01-01. Record the rules in dates.md as a section named "YEARFRAC accepts
+Add a 1904-workbook twin for a few cells: `financial_1900_serial` reads a 1904 serial 0 as 1900-serial 2924,
+so it never reaches the [0, 1) branch; the twin checks that the 1904 shift is unaffected
+(`YEARFRAC(0,59,0)` = 59/360 is already probed, date-system-1904-financial-shift). Record the rules in dates.md as a section named "YEARFRAC accepts
 serial 0", or fix the code comment's reference. Then implement them in `year_fraction_parts`.
 The discount-security functions also call `year_fraction_parts` (financial.md "Discount securities:
 day count and year length"). Check that no financial cell moves, or measure and list the ones that do.

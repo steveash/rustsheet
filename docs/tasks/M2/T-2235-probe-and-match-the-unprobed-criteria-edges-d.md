@@ -16,8 +16,10 @@ D-functions) give Excel's results on three edge groups that docs/excel-semantics
 unprobed. Each group gets oracle evidence, and the engine changes wherever Excel differs.
 
 ## Context
-Gap triage 2026-10-21. No criteria cell fails in `make eval`, and no open task covers these
-groups. Only the SPEC-0014 array-of-references cells fail, and T-2064 owns them. These are M2
+Gap triage 2026-10-21. No failing cell in `make eval` is a criteria function's own miss, and
+no open task covers these groups. The SPEC-0014 array-of-references cells are T-2064's; the gen-m5/gen-m9
+compound cells that contain COUNTIF/SUMIF(S) miss elsewhere (TAN ulp, FORECAST.ETS.CONFINT), but glance at
+gen-m5/6a8bb7cd6d7769ad A79 (Excel `#VALUE!`, ours 0) to confirm it is not COUNTIF's. These are M2
 functions with high priors, and the engine's behavior in each group below is inferred, not
 probed:
 1. **Tildes in D-function criteria.** criteria.md "Wildcard escapes, case and trailing tilde"

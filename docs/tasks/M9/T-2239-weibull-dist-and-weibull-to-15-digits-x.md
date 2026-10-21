@@ -20,8 +20,8 @@ accurate value.
 ## Context
 Gap triage 2026-10-21 (`make eval` on `main` d77d01b0). `functions/statistical/weibull.rs`
 `weibull_dist_of` calls `statrs::distribution::Weibull` (statrs 0.18: `cdf` = `-expm1(-x.powf(k) * l.powf(-k))`,
-`pdf` = `k/l (x/l)^(k-1) exp(-x^k l^-k)`). T-0978 owns the last digits: it targets the same sweeps
-bit for bit but has no 15-digit (visible-parity) stage, so the visibly-off sweep cells had no
+`pdf` = `k/l (x/l)^(k-1) exp(-x^k l^-k)`). T-0978 owns the last digits: it targets the m9 sweep and the two ironcalc
+cells bit for bit but has no 15-digit (visible-parity) stage, so the visibly-off sweep cells had no
 visible-parity task (decision 0083).
 
 The visibly-off cells (excel-graph; probes-numeric is ungated, so read them from `make eval` /
@@ -56,7 +56,7 @@ exp(-t)". Compute t = (x/l)^k as exp(k*ln(x/l)). In a libm re-run over all 230 i
   18 cells in the table).
 - The same t also gives ironcalc-calc WEIBULL_DIST.xlsx E2 bit for bit (T-0978's line).
 
-The fit is numeric, but the evidence is already in `eval/` (decision 0083 allows fitting at this stage).
+The fit is numeric, but the evidence is already in `eval/` (decision 0083: where Excel itself is inaccurate, its algorithm has to be reproduced).
 Use the engine's own `ln`/`exp` kernels (numbers.md; fit lab, T-1523) before settling a form.
 Extra candidate densities are cheap to test.
 
