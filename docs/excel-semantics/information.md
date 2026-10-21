@@ -130,7 +130,7 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   are 1x2 arrays of `#DIV/0!`, and the column forms have 2 rows (A12:B15).
 - A scalar error option beside a grid `source` and a wider array option lifts over the broadcast shape, not the source's:
   `IMAGE({url,url},"alt",1/0,{5,5,5})` is 1x3, `#DIV/0!`, `#DIV/0!`, `#N/A` (the source is the first argument, so its past-end
-  position is `#N/A`); `{url,url}` with a column `{5;5;5}` is 3x2, `#DIV/0!` in row 1 (rows 2-3 unprobed); `{url;url}` with `{5;5;5}` is 3x1; `IMAGE({url,url,url},"alt",1/0,{5,5})` is 1x3 of
+  position is `#N/A`); `{url,url}` with a column `{5;5;5}` is 3x2, `#DIV/0!` throughout (all six elements); `{url;url}` with `{5;5;5}` is 3x1, `#DIV/0!`, `#DIV/0!`, `#N/A` (the source's past-end row is `#N/A` as in the row case, probes/rich-errors-image-grid-error-past-end, T-2229), and `#N/A` throughout with `NA()`; `IMAGE({url,url,url},"alt",1/0,{5,5})` is 1x3 of
   `#DIV/0!` (the earlier error argument beats the option's past-end `#N/A`); `NA()` as the option gives `#N/A` throughout
   (probes/rich-errors-image-grid-error-option, excel-graph, 2026-10-21, T-2205). Without an array option the error fills the source's shape.
 - An error element inside an array `source`/`stock` keeps its error; the other elements are `#BLOCKED!` / `#CONNECT!` (A18:C19).
