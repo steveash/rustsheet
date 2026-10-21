@@ -3,7 +3,7 @@ id: T-2197
 title: "Probe how Excel resizes, converts and deletes a table and what its structured references become"
 milestone: M8
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
