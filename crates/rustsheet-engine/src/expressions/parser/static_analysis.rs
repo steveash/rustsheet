@@ -724,7 +724,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Mmult => StaticResult::Unknown,
         Function::Bycol | Function::Byrow => StaticResult::Unknown,
         Function::Groupby | Function::Pivotby => StaticResult::Unknown,
-        Function::Getpivotdata => StaticResult::Scalar,
+        // Spills by its items, broadcast; the other arguments never lift (SPEC-0015, T-2083).
+        Function::Getpivotdata => broadcast_static_result(args.iter().skip(3).step_by(2)),
         Function::Map | Function::Reduce => StaticResult::Unknown,
         Function::Scan => StaticResult::Unknown,
         Function::Randarray => StaticResult::Unknown,

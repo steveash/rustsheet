@@ -31,7 +31,8 @@ pub(super) fn args_signature_fieldvalue(arg_count: usize) -> Vec<Signature> {
 }
 
 /// `GETPIVOTDATA(data_field, pivot_table, [field1, item1, ...])`: every argument is taken as is, a
-/// range included (it never intersects or lifts; probes/getpivotdata-evidence-floor D6, D26).
+/// range included (it never intersects; probes/getpivotdata-evidence-floor D6, D26). An array or
+/// range of items lifts the call at evaluation (probes/getpivotdata-real-pivot L1, L5; T-2083).
 pub(super) fn args_signature_getpivotdata(arg_count: usize) -> Vec<Signature> {
     if arg_count >= 2 {
         vec![Signature::Vector; arg_count]

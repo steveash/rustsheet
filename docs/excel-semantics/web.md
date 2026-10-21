@@ -77,8 +77,18 @@ the probe cannot tell the two apart (T-2327 adds a control with stale rendered c
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Not probed: several data fields (the
 `Values` field), two row fields and their subtotals, filters, hidden items, dates and numbers as items, and
 pivots in tabular or outline form.
-Engine (SPEC-0015): the workbook model holds pivot caches and pivot tables (`pivot.rs`, T-2081); the importer (T-2082) and
-GETPIVOTDATA over them (T-2083) are still to come. Known interim gap: until T-2086 moves pivots with their cells, any row
+Engine (SPEC-0015): the workbook model holds pivot caches and pivot tables (`pivot.rs`, T-2081); the importer is T-2082.
+GETPIVOTDATA (T-2083, `functions/lookup_and_reference/getpivotdata.rs`, `pivot_index.rs`) aggregates the cache records the
+pairs pick, in cache order, rather than reading the rendered cell, and passes every cell of probes/getpivotdata-real-pivot.
+Until T-2085 probes them it answers `#REF!` for SPEC-0015's unknowns, never a guess: several data fields, page fields or
+hidden items, two fields on one axis, a reference meeting two pivots, `""` or an omitted data_field, a number, date or
+boolean as an item (or an item that matches two cache items differing only in case), the same field twice with the same
+item, an error in a field/item pair, an empty intersection of any aggregate but Sum, a picked record whose data-field value
+is not a number, a number or boolean data_field, and an array data_field, pivot_table or field name (an array of items
+lifts). An error in a single-cell pivot_table propagates even inside a pivot, and an overflowing aggregate is `#NUM!`
+(both unprobed, SPEC-0015 unknowns 13 and 16). Count, Max, Min, Product,
+Var and StdDev pivots are unprobed (UNVERIFIED: the worksheet functions' algorithms over the picked numbers).
+Known interim gap: until T-2086 moves pivots with their cells, any row
 or column insertion, deletion or move, and any sheet rename or deletion, on a sheet holding pivots drops those pivots, so
 GETPIVOTDATA against them is `#REF!` (Excel keeps the pivot, refusing an edit that would cut it); undoing a sheet deletion
 brings the sheet back without them. xlsx export drops pivots.
