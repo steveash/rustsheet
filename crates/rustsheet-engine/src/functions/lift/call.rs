@@ -1,9 +1,12 @@
 //! `lift_call` and its read phase (SPEC-0011 "The driver"): each argument is read once, by its
 //! kind in the table, and the kernel runs once (nothing lifted) or once per element.
 
+use std::mem::ManuallyDrop;
+
 use super::arg_buf::ArgBuf;
-use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg};
+use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg, NumbersKernel};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
+use super::number_result;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::is_multi_sheet_span;
 use crate::functions::Function;
@@ -212,7 +215,96 @@ impl Model {
                 read.into_lifted()
             }
         };
-        self.lift_grids(lifted, cost, &options, cell, kernel)
+        self.lift_grids(lifted, cost, &options, cell, kernel, None)
+    }
+
+    /// [`Model::lift_call`] for a kernel of numbers with the shortcut `numbers` (T-1932): while
+    /// the arguments read are numbers they are kept as such, and when all of them are, `numbers`
+    /// runs on them with no kernel call. At the first that is not, the call goes on as
+    /// `lift_call`'s, on the values already read, and a lifted element whose arguments are all
+    /// numbers runs `numbers` too. Each argument is read once, by its kind, in order, as in
+    /// [`Model::read_lift_args`].
+    #[inline(never)]
+    pub(crate) fn lift_call_numbers(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        numbers: &NumbersKernel<'_>,
+        kernel: &mut Kernel<'_>,
+    ) -> CalcResult {
+        let Some(kinds) = kind.arg_kinds() else {
+            return self.lift_call(kind, args, cell, kernel);
+        };
+        if !kinds.accepts(args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        if let [only] = args {
+            if kinds.kind(0) == Some(ArgKind::Lift) {
+                // Not dropped when it is a number, which owns nothing: dropping a `CalcResult`
+                // is an outlined call, a tenth of a one-number call's overhead (T-1932 bench).
+                let value = ManuallyDrop::new(self.evaluate_node_in_context(only, cell));
+                if let CalcResult::Number(number) = *value {
+                    return number_result(numbers(&[number]), cell);
+                }
+                let value = ManuallyDrop::into_inner(value);
+                return self.lift_numbers_after(kinds, args, (&[], value), cell, numbers, kernel);
+            }
+        }
+        let mut read = ArgBuf::filled(args.len(), || 0.0);
+        for (index, (node, slot)) in args.iter().zip(read.as_mut_slice()).enumerate() {
+            let kind = kinds.kind(index).unwrap_or(ArgKind::LiftArrays);
+            // `Lift`, the usual kind, evaluated here: one frame less per call (T-1932 bench).
+            let value = if kind == ArgKind::Lift {
+                self.evaluate_node_in_context(node, cell)
+            } else {
+                self.evaluate_lift_arg(kind, node, cell)
+            };
+            if let CalcResult::Number(number) = value {
+                *slot = number;
+            } else {
+                let read = read.as_slice().get(..index).unwrap_or_default();
+                return self.lift_numbers_after(kinds, args, (read, value), cell, numbers, kernel);
+            }
+        }
+        number_result(numbers(read.as_slice()), cell)
+    }
+
+    /// The rest of [`Model::lift_call_numbers`] once an argument is not a number: `numbers` are
+    /// the arguments before it, `pending` its value. Apart, so the all-numbers call does not
+    /// carry this frame.
+    #[inline(never)]
+    fn lift_numbers_after(
+        &mut self,
+        kinds: &ArgKinds,
+        args: &[Node],
+        (read, pending): (&[f64], CalcResult),
+        cell: CellReferenceIndex,
+        numbers: &NumbersKernel<'_>,
+        kernel: &mut Kernel<'_>,
+    ) -> CalcResult {
+        let read = match self.read_lift_args_after(
+            kinds,
+            args,
+            (read, Some(pending)),
+            MAX_LIFTED_CELL_VISITS,
+            cell,
+        ) {
+            Ok(read) => read,
+            Err(error) => return error,
+        };
+        if read.grids.is_empty() {
+            return kernel(self, read.values.as_slice());
+        }
+        let options = LiftOptions::for_entry(kinds);
+        self.lift_grids(
+            read.into_lifted(),
+            LiftCost::Unit,
+            &options,
+            cell,
+            kernel,
+            Some(numbers),
+        )
     }
 
     /// [`Model::lift_call_costed`] for a call whose `ReferenceByCaller` argument at `index` was
@@ -243,7 +335,7 @@ impl Model {
         };
         read.grids.push((index, grid));
         let options = LiftOptions::for_entry(kinds);
-        self.lift_grids(read.into_lifted(), cost, &options, cell, kernel)
+        self.lift_grids(read.into_lifted(), cost, &options, cell, kernel, None)
     }
 
     /// [`Model::read_lift_arg_with`] for argument `index` of a call read by `kinds`, under
@@ -274,12 +366,33 @@ impl Model {
         input_cap: u64,
         cell: CellReferenceIndex,
     ) -> Result<ReadArgs, CalcResult> {
+        self.read_lift_args_after(kinds, args, (&[], None), input_cap, cell)
+    }
+
+    /// [`Model::read_lift_args`] after `lift_call_numbers` read the first arguments as `numbers`
+    /// and evaluated the next one to `pending` (not a number): those are not read again.
+    fn read_lift_args_after(
+        &mut self,
+        kinds: &ArgKinds,
+        args: &[Node],
+        (numbers, mut pending): (&[f64], Option<CalcResult>),
+        input_cap: u64,
+        cell: CellReferenceIndex,
+    ) -> Result<ReadArgs, CalcResult> {
         let mut values = ArgBuf::filled(args.len(), || CalcResult::EmptyArg);
         let mut grids = Vec::new();
         let mut input_cells: u64 = 0;
         for (index, (node, slot)) in args.iter().zip(values.as_mut_slice()).enumerate() {
+            if let Some(number) = numbers.get(index) {
+                *slot = CalcResult::Number(*number);
+                continue;
+            }
             let kind = kinds.kind(index).unwrap_or(ArgKind::LiftArrays);
-            match self.read_lift_arg_with(kind, node, &mut input_cells, input_cap, cell)? {
+            let value = match pending.take() {
+                Some(value) => value,
+                None => self.evaluate_lift_arg(kind, node, cell),
+            };
+            match self.lift_arg_from_value(kind, value, &mut input_cells, input_cap, cell)? {
                 LiftedArg::Scalar(value) => *slot = value,
                 LiftedArg::Grid(grid) => grids.push((index, grid)),
             }
@@ -298,23 +411,49 @@ impl Model {
         input_cap: u64,
         cell: CellReferenceIndex,
     ) -> Result<LiftedArg, CalcResult> {
-        // The `#ERROR!` of `too_many_visits`, past the cap.
-        let over_cap = |cells: u64| (cells > input_cap).then(|| too_many_visits(u64::MAX, cell));
-        let value = match kind {
-            ArgKind::WholeByCaller | ArgKind::ReferenceByCaller => {
-                return Ok(LiftedArg::Scalar(CalcResult::EmptyArg))
-            }
-            ArgKind::Whole => {
-                return Ok(LiftedArg::Scalar(
-                    self.evaluate_node_with_reference(node, cell),
-                ))
-            }
+        let value = self.evaluate_lift_arg(kind, node, cell);
+        self.lift_arg_from_value(kind, value, input_cells, input_cap, cell)
+    }
+
+    /// The first half of [`Model::read_lift_arg_with`]: `node` evaluated as its kind reads it.
+    #[inline]
+    fn evaluate_lift_arg(
+        &mut self,
+        kind: ArgKind,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match kind {
+            ArgKind::WholeByCaller | ArgKind::ReferenceByCaller => CalcResult::EmptyArg,
             ArgKind::LiftArrays => self.evaluate_as_reference(node, cell),
             ArgKind::Lift => self.evaluate_node_in_context(node, cell),
             // A reference stays one, also a one-cell `E1`: the criteria table is read whole
             // (`DSUM(A1:C3,"Price",E1)` is a one-cell table, not the cell's value).
-            ArgKind::LiftArraysRangeWhole => self.evaluate_node_with_reference(node, cell),
-        };
+            ArgKind::Whole | ArgKind::LiftArraysRangeWhole => {
+                self.evaluate_node_with_reference(node, cell)
+            }
+        }
+    }
+
+    /// The second half of [`Model::read_lift_arg_with`]: the argument of kind `kind` that
+    /// evaluated to `value`, as the driver holds it.
+    #[inline]
+    fn lift_arg_from_value(
+        &mut self,
+        kind: ArgKind,
+        value: CalcResult,
+        input_cells: &mut u64,
+        input_cap: u64,
+        cell: CellReferenceIndex,
+    ) -> Result<LiftedArg, CalcResult> {
+        // The `#ERROR!` of `too_many_visits`, past the cap.
+        let over_cap = |cells: u64| (cells > input_cap).then(|| too_many_visits(u64::MAX, cell));
+        if matches!(
+            kind,
+            ArgKind::WholeByCaller | ArgKind::ReferenceByCaller | ArgKind::Whole
+        ) {
+            return Ok(LiftedArg::Scalar(value));
+        }
         let grid = match value {
             CalcResult::Array(grid) => grid,
             range @ CalcResult::Range { .. } if kind == ArgKind::LiftArraysRangeWhole => {
