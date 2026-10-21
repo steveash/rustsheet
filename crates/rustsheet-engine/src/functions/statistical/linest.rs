@@ -113,24 +113,56 @@ struct RegressionData {
 }
 
 impl Model {
+    /// TREND or GROWTH of one `known_y`: every predicted value is that point (`TREND(5)` is 5), one
+    /// per row of `new_x`, or one in all when `new_x` is omitted (statistics.md "TREND: defaults,
+    /// shapes, single points and error inputs"). `new_x_args` is the arguments from `new_x` on.
+    fn single_point_prediction(
+        &mut self,
+        new_x_args: &[Node],
+        data: &RegressionData,
+        value: f64,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let rows = match new_x_args.first() {
+            // An empty `new_x` is the default, as in the general case.
+            Some(node) => self.collect_matrix_from_node(node, cell).map(|m| {
+                if m.is_empty() {
+                    data.x.len()
+                } else {
+                    m.len()
+                }
+            }),
+            None => Ok(data.x.len()),
+        };
+        match rows {
+            Ok(rows) => CalcResult::Array(vec![vec![ArrayNode::Number(value)]; rows]),
+            Err(e) => e,
+        }
+    }
+
     /// Collect Y and X data for regression functions.
-    /// `x_arg`: None → auto-generate x = 1, 2, ..., n
+    /// `x_arg`: None → auto-generate x = 1, 2, ..., n. `min_points` is the fewest `known_y`
+    /// values the caller accepts (LINEST and LOGEST 2; TREND and GROWTH 1, a single value being
+    /// one point, statistics.md "Array arguments given a scalar, a single cell or an error").
     fn collect_regression_data(
         &mut self,
         y_arg: &Node,
         x_arg: Option<&Node>,
+        min_points: usize,
         cell: CellReferenceIndex,
     ) -> Result<RegressionData, CalcResult> {
-        // Collect Y
-        let y_raw = self.collect_matrix_from_node(y_arg, cell)?;
+        // Collect Y. A text cell is reported only after the size check below: GROWTH(B2:B3,<number>)
+        // with B2:B3 = "?b", 0 is `#REF!`, not `#VALUE!` (statistics.md "Array arguments given a
+        // scalar, a single cell or an error"; gen-m9/89693ab0cafc29df A24).
+        let (y_raw, mut text_error) = self.collect_matrix_deferring_text(y_arg, cell)?;
         let y: Vec<f64> = y_raw.into_iter().flatten().collect();
         let n = y.len();
 
-        if n < 2 {
+        if n < min_points {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
-                "Regression requires at least 2 data points".to_string(),
+                format!("Regression requires at least {min_points} data points"),
             ));
         }
 
@@ -141,7 +173,8 @@ impl Model {
                 (x_auto, 1)
             }
             Some(x_node) => {
-                let x_mat = self.collect_matrix_from_node(x_node, cell)?;
+                let (x_mat, x_text_error) = self.collect_matrix_deferring_text(x_node, cell)?;
+                text_error = text_error.or(x_text_error);
                 let rows = x_mat.len();
                 let p = if rows > 0 { x_mat[0].len() } else { 0 };
 
@@ -156,6 +189,9 @@ impl Model {
                 (x_mat, p)
             }
         };
+        if let Some(e) = text_error {
+            return Err(e);
+        }
 
         Ok(RegressionData { y, x, p })
     }
@@ -166,6 +202,21 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<f64>>, CalcResult> {
+        match self.collect_matrix_deferring_text(arg, cell)? {
+            (matrix, None) => Ok(matrix),
+            (_, Some(text_error)) => Err(text_error),
+        }
+    }
+
+    /// Like [`Self::collect_matrix_from_node`], but a text cell in a range is returned as the
+    /// second element (the `#VALUE!` to report) instead of failing, so the caller can check
+    /// sizes first. An error value, in a range or as the argument, is returned as that error.
+    fn collect_matrix_deferring_text(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(Vec<Vec<f64>>, Option<CalcResult>), CalcResult> {
+        let mut text_error = None;
         match self.evaluate_node_in_context(arg, cell) {
             CalcResult::Range { left, right } => {
                 let n_rows = (right.row - left.row + 1) as usize;
@@ -183,16 +234,18 @@ impl Model {
                             CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                             err @ CalcResult::Error { .. } => return Err(err),
                             _ => {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Regression: non-numeric value in data range".to_string(),
-                                ))
+                                text_error.get_or_insert_with(|| {
+                                    CalcResult::new_error(
+                                        Error::VALUE,
+                                        cell,
+                                        "Regression: non-numeric value in data range".to_string(),
+                                    )
+                                });
                             }
                         }
                     }
                 }
-                Ok(matrix)
+                Ok((matrix, text_error))
             }
             CalcResult::Array(arr) => {
                 let mut matrix = Vec::new();
@@ -210,10 +263,11 @@ impl Model {
                     }
                     matrix.push(mrow);
                 }
-                Ok(matrix)
+                Ok((matrix, None))
             }
-            CalcResult::Number(n) => Ok(vec![vec![n]]),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
+            CalcResult::Number(n) => Ok((vec![vec![n]], None)),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok((vec![], None)),
+            err @ CalcResult::Error { .. } => Err(err),
             _ => Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -477,7 +531,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        let data = match self.collect_regression_data(&args[0], x_arg, cell) {
+        let data = match self.collect_regression_data(&args[0], x_arg, 2, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -505,7 +559,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        let mut data = match self.collect_regression_data(&args[0], x_arg, cell) {
+        let mut data = match self.collect_regression_data(&args[0], x_arg, 2, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -552,10 +606,17 @@ impl Model {
             true
         };
 
-        let data = match self.collect_regression_data(&args[0], x_arg, cell) {
+        let data = match self.collect_regression_data(&args[0], x_arg, 1, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
+
+        // Only with a constant term: LINEST of one point is slope 0, intercept y (linest-modes
+        // K141), so TREND is y whatever new_x is. Without one the fit through the origin is
+        // unprobed and left to the regression below.
+        if let (&[y], true) = (&data.y[..], const_term) {
+            return self.single_point_prediction(args.get(2..).unwrap_or_default(), &data, y, cell);
+        }
 
         let reg = match linear_regression(&data.y, &data.x, data.p, const_term, false) {
             Some(r) => r,
@@ -609,7 +670,7 @@ impl Model {
             true
         };
 
-        let mut data = match self.collect_regression_data(&args[0], x_arg, cell) {
+        let mut data = match self.collect_regression_data(&args[0], x_arg, 1, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -622,6 +683,16 @@ impl Model {
                     "GROWTH: all known_y values must be positive".to_string(),
                 );
             }
+        }
+        // As in TREND, constant term only. The fit goes through ln and exp; Excel's
+        // `GROWTH(5,5,5)` is 4.999999999999999 (growth-modes K385), exactly exp(ln 5).
+        if let (&[y], true) = (&data.y[..], const_term) {
+            return self.single_point_prediction(
+                args.get(2..).unwrap_or_default(),
+                &data,
+                y.ln().exp(),
+                cell,
+            );
         }
         data.y = data.y.iter().map(|&v| v.ln()).collect();
 

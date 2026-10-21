@@ -61,16 +61,16 @@ impl ScopeResult for RefArg {
     fn lambda(&self) -> Option<usize> {
         match self {
             RefArg::Value(value) => value.lambda(),
-            RefArg::Ranges(_) => None,
+            RefArg::Ranges(_) | RefArg::Grid(_) => None,
         }
     }
 }
 
 impl ScopeResult for Binding {
     fn lambda(&self) -> Option<usize> {
-        match self {
+        match self.resolved() {
             Binding::Value(value) | Binding::ReadOnce(value) => value.lambda(),
-            Binding::Areas(_) | Binding::Span(_) => None,
+            Binding::Areas(_) | Binding::Span(_) | Binding::Grid(_) | Binding::Shared(_) => None,
         }
     }
 }
@@ -86,8 +86,9 @@ pub(crate) struct LambdaCaller {
 
 impl LambdaCaller {
     /// This caller with the body read in reference context: a body that is a reference, also
-    /// one picked by IF or returned by INDEX, comes back as a `CalcResult::Range` instead of the
-    /// cell's value, so GROUPBY and PIVOTBY can make it `#VALUE!` as Excel does
+    /// one picked by IF or returned by INDEX or XLOOKUP (`Model::evaluate_picked_reference_arg`),
+    /// comes back as a `CalcResult::Range` instead of the cell's value, so GROUPBY and PIVOTBY
+    /// can make it `#VALUE!` as Excel does
     /// (probes/groupby-lambda-forms G!J193, probes/groupby-pivotby-functions G!A541-A581).
     pub(crate) fn keeping_references(mut self) -> Self {
         self.references = true;
@@ -118,10 +119,12 @@ struct PreparedLambda {
 /// 200 calls in a release build and 50 in a debug build.
 const LAMBDA_STACK_SHARE: usize = 4;
 
-/// Most cells the LAMBDAs that outlive their scope may capture in one cell's formula
-/// (`Model::close_over`): a REDUCE whose steps each return a closure over a fresh array keeps
-/// every step's array. Past it a capture is `#NUM!` (DEVIATION, decision 0014: arrays.md "LAMBDAs
-/// that outlive their call"). Four whole columns.
+/// Most cells the LAMBDAs that outlive their scope may capture while one root cell is evaluated
+/// (`Model::close_over`; the cells it evaluates as dependencies share the budget, which
+/// `Model::evaluate_root_cell` resets): a REDUCE whose steps each return a closure over a fresh
+/// array keeps every step's array. Past it a capture is `#NUM!` (DEVIATION, decision 0014:
+/// docs/excel-semantics/arrays.md "LAMBDAs capture at most 4,194,304 cells"; Excel unprobed).
+/// Four whole columns.
 const MAX_CAPTURED_CELLS: usize = 1 << 22;
 
 /// One read count of [`read_once`]: more than one read, or reads it cannot count.
@@ -230,7 +233,9 @@ impl Model {
     /// [`Self::evaluate_node_with_reference`] of a node that is no plain reference: a LET or
     /// LAMBDA call whose body gives a reference, a single cell too, is that reference for OFFSET
     /// and COUNTIF (`OFFSET(LET(x,A1,x),1,0)`, `COUNTIF(LAMBDA(x,x)(A1),">0")` read A1;
-    /// probes/lambda-union-reference-callers D1, D2, D5, excel-graph; T-1951).
+    /// probes/lambda-union-reference-callers D1, D2, D5, excel-graph; T-1951). An INDEX of a
+    /// reference is the cell it picks, so `ISFORMULA(INDEX(D1:D3,1))` reads D1
+    /// (probes/ifna-isformula-edges Calc!B12, excel-graph; T-1453).
     pub(crate) fn evaluate_call_with_reference(
         &mut self,
         node: &Node,
@@ -244,6 +249,10 @@ impl Model {
             | Node::LambdaCallKind { .. } => self
                 .evaluate_reference_arg(node, cell)
                 .into_single_area(cell),
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self.index_reference(args, cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -525,7 +534,7 @@ impl Model {
         let result = match &prepared.definition {
             Ok((ids, body)) => {
                 let mark = self.last_lambda_id;
-                let mut captured = self.bind_captures(&caller.lambda, cell);
+                let captured = self.bind_captures(&caller.lambda, cell);
                 for (i, &(raw_id, once)) in ids.iter().enumerate() {
                     let binding = match bind(self, i) {
                         Binding::Value(value) if once => Binding::ReadOnce(value),
@@ -533,14 +542,28 @@ impl Model {
                     };
                     self.variable_stack.insert(raw_id, binding, cell);
                 }
+                // A body that picks a reference with XLOOKUP, TAKE or DROP, also as
+                // the arm an IF, CHOOSE, IFS or SWITCH picks or a LET body, is that reference:
+                // ISREF is TRUE, SUM skips its text and GROUPBY makes it `#VALUE!`
+                // (probes/lambda-body-picked-references, take-drop-over-ifs-switch-picks A78).
                 let result = if caller.references {
-                    self.evaluate_reference_arg(body, cell)
+                    self.evaluate_picked_reference_arg(body, cell)
                 } else {
                     RefArg::Value(self.evaluate_node_in_context(body, cell))
                 };
                 // A LAMBDA the body made may read the parameters and the captures bound here.
-                captured.extend(ids.iter().map(|&(raw_id, _)| raw_id));
-                self.close_over(result.lambda(), &captured, mark, cell);
+                // Most calls give no LAMBDA, and they list no ids (a plain call allocates nothing).
+                if let Some(lambda) = result.lambda() {
+                    let scope: Vec<usize> = ids
+                        .iter()
+                        .map(|&(raw_id, _)| raw_id)
+                        .chain(captured.iter().copied())
+                        .collect();
+                    self.close_over(Some(lambda), &scope, mark, cell);
+                }
+                for &(raw_id, _) in ids {
+                    self.variable_stack.remove(raw_id);
+                }
                 self.unbind_captures(captured);
                 result
             }
@@ -743,7 +766,7 @@ impl Model {
                 let cells = self.variable_stack.cells_to_share(id);
                 self.captured_cells = self.captured_cells.saturating_add(cells);
                 let binding = if self.captured_cells > MAX_CAPTURED_CELLS {
-                    // DEVIATION (decision 0014): arrays.md "LAMBDAs that outlive their call".
+                    // DEVIATION (decision 0014): arrays.md "LAMBDAs capture at most 4,194,304 cells".
                     Some(Arc::new(Binding::Value(CalcResult::new_error(
                         Error::NUM,
                         cell,
@@ -779,8 +802,9 @@ impl Model {
         let mut bound = Vec::new();
         for (variable, binding) in captures {
             if self.variable_stack.get(*variable).is_none() {
-                self.variable_stack
-                    .insert(*variable, binding.as_ref().clone(), cell);
+                // Shared, not copied: an escaped closure over a large array is called once per
+                // element by MAP (`a_closure_over_a_large_array_is_called_without_copying_it`).
+                self.variable_stack.bind_shared(*variable, binding, cell);
                 bound.push(*variable);
             }
         }

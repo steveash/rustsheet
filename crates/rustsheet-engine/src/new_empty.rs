@@ -4,9 +4,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::{
-    calc_result::Range,
     constants::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH},
-    defined_names::ParsedDefinedName,
+    defined_names::{NameReference, ParsedDefinedName},
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -150,16 +149,23 @@ impl Model {
         let mut parsed_defined_names = HashMap::new();
 
         for (name, formula, sheet_id) in entries {
-            let parsed_defined_name_formula = if let Ok(reference) =
-                ParsedReference::parse_reference_formula(None, &formula, self.locale, |n| {
-                    self.get_sheet_index_by_name(n)
-                }) {
+            let parsed_defined_name_formula = if let Ok((reference, absolute)) =
+                ParsedReference::parse_anchored_reference_formula(
+                    None,
+                    &formula,
+                    self.locale,
+                    |n| self.get_sheet_index_by_name(n),
+                ) {
                 match reference {
                     ParsedReference::CellReference(cell_reference) => {
-                        ParsedDefinedName::CellReference(cell_reference)
+                        ParsedDefinedName::CellReference(NameReference::new(
+                            cell_reference,
+                            cell_reference,
+                            absolute,
+                        ))
                     }
                     ParsedReference::Range(left, right) => {
-                        ParsedDefinedName::RangeReference(Range { left, right })
+                        ParsedDefinedName::RangeReference(NameReference::new(left, right, absolute))
                     }
                 }
             } else {

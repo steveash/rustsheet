@@ -2,18 +2,84 @@
 //! worksheet functions (PMT, RATE, DDB, ...) and the Analysis `ToolPak` ones, with the work
 //! weights of their coupon walks, solvers and period loops.
 
-use super::ArgKind::{Lift, LiftArrays};
-use super::KernelWork::{Constant, Weighted};
-use super::{ArgKinds, ATP_2, ATP_3, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
+use super::ArgKind::{Lift, LiftArrays, WholeByCaller};
+use super::KernelWork::{ByValue, Constant, Weighted};
+use super::ValueWork::{CouponWalks, Loop};
+use super::{ArgKinds, CallResult, ATP_2, ATP_3, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
+use crate::functions::financial::MAX_DEPRECIATION_PERIODS;
 use crate::functions::Function;
 
 /// `DDB(cost, salvage, life, period, [factor])`.
 const LIFT_4_OF_5: ArgKinds = ArgKinds::fixed(4, &[Lift, Lift, Lift, Lift, Lift], Constant);
+/// `DB(cost, salvage, life, period, [month])`: the schedule steps once per period up to `period`,
+/// at most `MAX_DEPRECIATION_PERIODS`, the kernel's own per-call cap; each element is charged by
+/// its period (T-1820).
+const DB: ArgKinds = ArgKinds::fixed(
+    4,
+    &[Lift, Lift, Lift, Lift, Lift],
+    ByValue(Loop {
+        arg: 3,
+        cap: MAX_DEPRECIATION_PERIODS,
+        weight: DEPRECIATION_WEIGHT,
+    }),
+);
+/// `VDB(cost, salvage, life, start_period, end_period, [factor], [no_switch])`: two schedules,
+/// to `start_period` and to `end_period`, each stepping once per period up to the cap; each
+/// element is charged by its `end_period` (T-1820).
+const VDB: ArgKinds = ArgKinds::fixed(
+    5,
+    &[Lift, Lift, Lift, Lift, Lift, Lift, Lift],
+    ByValue(Loop {
+        arg: 4,
+        cap: MAX_DEPRECIATION_PERIODS,
+        weight: DEPRECIATION_WEIGHT,
+    }),
+);
+/// The units a DB or VDB element at the period cap is charged (one more for the call): at most
+/// 1,024 such elements per lifted call.
+const DEPRECIATION_WEIGHT: u32 = (1 << 17) - 1;
 /// `RATE(nper, pmt, pv, [fv], [type], [guess])`: Newton's method with a fixed cap of 50 steps
 /// (`financial_util::compute_rate`), each element charged that weight (SPEC-0011 security rule).
 /// Under the 2^20-element output cap the charge never reaches `MAX_LIFTED_CELL_VISITS`, so it
 /// records the work rather than refusing a call: at worst about 2^20 × 50 Newton steps.
 const RATE: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift, Lift, Lift], Weighted(50));
+/// `NPV(rate, value1, [value2], ...)`: the values are read whole by the caller, once, and every
+/// element walks them, so the call is charged their count per element (`LiftCost::Cells`, T-1821).
+const NPV: ArgKinds = ArgKinds {
+    required: 2,
+    params: &[Lift],
+    repeat: Some(WholeByCaller),
+    max: 255,
+    work: Constant,
+    result: CallResult::Value,
+};
+/// What one IRR element is charged per cash flow (`LiftCost::Cells` of the flows): the most NPV
+/// passes over the flows one call can make, 455 (`financial_util::compute_irr`: two secant runs
+/// of 52, then the fallback's Newton from the guess, 100 with its derivative passes, its
+/// bisection's 51 and its Newtons from 200 and -2, 200), rounded up.
+const IRR_WEIGHT: u32 = 1 << 9;
+/// `IRR(values, [guess])`: the values are read whole by the caller (T-1821).
+const IRR: ArgKinds = ArgKinds::fixed(1, &[WholeByCaller, Lift], Weighted(IRR_WEIGHT));
+/// `MIRR(values, finance_rate, reinvest_rate)`: the values are read whole by the caller and one
+/// pass over them is charged per element (`LiftCost::Cells`, T-1821).
+const MIRR: ArgKinds = ArgKinds::fixed(3, &[WholeByCaller, Lift, Lift], Constant);
+/// `XNPV(rate, values, dates)`: the values and dates are read whole by the caller and one pass
+/// over them is charged per element (`LiftCost::Cells`, T-1843).
+const XNPV: ArgKinds = ArgKinds::fixed(3, &[LiftArrays, WholeByCaller, WholeByCaller], Constant);
+/// What one XIRR element is charged per cash flow (`LiftCost::Cells` of the flows): the most XNPV
+/// passes over the flows one call can make, 401 (`financial_util::compute_xirr`: XNPV(0), two
+/// bracket walks of `WALK_CAP` 100 points and the bisection's `BISECTION_CAP` 200 steps), plus its
+/// few sign and extent scans, rounded up.
+const XIRR_WEIGHT: u32 = 1 << 9;
+/// `XIRR(values, dates, [guess])`: the values and dates are read whole by the caller (T-1843).
+const XIRR: ArgKinds = ArgKinds::fixed(
+    2,
+    &[WholeByCaller, WholeByCaller, LiftArrays],
+    Weighted(XIRR_WEIGHT),
+);
+/// `FVSCHEDULE(principal, schedule)`: the schedule is read whole by the caller and one pass over
+/// it is charged per element (`LiftCost::Cells`, T-1843).
+const FVSCHEDULE: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, WholeByCaller], Constant);
 /// `ACCRINTM(issue, settlement, rate, [par], [basis])`.
 const ATP_3_OF_5: ArgKinds = ArgKinds::fixed(
     3,
@@ -37,40 +103,59 @@ const ATP_5_OF_6: ArgKinds = ArgKinds::fixed(
 );
 
 // --- Financial ATP (T-1822) -----------------------------------------------------------------
-/// What one walk of a coupon schedule is charged: the walk steps one coupon period at a time
-/// from the maturity back to the settlement (or from the first interest date to the issue), at
-/// most about 32,400 quarters inside the calendar (a settlement before serial 1 is #NUM! first,
-/// `Model::check_settlement`), about 1 ms in a release build (`COUPNUM(1,DATE(9990,6,30),4)`).
+/// What one walk of a coupon schedule is charged at the longest schedule: the walk steps one
+/// coupon period at a time from the maturity back to the settlement (or from the first interest
+/// date to the issue), at most about 32,400 quarters inside the calendar (a settlement before
+/// serial 0 is #NUM! first, `Model::coupon_args` and `Model::check_settlement`), about 1 ms in a
+/// release build (`COUPNUM(1,DATE(9990,6,30),4)`). A shorter walk is charged in proportion to its
+/// period count (`ValueWork::CouponWalks`, T-1846): a 10-year semiannual walk 43 units.
 const COUPON_WALK_WEIGHT: u32 = 1 << 16;
 /// `COUPDAYBS(settlement, maturity, frequency, [basis])` and the other COUP* functions: up to
-/// two schedule walks (COUPDAYSNC's basis 0 takes both coupon dates), so a lifted call runs at
-/// most 1,024 elements: at the calendar's longest schedule (maturity 9990-06-30, quarterly) that
-/// took 1.1 s for COUPNUM and 2.2 s for COUPDAYSNC in a release build (T-1822).
+/// two schedule walks from the maturity back to the settlement (COUPDAYSNC's basis 0 takes both
+/// coupon dates), so a lifted call runs at most 1,024 elements at the calendar's longest schedule
+/// (maturity 9990-06-30, quarterly), which took 1.1 s for COUPNUM and 2.2 s for COUPDAYSNC in a
+/// release build (T-1822), and many more over short schedules (T-1846).
 const COUPON: ArgKinds = ArgKinds::fixed(
     3,
     &[LiftArrays, LiftArrays, LiftArrays, LiftArrays],
-    Weighted(2 * COUPON_WALK_WEIGHT),
+    ByValue(CouponWalks {
+        dates: &[0, 1],
+        frequency: 2,
+        walks: 2,
+        weight: COUPON_WALK_WEIGHT,
+    }),
 );
 /// `ACCRINT(issue, first_interest, settlement, rate, par, frequency, [basis], [calc_method])`:
-/// a walk forward from the first interest date to the settlement and one back to the issue
-/// (1,024 elements over the longest schedule: 1.0 s).
+/// a walk forward from the first interest date to the settlement and one back to the issue, each
+/// inside the span of the three dates (1,024 elements over the longest schedule: 1.0 s).
 const ACCRINT: ArgKinds = ArgKinds::fixed(
     6,
     &[
         LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
         LiftArrays,
     ],
-    Weighted(2 * COUPON_WALK_WEIGHT),
+    ByValue(CouponWalks {
+        dates: &[0, 1, 2],
+        frequency: 5,
+        walks: 2,
+        weight: COUPON_WALK_WEIGHT,
+    }),
 );
 /// `DURATION(settlement, maturity, coupon, yld, frequency, [basis])` and MDURATION: three walks
 /// (the coupon count and the two day counts) and a sum over every coupon, about 3 ms at the
-/// longest schedule, so a lifted call runs at most 512 elements (1.5 s for PRICE or MDURATION).
+/// longest schedule, so a lifted call runs at most 512 elements there (1.5 s for PRICE or
+/// MDURATION).
 const BOND_5_OF_6: ArgKinds = ArgKinds::fixed(
     5,
     &[
         LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
     ],
-    Weighted(4 * COUPON_WALK_WEIGHT),
+    ByValue(CouponWalks {
+        dates: &[0, 1],
+        frequency: 4,
+        walks: 4,
+        weight: COUPON_WALK_WEIGHT,
+    }),
 );
 /// `PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])`, as DURATION.
 const BOND_6_OF_7: ArgKinds = ArgKinds::fixed(
@@ -78,61 +163,90 @@ const BOND_6_OF_7: ArgKinds = ArgKinds::fixed(
     &[
         LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
     ],
-    Weighted(4 * COUPON_WALK_WEIGHT),
+    ByValue(CouponWalks {
+        dates: &[0, 1],
+        frequency: 5,
+        walks: 4,
+        weight: COUPON_WALK_WEIGHT,
+    }),
 );
 // --- End financial ATP (T-1822) -------------------------------------------------------------
 
 // --- Financial ATP (T-1842) -----------------------------------------------------------------
-/// What one YIELD or ODDFYIELD element is charged: its kernel walks the coupon schedule once
-/// (`CouponSchedule`, `OddFirstSchedule`; up to 4.4 and 6.3 ms), then the solver evaluates the
-/// price at most 397 times (100 Newton steps of three, 97 bisection prices), each a sum over up to
-/// 32,400 quarterly coupons (0.55 ms at the calendar's longest schedule, release build). That
-/// bound is about 0.23 s an element, so a lifted call runs at most 2^27 / 2^24 = 8 elements,
-/// about 1.8 s at the bound; the slowest inputs found take 54 ms an element (`YIELD(1,2958465,
-/// 0.05,1E300,100,4,1)`, about 90 prices: 16 elements took 0.94 s). docs/excel-semantics/
-/// financial.md "Yield and odd-coupon work cap" (a DEVIATION; TODO(T-1869)).
+/// What one YIELD or ODDFYIELD element is charged at the longest schedule: its kernel walks the
+/// coupon schedule once (`CouponSchedule`, `OddFirstSchedule`; up to 4.4 and 6.3 ms), then the
+/// solver evaluates the price at most 397 times (100 Newton steps of three, 97 bisection prices),
+/// each a sum over up to 32,400 quarterly coupons (0.55 ms at the calendar's longest schedule,
+/// release build). That bound is about 0.23 s an element, so a lifted call runs at most 2^27 /
+/// 2^24 = 8 such elements, about 1.8 s at the bound; the slowest inputs found take 54 ms an
+/// element (`YIELD(1,2958465,0.05,1E300,100,4,1)`, about 90 prices: 16 elements took 0.94 s).
+/// The walk and every price sum are as long as the schedule, so a shorter one is charged in
+/// proportion to its coupon count plus one (`ValueWork::CouponWalks`, T-1869): a 10-year
+/// semiannual YIELD 10,873 units, so a lift of it runs up to 12,344 elements.
+/// docs/excel-semantics/financial.md "Yield and odd-coupon work cap" (a DEVIATION).
 const YIELD_SOLVER_WEIGHT: u32 = 1 << 24;
-/// `YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])`.
+/// `YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])`: one pass, the walk
+/// from the maturity back to the settlement and the solver's price sums over that schedule.
 const YIELD: ArgKinds = ArgKinds::fixed(
     6,
     &[
         LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
     ],
-    Weighted(YIELD_SOLVER_WEIGHT),
+    ByValue(CouponWalks {
+        dates: &[0, 1],
+        frequency: 5,
+        walks: 1,
+        weight: YIELD_SOLVER_WEIGHT,
+    }),
 );
 /// `ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency,
 /// [basis])`: the first coupon's schedule check and the odd first period's walks and sums, up to
 /// 6.3 ms an element (a long first period from serial 1 to 9999-09-30), so 8 walks: at most 256
-/// elements, 1.7 s measured at that worst case.
+/// elements at that worst case, 1.7 s measured; every walk inside the span of the four dates.
 const ODDFPRICE: ArgKinds = ArgKinds::fixed(
     8,
     &[
         LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
         LiftArrays, LiftArrays,
     ],
-    Weighted(8 * COUPON_WALK_WEIGHT),
+    ByValue(CouponWalks {
+        dates: &[0, 1, 2, 3],
+        frequency: 7,
+        walks: 8,
+        weight: COUPON_WALK_WEIGHT,
+    }),
 );
 /// `ODDFYIELD(settlement, maturity, issue, first_coupon, rate, pr, redemption, frequency,
-/// [basis])`: as YIELD (`YIELD_SOLVER_WEIGHT`).
+/// [basis])`: as YIELD (`YIELD_SOLVER_WEIGHT`), over the span of the four dates.
 const ODDFYIELD: ArgKinds = ArgKinds::fixed(
     8,
     &[
         LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
         LiftArrays, LiftArrays,
     ],
-    Weighted(YIELD_SOLVER_WEIGHT),
+    ByValue(CouponWalks {
+        dates: &[0, 1, 2, 3],
+        frequency: 7,
+        walks: 1,
+        weight: YIELD_SOLVER_WEIGHT,
+    }),
 );
 /// `ODDLPRICE(settlement, maturity, last_interest, rate, yld, redemption, frequency, [basis])`
 /// and ODDLYIELD (closed form, no solver): a walk from the last interest date to the maturity and
 /// a loop over its quasi-coupon periods, up to 2.2 ms an element from serial 2 to 9999-12-31, so
-/// two walks: at most 1,024 elements, 2.2 s measured for ODDLPRICE at that worst case.
+/// two walks: at most 1,024 elements at that worst case, 2.2 s measured for ODDLPRICE.
 const ODD_LAST: ArgKinds = ArgKinds::fixed(
     7,
     &[
         LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
         LiftArrays,
     ],
-    Weighted(2 * COUPON_WALK_WEIGHT),
+    ByValue(CouponWalks {
+        dates: &[0, 1, 2],
+        frequency: 6,
+        walks: 2,
+        weight: COUPON_WALK_WEIGHT,
+    }),
 );
 // --- End financial ATP (T-1842) -------------------------------------------------------------
 
@@ -197,14 +311,23 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // `{v;v}`, the first over a range), probes/fin-later-argument-ranges K1-K25 (the last
         // over a range), probes/scalar-lift-shapes H13-H48 (docs/excel-semantics/financial.md
         // "Financial function argument modes"). Their kernels run in closed form; RATE is
-        // weighted by its step cap. DB and VDB loop over the periods without a cap of their
-        // own, so they are not entered yet (TODO(T-1820)).
+        // weighted by its step cap; DB and VDB by their periods, up to their own cap (T-1820).
         Function::Pmt | Function::Pv | Function::Fv | Function::Nper => Some(&LIFT_3_OF_5),
         Function::Rate => Some(&RATE),
         Function::Ipmt | Function::Ppmt => Some(&LIFT_4_OF_6),
         Function::Ispmt | Function::Syd => Some(&LIFT_4),
         Function::Rri | Function::Pduration | Function::Sln => Some(&LIFT_3),
         Function::Ddb => Some(&LIFT_4_OF_5),
+        Function::Db => Some(&DB),
+        Function::Vdb => Some(&VDB),
+        // NPV's rate, IRR's guess and MIRR's rates lift over arrays and ranges beside their
+        // whole cash flows (`ROWS(NPV(G59:G60,K1:K5))`, `ROWS(IRR(K1:K5,G47:G48))` and
+        // `ROWS(MIRR(K1:K5,G53:G54,0.12))` are 2: probes/fin-argument-modes H155-H156,
+        // H172-H174, H187-H188), while a values array does not lift (`ROWS(NPV(0.1,{1;2}))`
+        // is 1, H386; T-1821).
+        Function::Npv => Some(&NPV),
+        Function::Irr => Some(&IRR),
+        Function::Mirr => Some(&MIRR),
         // Analysis ToolPak functions whose every argument has been probed over a range on
         // its own rows: all are refused, while an array lifts (fin-argument-modes; EFFECT:
         // scalar-lift-shapes H11, H12; DOLLARDE, DOLLARFR: scalar-lift-open-a Y16-Y18; the
@@ -271,6 +394,16 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Amorlinc => Some(&AMORLINC),
         Function::Amordegrc => Some(&AMORDEGRC),
         // --- End financial ATP (T-1841) ---
+        // --- Financial ATP (T-1843) ---
+        // XNPV's rate, XIRR's guess and FVSCHEDULE's principal lift over an array and refuse a
+        // multi-cell range (`ROWS(XNPV({0.09;0.09},K1:K5,M1:M5))`,
+        // `ROWS(XIRR(K1:K5,M1:M5,{0.1;0.1}))` and `ROWS(FVSCHEDULE({1000;1000},{0.1,0.2}))` are
+        // 2, over a range #VALUE!: probes/fin-argument-modes H137-H138, H338-H339, H341-H342),
+        // beside their whole cash flows, dates and schedule.
+        Function::Xnpv => Some(&XNPV),
+        Function::Xirr => Some(&XIRR),
+        Function::Fvschedule => Some(&FVSCHEDULE),
+        // --- End financial ATP (T-1843) ---
         _ => None,
     }
 }

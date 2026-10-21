@@ -226,3 +226,43 @@ fn im_sub_div_power_edge_cases() {
     );
     assert_eq!(model._get_text("A12"), "-1.83772268236293E-16+j");
 }
+
+/// Excel: empty text is `#NUM!` in every one-argument IM* function, a blank cell is 0
+/// (probes/eng-gen-sample-edges D1:D32).
+#[test]
+fn empty_text_is_num_error_blank_is_zero() {
+    let mut model = new_empty_model();
+    model._set("B1", r#"="""#);
+    model._set("A1", r#"=IMSQRT("")"#);
+    model._set("A2", "=IMSQRT(B1)");
+    model._set("A3", r#"=IMREAL("")"#);
+    model._set("A4", r#"=IMLN("")"#);
+    model._set("A5", "=IMSQRT(C1)");
+    model._set("A6", "=IMCOS(C1)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+    assert_eq!(model._get_text("A5"), *"0");
+    assert_eq!(model._get_text("A6"), *"1");
+}
+
+#[test]
+fn im_overflow_edges() {
+    // probes/eng-im-overflow-edges (excel-graph): A2, A3, A8, A27, A55, A64.
+    let mut model = new_empty_model();
+    model._set("B1", r#"=IMPRODUCT(A1,"1E200","1E200")"#);
+    model._set("B2", r#"=IMPRODUCT("1E200","1E200",A1)"#);
+    model._set("B3", r#"=IMCOSH("710.4+0i")"#);
+    model._set("B4", r#"=IMSIN("710.4i")"#);
+    model._set("B5", r#"=IMSECH("711+1.5i")"#);
+    model._set("B6", r#"=IMCSCH("710.4+0i")"#);
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), *"0");
+    assert_eq!(model._get_text("B2"), *"#VALUE!");
+    assert_eq!(model._get_text("B3"), *"#NUM!");
+    assert_eq!(model._get_text("B4"), *"#NUM!");
+    assert_eq!(model._get_text("B5"), *"0");
+    assert_eq!(model._get_text("B6"), *"0");
+}

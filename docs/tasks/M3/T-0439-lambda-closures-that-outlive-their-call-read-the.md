@@ -39,10 +39,13 @@ reads when the LAMBDA is created (cf. `Node::reads_variable`), which then also l
 When a LET or a LAMBDA call ends, the LAMBDAs reachable from its result now capture the variables of
 that scope their bodies read (`Model::close_over`; one shared copy per variable,
 `VariableStack::shared`), and each call binds the captured ones that are not in scope (`bind_captures`
-in `call_prepared`); captures are dropped after each root cell. Capturing when a LAMBDA is made, the
+in `call_prepared`, shared, not copied: `Binding::Shared`, which `VariableStack::get` and
+`Binding::value` read through, so MAP over an escaped closure that captured a 10,000-cell array
+costs no copy per call); captures are dropped after each root cell. Capturing when a LAMBDA is made, the
 first version, copied a REDUCE accumulator on every step (found in review), so a LAMBDA that never
 leaves its scope now captures nothing, and one cell's closures may hold at most 4,194,304 captured
-cells (`MAX_CAPTURED_CELLS`; past it a capture is `#NUM!`, DEVIATION). Probed on excel-graph (probes/lambda-escaping-closures, 28 cells): 20
+cells (`MAX_CAPTURED_CELLS`, per root cell; past it a capture is `#NUM!`, DEVIATION: arrays.md "LAMBDAs
+capture at most 4,194,304 cells"). Probed on excel-graph (probes/lambda-escaping-closures, 28 cells): 20
 pass, among them the REDUCE chain (123), LET-bound curried calls, rebinding and shadowing, and captured
 references, unions and errors. The other 8 are separate gaps, filed: chained calls `f(..)(..)`
 (H3, H8, H10: T-2038), arrays of LAMBDAs from SCAN (H2, I2, J2: T-2039) and LET names spelled like
@@ -52,7 +55,8 @@ was dropped.
 Review found that self-calls through a parameter (`f(f,20000)`, already on main) and long closure
 chains overflowed the stack; nested LAMBDA calls now stop at four times the evaluation's stack budget
 as `#NUM!` (decision 0080, DEVIATION "How deep LAMBDA calls nest"; probes/lambda-call-depth shows
-Excel evaluates 300 levels, ours about 200 in release, 4 cells listed as deviations).
+Excel evaluates 300 levels, ours about 200 in release and 50 in debug, 4 cells listed as deviations;
+follow-up T-0444 to fit 300).
 Eval: probes +2 cases (40 cells: 28 pass, 4 deviations, 8 new-coverage known failures), 0 regressions.
 
 ## Blocked because

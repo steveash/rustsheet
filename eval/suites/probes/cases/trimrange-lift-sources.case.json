@@ -1,0 +1,63 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "TRIMRANGE lifted over trim_rows/trim_cols with an array source, a one-cell source that is not a written reference (defined name, CHOOSE, INDIRECT, OFFSET, IF), a multi-cell computed reference and an error source (T-2089). A1=5, A2=7, A9=#N/A; srcOne = S!$A$1, srcAll = S!$A$1:$B$5. Row 40: bare spills.",
+ "tags": [
+  "M6",
+  "lookup",
+  "probe"
+ ],
+ "names": {
+  "srcOne": "=S!$A$1",
+  "srcAll": "=S!$A$1:$B$5"
+ },
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": 5,
+    "A2": 7,
+    "A9": "=NA()",
+    "D1": "=INDEX(TRIMRANGE({1,2},{0;1}),1,1)",
+    "D2": "=INDEX(TRIMRANGE({1,2},{0;1}),2,1)",
+    "D3": "=ISREF(INDEX(TRIMRANGE({1,2},{0;1}),2,1))",
+    "D4": "=ROWS(TRIMRANGE({1,2},{0;1}))",
+    "D5": "=COLUMNS(TRIMRANGE({1,2},{0;1}))",
+    "D6": "=SUM(TRIMRANGE({1,2},{0;1}))",
+    "D7": "=COUNTA(TRIMRANGE({1,2},{0;1}))",
+    "D8": "=ROWS(INDEX(TRIMRANGE({1,2},{0;1}),1,1))*100+COLUMNS(INDEX(TRIMRANGE({1,2},{0;1}),1,1))",
+    "D9": "=INDEX(TRIMRANGE({1;2},0,{0,1}),1,2)",
+    "D10": "=SUM(TRIMRANGE({1;2},0,{0,1}))",
+    "D11": "=INDEX(TRIMRANGE(srcOne,{0;1}),2,1)",
+    "D12": "=ISREF(INDEX(TRIMRANGE(srcOne,{0;1}),2,1))",
+    "D13": "=SUM(TRIMRANGE(srcOne,{0;1}))",
+    "D14": "=INDEX(TRIMRANGE(CHOOSE(1,A1),{0;1}),2,1)",
+    "D15": "=ISREF(INDEX(TRIMRANGE(CHOOSE(1,A1),{0;1}),2,1))",
+    "D16": "=SUM(TRIMRANGE(CHOOSE(1,A1),{0;1}))",
+    "D17": "=INDEX(TRIMRANGE(INDIRECT(\"A1\"),{0;1}),2,1)",
+    "D18": "=ISREF(INDEX(TRIMRANGE(INDIRECT(\"A1\"),{0;1}),2,1))",
+    "D19": "=SUM(TRIMRANGE(INDIRECT(\"A1\"),{0;1}))",
+    "D20": "=INDEX(TRIMRANGE(OFFSET(A1,0,0),{0;1}),2,1)",
+    "D21": "=INDEX(TRIMRANGE(IF(TRUE,A1),{0;1}),2,1)",
+    "D22": "=INDEX(TRIMRANGE(A1:A1,{0;1}),2,1)",
+    "D23": "=INDEX(TRIMRANGE(A1,{0;1}),2,1)",
+    "D24": "=SUM(TRIMRANGE(CHOOSE(1,A1:B5),{0;1}))",
+    "D25": "=SUM(TRIMRANGE(srcAll,{0;1}))",
+    "D26": "=SUM(TRIMRANGE(INDIRECT(\"A1:B5\"),{0;1}))",
+    "D27": "=SUM(TRIMRANGE(A1:B5,{0;1}))",
+    "D28": "=ROWS(TRIMRANGE(NA(),{0;1}))",
+    "D29": "=ERROR.TYPE(INDEX(TRIMRANGE(NA(),{0;1}),2,1))",
+    "D30": "=ERROR.TYPE(TRIMRANGE(NA(),{0;1}))",
+    "D31": "=COUNTA(TRIMRANGE(NA(),{0;1}))",
+    "D32": "=ROWS(TRIMRANGE(1/0,0,{0,1}))*100+COLUMNS(TRIMRANGE(1/0,0,{0,1}))",
+    "D33": "=ERROR.TYPE(INDEX(TRIMRANGE(A9,{0;1}),2,1))",
+    "D34": "=ROWS(TRIMRANGE(A9,{0;1}))",
+    "D35": "=ERROR.TYPE(TRIMRANGE(NA()))",
+    "F40": "=TRIMRANGE({1,2},{0;1})",
+    "H40": "=TRIMRANGE(NA(),{0;1})",
+    "J40": "=TRIMRANGE(CHOOSE(1,A1),{0;1})",
+    "L40": "=TRIMRANGE(1/0,0,{0,1})"
+   }
+  }
+ ],
+ "expected": {}
+}

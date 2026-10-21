@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "More consumers of a lifted OFFSET/INDIRECT/TRIMRANGE whose elements are references: text, boolean, blank and error elements under SUM-family aggregates, COUNT/COUNTA, the statistical aggregates, *IFS, CONCAT/TEXTJOIN, IF/CHOOSE/LET in an aggregate, ROW/COLUMN/CELL/SHEET/ISFORMULA, N/T, lookups, IFERROR (T-1955).",
+ "tags": [
+  "M6",
+  "probe",
+  "offset",
+  "indirect"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1,
+    "A2": 100,
+    "A3": 10000,
+    "B1": 2,
+    "B2": 200,
+    "B3": 20000,
+    "A4": "5",
+    "A6": true,
+    "A7": 7,
+    "E97": "=CELL(\"row\",OFFSET(A1,{0;1},0))",
+    "E101": "=SHEET(OFFSET(A1,{0;1},0))",
+    "E105": "=SUM(OFFSET(A1,{0;1},0),1)",
+    "E109": "=INDEX(OFFSET(A1,{0;1},0),2)",
+    "E113": "=IFERROR(OFFSET(A1,{0;1},0),\"x\")"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -8,3 +8,7 @@ lambda-call-depth.case.json	Sheet1!H3	decision 0014	docs/excel-semantics/arrays.
 lambda-call-depth.case.json	Sheet1!H6	decision 0014	docs/excel-semantics/arrays.md#how-deep-lambda-calls-nest	#NUM!
 lambda-call-depth.case.json	Sheet1!I3	decision 0014	docs/excel-semantics/arrays.md#how-deep-lambda-calls-nest	6
 lambda-call-depth.case.json	Sheet1!I6	decision 0014	docs/excel-semantics/arrays.md#how-deep-lambda-calls-nest	6
+textsplit-padded-size.case.json	Calc!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+textsplit-padded-size.case.json	Calc!A2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+textsplit-padded-size.case.json	Calc!A3	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+textsplit-padded-size.case.json	Calc!A4	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!

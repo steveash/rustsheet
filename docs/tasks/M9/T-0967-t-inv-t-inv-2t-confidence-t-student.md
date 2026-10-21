@@ -4,9 +4,10 @@ title: "T.INV/T.INV.2T/CONFIDENCE.T: Student-t quantile parity (89 known failure
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
+campaign: visible
 depends_on: [T-0969, T-1043]
 ---
 
@@ -57,3 +58,14 @@ Oracle sweep (T-1043): probes-numeric cases `m9-t-inv`, `m9-t-inv-2t`, `m9-confi
 
 ## Out of scope
 The CDF kernel (T-0969); CONFIDENCE.NORM (T-0925); legacy TINV (evidence in T-1048).
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 345 in total.
+- T.INV: 109 cells (13-14 digits right 66, 10-12 33, 6-9 4, fewer or 0 vs nonzero 6); most in `probes-numeric/m9-t-inv.case.json` 67; `probes-numeric/t1531-t-tiny-p.case.json` 27. e.g. `T.INV(0.4,5)` Excel -0.2671808657041464, ours -0.2671808657041447
+- T.INV.2T: 148 cells (13-14 digits right 69, 10-12 45, 6-9 12, fewer or 0 vs nonzero 22); most in `probes-numeric/m9-t-inv-2t.case.json` 100; `ironcalc-calc/STATISTICAL/T_DIST.xlsx` 19. e.g. `T.INV.2T(0.5,2)` Excel 0.8164965809277259, ours 0.8164965809277231
+- TINV: 22 cells (13-14 digits right 15, 10-12 4, 6-9 1, fewer or 0 vs nonzero 2); most in `probes-numeric/t1531-t-tiny-p.case.json` 17; `probes-numeric/t1048-tinv.case.json` 5. e.g. `TINV(0.5,10)` Excel 0.6998120613124317, ours 0.6998120613124311
+- CONFIDENCE.T: 66 cells (13-14 digits right 31, 10-12 29, 6-9 3, fewer or 0 vs nonzero 3); most in `probes-numeric/m9-confidence-t.case.json` 30; `ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx` 18. e.g. `CONFIDENCE.T(0.1,1,2)` Excel 4.464496510753559, ours 4.464496510753552
+
+Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.

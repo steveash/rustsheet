@@ -77,7 +77,9 @@ fn to_square_matrix(
 /// LU decomposition with partial pivoting (in-place).
 /// Returns (sign, swaps) where swaps[k] is the row swapped with row k at step k.
 /// After the call `mat` holds the LU factors (L below diagonal, U on/above diagonal).
-fn lu_decompose(mat: &mut [f64], n: usize) -> Result<(f64, Vec<usize>), ()> {
+/// The matrix counts as singular (`Err`) when a column's largest remaining entry is 0 or below
+/// `min_pivot`.
+fn lu_decompose(mat: &mut [f64], n: usize, min_pivot: f64) -> Result<(f64, Vec<usize>), ()> {
     let mut swaps: Vec<usize> = vec![0; n];
     let mut sign = 1.0f64;
 
@@ -91,7 +93,7 @@ fn lu_decompose(mat: &mut [f64], n: usize) -> Result<(f64, Vec<usize>), ()> {
                 max_row = row;
             }
         }
-        if max_val < f64::EPSILON {
+        if max_val == 0.0 || max_val < min_pivot {
             return Err(());
         }
         swaps[col] = max_row;
@@ -114,6 +116,21 @@ fn lu_decompose(mat: &mut [f64], n: usize) -> Result<(f64, Vec<usize>), ()> {
 }
 
 impl Model {
+    /// Evaluates a matrix-function argument. Unlike `eval_to_array`, a one-cell reference to a
+    /// blank cell stays blank (so `#VALUE!`) rather than becoming a scalar 0
+    /// (gen-m5 `MINVERSE(Data!$B4)`, `MDETERM(Data!D$1)`, `MMULT(Data!A5,Data!B11)`:
+    /// docs/excel-semantics/arrays.md "MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!").
+    pub(crate) fn eval_matrix_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
+            other => self.result_to_array(other, cell),
+        }
+    }
+
     // ── MDETERM ───────────────────────────────────────────────────────────────
 
     /// `=MDETERM(array)`
@@ -124,7 +141,7 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let arr = match self.eval_to_array(&args[0], cell) {
+        let arr = match self.eval_matrix_arg(&args[0], cell) {
             Ok(a) => a,
             Err(e) => return e,
         };
@@ -133,14 +150,19 @@ impl Model {
             Err(e) => return e,
         };
 
-        match lu_decompose(&mut mat, n) {
+        // Excel eliminates the same way and keeps the rounding residual of a tiny last pivot: only an
+        // exactly-zero pivot column gives 0. MDETERM({1,2,3;4,5,6;7,8,9}) = 6.661338147750939E-16 and
+        // MDETERM({1,2,3;4,5,6;7,8,10}) = -2.9999999999999982 (probes/stats-evidence-floor-t1623
+        // S!Q107, S!Q120, excel-graph; docs/excel-semantics/arrays.md, T-1751).
+        match lu_decompose(&mut mat, n, 0.0) {
             Err(()) => CalcResult::Number(0.0),
             Ok((sign, _)) => {
                 let mut det = sign;
                 for i in 0..n {
                     det *= mat[i * n + i];
                 }
-                CalcResult::Number(det)
+                // A pivot product past the double range is not a number Excel can hold.
+                CalcResult::finite_number_or_num(det, cell)
             }
         }
     }
@@ -155,7 +177,7 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let arr = match self.eval_to_array(&args[0], cell) {
+        let arr = match self.eval_matrix_arg(&args[0], cell) {
             Ok(a) => a,
             Err(e) => return e,
         };
@@ -164,7 +186,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        let (_, swaps) = match lu_decompose(&mut mat, n) {
+        let (_, swaps) = match lu_decompose(&mut mat, n, f64::EPSILON) {
             Ok(v) => v,
             Err(()) => {
                 return CalcResult::new_error(Error::NUM, cell, "matrix is singular".to_string())

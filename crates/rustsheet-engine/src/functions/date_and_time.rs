@@ -114,7 +114,7 @@ fn time_of_day_parts(v: f64) -> [f64; 3] {
     [hour, minute, ((minutes - minute) * 60.0).floor()]
 }
 
-use crate::cast::{array_node_to_string, number_text_too_long};
+use crate::cast::{calc_result_to_string, number_text_too_long};
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
@@ -123,7 +123,6 @@ use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
 use crate::functions::lift::{num_error, number_result, value_error};
-use crate::functions::text::text_arg::broadcast_text;
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
 use crate::types::DateSystem;
@@ -523,46 +522,42 @@ impl Model {
     }
 
     pub(crate) fn fn_timevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
         // Lifts over a range or array like the text functions (probes/date-argument-modes F47:F48).
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text], |i, j| {
-            let text = array_node_to_string(text.elem(i, j))?;
-            self.parse_time_text(&text)
+        self.lift_text(Function::Timevalue, args, cell, &mut |model, values| {
+            let [text] = values else {
+                return Err(Error::ERROR);
+            };
+            let text = calc_result_to_string(text)?;
+            model
+                .parse_time_text(&text)
                 .map(ArrayNode::Number)
                 .ok_or(Error::VALUE)
         })
     }
 
     pub(crate) fn fn_datevalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
         // Lifts over a range or array like the text functions (probes/date-argument-modes F9:F10).
-        let text = match self.text_arg(&args[0], cell) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&text], |i, j| match text.elem(i, j) {
-            ArrayNode::String(s) => self
-                .parse_datevalue_text(s)
-                .map(|serial| ArrayNode::Number(f64::from(serial)))
-                .ok_or(Error::VALUE),
-            ArrayNode::Error(e) => Err(e.clone()),
-            _ => Err(Error::VALUE),
-        })
+        self.lift_text(
+            Function::Datevalue,
+            args,
+            cell,
+            &mut |model, values| match values {
+                [CalcResult::String(s)] => model
+                    .parse_datevalue_text(s)
+                    .map(|serial| ArrayNode::Number(f64::from(serial)))
+                    .ok_or(Error::VALUE),
+                [CalcResult::Error { error, .. }] => Err(error.clone()),
+                [_] => Err(Error::VALUE),
+                _ => Err(Error::ERROR),
+            },
+        )
     }
 
     pub(crate) fn fn_datedif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // Every argument lifts over a range or array: the dates (probes/date-argument-modes F5:F8)
-        // and the unit (probes/date-math-lift-driver-edges G1-G5). Errors keep their pre-lift order:
-        // the dates' own, #NUM! of a reversed pair, the unit's, then out-of-calendar #NUM! (T-1355;
-        // UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
+        // and the unit (probes/date-math-lift-driver-edges G1-G5). Errors come in Excel's order: the
+        // dates' own (start first), the unit's, then #NUM! of a reversed pair or an out-of-calendar
+        // date, then a bad unit (probes/datedif-days360-error-order, excel-graph, T-1430).
         let date_system = self.workbook.settings.date_system;
         self.lift_call(Function::Datedif, args, cell, &mut |model, values| {
             let [start, end, unit] = values else {
@@ -629,11 +624,13 @@ impl Model {
         unit: Result<&str, Error>,
     ) -> Result<f64, Error> {
         let (start_serial, end_serial) = (start_serial.floor() as i64, end_serial.floor() as i64);
+        // A unit error beats a reversed pair and an out-of-calendar date: `DATEDIF(10,5,NA())` and
+        // `DATEDIF(3000000,5,NA())` are #N/A (probes/datedif-days360-error-order A1, A16; dates.md
+        // "DATEDIF argument errors before date checks").
+        let unit = unit?;
         if end_serial < start_serial {
             return Err(Error::NUM);
         }
-        // A unit error beats an out-of-calendar start date (dates.md "DATEDIF argument errors before date checks").
-        let unit = unit?;
         let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
         let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;
         // The units are ASCII, so an ASCII case-blind match is the upper-casing it replaces.
@@ -737,8 +734,9 @@ impl Model {
         // The dates and the method lift over a range or array (probes/date-argument-modes F15:F18,
         // probes/date-math-lift-driver-edges G6-G10). The European-method flag follows Excel's
         // logical coercion: numbers are truthy when non-zero, and only the text "TRUE"/"FALSE" is
-        // accepted. The dates' own errors come first, then the method's, then the dates' #NUM!, as
-        // before the lift (UNVERIFIED, dates.md "DATEDIF and DAYS360 error order", T-1430).
+        // accepted. The dates' own errors come first, then the method's, then the dates' #NUM!
+        // (probes/datedif-days360-error-order C1-C19, excel-graph; dates.md "DATEDIF and DAYS360
+        // error order", T-1430).
         let date_system = self.workbook.settings.date_system;
         self.lift_call(Function::Days360, args, cell, &mut |model, values| {
             let dates = model

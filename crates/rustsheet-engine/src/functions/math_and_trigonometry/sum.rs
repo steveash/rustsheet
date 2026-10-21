@@ -1,7 +1,9 @@
 use crate::calc_result::Range;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::paired::PairedArg;
-use crate::functions::util::aggregate_args::{AggregatePolicy, ArgReading, ErrorRule, NumberRules};
+use crate::functions::util::aggregate_args::{
+    AggregatePolicy, ArgReading, ErrorRule, GridReading, NumberRules,
+};
 
 use crate::{
     arithmetic::{extended_sum, snap_near_zero},
@@ -36,9 +38,13 @@ impl Model {
         self.sumx_fold(args, cell, |x, y| (x - y) * (x - y))
     }
 
-    // Excel pairs the arrays row-major and only needs equal element counts (not shapes); pairs where
-    // either side is not a number are skipped, none left is #DIV/0!, unequal counts are #N/A
-    // (docs/excel-semantics/coercion.md "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing").
+    // Excel pairs the arrays row-major and only needs equal element counts (not shapes). The
+    // checks run in this order (docs/excel-semantics/coercion.md "SUMX2MY2 / SUMX2PY2 / SUMXMY2
+    // pairing", probes/sumx-blank-text-error-order): each argument in turn, an error value or a
+    // one-cell reference holding one is that error, and a blank one-cell reference or an omitted
+    // argument is #VALUE!; then unequal counts are #N/A, ahead of any error inside a range or
+    // array; then that error; then an argument with no number at all is #DIV/0!. Otherwise the
+    // result is the sum over the pairs where both sides are numbers, which may be none (0).
     fn sumx_fold(
         &mut self,
         args: &[Node],
@@ -48,40 +54,70 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let first = self.sumx_arg(&args[0], cell);
-        let second = self.sumx_arg(&args[1], cell);
+        let first = match self.sumx_arg(&args[0], cell) {
+            Ok(arg) => arg,
+            Err(e) => return e,
+        };
+        let second = match self.sumx_arg(&args[1], cell) {
+            Ok(arg) => arg,
+            Err(e) => return e,
+        };
+        let unequal_counts = || {
+            CalcResult::new_error(
+                Error::NA,
+                cell,
+                "Arrays must have the same number of elements".to_string(),
+            )
+        };
+        if let (Some(m), Some(n)) = (first.cell_count(), second.cell_count()) {
+            if m != n {
+                return unequal_counts();
+            }
+        }
         let array_error =
             |_, error| CalcResult::new_error(error, cell, "Error in array".to_string());
         let paired = match self.paired_values(first, second, cell, array_error) {
             Ok(paired) => paired,
             Err(e) => return e,
         };
+        // A 3-D reference has no count before it is walked.
         if !paired.same_size {
-            return CalcResult::new_error(
-                Error::NA,
-                cell,
-                "Arrays must have the same number of elements".to_string(),
-            );
+            return unequal_counts();
+        }
+        let has_number = |values: &[Option<f64>]| values.iter().any(Option::is_some);
+        if !has_number(&paired.first) || !has_number(&paired.second) {
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
         let mut sum = 0.0;
-        let mut count = 0;
         for (x, y) in paired.first.into_iter().zip(paired.second) {
             if let (Some(x), Some(y)) = (x, y) {
                 sum += term(x, y);
-                count += 1;
             }
-        }
-        if count == 0 {
-            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
         CalcResult::finite_number_or_num(sum, cell)
     }
 
-    // One SUMX argument: a range, an array or a scalar typed in place (a non-number is `None`).
-    // An error is returned when its turn comes, after the first argument's cells.
-    fn sumx_arg(&mut self, arg: &Node, cell: CellReferenceIndex) -> PairedArg {
-        PairedArg::from_node_result(arg, self.evaluate_node_in_context(arg, cell))
-            .unwrap_or_else(|_| PairedArg::Values(vec![None]))
+    // One SUMX argument: a range, an array or a single value (a non-number is `None`). An error
+    // value, or a one-cell reference holding an error, is returned at once, and so is #VALUE! for
+    // a blank one-cell reference or an omitted argument; errors inside a longer range or an array
+    // wait for the count check.
+    fn sumx_arg(&mut self, arg: &Node, cell: CellReferenceIndex) -> Result<PairedArg, CalcResult> {
+        let value = match self.evaluate_node_in_context(arg, cell) {
+            CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
+            value => value,
+        };
+        match value {
+            error @ CalcResult::Error { .. } => Err(error),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Blank argument".to_string(),
+            )),
+            CalcResult::Number(n) => Ok(PairedArg::Values(vec![Some(n)])),
+            CalcResult::Range { left, right } => Ok(PairedArg::Range(Range { left, right })),
+            CalcResult::Array(array) => Ok(PairedArg::Array(array)),
+            _ => Ok(PairedArg::Values(vec![None])),
+        }
     }
 
     // Helper function to extract and validate two matrices (ranges or arrays) with compatible shapes.
@@ -138,11 +174,16 @@ impl Model {
     }
 }
 
-/// A range, array or number argument of [`Model::fn_get_two_matrices`] with its rows and columns;
-/// an error value is returned as the error, anything else is `None`.
+/// A range, array, number, text or boolean argument of [`Model::fn_get_two_matrices`] with its
+/// rows and columns; an error value is returned as the error, anything else is `None`.
 fn matrix_arg(node: &Node, value: CalcResult) -> Result<Option<(i64, i64, PairedArg)>, CalcResult> {
-    let Ok(arg) = PairedArg::from_node_result(node, value) else {
-        return Ok(None);
+    let arg = match PairedArg::from_node_result(node, value) {
+        Ok(arg) => arg,
+        // Excel: a typed text or boolean is one value with no number,
+        // like a single cell holding one: `CORREL("a",5)` is #DIV/0! and `CORREL(A1:A3,TRUE)`
+        // #N/A (probes/regression-pairs-text-scalar).
+        Err(CalcResult::String(_) | CalcResult::Boolean(_)) => PairedArg::Values(vec![None]),
+        Err(_) => return Ok(None),
     };
     let (rows, columns) = match &arg {
         PairedArg::Range(Range { left, right }) => (
@@ -191,6 +232,7 @@ const SUM_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: false,
+    grids: GridReading::TopLeft,
 };
 
 impl Model {

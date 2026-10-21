@@ -3,7 +3,7 @@ id: T-2052
 title: "CELL(\"filename\") is #VALUE! in Excel for the web: score it and match it"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ record, decision 0039) gives, and the eval scores them.
 
 ## Out of scope
 - Desktop Excel's path form.
+
+## Outcome
+`CELL("filename")` is `#VALUE!` in every form (web oracle); Calc!B1:B4 now scored and pass. information.md updated.

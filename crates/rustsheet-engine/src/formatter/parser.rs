@@ -49,6 +49,8 @@ pub enum TextToken {
     ElapsedMinutePadded,
     ElapsedSecond,
     ElapsedSecondPadded,
+    /// `.0`, `.00` or `.000` right after a seconds token: that many digits of the second.
+    SecondFraction(usize),
     AMPM,
     AP(char, char),
 }
@@ -65,10 +67,36 @@ pub struct NumberPart {
     pub scientific_minus: bool,
     pub exponent_digit_count: i32,
     pub currency: Option<char>,
+    /// A fraction (`# ?/4`, `?/100`, `# ??/??`); `None` for any other section.
+    pub fraction: Option<Fraction>,
+}
+
+/// Where a fraction sits among a number section's `tokens`: the digit placeholders before
+/// `numerator_start` are the integer part, those from it up to `numerator_end` the numerator.
+/// Literals may sit on either side of the `/` (`#\:#=/=#`).
+pub struct Fraction {
+    /// Index of the first numerator placeholder in `tokens`.
+    pub numerator_start: usize,
+    /// Index just past the last numerator placeholder in `tokens`.
+    pub numerator_end: usize,
+    /// Index in `tokens` where the denominator prints, after the literals that follow the `/`;
+    /// the denominator is not a token.
+    pub denominator_at: usize,
+    /// Fixed digits or placeholder kinds; see [`Denominator`].
+    pub denominator: Denominator,
+}
+
+/// The denominator of a fraction section.
+pub enum Denominator {
+    /// Digits as written (`16` in `# ??/16`).
+    Fixed(String),
+    /// The kinds of its digit placeholders (`??` in `# ??/??`): Excel picks the fraction.
+    Placeholders(Vec<char>),
 }
 
 pub struct DatePart {
     pub color: Option<i32>,
+    pub condition: Option<(Compare, f64)>,
     pub use_ampm: bool,
     pub tokens: Vec<TextToken>,
     /// The names of the section's `[$-...]` locale; `None` uses the workbook locale.
@@ -97,11 +125,48 @@ pub struct Parser {
     lexer: Lexer,
 }
 
+/// The most digits of a second a format may show (`.000`, poi/ElapsedFormatTests A2).
+const MAX_SECOND_FRACTION_DIGITS: usize = 3;
+
 #[derive(PartialEq, Copy, Clone)]
 pub enum NumberState {
     Integer,
     Decimal,
     Exponent,
+}
+
+/// The kind (`#`, `?` or `0`) of a digit placeholder token.
+fn placeholder_kind(token: &Token) -> char {
+    match token {
+        Token::QuestionMark => '?',
+        Token::Zero => '0',
+        _ => '#',
+    }
+}
+
+/// Whether `token` is a literal that may stand between a fraction's numerator, its `/` and its
+/// denominator: any literal but a digit or a `/`, escaped or quoted text, or a `_x` space.
+fn is_fraction_literal(token: &Token) -> bool {
+    match token {
+        Token::Literal(c) => !c.is_ascii_digit() && *c != '/',
+        Token::Escaped(_) | Token::Text(_) | Token::Ghost(_) => true,
+        _ => false,
+    }
+}
+
+/// The text token a fraction literal (see [`is_fraction_literal`]) prints as.
+fn fraction_literal(token: Token) -> Option<TextToken> {
+    match token {
+        Token::Literal(c) | Token::Escaped(c) => Some(TextToken::Literal(c)),
+        Token::Text(text) => Some(TextToken::Text(text)),
+        Token::Ghost(c) => Some(TextToken::Ghost(c)),
+        _ => None,
+    }
+}
+
+/// Whether `token` starts a fraction's denominator: a digit placeholder or a digit 1-9.
+fn starts_denominator(token: &Token) -> bool {
+    token.is_digit() || matches!(token, Token::Literal('1'..='9'))
 }
 
 impl NumberState {
@@ -166,6 +231,9 @@ impl Parser {
         let mut comma = 0;
         let mut percent = 0;
         let mut last_token_is_digit = false;
+        // Just past the last digit placeholder while only literals follow it, which may stand
+        // between a numerator and its `/` (`#\:#=/=#`, poi/NumberFormatTests A134).
+        let mut after_digits: Option<usize> = None;
         let mut color = None;
         let mut condition = None;
         let mut tokens = vec![];
@@ -185,10 +253,18 @@ impl Parser {
         // Excel: a second locale tag in a section is #VALUE!, even the same one
         // (`TEXT(45000,"[$-40C]mmmm [$-40C]mmmm")`; probes/text-locale-name-tables A568-A575).
         let mut repeated_locale = false;
+        let mut fraction = None;
+        // Excel: a plain `h` or `s`/`ss` after `[h]`/`[hh]` or `[s]`/`[ss]` shows the elapsed
+        // count too ("It was 75 [yes, 75] hours", poi/ElapsedFormatTests A10, A11, A21;
+        // number-formats.md "Elapsed-time tokens"). `m` after `[m]` is unprobed and stays a clock
+        // minute.
+        let mut elapsed_hour = false;
+        let mut elapsed_second = false;
 
         while token != Token::EOF && token != Token::Separator {
-            let next_token = self.lexer.next_token();
+            let mut next_token = self.lexer.next_token();
             let token_is_digit = token.is_digit();
+            let token_is_fraction_literal = is_fraction_literal(&token);
             is_number = is_number || token_is_digit;
             let next_token_is_digit = next_token.is_digit();
             let is_colon = token == Token::Literal(':');
@@ -225,6 +301,31 @@ impl Parser {
                 Token::Percent => {
                     tokens.push(TextToken::Literal('%'));
                     percent += 1;
+                }
+                // `.0`, `.00`, `.000` after a seconds token are the fraction of the second
+                // (number-formats.md "Elapsed-time tokens", "Fractional seconds in clock
+                // formats"); more zeros are unprobed and stay an error.
+                Token::Period
+                    if next_token == Token::Zero
+                        && matches!(
+                            tokens.last(),
+                            Some(
+                                TextToken::Second
+                                    | TextToken::SecondPadded
+                                    | TextToken::ElapsedSecond
+                                    | TextToken::ElapsedSecondPadded
+                            )
+                        ) =>
+                {
+                    let mut digits = 0;
+                    while next_token == Token::Zero {
+                        digits += 1;
+                        next_token = self.lexer.next_token();
+                    }
+                    if digits > MAX_SECOND_FRACTION_DIGITS {
+                        return ParsePart::Error(ErrorPart {});
+                    }
+                    tokens.push(TextToken::SecondFraction(digits));
                 }
                 Token::Period => {
                     if !is_number && !is_date && !found_decimal_dot {
@@ -285,6 +386,59 @@ impl Parser {
                         number,
                     }));
                     index += 1;
+                }
+                // A `/` after digit placeholders and before a number or more placeholders makes a
+                // fraction (`# ?/4`, `# ??/??`), also with literals on either side of it
+                // (`#\:#=/=#`, `#_#/#`; number-formats.md "Fraction formats", poi/NumberFormatTests).
+                Token::Literal('/')
+                    if after_digits.is_some()
+                        && !found_decimal_dot
+                        && !is_scientific
+                        && fraction.is_none()
+                        && (starts_denominator(&next_token)
+                            || (is_fraction_literal(&next_token)
+                                && starts_denominator(
+                                    &self.lexer.peek_token_past(is_fraction_literal),
+                                ))) =>
+                {
+                    let numerator_end = after_digits.unwrap_or(tokens.len());
+                    tokens.push(TextToken::Literal('/'));
+                    while is_fraction_literal(&next_token) {
+                        if let Some(literal) = fraction_literal(next_token) {
+                            tokens.push(literal);
+                        }
+                        next_token = self.lexer.next_token();
+                    }
+                    let denominator = if let Token::Literal(first) = next_token {
+                        let mut digits = String::from(first);
+                        loop {
+                            match self.lexer.peek_token() {
+                                Token::Literal(c) if c.is_ascii_digit() => digits.push(c),
+                                Token::Zero => digits.push('0'),
+                                _ => break,
+                            }
+                            self.lexer.next_token();
+                        }
+                        Denominator::Fixed(digits)
+                    } else {
+                        let mut kinds = vec![placeholder_kind(&next_token)];
+                        while self.lexer.peek_token().is_digit() {
+                            kinds.push(placeholder_kind(&self.lexer.next_token()));
+                        }
+                        Denominator::Placeholders(kinds)
+                    };
+                    next_token = self.lexer.next_token();
+                    let numerator_len = tokens[..numerator_end]
+                        .iter()
+                        .rev()
+                        .take_while(|t| matches!(t, TextToken::Digit(_)))
+                        .count();
+                    fraction = Some(Fraction {
+                        numerator_start: numerator_end - numerator_len,
+                        numerator_end,
+                        denominator_at: tokens.len(),
+                        denominator,
+                    });
                 }
                 Token::Literal(value) => {
                     if value == ':' {
@@ -399,22 +553,38 @@ impl Parser {
                 Token::Hour => {
                     is_date = true;
                     is_time = true;
-                    tokens.push(TextToken::Hour);
+                    tokens.push(if elapsed_hour {
+                        TextToken::ElapsedHour
+                    } else {
+                        TextToken::Hour
+                    });
                 }
                 Token::HourPadded => {
                     is_date = true;
                     is_time = true;
-                    tokens.push(TextToken::HourPadded);
+                    tokens.push(if elapsed_hour {
+                        TextToken::ElapsedHourPadded
+                    } else {
+                        TextToken::HourPadded
+                    });
                 }
                 Token::Second => {
                     is_date = true;
                     is_time = true;
-                    tokens.push(TextToken::Second);
+                    tokens.push(if elapsed_second {
+                        TextToken::ElapsedSecond
+                    } else {
+                        TextToken::Second
+                    });
                 }
                 Token::SecondPadded => {
                     is_date = true;
                     is_time = true;
-                    tokens.push(TextToken::SecondPadded);
+                    tokens.push(if elapsed_second {
+                        TextToken::ElapsedSecondPadded
+                    } else {
+                        TextToken::SecondPadded
+                    });
                 }
                 Token::AMPM => {
                     is_date = true;
@@ -430,20 +600,17 @@ impl Parser {
                     repeated_locale |= locale.is_some();
                     locale = Some(tag);
                 }
-                Token::Scientific => {
+                Token::Scientific | Token::ScientificMinus => {
                     if !is_scientific {
                         index = 0;
                         number = NumberState::Exponent;
+                        // The `E` stays where the format has it, ahead of any literal before the
+                        // exponent digits; the exponent's sign goes next to its digits (`|#.#|E+|#|`
+                        // on 123456.789 is "|1.2|E|+5|", poi/NumberFormatApproxTests.xlsx A41).
+                        tokens.push(TextToken::Literal('E'));
                     }
                     is_scientific = true;
-                }
-                Token::ScientificMinus => {
-                    if !is_scientific {
-                        index = 0;
-                        number = NumberState::Exponent;
-                    }
-                    is_scientific = true;
-                    scientific_minus = true;
+                    scientific_minus |= token == Token::ScientificMinus;
                 }
                 Token::Separator => {}
                 Token::Raw => {
@@ -456,6 +623,7 @@ impl Parser {
                 Token::ElapsedHour => {
                     is_date = true;
                     is_time = true;
+                    elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHour);
                 }
                 Token::ElapsedMinute => {
@@ -466,11 +634,13 @@ impl Parser {
                 Token::ElapsedSecond => {
                     is_date = true;
                     is_time = true;
+                    elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecond);
                 }
                 Token::ElapsedHourPadded => {
                     is_date = true;
                     is_time = true;
+                    elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHourPadded);
                 }
                 Token::ElapsedMinutePadded => {
@@ -481,8 +651,14 @@ impl Parser {
                 Token::ElapsedSecondPadded => {
                     is_date = true;
                     is_time = true;
+                    elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecondPadded);
                 }
+            }
+            if token_is_digit {
+                after_digits = Some(tokens.len());
+            } else if !token_is_fraction_literal {
+                after_digits = None;
             }
             last_token_is_digit = token_is_digit;
             after_colon = is_colon;
@@ -544,6 +720,7 @@ impl Parser {
             }
             ParsePart::Date(DatePart {
                 color,
+                condition,
                 use_ampm,
                 tokens,
                 names: localized.map(|l| l.names),
@@ -565,6 +742,7 @@ impl Parser {
                 scientific_minus,
                 exponent_digit_count,
                 currency,
+                fraction,
             })
         }
     }
@@ -588,6 +766,7 @@ impl Parser {
                 scientific_minus: false,
                 exponent_digit_count: 0,
                 currency: None,
+                fraction: None,
             });
         }
         let mut parser = Parser::new(format);

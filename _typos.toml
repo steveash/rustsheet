@@ -21,6 +21,8 @@ extend-ignore-re = ["-?0x[0-9a-fA-F]\\.[0-9a-fA-F]+p[-+]?[0-9]+"]
 # Excel function names and spreadsheet jargon
 ue = "ue"
 iif = "iif"
+# T-1941 probe case names (kmyst-gam-*)
+gam = "gam"
 # Excel function names / foreign-language function names that look like typos
 Permut = "Permut"
 permut = "permut"

@@ -3,225 +3,165 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+/// The moments of the pairs of two paired arguments that are both numbers, about their means:
+/// what CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX and FORECAST compute from.
+///
+/// Excel sums the squares and products of the deviations from the means (two passes), not
+/// `n*Σxy - Σx*Σy`: data with a large offset keeps its variance (`CORREL(I1:I6,B1:B6)` with
+/// I = 10000000001.. is 0.9402561526801988, not `#DIV/0!`), and every result of
+/// probes/regression-pairs-a and -b matches to the bit (docs/excel-semantics/statistics.md
+/// "Regression pairs: sums about the means").
+pub(super) struct PairedMoments {
+    /// How many pairs are both numbers.
+    pub(super) n: f64,
+    pub(super) mean_x: f64,
+    pub(super) mean_y: f64,
+    /// Σ(x - x̄)².
+    pub(super) sxx: f64,
+    /// Σ(y - ȳ)².
+    pub(super) syy: f64,
+    /// Σ(x - x̄)(y - ȳ).
+    pub(super) sxy: f64,
+}
+
+impl PairedMoments {
+    /// The moments of the pairs of `xs` and `ys` (aligned by position) that are both numbers.
+    pub(super) fn new(xs: &[Option<f64>], ys: &[Option<f64>]) -> Self {
+        let pairs = || xs.iter().zip(ys).filter_map(|(x, y)| Some(((*x)?, (*y)?)));
+        let (mut n, mut sum_x, mut sum_y) = (0.0, 0.0, 0.0);
+        for (x, y) in pairs() {
+            n += 1.0;
+            sum_x += x;
+            sum_y += y;
+        }
+        let mean_x = sum_x / n;
+        let mean_y = sum_y / n;
+        let (mut sxx, mut syy, mut sxy) = (0.0, 0.0, 0.0);
+        for (x, y) in pairs() {
+            let (dx, dy) = (x - mean_x, y - mean_y);
+            sxx += dx * dx;
+            syy += dy * dy;
+            sxy += dx * dy;
+        }
+        PairedMoments {
+            n,
+            mean_x,
+            mean_y,
+            sxx,
+            syy,
+            sxy,
+        }
+    }
+
+    /// The correlation coefficient with the covariance and standard deviations taken over
+    /// `divisor`: CORREL and PEARSON divide by `n`, RSQ squares the one over `n - 1`; that is
+    /// the order Excel's last digits follow (probes/regression-pairs-a L, M, N columns).
+    pub(super) fn correlation(&self, divisor: f64) -> Option<f64> {
+        if self.n < 2.0 || self.sxx == 0.0 || self.syy == 0.0 {
+            return None;
+        }
+        let r = (self.sxy / divisor) / ((self.sxx / divisor).sqrt() * (self.syy / divisor).sqrt());
+        r.is_finite().then_some(r)
+    }
+
+    /// The slope of the regression line of y on x, `None` with fewer than two pairs or all x
+    /// equal.
+    pub(super) fn slope(&self) -> Option<f64> {
+        if self.n < 2.0 || self.sxx == 0.0 {
+            return None;
+        }
+        let slope = self.sxy / self.sxx;
+        slope.is_finite().then_some(slope)
+    }
+
+    /// The intercept and slope of the regression line of y on x.
+    pub(super) fn line(&self) -> Option<(f64, f64)> {
+        let slope = self.slope()?;
+        let intercept = self.mean_y - slope * self.mean_x;
+        intercept.is_finite().then_some((intercept, slope))
+    }
+}
+
 impl Model {
+    /// The moments of the two paired arguments of a regression function, `known_y's` then
+    /// `known_x's` (CORREL's correlation is the same either way round).
+    pub(super) fn paired_moments(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<PairedMoments, CalcResult> {
+        let (_, _, known_y, known_x) = self.fn_get_two_matrices(args, cell)?;
+        Ok(PairedMoments::new(&known_x, &known_y))
+    }
+
+    /// CORREL and PEARSON: the correlation coefficient (Excel computes both alike).
+    pub(super) fn correlation_coefficient(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let moments = match self.paired_moments(args, cell) {
+            Ok(moments) => moments,
+            Err(error) => return error,
+        };
+        match moments.correlation(moments.n) {
+            Some(r) => CalcResult::Number(r),
+            None => CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string()),
+        }
+    }
+
     // CORREL(array1, array2) - Returns the correlation coefficient of two data sets
     pub(crate) fn fn_correl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (_, _, values_left, values_right) = match self.fn_get_two_matrices(args, cell) {
-            Ok(s) => s,
-            Err(e) => return e,
-        };
-
-        let mut n = 0.0;
-        let mut sum_x = 0.0;
-        let mut sum_y = 0.0;
-        let mut sum_x2 = 0.0;
-        let mut sum_y2 = 0.0;
-        let mut sum_xy = 0.0;
-
-        for (x_opt, y_opt) in values_left.into_iter().zip(values_right) {
-            if let (Some(x), Some(y)) = (x_opt, y_opt) {
-                n += 1.0;
-                sum_x += x;
-                sum_y += y;
-                sum_x2 += x * x;
-                sum_y2 += y * y;
-                sum_xy += x * y;
-            }
-        }
-
-        // Need at least 2 valid pairs
-        if n < 2.0 {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "CORREL requires at least two numeric data points in each range".to_string(),
-            );
-        }
-
-        let num = n * sum_xy - sum_x * sum_y;
-        let denom_x = n * sum_x2 - sum_x * sum_x;
-        let denom_y = n * sum_y2 - sum_y * sum_y;
-        let denom = (denom_x * denom_y).sqrt();
-
-        if denom == 0.0 || !denom.is_finite() {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "Division by zero in CORREL".to_string(),
-            );
-        }
-
-        let r = num / denom;
-        CalcResult::Number(r)
+        self.correlation_coefficient(args, cell)
     }
 
     // SLOPE(known_y's, known_x's) - Returns the slope of the linear regression line
     pub(crate) fn fn_slope(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (_rows, _cols, values_y, values_x) = match self.fn_get_two_matrices(args, cell) {
-            Ok(s) => s,
-            Err(e) => return e,
+        let moments = match self.paired_moments(args, cell) {
+            Ok(moments) => moments,
+            Err(error) => return error,
         };
-
-        let mut n = 0.0;
-        let mut sum_x = 0.0;
-        let mut sum_y = 0.0;
-        let mut sum_x2 = 0.0;
-        let mut sum_xy = 0.0;
-
-        let len = values_y.len().min(values_x.len());
-        for i in 0..len {
-            if let (Some(y), Some(x)) = (values_y[i], values_x[i]) {
-                n += 1.0;
-                sum_x += x;
-                sum_y += y;
-                sum_x2 += x * x;
-                sum_xy += x * y;
-            }
+        match moments.slope() {
+            Some(slope) => CalcResult::Number(slope),
+            None => CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string()),
         }
-
-        if n < 2.0 {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "SLOPE requires at least two numeric data points".to_string(),
-            );
-        }
-
-        let denom = n * sum_x2 - sum_x * sum_x;
-        if denom == 0.0 || !denom.is_finite() {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "Division by zero in SLOPE".to_string(),
-            );
-        }
-
-        let num = n * sum_xy - sum_x * sum_y;
-        let slope = num / denom;
-
-        CalcResult::Number(slope)
     }
 
     // INTERCEPT(known_y's, known_x's) - Returns the y-intercept of the linear regression line
     pub(crate) fn fn_intercept(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (_rows, _cols, values_y, values_x) = match self.fn_get_two_matrices(args, cell) {
-            Ok(s) => s,
-            Err(e) => return e,
+        let moments = match self.paired_moments(args, cell) {
+            Ok(moments) => moments,
+            Err(error) => return error,
         };
-
-        let mut n = 0.0;
-        let mut sum_x = 0.0;
-        let mut sum_y = 0.0;
-        let mut sum_x2 = 0.0;
-        let mut sum_xy = 0.0;
-
-        let len = values_y.len().min(values_x.len());
-        for i in 0..len {
-            if let (Some(y), Some(x)) = (values_y[i], values_x[i]) {
-                n += 1.0;
-                sum_x += x;
-                sum_y += y;
-                sum_x2 += x * x;
-                sum_xy += x * y;
-            }
+        match moments.line() {
+            Some((intercept, _)) => CalcResult::Number(intercept),
+            None => CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string()),
         }
-
-        if n < 2.0 {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "INTERCEPT requires at least two numeric data points".to_string(),
-            );
-        }
-
-        let denom = n * sum_x2 - sum_x * sum_x;
-        if denom == 0.0 || !denom.is_finite() {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "Division by zero in INTERCEPT".to_string(),
-            );
-        }
-
-        let num = n * sum_xy - sum_x * sum_y;
-        let slope = num / denom;
-        let intercept = (sum_y - slope * sum_x) / n;
-
-        CalcResult::Number(intercept)
     }
 
     // STEYX(known_y's, known_x's) - Returns the standard error of the predicted y-values
     pub(crate) fn fn_steyx(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (_rows, _cols, values_y, values_x) = match self.fn_get_two_matrices(args, cell) {
-            Ok(s) => s,
-            Err(e) => return e,
+        let moments = match self.paired_moments(args, cell) {
+            Ok(moments) => moments,
+            Err(error) => return error,
         };
-
-        let mut n = 0.0;
-        let mut sum_x = 0.0;
-        let mut sum_y = 0.0;
-        let mut sum_x2 = 0.0;
-        let mut sum_xy = 0.0;
-
-        // We need the actual pairs again later for residuals
-        let mut pairs: Vec<(f64, f64)> = Vec::new();
-
-        let len = values_y.len().min(values_x.len());
-        for i in 0..len {
-            if let (Some(y), Some(x)) = (values_y[i], values_x[i]) {
-                n += 1.0;
-                sum_x += x;
-                sum_y += y;
-                sum_x2 += x * x;
-                sum_xy += x * y;
-                pairs.push((x, y));
-            }
+        let div = || CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
+        // n - 2 degrees of freedom: two points are #DIV/0! (probes/regression-pairs-b M4).
+        if moments.n < 3.0 || moments.slope().is_none() {
+            return div();
         }
-
-        // Need at least 3 points for STEYX (n - 2 in denominator)
-        if n < 3.0 {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "STEYX requires at least three numeric data points".to_string(),
-            );
+        // Excel: Σ(y - ȳ)² less the explained part, sxy * sxy / sxx in that order
+        // (probes/regression-pairs-b M column to the bit). An exact fit whose difference rounds
+        // below zero is #NUM!, the square root of a negative, not 0 (probes/steyx-exact-fit A8).
+        let variance = (moments.syy - moments.sxy * moments.sxy / moments.sxx) / (moments.n - 2.0);
+        if variance < 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid data".to_string());
         }
-
-        let denom = n * sum_x2 - sum_x * sum_x;
-        if denom == 0.0 || !denom.is_finite() {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "Division by zero in STEYX".to_string(),
-            );
+        let sey = variance.sqrt();
+        if sey.is_finite() {
+            CalcResult::Number(sey)
+        } else {
+            div()
         }
-
-        let num = n * sum_xy - sum_x * sum_y;
-        let slope = num / denom;
-        let intercept = (sum_y - slope * sum_x) / n;
-
-        // Sum of squared residuals: Σ (y - ŷ)^2, ŷ = intercept + slope * x
-        let mut sse = 0.0;
-        for (x, y) in pairs {
-            let y_hat = intercept + slope * x;
-            let diff = y - y_hat;
-            sse += diff * diff;
-        }
-
-        let dof = n - 2.0;
-        if dof <= 0.0 {
-            return CalcResult::new_error(
-                Error::DIV,
-                cell,
-                "STEYX has non-positive degrees of freedom".to_string(),
-            );
-        }
-
-        let sey = (sse / dof).sqrt();
-        if !sey.is_finite() {
-            return CalcResult::new_error(Error::DIV, cell, "Numerical error in STEYX".to_string());
-        }
-
-        CalcResult::Number(sey)
     }
 }

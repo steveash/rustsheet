@@ -192,11 +192,44 @@ def test_fill_records_the_workbook_name_the_oracle_used(
     assert source.get("workbook_name") == recorded
 
 
-@pytest.mark.parametrize("formula", ["=SHEETS()", "=_xlfn.SHEETS(Sheet1:Sheet1)", '=info("numfile")'])
-def test_sheet_count_functions_are_refused(formula: str) -> None:
+@pytest.mark.parametrize(
+    ("formula", "named"),
+    [
+        ("=SHEETS()", r"uses (_xlfn\.)?SHEETS\(\)"),
+        ("=SHEETS( )", r"uses (_xlfn\.)?SHEETS\( \)"),
+        ("=_xlfn.SHEETS()", r"uses _xlfn\.SHEETS\(\)"),
+        ("=_xlfn.SHEETS(Sheet1:Sheet1)", r"uses _xlfn\.SHEETS\(Sheet1:Sheet1\)"),
+        ('=SHEETS(INDIRECT("A1"))', r"uses (_xlfn\.)?SHEETS\(INDIRECT"),
+        ("=SHEETS(RustSheetCanary!A1)", r"uses (_xlfn\.)?SHEETS\(RustSheetCanary"),
+        ('=INFO("numfile")', r'uses INFO\("numfile"\)'),
+        ('=INFO("NUMFILE")', r'uses INFO\("NUMFILE"\)'),
+        ('=INFO( "numfile" )', r'uses INFO\( "numfile" \)'),
+        ('=info("numfile")', r'uses info\("numfile"\)'),
+        ("=INFO(A1)", r"uses INFO\(A1\)"),
+        ('=INFO("num"&"file")', r"uses INFO\("),
+    ],
+)
+def test_sheet_count_functions_are_refused(formula: str, named: str) -> None:
     spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": formula}}]}
-    with pytest.raises(OracleError, match=r"SHEETS\(\) or INFO\(\)"):
+    with pytest.raises(OracleError, match=named):
         embed_canary(build_xlsx(spec))
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "=SHEETS(A1)",
+        "=SHEETS(Data!A1:B2)",
+        "=SHEETS(S1:S3!A1)",
+        "=SHEETS('My Sheet'!$A$1)",
+        '=INFO("recalc")',
+        '=INFO("system")',
+        '=INFO("x")',
+    ],
+)
+def test_calls_that_cannot_see_the_canary_are_accepted(formula: str) -> None:
+    spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": formula}}]}
+    assert SHEET in _parts(embed_canary(build_xlsx(spec)))["xl/workbook.xml"]
 
 
 @pytest.mark.parametrize("formula", ['=CELL("width",A:A )', '=cell( "Width",B1)'])
@@ -233,7 +266,7 @@ def _move_sheet(parts: dict[str, str], new: str) -> dict[str, str]:
 def test_refusal_scan_follows_the_workbook_rels_to_a_nonstandard_sheet_path() -> None:
     spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": "=SHEETS()"}}]}
     moved = _move_sheet(_parts(build_xlsx(spec)), "xl/other/data.xml")
-    with pytest.raises(OracleError, match=r"xl/other/data.xml uses SHEETS\(\)"):
+    with pytest.raises(OracleError, match=r"xl/other/data.xml uses (_xlfn\.)?SHEETS\(\)"):
         embed_canary(_repack(moved))
 
 
@@ -246,7 +279,7 @@ def test_refusal_scan_reads_single_quoted_and_entity_escaped_rels() -> None:
     parts = _move_sheet(_parts(build_xlsx(spec)), "xl/other/data.xml")
     rels = parts[_rels_path()]
     parts[_rels_path()] = rels.replace("other/data.xml", "other/dat&#97;.xml").replace('"', "'")
-    with pytest.raises(OracleError, match=r"xl/other/data.xml uses SHEETS\(\)"):
+    with pytest.raises(OracleError, match=r"xl/other/data.xml uses (_xlfn\.)?SHEETS\(\)"):
         embed_canary(_repack(parts))
 
 
@@ -276,7 +309,7 @@ def test_a_sheet_in_the_worksheets_directory_is_scanned_even_without_a_relations
     parts["xl/worksheets/orphan.xml"] = (
         "<worksheet><sheetData><row><c><f>SHEETS()</f></c></row></sheetData></worksheet>"
     )
-    with pytest.raises(OracleError, match=r"xl/worksheets/orphan.xml uses SHEETS\(\)"):
+    with pytest.raises(OracleError, match=r"xl/worksheets/orphan.xml uses (_xlfn\.)?SHEETS\(\)"):
         embed_canary(_repack(parts))
 
 
@@ -331,7 +364,7 @@ def test_a_utf16_rels_part_with_a_dtd_is_refused() -> None:
         "SHE<!-- -->ETS()",
         "<![CDATA[SHE]]>ETS()",
         "_xlfn.SHEETS&#x28;)",
-        "INFO&#40;&quot;x&quot;)",
+        "INFO&#40;&quot;numfile&quot;)",
     ],
 )
 def test_refusal_scan_reads_unescaped_text(formula: str) -> None:
@@ -339,7 +372,7 @@ def test_refusal_scan_reads_unescaped_text(formula: str) -> None:
     parts["xl/worksheets/sheet1.xml"] = parts["xl/worksheets/sheet1.xml"].replace(
         "</sheetData>", f"<row r='9'><c r='A9'><f>{formula}</f></c></row></sheetData>"
     )
-    with pytest.raises(OracleError, match=r"SHEETS\(\) or INFO\(\)"):
+    with pytest.raises(OracleError, match=r"uses (_xlfn\.)?(SHEETS\(\)|INFO\(\"numfile\"\))"):
         embed_canary(_repack(parts))
 
 

@@ -70,3 +70,20 @@ fn convert_matches_excel_bits() {
     assert_eq!(bits("A11"), 255.927_777_777_777_75_f64.to_bits());
     assert_eq!(bits("A12"), 1.111_111_111_111_111_f64.to_bits());
 }
+
+/// Excel: a boolean number is `#VALUE!`, before an unknown unit's `#N/A`
+/// (probes/eng-gen-sample-edges A8, A11:A14).
+#[test]
+fn boolean_number_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("B1", "TRUE");
+    model._set("A1", r#"=CONVERT(TRUE,"m","ft")"#);
+    model._set("A2", r#"=CONVERT(B1,"xyz","m")"#);
+    model._set("A3", r#"=INDEX(CONVERT({TRUE;1},"m","m"),1)"#);
+    model._set("A4", r#"=CONVERT("2.5","ft","xyz")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+}

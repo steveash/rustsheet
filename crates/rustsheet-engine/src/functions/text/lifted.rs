@@ -30,7 +30,7 @@ pub(super) const SEARCHED_BYTES_PER_VISIT: u64 = 8;
 
 impl Model {
     /// A one-cell reference as the value of its cell, any other value as it is.
-    pub(super) fn collapse_single_cell(&mut self, value: CalcResult) -> CalcResult {
+    pub(crate) fn collapse_single_cell(&mut self, value: CalcResult) -> CalcResult {
         match value {
             CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
             other => other,

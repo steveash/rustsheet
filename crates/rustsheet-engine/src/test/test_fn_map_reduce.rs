@@ -571,6 +571,38 @@ fn a_closure_called_many_times_and_recursively_keeps_its_captures() {
 }
 
 #[test]
+fn a_closure_over_a_large_array_is_called_without_copying_it() {
+    // Each call of an escaped closure binds what it captured; sharing it, not copying it, keeps
+    // MAP over 20,000 elements linear (a copy per call made it O(n^2): 3.6 s at n=10,000, T-0439
+    // review). The closures that read the array, and one made by an escaped closure (which
+    // captures the same shared copy), read through it.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,IF(i<0,INDEX(r,1),i))),f,mk(SEQUENCE(20000)),SUM(MAP(SEQUENCE(20000),f)))",
+    );
+    model._set(
+        "A2",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,SUM(r)*i)),f,mk(SEQUENCE(10)*2),SUM(MAP(SEQUENCE(10),f)))",
+    );
+    model._set(
+        "A3",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,LAMBDA(j,INDEX(r,i)+j))),f,mk(SEQUENCE(5)*3),g,f(2),g(10))",
+    );
+    model._set(
+        "A4",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,SUM(r)+i)),f,mk((A10,B10)),f(1))",
+    );
+    model._set("A10", "4");
+    model._set("B10", "5");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "200010000");
+    assert_eq!(model._get_text("A2"), "6050");
+    assert_eq!(model._get_text("A3"), "16");
+    assert_eq!(model._get_text("A4"), "10");
+}
+
+#[test]
 fn closures_escape_through_nested_scopes() {
     // A LAMBDA a LET value or body makes inside a call, and one an escaped closure makes, capture
     // the variables of every scope they leave (lexical, as probes/lambda-escaping-closures shows).

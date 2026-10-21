@@ -15,6 +15,9 @@ use super::{
 /// docs/research/non-glued-typed-input-2026-10-19.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
 
+/// Format of a typed clock with a fractional second (`10:00:30.5`, `10:00.5`).
+const FRACTION_CLOCK_FORMAT: &str = "mm:ss.0";
+
 /// Format of a bare typed clock with a single-letter A/P suffix (`10:00 A`).
 const BARE_CLOCK_AM_PM_FORMAT: &str = "h:mm AM/PM";
 
@@ -43,18 +46,20 @@ pub(crate) fn parse_typed_number(
 
 /// A bare typed clock with an `A`/`P` or `AM`/`PM` suffix as a time of day with its AM/PM clock
 /// format: `10:00 A`, `10:00 AM` and `10 A` are `h:mm AM/PM`, `10:00:30 A` is `h:mm:ss AM/PM`
-/// (probes/date-text-single-letter-ap N9, N13-N15, N19, N20). A bare hour with `AM`/`PM` is unprobed.
+/// (probes/date-text-single-letter-ap N9, N13-N15, N19-N29). A fractional second takes `mm:ss.0`,
+/// as without the suffix (N24-N25, T-2053).
 fn parse_bare_letter_clock(text: &str) -> Option<(f64, Option<String>)> {
     let (clock, word) = text.rsplit_once(' ')?;
-    let single_letter = is_single_letter_ap(word);
-    if clock.contains(' ')
-        || !(single_letter || word.eq_ignore_ascii_case("am") || word.eq_ignore_ascii_case("pm"))
-    {
+    let ap_word = is_single_letter_ap(word)
+        || word.eq_ignore_ascii_case("am")
+        || word.eq_ignore_ascii_case("pm");
+    if clock.contains(' ') || !ap_word {
         return None;
     }
-    let serial =
-        parse_clock_text(text).or_else(|| parse_hour_only_am_pm(text).filter(|_| single_letter))?;
-    let format = if clock.matches(':').count() == 2 {
+    let serial = parse_clock_text(text).or_else(|| parse_hour_only_am_pm(text))?;
+    let format = if clock.contains('.') {
+        FRACTION_CLOCK_FORMAT
+    } else if clock.matches(':').count() == 2 {
         "h:mm:ss AM/PM"
     } else {
         BARE_CLOCK_AM_PM_FORMAT
@@ -141,7 +146,7 @@ impl TypedClock {
     fn format(&self) -> Option<String> {
         match self {
             Self::Time => Some(TYPED_DATE_CLOCK_FORMAT.to_string()),
-            Self::Fraction => Some("mm:ss.0".to_string()),
+            Self::Fraction => Some(FRACTION_CLOCK_FORMAT.to_string()),
             Self::OutOfRange => None,
         }
     }
@@ -284,14 +289,17 @@ fn parse_percent_or_currency(
     if let Some(p) = value.strip_suffix('%') {
         let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
         if options.is_scientific {
-            return Ok(Some((f / 100.0, Some(SCIENTIFIC_FORMAT.to_string()))));
+            return Ok(Some((
+                percent_value(f),
+                Some(SCIENTIFIC_FORMAT.to_string()),
+            )));
         }
         let format = if options.decimal_digits > 0 {
             "0.00%"
         } else {
             "0%"
         };
-        return Ok(Some((f / 100.0, Some(format.to_string()))));
+        return Ok(Some((percent_value(f), Some(format.to_string()))));
     }
 
     // check if it is a currency in currencies
@@ -325,6 +333,22 @@ fn parse_percent_or_currency(
         }
     }
     Ok(None)
+}
+
+/// The value of number text `f` followed by `%`. Excel shifts the decimal text two places and
+/// rounds once (`VALUE("23.123%")` is 0.23123, the double nearest 23.123e-2), where dividing
+/// the double by 100 rounds twice (0.23123000000000002); ironcalc-calc
+/// `TEXT/T_VALUE_VALUETOTEXT.xlsx` `I4`, docs/excel-semantics/coercion.md "Percent text is
+/// rounded once". `f` came from at most 15 significant digits, so its shortest round-trip text
+/// is that number text.
+fn percent_value(f: f64) -> f64 {
+    let text = format!("{f:e}");
+    text.split_once('e')
+        .and_then(|(mantissa, exponent)| {
+            let exponent = exponent.parse::<i32>().ok()?;
+            format!("{mantissa}e{}", exponent - 2).parse::<f64>().ok()
+        })
+        .unwrap_or(f / 100.0)
 }
 
 /// The format Excel gives text typed with a leading currency symbol. `$` gets the red-negative

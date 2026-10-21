@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -65,3 +66,11 @@ matches the iterates but misses the final bits only through (1+r)^n, record that
 ## Out of scope
 - The annuity evaluation order of PMT/IPMT/PPMT/NPV (T-1528) and IRR's remaining cells, which need NPV's order.
 - YIELD (T-1592) and ODDFYIELD (T-2007), though a shared stop rule found here should be written down for both.
+
+## Visible-parity stage
+Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
+
+Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this function rather than on glue around it: 362 in total.
+- RATE: 362 cells (13-14 digits right 103, 10-12 237, 6-9 20, fewer or 0 vs nonzero 2); most in `probes-numeric/m9-fin-irr-rate.case.json` 262; `probes/solver-iteration-traces.case.json` 71. e.g. `RATE(A2,B2,C2)` Excel 0.007701472488201368, ours 0.00770147248823353
+
+Excel stops early, so 15 digits here means reproducing its stop, not converging further; a fit that reaches 15 digits on the sweep is enough for stage 1.

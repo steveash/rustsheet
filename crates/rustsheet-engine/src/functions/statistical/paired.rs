@@ -51,6 +51,21 @@ impl PairedArg {
             other => other,
         }
     }
+
+    /// The number of cells this argument stands for, known before its values are read: rows
+    /// times columns of a one-sheet reference or an array, the length of the values. `None` for
+    /// a 3-D reference, whose count is the list it walks, and for an error.
+    pub(crate) fn cell_count(&self) -> Option<u64> {
+        let span = |from: i32, to: i32| u64::try_from(i64::from(to) - i64::from(from) + 1).ok();
+        match self {
+            Self::Range(Range { left, right }) if left.sheet == right.sheet => {
+                span(left.row, right.row)?.checked_mul(span(left.column, right.column)?)
+            }
+            Self::Range(_) | Self::Error(_) => None,
+            Self::Array(array) => u64::try_from(array.iter().map(Vec::len).sum::<usize>()).ok(),
+            Self::Values(values) => u64::try_from(values.len()).ok(),
+        }
+    }
 }
 
 /// The flattened arguments of a paired function, aligned by row-major position: a number is
@@ -72,14 +87,16 @@ type Sparse = Vec<(u64, Option<f64>)>;
 impl Model {
     /// The two samples of COVARIANCE.P, COVARIANCE.S or T.TEST (`args[0]` and `args[1]`, which
     /// the caller checked exist), paired by position. Each must be a range or an array: anything
-    /// else is `#VALUE!`, and an array holding an error is `#VALUE!`, each when its turn comes.
+    /// else is `#VALUE!` (a typed text too, unless `typed_text_is_sample`), and an array holding an
+    /// error is `#VALUE!`, each when its turn comes.
     pub(crate) fn paired_samples(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
+        typed_text_is_sample: bool,
     ) -> Result<PairedValues, CalcResult> {
-        let first = self.sample_arg(&args[0], "First", cell);
-        let second = self.sample_arg(&args[1], "Second", cell);
+        let first = self.sample_arg(&args[0], "First", cell, typed_text_is_sample);
+        let second = self.sample_arg(&args[1], "Second", cell, typed_text_is_sample);
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
             CalcResult::new_error(
@@ -90,16 +107,28 @@ impl Model {
         })
     }
 
-    fn sample_arg(&mut self, arg: &Node, which: &str, cell: CellReferenceIndex) -> PairedArg {
-        PairedArg::from_node_result(arg, self.evaluate_node_in_context(arg, cell)).unwrap_or_else(
-            |_| {
-                PairedArg::Error(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    format!("{which} argument must be a range or array"),
-                ))
-            },
-        )
+    fn sample_arg(
+        &mut self,
+        arg: &Node,
+        which: &str,
+        cell: CellReferenceIndex,
+        typed_text_is_sample: bool,
+    ) -> PairedArg {
+        // With `typed_text_is_sample` a typed text is an array of one cell with no number, so
+        // against a longer range the sizes differ and the result is `#N/A`: `COVAR(A1:A6,"a")`,
+        // COVARIANCE.P and .S too (statistics.md "Paired regression functions",
+        // probes/covariance-pairs-skip L8, L16). T.TEST's typed text is unprobed and stays `#VALUE!`.
+        let value = self.evaluate_node_in_context(arg, cell);
+        if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
+            return PairedArg::Values(vec![None]);
+        }
+        PairedArg::from_node_result(arg, value).unwrap_or_else(|_| {
+            PairedArg::Error(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("{which} argument must be a range or array"),
+            ))
+        })
     }
 
     /// Flattens `first` and `second` for a function that pairs them by position. The first
@@ -165,10 +194,10 @@ impl Model {
             let cells = u64::try_from(values.len()).unwrap_or(u64::MAX);
             (cells, (0..).zip(values).collect())
         };
+        let cells = arg.cell_count().unwrap_or(0);
         match arg {
             PairedArg::Range(Range { left, right }) if left.sheet == right.sheet => {
-                let span = |from: i32, to: i32| u64::try_from(to - from + 1).unwrap_or(0);
-                let width = span(left.column, right.column);
+                let width = u64::try_from(right.column - left.column + 1).unwrap_or(0);
                 let mut entries = Vec::new();
                 self.for_each_position_in_areas(&[Range { left, right }], cell, |model, at| {
                     let value = match model.evaluate_cell(at) {
@@ -183,7 +212,7 @@ impl Model {
                     entries.push((position, value));
                     Ok(())
                 })?;
-                Ok((span(left.row, right.row) * width, entries))
+                Ok((cells, entries))
             }
             // A 3-D reference is walked sheet by sheet over each sheet's existing cells (T-0196):
             // its list is all it has, so positions count in that list.

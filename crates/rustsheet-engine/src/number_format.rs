@@ -313,6 +313,48 @@ pub(crate) fn significant_15(value: f64, tie_away: bool) -> (u64, i64) {
     (mantissa, exponent)
 }
 
+/// Adds one to a decimal digit string (most significant digit first), growing it on carry.
+pub(crate) fn increment_digits(digits: &mut Vec<u8>) {
+    for d in digits.iter_mut().rev() {
+        if *d == 9 {
+            *d = 0;
+        } else {
+            *d += 1;
+            return;
+        }
+    }
+    digits.insert(0, 1);
+}
+
+/// The integer and fraction digits of non-negative `value` cut to 15 significant digits, the
+/// first stage of ROUND, shared by FIXED, DOLLAR and BAHTTEXT (docs/excel-semantics/text.md "FIXED,
+/// DOLLAR and BAHTTEXT cut to 15 significant digits first"): an exact tie at the 16th digit goes away from zero when `tie_away`, otherwise toward zero, and digits past the
+/// 15th are zeros.
+pub(crate) fn cut_15_digits(abs_value: f64, tie_away: bool) -> (Vec<u8>, Vec<u8>) {
+    if abs_value == 0.0 {
+        return (vec![0], Vec::new());
+    }
+    let (mantissa, exponent) = significant_15(abs_value, tie_away);
+    let digits: Vec<u8> = format!("{mantissa:015}")
+        .bytes()
+        .map(|b| b - b'0')
+        .collect();
+    if exponent >= 0 {
+        let int_len = usize::try_from(exponent).unwrap_or(0) + 1;
+        if int_len >= digits.len() {
+            let mut int = digits;
+            int.resize(int_len, 0);
+            (int, Vec::new())
+        } else {
+            (digits[..int_len].to_vec(), digits[int_len..].to_vec())
+        }
+    } else {
+        let mut frac = vec![0; usize::try_from(-exponent - 1).unwrap_or(0)];
+        frac.extend(digits);
+        (vec![0], frac)
+    }
+}
+
 /// True when the 16th significant digit is 5 and every later printed digit is 0.
 fn is_possible_tie(digits: &[u8]) -> bool {
     digits.get(15) == Some(&b'5') && digits.iter().skip(16).all(|&d| d == b'0')
@@ -342,8 +384,31 @@ fn scientific_digits(value: f64, count: usize) -> (Vec<u8>, i64) {
 /// Not [`to_excel_precision_str`]: that one renders formula literals (JS `toPrecision`-style,
 /// no 20-character rule) and must not be used for coercion.
 pub(crate) fn number_to_text(value: f64) -> String {
+    value_to_text(value, TextRules::Coercion)
+}
+
+/// The text IM* functions (complex numbers) write for one part. It differs from
+/// [`number_to_text`] in two evidenced ways (probes/eng-im-overflow A11, A17, A40-A42): it keeps
+/// 15 digits at an exponent magnitude of 99 or more (`1.35498631931463E+308`), and it writes a
+/// small part in plain notation past 20 characters (`0.0000602887066915739`), otherwise
+/// the 20-character rule holds (`1.22514845490862E-16`, probes/eng-impower A9). The exponent -5
+/// limit is evidenced exactly: probes/eng-im-small-part has -1 to -5 plain and -6 to -16 in E notation.
+pub(crate) fn complex_part_to_text(value: f64) -> String {
+    value_to_text(value, TextRules::ComplexPart)
+}
+
+/// Which text rules [`value_to_text`] applies.
+#[derive(Clone, Copy, PartialEq)]
+enum TextRules {
+    Coercion,
+    ComplexPart,
+}
+
+fn value_to_text(value: f64, rules: TextRules) -> String {
     /// Longest plain-notation string (sign excluded) before Excel switches to E notation.
     const MAX_PLAIN_LEN: usize = 20;
+    /// Smallest decimal exponent an IM* part writes in plain notation whatever its length.
+    const MIN_COMPLEX_PLAIN_EXPONENT: i32 = -5;
     if !value.is_finite() {
         // Unreachable from formulas: Excel has no infinities or NaN (overflow is `#NUM!`).
         return format!("{value}");
@@ -358,7 +423,7 @@ pub(crate) fn number_to_text(value: f64) -> String {
     // From a decimal exponent magnitude of 99 on, Excel keeps 14 digits, rounding the 15-digit
     // string half up (`1.23456789012345E+99` → "1.2345678901235E+99"; probes/number-text-exponent-digits,
     // numbers.md "Exponent width").
-    if exponent.unsigned_abs() >= 99 {
+    if rules == TextRules::Coercion && exponent.unsigned_abs() >= 99 {
         mantissa = (mantissa + 5) / 10 * 10;
         if mantissa == 1_000_000_000_000_000 {
             mantissa /= 10;
@@ -369,7 +434,14 @@ pub(crate) fn number_to_text(value: f64) -> String {
     let mantissa = mantissa.to_string();
     let digits = mantissa.trim_end_matches('0');
     let digits = if digits.is_empty() { "0" } else { digits };
-    if plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN {
+    let plain = match rules {
+        TextRules::Coercion => plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN,
+        TextRules::ComplexPart => {
+            plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN
+                || (MIN_COMPLEX_PLAIN_EXPONENT..0).contains(&exponent)
+        }
+    };
+    if plain {
         return format!("{sign}{}", plain_notation(digits, exponent));
     }
     let (first, rest) = digits.split_at(1);
@@ -441,6 +513,7 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
                 text: "#ERROR!".to_owned(),
                 color: None,
                 error: Some("Invalid locale".to_string()),
+                unshowable: false,
             }
         }
     };
