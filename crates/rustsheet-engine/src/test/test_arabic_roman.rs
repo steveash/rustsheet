@@ -50,3 +50,30 @@ fn roman_truncates_before_the_sign_check_and_reads_its_form_for_zero() {
     assert_eq!(model._get_text("A7"), *"#NUM!");
     assert_eq!(model._get_text("A8"), *"00");
 }
+
+#[test]
+fn arabic_blank_and_padded_numerals() {
+    // A blank cell is 0; spaces, tabs, line feeds and carriage returns either side are trimmed,
+    // not inside, and CHAR(160) is not trimmed; 0 and FALSE stay #VALUE!
+    // (probes/t2200-blank-and-padded-m5-args A47:A70).
+    let mut model = new_empty_model();
+    model._set("A1", "=ARABIC(B1)");
+    model._set("A2", "=ARABIC(\" x \")");
+    model._set("A3", "=ARABIC(CHAR(9)&\"XI\"&CHAR(10))");
+    model._set("A4", "=ARABIC(CHAR(13))");
+    model._set("A5", "=ARABIC(\" \")");
+    model._set("A6", "=ARABIC(\"X X\")");
+    model._set("A7", "=ARABIC(CHAR(160)&\"XI\")");
+    model._set("A8", "=ARABIC(0)");
+    model._set("A9", "=ARABIC(FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0");
+    assert_eq!(model._get_text("A2"), "10");
+    assert_eq!(model._get_text("A3"), "11");
+    assert_eq!(model._get_text("A4"), "0");
+    assert_eq!(model._get_text("A5"), "0");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "#VALUE!");
+    assert_eq!(model._get_text("A8"), "#VALUE!");
+    assert_eq!(model._get_text("A9"), "#VALUE!");
+}
