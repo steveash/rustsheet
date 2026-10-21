@@ -35,7 +35,7 @@ time.
       `make check` green; reviewers approve.
 
 ## Out of scope
-- New edge pools (T-2247 to T-2250).
+- New edge pools (T-2247 to T-2249 and T-2286).
 - Generating or filling any suite.
 
 ## Visible-parity stage

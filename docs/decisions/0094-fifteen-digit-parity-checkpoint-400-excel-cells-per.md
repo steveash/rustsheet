@@ -43,7 +43,7 @@
     category (T-2252 to T-2258). Each sweep runs the gap-triager on what it finds, as T-2114 did,
     and files or extends a `campaign: visible` task for every visibly-off family before it is
     done. The generator first gets `--functions` and `--category` (T-0063) and the missing edge
-    pools (T-2247 to T-2250). All of these tasks carry `campaign: visible`.
+    pools (T-2247 to T-2249 and T-2286). All of these tasks carry `campaign: visible`.
   - *Dependencies come along.* `scripts/tasks.py next` orders every open task that an open
     campaign task depends on, directly or not, as a campaign task too (`in_campaign`). Without
     that, a probe or sweep a campaign fix waits on (on 2026-10-21: T-2043, T-2081, T-2145,

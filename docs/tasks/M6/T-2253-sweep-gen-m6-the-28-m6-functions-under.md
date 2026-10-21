@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-0063, T-2250]
+depends_on: [T-0063, T-2286]
 ---
 
 ## Goal

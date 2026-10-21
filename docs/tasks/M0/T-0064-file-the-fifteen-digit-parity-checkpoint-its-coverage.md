@@ -27,7 +27,7 @@ On the eval of 2026-10-21 (`main` 7dab5361):
 - [x] Decision 0094 defines the checkpoint (coverage, zero visibly-off cells in every suite, two
       steward runs), its exemptions and its measurement.
 - [x] Filed, all `campaign: visible`: T-0062 (report section), T-0063 (generator `--functions`
-      and `--category`), T-2247 to T-2250 (edge pools), T-2251 (INFO and SHEETS catalog) and
+      and `--category`), T-2247 to T-2249 and T-2286 (edge pools), T-2251 (INFO and SHEETS catalog) and
       T-2252 to T-2258 (oracle sweeps, which depend on the generator and pool tasks).
 - [x] The gap-triager traced the 89 untasked visibly-off functions. Every one now has a campaign
       task (2 new: T-2259, T-2260 a probe without the key; 36 extended) or a stated reason not
