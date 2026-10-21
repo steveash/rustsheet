@@ -224,6 +224,8 @@ mod tests {
             scope,
             reason: None,
             oracle,
+            v15: None,
+            v15_reason: None,
         }
     }
 

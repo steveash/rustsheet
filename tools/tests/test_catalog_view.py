@@ -16,3 +16,4 @@ def test_view_keeps_scope_reason_and_oracle() -> None:
     assert rows["SUM"] == {"name": "SUM", "category": "math", "milestone": "M2", "scope": "in"}
     assert rows["CALL"]["scope"] == "out" and rows["CALL"]["reason"]
     assert rows["INFO"]["oracle"] == "none"
+    assert rows["PI"]["v15"] == "exempt" and rows["PI"]["v15_reason"]

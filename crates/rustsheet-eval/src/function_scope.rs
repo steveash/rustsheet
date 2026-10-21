@@ -256,6 +256,8 @@ mod tests {
             scope: Scope::In,
             reason: None,
             oracle: None,
+            v15: None,
+            v15_reason: None,
         }
     }
 

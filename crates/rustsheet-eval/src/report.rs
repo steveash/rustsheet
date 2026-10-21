@@ -16,12 +16,20 @@ use crate::milestone_lists::{self, ListSummary};
 use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::text_expect;
+use crate::v15_checkpoint::{self, V15Checkpoint};
 use crate::value::Verdict;
 use crate::visible_parity;
 
 static FUNCTION_CALL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)(?:_xlfn\.|_xlws\.)?\b([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
         .unwrap_or_else(|e| unreachable!("static regex: {e}"))
+});
+static OUTER_CALL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)^=?\s*(?:_xlfn\.|_xlws\.)?([A-Z][A-Z0-9]*(?:\.[A-Z0-9]+)*)\s*\(")
+        .unwrap_or_else(|e| unreachable!("static regex: {e}"))
+});
+static QUOTED_SHEET: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"'(?:[^']|'')*'").unwrap_or_else(|e| unreachable!("static regex: {e}"))
 });
 static STRING_LITERAL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#""(?:[^"]|"")*""#).unwrap_or_else(|e| unreachable!("static regex: {e}"))
@@ -35,6 +43,32 @@ pub fn functions_in(formula: &str) -> BTreeSet<String> {
         .captures_iter(&stripped)
         .filter_map(|c| c.get(1).map(|m| m.as_str().to_ascii_uppercase()))
         .collect()
+}
+
+/// The upper-cased function a formula is one call of (`ABS(SQRT(4))` is ABS), or `None` when the
+/// formula is anything else at the top (`ABS(1)+SQRT(4)`, `-ABS(1)`, a reference). Decision 0094
+/// counts a generated cell for its outer call only.
+#[must_use]
+pub fn outer_call(formula: &str) -> Option<String> {
+    let stripped = STRING_LITERAL.replace_all(formula.trim(), "\"\"");
+    let stripped = QUOTED_SHEET.replace_all(&stripped, "''");
+    let call = OUTER_CALL.captures(&stripped)?;
+    let open = call.get(0)?.end();
+    let mut depth = 1usize;
+    for (i, ch) in stripped[open..].char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    let rest = &stripped[open + i + 1..];
+                    return rest.trim().is_empty().then(|| call[1].to_ascii_uppercase());
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 /// Whether a cell calling `called` counts toward parity: it calls no out-of-scope catalog function
@@ -279,6 +313,10 @@ pub struct RunReport {
     /// The exit measures of decision 0085 per milestone (T-2177); derived from the rows above.
     #[serde(default)]
     pub milestone_exit: Vec<crate::milestone_exit::ExitRow>,
+    /// The fifteen-digit parity checkpoint of decision 0094 (T-0062); filled by the caller, which
+    /// knows which suites are generated.
+    #[serde(default)]
+    pub v15_checkpoint: V15Checkpoint,
 }
 
 impl RunReport {
@@ -402,6 +440,7 @@ impl RunReport {
             function_scope: function_scope::summarize(catalog, results),
             catalog_coverage: Vec::new(),
             milestone_exit: Vec::new(),
+            v15_checkpoint: V15Checkpoint::default(),
         }
     }
 
@@ -566,6 +605,7 @@ impl RunReport {
         self.write_suites_table(&mut md);
         crate::milestone_exit::write_markdown(&self.milestone_exit, &mut md);
         visible_parity::write_markdown(self, &mut md);
+        v15_checkpoint::write_markdown(&self.v15_checkpoint, &mut md);
         text_expect::write_markdown(&self.suites, &self.cases, &mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
@@ -919,6 +959,8 @@ pub(crate) mod tests {
             scope,
             reason: reason.map(String::from),
             oracle,
+            v15: None,
+            v15_reason: None,
         };
         let catalog = Catalog::from_functions([
             entry("ABS", Scope::In, None, None),

@@ -122,6 +122,11 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
+- **Fifteen-digit parity checkpoint** (decision 0094, T-0062): after `make eval`, copy the bold
+  "Fifteen-digit parity: ..." line from the "Fifteen-digit parity checkpoint" section of
+  `eval/runs/latest/report.md` (report.json: `v15_checkpoint`) into the docs/status.md scoreboard,
+  and say whether the previous run's line also read "met". The checkpoint is reached only when two
+  consecutive runs are met.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
   is not reopened when its dependencies land, only when a new hypothesis is recorded there.
 - **Stuck**: after 3 failed fix attempts on the same failure, mark the task blocked with details,

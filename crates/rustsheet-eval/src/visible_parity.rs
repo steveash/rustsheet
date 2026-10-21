@@ -268,6 +268,8 @@ mod tests {
             scope: crate::catalog::Scope::Out,
             reason: None,
             oracle: None,
+            v15: None,
+            v15_reason: None,
         }]);
         let report = RunReport::build("e", &[r], &[], &catalog);
         let visible = |name: &str| {

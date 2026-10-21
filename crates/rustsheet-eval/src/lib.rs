@@ -34,6 +34,7 @@ pub mod runner;
 mod spill_extent;
 pub mod suite;
 pub mod text_expect;
+pub mod v15_checkpoint;
 pub mod value;
 pub mod visible_parity;
 pub mod volatile;
