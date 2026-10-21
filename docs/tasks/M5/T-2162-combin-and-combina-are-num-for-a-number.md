@@ -3,7 +3,7 @@ id: T-2162
 title: "COMBIN and COMBINA are #NUM! for a number past a bound (COMBINA(FACT(13),10))"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
