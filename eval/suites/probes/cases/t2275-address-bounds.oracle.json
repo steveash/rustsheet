@@ -1177,15 +1177,31 @@
    "J9": {
     "t": "e",
     "v": "#VALUE!"
+   },
+   "K1": {
+    "t": "s",
+    "v": "R[1048575]C3"
+   },
+   "K2": {
+    "t": "s",
+    "v": "R5C[16383]"
+   },
+   "K3": {
+    "t": "s",
+    "v": "R[1048575]C[3]"
+   },
+   "K4": {
+    "t": "s",
+    "v": "R[5]C[16383]"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "503a258bdf09a4c5dbde74e9a0610a8735e6f434bd531bff44cb7aaedd448bf8",
+  "input_sha256": "3edd69d94693c97e81c41251d416a3ae5812a57e2dba211d905a70c0e6584935",
   "kind": "excel-graph",
-  "produced_at": "2026-10-21T11:56:45+00:00",
+  "produced_at": "2026-10-21T12:19:58+00:00",
   "version": null,
-  "workbook_name": "140f703102a173da379e4dc780a9d4686858bb72f880dc65098eeecf28bea1d7.xlsx"
+  "workbook_name": "65a8047e3fd09afe17e3c640dc63ceee2675036a0162ee83d6add800c425aea4.xlsx"
  }
 }

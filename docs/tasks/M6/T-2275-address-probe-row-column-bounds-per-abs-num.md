@@ -53,7 +53,7 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 10 in eval/baseli
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
 
 ## Outcome
-Probe `probes/t2275-address-bounds` (excel-graph, 2026-10-21; 278 ADDRESS cells over abs_num 1-4 and a1 TRUE/FALSE, plus 16 GCD/LCM/
+Probe `probes/t2275-address-bounds` (excel-graph, 2026-10-21; 282 ADDRESS cells over abs_num 1-4 and a1 TRUE/FALSE, plus 16 GCD/LCM/
 MULTINOMIAL cells) settles the bounds: row and column are floored in every mode, an index must be 1..1048576 / 1..16384, a relative
 R1C1 offset -1048575..1048575 / -16383..16383, and a 0 offset is written bare (`RC3`, `R9C`). `address_index` and `r1c1_part`
 (address_areas.rs) implement it, and every argument is now cast before the bounds are checked. lookup.md's third bullet states it,

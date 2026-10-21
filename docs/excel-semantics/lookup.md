@@ -903,13 +903,14 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   `ADDRESS(1E+15,7)`, `ADDRESS(21887494,5)`, `ADDRESS(123456831,3,1,..,"Data")`, `ADDRESS(17,123456789.123,2,FALSE)`,
   `ADDRESS(2,45306,2,FALSE,"Data")` (36d5ce763ea63631 A154, b54448af3fde07ca A220, d0c30225243fde60 A63, 04fdc9a67474aab9 A98,
   acdfeaf6e6eadd4e A379).
-- Bounds per part (probes/t2275-address-bounds, 278 cells over abs_num 1-4 and a1 TRUE/FALSE, excel-graph, 2026-10-21, T-2275):
+- Bounds per part (probes/t2275-address-bounds, 282 cells over abs_num 1-4 and a1 TRUE/FALSE, excel-graph, 2026-10-21, T-2275):
   row_num and column_num are floored, not truncated, in every mode (2.9 is 2, 1048576.9 is 1048576; -0.5, -1.5, -2.4, -2.5
   and -2.6 are -1, -2, -3, -3 and -3; 0.5 and 0.9 are 0). A part written as an index (every part in A1 style, whatever
   abs_num; the R part for abs_num 1-2 and the C part for 1 and 3 in R1C1) must then be 1..1048576 for a row and 1..16384 for a
   column. A relative R1C1 part (R for abs_num 3-4, C for 2 and 4) is an offset in -1048575..1048575 or -16383..16383, so
   `ADDRESS(1048576,3,3,FALSE)`, `ADDRESS(-1048576,3,4,FALSE)` and `ADDRESS(5,16384,2,FALSE)` are `#VALUE!` while
-  `ADDRESS(-1048575,3,3,FALSE)` = `R[-1048575]C3` and `ADDRESS(5,-16383,4,FALSE)` = `R[5]C[-16383]`. An offset of 0 is written
+  `ADDRESS(-1048575,3,3,FALSE)` = `R[-1048575]C3`, `ADDRESS(1048575,3,3,FALSE)` = `R[1048575]C3`, `ADDRESS(5,-16383,4,FALSE)` =
+  `R[5]C[-16383]` and `ADDRESS(5,16383,2,FALSE)` = `R5C[16383]` (K1:K4 probe both positive edges). An offset of 0 is written
   bare: `ADDRESS(0,3,3,FALSE)` = `RC3`, `ADDRESS(9,0,2,FALSE,"Data")` = `Data!R9C`, `ADDRESS(0,0,4,FALSE)` = `RC`. So
   `ADDRESS(10,-2.5,4,FALSE)` = `R[10]C[-3]` (3a26794015dfbe9d A275), and `DATEVALUE(ADDRESS(9,0,2,FALSE,"Data")&OFFSET(Data!A4:D10,0,-1))`
   is the OFFSET's `#REF!` (44194b2fefa30de2 A307).

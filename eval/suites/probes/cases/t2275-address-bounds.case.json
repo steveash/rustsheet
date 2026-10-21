@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "ADDRESS row and column bounds per abs_num (columns A-D a1 TRUE, E-H a1 FALSE, abs_num 1-4): rows 1-17 sweep row_num with column 3, rows 18-33 sweep column_num with row 5; column J: MULTINOMIAL, GCD and LCM of a blank cell (Z200, Z201 blank; Z210 = 0) and the sheet_text \"1E3\" of gen-m6/be0e3a1b0fc3f7a0 A167 (T-2275).",
+  "description": "ADDRESS row and column bounds per abs_num (columns A-D a1 TRUE, E-H a1 FALSE, abs_num 1-4): rows 1-17 sweep row_num with column 3, rows 18-33 sweep column_num with row 5; column J: MULTINOMIAL, GCD and LCM of a blank cell (Z200, Z201 blank; Z210 = 0) and the sheet_text \"1E3\" of gen-m6/be0e3a1b0fc3f7a0 A167 Column K: the positive edge of relative R1C1 offsets (T-2275).",
   "tags": [
     "M6",
     "probe",
@@ -304,7 +304,11 @@
         "J28": "=GCD(Z200:Z200)",
         "J29": "=MULTINOMIAL(Z210)",
         "J30": "=MULTINOMIAL(Z210,2)",
-        "Z210": 0
+        "Z210": 0,
+        "K1": "=ADDRESS(1048575,3,3,FALSE)",
+        "K2": "=ADDRESS(5,16383,2,FALSE)",
+        "K3": "=ADDRESS(1048575.9,3,4,FALSE)",
+        "K4": "=ADDRESS(5,16383.9,4,FALSE)"
       }
     }
   ]
