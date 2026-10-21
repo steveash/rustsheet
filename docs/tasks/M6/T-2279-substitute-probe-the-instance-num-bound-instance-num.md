@@ -3,7 +3,7 @@ id: T-2279
 title: "SUBSTITUTE: probe the instance_num bound (instance_num 1E+15 is #VALUE! in Excel)"
 milestone: M6
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
