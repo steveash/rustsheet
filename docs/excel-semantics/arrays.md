@@ -1025,6 +1025,7 @@ probe cells H3 and H6 (and I3, I6 that read them) are `#NUM!` and listed in eval
 near 50 levels, its call frames being about four times larger. Before T-0439 such recursion overflowed the stack and aborted
 the process. Smaller call frames or a larger default budget would let 300 levels fit (T-0444).
 Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/functions/logical/lambda.rs (`LAMBDA_STACK_SHARE`, `Model::lambda_stack_base`).
 Tasks: T-0439, T-0444
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
