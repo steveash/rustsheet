@@ -318,10 +318,6 @@ impl Model {
             }
             CalcResult::Range { left, right } => {
                 let areas = [Range { left, right }];
-                // A text or boolean holiday's `#VALUE!` waits for the rest of the range: a
-                // numeric holiday out of the calendar is `#NUM!` and beats it (`WORKDAY(10651,-7,
-                // Data!B8:D12)` over "1.5", "ABC", -1; dates.md "WORKDAY and NETWORKDAYS holidays").
-                let mut text_holiday = false;
                 self.for_each_cell_in_areas(&areas, cell, |model, value| match value {
                     CalcResult::Number(v) => {
                         let serial = v.floor() as i64;
@@ -329,18 +325,12 @@ impl Model {
                         handle(serial)
                     }
                     CalcResult::EmptyCell => Ok(()),
-                    _ => {
-                        text_holiday = true;
-                        Ok(())
-                    }
-                })?;
-                if text_holiday {
-                    return Err(CalcResult::new_error(
+                    _ => Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
                         "Invalid holiday date".to_string(),
-                    ));
-                }
+                    )),
+                })?;
             }
             CalcResult::Array(array) => {
                 for row in array {
