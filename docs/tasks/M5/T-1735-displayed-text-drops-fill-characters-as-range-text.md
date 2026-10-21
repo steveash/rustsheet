@@ -3,7 +3,7 @@ id: T-1735
 title: "Displayed text drops * fill characters, as Range.text does (accounting formats, *.0.00, 0.00*-)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
