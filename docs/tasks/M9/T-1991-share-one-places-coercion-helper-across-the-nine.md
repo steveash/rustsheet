@@ -3,7 +3,7 @@ id: T-1991
 title: "Share one places-coercion helper across the nine base conversions"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1816 moved the `places` coercion before the number coercion in all nine kernel
 
 ## Out of scope
 - Any change to which error wins (T-1816).
+
+## Outcome
+All nine base conversions now coerce `places` through `Model::number_and_places` in number_basis.rs (which also owns the arity check). Pure refactor: eval output unchanged, no baseline edits; duplication ratchet updated to 3147.
