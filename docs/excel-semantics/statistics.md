@@ -1528,7 +1528,22 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
   `t0969-beta-prefactor` (BETA.DIST cdf and pdf for a around 7.5 and several b at x = 0.05 and 0.2) shows the same
   -14 to -22 at (7.5, 0.5), but its other cells carry 10 to 90 x 2^-53 of power-term noise, too much to isolate
   a prefactor.
-Status: VERIFIED (excel-graph) as an observation; the algorithm is UNVERIFIED
+- The algorithm, for a < 1 and b <= 8 (T-0969 attempt 10): B(a,b) = EXP(GAMMALN(a) + (GAMMALN(b) - GAMMALN(a+b))),
+  with Excel's own GAMMALN and in that grouping. probes-numeric `t0969-beta-switch` (excel-graph, 2026-10-21) has
+  `BETA.DIST(x,a,b,FALSE)` at x = 0.01 and 0.03 for a in {0.25, 0.5, 0.75, 1.5, 2.5} and b = 6.5 to 9.5 by 1/32, with
+  the worksheet's GAMMALN and GAMMA of a, b and a + b beside them:
+  - a < 1, b <= 8: the form predicts the density's error within 3 x 2^-53 on 140 of 147 rows (the other 7 within
+    3.5). Excel's errors run from -39 to +22.
+  - Rejected there: GAMMA(a)*GAMMA(b)/GAMMA(a+b) in three orders (at most 30 of 147), and the other two groupings
+    of the GAMMALN sum (36 and 58).
+  - b > 8, or a >= 1.5: Excel is within the power terms' noise of the exact B, and the GAMMALN form misses
+    (at most 4 of each 48-row region). GAMMALN switches to Stirling's series at 8 ("GAMMA, GAMMALN and LN kernels").
+  - For the Student t this is B(n/2, 1/2) for df up to 16. In the engine only df 13 to 16 take it. Below df 13
+    (b under 6.5, not probed) it costs probes-numeric cells, as the df-ratio errors there are small.
+- Ours: `student_t.rs` `log_gamma_ratio`, which scales the series tail for df 13 to 16. Visibly-off cells:
+  `t0969-t-tail-grid` 260 -> 245, `t0969-t-df-ratio` 9 -> 8, `t0969-t-beta-link` 42 -> 40, with none lost
+  in the family's probes.
+Status: VERIFIED (excel-graph) for a < 1, 6.5 <= b <= 8; b < 6.5 and a in [1, 1.5) UNVERIFIED
 Tasks: T-0969
 
 ## Student t density noise is not input rounding (T-0969)
