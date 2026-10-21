@@ -843,7 +843,7 @@ impl Model {
         ) {
             // An erroring INDEX is its own error (`FORMULATEXT(INDEX(A1:A3,9))` is `#REF!`) and an
             // INDEX of an array constant picks a value, not a cell, so is `#VALUE!`
-            // (probes/index-reference-args Calc!A4, A5, excel-graph; T-2137).
+            // (probes/index-reference-args Calc!A4, A5; T-2137).
             match reference {
                 error @ CalcResult::Error { .. } => error,
                 _ => CalcResult::new_error(

@@ -418,8 +418,8 @@ out-of-range index is `#REF!` (`INDEX(Data!A1:A3,9)`) and an array-constant sour
 constant `#VALUE!`; `INDEX(Data!A1:B3,0,2)` gives the address of its top-left cell `[file]Data!$B$1`.
 `OFFSET(INDEX(Data!A1:A3,2),1,0)` is Data!A3 (3), `OFFSET(INDEX(Data!A1:B3,2,2),-1,0)` is Data!B1 (10), a 2-row OFFSET off the
 picked cell has 2 rows, `OFFSET(INDEX(Data!A1:B3,0,2),1,0)` spills B2:B4 (20, 30, 0), `INDEX(..,9)` is `#REF!` and an array
-constant `#VALUE!`. The engine matches all but the two FORMULATEXT error forms: it returns `#ERROR!` for
-`FORMULATEXT(INDEX(Data!A1:A3,9))` (Excel `#REF!`) and `FORMULATEXT(INDEX({1,2,3},2))` (Excel `#VALUE!`), filed as T-2137.
+constant `#VALUE!`. The engine matches, FORMULATEXT's `#REF!` and `#VALUE!` forms
+(`FORMULATEXT(INDEX(Data!A1:A3,9))`, `FORMULATEXT(INDEX({1,2,3},2))`) since T-2137.
 XLOOKUP, TAKE, DROP and TRIMRANGE are references to ISREF when they pick cells of a range:
 `ISREF(XLOOKUP(2,A1:A3,B1:B3))`, `ISREF(TAKE(A1:B3,1))`, `ISREF(DROP(A1:B3,1))` and `ISREF(TRIMRANGE(A1:B3))` are
 TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a range return); over an array
