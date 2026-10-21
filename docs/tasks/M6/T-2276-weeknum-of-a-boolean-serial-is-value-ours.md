@@ -3,7 +3,7 @@ id: T-2276
 title: "WEEKNUM of a boolean serial is #VALUE! (ours 0 or 1)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -41,3 +41,6 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 4 in eval/baselin
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`weeknum_of` reads the serial with `cast_number_no_bools_ref`, so a boolean serial is `#VALUE!` before the return_type. A typed `WEEKNUM(TRUE)` reads the same (unprobed). Eval delta: see PR.

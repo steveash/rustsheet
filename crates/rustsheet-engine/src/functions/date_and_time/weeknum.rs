@@ -26,7 +26,10 @@ impl Model {
             [serial, return_type] => (serial, Some(return_type)),
             _ => return CalcResult::new_args_number_error(cell),
         };
-        let serial = match self.cast_number_ref(serial, cell) {
+        // A boolean serial is #VALUE!, before the return_type is read (`WEEKNUM(<FALSE cell>,1)`;
+        // dates.md "WEEKNUM of a boolean serial is #VALUE!", gen-m6, T-2276); WEEKDAY and
+        // ISOWEEKNUM read it as 1. A typed `WEEKNUM(TRUE)` is unprobed and reads the same.
+        let serial = match self.cast_number_no_bools_ref(serial, cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };

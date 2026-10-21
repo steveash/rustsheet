@@ -1056,3 +1056,21 @@ fn accrint_first_interest_past_the_1904_coupon_schedule_is_num() {
     assert_eq!(model._get_text("A3"), *"#NUM!");
     assert_eq!(model._get_text("A4"), *"75.27624309");
 }
+
+// T-2276: a boolean serial is #VALUE! in WEEKNUM, before the return_type (gen-m6/0bcac2d96e96b3df
+// Calc!A234, 3a26794015dfbe9d A242, excel-graph).
+#[test]
+fn weeknum_of_a_boolean_serial_is_value_error() {
+    let mut model = crate::test::util::new_empty_model();
+    model._set("B1", "TRUE");
+    model._set("B2", "FALSE");
+    model._set("A1", "=WEEKNUM(B1,1)");
+    model._set("A2", "=WEEKNUM(B2,1)");
+    model._set("A3", "=WEEKNUM(B1,0.5)");
+    model._set("A4", "=WEEKNUM(B2,0.5)");
+    model._set("A5", "=WEEKNUM(B2)");
+    model.evaluate();
+    for row in 1..=5 {
+        assert_eq!(model._get_text(&format!("A{row}")), "#VALUE!", "A{row}");
+    }
+}
