@@ -419,6 +419,22 @@ Each probe is a single formula cell, plus optional sidecar cells. Shapes:
 3. **Lifted probe** (dynamic arrays): `=f(range_or_array)` that spills. The probe region
    reserves a `rows×cols` empty footprint to avoid unintended `#SPILL!`. Spill
    collisions are generated on purpose under edge class `spill_blocked`.
+   *Implemented* (T-2224) as `rustsheet-gen --spill`, off by default, so existing suites
+   regenerate byte for byte. A formula whose outer call is `dynamic_array: true` in the
+   catalog gets its anchor in column A followed by an empty footprint of
+   `min(12, data rows) × min(6, data columns)` cells, starting at the anchor
+   (`SPILL_ROWS`, `SPILL_COLS` in `gen/generator.py`). Other formulas take one row, and no
+   formula sits to the right of column A, so no footprint overlaps a formula or another
+   footprint. The case's `check` lists the anchor and every footprint cell. The oracle records
+   the cells Excel fills, and those are scored. A footprint cell Excel leaves empty is not in
+   the sidecar, so the spill-extent check (T-1660) fails any engine value there against
+   empty. A result taller than its footprint is `#SPILL!` on the formula below it in both
+   Excel and the engine. A wider one spills right into unchecked cells: the extent check
+   fails an engine value where Excel left the cell empty, but Excel's values there are not
+   compared. `SPILL_BLOCKED_RATE` (5%) of footprints get a blocker constant just
+   below or just right of the anchor. The blocker is an input, so it is not checked, and the
+   case is tagged `spill_blocked`. The layout draws from its own seeded stream, so the
+   formulas are the same with and without `--spill`.
 4. **Implicit intersection probe**: `=@A1:A10` or legacy-style `=A1:A10` written as a
    non-DA formula on row k. Expected to return row k's value or `#VALUE!` outside the
    range.

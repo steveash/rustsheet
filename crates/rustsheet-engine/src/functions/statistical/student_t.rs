@@ -6,22 +6,32 @@
 //!   positive t is 1 - L, T.DIST.RT(x) of a negative x is 1 - L, T.DIST.2T is 2 L. In Excel
 //!   `T.DIST.RT(x,n)` = `T.DIST(-x,n,TRUE)` wherever the sweep has both, and 1 - L is bit-exact
 //!   on 118 of the 146 nonzero T.DIST cells against 113 for the correctly rounded CDF;
-//! - with y = n/(n+t^2) and z = t^2/(n+t^2), L = `I_y(n/2, 1/2)`/2. Away from the deep tail
-//!   (y > z) L is the exact value, rounded once: for an integer n up to [`SERIES_MAX_DF`] the
-//!   finite series for integer df in double-double. In the deep tail (y <= z) Excel's L carries
-//!   the error of exp((n/2) ln y): Cephes' power series with that power and a correctly rounded
-//!   Gamma ratio reproduces it (`T.DIST.RT(1E6,10)` = 1.230468749943611E-56, F18 of `T_DIST.xlsx`).
+//! - with y = n/(n+t^2) and z = t^2/(n+t^2), L = `I_y(n/2, 1/2)`/2. For t <= 1 or y > 0.99
+//!   (the next item covers the rest) and away from the deep tail (y > z), L is the exact value,
+//!   rounded once: for an integer n up to [`SERIES_MAX_DF`] the finite series for integer df in
+//!   double-double. In the deep tail (y <= z) Excel's L carries the error of exp((n/2) ln y):
+//!   Cephes' power series with that power and a correctly rounded Gamma ratio reproduces it
+//!   (`T.DIST.RT(1E6,10)` = 1.230468749943611E-56, F18 of `T_DIST.xlsx`).
+//! - beyond t = 1 and short of y = 0.99, deep tail included, L is `I_y(n/2, 1/2)`/2 at y as the
+//!   worksheet rounds it, fl(n / fl(n + fl(t*t))), through the same kernel as T.TEST's
+//!   [`student_t_tail_at`] (T-0969 attempt 7, probes-numeric t0969-t-tail-grid);
+//! - at df 2, for y from 0.1 up and t of any size, L is BETA.DIST's a = 1 closed form
+//!   1 - exp(ln(1 - y)/2), halved, at that rounded y ([`closed_form_tail`], T-0969 attempt 8);
 //! - elsewhere away from the deep tail (an integer df above [`SERIES_MAX_DF`], or a series tail too
 //!   small to keep its digits) L comes from Cephes' fractions with every input
 //!   formed from z and t^2/n, never from the rounded y ([`centre_tail`]): Excel is within a few ulp
 //!   of the exact value there up to df 1E10 (`T.DIST(2,1E10,TRUE)` = 0.977249868038323,
 //!   probes-numeric m9-t-edges), and a rounded y moves L by about n eps.
 //!
+//! - for df 13 to 16 the series tail is scaled by Excel's 1/B(n/2, 1/2) over the exact one: Excel's
+//!   BETA.DIST forms B from GAMMALNs there ([`log_gamma_ratio`], T-0969 attempt 10).
+//!
 //! Every loop is bounded: [`SERIES_MAX_DF`] / 2 series terms, [`TAYLOR_TERMS`] Taylor terms and
 //! [`MAX_POWER_SERIES_TERMS`] power-series terms a call.
 
-use super::incomplete_beta::{beta_reg_upper, incbcf, incbd};
-use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, two_sum};
+use super::gammaln::excel_gammaln;
+use super::incomplete_beta::{beta_reg_complement, beta_reg_upper, incbcf, incbd};
+use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp, two_sum};
 
 /// A double-double: an unevaluated sum `hi + lo` with |lo| <= ulp(hi)/2.
 type Dd = (f64, f64);
@@ -29,6 +39,13 @@ type Dd = (f64, f64);
 /// Largest integer df that the double-double series ([`centre_series`], [`integer_ratio`]) sum:
 /// about df/2 double-double steps a call.
 const SERIES_MAX_DF: f64 = 1000.0;
+/// From this shape up to [`LOG_GAMMA_BETA_MAX`] Excel's B(a, 1/2) is a sum of GAMMALNs
+/// ([`log_gamma_ratio`]). Below it (df under 13) the form is not probed and scaling by it loses
+/// probes-numeric cells (statistics.md "Student t prefactor per df").
+const LOG_GAMMA_BETA_MIN: f64 = 6.5;
+/// Up to this shape Excel's B(a, 1/2) is a sum of GAMMALNs: past 8 GAMMALN is Stirling's series and
+/// Excel's B is accurate.
+const LOG_GAMMA_BETA_MAX: f64 = 8.0;
 /// From this shape on, Gamma(a + 1/2)/Gamma(a) comes from its asymptotic series.
 const ASYMPTOTIC_MIN_SHAPE: f64 = 85.0;
 /// Cephes' `MACHEP`, 2^-53: the power series stops below it.
@@ -42,6 +59,13 @@ const MAX_POWER_SERIES_TERMS: u32 = 200;
 const TAYLOR_TERMS: u32 = 40;
 /// Below this the double-double tail 1/2 - A/2 keeps fewer than 40 of its 106 bits.
 const MIN_SERIES_TAIL: f64 = 1e-12;
+/// Largest rounded y = n/(n+t^2) at which the tail of a t beyond 1 is taken at that y
+/// ([`unflushed_upper_tail`]).
+const ROUNDED_Y_MAX: f64 = 0.99;
+/// Smallest y at which the df-2 tail is the closed form ([`closed_form_tail`]): Excel takes it at
+/// `T.DIST.RT(4.24,2)` (y = 0.100112) and not at `T.DIST.RT(4.245,2)` (y = 0.099900), probes-numeric
+/// t0969-t-df2-cut.
+const CLOSED_FORM_MIN_Y: f64 = 0.1;
 /// 1/pi as a double-double.
 const FRAC_1_PI_DD: Dd = (
     f64::from_bits(0x3FD4_5F30_6DC9_C883),
@@ -103,6 +127,18 @@ fn unflushed_upper_tail(t: f64, n: f64) -> f64 {
     if n + t * t == n {
         return 0.5;
     }
+    // Beyond t = 1, and short of y = 0.99, Excel evaluates the tail at y rounded as the
+    // worksheet would round it, fl(n / fl(n + fl(t^2))), as T.TEST does (`student_t_tail_at`);
+    // inside it the tail is the exact one at t (docs/excel-semantics/statistics.md, "T.DIST.RT
+    // follows the rounded y beyond t = 1"). A t whose square overflows (y = 0) keeps the
+    // path below, which still gives a far tail for a small n.
+    let rounded_y = n / (n + t * t);
+    if let Some(tail) = closed_form_tail(rounded_y, n) {
+        return tail;
+    }
+    if t > 1.0 && rounded_y > 0.0 && rounded_y <= ROUNDED_Y_MAX {
+        return tail_at(rounded_y, n);
+    }
     let (z, y) = beta_arguments(t, n);
     let square = t * t;
     let args = TailArguments {
@@ -126,11 +162,19 @@ pub(crate) fn student_t_tail_at(y: f64, n: f64) -> f64 {
     if y.is_nan() || n.is_nan() {
         return f64::NAN;
     }
+    flush_subnormal(tail_at(y, n))
+}
+
+/// [`student_t_tail_at`] before the subnormal flush, for a y in [0, 1].
+fn tail_at(y: f64, n: f64) -> f64 {
     if y >= 1.0 {
         return 0.5;
     }
     if y <= 0.0 {
         return 0.0;
+    }
+    if let Some(tail) = closed_form_tail(y, n) {
+        return tail;
     }
     let z = 1.0 - y;
     let series = (y > z && is_series_df(n)).then(|| SeriesArguments {
@@ -148,7 +192,18 @@ pub(crate) fn student_t_tail_at(y: f64, n: f64) -> f64 {
         inside_one: z * n <= y,
         series,
     };
-    flush_subnormal(tail_from(&args, n))
+    tail_from(&args, n)
+}
+
+/// L at df 2 for y = n/(n+t^2) from [`CLOSED_FORM_MIN_Y`] up, from y as the worksheet rounds it,
+/// fl(2/fl(2 + fl(t*t))): there `I_y(1, 1/2)` is BETA.DIST's a = 1 closed form, 1 - exp(ln(1 - y)/2)
+/// (T-1744), inside t = 1 too. `T.DIST.RT(0.0513,2)` = 0.4818746322295301 is that form, where the
+/// exact tail at t is 15 ulp off (probes-numeric t0969-t-tail-grid), and so is every
+/// `T.DIST.RT(t,2)` from t = 2 to 4.24 (t0969-t-df2-cut; docs/excel-semantics/statistics.md
+/// "T.DIST.RT at df 2 is BETA.DIST's closed form down to y = 0.1"). `None` elsewhere.
+fn closed_form_tail(y: f64, n: f64) -> Option<f64> {
+    (n == 2.0 && (CLOSED_FORM_MIN_Y..1.0).contains(&y))
+        .then(|| 0.5 * beta_reg_complement(y, 1.0 - y, 1.0, 0.5))
 }
 
 /// The inputs one tail is computed from, z = t^2/(n+t^2) and y = n/(n+t^2) among them, so that
@@ -176,10 +231,9 @@ fn tail_from(args: &TailArguments, n: f64) -> f64 {
     if y <= z {
         return 0.5 * power_series(0.5 * n, y, ratio);
     }
-    if let Some(inside) = args.series.as_ref().map(centre_series) {
-        let tail = dd_add((0.5, 0.0), (-0.5 * inside.0, -0.5 * inside.1)).0;
-        if tail > MIN_SERIES_TAIL {
-            return tail;
+    if let Some(tail) = args.series.as_ref().map(exact_series_tail) {
+        if tail.0 > MIN_SERIES_TAIL {
+            return excel_prefactor_scale(tail, 0.5 * n);
         }
     }
     centre_tail(args, n, z, ratio)
@@ -277,6 +331,32 @@ fn gamma_ratio(n: f64) -> Option<f64> {
         ratio = dd_div(dd_mul(ratio, shape), dd_add(shape, (0.5, 0.0)));
     }
     Some(ratio.0)
+}
+
+/// 1/B(a, 1/2) the way Excel's BETA.DIST forms B for a shape up to [`LOG_GAMMA_BETA_MAX`]:
+/// exp(GAMMALN(a) + (GAMMALN(1/2) - GAMMALN(a + 1/2))) with Excel's own GAMMALN and EXP.
+fn log_gamma_ratio(a: f64) -> Option<f64> {
+    if !(LOG_GAMMA_BETA_MIN..=LOG_GAMMA_BETA_MAX).contains(&a) {
+        return None;
+    }
+    let beta = excel_exp(excel_gammaln(0.5) + (excel_gammaln(a) - excel_gammaln(a + 0.5)));
+    Some(1.0 / beta)
+}
+
+/// The exact tail L = 1/2 - A/2 of the integer-df series, in double-double.
+fn exact_series_tail(args: &SeriesArguments) -> Dd {
+    let inside = centre_series(args);
+    dd_add((0.5, 0.0), (-0.5 * inside.0, -0.5 * inside.1))
+}
+
+/// The exact tail L (a double-double) times Excel's 1/B(a, 1/2) over the exact one, rounded once:
+/// where [`log_gamma_ratio`] applies, Excel's tail carries its Beta function's error at every t.
+fn excel_prefactor_scale(tail: Dd, a: f64) -> f64 {
+    // The series tail never used the exact 1/B; it is formed here only as the divisor.
+    match (log_gamma_ratio(a), integer_ratio(2.0 * a)) {
+        (Some(excel), Some(exact)) => dd_mul(tail, dd_div((excel, 0.0), exact)).0,
+        _ => tail.0,
+    }
 }
 
 /// Gamma(a + 1/2)/(Gamma(a) sqrt(pi)) by its asymptotic series, for a >= [`ASYMPTOTIC_MIN_SHAPE`].
@@ -447,6 +527,58 @@ fn dd_atan(u: Dd) -> Dd {
 mod tests {
     use super::super::incomplete_beta::tests::ulps;
     use super::*;
+
+    #[test]
+    fn tail_beyond_one_is_taken_at_the_rounded_y() {
+        // probes-numeric t0969-t-tail-grid B1117 and B1078: `T.DIST.RT(3.2013,100)` and
+        // `T.DIST.RT(1.2513,100)` are I_y/2 at y = fl(100/fl(100 + fl(t*t))); the exact tails at t
+        // are 33 and 25 ulp away.
+        assert_eq!(
+            student_t_tails(3.2013, 100.0).1,
+            0.000_917_214_524_131_372_6
+        );
+        assert_eq!(student_t_tails(1.2513, 100.0).1, 0.106_872_219_526_027_31);
+        let y = 100.0 / (100.0 + 3.2013 * 3.2013);
+        assert_eq!(
+            student_t_tails(3.2013, 100.0).1,
+            student_t_tail_at(y, 100.0)
+        );
+    }
+
+    #[test]
+    fn df_fifteen_tail_carries_excels_beta_function() {
+        // probes-numeric t0969-t-beta-link: Excel's `T.DIST.RT(2,15)` is 0.03197250364236003, about
+        // 20 x 2^-53 under the exact tail, the error of its B(7.5, 1/2) from GAMMALNs
+        // (t0969-beta-switch); df 17 is past the GAMMALN form and stays exact. The exact tail is
+        // further off than the one ulp left here.
+        let excel = 0.031_972_503_642_360_03;
+        assert!(ulps(student_t_tails(2.0, 15.0).1, excel) <= 1);
+        let exact = series_arguments(2.0, 15.0).map_or(f64::NAN, |args| exact_series_tail(&args).0);
+        assert!(ulps(exact, excel) > 1, "{exact}");
+        assert_eq!(log_gamma_ratio(8.5), None);
+        assert_eq!(log_gamma_ratio(6.0), None);
+    }
+
+    #[test]
+    fn df_two_tail_is_the_closed_form_down_to_y_one_tenth() {
+        // probes-numeric t0969-t-tail-grid B2 and t0969-t-df2-cut B1, B201, B449: 1 - exp(ln(1-y)/2)
+        // at the rounded y, inside t = 1 and out to t = 4.24 (y = 0.100112).
+        assert_eq!(student_t_tails(0.0513, 2.0).1, 0.481_874_632_229_530_1);
+        assert_eq!(student_t_tails(2.0, 2.0).1, 0.091_751_709_536_136_98);
+        assert_eq!(student_t_tails(3.0, 2.0).1, 0.047_732_983_133_354_61);
+        assert_eq!(student_t_tails(4.24, 2.0).1, 0.025_687_899_579_994_455);
+        assert_eq!(student_t_tails(-4.24, 2.0).0, 0.025_687_899_579_994_455);
+        // T.TEST's y path takes it too.
+        let y = 2.0 / (2.0 + 3.0 * 3.0);
+        assert_eq!(student_t_tail_at(y, 2.0), 0.047_732_983_133_354_61);
+        // Below y = 0.1 (t = 4.245, B450) Excel leaves the closed form, which is 1 ulp off there.
+        let y = 2.0 / (2.0 + 4.245 * 4.245);
+        assert!(y < CLOSED_FORM_MIN_Y);
+        assert_eq!(closed_form_tail(y, 2.0), None);
+        let closed = 0.5 * beta_reg_complement(y, 1.0 - y, 1.0, 0.5);
+        assert_eq!(ulps(closed, 0.025_631_992_844_658_943), 1);
+        assert_eq!(closed_form_tail(0.5, 3.0), None);
+    }
 
     #[test]
     fn t_test_tail_at_a_rounded_y() {

@@ -216,7 +216,7 @@ RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 
 criteria grid (broadcast criteria included), a GROUPBY result (groups x columns, checked while grouping, before any
 LAMBDA call; T-1322), the broadcast result of `lift_numbers` (DATE) and of the SPEC-0011 driver (ROUND family, MOD; functions/lift/driver.rs), a lifted INDEX's broadcast indices (T-1260), the broadcast of a binary operator over two arrays
 (arithmetic, `&` and comparisons: a whole column against a whole row, `=D:D+4:4`, would be 2^34
-cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), the broadcast of IF, IFERROR and IFNA (`=IF(D:D,4:4)`, `=IFERROR(D:D,4:4)`; T-1448), the broadcast of the element-wise text functions (`broadcast_text`: LEFT, RIGHT, MID, FIND, SEARCH, LEN, REPT, EXACT, CONCATENATE, TEXT, CHAR, CODE, BAHTTEXT and the other callers; `=LEFT(A:A,1:1)` would be 2^34 cells and FIND's numbers do not count against the 64 MiB text budget, so `ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` is `#ERROR!`; T-1771), the padded result of HSTACK and VSTACK (rows x summed columns, or summed rows x columns, checked before any argument is padded or copied: `ROWS(HSTACK(A1:A2000,A1:ALL1))` is `#ERROR!`, and a stack past the grid follows "Stacked results past the grid" below (`check_stack_size`: rows past it are `#NUM!` as in Excel, columns past it are allowed, so `ROWS(HSTACK(A:A,1:1))`, 2^34 cells, is `#ERROR!`; T-1803); T-1780), the padded results of EXPAND, WRAPCOLS and WRAPROWS and the product of MMULT (rows x columns, checked before allocating and, for EXPAND and MMULT, after their own argument checks: `ROWS(EXPAND(1,2000,1000))` and `ROWS(MMULT(A1:A2000,B1#))` with a 1,000-column B1# are `#ERROR!`, and `EXPAND(1,1E9,1E9)` is `#NUM!` past the grid as in Excel (`check_stack_size`; "Stacked results past the grid"); WRAPCOLS and WRAPROWS first clamp wrap_count to the vector's length, as Excel does, so they pad at most wrap_count - 1 cells; XMATCH builds no result array, only a one-row or one-column search vector; T-1786), the padded result of MAP over arrays of different sizes (largest rows x largest columns, checked before allocating; T-1349), the padded result of TEXTSPLIT (rows x widest row, checked before any row is padded: a 32,767-char text with the column delimiters first and the row delimiters after pads ~2^28 cells, and `ROWS(TEXTSPLIT(REPT(",",1500)&REPT(";",1500),",",";"))`, 1501 x 1501, is `#ERROR!`, where Excel builds the array and gives 1501 for ROWS and for COLUMNS, and 1025 for the 1025 x 1025 text just above 2^20, and 1024 for the 1024 x 1024 text of exactly 2^20 cells (A5, which fits) and 1001 for 1001 x 1001 (A6): probe `textsplit-padded-size` A1:A6; the bound is the cell count only, `check_array_cells`, because Excel builds a row wider than the grid: `COLUMNS(TEXTSPLIT(REPT(",",16384),","))` is 16385 and the 16383-comma text 16384, probe `textsplit-wide` A1:A2, and a 32,001-row split gives 32001, A4; the bare 16,385-column spill is `#SPILL!` in Excel, A6; T-1781), the broadcast of SPEC-0011's lifting driver (`lift_call`: EDATE, EOMONTH, WEEKNUM and YEARFRAC, and LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN, charged numbers + elements, TRIMMEAN numbers × elements, statistics.md, T-1772; checked before any element runs, and the call is also `#ERROR!` when the cells of its lifted arrays and ranges add up past 2^27 (`limits::MAX_LIFTED_CELL_VISITS`, checked before the next range is read) or when its kernel calls, weighted by the table's `KernelWork`, would cost more than that cap; Excel has neither limit; T-1770), the lifted SEQUENCE and MAKEARRAY (SPEC-0011 "Array-valued functions", T-1834: each lifted element is charged the cells it builds, `KernelWork::Output`, MAKEARRAY 128 per cell for its LAMBDA calls, against the same 2^27 cap, so `=ROWS(SEQUENCE(SEQUENCE(1024),1024))`, about 2^29 cells, and `=ROWS(MAKEARRAY(SEQUENCE(2048),1024,LAMBDA(r,c,r)))` are `#ERROR!`; Excel is expected to answer 1024 and 2048, worked out from probes/m7-argument-modes F1, F2 and F23, not measured), the lifted TAKE and DROP over an array value (T-1838: each element may copy the whole array, so the call is charged the array's cells per element, `LiftCost::Cells`, against the same 2^27 cap before any element runs: `=ROWS(TAKE(SEQUENCE(1000,1000),SEQUENCE(1000)))`, about 2^30, is `#ERROR!` where Excel is expected to answer 1000; over a range each element is a reference and is charged 1), and every range lifted into an array (`Model::evaluate_range`: scalar functions
+cells, and even a whole column against two columns, `SUM(A1:A1048576*B1:C1)`, is 2^21; T-1420), the broadcast of IF, IFERROR and IFNA (`=IF(D:D,4:4)`, `=IFERROR(D:D,4:4)`; T-1448), the broadcast of the element-wise text functions (`broadcast_text`: LEFT, RIGHT, MID, FIND, SEARCH, LEN, REPT, EXACT, CONCATENATE, TEXT, CHAR, CODE, BAHTTEXT and the other callers; `=LEFT(A:A,1:1)` would be 2^34 cells and FIND's numbers do not count against the 64 MiB text budget, so `ROWS(FIND("a",A1:A2000,COLUMN(A1:ALL1)))` is `#ERROR!`; T-1771), the padded result of HSTACK and VSTACK (rows x summed columns, or summed rows x columns, checked before any argument is padded or copied: `ROWS(HSTACK(A1:A2000,A1:ALL1))` is `#ERROR!`, and a stack past the grid follows "Stacked results past the grid" below (`check_stack_size`: rows past it are `#NUM!` as in Excel, columns past it are allowed, so `ROWS(HSTACK(A:A,1:1))`, 2^34 cells, is `#ERROR!`; T-1803); T-1780), the padded results of EXPAND, WRAPCOLS and WRAPROWS and the product of MMULT (rows x columns, checked before allocating and, for EXPAND and MMULT, after their own argument checks: `ROWS(EXPAND(1,2000,1000))` and `ROWS(MMULT(A1:A2000,B1#))` with a 1,000-column B1# are `#ERROR!`, and `EXPAND(1,1E9,1E9)` is `#NUM!` past the grid as in Excel (`check_stack_size`; "Stacked results past the grid"); WRAPCOLS and WRAPROWS first clamp wrap_count to the vector's length, as Excel does, so they pad at most wrap_count - 1 cells; XMATCH builds no result array, only a one-row or one-column search vector; T-1786), the padded result of MAP over arrays of different sizes (largest rows x largest columns, checked before allocating; T-1349), the padded result of TEXTSPLIT (rows x widest row, checked before any row is padded: a 32,767-char text with the column delimiters first and the row delimiters after pads ~2^28 cells, and `ROWS(TEXTSPLIT(REPT(",",1500)&REPT(";",1500),",",";"))`, 1501 x 1501, is `#ERROR!`, where Excel builds the array and gives 1501 for ROWS and for COLUMNS, and 1025 for the 1025 x 1025 text just above 2^20, and 1024 for the 1024 x 1024 text of exactly 2^20 cells (A5, which fits) and 1001 for 1001 x 1001 (A6): probe `textsplit-padded-size` A1:A6; the bound is the cell count only, `check_array_cells`, because Excel builds a row wider than the grid: `COLUMNS(TEXTSPLIT(REPT(",",16384),","))` is 16385 and the 16383-comma text 16384, probe `textsplit-wide` A1:A2, and a 32,001-row split gives 32001, A4; the bare 16,385-column spill is `#SPILL!` in Excel, A6; T-1781), the broadcast of SPEC-0011's lifting driver (`lift_call`: EDATE, EOMONTH, WEEKNUM and YEARFRAC, and LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK* and TRIMMEAN, charged numbers + elements, TRIMMEAN numbers × elements, statistics.md, T-1772; checked before any element runs, and the call is also `#ERROR!` when the cells of its lifted arrays and ranges add up past 2^27 (`limits::MAX_LIFTED_CELL_VISITS`, checked before the next range is read) or when its kernel calls, weighted by the table's `KernelWork`, would cost more than that cap; Excel has neither limit; T-1770), the lifted SEQUENCE and MAKEARRAY (SPEC-0011 "Array-valued functions", T-1834: each lifted element is charged the cells it builds, `KernelWork::Output`, MAKEARRAY 128 per cell for its LAMBDA calls, against the same 2^27 cap, so `=ROWS(SEQUENCE(SEQUENCE(1024),1024))`, about 2^29 cells, and `=ROWS(MAKEARRAY(SEQUENCE(2048),1024,LAMBDA(r,c,r)))` are `#ERROR!`; Excel is expected to answer 1024 and 2048, worked out from probes/m7-argument-modes F1, F2 and F23, not measured), the lifted TAKE and DROP over an array value (T-1838: each element may copy the whole array, so the call is charged the array's cells per element, `LiftCost::Cells`, against the same 2^27 cap before any element runs: `=ROWS(TAKE(SEQUENCE(1000,1000),SEQUENCE(1000)))`, about 2^30, is `#ERROR!` where Excel is expected to answer 1000; over a range each element is a reference and is charged 1), the lifted TOCOL and UNIQUE (T-1836: the array is read once and every element walks it, so the call is charged the array's cells per element, `LiftCost::Cells`, plus the cells it builds, against the same 2^27 cap before any element runs: `=ROWS(TOCOL(SEQUENCE(131072),SEQUENCE(1100,1,0,0)))`, about 1.4 x 2^27, is `#ERROR!` where Excel is expected to answer 1100, worked out from probes/m7-argument-modes F9 and F12, not measured), and every range lifted into an array (`Model::evaluate_range`: scalar functions
 over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
 before any cell is read, to bound allocation on untrusted input (CLAUDE.md directive 5); so
 `DATE(11:1899,12,1)` and `ROWS(DATE(11:1899,12,1))` are `#ERROR!`. Past-the-grid dimensions are
@@ -236,7 +236,8 @@ Excel for the web refuses to open a workbook whose formula sums such a
 31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
 C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
-eval/suites/probes/deviations, decision 0036).
+eval/suites/probes/deviations, decision 0036); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph, 2026-10-17;
+listed in eval/suites/probes/deviations, decision 0091, T-2223).
 Status: DEVIATION (decision 0014)
 Implemented in: limits.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::chosen_indices` (CHOOSECOLS/CHOOSEROWS) and FORMULATEXT over a range in
@@ -271,7 +272,7 @@ Implemented in: `coerce_to_f64` (crates/rustsheet-engine/src/functions/math_and_
 Status: VERIFIED (Excel-cached; the boolean rule excel-graph)
 Tasks: T-0943, T-1358
 A single blank cell is a blank matrix too: `MINVERSE(B4)`, `MDETERM(D$1)`, `MMULT(100,C$9)` and `MMULT(1E-15,B11)`
-with the cell blank are `#VALUE!` (ours `#NUM!`, 0, 0 and 0). Evidence (excel-graph, 2026-10-20): gen-m5/cf893ec19f53a7fc
+with the cell blank are `#VALUE!`. Implemented in `Model::eval_matrix_arg` (matrix.rs, T-2164); any blank result, not only a direct reference, stays blank (a blank through IF/INDEX/CHOOSE is unprobed). Evidence (excel-graph, 2026-10-20): gen-m5/cf893ec19f53a7fc
 Calc!A204, gen-m5/fc81c2f704bef138 Calc!A381, gen-m5/3e134e52393061b1 Calc!A10, gen-m5/d9fb1e918971111b Calc!A213 (T-2164).
 
 ## MDETERM: partial-pivot LU, no singularity cutoff
@@ -305,8 +306,22 @@ Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/043ee562f32eb901 Calc!A204, g
 gen-m5/8a387c26d182e73c Calc!A42, gen-m5/aac6230c2fb40e1e Calc!A258, gen-m5/c0651f0e0fb544d0 Calc!A84, gen-m5/f0f205865a3a4328 Calc!A208,
 gen-m5/6361fdf5993da954 Calc!A378, gen-m5/7d1a5d223624fc70 Calc!A380, gen-m5/d586a1e0c9896942 Calc!A364,
 gen-m5/aac6230c2fb40e1e Calc!A213, gen-m5/ae9ed30812c4d62c Calc!A154; consistent with it but not evidence (a scalar `#VALUE!` base): gen-m5/5704666097cbc5b2 Calc!A153.
-Unprobed: which arguments of each lift, and whether a multi-cell range given directly is lifted or refused
-(Analysis ToolPak functions refuse it, numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes").
+Argument kinds (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds, rows 10-27): every argument of all eight
+functions lifts both over an array constant and over a 3x1 range given directly, on rows off the range (`ROWS` is 3 in each
+case; element 2 equals the scalar control, a value in every row; ARABIC has one argument, so it has no mixed-shape cell, only row 36). So every argument is `Lift` (arrays and ranges), none is `LiftArrays`; unlike the
+Analysis ToolPak functions (numbers.md "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes"), no argument refuses a range.
+| Function | Arguments that lift over a range and an array |
+|---|---|
+| LOG | number, base |
+| DECIMAL | text, radix |
+| BASE | number, radix, min_length |
+| ATAN2 | x_num, y_num |
+| ARABIC | text |
+| DOLLAR | number, decimals |
+| FIXED | number, decimals, no_commas |
+| NUMBERVALUE | text, decimal_separator, group_separator |
+Two array arguments broadcast: `{1;2}` with `{1,2,3}` is 2x3 (rows 29-35 A-C), and `{v;v}` with a 3x1 array gives `#N/A` in
+the missing third row (D29-D35).
 Status: VERIFIED (excel-graph) for the cells above; not implemented (T-2159 math, T-2160 text).
 
 ## Legacy (CSE) array formula over a larger range
@@ -367,7 +382,7 @@ case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
 Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
-per-parameter rule, unprobed, and a 1x1 array argument still runs one unlifted call, both pending T-1960);
+per-parameter rule, unprobed, and a 1x1 array argument still runs one unlifted call, both pending T-1960); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, unprobed, pending T-1960);
 none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a
 sort_order list of the same length since T-1837 (F10:H11; `fn_sort` with `Model::sort_number_list`, spill_functions.rs;
 row and column lists alike, and with by_col the keys are rows: `SORT(A1:C3,{1,2},{1,-1},TRUE)` sorts columns by row 1,
@@ -380,7 +395,7 @@ wins (`SORT(..,IF({TRUE;FALSE},1,NA()),1/0)` is `#DIV/0!`), a range sort_index w
 `#VALUE!` (A9; read as 0 here), and text "1" in an array constant is key 1 (A13); an error cell inside a range list is
 read as an error element by analogy, UNVERIFIED (probes/sort-index-key-ties, excel-graph, 2026-10-20, T-1837);
 GROUPBY and PIVOTBY exist since T-1322 and T-1326 ("GROUPBY and PIVOTBY" below; `_xleta.` names work since T-1466, see "Functions passed by name" below); INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
-is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 84 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
+is 1 since T-1511 ("An uncalled LAMBDA is one value" below); a BYROW row result is not `#CALC!`. 91 of the 174 scored cells pass (F35:H35, PIVOTBY, since T-1326).
 Status: VERIFIED (web)
 Tasks: T-1083 (generator modes)
 
@@ -597,7 +612,8 @@ T-1326 follow-up (probes/pivotby-followup, 63 PIVOTBY questions over the same Da
 - Totals: -1 puts the Total column right after the row keys and the Total row right after the headers (P!A101, P!A121, P!A1241).
   ±2 with one field on that axis is `#VALUE!` (P!A401, P!A701); 3 is `#VALUE!` (P!A381). Two values with col_total_depth 0 have
   no Total columns; with row_total_depth 0, no Total row (P!A561, P!A581).
-- Sort orders follow GROUPBY: signed indices over the axis' key fields, then the values; 0, 1.5 and past the last column are
+- Sort orders follow GROUPBY: signed indices over the axis' key fields, then the values (col_sort_order only the first
+  value: see below); 0, 1.5 and past the last column are
   `#VALUE!` (P!A141, P!A721, P!A161, P!A1001); scalar 2 over two row fields is the second key (P!A1041, P!A1061); `{-1}` is
   accepted (P!A641); an error argument is passed on (P!A1261). With two value columns, `{3}` sorts by the second and `{-2}`
   by the first descending (P!A1321, P!A1361); a key and a value column in one array are `#VALUE!` on both axes (`{1,3}`,
@@ -685,9 +701,13 @@ same Data sheet, excel-graph, 2026-10-16; "functions", "functions2", "functions3
 - sort_order past the keys counts the output value columns: 3 is the second function of a row (functions G!A141, functions2
   G!A221, PIVOTBY P!A181); a column of functions sorts by its first function (functions2 G!A201, G!A261, P!A201, P!A221), each
   group's rows staying in function order.
-- Not implemented (T-1855): PIVOTBY's col_sort_order -3 with one column field over two value columns is `#VALUE!`
-  (probes/pivotby-total-columns-one-group S!A73), while -3 with two column fields sorts (probes/pivotby-col-subtotals-values
-  S!A111); the engine sorts by the second value column.
+- PIVOTBY's col_sort_order counts one value column past the column fields, whatever the value columns or functions:
+  with one column field 2 sorts the column groups by the first value column and ±3, ±4 and 5 are `#VALUE!` over one, two
+  or three value columns and over `HSTACK(SUM,MAX)` (also with row_total_depth 0 or an explicit col_total_depth); with two
+  column fields ±3 sorts by the first value column and ±4 is `#VALUE!` (probes/pivotby-sort-order-past-keys S!A1-A72,
+  A145-A167; pivotby-total-columns-one-group S!A73; pivotby-col-subtotals-values S!A111). Arrays follow (`{3}` `#VALUE!`
+  with one field, sorting with two: S!A162-A165). row_sort_order instead counts every output value column, as GROUPBY's
+  sort_order does: 3 and 4 are the second and third of three values, 5 is `#VALUE!` (S!A73-A144, two functions: S!A155-A161).
 - Arguments: a function passed by name gets its minimum argument count: one (SUM, MEDIAN, SUMPRODUCT, ABS, STDEV.S), two
   (PERCENTOF, CORREL, PEARSON, RSQ, COVARIANCE.P, and IF, ROUND, SUMIF, whose array results are `#VALUE!` per cell); none or
   three or more (NOW, TEXTJOIN, XLOOKUP) make the whole result `#VALUE!` (functions G!A421, functions2 G!A281-A501). A LAMBDA gets

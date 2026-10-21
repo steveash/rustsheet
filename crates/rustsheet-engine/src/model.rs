@@ -2592,7 +2592,7 @@ impl Model {
                 let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
-                        format_number(value, &format, &self.format_context()).text
+                        format_number(value, &format, &self.format_context()).displayed()
                     });
                 Ok(formatted_value)
             }

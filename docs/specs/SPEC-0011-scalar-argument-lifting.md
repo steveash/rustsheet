@@ -665,6 +665,8 @@ borrowing `cast::calc_result_to_text` and `Model::calc_result_to_number`, so an 
 scalar error format; text.md, T-1963). FIND and SEARCH are `Constant` with their scan named as the cap
 (`lift/tests/kernel_work.rs`); T-1961 charges it. The final grep finds two `bcast_get` loops the table above missed or
 another task owns: IMAGE's `image_grid` (information/offline_errors.rs, T-1962) and CHOOSE's `choose_array` (T-1810).
+As built (T-1962): IMAGE's array path calls `lift_values` with one kernel, `image_element`, and `image_grid` is gone; a
+position past a shorter array is the driver's `#N/A` element in argument order, as Excel does (probes/rich-errors-image-past-end).
 
 ### Kernels
 A kernel is the scalar function over borrowed values: `&[CalcResult]`. It never clones a slot.
@@ -888,10 +890,10 @@ it; an answer that differs changes the entry in T-1960's PR.
 | WRAPCOLS | vector | `Whole` | read as written |
 | WRAPCOLS | wrap_count | `Lift` | gen-m7/6db767d720c5b55a A12 (2-D array); array literal by the general rule (T-1960) |
 | WRAPCOLS | pad_with | `Lift` | probe G42 |
-| TOCOL | array | `Whole` | read as written |
+| TOCOL | array | `WholeByCaller` | read once by the function (T-1836), as TOCOL's cost needs its cells |
 | TOCOL | ignore | `Lift` | probe F9, K8; gen-m9/1782efcecd5d4b1b A19 |
 | TOCOL | scan_by_column | `Lift` | general rule (T-1960) |
-| UNIQUE | array | `Whole` | read as written |
+| UNIQUE | array | `WholeByCaller` | read once by the function (T-1836) |
 | UNIQUE | by_col | `Lift` | probe F12 (shape; it cannot tell a lift from reading one element, T-1960); gen-m9/4df1b22d3ed63f58 A36 (range) |
 | UNIQUE | exactly_once | `Lift` | general rule (T-1960) |
 | SORTBY | array, by_array1, by_array2, … | `Whole` | read as written |
