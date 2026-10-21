@@ -32,6 +32,7 @@ pub mod overrides;
 pub mod probe_milestones;
 pub mod report;
 pub mod runner;
+mod spec_pivots;
 mod spill_extent;
 pub mod suite;
 pub mod text_expect;
