@@ -66,6 +66,8 @@ fn arabic_blank_and_padded_numerals() {
     model._set("A7", "=ARABIC(CHAR(160)&\"XI\")");
     model._set("A8", "=ARABIC(0)");
     model._set("A9", "=ARABIC(FALSE)");
+    model._set("C1", "1");
+    model._set("A10", "=ARABIC(VLOOKUP(1,C1:D1,2))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "0");
     assert_eq!(model._get_text("A2"), "10");
@@ -76,4 +78,5 @@ fn arabic_blank_and_padded_numerals() {
     assert_eq!(model._get_text("A7"), "#VALUE!");
     assert_eq!(model._get_text("A8"), "#VALUE!");
     assert_eq!(model._get_text("A9"), "#VALUE!");
+    assert_eq!(model._get_text("A10"), "0");
 }

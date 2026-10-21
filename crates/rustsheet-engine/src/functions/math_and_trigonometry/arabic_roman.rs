@@ -272,15 +272,18 @@ impl Model {
     }
 
     /// `ARABIC(text)`: the text lifts over arrays and ranges (probes/t2198-m5-lift-argument-kinds
-    /// row 36; docs/excel-semantics/arrays.md). A blank cell is 0, as `""` is, and spaces, tabs,
-    /// line feeds and carriage returns either side of the numeral are ignored, but not inside it
-    /// nor CHAR(160); any other non-text (`0`, `FALSE`) is `#VALUE!` (numbers.md "ARABIC of a
-    /// blank cell, and padded numerals"; probes/t2200-blank-and-padded-m5-args A47:A70).
+    /// row 36; docs/excel-semantics/arrays.md). A blank cell (or its empty value) is 0, as `""`
+    /// is, and spaces, tabs, line feeds and carriage returns either side of the numeral are
+    /// ignored, but not inside it nor CHAR(160); any other non-text (`0`, `FALSE`) is `#VALUE!`
+    /// (numbers.md "ARABIC of a blank cell, and padded numerals";
+    /// probes/t2200-blank-and-padded-m5-args A47:A70).
     pub(crate) fn fn_arabic(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Arabic, args, cell, &mut |_, values| {
             let roman_numeral = match values {
                 [CalcResult::String(s)] => s.trim_matches([' ', '\t', '\n', '\r']),
-                [CalcResult::EmptyCell] => "",
+                // A blank cell, or the empty value a lookup hands on for one (lookup.md "VLOOKUP
+                // and HLOOKUP hand a blank result cell"; gen-m5/6a511beadb56b932 Calc!A106).
+                [CalcResult::EmptyCell | CalcResult::EmptyArg] => "",
                 [error @ CalcResult::Error { .. }] => return error.clone(),
                 [_] => return value_error(cell),
                 _ => return CalcResult::new_args_number_error(cell),
