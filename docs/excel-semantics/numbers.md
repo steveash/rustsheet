@@ -1601,10 +1601,9 @@ Rule: COMBINA rounds exactly as COMBIN of `n+k-1` and `k` does ("COMBIN is inexa
 `COMBINA(20,19)` 35345263799.999985 and `COMBINA(1000,200)` 1.6676833067813678e+233, all three bit for bit (a running
 product of `(n+i)/(i+1)` over k gives 92377.99999999999 and 35345263800 instead). `COMBINA(0,0)` is 1.
 Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/COMBIN_COMBINA.xlsx D4, D5, D16, and D11 for `COMBINA(0,0)` (Excel-cached,
-Excel Online). Not probed: k at or above 2^53, where `n+k-1` rounds (`COMBINA(2,1E300)` gives `combin(1E300,1E300)` = 1
-here; Excel's answer is unknown).
-Ours: `fn_combina` calls `combin(n+k-1, k)`. Its loop runs min(k, n-1) times and stops at overflow, so
-`COMBINA(1,1E10)` answers 1 at once (directive 5; the old loop ran k times).
+Excel Online). A huge k is past the bound below (`COMBINA(2,1E300)` is `#NUM!`).
+Ours: `fn_combina` calls `combin(n+k-1, k)`. Its loop runs min(k, n-1) times and stops at overflow; the bound below
+keeps `n+k-1` under 2^31-1, so `COMBINA(1,1E10)` is `#NUM!` at once (directive 5; the old loop ran k times).
 Status: VERIFIED (3 cached cells; the rule is a fit to them)
 Tasks: T-0905
 Bound (T-2162): a large `number` is `#NUM!`: `COMBINA(9007199254740992,1)`, `COMBINA(6227020800,10)` (`FACT(13)`),
@@ -1617,7 +1616,9 @@ and `COMBIN(2^31+1, 2^31+1)` is `#NUM!`. COMBINA is `#NUM!` when `n+k-1` >= 2^31
 `COMBINA(2^31-1,2)` and `COMBINA(2^31-10,20)` are `#NUM!`; with k = 0 it is `#NUM!` from `n` = 2^31. Both agree with COMBINA(n,k) being COMBIN(n+k-1,k).
 Evidence (excel-graph, 2026-10-20): gen-m5/34f69d858a39f497 Calc!A231, gen-m5/50d8a085335c05e6 Calc!A173,
 gen-m5/e0087a1fb9a36188 Calc!A379, gen-m5/fc81c2f704bef138 Calc!A265, gen-m5/6b831f5e2a20bc34 Calc!A5; numbers from gen-m5/1b30e4d075b252ea Calc!A213,
-gen-m5/c688ca172fe533dc Calc!A288. Status: OBSERVED; T-2162.
+gen-m5/c688ca172fe533dc Calc!A288. Every probed cell has `n` near 2^31 or above; for a small `n` with `k` past 2^31
+(`COMBINA(1,1E10)`, ours `#NUM!`) the rule is extrapolated (T-2291). Status: VERIFIED (excel-graph); implemented (`COMBIN_MAX_NUMBER` in
+functions/math_and_trigonometry/mathematical.rs, T-2162).
 
 ## SEQUENCE accumulates its step
 Rule: SEQUENCE adds `step` to the previous value in row-major order, not `start + i*step`: `SEQUENCE(5,1,10,2.2)` is 10,
