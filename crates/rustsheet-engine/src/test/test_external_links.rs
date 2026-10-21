@@ -423,3 +423,66 @@ fn let_body_picking_an_external_reference_is_that_reference() {
         assert_eq!(eval(&mut model, &formula), expected, "{formula}");
     }
 }
+
+// Book `[1]` caches what fixtures/external-link-cached-3d-span does: `Uses` as in
+// [`cached_ranges_fixture`], `Defines` A1 "Test A1", B2 142, and an empty `56737`.
+fn cached_span_fixture() -> Model {
+    let mut model = cached_ranges_fixture();
+    let book = &mut model.workbook.external_books[0];
+    book.sheet_names
+        .extend(["Defines".to_string(), "56737".to_string()]);
+    book.cells
+        .insert((1, 1, 1), SpillValue::Text("Test A1".into()));
+    book.cells.insert((1, 2, 2), SpillValue::Number(142.0));
+    model
+}
+
+// A 3-D span of the cached sheets aggregates over them, in either order; it is no reference to
+// ISREF, `#REF!` as a value and `#VALUE!` where one sheet is needed, as a span of this workbook
+// is (fixtures/external-link-cached-3d-span Refs!B2:B10, excel-graph; T-1654).
+#[test]
+fn span_of_cached_sheets_aggregates_over_them() {
+    let mut model = cached_span_fixture();
+    assert_eq!(eval(&mut model, "=SUM([1]Uses:Defines!$B$2)"), "142");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses:Defines!$A$1:$B$2)"), "157");
+    assert_eq!(eval(&mut model, "=COUNT([1]Uses:Defines!$A$1:$C$3)"), "4");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses:Defines!$A$1:$C$3)"), "9");
+    assert_eq!(eval(&mut model, "=MAX([1]Uses:Defines!$B$1:$B$2)"), "142");
+    assert_eq!(eval(&mut model, "=ISREF([1]Uses:Defines!$A$1)"), "FALSE");
+    assert_eq!(eval(&mut model, "=ERROR.TYPE([1]Uses:Defines!$A$1)"), "4");
+    assert_eq!(eval(&mut model, "=SUM([1]Defines:Uses!$B$2)"), "142");
+    assert_eq!(
+        eval(&mut model, "=ROWS([1]Uses:Defines!$A$1:$B$3)"),
+        "#VALUE!"
+    );
+}
+
+#[test]
+fn span_of_cached_sheets_round_trips() {
+    let mut model = cached_span_fixture();
+    model._set("C1", "=SUM([1]Uses:Defines!$A$1:$B$2)");
+    assert_eq!(
+        model._get_formula("C1"),
+        "=SUM('[1]Uses:Defines'!$A$1:$B$2)"
+    );
+}
+
+// A span over many cached sheets walks the cache once, not once per sheet (CLAUDE.md
+// directive 5); an end the cache does not hold stays `#BLOCKED!`, and a malformed span prefix does
+// not parse as one (T-1654).
+#[test]
+fn span_of_many_cached_sheets_is_one_walk() {
+    let mut model = cached_span_fixture();
+    let book = &mut model.workbook.external_books[0];
+    book.sheet_names
+        .extend((0..100_000).map(|index| format!("P{index}x")));
+    book.cells.insert((100_001, 7, 1), SpillValue::Number(1.0));
+    assert_eq!(eval(&mut model, "=SUM([1]Uses:P99999x!$A:$B)"), "158");
+    assert_eq!(eval(&mut model, "=COUNTA([1]Uses:P99999x!$A:$C)"), "10");
+    assert_eq!(eval(&mut model, "=SUM([1]Uses:Nope!$B$2)"), "#BLOCKED!");
+    for formula in ["=[1]A:!B1", "=[1]:B!A1", "=[1]A:B:C!A1"] {
+        model._set("C1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("C1"), "#ERROR!", "{formula}");
+    }
+}

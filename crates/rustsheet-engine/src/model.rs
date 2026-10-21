@@ -364,7 +364,9 @@ impl Model {
                     _ => self.evaluate_node_in_context(node, cell),
                 }
             }
-            _ => self.evaluate_call_with_reference(node, cell),
+            _ => self
+                .cached_external_span_reference(node, cell)
+                .unwrap_or_else(|| self.evaluate_call_with_reference(node, cell)),
         }
     }
 
@@ -581,11 +583,9 @@ impl Model {
                     column: column1,
                 })
             }
-            WrongReferenceKind { sheet_name, .. } => self
-                .external_reference_value(node, cell)
-                .unwrap_or_else(|| {
-                    Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
-                }),
+            WrongReferenceKind { .. } | WrongRangeKind { .. } => {
+                self.wrong_reference_value(node, cell)
+            }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
             OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
             SheetSpanKind {
@@ -595,10 +595,6 @@ impl Model {
                 ..
             } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
             OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
-            WrongRangeKind { sheet_name, .. } => match self.cached_external_area(node, cell) {
-                Some(area) => self.external_area_value(area, cell),
-                None => Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range"),
-            },
             RangeKind {
                 sheet_index,
                 row1,

@@ -356,8 +356,18 @@ the web keeps the cache on upload):
   `SUM(…!$A$1:$B$2)` 157, COUNT 4, COUNTA 9, MAX 142, and `SUM([1]Defines:Uses!$B$2)` for the span reversed 142
   (fixtures/external-link-cached-3d-span Refs!B9; the other aggregates reversed are unprobed); but `ISREF([1]Uses:Defines!$A$1)` is FALSE, ERROR.TYPE of the bare span 4 (`#REF!`) and
   ROWS `#VALUE!`, as for a span of this workbook ("3-D references outside the aggregates"), while
-  without a link `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` (T-1381). Ours does not parse the span
-  (`#ERROR!`; T-1654).
+  without a link `SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` (T-1381). Engine (T-1654): the lexer
+  reads the unquoted `[n]First:Last!` prefix as the quoted `'[n]First:Last'!` (the formula text
+  keeps the quoted form, as for `'[1]Uses'!`), and `Model::cached_span_cells` gives the cells the
+  cache holds in the written area on the sheets between the two ends in `sheetNames` order, in
+  sheet, row and column order, in one walk of the cache, which the aggregates and COUNTA read
+  (blanks skipped); it is `#REF!` as a value and `#VALUE!` where one sheet is needed. Unprobed, so
+  UNVERIFIED (T-2331 probes them): a span with an end the cache does not hold, kept `#BLOCKED!`
+  here (a span of this workbook with a missing end is `#NAME?`); blanks for the readers that keep
+  them (`TEXTJOIN(",",FALSE,[1]Uses:Defines!$A$1:$B$2)`), skipped here; a one-sheet span
+  (`[1]Uses:Uses!A1`), read here as a span (`#REF!` as a value, not that sheet's cell as a
+  one-sheet span of this workbook is); `@` of a span; and the reversed span in the other
+  aggregates.
 A workbook whose formulas reference a sheet with `refreshError="1"` (`[1]'56737'!$A$1:$B$2`) does
 not open in Excel for the web ("unsupportedWorkbook"), so what that reads is a desktop question.
 Engine: a cached area carries its cache (`external_links.rs`); aggregates and RANK read its cells
