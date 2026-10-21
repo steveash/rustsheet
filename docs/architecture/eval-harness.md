@@ -177,7 +177,8 @@ Only `pass` counts as passing. Case statuses:
   counts and `visible` its blamed visibly-off cells; each suite's `closeness` holds its in-scope
   bucket counts.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
-- `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088).
+- `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
+  it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
 
 ## Milestone probe lists
 `eval/milestones/<name>.txt` (decisions 0043, 0044) freezes the cases a milestone's probe criterion

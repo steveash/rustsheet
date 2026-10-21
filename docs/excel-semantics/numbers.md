@@ -107,7 +107,7 @@ Consequences: `MROUND(0.3,0.2)` = 0.4 (q = 1.4999999999999998); `MROUND(1.15,0.1
 companions are TRUE only because `=` compares to 15 digits); `MROUND(1234.4999999999998,1)` = 1234 and
 `MROUND(98765432.49999999,1)` = 98765432 (one ulp below the half is more than 5E-15 there), while
 `MROUND(1.4999999999999956,1)` = 2 (20 ulp below, 4.4E-15). The cutoff: fraction 0.5 - 4.996E-15 rounds up,
-0.5 - 5.0515E-15 down, the same at 0.5, 1.5, with multiple 2 and for negatives (rows 184-213). Ours today:
+0.5 - 5.0515E-15 down, the same at 0.5, 1.5, with multiple 2 and for negatives (rows 184-213). Before T-2167 ours was:
 `(value / multiple).round() * multiple`, which misses every within-tolerance cell below a half.
 Evidence: probes/t2201-mround-quotient-rounding (excel-graph, 2026-10-20, 213 cells: T-2167's near-half quotients and
 negatives, exact quotients at k+0.5 +- 1..48 ulp for four magnitudes, 80 seeded pairs within 4 ulp of a half, product
@@ -115,7 +115,7 @@ forming with companions, 1E-15 and 1E+15 controls, and the cutoff sweep); genera
 predicts all 213 cells. Rivals that miss: a 15-digit cut of `q` (145 or 146 of 213, by cut variant: misses 1234.5 - 1 ulp and most seeded pairs), a
 tolerance of 4.5E-15 or 4.9E-15 (196, 207) or 5.3E-15 (203), an x87 quotient, and a decimal product (the products are
 binary). gen-m5/043ee562f32eb901 Calc!A199 is `MROUND(0.3,0.2)`.
-Status: VERIFIED (excel-graph, 213 cells); not implemented (T-2167).
+Status: VERIFIED (excel-graph, 213 cells); implemented (T-2167, `mround_value` in ceiling_floor.rs).
 
 ## ROUNDUP adds the unit in binary
 Rule: when ROUNDUP has to round up, it does not return the double nearest the rounded-up decimal.
@@ -1604,8 +1604,12 @@ Tasks: T-0905
 Bound (T-2162): a large `number` is `#NUM!`: `COMBINA(9007199254740992,1)`, `COMBINA(6227020800,10)` (`FACT(13)`),
 `COMBINA(1E+15-0.0001,2)`, `COMBINA(1000000000000107,..)` and `COMBIN(1E+15,0)` (from `COMBIN(1E+15,1E-15)`) are `#NUM!`
 (ours: the coefficient, e.g. 2.4156840630757255E+91), while `COMBINA(25,123456789.123)` and `COMBIN(123456789.123,10)` are
-numbers. So the cut on `number` lies between 1.23E+8 and 6.2E+9 (2^31 is a guess); whether it applies to `n` or to `n+k-1`
-is unprobed. Evidence (excel-graph, 2026-10-20): gen-m5/34f69d858a39f497 Calc!A231, gen-m5/50d8a085335c05e6 Calc!A173,
+numbers. Cut (probes/t2199-text-length-and-combin-cuts A20-A37, B20-B34, excel-graph, T-2199): COMBIN is `#NUM!` when `number` >= 2^31-1
+(2147483647), whatever `k` (0, 1 and 2 all `#NUM!` there; at 2^31-2 they are 1, 2147483646 and 2.3058430038449848E+18),
+and `COMBIN(2^31+1, 2^31+1)` is `#NUM!`. COMBINA is `#NUM!` when `n+k-1` >= 2^31-1, not on `n` alone:
+`COMBINA(2^31-1,0)` is 1 and `COMBINA(2^31-2,1)` is 2147483646, while `COMBINA(2^31-2,2)`, `COMBINA(2^31-1,1)`,
+`COMBINA(2^31-1,2)` and `COMBINA(2^31-10,20)` are `#NUM!`; with k = 0 it is `#NUM!` from `n` = 2^31. Both agree with COMBINA(n,k) being COMBIN(n+k-1,k).
+Evidence (excel-graph, 2026-10-20): gen-m5/34f69d858a39f497 Calc!A231, gen-m5/50d8a085335c05e6 Calc!A173,
 gen-m5/e0087a1fb9a36188 Calc!A379, gen-m5/fc81c2f704bef138 Calc!A265, gen-m5/6b831f5e2a20bc34 Calc!A5; numbers from gen-m5/1b30e4d075b252ea Calc!A213,
 gen-m5/c688ca172fe533dc Calc!A288. Status: OBSERVED; T-2162.
 
