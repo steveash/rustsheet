@@ -22,6 +22,10 @@ const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
 
 /// The largest `min_length` BASE accepts (probes/base-min-length).
 const BASE_MAX_MIN_LENGTH: f64 = 255.0;
+/// COMBIN's `number`, and COMBINA's `number + number_chosen - 1`, at or above which Excel gives
+/// `#NUM!`, whatever the coefficient: 2^31-1 (probes/t2199-text-length-and-combin-cuts A20-A37,
+/// B20-B34; numbers.md "COMBINA is COMBIN(n+k-1, k)", "Bound").
+const COMBIN_MAX_NUMBER: f64 = 2_147_483_647.0;
 
 /// SIN, COS, TAN, COT, SEC and CSC are `#NUM!` from |x| = 2^27 (SIN(2^27-1) is a number, SIN(2^27)
 /// is `#NUM!`; probes/trig-huge-argument, docs/excel-semantics/numbers.md "Trig of a huge angle").
@@ -853,6 +857,13 @@ impl Model {
                 message: "k cannot be greater than n".to_string(),
             };
         }
+        if n >= COMBIN_MAX_NUMBER {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Number must be below 2^31-1".to_string(),
+            };
+        }
         match combin(n, k) {
             Ok(result) => CalcResult::Number(result),
             Err(error) => CalcResult::Error {
@@ -894,8 +905,16 @@ impl Model {
             };
         }
         // COMBINA(n, k) is Excel's COMBIN(n + k - 1, k), rounding included: `COMBINA(20,19)` is
-        // 35345263799.999985 (numbers.md "COMBINA is COMBIN(n+k-1, k)"). `combin` also bounds the
-        // loop by the smaller of k and n - 1, so `COMBINA(1,1E10)` is 1 at once (directive 5).
+        // 35345263799.999985 (numbers.md "COMBINA is COMBIN(n+k-1, k)"), and so is its bound:
+        // `COMBINA(2^31-2,1)` is 2147483646, `COMBINA(2^31-2,2)` and `COMBINA(2^31-1,1)` are #NUM!.
+        // That also caps `combin`'s loop below 2^31 steps; it runs min(k, n - 1) of them.
+        if n + k - 1.0 >= COMBIN_MAX_NUMBER {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Number plus number_chosen minus 1 must be below 2^31-1".to_string(),
+            };
+        }
         match combin(n + k - 1.0, k) {
             Ok(result) => CalcResult::Number(result),
             Err(error) => CalcResult::Error {
