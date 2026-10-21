@@ -1,5 +1,5 @@
 ---
-id: T-2181
+id: T-2250
 title: "ARRAYTOTEXT: an error value argument wins over an invalid format (#NUM! before #VALUE!)"
 milestone: M5
 lane: functions-text
