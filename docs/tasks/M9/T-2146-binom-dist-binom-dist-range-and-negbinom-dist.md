@@ -17,7 +17,8 @@ BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE, NEGBINOM.DIST and NEGBINOMDIST give Exc
 and points back to T-0927, which is done.
 
 ## Context
-- Needs an oracle sweep (T-2145). T-0927 tried and ruled out the exact sum, Loader's saddle-point pmf (R's
+- The oracle sweep (T-2145) is landed: probes-numeric/t2145-binomial-sweep, t2145-negbinom-sweep and
+  t2145-binom-range-sweep (statistics.md "Discrete distributions"). T-0927 tried and ruled out the exact sum, Loader's saddle-point pmf (R's
   `dbinom_raw`: 49 of 122) and `exp(a*ln x)` times the exact remaining factor, all on the cached cells alone.
 - Known failures (eval/baseline/ironcalc-calc.txt, gap triage 2026-10-20): 70 lines, BINOM.xlsx sheet by sheet:
   - BINOM.DIST: 18 (15 NumericUlp, for example E3: Excel 0.23925373020405763, ours ...576; 3 NumericClose:

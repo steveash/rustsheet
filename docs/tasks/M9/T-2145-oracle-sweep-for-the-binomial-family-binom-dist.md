@@ -3,7 +3,7 @@ id: T-2145
 title: "Oracle sweep for the binomial family: BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST pmf and cdf on short-decimal p"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -46,3 +46,10 @@ ironcalc-calc STATISTICAL/BINOM.xlsx that T-0927 already exhausted.
 
 ## Out of scope
 - Fitting or implementing (T-2146). POISSON.DIST (T-2055). HYPGEOM.DIST (T-0977, T-1896).
+
+## Outcome
+Three probes-numeric cases (split to keep each workbook small) filled by excel-graph with no pending cells:
+t2145-binomial-sweep (3260 cells), t2145-negbinom-sweep (1100), t2145-binom-range-sweep (790). Findings recorded
+in statistics.md "Discrete distributions" (exact share by p; Excel is exact at only about 31% of BINOM.DIST cells,
+never beyond 1E-12 relative). T-2146 links the cases. No engine change; eval gate unaffected (probes-numeric is
+ungated).
