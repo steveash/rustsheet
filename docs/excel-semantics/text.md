@@ -561,7 +561,7 @@ Unprobed: a group separator after the decimal separator, `%` with custom separat
 when only their first characters agree.
 Status: VERIFIED (excel-graph); not implemented (T-2151, T-2152).
 
-## REPT, CODE and UNICODE refuse a text argument over 255 characters (T-2155)
+## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)
 Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the
 count: `REPT(REPT("ab",300),0)`, `REPT(REPT("ab",300),3)`, `REPT(REPT("ab",300),5)`, `CODE(REPT("ab",300))` and
 `UNICODE(REPT("ab",300))` are `#VALUE!` (ours: the repeated text, "", 97, 97), while `REPT(REPT("x",255),3)` works

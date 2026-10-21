@@ -18,7 +18,7 @@ functions tasks can then implement the cuts without probing first.
 ## Context
 - The M5 exit needs gen-m5 at 99.9% (decision 0085 item 5): at most 22 known failures; 190 are left today. T-2155 owns 6
   and T-2162 owns 5, and both begin with "Probe first (`excel-probe`)". The functions lanes are full, so the probe moves here.
-- Text cut: docs/excel-semantics/text.md "REPT, CODE and UNICODE refuse a text argument over 255 characters (T-2155)":
+- Text cut: docs/excel-semantics/text.md "REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)":
   600 characters fail and 255 work. Still open: the exact cut, whether it counts UTF-16 units or code points, and whether
   other one-text-argument functions share it. LENB, PROPER, UPPER, EXACT, FIND and SEARCH do not.
 - Number cut: docs/excel-semantics/numbers.md "COMBINA is COMBIN(n+k-1, k)", paragraph "Bound (T-2162)": the cut lies

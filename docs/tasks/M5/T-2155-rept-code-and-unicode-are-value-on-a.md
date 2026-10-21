@@ -16,8 +16,8 @@ REPT, CODE and UNICODE are `#VALUE!` when their text argument is longer than 255
 
 ## Context
 - Evidence first (planner, 2026-10-20): the probe this task asks for is T-2199 (research), which fills `probes/t2199-text-length-and-combin-cuts`. Use that case; do not probe again. Its failing cells are this task's cells too.
-- Result (T-2199): the cut is 255 UTF-16 units (256 fails, astral characters count 2); T(..) shares it; CLEAN, TRIM, LOWER, LEFT do not. See docs/excel-semantics/text.md.
-Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). Rule: docs/excel-semantics/text.md "REPT, CODE and UNICODE refuse a text argument over 255 characters" (added by this triage):
+- Result (T-2199; T(..) is in scope here too, cells A12/B12): the cut is 255 UTF-16 units (256 fails, astral characters count 2); T(..) shares it; CLEAN, TRIM, LOWER, LEFT do not. See docs/excel-semantics/text.md.
+Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). Rule: docs/excel-semantics/text.md "REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units" (added by this triage):
 600 characters fail, 255 work (`REPT(REPT("x",255),3)`, 033e65b9 A55). Probe the cut first (`excel-probe`: 256, 257 and 300
 characters, an astral character straddling 255 UTF-16 units) and check whether other text functions with a one-character or
 count argument (CHAR? LEFT? CLEAN?) share it; gen-m5 shows LENB, PROPER, UPPER, EXACT, FIND and SEARCH do not. Code:
