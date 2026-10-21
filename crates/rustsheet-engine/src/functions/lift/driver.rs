@@ -454,8 +454,8 @@ impl Model {
         };
         if options.result == CallResult::Array && (rows, columns) == (1, 1) {
             // Every grid is one cell: the call runs once on those values and keeps its whole
-            // array, as before T-1834 (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows). Whether
-            // Excel lifts a 1x1 array here (`SEQUENCE({3})`) is open until T-1960.
+            // array, as before T-1834 (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows). Excel
+            // lifts a 1x1 array (`SEQUENCE({3})` is 1x1): TODO(T-2298).
             let values: Vec<CalcResult> = lifted
                 .into_iter()
                 .map(|arg| match arg {

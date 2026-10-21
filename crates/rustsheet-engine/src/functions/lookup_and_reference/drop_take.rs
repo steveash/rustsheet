@@ -82,9 +82,9 @@ impl Model {
     /// element is the reference its call returns, in an array of references: ROWS of
     /// `TAKE(A1:B3,{1;2})` is 2, and `INDEX(..,1,1)` is A1:B1, so it spills 1, 10 and its
     /// COLUMNS is 2; `INDEX(DROP(A1:B3,{1;2}),1,1)` is the 2x2 A2:B3 (probes/m7-argument-modes
-    /// F4:I6, K1-K4). Over an array value each element is its call's top-left value (rule 2;
-    /// TODO(T-1960) whether Excel keeps the whole sub-array there). `array` is evaluated once
-    /// (`read_once` in functions/logical/lambda.rs relies on it).
+    /// F4:I6, K1-K4). Over an array value each element is its call's top-left value (rule 2:
+    /// `TAKE({1,10;2,20;3,30},{1;2})` is 1, 1, probes/m7-lift-take-drop-sortby). `array` is
+    /// evaluated once (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn take_drop_reference(
         &mut self,
         args: &[Node],

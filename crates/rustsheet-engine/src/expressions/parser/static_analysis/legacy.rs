@@ -240,7 +240,7 @@ pub(super) fn legacy_array_call_at(
 /// [`spilling_switch_position`] finds it (probes/legacy-switch-at-shapes, T-1964).
 pub(super) fn is_spilling_switch(node: &Node, ranges: bool) -> bool {
     matches!(node, Node::FunctionKind { kind: kind @ Function::Switch, args }
-    if returns_only(kind, args, |result| match under_at(result) {
+    if returns_only(kind, args, |result| match under_at(result).lowered() {
         Node::ArrayKind(_) => true,
         Node::RangeKind { .. } => ranges,
         _ => false,
@@ -431,9 +431,12 @@ fn chooses_references_by_an_array_index(kind: &Function, args: &[Node]) -> bool 
     matches!(kind, Function::Choose)
         && matches!(index, Node::ArrayKind(_))
         && !arms.is_empty()
-        && arms
-            .iter()
-            .all(|arm| matches!(arm, Node::ReferenceKind { .. } | Node::RangeKind { .. }))
+        && arms.iter().all(|arm| {
+            matches!(
+                arm.lowered(),
+                Node::ReferenceKind { .. } | Node::RangeKind { .. }
+            )
+        })
 }
 
 /// Whether `kind` has an argument it can return ([`is_returned_argument`]) and every one is an
@@ -693,7 +696,7 @@ fn is_plain_reference(node: &Node) -> bool {
     let is_literal = |node: &Node| matches!(node, Node::NumberKind(_) | Node::BooleanKind(_));
     let mut pending = vec![node];
     while let Some(node) = pending.pop() {
-        match node {
+        match node.lowered() {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => {}
             Node::FunctionKind {
                 kind: Function::If,

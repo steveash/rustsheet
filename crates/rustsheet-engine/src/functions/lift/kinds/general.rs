@@ -39,8 +39,8 @@ const SERIES: ArgKinds = ArgKinds::fixed(
 // --- Array-valued (T-1834) -------------------------------------------------------------------
 /// `SEQUENCE(rows, [columns], [start], [step])`: every argument lifts over an array and a range
 /// (`ROWS(SEQUENCE(A1:A3))` is 3, `SEQUENCE({1;2;3})` and `SEQUENCE(2,2,{1;10})` are 3x1 and 2x1,
-/// probes/m7-argument-modes F1:H3; columns and step by the spec's per-parameter rule, T-1960). Each
-/// lifted element is charged the cells it builds.
+/// probes/m7-argument-modes F1:H3; columns and step, probes/m7-lift-take-drop-sortby rows 17-18).
+/// Each lifted element is charged the cells it builds.
 const SEQUENCE: ArgKinds =
     ArgKinds::fixed(1, &[Lift, Lift, Lift, Lift], Output { weight: 1 }).array();
 /// `MAKEARRAY(rows, cols, lambda)`: rows and cols lift (`MAKEARRAY(A1:A2,2,LAMBDA(r,c,r+c))` is
@@ -51,21 +51,22 @@ const MAKEARRAY: ArgKinds =
     ArgKinds::fixed(3, &[Lift, Lift, Whole], Output { weight: 128 }).array();
 /// `TAKE(array, rows, [columns])` and `DROP(array, rows, [columns])`: rows and columns lift over
 /// an array and a range (`ROWS(TAKE(A1:B3,A1:A2))` and `ROWS(DROP(A1:B3,{1;2}))` are 2,
-/// probes/m7-argument-modes F4:F6; columns by the spec's per-parameter rule, T-1960), the array
+/// probes/m7-argument-modes F4:F6; columns, probes/m7-lift-take-drop-sortby rows 27-28), the array
 /// is read whole by the function itself, a reference kept (`Model::take_drop_reference`, T-1838).
 /// Each lifted element is charged the cells it builds.
 const TAKE_DROP: ArgKinds = ArgKinds::fixed(2, &[Whole, Lift, Lift], Output { weight: 1 }).array();
 // --- M7 (T-1836) ---
 /// `TOCOL(array, [ignore], [scan_by_column])`: ignore lifts over an array and a range
 /// (`TOCOL(A1:B3,{0;1})` is 2x1 with first element 1, probes/m7-argument-modes F9:H9, K8; over an
-/// array, gen-m9/1782efcecd5d4b1b Calc!A19), `scan_by_column` by the spec's per-parameter rule
-/// (T-1960). The array is read once by the function and handed to every element whole; each
+/// array, gen-m9/1782efcecd5d4b1b Calc!A19), `scan_by_column` too (probes/m7-lift-take-drop-sortby
+/// row 24). The array is read once by the function and handed to every element whole; each
 /// element walks it (`LiftCost::Cells`) and is charged the cells it builds.
 const TOCOL: ArgKinds =
     ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array();
 /// `UNIQUE(array, [by_col], [exactly_once])`: `by_col` lifts over an array and a range
 /// (`UNIQUE(D1:D3,{FALSE;TRUE})` is 2x1, probes/m7-argument-modes F12:H12; over a range,
-/// gen-m9/4df1b22d3ed63f58 Calc!A36), `exactly_once` by the spec's per-parameter rule (T-1960).
+/// gen-m9/4df1b22d3ed63f58 Calc!A36), `exactly_once` too (probes/m7-lift-take-drop-sortby rows
+/// 25-26; Excel's later elements are empty unless every entry is equal, TODO(T-2300)).
 /// Read and charged as [`TOCOL`].
 const UNIQUE: ArgKinds =
     ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array();

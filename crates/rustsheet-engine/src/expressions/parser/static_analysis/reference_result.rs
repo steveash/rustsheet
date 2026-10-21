@@ -23,7 +23,7 @@ pub(super) fn static_analysis_offset(args: &[Node]) -> StaticResult {
     if !matches!(lifted, StaticResult::Scalar) {
         return lifted;
     }
-    if !matches!(args[0], Node::ReferenceKind { .. }) {
+    if !matches!(args[0].lowered(), Node::ReferenceKind { .. }) {
         return StaticResult::Unknown;
     }
     if arg_count == 3 {
