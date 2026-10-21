@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -19,6 +20,11 @@ From T-2181. probes/sheet-names-like-cells-3d-spans S1!B3 (`=SHEETS(S1:S3!A1)`, 
 ## Acceptance criteria
 - [ ] probes/sheet-names-like-cells-3d-spans S1!B3 passes and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures.
 - [ ] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
+number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
+criteria above are already the visible-parity stage.
 
 ## Out of scope
 -
