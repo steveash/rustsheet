@@ -483,8 +483,8 @@ AMORLINC, charged for their bounded period walks ("AMORLINC and AMORDEGRC work c
 XIRR's guess and FVSCHEDULE's principal, beside cash flows, dates and a schedule read once, whole ("XNPV, XIRR and
 FVSCHEDULE beside their whole data", a DEVIATION for the work cap). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE gives `#VALUE!` for text in the schedule (T-1373) and for a boolean principal (T-1765).
-The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
-ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475). The
+The base values of CUMIPMT, DB, DDB, DURATION, MDURATION, ODDFPRICE and PRICE are 1 to a few
+ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD and YIELD are off at 1e-10 to 1e-12 relative (T-1374; TBILLEQ and TBILLYIELD are exact since T-1475, INTRATE and YIELDDISC since T-2032). The
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1084, T-1372, T-1373, T-1374, T-1820, T-1821, T-1822, T-1841, T-1842, T-1843, T-1845, T-1870
@@ -765,10 +765,11 @@ share the readers of probed ones. Also `YIELD(39448,43831,0.0575,95.04,100,2,-1E
 Evidence: probes/fin-bond-negative-basis (176 cells, excel-graph, 2026-10-20, T-1870); probes/fin-yield-odd-lift L5
 (excel-graph, 2026-10-18, T-1842).
 Ours: one reader, `day_count_basis` (functions/financial/dates.rs), serves the coupon-bond and ODD* kernels, ACCRINT,
-AMORLINC, AMORDEGRC and YEARFRAC. ACCRINTM and the discount-security functions go through YEARFRAC. Before T-1870,
+AMORLINC, AMORDEGRC and YEARFRAC. ACCRINTM and the discount-security functions go through YEARFRAC (its parts since T-2032). Before T-1870,
 `floor() as u32` saturated a negative basis to 0, and the `as i32` of YEARFRAC and the `trunc()` of AMOR* turned -0.5
-into 0. The probe's ten failing cells, rows 1, 2, 9, 17 and 21 in columns E and G (YIELD, PRICE,
-ODDFPRICE, ODDFYIELD and INTRATE at bases 0 and 4.9), are last-digit misses of the T-1374 and T-2007 class, not basis reads.
+into 0. The probe's eight failing cells, rows 1, 2, 9 and 17 in columns E and G (YIELD, PRICE,
+ODDFPRICE and ODDFYIELD at bases 0 and 4.9), are last-digit misses of the T-1374 and T-2007 class, not basis reads;
+row 21 (INTRATE) matches since T-2032.
 Status: VERIFIED (excel-graph)
 Tasks: T-1842, T-1870
 
@@ -786,9 +787,34 @@ a direct 30/360 count: on 2018-02-28 to 2018-03-30 basis 0 and basis 4 agree for
 A126 = A127 = 0.271557884707002, 32 days), whereas INTRATE, PRICEDISC, RECEIVED and YIELDDISC give different results for
 the two bases (INTRATE A14 = 1.2000000000000002 for 30 days, A15 = 1.125 for 32). Ours already matches (`get_mat_factors`).
 Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624).
-Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0 on basis 0; T-1757 added a unit test); all 45 remaining mismatches (including A21, A43 and A88) are last-digit misses in the T-1374 class.
+Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0 on basis 0; T-1757 added a unit test); the last-digit misses are matched since T-2032 ("Discount securities: day count and year length").
 Status: VERIFIED (excel-graph)
-Tasks: T-1624, T-1757, T-1374
+Tasks: T-1624, T-1757, T-1374, T-2032
+
+## Discount securities: day count and year length
+Rule: DISC, INTRATE, PRICEDISC, RECEIVED, YIELDDISC, PRICEMAT and YIELDMAT do not divide by a year fraction. They
+take YEARFRAC's two parts, the basis day count D (30/360 for bases 0 and 4, actual days otherwise) and the basis year
+length B (360, 365, or basis 1's YEARFRAC year), and round in this order, with `b/d` computed first where it appears:
+- DISC = `(1 - pr/redemption) * (B/DSM)`; INTRATE = `(redemption - investment)/investment * (B/DIM)`;
+  YIELDDISC = `(redemption - pr)/pr * (B/DSM)`; PRICEDISC = `redemption - discount*redemption*DSM/B`;
+  RECEIVED = `investment / (1 - discount*(DIM/B))`.
+- PRICEMAT and YIELDMAT read one B, that of issue to settlement, with A = days(issue, settlement), DIM =
+  days(issue, maturity) and DSM = DIM - A: PRICEMAT = `(100 + DIM/B*rate*100) / (1 + DSM/B*yld) - A/B*rate*100`;
+  YIELDMAT = `((1 + DIM/B*rate) - T) / T * (B/DSM)` with T = `pr/100 + A/B*rate`.
+The forms differ from `(...)/YEARFRAC` in the last digit: INTRATE.xlsx F2 (90 days, basis 0, 2000000 to 2040000) is
+exactly 0.08 (the year-fraction form gives 0.08000000000000007), `INTRATE(43159,43189,1000,1100,0)` is
+1.2000000000000002 = 0.1*(360/30), not 1.2, and `YIELDMAT(43101,43466,42736,0.06,98,0)` is 0.07692307692307698 (the
+expanded numerator `DIM/B*rate + 1 - pr/100 - A/B*rate` gives ...704). The grouping `x*(B/D)` is the only one of ten
+candidates matching all eight distinct DISC.xlsx cells (F2:F5 and F15:F18, bases 0-3 on two spans; F6:F10 and F19
+repeat them with basis 4, 2.4 or omitted). RECEIVED's form is the year
+fraction it always used (`DIM/B` is YEARFRAC); no cell separates it from the alternatives.
+Evidence: ironcalc-calc DISC.xlsx F2:F19 and INTRATE.xlsx F2:F6 (Excel-cached); probes/discount-security-modes,
+probes/date-system-1900-financial-daycount, probes/date-system-1904-financial-daycount,
+probes/date-system-1904-financial A25, A27, probes/fin-argument-modes H139, H352 (excel-graph). 73 cells, all now bit-exact.
+Ours: `Model::year_fraction_parts` (date_and_time/yearfrac.rs) gives the parts; the kernels are in
+functions/financial/discount.rs and `get_mat_factors` (financial/mod.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2032
 
 ## PMT when (1+rate)^nper overflows or underflows
 Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient
@@ -1041,9 +1067,15 @@ A negative `fv/pv` is always `#NUM!` for RRI, even where the worksheet form is a
 (probes/fin-rri-vdb-edges A1-A16).
 Evidence: probes/fin-mduration-rri-fit (60 cells: 12 DURATION/MDURATION/quotient triples, 12 RRI/`^` pairs),
 fin-mduration, fin-rri (excel-graph, 2026-10-20, T-1975).
+Open point (2026-10-21 gap triage): the web probes above have an integer nper or an exact `fv/pv`.
+The one fractional-nper, inexact-ratio cell in the repo is Mac desktop: ironcalc-calc
+FINANCIAL/RRI.xlsx Sheet1!D12, `RRI(0.5,3,4)` = 0.7777777777777775 ("Microsoft Macintosh Excel"
+16.0300). The worksheet form `(4/3)^2-1` gives 0.7777777777777777, the engine's value. So either Mac
+desktop differs from the web here, as for SIN(4) and ATAN2 (decision 0074), or RRI is not the
+worksheet form when nper is fractional. T-2222 probes it on excel-graph.
 Status: VERIFIED (excel-graph)
 Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in annuity.rs.
-Tasks: T-1975
+Tasks: T-1975, T-2222
 
 ## NPV and FVSCHEDULE arguments
 Rule: NPV reads an array literal whole (`NPV(0.1,{-10000,2750,4250,3250,2750})` is 302.233453999042) and skips
