@@ -600,20 +600,17 @@ impl Parser {
                     repeated_locale |= locale.is_some();
                     locale = Some(tag);
                 }
-                Token::Scientific => {
+                Token::Scientific | Token::ScientificMinus => {
                     if !is_scientific {
                         index = 0;
                         number = NumberState::Exponent;
+                        // The `E` stays where the format has it, ahead of any literal before the
+                        // exponent digits; the exponent's sign goes next to its digits (`|#.#|E+|#|`
+                        // on 123456.789 is "|1.2|E|+5|", poi/NumberFormatApproxTests.xlsx A41).
+                        tokens.push(TextToken::Literal('E'));
                     }
                     is_scientific = true;
-                }
-                Token::ScientificMinus => {
-                    if !is_scientific {
-                        index = 0;
-                        number = NumberState::Exponent;
-                    }
-                    is_scientific = true;
-                    scientific_minus = true;
+                    scientific_minus |= token == Token::ScientificMinus;
                 }
                 Token::Separator => {}
                 Token::Raw => {
