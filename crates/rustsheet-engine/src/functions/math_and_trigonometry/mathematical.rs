@@ -844,25 +844,13 @@ impl Model {
             Err(s) => return s,
         };
         if n < 0.0 || k < 0.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Arguments must be non-negative integers".to_string(),
-            };
+            return num_error(cell);
         }
         if k > n {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "k cannot be greater than n".to_string(),
-            };
+            return num_error(cell);
         }
         if n >= COMBIN_MAX_NUMBER {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Number must be below 2^31-1".to_string(),
-            };
+            return num_error(cell);
         }
         match combin(n, k) {
             Ok(result) => CalcResult::Number(result),
@@ -898,22 +886,14 @@ impl Model {
             Err(s) => return s,
         };
         if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Arguments must be non-negative integers".to_string(),
-            };
+            return num_error(cell);
         }
         // COMBINA(n, k) is Excel's COMBIN(n + k - 1, k), rounding included: `COMBINA(20,19)` is
         // 35345263799.999985 (numbers.md "COMBINA is COMBIN(n+k-1, k)"), and so is its bound:
         // `COMBINA(2^31-2,1)` is 2147483646, `COMBINA(2^31-2,2)` and `COMBINA(2^31-1,1)` are #NUM!.
         // That also caps `combin`'s loop below 2^31 steps; it runs min(k, n - 1) of them.
         if n + k - 1.0 >= COMBIN_MAX_NUMBER {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Number plus number_chosen minus 1 must be below 2^31-1".to_string(),
-            };
+            return num_error(cell);
         }
         match combin(n + k - 1.0, k) {
             Ok(result) => CalcResult::Number(result),
