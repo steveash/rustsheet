@@ -3,7 +3,7 @@ id: T-2237
 title: "YEARFRAC with a date in [0, 1) on bases 1-4 and next to January-February 1900: probe and match (today #NUM! until probed)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
