@@ -3,7 +3,7 @@ id: T-2187
 title: "Oracle sweep for T-1592: YIELD over redemption, frequency and day-count basis at fixed dates, with the Newton back-chain per cell"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -51,16 +51,28 @@ docs/excel-semantics/financial.md "YIELD stops short of PRICE's root". The lab's
 the new cells as well (`uv run rustsheet-fitlab yield`).
 
 ## Acceptance criteria
-- [ ] probes/yield-start-sweep.case.json and its `.oracle.json` (excel-graph, canary-verified) are committed
+- [x] probes/yield-start-sweep.case.json and its `.oracle.json` (excel-graph, canary-verified) are committed
       with columns A to F as above. Its known failures are recorded in eval/baseline/probes.txt with
       `make eval-baseline`, and no other baseline line changes.
-- [ ] The fit lab's `yield` cell set includes the new case (`YIELD_CASES` in fitlab/kernels/solvers.py), and a lab test pins the back-chain iterate of at
+- [x] The fit lab's `yield` cell set includes the new case (`YIELD_CASES` in fitlab/kernels/solvers.py), and a lab test pins the back-chain iterate of at
       least A1 (R = 100, F = 2) and the matching B and C cells.
-- [ ] financial.md's YIELD entry states, citing cells, whether the earliest back-chain iterate depends on R,
+- [x] financial.md's YIELD entry states, citing cells, whether the earliest back-chain iterate depends on R,
       F, B and price, and names the next hypothesis for T-1592. T-1592's "Blocked because" is updated to point
       at this evidence, and it is set back to `todo` if the evidence supports a new hypothesis.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fitting YIELD or any engine change (T-1592 and the engine follow-up it files).
 - ODDFYIELD's solver (T-2007) and the discount securities (T-2032).
+
+## Outcome
+- probes/yield-start-sweep (100 cells, columns A to F as designed) is filled from excel-graph. It is canary-verified
+  by the fill, and its known failures are recorded with `make eval-baseline`.
+- The fit lab: the case is in `YIELD_CASES`, and `_bond_price` now prices in the cell's own basis (unchanged on
+  basis 0).
+- Finding: every cell that stops short traces back to one start, 0.0552344627. It is shared across redemption and
+  frequency, and it moves with price and basis. Newton run forward from it reproduces all 63 cells of columns A to C
+  (to 1.2e-14 relative) when it stops after the first step below about 7e-6. That replaces the residual-stop reading.
+  `test_yield_start_sweep_newton_from_a_shared_start` pins it.
+- T-1592: unblocked and back to `todo`, with that hypothesis. The finding is in financial.md.
+- Eval: a new case only; no other baseline line changes.
