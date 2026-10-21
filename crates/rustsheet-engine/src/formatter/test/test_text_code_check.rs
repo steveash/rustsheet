@@ -60,4 +60,8 @@ fn currency_text_prints_as_it_is() {
     );
     assert_eq!(number(1.5, "[$€]0.00").0, "€1.50");
     assert_eq!(format_text_value("TRUE", "#,##0.00 [$USD]").text, "TRUE");
+    // A locale may follow the text, as it follows a one-character symbol; an unclosed bracket
+    // is an error.
+    assert_eq!(number(1.5, "0.0 [$USD-409]").0, "1.5 USD");
+    assert!(number(1.5, "0.0 [$USD").1);
 }

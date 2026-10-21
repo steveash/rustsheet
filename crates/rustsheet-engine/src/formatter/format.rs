@@ -279,7 +279,6 @@ fn general_text(value: f64, locale: &Locale) -> String {
     }
 }
 
-/// Whether `part` holds `@`, which makes it a text section.
 /// How many of `parts` are number sections. A last section with `@` in a format of two or three
 /// sections is the text section: numbers use the sections before it (`TEXT(-1,"0;x@")` is "-1",
 /// `TEXT(-1,"0;0;x@")` "1"; probes/text-at-token-sections C10, C11, T-1656).
@@ -290,6 +289,7 @@ fn numeric_section_count(parts: &[ParsePart]) -> usize {
     }
 }
 
+/// Whether `part` holds `@`, which makes it a text section.
 fn is_text_section(part: &ParsePart) -> bool {
     section_tokens(part).is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw)))
 }
