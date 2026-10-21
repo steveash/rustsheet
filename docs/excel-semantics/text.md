@@ -557,11 +557,16 @@ gen-m5/109fc90dceb50ba9 Calc!A144, gen-m5/1962de140dae0111 Calc!A80, gen-m5/6b83
 gen-m5/38b1b8e51dbad326 Calc!A340, gen-m5/34f69d858a39f497 Calc!A227, gen-m5/b237245054b4fedb Calc!A128, gen-m5/eb942f4a59b1c004 Calc!A115 (T-2151);
 gen-m5/5704666097cbc5b2 Calc!A261, Calc!A392, gen-m5/bbbd316c346ce645 Calc!A76, gen-m5/b237245054b4fedb Calc!A390, gen-m5/a6fec430ac350c1a Calc!A32,
 gen-m5/ecd1b828aebad1e8 Calc!A60 (T-2152); the array lift is in arrays.md (T-2160).
+Every space is removed before the text is read, so `NUMBERVALUE("12:30 PM")` is `#VALUE!` ("12:30PM") where
+`VALUE("12:30 PM")` is 0.5208333333333334 (gen-m5/bbbd316c346ce645 A207, fc81c2f704bef138 A194, 6a8bb7cd6d7769ad A357
+against gen-m5/49bfbf67a1 A217, 901e91c09b A13; Microsoft's NUMBERVALUE page says spaces are ignored "even in the
+middle"; that "12:30PM" is the reason, not a refusal of AM/PM, is the simplest reading and unprobed).
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
 Unprobed: a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
 when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
-Status: VERIFIED (excel-graph); T-2152 implemented (first-character separators, empty text); VALUE-like parsing not implemented (T-2151).
+Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing
+after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs).
 
 ## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)
 Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the

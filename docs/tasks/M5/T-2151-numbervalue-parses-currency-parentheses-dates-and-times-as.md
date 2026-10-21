@@ -3,7 +3,7 @@ id: T-2151
 title: "NUMBERVALUE parses currency, parentheses, dates and times as VALUE does"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -52,10 +52,10 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 24 in eval/baseli
 | gen-m5/ee1667411bbe2ccc Calc!A88 | `=NUMBERVALUE("25:00",IFNA((3.14159<>Data!E12),((-0.0001)+Data!A$9)),Data!$B3)` | 1.0416666666666667 | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] These 24 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] gen-m6/07171fa3f7493f51 Calc!A261 (`NUMBERVALUE("1,000",FALSE,2.5)` = 1000, moved from T-2152) disappears from eval/baseline/gen-m6.txt.
-- [ ] text.md entry marked implemented.
-- [ ] `make check` green; reviewers approve.
+- [x] These 24 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] gen-m6/07171fa3f7493f51 Calc!A261 (`NUMBERVALUE("1,000",FALSE,2.5)` = 1000, moved from T-2152) disappears from eval/baseline/gen-m6.txt.
+- [x] text.md entry marked implemented.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -66,3 +66,10 @@ criteria above are already the visible-parity stage.
 - Array lifting (T-2160).
 
 Moved from T-2152: gen-m6/07171fa3f7493f51 Calc!A261 (`NUMBERVALUE("1,000",FALSE,2.5)` = 1000; the comma is kept as a thousands separator by VALUE-like parsing).
+
+## Outcome
+After its separator steps, `numbervalue_of` removes every space and reads the text as VALUE does
+(`parse_excel_number`, then `Model::parse_number_text`): currency, parentheses, dates, clock text past 24 hours.
+The space removal is evidence-driven: VALUE reads "12:30 PM" but NUMBERVALUE gives `#VALUE!` in every gen-m5 cell
+that has it (text.md entry). Stacked on T-2160 (same function). Eval: fixed 23 (gen-m5) + 1 (gen-m6), 0 regressions;
+the 24th listed gen-m5 line had already gone with T-2160.
