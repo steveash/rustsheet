@@ -1524,6 +1524,25 @@ them and oracle cells contradict them.
 - **The closed forms are the exception.** They read the upper tail from w itself:
   `F.DIST.RT(0.7,4,2.4)` = 1 - exp(2 ln(1-w)) (H3), 2 ulp off with the exact complement.
 
+- **Accuracy against a 50-digit reference (2026-10-21 gap triage).** mpmath `betainc` at 50 digits,
+  regularized, at y = d1*x/(d1*x+d2), plus the closed-form density. Excel is not uniformly correctly
+  rounded on this family, and neither side is uniformly closer to the true value:
+  - At larger shapes Excel is close to correctly rounded and the engine is the inaccurate side.
+    `F.DIST(1,50,100,TRUE)` = 0.5108794921920699 (Excel +3.4E-17, ours -3.7E-15),
+    `F.DIST(1,50,100,FALSE)` = 1.6223539167134502 (Excel -4.4E-17, ours +4.2E-15) and
+    `F.DIST.RT(1,100,3)` = 0.6038137503819936 (Excel +3.9E-16, ours +3.9E-15) (probes-numeric/m9-f-dist
+    A27, A28, m9-legacy-fdist A40). `F.DIST(3,50,100,FALSE)` is 1.05292998522241E-05, where ours is
+    `#NUM!` (m9-f-dist A30).
+  - Elsewhere Excel is off the true value by more than half a unit in the 15th digit. No accurate kernel
+    reproduces these, only Excel's formulation:
+    - `F.DIST.RT(10,10,10)` = 0.0005715525434020334, Excel +1.4E-15 (m9-f-dist-rt A16).
+    - `FDIST(3.5,5,50)` = 0.008642212995925193, +7.1E-16 (m9-legacy-fdist A47).
+    - `F.DIST(2.5,3,7,FALSE)` = 0.09478619896436714, +9.5E-16 (t1049-fdist A16).
+    - `F.DIST.RT(10,50,100)` = 3.009600356083383E-22, -4.1E-15 (m9-f-dist-rt A20).
+  - At d1 = d2 = 1 and x = 1 the exact value is 0.5, yet Excel gives `F.DIST(1,1,1,TRUE)` =
+    0.5000000000000001 and `F.DIST.RT(1,1,1)` = 0.4999999999999999 (t1049-fdist A7, m9-legacy-fdist A31).
+  - Tasks: T-2219 (the accuracy cells, visible parity) and T-2221 (the fit, after the T-2220 sweep).
+
 The engine follows both PARTIAL rules. Against statrs, the probes-numeric F and BETA cases gain
 72 bit-exact cells and lose 3, a net gain of 69. The three lost cells are now 1 ulp off:
 `FDIST(100,1,1)` and `F.DIST.RT(100,1,1)` (m9-legacy-fdist A61, A62: 0.06345103486110715) and
@@ -1562,7 +1581,7 @@ switch waits for T-2119.
 Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
 densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
 stays UNVERIFIED (T-1744).
-Tasks: T-0970, T-2119, T-1744, T-1745
+Tasks: T-0970, T-2119, T-1744, T-1745, T-2219, T-2220, T-2221
 
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
 Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)
