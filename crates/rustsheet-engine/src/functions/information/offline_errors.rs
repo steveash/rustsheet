@@ -167,6 +167,12 @@ impl Model {
             let value = self.evaluate_node_top_left(arg, cell);
             if let CalcResult::Error { error, .. } = &value {
                 match &first {
+                    // Beside an array option a scalar error lifts over both shapes, so the
+                    // result is the broadcast shape, not the source's (probes/rich-errors-
+                    // image-grid-error-option, T-2205): keep it for `fn_image`.
+                    LiftedArg::Grid(_) if lift_option_errors => {
+                        pending.get_or_insert_with(|| value.clone());
+                    }
                     LiftedArg::Grid(values) => {
                         return Err(self.error_grid(values.clone(), error, false, cell));
                     }
@@ -183,7 +189,12 @@ impl Model {
         }
         if let Some(error) = pending {
             if !has_array_option(&rest_values) {
-                return Err(error);
+                return Err(match (&first, &error) {
+                    (LiftedArg::Grid(values), CalcResult::Error { error, .. }) => {
+                        self.error_grid(values.clone(), error, false, cell)
+                    }
+                    _ => error,
+                });
             }
         }
         Ok((first, rest_values))
