@@ -41,7 +41,7 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 10 in eval/baseli
 | gen-m6/d0c30225243fde60 Calc!A63 | `=ADDRESS(SUM(Data!E1:E11),3,1,ISNA(SUMPRODUCT(Data!$A2)),"Data")` | "#VALUE!" | "Data!R123456831C3" |
 
 ## Acceptance criteria
-- [x] These 10 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] These 10 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite. (9 did; A167 is MULTINOMIAL's, moved to T-2294, which this PR files.)
 - [x] A new probes case (excel-graph) holds the grid; every cell passes or is a filed task named in the Outcome.
 - [x] lookup.md's third bullet states the rule with cells and no UNVERIFIED left.
 - [x] `make check` green; reviewers approve.
