@@ -576,7 +576,9 @@ in all three (A1, A2, B1-B2, C1-C2: REPT doubles it, CODE and UNICODE give 120) 
 units (`LEN` 256) and is `#VALUE!` in all three (row 7), as is 255 "x" plus it (row 8). T shares the cut:
 `T(REPT("x",256))` is `#VALUE!` (A12). CLEAN, TRIM, LOWER and LEFT(..,1) take the same 256-character text
 (A9-A11, A13, `LEN` 256 for the first three). `VALUE(REPT("1",256))` is `#VALUE!` (A14), which the probe cannot tell
-from a numeral-length limit. Unprobed: whether T refuses a long text element of an array argument (ours keeps it).
+from a numeral-length limit. Unprobed (every oracle cell builds the text inline with REPT): long text from a cell reference or as an array
+element (ours: `#VALUE!` in REPT, CODE and UNICODE and for T's scalar or top-left cell, T keeps a long array element),
+and which error wins when REPT's count is also an error (ours: the text's `#VALUE!`).
 Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs).
 
 ## UNICHAR code point bounds
