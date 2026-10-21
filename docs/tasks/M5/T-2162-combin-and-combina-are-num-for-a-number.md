@@ -16,6 +16,7 @@ COMBIN and COMBINA are `#NUM!` for a `number` past Excel's bound, at the exact c
 
 ## Context
 - Evidence first (planner, 2026-10-20): the probe this task asks for is T-2199 (research), which fills `probes/t2199-text-length-and-combin-cuts`. Use that case; do not probe again. Its failing cells are this task's cells too.
+- Result (T-2199): COMBIN is `#NUM!` for number >= 2^31-1; COMBINA for n+k-1 >= 2^31-1. See docs/excel-semantics/numbers.md.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). `COMBINA(FACT(13),10)` (6227020800) is `#NUM!` in Excel and 2.4E+91 here; `COMBINA(25,123456789.123)` and
 `COMBIN(123456789.123,10)` are numbers, so the cut lies in (1.23E+8, 6.2E+9]; 2^31 is the guess. Observation:
 docs/excel-semantics/numbers.md "COMBINA is COMBIN(n+k-1, k)", paragraph "Bound" (added by this triage). Probe first
