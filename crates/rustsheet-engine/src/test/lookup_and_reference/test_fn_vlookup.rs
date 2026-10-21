@@ -321,3 +321,46 @@ fn text_index_with_a_range_range_lookup_is_value_per_element() {
     assert_eq!(model._get_text("D1"), *"#VALUE!");
     assert_eq!(model._get_text("D2"), *"#VALUE!");
 }
+
+#[test]
+fn table_error_comes_after_lookup_value_and_before_index() {
+    // probes/lookup-argument-edges (excel-graph, T-2234): lookup_value, then table_array, then
+    // the index and range_lookup; a lifted lookup_value spills the table error.
+    let mut model = new_empty_model();
+    model._set("A1", "=VLOOKUP(NA(),1/0,2)");
+    model._set("A2", "=VLOOKUP(2,1/0,NA())");
+    model._set("A3", "=HLOOKUP(2,1/0,2,NA())");
+    model._set("A4", "=VLOOKUP(2,#REF!,\"a\")");
+    model._set("B1", "=VLOOKUP({2;9},1/0,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("A4"), *"#REF!");
+    assert_eq!(model._get_text("B1"), *"#DIV/0!");
+    assert_eq!(model._get_text("B2"), *"#DIV/0!");
+}
+
+#[test]
+fn index_floors_but_snaps_up_near_an_integer() {
+    // probes/lookup-index-near-integer and lookup-argument-edges (excel-graph, T-2234): 3.5 is
+    // column 3, 3.9999999 is column 4 (past the table), and the -2^31 cut-off is tested after
+    // flooring.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("C1", "3");
+    model._set("D1", "=VLOOKUP(1,A1:C1,3.5)");
+    model._set("D2", "=VLOOKUP(1,A1:C1,3.9999999)");
+    model._set("D3", "=VLOOKUP(1,A1:C1,2-2^-22)");
+    model._set("D4", "=VLOOKUP(1,A1:C1,2-2^-22*(1+3*2^-12))");
+    model._set("D5", "=VLOOKUP(1,A1:C1,-2147483647.5)");
+    model._set("D6", "=VLOOKUP(1,A1:C1,-2147483646.5)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "3");
+    assert_eq!(model._get_text("D2"), *"#REF!");
+    assert_eq!(model._get_text("D3"), "2");
+    assert_eq!(model._get_text("D4"), "1");
+    assert_eq!(model._get_text("D5"), *"#REF!");
+    assert_eq!(model._get_text("D6"), *"#VALUE!");
+}

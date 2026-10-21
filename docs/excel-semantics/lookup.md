@@ -161,9 +161,17 @@ index (`1/0`, `NA()`) and a text index (`"a"` is `#VALUE!`, not the `#REF!` of a
 each fill every row with that scalar error (VLOOKUP with a range or an array range_lookup; HLOOKUP and
 `NA()` probed with an array range_lookup only, the engine shares one path) (probes/vlookup-error-arg-lifting-range-lookup, 22 cells, excel-graph, 2026-10-13, T-1491).
 Matches the engine (`LookupIndexArg::Failed`).
-A multi-cell range *index* stays implicitly intersected (T-1426). Unprobed: which error wins when a
-lookup_value element and a range_lookup element are both errors (the engine gives the lookup error),
-and blank elements of a computed index array (read as 0, `#VALUE!`).
+A multi-cell range *index* stays implicitly intersected (T-1426).
+When a lookup_value element and a range_lookup element are both errors, the lookup_value's error wins:
+`VLOOKUP({#N/A;2},A1:C3,2,{#DIV/0!;TRUE})` spills `#N/A`, "y", and `VLOOKUP({2;#N/A},A1:C3,2,{#DIV/0!;#NUM!})`
+spills `#DIV/0!`, `#N/A`. The same holds unlifted: `VLOOKUP(NA(),A1:C3,2,1/0)` is `#N/A`, and `VLOOKUP(1/0,A1:C3,2,NA())`
+is `#DIV/0!`. A range_lookup error still beats a value that is not found: `VLOOKUP(9,A1:C3,2,1/0)` is `#DIV/0!`.
+HLOOKUP behaves alike (probes/lookup-argument-edges H30-H63, excel-graph, 2026-10-21, T-2234).
+A blank element of a computed index array is `#VALUE!` for the whole call, not a spill:
+`VLOOKUP(2,A1:C3,IF({1,0},2,Z1))` and `CHOOSE({1,2},2,Z1)` with Z1 blank, `INDEX(E10:E11,{1;2})` with E11 blank, and
+`{2,1}*Z1` (zeros). A text element (`IF({1,0},2,"")`) is `#REF!`. Not found is `#N/A` in each case. A blank
+reference index (`Z1`, `+Z1`) is `#VALUE!`. A lifted lookup_value with a blank-holding range index reads only its first
+cell: `VLOOKUP({2;2},A1:C3,E10:E11)` spills "y" twice (same probe, H126-H189).
 Evidence: probes/vlookup-array-index-range-lookup (155 cells, excel-graph, 2026-10-12, T-1269); the
 first-fill reading that an array range_lookup "looks unlifted" (T-0270) does not hold: each probe here has its own rows, so no spill collides.
 Implemented in: `Model::lookup_each` and `Model::pick_each` (lookup_each.rs), `LookupIndexArg::Array`
@@ -190,23 +198,46 @@ Evidence: probes/lookup-index-order H1–H50 (excel-graph, 2026-10-06, T-0211); 
 cbdabe32a32a4012 A87 (Calc sheet; excel-graph, 2026-10-04, gen-m2 sidecars, T-0203).
 Cut-off (probes/lookup-index-shapes H19-H36, excel-graph, 2026-10-06, T-0250): an index of
 -2147483648 is `#REF!`, -2147483647, -65536, -32769, -32768 and -32767 are `#VALUE!`, in VLOOKUP and
-HLOOKUP alike; not found is `#N/A` for all of them. A fractional index next to the cut-off is unprobed.
+HLOOKUP alike; not found is `#N/A` for all of them. A fractional index is floored before that test, so
+-2147483647.5, -2147483647.9999999 and -2147483648.25 are `#REF!`, while -2147483646.5 and -0.5 are `#VALUE!`. An
+array element floors the same way: `{-2147483647.5;-2147483648.5}` is `#REF!`. 2147483647.5 and 2147483648.5 are
+`#REF!` (past the table), and 3.5 is column 3 (probes/lookup-argument-edges H192-H333, excel-graph, 2026-10-21,
+T-2234).
+Near an integer the index snaps up, with the absolute bound that INDEX, LEFT and RIGHT use (2^-22 + 2^-33,
+"INDEX rounds an index up near an integer"). B1:CW1 holds 1 to 100, so `VLOOKUP(1,B1:CW1,x)` is the index used:
+- `2-2^-22*(1+2*2^-12)` is 2, but `2-2^-22*(1+3*2^-12)` is 1;
+- the same at 3, 50 and 100, and with HLOOKUP;
+- 2.9999999 is 3, and 3.9999999 is past a 3-column table (`#REF!`).
+
+Evidence: probes/lookup-index-near-integer (excel-graph, 2026-10-21, T-2234), for a literal and a reference index
+alike.
 Index shapes (same probe): `OFFSET(E1,..)` and `INDIRECT("E1")` results are references (a cell holding
 text or an error is `#REF!` when found, `#N/A` when not found). So is `INDEX(E1:E4,2)`: text or an
 error in the INDEXed cell is `#REF!` found / `#N/A` not found (probes H2, H3, H11, H12; T-0251).
 A multi-cell range index is implicitly intersected: `VLOOKUP(2,A1:C3,@E1:E2)` from row 1 reads E1,
 from row 2 reads E2 (text, so `#REF!`), from row 5 is `#VALUE!` (found), and also `#VALUE!` when the
 value is not found (value index fails before the search); `VLOOKUP(2,A1:C3,E1:E2)` unspilled in J10 is
-`#REF!` and `#N/A` when not found (K7); whether it spills into J11 is unprobed.
+`#REF!` and `#N/A` when not found (K7). Entered as a dynamic-array formula, it spills instead.
+`VLOOKUP(2,A1:C3,E1:E2)` with E1:E2 = 2, 3 spills "y" and 20 from J10, from N1 and from P2 (rows inside
+E1:E2 too), and is `#SPILL!` when the cell below is filled. `ROWS(..)` is 2, and `@E1:E2` from row 14 is `#VALUE!`.
+HLOOKUP behaves alike (probes/lookup-argument-edges J10-X2, excel-graph, 2026-10-21, T-2234).
 HLOOKUP twins (probes/lookup-index-hlookup H1-H6, excel-graph, 2026-10-07, T-0264): `INDEX(E1:E4,1)` (number)
 gives the row, `INDEX(E1:E4,2)` (text) and `INDEX(E1:E4,3)` (error) are `#REF!` found and `#N/A` not found,
 as in VLOOKUP. An INDEX index that itself fails (`INDEX(E1:E4,9)`) is `#REF!` in HLOOKUP and VLOOKUP, found
 or not found (H7-H10): a failing index is not turned into `#N/A` by a failed search. Whether the INDEX error propagates as is or is always
 mapped to `#REF!` is unprobed (an INDEX failing with another error, e.g. `INDEX(E1:E4,"x")`, would tell).
+A table_array error comes after lookup_value and before the index and range_lookup. `VLOOKUP(NA(),1/0,2)` and
+`VLOOKUP(NA(),#REF!,2)` are `#N/A`. `VLOOKUP(2,1/0,NA())`, `VLOOKUP(2,1/0,2,NA())` and `VLOOKUP(9,1/0,2)` are `#DIV/0!`.
+`VLOOKUP(2,#REF!,"a")` is `#REF!`. A lifted lookup_value spills the table error once per element: `VLOOKUP({2;9},1/0,2)`
+gives two `#DIV/0!` (probes/lookup-argument-edges H66-H123, excel-graph, 2026-10-21, T-2234).
+Unprobed: a table error next to a lifted range_lookup, and an error element of a lifted lookup_value with a table error
+(the engine gives the element's own error).
+A table that is the engine's own `#ERROR!` (arrays.md "Array results above 1,048,576 cells are #ERROR!", a DEVIATION)
+is returned once, not spread over a lifted lookup_value, so the limit still refuses the call.
 Status: VERIFIED
 Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
 (crates/rustsheet-engine/src/functions/lookup_and_reference/index_arg.rs), shared by VLOOKUP and HLOOKUP.
-Tasks: T-0211, T-0264
+Tasks: T-0211, T-0264, T-2234
 
 ## Approximate-match lookups: type-skipping binary search
 Rule: VLOOKUP/HLOOKUP with range_lookup TRUE (or omitted), LOOKUP, and MATCH with a non-zero
