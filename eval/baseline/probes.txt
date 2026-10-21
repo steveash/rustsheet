@@ -270,6 +270,7 @@ C	probes/eng-complex-overflow.case.json	21
 C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
 C	probes/eng-im-overflow.case.json	48
+C	probes/eng-im-small-part.case.json	28
 C	probes/eng-imdiv.case.json	24
 C	probes/eng-imexp-overflow-cutoff-halfpi.case.json	20
 C	probes/eng-imexp-overflow-cutoff-pi.case.json	24
