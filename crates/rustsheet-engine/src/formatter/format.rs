@@ -748,7 +748,6 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             if p.is_scientific {
                 if value_abs == 0.0 {
                     exponent_part = vec!['0'];
-                    exponent_is_negative = false;
                 } else {
                     // Engineering: the exponent is a multiple of the integer-placeholder count,
                     // rounded down (`##0.0E+0` on 123456.789 is "123.5E+3", on 61 "61.0E+0";
