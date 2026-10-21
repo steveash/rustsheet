@@ -22,7 +22,12 @@ Before any other character, `~` is a literal tilde: `"a~c"` matches "a~c", and a
 is literal (`"abc~"` matches "abc~", not "abc"). `~~` is **not** an escape for one tilde: `"~~"`
 does not match the text "~" and `"a~~c"` does not match "a~c". Matching, with or without
 wildcards, is case-insensitive (`"ABC"` → abc and ABC; `"A?C"`, `"*C"` → 5).
-Verified with COUNTIF only, for patterns without `*`/`?`; inside wildcard patterns and in MATCH/XMATCH see "Tildes inside wildcard patterns and wildcard-mode lookups" below. D-functions are unprobed for `~~`.
+Verified with COUNTIF, for patterns without `*`/`?`; inside wildcard patterns and in MATCH/XMATCH see "Tildes inside wildcard patterns and wildcard-mode lookups" below.
+D-functions follow the same plain-text tilde rule inside their prefix match (`~` stays literal, `~~` is two tildes, a trailing `~`
+is literal): over Data!A2:A9 = a~c, ac, abc~, abc, ~, a~~c, a~b, a~bx (v = 1..128), DSUM with criterion `a~c` 1, `a~~c` 32,
+`abc~` 4 (not abc), `~` 16, `~~` 0, `a~` 225 (a~c, a~~c, a~b, a~bx: prefix "a~", not "a"), `=a~c` 1, `=abc~` 4, `=~` 16, and the
+wildcard pattern `a~*` 0 (an escaped `*`); DCOUNTA counts agree (`a~` 4).
+Evidence: probes/criteria-tilde-blank-single-cell-edges Calc!A1:B10 (excel-graph, 2026-10-21, T-2235).
 Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, abc~, a*c, a?c, a~c,
 *, ~: 1, 1, 1, 0, 0, 1, 2, 5, 10, 5, 1; probes/criteria-grammar C8. Oracle: excel-graph, 2026-10-05 (T-0011).
 Status: VERIFIED
@@ -199,7 +204,12 @@ fixtures/external-link-cached-ranges Refs!B89:B92 (`SUM`, `ROWS`, `ISREF` and `I
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
-give 0 and AVERAGEIFS `#DIV/0!` at that position, and the COUNTIF result keeps its 3x1 shape (ROWS = 3; the others were probed only at INDEX(...,3,1); unprobed: blank, `""` or 0 cells in the searched range);
+give 0 and AVERAGEIFS `#DIV/0!` at that position, and the COUNTIF result keeps its 3x1 shape (ROWS = 3; the others were probed only at INDEX(...,3,1));
+over a searched range A1:A4 = blank, `=""`, 0, "0" (weights 1, 2, 4, 8) the array criterion `{"","=","<>",0,"0","=0"}` gives, per element,
+exactly the scalar criterion's result, in a 1x6 array for COUNTIF, SUMIF, SUMIFS, AVERAGEIFS and MAXIFS alike: COUNTIF 2, 1, 3, 2, 2, 2
+(`""` the blank and the `""` cell, `"="` the blank only, `"<>"` all but the blank, and `0`, `"0"`, `"=0"` each the number 0 and the text "0"),
+SUMIF/SUMIFS 3, 1, 14, 12, 12, 12, AVERAGEIFS 1.5, 1, 4.67, 6, 6, 6, MAXIFS 2, 1, 8, 8, 8, 8
+(probes/criteria-tilde-blank-single-cell-edges Arr!D1:K8, excel-graph 2026-10-21, T-2235);
 for SUMIFS and SUMIF an error in the sum range is `#N/A` only at the criteria positions whose rows select it
 (`SUMIFS(E1:E3,A1:A3,{"a","b"})` with E1 = #N/A is #N/A, 5; AVERAGEIFS and MAXIFS probed only at position 1: `#N/A`);
 `COUNTIFS(E1:E3,{"a","b"})` ignores it (0 at position 1). A `NA()`/non-range first argument with an array criterion
@@ -258,10 +268,15 @@ Tasks: T-0214
 ### SUMIF/AVERAGEIF resize clamps at the sheet edge; single-cell ranges are 1x1
 Rule: when the resized sum_range would run past XFD1048576 Excel clamps it to the sheet edge (no `#REF!`):
 `SUMIF(A1:B2,">0",XFD1)` sums XFD1:XFD2. After clamping, AVERAGEIF averages only the cells inside the clamped range (`AVERAGEIF(A1:B2,">0",XFD1048576)` = 30/1, not 30/4).
-A single-cell range is a 1x1 range (probed for SUMIF, SUMIFS, MINIFS, MAXIFS, COUNTIF; AVERAGEIF/COUNTIFS/MAXIFS share the code paths but are not probed): as the first range of
+A single-cell range is a 1x1 range (probed for SUMIF, SUMIFS, MINIFS, MAXIFS, COUNTIF, AVERAGEIF, COUNTIFS and AVERAGEIFS): as the first range of
 SUMIFS/MINIFS/MAXIFS (`SUMIFS(D1,A1:A1,">0")`) and as a criteria range (`=SUMIF(A1,">0",D1)`,
 `SUMIFS(D1:D1,A1,">0")`, `COUNTIF(A1,">0")`, `SUMIF(A1,{">0"},D1)`), none of them `#VALUE!`.
-Evidence: probes/sumif-edge-single-cell F1-F15 (oracle: excel-graph)
+With bare cells (A1 = 1, B1 = 2, D1 = 7, D2 = -1): `AVERAGEIF(A1,">0",D1)` 7, `AVERAGEIF(A1,">0")` 1, `AVERAGEIF(A1,"<0",D1)`
+`#DIV/0!`, `COUNTIFS(A1,">0",B1,"<5")` 1, `COUNTIFS(A1:A1,">0")` 1, `COUNTIFS(A1,">0",B1,">5")` 0, `MAXIFS(D1,A1,">0")` 7,
+`MAXIFS(D2,A1,">0")` -1, `MINIFS(D1:D1,A1,">0")` 7, `MINIFS(D1,A1,"<0")` 0, `AVERAGEIFS(D1,A1,">0")` 7,
+`AVERAGEIFS(D1:D1,A1,">0",B1,"<5")` 7.
+Evidence: probes/sumif-edge-single-cell F1-F15 (oracle: excel-graph); probes/criteria-tilde-blank-single-cell-edges One!F1:F12
+(excel-graph, 2026-10-21, T-2235)
 Status: VERIFIED
 Implemented in: `resize_to`, `apply_ifs`, `fn_countifs` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0234

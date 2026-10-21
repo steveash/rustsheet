@@ -3,7 +3,7 @@ id: T-2235
 title: "Probe and match the unprobed criteria edges: D-function ~~, array criteria over blank, empty-text and 0 cells, single-cell AVERAGEIF/COUNTIFS/MAXIFS ranges"
 milestone: M2
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -50,17 +50,27 @@ Write one excel-probe case (excel-graph oracle), about 60 cells. Code: `function
 `functions/database.rs`.
 
 ## Acceptance criteria
-- [ ] A new probes case, oracle-filled (excel-graph), covers the three groups. Every cell passes,
+- [x] A new probes case, oracle-filled (excel-graph), covers the three groups. Every cell passes,
       or its known failure is recorded with `make eval-baseline` and has a filed task named in the
       Outcome.
-- [ ] criteria.md replaces the three "unprobed" notes with rules that cite their cells. Where
+- [x] criteria.md replaces the three "unprobed" notes with rules that cite their cells. Where
       Excel looks inconsistent, it is recorded as found, not tidied.
-- [ ] Any engine change has unit tests next to the existing criteria tests; no gated baseline gains
+- [x] Any engine change has unit tests next to the existing criteria tests; no gated baseline gains
       a line.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A `NA()` or non-range first argument with an array criterion. excel-graph refuses those
   workbooks (criteria.md); they are desktop-only (M14).
 - An array of references as the range (T-2064).
 - Conditional-format value operators (T-1051).
+
+## Outcome
+New probe probes/criteria-tilde-blank-single-cell-edges (84 formula cells, excel-graph 2026-10-21): all pass
+with no engine change. D-function criteria keep the plain-text tilde rule inside the prefix match (`a~` is the
+prefix "a~", `abc~` does not match abc, `~~` matches no single tilde); array criteria over blank, `=""`, 0 and
+"0" cells give the scalar criterion's result per element in a 1x6 array; bare single-cell ranges in
+AVERAGEIF/COUNTIFS/MAXIFS/MINIFS/AVERAGEIFS act as 1x1 ranges. criteria.md's three "unprobed" notes are
+replaced with these rules (and the MAXIFS "not probed" contradiction removed). gen-m5/6a8bb7cd6d7769ad A79
+is not COUNTIF's (its COUNTIF is a scalar 0); it is T-2150's SUMPRODUCT blank one-cell argument.
+Eval delta: +84 passing cells (new case), no baseline change.
