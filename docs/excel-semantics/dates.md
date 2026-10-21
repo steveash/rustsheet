@@ -993,7 +993,9 @@ of January 1900, not on the weekday-faithful stand-in (serial 1 = 1899-12-31) th
   3e51213f35889d06 A320, 4ca39e0876796fa5 A308; 25 basis-0 cells in gen-m6). Basis 1 counts serial days (the fictitious day
   included) over the real calendar's average year: `YEARFRAC(48344,1,1)` = 132.35660175388034, `YEARFRAC(25538,1,1)` =
   69.91786287010599, `YEARFRAC(1,366,1)` = 1, `YEARFRAC(1,367,1)` = 366/365, `YEARFRAC(1,60,1)` = 59/365, `YEARFRAC(60,1520,1)` =
-  3.9978094194961664. Bases 2-4 pass too: probes/yearfrac-early-1900 holds serials 1, 31, 59, 60, 60.5 and 61 against 366 and
+  3.9978094194961664. Bases 2 and 3 count serial days (the fictitious day included) over 360 and 365: `YEARFRAC(1,366,2)` = 365/360,
+  `YEARFRAC(60,366,3)` = 306/365. Basis 4 is European 30/360 on the displayed date: `YEARFRAC(1,366,4)` = 359/360,
+  `YEARFRAC(60,366,4)` = 301/360 (29 February is day 29). probes/yearfrac-early-1900 holds serials 1, 31, 59, 60, 60.5 and 61 against 366 and
   45000 on bases 0-4, plus A61-A70 (70 cells, excel-graph 2026-10-21). Implemented by T-2237 (`year_fraction_parts`); T-2265
   added the probe.
 Status: VERIFIED for DATEDIF, EDATE, EOMONTH, DAYS360, WEEKNUM and YEARFRAC (the cells above). Implemented in `datedif_value`,
