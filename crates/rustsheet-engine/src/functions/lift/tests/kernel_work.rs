@@ -109,6 +109,15 @@ const VALUE_DEPENDENT: &[(Function, Option<&str>)] = &[
         Function::Fvschedule,
         Some("one pass over the schedule, charged per element as its count (LiftCost::Cells)"),
     ),
+    (
+        Function::Decimal,
+        Some("at most 255 text units: a longer text is #VALUE! before the loop"),
+    ),
+    (
+        Function::Base,
+        Some("at most 64 digits of an i64, then at most 255 units of padding"),
+    ),
+    (Function::Arabic, Some("one pass over the text")),
     (Function::Workday, Some(WORKDAY_SEARCH)),
     (Function::WorkdayIntl, Some(WORKDAY_SEARCH)),
     (Function::Networkdays, Some(NETWORKDAYS_COUNT)),

@@ -221,6 +221,18 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Mround => Some(&ATP_2),
         Function::Sqrtpi => Some(&ARRAYS_1),
         // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
+        // --- LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
+        // Every argument lifts over an array constant and over a multi-cell range given
+        // directly, on rows off the range too (probes/t2198-m5-lift-argument-kinds rows 10-27,
+        // 36; docs/excel-semantics/arrays.md "LOG, DECIMAL, BASE, ATAN2, ARABIC, DOLLAR, FIXED and
+        // NUMBERVALUE return arrays over array arguments"). LOG and ATAN2 are O(1); DECIMAL reads
+        // at most 255 units, BASE writes at most 64 digits and 255 padding, ARABIC makes one pass
+        // over its text (`lift/tests/kernel_work.rs`).
+        Function::Log => Some(&LIFT_1_OF_2),
+        Function::Decimal | Function::Atan2 => Some(&LIFT_2),
+        Function::Base => Some(&LIFT_2_OF_3),
+        Function::Arabic => Some(&LIFT_1),
+        // --- End LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
         _ => None,
     }
 }
