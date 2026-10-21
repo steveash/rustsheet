@@ -3,7 +3,7 @@ id: T-1965
 title: "A self-including VSTACK past the grid is #NUM!, not #CIRC! (probes/scalar-lift-open-c2 W1)"
 milestone: M9
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
