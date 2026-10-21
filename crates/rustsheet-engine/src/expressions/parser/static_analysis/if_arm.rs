@@ -51,7 +51,8 @@ fn is_range_arm(arm: &Node) -> bool {
                 kind: Function::Ifs,
                 args,
             } => pending.extend(args.iter().skip(1).step_by(2)),
-            // OFFSET resizes even a one-cell base into a range.
+            // Only whether the arm counts as a range argument: a resized OFFSET of one cell does, while at the
+            // root Excel shows a one-cell OFFSET(B1,0,0) arm with no `@` (probes/legacy-if-arm-other-references S).
             Node::FunctionKind {
                 kind: Function::Offset,
                 args,
