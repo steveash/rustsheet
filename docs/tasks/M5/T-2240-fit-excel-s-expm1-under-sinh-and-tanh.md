@@ -3,7 +3,7 @@ id: T-2240
 title: "Fit Excel's expm1 under SINH and TANH below 1 (PI()/4, 0.9999999999, 0.88)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
