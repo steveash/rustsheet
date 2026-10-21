@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
-use crate::functions::logical::{NamedLambdas, SharedLambda};
+use crate::functions::logical::{Captures, NamedLambdas, SharedLambda};
 use crate::{
     calc_result::{CalcResult, Range},
     cell::{spill_value_to_calc_result, CellValue},
@@ -164,6 +164,14 @@ pub struct Model {
     pub(crate) eta_lambdas: HashMap<usize, crate::functions::Function>,
     /// The defined-name LAMBDAs called in this evaluation, keyed by the same ids as `lambdas`.
     pub(crate) named_lambdas: NamedLambdas,
+    /// What each LAMBDA made inside a LET or a LAMBDA call captured of the variables in scope
+    /// (`Model::close_over`), keyed by the same ids as `lambdas`.
+    pub(crate) lambda_captures: HashMap<usize, Captures>,
+    /// The cells `lambda_captures` holds copies of, against `MAX_CAPTURED_CELLS`.
+    pub(crate) captured_cells: usize,
+    /// Where the stack was when the outermost LAMBDA call running now started
+    /// (`Model::lambda_stack_base`), `None` while no call runs.
+    pub(crate) lambda_calls_base: Option<usize>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
     /// The defined-name bodies being evaluated right now (`within_defined_name`).
@@ -236,10 +244,20 @@ impl Model {
         self.last_lambda_id += 1;
         id
     }
+    /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
+    /// made it (a cell holding one is `#CALC!`), so what the LAMBDAs captured
+    /// (`Model::close_over`) is dropped with it, not kept for the rest of the pass.
+    pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
+        self.evaluate_cell(cell);
+        self.lambda_captures.clear();
+        self.captured_cells = 0;
+    }
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
         self.eta_lambdas.clear();
         self.named_lambdas = NamedLambdas::default();
+        self.lambda_captures.clear();
+        self.captured_cells = 0;
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(

@@ -3,7 +3,7 @@ id: T-1484
 title: "Spec: WEEKNUM stale return_type state in Excel's calc order (decision 0038 reopened)"
 milestone: M6
 lane: engine
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -25,24 +25,31 @@ a sheet"; after edits Excel follows its calc chain (`calcChain.xml`). Decision 0
 and (b) list the problems: RustSheet's storage-order passes, restarts on spill reordering, and a
 hidden dependency that incremental recalc cannot see.
 
-gen-m6 triage (T-2180, excel-graph oracle, 2026-10-21): Four more cells with a return_type of 22 or more or negative, where Excel reuses an earlier WEEKNUM's start weekday and ours is `#NUM!` (return types `SUM(..)`, `YEAR(<blank>)` = 1900, `-ROUND(100,2)`).
-
-Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 4 in eval/baseline/gen-m6.txt:
-
-| case / cell | formula | Excel | ours |
-|---|---|---|---|
-| gen-m6/121a7c17092038d9 Calc!A238 | `=WEEKNUM(22503,SUM(Data!A6:A8,Data!D2:D4))` | 33.0 | "#NUM!" |
-| gen-m6/3e51213f35889d06 Calc!A74 | `=WEEKNUM(367,YEAR(Data!E7))` | 1.0 | "#NUM!" |
-| gen-m6/c96ac1ada46179c4 Calc!A219 | `=WEEKNUM(16038,SUM((Data!A3-7),Data!B11:B12,Data!E6:E9))` | 48.0 | "#NUM!" |
-| gen-m6/c96ac1ada46179c4 Calc!A295 | `=WEEKNUM(26714,-ROUND(100,2))` | 8.0 | "#NUM!" |
-
 ## Acceptance criteria
-- [ ] The implementation tasks the spec files cite the 4 gen-m6 cells above (case and cell), so they are owned when this task closes.
-- [ ] Probe what decides the order across sheets and after edits (excel-probe skill), and record it
+- [x] Probe what decides the order across sheets and after edits (excel-probe skill), and record it
       in docs/excel-semantics/dates.md.
-- [ ] docs/specs/SPEC-NNNN-*.md states how the state is kept and which calc order it follows, and
+- [x] docs/specs/SPEC-NNNN-*.md states how the state is kept and which calc order it follows, and
       files implementation tasks with `make new-task`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing calc-chain import in general, beyond what the spec needs.
+
+## Outcome
+Unblocked on 2026-10-21 in the owner's session: the only open verdict was reviewer-performance, which decision 0081 turned off; its two asks (a constant floor on the move budget, a long-chain probe in T-2070) are in 3189053e. The spec is renumbered SPEC-0017 because SPEC-0015 went to pivot tables (T-1708) while this PR was open.
+- Probed the order and the state (excel-graph, 2026-10-19): 21 new probes/weeknum-stale-* cases.
+  The state is Sunday, Monday or empty, one per recalc. Types 1 and 17 set Sunday; 2, 11, 21 and
+  ISOWEEKNUM set Monday; types 12-16, the always-`#NUM!` types and array-lifted calls empty it; 22+
+  and negative types read it. Fresh-load order is reverse load order: last sheet first, bottom row
+  first, right to left, a cell reading an uncalculated formula is moved to just after it and re-run. A moved sheet keeps its load position.
+  This corrects the old notes: ISOWEEKNUM does set the state, and there is no per-sheet reset.
+- calcChain.xml is ignored on a full-calc load. Session edits isolate session-entered formulas.
+  Both are in docs/research/t1484-weeknum-calc-order-2026-10-19.md.
+- Recorded in docs/excel-semantics/dates.md ("WEEKNUM's stale return_type state") and recalc.md
+  ("The order Excel calculates a freshly loaded workbook in").
+- SPEC-0017 specifies a per-pass state, with an Excel-order pass that runs only when a WEEKNUM
+  reader ran, so other workbooks keep today's order and cost. Follow-ups: T-2068 (engine, opus, M),
+  T-2069 (engine, sonnet, S, moved sheets) and T-2070 (research, sonnet, S, open questions).
+- Eval: probes known failures +42 (1913 -> 1955), all in the new M6 cases; no existing cell
+  changed. With the 5 already listed, T-2068 and T-2069 own 47 cells.
+

@@ -1,5 +1,5 @@
 ---
-id: T-2262
+id: T-2288
 title: "DATEDIF: an unknown unit is #NUM!, not #VALUE!, whatever the dates"
 milestone: M6
 lane: functions-date
@@ -70,7 +70,7 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 40 in eval/baseli
 ## Acceptance criteria
 - [ ] These 40 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] probes/datedif-days360-error-order and probes/date-math-lift-driver-edges still pass; a unit test covers a well-ordered pair with "x", "", a number and TRUE as unit.
-- [ ] dates.md's new sentence says Ours: implemented (T-2262).
+- [ ] dates.md's new sentence says Ours: implemented (T-2288).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

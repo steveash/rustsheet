@@ -3,7 +3,7 @@ id: T-2237
 title: "YEARFRAC with a date in [0, 1) on bases 1-4 and next to January-February 1900: probe and match (today #NUM! until probed)"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -47,45 +47,29 @@ serial 0", or fix the code comment's reference. Then implement them in `year_fra
 The discount-security functions also call `year_fraction_parts` (financial.md "Discount securities:
 day count and year length"). Check that no financial cell moves, or measure and list the ones that do.
 
-gen-m6 triage (T-2180, excel-graph oracle, 2026-10-21): YEARFRAC with a start or end in [0, 1) on bases 1-4 (blank cells, 0.3, 0.5, MINUTE(SECOND(<blank>)), SECH(1E+16) ...): Excel gives a number on every basis, ours `#NUM!`. These cells are evidence for the probe's grid (basis 1 `YEARFRAC(49382,0,1)` = 135.20326938175668, basis 2 `YEARFRAC(0,42305,2)` = 117.51388888888889, basis 3 `YEARFRAC(36821,0.3,3)` = 100.87945205479453, basis 4 `YEARFRAC(0.5,366,4)` = 1). One cell is YEARFRAC inside TIME (04fdc9a67474aab9 A315, basis 4). YEARFRAC of serials 1-60 is T-2265.
-
-Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 22 in eval/baseline/gen-m6.txt:
-
-| case / cell | formula | Excel | ours |
-|---|---|---|---|
-| gen-m6/03333cc38ec06a14 Calc!A175 | `=YEARFRAC(INDIRECT("Data!A1"),46914,1)` | 128.44421334125687 | "#NUM!" |
-| gen-m6/04fdc9a67474aab9 Calc!A35 | `=YEARFRAC(7011,Data!E6,2)` | 19.475 | "#NUM!" |
-| gen-m6/04fdc9a67474aab9 Calc!A315 | `=TIME(2,YEARFRAC((Data!D3*Data!A$12),14513,4),26)` | 0.11071759259259259 | "#NUM!" |
-| gen-m6/121a7c17092038d9 Calc!A61 | `=YEARFRAC(52878,0,AVERAGE((Data!A$8*Data!C$7),Data!E5,INDIRECT("Data!Z99",Data!$B2)))` | 144.7727573119843 | "#NUM!" |
-| gen-m6/38d4bcdafaed1275 Calc!A356 | `=YEARFRAC(10506,MINUTE(SECOND(Data!E$6)),2)` | 29.183333333333334 | "#NUM!" |
-| gen-m6/44194b2fefa30de2 Calc!A42 | `=YEARFRAC(13963,SECH(1E+16),3)` | 38.25479452054795 | "#NUM!" |
-| gen-m6/4ca39e0876796fa5 Calc!A118 | `=YEARFRAC(36821,0.3,3)` | 100.87945205479453 | "#NUM!" |
-| gen-m6/6684de07ac74bcb8 Calc!A368 | `=YEARFRAC(0,42305,2)` | 117.51388888888889 | "#NUM!" |
-| gen-m6/7ac4ea222977f3b4 Calc!A225 | `=YEARFRAC(Data!$E6,(CODE(UNICHAR(12288))-(Data!$A2+Data!C$2)),2)` | 0.16944444444444445 | "#NUM!" |
-| gen-m6/9130ade4b1924cc8 Calc!A250 | `=YEARFRAC(43155,(AREAS(Data!A8:C12)/Data!B3),3)` | 118.23287671232876 | "#NUM!" |
-| gen-m6/9615a6de0f3ac417 Calc!A7 | `=YEARFRAC(26267,0.5,4)` | 71.91666666666667 | "#NUM!" |
-| gen-m6/9615a6de0f3ac417 Calc!A235 | `=YEARFRAC(POWER(2/3,Data!$D$9),41949,4)` | 114.85 | "#NUM!" |
-| gen-m6/9c615d338d990644 Calc!A123 | `=YEARFRAC(49382,0,1)` | 135.20326938175668 | "#NUM!" |
-| gen-m6/9c615d338d990644 Calc!A161 | `=YEARFRAC(45276,0,1)` | 123.96166924265842 | "#NUM!" |
-| gen-m6/acdfeaf6e6eadd4e Calc!A111 | `=YEARFRAC(0.5,28080,2)` | 78.0 | "#NUM!" |
-| gen-m6/b62dd1ebd266b71c Calc!A271 | `=YEARFRAC(SECOND(INDIRECT("Data!Z99")),18137,3)` | 49.69041095890411 | "#NUM!" |
-| gen-m6/bf63ed6c6f592475 Calc!A90 | `=YEARFRAC(0.5,366,4)` | 1.0 | "#NUM!" |
-| gen-m6/d183b62596b8e174 Calc!A238 | `=YEARFRAC(21576,ROUND(1e-15,-1),1)` | 59.074564205530706 | "#NUM!" |
-| gen-m6/d183b62596b8e174 Calc!A314 | `=YEARFRAC(COUNTIF(Data!A6:C7,1),56133,4)` | 153.68333333333334 | "#NUM!" |
-| gen-m6/da0289bc74cdf6af Calc!A308 | `=YEARFRAC(22926,0.3,3)` | 62.81095890410959 | "#NUM!" |
-| gen-m6/da0289bc74cdf6af Calc!A346 | `=YEARFRAC(55825,0,1)` | 152.84120394395433 | "#NUM!" |
-| gen-m6/ee56a4ed5a612a0d Calc!A60 | `=YEARFRAC(32421,SUMIF(Data!E1:E12,"*c",Data!B11:E11),3)` | 88.82465753424657 | "#NUM!" |
-
 ## Acceptance criteria
-- [ ] The 22 gen-m6 known-failure lines above disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
-- [ ] A new probes case, oracle-filled (excel-graph), covers the grid above. Every cell passes, or
+- [x] A new probes case, oracle-filled (excel-graph), covers the grid above. Every cell passes, or
       its known failure is recorded with `make eval-baseline` and has a filed task named in the Outcome.
-- [ ] dates.md states the rule for each basis with its cells, and the UNVERIFIED notes above are gone.
-- [ ] Unit tests in `test/test_yearfrac_basis.rs` cover each basis's serial-0 rule. No gated baseline
+- [x] dates.md states the rule for each basis with its cells, and the UNVERIFIED notes above are gone.
+- [x] Unit tests in `test/test_yearfrac_basis.rs` cover each basis's serial-0 rule. No gated baseline
       gains a line, and no financial cell changes, or each change is listed in the Outcome.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - DAYS360, COUP* and the bond functions at serial 0 (probe separately if YEARFRAC's rule suggests
   they differ).
 - Negative serials (still `#NUM!`).
+
+## Outcome
+Probed (excel-graph, 2026-10-21): probes/yearfrac-serial-zero (205 cells: the grid, reversed pairs, serial 60
+pairs, plus serials 1 and 59 against later dates), probes/yearfrac-serial-zero-1904 (25 cells) and
+probes/discount-serial-zero (50 cells, since the discount securities share `year_fraction_parts`). Rules in dates.md
+"YEARFRAC accepts serial 0" (the section the code comment cited now exists; the UNVERIFIED note is gone):
+- Serial 0 is a date on every basis.
+- Basis 0 counts on Excel's own calendar with 1900-02-28 as February's last day, so `YEARFRAC(59,60,0)` is
+  **-1/360**. YEARFRAC and ACCRINTM no longer take `abs()`; ACCRINTM, DISC and PRICEDISC go negative the same way.
+- Bases 1-3 count serials, and basis 1's year length reads the real calendar from 1900. This also fixes serials
+  1-59, which were read as 1899 (`YEARFRAC(1,33752,1)`).
+- Basis 4 was already right once serial 0 was accepted.
+Financial cells that moved: only the new probes/discount-serial-zero cells; no gated baseline gained a line. Follow-up T-2283 probes PRICEMAT/YIELDMAT with issue or settlement at serials 0-60 (they read the same parts; review finding).
+Eval: 3 new probes cases, 280 cells, all bit-exact (baseline coverage lines only); 0 regressions and 0 fixed in every gated suite.

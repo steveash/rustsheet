@@ -20,7 +20,7 @@ error argument beats an out-of-range index" (added by this triage). `Model::chos
 (crates/rustsheet-engine/src/functions/lookup_and_reference/choosecols_chooserows.rs) stops at the first problem in argument order. Scan
 all arguments for an error value first, then validate the indexes. Which of two errors wins is not decided by the cells: keep the
 first in argument order and say so in lookup.md (UNVERIFIED).
-Three cells need an inner fix as well: c4edd76f46980c5f A232 (DATEDIF unknown unit, T-2262), da0289bc74cdf6af A195 (TIME past the bound,
+Three cells need an inner fix as well: c4edd76f46980c5f A232 (DATEDIF unknown unit, T-2288), da0289bc74cdf6af A195 (TIME past the bound,
 T-2267), 7f3606fef4cb9df7 A111 (EXP(999999999999999) must be `#NUM!`, T-2169).
 
 Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 26 in eval/baseline/gen-m6.txt:

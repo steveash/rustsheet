@@ -14,41 +14,52 @@ use crate::arithmetic::{
     extended_div, extended_mul, extended_of, extended_quotient, extended_sum, store_extended,
     Extended,
 };
+use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
 
 /// Below this |x| SINH and TANH are built from `expm1` ([`expm1_pair`]); from it on, from `exp`.
 const EXPM1_FORM_LIMIT: f64 = 1.0;
-/// `exp(x)` overflows near here; defer to libm so the finite/infinite boundary is unchanged.
-const EXP_SAFE_LIMIT: f64 = 700.0;
 /// |tanh(x)| rounds to 1.0 in f64 beyond this.
 const TANH_SATURATION: f64 = 20.0;
 
 /// `(expm1(x), expm1(-x))`, the two values Excel's SINH and TANH share below
 /// [`EXPM1_FORM_LIMIT`] (T-2134, docs/excel-semantics/numbers.md "SINH and TANH below 1 are built
-/// from expm1"). Excel's own expm1 is not known; libm's fits about three quarters of the
-/// probes-numeric t2178-hyperbolic-unit-sweep cells, and some pair within 3 ulp of it fits every one.
+/// from expm1").
 fn expm1_pair(x: f64) -> (f64, f64) {
-    (x.exp_m1(), (-x).exp_m1())
+    (excel_expm1(x), excel_expm1(-x))
 }
 
+/// Excel's expm1: Kahan's `(u - 1) * x / ln(u)` with `u` Excel's own EXP and the log Excel's LN,
+/// each step a double (T-2240, docs/excel-semantics/numbers.md "Excel's expm1 is Kahan's
+/// formula"). It fits all 1015 SINH and TANH cells of probes-numeric t2178-hyperbolic-unit-sweep,
+/// where libm's expm1 fits 773 and 781. `u == 1` (|x| tiny) gives `x`.
+fn excel_expm1(x: f64) -> f64 {
+    let u = excel_exp(x);
+    if u == 1.0 {
+        return x;
+    }
+    let u_minus_1 = u - 1.0;
+    if u_minus_1 == -1.0 {
+        return -1.0;
+    }
+    u_minus_1 * x / excel_ln(u)
+}
+
+/// Overflows to infinity where `e^|x|` does (just above 709.78; Excel's exact cut is unprobed,
+/// T-1944): SINH/COSH report that as `#NUM!` and SECH/CSCH
+/// as 0 (numbers.md "SINH and COSH overflow is `#NUM!` at once").
 pub(super) fn sinh(x: f64) -> f64 {
     if x.abs() < EXPM1_FORM_LIMIT {
         // (a - b)/2 is exact in its halving; a - b is the one rounding.
         let (a, b) = expm1_pair(x);
         (a - b) / 2.0
-    } else if x.abs() > EXP_SAFE_LIMIT {
-        x.sinh()
     } else {
         (x.exp() - (-x).exp()) / 2.0
     }
 }
 
 pub(super) fn cosh(x: f64) -> f64 {
-    if x.abs() > EXP_SAFE_LIMIT {
-        x.cosh()
-    } else {
-        (x.exp() + (-x).exp()) / 2.0
-    }
+    (x.exp() + (-x).exp()) / 2.0
 }
 
 pub(super) fn tanh(x: f64) -> f64 {
@@ -164,6 +175,17 @@ mod tests {
         assert_eq!(tanh(0.2), 0.197_375_320_224_904_03);
         assert_eq!(tanh(0.4), 0.379_948_962_255_224_9);
         assert_eq!(sinh(-0.3), -0.304_520_293_447_142_6);
+    }
+
+    // Kahan's expm1 over Excel's EXP and LN (T-2240): libm's expm1 put each of these an ulp off.
+    // TRIGONOMETRIC.xlsx SINH_COSH_TANH!B51/D51 (PI()/4) and B15 (0.9999999999), Excel-cached.
+    #[test]
+    fn expm1_is_kahans_formula() {
+        let quarter_pi = std::f64::consts::FRAC_PI_4;
+        assert_eq!(sinh(quarter_pi), 0.868_670_961_486_009_6);
+        assert_eq!(tanh(quarter_pi), 0.655_794_202_632_672_4);
+        assert_eq!(sinh(0.999_999_999_9), 1.175_201_193_489_493_5);
+        assert_eq!(excel_expm1(1e-20), 1e-20);
     }
 
     #[test]

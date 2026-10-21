@@ -831,3 +831,10 @@ is `#VALUE!` (gen-m6/9615a6de0f3ac417 Calc!A144); most likely SUBSTITUTE's insta
 (no 1E+15th match) and LOOKUP gives `#N/A`. The bound (2^31, 2^53, 32767 ...) is UNVERIFIED (T-2279 probes it).
 Status: UNVERIFIED (one cell)
 Tasks: T-2279
+
+## ARRAYTOTEXT: an error in the array argument wins over an invalid format (T-2250)
+Rule: `ARRAYTOTEXT(<error>, 2)` is the array argument's error, not the `#VALUE!` of the invalid format 2: `ARRAYTOTEXT(SINH(134217727),2)` is `#NUM!`. Whether this holds for every error kind and for a non-scalar array is unprobed.
+Ours: `#VALUE!` (the format is checked first).
+Evidence: gen-m5/4febabc66cfdf9a1 Calc!A156 (excel-graph, 2026-10-20, T-2114).
+Status: VERIFIED (excel-graph); not implemented (T-2250).
+Tasks: T-2169, T-2250
