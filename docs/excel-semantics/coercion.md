@@ -246,18 +246,22 @@ Calc!A307) and `SUMX2MY2(C10:D12,C11:E12)` (gen-m5/d1b251fd6e9c4b4b Calc!A397), 
 (two all-blank ranges stay `#DIV/0!`, above): each side holds a number, so rule 4 gives 0. Implemented in T-0961.
 
 ## SUMPRODUCT: a blank one-cell argument beside other arguments is `#VALUE!` (T-2150)
-Rule: with two or more arguments, SUMPRODUCT is `#VALUE!` when one argument is a blank cell given as a one-cell reference and
-the others are single values: `SUMPRODUCT(E6,123456789.123)` (E6 blank; `ISERR` of it is TRUE), `SUMPRODUCT(41.42,B7:B7,3.64)`,
+Rule: SUMPRODUCT is `#VALUE!` when one argument is a blank cell given as a one-cell reference (alone, or beside single values or ranges, see the probe below), e.g. `SUMPRODUCT(E6,123456789.123)` (E6 blank; `ISERR` of it is TRUE), `SUMPRODUCT(41.42,B7:B7,3.64)`,
 `SUMPRODUCT(<number>,D4:D4)`, `SUMPRODUCT(A6:A6,B4,0)` (A6 FALSE, B4 blank), `SUMPRODUCT(B1,C12,D10)` (D10 blank) and
 `SUMPRODUCT(A11:A11,1.005,C11:C11)` (A11 text, C11 blank), and the `#VALUE!` reaches the caller (`SHEET(7+SUMPRODUCT(E1,100,-1))`
-is `#VALUE!`, not SHEET's `#N/A`). A lone blank argument is 0 (`SUMPRODUCT(B4:B4)`, gen-m5/3e134e52393061b1 Calc!A222).
+is `#VALUE!`, not SHEET's `#N/A`). A lone one-cell boolean is 0 (`SUMPRODUCT(B4:B4)` with B4 TRUE, gen-m5/3e134e52393061b1 Calc!A222); the probe below shows a lone blank is `#VALUE!`.
 An error argument beats a shape mismatch earlier in the list: `SUMPRODUCT(TYPE(B11:B11),B9:E10,<VLOOKUP #N/A>)` is `#N/A`
 (ours `#VALUE!`, and ours is `#VALUE!` for `SUMPRODUCT(1,B9:E10,NA())` too).
 Ours: the blank is a 0 factor, so these are 0 (and their callers go on).
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1b30e4d075b252ea Calc!A365, gen-m5/6a8bb7cd6d7769ad Calc!A79,
 gen-m5/aac6230c2fb40e1e Calc!A79, gen-m5/fc81c2f704bef138 Calc!A165, gen-m5/c688ca172fe533dc Calc!A183, gen-m5/7d1a5d223624fc70 Calc!A33,
 gen-m5/aac6230c2fb40e1e Calc!A64, gen-m5/f0f205865a3a4328 Calc!A396, gen-m5/399071ff6782ab16 Calc!A145.
-Unprobed: a blank one-cell argument beside a multi-cell range, and a one-cell text or boolean argument on its own.
+Probed (excel-graph, 2026-10-21, T-2200, probes/t2200-blank-and-padded-m5-args, Calc!A1:A27): a blank one-cell reference is
+`#VALUE!` beside a 2x2 range in either order, beside a number reference in either order, in all three positions of a
+three-argument list, and alone (`SUMPRODUCT(Data!A1)`, A6). A one-cell text or boolean
+reference is a 0 factor beside a number (0, either order) and alone (0), but `#VALUE!` beside a 2x2 range (a 1x1 against a 2x2
+is a shape mismatch). A blank plus a shape mismatch is `#VALUE!` in every position (the cells all hold the blank, so they do not separate the two causes). The blank was a never-written cell; `SUMPRODUCT(blank:blank)` written as a range was not probed. An error argument ahead of the blank wins
+(`SUMPRODUCT(NA(),blank)`, `SUMPRODUCT(NA(),R,blank)` are `#N/A`); the blank ahead of the error gives `#VALUE!`.
 Status: VERIFIED (excel-graph); not implemented (T-2150).
 Tasks: T-0944
 
