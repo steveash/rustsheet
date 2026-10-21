@@ -3,7 +3,7 @@ id: T-2064
 title: "Per-element callers over an array of references: SUBTOTAL, COUNTIF/SUMIF(S), COUNTBLANK, AREAS, ROW/COLUMN/CELL, ISFORMULA, N/T (SPEC-0014)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
