@@ -3,7 +3,7 @@ id: T-2200
 title: "Probe blank and padded arguments of SUMPRODUCT, SWITCH and ARABIC (T-2150, T-2166, T-2153)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
