@@ -156,6 +156,7 @@ fn reads_cheaply(node: &Node) -> bool {
             | Node::ErrorKind(_)
             | Node::EmptyArgKind
             | Node::ArrayKind(_)
+            | Node::ImplicitIntersection { .. }
             | Node::ReferenceKind { .. }
             | Node::RangeKind { .. }
     )
@@ -233,6 +234,23 @@ impl Model {
             }
         }
         (resolved, grids)
+    }
+
+    /// Calls the implementation of `kind`: through [`Self::call_per_reference_element`] for a
+    /// per-element consumer ([`Function::per_reference_element`]), directly otherwise.
+    pub(crate) fn call_by_reference_elements(
+        &mut self,
+        kind: &Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        implementation: Implementation,
+    ) -> CalcResult {
+        match kind.per_reference_element(args.len()) {
+            Some(per_element) => {
+                self.call_per_reference_element(args, per_element, cell, implementation)
+            }
+            None => implementation(self, args, cell),
+        }
     }
 
     /// Calls `implementation` once per element of every array of references among its reference
@@ -436,9 +454,10 @@ impl Model {
         }
     }
 
-    /// OFFSET, INDIRECT, TRIMRANGE, TAKE or DROP read as a reference argument: one reference (an
-    /// unlifted TAKE or DROP: its value, as a value argument reads it), or an array of
-    /// references when an argument lifts the call (`kind` is one of the five).
+    /// OFFSET, INDIRECT, TRIMRANGE, TAKE, DROP or VSTACK read as a reference argument: one
+    /// reference (an unlifted TAKE or DROP: its value, as a value argument reads it), or an array
+    /// of references when an argument lifts the call, or VSTACK stacks such arrays
+    /// ([`Model::vstack_reference`]; otherwise VSTACK's value). `kind` is one of the six.
     pub(crate) fn reference_producer(
         &mut self,
         kind: &Function,
@@ -450,6 +469,10 @@ impl Model {
             Function::Trimrange => self.trimrange_reference(args, cell, false),
             Function::Take => self.take_drop_reference(args, cell, Edge::Take, false),
             Function::Drop => self.take_drop_reference(args, cell, Edge::Drop, false),
+            Function::Vstack => match self.vstack_reference(args, cell) {
+                Some(stacked) => stacked,
+                None => RefArg::from(self.fn_vstack(args, cell)),
+            },
             _ => self.offset_reference(args, cell),
         }
     }

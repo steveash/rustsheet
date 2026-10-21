@@ -362,6 +362,13 @@ fn fn_offset_per_element_consumers_nest_linearly() {
         formula = format!("N(OFFSET(A1,{formula},0))");
     }
     model._set("C1", &format!("={formula}"));
+    // IF, CHOOSE and LET are not read ahead: each is evaluated once, by the call.
+    let mut formula = "1".to_string();
+    for _ in 0..60 {
+        formula = format!("N(IF(TRUE,{formula}))");
+    }
+    model._set("D1", &format!("={formula}"));
     model.evaluate();
     assert_eq!(model._get_text("C1"), *"0");
+    assert_eq!(model._get_text("D1"), *"1");
 }

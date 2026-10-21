@@ -808,7 +808,8 @@ nest of such calls is evaluated once per level. Unprobed (T-2290): an error elem
 call with that error in the reference's place, `AREAS(OFFSET(A1,{0;-1},0))` 1, `#REF!`); a criteria or function_num
 array beside a grid (ours: each element's call cut to its top-left value, so `COUNTIF(OFFSET(A1,{0;1},0),{">0",">5"})`
 is 2x1, where a broadcast would give 2x2); VSTACK of several grids (ours: narrower ones padded with `#N/A` elements);
-a grid reached through IF, CHOOSE, LET, TAKE, DROP or TRIMRANGE by a per-element caller (ours: the value view, only
+an argument beside a grid that reads as an empty value, a 3-D range or a LAMBDA (ours: the call is `#VALUE!`,
+`COUNTIF(OFFSET(A1,{0;1},0),IF(TRUE,C5))` with C5 blank); a grid reached through IF, CHOOSE, LET, TAKE, DROP or TRIMRANGE by a per-element caller (ours: the value view, only
 a direct OFFSET or INDIRECT is read per element).
 DEVIATION (decision 0014, CLAUDE.md directive 5): before any element runs, each element of a per-element call is
 charged one visit (ROW, COLUMN, AREAS, CELL, ISFORMULA, N, T) or the cells of its reference inside the used area

@@ -20,6 +20,7 @@ T-1955 failed to open in Excel for the web), with the excel-probe skill:
 - `=AREAS(OFFSET(A1,{0;-1},0))`, `=ROW(OFFSET(A1,{0;-1},0))`, `=SUBTOTAL(9,OFFSET(A1,{0;-1},0))` (error elements);
 - `=COUNTIF(OFFSET(A1,{0;1},0),{">0",">5"})`, `=SUMIF(OFFSET(A1,{0;1},0),{">0",">50"})`, `=SUBTOTAL({9,1},OFFSET(A1,{0;1},0))`
   (an array beside a grid: 2x1 of top-left values, or a 2x2 broadcast?);
+- `=COUNTIF(OFFSET(A1,{0;1},0),IF(TRUE,C5))` with C5 blank (an empty criteria beside a grid);
 - `=SUM(VSTACK(OFFSET(A1,{0;1},0),OFFSET(A1,0,{0,1})))` (several grids);
 - `=SUBTOTAL(9,IF(TRUE,OFFSET(A1,{0;1},0)))`, `=ROW(LET(x,OFFSET(A1,{0;1},0),x))`, `=AREAS(TAKE(OFFSET(A1,{0;1;2},0),2))`
   (pass-through to a per-element caller).
