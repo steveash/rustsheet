@@ -119,3 +119,23 @@ fn choose_of_a_range_function_num_spills_like_the_range() {
     assert_eq!(model._get_text("A4"), *"23");
     assert_eq!(model._get_text("B4"), *"");
 }
+
+/// SUBTOTAL's PRODUCT over no numbers is 0, as `PRODUCT` is, not the empty product 1
+/// (docs/excel-semantics/numbers.md "SUBTOTAL 6 over no numbers is 0", gen-m6/216e3c05f407ca79).
+#[test]
+fn subtotal_product_over_no_numbers_is_zero() {
+    let mut model = new_empty_model();
+    model._set("A1", "abc");
+    model._set("A2", "?b");
+    model._set("B1", "=SUBTOTAL(6,A1:A2)");
+    model._set("B2", "=SUBTOTAL(106,C1:C3)");
+    model._set("B3", "=PRODUCT(A1:A2)");
+    model._set("D1", "3");
+    model._set("D2", "4");
+    model._set("B5", "=SUBTOTAL(6,D1:D2)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "0");
+    assert_eq!(model._get_text("B2"), "0");
+    assert_eq!(model._get_text("B3"), "0");
+    assert_eq!(model._get_text("B5"), "12");
+}
