@@ -1059,5 +1059,5 @@ Rule (excel-graph, gen-m6, 2026-10-21): a start date out of the calendar is `#NU
 `YEARFRAC(SUM(-1,FALSE,<blank>),SUMIFS(D10:D12,A5:B7,"abc")+..,0)` (end `#VALUE!` from the SUMIFS shape mismatch) and
 `YEARFRAC(123456790.12..,NETWORKDAYS.INTL(51358,34485,15,<FALSE cell>)+1E-15,0)` are `#NUM!` (gen-m6/3516b9fbbd60269b Calc!A301,
 d0c30225243fde60 A266). Ours: implemented (T-2266).
-Status: VERIFIED for these two cells; an error start against an error end keeps the start's error (UNVERIFIED, T-2266 checks the probes).
+Status: VERIFIED for these two cells; an error start against an error end keeps the start's error (VERIFIED: probes/scalar-lift-open-d W2 `YEARFRAC(NA(),1/0,1)` and W5 `YEARFRAC(1/0,NA(),1)`). An out-of-calendar start against a text or multi-cell-range end (`YEARFRAC(-1,"x")`, now #NUM!) is UNVERIFIED.
 Tasks: T-2266
