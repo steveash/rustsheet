@@ -25,15 +25,18 @@ Gap triage 2026-10-21 (`make eval` on main d48456cd; `make eval-show CASE=ironca
   probes/fin-rri, but not D12.
 - Candidate (triage check in a scratch case): `EXP(LN(fv/pv)/nper)-1` and `EXP(LN(fv/pv)*(1/nper))-1`, with the
   engine's `excel_exp` (x87_exp.rs) and `excel_ln` (x87_log10.rs), match all
-  27 Excel RRI cells: the 12 excel-graph cells of probes/fin-mduration-rri-fit, the 10 numeric cells of probes/fin-rri
-  (A1, A5, A6, A9-A14, A16), and the Mac cells RRI.xlsx D3-D6 and D12. D12 is the only cell where they differ from the current form; every other one
-  agrees under every form. Plain libm `exp(log(r)/n)-1` fits too, so T-2216 must also tell it apart.
+  25 numeric Excel RRI cells: the 12 excel-graph cells of probes/fin-mduration-rri-fit, the 8 numeric cells of probes/fin-rri
+  (A1, A9-A14, A16), and the Mac cells RRI.xlsx D3-D6 and D12; the special-case cells (fin-rri A5/A6, RRI.xlsx D2/D8)
+  and error cells (RRI.xlsx D7, D9-D11) are not counted. D12 is the only cell where they differ from the current form. Plain libm
+  `exp(log(r)/n)-1` also fits all 25 (libm `pow` misses A37 and A57), so T-2216 must also tell it apart.
 - **Needs an oracle sweep** (T-2216): one discriminating point, and a desktop-only one, is too few to fit
-  blind. Decision 0030 makes the desktop value the target if the web disagrees on `RRI(0.5,3,4)`.
+  blind. If the web disagrees with the Mac value of `RRI(0.5,3,4)`, the web value is the target (decision 0039 item 4;
+  decision 0074 is the precedent): D12 then stays a known failure, recorded in numbers.md as a web-vs-desktop
+  last-digit conflict with an M14 item under T-1075, and the first acceptance criterion's D12 clause does not apply.
 - docs/excel-semantics/financial.md "DURATION and RRI operation order" records the D12/E12 quirk.
 
 ## Acceptance criteria
-- [ ] The line `F	ironcalc-calc/FINANCIAL/RRI.xlsx	Sheet1!D12` disappears from eval/baseline/ironcalc-calc.txt
+- [ ] If the web agrees with the Mac D12 value: the line `F	ironcalc-calc/FINANCIAL/RRI.xlsx	Sheet1!D12` disappears from eval/baseline/ironcalc-calc.txt
       (`make eval-baseline`), with no new F lines in any baseline. In particular, probes/fin-rri, fin-rri-vdb-edges,
       fin-mduration-rri-fit and T-2216's sweep pass in full. If no single formulation fits every point, the PR
       lists the points that still miss and files a follow-up.

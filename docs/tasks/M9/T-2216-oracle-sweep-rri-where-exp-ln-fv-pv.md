@@ -21,11 +21,11 @@ cached value (Microsoft Macintosh Excel 16.x) is 0.7777777777777775; ours is 0.7
 workbook, E12 `=POWER(C12/B12,1/A12)-1` is 0.7777777777777777. So RRI does not use POWER here (POWER and `^` are the
 same in the engine; Excel has not been shown to agree), which contradicts financial.md "DURATION and RRI operation order".
 `EXP(LN(fv/pv)/nper)-1`, computed with the engine's `excel_exp`/`excel_ln`, matches all
-27 Excel RRI cells: the 12 excel-graph cells of probes/fin-mduration-rri-fit, the 10 numeric cells of probes/fin-rri
-(A1, A5, A6, A9-A14, A16), and the Mac cells RRI.xlsx D3-D6 and D12.
-The current `(fv/pv)^(1/nper)-1` (arithmetic.rs `power`) misses only D12. D12 is the only cell where the forms
-differ at all: every other one, the fractional-nper fin-mduration-rri-fit A57 included, agrees under every form.
-fin-rri A5/A6 match only through RRI's special cases. Plain libm `exp(log(r)/n)-1` also fits D12 and A37, so the
+25 numeric Excel RRI cells: the 12 excel-graph cells of probes/fin-mduration-rri-fit, the 8 numeric cells of probes/fin-rri
+(A1, A9-A14, A16), and the Mac cells RRI.xlsx D3-D6 and D12; the special-case cells (fin-rri A5/A6, RRI.xlsx D2/D8)
+  and error cells (RRI.xlsx D7, D9-D11) are not counted.
+The current `(fv/pv)^(1/nper)-1` (arithmetic.rs `power`) misses only D12. D12 is the only cell where the engine's
+forms differ at all. Plain libm `exp(log(r)/n)-1` also fits all 25 (only libm `pow` misses, at A37 and A57), so the
 evidence does not yet tell `excel_exp`/`excel_ln` from libm either. `/nper` and `*(1/nper)` are not told apart at all. The note is in docs/excel-semantics/financial.md "DURATION and RRI operation order".
 
 Sweep, as stored inputs (probes-numeric case, `excel-probe` skill). Pick each point off-line so that the engine's
