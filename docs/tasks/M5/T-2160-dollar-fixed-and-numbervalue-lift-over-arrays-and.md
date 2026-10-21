@@ -3,7 +3,7 @@ id: T-2160
 title: "DOLLAR, FIXED and NUMBERVALUE lift over arrays and ranges (SPEC-0011)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
