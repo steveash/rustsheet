@@ -11,7 +11,9 @@ use crate::{
 impl Model {
     /// The serials of a holidays argument, read whole: a range is not intersected
     /// (docs/excel-semantics/dates.md "WORKDAY holidays take the whole range"). Each must be a
-    /// date (`#NUM!`), and a value that is not a number is `#VALUE!`. A 3-D reference is
+    /// date (`#NUM!`); a blank cell is no holiday, a text cell that reads as a number is one, and any
+    /// other value that is not a number is `#VALUE!` (dates.md "WORKDAY and NETWORKDAYS holidays: blank and
+    /// number-text cells", T-2270). A 3-D reference is
     /// `#VALUE!` too, not `#REF!`, also as a branch of IF (`WORKDAY.INTL(45000,5,1,Sheet1:Sheet2!A1)`,
     /// `NETWORKDAYS(45000,45030,IF(TRUE,Sheet1:Sheet2!A1))`; probes/date-text-weekend-3d M9-N13).
     pub(super) fn holiday_serials(

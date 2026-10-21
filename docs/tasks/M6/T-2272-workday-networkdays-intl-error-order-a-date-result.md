@@ -104,3 +104,6 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 58 in eval/baseli
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Note from T-2270
+Nine cells listed here pass since T-2270 only by scan order (a `#NUM!` holiday is reached before a text one): 216e3c05f407ca79 A108 and A312, 38d4bcdafaed1275 A275 and A48, 3e51213f35889d06 A138, 4ca39e0876796fa5 A166 and A66, 50f0dd9a8ee2cb57 A68, 36d5ce763ea63631 A392. The error-order rule itself is still unimplemented.

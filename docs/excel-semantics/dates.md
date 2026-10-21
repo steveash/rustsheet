@@ -1032,7 +1032,7 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   `WORKDAY.INTL(1,-18,13,ERROR.TYPE("x~*"))` are `#NUM!` (d0c30225243fde60 A332, 9130ade4b1924cc8 A361), which "An error-valued or 3-D
   weekend" (holidays read first) does not cover. An all-weekend mask's `#VALUE!` beats a negative holiday's `#NUM!`:
   `WORKDAY.INTL(45382,10,"1111111",Data!B2:C5)` (holidays include -0.5 and " x ") is `#VALUE!` (ef10bf3afb9658f6 A346).
-Ours: a blank one-cell holidays reference is no holiday and a text cell that reads as a number is a holiday, in a range and as a one-cell reference (implemented, T-2270); number text in a range is counted, not skipped (every gen-m6 cell passes either way: UNVERIFIED). A blank or text cell that is not number text, and the error order, are still rejected at once, before the dates and the walk (T-2272).
+Ours: implemented (T-2270): a blank holidays cell is no holiday, and a text cell that reads as a number is a holiday, in a range and as a one-cell reference (number text in a range is counted, not skipped: every gen-m6 cell passes either way, UNVERIFIED). Text that is not number text, and a boolean, are `#VALUE!`. Literal or computed text (`WORKDAY(45000,5,"45001")`, `{"1"}`) is still `#VALUE!`: no cell evidences it (UNVERIFIED). The error order is T-2272.
 Status: VERIFIED for the cells; the full order (which `#NUM!` sources beat which holiday problems) is UNVERIFIED until T-2272 probes it.
 Tasks: T-2270, T-2272
 

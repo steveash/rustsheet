@@ -238,8 +238,27 @@ impl Model {
         })
     }
 
+    /// The holiday serial of a date `serial`: `#NUM!` outside the calendar.
+    fn holiday_serial(&self, v: f64, cell: CellReferenceIndex) -> Result<i64, CalcResult> {
+        let serial = v.floor() as i64;
+        self.excel_date(serial, cell)?;
+        Ok(serial)
+    }
+
+    /// The holiday serial of the text of a holidays cell: number text is a holiday as its number
+    /// (docs/excel-semantics/dates.md "WORKDAY and NETWORKDAYS holidays: blank and number-text
+    /// cells", T-2270), other text is `#VALUE!`.
+    fn text_holiday_serial(&self, text: &str, cell: CellReferenceIndex) -> Result<i64, CalcResult> {
+        let v = self
+            .cast_number(text)
+            .ok_or_else(|| invalid_holiday(cell))?;
+        self.holiday_serial(v, cell)
+    }
+
     /// Walk a scalar / range / array node and invoke the provided closure with every
-    /// numeric date serial that is encountered.
+    /// numeric date serial that is encountered. A blank cell is no holiday; a text cell that
+    /// reads as a number is a holiday, in a range and as a one-cell reference (not as literal
+    /// or computed text, which no cell evidences).
     fn collect_serial_numbers<F>(
         &mut self,
         node: &Node,
@@ -250,49 +269,21 @@ impl Model {
         F: FnMut(i64) -> Result<(), CalcResult>,
     {
         match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Number(v) => {
-                let serial = v.floor() as i64;
-                // Validate serial is in bounds
-                self.excel_date(serial, cell)?;
-                handle(serial)?;
-            }
+            CalcResult::Number(v) => handle(self.holiday_serial(v, cell)?)?,
             CalcResult::Range { left, right } => {
                 let areas = [Range { left, right }];
                 self.for_each_cell_in_areas(&areas, cell, |model, value| match value {
-                    CalcResult::Number(v) => {
-                        let serial = v.floor() as i64;
-                        model.excel_date(serial, cell)?;
-                        handle(serial)
-                    }
+                    CalcResult::Number(v) => handle(model.holiday_serial(v, cell)?),
                     CalcResult::EmptyCell => Ok(()),
-                    CalcResult::String(text) => {
-                        let serial = model.cast_number(&text).map(|v| v.floor() as i64);
-                        let Some(serial) = serial else {
-                            return Err(CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "Invalid holiday date".to_string(),
-                            ));
-                        };
-                        model.excel_date(serial, cell)?;
-                        handle(serial)
-                    }
-                    _ => Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Invalid holiday date".to_string(),
-                    )),
+                    CalcResult::String(text) => handle(model.text_holiday_serial(&text, cell)?),
+                    _ => Err(invalid_holiday(cell)),
                 })?;
             }
             CalcResult::Array(array) => {
                 for row in array {
                     for value in row {
                         match value {
-                            ArrayNode::Number(num) => {
-                                let serial = num.floor() as i64;
-                                self.excel_date(serial, cell)?;
-                                handle(serial)?;
-                            }
+                            ArrayNode::Number(num) => handle(self.holiday_serial(num, cell)?)?,
                             ArrayNode::Error(error) => {
                                 return Err(CalcResult::Error {
                                     error,
@@ -300,41 +291,17 @@ impl Model {
                                     message: "Error in array".to_string(),
                                 });
                             }
-                            _ => {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Invalid holiday date".to_string(),
-                                ))
-                            }
+                            _ => return Err(invalid_holiday(cell)),
                         }
                     }
                 }
             }
             e @ CalcResult::Error { .. } => return Err(e),
-            // A one-cell reference arrives as its value: a blank cell is no holiday and number
-            // text is a holiday, as in a range (docs/excel-semantics/dates.md "WORKDAY and
-            // NETWORKDAYS holidays: blank and number-text cells", T-2270).
             CalcResult::EmptyCell => {}
-            CalcResult::String(text) => {
-                let Some(v) = self.cast_number(&text) else {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Invalid holiday date".to_string(),
-                    ));
-                };
-                let serial = v.floor() as i64;
-                self.excel_date(serial, cell)?;
-                handle(serial)?;
+            CalcResult::String(text) if matches!(node.ungrouped(), Node::ReferenceKind { .. }) => {
+                handle(self.text_holiday_serial(&text, cell)?)?;
             }
-            _ => {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Invalid holiday date".to_string(),
-                ))
-            }
+            _ => return Err(invalid_holiday(cell)),
         }
         Ok(())
     }
@@ -799,6 +766,11 @@ impl Model {
             weeknum::iso_week(serial.ok_or(Error::NUM)?)
         })
     }
+}
+
+/// The `#VALUE!` of a holidays value that is not a date.
+fn invalid_holiday(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "Invalid holiday date".to_string())
 }
 
 #[cfg(test)]
