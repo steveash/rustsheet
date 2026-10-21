@@ -2,12 +2,12 @@ use crate::external_reference::PickedReference;
 use crate::functions::Function;
 use crate::{
     calc_result::CalcResult,
+    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
     model::Model,
     reference_operators::{not_a_reference_array, three_d_needs_one_sheet, RefArg},
 };
 
-use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::utils::number_to_column;
 
 /// Quotes `sheet_text` for ADDRESS. A leading `[workbook]` part does not by
@@ -29,7 +29,7 @@ fn address_sheet_text(s: &str) -> String {
 /// -2.4 and -0.5 are -3, -3 and -1) and accepts an index in 1..=last, an offset in
 /// -(last - 1)..=last - 1: `ADDRESS(1048577,3)` and `ADDRESS(-1048576,3,4,FALSE)` are `#VALUE!`
 /// (probes/t2275-address-bounds; docs/excel-semantics/lookup.md "ADDRESS: argument errors
-/// first, sheet_text "TRUE"/"FALSE" quoted, bounds").
+/// first, `sheet_text` "TRUE"/"FALSE" quoted, bounds").
 fn address_index(n: f64, last: i32, relative: bool) -> Option<i32> {
     let n = n.floor();
     let (lo, hi) = if relative {
@@ -71,7 +71,7 @@ impl Model {
     }
 
     /// ADDRESS of one element. The arguments are cast left to right, as the scalar call always
-    /// did; row and column bounds depend on abs_num and a1, so they are checked after every cast
+    /// did; row and column bounds depend on `abs_num` and `a1`, so they are checked after every cast
     /// (an argument error beats a bad row: docs/excel-semantics/lookup.md).
     fn address_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let (row_num, col_num, rest) = match values {
