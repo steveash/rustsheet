@@ -158,13 +158,6 @@ fn up_to_32_periods_are_the_per_period_sum() {
         // of powers (probes/fin-cumipmt-overflow-and-forms A15, A18; T-1890 review).
         ("A5", "=CUMPRINC(1E10,40,1,10,40,0)", "-1.0000000000000013"),
         ("A6", "=CUMIPMT(1E300,10,1,1,10,0)", "-1E301"),
-        // Where the first power underflows, not a silent 0: main's value, the exact
-        // -9.99999998000000002E-201 to 15 digits; Excel's is ...80000501E-201 (financial.md, T-2192).
-        (
-            "A7",
-            "=CUMPRINC(1E10,40,1,1,20,0)",
-            "-9.999999980000004E-201",
-        ),
         // CUMPRINC_CUMIPMT.xlsx H6, which the PPMT sum missed by 3 ulps.
         (
             "A4",
@@ -172,6 +165,34 @@ fn up_to_32_periods_are_the_per_period_sum() {
             "-1339.6579298169904",
         ),
     ]);
+}
+
+#[test]
+fn a_subnormal_or_underflowed_leading_power_keeps_its_digits() {
+    // A rate of 1E10 over a short range: `v^(a-1-nper)` is subnormal (A20-A22) or underflows
+    // (A23, A24), so the short-range product `v^(a-1-nper)·expm1(..)` would lose digits
+    // (-9.999888696826292E-71 for A20) and the difference of powers decides. Excel's values are
+    // probes/fin-cumipmt-overflow-and-forms A20-A24 (excel-graph). The difference is main's value,
+    // within 1E-13 relative of Excel's (5E-14 for A23, A24); the last digits are T-2192's.
+    let cells = [
+        ("A1", "=CUMPRINC(1E10,32,1,1,25,0)", -9.999_999_993_000_11E-71),
+        ("A2", "=CUMPRINC(1E10,32,1,1,10,0)", -9.999_999_978_000_387E-221),
+        ("A3", "=CUMPRINC(1E10,31.5,1,1,20,0)", -9.999_999_988_500_136E-116),
+        ("A4", "=CUMPRINC(1E10,40,1,1,20,0)", -9.999_999_980_000_501E-201),
+        ("A5", "=CUMPRINC(1E10,40,1,15,20,0)", -9.999_999_980_000_501E-201),
+    ];
+    let mut model = new_empty_model();
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, excel) in cells {
+        let ours = round_trip_value(&model, cell).parse::<f64>().unwrap();
+        assert!(
+            (ours / excel - 1.0).abs() < 1E-13,
+            "{formula}: ours {ours:e}, Excel {excel:e}"
+        );
+    }
 }
 
 #[test]

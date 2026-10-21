@@ -189,13 +189,16 @@ impl Periods {
             // H25 to the bit; T-1890). Where `expm1` overflows (a rate of 1E10 over 31 periods)
             // the difference has the value (probes/fin-cumipmt-overflow-and-forms A15-A19). Over
             // a long range the difference stays closer to Excel (fin-cumipmt-period-bound A6).
+            let leading = discount(first - 1.0 - self.nper);
             let product = payment
-                * (discount(first - 1.0 - self.nper)
-                    * ((self.end - first + 1.0) * log_growth).exp_m1()
+                * (leading * ((self.end - first + 1.0) * log_growth).exp_m1()
                     / log_growth.exp_m1());
-            // Where `v^(a-1-nper)` underflows the product is a silent 0 for a principal of
-            // 1E-200 (`CUMPRINC(1E10,40,1,1,20,0)`, financial.md), so the difference decides then too.
-            if product.is_finite() && product != 0.0 {
+            // Only a normal `v^(a-1-nper)` keeps its digits. Subnormal, it has lost them, and the
+            // product with it: `CUMPRINC(1E10,32,1,1,25,0)` would be -9.999888696826292E-71
+            // where Excel has -9.99999999300011E-71; underflowed, the product is a silent 0
+            // (`CUMPRINC(1E10,40,1,1,20,0)`). The difference decides then
+            // (probes/fin-cumipmt-overflow-and-forms A20-A24).
+            if leading.is_normal() && product.is_finite() {
                 product
             } else {
                 difference()
