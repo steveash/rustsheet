@@ -14,6 +14,7 @@ use rustsheet_engine::Text;
 
 use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp};
 use crate::cellref::{parse_range, Addr};
+use crate::spec_pivots;
 use crate::value::Value;
 
 /// A workbook after recalculation, ready to be queried.
@@ -219,6 +220,7 @@ impl Engine for RustSheetEngine {
                 for formulas in [false, true] {
                     for (sheet, &id) in spec.sheets.iter().zip(&ids) {
                         if formulas {
+                            spec_pivots::add_pivots(tx, spec, &ids, sheet, id)?;
                             for table in &sheet.tables {
                                 tx.add_table(
                                     table_range(id, &table.range, table.totals_row)?,
@@ -226,6 +228,9 @@ impl Engine for RustSheetEngine {
                                     table.filter,
                                 )?;
                             }
+                        }
+                        if !formulas {
+                            spec_pivots::write_rendered(tx, sheet, id, spec_input)?;
                         }
                         for (addr, a1, input) in row_major(&sheet.cells)? {
                             let Some(mut input) = spec_input(input) else {
@@ -614,6 +619,28 @@ mod tests {
                 "number_formats":{"nope":"0"}}]}"#,
         );
         assert!(RustSheetEngine.evaluate_spec(&bad_cell, None).is_err());
+    }
+
+    #[test]
+    fn spec_pivot_rendered_cells_reach_the_engine() {
+        let pivot = |rendered: &str| {
+            spec(&format!(
+                r#"{{"format":"rustsheet-case/v1","sheets":[{{"name":"S","cells":{{
+                    "A1":"Key","B1":"Val","A2":"a","B2":1,"A3":"b","B3":2,"H1":"=D2"}},
+                    "pivot_tables":[{{"name":"Pv","source":"A1:B3","location":"D1","row":"Key",
+                    "value":"Val","rendered":{rendered}}}]}}]}}"#
+            ))
+        };
+        let ok = pivot(r#"{"D1":"Row Labels","E1":"Sum of Val","D2":"a","E2":1}"#);
+        let evaluated = RustSheetEngine.evaluate_spec(&ok, None).expect("evaluates");
+        // The rendered cell is a constant a formula reads.
+        assert_eq!(
+            evaluated.value("S", Addr { row: 1, col: 8 }),
+            Some(Value::Text("a".into()))
+        );
+        // Without rendered cells the pivot has no location.
+        let err = RustSheetEngine.evaluate_spec(&pivot("{}"), None).err();
+        assert!(err.is_some_and(|e| e.contains("bake-pivots")));
     }
 
     #[test]

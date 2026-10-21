@@ -10,6 +10,9 @@
 //! the captured values are compared with the current ones (see `diff`).
 
 mod diff;
+mod pivot;
+
+pub use self::pivot::{PivotError, PivotFunction, PivotTableInput};
 
 use rustsheet_engine::clock::Clock;
 use rustsheet_engine::types::{Cell, Link, Worksheet};
@@ -172,6 +175,11 @@ enum Undo {
     },
     /// A table added by `add_table`.
     Table(String),
+    /// The lengths of the workbook's pivot caches and tables before `add_pivot_table`.
+    Pivot {
+        caches: usize,
+        tables: usize,
+    },
     /// A row's hidden flag as it was before `set_row_hidden`.
     RowHidden {
         sheet_id: u32,
@@ -718,6 +726,10 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                     .map_err(|e| e.to_string())
                     .and_then(|scope| model.delete_defined_name(&name, scope));
                 debug_assert!(undone.is_ok(), "undo of define_name failed: {undone:?}");
+            }
+            Undo::Pivot { caches, tables } => {
+                model.workbook.pivot_caches.truncate(caches);
+                model.workbook.pivot_tables.truncate(tables);
             }
             Undo::Table(name) => {
                 let undone = model.remove_table(&name);

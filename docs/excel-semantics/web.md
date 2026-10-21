@@ -69,7 +69,9 @@ returns the value of the pivot cell the field/item pairs pick, including subtota
   34, 12, 3.
 Evidence: probes/getpivotdata-real-pivot (oracle: excel-graph, 2026-10-16, T-1705). The pivots are written
 by the case builder (`pivot_tables`, tools/src/rustsheet_tools/pivot.py); excel-graph rendered them cell for
-cell as the builder does (a one-off check of the label, value, blank and grand-total cells, not committed).
+cell as the builder does: probes/pivot-rendered-cells (T-2084) reads every cell of both pivots through `=P!A3` and
+`ISBLANK`, and the caption, `Row Labels`/`Column Labels`, item, aggregate, grand-total and blank (West/C, `ISBLANK` true,
+reference 0) cells all match the layout `rendered` bakes into the case.
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Not probed: several data fields (the
 `Values` field), two row fields and their subtotals, filters, hidden items, dates and numbers as items, and
 pivots in tabular or outline form.

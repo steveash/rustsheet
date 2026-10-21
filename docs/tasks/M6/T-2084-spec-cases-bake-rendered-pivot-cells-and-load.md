@@ -3,7 +3,7 @@ id: T-2084
 title: "Spec cases: bake rendered pivot cells and load pivot_tables into the engine adapter (SPEC-0015)"
 milestone: M6
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: sonnet
@@ -36,3 +36,13 @@ T-2083 are both merged, so both carry the key.
 Decision 0083: the GETPIVOTDATA cells above are visibly off (`#REF!` where Excel answers from the pivot), so this task
 is in the campaign with T-2083. Its target is met when, with T-2083 merged, those 19 cells have Excel's values and
 leave eval/baseline/probes.txt; the first acceptance criterion states it.
+
+## Outcome
+- `PivotTableSpec.rendered` (A1 → cell); `rustsheet-spec bake-pivots` (tools/src/rustsheet_tools/spec_cli.py) fills it from the
+  builder's layout; spec2xlsx refuses a `rendered` that differs (test). probes/getpivotdata-real-pivot is baked.
+- Facade `Txn::add_pivot_table(&PivotTableInput)` (`#[doc(hidden)]`, typed `EditError::Pivot(PivotError)`, undone on rollback,
+  not in the Python binding). The eval adapter writes `rendered` as constants and registers each pivot over its source;
+  the rendered cells' bounding box is the pivot's location. The spill-extent check counts `rendered` cells as inputs.
+- New probe probes/pivot-rendered-cells (excel-graph oracle): 66 cells, all pass; they match the baked layout.
+- Eval delta: probes +66 cells passing, no baseline change. Criterion 1 (baseline shrinks by 22) needs T-2083, still todo;
+  the real-pivot cells keep failing until its GETPIVOTDATA lands, then run `make eval-baseline`.

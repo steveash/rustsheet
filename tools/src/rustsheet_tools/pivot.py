@@ -14,9 +14,10 @@ case-folded order.
 The builder renders the pivot as Excel lays out a new compact-form pivot (the caption cells, the
 item labels, the aggregates and the grand totals) into the sheet's cells, and writes the pivot
 cache definition, its records and the pivot table definition into the package. The cache is marked
-`refreshOnLoad`, so Excel rebuilds it from `source` on open. The engine adapter ignores pivot tables
-(the engine has none), so a case should only score formulas that read the pivot through
-GETPIVOTDATA, never the rendered cells.
+`refreshOnLoad`, so Excel rebuilds it from `source` on open. The engine adapter writes the optional
+`"rendered"` map (A1 address → cell, the layout above) as constants and builds the pivot's cache from
+`source` (T-2084); `rustsheet-spec bake-pivots` fills it, and spec2xlsx refuses a `rendered` that
+differs from the layout, so the layout stays defined here only.
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ _FUNCTIONS: dict[str, tuple[str, Callable[[list[float]], float]]] = {
     "max": ("Max", max),
     "min": ("Min", min),
 }
-_KEYS = {"name", "source", "location", "row", "column", "value", "function"}
+_KEYS = {"name", "source", "location", "row", "column", "value", "function", "rendered"}
 
 Cell = str | float
 
@@ -112,6 +113,7 @@ class _Pivot:
             msg = f"pivot table has unknown keys {sorted(unknown)}"
             raise ValueError(msg)
         self.name = str(pivot["name"])
+        self.rendered: dict[str, Cell] | None = pivot.get("rendered")
         self.source_sheet, self.source_ref, rows = _source(spec, sheet["name"], str(pivot["source"]))
         header, self.records = rows[0], rows[1:]
         if not all(isinstance(h, str) for h in header) or len(set(header)) != len(header):
@@ -292,6 +294,14 @@ class _Pivot:
         )
 
 
+def rendered_cells(spec: dict[str, Any], sheet: dict[str, Any], pivot: dict[str, Any]) -> dict[str, Cell]:
+    """The cells the builder renders for `pivot` (a pivot of `sheet`), by A1 address."""
+    return {
+        xlsxwriter.utility.xl_rowcol_to_cell(row, col): value
+        for (row, col), value in _Pivot(spec, sheet, pivot).cells().items()
+    }
+
+
 def relationships_xml(*relationships: str) -> bytes:
     """A relationships part holding `relationships`."""
     return _xml(f'<Relationships xmlns="{_PACKAGE_REL_NS}">{"".join(relationships)}</Relationships>')
@@ -316,6 +326,11 @@ def pivot_tables(spec: dict[str, Any], write: Callable[[int, int, int, Cell], No
         for raw in sheet.get("pivot_tables", ()):
             pivot = _Pivot(spec, sheet, raw)
             cells = pivot.cells()
+            if pivot.rendered is not None and pivot.rendered != {
+                xlsxwriter.utility.xl_rowcol_to_cell(row, col): value for (row, col), value in cells.items()
+            }:
+                msg = f"pivot {pivot.name} has `rendered` cells that differ from its layout (rustsheet-spec bake-pivots)"
+                raise ValueError(msg)
             if overlap := taken & set(cells):
                 msg = f"pivot {pivot.name} overlaps cells {sorted(overlap)}"
                 raise ValueError(msg)
