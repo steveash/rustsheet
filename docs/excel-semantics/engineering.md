@@ -352,6 +352,19 @@ Status: VERIFIED (excel-graph)
 Implemented in: `fn_impower` in functions/engineering/complex.rs (T-1950)
 Tasks: T-1950
 
+## IM* last-digit sweep: IMSEC and IMSECH use different kernels (T-2043)
+Evidence: probes-numeric case `im-last-digit-sweep` (excel-graph, no pending cells): 78 inputs (the
+24 COMPLEXs.xlsx D-column ones plus quadrant, 1E-5..1E3, pure real/imaginary rows) x IMABS,
+IMARGUMENT, IMCSC, IMSEC, IMSECH, IMLOG2, IMCOT, with IMREAL/IMAGINARY of each text result as
+number cells (columns B-R, row = input row). It exists to let T-2044 fit the kernels.
+Rule: although sech(3+4i) and sec(4+3i) are mathematically the same real part, Excel gives
+`IMSEC("4+3i")` real part -0.0652940278579471 (row 23, G23) and `IMSECH("3+4i")` real part
+-0.065294027857947 (row 58, J58/K58): the two functions are not the same formula up to
+rotation, so one kernel cannot serve both. Likewise `IMSEC("3+4i")` and `IMSECH("4+3i")` both
+give real part -0.0362534969158689 but IMAGINARY +0.00516434460775318 vs -0.00516434460775318
+(sign per the rotation).
+Errors in the sweep (row 21, input "0"): IMARGUMENT #DIV/0! (C21); IMCSC, IMLOG2 and IMCOT #NUM! (D21:F21, M21:R21).
+
 ## IMTAN and IMCOT use the double-angle form (T-0907)
 Rule: IMTAN computes tan(x+iy) as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)`, and IMCOT is the
 reciprocal of that value, `conj(t)/|t|²`; the tan/tanh product form loses the last 1-10 digits

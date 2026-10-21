@@ -16,7 +16,7 @@ IMABS, IMARGUMENT, IMCSC, IMSEC, IMSECH, IMLOG2 and IMCOT match Excel to the las
 formulations fitted on the T-2043 sweep, so the IM* residue T-0907 left behind is gone.
 
 ## Context
-Needs an oracle sweep: T-2043 (T-0907 tried the cached cells alone and no candidate reproduced them).
+Needs an oracle sweep: T-2043 (probes-numeric case `im-last-digit-sweep`) (T-0907 tried the cached cells alone and no candidate reproduced them).
 - Known failures (gap triage 2026-10-19), Excel vs ours:
   - IMABS: COMPLEXs.xlsx Sheet1!G7 9.591295345780985 vs ...987, G8 1.2345678958319997 vs ...999,
     G14 7.810249675906656 vs ...654, G23 51.394647859091315 vs ...32 (neither `sqrt(x²+y²)` nor `hypot`).
