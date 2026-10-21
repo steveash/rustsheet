@@ -45,5 +45,6 @@ denominator's value must be under 2147483647 in magnitude. A whole part never ov
 returns `None` past those bounds, and `format_number` turns that into an unshowable result: TEXT `#VALUE!`,
 displayed text 255 `#`. Recorded in number-formats.md "Fraction formats". Eval: gen-m10 failing text cells
 1374 -> 1347 (27 fixed), probes known failures -1, two new cases pass 145/145, visible parity -1, no regressions.
-gen-m10 has no overflowing TEXT() cell on sheet T, so gen-m10.txt is unchanged. Follow-up: T-2233. Excel picks a
+The 27 fixed text cells (TF lines) left eval/baseline/gen-m10.txt. gen-m10 has no overflowing TEXT() value cell
+on sheet T, so no value line changed. Follow-up: T-2233. Excel picks a
 coarser fraction than the last convergent for `?/?` past 2^30; the cells are kept out of the suites until it is fitted.
