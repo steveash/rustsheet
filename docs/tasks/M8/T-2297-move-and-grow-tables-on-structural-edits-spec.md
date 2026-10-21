@@ -23,7 +23,9 @@ never move. This task adds the *move* and *grow/shrink* classes of SPEC-0016 "St
 the tables on the edited sheet before the walk by the spec's edge-case table, pass the fallback table names
 to `to_string_displaced` (a reference to a moved or grown table prints its text), update the tables'
 `reference` after the walk, then `Model::reset_tables`. The interim rule is a hand assumption
-(docs/excel-semantics/references.md "Structured references when the table changes"); T-2197 probes Excel.
+(docs/excel-semantics/references.md "Structured references when the table changes"); T-2197 probed row inserts: the move, grow-inside and none
+rows hold, but an insert at `r == d1` or `r == t` grows the table in Excel (T-2321 does those rows; keep
+them fallback here).
 Tests: `src/test/test_structured_references.rs` (`check_edit` pins today's values with plain-range twins).
 
 ## Acceptance criteria

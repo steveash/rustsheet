@@ -4,15 +4,16 @@ use crate::functions::lift::lifting_table_functions;
 use crate::functions::lookup_and_reference::lifts_into_references;
 use crate::functions::Function;
 use broadcast::{broadcast_shapes, static_analysis_operator_chain};
+use if_arm::returns_range_arm;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
     legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
-    returns_range_arm,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
 mod aggregate;
 mod broadcast;
+mod if_arm;
 mod legacy;
 mod lifted;
 mod redundant;
@@ -510,12 +511,9 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Clean => args_signature_scalars(arg_count, 1, 0),
         Function::Asc | Function::Dbcs => args_signature_scalars(arg_count, 1, 0),
         Function::Arraytotext => args_signature_arraytotext(arg_count),
-        Function::Dollar => args_signature_scalars(arg_count, 1, 1),
         Function::Image => args_signature_scalars(arg_count, 1, 4),
         Function::Stockhistory => args_signature_scalars(arg_count, 2, 9),
         Function::Fieldvalue => args_signature_fieldvalue(arg_count),
-        Function::Fixed => args_signature_scalars(arg_count, 1, 2),
-        Function::Numbervalue => args_signature_scalars(arg_count, 1, 2),
         Function::Proper => args_signature_scalars(arg_count, 1, 0),
         Function::Geomean => vec![Signature::Vector; arg_count],
         Function::Gcd => vec![Signature::Vector; arg_count],
@@ -748,11 +746,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Asc | Function::Dbcs => scalar_arguments(args),
         Function::Phonetic => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
-        Function::Dollar => not_implemented(args),
         // All three lift over an array or range `source`/`stock`/`value` (T-1179).
         Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
-        Function::Fixed => not_implemented(args),
-        Function::Numbervalue => not_implemented(args),
         Function::Proper => scalar_arguments(args),
         Function::Upper => scalar_arguments(args),
         Function::Average => not_implemented(args),

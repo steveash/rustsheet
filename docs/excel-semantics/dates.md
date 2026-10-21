@@ -988,11 +988,18 @@ of January 1900, not on the weekday-faithful stand-in (serial 1 = 1899-12-31) th
   one-cell argument beside other arguments is `#VALUE!`"; probes/weeknum-sumproduct-blank-type A1-A12).
 - YEARFRAC basis 0 of a date in serials 1-60 counts from the displayed date: `YEARFRAC(1,30145)` = 82.5333 (29712/360),
   `YEARFRAC(22676,7,0)` = 62.06389, `YEARFRAC(3.14159,45291)` = 123.99444, while serial 60 is 29 February without the
-  end-of-February adjustment: `YEARFRAC(55862,60)` = 152.7778 (55000/360), `YEARFRAC(60.5,34993)` = 95.64444 (752959b8d3db0285 A35,
-  121a7c17092038d9 A175, 7f3606fef4cb9df7 A395, 3e51213f35889d06 A320, 4ca39e0876796fa5 A308; 27 cells in T-2265, two on basis 1:
-  `YEARFRAC(48344,1,1)` = 132.35660175388034, `YEARFRAC(25538,1,1)` = 69.91786287010599). Ours a day off (1/360 for basis 0).
-Status: VERIFIED for DATEDIF, EDATE, EOMONTH, DAYS360 and WEEKNUM (the cells above); YEARFRAC basis 1 is UNVERIFIED until T-2265
-probes it. Implemented in `datedif_value`, `shift_displayed_date` (EDATE) and `fn_days360` (T-2263).
+  end-of-February adjustment: `YEARFRAC(55862,60)` = 152.7778 (55000/360), `YEARFRAC(60.5,34993)` = 95.64444,
+  `YEARFRAC(60,425,0)` = 359/360 and `YEARFRAC(59,425,0)` = 1 (752959b8d3db0285 A35, 121a7c17092038d9 A175, 7f3606fef4cb9df7 A395,
+  3e51213f35889d06 A320, 4ca39e0876796fa5 A308; 25 basis-0 cells in gen-m6). Basis 1 counts serial days (the fictitious day
+  included) over the real calendar's average year: `YEARFRAC(48344,1,1)` = 132.35660175388034, `YEARFRAC(25538,1,1)` =
+  69.91786287010599, `YEARFRAC(1,366,1)` = 1, `YEARFRAC(1,367,1)` = 366/365, `YEARFRAC(1,60,1)` = 59/365, `YEARFRAC(60,1520,1)` =
+  3.9978094194961664. Bases 2 and 3 count serial days (the fictitious day included) over 360 and 365: `YEARFRAC(1,366,2)` = 365/360,
+  `YEARFRAC(60,366,3)` = 306/365. Basis 4 is European 30/360 on the displayed date: `YEARFRAC(1,366,4)` = 359/360,
+  `YEARFRAC(60,366,4)` = 301/360 (29 February is day 29). probes/yearfrac-early-1900 holds serials 1, 31, 59, 60, 60.5 and 61 against 366 and
+  45000 on bases 0-4, plus A61-A70 (70 cells, excel-graph 2026-10-21). Implemented by T-2237 (`year_fraction_parts`); T-2265
+  added the probe.
+Status: VERIFIED for DATEDIF, EDATE, EOMONTH, DAYS360, WEEKNUM and YEARFRAC (the cells above). Implemented in `datedif_value`,
+`shift_displayed_date` (EDATE), `fn_days360` (T-2263) and `year_fraction_parts` (T-2237).
 Tasks: T-2263, T-2265
 
 ## DATEDIF "MD" and "YD" day counts (gen-m6 triage, T-2264, T-2263)
