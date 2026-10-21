@@ -9,6 +9,7 @@ use super::super::utils::{
     is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range, parse_reference_a1,
 };
 use super::reference_operators::is_reference_operand;
+use super::structured_reference::{COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND};
 use super::*;
 
 impl Parser {
@@ -305,7 +306,7 @@ impl Parser {
             if table_name.to_lowercase() == name_lower {
                 // A bare table name is its data area, like `Table[]` (gen-m8b specials
                 // e804cf2f8af00680 K116, lookups 27252667210b1d03).
-                return self.structured_reference_operand(name, None, None);
+                return self.structured_reference_operand(name, None, None, true);
             }
         }
         // xlpm: Excel Lambda Parameter
@@ -486,8 +487,37 @@ impl Parser {
         Node::BooleanKind(value)
     }
 
-    /// A structured reference, `Table1[Column]`, resolved to the range it stands for.
+    /// A structured reference, `Table1[Column]`, kept as written around the area it stands for
+    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` is still lowered
+    /// at parse time, from the context row, so it keeps no text (T-1699); a reference that does
+    /// not resolve (unknown table or column) stays a parse error, which keeps the formula text.
     pub(super) fn structured_reference_operand(
+        &mut self,
+        table_name: String,
+        specifier: Option<token::TableSpecifier>,
+        table_reference: Option<TableReference>,
+        bare: bool,
+    ) -> Node {
+        let this_row = specifier == Some(token::TableSpecifier::ThisRow);
+        let reference = StructuredReference {
+            table_name: table_name.clone(),
+            specifier: specifier.clone(),
+            table_reference: table_reference.clone(),
+            bare,
+        };
+        let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
+        if this_row || matches!(lowered, Node::ParseErrorKind { .. }) {
+            return lowered;
+        }
+        Node::StructuredReferenceKind {
+            reference: Box::new(reference),
+            lowered: Box::new(lowered),
+        }
+    }
+
+    /// The area a structured reference resolves to against the parser's table list: a
+    /// `ReferenceKind`, a `RangeKind`, an `ErrorKind` or a `ParseErrorKind`.
+    fn lower_structured_reference(
         &mut self,
         table_name: String,
         specifier: Option<token::TableSpecifier>,
@@ -521,7 +551,7 @@ impl Parser {
             Some(t) => t,
             None => {
                 let message = format!(
-                    "Table not found: '{table_name}' at '{}!{}{}'",
+                    "{TABLE_NOT_FOUND}'{table_name}' at '{}!{}{}'",
                     context.sheet,
                     number_to_column(context.column).unwrap_or(format!("{}", context.column)),
                     context.row
@@ -541,7 +571,7 @@ impl Parser {
                     formula: self.lexer.get_formula(),
                     expecting: vec![ExpectedTokens::Other],
                     position: 0,
-                    message: format!("table sheet not found: {}", table.sheet_name),
+                    message: format!("{TABLE_SHEET_NOT_FOUND}{}", table.sheet_name),
                 };
             }
         };
@@ -643,7 +673,7 @@ impl Parser {
                             formula: self.lexer.get_formula(),
                             expecting: vec![ExpectedTokens::Other],
                             position: self.lexer.get_position() as usize,
-                            message: format!("Expecting column: {s} in table {table_name}"),
+                            message: format!("{COLUMN_NOT_FOUND}{s} in table {table_name}"),
                         };
                     }
                 };
@@ -678,7 +708,7 @@ impl Parser {
                             formula: self.lexer.get_formula(),
                             expecting: vec![ExpectedTokens::Other],
                             position: self.lexer.get_position() as usize,
-                            message: format!("Expecting column: {left} in table {table_name}"),
+                            message: format!("{COLUMN_NOT_FOUND}{left} in table {table_name}"),
                         };
                     }
                 };
@@ -690,7 +720,7 @@ impl Parser {
                             formula: self.lexer.get_formula(),
                             expecting: vec![ExpectedTokens::Other],
                             position: self.lexer.get_position() as usize,
-                            message: format!("Expecting column: {right} in table {table_name}"),
+                            message: format!("{COLUMN_NOT_FOUND}{right} in table {table_name}"),
                         };
                     }
                 };

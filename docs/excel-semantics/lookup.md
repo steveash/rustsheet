@@ -776,9 +776,11 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 - A TAKE or DROP whose rows or cols lifts over a range is the same kind of result: `INDEX(TAKE(A1:B3,{1;2}),1,1)`
   spills A1:B1 as 1, 10 (ROWS 1, COLUMNS 2), `INDEX(DROP(A1:B3,{1;2}),1,1)` is the 2x2 A2:B3 (`#SPILL!` where blocked),
   and the outer result is 2x1 (probes/m7-argument-modes F4:I6, K1-K4; arrays.md "Dynamic-array and LAMBDA function
-  argument modes"). What its spilled elements, SUM over it and TAKE over an array value give is not probed (T-1960);
-  the engine gives it to INDEX, ROWS, COLUMNS, SUMPRODUCT, the aggregates and LET as a lifted OFFSET's, while IF,
-  CHOOSE and OFFSET's reference argument read it as a value (T-1838).
+  argument modes"). Spilled directly its elements are `#VALUE!`, SUM reads their top-left cells (2), SUMPRODUCT 0,
+  IF and CHOOSE hand it on and OFFSET over it lifts again, as for OFFSET; over an array value TAKE keeps top-left
+  values (probes/m7-lift-take-drop-sortby, T-1960). The engine gives it to INDEX, ROWS, COLUMNS, SUMPRODUCT, the
+  aggregates and LET as a lifted OFFSET's, while IF, CHOOSE and OFFSET's reference argument read it as a value (T-1838;
+  T-2299 owns the difference).
 - XMATCH's search_mode lifts too, as a value (for the array modes only the second element is probed, `INDEX(…,2,1)`): it is 2 in
   `XMATCH(2,A1:A3,0,{1;-1})` and 3 in `XMATCH(2,{1;2;2},0,{2;-2})`; an invalid mode element is `#VALUE!` in its slot
   (`{1;3}`); a boolean range element counts as its number (TRUE is 1). The first array-mode elements are unprobed, as is an error lookup_value next to a lifted search_mode (`XMATCH(NA(),A1:A3,0,{1;-1})`, implemented as a 2x1 of `#N/A` by analogy with MATCH's match_type, UNVERIFIED). Implemented (T-1958): `fn_xmatch` lifts search_mode with lookup_value and match_mode.

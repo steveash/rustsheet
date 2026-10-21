@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use crate::expressions::parser::stringify::{to_excel_string, to_rc_format};
 use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils::{number_to_column, parse_reference_a1};
@@ -86,6 +87,10 @@ fn simple_table() {
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
+        "SUBTOTAL(109,tblIncome[Jan])"
+    );
+    assert_eq!(
+        to_excel_string(&t, &cell_reference),
         "SUBTOTAL(109,$A$2:$A$3)"
     );
 
@@ -99,6 +104,10 @@ fn simple_table() {
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
+        "SUBTOTAL(109,tblIncome[Jan])"
+    );
+    assert_eq!(
+        to_excel_string(&t, &cell_reference),
         "SUBTOTAL(109,'Sheet One'!$A$2:$A$3)"
     );
 }
@@ -118,10 +127,8 @@ fn malformed_table_reference_is_ref_error_not_a_panic() {
         column: 6,
     };
     let t = parser.parse("SUM(tblIncome[Jan])", &cell_reference);
-    assert_eq!(
-        to_english_localized_string(&t, &cell_reference),
-        "SUM(#REF!)"
-    );
+    assert_eq!(to_excel_string(&t, &cell_reference), "SUM(#REF!)");
+    assert_eq!(to_rc_format(&t), "SUM(tblIncome[Jan])");
 }
 
 #[test]
@@ -147,7 +154,7 @@ fn huge_header_or_totals_row_counts_are_ref_error_not_an_overflow() {
         for formula in ["SUM(tblIncome[Jan])", "SUM(tblIncome[[#Totals],[Jan]])"] {
             let t = parser.parse(formula, &cell_reference);
             assert_eq!(
-                to_english_localized_string(&t, &cell_reference),
+                to_excel_string(&t, &cell_reference),
                 "SUM(#REF!)",
                 "{formula} with header {header}, totals {totals}"
             );
@@ -167,18 +174,18 @@ fn bare_table_name_and_empty_brackets_are_the_data_area() {
     };
     // Header row excluded (gen-m8b specials e804cf2f8af00680 K29, K116).
     let bare = parser.parse("ROWS(tblIncome)", &cell_reference);
-    let expected = to_english_localized_string(
+    let expected = to_excel_string(
         &parser.parse("ROWS(tblIncome[])", &cell_reference),
         &cell_reference,
     );
-    assert_eq!(
-        to_english_localized_string(&bare, &cell_reference),
-        expected
-    );
+    assert_eq!(to_excel_string(&bare, &cell_reference), expected);
     assert_eq!(expected, "ROWS($A$2:$C$3)");
-    // Names match ignoring case.
+    // A bare name keeps its text; `tblIncome[]` is read as the bare name (SPEC-0016).
+    assert_eq!(to_rc_format(&bare), "ROWS(tblIncome)");
+    // Names match ignoring case, and keep the case they were typed in.
     let t = parser.parse("ROWS(TBLINCOME)", &cell_reference);
-    assert_eq!(to_english_localized_string(&t, &cell_reference), expected);
+    assert_eq!(to_excel_string(&t, &cell_reference), expected);
+    assert_eq!(to_rc_format(&t), "ROWS(TBLINCOME)");
 }
 
 #[test]
@@ -213,11 +220,103 @@ fn reversed_column_range_is_the_same_area() {
     let forward = parser.parse("tblIncome[[Jan]:[Mar]]", &cell_reference);
     let reversed = parser.parse("tblIncome[[Mar]:[Jan]]", &cell_reference);
     assert_eq!(
-        to_english_localized_string(&reversed, &cell_reference),
-        to_english_localized_string(&forward, &cell_reference)
+        to_excel_string(&reversed, &cell_reference),
+        to_excel_string(&forward, &cell_reference)
     );
-    assert_eq!(
-        to_english_localized_string(&reversed, &cell_reference),
-        "$A$2:$C$3"
-    );
+    assert_eq!(to_excel_string(&reversed, &cell_reference), "$A$2:$C$3");
+    assert_eq!(to_rc_format(&reversed), "tblIncome[[Mar]:[Jan]]");
+}
+
+/// Printing a structured reference and parsing the text gives the same reference, for every
+/// specifier and column form over adversarial column names (the names come from untrusted
+/// files). Printing never panics.
+#[test]
+fn every_form_round_trips_through_the_printer() {
+    use crate::expressions::parser::{Node, StructuredReference};
+    use crate::expressions::token::{TableReference, TableSpecifier};
+
+    let names = [
+        "Qty",
+        "a[b",
+        "a]b",
+        "#x",
+        "x#",
+        "it's",
+        "@at",
+        "a@",
+        " lead",
+        "trail ",
+        "two  spaces",
+        "''",
+        "'[",
+        "[']",
+        "#All",
+        "ñandú",
+        "数量",
+        "a'#b'@c",
+        "]",
+        "[",
+        "'",
+    ];
+    let mut tables = create_test_table("T", &names, "A1", 4);
+    if let Some(table) = tables.get_mut("T") {
+        table.totals_row_count = 1;
+    }
+    let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
+    let context = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 30,
+        column: 30,
+    };
+    let specifiers = [
+        None,
+        Some(TableSpecifier::All),
+        Some(TableSpecifier::Data),
+        Some(TableSpecifier::Headers),
+        Some(TableSpecifier::Totals),
+        Some(TableSpecifier::HeadersData),
+        Some(TableSpecifier::DataTotals),
+    ];
+    let mut references = vec![StructuredReference {
+        table_name: "T".to_string(),
+        specifier: None,
+        table_reference: None,
+        bare: true,
+    }];
+    for specifier in &specifiers {
+        if specifier.is_some() {
+            references.push(StructuredReference {
+                table_name: "T".to_string(),
+                specifier: specifier.clone(),
+                table_reference: None,
+                bare: false,
+            });
+        }
+        for (i, left) in names.iter().enumerate() {
+            let right = names[(i + 1) % names.len()];
+            for table_reference in [
+                TableReference::ColumnReference(left.to_string()),
+                TableReference::RangeReference((left.to_string(), right.to_string())),
+            ] {
+                references.push(StructuredReference {
+                    table_name: "T".to_string(),
+                    specifier: specifier.clone(),
+                    table_reference: Some(table_reference),
+                    bare: false,
+                });
+            }
+        }
+    }
+    for reference in references {
+        let text = reference.text();
+        let node = parser.parse(&text, &context);
+        let Node::StructuredReferenceKind {
+            reference: parsed, ..
+        } = &node
+        else {
+            panic!("{text} parsed as {node:?}");
+        };
+        assert_eq!(**parsed, reference, "{text}");
+        assert_eq!(to_rc_format(&node), text);
+    }
 }

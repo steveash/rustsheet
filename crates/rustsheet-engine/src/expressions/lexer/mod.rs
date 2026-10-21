@@ -532,6 +532,9 @@ impl Lexer {
                                         }
                                         self.position = pos;
 
+                                        if let Some(token) = self.r1c1_structured_reference(&name) {
+                                            return token;
+                                        }
                                         if is_valid_r1c1_identifier(&name, self.peek_char()) {
                                             return TokenType::Ident(name);
                                         } else {

@@ -1,8 +1,11 @@
 pub(super) mod bound_variables;
+mod rename_defined_name;
+mod structured;
 use super::reference_operators::{
     at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
     union_text,
 };
+use super::structured_reference::is_unresolved_structured_reference;
 use super::{
     super::utils::{name_needs_quoting, quote_name, rename_defined_name_sheet},
     for_each_chain_operand_mut, left_chain,
@@ -16,6 +19,8 @@ use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
+pub(crate) use rename_defined_name::rename_defined_name_in_node;
+pub(crate) use structured::to_string_lowering;
 
 pub enum DisplaceData {
     Column {
@@ -59,6 +64,10 @@ pub enum DisplaceData {
 enum Rewrite<'a> {
     Displace(&'a DisplaceData),
     Move(&'a MoveContext<'a>),
+    /// Prints the area of every structured reference to one of these tables (lowercase names)
+    /// instead of its text: the tables of a sheet being deleted (SPEC-0016 "Sheet rename, delete
+    /// and restore").
+    Lower(&'a [String]),
 }
 
 const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
@@ -467,6 +476,7 @@ fn stringify(
             }
             &DisplaceData::None
         }
+        Rewrite::Lower(_) => &DisplaceData::None,
     };
     let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {
@@ -726,9 +736,22 @@ fn stringify(
             }
         }
         ErrorKind(kind) => format!("{kind}"),
+        ParseErrorKind { message, .. }
+            if export_to_excel && is_unresolved_structured_reference(message) =>
+        {
+            "#REF!".to_string()
+        }
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
+        StructuredReferenceKind { reference, lowered } => structured::reference_text(
+            reference,
+            lowered,
+            context,
+            rewrite,
+            export_to_excel,
+            (locale, language),
+        ),
         SpillRangeOperator { child } => {
             if export_to_excel {
                 return format!("_xlfn.ANCHORARRAY({})", sub(child));
@@ -954,6 +977,9 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
+        Node::StructuredReferenceKind { lowered, .. } => {
+            rename_sheet_in_node(lowered, sheet_index, new_name);
+        }
 
         // Do nothing
         Node::BooleanKind(_)
@@ -975,87 +1001,6 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
             rename_sheet_in_node(lambda, sheet_index, new_name);
             for arg in args {
                 rename_sheet_in_node(arg, sheet_index, new_name);
-            }
-        }
-    }
-}
-
-pub(crate) fn rename_defined_name_in_node(
-    node: &mut Node,
-    name: &str,
-    scope: Option<u32>,
-    new_name: &str,
-) {
-    match node {
-        Node::DefinedNameKind((n, s, _)) => {
-            let prefix_len = n.len() - crate::expressions::utils::bare_defined_name(n).len();
-            if name.to_lowercase() == n[prefix_len..].to_lowercase() && *s == scope {
-                n.replace_range(prefix_len.., new_name); // `Sheet!` stays as typed
-            }
-        }
-        // Go next level
-        Node::OpRangeKind { left, right }
-        | Node::OpIntersectKind { left, right, .. }
-        | Node::OpUnionKind { left, right, .. } => {
-            rename_defined_name_in_node(left, name, scope, new_name);
-            rename_defined_name_in_node(right, name, scope, new_name);
-        }
-        Node::OpConcatenateKind { .. }
-        | Node::OpSumKind { .. }
-        | Node::OpProductKind { .. }
-        | Node::OpPowerKind { .. }
-        | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| {
-                rename_defined_name_in_node(operand, name, scope, new_name);
-            });
-        }
-        Node::FunctionKind { kind: _, args } => {
-            for arg in args {
-                rename_defined_name_in_node(arg, name, scope, new_name);
-            }
-        }
-        Node::NamedFunctionKind {
-            name: _,
-            args,
-            id: _,
-        } => {
-            for arg in args {
-                rename_defined_name_in_node(arg, name, scope, new_name);
-            }
-        }
-        Node::UnaryKind { kind: _, right } => {
-            rename_defined_name_in_node(right, name, scope, new_name);
-        }
-        Node::ImplicitIntersection { child, .. } => {
-            rename_defined_name_in_node(child, name, scope, new_name);
-        }
-        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
-            rename_defined_name_in_node(child, name, scope, new_name);
-        }
-        // Do nothing
-        Node::BooleanKind(_) => {}
-        Node::NumberKind(_) => {}
-        Node::StringKind(_) => {}
-        Node::ErrorKind(_) => {}
-        Node::ParseErrorKind { .. } => {}
-        Node::ArrayKind(_) => {}
-        Node::EmptyArgKind => {}
-        Node::ReferenceKind { .. } => {}
-        Node::RangeKind { .. } => {}
-        Node::SheetSpanKind { .. } => {}
-        Node::WrongReferenceKind { .. } => {}
-        Node::WrongRangeKind { .. } => {}
-        Node::NamedVariableKind { .. } => {}
-        Node::LambdaDefKind {
-            parameters: _,
-            body,
-        } => {
-            rename_defined_name_in_node(body, name, scope, new_name);
-        }
-        Node::LambdaCallKind { lambda, args } => {
-            rename_defined_name_in_node(lambda, name, scope, new_name);
-            for arg in args {
-                rename_defined_name_in_node(arg, name, scope, new_name);
             }
         }
     }
