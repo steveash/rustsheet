@@ -365,7 +365,11 @@ fn table_range(id: SheetId, a1: &str, totals_row: bool) -> Result<RangeRef, rust
 /// The facade input for a spec cell; `None` leaves the cell empty.
 fn spec_input(input: &CellInput) -> Option<Input> {
     Some(match input {
-        CellInput::Number(n) | CellInput::Typed(Value::Number(n)) => Input::from(*n),
+        // spec2xlsx writes a number as an xlsx `<v>`, and Excel reads a subnormal one as 0, as xlsx
+        // import does (numbers.md "A subnormal cell constant reads as 0").
+        CellInput::Number(n) | CellInput::Typed(Value::Number(n)) => {
+            Input::from(rustsheet_engine::flush_subnormal(*n))
+        }
         CellInput::Bool(b) | CellInput::Typed(Value::Bool(b)) => Input::from(*b),
         CellInput::Str(s) if s.starts_with('=') => Input::Formula(s.clone()),
         // Mirrors tools/src/rustsheet_tools/spec2xlsx.py: "" is materialized as ="".
