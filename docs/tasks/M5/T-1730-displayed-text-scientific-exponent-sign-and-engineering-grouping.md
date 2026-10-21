@@ -3,7 +3,7 @@ id: T-1730
 title: "Displayed text: scientific exponent sign and engineering grouping (E+0 for a zero exponent, ##0.0E+0, 00.0E+0)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
