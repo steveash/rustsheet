@@ -3,7 +3,7 @@ id: T-1731
 title: "Displayed text of a date or time format over a serial outside 0..2958465.99999 is 255 #"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
