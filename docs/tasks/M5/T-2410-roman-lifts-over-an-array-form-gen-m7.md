@@ -3,7 +3,7 @@ id: T-2410
 title: "ROMAN lifts over an array form (gen-m7 TOROW(ROMAN(561,<2x4>),2) is five DLXI, ours #N/IMPL!)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
