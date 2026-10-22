@@ -331,4 +331,11 @@ fn a_one_sheet_span_range_lifts_like_the_plain_range() {
         assert_eq!(model._get_text("E4"), model._get_text("E8"), "{span}");
         assert_eq!(model._get_text("D5"), model._get_text("D9"), "{span}");
     }
+    // The values themselves (probes/3d-ref-one-sheet-span-lift A1:A3 holds 1, 5, #VALUE! over
+    // other data; here Data1!A1:A3 is 1, "5x", TRUE).
+    let mut model = sample();
+    model._set("D4", "=ABS(Data1:Data1!A1:A3)");
+    model.evaluate();
+    assert_eq!(model._get_text("D4"), "1");
+    assert_eq!(model._get_text("D5"), "#VALUE!");
 }
