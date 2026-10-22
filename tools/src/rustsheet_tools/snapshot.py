@@ -106,6 +106,11 @@ def compare_workbooks(cached: Path, recalculated: Path) -> dict[str, Any]:
 UNDECODED = {"t": "e", "v": "#UNDECODED!"}
 
 
+def is_undecoded(value: Any) -> bool:
+    """Whether a sidecar value is the `UNDECODED` marker (`is_undecoded` in xlsx_snapshot.rs)."""
+    return bool(value == UNDECODED)
+
+
 def formula_values(snap: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """Maps sheet → A1 → value for every formula cell (incl. array members) in a snapshot."""
     result: dict[str, dict[str, Any]] = {}

@@ -30,7 +30,7 @@ from rustsheet_tools import repo_root
 from rustsheet_tools.oracle.backends import BACKENDS, OracleError, OracleInfo
 from rustsheet_tools.oracle.calibrate import calibrate, to_markdown
 from rustsheet_tools.oracle.canary import checked_values, embed_canary
-from rustsheet_tools.snapshot import UNDECODED, compare_workbooks, formula_values, snapshot, suite_cases
+from rustsheet_tools.snapshot import compare_workbooks, formula_values, is_undecoded, snapshot, suite_cases
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 GOLDEN_BACKENDS = {"excel-graph", "excel-desktop"}
@@ -202,7 +202,7 @@ def _report_hand_disagreements(case: Path, spec: dict[str, Any], values: dict[st
     for key, hand in spec.get("expected", {}).items():
         sheet, a1 = _split_cell_key(key)
         got = values.get(sheet, {}).get(a1)
-        if got is not None and got != UNDECODED and got != hand:
+        if got is not None and not is_undecoded(got) and got != hand:
             print(f"NOTE {case.name} {key}: hand={hand} excel={got} (oracle wins)", file=sys.stderr)
 
 
@@ -237,7 +237,7 @@ def _report_undecoded(case: Path, values: dict[str, dict[str, Any]]) -> None:
     Excel produced, never a guess (T-0203 review: errorType 10), and a spill member missing from
     the sidecar would be scored as an expected blank (T-2397)."""
     for sheet, cells in values.items():
-        for a1 in [a for a, v in cells.items() if v == UNDECODED]:
+        for a1 in [a for a, v in cells.items() if is_undecoded(v)]:
             print(
                 f"UNDECODED {case.name} {sheet}!{a1}: rich-value error type unknown (left pending)",
                 file=sys.stderr,
