@@ -156,7 +156,7 @@ worksheet endpoints (the canary sheet stays last); the structural ones are:
 | `delete_column` (`column`) | `range('C:C')/delete` shift `Left` |
 | `delete_sheet` | `DELETE worksheets('S')` (the canary sheet is refused) |
 | `convert_table` (`table`) | `POST tables('T')/convertToRange` |
-| `delete_table` (`table`) | `DELETE tables('T')` |
+| `delete_table` (`table`) | `DELETE tables('T')` (the table's cells are cleared too; the engine adapter does the same) |
 
 Cut and paste, row and column moves, undo and sheet duplication have no Graph REST endpoint and stay out
 (desktop questions, decision 0039). The engine adapter replays the same ops (decisions 0076, 0098); it has no

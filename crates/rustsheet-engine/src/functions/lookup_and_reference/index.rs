@@ -242,7 +242,7 @@ impl Model {
                     _ => None,
                 };
                 // `INDEX(XMATCH(2,{1,2,3}),{1,2})` is 2, #REF! (probes/index-literal-scalar A10).
-                let arg = scalar_as_one_element_array(arg);
+                let arg = scalar_as_one_element_array(arg, cell);
                 return self.index_lifted(row, col, area, cell, arg_error, |model, numbers| {
                     model.index_select(&arg, numbers, two_arg, cell, IndexForm::TopLeft)
                 });
@@ -267,10 +267,12 @@ impl Model {
             // and-array-constant-at H1, T-1643), `INDEX(XMATCH(2,{1,2,3}),1,1)` 2 and `INDEX(5,2)`
             // `#REF!` (probes/lookup-argument-modes, m7-argument-modes, index-literal-scalar; T-1645).
             PickedReference::Node(reference) => {
-                scalar_as_one_element_array(self.evaluate_reference_arg(reference, cell))
+                scalar_as_one_element_array(self.evaluate_reference_arg(reference, cell), cell)
             }
-            PickedReference::Read(read) => scalar_as_one_element_array(read),
-            PickedReference::Value(value) => RefArg::Value(scalar_as_array(value)),
+            PickedReference::Read(read) => scalar_as_one_element_array(read, cell),
+            PickedReference::Value(value) => {
+                scalar_as_one_element_array(RefArg::Value(value), cell)
+            }
         };
         self.index_select(&arg, numbers, two_arg, cell, form)
     }
@@ -608,9 +610,17 @@ fn external_index_area(
     })
 }
 
-/// INDEX's first argument with a scalar value read as a one-element array (T-1645).
-fn scalar_as_one_element_array(arg: RefArg) -> RefArg {
+/// INDEX's first argument with a scalar value read as a one-element array (T-1645). An empty
+/// value is `#VALUE!`: `INDEX(INDEX(UNIQUE(D1:D3,FALSE,{FALSE;TRUE}),2,1),1,1)`, whose inner
+/// INDEX is UNIQUE's empty element (probes/m7-lift-take-drop-sortby L25; arrays.md "UNIQUE's
+/// and SORTBY's lifted elements"; T-2300).
+fn scalar_as_one_element_array(arg: RefArg, cell: CellReferenceIndex) -> RefArg {
     match arg {
+        RefArg::Value(CalcResult::EmptyCell) => RefArg::Value(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "INDEX of an empty value".to_string(),
+        )),
         RefArg::Value(scalar) => RefArg::Value(scalar_as_array(scalar)),
         reference @ (RefArg::Ranges(_) | RefArg::Grid(_)) => reference,
     }

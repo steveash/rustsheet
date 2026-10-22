@@ -330,7 +330,7 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
             // feature-gated ones (decisions 0076, 0098). Rows and columns are 1-based in the case
             // file. A `Txn` edit recalculates on commit; these do not.
             SheetOp::DeleteTable { table, .. } => workbook
-                .remove_table(table)
+                .delete_table(table)
                 .map(|()| workbook.recalculate()),
             SheetOp::InsertRow { sheet, row } | SheetOp::DeleteRow { sheet, row } => {
                 let id = sheet_id_of(workbook, sheet)?;
@@ -548,6 +548,11 @@ mod tests {
         assert_eq!(
             evaluated.value("Calc", Addr { row: 1, col: 2 }),
             Some(Value::Number(5.0))
+        );
+        // T-2341: the table's cells are cleared, so D1 is empty (table-delete-table F!A6).
+        assert_eq!(
+            evaluated.value("Calc", Addr { row: 1, col: 4 }),
+            Some(Value::Empty)
         );
     }
 

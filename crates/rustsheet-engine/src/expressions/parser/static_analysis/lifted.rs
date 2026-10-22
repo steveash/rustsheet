@@ -6,7 +6,7 @@ use super::broadcast::broadcast_shapes;
 use super::reference_parameter::reference_by_caller_shape;
 use super::reference_result::yields_cells;
 use super::{run_static_analysis_on_node, Node, Signature, StaticResult};
-use crate::functions::lift::{ArgKind, ArgKinds, CallResult};
+use crate::functions::lift::{ArgKind, ArgKinds};
 use crate::functions::Function;
 
 /// A `Lift` argument is `Signature::Scalar`, so a legacy formula intersects a range in it
@@ -58,15 +58,13 @@ pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticRes
             Some(ArgKind::Whole | ArgKind::WholeByCaller) | None => StaticResult::Scalar,
         })
         .collect();
-    match (kinds.result, broadcast_shapes(shapes)) {
+    match (kinds.result.is_array(), broadcast_shapes(shapes)) {
         // Unlifted, the call runs once and keeps its whole array, so its shape is not known. A
         // 1x1 shape is not known either: a one-cell range there is its cell's value and runs the
         // unlifted call, where a 1x1 array lifts to one element (`SEQUENCE(A3:A3)` spills A3's
         // rows, `SEQUENCE({3})` is 1x1: probes/m7-lift-take-drop-sortby rows 12 and 40; T-2298),
         // and the shapes here do not tell the two apart.
-        (CallResult::Array, StaticResult::Scalar | StaticResult::Array(1, 1)) => {
-            StaticResult::Unknown
-        }
+        (true, StaticResult::Scalar | StaticResult::Array(1, 1)) => StaticResult::Unknown,
         (_, shape) => shape,
     }
 }
