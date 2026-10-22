@@ -3,7 +3,7 @@ id: T-2350
 title: "Port ironcalc 1fd0ff4f: take the extended LOG_LOG10_LN.xlsx calc test workbook"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ Excel-computed, not IronCalc-written, before trusting them). Triaged by the 2026
   CHISQ results (its `test_fn_chisq.rs` expectation changed from 7 to 6.999999999), so do not take statrs 0.19
   as part of this task.
 - eb9ca75b (version bump only).
+
+## Outcome
+Took upstream `LOG_LOG10_LN.xlsx` (Excel-authored: docProps Application is Microsoft Excel) from ironcalc@1fd0ff4f. ironcalc-calc coverage for the workbook grows 93 -> 227 cells, all 227 pass (new-coverage failures: none, regressions 0); the baseline only records the new checked-cell count. No follow-ups.
