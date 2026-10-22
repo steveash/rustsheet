@@ -438,6 +438,7 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
         Node::OpUnionKind { .. }
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
+        | Node::StructuredReferenceKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
         | Node::OpRangeKind { .. }

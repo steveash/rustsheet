@@ -41,6 +41,7 @@ mod limits;
 pub mod locale;
 pub mod new_empty;
 pub mod number_format;
+pub mod pivot;
 pub mod sheet_data;
 pub(crate) mod sheet_undo;
 pub mod text;
@@ -92,12 +93,14 @@ mod x87_register;
 #[cfg(test)]
 mod test;
 
+pub use arithmetic::flush_subnormal;
 pub use evaluation::{KeyBuild, KeyHasher};
 pub use function_names::{implemented_function_names, lift_kinds_table, LiftKinds};
 pub use locale::get_supported_locales;
 pub use merged_cells::MergeStructure;
 pub use model::FmtSettings;
 pub use model::Model;
+pub use sheet_undo::TakenSheet;
 pub use text::Text;
 pub use user_model::BorderArea;
 pub use user_model::ClipboardData;

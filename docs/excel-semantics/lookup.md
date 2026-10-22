@@ -147,7 +147,9 @@ search runs, not found is `#N/A` (before any index is looked at), and otherwise 
 validated in reading order and the first bad one is the error of the whole call, with no spill
 (`{0,9}` is `#VALUE!`, `{9,0}` is `#REF!`, `{2,"a"}` and `{2,#DIV/0!}` are `#REF!`, an element is read like
 a referenced cell, so text and errors are `#REF!`); valid indexes give a same-shaped array
-(`VLOOKUP(2,A1:B4,{2,1},FALSE)` is "two", 2; a fractional element truncates). When lookup_value or
+(`VLOOKUP(2,A1:B4,{2,1},FALSE)` is "two", 2). A fractional element is floored with the near-integer snap, as a scalar
+index is (`{2.9999999,1.999999}` reads columns 3 and 1, `{3.9999999,1.9999999}` is `#REF!` on a 3-column table;
+probes/lookup-argument-edges H366-H370, T-2234). When lookup_value or
 range_lookup lifts, the index uses only its first element (`VLOOKUP({2;3},A1:B4,{1;2},FALSE)` is 2, 3,
 `{2;"a"}` is "two", "three", `{#DIV/0!;2}` is `#REF!` twice, a 2-D index likewise).
 A multi-cell *range* range_lookup lifts like an array and spills (gen-m2/942bdade381b7537 Calc!A381,
@@ -161,9 +163,20 @@ index (`1/0`, `NA()`) and a text index (`"a"` is `#VALUE!`, not the `#REF!` of a
 each fill every row with that scalar error (VLOOKUP with a range or an array range_lookup; HLOOKUP and
 `NA()` probed with an array range_lookup only, the engine shares one path) (probes/vlookup-error-arg-lifting-range-lookup, 22 cells, excel-graph, 2026-10-13, T-1491).
 Matches the engine (`LookupIndexArg::Failed`).
-A multi-cell range *index* stays implicitly intersected (T-1426). Unprobed: which error wins when a
-lookup_value element and a range_lookup element are both errors (the engine gives the lookup error),
-and blank elements of a computed index array (read as 0, `#VALUE!`).
+A multi-cell range *index* lifts once the value is found, and `@` intersects it (T-1426; see "VLOOKUP / HLOOKUP search
+before validating the index"). With a table error, an array index gives one scalar error, not a spill
+(`VLOOKUP(2,1/0,{2,3})` is `#DIV/0!`, probes/lookup-argument-edges H372, H375).
+When a lookup_value element and a range_lookup element are both errors, the lookup_value's error wins:
+`VLOOKUP({#N/A;2},A1:C3,2,{#DIV/0!;TRUE})` spills `#N/A`, "y", and `VLOOKUP({2;#N/A},A1:C3,2,{#DIV/0!;#NUM!})`
+spills `#DIV/0!`, `#N/A`. The same holds unlifted: `VLOOKUP(NA(),A1:C3,2,1/0)` is `#N/A`, and `VLOOKUP(1/0,A1:C3,2,NA())`
+is `#DIV/0!`. A range_lookup error still beats a value that is not found: `VLOOKUP(9,A1:C3,2,1/0)` is `#DIV/0!`.
+HLOOKUP behaves alike (probes/lookup-argument-edges H30-H63, excel-graph, 2026-10-21, T-2234).
+A blank element of a computed index array is `#VALUE!` for the whole call, not a spill:
+`VLOOKUP(2,A1:C3,IF({1,0},2,Z1))` and `CHOOSE({1,2},2,Z1)` with Z1 blank, and `INDEX(E10:E11,{1;2})` with E11 blank. The
+same holds for `{2,1}*Z1`, though that is just an index below 1. A text element (`IF({1,0},2,"")`) is `#REF!`. Not found is
+`#N/A` in each case. A blank reference index (`Z1`, `+Z1`) is `#VALUE!`. A lifted lookup_value with a range index reads
+only the range's first cell: `VLOOKUP({2;2},A1:C3,E10:E11)` (E11 blank) and `VLOOKUP({2;2},A1:C3,E14:E15)` (2, 3) both
+spill "y" twice (same probe, H126-H189, H360-H364).
 Evidence: probes/vlookup-array-index-range-lookup (155 cells, excel-graph, 2026-10-12, T-1269); the
 first-fill reading that an array range_lookup "looks unlifted" (T-0270) does not hold: each probe here has its own rows, so no spill collides.
 Implemented in: `Model::lookup_each` and `Model::pick_each` (lookup_each.rs), `LookupIndexArg::Array`
@@ -190,26 +203,50 @@ Evidence: probes/lookup-index-order H1–H50 (excel-graph, 2026-10-06, T-0211); 
 cbdabe32a32a4012 A87 (Calc sheet; excel-graph, 2026-10-04, gen-m2 sidecars, T-0203).
 Cut-off (probes/lookup-index-shapes H19-H36, excel-graph, 2026-10-06, T-0250): an index of
 -2147483648 is `#REF!`, -2147483647, -65536, -32769, -32768 and -32767 are `#VALUE!`, in VLOOKUP and
-HLOOKUP alike; not found is `#N/A` for all of them. A fractional index next to the cut-off is unprobed.
+HLOOKUP alike; not found is `#N/A` for all of them. A fractional index is floored before that test, so
+-2147483647.5, -2147483647.9999999 and -2147483648.25 are `#REF!`, while -2147483646.5 and -0.5 are `#VALUE!`. An
+array element floors the same way: `{-2147483647.5;-2147483648.5}` is `#REF!`. 2147483647.5 and 2147483648.5 are
+`#REF!` (past the table), and 3.5 is column 3 (probes/lookup-argument-edges H192-H333, excel-graph, 2026-10-21,
+T-2234).
+Near an integer the index snaps up, with the absolute bound that INDEX, LEFT and RIGHT use (2^-22 + 2^-33,
+"INDEX rounds an index up near an integer"). B1:CW1 holds 1 to 100, so `VLOOKUP(1,B1:CW1,x)` is the index used:
+- `2-2^-22*(1+2*2^-12)` is 2, but `2-2^-22*(1+3*2^-12)` is 1;
+- the same at 3, 50 and 100, and with HLOOKUP;
+- 2.9999999 is 3, and 3.9999999 is past a 3-column table (`#REF!`).
+
+Evidence: probes/lookup-index-near-integer (excel-graph, 2026-10-21, T-2234), for a literal and a reference index
+alike.
 Index shapes (same probe): `OFFSET(E1,..)` and `INDIRECT("E1")` results are references (a cell holding
 text or an error is `#REF!` when found, `#N/A` when not found). So is `INDEX(E1:E4,2)`: text or an
 error in the INDEXed cell is `#REF!` found / `#N/A` not found (probes H2, H3, H11, H12; T-0251).
 A multi-cell range index is implicitly intersected: `VLOOKUP(2,A1:C3,@E1:E2)` from row 1 reads E1,
 from row 2 reads E2 (text, so `#REF!`), from row 5 is `#VALUE!` (found), and also `#VALUE!` when the
 value is not found (value index fails before the search); `VLOOKUP(2,A1:C3,E1:E2)` unspilled in J10 is
-`#REF!` and `#N/A` when not found (K7); whether it spills into J11 is unprobed.
+`#REF!` and `#N/A` when not found (K7). Entered as a dynamic-array formula, it spills instead.
+`VLOOKUP(2,A1:C3,E1:E2)` with E1:E2 = 2, 3 spills "y" and 20 from J10, from N1 and from P2 (rows inside
+E1:E2 too), and is `#SPILL!` when the cell below is filled. `ROWS(..)` is 2, and `@E1:E2` from row 14 is `#VALUE!`.
+HLOOKUP behaves alike (probes/lookup-argument-edges J10-X2, excel-graph, 2026-10-21, T-2234).
 HLOOKUP twins (probes/lookup-index-hlookup H1-H6, excel-graph, 2026-10-07, T-0264): `INDEX(E1:E4,1)` (number)
 gives the row, `INDEX(E1:E4,2)` (text) and `INDEX(E1:E4,3)` (error) are `#REF!` found and `#N/A` not found,
 as in VLOOKUP. An INDEX index that itself fails (`INDEX(E1:E4,9)`) is `#REF!` in HLOOKUP and VLOOKUP, found
 or not found (H7-H10): a failing index is not turned into `#N/A` by a failed search. Whether the INDEX error propagates as is or is always
 mapped to `#REF!` is unprobed (an INDEX failing with another error, e.g. `INDEX(E1:E4,"x")`, would tell).
+A table_array error comes after lookup_value and before the index and range_lookup. `VLOOKUP(NA(),1/0,2)` and
+`VLOOKUP(NA(),#REF!,2)` are `#N/A`. `VLOOKUP(2,1/0,NA())`, `VLOOKUP(2,1/0,2,NA())` and `VLOOKUP(9,1/0,2)` are `#DIV/0!`.
+`VLOOKUP(2,#REF!,"a")` is `#REF!`. A lifted lookup_value spills the table error once per element: `VLOOKUP({2;9},1/0,2)`
+gives two `#DIV/0!` (probes/lookup-argument-edges H66-H123, excel-graph, 2026-10-21, T-2234).
+A lifted range_lookup spreads the table error too, as `VLOOKUP(2,1/0,2,{TRUE;FALSE})` spilling `#DIV/0!` twice shows.
+A lookup_value error still comes first, element by element: `VLOOKUP(NA(),1/0,2,{TRUE;FALSE})` spills `#N/A` twice, and
+`VLOOKUP({#N/A;2},1/0,2)` spills `#N/A`, `#DIV/0!` (same probe, H336-H358, HLOOKUP alike).
+A table that is the engine's own `#ERROR!` (arrays.md "Array results above 1,048,576 cells are #ERROR!", a DEVIATION)
+is returned once, not spread over a lifted lookup_value, so the limit still refuses the call.
 Status: VERIFIED
 Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
 (crates/rustsheet-engine/src/functions/lookup_and_reference/index_arg.rs), shared by VLOOKUP and HLOOKUP.
-Tasks: T-0211, T-0264
+Tasks: T-0211, T-0264, T-2234
 
 ## Approximate-match lookups: type-skipping binary search
-Rule: VLOOKUP/HLOOKUP with range_lookup TRUE (or omitted), LOOKUP, and MATCH with a non-zero
+Rule: VLOOKUP/HLOOKUP with range_lookup TRUE (or omitted), LOOKUP, and MATCH with a positive
 match_type run one binary search over the vector that only compares cells of the lookup value's
 own type (number, text or boolean; a blank lookup value is the number 0):
 ```
@@ -220,14 +257,14 @@ while lo <= hi:
     if m > hi: hi = mid-1; continue
     c = compare(v[m], key)                                  # text case-insensitive
     if c == 0: return the last index of the run of adjacent equal cells starting at m
-               (the first index of the run, walking down, for a descending search)
-    if (c < 0 ascending) or (c > 0 descending): best = m; lo = m+1
+    if c < 0: best = m; lo = m+1
     else: hi = m-1
 return best (none -> #N/A)
 ```
 Blanks never match and there is no cross-type match (`VLOOKUP(TRUE,{blank;-1},1,TRUE)` is `#N/A`).
 The run of equal cells stops at the first cell that is not equal, whatever its type
-(`MATCH(2,{0,0,0,2,"x",2,9})` = 4). Any negative match_type searches descending and any positive one
+(`MATCH(2,{0,0,0,2,"x",2,9})` = 4). A negative match_type is no binary search at all: see "MATCH descending
+search scans from the top" below. Any negative match_type searches descending and any positive one
 ascending (`MATCH(5,{9,5,5,5,1},-2)` = 2, `MATCH(2,…,2)` = `MATCH(2,…,1)`). Only the sign of a fractional match_type counts: `-0.5` and `-0.0001` search descending (gen-m2/f7e6d351c8538ef5 Calc!A160, gen-m2/96a0952412cefa6c Calc!A241, T-1304) and `0.5`, `0.0001` and `0.999` search ascending, not exact (`MATCH(2.5,{1,2,3,4,5},0.5)` = 2; probes/match-fractional-match-type C1-C3, T-1391). A blank MATCH key is 0
 in an approximate search (`MATCH(blank,{1,blank,0,blank,2})` = 3).
 Exact match (range_lookup FALSE, MATCH 0) only matches cells of the key's type: a blank cell never
@@ -247,23 +284,28 @@ Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_posi
 `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`
 Tasks: T-0212, T-0220
 
-## MATCH descending search skips backward; a text match_type read from a cell is #REF!
-Rule 1: in a descending search (negative match_type) the probe step that lands on a cell of another
-type moves *backward* to the nearest cell of the key's type, not forward as in the ascending
-pseudo-code above. `MATCH(0.5,{0.1,TRUE,3.14159},-1)` is `#N/A` (backward skip reaches 0.1, which is
-below the key, so nothing qualifies; a forward skip would reach 3.14159 and give 3), while
-`MATCH(0.5,{3,TRUE,0.1},-1)` = 1, `MATCH(2,{5,"x",3,1},-1)` = 3 and `MATCH(2,{5,TRUE,TRUE,1},-1)` = 1
-(the range forms agree). One backward-skip reading fits all four; the evidence does not exclude
-other rules for a skip that passes the low bound. When the backward skip finds no cell of the key's
-type between the live range's low bound and the midpoint, the search continues forward from the
-midpoint: `MATCH(-14,{FALSE,0.5},-1)` = 2 (gen-m2 b4392a6514a36ade Calc!A277; a backward-only skip
-gives #N/A). The forward continuation is verified by 20 further cells (probes/match-descending-forward-continuation J1-J20, excel-graph, T-1396):
-with a prefix of text, boolean or error cells before a run of numbers (or text), the descending
-search behaves as a plain binary search over the cells of the key's type (J1, J3 and J11-J16 have nothing of the key's type at or below the midpoint; the longer vectors J2 and J7-J10 only exercise the ordinary search after a mixed prefix). `MATCH(3,{"a","b","c",5,3,1},-1)` = 5,
+## MATCH descending search scans from the top; a text match_type read from a cell is #REF!
+Rule 1: a descending search (negative match_type) is a linear scan from the first cell, not a binary
+search. It passes over blanks, errors and cells of another type, ends at the first cell equal to the key
+(the first of a run of equal cells), and otherwise stops at the first cell of the key's type that is
+below the key, giving the last cell before it that is above the key (`#N/A` if the first one is already
+below, or there is none). Over the unsorted 0.5, 0.3, 0, -2.5, 2.5, -1, 1, 0.1, 100, keys 0, a blank
+(0) and -0.0001 give 3 and 0.0001 gives 2, over the whole vector and its 5- to 8-cell prefixes alike, and
+`""` is `#N/A` (probes/lookup-match-descending-blank A1-A18, excel-graph, 2026-10-21, T-2278; a binary search
+gives 9). The scan also gives every earlier cell this section was first written for, which a backward
+skip from a binary-search midpoint was fitted to: `MATCH(0.5,{0.1,TRUE,3.14159},-1)` is `#N/A` (0.1 is
+below the key), `MATCH(0.5,{3,TRUE,0.1},-1)` = 1, `MATCH(2,{5,"x",3,1},-1)` = 3, `MATCH(2,{5,TRUE,TRUE,1},-1)` = 1
+(the range forms agree) and `MATCH(-14,{FALSE,0.5},-1)` = 2 (gen-m2 b4392a6514a36ade Calc!A277). So do the 20
+cells of probes/match-descending-forward-continuation J1-J20 (excel-graph, T-1396), a prefix of text, boolean or
+error cells before a run of numbers (or text): `MATCH(3,{"a","b","c",5,3,1},-1)` = 5,
 `MATCH(1,{TRUE,FALSE,"c",9,7,5,3,1},-1)` = 8, `MATCH("b",{1,TRUE,2,"c","b","a"},-1)` = 5, `{#N/A,#N/A,5,4,3,2}` and
 prefixes of 2-4 text, boolean or mixed cells (J11-J14) give the same positions as the typed tail alone; an inexact key picks the last cell >= key
 (`MATCH(4.5,{"a","b","c",9,8,7,6,5,4,3},-1)` = 8) and a key above everything is #N/A (`MATCH(1,{"a","b",0.5,0.2},-1)`);
-range forms (a column and a row) agree. The engine already matches all 20 cells.
+range forms (a column and a row) agree, as does `MATCH(5,{9,5,5,5,1},-2)` = 2 above. Replacing the backward-skip
+binary search with the scan changed no other cell of any suite (T-2278). A key-equal cell after a smaller one is never
+reached (`MATCH(5,{1,9,5},-1)` `#N/A`, a binary search gives 3; with 5, 9, 5 in B1:B3 `MATCH(5,B1:B3,-1)` = 1), and a 100-cell
+unsorted vector gives the scan's answers too (no switch of algorithm by size): probes/lookup-t2278-followups A8-A14
+(excel-graph, 2026-10-22).
 Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
 `MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
 lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
@@ -280,9 +322,9 @@ A multi-cell range is its top-left cell, plain or picked by IF, IFS, SWITCH, LET
 (probes/match-type-nested-passthrough K1:K17, excel-graph, T-1452).
 Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
 2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, b4392a6514a36ade Calc!A277, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
-Implemented in: `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed). Rule 3: `match_type_arg` evaluates through `evaluate_chosen_reference` (util.rs), which IF, IFS, SWITCH, LET and CHOOSE share; aggregates such as SUM are deliberately unchanged (no oracle evidence).
+Implemented in: Rule 1 `SearchVector::descending_search` (lookup_table.rs); `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed). Rule 3: `match_type_arg` evaluates through `evaluate_chosen_reference` (util.rs), which IF, IFS, SWITCH, LET and CHOOSE share; aggregates such as SUM are deliberately unchanged (no oracle evidence).
 Status: VERIFIED
-Tasks: T-1305, T-1312, T-1313, T-1399, T-1452
+Tasks: T-1305, T-1312, T-1313, T-1399, T-1452, T-2278
 
 ## INDEX with one index into a 2-D range is #REF!
 Rule: `INDEX(range2d, n)` with only a row index (including 0 and 1E-15) is `#REF!`:
@@ -604,11 +646,17 @@ a column number and picks one cell, a scalar: `INDEX({2,3},1)` and `INDEX({2},1)
 `TYPE(INDEX(Z1:Z2,1))` is 1 (one cell). So a legacy N or T over it is `#VALUE!` (references.md "Legacy N and T over a
 reference-returning call"): `=N(INDEX({2;3},2))`, `=T(INDEX({"a";"b"},1))` and `=N(INDEX({2;3},1,0))` are `#VALUE!`, while
 `=N(INDEX({2,3},2))` is 3 and `=N(INDEX({2},1))` 2; a legacy `=TYPE(INDEX({2;3},1))` is shown `=TYPE(@INDEX({2;3},1))`, 1.
-`TYPE(INDEX({7},0,0))` and the other whole-row and whole-column selections of a scalar or a 1x1 array are unprobed (their
-values are, "INDEX of a scalar or a 1x1 array"); the engine gives them the same array.
-Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); probes/legacy-n-t-marker-shapes F10.
+Every whole-row and whole-column pick (an index of 0) of a scalar or a 1x1 array is an array too: `TYPE` is 64 and `ROWS` and
+`COLUMNS` are 1 for `INDEX({7},0,0)`, `INDEX({7},1,0)`, `INDEX({7},0,1)`, `INDEX({7},0)`, `INDEX(5,0,0)` and `INDEX(5,0)`;
+`INDEX({2,3},0,1)` (one cell of a one-row array's column) is a 1x1 array (`TYPE` 64, value 2) and `INDEX({2;3},0,1)` a 2x1 one.
+`INDEX({2,3},0)` is the whole 1x2 row (`TYPE` 64, `COLUMNS` 2; a spill that collides is `#SPILL!`). A legacy `=N(...)` over
+any of them is `#VALUE!` and `FORMULATEXT` shows the formula as typed, with no `@`, including for the scalar `INDEX(5,0,0)`
+and `INDEX(5,0)`.
+Evidence: probes/index-one-index-array-shape (excel-graph, 2026-10-19, T-1921); probes/legacy-n-t-marker-shapes F10;
+probes/index-zero-index-scalar-shape (excel-graph, 2026-10-20, T-1943).
 Status: VERIFIED (excel-graph)
-Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs).
+Ours: implemented (T-1921, `index_from_array` in functions/lookup_and_reference/index.rs), except a legacy N over `INDEX(5,0,0)` or
+`INDEX(5,0)` (a scalar first argument) returns 5 and its FORMULATEXT gains an `@` (T-2191).
 
 ## INDEX rounds an index up near an integer; a tiny negative index is 0
 Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
@@ -733,9 +781,11 @@ call's result), not a value. What the caller sees depends on who reads the eleme
 - A TAKE or DROP whose rows or cols lifts over a range is the same kind of result: `INDEX(TAKE(A1:B3,{1;2}),1,1)`
   spills A1:B1 as 1, 10 (ROWS 1, COLUMNS 2), `INDEX(DROP(A1:B3,{1;2}),1,1)` is the 2x2 A2:B3 (`#SPILL!` where blocked),
   and the outer result is 2x1 (probes/m7-argument-modes F4:I6, K1-K4; arrays.md "Dynamic-array and LAMBDA function
-  argument modes"). What its spilled elements, SUM over it and TAKE over an array value give is not probed (T-1960);
-  the engine gives it to INDEX, ROWS, COLUMNS, SUMPRODUCT, the aggregates and LET as a lifted OFFSET's, while IF,
-  CHOOSE and OFFSET's reference argument read it as a value (T-1838).
+  argument modes"). Spilled directly its elements are `#VALUE!`, SUM reads their top-left cells (2), SUMPRODUCT 0,
+  IF and CHOOSE hand it on and OFFSET over it lifts again, as for OFFSET; over an array value TAKE keeps top-left
+  values (probes/m7-lift-take-drop-sortby, T-1960). The engine gives it to INDEX, ROWS, COLUMNS, SUMPRODUCT, the
+  aggregates and LET as a lifted OFFSET's, while IF, CHOOSE and OFFSET's reference argument read it as a value (T-1838;
+  T-2299 owns the difference).
 - XMATCH's search_mode lifts too, as a value (for the array modes only the second element is probed, `INDEX(…,2,1)`): it is 2 in
   `XMATCH(2,A1:A3,0,{1;-1})` and 3 in `XMATCH(2,{1;2;2},0,{2;-2})`; an invalid mode element is `#VALUE!` in its slot
   (`{1;3}`); a boolean range element counts as its number (TRUE is 1). The first array-mode elements are unprobed, as is an error lookup_value next to a lifted search_mode (`XMATCH(NA(),A1:A3,0,{1;-1})`, implemented as a 2x1 of `#N/A` by analogy with MATCH's match_type, UNVERIFIED). Implemented (T-1958): `fn_xmatch` lifts search_mode with lookup_value and match_mode.
@@ -754,8 +804,25 @@ the value view (`GridReading::Values`), SUMPRODUCT through `Model::sumproduct_ar
 CHOOSE (`SUM(IF(TRUE,r))` 101, b1c E69, E73), which their reference reading picks. INDIRECT
 (`Model::indirect_reference`) and TRIMRANGE (`Model::trimrange_reference`) are producers on the same carrier (T-1957;
 shared helpers in lookup_and_reference/ref_lift.rs); TRIMRANGE's array, computed-reference and error sources:
-"TRIMRANGE lifted over an array, a computed reference or an error" below (T-2089). Not yet: the
-per-element callers (T-2064). The pass-through of IF, CHOOSE, LET and a LAMBDA parameter, and OFFSET over a grid:
+"TRIMRANGE lifted over an array, a computed reference or an error" below (T-2089). The
+per-element callers (T-2064): `Function::per_reference_element` lists them and the arguments that take a reference,
+and `Model::call_per_reference_element` (lookup_and_reference/ref_lift.rs, called from `Model::evaluate_function`)
+runs each once per element with the element as an absolute reference in its place (a SUMIF or SUMIFS with several
+grids broadcasts them); COUNTIF, SUMIF and SUMIFS spill by `criteria_and_grid_static_result`. SHEET of a grid is
+one `#N/A` (b1d E101), and VSTACK of grids in a reference position stacks them (`Model::vstack_reference`, b2 E225).
+The other arguments are read once before the elements run and put back as literals or absolute references, so a
+nest of such calls is evaluated once per level. Unprobed (T-2292): an error element in a per-element call (ours: the
+call with that error in the reference's place, `AREAS(OFFSET(A1,{0;-1},0))` 1, `#REF!`); a criteria or function_num
+array beside a grid (ours: each element's call cut to its top-left value, so `COUNTIF(OFFSET(A1,{0;1},0),{">0",">5"})`
+is 2x1, where a broadcast would give 2x2); VSTACK of several grids (ours: narrower ones padded with `#N/A` elements);
+an argument beside a grid that reads as an empty value, a 3-D range or a LAMBDA (ours: the call is `#VALUE!`,
+`COUNTIF(OFFSET(A1,{0;1},0),IF(TRUE,C5))` with C5 blank); a grid reached through IF, CHOOSE, LET, TAKE, DROP or TRIMRANGE by a per-element caller (ours: the value view, only
+a direct OFFSET or INDIRECT is read per element).
+DEVIATION (decision 0014, CLAUDE.md directive 5): before any element runs, each element of a per-element call is
+charged one visit (ROW, COLUMN, AREAS, CELL, ISFORMULA, N, T) or the cells of its reference inside the used area
+(SUBTOTAL, COUNTIF, SUMIF, COUNTBLANK; SUMIFS times its criteria pairs) against the shared cell-visit cap of
+criteria.md; past it the call is `#ERROR!` where Excel computes it
+(`SUBTOTAL(9,OFFSET(A:A,0,0,,SEQUENCE(1,1000)))` with A1048576 filled). The pass-through of IF, CHOOSE, LET and a LAMBDA parameter, and OFFSET over a grid:
 "Arrays of references through LET, IF, CHOOSE and OFFSET" below (T-2078).
 Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065, T-2078, T-2089
 
@@ -836,4 +903,79 @@ Tasks: T-2078
 ## XLOOKUP: an error lookup_value beats a size mismatch
 Rule (VERIFIED, probes/workday-serial-zero F40, excel-graph, 2026-10-19, T-1254): `XLOOKUP(NA(),A1:A4,B1:B5)` is
 `#N/A`, not the `#VALUE!` of lookup and return arrays of different sizes: the lookup value's error is returned first.
-Tasks: T-1254
+The modes come next, before the size mismatch: both are read as numbers in argument order, and only then is either checked,
+so an error search_mode beats an unknown match_mode, while a text match_mode's `#VALUE!` and an error match_mode beat an error
+search_mode (`XLOOKUP(1,B1:B3,B1:B3,0,"x",1/0)` `#VALUE!`, `XLOOKUP(..,0,NA(),1/0)` `#N/A`; probes/lookup-t2278-followups A6, A7):
+`XLOOKUP(<blank>,Data!E5:E9,Data!C3:D8,0.3,101,INDEX(Data!D4:E11,0))` is `#REF!` (INDEX of a 2-D range with one index,
+"INDEX with one index into a 2-D range is #REF!"), and so is INDIRECT, ROWS and COLUMNS of it, while without that
+search_mode it is `#VALUE!` (the 6-row return array against the 5-cell lookup array, and match_mode 101 alike)
+(probes/xlookup-array-search-mode-indirect A1-A10, A21, excel-graph, 2026-10-22, T-2278; gen-m6/e3a562557696e2fc A33).
+INDIRECT of an error is that error (`INDIRECT(1/0)` `#DIV/0!`, `INDIRECT(NA())` `#N/A`), and an array search_mode of valid
+modes lifts (`ROWS(XLOOKUP(2,..,{1;2}))` 2).
+Implemented in: `xlookup_modes` (crates/rustsheet-engine/src/functions/xlookup.rs).
+Tasks: T-1254, T-2278
+
+## CHOOSEROWS and CHOOSECOLS: an error argument beats an out-of-range index (T-2273)
+Rule (excel-graph, gen-m6, 2026-10-21): an error value in any argument, the array or a later index, is the result even when an
+earlier index is 0 or out of range: `CHOOSECOLS(Data!A1,1E+15,ACOSH(-0.3))` is `#NUM!`, `CHOOSEROWS(Data!A7:B8,4,FLOOR(0.3,-0.0001),1)`
+`#NUM!`, `CHOOSECOLS(SQRT(2958465),2,-2,INDEX(Data!A8:D12,6,2))` `#REF!`, `CHOOSEROWS(CHOOSEROWS(Data!D11:E12,1),1E-15,6,2-FLOOR(7,0))`
+`#DIV/0!`, `CHOOSEROWS(Data!B11:E11,2,-1,..SUMX2MY2(<mismatched>))` `#N/A` (gen-m6/121a7c17092038d9 Calc!A298, 07171fa3f7493f51 A333,
+ee56a4ed5a612a0d A19, 535caabe1e635e2d A136, 7ac4ea222977f3b4 A391; 26 cells in T-2273). This answers the UNVERIFIED "which problem
+wins inside a CHOOSECOLS/CHOOSEROWS index list" above for errors against bad indexes; which of two errors wins is still unprobed.
+Ours: the first problem in argument order, so an out-of-range index's `#VALUE!` wins.
+Status: VERIFIED
+Tasks: T-2273
+
+## ADDRESS: argument errors first, sheet_text "TRUE"/"FALSE" quoted, bounds (T-2274, T-2275)
+Rule (excel-graph, gen-m6, 2026-10-21):
+- An error in any argument beats ADDRESS's own `#VALUE!` for a bad row, column or abs_num: `ADDRESS(-1,3.14159,2,NA())` is `#N/A`,
+  `ADDRESS(10,0.1/DATE(2055,0,5),3,INDEX(Data!A6:A7,3))` `#REF!`, `ADDRESS(18,0.1,-2.5,MINUTE(-0.5)<..,..)` `#NUM!`
+  (gen-m6/0fd242eb9b2456a8 Calc!A280, 38d4bcdafaed1275 A35, 07171fa3f7493f51 A245; 15 cells in T-2274).
+- A sheet_text of "TRUE" or "FALSE" is quoted like a name that needs quotes: `ADDRESS(9,26,3,TRUE,"TRUE")` = `'TRUE'!$Z9` and
+  `ADDRESS(6,20,4,TRUE,<a 1x1 array holding the boolean FALSE>)` = `'FALSE'!T6` (a boolean sheet_text becomes "FALSE" and is quoted) (c96ac1ada46179c4 A197, ee56a4ed5a612a0d A306). Ours leaves them bare.
+- A row past 1048576 or a column past 16384 is `#VALUE!` whatever abs_num and a1 are, R1C1 relative included:
+  `ADDRESS(1E+15,7)`, `ADDRESS(21887494,5)`, `ADDRESS(123456831,3,1,..,"Data")`, `ADDRESS(17,123456789.123,2,FALSE)`,
+  `ADDRESS(2,45306,2,FALSE,"Data")` (36d5ce763ea63631 A154, b54448af3fde07ca A220, d0c30225243fde60 A63, 04fdc9a67474aab9 A98,
+  acdfeaf6e6eadd4e A379).
+- Bounds per part (probes/t2275-address-bounds, 282 cells over abs_num 1-4 and a1 TRUE/FALSE, excel-graph, 2026-10-21, T-2275):
+  row_num and column_num are floored, not truncated, in every mode (2.9 is 2, 1048576.9 is 1048576; -0.5, -1.5, -2.4, -2.5
+  and -2.6 are -1, -2, -3, -3 and -3; 0.5 and 0.9 are 0). A part written as an index (every part in A1 style, whatever
+  abs_num; the R part for abs_num 1-2 and the C part for 1 and 3 in R1C1) must then be 1..1048576 for a row and 1..16384 for a
+  column. A relative R1C1 part (R for abs_num 3-4, C for 2 and 4) is an offset in -1048575..1048575 or -16383..16383, so
+  `ADDRESS(1048576,3,3,FALSE)`, `ADDRESS(-1048576,3,4,FALSE)` and `ADDRESS(5,16384,2,FALSE)` are `#VALUE!` while
+  `ADDRESS(-1048575,3,3,FALSE)` = `R[-1048575]C3`, `ADDRESS(1048575,3,3,FALSE)` = `R[1048575]C3`, `ADDRESS(5,-16383,4,FALSE)` =
+  `R[5]C[-16383]` and `ADDRESS(5,16383,2,FALSE)` = `R5C[16383]` (K1:K4 probe both positive edges). An offset of 0 is written
+  bare: `ADDRESS(0,3,3,FALSE)` = `RC3`, `ADDRESS(9,0,2,FALSE,"Data")` = `Data!R9C`, `ADDRESS(0,0,4,FALSE)` = `RC`. So
+  `ADDRESS(10,-2.5,4,FALSE)` = `R[10]C[-3]` (3a26794015dfbe9d A275), and `DATEVALUE(ADDRESS(9,0,2,FALSE,"Data")&OFFSET(Data!A4:D10,0,-1))`
+  is the OFFSET's `#REF!` (44194b2fefa30de2 A307).
+- gen-m6/be0e3a1b0fc3f7a0 A167 `ADDRESS(9,3,4,(Data!A5=MULTINOMIAL(<blank>)),T("1E3"))` is `#VALUE!` because
+  `MULTINOMIAL(<blank cell>)` is (coercion.md "GCD / LCM / MULTINOMIAL range cells", T-2294); ADDRESS itself gives
+  `ADDRESS(9,3,4,FALSE,"1E3")` = `'1E3'!R[9]C[3]`, and quotes "1A", "A1" and "R1C1" sheet_text alike.
+Status: VERIFIED (web).
+Implemented in: `address_index` and `r1c1_part` (crates/rustsheet-engine/src/functions/lookup_and_reference/address_areas.rs,
+T-2275); every argument is cast before the bounds are checked.
+Tasks: T-2274, T-2275
+
+## HYPERLINK: an error link_location is the result (T-2277)
+Rule (excel-graph, gen-m6, 2026-10-21): when link_location is an error, HYPERLINK returns that error as one value, whatever
+friendly_name is: with a number friendly_name (`HYPERLINK(TEXTJOIN(<#VALUE!>..),GCD(..))` is `#VALUE!`), with an array one
+(`HYPERLINK(XLOOKUP(<size mismatch>),MUNIT(2))` is `#VALUE!`, not a spill) and with a range one (`HYPERLINK(HLOOKUP(100,Data!A6:C11,7)&..,
+OFFSET(Data!A6:C12,6,42))` is `#REF!`); `HYPERLINK("abc"&NA(),OFFSET(..)^..)` is a single `#N/A` that spills nothing (gen-m6/0bcac2d96e96b3df
+Calc!A17, 44194b2fefa30de2 A169, d0c30225243fde60 A377, c6621490a4d67f4e A214/B214). Ours returns friendly_name or lifts over it.
+Status: VERIFIED
+Tasks: T-2277
+
+## LOOKUP past a short result vector gives a blank's empty value; MMULT of it is #VALUE! (T-2278)
+Rule: when LOOKUP's match position lies past a one-cell result vector, it reads on to the blank cell there and gives its
+empty value ("VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0"): it shows 0, but it is no reference
+(`ISREF` FALSE, with a two-cell result vector too), `ROWS` of it is `#VALUE!`, and a matrix function treats it as a blank
+matrix cell (arrays.md "MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!"): `MMULT(LOOKUP(TRUE,Data!B2:B10,Data!E11:E11),2.5)`
+and `WEEKDAY(MMULT(LOOKUP(..),Data!C$2))` are `#VALUE!` (TRUE matches B10, the 9th cell).
+Evidence: probes/lookup-short-result-vector A19-A26 (excel-graph, 2026-10-21, T-2278); gen-m6/50f0dd9a8ee2cb57 Calc!A315.
+The same gen-m6 workbook's A204, `DATE(2088,MATCH(<blank>,Data!E4:E12,-2.2),30)` = 68757, is the descending scan above
+("MATCH descending search scans from the top"), and e3a562557696e2fc A33 is "XLOOKUP: an error lookup_value beats a size mismatch".
+So are the other empty values: an omitted argument (`MMULT(,2)`), IFERROR of a blank (`MDETERM`, `MMULT` and `MINVERSE` of
+`IFERROR(<blank>,1)`) and `MMULT(IF(TRUE,<blank>),2)` are `#VALUE!` (probes/lookup-t2278-followups A1-A5, excel-graph, 2026-10-22).
+Implemented in: `Model::eval_matrix_arg` (matrix.rs) reads the empty value as blank, as a blank cell.
+Status: VERIFIED (excel-graph)
+Tasks: T-2278

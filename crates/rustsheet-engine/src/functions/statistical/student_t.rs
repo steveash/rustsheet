@@ -23,11 +23,15 @@
 //!   of the exact value there up to df 1E10 (`T.DIST(2,1E10,TRUE)` = 0.977249868038323,
 //!   probes-numeric m9-t-edges), and a rounded y moves L by about n eps.
 //!
+//! - for df 13 to 16 the series tail is scaled by Excel's 1/B(n/2, 1/2) over the exact one: Excel's
+//!   BETA.DIST forms B from GAMMALNs there ([`log_gamma_ratio`], T-0969 attempt 10).
+//!
 //! Every loop is bounded: [`SERIES_MAX_DF`] / 2 series terms, [`TAYLOR_TERMS`] Taylor terms and
 //! [`MAX_POWER_SERIES_TERMS`] power-series terms a call.
 
+use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{beta_reg_complement, beta_reg_upper, incbcf, incbd};
-use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, two_sum};
+use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp, two_sum};
 
 /// A double-double: an unevaluated sum `hi + lo` with |lo| <= ulp(hi)/2.
 type Dd = (f64, f64);
@@ -35,6 +39,13 @@ type Dd = (f64, f64);
 /// Largest integer df that the double-double series ([`centre_series`], [`integer_ratio`]) sum:
 /// about df/2 double-double steps a call.
 const SERIES_MAX_DF: f64 = 1000.0;
+/// From this shape up to [`LOG_GAMMA_BETA_MAX`] Excel's B(a, 1/2) is a sum of GAMMALNs
+/// ([`log_gamma_ratio`]). Below it (df under 13) the form is not probed and scaling by it loses
+/// probes-numeric cells (statistics.md "Student t prefactor per df").
+const LOG_GAMMA_BETA_MIN: f64 = 6.5;
+/// Up to this shape Excel's B(a, 1/2) is a sum of GAMMALNs: past 8 GAMMALN is Stirling's series and
+/// Excel's B is accurate.
+const LOG_GAMMA_BETA_MAX: f64 = 8.0;
 /// From this shape on, Gamma(a + 1/2)/Gamma(a) comes from its asymptotic series.
 const ASYMPTOTIC_MIN_SHAPE: f64 = 85.0;
 /// Cephes' `MACHEP`, 2^-53: the power series stops below it.
@@ -220,10 +231,9 @@ fn tail_from(args: &TailArguments, n: f64) -> f64 {
     if y <= z {
         return 0.5 * power_series(0.5 * n, y, ratio);
     }
-    if let Some(inside) = args.series.as_ref().map(centre_series) {
-        let tail = dd_add((0.5, 0.0), (-0.5 * inside.0, -0.5 * inside.1)).0;
-        if tail > MIN_SERIES_TAIL {
-            return tail;
+    if let Some(tail) = args.series.as_ref().map(exact_series_tail) {
+        if tail.0 > MIN_SERIES_TAIL {
+            return excel_prefactor_scale(tail, 0.5 * n);
         }
     }
     centre_tail(args, n, z, ratio)
@@ -321,6 +331,32 @@ fn gamma_ratio(n: f64) -> Option<f64> {
         ratio = dd_div(dd_mul(ratio, shape), dd_add(shape, (0.5, 0.0)));
     }
     Some(ratio.0)
+}
+
+/// 1/B(a, 1/2) the way Excel's BETA.DIST forms B for a shape up to [`LOG_GAMMA_BETA_MAX`]:
+/// exp(GAMMALN(a) + (GAMMALN(1/2) - GAMMALN(a + 1/2))) with Excel's own GAMMALN and EXP.
+fn log_gamma_ratio(a: f64) -> Option<f64> {
+    if !(LOG_GAMMA_BETA_MIN..=LOG_GAMMA_BETA_MAX).contains(&a) {
+        return None;
+    }
+    let beta = excel_exp(excel_gammaln(0.5) + (excel_gammaln(a) - excel_gammaln(a + 0.5)));
+    Some(1.0 / beta)
+}
+
+/// The exact tail L = 1/2 - A/2 of the integer-df series, in double-double.
+fn exact_series_tail(args: &SeriesArguments) -> Dd {
+    let inside = centre_series(args);
+    dd_add((0.5, 0.0), (-0.5 * inside.0, -0.5 * inside.1))
+}
+
+/// The exact tail L (a double-double) times Excel's 1/B(a, 1/2) over the exact one, rounded once:
+/// where [`log_gamma_ratio`] applies, Excel's tail carries its Beta function's error at every t.
+fn excel_prefactor_scale(tail: Dd, a: f64) -> f64 {
+    // The series tail never used the exact 1/B; it is formed here only as the divisor.
+    match (log_gamma_ratio(a), integer_ratio(2.0 * a)) {
+        (Some(excel), Some(exact)) => dd_mul(tail, dd_div((excel, 0.0), exact)).0,
+        _ => tail.0,
+    }
 }
 
 /// Gamma(a + 1/2)/(Gamma(a) sqrt(pi)) by its asymptotic series, for a >= [`ASYMPTOTIC_MIN_SHAPE`].
@@ -507,6 +543,20 @@ mod tests {
             student_t_tails(3.2013, 100.0).1,
             student_t_tail_at(y, 100.0)
         );
+    }
+
+    #[test]
+    fn df_fifteen_tail_carries_excels_beta_function() {
+        // probes-numeric t0969-t-beta-link: Excel's `T.DIST.RT(2,15)` is 0.03197250364236003, about
+        // 20 x 2^-53 under the exact tail, the error of its B(7.5, 1/2) from GAMMALNs
+        // (t0969-beta-switch); df 17 is past the GAMMALN form and stays exact. The exact tail is
+        // further off than the one ulp left here.
+        let excel = 0.031_972_503_642_360_03;
+        assert!(ulps(student_t_tails(2.0, 15.0).1, excel) <= 1);
+        let exact = series_arguments(2.0, 15.0).map_or(f64::NAN, |args| exact_series_tail(&args).0);
+        assert!(ulps(exact, excel) > 1, "{exact}");
+        assert_eq!(log_gamma_ratio(8.5), None);
+        assert_eq!(log_gamma_ratio(6.0), None);
     }
 
     #[test]

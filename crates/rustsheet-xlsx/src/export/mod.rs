@@ -85,6 +85,8 @@ pub fn save_to_xlsx(model: &Model, file_name: &str) -> Result<(), XlsxError> {
     Ok(())
 }
 
+/// Writes `model` as an xlsx package. Features the exporter does not write and drops: pivot
+/// caches and pivot tables (`Workbook::pivot_caches`/`pivot_tables`; SPEC-0015 non-goal).
 pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<W, XlsxError> {
     let workbook = &model.workbook;
     let selected_sheet = match workbook.views.get(&0) {

@@ -46,8 +46,14 @@ XIRR_OOS_CASES = [
     "probes/date-system-1900-financial-daycount",
     "probes/xirr-mismatched-empties",
     "probes/xirr-early-dates",
+    "probes/xirr-span-zero-first",
 ]
-YIELD_CASES = ["probes/solver-iteration-traces", "probes/bond-one-period-bases", "probes/yield-solver-sweep"]
+YIELD_CASES = [
+    "probes/solver-iteration-traces",
+    "probes/bond-one-period-bases",
+    "probes/yield-solver-sweep",
+    "probes/yield-start-sweep",
+]
 
 
 class NoResultError(ExcelError):
@@ -721,19 +727,24 @@ def dprice(y: float, bond: Bond) -> float:
 
 
 def _bond_price(args: tuple[Arg, ...]) -> tuple[Callable[[float], float], Bond, float]:
-    """The cell's PRICE(y) function on basis 0, its bond tuple and the target price."""
-    settle, maturity, rate, pr, red, freq, _ = _bond(args)
-    a, e, _, dsc, n = day_counts(settle, maturity, freq, 0, period_e=False)
+    """The cell's PRICE(y) function in its day-count basis, its bond tuple and the target price."""
+    settle, maturity, rate, pr, red, freq, basis = _bond(args)
+    a, e, _, dsc, n = day_counts(settle, maturity, freq, basis, period_e=False)
     bond: Bond = (rate, red, freq, a, e, dsc, n)
     return partial(price, bond=bond), bond, pr
 
 
 def _newton_yield(start: float, tol: float) -> Callable[..., float]:
     """Newton on PRICE(y) - pr from `start`, returning the iterate after a step below `tol`."""
+    return _newton_yield_from(lambda *_args: start, tol)
+
+
+def _newton_yield_from(start: Callable[..., float], tol: float) -> Callable[..., float]:
+    """`_newton_yield` from `start(*cell_args)` instead of a fixed start."""
 
     def call(*args: Arg) -> float:
         price_of, bond, pr = _bond_price(args)
-        y = start
+        y = start(*args)
         for _ in range(100):
             step = (price_of(y) - pr) / dprice(y, bond)
             y -= step
@@ -775,6 +786,42 @@ YIELD_STARTS: dict[str, Callable[[Bond, float], float]] = {
     "the current yield (rate * 100 / pr)": lambda bond, pr: bond[0] * 100 / pr,
     "the approximate yield (T-1592)": _approximate_yield,
 }
+
+
+def _years_to_maturity(settle: datetime.date, maturity: datetime.date, basis: int) -> float:
+    """Settlement to maturity in years: the basis' day count over 360 (bases 0, 2, 4) or 365
+    (bases 1, 3). T-1592: the hidden YIELD start moves between bases 0 and 1 as this count does
+    (1559/360 against 1581/365 on yield-start-sweep D), not as /366 or /365.25 would."""
+    days = days360(settle, maturity, basis == 4) if basis in (0, 4) else (maturity - settle).days
+    return days / (365.0 if basis in (1, 3) else 360.0)
+
+
+def _annuity_model_root(m: int) -> Callable[..., float]:
+    """The yield of a frequency-free bond with redemption 100: an annual coupon of 100 * rate paid
+    m times a year over the continuous term T (`_years_to_maturity`), m = 0 compounding
+    continuously, solved by `regula_falsi`. A T-1592 start candidate: the hidden start does not move
+    with redemption or frequency."""
+
+    def call(*args: Arg) -> float:
+        settle, maturity, rate, pr, _, _, basis = _bond(args)
+        years = _years_to_maturity(settle, maturity, basis)
+
+        def price_of(y: float) -> float:
+            v = math.exp(-y * years) if m == 0 else rpow(1 + y / m, -m * years)
+            coupons = 100 * rate * years if y == 0 else 100 * rate * (1 - v) / y
+            return coupons + 100 * v
+
+        return regula_falsi(price_of, pr)
+
+    return call
+
+
+def _semiannual_par_root(*args: Arg) -> float:
+    """PRICE's root at frequency 2 and redemption 100 whatever the cell's own: a T-1592 start
+    candidate."""
+    basis = args[6] if len(args) > 6 else 0.0
+    price_of, _, pr = _bond_price((*args[:4], 100.0, 2.0, basis))
+    return regula_falsi(price_of, pr)
 
 
 def newton_back_chain(cell_args: tuple[Arg, ...], y: float, steps: int) -> list[float]:
@@ -877,6 +924,16 @@ def yield_candidates() -> list[Candidate]:
         )
         for name, start in YIELD_STARTS.items()
         for t in (1e-7, 5e-8, 1e-8)
+    ]
+    # T-1592: Newton from a frequency- and redemption-free start, with T-2187's step cut.
+    model_starts = {f"a {m}-coupon-a-year annuity root": _annuity_model_root(m) for m in (1, 2, 3, 4)}
+    model_starts["a continuous annuity root"] = _annuity_model_root(0)
+    model_starts["PRICE's root at frequency 2, redemption 100"] = _semiannual_par_root
+    out += [
+        candidate(
+            f"Newton from {name}, |step| < 6.9e-6", _newton_yield_from(start, 6.9e-6), "Newton, model start"
+        )
+        for name, start in model_starts.items()
     ]
     return out
 

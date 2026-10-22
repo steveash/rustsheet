@@ -479,3 +479,255 @@ fn map_and_scan_elements_that_are_ranges_still_read_their_cells() {
     assert_eq!(model._get_text("G1"), "#CIRC!");
     assert_eq!(model._get_text("H1"), "#CIRC!");
 }
+
+// ── LAMBDAs that outlive their call (T-0439) ─────────────────────────────────
+
+#[test]
+fn closures_read_the_values_their_outer_names_had_when_made() {
+    // probes/lambda-escaping-closures, excel-graph: an accumulator LAMBDA made in each REDUCE
+    // step, a LET-bound curried call, and a captured name shadowed or rebound later.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set(
+        "B1",
+        "=LET(g,REDUCE(LAMBDA(z,z),{1,2,3},LAMBDA(f,x,LAMBDA(z,f(z)*10+x))),g(0))",
+    );
+    model._set("B2", "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),plus,mk(5),plus(1))");
+    model._set(
+        "B3",
+        "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),fa,mk(1),fb,mk(100),fa(0)+fb(0)*1000)",
+    );
+    model._set("B4", "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1),a,50,f(0))");
+    model._set("B5", "=LET(a,1,f,LAMBDA(b,a+b),LET(a,2,f(0)))");
+    model._set(
+        "B6",
+        "=LET(g,REDUCE(LAMBDA(z,z),{1,2,3},LAMBDA(f,x,LAMBDA(z,f(z)+x))),MAP({10,20},g))",
+    );
+    model._set(
+        "B8",
+        "=LET(x,10,mk,LAMBDA(a,LAMBDA(b,a+b+x)),f,mk(1),f(100))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "123");
+    assert_eq!(model._get_text("B2"), "6");
+    assert_eq!(model._get_text("B3"), "100001");
+    assert_eq!(model._get_text("B4"), "1");
+    assert_eq!(model._get_text("B5"), "1");
+    assert_eq!(model._get_text("B6"), "16");
+    assert_eq!(model._get_text("C6"), "26");
+    assert_eq!(model._get_text("B8"), "111");
+}
+
+#[test]
+fn closures_keep_captured_references_unions_and_errors() {
+    // probes/lambda-escaping-closures H11, H12, H19, H23, H24: a captured reference stays one.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set(
+        "B1",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,INDEX(r,i))),f,mk(A1:A3),f(2))",
+    );
+    model._set(
+        "B2",
+        "=LET(mk,LAMBDA(r,LAMBDA(z,ISREF(r))),f,mk(A1:A3),f(0))",
+    );
+    model._set("B3", "=LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1/0),f(1))");
+    model._set(
+        "B4",
+        "=LET(mk,LAMBDA(r,LAMBDA(z,AREAS(r))),f,mk((A1,A2)),f(0))",
+    );
+    model._set(
+        "B5",
+        "=LET(mk,LAMBDA(r,LAMBDA(z,SUM(r)+z)),f,mk((A1,A3)),f(0))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("B2"), "TRUE");
+    assert_eq!(model._get_text("B3"), "#DIV/0!");
+    assert_eq!(model._get_text("B4"), "2");
+    assert_eq!(model._get_text("B5"), "4");
+}
+
+#[test]
+fn a_closure_called_many_times_and_recursively_keeps_its_captures() {
+    // Each call binds what the closure captured and unbinds it after, so the next call (MAP over
+    // 1,000 elements) and a call of the same closure inside one (through REDUCE's chain) see it.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LET(mk,LAMBDA(k,LAMBDA(v,v*k)),f,mk(3),SUM(MAP(SEQUENCE(1000),f)))",
+    );
+    model._set(
+        "A2",
+        "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(50),LAMBDA(f,x,LAMBDA(z,f(z)+x))),g(0)+g(1))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1501500");
+    assert_eq!(model._get_text("A2"), "2551");
+}
+
+#[test]
+fn a_closure_over_a_large_array_is_called_without_copying_it() {
+    // Each call of an escaped closure binds what it captured; sharing it, not copying it, keeps
+    // MAP over 20,000 elements linear (a copy per call made it O(n^2): 3.6 s at n=10,000, T-0439
+    // review). The closures that read the array, and one made by an escaped closure (which
+    // captures the same shared copy), read through it.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,IF(i<0,INDEX(r,1),i))),f,mk(SEQUENCE(20000)),SUM(MAP(SEQUENCE(20000),f)))",
+    );
+    model._set(
+        "A2",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,SUM(r)*i)),f,mk(SEQUENCE(10)*2),SUM(MAP(SEQUENCE(10),f)))",
+    );
+    model._set(
+        "A3",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,LAMBDA(j,INDEX(r,i)+j))),f,mk(SEQUENCE(5)*3),g,f(2),g(10))",
+    );
+    model._set(
+        "A4",
+        "=LET(mk,LAMBDA(r,LAMBDA(i,SUM(r)+i)),f,mk((A10,B10)),f(1))",
+    );
+    model._set("A10", "4");
+    model._set("B10", "5");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "200010000");
+    assert_eq!(model._get_text("A2"), "6050");
+    assert_eq!(model._get_text("A3"), "16");
+    assert_eq!(model._get_text("A4"), "10");
+}
+
+#[test]
+fn closures_escape_through_nested_scopes() {
+    // A LAMBDA a LET value or body makes inside a call, and one an escaped closure makes, capture
+    // the variables of every scope they leave (lexical, as probes/lambda-escaping-closures shows).
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LET(mk,LAMBDA(a,LET(f,LAMBDA(b,a+b),f)),g,mk(3),g(4))",
+    );
+    model._set(
+        "A2",
+        "=LET(mk,LAMBDA(a,LET(x,a*2,LAMBDA(b,x+b))),f,mk(5),f(1))",
+    );
+    model._set(
+        "A3",
+        "=LET(mk,LAMBDA(a,LAMBDA(b,LAMBDA(c,a+b+c))),f,mk(1),g,f(10),g(100))",
+    );
+    model._set("A4", "=LET(x,1,f,LAMBDA(b,x+b),g,LET(y,f,y),g(2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "7");
+    assert_eq!(model._get_text("A2"), "11");
+    assert_eq!(model._get_text("A3"), "111");
+    assert_eq!(model._get_text("A4"), "3");
+}
+
+#[test]
+fn lambdas_that_do_not_outlive_their_call_capture_nothing() {
+    // A LAMBDA made on each of 2,000 REDUCE steps reads the 10,000-row accumulator but never
+    // leaves its step, so nothing is copied for it (capturing at creation kept 2,000 copies).
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=ROWS(REDUCE(SEQUENCE(10000),SEQUENCE(2000),LAMBDA(a,x,IF(SUM(MAP({1},LAMBDA(z,ROWS(a))))>0,a,a))))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "10000");
+}
+
+#[test]
+fn closures_past_the_captured_cell_budget_read_num_errors() {
+    // DEVIATION (decision 0014): each of 50 steps returns a closure over a fresh 100,000-row
+    // array, all kept by the chain; past MAX_CAPTURED_CELLS (4,194,304) a capture is #NUM!.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(50),LAMBDA(f,x,LET(b,SEQUENCE(100000),LAMBDA(z,f(z)+ROWS(b))))),g(0))",
+    );
+    model._set(
+        "A2",
+        "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(3),LAMBDA(f,x,LET(b,SEQUENCE(1000),LAMBDA(z,f(z)+ROWS(b))))),g(0))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "3000");
+}
+
+#[test]
+fn lambda_calls_past_the_stack_budget_are_num_errors() {
+    // DEVIATION (decision 0014): Excel evaluates these 300 deep (probes/lambda-call-depth); past
+    // the evaluation's stack budget the engine gives #NUM! instead of overflowing its stack.
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,20000))");
+    model._set(
+        "A2",
+        "=LET(g,REDUCE(LAMBDA(z,z),SEQUENCE(20000),LAMBDA(f,x,LAMBDA(z,f(z)+x))),g(0))",
+    );
+    model._set("A3", "=LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,10))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "10");
+}
+
+// ── errors reach the LAMBDA (T-2306) ─────────────────────────────────────────
+
+#[test]
+fn reduce_error_initial_value_is_passed_to_the_lambda() {
+    let mut model = new_empty_model();
+    model._set("A1", "7");
+    // The LAMBDA ignores the error accumulator (gen-m7/36809e9faa59553f A556).
+    model._set("B1", "=REDUCE(NA(), A1:A1, LAMBDA(acc, x, x + 1))");
+    // A normal initial value keeps working.
+    model._set("B2", "=REDUCE(1, A1:A1, LAMBDA(acc, x, acc + x))");
+    // An error step is the next accumulator, and a later step can ignore it.
+    model._set("A2", "2");
+    model._set(
+        "B3",
+        "=REDUCE(0, A1:A2, LAMBDA(acc, x, IF(x = 7, 1 / 0, x)))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "8");
+    assert_eq!(model._get_text("B2"), "8");
+    assert_eq!(model._get_text("B3"), "2");
+}
+
+#[test]
+fn map_multi_cell_array_step_is_one_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("B1", "=MAP(A1:A2, LAMBDA(x, HSTACK(x, x)))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#CALC!");
+    assert_eq!(model._get_text("B2"), "");
+}
+
+/// A cell initial value reaches the LAMBDA as a reference, so PRODUCT and COUNT skip its text
+/// and booleans (gen-m7/18b80d3fd292d63a A467, A285, 2c5ea078f25443a2 A1767; T-2307).
+#[test]
+fn scan_reduce_initial_value_cell_is_a_reference() {
+    let mut model = new_empty_model();
+    model._set("A1", "'1");
+    model._set("A2", "TRUE");
+    model._set("A3", "TRUE");
+    model._set("A4", "-2.5");
+    model._set("A5", "ü");
+    model._set("B1", "=REDUCE(A1, A4, LAMBDA(acc, x, COUNT(acc, x)))");
+    model._set("B2", "=REDUCE(A2, A3, LAMBDA(acc, x, PRODUCT(acc, x)))");
+    model._set("B3", "=REDUCE(A2, {1}, LAMBDA(acc, x, ISREF(acc)))");
+    model._set("B4", "=SCAN(A5, A4:A4, LAMBDA(acc, x, PRODUCT(acc, x)))");
+    // A value initial value stays a value.
+    model._set("B5", "=REDUCE(TRUE, A3, LAMBDA(acc, x, PRODUCT(acc, x)))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("B2"), "0");
+    assert_eq!(model._get_text("B3"), "TRUE");
+    assert_eq!(model._get_text("B4"), "-2.5");
+    assert_eq!(model._get_text("B5"), "1");
+}

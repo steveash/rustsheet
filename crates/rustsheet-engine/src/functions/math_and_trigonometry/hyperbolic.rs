@@ -2,9 +2,9 @@
 //!
 //! libm's `sinh`/`cosh`/`tanh` differ from Excel in the last ulp. Fitting against the Excel-cached
 //! values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx` (sheet `SINH_COSH_TANH`)
-//! shows Excel uses `(e^x ∓ e^-x)/2` (COSH matches 34/34 cells vs 33/34 for libm), with a Taylor
-//! series for small |x| in SINH (cells B10, B42; libm misses B42). See
-//! `docs/excel-semantics/numbers.md`.
+//! shows Excel uses `(e^x ∓ e^-x)/2` (COSH matches 34/34 cells vs 33/34 for libm). Below |x| = 1,
+//! SINH and TANH come from `a = expm1(x)` and `b = expm1(-x)` instead (T-2134, probes-numeric
+//! t2178-hyperbolic-unit-sweep). See `docs/excel-semantics/numbers.md`.
 //!
 //! ATANH and ACOTH are x87 code (T-0917, numbers.md "ATANH and ACOTH"): a halved FYL2X of a
 //! quotient (`0.5 * excel_ln`, exact: halving commutes with both roundings) or the atanh power series with its running term in an 80-bit
@@ -14,62 +14,63 @@ use crate::arithmetic::{
     extended_div, extended_mul, extended_of, extended_quotient, extended_sum, store_extended,
     Extended,
 };
+use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
 
-/// Below this |x| the exp formulation loses precision and Excel's values match the Taylor series
-/// (evidence: `SINH_COSH_TANH!B10`, B18, B42; the exp form matches all cells with |x| >= 0.5).
-const SINH_SERIES_LIMIT: f64 = 0.5;
-/// `exp(x)` overflows near here; defer to libm so the finite/infinite boundary is unchanged.
-const EXP_SAFE_LIMIT: f64 = 700.0;
+/// Below this |x| SINH and TANH are built from `expm1` ([`expm1_pair`]); from it on, from `exp`.
+const EXPM1_FORM_LIMIT: f64 = 1.0;
 /// |tanh(x)| rounds to 1.0 in f64 beyond this.
 const TANH_SATURATION: f64 = 20.0;
 
-/// From here up to 1 TANH uses the `e^2x` form; below it, sinh/cosh fits (cells with |x| <= 0.604).
-const TANH_E2X_FROM: f64 = 0.9;
-
-fn sinh_series(x: f64) -> f64 {
-    let x2 = x * x;
-    let mut term = x;
-    let mut sum = x;
-    for k in 1..16_u32 {
-        term = term * x2 / f64::from((2 * k) * (2 * k + 1));
-        sum += term;
-    }
-    sum
+/// `(expm1(x), expm1(-x))`, the two values Excel's SINH and TANH share below
+/// [`EXPM1_FORM_LIMIT`] (T-2134, docs/excel-semantics/numbers.md "SINH and TANH below 1 are built
+/// from expm1").
+fn expm1_pair(x: f64) -> (f64, f64) {
+    (excel_expm1(x), excel_expm1(-x))
 }
 
+/// Excel's expm1: Kahan's `(u - 1) * x / ln(u)` with `u` Excel's own EXP and the log Excel's LN,
+/// each step a double (T-2240, docs/excel-semantics/numbers.md "Excel's expm1 is Kahan's
+/// formula"). It fits all 1015 SINH and TANH cells of probes-numeric t2178-hyperbolic-unit-sweep,
+/// where libm's expm1 fits 773 and 781. `u == 1` (|x| tiny) gives `x`.
+fn excel_expm1(x: f64) -> f64 {
+    let u = excel_exp(x);
+    if u == 1.0 {
+        return x;
+    }
+    let u_minus_1 = u - 1.0;
+    if u_minus_1 == -1.0 {
+        return -1.0;
+    }
+    u_minus_1 * x / excel_ln(u)
+}
+
+/// Overflows to infinity where `e^|x|` does (just above 709.78; Excel's exact cut is unprobed,
+/// T-1944): SINH/COSH report that as `#NUM!` and SECH/CSCH
+/// as 0 (numbers.md "SINH and COSH overflow is `#NUM!` at once").
 pub(super) fn sinh(x: f64) -> f64 {
-    if x.abs() < SINH_SERIES_LIMIT {
-        sinh_series(x)
-    } else if x.abs() > EXP_SAFE_LIMIT {
-        x.sinh()
+    if x.abs() < EXPM1_FORM_LIMIT {
+        // (a - b)/2 is exact in its halving; a - b is the one rounding.
+        let (a, b) = expm1_pair(x);
+        (a - b) / 2.0
     } else {
         (x.exp() - (-x).exp()) / 2.0
     }
 }
 
 pub(super) fn cosh(x: f64) -> f64 {
-    if x.abs() > EXP_SAFE_LIMIT {
-        x.cosh()
-    } else {
-        (x.exp() + (-x).exp()) / 2.0
-    }
+    (x.exp() + (-x).exp()) / 2.0
 }
 
 pub(super) fn tanh(x: f64) -> f64 {
     if x.abs() > TANH_SATURATION {
         // exact in f64 (as the existing COTH shortcut)
         x.signum()
-    } else if x.abs() >= TANH_E2X_FROM && x.abs() < 1.0 {
-        // Excel's values for 0.9999999999 (SINH_COSH_TANH!D15/D17) and -0.9950546550253772
-        // (poi FormulaEvalTestData_Copy.xlsx EverythingTests!G1360) both match this form; neither
-        // sinh/cosh nor the exp quotient fits the latter.
-        let e2x = (2.0 * x).exp();
-        (e2x - 1.0) / (e2x + 1.0)
-    } else if x.abs() < 1.0 {
-        // the exp quotient loses digits here; Excel's values (TANH 1e-12, 0.5, 0.604) match
-        // sinh/cosh with the series SINH
-        sinh(x) / cosh(x)
+    } else if x.abs() < EXPM1_FORM_LIMIT {
+        // sinh/cosh as (a - b)/((a + b) + 2), summed in that order: (a - b)/(2 + a + b) fits 644
+        // of the sweep's 1015 cells below 1, this order 781.
+        let (a, b) = expm1_pair(x);
+        (a - b) / (a + b + 2.0)
     } else {
         let (a, b) = (x.exp(), (-x).exp());
         (a - b) / (a + b)
@@ -163,6 +164,28 @@ mod tests {
         assert_eq!(tanh(0.999_999_999_9), 0.761_594_155_913_767_4);
         assert_eq!(tanh(100.0), 1.0);
         assert_eq!(tanh(-100.0), -1.0);
+    }
+
+    // Below 1, (a - b)/2 and (a - b)/((a + b) + 2) with a = expm1(x), b = expm1(-x)
+    // (probes-numeric t2178-hyperbolic-unit-sweep, gen-m5, power-ulp-sources; excel-graph): the
+    // series SINH and sinh/cosh TANH missed each of these by an ulp.
+    #[test]
+    fn below_one_is_the_expm1_form() {
+        assert_eq!(sinh(0.3), 0.304_520_293_447_142_6);
+        assert_eq!(tanh(0.2), 0.197_375_320_224_904_03);
+        assert_eq!(tanh(0.4), 0.379_948_962_255_224_9);
+        assert_eq!(sinh(-0.3), -0.304_520_293_447_142_6);
+    }
+
+    // Kahan's expm1 over Excel's EXP and LN (T-2240): libm's expm1 put each of these an ulp off.
+    // TRIGONOMETRIC.xlsx SINH_COSH_TANH!B51/D51 (PI()/4) and B15 (0.9999999999), Excel-cached.
+    #[test]
+    fn expm1_is_kahans_formula() {
+        let quarter_pi = std::f64::consts::FRAC_PI_4;
+        assert_eq!(sinh(quarter_pi), 0.868_670_961_486_009_6);
+        assert_eq!(tanh(quarter_pi), 0.655_794_202_632_672_4);
+        assert_eq!(sinh(0.999_999_999_9), 1.175_201_193_489_493_5);
+        assert_eq!(excel_expm1(1e-20), 1e-20);
     }
 
     #[test]

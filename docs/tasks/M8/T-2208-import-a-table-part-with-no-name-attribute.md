@@ -3,7 +3,7 @@ id: T-2208
 title: "Import a table part with no name attribute by its displayName, as Excel does (poi/LIBRE_OFFICE-128382-0.xlsx)"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -60,3 +60,9 @@ the pinned rev into eval/.cache/suites/poi), then `make eval` or
 ## Visible-parity stage
 Decision 0083: a workbook Excel opens that we refuse is wrong for every cell in it. The acceptance
 criteria above are the visible-parity stage.
+
+## Outcome
+`import/tables.rs` now takes `name` and `displayName` from each other when one is missing (a part with
+neither is still an import error). `poi/LIBRE_OFFICE-128382-0.xlsx` loads and its 4 oracle cells
+(Basic features!B13:E13) pass bit-exact; its `!EngineError` line left eval/baseline/poi.txt. New
+`tests/table_part_names.rs` covers both/either/neither and odd names. The exporter was not touched.

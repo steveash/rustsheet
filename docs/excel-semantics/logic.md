@@ -31,9 +31,14 @@ Tasks: T-1088
 ## SWITCH: a blank cell case value does not match FALSE (T-2166)
 Observation: `SWITCH(FALSE,1.005E-15,<#VALUE!>,A11,FALSE,"a?b",<#VALUE!>)` with A11 blank is `#N/A` (no match, no default):
 FALSE does not match a blank cell given as a case value, unlike the omitted case argument below (`SWITCH(0,,"a","b")` is "a").
-Ours matches it and returns FALSE (so `ISEVEN` of it is `#VALUE!` instead of `#N/A`). Unprobed: a blank case against 0 or "".
-Evidence: gen-m5/d0419fa09d6a756a Calc!A63 (excel-graph, 2026-10-20).
-Status: OBSERVED (1 cell); T-2166.
+Ours matches it and returns FALSE (so `ISEVEN` of it is `#VALUE!` instead of `#N/A`). Probed (excel-graph, 2026-10-21, T-2200, probes/t2200-blank-and-padded-m5-args, Calc!A28:A46): a blank case cell matches only
+a 0 or blank expression: `SWITCH(0,blank,..)` and `SWITCH(blank,blank,..)` hit it; FALSE, "" and TRUE do not (`#N/A`, no
+default). A blank expression cell against a case matches 0 and a blank case cell, and not FALSE, "" or TRUE.
+Evidence: gen-m5/d0419fa09d6a756a Calc!A63 (excel-graph, 2026-10-20); probes/t2200-blank-and-padded-m5-args.
+Status: VERIFIED (excel-graph); implemented (T-2166: `switch_matches` reads a blank cell as 0 on either side; an
+omitted case argument keeps the empty-value rule). Blank elements of a range expression or case
+(`SWITCH(A1:A2,FALSE,..)`) take the same rule on the lifted path: a blank element matches 0 and a blank
+cell, not FALSE or "" (probes/t2280-ifs-one-cell-range-condition Calc!A61:A67).
 
 ## IFERROR / IFNA of a blank cell is an empty value, not the reference
 Rule: when IFERROR's or IFNA's value argument is a blank cell, the result is the blank's value, not a reference to it.
@@ -64,3 +69,17 @@ Rule: IFNA replaces only `#N/A` (`#DIV/0!`, `#VALUE!` pass through); a non-error
 Evidence: probes/ifna-isformula-edges Calc!A1:A13, C1:E3 (oracle: excel-graph, 2026-10-12, T-1279).
 Status: VERIFIED (excel-graph); the engine matches.
 Tasks: T-1279
+
+## IFS: a text condition gives a 1x1 array of #VALUE!; a one-cell range condition is a scalar (T-2280)
+Rule: an IFS condition that is text not reading as a boolean ends IFS in a 1x1 array holding `#VALUE!`, not the scalar
+error IF gives. This holds whether the text is a literal, a cell, a one-cell range or a formula result:
+`TYPE(IFS("a*",5))`, `TYPE(IFS(A1,5))`, `TYPE(IFS(A1&"",5))` and `TYPE(IFS(FALSE,1,"a*",5))` are 64, and
+`ROWS(IFS(A1,5)*2)` is 1 with A1 = "a*", while `ROWS(IF(A1,5)*2)` is `#VALUE!` and `TYPE(IF(A1,5)*2)` 16. The cell
+itself shows `#VALUE!` and ISERROR of it is TRUE. Text that reads as a boolean ("TRUE") picks its value (5). An error or
+blank condition and a FALSE-only `#N/A` stay scalar errors (TYPE 16). A one-cell range condition (`A3:A3`) is read as
+its cell's scalar value, as IF reads it (references.md, T-2079): `ROWS(IFS(A3:A3,5))` with A3 FALSE is `#N/A`.
+SWITCH has no such case: `ROWS(SWITCH(A1,TRUE,5)*2)` is `#N/A`.
+Evidence: probes/t2280-ifs-one-cell-range-condition (excel-graph, 2026-10-21), Calc!A1:A60, A68:A80;
+gen-m6/870c5e38f51ce5d4 Calc!A360 (`ROWS((IFS(Data!A$7,Data!D$10)*Data!C10))` is 1).
+Status: VERIFIED (excel-graph); implemented (T-2280, `ifs_pick`).
+Tasks: T-2280

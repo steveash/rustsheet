@@ -200,6 +200,19 @@ fn makearray_invalid_cols() {
 }
 
 #[test]
+fn makearray_fractional_size_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MAKEARRAY(2.5, 2, LAMBDA(x, y, x))");
+    model._set("A3", "=MAKEARRAY(2, 1.005, LAMBDA(x, y, x))");
+    model._set("A5", "=MAKEARRAY(2, 1, LAMBDA(x, y, x))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "1");
+    assert_eq!(model._get_text("A6"), "2");
+}
+
+#[test]
 fn bycol_lambda_counta() {
     let mut model = new_empty_model();
     model._set("A1", "x");

@@ -337,14 +337,14 @@ Tasks: T-1385
   `1E154+1E154i` (sum 2E308) and `1E-154+1E-154i` (sum 2E-308 < 2.2250738585072014E-308) are `#NUM!`, `1.5E-154+1.5E-154i`
   (2.25E-308), `1E-160+1i` and `1.1E154+0.1E154i` work, and a zero part exempts the number (`IMLN("1E-160+0i")`,
   `IMLN("1E160i")`, `IMLN("1E154+0i")` answer). Implemented (T-2117; probes/eng-imln-modulus-range A1-A42, A71-A78, A81-A84).
-- Not yet fitted (T-2241): Excel seems to flush a subnormal square to 0 inside the modulus: `IMLN("1E-154+1E-153i")`
+- Not yet fitted (T-2356): Excel seems to flush a subnormal square to 0 inside the modulus: `IMLN("1E-154+1E-153i")`
   is -352.295519228089 (= ln 1E-153, the 1E-154 part ignored), where `hypot` gives -352.290544062662; IMSQRT has its own
   range rule (`IMSQRT("1E154+1E154i")` is "0", `IMSQRT("1E155+1E155i")`, `IMSQRT("1E160+0i")` and `IMSQRT("3E200+4E200i")` are `#NUM!`,
   `IMSQRT("1E-155+0i")` is "0"); IMABS of 1E±150..155 pairs differs from `hypot` by 1 ulp
   (probes/eng-imln-modulus-range A43-A70, A79, A80, eng-imln-modulus A17).
 Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950); probes/eng-imln-modulus, eng-imln-modulus-range (excel-graph, 2026-10-21, T-2117).
 Status: VERIFIED (excel-graph)
-Tasks: T-1766, T-1892, T-1950, T-2117, T-2241
+Tasks: T-1766, T-1892, T-1950, T-2117, T-2356
 
 ## IMPOWER past the angle cut
 Rule: once IMPOWER's angle `atan2(y,x)·n` passes the cut (about 134217727), Excel's sine and cosine both read as the
@@ -363,6 +363,26 @@ A19 (excel-graph, 2026-10-19, T-1892).
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_impower` in functions/engineering/complex.rs (T-1950)
 Tasks: T-1950
+
+## IM* last-digit sweep: IMSEC and IMSECH use different kernels (T-2043)
+Evidence: probes-numeric case `im-last-digit-sweep` (excel-graph, no pending cells): 78 inputs (the
+23 usable COMPLEXs.xlsx D-column ones plus A20's 3.2E-19 (D20 is a COMPLEX formula; sweep row 20 is not COMPLEXs row 20's input) plus quadrant, 1E-5..1E3, pure real/imaginary rows) x IMABS,
+IMARGUMENT, IMCSC, IMSEC, IMSECH, IMLOG2, IMCOT, with IMREAL/IMAGINARY of each text result as
+number cells (columns B-R, row = input row). It exists to let T-2044 fit the kernels.
+Rule: although sech(3+4i) and sec(4+3i) are mathematically the same real part, Excel gives
+`IMSEC("4+3i")` real part -0.0652940278579471 (row 23, G23) and `IMSECH("3+4i")` real part
+-0.065294027857947 (row 58, J58/K58): the two functions are not the same formula up to
+rotation, so one kernel cannot serve both. Control pair (these agree, not a second split): `IMSEC("3+4i")` and `IMSECH("4+3i")` both
+give real part -0.0362534969158689 but IMAGINARY +0.00516434460775318 vs -0.00516434460775318
+(sign per the rotation).
+Ours: IMSEC G23/H23 give -0.065294027857947 and IMSECH K58 -0.0652940278579471, i.e. swapped.
+Status: VERIFIED (excel-graph, 2026-10-21, `im-last-digit-sweep`); the kernels are T-2044's.
+
+Also found by the sweep (same case; Ours is what RustSheet gives):
+- Tiny arguments lose about 8 digits in IMCSC and IMCOT: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (E70, F70; exact 50000.0000016667), `IMCSC("0.00001i")` imaginary part -99999.9917276303 (F65), IMCOT real 49999.9958596485 (Q70), imaginary -49999.9958663151 (R70) and -99999.9917326303 (R65). Ours gives the exact values (E70 50000.0000016667, F65 -99999.9999983333). Status: VERIFIED (excel-graph); T-2044 must reproduce this loss.
+- Excel keeps tiny results where the denominator is huge: `IMCSC("-724.227-562.884i")` is -6.94796703439417E-245-6.26263832046024E-246i (E55, F55; the IMSEC of it is -6.26263832046024E-246+6.94796703439417E-245i, G55:I55) and `IMSECH("-524.561+5.3113i")` is 1.73046857535442E-228-2.53533899849465E-228i (K42, L42). Ours: 0. Status: VERIFIED; T-2335.
+- `IMCSC("0")`, `IMLOG2("0")` and `IMCOT("0")` are `#NUM!` (D21, M21, P21), `IMARGUMENT("0")` is #DIV/0!. Ours: the text `NaNNaNi`, `-inf`, `inf`, so the "zero denominator stays #NUM!" note below is only true through IMREAL/IMAGINARY wrappers. Status: VERIFIED; T-2334.
+Errors in the sweep (row 21, input "0"): IMARGUMENT #DIV/0! (C21); IMCSC, IMLOG2 and IMCOT #NUM! (D21:F21, M21:R21).
 
 ## IMTAN and IMCOT use the double-angle form (T-0907)
 Rule: IMTAN computes tan(x+iy) as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)`, and IMCOT is the
@@ -432,26 +452,26 @@ Evidence: probes/eng-im-overflow (excel-graph).
   boundary is exactly 2^-26 = sqrt(DBL_EPSILON) = 1.4901161193847656E-8: `1000+1.4901161193847E-8i` is
   `#NUM!` and `1000+1.4901161193848E-8i` is capped (probes/eng-imexp-overflow-cutoff A1, A2; `1.49E-8`
   and `1.4901E-8` error, `1.4902E-8` caps). The window is independent of x (`800`, `709.9`:
-  eng-imexp-overflow-cutoff-pi A21-A24). The same kind of window applies around every other multiple of
-  pi/2, but smaller; it was only bracketed (probes/eng-imexp-overflow-cutoff-pi, -pi2, -halfpi): pi
-  below (1.04, 1.06]E-8, pi above and 2pi both sides (1.05, 1.10]E-8, pi/2 and 3pi/2 both sides
-  (1.0, 1.2]E-8. So `IMEXP("1000+3.14159265i")`, `IMEXP("1000+3.14159265358979i")` and
-  `IMEXP("1000+pi/2 i")` (y = 1.5707963267948966) are `#NUM!` while `3.14159264i` (1.36E-8 below pi)
-  caps. Implemented as 2^-26/sqrt(2) = 1.0537E-8 around multiples other than 0, which fits every
-  bracket but is fitted, not derived: UNVERIFIED beyond n = 4 quarter turns and at the exact
-  boundary (T-2101).
+  eng-imexp-overflow-cutoff-pi A21-A24). Exactly 2^-26 is `#NUM!` too, so the cap needs y strictly past it (probes/eng-imexp-cap-window A35),
+  and so does a negative y (A36, A37). The same kind of window applies around every other multiple
+  of pi/2, but is smaller: for pi/2, pi and 2pi, below and above, the boundary lies in
+  (1.053E-8, 1.054E-8] (A1-A30), and for 100pi in (1.05E-8, 1.06E-8] (A31-A34): `1.053E-8` from the multiple is `#NUM!`, `1.054E-8` is capped. That is
+  2^-26.5 = 2^-26/sqrt(2) = 1.0537E-8, where cos(d) = 1 - d^2/2 stops being distinguishable from 1;
+  implemented as that. The exact value is within the bracket but not pinned to the bit.
 - IMEXP's sine and cosine of the imaginary part reduce the argument as SIN and COS do (the x87
   64-bit pi, see the IMPOWER entry above): `IMEXP("1000+3.14159i")` is
   `-1.79769313485599E+308+4.770340154251E+302i` (probes/eng-imexp-overflow-imag A3) and
   `IMEXP("710i")` is `0.999999998182636+0.0000602887066915739i` (probes/eng-im-overflow A42); libm's
   sin gives other last digits. Implemented with `excel_sin_cos` (T-2060). `IMEXP("1000+134217727i")` is
-  `-5.27422318923931E+307-1.7185826441088E+308i` but every positive y >= 134217728 (negative y unprobed, T-2101) (`1000+134217728i`, `2E8`,
-  `1E9`, `1E15`) is `#NUM!`, even when x is small (`IMEXP("1+134217728i")`;
+  `-5.27422318923931E+307-1.7185826441088E+308i` but every |y| >= 134217728 (`1000+134217728i`, `1000-134217728i`, `2E8`,
+  `1E9`, `1E15`) is `#NUM!` (`1000-134217727i` answers, A39-A40), even when x is small (`IMEXP("1+134217728i")`;
   probes/eng-imexp-overflow-cutoff A17-A24); implemented as the SIN limit (T-2087).
 - A part near DBL_MAX is written as `1.79769313486232E+308`, a decimal above DBL_MAX: the 15-digit
   rounding of 1.7976931348623157E+308 is not clamped (probes/eng-imexp-overflow-imag A22, A24, A27,
-  A30). Ours keeps the unrounded part when the rounding overflows (T-2060). Numeric `DBL_MAX&""` and TEXT of
-  DBL_MAX are unprobed: a DBL_MAX literal in a formula makes excel-graph reject the workbook (T-2101).
+  A30). Ours keeps the unrounded part when the rounding overflows (T-2060). Numeric DBL_MAX (`=2^1023*(2-2^-52)&""`) is `1.7976931348623E+308` (14 digits, not the
+  IM* text's 15) and `TEXT(..., "0.00E+00")` is `1.80E+308` (probes/dbl-max-text-a, -b; ours differs for the TEXT form, T-2106). A DBL_MAX
+  literal in a formula makes excel-graph reject the workbook; whether the formula `=DBL_MAX literal`
+  equals the computed value is unprobed.
 - IM* text keeps 15 significant digits for an exponent past 98, unlike `&""` (numbers.md): A11,
   A17 (`IMPOWER("1+i",2000)`), A40 and A41 print `8.21840746155497E+307`, `1.35498631931463E+308` and
   `1.65498402768026E+308`, which ours now matches (T-2001: `complex_part_to_text` keeps 15 digits). This is a
@@ -463,7 +483,12 @@ Evidence: probes/eng-im-overflow (excel-graph).
   `...915853`).
 - An input part of `1E308` or more is `#NUM!` in every IM* function (`IMREAL("1E308")`,
   `IMSUM("1E308","0")`); ours already matches. `IMSQRT("1E307")` and `IMSQRT("4E307")` are `#NUM!`
-  too, which ours does not match (A33, A34).
+  too (A33, A34). The threshold per part lies between 1.34E154 and 1.35E154, consistent with sqrt(DBL_MAX) = 1.34078E154 (exact boundary unprobed): IMSQRT squares each
+  part, and a part past it is `#NUM!` (`"1.34E154"` is `1.15758369027902E+77`, `"1.35E154"`,
+  `"1E160i"`, `"-1E160"`, `"1E154+1.4E154i"` are `#NUM!`). When each square is finite but their
+  sum overflows, the result is `0`, not an error: `IMSQRT("1E154+1E154i")`, `"-1E154-1E154i"`,
+  `"1.34E154+1.34E154i"` (probes/eng-imsqrt-large, eng-imsqrt-large-b, excel-graph, T-1996).
+  Implemented in `imsqrt`.
 - `IMDIV("1","1E-308")` is `#NUM!` (A20) although results near 1E+308 are text (A46); the cause
   (subnormal divisor?) is unprobed, ours matches.
 - IMSIN, IMCOS, IMSINH and IMCOSH: a result part that overflows or is NaN is `#NUM!` (`IMCOSH("1000")`,
@@ -490,7 +515,7 @@ Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
   (`IMCOSH("711+1.5i")`). A tiny nonzero imaginary part with a large real one is UNVERIFIED. Implemented.
 - IMSEC, IMCSC, IMSECH and IMCSCH answer `0` (both parts) where the denominator overflows
   (`IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`, `IMSEC("1.5+711i")`); a zero denominator stays
-  `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented.
+  `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented except IMCSC of 0 returning text (T-2334); plain IMCSCH("0") is UNVERIFIED.
 - IMTAN and IMCOT near the edge answer `i` / `-i` (`IMTAN("1.5+710.4i")`); IMLN, IMLOG10, IMLOG2
   and IMSQRT do not overflow there. Already matched.
 - Last-digit differences remain as known failures (a kernel question, not a rule; T-2231): IMCOSH/IMSINH

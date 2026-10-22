@@ -283,3 +283,92 @@ fn fn_offset_deep_nest_over_a_grid_stays_bounded() {
     assert_eq!(model._get_text("C2"), *"2");
     assert_eq!(model._get_text("C3"), *"2000");
 }
+
+// SPEC-0014 rule 6: a function that takes a reference calls itself once per element of an array
+// of references, the whole element in its place (probes/reference-lift-consumers E57-E77,
+// E97-E113, E165, E169; -b1c E85-E93; -b1d E97, E101; -b2 E125-E133, E193, E197, E225).
+#[test]
+fn fn_offset_lifted_into_per_element_callers() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "100");
+    model._set("A3", "10000");
+    model._set("B1", "2");
+    model._set("B2", "200");
+    model._set("A4", "'5");
+    model._set("C1", "=COUNTIF(OFFSET(A1,{0;1},0),\">0\")");
+    model._set(
+        "D1",
+        "=SUMIF(OFFSET(A1,0,0,{1;2}),\">0\",OFFSET(B1,0,0,{1;2}))",
+    );
+    model._set(
+        "E1",
+        "=SUMIFS(OFFSET(B1,{0;1},0),OFFSET(A1,{0;1},0),\">0\")",
+    );
+    model._set("F1", "=SUBTOTAL(9,OFFSET(A1,{0;1},0),A1)");
+    model._set("G1", "=ROW(OFFSET(A1,{0;1},0))");
+    model._set("H1", "=SUMPRODUCT(SUBTOTAL(9,OFFSET(A1,{0;1;2},0)))");
+    model._set("I1", "=T(OFFSET(A4,{0;1},0))");
+    model._set("J1", "=SHEET(OFFSET(A1,{0;1},0))");
+    model._set("K1", "=SUM(VSTACK(OFFSET(A1,{0;1},0)))");
+    model._set("L1", "=AREAS(OFFSET(A1,{0;-1},0))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"1");
+    assert_eq!(model._get_text("C2"), *"1");
+    assert_eq!(model._get_text("D1"), *"2");
+    assert_eq!(model._get_text("D2"), *"202");
+    assert_eq!(model._get_text("E1"), *"2");
+    assert_eq!(model._get_text("E2"), *"200");
+    assert_eq!(model._get_text("F1"), *"2");
+    assert_eq!(model._get_text("F2"), *"101");
+    assert_eq!(model._get_text("G1"), *"1");
+    assert_eq!(model._get_text("G2"), *"2");
+    assert_eq!(model._get_text("H1"), *"10101");
+    assert_eq!(model._get_text("I1"), *"5");
+    assert_eq!(model._get_text("I2"), *"");
+    assert_eq!(model._get_text("J1"), *"#N/A");
+    assert_eq!(model._get_text("K1"), *"101");
+    assert_eq!(model._get_text("L1"), *"1");
+    assert_eq!(model._get_text("L2"), *"#REF!");
+}
+
+// SPEC-0014 "Bounds": the elements' cells are charged before any element runs, so a SUBTOTAL
+// over a thousand whole columns is the bound's error, not 10^9 reads (a DEVIATION, lookup.md).
+#[test]
+fn fn_offset_lifted_per_element_walk_past_the_budget_is_refused() {
+    let mut model = new_empty_model();
+    model._set("A1048576", "1");
+    model._set("C1", "=SUBTOTAL(9,OFFSET(A:A,0,0,,SEQUENCE(1,1000)))");
+    model._set("D1", "=SUBTOTAL(9,OFFSET(A:A,0,0,,SEQUENCE(1,3)))");
+    // A reference beside the grid is walked by every element, and charged so.
+    model._set("E5", "=SUBTOTAL(9,OFFSET(B1,SEQUENCE(1000),0),A:A)");
+    // A criteria argument is read once, not once per element.
+    model._set("F5", "=COUNTIF(OFFSET(A1,{0;1},0),SUM(1,2))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"#ERROR!");
+    assert_eq!(model._get_text("D1"), *"1");
+    assert_eq!(model._get_text("E5"), *"#ERROR!");
+    assert_eq!(model._get_text("F5"), *"0");
+}
+
+// A per-element consumer reads a lifting argument once and puts back what it gave, so a nest of
+// them costs one evaluation per level, not two (2^depth).
+#[test]
+fn fn_offset_per_element_consumers_nest_linearly() {
+    let mut model = new_empty_model();
+    model._set("A1", "0");
+    let mut formula = "0".to_string();
+    for _ in 0..60 {
+        formula = format!("N(OFFSET(A1,{formula},0))");
+    }
+    model._set("C1", &format!("={formula}"));
+    // IF, CHOOSE and LET are not read ahead: each is evaluated once, by the call.
+    let mut formula = "1".to_string();
+    for _ in 0..60 {
+        formula = format!("N(IF(TRUE,{formula}))");
+    }
+    model._set("D1", &format!("={formula}"));
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"0");
+    assert_eq!(model._get_text("D1"), *"1");
+}

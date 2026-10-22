@@ -83,7 +83,40 @@ fn combina_is_combin_of_n_plus_k_minus_one() {
     assert_eq!(bits("A2"), 35_345_263_799.999_985_f64.to_bits());
     assert_eq!(bits("A3"), 1.667_683_306_781_367_8e233_f64.to_bits());
     assert_eq!(bits("A4"), 1.0_f64.to_bits());
-    // The loop runs min(k, n - 1) times, so a huge k with n = 1 answers at once (directive 5).
-    assert_eq!(bits("A5"), 1.0_f64.to_bits());
+    // n + k - 1 = 1E10 is past the 2^31-1 bound (T-2162), so a huge k answers at once.
+    assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
+}
+
+#[test]
+fn combin_and_combina_are_num_from_two_to_the_31_minus_one() {
+    // probes/t2199-text-length-and-combin-cuts A20-A37, B20-B34 (excel-graph); numbers.md
+    // "COMBINA is COMBIN(n+k-1, k)", "Bound".
+    let mut model = new_empty_model();
+    let cases = [
+        ("=COMBIN(2^31-2,0)", "1"),
+        ("=COMBIN(2^31-2,1)", "2147483646"),
+        ("=COMBIN(2^31-1,0)", "#NUM!"),
+        ("=COMBIN(2^31-1,2)", "#NUM!"),
+        ("=COMBIN(1E+15,1E-15)", "#NUM!"),
+        ("=COMBIN(2^31+1,2^31+1)", "#NUM!"),
+        ("=COMBINA(2^31-1,0)", "1"),
+        ("=COMBINA(2^31-2,1)", "2147483646"),
+        ("=COMBINA(2^31-2,2)", "#NUM!"),
+        ("=COMBINA(2^31-1,1)", "#NUM!"),
+        ("=COMBINA(2^31,0)", "#NUM!"),
+        ("=COMBINA(2^31-10,20)", "#NUM!"),
+        ("=COMBINA(FACT(13),10)", "#NUM!"),
+    ];
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", i + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
 }

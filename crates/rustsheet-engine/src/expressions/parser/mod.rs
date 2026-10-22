@@ -50,6 +50,7 @@ use super::token::TokenType;
 use super::types::*;
 
 use sheet_span::with_sheet_span;
+pub(crate) use sheet_span::{is_multi_sheet_span, is_span_or_if_of_span};
 use token::OpCompare;
 
 mod call_names;
@@ -64,6 +65,7 @@ mod reference_operators;
 mod sheet_span;
 pub mod static_analysis;
 pub mod stringify;
+mod structured_reference;
 mod unparsed;
 
 pub use chain::ChainLeft;
@@ -73,6 +75,7 @@ pub(crate) use depth::is_limit_error;
 pub use depth::{
     MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
+pub use structured_reference::StructuredReference;
 
 pub(crate) use call_names::CallNameSpellings;
 
@@ -295,6 +298,14 @@ pub enum Node {
         levels: u8,
         child: Box<Node>,
     },
+    /// A structured reference as written (`Sales[[#All],[Qty]]`), with the area it resolves to
+    /// for the table list the formula was parsed against: a `ReferenceKind`, a `RangeKind` or an
+    /// `ErrorKind`. Transparent to evaluation (see [`Node::ungrouped`]); the storage and in-engine
+    /// printers print `reference`, the xlsx export prints `lowered` (SPEC-0016).
+    StructuredReferenceKind {
+        reference: Box<StructuredReference>,
+        lowered: Box<Node>,
+    },
     CompareKind {
         kind: OpCompare,
         left: ChainLeft,
@@ -322,14 +333,28 @@ const _: () = assert!(std::mem::size_of::<Node>() <= NODE_SIZE);
 const NODE_SIZE: usize = 80;
 
 impl Node {
-    /// The node under any written parentheses: `((A1))` is `A1`. Loops, never recurses, so a
-    /// group adds no evaluator frame (SPEC-0007 "Seeing through groups").
+    /// The node under any written parentheses and structured references: `((A1))` is `A1`, and
+    /// `Sales[Qty]` is the area it resolves to (SPEC-0016 "Transparency"). Loops, never recurses,
+    /// so a group adds no evaluator frame (SPEC-0007 "Seeing through groups").
     pub(crate) fn ungrouped(&self) -> &Node {
         let mut node = self;
-        while let Node::Group { child, .. } = node {
-            node = child;
+        loop {
+            match node {
+                Node::Group { child, .. } => node = child,
+                Node::StructuredReferenceKind { lowered, .. } => node = lowered,
+                _ => return node,
+            }
         }
-        node
+    }
+
+    /// The area a structured reference resolves to; any other node is itself. For the sites
+    /// that see a structured reference as the reference it stood for before SPEC-0016 but treat
+    /// written parentheses apart, so they do not call [`Node::ungrouped`].
+    pub(crate) fn lowered(&self) -> &Node {
+        match self {
+            Node::StructuredReferenceKind { lowered, .. } => lowered,
+            node => node,
+        }
     }
 
     /// The `@` an xlsx import adds around a range-valued operand.
@@ -665,7 +690,7 @@ impl Parser {
                 table_name,
                 specifier,
                 table_reference,
-            } => self.structured_reference_operand(table_name, specifier, table_reference),
+            } => self.structured_reference_operand(table_name, specifier, table_reference, false),
         }
     }
 }

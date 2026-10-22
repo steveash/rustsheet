@@ -1,6 +1,7 @@
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
+    functions::Function,
     model::Model,
 };
 
@@ -9,9 +10,17 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::EmptyArg => CalcResult::Boolean(true),
-            _ => CalcResult::Boolean(false),
-        }
+        // LOOKUP's empty value for a blank result cell is also `EmptyArg` but is not an
+        // omitted parameter: Excel gives FALSE (arrays.md "ISOMITTED of a function result"). The
+        // argument is still evaluated so its errors and dependencies are tracked as before.
+        let from_lookup = matches!(
+            args[0].ungrouped(),
+            Node::FunctionKind {
+                kind: Function::Lookup,
+                ..
+            }
+        );
+        let value = self.evaluate_node_in_context(&args[0], cell);
+        CalcResult::Boolean(matches!(value, CalcResult::EmptyArg) && !from_lookup)
     }
 }

@@ -15,7 +15,8 @@
 //! So `ROUND(1.005,2)` is 1.01 (1.00499999999999989… becomes 1.00500000000000 first) and
 //! `ROUNDDOWN(123456789.123,-5)` is exactly 123400000.
 
-use crate::number_format::significant_15;
+use crate::constants::EXCEL_PRECISION;
+use crate::number_format::{significant_15, to_precision};
 
 /// How the final digit is chosen in stage 2.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -137,6 +138,23 @@ fn round_off(mantissa: u64, dropped: i64, mode: RoundMode) -> (u64, bool) {
         RoundMode::Down => false,
     };
     (kept, round_up)
+}
+
+/// The value a number format shows at `precision` decimals: the 15-digit decimal rounded half away
+/// from zero, as General and ROUND do (`TEXT(2.5,"0")` "3", `TEXT(12.345,"0%")` "1235%"; T-2206).
+/// Scientific formats, and a result beyond the double range, keep the significant-digit cut (T-1730).
+pub(crate) fn round_shown_place(value: f64, precision: i32, is_scientific: bool) -> f64 {
+    let rounded = round_decimal(value, f64::from(precision), RoundMode::HalfAwayFromZero);
+    rounded.filter(|_| !is_scientific).unwrap_or_else(|| {
+        let integer_digits = format!("{}", value.abs().floor()).len();
+        to_precision(
+            value,
+            usize::min(
+                usize::try_from(precision).unwrap_or(0) + integer_digits,
+                EXCEL_PRECISION,
+            ),
+        )
+    })
 }
 
 #[cfg(test)]

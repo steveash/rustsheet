@@ -1,0 +1,27 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Abort": {
+   "A1": {
+    "t": "n",
+    "v": 15.0
+   },
+   "A2": {
+    "t": "s",
+    "v": "-"
+   },
+   "A3": {
+    "t": "s",
+    "v": "16|222222"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "7599703751a3217c122f570b2d9bcb651d4b963cb4352a2edceb675c820a1ac1",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-19T22:25:56+00:00",
+  "version": null,
+  "workbook_name": "d81bc47d502344ec5625c5654424b702681ab65f29a179d4344cf5b9cf39c1b6.xlsx"
+ }
+}

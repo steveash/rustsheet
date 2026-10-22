@@ -30,7 +30,9 @@ double), so its formulation loses accuracy somewhere a half-ulp-accurate model d
 I34, J12, J32, J35, K12, M12) are baselined failures because their PMT inputs fail (decision 0064):
 they must pass once PMT matches. The accurate PMT (`-(pv*P+fv)/((P-1)/r*k)`, P-1 by expm1) fixes 30
 Excel-cached cells and regresses 22, and IPMT's recurrence on the fitted FV regresses 4, so neither
-shipped. IPMT still uses `FutureValueForm::IpmtRecurrence`.
+shipped. Since T-2130 PMT, IPMT and PPMT are the exact payment (double-double, 15 digits on the
+sweep; financial.md "PMT, IPMT and PPMT are the exact payment"), and T-2243 lists the 13 cells it
+moved by 1 to 4 ulp.
 
 ## Acceptance criteria
 - [ ] A PMT formulation matches >= 99.9% of m9-fin-pmt PMT cells bit for bit (today's best: 132/308).

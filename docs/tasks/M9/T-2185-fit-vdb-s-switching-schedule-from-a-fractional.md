@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -26,7 +27,10 @@ A48-A49 but misses A43 (one ulp), A44 (factor 1.5, 244.0757706382978 vs 242.0635
 (start >= life/2 with factor > 1) makes it worse (87/92). More probes around A44 and A9 (factor 1.5, start past the
 switch, end at life) should separate the hypotheses.
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 3 cells, 3 numeric past half a unit in the 15th digit and 0 with a wrong type, error or text, blamed on VDB 3. Every one is listed above.
+
 ## Acceptance criteria
+- [ ] Visible parity: the 3 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 3 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] probes/fin-vdb-schedule A42-A46 pass, with fin-vdb-modes still 20/20.
 - [ ] `make check` green; reviewers approve.
 
@@ -34,3 +38,6 @@ Replacing that path should delete `vdb_total_depr`, whose `straight_line` parame
 
 ## Out of scope
 - The no_switch TRUE path and whole start periods (T-1975).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (VDB from a fractional start period differs from the 3rd digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083).

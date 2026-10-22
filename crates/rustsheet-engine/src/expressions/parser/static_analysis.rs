@@ -1,17 +1,19 @@
 use super::reference_operators::{at_outside, wrong_range_shape};
 use super::{for_each_chain_operand_mut, Node};
 use crate::functions::lift::lifting_table_functions;
+use crate::functions::lookup_and_reference::lifts_into_references;
 use crate::functions::Function;
 use broadcast::{broadcast_shapes, static_analysis_operator_chain};
+use if_arm::returns_range_arm;
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
     legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, mark_legacy_reading,
-    returns_range_arm,
 };
 pub use redundant::remove_redundant_implicit_intersection;
 use redundant::remove_redundant_legacy_intersection;
 mod aggregate;
 mod broadcast;
+mod if_arm;
 mod legacy;
 mod lifted;
 mod redundant;
@@ -27,11 +29,10 @@ use signature::{
     args_signature_lambda, args_signature_let, args_signature_lookup, args_signature_map,
     args_signature_match, args_signature_npv, args_signature_offset, args_signature_one_vector,
     args_signature_pivotby, args_signature_randarray, args_signature_reduce, args_signature_row,
-    args_signature_scalars, args_signature_scan, args_signature_sort, args_signature_sortby,
-    args_signature_sumif, args_signature_textafter, args_signature_textjoin,
-    args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_unique, args_signature_wrapcols, args_signature_xlookup, args_signature_xmatch,
-    Signature,
+    args_signature_scalars, args_signature_scan, args_signature_sort, args_signature_sumif,
+    args_signature_textafter, args_signature_textjoin, args_signature_textsplit,
+    args_signature_tocol, args_signature_trimrange, args_signature_wrapcols,
+    args_signature_xlookup, args_signature_xmatch, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -159,6 +160,13 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
             }
         }
         Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
+        // A structured reference is its area: a range gets the `@` a plain range gets, around
+        // the reference as written (SPEC-0016).
+        Node::StructuredReferenceKind { lowered, .. } => {
+            if add && matches!(lowered.as_ref(), Node::RangeKind { .. }) {
+                *node = Node::automatic_at(node.clone());
+            }
+        }
         // A range of another workbook too (fixtures/external-link-cached-ranges Refs!B44, T-1526).
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::WrongRangeKind { .. } => {
             if add {
@@ -278,7 +286,9 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::WrongReferenceKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
         Node::WrongRangeKind { .. } => wrong_range_shape(node), // T-1454
-        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+        Node::UnaryKind { right: child, .. }
+        | Node::Group { child, .. }
+        | Node::StructuredReferenceKind { lowered: child, .. } => {
             run_static_analysis_on_node(child)
         }
         Node::NamedFunctionKind { .. } => {
@@ -347,6 +357,36 @@ fn criteria_static_result(args: &[Node], first: usize) -> StaticResult {
     broadcast_static_result(args.iter().skip(first).step_by(2))
 }
 
+/// COUNTIF, SUMIF and SUMIFS also call themselves once per element of an array of references in
+/// a range argument (`Function::per_reference_element`; SPEC-0014 rule 6,
+/// `COUNTIF(OFFSET(A1,{0;1},0),">0")` spills 1, 1, probes/reference-lift-consumers E57): a range
+/// argument that is a lifted OFFSET or INDIRECT gives the shape, the criteria
+/// (`args[first]`, `args[first + 2]`, ...) only without one. Anything else does not:
+/// `SUMIF(IF(TRUE,A1:A6),"a",B1:B6)` stays a scalar call (probes/legacy-if-arm-range-argument U12).
+fn criteria_and_grid_static_result(kind: &Function, args: &[Node], first: usize) -> StaticResult {
+    let takes_reference = kind
+        .per_reference_element(args.len())
+        .map_or((|_| false) as fn(usize) -> bool, |per_element| {
+            per_element.takes_reference
+        });
+    let grids = args.iter().enumerate().filter_map(|(index, arg)| {
+        if !lifts_into_references(arg) || !takes_reference(index) {
+            return None;
+        }
+        match run_static_analysis_on_node(arg) {
+            shape @ StaticResult::Array(..) => Some(shape),
+            _ => None,
+        }
+    });
+    // Over a grid each call's own spill is cut to its top-left value (as the engine runs it),
+    // so the grids alone give the shape.
+    let grids: Vec<StaticResult> = grids.collect();
+    if !grids.is_empty() {
+        return broadcast_shapes(grids);
+    }
+    criteria_static_result(args, first)
+}
+
 // The signature of the functions should be defined only once
 
 // Given a function and a number of arguments this returns the arguments at each position
@@ -376,11 +416,9 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Switch => vec![Signature::Scalar; arg_count],
         Function::True => args_signature_scalars(arg_count, 0, 0),
         Function::Xor => vec![Signature::Vector; arg_count],
-        Function::Atan2 => args_signature_scalars(arg_count, 2, 0),
         Function::Choose => args_signature_choose(arg_count),
         Function::Column => args_signature_row(arg_count),
         Function::Columns => args_signature_one_vector(arg_count),
-        Function::Log => args_signature_scalars(arg_count, 1, 1),
         Function::Max => vec![Signature::Vector; arg_count],
         Function::Min => vec![Signature::Vector; arg_count],
         Function::Pi => args_signature_scalars(arg_count, 0, 0),
@@ -420,10 +458,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Xmatch => args_signature_xmatch(arg_count),
         Function::Trimrange => args_signature_trimrange(arg_count),
         Function::Sort => args_signature_sort(arg_count),
-        Function::Sortby => args_signature_sortby(arg_count),
-        Function::Unique => args_signature_unique(arg_count),
         Function::Filter => args_signature_filter(arg_count),
-        Function::Tocol => args_signature_tocol(arg_count),
         Function::Torow => args_signature_tocol(arg_count),
         Function::Transpose => args_signature_one_vector(arg_count),
         Function::Mmult => {
@@ -475,20 +510,14 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Clean => args_signature_scalars(arg_count, 1, 0),
         Function::Asc | Function::Dbcs => args_signature_scalars(arg_count, 1, 0),
         Function::Arraytotext => args_signature_arraytotext(arg_count),
-        Function::Dollar => args_signature_scalars(arg_count, 1, 1),
         Function::Image => args_signature_scalars(arg_count, 1, 4),
         Function::Stockhistory => args_signature_scalars(arg_count, 2, 9),
         Function::Fieldvalue => args_signature_fieldvalue(arg_count),
-        Function::Fixed => args_signature_scalars(arg_count, 1, 2),
-        Function::Numbervalue => args_signature_scalars(arg_count, 1, 2),
         Function::Proper => args_signature_scalars(arg_count, 1, 0),
         Function::Geomean => vec![Signature::Vector; arg_count],
         Function::Gcd => vec![Signature::Vector; arg_count],
         Function::Lcm => vec![Signature::Vector; arg_count],
-        Function::Base => args_signature_scalars(arg_count, 2, 1),
-        Function::Decimal => args_signature_scalars(arg_count, 2, 0),
         Function::Roman => args_signature_scalars(arg_count, 1, 1),
-        Function::Arabic => args_signature_scalars(arg_count, 1, 0),
         Function::Combin => args_signature_scalars(arg_count, 2, 0),
         Function::Combina => args_signature_scalars(arg_count, 2, 0),
         Function::Sumsq => vec![Signature::Vector; arg_count],
@@ -642,7 +671,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Switch => StaticResult::Unknown,
         Function::True => StaticResult::Scalar,
         Function::Xor => StaticResult::Scalar,
-        Function::Atan2 => scalar_arguments(args),
         Function::Choose => reference_result::choose_static_result(args),
         Function::Column => row_column::static_analysis_row_column(args, false),
         Function::Columns => not_implemented(args),
@@ -651,10 +679,9 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Pi => StaticResult::Scalar,
         Function::Power => scalar_arguments(args),
         Function::Product => not_implemented(args),
-        Function::Log => scalar_arguments(args),
         Function::Sum => StaticResult::Scalar,
-        Function::Sumif => criteria_static_result(args, 1),
-        Function::Sumifs => criteria_static_result(args, 2),
+        Function::Sumif => criteria_and_grid_static_result(kind, args, 1),
+        Function::Sumifs => criteria_and_grid_static_result(kind, args, 2),
         Function::Isformula => scalar_arguments(args),
         Function::Isomitted => not_implemented(args),
         Function::Isref => not_implemented(args),
@@ -690,13 +717,14 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
                 .map(|(_, a)| a),
         ),
         Function::Trimrange => reference_result::static_analysis_trimrange(args),
-        Function::Sort | Function::Sortby | Function::Unique => StaticResult::Unknown,
+        Function::Sort => StaticResult::Unknown,
         Function::Filter => StaticResult::Unknown,
-        Function::Tocol | Function::Torow | Function::Transpose => StaticResult::Unknown,
+        Function::Torow | Function::Transpose => StaticResult::Unknown,
         Function::Mmult => StaticResult::Unknown,
         Function::Bycol | Function::Byrow => StaticResult::Unknown,
         Function::Groupby | Function::Pivotby => StaticResult::Unknown,
-        Function::Getpivotdata => StaticResult::Scalar,
+        // Spills by its items, broadcast; the other arguments never lift (SPEC-0015, T-2083).
+        Function::Getpivotdata => broadcast_static_result(args.iter().skip(3).step_by(2)),
         Function::Map | Function::Reduce => StaticResult::Unknown,
         Function::Scan => StaticResult::Unknown,
         Function::Randarray => StaticResult::Unknown,
@@ -718,11 +746,8 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Asc | Function::Dbcs => scalar_arguments(args),
         Function::Phonetic => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
-        Function::Dollar => not_implemented(args),
         // All three lift over an array or range `source`/`stock`/`value` (T-1179).
         Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
-        Function::Fixed => not_implemented(args),
-        Function::Numbervalue => not_implemented(args),
         Function::Proper => scalar_arguments(args),
         Function::Upper => scalar_arguments(args),
         Function::Average => not_implemented(args),
@@ -733,7 +758,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Count => not_implemented(args),
         Function::Counta => not_implemented(args),
         Function::Countblank => reference_parameter::countblank_static_result(args),
-        Function::Countif => criteria_static_result(args, 1),
+        Function::Countif => criteria_and_grid_static_result(kind, args, 1),
         Function::Countifs => criteria_static_result(args, 1),
         Function::Maxifs => criteria_static_result(args, 2),
         Function::Minifs => criteria_static_result(args, 2),
@@ -748,10 +773,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Geomean => not_implemented(args),
         Function::Gcd => StaticResult::Scalar,
         Function::Lcm => StaticResult::Scalar,
-        Function::Base => scalar_arguments(args),
-        Function::Decimal => scalar_arguments(args),
         Function::Roman => scalar_arguments(args),
-        Function::Arabic => scalar_arguments(args),
         Function::Combin => scalar_arguments(args),
         Function::Combina => scalar_arguments(args),
         Function::Sumsq => StaticResult::Scalar,

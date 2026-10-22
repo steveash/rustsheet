@@ -246,20 +246,29 @@ Calc!A307) and `SUMX2MY2(C10:D12,C11:E12)` (gen-m5/d1b251fd6e9c4b4b Calc!A397), 
 (two all-blank ranges stay `#DIV/0!`, above): each side holds a number, so rule 4 gives 0. Implemented in T-0961.
 
 ## SUMPRODUCT: a blank one-cell argument beside other arguments is `#VALUE!` (T-2150)
-Rule: with two or more arguments, SUMPRODUCT is `#VALUE!` when one argument is a blank cell given as a one-cell reference and
-the others are single values: `SUMPRODUCT(E6,123456789.123)` (E6 blank; `ISERR` of it is TRUE), `SUMPRODUCT(41.42,B7:B7,3.64)`,
+Rule: SUMPRODUCT is `#VALUE!` when one argument is a blank cell given as a one-cell reference (alone, or beside single values or ranges, see the probe below), e.g. `SUMPRODUCT(E6,123456789.123)` (E6 blank; `ISERR` of it is TRUE), `SUMPRODUCT(41.42,B7:B7,3.64)`,
 `SUMPRODUCT(<number>,D4:D4)`, `SUMPRODUCT(A6:A6,B4,0)` (A6 FALSE, B4 blank), `SUMPRODUCT(B1,C12,D10)` (D10 blank) and
 `SUMPRODUCT(A11:A11,1.005,C11:C11)` (A11 text, C11 blank), and the `#VALUE!` reaches the caller (`SHEET(7+SUMPRODUCT(E1,100,-1))`
-is `#VALUE!`, not SHEET's `#N/A`). A lone blank argument is 0 (`SUMPRODUCT(B4:B4)`, gen-m5/3e134e52393061b1 Calc!A222).
+is `#VALUE!`, not SHEET's `#N/A`). A lone one-cell boolean is 0 (`SUMPRODUCT(B4:B4)` with B4 TRUE, gen-m5/3e134e52393061b1 Calc!A222); the probe below shows a lone blank is `#VALUE!`.
 An error argument beats a shape mismatch earlier in the list: `SUMPRODUCT(TYPE(B11:B11),B9:E10,<VLOOKUP #N/A>)` is `#N/A`
-(ours `#VALUE!`, and ours is `#VALUE!` for `SUMPRODUCT(1,B9:E10,NA())` too).
-Ours: the blank is a 0 factor, so these are 0 (and their callers go on).
+(ours was `#VALUE!` before T-2150, as was `SUMPRODUCT(1,B9:E10,NA())`).
+Ours (since T-2150): every argument is read in order, and the first whole-argument error or blank one-cell reference
+(a cell or a one-cell range such as `D4:D4`) decides the result, even after a shape mismatch; an error element inside a
+range wins only ahead of the first mismatched argument.
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/1b30e4d075b252ea Calc!A365, gen-m5/6a8bb7cd6d7769ad Calc!A79,
 gen-m5/aac6230c2fb40e1e Calc!A79, gen-m5/fc81c2f704bef138 Calc!A165, gen-m5/c688ca172fe533dc Calc!A183, gen-m5/7d1a5d223624fc70 Calc!A33,
 gen-m5/aac6230c2fb40e1e Calc!A64, gen-m5/f0f205865a3a4328 Calc!A396, gen-m5/399071ff6782ab16 Calc!A145.
-Unprobed: a blank one-cell argument beside a multi-cell range, and a one-cell text or boolean argument on its own.
-Status: VERIFIED (excel-graph); not implemented (T-2150).
-Tasks: T-0944
+Probed (excel-graph, 2026-10-21, T-2200, probes/t2200-blank-and-padded-m5-args, Calc!A1:A27): a blank one-cell reference is
+`#VALUE!` beside a 2x2 range in either order, beside a number reference in either order, in all three positions of a
+three-argument list, and alone (`SUMPRODUCT(Data!A1)`, A6). A one-cell text or boolean
+reference is a 0 factor beside a number (0, either order) and alone (0), but `#VALUE!` beside a 2x2 range (a 1x1 against a 2x2
+is a shape mismatch). A blank plus a shape mismatch is `#VALUE!` in every position (the cells all hold the blank, so they do not separate the two causes). The blank was a never-written cell written as a cell reference; a one-cell range to a blank is `#VALUE!` too (gen-m5
+`SUMPRODUCT(<number>,D4:D4)` fc81c2f704bef138 A165, `SUMPRODUCT(A11:A11,1.005,C11:C11)` aac6230c2fb40e1e A64). An error argument ahead of the blank wins
+(`SUMPRODUCT(NA(),blank)`, `SUMPRODUCT(NA(),R,blank)` are `#N/A`); the blank ahead of the error gives `#VALUE!`.
+Status: VERIFIED (excel-graph); implemented in `fn_sumproduct` / `sumproduct_array` (T-2150).
+Open: whether an error element inside a range (not a whole-argument error) beats an earlier shape mismatch is
+unprobed; ours keeps the pre-T-2150 order, where the first mismatched argument wins (T-2296).
+Tasks: T-0944, T-2150, T-2296
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
 Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =
@@ -275,7 +284,7 @@ Implemented in: `Model::for_each_value` users `fn_stdev_s`/`fn_stdev_p`, `fn_var
 (`VARP(TRUE,FALSE,TRUE)`) differ in the last digit (accumulation order, like E392/F392/J392; DEVSQ is
 probably the two-pass sum, T-1749).
 An empty argument is counted as 0 by DEVSQ and AVEDEV (`DEVSQ(1,)` = `AVEDEV(1,)` = 0.5; probes/stat-order-floor-batch
-A274, A299; T-1748) and by STDEV/VAR (probes/average-value-args); SUMSQ is untested (open, T-1748).
+A274, A299; T-1748) and by STDEV/VAR (probes/average-value-args); SUMSQ(1,) is 1 either way, T-1748.
 Tasks: T-0945
 
 ## MODE: a blank single-cell reference is #VALUE!; typed text and booleans are skipped
@@ -409,6 +418,12 @@ MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md
 These decide the generator's argument modes (eval/catalog/functions.yaml `array`, T-1082); the
 SUMX2MY2 family's `array` mode rests on "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing" above, and
 PERCENTOF's `aggregate` on Microsoft's page and on probes/percentof-snap-overflow-union (T-0416): direct text `"1"` and TRUE count as numbers (`PERCENTOF("1",2)` and `PERCENTOF(TRUE,2)` = 0.5), as in SUM.
+A blank cell is 0 only beside another argument or inside a multi-cell range: when every argument is a lone blank cell, GCD,
+LCM and MULTINOMIAL are `#VALUE!` (`MULTINOMIAL(Z200)`, `MULTINOMIAL(Z200:Z200)`, `MULTINOMIAL(Z200,Z201)`, `MULTINOMIAL(IF(TRUE,Z200))`,
+`GCD(Z200)`, `GCD(Z200:Z200)`, `LCM(Z200)` with Z200 and Z201 blank), while `MULTINOMIAL(Z200,2)`, `MULTINOMIAL(2,Z200)`,
+`MULTINOMIAL(Z200:Z201)` and `MULTINOMIAL(Z200:Z201,2)` are 1, `GCD(Z200,4)` and `LCM(Z200,4)` 4, and a cell holding 0 is 1
+(`MULTINOMIAL(Z210)`) (probes/t2275-address-bounds J1, J15:J30, excel-graph, 2026-10-21). Ours reads every blank as 0
+(MULTINOMIAL and `GCD(Z200:Z200)`; T-2294). Unprobed: how this `#VALUE!` ranks against a later negative or omitted argument.
 The type check wins over a negative argument whatever the order: `GCD(-1,B1:B11)` with the text "TRUE" in B1 is
 `#VALUE!`, and `MULTINOMIAL(A6:D9)` whose first cell is -2.5 and later cells hold FALSE and text is `#VALUE!`
 (gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m6/2c1a6e93a1974f48 Calc!A35, gen-m7/4629e931955aa4b8 Calc!A7, excel-graph; fixed in

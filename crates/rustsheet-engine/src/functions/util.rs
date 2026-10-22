@@ -180,27 +180,6 @@ pub(crate) fn is_at_xlookup_take(node: &Node) -> bool {
     )
 }
 
-/// Whether `node` is a written multi-sheet 3-D span (`Sheet1:Sheet2!A1`, a one-cell one included).
-pub(crate) fn is_multi_sheet_span(node: &Node) -> bool {
-    matches!(
-        node.ungrouped(),
-        Node::SheetSpanKind { first_index, last_index, .. } if first_index != last_index
-    )
-}
-
-/// Whether `node` is a multi-sheet 3-D span, possibly as a branch of IF (which hands its branch on
-/// as a reference). Recursion is bounded by the parser's depth cap.
-pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
-    let node = node.ungrouped();
-    match node {
-        Node::FunctionKind {
-            kind: Function::If,
-            args,
-        } => args.iter().skip(1).any(is_span_or_if_of_span),
-        _ => is_multi_sheet_span(node),
-    }
-}
-
 /// Most columns holding cells that a union area may have to be walked through the column index
 /// ([`Model::for_each_indexed_position`]); a wider one is walked by rows. The merge compares the
 /// next row of every column still being merged for each row it hands on, and a row is charged at
@@ -366,6 +345,7 @@ impl Model {
         let node = match self.pick_reference(node, cell) {
             PickedReference::Node(node) => node,
             PickedReference::Value(value) => return RefArg::Value(value),
+            PickedReference::Read(read) => return read,
             PickedReference::External(areas) => {
                 return RefArg::Value(match areas {
                     Ok(areas) => self.external_aggregate_value(&areas, blanks, cell),
@@ -373,6 +353,11 @@ impl Model {
                 })
             }
         };
+        // A 3-D span of a linked workbook's cached sheets is read sheet by sheet, as a span of
+        // this workbook is (fixtures/external-link-cached-3d-span Refs!B2:B6; T-1654).
+        if let Some(rows) = self.cached_span_cells(node, cell) {
+            return RefArg::Value(CalcResult::Array(rows));
+        }
         let result = match node {
             Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if self.is_multi_area(node) => {
                 return match self.reference_ranges(node, cell) {
@@ -414,15 +399,16 @@ impl Model {
             Node::LambdaCallKind { lambda, args } => {
                 return self.call_callee_as_reference(lambda, args, cell)
             }
-            // A lifted OFFSET, INDIRECT, TRIMRANGE, TAKE or DROP is an array of references
-            // (SPEC-0014; T-1838); an unlifted TAKE or DROP gives its value, as before.
+            // A lifted OFFSET, INDIRECT, TRIMRANGE, TAKE or DROP is an array of references, and
+            // so is a VSTACK of them (SPEC-0014; T-1838, T-2064); unlifted, each gives its value.
             Node::FunctionKind {
                 kind:
                     kind @ (Function::Offset
                     | Function::Indirect
                     | Function::Trimrange
                     | Function::Take
-                    | Function::Drop),
+                    | Function::Drop
+                    | Function::Vstack),
                 args,
             } => return self.reference_producer(kind, args, cell),
             Node::FunctionKind {
@@ -936,23 +922,25 @@ pub(crate) fn excel_mod(value: f64, divisor: f64) -> f64 {
 
 /// How far below the next integer a whole-number argument may fall and still count as that
 /// integer: 2^-22 + 2^-33, the same at 1, 500, 1000, 30000 and 100000 (an absolute bound, not
-/// relative). LEFT, RIGHT, REPLACE counts and INDEX's row and column indexes share it.
+/// relative). LEFT, RIGHT, REPLACE counts, INDEX's and VLOOKUP/HLOOKUP's indexes and TIME share it.
 pub(crate) const NEAR_INTEGER_TOLERANCE: f64 = 1.0 / 4_194_304.0 + 1.0 / 8_589_934_592.0;
 
-/// The whole number LEFT, RIGHT, REPLACE and INDEX read from a count, position or index: `x`
-/// truncated, except that a fraction within [`NEAR_INTEGER_TOLERANCE`] of the next integer counts
-/// as that integer, so `LEFT("abc",1-2^-22)` is "a". MID truncates exactly and does not use this.
+/// The whole number LEFT, RIGHT, REPLACE, INDEX, VLOOKUP and HLOOKUP read from a count, position
+/// or index: `x` floored, except that a fraction within [`NEAR_INTEGER_TOLERANCE`] of the next
+/// integer counts as that integer, so `LEFT("abc",1-2^-22)` is "a". MID truncates exactly and does
+/// not use this.
 // Excel: docs/excel-semantics/text.md "LEFT, RIGHT and REPLACE round counts up near an
 // integer" (probes/text-count-argument-bounds) and lookup.md "INDEX rounds an index up near an
 // integer" (probes/index-snap-tolerance).
 pub(crate) fn near_integer_count(x: f64) -> f64 {
+    near_integer_floor(x, NEAR_INTEGER_TOLERANCE)
+}
+
+/// `x` floored, but a fraction within `tolerance` of the next integer counts as that integer.
+pub(crate) fn near_integer_floor(x: f64, tolerance: f64) -> f64 {
     let whole = x.floor();
     // `x - whole` is exact for every finite double, so the bound is not blurred at large x.
-    if x - whole >= 1.0 - NEAR_INTEGER_TOLERANCE {
-        whole + 1.0
-    } else {
-        whole
-    }
+    whole + f64::from(u8::from(x - whole >= 1.0 - tolerance))
 }
 
 impl Function {

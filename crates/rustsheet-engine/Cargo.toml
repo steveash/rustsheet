@@ -22,8 +22,8 @@ thiserror = "1"
 # the REGEX* engine, a lazy DFA and PikeVM whose search work is counted (T-1272).
 memchr = "2"
 regex-automata = { version = "0.4", default-features = false, features = ["std", "syntax", "unicode", "hybrid", "nfa-pikevm"] }
-# regex-automata's own parser, for its AST: POSIX classes are rewritten to Excel's Unicode ones
-# before compiling (T-1903).
+# The `Hir` our PCRE2 parser builds for the automata, and its Unicode class and case-folding
+# tables (SPEC-0013, T-1973; decision recorded with T-1973). One locked copy, shared with regex.
 regex-syntax = { version = "0.8", default-features = false, features = ["std", "unicode"] }
 
 [dev-dependencies]

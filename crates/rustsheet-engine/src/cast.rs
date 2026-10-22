@@ -313,13 +313,18 @@ impl Model {
         self.number_or_array(value, cell)
     }
 
-    /// [`Model::get_number_or_array`] of an already evaluated `value`.
+    /// [`Model::get_number_or_array`] of an already evaluated `value`. A one-cell range is its
+    /// cell's value, as a written `A3` is, not a 1x1 array, here and in the other operand reads
+    /// ([`Model::value_or_array`], [`Model::string_or_array`]): Excel tells the two apart where
+    /// an array-valued function lifts a 1x1 array, and `SEQUENCE(INDIRECT("A3")*1)` with A3 = 3
+    /// spills three rows, as `SEQUENCE(A3*1)` does, where `SEQUENCE(A3+{0})` is one element
+    /// (probes/m7-lift-take-drop-sortby Sheet1 rows 38, 39 and 43; T-2298).
     pub(crate) fn number_or_array(
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<NumberOrArray, CalcResult> {
-        match value {
+        match self.collapse_single_cell(value) {
             CalcResult::Number(f) => Ok(NumberOrArray::Number(f)),
             CalcResult::String(s) => match self.cast_number(&s) {
                 Some(f) => Ok(NumberOrArray::Number(f)),
@@ -376,13 +381,14 @@ impl Model {
         self.value_or_array(value, cell)
     }
 
-    /// [`Model::get_value_or_array`] of an already evaluated `value`.
+    /// [`Model::get_value_or_array`] of an already evaluated `value`; a one-cell range is its
+    /// cell's value ([`Model::number_or_array`]).
     pub(crate) fn value_or_array(
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<ValueOrArray, CalcResult> {
-        match value {
+        match self.collapse_single_cell(value) {
             error @ CalcResult::Error { .. } => Err(error),
             CalcResult::Range { left, right } => {
                 Ok(ValueOrArray::Array(self.evaluate_range(left, right, cell)?))
@@ -403,13 +409,14 @@ impl Model {
         self.string_or_array(value, cell)
     }
 
-    /// [`Model::get_string_or_array`] of an already evaluated `value`.
+    /// [`Model::get_string_or_array`] of an already evaluated `value`; a one-cell range is its
+    /// cell's value ([`Model::number_or_array`]).
     pub(crate) fn string_or_array(
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<StringOrArray, CalcResult> {
-        match value {
+        match self.collapse_single_cell(value) {
             error @ CalcResult::Error { .. } => Err(error),
             CalcResult::Range { left, right } => Ok(StringOrArray::Array(
                 self.evaluate_range(left, right, cell)?,
@@ -789,8 +796,15 @@ impl Model {
     ) -> Result<(usize, usize), CalcResult> {
         // `ROWS(IF(TRUE,…!A1:B3))` is 3 (probes/external-ref-no-link-index A25).
         // `ROWS(LET(c,TRUE,IF(c,…!A1:B3)))` too (probes/external-ref-no-link-ifchoose A26).
-        let node = match self.pick_reference(node, cell) {
-            PickedReference::Node(node) => node,
+        // `ROWS(LET(c,TRUE,IF(c,…!A1:B3,D1:D2)))` too (probes/external-ref-no-link-let-index A5).
+        let read = match self.pick_reference(node, cell) {
+            PickedReference::Node(node) if self.is_multi_area(node) => {
+                self.evaluate_reference_arg(node, cell)
+            }
+            PickedReference::Node(node) => {
+                return value_extent(self.evaluate_node_with_reference(node, cell), cell)
+            }
+            PickedReference::Read(read) => read,
             PickedReference::Value(value) => return value_extent(value, cell),
             PickedReference::External(areas) => {
                 return one_external_area(areas, cell).map(ExternalArea::extent)
@@ -798,17 +812,12 @@ impl Model {
         };
         // ROWS/COLUMNS of a reference of several areas is #REF!, not the #VALUE! of a value
         // context (probes/multiarea-count H2, H3; SPEC-0004 row 5).
-        let result = if self.is_multi_area(node) {
-            match self.evaluate_reference_arg(node, cell) {
-                RefArg::Ranges(Ranges::Areas(_)) => return Err(several_areas_ref(cell)),
-                // A 3-D span through a variable, IF or CHOOSE is `#VALUE!`, as the written one
-                // is (probes/3d-ref-let-bound-span C7:C8, 3d-ref-let-values C5).
-                other => other.into_single_sheet_area(cell),
-            }
-        } else {
-            self.evaluate_node_with_reference(node, cell)
-        };
-        value_extent(result, cell)
+        match read {
+            RefArg::Ranges(Ranges::Areas(_)) => Err(several_areas_ref(cell)),
+            // A 3-D span through a variable, IF or CHOOSE is `#VALUE!`, as the written one
+            // is (probes/3d-ref-let-bound-span C7:C8, 3d-ref-let-values C5).
+            other => value_extent(other.into_single_sheet_area(cell), cell),
+        }
     }
 }
 

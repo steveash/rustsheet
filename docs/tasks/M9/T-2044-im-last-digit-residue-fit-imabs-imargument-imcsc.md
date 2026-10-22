@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
+campaign: visible
 depends_on: [T-2043]
 ---
 
@@ -15,7 +16,7 @@ IMABS, IMARGUMENT, IMCSC, IMSEC, IMSECH, IMLOG2 and IMCOT match Excel to the las
 formulations fitted on the T-2043 sweep, so the IM* residue T-0907 left behind is gone.
 
 ## Context
-Needs an oracle sweep: T-2043 (T-0907 tried the cached cells alone and no candidate reproduced them).
+Needs the T-2043 oracle sweep (probes-numeric case `im-last-digit-sweep`); T-0907 tried the cached cells alone and no candidate reproduced them.
 - Known failures (gap triage 2026-10-19), Excel vs ours:
   - IMABS: COMPLEXs.xlsx Sheet1!G7 9.591295345780985 vs ...987, G8 1.2345678958319997 vs ...999,
     G14 7.810249675906656 vs ...654, G23 51.394647859091315 vs ...32 (neither `sqrt(x²+y²)` nor `hypot`).
@@ -32,7 +33,10 @@ Needs an oracle sweep: T-2043 (T-0907 tried the cached cells alone and no candid
   engine code under crates/rustsheet-engine/src/functions/engineering/ (complex.rs and the IM* functions).
 - Fitting tools: tools/src/rustsheet_tools/fitlab (add a kernel module if none fits).
 
+Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 9 numeric past half a unit in the 15th digit and 2 with a wrong type, error or text, blamed on IMREAL 6, IMCSC 5, IMSECH 3, IMAGINARY 3, IMCOT 1, IMLOG2 1, IMSEC 1. Every one is listed above.
+
 ## Acceptance criteria
+- [ ] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 9 lines in eval/baseline/ironcalc-calc.txt disappear (`make eval-baseline`); the 1 line in eval/baseline/probes.txt disappears (`make eval-baseline`); the 1 cell of the ungated gen-m9 suite passes in `make eval`, with no new known-failure lines in any baseline.
 - [ ] These 15 COMPLEXs.xlsx known-failure lines leave eval/baseline/ironcalc-calc.txt (G7, G8, G14,
       G23, H14, H23, V4, W4, W7, V15, W21, Z25, AB7, AH19, T14),
       and probes/eng-argument-modes Calc!A45 leaves eval/baseline/probes.txt, with no new lines.
@@ -44,3 +48,6 @@ Needs an oracle sweep: T-2043 (T-0907 tried the cached cells alone and no candid
 ## Out of scope
 - Desktop-only differences (IMARGUMENT H2, H3, H10, IMCOS K25, IMSQRT AL12/AL26; docs/research/oracle-calibration.md): Phase 4.
 - IM* text formatting at large exponents (T-2001) and overflow (T-2002, T-2003).
+
+## Visible-parity stage
+Decision 0083: the cells listed under Context are visibly off (IM* real and imaginary parts that differ in the 15th printed digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083). The fit needs T-2043's oracle sweep first.

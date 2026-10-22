@@ -1,13 +1,14 @@
 //! OFFSET: a reference moved and resized from another, lifted into an array of references when
 //! rows, cols, height or width is an array or a multi-cell range (SPEC-0014; T-1956).
 
-use super::ref_lift::{lifts, may_hand_on_grid};
+use super::ref_lift::{lifts_one_by_one, may_hand_on_grid};
 use crate::calc_result::{CalcResult, Range};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::parser::Node;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::external_reference::PickedReference;
 use crate::functions::lift::{ArgBuf, LiftedArg};
 use crate::model::Model;
 use crate::reference_operators::{RefArg, RefElement, RefGrid};
@@ -16,6 +17,23 @@ use crate::reference_operators::{RefArg, RefElement, RefGrid};
 enum Source {
     One(Range),
     Grid(RefGrid),
+}
+
+/// OFFSET's reference argument read in reference context: an array of references, one
+/// range, or the error to give instead (`#VALUE!` for a value, a 3-D range or several areas).
+fn offset_source_read(read: RefArg, cell: CellReferenceIndex) -> Result<Source, CalcResult> {
+    match read {
+        RefArg::Grid(grid) => Ok(Source::Grid(grid)),
+        other => match other.into_single_sheet_area(cell) {
+            CalcResult::Range { left, right } => Ok(Source::One(Range { left, right })),
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expected reference".to_string(),
+            )),
+        },
+    }
 }
 
 impl Model {
@@ -39,26 +57,32 @@ impl Model {
         }
         // OFFSET of a reference into another workbook is `#VALUE!`, not a reference
         // (`ISREF(OFFSET(…!A1,1,1))` is FALSE; probes/external-ref-no-link-shapes A5,
-        // external-ref-no-link-index A16, A17, A32).
+        // external-ref-no-link-index A16, A17, A32), also of one a LET picks
+        // (`ISREF(OFFSET(LET(c,TRUE,…!A1),1,1))`; probes/external-ref-no-link-let-index A3).
         // An error in `rows`, `cols` or `width` comes first: `OFFSET(…!A1,1/0,1)`,
         // `OFFSET(…!A1,1,1/0)` and `OFFSET(…!A1,1,1,1,1/0)` are `#DIV/0!`, but a height of 0 is
         // still `#VALUE!` (probes/external-ref-no-link-ifchoose A7, -ifchoose-b A2, A3, A6).
-        if let Some(areas) = self.external_reference(&args[0], cell) {
-            if let Err(error) = areas {
-                return RefArg::Value(error);
-            }
-            for arg in &args[1..] {
-                if let Err(error) = self.get_number(arg, cell) {
+        let source = match self.pick_reference(&args[0], cell) {
+            PickedReference::External(areas) => {
+                if let Err(error) = areas {
                     return RefArg::Value(error);
                 }
+                for arg in &args[1..] {
+                    if let Err(error) = self.get_number(arg, cell) {
+                        return RefArg::Value(error);
+                    }
+                }
+                return RefArg::Value(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "OFFSET of an external reference".to_string(),
+                ));
             }
-            return RefArg::Value(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "OFFSET of an external reference".to_string(),
-            ));
-        }
-        let reference = match self.offset_source(&args[0], cell) {
+            PickedReference::Node(node) => self.offset_source(node, cell),
+            PickedReference::Read(read) => offset_source_read(read, cell),
+            PickedReference::Value(value) => offset_source_read(RefArg::Value(value), cell),
+        };
+        let reference = match source {
             Ok(Source::One(reference)) => reference,
             Ok(Source::Grid(grid)) => {
                 let values = self.offset_values(args, cell);
@@ -67,10 +91,10 @@ impl Model {
             Err(error) => return RefArg::Value(error),
         };
         let values = self.offset_values(args, cell);
-        if !values.as_slice().iter().any(lifts) {
+        if !values.as_slice().iter().any(lifts_one_by_one) {
             return RefArg::from(self.offset_of(&reference, values.as_slice(), cell));
         }
-        let lifted = match self.reference_lift_args(values, cell) {
+        let lifted = match self.reference_lift_args(values, lifts_one_by_one, cell) {
             Ok(lifted) => lifted,
             Err(error) => return RefArg::Value(error),
         };
@@ -90,18 +114,7 @@ impl Model {
         if !may_hand_on_grid(node) {
             return self.get_reference(node, cell).map(Source::One);
         }
-        match self.evaluate_reference_arg(node, cell) {
-            RefArg::Grid(grid) => Ok(Source::Grid(grid)),
-            other => match other.into_single_sheet_area(cell) {
-                CalcResult::Range { left, right } => Ok(Source::One(Range { left, right })),
-                error @ CalcResult::Error { .. } => Err(error),
-                _ => Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Expected reference".to_string(),
-                )),
-            },
-        }
+        offset_source_read(self.evaluate_reference_arg(node, cell), cell)
     }
 
     /// OFFSET over an array of references lifts again, over the grid's elements broadcast with
@@ -116,7 +129,7 @@ impl Model {
         values: ArgBuf<CalcResult>,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        let mut lifted = match self.reference_lift_args(values, cell) {
+        let mut lifted = match self.reference_lift_args(values, lifts_one_by_one, cell) {
             Ok(lifted) => lifted,
             Err(error) => return RefArg::Value(error),
         };
@@ -154,7 +167,10 @@ impl Model {
     /// Whether an OFFSET call lifts into an array of references, its own arguments evaluated
     /// but no element computed: ISREF's question (probes/reference-lift-elements F15).
     pub(crate) fn offset_lifts(&mut self, args: &[Node], cell: CellReferenceIndex) -> bool {
-        self.offset_values(args, cell).as_slice().iter().any(lifts)
+        self.offset_values(args, cell)
+            .as_slice()
+            .iter()
+            .any(lifts_one_by_one)
     }
 
     /// One of OFFSET's numbers, read by reference: only a reference or an array is cast by value
