@@ -3,7 +3,7 @@ id: T-1839
 title: "SORTBY lifts its sort_order arguments over a range or an array (alternating by_array/sort_order kinds in the lifting table)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
