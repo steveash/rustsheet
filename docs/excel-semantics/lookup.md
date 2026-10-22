@@ -922,7 +922,8 @@ earlier index is 0 or out of range: `CHOOSECOLS(Data!A1,1E+15,ACOSH(-0.3))` is `
 `#DIV/0!`, `CHOOSEROWS(Data!B11:E11,2,-1,..SUMX2MY2(<mismatched>))` `#N/A` (gen-m6/121a7c17092038d9 Calc!A298, 07171fa3f7493f51 A333,
 ee56a4ed5a612a0d A19, 535caabe1e635e2d A136, 7ac4ea222977f3b4 A391; 26 cells in T-2273). This answers the UNVERIFIED "which problem
 wins inside a CHOOSECOLS/CHOOSEROWS index list" above for errors against bad indexes; which of two errors wins is still unprobed.
-Ours: the first problem in argument order, so an out-of-range index's `#VALUE!` wins.
+Ours: implemented (T-2273): an out-of-range index is remembered and the scan goes on, so an error in any later argument wins and
+the `#VALUE!` is returned only if none is found. Between two errors, ours keeps the first in argument order (UNVERIFIED).
 Status: VERIFIED
 Tasks: T-2273
 

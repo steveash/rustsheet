@@ -76,7 +76,9 @@ impl Model {
     /// `CHOOSEROWS(A1:B3,A1:A2)` is 2x2; probes/lookup-argument-modes F7:G10,
     /// docs/excel-semantics/lookup.md "Lookup and reference function argument modes"). An index
     /// is 1-based, negative from the end; 0 or past `count` is `#VALUE!`, and an error element is
-    /// itself. The result is bounded before it is built (CLAUDE.md directive 5).
+    /// itself. An error in any argument beats that `#VALUE!`, so the scan goes on past a bad index
+    /// (docs/excel-semantics/lookup.md "CHOOSEROWS and CHOOSECOLS: an error argument beats an
+    /// out-of-range index"). The result is bounded before it is built (CLAUDE.md directive 5).
     fn chosen_indices(
         &mut self,
         args: &[Node],
@@ -86,6 +88,7 @@ impl Model {
     ) -> Result<Vec<usize>, CalcResult> {
         let count = i64::try_from(count).unwrap_or(i64::MAX);
         let mut indices = Vec::with_capacity(args.len());
+        let mut out_of_range = false;
         for arg in args {
             let list = self.eval_to_array(arg, cell)?;
             let added = list.len().saturating_mul(list.first().map_or(0, Vec::len));
@@ -97,15 +100,19 @@ impl Model {
             for node in list.iter().flatten() {
                 let n = self.cast_number_ref(&array_node_to_calc_result(node, cell), cell)? as i64;
                 if n == 0 || n.abs() > count {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Index out of range".to_string(),
-                    ));
+                    out_of_range = true;
+                    continue;
                 }
                 let index = if n > 0 { n - 1 } else { count + n };
                 indices.push(usize::try_from(index).unwrap_or(0));
             }
+        }
+        if out_of_range {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Index out of range".to_string(),
+            ));
         }
         Ok(indices)
     }

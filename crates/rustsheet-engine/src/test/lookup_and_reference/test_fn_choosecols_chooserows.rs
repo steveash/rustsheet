@@ -81,3 +81,19 @@ fn test_chooserows_out_of_range() {
     model.evaluate();
     assert_eq!(model._get_text("C1"), "#VALUE!");
 }
+
+#[test]
+fn test_choose_error_argument_beats_out_of_range_index() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("A2", "3");
+    model._set("B2", "4");
+    model._set("E1", "=CHOOSEROWS(A1:B2,9,NA())");
+    model._set("E2", "=CHOOSECOLS(A1:B2,0,1/0)");
+    model._set("E3", "=CHOOSEROWS(A1:B2,9,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "#N/A");
+    assert_eq!(model._get_text("E2"), "#DIV/0!");
+    assert_eq!(model._get_text("E3"), "#VALUE!");
+}

@@ -3,7 +3,7 @@ id: T-2273
 title: "CHOOSEROWS/CHOOSECOLS: an error argument beats an out-of-range index's #VALUE!"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -55,13 +55,19 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 26 in eval/baseli
 | gen-m6/ee56a4ed5a612a0d Calc!A19 | `=CHOOSECOLS(SQRT(2958465),2,-2,INDEX(Data!A8:D12,6,2))` | "#REF!" | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] The 23 known-failure lines without an inner dependency disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite; the other 3 disappear here or are named in the Outcome with the task they wait for.
-- [ ] Unit tests cover `CHOOSEROWS(A1:B2,9,NA())` (`#N/A`) and `CHOOSECOLS(A1:B2,0,1/0)` (`#DIV/0!`).
-- [ ] lookup.md's entry says Ours: implemented (T-2273).
-- [ ] `make check` green; reviewers approve.
+- [x] The 23 known-failure lines without an inner dependency disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite; the other 3 disappear here or are named in the Outcome with the task they wait for.
+- [x] Unit tests cover `CHOOSEROWS(A1:B2,9,NA())` (`#N/A`) and `CHOOSECOLS(A1:B2,0,1/0)` (`#DIV/0!`).
+- [x] lookup.md's entry says Ours: implemented (T-2273).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The order between two errors (unprobed).
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`Model::chosen_indices` now remembers an out-of-range index and keeps scanning, so an error in any argument wins and
+the `#VALUE!` is returned only when none is found. 25 of the 26 known failures leave eval/baseline/gen-m6.txt
+(including the T-2267 and T-2169 cells, which needed no inner fix here); gen-m6/c4edd76f46980c5f Calc!A232 still waits
+for T-2288 (DATEDIF unknown unit). Unit test `test_choose_error_argument_beats_out_of_range_index`. No new failures.
