@@ -3,7 +3,7 @@ id: T-0969
 title: "T.DIST/T.DIST.RT/T.DIST.2T/T.TEST: accurate Student-t CDF with direct upper tail (55 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -288,6 +288,38 @@ coarse grid for df 2 to 10; and `t0969-t-tail-grid`, 3,232 T.DIST.RT cells on a 
 - Next: (1) score bratio with Excel's GAMMALN as `gamln` (needs `excel_gammaln` callable from the harness) on
   columns E, H and I; (2) bratio's `bgrat`/`bup` against the df 50 to 1000 rounded-y cells. That is the region of the
   tail grid's 175 noise cells, where TOMS 708's asymptotic expansion for large a would run.
+
+## Attempt 12 (2026-10-22, opus run; findings only)
+- Eval delta: no engine change, no baseline line moved. On `main` (this run's `make eval`) the family has 522
+  visibly-off cells, all in ungated probes-numeric cases: `t0969-t-tail-grid` 245, `t0969-t-pdf-runs` 186,
+  `t0969-t-beta-link` 40, `m9-t-dist-pdf` 26, and 25 in six other cases. None is in a gated suite.
+- **TOMS 708 with Excel's GAMMALN, rejected.** Attempt 11's next step (1): R's `toms708.c` `bratio`, compiled
+  standalone, with `gamln` looked up from `excel_gammaln` (no miss), is bit-exact on 29 of 184 `t0969-t-beta-link`
+  column-E cells, the same as with its own `gamln`: `betaln` is never reached for (n/2, 1/2). H and I: 129 and 136.
+- **Rejected on column E** (exact I_y: 39 bit-exact, 145 within 4 ulp):
+  - Cephes `incbet` with Excel's B, prefactor exp-log, pow or one exp: 35 to 36.
+  - Cephes `incbet` with the exact B: 31.
+  - NR `betai`: 25 or 26.
+- **Rejected on 700 rounded-y tail-grid cells** (exact: 92 bit-exact, 589 within 4 ulp, 53 visibly off): Cephes
+  exp-log 52, Cephes pow 60, each about 175 visibly off.
+- **Finding:** Excel's tail error grows about linearly with |(n/2) ln y|. Its standard deviation is 3 x 2^-53 at
+  |E| < 2 and 24 at |E| >= 20, with no bias. (n/2) times the rounding error of ln y explains part of it
+  (correlation 0.38), whether ln y is Excel's LN or libm's. No double form of E tried
+  explains more (statistics.md "T.DIST.RT's noise beyond t = 1 grows with a ln y").
+
+## Blocked because: time-boxed (decision 0056)
+Attempts 11 and 12 did not raise the bit-exact count, which is decision 0056's bar. What is left is Excel's own
+noise. Every one of the 522 visibly-off cells is in an ungated probes-numeric case, and the engine's kernel is
+within a few ulp of the exact value there. Excel is not. Reaching the visible-parity stage needs Excel's algorithm
+reproduced, not more accuracy. Candidates tried, with their counts:
+- tails: attempts 2 to 12, ending in the list in statistics.md "T.DIST.RT's noise beyond t = 1 grows with a ln y";
+- B: "Student t prefactor per df";
+- densities: "Student t density noise is not input rounding" and attempts 6 to 8.
+Reopen when a new hypothesis is recorded here, for example:
+- a reconstruction of Excel's BETA.DIST cdf kernel that reproduces column E of `t0969-t-beta-link`;
+- the second component of the a ln y noise;
+- a density kernel for df >= 3.
+A dependency landing (T-2119 included) does not reopen it.
 
 ## Acceptance criteria
 - [ ] No T.DIST/T.DIST.RT/T.DIST.2T/T.TEST line listed above remains with a NumericClose or
