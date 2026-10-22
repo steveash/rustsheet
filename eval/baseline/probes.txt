@@ -2686,7 +2686,6 @@ F	probes/t2275-address-bounds.case.json	Calc!J15
 F	probes/t2275-address-bounds.case.json	Calc!J20
 F	probes/t2275-address-bounds.case.json	Calc!J25
 F	probes/t2275-address-bounds.case.json	Calc!J28
-F	probes/t2311-pivotby-value-cause.case.json	P!D46
 F	probes/t2311-pivotby-value-cause.case.json	P!D51
 F	probes/t2311-pivotby-value-columns-error.case.json	P!C12
 F	probes/t2311-pivotby-value-columns-error.case.json	P!D12
