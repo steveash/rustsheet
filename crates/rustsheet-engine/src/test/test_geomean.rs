@@ -145,7 +145,8 @@ fn test_fn_harmean_no_numbers_is_na() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#N/A");
-    // A written empty argument counts as 0, which is not strictly positive.
+    // A written empty argument counts as 0, which is not strictly positive (coercion.md "AVERAGE,
+    // MEDIAN, GEOMEAN, HARMEAN ..." `=HARMEAN(4,)`).
     assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"2");
 }
