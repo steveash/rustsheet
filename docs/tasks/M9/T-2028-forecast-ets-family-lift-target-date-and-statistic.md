@@ -3,7 +3,7 @@ id: T-2028
 title: "FORECAST.ETS family: lift target_date and statistic_type and coerce text target_date to #VALUE! before #N/IMPL!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
