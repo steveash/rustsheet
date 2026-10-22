@@ -3,7 +3,7 @@ id: T-2192
 title: "CUMIPMT short-range interest: reproduce Excel's per-period form (visibly-off cells after T-1890)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
