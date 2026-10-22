@@ -2774,18 +2774,16 @@ impl Model {
     // false otherwise.
     pub(crate) fn can_clear_range(&self, range: &Area) -> Result<bool, String> {
         let sheet = range.sheet;
-        // Only the cells that exist: an absent cell is a plain single cell, and the range can be
-        // as large as the sheet (a table's range comes from the file).
+        // Existing cells only: an absent one is a plain cell, and a table's range can span the sheet.
         let sheet_data = &self.workbook.worksheet(sheet)?.sheet_data;
         let rows = sheet_data
             .rows()
             .into_iter()
             .filter(|row| (range.row..range.row + range.height).contains(row));
         for row in rows {
-            for column in sheet_data.columns_in_row(row) {
-                if column < range.column || column >= range.column + range.width {
-                    continue;
-                }
+            let columns = sheet_data.columns_in_row(row).into_iter();
+            for column in columns.filter(|c| (range.column..range.column + range.width).contains(c))
+            {
                 match self.get_cell_structure(sheet, row, column)? {
                     CellStructure::ArrayFormula { range: r } => {
                         let (width, height) = r;
