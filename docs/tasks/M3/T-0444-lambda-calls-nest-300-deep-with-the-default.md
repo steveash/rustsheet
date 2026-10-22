@@ -3,7 +3,7 @@ id: T-0444
 title: "LAMBDA calls nest 300 deep with the default stack budget"
 milestone: M3
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
