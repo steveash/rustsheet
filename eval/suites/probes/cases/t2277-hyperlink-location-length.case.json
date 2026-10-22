@@ -1,0 +1,31 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2277 probe: HYPERLINK link_location length near 255 characters (gen-m6/0bcac2d96e96b3df Calc!A17 has a 328-character TEXTJOIN location and Excel gives #VALUE!).",
+ "tags": [
+  "M6",
+  "probe",
+  "lookup"
+ ],
+ "sheets": [
+  {
+   "name": "M",
+   "cells": {
+    "A1": "=HYPERLINK(REPT(\"a\",254),1)",
+    "A2": "=HYPERLINK(REPT(\"a\",255),1)",
+    "A3": "=HYPERLINK(REPT(\"a\",256),1)",
+    "A4": "=HYPERLINK(REPT(\"a\",257),1)",
+    "A5": "=HYPERLINK(REPT(\"a\",328),1)",
+    "A6": "=HYPERLINK(REPT(\"a\",1000),1)",
+    "A7": "=HYPERLINK(REPT(\"a\",255))",
+    "A8": "=HYPERLINK(\"#\"&REPT(\"a\",254),1)",
+    "A9": "=HYPERLINK(\"#\"&REPT(\"a\",255),1)",
+    "A10": "=HYPERLINK(REPT(\"a\",256))",
+    "A11": "=HYPERLINK(\"#\"&REPT(\"a\",255),1)",
+    "A12": "=HYPERLINK(\"#\"&REPT(\"a\",256),1)",
+    "A13": "=HYPERLINK(REPT(\"a\",256),{1,2})",
+    "A14": "=HYPERLINK(REPT(\"a\",300),\"x\")",
+    "A15": "=HYPERLINK(REPT(1,300),1)"
+   }
+  }
+ ]
+}
