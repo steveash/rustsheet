@@ -3,7 +3,7 @@ id: T-2376
 title: "ACOT of a negative zero is PI()/2 (ACOT(CEILING.PRECISE(-0.0001)))"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -40,3 +40,6 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 Decision 0083 (gap triage 2026-10-22, T-2252): every cell this task owns has the wrong type, error, text or boolean, or is a
 number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
 criteria above are already the visible-parity stage.
+
+## Outcome
+ACOT returns PI()/2 for either double zero (`fn_acot`, mathematical.rs); unit test `acot_of_negative_zero`. gen-m5 known failure Calc!A7 of 6efa59fc1257c475 removed.
