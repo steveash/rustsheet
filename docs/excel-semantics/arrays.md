@@ -1278,10 +1278,19 @@ is 1, 1, 2, ... (COUNT skips the error accumulator; 90de8755a2e565e6 A1223); `SC
 The initial value and the elements also look like references when they come from cells: `REDUCE(Data!A12,Data!C11,PRODUCT)` with
 both cells TRUE is 0 (PRODUCT skips booleans in references; 18b80d3fd292d63a A467), `REDUCE(Data!C7,Data!E12,COUNT)` with C7 the text
 "1" and E12 -2.5 is 1 (2c5ea078f25443a2 A1767), and `SCAN(Data!A5,Data!A7:C11,PRODUCT)` with A5 "ü" starts at 2.5 (18b80d3fd292d63a
-A285). Which of the two (initial value, elements) is a reference is UNVERIFIED (these cells have one-cell arrays).
+A285). Both are references:
+- A285 and A1767 need a reference initial value: a text value would make PRODUCT `#VALUE!` and COUNT 2.
+- A467 needs a reference element too. PRODUCT of a reference TRUE and a value TRUE would be 1.
+- Elements from a range, a one-cell range included, were already references (T-1442).
+- Unprobed initial values:
+  - a function result such as `IF(TRUE,A1)`;
+  - an INDEX or XLOOKUP that picks a cell (ours: a reference, as `eval_ref_or_index` gives it);
+  - a union or a 3-D span (ours: read as values, as before);
+  - ISREF of the accumulator (ours: TRUE for a cell).
 Evidence: gen-m7 cases above (excel-graph, 2026-10-21, T-2225).
-Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the LAMBDA and SCAN keeps an error step in its slot; they pass values, not references (T-2307).
-Status: VERIFIED (excel-graph) for the error rule; the reference rule UNVERIFIED in its split.
+Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the LAMBDA and SCAN keeps an error step in its slot.
+Since T-2307, `lambda_initial_value` keeps a reference initial_value a reference, as `eval_ref_or_index` binds a LAMBDA argument.
+Status: VERIFIED (excel-graph).
 Tasks: T-2306, T-2307
 
 ## MAKEARRAY rows and columns must be whole numbers
