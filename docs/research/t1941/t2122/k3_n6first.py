@@ -71,6 +71,8 @@ s5, d5 = fit('N', 5, [6], known, TOL); show('N5 eqs', s5, [6], N0, d5); known[6]
 s3, d3 = fit('N', 3, [4, 5], known, TOL); show('N3 eqs', s3, [4, 5], N0, d3); known[4], known[5] = s3
 print('N moves (ulps): ' + ' '.join('N%d %+.4g' % (k, known[k]/np.spacing(abs(N0[k]))) for k in sorted(known)))
 # 5. joint N6 + N7 (dN7, dN8, dN9): does one quadratic satisfy both stages? Weighted per equation by 1/ulp.
+# CAVEAT (HANDOFF2 14.1): alias shifts are enumerated on N7 rows only (4^rows), so this fails the 12-anchor planted
+# control; do not trust a 12-anchor joint number until every row gets alias freedom (14.2 step 1).
 if os.environ.get('JOINT67'):
     rows = [(c_, jj, x, s, per) for c_, jj, x, s, per in eq if c_ == 'N' and jj in (6, 7) and not (jj == 6 and abs(x-0.9517) < 1e-4)]
     ks = [7, 8, 9]; A = []; y = []; P = []; U = []
