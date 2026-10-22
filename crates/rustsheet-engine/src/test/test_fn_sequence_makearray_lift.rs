@@ -105,7 +105,9 @@ fn lifted_output_is_charged_against_the_visit_cap() {
 /// cell's value and runs one unlifted call that keeps its whole array: with A3 = 3,
 /// `SEQUENCE({3})` and `SEQUENCE(A3+{0})` are the 1x1 1, while `SEQUENCE(A3*1)`,
 /// `SEQUENCE(INDIRECT("A3")*1)` and `SEQUENCE(A3:A3)` spill three rows
-/// (probes/m7-lift-take-drop-sortby Sheet1 rows 12, 14 and 38-43; T-2298).
+/// (probes/m7-lift-take-drop-sortby Sheet1 rows 12, 14 and 38-43; T-2298). Any operator reads
+/// a one-cell range as its value: `--`, `&` and `=` over INDIRECT keep three rows
+/// (probes/m7-one-cell-operand-lift F2, F4, F8).
 #[test]
 fn a_one_cell_array_lifts_but_a_one_cell_reference_does_not() {
     let mut model = new_empty_model();
@@ -117,6 +119,10 @@ fn a_one_cell_array_lifts_but_a_one_cell_reference_does_not() {
     model._set("E1", "=ROWS(SEQUENCE(C3:C3))");
     model._set("F1", "=SEQUENCE(C3*1)");
     model._set("G1", "=SEQUENCE({3})");
+    model._set("H1", "=ROWS(SEQUENCE(--INDIRECT(\"C3\")))");
+    model._set("I1", "=ROWS(SEQUENCE(INDIRECT(\"C3\")&\"\"))");
+    model._set("J1", "=ROWS(SEQUENCE(IF(INDIRECT(\"C3\")=3,3)))");
+    model._set("K1", "=ROWS(SEQUENCE(--{3}))");
     model.evaluate();
     for (cell, want) in [
         ("A1", "1"),
@@ -127,6 +133,10 @@ fn a_one_cell_array_lifts_but_a_one_cell_reference_does_not() {
         ("F3", "3"),
         ("G1", "1"),
         ("G2", ""),
+        ("H1", "3"),
+        ("I1", "3"),
+        ("J1", "3"),
+        ("K1", "1"),
     ] {
         assert_eq!(model._get_text(cell), want, "{cell}");
     }

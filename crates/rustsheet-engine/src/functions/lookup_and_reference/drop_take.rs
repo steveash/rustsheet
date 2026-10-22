@@ -13,15 +13,7 @@ use crate::{
     reference_operators::{Picked, RefArg, RefGrid},
 };
 
-use super::ref_lift::lifts;
-
-/// Whether a rows or cols value lifts TAKE or DROP: what lifts OFFSET ([`lifts`]), and a 1x1
-/// array too, which gives one element: `TAKE(A1:B3,{2})` is one element, A1:B2, so ROWS of it
-/// is 1 and spilled directly it is `#VALUE!` (probes/m7-lift-take-drop-sortby Sheet1 F13, G13,
-/// I13:K13, W65; T-2298). A one-cell range is still its value.
-fn count_lifts(value: &CalcResult) -> bool {
-    lifts(value) || matches!(value, CalcResult::Array(_))
-}
+use super::ref_lift::lifts_one_by_one;
 
 /// Whether a call keeps (TAKE) or removes (DROP) the rows and columns it counts.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -128,7 +120,7 @@ impl Model {
             self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
         };
         let counts = self.reference_lift_values(&args[1..], cell);
-        if counts.as_slice().iter().any(count_lifts) {
+        if counts.as_slice().iter().any(lifts_one_by_one) {
             // TODO(T-2212) a lifted count over an array of references is unprobed; it reads the
             // grid's value view.
             return self.take_drop_lifted(source, counts, edge, cell);
@@ -168,7 +160,7 @@ impl Model {
         if let CalcResult::Range { left, right } = source {
             if left.sheet == right.sheet {
                 let (num_rows, num_cols) = range_dims(left, right);
-                let lifted = match self.reference_lift_args(counts, count_lifts, cell) {
+                let lifted = match self.reference_lift_args(counts, lifts_one_by_one, cell) {
                     Ok(lifted) => lifted,
                     Err(error) => return RefArg::Value(error),
                 };

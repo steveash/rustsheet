@@ -641,9 +641,8 @@ impl Model {
         subtract: bool,
     ) -> CalcResult {
         let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
-        let l = self.arithmetic_operand(left, cell);
-        let right = self.evaluate_node_in_context(right, cell);
-        let r = self.arithmetic_operand(right, cell);
+        let l = self.number_or_array(left, cell);
+        let r = self.get_number_or_array(right, cell);
         // The two addends of a scalar addition (a subtraction adds the negated right operand).
         let addends = match (&l, &r) {
             (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => {
@@ -706,27 +705,9 @@ impl Model {
         cell: CellReferenceIndex,
         op: &dyn Fn(f64, f64) -> Result<f64, Error>,
     ) -> CalcResult {
-        let l = self.arithmetic_operand(left, cell);
-        let right = self.evaluate_node_in_context(right, cell);
-        let r = self.arithmetic_operand(right, cell);
+        let l = self.number_or_array(left, cell);
+        let r = self.get_number_or_array(right, cell);
         self.arithmetic_on_values(l, r, cell, op)
-    }
-
-    /// An arithmetic operand as a number or an array: a one-cell range is its cell's value, as a
-    /// written `A3` is, not a 1x1 array. Excel tells the two apart where an array-valued
-    /// function lifts a 1x1 array: `SEQUENCE(INDIRECT("A3")*1)` with A3 = 3 spills three rows,
-    /// as `SEQUENCE(A3*1)` does, where `SEQUENCE(A3+{0})` is one element
-    /// (probes/m7-lift-take-drop-sortby Sheet1 rows 38, 39 and 43; T-2298).
-    fn arithmetic_operand(
-        &mut self,
-        value: CalcResult,
-        cell: CellReferenceIndex,
-    ) -> Result<NumberOrArray, CalcResult> {
-        let value = match value {
-            CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
-            value => value,
-        };
-        self.number_or_array(value, cell)
     }
 
     /// Applies `op` element‐wise to operands that are already evaluated. An
