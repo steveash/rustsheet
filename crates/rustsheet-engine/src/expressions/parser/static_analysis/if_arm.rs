@@ -77,6 +77,23 @@ fn is_range_arm(arm: &Node) -> bool {
     false
 }
 
+/// Whether `arm` is a range arm that makes the IF itself a value to intersect: not `INDEX(range,row)`
+/// with a literal non-zero row, one cell, for which Excel shows no `@` at all (`=IF(TRUE,INDEX(B1:B6,3))`,
+/// probes/legacy-if-arm-other-references M12, T-2326). The INDEX arm still counts as a reference arm
+/// ([`is_range_arm`]), so it gets no `@` of its own either.
+fn is_whole_range_arm(arm: &Node) -> bool {
+    is_range_arm(arm) && !is_single_cell_index(arm)
+}
+
+/// Whether `arm` is `INDEX(range,row)` with a literal non-zero row, possibly in parentheses.
+fn is_single_cell_index(arm: &Node) -> bool {
+    matches!(
+        arm.ungrouped(),
+        Node::FunctionKind { kind: Function::Index, args }
+            if args.len() == 2 && matches!(args[1].ungrouped(), Node::NumberKind(n) if *n != 0.0)
+    )
+}
+
 /// Whether `kind(args)` is an IF with an arm that is a range ([`is_range_arm`]), which a legacy
 /// formula intersects as a whole wherever it reads the IF as a value, also under a range
 /// argument: `=SUM(IF(TRUE,B1:B6)+0)` shows as `=SUM(@IF(TRUE,B1:B6)+0)`, 2 on the range's rows
@@ -84,8 +101,21 @@ fn is_range_arm(arm: &Node) -> bool {
 /// (probes/legacy-if-arm-range-argument-b, excel-graph, T-1935).
 pub(super) fn returns_range_arm(kind: &Function, args: &[Node]) -> bool {
     match kind {
-        Function::If => args.len() > 1 && args[1..].iter().any(is_range_arm),
-        Function::Ifs => args.iter().skip(1).step_by(2).any(is_range_arm),
+        Function::If => args.len() > 1 && args[1..].iter().any(is_whole_range_arm),
+        Function::Ifs => args.iter().skip(1).step_by(2).any(is_whole_range_arm),
+        _ => false,
+    }
+}
+
+/// Whether `kind(args)` is an IF or IFS whose value arms are all `INDEX(range,row)` with a literal
+/// non-zero row ([`is_single_cell_index`]): one cell whatever the condition, so no `@` on the call.
+pub(super) fn returns_single_cell_index(kind: &Function, args: &[Node]) -> bool {
+    match kind {
+        Function::If => args.len() > 1 && args[1..].iter().all(is_single_cell_index),
+        Function::Ifs => {
+            let mut arms = args.iter().skip(1).step_by(2).peekable();
+            arms.peek().is_some() && arms.all(is_single_cell_index)
+        }
         _ => false,
     }
 }

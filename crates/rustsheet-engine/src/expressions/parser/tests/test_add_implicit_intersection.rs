@@ -69,6 +69,10 @@ fn simple_test() {
         // IF passes its range arms whole and takes the `@` itself (`=@IF(TRUE,B1:B6)`,
         // probes/legacy-if-arm-range-argument Q12, T-1935).
         ("IF(A1:A10,B1:B10,C1:C10)", "@IF(@A1:A10,B1:B10,C1:C10)"),
+        // A single-cell INDEX arm shows no `@` at all; a whole-column INDEX arm still does
+        // (probes/legacy-if-arm-other-references M12, T-2326).
+        ("IF(TRUE,INDEX(B1:B6,3))", "IF(TRUE,INDEX(B1:B6,3))"),
+        ("IF(TRUE,INDEX(B1:C6,0,1))", "@IF(TRUE,INDEX(B1:C6,0,1))"),
         // CHOOSE value args pass references through: no `@` on the arms. In a
         // scalar position the whole call is wrapped instead; in a range
         // position (e.g. inside SUM) nothing is wrapped.
