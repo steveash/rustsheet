@@ -476,8 +476,8 @@ fn map_and_scan_elements_that_are_ranges_still_read_their_cells() {
     model.evaluate();
     assert_eq!(model._get_text("C1"), "#CALC!");
     assert_eq!(model._get_text("E1"), "#CALC!");
-    assert_eq!(model._get_text("G1"), "#CIRC!");
-    assert_eq!(model._get_text("H1"), "#CIRC!");
+    assert!(model._is_circular("G1"));
+    assert!(model._is_circular("H1"));
 }
 
 // ── LAMBDAs that outlive their call (T-0439) ─────────────────────────────────

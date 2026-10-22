@@ -60,6 +60,11 @@ with one missing end (`=SUM(Nope1:Nope2!A1)`, `=Nope1:Nope2!A1`; `ISREF` FALSE, 
 CHOOSE-wrapped spans in COUNTBLANK act like IF-wrapped ones: `COUNTBLANK(CHOOSE(1,Data1:Data3!A1:B3))` and
 `COUNTBLANK(CHOOSE(2,1,Data1:Data3!A1:B3))` are `#VALUE!`, `COUNTBLANK(CHOOSE(1,Data1:Data1!A1:B3))` is 2, and a span with a missing
 end in CHOOSE is `#NAME?`. A reversed span (`SUM(Data3:Data1!A1)`) is the same sheets: 111.
+A scalar function over a one-sheet span's range lifts and spills like the plain range
+(probes/3d-ref-one-sheet-span-lift, excel-graph, 2026-10-22, T-2351): `=ABS(Data1:Data1!A1:A3)` spills 1, 5, `#VALUE!`
+exactly as `=ABS(Data1!A1:A3)`, `ROWS(ABS(..))` is 3 and `SUM(ABS(Data1:Data1!A1:B1))` 4, while the two-sheet
+`=ABS(Data1:Data2!A1:A3)` is `#REF!`. Excel stores the one-sheet span as the plain reference: `FORMULATEXT` of
+`=ABS(Data1:Data1!A1:A3)` is `=ABS(Data1!A1:A3)`.
 COUNTBLANK of an error (probes/countblank-choose-errors, excel-graph, 2026-10-10, T-1181): an argument that evaluates to an error,
 not a reference, gives that error: `COUNTBLANK(Data1:Nope!A1:B3)` and its IF and CHOOSE forms `#NAME?`, `COUNTBLANK(CHOOSE(1,#N/A))`,
 `CHOOSE(1,NA())` and `IF(TRUE,NA())` `#N/A`, an empty intersection in CHOOSE `#NULL!`; also (probes/countblank-error-forms-b,
@@ -1705,7 +1710,7 @@ Implemented (T-1717): `add_legacy_intersection` (expressions/parser/static_analy
 computes from them (`legacy_array_context`, static_analysis/legacy.rs; not IF, IFERROR, IFNA, CHOOSE,
 IFS, SWITCH, LET or LAMBDA, nor N/T over IF, SWITCH or a CHOOSE, INDEX or IFS that returns only array constants, T-1713, or INDEX of a reference, T-1908). Where it holds, an array constant argument
 gets the `@`, and so does an array-valued call of more than one cell whose array is one of its
-arguments or comes from a non-scalar one (`legacy_array_call_at`). Probed since in T-1847 (below): IFNA, IFS, the IFERROR argument, T over SWITCH and the array-constant `@` under LEN and ISNUMBER/SEARCH match. An array constant inside an operator takes its own `@`, not one on the call: `=N({2;3}+0)` shows as `=N(@{2;3}+0)` and `=ABS({2;3}+0)` as `=ABS(@{2;3}+0)`, 2 with no spill (probes/legacy-array-at-shapes I20, J20, I11, J11; ours matches since T-1911). Only `{2;3}+0` is probed; the `@` on array constants under unary signs, parentheses, `&`, comparisons and range-mixed operands is extrapolated from it.
+arguments or comes from a non-scalar one (`legacy_array_call_at`). Probed since in T-1847 (below): IFNA, IFS, the IFERROR argument, T over SWITCH and the array-constant `@` under LEN and ISNUMBER/SEARCH match. An array constant inside an operator takes its own `@`, not one on the call: `=N({2;3}+0)` shows as `=N(@{2;3}+0)` and `=ABS({2;3}+0)` as `=ABS(@{2;3}+0)`, 2 with no spill (probes/legacy-array-at-shapes I20, J20, I11, J11; ours matches since T-1911). The same holds under a unary sign (`=ABS(-@{2;3})`, `=ABS(-@{5})`), parentheses (`=N((@{2;3}))`, `=ABS((@{2;3}))`), `&` (`=LEN(@{"ab";"c"}&"x")`), comparisons (`=N(@{2;3}>1)`) and range-mixed operands, where the range takes an `@` too (`=N(@{2;3}+@Y1:Y2)`, `#VALUE!` from a row outside Y1:Y2). A one-element constant gets `@` in a scalar-argument position (`=ABS(@{5}+0)`) but the probed `=SUM(ABS({5}+0))` shows no `@` (other aggregates and multi-element constants under SUM are not probed). Probed in T-1981 (probes/legacy-array-at-operators, excel-graph, 2026-10-22); ours matched without changes.
 In the probed shapes a legacy cell puts no `@` on a SWITCH, its results or a call over it: `=SWITCH(1,1,{2;3})`, `=SWITCH(1,1,Z30:Z32)` and `=SWITCH(1,1,Z30:AA31)` show no `@` and spill (1, 2, 3 for the range), as do `=ABS(SWITCH(1,1,{-2;3}))`, `=-SWITCH(1,1,{2;3})` and `=LEN(SWITCH(1,1,{"ab";"c"}))`; the one-element `=SWITCH(1,1,{5})` shows `=SWITCH(1,1,{5})` with no `@` on the constant, and several pairs, a default and a typed `=@SWITCH(1,1,{2;3})` (kept, value 2) follow (probes/legacy-switch-at-shapes, 57 cells, excel-graph, 2026-10-20, T-1964; C20, C11 earlier, T-1910), unlike IF/IFS/IFNA.
 Ours matches (`spilling_switch_position`, static_analysis/legacy.rs): only these shapes are left unmarked, a root SWITCH whose results are array constants or ranges and ABS, LEN or a unary minus over a SWITCH of array constants; a typed `@` on them or on a result is kept on export.
 Unprobed (UNVERIFIED), and the engine keeps the `@` it put there before T-1964: other callers (SIN, ROUND, N, INDEX, INDIRECT, OFFSET, a SUM-like vector argument) and a SWITCH past the first argument; binary operators over a SWITCH; parentheses around it; a range result under ABS, LEN or minus; a result that is an operation or a call (`Z30:Z32*1`, `ABS({-2;3})`, IF, a nested SWITCH); a SWITCH in an IF arm; a range lookup value or case (still intersected). Follow-up: T-2121.
@@ -1789,10 +1794,10 @@ an array constant or another call keeps the old `@`; CHOOSE with a literal index
 one get none either, T-1908, and are read as references, not marked; the other literal indices, INDEX indices and mixed arms are probed in legacy-n-t-choose-index-shapes, T-1918). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
 Re-entering a marked cell through a row/column insert or delete, a row/column move, fill or paste keeps the marker since T-1852:
 the display text goes back through the legacy entry (`Model::reenter_user_input`). Only the row insert is probed; the rest is rule 6's assumption.
-Redoing a paste or fill re-enters its text as typed and drops the marker (T-2018).
+Redo of a paste, fill or cut-rewrite re-enters through the legacy entry too, so the marker survives (T-2018; rule 6's assumption, not oracle-expressible).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921, T-1933
+Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921, T-1933, T-2018
 
 ## Edge shapes of a cell-shaped call name
 Rule: a call whose callee is spelled as a cell on the grid is a call of that cell, `#REF!`. That includes:
@@ -1811,6 +1816,12 @@ A cell-like name off the grid is an unknown name, `#NAME?`: a column past XFD (`
 
 An R1C1-shaped callee in an A1 workbook (`=R1C1(1)`, `=R[1]C[1](1)`) makes Excel refuse the workbook
 (createSession 501 `unsupportedWorkbook`), so its value is not observable through the web oracle.
+
+A range or a spill written as a callee without parentheses is a call too, `#REF!`, and FORMULATEXT keeps it bare:
+`=Sheet1!$A$1:$A$2(2)` and `=$A$1:A2(2)` show as written, `=A1#(2)` as written, also over a real spill anchor `A1: =SEQUENCE(3)` (probes/callee-unparenthesized-range-sheet,
+-range-plain, -spill-plain, -spill-anchor, excel-graph, 2026-10-22, T-2008; ours parsed them as `#ERROR!` before). `=$A$1(2)#` makes Excel
+refuse the workbook (createSession 501), so it has no oracle value. The lower-case row shapes `=a0(1)` and `=a1048577(1)` are
+`#NAME?` and print as written, lower case (probes/callee-unparenthesized-lower-row0, -lower-row-over; ours matched).
 
 Not probed: a called cell pushed off the grid by a structural edit. That needs a column insert, which no case
 file can express; ours turns `=XFD1(1)` into `=#REF!(1)` (`#ERROR!`).

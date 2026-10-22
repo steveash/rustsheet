@@ -377,10 +377,17 @@ Backtracker limits (T-1900, functions/text/pcre/backtrack.rs and program.rs):
   answers are UNVERIFIED (T-2356).
 - Counted repeats are expanded into copies, and every node a copy visits counts against the compile size limit.
   `(?:(?:){65535}){65535}(a)\1` is too big, and `#VALUE!`, where PCRE2 compiles it.
+- The memoized mode (T-2355; a regular pattern with `$` or `\Z` over a text with a line feed before its last
+  character) keeps one bit per instruction and byte position it reaches, in chunks of 64 positions, held with the
+  stack within what the call may still hold (64 MiB at most): 4 KiB per instruction over a 32,767-character ASCII
+  text. A search that would pass it is `#ERROR!`, where Excel answers FALSE (checked once on excel-graph,
+  2026-10-22, for T-2355; not kept as a case, being this deviation)
+  (`REGEXTEST("a"&CHAR(10)&REPT("a",32764)&CHAR(10),"(?:b[a-z]{20000}|a)*b$")`). Each chunk it reaches is charged one unit
+  a word, and each state it enters a step.
 Status: DEVIATION (decision 0014)
 Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `Backtracker` and `Program` (functions/text/pcre/), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138
+Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138, T-2355
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
@@ -562,7 +569,9 @@ parentheses `"(100)"` = -100, dates `"2024-02-29"` = 45351 and `"1900-02-29"` = 
 separator `"FALSE"` is "F", `"MDCVIII"` (`ROMAN(1608,4)`) is "M", `"0.2"` is "0". Every occurrence of the group separator's
 first character is removed from the text before parsing, digits included: `NUMBERVALUE("25:00",UNICHAR(12288),"5")` is "2:00"
 = 0.08333333333333333 and `NUMBERVALUE("25:00","-0.01","2")` is "5:00" = 0.20833333333333334; with the group separator "0",
-"25:00" still reads 1.0416666666666667 ("25:"). A decimal separator that is a digit of the number breaks it:
+"25:00" still reads 1.0416666666666667 ("25:", an hour and a trailing colon, which VALUE reads too:
+dates.md "Time text"; `NUMBERVALUE("25:")`, `NUMBERVALUE("12:30:")` and `NUMBERVALUE("1:","F","0")` agree,
+probes/t2352-time-text-trailing-colon, T-2352). A decimal separator that is a digit of the number breaks it:
 `NUMBERVALUE(0.3,"0.2")` and `NUMBERVALUE(0.1,"0.3x","ABCFALSE")` are `#VALUE!` (ours 0.3 and 0.1). Text that is empty, or
 empty once the group separator is removed, is 0: a blank cell, `""` from MID, RIGHT, T or REPT, and
 `NUMBERVALUE("A","0","ABC?b#N/A")` (ours `#VALUE!`). An empty group separator (a blank cell) is `#VALUE!`:
@@ -581,7 +590,8 @@ A decimal separator equal to the group separator is `#VALUE!` whatever the text:
 Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
 when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
 Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing
-after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs).
+after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs), the trailing
+colon after a bare hour (T-2352, in the shared clock parser).
 
 ## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)
 Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the
@@ -730,7 +740,7 @@ U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]
 `a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
 Ours: matches, `(*UCP)`, `\h` and `$` before a final LF included since T-1973 (our PCRE2 parser, functions/text/pcre/).
-`\X` and `\R` (A27, A42) parse but stay `#VALUE!` until T-2287.
+`\X` and `\R` (A27, A42) since T-2287 (next entry).
 `\Z` follows `$`'s final-LF rule, as SPEC-0013 reads PCRE2. That is UNVERIFIED for Excel (T-1972); before T-1973 it was
 `#VALUE!`.
 Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them):
@@ -741,10 +751,42 @@ Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them
   "xa\nx" in ours).
 - Now `#VALUE!` (fail closed): `\v` (was VT), `^*`, and spaces inside quantifier braces (`a{1, 2}`, a quantifier
   before). Also `--`, `~~` and `||` inside a bracket, which were set operations; Excel's nested brackets suggest a
-  UTS #18 dialect, where they may be set operations too. `$` and `\Z` on a text that holds another LF before
-its final one still match only at the very end (PCRE2 also matches before the final LF) until T-2355's memoized mode.
+  UTS #18 dialect, where they may be set operations too.
+`$` and `\Z` on a text that holds another LF before its final one also match before the final LF, as Excel's do
+(`REGEXTEST("b"&CHAR(10)&"a"&CHAR(10),"a$")` is TRUE, `REGEXREPLACE("a"&CHAR(10)&CHAR(10),"$","x")` puts an x before
+and after the final LF; probes/t2355-regex-dollar-inner-lf A1-A10, excel-graph, 2026-10-22), since T-2355: the pattern
+then runs on the backtracker's memoized mode. Before, they matched only at the very end. A text with an LF inside
+but none at the end stays on the automata, `$` meaning its end (A7, A8).
 Status: VERIFIED (excel-graph)
-Tasks: T-1829 (probe), T-1900, T-1903, T-2355, T-1973
+Tasks: T-1829 (probe), T-1900, T-1903, T-2355 (probe t2355-regex-dollar-inner-lf), T-1973
+
+## `\R` and `\X` are atomic; `\X` is PCRE2's grapheme cluster (T-2287)
+Rule: `\R` is one line break, CR LF or any one of LF, VT, FF, CR, NEL, U+2028 and U+2029, and it never gives back the
+LF of a CR LF. `REGEXEXTRACT(CHAR(13)&CHAR(10),"\R",1)` is one match of length 2. `CHAR(10)&CHAR(13)` is two matches,
+and `CHAR(13)&CHAR(13)&CHAR(10)` is 1 then 2. `^\R$` matches CR LF, but `^\R\n$`, `^\R\R$` and `^\R{2}$` do not. `[\R]` and
+`[\X]` are `#VALUE!`.
+`\X` is one extended grapheme cluster, also atomic: `^\X$` matches `"e"&UNICHAR(769)`, while `^\X\X$` and `^\X.$` do
+not, and `^.\X$` does. The clusters follow UAX #29 without GB9c, so a Devanagari conjunct (U+0915 U+094D U+0937) is
+two clusters, 2 then 1. That points to PCRE2 before 10.43. These all join as UAX #29 says: CR LF; Hangul L V T, LV V
+and L LV; Extend and SpacingMark after anything but a control; Prepend before a letter, a Prepend or an indicator; an
+emoji ZWJ sequence (8 units for the family, 7 with a skin tone); a flag pair (indicators pair up: three are 4 then 2);
+and `©` ZWJ `©`. Two of PCRE2's join-table quirks break where UAX #29 joins. A regional indicator joins nothing but a
+second indicator, so `UNICHAR(127482)&UNICHAR(769)` is 2 then 1, and a ZWJ after an indicator starts a new cluster.
+A Prepend does not join an emoji: `UNICHAR(1536)&UNICHAR(128512)` is 1 then 2. A ZWJ joins an emoji only after an emoji
+and its Extend marks. `"a"` ZWJ emoji is 2 then 2, emoji SpacingMark ZWJ emoji is 4 then 2, emoji ZWJ ZWJ emoji is
+4 then 2, and two emoji with nothing between them are two clusters. `\X` matches nothing in `""`. `\X$` on
+`"ab"&CHAR(13)&CHAR(10)` matches "b" (probes/t2364-regex-dollar-final-cr A1-A2; T-2364: `$` before a final CR LF).
+Evidence: probes/t2287-regex-r-x-spans A1-A49, A51-A53, A58-A64, B1-B24 (excel-graph, 2026-10-22).
+Ours: matches. `\R` is parsed into that atomic group. `\X` is an instruction of the backtracker that charges each
+character it takes (`pcre/grapheme.rs`, with break values from regex-syntax's Unicode tables).
+Unprobed:
+- Characters whose break value changed between Unicode versions. Ours uses regex-syntax's tables, and Excel's PCRE2
+  version is unknown.
+- `\X` starting inside a cluster (after `.` or `\G`). Ours reads a cluster as if one started there, but PCRE2 may look
+  back at earlier indicators or emoji.
+- `\R` and `\X` inside a lookbehind.
+Status: VERIFIED (excel-graph)
+Tasks: T-2287, T-2364
 
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;

@@ -319,6 +319,15 @@ impl Model {
             None
         };
         let slots = slots(&col_lines, pivot.shape.columns, pivot.col_depth);
+        let checked_totals: Vec<Slot> = if placement.is_some() {
+            slots
+                .iter()
+                .copied()
+                .filter(|slot| matches!(slot, Slot::Total { .. }))
+                .collect()
+        } else {
+            Vec::new()
+        };
         let shown = match &placement {
             Some(placement) => placement.shown(&cols, &slots, pivot.shape.columns),
             None => slots.iter().map(|&slot| Shown::Own(slot)).collect(),
@@ -330,11 +339,11 @@ impl Model {
             cols: col_totals,
         };
         let lines = (&rows, &cols, &row_lines[..]);
-        let grid = self.grid_rows(
+        let (grid, total_error) = self.grid_rows(
             functions,
             &pivot,
             lines,
-            (&shown, sets.as_ref()),
+            (&shown, &checked_totals, sets.as_ref()),
             &totals,
             cell,
         );
@@ -342,22 +351,29 @@ impl Model {
         if let Some(error) = functions.refused() {
             return Err(error);
         }
+        if total_error {
+            return Err(value_error(
+                cell,
+                "PIVOTBY has an error in a column total over several value columns",
+            ));
+        }
         Ok(output)
     }
 
     /// The row groups' rows with their subtotals, and the Total row (before them for
     /// `row_total_depth` -1, after them for 1, none for 0: P!A1, P!Y1, probes/pivotby-followup
     /// P!A101; "Grand Total" with subtotals, P!A97, probes/groupby-subtotals G!A661), each
-    /// repeated per function when the functions are laid out as rows (functions2 P!A21, P!A61).
+    /// repeated per function when the functions are laid out as rows (functions2 P!A21, P!A61),
+    /// and whether a cell of `checked_totals` was an error ([`Grid::checked_totals`]).
     fn grid_rows(
         &mut self,
         functions: &mut Functions,
         pivot: &Pivot,
         (rows, cols, lines): (&Grouping, &Grouping, &[Line]),
-        (shown, sets): (&[Shown], Option<&RelativeSets>),
+        (shown, checked_totals, sets): (&[Shown], &[Slot], Option<&RelativeSets>),
         totals: &Totals,
         cell: CellReferenceIndex,
-    ) -> Vec<Vec<ArrayNode>> {
+    ) -> (Vec<Vec<ArrayNode>>, bool) {
         let levels = subtotal_levels(pivot.row_depth);
         let row_fields = width(&pivot.row_keys);
         let column_of = cols.group_of(pivot.values.len());
@@ -369,6 +385,8 @@ impl Model {
             merged: Vec::new(),
             sets,
             row: None,
+            checked_totals,
+            total_error: false,
         };
         let mut output = Vec::with_capacity((lines.len() + 1) * pivot.shape.rows_per_group);
         let mut total = (pivot.row_depth != 0).then(|| {
@@ -389,7 +407,7 @@ impl Model {
             output.extend(self.grid_row(functions, &mut grid, label, &records, reuse, cell));
         }
         output.extend(total.into_iter().flatten());
-        output
+        (output, grid.total_error)
     }
 
     /// One grid line's rows: `label` (the row keys) and the label of the function (functions as
@@ -446,9 +464,7 @@ impl Model {
                     }
                     Slot::Total { .. } => records,
                 };
-                let relative = grid
-                    .sets
-                    .map_or(NO_RELATIVE, |sets| sets.of_cell(grid.row, slot_item(slot)));
+                let relative = grid.relative_of(slot);
                 let at = Aggregate {
                     rows: cell_rows,
                     relative,
@@ -457,7 +473,39 @@ impl Model {
             }
             output.push(row);
         }
+        self.check_totals(functions, grid, records, cell);
         output
+    }
+
+    /// Computes the line's cell of each of [`Grid::checked_totals`], shown or not, and notes an
+    /// error result: with one function over several value columns, an error in any Total column
+    /// cell (the grand total included) makes PIVOTBY `#VALUE!`, even where the column shows `""`
+    /// or the Total row is off; an error in a group cell or a Total row cell does not, nor does
+    /// an array or reference result (its cell's `#VALUE!`) (probes/t2311-pivotby-value-columns-
+    /// error P!A1-A42; gen-m7/18b80d3fd292d63a Calc!A913).
+    fn check_totals(
+        &mut self,
+        functions: &mut Functions,
+        grid: &mut Grid<'_>,
+        records: &[usize],
+        cell: CellReferenceIndex,
+    ) {
+        if records.is_empty() {
+            return;
+        }
+        for &slot in grid.checked_totals {
+            if grid.total_error {
+                return;
+            }
+            let relative = grid.relative_of(slot);
+            let at = Aggregate {
+                rows: records,
+                relative,
+            };
+            let pair = functions.pair_at(0, slot_value(slot));
+            let result = self.aggregate_result(functions, pair, grid.values, at, cell);
+            grid.total_error = matches!(result, Ok(CalcResult::Error { .. }));
+        }
     }
 
     /// Evaluates and checks the PIVOTBY arguments.
@@ -872,6 +920,20 @@ struct Grid<'a> {
     /// for the Total row).
     sets: Option<&'a RelativeSets>,
     row: Item,
+    /// The Total column slots of one function over several value columns, whose every cell is
+    /// computed whether or not it is shown; one that is an error makes the whole result
+    /// `#VALUE!` (`total_error`; arrays.md "PIVOTBY: an error column total over several value
+    /// columns", T-2311). Empty otherwise.
+    checked_totals: &'a [Slot],
+    total_error: bool,
+}
+
+impl<'a> Grid<'a> {
+    /// The relative set of `slot`'s cell in the row being laid out ([`RelativeSets::of_cell`]).
+    fn relative_of(&self, slot: Slot) -> Relative<'a> {
+        self.sets
+            .map_or(NO_RELATIVE, |sets| sets.of_cell(self.row, slot_item(slot)))
+    }
 }
 
 /// The column item of a slot ([`RelativeSets::of_cell`]).

@@ -570,7 +570,8 @@ impl Parser {
             'Z' => return node(Ast::Anchor(Anchor::EndOrFinalLf)),
             'G' => return node(Ast::Anchor(Anchor::SearchStart)),
             'K' => return node(Ast::KeepOut),
-            'R' | 'X' => return node(Ast::Unimplemented),
+            'R' => return node(Ast::line_break()),
+            'X' => return node(Ast::Grapheme),
             'Q' => Escape::Quote,
             'E' => Escape::Nothing,
             'g' => {

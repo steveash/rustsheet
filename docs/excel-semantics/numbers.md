@@ -1085,16 +1085,28 @@ Evidence: probes/log10-kernel (excel-graph, 2026-10-19, T-2004): 92 inputs (the 
 32 doubles where glibc is not correctly rounded, 16 where the correctly rounded value and the x87 models differ) for LOG10 and
 LOG: LOG = LOG10 in all 92, and the model matches 92 of 92 (correctly rounded 78, one rounding of the exact y·log2 x 85,
 glibc 56, ln/ln 42). The web agrees with the desktop cell `LOG10(1.3)` = 0.11394335230683679.
-ironcalc-calc/MATH_AND_TRIGONOMETRY/LOG_LOG10_LN.xlsx (desktop cache, Microsoft Macintosh Excel 16.x): LOG!B2:B14 equals
-LOG10!B2:B14 cell for cell, including B5 (1000 → 3), B12 (0.004 → -2.3979400086720375) and B13 (1.3).
+ironcalc-calc/MATH_AND_TRIGONOMETRY/LOG_LOG10_LN.xlsx (Excel cache, Microsoft Excel 16.0300; the 3-sheet Macintosh file of
+T-1930 was replaced by upstream's single-sheet version in T-2350): one-argument LOG(x) equals LOG10(x) bit for bit in
+C2/D2 (1), C5/D5 (86 -> 1.9344984512435677), C6/D6 (EXP(1) -> 0.4342944819032518), C7/D7, C10/D10 (1000 -> 3), C22/D22
+(1E-5 -> -5), C27/D27 and C31/D31 (EXP(709) -> 307.91478766940554). "the workbook's 7 numbers" and the desktop cell
+`LOG10(1.3)` above are from that earlier 3-sheet version.
 Two-argument LOG is ln(x)/ln(b) in doubles (`f64::log`): it matches all 92 `LOG(x,2)` and 92 `LOG(x,3)` cells of the probe
-(columns D and E); other bases are not probed.
+(columns D and E). The workbook adds other bases: `LOG(1000,10)` is 2.9999999999999996 (C9, C67) while
+`LOG10(1000)` is 3 (D9), `LOG(0.004,10)` -2.397940008672037 against `LOG10(0.004)` -2.3979400086720375 (C21, D21), `LOG(1E-3,10)` -2.9999999999999996 (C20) and `LOG(1E300,10)` 299.99999999999994 (C29), so
+two-argument LOG with base 10 is not LOG10.
 Implemented in `x87_log10.rs` (`excel_log10`: ln x in double-double, about 2^-104 relative, times `y / ln 2`, then the two
 roundings; 30,000 random inputs equal a decimal reference of the model), used by LOG10, one-argument LOG and MULTINOMIAL's
 `log10(k)` terms (which replaced their 170-entry table). It also fixes probes/geomean-root-models Root!I6 and I9
 (`10^(LOG10(E)/C)`).
-Status: VERIFIED (excel-graph, and desktop for the 13 workbook inputs)
-Tasks: T-2004
+Domain and coercion of LOG (Excel cache of LOG_LOG10_LN.xlsx, T-2350; the engine matches all 227 cells): base 1 gives
+`#DIV/0!` even for `LOG(1,1)` and `LOG(100,TRUE)` (C36, C37, C59); base 0 or a negative base gives `#NUM!` (C38, C39);
+an omitted argument counts as 0, so `LOG(,b)`, `LOG(x,)` and `LOG(,)` give `#NUM!` (C48-C50); with both arguments errors the
+first argument's error wins (C53, `#DIV/0!`); a direct boolean is a number (`LOG(TRUE,10)` = 0, C58; `LOG10(FALSE)` `#NUM!`,
+D59); text is coerced when it reads as a number (`LOG("100","10")` = 2, C69; C66, C68) and is `#VALUE!` otherwise
+(`LOG("abc")`, `LOG("")`, C70, C71; the text cells A63, A64, A65 in C63-C65); a whole-column argument takes the implicit
+intersection (`LOG(G:G,B75)`, C75, C76).
+Status: VERIFIED (excel-graph, and the desktop cache for the workbook cells)
+Tasks: T-2004, T-2350
 
 ## LN is FLDLN2 then FYL2X
 Rule: `LN(x)` is the x87 `FLDLN2; FYL2X` result stored to a double, `RN53(RN64(y * log2 x))` with `y = RN64(ln 2)` =
@@ -1111,6 +1123,22 @@ one ulp, at points where Excel's FYL2X rounds the other way (the research's firs
 the research run on the other 250 cells, so the last-bit rounding of an FYL2X near-tie varies between runs (plausibly the
 server's CPU), and following the model is the stable choice. glibc's `log` matches 2,674,450 of the 2,677,612 distinct x (the engine used it before).
 The probe keeps the 27 near-ties of that run as known failures in eval/baseline/probes.txt.
+T-2143 sweep (probes-numeric/t2143-ln-near-ties-fill1..3, excel-graph, three fills of one workbook of 380 x on 2026-10-22 within
+35 s of each other, fills 2 and 3 with a label cell so the oracle cache could not return fill 1; "d" is the distance of the exact
+product `RN64(ln 2) * log2 x` from the nearest 53-bit midpoint, in 53-bit ulps, 1 ulp64 = 2^-11 = 4.9e-4):
+- Near-ties: of the 30 probe points (d 4.7e-5 .. 2.7e-4), 12 return the same bits in all three fills and 18 do not; the fills match
+  the model at 3, 3 and 17 of the 30. So Excel's bit at a near-tie is not a fixed function of x: the same workbook, calculated
+  three times minutes apart, gave different bits (fill 3 mostly the model's, fills 1 and 2 mostly the other neighbour). The
+  disagreement is always between two adjacent doubles.
+- Window: all 23 disagreeing points have d between 2.19e-4 and 3.86e-4, around half a 64-bit ulp (2.44e-4), where RN64 of
+  the product is itself a coin flip. Of the 330 near-tie points (30 + 300 new), the 119 with d below 2.19e-4 and the 142 above
+  3.87e-4 return the model's bits in all three fills; the 69 in between split into 34 stable matches and 35 that differ from the
+  model in at least one fill (23 differ between fills).
+  The smallest d probed is 3.3e-5 (4.7e-5 for the old points); nothing closer than 2.19e-4 to a midpoint was unstable.
+- Controls: all 50 points at 0.1-0.4 ulp53 from a midpoint agree across fills and equal the model.
+- Consequence for T-2144: no single model can match every fill at the unstable points; fit only on points that agree
+  across fills (357 of 380 here); 12 of those 357 (11 old near-ties and one new point, d 2.36e-4 to 2.71e-4) stably return the
+  neighbour the model does not, so inside the window Excel can be stable and still differ from the model.
 Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
 sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,
 `test/fixtures/ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.
@@ -1783,8 +1811,14 @@ is -437500000000000 and `SERIESSUM(16,-1,2,B11:E11)` over -1, blank, 42, 0.5 is 
 A term that overflows is `#NUM!` even when a text, boolean or numeric-text cell of the range comes later:
 `SERIESSUM(64,1E+15,0,E3:E12)` (E3 = 1, E4 = "1.5", E5 = "ü") and `SERIESSUM(-2.49995,0,5040,A4:A6)` (A6 = TRUE, the second term
 overflows) are `#NUM!`; ours `#VALUE!`. That agrees with the x = 0 precedence above: the coefficients are read in order.
-Unprobed: an all-blank coefficient range (`SERIESSUM(0,0,1,A1)` with A1 blank: 0 with no terms, or `#NUM!`), and a negative
-power that underflows (`^` gives `#DIV/0!`; SERIESSUM gives `#NUM!` as before); T-2218.
+Edges (T-2218, probes/seriessum-blank-and-underflow, excel-graph 2026-10-22; the engine matches all 9 cells): an all-blank
+multi-cell range has no terms: `SERIESSUM(0,0,1,J1:J2)` and `SERIESSUM(2,0,1,J1:J2)` (J1:J2 blank) are both 0, even at x = 0 with
+n = 0 where 0^0 would be `#NUM!` (C8, C9). A blank one-cell reference is different: `SERIESSUM(0,0,1,F1)` is `#NUM!` and
+`SERIESSUM(2,0,1,F1)` is 0 (C1, C2), consistent with the blank read as a 0 coefficient at power 0 (the cells cannot tell that
+from Excel rejecting x = 0 with n = 0 before reading the coefficient). `SERIESSUM(0,0,1,G1:G2)` (blank, 4) and
+`SERIESSUM(0,1,-1,H1:H3)` (4, blank, 5) are `#NUM!`, which a dropped blank and a 0 term both give. A negative power whose
+reciprocal underflows, `SERIESSUM(1E-10,-33.5,1,1)` (the term would be 1E+335), is `#NUM!`, also with a later text element
+(`{1,"a"}`), while the `^` operator on the same operands, `1E-10^-33.5`, is `#DIV/0!`.
 The power is Excel's `^`: `SERIESSUM(1.005/42,3,1,C5)` = 1.3769443103134108E-05 and `SERIESSUM(-100.0001,42,2,42)` =
 4.200176403616261E+85 equal `C5*(1.005/42)^3` and `42*(-100.0001)^42` bit for bit, where ours is an ulp off.
 `SERIESSUM(LOG10(999999999999999),-2.5,1,10.005)` is 0.011481243964090428, a non-integer power: the old SERIESSUM `powf` gave

@@ -259,7 +259,9 @@ fn edit_histories_end_in_the_same_state_as_a_fresh_model() {
             .chain(history_again.iter())
             .chain(fresh_once.iter())
             .chain(fresh_twice.iter())
-            .any(|l| l.ends_with("#SPILL!") || l.ends_with("#CIRC!"));
+            .any(|l| l.ends_with("#SPILL!"))
+            || !model.model.evaluation.circular.is_empty()
+            || !expected.evaluation.circular.is_empty();
         let same_state = history_dependent
             || (history == fresh_once && history == history_again && fresh_once == fresh_twice);
         if !same_state || !inconsistencies.is_empty() {

@@ -727,12 +727,31 @@ The other cells of that kind are `(1E10,32,1,1,10,0)` -9.999999978000387E-221, `
 (ours ...0004E-201 for A23 and ...0572E-201 for A24, exact ...0000E-201): probes/fin-cumipmt-overflow-and-forms A20-A24, excel-graph
 2026-10-21. Their last digits are T-2192's.
 The closed form gets H6, H22 and H25 to the bit ( `CUMPRINC(0.01,360,100000,1,12,0)` -362.8793467231003, Excel
--362.8793467231). The PPMT sum it replaces lost a small principal's digits (H5 8 right, H7 7). The
+-362.8793467231; superseded for type 0 by T-2192 below, now ...0024). The PPMT sum it replaces lost a small principal's digits (H5 8 right, H7 7). The
 interest keeps the IPMT sum up to 32 periods.
-Status: PARTLY VERIFIED (excel-graph; CUMPRINC visibly right but for A2, A6, A16, A20-A24 and
-CUMPRINC_CUMIPMT.xlsx H26; CUMIPMT's remaining
-visible misses in T-2192, the short sums' last digits in T-1374)
-Tasks: T-1845, T-1890, T-2192, T-1374
+T-2192 (float64 fit against the cells above; excel-graph and excel-cached):
+- Excel's errors on the 1E10-rate cells follow the rounding of `m·ln(1+r)`: the relative error is
+  up to half an ulp of that product (5E-14 for A23, where `21·L` is about 483). Type 0's principal
+  as the per-period sum of `pmt·exp((k-1-nper)·L)`, `pmt = -pv·r/(1-v^nper)`, is within an ulp of
+  Excel on A16 and A20-A24 (bit-exact on A20, A21), and 0 to 4 ulps off on the other type 0
+  CUMPRINC cells probed: fin-argument-modes H80 and fin-remaining-later-argument-ranges I75-I83
+  4 (the closed form was 5), CUMPRINC_CUMIPMT.xlsx H29 3 (the closed form was 1), H21 1 (was 2).
+- Type 0's interest over a short range is the balance form `-(pv·q·r - pmt·(q-1))`, `q = exp((k-1)·L)`,
+  summed by period: A12 and A14 to the bit, H72, A13 and G29 within 4 ulps. It overflows past a
+  rate of 1E10 over 40 periods and near period 1E15.
+- Excel's CUMIPMT equals `-pmt·m - CUMPRINC` in doubles (`m = end-start+1`) on every cell probed
+  with both functions, to the bit on K3, A9, G2, G4, G5, G6, G21 and G22 (type 0 with
+  `pmt = (pv/(1-v^nper))·r`: all 13 pairs). So its digits are its principal's.
+- `CUMPRINC(1E300,10,1E300,1,10,1)` is -1E300 although `pv·r` overflows: the payment is
+  `pv·(r/(1+r))/(1-v^nper)` there (A2). As type 1's payment everywhere, that form gets H3, H16 and
+  H31 to the bit but misses H25 by an ulp.
+Ours since T-2192: over up to 32 periods of type 0, the principal is that per-period sum and the
+interest the balance form (the closed form where it overflows), and type 1's principal takes the
+`r/(1+r)` payment where `pv·r` overflows. Type 1's interest keeps the IPMT sum, and its principal
+the closed form: the per-period form misses H22 and H25, which pass.
+Status: PARTLY VERIFIED (excel-graph; visibly right but for A5, A6, A7 (= G2), A9-A11 and K3 near
+period 1E15, fin-cumipmt-period-bound A18 and H26: T-2363; the short sums' last digits in T-1374)
+Tasks: T-1845, T-1890, T-2192, T-2363, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's
@@ -888,16 +907,16 @@ Rule: INTRATE, PRICEDISC and YIELDDISC accept settlement serial 0 and compute wi
 YIELDMAT possibly because issue > settlement: inferred, the probe cannot tell it from a rejection of settlement 0 itself). All six: basis 5 and -1 are #NUM!, a fractional basis truncates (1.9 is 1) and any negative basis is #NUM! ("Day-count basis: a negative basis is #NUM!"), a text
 basis "1" is coerced, a boolean basis is #VALUE!, text dates are parsed, fractional dates truncate, settlement >= maturity
 is #NUM!, and a zero or negative investment, price or redemption (probed for INTRATE, PRICEDISC and YIELDDISC; RECEIVED's investment) is #NUM!, as is a zero or negative PRICEDISC discount; RECEIVED is #NUM! once 1 - discount*yearfrac = 0 (the "< 0" side is inferred, not probed) (`RECEIVED(...,1000,1)` is #NUM!, `...,0.99` is 99999.99999999991); a negative PRICEMAT/YIELDMAT rate or yield price is #NUM! (PRICEMAT and YIELDMAT accept a
-zero rate; issue after settlement is #NUM!). Basis 2 is the only mode whose result differs on a one-year span
+zero rate; issue on or after settlement is #NUM!, issue = settlement included: probes/matdisc-serial-0-60 A9, A14, A25, A30). Basis 2 is the only mode whose result differs on a one-year span
 (actual/360); bases 0, 1, 3 and 4 agree there.
 PRICEMAT and YIELDMAT count the settlement-to-maturity days as DSM = YEARFRAC-days(issue,maturity) - days(issue,settlement), not
 a direct 30/360 count: on 2018-02-28 to 2018-03-30 basis 0 and basis 4 agree for them (A103 = A104 = 100.05774336283186,
 A126 = A127 = 0.271557884707002, 32 days), whereas INTRATE, PRICEDISC, RECEIVED and YIELDDISC give different results for
 the two bases (INTRATE A14 = 1.2000000000000002 for 30 days, A15 = 1.125 for 32). Ours already matches (`get_mat_factors`).
-Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624).
+Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624); probes/matdisc-serial-0-60 (160 cells, excel-graph, 2026-10-22, T-2283: PRICEMAT and YIELDMAT on bases 0-4 with issue 0, 1, 59 and 60, settlement 59, 60, 61 and 366, maturity 400, all matching).
 Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0, on every basis since T-2237, dates.md "YEARFRAC accepts serial 0"; T-1757 added a unit test); the last-digit misses are matched since T-2032 ("Discount securities: day count and year length").
 Status: VERIFIED (excel-graph)
-Tasks: T-1624, T-1757, T-1374, T-2032
+Tasks: T-1624, T-1757, T-1374, T-2032, T-2283
 
 ## Discount securities: day count and year length
 Rule: DISC, INTRATE, PRICEDISC, RECEIVED, YIELDDISC, PRICEMAT and YIELDMAT do not divide by a year fraction. They

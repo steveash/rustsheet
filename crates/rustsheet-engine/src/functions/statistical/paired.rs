@@ -81,6 +81,15 @@ pub(crate) struct PairedValues {
     pub(crate) paired: usize,
 }
 
+/// Why [`Model::paired_samples`] read no samples: the first error met, and whether the two
+/// arguments' cell counts are known to differ. A function that needs equal sizes answers `#N/A`
+/// for that before the error: `COVARIANCE.S(H1:H3,I1:I4)` with H2 `=1/0` is `#N/A`, while the
+/// equal-size `COVARIANCE.S(H1:H3,I1:I3)` is `#DIV/0!` (probes/ftest-decomposition G7, G10).
+pub(crate) struct PairedSamplesError {
+    pub(crate) error: CalcResult,
+    pub(crate) sizes_differ: bool,
+}
+
 /// The non-blank entries of one argument: (row-major position, value), in position order.
 type Sparse = Vec<(u64, Option<f64>)>;
 
@@ -94,9 +103,13 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
         typed_text_is_sample: bool,
-    ) -> Result<PairedValues, CalcResult> {
+    ) -> Result<PairedValues, PairedSamplesError> {
         let first = self.sample_arg(&args[0], "First", cell, typed_text_is_sample);
         let second = self.sample_arg(&args[1], "Second", cell, typed_text_is_sample);
+        let sizes_differ = matches!(
+            (first.cell_count(), second.cell_count()),
+            (Some(m), Some(n)) if m != n
+        );
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
             CalcResult::new_error(
@@ -104,6 +117,10 @@ impl Model {
                 cell,
                 format!("Error in {which} array: {error:?}"),
             )
+        })
+        .map_err(|error| PairedSamplesError {
+            error,
+            sizes_differ,
         })
     }
 

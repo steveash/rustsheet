@@ -268,9 +268,11 @@ impl Parser {
             if let Err(error) = self.grow(self.depth, 0) {
                 return error;
             }
-            return Node::SpillRangeOperator {
+            let spill = Node::SpillRangeOperator {
                 child: Box::new(primary),
             };
+            // `A1#(2)` is a call of the spill, `#REF!` (probes/callee-unparenthesized-spill-plain).
+            return self.call_if_parenthesis_follows(spill);
         }
         primary
     }
@@ -512,11 +514,16 @@ pub(crate) fn at_text(child: &Node, sub: &dyn Fn(&Node) -> String) -> String {
 /// parentheses, and bare, `A1(A2)`, it would not parse back (T-0149). A cell is the one
 /// exception: a callee spelled like a cell (`Ab1(1)`, `$D$1(1)`, `Sheet1!D1(1)`) is a call of that
 /// cell and prints bare, `AB1(1)` (probes/unknown-function-name-spelling B8, T-1758;
-/// probes/cell-call-edges-a B5-B7, T-1806).
+/// probes/cell-call-edges-a B5-B7, T-1806). So do a range and a spill written without parentheses,
+/// `$A$1:A2(2)`, `A1#(2)`: a parenthesized one is a `Group` (probes/callee-unparenthesized-*, T-2008).
 pub(crate) fn callee_operand(text: String, node: &Node) -> String {
     if matches!(
         node,
-        Node::ReferenceKind { .. } | Node::LambdaDefKind { .. } | Node::Group { .. }
+        Node::ReferenceKind { .. }
+            | Node::RangeKind { .. }
+            | Node::SpillRangeOperator { .. }
+            | Node::LambdaDefKind { .. }
+            | Node::Group { .. }
     ) {
         text
     } else {

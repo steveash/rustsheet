@@ -6,7 +6,7 @@
 //! deep, groups and stacked quantifiers counted alike, so the recursive passes over it (its
 //! `Drop` included) are bounded.
 
-use regex_syntax::hir::ClassUnicode;
+use regex_syntax::hir::{ClassUnicode, ClassUnicodeRange};
 
 /// One node of a pattern.
 #[derive(Debug, Clone)]
@@ -53,9 +53,9 @@ pub(super) enum Ast {
     },
     /// `\K`: resets the start of the reported match.
     KeepOut,
-    /// `\R` (any line break, atomic in PCRE2) and `\X` (an extended grapheme cluster): Excel
-    /// accepts both (probes/regex-ascii-classes A27, A42); T-2287 implements them.
-    Unimplemented,
+    /// `\X`: one extended grapheme cluster, atomic (`grapheme::cluster_end`). `\R` needs no
+    /// node of its own: the parser spells it as the atomic group PCRE2 runs.
+    Grapheme,
 }
 
 /// A zero-width assertion.
@@ -111,6 +111,22 @@ pub(super) enum LookKind {
 }
 
 impl Ast {
+    /// `\R` as PCRE2 runs it: `(?>\r\n|[\n\x0B\f\r\x85\x{2028}\x{2029}])`, so `\r\n` is one
+    /// break that is never given back (`^\R\n$` does not match `\r\n`; probes/t2287-regex-r-x-spans
+    /// A1-A10, A34-A37).
+    pub(super) fn line_break() -> Ast {
+        let literal = |c| Ast::Literal { c, fold: false };
+        let breaks = ClassUnicode::new([
+            ClassUnicodeRange::new('\n', '\r'),
+            ClassUnicodeRange::new('\u{85}', '\u{85}'),
+            ClassUnicodeRange::new('\u{2028}', '\u{2029}'),
+        ]);
+        Ast::Atomic(Box::new(Ast::Alternation(vec![
+            Ast::Concat(vec![literal('\r'), literal('\n')]),
+            Ast::Class(breaks),
+        ])))
+    }
+
     /// Whether the tree runs on the automata: it holds none of the constructs only a backtracker
     /// can run (SPEC-0013 section 2). The list is closed: a construct added later is non-regular
     /// unless it is added here with a test.
@@ -128,11 +144,24 @@ impl Ast {
                 | Ast::Atomic(_)
                 | Ast::Conditional { .. }
                 | Ast::KeepOut
-                | Ast::Unimplemented => return false,
+                | Ast::Grapheme => return false,
                 _ => ast.push_children(&mut stack),
             }
         }
         true
+    }
+
+    /// Whether the tree holds `$` or `\Z` (without `(?m)`), whose automata translation depends
+    /// on the text (`hir::FinalLf`).
+    pub(super) fn has_final_lf_anchor(&self) -> bool {
+        let mut stack = vec![self];
+        while let Some(ast) = stack.pop() {
+            if matches!(ast, Ast::Anchor(Anchor::EndOrFinalLf)) {
+                return true;
+            }
+            ast.push_children(&mut stack);
+        }
+        false
     }
 
     /// Pushes the nodes directly under this one onto `stack`: the one list of every node's
@@ -155,8 +184,26 @@ impl Ast {
             | Ast::Anchor(_)
             | Ast::Backref { .. }
             | Ast::KeepOut
-            | Ast::Unimplemented => {}
+            | Ast::Grapheme => {}
         }
+    }
+}
+
+/// Whether `ast` can match the empty string. The recursion is bounded by the parser's nest limit,
+/// and a repeat's body is walked once whatever its count.
+pub(super) fn can_match_empty(ast: &Ast) -> bool {
+    match ast {
+        Ast::Empty
+        | Ast::Anchor(_)
+        | Ast::KeepOut
+        | Ast::LookAround { .. }
+        | Ast::Backref { .. } => true,
+        Ast::Literal { .. } | Ast::Class(_) | Ast::Dot { .. } | Ast::Grapheme => false,
+        Ast::Capture { ast, .. } | Ast::Atomic(ast) => can_match_empty(ast),
+        Ast::Concat(asts) => asts.iter().all(can_match_empty),
+        Ast::Alternation(asts) => asts.iter().any(can_match_empty),
+        Ast::Repeat { min, ast, .. } => *min == 0 || can_match_empty(ast),
+        Ast::Conditional { yes, no, .. } => can_match_empty(yes) || can_match_empty(no),
     }
 }
 
@@ -181,8 +228,6 @@ pub(super) fn fixed_length(ast: &Ast) -> Option<u32> {
         Ast::Repeat { min, max, ast, .. } if Some(*min) == *max => {
             min.checked_mul(fixed_length(ast)?)
         }
-        Ast::Repeat { .. } | Ast::Backref { .. } | Ast::Conditional { .. } | Ast::Unimplemented => {
-            None
-        }
+        Ast::Repeat { .. } | Ast::Backref { .. } | Ast::Conditional { .. } | Ast::Grapheme => None,
     }
 }

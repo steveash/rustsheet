@@ -1689,7 +1689,7 @@ functions:
       - { name: array, mode: array, type: any }
       - { name: rows, mode: value, type: number, domain: { int: true, min: 1, max: 5 } }
       - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 5 } }
-      - { name: pad_with, mode: value, type: any, optional: true }
+      - { name: pad_with, mode: array, type: any, optional: true }
   - name: EXPON.DIST
     category: statistical
     milestone: M9

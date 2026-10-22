@@ -3,7 +3,7 @@ id: T-2018
 title: "Redo of a paste or fill keeps a legacy N/T marker"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -37,3 +37,10 @@ bool, so older undo queues still deserialize) and redo through `reenter_user_inp
 
 ## Out of scope
 - Probing Excel (redo of a paste is not an oracle-expressible edit).
+
+## Outcome
+`Diff::SetCellValue` carries a `legacy` flag (set where paste, fill and the cut rewrite write through
+`reenter_user_input`); redo writes through `reenter_user_input` with it. Three redo tests added in
+test_legacy_marker_edits.rs; references.md caveat dropped. No eval change.
+Wire format: the `legacy` field is positional in the bitcode-encoded `Diff`, so a diff queue encoded
+before this change does not decode (an `Err`, no panic); the `#[serde(default)]` in the sketch does not apply to bitcode.

@@ -80,3 +80,49 @@ fn whole_week_skipping_lifted_weekend() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"1446000");
 }
+
+// probes/t2238-holidays-if-3d-branch (T-2238): only the branch IF takes is read as holidays, so a
+// 3-D branch not taken is no error; a taken one is #VALUE!, per element when lifted. A day count
+// of 0 never reads the holidays, while NETWORKDAYS over one day still does.
+#[test]
+fn holidays_follow_the_branch_if_takes() {
+    let mut model = new_empty_model();
+    model.add_sheet("Sheet2").unwrap();
+    model._set("A1", "45005");
+    model._set("A9", "FALSE");
+    model._set("B1", "=WORKDAY(45000,5,IF(FALSE,Sheet1:Sheet2!A1,A1))");
+    model._set("B2", "=NETWORKDAYS(45000,45030,IF(A9,Sheet1:Sheet2!A1,A1))");
+    model._set(
+        "B3",
+        "=WORKDAY.INTL(45000,5,1,IF(TRUE,Sheet1:Sheet2!A1,A1))",
+    );
+    model._set(
+        "B4",
+        "=ROWS(WORKDAY({45000;45001},5,IF(TRUE,Sheet1:Sheet2!A1,A1)))",
+    );
+    model._set("B5", "=WORKDAY(45000,0,Sheet1:Sheet2!A1)");
+    model._set("B6", "=NETWORKDAYS(45000,45000,Sheet1:Sheet2!A1)");
+    model._set("B7", "=WORKDAY(45000,5,IF(FALSE,Sheet1:Sheet2!A1))");
+    model._set("B8", "=WORKDAY(45000,5,CHOOSE(2,Sheet1:Sheet2!A1,A1))");
+    // An array condition: one element taking the 3-D branch is one #VALUE! (M1-M3).
+    model._set(
+        "B9",
+        "=ROWS(WORKDAY(45000,5,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1)))",
+    );
+    model._set(
+        "B10",
+        "=WORKDAY(45000,5,IF({FALSE;FALSE},Sheet1:Sheet2!A1,A1))",
+    );
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), *"45008");
+    assert_eq!(model._get_text("B2"), *"22");
+    assert_eq!(model._get_text("B3"), *"#VALUE!");
+    assert_eq!(model._get_text("B4"), *"2");
+    assert_eq!(model._get_text("B5"), *"45000");
+    assert_eq!(model._get_text("B6"), *"#VALUE!");
+    assert_eq!(model._get_text("B7"), *"#VALUE!");
+    assert_eq!(model._get_text("B8"), *"45008");
+    assert_eq!(model._get_text("B9"), *"#VALUE!");
+    assert_eq!(model._get_text("B10"), *"45008");
+}
