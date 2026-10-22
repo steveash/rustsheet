@@ -1325,8 +1325,8 @@ Tasks: T-2308
 ## SORTBY with a single-value by_array or a fractional sort_order
 Rule: a by_array sorts the array's rows when it is one column as tall as the array, and its columns when it is one row as wide
 as the array; every by_array of the call must sort the same way, or the call is `#VALUE!`. So a single value (a number, text, a
-boolean, a one-cell range, `{7}`) is a one-wide row: it leaves a one-column array in its own order and is `#VALUE!` on a wider
-array. With A1:A3 = 3,1,2 and B1:B3 = 30,10,20 (probes/t2310-sortby-single-by-array, excel-graph, 2026-10-22, T-2310):
+boolean, a one-cell range, `{7}`) is both a one-wide row and a one-tall column: it leaves a one-column or one-row array in its
+own order and is `#VALUE!` on any other array. With A1:A3 = 3,1,2 and B1:B3 = 30,10,20 (probes/t2310-sortby-single-by-array, excel-graph, 2026-10-22, T-2310):
 - `SORTBY(A1:A3,5)`, `0.5`, `-1`, `"x"`, `TRUE`, `{7}`, `C1` (a cell) are 3,1,2 (H1-H49); `SORTBY(A1:B3,5)`, `0.5`,
   `1234567.89123`, `C1` are `#VALUE!` (H13-H33); `SORTBY(A1:A3,NA())` is `#N/A` (H45); `SORTBY(A1,5)` is 3 (H153).
 - `SORTBY(A20:C20,5)` (a one-row array) keeps its order, and `SORTBY(A20:C20,A20:C20,-1)` sorts its columns (H53-H65).
