@@ -3,7 +3,7 @@ id: T-2312
 title: "WRAPROWS and WRAPCOLS: a wrap_count near 1E+15 is #NUM! (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
