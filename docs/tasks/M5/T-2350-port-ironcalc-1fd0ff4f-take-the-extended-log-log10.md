@@ -3,7 +3,7 @@ id: T-2350
 title: "Port ironcalc 1fd0ff4f: take the extended LOG_LOG10_LN.xlsx calc test workbook"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ Excel-computed, not IronCalc-written, before trusting them). Triaged by the 2026
   CHISQ results (its `test_fn_chisq.rs` expectation changed from 7 to 6.999999999), so do not take statrs 0.19
   as part of this task.
 - eb9ca75b (version bump only).
+
+## Outcome
+Took upstream `LOG_LOG10_LN.xlsx` (Excel-authored: docProps Application is Microsoft Excel) from ironcalc@1fd0ff4f. ironcalc-calc coverage for the workbook grows 93 -> 227 cells, all 227 pass (new-coverage failures: none, regressions 0); the baseline only records the new checked-cell count. The new file replaces the 3-sheet Macintosh workbook, so the numbers.md "LOG with one argument is LOG10" citation was re-pointed at the new cells and the base-10, domain and coercion findings were recorded. Provenance: created by a script (openpyxl), saved in Microsoft Excel 16.0300 (app.xml, calcChain, 17-digit caches); it has inert webextension parts. No follow-ups.

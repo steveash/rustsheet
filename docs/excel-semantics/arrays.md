@@ -1321,16 +1321,21 @@ Ours: `#VALUE!` for both (T-2310).
 Status: VERIFIED (excel-graph) for the cells cited
 Tasks: T-2310
 
-## PIVOTBY and GROUPBY #VALUE! results (gen-m7)
-Rule: UNVERIFIED in its cause. Five generated PIVOTBY calls are a single `#VALUE!` in Excel where ours builds a pivot:
-`PIVOTBY(Data!B1:B12,Data!A1:B12,Data!A1:D12,LAMBDA(v,NA()))` (gen-m7/18b80d3fd292d63a Calc!A913; ours spills 12x49),
-`PIVOTBY(Data!A1:B12,Data!A1:B12,Data!B1:D12,LAMBDA(z,COUNTIFS(..)%))` (07d27aa0add0247f A708), `PIVOTBY(Data!A1:D12,Data!E1:E12,
-Data!D1:E12,LAMBDA(x,WORKDAY.INTL(2137,15)/COUNT(x)))` (A992), `PIVOTBY(Data!A1:D12,Data!A1:D12,Data!A1:D12,LAMBDA(z,WORKDAY.INTL(..,z)))`
-(90de8755a2e565e6 A1) and `PIVOTBY(Data!C1:C12,Data!C1:E12,Data!A1:B12,AVERAGE)` (A285). They share overlapping or multi-column
-field ranges over mixed numbers, text and booleans; which condition gives `#VALUE!` is to be probed (T-2311).
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
-Ours: a pivot, `#SPILL!` where it does not fit (T-2311).
-Status: UNVERIFIED (cause); the cell values are excel-graph
+## PIVOTBY: an error column total over several value columns is #VALUE! (T-2311)
+Rule (excel-graph, 2026-10-22, probes/t2311-pivotby-value-columns-error P!A1-A42, probes/t2311-pivotby-value-cause): with one
+function over several value columns, PIVOTBY is a single `#VALUE!` when any cell of its Total columns is an error, the grand total
+alone included, although those columns show `""` (with two or more column groups) or show the last value's total (one column
+group, P!A35): `PIVOTBY(k,c,u:w,LAMBDA(v,IF(ROWS(v)=4,NA(),SUM(v))))` (grand total only, P!A7), an error under the hidden Total
+column of one row (P!A23), an error value in the data that reaches a column total (P!A2), `AVERAGE` of a text-only group (P!A14), `1/0`
+everywhere (P!A11). Not `#VALUE!`: errors in group cells or in Total row cells under the column groups (P!A1, P!A22: per cell),
+`col_total_depth` 0 (no Total column, P!A9, P!A26, P!A27, though `row_total_depth` 0 still is: P!A25), one value column (P!A3, P!A4),
+several functions (`HSTACK(SUM,LAMBDA(v,NA()))`, Total columns shown: P!A5, P!A24), GROUPBY (P!A18, P!A30), text in the hidden
+total (P!A33), and an array result (`LAMBDA(v,v)`, P!A12: Excel's cells there are not errors to ISERROR, unexplained). With the
+same functions over one value column, each gen-m7 call below is a pivot with error cells (value-cause `val1` rows). This is
+why five generated PIVOTBY calls are `#VALUE!` (gen-m7/18b80d3fd292d63a Calc!A913, 07d27aa0add0247f A708, A992, 90de8755a2e565e6
+A1, A285). Unprobed: an error only in a column subtotal.
+Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes every Total column cell of each line and the Total row.
+Status: VERIFIED
 Tasks: T-2311
 
 ## WRAPROWS and WRAPCOLS with a huge wrap_count

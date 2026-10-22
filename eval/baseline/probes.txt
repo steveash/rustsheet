@@ -9,6 +9,7 @@ C	probes/3d-ref-functions.case.json	22
 C	probes/3d-ref-let-bound-span-readers.case.json	13
 C	probes/3d-ref-let-bound-span.case.json	16
 C	probes/3d-ref-let-values.case.json	11
+C	probes/3d-ref-one-sheet-span-lift.case.json	12
 C	probes/3d-ref-span-edges.case.json	13
 C	probes/3d-ref-span-missing-ends.case.json	12
 C	probes/3d-ref-values.case.json	10
@@ -929,7 +930,10 @@ C	probes/t2201-mround-quotient-rounding.case.json	221
 C	probes/t2202-text-code-check-on-text.case.json	88
 C	probes/t2215-int-negatives-boundary.case.json	63
 C	probes/t2275-address-bounds.case.json	298
+C	probes/t2277-hyperlink-location-length.case.json	15
 C	probes/t2280-ifs-one-cell-range-condition.case.json	82
+C	probes/t2311-pivotby-value-cause.case.json	195
+C	probes/t2311-pivotby-value-columns-error.case.json	127
 C	probes/t2314-textbefore-instance-bound.case.json	29
 C	probes/table-edits/table-convert-to-range.case.json	0
 C	probes/table-edits/table-delete-column-before.case.json	12
@@ -1209,6 +1213,7 @@ C	probes/yield-one-period-dsr-zero.case.json	18
 C	probes/yield-solver-sweep.case.json	66
 C	probes/yield-start-rate-term.case.json	150
 C	probes/yield-start-sweep.case.json	100
+F	probes/3d-ref-one-sheet-span-lift.case.json	Calc!B6
 F	probes/circular-iteration-delta-boundary.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!B1
@@ -2709,6 +2714,10 @@ F	probes/t2275-address-bounds.case.json	Calc!J15
 F	probes/t2275-address-bounds.case.json	Calc!J20
 F	probes/t2275-address-bounds.case.json	Calc!J25
 F	probes/t2275-address-bounds.case.json	Calc!J28
+F	probes/t2311-pivotby-value-cause.case.json	P!D46
+F	probes/t2311-pivotby-value-cause.case.json	P!D51
+F	probes/t2311-pivotby-value-columns-error.case.json	P!C12
+F	probes/t2311-pivotby-value-columns-error.case.json	P!D12
 F	probes/table-edits/table-convert-to-range.case.json	!EngineError
 F	probes/table-edits/table-delete-column-before.case.json	F!A12
 F	probes/table-edits/table-delete-column-before.case.json	F!A5
