@@ -1200,9 +1200,9 @@ start's, and a blank weekend cell is weekend 0 (`#NUM!`), not the default: `NETW
 `NETWORKDAYS.INTL((0/0)^..,40608,IFERROR(#N/A,TRUE),..)` is the start's `#DIV/0!`, `WORKDAY.INTL(16895,22,<blank>,..)` is `#NUM!`, and so is `NETWORKDAYS.INTL(13803,28521,<blank>)` (gen-m6/afe9267df3df26a8 A47, T-2253)
 (gen-m6/c93ea588c271840e Calc!A31, 1a404a0379a1372c A62, ee56a4ed5a612a0d A186, c96ac1ada46179c4 A287, ee56a4ed5a612a0d A387,
 fde83d52a9d1fc63 A219). Ours: a fractional weekend truncates (folded into T-2272, whose order otherwise let gen-m6/e3a562557696e2fc A385 `WORKDAY.INTL(11303,-4,1.25,..)` reach it), `#VALUE!` for TRUE, the default weekend for a blank cell.
-A FALSE weekend cell on valid dates is `#NUM!`: `NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)` with C5 FALSE
-(gen-m6/f93597dff1cfa5b6 A252, excel-graph, 2026-10-22, T-2253; ours `#VALUE!`).
-Status: VERIFIED, except what a TRUE weekend gives on valid dates and whether a fraction of .5 or more truncates or rounds (every cited fraction is below .5): UNVERIFIED (no cell shows them; T-2271 probes them).
+A FALSE weekend cell raises no `#VALUE!` ahead of a negative holiday's `#NUM!`: `NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)`
+with C5 FALSE and -1 among the holidays (B7) is `#NUM!` (gen-m6/f93597dff1cfa5b6 A252, excel-graph, 2026-10-22, T-2253; ours `#VALUE!`).
+Status: VERIFIED, except what a TRUE or FALSE weekend gives on valid dates and whether a fraction of .5 or more truncates or rounds (every cited fraction is below .5): UNVERIFIED (no cell shows them; T-2271 probes them).
 Tasks: T-2271
 
 ## WEEKNUM of a boolean serial is `#VALUE!` (T-2276)

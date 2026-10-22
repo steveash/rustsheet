@@ -21,7 +21,8 @@ on blanks inside an array (added by T-2253). Excel computes every cell below; ou
 passes (T-2270), so the array path of `Model::holiday_serials` (crates/rustsheet-engine/src/functions/date_and_time/holidays.rs) is
 the likely place: an empty element of an array value (HSTACK of a blank cell) is rejected instead of skipped or read as 0. Excel's
 results here are the same whether the blanks are skipped or read as serial 0 (no holiday at serial 0 changes them), so check which by
-a probe if the implementation needs it.
+a probe if the implementation needs it. HSTACK of a blank reference may well hold 0, not a blank, in Excel
+(`HSTACK(Data!Z1:Z2,{1;2})` alone is unprobed): probe that first, since it decides whether the fix is in HSTACK or in the holidays reader.
 
 Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 6 in eval/baseline/gen-m6.txt:
 

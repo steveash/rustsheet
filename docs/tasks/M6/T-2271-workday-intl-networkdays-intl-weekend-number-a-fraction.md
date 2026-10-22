@@ -39,8 +39,9 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 9 in eval/baselin
 
 Also (T-2253 top-up sweep, excel-graph, 2026-10-22; recorded in eval/baseline/gen-m6.txt): a blank weekend cell is `#NUM!`
 (`NETWORKDAYS.INTL(13803,28521,Data!E1)`, E1 blank: Excel `#NUM!`, ours 10513; gen-m6/afe9267df3df26a8 Calc!A47), and a FALSE weekend
-cell on valid dates is `#NUM!` (`NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)`, C5 FALSE: Excel `#NUM!`, ours
-`#VALUE!`; gen-m6/f93597dff1cfa5b6 Calc!A252), which settles half of this task's boolean-weekend question.
+cell raises no `#VALUE!` ahead of a negative holiday's `#NUM!` (`NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)`,
+C5 FALSE, B7 -1 among the holidays: Excel `#NUM!`, ours `#VALUE!`; gen-m6/f93597dff1cfa5b6 Calc!A252). What a boolean weekend gives on
+valid dates with valid holidays is still this task's probe.
 
 ## Acceptance criteria
 - [ ] These 9 known-failure lines, and the 2 cells of the T-2253 paragraph above, disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
