@@ -54,9 +54,10 @@ struct Compiled {
 /// pattern is compiled once for each case sensitivity, within [`COMPILE_BUDGET`] and
 /// [`HELD_LIMIT`], and every search is charged against [`SEARCH_BUDGET`].
 struct PatternCache {
-    /// The case-sensitive patterns, then the case-insensitive ones; each once with `$` read as
-    /// [`FinalLf::EndLf`], then as [`FinalLf::End`] (compiled only for a text that needs it).
-    entries: [HashMap<String, Compiled>; 4],
+    /// The case-sensitive patterns, then the case-insensitive ones; each once for
+    /// [`FinalLf::EndLf`] texts, then for [`FinalLf::End`] and [`FinalLf::InnerLf`] ones (compiled
+    /// only for a text that needs it).
+    entries: [HashMap<String, Compiled>; 6],
     held: usize,
     budget: usize,
     work: u64,
@@ -66,12 +67,7 @@ struct PatternCache {
 impl PatternCache {
     fn new() -> Self {
         PatternCache {
-            entries: [
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-            ],
+            entries: Default::default(),
             held: 0,
             budget: COMPILE_BUDGET,
             work: SEARCH_BUDGET,
@@ -99,7 +95,12 @@ impl PatternCache {
         } else {
             FinalLf::EndLf
         };
-        let index = usize::from(case_insensitive) + 2 * usize::from(final_lf == FinalLf::End);
+        let kind = match final_lf {
+            FinalLf::EndLf => 0,
+            FinalLf::End => 1,
+            FinalLf::InnerLf => 2,
+        };
+        let index = usize::from(case_insensitive) + 2 * kind;
         if !self.entries[index].contains_key(pattern) {
             let matcher = self.compile(pattern, case_insensitive, final_lf, cell)?;
             self.entries[index].insert(pattern.to_string(), Compiled { matcher, held: 0 });

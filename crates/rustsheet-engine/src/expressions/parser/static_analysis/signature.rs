@@ -391,21 +391,3 @@ pub(super) fn args_signature_choosecols(arg_count: usize) -> Vec<Signature> {
     }
     vec![Signature::Vector; arg_count]
 }
-
-pub(super) fn args_signature_expand(arg_count: usize) -> Vec<Signature> {
-    if !(2..=4).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
-}
-
-pub(super) fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
-    if !(2..=3).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
-}
