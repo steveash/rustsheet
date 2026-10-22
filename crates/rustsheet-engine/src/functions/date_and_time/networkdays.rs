@@ -47,7 +47,7 @@ impl Model {
             Some(arg) => self
                 .holiday_serials(arg, cell)
                 .map(Holidays::new)
-                .map_err(|error| bare_error(&error, cell)),
+                .map_err(|error| bare_error(&error.error, cell)),
             None => Ok(Holidays::none()),
         };
         let read = holidays.as_ref().map_or(0, |holidays| holidays.read);
@@ -62,8 +62,9 @@ impl Model {
         )
     }
 
-    /// One element of NETWORKDAYS(.INTL): the weekend (NETWORKDAYS.INTL only), the dates (booleans
-    /// are rejected), then the holidays. An end before the start counts the same days,
+    /// One element of NETWORKDAYS(.INTL): the weekend (NETWORKDAYS.INTL only), the start date,
+    /// the end date (booleans are rejected; each date's range is checked before the next
+    /// argument is read), then the holidays. An end before the start counts the same days,
     /// negated. Both dates must be dates (`#NUM!` otherwise); the dates of a date system are one
     /// run of serials, so every day between is one too, and its weekday follows the first day's.
     /// The days are counted in closed form (T-1808).
@@ -84,19 +85,20 @@ impl Model {
             Some(weekend) if holidays_at == 3 => Self::weekend_mask(weekend, Error::VALUE, cell)?,
             _ => DEFAULT_WEEKEND,
         };
+        // Each date's `#NUM!` comes before the next argument's error: `NETWORKDAYS(-1,"x")`,
+        // `NETWORKDAYS(-1,TRUE)` and `NETWORKDAYS(45000,-1,"x")` are `#NUM!`
+        // (probes/workday-holidays-error-order rows 23-25, Q50:Q55).
         let start = self.cast_number_no_bools_ref(start, cell)?.floor() as i64;
+        let start_date = self.excel_date(start, cell)?;
         let end = self.cast_number_no_bools_ref(end, cell)?.floor() as i64;
+        let end_date = self.excel_date(end, cell)?;
         let holidays = holidays.as_ref().map_err(Clone::clone)?;
-        let (from, to, sign) = if start <= end {
-            (start, end, 1.0)
+        let (from, to, from_date, sign) = if start <= end {
+            (start, end, start_date, 1.0)
         } else {
-            (end, start, -1.0)
+            (end, start, end_date, -1.0)
         };
-        let first_weekday = self
-            .excel_date(from, cell)?
-            .weekday()
-            .num_days_from_monday() as usize;
-        self.excel_date(to, cell)?;
+        let first_weekday = from_date.weekday().num_days_from_monday() as usize;
         let days = working_days(&days_per_weekday(from, to, first_weekday), &weekend)
             - working_days(&holidays.per_weekday(from, to, first_weekday), &weekend);
         Ok(days as f64 * sign)
