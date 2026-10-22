@@ -1408,7 +1408,7 @@ is `#N/A`: 8044dce50616cfe9 A1508). SORT lifts an array by_col (`SORT(Data!D6:E7
 ac67253061bba16a A1137).
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
 Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
-analogy with TOROW's evidence), and an error ignore or scan_by_column comes before an invalid one, in argument order
+analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
 (T-2313; an error ignore beside an error scan_by_column is unprobed); SORT and TEXTJOIN: `#N/IMPL!` or one cell (T-2319, T-2318).
 Status: VERIFIED (excel-graph)
 Tasks: T-2313, T-2318, T-2319
