@@ -1582,6 +1582,33 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
 Status: VERIFIED (excel-graph) for a < 1, 6.5 <= b <= 8; b < 6.5 and a in [1, 1.5) UNVERIFIED
 Tasks: T-0969
 
+## T.DIST.RT's noise beyond t = 1 grows with a ln y (T-0969)
+Rule: beyond t = 1 (y <= 0.99), where `T.DIST.RT(t,n)` is `BETA.DIST(y,n/2,0.5,TRUE)/2` at the worksheet's y,
+Excel's error against the exact `I_y(n/2,1/2)/2` at that y grows about linearly with |E| = |(n/2) ln y|, the
+signature of a prefactor exp(E) with E held in a double. Part of it is ln y rounded to a double and then scaled
+by n/2; the rest is not identified.
+- Evidence: 700 cells sampled (seed 1) from the 2,531 `t0969-t-tail-grid` cells with t > 1, y <= 0.99, y > 1 - y and
+  df other than 2 (excel-graph). Errors are relative, in units of 2^-53:
+  - The standard deviation of Excel's error is 3.3 for |E| < 1, 3.1 for |E| in [1, 2), 3.9 for [3, 4), 7 to 12 for
+    [4, 10), and 24 for |E| >= 20. By df it is 2.7 to 5.2 up to df 100, and 15 to 21 at df 200 to 1000. The mean is
+    0.2, so the error has no bias.
+  - (n/2) times the rounding error of ln y correlates 0.38 with Excel's error. It is the same whether ln y is
+    Excel's LN (`x87_log10::excel_ln`) or libm's. It predicts a standard deviation of 3.0 against Excel's 7.9 and
+    leaves a residual of 7.3.
+  - Weaker fits: fl((n/2) * ln y) correlates 0.32, and so does E as a double sum with ln B, 0.23 to 0.32 over three
+    groupings, with B either exact or in Excel's GAMMALN form ("Student t prefactor per df").
+- Rejected as Excel's incomplete beta, bit-exact counts out of 184 on `t0969-t-beta-link` column E
+  (`BETA.DIST(y,n/2,0.5,TRUE)`), where the exact I_y gets 39 and 145 within 4 ulp:
+  - R's `toms708.c` `bratio` with Excel's GAMMALN in place of `gamln`: 29, the same as with TOMS 708's own `gamln`,
+    because `betaln` is not on any path these arguments take.
+  - Cephes `incbet` with the prefactor exp(a ln x + b ln(1-x) - ln B) and Excel's B: 35 or 36. With the exact B
+    it gets 31. Numerical Recipes `betai` gets 25 with Excel's B and 26 with the exact B.
+  - On the 700 tail-grid cells (exact: 92 bit-exact, 589 within 4 ulp, 53 visibly off), Cephes `incbet` gets 52
+    bit-exact with exp-log powers and 60 with `pow`. Each leaves about 175 cells visibly off.
+- Ours: `student_t.rs` returns the exact tail at that y, rounded once. That is closer to Excel than any candidate above.
+Status: VERIFIED (excel-graph) as an observation; the algorithm is UNVERIFIED
+Tasks: T-0969
+
 ## Student t density noise is not input rounding (T-0969)
 Rule: Excel's `T.DIST(t,n,FALSE)` for n >= 3 carries 1 to 2 ulp of noise of its own, not explained by the
 rounding of t*t, n + t^2 or 1 + t^2/n. With those inputs exact, the best model is the exact density
