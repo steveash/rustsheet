@@ -1726,10 +1726,10 @@ Probed in T-1847 (probes/legacy-array-at-shapes, excel-graph, 2026-10-18; FORMUL
 `=ISNUMBER(SEARCH({"a","b"},Z1))` `=ISNUMBER(SEARCH(@{"a","b"},Z1))` (TRUE),
 `=N({2;3}+0)` `=N(@{2;3}+0)` (2) and `=ABS({2;3}+0)` `=ABS(@{2;3}+0)` (2): the `@` goes on the array constant
 inside an operator. SWITCH is the exception again: `=SWITCH(1,1,{2;3})` shows no `@` and the legacy cell spills 2, 3,
-and `=T(SWITCH(1,1,{"a";"b"}))` shows none and spills "a", "b". Ours matches, SWITCH over a range and under ABS, LEN or a minus included (T-1964; other nestings unprobed, T-2121). IFNA, IFS, the IFERROR argument and
+and `=T(SWITCH(1,1,{"a";"b"}))` shows none and spills "a", "b". Ours matches, SWITCH over a range and under ABS, LEN or a minus included (T-1964; any nesting, T-2121 above). IFNA, IFS, the IFERROR argument and
 T over SWITCH are confirmed.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1847, T-1910, T-1911, T-1964
+Tasks: T-1713, T-1717, T-1847, T-1910, T-1911, T-1964, T-2121
 
 ## Legacy N and T over a reference-returning call (T-1713)
 Rule: in a legacy (non-array) formula, N and T read their argument as a reference: no `@` goes on it,
