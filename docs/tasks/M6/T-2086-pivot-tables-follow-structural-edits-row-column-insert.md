@@ -3,7 +3,7 @@ id: T-2086
 title: "Pivot tables follow structural edits: row/column insert and delete, sheet rename and delete (SPEC-0015)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
