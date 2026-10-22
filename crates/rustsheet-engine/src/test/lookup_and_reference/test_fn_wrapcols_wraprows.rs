@@ -96,7 +96,7 @@ fn test_wraprows_2d_input_error() {
     assert_eq!(model._get_text("D1"), "#VALUE!");
 }
 
-/// A wrap_count that truncates to 2^31 or more is `#NUM!` rather than clamped to the vector's
+/// A `wrap_count` of 2^31 or more is `#NUM!` rather than clamped to the vector's
 /// length; one just below still wraps (probes/t2312-wrap-count-threshold).
 #[test]
 fn wrap_count_of_2_pow_31_is_num() {
