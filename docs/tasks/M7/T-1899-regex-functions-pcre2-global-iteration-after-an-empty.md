@@ -3,7 +3,7 @@ id: T-1899
 title: "REGEX functions: PCRE2 global iteration after an empty match"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: todo
 priority: P2
 size: S
 tier: opus
@@ -51,3 +51,27 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric pa
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (wrong REGEXREPLACE and REGEXEXTRACT text after an empty match), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Handoff
+Opus run of 2026-10-22: no code yet. This run landed T-2355 (#1530), which this task needed, then
+stopped at its session budget. Notes for the next run, from reading the code on main after #1530:
+- Memoized mode exists: `pcre::program::compile_memoized(ast, limit)` builds a guard-free
+  program for a regular AST, and `Backtracker` (memoized when `Program::memoized`) keeps a visited
+  set across one operation, forgetting positions up to a match's end in `find_from`.
+- What is missing:
+  - an anchored "not empty at start" attempt on `Backtracker`: one `attempt` at `p` whose `Match`
+    is refused when `pos == p` (PCRE2's `NOTEMPTY_ATSTART | ANCHORED`). Under memoization a refused
+    `Match` at `(pc, p)` is safe to keep marked, since later attempts start after `p`
+    (SPEC-0013 section 3);
+  - `Matcher::Automata` has no AST or program, so the retry needs the regular AST kept (or
+    re-parsed) and a lazily compiled memoized `Program` plus `BacktrackCache` in the matcher,
+    charged to the compile budget and counted in `memory_usage`;
+  - one iterator replacing both `regex_search::each_match` and `EngineSearch::advance`'s
+    `Searcher` rule:
+    - after a non-empty match, search from its end;
+    - after an empty match at `p`, run the anchored not-empty attempt at `p`, then advance one
+      UTF-16 unit;
+    - advancing into a surrogate pair is `SplitSurrogate`, which maps to `#VALUE!`.
+  - `captures_at` replays the iteration, so it must use the same iterator.
+- Tests to pin: the 11 cells in Context, `a*?` on `aaa` with 7 matches in memoized mode, and
+  `|a(?:a*b)?` on `REPT("a",32767)` linear (the forget-after-`e` rule).
