@@ -60,6 +60,11 @@ Implemented in: `Lexer::next_token` (formatter/lexer.rs), `BUDDHIST_ERA_OFFSET` 
 any date or time token that prints is `#VALUE!` in the engine: the Hijri calendar is not implemented (unprobed). Whether
 the lone-`B` error is about the end of the code or of the section is inferred from `"B"` and `"dB"` only.
 Tasks: T-1262
+Observation (T-2377): bare digits in front of a date token make the code `#VALUE!` for a number:
+`TEXT(Data!A$2+Data!$B9,Data!C10&"abc")` = `TEXT(3.14159,"42abc")` is `#VALUE!` (gen-m5/2b01cadfd03df4b5 Calc!A211 inside LENB,
+excel-graph, 2026-10-22), while `"ABC"` alone is "A43C" (above) and a bare digit alone is a literal (`TEXT(5,"2")` = "2",
+"Bare letters and digits in a number format"). Ours prints "42a43c". The likeliest reading, unprobed, is that a bare digit 1-9
+counts as a number token, so it joins the rule that a date token beside digit placeholders is `#VALUE!` (`"0b"`, T-2202).
 
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the

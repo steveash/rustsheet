@@ -532,6 +532,14 @@ negative count; PROPER capitalises after any non-letter (`O'Neil`, `Abc123Def`, 
 (`PROPER(TRUE)` = "True").
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
+## FIXED of a very large number is #VALUE! (T-2378)
+Observation: `FIXED((Data!$A3+Data!D3)^100)` = `FIXED(99^100)` (3.66E+199) is `#VALUE!` (gen-m5/55afc805e00a1509 Calc!A392,
+excel-graph, 2026-10-22); ours prints the 15 digits, 185 zeros and ".00" with commas, 269 characters. Values past 2^64 do print
+(`DOLLAR(1.0000001234567907E+30,-2)`, "FIXED, DOLLAR and BAHTTEXT cut to 15 significant digits first" below), and so does a 103-character
+`FIXED(ASINH(123456790.123),100)`. Whether the bound is the result's length (255 characters?) or the value's magnitude is unprobed;
+T-2378 probes it for FIXED and DOLLAR.
+Status: OBSERVED
+
 ## DOLLAR and FIXED decimals
 Rule: `decimals` is truncated toward zero, not floored: `DOLLAR(1234.5,-1.5)` is "$1,230" (decimals -1), `FIXED(1234.5,-0.5)`
 is "1,235" (decimals 0), `DOLLAR(1234.5,1.9)` is "$1,234.5". A `decimals` of 128 or more (also 128.5) is `#VALUE!`;
@@ -587,6 +595,11 @@ against gen-m5/49bfbf67a1409563 A217, 901e91c09b347914 A13; Microsoft's NUMBERVA
 middle"; that "12:30PM" is the reason, not a refusal of AM/PM, is the simplest reading and unprobed).
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
+Observation (T-2379): `NUMBERVALUE(0.2,PROPER(REPT("ab",300)),"a*2")` is `#VALUE!` (ours 0.2): the decimal separator is the
+600-character text "Abab...ab" and the group separator "a*2" (gen-m5/9a7a94353845ea12 Calc!A162, excel-graph, 2026-10-22). Three
+readings fit, none probed: a separator over 255 characters is `#VALUE!` (as REPT's, CODE's and UNICODE's text, "REPT, CODE, UNICODE and
+T refuse a text argument over 255 UTF-16 units" below); the first characters "A" and "a" clash case-insensitively; or "0.2"
+with "A" as the decimal separator no longer reads its "." as a decimal point (ours reads `NUMBERVALUE("0.2","A","b")` as 0.2).
 Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
 when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
 Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing

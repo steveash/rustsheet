@@ -313,6 +313,9 @@ lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and 
 `INDEX` returns that `#REF!` (`INDEX(A5:B7,MATCH(1,A5:A6,D1),3)` and `,1`), while a literal-text
 match_type inside it is `#VALUE!` and `INDEX(A5:B7,NA(),3)` is `#N/A` (the row error wins over the
 out-of-range column, which alone is `#REF!`).
+An error column beats a row index below 1 as well: `INDEX(Data!B2:E6,TAN(-0.5),MATCH("1",Data!B5:C8,1))` (row -0.546, column
+`#N/A` from MATCH over a 2-D range) is `#N/A`, while ours checks the row first and is `#VALUE!` (gen-m5/372a676d47aa1427
+Calc!A371 inside `MMULT(Data!A1,..)`, excel-graph, 2026-10-22, T-2252 triage; fix T-2375).
 Rule 3: the cell stays a reference through IF, IFS, CHOOSE, SWITCH and LET, so `MATCH(2,A5:A7,IFS(TRUE,D1))`
 with D1 = "x" is `#REF!` too (as are the same with IF, CHOOSE, SWITCH, `LET(a,D1,a)`); D2 = 1
 gives 2. IFERROR returns the value, so `IFERROR(D1,0)` is `#VALUE!`, like literal text

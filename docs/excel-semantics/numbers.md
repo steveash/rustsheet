@@ -97,6 +97,8 @@ Observation: `ODD(9999999999999999)` (the literal reads 9999999999999990) is 999
 ulp low through SERIESSUM's own power, and the cell passes since T-2163 raised with the `^` kernel. No formulation is fitted
 yet for the ODD cells.
 Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224 (gen-m5/38b1b8e51dbad326 Calc!A10 fixed by T-2163).
+`ODD(EVEN(9999999999999999))` is 9999999999999992 as well (ours 9999999999999988): gen-m5/d88d12a62b726a0a Calc!A232 (excel-graph,
+2026-10-22, T-2252 triage).
 Status: OBSERVED; T-2173 (after the T-2172 oracle sweep).
 
 ## MROUND rounds the quotient up within 5E-15 of a half, and multiplies in binary (T-2201)
@@ -255,6 +257,11 @@ Evidence: gen-m1/f91603cd8616521f Calc!A20, A249, A13 and 9 more cells (A7 A28 A
 `-Data!B$3` with B3 = FALSE → "01000");
 gen-m1/57fe331cb7611dbf Calc!A235 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED. Implementation: `number_to_text` (T-0107).
+ACOT shows no negative zero either: `ACOT(CEILING.PRECISE(Data!C9))` with C9 = -0.0001 is 1.5707963267948966 (PI()/2), the
+value of `ACOT(0)` (gen-m5/6efa59fc1257c475 Calc!A7, excel-graph, 2026-10-22, T-2252 triage). Ours is -1.5707963267948966:
+CEILING.PRECISE (and CEILING, CEILING.MATH, ISO.CEILING, ECMA.CEILING, unary minus `-(0)` and `INT(-0)`) yields the double -0.0,
+and `fn_acot` tests `f >= 0.0` (true for -0.0) and returns `atan(1/-0.0)` = -PI()/2. Whether Excel's CEILING.PRECISE yields
++0 or ACOT ignores the sign of zero cannot be told from the cell; both give PI()/2. Task: T-2376.
 
 ## Overflow in `+ - * /` is #NUM! where it happens
 Rule: a sum, difference, product or quotient beyond the double range is the error `#NUM!` at that
@@ -1534,6 +1541,11 @@ position past a shorter array is `#N/A`). Examples:
 - Invalid elements fail alone: `{1,"x",TRUE}` gives 3.83, `#VALUE!`, 3.83, and `{9,99}` gives 23, `#VALUE!`.
 - A range fourth argument is a reference, not lifted: `AGGREGATE({9,4},0,E1:E6,E1:E2)` spills 27, 9.
 
+Observation (T-2381): `SERIESSUM(MINVERSE(0.2),-AGGREGATE(15,Data!$C12,Data!A6:C12,Data!B2:E12),2,1E+15)` with C12 = -0.0001
+is `#VALUE!` (gen-m5/c634f6ec7b14fe08 Calc!A322, excel-graph, 2026-10-22); ours is `#NUM!` from the AGGREGATE, which truncates the
+option to 0 and reads k = B2 (blank, 0). Either a negative option below 0 is `#VALUE!` before truncation (as -0.0001 < 0), or a
+multi-cell range k for functions 14-19 is `#VALUE!` (the formula sits in row 322, outside B2:E12); the cell cannot tell which.
+
 A lifted call is subject to the *IF(S) cell-visit cap (criteria.md, "*IF(S) lift array criteria", DEVIATION):
 the elements to compute times the cells every element reads (the used cells of each reference plus the size of each
 computed array, which is evaluated once per call), times the lifted argument count, above 2^27 is `#ERROR!`
@@ -1756,6 +1768,20 @@ Status: VERIFIED
 Implemented in: `fn_base` (crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs)
 Tasks: T-1243
 
+## BASE of zero with min_length 0 is empty; BASE past 2^53 is #NUM! (T-2373, T-2374)
+Rule: BASE pads its digits to `min_length`, and a zero number has no digits of its own, so an explicit `min_length` that
+truncates to 0 gives empty text: `BASE(0.2,29,0.3)` is "" (`LENB` of it is 0; ours "0"). Without `min_length` a zero is "0"
+(`MID(BASE(0,22),1,MONTH(43194))` = "0"), and with `min_length` n it is n zeros (`BASE(0.1,15,9)` "000000000",
+`BASE(0.1,24,10)`), which is what a default `min_length` of 1 would give.
+A number past 2^53 is `#NUM!`: `BASE(ROUNDUP(2^53,-6),10,5)` (9007199255000000) and BASE of about 7.47E+19 (a SUM of products of
+123456789.123) in radix 34 are `#NUM!` (ours "9007199255000000" and "3TDTK1V8J6TPP"; above 2^63 ours prints i64::MAX's digits). Whether
+2^53 itself is accepted is unprobed (T-2289).
+Evidence (excel-graph, 2026-10-22, T-2252 triage): gen-m5/dde5ea295a38fb16 Calc!A254 (zero, min_length 0.3);
+gen-m5/55afc805e00a1509 Calc!A101, gen-m5/08eafc9e61602bcb Calc!A98 (past 2^53); the "0" and zero-padded cells, which pass:
+gen-m5/cd883013bea3b305 Calc!A22, gen-m5/9a7a94353845ea12 Calc!A45, gen-m5/90bf45bea539723d Calc!A251.
+Status: VERIFIED (excel-graph) for the cells above; engine DIVERGENT until T-2373 and T-2374 land.
+Tasks: T-2289, T-2373, T-2374
+
 ## RANDBETWEEN and RANDARRAY argument checks
 Rule: RANDBETWEEN compares the raw `bottom` and `top` (`bottom > top` is `#NUM!`, even
 `RANDBETWEEN(5,4.5)`), then draws a whole number from `CEILING(bottom)` to `FLOOR(top)`, and gives
@@ -1829,6 +1855,23 @@ gen-m5/1d22a002d4f380b3 Calc!A157.
 Status: VERIFIED (excel-graph); implemented (T-2163) in `fn_seriessum`: blank cells are filtered out before the powers are
 numbered, each term is `coeff * arithmetic::power(x, n + i*m)` and is `#NUM!` at once when the power fails or the term is not
 finite. All 8 cells pass, and so does gen-m5/38b1b8e51dbad326 Calc!A10 (`EVEN(0.1/E5*SERIESSUM(-2.5,B10,3,0.1))`).
+
+## SERIESSUM: a negative x to a non-integer power does not stop the read (T-2380)
+Observation: `SERIESSUM(-308641972.8075,30864197.28075,2,D1:E8)` is `#VALUE!` (ours `#NUM!`). D1:E8 read row by row is 2, 1E-15,
+the text "#N/A", the text "ü", 0, 0.5, 2.5, TRUE, blank, -0.5, ..., so the first term is `2*x^n` with a negative x and a non-integer
+power, which `^` refuses with `#NUM!`; Excel still reaches the text coefficient and gives `#VALUE!`. An overflowing term, by
+contrast, is `#NUM!` before a later text coefficient (the T-2163 entry above). So a domain failure of the power is not an
+immediate `#NUM!` the way an overflow is (perhaps a NaN term that is only judged at the end), unprobed beyond this cell.
+Evidence: gen-m5/bf8903e05ec369ca Calc!A326 (excel-graph, 2026-10-22, T-2252 triage).
+Status: OBSERVED; T-2380 probes and fixes it.
+
+## SUMXMY2 is 1 ulp above the correctly rounded sum on a 1.5E+16 result (T-2384)
+Observation: `SUMXMY2(C10:E12,C6:E8)`, whose numeric pairs are (-1, 123456789.123), (7, 1E-15) and (-1, 0.3), is
+1.5241579027474522E+16; the exact sum of the squared differences rounds to 1.524157902747452E+16, and so do the left-to-right
+double sums of `(x-y)^2`, of `x^2-2xy+y^2` and of `x^2+y^2-2xy` (ours). `SUMX2-2SUMXY+SUMY2` gives ...518. So Excel's
+accumulation is none of these; one cell cannot fit it.
+Evidence: gen-m5/bf8903e05ec369ca Calc!A248 (excel-graph, 2026-10-22, T-2252 triage).
+Status: OBSERVED; the T-2172 oracle sweep collects the points, T-2384 fits them.
 
 ## ARABIC of a blank cell, and padded numerals (T-2153)
 Rule: ARABIC of a blank cell is 0, as `ARABIC("")` is, whether the blank comes as a reference (`ARABIC(C3)`), through
