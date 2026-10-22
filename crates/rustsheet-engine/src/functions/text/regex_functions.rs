@@ -4,9 +4,10 @@ use regex_automata::Match;
 
 use super::{
     lifted::COMPARED_BYTES_PER_VISIT,
-    pcre::{self, FinalLf},
-    regex_engine::{BuildFailure, Caches, Engine, Search, Spent},
+    pcre::{self, BacktrackCache, FinalLf, Form, ProgramFailure},
+    regex_engine::{BuildFailure, Engine, Spent},
     regex_replacement::Replacement,
+    regex_search::{Matcher, Search},
     util::within_text_budget,
 };
 use crate::{
@@ -45,7 +46,7 @@ const SEARCH_BUDGET: u64 = 1 << 30;
 
 /// A compiled pattern (`None` when invalid), its search caches and the heap they last held.
 struct Compiled {
-    engine: Option<(Engine, Caches)>,
+    matcher: Option<Matcher>,
     held: usize,
 }
 
@@ -100,25 +101,27 @@ impl PatternCache {
         };
         let index = usize::from(case_insensitive) + 2 * usize::from(final_lf == FinalLf::End);
         if !self.entries[index].contains_key(pattern) {
-            let engine = self.compile(pattern, case_insensitive, final_lf, cell)?;
-            self.entries[index].insert(pattern.to_string(), Compiled { engine, held: 0 });
+            let matcher = self.compile(pattern, case_insensitive, final_lf, cell)?;
+            self.entries[index].insert(pattern.to_string(), Compiled { matcher, held: 0 });
         }
         let Some(entry) = self.entries[index].get_mut(pattern) else {
             return Err(too_much_regex_work(cell));
         };
-        let Some((engine, caches)) = entry.engine.as_mut() else {
+        let Some(matcher) = entry.matcher.as_mut() else {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "Invalid regular expression".to_string(),
             ));
         };
+        // The backtracker's stack may grow into what the call does not hold yet.
+        let room = HELD_LIMIT.saturating_sub(self.held.saturating_sub(entry.held));
         let result = searches(&mut Search {
-            engine,
-            caches,
+            matcher,
             work: &mut self.work,
+            room,
         });
-        let held = engine.memory_usage(caches);
+        let held = matcher.memory_usage();
         self.held = self.held.saturating_sub(entry.held).saturating_add(held);
         entry.held = held;
         match result {
@@ -138,7 +141,7 @@ impl PatternCache {
         case_insensitive: bool,
         final_lf: FinalLf,
         cell: CellReferenceIndex,
-    ) -> Result<Option<(Engine, Caches)>, CalcResult> {
+    ) -> Result<Option<Matcher>, CalcResult> {
         let Ok(translated) = pcre::translate(pattern, case_insensitive, final_lf, self.budget)
         else {
             return Ok(None);
@@ -157,13 +160,29 @@ impl PatternCache {
                 return Err(too_much_regex_work(cell));
             }
             self.budget -= limit;
-            match Engine::new(&translated.hir, limit) {
-                Ok(engine) => {
-                    let caches = engine.create_caches();
-                    return Ok(Some((engine, caches)));
-                }
-                Err(BuildFailure::TooBig) => {}
-                Err(BuildFailure::Invalid) => break,
+            match &translated.form {
+                Form::Automata(hir) => match Engine::new(hir, limit) {
+                    Ok(engine) => {
+                        let caches = Box::new(engine.create_caches());
+                        return Ok(Some(Matcher::Automata {
+                            engine: Box::new(engine),
+                            caches,
+                        }));
+                    }
+                    Err(BuildFailure::TooBig) => {}
+                    Err(BuildFailure::Invalid) => break,
+                },
+                // A program is charged its whole size limit, as an NFA is.
+                Form::Backtrack(backtrack) => match backtrack.compile(limit) {
+                    Ok(program) => {
+                        return Ok(Some(Matcher::Backtrack {
+                            program,
+                            cache: BacktrackCache::default(),
+                        }));
+                    }
+                    Err(ProgramFailure::TooBig) => {}
+                    Err(ProgramFailure::Unsupported) => break,
+                },
             }
         }
         Ok(None)
@@ -368,10 +387,10 @@ impl Model {
                         Ok(Ok(Some(all).filter(|all| !all.is_empty())))
                     }
                     ReturnMode::Groups => {
-                        if search.engine.group_len() < 2 {
+                        if search.group_len() < 2 {
                             return Ok(Err(no_groups()));
                         }
-                        let mut caps = search.engine.create_captures();
+                        let mut caps = search.create_captures();
                         if !search.captures(&text, &mut caps)? {
                             return Ok(Ok(None));
                         }
@@ -455,7 +474,8 @@ impl Model {
                 };
                 // Two passes over the text: one measures the result, one builds it.
                 let replaced = cache.with(&pattern, insensitive, &text, cell, |search| {
-                    let Some(replacement) = Replacement::new(search.engine, &replacement) else {
+                    let Some(replacement) = Replacement::new(search.group_info(), &replacement)
+                    else {
                         // An invalid replacement is #VALUE! only once a match it replaces is
                         // found: else the text comes back unchanged (regex-pcre2-features E1-E3,
                         // regex-optional-args A133, A134).
@@ -474,7 +494,7 @@ impl Model {
                             let Some(m) = occurrence.find(search, &text)? else {
                                 return Ok(Ok(text.to_string()));
                             };
-                            let mut caps = search.engine.create_captures();
+                            let mut caps = search.create_captures();
                             search.captures_at(&text, m, &mut caps)?;
                             Some((m, caps))
                         }

@@ -38,8 +38,9 @@ pub(super) enum Ast {
         kind: RepeatKind,
         ast: Box<Ast>,
     },
-    /// A backreference to a group, by number (resolved once the pattern is parsed) or name.
-    Backref(Reference),
+    /// A backreference to a group, by number (resolved once the pattern is parsed) or name;
+    /// `fold` when it ignores case (simple case folding, as its scope's flags say).
+    Backref { reference: Reference, fold: bool },
     /// A lookahead or lookbehind.
     LookAround { kind: LookKind, ast: Box<Ast> },
     /// `(?>..)`.
@@ -94,7 +95,7 @@ pub(super) enum Reference {
 }
 
 /// What a conditional group tests: whether the group has matched. Assertion conditions
-/// (`(?(?=x)..)`) are left to T-1900 and are invalid until then.
+/// (`(?(?=x)..)`) are left to T-2354 and are invalid until then.
 #[derive(Debug, Clone)]
 pub(super) enum Condition {
     Group(Reference),
@@ -117,37 +118,45 @@ impl Ast {
         let mut stack = vec![self];
         while let Some(ast) = stack.pop() {
             match ast {
-                Ast::Empty
-                | Ast::Literal { .. }
-                | Ast::Class(_)
-                | Ast::Dot { .. }
-                | Ast::Anchor(
-                    Anchor::Start
-                    | Anchor::StartLine
-                    | Anchor::EndOrFinalLf
-                    | Anchor::EndLine
-                    | Anchor::End
-                    | Anchor::WordBoundary
-                    | Anchor::NotWordBoundary,
-                ) => {}
-                Ast::Capture { ast, .. } => stack.push(ast),
-                Ast::Repeat { kind, ast, .. } => {
-                    if *kind == RepeatKind::Possessive {
-                        return false;
-                    }
-                    stack.push(ast);
+                Ast::Repeat {
+                    kind: RepeatKind::Possessive,
+                    ..
                 }
-                Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
-                Ast::Anchor(Anchor::SearchStart)
-                | Ast::Backref(_)
+                | Ast::Anchor(Anchor::SearchStart)
+                | Ast::Backref { .. }
                 | Ast::LookAround { .. }
                 | Ast::Atomic(_)
                 | Ast::Conditional { .. }
                 | Ast::KeepOut
                 | Ast::Unimplemented => return false,
+                _ => ast.push_children(&mut stack),
             }
         }
         true
+    }
+
+    /// Pushes the nodes directly under this one onto `stack`: the one list of every node's
+    /// children, for the iterative passes over the tree.
+    pub(super) fn push_children<'a>(&'a self, stack: &mut Vec<&'a Ast>) {
+        match self {
+            Ast::Capture { ast, .. }
+            | Ast::Repeat { ast, .. }
+            | Ast::LookAround { ast, .. }
+            | Ast::Atomic(ast) => stack.push(ast),
+            Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
+            Ast::Conditional { yes, no, .. } => {
+                stack.push(yes);
+                stack.push(no);
+            }
+            Ast::Empty
+            | Ast::Literal { .. }
+            | Ast::Class(_)
+            | Ast::Dot { .. }
+            | Ast::Anchor(_)
+            | Ast::Backref { .. }
+            | Ast::KeepOut
+            | Ast::Unimplemented => {}
+        }
     }
 }
 
@@ -172,6 +181,8 @@ pub(super) fn fixed_length(ast: &Ast) -> Option<u32> {
         Ast::Repeat { min, max, ast, .. } if Some(*min) == *max => {
             min.checked_mul(fixed_length(ast)?)
         }
-        Ast::Repeat { .. } | Ast::Backref(_) | Ast::Conditional { .. } | Ast::Unimplemented => None,
+        Ast::Repeat { .. } | Ast::Backref { .. } | Ast::Conditional { .. } | Ast::Unimplemented => {
+            None
+        }
     }
 }

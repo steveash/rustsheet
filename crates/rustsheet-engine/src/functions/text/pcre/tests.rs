@@ -1,15 +1,27 @@
 #![allow(clippy::unwrap_used)]
 
+use regex_syntax::hir::Hir;
+
 use super::{
     parse::{parse, Invalid, NEST_LIMIT},
-    translate, FinalLf, Unsupported,
+    translate, FinalLf, Form, ProgramFailure,
 };
+
+/// `pattern` translated for the automata; panics on a pattern only the backtracker runs.
+fn hir(pattern: &str, caseless: bool, final_lf: FinalLf) -> Hir {
+    match translate(pattern, caseless, final_lf, usize::MAX)
+        .unwrap()
+        .form
+    {
+        Form::Automata(hir) => hir,
+        Form::Backtrack(_) => panic!("{pattern} is not regular"),
+    }
+}
 
 /// Whether `pattern` matches `text`, translated as REGEXTEST translates it.
 fn matches(pattern: &str, text: &str, caseless: bool) -> bool {
-    let translated = translate(pattern, caseless, super::final_lf_for(text), usize::MAX).unwrap();
     regex_automata::meta::Regex::builder()
-        .build_from_hir(&translated.hir)
+        .build_from_hir(&hir(pattern, caseless, super::final_lf_for(text)))
         .unwrap()
         .is_match(text)
 }
@@ -52,7 +64,7 @@ fn dollar_matches_before_a_final_line_feed() {
     assert!(!matches(r"a\z", "a\n", false));
     assert!(!matches("a$", "a\nb", false));
     assert!(matches("a$", "a", false));
-    // A text with another \n keeps `\z` until T-1900's memoized mode: PCRE2 matches here.
+    // A text with another \n keeps `\z` until T-2355's memoized mode: PCRE2 matches here.
     assert!(!matches("a$", "b\na\n", false));
 }
 
@@ -128,24 +140,22 @@ fn posix_syntax_pcre2_rejects_is_invalid() {
 }
 
 #[test]
-fn backtracking_constructs_parse_but_stay_unsupported() {
-    // Until T-1900: each parses, and is not regular.
-    for pattern in [
-        "a++",
-        "(?>a)",
-        r"(a)\1",
-        "(?=a)",
-        "(?<!a)b",
-        r"a\Kb",
-        r"\Ga",
-        "(a)(?(1)b|c)",
-        r"\R",
-        r"\X",
-    ] {
-        assert!(parse(pattern, false, usize::MAX).is_ok(), "{pattern}");
-        assert_eq!(
-            translate(pattern, false, FinalLf::EndLf, usize::MAX).err(),
-            Some(Unsupported),
+fn backtracking_constructs_go_to_the_backtracker() {
+    // Each parses and is not regular. T-1900 runs the first four; the rest wait for T-2354
+    // (lookaround, `\K`, conditionals) and T-2287 (`\R`, `\X`).
+    let program = |pattern: &str| match translate(pattern, false, FinalLf::EndLf, usize::MAX)
+        .unwrap()
+        .form
+    {
+        Form::Backtrack(backtrack) => backtrack.compile(usize::MAX),
+        Form::Automata(_) => panic!("{pattern} is regular"),
+    };
+    for pattern in ["a++", "(?>a)", r"(a)\1", r"\Ga"] {
+        assert!(program(pattern).is_ok(), "{pattern}");
+    }
+    for pattern in ["(?=a)", "(?<!a)b", r"a\Kb", "(a)(?(1)b|c)", r"\R", r"\X"] {
+        assert!(
+            matches!(program(pattern), Err(ProgramFailure::Unsupported)),
             "{pattern}"
         );
     }
@@ -179,10 +189,10 @@ fn nesting_and_repeat_counts_are_capped() {
     assert!(parse("a{65535}", false, usize::MAX).is_ok());
     assert_eq!(parse("a{65536}", false, usize::MAX).err(), Some(Invalid));
     // Parses; the NFA's size limit refuses it, with no overflow on the way.
-    let huge = translate("(?:a{65535}){65535}", false, FinalLf::EndLf, usize::MAX).unwrap();
+    let huge = hir("(?:a{65535}){65535}", false, FinalLf::EndLf);
     assert!(regex_automata::nfa::thompson::NFA::compiler()
         .configure(regex_automata::nfa::thompson::NFA::config().nfa_size_limit(Some(10 << 20)))
-        .build_from_hir(&huge.hir)
+        .build_from_hir(&huge)
         .is_err());
     let long = "a".repeat(32_767);
     assert!(parse(&long, false, usize::MAX).is_ok());
@@ -228,9 +238,7 @@ fn our_hir_agrees_with_regex_syntax_where_the_dialects_agree() {
                 pattern.push_str(quantifiers[next(quantifiers.len())]);
             }
         }
-        let ours = translate(&pattern, false, FinalLf::EndLf, usize::MAX)
-            .unwrap()
-            .hir;
+        let ours = hir(&pattern, false, FinalLf::EndLf);
         let theirs = regex_syntax::Parser::new().parse(&pattern).expect(&pattern);
         assert_eq!(ours, theirs, "{pattern}");
     }

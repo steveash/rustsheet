@@ -1,12 +1,11 @@
 //! A regular [`Ast`] as a `regex_syntax` [`Hir`], for the automata of `regex_engine`
 //! (SPEC-0013 section 2).
 
-use regex_syntax::hir::{
-    Capture, Class, ClassUnicode, ClassUnicodeRange, Dot, Hir, Look, Repetition,
-};
+use regex_syntax::hir::{Capture, Class, Dot, Hir, Look, Repetition};
 
 use super::{
     ast::{Anchor, Ast, RepeatKind},
+    class::literal_class,
     parse::Invalid,
 };
 
@@ -14,7 +13,7 @@ use super::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::functions::text) enum FinalLf {
     /// `Look::End`: exact on a text with no `\n`, and today's gap on one holding a `\n` before
-    /// its last character (the backtracker's memoized mode closes it, T-1900).
+    /// its last character (the backtracker's memoized mode closes it, T-2355).
     End,
     /// `Look::EndLF`: exact on a text whose only `\n` is its last character.
     EndLf,
@@ -26,10 +25,7 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
     Ok(match ast {
         Ast::Empty => Hir::empty(),
         Ast::Literal { c, fold } => {
-            let mut class = ClassUnicode::new([ClassUnicodeRange::new(*c, *c)]);
-            if *fold {
-                class.case_fold_simple();
-            }
+            let class = literal_class(*c, *fold);
             match class.literal() {
                 Some(bytes) => Hir::literal(bytes),
                 None => Hir::class(Class::Unicode(class)),
@@ -87,7 +83,7 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
                 sub: Box::new(to_hir(ast, final_lf)?),
             })
         }
-        Ast::Backref(_)
+        Ast::Backref { .. }
         | Ast::LookAround { .. }
         | Ast::Atomic(_)
         | Ast::Conditional { .. }
