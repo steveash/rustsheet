@@ -545,7 +545,7 @@ impl Model {
                     Some(value) => Self::cast_bool_ref(value, cell),
                 };
                 match (flag(1), flag(2)) {
-                    (Ok(by_col), Ok(exactly_once)) => unique_of(&data, by_col, exactly_once, cell),
+                    (Ok(by_col), Ok(exactly_once)) => unique_of(data, by_col, exactly_once, cell),
                     (Err(error), _) | (_, Err(error)) => error,
                 }
             },
