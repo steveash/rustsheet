@@ -2275,3 +2275,12 @@ B2 blank, B3 0.5, B4 2, C1:C2 no numbers, D1 `=NA()`, E1 `=NA()`, E2 2):
 Engine: `Model::aggregate_k` (crates/rustsheet-engine/src/functions/aggregate.rs); `fn_aggregate`
 keeps a fourth argument IF or CHOOSE picks a reference for as that reference.
 Status: implemented (T-2281)
+
+## F.TEST / FTEST is not correctly rounded (T-1927)
+Excel's F.TEST is not the correctly rounded value of `2*min(lower, upper)` tail: with the f
+our two-pass variance gives, the exact p of `F.TEST({1,2,3,4},{5,6,7,2.4})` is 0.5023992107800743
+but Excel returns 0.5023992107800741, and `F.TEST(C1:C6,B1:B8)` of probes/stat-argument-modes
+(df 1,7) is 0.91959790471759887 exactly against Excel's 0.9195979047175995, while
+`F.TEST(A1:A8,B1:B8)` (df 7,7) and `FTEST(B1:C5,B1:B5)` (df 9,4) are Excel's correctly rounded
+values. An exact incomplete beta therefore fixes some cells and regresses others; matching all
+needs Excel's own algorithm (see the F.DIST/BETA.DIST fit notes). Still open: T-1927.

@@ -48,7 +48,7 @@ Result against mpmath (40 digits, f taken as the double our variance gives):
 - H248/H251 (df 1,7, f=0.6116504854368933): exact is 0.91959790471759887, Excel is ...5995, ours
   ...5987 now (was ...5988): Excel is itself ~7e-16 off the exact value here, so no exact method hits it.
 - ironcalc-calc/STATISTICAL/F_TEST.xlsx F1 (df 3,3, f=0.4266211604095564): exact is
-  0.50230921...743, Excel 0.5023992107800741, the old code matched bit-exactly, the recurrence gives ...743:
+  0.5023992107800743, Excel 0.5023992107800741, the old code matched bit-exactly, the recurrence gives ...743:
   a REGRESSION (make eval-baseline refuses it).
 So Excel's F.TEST is not correctly rounded and is not the exact value; a bit-exact fit needs
 Excel's own algorithm (probably the same one as F.DIST/BETA.DIST, see the fit notes in
