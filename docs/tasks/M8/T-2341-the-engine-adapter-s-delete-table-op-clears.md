@@ -3,7 +3,7 @@ id: T-2341
 title: "The engine adapter's delete_table op clears the table's cells, as Graph's DELETE tables does (T-2324)"
 milestone: M8
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
