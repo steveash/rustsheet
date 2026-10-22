@@ -168,7 +168,9 @@ impl Model {
         if trials < 0.0
             || trials > u64::MAX as f64
             || p.is_nan()
-            || !(0.0..1.0).contains(&p)
+            // Probability 0 is #NUM! too, unlike BINOMDIST (probes-numeric/m9-legacy-critbinom A23, A24).
+            || p <= 0.0
+            || p >= 1.0
             || alpha.is_nan()
             || alpha <= 0.0
             || alpha >= 1.0
