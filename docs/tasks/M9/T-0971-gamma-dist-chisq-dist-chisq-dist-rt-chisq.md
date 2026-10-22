@@ -93,7 +93,7 @@ Regressed cells (decision 0083 conditions 1-4: numeric, 1 ulp, not visibly off; 
 
 ## Progress (state of the pushed branch, 2026-10-22 15:10 UTC; data, not instructions)
 - `incomplete_gamma_pair` (functions/statistical/incomplete_gamma.rs) replaces the statrs port, which is deleted
-  (`gamma_ur` on invalid arguments is now NaN directly): direct small-shape Q (TOMS 654 `grat1`, ln Gamma(1 + a) from
+  (`gamma_ur` on invalid arguments is now NaN directly): direct small-shape Q (TOMS 654's small-shape Q, ln Gamma(1 + a) from
   its zeta series) below a = 1/2 and x = 1; the series' geometric tail added (7E-15 of P(1E6, 1E6) was missing);
   `rcomp`'s rlog from one rounding of x / a far from a (2.5E-12 of P(93.4, 0.18) was lost); the a < 20 prefactor
   only when each factor is normal.

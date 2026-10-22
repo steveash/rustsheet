@@ -109,7 +109,7 @@ fn lower_of_underflow(a: f64) -> f64 {
     }
 }
 
-/// `x - ln(1 + x)` for `x > -1`, without the cancellation of the two terms near 0 (TOMS 654
+/// `x - ln(1 + x)` for `x > -1`, without the cancellation of the two terms near 0 (TOMS 654's
 /// `rlog1`): its alternating series below |x| = 1/4, where it converges by a factor of 4 a
 /// term, else the subtraction itself.
 fn x_minus_ln_1p(x: f64) -> f64 {
@@ -139,7 +139,7 @@ fn stirling_correction(a: f64) -> f64 {
 
 /// x^a e^-x / Gamma(a), the factor in front of both P(a, x) and Q(a, x). For a large shape the
 /// exponent a ln x - x - ln Gamma(a) cancels to a small number and loses its digits, so it is
-/// rewritten as sqrt(a / 2 pi) exp(-a rlog1(x/a - 1) - correction(a)) (TOMS 654
+/// rewritten as sqrt(a / 2 pi) exp(-a rlog1(x/a - 1) - correction(a)) (TOMS 654's
 /// `rcomp`); below 20 it is formed directly.
 fn gamma_prefactor(a: f64, x: f64) -> f64 {
     if a < 20.0 {
@@ -223,8 +223,8 @@ fn ln_gamma_1p_small(a: f64) -> f64 {
 /// Euler's constant.
 const EULER_GAMMA: f64 = 0.577_215_664_901_532_9;
 
-/// Q(a, x) for a below [`SMALL_SHAPE`] and x below 1, formed directly (TOMS 654
-/// `grat1`): with u = x^a / Gamma(1 + a) and S = sum (-x)^n / (n! (a + n)) over n >= 1,
+/// Q(a, x) for a below [`SMALL_SHAPE`] and x below 1, formed directly (TOMS 654's
+/// small-shape Q): with u = x^a / Gamma(1 + a) and S = sum (-x)^n / (n! (a + n)) over n >= 1,
 /// P = u (1 + a S), so Q = (1 - u) - u a S, where 1 - u is `-expm1(a ln x - ln Gamma(1 + a))`.
 /// NaN past `terms`.
 fn small_shape_upper(a: f64, x: f64, terms: &mut Terms) -> f64 {

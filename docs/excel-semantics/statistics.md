@@ -905,7 +905,7 @@ x = a). The prefactor x^a e^-x / Gamma(a) is `powf * exp / tgamma` below a = 20 
 Morris' `rcomp` above it (sqrt(a / 2 pi) exp(-a rlog(x/a) - Stirling correction)); P is the power series below
 x = a + 1, with the geometric sum of the terms it leaves (near x = a they add up to thousands of times the last one:
 7E-15 of P(1E6, 1E6)), and Q the modified-Lentz continued fraction above it; below a shape of 1/2 and x of 1 Q is formed
-directly (DiDonato and Morris' `grat1`, with ln Gamma(1 + a) from its zeta series); a = 1 is (-expm1(-x), exp(-x)).
+directly (TOMS 654's small-shape Q, with ln Gamma(1 + a) from its zeta series); a = 1 is (-expm1(-x), exp(-x)).
 Unit tests (`incomplete_gamma.rs`): within 8 units of 2^-52 of mpmath at a in {0.001, 0.01, 0.3, 0.5, 9, 500}, P + Q = 1
 within 2 of them, the a = 1 identity, the b = 1E6 scale. The 2^19-term cap (section above) is unchanged; the series now
 runs to 2^-54 instead of 1E-15, about 8% more terms near x = a, so an inversion's budget runs out at a somewhat smaller
