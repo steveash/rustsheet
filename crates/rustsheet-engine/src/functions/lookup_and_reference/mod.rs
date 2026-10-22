@@ -64,7 +64,7 @@ fn lookup_index(
     is_sorted: bool,
 ) -> Option<usize> {
     if is_sorted {
-        search_vector.approximate_search(lookup_value, false)
+        search_vector.approximate_search(lookup_value)
     } else if let CalcResult::String(s) = lookup_value {
         search_vector.position(wildcard_text_matcher(s))
     } else {
@@ -180,10 +180,12 @@ impl Model {
                 };
                 let found = if match_type == 0 {
                     lookup_index(target, values, false)
-                } else {
+                } else if match_type < 0 {
                     // Any negative match_type searches descending, any positive one
                     // ascending (probes/lookup-approximate-search N20, N21).
-                    values.approximate_search(target, match_type < 0)
+                    values.descending_search(target)
+                } else {
+                    values.approximate_search(target)
                 };
                 match found {
                     Some(l) => CalcResult::Number(l as f64 + 1.0),
@@ -199,7 +201,7 @@ impl Model {
 
     /// MATCH's `match_type` as a number. Text that comes from a cell (a reference) and is not a
     /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
-    /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
+    /// descending search scans from the top", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         // A range of several cells is its top-left cell, plain or picked by IF, IFS, SWITCH or
         // LET (probes/match-type-nested-passthrough K2, K3, K7:K9, K14, K15, T-1452). An array
