@@ -13,7 +13,7 @@ depends_on: [T-2219, T-2220]
 
 ## Goal
 F.DIST (cdf and density), F.DIST.RT and FDIST give Excel's double bit for bit on the F-distribution
-probes, including where Excel is not correctly rounded. Needs an oracle sweep: T-2220 provides it.
+probes, including where Excel is not correctly rounded. Needs an oracle sweep: T-2220 provides it (`probes-numeric/t2220-f-dist-sweep-*.case.json`, findings in statistics.md "Dense F sweep (T-2220)").
 
 ## Context
 Gap triage 2026-10-21 (`make eval` on `main` fce6020d). After T-0970, 107 F-distribution cells
