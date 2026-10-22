@@ -3,7 +3,7 @@ id: T-2387
 title: "Probe legacy @ with SWITCH inside LET or LAMBDA, a defined name, and other dynamic-array-only functions"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
