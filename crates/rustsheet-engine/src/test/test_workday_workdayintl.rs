@@ -126,3 +126,50 @@ fn holidays_follow_the_branch_if_takes() {
     assert_eq!(model._get_text("B9"), *"#VALUE!");
     assert_eq!(model._get_text("B10"), *"45008");
 }
+
+/// Excel's error order between the holidays, the dates, start + days and the weekend
+/// (probes/workday-holidays-error-order; dates.md "WORKDAY and NETWORKDAYS holidays: blank and
+/// number-text cells, and the error order").
+#[test]
+fn holidays_error_order() {
+    let mut model = new_empty_model();
+    model._set("H1", "a");
+    model._set("H2", "-1");
+    model._set("H3", "a");
+    let cases = [
+        // start + days off the calendar beats the holidays and the weekend
+        ("=WORKDAY(1,-18,H1)", "#NUM!"),
+        ("=WORKDAY.INTL(1,-18,\"abc\",NA())", "#NUM!"),
+        ("=WORKDAY.INTL(5,-5,\"1111111\")", "#VALUE!"),
+        ("=WORKDAY.INTL(5,-6,\"1111111\")", "#NUM!"),
+        // a walk off the calendar comes after the holidays
+        ("=WORKDAY(10,-8,H1)", "#VALUE!"),
+        ("=WORKDAY(10,-8)", "#NUM!"),
+        // a single non-number holiday beats the weekend, an array or a range does not
+        ("=WORKDAY.INTL(45000,5,99,\"a\")", "#VALUE!"),
+        ("=WORKDAY.INTL(45000,5,99,H1:H1)", "#VALUE!"),
+        ("=WORKDAY.INTL(45000,5,99,{\"a\"})", "#NUM!"),
+        ("=WORKDAY.INTL(45000,5,99,H1:H2)", "#NUM!"),
+        ("=WORKDAY.INTL(45000,5,\"1111111\",-1)", "#VALUE!"),
+        // the first bad holiday decides
+        ("=WORKDAY(45000,5,H2:H3)", "#NUM!"),
+        ("=WORKDAY(45000,5,{\"a\",-1})", "#VALUE!"),
+        // each date's range comes before the next argument
+        ("=NETWORKDAYS(-1,\"x\")", "#NUM!"),
+        ("=NETWORKDAYS(45000,-1,H1)", "#NUM!"),
+        ("=WORKDAY(-1,TRUE)", "#NUM!"),
+        // a fractional weekend truncates
+        ("=WORKDAY.INTL(11303,-4,1.25,H1:H2)", "#VALUE!"),
+    ];
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

@@ -49,3 +49,9 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 9 in eval/baselin
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Note from T-2272
+T-2272 made a fractional weekend number truncate (`weekend_mask`), since its error order let gen-m6/e3a562557696e2fc A385
+reach the 1.25 weekend: the first criterion is done for fractions below .5. Still open here: whether 1.9 truncates or rounds
+(probe `WORKDAY.INTL(45351,10,1.9)`), the blank weekend cell, the boolean weekend, and whether a single number-text holiday
+cell off the calendar (`"-1"`) is reported before the weekend (ours: after; dates.md "the error order").
