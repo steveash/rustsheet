@@ -50,11 +50,13 @@ def check(functions: list[dict[str, Any]], table: list[dict[str, Any]]) -> list[
             continue
         params: list[dict[str, Any]] = entry["params"]
         kinds: list[str] = row["params"]
-        if row["repeat"] is None and len(params) != len(kinds):
+        cycle: list[str] = row["repeat"]
+        if not cycle and len(params) != len(kinds):
             problems.append(f"{name}: catalog has {len(params)} params, the table {len(kinds)}")
-        if row["repeat"]:
-            # Catalog params past the listed ones take the repeat kind (IMSUM's numbers).
-            kinds = kinds + [row["repeat"]] * max(0, len(params) - len(kinds))
+        if cycle:
+            # Catalog params past the listed ones take the repeat kinds in turn (IMSUM's numbers).
+            extra = max(0, len(params) - len(kinds))
+            kinds = kinds + [cycle[i % len(cycle)] for i in range(extra)]
         for param, kind in zip(params, kinds, strict=False):
             modes, lifts_arrays = RULE[kind]
             label = f"{name}({param['name']})"
