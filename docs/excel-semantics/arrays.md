@@ -448,10 +448,10 @@ Tasks: T-1083 (generator modes)
 
 ## UNIQUE's and SORTBY's lifted elements
 Rule: when UNIQUE's by_col or exactly_once, or SORTBY's sort_order, lifts over entries that are not all equal, only
-the first element is its call's top-left; every later element is empty, even where its entry equals the first. An
-empty element spills as 0, and ISBLANK of it is TRUE, `INDEX(..,i,1)&"|"` is "|", SUM of it 0, and ROWS, COLUMNS and
-`INDEX(INDEX(..,i,1),1,1)` of it `#VALUE!` (the spill, ISBLANK and `&"|"` cells are SORTBY's; UNIQUE's empty elements
-are evidenced by SUM 0 and ROWS, COLUMNS and INDEX `#VALUE!` only). When every entry is equal, each element is the
+the first element is its call's top-left (for UNIQUE, the first whose call is not an error; an error element stays);
+every later element is empty, even where its entry equals the first. An empty element spills as 0, and ISBLANK of it is
+TRUE, `INDEX(..,i,1)&"|"` is "|", TYPE 1, SUM of it 0, and ROWS, COLUMNS and `INDEX(INDEX(..,i,1),1,1)` of it `#VALUE!`
+(SORTBY's cells and, for UNIQUE, probes/m7-unique-lift-elements). When every entry is equal, each element is the
 top-left of its call.
 - UNIQUE in detail (probes/m7-unique-lift-elements, excel-graph, 2026-10-22, T-2300; D1:D3 = x,y,x, E1:E2 = FALSE,TRUE):
   - The empty element spills as 0, ISBLANK of it is TRUE, `&"|"` is "|", TYPE 1, SUM 0 and ROWS `#VALUE!`.
