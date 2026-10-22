@@ -320,8 +320,13 @@ impl Model {
         if matches!(value, CalcResult::Lambda(_)) {
             return Self::lambda_as_number_error(cell);
         }
+        // Excel adds 1E-10 to the absolute value before truncating, so a value at most 1E-10 below
+        // an integer counts as that integer: ISODD(7-1E-10) is TRUE, ISODD(7-1.01E-10) FALSE, at 7,
+        // 1001 and 1000001 alike, and ISEVEN(POWER(49,0.5-1E-15)) (6.999999999999972) is FALSE
+        // (probes/iseven-isodd-below-integer, -rounding-threshold, -rounding-window, excel-graph;
+        // docs/excel-semantics/information.md "ISEVEN of a value just below an integer", T-2382).
         match self.cast_to_number(value, cell) {
-            Ok(f) => CalcResult::Boolean((f.abs().trunc() % 2.0 == 0.0) == even),
+            Ok(f) => CalcResult::Boolean(((f.abs() + 1E-10).trunc() % 2.0 == 0.0) == even),
             Err(error) => error,
         }
     }

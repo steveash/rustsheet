@@ -453,6 +453,9 @@ C	probes/intersection-single-operands.case.json	4
 C	probes/intersection-whitespace.case.json	8
 C	probes/is-functions-array-lift.case.json	79
 C	probes/is-functions-scalar-kinds.case.json	89
+C	probes/iseven-isodd-below-integer.case.json	78
+C	probes/iseven-isodd-rounding-threshold.case.json	124
+C	probes/iseven-isodd-rounding-window.case.json	84
 C	probes/isref-function-results.case.json	6
 C	probes/isref-if-range-corners.case.json	18
 C	probes/isref-implicit-xlookup-take.case.json	11
@@ -846,6 +849,7 @@ C	probes/securities-argument-error-order.case.json	192
 C	probes/sequence-step-accumulation.case.json	11
 C	probes/seriessum-blank-and-underflow.case.json	9
 C	probes/seriessum-boolean-coefficients.case.json	18
+C	probes/seriessum-negative-x-fractional-power.case.json	25
 C	probes/seriessum-x-zero-error-precedence.case.json	27
 C	probes/seriessum-x-zero.case.json	22
 C	probes/sheet-names-like-cells-3d-spans.case.json	7
@@ -1030,6 +1034,7 @@ C	probes/text-date-255-char-limit.case.json	43
 C	probes/text-ddd-negative-fraction.case.json	9
 C	probes/text-format-array.case.json	37
 C	probes/text-format-bare-literals.case.json	76
+C	probes/text-format-digits-date-token.case.json	132
 C	probes/text-format-length-limit-b.case.json	27
 C	probes/text-format-length-limit-c.case.json	82
 C	probes/text-format-length-limit-d.case.json	73
@@ -2793,6 +2798,7 @@ F	probes/table-edits/table-unknown-column-load.case.json	F!A1
 F	probes/table-edits/table-unknown-column-load.case.json	F!A2
 F	probes/table-edits/table-unknown-name-load.case.json	F!A1
 F	probes/table-edits/table-unknown-name-load.case.json	F!A2
+F	probes/text-format-digits-date-token.case.json	Sheet1!C25
 F	probes/text-format-length-limit-n.case.json	Sheet1!A2
 F	probes/text-format-length-limit-n.case.json	Sheet1!A7
 F	probes/text-format-length-limit-n.case.json	Sheet1!A8

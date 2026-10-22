@@ -309,12 +309,20 @@ text, boolean, error or blank cell and over an OFFSET/INDIRECT result (T-2262). 
 CELL's range info_type implemented (T-2161, `fn_cell`); TYPE of a one-cell range implemented (T-2156, `fn_type`).
 
 ## ISEVEN of a value just below an integer (T-2382)
-Observation: `ISEVEN(POWER(7*Data!$A$9,0.5-Data!C$5))` with A9 = 7 and C5 = 1E-15 is FALSE (gen-m5/bf8903e05ec369ca Calc!A392,
-excel-graph, 2026-10-22). Ours computes `POWER(49,0.499999999999999)` = 6.999999999999972, truncates it to 6 and says TRUE. The
-15-digit cut INT and TRUNC take (numbers.md "INT cuts to 15 significant digits first") gives 6.99999999999997, still 6. So either
-Excel's POWER here is 7 or more (about 17 ulps from ours, unlikely), or ISEVEN/ISODD round their argument more coarsely than the
-15-digit cut before truncating. Unprobed; T-2382 probes both.
-Status: OBSERVED
+Rule: ISEVEN and ISODD take the parity of `TRUNC(ABS(x) + 1E-10)`: a value no more than 1E-10 below an integer counts as that
+integer, whatever its size, with the same window for negatives (on the absolute value). `ISODD(7-1E-10)`,
+`ISODD(1001-1E-10)`, `ISODD(1000001-1E-10)`, `ISODD(0.9999999999)` and `ISODD(-(7-1E-10))` are TRUE; `ISODD(7-1.01E-10)`,
+`ISODD(1001-1.01E-10)`, `ISODD(7-2E-10)`, `ISODD(1-2^-33)` and `ISODD(6.9999999)` are FALSE. It is an absolute window, not a
+15-digit cut: `ISODD(1E+15-0.25)` is TRUE (999999999999999), and values just above an integer stay put (`ISODD(6+1E-9)` FALSE).
+So `ISEVEN(POWER(49,0.5-1E-15))` is FALSE: Excel's POWER is the same 6.999999999999972 as ours (the cell itself; INT and TRUNC
+of it are 6), and the 1E-10 window lifts it to 7 (gen-m5/bf8903e05ec369ca Calc!A392).
+The fit: `TRUNC(ABS(x)+1E-10)` in IEEE doubles matches all 128 ISEVEN/ISODD cells of the three probes. The candidates
+"round to 10 decimals", "fraction ≥ 1-1E-10" and windows of 1.009E-10 or more each miss cells.
+Evidence: probes/iseven-isodd-below-integer, probes/iseven-isodd-rounding-threshold, probes/iseven-isodd-rounding-window
+(excel-graph, 2026-10-22, T-2382).
+Implemented in: `Model::parity_of` (crates/rustsheet-engine/src/functions/information/mod.rs, T-2382)
+Status: VERIFIED (excel-graph)
+Tasks: T-2382
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
