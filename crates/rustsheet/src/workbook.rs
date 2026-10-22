@@ -357,15 +357,16 @@ impl Workbook {
             .map_err(crate::error::EditError::Engine)
     }
 
-    /// Removes the table `name`; its cells stay. Harness only (decisions 0076, 0098): the eval
-    /// replays a case's `delete_table` sheet op with it. It does not recalculate.
+    /// Deletes the table `name` and clears its cells, as Graph's `DELETE tables('T')` does
+    /// (T-2341). Harness only (decisions 0076, 0098): the eval replays a case's `delete_table`
+    /// sheet op with it. It does not recalculate.
     ///
     /// # Errors
     /// [`EditError::Engine`] when there is no table with that exact name.
     #[cfg(feature = "harness_row_insert")]
-    pub fn remove_table(&mut self, name: &str) -> Result<(), crate::error::EditError> {
+    pub fn delete_table(&mut self, name: &str) -> Result<(), crate::error::EditError> {
         self.model
-            .remove_table(name)
+            .delete_table(name)
             .map_err(crate::error::EditError::Engine)
     }
 
@@ -982,7 +983,7 @@ mod tests {
             ));
         }
         assert!(matches!(
-            wb.remove_table("Nope"),
+            wb.delete_table("Nope"),
             Err(crate::error::EditError::Engine(_))
         ));
     }
