@@ -883,7 +883,7 @@ are `#VALUE!` (`TEXTBEFORE("aBc","b",1,2)`; `TEXTBEFORE("abc","",2,123456789.123
 `TEXTBEFORE("b","a",1,0,0,5)` is "5", `-2.5` is "-2.5", TRUE is "TRUE" (also gen-m7 ac67253061bba16a A776, A1345).
 Evidence: probes/t2314-textbefore-instance-bound (excel-graph, 2026-10-22) and gen-m7 (excel-graph, 2026-10-21, T-2225).
 Ours: matches (`text_around_element`, `around_options` and `around_not_found` in functions/text/before_after.rs, T-2314). The probe's
-`TEXTBEFORE("abc","b",1,-0.5)` does not tell cutting toward zero from flooring apart (both match); UNVERIFIED for a match_mode in (-1,0).
+`TEXTBEFORE("abc","b",1,-0.5)` is "a", not `#VALUE!`: flooring -0.5 would give the invalid -1 (A2), so match_mode is cut toward zero.
 Status: VERIFIED (excel-graph)
 Tasks: T-2314
 
