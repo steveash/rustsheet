@@ -3,7 +3,7 @@ id: T-2277
 title: "HYPERLINK: an error link_location is the result, whatever friendly_name is (no spill)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
