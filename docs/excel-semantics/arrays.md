@@ -284,7 +284,7 @@ Implemented in: `coerce_to_f64` (crates/rustsheet-engine/src/functions/math_and_
 Status: VERIFIED (Excel-cached; the boolean rule excel-graph)
 Tasks: T-0943, T-1358
 A single blank cell is a blank matrix too: `MINVERSE(B4)`, `MDETERM(D$1)`, `MMULT(100,C$9)` and `MMULT(1E-15,B11)`
-with the cell blank are `#VALUE!`. Implemented in `Model::eval_matrix_arg` (matrix.rs, T-2164); any blank result, not only a direct reference, stays blank (a blank through IF/INDEX/CHOOSE is unprobed). So does the empty value a lookup gives for a blank result cell: `MMULT(LOOKUP(TRUE,Data!B2:B10,Data!E11:E11),2.5)` is `#VALUE!` (probes/lookup-short-result-vector A20, T-2278; lookup.md "LOOKUP past a short result vector"), as do `MMULT(,2)`, IFERROR of a blank and `IF(TRUE,<blank>)` (probes/lookup-t2278-followups A1-A5). Evidence (excel-graph, 2026-10-20): gen-m5/cf893ec19f53a7fc
+with the cell blank are `#VALUE!`. Implemented in `Model::eval_matrix_arg` (matrix.rs, T-2164); any blank result, not only a direct reference, stays blank (a blank through INDEX or CHOOSE is unprobed). So does the empty value a lookup gives for a blank result cell: `MMULT(LOOKUP(TRUE,Data!B2:B10,Data!E11:E11),2.5)` is `#VALUE!` (probes/lookup-short-result-vector A20, T-2278; lookup.md "LOOKUP past a short result vector"), as do `MMULT(,2)`, IFERROR of a blank and `IF(TRUE,<blank>)` (probes/lookup-t2278-followups A1-A5). Evidence (excel-graph, 2026-10-20): gen-m5/cf893ec19f53a7fc
 Calc!A204, gen-m5/fc81c2f704bef138 Calc!A381, gen-m5/3e134e52393061b1 Calc!A10, gen-m5/d9fb1e918971111b Calc!A213 (T-2164).
 
 ## MDETERM: partial-pivot LU, no singularity cutoff
