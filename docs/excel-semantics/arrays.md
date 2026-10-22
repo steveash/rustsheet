@@ -1128,12 +1128,13 @@ with 1,000 to 20,000 levels made Excel for the web's createSession fail (`rustsh
 Evidence: probes/lambda-call-depth H1-H6, I1-I6 (excel-graph, 2026-10-19, T-0439).
 Ours: nested LAMBDA calls may use four times the evaluation's stack budget (decision 0080; `set_max_evaluation_stack`,
 256 KB by default), counted from the cell's own base so cells and calls share it (`Model::lambda_stack_base`); past it a call
-is `#NUM!` instead of overflowing the stack. With the defaults that is about 200 levels in a release build, so the 300-level
-probe cells H3 and H6 (and I3, I6 that read them) are `#NUM!` and listed in eval/suites/probes/deviations; a debug build stops
-near 50 levels, its call frames being about four times larger. Before T-0439 such recursion overflowed the stack and aborted
-the process. Smaller call frames or a larger default budget would let 300 levels fit (T-0444).
+is `#NUM!` instead of overflowing the stack. With the defaults that is 408 levels of the self-call and 491 of the REDUCE chain
+in a release build (116 and 147 in a debug build), so the 300-level probe cells H3 and H6 match Excel; a call 20,000 deep is
+`#NUM!`. Before T-0439 such recursion overflowed the stack and aborted the process; before T-0444 (decision 0100) a level took
+twice the stack and only about 200 fit, the 300-level cells being listed deviations.
 Status: DEVIATION (decision 0014)
-Implemented in: crates/rustsheet-engine/src/functions/logical/lambda.rs (`LAMBDA_STACK_SHARE`, `Model::lambda_stack_base`).
+Implemented in: crates/rustsheet-engine/src/functions/logical/lambda.rs (`LAMBDA_STACK_SHARE`, `Model::lambda_stack_base`),
+crates/rustsheet-engine/src/model.rs (`evaluate_node_in_context`), crates/rustsheet-engine/src/node_frames.rs.
 Tasks: T-0439, T-0444
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references

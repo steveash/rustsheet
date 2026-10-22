@@ -465,6 +465,7 @@ C	probes/lambda-value-arguments.case.json	41
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
+C	probes/legacy-array-at-operators.case.json	37
 C	probes/legacy-array-at-shapes.case.json	40
 C	probes/legacy-array-result.case.json	46
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
@@ -933,6 +934,7 @@ C	probes/t2200-blank-and-padded-m5-args.case.json	70
 C	probes/t2201-mround-quotient-rounding.case.json	221
 C	probes/t2202-text-code-check-on-text.case.json	88
 C	probes/t2215-int-negatives-boundary.case.json	63
+C	probes/t2238-holidays-if-3d-branch.case.json	76
 C	probes/t2275-address-bounds.case.json	298
 C	probes/t2277-hyperlink-location-length.case.json	15
 C	probes/t2280-ifs-one-cell-range-condition.case.json	82
