@@ -493,6 +493,7 @@ C	probes/legacy-n-t-reference-args-2.case.json	30
 C	probes/legacy-n-t-reference-args.case.json	41
 C	probes/legacy-one-cell-shape-intersection.case.json	26
 C	probes/legacy-switch-at-shapes.case.json	57
+C	probes/legacy-switch-callers.case.json	177
 C	probes/legacy-type-intersection.case.json	17
 C	probes/legacy-value-argument-intersection-b.case.json	64
 C	probes/legacy-value-argument-intersection-c.case.json	33
@@ -1206,6 +1207,7 @@ C	probes/weeknum-stale-sheet-order.case.json	4
 C	probes/weeknum-stale-volatile-reader.case.json	1
 C	probes/weeknum-sumproduct-blank-type.case.json	12
 C	probes/whole-column-empty-walkers.case.json	16
+C	probes/workday-holidays-error-order.case.json	541
 C	probes/workday-lift-errors.case.json	35
 C	probes/workday-serial-zero.case.json	58
 C	probes/wrapcols-wraprows-pad-with.case.json	122
