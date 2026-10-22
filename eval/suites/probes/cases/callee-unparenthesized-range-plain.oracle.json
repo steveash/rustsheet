@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "C1": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "D1": {
+    "t": "s",
+    "v": "=$A$1:A2(2)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "118af3ae65e1100d3b2c100110c5c25030b46dd9eddf9d397b345892ddcffc04",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-22T10:08:57+00:00",
+  "version": null,
+  "workbook_name": "223b3003c42d1acb73ea4ab2864397ad18fc97d8cd4425908795c3cd72487e3c.xlsx"
+ }
+}
