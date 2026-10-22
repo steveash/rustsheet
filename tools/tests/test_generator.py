@@ -215,15 +215,15 @@ def test_generator_emits_every_m6_date_function() -> None:
     assert not sorted(m6_date - emitted("M6"))
 
 
-def test_generator_emits_every_m6_lookup_function_but_getpivotdata() -> None:
-    # T-1238: every in-scope M6 lookup entry is generator-ready but GETPIVOTDATA (no pivot table to read).
+def test_generator_emits_every_m6_lookup_function() -> None:
+    # T-1238: every in-scope M6 lookup entry is generator-ready; GETPIVOTDATA reads the case's own pivot (T-2396).
     m6_lookup = {
         f["name"]
         for f in catalog().functions
         if "params" in f and f["milestone"] == "M6" and f["category"] == "lookup"
     }
-    assert len(m6_lookup) == 18
-    assert "GETPIVOTDATA" not in m6_lookup
+    assert len(m6_lookup) == 19
+    assert "GETPIVOTDATA" in m6_lookup
     assert not sorted(m6_lookup - emitted("M6"))
 
 
@@ -340,7 +340,8 @@ def test_lambdas_get_as_many_parameters_as_values() -> None:
         )
     ]
     assert mapped and all(a.count(",") == b.count(",") for a, b in mapped)
-    made = re.findall(r"MAKEARRAY\([^,()]*,[^,()]*,LAMBDA\(((?:[a-z_]+,)+)", " ".join(formulas))
+    # A pooled LAMBDA may mark its last parameter optional (`LAMBDA(w,[y],ISOMITTED(y))`).
+    made = re.findall(r"MAKEARRAY\([^,()]*,[^,()]*,LAMBDA\(((?:\[?[a-z_]+\]?,)+)", " ".join(formulas))
     assert made and all(names.count(",") == 2 for names in made), made
 
 

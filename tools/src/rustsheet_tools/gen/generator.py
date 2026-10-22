@@ -22,6 +22,7 @@ from typing import Any
 import yaml
 
 from rustsheet_tools.gen.common import quoted
+from rustsheet_tools.gen.pivots import PivotSource, build_source, pivot_call
 from rustsheet_tools.gen.pools import POOLS, lambda_arity
 
 MILESTONES = ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"]
@@ -148,6 +149,9 @@ class Gen:
     # visible (a LET variable is visible after its value, a LAMBDA parameter in the body).
     scope: list[str] = field(default_factory=list)
     pending: list[str] = field(default_factory=list)
+    # The case's pivot (sheet `Pivot`), built from its own seeded stream at the first `pivot: true` call (T-2396).
+    pivot_seed: int = 0
+    pivot: PivotSource | None = None
 
     # -- references into the data sheet --------------------------------------------------
     def cell_ref(self) -> str:
@@ -208,6 +212,11 @@ class Gen:
     def call_fn(self, fn: dict[str, Any], depth: int) -> str:
         """A call to `fn` with generated arguments."""
         self.used.add(fn["name"])
+        if fn.get("pivot"):
+            # GETPIVOTDATA queries the case's pivot: its arguments are names from it, not free expressions.
+            if self.pivot is None:
+                self.pivot = build_source(random.Random(f"pivot-{self.pivot_seed}"))
+            return pivot_call(self.rng, self.pivot, fn.get("spelled", fn["name"]))
         args: list[str] = []
         params: list[dict[str, Any]] = fn["params"]
         outer, outer_pending = len(self.scope), self.pending
@@ -438,7 +447,7 @@ def generate_case(
     themselves are the same as without it. `functions` (catalog names) and `category` narrow the `focus`
     targets; an unknown name, an empty selection or a function outside `milestone` is a ValueError."""
     rng = random.Random(seed)
-    g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth)
+    g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth, pivot_seed=seed)
     targets = [f for f in g.catalog.functions if f.get("milestone") == milestone] if focus else []
     if (functions or category is not None) and not focus:
         msg = "--functions and --category narrow --focus; pass --focus too"
@@ -483,7 +492,11 @@ def generate_case(
         "format": "rustsheet-case/v1",
         "description": f"generated P0 seed={seed} milestone={milestone}" + (" spill" if spill else ""),
         "tags": tags,
-        "sheets": [{"name": "Data", "cells": data}, {"name": "Calc", "cells": calc}],
+        "sheets": [
+            {"name": "Data", "cells": data},
+            {"name": "Calc", "cells": calc},
+            *([g.pivot.spec_sheet()] if g.pivot is not None else []),
+        ],
         "expected": {},
         "check": check,
     }
