@@ -4,8 +4,8 @@
 use super::ArgKind::{Lift, LiftArrays, Whole, WholeByCaller};
 use super::KernelWork::{Constant, Output};
 use super::{
-    ArgKinds, CallResult, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2, LIFT_1_OF_3, LIFT_2,
-    LIFT_2_OF_3, LIFT_3,
+    ArgKinds, CallResult, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2,
+    LIFT_1_OF_3, LIFT_2, LIFT_2_OF_3, LIFT_3,
 };
 use crate::functions::Function;
 

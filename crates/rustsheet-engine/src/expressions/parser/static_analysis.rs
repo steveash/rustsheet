@@ -29,10 +29,10 @@ use signature::{
     args_signature_lambda, args_signature_let, args_signature_lookup, args_signature_map,
     args_signature_match, args_signature_npv, args_signature_offset, args_signature_one_vector,
     args_signature_pivotby, args_signature_randarray, args_signature_reduce, args_signature_row,
-    args_signature_scalars, args_signature_scan, args_signature_sort,
-    args_signature_sumif, args_signature_textafter, args_signature_textjoin,
-    args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_wrapcols, args_signature_xlookup, args_signature_xmatch, Signature,
+    args_signature_scalars, args_signature_scan, args_signature_sort, args_signature_sumif,
+    args_signature_textafter, args_signature_textjoin, args_signature_textsplit,
+    args_signature_tocol, args_signature_trimrange, args_signature_wrapcols,
+    args_signature_xlookup, args_signature_xmatch, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
