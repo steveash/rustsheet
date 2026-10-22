@@ -153,7 +153,10 @@ Ours: a pass in Excel's order makes at most `4 × formula cells + 2^24` moves
 (`excel_order::move_budget`); past that, the rest of the pass evaluates on demand, as the
 default pass does, and WEEKNUM readers can differ from Excel. A reverse chain of about 5,800
 cells fits the floor alone; a cycle of formulas ends there too. A workbook without a reader
-never runs this pass. Measured (release, 2026-10-22): a running total plus one reader takes
+never runs this pass. The budget counts moves, not work: a cell runs again (up to its next
+blocking read) each time the precedent it waits on is calculated, so a layout of range reads
+such as `B_k = SUM(B$1:B_{k-1})+1` costs about n^1.3 to n^1.5 (420 ms at 8,000 rows, 1.5 s at
+20,000, security review of T-2068). Measured (release, 2026-10-22): a running total plus one reader takes
 34 ms at 10k rows and 75 ms at 100k rows, against 1.5 ms and 23 ms without the second pass.
 Evidence: directive 5 (CLAUDE.md), SPEC-0017 "Cost".
 Status: DEVIATION (decision 0014)
