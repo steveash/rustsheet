@@ -991,7 +991,7 @@ of January 1900, not on the weekday-faithful stand-in (serial 1 = 1899-12-31) th
   ee56a4ed5a612a0d A185, b54448af3fde07ca A55; 26 cells). Probe A50-A98: `DATEDIF(59,61,"MD")` = 2 and `DATEDIF(60,61,"MD")` = 1
   (February 1900 lends 29 days), `DATEDIF(0,61,"MD")` = 1, `DATEDIF(0,60,"YD")` = 60, `DATEDIF(0,366,"YD")` = 366,
   `DATEDIF(0,367,"YD")` = 1, `DATEDIF(60,1520,"Y")` = 3, `DATEDIF(60,1521,"Y")` = 4, `DATEDIF(60,426,"M")` = 12,
-  `DATEDIF(60,1520,"YM")` = 11, `DATEDIF(0,0,"D")` = 0; a negative date is `#NUM!` (`DATEDIF(-1E-15,10,"D")`). An unknown unit is `#NUM!` rather than `#VALUE!` when a date is day 0:
+  `DATEDIF(60,1520,"YM")` = 11, `DATEDIF(0,0,"D")` = 0; a negative date is `#NUM!` (`DATEDIF(-1E-15,10,"D")`). An unknown unit is `#NUM!` for any pair, day 0 included ("DATEDIF and DAYS360 error order with a bad unit or method", T-2288):
   `DATEDIF(0.1,874,"1a*")`, `DATEDIF(<blank>,0,<bad unit>)` (gen-m6/03333cc38ec06a14 A269, 3a26794015dfbe9d A225, 4ca39e0876796fa5 A362,
   60bcd25271767317 A272, 9130ade4b1924cc8 A137, d0c30225243fde60 A129, gen-m7/44ef4f5638e25bcd A18).
 - EDATE reads the displayed day and clamps on the real calendar: serial 60 is 29 February, so `EDATE(60,1)` = 89 (29 March),
