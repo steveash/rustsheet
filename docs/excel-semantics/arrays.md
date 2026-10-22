@@ -1432,3 +1432,35 @@ analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}
 (T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; each element is its call's top-left, UNVERIFIED against SORTBY's and UNIQUE's first-element-only rule, and a range by_col lifts too, UNVERIFIED: T-2366 probes both); TEXTJOIN: one cell (T-2318).
 Status: VERIFIED (excel-graph)
 Tasks: T-2313, T-2318, T-2319
+
+## GROUPBY and PIVOTBY lift over an array field_headers or total depth
+Rule: an array (or a multi-cell range) given as GROUPBY's `field_headers` or `total_depth`, or PIVOTBY's `field_headers`,
+`row_total_depth` or `col_total_depth`, lifts the call. The result has the array's shape, and each element is the top-left cell
+of the call with that element in the argument's place, or that call's error. A one-element array lifts too.
+- `GROUPBY(k,v,SUM,{0,1})` is `a`, `a` (the first key of each result); `{0;3}` is a column of two; `{3}` is the one cell `a`;
+  `{"x",1}` and `{5,1}` are `#VALUE!`, `a` (A57-A113).
+- PIVOTBY's top-left cell is its empty corner: `PIVOTBY(r,c,v,SUM,{0,1})` and `PIVOTBY(r,c,v,SUM,0,{0,1})` are `""`, `""`
+  (A121, A129). With an invalid later argument (a text `row_sort_order`) every element is `#VALUE!` (A137).
+- Each element's call checks its arguments in its own order. Text that is no number is `#VALUE!` in the element's place, ahead
+  of a later argument's error value, and an error element is that error: `GROUPBY(k,v,SUM,0,{1,"x",#N/A},,,1/0)` is `#DIV/0!`,
+  `#VALUE!`, `#N/A` (A97).
+- A multi-cell range lifts as an array does (`Data!D1:E1` holding 0 and 1, as field_headers or total_depth: A177, A225), and a
+  blank element is valid (A185; whether as 0 or as omitted is unprobed: the data has no header to tell them apart).
+- An invalid number comes after a later argument's error value (`GROUPBY(k,v,SUM,0,{5},,,1/0)` and the scalar
+  `...,0,5,,,1/0)` are `#DIV/0!`: A193, A217), but text that is no number, typed or computed, comes before it,
+  scalar or lifted (`GROUPBY(k,v,SUM,0,"x",,,1/0)` is `#VALUE!`: A201). Text read from a one-cell reference is unprobed (ours
+  keeps the reference, so the later error wins).
+- Two array options broadcast: `GROUPBY(k,v,SUM,{0,1},{0;1})` is 2x2 (A209:B210; not yet matched, T-2399).
+- `sort_order` does not lift (it takes arrays of its own): `GROUPBY(k,v,SUM,0,1,{1,-1})` with one key is a single `#VALUE!` (A81).
+- REGEXEXTRACT with an invalid return mode (-1) is `#VALUE!`, inside a GROUPBY function too (K1-K10). excel-graph returns those
+  spilled cells as rich errors it cannot decode, so the probe reads them through INDEX and ERROR.TYPE (A33, A41; T-2397).
+- Not yet matched: `SCAN(GROUPBY(..,LAMBDA(w,w)),0,MIN)` is a single `#N/A` and `SCAN(GROUPBY(..,SUM),0,MIN)` a single 0
+  (A153, A161; T-2398).
+Evidence: probes/groupby-lifted-args (excel-graph, 2026-10-22, T-2359); gen-m7/18b80d3fd292d63a A1481, 611ce3bbfab27cef A1584,
+b24ce74f08d3f91a A1778.
+Ours: `Model::lift_options` (functions/lookup_and_reference/lifted_options.rs) evaluates each option once and re-runs the call
+once per class of element (a whole number within the valid range, another number, a boolean, text that is no number, an error),
+with every other argument frozen to its value, so neither an array's size nor nesting multiplies the work.
+`Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
+Status: VERIFIED (excel-graph)
+Tasks: T-2359, T-2397, T-2398, T-2399

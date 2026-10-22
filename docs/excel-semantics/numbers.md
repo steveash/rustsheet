@@ -1777,9 +1777,12 @@ truncates to 0 gives empty text: `BASE(0.2,29,0.3)` is "" (`LENB` of it is 0; ou
 (`MID(BASE(0,22),1,MONTH(43194))` = "0"), and with `min_length` n it is n zeros (`BASE(0.1,15,9)` "000000000",
 `BASE(0.1,24,10)`), which is what a default `min_length` of 1 would give.
 A number past 2^53 is `#NUM!`: `BASE(ROUNDUP(2^53,-6),10,5)` (9007199255000000) and BASE of about 7.47E+19 (a SUM of products of
-123456789.123) in radix 34 are `#NUM!` (ours "9007199255000000" and "3TDTK1V8J6TPP"; above 2^63 ours prints i64::MAX's digits). Whether
-2^53 itself is accepted is unprobed (T-2289).
-Evidence (excel-graph, 2026-10-22, T-2252 triage): gen-m5/dde5ea295a38fb16 Calc!A254 (zero, min_length 0.3);
+123456789.123) in radix 34 are `#NUM!` (ours "9007199255000000" and "3TDTK1V8J6TPP"; above 2^63 ours prints i64::MAX's digits).
+The cut is exact: `number` of 2^53-1 is accepted (radix 2 prints 53 ones, radix 16 "1FFFFFFFFFFFFF", radix 36 "2GOSA7PA2GV"),
+while 2^53, 2^53+2, 2^63, 2^64 and 1E+300 are `#NUM!` in radix 2, 16 and 36, with or without `min_length`; `BASE(-2^53,10)`
+is `#NUM!` too (negatives are `#NUM!` anyway). `BASE(9007199254740993,10)` is accepted and
+gives "9007199254740990" (15 significant digits, below 2^53); whether the cut happens on entry or inside BASE is unprobed.
+Evidence (excel-graph, 2026-10-22): probes/base-number-upper-bound (T-2289); T-2252 triage: gen-m5/dde5ea295a38fb16 Calc!A254 (zero, min_length 0.3);
 gen-m5/55afc805e00a1509 Calc!A101, gen-m5/08eafc9e61602bcb Calc!A98 (past 2^53); the "0" and zero-padded cells, which pass:
 gen-m5/cd883013bea3b305 Calc!A22, gen-m5/9a7a94353845ea12 Calc!A45, gen-m5/90bf45bea539723d Calc!A251.
 Status: VERIFIED (excel-graph) for the cells above; engine DIVERGENT until T-2373 and T-2374 land.
