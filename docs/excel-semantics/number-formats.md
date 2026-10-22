@@ -66,7 +66,7 @@ Rule: a bare (unquoted, unescaped) digit 1-9 is a literal in a number section (`
 `"4 0"` = "4 3"). But a section holding one beside any date or time token, before or after it, makes the whole code
 `#VALUE!`. That holds for 3.14159, 100 and -3 alike, with `"42abc"`, `"4b"`, `"b4"`, `"4 b"`, `"1b"`, `"9b"`, `"4d"`, `"d4"`,
 `"4 d"`, `"d 4"`, `"dd 4"`, `"4yy"`, `"4mmm"`, `"4h"`, `"4s"`, `"4:mm"`, `"4e"`, `"4g"`, `"[h]4"`, `"4[h]"`, `"4/d"`, `"b.4"`,
-`"4%b"` and `"x4b"` (rows 1-15, 22-24, 27-28, 30-39). AM/PM alone does not count (`"4am/pm"` and `"4AM/PM"` are "4AM"), and
+`"4%b"` and `"x4b"` (rows 1-6, 9-15, 22-24, 27-28, 30-34, 37-39; `"0b"` and `"#b"`, rows 7-8, are the digit-placeholder rule of T-2202). AM/PM alone does not count (`"4am/pm"` and `"4AM/PM"` are "4AM"), and
 a quoted or escaped digit prints (`"\4b"` and `"""4""b"` are "443"). The check covers every number section, also one the
 value does not use: `TEXT(3.14159,"0;4b")` is `#VALUE!`, while `"4;b"` gives "4" and `"b;4"` "43". A text or boolean value
 is rejected too (`TEXT("x","42abc")`, `TEXT(TRUE,"42abc")` and `TEXT("5","42abc")` are `#VALUE!`; `TEXT("x","4;b")` is "x";
