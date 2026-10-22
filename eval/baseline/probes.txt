@@ -1130,6 +1130,7 @@ C	probes/trimrange-lift-sources.case.json	44
 C	probes/trunc-decimal-stages.case.json	56
 C	probes/type-long-text-refs.case.json	8
 C	probes/type-long-text.case.json	30
+C	probes/type-one-cell-range-kinds.case.json	20
 C	probes/typed-currency-percent-input.case.json	66
 C	probes/typed-number-tiny.case.json	24
 C	probes/typed-paren-number-input.case.json	24
@@ -1910,10 +1911,6 @@ F	probes/incomplete-gamma-cap.case.json	Sheet1!E8
 F	probes/incomplete-gamma-cap.case.json	Sheet1!E9
 F	probes/index-reference-args.case.json	Calc!A4
 F	probes/index-reference-args.case.json	Calc!A5
-F	probes/index-zero-index-scalar-shape.case.json	S!E5
-F	probes/index-zero-index-scalar-shape.case.json	S!E6
-F	probes/index-zero-index-scalar-shape.case.json	S!F5
-F	probes/index-zero-index-scalar-shape.case.json	S!F6
 F	probes/lambda-escaping-closures.case.json	Sheet1!H10
 F	probes/lambda-escaping-closures.case.json	Sheet1!H2
 F	probes/lambda-escaping-closures.case.json	Sheet1!H3
