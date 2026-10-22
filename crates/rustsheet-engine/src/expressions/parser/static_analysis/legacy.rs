@@ -248,8 +248,8 @@ const NO_AUTOMATIC_AT: [Function; 7] = [
     Function::Take,
 ];
 
-/// [`add_legacy_intersection`] on a whole formula. A legacy formula holding a SWITCH at any depth
-/// gets no automatic `@` anywhere, not on the SWITCH, its arguments or the rest of the formula,
+/// [`add_legacy_intersection`] on a whole formula. A legacy formula holding a SWITCH, or any other
+/// [`NO_AUTOMATIC_AT`] function, at any depth gets no automatic `@` anywhere, not on the SWITCH, its arguments or the rest of the formula,
 /// and the cell spills: `=SIN(SWITCH(1,1,{2;3}))`, `=SWITCH(1,1,2)+Z30:Z32`, `=SWITCH(1,1,2)`,
 /// `=IF(1,SWITCH(1,1,{2;3}))` all show no `@` in FORMULATEXT, while `=ABS(Z30:Z32)` keeps its
 /// (probes/legacy-switch-callers, legacy-switch-at-shapes; T-1964, T-2121). An `@` typed in such a
