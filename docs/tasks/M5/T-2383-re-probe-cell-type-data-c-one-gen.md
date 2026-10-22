@@ -3,7 +3,7 @@ id: T-2383
 title: "Re-probe CELL('type',Data!C$9): one gen-m5 cell reads the referenced sheet, against the own-sheet rule"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
