@@ -3,7 +3,7 @@ id: T-2378
 title: "FIXED of a very large number is #VALUE! (FIXED(99^100)): find the bound"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
