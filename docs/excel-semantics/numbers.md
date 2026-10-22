@@ -1545,6 +1545,7 @@ Observation (T-2381): `SERIESSUM(MINVERSE(0.2),-AGGREGATE(15,Data!$C12,Data!A6:C
 is `#VALUE!` (gen-m5/c634f6ec7b14fe08 Calc!A322, excel-graph, 2026-10-22); ours is `#NUM!` from the AGGREGATE, which truncates the
 option to 0 and reads k = B2 (blank, 0). Either a negative option below 0 is `#VALUE!` before truncation (as -0.0001 < 0), or a
 multi-cell range k for functions 14-19 is `#VALUE!` (the formula sits in row 322, outside B2:E12); the cell cannot tell which.
+Status: OBSERVED (one excel-graph cell; T-2381 probes it)
 
 A lifted call is subject to the *IF(S) cell-visit cap (criteria.md, "*IF(S) lift array criteria", DEVIATION):
 the elements to compute times the cells every element reads (the used cells of each reference plus the size of each

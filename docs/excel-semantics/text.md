@@ -600,6 +600,7 @@ Observation (T-2379): `NUMBERVALUE(0.2,PROPER(REPT("ab",300)),"a*2")` is `#VALUE
 readings fit, none probed: a separator over 255 characters is `#VALUE!` (as REPT's, CODE's and UNICODE's text, "REPT, CODE, UNICODE and
 T refuse a text argument over 255 UTF-16 units" below); the first characters "A" and "a" clash case-insensitively; or "0.2"
 with "A" as the decimal separator no longer reads its "." as a decimal point (ours reads `NUMBERVALUE("0.2","A","b")` as 0.2).
+Status of this observation: OBSERVED (one excel-graph cell; T-2379 probes it).
 Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
 when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
 Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing

@@ -65,6 +65,7 @@ Observation (T-2377): bare digits in front of a date token make the code `#VALUE
 excel-graph, 2026-10-22), while `"ABC"` alone is "A43C" (above) and a bare digit alone is a literal (`TEXT(5,"2")` = "2",
 "Bare letters and digits in a number format"). Ours prints "42a43c". The likeliest reading, unprobed, is that a bare digit 1-9
 counts as a number token, so it joins the rule that a date token beside digit placeholders is `#VALUE!` (`"0b"`, T-2202).
+Status of this observation: OBSERVED (one excel-graph cell; T-2377 probes it).
 
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the
