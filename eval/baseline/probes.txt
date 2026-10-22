@@ -438,6 +438,7 @@ C	probes/info-cell-address-cross-sheet.case.json	13
 C	probes/info-cell-contents-range.case.json	50
 C	probes/info-cell-info-type-grid-errors.case.json	17
 C	probes/info-cell-legacy-range.case.json	40
+C	probes/info-cell-type-cross-sheet-reprobe.case.json	24
 C	probes/info-logic-argument-modes-2.case.json	11
 C	probes/info-logic-argument-modes.case.json	42
 C	probes/info-modes-isref-value-op.case.json	1
@@ -452,6 +453,9 @@ C	probes/intersection-single-operands.case.json	4
 C	probes/intersection-whitespace.case.json	8
 C	probes/is-functions-array-lift.case.json	79
 C	probes/is-functions-scalar-kinds.case.json	89
+C	probes/iseven-isodd-below-integer.case.json	78
+C	probes/iseven-isodd-rounding-threshold.case.json	124
+C	probes/iseven-isodd-rounding-window.case.json	84
 C	probes/isref-function-results.case.json	6
 C	probes/isref-if-range-corners.case.json	18
 C	probes/isref-implicit-xlookup-take.case.json	11
@@ -493,6 +497,7 @@ C	probes/legacy-n-t-reference-args-2.case.json	30
 C	probes/legacy-n-t-reference-args.case.json	41
 C	probes/legacy-one-cell-shape-intersection.case.json	26
 C	probes/legacy-switch-at-shapes.case.json	57
+C	probes/legacy-switch-callers.case.json	177
 C	probes/legacy-type-intersection.case.json	17
 C	probes/legacy-value-argument-intersection-b.case.json	64
 C	probes/legacy-value-argument-intersection-c.case.json	33

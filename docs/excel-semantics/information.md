@@ -261,12 +261,14 @@ Evidence: probes/info-cell-legacy-range (40 cells; oracle: excel-graph, 2026-10-
 Status: VERIFIED (excel-graph); desktop UNVERIFIED (same caveat as "contents", T-1075 item 9).
 Ours: matches (`cell_info` "TYPE" reads `cell.sheet` since T-1433). Cross-sheet "address": next entry.
 Tasks: T-1230, T-1433
-Conflicting cell (T-2383): `RIGHTB(CELL("type",Data!C$9),3)` is "l" in gen-m5/74b183ca6fc1d190 Calc!A347 (excel-graph,
-2026-10-22), where Data!C9 is the text "abc" and Calc!C9 is blank, so this one cell reads the *referenced* sheet; ours, by the
-own-sheet rule, is "b". Every one of the 25 bare `=CELL("type",Data!..)` cells of the generated suites whose two sheets disagree at
-that address fits the own-sheet rule (for example `CELL("type",Data!C9)` = "b" with Data!C9 a number, gen-m5/901e91c09b347914
-Calc!A391, and `CELL("type",Data!E$6)` = "b" with Data!E6 = 0, gen-m5/38b1b8e51dbad326 Calc!A391), as do the "contents" cells. Whether the rule depends on something the generator varies (the active sheet, calculation order, the RIGHTB caller)
-or the cell is an oracle artefact is open: T-2383 re-probes it. Excel is right either way; the engine keeps the own-sheet rule until then.
+Conflicting cell (T-2383), an oracle artefact: `RIGHTB(CELL("type",Data!C$9),3)` was "l" in gen-m5/74b183ca6fc1d190 Calc!A347
+(excel-graph, 2026-10-22 16:40), where Data!C9 is the text "abc" and Calc!C9 is blank, as if this one cell read the referenced
+sheet. Re-filling the same workbook (identical input_sha256) at 18:17 gave "b", the own-sheet answer, and no other cell of the
+case changed. The re-probe probes/info-cell-type-cross-sheet-reprobe (excel-graph, 2026-10-22, T-2383) fits the own-sheet rule
+in all 24 cells: `CELL("type",Data!C$9)` bare, under RIGHTB, LEFT and `&""`, as `Data!C9`, `Data!$C9` and `Data!$C$9`, eleven
+repeats of the gen formula (A14:A23, A347) all "b"; rows 8 and 10 "b"; Calc!E9 text gives "l" and Calc!G9 a number "v" for
+`Data!E$9` / `Data!G$9` with Data blank there. So excel-graph can, rarely and not repeatably (one observation, T-2383), answer a cross-sheet "type" from
+the referenced sheet; the rule stands, and a single conflicting cell is re-filled before it is believed.
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
 Rule: `CELL("address", ref)` for a reference on another sheet is `[<file name>]<sheet>!<address>`, the sheet name
@@ -307,12 +309,20 @@ text, boolean, error or blank cell and over an OFFSET/INDIRECT result (T-2262). 
 CELL's range info_type implemented (T-2161, `fn_cell`); TYPE of a one-cell range implemented (T-2156, `fn_type`).
 
 ## ISEVEN of a value just below an integer (T-2382)
-Observation: `ISEVEN(POWER(7*Data!$A$9,0.5-Data!C$5))` with A9 = 7 and C5 = 1E-15 is FALSE (gen-m5/bf8903e05ec369ca Calc!A392,
-excel-graph, 2026-10-22). Ours computes `POWER(49,0.499999999999999)` = 6.999999999999972, truncates it to 6 and says TRUE. The
-15-digit cut INT and TRUNC take (numbers.md "INT cuts to 15 significant digits first") gives 6.99999999999997, still 6. So either
-Excel's POWER here is 7 or more (about 17 ulps from ours, unlikely), or ISEVEN/ISODD round their argument more coarsely than the
-15-digit cut before truncating. Unprobed; T-2382 probes both.
-Status: OBSERVED
+Rule: ISEVEN and ISODD take the parity of `TRUNC(ABS(x) + 1E-10)`: a value no more than 1E-10 below an integer counts as that
+integer, whatever its size, with the same window for negatives (on the absolute value). `ISODD(7-1E-10)`,
+`ISODD(1001-1E-10)`, `ISODD(1000001-1E-10)`, `ISODD(0.9999999999)` and `ISODD(-(7-1E-10))` are TRUE; `ISODD(7-1.01E-10)`,
+`ISODD(1001-1.01E-10)`, `ISODD(7-2E-10)`, `ISODD(1-2^-33)` and `ISODD(6.9999999)` are FALSE. It is an absolute window, not a
+15-digit cut: `ISODD(1E+15-0.25)` is TRUE (999999999999999), and values just above an integer stay put (`ISODD(6+1E-9)` FALSE).
+So `ISEVEN(POWER(49,0.5-1E-15))` is FALSE: Excel's POWER is the same 6.999999999999972 as ours (the cell itself; INT and TRUNC
+of it are 6), and the 1E-10 window lifts it to 7 (gen-m5/bf8903e05ec369ca Calc!A392).
+The fit: `TRUNC(ABS(x)+1E-10)` in IEEE doubles matches all 128 ISEVEN/ISODD cells of the three probes. The candidates
+"round to 10 decimals", "fraction ≥ 1-1E-10" and windows of 1.009E-10 or more each miss cells.
+Evidence: probes/iseven-isodd-below-integer, probes/iseven-isodd-rounding-threshold, probes/iseven-isodd-rounding-window
+(excel-graph, 2026-10-22, T-2382).
+Implemented in: `Model::parity_of` (crates/rustsheet-engine/src/functions/information/mod.rs, T-2382)
+Status: VERIFIED (excel-graph)
+Tasks: T-2382
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
