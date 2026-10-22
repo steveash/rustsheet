@@ -970,7 +970,7 @@ BINOM.DIST.RANGE at 393 of 790. Patterns in the BINOM.DIST cells (all counts fro
 - Exact share by p: 48% (0.1), 50% (0.125), 40% (0.2), 45% (0.25), 37% (0.3), 43% (0.5), then 16% (0.7), 14% (0.9),
   8% (0.99), 10% (0.999): it drops sharply above 0.5.
 - pmf against cdf: the pmf is exact at 234 of 1630 (14%), the cdf at 783 of 1630 (48%).
-- Every cdf cell with k = n is exactly 1 (170 of 170), which looks like a short-circuit. The k = 0 pmf, `(1-p)^n`,
+- Every cdf cell with k = n is exactly 1 (170 of 170), which may be a short-circuit (1 is also the exact value, so this does not prove one). The k = 0 pmf, `(1-p)^n`,
   is exact at only 44 of 170, so even that single power is not the exact value rounded once.
 - The exact share falls with n: 30 of 40 at n = 1, 72 of 220 at n = 10, 158 of 720 at n >= 30.
 - For p in {0.5, 0.25, 0.125}, where the exact value is often a short decimal, Excel is still off in 50 to 57% of
