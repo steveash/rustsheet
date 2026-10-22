@@ -3,7 +3,7 @@ id: T-2314
 title: "TEXTBEFORE and TEXTAFTER: instance_num past the text length is #VALUE!, a number if_not_found is returned as text (gen-m7)"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -41,3 +41,9 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 6 known-failure lin
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Probe `probes/t2314-textbefore-instance-bound` (29 cells, excel-graph) showed three rules: |instance_num| above the UTF-16 length of the
+text is `#VALUE!`; match_mode is truncated and must be 0 or 1 (c36ff5f42a1a4d47 A148 was this, not the instance bound: the empty
+delimiter's "ignores the size of instance_num" still holds); a number or boolean if_not_found comes back as text. Implemented in
+`before_after.rs` with unit tests. Eval: gen-m7 990 -> 977 known failures (13 fixed, the 6 owned cells among them), 0 regressions.
