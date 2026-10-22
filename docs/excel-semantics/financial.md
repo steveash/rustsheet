@@ -894,10 +894,10 @@ PRICEMAT and YIELDMAT count the settlement-to-maturity days as DSM = YEARFRAC-da
 a direct 30/360 count: on 2018-02-28 to 2018-03-30 basis 0 and basis 4 agree for them (A103 = A104 = 100.05774336283186,
 A126 = A127 = 0.271557884707002, 32 days), whereas INTRATE, PRICEDISC, RECEIVED and YIELDDISC give different results for
 the two bases (INTRATE A14 = 1.2000000000000002 for 30 days, A15 = 1.125 for 32). Ours already matches (`get_mat_factors`).
-Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624).
+Evidence: probes/discount-security-modes (135 cells, excel-graph, 2026-10-17, T-1624); probes/matdisc-serial-0-60 (160 cells, excel-graph, 2026-10-22, T-2283: PRICEMAT and YIELDMAT on bases 0-4 with issue 0, 1, 59 and 60, settlement 59, 60, 61 and 366, maturity 400, all matching).
 Ours: the settlement-0 cells compute since T-1409 (YEARFRAC accepts serial 0, on every basis since T-2237, dates.md "YEARFRAC accepts serial 0"; T-1757 added a unit test); the last-digit misses are matched since T-2032 ("Discount securities: day count and year length").
 Status: VERIFIED (excel-graph)
-Tasks: T-1624, T-1757, T-1374, T-2032
+Tasks: T-1624, T-1757, T-1374, T-2032, T-2283
 
 ## Discount securities: day count and year length
 Rule: DISC, INTRATE, PRICEDISC, RECEIVED, YIELDDISC, PRICEMAT and YIELDMAT do not divide by a year fraction. They

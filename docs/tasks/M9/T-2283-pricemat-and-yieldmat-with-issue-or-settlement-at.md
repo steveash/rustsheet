@@ -3,7 +3,7 @@ id: T-2283
 title: "PRICEMAT and YIELDMAT with issue or settlement at serial 0-60: probe the shared YEARFRAC day counts"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Record any miss in financial.md and fix it in `get_mat_factors`.
 
 ## Out of scope
 - YEARFRAC and the other discount securities (probed by T-2237).
+
+## Outcome
+Added probes/matdisc-serial-0-60 (tag M9, 32 rows x bases 0-4 = 160 cells: PRICEMAT and YIELDMAT, issue in {0,1,59,60}, settlement in {59,60,61,366}, maturity 400), oracle-filled on excel-graph. Every cell passes already, so `get_mat_factors` needed no change. financial.md cites the case. Eval delta: +160 passing cells in probes, no baseline change.
