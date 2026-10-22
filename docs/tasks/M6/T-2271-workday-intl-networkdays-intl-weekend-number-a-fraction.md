@@ -43,7 +43,7 @@ cell on valid dates is `#NUM!` (`NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a")
 `#VALUE!`; gen-m6/f93597dff1cfa5b6 Calc!A252), which settles half of this task's boolean-weekend question.
 
 ## Acceptance criteria
-- [ ] These 9 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [ ] These 9 known-failure lines, and the 2 cells of the T-2253 paragraph above, disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] A probe case (excel-graph) gives TRUE and FALSE weekends on valid dates for both functions; dates.md records it.
 - [ ] Unit tests cover weekend 3.9, 11.5, TRUE, FALSE (as probed) and a blank cell for both functions; probes/date-text-weekend-3d still passes.
 - [ ] dates.md's entry says Ours: implemented (T-2271).

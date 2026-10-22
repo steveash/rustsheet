@@ -62,6 +62,6 @@ Triage of the 8 (all visibly off):
 - T-2395 (new): a holidays array holding blanks from `HSTACK(Data!Z1:Z2,{1;2})` is accepted (6 cells).
 - T-2271 (extended): a blank weekend cell and a FALSE weekend cell are `#NUM!` (2 cells).
 dates.md records both.
-GETPIVOTDATA stays at 54 cells with no generated cell. It needs a pivot source the generator cannot build (T-1708, SPEC-0015), so it is
-not exempted and does not meet the bar here. Params with no pool among the 28: ADDRESS, AREAS, COLUMN, ROW, HYPERLINK, TIME and
+GETPIVOTDATA stays at 54 cells with no generated cell. It needs a pivot source the generator cannot build (SPEC-0015), so it is
+not exempted and does not meet the bar here; T-2396 (new, `campaign: visible`) builds generated pivot sources for it. Params with no pool among the 28: ADDRESS, AREAS, COLUMN, ROW, HYPERLINK, TIME and
 TRIMRANGE (noted for the pool tasks, per Out of scope).
