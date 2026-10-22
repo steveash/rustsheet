@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SERIESSUM edges left open by T-2163 (T-2218): an all-blank coefficient range (F1 blank, C1 x=0, C2 x=2), a leading blank (C3, G1 blank, G2 = 4), a blank between numbers (C4, H1 = 4, H2 blank, H3 = 5), a negative power whose term underflows (C5, C6 with a later text element), and the ^ operator on the same underflow (C7). Blank cells are left out of the spec.",
+  "tags": [
+    "M5",
+    "probe",
+    "math"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "G2": 4,
+        "H1": 4,
+        "H3": 5,
+        "C1": "=SERIESSUM(0,0,1,F1)",
+        "C2": "=SERIESSUM(2,0,1,F1)",
+        "C3": "=SERIESSUM(0,0,1,G1:G2)",
+        "C4": "=SERIESSUM(0,1,-1,H1:H3)",
+        "C5": "=SERIESSUM(1E-10,-33.5,1,1)",
+        "C6": "=SERIESSUM(1E-10,-33.5,1,{1,\"a\"})",
+        "C7": "=1E-10^-33.5"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!C1",
+    "Sheet1!C2",
+    "Sheet1!C3",
+    "Sheet1!C4",
+    "Sheet1!C5",
+    "Sheet1!C6",
+    "Sheet1!C7"
+  ]
+}

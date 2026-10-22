@@ -1795,8 +1795,12 @@ is -437500000000000 and `SERIESSUM(16,-1,2,B11:E11)` over -1, blank, 42, 0.5 is 
 A term that overflows is `#NUM!` even when a text, boolean or numeric-text cell of the range comes later:
 `SERIESSUM(64,1E+15,0,E3:E12)` (E3 = 1, E4 = "1.5", E5 = "ü") and `SERIESSUM(-2.49995,0,5040,A4:A6)` (A6 = TRUE, the second term
 overflows) are `#NUM!`; ours `#VALUE!`. That agrees with the x = 0 precedence above: the coefficients are read in order.
-Unprobed: an all-blank coefficient range (`SERIESSUM(0,0,1,A1)` with A1 blank: 0 with no terms, or `#NUM!`), and a negative
-power that underflows (`^` gives `#DIV/0!`; SERIESSUM gives `#NUM!` as before); T-2218.
+Edges (T-2218, probes/seriessum-blank-and-underflow, excel-graph 2026-10-22; the engine matches all 7 cells): over a blank
+coefficient cell `SERIESSUM(0,0,1,F1)` is `#NUM!` (the term sits at power 0, so 0^0) and `SERIESSUM(2,0,1,F1)` is 0, so an
+all-blank range is not "no terms, 0"; these two cannot tell a dropped blank from a 0 term. `SERIESSUM(0,0,1,G1:G2)` (blank, 4) and
+`SERIESSUM(0,1,-1,H1:H3)` (4, blank, 5) are `#NUM!`, which both readings of the blank also give. A negative power whose term
+underflows, `SERIESSUM(1E-10,-33.5,1,1)`, is `#NUM!`, also with a later text element (`{1,"a"}`), while the `^` operator on the same
+operands, `1E-10^-33.5`, is `#DIV/0!`.
 The power is Excel's `^`: `SERIESSUM(1.005/42,3,1,C5)` = 1.3769443103134108E-05 and `SERIESSUM(-100.0001,42,2,42)` =
 4.200176403616261E+85 equal `C5*(1.005/42)^3` and `42*(-100.0001)^42` bit for bit, where ours is an ulp off.
 `SERIESSUM(LOG10(999999999999999),-2.5,1,10.005)` is 0.011481243964090428, a non-integer power: the old SERIESSUM `powf` gave
