@@ -1,9 +1,31 @@
+use super::paired::{PairedSamplesError, PairedValues};
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
 impl Model {
+    /// COVARIANCE's two samples paired by position: arguments of different sizes are `#N/A`,
+    /// before an error cell in them is (probes/ftest-decomposition G7, G8, G11; T-1927).
+    fn covariance_samples(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<PairedValues, CalcResult> {
+        match self.paired_samples(args, cell, true) {
+            Ok(paired) if paired.same_size => Ok(paired),
+            Ok(_)
+            | Err(PairedSamplesError {
+                sizes_differ: true, ..
+            }) => Err(CalcResult::new_error(
+                Error::NA,
+                cell,
+                "COVARIANCE requires arrays of the same size".to_string(),
+            )),
+            Err(PairedSamplesError { error, .. }) => Err(error),
+        }
+    }
+
     pub(crate) fn fn_covariance_p(
         &mut self,
         args: &[Node],
@@ -13,15 +35,8 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let (values1_opts, values2_opts) = match self.paired_samples(args, cell, true) {
-            Ok(paired) if paired.same_size => (paired.first, paired.second),
-            Ok(_) => {
-                return CalcResult::new_error(
-                    Error::NA,
-                    cell,
-                    "COVARIANCE requires arrays of the same size".to_string(),
-                )
-            }
+        let (values1_opts, values2_opts) = match self.covariance_samples(args, cell) {
+            Ok(paired) => (paired.first, paired.second),
             Err(error) => return error,
         };
 
@@ -91,15 +106,8 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let (values1_opts, values2_opts) = match self.paired_samples(args, cell, true) {
-            Ok(paired) if paired.same_size => (paired.first, paired.second),
-            Ok(_) => {
-                return CalcResult::new_error(
-                    Error::NA,
-                    cell,
-                    "COVARIANCE requires arrays of the same size".to_string(),
-                )
-            }
+        let (values1_opts, values2_opts) = match self.covariance_samples(args, cell) {
+            Ok(paired) => (paired.first, paired.second),
             Err(error) => return error,
         };
 
