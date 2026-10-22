@@ -1266,7 +1266,8 @@ excel-graph, 2026-10-21, T-2225): rows 2.005 (18b80d3fd292d63a Calc!A963), 11111
 (7307132bb8820f17 A1, a cell), 2.5 again (A1137), 3.14159 (b24ce74f08d3f91a A382), 1.005 (c36ff5f42a1a4d47 A285), the fractions of
 36809e9faa59553f A1285, 90de8755a2e565e6 A409, ac67253061bba16a A1222 and c36ff5f42a1a4d47 A853, and a WRAPCOLS rows array whose first
 element is 3.14159 (c36ff5f42a1a4d47 A1705) are all `#VALUE!`.
-Ours: truncates and builds the array, or `#SPILL!` where it does not fit (T-2308).
+Ours: `#VALUE!` for a fractional rows or columns (T-2308).
+Unverified: a size within one ulp of a whole number (`(0.1+0.2)*10`) is `#VALUE!` in ours (exact test); Excel may round to 15 digits first.
 Status: VERIFIED (excel-graph)
 Tasks: T-2308
 
