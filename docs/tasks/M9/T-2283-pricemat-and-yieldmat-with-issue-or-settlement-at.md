@@ -32,4 +32,5 @@ Record any miss in financial.md and fix it in `get_mat_factors`.
 - YEARFRAC and the other discount securities (probed by T-2237).
 
 ## Outcome
-Added probes/matdisc-serial-0-60 (tag M9, 32 rows x bases 0-4 = 160 cells: PRICEMAT and YIELDMAT, issue in {0,1,59,60}, settlement in {59,60,61,366}, maturity 400), oracle-filled on excel-graph. Every cell passes already, so `get_mat_factors` needed no change. financial.md cites the case. Eval delta: +160 passing cells in probes, no baseline change.
+Added probes/matdisc-serial-0-60 (tag M9, 32 rows x bases 0-4 = 160 cells: PRICEMAT and YIELDMAT, issue in {0,1,59,60}, settlement in {59,60,61,366}, maturity 400), oracle-filled on excel-graph. Every cell passes already, so `get_mat_factors` needed no change. financial.md cites the case. Eval delta: +160 passing cells in probes, the only baseline change is the new case's clean line, recorded by `make eval-baseline`.
+The grid includes settlement-before-issue cells (e.g. settlement 59, issue 60); they match Excel too, so the grid needed no code change.
