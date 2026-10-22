@@ -3,7 +3,7 @@ id: T-2270
 title: "WORKDAY/NETWORKDAYS(.INTL): a blank one-cell holidays reference and numeric-text holiday cells are accepted (ours #VALUE!)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
