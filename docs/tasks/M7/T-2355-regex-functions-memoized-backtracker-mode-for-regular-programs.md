@@ -3,7 +3,7 @@ id: T-2355
 title: "REGEX functions: memoized backtracker mode for regular programs, the final-LF dollar and the differential test"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
