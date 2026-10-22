@@ -87,6 +87,19 @@ it runs them, and a WEEKNUM with a return_type of 22 or more, or negative, reads
 - **Emptying:** a scalar WEEKNUM with return_type 12-16 (Tuesday to Saturday starts are never
   kept), one with an always-#NUM! return_type (0, 3-10, 18-20; probed 0, 3, 10, 18, 20), and any WEEKNUM that lifts over an
   array, valid types included (`SUM(WEEKNUM(100,{2,2}))`, `SUM(WEEKNUM({100,101},2))`).
+- **A dynamic-array formula empties it** (T-2068, gen-m6, excel-graph 2026-10-21): with a
+  dynamic-array formula between a reader and the setter that runs before it in the order, the
+  reader is `#NUM!` (OFFSET, TRANSPOSE, TRIMRANGE, CHOOSEROWS or CHOOSECOLS, none of them
+  calling WEEKNUM). In the evidence none of them spilled: each is `#SPILL!`, an error or a 1×1
+  result (A17 `#SPILL!`, 22ce5678fa646215 A237 `"a*"`). Whether a formula that does spill
+  empties it too is unprobed (T-2070); we treat every dynamic anchor alike. Eight readers show it, each with a
+  Monday setter after it and a spilling formula in between: gen-m6/9c615d338d990644 Calc!A16
+  (A17 `=OFFSET(Data!B11:E12,2,2,3)`), 07171fa3f7493f51 A246, 22ce5678fa646215 A236
+  (A237 `=TRIMRANGE(Data!A10:D10)`), a165b0a457367d4f A203, b54448af3fde07ca A243,
+  c4edd76f46980c5f A307 and fde83d52a9d1fc63 A131 and A359, all `#NUM!`; the four readers with no
+  dynamic-array formula in between read the setter (121a7c17092038d9 A238 = 33, 3e51213f35889d06 A74,
+  c96ac1ada46179c4 A219 and A295). Whether it is the spill itself or where Excel runs the anchor
+  that empties it is open (T-2070).
 - **No effect:** a call whose serial is an error (`WEEKNUM(-1,2)`, `WEEKNUM(-1,0)`,
   `ISOWEEKNUM(-1)`), a `#VALUE!` return_type (`TRUE`, `"x"`), a call IF does not run, and WEEKDAY of
   any return_type.
@@ -120,13 +133,37 @@ values twice. This corrects two earlier readings: ISOWEEKNUM does set the state 
 state is not "the last valid WEEKNUM": types 12-16 empty it. probes/weeknum-stale-return-type
 Down!A2 is `#NUM!` because Mixed!A1 (type 0) emptied the state just before it, not because the
 state resets per sheet.
-Ours: always `#NUM!` for 22+ and negatives, which matches only where the state is empty.
-SPEC-0017 specifies the state and the order; implementation tasks are listed there.
+Ours (T-2068): the state lives in `Evaluation::weeknum_start`, updated by `weeknum_of` and
+`fn_isoweeknum` and read by `weeknum_of`. A pass in which a reader ran is followed by one in
+Excel's order (crates/rustsheet-engine/src/excel_order.rs), whose values are kept; later
+evaluations start in that order until a pass has no reader. Dynamic anchors still run first in
+that pass, with their recursion, and empty the state when the order reaches their position.
+Known gaps: the WEEKNUM calls inside a spilling formula, or inside a cell it reads, run when the
+anchor runs, not at their place in the order (T-2070), and a moved sheet is ranked by its
+current index (T-2069, probes/weeknum-stale-sheet-moved Second!A1). Outside a recalc
+(conditional formats, `evaluate_formula`) the state lives for one formula.
 Status: VERIFIED
-Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), where a spilling formula sits
+Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), an ISOWEEKNUM that
+lifts over one (we leave the state as it is), where a spilling formula sits
 in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and
 a return_type in (-1, 0) (truncates to 0, so presumably empties), and whether a reference to an
 uncalculated cell in an IF branch that is not taken also moves the cell.
+
+### WEEKNUM readers past the move budget of Excel's order (T-2068)
+Rule (Excel): the chain moves a cell that read an uncalculated formula cell to just after it, as
+often as it takes; a running total read in reverse needs `n(n-1)/2` moves.
+Ours: a pass in Excel's order makes at most `4 × formula cells + 2^24` moves
+(`excel_order::move_budget`); past that, the rest of the pass evaluates on demand, as the
+default pass does, and WEEKNUM readers can differ from Excel. A reverse chain of about 5,800
+cells fits the floor alone; a cycle of formulas ends there too. A workbook without a reader
+never runs this pass. The budget counts moves, not work: a cell runs again (up to its next
+blocking read) each time the precedent it waits on is calculated, so a layout of range reads
+such as `B_k = SUM(B$1:B_{k-1})+1` costs about n^1.3 to n^1.5 (420 ms at 8,000 rows, 1.5 s at
+20,000, security review of T-2068). Measured (release, 2026-10-22): a running total plus one reader takes
+34 ms at 10k rows and 75 ms at 100k rows, against 1.5 ms and 23 ms without the second pass.
+Evidence: directive 5 (CLAUDE.md), SPEC-0017 "Cost".
+Status: DEVIATION (decision 0014)
+Implemented in: `run_chain`, `move_budget` (crates/rustsheet-engine/src/excel_order.rs).
 
 ## DATE month and day bounds
 Rule: DATE floors its month and day, then a month outside -32767..=32766 is `#NUM!` even when the
