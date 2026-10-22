@@ -66,9 +66,11 @@ impl Model {
             }
             LambdaCallKind { lambda, args } => {
                 // With a reference kept as one, a cell and an INDEX or IF that selects one
-                // included: a called reference is `#REF!` (`call_callee`).
+                // included: a called reference is `#REF!` (`call_callee`), and a called value,
+                // what a call returned (`LAMBDA(x,x)(1)(2)`), is called like a LET-bound one
+                // (`call_variable`; probes/chained-calls-lambda B4-B8, T-2038).
                 let callee = self.evaluate_reference_arg(lambda, cell);
-                self.call_callee(callee.into_single_area(cell), args, cell)
+                self.call_variable(callee.into_single_area(cell), args, cell)
             }
             // Unreachable by construction: `evaluate_node_in_context` answers these itself, so
             // this is at most one bounce.
