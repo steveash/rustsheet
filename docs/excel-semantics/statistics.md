@@ -1766,6 +1766,11 @@ statrs' inversion or with the inversion run on the new cdf. Under statrs they pa
 with both functions wrong in the same way. Excel's own pair lands on x exactly at H2 (3) and H14
 (0.7) but not at H23 (-0.23399999999999987) or H42 (0.23399999999999999), as T-1745 found. The
 switch waits for T-2119.
+Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
+densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
+stays UNVERIFIED (T-1744).
+Tasks: T-0970, T-2119, T-1744, T-1745, T-2219, T-2220, T-2221
+
 ### Dense F sweep (T-2220)
 Evidence: `probes-numeric/t2220-f-dist-sweep-{cdf,pdf,rt}` (100 df pairs d1, d2 in {1,2,3,4,5,7,10,20,50,100}
 x x in {0.1,0.25,0.5,1,1.5,2,3,5,10,100}: 1,000 cells each) and `t2220-f-dist-sweep-d1-1`, `-d2-1`
@@ -1792,15 +1797,11 @@ closed form) rounded to a double:
   double (0.19498222904213666), consistent with the reflection F.DIST.RT(x) = F.DIST(1/x) at d1 = d2.
 - Far tails (below about 1E-40) are not reliable in the reference at 50 digits: eight RT cells at
   d1 = 1 with x of 1.27E3 or more, d2 of 20..100, and (100,10,100) disagree with the reference by
-  more than 1E-9 relative; they are cancellation in the reference, not necessarily in Excel
- , so T-2221 should refit them with a
+  more than 1E-9 relative; they are cancellation in the reference, not necessarily in Excel, so T-2221 should refit them with a
   higher-precision reference.
-Status: VERIFIED (observation, with the case ids above); the algorithm stays UNVERIFIED (T-2221).
-
-Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
-densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
-stays UNVERIFIED (T-1744).
-Tasks: T-0970, T-2119, T-1744, T-1745, T-2219, T-2220, T-2221
+Status: VERIFIED (observation, with the case ids above): the exact-complement rule is refuted (84 of 1,570
+cells break it) and the one-evaluation rule is only suggested by the data (PARTIAL); the algorithm stays
+UNVERIFIED (T-2221).
 
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
 Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)
