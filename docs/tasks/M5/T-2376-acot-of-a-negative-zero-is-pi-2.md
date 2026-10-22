@@ -3,7 +3,7 @@ id: T-2376
 title: "ACOT of a negative zero is PI()/2 (ACOT(CEILING.PRECISE(-0.0001)))"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
