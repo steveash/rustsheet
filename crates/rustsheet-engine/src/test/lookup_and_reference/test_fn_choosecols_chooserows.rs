@@ -97,3 +97,12 @@ fn test_choose_error_argument_beats_out_of_range_index() {
     assert_eq!(model._get_text("E2"), "#DIV/0!");
     assert_eq!(model._get_text("E3"), "#VALUE!");
 }
+
+#[test]
+fn test_choose_huge_negative_index_is_out_of_range() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("E1", "=CHOOSEROWS(A1:A2,-1E+300)");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "#VALUE!");
+}

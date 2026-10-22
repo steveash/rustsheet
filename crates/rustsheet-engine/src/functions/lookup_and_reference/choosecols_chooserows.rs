@@ -89,17 +89,19 @@ impl Model {
         let count = i64::try_from(count).unwrap_or(i64::MAX);
         let mut indices = Vec::with_capacity(args.len());
         let mut out_of_range = false;
+        // Elements read so far, in range or not: the scan goes on past a bad index, so the bound counts
+        // what is read, not only what is picked.
+        let mut scanned = 0usize;
         for arg in args {
             let list = self.eval_to_array(arg, cell)?;
             let added = list.len().saturating_mul(list.first().map_or(0, Vec::len));
-            if let Some((error, message)) =
-                check_array_cells(indices.len().saturating_add(added), other)
-            {
+            scanned = scanned.saturating_add(added);
+            if let Some((error, message)) = check_array_cells(scanned, other) {
                 return Err(CalcResult::new_error(error, cell, message));
             }
             for node in list.iter().flatten() {
                 let n = self.cast_number_ref(&array_node_to_calc_result(node, cell), cell)? as i64;
-                if n == 0 || n.abs() > count {
+                if n == 0 || n.unsigned_abs() > count.unsigned_abs() {
                     out_of_range = true;
                     continue;
                 }
