@@ -829,7 +829,7 @@ C	probes/search-wildcard-newline.case.json	30
 C	probes/second-rounding.case.json	40
 C	probes/securities-argument-error-order.case.json	192
 C	probes/sequence-step-accumulation.case.json	11
-C	probes/seriessum-blank-and-underflow.case.json	7
+C	probes/seriessum-blank-and-underflow.case.json	9
 C	probes/seriessum-boolean-coefficients.case.json	18
 C	probes/seriessum-x-zero-error-precedence.case.json	27
 C	probes/seriessum-x-zero.case.json	22

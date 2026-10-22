@@ -33,4 +33,4 @@ Excel evidence (excel-graph) for two SERIESSUM edges T-2163 left unprobed, and t
 - Non-integer power last digits.
 
 ## Outcome
-Added probes/seriessum-blank-and-underflow (7 cells, excel-graph filled). Results: SERIESSUM(0,0,1,blank) is #NUM!, SERIESSUM(2,0,1,blank) is 0, the two-cell blank cases are #NUM! under either reading of the blank, and an underflowing negative power is #NUM! (the ^ operator gives #DIV/0!). The engine already matched all 7 cells, so no engine change; the baseline only gains the new case line (7 checked cells, no failures). Recorded in numbers.md.
+Added probes/seriessum-blank-and-underflow (9 cells, excel-graph filled). Results: a two-cell all-blank range has no terms (0 for x = 0, n = 0 and for x = 2), while a blank one-cell reference gives #NUM! for SERIESSUM(0,0,1,F1) and 0 for x = 2; the mixed blank cases are #NUM! under either reading of the blank; a negative power whose reciprocal underflows is #NUM! (the ^ operator gives #DIV/0!). The engine already matched all 9 cells, so no engine change; the baseline only gains the new case line (9 checked cells, no failures). Recorded in numbers.md.
