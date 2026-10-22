@@ -3,7 +3,7 @@ id: T-2313
 title: "TOROW and TOCOL: lifted scan_by_column over an error or array and the scan_by_column error before ignore (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
