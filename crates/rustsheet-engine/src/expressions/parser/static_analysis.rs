@@ -23,16 +23,15 @@ mod row_column;
 mod signature;
 use signature::{
     args_signature_arraytotext, args_signature_bycol_byrow, args_signature_cell,
-    args_signature_choose, args_signature_choosecols, args_signature_expand,
-    args_signature_fieldvalue, args_signature_filter, args_signature_getpivotdata,
-    args_signature_groupby, args_signature_hlookup, args_signature_ifs, args_signature_index,
-    args_signature_lambda, args_signature_let, args_signature_lookup, args_signature_map,
-    args_signature_match, args_signature_npv, args_signature_offset, args_signature_one_vector,
-    args_signature_pivotby, args_signature_randarray, args_signature_reduce, args_signature_row,
-    args_signature_scalars, args_signature_scan, args_signature_sort, args_signature_sumif,
-    args_signature_textafter, args_signature_textjoin, args_signature_textsplit,
-    args_signature_tocol, args_signature_trimrange, args_signature_wrapcols,
-    args_signature_xlookup, args_signature_xmatch, Signature,
+    args_signature_choose, args_signature_choosecols, args_signature_fieldvalue,
+    args_signature_filter, args_signature_getpivotdata, args_signature_groupby,
+    args_signature_hlookup, args_signature_ifs, args_signature_index, args_signature_lambda,
+    args_signature_let, args_signature_lookup, args_signature_map, args_signature_match,
+    args_signature_npv, args_signature_offset, args_signature_one_vector, args_signature_pivotby,
+    args_signature_randarray, args_signature_reduce, args_signature_row, args_signature_scalars,
+    args_signature_scan, args_signature_sort, args_signature_sumif, args_signature_textafter,
+    args_signature_textjoin, args_signature_textsplit, args_signature_tocol,
+    args_signature_trimrange, args_signature_xlookup, args_signature_xmatch, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -469,7 +468,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Areas | Function::Phonetic => args_signature_one_vector(arg_count),
         Function::Choosecols => args_signature_choosecols(arg_count),
         Function::Chooserows => args_signature_choosecols(arg_count),
-        Function::Expand => args_signature_expand(arg_count),
         Function::Hlookup => args_signature_hlookup(arg_count),
         Function::Hstack => vec![Signature::Vector; arg_count],
         Function::Index => args_signature_index(arg_count),
@@ -481,8 +479,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Rows => args_signature_one_vector(arg_count),
         Function::Vlookup => args_signature_hlookup(arg_count),
         Function::Vstack => vec![Signature::Vector; arg_count],
-        Function::Wrapcols => args_signature_wrapcols(arg_count),
-        Function::Wraprows => args_signature_wrapcols(arg_count),
         Function::Xlookup => args_signature_xlookup(arg_count),
         Function::Xmatch => args_signature_xmatch(arg_count),
         Function::Trimrange => args_signature_trimrange(arg_count),
@@ -720,7 +716,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Areas => aggregate::areas_static_result(args),
         Function::Choosecols => StaticResult::Unknown,
         Function::Chooserows => StaticResult::Unknown,
-        Function::Expand => StaticResult::Unknown,
         Function::Hlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Hstack => StaticResult::Unknown,
         // INDEX has two forms, but they are indistinguishable at parse time.
@@ -734,8 +729,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Rows => not_implemented(args),
         Function::Vlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Vstack => StaticResult::Unknown,
-        Function::Wrapcols => StaticResult::Unknown,
-        Function::Wraprows => StaticResult::Unknown,
         Function::Xlookup => StaticResult::Unknown,
         // Spills by lookup_value, match_mode and search_mode, broadcast; lookup_array is consumed
         // (T-1241, T-1958).

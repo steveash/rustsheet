@@ -439,8 +439,8 @@ case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
 Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
-per-parameter rule, which T-1960 confirmed; a 1x1 array argument lifts to one element since T-2298, a one-cell range read through any operator being the cell's value: `number_or_array`, `value_or_array` and `string_or_array` in cast.rs, OFFSET's, TAKE's and DROP's `lifts_one_by_one`; EXPAND's and WRAPROWS's 1x1 cases wait on T-1835, which lifts them); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
-EXPAND's columns, WRAPROWS's pad_with and WRAPCOLS's array wrap_count are T-1835's, and EXPAND's array pad_with is `#VALUE!` there too (ours lifts it);
+per-parameter rule, which T-1960 confirmed; a 1x1 array argument lifts to one element since T-2298, a one-cell range read through any operator being the cell's value: `number_or_array`, `value_or_array` and `string_or_array` in cast.rs, OFFSET's, TAKE's and DROP's `lifts_one_by_one`; EXPAND's and WRAPROWS's 1x1 cases lift since T-1835); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
+EXPAND's rows and columns and WRAPROWS's and WRAPCOLS's wrap_count and pad_with lift since T-1835, and EXPAND's array pad_with is a whole-call `#VALUE!`;
 TAKE and DROP lift since T-1838 (reference elements; IF, CHOOSE and OFFSET do not hand the grid on, and `TAKE(NA(),{1;2})` is one `#N/A`: T-2299);
 none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a
 sort_order list of the same length since T-1837 (F10:H11; `fn_sort` with `Model::sort_number_list`, spill_functions.rs;
@@ -1350,6 +1350,21 @@ A1, A285). Unprobed: an error only in a column subtotal.
 Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes every Total column cell of each line and the Total row.
 Status: VERIFIED
 Tasks: T-2311
+
+## EXPAND, WRAPROWS and WRAPCOLS: scalar arguments lift, EXPAND's pad_with does not
+Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes/m7-lift-take-drop-sortby rows 20-23,
+2026-10-21; T-1835): EXPAND's rows and columns, and WRAPROWS's and WRAPCOLS's wrap_count and pad_with, lift over an array
+and a range, one call per element whose value is its top-left (`ROWS(EXPAND(A1:A2,{3;4}))` is 2,
+`COLUMNS(WRAPCOLS(A1:A3,2,{0;1}))` is 1). EXPAND's pad_with does not lift: an array there makes the whole call `#VALUE!`
+(`ROWS(EXPAND(A1:A2,3,1,{0;1}))` is `#VALUE!`, not 3 rows padded with errors). Implemented through the lifting table.
+UNVERIFIED part: a WRAPROWS whose vector is an error (`..-SIGN("ABC")`), wrap_count -1 and pad_with a 6x4 array is a
+6x4 grid of `#VALUE!`s in Excel (gen-m7/90de8755a2e565e6 A889:D894), not one error. Ours makes the vector's error (and a
+not-a-vector `#VALUE!`) every lifted element's result, before wrap_count's `#NUM!`. That cell cannot tell this from "a
+lifted error element in pad_with is that element's result", since its pad_with is all `#VALUE!` too. EXPAND with an error
+array beside a lifted argument (ours: one error), a 1x1 array or multi-cell range pad_with, and an array pad_with with rows
+past the grid are not probed either; T-2365 probes them.
+Status: VERIFIED (excel-graph) for the lifts; UNVERIFIED for the vector-error part
+Tasks: T-1835, T-2365
 
 ## WRAPROWS and WRAPCOLS with a huge wrap_count
 Rule: a wrap_count of 2^31 or more is `#NUM!` in both functions, padded or not, before any clamp to the vector's length.
