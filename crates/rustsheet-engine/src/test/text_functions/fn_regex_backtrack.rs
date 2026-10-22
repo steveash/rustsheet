@@ -101,3 +101,22 @@ fn catastrophic_patterns_stop() {
         assert!(start.elapsed().as_secs() < bound, "{pattern}");
     }
 }
+
+/// Repeats of a body that compiles to nothing still count against the compile limit (security
+/// review of T-1900): each nesting multiplies the copies, which once cost nothing.
+#[test]
+fn empty_repeat_bodies_are_charged_at_compile() {
+    for pattern in [
+        r"(?:(?:){65535}){65535}(a)\1",
+        r"(?:(?:){0,65535}){0,65535}(a)\1",
+        r"(?:(?:(?:){65535}){65535}){65535}(a)\1",
+    ] {
+        let start = std::time::Instant::now();
+        let result = value(&format!(r#"=REGEXTEST("aa","{pattern}")"#));
+        assert!(
+            result == "#VALUE!" || result == "#ERROR!",
+            "{pattern}: {result}"
+        );
+        assert!(start.elapsed().as_secs() < 10, "{pattern}");
+    }
+}

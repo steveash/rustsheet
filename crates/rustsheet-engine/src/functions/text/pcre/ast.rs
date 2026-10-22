@@ -118,37 +118,45 @@ impl Ast {
         let mut stack = vec![self];
         while let Some(ast) = stack.pop() {
             match ast {
-                Ast::Empty
-                | Ast::Literal { .. }
-                | Ast::Class(_)
-                | Ast::Dot { .. }
-                | Ast::Anchor(
-                    Anchor::Start
-                    | Anchor::StartLine
-                    | Anchor::EndOrFinalLf
-                    | Anchor::EndLine
-                    | Anchor::End
-                    | Anchor::WordBoundary
-                    | Anchor::NotWordBoundary,
-                ) => {}
-                Ast::Capture { ast, .. } => stack.push(ast),
-                Ast::Repeat { kind, ast, .. } => {
-                    if *kind == RepeatKind::Possessive {
-                        return false;
-                    }
-                    stack.push(ast);
+                Ast::Repeat {
+                    kind: RepeatKind::Possessive,
+                    ..
                 }
-                Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
-                Ast::Anchor(Anchor::SearchStart)
+                | Ast::Anchor(Anchor::SearchStart)
                 | Ast::Backref { .. }
                 | Ast::LookAround { .. }
                 | Ast::Atomic(_)
                 | Ast::Conditional { .. }
                 | Ast::KeepOut
                 | Ast::Unimplemented => return false,
+                _ => ast.push_children(&mut stack),
             }
         }
         true
+    }
+
+    /// Pushes the nodes directly under this one onto `stack`: the one list of every node's
+    /// children, for the iterative passes over the tree.
+    pub(super) fn push_children<'a>(&'a self, stack: &mut Vec<&'a Ast>) {
+        match self {
+            Ast::Capture { ast, .. }
+            | Ast::Repeat { ast, .. }
+            | Ast::LookAround { ast, .. }
+            | Ast::Atomic(ast) => stack.push(ast),
+            Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
+            Ast::Conditional { yes, no, .. } => {
+                stack.push(yes);
+                stack.push(no);
+            }
+            Ast::Empty
+            | Ast::Literal { .. }
+            | Ast::Class(_)
+            | Ast::Dot { .. }
+            | Ast::Anchor(_)
+            | Ast::Backref { .. }
+            | Ast::KeepOut
+            | Ast::Unimplemented => {}
+        }
     }
 }
 

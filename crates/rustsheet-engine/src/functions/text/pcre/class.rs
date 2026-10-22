@@ -71,3 +71,12 @@ pub(super) fn is_extended_space(c: char) -> bool {
             | '\u{2029}'
     )
 }
+
+/// The class of the one character `c`, simply case folded when `fold`: what a literal matches.
+pub(super) fn literal_class(c: char, fold: bool) -> ClassUnicode {
+    let mut class = ClassUnicode::new([ClassUnicodeRange::new(c, c)]);
+    if fold {
+        class.case_fold_simple();
+    }
+    class
+}

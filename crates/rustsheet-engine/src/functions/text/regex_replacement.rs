@@ -169,12 +169,12 @@ fn is_name_char(c: char) -> bool {
 }
 
 impl Replacement {
-    /// Parses `text` for a pattern with the capture groups `groups`; `None` when Excel gives `#VALUE!` for
-    /// it: a group the pattern does not have (`$2`, `\2`, `${y}` with one unnamed group), a `$`
-    /// that starts no reference, a trailing `\`, `\0` or a letter escape other than `\n` and
-    /// `\t` (probes/regex-pcre2-features B15-B24, B30). A backslash before any other character
-    /// is that character (`\-`, `\é`; E6, E7). The `?`s on slices of the text never fail: they
-    /// cut at the ASCII `$`, `\` and digits the scan found.
+    /// Parses `text` for a pattern with the capture groups `groups`; `None` when Excel gives
+    /// `#VALUE!` for it: a group the pattern does not have (`$2`, `\2`, `${y}` with one unnamed
+    /// group), a `$` that starts no reference, a trailing `\`, `\0` or a letter escape other
+    /// than `\n` and `\t` (probes/regex-pcre2-features B15-B24, B30). A backslash before any
+    /// other character is that character (`\-`, `\é`; E6, E7). The `?`s on slices of the text
+    /// never fail: they cut at the ASCII `$`, `\` and digits the scan found.
     pub(super) fn new(groups: &GroupInfo, text: &str) -> Option<Self> {
         let mut pieces = Vec::new();
         let mut literal = String::new();

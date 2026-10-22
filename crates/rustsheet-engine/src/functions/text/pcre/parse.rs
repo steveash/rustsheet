@@ -304,25 +304,7 @@ impl Parser {
                     return Err(Invalid);
                 }
             }
-            match ast {
-                Ast::Capture { ast, .. }
-                | Ast::Repeat { ast, .. }
-                | Ast::LookAround { ast, .. }
-                | Ast::Atomic(ast) => stack.push(ast),
-                Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
-                Ast::Conditional { yes, no, .. } => {
-                    stack.push(yes);
-                    stack.push(no);
-                }
-                Ast::Empty
-                | Ast::Literal { .. }
-                | Ast::Class(_)
-                | Ast::Dot { .. }
-                | Ast::Anchor(_)
-                | Ast::Backref { .. }
-                | Ast::KeepOut
-                | Ast::Unimplemented => {}
-            }
+            ast.push_children(&mut stack);
         }
         Ok(())
     }

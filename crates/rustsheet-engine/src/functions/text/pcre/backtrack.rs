@@ -13,6 +13,7 @@ use regex_automata::{
 };
 
 use super::ast::Anchor;
+use super::class::literal_class;
 use super::program::{Inst, Program};
 use crate::functions::text::regex_engine::{charge, Spent};
 
@@ -267,7 +268,8 @@ impl Backtracker<'_> {
         fold: bool,
     ) -> Result<Option<usize>, Spent> {
         let slot = |i: usize| self.cache.slots.get(i).copied().flatten();
-        let (Some(start), Some(end)) = (slot(2 * group), slot(2 * group + 1)) else {
+        let first = group.saturating_mul(2);
+        let (Some(start), Some(end)) = (slot(first), slot(first.saturating_add(1))) else {
             return Ok(None);
         };
         let Some(captured) = text.get(start..end) else {
@@ -326,10 +328,7 @@ fn in_ranges(ranges: &[regex_syntax::hir::ClassUnicodeRange], c: char) -> bool {
 /// Whether `a` and `b` are equal under simple case folding, the folding the parser gives a
 /// case-insensitive literal.
 fn same_fold(a: char, b: char) -> bool {
-    let mut class =
-        regex_syntax::hir::ClassUnicode::new([regex_syntax::hir::ClassUnicodeRange::new(a, a)]);
-    class.case_fold_simple();
-    in_ranges(class.ranges(), b)
+    in_ranges(literal_class(a, true).ranges(), b)
 }
 
 fn is_word(c: Option<char>) -> bool {

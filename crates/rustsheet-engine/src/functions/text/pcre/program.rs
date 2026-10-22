@@ -11,6 +11,8 @@
 use regex_automata::util::captures::GroupInfo;
 use regex_syntax::hir::{ClassUnicode, ClassUnicodeRange};
 
+use super::class::literal_class;
+
 use super::ast::{Anchor, Ast, Reference, RepeatKind};
 
 /// One instruction.
@@ -123,36 +125,18 @@ fn group_names(ast: &Ast) -> Vec<Option<Box<str>>> {
     let mut names = Vec::new();
     let mut stack = vec![ast];
     while let Some(ast) = stack.pop() {
-        match ast {
-            Ast::Capture { index, name, ast } => {
-                let slot = usize::try_from(*index)
-                    .unwrap_or(usize::MAX)
-                    .saturating_sub(1);
-                if names.len() <= slot {
-                    names.resize(slot.saturating_add(1), None);
-                }
-                if let Some(entry) = names.get_mut(slot) {
-                    entry.clone_from(name);
-                }
-                stack.push(ast);
+        if let Ast::Capture { index, name, .. } = ast {
+            let slot = usize::try_from(*index)
+                .unwrap_or(usize::MAX)
+                .saturating_sub(1);
+            if names.len() <= slot {
+                names.resize(slot.saturating_add(1), None);
             }
-            Ast::Concat(asts) | Ast::Alternation(asts) => stack.extend(asts),
-            Ast::Repeat { ast, .. } | Ast::LookAround { ast, .. } | Ast::Atomic(ast) => {
-                stack.push(ast);
+            if let Some(entry) = names.get_mut(slot) {
+                entry.clone_from(name);
             }
-            Ast::Conditional { yes, no, .. } => {
-                stack.push(yes);
-                stack.push(no);
-            }
-            Ast::Empty
-            | Ast::Literal { .. }
-            | Ast::Class(_)
-            | Ast::Dot { .. }
-            | Ast::Anchor(_)
-            | Ast::Backref { .. }
-            | Ast::KeepOut
-            | Ast::Unimplemented => {}
         }
+        ast.push_children(&mut stack);
     }
     names
 }
@@ -183,19 +167,22 @@ struct Compiler<'a> {
 }
 
 impl Compiler<'_> {
+    /// Counts `bytes` against the size limit.
+    fn charge(&mut self, bytes: usize) -> Result<(), CompileError> {
+        self.bytes = self.bytes.saturating_add(bytes);
+        if self.bytes > self.size_limit {
+            return Err(CompileError::TooBig);
+        }
+        Ok(())
+    }
+
     /// Appends `inst`; its index.
     fn push(&mut self, inst: Inst) -> Result<usize, CompileError> {
         let extra = match &inst {
             Inst::Class(ranges) => std::mem::size_of_val(&**ranges),
             _ => 0,
         };
-        self.bytes = self
-            .bytes
-            .saturating_add(std::mem::size_of::<Inst>())
-            .saturating_add(extra);
-        if self.bytes > self.size_limit {
-            return Err(CompileError::TooBig);
-        }
+        self.charge(std::mem::size_of::<Inst>().saturating_add(extra))?;
         self.insts.push(inst);
         Ok(self.insts.len() - 1)
     }
@@ -214,18 +201,17 @@ impl Compiler<'_> {
         self.insts.len()
     }
 
-    /// Compiles `ast`; the recursion is bounded by the parser's nest limit.
+    /// Compiles `ast`; the recursion is bounded by the parser's nest limit. Every visit is
+    /// charged an instruction's size, so a repeat of a body that emits nothing
+    /// (`(?:(?:){65535}){65535}`) still runs into the size limit instead of looping uncharged.
     fn node(&mut self, ast: &Ast) -> Result<(), CompileError> {
+        self.charge(std::mem::size_of::<Inst>())?;
         match ast {
             Ast::Empty => {}
             Ast::Literal { c, fold: false } => {
                 self.push(Inst::Char(*c))?;
             }
-            Ast::Literal { c, fold: true } => {
-                let mut class = ClassUnicode::new([ClassUnicodeRange::new(*c, *c)]);
-                class.case_fold_simple();
-                self.class(&class)?;
-            }
+            Ast::Literal { c, fold: true } => self.class(&literal_class(*c, true))?,
             Ast::Class(class) => self.class(class)?,
             Ast::Dot { dot_all } => {
                 self.push(Inst::Any { dot_all: *dot_all })?;
@@ -234,10 +220,13 @@ impl Compiler<'_> {
                 self.push(Inst::Assert(*anchor))?;
             }
             Ast::Capture { index, ast, .. } => {
-                let group = usize::try_from(*index).map_err(|_| CompileError::TooBig)?;
-                self.push(Inst::Save(2 * group))?;
+                let start = usize::try_from(*index)
+                    .ok()
+                    .and_then(|group| group.checked_mul(2))
+                    .ok_or(CompileError::TooBig)?;
+                self.push(Inst::Save(start))?;
                 self.node(ast)?;
-                self.push(Inst::Save(2 * group + 1))?;
+                self.push(Inst::Save(start.saturating_add(1)))?;
             }
             Ast::Concat(asts) => {
                 for ast in asts {
