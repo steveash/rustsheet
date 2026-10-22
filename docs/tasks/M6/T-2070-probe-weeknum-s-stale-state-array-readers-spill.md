@@ -25,7 +25,10 @@ marker; the order is bottom to top. Write one probe case per question group and 
     marker, to show where anchors sit in the order;
   - a spilling formula with no WEEKNUM between a Monday marker and a reader: gen-m6 says it
     empties the state (dates.md, T-2068). Tell a spill from a 1×1 array result
-    (`=TRANSPOSE("abc")`) and from `#SPILL!`, and whether the anchor runs at its place;
+    (`=TRANSPOSE("abc")`) and from `#SPILL!` (the gen-m6 evidence has only the latter two), and
+    whether the anchor runs at its place: a WEEKNUM setter read by an anchor
+    (`=SEQUENCE(C5)`, C5 `=WEEKNUM(1,2)`) above a reader that runs first in the chain;
+  - an ISOWEEKNUM that lifts over an array (`=SUM(ISOWEEKNUM({100,101}))`) after a Sunday marker;
   - WEEKNUM inside a defined name, inside LET and inside a LAMBDA called from a cell, as both setter
     and reader;
   - a reader in a conditional-formatting rule, if the harness can read it; otherwise say it cannot;

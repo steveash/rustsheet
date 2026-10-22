@@ -87,15 +87,17 @@ it runs them, and a WEEKNUM with a return_type of 22 or more, or negative, reads
 - **Emptying:** a scalar WEEKNUM with return_type 12-16 (Tuesday to Saturday starts are never
   kept), one with an always-#NUM! return_type (0, 3-10, 18-20; probed 0, 3, 10, 18, 20), and any WEEKNUM that lifts over an
   array, valid types included (`SUM(WEEKNUM(100,{2,2}))`, `SUM(WEEKNUM({100,101},2))`).
-- **A spilling formula empties it** (T-2068, gen-m6, excel-graph 2026-10-21): with a
+- **A dynamic-array formula empties it** (T-2068, gen-m6, excel-graph 2026-10-21): with a
   dynamic-array formula between a reader and the setter that runs before it in the order, the
-  reader is `#NUM!` (spilling OFFSET, TRANSPOSE, TRIMRANGE, CHOOSEROWS or CHOOSECOLS, none of
-  them calling WEEKNUM). Eight readers show it, each with a
+  reader is `#NUM!` (OFFSET, TRANSPOSE, TRIMRANGE, CHOOSEROWS or CHOOSECOLS, none of them
+  calling WEEKNUM). In the evidence none of them spilled: each is `#SPILL!`, an error or a 1×1
+  result (A17 `#SPILL!`, 22ce5678fa646215 A237 `"a*"`). Whether a formula that does spill
+  empties it too is unprobed (T-2070); we treat every dynamic anchor alike. Eight readers show it, each with a
   Monday setter after it and a spilling formula in between: gen-m6/9c615d338d990644 Calc!A16
   (A17 `=OFFSET(Data!B11:E12,2,2,3)`), 07171fa3f7493f51 A246, 22ce5678fa646215 A236
   (A237 `=TRIMRANGE(Data!A10:D10)`), a165b0a457367d4f A203, b54448af3fde07ca A243,
   c4edd76f46980c5f A307 and fde83d52a9d1fc63 A131 and A359, all `#NUM!`; the four readers with no
-  spilling formula in between read the setter (121a7c17092038d9 A238 = 33, 3e51213f35889d06 A74,
+  dynamic-array formula in between read the setter (121a7c17092038d9 A238 = 33, 3e51213f35889d06 A74,
   c96ac1ada46179c4 A219 and A295). Whether it is the spill itself or where Excel runs the anchor
   that empties it is open (T-2070).
 - **No effect:** a call whose serial is an error (`WEEKNUM(-1,2)`, `WEEKNUM(-1,0)`,
@@ -141,7 +143,8 @@ anchor runs, not at their place in the order (T-2070), and a moved sheet is rank
 current index (T-2069, probes/weeknum-stale-sheet-moved Second!A1). Outside a recalc
 (conditional formats, `evaluate_formula`) the state lives for one formula.
 Status: VERIFIED
-Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), where a spilling formula sits
+Unprobed: a reader that lifts over an array (`WEEKNUM(100,{99,99})`), an ISOWEEKNUM that
+lifts over one (we leave the state as it is), where a spilling formula sits
 in the order, WEEKNUM in a defined name, LET or LAMBDA, conditional formatting formulas, and
 a return_type in (-1, 0) (truncates to 0, so presumably empties), and whether a reference to an
 uncalculated cell in an IF branch that is not taken also moves the cell.

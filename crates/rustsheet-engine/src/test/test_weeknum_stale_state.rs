@@ -152,6 +152,8 @@ fn a_stopped_cell_runs_again_just_after_its_precedent() {
 
 #[test]
 fn a_spilling_formula_empties_the_state_at_its_place() {
+    // gen-m6 shows it for dynamic-array formulas that gave #SPILL!, an error or one value; that
+    // a formula that does spill does it too is our reading, unprobed (T-2070).
     let cells = [
         ("A1", READER),
         ("A2", "=SEQUENCE(1,2)"),

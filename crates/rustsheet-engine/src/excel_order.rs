@@ -113,13 +113,16 @@ impl Model {
     pub(crate) fn run_excel_order(&mut self) -> Option<Restart> {
         let positions = self.formula_positions();
         let budget = move_budget(positions.len());
+        // The chain starts as Excel's recalc does, with an empty state: what the anchors' own
+        // WEEKNUM calls left is not in Excel's order (rule 1; dates.md "Ours").
+        self.evaluation.weeknum_start = None;
         run_chain(self, positions.len(), budget, |model, index, may_block| {
             let cell = positions[index as usize];
             let state = &mut model.evaluation;
             if state.cells.get(&key(cell)) == Some(&CellState::Evaluated) {
-                // An anchor, or a cell an anchor read. At its place in the order a formula that
-                // spills empties WEEKNUM's state (gen-m6, dates.md "WEEKNUM's stale return_type
-                // state"; ran or not, where Excel runs it is open, T-2070).
+                // An anchor, or a cell an anchor read. At its place in the order a dynamic-array
+                // formula empties WEEKNUM's state (gen-m6, dates.md "WEEKNUM's stale
+                // `return_type` state"; one that spills is unprobed, T-2070).
                 if matches!(
                     model.fetch_cell(cell),
                     Some(Cell::ArrayFormula {
