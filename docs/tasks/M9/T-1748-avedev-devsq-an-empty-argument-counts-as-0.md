@@ -3,7 +3,7 @@ id: T-1748
 title: "AVEDEV/DEVSQ: an empty argument counts as 0; QUARTILE of a typed boolean"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,9 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 4 cells, 2 numeric pas
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (AVEDEV/DEVSQ 0 for an empty argument and QUARTILE errors on a typed TRUE), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+AVEDEV and DEVSQ now count an empty argument as 0; the shared data reader of PERCENTILE*, QUARTILE*, PERCENTRANK*
+reads a typed boolean as a one-element array and direct text as a number (new probe
+probes-numeric/t1748-typed-boolean-data, 12 cells, all pass). The 4 cells left eval/baseline/probes.txt. SUMSQ keeps
+skipping the empty argument (`SUMSQ(1,)` is 1 either way).
