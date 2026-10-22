@@ -1,6 +1,6 @@
 ---
 id: T-2365
-title: "Probe WRAPROWS, WRAPCOLS and EXPAND error and edge arguments beside a lifted argument"
+title: "Probe WRAPROWS, WRAPCOLS, EXPAND and TOCOL error and edge arguments beside a lifted argument"
 milestone: M7
 lane: functions-lookup
 status: todo
@@ -26,7 +26,9 @@ Probe (excel-probe skill), with A1:A3 = 1,2,3:
 - `ROWS(EXPAND(1/0,{3;4}))`, `ROWS(EXPAND(NA(),3,{1;2}))` (EXPAND error array beside a lifted argument; ours one error)
 - `EXPAND(A1:A2,3,1,{0})` (1x1 array pad_with; ours whole-call `#VALUE!`), `EXPAND(A1:A2,3,1,B1:B2)` with a multi-cell
   range pad_with (ours intersects), `EXPAND(1,1048577,1,{0;1})` (array pad_with vs rows past the grid; ours `#VALUE!`)
-Code: `lift_wrap` in functions/lookup_and_reference/wrapcols_wraprows.rs, `fn_expand` in expand.rs.
+- `ROWS(TOCOL(1/0,0,{0;1}))`, `ROWS(TOCOL(1/0,{0;1}))` (TOCOL error array beside a lifted argument; T-2313 made it fill
+  the shape by analogy with TOROW's gen-m7/611ce3bbfab27cef A919, UNVERIFIED for TOCOL)
+Code: `lift_flatten` in tocol_torow.rs, `lift_wrap` in functions/lookup_and_reference/wrapcols_wraprows.rs, `fn_expand` in expand.rs.
 
 ## Acceptance criteria
 - [ ] The probe case lands with oracle values; arrays.md's entry is VERIFIED or corrected with the evidence.
@@ -34,4 +36,4 @@ Code: `lift_wrap` in functions/lookup_and_reference/wrapcols_wraprows.rs, `fn_ex
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Lifting changes to other functions (TOCOL, UNIQUE, TAKE/DROP).
+- Lifting changes to other functions (UNIQUE, TAKE/DROP).

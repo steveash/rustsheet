@@ -439,7 +439,7 @@ case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
 Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
-per-parameter rule, which T-1960 confirmed; a 1x1 array argument lifts to one element since T-2298, a one-cell range read through any operator being the cell's value: `number_or_array`, `value_or_array` and `string_or_array` in cast.rs, OFFSET's, TAKE's and DROP's `lifts_one_by_one`; EXPAND's and WRAPROWS's 1x1 cases lift since T-1835); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
+per-parameter rule, which T-1960 confirmed; a 1x1 array argument lifts to one element since T-2298, a one-cell range read through any operator being the cell's value: `number_or_array`, `value_or_array` and `string_or_array` in cast.rs, OFFSET's, TAKE's and DROP's `lifts_one_by_one`; EXPAND's and WRAPROWS's 1x1 cases lift since T-1835); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so UNIQUE of an empty array is empty, UNVERIFIED against Excel, while an error array fills the lifted shape since T-2313 ("TOROW, TOCOL, SORT and TEXTJOIN lifted arguments"); TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
 EXPAND's rows and columns and WRAPROWS's and WRAPCOLS's wrap_count and pad_with lift since T-1835, and EXPAND's array pad_with is a whole-call `#VALUE!`;
 TAKE and DROP lift since T-1838 (reference elements; IF, CHOOSE and OFFSET do not hand the grid on, and `TAKE(NA(),{1;2})` is one `#N/A`: T-2299);
 none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a
@@ -1401,11 +1401,13 @@ Tasks: T-2316
 ## TOROW, TOCOL, SORT and TEXTJOIN lifted arguments (gen-m7)
 Rule: TOROW's and TOCOL's scan_by_column lift over an array, an error initial argument filling every element
 (`TOROW(<#NUM!>,3,SCAN(1.005,Data!A5:C9,MIN))` spills 15 `#NUM!`: gen-m7/611ce3bbfab27cef Calc!A919; `TOROW(Data!B3:E8,3,WRAPCOLS(..,1))`
-lifts over the 9x1 array: 7d67c559ce7536fa A619), and an error scan_by_column beats an invalid ignore (`TOCOL(Data!B1:B5,Data!B8,NA())`
+lifts over the 1x9 array: 7d67c559ce7536fa A619), and an error scan_by_column beats an invalid ignore (`TOCOL(Data!B1:B5,Data!B8,NA())`
 is `#N/A`: 8044dce50616cfe9 A1508). SORT lifts an array by_col (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`:
 7307132bb8820f17 A1076), and TEXTJOIN an array ignore_empty (`LAMBDA(y,RIGHT(TEXTJOIN(y,y,y),2))(UNIQUE(Data!C3:D4))` is `#SPILL!`:
 ac67253061bba16a A1137).
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
-Ours: `#N/IMPL!` or one cell (T-2313, T-2319, T-2318).
+Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
+analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
+(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT and TEXTJOIN: `#N/IMPL!` or one cell (T-2319, T-2318).
 Status: VERIFIED (excel-graph)
 Tasks: T-2313, T-2318, T-2319
