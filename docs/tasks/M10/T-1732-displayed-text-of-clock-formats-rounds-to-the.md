@@ -3,7 +3,7 @@ id: T-1732
 title: "Displayed text of clock formats rounds to the shown second before splitting the day (0.9999999999 is 0:00)"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
