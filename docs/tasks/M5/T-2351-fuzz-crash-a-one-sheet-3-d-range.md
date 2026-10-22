@@ -3,7 +3,7 @@ id: T-2351
 title: "Fuzz crash: a one-sheet 3-D range in a scalar argument reaches the cell as an array (model.rs debug_assert)"
 milestone: M5
 lane: engine
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
