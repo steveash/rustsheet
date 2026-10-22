@@ -38,6 +38,7 @@ mod grouping;
 mod hstack_vstack;
 mod index;
 mod index_arg;
+mod lifted_options;
 mod lookup;
 mod lookup_each;
 pub(crate) mod lookup_table;
