@@ -114,9 +114,12 @@ fn negative_x_to_a_non_integer_power_is_a_zero_term() {
     model._set("A2", "=SERIESSUM(-2,1,0.5,{1,1,1})");
     model._set("A3", "=SERIESSUM(-2,0.5,1,{1,\"a\"})");
     model._set("A4", "=SERIESSUM(-10,0.5,399.5,{1,1,\"a\"})");
+    model._set("A5", "=SERIESSUM(-8,1/3,1,{1})");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"0");
     assert_eq!(model._get_text("A2"), *"2");
     assert_eq!(model._get_text("A3"), *"#VALUE!");
     assert_eq!(model._get_text("A4"), *"#NUM!");
+    // An odd root is a zero term too, although `(-8)^(1/3)` is a real number.
+    assert_eq!(model._get_text("A5"), *"0");
 }

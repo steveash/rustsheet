@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2380 SERIESSUM with a negative x to a non-integer power: does the read stop (#NUM!) or go on to a later text/error/boolean coefficient; array literals, Data ranges, and overflow-vs-domain order.",
+ "description": "T-2380 SERIESSUM with a negative x to a non-integer power: does the read stop (#NUM!) or go on to a later text/error/boolean coefficient; array literals, Data ranges, and overflow-vs-domain order. A22:A25: a non-integer exponent past 2^32-1 and an odd-root exponent.",
  "tags": [
   "M5",
   "probe",
@@ -43,7 +43,11 @@
     "A18": "=SERIESSUM(-10,0.5,399.5,{1,1,\"a\"})",
     "A19": "=SERIESSUM(-10,0.5,399.5,{1,1})",
     "A20": "=SERIESSUM(-2,0.5,1,{1,#N/A,\"a\"})",
-    "A21": "=SERIESSUM(-2,0.5,1,{1,\"a\",#N/A})"
+    "A21": "=SERIESSUM(-2,0.5,1,{1,\"a\",#N/A})",
+    "A22": "=SERIESSUM(-2,4294967295.5,1,{1,\"a\"})",
+    "A23": "=SERIESSUM(-2,4294967295.5,1,{1,1})",
+    "A24": "=SERIESSUM(-8,1/3,1,{1})",
+    "A25": "=SERIESSUM(-8,1/3,1,{1,\"a\"})"
    }
   }
  ],

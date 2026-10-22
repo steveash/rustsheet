@@ -47,7 +47,7 @@ criteria above are already the visible-parity stage.
 
 ## Outcome
 SERIESSUM counts a term with a negative x and a non-integer power as 0 and reads on (`seriessum_of`); overflow stays an
-immediate `#NUM!`. Probe probes/seriessum-negative-x-fractional-power (21 cells, excel-graph) pins it: `{1,2}` is 0,
+immediate `#NUM!`. Probe probes/seriessum-negative-x-fractional-power (25 cells, excel-graph) pins it: `{1,2}` is 0,
 `(-2,1,0.5,{1,1,1})` is 2, a later text/boolean is `#VALUE!`, a later error that error. The old unit test that pinned `#NUM!`
 (no evidence) now asserts Excel's 0. numbers.md entry is VERIFIED.
 Eval: gen-m5 known failures down by 1 (bf8903e05ec369ca A326); probes +1 case (21 cells, all pass); no regressions.
