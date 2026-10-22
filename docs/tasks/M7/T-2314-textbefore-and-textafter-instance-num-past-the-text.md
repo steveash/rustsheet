@@ -3,7 +3,7 @@ id: T-2314
 title: "TEXTBEFORE and TEXTAFTER: instance_num past the text length is #VALUE!, a number if_not_found is returned as text (gen-m7)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
