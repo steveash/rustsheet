@@ -137,13 +137,13 @@ impl Model {
     /// `REDUCE(Data!A12,Data!C11,PRODUCT)` with both cells TRUE is 0 (gen-m7/2c5ea078f25443a2
     /// A1767, 18b80d3fd292d63a A467; docs/excel-semantics/arrays.md "SCAN and REDUCE keep errors
     /// in the LAMBDA", T-2307). An error goes to the LAMBDA like any value (same entry). A union
-    /// is read as before (unprobed).
+    /// and a 3-D span are read as before (unprobed).
     pub(super) fn lambda_initial_value(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if self.is_multi_area(node) {
+        if self.is_multi_area(node) || matches!(node.ungrouped(), Node::SheetSpanKind { .. }) {
             return self.evaluate_node_in_context(node, cell);
         }
         self.eval_ref_or_index(node, cell)

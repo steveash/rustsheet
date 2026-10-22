@@ -1282,7 +1282,11 @@ A285). Both are references:
 - A285 and A1767 need a reference initial value: a text value would make PRODUCT `#VALUE!` and COUNT 2.
 - A467 needs a reference element too. PRODUCT of a reference TRUE and a value TRUE would be 1.
 - Elements from a range, a one-cell range included, were already references (T-1442).
-- A function result such as `IF(TRUE,A1)` as initial_value is unprobed.
+- Unprobed initial values:
+  - a function result such as `IF(TRUE,A1)`;
+  - an INDEX or XLOOKUP that picks a cell (ours: a reference, as `eval_ref_or_index` gives it);
+  - a union or a 3-D span (ours: read as values, as before);
+  - ISREF of the accumulator (ours: TRUE for a cell).
 Evidence: gen-m7 cases above (excel-graph, 2026-10-21, T-2225).
 Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the LAMBDA and SCAN keeps an error step in its slot.
 Since T-2307, `lambda_initial_value` keeps a reference initial_value a reference, as `eval_ref_or_index` binds a LAMBDA argument.
