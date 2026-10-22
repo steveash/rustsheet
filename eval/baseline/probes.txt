@@ -64,6 +64,7 @@ C	probes/atanh-unit-argument.case.json	12
 C	probes/average-value-args.case.json	32
 C	probes/averagea-array-constant-elements.case.json	25
 C	probes/base-min-length.case.json	14
+C	probes/base-number-upper-bound.case.json	50
 C	probes/bond-one-period-bases.case.json	80
 C	probes/byrow-bycol-array-results.case.json	32
 C	probes/callee-unparenthesized-lower-row-over.case.json	2
