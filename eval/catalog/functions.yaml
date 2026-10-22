@@ -45,6 +45,8 @@
 # MMULT, TRANSPOSE, LINEST, XLOOKUP's row, ROW of a range), not only by lifting a scalar parameter over an array.
 # `rustsheet-gen --spill` reserves an empty footprint under such an outer call (synthetic-generator.md §5.2 shape 3);
 # tools/tests/test_catalog.py pins the list.
+# `pivot: true` (GETPIVOTDATA) makes a case calling it get a pivot table on sheet `Pivot`, its arguments drawn from
+# that pivot instead of from the params (tools/src/rustsheet_tools/gen/pivots.py, T-2396).
 #
 # milestone: the first milestone in which the function is in scope for the gate.
 # prior: relative real-world frequency (Enron/EUSES/FUSE-derived, see research report). Most
@@ -2111,8 +2113,20 @@ functions:
     params:
       - { name: number, mode: value, lift: arrays, type: number }
       - { name: step, mode: value, lift: arrays, type: number, optional: true }
-  # No signature: GETPIVOTDATA reads a pivot table, which generated workbooks do not have (T-1238).
-  - { name: GETPIVOTDATA, category: lookup, milestone: M6, scope: in }
+  # `pivot: true`: a case calling GETPIVOTDATA gets a pivot on sheet `Pivot`, and the call's arguments are drawn
+  # from it (tools/src/rustsheet_tools/gen/pivots.py, T-2396); the params below document the signature.
+  - name: GETPIVOTDATA
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.3
+    returns: any
+    pivot: true
+    params:
+      - { name: data_field, mode: value, type: text }
+      - { name: pivot_table, mode: range, type: any }
+      - { name: field, mode: value, type: text, optional: true, repeat: { group: [field, item], min: 1, max: 2 } }
+      - { name: item, mode: value, type: text, optional: true }
   - name: GROUPBY
     category: lookup
     milestone: M7
