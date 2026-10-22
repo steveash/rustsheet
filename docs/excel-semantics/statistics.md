@@ -755,7 +755,7 @@ the text "TRUE" (L2) and a one-cell range or reference as its value (`BETA.DIST(
 and STANDARDIZE (probes-numeric/t1049-fdistrt A19, A26, m9-legacy-fdist A90; "SKEW, SKEW.P, KURT, ..." below).
 Evidence: probes/stat-later-argument-lift (141 formula cells, value cells rounded to 12 places, excel-graph, 2026-10-17, T-1290); probes/stat-argument-modes.
 Ours: matches (T-1290), except that BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as `#VALUE!`, as their scalar
-calls always did (L1, L13: T-1849; STANDARDIZE, L14: T-1755; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
+calls always did (L1, L13: T-1849; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
 in the lifting table and each kernel reads its arguments in its scalar order; T.DIST.2T and TDIST read every argument
 before they check any ("Overflowing arguments, PERMUT's limit and argument error order" below). One scalar change
 here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and
@@ -1582,6 +1582,33 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
 Status: VERIFIED (excel-graph) for a < 1, 6.5 <= b <= 8; b < 6.5 and a in [1, 1.5) UNVERIFIED
 Tasks: T-0969
 
+## T.DIST.RT's noise beyond t = 1 grows with a ln y (T-0969)
+Rule: beyond t = 1 (y <= 0.99), where `T.DIST.RT(t,n)` is `BETA.DIST(y,n/2,0.5,TRUE)/2` at the worksheet's y,
+Excel's error against the exact `I_y(n/2,1/2)/2` at that y grows about linearly with |E| = |(n/2) ln y|, the
+signature of a prefactor exp(E) with E held in a double. Part of it is ln y rounded to a double and then scaled
+by n/2; the rest is not identified.
+- Evidence: 700 cells sampled (seed 1) from the 2,531 `t0969-t-tail-grid` cells with t > 1, y <= 0.99, y > 1 - y and
+  df other than 2 (excel-graph). Errors are relative, in units of 2^-53:
+  - The standard deviation of Excel's error is 3.3 for |E| < 1, 3.1 for |E| in [1, 2), 3.9 for [3, 4), 7 to 12 for
+    [4, 10), and 24 for |E| >= 20. By df it is 2.7 to 5.2 up to df 100, and 15 to 21 at df 200 to 1000. The mean is
+    0.2, so the error has no bias.
+  - (n/2) times the rounding error of ln y correlates 0.38 with Excel's error. It is the same whether ln y is
+    Excel's LN (`x87_log10::excel_ln`) or libm's. It predicts a standard deviation of 3.0 against Excel's 7.9 and
+    leaves a residual of 7.3.
+  - Weaker fits: fl((n/2) * ln y) correlates 0.32, and so does E as a double sum with ln B, 0.23 to 0.32 over three
+    groupings, with B either exact or in Excel's GAMMALN form ("Student t prefactor per df").
+- Rejected as Excel's incomplete beta, bit-exact counts out of 184 on `t0969-t-beta-link` column E
+  (`BETA.DIST(y,n/2,0.5,TRUE)`), where the exact I_y gets 39 and 145 within 4 ulp:
+  - R's `toms708.c` `bratio` with Excel's GAMMALN in place of `gamln`: 29, the same as with TOMS 708's own `gamln`,
+    because `betaln` is not on any path these arguments take.
+  - Cephes `incbet` with the prefactor exp(a ln x + b ln(1-x) - ln B) and Excel's B: 35 or 36. With the exact B
+    it gets 31. Numerical Recipes `betai` gets 25 with Excel's B and 26 with the exact B.
+  - On the 700 tail-grid cells (exact: 92 bit-exact, 589 within 4 ulp, 53 visibly off), Cephes `incbet` gets 52
+    bit-exact with exp-log powers and 60 with `pow`. Each leaves about 175 cells visibly off.
+- Ours: `student_t.rs` returns the exact tail at that y, rounded once. That is closer to Excel than any candidate above.
+Status: VERIFIED (excel-graph) as an observation; the algorithm is UNVERIFIED
+Tasks: T-0969
+
 ## Student t density noise is not input rounding (T-0969)
 Rule: Excel's `T.DIST(t,n,FALSE)` for n >= 3 carries 1 to 2 ulp of noise of its own, not explained by the
 rounding of t*t, n + t^2 or 1 + t^2/n. With those inputs exact, the best model is the exact density
@@ -1920,6 +1947,8 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1047
 
 ## Legacy distribution names sweep, second family (T-1048)
+Implemented in: `functions/statistical/hypegeom.rs`, `weibull.rs` (HYPGEOMDIST/HYPGEOM.DIST sample_s above min(number_sample, population_s) is 0 or 1, zero counts valid, TRUE sample_s; WEIBULL density 0 at x = 0, TRUE x)
+Tasks: T-2035
 Rule: GAMMADIST, GAMMAINV, HYPGEOMDIST, LOGINV, LOGNORMDIST, NEGBINOMDIST, NORMDIST, NORMINV, NORMSDIST, NORMSINV, POISSON, TINV, WEIBULL return exactly the same value or error as their modern equivalent (GAMMA.DIST, GAMMA.INV, HYPGEOM.DIST with cumulative FALSE, LOGINV = LOGNORM.INV, LOGNORM.DIST cum TRUE, NEGBINOM.DIST cum FALSE, NORM.DIST, NORM.INV, NORM.S.DIST cum TRUE, NORM.S.INV, POISSON.DIST, T.INV.2T, WEIBULL.DIST) on every paired cell, so the aliases need no separate kernel. TDIST with tails 1 is the exception: it differs from T.DIST.RT for negative x (T.DIST.2T agrees with TDIST tails 2). TTEST = T.TEST and ZTEST = Z.TEST on every paired cell too.
 Oracle sweep (excel-graph), 16 cases, 34-102 cells each; every paired cell (column B) is identical except the TDIST row below. Quirks seen:
 - `TDIST(-1,3,1)` and `TDIST(-1,3,2)` are #NUM! (x must be >= 0); `T.DIST.2T(-1,3)` is #NUM! too, but `T.DIST.RT(-1,3)` = 0.8044988905221147. `TDIST(1,0.9,1)` is #NUM! (df truncates to 0); `TDIST(1,1.9,2)` = 0.5000000000000001 (= `T.DIST.2T(1,1.9)`, df truncates to 1); tails truncate (`TDIST(1,3,1.9)` and `TDIST(1,3,TRUE)` = tails 1, `TDIST(1,3,2.1)` = tails 2); tails 0 and 3 are #NUM!, and an omitted tails (`TDIST(1,3,)`) is #NUM!.
@@ -2057,7 +2086,9 @@ Implemented in: `Model::for_each_value_a` (statistical/count_and_average.rs), `A
 Tasks: T-1551, T-1555, T-1559
 
 ## Thin distribution functions: argument coercion, truncation and error edges (T-1049)
-Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by this task):
+Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by T-1049):
+Implemented in: `functions/statistical/hypegeom.rs`, `weibull.rs`, `phi.rs` (the HYPGEOM.DIST sample_s, zero-count, negative-fraction and TRUE-sample_s rules, the WEIBULL.DIST x = 0 density and TRUE x, PHI of a boolean)
+Tasks: T-2035 (partial)
 - **Truncation:** HYPGEOM.DIST truncates all four counts toward zero (`HYPGEOM.DIST(1.9,4,8,20,TRUE)`
   = `(1,4,8,20)`, and `(0.9,...)` = `(0,...)`; `hypgeomdist`), and a negative fraction (-0.5) is
   `#NUM!`. T.TEST truncates `tails` and `type` (`T.TEST(...,1.9,2.9)` = tails 1, type 2; `ttest`).
@@ -2221,7 +2252,7 @@ as does a wrong argument count (`STANDARDIZE(5,3)`, a three-range `SUMX2PY2`); `
 written `_xlfn.`-prefixed in the file.
 Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
 Status: VERIFIED (excel-graph).
-Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404 and HARMEAN of no numbers (`#N/A`, Q50) by T-1753; the others above are open.
+Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404, HARMEAN of no numbers (`#N/A`, Q50) by T-1753, and the direct TRUE in STANDARDIZE's x (Q58, and L14 of probes/stat-later-argument-lift) by T-1755; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755
 
 ## AGGREGATE 14-19: k is read before the array, a referenced error k is `#VALUE!` (T-2281)
@@ -2248,3 +2279,34 @@ B2 blank, B3 0.5, B4 2, C1:C2 no numbers, D1 `=NA()`, E1 `=NA()`, E2 2):
 Engine: `Model::aggregate_k` (crates/rustsheet-engine/src/functions/aggregate.rs); `fn_aggregate`
 keeps a fourth argument IF or CHOOSE picks a reference for as that reference.
 Status: implemented (T-2281)
+
+## F.TEST / FTEST is not correctly rounded (T-1927)
+Excel's F.TEST is not the correctly rounded value of `2*min(lower, upper)` tail: with the f
+our two-pass variance gives, the exact p of `F.TEST({1,2,3,4},{5,6,7,2.4})` is 0.5023992107800743
+but Excel returns 0.5023992107800741, and `F.TEST(C1:C6,B1:B8)` of probes/stat-argument-modes
+(df 1,7) is 0.91959790471759887 exactly against Excel's 0.9195979047175995, while
+`F.TEST(A1:A8,B1:B8)` (df 7,7) and `FTEST(B1:C5,B1:B5)` (df 9,4) are Excel's correctly rounded
+values. An exact incomplete beta therefore fixes some cells and regresses others; matching all
+needs Excel's own algorithm (see the F.DIST/BETA.DIST fit notes).
+F.TEST is not built on Excel's own F.DIST either (probes/ftest-decomposition, excel-graph,
+2026-10-22, T-1927): `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` with f = `VAR.S(x)/VAR.S(y)` is
+0.7947858780819459 and 0.5236816407506065 where F.TEST is 0.7947858780819458 and
+0.5236816407506063 (A8/A7, B8/B7), and F.TEST is exactly symmetric in its arguments (A7 = E7,
+C7 = F7). Over the 33 distinct F.TEST inputs on file (probes stat-argument-modes,
+ftest-decomposition; probes-numeric m9-legacy-ftest, t1049-ftest) Excel is within -6..+4 ulps of
+the exact two-tailed p, on both sides; neither the exact p (12 of 33 bit-exact) nor the A&S
+26.6.4-26.6.8 finite series in doubles (11 of 33), with a two-pass, textbook or corrected
+variance, or with f taken as larger over smaller, reproduces it. Open: T-2361.
+
+## Paired functions: a size mismatch is `#N/A` before an error cell (T-1927)
+COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST (type 1) of arguments with different cell
+counts are `#N/A` even when a cell holds an error: `COVARIANCE.S(H1:H3,I1:I4)` with H2 `=1/0` is
+`#N/A`, as is `COVARIANCE.P(I1:I4,H1:H3)` with the order swapped; with equal sizes the error wins
+(`COVARIANCE.S(H1:H3,I1:I3)` `#DIV/0!`). CORREL, PEARSON and RSQ already check sizes first
+(`#N/A`). The tests that allow unequal sizes return the error: `T.TEST(H1:H3,I1:I4,2,2)` and
+`F.TEST(H1:H3,I1:I4)` are `#DIV/0!`. Evidence: probes/ftest-decomposition G1:G13 (excel-graph,
+2026-10-22). Unprobed: an error inside an array constant (`COVARIANCE.S({1,#DIV/0!,3},{2,4,5,7})`);
+the engine treats it like the range.
+Engine: `Model::paired_samples` (`PairedSamplesError::sizes_differ`) in
+crates/rustsheet-engine/src/functions/statistical/paired.rs.
+Status: implemented (T-1927)

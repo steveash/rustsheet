@@ -392,3 +392,116 @@ pasted scripts point at a scratchpad. Reviewer 3 uses the literal `SCRATCH/`. Ed
 - cand9 is 0.99 within about 0.02 of 2, and t near 2 also feeds GAMMALN on [3,8) just above each integer.
   Switching to cand9 there is a measured option, but it is not Excel's algorithm. Decide it with the eval data.
 - Nothing else changes for T-2123.
+
+## 13. T-2122 run 1 (2026-10-22, single opus worker, no sub-sessions)
+
+Scripts and logs of this run are in `docs/research/t1941/t2122/` on the research branch (main keeps only
+`gen_k2micro.py`). The K2 scripts read `SCRATCH/cand9_PQ.npy` (cand9 of 12.1 as [P(10), Q(9)+pad], built from
+`review3/spec.py` with p1..p5 and q0..q4 replaced) and `SCRATCH/c3all.pkl` (from `review3/final/c3all.py`); replace
+`SCRATCH/` with a local directory as in section 12. Probe data stays on the research branch.
+
+### 13.1 Oracles filled
+- Every case committed without oracles at the pause is now filled: k3l a-f rungs 22-26 and the missing f21; k3l g-l
+  rungs 00, 10-26; k1l (all 78). No probe case on the branch is left without an oracle from this run's lists.
+- New cases, filled:
+  - **K2 micro-ladders** `kmyst-gam-k2m[a-e][0-2]`, `k2mz[0-4]` (20 cases, `t2122/gen_k2micro.py`): §12.1 step 1
+    exactly (anchors 2.05/2.25/2.5/2.75/2.95, a 256-double run every 2e-5 across 3e-3; near 2, a run at 2 + k·1e-5,
+    k = 1..300).
+  - **K3 rungs 27-30** at all 12 anchors `kmyst-gam-k3l[a-l](27..30)` (48 cases; `w5/gen_k3ladder.py`, now `KMAX`-aware).
+
+### 13.2 K3: the ladder slopes were aliased twice; the offsets are ~1e10 ulps
+- With rungs to 26 (`t2122/ladder_real_af26.log`), every slope moved by a multiple of 2^21 from the §12.3 values
+  (e.g. N5@0.8013 −8.1e5 → −2.5e7). With rungs to 30 (`ladder_real_af30.log`) they moved again by multiples of 2^26
+  and 2^28: N6 at anchors c-f is now a coherent smooth law (−3.04e8, −2.99e8, −2.88e8, −2.70e8 cycles/x). N3 and D5
+  are stable across KMAX. The 6-anchor joint solve is still inconsistent (7/15 N, 6/11 D equations kept).
+- Planted controls (`ladder_ctl*.log`, `ladder.py ... control`, seed 1):
+  - KMAX=26, 6 anchors: fine at TSIZE 1e8; at 1e9 every slope above ~2.2e7 wraps by exactly 2^26 (the real data
+    look like this).
+  - KMAX=30, 6 anchors: recovers N4-N8 and D6-D8 at 1e9 and 3e9; fails at 1e10 (D chain lost, N7 11% off).
+  - **KMAX=30, all 12 anchors, TSIZE 1e10: N4-N9 within 0.2%, D6/D7 within 0.05%, D8 ~20%, D5 unidentifiable.**
+    This is the configuration to use on the real data (13.4).
+- So the true K3 coefficients are ~1e10 ulps (relative ~1e-6) from ss_fc along near-null directions: far further
+  than any lattice climb could reach, consistent with ss_fc being a strict local maximum.
+
+### 13.3 K2: the per-run c3 is a sawtooth, not a winding law
+- Reproduced: cand9 stored scores 0.9418 on all 2.18 M unique x in (2,3] (`k2_allscore_cand9.log`); `c3all.py`
+  with the micro-ladders: 2,871 runs, 0.9417 → 0.9550 with per-run c3 (`c3all2.log`).
+- `k2c3window.py` (5-run windows, offsets in 1/32 ulp including 0, so c3 ≈ 0 regions are visible) shows c3(x) on
+  every ladder as a **sawtooth**: a monotone ramp of 0.5-0.75 ulp(s3) over 1-1.7e-3 in x, then a jump back of
+  ~0.4-0.75 (not 1). Ramp direction is decreasing at s3; the N.p4 read is the same pattern rising 0 → 0.5 ulp(P4)
+  (`k2stagewin_ac.log`; P4 is one binade above s3 for x < 2.75). Earlier "decorrelated by 3e-4" was the per-run
+  argmax mixing informative and uninformative runs (`k2c3unwrap.py`: informative-only steps have coherence 0.85).
+- **Refuted:** a smooth linear pre-rounding offset law at any single N op (s2, p3, s3, p4, s4) on 3e-3 windows
+  (`k2lin.py`, planted control (−700, 0.3) recovered exactly as (−698, 0.297) at 100%; real best gains +0.004 to
+  +0.015, below the per-window reads; `k2lin_s3.log`, `k2lin_sites.log`).
+- Reading: the offset is periodic in x with period ~1e-3 (near 2) to ~1.7e-3, ramp-and-reset, with partial
+  resets. That is what a rounding residue of a coarser intermediate looks like, not a coefficient move. Next:
+  (1) read the ramp's exact period at each ladder (finer windows, W = 2) and test it against binary grids of
+  s2/P3/x values and against ulp(P4)/ulp(s3) binade edges; (2) test a two-site model (s3 + p4 jointly per window);
+  (3) cand9's near-2 strength makes it the base for every K2 test.
+
+### 13.4 K3 real ladder, 12 anchors, KMAX=30 (`t2122/ladder_real_12a30.log`)
+- Still inconsistent: 10/27 N and 7/20 D equations kept, and the solved moves equal the 6-anchor ones (the RANSAC
+  consensus is the same subset). Several dropped residuals sit near multiples of 2^28-2^29 cycles/x, so some reads
+  are still aliased at rung 30 or are wrong-branch unwraps.
+- The most coherent law in the data is **N6: −2.7e8 to −3.04e8 cycles/x at all 12 anchors from 0.73 to 1.45**
+  (nearly constant in x), and RANSAC drops most of those equations. N3 (−1.6e5 to −1.6e7) and D5 (−4.6e7 to +3.8e7,
+  smooth in x) are stable across KMAX 26/30.
+- Next steps, in order:
+  1. Do not trust the joint solve's consensus. Fix N6 from its 12 coherent equations first, then solve the
+     remaining stages conditionally (pass `STAGES` without N6 after applying its move; or weight equations by
+     rung count).
+  2. Test the near-constant N6 slope directly: a pure move along the direction that makes δ6' constant
+     (N7 and the N8/N9 compensation) at about −2.9e8 cycles/x, scored on rows6.
+  3. If residuals stay at 2^28-2^29 multiples, add rungs 31-33 (`KMAX=33 python3 w5/gen_k3ladder.py ...`) for
+     the 6 anchors whose reads disagree and confirm with a 1e11 control.
+
+### 13.5 Not reached this run
+- K1: the D P2 line unwrap (`w4/k1r/dtrack.py`) is not run.
+- (1.5,2]: the w6t/k3t cases beyond the committed ones must be regenerated and filled before W6's pkscan, which
+  is hours of CPU per stage; not started.
+- No kernel is bit-exact yet, so `gamma_kernels.rs` has no new arrays to swap (no engine task filed this run).
+
+## 14. T-2122 run 2 (2026-10-22, single opus worker, ~40 minutes, K3 only)
+
+Script `t2122/k3_n6first.py` (main and the research branch; logs `k3_n6first_*.log` on the research branch). It
+reads the per-stage slopes `w5/p5/ladder.py` prints and solves the N chain top-down instead of by the joint RANSAC
+(13.4 step 1): N6's equations alone give (dN7, dN8, dN9), with a consensus start over minimal subsets and alias
+shifts of 2^maxrung cycles/x; N7's reads are then a check; N5 adds dN6; N3 adds dN4 and dN5. With `JOINT67=1` it
+also fits N6 and N7 jointly, enumerating alias shifts on the N7 rows only. It needs only numpy (no `libsc.so`). No
+new oracle data this run.
+
+### 14.1 Results
+- **N6 is one smooth quadratic law at 8 of the 9 readable anchors.** In coefficient units, slope·ulp(S6) runs
+  −3.83e-9 (0.8741), −4.19e-9 (1.0309), −4.22e-9 (1.1023) down to −3.74e-9 (1.4531). S6 stays in one binade
+  (ulp 2^-56) over [0.73, 1.46], so the near-constant cycles/x read of 13.4 is not a binade artefact.
+  - Fit on 8 anchors: residuals ≤ 2e6 cycles/x (0.7%).
+  - The 0.9517 read (−7.6e6) is off by −2.83e8, about 2^28. It is an alias at rung 28 or a wrong-branch unwrap.
+- **Anchors a-f alone are fully consistent.** `ladder_real_af30.log` gives 4 N6 equations and 2 N7 equations. The
+  joint N6+N7 fit leaves rms 2.4e4 cycles/x, with N7@1.3527 at alias −1 (one period of 2^30). The moves are **N7
+  +4.005e8, N8 −4.61e10, N9 +3.502e12 ulps** (`k3_n6first_real_af.log`).
+- **With all 12 anchors the joint N6+N7 fit breaks.** Rms is 1.25e7 cycles/x and N7 residuals reach 3.7e7
+  (`k3_n6first_real.log`). The N6-only 12-anchor fit moves N7 to +7.5e8 (+5.6e8 jointly). So the g-l anchors
+  (0.7311 to 1.4129) pull against a-f by ~2e8 ulps in N7.
+- The lower stages are not consistent yet: N5 has 3 readable anchors, 2 dropped; N3 keeps 6 of 10 at a 3e6
+  tolerance, giving N4 −3.8e8 and N5 +1.04e9 ulps. They depend on the head move, so they mean nothing until N7-N9
+  are settled.
+- **Controls:**
+  - On the 12-anchor planted control (`ladder_ctl30_1e10_12a.log`), N6-only recovers truth N7 to 1% (−1.33e9
+    against −1.344e9). It does not recover N8 or N9 (−1.5e9 against −1.08e9; 3.9e10 against 4.3e9): N6's
+    equations fix N7 and only a combination of N8 and N9.
+  - The control's N7 reads miss the N6 prediction by 2e6-1.4e7. So N7 reads are good to ~1e7 cycles/x at best, and
+    the real 12-anchor N7 misfit is only 2-3 times that.
+  - **The `JOINT67` fit fails its control** (rms 2.7e8). It enumerates alias shifts on N7 rows only, and the
+    control needs one on N6 (1.1789, alias −1). Its a-f real result passed because there no N6 row needed a shift.
+    Fix this before trusting any 12-anchor joint number.
+
+### 14.2 Next steps (in order)
+1. Let the joint fit enumerate alias shifts on every row: ±1 on all, or a RANSAC over (rows, shift). Validate it on
+   `ladder_ctl30_1e10_12a.log` until it recovers truth N7 and the N8/N9 combination.
+2. Score the a-f head move (N7 +4.005e8, N8 −4.61e10, N9 +3.502e12 on ss_fc) against the 12-anchor one on the
+   rows6 data. This is 13.4 step 2 and needs `w5/libsc.so` built: `make` in `w5/`.
+   - If a-f wins, re-read the g-l ladders: the second-batch anchors are the suspect, rung by rung.
+   - If neither wins, the head offset is not a coefficient move. That would be the same reading as K2's
+     sawtooth (13.3).
+3. Only after the head is fixed: N5 → dN6, then N3 → (dN4, dN5), each with its alias shifts free.

@@ -271,7 +271,9 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let [sample_s, number_sample, population_s, number_pop] = counts;
-        let sample_s = self.cast_number_no_bools_ref(sample_s, cell)?.trunc();
+        // A TRUE sample_s is 1 (probes-numeric/t1048-hypgeomdist A19, t1049-hypgeomdist A53); the
+        // other three counts stay `#VALUE!` for a boolean (unprobed).
+        let sample_s = self.cast_number_ref(sample_s, cell)?;
         let number_sample = self.cast_number_no_bools_ref(number_sample, cell)?.trunc();
         let population_s = self.cast_number_no_bools_ref(population_s, cell)?.trunc();
         let number_pop = self.cast_number_no_bools_ref(number_pop, cell)?.trunc();
@@ -279,19 +281,34 @@ impl Model {
             Some(value) => Self::cast_bool_ref(value, cell)?,
             None => false,
         };
+        // A negative fraction is `#NUM!` before truncation (t1049-hypgeomdist A34
+        // `HYPGEOM.DIST(-0.5,4,8,20,TRUE)`).
+        if sample_s < 0.0 {
+            return Err(num_error(cell));
+        }
+        let sample_s = sample_s.trunc();
 
-        // 0 <= sample_s <= min(number_sample, population_s), sample_s >= number_sample +
-        // population_s - number_pop, 0 < number_sample <= number_pop and 0 < population_s <=
-        // number_pop; anything else is #NUM!.
-        let valid = sample_s >= 0.0
-            && sample_s <= f64::min(number_sample, population_s)
-            && sample_s >= f64::max(0.0, number_sample + population_s - number_pop)
-            && number_sample > 0.0
+        // sample_s >= number_sample + population_s - number_pop, 0 <= number_sample <= number_pop
+        // and 0 <= population_s <= number_pop, with number_pop > 0; anything else is #NUM!. A zero
+        // number_sample or population_s is valid (t1049-hypgeomdist A44, A46, A55, A56).
+        let valid = sample_s >= f64::max(0.0, number_sample + population_s - number_pop)
+            && number_sample >= 0.0
             && number_sample <= number_pop
-            && population_s > 0.0
-            && population_s <= number_pop;
+            && population_s >= 0.0
+            && population_s <= number_pop
+            && number_pop > 0.0;
         if !valid {
             return Err(num_error(cell));
+        }
+        // Above min(number_sample, population_s) the density is 0 and the cdf 1, not `#NUM!`
+        // (t1048-hypgeomdist A13, A16; t1049-hypgeomdist A35, A36, A43, A45).
+        if sample_s > f64::min(number_sample, population_s) {
+            return Ok(if cumulative { 1.0 } else { 0.0 });
+        }
+        // With no draws or no successes the only outcome is 0, with probability 1
+        // (t1049-hypgeomdist A44, A46, A49).
+        if f64::min(number_sample, population_s) == 0.0 {
+            return Ok(1.0);
         }
 
         let n_pop = number_pop as u64;

@@ -368,9 +368,18 @@ Pattern limits of our PCRE2 parser (T-1973, functions/text/pcre/parse.rs):
   DEVIATION: `REPT("(",250)&"a*"&REPT(")",250)` is `#VALUE!`, as it already was under regex-syntax's nest limit.
 - Repeat counts are capped at 65,535 (PCRE2's), as are capture groups. Group names are capped at 32 characters
   (PCRE2 before 10.44, which may have raised it). All of these are UNVERIFIED for Excel (T-1972).
+Backtracker limits (T-1900, functions/text/pcre/backtrack.rs and program.rs):
+- Every executed instruction, pushed frame, backreference character, atomic-group scan and start position is
+  charged to the call's one work budget. The stack may not pass the heap the call may still hold (64 MiB less what
+  it holds). Past either, the call is `#ERROR!`. Stock PCRE2 has a required-character check and a match limit
+  instead. `REGEXTEST(REPT("a",30)&"c","\G(a|a)*b")` is `#ERROR!` here, where PCRE2 answers FALSE at once.
+  `\G(a|a)*b`, `\G(a*)*b`, `\G((a+)+)+b` and `(.*)\1x` over `REPT("a",32767)` are `#ERROR!` or FALSE. Excel's
+  answers are UNVERIFIED (T-2356).
+- Counted repeats are expanded into copies, and every node a copy visits counts against the compile size limit.
+  `(?:(?:){65535}){65535}(a)\1` is too big, and `#VALUE!`, where PCRE2 compiles it.
 Status: DEVIATION (decision 0014)
 Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
-and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
+and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `Backtracker` and `Program` (functions/text/pcre/), `SplitList` (functions/text/textsplit.rs)
 Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
@@ -733,9 +742,9 @@ Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them
 - Now `#VALUE!` (fail closed): `\v` (was VT), `^*`, and spaces inside quantifier braces (`a{1, 2}`, a quantifier
   before). Also `--`, `~~` and `||` inside a bracket, which were set operations; Excel's nested brackets suggest a
   UTS #18 dialect, where they may be set operations too. `$` and `\Z` on a text that holds another LF before
-its final one still match only at the very end (PCRE2 also matches before the final LF) until T-1900's memoized mode.
+its final one still match only at the very end (PCRE2 also matches before the final LF) until T-2355's memoized mode.
 Status: VERIFIED (excel-graph)
-Tasks: T-1829 (probe), T-1900, T-1903, T-1973
+Tasks: T-1829 (probe), T-1900, T-1903, T-2355, T-1973
 
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
@@ -752,14 +761,22 @@ advancing one character, so `a*?` and `a??` on `aaa` replace to `bbbbbbb`, `(?:a
 ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around the emoji.
 Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
 Ours: PCRE2's grammar since T-1973 (functions/text/pcre/): comments, `\Q..\E`, `(?x)` and scoped flags match
-(C14-C19). Backreferences, lookaround, atomic groups, possessive quantifiers, `\K`, `\G` and conditionals parse
-but are `#VALUE!` until T-1900's backtracker. Excel's answer for `a++a` is `#N/A` (B29). C11 passes only because it
-tests ISERROR. Possessive patterns whose result does not depend on possessiveness (`REGEXTEST("aaa","a++")`, TRUE
-in PCRE2, unprobed in Excel) were right before T-1973 and are `#VALUE!` until T-1900. SPEC-0013 accepts that temporary loss. Iteration is
+(C14-C19). Backreferences (C1-C5), atomic groups and possessive quantifiers (B29, C11) and `\G` match on T-1900's
+backtracker (functions/text/pcre/backtrack.rs). Several PCRE2 behaviors it implements are UNVERIFIED for Excel
+(T-2356 probes them):
+- a backreference ignores case as its scope's flags say;
+- a backreference to a group that did not take part fails to match (PCRE2's default);
+- a group's capture changes only when the group closes, so `^(a|b\1)+$` is FALSE on `abab`;
+- `\G` stands at each iteration search's start;
+- the empty-loop rule;
+- captures made inside an atomic group are undone on backtracking.
+`(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals parse but are
+`#VALUE!` until T-2354. Iteration is
 still Rust's (`bababab`) until T-1899. The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
-unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
-Status: VERIFIED (excel-graph)
-Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974
+unprobed features), T-1973 (parser), T-1900 (backtracker), T-2354 (lookaround, `\K`, conditionals), T-2355 (memoized
+mode), T-1899 (iteration), T-1974 (costs), T-2356 (probe of the backtracker's behaviors).
+Status: VERIFIED (excel-graph); the backtracker behaviors listed above UNVERIFIED (T-2356)
+Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974, T-2354, T-2355, T-2356
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
@@ -872,14 +889,18 @@ Status: VERIFIED (excel-graph); not implemented (T-2250).
 Tasks: T-2169, T-2250
 
 ## TEXTBEFORE and TEXTAFTER: instance_num past the text, a number if_not_found
-Rule: an instance_num whose size is greater than the text's length is `#VALUE!`, whatever the delimiter, match_end and if_not_found
-(the empty delimiter excepted, see above): `TEXTBEFORE("b","a",-2,1,1)` (gen-m7/2c5ea078f25443a2 Calc!A360), `TEXTBEFORE("x~*","1",
-WORKDAY(..))` (611ce3bbfab27cef A336), and
-`TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767) are `#VALUE!`. `TEXTBEFORE(<blank>,Data!A6:A11,2,123456789.123,1,FALSE)`
-(c36ff5f42a1a4d47 A148) is `#VALUE!` too, but its match_mode 123456789.123 is itself invalid, so it does not isolate this rule. A number if_not_found comes back as text:
-`TEXTAFTER(..,"a",..,0,1,-2.5)` is "-2.5" (ac67253061bba16a A776) and `TEXTBEFORE(..,",",2,..,1,3)` is "3" (A1345).
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
-Ours: `#N/A`, "" or the if_not_found number (T-2314).
+Rule: an instance_num whose size is greater than the text's length, counted in UTF-16 units, is `#VALUE!`, whatever the delimiter,
+match_end and if_not_found (the empty delimiter excepted, see above): `TEXTBEFORE("b","a",-2,1,1)`, `TEXTBEFORE("ab","a",3)` and
+`TEXTBEFORE("ab","a",3,0,0,"nf")` are `#VALUE!`, while `TEXTBEFORE("ab","a",2)` is the usual `#N/A`. `TEXTAFTER("😀","a",2)` is `#N/A`
+and `TEXTAFTER("😀","a",3)` `#VALUE!` (two units), `TEXTAFTER("é","a",2)` `#VALUE!` (one). Gen-m7 shows it on `TEXTBEFORE("x~*","1",
+WORKDAY(..))` (611ce3bbfab27cef A336) and `TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767).
+match_mode is cut toward zero and must then be 0 or 1, else `#VALUE!`, also beside the empty delimiter: 2, -1, 255 and 123456789.123
+are `#VALUE!` (`TEXTBEFORE("aBc","b",1,2)`; `TEXTBEFORE("abc","",2,123456789.123)`, which is c36ff5f42a1a4d47 A148), 0.5 is 0
+(`#N/A` for a case-different delimiter), 1.5 and TRUE are 1. A number or boolean if_not_found comes back as its text:
+`TEXTBEFORE("b","a",1,0,0,5)` is "5", `-2.5` is "-2.5", TRUE is "TRUE" (also gen-m7 ac67253061bba16a A776, A1345).
+Evidence: probes/t2314-textbefore-instance-bound (excel-graph, 2026-10-22) and gen-m7 (excel-graph, 2026-10-21, T-2225).
+Ours: matches (`text_around_element`, `around_options` and `around_not_found` in functions/text/before_after.rs, T-2314). The probe's
+`TEXTBEFORE("abc","b",1,-0.5)` is "a", not `#VALUE!`: flooring -0.5 would give the invalid -1 (A2), so match_mode is cut toward zero.
 Status: VERIFIED (excel-graph)
 Tasks: T-2314
 

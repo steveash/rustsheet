@@ -932,7 +932,7 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   `ADDRESS(10,0.1/DATE(2055,0,5),3,INDEX(Data!A6:A7,3))` `#REF!`, `ADDRESS(18,0.1,-2.5,MINUTE(-0.5)<..,..)` `#NUM!`
   (gen-m6/0fd242eb9b2456a8 Calc!A280, 38d4bcdafaed1275 A35, 07171fa3f7493f51 A245; 15 cells in T-2274).
 - A sheet_text of "TRUE" or "FALSE" is quoted like a name that needs quotes: `ADDRESS(9,26,3,TRUE,"TRUE")` = `'TRUE'!$Z9` and
-  `ADDRESS(6,20,4,TRUE,<a 1x1 array holding the boolean FALSE>)` = `'FALSE'!T6` (a boolean sheet_text becomes "FALSE" and is quoted) (c96ac1ada46179c4 A197, ee56a4ed5a612a0d A306). Ours leaves them bare.
+  `ADDRESS(6,20,4,TRUE,<a 1x1 array holding the boolean FALSE>)` = `'FALSE'!T6` (a boolean sheet_text becomes "FALSE" and is quoted) (c96ac1ada46179c4 A197, ee56a4ed5a612a0d A306).
 - A row past 1048576 or a column past 16384 is `#VALUE!` whatever abs_num and a1 are, R1C1 relative included:
   `ADDRESS(1E+15,7)`, `ADDRESS(21887494,5)`, `ADDRESS(123456831,3,1,..,"Data")`, `ADDRESS(17,123456789.123,2,FALSE)`,
   `ADDRESS(2,45306,2,FALSE,"Data")` (36d5ce763ea63631 A154, b54448af3fde07ca A220, d0c30225243fde60 A63, 04fdc9a67474aab9 A98,
@@ -953,15 +953,29 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   `ADDRESS(9,3,4,FALSE,"1E3")` = `'1E3'!R[9]C[3]`, and quotes "1A", "A1" and "R1C1" sheet_text alike.
 Status: VERIFIED (web).
 Implemented in: `address_index` and `r1c1_part` (crates/rustsheet-engine/src/functions/lookup_and_reference/address_areas.rs,
-T-2275); every argument is cast before the bounds are checked.
+T-2275, T-2274); every argument is cast before abs_num and the bounds are checked, and `address_sheet_text`
+quotes a `sheet_text` of "TRUE" or "FALSE" (T-2274; other spellings are unprobed).
+Ours: implemented (T-2274, T-2275).
 Tasks: T-2274, T-2275
 
 ## HYPERLINK: an error link_location is the result (T-2277)
 Rule (excel-graph, gen-m6, 2026-10-21): when link_location is an error, HYPERLINK returns that error as one value, whatever
-friendly_name is: with a number friendly_name (`HYPERLINK(TEXTJOIN(<#VALUE!>..),GCD(..))` is `#VALUE!`), with an array one
+friendly_name is: with a number friendly_name (`HYPERLINK(<328-character text>,GCD(..))` is `#VALUE!`: next entry), with an array one
 (`HYPERLINK(XLOOKUP(<size mismatch>),MUNIT(2))` is `#VALUE!`, not a spill) and with a range one (`HYPERLINK(HLOOKUP(100,Data!A6:C11,7)&..,
 OFFSET(Data!A6:C12,6,42))` is `#REF!`); `HYPERLINK("abc"&NA(),OFFSET(..)^..)` is a single `#N/A` that spills nothing (gen-m6/0bcac2d96e96b3df
-Calc!A17, 44194b2fefa30de2 A169, d0c30225243fde60 A377, c6621490a4d67f4e A214/B214). Ours returns friendly_name or lifts over it.
+Calc!A17, 44194b2fefa30de2 A169, d0c30225243fde60 A377, c6621490a4d67f4e A214/B214).
+Ours: implemented (T-2277): an error link_location, or one past 255 characters, is the whole result over a scalar, array or range
+friendly_name (`fn_hyperlink` reads link_location before the lift).
+Status: VERIFIED
+Tasks: T-2277
+
+## HYPERLINK: a link_location past 255 characters is #VALUE! (T-2277)
+Rule (excel-graph, 2026-10-22, probes/t2277-hyperlink-location-length A1-A15): a link_location of more than 255 characters is
+`#VALUE!`, with or without friendly_name and over an array friendly_name (one `#VALUE!`, no spill): `HYPERLINK(REPT("a",255),1)` = 1,
+`REPT("a",256)` is `#VALUE!` (also `HYPERLINK(REPT("a",256))`), `"#"&REPT("a",254)` = 1 and `"#"&REPT("a",255)` is `#VALUE!`: the
+`#` of an internal link counts. This was the cause of gen-m6/0bcac2d96e96b3df Calc!A17 (a 328-character TEXTJOIN location), not a
+TEXTJOIN error. Unprobed: characters outside the BMP (ours counts UTF-16 units).
+Ours: implemented (T-2277).
 Status: VERIFIED
 Tasks: T-2277
 

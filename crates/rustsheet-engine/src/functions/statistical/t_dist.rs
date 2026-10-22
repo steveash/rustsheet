@@ -3,7 +3,7 @@ use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
-use crate::functions::statistical::paired::PairedValues;
+use crate::functions::statistical::paired::{PairedSamplesError, PairedValues};
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
 use crate::functions::statistical::student_t::{
     student_t_density, student_t_tail_at, student_t_tails,
@@ -54,7 +54,7 @@ enum TTestTails {
 /// then the test.
 fn t_test_element(
     model: &Model,
-    samples: &Result<PairedValues, CalcResult>,
+    samples: &Result<PairedValues, PairedSamplesError>,
     values: &[CalcResult],
     cell: CellReferenceIndex,
 ) -> CalcResult {
@@ -76,7 +76,14 @@ fn t_test_element(
     };
     match samples {
         Ok(samples) => number_or_error(t_test_p(samples, &tails, &test_type, cell)),
-        Err(error) => error.clone(),
+        // A paired test of samples of different sizes is `#N/A` before an error cell is
+        // (probes/ftest-decomposition G12); the unpaired tests return the error (G13).
+        Err(PairedSamplesError {
+            sizes_differ: true, ..
+        }) if matches!(test_type, TTestType::Paired) => {
+            CalcResult::new_error(Error::NA, cell, String::new())
+        }
+        Err(PairedSamplesError { error, .. }) => error.clone(),
     }
 }
 
@@ -501,7 +508,10 @@ impl Model {
         }
         let samples = self
             .paired_samples(args, cell, false)
-            .map_err(CalcResult::without_message);
+            .map_err(|error| PairedSamplesError {
+                error: error.error.without_message(),
+                ..error
+            });
         let cells = samples.as_ref().map_or(0, |samples| {
             let cells = samples.first.len().saturating_add(samples.second.len());
             u64::try_from(cells).unwrap_or(u64::MAX)

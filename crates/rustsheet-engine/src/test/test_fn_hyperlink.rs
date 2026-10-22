@@ -194,3 +194,46 @@ fn fixing_an_erroring_friendly_name_attaches_the_link() {
         Some(external("https://www.ironcalc.com/"))
     );
 }
+
+// docs/excel-semantics/lookup.md "HYPERLINK: an error link_location is the result" (T-2277):
+// an error link_location is one value whatever friendly_name is, and spills nothing.
+#[test]
+fn an_error_link_location_is_the_result_over_an_array_friendly_name() {
+    let mut model = new_empty_model();
+    model._set("A1", "=HYPERLINK(NA(), 5)");
+    model._set("A2", "=HYPERLINK(NA(), {1,2})");
+    model._set("A3", "=HYPERLINK(NA(), B5:C6)");
+    // a lifted non-error link_location still lifts
+    model._set("A4", "=HYPERLINK(\"#A1\", {1,2})");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("B2"), "");
+    assert_eq!(model._get_text("A3"), "#N/A");
+    assert_eq!(model._get_text("B3"), "");
+    assert_eq!(model._get_text("A4"), "1");
+    assert_eq!(model._get_text("B4"), "2");
+}
+
+// probes/t2277-hyperlink-location-length A1-A15: a link_location of more than 255 characters
+// (a "#" included) is #VALUE!, whatever friendly_name is, and spills nothing.
+#[test]
+fn a_location_past_255_characters_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=HYPERLINK(REPT(\"a\",255),1)");
+    model._set("A2", "=HYPERLINK(REPT(\"a\",256),1)");
+    model._set("A3", "=HYPERLINK(\"#\"&REPT(\"a\",254),1)");
+    model._set("A4", "=HYPERLINK(\"#\"&REPT(\"a\",255),1)");
+    model._set("A5", "=HYPERLINK(REPT(\"a\",256))");
+    model._set("A6", "=HYPERLINK(REPT(\"a\",256),{1,2})");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "1");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("B6"), "");
+}

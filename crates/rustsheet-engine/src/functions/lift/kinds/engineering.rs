@@ -34,7 +34,7 @@ const BESSEL_WEIGHT: u32 = (1 << 16) - 1;
 const COMPLEX_FOLD: ArgKinds = ArgKinds {
     required: 1,
     params: &[],
-    repeat: Some(WholeByCaller),
+    repeat: &[WholeByCaller],
     max: 255,
     work: Constant,
     result: CallResult::Value,

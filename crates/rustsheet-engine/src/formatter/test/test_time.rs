@@ -70,3 +70,17 @@ fn elapsed_hour_padded() {
     let formatted = format_number(value, format, &ctx);
     assert_eq!(formatted.text, "02:24:00");
 }
+
+/// gen-m10 and gen-m5 (T-1731): a clock token over a serial past 9999-12-31 is unshowable, a lone
+/// elapsed token is not.
+#[test]
+fn clock_past_last_date_is_unshowable() {
+    let ctx = FormatContext::new(get_default_locale());
+    for format in ["h:mm", "[h]:mm", "[m]:ss", "h AM/PM", "h:mm:ss AM/PM"] {
+        let formatted = format_number(1_234_567_890.0, format, &ctx);
+        assert!(formatted.unshowable, "{format}");
+    }
+    let formatted = format_number(1e15, "[s]", &ctx);
+    assert!(!formatted.unshowable);
+    assert_eq!(formatted.text, "86400000000000000000");
+}
