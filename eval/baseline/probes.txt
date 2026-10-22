@@ -573,6 +573,7 @@ C	probes/match-single-cell-forms-and-texts.case.json	36
 C	probes/match-single-value-lookup-array.case.json	26
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
+C	probes/matdisc-serial-0-60.case.json	160
 C	probes/math-argument-modes.case.json	56
 C	probes/math-atp-array-lift-b.case.json	18
 C	probes/math-atp-array-lift.case.json	44
