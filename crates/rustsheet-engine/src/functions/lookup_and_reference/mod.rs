@@ -369,10 +369,12 @@ impl Model {
             Err(error) => return error,
         };
         if let LiftedArg::Scalar(value) = &location {
-            if let Some(error) = Self::hyperlink_location(value, cell).err() {
+            if let Err(error) = Self::hyperlink_location(value, cell) {
                 return error;
             }
         }
+        // Each read is bounded by `MAX_LIFTED_CELL_VISITS` on its own, so the two hold at most
+        // twice that many cells; `lift_values` then bounds the elements before any runs.
         let mut values = vec![location.into_value()];
         if let Some(friendly_name) = friendly_name {
             values.push(match self.read_lift_arg(friendly_name, cell) {
@@ -392,7 +394,7 @@ impl Model {
     /// A `link_location` as HYPERLINK reads it, or the error it gives whatever `friendly_name`
     /// is: the location's own error, or `#VALUE!` for more than 255 characters, a `#` of an
     /// internal link included (probes/t2277-hyperlink-location-length A1-A15; lookup.md
-    /// "HYPERLINK: a link_location past 255 characters").
+    /// "HYPERLINK: a `link_location` past 255 characters").
     fn hyperlink_location(
         location: &CalcResult,
         cell: CellReferenceIndex,
