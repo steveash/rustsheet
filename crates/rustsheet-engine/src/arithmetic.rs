@@ -662,7 +662,8 @@ impl Model {
     /// left operands (T-0128): the first operand, then each operator over the
     /// result so far and its right operand, the same order and results as
     /// recursing into each left operand, on one stack frame however long the
-    /// chain is.
+    /// chain is. Out of line, so its locals stay off `evaluate_node_in_context`'s frame (T-0444).
+    #[inline(never)]
     pub(crate) fn evaluate_operator_chain(
         &mut self,
         node: &Node,
@@ -671,29 +672,38 @@ impl Model {
         let (links, first) = left_chain(node);
         let mut value = self.evaluate_node_in_context(first, cell);
         for link in links {
-            value = match link {
-                Node::OpSumKind { kind, right, .. } => match kind {
-                    OpSum::Add => self.handle_arithmetic(value, right, cell, &plus),
-                    OpSum::Minus => self.handle_arithmetic(value, right, cell, &minus),
-                },
-                Node::OpProductKind { kind, right, .. } => match kind {
-                    OpProduct::Times => self.handle_arithmetic(value, right, cell, &times),
-                    OpProduct::Divide => self.handle_arithmetic(value, right, cell, &divide),
-                },
-                Node::OpPowerKind { right, .. } => {
-                    self.handle_arithmetic(value, right, cell, &power)
-                }
-                Node::OpConcatenateKind { right, .. } => {
-                    self.handle_concatenate(value, right, cell)
-                }
-                Node::CompareKind { kind, right, .. } => {
-                    self.handle_comparison(value, right, cell, kind)
-                }
-                // `left_chain` links are value operators only.
-                _ => value,
-            };
+            value = self.apply_operator_link(value, link, cell);
         }
         value
+    }
+
+    /// The operator of `link`, a link of [`left_chain`], over `value`, the result so far, and
+    /// its right operand. Out of line, so the chain's frame, held while its first operand (a
+    /// nested call, say) runs, stays small (T-0444).
+    #[inline(never)]
+    fn apply_operator_link(
+        &mut self,
+        value: CalcResult,
+        link: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match link {
+            Node::OpSumKind { kind, right, .. } => match kind {
+                OpSum::Add => self.handle_arithmetic(value, right, cell, &plus),
+                OpSum::Minus => self.handle_arithmetic(value, right, cell, &minus),
+            },
+            Node::OpProductKind { kind, right, .. } => match kind {
+                OpProduct::Times => self.handle_arithmetic(value, right, cell, &times),
+                OpProduct::Divide => self.handle_arithmetic(value, right, cell, &divide),
+            },
+            Node::OpPowerKind { right, .. } => self.handle_arithmetic(value, right, cell, &power),
+            Node::OpConcatenateKind { right, .. } => self.handle_concatenate(value, right, cell),
+            Node::CompareKind { kind, right, .. } => {
+                self.handle_comparison(value, right, cell, kind)
+            }
+            // `left_chain` links are value operators only.
+            _ => value,
+        }
     }
 
     /// Applies `op` element‐wise for arrays/numbers to `left`, the evaluated left

@@ -274,7 +274,9 @@ impl Model {
     /// (`check_array_size`) and the cost of every element are checked (directive 5): the cells
     /// its references walk ([`ElementCost`]) and those the other arguments read. An argument that
     /// cannot be put back (a 3-D range, a LAMBDA, an empty value) makes the call `#VALUE!`
-    /// (unprobed in Excel).
+    /// (unprobed in Excel). Out of line: inlined into `evaluate_function`, its locals made the
+    /// frame of every function call, and of every nested LAMBDA call, larger (T-0444).
+    #[inline(never)]
     pub(crate) fn call_per_reference_element(
         &mut self,
         args: &[Node],
