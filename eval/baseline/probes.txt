@@ -1661,7 +1661,6 @@ F	probes/forecast-ets-longer-series.case.json	Sheet1!K34
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K35
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K36
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K37
-F	probes/forecast-ets-longer-series.case.json	Sheet1!K38
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K39
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K4
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K40
@@ -2619,19 +2618,13 @@ F	probes/stat-argument-modes.case.json	Sheet1!H250
 F	probes/stat-argument-modes.case.json	Sheet1!H251
 F	probes/stat-argument-modes.case.json	Sheet1!H266
 F	probes/stat-argument-modes.case.json	Sheet1!H267
-F	probes/stat-argument-modes.case.json	Sheet1!H268
-F	probes/stat-argument-modes.case.json	Sheet1!H269
 F	probes/stat-argument-modes.case.json	Sheet1!H270
 F	probes/stat-argument-modes.case.json	Sheet1!H271
-F	probes/stat-argument-modes.case.json	Sheet1!H272
-F	probes/stat-argument-modes.case.json	Sheet1!H273
 F	probes/stat-argument-modes.case.json	Sheet1!H274
 F	probes/stat-argument-modes.case.json	Sheet1!H275
 F	probes/stat-argument-modes.case.json	Sheet1!H276
 F	probes/stat-argument-modes.case.json	Sheet1!H277
 F	probes/stat-argument-modes.case.json	Sheet1!H278
-F	probes/stat-argument-modes.case.json	Sheet1!H279
-F	probes/stat-argument-modes.case.json	Sheet1!H280
 F	probes/stat-argument-modes.case.json	Sheet1!H281
 F	probes/stat-argument-modes.case.json	Sheet1!H318
 F	probes/stat-argument-modes.case.json	Sheet1!H319

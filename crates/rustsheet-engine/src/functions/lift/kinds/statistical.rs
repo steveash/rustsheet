@@ -26,6 +26,49 @@ const TWO_DATA_THEN_2: ArgKinds =
 /// `FORECAST(x, known_y's, known_x's)`.
 const ONE_THEN_TWO_DATA: ArgKinds =
     ArgKinds::fixed(3, &[Lift, WholeByCaller, WholeByCaller], Constant);
+/// `FORECAST.ETS(target_date, values, timeline, [seasonality], [data_completion], [aggregation])`:
+/// the target date lifts, the rest is read by the function (T-2028).
+const ETS_TARGET: ArgKinds = ArgKinds::fixed(
+    3,
+    &[
+        Lift,
+        WholeByCaller,
+        WholeByCaller,
+        WholeByCaller,
+        WholeByCaller,
+        WholeByCaller,
+    ],
+    Constant,
+);
+/// `FORECAST.ETS.CONFINT(target_date, values, timeline, [confidence_level], [seasonality],
+/// [data_completion], [aggregation])`.
+const ETS_CONFINT_TARGET: ArgKinds = ArgKinds::fixed(
+    3,
+    &[
+        Lift,
+        WholeByCaller,
+        WholeByCaller,
+        WholeByCaller,
+        WholeByCaller,
+        WholeByCaller,
+        WholeByCaller,
+    ],
+    Constant,
+);
+/// `FORECAST.ETS.STAT(values, timeline, statistic_type, [seasonality], [data_completion],
+/// [aggregation])`: the statistic type lifts.
+const ETS_STAT_TYPE: ArgKinds = ArgKinds::fixed(
+    3,
+    &[
+        WholeByCaller,
+        WholeByCaller,
+        Lift,
+        WholeByCaller,
+        WholeByCaller,
+        WholeByCaller,
+    ],
+    Constant,
+);
 /// A lifted argument, a reference read by its function, then an optional lifted argument:
 /// `RANK(number, ref, [order])`.
 const ONE_THEN_REFERENCE_THEN_1: ArgKinds =
@@ -192,6 +235,12 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // the regression line; a T.TEST element walks the samples (`LiftCost::Cells`).
         Function::Forecast | Function::ForecastLinear => Some(&ONE_THEN_TWO_DATA),
         Function::TTest | Function::TTestCompat => Some(&TWO_DATA_THEN_2),
+        // The FORECAST.ETS family never computes (statistics.md "FORECAST.ETS family"), but its
+        // `target_date` and `statistic_type` lift and read as numbers first (probes/stat-argument-modes
+        // H268-H280, probes/forecast-ets-longer-series K38; T-2028).
+        Function::ForecastEts => Some(&ETS_TARGET),
+        Function::ForecastEtsConfint => Some(&ETS_CONFINT_TARGET),
+        Function::ForecastEtsStat => Some(&ETS_STAT_TYPE),
         // RANK's `number` and `order` lift likewise over a `ref` read once; a `ref` that is not a
         // reference broadcasts as its own shape of errors (probes/stat-test-lift P20-P33, P72;
         // probes/stat-argument-modes H492-H499; T-1999). A lifted call sorts the numbers once
