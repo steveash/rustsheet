@@ -3,7 +3,7 @@ id: T-2289
 title: "Probe BASE of a number at or above 2^53 (the engine prints i64::MAX's digits)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
