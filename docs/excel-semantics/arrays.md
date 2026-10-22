@@ -485,6 +485,11 @@ top-left of its call.
   `UNIQUE(D1:D3,{FALSE;FALSE})` "x", "x"; `UNIQUE(D1:D3,FALSE,{TRUE;TRUE})` "y", "y".
 - TOCOL's scan_by_column (`TOCOL(A1:B3,0,{FALSE;TRUE})`: element 2 is 1, ROWS 1) and the other M7 lifts do not show it.
 Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 30, 35-37; excel-graph, 2026-10-21, T-1960).
+UNVERIFIED for SORTBY (taken from UNIQUE's rule, unprobed; T-2349):
+- a leading invalid entry (`{2;1}`): ours `#VALUE!`, then the next element's top-left;
+- a mixed `{1;-1;2}`: ours 1, empty, `#VALUE!`, with the error per slot;
+- an error array: ours one scalar error;
+- an error by_array: ours the error in every element.
 Ours: implemented. The driver option `CallResult::ArrayFirst` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
 Status: VERIFIED (web)
 Tasks: T-2300 (UNIQUE), T-1839 (SORTBY)
