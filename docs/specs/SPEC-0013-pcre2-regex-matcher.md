@@ -407,7 +407,11 @@ Each task is S/M and leaves `make check` green. A pattern needing an unimplement
    - `a++` and the other backtracking-only constructs become `#VALUE!`, which is B29's direction (it is a failure
      today either way);
    - includes the differential test against `regex-syntax`.
-3. **Backtracker core** (T-1900, rewritten; functions-text, opus, M):
+3. **Backtracker core** (T-1900, rewritten; functions-text, opus, M; split on 2026-10-22 at the seams below:
+   T-1900 the core VM with backreferences, atomic and possessive groups; T-2354 lookaround, conditionals and `\K`;
+   T-2355 the memoized mode and the differential test). T-1900 expands counted repeats into copies under the compile
+   budget instead of a `RepeatCounter` (`(x{1000}){1000}` is then `TooBig`, `#VALUE!` after the last size limit, as
+   for the NFA), and has no first-character prefilter yet (T-1974 benches both):
    - `Program`, `Backtracker` and budget accounting;
    - backreferences, lookahead and lookbehind, atomic and possessive groups, `\K`, conditionals (C1-C19,
      B27-B29, t1626-regextest C29);
