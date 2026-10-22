@@ -132,6 +132,7 @@ fn size_mismatch_beats_an_error_cell() {
     model._set("A4", "=COVARIANCE.S(H1:H3,I1:I3)");
     model._set("A5", "=T.TEST(H1:H3,I1:I4,1,1)");
     model._set("A6", "=T.TEST(H1:H3,I1:I4,2,2)");
+    model._set("A7", "=F.TEST(H1:H3,I1:I4)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#N/A");
     assert_eq!(model._get_text("A2"), "#N/A");
@@ -139,4 +140,5 @@ fn size_mismatch_beats_an_error_cell() {
     assert_eq!(model._get_text("A4"), "#DIV/0!");
     assert_eq!(model._get_text("A5"), "#N/A");
     assert_eq!(model._get_text("A6"), "#DIV/0!");
+    assert_eq!(model._get_text("A7"), "#DIV/0!");
 }

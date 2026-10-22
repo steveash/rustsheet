@@ -70,5 +70,6 @@ bit-exact, A&S finite series 11/33, four variance formulas, f as larger/smaller)
 any of them loses cells that are bit-exact today (F_TEST.xlsx F1). The visible-parity
 criterion and H248/H251 move unmet to T-2359 (research, opus), which holds the findings.
 Eval delta: probes fixed 0, new-coverage known failures 52 (the decomposition rows of the new
-case: F.TEST, F.DIST and BETA.DIST cells the kernel fit owns), regressions 0; the 13 error-order
+case: 46 F.TEST, F.DIST and BETA.DIST cells T-2359 owns, and 6 DEVSQ last-digit cells, B9, C9, C10,
+D10, F9 and F10, that belong to T-1749), regressions 0; the 13 error-order
 cells pass.

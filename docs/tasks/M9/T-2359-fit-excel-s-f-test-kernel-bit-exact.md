@@ -28,6 +28,8 @@ Findings so far (docs/excel-semantics/statistics.md "F.TEST / FTEST is not corre
   fewer, and none of two-pass/textbook/corrected variance or f = larger/smaller fits all.
   ironcalc-calc STATISTICAL/F_TEST.xlsx F1 (df 3,3) is bit-exact today and the exact p loses it.
 - The T-1927 handoff tried an exact half-integer recurrence (1 ulp off on df 7,7 and 9,4).
+The F.TEST, F.DIST and BETA.DIST rows of probes/ftest-decomposition in eval/baseline/probes.txt
+are this task's (its DEVSQ rows are T-1749's).
 Next: use the fitlab (tools, `kernels/beta.py`), with the 33 inputs as a case set. Candidates:
 Excel's BETA.DIST kernel run on the reflected side; a series in
 x = d2/(d2+d1 f) summed in reverse; long-double (x87) intermediates (decision on "Division rounds

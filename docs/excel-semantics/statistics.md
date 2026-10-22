@@ -2301,11 +2301,12 @@ variance, or with f taken as larger over smaller, reproduces it. Open: T-2359.
 ## Paired functions: a size mismatch is `#N/A` before an error cell (T-1927)
 COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST (type 1) of arguments with different cell
 counts are `#N/A` even when a cell holds an error: `COVARIANCE.S(H1:H3,I1:I4)` with H2 `=1/0` is
-`#N/A`, as is the argument order swapped; with equal sizes the error wins
+`#N/A`, as is `COVARIANCE.P(I1:I4,H1:H3)` with the order swapped; with equal sizes the error wins
 (`COVARIANCE.S(H1:H3,I1:I3)` `#DIV/0!`). CORREL, PEARSON and RSQ already check sizes first
 (`#N/A`). The tests that allow unequal sizes return the error: `T.TEST(H1:H3,I1:I4,2,2)` and
 `F.TEST(H1:H3,I1:I4)` are `#DIV/0!`. Evidence: probes/ftest-decomposition G1:G13 (excel-graph,
-2026-10-22).
+2026-10-22). Unprobed: an error inside an array constant (`COVARIANCE.S({1,#DIV/0!,3},{2,4,5,7})`);
+the engine treats it like the range.
 Engine: `Model::paired_samples` (`PairedSamplesError::sizes_differ`) in
 crates/rustsheet-engine/src/functions/statistical/paired.rs.
 Status: implemented (T-1927)
