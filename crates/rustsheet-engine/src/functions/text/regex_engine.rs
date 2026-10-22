@@ -8,9 +8,9 @@
 //! (or quits, on a Unicode word boundary) runs on a `PikeVM` instead, over only the span a scan of
 //! the NFA's states shows it needs, charged the states that scan visits (`regex_reach`, T-1829).
 //! Capture groups are resolved by the `PikeVM` over the match alone, as the `regex` crate does.
-//! Patterns, matches and replacements
-//! follow the `regex` crate exactly: the same syntax, leftmost-first semantics, UTF-8 empty-match
-//! rules and `$name` interpolation (all from `regex_automata`, which `regex` is built on).
+//! Patterns arrive as a `Hir` from our PCRE2 parser (`pcre`, SPEC-0013); matches follow the
+//! `regex` crate: leftmost-first semantics and UTF-8 empty-match rules (all from
+//! `regex_automata`, which `regex` is built on).
 //!
 //! Costs are in units of about a nanosecond of a release build, measured for T-1272:
 //! `a[ab]{100}c|b[ab]{100}c` (210 states) on a `PikeVM` costs about 4.2 ns a state-byte; lazy DFA
@@ -30,9 +30,10 @@ use regex_automata::{
         pikevm::{Cache as PikeCache, PikeVM},
         WhichCaptures, NFA,
     },
-    util::{captures::Captures, iter::Searcher, syntax},
+    util::{captures::Captures, iter::Searcher},
     Anchored, Input, Match, MatchError, MatchKind, PatternID,
 };
+use regex_syntax::hir::Hir;
 
 /// Lazy DFA cache capacity, per direction: the `regex` crate's default.
 const DFA_CACHE: usize = 2 << 20;
@@ -116,14 +117,9 @@ pub(super) struct Caches {
 }
 
 impl Engine {
-    /// Compiles `pattern` with its NFAs under `size_limit` bytes, ignoring case (Unicode simple
-    /// case folding: `ſ` matches `s`, the Kelvin sign `k`; probes/regex-optional-args A24-A26)
-    /// when `case_insensitive`.
-    pub(super) fn new(
-        pattern: &str,
-        size_limit: usize,
-        case_insensitive: bool,
-    ) -> Result<Engine, BuildFailure> {
+    /// Compiles `hir` (a pattern as `pcre::translate` reads it) with its NFAs under
+    /// `size_limit` bytes.
+    pub(super) fn new(hir: &Hir, size_limit: usize) -> Result<Engine, BuildFailure> {
         let failure = |error: thompson::BuildError| {
             if error.size_limit().is_some() {
                 BuildFailure::TooBig
@@ -131,21 +127,18 @@ impl Engine {
                 BuildFailure::Invalid
             }
         };
-        let syntax = syntax::Config::new().case_insensitive(case_insensitive);
         let forward = NFA::compiler()
-            .syntax(syntax)
             .configure(NFA::config().nfa_size_limit(Some(size_limit)))
-            .build(pattern)
+            .build_from_hir(hir)
             .map_err(failure)?;
         let reverse = NFA::compiler()
-            .syntax(syntax)
             .configure(
                 NFA::config()
                     .nfa_size_limit(Some(size_limit))
                     .reverse(true)
                     .which_captures(WhichCaptures::None),
             )
-            .build(pattern)
+            .build_from_hir(hir)
             .map_err(failure)?;
         let states = to_u64(forward.states().len());
         let config = DfaConfig::new()
