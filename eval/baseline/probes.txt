@@ -1205,6 +1205,7 @@ C	probes/weeknum-stale-sheet-order.case.json	4
 C	probes/weeknum-stale-volatile-reader.case.json	1
 C	probes/weeknum-sumproduct-blank-type.case.json	12
 C	probes/whole-column-empty-walkers.case.json	16
+C	probes/workday-holidays-error-order.case.json	541
 C	probes/workday-lift-errors.case.json	35
 C	probes/workday-serial-zero.case.json	58
 C	probes/wrapcols-wraprows-pad-with.case.json	122
