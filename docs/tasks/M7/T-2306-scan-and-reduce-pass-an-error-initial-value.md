@@ -3,7 +3,7 @@ id: T-2306
 title: "SCAN and REDUCE pass an error initial value or accumulator to the LAMBDA and keep per-element errors (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -74,3 +74,6 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 219 known-failure l
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+`fn_scan` and `fn_reduce` no longer return an error initial value or accumulator at once: the LAMBDA gets it, and a SCAN error step fills its slot. `lambda_result_value` turns a multi-cell array step into the one `#CALC!` already given for a multi-cell range (needed so the freed TRIMRANGE cell 2c5ea078f25443a2 A1717 does not spill). It also finished T-2309's six formulas (63 cells). Eval: all 219 listed gen-m7 lines fixed (271 lines in all), 0 regressions; gen-m7 known failures 1339 -> 1068.
