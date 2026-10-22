@@ -97,6 +97,9 @@ fn no_posix_class_folds_while_the_other_items_do() {
 #[test]
 fn posix_syntax_pcre2_rejects_is_invalid() {
     for pattern in [
+        "[:alpha:]",
+        "[.a.]",
+        "[..]",
         "[[:foo:]]",
         "[[:ALPHA:]]",
         "[[.a.]]",

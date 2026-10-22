@@ -202,6 +202,12 @@ impl Parser {
                     frame.alternatives.push(concat(items));
                 }
                 '[' => {
+                    // A POSIX class, collating element or equivalence class outside a bracket
+                    // (`[:alpha:]`, `[.a.]`, `[..]`) is a PCRE2 error (probes/regex-posix-classes
+                    // Z1, regex-posix-syntax-edges A5-A7; T-1985, T-2010).
+                    if self.posix_class()?.is_some() {
+                        return Err(Invalid);
+                    }
                     let class = self.bracket(1)?;
                     stack
                         .last_mut()

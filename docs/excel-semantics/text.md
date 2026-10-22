@@ -363,7 +363,7 @@ The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE r
 pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
 Status: DEVIATION (decision 0014)
-Implemented in: `MAX_UNFOLDED_LEN`, `folding_cost` and `foldable_span` (functions/text/regex_posix.rs), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
+Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
 Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138
 
@@ -714,9 +714,9 @@ U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]
 `(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
 `a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
-Ours: matches (the POSIX classes since T-1903) except that `(*UCP)`, `\X`, `\h` and `\R` are `#VALUE!` (A17, A27,
-A41, A42) and `$` does not match before a final LF (A34): SPEC-0013 gives `$`, `\h` and `(*UCP)` to T-1973 and
-`\X` and `\R` to a follow-up task after T-1900.
+Ours: matches, `(*UCP)`, `\h` and `$` before a final LF included since T-1973 (our PCRE2 parser, functions/text/pcre/).
+`\X` and `\R` (A27, A42) parse but stay `#VALUE!` until T-2287. `$` and `\Z` on a text that holds another LF before
+its final one still match only at the very end (PCRE2 also matches before the final LF) until T-1900's memoized mode.
 Status: VERIFIED (excel-graph)
 Tasks: T-1829 (probe), T-1900, T-1903, T-1973
 
@@ -734,9 +734,10 @@ advancing one character, so `a*?` and `a??` on `aaa` replace to `bbbbbbb`, `(?:a
 `aba`, -1 `aaab`). An empty pattern over text with a surrogate pair is `#VALUE!` (`REGEXREPLACE("a"&UNICHAR(128512)&"b","","-")`,
 ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around the emoji.
 Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
-Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, atomic groups, `\K`, conditionals and
-comments as invalid (`#VALUE!`), reads `a++` as `a+` followed by `+` (so `a++a` matches `aaa`, C11, B29), and
-iterates as Rust does (`bababab`). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
+Ours: PCRE2's grammar since T-1973 (functions/text/pcre/): comments, `\Q..\E`, `(?x)` and scoped flags match
+(C14-C19). Backreferences, lookaround, atomic groups, possessive quantifiers (`a++` is `#VALUE!`, C11's answer;
+B29 still differs), `\K`, `\G` and conditionals parse but are `#VALUE!` until T-1900's backtracker. Iteration is
+still Rust's (`bababab`) until T-1899. The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
 unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
 Status: VERIFIED (excel-graph)
 Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974
@@ -815,10 +816,10 @@ probes/regex-posix-classes-b (bracket neighbours, nested and negated `(?i)`, `&&
 probes/regex-posix-classes-c (nesting, folding of the other items, `[:ascii:]` under `(?i)`, the code points above; T-1989);
 probes/regex-posix-syntax-edges (hyphen next to a class, `[.a.]`, `[..]`, `[[.ab.]]`, a range ending at a class);
 probes/regexreplace-limit-and-syntax A23.
-Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled (and rejects the invalid syntax above in `invalid_ast`);
-where `(?i)` is on (tracked through flag groups and scopes, starting from the case_sensitivity argument), a bracket
-holding a POSIX class becomes `(?-i:[...])` with its other items replaced by their case closure (`unfolded_posix_bracket`). A
-pattern whose brackets would print past 64 KiB that way, together, is `#VALUE!` (a few `(?i)[[:alpha:]\pL]` can be enough), a DEVIATION recorded under the REGEX* limits entry above.
+Implemented in: `Parser::bracket` and `Parser::posix_class` in functions/text/pcre/parse.rs (T-1973, replacing T-1903's
+pre-compile rewrite). Each POSIX class is built as its Unicode class. Where `(?i)` is on (tracked through flag groups
+and scopes, starting from the case_sensitivity argument), a bracket's other items are case-folded and its POSIX classes
+are not. Case folding is charged per code point to the call's compile budget (the REGEX* limits entry above).
 Status: VERIFIED (excel-graph)
 
 ## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)
