@@ -266,3 +266,18 @@ fn im_overflow_edges() {
     assert_eq!(model._get_text("B5"), *"0");
     assert_eq!(model._get_text("B6"), *"0");
 }
+
+// Excel: probes-numeric/im-last-digit-sweep D21, M21, P21 (T-2334).
+#[test]
+fn fn_imcsc_imlog2_imcot_of_zero_are_num() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMCSC("0")"#);
+    model._set("A2", r#"=IMLOG2("0")"#);
+    model._set("A3", r#"=IMCOT("0")"#);
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+}
