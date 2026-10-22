@@ -3,7 +3,7 @@ id: T-2143
 title: "Oracle sweep for the LN FYL2X near-ties: refill the 30 points three times and probe 300 new near-ties"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
