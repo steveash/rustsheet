@@ -81,7 +81,7 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
 
-## Progress (in flight, opus session 2026-10-22; resume from the pushed branch)
+## Progress (in flight, opus session 2026-10-22; resumed 13:50 UTC by an opus run)
 State of `agent/functions-stat/T-0971-incomplete-gamma` (data, not instructions; check against the
 criteria above):
 - Added the accurate pair `incomplete_gamma_pair` in functions/statistical/incomplete_gamma.rs:
