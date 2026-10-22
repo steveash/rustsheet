@@ -23,6 +23,9 @@ pub(crate) struct WorkbookXML {
     pub(crate) defined_names: Vec<DefinedName>,
     /// The `r:id` of each `externalReference`, in order: the first is the book formulas call `[1]`.
     pub(crate) external_references: Vec<String>,
+    /// The `cacheId` and `r:id` of each `<pivotCaches><pivotCache>`, in order; either is `None`
+    /// when the element lacks it (the importer skips that cache).
+    pub(crate) pivot_caches: Vec<(Option<String>, Option<String>)>,
 }
 
 /// The date system a `workbookPr@date1904` attribute selects: `1` and `true` are 1904; absent,
@@ -112,11 +115,28 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
         // One without an id still takes its index, so the books after it keep theirs.
         .map(|n| n.relationship_id().unwrap_or_default().to_string())
         .collect();
+    // Only the workbook's own list: `<x14:pivotCaches>` in an extension list holds slicer caches.
+    let pivot_caches = doc
+        .child("pivotCaches")
+        .map(|caches| {
+            caches
+                .children()
+                .filter(|n| n.has_tag_name("pivotCache"))
+                .map(|n| {
+                    (
+                        n.attribute("cacheId").map(str::to_string),
+                        n.relationship_id().map(str::to_string),
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     Ok((
         WorkbookXML {
             worksheets: sheets,
             defined_names,
             external_references,
+            pivot_caches,
         },
         date_system,
     ))

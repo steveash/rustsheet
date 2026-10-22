@@ -49,6 +49,17 @@ Evidence: probes/getpivotdata-evidence-floor (oracle: excel-graph, 2026-10-16, T
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081).
 A real pivot: see the next section (T-1705).
 
+## Pivot caches past the import limits are dropped
+Rule: Excel loads a pivot of any size its grid allows. The importer drops, never truncates, a pivot cache with more
+than 1,048,576 records, 16,384 fields, 1,000,000 shared items over its fields or 10,000,000 record values (records x
+fields), every cache once the workbook's caches together pass 10,000,000 record values (in workbook order), and a pivot
+with more than 256 fields on an axis (rows, columns or page) or 256 data fields, or past the 64th pivot of a sheet;
+the pivots on a dropped cache go with it. GETPIVOTDATA against a dropped pivot is `#REF!` rather than a wrong total.
+The limits are totals counted while parsing, before anything past them is allocated (CLAUDE.md directive 5).
+Evidence: none for Excel; this is a resource limit (SPEC-0015 "Untrusted-input limits").
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/pivot.rs (`CacheBuilder`, `MAX_*`), crates/rustsheet-xlsx/src/import/pivots.rs
+
 ## GETPIVOTDATA against a pivot table (T-1705)
 Rule: against a compact-form pivot (one row field, an optional column field, one data field), GETPIVOTDATA
 returns the value of the pivot cell the field/item pairs pick, including subtotal and grand-total cells:
@@ -77,7 +88,17 @@ the probe cannot tell the two apart (T-2327 adds a control with stale rendered c
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081). Not probed: several data fields (the
 `Values` field), two row fields and their subtotals, filters, hidden items, dates and numbers as items, and
 pivots in tabular or outline form.
-Engine (SPEC-0015): the workbook model holds pivot caches and pivot tables (`pivot.rs`, T-2081); the importer is T-2082.
+Engine (SPEC-0015): the workbook model holds pivot caches and pivot tables (`pivot.rs`, T-2081), read from xlsx by
+`crates/rustsheet-xlsx/src/import/pivots.rs` (T-2082). The importer skips, whole and logged, a cache with an OLAP,
+external, consolidation or scenario source, a grouped (`fieldGroup`) or calculated field, no records part
+(`saveData="0"`), a bad index, or a value it cannot read (an unknown error name, a `<d>` date before 1900, which
+includes time-only dates if Excel writes them so), and a pivot whose data field is shown as a calculation
+(`showDataAs`, such as % of total), whose index points past its cache, whose `axis` or `subtotal` is unknown, which has
+no `location` or not one `pivotField` per cache field, or whose parts are reached outside the package (absolute,
+escaping or External targets), twice, or through a duplicate `cacheId`: GETPIVOTDATA against it is `#REF!`.
+UNVERIFIED: what Excel answers for each of these (presumably it computes them, refreshing a cache saved without
+records); a known gap, not a deviation. Cache `<d>` dates are read as 1900-system serials even in a `date1904`
+workbook, which no answer depends on yet (GETPIVOTDATA matches text items only; T-2393 before dates are matched).
 GETPIVOTDATA (T-2083, `functions/lookup_and_reference/getpivotdata.rs`, `pivot_index.rs`) aggregates the cache records the
 pairs pick, in cache order, rather than reading the rendered cell, and passes every cell of probes/getpivotdata-real-pivot.
 Until T-2085 probes them it answers `#REF!` for SPEC-0015's unknowns, never a guess: several data fields, page fields or
