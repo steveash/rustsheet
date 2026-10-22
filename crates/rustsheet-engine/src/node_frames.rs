@@ -70,7 +70,8 @@ impl Model {
                 let callee = self.evaluate_reference_arg(lambda, cell);
                 self.call_callee(callee.into_single_area(cell), args, cell)
             }
-            // `evaluate_node_in_context` answers these itself.
+            // Unreachable by construction: `evaluate_node_in_context` answers these itself, so
+            // this is at most one bounce.
             OpSumKind { .. }
             | OpProductKind { .. }
             | OpPowerKind { .. }
