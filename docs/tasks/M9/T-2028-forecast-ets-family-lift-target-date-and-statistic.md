@@ -54,3 +54,4 @@ Decision 0083: the cells listed under Context are visibly off (`#N/IMPL!` where 
 
 ## Outcome
 FORECAST.ETS, .CONFINT and .STAT now go through `lift_call` (kinds `ETS_TARGET`, `ETS_CONFINT_TARGET`, `ETS_STAT_TYPE`, lift/kinds/statistical.rs): the lifted argument is read as a number first (`#VALUE!` for text), every element is otherwise `#N/IMPL!`. The 7 listed probes cells leave eval/baseline/probes.txt (7 lines removed, nothing added). Unit test `forecast_ets_family_reads_lifted_argument_then_is_not_implemented`. The gen-m9 CONFINT `#VALUE!` cells were not investigated.
+The optional settings (seasonality, data_completion, aggregation, confidence_level) are `Lift` too, following the catalog's `value` mode; that is unverified (statistics.md) and probed by the follow-up task.
