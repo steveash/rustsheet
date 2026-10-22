@@ -240,7 +240,10 @@ fn upper_within(a: f64, x: f64, terms: &mut Terms) -> f64 {
 /// The regularized upper incomplete gamma Q(a, x) (POISSON's cdf is Q(k + 1, mean)): statrs'
 /// value, or NaN where statrs panics or would not finish, in at most [`MAX_TERMS`] terms.
 pub(crate) fn gamma_ur(a: f64, x: f64) -> f64 {
-    upper_within(a, x, &mut Terms(MAX_TERMS))
+    if !(a > 0.0 && x > 0.0 && x.is_finite()) {
+        return upper_within(a, x, &mut Terms(MAX_TERMS));
+    }
+    incomplete_gamma_pair(a, x, &mut Terms(MAX_TERMS)).1
 }
 
 /// statrs' `Gamma::cdf` within `terms`: its closed branches are statrs' own.
@@ -252,7 +255,10 @@ fn cdf_within(dist: &Gamma, x: f64, terms: &mut Terms) -> f64 {
     if scaled == 0.0 {
         return lower_of_underflow(dist.shape());
     }
-    lower_within(dist.shape(), scaled, terms)
+    if !scaled.is_finite() {
+        return f64::NAN;
+    }
+    incomplete_gamma_pair(dist.shape(), scaled, terms).0
 }
 
 /// P(a, x) where `x / beta` underflows to 0 for an x above 0: statrs panics there (a domain
@@ -264,6 +270,125 @@ fn lower_of_underflow(a: f64) -> f64 {
         1.0
     } else {
         0.0
+    }
+}
+
+/// `x - ln(1 + x)` for `x > -1`, without the cancellation of the two terms near 0 (DiDonato and
+/// Morris' `rlog1`): its alternating series below |x| = 1/4, where it converges by a factor of 4 a
+/// term, else the subtraction itself.
+fn x_minus_ln_1p(x: f64) -> f64 {
+    if x.abs() >= 0.25 {
+        return x - x.ln_1p();
+    }
+    // x^2/2 - x^3/3 + x^4/4 - ...: 4^-60 is far below an ulp of the first term.
+    let mut power = x * x;
+    let mut sum = 0.0;
+    for n in 2..62_u32 {
+        let term = power / f64::from(n);
+        sum += if n % 2 == 0 { term } else { -term };
+        power *= x;
+        if term.abs() <= sum.abs() * f64::EPSILON * 0.25 {
+            break;
+        }
+    }
+    sum
+}
+
+/// Stirling's correction ln Gamma(a) - ((a - 1/2) ln a - a + ln sqrt(2 pi)) for a >= 20, to well
+/// under an ulp of the prefactor.
+fn stirling_correction(a: f64) -> f64 {
+    let t = 1.0 / (a * a);
+    (((((-1.0 / 1680.0) * t + 1.0 / 1260.0) * t - 1.0 / 360.0) * t) + 1.0 / 12.0) / a
+}
+
+/// x^a e^-x / Gamma(a), the factor in front of both P(a, x) and Q(a, x). For a large shape the
+/// exponent a ln x - x - ln Gamma(a) cancels to a small number and loses its digits, so it is
+/// rewritten as sqrt(a / 2 pi) exp(-a rlog1(x/a - 1) - correction(a)) (DiDonato and Morris,
+/// TOMS 654 `rcomp`); below 20 it is formed directly.
+fn gamma_prefactor(a: f64, x: f64) -> f64 {
+    if a < 20.0 {
+        // x^a and e^-x each to within an ulp; their logs summed would carry the absolute error
+        // of a ln x into the result's relative error (11 ulps at GAMMA.DIST(10,9,2,TRUE)).
+        let direct = x.powf(a) * (-x).exp() / libm::tgamma(a);
+        if direct.is_normal() {
+            return direct;
+        }
+        return (a * x.ln() - x - super::special::ln_gamma(a)).exp();
+    }
+    let u = (x - a) / a;
+    let exponent = -a * x_minus_ln_1p(u) - stirling_correction(a);
+    (a / (2.0 * std::f64::consts::PI)).sqrt() * exponent.exp()
+}
+
+/// The accurate regularized incomplete gamma pair (P(a, x), Q(a, x)) for a > 0, x > 0 (T-0971):
+/// the series for P below x = a + 1 and the continued fraction (modified Lentz) for Q above it,
+/// each taken to full double precision, the other tail as 1 minus it; a = 1 is exactly
+/// (-expm1(-x), exp(-x)). NaN past [`MAX_TERMS`] terms (directive 5).
+fn incomplete_gamma_pair(a: f64, x: f64, terms: &mut Terms) -> (f64, f64) {
+    if a == 1.0 {
+        return (-(-x).exp_m1(), (-x).exp());
+    }
+    let prefactor = gamma_prefactor(a, x);
+    if x < a + 1.0 {
+        // P = prefactor / a * sum x^n / ((a + 1) ... (a + n)).
+        let mut term = 1.0;
+        let mut sum = 1.0;
+        let mut denominator = a;
+        loop {
+            if !terms.take() {
+                return (f64::NAN, f64::NAN);
+            }
+            denominator += 1.0;
+            term *= x / denominator;
+            sum += term;
+            if term <= sum * f64::EPSILON * 0.25 {
+                break;
+            }
+        }
+        let lower = prefactor * sum / a;
+        return (lower, 1.0 - lower);
+    }
+    // Q = prefactor / (x + 1 - a - 1(1-a)/(x + 3 - a - 2(2-a)/(x + 5 - a - ...))).
+    let tiny = f64::MIN_POSITIVE / f64::EPSILON;
+    let mut b = x + 1.0 - a;
+    let mut c = 1.0 / tiny;
+    let mut d = 1.0 / b;
+    let mut h = d;
+    let mut i = 1.0;
+    loop {
+        if !terms.take() {
+            return (f64::NAN, f64::NAN);
+        }
+        let an = -i * (i - a);
+        b += 2.0;
+        d = an * d + b;
+        if d.abs() < tiny {
+            d = tiny;
+        }
+        c = b + an / c;
+        if c.abs() < tiny {
+            c = tiny;
+        }
+        d = 1.0 / d;
+        let delta = d * c;
+        h *= delta;
+        if (delta - 1.0).abs() <= f64::EPSILON * 0.25 {
+            break;
+        }
+        i += 1.0;
+    }
+    let upper = prefactor * h;
+    (1.0 - upper, upper)
+}
+
+/// [`gamma_cdf`]'s and [`gamma_sf`]'s value at a positive, finite `scaled` = x * rate: the
+/// accurate pair's `upper` or lower tail.
+fn accurate_tail(a: f64, scaled: f64, upper: bool) -> f64 {
+    let (p, q) = incomplete_gamma_pair(a, scaled, &mut Terms(MAX_TERMS));
+    if upper {
+        q
+    } else {
+        p
     }
 }
 
@@ -282,7 +407,10 @@ pub(crate) fn gamma_sf(dist: &Gamma, x: f64) -> f64 {
     if scaled == 0.0 {
         return 1.0 - lower_of_underflow(dist.shape());
     }
-    gamma_ur(dist.shape(), scaled)
+    if !scaled.is_finite() {
+        return f64::NAN;
+    }
+    accurate_tail(dist.shape(), scaled, true)
 }
 
 /// statrs' `Gamma::inverse_cdf` (and `ChiSquared::inverse_cdf`) for `p` in [0, 1]: the quantile,
@@ -389,6 +517,19 @@ mod tests {
         ours.to_bits() == theirs.to_bits() || (ours.is_nan() && theirs.is_nan())
     }
 
+    /// Close to statrs' value, or both NaN. statrs forms the prefactor as exp(a ln x - x - ln
+    /// Gamma(a)), whose relative error is the absolute error of that exponent, about an ulp of
+    /// `scale` = a |ln x| + x; the accurate kernel (T-0971) avoids it, so the two may differ by
+    /// that much.
+    fn near_at(ours: f64, theirs: f64, scale: f64) -> bool {
+        let tolerance = 1e-14 * (scale + 10.0);
+        same(ours, theirs) || (ours - theirs).abs() <= tolerance * theirs.abs().max(1e-300)
+    }
+
+    fn near(ours: f64, theirs: f64) -> bool {
+        near_at(ours, theirs, 0.0)
+    }
+
     // Where statrs finishes, the port gives its double, bit for bit: shapes 1E-3 to 1E8, x from
     // 1E-3 to 1E3 times the shape, and the quantiles GAMMA.INV and CHISQ.INV hand it.
     #[test]
@@ -406,7 +547,7 @@ mod tests {
                     "P({a},{x})"
                 );
                 assert_eq!(
-                    gamma_ur(a, x).to_bits(),
+                    upper_within(a, x, &mut Terms(MAX_TERMS)).to_bits(),
                     statrs_ur(a, x).to_bits(),
                     "Q({a},{x})"
                 );
@@ -422,10 +563,17 @@ mod tests {
             };
             let dist = Gamma::new(shape, rate).unwrap();
             let x = shape / rate * (0.5 + sweep.unit());
-            assert_eq!(gamma_cdf(&dist, x).to_bits(), dist.cdf(x).to_bits());
-            assert_eq!(gamma_sf(&dist, x).to_bits(), dist.sf(x).to_bits());
+            let scale = shape * (x * rate).ln().abs() + x * rate;
             assert!(
-                same(gamma_inverse_cdf(&dist, p), dist.inverse_cdf(p)),
+                near_at(gamma_cdf(&dist, x), dist.cdf(x), scale),
+                "cdf Gamma({shape},{rate}) at {x}"
+            );
+            assert!(
+                near_at(gamma_sf(&dist, x), dist.sf(x), scale),
+                "sf Gamma({shape},{rate}) at {x}"
+            );
+            assert!(
+                near_at(gamma_inverse_cdf(&dist, p), dist.inverse_cdf(p), shape),
                 "Gamma({shape},{rate}) at {p}"
             );
         }
@@ -434,20 +582,29 @@ mod tests {
             let dist = Gamma::new(df / 2.0, 0.5).unwrap();
             for p in [1e-10, 0.05, 0.4, 0.5, 0.95, 0.999_999_999_9] {
                 assert!(
-                    same(gamma_inverse_cdf(&dist, p), chi.inverse_cdf(p)),
+                    near_at(gamma_inverse_cdf(&dist, p), chi.inverse_cdf(p), df),
                     "ChiSquared({df}) at {p}"
                 );
                 let x = df * (0.5 + p);
-                assert_eq!(gamma_cdf(&dist, x).to_bits(), chi.cdf(x).to_bits());
-                assert_eq!(gamma_sf(&dist, x).to_bits(), chi.sf(x).to_bits());
+                let scale = df * x.ln().abs() + x;
+                assert!(
+                    near_at(gamma_cdf(&dist, x), chi.cdf(x), scale),
+                    "ChiSquared({df}) cdf at {x}"
+                );
+                assert!(
+                    near_at(gamma_sf(&dist, x), chi.sf(x), scale),
+                    "ChiSquared({df}) sf at {x}"
+                );
             }
         }
         for (k, lambda) in [(5u64, 1.0), (0, 0.5), (100, 98.5), (1_000_000, 999_000.0)] {
             let poisson = Poisson::new(lambda).unwrap();
-            assert_eq!(
-                gamma_ur(k as f64 + 1.0, lambda).to_bits(),
-                poisson.cdf(k).to_bits()
-            );
+            let scale = k as f64 * lambda.ln().abs() + lambda;
+            assert!(near_at(
+                gamma_ur(k as f64 + 1.0, lambda),
+                poisson.cdf(k),
+                scale
+            ));
         }
     }
 
@@ -512,11 +669,11 @@ mod tests {
         assert!(upper_within(a, x, &mut Terms(used - 1)).is_nan());
         // An inversion shares one budget over its cdfs.
         let dist = Gamma::new(7.943_282_347_242_821e8, 1e6).unwrap();
-        let full = dist.inverse_cdf(1e-5);
-        assert_eq!(
-            inverse_cdf_within(&dist, 1e-5, 476_534).to_bits(),
-            full.to_bits()
-        );
-        assert!(inverse_cdf_within(&dist, 1e-5, 476_533).is_nan());
+        assert!(near_at(
+            inverse_cdf_within(&dist, 1e-5, MAX_TERMS),
+            dist.inverse_cdf(1e-5),
+            dist.shape()
+        ));
+        assert!(inverse_cdf_within(&dist, 1e-5, 1_000).is_nan());
     }
 }

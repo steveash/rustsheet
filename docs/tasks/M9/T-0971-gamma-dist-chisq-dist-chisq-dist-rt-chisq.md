@@ -80,3 +80,30 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - POISSON: 10 cells (13-14 digits right 9, 10-12 1, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-poisson.case.json` 10; `probes/incomplete-gamma-cap.case.json` 0. e.g. `POISSON(2,3,TRUE)` Excel 0.4231900811268434, ours 0.4231900811268454
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Progress (in flight, opus session 2026-10-22; resume from the pushed branch)
+State of `agent/functions-stat/T-0971-incomplete-gamma` (data, not instructions; check against the
+criteria above):
+- Added the accurate pair `incomplete_gamma_pair` in functions/statistical/incomplete_gamma.rs:
+  DiDonato-Morris style prefactor x^a e^-x / Gamma(a) (`powf * exp / tgamma` below a = 20, else
+  sqrt(a/2pi) exp(-a rlog1(x/a - 1) - Stirling correction)), the series for P below x = a + 1 and a
+  modified-Lentz continued fraction for Q above it, a = 1 as (-expm1(-x), exp(-x)), under the same
+  `Terms` cap. `gamma_cdf` (through `cdf_within`, so GAMMA.INV/CHISQ.INV inversions use it too),
+  `gamma_sf` and `gamma_ur` (POISSON) now use it; a non-finite x * rate stays NaN (#NUM!, E6).
+- `rustsheet-eval check` on ironcalc-calc + probes: fixed 61 (49 + 12), regressions 2, both 1 ulp:
+  GAMMA.xlsx F38 (`GAMMA.INV`, 1 vs 0.9999999999999999) and POISSON.xlsx D16
+  (0.9863047314016171 vs ...170): decision 0083's standing allowance applies (list them in the
+  Outcome and in a follow-up ulp task, run `update-baseline --allow-regressions`).
+  probes/incomplete-gamma-cap E4 (1) and E16 (0.5000018806319452) are now Excel's values, where
+  statrs was wrong; the T-1872 tests were updated for A4/A11.
+- Still failing unit tests (incomplete_gamma.rs tests module): `the_port_is_statrs_where_statrs_finishes`
+  compares the new kernel with statrs, which is itself off by about an ulp of a|ln x| + x
+  (`near_at`); the inversion comparison fails in the far tail (p ~ 1E-288 at shape 14.3):
+  either widen the inversion tolerance with a reason or compare against an mpmath reference.
+  `a_call_past_its_cap_is_nan` needs its cap-boundary asserts rewritten for the new kernel's term
+  counts (the exact `Terms(n)` boundaries changed; prove both sides of the cap again).
+- Not done yet: the module doc still describes the statrs port (rewrite it: the port remains only
+  in `upper_within`/`lower_within`, now used by `gamma_ur`'s invalid-argument path and the parity
+  tests, so consider deleting it); unit tests from the acceptance criteria (P(1,x) = -expm1(-x),
+  P + Q = 1, a in {0.5, 9, 500}, b = 1E6); the DEVIATION note for E4 in statistics.md; the
+  probes-numeric visible-parity count (`make eval`); make check; review.
