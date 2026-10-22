@@ -3,7 +3,7 @@ id: T-2350
 title: "Port ironcalc 1fd0ff4f: take the extended LOG_LOG10_LN.xlsx calc test workbook"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
