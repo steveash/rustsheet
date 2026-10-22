@@ -3,7 +3,7 @@ id: T-2121
 title: "Probe legacy @ on SWITCH under callers other than ABS/LEN, operators and nested in IF"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
