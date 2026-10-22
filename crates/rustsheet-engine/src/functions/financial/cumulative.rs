@@ -98,7 +98,7 @@ impl Model {
         // form and the IPMT sum were up to 343 ulps off (T-2192). Type 1's interest is the IPMT sum, which is
         // bit-exact on CUMPRINC_CUMIPMT.xlsx G3, G4, G9, G15 where those forms are not, and its
         // principal the closed form: summing PPMT loses a small principal's digits to the payment
-        // it is taken from (H5 had 8 right digits, H7 7; T-1890), and the type 0 form misses H22
+        // it is taken from (H5 had 8 right digits, H7 7; T-1890), and the per-period `exp` form misses H22
         // and H25 by an ulp or two.
         let short = end - start < CUMULATIVE_LOOP_PERIODS && end < EXACT_INTEGER_LIMIT;
         if short && !period_start {
@@ -204,8 +204,9 @@ impl Periods {
             let period = self.start + f64::from(offset);
             sum += payment * ((period - 1.0 - self.nper) * log_growth).exp();
         }
-        // `+ 0.0` turns the -0 of an underflowed principal into Excel's 0 (fin-cumipmt-period-bound A14).
-        sum.is_finite().then_some(sum + 0.0)
+        // The sum starts at +0, so an underflowed principal is Excel's 0, not -0
+        // (fin-cumipmt-period-bound A14).
+        sum.is_finite().then_some(sum)
     }
 
     /// The offsets `0..=end-start` of a short range's periods: a bounded count, so the loop ends

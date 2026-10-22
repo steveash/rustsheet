@@ -40,6 +40,9 @@ Leads from T-2192's fit (float64 checks against the oracle values, no engine cha
 - A6's per-period `exp` sum is -4.085993687045532E-19 against Excel's ...525 (just past half a unit).
 - T-2192's type 0 principal form moved CUMPRINC_CUMIPMT.xlsx H29 from 1 ulp to 3 (still visibly
   right); a bit-exact fit (T-1374) should start there.
+- `CUMULATIVE_WEIGHT` (functions/lift/kinds/financial.rs) was measured on the IPMT/PPMT sums; type 0
+  now runs up to 32 `exp` steps first and can fall through to them. Re-measure it if a form here
+  adds work.
 Code: functions/financial/cumulative.rs.
 
 ## Acceptance criteria
