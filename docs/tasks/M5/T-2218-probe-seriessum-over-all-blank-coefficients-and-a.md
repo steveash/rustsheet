@@ -3,7 +3,7 @@ id: T-2218
 title: "Probe SERIESSUM over all-blank coefficients and a negative power that underflows"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
