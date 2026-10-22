@@ -9,6 +9,7 @@ C	probes/3d-ref-functions.case.json	22
 C	probes/3d-ref-let-bound-span-readers.case.json	13
 C	probes/3d-ref-let-bound-span.case.json	16
 C	probes/3d-ref-let-values.case.json	11
+C	probes/3d-ref-one-sheet-span-lift.case.json	12
 C	probes/3d-ref-span-edges.case.json	13
 C	probes/3d-ref-span-missing-ends.case.json	12
 C	probes/3d-ref-values.case.json	10
@@ -1208,6 +1209,7 @@ C	probes/yield-one-period-dsr-zero.case.json	18
 C	probes/yield-solver-sweep.case.json	66
 C	probes/yield-start-rate-term.case.json	150
 C	probes/yield-start-sweep.case.json	100
+F	probes/3d-ref-one-sheet-span-lift.case.json	Calc!B6
 F	probes/circular-iteration-delta-boundary.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!A1
 F	probes/circular-iteration-delta-no-reader.case.json	S!B1

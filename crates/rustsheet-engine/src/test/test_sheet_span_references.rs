@@ -304,3 +304,31 @@ fn a_name_bound_to_a_span_reads_like_the_span() {
     assert_eq!(eval(&mut model, "=ISREF(span3)"), "FALSE");
     assert_eq!(eval(&mut model, "=ISERROR(span3)"), "TRUE");
 }
+
+// A one-sheet span is that sheet's reference, so a scalar function over its range lifts and
+// spills like the plain range (fuzz reproducer `DATEVALUE(Sheet1:Sheet1!B1:BM1)`, T-2351); this
+// tripped the scalar-cell debug_assert in `Model` when static analysis called every span scalar.
+#[test]
+fn a_one_sheet_span_range_lifts_like_the_plain_range() {
+    for (span, plain) in [
+        (
+            "=DATEVALUE(Sheet1:Sheet1!B1:BM1)",
+            "=DATEVALUE(Sheet1!B1:BM1)",
+        ),
+        ("=LEN(Sheet1:Sheet1!B1:BM1)", "=LEN(Sheet1!B1:BM1)"),
+        ("=ABS(Sheet1:Sheet1!B1:C1)", "=ABS(Sheet1!B1:C1)"),
+        ("=ABS(Data1:Data1!A1:A3)", "=ABS(Data1!A1:A3)"),
+        ("=LEN(Data1:Data1!A1:A3)", "=LEN(Data1!A1:A3)"),
+        ("=DATEVALUE(Data1:Data1!A1:A3)", "=DATEVALUE(Data1!A1:A3)"),
+    ] {
+        let mut model = sample();
+        model._set("D4", span);
+        model._set("D8", plain);
+        model.evaluate();
+        let spilled = model._get_text("D4");
+        let expected = model._get_text("D8");
+        assert_eq!(spilled, expected, "{span}");
+        assert_eq!(model._get_text("E4"), model._get_text("E8"), "{span}");
+        assert_eq!(model._get_text("D5"), model._get_text("D9"), "{span}");
+    }
+}

@@ -43,6 +43,9 @@ fn simple_test() {
         ("ATAN2(A1:A10,B1:B10)", "ATAN2(@A1:A10,@B1:B10)"),
         ("ATAN2(A1:A10,A1)", "ATAN2(@A1:A10,A1)"),
         ("SQRT(A1:A10)", "SQRT(@A1:A10)"),
+        // A one-sheet span is that sheet's reference: its range gets the `@` (T-2351).
+        ("SIN(Sheet1:Sheet1!A1:A10)", "SIN(@Sheet1:Sheet1!A1:A10)"),
+        ("SIN(Sheet1:Sheet1!A1)", "SIN(Sheet1:Sheet1!A1)"),
         // An Analysis ToolPak argument's bare range takes no `@`: legacy `SQRTPI(E1:E3)` and
         // `MROUND(E1:E3,2)` are #VALUE! on the range's rows (probes/date-math-lift-driver-edges K2-K3).
         ("SQRTPI(A1:A10)", "SQRTPI(A1:A10)"),

@@ -113,13 +113,28 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         | Node::EmptyArgKind
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
-        | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
         | Node::OpUnionKind { .. }
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
+        // A span of one sheet is that sheet's reference (`=@Data1:Data1!A1` is 1,
+        // probes/3d-ref-span-edges B2), so its range gets the `@` a plain range gets (T-2351).
+        // A wider span is `#REF!` as a value either way and gets none.
+        Node::SheetSpanKind {
+            first_index,
+            last_index,
+            reference,
+            ..
+        } => {
+            if add
+                && first_index == last_index
+                && matches!(reference.as_ref(), Node::RangeKind { .. })
+            {
+                *node = Node::automatic_at(node.clone());
+            }
+        }
         Node::ImplicitIntersection { child, .. } => {
             // We need to check whether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
@@ -312,8 +327,22 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
             StaticResult::Unknown
         }
-        // A 3-D reference is a value only as an error (`#REF!`), so it never spills.
-        Node::ReferenceKind { .. } | Node::SheetSpanKind { .. } => StaticResult::Scalar,
+        Node::ReferenceKind { .. } => StaticResult::Scalar,
+        // A span of one sheet evaluates as that sheet's reference, so it has its shape
+        // (`Model::get_sheet_span_value`, T-2351); a wider 3-D reference is a value only as an
+        // error (`#REF!`), so it never spills.
+        Node::SheetSpanKind {
+            first_index,
+            last_index,
+            reference,
+            ..
+        } => {
+            if first_index == last_index {
+                run_static_analysis_on_node(reference)
+            } else {
+                StaticResult::Scalar
+            }
+        }
 
         // binary operations
         Node::OpConcatenateKind { .. }

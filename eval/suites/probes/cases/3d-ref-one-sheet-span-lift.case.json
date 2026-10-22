@@ -1,0 +1,53 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A scalar function over a one-sheet 3-D span range (Data1:Data1!A1:A3): lifts and spills like the plain range? Plus a multi-sheet span in the same place (T-2351)",
+  "tags": [
+    "M8",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ABS(Data1:Data1!A1:A3)",
+        "B1": "=LEN(Data1:Data1!A1:B1)",
+        "B3": "=ROWS(ABS(Data1:Data1!A1:A3))",
+        "B4": "=SUM(ABS(Data1:Data1!A1:B1))",
+        "B5": "=ABS(Data1:Data2!A1:A3)",
+        "B6": "=FORMULATEXT(A1)",
+        "D1": "=ABS(Data1!A1:A3)"
+      }
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "A1": 1,
+        "A2": -5,
+        "A3": "xy",
+        "B1": 3
+      }
+    },
+    {
+      "name": "Data2",
+      "cells": {
+        "A1": 10
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!A1",
+    "Calc!A2",
+    "Calc!A3",
+    "Calc!B1",
+    "Calc!C1",
+    "Calc!B3",
+    "Calc!B4",
+    "Calc!B5",
+    "Calc!B6",
+    "Calc!D1",
+    "Calc!D2",
+    "Calc!D3"
+  ]
+}
