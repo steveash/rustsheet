@@ -3,7 +3,7 @@ id: T-2262
 title: "Probe TYPE of a one-cell range over text, boolean, error, blank, OFFSET and INDIRECT cells"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2156 made `fn_type` (functions/information/mod.rs) classify the cell of a one-
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/type-one-cell-range-kinds (20 cells, excel-graph sidecar): `TYPE(X:X)` over blank 1, text 2, boolean 4, error 16, 256-unit text 64, blocked spill anchor 16 and working numeric anchor 1; one-cell OFFSET and INDIRECT classify the same way. The engine already matched every cell, so no code change; the baseline only gains the new passing case. Recorded in information.md "TYPE of a one-cell range, ISEVEN/ISODD past 2^63, CELL ...".
