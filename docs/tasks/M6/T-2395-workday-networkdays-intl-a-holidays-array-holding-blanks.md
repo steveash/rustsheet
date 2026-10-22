@@ -3,7 +3,7 @@ id: T-2395
 title: "WORKDAY/NETWORKDAYS(.INTL): a holidays array holding blanks from HSTACK of empty cells is accepted (ours #VALUE!)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
