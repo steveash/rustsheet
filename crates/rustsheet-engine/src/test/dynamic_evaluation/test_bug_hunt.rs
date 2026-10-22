@@ -81,8 +81,8 @@ fn cse_reading_its_own_spill_cell_is_circular() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("A1"), "#CIRC!");
-        assert_eq!(model._get_text("A2"), "#CIRC!");
+        assert!(model._is_circular("A1"));
+        assert!(model._is_circular("A2"));
     }
 }
 
@@ -100,7 +100,7 @@ fn two_cse_arrays_reading_each_other_are_circular() {
     for _ in 0..2 {
         model.evaluate();
         for cell in ["A1", "A2", "B1", "B2"] {
-            assert_eq!(model._get_text(cell), "#CIRC!", "{cell}");
+            assert!(model._is_circular(cell), "{cell}");
         }
     }
 }
@@ -130,7 +130,7 @@ fn dynamic_anchor_and_cse_array_reading_each_other_are_circular() {
         ));
     }
     assert_eq!(snapshots[0], snapshots[1], "not a fixed point");
-    assert_eq!(model._get_text("B1"), "#CIRC!");
+    assert!(model._is_circular("B1"));
 }
 
 //         ║    A    |       B       |      C       |
@@ -522,8 +522,8 @@ fn two_anchors_reading_each_others_value_are_circular() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("A1"), "#CIRC!");
-        assert_eq!(model._get_text("B1"), "#CIRC!");
+        assert!(model._is_circular("A1"));
+        assert!(model._is_circular("B1"));
     }
 }
 
@@ -534,7 +534,7 @@ fn indirect_into_own_spill_area_is_circular() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("A1"), "#CIRC!");
+        assert!(model._is_circular("A1"));
         assert_eq!(model._get_text("A2"), "");
     }
 }
@@ -559,7 +559,9 @@ fn mutual_area_dependency_is_a_fixed_point() {
         .collect();
     assert_eq!(first, second);
     assert!(
-        first.iter().any(|v| v == "#CIRC!"),
+        ["A1", "A2", "A3", "B1", "B2", "B3"]
+            .iter()
+            .any(|c| model._is_circular(c)),
         "expected a circular reference, got {first:?}"
     );
 }
@@ -571,9 +573,9 @@ fn mutual_area_dependency_is_a_fixed_point() {
 //    5    ║         |                |
 //
 // A4 reads D3 (= 2) and then D4, whose spill would close the cycle
-// D3 → D5 → D4. D4 reports #CIRC! and does not spill; D3 and A4 keep the
-// values they computed with an empty D5, which the final sheet holds. Found
-// by the consistency oracle, which must stay clean.
+// D3 → D5 → D4. D4 is circular (0) and does not spill; D3 keeps the value it
+// computed with an empty D5, which the final sheet holds, and A4, a reader of
+// D4, is 0 (recalc.md). Found by the consistency oracle, which must stay clean.
 #[test]
 fn running_reader_of_a_cycle_member_is_redone() {
     let mut model = new_empty_model();
@@ -584,10 +586,10 @@ fn running_reader_of_a_cycle_member_is_redone() {
     for _ in 0..2 {
         model.evaluate();
         assert_eq!(model._get_text("D3"), "2");
-        assert_eq!(model._get_text("D4"), "#CIRC!");
-        assert_eq!(model._get_text("A4"), "2");
-        assert_eq!(model._get_text("A5"), "#CIRC!");
-        assert_eq!(model._get_text("A6"), "0");
+        assert!(model._is_circular("D4"));
+        assert!(model._is_circular("A4"));
+        assert_eq!(model._get_text("A5"), "");
+        assert_eq!(model._get_text("A6"), "");
         assert_eq!(super::oracle::violations(&mut model), Vec::<String>::new());
     }
 }
@@ -644,7 +646,7 @@ fn cross_sheet_spill_cycle_is_circular() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("Sheet2!B1"), "#CIRC!");
+        assert!(model._is_circular("Sheet2!B1"));
         assert_eq!(model._get_text("A1"), "2");
     }
 }
@@ -833,7 +835,7 @@ fn contention_with_a_dependency_keeps_history() {
 // still has spill cells from a previous evaluation, C1 pulls C4 in, C4 reads
 // D4 through the stale cell, D2 is evaluated on C4's behalf and the loop
 // closes on the stack. On a fresh sheet the loop is caught by D2's write
-// barrier instead. Both paths must blame the anchor only: D2 = #CIRC!, C4
+// barrier instead. Both paths must blame the anchor only: D2 is circular (0), C4
 // keeps 0 (D4 is empty in the final sheet), C1 = SEQUENCE(0) = #CALC!.
 #[test]
 fn cycle_blame_does_not_depend_on_stale_spill_cells() {
@@ -853,7 +855,8 @@ fn cycle_blame_does_not_depend_on_stale_spill_cells() {
     );
     history.evaluate();
     assert_eq!(after_history, snapshot(&history, &cells));
-    assert_eq!(after_history, ["#CALC!", "0", "#CIRC!", "", ""]);
+    assert_eq!(after_history, ["#CALC!", "0", "0", "", ""]);
+    assert!(history._is_circular("D2"));
 
     let mut fresh = new_empty_model();
     fresh._set("D2", "=C2:C4");
@@ -864,7 +867,8 @@ fn cycle_blame_does_not_depend_on_stale_spill_cells() {
     assert_eq!(super::oracle::violations(&mut fresh), Vec::<String>::new());
     fresh.evaluate();
     assert_eq!(after_fresh, snapshot(&fresh, &cells));
-    assert_eq!(after_fresh, ["#CALC!", "0", "#CIRC!", "", ""]);
+    assert_eq!(after_fresh, ["#CALC!", "0", "0", "", ""]);
+    assert!(fresh._is_circular("D2"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

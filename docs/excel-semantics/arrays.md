@@ -209,8 +209,7 @@ Evidence: probes/vstack-self-past-grid W2-W12 (excel-graph, 2026-10-21, T-1965).
 Ours: `limits::check_stack_size` in `fn_hstack`, `fn_vstack` (T-1803), EXPAND, WRAPROWS and WRAPCOLS (T-1967). `fn_vstack`
 evaluates every argument but a one-cell reference, a range only to its corners, and checks the rows of every argument
 before reading a reference (T-1965); that an evaluated array's rows count too, `ROWS(VSTACK(SEQUENCE(1048576),1:1))` in
-row 1 `#NUM!`, follows from that order but is unprobed. W9 is `#CIRC!` (a cycle is an error in ours, recalc.md), and so is -c3 W1, which sits in
-row 1, which it stacks.
+row 1 `#NUM!`, follows from that order but is unprobed. W9 is 0 since T-0445 (recalc.md), and so is -c3 W1, which sits in row 1, which it stacks.
 Status: VERIFIED (excel-graph)
 Tasks: T-1803, T-1967, T-1965
 
@@ -1276,7 +1275,7 @@ what the range holds (numbers, an error cell among numbers, an error cell among 
 range is the control: its value is the element (`MAP(A1:A2,LAMBDA(r,J1:J1))` is 4, 4).
 Evidence: probes/map-scan-range-result (excel-graph 2026-10-18).
 Implemented in: `Model::lambda_result_value`, which still reads the range's existing cells (a cycle
-through it is `#CIRC!`). Tasks: T-1792, T-1769.
+through it is 0, recalc.md). Tasks: T-1792, T-1769.
 The same holds for a multi-cell array value, not only a range: `MAP(Data!C4:D12,Data!A8:B12,LAMBDA(x,acc,HSTACK(acc,Data!A7:D11,acc)))`
 (gen-m7/611ce3bbfab27cef Calc!A944), `SCAN(Data!B8,Data!B6:E11,LAMBDA(acc,v,HSTACK(..)))` (b24ce74f08d3f91a A430), a SCAN step that is a FILTER
 result (7307132bb8820f17 A619) or a TRIMRANGE (2c5ea078f25443a2 A1717), a MAP step raising to a BYROW column (7307132bb8820f17 A1324) and a SCAN

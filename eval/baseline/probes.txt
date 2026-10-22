@@ -920,6 +920,7 @@ C	probes/sumif-edge-single-cell.case.json	15
 C	probes/sumx-blank-text-error-order.case.json	93
 C	probes/t-array-lift.case.json	22
 C	probes/t-n-range-top-left.case.json	45
+C	probes/t0445-circular-readers.case.json	16
 C	probes/t1626-asc.case.json	29
 C	probes/t1626-findb.case.json	26
 C	probes/t1626-jis-0.case.json	8
@@ -1247,20 +1248,9 @@ F	probes/circular-iteration-limits.case.json	S!D1
 F	probes/circular-iteration-limits.case.json	S!E1
 F	probes/circular-iteration-limits.case.json	S!F1
 F	probes/circular-iteration-limits.case.json	S!G1
-F	probes/circular-iteration-off.case.json	S!A1
-F	probes/circular-iteration-off.case.json	S!A2
-F	probes/circular-iteration-off.case.json	S!B1
-F	probes/circular-iteration-off.case.json	S!C1
-F	probes/circular-iteration-off.case.json	S!C2
-F	probes/circular-iteration-off.case.json	S!D1
-F	probes/circular-iteration-off.case.json	S!E1
-F	probes/circular-iteration-off.case.json	S!F1
-F	probes/circular-iteration-off.case.json	S!G1
-F	probes/circular-iteration-off.case.json	S!H1
 F	probes/circular-iteration-on.case.json	S!A1
 F	probes/circular-iteration-on.case.json	S!A2
 F	probes/circular-iteration-on.case.json	S!B1
-F	probes/circular-iteration-on.case.json	S!B2
 F	probes/circular-iteration-on.case.json	S!C1
 F	probes/circular-iteration-on.case.json	S!C2
 F	probes/circular-iteration-on.case.json	S!D1
@@ -2480,7 +2470,6 @@ F	probes/regression-trend.case.json	Sheet1!O7
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
-F	probes/scalar-lift-open-c3.case.json	Sheet1!W1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!A1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B2
@@ -2918,7 +2907,6 @@ F	probes/text-locale-calendars.case.json	S!A99
 F	probes/text-locale-era-gregorian.case.json	S!A21
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
-F	probes/vstack-self-past-grid.case.json	Sheet1!W9
 F	probes/weeknum-stale-dependency.case.json	Dep!A3
 F	probes/weeknum-stale-grid.case.json	Grid!B1
 F	probes/weeknum-stale-order-2x3.case.json	Wide!A1
