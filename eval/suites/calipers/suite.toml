@@ -1,0 +1,27 @@
+name = "calipers"
+description = "Calipers, the mog engine's verification corpus: Excel-saved goldens (real financial models, round trips, Office.js outputs) recalculated and scored against their cached values (T-0446)"
+kind = "xlsx"
+root = "../../.cache/suites/calipers"
+# Every Excel golden. `pv_goldens/` holds 107 real financial models; `roundtrip/`, `recalculate/`,
+# `default/`, `scratch/` and `officejs/` hold Excel's saves of authored fixtures and of Office.js
+# script runs (the engine cannot run the scripts, but their saved workbooks are ordinary Excel files).
+include = ["**/golden.xlsx"]
+# `_disabled/`: hostile files Calipers itself never loads. pv26_002 and pv26_2_002 (1.4M formulas,
+# 560k COUNTIFS/SUMIFS) take about 11 minutes to calculate, and a timed-out case keeps its worker
+# running until the run ends; T-0449 puts them back once they calculate within the case timeout.
+exclude = ["_disabled/**", "pv_goldens/pv26_002/**", "pv_goldens/pv26_2_002/**"]
+# Calipers is MIT. The pv_goldens workbooks were imported into it from a non-public repository
+# (lyfegame/shortcut, anonymised by its authors), so the corpus is fetched, never vendored.
+license = "MIT"
+origin = "https://github.com/fundamental-research-labs/calipers (verification/cases)"
+use_cached_values = true
+require_excel_authored = true
+gate = true
+baseline = "cells"
+milestone = ["M11"]
+
+[fetch]
+url = "https://github.com/fundamental-research-labs/calipers.git"
+rev = "9e47ea4fc97b292b15ff7bf3c445acab53f6d8e9"
+subdir = "verification/cases"
+include = ["**/golden.xlsx"]

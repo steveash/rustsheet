@@ -21,7 +21,10 @@ distinct text criteria and 100 numeric thresholds.
 - rustsheet: 20.2 s, of which recalculation is 18.5 s.
 - mog: 2.4 s, the same values.
 
-Real files: corpus-bench 52450 takes 267 s against mog's 2.5 s (part of T-0430). Each call re-parses
+Real files: corpus-bench 52450 takes 267 s against mog's 2.5 s (part of T-0430). Calipers
+pv_goldens/pv26_002 and pv26_2_002 (1.38M formulas: about 330k COUNTIFS and 230k SUMIFS over
+1,400-row ranges, many through OFFSET) take about 11 minutes each in rustsheet and in mog, so
+eval/suites/calipers/suite.toml excludes them (T-0446). Each call re-parses
 its criteria and re-tests every cell of every criteria range.
 
 Candidate approach: per recalculation, memoise the set of matching rows per (criteria range,
@@ -46,6 +49,10 @@ Shared constraints:
       `main` before this task, and both timings are in the Outcome.
 - [ ] corpus-bench 52450's release-build calculation time is in the Outcome; its timeout leaves
       eval/baseline/corpus-bench.txt if it now runs under 60 s.
+- [ ] Calipers pv26_002 and pv26_2_002: release calculation times before and after in the Outcome. If
+      they now calculate within the 60 s case timeout, their `exclude` entries leave
+      eval/suites/calipers/suite.toml and `make eval-baseline` records the result; otherwise file the
+      remaining cause as a follow-up.
 - [ ] Unit tests cover cache invalidation within a pass, wildcard and comparison criteria,
       text-number coercion in criteria, and errors in criteria ranges.
 - [ ] `make eval` shows no new known failure; `make check` green; reviewers approve.

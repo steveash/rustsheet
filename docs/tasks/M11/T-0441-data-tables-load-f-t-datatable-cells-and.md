@@ -31,9 +31,10 @@ which needs the dependency graph's recalculation of a substituted cell (SPEC-000
 blocked on it. Directive 5: the number of substitutions is rows x columns of the table; it needs a
 work bound like the other walkers.
 
-Real-world evidence (mog head-to-head, docs/research/mog-head-to-head-2026-10-22.md, 2026-10-22): 21 of
-the 107 Excel-saved financial models in the Calipers corpus (calipers/pv_goldens, T-0446) contain data
-tables, and rustsheet refuses to load every one of them (`Not Implemented Error: data table formulas`),
+Real-world evidence (mog head-to-head, docs/research/mog-head-to-head-2026-10-22.md, 2026-10-22): 19 of
+the 107 Excel-saved financial models in the Calipers corpus (calipers/pv_goldens, T-0446), and 2 of its
+round-trip workbooks (roundtrip/i18n_hebrew, roundtrip/lbo_model), contain data tables. Rustsheet
+refuses to load every one of them (`Not Implemented Error: data table formulas`),
 so none of their cells are scored. Mog loads them. Before the full calculation, the import could keep
 the data-table cells as stored constants (Excel's cached results) instead of failing the whole workbook.
 That would be a separate S task if the owner wants it before Phase 2. Priority raised P3 to P2 at the

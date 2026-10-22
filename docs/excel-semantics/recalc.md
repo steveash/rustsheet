@@ -60,9 +60,11 @@ Jacobi). With iterateCount 100 and the three oracle calculations (300 sweeps):
 - `=B2` stays 0.
 Evidence: probes/circular-iteration-on (iterate, iterateCount 100, iterateDelta 0.001;
 excel-graph, 2026-10-16, T-0428).
-Ours: every cell is an error.
+Ours: every cell is an error. The xlsx import also drops `iterate`, `iterateCount` and
+`iterateDelta`, so real models saved with iteration on (calipers pv23_021 and pv26_004, about 3,600
+cells) give `#CIRC!` where Excel has numbers.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401, T-0429
+Tasks: T-0428, T-0401, T-0429, T-0447
 
 ## iterateDelta stops the iterations for the whole workbook, not per cycle
 Rule: the delta stop ends the iterations of the whole workbook, not of each cycle on its own.
@@ -124,9 +126,12 @@ formula: `ISFORMULA` of a non-anchor result cell is TRUE, and `COUNT` of the res
 is the row input and its second the column input, so the column table leaves the first empty.
 Storage: excel-graph reads a one-variable column table written as `dt2D="0" dtr="0" r1=<input>`,
 a row table as `dtr="1"`, and a two-variable table as `dt2D="1" dtr="1" r1=<row input> r2=<column
-input>`. These are the forms spec2xlsx writes. No Excel-authored file in the repo has a data table.
+input>`. These are the forms spec2xlsx writes. No vendored Excel-authored file has a data table.
+The fetched calipers suite has 21 workbooks saved by desktop Excel that do: 19 pv_goldens financial
+models, roundtrip/i18n_hebrew and roundtrip/lbo_model (T-0446).
 Evidence: probes/data-tables (excel-graph, 2026-10-16, T-0428).
-Ours: the result cells are blank (the import has no data tables), so the reads are 0 or wrong.
-The table formulas themselves already match.
+Ours: for a spec case the result cells are blank (the eval adapter ignores `data_tables`), so the
+reads are 0 or wrong. The table formulas themselves already match. An xlsx file with a data table
+does not load at all (`Not Implemented Error: data table formulas`), so none of its cells calculate.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0441
+Tasks: T-0428, T-0441, T-0446

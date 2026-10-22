@@ -24,8 +24,8 @@ Owner request (2026-10-22), after a head-to-head of rustsheet and mog (docs/rese
   recalculation cases and 263 Office.js script outputs. The engine cannot run the Office.js scripts,
   but their goldens are ordinary Excel-saved workbooks whose cached values are an oracle like POI's.
 - Measured before this task (values only, 132 cases both engines loaded): 99.55% of 1.56M formula
-  cells bit-exact. Rustsheet refuses 21 `pv_goldens` workbooks (`Not Implemented Error: data table
-  formulas`, T-0441); two models with `<calcPr iterate="1">` (pv23_021, pv26_004) give `#CIRC!`
+  cells bit-exact. Rustsheet refuses 19 `pv_goldens` workbooks and 2 round trips (`Not Implemented Error:
+  data table formulas`, T-0441); two models with `<calcPr iterate="1">` (pv23_021, pv26_004) give `#CIRC!`
   (T-0447); pv26_002 and pv26_2_002 take about 11 minutes each to calculate.
 - Licence: Calipers is MIT. The `pv_goldens` workbooks were imported into it from a repository that is
   not public (lyfegame/shortcut, anonymised by its authors), so the suite is fetched into
@@ -33,6 +33,8 @@ Owner request (2026-10-22), after a head-to-head of rustsheet and mog (docs/rese
 - Nothing about Calipers' own `verify` gate (formula text, styles) is in scope: the suite scores values.
 
 ## Acceptance criteria
+- [ ] pv26_002 and pv26_2_002 are excluded with a comment naming T-0449, which owns their calculation
+      time, because a timed-out case's worker keeps running until the run ends.
 - [ ] `eval/suites/calipers/suite.toml` fetches Calipers at a pinned full commit id (`[fetch]` with
       `rev` and `subdir = "verification/cases"`), includes `**/golden.xlsx`, excludes `_disabled/**`,
       scores cached values, and is gated with a `cells` baseline.
