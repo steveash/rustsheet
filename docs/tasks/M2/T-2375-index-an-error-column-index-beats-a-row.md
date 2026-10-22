@@ -3,7 +3,7 @@ id: T-2375
 title: "INDEX: an error column index beats a row index below 1 (INDEX(B2:E6,-0.5,#N/A) is #N/A)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
