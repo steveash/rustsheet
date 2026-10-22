@@ -535,6 +535,7 @@ C	probes/lookup-pick-index-shapes.case.json	22
 C	probes/lookup-reference-lookup-value-blank-error.case.json	167
 C	probes/lookup-reference-lookup-value.case.json	220
 C	probes/lookup-short-result-vector.case.json	7
+C	probes/lookup-t2278-followups.case.json	14
 C	probes/lookup-vector-blank-result-to-caller.case.json	38
 C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
