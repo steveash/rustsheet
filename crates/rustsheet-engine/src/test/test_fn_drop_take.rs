@@ -230,8 +230,8 @@ fn take_drop_reference_elements_reach_the_grid_consumers() {
 }
 
 // Over an array value each element is its call's top-left value (SPEC-0011 rule 2;
-// probes/m7-lift-take-drop-sortby rows 5-7), errors in place; an unlifted call and a 1x1 count
-// keep the whole array (Excel lifts the 1x1 count, TODO(T-2298)).
+// probes/m7-lift-take-drop-sortby rows 5-7), errors in place; a 1x1 count lifts to one element
+// too (T-2298).
 #[test]
 fn take_drop_lift_over_an_array_value_gives_top_left_values() {
     let mut model = new_empty_model();
@@ -306,4 +306,71 @@ fn take_drop_keep_an_array_of_references() {
     assert_eq!(model._get_text("E10"), *"100");
     assert_eq!(model._get_text("E11"), *"#REF!");
     assert_eq!(model._get_text("E12"), *"#CALC!");
+}
+
+// A 1x1 count over a range lifts to one reference element, the scalar call's A1:B2: ROWS and
+// COLUMNS of the result are 1, of its element 2, and spilled directly it is `#VALUE!`, as a
+// lifted OFFSET's element is (probes/m7-lift-take-drop-sortby Sheet1 F13, G13, I13:K13, W65;
+// T-2298). DROP and OFFSET lift a 1x1 array alike (probes/m7-one-cell-operand-lift F6, F7, F16).
+// A one-cell range count, also through an operator, is its value and keeps the scalar call (F5).
+#[test]
+fn take_lifts_a_one_cell_array_count_into_one_reference_element() {
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("B1", "10"),
+        ("A2", "2"),
+        ("B2", "20"),
+        ("A3", "3"),
+        ("B3", "30"),
+        ("D1", "2"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("F1", "=ROWS(TAKE(A1:B3,{2}))");
+    model._set("G1", "=COLUMNS(TAKE(A1:B3,{2}))");
+    model._set("H1", "=ROWS(INDEX(TAKE(A1:B3,{2}),1,1))");
+    model._set("I1", "=SUM(INDEX(TAKE(A1:B3,{2}),1,1))");
+    model._set("J1", "=ROWS(TAKE(A1:B3,D1:D1))");
+    model._set("F5", "=TAKE(A1:B3,{2})");
+    model._set("K1", "=ROWS(DROP(A1:B3,{1}))");
+    model._set("L1", "=ROWS(INDEX(DROP(A1:B3,{1}),1,1))");
+    model._set("M1", "=ROWS(OFFSET(A1:B2,{1},0))");
+    model._set("N1", "=ROWS(TAKE(A1:B3,--INDIRECT(\"D1\")))");
+    model.evaluate();
+    for (cell, want) in [
+        ("F1", "1"),
+        ("G1", "1"),
+        ("H1", "2"),
+        ("I1", "33"),
+        ("J1", "2"),
+        ("K1", "1"),
+        ("L1", "2"),
+        ("M1", "1"),
+        ("N1", "2"),
+        ("F5", "#VALUE!"),
+        ("F6", ""),
+        ("G5", ""),
+    ] {
+        assert_eq!(model._get_text(cell), want, "{cell}");
+    }
+}
+
+#[test]
+fn take_cols_error_beats_zero_rows() {
+    // gen-m7/7d67c559ce7536fa A1296 (T-2316): both counts are read before a zero is `#CALC!`.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("D1", "=TAKE(A1:B1,0,1/0)");
+    model._set("D2", "=TAKE(A1:B1,1/0,0)");
+    model._set("D3", "=TAKE(A1:B1,0,1)");
+    model._set("D4", "=TAKE(A1:B1,1,0)");
+    model._set("D5", "=TAKE(A1:B1,1,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#DIV/0!");
+    assert_eq!(model._get_text("D2"), "#DIV/0!");
+    assert_eq!(model._get_text("D3"), "#CALC!");
+    assert_eq!(model._get_text("D4"), "#CALC!");
+    assert_eq!(model._get_text("D5"), "1");
 }

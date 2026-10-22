@@ -313,13 +313,18 @@ impl Model {
         self.number_or_array(value, cell)
     }
 
-    /// [`Model::get_number_or_array`] of an already evaluated `value`.
+    /// [`Model::get_number_or_array`] of an already evaluated `value`. A one-cell range is its
+    /// cell's value, as a written `A3` is, not a 1x1 array, here and in the other operand reads
+    /// ([`Model::value_or_array`], [`Model::string_or_array`]): Excel tells the two apart where
+    /// an array-valued function lifts a 1x1 array, and `SEQUENCE(INDIRECT("A3")*1)` with A3 = 3
+    /// spills three rows, as `SEQUENCE(A3*1)` does, where `SEQUENCE(A3+{0})` is one element
+    /// (probes/m7-lift-take-drop-sortby Sheet1 rows 38, 39 and 43; T-2298).
     pub(crate) fn number_or_array(
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<NumberOrArray, CalcResult> {
-        match value {
+        match self.collapse_single_cell(value) {
             CalcResult::Number(f) => Ok(NumberOrArray::Number(f)),
             CalcResult::String(s) => match self.cast_number(&s) {
                 Some(f) => Ok(NumberOrArray::Number(f)),
@@ -376,13 +381,14 @@ impl Model {
         self.value_or_array(value, cell)
     }
 
-    /// [`Model::get_value_or_array`] of an already evaluated `value`.
+    /// [`Model::get_value_or_array`] of an already evaluated `value`; a one-cell range is its
+    /// cell's value ([`Model::number_or_array`]).
     pub(crate) fn value_or_array(
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<ValueOrArray, CalcResult> {
-        match value {
+        match self.collapse_single_cell(value) {
             error @ CalcResult::Error { .. } => Err(error),
             CalcResult::Range { left, right } => {
                 Ok(ValueOrArray::Array(self.evaluate_range(left, right, cell)?))
@@ -403,13 +409,14 @@ impl Model {
         self.string_or_array(value, cell)
     }
 
-    /// [`Model::get_string_or_array`] of an already evaluated `value`.
+    /// [`Model::get_string_or_array`] of an already evaluated `value`; a one-cell range is its
+    /// cell's value ([`Model::number_or_array`]).
     pub(crate) fn string_or_array(
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<StringOrArray, CalcResult> {
-        match value {
+        match self.collapse_single_cell(value) {
             error @ CalcResult::Error { .. } => Err(error),
             CalcResult::Range { left, right } => Ok(StringOrArray::Array(
                 self.evaluate_range(left, right, cell)?,

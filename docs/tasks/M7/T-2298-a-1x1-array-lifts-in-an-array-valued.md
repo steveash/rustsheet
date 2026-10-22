@@ -3,7 +3,7 @@ id: T-2298
 title: "A 1x1 array lifts in an array-valued function's lifted parameter (delete T-1834's 1x1 rule)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -62,3 +62,8 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 6 known-failure lin
 
 ## Out of scope
 - SORTBY (T-1839).
+
+## Outcome
+The driver's 1x1 rule is gone from `lift_grids` and `lift_references`: a 1x1 grid lifts like any other. A single cell never reaches the driver as a grid: a one-cell range was already its value in the read phase, and every operator now reads a one-cell range operand as its cell's value (`number_or_array`, `value_or_array`, `string_or_array` in cast.rs, through `collapse_single_cell`), so `SEQUENCE(INDIRECT("A3")*1)` keeps spilling (row 39, the one regression of deleting the rule alone). A new probe, probes/m7-one-cell-operand-lift (excel-graph, 2026-10-22, 18 cells, all pass), confirms the rule for unary minus, `%`, `&` and comparisons over INDIRECT, OFFSET and `A3:A3`, and that OFFSET and DROP lift a 1x1 array: OFFSET's, TAKE's and DROP's arguments use `lifts_one_by_one`; INDIRECT and TRIMRANGE keep `lifts` (unprobed). Static shape of a 1x1 lift stays `Unknown`. SPEC-0011 "As built (T-1834)" and arrays.md updated.
+
+Eval delta: probes known failures 2446 -> 2425 (21 lines fixed, plus the new 18-cell case passing), gen-m7 1020 -> 991 against main after T-2316 (29 lines fixed, 14 of them comparisons over a one-cell OFFSET in 8044dce50616cfe9), 0 regressions; rows 38-42 still pass. Not fixed here: Sheet1!F15 (EXPAND), gen-m7 A1754 (EXPAND) and A1781 (WRAPROWS), because EXPAND and WRAPROWS are not lifted on main yet; they pass through this driver change once T-1835 lifts them, and are handed to T-1835's Context.

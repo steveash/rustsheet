@@ -231,3 +231,17 @@ fn percentile_exc_checks_k_before_empty_data() {
         ("=PERCENTILE.EXC(G2:G3,0.5)", "#NUM!"),
     ]);
 }
+
+/// A typed boolean or text is a one-element data array (probes-numeric/t1748-typed-boolean-data,
+/// T-1748); a single cell holding one is unprobed and keeps its old reading.
+#[test]
+fn typed_scalar_data_is_a_one_element_array_but_a_cell_holding_one_is_not() {
+    assert_cells(&[
+        ("=QUARTILE(TRUE,1)", "1"),
+        ("=QUARTILE.INC(TRUE,1)", "1"),
+        ("=PERCENTILE(FALSE,0.5)", "0"),
+        ("=QUARTILE(\"1\",1)", "1"),
+        ("=QUARTILE(\"abc\",1)", "#VALUE!"),
+        ("=QUARTILE(C2,1)", "#VALUE!"),
+    ]);
+}

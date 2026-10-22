@@ -1,7 +1,7 @@
 //! OFFSET: a reference moved and resized from another, lifted into an array of references when
 //! rows, cols, height or width is an array or a multi-cell range (SPEC-0014; T-1956).
 
-use super::ref_lift::{lifts, may_hand_on_grid};
+use super::ref_lift::{lifts_one_by_one, may_hand_on_grid};
 use crate::calc_result::{CalcResult, Range};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
@@ -91,10 +91,10 @@ impl Model {
             Err(error) => return RefArg::Value(error),
         };
         let values = self.offset_values(args, cell);
-        if !values.as_slice().iter().any(lifts) {
+        if !values.as_slice().iter().any(lifts_one_by_one) {
             return RefArg::from(self.offset_of(&reference, values.as_slice(), cell));
         }
-        let lifted = match self.reference_lift_args(values, cell) {
+        let lifted = match self.reference_lift_args(values, lifts_one_by_one, cell) {
             Ok(lifted) => lifted,
             Err(error) => return RefArg::Value(error),
         };
@@ -129,7 +129,7 @@ impl Model {
         values: ArgBuf<CalcResult>,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        let mut lifted = match self.reference_lift_args(values, cell) {
+        let mut lifted = match self.reference_lift_args(values, lifts_one_by_one, cell) {
             Ok(lifted) => lifted,
             Err(error) => return RefArg::Value(error),
         };
@@ -167,7 +167,10 @@ impl Model {
     /// Whether an OFFSET call lifts into an array of references, its own arguments evaluated
     /// but no element computed: ISREF's question (probes/reference-lift-elements F15).
     pub(crate) fn offset_lifts(&mut self, args: &[Node], cell: CellReferenceIndex) -> bool {
-        self.offset_values(args, cell).as_slice().iter().any(lifts)
+        self.offset_values(args, cell)
+            .as_slice()
+            .iter()
+            .any(lifts_one_by_one)
     }
 
     /// One of OFFSET's numbers, read by reference: only a reference or an array is cast by value

@@ -197,10 +197,22 @@ WRAPROWS allow columns past the grid: `ROWS(WRAPCOLS(SEQUENCE(16385),1))` is 1 a
 16385; their rows never pass the grid (wrap_count is clamped to the vector, and `SEQUENCE(1048577)` is itself `#VALUE!`).
 `COLUMNS(VSTACK(TEXTSPLIT(REPT(",",16384),","),1))` is 16385.
 Evidence: probes/expand-wrap-past-grid W1-W10 (excel-graph, 2026-10-19, T-1967).
-Ours: `limits::check_stack_size` in `fn_hstack`, `fn_vstack` (T-1803), EXPAND, WRAPROWS and WRAPCOLS (T-1967), except -c2 W1 and -c3 W1: both sit in row 1,
-which they stack, so ours is `#CIRC!` (T-1965).
+VSTACK checks its rows before it reads a referenced cell, after it evaluates every other argument: a stack past the grid
+is `#NUM!` even when a reference argument holds the formula's own cell, so `ROWS(VSTACK(A:A,1:1))` in W1 (-c2),
+`ROWS(VSTACK(2:2,A:A))` in W2, `ROWS(VSTACK(A:A,W8))` in W8 and `COLUMNS(VSTACK(A:A,12:12))` in W12 are `#NUM!`, not a
+circular reference; an error argument wins over the size wherever it stands, `ROWS(VSTACK(A:A,3:3,1/0))` in W3,
+`ROWS(VSTACK(1/0,A:A,4:4))` in W4, `ROWS(VSTACK(A:A,1/0))` and `ROWS(VSTACK(1/0,A:A))` are `#DIV/0!`; and an argument
+that is an expression reading the cell is evaluated, so it is a cycle: `ROWS(VSTACK(A:A,B9+W9))` in W9 is 0
+(recalc.md "A circular reference without iteration is 0"). ROWS, COLUMNS and ISREF of the formula's own row read no
+cell: `ROWS(5:5)` in W5 is 1, `COLUMNS(6:6)` in W6 16384, `ISREF(7:7)` in W7 TRUE.
+Evidence: probes/vstack-self-past-grid W2-W12 (excel-graph, 2026-10-21, T-1965).
+Ours: `limits::check_stack_size` in `fn_hstack`, `fn_vstack` (T-1803), EXPAND, WRAPROWS and WRAPCOLS (T-1967). `fn_vstack`
+evaluates every argument but a one-cell reference, a range only to its corners, and checks the rows of every argument
+before reading a reference (T-1965); that an evaluated array's rows count too, `ROWS(VSTACK(SEQUENCE(1048576),1:1))` in
+row 1 `#NUM!`, follows from that order but is unprobed. W9 is `#CIRC!` (a cycle is an error in ours, recalc.md), and so is -c3 W1, which sits in
+row 1, which it stacks.
 Status: VERIFIED (excel-graph)
-Tasks: T-1803, T-1967
+Tasks: T-1803, T-1967, T-1965
 
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
@@ -272,7 +284,7 @@ Implemented in: `coerce_to_f64` (crates/rustsheet-engine/src/functions/math_and_
 Status: VERIFIED (Excel-cached; the boolean rule excel-graph)
 Tasks: T-0943, T-1358
 A single blank cell is a blank matrix too: `MINVERSE(B4)`, `MDETERM(D$1)`, `MMULT(100,C$9)` and `MMULT(1E-15,B11)`
-with the cell blank are `#VALUE!`. Implemented in `Model::eval_matrix_arg` (matrix.rs, T-2164); any blank result, not only a direct reference, stays blank (a blank through IF/INDEX/CHOOSE is unprobed). Evidence (excel-graph, 2026-10-20): gen-m5/cf893ec19f53a7fc
+with the cell blank are `#VALUE!`. Implemented in `Model::eval_matrix_arg` (matrix.rs, T-2164); any blank result, not only a direct reference, stays blank (a blank through INDEX or CHOOSE is unprobed). So does the empty value a lookup gives for a blank result cell: `MMULT(LOOKUP(TRUE,Data!B2:B10,Data!E11:E11),2.5)` is `#VALUE!` (probes/lookup-short-result-vector A20, T-2278; lookup.md "LOOKUP past a short result vector"), as do `MMULT(,2)`, IFERROR of a blank and `IF(TRUE,<blank>)` (probes/lookup-t2278-followups A1-A5). Evidence (excel-graph, 2026-10-20): gen-m5/cf893ec19f53a7fc
 Calc!A204, gen-m5/fc81c2f704bef138 Calc!A381, gen-m5/3e134e52393061b1 Calc!A10, gen-m5/d9fb1e918971111b Calc!A213 (T-2164).
 
 ## MDETERM: partial-pivot LU, no singularity cutoff
@@ -380,7 +392,13 @@ A 1x1 array in a lifted parameter lifts to one element, but a single cell does n
 `SEQUENCE({3},2)`, `SEQUENCE(A3+{0})` and `EXPAND(A1:A2,{3})` are the 1x1 1 (ROWS 1; `=SEQUENCE({3})` spills one
 cell), `TOCOL(A1:B3,{0})` and `UNIQUE(D1:D3,{FALSE})` are 1x1, `TAKE(A1:B3,{2})` is one reference element A1:B2
 (spilled `#VALUE!`), while `SEQUENCE(A3*1)`, `SEQUENCE(INDIRECT("A3")*1)`, `SEQUENCE(A3:A3)`, `SEQUENCE(IF(TRUE,A3))`
-and `SEQUENCE(INDEX({3},1,1))` with A3 = 3 spill 3 rows. A lifted element error stays in place:
+and `SEQUENCE(INDEX({3},1,1))` with A3 = 3 spill 3 rows: arithmetic over a one-cell reference is that cell's value
+here, not a 1x1 array (row 39), and so through any operator: `SEQUENCE(-INDIRECT("A3")*-1)`,
+`SEQUENCE(--INDIRECT("A3"))`, `SEQUENCE(INDIRECT("A3")%*100)`, `SEQUENCE(INDIRECT("A3")&"")`,
+`SEQUENCE(IF(INDIRECT("A3")=3,3))`, `SEQUENCE(OFFSET(A3,0,0)+0)`, `SEQUENCE(--A3:A3)` and
+`TAKE(A1:B3,--INDIRECT("A3"))` all have 3 rows, where the same operators over `{3}` give one element
+(probes/m7-one-cell-operand-lift F1-F15). OFFSET lifts a 1x1 array too: `OFFSET(A1:B2,{1},0)` has ROWS and
+COLUMNS 1 (F16, F17), as `DROP(A1:B3,{1})` (F6; its element has 2 rows, F7). A lifted element error stays in place:
 `INDEX(SEQUENCE({1;0}),2,1)` is `#CALC!`. UNIQUE's and SORTBY's later elements follow their own rule ("UNIQUE's and
 SORTBY's lifted elements" below).
 These take an array whole: the delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are a list of delimiters
@@ -409,7 +427,7 @@ case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
 Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
-per-parameter rule, which T-1960 confirmed; a 1x1 array argument still runs one unlifted call where Excel lifts it, T-2298); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
+per-parameter rule, which T-1960 confirmed; a 1x1 array argument lifts to one element since T-2298, a one-cell range read through any operator being the cell's value: `number_or_array`, `value_or_array` and `string_or_array` in cast.rs, OFFSET's, TAKE's and DROP's `lifts_one_by_one`; EXPAND's and WRAPROWS's 1x1 cases wait on T-1835, which lifts them); TOCOL's ignore and UNIQUE's by_col lift since T-1836 (F9:H9, K8, F12:H12; the array is read once and handed to every element whole, so `TOCOL(1/0,{0;1})` is one `#DIV/0!` and UNIQUE of an empty array is empty, UNVERIFIED against Excel; TOCOL's scan_by_column and UNIQUE's exactly_once lift by the spec's per-parameter rule, which T-1960 confirmed, but UNIQUE's later elements are not yet empty where Excel's are, T-2300);
 EXPAND's columns, WRAPROWS's pad_with and WRAPCOLS's array wrap_count are T-1835's, and EXPAND's array pad_with is `#VALUE!` there too (ours lifts it);
 TAKE and DROP lift since T-1838 (reference elements; IF, CHOOSE and OFFSET do not hand the grid on, and `TAKE(NA(),{1;2})` is one `#N/A`: T-2299);
 none of the other lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array); SORT reads a sort_index list and a
@@ -1209,7 +1227,7 @@ ISOMITTED inside `LAMBDA(x,[y],...)` matches ours in every probed form (A20-A49)
 (`(1,)`, A24-A25) counts as omitted and so does a required parameter left empty (`(,2)`, A34), while `""` (A26-A27) and a reference to a
 filled cell (A28-A31) count as supplied (FALSE), and so is a reference to a blank cell: `LAMBDA(x,[y],ISOMITTED(y))(1,C1)` with C1 blank is FALSE (probes/dynamic-array-reshape-reprobe E20-E21); outside a LAMBDA `ISOMITTED(5)`, `ISOMITTED(A1)` and `ISOMITTED(#N/A)` are FALSE (A43-A45).
 A function result is not omitted either: `ISOMITTED(LOOKUP(ROWS(Data!D$3),Data!C9:C12,Data!B10:B12))` (an unsorted lookup vector, a
-shorter result vector over blank cells) is FALSE (gen-m7/2c5ea078f25443a2 Calc!A1087, excel-graph, 2026-10-21, T-2225). Ours: TRUE (T-2317).
+shorter result vector over blank cells) is FALSE (gen-m7/2c5ea078f25443a2 Calc!A1087, excel-graph, 2026-10-21, T-2225). Ours: FALSE for a LOOKUP call since T-2317 (`fn_isomitted`); other built-ins that can pass an omitted parameter through (`IF(TRUE,y)`, `CHOOSE`, `LET`, `IFERROR`) and a LAMBDA call around the LOOKUP are unprobed and unchanged.
 Status: VERIFIED (excel-graph)
 Tasks: T-1627, T-1630, T-1632
 
@@ -1254,7 +1272,8 @@ excel-graph, 2026-10-21, T-2225): rows 2.005 (18b80d3fd292d63a Calc!A963), 11111
 (7307132bb8820f17 A1, a cell), 2.5 again (A1137), 3.14159 (b24ce74f08d3f91a A382), 1.005 (c36ff5f42a1a4d47 A285), the fractions of
 36809e9faa59553f A1285, 90de8755a2e565e6 A409, ac67253061bba16a A1222 and c36ff5f42a1a4d47 A853, and a WRAPCOLS rows array whose first
 element is 3.14159 (c36ff5f42a1a4d47 A1705) are all `#VALUE!`.
-Ours: truncates and builds the array, or `#SPILL!` where it does not fit (T-2308).
+Ours: `#VALUE!` for a fractional rows or columns (T-2308).
+Unverified: a size within one ulp of a whole number (`(0.1+0.2)*10`) is `#VALUE!` in ours (exact test); Excel may round to 15 digits first.
 Status: VERIFIED (excel-graph)
 Tasks: T-2308
 
@@ -1301,9 +1320,14 @@ TOCOL(Data!E7:E11))` spills five `#NUM!` (36809e9faa59553f A334),
 `SEQUENCE(0,1,ROUNDDOWN(SORT(..),-6),COLUMNS(COTH(..)))` has `#VALUE!` elements (611ce3bbfab27cef A1633) and `TAKE(Data!B9:C10,0,
 LN(ROUND(..)))` is `#VALUE!` (7d67c559ce7536fa A1296). `SEQUENCE(0)` alone stays `#CALC!`. A817's error argument (its start, a UNIQUE over an XLOOKUP) is not isolated.
 `SEQUENCE(WRAPROWS(Data!C2,3,Data!$A$3)+..,0,..)` (611ce3bbfab27cef A1065) is one `#VALUE!` with no error argument: its rows is
-an array (WRAPROWS pads with a blank) of about 1E+15; its cause is UNVERIFIED and not this rule.
+an array (WRAPROWS pads with a blank) of about 1E+15, past the grid, which is `#VALUE!` as `SEQUENCE(1048577)` is, and that also
+beats the zero columns; the reading fits the cell but is not isolated by a probe.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
-Ours: `#CALC!` (T-2316).
+A zero rows beats an invalid columns: `SEQUENCE(0,<negative>)` is `#CALC!` (c36ff5f42a1a4d47 A359). So SEQUENCE reads all four
+arguments, an error value in any of them winning, and only then checks rows (negative or past the grid `#VALUE!`, 0 `#CALC!`), then
+columns.
+Ours: `sequence_kernel` in that order; TAKE reads both counts before a zero one is `#CALC!` (`edge_spans`; T-2316).
+Unprobed: whether an error start beats a negative extent (ours: it does, by the reading above).
 Status: VERIFIED (excel-graph)
 Tasks: T-2316
 
