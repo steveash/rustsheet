@@ -49,7 +49,7 @@ Evidence: probes/circular-iteration-off (excel-graph, 2026-10-16, T-0428); probe
 (excel-graph, 2026-10-22, T-0445).
 Ours: matches since T-0445. A read that closes a loop, or reads a cell already known to be circular, marks every
 cell on the evaluation stack circular, and a circular cell stores 0 and does not spill (`Model::mark_stack_circular`,
-crates/rustsheet-engine/src/evaluation.rs). An array anchor whose spill contradicts its own inputs, which the driver
+crates/rustsheet-engine/src/circular.rs). An array anchor whose spill contradicts its own inputs, which the driver
 marks circular, is 0 the same way, and so are its readers (unprobed for spills).
 Status: VERIFIED (excel-graph)
 Tasks: T-0428, T-0401, T-0445

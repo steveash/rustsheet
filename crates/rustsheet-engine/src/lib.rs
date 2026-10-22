@@ -58,6 +58,7 @@ mod actions;
 mod area_budget;
 mod arithmetic;
 mod cast;
+mod circular;
 mod conditional_formatting;
 mod constants;
 mod cut_paste;

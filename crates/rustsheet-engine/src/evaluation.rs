@@ -42,6 +42,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::calc_result::CalcResult;
+use crate::circular::circular_reference;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
@@ -81,7 +82,7 @@ pub type KeyBuild = std::hash::BuildHasherDefault<KeyHasher>;
 /// `(sheet, row, column)`: a position in the workbook.
 pub(crate) type CellKey = (u32, i32, i32);
 
-fn key(cell: CellReferenceIndex) -> CellKey {
+pub(crate) fn key(cell: CellReferenceIndex) -> CellKey {
     (cell.sheet, cell.row, cell.column)
 }
 
@@ -953,41 +954,6 @@ impl Model {
         }
     }
 
-    /// A read closed a loop, or read a circular cell: every cell on the stack
-    /// is on the loop or reads it, however indirectly. They all store 0,
-    /// whatever their formula would have made of the value, as Excel's do with
-    /// iterative calculation off (`=A1+10`, `=ISNUMBER(A1)` and `=IFERROR(A1,5)`
-    /// reading a loop, and their readers, are 0; probes/circular-iteration-off,
-    /// probes/t0445-circular-readers). Only the cells pushed since the last
-    /// marking are visited.
-    fn mark_stack_circular(&mut self) {
-        let evaluation = &mut self.evaluation;
-        let from = evaluation.circular_below.min(evaluation.stack.len());
-        for cell in &evaluation.stack[from..] {
-            evaluation.circular.insert(key(*cell));
-        }
-        evaluation.circular_below = evaluation.stack.len();
-    }
-
-    /// Marks the stack circular if the cell at `key`, just read, is circular.
-    /// Not while the recursion unwinds: cells that have not run yet are then
-    /// on the stack above the reader, and the replay reads again.
-    fn mark_readers_of(&mut self, key: CellKey) {
-        if self.evaluation.restart.is_none()
-            && !self.evaluation.unwinding
-            && self.evaluation.circular.contains(&key)
-        {
-            self.mark_stack_circular();
-        }
-    }
-
-    /// Takes the top cell off the stack.
-    fn pop_stack(&mut self) {
-        let evaluation = &mut self.evaluation;
-        evaluation.stack.pop();
-        evaluation.circular_below = evaluation.circular_below.min(evaluation.stack.len());
-    }
-
     /// Records what the formula being evaluated found at a position, together
     /// with the root of the current recursion, the cell the driver is
     /// evaluating. The first record of each kind is kept. Reads made outside
@@ -1100,11 +1066,4 @@ impl Model {
         });
         true
     }
-}
-
-/// What a circular cell holds, and what a read that closes a loop gets: 0, as
-/// in Excel with iterative calculation off (recalc.md "A circular reference
-/// without iteration is 0").
-fn circular_reference() -> CalcResult {
-    CalcResult::Number(0.0)
 }
