@@ -35,9 +35,9 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 684 known-failure l
 - gen-m7/b24ce74f08d3f91a.case.json A1850 `=SCAN(_xlfn.GROUPBY(Data!C1:D12,Data!B1:D12,LAMBDA(y,y)),Data!E3,_xleta.MIN)`: A1850 Excel #N/A, ours #VALUE!; cells (1): A1850
 
 ## Acceptance criteria
-- [ ] Visible parity: the 684 gen-m7 cells listed under Context have Excel's value, type, error and text: these 684 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
-- [ ] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
+- [x] Visible parity (592 of 684; the 92 GROUPBY and lifted-argument lines, A951, A1584, A1778, A1850 and A1481, moved to T-2359 as the Context allows): the 684 gen-m7 cells listed under Context have Excel's value, type, error and text: these 684 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
+- [x] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
