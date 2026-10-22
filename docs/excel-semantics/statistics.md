@@ -964,8 +964,8 @@ A8. So POISSON.DIST stays on statrs here (T-2055).
 T-2145 dense sweep (excel-graph; probes-numeric/t2145-binomial-sweep, t2145-negbinom-sweep, t2145-binom-range-sweep:
 3260 BINOM.DIST, 1100 NEGBINOM.DIST and 790 BINOM.DIST.RANGE cells, p in {0.5, 0.25, 0.125, 0.1, 0.2, 0.3, 0.7, 0.9,
 0.99, 0.999}, no error cells). Against the exact value rounded once (Python `fractions`, from the exact decimal p),
-BINOM.DIST is bit-exact at 1017 of 3260 (31%). Of the other 2243, 1020 are within 4 ulp, 1007 more within 1E-14
-relative and 216 more within 1E-12 relative; none is beyond (worst 1.4E-13). NEGBINOM.DIST is exact at 394 of 1100 and
+BINOM.DIST is bit-exact at 1017 of 3260 (31%). Of the other 2243, 1017 are within 4 ulp (steps between doubles), 1011 more
+within 1E-14 relative and 215 more within 1E-12 relative (against the exact value); none is beyond (worst 1.4E-13). NEGBINOM.DIST is exact at 394 of 1100 and
 BINOM.DIST.RANGE at 393 of 790. Patterns in the BINOM.DIST cells (all counts from the sidecars):
 - Exact share by p: 48% (0.1), 50% (0.125), 40% (0.2), 45% (0.25), 37% (0.3), 43% (0.5), then 16% (0.7), 14% (0.9),
   8% (0.99), 10% (0.999): it drops sharply above 0.5.
@@ -974,7 +974,9 @@ BINOM.DIST.RANGE at 393 of 790. Patterns in the BINOM.DIST cells (all counts fro
   is exact at only 44 of 170, so even that single power is not the exact value rounded once.
 - The exact share falls with n: 30 of 40 at n = 1, 72 of 220 at n = 10, 158 of 720 at n >= 30.
 - For p in {0.5, 0.25, 0.125}, where the exact value is often a short decimal, Excel is still off in 50 to 57% of
-  cells, from 1 ulp (32% of the misses) to about 210 ulp (median 2): the exact short decimal is not Excel's answer.
+  cells, from 1 ulp (31% of the misses) to about 210 ulp (median 2): the exact short decimal is not Excel's answer. Even the exact power of two
+  `BINOM.DIST(0,50,0.5,FALSE)` = 0.5^50 is 8.881784197001244E-16, 8 doubles below the exact 8.881784197001252E-16
+  (t2145-binomial-sweep A2781; A2782 the cdf, A2803 the pmf at k = 50 likewise).
 NEGBINOM.DIST goes the other way: its exact share is 15 to 17% at p = 0.1 and 0.2, 27% at 0.125, 31% at 0.3, 40% at
 0.25, 56% at 0.5, then 36%, 42%, 45%, 48% at 0.7 to 0.999, so the BINOM.DIST trend must not be carried over to it.
 Hypothesis only (not tested): the growth of the error with n and with p near 1 is what a prefactor `exp(a*ln x)`
