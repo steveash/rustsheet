@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 
 use chrono::Datelike;
 
-use super::holidays::{days_per_weekday, weekday_of, working_days, Holidays};
+use super::holidays::{days_per_weekday, weekday_of, working_days, Holidays, HolidaysError};
 use super::{bare_error, DEFAULT_WEEKEND};
 use crate::{
     calc_result::CalcResult,
@@ -94,7 +94,10 @@ impl Model {
         }
         let holidays = self
             .workday_holidays(args.get(holidays_at), cell)
-            .map_err(|error| bare_error(&error, cell));
+            .map_err(|error| HolidaysError {
+                error: bare_error(&error.error, cell),
+                ..error
+            });
         let read = holidays.as_ref().map_or(0, |holidays| holidays.read);
         self.lift_call_costed(
             kind,
@@ -112,26 +115,30 @@ impl Model {
         &mut self,
         arg: Option<&Node>,
         cell: CellReferenceIndex,
-    ) -> Result<Holidays, CalcResult> {
+    ) -> Result<Holidays, HolidaysError> {
         let Some(arg) = arg else {
             return Ok(Holidays::none());
         };
-        let days = self
-            .holiday_serials(arg, cell)?
+        let serials = self.holiday_serials(arg, cell)?;
+        // `holiday_serials` keeps only serials of the date range, so none is dropped here.
+        let days = serials
             .into_iter()
-            .map(|serial| self.excel_date(serial, cell).map(day_number))
-            .collect::<Result<Vec<i64>, CalcResult>>()?;
+            .filter_map(|serial| self.excel_date(serial, cell).ok().map(day_number))
+            .collect();
         Ok(Holidays::new(days))
     }
 
-    /// One element of WORKDAY(.INTL): the start date, the day count, the holidays, then the weekend
-    /// (WORKDAY.INTL only); an all-weekend mask is `#VALUE!`. A day count of 0 is the start
-    /// date, whatever the weekend and the holidays are.
+    /// One element of WORKDAY(.INTL), its errors in Excel's order (dates.md "WORKDAY and
+    /// NETWORKDAYS holidays: blank and number-text cells, and the error order"): the start date,
+    /// then the day count; a day count of 0 is the start date, whatever the weekend and the
+    /// holidays are; `#NUM!` when start + days is off the calendar; a single holiday that is no
+    /// number; the weekend (WORKDAY.INTL only; an all-weekend mask is `#VALUE!`); any other
+    /// holidays error; and last a walk that leaves the calendar.
     fn workday_of(
         &self,
         values: &[CalcResult],
         holidays_at: usize,
-        holidays: &Result<Holidays, CalcResult>,
+        holidays: &Result<Holidays, HolidaysError>,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let [start, days, rest @ ..] = values else {
@@ -147,9 +154,20 @@ impl Model {
             // from serial 0").
             return Ok(start as f64);
         }
-        // The holidays' error comes before the weekend's, also before a bad weekend code:
-        // `WORKDAY.INTL(45000,5,99,NA())` is `#N/A` (probes/date-text-weekend-3d P3, P31, P33).
-        let holidays = holidays.as_ref().map_err(Clone::clone)?;
+        // Every working day is a day, so a result past start + days is off the calendar too:
+        // Excel answers `#NUM!` before reading the holidays and the weekend
+        // (`WORKDAY.INTL(1,-18,"abc",NA())` and `WORKDAY.INTL(5,-6,"1111111")` are `#NUM!`, while
+        // `WORKDAY.INTL(5,-5,"1111111")` is `#VALUE!`; probes/workday-holidays-error-order rows 4,
+        // 5, 12, 13, 18, 19, Q29:Q36, Q65:Q67).
+        self.excel_date(start + i64::from(days), cell)?;
+        // A single holiday that is no number comes before the weekend, also before a bad weekend
+        // code: `WORKDAY.INTL(45000,5,99,NA())` is `#N/A` (probes/date-text-weekend-3d P3, P31,
+        // P33); the rest after it (`HolidaysError::before_weekend`).
+        if let Err(error) = holidays {
+            if error.before_weekend {
+                return Err(error.error.clone());
+            }
+        }
         let weekend = match rest.first() {
             Some(weekend) if holidays_at == 3 => Self::weekend_mask(weekend, Error::NUM, cell)?,
             _ => DEFAULT_WEEKEND,
@@ -161,6 +179,7 @@ impl Model {
                 "Invalid weekend mask".to_string(),
             ));
         }
+        let holidays = holidays.as_ref().map_err(|error| error.error.clone())?;
         self.step_workdays(date, days, &weekend, holidays, cell)
     }
 

@@ -26,15 +26,23 @@ impl Model {
     /// probes/t2238-holidays-if-3d-branch D1:I9, T-2238). IF's pick is followed here, its condition
     /// read once, because IF itself hands a span branch on as a reference (`#REF!`). CHOOSE needs
     /// no such step: evaluating it reads its picked span as `#VALUE!` (D4:G7).
+    ///
+    /// The holidays are read in order and the first bad one is the error: `{"a",-1}` is
+    /// `#VALUE!` and `{-1,"a"}` `#NUM!` (probes/workday-holidays-error-order F1, G1, Q60:Q63).
+    /// [`HolidaysError::before_weekend`] says when WORKDAY.INTL reports it.
     pub(super) fn holiday_serials(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<i64>, CalcResult> {
+    ) -> Result<Vec<i64>, HolidaysError> {
+        let early = |error| HolidaysError {
+            error,
+            before_weekend: true,
+        };
         let (mut arg, mut picked) = (arg, false);
         let value = loop {
             if is_multi_sheet_span(arg) {
-                return Err(three_d_holidays(cell));
+                return Err(early(three_d_holidays(cell)));
             }
             match arg.ungrouped() {
                 Node::FunctionKind {
@@ -47,7 +55,7 @@ impl Model {
                     // (`WORKDAY(45000,5,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1))`; with {FALSE;FALSE}
                     // A1 is read; probes/t2238-holidays-if-3d-branch M1-M8).
                     Picked::Value(value) if is_span_or_if_of_span(arg) && has_ref_error(&value) => {
-                        return Err(three_d_holidays(cell));
+                        return Err(early(three_d_holidays(cell)));
                     }
                     Picked::Value(value) => break value,
                 },
@@ -56,12 +64,50 @@ impl Model {
                 _ => break self.evaluate_node_in_context(arg, cell),
             }
         };
-        let mut serials = Vec::new();
+        let one_value = is_one_value(&value);
+        let date_system = self.workbook.settings.date_system;
+        let (mut serials, mut out_of_range) = (Vec::new(), false);
         self.collect_serial_numbers(value, cell, |serial| {
+            // Serial 0 is a holiday too (dates.md "WORKDAY and NETWORKDAYS from serial 0").
+            if date_system.date_of_serial_from_zero(serial).is_none() {
+                out_of_range = true;
+                return Err(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "Out of range parameters for date".to_string(),
+                ));
+            }
             serials.push(serial);
             Ok(())
+        })
+        .map_err(|error| HolidaysError {
+            error,
+            before_weekend: one_value && !out_of_range,
         })?;
         Ok(serials)
+    }
+}
+
+/// A holidays argument's error, and when WORKDAY.INTL reports it. A single value (a scalar or a
+/// one-cell reference) that is not a date at all (text, a boolean or an error) is read before
+/// the weekend: `WORKDAY.INTL(45000,5,99,"a")` is `#VALUE!` and `WORKDAY.INTL(45000,5,99,NA())`
+/// `#N/A`; a single number off the calendar, and anything bad in an array or a multi-cell range,
+/// after it: `WORKDAY.INTL(45000,5,"1111111",-1)` and `WORKDAY.INTL(45000,5,99,{"a"})` are the
+/// weekend's errors (probes/workday-holidays-error-order rows 14-17, Q37:Q49). WORKDAY,
+/// NETWORKDAYS and NETWORKDAYS.INTL read nothing between the two, so the flag does not matter
+/// to them.
+#[derive(Clone)]
+pub(super) struct HolidaysError {
+    pub(super) error: CalcResult,
+    pub(super) before_weekend: bool,
+}
+
+/// Whether a holidays value is one value: neither an array nor a range of more than one cell.
+fn is_one_value(value: &CalcResult) -> bool {
+    match value {
+        CalcResult::Array(_) => false,
+        CalcResult::Range { left, right } => left == right,
+        _ => true,
     }
 }
 

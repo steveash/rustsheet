@@ -600,7 +600,7 @@ Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
   arguments; a one-sheet span `Sheet2:Sheet2!B1` is a plain reference (G6, H6).
 - WORKDAY.INTL never passes an error-valued `weekend` on: `NA()`, `1/0`, a cell holding `#REF!` or `#DIV/0!` and a 3-D
   reference (read as `#REF!`, one cell or several) are all `#NUM!`, the code of an invalid weekend number (P1-P25,
-  J1-J5, M7). It reads the start date, the day count and the holidays first: `WORKDAY.INTL(1/0,5,NA())` is `#DIV/0!`,
+  J1-J5, M7). It reads the start date, the day count and a single holiday first (an array or multi-cell range of holidays comes after the weekend, and start + days off the calendar before both; "WORKDAY and NETWORKDAYS holidays: blank and number-text cells, and the error order", T-2272): `WORKDAY.INTL(1/0,5,NA())` is `#DIV/0!`,
   `WORKDAY.INTL(45000,"x",NA())` and `WORKDAY.INTL(45000,5,NA(),"y")` `#VALUE!`, and the holidays' error beats an
   invalid weekend too: `WORKDAY.INTL(45000,5,99,NA())` and `WORKDAY.INTL(45000,5,"abc",NA())` are `#N/A` (P31, P33). A day
   count of 0 still skips the weekend (`WORKDAY.INTL(45000,0,Sheet1:Sheet2!W1)` = 45000, M5).
@@ -1165,8 +1165,28 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   `WORKDAY.INTL(1,-18,13,ERROR.TYPE("x~*"))` are `#NUM!` (d0c30225243fde60 A332, 9130ade4b1924cc8 A361), which "An error-valued or 3-D
   weekend" (holidays read first) does not cover. An all-weekend mask's `#VALUE!` beats a negative holiday's `#NUM!`:
   `WORKDAY.INTL(45382,10,"1111111",Data!B2:C5)` (holidays include -0.5 and " x ") is `#VALUE!` (ef10bf3afb9658f6 A346).
-Ours: implemented (T-2270): a blank one-cell reference is no holiday; a cell holding number text is a holiday, counted rather than skipped (serial 1 in 1aa50086e42bff9a A67 and 752959b8d3db0285 A393 lies outside every range, so skip-vs-count is UNVERIFIED). Also UNVERIFIED: the scalar branch accepts any text `cast_number` reads (a literal `"45001"`, a formula's number text, date, currency or percent text) as a holiday; the cells only show holidays reached through a reference. Other text is `#VALUE!` as before.
-Status: VERIFIED for the cells; the full order (which `#NUM!` sources beat which holiday problems) is UNVERIFIED until T-2272 probes it.
+- The full order (probes/workday-holidays-error-order, excel-graph, 2026-10-22, T-2272; 486 cells: twelve holidays
+  columns, A-M, against 36 call shapes, rows 1-36, plus column Q). WORKDAY and WORKDAY.INTL: (1) the start date, its type and then its
+  range (`WORKDAY(-1,"x")` and `WORKDAY(-1,TRUE)` are `#NUM!`, Q56:Q58); (2) the day count's type (`WORKDAY(45000,"x",..)`
+  `#VALUE!` over every holidays, row 6); a day count of 0 is the start date; (3) `#NUM!` when start + days is off the
+  calendar, before the holidays and the weekend, an invalid one, `"abc"` and an all-weekend mask included (rows 4, 5, 12, 13,
+  18, 19; `WORKDAY.INTL(1,-18,"abc")` `#NUM!`, Q29; `WORKDAY.INTL(5,-6,"1111111")` `#NUM!` but `(5,-5,"1111111")` `#VALUE!`,
+  Q30:Q36; `WORKDAY(0,-1,"a")` `#NUM!`, `WORKDAY(1,-1,"a")` `#VALUE!`, Q65:Q67); (4) a single holiday (a scalar or a one-cell
+  reference) that is no number: text and booleans `#VALUE!`, an error itself (`WORKDAY.INTL(45000,5,99,"a")` `#VALUE!`,
+  `(..,99,NA())` and `(..,"1111111",NA())` `#N/A`, `(..,99,H1:H1)` with H1 "a" `#VALUE!`; rows 14-17, Q37:Q48); (5) the weekend
+  (WORKDAY.INTL), an all-weekend mask included; (6) every other holidays error: a single number off the calendar
+  (`WORKDAY.INTL(45000,5,"1111111",-1)` `#VALUE!`, Q45), and anything in an array or a multi-cell range, a one-element array too
+  (`WORKDAY.INTL(45000,5,99,{"a"})` `#NUM!`, `(..,"1111111",{#N/A,1})` `#VALUE!`, Q42, Q49; rows 14-17 columns F-L); (7) a walk
+  that leaves the calendar although start + days does not (`WORKDAY(5,-5)` and `WORKDAY(10,-8)` `#NUM!`, Q26, Q27, but with
+  holidays "a", NA(), -1 those holidays' errors, Q1:Q25). NETWORKDAYS and NETWORKDAYS.INTL: the weekend first (any error,
+  rows 30-36), then the start date, its type and range, then the end date likewise (`NETWORKDAYS(-1,"x")` `#NUM!`,
+  `NETWORKDAYS("x",-1)` `#VALUE!`, `NETWORKDAYS(45000,-1,"x")` `#NUM!`; rows 23-26, Q50:Q55), then the holidays.
+  Within the holidays the first bad one in reading order decides: "a" then -1 is `#VALUE!`, -1 then "a" `#NUM!`, NA() then "a"
+  `#N/A` (columns F-L of rows 1, 22, 27-29; Q60:Q64).
+  T-1954's question: `WORKDAY.INTL(45000,5,"1111111",NA())` is `#N/A` (row 15 column E), and with the holidays in an array or a
+  range the all-weekend `#VALUE!` wins.
+Ours: implemented (T-2270, T-2272): a blank one-cell reference is no holiday; a cell holding number text is a holiday, counted rather than skipped (serial 1 in 1aa50086e42bff9a A67 and 752959b8d3db0285 A393 lies outside every range, so skip-vs-count is UNVERIFIED). Also UNVERIFIED: the scalar branch accepts any text `cast_number` reads (a literal `"45001"`, a formula's number text, date, currency or percent text) as a holiday; the cells only show holidays reached through a reference. Other text is `#VALUE!` as before. The order is `Model::workday_of` and `Model::networkdays_of`, with `HolidaysError::before_weekend` for step (4) (crates/rustsheet-engine/src/functions/date_and_time/). Unprobed: whether single number text off the calendar (a `"-1"` cell) is step (4) or (6); ours (6).
+Status: VERIFIED
 Tasks: T-2270, T-2272
 
 ## WORKDAY.INTL and NETWORKDAYS.INTL: weekend number coercion (T-2271)
@@ -1175,7 +1195,7 @@ start's, and a blank weekend cell is weekend 0 (`#NUM!`), not the default: `NETW
 = 32394, `WORKDAY.INTL(45351,10,1.005)` = 45365, `NETWORKDAYS.INTL(44926," x ",3.14159)` is the end's `#VALUE!` (not the weekend's `#NUM!`),
 `NETWORKDAYS.INTL((0/0)^..,40608,IFERROR(#N/A,TRUE),..)` is the start's `#DIV/0!`, `WORKDAY.INTL(16895,22,<blank>,..)` is `#NUM!`
 (gen-m6/c93ea588c271840e Calc!A31, 1a404a0379a1372c A62, ee56a4ed5a612a0d A186, c96ac1ada46179c4 A287, ee56a4ed5a612a0d A387,
-fde83d52a9d1fc63 A219). Ours: `#NUM!` for a fractional weekend, `#VALUE!` for TRUE, the default weekend for a blank cell.
+fde83d52a9d1fc63 A219). Ours: a fractional weekend truncates (folded into T-2272, whose order otherwise let gen-m6/e3a562557696e2fc A385 `WORKDAY.INTL(11303,-4,1.25,..)` reach it), `#VALUE!` for TRUE, the default weekend for a blank cell.
 Status: VERIFIED, except what a TRUE or FALSE weekend gives on valid dates: UNVERIFIED (no cell shows it; T-2271 probes it).
 Tasks: T-2271
 
