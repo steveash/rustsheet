@@ -402,8 +402,7 @@ Scripts and logs of this run are in `docs/research/t1941/t2122/` on the research
 
 ### 13.1 Oracles filled
 - Every case committed without oracles at the pause is now filled: k3l a-f rungs 22-26 and the missing f21; k3l g-l
-  rungs 00, 10-26. k1l (78): the fill ran to the end of this run; count `kmyst-gam-k1l*.oracle.json` on this branch
-  and fill any left with the T-2122 command.
+  rungs 00, 10-26; k1l (all 78). No probe case on the branch is left without an oracle from this run's lists.
 - New cases, filled:
   - **K2 micro-ladders** `kmyst-gam-k2m[a-e][0-2]`, `k2mz[0-4]` (20 cases, `t2122/gen_k2micro.py`): §12.1 step 1
     exactly (anchors 2.05/2.25/2.5/2.75/2.95, a 256-double run every 2e-5 across 3e-3; near 2, a run at 2 + k·1e-5,
