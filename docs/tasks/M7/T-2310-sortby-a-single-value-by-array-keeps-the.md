@@ -3,7 +3,7 @@ id: T-2310
 title: "SORTBY: a single-value by_array keeps the array's order, and a fractional sort_order reads its sign (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
