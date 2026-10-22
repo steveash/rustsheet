@@ -3,7 +3,7 @@ id: T-1900
 title: "REGEX functions: backreferences, lookaround, atomic and possessive groups, K, conditionals"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
