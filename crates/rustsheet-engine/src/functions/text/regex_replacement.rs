@@ -7,8 +7,7 @@ use regex_automata::{
 };
 
 use super::{
-    regex_engine::Spent,
-    regex_search::Search,
+    regex_search::{Search, SearchError},
     string_format::{lower_case, upper_case},
 };
 
@@ -405,7 +404,11 @@ impl Replacement {
     }
 
     /// The byte length of `REGEXREPLACE(text, re, replacement)`, saturating, without building it.
-    pub(super) fn result_len(&self, search: &mut Search<'_>, text: &str) -> Result<usize, Spent> {
+    pub(super) fn result_len(
+        &self,
+        search: &mut Search<'_>,
+        text: &str,
+    ) -> Result<usize, SearchError> {
         let mut len = text.len();
         if self.groups.is_empty() {
             let literal_len = self.grown(self.literal_len);
@@ -457,7 +460,7 @@ impl Replacement {
         search: &mut Search<'_>,
         text: &str,
         len: usize,
-    ) -> Result<String, Spent> {
+    ) -> Result<String, SearchError> {
         let mut out = String::with_capacity(len);
         let mut last = 0;
         if let Some(literal) = self.literal_only() {

@@ -2,7 +2,8 @@
 //! patterns translated to a `Hir` for the automata of `regex_engine`, the others (backreferences,
 //! atomic and possessive groups, `\G`, `\R`, `\X`) compiled to a [`Program`] for the
 //! backtracker ([`Backtracker`], T-1900, T-2287). A regular pattern with `$` or `\Z` over a
-//! text the automata cannot read it on runs on the backtracker's memoized mode (T-2355).
+//! text the automata cannot read it on runs on the backtracker's memoized mode (T-2355), as do
+//! the retries after an empty match of every regular pattern (T-1899).
 //! Lookaround, conditionals and `\K` parse and are `#VALUE!` until T-2354.
 
 mod ast;
@@ -20,6 +21,8 @@ pub(in crate::functions::text) use hir::FinalLf;
 pub(in crate::functions::text) use program::Program;
 use regex_syntax::hir::Hir;
 
+use super::regex_engine::BuildFailure;
+
 /// A pattern this dialect cannot run: invalid in PCRE2 or unknown to us.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Unsupported;
@@ -33,8 +36,9 @@ pub(super) struct Translated {
 
 /// Which engine a pattern runs on.
 pub(super) enum Form {
-    /// A regular pattern, for the automata.
-    Automata(Hir),
+    /// A regular pattern, for the automata, and for the memoized mode that runs its retries
+    /// after an empty match (SPEC-0013 section 4).
+    Automata { hir: Hir, retry: Backtrack },
     /// Any other, compiled for the backtracker by [`Backtrack::compile`].
     Backtrack(Backtrack),
 }
@@ -52,6 +56,15 @@ pub(super) enum ProgramFailure {
     TooBig,
     /// It holds a construct the backtracker does not run yet.
     Unsupported,
+}
+
+impl From<ProgramFailure> for BuildFailure {
+    fn from(failure: ProgramFailure) -> Self {
+        match failure {
+            ProgramFailure::TooBig => BuildFailure::TooBig,
+            ProgramFailure::Unsupported => BuildFailure::Invalid,
+        }
+    }
 }
 
 impl Backtrack {
@@ -91,7 +104,13 @@ pub(super) fn translate(
             memoized: true,
         })
     } else {
-        Form::Automata(hir::to_hir(&parsed.ast, final_lf).map_err(|_| Unsupported)?)
+        Form::Automata {
+            hir: hir::to_hir(&parsed.ast, final_lf).map_err(|_| Unsupported)?,
+            retry: Backtrack {
+                ast: parsed.ast,
+                memoized: true,
+            },
+        }
     };
     Ok(Translated {
         form,

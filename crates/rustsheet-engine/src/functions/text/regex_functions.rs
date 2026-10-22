@@ -4,10 +4,10 @@ use regex_automata::Match;
 
 use super::{
     lifted::COMPARED_BYTES_PER_VISIT,
-    pcre::{self, BacktrackCache, FinalLf, Form, ProgramFailure},
-    regex_engine::{BuildFailure, Engine, Spent},
+    pcre::{self, BacktrackCache, FinalLf, Form},
+    regex_engine::{within_size_limits, BuildFailure, Engine, Spent},
     regex_replacement::Replacement,
-    regex_search::{Matcher, Search},
+    regex_search::{Matcher, Search, SearchError},
     util::within_text_budget,
 };
 use crate::{
@@ -20,13 +20,6 @@ use crate::{
     model::Model,
     Text,
 };
-
-/// The size limits a pattern is compiled under, smallest first. A pattern is compiled under the
-/// next one only when it is too big for the one before; the last is the regex crate's default,
-/// so every pattern that compiled before T-1272 still compiles. Compile time grows with the
-/// limit: in a release build the largest patterns the last admits take 70-90 ms to compile
-/// (`\w{200}`), a failed attempt about as long as its limit admits.
-const SIZE_LIMITS: [usize; 5] = [1 << 16, 1 << 18, 1 << 20, 4 << 20, 10 << 20];
 
 /// Bytes of size limit one call may compile under, attempts that were too big included: 2,048
 /// small patterns, 409 of 256 KiB or 8 of the largest, about 1 s of compiling. A call that needs
@@ -76,14 +69,15 @@ impl PatternCache {
     }
 
     /// Runs `searches` over `text` with `pattern`, ignoring case when `case_insensitive`: its
-    /// result; or the `#VALUE!` of an invalid pattern; or `#ERROR!` once the call's work is spent.
+    /// result; or the `#VALUE!` of an invalid pattern or of an iteration that split a surrogate
+    /// pair; or `#ERROR!` once the call's work is spent.
     fn with<R>(
         &mut self,
         pattern: &str,
         case_insensitive: bool,
         text: &str,
         cell: CellReferenceIndex,
-        searches: impl FnOnce(&mut Search<'_>) -> Result<R, Spent>,
+        searches: impl FnOnce(&mut Search<'_>) -> Result<R, SearchError>,
     ) -> Result<R, CalcResult> {
         if self.exhausted {
             return Err(too_much_regex_work(cell));
@@ -121,12 +115,21 @@ impl PatternCache {
             matcher,
             work: &mut self.work,
             room,
+            budget: &mut self.budget,
         });
         let held = matcher.memory_usage();
         self.held = self.held.saturating_sub(entry.held).saturating_add(held);
         entry.held = held;
         match result {
             Ok(result) if self.held <= HELD_LIMIT => Ok(result),
+            // probes/regex-pcre2-features D11, D13.
+            Err(SearchError::SplitSurrogate) if self.held <= HELD_LIMIT => {
+                Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Iteration splits a surrogate pair".to_string(),
+                ))
+            }
             _ => {
                 self.exhausted = true;
                 Err(too_much_regex_work(cell))
@@ -155,38 +158,26 @@ impl PatternCache {
             return Err(too_much_regex_work(cell));
         }
         self.budget -= fold;
-        for limit in SIZE_LIMITS {
-            if self.budget < limit {
-                self.exhausted = true;
-                return Err(too_much_regex_work(cell));
+        // A program is charged its whole size limit, as an NFA is.
+        let compiled = match translated.form {
+            Form::Automata { hir, retry } => {
+                within_size_limits(&mut self.budget, |limit| Engine::new(&hir, limit))
+                    .map(|engine| engine.map(|engine| Matcher::automata(engine, retry)))
             }
-            self.budget -= limit;
-            match &translated.form {
-                Form::Automata(hir) => match Engine::new(hir, limit) {
-                    Ok(engine) => {
-                        let caches = Box::new(engine.create_caches());
-                        return Ok(Some(Matcher::Automata {
-                            engine: Box::new(engine),
-                            caches,
-                        }));
-                    }
-                    Err(BuildFailure::TooBig) => {}
-                    Err(BuildFailure::Invalid) => break,
-                },
-                // A program is charged its whole size limit, as an NFA is.
-                Form::Backtrack(backtrack) => match backtrack.compile(limit) {
-                    Ok(program) => {
-                        return Ok(Some(Matcher::Backtrack {
-                            program,
-                            cache: BacktrackCache::default(),
-                        }));
-                    }
-                    Err(ProgramFailure::TooBig) => {}
-                    Err(ProgramFailure::Unsupported) => break,
-                },
-            }
-        }
-        Ok(None)
+            Form::Backtrack(backtrack) => within_size_limits(&mut self.budget, |limit| {
+                backtrack.compile(limit).map_err(BuildFailure::from)
+            })
+            .map(|program| {
+                program.map(|program| Matcher::Backtrack {
+                    program,
+                    cache: BacktrackCache::default(),
+                })
+            }),
+        };
+        compiled.map_err(|Spent| {
+            self.exhausted = true;
+            too_much_regex_work(cell)
+        })
     }
 
     /// The call's result: `#ERROR!` when its work ran out in any element.
@@ -265,7 +256,7 @@ impl Occurrence {
     /// The match of `text` this occurrence names; with [`Occurrence::All`] the first. Matches
     /// are counted as REGEXREPLACE replaces them, empty ones included (`REGEXREPLACE("abc","",
     /// "-",4)` is `abc-`; probes/regex-optional-args A125-A128).
-    fn find(self, search: &mut Search<'_>, text: &str) -> Result<Option<Match>, Spent> {
+    fn find(self, search: &mut Search<'_>, text: &str) -> Result<Option<Match>, SearchError> {
         let index = match self {
             Occurrence::All => return search.find(text),
             Occurrence::Nth(index) => index,
@@ -278,15 +269,7 @@ impl Occurrence {
                 }
             }
         };
-        let mut seen = 0usize;
-        let mut found = None;
-        search.for_each_match(text, |m| {
-            if seen == index {
-                found = Some(m);
-            }
-            seen += 1;
-        })?;
-        Ok(found)
+        search.nth_match(text, index)
     }
 }
 

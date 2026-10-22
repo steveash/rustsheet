@@ -345,3 +345,54 @@ fn networkdays_handles_large_date_ranges_efficiently() {
         "Large ranges should not error"
     );
 }
+
+/// Excel: a one-cell holidays reference to a blank cell is no holiday, and a holiday cell holding
+/// number text is one (docs/excel-semantics/dates.md "WORKDAY and NETWORKDAYS holidays", T-2270). Counting number
+/// text inside the date range, rather than skipping it, is UNVERIFIED (T-2369).
+#[test]
+fn holidays_blank_cell_and_number_text_cell_for_all_four_functions() {
+    let mut model = new_empty_model();
+    model._set("B1", "'44928");
+    let calls = [
+        ("NETWORKDAYS(44927,44936,{})", "7", "6"),
+        ("NETWORKDAYS.INTL(44927,44936,1,{})", "7", "6"),
+        ("WORKDAY(44927,1,{})", "44928", "44929"),
+        ("WORKDAY.INTL(44927,1,1,{})", "44928", "44929"),
+    ];
+    for (i, (call, blank, text)) in calls.iter().enumerate() {
+        model._set(
+            &format!("D{}", i + 1),
+            &format!("={}", call.replace("{}", "C1")),
+        );
+        model._set(
+            &format!("E{}", i + 1),
+            &format!("={}", call.replace("{}", "B1")),
+        );
+        model.evaluate();
+        assert_eq!(
+            model._get_text(&format!("D{}", i + 1)),
+            *blank,
+            "{call} blank"
+        );
+        assert_eq!(
+            model._get_text(&format!("E{}", i + 1)),
+            *text,
+            "{call} text"
+        );
+    }
+    model._set("B2", "'abc");
+    model._set("D5", "=NETWORKDAYS(44927,44936,B2)");
+    model.evaluate();
+    assert_eq!(
+        model._get_text("D5"),
+        "#VALUE!",
+        "non-number text stays #VALUE!"
+    );
+    // A range with number text: 1.005, "1.5" and 0.3 are all serial 1, outside the span.
+    model._set("F1", "1.005");
+    model._set("F2", "'1.5");
+    model._set("F3", "0.3");
+    model._set("D6", "=NETWORKDAYS(44927,44936,F1:F3)");
+    model.evaluate();
+    assert_eq!(model._get_text("D6"), "7");
+}

@@ -1154,7 +1154,7 @@ Rule (excel-graph, gen-m6, 2026-10-21):
 - A one-cell `holidays` reference to a blank cell is no holiday, not `#VALUE!`: `NETWORKDAYS(17247,33116,Data!E9)` = 11336,
   `NETWORKDAYS(59460,0,Data!C$3)` = -42471, `WORKDAY.INTL(60,PI(),4,Data!E5)` = 63 (gen-m6/3e51213f35889d06 Calc!A314, b62dd1ebd266b71c
   A111, acdfeaf6e6eadd4e A83). A holiday cell holding number text is accepted: `WORKDAY(18260,-30,Data!C4)` with C4 `"1"` = 18218,
-  `WORKDAY(58719,5,Data!D5:D7)` over 1.005, `"1.5"`, 0.3 = 58726 (1aa50086e42bff9a A67, 752959b8d3db0285 A393). Ours `#VALUE!` for both.
+  `WORKDAY(58719,5,Data!D5:D7)` over 1.005, `"1.5"`, 0.3 = 58726 (1aa50086e42bff9a A67, 752959b8d3db0285 A393). (Ours was `#VALUE!` for both before T-2270.)
   (Non-number text is still `#VALUE!`: "WORKDAY and NETWORKDAYS from serial 0" F56.)
 - `#NUM!` from the dates, the result or a numeric holiday beats a text or boolean holiday's `#VALUE!`: `WORKDAY(0,-23,Data!A5:A5)`
   ("ABC", the result would be before serial 0), `WORKDAY(2958465,18,..)` (past the calendar), `NETWORKDAYS(-1,3214,Data!B5)` ("abc"),
@@ -1165,7 +1165,7 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   `WORKDAY.INTL(1,-18,13,ERROR.TYPE("x~*"))` are `#NUM!` (d0c30225243fde60 A332, 9130ade4b1924cc8 A361), which "An error-valued or 3-D
   weekend" (holidays read first) does not cover. An all-weekend mask's `#VALUE!` beats a negative holiday's `#NUM!`:
   `WORKDAY.INTL(45382,10,"1111111",Data!B2:C5)` (holidays include -0.5 and " x ") is `#VALUE!` (ef10bf3afb9658f6 A346).
-Ours: `holiday_serials` rejects a blank or text cell at once, before the dates and the walk.
+Ours: implemented (T-2270): a blank one-cell reference is no holiday; a cell holding number text is a holiday, counted rather than skipped (serial 1 in 1aa50086e42bff9a A67 and 752959b8d3db0285 A393 lies outside every range, so skip-vs-count is UNVERIFIED). Also UNVERIFIED: the scalar branch accepts any text `cast_number` reads (a literal `"45001"`, a formula's number text, date, currency or percent text) as a holiday; the cells only show holidays reached through a reference. Other text is `#VALUE!` as before.
 Status: VERIFIED for the cells; the full order (which `#NUM!` sources beat which holiday problems) is UNVERIFIED until T-2272 probes it.
 Tasks: T-2270, T-2272
 

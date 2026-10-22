@@ -159,6 +159,17 @@ impl<'a> Backtracker<'a> {
         room: usize,
     ) -> Backtracker<'a> {
         cache.visited.reset();
+        Backtracker::resume(program, cache, work, room)
+    }
+
+    /// A search of `program` with `cache` that continues the operation `cache` is in: what the
+    /// memoized mode visited stays visited (SPEC-0013 section 3).
+    pub(in crate::functions::text) fn resume(
+        program: &'a Program,
+        cache: &'a mut BacktrackCache,
+        work: &'a mut u64,
+        room: usize,
+    ) -> Backtracker<'a> {
         Backtracker {
             program,
             cache,
@@ -177,13 +188,8 @@ impl<'a> Backtracker<'a> {
         let mut start = from;
         loop {
             charge(self.work, ATTEMPT)?;
-            if self.attempt(text, start, from)? {
-                let slot = |i: usize| self.cache.slots.get(i).copied().flatten();
-                let found = slot(0).zip(slot(1));
-                if let (true, Some((_, end))) = (self.program.memoized, found) {
-                    self.cache.visited.forget(from, end, self.work)?;
-                }
-                return Ok(found);
+            if self.attempt(text, start, from, false)? {
+                return self.found(from);
             }
             if self.program.anchored {
                 return Ok(None);
@@ -195,7 +201,37 @@ impl<'a> Backtracker<'a> {
         }
     }
 
-    /// Fills `caps` from the slots of the last match [`Backtracker::find_from`] found.
+    /// One attempt anchored at `at` (a character boundary of `text`) that refuses an empty match,
+    /// with `\G` at `at`: PCRE2's `NOTEMPTY_ATSTART | ANCHORED`, the retry after an empty match
+    /// (SPEC-0013 section 4). Its capture slots stay in the cache. `(start, end)` of the match.
+    ///
+    /// In the memoized mode a refused match stays visited: only a match at `at` depends on the
+    /// attempt's start, and every later search of the iteration starts after `at`.
+    pub(in crate::functions::text) fn retry(
+        &mut self,
+        text: &str,
+        at: usize,
+    ) -> Result<Option<(usize, usize)>, Spent> {
+        charge(self.work, ATTEMPT)?;
+        if self.attempt(text, at, at, true)? {
+            return self.found(at);
+        }
+        Ok(None)
+    }
+
+    /// The match the last attempt found, searched for from `from`: in the memoized mode every
+    /// position up to its end is unvisited again, so the next search may cross them.
+    fn found(&mut self, from: usize) -> Result<Option<(usize, usize)>, Spent> {
+        let slot = |i: usize| self.cache.slots.get(i).copied().flatten();
+        let found = slot(0).zip(slot(1));
+        if let (true, Some((_, end))) = (self.program.memoized, found) {
+            self.cache.visited.forget(from, end, self.work)?;
+        }
+        Ok(found)
+    }
+
+    /// Fills `caps` from the slots of the last match [`Backtracker::find_from`] or
+    /// [`Backtracker::retry`] found.
     pub(in crate::functions::text) fn fill(&self, caps: &mut Captures) {
         caps.set_pattern(Some(PatternID::ZERO));
         for (out, slot) in caps.slots_mut().iter_mut().zip(&self.cache.slots) {
@@ -259,8 +295,15 @@ impl<'a> Backtracker<'a> {
         Ok(seen)
     }
 
-    /// One anchored match attempt at `start`; whether it matched.
-    fn attempt(&mut self, text: &str, start: usize, search_start: usize) -> Result<bool, Spent> {
+    /// One anchored match attempt at `start`, refusing a match that ends there when
+    /// `not_empty`; whether it matched.
+    fn attempt(
+        &mut self,
+        text: &str,
+        start: usize,
+        search_start: usize,
+        not_empty: bool,
+    ) -> Result<bool, Spent> {
         let program = self.program;
         self.cache.stack.clear();
         self.cache.slots.clear();
@@ -276,6 +319,7 @@ impl<'a> Backtracker<'a> {
             let matched = match program.insts.get(pc) {
                 _ if seen => false,
                 None => false,
+                Some(Inst::Match) if not_empty && pos == start => false,
                 Some(Inst::Match) => return Ok(true),
                 Some(Inst::Char(want)) => match char_at(text, pos) {
                     Some(c) if c == *want => {
