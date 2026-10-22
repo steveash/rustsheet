@@ -3,7 +3,7 @@ id: T-2067
 title: "Probe MINVERSE of singular and near-singular matrices (cutoff or residual inverse)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
