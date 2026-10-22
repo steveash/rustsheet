@@ -529,8 +529,13 @@ reads its values from that file, so every value Excel for the web saves for a ke
 included: ironcalc-calc `EXP_SIGN.xlsx` EXP_SIGN!B44 (`EXP(-745)`, Excel Online) caches 0 for the same reason. A normal
 result is written in full (`EXP(-708)`: `<v>3.3075530036384078E-308</v>`). Desktop Excel's save is not probed.
 RustSheet's export does not do this yet (T-2211).
-Not probed: the overflow edge of
-EXP itself, a in (709.7827, 709.79).
+Range edges (T-2203, probes-numeric/t2203-exp-range-edges, excel-graph 2026-10-22, 527 rows): the last finite
+argument is 709.782712893384 (ln DBL_MAX; EXP = 1.7976931348622732E308, not quite DBL_MAX), and the first
+`#NUM!` is its successor double 709.7827128933841; every argument above it, up to 710.5, is `#NUM!`. At the other
+end `(EXP(a))=0` is TRUE for every a <= -745.1332191019412 and FALSE for every a >= -745.1332191019411 (the kept
+2^-1074, probes/subnormal-function-results C4), so the switch sits between those two consecutive doubles, at -1075*ln 2 as the midpoint rounding
+predicts; -745.5 and -746 are 0. The 20 control arguments in [-708.39, -707] are normal results. The current
+engine matches all 780 checked cells.
 - Curated evidence on main (probes-numeric, excel-graph fill of 2026-10-19, bit-identical to the T-1778 research
   run at all 22,281 formula cells): `t1931-exp-map` (5,990 near-midpoint EXP(a) cells from `kmyst-erfc-r5expmap1`),
   `t1931-exp-random` (7,084 from `kmyst-erfc-r5expmap2`), `t1931-exp-gauss` (8,096 `EXP(-(x*x))` cells from
@@ -1080,16 +1085,28 @@ Evidence: probes/log10-kernel (excel-graph, 2026-10-19, T-2004): 92 inputs (the 
 32 doubles where glibc is not correctly rounded, 16 where the correctly rounded value and the x87 models differ) for LOG10 and
 LOG: LOG = LOG10 in all 92, and the model matches 92 of 92 (correctly rounded 78, one rounding of the exact y·log2 x 85,
 glibc 56, ln/ln 42). The web agrees with the desktop cell `LOG10(1.3)` = 0.11394335230683679.
-ironcalc-calc/MATH_AND_TRIGONOMETRY/LOG_LOG10_LN.xlsx (desktop cache, Microsoft Macintosh Excel 16.x): LOG!B2:B14 equals
-LOG10!B2:B14 cell for cell, including B5 (1000 → 3), B12 (0.004 → -2.3979400086720375) and B13 (1.3).
+ironcalc-calc/MATH_AND_TRIGONOMETRY/LOG_LOG10_LN.xlsx (Excel cache, Microsoft Excel 16.0300; the 3-sheet Macintosh file of
+T-1930 was replaced by upstream's single-sheet version in T-2350): one-argument LOG(x) equals LOG10(x) bit for bit in
+C2/D2 (1), C5/D5 (86 -> 1.9344984512435677), C6/D6 (EXP(1) -> 0.4342944819032518), C7/D7, C10/D10 (1000 -> 3), C22/D22
+(1E-5 -> -5), C27/D27 and C31/D31 (EXP(709) -> 307.91478766940554). "the workbook's 7 numbers" and the desktop cell
+`LOG10(1.3)` above are from that earlier 3-sheet version.
 Two-argument LOG is ln(x)/ln(b) in doubles (`f64::log`): it matches all 92 `LOG(x,2)` and 92 `LOG(x,3)` cells of the probe
-(columns D and E); other bases are not probed.
+(columns D and E). The workbook adds other bases: `LOG(1000,10)` is 2.9999999999999996 (C9, C67) while
+`LOG10(1000)` is 3 (D9), `LOG(0.004,10)` -2.397940008672037 against `LOG10(0.004)` -2.3979400086720375 (C21, D21), `LOG(1E-3,10)` -2.9999999999999996 (C20) and `LOG(1E300,10)` 299.99999999999994 (C29), so
+two-argument LOG with base 10 is not LOG10.
 Implemented in `x87_log10.rs` (`excel_log10`: ln x in double-double, about 2^-104 relative, times `y / ln 2`, then the two
 roundings; 30,000 random inputs equal a decimal reference of the model), used by LOG10, one-argument LOG and MULTINOMIAL's
 `log10(k)` terms (which replaced their 170-entry table). It also fixes probes/geomean-root-models Root!I6 and I9
 (`10^(LOG10(E)/C)`).
-Status: VERIFIED (excel-graph, and desktop for the 13 workbook inputs)
-Tasks: T-2004
+Domain and coercion of LOG (Excel cache of LOG_LOG10_LN.xlsx, T-2350; the engine matches all 227 cells): base 1 gives
+`#DIV/0!` even for `LOG(1,1)` and `LOG(100,TRUE)` (C36, C37, C59); base 0 or a negative base gives `#NUM!` (C38, C39);
+an omitted argument counts as 0, so `LOG(,b)`, `LOG(x,)` and `LOG(,)` give `#NUM!` (C48-C50); with both arguments errors the
+first argument's error wins (C53, `#DIV/0!`); a direct boolean is a number (`LOG(TRUE,10)` = 0, C58; `LOG10(FALSE)` `#NUM!`,
+D59); text is coerced when it reads as a number (`LOG("100","10")` = 2, C69; C66, C68) and is `#VALUE!` otherwise
+(`LOG("abc")`, `LOG("")`, C70, C71; the text cells A63, A64, A65 in C63-C65); a whole-column argument takes the implicit
+intersection (`LOG(G:G,B75)`, C75, C76).
+Status: VERIFIED (excel-graph, and the desktop cache for the workbook cells)
+Tasks: T-2004, T-2350
 
 ## LN is FLDLN2 then FYL2X
 Rule: `LN(x)` is the x87 `FLDLN2; FYL2X` result stored to a double, `RN53(RN64(y * log2 x))` with `y = RN64(ln 2)` =

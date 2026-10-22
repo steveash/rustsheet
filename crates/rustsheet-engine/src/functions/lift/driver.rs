@@ -37,6 +37,16 @@ impl LiftedArg {
         matches!(value, CalcResult::Range { .. } | CalcResult::Array(_))
     }
 
+    /// The argument as a value again: a grid as its array, a scalar as itself. A function that
+    /// reads an argument before the lift (to give its error first) hands it to
+    /// [`Model::lift_values`] this way.
+    pub(crate) fn into_value(self) -> CalcResult {
+        match self {
+            LiftedArg::Scalar(value) => value,
+            LiftedArg::Grid(grid) => CalcResult::Array(grid),
+        }
+    }
+
     pub(crate) fn dims(&self) -> (usize, usize) {
         match self {
             LiftedArg::Scalar(_) => (1, 1),
