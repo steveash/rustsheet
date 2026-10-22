@@ -788,8 +788,8 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
-      - { name: function, mode: lambda, arity: 1, type: any }
+      - { name: array, mode: array, type: any, pool: array_holes }
+      - { name: function, mode: lambda, arity: 1, type: any, pool: lambda_body }
   - name: BYROW
     category: logical
     milestone: M7
@@ -798,8 +798,8 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
-      - { name: function, mode: lambda, arity: 1, type: any }
+      - { name: array, mode: array, type: any, pool: array_holes }
+      - { name: function, mode: lambda, arity: 1, type: any, pool: lambda_body }
   - { name: CALL, category: addin, milestone: M5, scope: out, reason: "calls a DLL or code resource (decision 0027)" }
   - name: CEILING
     category: math
@@ -937,7 +937,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_shape }
       - { name: col_num, mode: value, type: number, repeat: true, min: 1, max: 254, domain: { int: true, min: -2, max: 3 } }
   - name: CHOOSEROWS
     category: lookup
@@ -947,7 +947,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_shape }
       - { name: row_num, mode: value, type: number, repeat: true, min: 1, max: 254, domain: { int: true, min: -3, max: 6 } }
   - name: CLEAN
     category: text
@@ -981,7 +981,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_shape }
   - name: COMBIN
     category: math
     milestone: M5
@@ -1501,7 +1501,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_shape }
       - { name: rows, mode: value, type: number, domain: { int: true, min: -3, max: 3 } }
       - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: -3, max: 3 } }
   - name: DSTDEV
@@ -1686,7 +1686,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_shape }
       - { name: rows, mode: value, type: number, domain: { int: true, min: 1, max: 5 } }
       - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 5 } }
       - { name: pad_with, mode: array, type: any, optional: true }
@@ -2190,7 +2190,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any, repeat: true, min: 1, max: 254 }
+      - { name: array, mode: array, type: any, repeat: true, min: 1, max: 254, pool: array_shape }
   - name: HYPERLINK
     category: lookup
     milestone: M6
@@ -2808,8 +2808,8 @@ functions:
     prior: 1
     returns: any
     params:
-      - { name: lookup_value, mode: value, type: any }
-      - { name: lookup_vector, mode: range, type: any, vector: true }
+      - { name: lookup_value, mode: value, type: any, pool: lookup_value }
+      - { name: lookup_vector, mode: range, type: any, vector: true, pool: lookup_table }
       - { name: result_vector, mode: range, type: any, optional: true, vector: true }
   - name: MAKEARRAY
     category: logical
@@ -2821,7 +2821,7 @@ functions:
     params:
       - { name: rows, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
       - { name: columns, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
-      - { name: function, mode: lambda, arity: 2, type: any }
+      - { name: function, mode: lambda, arity: 2, type: any, pool: lambda_body }
   - name: MAP
     category: logical
     milestone: M7
@@ -2830,8 +2830,8 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any, repeat: true, min: 1, max: 253 }
-      - { name: function, mode: lambda, arity: repeat, type: any }
+      - { name: array, mode: array, type: any, repeat: true, min: 1, max: 253, pool: array_holes }
+      - { name: function, mode: lambda, arity: repeat, type: any, pool: lambda_body }
   - name: MAXA
     category: statistical
     milestone: M9
@@ -3042,7 +3042,7 @@ functions:
     params:
       - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: end_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
-      - { name: holidays, mode: array, type: number, optional: true }
+      - { name: holidays, mode: array, type: number, optional: true, pool: array_holes }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: NETWORKDAYS.INTL
     category: date
@@ -3054,7 +3054,7 @@ functions:
       - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: end_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: weekend, mode: value, type: number, optional: true, pool: weekend_mask, domain: { int: true, min: 1, max: 17 } }
-      - { name: holidays, mode: array, type: number, optional: true }
+      - { name: holidays, mode: array, type: number, optional: true, pool: array_holes }
   - name: NOMINAL
     category: financial
     milestone: M9
@@ -3699,8 +3699,8 @@ functions:
     returns: any
     params:
       - { name: initial_value, mode: value, type: any }
-      - { name: array, mode: array, type: any }
-      - { name: function, mode: lambda, arity: 2, type: any }
+      - { name: array, mode: array, type: any, pool: array_holes }
+      - { name: function, mode: lambda, arity: 2, type: any, pool: lambda_body }
   - name: REGEXEXTRACT
     category: text
     milestone: M7
@@ -3710,7 +3710,7 @@ functions:
     dynamic_array: true
     params:
       - { name: text, mode: value, type: text }
-      - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] } }
+      - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] }, pool: regex_pattern }
       - { name: return_mode, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 2 } }
       - { name: case_sensitivity, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
   - name: REGEXREPLACE
@@ -3721,7 +3721,7 @@ functions:
     returns: text
     params:
       - { name: text, mode: value, type: text }
-      - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] } }
+      - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] }, pool: regex_pattern }
       - { name: replacement, mode: value, type: text, domain: { enum: ["", "-", "$1", "<$0>"] } }
       - { name: occurrence, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
       - { name: case_sensitivity, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
@@ -3733,7 +3733,7 @@ functions:
     returns: bool
     params:
       - { name: text, mode: value, type: text }
-      - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] } }
+      - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] }, pool: regex_pattern }
       - { name: case_sensitivity, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
   - { name: REGISTER.ID, category: addin, milestone: M5, scope: out, reason: "registers a DLL or code resource (decision 0027)" }
   - name: REPLACE
@@ -3801,7 +3801,7 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_shape }
   - name: RRI
     category: financial
     milestone: M9
@@ -3831,8 +3831,8 @@ functions:
     dynamic_array: true
     params:
       - { name: initial_value, mode: value, type: any }
-      - { name: array, mode: array, type: any }
-      - { name: function, mode: lambda, arity: 2, type: any }
+      - { name: array, mode: array, type: any, pool: array_holes }
+      - { name: function, mode: lambda, arity: 2, type: any, pool: lambda_body }
   - name: SEARCH
     category: text
     milestone: M5
@@ -3985,7 +3985,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_holes }
       - { name: sort_index, mode: array, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
       - { name: sort_order, mode: array, type: number, optional: true, domain: { int: true, min: -1, max: 1 } }
       - { name: by_col, mode: value, type: bool, optional: true }
@@ -4233,7 +4233,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_shape }
       - { name: rows, mode: value, type: number, domain: { int: true, min: -3, max: 3 } }
       - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: -3, max: 3 } }
   - name: TAN
@@ -4384,7 +4384,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_holes }
       - { name: ignore, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
       - { name: scan_by_column, mode: value, type: bool, optional: true }
   - { name: TODAY, category: date, milestone: M2, scope: in, v15: exempt, v15_reason: "volatile: no Excel value can match" }
@@ -4396,7 +4396,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_holes }
       - { name: ignore, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
       - { name: scan_by_column, mode: value, type: bool, optional: true }
   - { name: TRANSLATE, category: text, milestone: M5, scope: out, reason: "Microsoft Translation Services (decision 0027)" }
@@ -4408,7 +4408,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_shape }
   - name: TREND
     category: statistical
     milestone: M9
@@ -4502,7 +4502,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any }
+      - { name: array, mode: array, type: any, pool: array_holes }
       - { name: by_col, mode: value, type: bool, optional: true }
       - { name: exactly_once, mode: value, type: bool, optional: true }
   - name: VALUE
@@ -4586,7 +4586,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: array, mode: array, type: any, repeat: true, min: 1, max: 254 }
+      - { name: array, mode: array, type: any, repeat: true, min: 1, max: 254, pool: array_shape }
   - { name: WEBSERVICE, category: web, milestone: M5, scope: out, reason: "calls a web service (decision 0027)" }
   - name: WEEKDAY
     category: date
@@ -4639,7 +4639,7 @@ functions:
     params:
       - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: days, mode: value, lift: arrays, type: number, domain: { int: true, min: -30, max: 30 } }
-      - { name: holidays, mode: array, type: number, optional: true }
+      - { name: holidays, mode: array, type: number, optional: true, pool: array_holes }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: WORKDAY.INTL
     category: date
@@ -4651,7 +4651,7 @@ functions:
       - { name: start_date, mode: value, lift: arrays, type: number, pool: date_serial, domain: { int: true, min: 1, max: 60000 } }
       - { name: days, mode: value, lift: arrays, type: number, domain: { int: true, min: -30, max: 30 } }
       - { name: weekend, mode: value, type: number, optional: true, pool: weekend_mask, domain: { int: true, min: 1, max: 17 } }
-      - { name: holidays, mode: array, type: number, optional: true }
+      - { name: holidays, mode: array, type: number, optional: true, pool: array_holes }
   - name: WRAPCOLS
     category: lookup
     milestone: M7
@@ -4660,7 +4660,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: vector, mode: array, type: any, vector: true }
+      - { name: vector, mode: array, type: any, vector: true, pool: array_shape }
       - { name: wrap_count, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
       - { name: pad_with, mode: value, type: any, optional: true }
   - name: WRAPROWS
@@ -4671,7 +4671,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: vector, mode: array, type: any, vector: true }
+      - { name: vector, mode: array, type: any, vector: true, pool: array_shape }
       - { name: wrap_count, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
       - { name: pad_with, mode: value, type: any, optional: true }
   - name: XIRR
@@ -4692,7 +4692,7 @@ functions:
     returns: any
     dynamic_array: true
     params:
-      - { name: lookup_value, mode: value, type: any }
+      - { name: lookup_value, mode: value, type: any, pool: lookup_value }
       - { name: lookup_array, mode: range, type: any, vector: true }
       - { name: return_array, mode: range, type: any }
       - { name: if_not_found, mode: value, type: any, optional: true }
@@ -4705,8 +4705,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: lookup_value, mode: value, type: any }
-      - { name: lookup_array, mode: range, type: any, vector: true }
+      - { name: lookup_value, mode: value, type: any, pool: lookup_value }
+      - { name: lookup_array, mode: range, type: any, vector: true, pool: lookup_table }
       - { name: match_mode, mode: value, type: number, optional: true, domain: { int: true, min: -1, max: 2 } }
       - { name: search_mode, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
   - name: XNPV
