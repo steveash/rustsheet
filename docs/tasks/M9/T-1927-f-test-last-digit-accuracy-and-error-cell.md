@@ -3,7 +3,7 @@ id: T-1927
 title: "F.TEST last-digit accuracy and error-cell paired size order"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
