@@ -1,0 +1,18 @@
+ALL unique x in (2,3]: n=2180674  set 0.9418   grid_a stored 0.7749
+   family q2   n=  858032  set 0.9418  grid_a 0.7643
+   family e8   n=  396554  set 0.9308  grid_a 0.7889
+   family v4   n=  255231  set 0.9382  grid_a 0.6907
+   family e6   n=  230668  set 0.9412  grid_a 0.7677
+   family e4   n=  110592  set 0.9741  grid_a 0.9001
+   family e5   n=   70919  set 0.9926  grid_a 0.9958
+   family s1   n=   65536  set 0.9349  grid_a 0.7616
+   family c3   n=   57344  set 0.9401  grid_a 0.7685
+   family r7   n=   40960  set 0.9286  grid_a 0.7337
+   family r1   n=   32768  set 0.9135  grid_a 0.7482
+   family l1   n=   22528  set 0.9381  grid_a 0.8113
+   family p4   n=   16384  set 0.9453  grid_a 0.7612
+   family r6   n=   16384  set 0.9581  grid_a 0.7781
+   family r9   n=    6012  set 0.9366  grid_a 0.8011
+   family r2   n=     762  set 0.9934  grid_a 0.9987
+match by x: 0.977 0.930 0.924 0.925 0.914 0.948 0.960 0.932 0.948 0.958 0.950 0.939 0.936 0.949 0.936 0.934 0.929 0.953 0.944 0.914
+mean(Excel-sim) ulp by x: -0.243 +0.078 +0.108 +0.078 +0.069 +0.029 +0.004 -0.025 -0.056 -0.038 -0.042 -0.042 -0.031 -0.012 +0.017 +0.028 +0.024 +0.022 -0.015 -0.076

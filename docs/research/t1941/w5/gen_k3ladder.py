@@ -5,12 +5,13 @@
 # per-stage offset laws (w5/p5 README, "Per-stage phase read"). B = GAMMALN.PRECISE(A) only.
 # usage (repo root): python3 docs/research/t1941/w5/gen_k3ladder.py eval/suites/probes-numeric/cases
 import json, math, sys, os
+# T-2122: KMAX (env, default 26) extends the rungs; KMAX=30 adds kk = 27..30 (the 2^26 aliasing of the 1e7-cycle/x laws).
 D = sys.argv[1]
 ANCH = {'a': 0.8013, 'b': 0.9517, 'c': 1.1023, 'd': 1.2519, 'e': 1.3527, 'f': 1.4531,
         'g': 0.7311, 'h': 0.8741, 'i': 1.0309, 'j': 1.1789, 'k': 1.3021, 'l': 1.4129}
 n = 0
 for tag, a in ANCH.items():
-    for k in [0] + list(range(10, 27)):
+    for k in [0] + list(range(10, int(os.environ.get('KMAX', 26)) + 1)):
         x0 = a if k == 0 else a + 2.0**-k
         p = os.path.join(D, f'kmyst-gam-k3l{tag}{k:02d}.case.json')
         if os.path.exists(p): continue   # already generated
