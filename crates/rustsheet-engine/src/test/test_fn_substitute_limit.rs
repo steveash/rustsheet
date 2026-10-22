@@ -33,3 +33,25 @@ fn substitute_result_over_32767_chars_is_value_error() {
     assert_eq!(model._get_text("A7"), *"#VALUE!");
     assert_eq!(model._get_text("A8"), *"32767");
 }
+
+// Oracle: probes/substitute-instance-num-bound (excel-graph, T-2279): instance_num is valid for
+// 1..=2147483646 after flooring; 2147483647 and above are #VALUE!, match or not.
+#[test]
+fn substitute_instance_num_above_2_pow_31_minus_2_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SUBSTITUTE(\"bbb\",\"b\",\"x\",2147483646.9)");
+    model._set("A2", "=SUBSTITUTE(\"bbb\",\"b\",\"x\",2147483647)");
+    model._set("A3", "=SUBSTITUTE(\"abc\",\"z\",\"x\",1E+15)");
+    model._set("A4", "=SUBSTITUTE(\"abc\",\"\",\"x\",1E+15)");
+    model._set("A5", "=SUBSTITUTE(\"bbb\",\"b\",\"x\",1.5)");
+    model._set("A6", "=SUBSTITUTE(\"\",\"b\",\"x\",1E+15)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"bbb");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"xbb");
+    assert_eq!(model._get_text("A6"), *"#VALUE!");
+}
