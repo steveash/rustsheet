@@ -3,7 +3,7 @@ id: T-2319
 title: "SORT lifts an array by_col (gen-m7 7307132bb8820f17 A1076 is a 2x4 #VALUE!)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,13 +26,20 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 8 known-failure lin
 - gen-m7/7307132bb8820f17.case.json A1076 `=SORT(Data!D6:E7,3,1e-15,(HSTACK(Data!B5:D6,Data!E2)>Data!D$11))`: A1076 Excel #VALUE!, ours #N/IMPL!; cells (8): A1076:D1076, A1077:D1077
 
 ## Acceptance criteria
-- [ ] Visible parity: the 8 gen-m7 cells listed under Context have Excel's value, type, error and text: these 8 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
-- [ ] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 8 gen-m7 cells listed under Context have Excel's value, type, error and text: these 8 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
+- [x] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SORTBY (T-1839, T-2310).
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+SORT is in the lifting table (`// --- M7 (T-2319) ---` in lift/kinds/general.rs): the array, sort_index and sort_order are
+`WholeByCaller` (read once by `fn_sort`, which keeps its argument-error order), by_col is `Lift`, one SORT per element
+(`sort_by_keys`) whose value is its call's top-left. SORT's static-analysis fallback arms and `args_signature_sort` are gone;
+its sort_index and sort_order are `Signature::Vector` now, as the lists they have been since T-1837.
+Eval delta: gen-m7 known failures 222 -> 214 (fixed 8), no regressions.
