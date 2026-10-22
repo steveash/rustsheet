@@ -51,8 +51,8 @@ of x, which can be fitted, or changes from one calculation to the next.
 Case `probes-numeric/t2143-ln-near-ties-fill1..3` (380 x each: the 30 near-ties, 300 new x within 2^-8 of a midpoint, 43 per
 octave of distance down to 2^-15, and 50 controls), filled by excel-graph on 2026-10-22 (12:57:39, 12:58:00, 12:58:12 UTC).
 Findings are in numbers.md "LN is FLDLN2 then FYL2X": fills disagree at 23 of 380 points (18 of the 30 old near-ties), all with the product
-2.19e-4 to 3.86e-4 ulp53 (about half an ulp64) from a midpoint; controls and every other point agree with the model in all
-fills. Caveat: the three fills ran in one session minutes apart (not on different days), and fills 2 and 3 carry a label cell
+2.19e-4 to 3.86e-4 ulp53 (about half an ulp64) from a midpoint; controls and every point outside that window agree with the
+model in all fills; inside it 12 more points stably return the other neighbour. Caveat: the three fills ran in one session minutes apart (not on different days), and fills 2 and 3 carry a label cell
 D1 so the oracle's workbook-hash cache did not replay fill 1. Since the fills already differ from one another, a later-day
-refill would add at most a check of day-to-day variation. Eval delta: 0 (probes-numeric is ungated; the new cells'
-29 misses of fill 1 are near-ties, see T-2144).
+refill would add at most a check of day-to-day variation. Eval delta: 0 (probes-numeric is ungated; fill 1 misses the model at 29 cells, 27 of the old near-ties and
+2 new points, see T-2144).
