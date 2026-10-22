@@ -3,7 +3,7 @@ id: T-2396
 title: "Generator: build pivot sources so gen-m6 can emit GETPIVOTDATA calls (400-cell bar, decision 0094)"
 milestone: M6
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
