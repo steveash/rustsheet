@@ -3,7 +3,7 @@ id: T-2294
 title: "GCD, LCM and MULTINOMIAL are #VALUE! when every argument is a lone blank cell (MULTINOMIAL(Z200), GCD(Z200))"
 milestone: M6
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
