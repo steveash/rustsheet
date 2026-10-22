@@ -38,4 +38,4 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 1 known-failure lin
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
 
 ## Outcome
-`fn_isomitted` returns FALSE for a built-in call (its empty value is not an omitted parameter). gen-m7 known failures 1068 -> 1067 (1 fixed, 0 regressions). Unit test added; arrays.md updated.
+`fn_isomitted` returns FALSE for a LOOKUP call (its empty value is not an omitted parameter); other built-ins are unprobed, follow-up T-2346. gen-m7 known failures 1068 -> 1067 (1 fixed, 0 regressions). Unit test added; arrays.md ISOMITTED entry's Ours line updated.
