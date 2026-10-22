@@ -3,7 +3,7 @@ id: T-1748
 title: "AVEDEV/DEVSQ: an empty argument counts as 0; QUARTILE of a typed boolean"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
