@@ -141,3 +141,55 @@ fn a_cut_of_a_referenced_cell_keeps_the_marker() {
     assert_legacy(&model, (2, 3), "=N(IF(1,{2;3}))+$A$20");
     assert_dynamic(&model, (2, 5));
 }
+
+// Redo writes the diff's text back through the same entry the edit used (T-2018).
+#[test]
+fn redo_of_a_fill_keeps_the_marker() {
+    let mut model = legacy_and_dynamic();
+    let source = Area {
+        sheet: 0,
+        row: 2,
+        column: 3,
+        width: 1,
+        height: 1,
+    };
+    model.auto_fill_rows(&source, 4).unwrap();
+    model.undo().unwrap();
+    model.redo().unwrap();
+    assert_legacy(&model, (4, 3), FORMULA);
+    assert_dynamic(&model, (2, 5));
+}
+
+#[test]
+fn redo_of_a_paste_keeps_the_marker() {
+    for is_cut in [false, true] {
+        let mut model = legacy_and_dynamic();
+        model.set_selected_cell(2, 3).unwrap();
+        model.set_selected_range(2, 3, 2, 5).unwrap();
+        let clipboard = model.copy_to_clipboard().unwrap();
+        model.set_selected_cell(12, 3).unwrap();
+        model
+            .paste_from_clipboard(0, (2, 3, 2, 5), &clipboard.data, is_cut)
+            .unwrap();
+        model.undo().unwrap();
+        model.redo().unwrap();
+        assert_legacy(&model, (12, 3), FORMULA);
+        assert_dynamic(&model, (12, 5));
+    }
+}
+
+#[test]
+fn redo_of_a_cut_of_a_referenced_cell_keeps_the_marker() {
+    let mut model = legacy_and_dynamic();
+    model.set_selected_cell(9, 1).unwrap();
+    model.set_selected_range(9, 1, 9, 1).unwrap();
+    let clipboard = model.copy_to_clipboard().unwrap();
+    model.set_selected_cell(20, 1).unwrap();
+    model
+        .paste_from_clipboard(0, (9, 1, 9, 1), &clipboard.data, true)
+        .unwrap();
+    model.undo().unwrap();
+    model.redo().unwrap();
+    assert_legacy(&model, (2, 3), "=N(IF(1,{2;3}))+$A$20");
+    assert_dynamic(&model, (2, 5));
+}
