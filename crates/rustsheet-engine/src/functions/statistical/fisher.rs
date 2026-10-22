@@ -307,6 +307,10 @@ impl Model {
                     );
                 }
             },
+            // A number or text is a sample with no points, so it reaches the
+            // `#DIV/0!` check below (probes-numeric t1049-ftest Calc!A29:A32,
+            // m9-legacy-ftest Calc!A32); booleans and errors are unprobed.
+            CalcResult::Number(_) | CalcResult::String(_) => Vec::new(),
             _ => {
                 return CalcResult::new_error(
                     Error::VALUE,
@@ -332,6 +336,10 @@ impl Model {
                     );
                 }
             },
+            // A number or text is a sample with no points, so it reaches the
+            // `#DIV/0!` check below (probes-numeric t1049-ftest Calc!A29:A32,
+            // m9-legacy-ftest Calc!A32); booleans and errors are unprobed.
+            CalcResult::Number(_) | CalcResult::String(_) => Vec::new(),
             _ => {
                 return CalcResult::new_error(
                     Error::VALUE,
