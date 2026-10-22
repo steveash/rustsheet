@@ -1794,10 +1794,10 @@ an array constant or another call keeps the old `@`; CHOOSE with a literal index
 one get none either, T-1908, and are read as references, not marked; the other literal indices, INDEX indices and mixed arms are probed in legacy-n-t-choose-index-shapes, T-1918). An IF whose condition the rewrite intersects (`=N(IF(@W1:W2,Z1,Z2))`) is a scalar and is not marked.
 Re-entering a marked cell through a row/column insert or delete, a row/column move, fill or paste keeps the marker since T-1852:
 the display text goes back through the legacy entry (`Model::reenter_user_input`). Only the row insert is probed; the rest is rule 6's assumption.
-Redoing a paste or fill re-enters its text as typed and drops the marker (T-2018).
+Redo of a paste, fill or cut-rewrite re-enters through the legacy entry too, so the marker survives (T-2018).
 Implemented since T-1717: the IFERROR `@`, the SWITCH spill and the `@IF`.
 Status: VERIFIED (excel-graph)
-Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921, T-1933
+Tasks: T-1713, T-1717, T-1727, T-1728, T-1768, T-1851, T-1852, T-1853, T-1908, T-1921, T-1933, T-2018
 
 ## Edge shapes of a cell-shaped call name
 Rule: a call whose callee is spelled as a cell on the grid is a call of that cell, `#REF!`. That includes:

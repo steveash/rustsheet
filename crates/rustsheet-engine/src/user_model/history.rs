@@ -30,6 +30,8 @@ pub(crate) enum Diff {
         row: i32,
         column: i32,
         new_value: String,
+        /// `new_value` was written through the legacy entry (SPEC-0012), so redo must be too.
+        legacy: bool,
         old_value: Box<Option<Cell>>,
     },
     SetArrayValue {

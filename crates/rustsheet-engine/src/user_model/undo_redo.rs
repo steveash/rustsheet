@@ -21,6 +21,7 @@ impl UserModel {
                     row,
                     column,
                     new_value: _,
+                    legacy: _,
                     old_value,
                 } => {
                     needs_evaluation = true;
@@ -659,11 +660,17 @@ impl UserModel {
                     row,
                     column,
                     new_value,
+                    legacy,
                     old_value: _,
                 } => {
                     needs_evaluation = true;
-                    self.model
-                        .set_user_input(*sheet, *row, *column, new_value.to_string())?;
+                    self.model.reenter_user_input(
+                        *sheet,
+                        *row,
+                        *column,
+                        new_value.to_string(),
+                        *legacy,
+                    )?;
                 }
                 Diff::SetArrayValue {
                     sheet,

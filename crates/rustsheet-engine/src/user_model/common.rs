@@ -454,6 +454,7 @@ impl UserModel {
             row,
             column,
             new_value: value.to_string(),
+            legacy: false,
             old_value: Box::new(old_value),
         }];
         self.set_user_input_with_link_diffs(sheet, row, column, value.to_string(), &mut diff_list)?;
