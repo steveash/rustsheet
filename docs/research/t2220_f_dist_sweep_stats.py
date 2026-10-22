@@ -46,7 +46,7 @@ def exact(kind: str, x: float, d1: int, d2: int) -> mp.mpf:
     if kind == "cdf":
         return mp.betainc(a / 2, b / 2, 0, z, regularized=True)
     if kind == "rt":
-        # Directly, not 1 - cdf: the cancelling form is wrong below ~1E-40.
+        # Directly, not 1 - cdf: the cancelling form is wrong below ~1E-33.
         return mp.betainc(b / 2, a / 2, 0, b / (a * mx + b), regularized=True)
     return (
         a ** (a / 2)
@@ -71,6 +71,7 @@ def main() -> None:
     exact_by_df: dict[tuple, list[int]] = defaultdict(lambda: [0, 0])
     hist: dict[str, Counter] = defaultdict(Counter)
     worst: dict[str, float] = defaultdict(float)
+    top: dict[str, list] = defaultdict(list)
     for label, v in cells.items():
         kind, x, d1, d2 = parse(label)
         ref = float(exact(kind, x, d1, d2))
@@ -78,7 +79,9 @@ def main() -> None:
         for tally in (exact_by_kind[kind], exact_by_df[(kind, d1, d2)]):
             tally[0] += 1
             tally[1] += got == ref
-        hist[kind][min(ulps(got, ref), 10)] += 1
+        n_ulp = ulps(got, ref)
+        hist[kind][min(n_ulp, 10)] += 1
+        top[kind].append((n_ulp, x, d1, d2))
         if ref:
             worst[kind] = max(worst[kind], abs(got - ref) / abs(ref))
     print("correctly rounded (cells, exact):", dict(exact_by_kind))
@@ -87,6 +90,8 @@ def main() -> None:
         print(kind, "df pairs with every cell correctly rounded:", full)
         print(kind, "ulp histogram (10 = 10 or more):", sorted(hist[kind].items()))
     print("worst relative error:", dict(worst))
+    for kind, cells_ulp in top.items():
+        print(kind, "largest ulp errors (ulp, x, d1, d2):", sorted(cells_ulp)[-5:])
     sums = Counter()
     for label, v in cells.items():
         kind, x, d1, d2 = parse(label)

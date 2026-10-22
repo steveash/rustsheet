@@ -1779,18 +1779,19 @@ errors. Compared against a 50-digit reference (mpmath regularized incomplete bet
 closed form) rounded to a double:
 - Reference: the 50-digit values are evaluated at the double x Excel receives
   (`docs/research/t2220_f_dist_sweep_stats.py` reproduces every figure here); the upper tail is computed
-  directly as I_{d2/(d2+d1 x)}(d2/2, d1/2), not as 1 - cdf, which cancels below about 1E-40.
+  directly as I_{d2/(d2+d1 x)}(d2/2, d1/2), not as 1 - cdf, which cancels below about 1E-33.
 - Excel is not correctly rounded anywhere: no (d1, d2) pair, for any of F.DIST TRUE, F.DIST FALSE or
   F.DIST.RT, has all its cells equal to the correctly rounded double, and that includes d1 = d2 = 1
   and d1 = 1 or d2 = 1 with closed forms available.
 - Cells equal to the correctly rounded value: cdf 765/1570 (49%), RT 607/1570 (39%), pdf 147/1570
   (9%). The density is the least accurate: 4/10 at the (2,2) pair and 1/40 at d1 = d2 = 1.
 - Error size: within 4 ulp are cdf 1,419/1,570 (90%), RT 1,318/1,570 (84%) and pdf 1,052/1,570 (67%).
-  Worst relative error: cdf 2.7E-14, RT 2.8E-14, density 7.8E-14. The RT worst cases are far tails, where
-  Excel is 13 to about 180 ulp off (e.g. (1E6,1,100): 181 ulp, (386000,1,100): 169 ulp, (3290,1,100): 98).
+  Worst relative error: cdf 2.7E-14, RT 2.8E-14, density 7.8E-14. The largest RT error is 196 ulp at
+  `F.DIST.RT(1E6,1,50)`; 125 RT cells are 10 or more ulp off, at every magnitude of p (e.g. 35 ulp at
+  (1.61,1,50) where p = 0.21), not only in far tails. The cdf is at worst 201 ulp off and the density 619 ulp.
   A T-2221 acceptance bar of "bit-exact or within 4 ulp" therefore cannot cover all of this grid.
 - `F.DIST(x,d1,d2,TRUE) + F.DIST.RT(x,d1,d2)` is exactly 1.0 in 1,486 of 1,570 cells and not in 84
-  (each such sum is 0.9999999999999999 in the examples checked), e.g. (x,d1,d2) = (100,1,3), (5,1,4),
+  (all 84 such sums are exactly 0.9999999999999999), e.g. (x,d1,d2) = (100,1,3), (5,1,4),
   (10,1,50), (0.1,3,1), (100,3,3), (0.1,3,5), (100,3,7), (3,3,10). This bears on the second PARTIAL
   rule above (both tails from one evaluation): its strong form, an exactly-1 sum, fails in 5% of cells.
   It does not test the first rule (how the beta argument's complement is formed, d2/(d1 x + d2) directly
