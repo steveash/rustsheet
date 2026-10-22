@@ -395,7 +395,10 @@ pasted scripts point at a scratchpad. Reviewer 3 uses the literal `SCRATCH/`. Ed
 
 ## 13. T-2122 run 1 (2026-10-22, single opus worker, no sub-sessions)
 
-All scripts and logs of this run are in `t2122/`. Probe data stays on this branch.
+Scripts and logs of this run are in `docs/research/t1941/t2122/` on the research branch (main keeps only
+`gen_k2micro.py`). The K2 scripts read `SCRATCH/cand9_PQ.npy` (cand9 of 12.1 as [P(10), Q(9)+pad], built from
+`review3/spec.py` with p1..p5 and q0..q4 replaced) and `SCRATCH/c3all.pkl` (from `review3/final/c3all.py`); replace
+`SCRATCH/` with a local directory as in section 12. Probe data stays on the research branch.
 
 ### 13.1 Oracles filled
 - Every case committed without oracles at the pause is now filled: k3l a-f rungs 22-26 and the missing f21; k3l g-l
