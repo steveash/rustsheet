@@ -3,7 +3,7 @@ id: T-1732
 title: "Displayed text of clock formats rounds to the shown second before splitting the day (0.9999999999 is 0:00)"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+Clock and date fields (and the day) now come from the serial rounded to the shown second; elapsed counts round when a seconds token is shown. gen-m10 displayed text 9313 -> 9372; matching TEXT() cells left the baseline. Unprobed: `[h]:mm` / `[m]` without seconds on near-midnight values.

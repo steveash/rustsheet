@@ -254,3 +254,27 @@ fn unshowable_date_displays_hashes() {
         "2023-03-15"
     );
 }
+
+// gen-m10 displayed text (T-1732): fields come from the serial rounded to the shown second.
+#[test]
+fn fields_come_from_the_serial_rounded_to_the_second() {
+    let v = 0.999_999_999_9;
+    let cases = [
+        ("h:mm", "0:00"),
+        ("hh:mm:ss", "00:00:00"),
+        ("[h]:mm:ss", "24:00:00"),
+        ("h:mm:ss AM/PM", "12:00:00 AM"),
+        ("yyyy-mm-dd", "1900-01-01"),
+        ("dddd", "Sunday"),
+        ("d \\d\\a\\y\\s h:mm", "1 days 0:00"),
+        ("[m]:ss", "1440:00"),
+        ("dd/mm/yy", "01/01/00"),
+    ];
+    for (format, expected) in cases {
+        assert_eq!(
+            format_in(v, format, DateSystem::Excel1900),
+            expected,
+            "{format}"
+        );
+    }
+}

@@ -1,5 +1,8 @@
 //! Elapsed `[h]`/`[m]`/`[s]` token text and fractional seconds (`s.000`, `[s].000`).
 
+use super::parser::TextToken;
+use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
+
 /// The unit of an elapsed `[h]`/`[m]`/`[s]` token.
 #[derive(Clone, Copy)]
 pub(super) enum ElapsedUnit {
@@ -42,6 +45,11 @@ impl FractionalSeconds {
         )
     }
 
+    /// The whole days after rounding: a time just short of midnight rolls into the next date.
+    pub(super) fn days(&self) -> i64 {
+        (self.units / (86400.0 * self.scale)).floor() as i64
+    }
+
     /// The whole elapsed count of `unit` after rounding.
     fn elapsed(&self, unit: ElapsedUnit) -> f64 {
         let seconds = (self.units / self.scale).floor();
@@ -59,6 +67,56 @@ impl FractionalSeconds {
             self.units % self.scale,
             width = self.digits
         )
+    }
+}
+
+/// The clock, day and elapsed-count inputs of one date format, all from the serial rounded to the
+/// shown second or fraction digits (`0.9999999999` is "0:00" under `h:mm` and "1900-01-01" under
+/// `yyyy-mm-dd`; gen-m10, T-1732).
+pub(super) struct DisplayClock {
+    /// Hours, minutes and seconds of the time of day.
+    pub(super) hms: (f64, f64, f64),
+    /// Whole days after rounding, so a time just short of midnight rolls into the next date.
+    pub(super) days: i64,
+    /// What the elapsed tokens count from, if rounded: only when seconds or a fraction are shown
+    /// (`[h]` or `[m]` alone keep their own truncation, probes/elapsed-fractions-1900).
+    pub(super) elapsed: Option<FractionalSeconds>,
+}
+
+impl DisplayClock {
+    /// `value` is a non-negative serial. Past 9999-12-31 only a lone elapsed token formats and
+    /// nothing is rounded here.
+    pub(super) fn new(value: f64, fraction_digits: Option<usize>, tokens: &[TextToken]) -> Self {
+        let shows_seconds = tokens.iter().any(|t| {
+            matches!(
+                t,
+                TextToken::Second
+                    | TextToken::SecondPadded
+                    | TextToken::ElapsedSecond
+                    | TextToken::ElapsedSecondPadded
+            )
+        });
+        let digits = match fraction_digits {
+            Some(digits) => Some(digits),
+            None if value < f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0 => Some(0),
+            None => None,
+        };
+        let rounded = digits.and_then(|digits| FractionalSeconds::new(value, digits));
+        let Some(rounded) = rounded else {
+            let time_fract = value.fract();
+            let hours = (time_fract * 24.0).floor();
+            let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
+            let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
+            return Self {
+                hms: (hours, minutes, seconds),
+                days: value as i64,
+                elapsed: None,
+            };
+        };
+        let hms = rounded.clock();
+        let days = rounded.days();
+        let elapsed = (fraction_digits.is_some() || shows_seconds).then_some(rounded);
+        Self { hms, days, elapsed }
     }
 }
 
