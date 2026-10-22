@@ -3,7 +3,7 @@ id: T-2272
 title: "WORKDAY/NETWORKDAYS(.INTL) error order: a date, result or numeric-holiday #NUM! beats a text or boolean holiday's #VALUE!"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
