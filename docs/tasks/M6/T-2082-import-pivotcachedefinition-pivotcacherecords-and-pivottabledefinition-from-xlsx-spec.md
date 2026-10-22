@@ -3,7 +3,7 @@ id: T-2082
 title: "Import pivotCacheDefinition, pivotCacheRecords and pivotTableDefinition from xlsx (SPEC-0015)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
