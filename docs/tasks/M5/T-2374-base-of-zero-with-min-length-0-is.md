@@ -3,7 +3,7 @@ id: T-2374
 title: "BASE of zero with min_length 0 is empty text (BASE(0.2,29,0.3) is '')"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,9 +28,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 | gen-m5/dde5ea295a38fb16 Calc!A254 | `=LENB(BASE(Data!B8,29,Data!A$6))` | 0 | 1 |
 
 ## Acceptance criteria
-- [ ] The three passing zero cells named above still pass.
-- [ ] This 1 known-failure line disappears from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] The three passing zero cells named above still pass.
+- [x] This 1 known-failure line disappears from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - BASE's upper bound (T-2373).
@@ -39,3 +39,6 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 Decision 0083 (gap triage 2026-10-22, T-2252): every cell this task owns has the wrong type, error, text or boolean, or is a
 number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
 criteria above are already the visible-parity stage.
+
+## Outcome
+`base_text` emits no digits for a zero number, so an explicit `min_length` that truncates to 0 gives empty text; an omitted `min_length` now defaults to 1 ("0"). Eval: 1 gen-m5 known failure fixed (dde5ea295a38fb16 Calc!A254), no regressions; the three passing zero cells still pass.
