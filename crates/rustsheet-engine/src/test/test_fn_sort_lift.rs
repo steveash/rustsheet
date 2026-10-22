@@ -1,5 +1,5 @@
-//! SORT's by_col lifts over an array, one call per element whose value is that call's top-left;
-//! the array and the sort_index and sort_order lists stay whole (SPEC-0011 "Array-valued
+//! SORT's `by_col` lifts over an array, one call per element whose value is that call's top-left;
+//! the array and the `sort_index` and `sort_order` lists stay whole (SPEC-0011 "Array-valued
 //! functions", T-2319; gen-m7/7307132bb8820f17 A1076).
 
 use crate::test::util::new_empty_model;

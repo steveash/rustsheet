@@ -87,9 +87,9 @@ const SORTBY: ArgKinds = ArgKinds {
 };
 // --- End M7 (T-1839) ---
 // --- M7 (T-2319) ---
-/// `SORT(array, [sort_index], [sort_order], [by_col])`: by_col lifts over an array
+/// `SORT(array, [sort_index], [sort_order], [by_col])`: `by_col` lifts over an array
 /// (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`, gen-m7/7307132bb8820f17 A1076);
-/// the array and the sort_index and sort_order lists are read once by the function. Each element
+/// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
 /// sorts the whole array: read and charged as [`TOCOL`].
 const SORT: ArgKinds = ArgKinds::fixed(
     1,

@@ -331,7 +331,7 @@ impl Model {
         )
     }
 
-    /// One SORT call over the read `data`: the sort_index and sort_order lists validated against
+    /// One SORT call over the read `data`: the `sort_index` and `sort_order` lists validated against
     /// `data` (rows, or columns when `by_col`), then the sort.
     fn sort_by_keys(
         &self,
