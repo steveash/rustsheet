@@ -3,7 +3,7 @@ id: T-2374
 title: "BASE of zero with min_length 0 is empty text (BASE(0.2,29,0.3) is '')"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
