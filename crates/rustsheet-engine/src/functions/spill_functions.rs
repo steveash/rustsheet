@@ -1,4 +1,4 @@
-use crate::functions::util::array_node_to_calc_result;
+use crate::functions::util::{array_node_to_calc_result, near_integer_count};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
@@ -177,19 +177,20 @@ fn first_unequal(mut orderings: impl Iterator<Item = Ordering>) -> Ordering {
 /// An evaluated SORTBY `by_array` argument.
 type SortByArray = Vec<Vec<ArrayNode>>;
 
-// Extract a 1-D column key from a 2-D by_array.
-// Accepts column vectors (N×1) and row vectors (1×N); a wider array is #VALUE! (probes/sort-error-args H101).
-fn extract_key_column(data: &[Vec<ArrayNode>], expected_len: usize) -> Option<Vec<ArrayNode>> {
-    if data.is_empty() {
-        return None;
-    }
-    if data.len() == expected_len && data[0].len() == 1 {
-        Some(data.iter().map(|row| row[0].clone()).collect())
-    } else if data.len() == 1 && data[0].len() == expected_len {
-        Some(data[0].clone())
-    } else {
-        None
-    }
+/// The ways a SORTBY `by_array` of `key` can sort an array of `rows` x `cols`, as (rows, columns):
+/// a column as tall as the array sorts its rows and a row as wide as the array sorts its columns
+/// (`SORTBY(A1:B3,{2,1})` swaps the columns; `SORTBY(A1:A3,{3,1,2})` is `#VALUE!`). So one value
+/// sorts the columns of a one-column array, which leaves it as it is: `SORTBY(A1:A3,5)` is A1:A3,
+/// whatever the value (text, a boolean, a one-cell range), while `SORTBY(A1:B3,5)` is `#VALUE!`
+/// (probes/t2310-sortby-single-by-array H1-H81). Anything wider is `#VALUE!` too
+/// (probes/sort-error-args H101).
+// Excel: docs/excel-semantics/arrays.md "SORTBY with a single-value by_array or a fractional sort_order".
+fn by_array_axes(key: &[Vec<ArrayNode>], rows: usize, cols: usize) -> (bool, bool) {
+    let width = key.first().map_or(0, Vec::len);
+    (
+        key.len() == rows && width == 1,
+        key.len() == 1 && width == cols,
+    )
 }
 
 impl Model {
@@ -450,9 +451,10 @@ impl Model {
 
     /// `=SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2], ...)`
     ///
-    /// Sorts array rows using one or more external key arrays.
+    /// Sorts the array's rows (or columns) using one or more external key arrays.
     ///   * `sort_order` values: 1 = ascending (default), -1 = descending
-    ///   * `by_array` must have the same number of rows as array
+    ///   * `by_array` is a column as tall as array (sorting its rows) or a row as wide as it
+    ///     (sorting its columns), the same way for every key
     ///   * Valid argument counts: 2, 3, 5, 7, … (additional keys in pairs)
     pub(crate) fn fn_sortby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let kind = Function::Sortby;
@@ -518,41 +520,65 @@ impl Model {
             };
             let order = match values.get(2 + 2 * pair) {
                 None | Some(CalcResult::EmptyArg) => 1,
+                // A fraction reads as its floor, snapped up near an integer: -0.0001 and -0.9999
+                // are -1 and 1.5 is 1, while 0.5, -1.5 and -1E-300 are `#VALUE!`
+                // (probes/t2310-sortby-single-by-array H97-H165).
                 Some(value) => match self.cast_to_number(value.clone(), cell) {
-                    Ok(order) => order as i32,
+                    Ok(order) => near_integer_count(order) as i32,
                     Err(error) => return error,
                 },
             };
             raw_keys.push((key, order));
         }
 
-        // Collect sort keys: (flat key column, ascending)
-        let mut sort_keys: Vec<(Vec<ArrayNode>, bool)> = Vec::with_capacity(raw_keys.len());
+        // Every by_array must sort the same way: `SORTBY(A1:A3,5,1,A1:A3,-1)` is `#VALUE!`
+        // (probes/t2310-sortby-single-by-array H85-H93).
+        let num_cols = data.first().map_or(0, Vec::len);
+        let (mut by_rows, mut by_cols) = (true, true);
+        let mut sort_keys: Vec<(&SortByArray, bool)> = Vec::with_capacity(raw_keys.len());
         for (key, order) in raw_keys {
-            let Some(key_flat) = extract_key_column(key, num_rows) else {
+            let (rows, cols) = by_array_axes(key, num_rows, num_cols);
+            by_rows &= rows;
+            by_cols &= cols;
+            if !by_rows && !by_cols {
                 return CalcResult::new_error(
                     Error::VALUE,
                     cell,
-                    "by_array must be one column or row with the same size as array".to_string(),
+                    "by_array must be one column as tall or one row as wide as array".to_string(),
                 );
-            };
+            }
             let ascending = match Self::validate_sort_order(order, cell) {
                 Ok(a) => a,
                 Err(e) => return e,
             };
-            sort_keys.push((key_flat, ascending));
+            sort_keys.push((key, ascending));
         }
 
-        let mut row_indices: Vec<usize> = (0..num_rows).collect();
-        row_indices.sort_by(|&a, &b| {
-            first_unequal(
-                sort_keys
-                    .iter()
-                    .map(|(keys, ascending)| sort_key_cmp(&keys[a], &keys[b], *ascending, cell)),
+        if by_rows {
+            let mut row_indices: Vec<usize> = (0..num_rows).collect();
+            row_indices.sort_by(|&a, &b| {
+                first_unequal(
+                    sort_keys.iter().map(|(key, ascending)| {
+                        sort_key_cmp(&key[a][0], &key[b][0], *ascending, cell)
+                    }),
+                )
+            });
+            CalcResult::Array(row_indices.iter().map(|&r| data[r].clone()).collect())
+        } else {
+            let mut col_indices: Vec<usize> = (0..num_cols).collect();
+            col_indices.sort_by(|&a, &b| {
+                first_unequal(
+                    sort_keys.iter().map(|(key, ascending)| {
+                        sort_key_cmp(&key[0][a], &key[0][b], *ascending, cell)
+                    }),
+                )
+            });
+            CalcResult::Array(
+                data.iter()
+                    .map(|row| col_indices.iter().map(|&c| row[c].clone()).collect())
+                    .collect(),
             )
-        });
-
-        CalcResult::Array(row_indices.iter().map(|&r| data[r].clone()).collect())
+        }
     }
 
     // ── UNIQUE ────────────────────────────────────────────────────────────────

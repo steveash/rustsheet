@@ -946,6 +946,7 @@ C	probes/t2275-address-bounds.case.json	298
 C	probes/t2277-hyperlink-location-length.case.json	15
 C	probes/t2280-ifs-one-cell-range-condition.case.json	82
 C	probes/t2287-regex-r-x-spans.case.json	83
+C	probes/t2310-sortby-single-by-array.case.json	90
 C	probes/t2311-pivotby-value-cause.case.json	195
 C	probes/t2311-pivotby-value-columns-error.case.json	127
 C	probes/t2312-wrap-count-threshold.case.json	66
