@@ -3,7 +3,7 @@ id: T-2068
 title: "WEEKNUM stale return_type state in a per-recalc state and Excel's fresh-load order (SPEC-0017)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
