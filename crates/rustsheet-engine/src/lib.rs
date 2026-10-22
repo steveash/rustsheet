@@ -74,6 +74,7 @@ mod legacy_formula;
 pub mod links;
 mod merged_cells;
 mod model;
+mod node_frames;
 mod outside_cell;
 mod reference_operators;
 mod seen_ranges;
