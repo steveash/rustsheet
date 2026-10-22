@@ -15,7 +15,7 @@ After a table is deleted, or its sheet is, every structured reference to it is `
 prints it as `#REF!`, as Excel does.
 
 ## Context
-T-2324 (excel-graph) in docs/excel-semantics/references.md "Structured references when the table changes". table-delete-table (Graph `DELETE tables('Sales')`): `SUM(Sales[Qty])`,
+T-2324 (excel-graph) in docs/excel-semantics/references.md "Structured references under row deletes, column edits, convert, table and sheet delete". table-delete-table (Graph `DELETE tables('Sales')`): `SUM(Sales[Qty])`,
 `ROWS(Sales)`, `ROW(Sales[#Headers])`, `COLUMNS(Sales)`, `COLUMN(Sales[Qty])` are `#REF!`,
 `COUNTA(Sales[Region])` is 1, and FORMULATEXT prints `=SUM(#REF!)`, `=COUNTA(#REF!)`, `=COLUMN(#REF!)`; ours
 keeps a parse error (`#ERROR!`, `#NAME?` for ROWS/COLUMNS, text unchanged). table-delete-sheet (sheet S

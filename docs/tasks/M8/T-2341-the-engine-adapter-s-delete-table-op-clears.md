@@ -19,7 +19,7 @@ T-2324: after `delete_table` on `Sales` (S!B3:C7) Excel-graph gives `SUM(S!C4:C7
 (probes/table-edits/table-delete-table F!A6), so Graph's table delete clears the range; the adapter
 (`apply_sheet_ops` in crates/rustsheet-eval/src/engine.rs) calls `remove_table`, which keeps the cells (ours
 15). Whether the cells are cleared or the rows deleted is open: probe a cell below the table (e.g. S!C9 moving
-or not) with the excel-probe skill before changing the adapter, and record it in docs/excel-semantics/references.md "Structured references when the table changes". Desktop has no "delete
+or not) with the excel-probe skill before changing the adapter, and record it in docs/excel-semantics/references.md "Structured references under row deletes, column edits, convert, table and sheet delete". Desktop has no "delete
 table" command (M14 if needed).
 
 ## Acceptance criteria

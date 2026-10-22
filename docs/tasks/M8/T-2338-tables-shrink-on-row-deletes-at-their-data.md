@@ -17,7 +17,7 @@ the probes/table-edits delete-row cases.
 
 ## Context
 T-2324 probed Excel (excel-graph, `delete_row` = Graph `range('r:r')/delete` shift Up) on `Sales` at
-S!B3:C7 (header 3, data 4-7, Qty 1,2,4,8; and with a totals row 8); findings in docs/excel-semantics/references.md "Structured references when the table changes".
+S!B3:C7 (header 3, data 4-7, Qty 1,2,4,8; and with a totals row 8); findings in docs/excel-semantics/references.md "Structured references under row deletes, column edits, convert, table and sheet delete".
 The engine treats every table as SPEC-0016's fallback (the reference becomes the displaced plain range), so
 an edge delete leaves `#REF!` corners: table-delete-row-first-data (row 4: Excel `SUM(Sales[Qty])` 14,
 `ROWS(Sales)` 3, FORMULATEXT kept, plain `S!C4:C7` becomes `S!C4:C6`; ours `#REF!`, `=SUM(#REF!:$C$6)`),

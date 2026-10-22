@@ -16,7 +16,7 @@ absolute plain range Excel writes.
 
 ## Context
 T-2324 (excel-graph, Graph `tables('Sales')/convertToRange`), probes/table-edits/table-convert-to-range in
-docs/excel-semantics/references.md "Structured references when the table changes": values are unchanged and FORMULATEXT prints `=SUM(S!$C$4:$C$7)`, `=COUNTA(S!$B$4:$B$7)`,
+docs/excel-semantics/references.md "Structured references under row deletes, column edits, convert, table and sheet delete": values are unchanged and FORMULATEXT prints `=SUM(S!$C$4:$C$7)`, `=COUNTA(S!$B$4:$B$7)`,
 `=COLUMN(S!$C$4:$C$7)` (absolute, sheet-qualified from another sheet; a plain `S!C4:C7` is unchanged).
 `ROWS(Sales)` 4, `ROWS(Sales[#All])` 5 and `ROW(Sales[#Headers])` 3 keep their values, so they became the
 data, all and header ranges. The engine has no convert-to-range: the adapter refuses `convert_table`

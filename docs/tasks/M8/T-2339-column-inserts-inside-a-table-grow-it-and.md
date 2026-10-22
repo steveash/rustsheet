@@ -16,7 +16,7 @@ references as Excel does on every cell of the probes/table-edits column cases.
 
 ## Context
 T-2324 (excel-graph, `insert_column` = Graph `range('C:C')/insert` shift Right, `delete_column` = delete shift
-Left) on `Sales` at S!B3:C7; findings in docs/excel-semantics/references.md "Structured references when the table changes". Insert at C (between the two columns): `COLUMNS(Sales)` 3,
+Left) on `Sales` at S!B3:C7; findings in docs/excel-semantics/references.md "Structured references under row deletes, column edits, convert, table and sheet delete". Insert at C (between the two columns): `COLUMNS(Sales)` 3,
 `COLUMN(Sales[Qty])` 4, FORMULATEXT kept (table-insert-column-inside; ours prints the plain range).
 Delete column C (Qty): `SUM(Sales[Qty])` is `#REF!` and prints `=SUM(#REF!)`, `COLUMNS(Sales)` 1,
 `ROWS(Sales)` 4, a plain `S!C4:C7` prints `=SUM(S!#REF!)` (table-delete-column-qty; ours `#ERROR!` and
