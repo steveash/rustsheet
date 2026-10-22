@@ -25,6 +25,8 @@ visibly-off count means something (decision 0094).
   so that each function is the outer call of about 250 formulas.
 - Then `uv run rustsheet-oracle fill -b excel-graph --suite gen-m5` and `make eval-baseline`.
 - Left out as decision 0094 exemptions (T-0062 records them): TRUE, FALSE, RAND, RANDBETWEEN and INFO, plus M2's NOW and TODAY and M7's RANDARRAY. SHEETS stays in: T-2251 makes its reference form generatable.
+- M5's catalog-coverage cells for INFO and SHEETS (decision 0085 item 4) come from T-2353's small batch, not
+  from this sweep. Its SHEETS formulas count toward the 400-cell bar here.
 ## Acceptance criteria
 - [ ] In `make eval`'s "Excel evidence per function", every function listed above has at least
       400 Excel-backed cells, and at least 200 of them are new generated formulas with the
