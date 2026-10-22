@@ -79,6 +79,23 @@ impl Parser {
         absolute_row: bool,
     ) -> Node {
         let node = self.reference_operand(sheet, row, column, absolute_column, absolute_row);
+        self.call_if_parenthesis_follows(node)
+    }
+
+    /// A range token, or a call of one: `Sheet1!$A$1:$A$2(2)` and `$A$1:A2(2)` are `#REF!` like
+    /// any called reference (probes/callee-unparenthesized-range-*, T-2008).
+    pub(super) fn range_or_call_operand(
+        &mut self,
+        sheet: Option<String>,
+        left: ParsedReference,
+        right: ParsedReference,
+    ) -> Node {
+        let node = self.range_operand(sheet, left, right);
+        self.call_if_parenthesis_follows(node)
+    }
+
+    /// `node` called with the argument list that follows it, when a `(` follows with no space.
+    pub(super) fn call_if_parenthesis_follows(&mut self, node: Node) -> Node {
         if !self.lexer.whitespace_follows() && self.lexer.peek_token() == TokenType::LeftParenthesis
         {
             return self.parse_call(node);
