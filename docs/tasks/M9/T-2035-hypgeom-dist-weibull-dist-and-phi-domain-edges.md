@@ -3,7 +3,7 @@ id: T-2035
 title: "HYPGEOM.DIST, WEIBULL.DIST and PHI: domain edges and boolean arguments as Excel (T-1048, T-1049 sweeps)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -57,3 +57,6 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 2 cells, 0 numeric pas
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (PHI of a boolean is `#VALUE!` where Excel reads it as a number), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. PHI(1E300) and PHI(-1E300) (t1049-phi A25, A26) stay out of scope until T-2260 probes the cut.
+
+## Outcome
+Implemented the listed HYPGEOM.DIST (sample_s read as a number, negative fraction `#NUM!` before truncation, sample_s above min(number_sample, population_s) gives 0/1, zero number_sample or population_s valid), WEIBULL.DIST (density 0 at x = 0, TRUE x = 1) and PHI (boolean = number) rules. Every listed cell passes except three last-digit cells that stay with T-0977 (t1048-hypgeomdist A19/B19 and t1049-hypgeomdist A53, t1049-weibulldist A33: 1 ulp or NumericClose now, no longer `#VALUE!`). No baseline change (probes-numeric is ungated).

@@ -1947,6 +1947,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1047
 
 ## Legacy distribution names sweep, second family (T-1048)
+Implemented by T-2035: HYPGEOMDIST/HYPGEOM.DIST sample_s above min(number_sample, population_s) is 0 (density) or 1 (cdf), zero number_sample/population_s is valid (density 1 at 0), TRUE sample_s is 1; WEIBULL density at x = 0 is 0, TRUE x is 1.
 Rule: GAMMADIST, GAMMAINV, HYPGEOMDIST, LOGINV, LOGNORMDIST, NEGBINOMDIST, NORMDIST, NORMINV, NORMSDIST, NORMSINV, POISSON, TINV, WEIBULL return exactly the same value or error as their modern equivalent (GAMMA.DIST, GAMMA.INV, HYPGEOM.DIST with cumulative FALSE, LOGINV = LOGNORM.INV, LOGNORM.DIST cum TRUE, NEGBINOM.DIST cum FALSE, NORM.DIST, NORM.INV, NORM.S.DIST cum TRUE, NORM.S.INV, POISSON.DIST, T.INV.2T, WEIBULL.DIST) on every paired cell, so the aliases need no separate kernel. TDIST with tails 1 is the exception: it differs from T.DIST.RT for negative x (T.DIST.2T agrees with TDIST tails 2). TTEST = T.TEST and ZTEST = Z.TEST on every paired cell too.
 Oracle sweep (excel-graph), 16 cases, 34-102 cells each; every paired cell (column B) is identical except the TDIST row below. Quirks seen:
 - `TDIST(-1,3,1)` and `TDIST(-1,3,2)` are #NUM! (x must be >= 0); `T.DIST.2T(-1,3)` is #NUM! too, but `T.DIST.RT(-1,3)` = 0.8044988905221147. `TDIST(1,0.9,1)` is #NUM! (df truncates to 0); `TDIST(1,1.9,2)` = 0.5000000000000001 (= `T.DIST.2T(1,1.9)`, df truncates to 1); tails truncate (`TDIST(1,3,1.9)` and `TDIST(1,3,TRUE)` = tails 1, `TDIST(1,3,2.1)` = tails 2); tails 0 and 3 are #NUM!, and an omitted tails (`TDIST(1,3,)`) is #NUM!.
@@ -2084,7 +2085,7 @@ Implemented in: `Model::for_each_value_a` (statistical/count_and_average.rs), `A
 Tasks: T-1551, T-1555, T-1559
 
 ## Thin distribution functions: argument coercion, truncation and error edges (T-1049)
-Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by this task):
+Rule (all from excel-graph sweeps `probes-numeric/t1049-*`; none implemented by T-1049; T-2035 implemented the HYPGEOM.DIST sample_s/zero-count/negative-fraction/TRUE-sample_s rules, the WEIBULL.DIST x = 0 density and TRUE x, and PHI of a boolean):
 - **Truncation:** HYPGEOM.DIST truncates all four counts toward zero (`HYPGEOM.DIST(1.9,4,8,20,TRUE)`
   = `(1,4,8,20)`, and `(0.9,...)` = `(0,...)`; `hypgeomdist`), and a negative fraction (-0.5) is
   `#NUM!`. T.TEST truncates `tails` and `type` (`T.TEST(...,1.9,2.9)` = tails 1, type 2; `ttest`).
