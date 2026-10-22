@@ -79,11 +79,16 @@ Implemented in: `fn_trunc` in functions/math_and_trigonometry/mathematical.rs, v
 Rule: INT rounds down after the same 15-significant-digit cut as TRUNC and ROUNDDOWN, so binary noise just below an
 integer does not drop a unit: `INT(1-2^-53)` = 1 (0.99999999999999989 reads 1.00000000000000), so does
 `FLOOR.PRECISE(INT(1-2^-53))`, and INT of 999999876543311.88 (`(1.005+E11)+(1E+15-A8)`) is 999999876543312.
-Implemented in `fn_int` (mathematical.rs, T-2171) via `round_decimal`: Down for a positive value, Up (away from zero) for a negative one. A value of 1E+15 or more is floored as it is (`INT(2^53+1)` = 2^53: gen-m5/d586a1e0c9896942 Calc!A64; a sum of 1000000000000006 stays 1000000000000006: gen-m5/1315170eef6c413e Calc!A332; the cut would drop integer digits). Unprobed: the exact 1E+15 boundary and a fraction between 1E+15 and 2^53.
+Implemented in `fn_int` (mathematical.rs, T-2171) via `round_decimal`: Down for a positive value, Up (away from zero) for a negative one. A value of 1E+15 or more is floored as it is (`INT(2^53+1)` = 2^53: gen-m5/d586a1e0c9896942 Calc!A64; a sum of 1000000000000006 stays 1000000000000006: gen-m5/1315170eef6c413e Calc!A332; the cut would drop integer digits).
 Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/0362d48f56108faa Calc!A364, gen-m5/043ee562f32eb901 Calc!A62,
 gen-m5/1962de140dae0111 Calc!A352, gen-m5/38b1b8e51dbad326 Calc!A212, gen-m5/b0d597ec5af5fb92 Calc!A173.
-Unprobed: negatives (`INT(-(1-2^-53))`) and a 16th-digit tie.
-Status: VERIFIED (excel-graph, 5 cells); implemented (T-2171).
+T-2215 (excel-graph, 2026-10-22; probes/t2215-int-negatives-boundary, 63 cells, engine passes all): the cut is
+round-to-nearest (half away from zero) to 15 significant digits, then floor, for negatives too: `INT(-(1-2^-53))` = -1,
+`INT(-100000000000000.25)` = -100000000000000 (plain floor would be -100000000000001), `INT(-999999999999999.25)` =
+-999999999999999, `INT(-999999999999999.5)` = -1E+15, and the tie `INT(100000000000000.5)` = 100000000000001. At
+1E+15 and above there is no cut: `INT(-1000000000000000.1)` = -1000000000000001, `INT(1000000000000005.5)` =
+1000000000000005, `INT(-4503599627370495.5)` = -4503599627370496, `INT(999999999999999.9)` = 1E+15 (still cut).
+Status: VERIFIED (excel-graph, 5 + 63 cells); implemented (T-2171, confirmed by T-2215).
 
 ## ODD and EVEN above 2^53: last digits not explained (T-2173)
 Observation: `ODD(9999999999999999)` (the literal reads 9999999999999990) is 9999999999999992; ours is 9999999999999988, from
