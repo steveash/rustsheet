@@ -25,6 +25,11 @@ fn percentile_numbers(
     match model.evaluate_node_in_context(arg, cell) {
         CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
         error @ CalcResult::Error { .. } => Err(error),
+        // A typed boolean is a one-element array (`QUARTILE(TRUE,1)` is 1, probes-numeric/t1748-
+        // typed-boolean-data A1-A8 for the whole family, probes/stat-order-floor-batch A102, A128).
+        CalcResult::Boolean(b) => Ok(vec![f64::from(u8::from(b))]),
+        // Direct text coerces as a number does (`QUARTILE("1",1)` is 1, t1748-typed-boolean-data A11).
+        text @ CalcResult::String(_) => model.cast_number_ref(&text, cell).map(|n| vec![n]),
         value => model.numeric_flat_of(value, cell),
     }
 }
