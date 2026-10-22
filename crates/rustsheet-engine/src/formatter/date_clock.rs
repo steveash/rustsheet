@@ -142,7 +142,7 @@ fn at_most_one_out_of_range(hour: u32, minute: u32, second: f64) -> bool {
 /// Serial value of clock text in Excel's en-US grammar, before any wrap to one day:
 /// `H:M`, `H:M:S[.f]`, `M:S.f` (two components with a fraction are minutes and seconds) or the
 /// odd `H:M.f:S` (see [`fraction_as_seconds`]; `S` is checked and then ignored), spaces allowed
-/// around `:` and `.`, one trailing `:` ignored, components up to 9999 and at most one
+/// around `:` and `.`, one trailing `:` ignored (so `H:` alone is an hour), components up to 9999 and at most one
 /// of them out of its usual range (see [`at_most_one_out_of_range`]), an optional ` AM`/` PM`/` A`/` P` suffix after whitespace
 /// (then the hour is at most 12 and minutes and whole seconds at most 59). The value is
 /// `(total_ms / 1000) / 86400`, which matches Excel bit for bit (`"10:11:12.5"` is
@@ -161,7 +161,12 @@ pub(crate) fn parse_clock_text(text: &str) -> Option<f64> {
     // `"10:11:"` is 10:11 and `"10:11:12.5:"` is 10:11:12.5, but `"10:11.5::"` is #VALUE!
     // (probes/clock-text-oddities3 A11-A14).
     let body = trim_spaces(body);
-    let body = body.strip_suffix(':').unwrap_or(body);
+    let (body, bare_hour) = match body.strip_suffix(':') {
+        // `"12:"` is 12:00 (`"25:"` is 25 hours) without an AM/PM suffix; `"12: PM"` is #VALUE!
+        // (probes/t2352-time-text-trailing-colon A1-A5, A16).
+        Some(stripped) => (stripped, suffix_is_pm.is_none()),
+        None => (body, false),
+    };
     let (head, fraction, odd_tail) = match body.split_once('.') {
         Some((head, rest)) => {
             let (fraction, odd_tail) = match rest.split_once(':') {
@@ -195,6 +200,7 @@ pub(crate) fn parse_clock_text(text: &str) -> Option<f64> {
             ((0, *m), (f64::from(*s), fraction_digits_to_ms(f)))
         }
         ([h, m], ..) => ((*h, *m), (0.0, 0)),
+        ([h], None, None) if bare_hour => ((*h, 0), (0.0, 0)),
         _ => return None,
     };
     if !at_most_one_out_of_range(hour, minute, second) {
