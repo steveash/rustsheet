@@ -349,3 +349,58 @@ fn test_textbefore_textafter_sigma_contexts() {
     assert_eq!(model._get_text("A6"), *",Α");
     assert_eq!(model._get_text("A7"), *"#N/A");
 }
+
+// T-2314: probes/t2314-textbefore-instance-bound (excel-graph).
+#[test]
+fn test_textbefore_textafter_instance_num_past_the_text() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(\"b\",\"a\",-2,1,1)");
+    model._set("A2", "=TEXTBEFORE(\"ab\",\"a\",3,0,0,\"nf\")");
+    model._set("A3", "=TEXTBEFORE(\"ab\",\"a\",2)");
+    model._set("A4", "=TEXTAFTER(\"😀\",\"a\",2)");
+    model._set("A5", "=TEXTAFTER(\"😀\",\"a\",3)");
+    model._set("A6", "=TEXTAFTER(\"é\",\"a\",2)");
+    model._set("A7", "=TEXTBEFORE(\"abc\",\"\",2)");
+    model._set("A8", "=TEXTBEFORE(\"a,b\",\",\",2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+    assert_eq!(model._get_text("A6"), *"#VALUE!");
+    assert_eq!(model._get_text("A7"), *"");
+    assert_eq!(model._get_text("A8"), *"#N/A");
+}
+
+#[test]
+fn test_textbefore_textafter_match_mode_values() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(\"aBc\",\"b\",1,2)");
+    model._set("A2", "=TEXTBEFORE(\"aBc\",\"b\",1,-1)");
+    model._set("A3", "=TEXTBEFORE(\"aBc\",\"b\",1,0.5)");
+    model._set("A4", "=TEXTBEFORE(\"aBc\",\"b\",1,1.5)");
+    model._set("A5", "=TEXTBEFORE(\"aBc\",\"b\",1,TRUE)");
+    model._set("A6", "=TEXTBEFORE(\"abc\",\"\",2,123456789.123)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"a");
+    assert_eq!(model._get_text("A5"), *"a");
+    assert_eq!(model._get_text("A6"), *"#VALUE!");
+}
+
+#[test]
+fn test_textbefore_textafter_number_if_not_found_is_text() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXTBEFORE(\"b\",\"a\",1,0,0,5)");
+    model._set("A2", "=TEXTBEFORE(\"b\",\"a\",1,0,0,-2.5)");
+    model._set("A3", "=TEXTAFTER(\"b\",\"a\",1,0,0,TRUE)");
+    model._set("A4", "=ISTEXT(TEXTBEFORE(\"b\",\"a\",1,0,0,5))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"5");
+    assert_eq!(model._get_text("A2"), *"-2.5");
+    assert_eq!(model._get_text("A3"), *"TRUE");
+    assert_eq!(model._get_text("A4"), *"TRUE");
+}

@@ -3,7 +3,7 @@ id: T-1755
 title: "STANDARDIZE reads a direct TRUE as 1"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 2 cells, 0 numeric pas
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#VALUE!` where Excel reads TRUE as 1), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+STANDARDIZE reads a direct TRUE x as 1 (`standardize_of` uses `cast_number_ref` for x). mean and standard_dev are unprobed and keep the boolean-is-#VALUE! read. Eval: probes known failures -2 (stats-evidence-floor-t1623 Q58, stat-later-argument-lift L14), no regressions.
