@@ -70,9 +70,9 @@ const UNIQUE: ArgKinds =
     ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array_first();
 // --- End M7 (T-1836) ---
 // --- M7 (T-1839) ---
-/// `SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2], ...)`: the sort_orders lift
+/// `SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2], ...)`: each sort order lifts
 /// over an array and a range (`SORTBY(A1:A3,B1:B3,{1;-1})` is 2x1, probes/m7-argument-modes
-/// F26:H26), the array and the by_arrays are read once by the function. Unless every entry is
+/// F26:H26), the array and the by arrays are read once by the function. Unless every entry is
 /// equal only the first element keeps its call's top-left (`CallResult::ArrayFirst`;
 /// `SORTBY(A1:A3,C1:C3,{1;-1;1})` is {1;0;0}, probes/sort-error-args H97-H99), `#VALUE!` once the
 /// call has a second pair (probes/m7-lift-take-drop-sortby sheet Sort). Each element sorts the

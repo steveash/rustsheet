@@ -168,7 +168,7 @@ pub(crate) struct LiftOptions {
     /// What one unlifted call returns: an `Array` entry's element is its call's top-left value.
     pub(crate) result: CallResult,
     /// Whether a [`CallResult::ArrayFirst`] entry's emptied elements are `#VALUE!` instead: a
-    /// SORTBY call with a second by_array, sort_order pair (`lift_call_with` sets it).
+    /// SORTBY call with a second `by_array`, `sort_order` pair (`lift_call_with` sets it).
     pub(crate) later_error: bool,
 }
 

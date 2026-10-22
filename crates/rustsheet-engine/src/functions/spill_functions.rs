@@ -466,7 +466,7 @@ impl Model {
         )
     }
 
-    /// One SORTBY call over the read `data` and `keys`, with the sort_orders in `values` (at the
+    /// One SORTBY call over the read `data` and `keys`, with the `sort_orders` in `values` (at the
     /// argument positions 2, 4, ...). Every argument is taken left to right and the first error
     /// wins before any value is validated (probes/sort-error-args H73-H105;
     /// docs/excel-semantics/arrays.md).

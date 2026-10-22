@@ -281,7 +281,7 @@ impl CallResult {
 }
 
 /// The parameters of one function: `params[i]` is the kind of argument `i`. Arguments past
-/// `params` take the kinds of `repeat` in turn, a cycle (SORTBY's by_array, sort_order pairs;
+/// `params` take the kinds of `repeat` in turn, a cycle (SORTBY's `by_array`, `sort_order` pairs;
 /// SPEC-0011 "Array-valued functions" rule 4), and the call is valid with `required..=max`
 /// arguments that end on a whole cycle.
 pub(crate) struct ArgKinds {
