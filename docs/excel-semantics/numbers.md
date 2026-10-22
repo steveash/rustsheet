@@ -1911,6 +1911,11 @@ Evidence (excel-graph, 2026-10-20): gen-m5/49bfbf67a1409563 Calc!A179, gen-m5/03
 gen-m5/a6fec430ac350c1a Calc!A31, gen-m5/c0651f0e0fb544d0 Calc!A253, gen-m5/d1b251fd6e9c4b4b Calc!A24.
 Unprobed: which error wins when both the number and the form are bad (`ROMAN(-5,NA())`, `ROMAN(4000,9)`); the engine
 reports the number's.
+ROMAN lifts over an array form, element by element: `TOROW(ROMAN(561,HSTACK(Data!B7:B7,{1,2;3,4},Data!A$6)),2)` is five "DLXI" (forms
+1, 2, 0.5, 3, 4; the 123456789.123 element is `#VALUE!` and the HSTACK pads `#N/A`, both dropped by ignore 2: gen-m7/f7e94a817e5385ac
+Calc!A1563, excel-graph, 2026-10-22). Ours `#N/IMPL!` (no lifting-table entry), T-2410.
+Unexplained (T-2414): `VSTACK(COMBINA(WRAPROWS(Data!E6:E12,1,Data!$B1),4),CHOOSE(3,..))` is one `#VALUE!` with nothing spilled
+(gen-m7/f19581ac44da1653 A3357), not the 8x1 stack a lifting COMBINA would give; ours `#N/IMPL!`.
 Status: VERIFIED (excel-graph); implemented (T-2154).
 
 ## QUOTIENT, FACTDOUBLE and SERIESSUM argument modes
