@@ -288,10 +288,8 @@ impl Model {
         let callee = self
             .evaluate_reference_arg(lambda, cell)
             .into_single_area(cell);
-        // The same guards as `call_callee`'s and `call_variable`'s, kept in step with them.
-        if let CalcResult::Range { .. } = callee {
-            return RefArg::Value(reference_called(cell));
-        }
+        // Anything but a LAMBDA is called as `call_variable` calls it: a reference is `#REF!`
+        // (`call_callee`), a value gives Excel's odd results.
         if !matches!(callee, CalcResult::Lambda(_)) {
             return RefArg::Value(self.call_variable(callee, call_args, cell));
         }
