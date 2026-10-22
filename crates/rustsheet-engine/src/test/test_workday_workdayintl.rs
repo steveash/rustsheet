@@ -103,6 +103,16 @@ fn holidays_follow_the_branch_if_takes() {
     model._set("B5", "=WORKDAY(45000,0,Sheet1:Sheet2!A1)");
     model._set("B6", "=NETWORKDAYS(45000,45000,Sheet1:Sheet2!A1)");
     model._set("B7", "=WORKDAY(45000,5,IF(FALSE,Sheet1:Sheet2!A1))");
+    model._set("B8", "=WORKDAY(45000,5,CHOOSE(2,Sheet1:Sheet2!A1,A1))");
+    // An array condition: one element taking the 3-D branch is one #VALUE! (M1-M3).
+    model._set(
+        "B9",
+        "=ROWS(WORKDAY(45000,5,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1)))",
+    );
+    model._set(
+        "B10",
+        "=WORKDAY(45000,5,IF({FALSE;FALSE},Sheet1:Sheet2!A1,A1))",
+    );
     model.evaluate();
 
     assert_eq!(model._get_text("B1"), *"45008");
@@ -112,4 +122,7 @@ fn holidays_follow_the_branch_if_takes() {
     assert_eq!(model._get_text("B5"), *"45000");
     assert_eq!(model._get_text("B6"), *"#VALUE!");
     assert_eq!(model._get_text("B7"), *"#VALUE!");
+    assert_eq!(model._get_text("B8"), *"45008");
+    assert_eq!(model._get_text("B9"), *"#VALUE!");
+    assert_eq!(model._get_text("B10"), *"45008");
 }

@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "WORKDAY/NETWORKDAYS holidays: an IF or CHOOSE with a 3-D branch not taken, and a 3-D holidays with 0 days (T-2238). Columns D-I per holidays form (rows 1-9, name in C): WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, ROWS and INDEX of a lifted WORKDAY. K: day count 0 and controls.",
+ "description": "WORKDAY/NETWORKDAYS holidays: an IF or CHOOSE with a 3-D branch not taken, and a 3-D holidays with 0 days (T-2238). Columns D-I per holidays form (rows 1-9, name in C): WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, ROWS and INDEX of a lifted WORKDAY. K: day count 0 and controls. M: an array IF condition beside a 3-D branch.",
  "tags": [
   "M6",
   "probe",
@@ -90,7 +90,15 @@
     "K11": "=ROWS(WORKDAY({45000;45001},0,Sheet1:Sheet2!A1))",
     "K12": "=WORKDAY(45005,0,A1)",
     "K13": "=WORKDAY(45000,0,NA())",
-    "K14": "=WORKDAY(45000,0,\"x\")"
+    "K14": "=WORKDAY(45000,0,\"x\")",
+    "M1": "=WORKDAY(45000,5,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1))",
+    "M2": "=ROWS(WORKDAY(45000,5,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1)))",
+    "M3": "=ERROR.TYPE(WORKDAY(45000,5,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1)))",
+    "M4": "=WORKDAY(45000,5,IF({FALSE;FALSE},Sheet1:Sheet2!A1,A1))",
+    "M5": "=ROWS(WORKDAY(45000,5,IF({FALSE;FALSE},Sheet1:Sheet2!A1,A1)))",
+    "M6": "=NETWORKDAYS(45000,45030,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1))",
+    "M7": "=NETWORKDAYS(45000,45030,IF({FALSE;FALSE},Sheet1:Sheet2!A1,A1))",
+    "M8": "=WORKDAY(45000,5,IF({FALSE;FALSE},A1,A1))"
    }
   },
   {
