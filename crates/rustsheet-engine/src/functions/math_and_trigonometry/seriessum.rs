@@ -2,12 +2,11 @@ use crate::{
     arithmetic::power,
     calc_result::CalcResult,
     expressions::{
-        parser::{ArrayNode, Node},
+        parser::{is_multi_sheet_span, ArrayNode, Node},
         types::CellReferenceIndex,
     },
     functions::{
         lift::{num_error, value_error, LiftCost},
-        util::is_multi_sheet_span,
         Function,
     },
     model::Model,

@@ -4,8 +4,8 @@
 use super::ArgKind::{Lift, LiftArrays, Whole, WholeByCaller};
 use super::KernelWork::{Constant, Output};
 use super::{
-    ArgKinds, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2, LIFT_2, LIFT_2_OF_3,
-    LIFT_3,
+    ArgKinds, CallResult, ARRAYS_1, ATP_1_OF_2, ATP_2, ATP_2_OF_3, LIFT_1, LIFT_1_OF_2,
+    LIFT_1_OF_3, LIFT_2, LIFT_2_OF_3, LIFT_3,
 };
 use crate::functions::Function;
 
@@ -20,8 +20,6 @@ const WORKDAYS: ArgKinds = ArgKinds::fixed(2, &[LiftArrays, LiftArrays, WholeByC
 /// over a range too.
 const WORKDAYS_INTL: ArgKinds =
     ArgKinds::fixed(2, &[LiftArrays, LiftArrays, Lift, WholeByCaller], Constant);
-/// `CEILING.MATH(number, [significance], [mode])` and FLOOR.MATH.
-const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
 
 // --- Math (T-1802) --------------------------------------------------------------------------
 /// `SERIESSUM(x, n, m, coefficients)`: x, n and m are Analysis `ToolPak` arguments, and the
@@ -39,8 +37,8 @@ const SERIES: ArgKinds = ArgKinds::fixed(
 // --- Array-valued (T-1834) -------------------------------------------------------------------
 /// `SEQUENCE(rows, [columns], [start], [step])`: every argument lifts over an array and a range
 /// (`ROWS(SEQUENCE(A1:A3))` is 3, `SEQUENCE({1;2;3})` and `SEQUENCE(2,2,{1;10})` are 3x1 and 2x1,
-/// probes/m7-argument-modes F1:H3; columns and step by the spec's per-parameter rule, T-1960). Each
-/// lifted element is charged the cells it builds.
+/// probes/m7-argument-modes F1:H3; columns and step, probes/m7-lift-take-drop-sortby rows 17-18).
+/// Each lifted element is charged the cells it builds.
 const SEQUENCE: ArgKinds =
     ArgKinds::fixed(1, &[Lift, Lift, Lift, Lift], Output { weight: 1 }).array();
 /// `MAKEARRAY(rows, cols, lambda)`: rows and cols lift (`MAKEARRAY(A1:A2,2,LAMBDA(r,c,r+c))` is
@@ -51,25 +49,71 @@ const MAKEARRAY: ArgKinds =
     ArgKinds::fixed(3, &[Lift, Lift, Whole], Output { weight: 128 }).array();
 /// `TAKE(array, rows, [columns])` and `DROP(array, rows, [columns])`: rows and columns lift over
 /// an array and a range (`ROWS(TAKE(A1:B3,A1:A2))` and `ROWS(DROP(A1:B3,{1;2}))` are 2,
-/// probes/m7-argument-modes F4:F6; columns by the spec's per-parameter rule, T-1960), the array
+/// probes/m7-argument-modes F4:F6; columns, probes/m7-lift-take-drop-sortby rows 27-28), the array
 /// is read whole by the function itself, a reference kept (`Model::take_drop_reference`, T-1838).
 /// Each lifted element is charged the cells it builds.
 const TAKE_DROP: ArgKinds = ArgKinds::fixed(2, &[Whole, Lift, Lift], Output { weight: 1 }).array();
 // --- M7 (T-1836) ---
 /// `TOCOL(array, [ignore], [scan_by_column])`: ignore lifts over an array and a range
 /// (`TOCOL(A1:B3,{0;1})` is 2x1 with first element 1, probes/m7-argument-modes F9:H9, K8; over an
-/// array, gen-m9/1782efcecd5d4b1b Calc!A19), `scan_by_column` by the spec's per-parameter rule
-/// (T-1960). The array is read once by the function and handed to every element whole; each
-/// element walks it (`LiftCost::Cells`) and is charged the cells it builds.
+/// array, gen-m9/1782efcecd5d4b1b Calc!A19), `scan_by_column` too (probes/m7-lift-take-drop-sortby
+/// row 24). The array is read once by the function and handed to every element whole; each
+/// element walks it (`LiftCost::Cells`) and is charged the cells it builds. TOROW shares it
+/// (`TOROW(Data!B3:E8,3,WRAPCOLS(Data!D3:D11,1))` is 1x9, gen-m7/7d67c559ce7536fa A619; T-2313).
 const TOCOL: ArgKinds =
     ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array();
 /// `UNIQUE(array, [by_col], [exactly_once])`: `by_col` lifts over an array and a range
 /// (`UNIQUE(D1:D3,{FALSE;TRUE})` is 2x1, probes/m7-argument-modes F12:H12; over a range,
-/// gen-m9/4df1b22d3ed63f58 Calc!A36), `exactly_once` by the spec's per-parameter rule (T-1960).
-/// Read and charged as [`TOCOL`].
+/// gen-m9/4df1b22d3ed63f58 Calc!A36), `exactly_once` too (probes/m7-lift-take-drop-sortby rows
+/// 25-26). Its later elements are empty unless every entry is equal (`CallResult::ArrayFirst`,
+/// probes/m7-unique-lift-elements; T-2300). Read and charged as [`TOCOL`].
 const UNIQUE: ArgKinds =
-    ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array();
+    ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array_first();
 // --- End M7 (T-1836) ---
+// --- M7 (T-1839) ---
+/// `SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2], ...)`: each sort order lifts
+/// over an array and a range (`SORTBY(A1:A3,B1:B3,{1;-1})` is 2x1, probes/m7-argument-modes
+/// F26:H26), the array and the by arrays are read once by the function. Unless every entry is
+/// equal only the first element keeps its call's top-left (`CallResult::ArrayFirst`;
+/// `SORTBY(A1:A3,C1:C3,{1;-1;1})` is {1;0;0}, probes/sort-error-args H97-H99), `#VALUE!` once the
+/// call has a second pair (probes/m7-lift-take-drop-sortby sheet Sort). Each element sorts the
+/// whole array: read and charged as [`TOCOL`].
+const SORTBY: ArgKinds = ArgKinds {
+    required: 2,
+    params: &[WholeByCaller, WholeByCaller, Lift],
+    repeat: &[WholeByCaller, Lift],
+    max: 255,
+    work: Output { weight: 1 },
+    result: CallResult::ArrayFirst,
+};
+// --- End M7 (T-1839) ---
+// --- M7 (T-2319) ---
+/// `SORT(array, [sort_index], [sort_order], [by_col])`: `by_col` lifts over an array
+/// (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`, gen-m7/7307132bb8820f17 A1076);
+/// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
+/// sorts the whole array: read and charged as [`TOCOL`]. Whether a later non-error element is its
+/// call's top-left (`.array()`) or empty (SORTBY's `.array_first()`) is UNVERIFIED (T-2366).
+const SORT: ArgKinds = ArgKinds::fixed(
+    1,
+    &[WholeByCaller, WholeByCaller, WholeByCaller, Lift],
+    Output { weight: 1 },
+)
+.array();
+// --- End M7 (T-2319) ---
+// --- M7 (T-1835) ---
+/// `EXPAND(array, rows, [columns], [pad_with])`: rows and columns lift over an array and a range
+/// (`ROWS(EXPAND(A1:A2,{3;4}))` is 2, probes/m7-argument-modes F7:H7; columns,
+/// probes/m7-lift-take-drop-sortby row 20), `pad_with` does not: an array there is `#VALUE!` (same
+/// case row 21). The array is read once by the function and handed to every element whole; each
+/// element walks it (`LiftCost::Cells`) and is charged the cells it builds.
+const EXPAND: ArgKinds =
+    ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift, Whole], Output { weight: 1 }).array();
+/// `WRAPROWS(vector, wrap_count, [pad_with])` and WRAPCOLS: `wrap_count` and `pad_with` lift over an
+/// array and a range (`ROWS(WRAPROWS(A1:A3,{1;2}))` is 2, probes/m7-argument-modes F8:H8, G42;
+/// probes/m7-lift-take-drop-sortby rows 22-23). Read and charged as [`EXPAND`].
+const WRAP: ArgKinds =
+    ArgKinds::fixed(2, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array();
+// --- End M7 (T-1835) ---
 // --- End array-valued (T-1834) ---------------------------------------------------------------
 
 /// This family's part of the lifting table (`Function::arg_kinds`).
@@ -122,8 +166,12 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Sequence => Some(&SEQUENCE),
         Function::Makearray => Some(&MAKEARRAY),
         Function::Take | Function::Drop => Some(&TAKE_DROP),
-        Function::Tocol => Some(&TOCOL),
+        Function::Expand => Some(&EXPAND),
+        Function::Wrapcols | Function::Wraprows => Some(&WRAP),
+        Function::Tocol | Function::Torow => Some(&TOCOL),
         Function::Unique => Some(&UNIQUE),
+        Function::Sortby => Some(&SORTBY),
+        Function::Sort => Some(&SORT),
         Function::Hyperlink => Some(&LIFT_1_OF_2),
         // --- Math (T-1802) ---
         // QUOTIENT, FACTDOUBLE and SERIESSUM's x, n and m are Analysis ToolPak arguments: they
@@ -221,6 +269,18 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Mround => Some(&ATP_2),
         Function::Sqrtpi => Some(&ARRAYS_1),
         // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
+        // --- LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
+        // Every argument lifts over an array constant and over a multi-cell range given
+        // directly, on rows off the range too (probes/t2198-m5-lift-argument-kinds rows 10-27,
+        // 36; docs/excel-semantics/arrays.md "LOG, DECIMAL, BASE, ATAN2, ARABIC, DOLLAR, FIXED and
+        // NUMBERVALUE return arrays over array arguments"). LOG and ATAN2 are O(1); DECIMAL reads
+        // at most 255 units, BASE writes at most 64 digits and 255 padding, ARABIC makes one pass
+        // over its text (`lift/tests/kernel_work.rs`).
+        Function::Log => Some(&LIFT_1_OF_2),
+        Function::Decimal | Function::Atan2 => Some(&LIFT_2),
+        Function::Base => Some(&LIFT_2_OF_3),
+        Function::Arabic => Some(&LIFT_1),
+        // --- End LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
         _ => None,
     }
 }

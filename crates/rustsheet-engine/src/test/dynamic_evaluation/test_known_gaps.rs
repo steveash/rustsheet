@@ -160,7 +160,7 @@ fn spill_range_operator_on_itself_is_circular() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("C1"), "#CIRC!");
+    assert!(model._is_circular("C1"));
 }
 
 // ── 5.4: cycles through a spill area ────────────────────────────────────────
@@ -185,7 +185,7 @@ fn spill_cycle_through_reader_is_circular() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("B1"), "#CIRC!");
+        assert!(model._is_circular("B1"));
         assert_eq!(model._get_text("B2"), "");
         assert_eq!(model._get_text("A1"), "2");
     }
@@ -298,8 +298,8 @@ fn every_member_of_a_cycle_reports_circ() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("C1"), "#CIRC!");
-        assert_eq!(model._get_text("C4"), "#CIRC!");
+        assert!(model._is_circular("C1"));
+        assert!(model._is_circular("C4"));
     }
 }
 
@@ -313,8 +313,8 @@ fn iferror_does_not_hide_a_cycle() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), "#CIRC!");
-    assert_eq!(model._get_text("B1"), "#CIRC!");
+    assert!(model._is_circular("A1"));
+    assert!(model._is_circular("B1"));
 }
 
 // ── Stale read edges of a retracted cell are ignored ────────────────────────

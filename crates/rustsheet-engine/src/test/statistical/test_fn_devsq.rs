@@ -14,8 +14,8 @@ fn arguments_smoke_test() {
 
     assert_eq!(model._get_text("A1"), *"#ERROR!");
     assert_eq!(model._get_text("A2"), *"2");
-    assert_eq!(model._get_text("A3"), *"0");
-    assert_eq!(model._get_text("A4"), *"2");
+    assert_eq!(model._get_text("A3"), *"0.5"); // empty counts as 0 (probes/stat-order-floor-batch A299, T-1748)
+    assert_eq!(model._get_text("A4"), *"4.666666667");
 }
 
 #[test]

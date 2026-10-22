@@ -181,7 +181,7 @@ fn test_datedif_ym() {
 
 #[test]
 fn test_datedif_yd() {
-    assert_eq!(eval_datedif("YD"), *"165");
+    assert_eq!(eval_datedif("YD"), *"166");
 }
 
 #[test]
@@ -207,7 +207,7 @@ fn test_datedif_edge_and_error_cases() {
 
 #[test]
 fn test_datedif_mixed_case_unit() {
-    assert_eq!(eval_datedif("yD"), *"165"); // mixed-case should work
+    assert_eq!(eval_datedif("yD"), *"166"); // mixed-case should work
 }
 
 #[test]

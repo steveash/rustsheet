@@ -224,11 +224,9 @@ impl Model {
             // {#DIV/0!,#DIV/0!,#DIV/0!},{5,5})` `#DIV/0!` (probes/rich-errors-image-array-error-
             // elements, T-1417; probes/rich-errors-image-past-end A5, A7, T-1962).
             Ok((source, options)) => {
-                let source = match source {
-                    LiftedArg::Grid(values) => CalcResult::Array(values),
-                    LiftedArg::Scalar(value) => value,
-                };
-                let args = std::iter::once(source).chain(options).collect();
+                let args = std::iter::once(source.into_value())
+                    .chain(options)
+                    .collect();
                 self.lift_values(
                     args,
                     LiftCost::Unit,

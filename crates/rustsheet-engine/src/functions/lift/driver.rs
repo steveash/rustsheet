@@ -37,6 +37,16 @@ impl LiftedArg {
         matches!(value, CalcResult::Range { .. } | CalcResult::Array(_))
     }
 
+    /// The argument as a value again: a grid as its array, a scalar as itself. A function that
+    /// reads an argument before the lift (to give its error first) hands it to
+    /// [`Model::lift_values`] this way.
+    pub(crate) fn into_value(self) -> CalcResult {
+        match self {
+            LiftedArg::Scalar(value) => value,
+            LiftedArg::Grid(grid) => CalcResult::Array(grid),
+        }
+    }
+
     pub(crate) fn dims(&self) -> (usize, usize) {
         match self {
             LiftedArg::Scalar(_) => (1, 1),
@@ -167,6 +177,9 @@ pub(crate) struct LiftOptions {
     pub(crate) work: KernelWork,
     /// What one unlifted call returns: an `Array` entry's element is its call's top-left value.
     pub(crate) result: CallResult,
+    /// Whether a [`CallResult::ArrayFirst`] entry's emptied elements are `#VALUE!` instead: a
+    /// SORTBY call with a second `by_array`, `sort_order` pair (`lift_call_with` sets it).
+    pub(crate) later_error: bool,
 }
 
 impl LiftOptions {
@@ -176,6 +189,7 @@ impl LiftOptions {
             reuse: Reuse::Never,
             work: kinds.work,
             result: kinds.result,
+            later_error: false,
         }
     }
 
@@ -184,6 +198,7 @@ impl LiftOptions {
         reuse: Reuse::EqualRuns,
         work: KernelWork::Constant,
         result: CallResult::Value,
+        later_error: false,
     };
 
     /// The *IF(S) functions, whose kernel only reads the criteria and the ranges resolved before
@@ -192,6 +207,7 @@ impl LiftOptions {
         reuse: Reuse::AnyEqual,
         work: KernelWork::Constant,
         result: CallResult::Value,
+        later_error: false,
     };
 
     /// Every element runs, and the caller's [`LiftCost`] already counts its work: the lifted
@@ -200,19 +216,64 @@ impl LiftOptions {
         reuse: Reuse::Never,
         work: KernelWork::Constant,
         result: CallResult::Value,
+        later_error: false,
     };
 }
 
 /// What the element loops share: the options, the visits charged so far (the up-front cost,
-/// then each element's output charge) and the calling cell.
+/// then each element's output charge), the calling cell and what the elements keep.
 struct Run<'r> {
     options: &'r LiftOptions,
     visits: &'r mut u64,
     cell: CellReferenceIndex,
+    later: Later,
+}
+
+/// Which element results are kept (SPEC-0011 "Array-valued functions" rule 2).
+enum Later {
+    /// Every element keeps its result.
+    Kept,
+    /// [`CallResult::ArrayFirst`] over entries that are not all equal: an error result stays,
+    /// the first other one is kept (`placed` once it is), and every later one is empty.
+    EmptyAfterFirst { placed: bool },
+}
+
+impl Run<'_> {
+    /// One element's result as the output holds it ([`element_node`]), empty when [`Later`]
+    /// says so.
+    fn element(&mut self, value: CalcResult) -> Result<ArrayNode, CalcResult> {
+        let node = element_node(value, self.options, self.visits, self.cell)?;
+        Ok(match &mut self.later {
+            Later::EmptyAfterFirst { placed } if !matches!(node, ArrayNode::Error(_)) => {
+                if !std::mem::replace(placed, true) {
+                    node
+                } else if self.options.later_error {
+                    ArrayNode::Error(Error::VALUE)
+                } else {
+                    ArrayNode::Empty
+                }
+            }
+            _ => node,
+        })
+    }
+}
+
+/// Whether every element's grid slots equal the first element's: then a
+/// [`CallResult::ArrayFirst`] entry keeps every element (`UNIQUE(D1:D3,{FALSE;FALSE})` is "x"
+/// twice, probes/m7-lift-take-drop-sortby row 35). One slot comparison per element and argument,
+/// within the work the elements are charged.
+fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
+    (0..rows).all(|row| (0..columns).all(|column| same_as(args, row, column, (0, 0))))
 }
 
 /// A per-element kernel: the scalar function over the argument values of one element.
 pub(crate) type Kernel<'k> = dyn FnMut(&mut Model, &[CalcResult]) -> CalcResult + 'k;
+
+/// A number kernel's shortcut (T-1932): its result for arguments that are all numbers, one per
+/// argument written, exactly what its [`Kernel`] returns for them as `CalcResult::Number`s, but
+/// without building, dispatching on and dropping those values. A per-row `=DAY(A1)` and each
+/// element of `DAY(A1:A1000000)` cost a third more through the kernel than the math macros did.
+pub(crate) type NumbersKernel<'k> = dyn Fn(&[f64]) -> Result<f64, Error> + 'k;
 
 /// Whether every grid slot at (`row`, `column`) equals the one at `previous`.
 fn same_as(args: &[LiftedArg], row: usize, column: usize, previous: (usize, usize)) -> bool {
@@ -347,8 +408,7 @@ fn element_node(
     visits: &mut u64,
     cell: CellReferenceIndex,
 ) -> Result<ArrayNode, CalcResult> {
-    // Every entry before T-1834: no output charge and no top-left, the loop body as before.
-    if options.result == CallResult::Value && !matches!(options.work, KernelWork::Output { .. }) {
+    if element_is_value(options) {
         return Ok(calc_result_to_array_node(value));
     }
     let cells = match &value {
@@ -362,12 +422,32 @@ fn element_node(
     if let Some(error) = too_many_visits(*visits, cell) {
         return Err(error);
     }
-    Ok(match (options.result, value) {
-        (CallResult::Array, CalcResult::Array(grid)) => {
+    Ok(match value {
+        CalcResult::Array(grid) if options.result.is_array() => {
             calc_result_to_array_node(top_left_of_array(&grid, cell))
         }
-        (_, value) => calc_result_to_array_node(value),
+        value => calc_result_to_array_node(value),
     })
+}
+
+/// Whether an element's result is its value as it is: no output charge and no top-left, every
+/// entry before T-1834.
+fn element_is_value(options: &LiftOptions) -> bool {
+    options.result == CallResult::Value && !matches!(options.work, KernelWork::Output { .. })
+}
+
+/// The arguments of a [`NumbersKernel`] for `values` but the grid's at `grid_index` (left 0),
+/// `None` when one of them is not a number.
+fn scalar_numbers(values: &[CalcResult], grid_index: usize) -> Option<ArgBuf<f64>> {
+    let mut numbers = ArgBuf::filled(values.len(), || 0.0);
+    for (index, (slot, value)) in numbers.as_mut_slice().iter_mut().zip(values).enumerate() {
+        match value {
+            CalcResult::Number(number) => *slot = *number,
+            _ if index == grid_index => {}
+            _ => return None,
+        }
+    }
+    Some(numbers)
 }
 
 /// An array element as a scalar value, by value: a string element moves, not copied.
@@ -406,13 +486,17 @@ impl Model {
                 Err(error) => return error,
             }
         }
-        self.lift_grids(lifted, cost, options, cell, kernel)
+        self.lift_grids(lifted, cost, options, cell, kernel, None)
     }
 
     /// The broadcast over arguments already read, at least one of them a grid (SPEC-0011
     /// `lift_values` steps 3-7): the output bound (`check_array_size`, `#ERROR!` past it) and the
     /// work bound (`cost`, `too_many_visits`) are checked before any element is computed; then
     /// the elements run in row-major order, in place when one grid is the only lifted argument.
+    /// There, an element whose arguments are all numbers runs `numbers` instead of `kernel`. A
+    /// 1x1 grid lifts like any other, also for an array-valued entry: `SEQUENCE({3})` is one
+    /// element, 1, where `SEQUENCE(A3:A3)` never gets here, since a one-cell range is its value
+    /// (probes/m7-lift-take-drop-sortby Sheet1 rows 12 and 38-43; T-2298).
     pub(super) fn lift_grids(
         &mut self,
         lifted: Vec<LiftedArg>,
@@ -420,24 +504,12 @@ impl Model {
         options: &LiftOptions,
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
+        numbers: Option<&NumbersKernel<'_>>,
     ) -> CalcResult {
         let (rows, columns) = match broadcast_shape(&lifted, cell) {
             Ok(shape) => shape,
             Err(error) => return error,
         };
-        if options.result == CallResult::Array && (rows, columns) == (1, 1) {
-            // Every grid is one cell: the call runs once on those values and keeps its whole
-            // array, as before T-1834 (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows). Whether
-            // Excel lifts a 1x1 array here (`SEQUENCE({3})`) is open until T-1960.
-            let values: Vec<CalcResult> = lifted
-                .into_iter()
-                .map(|arg| match arg {
-                    LiftedArg::Scalar(value) => value,
-                    LiftedArg::Grid(grid) => top_left_of_array(&grid, cell),
-                })
-                .collect();
-            return kernel(self, &values);
-        }
         // Refuse before running anything when the elements would cost too much.
         let (plan, elements) = match options.reuse {
             Reuse::AnyEqual => {
@@ -477,14 +549,22 @@ impl Model {
             .then_some(index),
             _ => None,
         };
+        let later = if options.result == CallResult::ArrayFirst
+            && !all_elements_equal(&lifted, rows, columns)
+        {
+            Later::EmptyAfterFirst { placed: false }
+        } else {
+            Later::Kept
+        };
         let mut visits = visits;
         let run = Run {
             options,
             visits: &mut visits,
             cell,
+            later,
         };
         match in_place {
-            Some(index) => self.lift_in_place(lifted, index, run, kernel),
+            Some(index) => self.lift_in_place(lifted, index, run, kernel, numbers),
             None => self.lift_broadcast(&lifted, rows, columns, &plan, run, kernel),
         }
     }
@@ -493,8 +573,8 @@ impl Model {
     /// once per element of the broadcast of `lifted`, as [`Self::lift_grids`] runs it, and each
     /// result is kept as a [`RefElement`]: its reference, or its error (any other value is
     /// `#VALUE!`). The shape and the work (one visit per element) are checked before any element
-    /// runs. When every grid is one cell the call runs once and keeps its result, as a lifted
-    /// `CallResult::Array` call does.
+    /// runs. A 1x1 grid gives one element too: `TAKE(A1:B3,{2})` is one element, A1:B2
+    /// (probes/m7-lift-take-drop-sortby Sheet1 F13, I13:K13; T-2298).
     pub(crate) fn lift_references(
         &mut self,
         lifted: Vec<LiftedArg>,
@@ -512,9 +592,6 @@ impl Model {
                 LiftedArg::Grid(grid) => top_left_of_array(grid, cell),
             })
             .collect();
-        if (rows, columns) == (1, 1) {
-            return RefArg::from(kernel(self, &values));
-        }
         let elements = rows.saturating_mul(columns);
         if let Some(error) = too_many_visits(u64::try_from(elements).unwrap_or(u64::MAX), cell) {
             return RefArg::Value(error);
@@ -548,19 +625,19 @@ impl Model {
 
     /// One grid at `grid_index`, the rest scalars: each element is moved out of the grid, given
     /// to the kernel, and its result written back into the same slot, so the output is the input
-    /// grid (T-1078: at most one allocation per output element, none for a number).
+    /// grid (T-1078: at most one allocation per output element, none for a number). With a
+    /// `numbers` shortcut and every scalar a number, a number element runs the shortcut on the
+    /// numbers alone (T-1932); the shortcut's elements charge nothing beyond the up-front cost and
+    /// hold no text, so only an entry whose elements are charged nothing takes it.
     fn lift_in_place(
         &mut self,
         lifted: Vec<LiftedArg>,
         grid_index: usize,
-        run: Run<'_>,
+        mut run: Run<'_>,
         kernel: &mut Kernel<'_>,
+        numbers: Option<&NumbersKernel<'_>>,
     ) -> CalcResult {
-        let Run {
-            options,
-            visits,
-            cell,
-        } = run;
+        let cell = run.cell;
         // The values live inline for up to `INLINE_ARGS` arguments, as in the read phase.
         let mut values = ArgBuf::filled(lifted.len(), || CalcResult::EmptyCell);
         let mut output = Vec::new();
@@ -570,14 +647,28 @@ impl Model {
                 LiftedArg::Grid(grid) => output = grid,
             }
         }
+        let mut shortcut = numbers
+            .filter(|_| element_is_value(run.options))
+            .and_then(|numbers| Some((numbers, scalar_numbers(values.as_slice(), grid_index)?)));
         let mut text_bytes = 0;
         for row in &mut output {
             for node in row {
+                if let (Some((numbers, args)), ArrayNode::Number(number)) = (&mut shortcut, &*node)
+                {
+                    if let Some(slot) = args.as_mut_slice().get_mut(grid_index) {
+                        *slot = *number;
+                    }
+                    *node = match numbers(args.as_slice()) {
+                        Ok(number) => ArrayNode::Number(number),
+                        Err(error) => ArrayNode::Error(error),
+                    };
+                    continue;
+                }
                 let element = std::mem::replace(node, ArrayNode::Empty);
                 if let Some(slot) = values.as_mut_slice().get_mut(grid_index) {
                     *slot = array_node_into_calc_result(element, cell);
                 }
-                *node = match element_node(kernel(self, values.as_slice()), options, visits, cell) {
+                *node = match run.element(kernel(self, values.as_slice())) {
                     Ok(node) => node,
                     Err(error) => return error,
                 };
@@ -599,14 +690,10 @@ impl Model {
         rows: usize,
         columns: usize,
         plan: &ReusePlan,
-        run: Run<'_>,
+        mut run: Run<'_>,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult {
-        let Run {
-            options,
-            visits,
-            cell,
-        } = run;
+        let cell = run.cell;
         let mut values: Vec<CalcResult> = lifted
             .iter()
             .map(|arg| match arg {
@@ -655,8 +742,7 @@ impl Model {
                                 *slot = array_node_to_calc_result(node, cell);
                             }
                         }
-                        let value = match element_node(kernel(self, &values), options, visits, cell)
-                        {
+                        let value = match run.element(kernel(self, &values)) {
                             Ok(value) => value,
                             Err(error) => return error,
                         };

@@ -20,7 +20,10 @@ use super::{
     dates::{excel_serial_to_ymd, negative_serial_allowed},
     lexer::Compare,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
-    parser::{GeneralPart, ParsePart, Parser, TextToken},
+    parser::{
+        is_text_section, numeric_section_count, section_tokens, GeneralPart, ParsePart, Parser,
+        TextToken,
+    },
 };
 
 /// The workbook inputs of number formatting: the locale and the date system (SPEC-0005).
@@ -126,10 +129,22 @@ pub fn format_text(value: Option<f64>, format: &str, ctx: &FormatContext) -> For
 /// `TEXT("abc","0;x@")` is "xabc", probes/text-at-token-sections A10, A11, T-1656). Any other
 /// format with fewer than four sections returns the text unchanged; that case is unprobed. A
 /// result over 255 characters is `#VALUE!` ([`MAX_TEXT_FORMAT_CHARS`]).
+///
+/// Excel checks the number sections first: a code with an unparsable number section is `#VALUE!`
+/// for a text value too, even where the text section would apply (`TEXT("a","ab1")`,
+/// `TEXT(TRUE,"n;n;n;@")`; probes/t2202-text-code-check-on-text; number-formats.md "TEXT checks
+/// the code before it looks at a text or boolean value"). A bad section a number would not use
+/// in a multi-section code rejects the text too; that case is unprobed.
 pub fn format_text_value(text: &str, format: &str) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
     let parts = parser.parts.as_slice();
+    if parts[..numeric_section_count(parts)]
+        .iter()
+        .any(ParsePart::is_error)
+    {
+        return format_error();
+    }
     let section = match parts.last() {
         Some(last) if parts.len() < 4 && is_text_section(last) => parts.len() - 1,
         _ if parts.len() < 4 => return capped_text(text.to_string()),
@@ -267,20 +282,6 @@ fn general_text(value: f64, locale: &Locale) -> String {
     }
 }
 
-/// Whether `part` holds `@`, which makes it a text section.
-fn is_text_section(part: &ParsePart) -> bool {
-    section_tokens(part).is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw)))
-}
-
-/// The tokens of a number or date section; `None` for General or an unparsable section.
-fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
-    match part {
-        ParsePart::Number(p) => Some(&p.tokens),
-        ParsePart::Date(p) => Some(&p.tokens),
-        ParsePart::General(_) | ParsePart::Error(_) => None,
-    }
-}
-
 /// The `[cond]` of a number or date section, if it has one.
 fn section_condition(part: &ParsePart) -> Option<(Compare, f64)> {
     match part {
@@ -309,14 +310,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     let mut value = value_original;
     let general = ParsePart::General(GeneralPart {});
     let part;
-    // A last section with `@` in a format of two or three sections is the text section: numbers
-    // use the sections before it (`TEXT(-1,"0;x@")` is "-1", `TEXT(-1,"0;0;x@")` "1";
-    // probes/text-at-token-sections C10, C11, T-1656).
-    let numeric_sections = match parts.last() {
-        Some(last) if (2..4).contains(&parts.len()) && is_text_section(last) => parts.len() - 1,
-        _ => parts.len(),
-    };
-    match numeric_sections {
+    match numeric_section_count(&parts) {
         // Excel: an empty format shows nothing but a negative's minus, also for a value that
         // rounds to zero (`TEXT(-0.0001,"")` = "-", `TEXT(5,"")` = ""; probes/text-format-bare-literals
         // A32-A35).
@@ -408,11 +402,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 TextToken::SecondFraction(digits) => Some(*digits),
                 _ => None,
             });
-            // Excel: a fraction of a second over a serial past 9999-12-31 is #VALUE!, elapsed
-            // tokens or not (`TEXT(1234567890,"[mm]:ss.0")`, `"h:mm:ss.00"`; gen-m10
-            // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20, fbdab487cb11409e T!A25). The
-            // same for the other clock tokens is T-1731.
-            if fraction_digits.is_some() && value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0 {
+            // Excel: any token but a lone elapsed one (`[s]`) over a serial past 9999-12-31 is
+            // #VALUE!: `TEXT(1234567890,"h:mm")`, `"[h]:mm"`, `"[mm]:ss.0"` (gen-m10
+            // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20; gen-m5 6a511beadb56b932 Calc!A126).
+            if value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0
+                && !negative_serial_allowed(tokens, DateSystem::Excel1900)
+            {
                 return invalid_date(value_original);
             }
             let fraction = fraction_digits.and_then(|digits| FractionalSeconds::new(value, digits));

@@ -3,7 +3,7 @@ id: T-2238
 title: "WORKDAY/NETWORKDAYS holidays: probe and match an IF whose 3-D branch is not taken and a 3-D holidays with 0 days (ours #VALUE! and the start date, unprobed)"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -54,3 +54,6 @@ replacing the "Unprobed" sentence. Implement it in `holiday_serials` / `workday_
 - 3-D `weekend` arguments (already `#VALUE!`, probed).
 - COUNT/COUNTA over IF of a 3-D span (statistical lane; probe separately if this task's rule
   suggests COUNT differs).
+
+## Outcome
+Probe `probes/t2238-holidays-if-3d-branch` (excel-graph, 2026-10-22; 76 cells, all passing). Only the branch IF or CHOOSE takes counts as holidays: an untaken 3-D branch is no error, a taken one is `#VALUE!` (per element when lifted), and an array condition with any element taking it is one `#VALUE!` (column M, added after the fidelity review). A day count of 0 never reads WORKDAY's holidays, even `NA()` or `"x"`, while NETWORKDAYS over one day still does: ours already matched both. `holiday_serials` now follows IF's pick (`if_pick`, the condition read once) instead of the static `is_span_or_if_of_span`, which looked at every branch; COUNT's use of that helper is unchanged. `collect_serial_numbers` takes the value instead of the node. dates.md's "Unprobed" sentence is replaced by the rule. Eval delta: probes +1 case (76 cells), no other baseline line changed.

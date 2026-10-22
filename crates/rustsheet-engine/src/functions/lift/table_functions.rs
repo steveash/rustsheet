@@ -67,7 +67,13 @@ macro_rules! lifting_table_functions {
             | Function::Take
             | Function::Drop
             | Function::Tocol
+            | Function::Expand
+            | Function::Wrapcols
+            | Function::Wraprows
+            | Function::Torow
             | Function::Unique
+            | Function::Sortby
+            | Function::Sort
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv
@@ -335,6 +341,13 @@ macro_rules! lifting_table_functions {
             | Function::Mround
             | Function::Sqrtpi
             // --- End date and time lifts, MROUND, SQRTPI (T-1785) ---
+            // --- LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
+            | Function::Log
+            | Function::Decimal
+            | Function::Base
+            | Function::Atan2
+            | Function::Arabic
+            // --- End LOG, DECIMAL, BASE, ATAN2, ARABIC (T-2159) ---
             // --- Text lifts (T-1775) ---
             | Function::Len
             | Function::Lenb
@@ -364,6 +377,9 @@ macro_rules! lifting_table_functions {
             | Function::Replace
             | Function::Replaceb
             | Function::Concatenate
+            | Function::Dollar
+            | Function::Fixed
+            | Function::Numbervalue
             // --- End text lifts (T-1775) ---
     };
 }

@@ -593,3 +593,36 @@ fn fn_pmt_when_the_power_overflows_or_underflows() {
     assert_eq!(number(7), Ok(CellValue::Number(0.0)));
     assert_eq!(model._get_text("A8"), "#NUM!");
 }
+
+/// PMT, IPMT and PPMT are the exact payment on the double arguments to Excel's 15 digits, which
+/// the double forms miss where they cancel: long terms, type 1, the first periods of PPMT and
+/// fractional periods (probes-numeric/m9-fin-pmt A86, A91, A503, A504; ironcalc-calc
+/// `FINANCIAL/IPMT_PPMT.xlsx` G17, J13; T-2130).
+#[test]
+fn pmt_ipmt_and_ppmt_are_the_exact_payment() {
+    let cells: [(&str, f64); 6] = [
+        ("=PMT(0.1,2,10000)", -5_761.904_761_904_763),
+        ("=PMT(0.1,1,10000,-500,1)", -9_545.454_545_454_548),
+        ("=IPMT(0.3,180,360,10000,0,1)", -2_307.692_307_692_307),
+        ("=PPMT(0.3,360,360,10000,-500)", -2_192.307_692_307_692_4),
+        ("=IPMT(0.1,3.9,3,8000,10,1)", -26.866_364_667_656_377),
+        ("=PPMT(0.1,3.3,30,8000)", -60.554_028_580_337_764),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cells.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cells.iter().enumerate() {
+        let Ok(CellValue::Number(actual)) = model.get_cell_value_by_index(0, row as i32 + 1, 1)
+        else {
+            panic!("{formula} is not a number");
+        };
+        // Within half a unit of Excel's 15th significant digit (decision 0083).
+        let half_unit = 0.5 * 10f64.powi(expected.abs().log10().floor() as i32 - 14);
+        assert!(
+            (actual - expected).abs() <= half_unit,
+            "{formula}: {actual} vs Excel {expected}"
+        );
+    }
+}

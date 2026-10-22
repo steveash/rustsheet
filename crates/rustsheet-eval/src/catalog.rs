@@ -33,6 +33,16 @@ pub enum OracleSupport {
     Unavailable,
 }
 
+/// The fifteen-digit parity checkpoint's view of a function (decision 0094), when the catalog
+/// says anything (absent = the 400-cell rule applies).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum V15 {
+    /// `v15: exempt`: no inputs or a small, closed set of them, so the evidence floor of Excel
+    /// cells stands in for the 400-cell rule. Needs a `v15_reason`.
+    Exempt,
+}
+
 /// One catalog entry, as far as the harness needs it.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -52,6 +62,12 @@ pub struct CatalogFunction {
     /// Set when the oracle cannot evaluate the function.
     #[serde(default)]
     pub oracle: Option<OracleSupport>,
+    /// Set when the function is exempt from the checkpoint's cell counts.
+    #[serde(default)]
+    pub v15: Option<V15>,
+    /// Why `v15` exempts it; required with `v15`.
+    #[serde(default)]
+    pub v15_reason: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -73,6 +89,9 @@ pub enum CatalogError {
     /// The view is not valid JSON of the expected shape.
     #[error("parsing the catalog view: {0} (regenerate with `cd tools && uv run rustsheet-catalog-view`)")]
     Parse(#[from] serde_json::Error),
+    /// A `v15: exempt` entry without a `v15_reason` (decision 0094 lists each exemption with it).
+    #[error("catalog entry {0} has `v15: exempt` but no `v15_reason`")]
+    ExemptWithoutReason(String),
 }
 
 /// Every catalog function by name. An empty catalog puts every function in scope.
@@ -98,9 +117,14 @@ impl Catalog {
     /// Parses the JSON view.
     ///
     /// # Errors
-    /// When `text` is not a catalog view.
+    /// When `text` is not a catalog view, or an exempt entry gives no reason.
     pub fn parse(text: &str) -> Result<Catalog, CatalogError> {
         let view: View = serde_json::from_str(text)?;
+        if let Some(f) = view.functions.iter().find(|f| {
+            f.v15.is_some() && f.v15_reason.as_deref().is_none_or(|r| r.trim().is_empty())
+        }) {
+            return Err(CatalogError::ExemptWithoutReason(f.name.clone()));
+        }
         Ok(Catalog::from_functions(view.functions))
     }
 
@@ -124,6 +148,15 @@ impl Catalog {
         self.functions
             .get(name)
             .is_none_or(|f| f.scope == Scope::In)
+    }
+
+    /// Why `name` is exempt from the fifteen-digit checkpoint's cell counts, if it is.
+    #[must_use]
+    pub fn v15_exemption(&self, name: &str) -> Option<&str> {
+        self.functions
+            .get(name)
+            .filter(|f| f.v15 == Some(V15::Exempt))
+            .and_then(|f| f.v15_reason.as_deref())
     }
 
     /// Whether `name` is an in-scope function the oracle cannot evaluate.
@@ -150,7 +183,7 @@ mod tests {
         assert!(catalog.functions().count() >= 500);
         assert!(catalog.in_scope("SUM") && !catalog.needs_other_evidence("SUM"));
         assert!(!catalog.in_scope("WEBSERVICE"));
-        assert!(catalog.needs_other_evidence("INFO"));
+        assert!(!catalog.needs_other_evidence("INFO") && !catalog.needs_other_evidence("SHEETS"));
         assert!(catalog
             .functions()
             .filter(|f| f.scope == Scope::Out)
@@ -169,5 +202,38 @@ mod tests {
         assert!(Catalog::parse(bad_scope).is_err());
         let extra = r#"{"functions": [{"name": "A", "category": "math", "milestone": "M2", "scope": "in", "x": 1}]}"#;
         assert!(Catalog::parse(extra).is_err());
+    }
+
+    #[test]
+    fn exempt_entries_need_a_reason() {
+        let entry = |reason: &str| {
+            format!(
+                r#"{{"functions": [{{"name": "PI", "category": "math", "milestone": "M5", "scope": "in", "v15": "exempt"{reason}}}]}}"#
+            )
+        };
+        assert!(matches!(
+            Catalog::parse(&entry("")),
+            Err(CatalogError::ExemptWithoutReason(name)) if name == "PI"
+        ));
+        assert!(Catalog::parse(&entry(r#", "v15_reason": " ""#)).is_err());
+        let catalog = Catalog::parse(&entry(r#", "v15_reason": "no arguments""#))
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(catalog.v15_exemption("PI"), Some("no arguments"));
+        assert_eq!(catalog.v15_exemption("SUM"), None);
+        let committed = Catalog::load(&repo_root()).unwrap_or_else(|e| panic!("{e}"));
+        for name in [
+            "PI",
+            "TRUE",
+            "FALSE",
+            "NA",
+            "INFO",
+            "NOW",
+            "TODAY",
+            "RAND",
+            "RANDBETWEEN",
+            "RANDARRAY",
+        ] {
+            assert!(committed.v15_exemption(name).is_some(), "{name}");
+        }
     }
 }

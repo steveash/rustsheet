@@ -248,7 +248,8 @@ impl Model {
                 RefArg::Ranges(ranges) => resolved.push(SubtotalArg::Areas(ranges)),
                 RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 RefArg::Value(CalcResult::Array(rows)) => return Err(not_a_reference_array(rows)),
-                // Per element in Excel (SPEC-0014 rule 6, T-2064); the value view until then.
+                // Reached only through TAKE or DROP of one: per-element calls ask for the grid where
+                // `may_hand_on_grid` says one can come (SPEC-0014 rule 6); here, its value view.
                 RefArg::Grid(grid) => return Err(grid.to_values()),
                 RefArg::Value(_) => {
                     return Err(CalcResult::new_error(
@@ -550,6 +551,11 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
+        // No numbers at all is 0, as PRODUCT gives, not the empty product 1
+        // (docs/excel-semantics/numbers.md "SUBTOTAL 6 over no numbers is 0").
+        if values.is_empty() {
+            return CalcResult::Number(0.0);
+        }
         let mut result = 1.0;
         for value in values {
             result *= value;

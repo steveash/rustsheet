@@ -2,6 +2,7 @@
 //! (`First:Last!A1`, docs/excel-semantics/references.md "3-D sheet-range references").
 
 use crate::expressions::parser::{Node, Parser};
+use crate::functions::Function;
 
 /// The two ends of a 3-D reference prefix (`First:Last!`), as written and as sheet indices.
 pub(super) struct SheetSpan {
@@ -65,5 +66,26 @@ impl Parser {
             }
         }
         None
+    }
+}
+
+/// Whether `node` is a written multi-sheet 3-D span (`Sheet1:Sheet2!A1`, a one-cell one included).
+pub(crate) fn is_multi_sheet_span(node: &Node) -> bool {
+    matches!(
+        node.ungrouped(),
+        Node::SheetSpanKind { first_index, last_index, .. } if first_index != last_index
+    )
+}
+
+/// Whether `node` is a multi-sheet 3-D span, possibly as a branch of IF (which hands its branch on
+/// as a reference). Recursion is bounded by the parser's depth cap.
+pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
+    let node = node.ungrouped();
+    match node {
+        Node::FunctionKind {
+            kind: Function::If,
+            args,
+        } => args.iter().skip(1).any(is_span_or_if_of_span),
+        _ => is_multi_sheet_span(node),
     }
 }
