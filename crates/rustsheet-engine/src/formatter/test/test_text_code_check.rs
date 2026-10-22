@@ -65,3 +65,22 @@ fn currency_text_prints_as_it_is() {
     assert_eq!(number(1.5, "0.0 [$USD-409]").0, "1.5 USD");
     assert!(number(1.5, "0.0 [$USD").1);
 }
+
+// Values from probes/text-format-digits-date-token (T-2377): a bare digit beside a date or time
+// token rejects the whole code, an unused section included; AM/PM alone and quoted digits do not.
+#[test]
+fn a_bare_digit_beside_a_date_token_rejects_the_code() {
+    for code in ["42abc", "4b", "b4", "4 d", "4:mm", "[h]4", "4g", "0;4b"] {
+        assert!(number(3.14159, code).1, "{code} on 3.14159");
+        assert!(rejects_text("x", code), "{code} on \"x\"");
+    }
+    for (code, text) in [
+        ("4am/pm", "4AM"),
+        ("\\4b", "443"),
+        ("\"4\"b", "443"),
+        ("4;b", "4"),
+        ("4a", "4a"),
+    ] {
+        assert_eq!(number(3.14159, code), (text.to_string(), false), "{code}");
+    }
+}
