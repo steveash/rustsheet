@@ -3,7 +3,7 @@ id: T-2035
 title: "HYPGEOM.DIST, WEIBULL.DIST and PHI: domain edges and boolean arguments as Excel (T-1048, T-1049 sweeps)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
