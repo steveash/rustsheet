@@ -27,46 +27,25 @@ const TWO_DATA_THEN_2: ArgKinds =
 const ONE_THEN_TWO_DATA: ArgKinds =
     ArgKinds::fixed(3, &[Lift, WholeByCaller, WholeByCaller], Constant);
 /// `FORECAST.ETS(target_date, values, timeline, [seasonality], [data_completion], [aggregation])`:
-/// the target date lifts, the rest is read by the function (T-2028).
+/// the target date and the scalar settings lift, the series and timeline are read by the function
+/// (T-2028); a setting is not read by the placeholder kernel.
 const ETS_TARGET: ArgKinds = ArgKinds::fixed(
     3,
-    &[
-        Lift,
-        WholeByCaller,
-        WholeByCaller,
-        WholeByCaller,
-        WholeByCaller,
-        WholeByCaller,
-    ],
+    &[Lift, WholeByCaller, WholeByCaller, Lift, Lift, Lift],
     Constant,
 );
 /// `FORECAST.ETS.CONFINT(target_date, values, timeline, [confidence_level], [seasonality],
 /// [data_completion], [aggregation])`.
 const ETS_CONFINT_TARGET: ArgKinds = ArgKinds::fixed(
     3,
-    &[
-        Lift,
-        WholeByCaller,
-        WholeByCaller,
-        WholeByCaller,
-        WholeByCaller,
-        WholeByCaller,
-        WholeByCaller,
-    ],
+    &[Lift, WholeByCaller, WholeByCaller, Lift, Lift, Lift, Lift],
     Constant,
 );
 /// `FORECAST.ETS.STAT(values, timeline, statistic_type, [seasonality], [data_completion],
 /// [aggregation])`: the statistic type lifts.
 const ETS_STAT_TYPE: ArgKinds = ArgKinds::fixed(
     3,
-    &[
-        WholeByCaller,
-        WholeByCaller,
-        Lift,
-        WholeByCaller,
-        WholeByCaller,
-        WholeByCaller,
-    ],
+    &[WholeByCaller, WholeByCaller, Lift, Lift, Lift, Lift],
     Constant,
 );
 /// A lifted argument, a reference read by its function, then an optional lifted argument:
