@@ -379,4 +379,12 @@ fn holidays_blank_cell_and_number_text_cell_for_all_four_functions() {
             "{call} text"
         );
     }
+    model._set("B2", "'abc");
+    model._set("D5", "=NETWORKDAYS(44927,44936,B2)");
+    model.evaluate();
+    assert_eq!(
+        model._get_text("D5"),
+        "#VALUE!",
+        "non-number text stays #VALUE!"
+    );
 }
