@@ -88,7 +88,6 @@ C	calipers/pv_goldens/pv23_063/golden.xlsx	0
 C	calipers/pv_goldens/pv23_064/golden.xlsx	75
 C	calipers/pv_goldens/pv23_065/golden.xlsx	75
 C	calipers/pv_goldens/pv23_066/golden.xlsx	1836
-C	calipers/pv_goldens/pv26_001/golden.xlsx	134039
 C	calipers/pv_goldens/pv26_003/golden.xlsx	37225
 C	calipers/pv_goldens/pv26_004/golden.xlsx	1123
 C	calipers/pv_goldens/pv26_005/golden.xlsx	117
@@ -107,7 +106,6 @@ C	calipers/pv_goldens/pv26_017/golden.xlsx	32080
 C	calipers/pv_goldens/pv26_018/golden.xlsx	61232
 C	calipers/pv_goldens/pv26_019/golden.xlsx	1573
 C	calipers/pv_goldens/pv26_020/golden.xlsx	1324
-C	calipers/pv_goldens/pv26_2_001/golden.xlsx	0
 C	calipers/pv_goldens/pv26_2_003/golden.xlsx	37225
 C	calipers/pv_goldens/pv26_2_004/golden.xlsx	1123
 C	calipers/pv_goldens/pv26_2_005/golden.xlsx	117
@@ -4021,7 +4019,6 @@ F	calipers/pv_goldens/pv23_064/golden.xlsx	Valuation & Returns!N35
 F	calipers/pv_goldens/pv23_064/golden.xlsx	Valuation & Returns!P9
 F	calipers/pv_goldens/pv23_065/golden.xlsx	Valuation & Returns!N35
 F	calipers/pv_goldens/pv23_065/golden.xlsx	Valuation & Returns!P9
-F	calipers/pv_goldens/pv26_001/golden.xlsx	Ticker0001_Validation_Sheet!A2
 F	calipers/pv_goldens/pv26_003/golden.xlsx	Model!A829
 F	calipers/pv_goldens/pv26_003/golden.xlsx	Model!A830
 F	calipers/pv_goldens/pv26_003/golden.xlsx	Model!A831
@@ -5070,7 +5067,6 @@ F	calipers/pv_goldens/pv26_020/golden.xlsx	Summary!O23
 F	calipers/pv_goldens/pv26_020/golden.xlsx	Summary!O24
 F	calipers/pv_goldens/pv26_020/golden.xlsx	Summary!O25
 F	calipers/pv_goldens/pv26_020/golden.xlsx	Summary!O26
-F	calipers/pv_goldens/pv26_2_001/golden.xlsx	!Timeout
 F	calipers/pv_goldens/pv26_2_003/golden.xlsx	Model!A829
 F	calipers/pv_goldens/pv26_2_003/golden.xlsx	Model!A830
 F	calipers/pv_goldens/pv26_2_003/golden.xlsx	Model!A831
@@ -6239,7 +6235,6 @@ F	calipers/roundtrip/formulas_dynamic_arrays/golden.xlsx	Sheet1!F287
 F	calipers/roundtrip/formulas_dynamic_arrays/golden.xlsx	Sheet1!F290
 F	calipers/roundtrip/formulas_dynamic_arrays/golden.xlsx	Sheet1!F291
 F	calipers/roundtrip/formulas_dynamic_arrays/golden.xlsx	Sheet1!F292
-F	calipers/roundtrip/formulas_dynamic_arrays/golden.xlsx	Sheet1!F293
 F	calipers/roundtrip/formulas_dynamic_arrays/golden.xlsx	Sheet1!F298
 F	calipers/roundtrip/formulas_dynamic_arrays/golden.xlsx	Sheet1!F299
 F	calipers/roundtrip/formulas_dynamic_arrays/golden.xlsx	Sheet1!F300

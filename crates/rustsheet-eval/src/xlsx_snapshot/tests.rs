@@ -143,6 +143,38 @@ fn parses_values_formulas_shared_and_arrays() {
 }
 
 #[test]
+fn empty_formulas_inside_a_volatile_spill_are_array_members() {
+    // Excel saves the members of a spilled RANDARRAY as `<f ca="1"/>` with a value
+    // (calipers roundtrip/formulas_dynamic_arrays F261:F265).
+    let xml = r#"<worksheet><sheetData>
+<row r="1"><c r="A1" cm="1"><f t="array" ref="A1:A3" ca="1">_xlfn.RANDARRAY(3)</f><v>0.5</v></c></row>
+<row r="2"><c r="A2"><f ca="1"/><v>0.25</v></c></row>
+<row r="3"><c r="A3"><f ca="1"/><v>0.75</v></c></row>
+<row r="4"><c r="A4"><f ca="1">RAND()</f><v>0.1</v></c></row>
+</sheetData></worksheet>"#;
+    let cells = parse_sheet(xml, "s.xml", &[], &[]).unwrap_or_default();
+    let kind = |s: &str| {
+        Addr::parse(s)
+            .and_then(|a| cells.get(&a))
+            .and_then(|c| c.formula_kind.clone())
+    };
+    for member in ["A2", "A3"] {
+        assert_eq!(
+            kind(member),
+            Some(FormulaKind::ArrayMember {
+                anchor: "A1".into()
+            }),
+            "{member}"
+        );
+    }
+    assert_eq!(
+        kind("A4"),
+        Some(FormulaKind::Normal),
+        "outside the array range"
+    );
+}
+
+#[test]
 fn rich_value_errors_replace_the_cached_value_error() {
     let sheet = r#"<worksheet><sheetData><row r="1"><c r="A1" t="e" vm="1"><f>1</f><v>#VALUE!</v></c><c r="B1" t="e" vm="2"><f>1</f><v>#VALUE!</v></c><c r="C1" t="e"><f>1</f><v>#VALUE!</v></c></row></sheetData></worksheet>"#;
     // errorType 13 = #CALC!, 8 = #SPILL! (ERROR.TYPE.xlsx)

@@ -179,6 +179,21 @@ Status: VERIFIED (Excel-authored files)
 Implemented in: crates/rustsheet-xlsx/src/export/worksheets.rs (`plain_formula`, T-1552).
 Tasks: T-1552
 
+## Members of a volatile spill are stored as empty `<f ca="1"/>`
+Rule: desktop Excel saves each spilled member of a volatile dynamic array, apart from the anchor, as an
+empty formula element with the calculate-always flag and its value:
+`<c r="F261" cm="1"><f t="array" aca="1" ref="F261:F265" ca="1">_xlfn.RANDARRAY(5)</f><v>0.57…</v></c>`
+then `<c r="F262"><f ca="1"/><v>0.61…</v></c>` through F265. Members of a non-volatile spill are plain
+values with no `<f>`. An empty `<f ca="1"/>` inside an array's `ref` is therefore a spill member, not a
+formula of its own.
+Evidence: calipers roundtrip/formulas_dynamic_arrays/golden.xlsx (desktop Excel, Calipers 9e47ea4f):
+the RANDARRAY spills at F261, F267, F269, F273 and F279 (T-0446).
+Ours: the import loads the members as the anchor's spill. The eval snapshot reader marks them array
+members, and the harness skips them as volatile, as it does the anchor (T-0446).
+Status: VERIFIED (Excel-authored files)
+Implemented in: crates/rustsheet-eval/src/xlsx_snapshot.rs (`parse_sheet`), crates/rustsheet-eval/src/volatile.rs (`scorable_cells`).
+Tasks: T-0446
+
 ## LAMBDA optional parameters are stored `_xlop.`
 Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of
 it as `_xlpm.y` like any other parameter: `=LAMBDA(x,[y],ISOMITTED(y))(1)` is saved as
