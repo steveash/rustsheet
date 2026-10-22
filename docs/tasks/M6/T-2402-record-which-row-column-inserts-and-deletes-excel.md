@@ -21,7 +21,8 @@ part of a pivot; no oracle evidence backs it, nor the drop. The formula oracle c
 workbook range `insert` and `delete` actions (`shift: Down/Up/Right/Left` on an `entireRow`/`entireColumn` range) on a workbook
 holding a pivot can, as can a recorded desktop observation (decision 0039: desktop-only evidence never blocks a task).
 Cases: insert rows above, at the first row, inside and just below a pivot; delete rows wholly above, its first row, an inner
-row, its last row, every row of it, and a block straddling its first row; the same for columns.
+row, its last row, every row of it, and a block straddling its first row; the same for columns. With a report filter (page field) above the body, also an insert
+between the filter area and the body (the engine only checks `<location>`; page-field pivots are `#REF!` today).
 
 ## Acceptance criteria
 - [ ] web.md "Pivot tables and structural edits" lists each case above with Excel's outcome and its evidence (Graph run or desktop observation, dated).

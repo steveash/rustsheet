@@ -15,7 +15,7 @@ A row or column move (`move_rows_action`, `move_columns_action`) on a sheet hold
 
 ## Context
 T-2086 made inserts and deletes move pivots (`Model::displace_pivots`, crates/rustsheet-engine/src/pivot.rs) but left moves
-calling `Model::drop_pivots_on`, a gap recorded in docs/excel-semantics/web.md "GETPIVOTDATA against a pivot table". The move
+calling `Model::drop_pivots_on`, a gap recorded in docs/excel-semantics/web.md "Pivot tables and structural edits". The move
 actions in actions.rs already have the interval arithmetic merged cells use (`interval_survives_move`,
 `displace_interval_for_move`): reuse them for the pivot's rows (or columns); a move that would split a pivot is refused, as
 a move that splits a merged cell is (SPEC-0015; T-2402 records which edits Excel refuses).
