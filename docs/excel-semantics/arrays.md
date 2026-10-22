@@ -485,7 +485,12 @@ top-left of its call.
   `UNIQUE(D1:D3,{FALSE;FALSE})` "x", "x"; `UNIQUE(D1:D3,FALSE,{TRUE;TRUE})` "y", "y".
 - TOCOL's scan_by_column (`TOCOL(A1:B3,0,{FALSE;TRUE})`: element 2 is 1, ROWS 1) and the other M7 lifts do not show it.
 Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 30, 35-37; excel-graph, 2026-10-21, T-1960).
-Ours: lifted SORTBY is `#N/IMPL!` (T-1839); UNIQUE's later elements are each call's top-left (T-2300).
+UNVERIFIED for SORTBY (taken from UNIQUE's rule, unprobed; T-2349):
+- a leading invalid entry (`{2;1}`): ours `#VALUE!`, then the next element's top-left;
+- a mixed `{1;-1;2}`: ours 1, empty, `#VALUE!`, with the error per slot;
+- an error array: ours one scalar error;
+- an error by_array: ours the error in every element.
+Ours: implemented. The driver option `CallResult::ArrayFirst` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
 Status: VERIFIED (web)
 Tasks: T-2300 (UNIQUE), T-1839 (SORTBY)
 
@@ -1278,10 +1283,19 @@ is 1, 1, 2, ... (COUNT skips the error accumulator; 90de8755a2e565e6 A1223); `SC
 The initial value and the elements also look like references when they come from cells: `REDUCE(Data!A12,Data!C11,PRODUCT)` with
 both cells TRUE is 0 (PRODUCT skips booleans in references; 18b80d3fd292d63a A467), `REDUCE(Data!C7,Data!E12,COUNT)` with C7 the text
 "1" and E12 -2.5 is 1 (2c5ea078f25443a2 A1767), and `SCAN(Data!A5,Data!A7:C11,PRODUCT)` with A5 "ü" starts at 2.5 (18b80d3fd292d63a
-A285). Which of the two (initial value, elements) is a reference is UNVERIFIED (these cells have one-cell arrays).
+A285). Both are references:
+- A285 and A1767 need a reference initial value: a text value would make PRODUCT `#VALUE!` and COUNT 2.
+- A467 needs a reference element too. PRODUCT of a reference TRUE and a value TRUE would be 1.
+- Elements from a range, a one-cell range included, were already references (T-1442).
+- Unprobed initial values:
+  - a function result such as `IF(TRUE,A1)`;
+  - an INDEX or XLOOKUP that picks a cell (ours: a reference, as `eval_ref_or_index` gives it);
+  - a union or a 3-D span (ours: read as values, as before);
+  - ISREF of the accumulator (ours: TRUE for a cell).
 Evidence: gen-m7 cases above (excel-graph, 2026-10-21, T-2225).
-Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the LAMBDA and SCAN keeps an error step in its slot; they pass values, not references (T-2307).
-Status: VERIFIED (excel-graph) for the error rule; the reference rule UNVERIFIED in its split.
+Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the LAMBDA and SCAN keeps an error step in its slot.
+Since T-2307, `lambda_initial_value` keeps a reference initial_value a reference, as `eval_ref_or_index` binds a LAMBDA argument.
+Status: VERIFIED (excel-graph).
 Tasks: T-2306, T-2307
 
 ## MAKEARRAY rows and columns must be whole numbers

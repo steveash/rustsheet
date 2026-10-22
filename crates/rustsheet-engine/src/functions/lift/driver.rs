@@ -167,6 +167,9 @@ pub(crate) struct LiftOptions {
     pub(crate) work: KernelWork,
     /// What one unlifted call returns: an `Array` entry's element is its call's top-left value.
     pub(crate) result: CallResult,
+    /// Whether a [`CallResult::ArrayFirst`] entry's emptied elements are `#VALUE!` instead: a
+    /// SORTBY call with a second `by_array`, `sort_order` pair (`lift_call_with` sets it).
+    pub(crate) later_error: bool,
 }
 
 impl LiftOptions {
@@ -176,6 +179,7 @@ impl LiftOptions {
             reuse: Reuse::Never,
             work: kinds.work,
             result: kinds.result,
+            later_error: false,
         }
     }
 
@@ -184,6 +188,7 @@ impl LiftOptions {
         reuse: Reuse::EqualRuns,
         work: KernelWork::Constant,
         result: CallResult::Value,
+        later_error: false,
     };
 
     /// The *IF(S) functions, whose kernel only reads the criteria and the ranges resolved before
@@ -192,6 +197,7 @@ impl LiftOptions {
         reuse: Reuse::AnyEqual,
         work: KernelWork::Constant,
         result: CallResult::Value,
+        later_error: false,
     };
 
     /// Every element runs, and the caller's [`LiftCost`] already counts its work: the lifted
@@ -200,6 +206,7 @@ impl LiftOptions {
         reuse: Reuse::Never,
         work: KernelWork::Constant,
         result: CallResult::Value,
+        later_error: false,
     };
 }
 
@@ -228,10 +235,12 @@ impl Run<'_> {
         let node = element_node(value, self.options, self.visits, self.cell)?;
         Ok(match &mut self.later {
             Later::EmptyAfterFirst { placed } if !matches!(node, ArrayNode::Error(_)) => {
-                if std::mem::replace(placed, true) {
-                    ArrayNode::Empty
-                } else {
+                if !std::mem::replace(placed, true) {
                     node
+                } else if self.options.later_error {
+                    ArrayNode::Error(Error::VALUE)
+                } else {
+                    ArrayNode::Empty
                 }
             }
             _ => node,
