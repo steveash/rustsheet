@@ -156,6 +156,10 @@ pub(crate) enum Reuse {
     AnyEqual,
 }
 
+/// The check of [`Model::lift_call_error_first`]: the error a scalar first argument makes the
+/// whole call, `None` when the call goes on.
+pub(crate) type FirstError<'a> = dyn FnMut(&CalcResult) -> Option<CalcResult> + 'a;
+
 /// How [`Model::lift_values`] runs the elements.
 pub(crate) struct LiftOptions {
     /// Which elements reuse an earlier result. `ArrayNode`'s equality treats 0 and -0 as equal,

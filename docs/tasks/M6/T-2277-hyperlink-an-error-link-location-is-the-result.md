@@ -3,7 +3,7 @@ id: T-2277
 title: "HYPERLINK: an error link_location is the result, whatever friendly_name is (no spill)"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -41,3 +41,6 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 4 in eval/baselin
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`fn_hyperlink` now goes through `lift_call_error_first`: an error link_location is the whole result over a scalar, array or range friendly_name (3 of the 4 cells: gen-m6/44194b2fefa30de2 A169, c6621490a4d67f4e B214, d0c30225243fde60 A377). The fourth, 0bcac2d96e96b3df A17, was not an error location: the TEXTJOIN text is 328 characters and Excel's HYPERLINK gives `#VALUE!` for a link_location past 255 characters (new probe probes/t2277-hyperlink-location-length, excel-graph); implemented too and recorded in lookup.md. Unit tests in test_fn_hyperlink.rs.
