@@ -122,6 +122,77 @@ fn catastrophic_patterns_stop() {
     }
 }
 
+#[test]
+fn dollar_before_a_final_line_feed_on_a_text_with_another() {
+    // `$` and `\Z` match before a final \n on every text (probes/regex-ascii-classes A34; PCRE2):
+    // a text with another \n runs on the memoized mode (T-2355).
+    assert_eq!(
+        value(r#"=REGEXTEST("b"&CHAR(10)&"a"&CHAR(10),"a$")"#),
+        "TRUE"
+    );
+    assert_eq!(
+        value(r#"=REGEXTEST("b"&CHAR(10)&"a"&CHAR(10),"a\Z")"#),
+        "TRUE"
+    );
+    assert_eq!(
+        value(r#"=REGEXTEST("a"&CHAR(10)&"b"&CHAR(10),"a$")"#),
+        "FALSE"
+    );
+    assert_eq!(
+        value(r#"=REGEXTEST("b"&CHAR(10)&"a"&CHAR(10),"a\z")"#),
+        "FALSE"
+    );
+    assert_eq!(
+        value(r#"=REGEXEXTRACT("x y"&CHAR(10)&"ab cd"&CHAR(10),"(\w+)$",2)"#),
+        "cd"
+    );
+    assert_eq!(
+        value(r#"=REGEXREPLACE("a"&CHAR(10)&"a"&CHAR(10),"a$","x")"#),
+        "a\nx\n"
+    );
+}
+
+/// The memoized mode visits each state once, so a pattern that is catastrophic for a plain
+/// backtracker runs in time linear in the text, across the searches of an iteration too (marks
+/// after a match's end are kept). Measured in a release build: under 10 ms each.
+#[test]
+fn memoized_mode_is_linear() {
+    let bound = if cfg!(debug_assertions) { 60 } else { 1 };
+    let text = r#""a"&CHAR(10)&REPT("a",32764)&CHAR(10)"#;
+    for (formula, expected) in [
+        (format!(r#"=REGEXTEST({text},"(a|a)*b$")"#), "FALSE"),
+        (format!(r#"=REGEXTEST({text},"^(a|a)*a$")"#), "FALSE"),
+        (format!(r#"=REGEXTEST({text},"(a|a)*a$")"#), "TRUE"),
+        (
+            format!(r#"=LEN(REGEXREPLACE({text},"(a|a)*b$|a","-"))"#),
+            "32767",
+        ),
+        (
+            format!(r#"=LEN(REGEXREPLACE({text},"(?:a|a)*b$|a",""))"#),
+            "2",
+        ),
+    ] {
+        let start = std::time::Instant::now();
+        assert_eq!(value(&formula), expected, "{formula}");
+        assert!(start.elapsed().as_secs() < bound, "{formula}");
+    }
+}
+
+/// The memoized mode's visited set is held with the call's other heap: past 64 MiB the call is
+/// `#ERROR!` (DEVIATION, text.md "Lifted TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* calls are
+/// capped"), where PCRE2 answers FALSE.
+#[test]
+fn the_visited_set_is_held_memory() {
+    assert_eq!(
+        value(r#"=REGEXTEST("a"&CHAR(10)&REPT("a",32765),"(?:b[a-z]{20000}|a)*b$")"#),
+        "#ERROR!"
+    );
+    assert_eq!(
+        value(r#"=REGEXTEST("a"&CHAR(10)&REPT("a",3000),"(?:b[a-z]{20000}|a)*b$")"#),
+        "FALSE"
+    );
+}
+
 /// Repeats of a body that compiles to nothing still count against the compile limit (security
 /// review of T-1900): each nesting multiplies the copies, which once cost nothing.
 #[test]

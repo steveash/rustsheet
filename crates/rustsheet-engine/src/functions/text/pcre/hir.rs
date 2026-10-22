@@ -9,19 +9,21 @@ use super::{
     parse::Invalid,
 };
 
-/// How `$` and `\Z` translate: at the end, or also before a final `\n`.
+/// Which texts a pattern is compiled for, as `$` and `\Z` (at the end or before a final `\n`)
+/// read on them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::functions::text) enum FinalLf {
-    /// `Look::End`: exact on a text with no `\n`, and today's gap on one holding a `\n` before
-    /// its last character (the backtracker's memoized mode closes it, T-2355).
-    End,
-    /// `Look::EndLF`: exact on a text whose only `\n` is its last character.
+    /// Texts whose only `\n`, if any, is the last character: `$` is `Look::EndLF` (the end, or
+    /// before a `\n`), exact there.
     EndLf,
+    /// Texts with a `\n` before the last character, where no `Look` is exact: a regular pattern
+    /// with `$` or `\Z` runs on the backtracker's memoized mode (T-2355).
+    InnerLf,
 }
 
-/// `ast` as a `Hir`; `Invalid` for a construct only the backtracker runs. The recursion is
-/// bounded by the parser's nest limit.
-pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
+/// `ast` as a `Hir`, `$` and `\Z` read for [`FinalLf::EndLf`] texts; `Invalid` for a construct
+/// only the backtracker runs. The recursion is bounded by the parser's nest limit.
+pub(super) fn to_hir(ast: &Ast) -> Result<Hir, Invalid> {
     Ok(match ast {
         Ast::Empty => Hir::empty(),
         Ast::Literal { c, fold } => {
@@ -42,10 +44,7 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
             Anchor::StartLine => Look::StartLF,
             Anchor::EndLine => Look::EndLF,
             Anchor::End => Look::End,
-            Anchor::EndOrFinalLf => match final_lf {
-                FinalLf::End => Look::End,
-                FinalLf::EndLf => Look::EndLF,
-            },
+            Anchor::EndOrFinalLf => Look::EndLF,
             Anchor::WordBoundary => Look::WordUnicode,
             Anchor::NotWordBoundary => Look::WordUnicodeNegate,
             Anchor::SearchStart => return Err(Invalid),
@@ -53,16 +52,16 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
         Ast::Capture { index, name, ast } => Hir::capture(Capture {
             index: *index,
             name: name.clone(),
-            sub: Box::new(to_hir(ast, final_lf)?),
+            sub: Box::new(to_hir(ast)?),
         }),
         Ast::Concat(asts) => Hir::concat(
             asts.iter()
-                .map(|ast| to_hir(ast, final_lf))
+                .map(|ast| to_hir(ast))
                 .collect::<Result<_, _>>()?,
         ),
         Ast::Alternation(asts) => Hir::alternation(
             asts.iter()
-                .map(|ast| to_hir(ast, final_lf))
+                .map(|ast| to_hir(ast))
                 .collect::<Result<_, _>>()?,
         ),
         Ast::Repeat {
@@ -80,7 +79,7 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
                 min: *min,
                 max: *max,
                 greedy,
-                sub: Box::new(to_hir(ast, final_lf)?),
+                sub: Box::new(to_hir(ast)?),
             })
         }
         Ast::Backref { .. }

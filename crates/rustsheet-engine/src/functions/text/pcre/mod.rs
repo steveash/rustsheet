@@ -1,8 +1,9 @@
 //! The PCRE2 dialect of the REGEX* functions (SPEC-0013): one parser for every pattern, regular
 //! patterns translated to a `Hir` for the automata of `regex_engine`, the others (backreferences,
 //! atomic and possessive groups, `\G`, `\R`, `\X`) compiled to a [`Program`] for the
-//! backtracker ([`Backtracker`], T-1900, T-2287). Lookaround, conditionals and `\K` parse and
-//! are `#VALUE!` until T-2354.
+//! backtracker ([`Backtracker`], T-1900, T-2287). A regular pattern with `$` or `\Z` over a
+//! text the automata cannot read it on runs on the backtracker's memoized mode (T-2355).
+//! Lookaround, conditionals and `\K` parse and are `#VALUE!` until T-2354.
 
 mod ast;
 mod backtrack;
@@ -38,8 +39,12 @@ pub(super) enum Form {
     Backtrack(Backtrack),
 }
 
-/// A parsed pattern only the backtracker runs.
-pub(super) struct Backtrack(ast::Ast);
+/// A parsed pattern for the backtracker: one only it runs, or a regular one for its memoized
+/// mode.
+pub(super) struct Backtrack {
+    ast: ast::Ast,
+    memoized: bool,
+}
 
 /// Why [`Backtrack::compile`] failed.
 pub(super) enum ProgramFailure {
@@ -52,17 +57,22 @@ pub(super) enum ProgramFailure {
 impl Backtrack {
     /// The program, within `size_limit` bytes.
     pub(super) fn compile(&self, size_limit: usize) -> Result<Program, ProgramFailure> {
-        program::compile(&self.0, size_limit).map_err(|error| match error {
+        let compiled = if self.memoized {
+            program::compile_memoized(&self.ast, size_limit)
+        } else {
+            program::compile(&self.ast, size_limit)
+        };
+        compiled.map_err(|error| match error {
             program::CompileError::TooBig => ProgramFailure::TooBig,
             program::CompileError::Unsupported => ProgramFailure::Unsupported,
         })
     }
 }
 
-/// `pattern` for its engine, ignoring case when `caseless` (`(?i)` and `(?-i)` override it), with
-/// `$` and `\Z` translated for the automata per `final_lf` (the backtracker reads them exactly on
-/// every text). Its case folding stops past `fold_budget` code points, with a `fold_cost` of
-/// `usize::MAX`.
+/// `pattern` for its engine, ignoring case when `caseless` (`(?i)` and `(?-i)` override it), for
+/// texts of kind `final_lf`: a regular pattern with `$` or `\Z` goes to the memoized mode on a
+/// [`FinalLf::InnerLf`] text (the backtracker reads them exactly on every text). Its case folding
+/// stops past `fold_budget` code points, with a `fold_cost` of `usize::MAX`.
 pub(super) fn translate(
     pattern: &str,
     caseless: bool,
@@ -70,10 +80,18 @@ pub(super) fn translate(
     fold_budget: usize,
 ) -> Result<Translated, Unsupported> {
     let parsed = parse::parse(pattern, caseless, fold_budget).map_err(|_| Unsupported)?;
-    let form = if parsed.ast.is_regular() {
-        Form::Automata(hir::to_hir(&parsed.ast, final_lf).map_err(|_| Unsupported)?)
+    let form = if !parsed.ast.is_regular() {
+        Form::Backtrack(Backtrack {
+            ast: parsed.ast,
+            memoized: false,
+        })
+    } else if final_lf == FinalLf::InnerLf && parsed.ast.has_final_lf_anchor() {
+        Form::Backtrack(Backtrack {
+            ast: parsed.ast,
+            memoized: true,
+        })
     } else {
-        Form::Backtrack(Backtrack(parsed.ast))
+        Form::Automata(hir::to_hir(&parsed.ast).map_err(|_| Unsupported)?)
     };
     Ok(Translated {
         form,
@@ -81,13 +99,12 @@ pub(super) fn translate(
     })
 }
 
-/// Which translation of `$` searching `text` needs (SPEC-0013 section 2): `EndLf` unless `text`
-/// holds a `\n` before its last character, where neither is exact and `End` keeps today's
-/// meaning until T-2355's memoized mode.
+/// Which kind of text `text` is for `$` (SPEC-0013 section 2): `InnerLf` when it holds a `\n`
+/// before its last character, where no automata translation of `$` is exact.
 pub(super) fn final_lf_for(text: &str) -> FinalLf {
     let body = text.strip_suffix('\n').unwrap_or(text);
     if body.contains('\n') {
-        FinalLf::End
+        FinalLf::InnerLf
     } else {
         FinalLf::EndLf
     }
