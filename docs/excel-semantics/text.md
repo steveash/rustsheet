@@ -602,12 +602,16 @@ against gen-m5/49bfbf67a1409563 A217, 901e91c09b347914 A13; Microsoft's NUMBERVA
 middle"; that "12:30PM" is the reason, not a refusal of AM/PM, is the simplest reading and unprobed).
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
-Observation (T-2379): `NUMBERVALUE(0.2,PROPER(REPT("ab",300)),"a*2")` is `#VALUE!` (ours 0.2): the decimal separator is the
-600-character text "Abab...ab" and the group separator "a*2" (gen-m5/9a7a94353845ea12 Calc!A162, excel-graph, 2026-10-22). Three
-readings fit, none probed: a separator over 255 characters is `#VALUE!` (as REPT's, CODE's and UNICODE's text, "REPT, CODE, UNICODE and
-T refuse a text argument over 255 UTF-16 units" below); the first characters "A" and "a" clash case-insensitively; or "0.2"
-with "A" as the decimal separator no longer reads its "." as a decimal point (ours reads `NUMBERVALUE("0.2","A","b")` as 0.2).
-Status of this observation: OBSERVED (one excel-graph cell; T-2379 probes it).
+A separator over 255 characters is `#VALUE!`, though only its first character counts: `NUMBERVALUE(0.2,REPT("A",255),"b")` is 0.2
+and `NUMBERVALUE(0.2,REPT("A",256),"b")`, `NUMBERVALUE("2",REPT("A",256),"b")` and `NUMBERVALUE(0.2,"b",REPT("a",256))` are
+`#VALUE!` (and `NUMBERVALUE(0.2,PROPER(REPT("ab",300)),"a*2")`, gen-m5/9a7a94353845ea12 Calc!A162, while 200 characters give
+0.2). Separators differing only in case do not clash: `NUMBERVALUE(0.2,"A","a")` is 0.2, `NUMBERVALUE("1A5","A","a")` and
+`NUMBERVALUE("1x5","x","X")` are 1.5, but `NUMBERVALUE("1,5","A","a")` is `#VALUE!` (the "," is no separator) and the decimal
+separator matches case (`NUMBERVALUE("1a5","A","b")` is `#VALUE!`). A letter decimal separator leaves "0.2" readable
+(`NUMBERVALUE("0.2","A","b")` and `NUMBERVALUE("0.2","A")` are 0.2). With a "," decimal separator and no group separator,
+`NUMBERVALUE("1.5",",")` is 15: the default group separator is then not "," (ours `#VALUE!`, T-2406).
+Evidence: probes/numbervalue-separator-edges A1:A20 (excel-graph, 2026-10-22, T-2379). Whether the 255 counts characters or
+UTF-16 units is unprobed (the engine counts as for the text, `number_text_too_long`).
 Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
 when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
 Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing
