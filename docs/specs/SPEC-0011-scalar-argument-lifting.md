@@ -956,7 +956,7 @@ it; an answer that differs changes the entry in T-1960's PR.
 | TAKE, DROP | columns | `Lift` | probe m7-lift-take-drop-sortby rows 27, 28 (reference elements; `DROP(A1:B3,1,{1;2})` element 2 `#CALC!`) |
 
 TOROW, CHOOSECOLS and CHOOSEROWS are not in this list: TOROW is unprobed (T-1836 leaves it), and
-CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). SORT is not lifted (T-1837).
+CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). SORT lifts only its by_col (T-2319; T-1837 made its sort_index and sort_order lists).
 
 A 1x1 array in a lifted parameter (`SEQUENCE({3})`) is a grid for the driver
 (`LiftedArg::is_grid`), so it gives one element (1), not the 3x1 of `SEQUENCE(3)`: Excel agrees
@@ -1118,7 +1118,7 @@ Each step is one PR of size S/M. The old paths stay until their step.
    - **T-1834** (functions-math, opus, M): `CallResult`, `element_value`, `KernelWork::Output`,
      with SEQUENCE and MAKEARRAY.
    - Then, in parallel: **T-1835** (EXPAND, WRAPROWS, WRAPCOLS), **T-1836** (TOCOL, UNIQUE),
-     **T-1839** (SORTBY; the `repeat` cycle). **T-1837** (SORT, nothing lifted) is independent.
+     **T-1839** (SORTBY; the `repeat` cycle). **T-1837** (SORT's lists) is independent; **T-2319** lifts SORT's by_col.
    - **T-1838** (TAKE, DROP) after T-1955 and T-1956 (the reference carrier).
    - **T-1960** (research, done): the open probes of the per-parameter list; follow-ups T-2298 (a 1x1
      array lifts), T-2299 (TAKE/DROP grids handed on), T-2300 (UNIQUE's and SORTBY's empty later elements).

@@ -29,9 +29,9 @@ use signature::{
     args_signature_let, args_signature_lookup, args_signature_map, args_signature_match,
     args_signature_npv, args_signature_offset, args_signature_one_vector, args_signature_pivotby,
     args_signature_randarray, args_signature_reduce, args_signature_row, args_signature_scalars,
-    args_signature_scan, args_signature_sort, args_signature_sumif, args_signature_textafter,
-    args_signature_textjoin, args_signature_textsplit, args_signature_trimrange,
-    args_signature_xlookup, args_signature_xmatch, Signature,
+    args_signature_scan, args_signature_sumif, args_signature_textafter, args_signature_textjoin,
+    args_signature_textsplit, args_signature_trimrange, args_signature_xlookup,
+    args_signature_xmatch, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -482,7 +482,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Xlookup => args_signature_xlookup(arg_count),
         Function::Xmatch => args_signature_xmatch(arg_count),
         Function::Trimrange => args_signature_trimrange(arg_count),
-        Function::Sort => args_signature_sort(arg_count),
         Function::Filter => args_signature_filter(arg_count),
         Function::Transpose => args_signature_one_vector(arg_count),
         Function::Mmult => {
@@ -738,7 +737,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
                 .map(|(_, a)| a),
         ),
         Function::Trimrange => reference_result::static_analysis_trimrange(args),
-        Function::Sort => StaticResult::Unknown,
         Function::Filter => StaticResult::Unknown,
         Function::Transpose => StaticResult::Unknown,
         Function::Mmult => StaticResult::Unknown,

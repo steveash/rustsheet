@@ -87,6 +87,19 @@ const SORTBY: ArgKinds = ArgKinds {
     result: CallResult::ArrayFirst,
 };
 // --- End M7 (T-1839) ---
+// --- M7 (T-2319) ---
+/// `SORT(array, [sort_index], [sort_order], [by_col])`: `by_col` lifts over an array
+/// (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`, gen-m7/7307132bb8820f17 A1076);
+/// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
+/// sorts the whole array: read and charged as [`TOCOL`]. Whether a later non-error element is its
+/// call's top-left (`.array()`) or empty (SORTBY's `.array_first()`) is UNVERIFIED (T-2366).
+const SORT: ArgKinds = ArgKinds::fixed(
+    1,
+    &[WholeByCaller, WholeByCaller, WholeByCaller, Lift],
+    Output { weight: 1 },
+)
+.array();
+// --- End M7 (T-2319) ---
 // --- M7 (T-1835) ---
 /// `EXPAND(array, rows, [columns], [pad_with])`: rows and columns lift over an array and a range
 /// (`ROWS(EXPAND(A1:A2,{3;4}))` is 2, probes/m7-argument-modes F7:H7; columns,
@@ -158,6 +171,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Tocol | Function::Torow => Some(&TOCOL),
         Function::Unique => Some(&UNIQUE),
         Function::Sortby => Some(&SORTBY),
+        Function::Sort => Some(&SORT),
         Function::Hyperlink => Some(&LIFT_1_OF_2),
         // --- Math (T-1802) ---
         // QUOTIENT, FACTDOUBLE and SERIESSUM's x, n and m are Analysis ToolPak arguments: they
