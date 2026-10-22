@@ -3,7 +3,7 @@ id: T-2313
 title: "TOROW and TOCOL: lifted scan_by_column over an error or array and the scan_by_column error before ignore (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -29,13 +29,20 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 27 known-failure li
 - gen-m7/8044dce50616cfe9.case.json A1508 `=TOCOL(Data!B1:B5,Data!B8,NA())`: A1508 Excel #N/A, ours #VALUE!; cells (1): A1508
 
 ## Acceptance criteria
-- [ ] Visible parity: the 27 gen-m7 cells listed under Context have Excel's value, type, error and text: these 27 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
-- [ ] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 27 gen-m7 cells listed under Context have Excel's value, type, error and text: these 27 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
+- [x] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A 1x1 array scan_by_column (T-2298).
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+TOROW joins TOCOL's lifting-table entry (`lift_flatten` in tocol_torow.rs, the shape per function; TOROW's static-analysis
+fallback arm and `args_signature_tocol` are gone). An error array is every lifted element's result (TOROW's evidence; TOCOL
+by analogy, UNVERIFIED, probed by T-2365), and an error ignore or scan_by_column comes before an invalid one. The 7 A692
+cells already passed on main (T-2314), so 20 of the 27 owned lines left the baseline here.
+Eval delta: gen-m7 known failures 222 -> 202 (fixed 20), no regressions.

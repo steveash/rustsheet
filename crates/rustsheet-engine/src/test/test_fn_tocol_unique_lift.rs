@@ -163,6 +163,7 @@ fn an_error_argument_comes_before_an_invalid_one() {
         ("F1", "=TOCOL(A1:A3,7,NA())", "#N/A"),
         ("F2", "=TOROW(A1:A3,7,NA())", "#N/A"),
         ("F3", "=TOCOL(A1:A3,7,TRUE)", "#VALUE!"),
+        // Hand-written, UNVERIFIED: two error arguments give the first in argument order.
         ("F4", "=TOCOL(A1:A3,1/0,NA())", "#DIV/0!"),
     ]);
 }
