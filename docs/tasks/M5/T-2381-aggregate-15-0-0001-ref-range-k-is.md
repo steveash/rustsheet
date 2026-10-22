@@ -3,7 +3,7 @@ id: T-2381
 title: "AGGREGATE(15,-0.0001,ref,range k) is #VALUE!: probe the option sign and a multi-cell k"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
