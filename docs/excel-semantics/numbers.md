@@ -1866,8 +1866,8 @@ coefficient wins (`{1,#N/A,"a"}` is `#N/A`, `{1,"a",#N/A}` `#VALUE!`). An overfl
 zero term (`SERIESSUM(-10,0.5,399.5,{1,1,"a"})`, powers 0.5 and 400, is `#NUM!`; the T-2163 entry above).
 So `SERIESSUM(-308641972.8075,30864197.28075,2,D1:E8)` is `#VALUE!` (gen-m5/bf8903e05ec369ca Calc!A326): its first term is 0 and the
 read reaches the text "#N/A" in D2.
-Unprobed: an odd-root exponent (`(-8)^(1/3)` is a real number for `^`) inside SERIESSUM, and negative-x exponents of 2^32-1 or
-more that are not integers (the engine gives both the `^` value and 0 respectively).
+Unprobed: an odd-root exponent inside SERIESSUM (the engine keeps `^`'s real value, `(-8)^(1/3)` = -1.9999999999999998), and a
+non-integer exponent between 2^32-1 and 2^52 with a negative x (`^` refuses it; the engine counts the term as 0).
 Evidence: probes/seriessum-negative-x-fractional-power (21 cells, excel-graph, 2026-10-22, T-2380); gen-m5/bf8903e05ec369ca Calc!A326.
 Implemented in: `seriessum_of` (crates/rustsheet-engine/src/functions/math_and_trigonometry/seriessum.rs, T-2380)
 Status: VERIFIED (excel-graph)

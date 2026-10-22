@@ -143,7 +143,7 @@ impl Model {
             // power is a term of 0", T-2380).
             let term = match power(x, exponent) {
                 Ok(p) => coeff * p,
-                Err(_) if x < 0.0 && exponent.fract() != 0.0 => 0.0,
+                Err(_) if x < 0.0 && exponent.is_finite() && exponent.fract() != 0.0 => 0.0,
                 Err(_) => return num_error(cell),
             };
             if !term.is_finite() {
