@@ -3,7 +3,7 @@ id: T-2382
 title: "ISEVEN/ISODD just below an integer: ISEVEN(POWER(49,0.5-1E-15)) is FALSE"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
