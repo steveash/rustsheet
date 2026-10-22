@@ -440,4 +440,19 @@ fn delete_table_clears_the_cells_and_a_huge_range_is_clamped() {
         .unwrap();
     model.delete_table("Whole").unwrap();
     assert_eq!(model.get_formatted_cell_value(0, 2, 3).unwrap(), "");
+    // Nor may clearing the whole sheet walk every position: cells in two far corners only.
+    model
+        .set_user_input(0, 1_048_576, 1, "x".to_string())
+        .unwrap();
+    model.set_user_input(0, 1, 16_384, "y".to_string()).unwrap();
+    model
+        .range_clear_all(&crate::expressions::types::Area {
+            sheet: 0,
+            row: 1,
+            column: 1,
+            width: 16_384,
+            height: 1_048_576,
+        })
+        .unwrap();
+    assert_eq!(model.get_formatted_cell_value(0, 1_048_576, 1).unwrap(), "");
 }
