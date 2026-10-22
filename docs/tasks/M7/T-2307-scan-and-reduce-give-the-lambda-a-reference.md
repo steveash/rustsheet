@@ -3,7 +3,7 @@ id: T-2307
 title: "SCAN and REDUCE give the LAMBDA a reference initial_value and range elements as references (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
