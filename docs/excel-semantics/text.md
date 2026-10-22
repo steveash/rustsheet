@@ -872,14 +872,18 @@ Status: VERIFIED (excel-graph); not implemented (T-2250).
 Tasks: T-2169, T-2250
 
 ## TEXTBEFORE and TEXTAFTER: instance_num past the text, a number if_not_found
-Rule: an instance_num whose size is greater than the text's length is `#VALUE!`, whatever the delimiter, match_end and if_not_found
-(the empty delimiter excepted, see above): `TEXTBEFORE("b","a",-2,1,1)` (gen-m7/2c5ea078f25443a2 Calc!A360), `TEXTBEFORE("x~*","1",
-WORKDAY(..))` (611ce3bbfab27cef A336), and
-`TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767) are `#VALUE!`. `TEXTBEFORE(<blank>,Data!A6:A11,2,123456789.123,1,FALSE)`
-(c36ff5f42a1a4d47 A148) is `#VALUE!` too, but its match_mode 123456789.123 is itself invalid, so it does not isolate this rule. A number if_not_found comes back as text:
-`TEXTAFTER(..,"a",..,0,1,-2.5)` is "-2.5" (ac67253061bba16a A776) and `TEXTBEFORE(..,",",2,..,1,3)` is "3" (A1345).
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
-Ours: `#N/A`, "" or the if_not_found number (T-2314).
+Rule: an instance_num whose size is greater than the text's length, counted in UTF-16 units, is `#VALUE!`, whatever the delimiter,
+match_end and if_not_found (the empty delimiter excepted, see above): `TEXTBEFORE("b","a",-2,1,1)`, `TEXTBEFORE("ab","a",3)` and
+`TEXTBEFORE("ab","a",3,0,0,"nf")` are `#VALUE!`, while `TEXTBEFORE("ab","a",2)` is the usual `#N/A`. `TEXTAFTER("😀","a",2)` is `#N/A`
+and `TEXTAFTER("😀","a",3)` `#VALUE!` (two units), `TEXTAFTER("é","a",2)` `#VALUE!` (one). Gen-m7 shows it on `TEXTBEFORE("x~*","1",
+WORKDAY(..))` (611ce3bbfab27cef A336) and `TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767).
+match_mode is cut toward zero and must then be 0 or 1, else `#VALUE!`, also beside the empty delimiter: 2, -1, 255 and 123456789.123
+are `#VALUE!` (`TEXTBEFORE("aBc","b",1,2)`; `TEXTBEFORE("abc","",2,123456789.123)`, which is c36ff5f42a1a4d47 A148), 0.5 is 0
+(`#N/A` for a case-different delimiter), 1.5 and TRUE are 1. A number or boolean if_not_found comes back as its text:
+`TEXTBEFORE("b","a",1,0,0,5)` is "5", `-2.5` is "-2.5", TRUE is "TRUE" (also gen-m7 ac67253061bba16a A776, A1345).
+Evidence: probes/t2314-textbefore-instance-bound (excel-graph, 2026-10-22) and gen-m7 (excel-graph, 2026-10-21, T-2225).
+Ours: matches (`text_around_element`, `around_options` and `around_not_found` in functions/text/before_after.rs, T-2314). The probe's
+`TEXTBEFORE("abc","b",1,-0.5)` does not tell cutting toward zero from flooring apart (both match); UNVERIFIED for a match_mode in (-1,0).
 Status: VERIFIED (excel-graph)
 Tasks: T-2314
 
