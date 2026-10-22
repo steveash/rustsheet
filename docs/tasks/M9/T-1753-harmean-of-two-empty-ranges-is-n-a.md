@@ -3,7 +3,7 @@ id: T-1753
 title: "HARMEAN of a range with no numbers is #N/A, not #DIV/0!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
