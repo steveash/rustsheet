@@ -209,15 +209,6 @@ pub(super) fn args_signature_xlookup(arg_count: usize) -> Vec<Signature> {
     result
 }
 
-pub(super) fn args_signature_sort(arg_count: usize) -> Vec<Signature> {
-    if !(1..=4).contains(&arg_count) {
-        return vec![Signature::Error; arg_count];
-    }
-    let mut result = vec![Signature::Scalar; arg_count];
-    result[0] = Signature::Vector;
-    result
-}
-
 pub(super) fn args_signature_filter(arg_count: usize) -> Vec<Signature> {
     if !(2..=3).contains(&arg_count) {
         return vec![Signature::Error; arg_count];

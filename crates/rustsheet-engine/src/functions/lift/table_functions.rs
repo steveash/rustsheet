@@ -72,6 +72,7 @@ macro_rules! lifting_table_functions {
             | Function::Wraprows
             | Function::Unique
             | Function::Sortby
+            | Function::Sort
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv

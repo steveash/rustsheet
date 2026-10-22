@@ -251,7 +251,11 @@ impl Model {
     ///
     /// `array` is evaluated once (`read_once` in functions/logical/lambda.rs relies on it).
     pub(crate) fn fn_sort(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() || args.len() > 4 {
+        let kind = Function::Sort;
+        if !kind
+            .arg_kinds()
+            .is_some_and(|kinds| kinds.accepts(args.len()))
+        {
             return CalcResult::new_args_number_error(cell);
         }
 
@@ -265,7 +269,7 @@ impl Model {
         }
 
         let num_rows = data.len();
-        let num_cols = data[0].len();
+        let num_cols = data.first().map_or(0, Vec::len);
 
         // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
         // Argument errors come before value validation and are reported left to right: sort_index,
@@ -299,18 +303,46 @@ impl Model {
                 return e.clone();
             }
         }
-        let by_col: bool = if args.len() >= 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(b) => b,
-                Err(e) => return e,
-            }
-        } else {
-            false
-        };
-        let raw_order = match raw_order {
-            Ok(list) => list,
-            Err(e) => return e,
-        };
+        // The array, sort_index and sort_order are read once here; by_col lifts over an array and
+        // a range, one SORT per element whose value is that call's top-left
+        // (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`,
+        // gen-m7/7307132bb8820f17 A1076; T-2319). Each element sorts the whole array.
+        let cells = u64::try_from(num_rows.saturating_mul(num_cols))
+            .unwrap_or(u64::MAX)
+            .max(1);
+        self.lift_call_costed(
+            kind,
+            args,
+            LiftCost::Cells(cells),
+            cell,
+            &mut |model, values| {
+                let by_col = match values.get(3) {
+                    None | Some(CalcResult::EmptyArg) => Ok(false),
+                    Some(value) => Self::cast_bool_ref(value, cell),
+                };
+                match (by_col, &raw_order) {
+                    (Err(error), _) => error,
+                    (Ok(_), Err(error)) => error.clone(),
+                    (Ok(by_col), Ok(raw_order)) => {
+                        model.sort_by_keys(&data, &raw_index, raw_order, by_col, cell)
+                    }
+                }
+            },
+        )
+    }
+
+    /// One SORT call over the read `data`: the sort_index and sort_order lists validated against
+    /// `data` (rows, or columns when `by_col`), then the sort.
+    fn sort_by_keys(
+        &self,
+        data: &[Vec<ArrayNode>],
+        raw_index: &[f64],
+        raw_order: &[f64],
+        by_col: bool,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let num_rows = data.len();
+        let num_cols = data[0].len();
         // An array or range sort_index is a list of keys, applied in order, and a sort_order list
         // must be as long (`SORT(A1:B3,{1;2})` sorts by column 1 then 2; `SORT(A1:B3,1,{1;-1})` is
         // `#VALUE!`: probes/m7-argument-modes F10:H11). Rows tied on a key are ordered by the
