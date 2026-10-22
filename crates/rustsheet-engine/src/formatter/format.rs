@@ -1,4 +1,4 @@
-use super::elapsed::{elapsed_text, ElapsedUnit, FractionalSeconds};
+use super::elapsed::{elapsed_text, DisplayClock, ElapsedUnit};
 use super::fraction::format_fraction;
 use super::general::format_general;
 use crate::{
@@ -410,24 +410,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             {
                 return invalid_date(value_original);
             }
-            let fraction = fraction_digits.and_then(|digits| FractionalSeconds::new(value, digits));
-            let fraction = fraction.as_ref();
-            let (hours, minutes, seconds) = match fraction {
-                Some(fraction) => fraction.clock(),
-                None => {
-                    let time_fract = value.fract();
-                    let hours = (time_fract * 24.0).floor();
-                    let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
-                    let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-                    (hours, minutes, seconds)
-                }
-            };
+            let clock = DisplayClock::new(value, fraction_digits, tokens);
+            let (hours, minutes, seconds) = clock.hms;
+            let elapsed_fraction = clock.elapsed.as_ref();
+            let day_serial = clock.days;
             // Day/month/year and weekday tokens show Excel's exact components (including the
             // fictitious 1900-02-29) and "1900-01-00" (serial 0). In a 1904 workbook they read the
             // 1904 epoch (`TEXT(0,"yyyy-mm-dd")` is "1904-01-01"; dates.md "The 1904 date system");
             // -1 stands for no date. The fallback is never read: `ymd` is `None` exactly when
             // `date_valid` is false.
-            let serial_1900 = ctx.date_system.to_1900_serial(value as i64).unwrap_or(-1);
+            let serial_1900 = ctx.date_system.to_1900_serial(day_serial).unwrap_or(-1);
             let ymd = excel_serial_to_ymd(serial_1900);
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
@@ -662,32 +654,36 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = elapsed_text(value, false, ElapsedUnit::Hour, fraction);
+                        let hour = elapsed_text(value, false, ElapsedUnit::Hour, elapsed_fraction);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = elapsed_text(value, true, ElapsedUnit::Hour, fraction);
+                        let hour = elapsed_text(value, true, ElapsedUnit::Hour, elapsed_fraction);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = elapsed_text(value, false, ElapsedUnit::Minute, fraction);
+                        let minute =
+                            elapsed_text(value, false, ElapsedUnit::Minute, elapsed_fraction);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = elapsed_text(value, true, ElapsedUnit::Minute, fraction);
+                        let minute =
+                            elapsed_text(value, true, ElapsedUnit::Minute, elapsed_fraction);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = elapsed_text(value, false, ElapsedUnit::Second, fraction);
+                        let second =
+                            elapsed_text(value, false, ElapsedUnit::Second, elapsed_fraction);
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = elapsed_text(value, true, ElapsedUnit::Second, fraction);
+                        let second =
+                            elapsed_text(value, true, ElapsedUnit::Second, elapsed_fraction);
                         text = format!("{text}{second}");
                     }
                     TextToken::SecondFraction(digits) => {
                         text.push('.');
-                        match fraction {
+                        match elapsed_fraction {
                             Some(fraction) => text.push_str(&fraction.digits_text()),
                             None => text.extend(std::iter::repeat_n('0', *digits)),
                         }

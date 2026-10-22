@@ -116,6 +116,7 @@ moved into `holiday_serials` so the first bad holiday decides. A fractional week
 "weekend number coercion"): without it gen-m6/e3a562557696e2fc A385 regressed, its 1.25 weekend no longer masked by the
 holidays' `#VALUE!`; that is T-2271's first criterion, its blank-cell and boolean parts stay open.
 T-1954's order question is answered (row 15, column E: `#N/A`); its legacy-control criterion stays open.
-Eval delta: gen-m6 known failures 127 -> 72 (55 fixed: 57 of this task's 58 cells, plus T-2271's fraction cells
+Eval delta (after merging main, T-2273 included): gen-m6 known failures 102 -> 46, 56 fixed here. All 58 of this task's
+cells now pass (A188 since T-2273 landed; a few others were already fixed on main), plus T-2271's fraction cells
 121a7c17092038d9 A308, 1a404a0379a1372c A62, 870c5e38f51ce5d4 A125, c93ea588c271840e A31, c96ac1ada46179c4 A287,
-d1a403971712513c A217, ee56a4ed5a612a0d A186); gen-m6/9615a6de0f3ac417 A188 waits for T-2273 (CHOOSEROWS). New probe passes in full; no regressions.
+d1a403971712513c A217, ee56a4ed5a612a0d A186. The new probe passes in full; no regressions.

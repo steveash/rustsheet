@@ -261,6 +261,12 @@ Evidence: probes/info-cell-legacy-range (40 cells; oracle: excel-graph, 2026-10-
 Status: VERIFIED (excel-graph); desktop UNVERIFIED (same caveat as "contents", T-1075 item 9).
 Ours: matches (`cell_info` "TYPE" reads `cell.sheet` since T-1433). Cross-sheet "address": next entry.
 Tasks: T-1230, T-1433
+Conflicting cell (T-2383): `RIGHTB(CELL("type",Data!C$9),3)` is "l" in gen-m5/74b183ca6fc1d190 Calc!A347 (excel-graph,
+2026-10-22), where Data!C9 is the text "abc" and Calc!C9 is blank, so this one cell reads the *referenced* sheet; ours, by the
+own-sheet rule, is "b". Every one of the 25 bare `=CELL("type",Data!..)` cells of the generated suites whose two sheets disagree at
+that address fits the own-sheet rule (for example `CELL("type",Data!C9)` = "b" with Data!C9 a number, gen-m5/901e91c09b347914
+Calc!A391, and `CELL("type",Data!E$6)` = "b" with Data!E6 = 0, gen-m5/38b1b8e51dbad326 Calc!A391), as do the "contents" cells. Whether the rule depends on something the generator varies (the active sheet, calculation order, the RIGHTB caller)
+or the cell is an oracle artefact is open: T-2383 re-probes it. Excel is right either way; the engine keeps the own-sheet rule until then.
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
 Rule: `CELL("address", ref)` for a reference on another sheet is `[<file name>]<sheet>!<address>`, the sheet name
@@ -299,6 +305,14 @@ Tasks: T-2042, T-2052
 Status: VERIFIED (excel-graph, desktop Excel not checked) for the cells cited, including TYPE of a one-cell range over a
 text, boolean, error or blank cell and over an OFFSET/INDIRECT result (T-2262). ISEVEN/ISODD implemented (T-2165);
 CELL's range info_type implemented (T-2161, `fn_cell`); TYPE of a one-cell range implemented (T-2156, `fn_type`).
+
+## ISEVEN of a value just below an integer (T-2382)
+Observation: `ISEVEN(POWER(7*Data!$A$9,0.5-Data!C$5))` with A9 = 7 and C5 = 1E-15 is FALSE (gen-m5/bf8903e05ec369ca Calc!A392,
+excel-graph, 2026-10-22). Ours computes `POWER(49,0.499999999999999)` = 6.999999999999972, truncates it to 6 and says TRUE. The
+15-digit cut INT and TRUNC take (numbers.md "INT cuts to 15 significant digits first") gives 6.99999999999997, still 6. So either
+Excel's POWER here is 7 or more (about 17 ulps from ours, unlikely), or ISEVEN/ISODD round their argument more coarsely than the
+15-digit cut before truncating. Unprobed; T-2382 probes both.
+Status: OBSERVED
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
 The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`

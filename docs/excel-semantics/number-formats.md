@@ -60,6 +60,12 @@ Implemented in: `Lexer::next_token` (formatter/lexer.rs), `BUDDHIST_ERA_OFFSET` 
 any date or time token that prints is `#VALUE!` in the engine: the Hijri calendar is not implemented (unprobed). Whether
 the lone-`B` error is about the end of the code or of the section is inferred from `"B"` and `"dB"` only.
 Tasks: T-1262
+Observation (T-2377): bare digits in front of a date token make the code `#VALUE!` for a number:
+`TEXT(Data!A$2+Data!$B9,Data!C10&"abc")` = `TEXT(3.14159,"42abc")` is `#VALUE!` (gen-m5/2b01cadfd03df4b5 Calc!A211 inside LENB,
+excel-graph, 2026-10-22), while `"ABC"` alone is "A43C" (above) and a bare digit alone is a literal (`TEXT(5,"2")` = "2",
+"Bare letters and digits in a number format"). Ours prints "42a43c". The likeliest reading, unprobed, is that a bare digit 1-9
+counts as a number token, so it joins the rule that a date token beside digit placeholders is `#VALUE!` (`"0b"`, T-2202).
+Status of this observation: OBSERVED (one excel-graph cell; T-2377 probes it).
 
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the
@@ -511,6 +517,9 @@ TEXT() with the same codes. Points the earlier probes did not show:
   formats", "A numerator that overflows".
 - Clock and date fields come from the serial rounded to the shown second: 0.9999999999 is "0:00"
   under `h:mm`, "24:00:00" under `[h]:mm:ss`, "1900-01-01" under `yyyy-mm-dd`, "Sunday" under `dddd`.
+  Also `[m]:ss` "1440:00", `d \d\a\y\s h:mm` "1 days 0:00", `dd/mm/yy` "01/01/00" (VERIFIED, gen-m10, T-1732). Implemented in
+  `DisplayClock` (formatter/elapsed.rs, rounded to whole seconds): clock fields and the day always
+  round; an elapsed count rounds only when a seconds token is in the section (`[h]`/`[m]` alone keep their truncation; unprobed).
 - `mm:ss` with no hour is minutes: 123456.789 is "56:10".
 - The text section formats booleans as well as text: `"pre "@` on TRUE is "pre TRUE", `;;;` shows
   nothing, `0.0;[Red]-0.0;0.0;"<"@">"` on an empty string "<>".
