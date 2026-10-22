@@ -15,7 +15,7 @@ No formula makes an array larger than 1x1 reach a scalar-context cell: the night
 fuzz target stops panicking on a one-sheet 3-D range passed to a scalar argument.
 
 ## Context
-Nightly fuzz run 39718987994 (2026-10-22, `main` at c8d23daa; the 2026-10-21 run at d77d01b0 was
+Nightly fuzz run 39718987994 (2026-10-22, `main` at c8d23da; the 2026-10-21 run at d77d01b0 was
 green) crashed `formula_eval` on the 31-byte input (base64 `REFURVZBTFVFKFNoZWV0MTpTaGVldDEhQjE6Qk0xKQ==`):
 
     DATEVALUE(Sheet1:Sheet1!B1:BM1)
@@ -29,7 +29,7 @@ steward reproduced it on `main` b23f5f8 in a debug build through the `rustsheet`
 So static analysis gives the one-sheet 3-D range (`Sheet1:Sheet1!`) no `@` and no spill where it
 gives the plain range one, and the lifted call returns an array to a scalar cell. Release builds hit
 the fallback after the assert (not a crash in production), but it is a directive-5 bug and the
-assert is the invariant (decision 0035). Likely a regression between d77d01b0 and c8d23daa (bisect
+assert is the invariant (decision 0035). Likely a regression between d77d01b0 and c8d23da (bisect
 with the reproducer if the cause is not obvious; candidates touch static analysis or lifting, e.g.
 T-2298).
 
