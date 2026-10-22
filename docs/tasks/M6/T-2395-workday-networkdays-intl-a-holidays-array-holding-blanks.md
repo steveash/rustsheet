@@ -44,4 +44,4 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 6 in eval/baselin
 - Text or boolean elements inside a holidays array (T-2270, T-2272).
 
 ## Outcome
-The holidays reader skips blank array elements (`ArrayNode::Empty`); the six gen-m6 cells now pass. Rule recorded in dates.md.
+The holidays reader skips blank array elements (`ArrayNode::Empty`); the six gen-m6 cells now pass, plus probes t2311-pivotby-value-cause P!D46 (same path). Rule recorded in dates.md. Follow-up: probe skip-vs-serial-0 with `NETWORKDAYS.INTL(0,1,"0000000",HSTACK(Data!Z1,{5}))`.
