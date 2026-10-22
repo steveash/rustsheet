@@ -3,7 +3,7 @@ id: T-2362
 title: "MINVERSE singularity rule: invert residual-pivot matrices, #NUM! only where Excel does"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
