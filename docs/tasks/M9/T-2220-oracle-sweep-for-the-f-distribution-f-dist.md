@@ -54,5 +54,5 @@ two PARTIAL rules contradict each other.
 ## Outcome
 Five probes-numeric cases (split deliberately, at most 1,000 cells each, per the task's size allowance) `t2220-f-dist-sweep-{cdf,pdf,rt,d1-1,d2-1}` (4,710 cells, all numeric) filled from
 excel-graph, sidecars committed. Findings in statistics.md "Dense F sweep (T-2220)": Excel is not correctly
-rounded at any df pair (cdf 48%, RT 39%, pdf 9% of cells exact); `F.DIST + F.DIST.RT` is exactly 1 in
+rounded at any df pair (cdf 49%, RT 39%, pdf 9% of cells exact); `F.DIST + F.DIST.RT` is exactly 1 in
 1,486 of 1,570 cells. T-2221 links the case. The grid was generated once, one formula per cell; the statistics are reproducible with `docs/research/t2220_f_dist_sweep_stats.py` (needs mpmath). No eval baseline change (probe cases have no expected values).

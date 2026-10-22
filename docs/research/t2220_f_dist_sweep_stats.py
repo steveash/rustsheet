@@ -41,12 +41,13 @@ def parse(label: str) -> tuple[str, float, int, int]:
 
 
 def exact(kind: str, x: float, d1: int, d2: int) -> mp.mpf:
-    mx, a, b = mp.mpf(str(x)), mp.mpf(d1), mp.mpf(d2)
+    mx, a, b = mp.mpf(x), mp.mpf(d1), mp.mpf(d2)  # the double Excel receives
     z = a * mx / (a * mx + b)
     if kind == "cdf":
         return mp.betainc(a / 2, b / 2, 0, z, regularized=True)
     if kind == "rt":
-        return mp.betainc(a / 2, b / 2, z, 1, regularized=True)
+        # Directly, not 1 - cdf: the cancelling form is wrong below ~1E-40.
+        return mp.betainc(b / 2, a / 2, 0, b / (a * mx + b), regularized=True)
     return (
         a ** (a / 2)
         * b ** (b / 2)
@@ -69,7 +70,7 @@ def main() -> None:
     exact_by_kind: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     exact_by_df: dict[tuple, list[int]] = defaultdict(lambda: [0, 0])
     hist: dict[str, Counter] = defaultdict(Counter)
-    far_tail = []
+    worst: dict[str, float] = defaultdict(float)
     for label, v in cells.items():
         kind, x, d1, d2 = parse(label)
         ref = float(exact(kind, x, d1, d2))
@@ -77,16 +78,15 @@ def main() -> None:
         for tally in (exact_by_kind[kind], exact_by_df[(kind, d1, d2)]):
             tally[0] += 1
             tally[1] += got == ref
-        if ref and abs(got - ref) / abs(ref) > 1e-9:
-            far_tail.append((kind, x, d1, d2, got, ref))
-        else:
-            hist[kind][min(ulps(got, ref), 10)] += 1
+        hist[kind][min(ulps(got, ref), 10)] += 1
+        if ref:
+            worst[kind] = max(worst[kind], abs(got - ref) / abs(ref))
     print("correctly rounded (cells, exact):", dict(exact_by_kind))
     for kind in ("cdf", "pdf", "rt"):
         full = [k[1:] for k, t in exact_by_df.items() if k[0] == kind and t[0] == t[1]]
         print(kind, "df pairs with every cell correctly rounded:", full)
         print(kind, "ulp histogram (10 = 10 or more):", sorted(hist[kind].items()))
-    print("cells more than 1E-9 relative from the reference:", far_tail)
+    print("worst relative error:", dict(worst))
     sums = Counter()
     for label, v in cells.items():
         kind, x, d1, d2 = parse(label)
