@@ -51,7 +51,7 @@ Shared constraints:
       eval/baseline/corpus-bench.txt if it now runs under 60 s.
 - [ ] Calipers pv26_002 and pv26_2_002: release calculation times before and after in the Outcome. If
       they now calculate within the 60 s case timeout, their `exclude` entries leave
-      eval/suites/calipers/suite.toml and `make eval-baseline` records the result; otherwise file the
+      eval/suites/calipers/suite.toml and `rustsheet-eval update-baseline --suite calipers` records the result; otherwise file the
       remaining cause as a follow-up.
 - [ ] Unit tests cover cache invalidation within a pass, wildcard and comparison criteria,
       text-number coercion in criteria, and errors in criteria ranges.

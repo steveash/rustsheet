@@ -24,7 +24,11 @@ license = "MIT"
 origin = "https://github.com/fundamental-research-labs/calipers (verification/cases)"
 use_cached_values = true
 require_excel_authored = true
-gate = true
+# Not in `make check`: with its ~1.4M scored cells in the same parallel run, corpus-bench's heavy
+# workbooks (59969, 68-47) passed the 60 s case timeout in 2 of 3 runs (T-0446). It keeps its cell
+# baseline: `rustsheet-eval check --suite calipers` gates it and
+# `rustsheet-eval update-baseline --suite calipers` ratchets it; `make eval` reports it.
+gate = false
 baseline = "cells"
 milestone = ["M11"]
 

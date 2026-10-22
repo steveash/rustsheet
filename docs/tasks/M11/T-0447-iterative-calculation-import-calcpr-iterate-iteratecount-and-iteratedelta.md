@@ -49,7 +49,7 @@ existing per-pass work budget.
 - [ ] The probes/circular-iteration-on, -limits, -delta, -delta-small, -delta-no-reader and
       -delta-boundary lines leave eval/baseline/probes.txt (`make eval-baseline`).
 - [ ] calipers/pv_goldens/pv23_021 and pv26_004 have no `#CIRC!` cells. Their known failures in
-      eval/baseline/calipers.txt drop accordingly, with no new known failure in any suite.
+      eval/baseline/calipers.txt drop (`rustsheet-eval update-baseline --suite calipers`) accordingly, with no new known failure in any suite.
 - [ ] A round-trip test keeps `iterate`, `iterateCount` and `iterateDelta` on export.
 - [ ] recalc.md's two "Ours" lines state the new behavior.
 - [ ] `make check` green; reviewers approve.

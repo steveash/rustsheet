@@ -36,7 +36,7 @@ import as a follow-up.
 - [ ] The release-build load time of pv26_001, before and after, is in the Outcome, and is at least 4x
       faster.
 - [ ] pv26_001 and pv26_2_001 leave the `exclude` list in eval/suites/calipers/suite.toml if they
-      calculate within 60 s, and `make eval-baseline` records their results with no new known failure
+      calculate within 60 s, and `rustsheet-eval update-baseline --suite calipers` records their results with no new known failure
       elsewhere.
 - [ ] `make check` green; reviewers approve.
 

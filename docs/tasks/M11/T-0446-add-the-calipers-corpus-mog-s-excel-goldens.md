@@ -37,8 +37,8 @@ Owner request (2026-10-22), after a head-to-head of rustsheet and mog (docs/rese
       time, because a timed-out case's worker keeps running until the run ends.
 - [x] `eval/suites/calipers/suite.toml` fetches Calipers at a pinned full commit id (`[fetch]` with
       `rev` and `subdir = "verification/cases"`), includes `**/golden.xlsx`, excludes `_disabled/**`,
-      scores cached values, and is gated with a `cells` baseline.
-- [x] `rustsheet-eval fetch --suite calipers` then `make eval-baseline` records the suite's current known
+      scores cached values, and keeps a `cells` baseline that `rustsheet-eval check --suite calipers` gates.
+- [x] `rustsheet-eval fetch --suite calipers` then `rustsheet-eval update-baseline --suite calipers` records the suite's current known
       failures in eval/baseline/calipers.txt; no other baseline changes.
 - [x] docs/research/mog-head-to-head-2026-10-22.md records the comparison, its method and its numbers;
       docs/excel-semantics/recalc.md notes that Excel-authored data-table workbooks now exist in a suite.
@@ -56,7 +56,13 @@ Owner request (2026-10-22), after a head-to-head of rustsheet and mog (docs/rese
 - eval/baseline/calipers.txt: 173 cases with formula cells, 6,679 known failures. These include 21
   `!EngineError` workbooks with data tables (T-0441) and the `#CIRC!` cells of pv23_021 and pv26_004
   (T-0447). No other baseline changed.
-- The suite adds about 4 minutes to a 4-core `make eval`. Like poi and corpus-bench, it is only checked
-  where it has been fetched.
+- `gate = false`, so `make check` does not run it. In the same parallel run as the other suites,
+  corpus-bench 59969 and 68-47 passed the 60 s case timeout in 2 of 3 `make check` runs; without
+  calipers, `make eval-check` was green. `rustsheet-eval check --suite calipers` gates it, and
+  `rustsheet-eval update-baseline --suite calipers` ratchets it.
+- Excel stores the members of a volatile spill as an empty `<f ca="1"/>`; they were scored against
+  RANDARRAY's random values and flapped. The snapshot reader now treats them as array members, and
+  `scorable_cells` skips members of a volatile anchor (xlsx-storage.md).
+- Final baseline: 6,634 known failures. `make eval` takes about 4 minutes longer with the suite fetched.
 - Comparison numbers: docs/research/mog-head-to-head-2026-10-22.md.
 

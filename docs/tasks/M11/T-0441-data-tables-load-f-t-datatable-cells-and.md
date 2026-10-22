@@ -45,7 +45,7 @@ owner's request.
       lines; a round-trip test keeps the `dataTable` formula on export.
 - [ ] recalc.md's data-table entry gains an "Ours" line; any work cap is a DEVIATION entry if Excel has none.
 - [ ] The calipers/pv_goldens cases that fail to load today load and calculate; their known failures in
-      eval/baseline/calipers.txt drop, with no new known failure in any suite.
+      eval/baseline/calipers.txt drop (`rustsheet-eval update-baseline --suite calipers`), with no new known failure in any suite.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
