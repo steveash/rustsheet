@@ -1,4 +1,4 @@
-//! SORTBY's sort_orders lift over an array or a range; its array and by_arrays stay whole
+//! SORTBY's sort orders lift over an array or a range; its array and by arrays stay whole
 //! (SPEC-0011 "Array-valued functions" rule 4, T-1839; probes/m7-argument-modes F26:H26,
 //! probes/sort-error-args H97-H99, probes/m7-lift-take-drop-sortby sheet Sort).
 
@@ -74,7 +74,7 @@ fn sort_orders_lift_by_the_first_element_rule() {
     ]);
 }
 
-/// Each element sorts the whole array, so it is charged the array's and the by_array's cells and
+/// Each element sorts the whole array, so it is charged the array's and the by array's cells and
 /// is `#ERROR!` past `limits::MAX_LIFTED_CELL_VISITS` (DEVIATION, docs/excel-semantics/arrays.md
 /// "Array results above 1,048,576 cells").
 #[test]
