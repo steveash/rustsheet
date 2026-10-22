@@ -5,7 +5,7 @@ Runs of 256 consecutive doubles, B = GAMMALN.PRECISE(x):
 - near 2: a run starting at x = 2 + k*1e-5, k = 1..300.
 Packed 50 runs (12,800 rows) per case for the anchors and 60 runs (15,360 rows) per case near 2, so every case
 stays under the 16,384-row fill limit. The per-run c3 unwrap (review3/final/c3all.py) finds the runs by
-consecutive-double breaks, so the packing order does not matter.
+consecutive-double breaks (c3all.py is on the research branch), so the packing order does not matter.
 usage: python3 gen_k2micro.py OUTDIR
 """
 
