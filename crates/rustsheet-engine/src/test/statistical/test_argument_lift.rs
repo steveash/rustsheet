@@ -204,8 +204,8 @@ fn unlifted_calls_are_the_scalar_calls() {
     assert_eq!(model._get_text("A5"), *"0.383131167");
     assert_eq!(model._get_text("A6"), *"0.2592");
     assert_eq!(model._get_text("A7"), *"#ERROR!");
-    // TODO(T-1755): Excel reads the TRUE as 1 (-0.5 here); unchanged by the lift.
-    assert_eq!(model._get_text("A8"), *"#VALUE!");
+    // Excel reads the TRUE as 1 (probes/stats-evidence-floor-t1623 Q58): (1-1)/2.
+    assert_eq!(model._get_text("A8"), *"0");
 }
 
 #[test]
