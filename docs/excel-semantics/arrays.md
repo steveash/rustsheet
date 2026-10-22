@@ -312,6 +312,8 @@ is 2.22E-16, larger than the 3x3's 1.11E-16 that is inverted: the singularity te
 (T-2362). Ours (`f64::EPSILON` cutoff) differs on all the inverted cases.
 MINVERSE inverts a 1x1 pivot far below 2.2E-16: `MINVERSE(1.0000000000000085E-108)` is 9.999999999999914E+107 (ours `#NUM!`),
 gen-m5/9284730052aff46c Calc!A39 (excel-graph, 2026-10-20).
+`MINVERSE((Data!E1+Data!E1)/TRUNC(2^31))` = `MINVERSE(9.313225746154786E-25)` is 1.0737418239999999E+24, the IEEE reciprocal
+(ours `#NUM!`): gen-m5/12a3d13f2a5aa246 Calc!A258 (excel-graph, 2026-10-22, T-2252 triage).
 Evidence: probes/minverse-singular-near-singular (46 cells, excel-graph, T-2067); gen-m5/9284730052aff46c Calc!A39.
 Implemented in: `fn_minverse` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs) with a wrong `f64::EPSILON` pivot cutoff.
 Status: VERIFIED (excel-graph); engine DIVERGENT until T-2362 lands.
