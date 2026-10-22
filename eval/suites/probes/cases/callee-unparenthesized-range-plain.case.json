@@ -1,0 +1,21 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2008: callee written without parentheses: =$A$1:A2(2)",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 5,
+        "A2": 6,
+        "C1": "=$A$1:A2(2)",
+        "D1": "=FORMULATEXT(C1)"
+      }
+    }
+  ],
+  "expected": {}
+}

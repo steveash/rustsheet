@@ -1817,6 +1817,12 @@ A cell-like name off the grid is an unknown name, `#NAME?`: a column past XFD (`
 An R1C1-shaped callee in an A1 workbook (`=R1C1(1)`, `=R[1]C[1](1)`) makes Excel refuse the workbook
 (createSession 501 `unsupportedWorkbook`), so its value is not observable through the web oracle.
 
+A range or a spill written as a callee without parentheses is a call too, `#REF!`, and FORMULATEXT keeps it bare:
+`=Sheet1!$A$1:$A$2(2)` and `=$A$1:A2(2)` show as written, `=A1#(2)` as written, also over a real spill anchor `A1: =SEQUENCE(3)` (probes/callee-unparenthesized-range-sheet,
+-range-plain, -spill-plain, -spill-anchor, excel-graph, 2026-10-22, T-2008; ours parsed them as `#ERROR!` before). `=$A$1(2)#` makes Excel
+refuse the workbook (createSession 501), so it has no oracle value. The lower-case row shapes `=a0(1)` and `=a1048577(1)` are
+`#NAME?` and print as written, lower case (probes/callee-unparenthesized-lower-row0, -lower-row-over; ours matched).
+
 Not probed: a called cell pushed off the grid by a structural edit. That needs a column insert, which no case
 file can express; ours turns `=XFD1(1)` into `=#REF!(1)` (`#ERROR!`).
 Evidence: probes/cell-call-edges-a, -b, -c, -f, -g (excel-graph, 2026-10-19, T-1806).
