@@ -3,7 +3,7 @@ id: T-1899
 title: "REGEX functions: PCRE2 global iteration after an empty match"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -75,3 +75,20 @@ stopped at its session budget. Notes for the next run, from reading the code on 
   - `captures_at` replays the iteration, so it must use the same iterator.
 - Tests to pin: the 11 cells in Context, `a*?` on `aaa` with 7 matches in memoized mode, and
   `|a(?:a*b)?` on `REPT("a",32767)` linear (the forget-after-`e` rule).
+
+## Outcome
+`regex_search::each_match` is now the one iterator of every REGEX* pattern, by PCRE2's global rule: after an
+empty match at `p`, one attempt anchored at `p` that refuses the empty match (`Backtracker::retry`), then a search
+one UTF-16 unit on, which inside a surrogate pair is `SearchError::SplitSurrogate` (`#VALUE!`). A regular pattern
+keeps its AST (`Form::Automata { hir, retry }`) and compiles its memoized retry program the first time an
+iteration needs it, within the call's compile budget (`within_size_limits`, shared with the pattern compile); the
+visited set persists across the retries of one iteration. `captures_at` replays the iteration, and an n-th
+occurrence stops at its match (new probe case probes/regex-iteration-surrogates A1-A11, excel-graph: a split after
+the n-th match is no error, A4, A6, A8). The differential test now compares PCRE2 iteration with groups on the
+automata (with retries) against the memoized mode.
+
+Eval: probes known failures 2047 -> 2037 (regex-pcre2-features D1-D7, D9, D13, t1626-regexreplace C34), plus 11
+new passing cells; no regressions. D12 needs lookahead (added to T-2354's criteria); D14's question is answered by
+the new case's A1 (`x*` is ERROR.TYPE 3). Release timings of `LEN(REGEXREPLACE(REPT("a",32767),p,"-"))`, before ->
+after: `a*?` 3.4 -> 4.3 ms, `|b` 3.2 -> 3.7 ms, `a` (cannot match empty) 2.0 -> 2.1 ms (noise), `(a|a)*b|` 427 ->
+431 ms, `#ERROR!` both (its automata searches already run out of work).
