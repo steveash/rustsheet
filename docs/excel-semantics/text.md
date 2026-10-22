@@ -562,7 +562,9 @@ parentheses `"(100)"` = -100, dates `"2024-02-29"` = 45351 and `"1900-02-29"` = 
 separator `"FALSE"` is "F", `"MDCVIII"` (`ROMAN(1608,4)`) is "M", `"0.2"` is "0". Every occurrence of the group separator's
 first character is removed from the text before parsing, digits included: `NUMBERVALUE("25:00",UNICHAR(12288),"5")` is "2:00"
 = 0.08333333333333333 and `NUMBERVALUE("25:00","-0.01","2")` is "5:00" = 0.20833333333333334; with the group separator "0",
-"25:00" still reads 1.0416666666666667 ("25:"). A decimal separator that is a digit of the number breaks it:
+"25:00" still reads 1.0416666666666667 ("25:", an hour and a trailing colon, which VALUE reads too:
+dates.md "Time text"; `NUMBERVALUE("25:")`, `NUMBERVALUE("12:30:")` and `NUMBERVALUE("1:","F","0")` agree,
+probes/t2352-time-text-trailing-colon, T-2352). A decimal separator that is a digit of the number breaks it:
 `NUMBERVALUE(0.3,"0.2")` and `NUMBERVALUE(0.1,"0.3x","ABCFALSE")` are `#VALUE!` (ours 0.3 and 0.1). Text that is empty, or
 empty once the group separator is removed, is 0: a blank cell, `""` from MID, RIGHT, T or REPT, and
 `NUMBERVALUE("A","0","ABC?b#N/A")` (ours `#VALUE!`). An empty group separator (a blank cell) is `#VALUE!`:
@@ -581,7 +583,8 @@ A decimal separator equal to the group separator is `#VALUE!` whatever the text:
 Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
 when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
 Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing
-after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs).
+after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs), the trailing
+colon after a bare hour (T-2352, in the shared clock parser).
 
 ## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)
 Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the
