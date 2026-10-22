@@ -6,6 +6,8 @@ workbook for one (docs/excel-semantics/numbers.md). `number_edges` is the target
 
 from __future__ import annotations
 
+import re
+
 from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM
 
@@ -102,4 +104,90 @@ POOLS: dict[str, list[str]] = {
     "weeknum_return": entries("1 | 2 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 21 | 3"),
     # EDATE and EOMONTH months: fractions truncate toward zero, and 1200 / 120000 months reach the 9999 limit.
     "month_offset": entries("0 | 1 | (-1) | 1.5 | (-1.5) | 12 | 1200 | (-1200) | 120000"),
+    # The shape-driven array functions (TAKE, DROP, EXPAND, CHOOSEROWS/COLS, WRAPROWS/COLS, the stacks, ROWS,
+    # COLUMNS) over every shape docs/excel-semantics/arrays.md separates: a single value and a 1x1 array or range
+    # ("WRAPCOLS of a single value is not padded", "INDEX of a scalar or a 1x1 array", "BYROW and BYCOL of a single
+    # value"), a 1xn row, an nx1 column, 2-D arrays, and ragged results the stacks pad with #N/A ("Stacked results
+    # past the grid"; EXPAND's #N/A padding).
+    "array_shape": entries(
+        '5 | "a" | {1} | SEQUENCE(1,1) | Data!A1 | {1,2,3} | {1;2;3} | Data!A1:E1 | Data!A1:A12 | {1,2;3,4} | '
+        '{1,2,3;4,5,6} | {"a","b";"c","d"} | VSTACK({1,2},{3}) | HSTACK({1;2},3) | EXPAND({1},2,3)'
+    ),
+    # Arrays holding errors and blanks: error elements broadcast or are kept per element ("A scalar error
+    # operand broadcasts", "SCAN and REDUCE keep errors in the LAMBDA"), TOCOL/TOROW's ignore drops blanks and
+    # errors, and a blank cell is handed on as a reference, not as 0 ("BYROW, BYCOL, MAP, SCAN and REDUCE hand a
+    # range's slices to the LAMBDA as references"). Column Z of Data is never filled, so Data!Z1:Z3 is blank.
+    "array_holes": entries(
+        '{1,#N/A,3} | {#DIV/0!;2;#VALUE!} | {"",0,FALSE} | {1,2;#N/A,""} | IF({1,0,1},1,NA()) | '
+        'IFERROR(1/{1,0,2},"") | Data!Z1 | Data!Z1:Z3 | HSTACK(Data!Z1:Z2,{1;2}) | EXPAND(1,2,2,"") | '
+        '{TRUE,FALSE;"TRUE",1}'
+    ),
+    # A value looked up: where the type-skipping binary search and the wildcard and next-smaller/larger modes
+    # change their answer (lookup.md "Approximate-match lookups: type-skipping binary search", "XMATCH and
+    # XLOOKUP next-smaller mode: text sorts above every number"): numbers below, between and above the data,
+    # text in either case, wildcards and an escaped one (match_mode 2), booleans, number-looking text, an empty
+    # string and an error.
+    "lookup_value": entries(
+        '0 | 1 | 2.5 | (-1) | 1E+300 | 45351 | "" | "a" | "A" | "b" | "zzz" | "1" | "*" | "a*" | "?" | "~*" | '
+        "TRUE | FALSE | NA()"
+    ),
+    # The vector LOOKUP and XMATCH search: sorted, descending, unsorted, runs of duplicates (lookup.md "XMATCH /
+    # XLOOKUP binary search over runs of equal values"), mixed types, text case, an error element, blanks
+    # ("XMATCH / XLOOKUP linear search over blanks"), a single element and a row instead of a column. No 2-D
+    # table: XMATCH's lookup_array shares the pool, and a 2-D one is only #VALUE! there.
+    "lookup_table": entries(
+        '{1;2;3;4;5} | {5;4;3;2;1} | {3;1;4;1;5} | {1;2;2;2;3} | {1;"a";TRUE;2;"b"} | {"a";"B";"c";"D"} | '
+        "{1;#N/A;3} | Data!Z1:Z4 | {1} | {1,2,3}"
+    ),
+    # REGEXTEST, REGEXEXTRACT and REGEXREPLACE patterns (PCRE2; text.md's REGEX entries): anchors, the empty
+    # pattern and patterns that match empty (the iteration after an empty match), alternation with an empty
+    # side, a lookahead, inline (?i), (?m) and (?s), POSIX and Unicode classes, a named group and its
+    # back-reference, \X and \R and a counted repeat. No invalid pattern: excel-graph's error for "[" is a rich
+    # value it cannot decode, so the cell would stay pending (T-2286 smoke check).
+    # (A list, not `entries`: the patterns hold `|`.)
+    "regex_pattern": [
+        '"^"',
+        '"$"',
+        '"^$"',
+        '""',
+        '"\\b"',
+        '"a*?"',
+        '"x*"',
+        '"|b"',
+        '"b|"',
+        '"(?=b)|b"',
+        '"(?i)A"',
+        '"(?m)^a"',
+        '"(?s).+"',
+        '"[[:alpha:]]+"',
+        '"\\d+"',
+        '"\\p{L}"',
+        '"[^a-z]"',
+        '"(a)|b"',
+        '"(?<n>\\w)\\k<n>"',
+        '"\\X"',
+        '"\\R"',
+        '"a{2,}"',
+        '"."',
+        '"\\."',
+    ],
+    # LAMBDAs for MAP, BYROW, BYCOL, REDUCE, SCAN and MAKEARRAY, by parameter count (the generator takes only
+    # entries of the arity the call needs, and renames x and y to free names): an identity that hands back a
+    # reference or a row (BYROW's #CALC!, "BYROW and BYCOL: a LAMBDA result that is an array"), an array or a
+    # multi-cell range result ("MAP and SCAN with a LAMBDA that returns a multi-cell range"), an error ("SCAN
+    # and REDUCE keep errors in the LAMBDA"), ISBLANK of a handed-on blank reference, a LAMBDA result ("An
+    # uncalled LAMBDA is one value"), REDUCE's VSTACK accumulator, and an omitted optional parameter.
+    "lambda_body": entries(
+        'LAMBDA(x,x) | LAMBDA(x,SUM(x)) | LAMBDA(x,NA()) | LAMBDA(x,"") | LAMBDA(x,ISBLANK(x)) | '
+        'LAMBDA(x,ROWS(x)) | LAMBDA(x,{1,2}) | LAMBDA(x,x&"") | LAMBDA(x,IF(x>1,x,1/0)) | '
+        "LAMBDA(x,LAMBDA(y,y)) | LAMBDA(x,Data!A1:B2) | LAMBDA(x,y,x+y) | LAMBDA(x,y,y) | LAMBDA(x,y,x&y) | "
+        "LAMBDA(x,y,IF(y>x,y,x)) | LAMBDA(x,y,NA()) | LAMBDA(x,y,{1,2}) | LAMBDA(x,y,ISBLANK(y)) | "
+        'LAMBDA(x,y,IFERROR(x/y,"e")) | LAMBDA(x,y,VSTACK(x,y)) | LAMBDA(x,y,x*y) | LAMBDA(x,[y],ISOMITTED(y))'
+    ),
 }
+
+
+def lambda_arity(text: str) -> int:
+    """The parameter count of a `lambda_body` entry: `LAMBDA(x,[y],ISOMITTED(y))` has 2."""
+    match = re.match(r"LAMBDA\(((?:\[?[a-z]+\]?,)*)", text)
+    return match.group(1).count(",") if match else 0
