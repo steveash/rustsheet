@@ -3,7 +3,7 @@ id: T-2192
 title: "CUMIPMT short-range interest: reproduce Excel's per-period form (visibly-off cells after T-1890)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -60,3 +60,22 @@ Float64 checks in Python against the fin-cumipmt-overflow-and-forms oracle (no e
 Next: run these forms through the engine over every listed cell (A5-A12, fin-cumipmt-period-bound A18,
 fin-remaining-later-argument-ranges K3, CUMPRINC_CUMIPMT.xlsx), and check whether the type 0 form with
 pow and the type 1 form reach visible parity together.
+
+## Outcome
+Second opus run (2026-10-22). A float64 fit over the 88 CUMIPMT/CUMPRINC oracle cells (probes and
+CUMPRINC_CUMIPMT.xlsx) found:
+- Excel's errors on the 1E10-rate principal follow the rounding of `m·ln(1+r)`, and type 0's
+  per-period sum of `pmt·exp((k-1-nper)·L)` is within an ulp of Excel on every type 0 CUMPRINC
+  probed (A16, A20-A24 were 33 to 343 ulps off).
+- Type 0's short interest is the balance form `-(pv·q·r - pmt·(q-1))`, `q = exp((k-1)·L)` (A12, A14
+  to the bit).
+- Excel's CUMIPMT is `-pmt·m - CUMPRINC` in doubles wherever both were probed, so the interest
+  cells left are principal misses.
+- Type 1's CUMPRINC past an overflowing `pv·r` uses `pv·(r/(1+r))/(1-v^nper)` (A2 -1E300).
+functions/financial/cumulative.rs now takes those forms for type 0 over up to 32 periods (falling
+back to the old paths where they overflow) and that payment as type 1's CUMPRINC fallback.
+Visibly fixed: probes/fin-cumipmt-overflow-and-forms A2, A12, A16, A20-A24 (8 of the 17 listed cells).
+The other nine (A5, A6, A7 = G2, A9-A11, K3, period-bound A18, H26) moved to **T-2362** with the
+fit's leads. docs/excel-semantics/financial.md "CUMIPMT and CUMPRINC over many periods" records it.
+Eval delta: probes known failures 2070 -> 2065 (A2, A12, A14, A20, A21 bit-exact), 0 regressions in
+every gated suite; visibly-off in-scope cells 2335.

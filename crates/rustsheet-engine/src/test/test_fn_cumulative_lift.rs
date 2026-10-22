@@ -84,10 +84,9 @@ fn extreme_values_from_cells_are_values_without_a_panic() {
         ("A2", "=CUMPRINC(Z4,Z2,Z1,1,Z2,1)", "-1E-300"),
         ("A3", "=CUMPRINC(Z6,Z7,Z3,1,Z7,0)", "-9.999999999999999E299"),
         // A payment that overflows: CUMIPMT is #NUM! as in Excel (probes/fin-cumipmt-overflow-and-forms
-        // A1, A3). Excel's CUMPRINC is -1E300 there (A2); this pins today's #NUM!, a known miss.
-        // TODO(T-2192): CUMPRINC of an overflowing payment.
+        // A1, A3), while type 1's CUMPRINC is still the loan, -1E300 (A2; T-2192).
         ("A4", "=CUMIPMT(Z2,Z5,Z3,1,Z5,0)", "#NUM!"),
-        ("A5", "=CUMPRINC(Z2,10,Z3,1,10,1)", "#NUM!"),
+        ("A5", "=CUMPRINC(Z2,10,Z3,1,10,1)", "-1E300"),
         (
             "A6",
             "=ROWS(CUMIPMT({1E300;-1E300},Z5,Z3,{1;1E300},Z2,{0;1}))",
@@ -113,15 +112,16 @@ fn an_end_period_past_nper_is_num() {
 
 #[test]
 fn up_to_32_periods_are_the_per_period_sum() {
-    // The kernel keeps main's sum of IPMT up to `CUMULATIVE_LOOP_PERIODS` (32), bit for bit
+    // Type 1's interest is main's sum of IPMT up to `CUMULATIVE_LOOP_PERIODS` (32), bit for bit
     // (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26); past it, the closed form.
-    // The principal is the closed form at any length, close to the PPMT sum (T-1890). The
-    // per-period sums are rebuilt here from IPMT and PPMT.
+    // Type 0's short sums are their own forms (T-2192, below). The principal of type 1 is the
+    // closed form at any length, close to the PPMT sum (T-1890). The per-period sums are rebuilt
+    // here from IPMT and PPMT.
     let mut model = new_empty_model();
     let pairs = [
         (
-            "=CUMIPMT(0.004,1024,1000,1,32,0)",
-            "=SUM(IPMT(0.004,SEQUENCE(32),1024,1000))",
+            "=CUMIPMT(0.004,1024,1000,2,33,1)",
+            "=SUM(IPMT(0.004,SEQUENCE(32,1,2),1024,1000,0,1))",
         ),
         (
             "=CUMPRINC(0.004,1024,1000,3,34,1)",
@@ -172,10 +172,10 @@ fn up_to_32_periods_are_the_per_period_sum() {
 #[test]
 fn a_subnormal_or_underflowed_leading_power_keeps_its_digits() {
     // A rate of 1E10 over a short range: `v^(a-1-nper)` is subnormal (A20-A22) or underflows
-    // (A23, A24), so the short-range product `v^(a-1-nper)·expm1(..)` would lose digits
-    // (-9.999888696826292E-71 for A20) and the difference of powers decides. Excel's values are
-    // probes/fin-cumipmt-overflow-and-forms A20-A24 (excel-graph). The difference is main's value,
-    // within 1E-13 relative of Excel's (5E-14 for A23, A24); the last digits are T-2192's.
+    // (A23, A24), where the closed form's product `v^(a-1-nper)·expm1(..)` loses digits
+    // (-9.999888696826292E-71 for A20) and its difference of powers is up to 343 ulps off. Type
+    // 0's short principal is the per-period sum of `pmt·exp((k-1-nper)·L)`, within an ulp of
+    // Excel's values, probes/fin-cumipmt-overflow-and-forms A20-A24 (excel-graph; T-2192).
     let cells = [
         (
             "A1",
@@ -211,10 +211,23 @@ fn a_subnormal_or_underflowed_leading_power_keeps_its_digits() {
     for (cell, formula, excel) in cells {
         let ours = round_trip_value(&model, cell).parse::<f64>().unwrap();
         assert!(
-            (ours / excel - 1.0).abs() < 1E-13,
+            (ours / excel - 1.0).abs() < 3E-16,
             "{formula}: ours {ours:e}, Excel {excel:e}"
         );
     }
+}
+
+#[test]
+fn type_0_short_interest_is_the_balance_form() {
+    // probes/fin-cumipmt-overflow-and-forms A12-A14 (excel-graph): the interest of period k is
+    // `-(pv·q·r - pmt·(q-1))` with `q = exp((k-1)·L)`, not the exact IPMT (A12 was
+    // -15.708656559792592, the exact value; T-2192). A rate of 1E10 overflows `q`, and the closed
+    // form keeps A19.
+    check(&[
+        ("A1", "=CUMIPMT(0.01,100,100000,100,100,0)", "-15.708656559792416"),
+        ("A2", "=CUMIPMT(0.0083,36,8000,3,4,0)", "-124.79622431364345"),
+        ("A3", "=CUMIPMT(1E10,40,1,10,40,0)", "-309999999999"),
+    ]);
 }
 
 #[test]
