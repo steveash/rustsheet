@@ -269,7 +269,7 @@ impl Model {
         }
 
         let num_rows = data.len();
-        let num_cols = data.first().map_or(0, Vec::len);
+        let num_cols = data[0].len();
 
         // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
         // Argument errors come before value validation and are reported left to right: sort_index,
@@ -342,7 +342,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let num_rows = data.len();
-        let num_cols = data[0].len();
+        let num_cols = data.first().map_or(0, Vec::len);
         // An array or range sort_index is a list of keys, applied in order, and a sort_order list
         // must be as long (`SORT(A1:B3,{1;2})` sorts by column 1 then 2; `SORT(A1:B3,1,{1;-1})` is
         // `#VALUE!`: probes/m7-argument-modes F10:H11). Rows tied on a key are ordered by the
