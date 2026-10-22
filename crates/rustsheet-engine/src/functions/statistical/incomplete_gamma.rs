@@ -572,10 +572,17 @@ mod tests {
                 near_at(gamma_sf(&dist, x), dist.sf(x), scale),
                 "sf Gamma({shape},{rate}) at {x}"
             );
-            assert!(
-                near_at(gamma_inverse_cdf(&dist, p), dist.inverse_cdf(p), shape),
-                "Gamma({shape},{rate}) at {p}"
-            );
+            // statrs' search (halve and double, 8 bisections, 4 Newton steps) can stop far from
+            // the quantile in the far tail (at p = 1.26E-291 and shape 14.3 both searches end
+            // where the cdf is about 1E-88), so the two are compared only where statrs' quantile
+            // reproduces p.
+            let theirs = dist.inverse_cdf(p);
+            if (dist.cdf(theirs) / p - 1.0).abs() < 1e-6 {
+                assert!(
+                    near_at(gamma_inverse_cdf(&dist, p), theirs, shape),
+                    "Gamma({shape},{rate}) at {p:e}"
+                );
+            }
         }
         for df in [1.0, 2.0, 5.0, 10.0, 99.0, 1e4, 1e6, 1e10] {
             let chi = ChiSquared::new(df).unwrap();

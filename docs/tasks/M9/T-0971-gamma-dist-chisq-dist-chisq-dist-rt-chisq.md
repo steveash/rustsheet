@@ -99,7 +99,12 @@ criteria above):
 - Still failing unit tests (incomplete_gamma.rs tests module): `the_port_is_statrs_where_statrs_finishes`
   compares the new kernel with statrs, which is itself off by about an ulp of a|ln x| + x
   (`near_at`); the inversion comparison fails in the far tail (p ~ 1E-288 at shape 14.3):
-  either widen the inversion tolerance with a reason or compare against an mpmath reference.
+  now compared only where statrs' own quantile reproduces p (both searches stop far off in the
+  far tail: p = 1.26E-291, shape 14.3). The next failure is real: for a tiny shape and x below
+  a + 1 (Gamma(0.00113, 3.58E-5) at 22.35, x*rate = 8E-4) Q is taken as 1 - P and loses about
+  1E-14 relative; the acceptance criteria want Q directly. Add a direct small-a Q (DiDonato-Morris
+  `grat1`: Q = 1 - x^a/Gamma(a+1) through expm1 of a ln x plus the series remainder) before
+  switching `gamma_sf` there.
   `a_call_past_its_cap_is_nan` needs its cap-boundary asserts rewritten for the new kernel's term
   counts (the exact `Terms(n)` boundaries changed; prove both sides of the cap again).
 - Not done yet: the module doc still describes the statrs port (rewrite it: the port remains only
