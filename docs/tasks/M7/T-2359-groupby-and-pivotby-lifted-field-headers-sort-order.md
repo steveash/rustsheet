@@ -3,7 +3,7 @@ id: T-2359
 title: "GROUPBY and PIVOTBY: lifted field_headers, sort_order and filter arguments, GROUPBY widths (gen-m7 rest of T-2311)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
