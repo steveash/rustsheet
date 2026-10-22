@@ -44,3 +44,19 @@ Visibly off on the T-1890 head:
 
 ## Visible-parity stage
 Decision 0083: the acceptance criteria are the visible-parity stage.
+
+## Notes (first opus run, 2026-10-22; not finished, out of session budget)
+Float64 checks in Python against the fin-cumipmt-overflow-and-forms oracle (no engine change yet):
+- Type 0: a per-period sum of `-(pv*q*r - pmt*(q-1))` with `q = (1+r)^(k-1)` (pow) and
+  `pmt = pv*r*Q/(Q-1)`, `Q = (1+r)^nper`, is bit-exact on A12 (the single period main misses) and A13,
+  and 2 ulps off on A14. The same form with `q = exp((k-1)*log1p r)` and `pmt = pv*r/-expm1(-nper*log1p r)`
+  is also bit-exact on A12. `pmt*r/(1+r)` and `pmt - pmt/(1+r)` are 7 to 18 ulps off.
+- Type 1: `-((pv-P1)*q*r - P1*(q-1))` with `q = (1+r)^(k-2)`, `P1 = pmt/(1+r)`, summed from period 2,
+  is bit-exact on A8 and 5 ulps off on A7 (visibly off). `ipmt0(k)/(1+r)` in the factored form
+  `-((pv*r-pmt)*q+pmt)/(1+r)` with the expm1 payment, summed last period first, is 2 ulps off on A7 (visibly right).
+- A11 (period 1E15, where `(1+r)^nper` overflows): every form tried gives -9.90099009900996 or the exact
+  ...901, while Excel's -9.900990099009732 looks like `pmt - x` with `x` about 1.6 ulps above 990.0990099009901.
+  Not yet explained.
+Next: run these forms through the engine over every listed cell (A5-A12, fin-cumipmt-period-bound A18,
+fin-remaining-later-argument-ranges K3, CUMPRINC_CUMIPMT.xlsx), and check whether the type 0 form with
+pow and the type 1 form reach visible parity together.
