@@ -579,7 +579,9 @@ Rule (probes/date-text-weekend-3d, excel-graph, 2026-10-19, T-1428):
   is 2 and its second element `#VALUE!` (H5, I5). `IF(FALSE,Sheet1:Sheet2!A1)` is FALSE as holidays, `#VALUE!` (row 9).
   An array condition beside a 3-D branch: if any element takes it the call is one `#VALUE!`, no array
   (`WORKDAY(45000,5,IF({TRUE;FALSE},Sheet1:Sheet2!A1,A1))`, its ROWS too, ERROR.TYPE 3; NETWORKDAYS alike), and with
-  `{FALSE;FALSE}` A1 is read (45008, ROWS 1; NETWORKDAYS 22) (M1-M8).
+  `{FALSE;FALSE}` A1 is read (45008, ROWS 1; NETWORKDAYS 22) (M1-M8). Unprobed: a real `#REF!` value in the
+  untaken branch under an array condition (ours `#VALUE!`, as any `#REF!` there is read as the 3-D one) and CHOOSE with
+  an array index beside a 3-D arm (`CHOOSE({1;2},Sheet1:Sheet2!A1,A1)`).
   A day count of 0 (or 0.5) never reads the holidays: WORKDAY and WORKDAY.INTL give the start date, a weekend start
   included, with a 3-D, `NA()` or `"x"` holidays (K1-K4, K8-K9, K11-K14), but 1 day is `#VALUE!` (K10); NETWORKDAYS
   and NETWORKDAYS.INTL over one day still read them (`NETWORKDAYS(45000,45000,Sheet1:Sheet2!A1)` is `#VALUE!`, K5-K7).
