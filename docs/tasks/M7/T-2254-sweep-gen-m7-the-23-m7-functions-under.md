@@ -59,7 +59,8 @@ Then `uv run rustsheet-oracle fill -b excel-graph --suite gen-m7` and `make eval
 after the sweep (report "Excel evidence per function"): BYCOL 460, BYROW 407, DROP 479, EXPAND 457, FILTER 512,
 ISOMITTED 405, MAKEARRAY 452, MAP 476, REDUCE 456, REGEXEXTRACT 532, SCAN 480, SORT 552, SORTBY 923, TAKE 770,
 TEXTAFTER 607, TEXTBEFORE 743, TEXTSPLIT 510, TOCOL 474, TOROW 412, UNIQUE 834, VSTACK 579, WRAPCOLS 467,
-WRAPROWS 467: all at least 400, ten short of 500 (the aim). gen-m7 known failures went from 56 to 706: 650
+WRAPROWS 467: all at least 400; 13 stay under the 500 aim (BYCOL, BYROW, DROP, EXPAND, ISOMITTED, MAKEARRAY, MAP,
+REDUCE, SCAN, TOCOL, TOROW, WRAPCOLS, WRAPROWS). gen-m7 known failures went from 56 to 706: 650
 new-coverage, 0 regressions; all 650 are visibly off (in-scope visibly-off cells 1,950 → 2,600,
 decision 0088 lock 2947 unchanged).
 
