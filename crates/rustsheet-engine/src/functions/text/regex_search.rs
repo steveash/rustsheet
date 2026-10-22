@@ -158,12 +158,9 @@ impl Search<'_> {
                 caches,
                 work: self.work,
             }),
-            Matcher::Backtrack { program, cache } => Engines::Backtrack(Backtracker {
-                program,
-                cache,
-                work: self.work,
-                room: self.room,
-            }),
+            Matcher::Backtrack { program, cache } => {
+                Engines::Backtrack(Backtracker::new(program, cache, self.work, self.room))
+            }
         }
     }
 }
@@ -182,8 +179,8 @@ fn to_match((start, end): (usize, usize)) -> Match {
 /// true, by the rule the automata's iterator follows (`regex_automata`'s `Searcher`): the next
 /// search starts where a match ended, and an empty match may not end where the previous match
 /// did, so the search that found one is repeated one character later. The PCRE2 rule is
-/// T-1899's.
-fn each_match(
+/// T-1899's. Visible to `pcre`'s differential test.
+pub(in crate::functions::text) fn each_match(
     bt: &mut Backtracker<'_>,
     text: &str,
     mut each: impl FnMut(&Backtracker<'_>, Match) -> bool,

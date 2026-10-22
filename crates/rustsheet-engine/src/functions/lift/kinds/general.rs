@@ -58,7 +58,8 @@ const TAKE_DROP: ArgKinds = ArgKinds::fixed(2, &[Whole, Lift, Lift], Output { we
 /// (`TOCOL(A1:B3,{0;1})` is 2x1 with first element 1, probes/m7-argument-modes F9:H9, K8; over an
 /// array, gen-m9/1782efcecd5d4b1b Calc!A19), `scan_by_column` too (probes/m7-lift-take-drop-sortby
 /// row 24). The array is read once by the function and handed to every element whole; each
-/// element walks it (`LiftCost::Cells`) and is charged the cells it builds.
+/// element walks it (`LiftCost::Cells`) and is charged the cells it builds. TOROW shares it
+/// (`TOROW(Data!B3:E8,3,WRAPCOLS(Data!D3:D11,1))` is 1x9, gen-m7/7d67c559ce7536fa A619; T-2313).
 const TOCOL: ArgKinds =
     ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array();
 /// `UNIQUE(array, [by_col], [exactly_once])`: `by_col` lifts over an array and a range
@@ -166,7 +167,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Take | Function::Drop => Some(&TAKE_DROP),
         Function::Expand => Some(&EXPAND),
         Function::Wrapcols | Function::Wraprows => Some(&WRAP),
-        Function::Tocol => Some(&TOCOL),
+        Function::Tocol | Function::Torow => Some(&TOCOL),
         Function::Unique => Some(&UNIQUE),
         Function::Sortby => Some(&SORTBY),
         Function::Sort => Some(&SORT),

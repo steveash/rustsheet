@@ -151,6 +151,19 @@ impl Ast {
         true
     }
 
+    /// Whether the tree holds `$` or `\Z` (without `(?m)`), whose automata translation depends
+    /// on the text (`hir::FinalLf`).
+    pub(super) fn has_final_lf_anchor(&self) -> bool {
+        let mut stack = vec![self];
+        while let Some(ast) = stack.pop() {
+            if matches!(ast, Ast::Anchor(Anchor::EndOrFinalLf)) {
+                return true;
+            }
+            ast.push_children(&mut stack);
+        }
+        false
+    }
+
     /// Pushes the nodes directly under this one onto `stack`: the one list of every node's
     /// children, for the iterative passes over the tree.
     pub(super) fn push_children<'a>(&'a self, stack: &mut Vec<&'a Ast>) {
@@ -173,6 +186,24 @@ impl Ast {
             | Ast::KeepOut
             | Ast::Grapheme => {}
         }
+    }
+}
+
+/// Whether `ast` can match the empty string. The recursion is bounded by the parser's nest limit,
+/// and a repeat's body is walked once whatever its count.
+pub(super) fn can_match_empty(ast: &Ast) -> bool {
+    match ast {
+        Ast::Empty
+        | Ast::Anchor(_)
+        | Ast::KeepOut
+        | Ast::LookAround { .. }
+        | Ast::Backref { .. } => true,
+        Ast::Literal { .. } | Ast::Class(_) | Ast::Dot { .. } | Ast::Grapheme => false,
+        Ast::Capture { ast, .. } | Ast::Atomic(ast) => can_match_empty(ast),
+        Ast::Concat(asts) => asts.iter().all(can_match_empty),
+        Ast::Alternation(asts) => asts.iter().any(can_match_empty),
+        Ast::Repeat { min, ast, .. } => *min == 0 || can_match_empty(ast),
+        Ast::Conditional { yes, no, .. } => can_match_empty(yes) || can_match_empty(no),
     }
 }
 

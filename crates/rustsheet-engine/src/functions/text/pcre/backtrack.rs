@@ -4,6 +4,10 @@
 //! catastrophic pattern ends in `Spent` (`#ERROR!`) instead of running or allocating unboundedly
 //! (CLAUDE.md directive 5).
 //!
+//! A program compiled for the memoized mode ([`Program::memoized`]) also keeps a visited set of
+//! `(instruction, position)` states and never enters one twice, so it runs in time linear in the
+//! program times the text (SPEC-0013 section 3, T-2355).
+//!
 //! The costs are conservative placeholders in `regex_engine`'s units (about a nanosecond each);
 //! T-1974 fits them.
 
@@ -16,7 +20,10 @@ use super::ast::Anchor;
 use super::class::literal_class;
 use super::grapheme::cluster_end;
 use super::program::{Inst, Program};
-use crate::functions::text::regex_engine::{charge, Spent};
+use crate::functions::text::{
+    lifted::to_u64,
+    regex_engine::{charge, Spent},
+};
 
 /// Units charged per instruction executed.
 const STEP: u64 = 8;
@@ -29,6 +36,10 @@ const BACKREF_CHAR: u64 = 8;
 const BACKREF_FOLD_CHAR: u64 = 256;
 /// Units charged per start position an unanchored search tries.
 const ATTEMPT: u64 = 64;
+/// Units charged per word of the visited set cleared: a word is 64 positions of one instruction.
+const VISITED_WORD: u64 = 1;
+/// Positions (bytes of the text) one chunk of the visited set covers: one bit of a word each.
+const CHUNK: usize = 64;
 
 /// One entry of the backtracking stack.
 #[derive(Debug, Clone, Copy)]
@@ -49,6 +60,7 @@ pub(in crate::functions::text) struct BacktrackCache {
     stack: Vec<Frame>,
     slots: Vec<Option<usize>>,
     loops: Vec<usize>,
+    visited: Visited,
 }
 
 impl BacktrackCache {
@@ -57,6 +69,74 @@ impl BacktrackCache {
         self.stack.capacity() * std::mem::size_of::<Frame>()
             + self.slots.capacity() * std::mem::size_of::<Option<usize>>()
             + self.loops.capacity() * std::mem::size_of::<usize>()
+            + self.visited.memory_usage()
+    }
+}
+
+/// The states the memoized mode has visited: one bit per instruction and byte position, in
+/// chunks of [`CHUNK`] positions allocated as the search reaches them. A chunk holds one word
+/// per instruction (bit `pos % CHUNK` of word `pc`) and counts only while its stamp is the
+/// current one, so a new text or operation clears the set by bumping the stamp, not by
+/// touching memory.
+#[derive(Debug, Default)]
+struct Visited {
+    chunks: Vec<Chunk>,
+    /// The stamp of the current operation; 0 is never current.
+    stamp: u32,
+    /// Bytes the chunks' words hold.
+    bytes: usize,
+}
+
+#[derive(Debug, Default)]
+struct Chunk {
+    stamp: u32,
+    words: Vec<u64>,
+}
+
+impl Visited {
+    fn memory_usage(&self) -> usize {
+        self.chunks.capacity() * std::mem::size_of::<Chunk>() + self.bytes
+    }
+
+    /// Starts a new operation: every state is unvisited again.
+    fn reset(&mut self) {
+        self.stamp = self.stamp.wrapping_add(1);
+        if self.stamp == 0 {
+            // Every chunk's stamp could now look current: make each stale for good.
+            for chunk in &mut self.chunks {
+                chunk.stamp = 0;
+            }
+            self.stamp = 1;
+        }
+    }
+
+    /// Marks unvisited again every position from `from` to `to`, both included: where a match
+    /// was found, so the next search of the same iteration may cross it again (SPEC-0013
+    /// section 3). Marks after `to` stay: they are states that failed before the match's path
+    /// was taken, and fail for every later start too.
+    fn forget(&mut self, from: usize, to: usize, work: &mut u64) -> Result<(), Spent> {
+        for index in from / CHUNK..=to / CHUNK {
+            let Some(chunk) = self.chunks.get_mut(index) else {
+                break;
+            };
+            if chunk.stamp != self.stamp {
+                continue;
+            }
+            if (index + 1) * CHUNK <= to + 1 {
+                chunk.stamp = 0;
+                continue;
+            }
+            // Keep the bits of the positions after `to` in this chunk: none when `to` is its last
+            // position, where the shift by 64 overflows to 0.
+            let keep = u64::MAX
+                .checked_shl(u32::try_from(to % CHUNK + 1).unwrap_or(u32::MAX))
+                .unwrap_or(0);
+            charge(work, to_u64(chunk.words.len()).saturating_mul(VISITED_WORD))?;
+            for word in &mut chunk.words {
+                *word &= keep;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -69,7 +149,24 @@ pub(in crate::functions::text) struct Backtracker<'a> {
     pub(in crate::functions::text) room: usize,
 }
 
-impl Backtracker<'_> {
+impl<'a> Backtracker<'a> {
+    /// A search of `program` with `cache` for one operation over one text: what the memoized
+    /// mode visited in another is forgotten.
+    pub(in crate::functions::text) fn new(
+        program: &'a Program,
+        cache: &'a mut BacktrackCache,
+        work: &'a mut u64,
+        room: usize,
+    ) -> Backtracker<'a> {
+        cache.visited.reset();
+        Backtracker {
+            program,
+            cache,
+            work,
+            room,
+        }
+    }
+
     /// The leftmost match starting at or after `from` (a character boundary of `text`), with `\G`
     /// at `from`: its capture slots stay in the cache. `(start, end)` of the match.
     pub(in crate::functions::text) fn find_from(
@@ -82,7 +179,11 @@ impl Backtracker<'_> {
             charge(self.work, ATTEMPT)?;
             if self.attempt(text, start, from)? {
                 let slot = |i: usize| self.cache.slots.get(i).copied().flatten();
-                return Ok(slot(0).zip(slot(1)));
+                let found = slot(0).zip(slot(1));
+                if let (true, Some((_, end))) = (self.program.memoized, found) {
+                    self.cache.visited.forget(from, end, self.work)?;
+                }
+                return Ok(found);
             }
             if self.program.anchored {
                 return Ok(None);
@@ -102,15 +203,60 @@ impl Backtracker<'_> {
         }
     }
 
-    /// Pushes `frame`, charged; spent once the stack would pass [`Backtracker::room`].
+    /// Pushes `frame`, charged; spent once the stack and the visited set would pass
+    /// [`Backtracker::room`].
     fn push(&mut self, frame: Frame) -> Result<(), Spent> {
         charge(self.work, FRAME)?;
-        let bytes = (self.cache.stack.len() + 1).saturating_mul(std::mem::size_of::<Frame>());
+        let bytes = (self.cache.stack.len() + 1)
+            .saturating_mul(std::mem::size_of::<Frame>())
+            .saturating_add(self.cache.visited.bytes);
         if bytes > self.room {
             return Err(Spent);
         }
         self.cache.stack.push(frame);
         Ok(())
+    }
+
+    /// Marks state `(pc, pos)` visited; whether it already was. A chunk is allocated (or a stale
+    /// one cleared) when the search first reaches its positions, charged per word, and spent
+    /// once the stack and the visited set would pass [`Backtracker::room`].
+    fn visit(&mut self, pc: usize, pos: usize) -> Result<bool, Spent> {
+        let words = self.program.insts.len();
+        let index = pos / CHUNK;
+        let visited = &mut self.cache.visited;
+        if visited.chunks.len() <= index {
+            visited.chunks.resize_with(index + 1, Chunk::default);
+        }
+        let stamp = visited.stamp;
+        let table = visited.chunks.len() * std::mem::size_of::<Chunk>();
+        let Some(chunk) = visited.chunks.get_mut(index) else {
+            return Err(Spent);
+        };
+        if chunk.stamp != stamp {
+            charge(self.work, to_u64(words).saturating_mul(VISITED_WORD))?;
+            if chunk.words.len() != words {
+                let held = visited
+                    .bytes
+                    .saturating_sub(chunk.words.len() * std::mem::size_of::<u64>())
+                    .saturating_add(words.saturating_mul(std::mem::size_of::<u64>()));
+                let stack = self.cache.stack.len() * std::mem::size_of::<Frame>() + table;
+                if held.saturating_add(stack) > self.room {
+                    return Err(Spent);
+                }
+                visited.bytes = held;
+                chunk.words = vec![0; words];
+            } else {
+                chunk.words.fill(0);
+            }
+            chunk.stamp = stamp;
+        }
+        let bit = 1u64 << (pos % CHUNK);
+        let Some(word) = chunk.words.get_mut(pc) else {
+            return Err(Spent);
+        };
+        let seen = *word & bit != 0;
+        *word |= bit;
+        Ok(seen)
     }
 
     /// One anchored match attempt at `start`; whether it matched.
@@ -124,7 +270,11 @@ impl Backtracker<'_> {
         let (mut pc, mut pos) = (0, start);
         loop {
             charge(self.work, STEP)?;
+            // A visited state already failed, or is a loop back to itself with nothing matched
+            // on the way, which the Thompson NFA's epsilon closure drops too.
+            let seen = program.memoized && self.visit(pc, pos)?;
             let matched = match program.insts.get(pc) {
+                _ if seen => false,
                 None => false,
                 Some(Inst::Match) => return Ok(true),
                 Some(Inst::Char(want)) => match char_at(text, pos) {
