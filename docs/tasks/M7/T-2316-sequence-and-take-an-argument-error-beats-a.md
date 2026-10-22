@@ -3,7 +3,7 @@ id: T-2316
 title: "SEQUENCE and TAKE: an argument error beats a zero rows or columns #CALC! (gen-m7)"
 milestone: M7
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
