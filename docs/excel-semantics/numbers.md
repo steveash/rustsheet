@@ -1123,6 +1123,22 @@ one ulp, at points where Excel's FYL2X rounds the other way (the research's firs
 the research run on the other 250 cells, so the last-bit rounding of an FYL2X near-tie varies between runs (plausibly the
 server's CPU), and following the model is the stable choice. glibc's `log` matches 2,674,450 of the 2,677,612 distinct x (the engine used it before).
 The probe keeps the 27 near-ties of that run as known failures in eval/baseline/probes.txt.
+T-2143 sweep (probes-numeric/t2143-ln-near-ties-fill1..3, excel-graph, three fills of one workbook of 380 x on 2026-10-22 within
+35 s of each other, fills 2 and 3 with a label cell so the oracle cache could not return fill 1; "d" is the distance of the exact
+product `RN64(ln 2) * log2 x` from the nearest 53-bit midpoint, in 53-bit ulps, 1 ulp64 = 2^-11 = 4.9e-4):
+- Near-ties: of the 30 probe points (d 4.7e-5 .. 2.7e-4), 12 return the same bits in all three fills and 18 do not; the fills match
+  the model at 3, 3 and 17 of the 30. So Excel's bit at a near-tie is not a fixed function of x: the same workbook, calculated
+  three times minutes apart, gave different bits (fill 3 mostly the model's, fills 1 and 2 mostly the other neighbour). The
+  disagreement is always between two adjacent doubles.
+- Window: all 23 disagreeing points have d between 2.19e-4 and 3.86e-4, around half a 64-bit ulp (2.44e-4), where RN64 of
+  the product is itself a coin flip. Of the 330 near-tie points (30 + 300 new), the 119 with d below 2.19e-4 and the 142 above
+  3.87e-4 return the model's bits in all three fills; the 69 in between split into 34 stable matches and 35 that differ from the
+  model in at least one fill (23 differ between fills).
+  The smallest d probed is 3.3e-5 (4.7e-5 for the old points); nothing closer than 2.19e-4 to a midpoint was unstable.
+- Controls: all 50 points at 0.1-0.4 ulp53 from a midpoint agree across fills and equal the model.
+- Consequence for T-2144: no single model can match every fill at the unstable points; fit only on points that agree
+  across fills (357 of 380 here).
+The probe keeps the 27 near-ties of that run as known failures in eval/baseline/probes.txt.
 Implemented in `x87_log10.rs` (`excel_ln`, sharing `excel_log10`'s FYL2X evaluation), used by the worksheet LN. A committed
 sample of 4,000 points plus every miss pins it to the Python model and to Excel (`x87_log10.rs` tests,
 `test/fixtures/ln_kernel.fixture`); `ln_matches_the_t1941_runs` reruns the full set when `RUSTSHEET_T1941_ROWS` names the extracted rows.
