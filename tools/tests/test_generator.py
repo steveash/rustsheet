@@ -918,3 +918,26 @@ def test_spill_is_off_by_default() -> None:
     spec = generate_case(catalog(), 3, milestone="M7", focus=True, formulas=10)
     assert spec["check"] == [f"Calc!A{i}" for i in range(1, 11)]
     assert "spill" not in spec["tags"]
+
+
+def test_m9_statistical_pools_keep_soft_domains_and_reach_their_edges() -> None:
+    # T-2247: a pooled df keeps drawing in-domain integers most of the time, and the pool adds its edges
+    # (the 1E10 df cut, values below 1 that truncate) the rest; every M9 statistical pool is used.
+    catalog = _loaded_catalog()
+    by_name = {f["name"]: f for f in catalog.functions}
+    df = next(p for p in by_name["T.DIST"]["params"] if p["name"] == "deg_freedom")
+    assert df["pool"] == "shape" and df.get("domain", {}).get("int")
+    g = Gen(random.Random(9), Catalog([], []), 12, 5, 3)
+    draws = [g.argument_text(df, "value", 0) for _ in range(2000)]
+    dom = df["domain"]
+    in_domain = [d for d in draws if d.isdigit() and dom.get("min", 0) <= int(d) <= dom.get("max", 10)]
+    assert len(in_domain) / len(draws) >= 0.6
+    assert any(d in POOLS["shape"] and d not in in_domain for d in draws)
+    used = {
+        p["pool"]
+        for f in catalog.functions
+        if f.get("milestone") == "M9" and f.get("category") == "statistical"
+        for p in f.get("params", [])
+        if "pool" in p
+    }
+    assert {"probability", "shape", "stat_x", "gamma_x", "flag", "stat_data"} <= used
