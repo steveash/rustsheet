@@ -298,18 +298,18 @@ impl Model {
         })
     }
 
-    /// Walk a scalar / range / array node and invoke the provided closure with every
+    /// Walk a scalar / range / array value and invoke the provided closure with every
     /// numeric date serial that is encountered.
     fn collect_serial_numbers<F>(
         &mut self,
-        node: &Node,
+        value: CalcResult,
         cell: CellReferenceIndex,
         mut handle: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(i64) -> Result<(), CalcResult>,
     {
-        match self.evaluate_node_in_context(node, cell) {
+        match value {
             CalcResult::Number(v) => {
                 let serial = v.floor() as i64;
                 // Validate serial is in bounds
