@@ -1098,7 +1098,7 @@ in a release build (116 and 147 in a debug build), so the 300-level probe cells 
 twice the stack and only about 200 fit, the 300-level cells being listed deviations.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/functions/logical/lambda.rs (`LAMBDA_STACK_SHARE`, `Model::lambda_stack_base`),
-crates/rustsheet-engine/src/model.rs (`evaluate_node_in_context`, `evaluate_cold_node`).
+crates/rustsheet-engine/src/model.rs (`evaluate_node_in_context`), crates/rustsheet-engine/src/node_frames.rs.
 Tasks: T-0439, T-0444
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
