@@ -533,7 +533,7 @@ Range edges (T-2203, probes-numeric/t2203-exp-range-edges, excel-graph 2026-10-2
 argument is 709.782712893384 (ln DBL_MAX; EXP = 1.7976931348622732E308, not quite DBL_MAX), and the first
 `#NUM!` is its successor double 709.7827128933841; every argument above it, up to 710.5, is `#NUM!`. At the other
 end `(EXP(a))=0` is TRUE for every a <= -745.1332191019412 and FALSE for every a >= -745.1332191019411 (the kept
-2^-1074), so the switch sits between those two consecutive doubles, at -1075*ln 2 as the midpoint rounding
+2^-1074, probes/subnormal-function-results C4), so the switch sits between those two consecutive doubles, at -1075*ln 2 as the midpoint rounding
 predicts; -745.5 and -746 are 0. The 20 control arguments in [-708.39, -707] are normal results. The current
 engine matches all 780 checked cells.
 - Curated evidence on main (probes-numeric, excel-graph fill of 2026-10-19, bit-identical to the T-1778 research
