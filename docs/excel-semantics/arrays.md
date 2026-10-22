@@ -1329,6 +1329,7 @@ in its own order. `SORTBY(Data!E1:E12,MAX(..)%,-1)` is Data!E1:E12 unchanged (ge
 A fractional sort_order is not `#VALUE!`: `SORTBY(Data!B1:E12,Data!E1:E12,-0.0001,Data!B1:B12,-1)` inside a TEXTSPLIT is a value
 (07d27aa0add0247f A658), and reading it as -1 reproduces that value; that it is read by its sign is derived, not a measured -1 control (UNVERIFIED). A positive fraction and a one-cell range as by_array are UNVERIFIED. The "Invalid values" list of
 "SORT and SORTBY argument errors" (`SORTBY(arr,key,0)` `#VALUE!`) still holds.
+Not every single value is kept: `SORTBY(Data!B1:C12,(-1),1)` (gen-m7/0e40208f51c2454c Calc!A2), `SORTBY(Data!A1:D12,ROUNDDOWN(2^31-1,4),1)` (2c5ea078f25443a2 A682) and `SORTBY(Data!B1:C12,IFS(..,(Data!D11+Data!$D8)),1)` with the by_array 0.5 (7d67c559ce7536fa A1358) are `#VALUE!`, while 1234567.89123 (`MAX(..)%`) and 0.2952.. (`TIMEVALUE`) keep the order. Integers and 0.5 fail, the two inexact fractions pass; "non-integer" alone regresses A1358 (T-2310 attempt). What separates them is unknown.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
 Ours: `#VALUE!` for both (T-2310).
 Status: VERIFIED (excel-graph) for the cells cited
