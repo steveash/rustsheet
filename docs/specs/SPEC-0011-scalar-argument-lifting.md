@@ -840,7 +840,7 @@ whose call is not an error keeps its top-left, and every other element is `Array
 `UNIQUE(D1:D3,FALSE,{#N/A;FALSE})` is `#N/A`, "x" (row 19), and `UNIQUE(<#VALUE!>,HSTACK(0.2,
 1E+15))` two `#VALUE!` (gen-m7/8044dce50616cfe9 A1434, so UNIQUE lifts an error array). INDEX of
 an empty value is `#VALUE!` (m7-lift-take-drop-sortby L25).
-`element_value` is the one conversion for `CallResult::Array` entries; a `Value` entry keeps
+`element_node` (as built; `element_value` in this design) is the one conversion for array entries; a `Value` entry keeps
 `calc_result_to_array_node`, so no existing element changes.
 
 **3. Each element is charged what it builds (directive 5).** An element's own result can be far

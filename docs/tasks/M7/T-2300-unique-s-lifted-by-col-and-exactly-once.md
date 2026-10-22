@@ -3,7 +3,7 @@ id: T-2300
 title: "UNIQUE's lifted by_col and exactly_once: later elements are empty unless every entry is equal"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -56,10 +56,24 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 34 known-failure li
 - gen-m7/8044dce50616cfe9.case.json A1434 `=UNIQUE(SUMPRODUCT((100+42),Data!C8:E8,Data!A8:D12),HSTACK(0.2,1000000000000000.0),(Data!B2<=((-1)/(-0.5))))`: B1434 Excel #VALUE!, ours <empty>; cells (1): B1434
 
 ## Acceptance criteria
-- [ ] The 34 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 34 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
-- [ ] The cells above pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures; rows 24, 35 and 36 still pass.
-- [ ] The rule is one driver option with a unit test (uniform entries, a differing later entry, a differing entry equal to the first after a differing one), documented in SPEC-0011 "Array-valued functions" rule 2.
-- [ ] `make check` green; reviewers approve.
+- [x] The 34 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 34 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
+- [x] The cells above pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures; rows 24, 35 and 36 still pass.
+- [x] The rule is one driver option with a unit test (uniform entries, a differing later entry, a differing entry equal to the first after a differing one), documented in SPEC-0011 "Array-valued functions" rule 2.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SORTBY (T-1839), which reuses the rule.
+
+## Outcome
+- UNIQUE's entry is `ArgKinds::array_first()` (`CallResult::ArrayFirst`). Unless every element's lifted entries are equal, `lift_grids` keeps an element whose call errors, keeps the top-left of the first element whose call is not an error, and empties every other element. T-1839 can reuse the option for SORTBY.
+- Error-array case:
+  - UNIQUE with an error array now lifts (each element is the error); before, it returned one scalar error.
+  - INDEX of an empty value is `#VALUE!`.
+  - New probe probes/m7-unique-lift-elements (350 cells, excel-graph, 2026-10-22). It covers equality by type, two lifted arguments, error entries, the empty element's ISBLANK/`&"|"`/TYPE/SUM/ROWS and the direct spills. Recorded in arrays.md and SPEC-0011 "As built (T-2300)".
+- Eval delta:
+  - probes: 2513 → 2489 known failures (24 fixed).
+  - gen-m7: 990 → 967 (23 fixed).
+  - Regressions: 0 in every suite.
+  - The 34 owned gen-m7 lines are all gone:
+    - 23 fixed here: 2c5ea078 (3), 7d67c559 (19) and 8044dce5 B1434 (1);
+    - the 11 7307132b A1173 lines had already left the baseline with T-2298 (#1493), since `SORT(-Data!A$12)` is a 1x1 array.

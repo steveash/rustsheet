@@ -267,7 +267,7 @@ pub(crate) enum CallResult {
     /// An array as [`CallResult::Array`], but unless every element's lifted entries are equal,
     /// only the first element whose call is not an error keeps its top-left value: an error
     /// stays, and every other element is empty (UNIQUE; probes/m7-unique-lift-elements,
-    /// docs/excel-semantics/arrays.md "UNIQUE's lifted elements"; T-2300).
+    /// docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's lifted elements"; T-2300).
     ArrayFirst,
 }
 
