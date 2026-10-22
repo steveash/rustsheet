@@ -3,7 +3,7 @@
 //! value, errors included (an array-valued entry's: its top-left value). `WholeByCaller` arguments
 //! stay as written.
 
-use super::super::kinds::{ArgKind, ArgKinds, CallResult};
+use super::super::kinds::{ArgKind, ArgKinds};
 use crate::functions::Function;
 use crate::language::get_default_language;
 use crate::test::util::new_empty_model;
@@ -47,7 +47,7 @@ fn mismatches(function: &Function, kinds: &ArgKinds, checked: &mut Vec<usize>) -
                 // An array-valued entry's element is its scalar call's top-left value
                 // (SPEC-0011 "Array-valued functions" rule 2).
                 let scalar_call = format!("{name}({})", scalar.join(","));
-                let scalar_call = if kinds.result == CallResult::Array {
+                let scalar_call = if kinds.result.is_array() {
                     format!("=INDEX({scalar_call},1,1)")
                 } else {
                     format!("={scalar_call}")

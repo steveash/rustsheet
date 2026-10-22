@@ -81,6 +81,41 @@ fn an_element_error_stays_in_its_position() {
     ]);
 }
 
+/// Unless every entry is equal, only the first element that is not an error keeps its call's
+/// top-left; later ones are empty: they spill as 0, ISBLANK is TRUE, and ROWS and INDEX of them
+/// are `#VALUE!` (probes/m7-unique-lift-elements, m7-lift-take-drop-sortby rows 24-37; T-2300).
+#[test]
+fn later_elements_are_empty_unless_every_entry_is_equal() {
+    check(&[
+        ("F1", "=UNIQUE(D1:D3,FALSE,{FALSE;TRUE;FALSE})", "x"),
+        ("F2", "", "0"),
+        ("F3", "", "0"),
+        ("G1", "=UNIQUE(D1:D3,FALSE,{FALSE;FALSE})", "x"),
+        ("G2", "", "x"),
+        ("H1", "=UNIQUE(D1:D3,FALSE,{#N/A;FALSE})", "#N/A"),
+        ("H2", "", "x"),
+        (
+            "I1",
+            "=ISBLANK(INDEX(UNIQUE(D1:D3,{FALSE;TRUE}),2,1))",
+            "TRUE",
+        ),
+        (
+            "J1",
+            "=ROWS(INDEX(UNIQUE(D1:D3,{FALSE;TRUE}),2,1))",
+            "#VALUE!",
+        ),
+        (
+            "K1",
+            "=INDEX(INDEX(UNIQUE(D1:D3,{FALSE;TRUE}),2,1),1,1)",
+            "#VALUE!",
+        ),
+        ("L1", "=SUM(INDEX(UNIQUE(D1:D3,{FALSE;TRUE}),2,1))", "0"),
+        // An error array is every element's result (gen-m7/8044dce50616cfe9 Calc!A1434:B1434).
+        ("M1", "=UNIQUE(1/0,{0.2,1E+15})", "#DIV/0!"),
+        ("N1", "", "#DIV/0!"),
+    ]);
+}
+
 /// Each element walks the whole array, so a call is charged its cells per element and is `#ERROR!`
 /// past `limits::MAX_LIFTED_CELL_VISITS` (DEVIATION, docs/excel-semantics/arrays.md "Array
 /// results above 1,048,576 cells").
