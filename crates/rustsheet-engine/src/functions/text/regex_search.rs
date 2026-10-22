@@ -106,11 +106,15 @@ impl Search<'_> {
         match self.split() {
             Engines::Automata(mut search) => search.captures_at(text, m, caps),
             Engines::Backtrack(mut bt) => {
-                // The search from the match's start finds the same match: the leftmost one
-                // starting at or after it, which `m` is.
-                bt.find_from(text, m.start())?;
-                bt.fill(caps);
-                Ok(())
+                // The iteration that found `m` is replayed up to it, so `\G` stands where that
+                // search started and the groups are those of `m` itself.
+                each_match(&mut bt, text, |bt, found| {
+                    if found == m {
+                        bt.fill(caps);
+                        return false;
+                    }
+                    found.start() < m.start()
+                })
             }
         }
     }
@@ -123,7 +127,10 @@ impl Search<'_> {
     ) -> Result<(), Spent> {
         match self.split() {
             Engines::Automata(mut search) => search.for_each_match(text, each),
-            Engines::Backtrack(mut bt) => each_match(&mut bt, text, |_, m| each(m)),
+            Engines::Backtrack(mut bt) => each_match(&mut bt, text, |_, m| {
+                each(m);
+                true
+            }),
         }
     }
 
@@ -139,6 +146,7 @@ impl Search<'_> {
             Engines::Backtrack(mut bt) => each_match(&mut bt, text, |bt, _| {
                 bt.fill(caps);
                 each(caps);
+                true
             }),
         }
     }
@@ -170,18 +178,18 @@ fn to_match((start, end): (usize, usize)) -> Match {
     Match::new(PatternID::ZERO, start..end)
 }
 
-/// Calls `each` with every successive non-overlapping match of `bt` in `text`, by the rule the
-/// automata's iterator follows (`regex_automata`'s `Searcher`): the next search starts where a
-/// match ended, and an empty match may not end where the previous match did, so the search
-/// that found one is repeated one character later. The PCRE2 rule is T-1899's.
+/// Calls `each` with every successive non-overlapping match of `bt` in `text` while it returns
+/// true, by the rule the automata's iterator follows (`regex_automata`'s `Searcher`): the next
+/// search starts where a match ended, and an empty match may not end where the previous match
+/// did, so the search that found one is repeated one character later. The PCRE2 rule is
+/// T-1899's.
 fn each_match(
     bt: &mut Backtracker<'_>,
     text: &str,
-    mut each: impl FnMut(&Backtracker<'_>, Match),
+    mut each: impl FnMut(&Backtracker<'_>, Match) -> bool,
 ) -> Result<(), Spent> {
-    let mut from = 0;
     let mut last_end = None;
-    let mut retry_from = from;
+    let mut retry_from = 0;
     loop {
         let Some((start, end)) = bt.find_from(text, retry_from)? else {
             return Ok(());
@@ -196,9 +204,10 @@ fn each_match(
                 None => return Ok(()),
             }
         }
-        each(bt, to_match((start, end)));
-        from = end;
-        retry_from = from;
+        if !each(bt, to_match((start, end))) {
+            return Ok(());
+        }
+        retry_from = end;
         last_end = Some(end);
     }
 }

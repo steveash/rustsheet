@@ -368,9 +368,18 @@ Pattern limits of our PCRE2 parser (T-1973, functions/text/pcre/parse.rs):
   DEVIATION: `REPT("(",250)&"a*"&REPT(")",250)` is `#VALUE!`, as it already was under regex-syntax's nest limit.
 - Repeat counts are capped at 65,535 (PCRE2's), as are capture groups. Group names are capped at 32 characters
   (PCRE2 before 10.44, which may have raised it). All of these are UNVERIFIED for Excel (T-1972).
+Backtracker limits (T-1900, functions/text/pcre/backtrack.rs and program.rs):
+- Every executed instruction, pushed frame, backreference character, atomic-group scan and start position is
+  charged to the call's one work budget. The stack may not pass the heap the call may still hold (64 MiB less what
+  it holds). Past either, the call is `#ERROR!`. Stock PCRE2 has a required-character check and a match limit
+  instead. `REGEXTEST(REPT("a",30)&"c","\G(a|a)*b")` is `#ERROR!` here, where PCRE2 answers FALSE at once.
+  `\G(a|a)*b`, `\G(a*)*b`, `\G((a+)+)+b` and `(.*)\1x` over `REPT("a",32767)` are `#ERROR!` or FALSE. Excel's
+  answers are UNVERIFIED (T-2356).
+- Counted repeats are expanded into copies, and every node a copy visits counts against the compile size limit.
+  `(?:(?:){65535}){65535}(a)\1` is too big, and `#VALUE!`, where PCRE2 compiles it.
 Status: DEVIATION (decision 0014)
 Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
-and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
+and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `Backtracker` and `Program` (functions/text/pcre/), `SplitList` (functions/text/textsplit.rs)
 Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
@@ -753,14 +762,21 @@ ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around 
 Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
 Ours: PCRE2's grammar since T-1973 (functions/text/pcre/): comments, `\Q..\E`, `(?x)` and scoped flags match
 (C14-C19). Backreferences (C1-C5), atomic groups and possessive quantifiers (B29, C11) and `\G` match on T-1900's
-backtracker (functions/text/pcre/backtrack.rs). A backreference ignores case as its scope's flags say, and a
-backreference to a group that did not take part fails to match (PCRE2's default). Lookaround, `\K` and conditionals
-parse but are `#VALUE!` until T-2354. Iteration is
+backtracker (functions/text/pcre/backtrack.rs). Several PCRE2 behaviors it implements are UNVERIFIED for Excel
+(T-2356 probes them):
+- a backreference ignores case as its scope's flags say;
+- a backreference to a group that did not take part fails to match (PCRE2's default);
+- a group's capture changes only when the group closes, so `^(a|b\1)+$` is FALSE on `abab`;
+- `\G` stands at each iteration search's start;
+- the empty-loop rule;
+- captures made inside an atomic group are undone on backtracking.
+`(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals parse but are
+`#VALUE!` until T-2354. Iteration is
 still Rust's (`bababab`) until T-1899. The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
 unprobed features), T-1973 (parser), T-1900 (backtracker), T-2354 (lookaround, `\K`, conditionals), T-2355 (memoized
-mode), T-1899 (iteration), T-1974 (costs).
-Status: VERIFIED (excel-graph)
-Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974, T-2354, T-2355
+mode), T-1899 (iteration), T-1974 (costs), T-2356 (probe of the backtracker's behaviors).
+Status: VERIFIED (excel-graph); the backtracker behaviors listed above UNVERIFIED (T-2356)
+Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974, T-2354, T-2355, T-2356
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.

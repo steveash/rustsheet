@@ -28,8 +28,12 @@ pub(super) enum Inst {
     Split(usize, usize),
     /// Continues at the target.
     Jump(usize),
-    /// Records the position in a capture slot (group `g` owns slots `2g` and `2g + 1`).
+    /// Records the position in a slot: group 0's capture slots, or a group's open slot.
     Save(usize),
+    /// Closes group `group`, opened at its open slot `open`: only now does the group's capture
+    /// (slots `2 * group` and `2 * group + 1`) change, as in PCRE2, so a backreference inside its
+    /// own repeated group sees the last completed iteration (`^(a|b\1)+$` is FALSE on `abab`).
+    Close { group: usize, open: usize },
     /// Matches again the text a group last matched; fails while the group is unset (PCRE2's
     /// default, without `PCRE2_MATCH_UNSET_BACKREF`).
     Backref { group: usize, fold: bool },
@@ -62,7 +66,8 @@ pub(super) enum CompileError {
 #[derive(Debug)]
 pub(in crate::functions::text) struct Program {
     pub(super) insts: Vec<Inst>,
-    /// Capture slots, two a group, the whole match (group 0) included.
+    /// Slots: two capture slots a group, the whole match (group 0) included, then one open slot
+    /// for each group from 1.
     pub(super) slots: usize,
     /// Unbounded loops, each with its [`Inst::LoopStart`] slot.
     pub(super) loops: usize,
@@ -112,7 +117,7 @@ pub(super) fn compile(ast: &Ast, size_limit: usize) -> Result<Program, CompileEr
     compiler.push(Inst::Save(1))?;
     compiler.push(Inst::Match)?;
     Ok(Program {
-        slots: 2 * (names.len() + 1),
+        slots: 3 * names.len() + 2,
         loops: compiler.loops,
         insts: compiler.insts,
         group_info,
@@ -220,13 +225,14 @@ impl Compiler<'_> {
                 self.push(Inst::Assert(*anchor))?;
             }
             Ast::Capture { index, ast, .. } => {
-                let start = usize::try_from(*index)
-                    .ok()
-                    .and_then(|group| group.checked_mul(2))
+                // Group g's open slot follows the 2 (n + 1) capture slots.
+                let group = usize::try_from(*index).map_err(|_| CompileError::TooBig)?;
+                let open = group
+                    .checked_add(2 * self.names.len() + 1)
                     .ok_or(CompileError::TooBig)?;
-                self.push(Inst::Save(start))?;
+                self.push(Inst::Save(open))?;
                 self.node(ast)?;
-                self.push(Inst::Save(start.saturating_add(1)))?;
+                self.push(Inst::Close { group, open })?;
             }
             Ast::Concat(asts) => {
                 for ast in asts {

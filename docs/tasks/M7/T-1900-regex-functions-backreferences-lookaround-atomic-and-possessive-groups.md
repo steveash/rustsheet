@@ -85,5 +85,7 @@ Decision 0083: the cells listed under Context are visibly off (`#VALUE!` where E
 - Tests: `test/text_functions/fn_regex_backtrack.rs` covers the probe cells, iteration with captures,
   atomic capture restore, empty loops, `\G`, and the four catastrophic patterns on 32,767 characters
   (`#ERROR!` or FALSE within the bound).
+- Review fixes: a group's capture changes only when it closes (`Close`), so `^(a|b\1)+$` is FALSE on `abab`.
+  `captures_at` replays the iteration, so `\G` stays where the search that found the match started.
 - Follow-ups: T-2354 (lookaround, conditionals, `\K`), T-2355 (memoized mode, final-LF `$`,
-  differential test).
+  differential test), T-2356 (probe the unprobed PCRE2 behaviors and the budget DEVIATION).

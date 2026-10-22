@@ -157,11 +157,14 @@ impl Backtracker<'_> {
                     continue;
                 }
                 Some(Inst::Save(slot)) => {
-                    let old = self.cache.slots.get(*slot).copied().flatten();
-                    self.push(Frame::Slot { slot: *slot, old })?;
-                    if let Some(entry) = self.cache.slots.get_mut(*slot) {
-                        *entry = Some(pos);
-                    }
+                    self.set_slot(*slot, Some(pos))?;
+                    true
+                }
+                Some(Inst::Close { group, open }) => {
+                    let start = self.cache.slots.get(*open).copied().flatten();
+                    let first = group.saturating_mul(2);
+                    self.set_slot(first, start)?;
+                    self.set_slot(first.saturating_add(1), Some(pos))?;
                     true
                 }
                 Some(Inst::Backref { group, fold }) => {
@@ -225,6 +228,16 @@ impl Backtracker<'_> {
                 }
             }
         }
+    }
+
+    /// Sets slot `slot` to `value`, with a frame that restores it on backtracking.
+    fn set_slot(&mut self, slot: usize, value: Option<usize>) -> Result<(), Spent> {
+        let old = self.cache.slots.get(slot).copied().flatten();
+        self.push(Frame::Slot { slot, old })?;
+        if let Some(entry) = self.cache.slots.get_mut(slot) {
+            *entry = value;
+        }
+        Ok(())
     }
 
     /// Closes the innermost atomic group: drops its barrier and the choices above it, keeping

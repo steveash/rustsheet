@@ -32,6 +32,26 @@ fn backreferences_match_the_group_again() {
 }
 
 #[test]
+fn a_group_changes_its_capture_only_when_it_closes() {
+    // PCRE2 (and Perl): inside its own repeated group a backreference sees the last completed
+    // iteration, not the one in progress (Excel-fidelity review of T-1900; unprobed in Excel).
+    assert_eq!(value(r#"=REGEXTEST("abab","^(a|b\1)+$")"#), "FALSE");
+    assert_eq!(value(r#"=REGEXEXTRACT("abab","^(a|b\1)+")"#), "aba");
+    assert_eq!(value(r#"=REGEXTEST("aba","^(a|b\1)+$")"#), "TRUE");
+}
+
+#[test]
+fn an_occurrence_keeps_the_match_and_groups_the_iteration_found() {
+    // `\G` stands where the search that found the match started, with or without an occurrence.
+    assert_eq!(value(r#"=REGEXREPLACE("xab","\Gab|a","[$0]")"#), "x[a]b");
+    assert_eq!(value(r#"=REGEXREPLACE("xab","\Gab|a","[$0]",1)"#), "x[a]b");
+    assert_eq!(
+        value(r#"=REGEXREPLACE("ab ab","(a)(b)\1?","<$2>",2)"#),
+        "ab <b>"
+    );
+}
+
+#[test]
 fn backreferences_iterate_with_their_captures() {
     assert_eq!(
         value(r#"=REGEXREPLACE("aa bb cd","(\w)\1","<$1>")"#),
