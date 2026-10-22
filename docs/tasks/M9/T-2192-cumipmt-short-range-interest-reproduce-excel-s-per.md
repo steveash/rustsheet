@@ -45,7 +45,7 @@ Visibly off on the T-1890 head:
 ## Visible-parity stage
 Decision 0083: the acceptance criteria are the visible-parity stage.
 
-## Notes (first opus run, 2026-10-22; not finished, out of session budget)
+## Notes (first opus run, 2026-10-22; not finished, out of session budget; resumed by a second opus run 2026-10-22)
 Float64 checks in Python against the fin-cumipmt-overflow-and-forms oracle (no engine change yet):
 - Type 0: a per-period sum of `-(pv*q*r - pmt*(q-1))` with `q = (1+r)^(k-1)` (pow) and
   `pmt = pv*r*Q/(Q-1)`, `Q = (1+r)^nper`, is bit-exact on A12 (the single period main misses) and A13,
