@@ -37,7 +37,7 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 4 cells, 4 numeric pas
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (FTEST values that differ in the 15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083).
 
-## Handoff
+## Handoff (resumed)
 Tried (sonnet, 2026-10-22): an exact tail for whole-number df, `I_x(a,b)` for a,b in {1/2,1,3/2,..} by
 stepping up from the closed forms at a,b in {1/2,1} with `I_x(a+1,b)=I_x(a,b)-x^a y^b/(a B)` and
 `I_x(a,b+1)=I_x(a,b)+x^a y^b/(b B)`, each F tail its own evaluation, used only in `fn_f_test`
