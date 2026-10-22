@@ -297,11 +297,18 @@ residual: `MDETERM({1,2,3;4,5,6;7,8,9})` (as a range) = 6.661338147750939E-16, n
 elimination fits was checked in IEEE doubles: dividing each product by the pivot instead of forming the multiplier first
 gives -4.66E-15 and -3.0000000000000036, and no pivoting gives 0 and -3.
 Evidence: probes/stats-evidence-floor-t1623 S!Q107, S!Q120, S!Q121 (excel-graph).
-Not known: whether MINVERSE has a near-singular cutoff (the engine gives `#NUM!` below a pivot of 2.2E-16; unprobed,
-T-2067), and what Excel returns when the pivot product overflows (the engine gives `#NUM!`; probe in T-2067).
+MDETERM of an overflowing or underflowing pivot product: `MDETERM({1E+200,0;0,1E+200})` is `#NUM!`; `{1E-20}` is 1E-20, `{1E-300}` 1E-300,
+`{1E-17,0;0,1}` 1E-17, `{1E-200,0;0,1E-200}` 0 (underflow), `{1E+200}` 1E+200 (probes/minverse-singular-near-singular H1:H6, excel-graph, T-2067).
 Implemented in: `fn_mdeterm`/`lu_decompose` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs, T-1751)
 Status: VERIFIED (excel-graph)
 Tasks: T-1751
+MINVERSE singularity (probes/minverse-singular-near-singular, excel-graph, T-2067): Excel inverts matrices whose LU is nearly singular and
+returns `#NUM!` only in rare cases. `MINVERSE({1,2,3;4,5,6;7,8,9})` (last partial-pivot LU pivot 1.11E-16) is a residual inverse
+{-4503599627370498, 9007199254740992, -4503599627370496; 9007199254740996, -1.8014398509481984E+16, 9007199254740991;
+-4503599627370498, 9007199254740992, -4503599627370495.5}; `{1E-20}` is 1E+20, `{1E-17,0;0,1}` is {1E+17,0;0,1}, and `{1E-300}` is
+9.999999999999999E+299 (not 1E+300). `#NUM!` for `{1,2;2,4}` (exactly-zero pivot) and also for `{1,1;1,1.0000000000000002}`, whose last pivot
+is 2.22E-16, larger than the 3x3's 1.11E-16 that is inverted: the singularity test is not a monotone absolute-pivot cutoff and is unexplained
+(T-2362). Ours (`f64::EPSILON` cutoff) differs on all the inverted cases.
 MINVERSE inverts a 1x1 pivot far below 2.2E-16: `MINVERSE(1.0000000000000085E-108)` is 9.999999999999914E+107 (ours `#NUM!`),
 gen-m5/9284730052aff46c Calc!A39 (excel-graph, 2026-10-20; T-2067).
 
