@@ -302,7 +302,10 @@ error cells before a run of numbers (or text): `MATCH(3,{"a","b","c",5,3,1},-1)`
 prefixes of 2-4 text, boolean or mixed cells (J11-J14) give the same positions as the typed tail alone; an inexact key picks the last cell >= key
 (`MATCH(4.5,{"a","b","c",9,8,7,6,5,4,3},-1)` = 8) and a key above everything is #N/A (`MATCH(1,{"a","b",0.5,0.2},-1)`);
 range forms (a column and a row) agree, as does `MATCH(5,{9,5,5,5,1},-2)` = 2 above. Replacing the backward-skip
-binary search with the scan changed no other cell of any suite (T-2278).
+binary search with the scan changed no other cell of any suite (T-2278). A key-equal cell after a smaller one is never
+reached (`MATCH(5,{1,9,5},-1)` `#N/A`, a binary search gives 3; with 5, 9, 5 in B1:B3 `MATCH(5,B1:B3,-1)` = 1), and a 100-cell
+unsorted vector gives the scan's answers too (no switch of algorithm by size): probes/lookup-t2278-followups A8-A14
+(excel-graph, 2026-10-22).
 Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
 `MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
 lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
@@ -900,13 +903,15 @@ Tasks: T-2078
 ## XLOOKUP: an error lookup_value beats a size mismatch
 Rule (VERIFIED, probes/workday-serial-zero F40, excel-graph, 2026-10-19, T-1254): `XLOOKUP(NA(),A1:A4,B1:B5)` is
 `#N/A`, not the `#VALUE!` of lookup and return arrays of different sizes: the lookup value's error is returned first.
-An error match_mode or search_mode comes next, before an unknown mode in the other one and before the size mismatch:
+The modes come next, before the size mismatch: both are read as numbers in argument order, and only then is either checked,
+so an error search_mode beats an unknown match_mode, while a text match_mode's `#VALUE!` and an error match_mode beat an error
+search_mode (`XLOOKUP(1,B1:B3,B1:B3,0,"x",1/0)` `#VALUE!`, `XLOOKUP(..,0,NA(),1/0)` `#N/A`; probes/lookup-t2278-followups A6, A7):
 `XLOOKUP(<blank>,Data!E5:E9,Data!C3:D8,0.3,101,INDEX(Data!D4:E11,0))` is `#REF!` (INDEX of a 2-D range with one index,
 "INDEX with one index into a 2-D range is #REF!"), and so is INDIRECT, ROWS and COLUMNS of it, while without that
 search_mode it is `#VALUE!` (the 6-row return array against the 5-cell lookup array, and match_mode 101 alike)
 (probes/xlookup-array-search-mode-indirect A1-A10, A21, excel-graph, 2026-10-22, T-2278; gen-m6/e3a562557696e2fc A33).
 INDIRECT of an error is that error (`INDIRECT(1/0)` `#DIV/0!`, `INDIRECT(NA())` `#N/A`), and an array search_mode of valid
-modes lifts (`ROWS(XLOOKUP(2,..,{1;2}))` 2). Which of an error match_mode and an error search_mode wins is unprobed (ours: match_mode).
+modes lifts (`ROWS(XLOOKUP(2,..,{1;2}))` 2).
 Implemented in: `xlookup_modes` (crates/rustsheet-engine/src/functions/xlookup.rs).
 Tasks: T-1254, T-2278
 
@@ -969,7 +974,8 @@ and `WEEKDAY(MMULT(LOOKUP(..),Data!C$2))` are `#VALUE!` (TRUE matches B10, the 9
 Evidence: probes/lookup-short-result-vector A19-A26 (excel-graph, 2026-10-21, T-2278); gen-m6/50f0dd9a8ee2cb57 Calc!A315.
 The same gen-m6 workbook's A204, `DATE(2088,MATCH(<blank>,Data!E4:E12,-2.2),30)` = 68757, is the descending scan above
 ("MATCH descending search scans from the top"), and e3a562557696e2fc A33 is "XLOOKUP: an error lookup_value beats a size mismatch".
-Implemented in: `Model::eval_matrix_arg` (matrix.rs) reads the empty value as blank, as a blank cell. The empty value of
-IFERROR of a blank and an omitted argument (`MMULT(,2)`) under a matrix function are unprobed and take the same path.
+So are the other empty values: an omitted argument (`MMULT(,2)`), IFERROR of a blank (`MDETERM`, `MMULT` and `MINVERSE` of
+`IFERROR(<blank>,1)`) and `MMULT(IF(TRUE,<blank>),2)` are `#VALUE!` (probes/lookup-t2278-followups A1-A5, excel-graph, 2026-10-22).
+Implemented in: `Model::eval_matrix_arg` (matrix.rs) reads the empty value as blank, as a blank cell.
 Status: VERIFIED (excel-graph)
 Tasks: T-2278

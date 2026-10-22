@@ -46,7 +46,7 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 3 in eval/baselin
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
 
-## Progress (opus run, 2026-10-21, session budget reached)
+## Progress (opus run, 2026-10-21, session budget reached; superseded by the Outcome)
 Probes committed with oracle values: probes/lookup-match-descending-blank (18 cells, ours 8 off) and
 probes/lookup-short-result-vector (7 cells, ours 2 off); findings in lookup.md "Unexplained gen-m6 lookup cells". Their
 known failures are not baselined yet: run `make eval-baseline` only as part of the fix, or record them first if the
@@ -69,5 +69,8 @@ evaluation context or LOOKUP's array path). Trace that first.
   the gen-m6 cell's `#REF!` came from `INDEX(Data!D4:E11,0)` (new probe probes/xlookup-array-search-mode-indirect, 21 cells).
 - lookup.md: "MATCH descending search scans from the top" rewritten, the "Unexplained gen-m6 lookup cells" entry replaced by
   "LOOKUP past a short result vector..", the XLOOKUP error-order entry extended; arrays.md notes the empty value.
-- Eval delta: gen-m6 known failures 166 -> 163 (all 3 cells), probes +3 cases (46 cells, all passing), no regressions;
+- Eval delta: gen-m6 known failures 166 -> 163 (all 3 cells), probes +4 cases (60 cells, all passing), no regressions;
   visible parity 3667 -> 3663.
+- Review follow-ups probed at once (probes/lookup-t2278-followups, 14 cells): the other empty values under matrix
+  functions, XLOOKUP's mode order (both cast first, then checked; `xlookup_modes` follows it) and two more descending-MATCH
+  shapes, all matching. No follow-up tasks.
