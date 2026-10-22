@@ -3,7 +3,7 @@ id: T-2253
 title: "Sweep gen-m6: the 28 M6 functions under 400 Excel cells to at least 500, with edge pools"
 milestone: M6
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
