@@ -312,25 +312,36 @@ impl Model {
         num_rows: usize,
         num_cols: usize,
     ) -> Result<(Range<usize>, Range<usize>), CalcResult> {
-        let count = |model: &mut Self, value: &CalcResult, name: &str| {
-            let n = model.cast_to_number(value.clone(), cell)? as i64;
-            if edge == Edge::Take && n == 0 {
+        let count = |model: &mut Self, value: &CalcResult| {
+            model.cast_to_number(value.clone(), cell).map(|n| n as i64)
+        };
+        let rows_arg = count(self, counts.first().unwrap_or(&CalcResult::EmptyArg))?;
+        let cols_arg = match counts.get(1) {
+            Some(value) => Some(count(self, value)?),
+            None => None,
+        };
+        // A zero TAKE count is `#CALC!` only once both counts are read: an error in cols beats a
+        // zero rows (`TAKE(Data!B9:C10,0,LN(..))` is `#VALUE!`, gen-m7/7d67c559ce7536fa A1296;
+        // arrays.md "SEQUENCE and TAKE: an argument error before zero rows"; T-2316).
+        if edge == Edge::Take {
+            let zero = if rows_arg == 0 {
+                Some("rows")
+            } else if cols_arg == Some(0) {
+                Some("cols")
+            } else {
+                None
+            };
+            if let Some(name) = zero {
                 return Err(CalcResult::new_error(
                     Error::CALC,
                     cell,
                     format!("{name} cannot be 0"),
                 ));
             }
-            Ok(n)
-        };
-        let rows_arg = count(
-            self,
-            counts.first().unwrap_or(&CalcResult::EmptyArg),
-            "rows",
-        )?;
+        }
         let rows = edge_span(edge, num_rows, rows_arg);
-        let columns = match counts.get(1) {
-            Some(value) => edge_span(edge, num_cols, count(self, value, "cols")?),
+        let columns = match cols_arg {
+            Some(n) => edge_span(edge, num_cols, n),
             None => 0..num_cols,
         };
         if rows.is_empty() || columns.is_empty() {
