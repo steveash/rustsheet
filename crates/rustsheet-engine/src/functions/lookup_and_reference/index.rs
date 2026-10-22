@@ -28,8 +28,8 @@ struct IndexNumbers {
 
 /// Validates INDEX's numbers, each cast already tried, in Excel's order: `area_num`'s cast error,
 /// then `area_num` below 1 (`#VALUE!`; past the last area, or NaN, is `#REF!` later, SPEC-0004), then
-/// `row_num`'s cast error and a negative `row_num` (`#VALUE!`, see [`index_number`]), then the same
-/// for `column_num`.
+/// the cast errors of `row_num` and `column_num`, then a negative `row_num` and a negative
+/// `column_num` (`#VALUE!`, see [`index_number`]).
 fn index_numbers<E>(
     area: Result<f64, E>,
     row: Result<f64, E>,
@@ -41,8 +41,11 @@ fn index_numbers<E>(
     if area < 1.0 {
         return Err(out_of_range());
     }
-    let row = index_number(row?).ok_or_else(&out_of_range)?;
-    let col = index_number(col?).ok_or_else(&out_of_range)?;
+    // A cast error in `column_num` beats a negative `row_num` (`INDEX(B2:E6,-0.5,NA())` is `#N/A`;
+    // gen-m5 372a676d47aa1427 Calc!A371, T-2375).
+    let (row, col) = (row?, col?);
+    let row = index_number(row).ok_or_else(&out_of_range)?;
+    let col = index_number(col).ok_or_else(&out_of_range)?;
     Ok(IndexNumbers { row, col, area })
 }
 

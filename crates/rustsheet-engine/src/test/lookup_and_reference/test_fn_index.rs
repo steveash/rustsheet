@@ -311,3 +311,16 @@ fn index_snaps_near_integer_indexes() {
     assert_eq!(model._get_text("A6"), "3");
     assert_eq!(model._get_text("A7"), "#VALUE!");
 }
+
+// An error column index beats a row index below 1 (gen-m5 372a676d47aa1427 Calc!A371, T-2375).
+#[test]
+fn test_index_error_column_beats_negative_row() {
+    let mut model = new_empty_model();
+    model._set("A1", "=INDEX(C1:E3,-0.5,NA())");
+    model._set("A2", "=INDEX({1,2;3,4},-1,NA())");
+    model._set("A3", "=INDEX(C1:E3,-0.5,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+}
