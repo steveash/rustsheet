@@ -3,7 +3,7 @@ id: T-2203
 title: "Oracle grid for EXP's overflow and underflow edges (T-1944)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
