@@ -3,7 +3,7 @@ id: T-2308
 title: "MAKEARRAY: rows or columns that are not whole numbers are #VALUE! (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -46,3 +46,6 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 38 known-failure li
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+`makearray_kernel` now returns `#VALUE!` for a fractional rows or columns instead of truncating. gen-m7 known failures 1068 -> 1030 (38 fixed, 0 regressions). Unit test `makearray_fractional_size_is_value_error`; arrays.md "Ours:" line updated.

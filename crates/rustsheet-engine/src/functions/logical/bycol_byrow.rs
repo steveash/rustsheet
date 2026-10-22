@@ -380,14 +380,17 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         };
         let extent = |value: &CalcResult, name: &str| -> Result<usize, CalcResult> {
-            let n = self.cast_number_ref(value, cell)?.floor() as i64;
-            if n < 1 {
+            let x = self.cast_number_ref(value, cell)?;
+            // Unlike SEQUENCE, a fractional size is #VALUE!, not truncated (arrays.md
+            // "MAKEARRAY rows and columns must be whole numbers").
+            if x.fract() != 0.0 || x < 1.0 {
                 return Err(CalcResult::new_error(
                     Error::VALUE,
                     cell,
-                    format!("{name} must be >= 1"),
+                    format!("{name} must be a whole number >= 1"),
                 ));
             }
+            let n = x as i64;
             Ok(usize::try_from(n).unwrap_or(usize::MAX))
         };
         let rows = match extent(rows, "rows") {

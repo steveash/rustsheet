@@ -355,3 +355,22 @@ fn take_lifts_a_one_cell_array_count_into_one_reference_element() {
         assert_eq!(model._get_text(cell), want, "{cell}");
     }
 }
+
+#[test]
+fn take_cols_error_beats_zero_rows() {
+    // gen-m7/7d67c559ce7536fa A1296 (T-2316): both counts are read before a zero is `#CALC!`.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("D1", "=TAKE(A1:B1,0,1/0)");
+    model._set("D2", "=TAKE(A1:B1,1/0,0)");
+    model._set("D3", "=TAKE(A1:B1,0,1)");
+    model._set("D4", "=TAKE(A1:B1,1,0)");
+    model._set("D5", "=TAKE(A1:B1,1,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#DIV/0!");
+    assert_eq!(model._get_text("D2"), "#DIV/0!");
+    assert_eq!(model._get_text("D3"), "#CALC!");
+    assert_eq!(model._get_text("D4"), "#CALC!");
+    assert_eq!(model._get_text("D5"), "1");
+}
