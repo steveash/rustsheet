@@ -3,7 +3,7 @@ id: T-2050
 title: "BINOM.INV and CRITBINOM with probability_s 0 are #NUM!, not 0"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -38,3 +38,6 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 2 cells, 0 numeric pas
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (0 where Excel is `#NUM!`), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+BINOM.INV and CRITBINOM now reject probability_s 0 as `#NUM!` (the rule was already in statistics.md). Unit test added; m9-legacy-critbinom A23 and A24 pass.
