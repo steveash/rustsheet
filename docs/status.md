@@ -67,7 +67,16 @@ Blocked: 30 (29 last run).
 - Can be unblocked: **T-1699**. Its blocker said "Unblock when T-2195 is done", and T-2195 is now done. It is blocked on its pushed branch `agent/engine/T-1699-this-row-eval-time` (draft #1368), so it must be unblocked on that branch (decision 0048). My push to that branch was refused by this session's permission policy, so it is still blocked. The opus worker can unblock it when it resumes the branch.
 - The rest are unchanged: Phase 2 (T-0400, T-0401, T-0402, T-0423, T-1066, T-0441), time-boxed fits with no new hypothesis (T-0968, T-1528, T-1529, T-1592), T-1099/T-1284 (GEOMEAN), T-0431 (FUSE corpus), T-2037 (needs a routine change) and the M14 desktop-oracle tasks (decision 0039).
 
-OPEN_PRS_PLACEHOLDER
+Open PRs: 14 at 05:56 UTC. Two agent PRs had been open longer than 24 h at the start of the run: #1230 (T-1835) and the draft #1368 (T-1699). #1413 (T-1731), #1417 (T-2117) and #1421 (T-1735) passed 24 h during the run.
+- #1230 (T-1835) conflicts with `main`. Merging `main` in locally fixes 34 probe cells but **regresses 16 gen-m7 cells**:
+  - 15 cells: EXPAND lifts `pad_with`. T-1960's evidence says an array pad_with is one `#VALUE!`.
+  - 1 cell: WRAPCOLS with a 2-D pad_with array.
+  - I pushed nothing and commented the blocker on the PR. Main's T-1835 also owns new T-1960 cells, so the PR goes back to the functions-lookup lane.
+- #1413 (T-1731): another session (`01Umo3rB…`) merged `main` in and pushed at 06:49 UTC, so it is live and I left it alone.
+- #1417 (T-2117) and #1421 (T-1735) conflict with `main`. This run merged `main` into both; see the PR for whether those merges were pushed. Neither PR was merged by this run: no reviewers have run on the merged diffs.
+- #1368 (T-1699) is a draft whose task is blocked on its branch. Its blocker is gone (see Blocked).
+- No duplicate task PRs. #1210 (T-1943) closed after #1347 merged.
+- No task is `Blocked because: review-round limit`.
 
 Queues at the start of the run:
 - functions: 7 ready (≥ 3), so the gap-triager did not run. The sonnet buffer is 23 (≥ 10).
