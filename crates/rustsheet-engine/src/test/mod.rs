@@ -175,6 +175,7 @@ mod test_fn_oddfprice;
 mod test_fn_pivotby;
 mod test_fn_round;
 mod test_fn_scan;
+mod test_fn_sort_lift;
 mod test_fn_sortby_lift;
 mod test_fn_tocol_torow;
 mod test_fn_tocol_unique_lift;
