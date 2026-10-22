@@ -14,6 +14,7 @@ import hashlib
 import json
 import random
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -365,6 +366,39 @@ class Gen:
         return None  # blank
 
 
+def narrow_targets(
+    catalog: Catalog,
+    targets: list[dict[str, Any]],
+    milestone: str,
+    functions: Sequence[str],
+    category: str | None,
+) -> list[dict[str, Any]]:
+    """The `--focus` targets of `milestone` narrowed to the named `functions` and/or catalog `category`."""
+    if functions:
+        by_name = {str(f["name"]).upper(): f for f in catalog.functions}
+        wanted = [n.strip().upper() for n in functions if n.strip()]
+        unknown = [n for n in wanted if n not in by_name]
+        if unknown:
+            msg = f"unknown function(s) not in the catalog: {', '.join(unknown)}"
+            raise ValueError(msg)
+        elsewhere = [n for n in wanted if by_name[n].get("milestone") != milestone]
+        if elsewhere:
+            msg = f"function(s) outside milestone {milestone}: {', '.join(elsewhere)}"
+            raise ValueError(msg)
+        keep = set(wanted)
+        missing = sorted(keep - {str(f["name"]).upper() for f in targets})
+        if missing:
+            msg = f"function(s) not generator-ready: {', '.join(missing)}"
+            raise ValueError(msg)
+        targets = [f for f in targets if str(f["name"]).upper() in keep]
+    if category is not None:
+        if not any(f.get("category") == category for f in catalog.functions):
+            msg = f"unknown category: {category}"
+            raise ValueError(msg)
+        targets = [f for f in targets if f.get("category") == category]
+    return targets
+
+
 def generate_case(
     catalog: Catalog,
     seed: int,
@@ -377,16 +411,23 @@ def generate_case(
     focus: bool = False,
     case_index: int = 0,
     spill: bool = False,
+    functions: Sequence[str] = (),
+    category: str | None = None,
 ) -> dict[str, Any]:
     """One case. With `focus`, every formula's outer call is a function whose own milestone is `milestone`,
     taking turns through a seeded shuffle (each case reshuffles from its own seed; `case_index` offsets the
     position, so counts are exactly even within a case and roughly even across a run). With `spill`, a formula
     whose outer call is `dynamic_array` gets an empty footprint to spill into (`spill_layout`); the formulas
-    themselves are the same as without it."""
+    themselves are the same as without it. `functions` (catalog names) and `category` narrow the `focus`
+    targets; an unknown name, an empty selection or a function outside `milestone` is a ValueError."""
     rng = random.Random(seed)
     g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth)
     targets = [f for f in g.catalog.functions if f.get("milestone") == milestone] if focus else []
+    if (functions or category is not None) and not focus:
+        msg = "--functions and --category narrow --focus; pass --focus too"
+        raise ValueError(msg)
     if focus:
+        targets = narrow_targets(catalog, targets, milestone, functions, category)
         if not targets:
             msg = f"no generator-ready functions at milestone {milestone} to focus on"
             raise ValueError(msg)
