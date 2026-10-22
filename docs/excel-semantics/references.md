@@ -2134,7 +2134,7 @@ Right/Left):
 - Row deletes. Above the table (r = 1) the table moves up (`ROW(Sales[#Headers])` 2, plain `S!C4:C7` becomes
   `S!C3:C6`); just below it (r = 8) nothing changes (table-delete-row-before, -below). Excel refuses a delete
   of the header row: 409 InsertDeleteConflict, "This won't work because it would move cells in a table on your
-  worksheet" (no case: there is no value to score). A delete of the first data row (r = 4), one inside the
+  worksheet" (no case: there is no value to score; excel-graph only, desktop unprobed, T-2325). A delete of the first data row (r = 4), one inside the
   data (r = 5) or the last data row (r = 7) shrinks the table (`ROWS(Sales)` 3; `SUM(Sales[Qty])` 14, 13, 7)
   and the plain `S!C4:C7` becomes `S!C4:C6` in all three (table-delete-row-first-data, -inside-data,
   -last-data). With a totals row, deleting the last data row moves the totals row up (`#All` 5,
@@ -2142,7 +2142,10 @@ Right/Left):
   totals row removes it: `Sales[[#Totals],[Qty]]` and `ROW(Sales[#Totals])` are `#REF!` though FORMULATEXT still
   prints `=Sales[[#Totals],[Qty]]`, and `ROWS(Sales[#All])` is 5 (table-delete-row-totals). Deleting row 4 four
   times, every data row, leaves the header and one blank data row: `ROWS(Sales)` 1, `#All` 2, `SUM` 0,
-  `COUNTA(Sales[Region])` 0, the plain range `S!C4:C4` (table-delete-row-all-data).
+  `COUNTA(Sales[Region])` 0, the plain range `S!C4:C4` (table-delete-row-all-data). The last of the four deletes
+  is not an ordinary row delete: a plain range onto only that row survives as `S!C4:C4` instead of `#REF!`, so
+  Excel keeps the table's one data row (cleared or refused); whether cells below the table shift up on that
+  last delete is open.
 - Column inserts. At A or B (left of or at the table's first column) the table moves right
   (`COLUMN(Sales[Qty])` 4, plain `S!C4:C7` becomes `S!D4:D7`); at C, between its columns, it grows
   (`COLUMNS(Sales)` 3, `COLUMN(Sales[Qty])` 4); at D, just right of it, nothing changes

@@ -24,7 +24,9 @@ an edge delete leaves `#REF!` corners: table-delete-row-first-data (row 4: Excel
 table-delete-row-last-data (row 7: 7, 3; ours `#ERROR!`), table-delete-row-last-data-totals (row 7 with
 totals: 7, `#All` 5, totals row moves to 7 and `Sales[[#Totals],[Qty]]` is 7), table-delete-row-all-data
 (row 4 four times: the table keeps its header and one blank data row, `ROWS(Sales)` 1, `#All` 2,
-`SUM` 0, `COUNTA(Sales[Region])` 0, the plain range becomes `S!C4:C4`). T-2297 implements the move and
+`SUM` 0, `COUNTA(Sales[Region])` 0, the plain range becomes `S!C4:C4`, not `#REF!`: the last delete keeps the
+one data row rather than deleting the sheet row; whether cells below the table shift then is open, so probe
+it, excel-probe skill, before implementing that case). T-2297 implements the move and
 the shrink strictly inside the data (table-delete-row-before, -inside-data); this task adds the edges,
 as T-2321 does for inserts. Excel refuses a delete of the header row (409 InsertDeleteConflict, "it would
 move cells in a table"); the engine's answer to that edit is an engine decision (refuse or fall back).
