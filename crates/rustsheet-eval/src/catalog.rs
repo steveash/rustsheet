@@ -183,7 +183,7 @@ mod tests {
         assert!(catalog.functions().count() >= 500);
         assert!(catalog.in_scope("SUM") && !catalog.needs_other_evidence("SUM"));
         assert!(!catalog.in_scope("WEBSERVICE"));
-        assert!(catalog.needs_other_evidence("INFO"));
+        assert!(!catalog.needs_other_evidence("INFO") && !catalog.needs_other_evidence("SHEETS"));
         assert!(catalog
             .functions()
             .filter(|f| f.scope == Scope::Out)

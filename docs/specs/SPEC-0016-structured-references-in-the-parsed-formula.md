@@ -187,6 +187,10 @@ The mechanism covers every edit that rewrites formulas through `to_string_displa
 (`move_formula` → `to_string_moved`, cut_paste.rs). It also covers every formula such an edit
 rewrites: cell formulas, conditional-format formulas (`displace_cfvo`), and defined names.
 
+Step 1 (T-2195) shipped every table as *fallback*, refined: a reference whose displaced or moved area is
+the same text as its area keeps its written text, and only one whose area changes prints the area. T-2297
+adds the *move* and *grow/shrink* classes on top of that rule.
+
 1. **Classify, before the walk.** For a `DisplaceData::Row` or `DisplaceData::Column` edit, each
    table whose `sheet_name` is the edited sheet is classified as *move*, *grow/shrink* or
    *fallback* by the table below, and its new `reference` is computed by the same rule
@@ -220,6 +224,10 @@ Edge cases, for a table with header row `h`, data rows `d1..d2` and an optional 
 | Delete wholly above `h` or wholly below the last row | move / none | |
 | Delete wholly inside `d1..d2`, at least one data row left | shrink | |
 | Delete touching `h` or `t`, all data rows, or straddling an edge of the table | fallback | the lowered areas become trimmed or `#REF!`, which a table cannot represent |
+
+T-2197 probed the row inserts (references.md "Structured references when the table changes"): Excel
+*grows* the table on an insert at `r == d1` and at `r == t`, so those two fallback rows are superseded
+(T-2321); the other insert rows hold.
 
 A column edit at column `c`: an insert with `c <= c1`, or a delete wholly left of `c1`, is a
 move; an edit wholly right of `c2` changes nothing; every other column edit that crosses

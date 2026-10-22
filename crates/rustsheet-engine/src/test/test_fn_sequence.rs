@@ -150,3 +150,26 @@ fn test_sequence_accumulates_its_step() {
     assert_eq!(bits("F1"), 12.999_999_999_999_998_f64.to_bits());
     assert_eq!(bits("G1"), 13.099_999_999_999_998_f64.to_bits());
 }
+
+#[test]
+fn test_sequence_argument_error_beats_zero_extent() {
+    // gen-m7 (T-2316): an error in any argument beats an invalid extent; then rows is checked
+    // before columns (a rows past the grid beats a zero columns); alone, 0 stays `#CALC!`.
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(0,1,1/0)");
+    model._set("A2", "=SEQUENCE(1,0,1,NA())");
+    model._set("A3", "=SEQUENCE(1E+15,0)");
+    model._set("A4", "=SEQUENCE(0)");
+    model._set("A5", "=SEQUENCE(0,4,1,2)");
+    model._set("A6", "=SEQUENCE(-1,0)");
+    // Rows is checked before columns (gen-m7/c36ff5f42a1a4d47 A359).
+    model._set("A7", "=SEQUENCE(0,-1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#DIV/0!");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#CALC!");
+    assert_eq!(model._get_text("A5"), "#CALC!");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "#CALC!");
+}

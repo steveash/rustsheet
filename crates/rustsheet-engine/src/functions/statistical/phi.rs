@@ -15,7 +15,9 @@ impl Model {
             };
             number_or_error(
                 model
-                    .cast_number_no_bools_ref(x, cell)
+                    // A boolean is a number: PHI(TRUE) = 0.24197072451914337
+                    // (probes-numeric/t1049-phi A32, A33).
+                    .cast_number_ref(x, cell)
                     .map(|x| flush_subnormal(standard_normal_pdf(x))),
             )
         })

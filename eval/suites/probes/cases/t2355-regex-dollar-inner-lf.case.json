@@ -1,0 +1,29 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2355 probe: `$` and `\\Z` before a final LF on a text that holds another LF, and a long text on the memoized path.",
+ "tags": [
+  "M7",
+  "probe",
+  "text",
+  "T-2355"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=REGEXTEST(\"b\"&CHAR(10)&\"a\"&CHAR(10),\"a$\")",
+    "A2": "=REGEXTEST(\"b\"&CHAR(10)&\"a\"&CHAR(10),\"a\\Z\")",
+    "A3": "=REGEXTEST(\"a\"&CHAR(10)&\"b\"&CHAR(10),\"a$\")",
+    "A4": "=REGEXTEST(\"b\"&CHAR(10)&\"a\"&CHAR(10),\"a\\z\")",
+    "A5": "=REGEXEXTRACT(\"x y\"&CHAR(10)&\"ab cd\"&CHAR(10),\"(\\w+)$\",2)",
+    "A6": "=SUBSTITUTE(REGEXREPLACE(\"a\"&CHAR(10)&\"a\"&CHAR(10),\"a$\",\"x\"),CHAR(10),\"|\")",
+    "A7": "=REGEXTEST(\"a\"&CHAR(10)&\"b\",\"a$\")",
+    "A8": "=REGEXTEST(\"a\"&CHAR(10)&\"b\",\"b$\")",
+    "A9": "=REGEXTEST(\"a\"&CHAR(10)&CHAR(10),\"a$\")",
+    "A10": "=SUBSTITUTE(REGEXREPLACE(\"a\"&CHAR(10)&CHAR(10),\"$\",\"x\"),CHAR(10),\"|\")",
+    "A11": "=REGEXTEST(\"a\"&CHAR(10)&REPT(\"a\",32764)&CHAR(10),\"(a|a)*b$\")"
+   }
+  }
+ ],
+ "expected": {}
+}

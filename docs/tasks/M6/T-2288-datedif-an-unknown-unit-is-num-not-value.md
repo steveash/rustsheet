@@ -67,7 +67,15 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 40 in eval/baseli
 | gen-m6/d1a403971712513c Calc!A56 | `=DATEDIF(17229,52166,IF((Data!B9>=Data!A$11),RIGHT("a*"),COUNTIFS(Data!D6:E9,"<>")))` | "#NUM!" | "#VALUE!" |
 | gen-m6/ee56a4ed5a612a0d Calc!A299 | `=DATEDIF(60,45000.75,"a*")` | "#NUM!" | "#VALUE!" |
 
+gen-m7 cells (T-2225 triage, 2026-10-21): An unknown DATEDIF unit under other calls: `DATEDIF(1720,27965,"ABC")` in a MAP argument and `DATEDIF(1077,5272,0)` (unit 0) under WORKDAY and DROP are `#NUM!` in Excel, ours `#VALUE!`.
+
+Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 2 known-failure lines in eval/baseline/gen-m7.txt, 2 formulas. One line per formula: case, anchor, the anchor formula, Excel vs ours at the first failing cell, then every failing cell (sheet Calc; a range is consecutive cells of one row).
+
+- gen-m7/2c5ea078f25443a2.case.json A1226 `=MAP(DATEDIF(1720,27965,"ABC"),MATCH(0.1,Data!B4:B6,(100^123456789.123)),Data!B3:B4,LAMBDA(v,w,x,Data!E8))`: A1226 Excel #NUM!, ours #VALUE!; cells (1): A1226
+- gen-m7/c36ff5f42a1a4d47.case.json A1051 `=DROP(WORKDAY(DATEDIF(1077,5272,Data!A4),-4),-2)`: A1051 Excel #NUM!, ours #VALUE!; cells (1): A1051
+
 ## Acceptance criteria
+- [ ] The 2 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 2 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
 - [ ] These 40 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] probes/datedif-days360-error-order and probes/date-math-lift-driver-edges still pass; a unit test covers a well-ordered pair with "x", "", a number and TRUE as unit.
 - [ ] dates.md's new sentence says Ours: implemented (T-2288).

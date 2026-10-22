@@ -123,8 +123,8 @@ pub struct SheetSpec {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub data_tables: Vec<DataTableSpec>,
     /// Pivot tables, written by spec2xlsx with their rendered cells, cache and definition
-    /// (`tools/src/rustsheet_tools/pivot.py`, T-1705). The engine has no pivot tables, so the
-    /// adapter ignores them: a case scores only the GETPIVOTDATA formulas that read them.
+    /// (`tools/src/rustsheet_tools/pivot.py`, T-1705). The engine adapter writes each pivot's
+    /// `rendered` cells and registers the pivot over its source (T-2084).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pivot_tables: Vec<PivotTableSpec>,
     /// A1 address → number format code (`"[h]:mm"`), applied to that cell whatever it holds
@@ -189,6 +189,12 @@ pub struct PivotTableSpec {
     /// `sum` (when absent), `count`, `average`, `max` or `min`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub function: Option<String>,
+    /// The pivot's cells as the builder lays them out, by A1 address: caption, labels, aggregates
+    /// and grand totals (blank intersections absent). `rustsheet-spec bake-pivots` fills it and
+    /// spec2xlsx refuses a case where it differs from the layout (T-2084, SPEC-0015). Their bounding
+    /// box is the pivot's `<location>`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub rendered: BTreeMap<String, CellInput>,
 }
 
 /// A workbook's calculation settings (`<calcPr>`), written by spec2xlsx (T-0428). The engine
@@ -212,7 +218,13 @@ pub struct CalculationSpec {
 /// the edit API. `{"op":"add","sheet":"New"}` appends a sheet, `{"op":"rename","sheet":"Data",
 /// "to":"Inputs"}` renames one, `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based
 /// position, and `{"op":"insert_row","sheet":"S","row":1}` inserts one blank row above the 1-based
-/// `row`, shifting the cells below down (T-1933).
+/// `row`, shifting the cells below down (T-1933). T-2323 adds `{"op":"delete_row","sheet":"S",
+/// "row":1}` (the 1-based row goes, the cells below shift up), `{"op":"insert_column","sheet":"S",
+/// "column":"B"}` and `{"op":"delete_column","sheet":"S","column":"B"}` (a column letter; the cells
+/// to the right shift), `{"op":"delete_sheet","sheet":"S"}`, `{"op":"delete_table","sheet":"S",
+/// "table":"T1"}` and `{"op":"convert_table","sheet":"S","table":"T1"}`. The engine has no convert
+/// to range yet, so the adapter refuses `convert_table` and the case scores as an adapter error
+/// until an engine task adds it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum SheetOp {
@@ -220,18 +232,47 @@ pub enum SheetOp {
     Rename { sheet: String, to: String },
     Move { sheet: String, to: u32 },
     InsertRow { sheet: String, row: u32 },
+    DeleteRow { sheet: String, row: u32 },
+    InsertColumn { sheet: String, column: String },
+    DeleteColumn { sheet: String, column: String },
+    DeleteSheet { sheet: String },
+    ConvertTable { sheet: String, table: String },
+    DeleteTable { sheet: String, table: String },
 }
 
 impl SheetOp {
-    /// Where the input cell `addr` (1-based row) of `sheet` sits after this op: an `insert_row`
-    /// at or above it moves it down a row; every other op leaves cells where they are. `sheet` is
-    /// the spec's sheet name: a row insert into a sheet renamed by an earlier op is not matched,
-    /// which no case does yet.
+    /// Where the input cell `addr` (1-based row) of `sheet` sits after this op: an `insert_row` at
+    /// or above it moves it down a row, a `delete_row` above it moves it up, and the column ops
+    /// move it the same way across. A cell in the deleted row or column, a deleted sheet or a
+    /// table op leaves the address as it was (the cell is gone or unmoved; no case reads it).
+    /// `sheet` is the spec's sheet name: an edit of a sheet renamed by an earlier op is not
+    /// matched, which no case does yet.
     #[must_use]
     pub fn moved(&self, sheet: &str, addr: Addr) -> Addr {
+        let shift = |index: u32, at: u32, delta: i32| {
+            if index >= at {
+                index.saturating_add_signed(delta)
+            } else {
+                index
+            }
+        };
         match self {
-            SheetOp::InsertRow { sheet: at, row } if at == sheet && addr.row >= *row => Addr {
-                row: addr.row.saturating_add(1),
+            SheetOp::InsertRow { sheet: at, row } if at == sheet => Addr {
+                row: shift(addr.row, *row, 1),
+                ..addr
+            },
+            SheetOp::DeleteRow { sheet: at, row } if at == sheet && addr.row > *row => Addr {
+                row: addr.row - 1,
+                ..addr
+            },
+            SheetOp::InsertColumn { sheet: at, column } if at == sheet => Addr {
+                col: Addr::col_index(column).map_or(addr.col, |c| shift(addr.col, c, 1)),
+                ..addr
+            },
+            SheetOp::DeleteColumn { sheet: at, column } if at == sheet => Addr {
+                col: Addr::col_index(column)
+                    .filter(|c| addr.col > *c)
+                    .map_or(addr.col, |_| addr.col - 1),
                 ..addr
             },
             _ => addr,
@@ -420,6 +461,32 @@ pub fn load_oracle(case: &CaseFile) -> Result<Option<OracleFile>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn deletes_and_column_inserts_move_the_inputs_they_shift() {
+        let at = |a1| Addr::parse(a1).expect("addr");
+        let op = |json: &str| serde_json::from_str::<SheetOp>(json).expect("op");
+        let del_row = op(r#"{"op":"delete_row","sheet":"S","row":3}"#);
+        assert_eq!(del_row.moved("S", at("B4")), at("B3"));
+        assert_eq!(del_row.moved("S", at("B2")), at("B2"));
+        let ins_col = op(r#"{"op":"insert_column","sheet":"S","column":"B"}"#);
+        assert_eq!(ins_col.moved("S", at("B1")), at("C1"));
+        assert_eq!(ins_col.moved("S", at("A1")), at("A1"));
+        let del_col = op(r#"{"op":"delete_column","sheet":"S","column":"B"}"#);
+        assert_eq!(del_col.moved("S", at("C1")), at("B1"));
+        assert_eq!(del_col.moved("T", at("C1")), at("C1"));
+        let table = op(r#"{"op":"delete_table","sheet":"S","table":"Sales"}"#);
+        assert_eq!(table.moved("S", at("C1")), at("C1"));
+    }
+
+    #[test]
+    fn column_letters_are_one_to_three_letters_within_xfd() {
+        assert_eq!(Addr::col_index("B"), Some(2));
+        assert_eq!(Addr::col_index("xfd"), Some(16_384));
+        for bad in ["", "XFE", "A1", "$B", "AAAA", "é"] {
+            assert_eq!(Addr::col_index(bad), None, "{bad}");
+        }
+    }
 
     #[test]
     fn a_row_insert_moves_the_inputs_at_and_below_it() {

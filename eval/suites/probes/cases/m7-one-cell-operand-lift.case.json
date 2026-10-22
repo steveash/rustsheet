@@ -1,0 +1,62 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2298: a one-cell reference read through an operator (unary minus, %, &, a comparison) in a lifted parameter of an array-valued function: its value (the scalar call) or a 1x1 array (one element). Controls over 1x1 array literals; DROP's 1x1 count; OFFSET's 1x1 array rows. A1:B3 = 1,10;2,20;3,30; column E holds each row's formula as text.",
+  "tags": [
+    "M7",
+    "probe",
+    "sequence",
+    "take",
+    "drop",
+    "offset"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "E1": "ROWS(SEQUENCE(-INDIRECT(\"A3\")*-1))",
+        "F1": "=ROWS(SEQUENCE(-INDIRECT(\"A3\")*-1))",
+        "E2": "ROWS(SEQUENCE(--INDIRECT(\"A3\")))",
+        "F2": "=ROWS(SEQUENCE(--INDIRECT(\"A3\")))",
+        "E3": "ROWS(SEQUENCE(INDIRECT(\"A3\")%*100))",
+        "F3": "=ROWS(SEQUENCE(INDIRECT(\"A3\")%*100))",
+        "E4": "ROWS(SEQUENCE(INDIRECT(\"A3\")&\"\"))",
+        "F4": "=ROWS(SEQUENCE(INDIRECT(\"A3\")&\"\"))",
+        "E5": "ROWS(TAKE(A1:B3,--INDIRECT(\"A3\")))",
+        "F5": "=ROWS(TAKE(A1:B3,--INDIRECT(\"A3\")))",
+        "E6": "ROWS(DROP(A1:B3,{1}))",
+        "F6": "=ROWS(DROP(A1:B3,{1}))",
+        "E7": "ROWS(INDEX(DROP(A1:B3,{1}),1,1))",
+        "F7": "=ROWS(INDEX(DROP(A1:B3,{1}),1,1))",
+        "E8": "ROWS(SEQUENCE(IF(INDIRECT(\"A3\")=3,3)))",
+        "F8": "=ROWS(SEQUENCE(IF(INDIRECT(\"A3\")=3,3)))",
+        "E9": "ROWS(SEQUENCE(OFFSET(A3,0,0)+0))",
+        "F9": "=ROWS(SEQUENCE(OFFSET(A3,0,0)+0))",
+        "E10": "ROWS(SEQUENCE(A3:A3+0))",
+        "F10": "=ROWS(SEQUENCE(A3:A3+0))",
+        "E11": "ROWS(SEQUENCE(--A3:A3))",
+        "F11": "=ROWS(SEQUENCE(--A3:A3))",
+        "E12": "ROWS(SEQUENCE(A3:A3&\"\"))",
+        "F12": "=ROWS(SEQUENCE(A3:A3&\"\"))",
+        "E13": "ROWS(SEQUENCE(-{3}*-1))",
+        "F13": "=ROWS(SEQUENCE(-{3}*-1))",
+        "E14": "ROWS(SEQUENCE({3}&\"\"))",
+        "F14": "=ROWS(SEQUENCE({3}&\"\"))",
+        "E15": "ROWS(SEQUENCE(IF({3}=3,3)))",
+        "F15": "=ROWS(SEQUENCE(IF({3}=3,3)))",
+        "E16": "ROWS(OFFSET(A1:B2,{1},0))",
+        "F16": "=ROWS(OFFSET(A1:B2,{1},0))",
+        "E17": "COLUMNS(OFFSET(A1:B2,{1},0))",
+        "F17": "=COLUMNS(OFFSET(A1:B2,{1},0))",
+        "E18": "ROWS(SEQUENCE(-INDIRECT(\"A3\")))",
+        "F18": "=ROWS(SEQUENCE(-INDIRECT(\"A3\")))"
+      }
+    }
+  ],
+  "expected": {}
+}

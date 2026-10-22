@@ -142,6 +142,26 @@ matches the web unless desktop evidence already in the repo decides, and desktop
   settings. The canary pins it to en-US (`DATEVALUE("1/2/2001")-DATEVALUE("1/1/2001")` = 1, not 31; a date difference so that 1904 workbooks pass too, T-1268; `VALUE("1.5")` = 1.5);
   if the site is changed, every fill fails rather than returning another locale's answers.
 
+## Sheet ops the excel-graph backend replays (T-1608, T-1933, T-2323)
+
+A case's `sheet_ops` (spec2xlsx docstring, `docs/architecture/eval-harness.md`) are replayed in the Graph
+session after the typed entries, each logging a `SHEET OP` line. `add`, `rename` and `move` use the
+worksheet endpoints (the canary sheet stays last); the structural ones are:
+
+| op (spec keys) | Graph call |
+|---|---|
+| `insert_row` (`row`) | `range('r:r')/insert` shift `Down` |
+| `delete_row` (`row`) | `range('r:r')/delete` shift `Up` |
+| `insert_column` (`column`, a letter) | `range('C:C')/insert` shift `Right` |
+| `delete_column` (`column`) | `range('C:C')/delete` shift `Left` |
+| `delete_sheet` | `DELETE worksheets('S')` (the canary sheet is refused) |
+| `convert_table` (`table`) | `POST tables('T')/convertToRange` |
+| `delete_table` (`table`) | `DELETE tables('T')` (the table's cells are cleared too; the engine adapter does the same) |
+
+Cut and paste, row and column moves, undo and sheet duplication have no Graph REST endpoint and stay out
+(desktop questions, decision 0039). The engine adapter replays the same ops (decisions 0076, 0098); it has no
+table convert-to-range yet, so a `convert_table` case scores as an adapter error.
+
 ## Owner setup — Microsoft Graph (one time, ~20 minutes)
 
 **What this does:** it creates a "robot" identity (an *app registration*) in your Microsoft 365

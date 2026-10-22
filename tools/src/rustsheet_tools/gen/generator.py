@@ -14,6 +14,7 @@ import hashlib
 import json
 import random
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -21,7 +22,7 @@ from typing import Any
 import yaml
 
 from rustsheet_tools.gen.common import quoted
-from rustsheet_tools.gen.pools import POOLS
+from rustsheet_tools.gen.pools import POOLS, lambda_arity
 
 MILESTONES = ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"]
 
@@ -270,6 +271,19 @@ class Gen:
         del self.scope[outer:]
         return f"LAMBDA({','.join(names)},{body})"
 
+    def pooled_lambda(self, p: dict[str, Any], arity: int) -> str | None:
+        """A `lambda_body` pool entry of `arity` parameters (POOL_RATE of the time), with x and y renamed to
+        free names so an outer LAMBDA or LET name is never shadowed; None to build one."""
+        fitting = [t for t in POOLS.get(p.get("pool", ""), []) if lambda_arity(t) == arity]
+        if not fitting or self.rng.random() >= POOL_RATE:
+            return None
+        text = self.rng.choice(fitting)
+        names = {"x": self.fresh_name()}
+        self.scope.append(names["x"])
+        names["y"] = self.fresh_name()
+        self.scope.pop()
+        return re.sub(r"\b[xy]\b", lambda m: names[m.group(0)], text)
+
     def argument(self, p: dict[str, Any], depth: int, arity: int = 1) -> str:
         mode = p.get("mode", "value")
         if mode == "name":
@@ -278,13 +292,17 @@ class Gen:
             return name
         if mode == "lambda":
             n = p.get("arity", 1)
-            return self.lambda_arg(arity if n == "repeat" else int(n), depth)
+            want = arity if n == "repeat" else int(n)
+            return self.pooled_lambda(p, want) or self.lambda_arg(want, depth)
         if mode == "array" and p.get("mask"):
             # FILTER's include: one TRUE/FALSE per data row, so it fits a `full` array.
             text = f"({self.range_ref(full=True)}{self.rng.choice(MASK_OPS)}{self.literal('number')})"
         elif mode in ("array", "aggregate", "aggregate_a") and self.scope and self.rng.random() < 0.5:
             # A LAMBDA parameter or LET variable often holds the row, column or array (BYROW's SUM(x)).
             text = self.rng.choice(self.scope)
+        elif mode == "range" and p.get("pool") and self.rng.random() < POOL_RATE:
+            # A pooled `range` param takes array constants too (LOOKUP's and XMATCH's lookup_table).
+            text = self.rng.choice(POOLS[p["pool"]])
         else:
             text = self.argument_text(p, mode, depth)
         # A LET variable is visible from the argument after its value on.
@@ -365,6 +383,39 @@ class Gen:
         return None  # blank
 
 
+def narrow_targets(
+    catalog: Catalog,
+    targets: list[dict[str, Any]],
+    milestone: str,
+    functions: Sequence[str],
+    category: str | None,
+) -> list[dict[str, Any]]:
+    """The `--focus` targets of `milestone` narrowed to the named `functions` and/or catalog `category`."""
+    if functions:
+        by_name = {str(f["name"]).upper(): f for f in catalog.functions}
+        wanted = [n.strip().upper() for n in functions if n.strip()]
+        unknown = [n for n in wanted if n not in by_name]
+        if unknown:
+            msg = f"unknown function(s) not in the catalog: {', '.join(unknown)}"
+            raise ValueError(msg)
+        elsewhere = [n for n in wanted if by_name[n].get("milestone") != milestone]
+        if elsewhere:
+            msg = f"function(s) outside milestone {milestone}: {', '.join(elsewhere)}"
+            raise ValueError(msg)
+        keep = set(wanted)
+        missing = sorted(keep - {str(f["name"]).upper() for f in targets})
+        if missing:
+            msg = f"function(s) not generator-ready: {', '.join(missing)}"
+            raise ValueError(msg)
+        targets = [f for f in targets if str(f["name"]).upper() in keep]
+    if category is not None:
+        if not any(f.get("category") == category for f in catalog.functions):
+            msg = f"unknown category: {category}"
+            raise ValueError(msg)
+        targets = [f for f in targets if f.get("category") == category]
+    return targets
+
+
 def generate_case(
     catalog: Catalog,
     seed: int,
@@ -377,16 +428,23 @@ def generate_case(
     focus: bool = False,
     case_index: int = 0,
     spill: bool = False,
+    functions: Sequence[str] = (),
+    category: str | None = None,
 ) -> dict[str, Any]:
     """One case. With `focus`, every formula's outer call is a function whose own milestone is `milestone`,
     taking turns through a seeded shuffle (each case reshuffles from its own seed; `case_index` offsets the
     position, so counts are exactly even within a case and roughly even across a run). With `spill`, a formula
     whose outer call is `dynamic_array` gets an empty footprint to spill into (`spill_layout`); the formulas
-    themselves are the same as without it."""
+    themselves are the same as without it. `functions` (catalog names) and `category` narrow the `focus`
+    targets; an unknown name, an empty selection or a function outside `milestone` is a ValueError."""
     rng = random.Random(seed)
     g = Gen(rng, catalog.scoped(milestone), data_rows, data_cols, max_depth)
     targets = [f for f in g.catalog.functions if f.get("milestone") == milestone] if focus else []
+    if (functions or category is not None) and not focus:
+        msg = "--functions and --category narrow --focus; pass --focus too"
+        raise ValueError(msg)
     if focus:
+        targets = narrow_targets(catalog, targets, milestone, functions, category)
         if not targets:
             msg = f"no generator-ready functions at milestone {milestone} to focus on"
             raise ValueError(msg)

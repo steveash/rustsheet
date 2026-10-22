@@ -3,10 +3,10 @@ id: T-1960
 title: "Probe lifted TAKE/DROP over an array value, and the unprobed M7 lift parameters"
 milestone: M7
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -26,10 +26,34 @@ From T-1833. The spec reads a lifted TAKE's or DROP's whole element (probes/m7-a
    lifted count, `ROWS(TAKE(NA(),{1;2}))` (one `#N/A`, or two?).
 
 ## Acceptance criteria
-- [ ] A probe case with excel-graph oracle values answers 1-7; arrays.md "Dynamic-array and LAMBDA function argument modes" records each answer.
-- [ ] Where an answer differs from SPEC-0011's choice (the per-parameter list, the reference reading of TAKE/DROP, the 1x1 rule), the spec and the owning task (T-1834 to T-1839) are updated in the same PR.
-- [ ] Every new failing cell is in eval/baseline with an owning task.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with excel-graph oracle values answers 1-7; arrays.md "Dynamic-array and LAMBDA function argument modes" records each answer.
+- [x] Where an answer differs from SPEC-0011's choice (the per-parameter list, the reference reading of TAKE/DROP, the 1x1 rule), the spec and the owning task (T-1834 to T-1839) are updated in the same PR.
+- [x] Every new failing cell is in eval/baseline with an owning task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Any implementation (T-1834 to T-1839).
+
+## Handoff (resumed)
+Handed off by a sonnet run without starting the probes (no cells written, no oracle calls made). Reason:
+item 5 asks for a rule fitted to the oracle ("until a rule gives {1;0;0}") and items 1, 3 and 7 decide
+whether SPEC-0011's reading stands, which is analysis and a spec decision beyond the sonnet rubric.
+Oracle: `rustsheet-oracle status` showed `excel-graph OK` at hand-off time. Suggested order: write one probe
+case under eval/suites/probes for items 1-4, 6 and 7 (mechanical `ROWS`/`COLUMNS`/`INDEX(..,i,1)` cells), fill it,
+record the answers in arrays.md, then iterate item 5 with extra cells until a rule fits, and update SPEC-0011
+and T-1834 to T-1839 where an answer differs.
+
+## Outcome
+probes/m7-lift-take-drop-sortby (934 cells, excel-graph, 2026-10-21) answers 1-7; arrays.md "Dynamic-array and LAMBDA
+function argument modes" and the new "UNIQUE's and SORTBY's lifted elements" record them, and SPEC-0011 is updated.
+1. Over an array value a lifted TAKE or DROP keeps the top-left value (SPEC-0011's reading stands; no nested array).
+2. A lifted TAKE over a range behaves as a lifted OFFSET's grid: spilled `#VALUE!`, `+0` `#VALUE!`, SUM 2, ISREF FALSE.
+3. A 1x1 array lifts (`SEQUENCE({3})` is the 1x1 1); a single cell does not (`SEQUENCE(A3:A3)` spills 3 rows):
+   T-1834's 1x1 rule is too wide (T-2298). `INDEX(SEQUENCE({1;0}),2,1)` is `#CALC!` as built.
+4. Every unprobed parameter lifts except EXPAND's pad_with (an array is `#VALUE!`; SPEC-0011 now `Whole`, T-1835).
+5. SORTBY: uniform entries give each call's top-left; otherwise element 1 is the first call's top-left and later
+   elements are empty ({1;0;0} spilled), or `#VALUE!` with an invalid entry or a later key pair (T-1839).
+6. UNIQUE's by_col and exactly_once show the same empty-later-elements rule (T-2300).
+7. IF and CHOOSE hand a TAKE grid on, OFFSET over it lifts again, `TAKE(NA(),{1;2})` is two `#N/A` (T-2299).
+Eval: one new probe case, 399 of 934 scored cells pass; the failing cells are baselined, owned by T-1835 (26), T-1839 (452),
+T-2298 (22), T-2299 (16) and T-2300 (24). Follow-ups: T-2298, T-2299, T-2300.

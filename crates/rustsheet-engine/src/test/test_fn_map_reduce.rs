@@ -476,8 +476,8 @@ fn map_and_scan_elements_that_are_ranges_still_read_their_cells() {
     model.evaluate();
     assert_eq!(model._get_text("C1"), "#CALC!");
     assert_eq!(model._get_text("E1"), "#CALC!");
-    assert_eq!(model._get_text("G1"), "#CIRC!");
-    assert_eq!(model._get_text("H1"), "#CIRC!");
+    assert!(model._is_circular("G1"));
+    assert!(model._is_circular("H1"));
 }
 
 // ── LAMBDAs that outlive their call (T-0439) ─────────────────────────────────
@@ -673,4 +673,61 @@ fn lambda_calls_past_the_stack_budget_are_num_errors() {
     assert_eq!(model._get_text("A1"), "#NUM!");
     assert_eq!(model._get_text("A2"), "#NUM!");
     assert_eq!(model._get_text("A3"), "10");
+}
+
+// ── errors reach the LAMBDA (T-2306) ─────────────────────────────────────────
+
+#[test]
+fn reduce_error_initial_value_is_passed_to_the_lambda() {
+    let mut model = new_empty_model();
+    model._set("A1", "7");
+    // The LAMBDA ignores the error accumulator (gen-m7/36809e9faa59553f A556).
+    model._set("B1", "=REDUCE(NA(), A1:A1, LAMBDA(acc, x, x + 1))");
+    // A normal initial value keeps working.
+    model._set("B2", "=REDUCE(1, A1:A1, LAMBDA(acc, x, acc + x))");
+    // An error step is the next accumulator, and a later step can ignore it.
+    model._set("A2", "2");
+    model._set(
+        "B3",
+        "=REDUCE(0, A1:A2, LAMBDA(acc, x, IF(x = 7, 1 / 0, x)))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "8");
+    assert_eq!(model._get_text("B2"), "8");
+    assert_eq!(model._get_text("B3"), "2");
+}
+
+#[test]
+fn map_multi_cell_array_step_is_one_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("B1", "=MAP(A1:A2, LAMBDA(x, HSTACK(x, x)))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#CALC!");
+    assert_eq!(model._get_text("B2"), "");
+}
+
+/// A cell initial value reaches the LAMBDA as a reference, so PRODUCT and COUNT skip its text
+/// and booleans (gen-m7/18b80d3fd292d63a A467, A285, 2c5ea078f25443a2 A1767; T-2307).
+#[test]
+fn scan_reduce_initial_value_cell_is_a_reference() {
+    let mut model = new_empty_model();
+    model._set("A1", "'1");
+    model._set("A2", "TRUE");
+    model._set("A3", "TRUE");
+    model._set("A4", "-2.5");
+    model._set("A5", "ü");
+    model._set("B1", "=REDUCE(A1, A4, LAMBDA(acc, x, COUNT(acc, x)))");
+    model._set("B2", "=REDUCE(A2, A3, LAMBDA(acc, x, PRODUCT(acc, x)))");
+    model._set("B3", "=REDUCE(A2, {1}, LAMBDA(acc, x, ISREF(acc)))");
+    model._set("B4", "=SCAN(A5, A4:A4, LAMBDA(acc, x, PRODUCT(acc, x)))");
+    // A value initial value stays a value.
+    model._set("B5", "=REDUCE(TRUE, A3, LAMBDA(acc, x, PRODUCT(acc, x)))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("B2"), "0");
+    assert_eq!(model._get_text("B3"), "TRUE");
+    assert_eq!(model._get_text("B4"), "-2.5");
+    assert_eq!(model._get_text("B5"), "1");
 }

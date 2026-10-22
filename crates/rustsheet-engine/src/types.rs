@@ -474,6 +474,13 @@ pub struct Table {
     pub has_filters: bool,
 }
 
+impl Table {
+    /// Whether the table is on the sheet `sheet_name`; sheet names match ignoring case.
+    pub(crate) fn is_on_sheet(&self, sheet_name: &str) -> bool {
+        self.sheet_name.to_uppercase() == sheet_name.to_uppercase()
+    }
+}
+
 // totals_row_label vs totals_row_function might be mutually exclusive. Use an enum?
 // the totals_row_function is an enum not String methinks
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]

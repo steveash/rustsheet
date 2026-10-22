@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM of a typed boolean, a boolean in an array constant and a boolean read from a cell (T-2276).",
+  "tags": [
+    "M2",
+    "dates",
+    "probe"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": true,
+        "B2": false,
+        "A1": "=WEEKNUM(TRUE)",
+        "A2": "=WEEKNUM(FALSE)",
+        "A3": "=WEEKNUM(TRUE,2)",
+        "A4": "=WEEKNUM(FALSE,0.5)",
+        "A5": "=WEEKNUM({TRUE})",
+        "A6": "=WEEKNUM(\"TRUE\")",
+        "A7": "=WEEKNUM(B1)",
+        "A8": "=WEEKNUM(B2)",
+        "A9": "=WEEKNUM(1)",
+        "A10": "=WEEKNUM(B1+0)",
+        "A11": "=WEEKNUM(IF(TRUE,TRUE))",
+        "A12": "=ISOWEEKNUM(TRUE)"
+      }
+    }
+  ]
+}

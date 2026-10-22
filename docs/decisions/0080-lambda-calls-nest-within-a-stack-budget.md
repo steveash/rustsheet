@@ -1,6 +1,6 @@
 # 0080 — LAMBDA calls nest within a stack budget
 
-- **Status:** accepted (2026-10-19, T-0439)
+- **Status:** accepted (2026-10-19, T-0439); consequences amended by decision 0100 (300 levels fit).
 - **Context:** A LAMBDA that calls itself through a parameter
   (`LET(f,LAMBDA(g,n,IF(n=0,0,g(g,n-1)+1)),f(f,20000))`) overflowed the stack and aborted the process
   on `main` on a default-sized thread stack (the eval harness runs on 256 MB), and T-0439's closures add a second way in (a chain of 20,000 closures made by REDUCE).

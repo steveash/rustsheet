@@ -117,7 +117,7 @@ replaces only the nth: `SUBSTITUTE("aaa","aa","x",1)` "xa", `,2)` "ax", `,3)` "a
 `SUBSTITUTE("aaaa","aa","x",2)` "axa", `,3)` "aax"; `SUBSTITUTE("aaaaa","aaa","x",3)` "aax";
 `SUBSTITUTE("abab","bab","x",1)` "ax"; `SUBSTITUTE("ababab","abab","x",2)` "abx". Without one, it replaces
 left-to-right non-overlapping matches: `SUBSTITUTE("aaaa","aa","x")` "xx", `SUBSTITUTE("aaa","aa","x")` "xa".
-Matching is case-sensitive (`SUBSTITUTE("AaA","aa","x",2)` "AaA"); an instance past the last match leaves the
+Matching is case-sensitive (`SUBSTITUTE("AaA","aa","x",2)` "AaA"); an instance past the last match (up to 2147483646, below) leaves the
 text unchanged; 0 and -1 are `#VALUE!`; 1.9 truncates to 1; an empty old_text changes nothing (probed with an instance_num); the instance lifts
 over an array (`{1,2,3}` gives "xa", "ax", "aaa").
 Evidence: probes/substitute-overlapping-instances (excel-graph, 2026-10-16).
@@ -362,10 +362,32 @@ Excel's are (T-1817, below); POSIX classes are rewritten to Excel's Unicode ones
 The REGEXREPLACE replacement syntax is Excel's since T-1688: see "REGEXREPLACE replacement syntax (T-1688)"; the
 pattern dialect still differs from Excel's PCRE2: see "REGEX* patterns and match iteration are PCRE2 (T-1688)".
 Evidence: none needed for Excel's side (it has no such limit); CLAUDE.md directive 5.
+Pattern limits of our PCRE2 parser (T-1973, functions/text/pcre/parse.rs):
+- Nesting is capped at 250 levels. That is PCRE2's default parentheses limit, UNVERIFIED for Excel (T-1972).
+- Stacked quantifiers and nested brackets also count toward that cap. This is our own directive-5 limit, a
+  DEVIATION: `REPT("(",250)&"a*"&REPT(")",250)` is `#VALUE!`, as it already was under regex-syntax's nest limit.
+- Repeat counts are capped at 65,535 (PCRE2's), as are capture groups. Group names are capped at 32 characters
+  (PCRE2 before 10.44, which may have raised it). All of these are UNVERIFIED for Excel (T-1972).
+Backtracker limits (T-1900, functions/text/pcre/backtrack.rs and program.rs):
+- Every executed instruction, pushed frame, backreference character, atomic-group scan and start position is
+  charged to the call's one work budget. The stack may not pass the heap the call may still hold (64 MiB less what
+  it holds). Past either, the call is `#ERROR!`. Stock PCRE2 has a required-character check and a match limit
+  instead. `REGEXTEST(REPT("a",30)&"c","\G(a|a)*b")` is `#ERROR!` here, where PCRE2 answers FALSE at once.
+  `\G(a|a)*b`, `\G(a*)*b`, `\G((a+)+)+b` and `(.*)\1x` over `REPT("a",32767)` are `#ERROR!` or FALSE. Excel's
+  answers are UNVERIFIED (T-2356).
+- Counted repeats are expanded into copies, and every node a copy visits counts against the compile size limit.
+  `(?:(?:){65535}){65535}(a)\1` is too big, and `#VALUE!`, where PCRE2 compiles it.
+- The memoized mode (T-2355; a regular pattern with `$` or `\Z` over a text with a line feed before its last
+  character) keeps one bit per instruction and byte position it reaches, in chunks of 64 positions, held with the
+  stack within what the call may still hold (64 MiB at most): 4 KiB per instruction over a 32,767-character ASCII
+  text. A search that would pass it is `#ERROR!`, where Excel answers FALSE (checked once on excel-graph,
+  2026-10-22, for T-2355; not kept as a case, being this deviation)
+  (`REGEXTEST("a"&CHAR(10)&REPT("a",32764)&CHAR(10),"(?:b[a-z]{20000}|a)*b$")`). Each chunk it reaches is charged one unit
+  a word, and each state it enters a step.
 Status: DEVIATION (decision 0014)
-Implemented in: `MAX_UNFOLDED_LEN`, `folding_cost` and `foldable_span` (functions/text/regex_posix.rs), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
-and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `SplitList` (functions/text/textsplit.rs)
-Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138
+Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, charged per code point a fold walks), `Model::lift_text_call`, `text_call_cost` and `ScanCost` (functions/text/lifted.rs), `PatternCache`
+and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `Backtracker` and `Program` (functions/text/pcre/), `SplitList` (functions/text/textsplit.rs)
+Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138, T-2355
 
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
@@ -547,7 +569,9 @@ parentheses `"(100)"` = -100, dates `"2024-02-29"` = 45351 and `"1900-02-29"` = 
 separator `"FALSE"` is "F", `"MDCVIII"` (`ROMAN(1608,4)`) is "M", `"0.2"` is "0". Every occurrence of the group separator's
 first character is removed from the text before parsing, digits included: `NUMBERVALUE("25:00",UNICHAR(12288),"5")` is "2:00"
 = 0.08333333333333333 and `NUMBERVALUE("25:00","-0.01","2")` is "5:00" = 0.20833333333333334; with the group separator "0",
-"25:00" still reads 1.0416666666666667 ("25:"). A decimal separator that is a digit of the number breaks it:
+"25:00" still reads 1.0416666666666667 ("25:", an hour and a trailing colon, which VALUE reads too:
+dates.md "Time text"; `NUMBERVALUE("25:")`, `NUMBERVALUE("12:30:")` and `NUMBERVALUE("1:","F","0")` agree,
+probes/t2352-time-text-trailing-colon, T-2352). A decimal separator that is a digit of the number breaks it:
 `NUMBERVALUE(0.3,"0.2")` and `NUMBERVALUE(0.1,"0.3x","ABCFALSE")` are `#VALUE!` (ours 0.3 and 0.1). Text that is empty, or
 empty once the group separator is removed, is 0: a blank cell, `""` from MID, RIGHT, T or REPT, and
 `NUMBERVALUE("A","0","ABC?b#N/A")` (ours `#VALUE!`). An empty group separator (a blank cell) is `#VALUE!`:
@@ -557,11 +581,17 @@ gen-m5/109fc90dceb50ba9 Calc!A144, gen-m5/1962de140dae0111 Calc!A80, gen-m5/6b83
 gen-m5/38b1b8e51dbad326 Calc!A340, gen-m5/34f69d858a39f497 Calc!A227, gen-m5/b237245054b4fedb Calc!A128, gen-m5/eb942f4a59b1c004 Calc!A115 (T-2151);
 gen-m5/5704666097cbc5b2 Calc!A261, Calc!A392, gen-m5/bbbd316c346ce645 Calc!A76, gen-m5/b237245054b4fedb Calc!A390, gen-m5/a6fec430ac350c1a Calc!A32,
 gen-m5/ecd1b828aebad1e8 Calc!A60 (T-2152); the array lift is in arrays.md (T-2160).
+Every space is removed before the text is read, so `NUMBERVALUE("12:30 PM")` is `#VALUE!` ("12:30PM") where
+`VALUE("12:30 PM")` is 0.5208333333333334 (gen-m5/bbbd316c346ce645 A207, fc81c2f704bef138 A194, 6a8bb7cd6d7769ad A357
+against gen-m5/49bfbf67a1409563 A217, 901e91c09b347914 A13; Microsoft's NUMBERVALUE page says spaces are ignored "even in the
+middle"; that "12:30PM" is the reason, not a refusal of AM/PM, is the simplest reading and unprobed).
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
-Unprobed: a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
-when only their first characters agree.
-Status: VERIFIED (excel-graph); not implemented (T-2151, T-2152).
+Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, a decimal separator equal to the group one
+when only their first characters agree (ours `#VALUE!`), whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
+Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing
+after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs), the trailing
+colon after a bare hour (T-2352, in the shared clock parser).
 
 ## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155)
 Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the
@@ -576,8 +606,10 @@ in all three (A1, A2, B1-B2, C1-C2: REPT doubles it, CODE and UNICODE give 120) 
 units (`LEN` 256) and is `#VALUE!` in all three (row 7), as is 255 "x" plus it (row 8). T shares the cut:
 `T(REPT("x",256))` is `#VALUE!` (A12). CLEAN, TRIM, LOWER and LEFT(..,1) take the same 256-character text
 (A9-A11, A13, `LEN` 256 for the first three). `VALUE(REPT("1",256))` is `#VALUE!` (A14), which the probe cannot tell
-from a numeral-length limit.
-Status: VERIFIED (excel-graph); not implemented (T-2155).
+from a numeral-length limit. Unprobed (every oracle cell builds the text inline with REPT): long text from a cell reference or as an array
+element (ours: `#VALUE!` in REPT, CODE and UNICODE and for T's scalar or top-left cell, T keeps a long array element),
+and which error wins when REPT's count is also an error (ours: the text's `#VALUE!`).
+Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs).
 
 ## UNICHAR code point bounds
 Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or
@@ -625,10 +657,11 @@ Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Implemented in: `Model::fn_asc` (functions/text/char_code.rs). Tasks: T-1863
 
 ## REGEXTEST and REGEXREPLACE edge cases (T-1626)
-Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); surrogate pairs are UNVERIFIED (not probed). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending; UNVERIFIED. REGEXTEST case_sensitivity 2 and -1 (C23, C24, undecoded here) are `#VALUE!` (probes/regex-optional-args A3, A4; next entry but two).
+Rule: `case_sensitivity` 1 is case-insensitive and 0 (or omitted) case-sensitive for both functions (`REGEXTEST("Hello World 123","hello",1)` TRUE, `,0` FALSE; REGEXREPLACE's fifth argument likewise, `"O"` with 0,1 replaces every o). REGEXREPLACE occurrence: 0 or omitted replaces all, n > 0 the n-th match, n < 0 counts from the end (-1 the last), an out-of-range occurrence (3 of 2 matches, 9, -9) returns the text unchanged; 1.9 truncates to 1; "x" is `#VALUE!`. The replacement reads `$0`, `$1`, `$$` (a literal `$`), `${name}` and also `\1`; a backreference in the pattern (`(\w)\1`) works. An empty pattern or `x*` matches between every character and at both ends (`-H-e-l-l-o-...-3-`; an empty text gives "-"); `^` and `$` anchor the text. Lazy empty matches are not skipped: `a*?` on "aaa" with "b" is "bbbbbbb" (PCRE2-style global replace: after an empty match a non-empty match is tried again at the same position, so each "a" is consumed too, unlike a Rust-regex iterator's "bababab"). `\p{L}` and `.` match each character of BMP text ("日本語" is 3); `.` matches a surrogate pair as one character
+(`REGEXREPLACE("a😀",".","-")` is `--`, probes/regex-iteration-surrogates A9). Numbers and booleans are read as text; an error argument is returned. A range argument lifts and spills (`#SPILL!` when blocked). Invalid patterns and a missing group (`$3`) give an error type the oracle does not decode yet; those cells stay pending; UNVERIFIED. REGEXTEST case_sensitivity 2 and -1 (C23, C24, undecoded here) are `#VALUE!` (probes/regex-optional-args A3, A4; next entry but two).
 Evidence: probes/t1626-regextest, t1626-regexreplace (excel-graph, 2026-10-16).
 Ours: the optional arguments since T-1360 (next entry but two, "REGEX* optional arguments"); `\1` in the replacement matches since T-1688; the pattern
-backreference (REGEXTEST C29) is T-1900 and the lazy empty matches (REGEXREPLACE C34) T-1899.
+backreference (REGEXTEST C29) is T-1900 and the lazy empty matches (REGEXREPLACE C34) match since T-1899.
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 Tasks: T-1360, T-1688, T-1272 (range lift)
 
@@ -707,11 +740,54 @@ U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]
 `(*UCP)`, `\X`, `\h` and `\R` are accepted. `$` matches at the end and before a final LF only (`"a"&CHAR(10)` matches
 `a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
-Ours: matches (the POSIX classes since T-1903) except that `(*UCP)`, `\X`, `\h` and `\R` are `#VALUE!` (A17, A27,
-A41, A42) and `$` does not match before a final LF (A34): SPEC-0013 gives `$`, `\h` and `(*UCP)` to T-1973 and
-`\X` and `\R` to a follow-up task after T-1900.
+Ours: matches, `(*UCP)`, `\h` and `$` before a final LF included since T-1973 (our PCRE2 parser, functions/text/pcre/).
+`\X` and `\R` (A27, A42) since T-2287 (next entry).
+`\Z` follows `$`'s final-LF rule, as SPEC-0013 reads PCRE2. That is UNVERIFIED for Excel (T-1972); before T-1973 it was
+`#VALUE!`.
+Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them):
+- Now accepted as PCRE2 reads it: `(?n)`, `(?-)`, `(?'name'..)`, `\e`, `\cX`, `[\b]`, `\p{^Lu}`, a `{` that starts
+  no quantifier (a literal), and spaces inside a bracket under `(?x)` (literal).
+- Changed meaning: `\<` is a literal `<`, not a word start.
+- Unchanged, but unlike stock PCRE2: `(?m)^` also matches after a final LF (`REGEXREPLACE("a"&CHAR(10),"(?m)^","x")` is
+  "xa\nx" in ours).
+- Now `#VALUE!` (fail closed): `\v` (was VT), `^*`, and spaces inside quantifier braces (`a{1, 2}`, a quantifier
+  before). Also `--`, `~~` and `||` inside a bracket, which were set operations; Excel's nested brackets suggest a
+  UTS #18 dialect, where they may be set operations too.
+`$` and `\Z` on a text that holds another LF before its final one also match before the final LF, as Excel's do
+(`REGEXTEST("b"&CHAR(10)&"a"&CHAR(10),"a$")` is TRUE, `REGEXREPLACE("a"&CHAR(10)&CHAR(10),"$","x")` puts an x before
+and after the final LF; probes/t2355-regex-dollar-inner-lf A1-A10, excel-graph, 2026-10-22), since T-2355: the pattern
+then runs on the backtracker's memoized mode. Before, they matched only at the very end. A text with an LF inside
+but none at the end stays on the automata, `$` meaning its end (A7, A8).
 Status: VERIFIED (excel-graph)
-Tasks: T-1829 (probe), T-1900, T-1903, T-1973
+Tasks: T-1829 (probe), T-1900, T-1903, T-2355 (probe t2355-regex-dollar-inner-lf), T-1973
+
+## `\R` and `\X` are atomic; `\X` is PCRE2's grapheme cluster (T-2287)
+Rule: `\R` is one line break, CR LF or any one of LF, VT, FF, CR, NEL, U+2028 and U+2029, and it never gives back the
+LF of a CR LF. `REGEXEXTRACT(CHAR(13)&CHAR(10),"\R",1)` is one match of length 2. `CHAR(10)&CHAR(13)` is two matches,
+and `CHAR(13)&CHAR(13)&CHAR(10)` is 1 then 2. `^\R$` matches CR LF, but `^\R\n$`, `^\R\R$` and `^\R{2}$` do not. `[\R]` and
+`[\X]` are `#VALUE!`.
+`\X` is one extended grapheme cluster, also atomic: `^\X$` matches `"e"&UNICHAR(769)`, while `^\X\X$` and `^\X.$` do
+not, and `^.\X$` does. The clusters follow UAX #29 without GB9c, so a Devanagari conjunct (U+0915 U+094D U+0937) is
+two clusters, 2 then 1. That points to PCRE2 before 10.43. These all join as UAX #29 says: CR LF; Hangul L V T, LV V
+and L LV; Extend and SpacingMark after anything but a control; Prepend before a letter, a Prepend or an indicator; an
+emoji ZWJ sequence (8 units for the family, 7 with a skin tone); a flag pair (indicators pair up: three are 4 then 2);
+and `©` ZWJ `©`. Two of PCRE2's join-table quirks break where UAX #29 joins. A regional indicator joins nothing but a
+second indicator, so `UNICHAR(127482)&UNICHAR(769)` is 2 then 1, and a ZWJ after an indicator starts a new cluster.
+A Prepend does not join an emoji: `UNICHAR(1536)&UNICHAR(128512)` is 1 then 2. A ZWJ joins an emoji only after an emoji
+and its Extend marks. `"a"` ZWJ emoji is 2 then 2, emoji SpacingMark ZWJ emoji is 4 then 2, emoji ZWJ ZWJ emoji is
+4 then 2, and two emoji with nothing between them are two clusters. `\X` matches nothing in `""`. `\X$` on
+`"ab"&CHAR(13)&CHAR(10)` matches "b" (probes/t2364-regex-dollar-final-cr A1-A2; T-2364: `$` before a final CR LF).
+Evidence: probes/t2287-regex-r-x-spans A1-A49, A51-A53, A58-A64, B1-B24 (excel-graph, 2026-10-22).
+Ours: matches. `\R` is parsed into that atomic group. `\X` is an instruction of the backtracker that charges each
+character it takes (`pcre/grapheme.rs`, with break values from regex-syntax's Unicode tables).
+Unprobed:
+- Characters whose break value changed between Unicode versions. Ours uses regex-syntax's tables, and Excel's PCRE2
+  version is unknown.
+- `\X` starting inside a cluster (after `.` or `\G`). Ours reads a cluster as if one started there, but PCRE2 may look
+  back at earlier indicators or emoji.
+- `\R` and `\X` inside a lookbehind.
+Status: VERIFIED (excel-graph)
+Tasks: T-2287, T-2364
 
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
@@ -725,14 +801,33 @@ advancing one character, so `a*?` and `a??` on `aaa` replace to `bbbbbbb`, `(?:a
 `abc` to `-a---c-`, `b|` to `-a--c-` and `(?=b)|b` to `a--c`; REGEXEXTRACT's all-matches mode gives 7 matches for
 `a*?` on `aaa` (`,a,,a,,a,`), and REGEXREPLACE's occurrence counts the same matches (occurrence 2 is `baa`, 4 is
 `aba`, -1 `aaab`). An empty pattern over text with a surrogate pair is `#VALUE!` (`REGEXREPLACE("a"&UNICHAR(128512)&"b","","-")`,
-ERROR.TYPE 3; with `x*` too, as an undecoded error), where ours puts `-` around the emoji.
-Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18).
-Ours: the `regex` crate's dialect: it rejects backreferences, lookaround, atomic groups, `\K`, conditionals and
-comments as invalid (`#VALUE!`), reads `a++` as `a+` followed by `+` (so `a++a` matches `aaa`, C11, B29), and
-iterates as Rust does (`bababab`). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
-unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
-Status: VERIFIED (excel-graph)
-Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974
+ERROR.TYPE 3; with `x*` too, ERROR.TYPE 3). Only an iteration that reaches the pair that way fails: a non-empty match
+steps over it (`REGEXREPLACE("😀b","😀|b","-")` is `--`, `.` on `a😀` gives `--`), an n-th occurrence stops at its
+match (`REGEXREPLACE("a😀","","-",1)` is `-a😀`; with `a*` on `😀a` `-😀a`, `b|` occurrence 2 on `ab😀` `a-😀`, `a|`
+occurrence 1 `-b😀`), while occurrence 3 of `""` on `a😀` and REGEXEXTRACT's all-matches mode over it are `#VALUE!`;
+REGEXEXTRACT's first match is unaffected (`""`). A negative occurrence needs the whole iteration, so it is `#VALUE!`
+in ours whenever the iteration splits a pair: UNVERIFIED (not probed).
+Evidence: probes/regex-pcre2-features C1-C19, D1-D14, B27-B29 (excel-graph, 2026-10-18; D11 and D14 undecoded there,
+answered by the next case); probes/regex-iteration-surrogates A1-A11 (excel-graph, 2026-10-22, T-1899).
+Ours: PCRE2's grammar since T-1973 (functions/text/pcre/): comments, `\Q..\E`, `(?x)` and scoped flags match
+(C14-C19). Backreferences (C1-C5), atomic groups and possessive quantifiers (B29, C11) and `\G` match on T-1900's
+backtracker (functions/text/pcre/backtrack.rs). Several PCRE2 behaviors it implements are UNVERIFIED for Excel
+(T-2356 probes them):
+- a backreference ignores case as its scope's flags say;
+- a backreference to a group that did not take part fails to match (PCRE2's default);
+- a group's capture changes only when the group closes, so `^(a|b\1)+$` is FALSE on `abab`;
+- `\G` stands at each iteration search's start;
+- the empty-loop rule;
+- captures made inside an atomic group are undone on backtracking.
+`(?P=name)` is `#VALUE!` in ours, though PCRE2 accepts it. Lookaround, `\K` and conditionals parse but are
+`#VALUE!` until T-2354 (so `(?=b)|b`, D12, waits for it). Iteration is PCRE2's since T-1899
+(functions/text/regex_search.rs `each_match`): the retry runs on the backtracker, a regular pattern's on its memoized
+mode, and an advance of one UTF-16 unit into a surrogate pair is `#VALUE!` (the cause, Excel iterating UTF-16
+units, is inferred; every regex-iteration-surrogates cell matches it). The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
+unprobed features), T-1973 (parser), T-1900 (backtracker), T-2354 (lookaround, `\K`, conditionals), T-2355 (memoized
+mode), T-1899 (iteration), T-1974 (costs), T-2356 (probe of the backtracker's behaviors).
+Status: VERIFIED (excel-graph); the backtracker behaviors listed above UNVERIFIED (T-2356)
+Tasks: T-1688, T-1898, T-1899, T-1900, T-1972, T-1973, T-1974, T-2354, T-2355, T-2356
 
 ## CLEAN character set and PROPER word starts and case mapping (T-1307)
 Rule (CLEAN): code points 0-31 and the C1 controls 128-159 (`CHAR(129)`, 141, 143, 144, 157 and `UNICHAR(133)` included) are removed; 32, DEL (127), NBSP (160), the soft hyphen (173), U+200B, U+2028 and U+FEFF stay. TAB, LF and CR go (`CLEAN("a"&CHAR(10)&"b"&CHAR(1)&"c")` is "abc"). The engine already matched all 38 CLEAN cells.
@@ -808,10 +903,10 @@ probes/regex-posix-classes-b (bracket neighbours, nested and negated `(?i)`, `&&
 probes/regex-posix-classes-c (nesting, folding of the other items, `[:ascii:]` under `(?i)`, the code points above; T-1989);
 probes/regex-posix-syntax-edges (hyphen next to a class, `[.a.]`, `[..]`, `[[.ab.]]`, a range ending at a class);
 probes/regexreplace-limit-and-syntax A23.
-Implemented in: `unicode_posix_classes` in functions/text/regex_posix.rs, which rewrites the parsed pattern before it is compiled (and rejects the invalid syntax above in `invalid_ast`);
-where `(?i)` is on (tracked through flag groups and scopes, starting from the case_sensitivity argument), a bracket
-holding a POSIX class becomes `(?-i:[...])` with its other items replaced by their case closure (`unfolded_posix_bracket`). A
-pattern whose brackets would print past 64 KiB that way, together, is `#VALUE!` (a few `(?i)[[:alpha:]\pL]` can be enough), a DEVIATION recorded under the REGEX* limits entry above.
+Implemented in: `Parser::bracket` and `Parser::posix_class` in functions/text/pcre/parse.rs (T-1973, replacing T-1903's
+pre-compile rewrite). Each POSIX class is built as its Unicode class. Where `(?i)` is on (tracked through flag groups
+and scopes, starting from the case_sensitivity argument), a bracket's other items are case-folded and its POSIX classes
+are not. Case folding is charged per code point to the call's compile budget (the REGEX* limits entry above).
 Status: VERIFIED (excel-graph)
 
 ## REGEXREPLACE results are capped at 65,535 UTF-16 units, not 32,767; replacement syntax and Unicode classes (T-1817)
@@ -825,11 +920,16 @@ Implemented in: `MAX_REPLACED_UNITS` / `over_cap` in functions/text/regex_functi
 Status: VERIFIED (excel-graph)
 Tasks: T-1817
 
-## SUBSTITUTE with an instance_num of 1E+15 is `#VALUE!` (T-2279)
-Observed (excel-graph, gen-m6, 2026-10-21): `LOOKUP(SUBSTITUTE("x~*"&<blank>,RIGHTB("ü"),-0.0001,<blank>+1E+15),Data!C8:C8,Data!B8:B12)`
-is `#VALUE!` (gen-m6/9615a6de0f3ac417 Calc!A144); most likely SUBSTITUTE's instance_num makes it so. Ours returns the text unchanged
-(no 1E+15th match) and LOOKUP gives `#N/A`. The bound (2^31, 2^53, 32767 ...) is UNVERIFIED (T-2279 probes it).
-Status: UNVERIFIED (one cell)
+## SUBSTITUTE accepts an instance_num of 1 to 2147483646 only (T-2279)
+Rule: SUBSTITUTE floors instance_num and gives `#VALUE!` unless the result is in 1..=2147483646
+(2^31 - 2), whether or not text holds a match, and also for an empty text or empty old_text:
+`SUBSTITUTE("bbb","b","x",2147483646.9)` is "bbb" and `SUBSTITUTE("bbb","b","x",2147483647)` is
+`#VALUE!`; 32767, 65536, 2^30 and 2147483520 are fine; 2^31, 2^32, 2^53, 1E+10, 1E+15 and 1E+300 are
+`#VALUE!`; 0.5 is `#VALUE!` and 1.5 acts as 1. This explains gen-m6/9615a6de0f3ac417 Calc!A144
+(`LOOKUP(SUBSTITUTE(...,1E+15),...)` is `#VALUE!`).
+Evidence: probes/substitute-instance-num-bound (excel-graph, 2026-10-21). Its D5 (an array instance_num) is
+`#SPILL!` only because the probe cell has no room to spill; it says nothing about the bound.
+Status: implemented (`substitute_element`)
 Tasks: T-2279
 
 ## ARRAYTOTEXT: an error in the array argument wins over an invalid format (T-2250)
@@ -838,3 +938,31 @@ Ours: `#VALUE!` (the format is checked first).
 Evidence: gen-m5/4febabc66cfdf9a1 Calc!A156 (excel-graph, 2026-10-20, T-2114).
 Status: VERIFIED (excel-graph); not implemented (T-2250).
 Tasks: T-2169, T-2250
+
+## TEXTBEFORE and TEXTAFTER: instance_num past the text, a number if_not_found
+Rule: an instance_num whose size is greater than the text's length, counted in UTF-16 units, is `#VALUE!`, whatever the delimiter,
+match_end and if_not_found (the empty delimiter excepted, see above): `TEXTBEFORE("b","a",-2,1,1)`, `TEXTBEFORE("ab","a",3)` and
+`TEXTBEFORE("ab","a",3,0,0,"nf")` are `#VALUE!`, while `TEXTBEFORE("ab","a",2)` is the usual `#N/A`. `TEXTAFTER("😀","a",2)` is `#N/A`
+and `TEXTAFTER("😀","a",3)` `#VALUE!` (two units), `TEXTAFTER("é","a",2)` `#VALUE!` (one). Gen-m7 shows it on `TEXTBEFORE("x~*","1",
+WORKDAY(..))` (611ce3bbfab27cef A336) and `TEXTBEFORE(..,"-",DATE(2060,10,19),0,0,6)` (b24ce74f08d3f91a A767).
+match_mode is cut toward zero and must then be 0 or 1, else `#VALUE!`, also beside the empty delimiter: 2, -1, 255 and 123456789.123
+are `#VALUE!` (`TEXTBEFORE("aBc","b",1,2)`; `TEXTBEFORE("abc","",2,123456789.123)`, which is c36ff5f42a1a4d47 A148), 0.5 is 0
+(`#N/A` for a case-different delimiter), 1.5 and TRUE are 1. A number or boolean if_not_found comes back as its text:
+`TEXTBEFORE("b","a",1,0,0,5)` is "5", `-2.5` is "-2.5", TRUE is "TRUE" (also gen-m7 ac67253061bba16a A776, A1345).
+Evidence: probes/t2314-textbefore-instance-bound (excel-graph, 2026-10-22) and gen-m7 (excel-graph, 2026-10-21, T-2225).
+Ours: matches (`text_around_element`, `around_options` and `around_not_found` in functions/text/before_after.rs, T-2314). The probe's
+`TEXTBEFORE("abc","b",1,-0.5)` is "a", not `#VALUE!`: flooring -0.5 would give the invalid -1 (A2), so match_mode is cut toward zero.
+Status: VERIFIED (excel-graph)
+Tasks: T-2314
+
+## TEXTSPLIT: argument errors first, an all-empty result
+Rule: an error in match_mode or ignore_empty is the result before TEXTSPLIT's own `#VALUE!` for an empty text or a blank delimiter
+cell: `TEXTSPLIT("ABC",Data!D4:E7,Data!C5:E9,-1,<#DIV/0!>)` is `#DIV/0!` (gen-m7/90de8755a2e565e6 Calc!A1643) and
+`TEXTSPLIT("","-",Data!A11:D12,<#REF!>)` is `#REF!` (ac67253061bba16a A184). A split whose every piece is dropped by ignore_empty is
+`#CALC!`: `TEXTSPLIT(100,{1.005,100},"a",TRUE)` under LOWER and REGEXEXTRACT gives `#CALC!` (07d27aa0add0247f A768). An array
+ignore_empty lifts (`TEXTSPLIT("x~*",Data!C7:C11," ",UNIQUE(Data!C4:E8),1,..)` spills 15 `#VALUE!`: 8044dce50616cfe9 A1064).
+Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225).
+Ours: `#VALUE!` (T-2315).
+Status: VERIFIED (excel-graph)
+Tasks: T-2315
+

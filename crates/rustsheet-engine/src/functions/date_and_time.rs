@@ -6,7 +6,7 @@ mod month_shift;
 mod networkdays;
 pub(crate) mod time_text;
 mod weekend;
-mod weeknum;
+pub(crate) mod weeknum;
 mod workday;
 mod yearfrac;
 use weekend::WeekendPattern;
@@ -17,12 +17,44 @@ pub(crate) fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
 }
 
-fn last_day_of_feb(year: i32) -> u32 {
-    if is_leap_year(year) {
-        29
-    } else {
-        28
+/// The length of `month` on the calendar Excel displays, where February 1900 has the fictitious
+/// 29th (serial 60): DAYS360 counts 1900-02-29 as February's last day (`DAYS360(60,1)` = -59) and
+/// DATEDIF "MD" borrows 29 days from it (`DATEDIF(59,61,"MD")` = 2; probes/dates-early-1900-displayed,
+/// dates.md "Serials below 61 in DATEDIF, EDATE, DAYS360, WEEKNUM and YEARFRAC").
+fn displayed_month_length(year: i32, month: u32) -> u32 {
+    match month {
+        2 if year == 1900 || is_leap_year(year) => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
     }
+}
+
+/// DATEDIF's whole months from `start` to `end` (displayed `(year, month, day)`): the month
+/// difference, one less when the end's day is before the start's.
+fn datedif_months(start: (i32, u32, u32), end: (i32, u32, u32)) -> i32 {
+    let months = (end.0 - start.0) * 12 + (end.1 as i32 - start.1 as i32);
+    if end.2 < start.2 {
+        months - 1
+    } else {
+        months
+    }
+}
+
+/// DATEDIF "MD": the end's day minus the start's, plus the length of the month before the end's
+/// month when that is negative (gen-m6 excel-graph, dates.md "DATEDIF "MD" and "YD" day counts",
+/// T-2264); February 1900 has 29 days (`DATEDIF(59,61,"MD")` = 2). The sum can stay negative.
+fn datedif_month_days(start: (i32, u32, u32), end: (i32, u32, u32)) -> i64 {
+    let days = i64::from(end.2) - i64::from(start.2);
+    if days >= 0 {
+        return days;
+    }
+    let (year, month) = if end.1 == 1 {
+        (end.0 - 1, 12)
+    } else {
+        (end.0, end.1 - 1)
+    };
+    days + i64::from(displayed_month_length(year, month))
 }
 
 // The date serial of a raw argument (DAYS360, HOUR/MINUTE/SECOND's bound), rounding the
@@ -42,7 +74,7 @@ fn days360_us(start: (i32, u32, u32), end: (i32, u32, u32)) -> f64 {
     let mut day1 = day1 as i32;
     let mut day2 = day2 as i32;
 
-    if day1 == 31 || (m1 == 2 && day1 == last_day_of_feb(y1) as i32) {
+    if day1 == 31 || (m1 == 2 && day1 == displayed_month_length(y1, 2) as i32) {
         day1 = 30;
     }
     if day2 == 31 && day1 == 30 {
@@ -99,6 +131,32 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
+/// A DATE or TIME argument as Excel reads it: [`near_integer_floor`] with the shared
+/// [`NEAR_INTEGER_TOLERANCE`], half of it for a negative value, in the argument's own unit, so
+/// `TIME(1-2^-22,0,0)` is 1:00, `TIME(1,0,-1E-7)` 1:00 and `DATE(1983,12,-1E-15)` day 0.
+// Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is `#NUM!`" and "DATE: a
+// year, month or day just below an integer" (probes/time-argument-*, date-argument-window; T-2267,
+// T-2268): the positive edge lies in (2^-22+1E-12, 2.4E-7), the negative one in
+// (2^-23+1E-12, 1.2E-7), the same for every argument of both and at every magnitude probed.
+fn date_time_whole(value: f64) -> f64 {
+    let tolerance = if value < 0.0 {
+        NEAR_INTEGER_TOLERANCE / 2.0
+    } else {
+        NEAR_INTEGER_TOLERANCE
+    };
+    near_integer_floor(value, tolerance)
+}
+
+/// One TIME argument: [`date_time_whole`], then `#NUM!` outside -32768..=32767.
+fn time_argument(value: f64) -> Result<f64, Error> {
+    let whole = date_time_whole(value);
+    if (-32768.0..=32767.0).contains(&whole) {
+        Ok(whole)
+    } else {
+        Err(Error::NUM)
+    }
+}
+
 /// The hour, minute and second of a serial's time of day, as HOUR, MINUTE and SECOND take it
 /// apart. Half a second is added to the serial, then its fraction of a day is split by floors,
 /// through hours (x24) and minutes (x60), each step in double precision. So the time rounds to the
@@ -122,6 +180,7 @@ use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::functions::lift::{num_error, number_result, value_error};
+use crate::functions::util::{near_integer_floor, NEAR_INTEGER_TOLERANCE};
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
 use crate::types::DateSystem;
@@ -216,7 +275,8 @@ impl Model {
     pub(crate) fn fn_date(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let date_system = self.workbook.settings.date_system;
         self.numbers_fn(Function::Date, args, [0.0; 3], cell, |[year, month, day]| {
-            let mut year = year.floor() as i32;
+            let [year, month, day] = [year, month, day].map(date_time_whole);
+            let mut year = year as i32;
             if year < 0 {
                 return Err(Error::NUM);
             }
@@ -238,49 +298,35 @@ impl Model {
         })
     }
 
-    /// Walk a scalar / range / array node and invoke the provided closure with every
+    /// Walk a scalar / range / array value and invoke the provided closure with every
     /// numeric date serial that is encountered.
     fn collect_serial_numbers<F>(
         &mut self,
-        node: &Node,
+        value: CalcResult,
         cell: CellReferenceIndex,
         mut handle: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(i64) -> Result<(), CalcResult>,
     {
-        match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Number(v) => {
-                let serial = v.floor() as i64;
-                // Validate serial is in bounds
-                self.excel_date(serial, cell)?;
-                handle(serial)?;
-            }
+        match value {
+            CalcResult::Number(v) => handle(self.holiday_serial(v, cell)?)?,
             CalcResult::Range { left, right } => {
                 let areas = [Range { left, right }];
                 self.for_each_cell_in_areas(&areas, cell, |model, value| match value {
-                    CalcResult::Number(v) => {
-                        let serial = v.floor() as i64;
-                        model.excel_date(serial, cell)?;
-                        handle(serial)
-                    }
+                    CalcResult::Number(v) => handle(model.holiday_serial(v, cell)?),
                     CalcResult::EmptyCell => Ok(()),
-                    _ => Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Invalid holiday date".to_string(),
-                    )),
+                    // Excel: a cell holding number text is a holiday (dates.md "WORKDAY and
+                    // NETWORKDAYS holidays: blank and number-text cells").
+                    CalcResult::String(text) => handle(model.holiday_text_serial(&text, cell)?),
+                    _ => Err(invalid_holiday(cell)),
                 })?;
             }
             CalcResult::Array(array) => {
                 for row in array {
                     for value in row {
                         match value {
-                            ArrayNode::Number(num) => {
-                                let serial = num.floor() as i64;
-                                self.excel_date(serial, cell)?;
-                                handle(serial)?;
-                            }
+                            ArrayNode::Number(num) => handle(self.holiday_serial(num, cell)?)?,
                             ArrayNode::Error(error) => {
                                 return Err(CalcResult::Error {
                                     error,
@@ -288,27 +334,33 @@ impl Model {
                                     message: "Error in array".to_string(),
                                 });
                             }
-                            _ => {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Invalid holiday date".to_string(),
-                                ))
-                            }
+                            _ => return Err(invalid_holiday(cell)),
                         }
                     }
                 }
             }
             e @ CalcResult::Error { .. } => return Err(e),
-            _ => {
-                return Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Invalid holiday date".to_string(),
-                ))
-            }
+            // A one-cell reference to a blank cell is no holiday.
+            CalcResult::EmptyCell => {}
+            CalcResult::String(text) => handle(self.holiday_text_serial(&text, cell)?)?,
+            _ => return Err(invalid_holiday(cell)),
         }
         Ok(())
+    }
+
+    /// The serial of a holiday number: its floor, which must be a date (`#NUM!`).
+    fn holiday_serial(&self, number: f64, cell: CellReferenceIndex) -> Result<i64, CalcResult> {
+        let serial = number.floor() as i64;
+        self.excel_date(serial, cell)?;
+        Ok(serial)
+    }
+
+    /// The serial of a holiday cell holding number text; other text is `#VALUE!`.
+    fn holiday_text_serial(&self, text: &str, cell: CellReferenceIndex) -> Result<i64, CalcResult> {
+        match self.cast_number(text) {
+            Some(number) => self.holiday_serial(number, cell),
+            None => Err(invalid_holiday(cell)),
+        }
     }
 
     /// The weekday-faithful date of a WORKDAY or NETWORKDAYS date or holiday, serial 0 included
@@ -478,7 +530,12 @@ impl Model {
         // Lifts over a range or array in every argument (probes/date-argument-modes F43:F46).
         let kind = Function::Time;
         self.numbers_fn(kind, args, [0.0; 3], cell, |[hour, minute, second]| {
-            let total_seconds = hour.floor() * 3600.0 + minute.floor() * 60.0 + second.floor();
+            let [hour, minute, second] = [
+                time_argument(hour)?,
+                time_argument(minute)?,
+                time_argument(second)?,
+            ];
+            let total_seconds = hour * 3600.0 + minute * 60.0 + second;
             if total_seconds < 0.0 {
                 return Err(Error::NUM);
             }
@@ -615,7 +672,10 @@ impl Model {
         }
     }
 
-    /// DATEDIF of two date serials for `unit`, in any letter case.
+    /// DATEDIF of two date serials for `unit`, in any letter case. The dates are read on the
+    /// calendar Excel displays: serial 0 is 1900-01-00 and serial 60 the fictitious 1900-02-29
+    /// (`DATEDIF(0.5,60,"D")` = 60, `DATEDIF(60.5,45291,"MD")` = 2; gen-m6, probes/dates-early-1900-displayed,
+    /// dates.md "Serials below 61 in DATEDIF, EDATE, DAYS360, WEEKNUM and YEARFRAC").
     fn datedif_value(
         date_system: DateSystem,
         start_serial: f64,
@@ -630,64 +690,40 @@ impl Model {
         if end_serial < start_serial {
             return Err(Error::NUM);
         }
-        let start = date_system.date_of_serial(start_serial).ok_or(Error::NUM)?;
-        let end = date_system.date_of_serial(end_serial).ok_or(Error::NUM)?;
+        let start_1900 = date_system.to_1900_serial(start_serial).ok_or(Error::NUM)?;
+        let start = excel_serial_to_ymd(start_1900).ok_or(Error::NUM)?;
+        let end = date_system
+            .to_1900_serial(end_serial)
+            .and_then(excel_serial_to_ymd)
+            .ok_or(Error::NUM)?;
         // The units are ASCII, so an ASCII case-blind match is the upper-casing it replaces.
         let unit = ["Y", "M", "D", "YM", "YD", "MD"]
             .into_iter()
             .find(|known| known.eq_ignore_ascii_case(unit))
             .unwrap_or("");
         match unit {
-            "Y" => {
-                let mut years = end.year() - start.year();
-                if (end.month(), end.day()) < (start.month(), start.day()) {
-                    years -= 1;
-                }
-                Ok(f64::from(years))
-            }
-            "M" => {
-                let mut months =
-                    (end.year() - start.year()) * 12 + (end.month() as i32 - start.month() as i32);
-                if end.day() < start.day() {
-                    months -= 1;
-                }
-                Ok(f64::from(months))
-            }
+            "Y" => Ok(f64::from(datedif_months(start, end).div_euclid(12))),
+            "M" => Ok(f64::from(datedif_months(start, end))),
             "D" => Ok((end_serial - start_serial) as f64),
-            "YM" => {
-                let mut months =
-                    (end.year() - start.year()) * 12 + (end.month() as i32 - start.month() as i32);
-                if end.day() < start.day() {
-                    months -= 1;
-                }
-                Ok(f64::from((months % 12).abs()))
-            }
+            "YM" => Ok(f64::from(datedif_months(start, end).rem_euclid(12))),
             "YD" => {
-                // The end moves into the start's year, or the next one when its month and day come
-                // first; the count runs from the start (gen-m6 excel-graph, dates.md "DATEDIF "MD"
-                // and "YD" day counts", T-2264). A 29 February end in a non-leap year lands on
-                // 1 March (UNVERIFIED: no cell decides it).
-                let year = if (end.month(), end.day()) < (start.month(), start.day()) {
-                    start.year() + 1
-                } else {
-                    start.year()
-                };
-                let moved = chrono::NaiveDate::from_ymd_opt(year, end.month(), end.day())
-                    .or_else(|| chrono::NaiveDate::from_ymd_opt(year, 3, 1))
-                    .ok_or(Error::NUM)?;
-                Ok((moved - start).num_days() as f64)
+                // The start moved on by the "YM" months in its own year (DATE's day overflow, so
+                // 31 January + 1 month is 3 March), plus the "MD" days: fitted to 39 excel-graph
+                // cells, among them `DATEDIF(29872,35271,"YD")` = 285, `DATEDIF(1521,1888,"YD")` = 1
+                // and `DATEDIF(DATE(2024,1,31),DATE(2025,3,1),"YD")` = 29 (dates.md "DATEDIF "MD" and
+                // "YD" day counts", T-2264, T-2263).
+                let (year, month, day) = start;
+                let months = datedif_months(start, end).rem_euclid(12);
+                let moved =
+                    permissive_date_to_serial_number(day as i32, month as i32 + months, year)
+                        .map_err(|_| Error::NUM)?;
+                Ok((i64::from(moved) - start_1900 + datedif_month_days(start, end)) as f64)
             }
-            "MD" => {
-                // The end's day minus the start's, plus the length of the month before the end's
-                // month when negative (gen-m6 excel-graph, dates.md, T-2264).
-                let days = i64::from(end.day()) - i64::from(start.day());
-                if days >= 0 {
-                    return Ok(days as f64);
-                }
-                let first = end.with_day(1).ok_or(Error::NUM)?;
-                let previous_month = first.pred_opt().ok_or(Error::NUM)?;
-                Ok((days + i64::from(previous_month.day())) as f64)
-            }
+            "MD" => Ok(datedif_month_days(start, end) as f64),
+            // An unknown unit is #VALUE!, but #NUM! when a date is day 0 (in [0, 1)):
+            // `DATEDIF(0.1,874,"1a*")`, `DATEDIF(<blank>,0,<bad>)` (gen-m6/03333cc38ec06a14 A269,
+            // 3a26794015dfbe9d A225, 9130ade4b1924cc8 A137 and 4 more; dates.md "Serials below 61").
+            _ if start.2 == 0 || end.2 == 0 => Err(Error::NUM),
             _ => Err(Error::VALUE),
         }
     }
@@ -735,7 +771,13 @@ impl Model {
                 Ok(read) => read,
                 Err(error) => return error,
             };
-            let ymd = |serial| {
+            // A negative date is #NUM! even when rounding to the second would make it 0:
+            // `DAYS360(100,-1E-15)` (probes/dates-early-1900-displayed A29-A35), while
+            // `DAYS360(1E-15,100)` = 99.
+            let ymd = |serial: f64| {
+                if serial < 0.0 {
+                    return Err(Error::NUM);
+                }
                 date_system
                     .to_1900_serial(days360_serial(serial))
                     .and_then(excel_serial_to_ymd)
@@ -766,11 +808,22 @@ impl Model {
 
     pub(crate) fn fn_isoweeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let date_system = self.workbook.settings.date_system;
-        self.numbers_fn(Function::Isoweeknum, args, [0.0], cell, |[serial]| {
+        let result = self.numbers_fn(Function::Isoweeknum, args, [0.0], cell, |[serial]| {
             let serial = date_system.to_1900_serial(serial.floor() as i64);
             weeknum::iso_week(serial.ok_or(Error::NUM)?)
-        })
+        });
+        // ISOWEEKNUM of a valid serial keeps a Monday start in WEEKNUM's stale return_type state
+        // (probes/weeknum-stale-reset-isoweeknum, SPEC-0017 rule 2).
+        if matches!(result, CalcResult::Number(_)) {
+            self.evaluation.weeknum_start = Some(weeknum::WeeknumStart::Monday);
+        }
+        result
     }
+}
+
+/// The `#VALUE!` of a holiday that is not a date.
+fn invalid_holiday(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "Invalid holiday date".to_string())
 }
 
 #[cfg(test)]

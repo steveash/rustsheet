@@ -3,7 +3,7 @@ id: T-2043
 title: "Oracle sweep for the IM* last-digit residue: IMABS, IMARGUMENT, IMCSC, IMSEC, IMSECH, IMLOG2, IMCOT"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -44,3 +44,9 @@ the 19 Macintosh-cached cells of COMPLEXs.xlsx (T-0907 tried and found no candid
 ## Out of scope
 - Fitting or implementing any formulation (T-2044).
 - Desktop-only differences (IMARGUMENT H2, H3, H10, IMCOS K25, ATAN2_POWER D14, D26): Phase 4 desktop oracle.
+
+## Outcome
+Met with 23 usable D-column inputs plus A20 (D9, D24 are errors, D20 a formula) (of 25 in the criterion). Added probes-numeric case `im-last-digit-sweep` (78 inputs x 7 functions, 1404 oracle cells from
+excel-graph, none pending); the 2 error inputs of COMPLEXs.xlsx (D9, D24) are not in it. The
+IMSEC/IMSECH split is recorded in docs/excel-semantics/engineering.md. No gated baseline changes.
+Follow-ups from the sweep: T-2334 (text instead of #NUM! at 0), T-2335 (tiny results flushed to 0).

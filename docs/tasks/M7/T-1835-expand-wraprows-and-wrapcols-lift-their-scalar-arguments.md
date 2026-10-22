@@ -3,10 +3,10 @@ id: T-1835
 title: "EXPAND, WRAPROWS and WRAPCOLS lift their scalar arguments over a range or an array"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 campaign: visible
 depends_on: [T-1770, T-1833, T-1834]
 spec: docs/specs/SPEC-0011-scalar-argument-lifting.md
@@ -28,7 +28,38 @@ Owned cells:
   - K5 `=ROWS(INDEX(EXPAND(A1:A2,{3;4}),1,1))` 1; K6 `=ROWS(INDEX(WRAPROWS(A1:A3,{1;2}),1,1))` 1; K7 `=COLUMNS(INDEX(WRAPROWS(A1:A3,{1;2}),2,1))` 1.
 - gen-m7/6db767d720c5b55a Calc!A12 `=WRAPCOLS(Data!D3:D3,UNIQUE(Data!B3:E4,SWITCH(..)))` (wrap_count is UNIQUE's 2-D array): Excel `#SPILL!`, ours `#N/IMPL!` (T-1275, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/6db767d720c5b55a.case.json`).
 
-EXPAND's columns and pad_with and WRAPROWS's pad_with are `Lift` by SPEC-0011's per-parameter list ("Array-valued functions"); T-1960 probes them. `KernelWork::Output { weight: 1 }`.
+T-1960 probed the rest (probes/m7-lift-take-drop-sortby, excel-graph, 2026-10-21; Sheet1 rows 20-23, columns F:S as that case's description says): EXPAND's columns lifts (`EXPAND(A1:A2,3,{1;2})` 2x1, elements 1x1, value 1), WRAPROWS's pad_with lifts (`WRAPROWS(A1:A3,2,{0;1})` 2x1, element 2 is 1, ours a 2-wide result) and WRAPCOLS's wrap_count over an array literal lifts (`WRAPCOLS(A1:A3,{1;2})` 2x1); EXPAND's pad_with does **not** lift: `EXPAND(A1:A2,3,1,{0;1})` is one `#VALUE!` (ROWS, COLUMNS and INDEX of it `#VALUE!`), so pad_with is `Whole` and an array there is `#VALUE!` (SPEC-0011 per-parameter list). A 1x1 array (`EXPAND(A1:A2,{3})`) is T-2298's. `KernelWork::Output { weight: 1 }`.
+
+Owned cells (T-1960):
+
+| case / cell | formula | Excel | ours |
+|---|---|---|---|
+| probes/m7-lift-take-drop-sortby Sheet1!F20 | `=ROWS(EXPAND(A1:A2,3,{1;2}))` | 2.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!F21 | `=ROWS(EXPAND(A1:A2,3,1,{0;1}))` | #VALUE! | 3.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!F23 | `=ROWS(WRAPCOLS(A1:A3,{1;2}))` | 2.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!G20 | `=COLUMNS(EXPAND(A1:A2,3,{1;2}))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!G21 | `=COLUMNS(EXPAND(A1:A2,3,1,{0;1}))` | #VALUE! | 1.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!G22 | `=COLUMNS(WRAPROWS(A1:A3,2,{0;1}))` | 1.0 | 2.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!G23 | `=COLUMNS(WRAPCOLS(A1:A3,{1;2}))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!H20 | `=INDEX(INDEX(EXPAND(A1:A2,3,{1;2}),1,1),1,1)` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!H21 | `=INDEX(INDEX(EXPAND(A1:A2,3,1,{0;1}),1,1),1,1)` | #VALUE! | 1.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!H23 | `=INDEX(INDEX(WRAPCOLS(A1:A3,{1;2}),1,1),1,1)` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!I20 | `=ROWS(INDEX(EXPAND(A1:A2,3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!I23 | `=ROWS(INDEX(WRAPCOLS(A1:A3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!J20 | `=COLUMNS(INDEX(EXPAND(A1:A2,3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!J23 | `=COLUMNS(INDEX(WRAPCOLS(A1:A3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!K20 | `=SUM(INDEX(EXPAND(A1:A2,3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!K23 | `=SUM(INDEX(WRAPCOLS(A1:A3,{1;2}),1,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!L20 | `=INDEX(INDEX(EXPAND(A1:A2,3,{1;2}),2,1),1,1)` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!L22 | `=INDEX(INDEX(WRAPROWS(A1:A3,2,{0;1}),2,1),1,1)` | 1.0 | 3.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!L23 | `=INDEX(INDEX(WRAPCOLS(A1:A3,{1;2}),2,1),1,1)` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!M20 | `=ROWS(INDEX(EXPAND(A1:A2,3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!M23 | `=ROWS(INDEX(WRAPCOLS(A1:A3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!N20 | `=COLUMNS(INDEX(EXPAND(A1:A2,3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!N23 | `=COLUMNS(INDEX(WRAPCOLS(A1:A3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!O20 | `=SUM(INDEX(EXPAND(A1:A2,3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
+| probes/m7-lift-take-drop-sortby Sheet1!O22 | `=SUM(INDEX(WRAPROWS(A1:A3,2,{0;1}),2,1))` | 1.0 | 3.0 |
+| probes/m7-lift-take-drop-sortby Sheet1!O23 | `=SUM(INDEX(WRAPCOLS(A1:A3,{1;2}),2,1))` | 1.0 | #N/IMPL! |
 
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric past half a unit in the 15th digit and 10 with a wrong type, error or text, blamed on WRAPROWS 5, EXPAND 4, ROWS 4, COLUMNS 4, WRAPCOLS 2, UNIQUE 1.
 
@@ -46,14 +77,26 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric pa
 | probes/m7-argument-modes Sheet1!K6 | `=ROWS(INDEX(WRAPROWS(A1:A3,{1;2}),1,1))` | 1 | #N/IMPL! |
 | probes/m7-argument-modes Sheet1!K7 | `=COLUMNS(INDEX(WRAPROWS(A1:A3,{1;2}),2,1))` | 1 | #N/IMPL! |
 
+gen-m7 cells (T-2225 triage, 2026-10-21): WRAPROWS/WRAPCOLS calls whose pad_with or wrap_count is an array (TOROW, FILTER or UNIQUE result): Excel lifts (a `#NUM!`/`#VALUE!` grid, or `#SPILL!` for 6db767d720c5b55a A12), ours `#N/IMPL!` or one cell.
+
+Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 28 known-failure lines in eval/baseline/gen-m7.txt, 3 formulas. One line per formula: case, anchor, the anchor formula, Excel vs ours at the first failing cell, then every failing cell (sheet Calc; a range is consecutive cells of one row).
+
+- gen-m7/611ce3bbfab27cef.case.json A1176 `=WRAPROWS(Data!E11:E12,Data!$A$4,((Data!D9-Data!D5)-TOROW(Data!B6:E8,1,Data!E1)))`: B1176 Excel #NUM!, ours <empty>; cells (4): B1176:E1176
+- gen-m7/6db767d720c5b55a.case.json A12 `=WRAPCOLS(Data!D3:D3,UNIQUE(Data!B3:E4,SWITCH((-0.5),"a*",Data!$E9,Data!A12,1.005,Data!B9,Data!A6,(-0.0001))))`: A12 Excel #SPILL!, ours #N/IMPL!; cells (1): A12
+- gen-m7/90de8755a2e565e6.case.json A889 `=WRAPROWS(((Data!B5+Data!C7)-SIGN(Data!B4)),(-1),((Data!B4-(-0.5))*FILTER(Data!A1:D12,(Data!B1:B12>3.14159))))`: B889 Excel #VALUE!, ours <empty>; cells (23): B889:D889, A890:D890, A891:D891, A892:D892, A893:D893, A894:D894
+
+Owned cells (from T-2298, 2026-10-22): a 1x1 array lifts in the driver since T-2298, so these pass once EXPAND and WRAPROWS lift: probes/m7-lift-take-drop-sortby Sheet1!F15 `=ROWS(EXPAND(A1:A2,{3}))` (Excel 1, ours 3); gen-m7/18b80d3fd292d63a Calc!A1754 (EXPAND over a one-cell SCAN, Excel <empty>, ours #N/A); gen-m7/8044dce50616cfe9 Calc!A1781 (WRAPROWS with a MINVERSE pad_with, Excel <empty>, ours 0.3).
+
 ## Acceptance criteria
-- [ ] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 10 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 1 cell of the ungated gen-m7 suite passes in `make eval`, with no new known-failure lines in any baseline.
-- [ ] probes/m7-argument-modes F7:H7, F8:H8, G42 and K5-K7 pass, and F42, H42 still pass.
-- [ ] gen-m7/6db767d720c5b55a A12 passes, with no new failing gen-m7 cell.
-- [ ] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
-- [ ] The three functions have table entries citing those cells; their fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes).
-- [ ] Unit tests: an unlifted call is unchanged (value and static shape); `=ROWS(EXPAND(1,SEQUENCE(1024),1024))` is `#ERROR!` (SPEC-0011 rule 3); an element error stays in its position.
-- [ ] `make check` green; reviewers approve.
+- [x] The 28 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 28 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
+- [x] Visible parity: the 11 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 10 lines in eval/baseline/probes.txt disappear (`make eval-baseline`); the 1 cell of the ungated gen-m7 suite passes in `make eval`, with no new known-failure lines in any baseline.
+- [x] probes/m7-argument-modes F7:H7, F8:H8, G42 and K5-K7 pass, and F42, H42 still pass.
+- [x] The probes/m7-lift-take-drop-sortby cells listed under Context pass (EXPAND's array pad_with is `#VALUE!`).
+- [x] gen-m7/6db767d720c5b55a A12 passes, with no new failing gen-m7 cell.
+- [x] Their lines leave eval/baseline/ (`make eval-baseline`), with no new known failures.
+- [x] The three functions have table entries citing those cells; their fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes).
+- [x] Unit tests: an unlifted call is unchanged (value and static shape); `=ROWS(EXPAND(1,SEQUENCE(1024),1024))` is `#ERROR!` (SPEC-0011 rule 3); an element error stays in its position.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - WRAPCOLS of a single value and wrap_count below 1 (T-1348).
@@ -61,3 +104,17 @@ Visibly-off cells (gap triage 2026-10-21, decision 0083): 11 cells, 1 numeric pa
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#N/IMPL!` and a wrong width where Excel lifts EXPAND, WRAPROWS and WRAPCOLS), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Handoff (resumed)
+A sonnet run landed the table entries, kernels, tests and most baseline lines, and handed off the 23 gen-m7/90de8755a2e565e6
+cells (A889:D894) where WRAPROWS's vector is an error; the opus run finished them (see Outcome).
+
+## Outcome
+EXPAND, WRAPROWS and WRAPCOLS are in the lifting table (`// --- M7 (T-1835) ---` in lift/kinds/general.rs): the array/vector
+is `WholeByCaller`, EXPAND's rows and columns and WRAP*'s wrap_count and pad_with `Lift`, EXPAND's pad_with `Whole` (an
+array there is `#VALUE!`). Their static-analysis fallback arms are gone. The resumed opus run finished the handoff without a
+driver change: WRAP* keep the vector's error (or not-a-vector `#VALUE!`) and return it from every element, so it fills the
+lifted shape of the other arguments (gen-m7/90de8755a2e565e6 A889:D894) and is the single error when nothing lifts.
+Eval delta: probes known failures -37, gen-m7 known failures -30 (every owned cell), no regressions. arrays.md
+"EXPAND, WRAPROWS and WRAPCOLS: scalar arguments lift, EXPAND's pad_with does not" records the rule; EXPAND with an error
+array beside a lifted argument is unprobed (ours: one error).

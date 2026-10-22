@@ -282,14 +282,22 @@ Tasks: T-2042, T-2052
 ## TYPE of a one-cell range, ISEVEN/ISODD past 2^63, CELL over a range info_type (T-2156, T-2165, T-2161)
 - `TYPE` of a one-cell range is its cell's type, not 64: `TYPE(D7:D7)` and `TYPE(B3:B3)` are 1 (ours 64). Multi-cell ranges
   stay 64 (above). Evidence: gen-m5/2abdc1524e5aa685 Calc!A371, gen-m5/c0651f0e0fb544d0 Calc!A203 (excel-graph, 2026-10-20).
+  The cell's kind decides: blank 1, number 1, text 2, boolean 4, error 16, text over 255 units 64, a blocked spill anchor
+  (`#SPILL!`) 16 and a working numeric one 1; one-cell `OFFSET(A2,0,0,1,1)` and `INDIRECT("A2:A2")` results classify the same way (probed: OFFSET over text, blank and error; INDIRECT over text, boolean, error and blank).
+  Evidence: probes/type-one-cell-range-kinds (T-2262, excel-graph).
 - ISEVEN and ISODD of a value at or above 2^63 read it as even (every double from 2^53 up is an even integer):
   `ISODD(INT(1E+21))` is FALSE, `ISEVEN(3.333333333333325E+29)` and `ISEVEN(8.999999753086524E+28)` TRUE. Implemented in `Model::parity_of`
   (functions/information/mod.rs) with an f64 remainder (an i64 cast saturated to i64::MAX, which is odd). This settles the ">= 2^63" line of "ISEVEN/ISODD over a range". Evidence: gen-m5/ee1667411bbe2ccc
   Calc!A159, gen-m5/1315170eef6c413e Calc!A396, gen-m5/50d8a085335c05e6 Calc!A92.
 - CELL lifts over a multi-cell range given as info_type, as over an array: `CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
   filled column (ours was `#VALUE!` before T-2161). Evidence: gen-m5/c0651f0e0fb544d0 Calc!A293.
-Status: VERIFIED (excel-graph) for the cells cited; TYPE of a one-cell range over a text, boolean, error or blank cell, or
-an OFFSET/INDIRECT result, is UNVERIFIED (every cited cell is numeric; T-2262 probes it). ISEVEN/ISODD implemented (T-2165);
+- An error element of a CELL info_type grid passes through as that error, per element; any other non-text element (number,
+  blank) is `#VALUE!`. `CELL({#N/A,"row"},B2)` spills #N/A, 2; `CELL({"row",#N/A},B2)` spills 2, #N/A; `CELL(D1:D2,B2)` with
+  D1=#DIV/0!, D2="row" spills #DIV/0!, 2; a range `{"row","col"}` at B3 spills 3, 2; `{"row",5}` spills 3, #VALUE!; `{"row",blank,"col"}`
+  spills 3, #VALUE!, 2. Scalar `CELL(A1,B1)` with A1=#N/A is #N/A. Evidence: probes/info-cell-info-type-grid-errors (excel-graph,
+  T-2232); implemented in `lifted_cell`.
+Status: VERIFIED (excel-graph, desktop Excel not checked) for the cells cited, including TYPE of a one-cell range over a
+text, boolean, error or blank cell and over an OFFSET/INDIRECT result (T-2262). ISEVEN/ISODD implemented (T-2165);
 CELL's range info_type implemented (T-2161, `fn_cell`); TYPE of a one-cell range implemented (T-2156, `fn_type`).
 
 ## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)

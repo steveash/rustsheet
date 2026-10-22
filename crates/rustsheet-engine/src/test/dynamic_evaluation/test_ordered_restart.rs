@@ -225,7 +225,7 @@ fn an_anchor_contradicted_by_its_own_inputs_is_circular_wherever_it_is_in_the_or
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("D1"), "#CIRC!");
+        assert!(model._is_circular("D1"));
         assert_eq!(model._get_text("A2"), "1");
         assert_eq!(model._get_text("A3"), "2");
         assert_eq!(model._get_text("D4"), "1");
@@ -248,15 +248,16 @@ fn anchors_reading_each_others_areas_are_all_circular() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("A1"), "#CIRC!");
-        assert_eq!(model._get_text("B1"), "#CIRC!");
+        assert!(model._is_circular("A1"));
+        assert!(model._is_circular("B1"));
         assert_eq!(model._get_text("A2"), "");
         assert_eq!(model._get_text("B2"), "");
     }
 }
 
-// A three-anchor loop, with a fourth anchor that merely reads one of them and
-// must not be blamed.
+// A three-anchor loop, with a fourth anchor that merely reads one of them: it
+// is not on the loop, so the driver does not mark it, but as a reader of the
+// loop it is 0 and does not spill (recalc.md).
 #[test]
 fn a_bystander_of_a_loop_is_not_blamed() {
     let mut model = new_empty_model();
@@ -267,12 +268,13 @@ fn a_bystander_of_a_loop_is_not_blamed() {
 
     for _ in 0..2 {
         model.evaluate();
-        assert_eq!(model._get_text("A1"), "#CIRC!");
-        assert_eq!(model._get_text("B1"), "#CIRC!");
-        assert_eq!(model._get_text("C1"), "#CIRC!");
-        assert_eq!(model._get_text("E1"), "#CIRC!");
-        assert_eq!(model._get_text("E2"), "0");
-        assert_eq!(model._get_text("E3"), "0");
+        assert!(model._is_circular("A1"));
+        assert!(model._is_circular("B1"));
+        assert!(model._is_circular("C1"));
+        assert!(model._is_circular("E1"));
+        assert!(!model.evaluation.circular_anchors.contains(&(0, 1, 5)));
+        assert_eq!(model._get_text("E2"), "");
+        assert_eq!(model._get_text("E3"), "");
     }
 }
 
@@ -467,7 +469,7 @@ fn a_cycle_free_cascade_is_not_marked_circular() {
     // 1 + 10*22, 2 + 10*22; the one before it adds the last X's 222.
     let circular: Vec<String> = (0..2 * m + k)
         .map(|c| format!("{}1", column(c)))
-        .filter(|cell| model._get_text(cell) == "#CIRC!")
+        .filter(|cell| model._is_circular(cell))
         .collect();
     assert_eq!(
         circular,

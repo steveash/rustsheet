@@ -67,7 +67,13 @@ macro_rules! lifting_table_functions {
             | Function::Take
             | Function::Drop
             | Function::Tocol
+            | Function::Expand
+            | Function::Wrapcols
+            | Function::Wraprows
+            | Function::Torow
             | Function::Unique
+            | Function::Sortby
+            | Function::Sort
             | Function::Hyperlink
             | Function::Pmt
             | Function::Pv
@@ -371,6 +377,9 @@ macro_rules! lifting_table_functions {
             | Function::Replace
             | Function::Replaceb
             | Function::Concatenate
+            | Function::Dollar
+            | Function::Fixed
+            | Function::Numbervalue
             // --- End text lifts (T-1775) ---
     };
 }

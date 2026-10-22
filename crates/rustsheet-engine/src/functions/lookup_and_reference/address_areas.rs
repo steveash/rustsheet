@@ -13,7 +13,14 @@ use crate::expressions::utils::number_to_column;
 /// Quotes `sheet_text` for ADDRESS. A leading `[workbook]` part does not by
 /// itself force quotes: the decision is made on the text after the `]`
 /// (Excel-cached poi EverythingTests!F128; docs/excel-semantics/references.md).
+///
+/// "TRUE" and "FALSE" are quoted like any other name that reads as something else:
+/// `ADDRESS(9,26,3,TRUE,"TRUE")` is `'TRUE'!$Z9` (gen-m6/c96ac1ada46179c4 A197; other spellings
+/// of them are unprobed).
 fn address_sheet_text(s: &str) -> String {
+    if s == "TRUE" || s == "FALSE" {
+        return format!("'{s}'");
+    }
     if let Some(rest) = s.strip_prefix('[') {
         if let Some((book, sheet)) = rest.split_once(']') {
             if !book.contains('[') && quote_name(sheet) == sheet {
@@ -95,14 +102,6 @@ impl Model {
             None => 1,
         };
 
-        if !(1..=4).contains(&abs_num) {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "abs_num must be 1, 2, 3, or 4".to_string(),
-            );
-        }
-
         let use_a1 = match rest.get(1) {
             Some(value) => match Self::cast_bool_ref(value, cell) {
                 Ok(b) => b,
@@ -121,6 +120,16 @@ impl Model {
             },
             None => String::new(),
         };
+
+        // abs_num is checked with the row and column, after every cast: an error value in a
+        // later argument beats it (`ADDRESS(1,1,0,NA())` is `#N/A`, gen-m6/870c5e38f51ce5d4 A229).
+        if !(1..=4).contains(&abs_num) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "abs_num must be 1, 2, 3, or 4".to_string(),
+            );
+        }
 
         // The row is relative in R1C1 style for abs_num 3 and 4, the column for 2 and 4; in A1
         // style both are written as plain numbers and letters, so both are absolute indexes.
@@ -190,6 +199,7 @@ impl Model {
                 };
             }
             PickedReference::Node(node) => self.evaluate_picked_reference_arg(node, cell),
+            PickedReference::Read(read) => read,
             PickedReference::Value(value) => RefArg::Value(value),
         };
         if let Some(areas) = arg.single_sheet_areas() {

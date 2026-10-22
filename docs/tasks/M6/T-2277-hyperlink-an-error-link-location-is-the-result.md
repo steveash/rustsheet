@@ -3,10 +3,10 @@ id: T-2277
 title: "HYPERLINK: an error link_location is the result, whatever friendly_name is (no spill)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: visible
 ---
@@ -41,3 +41,16 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 4 in eval/baselin
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`fn_hyperlink` reads link_location itself (`read_lift_arg`, as IMAGE's `offline_args` does), returns a scalar location's error or over-long `#VALUE!` at once, and only then lifts with `lift_values`, so the SPEC-0011 driver stays unchanged (no first-error hook; the opus resume replaced the handed-off driver hook). An error link_location is the whole result over a scalar, array or range friendly_name (3 of the 4 cells: gen-m6/44194b2fefa30de2 A169, c6621490a4d67f4e B214, d0c30225243fde60 A377). The fourth, 0bcac2d96e96b3df A17, was not an error location: the TEXTJOIN text is 328 characters and Excel's HYPERLINK gives `#VALUE!` for a link_location past 255 characters (new probe probes/t2277-hyperlink-location-length, excel-graph); implemented too and recorded in lookup.md. Unit tests in test_fn_hyperlink.rs. `LiftedArg::into_value` replaces two hand-written grid-to-array conversions (IMAGE, text lifts). Eval delta: gen-m6 -4 known failures; probes +1 case (t2277-hyperlink-location-length, 15 cells passing).
+
+## Handoff (resumed)
+Superseded: the opus resume dropped the driver hook (no `lift_call_error_first` or `FirstError`); see Outcome. The notes below are kept as history.
+Escalated by a sonnet run (work-loop step 5b): the architecture reviewer returned REQUEST_CHANGES because the implementation adds an opt-in first-error hook to the lift driver (`lift_call_error_first` / `FirstError`, lift/call.rs and lift/driver.rs), which SPEC-0011 forbids in three places ("the driver never scans for the first error"). Everything else is done and `make check` was green on the pushed branch: behavior, unit tests (test_fn_hyperlink.rs), probe `probes/t2277-hyperlink-location-length` (excel-graph: a link_location past 255 characters is `#VALUE!`; it was the real cause of gen-m6/0bcac2d96e96b3df A17), lookup.md entries, baseline (4 gen-m6 lines removed). Security and quality reviewers APPROVED; excel-fidelity had not reported when this was written.
+What is left for opus:
+1. Decide the design: either amend SPEC-0011 (an opt-in "error-first hook" paragraph with the HYPERLINK evidence) or a decision record, or avoid a driver change another way (the kernel cannot change the result shape, and collapsing identical element errors afterwards is wrong for an array friendly_name of errors).
+2. Make the hook honoured on every argument-count arm of `lift_call_with_first`, or restrict it to exactly two arguments with a `debug_assert!`, consistently with the no-table-entry fallback.
+3. Add a lift-level unit test for the hook (counting kernel never called when the check fires).
+4. Minor: `hyperlink_of` casts the location twice (make `hyperlink_location_error` return the cast string).
+Then re-run the reviewers and open the PR (none is open yet).

@@ -3,7 +3,7 @@ id: T-1731
 title: "Displayed text of a date or time format over a serial outside 0..2958465.99999 is 255 #"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -53,3 +53,8 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+Any date or clock token other than a lone elapsed token over a serial past 9999-12-31 is now unshowable
+(`format.rs`, reusing `negative_serial_allowed`). gen-m10 known failures 54 -> 52 (63 text cells fixed),
+gen-m5 165 -> 162, no regressions.
