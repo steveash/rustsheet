@@ -147,12 +147,16 @@ impl Model {
         rest: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        // Both are truncated: AGGREGATE(9.9,7.9,..) is AGGREGATE(9,7,..) (probes/aggregate-args).
+        // Both are truncated: AGGREGATE(9.9,7.9,..) is AGGREGATE(9,7,..) (probes/aggregate-args),
+        // and AGGREGATE(14.5,..) is AGGREGATE(14,..). An `options` value below 0 is refused before
+        // it is truncated: AGGREGATE(15,-0.0001,..) is #VALUE!, not option 0
+        // (probes/aggregate-negative-option-range-k). It maps to -1, which the range check rejects.
         let function = match self.cast_to_number(function, cell) {
             Ok(f) => f.trunc(),
             Err(error) => return error,
         };
         let option = match self.cast_to_number(option, cell) {
+            Ok(f) if f < 0.0 => -1.0,
             Ok(f) => f.trunc(),
             Err(error) => return error,
         };

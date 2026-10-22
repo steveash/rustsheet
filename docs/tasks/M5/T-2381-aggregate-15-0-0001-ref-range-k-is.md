@@ -3,7 +3,7 @@ id: T-2381
 title: "AGGREGATE(15,-0.0001,ref,range k) is #VALUE!: probe the option sign and a multi-cell k"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,9 +32,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 | gen-m5/c634f6ec7b14fe08 Calc!A322 | `=SERIESSUM(MINVERSE(0.2),-AGGREGATE(15,Data!$C12,Data!A6:C12,Data!B2:E12),2,1000000000000000.0)` | #VALUE! | #NUM! |
 
 ## Acceptance criteria
-- [ ] A probes case with the cells above, oracle-filled (excel-graph), passes in full; numbers.md "AGGREGATE" states the rule.
-- [ ] This 1 known-failure line disappears from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] A probes case with the cells above, oracle-filled (excel-graph), passes in full; numbers.md "AGGREGATE" states the rule.
+- [x] This 1 known-failure line disappears from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - AGGREGATE error-cell k under options 1-3 (T-2336).
@@ -43,3 +43,10 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 Decision 0083 (gap triage 2026-10-22, T-2252): every cell this task owns has the wrong type, error, text or boolean, or is a
 number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
 criteria above are already the visible-parity stage.
+
+## Outcome
+Probe probes/aggregate-negative-option-range-k (excel-graph, 25 cells) separates the two readings. An `options` below 0 is
+`#VALUE!` before truncation: -0.0001, -0.5 and -1, with functions 9 and 15. A multi-cell range k is fine: it reads its first
+cell in any row, which we already did. `aggregate_scalar` now refuses a negative option before truncating it, and
+numbers.md "AGGREGATE" states the rule (replacing the observation).
+Eval delta: gen-m5 17 -> 16 (c634f6ec7b14fe08 A322 fixed); the new probe passes 25/25; no regressions.
