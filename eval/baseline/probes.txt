@@ -357,6 +357,7 @@ C	probes/fin-rri.case.json	16
 C	probes/fin-vdb-modes.case.json	20
 C	probes/fin-vdb-schedule.case.json	78
 C	probes/fin-yield-odd-lift.case.json	51
+C	probes/fixed-dollar-length-bound.case.json	82
 C	probes/forecast-ets-longer-series.case.json	42
 C	probes/format-doubled-quotes.case.json	11
 C	probes/formula-length-nonbmp-33pieces.case.json	1
