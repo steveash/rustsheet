@@ -3,7 +3,7 @@ id: T-2050
 title: "BINOM.INV and CRITBINOM with probability_s 0 are #NUM!, not 0"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
