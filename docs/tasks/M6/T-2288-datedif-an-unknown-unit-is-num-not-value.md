@@ -3,7 +3,7 @@ id: T-2288
 title: "DATEDIF: an unknown unit is #NUM!, not #VALUE!, whatever the dates"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -86,3 +86,6 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 2 known-failure lin
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`datedif_value`'s fallback arm is now `#NUM!` (the day-0 special case folded in). 40 gen-m6 and 2 gen-m7 known failures removed from the baseline; no new failures. Unit test `datedif_unknown_unit_is_num`; dates.md updated.
