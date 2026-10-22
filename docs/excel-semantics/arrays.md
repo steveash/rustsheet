@@ -1226,8 +1226,8 @@ The same holds for a multi-cell array value, not only a range: `MAP(Data!C4:D12,
 (gen-m7/611ce3bbfab27cef Calc!A944), `SCAN(Data!B8,Data!B6:E11,LAMBDA(acc,v,HSTACK(..)))` (b24ce74f08d3f91a A430), a SCAN step that is a FILTER
 result (7307132bb8820f17 A619) or a TRIMRANGE (2c5ea078f25443a2 A1717), a MAP step raising to a BYROW column (7307132bb8820f17 A1324) and a SCAN
 whose array initial value is returned as the accumulator (9359f03972e94026 A1705) are each one `#CALC!` with nothing spilled (excel-graph,
-2026-10-21, T-2225). Ours: a `#VALUE!` per element, spilled (T-2309).
-Tasks: T-2309
+2026-10-21, T-2225). Ours: implemented (T-2306, T-2309): a multi-cell array step of MAP or SCAN is the one `#CALC!` of a multi-cell range (`lambda_result_value`); REDUCE does not go through it.
+Tasks: T-2309, T-2306
 
 ## SCAN and REDUCE keep errors in the LAMBDA
 Rule: SCAN and REDUCE do not stop at an error. An error initial_value, an error accumulator and an error element are handed
@@ -1244,7 +1244,7 @@ both cells TRUE is 0 (PRODUCT skips booleans in references; 18b80d3fd292d63a A46
 "1" and E12 -2.5 is 1 (2c5ea078f25443a2 A1767), and `SCAN(Data!A5,Data!A7:C11,PRODUCT)` with A5 "ü" starts at 2.5 (18b80d3fd292d63a
 A285). Which of the two (initial value, elements) is a reference is UNVERIFIED (these cells have one-cell arrays).
 Evidence: gen-m7 cases above (excel-graph, 2026-10-21, T-2225).
-Ours: `fn_scan` and `fn_reduce` return the first error at once (T-2306) and pass values, not references (T-2307).
+Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the LAMBDA and SCAN keeps an error step in its slot; they pass values, not references (T-2307).
 Status: VERIFIED (excel-graph) for the error rule; the reference rule UNVERIFIED in its split.
 Tasks: T-2306, T-2307
 

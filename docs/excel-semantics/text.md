@@ -117,7 +117,7 @@ replaces only the nth: `SUBSTITUTE("aaa","aa","x",1)` "xa", `,2)` "ax", `,3)` "a
 `SUBSTITUTE("aaaa","aa","x",2)` "axa", `,3)` "aax"; `SUBSTITUTE("aaaaa","aaa","x",3)` "aax";
 `SUBSTITUTE("abab","bab","x",1)` "ax"; `SUBSTITUTE("ababab","abab","x",2)` "abx". Without one, it replaces
 left-to-right non-overlapping matches: `SUBSTITUTE("aaaa","aa","x")` "xx", `SUBSTITUTE("aaa","aa","x")` "xa".
-Matching is case-sensitive (`SUBSTITUTE("AaA","aa","x",2)` "AaA"); an instance past the last match leaves the
+Matching is case-sensitive (`SUBSTITUTE("AaA","aa","x",2)` "AaA"); an instance past the last match (up to 2147483646, below) leaves the
 text unchanged; 0 and -1 are `#VALUE!`; 1.9 truncates to 1; an empty old_text changes nothing (probed with an instance_num); the instance lifts
 over an array (`{1,2,3}` gives "xa", "ax", "aaa").
 Evidence: probes/substitute-overlapping-instances (excel-graph, 2026-10-16).
@@ -852,11 +852,16 @@ Implemented in: `MAX_REPLACED_UNITS` / `over_cap` in functions/text/regex_functi
 Status: VERIFIED (excel-graph)
 Tasks: T-1817
 
-## SUBSTITUTE with an instance_num of 1E+15 is `#VALUE!` (T-2279)
-Observed (excel-graph, gen-m6, 2026-10-21): `LOOKUP(SUBSTITUTE("x~*"&<blank>,RIGHTB("ü"),-0.0001,<blank>+1E+15),Data!C8:C8,Data!B8:B12)`
-is `#VALUE!` (gen-m6/9615a6de0f3ac417 Calc!A144); most likely SUBSTITUTE's instance_num makes it so. Ours returns the text unchanged
-(no 1E+15th match) and LOOKUP gives `#N/A`. The bound (2^31, 2^53, 32767 ...) is UNVERIFIED (T-2279 probes it).
-Status: UNVERIFIED (one cell)
+## SUBSTITUTE accepts an instance_num of 1 to 2147483646 only (T-2279)
+Rule: SUBSTITUTE floors instance_num and gives `#VALUE!` unless the result is in 1..=2147483646
+(2^31 - 2), whether or not text holds a match, and also for an empty text or empty old_text:
+`SUBSTITUTE("bbb","b","x",2147483646.9)` is "bbb" and `SUBSTITUTE("bbb","b","x",2147483647)` is
+`#VALUE!`; 32767, 65536, 2^30 and 2147483520 are fine; 2^31, 2^32, 2^53, 1E+10, 1E+15 and 1E+300 are
+`#VALUE!`; 0.5 is `#VALUE!` and 1.5 acts as 1. This explains gen-m6/9615a6de0f3ac417 Calc!A144
+(`LOOKUP(SUBSTITUTE(...,1E+15),...)` is `#VALUE!`).
+Evidence: probes/substitute-instance-num-bound (excel-graph, 2026-10-21). Its D5 (an array instance_num) is
+`#SPILL!` only because the probe cell has no room to spill; it says nothing about the bound.
+Status: implemented (`substitute_element`)
 Tasks: T-2279
 
 ## ARRAYTOTEXT: an error in the array argument wins over an invalid format (T-2250)
