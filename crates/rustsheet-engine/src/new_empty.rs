@@ -562,11 +562,12 @@ impl Model {
         }
         self.workbook.defined_names = defined_names;
 
-        self.drop_pivots_on(sheet_index)?;
         // Update the name of the worksheet
         self.workbook.worksheet_mut(sheet_index)?.set_name(new_name);
         // The tables follow their sheet, so their structured references still resolve.
         self.rename_tables_sheet(&old_name, new_name);
+        // Pivots are keyed by `sheet_id` and stay; the cache sources name the sheet.
+        self.rename_pivot_sources(&old_name, new_name);
         self.reset_parsed_structures();
         Ok(())
     }

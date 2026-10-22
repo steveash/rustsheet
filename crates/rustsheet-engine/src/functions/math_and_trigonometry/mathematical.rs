@@ -96,17 +96,17 @@ fn base_text(number: f64, radix: i64, min_length: f64) -> Result<String, Error> 
         return Err(Error::NUM);
     }
     let mut value = number.trunc() as i64;
+    // Excel: a zero has no digits of its own, only the padding to `min_length`, so an explicit
+    // `min_length` of 0 gives empty text (`BASE(0.2,29,0.3)`, `LENB` 0) while an omitted one
+    // defaults to 1 and gives "0" (numbers.md "BASE of zero with min_length 0 is empty").
     let mut digits = Vec::new();
-    loop {
+    while value > 0 {
         // `radix` is 2..=36, so the digit is below 36 and `from_digit` never fails: the `'0'`
         // fallback is unreachable.
         digits.push(
             char::from_digit((value % radix) as u32, 36).map_or('0', |c| c.to_ascii_uppercase()),
         );
         value /= radix;
-        if value == 0 {
-            break;
-        }
     }
     let padding = min_length.saturating_sub(digits.len());
     let mut text = String::with_capacity(padding + digits.len());
@@ -172,7 +172,7 @@ impl Model {
                 Ok(f) => f.trunc() as i64,
                 Err(error) => return error,
             };
-            let min_length = match model.kernel_number_or(min_length, 0.0, cell) {
+            let min_length = match model.kernel_number_or(min_length, 1.0, cell) {
                 Ok(f) => f,
                 Err(error) => return error,
             };
