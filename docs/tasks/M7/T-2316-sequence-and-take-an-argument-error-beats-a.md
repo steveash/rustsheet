@@ -3,7 +3,7 @@ id: T-2316
 title: "SEQUENCE and TAKE: an argument error beats a zero rows or columns #CALC! (gen-m7)"
 milestone: M7
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,13 +32,22 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 10 known-failure li
 - Review note (T-2225): 611ce3bbfab27cef A1065 has no error argument (its rows is an array of about 1E+15 from WRAPROWS with a blank pad), so its `#VALUE!` is not this rule; probe it before fixing it here. A817's error argument (a UNIQUE over an XLOOKUP as start) is not isolated.
 
 ## Acceptance criteria
-- [ ] Visible parity: the 10 gen-m7 cells listed under Context have Excel's value, type, error and text: these 10 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
-- [ ] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 10 gen-m7 cells listed under Context have Excel's value, type, error and text: these 10 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
+- [x] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - 1x1 array arguments (T-2298).
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+SEQUENCE now reads all four arguments first, so an error value in any of them wins. Then it checks rows,
+then columns: a negative extent or one past the grid is `#VALUE!` and 0 is `#CALC!`. TAKE reads both
+counts before a zero one is `#CALC!`. A first cut that checked a negative extent at once regressed
+gen-m7/c36ff5f42a1a4d47 A359 (`SEQUENCE(0,<negative>)` is `#CALC!` in Excel), which settled the order.
+A1065 (rows of about 1E+15, columns 0) is `#VALUE!` by the same order. arrays.md "SEQUENCE and TAKE: an
+argument error before zero rows" states the rule; there are unit tests in test_fn_sequence.rs and
+test_fn_drop_take.rs. Eval delta: gen-m7 fixed 10 (1339 -> 1329 known failures), 0 regressions.
