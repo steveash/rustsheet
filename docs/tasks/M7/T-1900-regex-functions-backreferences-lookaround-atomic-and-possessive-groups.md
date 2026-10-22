@@ -3,7 +3,7 @@ id: T-1900
 title: "REGEX functions: backtracker core with backreferences, atomic and possessive groups"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -70,3 +70,20 @@ before a final LF (A34, ours FALSE). text.md "REGEX* character classes are Unico
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#VALUE!` where Excel accepts backreferences, lookaround, `\K`, conditionals and possessive groups), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+- `pcre/program.rs` compiles a non-regular pattern to a flat program: chars, classes, splits, saves,
+  `Backref`, `AtomicStart`/`AtomicEnd` (possessive = atomic greedy) and `LoopStart`/`LoopEnd` (PCRE2's
+  empty-loop rule). Counted repeats are expanded under the compile budget (SPEC-0013 amended).
+- `pcre/backtrack.rs` runs it on one explicit stack, with no recursion. Every step and frame is charged to the
+  call's work counter. The stack is capped at what the call may still hold (`#ERROR!` past it).
+- `regex_search.rs` puts both engines behind one `Search`. `regex_functions.rs` and
+  `regex_replacement.rs` take the pattern's `GroupInfo` from either engine.
+- Backreferences ignore case per their scope (`Ast::Backref { fold }`). `\G` runs too.
+- Eval delta: probes known failures 2020 -> 2013 (fixed 7: regex-pcre2-features B29, C1-C5;
+  t1626-regextest C29), 0 regressions, no new baseline lines. C11 already passed.
+- Tests: `test/text_functions/fn_regex_backtrack.rs` covers the probe cells, iteration with captures,
+  atomic capture restore, empty loops, `\G`, and the four catastrophic patterns on 32,767 characters
+  (`#ERROR!` or FALSE within the bound).
+- Follow-ups: T-2354 (lookaround, conditionals, `\K`), T-2355 (memoized mode, final-LF `$`,
+  differential test).
