@@ -3,7 +3,7 @@ id: T-2309
 title: "MAP and SCAN: a LAMBDA step that returns a multi-cell array makes the whole call #CALC! (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -41,3 +41,6 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 63 known-failure li
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Done by T-2306: its `lambda_result_value` arm turns a multi-cell array step of MAP or SCAN into the one `#CALC!`. All 63 listed gen-m7 lines are gone from eval/baseline/gen-m7.txt (no change in this task's PR).

@@ -345,7 +345,7 @@ impl Model {
 }
 
 /// Rows and columns of the range with corners `left` and `right`, in order.
-fn range_dims(left: CellReferenceIndex, right: CellReferenceIndex) -> (usize, usize) {
+pub(crate) fn range_dims(left: CellReferenceIndex, right: CellReferenceIndex) -> (usize, usize) {
     (
         usize::try_from(right.row - left.row + 1).unwrap_or(0),
         usize::try_from(right.column - left.column + 1).unwrap_or(0),
