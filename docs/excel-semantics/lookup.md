@@ -965,7 +965,7 @@ friendly_name is: with a number friendly_name (`HYPERLINK(<328-character text>,G
 OFFSET(Data!A6:C12,6,42))` is `#REF!`); `HYPERLINK("abc"&NA(),OFFSET(..)^..)` is a single `#N/A` that spills nothing (gen-m6/0bcac2d96e96b3df
 Calc!A17, 44194b2fefa30de2 A169, d0c30225243fde60 A377, c6621490a4d67f4e A214/B214).
 Ours: implemented (T-2277): an error link_location, or one past 255 characters, is the whole result over a scalar, array or range
-friendly_name (`lift_call_error_first`).
+friendly_name (`fn_hyperlink` reads link_location before the lift).
 Status: VERIFIED
 Tasks: T-2277
 

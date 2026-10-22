@@ -4,7 +4,7 @@
 use std::mem::ManuallyDrop;
 
 use super::arg_buf::ArgBuf;
-use super::driver::{FirstError, Kernel, LiftCost, LiftOptions, LiftedArg, NumbersKernel};
+use super::driver::{Kernel, LiftCost, LiftOptions, LiftedArg, NumbersKernel};
 use super::kinds::{ArgKind, ArgKinds, KernelWork};
 use super::number_result;
 use crate::expressions::parser::is_multi_sheet_span;
@@ -146,38 +146,6 @@ impl Model {
         cell: CellReferenceIndex,
         kernel: &mut Kernel<'_>,
     ) -> CalcResult {
-        self.lift_call_with_first(kinds, args, cost, None, cell, kernel)
-    }
-
-    /// [`Model::lift_call`] for a function whose first argument, when it is a scalar that
-    /// `first_error` turns into an error, makes that error the whole result whatever the other
-    /// argument is, an array or a range included (HYPERLINK: docs/excel-semantics/lookup.md
-    /// "HYPERLINK: an error `link_location` is the result", T-2277).
-    pub(crate) fn lift_call_error_first(
-        &mut self,
-        kind: Function,
-        args: &[Node],
-        cell: CellReferenceIndex,
-        first_error: &mut FirstError<'_>,
-        kernel: &mut Kernel<'_>,
-    ) -> CalcResult {
-        let Some(kinds) = kind.arg_kinds() else {
-            return self.lift_call(kind, args, cell, kernel);
-        };
-        self.lift_call_with_first(kinds, args, LiftCost::Unit, Some(first_error), cell, kernel)
-    }
-
-    /// `lift_call_with`, and `first_error` for [`Model::lift_call_error_first`].
-    #[inline(never)]
-    fn lift_call_with_first(
-        &mut self,
-        kinds: &ArgKinds,
-        args: &[Node],
-        cost: LiftCost,
-        mut first_error: Option<&mut FirstError<'_>>,
-        cell: CellReferenceIndex,
-        kernel: &mut Kernel<'_>,
-    ) -> CalcResult {
         if !kinds.accepts(args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -210,16 +178,7 @@ impl Model {
                     Ok((LiftedArg::Scalar(first), LiftedArg::Scalar(second))) => {
                         return kernel(self, &[first, second]);
                     }
-                    Ok((first, second)) => {
-                        if let (LiftedArg::Scalar(value), Some(check)) =
-                            (&first, first_error.as_mut())
-                        {
-                            if let Some(error) = check(value) {
-                                return error;
-                            }
-                        }
-                        vec![first, second]
-                    }
+                    Ok((first, second)) => vec![first, second],
                     Err(error) => return error,
                 }
             }

@@ -352,34 +352,60 @@ impl Model {
     // is the whole result, even over an array or range friendly_name (lookup.md "HYPERLINK: an
     // error link_location is the result", T-2277).
     pub(crate) fn fn_hyperlink(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_call_error_first(
-            Function::Hyperlink,
-            args,
+        let Some(kinds) = Function::Hyperlink.arg_kinds() else {
+            // As in `lift_call_costed`: HYPERLINK always has its table entry.
+            debug_assert!(false, "HYPERLINK has no lifting table entry");
+            return CalcResult::new_args_number_error(cell);
+        };
+        let (location, friendly_name) = match args {
+            [location] => (location, None),
+            [location, friendly_name] => (location, Some(friendly_name)),
+            _ => return CalcResult::new_args_number_error(cell),
+        };
+        // Read here rather than in `lift_call`, so a scalar location's error comes before
+        // friendly_name is lifted: the lift driver never picks an error itself (SPEC-0011).
+        let location = match self.read_lift_arg(location, cell) {
+            Ok(location) => location,
+            Err(error) => return error,
+        };
+        if let LiftedArg::Scalar(value) = &location {
+            if let Some(error) = Self::hyperlink_location(value, cell).err() {
+                return error;
+            }
+        }
+        let mut values = vec![location.into_value()];
+        if let Some(friendly_name) = friendly_name {
+            values.push(match self.read_lift_arg(friendly_name, cell) {
+                Ok(friendly_name) => friendly_name.into_value(),
+                Err(error) => return error,
+            });
+        }
+        self.lift_values(
+            values,
+            LiftCost::Unit,
+            &LiftOptions::for_entry(kinds),
             cell,
-            &mut |location| Self::hyperlink_location_error(location, cell),
             &mut |model, values| model.hyperlink_of(values, cell),
         )
     }
 
-    /// The error HYPERLINK gives for a `link_location` whatever its `friendly_name` is: the error
-    /// itself, or `#VALUE!` for more than 255 characters, a `#` of an internal link included
-    /// (probes/t2277-hyperlink-location-length A1-A15; lookup.md "HYPERLINK: a location past
-    /// 255 characters"). `None` when the location is fine.
-    fn hyperlink_location_error(
+    /// A `link_location` as HYPERLINK reads it, or the error it gives whatever `friendly_name`
+    /// is: the location's own error, or `#VALUE!` for more than 255 characters, a `#` of an
+    /// internal link included (probes/t2277-hyperlink-location-length A1-A15; lookup.md
+    /// "HYPERLINK: a link_location past 255 characters").
+    fn hyperlink_location(
         location: &CalcResult,
         cell: CellReferenceIndex,
-    ) -> Option<CalcResult> {
-        match Self::cast_string_ref(location, cell) {
-            Err(error) => Some(error),
-            Ok(s) if s.encode_utf16().count() > Self::HYPERLINK_MAX_LOCATION => {
-                Some(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "HYPERLINK link_location is longer than 255 characters".to_string(),
-                ))
-            }
-            Ok(_) => None,
+    ) -> Result<String, CalcResult> {
+        let location = Self::cast_string_ref(location, cell)?;
+        if location.encode_utf16().count() > Self::HYPERLINK_MAX_LOCATION {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "HYPERLINK link_location is longer than 255 characters".to_string(),
+            ));
         }
+        Ok(location)
     }
 
     /// HYPERLINK of one element.
@@ -389,10 +415,7 @@ impl Model {
             [location, friendly_name] => (location, Some(friendly_name)),
             _ => return CalcResult::new_args_number_error(cell),
         };
-        if let Some(error) = Self::hyperlink_location_error(location, cell) {
-            return error;
-        }
-        let location = match Self::cast_string_ref(location, cell) {
+        let location = match Self::hyperlink_location(location, cell) {
             Ok(s) => s,
             Err(error) => return error,
         };
