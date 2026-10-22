@@ -23,7 +23,7 @@ use rustsheet_engine::pivot::{
 use super::iso_date::iso8601_to_serial;
 use super::package::{part_folder_and_rels, resolve_relative_target, Package};
 use super::worksheets::parse_range;
-use super::xml::{attribute_value_of, XmlNode};
+use super::xml::{find_start_attribute, start_attribute, XmlNode};
 use super::{parse_relationships, Relationship};
 use crate::error::XlsxError;
 
@@ -131,8 +131,14 @@ fn occurrences<'a, T: Eq + std::hash::Hash + 'a>(
     counts
 }
 
+/// Logs a skipped cache or pivot to stderr, as the theme importer does: the importer has no
+/// warnings channel. Part names and reasons come from the file, so they are quoted (no raw
+/// newlines or escapes) and cut short.
 fn log_skip(what: &str, part: &str, reason: &Skip) {
-    eprintln!("RustSheet: skipped {what} {part}: {}", reason.0);
+    const MAX_CHARS: usize = 200;
+    let part: String = part.chars().take(MAX_CHARS).collect();
+    let reason: String = reason.0.chars().take(MAX_CHARS).collect();
+    eprintln!("RustSheet: skipped {what} {part:?}: {reason:?}");
 }
 
 /// The caches that load, in workbook order, and each one's index by `cacheId`. A `cacheId`
@@ -175,7 +181,8 @@ fn load_caches<R: Read + Seek>(
         };
         match result {
             Ok((id, cache)) => {
-                values_left -= cache.record_count as usize * cache.fields.len();
+                values_left =
+                    values_left.saturating_sub(cache.record_count as usize * cache.fields.len());
                 // At most one cache per listed `<pivotCache>`, bounded by the byte budget.
                 ids.insert(id, pivot_caches.len() as u32);
                 pivot_caches.push(cache);
@@ -297,26 +304,16 @@ fn local_name(element: &BytesStart) -> String {
     element.local_name().as_ref().to_string()
 }
 
-/// The unprefixed attribute `name`.
+/// The attribute `name`.
 fn attribute(element: &BytesStart, name: &str) -> Result<Option<String>, Skip> {
-    for a in element.attributes() {
-        let a = a?;
-        if a.key.as_ref() == name {
-            return Ok(Some(attribute_value_of(&a)?.into_owned()));
-        }
-    }
-    Ok(None)
+    Ok(start_attribute(element, name)?)
 }
 
 /// The relationship id: an `id` attribute with a prefix (`r:id`).
 fn relationship_id(element: &BytesStart) -> Result<Option<String>, Skip> {
-    for a in element.attributes() {
-        let a = a?;
-        if a.key.prefix().is_some() && a.key.local_name().as_ref() == "id" {
-            return Ok(Some(attribute_value_of(&a)?.into_owned()));
-        }
-    }
-    Ok(None)
+    Ok(find_start_attribute(element, |name| {
+        name.prefix().is_some() && name.local_name().as_ref() == "id"
+    })?)
 }
 
 fn index_attribute(element: &BytesStart, name: &str) -> Result<u32, Skip> {
@@ -497,23 +494,14 @@ fn read_pivot_table<B: BufRead>(
     caches: &[PivotCache],
     cache_ids: &HashMap<u32, u32>,
 ) -> Result<PivotTable, Skip> {
-    let mut pivot = PivotTable {
-        name: String::new(),
-        sheet_id,
-        location: CellArea {
-            top: 0,
-            left: 0,
-            bottom: 0,
-            right: 0,
-        },
-        cache: 0,
-        fields: Vec::new(),
-        row_fields: Vec::new(),
-        column_fields: Vec::new(),
-        data_fields: Vec::new(),
-    };
+    let mut pivot_name = String::new();
+    let mut cache_index = 0;
+    let mut area = None;
+    let mut fields: Vec<PivotField> = Vec::new();
+    let mut row_fields = Vec::new();
+    let mut column_fields = Vec::new();
+    let mut data_fields = Vec::new();
     let mut cache: Option<&PivotCache> = None;
-    let mut has_location = false;
     let mut page_fields = 0;
     walk(part, |path, tag| {
         let Tag::Open(element) = tag else {
@@ -524,12 +512,12 @@ fn read_pivot_table<B: BufRead>(
             if name != TABLE {
                 return skip("not a pivotTableDefinition");
             }
-            pivot.name = attribute(element, "name")?.unwrap_or_default();
+            pivot_name = attribute(element, "name")?.unwrap_or_default();
             let id = index_attribute(element, "cacheId")?;
             let Some(&index) = cache_ids.get(&id) else {
                 return skip(format!("cacheId {id} has no loaded cache"));
             };
-            pivot.cache = index;
+            cache_index = index;
             cache = caches.get(index as usize);
             return Ok(());
         }
@@ -545,10 +533,9 @@ fn read_pivot_table<B: BufRead>(
             Ok(index)
         };
         if at(path, &[TABLE]) && name == "location" {
-            pivot.location = location(attribute(element, "ref")?.as_deref())?;
-            has_location = true;
+            area = Some(location(attribute(element, "ref")?.as_deref())?);
         } else if at(path, &[TABLE, "pivotFields"]) && name == "pivotField" {
-            let Some(cache_field) = cache.fields.get(pivot.fields.len()) else {
+            let Some(cache_field) = cache.fields.get(fields.len()) else {
                 return skip("more pivotFields than cache fields");
             };
             let axis = match attribute(element, "axis")?.as_deref() {
@@ -558,17 +545,14 @@ fn read_pivot_table<B: BufRead>(
                 Some("axisValues") | None => None,
                 Some(other) => return skip(format!("unknown axis {other:?}")),
             };
-            pivot
-                .fields
-                .push(PivotField::new(axis, cache_field.items.len()));
+            fields.push(PivotField::new(axis, cache_field.items.len()));
         } else if at(path, &[TABLE, "pivotFields", "pivotField", "items"]) && name == "item" {
             // Subtotal rows (`t="default"`, `t="sum"`, ...) name no cache item.
             if attribute(element, "t")?.is_some_and(|t| t != "data") {
                 return Ok(());
             }
-            let current = pivot.fields.len().saturating_sub(1);
-            let (Some(field), Some(cache_field)) =
-                (pivot.fields.last_mut(), cache.fields.get(current))
+            let current = fields.len().saturating_sub(1);
+            let (Some(field), Some(cache_field)) = (fields.last_mut(), cache.fields.get(current))
             else {
                 return Ok(());
             };
@@ -587,15 +571,15 @@ fn read_pivot_table<B: BufRead>(
                 Some("-2") => AxisField::Values,
                 _ => AxisField::Field(field_index(element, "x")?),
             };
-            let fields = if path.get(1).is_some_and(|p| p == "rowFields") {
-                &mut pivot.row_fields
+            let axis_fields = if path.get(1).is_some_and(|p| p == "rowFields") {
+                &mut row_fields
             } else {
-                &mut pivot.column_fields
+                &mut column_fields
             };
-            if fields.len() >= MAX_AXIS_FIELDS {
+            if axis_fields.len() >= MAX_AXIS_FIELDS {
                 return skip("too many fields on an axis");
             }
-            fields.push(axis_field);
+            axis_fields.push(axis_field);
         } else if at(path, &[TABLE, "pageFields"]) && name == "pageField" {
             field_index(element, "fld")?;
             page_fields += 1;
@@ -603,7 +587,7 @@ fn read_pivot_table<B: BufRead>(
                 return skip("too many page fields");
             }
         } else if at(path, &[TABLE, "dataFields"]) && name == "dataField" {
-            if pivot.data_fields.len() >= MAX_DATA_FIELDS {
+            if data_fields.len() >= MAX_DATA_FIELDS {
                 return skip("too many data fields");
             }
             // "Show values as" (% of total, running total, ...) changes every value; not modeled.
@@ -613,7 +597,7 @@ fn read_pivot_table<B: BufRead>(
             let field = field_index(element, "fld")?;
             let function = aggregate(attribute(element, "subtotal")?.as_deref())?;
             let caption = attribute(element, "name")?.unwrap_or_default();
-            pivot.data_fields.push(DataField {
+            data_fields.push(DataField {
                 caption,
                 field,
                 function,
@@ -621,16 +605,25 @@ fn read_pivot_table<B: BufRead>(
         }
         Ok(())
     })?;
-    if cache.is_none() {
+    let Some(cache) = cache else {
         return skip("not a pivotTableDefinition");
-    }
-    if !has_location {
+    };
+    let Some(location) = area else {
         return skip("no location");
-    }
-    if cache.is_some_and(|c| c.fields.len() != pivot.fields.len()) {
+    };
+    if cache.fields.len() != fields.len() {
         return skip("pivotFields do not match the cache fields");
     }
-    Ok(pivot)
+    Ok(PivotTable {
+        name: pivot_name,
+        sheet_id,
+        location,
+        cache: cache_index,
+        fields,
+        row_fields,
+        column_fields,
+        data_fields,
+    })
 }
 
 /// A `<location ref>` as a 0-based area, inside the sheet.

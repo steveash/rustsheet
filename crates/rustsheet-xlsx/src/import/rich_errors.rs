@@ -26,6 +26,7 @@ use rustsheet_engine::expressions::token::get_error_by_english_name;
 use crate::error::XlsxError;
 
 use super::package::Package;
+use super::xml::start_attribute;
 
 /// The value-metadata part (`<valueMetadata>`, `<futureMetadata>`).
 pub const METADATA_PART: &str = "xl/metadata.xml";
@@ -129,15 +130,7 @@ fn xml_error(part: &str, error: impl std::fmt::Display) -> XlsxError {
 }
 
 fn attribute(element: &BytesStart<'_>, key: &str) -> Option<String> {
-    element.attributes().flatten().find_map(|a| {
-        (a.key.local_name().as_ref() == key)
-            .then(|| {
-                a.normalized_value(XmlVersion::Implicit1_0)
-                    .ok()
-                    .map(std::borrow::Cow::into_owned)
-            })
-            .flatten()
-    })
+    start_attribute(element, key).ok().flatten()
 }
 
 fn index_attribute(element: &BytesStart<'_>, key: &str) -> Option<usize> {

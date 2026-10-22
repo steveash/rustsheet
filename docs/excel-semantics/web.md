@@ -91,10 +91,14 @@ pivots in tabular or outline form.
 Engine (SPEC-0015): the workbook model holds pivot caches and pivot tables (`pivot.rs`, T-2081), read from xlsx by
 `crates/rustsheet-xlsx/src/import/pivots.rs` (T-2082). The importer skips, whole and logged, a cache with an OLAP,
 external, consolidation or scenario source, a grouped (`fieldGroup`) or calculated field, no records part
-(`saveData="0"`), or a bad index, and a pivot whose data field is shown as a calculation (`showDataAs`, such as % of
-total), whose index points past its cache, or whose parts are reached outside the package (absolute, escaping or
-External targets), twice, or through a duplicate `cacheId`: GETPIVOTDATA against it is `#REF!`. Excel computes
-these (it refreshes a cache saved without records); a known gap, UNVERIFIED per form, not a deviation.
+(`saveData="0"`), a bad index, or a value it cannot read (an unknown error name, a `<d>` date before 1900, which
+includes time-only dates if Excel writes them so), and a pivot whose data field is shown as a calculation
+(`showDataAs`, such as % of total), whose index points past its cache, whose `axis` or `subtotal` is unknown, which has
+no `location` or not one `pivotField` per cache field, or whose parts are reached outside the package (absolute,
+escaping or External targets), twice, or through a duplicate `cacheId`: GETPIVOTDATA against it is `#REF!`.
+UNVERIFIED: what Excel answers for each of these (presumably it computes them, refreshing a cache saved without
+records); a known gap, not a deviation. Cache `<d>` dates are read as 1900-system serials even in a `date1904`
+workbook, which no answer depends on yet (GETPIVOTDATA matches text items only; T-2393 before dates are matched).
 GETPIVOTDATA (T-2083, `functions/lookup_and_reference/getpivotdata.rs`, `pivot_index.rs`) aggregates the cache records the
 pairs pick, in cache order, rather than reading the rendered cell, and passes every cell of probes/getpivotdata-real-pivot.
 Until T-2085 probes them it answers `#REF!` for SPEC-0015's unknowns, never a guess: several data fields, page fields or
