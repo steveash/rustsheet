@@ -1,0 +1,4 @@
+ladder z x0 2.00001: off=0 0.9559 -> linear law s +16 cycles/x phi 0.9688: 0.9561
+ladder a x0 2.05000: off=0 0.9308 -> linear law s +90 cycles/x phi 0.2656: 0.9431
+ladder b x0 2.25000: off=0 0.9474 -> linear law s -66 cycles/x phi 0.2969: 0.9528
+ladder c x0 2.50000: off=0 0.9420 -> linear law s -110 cycles/x phi 0.0000: 0.9489
