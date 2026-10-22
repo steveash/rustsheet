@@ -1,8 +1,8 @@
 //! The PCRE2 dialect of the REGEX* functions (SPEC-0013): one parser for every pattern, regular
 //! patterns translated to a `Hir` for the automata of `regex_engine`, the others (backreferences,
 //! atomic and possessive groups, `\G`, `\R`, `\X`) compiled to a [`Program`] for the
-//! backtracker ([`Backtracker`], T-1900, T-2287). Lookaround, conditionals and `\K` parse and are `#VALUE!` until
-//! T-2354.
+//! backtracker ([`Backtracker`], T-1900, T-2287). Lookaround, conditionals and `\K` parse and
+//! are `#VALUE!` until T-2354.
 
 mod ast;
 mod backtrack;

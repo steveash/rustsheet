@@ -1,8 +1,8 @@
 //! `\X`: one extended grapheme cluster as Excel's PCRE2 reads it (T-2287). That is UAX #29
-//! before Unicode 15.1 (no GB9c: a Devanagari conjunct is two clusters) with two quirks of
+//! before Unicode 15.1 (no `GB9c`: a Devanagari conjunct is two clusters) with two quirks of
 //! PCRE2's join table: a regional indicator joins only a second regional indicator, so an
-//! Extend, ZWJ or SpacingMark after it starts a new cluster, and a Prepend does not join an
-//! Extended_Pictographic. Excel: see docs/excel-semantics/text.md "`\R` and `\X` are atomic"
+//! Extend, ZWJ or `SpacingMark` after it starts a new cluster, and a Prepend does not join an
+//! `Extended_Pictographic`. Excel: see docs/excel-semantics/text.md "`\R` and `\X` are atomic"
 //! (probes/t2287-regex-r-x-spans A11-A33, B1-B24).
 //!
 //! The break property of a character comes from regex-syntax's Unicode tables, built once.
@@ -13,7 +13,7 @@ use regex_syntax::hir::ClassUnicodeRange;
 
 use super::class::class_of;
 
-/// PCRE2's grapheme break values: UAX #29's, with Extended_Pictographic as one of them.
+/// PCRE2's grapheme break values: UAX #29's, with `Extended_Pictographic` as one of them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Break {
     Cr,
@@ -34,7 +34,7 @@ enum Break {
 }
 
 /// Each break value but `Other`, as the regex-syntax class that holds its characters.
-/// Extended_Pictographic comes last: its characters are all `Other` in UAX #29.
+/// `Extended_Pictographic` comes last: its characters are all `Other` in UAX #29.
 const PROPERTIES: [(&str, Break); 14] = [
     (r"\p{gcb=CR}", Break::Cr),
     (r"\p{gcb=LF}", Break::Lf),
@@ -140,4 +140,20 @@ pub(super) fn cluster_end(text: &str, pos: usize) -> Option<(usize, u64)> {
         count += 1;
     }
     Some((end, count))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{class_of, PROPERTIES};
+
+    /// Every spelling regex-syntax must know: one it rejects would read as `Other` silently.
+    #[test]
+    fn every_break_property_has_characters() {
+        for (text, _) in PROPERTIES {
+            assert!(
+                class_of(text).is_ok_and(|class| !class.ranges().is_empty()),
+                "{text}"
+            );
+        }
+    }
 }
