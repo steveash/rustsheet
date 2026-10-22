@@ -418,7 +418,8 @@ an omitted parameter's value is 0 (`LAMBDA(x,[y],y)(1)` = 0) and "" as text (`y&
 `LAMBDA(x,[y],IF(ISOMITTED(y),x,x+y))` gives 1 for `(1)` and 3 for `(1,2)`; `LAMBDA([x],[y],ISOMITTED(x)+ISOMITTED(y))()`
 is 2 (probes/lambda-optional-params A1-A8, excel-graph, 2026-10-11, T-1274; the engine matches all of them). The
 case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
-A function's result is never omitted: `ISOMITTED(LOOKUP(ROWS(Data!D$3),Data!C9:C12,Data!B10:B12))`, whose LOOKUP lands on a blank cell, is FALSE (gen-m7/2c5ea078f25443a2 Calc!A1087, excel-graph, 2026-10-21, T-2225). Ours: FALSE for any built-in call since T-2317 (`fn_isomitted`).
+A function's result is not omitted: `ISOMITTED(LOOKUP(ROWS(Data!D$3),Data!C9:C12,Data!B10:B12))`, whose LOOKUP lands on a blank cell, is FALSE (gen-m7/2c5ea078f25443a2 Calc!A1087, excel-graph, 2026-10-21, T-2225). 
+Only the LOOKUP case is evidenced; other built-ins (`IF(TRUE,y)`, `CHOOSE`) are unprobed. Ours: FALSE for any built-in call since T-2317 (`fn_isomitted`).
 Ours: TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift as above since T-1272 (rows 13-22, 55, K11:K13; text.md "TEXTSPLIT,
 TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"); SEQUENCE and MAKEARRAY lift since T-1834 (F1:H3,
 F23:H23, K9, K10; SPEC-0011 "Array-valued functions"; SEQUENCE's columns and step and MAKEARRAY's cols lift by the spec's
