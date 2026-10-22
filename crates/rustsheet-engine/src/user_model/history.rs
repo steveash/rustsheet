@@ -22,6 +22,27 @@ pub(crate) struct ColumnData {
     pub(crate) data: HashMap<i32, Cell>,
 }
 
+impl Diff {
+    /// A `SetCellValue` of the user input `value`, typed rather than written through the legacy
+    /// entry.
+    pub(crate) fn set_cell_value(
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+        old_value: Option<Cell>,
+    ) -> Self {
+        Diff::SetCellValue {
+            sheet,
+            row,
+            column,
+            new_value: value.to_string(),
+            legacy: false,
+            old_value: Box::new(old_value),
+        }
+    }
+}
+
 #[derive(Clone, Encode, Decode)]
 pub(crate) enum Diff {
     // Cell diffs
