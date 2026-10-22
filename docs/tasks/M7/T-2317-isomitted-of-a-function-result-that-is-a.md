@@ -3,7 +3,7 @@ id: T-2317
 title: "ISOMITTED of a function result that is a blank cell is FALSE (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
