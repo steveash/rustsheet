@@ -63,8 +63,9 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
 - Run 3 (2026-10-22, one opus worker, ~30 min, K3 only): HANDOFF2 section 15, `JOINTALL=1` in `t2122/k3_n6first.py`.
   The joint N6+N7 fit with alias freedom on every row passes the 12-anchor planted control (N7 -1.344e9 against truth
   -1.344e9) and fits all 12 real anchors with one head move, N7 +4.007e8, N8 -4.611e10, N9 +3.503e12 ulps (10/14 rows,
-  rms 2.65e4 cycles/x): the a-f move. Run 2's g-l conflict was the missing N6 alias freedom. Next: score that move on
-  rows6 (15.2 step 1, needs `make` in `w5/`).
+  rms 2.65e4 cycles/x): the a-f move. Run 2's g-l conflict was the missing N6 alias freedom. Scored after a full
+  function refit (15.3), that move beats the zero-move refit control by 3.9 points (0.298 against 0.260) but not the base
+  (0.322). The refit itself costs 6 points, so next is a bit-preserving conditional solve of the lower chain (15.3).
 
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses

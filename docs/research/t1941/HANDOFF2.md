@@ -537,3 +537,29 @@ nearest alias per row), keeps a row only within `TOL` (default 3e6 cycles/x) and
 2. Re-read N6@0.8741 and N7@1.1789/1.3021 rung by rung (they are the only rows that disagree beyond noise).
 3. Then 14.2 step 3 (N5 -> dN6, N3 -> dN4, dN5) with the head fixed; give those fits the same all-row alias freedom
    and least-alias ranking (port JOINTALL's search into `fit()`).
+
+### 15.3 Step 15.2.1, first score (same run)
+Rows: `w5/p5/mkrows.py` now gives **9,606,590 points from 741 cases** (rows6 was 5.68 M). Built `w5/libsc.so`
+and `w5/p5/libhypo.so` with the gcc lines in `sc.c`/`hypo.c` (not committed). Moves applied by `t2122/k3_move.py`
+on `w5/p4/ss_fc.txt`, then `w5/p5/refit_fn.py IN p4/ss_fc.txt OUT N 7 [EXCL]` restores the function; scored by
+`t2122/k3_score.py` (exact rate: all / |x-1|>2e-3 / near 1).
+
+| set | refit freedom | all | far | near 1 |
+|---|---|---|---|---|
+| ss_fc (base) | none | 0.3217 | 0.3052 | 0.7294 |
+| zero move (control) | all 16 (N0-N6, D1-D9) | 0.2595 | 0.2565 | 0.3343 |
+| A: N7 +4.007e8, N8 -4.611e10, N9 +3.503e12 | all 16 | **0.2983** | 0.2944 | 0.3933 |
+| B: N7 +4.986e8, N8 -4.96e10, N9 +3.812e12 (TOL=1e7) | all 16 | 0.1562 | 0.1462 | 0.4004 |
+| zero move | N0-N6 only (D fixed) | 0.2894 | 0.2830 | 0.4464 |
+| A or B | N6 only, or N0-N6 | 0.0000 | | (function off by 3e-9 / 1e-12) |
+
+- **The refit is not neutral:** with no move at all it costs 6 points (0.322 -> 0.260). Score moves against that
+  control, not the base. A beats it by +3.9 points (+5.9 near 1); B loses 10. So the least-alias joint move (A) is
+  favoured over the TOL=1e7 variant, but no protocol here beats the base yet.
+- A's move needs D-chain freedom to stay function-equivalent: N6-only or N-only compensation leaves the function off
+  by 3e-9 or 1e-12, and every point fails. So "compensate at the next constant only" does not apply to a move this
+  size; the head move and the lower chain must be solved together.
+- `t2122/k3_moveA_refit16.txt` is set A after the 16-coefficient refit.
+- Next: a refit that keeps the base's lower-chain bits where it can, for example the 15.2 step 3 conditional
+  solves (N5 -> dN6, N3 -> dN4, dN5, then D) instead of a least-squares function refit. Score it against the zero-move
+  control of the same protocol.
