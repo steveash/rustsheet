@@ -64,10 +64,10 @@ const TOCOL: ArgKinds =
 /// `UNIQUE(array, [by_col], [exactly_once])`: `by_col` lifts over an array and a range
 /// (`UNIQUE(D1:D3,{FALSE;TRUE})` is 2x1, probes/m7-argument-modes F12:H12; over a range,
 /// gen-m9/4df1b22d3ed63f58 Calc!A36), `exactly_once` too (probes/m7-lift-take-drop-sortby rows
-/// 25-26; Excel's later elements are empty unless every entry is equal, TODO(T-2300)).
-/// Read and charged as [`TOCOL`].
+/// 25-26). Its later elements are empty unless every entry is equal (`CallResult::ArrayFirst`,
+/// probes/m7-unique-lift-elements; T-2300). Read and charged as [`TOCOL`].
 const UNIQUE: ArgKinds =
-    ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array();
+    ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array_first();
 // --- End M7 (T-1836) ---
 // --- End array-valued (T-1834) ---------------------------------------------------------------
 

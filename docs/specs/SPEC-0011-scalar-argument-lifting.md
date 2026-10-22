@@ -830,6 +830,16 @@ elements are `#VALUE!` instead when an entry is not 1 or -1 or the call has a la
 by_array/sort_order pair. This is one driver option the two entries opt into (T-2300 builds it for
 UNIQUE, T-1839 reuses it); TOCOL, SEQUENCE, MAKEARRAY, EXPAND, WRAPROWS, WRAPCOLS, TAKE and DROP do
 not show it (their later elements are their calls' own).
+*As built (T-2300):* the option is `CallResult::ArrayFirst` (`ArgKinds::array_first()`), an
+`Array` result whose elements `lift_grids` keeps per `Later`. "Entries all equal" means every
+element's grid slots equal the first element's (`ArrayNode` equality, so `{0;FALSE}` differs:
+probes/m7-unique-lift-elements row 15); with several lifted arguments they all must be uniform
+(`UNIQUE(D1:D3,{FALSE;FALSE},{FALSE;TRUE})` is "x", empty, row 21; `{TRUE;TRUE},{FALSE;FALSE}`
+"x", "x", row 22). Otherwise an element whose call is an error keeps the error, the first element
+whose call is not an error keeps its top-left, and every other element is `ArrayNode::Empty`:
+`UNIQUE(D1:D3,FALSE,{#N/A;FALSE})` is `#N/A`, "x" (row 19), and `UNIQUE(<#VALUE!>,HSTACK(0.2,
+1E+15))` two `#VALUE!` (gen-m7/8044dce50616cfe9 A1434, so UNIQUE lifts an error array). INDEX of
+an empty value is `#VALUE!` (m7-lift-take-drop-sortby L25).
 `element_value` is the one conversion for `CallResult::Array` entries; a `Value` entry keeps
 `calc_result_to_array_node`, so no existing element changes.
 
