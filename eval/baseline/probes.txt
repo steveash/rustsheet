@@ -3248,7 +3248,6 @@ F	probes/table-edits/table-delete-table.case.json	F!A2
 F	probes/table-edits/table-delete-table.case.json	F!A3
 F	probes/table-edits/table-delete-table.case.json	F!A4
 F	probes/table-edits/table-delete-table.case.json	F!A5
-F	probes/table-edits/table-delete-table.case.json	F!A6
 F	probes/table-edits/table-delete-table.case.json	F!A8
 F	probes/table-edits/table-delete-table.case.json	F!A9
 F	probes/table-edits/table-insert-column-before.case.json	F!A12
