@@ -3,8 +3,8 @@
 // The consistency oracle of evaluation.
 //
 // A sheet is consistent when every formula cell that is not circular (on a
-// loop or reading one, which holds 0; recalc.md) stores what its formula gives when evaluated against the sheet itself, and
-// every array result either occupies its area as spill cells of the anchor or
+// loop or reading one, which holds 0; recalc.md) stores what its formula
+// gives when evaluated against the sheet itself, and every array result either occupies its area as spill cells of the anchor or
 // is blocked and the anchor holds #SPILL!. The oracle re-runs every formula
 // against the final sheet and reports every violation. It also reports spill
 // cells whose anchor does not cover them (orphans).
