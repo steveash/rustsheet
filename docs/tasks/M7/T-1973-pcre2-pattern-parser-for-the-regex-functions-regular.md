@@ -3,7 +3,7 @@ id: T-1973
 title: "PCRE2 pattern parser for the REGEX functions, regular patterns on the automata"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
