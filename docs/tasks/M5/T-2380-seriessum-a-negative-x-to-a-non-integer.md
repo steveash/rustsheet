@@ -3,7 +3,7 @@ id: T-2380
 title: "SERIESSUM: a negative x to a non-integer power does not stop the read; a later text coefficient is #VALUE!"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
