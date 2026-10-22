@@ -109,7 +109,11 @@ is not a number, a number or boolean data_field, and an array data_field, pivot_
 lifts). An error in a single-cell pivot_table propagates even inside a pivot, and an overflowing aggregate is `#NUM!`
 (both unprobed, SPEC-0015 unknowns 13 and 16). Count, Max, Min, Product,
 Var and StdDev pivots are unprobed (UNVERIFIED: the worksheet functions' algorithms over the picked numbers).
-Known interim gap: until T-2086 moves pivots with their cells, any row
-or column insertion, deletion or move, and any sheet rename or deletion, on a sheet holding pivots drops those pivots, so
-GETPIVOTDATA against them is `#REF!` (Excel keeps the pivot, refusing an edit that would cut it); undoing a sheet deletion
-brings the sheet back without them. xlsx export drops pivots.
+Structural edits (T-2086): a pivot moves with its cells. A row or column insert at or before
+its first line shifts it, one inside grows it; a delete before it shifts it and one inside shrinks it. A sheet rename keeps
+its pivots (they are keyed by sheet id) and rewrites the cache sources naming that sheet; a sheet deletion removes its
+pivots, and undoing the deletion brings them back. Deleting a pivot's top-left cell (its first row or column) drops the
+pivot, so GETPIVOTDATA against it is `#REF!`, and undoing that delete does not bring it back: Excel refuses that edit (SPEC-0015),
+which the engine cannot do, so this is a known non-parity. Excel also
+refuses other edits that cut through a pivot (UNVERIFIED which ones); the engine shrinks the pivot instead. A row or
+column move on a sheet holding pivots still drops those pivots (`#REF!`; T-2401). xlsx export drops pivots.

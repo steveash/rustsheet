@@ -132,8 +132,9 @@ tables.rs, the parser, SUBTOTAL and export), so this is new code, T-2086: the ro
 insert/delete actions (`actions.rs` `insert_rows`, `delete_rows`, `insert_columns`,
 `delete_columns`) shift or shrink `location` like the cells they move, a deletion that removes a
 pivot's top-left cell drops the pivot (Excel refuses that edit; the engine cannot), sheet deletion
-drops the sheet's pivots, and a sheet rename rewrites `CacheSource::sheet_name`. Until T-2086
-lands, any of these edits on a sheet holding a pivot drops that sheet's pivots (GETPIVOTDATA
+drops the sheet's pivots, and a sheet rename rewrites `CacheSource::sheet_name`. T-2086 landed
+this (`Model::displace_pivots` in pivot.rs); a sheet deletion keeps its pivots in `TakenSheet` so an
+undo restores them, and a row or column move still drops the sheet's pivots (GETPIVOTDATA
 `#REF!`), a known gap listed in the web.md section, not a silent wrong answer.
 
 ### xlsx import (T-2082)

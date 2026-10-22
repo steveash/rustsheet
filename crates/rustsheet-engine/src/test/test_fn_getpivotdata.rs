@@ -410,3 +410,32 @@ fn many_calls_build_one_index_per_pivot_and_evaluation() {
     model.evaluate();
     assert_eq!(model.evaluation.pivot_indexes.builds(), builds + 2);
 }
+
+#[test]
+fn getpivotdata_follows_the_pivot_through_structural_edits() {
+    // SPEC-0015 "Data model" (T-2086): the pivot moves with its cells, so a formula whose
+    // reference moved with them keeps answering.
+    let mut model = model();
+    model._set(
+        "Sheet2!A1",
+        r#"=GETPIVOTDATA("Sales",Sheet1!$A$3,"Region","East")"#,
+    );
+    model._set("Sheet2!A2", r#"=GETPIVOTDATA("Sales",Sheet1!$E$7)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!A1"), "22");
+    model.insert_rows(0, 1, 2).unwrap();
+    model.insert_columns(0, 3, 1).unwrap();
+    model.delete_rows(0, 7, 1).unwrap();
+    model.rename_sheet_by_index(0, "Moved").unwrap();
+    model.evaluate();
+    assert_eq!(
+        model._get_formula("Sheet2!A1"),
+        r#"=GETPIVOTDATA("Sales",Moved!$A$5,"Region","East")"#
+    );
+    assert_eq!(model._get_text("Sheet2!A1"), "22");
+    assert_eq!(model._get_text("Sheet2!A2"), "49");
+    // Deleting the pivot's top-left cell drops it (Excel refuses that edit).
+    model.delete_rows(0, 5, 1).unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!A2"), "#REF!");
+}

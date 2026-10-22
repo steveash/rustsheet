@@ -621,7 +621,6 @@ impl Model {
             );
         }
         self.reset_dynamic_array_spills(sheet)?;
-        self.drop_pivots_on(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
@@ -676,6 +675,7 @@ impl Model {
             column,
             delta: column_count,
         };
+        self.displace_pivots(&disp)?;
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
 
@@ -738,7 +738,6 @@ impl Model {
         }
 
         self.reset_dynamic_array_spills(sheet)?;
-        self.drop_pivots_on(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
@@ -806,6 +805,7 @@ impl Model {
             column,
             delta: -column_count,
         };
+        self.displace_pivots(&disp)?;
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
         let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
@@ -1010,7 +1010,6 @@ impl Model {
         }
 
         self.reset_dynamic_array_spills(sheet)?;
-        self.drop_pivots_on(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
@@ -1083,6 +1082,7 @@ impl Model {
             row,
             delta: row_count,
         };
+        self.displace_pivots(&disp)?;
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
 
@@ -1111,7 +1111,6 @@ impl Model {
         }
 
         self.reset_dynamic_array_spills(sheet)?;
-        self.drop_pivots_on(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
         let merged_cells = std::mem::take(&mut self.workbook.worksheet_mut(sheet)?.merged_cells);
@@ -1193,6 +1192,7 @@ impl Model {
             row,
             delta: -row_count,
         };
+        self.displace_pivots(&disp)?;
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
         Ok(())
