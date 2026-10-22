@@ -1731,7 +1731,7 @@ them and oracle cells contradict them.
     0.5000000000000001 and `F.DIST.RT(1,1,1)` = 0.4999999999999999 (t1049-fdist A7, m9-legacy-fdist A31).
   - Tasks: T-2219 (the accuracy cells, visible parity) and T-2221 (the fit, after the T-2220 sweep).
 
-The engine follows both PARTIAL rules. Against statrs, the probes-numeric F and BETA cases gain
+The engine follows both PARTIAL rules (the T-2220 sweep contradicts the strong form of the second). Against statrs, the probes-numeric F and BETA cases gain
 72 bit-exact cells and lose 3, a net gain of 69. The three lost cells are now 1 ulp off:
 `FDIST(100,1,1)` and `F.DIST.RT(100,1,1)` (m9-legacy-fdist A61, A62: 0.06345103486110715) and
 t1049-fdist A23 (0.979990011905381).
@@ -1767,9 +1767,42 @@ with both functions wrong in the same way. Excel's own pair lands on x exactly a
 (0.7) but not at H23 (-0.23399999999999987) or H42 (0.23399999999999999), as T-1745 found. The
 switch waits for T-2119.
 Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
-densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
-stays UNVERIFIED (T-1744).
+densities on the cells named); PARTIAL (exact complement, one-evaluation tails; the T-2220 sweep contradicts the
+strong form of the latter, see below); the cdf algorithm stays UNVERIFIED (T-1744).
 Tasks: T-0970, T-2119, T-1744, T-1745, T-2219, T-2220, T-2221
+
+### Dense F sweep (T-2220)
+Evidence: `probes-numeric/t2220-f-dist-sweep-{cdf,pdf,rt}` (100 df pairs d1, d2 in {1,2,3,4,5,7,10,20,50,100}
+x x in {0.1,0.25,0.5,1,1.5,2,3,5,10,100}: 1,000 cells each) and `t2220-f-dist-sweep-d1-1`, `-d2-1`
+(d1 = 1 or d2 = 1, 30 x points over 1E-6..1E6: 900 and 810 cells). All 4,710 cells are numbers, no
+errors. Compared against a 50-digit reference (mpmath regularized incomplete beta, density from the
+closed form) rounded to a double:
+- Reference: the 50-digit values are evaluated at the double x Excel receives
+  (`docs/research/t2220_f_dist_sweep_stats.py` reproduces every figure here); the upper tail is computed
+  directly as I_{d2/(d2+d1 x)}(d2/2, d1/2), not as 1 - cdf, which cancels below about 1E-33.
+- Excel is not correctly rounded anywhere: no (d1, d2) pair, for any of F.DIST TRUE, F.DIST FALSE or
+  F.DIST.RT, has all its cells equal to the correctly rounded double, and that includes d1 = d2 = 1
+  and d1 = 1 or d2 = 1 with closed forms available.
+- Cells equal to the correctly rounded value: cdf 765/1570 (49%), RT 607/1570 (39%), pdf 147/1570
+  (9%). The density is the least accurate: 4/10 at the (2,2) pair and 1/40 at d1 = d2 = 1.
+- Error size: within 4 ulp are cdf 1,419/1,570 (90%), RT 1,318/1,570 (84%) and pdf 1,052/1,570 (67%).
+  Worst relative error: cdf 2.7E-14, RT 2.8E-14, density 7.8E-14. The largest RT error is 196 ulp at
+  `F.DIST.RT(1E6,1,50)`; 125 RT cells are 10 or more ulp off, at every magnitude of p (e.g. 35 ulp at
+  (1.61,1,50) where p = 0.21), not only in far tails. The cdf is at worst 201 ulp off and the density 619 ulp.
+  A T-2221 acceptance bar of "bit-exact or within 4 ulp" therefore cannot cover all of this grid.
+- `F.DIST(x,d1,d2,TRUE) + F.DIST.RT(x,d1,d2)` is exactly 1.0 in 1,486 of 1,570 cells and not in 84
+  (all 84 such sums are exactly 0.9999999999999999), e.g. (x,d1,d2) = (100,1,3), (5,1,4),
+  (10,1,50), (0.1,3,1), (100,3,3), (0.1,3,5), (100,3,7), (3,3,10). This bears on the second PARTIAL
+  rule above (both tails from one evaluation): its strong form, an exactly-1 sum, fails in 5% of cells.
+  It does not test the first rule (how the beta argument's complement is formed, d2/(d1 x + d2) directly
+  versus 1 - w); that stays open for T-2221.
+- d1 = d2 = 1: `F.DIST(1,1,1,TRUE)` = 0.5000000000000001 and `F.DIST.RT(1,1,1)` =
+  0.4999999999999999 reproduce on the sweep (also F.DIST(3,1,1,TRUE) = 0.6666666666666666 and
+  F.DIST.RT(3,1,1) = 0.33333333333333337); `F.DIST.RT(10,1,1)` and `F.DIST(0.1,1,1,TRUE)` are the same
+  double (0.19498222904213666), consistent with the reflection F.DIST.RT(x) = F.DIST(1/x) at d1 = d2.
+Status: VERIFIED (observation, with the case ids above); the strong form of the one-evaluation rule is
+contradicted (84 of 1,570 sums are not 1), the exact-complement rule is untested here; the algorithm
+stays UNVERIFIED (T-2221).
 
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
 Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)
