@@ -345,3 +345,38 @@ fn networkdays_handles_large_date_ranges_efficiently() {
         "Large ranges should not error"
     );
 }
+
+/// Excel: a one-cell holidays reference to a blank cell is no holiday, and a holiday cell holding
+/// number text is one (docs/excel-semantics/dates.md "WORKDAY and NETWORKDAYS holidays", T-2270).
+#[test]
+fn holidays_blank_cell_and_number_text_cell_for_all_four_functions() {
+    let mut model = new_empty_model();
+    model._set("B1", "'44928");
+    let calls = [
+        ("NETWORKDAYS(44927,44936,{})", "7", "6"),
+        ("NETWORKDAYS.INTL(44927,44936,1,{})", "7", "6"),
+        ("WORKDAY(44927,1,{})", "44928", "44929"),
+        ("WORKDAY.INTL(44927,1,1,{})", "44928", "44929"),
+    ];
+    for (i, (call, blank, text)) in calls.iter().enumerate() {
+        model._set(
+            &format!("D{}", i + 1),
+            &format!("={}", call.replace("{}", "C1")),
+        );
+        model._set(
+            &format!("E{}", i + 1),
+            &format!("={}", call.replace("{}", "B1")),
+        );
+        model.evaluate();
+        assert_eq!(
+            model._get_text(&format!("D{}", i + 1)),
+            *blank,
+            "{call} blank"
+        );
+        assert_eq!(
+            model._get_text(&format!("E{}", i + 1)),
+            *text,
+            "{call} text"
+        );
+    }
+}

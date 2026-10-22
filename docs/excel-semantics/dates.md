@@ -1128,7 +1128,7 @@ Rule (excel-graph, gen-m6, 2026-10-21):
   `WORKDAY.INTL(1,-18,13,ERROR.TYPE("x~*"))` are `#NUM!` (d0c30225243fde60 A332, 9130ade4b1924cc8 A361), which "An error-valued or 3-D
   weekend" (holidays read first) does not cover. An all-weekend mask's `#VALUE!` beats a negative holiday's `#NUM!`:
   `WORKDAY.INTL(45382,10,"1111111",Data!B2:C5)` (holidays include -0.5 and " x ") is `#VALUE!` (ef10bf3afb9658f6 A346).
-Ours: `holiday_serials` rejects a blank or text cell at once, before the dates and the walk.
+Ours: implemented (T-2270): a blank one-cell reference is no holiday and a cell holding number text counts as a holiday (counted, not skipped; both 752959b8d3db0285 A393 passes; skip-vs-count UNVERIFIED); other text is `#VALUE!` as before.
 Status: VERIFIED for the cells; the full order (which `#NUM!` sources beat which holiday problems) is UNVERIFIED until T-2272 probes it.
 Tasks: T-2270, T-2272
 

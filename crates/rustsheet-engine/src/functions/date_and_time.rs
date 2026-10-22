@@ -325,6 +325,20 @@ impl Model {
                         handle(serial)
                     }
                     CalcResult::EmptyCell => Ok(()),
+                    // Excel: a cell holding number text is a holiday (dates.md "WORKDAY and
+                    // NETWORKDAYS holidays: blank and number-text cells").
+                    CalcResult::String(text) => match model.cast_number(&text) {
+                        Some(v) => {
+                            let serial = v.floor() as i64;
+                            model.excel_date(serial, cell)?;
+                            handle(serial)
+                        }
+                        None => Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Invalid holiday date".to_string(),
+                        )),
+                    },
                     _ => Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
@@ -360,6 +374,22 @@ impl Model {
                 }
             }
             e @ CalcResult::Error { .. } => return Err(e),
+            // A one-cell reference to a blank cell is no holiday.
+            CalcResult::EmptyCell => {}
+            CalcResult::String(text) => match self.cast_number(&text) {
+                Some(v) => {
+                    let serial = v.floor() as i64;
+                    self.excel_date(serial, cell)?;
+                    handle(serial)?;
+                }
+                None => {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Invalid holiday date".to_string(),
+                    ))
+                }
+            },
             _ => {
                 return Err(CalcResult::new_error(
                     Error::VALUE,

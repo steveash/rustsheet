@@ -3,7 +3,7 @@ id: T-2270
 title: "WORKDAY/NETWORKDAYS(.INTL): a blank one-cell holidays reference and numeric-text holiday cells are accepted (ours #VALUE!)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -49,3 +49,6 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 11 in eval/baseli
 
 ## Visible-parity stage
 Decision 0083: every cell above is visibly off (a wrong error, a wrong type or a value off in a leading digit). The acceptance criteria above are the stage.
+
+## Outcome
+`collect_serial_numbers` (date_and_time.rs) treats a blank scalar as no holiday and number text (cell or one-cell reference) as a holiday; unit test `holidays_blank_cell_and_number_text_cell_for_all_four_functions`. gen-m6: the 11 listed known failures pass.
