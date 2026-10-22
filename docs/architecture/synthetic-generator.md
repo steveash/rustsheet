@@ -529,6 +529,11 @@ domain; other parameters still build a free expression. The pools there are `num
 two draw extensions: a pooled `range` parameter (LOOKUP's lookup_vector, XMATCH's lookup_array) takes a pool entry
 35% of the time in place of a range, and a pooled `lambda` parameter takes an entry with the parameter count the call
 needs (MAP's one per array), its `x` and `y` renamed to free names.
+T-2247 added `probability`, `shape`, `stat_x`, `gamma_x`, `flag` and `stat_data` for the M9 statistical functions
+(probabilities and alphas, degrees of freedom and shapes, distribution x and z, GAMMA's x, the cumulative/const/stats
+flags, and the data arrays of the aggregates, order statistics and paired functions) and put FISHER's x on
+`unit_interval`; no draw change was needed, as an `array` or `aggregate` parameter's non-range draw already reaches
+the pool.
 
 ### 6.1 Numbers
 - **Zeros & signs**: `0`, `-0` (Excel has no negative zero: it must normalize),
