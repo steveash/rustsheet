@@ -3,7 +3,7 @@ id: T-2049
 title: "Z.TEST with a direct TRUE as its array is one value (#DIV/0!), not #VALUE!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
