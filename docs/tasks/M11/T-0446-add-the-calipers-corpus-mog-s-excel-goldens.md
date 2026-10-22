@@ -50,7 +50,9 @@ Owner request (2026-10-22), after a head-to-head of rustsheet and mog (docs/rese
 
 ## Outcome
 - eval/suites/calipers fetches Calipers 9e47ea4f (`rustsheet-eval fetch --suite calipers`, 458 goldens, about
-  170 MB) and scores 456 of them; pv26_002 and pv26_2_002 are excluded (T-0449).
+  170 MB) and scores 454 of them. pv26_002 and pv26_2_002 (11 minutes, T-0449) and pv26_001 and pv26_2_001
+  (17 s import, T-0450) are excluded. With the last two included, `make check` timed out
+  corpus-bench 68-47 under the extra load.
 - eval/baseline/calipers.txt: 173 cases with formula cells, 6,679 known failures. These include 21
   `!EngineError` workbooks with data tables (T-0441) and the `#CIRC!` cells of pv23_021 and pv26_004
   (T-0447). No other baseline changed.
