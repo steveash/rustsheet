@@ -1081,18 +1081,20 @@ Evidence: probes/log10-kernel (excel-graph, 2026-10-19, T-2004): 92 inputs (the 
 LOG: LOG = LOG10 in all 92, and the model matches 92 of 92 (correctly rounded 78, one rounding of the exact y·log2 x 85,
 glibc 56, ln/ln 42). The web agrees with the desktop cell `LOG10(1.3)` = 0.11394335230683679.
 ironcalc-calc/MATH_AND_TRIGONOMETRY/LOG_LOG10_LN.xlsx (Excel cache, Microsoft Excel 16.0300; the 3-sheet Macintosh file of
-T-1930 was replaced by upstream's single-sheet version in T-2350): LOG(x) equals LOG10(x) in C10/D10 (1000 -> 3), C2/D2
-(10 -> 1) and D21 (0.004 -> -2.3979400086720375).
+T-1930 was replaced by upstream's single-sheet version in T-2350): one-argument LOG(x) equals LOG10(x) bit for bit in
+C2/D2 (1), C5/D5 (86 -> 1.9344984512435677), C6/D6 (EXP(1) -> 0.4342944819032518), C7/D7, C10/D10 (1000 -> 3), C22/D22
+(1E-5 -> -5), C27/D27 and C31/D31 (EXP(709) -> 307.91478766940554). "the workbook's 7 numbers" and the desktop cell
+`LOG10(1.3)` above are from that earlier 3-sheet version.
 Two-argument LOG is ln(x)/ln(b) in doubles (`f64::log`): it matches all 92 `LOG(x,2)` and 92 `LOG(x,3)` cells of the probe
 (columns D and E). The workbook adds other bases: `LOG(1000,10)` is 2.9999999999999996 (C9, C67) while
-`LOG10(1000)` is 3 (D9), `LOG(1E-3,10)` -2.9999999999999996 (C20) and `LOG(1E300,10)` 299.99999999999994 (C29), so
+`LOG10(1000)` is 3 (D9), `LOG(0.004,10)` -2.397940008672037 against `LOG10(0.004)` -2.3979400086720375 (C21, D21), `LOG(1E-3,10)` -2.9999999999999996 (C20) and `LOG(1E300,10)` 299.99999999999994 (C29), so
 two-argument LOG with base 10 is not LOG10.
 Implemented in `x87_log10.rs` (`excel_log10`: ln x in double-double, about 2^-104 relative, times `y / ln 2`, then the two
 roundings; 30,000 random inputs equal a decimal reference of the model), used by LOG10, one-argument LOG and MULTINOMIAL's
 `log10(k)` terms (which replaced their 170-entry table). It also fixes probes/geomean-root-models Root!I6 and I9
 (`10^(LOG10(E)/C)`).
 Domain and coercion of LOG (Excel cache of LOG_LOG10_LN.xlsx, T-2350; the engine matches all 227 cells): base 1 gives
-`#DIV/0!` even for `LOG(1,1)` and `LOG(100,TRUE)` (C36, C37, C59); base 0 or a negative base gives `#NUM!` (C38, C39, C44);
+`#DIV/0!` even for `LOG(1,1)` and `LOG(100,TRUE)` (C36, C37, C59); base 0 or a negative base gives `#NUM!` (C38, C39);
 an omitted argument counts as 0, so `LOG(,b)`, `LOG(x,)` and `LOG(,)` give `#NUM!` (C48-C50); with both arguments errors the
 first argument's error wins (C53, `#DIV/0!`); a direct boolean is a number (`LOG(TRUE,10)` = 0, C58; `LOG10(FALSE)` `#NUM!`,
 D59); text is coerced when it reads as a number (`LOG("100","10")` = 2, C69; C66, C68) and is `#VALUE!` otherwise
