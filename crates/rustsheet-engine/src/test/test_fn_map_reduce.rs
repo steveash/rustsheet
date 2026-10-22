@@ -707,3 +707,27 @@ fn map_multi_cell_array_step_is_one_calc_error() {
     assert_eq!(model._get_text("B1"), "#CALC!");
     assert_eq!(model._get_text("B2"), "");
 }
+
+/// A cell initial value reaches the LAMBDA as a reference, so PRODUCT and COUNT skip its text
+/// and booleans (gen-m7/18b80d3fd292d63a A467, A285, 2c5ea078f25443a2 A1767; T-2307).
+#[test]
+fn scan_reduce_initial_value_cell_is_a_reference() {
+    let mut model = new_empty_model();
+    model._set("A1", "'1");
+    model._set("A2", "TRUE");
+    model._set("A3", "TRUE");
+    model._set("A4", "-2.5");
+    model._set("A5", "ü");
+    model._set("B1", "=REDUCE(A1, A4, LAMBDA(acc, x, COUNT(acc, x)))");
+    model._set("B2", "=REDUCE(A2, A3, LAMBDA(acc, x, PRODUCT(acc, x)))");
+    model._set("B3", "=REDUCE(A2, {1}, LAMBDA(acc, x, ISREF(acc)))");
+    model._set("B4", "=SCAN(A5, A4:A4, LAMBDA(acc, x, PRODUCT(acc, x)))");
+    // A value initial value stays a value.
+    model._set("B5", "=REDUCE(TRUE, A3, LAMBDA(acc, x, PRODUCT(acc, x)))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("B2"), "0");
+    assert_eq!(model._get_text("B3"), "TRUE");
+    assert_eq!(model._get_text("B4"), "-2.5");
+    assert_eq!(model._get_text("B5"), "1");
+}

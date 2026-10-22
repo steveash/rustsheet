@@ -3,7 +3,7 @@ id: T-2341
 title: "The engine adapter's delete_table op clears the table's cells, as Graph's DELETE tables does (T-2324)"
 milestone: M8
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,9 +23,12 @@ or not) with the excel-probe skill before changing the adapter, and record it in
 table" command (M14 if needed).
 
 ## Acceptance criteria
-- [ ] table-delete-table F!A6 passes; a probe shows whether rows are removed or only cleared.
-- [ ] docs/architecture/oracle.md's op table states it.
-- [ ] `make check` green; reviewers approve.
+- [x] table-delete-table F!A6 passes; a probe shows whether rows are removed or only cleared.
+- [x] docs/architecture/oracle.md's op table states it.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cut and paste, row and column moves, undo and duplicated sheets (desktop, T-2325).
+
+## Outcome
+The adapter's `delete_table` now calls the new `Model::delete_table`, which clears the table's range and then removes the table. F!A6 of table-delete-table passes (probes known failures 12 to 11 in the baseline file; 0 regressions). The oracle shows the cells cleared and F!A7's text unshifted, so rows are cleared, not removed; table-delete-table-cells (excel-graph) shows the header, the text column and the Qty column all cleared and the cells below the table unmoved, so rows are cleared, not removed. oracle.md and references.md state it.

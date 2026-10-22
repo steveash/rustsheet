@@ -255,7 +255,8 @@ impl KernelWork {
     }
 }
 
-/// What one unlifted call returns (SPEC-0011 "Array-valued functions" rule 1).
+/// What one unlifted call returns (SPEC-0011 "Array-valued functions" rule 1), and so what a
+/// lifted element keeps (rule 2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum CallResult {
     /// One value: every entry before T-1834.
@@ -263,6 +264,20 @@ pub(crate) enum CallResult {
     /// An array (SEQUENCE, MAKEARRAY): unlifted, the static shape is `Unknown`, and a lifted
     /// element is the top-left value of its call.
     Array,
+    /// An array as [`CallResult::Array`], but unless every element's lifted entries are equal,
+    /// only the first element whose call is not an error keeps its top-left value: an error
+    /// stays, and every other element is empty (UNIQUE; probes/m7-unique-lift-elements,
+    /// docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's lifted elements"; T-2300). The
+    /// driver applies it to computed elements only, so it needs `Reuse::Never`, which every
+    /// table entry's options have (`LiftOptions::for_entry`).
+    ArrayFirst,
+}
+
+impl CallResult {
+    /// Whether one unlifted call returns an array.
+    pub(crate) fn is_array(self) -> bool {
+        matches!(self, CallResult::Array | CallResult::ArrayFirst)
+    }
 }
 
 /// The parameters of one function: `params[i]` is the kind of argument `i`. Arguments past
@@ -297,6 +312,15 @@ impl ArgKinds {
     pub(crate) const fn array(self) -> Self {
         Self {
             result: CallResult::Array,
+            ..self
+        }
+    }
+
+    /// The same kinds for a function whose unlifted call returns an array and whose lifted
+    /// elements follow [`CallResult::ArrayFirst`].
+    pub(crate) const fn array_first(self) -> Self {
+        Self {
+            result: CallResult::ArrayFirst,
             ..self
         }
     }

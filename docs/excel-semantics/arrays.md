@@ -448,11 +448,29 @@ Tasks: T-1083 (generator modes)
 
 ## UNIQUE's and SORTBY's lifted elements
 Rule: when UNIQUE's by_col or exactly_once, or SORTBY's sort_order, lifts over entries that are not all equal, only
-the first element is its call's top-left; every later element is empty, even where its entry equals the first. An
-empty element spills as 0, and ISBLANK of it is TRUE, `INDEX(..,i,1)&"|"` is "|", SUM of it 0, and ROWS, COLUMNS and
-`INDEX(INDEX(..,i,1),1,1)` of it `#VALUE!` (the spill, ISBLANK and `&"|"` cells are SORTBY's; UNIQUE's empty elements
-are evidenced by SUM 0 and ROWS, COLUMNS and INDEX `#VALUE!` only). When every entry is equal, each element is the
+the first element is its call's top-left (for UNIQUE, the first whose call is not an error; an error element stays);
+every later element is empty, even where its entry equals the first. An empty element spills as 0, and ISBLANK of it is
+TRUE, `INDEX(..,i,1)&"|"` is "|", TYPE 1, SUM of it 0, and ROWS, COLUMNS and `INDEX(INDEX(..,i,1),1,1)` of it `#VALUE!`
+(SORTBY's cells and, for UNIQUE, probes/m7-unique-lift-elements). When every entry is equal, each element is the
 top-left of its call.
+- UNIQUE in detail (probes/m7-unique-lift-elements, excel-graph, 2026-10-22, T-2300; D1:D3 = x,y,x, E1:E2 = FALSE,TRUE):
+  - The empty element spills as 0, ISBLANK of it is TRUE, `&"|"` is "|", TYPE 1, SUM 0 and ROWS `#VALUE!`.
+  - The same holds over each array argument tried: a range, an array constant, `D1:D3&""`, a one-cell range D1, a scalar 5, a
+    two-column range and a range E1:E2 of entries.
+  - The first element is the call of the first entries: `UNIQUE(D1:D3,FALSE,{1;2})` is "y", empty.
+  - Equal means the same type and value. `{0;FALSE}` differs (x, empty) although both calls give the same array, and so
+    does `{0.2,1E+15}`.
+  - With two lifted arguments, both must be uniform. `UNIQUE(D1:D3,{FALSE;FALSE},{FALSE;TRUE})` is x, empty;
+    `{TRUE;TRUE},{FALSE;FALSE}` is x, x.
+  - A 2x2 broadcast (`{FALSE;TRUE}` against `{FALSE,TRUE}`) or a 2-D by_col keeps only the top-left element.
+  - An error stays: `{FALSE;#N/A}` is x, `#N/A`. And the first element whose call is not an error is the one kept:
+    `{#N/A;FALSE}` is `#N/A`, x.
+  - An error array is every element's result: `UNIQUE(SUMPRODUCT(<mismatched sizes>),HSTACK(0.2,1E+15))` is `#VALUE!`,
+    `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434).
+  - Ours (T-2300): the driver option `CallResult::ArrayFirst` (SPEC-0011 rule 2, "As built (T-2300)"). INDEX of any empty
+    value is `#VALUE!` there (`scalar_as_one_element_array`). Only the empty element is evidenced (m7-lift-take-drop-sortby
+    L25); other empty values in INDEX's first argument (`INDEX(IFERROR(B1,1),1,1)` with B1 blank) take the same rule by
+    analogy, UNVERIFIED.
 - With A1:A3 = 3,1,2 and C1:C3 = 2,1,3: `SORTBY(A1:A3,C1:C3,{1;-1;1})` is 1, empty, empty (it spills {1;0;0}:
   probes/sort-error-args H97-H99); `{1;-1}` 1, empty; `{-1;1}` 2, empty; `{1;1;-1}` 1, empty, empty; E1:E3 = 1,-1,1
   the same as the literal; `{1;1}`, `{1;1}+0` 1, 1; `{1;1;1}` 1,1,1; `{-1;-1;-1}` 2,2,2. The same over B1:B3 =
@@ -1261,10 +1279,19 @@ is 1, 1, 2, ... (COUNT skips the error accumulator; 90de8755a2e565e6 A1223); `SC
 The initial value and the elements also look like references when they come from cells: `REDUCE(Data!A12,Data!C11,PRODUCT)` with
 both cells TRUE is 0 (PRODUCT skips booleans in references; 18b80d3fd292d63a A467), `REDUCE(Data!C7,Data!E12,COUNT)` with C7 the text
 "1" and E12 -2.5 is 1 (2c5ea078f25443a2 A1767), and `SCAN(Data!A5,Data!A7:C11,PRODUCT)` with A5 "ü" starts at 2.5 (18b80d3fd292d63a
-A285). Which of the two (initial value, elements) is a reference is UNVERIFIED (these cells have one-cell arrays).
+A285). Both are references:
+- A285 and A1767 need a reference initial value: a text value would make PRODUCT `#VALUE!` and COUNT 2.
+- A467 needs a reference element too. PRODUCT of a reference TRUE and a value TRUE would be 1.
+- Elements from a range, a one-cell range included, were already references (T-1442).
+- Unprobed initial values:
+  - a function result such as `IF(TRUE,A1)`;
+  - an INDEX or XLOOKUP that picks a cell (ours: a reference, as `eval_ref_or_index` gives it);
+  - a union or a 3-D span (ours: read as values, as before);
+  - ISREF of the accumulator (ours: TRUE for a cell).
 Evidence: gen-m7 cases above (excel-graph, 2026-10-21, T-2225).
-Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the LAMBDA and SCAN keeps an error step in its slot; they pass values, not references (T-2307).
-Status: VERIFIED (excel-graph) for the error rule; the reference rule UNVERIFIED in its split.
+Ours: implemented (T-2306): `fn_scan` and `fn_reduce` hand error values to the LAMBDA and SCAN keeps an error step in its slot.
+Since T-2307, `lambda_initial_value` keeps a reference initial_value a reference, as `eval_ref_or_index` binds a LAMBDA argument.
+Status: VERIFIED (excel-graph).
 Tasks: T-2306, T-2307
 
 ## MAKEARRAY rows and columns must be whole numbers

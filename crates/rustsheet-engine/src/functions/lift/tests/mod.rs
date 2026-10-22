@@ -332,6 +332,61 @@ fn a_single_grid_is_rewritten_in_place_with_the_scalars_beside_it() {
     );
 }
 
+#[test]
+fn an_array_first_entry_empties_later_elements_unless_every_entry_is_equal() {
+    // UNIQUE's rule (probes/m7-unique-lift-elements, m7-lift-take-drop-sortby rows 24-37): each
+    // call is the 1x2 {entry, 7}, so a kept element is its entry; entry 0 makes the call #N/A.
+    let mut model = model_with(&[]);
+    let options = LiftOptions {
+        reuse: Reuse::Never,
+        work: KernelWork::Output { weight: 1 },
+        result: CallResult::ArrayFirst,
+    };
+    let mut kernel = |_: &mut Model, values: &[CalcResult]| match values {
+        [CalcResult::Number(entry)] if *entry != 0.0 => CalcResult::Array(vec![vec![
+            ArrayNode::Number(*entry),
+            ArrayNode::Number(7.0),
+        ]]),
+        _ => CalcResult::new_error(Error::NA, AT, String::new()),
+    };
+    let column = |entries: &[f64]| {
+        vec![CalcResult::Array(
+            entries
+                .iter()
+                .map(|e| vec![ArrayNode::Number(*e)])
+                .collect(),
+        )]
+    };
+    let empty = ArrayNode::Empty;
+    let na = ArrayNode::Error(Error::NA);
+    for (entries, want) in [
+        // Every entry equal: every element is its call's top-left.
+        (
+            &[2.0, 2.0][..],
+            vec![ArrayNode::Number(2.0), ArrayNode::Number(2.0)],
+        ),
+        // A differing later entry is empty.
+        (&[2.0, 3.0][..], vec![ArrayNode::Number(2.0), empty.clone()]),
+        // So is an entry equal to the first after a differing one.
+        (
+            &[2.0, 3.0, 2.0][..],
+            vec![ArrayNode::Number(2.0), empty.clone(), empty.clone()],
+        ),
+        // An error stays, and the first other element is kept.
+        (
+            &[0.0, 3.0, 2.0][..],
+            vec![na.clone(), ArrayNode::Number(3.0), empty.clone()],
+        ),
+    ] {
+        let result = model.lift_values(column(entries), LiftCost::Unit, &options, AT, &mut kernel);
+        let CalcResult::Array(rows) = result else {
+            panic!("{entries:?} is not an array");
+        };
+        let got: Vec<ArrayNode> = rows.into_iter().flatten().collect();
+        assert_eq!(got, want, "{entries:?}");
+    }
+}
+
 // ---------------------------------------------------------------- errors per element
 
 #[test]
