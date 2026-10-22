@@ -672,7 +672,9 @@ reference called again stays `#REF!`: `=$A$1(1)(2)`, `=$A$1:A2(1)(2)`, `=(A1)(1)
 but not every built-in's: `=INDEX(A1:A3,1)(2)` is `#REF!` and `=IF(TRUE,LAMBDA(x,x*2))(3)` is 6, while Excel for the web refuses
 a workbook holding `=SUM(1)(2)` (FileCorruptTryRepair, one single-formula workbook, T-2038), so the engine reads it as a syntax
 error. With a space, `=LAMBDA(a,LAMBDA(b,a*b))(3) (4)` is refused the same way (no intersection), and the engine reads it as a
-syntax error too. `LAMBDA(x,LAMBDA(y,x+y))(1)()` gives an error the oracle could not decode (unprobed).
+syntax error too. `LAMBDA(x,LAMBDA(y,x+y))(1)()` gives an error the oracle could not decode (unprobed). Unprobed: a chain after a defined-name LAMBDA or an
+unknown name (`=MYFN(1)(2)`, `=FOO(1)(2)`; the engine chains any name call) and a single call of a parenthesized value a
+function returned (`=(IF(TRUE,1))(2)`; the engine calls it like a LET-bound value, `#NAME?`); T-2405 probes them.
 Evidence: probes/lambda-escaping-closures H8, H10; probes/chained-calls-lambda B1:B10; probes/chained-calls-ref-1..4, -6
 (oracle: excel-graph, 2026-10-22, T-2038); the refused `SUM(1)(2)` and spaced forms were single-formula workbooks, not kept as
 cases (a refused workbook gives no values).
