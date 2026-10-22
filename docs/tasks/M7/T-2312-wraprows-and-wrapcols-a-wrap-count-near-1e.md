@@ -3,7 +3,7 @@ id: T-2312
 title: "WRAPROWS and WRAPCOLS: a wrap_count near 1E+15 is #NUM! (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -29,13 +29,22 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 13 known-failure li
 - gen-m7/c36ff5f42a1a4d47.case.json A877 `=WRAPCOLS(Data!E9:E12,MAX(SIN(Data!A11),(1000000000000000.0+Data!E3)))`: A877 Excel #NUM!, ours 123456789.123; cells (4): A877, A878, A879, A880
 
 ## Acceptance criteria
-- [ ] Visible parity: the 13 gen-m7 cells listed under Context have Excel's value, type, error and text: these 13 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
-- [ ] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 13 gen-m7 cells listed under Context have Excel's value, type, error and text: these 13 known-failure lines disappear from eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] The docs/excel-semantics entry cited above states the rule and its "Ours:" line names this task's change.
+- [x] Unit tests cover the rule on a small hand-written input (one error or edge case and one normal case that must keep passing).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Lifted wrap_count and pad_with (T-1835).
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+- Probe probes/t2312-wrap-count-threshold (excel-graph, 2026-10-22): a wrap_count of 2^31 or more is `#NUM!` in WRAPROWS
+  and WRAPCOLS, padded or not. 2^31 - 0.5 still wraps. `ODD(2^53)` is not an error, so the A1372 cell follows the
+  same rule. `get_wrap_count` (wrapcols_wraprows.rs) refuses such a count before the clamp to the vector's length.
+  The rule is recorded in arrays.md "WRAPROWS and WRAPCOLS with a huge wrap_count", whose threshold was UNVERIFIED
+  until now.
+- Eval delta: the 13 gen-m7 lines are fixed (265 to 252 known failures), and the new probe passes. No regressions.
+- Unit test: `wrap_count_of_2_pow_31_is_num` (two `#NUM!` cells and two that still wrap).
