@@ -23,6 +23,7 @@ C	probes/aggregate-error-precedence-a-variants.case.json	76
 C	probes/aggregate-error-precedence-stat-family.case.json	132
 C	probes/aggregate-error-precedence.case.json	92
 C	probes/aggregate-grid.case.json	217
+C	probes/aggregate-negative-option-range-k.case.json	25
 C	probes/aggregate-overflow.case.json	178
 C	probes/aggregate-picked-direct-a-variants.case.json	27
 C	probes/aggregate-product-trimrange-picks.case.json	15
@@ -357,6 +358,7 @@ C	probes/fin-rri.case.json	16
 C	probes/fin-vdb-modes.case.json	20
 C	probes/fin-vdb-schedule.case.json	78
 C	probes/fin-yield-odd-lift.case.json	51
+C	probes/fixed-dollar-length-bound.case.json	82
 C	probes/forecast-ets-longer-series.case.json	42
 C	probes/format-doubled-quotes.case.json	11
 C	probes/formula-length-nonbmp-33pieces.case.json	1

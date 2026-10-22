@@ -532,13 +532,20 @@ negative count; PROPER capitalises after any non-letter (`O'Neil`, `Abc123Def`, 
 (`PROPER(TRUE)` = "True").
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
-## FIXED of a very large number is #VALUE! (T-2378)
-Observation: `FIXED((Data!$A3+Data!D3)^100)` = `FIXED(99^100)` (3.66E+199) is `#VALUE!` (gen-m5/55afc805e00a1509 Calc!A392,
-excel-graph, 2026-10-22); ours prints the 15 digits, 185 zeros and ".00" with commas, 269 characters. Values past 2^64 do print
-(`DOLLAR(1.0000001234567907E+30,-2)`, "FIXED, DOLLAR and BAHTTEXT cut to 15 significant digits first" below), and so does a 103-character
-`FIXED(ASINH(123456790.123),100)`. Whether the bound is the result's length (255 characters?) or the value's magnitude is unprobed;
-T-2378 probes it for FIXED and DOLLAR.
-Status: OBSERVED
+## FIXED and DOLLAR return at most 255 characters
+Rule: FIXED and DOLLAR are `#VALUE!` when their result would be longer than 255 characters, whatever the value's
+magnitude: `FIXED(1E+188,3)` (255 characters with commas) and `FIXED(1E+254,0,TRUE)` (255) print, `FIXED(1E+188,4)` and
+`FIXED(1E+255,0,TRUE)` (256) are `#VALUE!`, and `FIXED(1E+200,2,TRUE)` (204) prints. The sign counts (`FIXED(-1E+188,2)`
+is 255 and prints, `FIXED(-1E+188,3)` is `#VALUE!`), as do the 127 decimals (`FIXED(1E+126,127,TRUE)` prints,
+`FIXED(1E+127,127,TRUE)` does not). DOLLAR has the same bound with its `$` and parentheses counted, except that a
+value shown without parentheses counts one character more, as if the `_)` padding of its positive section were part of
+the text: `DOLLAR(1E+188,1)` (254) prints but `DOLLAR(1E+188,2)` and `DOLLAR(1E+190,0)` (255) are `#VALUE!`, while the
+negative `DOLLAR(-1E+187,1)` (255) prints and `DOLLAR(-1E+188,1)` (256) does not. So `FIXED(99^100)` (269 characters with
+commas) is `#VALUE!`.
+Evidence: probes/fixed-dollar-length-bound A1:B41 (oracle: excel-graph, 2026-10-22, T-2378); gen-m5/55afc805e00a1509
+Calc!A392.
+Status: VERIFIED (excel-graph); desktop confirmation pending
+Implemented in: crates/rustsheet-engine/src/functions/text/string_format.rs (`MAX_FORMATTED_LEN`, `formatted_result`)
 
 ## DOLLAR and FIXED decimals
 Rule: `decimals` is truncated toward zero, not floored: `DOLLAR(1234.5,-1.5)` is "$1,230" (decimals -1), `FIXED(1234.5,-0.5)`
