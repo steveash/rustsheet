@@ -619,3 +619,30 @@ fn relative_sets_are_capped_before_they_are_built() {
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("B1"), "FALSE");
 }
+
+#[test]
+fn an_error_column_total_over_several_value_columns_is_value_error() {
+    // probes/t2311-pivotby-value-columns-error (T-2311): one function over two value columns
+    // whose Total column cells (shown as "") hold an error is #VALUE!, the grand total alone too.
+    let grand_error = "LAMBDA(x,IF(ROWS(x)=10,NA(),SUM(x)))";
+    let mut model = records();
+    model._set("G1", &format!("=PIVOTBY(B2:B11,C2:C11,D2:E11,{grand_error})"));
+    // Without the Total column nothing computes it (P!A27).
+    model._set(
+        "G20",
+        &format!("=PIVOTBY(B2:B11,C2:C11,D2:E11,{grand_error},0,1,1,0)"),
+    );
+    // One value column shows the error in its cell (P!A3, P!A4).
+    model._set("G40", &format!("=PIVOTBY(B2:B11,C2:C11,D2:D11,{grand_error})"));
+    // An array result is #VALUE! in its cells only (P!A12).
+    model._set("G60", "=PIVOTBY(B2:B11,C2:C11,D2:E11,LAMBDA(x,x))");
+    model.evaluate();
+    assert_eq!(model._get_text("G1"), "#VALUE!");
+    assert_eq!(model._get_text("H1"), "");
+    assert_eq!(model._get_text("G20"), "");
+    assert_eq!(model._get_text("H20"), "2023");
+    assert_eq!(model._get_text("G40"), "");
+    assert_eq!(model._get_text("K44"), "#N/A");
+    assert_eq!(model._get_text("G60"), "");
+    assert_eq!(model._get_text("H61"), "#VALUE!");
+}

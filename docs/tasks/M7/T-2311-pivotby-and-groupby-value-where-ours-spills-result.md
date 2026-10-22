@@ -3,7 +3,7 @@ id: T-2311
 title: "PIVOTBY and GROUPBY: #VALUE! where ours spills, result widths and lifted arguments (gen-m7)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -15,7 +15,7 @@ depends_on: []
 PIVOTBY and GROUPBY give Excel's result on the gen-m7 cells below: #VALUE! where ours builds (and fails to spill) a pivot, Excel's result width where GROUPBY spills, and Excel's element results where an argument is an array that lifts.
 
 ## Context
-Found by the T-2225 triage of eval/suites/gen-m7 (38 cases, 10,991 Excel-scored cells, excel-graph). Quirk entry: docs/excel-semantics/arrays.md "PIVOTBY and GROUPBY #VALUE! results (gen-m7)".
+Found by the T-2225 triage of eval/suites/gen-m7 (38 cases, 10,991 Excel-scored cells, excel-graph). Quirk entry: docs/excel-semantics/arrays.md "PIVOTBY: an error column total over several value columns is #VALUE! (T-2311)" (was "PIVOTBY and GROUPBY #VALUE! results (gen-m7)").
 
 Needs a probe: the gen-m7 cells do not say why Excel is `#VALUE!`. Five PIVOTBY calls are a single `#VALUE!` where ours is `#SPILL!` (07d27aa0add0247f A708, A992; 90de8755a2e565e6 A1, A285) or spills 12x49 cells (18b80d3fd292d63a A913, `PIVOTBY(Data!B1:B12,Data!A1:B12,Data!A1:D12,LAMBDA(v,NA()))`, 588 lines). Their common traits: multi-column col_fields or values that overlap row_fields, fields holding numbers, text and booleans, and a LAMBDA that returns an error or a number. Probe (excel-probe, research lane, or in this task) PIVOTBY with overlapping fields, an error-returning function and a two-column col_fields on a small table, record the rule in arrays.md, then fix. GROUPBY: 18b80d3fd292d63a A951 is narrower in Excel (C951:E951... empty, ours `#VALUE!`), 611ce3bbfab27cef A1584 and b24ce74f08d3f91a A1778 lift an array field_headers/sort_order/filter argument (Excel spills `#DIV/0!` and `#VALUE!`, ours `#N/IMPL!` or one cell), 18b80d3fd292d63a A1481 is a PIVOTBY with an array filter (ours `#N/IMPL!`), and b24ce74f08d3f91a A1850 (`SCAN(GROUPBY(..,LAMBDA(y,y)),E3,MIN)`) is `#N/A` in Excel. Code: functions/lookup_and_reference/pivotby.rs and groupby.rs. Split the task (lifting vs the #VALUE! rule) if it does not fit one PR.
 
@@ -45,3 +45,6 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 684 known-failure l
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (a wrong type, error, text or value), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Probed the cause (probes/t2311-pivotby-value-cause replays the three gen-m7 Data sheets with one argument varied at a time; probes/t2311-pivotby-value-columns-error isolates the rule on a 4-record table, excel-graph 2026-10-22): with one function over several value columns, an error in any Total column cell (hidden `""` or shown, the grand total included) makes PIVOTBY a single `#VALUE!`; group and Total row cells keep their errors. `check_totals` in pivotby.rs computes those cells for every line (`aggregate_result` gives the function's own result, so an array or reference result's `#VALUE!` does not count). arrays.md entry rewritten (VERIFIED). Eval delta: gen-m7 857 → 265 known failures (−592: the five PIVOTBY formulas, A913's 588 cells included); probes +2 cases (322 cells, 4 new-coverage failures filed as T-2360). The GROUPBY and lifted-argument cells (92 lines: A951, A1584, A1778, A1850, A1481) were split to T-2359, as the task allowed.

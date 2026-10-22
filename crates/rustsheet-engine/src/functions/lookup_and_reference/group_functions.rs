@@ -527,11 +527,27 @@ impl Model {
         cell_rows: Aggregate<'_>,
         cell: CellReferenceIndex,
     ) -> ArrayNode {
+        match self.aggregate_result(functions, pair, values, cell_rows, cell) {
+            Ok(result) => calc_result_to_array_node(result),
+            Err(error) => error,
+        }
+    }
+
+    /// [`Model::aggregate`] before an array or reference result becomes `#VALUE!`: the function's
+    /// own result, or `Err` with the cell when there is no call (an unknown pair, the cap).
+    pub(crate) fn aggregate_result(
+        &mut self,
+        functions: &mut Functions,
+        pair: usize,
+        values: &[Vec<ArrayNode>],
+        cell_rows: Aggregate<'_>,
+        cell: CellReferenceIndex,
+    ) -> Result<CalcResult, ArrayNode> {
         let Some(&(function, column)) = functions.pairs.get(pair) else {
-            return ArrayNode::Error(Error::VALUE);
+            return Err(ArrayNode::Error(Error::VALUE));
         };
         if functions.refused.is_some() {
-            return ArrayNode::Error(Error::ERROR);
+            return Err(ArrayNode::Error(Error::ERROR));
         }
         let relative = cell_rows.relative;
         let (rows, all) = (cell_rows.rows.len() as u64, relative.rows.len() as u64);
@@ -544,12 +560,12 @@ impl Model {
                     .is_some_and(|id| totals.contains_key(&(id, column)));
                 rows.saturating_add(if cached { 0 } else { all })
             }
-            None => return ArrayNode::Error(Error::VALUE),
+            None => return Err(ArrayNode::Error(Error::VALUE)),
         };
         let visits = functions.visits.saturating_add(cost);
         if let Some(error) = too_many_visits(visits, cell) {
             functions.refused = Some(error);
-            return ArrayNode::Error(Error::ERROR);
+            return Err(ArrayNode::Error(Error::ERROR));
         }
         functions.visits = visits;
         let column_of = |rows: &[usize]| {
@@ -561,9 +577,9 @@ impl Model {
         };
         let input = column_of(cell_rows.rows);
         let Some(aggregator) = functions.list.get_mut(function) else {
-            return ArrayNode::Error(Error::VALUE);
+            return Err(ArrayNode::Error(Error::VALUE));
         };
-        let result = match &mut aggregator.call {
+        Ok(match &mut aggregator.call {
             Call::One => self.call_lambda_caller(&mut aggregator.caller, [input], cell),
             Call::Two => {
                 let all = column_of(relative.rows);
@@ -587,8 +603,7 @@ impl Model {
                     cell,
                 )
             }
-        };
-        calc_result_to_array_node(result)
+        })
     }
 }
 
