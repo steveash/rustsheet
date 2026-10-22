@@ -1,0 +1,12 @@
+p4 ladder a x0 2.05000: off=0 0.9308 -> linear law s +162 cycles/x phi 0.1250: 0.9460
+p4 ladder c x0 2.50000: off=0 0.9420 -> linear law s -180 cycles/x phi 0.0000: 0.9480
+p4 ladder e x0 2.95000: off=0 0.9299 -> linear law s -40 cycles/x phi 0.9844: 0.9377
+p3 ladder a x0 2.05000: off=0 0.9308 -> linear law s +1160 cycles/x phi 0.7812: 0.9426
+p3 ladder c x0 2.50000: off=0 0.9420 -> linear law s -1042 cycles/x phi 0.9844: 0.9494
+p3 ladder e x0 2.95000: off=0 0.9299 -> linear law s +52 cycles/x phi 0.9531: 0.9303
+s2 ladder a x0 2.05000: off=0 0.9308 -> linear law s +1004 cycles/x phi 0.0000: 0.9430
+s2 ladder c x0 2.50000: off=0 0.9420 -> linear law s -856 cycles/x phi 0.1406: 0.9482
+s2 ladder e x0 2.95000: off=0 0.9299 -> linear law s -12 cycles/x phi 0.1250: 0.9307
+s4 ladder a x0 2.05000: off=0 0.9308 -> linear law s +0 cycles/x phi 0.0000: 0.9308
+s4 ladder c x0 2.50000: off=0 0.9420 -> linear law s +0 cycles/x phi 0.0000: 0.9420
+s4 ladder e x0 2.95000: off=0 0.9299 -> linear law s +0 cycles/x phi 0.0000: 0.9299

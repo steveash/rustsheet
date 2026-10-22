@@ -25,11 +25,18 @@ P = [float(v) for v in PQ[0]]
 Q = [float(v) for v in PQ[1][:9]]
 
 
+SITE = os.environ.get("SITE", "s3")  # N op carrying the offset: s<j> (sum) or p<j> (product)
+SK, SJ = SITE[0], int(SITE[1:])
+
+
 def nchain(x, off):
     s = LD(P[0]) + 0 * x
     for i in range(1, len(P)):
-        v = sd(s * x) + LD(P[i])
-        if i == 3:
+        pr = s * x
+        if SK == "p" and i == SJ:
+            pr = pr + off * ulp(sd(pr))
+        v = sd(pr) + LD(P[i])
+        if SK == "s" and i == SJ:
             v = v + off * ulp(sd(v))
         s = sd(v)
     return s
