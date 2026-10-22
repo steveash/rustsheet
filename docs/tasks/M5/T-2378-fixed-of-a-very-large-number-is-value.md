@@ -3,7 +3,7 @@ id: T-2378
 title: "FIXED of a very large number is #VALUE! (FIXED(99^100)): find the bound"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -30,9 +30,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 | gen-m5/55afc805e00a1509 Calc!A392 | `=FIXED(((Data!$A3+Data!D3)^100))` | #VALUE! | "36,603,234,127,322,900,000,...,000.00" (269 characters) |
 
 ## Acceptance criteria
-- [ ] A probes case with the cells above, oracle-filled (excel-graph), passes in full; text.md states the bound.
-- [ ] This 1 known-failure line disappears from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] A probes case with the cells above, oracle-filled (excel-graph), passes in full; text.md states the bound.
+- [x] This 1 known-failure line disappears from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 15-digit cut (T-2148, done).
@@ -41,3 +41,11 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 Decision 0083 (gap triage 2026-10-22, T-2252): every cell this task owns has the wrong type, error, text or boolean, or is a
 number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
 criteria above are already the visible-parity stage.
+
+## Outcome
+Probe probes/fixed-dollar-length-bound (excel-graph, 82 cells, 41 formulas and their LEN) shows the bound is the result's
+length, not the magnitude. FIXED is `#VALUE!` past 255 characters, counting sign, commas and decimals. DOLLAR counts its `$`
+and parentheses, and one more character for a value without parentheses (positive 254 prints, 255 is `#VALUE!`; negative 255
+prints), as if the `_)` padding of its positive section counted. Recorded in text.md "FIXED and DOLLAR return at most 255
+characters" (replacing the observation). Implemented in string_format.rs `formatted_result`.
+Eval delta: gen-m5 18 -> 17 (55afc805e00a1509 A392 fixed); the new probe passes 82/82; no regressions.
