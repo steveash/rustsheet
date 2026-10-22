@@ -21,4 +21,4 @@ T-2067 probed MINVERSE (excel-graph). Excel returns `#NUM!` only for `{1,2;2,4}`
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- MDETERM, which already matches Excel on every probed cell.
