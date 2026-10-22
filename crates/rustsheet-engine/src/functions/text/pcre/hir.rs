@@ -88,6 +88,6 @@ pub(super) fn to_hir(ast: &Ast, final_lf: FinalLf) -> Result<Hir, Invalid> {
         | Ast::Atomic(_)
         | Ast::Conditional { .. }
         | Ast::KeepOut
-        | Ast::Unimplemented => return Err(Invalid),
+        | Ast::Grapheme => return Err(Invalid),
     })
 }

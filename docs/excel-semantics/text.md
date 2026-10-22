@@ -733,7 +733,7 @@ U+0085 and VT but not the zero-width space U+200B; the POSIX classes `[[:alpha:]
 `a$`; an LF, CR or U+2028 inside the text does not end a line for `$` or `^`), and `.` does not match LF.
 Evidence: probes/regex-ascii-classes A1-A42 (excel-graph, 2026-10-19).
 Ours: matches, `(*UCP)`, `\h` and `$` before a final LF included since T-1973 (our PCRE2 parser, functions/text/pcre/).
-`\X` and `\R` (A27, A42) parse but stay `#VALUE!` until T-2287.
+`\X` and `\R` (A27, A42) since T-2287 (next entry).
 `\Z` follows `$`'s final-LF rule, as SPEC-0013 reads PCRE2. That is UNVERIFIED for Excel (T-1972); before T-1973 it was
 `#VALUE!`.
 Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them):
@@ -748,6 +748,34 @@ Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them
 its final one still match only at the very end (PCRE2 also matches before the final LF) until T-2355's memoized mode.
 Status: VERIFIED (excel-graph)
 Tasks: T-1829 (probe), T-1900, T-1903, T-2355, T-1973
+
+## `\R` and `\X` are atomic; `\X` is PCRE2's grapheme cluster (T-2287)
+Rule: `\R` is one line break, CR LF or any one of LF, VT, FF, CR, NEL, U+2028 and U+2029, and it never gives back the
+LF of a CR LF. `REGEXEXTRACT(CHAR(13)&CHAR(10),"\R",1)` is one match of length 2. `CHAR(10)&CHAR(13)` is two matches,
+and `CHAR(13)&CHAR(13)&CHAR(10)` is 1 then 2. `^\R$` matches CR LF, but `^\R\n$`, `^\R\R$` and `^\R{2}$` do not. `[\R]` and
+`[\X]` are `#VALUE!`.
+`\X` is one extended grapheme cluster, also atomic: `^\X$` matches `"e"&UNICHAR(769)`, while `^\X\X$` and `^\X.$` do
+not, and `^.\X$` does. The clusters follow UAX #29 without GB9c, so a Devanagari conjunct (U+0915 U+094D U+0937) is
+two clusters, 2 then 1. That points to PCRE2 before 10.43. These all join as UAX #29 says: CR LF; Hangul L V T, LV V
+and L LV; Extend and SpacingMark after anything but a control; Prepend before a letter, a Prepend or an indicator; an
+emoji ZWJ sequence (8 units for the family, 7 with a skin tone); a flag pair (indicators pair up: three are 4 then 2);
+and `©` ZWJ `©`. Two of PCRE2's join-table quirks break where UAX #29 joins. A regional indicator joins nothing but a
+second indicator, so `UNICHAR(127482)&UNICHAR(769)` is 2 then 1, and a ZWJ after an indicator starts a new cluster.
+A Prepend does not join an emoji: `UNICHAR(1536)&UNICHAR(128512)` is 1 then 2. A ZWJ joins an emoji only after an emoji
+and its Extend marks. `"a"` ZWJ emoji is 2 then 2, emoji SpacingMark ZWJ emoji is 4 then 2, emoji ZWJ ZWJ emoji is
+4 then 2, and two emoji with nothing between them are two clusters. `\X` matches nothing in `""`. `\X$` on
+`"ab"&CHAR(13)&CHAR(10)` matches "b" (probes/t2364-regex-dollar-final-cr A1-A2; T-2364: `$` before a final CR LF).
+Evidence: probes/t2287-regex-r-x-spans A1-A49, A51-A53, A58-A64, B1-B24 (excel-graph, 2026-10-22).
+Ours: matches. `\R` is parsed into that atomic group. `\X` is an instruction of the backtracker that charges each
+character it takes (`pcre/grapheme.rs`, with break values from regex-syntax's Unicode tables).
+Unprobed:
+- Characters whose break value changed between Unicode versions. Ours uses regex-syntax's tables, and Excel's PCRE2
+  version is unknown.
+- `\X` starting inside a cluster (after `.` or `\G`). Ours reads a cluster as if one started there, but PCRE2 may look
+  back at earlier indicators or emoji.
+- `\R` and `\X` inside a lookbehind.
+Status: VERIFIED (excel-graph)
+Tasks: T-2287, T-2364
 
 ## REGEX* patterns and match iteration are PCRE2 (T-1688)
 Rule: Excel's patterns are PCRE2's. Backreferences match (`^(ab)\1$` on `abab` TRUE, on `abac` FALSE;
