@@ -288,6 +288,11 @@ Tasks: T-2042, T-2052
   Calc!A159, gen-m5/1315170eef6c413e Calc!A396, gen-m5/50d8a085335c05e6 Calc!A92.
 - CELL lifts over a multi-cell range given as info_type, as over an array: `CELL(INDEX(D2:E9,0,1),A9)` is `#SPILL!` under a
   filled column (ours was `#VALUE!` before T-2161). Evidence: gen-m5/c0651f0e0fb544d0 Calc!A293.
+- An error element of a CELL info_type grid passes through as that error, per element; any other non-text element (number,
+  blank) is `#VALUE!`. `CELL({#N/A,"row"},B2)` spills #N/A, 2; `CELL({"row",#N/A},B2)` spills 2, #N/A; `CELL(D1:D2,B2)` with
+  D1=#DIV/0!, D2="row" spills #DIV/0!, 2; a range `{"row","col"}` at B3 spills 3, 2; `{"row",5}` spills 3, #VALUE!; `{"row",blank,"col"}`
+  spills 3, #VALUE!, 2. Scalar `CELL(A1,B1)` with A1=#N/A is #N/A. Evidence: probes/info-cell-info-type-grid-errors (excel-graph,
+  T-2232); implemented in `lifted_cell`.
 Status: VERIFIED (excel-graph) for the cells cited; TYPE of a one-cell range over a text, boolean, error or blank cell, or
 an OFFSET/INDIRECT result, is UNVERIFIED (every cited cell is numeric; T-2262 probes it). ISEVEN/ISODD implemented (T-2165);
 CELL's range info_type implemented (T-2161, `fn_cell`); TYPE of a one-cell range implemented (T-2156, `fn_type`).
