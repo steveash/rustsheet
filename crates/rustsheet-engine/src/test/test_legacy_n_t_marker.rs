@@ -303,6 +303,9 @@ fn the_legacy_rewrite_marks_n_and_t_over_an_array_valued_call() {
             "T(CHOOSE(1,{\"a\";\"b\"}))",
         ),
         ("N(INDEX({2;3},0,1))", true, "N(INDEX({2;3},0,1))"),
+        // T-2191: the whole of a scalar is an array too (probes/index-zero-index-scalar-shape).
+        ("N(INDEX(5,0,0))", true, "N(INDEX(5,0,0))"),
+        ("N(INDEX(5,0))", true, "N(INDEX(5,0))"),
         ("N(IFS(1,{2;3}))", true, "N(IFS(1,{2;3}))"),
         ("ABS(N(IF(1,{2;3})))", true, "ABS(N(IF(1,{2;3})))"),
         ("N(IF(1,{2;3}))+0", true, "N(IF(1,{2;3}))+0"),
