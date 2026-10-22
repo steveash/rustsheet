@@ -33,12 +33,8 @@ use super::{
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
     util::{get_attribute, get_color, get_number, get_relationship, parse_cell_number},
+    Relationship,
 };
-
-pub(crate) struct Relationship {
-    pub(crate) target: String,
-    pub(crate) rel_type: String,
-}
 
 impl WorkbookXML {
     fn get_defined_names_with_scope(&self) -> Vec<DefinedNameS> {
