@@ -267,7 +267,7 @@ sheet. Re-filling the same workbook (identical input_sha256) at 18:17 gave "b", 
 case changed. The re-probe probes/info-cell-type-cross-sheet-reprobe (excel-graph, 2026-10-22, T-2383) fits the own-sheet rule
 in all 24 cells: `CELL("type",Data!C$9)` bare, under RIGHTB, LEFT and `&""`, as `Data!C9`, `Data!$C9` and `Data!$C$9`, eleven
 repeats of the gen formula (A14:A23, A347) all "b"; rows 8 and 10 "b"; Calc!E9 text gives "l" and Calc!G9 a number "v" for
-`Data!E$9` / `Data!G$9` with Data blank there. So excel-graph can, rarely and not repeatably, answer a cross-sheet "type" from
+`Data!E$9` / `Data!G$9` with Data blank there. So excel-graph can, rarely and not repeatably (one observation, T-2383), answer a cross-sheet "type" from
 the referenced sheet; the rule stands, and a single conflicting cell is re-filled before it is believed.
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
