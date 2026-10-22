@@ -438,7 +438,10 @@ impl Model {
     /// `lift_values` steps 3-7): the output bound (`check_array_size`, `#ERROR!` past it) and the
     /// work bound (`cost`, `too_many_visits`) are checked before any element is computed; then
     /// the elements run in row-major order, in place when one grid is the only lifted argument.
-    /// There, an element whose arguments are all numbers runs `numbers` instead of `kernel`.
+    /// There, an element whose arguments are all numbers runs `numbers` instead of `kernel`. A
+    /// 1x1 grid lifts like any other, also for an array-valued entry: `SEQUENCE({3})` is one
+    /// element, 1, where `SEQUENCE(A3:A3)` never gets here, since a one-cell range is its value
+    /// (probes/m7-lift-take-drop-sortby Sheet1 rows 12 and 38-43; T-2298).
     pub(super) fn lift_grids(
         &mut self,
         lifted: Vec<LiftedArg>,
@@ -452,19 +455,6 @@ impl Model {
             Ok(shape) => shape,
             Err(error) => return error,
         };
-        if options.result == CallResult::Array && (rows, columns) == (1, 1) {
-            // Every grid is one cell: the call runs once on those values and keeps its whole
-            // array, as before T-1834 (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows). Excel
-            // lifts a 1x1 array (`SEQUENCE({3})` is 1x1): TODO(T-2298).
-            let values: Vec<CalcResult> = lifted
-                .into_iter()
-                .map(|arg| match arg {
-                    LiftedArg::Scalar(value) => value,
-                    LiftedArg::Grid(grid) => top_left_of_array(&grid, cell),
-                })
-                .collect();
-            return kernel(self, &values);
-        }
         // Refuse before running anything when the elements would cost too much.
         let (plan, elements) = match options.reuse {
             Reuse::AnyEqual => {
@@ -520,8 +510,8 @@ impl Model {
     /// once per element of the broadcast of `lifted`, as [`Self::lift_grids`] runs it, and each
     /// result is kept as a [`RefElement`]: its reference, or its error (any other value is
     /// `#VALUE!`). The shape and the work (one visit per element) are checked before any element
-    /// runs. When every grid is one cell the call runs once and keeps its result, as a lifted
-    /// `CallResult::Array` call does.
+    /// runs. A 1x1 grid gives one element too: `TAKE(A1:B3,{2})` is one element, A1:B2
+    /// (probes/m7-lift-take-drop-sortby Sheet1 F13, I13:K13; T-2298).
     pub(crate) fn lift_references(
         &mut self,
         lifted: Vec<LiftedArg>,
@@ -539,9 +529,6 @@ impl Model {
                 LiftedArg::Grid(grid) => top_left_of_array(grid, cell),
             })
             .collect();
-        if (rows, columns) == (1, 1) {
-            return RefArg::from(kernel(self, &values));
-        }
         let elements = rows.saturating_mul(columns);
         if let Some(error) = too_many_visits(u64::try_from(elements).unwrap_or(u64::MAX), cell) {
             return RefArg::Value(error);

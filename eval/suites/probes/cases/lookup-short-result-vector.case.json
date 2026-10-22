@@ -1,0 +1,67 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2278: LOOKUP whose one-cell result vector is shorter than the match position (gen-m6/50f0dd9a8ee2cb57 A315), as a value and a reference (ISREF, ROWS, MMULT, WEEKDAY of MMULT).",
+  "tags": [
+    "probe",
+    "lookup",
+    "T-2278",
+    "M6"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A1": true,
+        "C2": 2.5,
+        "Z1": "x",
+        "E4": 0.5,
+        "E5": 0.3,
+        "E6": 0,
+        "E7": -2.5,
+        "E8": 2.5,
+        "E9": -1,
+        "E10": 1,
+        "E11": 0.1,
+        "E12": 100,
+        "B3": false,
+        "B4": 3.14159,
+        "B5": 42,
+        "B6": -1,
+        "B7": "ABC",
+        "B8": -0.0001,
+        "B9": -0.0001,
+        "B10": true,
+        "E25": true,
+        "E26": "x",
+        "E27": 2,
+        "E28": "1.5",
+        "E29": 1,
+        "C23": -2.5,
+        "C26": 1e-15,
+        "C27": true,
+        "D24": 1e-15,
+        "D25": 123456789.123,
+        "D26": "x",
+        "D27": 2.5,
+        "D29": 2.5,
+        "D31": 7,
+        "E30": -0.0001,
+        "E31": 3.14159,
+        "E24": 0.3,
+        "A26": "A1"
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A19": "=ISREF(LOOKUP(Data!A$1,Data!B2:B10,Data!E11:E11))",
+        "A20": "=MMULT(LOOKUP(Data!A$1,Data!B2:B10,Data!E11:E11),2.5)",
+        "A21": "=ROWS(LOOKUP(Data!A$1,Data!B2:B10,Data!E11:E11))",
+        "A23": "=LOOKUP(Data!A$1,Data!B2:B10,Data!E11:E11)",
+        "A24": "=WEEKDAY(MMULT(LOOKUP(Data!A$1,Data!B2:B10,Data!E11:E11),Data!C$2))",
+        "A25": "=LOOKUP(TRUE,Data!B2:B10,Data!E11:E12)",
+        "A26": "=ISREF(LOOKUP(TRUE,Data!B2:B10,Data!E11:E12))"
+      }
+    }
+  ]
+}

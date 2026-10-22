@@ -34,7 +34,8 @@ pub(super) fn lifted_signature(kinds: &ArgKinds, arg_count: usize) -> Vec<Signat
 /// `Unknown`; a `ReferenceByCaller` argument adds the shape of an array that is not a reference
 /// (RANK's `ref`); a `Whole` argument adds nothing. A call with a bad count is a scalar (the count
 /// error). An entry whose unlifted call is an array (SEQUENCE, MAKEARRAY) is `Unknown` when no
-/// lifted argument has a shape larger than 1x1, and the broadcast otherwise (`SEQUENCE({1;2;3})` is 3x1,
+/// lifted argument has a shape larger than 1x1 (a one-cell range and a 1x1 array share that
+/// shape but not the result), and the broadcast otherwise (`SEQUENCE({1;2;3})` is 3x1,
 /// probes/m7-argument-modes F2, G2; SPEC-0011 "Array-valued functions" rule 1).
 pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticResult {
     if !kinds.accepts(args.len()) {
@@ -58,9 +59,11 @@ pub(super) fn lifted_static_result(kinds: &ArgKinds, args: &[Node]) -> StaticRes
         })
         .collect();
     match (kinds.result, broadcast_shapes(shapes)) {
-        // Unlifted, or lifted over 1x1 arrays only, the call runs once and keeps its whole array
-        // (the driver's 1x1 rule; Excel lifts a 1x1 array, TODO(T-2298)), so its shape is not
-        // known.
+        // Unlifted, the call runs once and keeps its whole array, so its shape is not known. A
+        // 1x1 shape is not known either: a one-cell range there is its cell's value and runs the
+        // unlifted call, where a 1x1 array lifts to one element (`SEQUENCE(A3:A3)` spills A3's
+        // rows, `SEQUENCE({3})` is 1x1: probes/m7-lift-take-drop-sortby rows 12 and 40; T-2298),
+        // and the shapes here do not tell the two apart.
         (CallResult::Array, StaticResult::Scalar | StaticResult::Array(1, 1)) => {
             StaticResult::Unknown
         }

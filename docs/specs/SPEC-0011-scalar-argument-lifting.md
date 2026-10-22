@@ -870,7 +870,16 @@ is `Unknown`. Excel keeps that only for a single cell: `SEQUENCE(A3*1)`, `SEQUEN
 `SEQUENCE(IF(TRUE,A3))` and `SEQUENCE(INDEX({3},1,1))` with A3 = 3 spill 3 rows, but a 1x1 array
 lifts to one element: `SEQUENCE({3})`, `SEQUENCE(A3+{0})` and `EXPAND(A1:A2,{3})` are the 1x1 1,
 and `TAKE(A1:B3,{2})` one reference element A1:B2 (probes/m7-lift-take-drop-sortby rows 12-15 and
-38-45, T-1960). T-2298 narrows the rule to single cells.
+38-45, T-1960). **T-2298 deleted the rule**: a 1x1 grid lifts like any other in `lift_grids` and
+`lift_references`, and a single cell never reaches the driver as a grid: a one-cell range is its value
+in the read phase (as before), and every operator reads a one-cell range operand as its cell's value
+(`number_or_array`, `value_or_array` and `string_or_array` in cast.rs), so `SEQUENCE(INDIRECT("A3")*1)`,
+`SEQUENCE(--INDIRECT("A3"))`, `SEQUENCE(INDIRECT("A3")&"")` and `SEQUENCE(IF(INDIRECT("A3")=3,3))` are
+scalar calls (row 39; probes/m7-one-cell-operand-lift F1-F12). OFFSET's, TAKE's and DROP's arguments
+lift a 1x1 array (`lifts_one_by_one`: `OFFSET(A1:B2,{1},0)` and `DROP(A1:B3,{1})` are one element,
+m7-one-cell-operand-lift F6, F7, F16, F17); INDIRECT and TRIMRANGE keep `lifts`, which does not
+(unprobed). The static shape of a 1x1 lift stays
+`Unknown`, since it cannot tell a one-cell range from a 1x1 array.
 
 **4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds:
 ```rust
@@ -935,7 +944,7 @@ CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). SORT is not lifted 
 
 A 1x1 array in a lifted parameter (`SEQUENCE({3})`) is a grid for the driver
 (`LiftedArg::is_grid`), so it gives one element (1), not the 3x1 of `SEQUENCE(3)`: Excel agrees
-(T-1960; "As built (T-1834)" above), so the 1x1 rule must not catch it (T-2298).
+(T-1960; "As built (T-1834)" above); T-2298 deleted the 1x1 rule that caught it.
 
 ### Elements that are references (T-1833)
 A lifted TAKE or DROP keeps each call's whole result: `INDEX(TAKE(A1:B3,{1;2}),1,1)` spills the row
