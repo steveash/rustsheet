@@ -1444,6 +1444,12 @@ of the call with that element in the argument's place, or that call's error. A o
 - Each element's call checks its arguments in its own order. Text that is no number is `#VALUE!` in the element's place, ahead
   of a later argument's error value, and an error element is that error: `GROUPBY(k,v,SUM,0,{1,"x",#N/A},,,1/0)` is `#DIV/0!`,
   `#VALUE!`, `#N/A` (A97).
+- A multi-cell range lifts as an array does (`Data!D1:E1` holding 0 and 1, as field_headers or total_depth: A177, A225), and a
+  blank element reads as 0 (A185).
+- An invalid number comes after a later argument's error value (`GROUPBY(k,v,SUM,0,{5},,,1/0)` and the scalar
+  `...,0,5,,,1/0)` are `#DIV/0!`: A193, A217), but text that is no number comes before it, scalar or lifted
+  (`GROUPBY(k,v,SUM,0,"x",,,1/0)` is `#VALUE!`: A201).
+- Two array options broadcast: `GROUPBY(k,v,SUM,{0,1},{0;1})` is 2x2 (A209:B210; not yet matched, T-2399).
 - `sort_order` does not lift (it takes arrays of its own): `GROUPBY(k,v,SUM,0,1,{1,-1})` with one key is a single `#VALUE!` (A81).
 - REGEXEXTRACT with an invalid return mode (-1) is `#VALUE!`, inside a GROUPBY function too (K1-K10). excel-graph returns those
   spilled cells as rich errors it cannot decode, so the probe reads them through INDEX and ERROR.TYPE (A33, A41; T-2397).
@@ -1451,8 +1457,9 @@ of the call with that element in the argument's place, or that call's error. A o
   (A153, A161; T-2398).
 Evidence: probes/groupby-lifted-args (excel-graph, 2026-10-22, T-2359); gen-m7/18b80d3fd292d63a A1481, 611ce3bbfab27cef A1584,
 b24ce74f08d3f91a A1778.
-Ours: `Model::lifted_option` (functions/lookup_and_reference/lifted_options.rs) re-runs the call once per class of element (a
-whole number within the valid range, another number, a boolean, text that is no number, an error), so an array of any size costs
-at most a few calls. GROUPBY's array `field_relationship` keeps its own lifting (`Model::lifted_groupby`).
+Ours: `Model::lift_options` (functions/lookup_and_reference/lifted_options.rs) evaluates each option once and re-runs the call
+once per class of element (a whole number within the valid range, another number, a boolean, text that is no number, an error),
+with every other argument frozen to its value, so neither an array's size nor nesting multiplies the work.
+`Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
 Status: VERIFIED (excel-graph)
-Tasks: T-2359, T-2397, T-2398
+Tasks: T-2359, T-2397, T-2398, T-2399

@@ -1057,3 +1057,20 @@ fn array_field_headers_and_total_depth_lift_to_top_left_cells() {
         ["East", ""]
     );
 }
+
+#[test]
+fn nested_groupby_evaluates_each_level_once() {
+    // T-2359 review: the lift check must not evaluate the arguments again, or a GROUPBY nested
+    // in the keys of GROUPBY 24 deep, lifted at every level, would take 2^24 evaluations (the
+    // value, an error from the shrinking keys, does not matter here).
+    let mut model = region_sales();
+    let mut formula = "A2:A11".to_string();
+    for _ in 0..24 {
+        formula = format!("TAKE(GROUPBY({formula},B2:B11,LAMBDA(x,SUM(x)),{{0,1}}),,1)");
+    }
+    model._set("D1", &format!("=ROWS({formula})"));
+    let start = std::time::Instant::now();
+    model.evaluate();
+    assert!(start.elapsed().as_secs() < 5, "{:?}", start.elapsed());
+    assert!(!model._get_text("D1").is_empty());
+}

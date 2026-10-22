@@ -36,7 +36,7 @@ Split from T-2311 (which fixed the PIVOTBY `#VALUE!` rule: arrays.md "PIVOTBY: a
 Probe: probes/groupby-lifted-args (excel-graph, 2026-10-22, 129 cells). Rule (arrays.md "GROUPBY and PIVOTBY lift over an
 array field_headers or total depth"): an array `field_headers` or total depth lifts GROUPBY and PIVOTBY. Each element is the
 top-left cell of the element's call, or its error in argument order. A one-element array lifts too, and `sort_order` does not.
-New `Model::lifted_option` (lifted_options.rs) implements it for GROUPBY (`field_headers`, `total_depth`) and PIVOTBY
+New `Model::lift_options` (lifted_options.rs) implements it for GROUPBY (`field_headers`, `total_depth`) and PIVOTBY
 (`field_headers`, `row_total_depth`, `col_total_depth`). It runs one call per element class, so an array's size does not
 multiply the work. Unit tests are in test_fn_groupby.rs and test_fn_pivotby.rs.
 Fixed: 55 of the 92 gen-m7 cells (A1481:D1491, B1584:E1584 with A1585:E1585, A1778:B1778).
@@ -44,5 +44,11 @@ Re-split, each with probe evidence:
 - T-2397 (harness): C951:E962, 36 cells. Excel's value there is `#VALUE!`, which ours already gives. The sidecar holds blanks
   because excel-graph's undecodable rich errors inside a spill are scored as expected blanks.
 - T-2398: A1850, 1 cell. SCAN over a GROUPBY is a single value.
-Eval delta: gen-m7 known failures 111 -> 56 (55 fixed, 0 regressions); probes +129 cells (2 known failures, the SCAN cells,
-owned by T-2398).
+Each option is evaluated once, and each element class runs one call with the other arguments frozen to their values, so
+neither an array's size nor nesting multiplies the work (security review; a 24-deep nesting test). The class loop
+(`Model::lift_by_class`) is shared with GROUPBY's existing `field_relationship` lift (quality review). PIVOTBY's
+`relative_to` lift stays separate because it calls no function. A follow-up probe (A177-A225) covered range lifts, blank
+elements, error order and two arrays at once.
+- T-2399 (new): two array options at once broadcast to 2x2 (A209:B210), which ours does not match yet.
+Eval delta: gen-m7 known failures 111 -> 56 (55 fixed, 0 regressions); probes +185 cells (4 known failures: the SCAN cells
+for T-2398 and A210:B210 for T-2399).
