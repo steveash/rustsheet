@@ -3,7 +3,7 @@ id: T-2308
 title: "MAKEARRAY: rows or columns that are not whole numbers are #VALUE! (gen-m7)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
