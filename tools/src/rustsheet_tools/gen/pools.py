@@ -15,9 +15,9 @@ from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM
 MAX_STRING_LITERAL = 255
 
 
-def entries(text: str) -> list[str]:
-    """The `|`-separated formula texts of `text` (a pool written compactly)."""
-    return [e.strip() for e in text.split("|")]
+def entries(text: str, sep: str = "|") -> list[str]:
+    """The `sep`-separated formula texts of `text` (a pool written compactly)."""
+    return [e.strip() for e in text.split(sep)]
 
 
 POOLS: dict[str, list[str]] = {
@@ -144,33 +144,12 @@ POOLS: dict[str, list[str]] = {
     # side, a lookahead, inline (?i), (?m) and (?s), POSIX and Unicode classes, a named group and its
     # back-reference, \X and \R and a counted repeat. No invalid pattern: excel-graph's error for "[" is a rich
     # value it cannot decode, so the cell would stay pending (T-2286 smoke check).
-    # (A list, not `entries`: the patterns hold `|`.)
-    "regex_pattern": [
-        '"^"',
-        '"$"',
-        '"^$"',
-        '""',
-        '"\\b"',
-        '"a*?"',
-        '"x*"',
-        '"|b"',
-        '"b|"',
-        '"(?=b)|b"',
-        '"(?i)A"',
-        '"(?m)^a"',
-        '"(?s).+"',
-        '"[[:alpha:]]+"',
-        '"\\d+"',
-        '"\\p{L}"',
-        '"[^a-z]"',
-        '"(a)|b"',
-        '"(?<n>\\w)\\k<n>"',
-        '"\\X"',
-        '"\\R"',
-        '"a{2,}"',
-        '"."',
-        '"\\."',
-    ],
+    # (Separated by spaces: the patterns hold `|` and no space.)
+    "regex_pattern": entries(
+        '"^" "$" "^$" "" "\\b" "a*?" "x*" "|b" "b|" "(?=b)|b" "(?i)A" '
+        '"(?m)^a" "(?s).+" "[[:alpha:]]+" "\\d+" "\\p{L}" "[^a-z]" "(a)|b" "(?<n>\\w)\\k<n>" "\\X" "\\R" "a{2,}" "." "\\."',
+        sep=" ",
+    ),
     # LAMBDAs for MAP, BYROW, BYCOL, REDUCE, SCAN and MAKEARRAY, by parameter count (the generator takes only
     # entries of the arity the call needs, and renames x and y to free names): an identity that hands back a
     # reference or a row (BYROW's #CALC!, "BYROW and BYCOL: a LAMBDA result that is an array"), an array or a
