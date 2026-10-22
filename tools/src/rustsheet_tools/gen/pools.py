@@ -257,7 +257,8 @@ POOLS: dict[str, list[str]] = {
     # is -1), leap days and February ends of 2000, 2007, 2008, 2020, 2023 and 2024 ("COUPDAYS basis 1 around 29
     # February"), month ends (31st, 30th, 31 December: month-end coupon schedules), the last serial 2958465 and
     # the first past it, a fractional serial (it truncates) and a text date. Settlement and maturity draw from the
-    # same pool, so the same day and the wrong order both occur.
+    # same pool, so the same day and the wrong order both occur. Kept apart from `date_serial`: a bond needs
+    # coupon-schedule dates (month ends, February ends) and a text date, not time fractions or the 1E+15 serial.
     "security_date": entries(
         "0 | 0.5 | (-1) | 1 | 59 | 60 | 61 | 366 | 36584 | 36585 | 36586 | 39141 | 39448 | 39507 | 43830 | "
         "43831 | 43890 | 44985 | 45322 | 45351 | 45412 | 45535 | 45657 | 47664 | 48638 | 45351.75 | 2958465 | "
