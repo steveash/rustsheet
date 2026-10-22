@@ -529,10 +529,13 @@ C	probes/lookup-index-multicell-lifted.case.json	14
 C	probes/lookup-index-near-integer.case.json	1095
 C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
+C	probes/lookup-match-descending-blank.case.json	18
 C	probes/lookup-pick-aggregates.case.json	64
 C	probes/lookup-pick-index-shapes.case.json	22
 C	probes/lookup-reference-lookup-value-blank-error.case.json	167
 C	probes/lookup-reference-lookup-value.case.json	220
+C	probes/lookup-short-result-vector.case.json	7
+C	probes/lookup-t2278-followups.case.json	14
 C	probes/lookup-vector-blank-result-to-caller.case.json	38
 C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
@@ -1182,6 +1185,7 @@ C	probes/xirr-xnpv-whole-column-nogaps.case.json	8
 C	probes/xlookup-array-lookup-value-args.case.json	57
 C	probes/xlookup-array-lookup-value.case.json	27
 C	probes/xlookup-array-return.case.json	27
+C	probes/xlookup-array-search-mode-indirect.case.json	21
 C	probes/xlookup-omitted-lookup-value.case.json	41
 C	probes/xlookup-row-column-picks.case.json	45
 C	probes/xmatch-blank-extensions.case.json	43
