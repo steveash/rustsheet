@@ -3,7 +3,7 @@ id: T-2093
 title: "F.TEST and FTEST with a scalar or text argument are #DIV/0!, not #VALUE!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
