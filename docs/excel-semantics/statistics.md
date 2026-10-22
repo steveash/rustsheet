@@ -495,7 +495,7 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
   - Legacy ERF and ERFC are identical to the .PRECISE forms.
   - CHIDIST, CHISQ.TEST at df 1 and Z.TEST are wrappers too.
   - Z.TEST with a single-value array returns #DIV/0!. A typed TRUE as the array is such a single value:
-    `Z.TEST(TRUE,0.5,1)` is #DIV/0! (probes-numeric/t1049-ztest A51; a direct boolean is read as a number, T-2049), while typed text is
+    `Z.TEST(TRUE,0.5,1)` is #DIV/0! (probes-numeric/t1049-ztest A51; a direct boolean is accepted as one value; whether it is counted as 1 or skipped is not distinguishable here, both give #DIV/0!, T-2049), while typed text is
     #VALUE! (`Z.TEST("a",4)`, A50) and `Z.TEST(7,4)` #DIV/0! (A41).
   - Odd-df upper chi-square (Q(1.5), Q(2.5)) and the shape-0.5 density use separate generic paths, not this kernel.
 - ERFC kernel for 0.5 < x <= 4 (rounds 7-9): bit-exact.
