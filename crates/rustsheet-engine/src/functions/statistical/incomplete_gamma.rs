@@ -5,7 +5,7 @@
 //!
 //! The incomplete gamma itself is an accurate pair P(a, x), Q(a, x) (T-0971; Excel is close to
 //! correctly rounded for this family, docs/excel-semantics/statistics.md "Incomplete gamma:
-//! accurate kernel"): DiDonato and Morris' prefactor, the power series for P below x = a + 1
+//! accurate kernel"): the prefactor of TOMS 654, the power series for P below x = a + 1
 //! and a continued fraction for Q above it, Q computed directly for a small shape, and a = 1 as
 //! `-expm1(-x)`. [`gamma_inverse_cdf`] is statrs 0.18.0's `Gamma::inverse_cdf` (halve and double
 //! a bracket, then 8 bisections and 4 Newton steps) over that cdf. Neither loop is open: the
@@ -52,6 +52,9 @@ use statrs::prec;
 /// large shape: in 3 million samples (shapes 1E-3 to 2.4E10, rates 1E-12 to 1E12, probabilities
 /// 1E-307 to 1-1E-16, T-1872) the smallest shape whose inversion statrs ends with a number and
 /// that needed more than 2^19 terms was 3.5E8, so the inversions with a smaller shape are kept.
+/// Those counts are statrs' series (T-1872); the accurate one (T-0971) runs to 2^-54, not 1E-15,
+/// about 8% more terms near x = a (a = 5E9 stays under the cap), so an inversion's budget runs
+/// out at a smaller shape: 7.9E8 at p = 1E-5 is past it, 3E8 within (T-2367 measures the bound).
 const MAX_TERMS: u32 = 1 << 19;
 
 /// The terms a cdf or an inversion has left. Once spent, the cdf in progress is NaN.
@@ -106,8 +109,8 @@ fn lower_of_underflow(a: f64) -> f64 {
     }
 }
 
-/// `x - ln(1 + x)` for `x > -1`, without the cancellation of the two terms near 0 (DiDonato and
-/// Morris' `rlog1`): its alternating series below |x| = 1/4, where it converges by a factor of 4 a
+/// `x - ln(1 + x)` for `x > -1`, without the cancellation of the two terms near 0 (TOMS 654
+/// `rlog1`): its alternating series below |x| = 1/4, where it converges by a factor of 4 a
 /// term, else the subtraction itself.
 fn x_minus_ln_1p(x: f64) -> f64 {
     if x.abs() >= 0.25 {
@@ -136,8 +139,8 @@ fn stirling_correction(a: f64) -> f64 {
 
 /// x^a e^-x / Gamma(a), the factor in front of both P(a, x) and Q(a, x). For a large shape the
 /// exponent a ln x - x - ln Gamma(a) cancels to a small number and loses its digits, so it is
-/// rewritten as sqrt(a / 2 pi) exp(-a rlog1(x/a - 1) - correction(a)) (DiDonato and Morris,
-/// TOMS 654 `rcomp`); below 20 it is formed directly.
+/// rewritten as sqrt(a / 2 pi) exp(-a rlog1(x/a - 1) - correction(a)) (TOMS 654
+/// `rcomp`); below 20 it is formed directly.
 fn gamma_prefactor(a: f64, x: f64) -> f64 {
     if a < 20.0 {
         // x^a and e^-x each to within an ulp; their logs summed would carry the absolute error
@@ -220,8 +223,8 @@ fn ln_gamma_1p_small(a: f64) -> f64 {
 /// Euler's constant.
 const EULER_GAMMA: f64 = 0.577_215_664_901_532_9;
 
-/// Q(a, x) for a below [`SMALL_SHAPE`] and x below 1, formed directly (DiDonato and Morris,
-/// TOMS 654 `grat1`): with u = x^a / Gamma(1 + a) and S = sum (-x)^n / (n! (a + n)) over n >= 1,
+/// Q(a, x) for a below [`SMALL_SHAPE`] and x below 1, formed directly (TOMS 654
+/// `grat1`): with u = x^a / Gamma(1 + a) and S = sum (-x)^n / (n! (a + n)) over n >= 1,
 /// P = u (1 + a S), so Q = (1 - u) - u a S, where 1 - u is `-expm1(a ln x - ln Gamma(1 + a))`.
 /// NaN past `terms`.
 fn small_shape_upper(a: f64, x: f64, terms: &mut Terms) -> f64 {

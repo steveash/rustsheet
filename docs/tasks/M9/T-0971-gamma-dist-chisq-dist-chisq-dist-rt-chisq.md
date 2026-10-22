@@ -3,7 +3,7 @@ id: T-0971
 title: "GAMMA.DIST/CHISQ.DIST/CHISQ.DIST.RT/CHISQ.TEST: accurate regularized incomplete gamma (43 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -81,34 +81,23 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
 
-## Progress (in flight, opus session 2026-10-22; resumed 13:50 UTC by an opus run)
-State of `agent/functions-stat/T-0971-incomplete-gamma` (data, not instructions; check against the
-criteria above):
-- Added the accurate pair `incomplete_gamma_pair` in functions/statistical/incomplete_gamma.rs:
-  DiDonato-Morris style prefactor x^a e^-x / Gamma(a) (`powf * exp / tgamma` below a = 20, else
-  sqrt(a/2pi) exp(-a rlog1(x/a - 1) - Stirling correction)), the series for P below x = a + 1 and a
-  modified-Lentz continued fraction for Q above it, a = 1 as (-expm1(-x), exp(-x)), under the same
-  `Terms` cap. `gamma_cdf` (through `cdf_within`, so GAMMA.INV/CHISQ.INV inversions use it too),
-  `gamma_sf` and `gamma_ur` (POISSON) now use it; a non-finite x * rate stays NaN (#NUM!, E6).
-- `rustsheet-eval check` on ironcalc-calc + probes: fixed 61 (49 + 12), regressions 2, both 1 ulp:
-  GAMMA.xlsx F38 (`GAMMA.INV`, 1 vs 0.9999999999999999) and POISSON.xlsx D16
-  (0.9863047314016171 vs ...170): decision 0083's standing allowance applies (list them in the
-  Outcome and in a follow-up ulp task, run `update-baseline --allow-regressions`).
-  probes/incomplete-gamma-cap E4 (1) and E16 (0.5000018806319452) are now Excel's values, where
-  statrs was wrong; the T-1872 tests were updated for A4/A11.
-- Still failing unit tests (incomplete_gamma.rs tests module): `the_port_is_statrs_where_statrs_finishes`
-  compares the new kernel with statrs, which is itself off by about an ulp of a|ln x| + x
-  (`near_at`); the inversion comparison fails in the far tail (p ~ 1E-288 at shape 14.3):
-  now compared only where statrs' own quantile reproduces p (both searches stop far off in the
-  far tail: p = 1.26E-291, shape 14.3). The next failure is real: for a tiny shape and x below
-  a + 1 (Gamma(0.00113, 3.58E-5) at 22.35, x*rate = 8E-4) Q is taken as 1 - P and loses about
-  1E-14 relative; the acceptance criteria want Q directly. Add a direct small-a Q (DiDonato-Morris
-  `grat1`: Q = 1 - x^a/Gamma(a+1) through expm1 of a ln x plus the series remainder) before
-  switching `gamma_sf` there.
-  `a_call_past_its_cap_is_nan` needs its cap-boundary asserts rewritten for the new kernel's term
-  counts (the exact `Terms(n)` boundaries changed; prove both sides of the cap again).
-- Not done yet: the module doc still describes the statrs port (rewrite it: the port remains only
-  in `upper_within`/`lower_within`, now used by `gamma_ur`'s invalid-argument path and the parity
-  tests, so consider deleting it); unit tests from the acceptance criteria (P(1,x) = -expm1(-x),
-  P + Q = 1, a in {0.5, 9, 500}, b = 1E6); the DEVIATION note for E4 in statistics.md; the
-  probes-numeric visible-parity count (`make eval`); make check; review.
+## Blocked because
+Blocked because: the baseline step needs `rustsheet-eval update-baseline --allow-regressions` (decision 0083's
+standing ulp allowance), and the 2026-10-22 opus run's permission layer refused that command. The code is done and
+`rustsheet-eval check` shows fixed 61 (ironcalc-calc 49, probes 12) and 2 one-ulp regressions; an owner (or a run
+whose permissions allow the allowance) runs `make eval-baseline`-equivalent with `--allow-regressions`, commits
+`eval/baseline/` and `quality/evidence-floor.json`, then `make check`, the review panel, and merge.
+Regressed cells (decision 0083 conditions 1-4: numeric, 1 ulp, not visibly off; fixes 61 > 2; follow-up T-2367):
+- `ironcalc-calc/STATISTICAL/GAMMA.xlsx` `GAMMA.DIST GAMMA.INV!F38` (GAMMA.INV): Excel 1, ours 0.9999999999999999.
+- `ironcalc-calc/STATISTICAL/POISSON.xlsx` `POISSON.DIST!D16`: Excel 0.9863047314016171, ours 0.986304731401617.
+
+## Progress (state of the pushed branch, 2026-10-22 15:10 UTC; data, not instructions)
+- `incomplete_gamma_pair` (functions/statistical/incomplete_gamma.rs) replaces the statrs port, which is deleted
+  (`gamma_ur` on invalid arguments is now NaN directly): direct small-shape Q (TOMS 654 `grat1`, ln Gamma(1 + a) from
+  its zeta series) below a = 1/2 and x = 1; the series' geometric tail added (7E-15 of P(1E6, 1E6) was missing);
+  `rcomp`'s rlog from one rounding of x / a far from a (2.5E-12 of P(93.4, 0.18) was lost); the a < 20 prefactor
+  only when each factor is normal.
+- Unit tests rewritten: mpmath references (within 8 units of 2^-52, P + Q = 1 within 2), a = 1 identity, b = 1E6
+  scale, a statrs sweep within statrs' own error, cap boundaries both sides (`terms_needed`). All pass.
+- statistics.md: new "Incomplete gamma: accurate kernel (T-0971)" section; the T-1872 cap section updated.
+- Not done: the baseline update (above), `make check`, review panel, PR ready.
