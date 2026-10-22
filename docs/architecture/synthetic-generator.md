@@ -631,6 +631,10 @@ sheet. The sheet count is sampled from {1: 50%, 2–3: 40%, 4–8: 10%}, skewed 
 matching the corpus median of 1 worksheet. Sheet names include spaces, quotes, unicode and
 names that look like cell refs (`'A1'`, `'R1C1'`, `'TRUE'`) to exercise quoting.
 
+As built (T-2396): a case that calls GETPIVOTDATA (catalog `pivot: true`) gets a third sheet, `Pivot`, with a seeded
+source block and one compact-form pivot over it (spec `pivot_tables`); every GETPIVOTDATA call in the case queries
+that pivot, with deliberate `#REF!` misses (tools/src/rustsheet_tools/gen/pivots.py).
+
 ### 7.2 Realistic data tables
 
 A table is a list of **column archetypes**, each a generator:
