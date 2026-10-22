@@ -1,10 +1,14 @@
 //! REGEXREPLACE's replacement text: PCRE2's extended substitution syntax, parsed once per
 //! pattern, and the case forcing it applies (text.md "REGEXREPLACE replacement syntax").
 
-use regex_automata::{util::captures::Captures, Match};
+use regex_automata::{
+    util::captures::{Captures, GroupInfo},
+    Match, PatternID,
+};
 
 use super::{
-    regex_engine::{Engine, Search, Spent},
+    regex_engine::Spent,
+    regex_search::Search,
     string_format::{lower_case, upper_case},
 };
 
@@ -165,13 +169,13 @@ fn is_name_char(c: char) -> bool {
 }
 
 impl Replacement {
-    /// Parses `text` for a pattern compiled to `engine`; `None` when Excel gives `#VALUE!` for
-    /// it: a group the pattern does not have (`$2`, `\2`, `${y}` with one unnamed group), a `$`
-    /// that starts no reference, a trailing `\`, `\0` or a letter escape other than `\n` and
-    /// `\t` (probes/regex-pcre2-features B15-B24, B30). A backslash before any other character
-    /// is that character (`\-`, `\é`; E6, E7). The `?`s on slices of the text never fail: they
-    /// cut at the ASCII `$`, `\` and digits the scan found.
-    pub(super) fn new(engine: &Engine, text: &str) -> Option<Self> {
+    /// Parses `text` for a pattern with the capture groups `groups`; `None` when Excel gives
+    /// `#VALUE!` for it: a group the pattern does not have (`$2`, `\2`, `${y}` with one unnamed
+    /// group), a `$` that starts no reference, a trailing `\`, `\0` or a letter escape other
+    /// than `\n` and `\t` (probes/regex-pcre2-features B15-B24, B30). A backslash before any
+    /// other character is that character (`\-`, `\é`; E6, E7). The `?`s on slices of the text
+    /// never fail: they cut at the ASCII `$`, `\` and digits the scan found.
+    pub(super) fn new(groups: &GroupInfo, text: &str) -> Option<Self> {
         let mut pieces = Vec::new();
         let mut literal = String::new();
         let mut rest = text;
@@ -186,7 +190,7 @@ impl Replacement {
                 literal.push(next);
                 None
             } else if backslash && next.is_ascii_digit() {
-                match Replacement::digit_escape(engine, after) {
+                match Replacement::digit_escape(groups, after) {
                     Some(Ok(group)) => Some(group),
                     Some(Err((c, used))) => {
                         literal.push(c);
@@ -214,11 +218,11 @@ impl Replacement {
                 rest = after.get(used..)?;
                 continue;
             } else {
-                Some(Replacement::dollar_group(engine, after)?)
+                Some(Replacement::dollar_group(groups, after)?)
             };
             let used = match reference {
                 Some((index, used)) => {
-                    if index >= engine.group_len() {
+                    if index >= groups.group_len(PatternID::ZERO) {
                         return None;
                     }
                     if !literal.is_empty() {
@@ -272,7 +276,10 @@ impl Replacement {
     /// a group (a missing one is `#VALUE!`), else three octal digits up to `\377` are a
     /// character. `\0` takes one or two more octal digits and needs at least one
     /// (probes/regexreplace-extended-escapes A37, C1-C14, D1-D11, E1-E7, I11-I14).
-    fn digit_escape(engine: &Engine, after: &str) -> Option<Result<(usize, usize), (char, usize)>> {
+    fn digit_escape(
+        groups: &GroupInfo,
+        after: &str,
+    ) -> Option<Result<(usize, usize), (char, usize)>> {
         if let Some(zeroed) = after.strip_prefix('0') {
             let more = run_len(zeroed, |c| ('0'..='7').contains(&c)).min(2);
             if more == 0 {
@@ -282,7 +289,7 @@ impl Replacement {
         }
         let digits = run_len(after, |c| c.is_ascii_digit());
         let index = group_number(after.get(..digits)?);
-        if index.is_some_and(|i| i < 10 || i < engine.group_len()) {
+        if index.is_some_and(|i| i < 10 || i < groups.group_len(PatternID::ZERO)) {
             return Some(Ok((index?, digits)));
         }
         let code = after
@@ -342,12 +349,12 @@ impl Replacement {
 
     /// The group a `$` followed by `after` refers to and the bytes of `after` the reference
     /// takes; `None` when it is no reference or names no group of the pattern.
-    fn dollar_group(engine: &Engine, after: &str) -> Option<(usize, usize)> {
+    fn dollar_group(groups: &GroupInfo, after: &str) -> Option<(usize, usize)> {
         let resolve = |name: &str| {
             if name.bytes().all(|b| b.is_ascii_digit()) {
                 group_number(name)
             } else {
-                engine.group_index(name)
+                groups.to_index(PatternID::ZERO, name)
             }
         };
         let digits = run_len(after, |c| c.is_ascii_digit());
@@ -407,7 +414,7 @@ impl Replacement {
             })?;
             return Ok(len);
         }
-        let mut caps = search.engine.create_captures();
+        let mut caps = search.create_captures();
         search.for_each_captures(text, &mut caps, |caps| {
             let whole = caps.get_match().map_or(0, |m| m.len());
             len = len
@@ -462,7 +469,7 @@ impl Replacement {
             out.push_str(text.get(last..).unwrap_or_default());
             return Ok(out);
         }
-        let mut caps = search.engine.create_captures();
+        let mut caps = search.create_captures();
         search.for_each_captures(text, &mut caps, |caps| {
             if let Some(m) = caps.get_match() {
                 out.push_str(text.get(last..m.start()).unwrap_or_default());

@@ -20,9 +20,10 @@ impl Model {
         let [x, mean, std_dev] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
-        // TODO(T-1755): Excel reads a TRUE as 1 here (probes/stats-evidence-floor-t1623 Q58,
-        // probes/stat-later-argument-lift L14).
-        let x = self.cast_number_no_bools_ref(x, cell)?;
+        // Excel reads a TRUE as 1 for x (probes/stats-evidence-floor-t1623 Q58,
+        // probes/stat-later-argument-lift L14); mean and standard_dev are unprobed, so they keep
+        // the boolean-is-#VALUE! read.
+        let x = self.cast_number_ref(x, cell)?;
         let mean = self.cast_number_no_bools_ref(mean, cell)?;
         let std_dev = self.cast_number_no_bools_ref(std_dev, cell)?;
         if std_dev <= 0.0 {

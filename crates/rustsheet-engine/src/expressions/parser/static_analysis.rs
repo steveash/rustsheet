@@ -29,10 +29,10 @@ use signature::{
     args_signature_lambda, args_signature_let, args_signature_lookup, args_signature_map,
     args_signature_match, args_signature_npv, args_signature_offset, args_signature_one_vector,
     args_signature_pivotby, args_signature_randarray, args_signature_reduce, args_signature_row,
-    args_signature_scalars, args_signature_scan, args_signature_sort, args_signature_sortby,
-    args_signature_sumif, args_signature_textafter, args_signature_textjoin,
-    args_signature_textsplit, args_signature_tocol, args_signature_trimrange,
-    args_signature_wrapcols, args_signature_xlookup, args_signature_xmatch, Signature,
+    args_signature_scalars, args_signature_scan, args_signature_sort, args_signature_sumif,
+    args_signature_textafter, args_signature_textjoin, args_signature_textsplit,
+    args_signature_tocol, args_signature_trimrange, args_signature_wrapcols,
+    args_signature_xlookup, args_signature_xmatch, Signature,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -113,13 +113,28 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         | Node::EmptyArgKind
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
-        | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
         | Node::OpUnionKind { .. }
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
+        // A span of one sheet is that sheet's reference (`=@Data1:Data1!A1` is 1,
+        // probes/3d-ref-span-edges B2), so its range gets the `@` a plain range gets (T-2351).
+        // A wider span is `#REF!` as a value either way and gets none.
+        Node::SheetSpanKind {
+            first_index,
+            last_index,
+            reference,
+            ..
+        } => {
+            if add
+                && first_index == last_index
+                && matches!(reference.as_ref(), Node::RangeKind { .. })
+            {
+                *node = Node::automatic_at(node.clone());
+            }
+        }
         Node::ImplicitIntersection { child, .. } => {
             // We need to check whether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
@@ -312,8 +327,22 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
             StaticResult::Unknown
         }
-        // A 3-D reference is a value only as an error (`#REF!`), so it never spills.
-        Node::ReferenceKind { .. } | Node::SheetSpanKind { .. } => StaticResult::Scalar,
+        Node::ReferenceKind { .. } => StaticResult::Scalar,
+        // A span of one sheet evaluates as that sheet's reference, so it has its shape
+        // (`Model::get_sheet_span_value`, T-2351); a wider 3-D reference is a value only as an
+        // error (`#REF!`), so it never spills.
+        Node::SheetSpanKind {
+            first_index,
+            last_index,
+            reference,
+            ..
+        } => {
+            if first_index == last_index {
+                run_static_analysis_on_node(reference)
+            } else {
+                StaticResult::Scalar
+            }
+        }
 
         // binary operations
         Node::OpConcatenateKind { .. }
@@ -458,7 +487,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Xmatch => args_signature_xmatch(arg_count),
         Function::Trimrange => args_signature_trimrange(arg_count),
         Function::Sort => args_signature_sort(arg_count),
-        Function::Sortby => args_signature_sortby(arg_count),
         Function::Filter => args_signature_filter(arg_count),
         Function::Torow => args_signature_tocol(arg_count),
         Function::Transpose => args_signature_one_vector(arg_count),
@@ -718,7 +746,7 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
                 .map(|(_, a)| a),
         ),
         Function::Trimrange => reference_result::static_analysis_trimrange(args),
-        Function::Sort | Function::Sortby => StaticResult::Unknown,
+        Function::Sort => StaticResult::Unknown,
         Function::Filter => StaticResult::Unknown,
         Function::Torow | Function::Transpose => StaticResult::Unknown,
         Function::Mmult => StaticResult::Unknown,

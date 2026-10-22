@@ -13,7 +13,7 @@ use crate::functions::Function;
 const CONCATENATE: ArgKinds = ArgKinds {
     required: 1,
     params: &[],
-    repeat: Some(Lift),
+    repeat: &[Lift],
     max: 255,
     work: Constant,
     result: CallResult::Value,

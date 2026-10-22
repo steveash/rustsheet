@@ -80,10 +80,11 @@ fn ranges_lift_on_their_own_rows() {
 #[test]
 fn each_element_is_the_scalar_call_with_its_own_error() {
     let mut model = new_empty_model();
-    // A boolean count is #VALUE!, as in the scalar call; an error element is its error.
-    model._set("A1", "=INDEX(HYPGEOMDIST({2;TRUE},3,5,10),2)");
+    // A boolean count other than sample_s is #VALUE!, as in the scalar call; an error element is
+    // its error.
+    model._set("A1", "=INDEX(HYPGEOMDIST(2,{3;TRUE},5,10),2)");
     model._set("A2", "=INDEX(HYPGEOM.DIST({2;#N/A},3,5,10,TRUE),2)");
-    // Each element is checked alone: sample_s above number_sample is #NUM!.
+    // Each element is checked alone: sample_s above number_sample is 1.
     model._set("A3", "=INDEX(HYPGEOM.DIST({2;4},3,5,10,TRUE),2)");
     model._set("A4", "=ROUND(INDEX(HYPGEOM.DIST({2;4},3,5,10,TRUE),1),12)");
     // `cumulative` per element, the text "TRUE" and "FALSE" too.
@@ -99,7 +100,7 @@ fn each_element_is_the_scalar_call_with_its_own_error() {
     let expected = [
         ("A1", "#VALUE!"),
         ("A2", "#N/A"),
-        ("A3", "#NUM!"),
+        ("A3", "1"),
         ("A4", "0.916666667"),
         ("A5", "0.416666667"),
         ("A6", "#VALUE!"),

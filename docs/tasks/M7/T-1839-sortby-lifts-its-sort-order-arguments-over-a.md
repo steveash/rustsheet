@@ -3,7 +3,7 @@ id: T-1839
 title: "SORTBY lifts its sort_order arguments over a range or an array (alternating by_array/sort_order kinds in the lifting table)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -50,16 +50,29 @@ Owned gen-m7 cells (T-2225 triage, excel-graph, 2026-10-21): 80 known-failure li
 - gen-m7/b24ce74f08d3f91a.case.json A581 `=SORTBY(Data!E1:E12,Data!B1:B12,42,COUNT(Data!D6:D11),WEEKNUM(40212),"ü",IF(ISNUMBER(Data!C8),INDEX(Data!B6:D12,1,Data!D5),FIND(Data!B2,Data!B11)))`: B581 Excel #VALUE!, ours <empty>; cells (2): B581:C581
 
 ## Acceptance criteria
-- [ ] The 80 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 80 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
-- [ ] Visible parity: the 4 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 4 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Sheet Sort of probes/m7-lift-take-drop-sortby passes.
-- [ ] probes/m7-argument-modes F26:H26 and probes/sort-error-args H97-H99 pass and F56:H56 still pass; their lines leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures.
-- [ ] SORTBY has a table entry citing those cells; its fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes); a unit test checks the kinds of arguments 1-6 and that the accepted argument counts are those `fn_sortby` accepts today (2, 3, then odd counts from 5; an even count above 3 is the count error).
-- [ ] Unit tests: an unlifted SORTBY is unchanged (value and static shape); a lifted sort_order2 in a two-key call lifts; a by_array given as an array literal is not lifted; a lifted call over a large array is `#ERROR!` past the visit cap.
-- [ ] `make check` green; reviewers approve.
+- [x] The 80 gen-m7 cells listed under Context (T-2225 triage) match Excel: their 80 known-failure lines leave eval/baseline/gen-m7.txt (`make eval-baseline`), with no new known failures.
+- [x] Visible parity: the 4 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 4 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] Sheet Sort of probes/m7-lift-take-drop-sortby passes.
+- [x] probes/m7-argument-modes F26:H26 and probes/sort-error-args H97-H99 pass and F56:H56 still pass; their lines leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failures.
+- [x] SORTBY has a table entry citing those cells; its fallback arms are gone (`no_function_in_the_table_has_a_fallback_arm` passes); a unit test checks the kinds of arguments 1-6 and that the accepted argument counts are those `fn_sortby` accepts today (2, 3, then odd counts from 5; an even count above 3 is the count error).
+- [x] Unit tests: an unlifted SORTBY is unchanged (value and static shape); a lifted sort_order2 in a two-key call lifts; a by_array given as an array literal is not lifted; a lifted call over a large array is `#ERROR!` past the visit cap.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SORT (T-1837); SORT's and SORTBY's argument-error order (T-1351).
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (`#N/IMPL!` where Excel lifts SORTBY), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+- **Repeat cycle.** `ArgKinds::repeat` is a cycle of kinds (`&'static [ArgKind]`). `kind` takes it in turn and `accepts` only whole cycles; an empty cycle takes nothing past `params`. `LiftKinds::repeat`, `eval/catalog/lift-kinds.json` (regenerated) and `catalog_lift.py` read it as a list.
+- **SORTBY entry.** SORTBY's entry is `[WholeByCaller, WholeByCaller, Lift]` + `[WholeByCaller, Lift]`, `CallResult::ArrayFirst`.
+  - `fn_sortby` reads the array and the by_arrays once and charges their cells per element.
+  - Its kernel `sortby_of` keeps the left-to-right first-error order.
+  - `LiftOptions::later_error` makes the emptied elements `#VALUE!` when the call has a second pair.
+  - SORTBY's fallback signature and shape arms are deleted. The metamorphic test checks only accepted counts.
+- Tests: `test_fn_sortby_lift.rs` (kinds and counts, unlifted, lifted, the literal by_array, the visit cap) and a driver test for the cycle.
+- Eval delta:
+  - gen-m7: 950 → 870 known failures (the 80 owned lines).
+  - probes: 2480 → 2022 (458 fixed, including sheet Sort, m7-argument-modes F26:H26 and sort-error-args H97-H99).
+  - Regressions: 0 in every suite.
