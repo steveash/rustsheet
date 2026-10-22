@@ -3,7 +3,7 @@ id: T-1835
 title: "EXPAND, WRAPROWS and WRAPCOLS lift their scalar arguments over a range or an array"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
