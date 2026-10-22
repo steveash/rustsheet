@@ -238,7 +238,7 @@ pub(super) fn legacy_array_call_at(
 /// The functions that switch off every automatic `@` of a legacy formula holding one, as SWITCH
 /// does: XLOOKUP, FILTER, SORT, SEQUENCE, UNIQUE and TAKE behave alike, while IFS, MAXIFS
 /// and LET keep theirs (probes/legacy-at-let-lambda-dynamic-funcs, T-2387).
-const NO_AUTOMATIC_AT: [Function; 7] = [
+pub(super) const NO_AUTOMATIC_AT: [Function; 7] = [
     Function::Switch,
     Function::Xlookup,
     Function::Filter,

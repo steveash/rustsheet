@@ -7,7 +7,7 @@ use crate::functions::Function;
 use super::add_implicit_intersection;
 use super::legacy::{
     leaves_call_whole, legacy_array_context, legacy_context_intersects, remove_array_at,
-    remove_in_array_context,
+    remove_in_array_context, NO_AUTOMATIC_AT,
 };
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, get_function_args_signature,
@@ -33,9 +33,9 @@ use super::{
 /// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
 /// (a formula is evaluated in a scalar context).
 pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
-    // The import adds no `@` to a formula holding a SWITCH, so every `@` in it is meaningful
+    // The import adds no `@` to a formula holding a SWITCH or another `NO_AUTOMATIC_AT` function, so every `@` in it is meaningful
     // (`add_root_legacy_intersection`, probes/legacy-switch-callers).
-    if add && node.contains_function(&[Function::Switch]) {
+    if add && node.contains_function(&NO_AUTOMATIC_AT) {
         return;
     }
     remove_redundant_legacy_intersection(node, add, add);

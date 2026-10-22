@@ -785,6 +785,18 @@ fn legacy_array_values_intersect_in_value_positions() {
             "@SWITCH(1,1,{2;3})",
             "_xlfn.SINGLE(_xlfn.SWITCH(1,1,{2;3}))",
         ),
+        // The same holds for the other functions that switch the automatic `@` off: a typed `@` is
+        // kept, a bare call is not marked (probes/legacy-at-let-lambda-dynamic-funcs, T-2387).
+        (
+            "ABS(Z30:Z32)+_xlfn.XLOOKUP(2,Z30:Z32,Z30:Z32)",
+            "ABS(Z30:Z32)+XLOOKUP(2,Z30:Z32,Z30:Z32)",
+            "ABS(Z30:Z32)+_xlfn.XLOOKUP(2,Z30:Z32,Z30:Z32)",
+        ),
+        (
+            "ABS(_xlfn.SINGLE(Z30:Z32))+_xlfn.XLOOKUP(2,Z30:Z32,Z30:Z32)",
+            "ABS(@Z30:Z32)+XLOOKUP(2,Z30:Z32,Z30:Z32)",
+            "ABS(_xlfn.SINGLE(Z30:Z32))+_xlfn.XLOOKUP(2,Z30:Z32,Z30:Z32)",
+        ),
         (
             "ABS(_xlfn.SWITCH(1,1,{-2;3}))",
             "ABS(SWITCH(1,1,{-2;3}))",
