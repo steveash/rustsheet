@@ -278,3 +278,16 @@ fn fields_come_from_the_serial_rounded_to_the_second() {
         );
     }
 }
+
+#[test]
+fn fraction_digits_round_into_the_next_day() {
+    // 0.99999999999 is 23:59:59.999999; `.000` rounds it up to midnight of the next date.
+    assert_eq!(
+        format_in(
+            0.999_999_999_99,
+            "yyyy-mm-dd hh:mm:ss.000",
+            DateSystem::Excel1900
+        ),
+        "1900-01-01 00:00:00.000"
+    );
+}
