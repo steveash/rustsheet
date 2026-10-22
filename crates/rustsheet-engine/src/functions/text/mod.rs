@@ -12,7 +12,7 @@ mod lifted;
 mod position;
 mod regex_engine;
 mod regex_functions;
-mod regex_posix;
+mod pcre;
 mod regex_reach;
 mod regex_replacement;
 mod string_format;
