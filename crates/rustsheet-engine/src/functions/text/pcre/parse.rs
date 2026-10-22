@@ -16,6 +16,11 @@ pub(super) const NEST_LIMIT: u32 = 250;
 /// PCRE2's largest repeat count (`a{65536}` is a compile error).
 const MAX_REPEAT: u32 = 65_535;
 
+/// Compile-budget units per code point a case fold walks: regex-syntax's simple folding takes
+/// about 5 ns a code point in a release build (T-2138), so a call's 128 MiB compile budget
+/// folds at most 16 M code points, under 0.1 s, before the parser stops folding.
+const FOLD_UNITS: usize = 8;
+
 /// PCRE2's longest group name.
 const MAX_NAME: usize = 32;
 
@@ -745,13 +750,14 @@ impl Parser {
         Ok(class)
     }
 
-    /// Charges folding `class`, by the code points it covers; whether it may be folded.
+    /// Charges folding `class`, [`FOLD_UNITS`] per code point it covers; whether it may be
+    /// folded.
     fn charge_fold(&mut self, class: &ClassUnicode) -> bool {
         let span = class.iter().fold(0usize, |sum, range| {
             let span = u32::from(range.end()) - u32::from(range.start()) + 1;
             sum.saturating_add(usize::try_from(span).unwrap_or(usize::MAX))
         });
-        self.charge(span)
+        self.charge(span.saturating_mul(FOLD_UNITS))
     }
 
     /// Adds `units` to the fold cost; false, and the cost `usize::MAX`, once past the budget.

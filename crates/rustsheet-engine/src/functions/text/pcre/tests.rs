@@ -154,9 +154,13 @@ fn backtracking_constructs_parse_but_stay_unsupported() {
 #[test]
 fn unknown_constructs_fail_closed() {
     for pattern in [
-        "(", ")", "a{2,1}", "*", "(?P>x)", "(*FAIL)", r"\v", r"\N", "a{,3}", "(?|a)",
+        "(", ")", "a{2,1}", "*", "(?P>x)", "(*FAIL)", r"\v", r"\N", "a{,3}", "(?|a)", "a{1, 2}",
+        "a{ 2}", "[a--b]", "[a~~b]", "[a||b]",
     ] {
         assert!(invalid(pattern), "{pattern}");
+    }
+    for pattern in ["x{ }", "[a|b]", "[a-]", "[a~b]"] {
+        assert!(!invalid(pattern), "{pattern}");
     }
     // A brace that starts no quantifier is a literal in PCRE2.
     assert!(matches("a{x", "a{x", false));
@@ -195,7 +199,7 @@ fn folding_stops_at_its_budget() {
         translate("[a-c]", true, FinalLf::EndLf, 100)
             .unwrap()
             .fold_cost,
-        3
+        24
     );
 }
 

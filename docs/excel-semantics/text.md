@@ -728,6 +728,8 @@ Other syntax that T-1973 changed without a probe (UNVERIFIED, T-1972 probes them
 - Now accepted as PCRE2 reads it: `(?n)`, `(?-)`, `(?'name'..)`, `\e`, `\cX`, `[\b]`, `\p{^Lu}`, a `{` that starts
   no quantifier (a literal), and spaces inside a bracket under `(?x)` (literal).
 - Changed meaning: `\<` is a literal `<`, not a word start.
+- Unchanged, but unlike stock PCRE2: `(?m)^` also matches after a final LF (`REGEXREPLACE("a"&CHAR(10),"(?m)^","x")` is
+  "xa\nx" in ours).
 - Now `#VALUE!` (fail closed): `\v` (was VT), `^*`, and spaces inside quantifier braces (`a{1, 2}`, a quantifier
   before). Also `--`, `~~` and `||` inside a bracket, which were set operations; Excel's nested brackets suggest a
   UTS #18 dialect, where they may be set operations too. `$` and `\Z` on a text that holds another LF before
@@ -753,7 +755,7 @@ Ours: PCRE2's grammar since T-1973 (functions/text/pcre/): comments, `\Q..\E`, `
 (C14-C19). Backreferences, lookaround, atomic groups, possessive quantifiers, `\K`, `\G` and conditionals parse
 but are `#VALUE!` until T-1900's backtracker. Excel's answer for `a++a` is `#N/A` (B29). C11 passes only because it
 tests ISERROR. Possessive patterns whose result does not depend on possessiveness (`REGEXTEST("aaa","a++")`, TRUE
-in Excel) were right before T-1973 and are `#VALUE!` until T-1900. SPEC-0013 accepts that temporary loss. Iteration is
+in PCRE2, unprobed in Excel) were right before T-1973 and are `#VALUE!` until T-1900. SPEC-0013 accepts that temporary loss. Iteration is
 still Rust's (`bababab`) until T-1899. The matcher is designed in SPEC-0013 (T-1898): T-1972 (probe of limits and
 unprobed features), T-1973 (parser), T-1900 (backtracker and pattern features), T-1899 (iteration), T-1974 (costs).
 Status: VERIFIED (excel-graph)
