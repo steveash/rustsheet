@@ -755,7 +755,7 @@ the text "TRUE" (L2) and a one-cell range or reference as its value (`BETA.DIST(
 and STANDARDIZE (probes-numeric/t1049-fdistrt A19, A26, m9-legacy-fdist A90; "SKEW, SKEW.P, KURT, ..." below).
 Evidence: probes/stat-later-argument-lift (141 formula cells, value cells rounded to 12 places, excel-graph, 2026-10-17, T-1290); probes/stat-argument-modes.
 Ours: matches (T-1290), except that BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as `#VALUE!`, as their scalar
-calls always did (L1, L13: T-1849; STANDARDIZE, L14: T-1755; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
+calls always did (L1, L13: T-1849; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
 in the lifting table and each kernel reads its arguments in its scalar order; T.DIST.2T and TDIST read every argument
 before they check any ("Overflowing arguments, PERMUT's limit and argument error order" below). One scalar change
 here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and
@@ -2221,7 +2221,7 @@ as does a wrong argument count (`STANDARDIZE(5,3)`, a three-range `SUMX2PY2`); `
 written `_xlfn.`-prefixed in the file.
 Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
 Status: VERIFIED (excel-graph).
-Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404 and HARMEAN of no numbers (`#N/A`, Q50) by T-1753; the others above are open.
+Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404, HARMEAN of no numbers (`#N/A`, Q50) by T-1753, and the direct TRUE in STANDARDIZE's x (Q58, and L14 of probes/stat-later-argument-lift) by T-1755; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755
 
 ## AGGREGATE 14-19: k is read before the array, a referenced error k is `#VALUE!` (T-2281)
