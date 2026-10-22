@@ -1540,12 +1540,14 @@ position past a shorter array is `#N/A`). Examples:
 - Each element keeps its own form: `AGGREGATE({9,14},0,E1:E6,2)` is `#VALUE!` (2 is not a reference), then 5.
 - Invalid elements fail alone: `{1,"x",TRUE}` gives 3.83, `#VALUE!`, 3.83, and `{9,99}` gives 23, `#VALUE!`.
 - A range fourth argument is a reference, not lifted: `AGGREGATE({9,4},0,E1:E6,E1:E2)` spills 27, 9.
-
-Observation (T-2381): `SERIESSUM(MINVERSE(0.2),-AGGREGATE(15,Data!$C12,Data!A6:C12,Data!B2:E12),2,1E+15)` with C12 = -0.0001
-is `#VALUE!` (gen-m5/c634f6ec7b14fe08 Calc!A322, excel-graph, 2026-10-22); ours is `#NUM!` from the AGGREGATE, which truncates the
-option to 0 and reads k = B2 (blank, 0). Either a negative option below 0 is `#VALUE!` before truncation (as -0.0001 < 0), or a
-multi-cell range k for functions 14-19 is `#VALUE!` (the formula sits in row 322, outside B2:E12); the cell cannot tell which.
-Status: OBSERVED (one excel-graph cell; T-2381 probes it)
+- An `options` below 0 is `#VALUE!` before it is truncated: `AGGREGATE(15,-0.0001,E1:E6,1)`, `AGGREGATE(9,-0.5,E1:E6)` and
+  `AGGREGATE(15,-1,..)` are `#VALUE!`, while `AGGREGATE(15,7.9,..)` is option 7 and `AGGREGATE(14.5,0,..)` is function 14. A
+  multi-cell range k for functions 14-19 reads its first cell wherever the formula sits (`AGGREGATE(15,0,E1:E6,G1:G2)` is the
+  smallest, 1, in rows 1, 2 and 6, and `@` gives the same), and the array `{1;2}` lifts. So
+  `SERIESSUM(MINVERSE(0.2),-AGGREGATE(15,Data!$C12,..),2,1E+15)` with C12 = -0.0001 is `#VALUE!` from the option
+  (gen-m5/c634f6ec7b14fe08 Calc!A322).
+  Evidence: probes/aggregate-negative-option-range-k (excel-graph, 2026-10-22, T-2381). Status: VERIFIED (excel-graph).
+  Implemented in: crates/rustsheet-engine/src/functions/aggregate.rs (`aggregate_scalar`).
 
 A lifted call is subject to the *IF(S) cell-visit cap (criteria.md, "*IF(S) lift array criteria", DEVIATION):
 the elements to compute times the cells every element reads (the used cells of each reference plus the size of each
