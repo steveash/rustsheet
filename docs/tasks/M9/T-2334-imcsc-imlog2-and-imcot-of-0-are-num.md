@@ -3,7 +3,7 @@ id: T-2334
 title: "IMCSC, IMLOG2 and IMCOT of 0 are #NUM!, not NaN/inf text"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
