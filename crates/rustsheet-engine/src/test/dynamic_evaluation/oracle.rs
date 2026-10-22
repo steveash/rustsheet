@@ -2,8 +2,8 @@
 
 // The consistency oracle of evaluation.
 //
-// A sheet is consistent when every formula cell that does not hold #CIRC!
-// stores what its formula gives when evaluated against the sheet itself, and
+// A sheet is consistent when every formula cell that is not circular (on a
+// loop or reading one, which holds 0; recalc.md) stores what its formula gives when evaluated against the sheet itself, and
 // every array result either occupies its area as spill cells of the anchor or
 // is blocked and the anchor holds #SPILL!. The oracle re-runs every formula
 // against the final sheet and reports every violation. It also reports spill
@@ -119,13 +119,12 @@ pub(crate) fn violations(model: &mut Model) -> Vec<String> {
             out.push(format!("{}: unevaluated", name(sheet, row, column)));
             continue;
         }
-        if matches!(
-            &stored,
-            FormulaValue::Error {
-                ei: Error::CIRC,
-                ..
-            }
-        ) {
+        // A cell on a loop, or reading one, holds 0 whatever its formula gives.
+        if model
+            .evaluation
+            .circular
+            .contains(&(sheet, cell_ref.row, cell_ref.column))
+        {
             continue;
         }
 

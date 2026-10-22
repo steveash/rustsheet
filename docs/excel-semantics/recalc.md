@@ -40,13 +40,19 @@ Tasks: T-1484, T-2068, T-2069, T-2070
 Rule: with iterative calculation off, every cell of a cycle is 0, with no error value: a
 self-reference `=A1+1`, `=A2`, and the 2- and 3-cell cycles `B1=C1+1, C1=B1+1` and `D1=E1+1,
 E1=F1+1, F1=D1+1`. A cell outside the cycle that reads it is also 0, whatever it computes:
-`=A1+10` is 0 (not 10), `=SUM(B1:C1)+5` is 0, and `=ISNUMBER(A1)` is the number 0 (not FALSE).
+`=A1+10` is 0 (not 10), `=SUM(B1:C1)+5` is 0, and `=ISNUMBER(A1)` is the number 0 (not FALSE). So is a
+reader of a reader, at any depth (`=B1+1` reading `=A1+10`), and so are `=IFERROR(A1,5)`, `=ISERROR(A1)`,
+`=TYPE(A1)`, `=ISBLANK(A1)` and a formula that would give text (`=IF(A1=0,"zero","other")`).
 A reference IF does not evaluate is no cycle: `=IF(FALSE,B2,7)` in B2 and `=IF(TRUE,7,E2)` in E2 are
 7. `=ROW(D2)+COLUMN(D2)` in D2 is 6 (ROW and COLUMN do not read the cell).
-Evidence: probes/circular-iteration-off (excel-graph, 2026-10-16, T-0428).
-Ours: every cycle cell and every reader is an error; the IF and ROW/COLUMN cells already match.
+Evidence: probes/circular-iteration-off (excel-graph, 2026-10-16, T-0428); probes/t0445-circular-readers
+(excel-graph, 2026-10-22, T-0445).
+Ours: matches since T-0445. A read that closes a loop, or reads a cell already known to be circular, marks every
+cell on the evaluation stack circular, and a circular cell stores 0 and does not spill (`Model::mark_stack_circular`,
+crates/rustsheet-engine/src/evaluation.rs). An array anchor whose spill contradicts its own inputs, which the driver
+marks circular, is 0 the same way, and so are its readers (unprobed for spills).
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401
+Tasks: T-0428, T-0401, T-0445
 
 ## Iterative calculation sweeps the cycle in sheet order, in place
 Rule: with iteration on, each iteration recalculates the cycle's cells once in row-major sheet
