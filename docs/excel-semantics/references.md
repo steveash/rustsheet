@@ -2126,22 +2126,56 @@ canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The ev
 table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
 Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322
 
-## Structured references under the unprobed table edits
-Rule (unprobed): renaming the table's sheet keeps its structured references working (hand, certain; the
-`rename` sheet op could probe it, T-2324). What Excel does to a table and its structured references on a row delete, a column insert
-or delete, "Convert to Range", deleting the table, and deleting the table's sheet (SPEC-0016 assumes a
-reference from another sheet becomes `#REF!`). excel-graph can make these edits through Graph
-(`range/delete`, `range/insert` shift Right, `tables/convertToRange`, `DELETE tables`, `DELETE worksheets`),
-but the oracle replays only `add`, `rename`, `move` and `insert_row` sheet ops: T-2323 adds the ops and
-T-2324 probes them. Cut and paste of table cells, row and column moves, undo after a sheet delete and a
-duplicated sheet have no Graph REST endpoint (no range move, no undo, no worksheet copy), so only desktop
-Excel can answer them (M14, T-2325). Engine behavior until then (engine decision, SPEC-0016 "Structural
-edits"): every such edit that changes the area a reference resolves to rewrites it to the displaced plain
-range; a duplicated sheet gets no table and its references to the source sheet's tables are written as the
-retargeted plain ranges (Excel is believed to add a renamed table to the copy, hand).
-Status: UNVERIFIED
-Implemented in: no (fallback only).
-Tasks: T-2197, T-2323, T-2324, T-2325
+## Structured references under row deletes, column edits, convert, table and sheet delete
+Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases
+above, Qty 1,2,4,8, formulas on F, plus `COLUMNS(Sales)` and `COLUMN(Sales[Qty])`; `delete_row` is Graph
+`range('r:r')/delete` shift Up, `insert_column` / `delete_column` `range('C:C')/insert|delete` shift
+Right/Left):
+- Row deletes. Above the table (r = 1) the table moves up (`ROW(Sales[#Headers])` 2, plain `S!C4:C7` becomes
+  `S!C3:C6`); just below it (r = 8) nothing changes (table-delete-row-before, -below). Excel refuses a delete
+  of the header row: 409 InsertDeleteConflict, "This won't work because it would move cells in a table on your
+  worksheet" (no case: there is no value to score). A delete of the first data row (r = 4), one inside the
+  data (r = 5) or the last data row (r = 7) shrinks the table (`ROWS(Sales)` 3; `SUM(Sales[Qty])` 14, 13, 7)
+  and the plain `S!C4:C7` becomes `S!C4:C6` in all three (table-delete-row-first-data, -inside-data,
+  -last-data). With a totals row, deleting the last data row moves the totals row up (`#All` 5,
+  `ROW(Sales[#Totals])` 7, `Sales[[#Totals],[Qty]]` 7) (table-delete-row-last-data-totals); deleting the
+  totals row removes it: `Sales[[#Totals],[Qty]]` and `ROW(Sales[#Totals])` are `#REF!` though FORMULATEXT still
+  prints `=Sales[[#Totals],[Qty]]`, and `ROWS(Sales[#All])` is 5 (table-delete-row-totals). Deleting row 4 four
+  times, every data row, leaves the header and one blank data row: `ROWS(Sales)` 1, `#All` 2, `SUM` 0,
+  `COUNTA(Sales[Region])` 0, the plain range `S!C4:C4` (table-delete-row-all-data).
+- Column inserts. At A or B (left of or at the table's first column) the table moves right
+  (`COLUMN(Sales[Qty])` 4, plain `S!C4:C7` becomes `S!D4:D7`); at C, between its columns, it grows
+  (`COLUMNS(Sales)` 3, `COLUMN(Sales[Qty])` 4); at D, just right of it, nothing changes
+  (table-insert-column-before, -left-edge, -inside, -right-edge).
+- Column deletes. Deleting A moves the table left (table-delete-column-before). Deleting a table column drops
+  it: deleting C (Qty) makes `SUM(Sales[Qty])` `#REF!`, printed `=SUM(#REF!)`, and the plain `S!C4:C7`
+  `=SUM(S!#REF!)`, while `COLUMNS(Sales)` is 1 and `ROWS(Sales)` 4 (table-delete-column-qty); deleting B
+  (Region) makes `COUNTA(Sales[Region])` 1, a COUNTA of the `#REF!` error, printed `=COUNTA(#REF!)`
+  (table-delete-column-region).
+- Convert to Range (`tables/convertToRange`): every value is kept and each structured reference from another
+  sheet is rewritten as an absolute, sheet-qualified range: `=SUM(S!$C$4:$C$7)`, `=COUNTA(S!$B$4:$B$7)`,
+  `=COLUMN(S!$C$4:$C$7)`; `ROWS(Sales)` 4, `ROWS(Sales[#All])` 5 and `ROW(Sales[#Headers])` 3 keep their values
+  (table-convert-to-range).
+- Delete table (`DELETE tables('Sales')`): every structured reference is `#REF!` (`SUM`, `ROWS`, `ROW`,
+  `COLUMNS`, `COLUMN`) and prints as `#REF!` (`=SUM(#REF!)`); `COUNTA(Sales[Region])` is 1; and the table's
+  cells are gone too: `SUM(S!C4:C7)` is 0 (table-delete-table).
+- Delete the table's sheet (`DELETE worksheets('S')`): every reference is `#REF!` (`COUNTA` 1), and FORMULATEXT
+  prints `=SUM(#REF!)` for the structured reference and `=SUM(#REF!C4:C7)` for the plain `S!C4:C7`
+  (table-delete-sheet). SPEC-0016's assumption (`#REF!`) holds for the values.
+- Renaming the table's sheet (S to Data) keeps every structured reference and value; the plain range prints
+  `=SUM(Data!C4:C7)` (table-rename-sheet).
+Cut and paste of table cells, row and column moves, undo after a sheet delete and a duplicated sheet have no
+Graph REST endpoint, so only desktop Excel can answer them (M14, T-2325); a duplicated sheet gets no table in
+the engine and its references to the source sheet's tables are written as the retargeted plain ranges (Excel
+is believed to add a renamed table to the copy, hand).
+Status: VERIFIED (excel-graph)
+Implemented in: partly. The engine treats every table as SPEC-0016's fallback (above): the row delete above,
+inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
+match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
+move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339),
+the `#REF!` spelling of a deleted table or sheet (T-2340), the adapter's delete_table (T-2341) and convert to
+range (T-2342; the adapter refuses `convert_table`) do not.
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
