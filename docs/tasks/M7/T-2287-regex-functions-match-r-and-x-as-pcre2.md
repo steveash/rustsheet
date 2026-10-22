@@ -3,7 +3,7 @@ id: T-2287
 title: "REGEX functions match \R and \X as PCRE2 does (regex-ascii-classes A27, A42)"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
