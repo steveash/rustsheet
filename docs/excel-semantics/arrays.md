@@ -197,10 +197,22 @@ WRAPROWS allow columns past the grid: `ROWS(WRAPCOLS(SEQUENCE(16385),1))` is 1 a
 16385; their rows never pass the grid (wrap_count is clamped to the vector, and `SEQUENCE(1048577)` is itself `#VALUE!`).
 `COLUMNS(VSTACK(TEXTSPLIT(REPT(",",16384),","),1))` is 16385.
 Evidence: probes/expand-wrap-past-grid W1-W10 (excel-graph, 2026-10-19, T-1967).
-Ours: `limits::check_stack_size` in `fn_hstack`, `fn_vstack` (T-1803), EXPAND, WRAPROWS and WRAPCOLS (T-1967), except -c2 W1 and -c3 W1: both sit in row 1,
-which they stack, so ours is `#CIRC!` (T-1965).
+VSTACK checks its rows before it reads a referenced cell, after it evaluates every other argument: a stack past the grid
+is `#NUM!` even when a reference argument holds the formula's own cell, so `ROWS(VSTACK(A:A,1:1))` in W1 (-c2),
+`ROWS(VSTACK(2:2,A:A))` in W2, `ROWS(VSTACK(A:A,W8))` in W8 and `COLUMNS(VSTACK(A:A,12:12))` in W12 are `#NUM!`, not a
+circular reference; an error argument wins over the size wherever it stands, `ROWS(VSTACK(A:A,3:3,1/0))` in W3,
+`ROWS(VSTACK(1/0,A:A,4:4))` in W4, `ROWS(VSTACK(A:A,1/0))` and `ROWS(VSTACK(1/0,A:A))` are `#DIV/0!`; and an argument
+that is an expression reading the cell is evaluated, so it is a cycle: `ROWS(VSTACK(A:A,B9+W9))` in W9 is 0
+(recalc.md "A circular reference without iteration is 0"). ROWS, COLUMNS and ISREF of the formula's own row read no
+cell: `ROWS(5:5)` in W5 is 1, `COLUMNS(6:6)` in W6 16384, `ISREF(7:7)` in W7 TRUE.
+Evidence: probes/vstack-self-past-grid W2-W12 (excel-graph, 2026-10-21, T-1965).
+Ours: `limits::check_stack_size` in `fn_hstack`, `fn_vstack` (T-1803), EXPAND, WRAPROWS and WRAPCOLS (T-1967). `fn_vstack`
+evaluates every argument but a one-cell reference, a range only to its corners, and checks the rows of every argument
+before reading a reference (T-1965); that an evaluated array's rows count too, `ROWS(VSTACK(SEQUENCE(1048576),1:1))` in
+row 1 `#NUM!`, follows from that order but is unprobed. W9 is `#CIRC!` (a cycle is an error in ours, recalc.md), and so is -c3 W1, which sits in
+row 1, which it stacks.
 Status: VERIFIED (excel-graph)
-Tasks: T-1803, T-1967
+Tasks: T-1803, T-1967, T-1965
 
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,

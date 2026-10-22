@@ -1118,6 +1118,7 @@ C	probes/volatile-and-info-rand-true-false-sheet.case.json	108
 C	probes/volatile-invariant.case.json	60
 C	probes/volatile-now-today-shapes.case.json	48
 C	probes/vstack-scalar-error.case.json	40
+C	probes/vstack-self-past-grid.case.json	11
 C	probes/weekday-serial-zero.case.json	18
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-boolean-serial.case.json	12
@@ -2903,7 +2904,6 @@ F	probes/regression-trend.case.json	Sheet1!O7
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
-F	probes/scalar-lift-open-c2.case.json	Sheet1!W1
 F	probes/scalar-lift-open-c3.case.json	Sheet1!W1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!A1
 F	probes/sheet-ops/sheet-ops-move-span-end-first.case.json	Calc!B1
@@ -3254,6 +3254,7 @@ F	probes/text-locale-calendars.case.json	S!A99
 F	probes/text-locale-era-gregorian.case.json	S!A21
 F	probes/text-locale-name-tables.case.json	S!A589
 F	probes/text-locale-name-tables.case.json	S!A596
+F	probes/vstack-self-past-grid.case.json	Sheet1!W9
 F	probes/weeknum-stale-dependency.case.json	Dep!A3
 F	probes/weeknum-stale-grid.case.json	Grid!B1
 F	probes/weeknum-stale-order-2x3.case.json	Wide!A1
