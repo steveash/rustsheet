@@ -3,7 +3,7 @@ id: T-2373
 title: "BASE of a number at or above 2^53 is #NUM! (BASE(ROUNDUP(2^53,-6),10,5))"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,9 +29,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 2 in eval/baselin
 | gen-m5/08eafc9e61602bcb Calc!A98 | `=BASE(SUM(PRODUCT(Data!D3:D8,Data!$C6),Data!E6:E6,IFERROR(Data!B2,Data!B12)),34)` | #NUM! | "3TDTK1V8J6TPP" |
 
 ## Acceptance criteria
-- [ ] T-2289's probe cells at and around 2^53 pass.
-- [ ] These 2 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] `make check` green; reviewers approve.
+- [x] T-2289's probe cells at and around 2^53 pass.
+- [x] These 2 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - DECIMAL's bounds.
@@ -41,3 +41,6 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 2 in eval/baselin
 Decision 0083 (gap triage 2026-10-22, T-2252): every cell this task owns has the wrong type, error, text or boolean, or is a
 number further than half a unit in Excel's 15th significant digit, so the task is in the campaign. Its acceptance
 criteria above are already the visible-parity stage.
+
+## Outcome
+`base_text` returns `#NUM!` for a number of 2^53 or more (edge from T-2289). Eval: 32 known failures fixed (2 gen-m5, 30 probes/base-number-upper-bound), no regressions.
