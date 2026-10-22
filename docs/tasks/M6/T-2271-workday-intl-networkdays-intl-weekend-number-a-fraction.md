@@ -37,8 +37,14 @@ Failing cells (`make eval-show CASE=gen-m6/<case>.case.json`), 9 in eval/baselin
 | gen-m6/ee56a4ed5a612a0d Calc!A387 | `=NETWORKDAYS.INTL(((Data!D$12/Data!D7)^SUMIFS(Data!C10:C11,Data!A2:D9,"",Data!A6:C8,"<5",Data!B4:C6,1)),406...` | "#DIV/0!" | "#VALUE!" |
 | gen-m6/fde83d52a9d1fc63 Calc!A219 | `=WORKDAY.INTL(16895,22,Data!B$8,COUNTA(Data!A4:A6,EDATE(23398,8),Data!B1:B3))` | "#NUM!" | 16925.0 |
 
+Also (T-2253 top-up sweep, excel-graph, 2026-10-22; recorded in eval/baseline/gen-m6.txt): a blank weekend cell is `#NUM!`
+(`NETWORKDAYS.INTL(13803,28521,Data!E1)`, E1 blank: Excel `#NUM!`, ours 10513; gen-m6/afe9267df3df26a8 Calc!A47), and a FALSE weekend
+cell raises no `#VALUE!` ahead of a negative holiday's `#NUM!` (`NETWORKDAYS.INTL(39588,SUMIF(Data!A10:C11,"=a"),Data!C$5,Data!B4:E7)`,
+C5 FALSE, B7 -1 among the holidays: Excel `#NUM!`, ours `#VALUE!`; gen-m6/f93597dff1cfa5b6 Calc!A252). What a boolean weekend gives on
+valid dates with valid holidays is still this task's probe.
+
 ## Acceptance criteria
-- [ ] These 9 known-failure lines disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
+- [ ] These 9 known-failure lines, and the 2 cells of the T-2253 paragraph above, disappear from eval/baseline/gen-m6.txt (`make eval-baseline`), with no new known failure in any suite.
 - [ ] A probe case (excel-graph) gives TRUE and FALSE weekends on valid dates for both functions; dates.md records it.
 - [ ] Unit tests cover weekend 3.9, 11.5, TRUE, FALSE (as probed) and a blank cell for both functions; probes/date-text-weekend-3d still passes.
 - [ ] dates.md's entry says Ours: implemented (T-2271).
