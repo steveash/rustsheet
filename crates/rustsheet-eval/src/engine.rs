@@ -330,7 +330,7 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
             // feature-gated ones (decisions 0076, 0098). Rows and columns are 1-based in the case
             // file. A `Txn` edit recalculates on commit; these do not.
             SheetOp::DeleteTable { table, .. } => workbook
-                .remove_table(table)
+                .delete_table(table)
                 .map(|()| workbook.recalculate()),
             SheetOp::InsertRow { sheet, row } | SheetOp::DeleteRow { sheet, row } => {
                 let id = sheet_id_of(workbook, sheet)?;
@@ -548,6 +548,28 @@ mod tests {
         assert_eq!(
             evaluated.value("Calc", Addr { row: 1, col: 2 }),
             Some(Value::Number(5.0))
+        );
+    }
+
+    #[test]
+    fn delete_table_clears_the_table_cells() {
+        // T-2341: Graph's DELETE tables clears the range (probes/table-edits/table-delete-table).
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1",
+                "sheets":[{"name":"S","cells":{"A1":"h","A2":1,"A3":2,"B5":"=SUM(A2:A3)","A6":7},
+                           "tables":[{"name":"Sales","ref":"A1:A3"}]}],
+                "sheet_ops":[{"op":"delete_table","sheet":"S","table":"Sales"}]}"#,
+        );
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
+        assert_eq!(
+            evaluated.value("S", Addr { row: 5, col: 2 }),
+            Some(Value::Number(0.0))
+        );
+        assert_eq!(
+            evaluated.value("S", Addr { row: 6, col: 1 }),
+            Some(Value::Number(7.0))
         );
     }
 

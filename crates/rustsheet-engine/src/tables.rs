@@ -9,7 +9,7 @@ use crate::{
             parse_range,
             stringify::{to_english_string, to_string_lowering},
         },
-        types::CellReferenceRC,
+        types::{Area, CellReferenceRC},
         utils::{is_valid_identifier, number_to_column},
     },
     model::Model,
@@ -120,6 +120,34 @@ impl Model {
             .ok_or_else(|| format!("No table named '{name}'"))?;
         self.reset_tables();
         Ok(())
+    }
+
+    /// Deletes the table `name` as Graph's `DELETE tables('T')` does: the table and every cell of
+    /// its range go (T-2324: `SUM(S!C4:C7)` is 0 afterwards; the rows stay in place, a plain
+    /// reference below the table does not shift). Does not recalculate.
+    ///
+    /// # Errors
+    /// There is no table with that exact name, or its range cannot be cleared (it holds part of
+    /// an array formula).
+    pub fn delete_table(&mut self, name: &str) -> Result<(), String> {
+        let table = self
+            .workbook
+            .tables
+            .get(name)
+            .ok_or_else(|| format!("No table named '{name}'"))?;
+        let sheet = self
+            .get_sheet_index_by_name(&table.sheet_name)
+            .ok_or_else(|| format!("No sheet named '{}'", table.sheet_name))?;
+        let (left, top, right, bottom) = parse_range(&table.reference)
+            .map_err(|_| format!("Table '{name}' has an invalid range"))?;
+        self.range_clear_all(&Area {
+            sheet,
+            row: top,
+            column: left,
+            width: right - left + 1,
+            height: bottom - top + 1,
+        })?;
+        self.remove_table(name)
     }
 
     /// Hands the table list to the parser and reparses every formula against it.
