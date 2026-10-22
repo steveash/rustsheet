@@ -152,7 +152,7 @@ impl Model {
     /// [`Model::lift_call`] for a function whose first argument, when it is a scalar that
     /// `first_error` turns into an error, makes that error the whole result whatever the other
     /// argument is, an array or a range included (HYPERLINK: docs/excel-semantics/lookup.md
-    /// "HYPERLINK: an error link_location is the result", T-2277).
+    /// "HYPERLINK: an error `link_location` is the result", T-2277).
     pub(crate) fn lift_call_error_first(
         &mut self,
         kind: Function,

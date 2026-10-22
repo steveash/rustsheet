@@ -361,7 +361,7 @@ impl Model {
         )
     }
 
-    /// The error HYPERLINK gives for a `link_location` whatever its friendly_name is: the error
+    /// The error HYPERLINK gives for a `link_location` whatever its `friendly_name` is: the error
     /// itself, or `#VALUE!` for more than 255 characters, a `#` of an internal link included
     /// (probes/t2277-hyperlink-location-length A1-A15; lookup.md "HYPERLINK: a location past
     /// 255 characters"). `None` when the location is fine.
