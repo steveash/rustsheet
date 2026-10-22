@@ -61,6 +61,13 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
 > - when a kernel goes bit-exact (≥ 99.9% with only documented x87 near-ties), update `gamma_kernels.rs` (a new engine task) and
 >   `docs/excel-semantics/statistics.md`.
 
+## Progress
+- Run 1 (2026-10-22, one opus worker without sub-sessions): HANDOFF2 section 13. It filled every probe left from the
+  pause and added K2 micro-ladders (20 cases) and K3 rungs 27-30 (48 cases). K3's true offsets are ~1e10 ulps: the
+  slopes were aliased twice, the 12-anchor KMAX=30 ladder is validated by a 1e10 control, and the real joint solve
+  still needs the N6-first conditional solve (13.4). K2's per-run c3 is a sawtooth, and every single-op linear law is
+  refuted (13.3). K1 and (1.5,2] were not reached. Pick up from HANDOFF2 13.4 / 13.3 on the research branch.
+
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses
       only at documented x87 near-ties) committed with its verifier, or an updated best model plus a measured
