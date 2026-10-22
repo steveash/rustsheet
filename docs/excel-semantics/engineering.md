@@ -503,7 +503,7 @@ Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
   (`IMCOSH("711+1.5i")`). A tiny nonzero imaginary part with a large real one is UNVERIFIED. Implemented.
 - IMSEC, IMCSC, IMSECH and IMCSCH answer `0` (both parts) where the denominator overflows
   (`IMSECH("711+1.5i")`, `IMCSCH("710.4+0i")`, `IMSEC("1.5+711i")`); a zero denominator stays
-  `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented except IMCSC of 0 returning text (T-2334); plain IMCSCH("0") is UNVERIFIED.
+  `#NUM!` (COMPLEXs.xlsx Sheet1 V22:Y22). Implemented (IMCSC of 0 since T-2334); plain IMCSCH("0") is UNVERIFIED. A denominator that underflows to 0 (`IMCSC("1E-200")`, `IMCOT("1E-310")`) is also `#NUM!` here: UNVERIFIED.
 - IMTAN and IMCOT near the edge answer `i` / `-i` (`IMTAN("1.5+710.4i")`); IMLN, IMLOG10, IMLOG2
   and IMSQRT do not overflow there. Already matched.
 - Last-digit differences remain as known failures (a kernel question, not a rule; T-2231): IMCOSH/IMSINH
