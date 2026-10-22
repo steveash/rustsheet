@@ -447,7 +447,7 @@ fn test_weeknum_function() {
     assert_eq!(model._get_text("A13"), *"#ERROR!");
     // Excel: return_type 0, 3-10 and 18-20 are always #NUM! (probes/weeknum-serial-0 C3, C4,
     // C18, C19, C25; T-1023). 22+ and negatives depend on calc order in Excel;
-    // we give #NUM!, Excel's no-state value, until T-1484.
+    // we give #NUM!, Excel's no-state value, until T-2068 (SPEC-0017).
     assert_eq!(model._get_text("A14"), *"#NUM!");
     assert_eq!(model._get_text("A15"), *"#NUM!");
     assert_eq!(model._get_text("A16"), *"#NUM!");
@@ -1055,4 +1055,25 @@ fn accrint_first_interest_past_the_1904_coupon_schedule_is_num() {
     assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"#NUM!");
     assert_eq!(model._get_text("A4"), *"75.27624309");
+}
+
+// T-2276: a boolean serial is #VALUE! in WEEKNUM, before the return_type (gen-m6/0bcac2d96e96b3df
+// Calc!A234, 3a26794015dfbe9d A242, excel-graph).
+#[test]
+fn weeknum_of_a_boolean_serial_is_value_error() {
+    let mut model = crate::test::util::new_empty_model();
+    model._set("B1", "TRUE");
+    model._set("B2", "FALSE");
+    model._set("A1", "=WEEKNUM(B1,1)");
+    model._set("A2", "=WEEKNUM(B2,1)");
+    model._set("A3", "=WEEKNUM(B1,0.5)");
+    model._set("A4", "=WEEKNUM(B2,0.5)");
+    model._set("A5", "=WEEKNUM(B2)");
+    model._set("A6", "=WEEKNUM(TRUE)");
+    model._set("A7", "=WEEKNUM(FALSE,0.5)");
+    model._set("A8", "=WEEKNUM({TRUE})");
+    model.evaluate();
+    for row in 1..=8 {
+        assert_eq!(model._get_text(&format!("A{row}")), "#VALUE!", "A{row}");
+    }
 }

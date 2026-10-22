@@ -3,7 +3,7 @@ id: T-2155
 title: "REPT, CODE and UNICODE are #VALUE! on a text argument over 255 characters"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -36,9 +36,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 6 in eval/baselin
 | gen-m5/ecd1b828aebad1e8 Calc!A1 | `=CODE(REPT("ab",300))` | "#VALUE!" | 97.0 |
 
 ## Acceptance criteria
-- [ ] These 6 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] text.md entry updated with the cut and marked implemented.
-- [ ] `make check` green; reviewers approve.
+- [x] These 6 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] text.md entry updated with the cut and marked implemented.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -47,3 +47,9 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - REPT's 32,767-unit result limit (already implemented).
+
+## Outcome
+REPT's text, CODE, UNICODE and T (scalar) are `#VALUE!` over 255 UTF-16 units through one helper,
+`reject_over_short_limit` (functions/text/common.rs, on `MAX_SHORT_TEXT_UNITS`). text.md entry marked
+implemented; T's array elements stay unprobed and unchanged. Eval: gen-m5 known failures 125 -> 119,
+probes 1738 -> 1719 (the T-2199 probe's REPT/CODE/UNICODE/T cells), no regressions.

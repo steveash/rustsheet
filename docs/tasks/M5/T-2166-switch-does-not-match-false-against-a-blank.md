@@ -3,7 +3,7 @@ id: T-2166
 title: "SWITCH does not match FALSE against a blank cell case value"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -15,6 +15,7 @@ depends_on: [T-2200]
 SWITCH does not match a FALSE expression against a blank cell given as a case value, as Excel does.
 
 ## Context
+- Evidence (T-2200): `eval/suites/probes/cases/t2200-blank-and-padded-m5-args` holds the probed blank, padded and shape cases for this rule (see the matching docs/excel-semantics entry); its cells must pass here.
 - Evidence first (planner, 2026-10-20): the probe this task asks for is T-2200 (research), which fills `probes/t2200-blank-and-padded-m5-args`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). `SWITCH(FALSE,..,A11,FALSE,..)` with A11 blank is `#N/A` in Excel (no match, no default); ours matches the blank and returns FALSE.
 The omitted-argument case (`SWITCH(0,,"a","b")` = "a") must keep matching (logic.md "IFERROR / IFNA of a blank cell"). Probe first
@@ -29,9 +30,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 | gen-m5/d0419fa09d6a756a Calc!A63 | `=ISEVEN(SWITCH((Data!B9=(-0.5)),(Data!$E3*Data!A7),(Data!C1+Data!$A1),Data!A$11,IF(FALSE,Data!A6),...` | "#N/A" | "#VALUE!" |
 
 ## Acceptance criteria
-- [ ] These 1 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] logic.md entry updated with the probe results.
-- [ ] `make check` green; reviewers approve.
+- [x] These 1 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] logic.md entry updated with the probe results.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -40,3 +41,9 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 -
+
+## Outcome
+SWITCH compares through a new `switch_matches` (functions/logical/switch.rs) that reads a blank cell as the number 0 on
+either side, so a blank case or expression cell matches only 0 or another blank, as the T-2200 probe shows; omitted
+arguments keep `compare_values`' empty-value rule. Eval: gen-m5 known failures 74 -> 73 (the task's cell), probes
+2299 -> 2291 (t2200 A28, A29, A32, A33, A38, A40, A42, A44), regressions 0.

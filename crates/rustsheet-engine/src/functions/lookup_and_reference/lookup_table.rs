@@ -181,23 +181,16 @@ impl SearchVector {
         }
     }
 
-    /// Excel's approximate-match search (VLOOKUP/HLOOKUP with `range_lookup`
-    /// TRUE, LOOKUP, MATCH with a positive or negative `match_type`; T-0212).
+    /// Excel's ascending approximate-match search (VLOOKUP/HLOOKUP with
+    /// `range_lookup` TRUE, LOOKUP, MATCH with a positive `match_type`; T-0212).
     /// A binary search that only ever compares values of `target`'s own type:
-    /// from each midpoint it skips past blanks, errors and other types (upwards;
-    /// when `descending`, downwards to the live range's low bound and then
-    /// upwards if nothing is there), and a midpoint with none left in the live
-    /// range narrows the search below it. An equal value ends the search at the
-    /// edge of its run of adjacent equal values: the last one, or the first when
-    /// `descending` (MATCH -1).
-    /// Otherwise the result is the last value probed that is smaller than
-    /// `target` (larger when `descending`), `None` if there is none.
+    /// from each midpoint it skips forward past blanks, errors and other types,
+    /// and a midpoint with none left in the live range narrows the search below
+    /// it. An equal value ends the search at the last of its run of adjacent
+    /// equal values. Otherwise the result is the last value probed that is
+    /// smaller than `target`, `None` if there is none.
     /// Excel: see docs/excel-semantics/lookup.md "Approximate match".
-    pub(super) fn approximate_search(
-        &self,
-        target: &CalcResult,
-        descending: bool,
-    ) -> Option<usize> {
+    pub(super) fn approximate_search(&self, target: &CalcResult) -> Option<usize> {
         let target = lookup_key(target);
         let kind = value_kind(target)?;
         let equal = |index: usize| {
@@ -215,29 +208,12 @@ impl SearchVector {
         while lo < hi {
             let mid = lo + (hi - 1 - lo) / 2;
             // Every scan stays inside the live range, so a round costs O(n) and
-            // the O(log n) rounds total O(n log n): a hit far below `mid` may
-            // shrink the range by one while the next round rescans the cells
-            // between (bounded by the range, never quadratic).
-            let of_kind = |index: usize| {
+            // the O(log n) rounds total O(n log n).
+            let found = (mid..hi.min(evaluated)).find(|&index| {
                 self.values
                     .get(index)
                     .is_some_and(|value| value_kind(value) == Some(kind))
-            };
-            let forward = || (mid..hi.min(evaluated)).find(|&index| of_kind(index));
-            // A descending search steps backward from the midpoint, an
-            // ascending one forward (docs/excel-semantics/lookup.md "MATCH
-            // descending search skips backward"; probes/match-descending-argcheck
-            // J1-J8). With nothing of the key's type at or below the midpoint it
-            // continues forward (gen-m2 b4392a6514a36ade A277:
-            // MATCH(-14,{FALSE,0.5},-1) = 2).
-            let found = if descending {
-                (lo..=mid)
-                    .rev()
-                    .find(|&index| of_kind(index))
-                    .or_else(forward)
-            } else {
-                forward()
-            };
+            });
             let Some(m) = found else {
                 hi = mid;
                 continue;
@@ -246,22 +222,42 @@ impl SearchVector {
                 0 => {
                     // Linear in the run's length, as Excel's answer needs it.
                     let mut edge = m;
-                    if descending {
-                        while edge > 0 && equal(edge - 1) {
-                            edge -= 1;
-                        }
-                    } else {
-                        while equal(edge + 1) {
-                            edge += 1;
-                        }
+                    while equal(edge + 1) {
+                        edge += 1;
                     }
                     return Some(edge);
                 }
-                c if (c < 0) != descending => {
+                c if c < 0 => {
                     best = Some(m);
                     lo = m + 1;
                 }
                 _ => hi = m,
+            }
+        }
+        best
+    }
+
+    /// Excel's descending search (MATCH with a negative `match_type`): not a
+    /// binary search but a scan from the top over the values of `target`'s own
+    /// type (blanks, errors and other types are passed over). It ends at the
+    /// first value equal to `target`, or before the first one smaller than it,
+    /// giving the last value seen that is larger; `None` if the first value of
+    /// the type is already smaller, or there is none.
+    /// Excel: docs/excel-semantics/lookup.md "MATCH descending search scans
+    /// from the top" (probes/lookup-match-descending-blank: over the unsorted
+    /// 0.5,0.3,0,-2.5,2.5,.. a key 0 gives 3 and 0.0001 gives 2).
+    pub(super) fn descending_search(&self, target: &CalcResult) -> Option<usize> {
+        let target = lookup_key(target);
+        let kind = value_kind(target)?;
+        let mut best = None;
+        for (index, value) in self.values.iter().enumerate() {
+            if value_kind(value) != Some(kind) {
+                continue;
+            }
+            match compare_values(value, target) {
+                0 => return Some(index),
+                c if c > 0 => best = Some(index),
+                _ => break,
             }
         }
         best

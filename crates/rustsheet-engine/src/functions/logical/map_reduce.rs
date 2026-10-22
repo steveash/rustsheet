@@ -113,11 +113,7 @@ impl Model {
         }
 
         let (mut accumulator, start) = if has_initial {
-            let init = self.evaluate_node_in_context(&args[0], cell);
-            if init.is_error() {
-                return init;
-            }
-            (init, 0)
+            (self.lambda_initial_value(&args[0], cell), 0)
         } else {
             (data.at(0, 0), 1)
         };
@@ -129,11 +125,27 @@ impl Model {
                 [accumulator, data.at(index / columns, index % columns)],
                 cell,
             );
-            if accumulator.is_error() {
-                return accumulator;
-            }
         }
 
         accumulator
+    }
+
+    /// SCAN's and REDUCE's `initial_value` as the LAMBDA's first accumulator. A cell or range
+    /// reference stays a reference, a single cell too, as in the common case of a LAMBDA call's
+    /// argument ([`Model::bind_argument`], whose OFFSET, INDIRECT, TRIMRANGE and grid-variable
+    /// forms are not taken here): `REDUCE(Data!C7,Data!E12,COUNT)` with C7 the text "1" is 1, and
+    /// `REDUCE(Data!A12,Data!C11,PRODUCT)` with both cells TRUE is 0 (gen-m7/2c5ea078f25443a2
+    /// A1767, 18b80d3fd292d63a A467; docs/excel-semantics/arrays.md "SCAN and REDUCE keep errors
+    /// in the LAMBDA", T-2307). An error goes to the LAMBDA like any value (same entry). A union
+    /// and a 3-D span are read as before (unprobed).
+    pub(super) fn lambda_initial_value(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if self.is_multi_area(node) || matches!(node.ungrouped(), Node::SheetSpanKind { .. }) {
+            return self.evaluate_node_in_context(node, cell);
+        }
+        self.eval_ref_or_index(node, cell)
     }
 }

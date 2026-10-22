@@ -102,7 +102,7 @@ fn edate_kinds() -> &'static ArgKinds {
 const LIFT_ALL: ArgKinds = ArgKinds {
     required: 1,
     params: &[],
-    repeat: Some(ArgKind::Lift),
+    repeat: &[ArgKind::Lift],
     max: 255,
     work: KernelWork::Constant,
     result: CallResult::Value,
@@ -188,6 +188,75 @@ fn a_wrong_count_is_the_count_error_before_anything_is_read() {
     assert_eq!(model._get_text("A2"), "#ERROR!");
 }
 
+// ---------------------------------------------------------------- the number shortcut (T-1932)
+
+/// `lift_call_numbers` for ROUND (`LIFT_2`) over `formula`'s arguments, counting the shortcut's
+/// calls and the kernel's: the result, the shortcut's calls and the kernel's. The shortcut sums
+/// its numbers; the kernel returns its first value, or the sum when every value is a number.
+fn run_numbers(model: &mut Model, formula: &str) -> (CalcResult, usize, usize) {
+    let args = args_of(model, formula);
+    let shortcuts = std::cell::Cell::new(0);
+    let shortcut = |numbers: &[f64]| {
+        shortcuts.set(shortcuts.get() + 1);
+        Ok(numbers.iter().sum())
+    };
+    let mut calls = 0;
+    let mut kernel = |_: &mut Model, values: &[CalcResult]| {
+        calls += 1;
+        let sum: Option<f64> = values
+            .iter()
+            .map(|value| match value {
+                CalcResult::Number(number) => Some(*number),
+                _ => None,
+            })
+            .sum();
+        sum.map_or_else(|| first(values), CalcResult::Number)
+    };
+    let result = model.lift_call_numbers(Function::Round, &args, AT, &shortcut, &mut kernel);
+    (result, shortcuts.get(), calls)
+}
+
+#[test]
+fn numbers_run_the_shortcut_and_anything_else_the_kernel() {
+    let mut model = model_with(&[("A1", "2"), ("A2", "x")]);
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND(A1,3)");
+    assert!(matches!(result, CalcResult::Number(n) if n == 5.0));
+    assert_eq!((shortcuts, calls), (1, 0));
+    // Text first, then text second: the numbers read before it are handed on, not read again.
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND(A2,3)");
+    assert!(matches!(&result, CalcResult::String(text) if &**text == "x"));
+    assert_eq!((shortcuts, calls), (0, 1));
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND(A1,\"3\")");
+    assert!(matches!(result, CalcResult::Number(n) if n == 2.0));
+    assert_eq!((shortcuts, calls), (0, 1));
+    // A wrong count is the count error before anything runs.
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND(1,2,3)");
+    assert!(is_error(&result, &Error::ERROR));
+    assert_eq!((shortcuts, calls), (0, 0));
+}
+
+#[test]
+fn lifted_number_elements_run_the_shortcut_in_place() {
+    let mut model = model_with(&[]);
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND({1,2;3,4},10)");
+    assert_eq!(numbers(&result), vec![vec![11.0, 12.0], vec![13.0, 14.0]]);
+    assert_eq!((shortcuts, calls), (4, 0));
+    // A text element runs the kernel; the number elements beside it the shortcut.
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND({1,\"x\"},10)");
+    assert_eq!(shortcuts, 1);
+    assert_eq!(calls, 1);
+    let CalcResult::Array(rows) = result else {
+        panic!("not an array");
+    };
+    assert!(matches!(&rows[0][1], ArrayNode::String(text) if &**text == "x"));
+    // A scalar that is not a number, or a second grid, leaves every element to the kernel.
+    let (_, shortcuts, calls) = run_numbers(&mut model, "ROUND({1,2},\"3\")");
+    assert_eq!((shortcuts, calls), (0, 2));
+    let (result, shortcuts, calls) = run_numbers(&mut model, "ROUND({1,2},{10;20})");
+    assert_eq!(numbers(&result), vec![vec![11.0, 12.0], vec![21.0, 22.0]]);
+    assert_eq!((shortcuts, calls), (0, 4));
+}
+
 // ---------------------------------------------------------------- shapes
 
 #[test]
@@ -261,6 +330,90 @@ fn a_single_grid_is_rewritten_in_place_with_the_scalars_beside_it() {
         numbers(&result),
         vec![vec![1101.0, 1102.0], vec![1103.0, 1104.0]]
     );
+}
+
+#[test]
+fn an_array_first_entry_empties_later_elements_unless_every_entry_is_equal() {
+    // UNIQUE's rule (probes/m7-unique-lift-elements, m7-lift-take-drop-sortby rows 24-37): each
+    // call is the 1x2 {entry, 7}, so a kept element is its entry; entry 0 makes the call #N/A.
+    let mut model = model_with(&[]);
+    let options = LiftOptions {
+        reuse: Reuse::Never,
+        work: KernelWork::Output { weight: 1 },
+        result: CallResult::ArrayFirst,
+        later_error: false,
+    };
+    let mut kernel = |_: &mut Model, values: &[CalcResult]| match values {
+        [CalcResult::Number(entry)] if *entry != 0.0 => CalcResult::Array(vec![vec![
+            ArrayNode::Number(*entry),
+            ArrayNode::Number(7.0),
+        ]]),
+        _ => CalcResult::new_error(Error::NA, AT, String::new()),
+    };
+    let column = |entries: &[f64]| {
+        vec![CalcResult::Array(
+            entries
+                .iter()
+                .map(|e| vec![ArrayNode::Number(*e)])
+                .collect(),
+        )]
+    };
+    let empty = ArrayNode::Empty;
+    let na = ArrayNode::Error(Error::NA);
+    for (entries, want) in [
+        // Every entry equal: every element is its call's top-left.
+        (
+            &[2.0, 2.0][..],
+            vec![ArrayNode::Number(2.0), ArrayNode::Number(2.0)],
+        ),
+        // A differing later entry is empty.
+        (&[2.0, 3.0][..], vec![ArrayNode::Number(2.0), empty.clone()]),
+        // So is an entry equal to the first after a differing one.
+        (
+            &[2.0, 3.0, 2.0][..],
+            vec![ArrayNode::Number(2.0), empty.clone(), empty.clone()],
+        ),
+        // An error stays, and the first other element is kept.
+        (
+            &[0.0, 3.0, 2.0][..],
+            vec![na.clone(), ArrayNode::Number(3.0), empty.clone()],
+        ),
+    ] {
+        let result = model.lift_values(column(entries), LiftCost::Unit, &options, AT, &mut kernel);
+        let CalcResult::Array(rows) = result else {
+            panic!("{entries:?} is not an array");
+        };
+        let got: Vec<ArrayNode> = rows.into_iter().flatten().collect();
+        assert_eq!(got, want, "{entries:?}");
+    }
+}
+
+#[test]
+fn a_repeat_cycle_takes_its_kinds_in_turn_and_whole_cycles_only() {
+    const PAIRS: ArgKinds = ArgKinds {
+        required: 2,
+        params: &[ArgKind::Whole, ArgKind::Whole, ArgKind::Lift],
+        repeat: &[ArgKind::Whole, ArgKind::Lift],
+        max: 9,
+        work: KernelWork::Constant,
+        result: CallResult::Value,
+    };
+    // No cycle: nothing past `params`, whatever `max` says.
+    const NONE: ArgKinds = ArgKinds {
+        required: 1,
+        params: &[ArgKind::Lift],
+        repeat: &[],
+        max: 3,
+        work: KernelWork::Constant,
+        result: CallResult::Value,
+    };
+    assert_eq!(PAIRS.kind(5), Some(ArgKind::Whole));
+    assert_eq!(PAIRS.kind(6), Some(ArgKind::Lift));
+    assert_eq!(PAIRS.kind(9), None);
+    let counts = |kinds: &ArgKinds| (0..12).filter(|&c| kinds.accepts(c)).collect::<Vec<_>>();
+    assert_eq!(counts(&PAIRS), vec![2, 3, 5, 7, 9]);
+    assert_eq!(counts(&NONE), vec![1]);
+    assert_eq!(NONE.kind(1), None);
 }
 
 // ---------------------------------------------------------------- errors per element
@@ -649,6 +802,7 @@ fn a_weighted_kernel_is_charged_its_weight() {
             reuse: Reuse::Never,
             work: KernelWork::Weighted(weight),
             result: CallResult::Value,
+            later_error: false,
         };
         let mut calls = 0;
         let mut kernel = |_: &mut Model, _: &[CalcResult]| {
@@ -694,6 +848,7 @@ fn element_texts_count_against_the_text_budget() {
         reuse: Reuse::Never,
         work: KernelWork::Constant,
         result: CallResult::Value,
+        later_error: false,
     };
     let mut kernel = |_: &mut Model, _: &[CalcResult]| long.clone();
     // 2048 texts of 32,767 bytes fit 64 MiB; 2049 are #VALUE!.

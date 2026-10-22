@@ -6,12 +6,12 @@ use std::{ops::Deref, sync::Arc};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
-        parser::{ArrayNode, Node},
+        parser::{is_multi_sheet_span, ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
     functions::{
-        util::{is_at_if, is_at_xlookup_take, is_multi_sheet_span},
+        util::{is_at_if, is_at_xlookup_take},
         Function,
     },
     model::Model,
@@ -311,6 +311,15 @@ impl RefGrid {
             })
             .collect()
     }
+}
+
+/// `#REF!`, what a 3-D reference gives where a value is needed (probes/3d-ref-values C1:C3).
+pub(crate) fn three_d_value_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::REF,
+        cell,
+        "3-D reference where a value is needed".to_string(),
+    )
 }
 
 /// `#VALUE!` for a 3-D reference where a single-sheet reference is needed (INDEX, AREAS,
@@ -633,11 +642,7 @@ impl Model {
         if first_index == last_index {
             return self.evaluate_node_in_context(reference, cell);
         }
-        CalcResult::new_error(
-            Error::REF,
-            cell,
-            "3-D reference where a value is needed".to_string(),
-        )
+        three_d_value_error(cell)
     }
 
     /// A 3-D reference where a single-sheet reference is needed: `#VALUE!` (INDEX, ROWS, ROW,

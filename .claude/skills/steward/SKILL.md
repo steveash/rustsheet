@@ -29,6 +29,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
      do not merge, start again at 1), run check (c), merge with `expectedHeadSha`, then
      `make merge-lock-release`. Red, or any reason to stop
      (review changes, the session ending): release at once, then fix without the lock.
+  A lock whose PR is already merged or closed is never held (decision 0097): `acquire` for a finished
+  PR exits 3 (stop; the PR is done) and any acquirer takes over a finished PR's lock, whatever its age.
   A lock older than 30 minutes is stale and the next acquirer takes it over; renew yours by
   acquiring again if CI runs long. `make merge-lock-status` shows the holder. Orphaned-PR merges,
   the steward's PR and task-only PRs take the lock too.
@@ -122,7 +124,16 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
+- **Fifteen-digit parity checkpoint** (decision 0094, T-0062): after `make eval`, copy the bold
+  "Fifteen-digit parity: ..." line from the "Fifteen-digit parity checkpoint" section of
+  `eval/runs/latest/report.md` (report.json: `v15_checkpoint`) into the docs/status.md scoreboard,
+  and say whether the previous run's line also read "met". The checkpoint is reached only when two
+  consecutive runs are met.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
   is not reopened when its dependencies land, only when a new hypothesis is recorded there.
+- **Review-round limit** (decision 0095): list every PR whose task is `Blocked because: review-round
+  limit` under open PRs in `docs/status.md` with its age; the opus worker re-reviews it once its
+  branch is idle 2 h, so do not merge or unblock it yourself. A task `Blocked because: review-round
+  limit, twice` goes under "Needs owner" with the PR link and the findings still open.
 - **Stuck**: after 3 failed fix attempts on the same failure, mark the task blocked with details,
   leave the PR as draft, and move on. Do not leave `main` red: if a merge broke `main`, revert first.

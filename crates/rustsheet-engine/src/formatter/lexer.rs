@@ -9,6 +9,9 @@ pub struct Lexer {
     error_position: usize,
     /// The locale of a `[$€-40C]` currency tag, returned by the call after its symbol.
     pending_locale: Option<LocaleTag>,
+    /// Whether the current section has a token before this one other than a color, condition,
+    /// locale or calendar prefix: a `B1`/`B2` calendar prefix is invalid after one.
+    section_started: bool,
 }
 
 #[derive(PartialEq, Debug)]
@@ -129,6 +132,7 @@ impl Lexer {
             error_message: "".to_string(),
             error_position: 0,
             pending_locale: None,
+            section_started: false,
         }
     }
 
@@ -409,6 +413,18 @@ impl Lexer {
     }
 
     pub fn next_token(&mut self) -> Token {
+        let token = self.read_token();
+        self.section_started = match token {
+            Token::Separator => false,
+            Token::Color(_) | Token::Condition(..) | Token::Locale(_) | Token::Calendar(_) => {
+                self.section_started
+            }
+            _ => true,
+        };
+        token
+    }
+
+    fn read_token(&mut self) -> Token {
         if let Some(locale) = self.pending_locale.take() {
             return Token::Locale(locale);
         }
@@ -460,6 +476,17 @@ impl Lexer {
                                 return Token::ILLEGAL;
                             }
                             if let Some(currency) = self.read_next_char() {
+                                // Excel: currency text of several characters prints as it is
+                                // (`#,##0.00 [$USD]` on -1.5 is "-1.50 USD", gen-m10 T-1611;
+                                // number-formats.md).
+                                let mut text = String::from(currency);
+                                while let Some(c) = self.peek_char() {
+                                    if c == ']' || c == '-' {
+                                        break;
+                                    }
+                                    text.push(c);
+                                    self.read_next_char();
+                                }
                                 // The locale part of `[$€-40C]` is read as a `[$-40C]` tag that
                                 // follows the symbol (probes/text-currency-locale-date).
                                 if Some('-') == self.peek_char() {
@@ -475,7 +502,11 @@ impl Lexer {
                                     self.pending_locale = Some(locale_tag::resolve(&tag));
                                 }
                                 if self.read_next_char() == Some(']') {
-                                    return Token::Currency(currency);
+                                    return if text.chars().count() == 1 {
+                                        Token::Currency(currency)
+                                    } else {
+                                        Token::Text(text)
+                                    };
                                 }
                             }
                             self.set_error("Failed to parse currency");
@@ -615,9 +646,17 @@ impl Lexer {
                 // `B1`/`B2` a calendar prefix that prints nothing, and a lone `B` closing the code is
                 // invalid (`TEXT(100,"ABC")` = "A43C", `"B"` and `"dB"` are #VALUE!;
                 // probes/text-format-bare-literals A40-A50, probes/text-format-unquoted-letters).
+                // The prefix is invalid after anything that prints in its section: `"b1"` is
+                // accepted, `"ab1"`, `"*xb1"` and `"a*?b1"` are #VALUE! (probes/
+                // t2202-text-code-check-on-text; number-formats.md "TEXT checks the code before it
+                // looks at a text or boolean value").
                 'b' | 'B' => {
                     if let Some(c @ ('1' | '2')) = self.peek_char() {
                         self.read_next_char();
+                        if self.section_started {
+                            self.set_error("Calendar prefix after the start of a section");
+                            return Token::ILLEGAL;
+                        }
                         return Token::Calendar(c);
                     }
                     let count = self.consume_run('b');
@@ -660,7 +699,12 @@ impl Lexer {
                 // above) and the digits 1-9 as they are: `TEXT(1,"0x")` = "1x", `TEXT(PI(),"ü")` =
                 // "ü", `TEXT(5,"2")` = "2" (probes/text-format-unquoted-letters,
                 // probes/text-format-bare-literals A1-A7).
-                _ if x.is_alphabetic() || ('1'..='9').contains(&x) => Token::Literal(x),
+                // Control characters print as themselves too: `TEXT(100,CHAR(10))` is a line feed
+                // and `TEXT(-2.5,CHAR(1))` is "-" and CHAR(1) (gen-m5/d586a1e0c9896942 Calc!A38,
+                // gen-m5/c0651f0e0fb544d0 Calc!A336; number-formats.md, T-2158).
+                _ if x.is_alphabetic() || ('1'..='9').contains(&x) || x.is_control() => {
+                    Token::Literal(x)
+                }
                 _ => {
                     self.set_error(&format!("Unexpected character: {x}"));
                     Token::ILLEGAL

@@ -62,3 +62,19 @@ fn test_text_on_text_over_255_characters_is_value_error() {
     assert_eq!(model._get_text("A5"), "255");
     assert_eq!(model._get_text("A6"), "#VALUE!");
 }
+
+#[test]
+fn test_text_reads_number_like_text_and_prints_control_characters() {
+    // gen-m5/901e91c09b347914 Calc!A210, eb942f4a59b1c004 Calc!A54, d586a1e0c9896942 Calc!A38,
+    // c0651f0e0fb544d0 Calc!A336 (excel-graph, T-2158).
+    let mut model = new_empty_model();
+    model._set("A1", r#"=TEXT("1","0,000.0")"#);
+    model._set("A2", r#"=TEXT(DOLLAR(3.14159),"h:mm:ss.00")"#);
+    model._set("A3", "=TEXT(100,CHAR(10))");
+    model._set("A4", "=TEXT(-2.5,CHAR(1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0,001.0");
+    assert_eq!(model._get_text("A2"), "3:21:36.00");
+    assert_eq!(model._get_text("A3"), "\n");
+    assert_eq!(model._get_text("A4"), "-\u{1}");
+}

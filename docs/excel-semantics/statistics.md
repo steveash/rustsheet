@@ -755,7 +755,7 @@ the text "TRUE" (L2) and a one-cell range or reference as its value (`BETA.DIST(
 and STANDARDIZE (probes-numeric/t1049-fdistrt A19, A26, m9-legacy-fdist A90; "SKEW, SKEW.P, KURT, ..." below).
 Evidence: probes/stat-later-argument-lift (141 formula cells, value cells rounded to 12 places, excel-graph, 2026-10-17, T-1290); probes/stat-argument-modes.
 Ours: matches (T-1290), except that BETA.DIST, F.DIST, F.DIST.RT and FDIST read a TRUE as `#VALUE!`, as their scalar
-calls always did (L1, L13: T-1849; STANDARDIZE, L14: T-1755; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
+calls always did (L1, L13: T-1849; WEIBULL's and PHI's are unprobed). Every argument of these functions is `Lift`
 in the lifting table and each kernel reads its arguments in its scalar order; T.DIST.2T and TDIST read every argument
 before they check any ("Overflowing arguments, PERMUT's limit and argument error order" below). One scalar change
 here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and
@@ -961,7 +961,28 @@ and `POISSON(1,0.1,TRUE)` 0.9953211598395555 (...556), all of which statrs gets 
 CHISQ.DIST.RT through T-1778's identity, the same model gives `CHISQ.DIST.RT(1E-06,30)` = 1.0000000000000002 where
 Excel gives 1.0 (probes-numeric/m9-legacy-chidist A15, A16), and it misses m9-chisq-dist-rt A32 and t1049-chisqdistrt
 A8. So POISSON.DIST stays on statrs here (T-2055).
-Evidence: ironcalc-calc STATISTICAL/BINOM.xlsx and POISSON.xlsx (Excel-cached); probes-numeric/t1048-poisson,
+T-2145 dense sweep (excel-graph; probes-numeric/t2145-binomial-sweep, t2145-negbinom-sweep, t2145-binom-range-sweep:
+3260 BINOM.DIST, 1100 NEGBINOM.DIST and 790 BINOM.DIST.RANGE cells, p in {0.5, 0.25, 0.125, 0.1, 0.2, 0.3, 0.7, 0.9,
+0.99, 0.999}, no error cells). Against the exact value rounded once (Python `fractions`, from the exact decimal p),
+BINOM.DIST is bit-exact at 1017 of 3260 (31%). Of the other 2243, 1017 are within 4 ulp (steps between doubles), 1011 more
+within 1E-14 relative and 215 more within 1E-12 relative (against the exact value); none is beyond (worst 1.4E-13). NEGBINOM.DIST is exact at 394 of 1100 and
+BINOM.DIST.RANGE at 393 of 790. Patterns in the BINOM.DIST cells (all counts from the sidecars):
+- Exact share by p: 48% (0.1), 50% (0.125), 40% (0.2), 45% (0.25), 37% (0.3), 43% (0.5), then 16% (0.7), 14% (0.9),
+  8% (0.99), 10% (0.999): it drops sharply above 0.5.
+- pmf against cdf: the pmf is exact at 234 of 1630 (14%), the cdf at 783 of 1630 (48%).
+- Every cdf cell with k = n is exactly 1 (170 of 170), which may be a short-circuit (1 is also the exact value, so this does not prove one). The k = 0 pmf, `(1-p)^n`,
+  is exact at only 44 of 170, so even that single power is not the exact value rounded once.
+- The exact share falls with n: 30 of 40 at n = 1, 72 of 220 at n = 10, 158 of 720 at n >= 30.
+- For p in {0.5, 0.25, 0.125}, where the exact value is often a short decimal, Excel is still off in 50 to 57% of
+  cells, from 1 ulp (31% of the misses) to about 210 ulp (median 2): the exact short decimal is not Excel's answer. Even the exact power of two
+  `BINOM.DIST(0,50,0.5,FALSE)` = 0.5^50 is 8.881784197001244E-16, 8 doubles below the exact 8.881784197001252E-16
+  (t2145-binomial-sweep A2781; A2782 the cdf, A2803 the pmf at k = 50 likewise).
+NEGBINOM.DIST goes the other way: its exact share is 15 to 17% at p = 0.1 and 0.2, 27% at 0.125, 31% at 0.3, 40% at
+0.25, 56% at 0.5, then 36%, 42%, 45%, 48% at 0.7 to 0.999, so the BINOM.DIST trend must not be carried over to it.
+Hypothesis only (not tested): the growth of the error with n and with p near 1 is what a prefactor `exp(a*ln x)`
+would give. The per-cell values are the fitting data for T-2146.
+Evidence: ironcalc-calc STATISTICAL/BINOM.xlsx and POISSON.xlsx (Excel-cached); probes-numeric/t2145-binomial-sweep,
+t2145-negbinom-sweep, t2145-binom-range-sweep (per-cell values in their .oracle.json sidecars); probes-numeric/t1048-poisson,
 m9-legacy-chidist, m9-chisq-dist-rt, t1049-chisqdistrt (excel-graph); the exact values from Python `fractions`.
 Ours (T-0927): `statistical/discrete.rs` walks the pmf terms, each from the last by the exact ratio of consecutive
 terms, in double-double with a power-of-two exponent beside it (the terms start at q^n, as small as 0.5^3000), and
@@ -1539,7 +1560,22 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
   - b > 8, or a >= 1.5: Excel is within the power terms' noise of the exact B, and the GAMMALN form misses
     (at most 4 of each 48-row region). GAMMALN switches to Stirling's series at 8 ("GAMMA, GAMMALN and LN kernels").
   - For the Student t this is B(n/2, 1/2) for df up to 16. In the engine only df 13 to 16 take it. Below df 13
-    (b under 6.5, not probed) it costs probes-numeric cells, as the df-ratio errors there are small.
+    it costs probes-numeric cells, as the df-ratio errors there are small.
+  - b under 6.5 (T-0969 attempt 11, from the existing `t0969-beta-density-b`, b = 0.25 to 8 by 0.25): the same form
+    holds for a = 1/2. At x = 0.05 it predicts Excel's density error within 2 x 2^-53 at 29 of the 32 b (b = 3.75,
+    4.25 and 4.5 are within 4). At x = 0.01, every b carries about -2 more, the power terms' share. For a = 1.5 it
+    misses by up to 21 (b = 6.75). The form's own error below b = 6.5 is under 7 x 2^-53 (df 11 and 12: -4 to -7),
+    so the tails' loss below df 13 is the tail kernel's noise, not B.
+  - The branch structure is that of TOMS 708's `betaln` (Didonato and Morris 1992). For min(a,b) < 1 and
+    max(a,b) < 8 it is `gamln(a0) + (gamln(b0) - gamln(a0 + b0))`, and from 8 `algdiv`. That makes TOMS 708 a
+    candidate for BETA.DIST (an interpretation). Its `bratio` (R's `toms708.c`, with TOMS 708's own `gamln`) is not
+    Excel's tail: on `t0969-t-beta-link` column E (`BETA.DIST(y,n/2,0.5,TRUE)`, 176 cells), it is bit-exact on 27 and
+    the exact I_y on 36, in every bratio branch (bpser 19 of 86 against the exact 25, bup+bgrat 6 of 29 against 7). On
+    the centre columns H and I (`BETA.DIST(z,0.5,n/2,TRUE)`) it does better than the exact value: 122 and 131 of 176,
+    against 102 and 115.
+  - The tail takes the GAMMALN terms smaller shape first, `GAMMALN(1/2) + (GAMMALN(n/2) - GAMMALN(n/2 + 1/2))`.
+    BETA.DIST's argument order, `GAMMALN(n/2) + (GAMMALN(1/2) - ...)`, scored in `log_gamma_ratio` for df 13 to 16,
+    gains 8 probes-numeric cells but loses 13 (10 of them df-15 `t0969-t-tail-grid` cells).
 - Ours: `student_t.rs` `log_gamma_ratio`, which scales the series tail for df 13 to 16. Visibly-off cells:
   `t0969-t-tail-grid` 260 -> 245, `t0969-t-df-ratio` 9 -> 8, `t0969-t-beta-link` 42 -> 40, with none lost
   in the family's probes.
@@ -1695,7 +1731,7 @@ them and oracle cells contradict them.
     0.5000000000000001 and `F.DIST.RT(1,1,1)` = 0.4999999999999999 (t1049-fdist A7, m9-legacy-fdist A31).
   - Tasks: T-2219 (the accuracy cells, visible parity) and T-2221 (the fit, after the T-2220 sweep).
 
-The engine follows both PARTIAL rules. Against statrs, the probes-numeric F and BETA cases gain
+The engine follows both PARTIAL rules (the T-2220 sweep contradicts the strong form of the second). Against statrs, the probes-numeric F and BETA cases gain
 72 bit-exact cells and lose 3, a net gain of 69. The three lost cells are now 1 ulp off:
 `FDIST(100,1,1)` and `F.DIST.RT(100,1,1)` (m9-legacy-fdist A61, A62: 0.06345103486110715) and
 t1049-fdist A23 (0.979990011905381).
@@ -1731,9 +1767,42 @@ with both functions wrong in the same way. Excel's own pair lands on x exactly a
 (0.7) but not at H23 (-0.23399999999999987) or H42 (0.23399999999999999), as T-1745 found. The
 switch waits for T-2119.
 Status: VERIFIED (F.DIST.RT and F.TEST are not 1 - cdf: F_DIST H2, H3, F_TEST F1, F3; the
-densities on the cells named); PARTIAL (exact complement, one-evaluation tails); the cdf algorithm
-stays UNVERIFIED (T-1744).
+densities on the cells named); PARTIAL (exact complement, one-evaluation tails; the T-2220 sweep contradicts the
+strong form of the latter, see below); the cdf algorithm stays UNVERIFIED (T-1744).
 Tasks: T-0970, T-2119, T-1744, T-1745, T-2219, T-2220, T-2221
+
+### Dense F sweep (T-2220)
+Evidence: `probes-numeric/t2220-f-dist-sweep-{cdf,pdf,rt}` (100 df pairs d1, d2 in {1,2,3,4,5,7,10,20,50,100}
+x x in {0.1,0.25,0.5,1,1.5,2,3,5,10,100}: 1,000 cells each) and `t2220-f-dist-sweep-d1-1`, `-d2-1`
+(d1 = 1 or d2 = 1, 30 x points over 1E-6..1E6: 900 and 810 cells). All 4,710 cells are numbers, no
+errors. Compared against a 50-digit reference (mpmath regularized incomplete beta, density from the
+closed form) rounded to a double:
+- Reference: the 50-digit values are evaluated at the double x Excel receives
+  (`docs/research/t2220_f_dist_sweep_stats.py` reproduces every figure here); the upper tail is computed
+  directly as I_{d2/(d2+d1 x)}(d2/2, d1/2), not as 1 - cdf, which cancels below about 1E-33.
+- Excel is not correctly rounded anywhere: no (d1, d2) pair, for any of F.DIST TRUE, F.DIST FALSE or
+  F.DIST.RT, has all its cells equal to the correctly rounded double, and that includes d1 = d2 = 1
+  and d1 = 1 or d2 = 1 with closed forms available.
+- Cells equal to the correctly rounded value: cdf 765/1570 (49%), RT 607/1570 (39%), pdf 147/1570
+  (9%). The density is the least accurate: 4/10 at the (2,2) pair and 1/40 at d1 = d2 = 1.
+- Error size: within 4 ulp are cdf 1,419/1,570 (90%), RT 1,318/1,570 (84%) and pdf 1,052/1,570 (67%).
+  Worst relative error: cdf 2.7E-14, RT 2.8E-14, density 7.8E-14. The largest RT error is 196 ulp at
+  `F.DIST.RT(1E6,1,50)`; 125 RT cells are 10 or more ulp off, at every magnitude of p (e.g. 35 ulp at
+  (1.61,1,50) where p = 0.21), not only in far tails. The cdf is at worst 201 ulp off and the density 619 ulp.
+  A T-2221 acceptance bar of "bit-exact or within 4 ulp" therefore cannot cover all of this grid.
+- `F.DIST(x,d1,d2,TRUE) + F.DIST.RT(x,d1,d2)` is exactly 1.0 in 1,486 of 1,570 cells and not in 84
+  (all 84 such sums are exactly 0.9999999999999999), e.g. (x,d1,d2) = (100,1,3), (5,1,4),
+  (10,1,50), (0.1,3,1), (100,3,3), (0.1,3,5), (100,3,7), (3,3,10). This bears on the second PARTIAL
+  rule above (both tails from one evaluation): its strong form, an exactly-1 sum, fails in 5% of cells.
+  It does not test the first rule (how the beta argument's complement is formed, d2/(d1 x + d2) directly
+  versus 1 - w); that stays open for T-2221.
+- d1 = d2 = 1: `F.DIST(1,1,1,TRUE)` = 0.5000000000000001 and `F.DIST.RT(1,1,1)` =
+  0.4999999999999999 reproduce on the sweep (also F.DIST(3,1,1,TRUE) = 0.6666666666666666 and
+  F.DIST.RT(3,1,1) = 0.33333333333333337); `F.DIST.RT(10,1,1)` and `F.DIST(0.1,1,1,TRUE)` are the same
+  double (0.19498222904213666), consistent with the reflection F.DIST.RT(x) = F.DIST(1/x) at d1 = d2.
+Status: VERIFIED (observation, with the case ids above); the strong form of the one-evaluation rule is
+contradicted (84 of 1,570 sums are not 1), the exact-complement rule is untested here; the algorithm
+stays UNVERIFIED (T-2221).
 
 ## BETA.INV solves Excel's own CDF to the crossing (T-1745)
 Rule: BETA.INV(p,a,b) returns, in most cases, a double where Excel's own BETA.DIST(.,a,b,TRUE)
@@ -2124,7 +2193,11 @@ matches the engine.
 Evidence: probes/stat-order-floor-batch A274, A299 (empty argument), A102, A128 (boolean), A277, A278, A280, A290,
 A294, A295, A300 (DEVSQ; a two-pass reproduces all seven bit-exactly); excel-graph, 2026-10-17.
 Status: VERIFIED (excel-graph).
-Ours: AVEDEV/DEVSQ ignore the empty argument (0), QUARTILE(TRUE,1) is an error, DEVSQ is one-pass (devsq.rs).
+Ours (T-1748): AVEDEV/DEVSQ count the empty argument as 0 (`for_each_value`); the data argument of PERCENTILE*, QUARTILE*,
+PERCENTRANK* reads a typed boolean as a one-element array and typed text as a number (a single cell holding either is unprobed, UNVERIFIED, and unchanged). DEVSQ is one-pass (devsq.rs, T-1749).
+T-1748 sweep (probes-numeric/t1748-typed-boolean-data, excel-graph): PERCENTILE, PERCENTILE.INC/.EXC(TRUE,0.5), QUARTILE.EXC(TRUE,2),
+PERCENTRANK/.EXC(TRUE,1), SMALL/LARGE(TRUE,1) and QUARTILE(TRUE,0) are all 1, QUARTILE(FALSE,1) is 0, `QUARTILE("1",1)` is 1 (direct
+text coerces), `SUMSQ(1,)` is 1 (empty skipped or counted as 0 alike).
 Tasks: T-1748, T-1749
 
 ## SKEW, SKEW.P, KURT, HARMEAN, STANDARDIZE, SUMX* and MDETERM edge pools (T-1623)
@@ -2148,5 +2221,30 @@ as does a wrong argument count (`STANDARDIZE(5,3)`, a three-range `SUMX2PY2`); `
 written `_xlfn.`-prefixed in the file.
 Evidence: probes/stats-evidence-floor-t1623 (excel-graph, 2026-10-17).
 Status: VERIFIED (excel-graph).
-Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404; the others above are open.
+Ours: the SKEW.P mismatches (Q16, Q19) were fixed by T-1404, HARMEAN of no numbers (`#N/A`, Q50) by T-1753, and the direct TRUE in STANDARDIZE's x (Q58, and L14 of probes/stat-later-argument-lift) by T-1755; the others above are open.
 Tasks: T-1750, T-1751, T-1752, T-1753, T-1754, T-1755
+
+## AGGREGATE 14-19: k is read before the array, a referenced error k is `#VALUE!` (T-2281)
+Rule: functions 14-19 read k as a number before they read the array, so a text k is `#VALUE!`
+and an error k its own error even where the array holds an error or no numbers, while a blank,
+TRUE or "2" k is coerced and the array decides (no numbers: `#NUM!`). A k that is a reference,
+written or returned by OFFSET, INDIRECT or IF, reads its top-left cell (a multi-cell range does not
+lift), and a referenced cell holding an error is `#VALUE!`, not that error (options 0, 4 and 6
+probed, the others assumed alike).
+Cells (probes/aggregate-range-k-first-cell, excel-graph 2026-10-21; Data A1:A5 = 1..5, B1 "x",
+B2 blank, B3 0.5, B4 2, C1:C2 no numbers, D1 `=NA()`, E1 `=NA()`, E2 2):
+- `AGGREGATE(18,3,C1:C2,B1:B3)`, `AGGREGATE(14,6,C1:C2,"x")`, functions 14-19 over C1:C2 with
+  k B1:B3: `#VALUE!` (A3, A5:A11); `EDATE(…,-21)` `#VALUE!` (A19, and gen-m6/03333cc38ec06a14
+  Calc!A120). `AGGREGATE(14,4,E1:E2,"x")` `#VALUE!`, not the array's `#N/A` (C8).
+- `AGGREGATE(18,3,C1:C2,0.5)`, k -1, k B2:B3 (blank), k B3:B4 (0.5), k "2", k TRUE: `#NUM!` (A4,
+  A12, A20, A21, A25, A26); k `1/0`: `#DIV/0!` (A24); `AGGREGATE(14,6,A1:A5,NA())` `#N/A` (C9).
+- `AGGREGATE(14,6,A1:A5,B1:B3)` `#VALUE!` (A2), `AGGREGATE(16,6,A1:A5,B3:B4)` 3 (A14),
+  `AGGREGATE(14,6,A1:A5,B4:B5)` 4 and `ROWS(…)` 1 (A16, A17), `AGGREGATE(14,6,A1:A5,"2")` 4 (A28);
+  k `OFFSET(B4,0,0)`, `OFFSET(B4,0,0,2,1)`, `INDIRECT("Data!B4")`, `IF(TRUE,B4)`: 4 (C5, E1, C12,
+  C13), and `OFFSET(B1,0,0)` over C1:C2 `#VALUE!` (C7).
+- k D1 or D1:D2 over A1:A5 or C1:C2 under options 0, 4 and 6, and k `INDIRECT("Data!D1")` or
+  `IF(TRUE,D1)`: `#VALUE!` (A27, A29:A31, C1:C4, C6, C10, C11, C14).
+- An array k still lifts: `AGGREGATE(14,6,C1:C2,{"x";1})` spills `#VALUE!`, `#NUM!` (A22:A23).
+Engine: `Model::aggregate_k` (crates/rustsheet-engine/src/functions/aggregate.rs); `fn_aggregate`
+keeps a fourth argument IF or CHOOSE picks a reference for as that reference.
+Status: implemented (T-2281)

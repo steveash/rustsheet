@@ -30,3 +30,17 @@ fn arguments() {
     assert_eq!(model._get_text("B4"), *"1");
     assert_eq!(model._get_text("B5"), *"#ERROR!");
 }
+
+#[test]
+fn yearfrac_out_of_calendar_start_beats_an_error_end() {
+    // dates.md "YEARFRAC reads its start's range before the end's error" (T-2266): the start's
+    // #NUM! comes before the end's error, but an error start keeps its own error.
+    let mut model = new_empty_model();
+    model._set("A1", "=YEARFRAC(-1,1/0)");
+    model._set("A2", "=YEARFRAC(NA(),-1)");
+    model._set("A3", "=YEARFRAC(123456790.12,1/0,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+}

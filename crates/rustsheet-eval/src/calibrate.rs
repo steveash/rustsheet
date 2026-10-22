@@ -6,7 +6,7 @@
 
 use serde::Serialize;
 
-use crate::report::functions_in;
+use crate::formula_calls::functions_in;
 use crate::value::{compare, Value, Verdict};
 use crate::volatile::scorable_cells;
 use crate::xlsx_snapshot::WorkbookSnapshot;

@@ -26,7 +26,11 @@ impl Model {
             [serial, return_type] => (serial, Some(return_type)),
             _ => return CalcResult::new_args_number_error(cell),
         };
-        let serial = match self.cast_number_ref(serial, cell) {
+        // A boolean serial is #VALUE!, before the return_type is read (`WEEKNUM(<FALSE cell>,1)`;
+        // dates.md "WEEKNUM of a boolean serial is #VALUE!", gen-m6, T-2276); WEEKDAY and
+        // ISOWEEKNUM read it as 1. A typed or array-constant boolean is `#VALUE!` too
+        // (probes/weeknum-boolean-serial A1:A8, A11).
+        let serial = match self.cast_number_no_bools_ref(serial, cell) {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
@@ -67,10 +71,10 @@ impl Model {
             16 => chrono::Weekday::Sat,
             17 => chrono::Weekday::Sun,
             // 0, 3-10 and 18-20 are #NUM! (probes/weeknum-serial-0 C3, C4, C18, C19, C23-C26).
-            // Excel gives 22+ and negatives the start weekday of the last valid WEEKNUM evaluated
-            // earlier in the recalc, #NUM! only when none ran (probes/weeknum-stale-return-type,
-            // docs/excel-semantics/dates.md). That value depends on Excel's calc order; we give
-            // #NUM!, Excel's no-state value, until TODO(T-1484) reproduces the state.
+            // Excel gives 22+ and negatives the start weekday from a state that earlier WEEKNUM and
+            // ISOWEEKNUM calls of the recalc left, #NUM! only when it is empty (docs/excel-semantics/
+            // dates.md "WEEKNUM's stale return_type state", probes/weeknum-stale-*). We give #NUM!,
+            // Excel's empty-state value, until TODO(T-2068) reproduces the state (SPEC-0017).
             _ => return num_error(cell),
         };
         // Excel numbers the weeks of 1900 as if serial 1 were a Sunday (the real 1 Jan 1900 is a

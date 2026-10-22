@@ -418,13 +418,14 @@ impl UserModel {
                         self.model.range_clear_all(&area)?;
                     }
                 }
-                Diff::DeleteSheet { sheet, old_data } => {
+                Diff::DeleteSheet {
+                    sheet,
+                    old_data,
+                    tables,
+                } => {
                     needs_evaluation = true;
-                    let sheet_name = &old_data.name.clone();
-                    let sheet_index = *sheet;
-                    let sheet_id = old_data.sheet_id;
-                    self.model
-                        .insert_sheet(sheet_name, sheet_index, Some(sheet_id))?;
+                    let (name, id) = (old_data.name.clone(), old_data.sheet_id);
+                    self.model.insert_sheet(&name, *sheet, Some(id))?;
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
                     for (row, column, cell) in old_data.sheet_data.cells() {
                         worksheet.update_cell(row, column, cell.clone())?;
@@ -438,9 +439,8 @@ impl UserModel {
                     worksheet.color = old_data.color.clone();
                     worksheet.merged_cells = old_data.merged_cells.clone();
                     worksheet.shared_formulas = old_data.shared_formulas.clone();
-                    self.model.reset_parsed_structures();
-
-                    self.set_selected_sheet(sheet_index)?;
+                    self.model.restore_tables(tables.clone());
+                    self.set_selected_sheet(*sheet)?;
                 }
                 Diff::SetColumnStyle {
                     sheet,
@@ -822,7 +822,7 @@ impl UserModel {
                     new_value,
                     old_value: _,
                 } => self.model.set_frozen_columns(*sheet, *new_value)?,
-                Diff::DeleteSheet { sheet, old_data: _ } => {
+                Diff::DeleteSheet { sheet, .. } => {
                     self.model.delete_sheet(*sheet)?;
                     if *sheet > 0 {
                         self.set_selected_sheet(*sheet - 1)?;

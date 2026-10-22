@@ -439,10 +439,13 @@ fn test_time_function_extreme_values() {
         ("D3", "=SECOND(0.999999999999)"),
     ]);
 
-    // Large fractional inputs should be floored and normalized
-    let result_a1 = model._get_text("A1").parse::<f64>().unwrap();
+    // An argument past 32767 is #NUM!, not wrapped (probes/time-argument-bound A13:A18).
+    for cell in ["A1", "A2"] {
+        assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
+    }
+    let result_a3 = model._get_text("A3").parse::<f64>().unwrap();
     assert!(
-        (0.0..1.0).contains(&result_a1),
+        (0.0..1.0).contains(&result_a3),
         "Result should be valid time fraction"
     );
 
@@ -517,7 +520,7 @@ fn test_timevalue_malformed_but_parseable() {
 fn test_performance_stress_with_extreme_values() {
     // Test performance/stress cases with extreme values
     let model = test_time_expressions(&[
-        // Very large numbers that should still work
+        // Very large arguments
         ("A1", "=TIME(2147483647, 0, 0)"), // Max i32 hours
         ("A2", "=TIME(0, 2147483647, 0)"), // Max i32 minutes
         ("A3", "=TIME(0, 0, 2147483647)"), // Max i32 seconds
@@ -536,25 +539,11 @@ fn test_performance_stress_with_extreme_values() {
         ("D4", "=SECOND(D1)"),
     ]);
 
-    for cell in ["B1", "B2", "B3"] {
+    // TIME of an argument past 32767 is #NUM! and so is a part of it (probes/time-argument-bound
+    // A13:A18; gen-m6/9e6a1b733ee1e1e0 A77).
+    for cell in ["B1", "B2", "B3", "A1", "A2", "A3", "D1", "D2", "D3", "D4"] {
         assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
     }
-
-    // All results should be valid (not errors) even with extreme inputs
-    for cell in ["A1", "A2", "A3", "D1", "D2", "D3", "D4"] {
-        let result = model._get_text(cell);
-        assert!(
-            result != *"#ERROR!" && result != *"#NUM!" && result != *"#VALUE!",
-            "Cell {cell} should not error with extreme values: {result}",
-        );
-    }
-
-    // TIME function results should be valid time fractions
-    let time_d1 = model._get_text("D1").parse::<f64>().unwrap();
-    assert!(
-        (0.0..1.0).contains(&time_d1),
-        "TIME result should be valid fraction"
-    );
 }
 
 #[test]
@@ -572,4 +561,32 @@ fn time_over_24_hours_divides_before_dropping_days() {
     assert_eq!(bits("A1"), 0.0014236111111110006_f64.to_bits());
     assert_eq!(bits("A2"), 0.41738425925925915_f64.to_bits());
     assert_eq!(bits("A3"), 0.4257754629629744_f64.to_bits());
+}
+
+#[test]
+fn time_arguments_snap_near_an_integer_and_stop_at_32767() {
+    // probes/time-argument-window A43, A49, A74, A75; time-argument-negative-window A2, A19;
+    // time-argument-bound A1, A10, A19:A21 (excel-graph, T-2267).
+    let model = test_time_expressions(&[
+        ("A1", "=TIME(1-2^-22,0,0)"),
+        ("A2", "=TIME(1-2.4E-7,0,0)"),
+        ("A3", "=TIME(10,0,-(2^-23+1E-12))"),
+        ("A4", "=TIME(10,0,-1-1.2E-7)"),
+        ("A5", "=TIME(32767,0,0)"),
+        ("A6", "=TIME(32768,0,0)"),
+        ("A7", "=TIME(600,-32768,0)"),
+        ("A8", "=TIME(600,-32768-1E-6,0)"),
+    ]);
+    let seconds = |c: &str| {
+        let v: f64 = model._get_text(c).parse().unwrap();
+        (v * 86400.0).round()
+    };
+    assert_eq!(seconds("A1"), 3600.0);
+    assert_eq!(seconds("A2"), 0.0);
+    assert_eq!(seconds("A3"), 36000.0);
+    assert_eq!(seconds("A4"), 35998.0);
+    assert_eq!(seconds("A5"), 25200.0);
+    assert_eq!(model._get_text("A6"), "#NUM!");
+    assert_eq!(seconds("A7"), 21120.0);
+    assert_eq!(model._get_text("A8"), "#NUM!");
 }

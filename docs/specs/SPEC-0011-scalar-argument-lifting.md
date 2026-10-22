@@ -248,13 +248,15 @@ So the driver needs no legacy flag. Every legacy difference is an `@` that
    was probed (-d W30); SERIESSUM's coefficients is read whole (-a Y22-Y23, Y27-Y30).
 4. **Answered, with a limit.** `=EDATE({45000;45031},A1:A60)` spills 2 rows, as the static shape says
    (-a AA3, AC3). FORMULATEXT carries no marker, so how Excel saves it needs the file (M14).
-5. **Partly answered.** Lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT):
-   an array element is its top-left value (probes/m7-argument-modes K5-K10; SORTBY excepted, H97-H99),
-   the elements of OFFSET, INDIRECT and TRIMRANGE are references (probes/reference-lift-elements),
-   and TAKE's and DROP's are whole (K1-K4), which this spec reads as references, pending T-1960. Design: "Array-valued functions" (T-1834 to T-1839) and
-   "Elements that are references"; the carrier and its consumers are SPEC-0014 (T-1955), which
-   answers SUM, `=` and arithmetic over a result of references. Still open: a TAKE or DROP over an
-   array value (T-1960).
+5. **Answered.** Lifted elements that are arrays or references (TAKE, DROP, OFFSET, INDIRECT):
+   an array element is its top-left value (probes/m7-argument-modes K5-K10; UNIQUE's and SORTBY's
+   later elements are empty unless every entry is equal, H97-H99, T-1960), the elements of OFFSET,
+   INDIRECT and TRIMRANGE are references (probes/reference-lift-elements), and TAKE's and DROP's
+   are whole (K1-K4) references (ISREF of an element TRUE, spilled `#VALUE!`, SUM the top-left
+   cells: probes/m7-lift-take-drop-sortby, T-1960). Design: "Array-valued functions" (T-1834 to
+   T-1839) and "Elements that are references"; the carrier and its consumers are SPEC-0014 (T-1955), which
+   answers SUM, `=` and arithmetic over a result of references. A TAKE or DROP over an array value
+   gives top-left values (T-1960).
 6. **Answered.** A function-returned multi-cell reference in a `Lift` argument [lifts like a written
    range]: it does (IF, INDEX, OFFSET, INDIRECT, CHOOSE; -a W31-W36).
 7. **Answered.** The precedence and element-value gaps: precedence is the kernel's order (-a W14-W17
@@ -430,6 +432,21 @@ impl Model {
         kind: Function,
         args: &[Node],
         cell: CellReferenceIndex,
+        kernel: &mut Kernel<'_>,
+    ) -> CalcResult;
+
+    /// `lift_call` for a kernel of numbers (`number_fn`, `numbers_fn`; T-1932) with its
+    /// shortcut `numbers`, the kernel's result for arguments that are all numbers. While the
+    /// arguments read are numbers they stay `f64`s, and when all are, `numbers` runs with no
+    /// kernel call; at the first that is not, the call goes on as `lift_call`'s on the values
+    /// already read (none is read twice). In the in-place lift, a number element whose scalars
+    /// are numbers runs `numbers` too, for an entry whose elements are charged nothing.
+    pub(crate) fn lift_call_numbers(
+        &mut self,
+        kind: Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        numbers: &NumbersKernel<'_>, // dyn Fn(&[f64]) -> Result<f64, Error>
         kernel: &mut Kernel<'_>,
     ) -> CalcResult;
 
@@ -749,7 +766,7 @@ silently.
   | T-1784 | a lifted whole-column COUNTIFS (`=SUM(COUNTIFS(A:A,A1:A100000))`, the `reuse_equal_runs` path) and a *IF(S) bench | within 5% |
   | T-1773 | per-row unlifted cells over ≥ 100k rows, full recalc: `=ROUND(A{r},2)`, `=ABS(A{r})`, `=MOD(A{r},7)` | within 5% each |
   | T-1773 | lifted `=SUM(ROUND(A1:A1000000,2))` and `=SUM(ABS(A1:A1000000))` | within 5% |
-  | T-1785 | per-row unlifted `=DAY(A{r})` over ≥ 100k rows | within 5%; relaxed by decision 0077 (landed at +9.4% instructions), the target moves to T-1932 |
+  | T-1785 | per-row unlifted `=DAY(A{r})` over ≥ 100k rows | within 5%; relaxed by decision 0077 (landed at +9.4% instructions), the target moves to T-1932, which meets it (+4.7%) |
   | T-1775 | `benches/text.rs` | within 5% |
   | T-1372 | `=SUM(PMT(A1:A100000,10,100))` | none: a new path, a smoke number only |
 
@@ -802,12 +819,28 @@ result as it is, the array included. Lifted, the driver turns each element's res
 - a reference to several cells is a reference element ("Elements that are references" below:
   TAKE and DROP over a range);
 - a value is itself.
-SORTBY is the exception that is not settled: `SORTBY(A1:A3,C1:C3,{1;-1;1})` with A1:A3 = 3,1,2 and
-C1:C3 = 2,1,3 is {1;0;0} in Excel (probes/sort-error-args H97-H99, arrays.md "SORT argument errors
-come before validation"), where this rule gives {1;2;1}. H26 only shows the shape and the first
-element. So SORTBY's lifted element is an open question: T-1960 probes it, and T-1839 enters SORTBY
-only once the rule that gives {1;0;0} is known.
-`element_value` is the one conversion for `CallResult::Array` entries; a `Value` entry keeps
+UNIQUE and SORTBY are the exception (T-1960, probes/m7-lift-take-drop-sortby; arrays.md
+"UNIQUE's and SORTBY's lifted elements"): when the lifted argument's entries are not all equal, only
+the first element is its call's top-left; every later element is **empty** (it spills as 0; ISBLANK
+TRUE, SUM 0, ROWS, COLUMNS and INDEX of it `#VALUE!`), even where its entry equals the first.
+`SORTBY(A1:A3,C1:C3,{1;-1;1})` with A1:A3 = 3,1,2 and C1:C3 = 2,1,3 is so {1;0;0} spilled
+(probes/sort-error-args H97-H99), not this rule's {1;2;1}, and `UNIQUE(D1:D3,FALSE,{FALSE;TRUE})`
+with D1:D3 = x,y,x is "x", empty. Uniform entries follow the rule (`{1;1;1}`: 1,1,1). SORTBY's later
+elements are `#VALUE!` instead when an entry is not 1 or -1 or the call has a later
+by_array/sort_order pair. This is one driver option the two entries opt into (T-2300 builds it for
+UNIQUE, T-1839 reuses it); TOCOL, SEQUENCE, MAKEARRAY, EXPAND, WRAPROWS, WRAPCOLS, TAKE and DROP do
+not show it (their later elements are their calls' own).
+*As built (T-2300):* the option is `CallResult::ArrayFirst` (`ArgKinds::array_first()`), an
+`Array` result whose elements `lift_grids` keeps per `Later`. "Entries all equal" means every
+element's grid slots equal the first element's (`ArrayNode` equality, so `{0;FALSE}` differs:
+probes/m7-unique-lift-elements row 15); with several lifted arguments they all must be uniform
+(`UNIQUE(D1:D3,{FALSE;FALSE},{FALSE;TRUE})` is "x", empty, row 21; `{TRUE;TRUE},{FALSE;FALSE}`
+"x", "x", row 22). Otherwise an element whose call is an error keeps the error, the first element
+whose call is not an error keeps its top-left, and every other element is `ArrayNode::Empty`:
+`UNIQUE(D1:D3,FALSE,{#N/A;FALSE})` is `#N/A`, "x" (row 19), and `UNIQUE(<#VALUE!>,HSTACK(0.2,
+1E+15))` two `#VALUE!` (gen-m7/8044dce50616cfe9 A1434, so UNIQUE lifts an error array). INDEX of
+an empty value is `#VALUE!` (m7-lift-take-drop-sortby L25).
+`element_value` (built as `element_node`) is the one conversion for array entries; a `Value` entry keeps
 `calc_result_to_array_node`, so no existing element changes.
 
 **3. Each element is charged what it builds (directive 5).** An element's own result can be far
@@ -843,10 +876,26 @@ Test formulas (T-1834, T-1835):
 charge; entries that are `CallResult::Value` with no `Output` work skip both. One rule the spec did
 not name: an `Array` entry whose lifted arguments are all 1x1 runs one unlifted call and keeps its
 whole array (`SEQUENCE(INDIRECT("C3")*1)` spills C3's rows, as before T-1834), and its static shape
-is `Unknown`. Whether Excel lifts a 1x1 array there (`SEQUENCE({3})`) is open until T-1960, which
-deletes the rule or keeps it.
+is `Unknown`. Excel keeps that only for a single cell: `SEQUENCE(A3*1)`, `SEQUENCE(A3:A3)`,
+`SEQUENCE(IF(TRUE,A3))` and `SEQUENCE(INDEX({3},1,1))` with A3 = 3 spill 3 rows, but a 1x1 array
+lifts to one element: `SEQUENCE({3})`, `SEQUENCE(A3+{0})` and `EXPAND(A1:A2,{3})` are the 1x1 1,
+and `TAKE(A1:B3,{2})` one reference element A1:B2 (probes/m7-lift-take-drop-sortby rows 12-15 and
+38-45, T-1960). **T-2298 deleted the rule**: a 1x1 grid lifts like any other in `lift_grids` and
+`lift_references`, and a single cell never reaches the driver as a grid: a one-cell range is its value
+in the read phase (as before), and every operator reads a one-cell range operand as its cell's value
+(`number_or_array`, `value_or_array` and `string_or_array` in cast.rs), so `SEQUENCE(INDIRECT("A3")*1)`,
+`SEQUENCE(--INDIRECT("A3"))`, `SEQUENCE(INDIRECT("A3")&"")` and `SEQUENCE(IF(INDIRECT("A3")=3,3))` are
+scalar calls (row 39; probes/m7-one-cell-operand-lift F1-F12). OFFSET's, TAKE's and DROP's arguments
+lift a 1x1 array (`lifts_one_by_one`: `OFFSET(A1:B2,{1},0)` and `DROP(A1:B3,{1})` are one element,
+m7-one-cell-operand-lift F6, F7, F16, F17); INDIRECT and TRIMRANGE keep `lifts`, which does not
+(unprobed). The static shape of a 1x1 lift stays
+`Unknown`, since it cannot tell a one-cell range from a 1x1 array.
 
-**4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds:
+**4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds. *As built (T-1839):* SORTBY's entry is
+`params: [WholeByCaller, WholeByCaller, Lift]`, `repeat: [WholeByCaller, Lift]`, `CallResult::ArrayFirst`. The array and the
+by_arrays are read once by `fn_sortby`, and errors are still taken left to right in its kernel. `LiftOptions::later_error`
+makes the emptied elements `#VALUE!` when a call uses its cycle (more arguments than `params`). `LiftKinds::repeat` and
+`catalog_lift.py` read the cycle as a list.
 ```rust
 pub(crate) struct ArgKinds {
     // ...
@@ -875,40 +924,41 @@ it; an answer that differs changes the entry in T-1960's PR.
 | Function | Parameter | Kind | Evidence |
 |---|---|---|---|
 | SEQUENCE | rows | `Lift` | probe F1 (range), F2 (array), K9 |
-| SEQUENCE | columns | `Lift` | general rule (T-1960) |
+| SEQUENCE | columns | `Lift` | probe m7-lift-take-drop-sortby row 17 |
 | SEQUENCE | start | `Lift` | probe F3 |
-| SEQUENCE | step | `Lift` | general rule (T-1960) |
+| SEQUENCE | step | `Lift` | probe m7-lift-take-drop-sortby row 18 |
 | MAKEARRAY | rows | `Lift` | probe F23 (range), K10 |
-| MAKEARRAY | cols | `Lift` | general rule (T-1960) |
+| MAKEARRAY | cols | `Lift` | probe m7-lift-take-drop-sortby row 19 (element 2) |
 | MAKEARRAY | lambda | `Whole` | a LAMBDA is one value; an array of LAMBDAs cannot be written |
 | EXPAND | array | `Whole` | read as written |
 | EXPAND | rows | `Lift` | probe F7, K5 |
-| EXPAND | columns, pad_with | `Lift` | general rule (T-1960) |
+| EXPAND | columns | `Lift` | probe m7-lift-take-drop-sortby row 20 |
+| EXPAND | pad_with | `Whole` | probe m7-lift-take-drop-sortby row 21: `EXPAND(A1:A2,3,1,{0;1})` is one `#VALUE!` (an array pad_with is refused, not lifted) |
 | WRAPROWS | vector | `Whole` | read as written |
 | WRAPROWS | wrap_count | `Lift` | probe F8, K6, K7 |
-| WRAPROWS | pad_with | `Lift` | general rule; WRAPCOLS's pad_with is probed (T-1960) |
+| WRAPROWS | pad_with | `Lift` | probe m7-lift-take-drop-sortby row 22 |
 | WRAPCOLS | vector | `Whole` | read as written |
-| WRAPCOLS | wrap_count | `Lift` | gen-m7/6db767d720c5b55a A12 (2-D array); array literal by the general rule (T-1960) |
+| WRAPCOLS | wrap_count | `Lift` | gen-m7/6db767d720c5b55a A12 (2-D array); probe m7-lift-take-drop-sortby row 23 (array literal) |
 | WRAPCOLS | pad_with | `Lift` | probe G42 |
-| TOCOL | array | `Whole` | read as written |
+| TOCOL | array | `WholeByCaller` | read once by the function (T-1836), as TOCOL's cost needs its cells |
 | TOCOL | ignore | `Lift` | probe F9, K8; gen-m9/1782efcecd5d4b1b A19 |
-| TOCOL | scan_by_column | `Lift` | general rule (T-1960) |
-| UNIQUE | array | `Whole` | read as written |
-| UNIQUE | by_col | `Lift` | probe F12 (shape; it cannot tell a lift from reading one element, T-1960); gen-m9/4df1b22d3ed63f58 A36 (range) |
-| UNIQUE | exactly_once | `Lift` | general rule (T-1960) |
+| TOCOL | scan_by_column | `Lift` | probe m7-lift-take-drop-sortby row 24 |
+| UNIQUE | array | `WholeByCaller` | read once by the function (T-1836) |
+| UNIQUE | by_col | `Lift` | probe F12; m7-lift-take-drop-sortby rows 29, 30, 35 (later elements empty unless uniform, rule 2); gen-m9/4df1b22d3ed63f58 A36 (range) |
+| UNIQUE | exactly_once | `Lift` | probe m7-lift-take-drop-sortby rows 25, 26, 36, 37 (as by_col) |
 | SORTBY | array, by_array1, by_array2, … | `Whole` | read as written |
-| SORTBY | sort_order1 | `Lift` | probe F26 (shape); element values open, sort-error-args H97-H99 (T-1960) |
-| SORTBY | sort_order2, … | `Lift` | general rule (T-1960) |
+| SORTBY | sort_order1 | `Lift` | probe F26 (shape); m7-lift-take-drop-sortby sheet Sort (elements, rule 2), sort-error-args H97-H99 |
+| SORTBY | sort_order2, … | `Lift` | probe m7-lift-take-drop-sortby Sort rows 32, 33, 40, 41 |
 | TAKE, DROP | array | `Whole` | read as written, a reference kept (`evaluate_node_with_reference`) |
 | TAKE, DROP | rows | `Lift` | probe F4 (range), F5, F6, K1-K4 |
-| TAKE, DROP | columns | `Lift` | general rule (T-1960) |
+| TAKE, DROP | columns | `Lift` | probe m7-lift-take-drop-sortby rows 27, 28 (reference elements; `DROP(A1:B3,1,{1;2})` element 2 `#CALC!`) |
 
 TOROW, CHOOSECOLS and CHOOSEROWS are not in this list: TOROW is unprobed (T-1836 leaves it), and
 CHOOSECOLS/CHOOSEROWS read their index lists whole (T-1241). SORT is not lifted (T-1837).
 
-One more question is open: a 1x1 array in a lifted parameter (`SEQUENCE({3})`) is a grid for the
-driver (`LiftedArg::is_grid`), so it gives one element (1), not the 3x1 of `SEQUENCE(3)`. T-1960
-probes it; until then the driver's rule stands for every entry.
+A 1x1 array in a lifted parameter (`SEQUENCE({3})`) is a grid for the driver
+(`LiftedArg::is_grid`), so it gives one element (1), not the 3x1 of `SEQUENCE(3)`: Excel agrees
+(T-1960; "As built (T-1834)" above); T-2298 deleted the 1x1 rule that caught it.
 
 ### Elements that are references (T-1833)
 A lifted TAKE or DROP keeps each call's whole result: `INDEX(TAKE(A1:B3,{1;2}),1,1)` spills the row
@@ -923,9 +973,11 @@ the reference itself, and a multi-cell pick spills its cells or is `#SPILL!` whe
 is one (`ISREF(TAKE(A1:B3,1))` and `ISREF(DROP(A1:B3,1))` are TRUE, over an array FALSE:
 references.md, probes/isref-reference-lookups). So this spec reads a lifted TAKE's or DROP's element as a **reference**, not a nested array:
 - over a reference, each element is the reference the scalar TAKE or DROP returns (A1:B1, A1:B2);
-- over an array value, the element follows rule 2 above: the top-left value, as EXPAND's. This is
-  not probed: T-1960 asks `TAKE({1,10;2,20;3,30},{1;2})`. If Excel keeps a whole sub-array there,
-  T-1960 records it and this section gains a nested-array element in its PR.
+- over an array value, the element follows rule 2 above: the top-left value, as EXPAND's.
+  `TAKE({1,10;2,20;3,30},{1;2})`, `TAKE(SEQUENCE(3,2),{1;2})` and `TAKE(A1:B3*1,{1;2})` are 1, 1
+  and `DROP({1,10;2,20;3,30},{1;2})` 2, 3, each element 1x1 with ISREF FALSE, and spilled directly
+  1, 1 (probes/m7-lift-take-drop-sortby rows 5-7, 10, U4, U13, W55; T-1960). No nested-array element
+  is needed.
 
 Then no new nested-array carrier is needed. The array-of-references carrier is SPEC-0014's `RefGrid` (T-1955; one
 definition for OFFSET, INDIRECT, TRIMRANGE, TAKE and DROP: directive 3). Rule 2's `element_value`
@@ -935,7 +987,9 @@ evidence it has:
 - ROWS and COLUMNS count the outer array (F4-F6; `ROWS(OFFSET(A1,0,0,{1;2}))` is 2);
 - ISREF of the whole result is one FALSE (reference-lift-elements F15, G15);
 - spilled directly, an OFFSET element is `#VALUE!`; SUM, `=` and arithmetic over such a result are
-  answered in SPEC-0014 rules 2-7 (T-1960 asks the same of TAKE).
+  answered in SPEC-0014 rules 2-7, and TAKE's grid gives the same (T-1960): spilled directly each
+  element is `#VALUE!` (W45, W70), `+0` too (row 11), `SUM` reads the top-left cells (2, U1),
+  SUMPRODUCT reads 0 (U8), ISREF of the whole is FALSE and of an element TRUE (U2, U12).
 So T-1838 builds on T-1955's spec and T-1956's carrier, and adds TAKE and DROP as two more
 producers.
 
@@ -946,7 +1000,10 @@ count lifts (an array or a multi-cell range, as for OFFSET), a single-sheet rang
 any element runs). An unlifted call is unchanged. TAKE and DROP join OFFSET, INDIRECT and TRIMRANGE in
 `reference_producer`, so INDEX, ROWS, COLUMNS, SUMPRODUCT, the aggregates and LET read the grid as they read
 a lifted OFFSET's. IF, CHOOSE and OFFSET's reference argument (`may_hand_on_grid`) do not hand a TAKE or DROP
-grid on yet: unprobed either way, asked in T-1960.
+grid on yet. Excel does (T-1960, probes/m7-lift-take-drop-sortby rows 31, 32, 34, U7-U18): IF and
+CHOOSE hand the references on (`ISREF(INDEX(IF(TRUE,TAKE(A1:B3,{1;2})),1,1))` TRUE,
+`SUMPRODUCT(IF(..))` 0), OFFSET over the grid lifts again (`ROWS(OFFSET(TAKE(A1:B3,{1;2}),1,0))` 2,
+elements A2:B2 and A2:B3), and `TAKE(NA(),{1;2})` is two `#N/A` elements (ROWS 2). T-2299 builds them.
 
 ## Alternatives considered
 - **A helper per family** (status quo, "lift literals only" variants for financial and
@@ -1061,7 +1118,8 @@ Each step is one PR of size S/M. The old paths stay until their step.
    - Then, in parallel: **T-1835** (EXPAND, WRAPROWS, WRAPCOLS), **T-1836** (TOCOL, UNIQUE),
      **T-1839** (SORTBY; the `repeat` cycle). **T-1837** (SORT, nothing lifted) is independent.
    - **T-1838** (TAKE, DROP) after T-1955 and T-1956 (the reference carrier).
-   - **T-1960** (research, sonnet, S, any time): the open probes of the per-parameter list.
+   - **T-1960** (research, done): the open probes of the per-parameter list; follow-ups T-2298 (a 1x1
+     array lifts), T-2299 (TAKE/DROP grids handed on), T-2300 (UNIQUE's and SORTBY's empty later elements).
 4. **The old helpers, with no result change:**
    - **T-1773** (quality, opus, M): `single_number_fn!`, `lift_numbers`, `lift_with_defaults`,
      ROUND/MOD/CEILING.

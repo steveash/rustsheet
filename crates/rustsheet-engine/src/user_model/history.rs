@@ -5,7 +5,8 @@ use bitcode::{Decode, Encode};
 use crate::{
     cf_types::CfRule,
     types::{
-        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Theme, Worksheet,
+        Cell, Col, Color, Link, MergedCell, Row, SheetState, Style, StyleIncludes, Table, Theme,
+        Worksheet,
     },
 };
 
@@ -151,6 +152,8 @@ pub(crate) enum Diff {
     DeleteSheet {
         sheet: u32,
         old_data: Box<Worksheet>,
+        /// The tables on the sheet, which the delete takes out of the workbook (SPEC-0016).
+        tables: Vec<(String, Table)>,
     },
     SetFrozenRowsCount {
         sheet: u32,

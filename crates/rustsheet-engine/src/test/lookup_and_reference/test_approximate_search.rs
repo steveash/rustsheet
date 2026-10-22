@@ -193,8 +193,8 @@ fn exact_match_blank_key_is_zero_and_numbers_are_exact() {
 }
 
 #[test]
-fn descending_match_skips_backward_over_other_types() {
-    // docs/excel-semantics/lookup.md "MATCH descending search skips backward"
+fn descending_match_passes_over_other_types() {
+    // docs/excel-semantics/lookup.md "MATCH descending search scans from the top"
     // (probes/match-descending-argcheck J1-J8): Excel's values.
     assert_eq!(
         eval_over('A', &["0.1", "TRUE", "3.14159"], &["=MATCH(0.5,A1:A3,-1)"]),
@@ -216,4 +216,54 @@ fn descending_match_skips_backward_over_other_types() {
     );
     // An all-blank column has no cell of the key's type.
     assert_eq!(eval_over('E', &["", ""], &["=MATCH(1,E1:E2,-1)"]), ["#N/A"]);
+}
+
+#[test]
+fn descending_match_scans_from_the_top() {
+    // probes/lookup-match-descending-blank (excel-graph, T-2278): over an unsorted
+    // vector the search stops before the first value below the key.
+    let values = [
+        "0.5", "0.3", "0", "-2.5", "2.5", "-1", "1", "0.1", "100", "",
+    ];
+    assert_eq!(
+        eval_over(
+            'E',
+            &values,
+            &[
+                "=MATCH(J1,E1:E9,-1)",
+                "=MATCH(0,E1:E9,-2.2)",
+                "=MATCH(0.0001,E1:E9,-1)",
+                "=MATCH(-0.0001,E1:E9,-1)",
+                "=MATCH(\"\",E1:E9,-1)",
+                "=MATCH(0,E1:E5,-1)",
+            ],
+        ),
+        ["3", "3", "2", "3", "#N/A", "3"]
+    );
+    // An equal value ends the scan at the first of a run; a first value below the key is #N/A.
+    assert_eq!(
+        eval_over(
+            'E',
+            &["5", "3", "3", "1"],
+            &["=MATCH(3,E1:E4,-1)", "=MATCH(9,E1:E4,-1)"]
+        ),
+        ["2", "#N/A"]
+    );
+}
+
+#[test]
+fn matrix_of_a_lookup_landing_past_a_short_result_vector_is_value() {
+    // probes/lookup-short-result-vector A20, A23 (excel-graph, T-2278): LOOKUP reads on
+    // past the one-cell E11 to blank E19, an empty value that shows as 0 but is a blank matrix.
+    assert_eq!(
+        eval_over(
+            'B',
+            &["", "FALSE", "3", "42", "-1", "ABC", "-0.0001", "-0.0001", "TRUE"],
+            &[
+                "=LOOKUP(TRUE,B2:B10,E11:E11)",
+                "=MMULT(LOOKUP(TRUE,B2:B10,E11:E11),2.5)",
+            ],
+        ),
+        ["0", "#VALUE!"]
+    );
 }

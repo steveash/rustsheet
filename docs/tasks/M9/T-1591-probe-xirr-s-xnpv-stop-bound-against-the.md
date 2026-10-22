@@ -3,7 +3,7 @@ id: T-1591
 title: "Probe XIRR's XNPV stop bound against the span and a zero first value"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,10 @@ can find the returned bisection step (`uv run rustsheet-fitlab xirr-oos`).
 
 ## Out of scope
 - Engine changes (T-0916).
+
+## Outcome
+Probe `probes/xirr-span-zero-first` (30 cells) oracle-filled on excel-graph and added to `XIRR_OOS_CASES`.
+Zero-first-value results confirmed for every date order and guesses 0.2 and 1 (0.1/2^25, and 0.125/2^25 at
+guess 1). The span factor is not confirmed: 3 of 21 long-span cells miss (root 0.1, T = 20, 40, 120), the bound is
+not monotone in the span. `xirr-oos`: T-1583 candidate 48/52 (was 21/22), engine 46/52. Counts and the corrected status
+are in financial.md; the fit continues in T-2328; A28-A30 (zero first value, no later date: Excel gives a number where the engine gives `#NUM!`) are T-2329. No engine change; `make eval-baseline` recorded the new case (1 case; 3 stop-bound misses A11, A14, A20 and 3 input-check misses A28-A30).

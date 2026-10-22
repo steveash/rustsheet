@@ -3,7 +3,7 @@ id: T-2157
 title: "TEXT of a text or boolean value is #VALUE! when the format code is invalid"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -15,6 +15,7 @@ depends_on: [T-2202]
 TEXT is `#VALUE!` when its format code is invalid, whatever the value: a text or boolean value no longer bypasses the code check.
 
 ## Context
+- Evidence (T-2202): `eval/suites/probes/cases/t2202-text-code-check-on-text` probes which codes are rejected and that the check covers text, empty text and booleans; its cells must pass here (see number-formats.md).
 - Evidence first (planner, 2026-10-20): the probe this task asks for is T-2202 (research), which fills `probes/t2202-text-code-check-on-text`. Use that case; do not probe again. Its failing cells are this task's cells too.
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). `fn_text` (crates/rustsheet-engine/src/functions/text/common.rs) sends text and booleans to `format_text_value`
 (formatter/format.rs), which never validates the number sections, so codes like "TRUE", "FALSE", "#N/A" and "HELLO " (a bare
@@ -39,9 +40,9 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 11 in eval/baseli
 | gen-m5/f0f205865a3a4328 Calc!A262 | `=TEXT(Data!E11,LEFT(UPPER("Hello World"),6))` | "#VALUE!" | "TRUE" |
 
 ## Acceptance criteria
-- [ ] These 11 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] number-formats.md entry marked implemented, with the `a*?b1` probe result.
-- [ ] `make check` green; reviewers approve.
+- [x] These 11 known-failure lines disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] number-formats.md entry marked implemented, with the `a*?b1` probe result.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-21): every cell this task owns has the wrong type, error, text or boolean, or is a
@@ -50,3 +51,11 @@ criteria above are already the visible-parity stage.
 
 ## Out of scope
 - Text values under valid 1-3 section codes (T-1130).
+
+## Outcome
+TEXT of a text or boolean value is `#VALUE!` when a number section of its code does not parse (`format_text_value`,
+which now shares `numeric_section_count` with `format_number`), and a `B1`/`B2` calendar prefix after a printing token in
+its section is rejected (`"ab1"`, `"*?b1"`, `"a*?b1"`: the `a*?b1` probe answer). Avoiding two gen-m10 regressions
+(`TEXT(TRUE,"#,##0.00 [$USD]")` is "TRUE") needed `[$USD]` currency text, which now prints as it is (T-1737's half; the
+`[Cyan]` color stays T-1737's). Eval: gen-m5 11 fixed, probes 41 fixed, gen-m10 2 value cells and 75 displayed-text cells
+fixed, 0 regressions. Remaining in probes/t2202-text-code-check-on-text: fill characters (`TEXT(2.5,"a*?")`, T-1735).

@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1965: a VSTACK past the grid whose argument holds the formula's own cell (a cycle), against the same size error with an error argument and without a cycle; ROWS, COLUMNS and ISREF of the formula's own row. Each formula reads only its own row (or column A), so no two cells share a cycle.",
+  "tags": ["M7", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "W2": "=ROWS(VSTACK(2:2,A:A))",
+        "W3": "=ROWS(VSTACK(A:A,3:3,1/0))",
+        "W4": "=ROWS(VSTACK(1/0,A:A,4:4))",
+        "W5": "=ROWS(5:5)",
+        "W6": "=COLUMNS(6:6)",
+        "W7": "=ISREF(7:7)",
+        "W8": "=ROWS(VSTACK(A:A,W8))",
+        "W9": "=ROWS(VSTACK(A:A,B9+W9))",
+        "W10": "=ROWS(VSTACK(A:A,1/0))",
+        "W11": "=ROWS(VSTACK(1/0,A:A))",
+        "W12": "=COLUMNS(VSTACK(A:A,12:12))"
+      },
+      "expected": {}
+    }
+  ]
+}
