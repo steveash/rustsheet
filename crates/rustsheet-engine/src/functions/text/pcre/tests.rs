@@ -235,3 +235,14 @@ fn our_hir_agrees_with_regex_syntax_where_the_dialects_agree() {
         assert_eq!(ours, theirs, "{pattern}");
     }
 }
+
+#[test]
+fn nested_lookbehind_alternations_are_measured_in_linear_time() {
+    let mut inner = String::from("a|b");
+    for _ in 0..200 {
+        inner = format!("(?:{inner})|c");
+    }
+    let start = std::time::Instant::now();
+    assert!(parse(&format!("(?<={inner})x"), false, usize::MAX).is_ok());
+    assert!(start.elapsed().as_secs() < 2);
+}

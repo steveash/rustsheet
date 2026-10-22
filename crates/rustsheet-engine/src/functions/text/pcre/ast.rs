@@ -163,10 +163,11 @@ pub(super) fn fixed_length(ast: &Ast) -> Option<u32> {
             .iter()
             .try_fold(0u32, |sum, ast| sum.checked_add(fixed_length(ast)?)),
         Ast::Alternation(asts) => {
-            let first = fixed_length(asts.first()?)?;
-            asts.iter()
-                .all(|ast| fixed_length(ast) == Some(first))
-                .then_some(first)
+            // Each alternative is measured once: measuring the first twice doubles the work
+            // at every nested level (`(?<=(?:(?:a|b)|c)|d)` 250 deep).
+            let mut lengths = asts.iter().map(fixed_length);
+            let first = lengths.next()??;
+            lengths.all(|length| length == Some(first)).then_some(first)
         }
         Ast::Repeat { min, max, ast, .. } if Some(*min) == *max => {
             min.checked_mul(fixed_length(ast)?)
