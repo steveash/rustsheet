@@ -620,6 +620,11 @@ impl Model {
                     .to_string(),
             );
         }
+        self.displace_pivots(&DisplaceData::Column {
+            sheet,
+            column,
+            delta: column_count,
+        })?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
@@ -675,7 +680,6 @@ impl Model {
             column,
             delta: column_count,
         };
-        self.displace_pivots(&disp)?;
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
 
@@ -737,6 +741,11 @@ impl Model {
             );
         }
 
+        self.displace_pivots(&DisplaceData::Column {
+            sheet,
+            column,
+            delta: -column_count,
+        })?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
@@ -805,7 +814,6 @@ impl Model {
             column,
             delta: -column_count,
         };
-        self.displace_pivots(&disp)?;
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
         let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
@@ -1009,6 +1017,11 @@ impl Model {
             );
         }
 
+        self.displace_pivots(&DisplaceData::Row {
+            sheet,
+            row,
+            delta: row_count,
+        })?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
@@ -1082,7 +1095,6 @@ impl Model {
             row,
             delta: row_count,
         };
-        self.displace_pivots(&disp)?;
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
 
@@ -1110,6 +1122,11 @@ impl Model {
             return Err("Cannot delete rows because that would break an array formula".to_string());
         }
 
+        self.displace_pivots(&DisplaceData::Row {
+            sheet,
+            row,
+            delta: -row_count,
+        })?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
         // (which go through `set_user_input`) do not trip the covered-cell guard.
@@ -1192,7 +1209,6 @@ impl Model {
             row,
             delta: -row_count,
         };
-        self.displace_pivots(&disp)?;
         self.displace_cells(&disp)?;
         self.displace_cf_ranges(sheet, &disp);
         Ok(())

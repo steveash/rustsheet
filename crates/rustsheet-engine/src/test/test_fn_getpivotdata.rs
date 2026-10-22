@@ -414,7 +414,7 @@ fn many_calls_build_one_index_per_pivot_and_evaluation() {
 #[test]
 fn getpivotdata_follows_the_pivot_through_structural_edits() {
     // SPEC-0015 "Data model" (T-2086): the pivot moves with its cells, so a formula whose
-    // reference moved with them keeps answering.
+    // reference moved with them keeps answering; an edit through the pivot is refused.
     let mut model = model();
     model._set(
         "Sheet2!A1",
@@ -424,9 +424,9 @@ fn getpivotdata_follows_the_pivot_through_structural_edits() {
     model.evaluate();
     assert_eq!(model._get_text("Sheet2!A1"), "22");
     model.insert_rows(0, 1, 2).unwrap();
-    model.insert_columns(0, 3, 1).unwrap();
-    model.delete_rows(0, 7, 1).unwrap();
+    model.delete_columns(0, 6, 2).unwrap();
     model.rename_sheet_by_index(0, "Moved").unwrap();
+    assert!(model.insert_rows(0, 7, 1).is_err());
     model.evaluate();
     assert_eq!(
         model._get_formula("Sheet2!A1"),
@@ -434,8 +434,12 @@ fn getpivotdata_follows_the_pivot_through_structural_edits() {
     );
     assert_eq!(model._get_text("Sheet2!A1"), "22");
     assert_eq!(model._get_text("Sheet2!A2"), "49");
-    // Deleting the pivot's top-left cell drops it (Excel refuses that edit).
-    model.delete_rows(0, 5, 1).unwrap();
+    // Deleting every row of the second pivot (A22:B25 now) drops it with its cells.
+    model._set("Sheet2!A3", r#"=GETPIVOTDATA("Sales",Moved!$A$22)"#);
     model.evaluate();
-    assert_eq!(model._get_text("Sheet2!A2"), "#REF!");
+    assert_eq!(model._get_text("Sheet2!A3"), "8.166666667");
+    model.delete_rows(0, 21, 6).unwrap();
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!A3"), "#REF!");
+    assert_eq!(model._get_text("Sheet2!A1"), "22");
 }

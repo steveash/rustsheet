@@ -4,8 +4,9 @@
 //! costs 4 bytes per field and no allocation of its own. [`CacheBuilder`] is the one way to build a
 //! cache: the xlsx importer (T-2082) and `Txn::add_pivot_table` (T-2084) both use it, and it counts
 //! the SPEC-0015 limits before every push, so nothing past them is allocated (CLAUDE.md
-//! directive 5). Pivots follow structural edits (T-2086): a row or column insert or delete shifts,
-//! grows or shrinks a pivot's location ([`Model::displace_pivots`]), a sheet rename rewrites the
+//! directive 5). Pivots follow structural edits (T-2086): a row or column insert or delete shifts a
+//! pivot's location, drops the pivot or is refused when it cuts through one
+//! ([`Model::displace_pivots`]), a sheet rename rewrites the
 //! cache sources naming it, and a sheet deletion takes the sheet's pivots with it so an undo puts
 //! them back. A row or column move still drops the sheet's pivots
 //! ([`Workbook::drop_pivots_on_sheet`]; docs/excel-semantics/web.md "GETPIVOTDATA against a pivot
@@ -417,33 +418,47 @@ impl Workbook {
     }
 }
 
-/// Where the 0-based span `[first, last]` of a pivot's rows or columns goes when `delta` lines are
-/// inserted (`delta > 0`) or deleted (`delta < 0`) at the 0-based line `at`, like the cells it
-/// covers: an insert at or before `first` shifts it and one inside grows it; a delete before it
-/// shifts it and one inside shrinks it. `None` drops the pivot: its first line is deleted (Excel
-/// refuses that edit, the engine cannot) or an insert pushes it past the last line `max`.
-fn displace_span(first: u32, last: u32, at: i64, delta: i64, max: u32) -> Option<(u32, u32)> {
-    let (first, last) = (i64::from(first), i64::from(last));
-    let (first, last) = if delta >= 0 {
-        let shift = |line: i64| if line >= at { line + delta } else { line };
-        (shift(first), shift(last).min(i64::from(max)))
-    } else {
+/// What a row or column insert or delete does to the 0-based span `[first, last]` of a pivot's
+/// rows or columns ([`displace_span`]).
+#[derive(Debug, PartialEq, Eq)]
+enum SpanEdit {
+    /// The span is now `[first, last]`.
+    Keep(u32, u32),
+    /// The edit deletes every line of the span: the pivot goes with its cells.
+    Drop,
+    /// The edit cuts through the span, or pushes it off the sheet: Excel refuses an edit that
+    /// would change part of a pivot (SPEC-0015 "Data model"; UNVERIFIED which edits exactly,
+    /// T-2402), so the edit is refused as one that would break an array formula is.
+    Refuse,
+}
+
+/// What inserting (`delta > 0`) or deleting (`delta < 0`) `|delta|` lines at the 0-based line `at`
+/// does to the span `[first, last]` on a sheet whose last 0-based line is `max`: lines inserted at
+/// or before `first`, or deleted wholly before it, shift it like the cells it covers; lines
+/// inserted or deleted after `last` leave it; a delete of every line of it drops it; anything else
+/// is refused ([`SpanEdit`]).
+fn displace_span(first: u32, last: u32, at: i64, delta: i64, max: u32) -> SpanEdit {
+    let (from, to) = (i64::from(first), i64::from(last));
+    if at > to {
+        return SpanEdit::Keep(first, last);
+    }
+    if delta >= 0 && at > from {
+        return SpanEdit::Refuse;
+    }
+    if delta < 0 {
         let end = at - delta;
-        if (at..end).contains(&first) {
-            return None;
+        if at <= from && end > to {
+            return SpanEdit::Drop;
         }
-        let shrink = |line: i64| {
-            if line < at {
-                line
-            } else if line < end {
-                at - 1
-            } else {
-                line + delta
-            }
-        };
-        (shrink(first), shrink(last))
-    };
-    Some((u32::try_from(first).ok()?, u32::try_from(last).ok()?)).filter(|&(f, _)| f <= max)
+        if end > from {
+            return SpanEdit::Refuse;
+        }
+    }
+    let shift = |line: i64| u32::try_from(line + delta).ok().filter(|&l| l <= max);
+    match (shift(from), shift(to)) {
+        (Some(first), Some(last)) => SpanEdit::Keep(first, last),
+        _ => SpanEdit::Refuse,
+    }
 }
 
 impl Model {
@@ -457,8 +472,10 @@ impl Model {
     }
 
     /// Moves the pivots of a row or column insert or delete (`DisplaceData::Row` or
-    /// `DisplaceData::Column`, 1-based, a negative `delta` deleting) with their cells
-    /// ([`displace_span`]); other displacements leave pivots alone. SPEC-0015 "Data model".
+    /// `DisplaceData::Column`, 1-based, a negative `delta` deleting) with their cells, or refuses
+    /// the edit, leaving every pivot as it was, when it cuts through one ([`displace_span`]).
+    /// Other displacements leave pivots alone. Called before the edit changes anything, so a
+    /// refusal leaves the model unchanged. SPEC-0015 "Data model".
     pub(crate) fn displace_pivots(&mut self, data: &DisplaceData) -> Result<(), String> {
         let (sheet, at, delta, rows) = match *data {
             DisplaceData::Row { sheet, row, delta } => (sheet, row, delta, true),
@@ -471,26 +488,56 @@ impl Model {
         };
         let sheet_id = self.workbook.worksheet(sheet)?.sheet_id;
         let (at, delta) = (i64::from(at) - 1, i64::from(delta));
-        // The last 0-based line; `LAST_ROW` and `LAST_COLUMN` are 1-based and positive.
+        // The last 0-based line; `LAST_ROW` and `LAST_COLUMN` are 1-based and positive, so the
+        // conversion cannot fail.
         let max = u32::try_from(if rows { LAST_ROW } else { LAST_COLUMN } - 1).unwrap_or(0);
-        self.workbook.pivot_tables.retain_mut(|pivot| {
-            if pivot.sheet_id != sheet_id {
-                return true;
-            }
-            let area = &mut pivot.location;
-            let (first, last) = if rows {
-                (&mut area.top, &mut area.bottom)
+        let span = |area: &CellArea| {
+            if rows {
+                (area.top, area.bottom)
             } else {
-                (&mut area.left, &mut area.right)
-            };
-            match displace_span(*first, *last, at, delta, max) {
-                Some((new_first, new_last)) => {
-                    (*first, *last) = (new_first, new_last);
-                    true
-                }
-                None => false,
+                (area.left, area.right)
             }
-        });
+        };
+        let edits: Vec<SpanEdit> = self
+            .workbook
+            .pivot_tables
+            .iter()
+            .map(|pivot| {
+                if pivot.sheet_id != sheet_id {
+                    return SpanEdit::Keep(0, 0);
+                }
+                let (first, last) = span(&pivot.location);
+                displace_span(first, last, at, delta, max)
+            })
+            .collect();
+        if let Some(i) = edits.iter().position(|e| *e == SpanEdit::Refuse) {
+            let name = self
+                .workbook
+                .pivot_tables
+                .get(i)
+                .map_or("", |p| p.name.as_str());
+            return Err(format!(
+                "Cannot change part of the pivot table '{name}' (insert or delete around it)"
+            ));
+        }
+        let pivots = std::mem::take(&mut self.workbook.pivot_tables);
+        self.workbook.pivot_tables = pivots
+            .into_iter()
+            .zip(edits)
+            .filter_map(|(mut pivot, edit)| match edit {
+                SpanEdit::Keep(first, last) if pivot.sheet_id == sheet_id => {
+                    let area = &mut pivot.location;
+                    if rows {
+                        (area.top, area.bottom) = (first, last);
+                    } else {
+                        (area.left, area.right) = (first, last);
+                    }
+                    Some(pivot)
+                }
+                SpanEdit::Drop => None,
+                _ => Some(pivot),
+            })
+            .collect();
         // The indices are keyed by position in `pivot_tables`, which dropping shifts.
         self.evaluation.pivot_indexes.clear();
         Ok(())
@@ -675,29 +722,27 @@ mod tests {
     }
 
     #[test]
-    fn displace_span_follows_the_lines_it_covers() {
+    fn displace_span_shifts_drops_or_refuses() {
         // The span is 0-based rows 2..=6; `at` is the 0-based first inserted or deleted line.
         let max = 1_048_575;
-        // Inserts at or before the first line shift; inside grow; after leave it.
-        assert_eq!(displace_span(2, 6, 0, 3, max), Some((5, 9)));
-        assert_eq!(displace_span(2, 6, 2, 1, max), Some((3, 7)));
-        assert_eq!(displace_span(2, 6, 3, 2, max), Some((2, 8)));
-        assert_eq!(displace_span(2, 6, 6, 1, max), Some((2, 7)));
-        assert_eq!(displace_span(2, 6, 7, 1, max), Some((2, 6)));
-        // Deletes before shift; inside shrink; through the end cut it; the first line drops it.
-        assert_eq!(displace_span(2, 6, 0, -2, max), Some((0, 4)));
-        assert_eq!(displace_span(2, 6, 3, -2, max), Some((2, 4)));
-        assert_eq!(displace_span(2, 6, 4, -10, max), Some((2, 3)));
-        assert_eq!(displace_span(2, 6, 7, -3, max), Some((2, 6)));
-        assert_eq!(displace_span(2, 6, 2, -1, max), None);
-        assert_eq!(displace_span(2, 6, 0, -3, max), None);
-        // An insert pushing the first line off the sheet drops it; the last line is clamped.
-        assert_eq!(
-            displace_span(2, 6, 0, 1_048_573, max),
-            Some((1_048_575, max))
-        );
-        assert_eq!(displace_span(2, 6, 0, 1_048_574, max), None);
-        assert_eq!(displace_span(2, 6, 3, 1_048_576, max), Some((2, max)));
+        let keep = SpanEdit::Keep;
+        // Inserts at or before the first line shift; after the last leave it; inside refuse.
+        assert_eq!(displace_span(2, 6, 0, 3, max), keep(5, 9));
+        assert_eq!(displace_span(2, 6, 2, 1, max), keep(3, 7));
+        assert_eq!(displace_span(2, 6, 7, 1, max), keep(2, 6));
+        assert_eq!(displace_span(2, 6, 3, 2, max), SpanEdit::Refuse);
+        assert_eq!(displace_span(2, 6, 6, 1, max), SpanEdit::Refuse);
+        // Deletes wholly before shift; after leave it; over all of it drop; through it refuse.
+        assert_eq!(displace_span(2, 6, 0, -2, max), keep(0, 4));
+        assert_eq!(displace_span(2, 6, 7, -3, max), keep(2, 6));
+        assert_eq!(displace_span(2, 6, 2, -5, max), SpanEdit::Drop);
+        assert_eq!(displace_span(2, 6, 0, -10, max), SpanEdit::Drop);
+        assert_eq!(displace_span(2, 6, 2, -1, max), SpanEdit::Refuse);
+        assert_eq!(displace_span(2, 6, 0, -3, max), SpanEdit::Refuse);
+        assert_eq!(displace_span(2, 6, 4, -10, max), SpanEdit::Refuse);
+        // An insert pushing the span off the sheet is refused.
+        assert_eq!(displace_span(2, 6, 0, 1_048_569, max), keep(1_048_571, max));
+        assert_eq!(displace_span(2, 6, 0, 1_048_570, max), SpanEdit::Refuse);
     }
 
     #[test]
@@ -706,11 +751,11 @@ mod tests {
         // The pivots sit at A3:E7 (0-based rows 2..=6, columns 0..=4); edits are 1-based.
         let edits: [(Edit, [u32; 4]); 6] = [
             (|m| m.insert_rows(0, 1, 2), [4, 0, 8, 4]),
-            (|m| m.insert_rows(0, 5, 1), [2, 0, 7, 4]),
+            (|m| m.insert_rows(0, 8, 1), [2, 0, 6, 4]),
             (|m| m.delete_rows(0, 1, 2), [0, 0, 4, 4]),
-            (|m| m.delete_rows(0, 6, 4), [2, 0, 4, 4]),
-            (|m| m.insert_columns(0, 3, 2), [2, 0, 6, 6]),
-            (|m| m.delete_columns(0, 2, 1), [2, 0, 6, 3]),
+            (|m| m.delete_rows(0, 8, 4), [2, 0, 6, 4]),
+            (|m| m.insert_columns(0, 1, 3), [2, 3, 6, 7]),
+            (|m| m.delete_columns(0, 6, 1), [2, 0, 6, 4]),
         ];
         for (edit, moved) in edits {
             let (mut model, first, second) = model_with_pivots();
@@ -720,18 +765,35 @@ mod tests {
                 vec![(first, moved), (second, [2, 0, 6, 4])]
             );
         }
-        // Inserting columns before the pivot shifts it right.
-        let (mut model, first, _) = model_with_pivots();
-        model.insert_columns(0, 1, 3).unwrap();
-        assert_eq!(locations(&model)[0], (first, [2, 3, 6, 7]));
     }
 
     #[test]
-    fn deleting_the_top_left_cell_or_moving_lines_drops_the_pivot() {
+    fn an_edit_through_a_pivot_is_refused_and_changes_nothing() {
+        type Edit = fn(&mut Model) -> Result<(), String>;
+        let edits: [Edit; 5] = [
+            |m| m.insert_rows(0, 4, 1),
+            |m| m.delete_rows(0, 3, 1),
+            |m| m.delete_rows(0, 7, 1),
+            |m| m.insert_columns(0, 2, 1),
+            |m| m.delete_columns(0, 1, 1),
+        ];
+        for edit in edits {
+            let (mut model, _, _) = model_with_pivots();
+            model.set_user_input(0, 5, 2, "x".to_string()).unwrap();
+            let before = locations(&model);
+            let error = edit(&mut model).unwrap_err();
+            assert!(error.contains("pivot table 'P"), "{error}");
+            assert_eq!(locations(&model), before);
+            assert_eq!(model.get_formatted_cell_value(0, 5, 2).unwrap(), "x");
+        }
+    }
+
+    #[test]
+    fn deleting_every_line_of_a_pivot_or_moving_lines_drops_it() {
         type Edit = fn(&mut Model) -> Result<(), String>;
         let edits: [Edit; 4] = [
-            |m| m.delete_rows(0, 3, 1),
-            |m| m.delete_columns(0, 1, 1),
+            |m| m.delete_rows(0, 2, 6),
+            |m| m.delete_columns(0, 1, 5),
             |m| m.move_rows_action(0, 1, 1, 1),
             |m| m.move_columns_action(0, 1, 1, 1),
         ];

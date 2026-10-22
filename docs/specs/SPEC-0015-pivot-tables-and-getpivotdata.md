@@ -128,14 +128,16 @@ in them (cache, field, shared item, data field) is validated at import (T-2082) 
 api-design convention (0-based `u32`, stable `sheet_id`, docs/architecture/api-design.md principle 3).
 
 Structural edits: tables have no such handling today (`workbook.tables` is only touched by
-tables.rs, the parser, SUBTOTAL and export), so this is new code, T-2086: the row/column
-insert/delete actions (`actions.rs` `insert_rows`, `delete_rows`, `insert_columns`,
-`delete_columns`) shift or shrink `location` like the cells they move, a deletion that removes a
-pivot's top-left cell drops the pivot (Excel refuses that edit; the engine cannot), sheet deletion
-drops the sheet's pivots, and a sheet rename rewrites `CacheSource::sheet_name`. T-2086 landed
-this (`Model::displace_pivots` in pivot.rs); a sheet deletion keeps its pivots in `TakenSheet` so an
-undo restores them, and a row or column move still drops the sheet's pivots (GETPIVOTDATA
-`#REF!`), a known gap listed in the web.md section, not a silent wrong answer.
+tables.rs, the parser, SUBTOTAL and export), so this is new code, T-2086 (`Model::displace_pivots`
+in pivot.rs): the row/column insert/delete actions (`actions.rs` `insert_rows`, `delete_rows`,
+`insert_columns`, `delete_columns`) shift `location` like the cells they move when the edit is at
+or before its first line (an insert) or wholly before it (a delete), drop the pivot when a delete
+takes every one of its lines, and otherwise, when the edit meets the pivot's lines, refuse the edit
+before changing anything, as Excel refuses an edit that would change part of a pivot (UNVERIFIED
+which edits exactly; T-2402). Sheet deletion takes the sheet's pivots into `TakenSheet` so an undo
+restores them, and a sheet rename rewrites `CacheSource::sheet_name`. A row or column move still
+drops the sheet's pivots (GETPIVOTDATA `#REF!`), a known gap listed in the web.md entry "Pivot
+tables and structural edits" (T-2401), not a silent wrong answer.
 
 ### xlsx import (T-2082)
 `crates/rustsheet-xlsx/src/import/pivots.rs`, next to `tables.rs`:
