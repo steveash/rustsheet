@@ -529,8 +529,13 @@ reads its values from that file, so every value Excel for the web saves for a ke
 included: ironcalc-calc `EXP_SIGN.xlsx` EXP_SIGN!B44 (`EXP(-745)`, Excel Online) caches 0 for the same reason. A normal
 result is written in full (`EXP(-708)`: `<v>3.3075530036384078E-308</v>`). Desktop Excel's save is not probed.
 RustSheet's export does not do this yet (T-2211).
-Not probed: the overflow edge of
-EXP itself, a in (709.7827, 709.79).
+Range edges (T-2203, probes-numeric/t2203-exp-range-edges, excel-graph 2026-10-22, 527 rows): the last finite
+argument is 709.782712893384 (ln DBL_MAX; EXP = 1.7976931348622732E308, not quite DBL_MAX), and the first
+`#NUM!` is its successor double 709.7827128933841; every argument above it, up to 710.5, is `#NUM!`. At the other
+end `(EXP(a))=0` is TRUE for every a <= -745.1332191019412 and FALSE for every a >= -745.1332191019411 (the kept
+2^-1074, probes/subnormal-function-results C4), so the switch sits between those two consecutive doubles, at -1075*ln 2 as the midpoint rounding
+predicts; -745.5 and -746 are 0. The 20 control arguments in [-708.39, -707] are normal results. The current
+engine matches all 780 checked cells.
 - Curated evidence on main (probes-numeric, excel-graph fill of 2026-10-19, bit-identical to the T-1778 research
   run at all 22,281 formula cells): `t1931-exp-map` (5,990 near-midpoint EXP(a) cells from `kmyst-erfc-r5expmap1`),
   `t1931-exp-random` (7,084 from `kmyst-erfc-r5expmap2`), `t1931-exp-gauss` (8,096 `EXP(-(x*x))` cells from

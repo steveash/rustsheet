@@ -697,7 +697,9 @@ cloned only on the failure path. Turning a function into a kernel is mechanical:
 the other getters. Checks keep their order, so the kernel's own check order decides per element, by construction
 (PMT reads rate, nper, pv in order; YEARFRAC reads basis, start, end). The driver must not scan the
 arguments for the first error before calling the kernel: a refused range reaches the kernel as
-`#VALUE!` in its slot (T-1800).
+`#VALUE!` in its slot (T-1800). As built (T-2277): a function whose own argument error beats the lift (IMAGE's `offline_args`,
+HYPERLINK's link_location) reads that argument itself with `read_lift_arg` before the lift and hands the rest to
+`lift_values`; the driver still never picks an error.
 ```rust
 pub(crate) fn fn_edate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
     self.lift_call(Function::Edate, args, cell, &mut |model, values| model.edate_of(values, cell))
