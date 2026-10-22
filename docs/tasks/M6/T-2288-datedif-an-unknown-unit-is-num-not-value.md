@@ -3,7 +3,7 @@ id: T-2288
 title: "DATEDIF: an unknown unit is #NUM!, not #VALUE!, whatever the dates"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
